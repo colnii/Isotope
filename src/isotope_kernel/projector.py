@@ -26,6 +26,9 @@ class RunProjector:
 
     EXECUTABLE_DECISION_OUTCOMES = {"approved", "modified"}
     KNOWN_DECISION_OUTCOMES = {"approved", "modified", "denied", "pending_user_approval"}
+    KNOWN_RUN_STATUSES = {"unknown", "running", "pending_user_approval", "failed", "completed"}
+    CHECKPOINT_STATE_FIELDS = ("run_id", "status", "current_agent", "actions", "artifacts", "last_event_id")
+    CHECKPOINT_ARTIFACT_FIELDS = ("ref", "artifact_type", "summary", "provenance")
     PROJECTOR_VERSION = "run_projector@v1"
 
     def __init__(self) -> None:
@@ -244,9 +247,7 @@ class RunProjector:
 
         # Validate prefix from canonical events before trusting the checkpoint state.
         self.project(canonical_events[: basis_index + 1])
-        state = self._run_state_from_checkpoint(checkpoint["state"])
-        if state.run_id and state.run_id != run_id:
-            raise ValueError("checkpoint state run_id must match rebuild run_id")
+        state = self._run_state_from_checkpoint(checkpoint["state"], run_id, checkpoint["basis_event_id"])
 
         for event in canonical_events[basis_index + 1 :]:
             self._validate_lifecycle(event)
@@ -259,9 +260,24 @@ class RunProjector:
                 return index
         raise ValueError("checkpoint basis_event_id not found")
 
-    def _run_state_from_checkpoint(self, state: dict[str, Any]) -> RunState:
+    def _run_state_from_checkpoint(self, state: dict[str, Any], run_id: str, basis_event_id: str) -> RunState:
         if not isinstance(state, dict):
             raise ValueError("checkpoint state must be a dict")
+        for field in self.CHECKPOINT_STATE_FIELDS:
+            if field not in state:
+                raise ValueError(f"checkpoint state missing required field: {field}")
+        if state["run_id"] != run_id:
+            raise ValueError("checkpoint state run_id must match rebuild run_id")
+        if state["last_event_id"] != basis_event_id:
+            raise ValueError("checkpoint state last_event_id must match basis_event_id")
+        if state["status"] not in self.KNOWN_RUN_STATUSES:
+            raise ValueError("checkpoint state status must be known")
+        if not isinstance(state["actions"], dict):
+            raise ValueError("checkpoint state actions must be a dict")
+        if not isinstance(state["artifacts"], list):
+            raise ValueError("checkpoint state artifacts must be a list")
+        for artifact in state["artifacts"]:
+            self._validate_checkpoint_artifact(artifact)
         return RunState(
             run_id=str(state.get("run_id", "")),
             status=str(state.get("status", "unknown")),
@@ -270,3 +286,12 @@ class RunProjector:
             artifacts=list(state.get("artifacts", [])),
             last_event_id=str(state.get("last_event_id", "")),
         )
+
+    def _validate_checkpoint_artifact(self, artifact: Any) -> None:
+        if not isinstance(artifact, dict):
+            raise ValueError("checkpoint artifact entry must be a dict")
+        if "content" in artifact:
+            raise ValueError("checkpoint artifact entry cannot contain content")
+        for field in self.CHECKPOINT_ARTIFACT_FIELDS:
+            if field not in artifact:
+                raise ValueError(f"checkpoint artifact entry missing required field: {field}")
