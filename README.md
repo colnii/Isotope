@@ -1,0 +1,24 @@
+# Isotope
+
+Isotope 是一个独立的 kernel-first agent runtime 项目。当前仓库用于沉淀最小 kernel slice：file event log、action chain、policy grants、artifact provenance、structured ResourceRef、projector replay 和 RunState rebuild。
+
+当前代码来自 `x-agent` 中的 Isotope staging snapshot。`x-agent` 不是 Isotope 的 canonical repo，后续 Isotope 的设计和实现应以本仓库为准。
+
+## Current Slice
+
+当前 slice 只验证最小闭环：
+
+- compact intent 编译为 `ActionProposal` 后才能进入 policy。
+- executor 只能使用 `PolicyDecision.grants`。
+- file event log 使用 JSONL append-only。
+- artifact 带 execution provenance。
+- artifact identity 使用 structured `ResourceRef`。
+- projector 只从 canonical events 重建 `RunState`。
+
+## Verify
+
+```bash
+python -m venv .venv
+.venv/bin/python -m pip install -U pip pytest
+PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
+```
