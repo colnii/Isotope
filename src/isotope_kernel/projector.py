@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 from typing import Any, Iterable
 
 from .events import CanonicalEvent
@@ -200,6 +201,28 @@ class RunProjector:
 
     def rebuild(self, run_id: str, event_store) -> RunState:
         return self.project(event_store.list_events(run_id))
+
+    def create_checkpoint(
+        self,
+        run_id: str,
+        events: Iterable[CanonicalEvent],
+        projector_version: str = PROJECTOR_VERSION,
+    ) -> dict[str, Any]:
+        canonical_events = list(events)
+        if not canonical_events:
+            raise ValueError("cannot create checkpoint from empty events")
+
+        state = self.project(canonical_events)
+        if state.run_id and state.run_id != run_id:
+            raise ValueError("checkpoint state run_id must match checkpoint run_id")
+
+        return {
+            "run_id": run_id,
+            "projector_version": projector_version,
+            "basis_event_id": canonical_events[-1].event_id,
+            "state": asdict(state),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
 
     def rebuild_with_checkpoint(
         self,
