@@ -42,6 +42,9 @@
 - retrieval authorization validation
 - summary-only retrieval boundary
 - retrieval content-read prevention
+- workspace grants validation
+- shared_ro-only workspace binding
+- executor uses decision workspace grants only
 
 ## Deferred
 

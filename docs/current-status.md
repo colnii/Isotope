@@ -36,6 +36,9 @@
 - retrieval authorization validation
 - summary-only retrieval boundary
 - retrieval content-read prevention
+- workspace grants validation
+- shared_ro-only workspace binding
+- executor uses decision workspace grants only
 
 ## Tests
 
@@ -48,7 +51,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-75 passed
+83 passed
 ```
 
 Import boundary check:
@@ -84,6 +87,6 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 下一步建议优先做：
 
 - checkpoint design doc only
-- workspace binding hardening
+- policy decision validation hardening
 
 不要直接进入 real LLM / memory / ingestion。
