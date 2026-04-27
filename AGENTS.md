@@ -14,7 +14,7 @@
 - 不要把 v0 implementation shape 误写成永久协议。
 - 保持 hard contracts 优先：action chain、policy grants、append-only canonical event log、projector-only replay、RunState rebuild、artifact provenance、ResourceRef。
 - 任何 deferred 能力必须先写 design/doc patch 和 red tests，不能直接实现。
-- 不得直接实现 checkpoint-assisted recovery / Projector checkpoint integration；checkpoint 相关实现必须遵守 `docs/checkpoint-ownership-v0.1.md`，并先写 red tests。
+- 不得直接扩展 checkpoint creation automation / server checkpoint API；checkpoint 相关实现必须遵守 `docs/checkpoint-ownership-v0.1.md`，并先写 red tests。
 
 ## Current Slice
 
@@ -87,6 +87,18 @@
 - projector validates artifact created payload and rejects projected content
 - projector validates approval requested payload
 - projector remains canonical-event-only and does not read artifact store / executor state / server memory / checkpoint
+- minimal checkpoint-assisted projector rebuild
+- `RunProjector.rebuild_with_checkpoint(...)`
+- no checkpoint falls back to full event log rebuild
+- incompatible checkpoint version falls back to full event log rebuild
+- compatible checkpoint replays canonical events after `basis_event_id`
+- missing checkpoint basis event fail-fast
+- checkpoint run_id mismatch fail-fast
+- checkpoint cannot hide malformed / lifecycle-invalid event log
+- checkpoint-assisted rebuild still runs canonical event validation / lifecycle validation
+- checkpoint-assisted rebuild has no server API integration
+- checkpoint creation automation remains deferred
+- no CheckpointService
 
 ## Deferred
 
@@ -96,8 +108,7 @@
 - ActionTypeRegistry
 - memory write
 - external ingestion
-- checkpoint-assisted recovery
-- Projector checkpoint integration
+- checkpoint creation automation
 - CheckpointService
 - checkpoint migration / version negotiation / integrity hash
 - SSE

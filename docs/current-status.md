@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`3d0e4a78e749b307d1333f86c2fdd269cf168fe0`。
+- 最新 implementation commit：`475c96173cfc16951ca4f6accef9078f9718c3c2`。
 
 ## Implemented Slice
 
@@ -82,6 +82,18 @@
 - projector validates artifact created payload and rejects projected content
 - projector validates approval requested payload
 - projector remains canonical-event-only and does not read artifact store / executor state / server memory / checkpoint
+- minimal checkpoint-assisted projector rebuild
+- `RunProjector.rebuild_with_checkpoint(...)`
+- no checkpoint falls back to full event log rebuild
+- incompatible checkpoint version falls back to full event log rebuild
+- compatible checkpoint replays canonical events after `basis_event_id`
+- missing checkpoint basis event fail-fast
+- checkpoint run_id mismatch fail-fast
+- checkpoint cannot hide malformed / lifecycle-invalid event log
+- checkpoint-assisted rebuild still runs canonical event validation / lifecycle validation
+- checkpoint-assisted rebuild has no server API integration
+- checkpoint creation automation remains deferred
+- no CheckpointService
 
 ## Tests
 
@@ -94,7 +106,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-218 passed
+225 passed
 ```
 
 Import boundary check:
@@ -113,8 +125,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - `ActionTypeRegistry`
 - memory write
 - external ingestion / `ImportedSnapshot`
-- checkpoint-assisted recovery
-- Projector checkpoint integration
+- checkpoint creation automation
 - CheckpointService
 - checkpoint migration / version negotiation / integrity hash
 - SSE
@@ -134,7 +145,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- checkpoint-assisted projector rebuild design patch
-- checkpoint-assisted projector rebuild red tests
+- checkpoint creation by projector red tests
+- checkpoint-assisted rebuild hardening for checkpoint state schema
 
 不要直接进入 real LLM / memory / ingestion。

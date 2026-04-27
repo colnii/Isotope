@@ -2,7 +2,7 @@
 
 状态：draft
 
-本文只定义 checkpoint ownership（检查点归属）和边界，不定义最终 checkpoint schema，也不授权直接实现 checkpoint。
+本文定义 checkpoint ownership（检查点归属）和边界。当前实现只覆盖 opaque checkpoint storage 和最小 checkpoint-assisted projector rebuild；checkpoint schema 仍是 v0 candidate。
 
 ## Purpose
 
@@ -39,9 +39,9 @@ v0.1 决定：
 
 v0.1 ownership 分工：
 
-- `RunProjector`：解释 canonical events，产出 projected state，并在未来负责生成 checkpoint。
-- `FileEventStore` / future storage layer：只保存和读取 opaque checkpoint blob，不解释 checkpoint 字段含义。
-- `InProcessServer` / future server API：可以请求 projector rebuild 或未来 checkpoint-assisted rebuild，但不能直接把 checkpoint 当成 state source。
+- `RunProjector`：解释 canonical events，产出 projected state，执行 checkpoint-assisted rebuild，并在未来负责生成 checkpoint。
+- `FileCheckpointStore` / future storage layer：只保存和读取 opaque checkpoint blob，不解释 checkpoint 字段含义。
+- `InProcessServer` / future server API：当前未接入 checkpoint；未来可以请求 projector rebuild 或 server-facing checkpoint-assisted rebuild，但不能直接把 checkpoint 当成 state source。
 - future checkpoint storage：只是一种 storage concern，不是新的 truth layer。
 
 不新增独立 `CheckpointService`，除非后续 TDD 证明 projector/storage 边界无法承载最小实现。
@@ -68,7 +68,7 @@ checkpoint 不应包含：
 
 ## Recovery Flow
 
-checkpoint-assisted recovery 的 v0.1 流程应是：
+checkpoint-assisted rebuild 的 v0.1 流程应是：
 
 1. 读取 checkpoint。
 2. 校验 checkpoint 的 `run_id`、`projector_version` 和 basis cursor。
@@ -93,10 +93,9 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 
 ## Deferred
 
-本轮不实现：
+当前仍不实现：
 
-- checkpoint write/read API
-- checkpoint storage format
+- checkpoint creation automation
 - checkpoint compaction
 - checkpoint migration
 - checkpoint version negotiation
@@ -108,12 +107,19 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 
 ## Implementation Notes For Future TDD
 
-后续实现必须先写 red tests，至少覆盖：
+已覆盖的最小行为：
 
 - checkpoint 丢失时仍可从 event log 完整 rebuild。
 - checkpoint version 不兼容时被丢弃，并从 event log 重新投影。
 - checkpoint basis cursor 之后的 events 会继续 replay。
 - malformed event log 不会因为 checkpoint 存在而被静默跳过。
-- EventStore 只存取 checkpoint blob，不解释 projector state。
+- `FileCheckpointStore` 只存取 checkpoint blob，不解释 projector state。
 - checkpoint 不包含 external raw input。
 - checkpoint schema 仍被标记为 v0 candidate。
+
+后续实现必须先写 red tests，优先覆盖：
+
+- projector-owned checkpoint creation。
+- checkpoint state schema hardening。
+- incompatible checkpoint state 与 event log 的冲突处理。
+- server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。
