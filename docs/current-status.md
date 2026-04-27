@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`56a8fa30ddbd36b812f21b1aa33e679fa24b32f2`。
+- 最新 implementation commit：`3d0e4a78e749b307d1333f86c2fdd269cf168fe0`。
 
 ## Implemented Slice
 
@@ -75,6 +75,13 @@
 - missing checkpoint returns `None`
 - malformed checkpoint file fail-fast
 - checkpoint store does not modify event log
+- projector event payload validation hardening
+- `PolicyDecision.modified` enters execution lifecycle like `approved`
+- malformed projector event payload fail-fast with controlled `ValueError`
+- projector validates action decided/started/completed/failed payloads
+- projector validates artifact created payload and rejects projected content
+- projector validates approval requested payload
+- projector remains canonical-event-only and does not read artifact store / executor state / server memory / checkpoint
 
 ## Tests
 
@@ -87,7 +94,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-190 passed
+218 passed
 ```
 
 Import boundary check:
@@ -127,7 +134,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
+- checkpoint-assisted projector rebuild design patch
 - checkpoint-assisted projector rebuild red tests
-- event payload validation for projector
 
 不要直接进入 real LLM / memory / ingestion。

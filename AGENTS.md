@@ -80,6 +80,13 @@
 - missing checkpoint returns `None`
 - malformed checkpoint file fail-fast
 - checkpoint store does not modify event log
+- projector event payload validation hardening
+- `PolicyDecision.modified` enters execution lifecycle like `approved`
+- malformed projector event payload fail-fast with controlled `ValueError`
+- projector validates action decided/started/completed/failed payloads
+- projector validates artifact created payload and rejects projected content
+- projector validates approval requested payload
+- projector remains canonical-event-only and does not read artifact store / executor state / server memory / checkpoint
 
 ## Deferred
 
