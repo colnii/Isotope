@@ -16,7 +16,10 @@ class RetrievalService:
             raise TypeError("artifact summary retrieval requires a structured ResourceRef")
         if ref.ref_type != "artifact":
             raise ValueError("artifact summary retrieval requires an artifact ResourceRef")
-        if grants.get("artifact", {}).get("read") != "summary":
+        if not isinstance(grants, dict):
+            raise TypeError("retrieval grants must be a dict")
+        artifact_grants = grants.get("artifact")
+        if not isinstance(artifact_grants, dict) or artifact_grants.get("read") != "summary":
             raise PermissionError("artifact summary read is not granted")
 
         metadata = self.artifact_store.get_metadata(ref.artifact_id)
