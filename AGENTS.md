@@ -14,7 +14,7 @@
 - 不要把 v0 implementation shape 误写成永久协议。
 - 保持 hard contracts 优先：action chain、policy grants、append-only canonical event log、projector-only replay、RunState rebuild、artifact provenance、ResourceRef。
 - 任何 deferred 能力必须先写 design/doc patch 和 red tests，不能直接实现。
-- 不得直接实现 checkpoint；实现前必须遵守 `docs/checkpoint-ownership-v0.1.md`，并先写 red tests。
+- 不得直接实现 checkpoint-assisted recovery / Projector checkpoint integration；checkpoint 相关实现必须遵守 `docs/checkpoint-ownership-v0.1.md`，并先写 red tests。
 
 ## Current Slice
 
@@ -72,6 +72,14 @@
 - `run.completed` cannot override running / failed / pending approval state
 - `run.completed` closes later action/artifact lifecycle events
 - projector remains canonical-event-only for run completion state
+- checkpoint storage boundary
+- `FileCheckpointStore` run-scoped opaque blob save/load
+- checkpoint required fields: `run_id`, `projector_version`, `basis_event_id`, `state`, `created_at`
+- checkpoint `run_id` must match target run
+- checkpoint rejects external raw input / provider response / imported snapshot
+- missing checkpoint returns `None`
+- malformed checkpoint file fail-fast
+- checkpoint store does not modify event log
 
 ## Deferred
 
@@ -81,7 +89,10 @@
 - ActionTypeRegistry
 - memory write
 - external ingestion
-- checkpoint implementation
+- checkpoint-assisted recovery
+- Projector checkpoint integration
+- CheckpointService
+- checkpoint migration / version negotiation / integrity hash
 - SSE
 - auth
 - multi-agent concurrency

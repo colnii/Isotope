@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`2938d51a55534221aecba4b587da953578d71594`。
+- 最新 implementation commit：`56a8fa30ddbd36b812f21b1aa33e679fa24b32f2`。
 
 ## Implemented Slice
 
@@ -67,6 +67,14 @@
 - `run.completed` cannot override running / failed / pending approval state
 - `run.completed` closes later action/artifact lifecycle events
 - projector remains canonical-event-only for run completion state
+- checkpoint storage boundary
+- `FileCheckpointStore` run-scoped opaque blob save/load
+- checkpoint required fields: `run_id`, `projector_version`, `basis_event_id`, `state`, `created_at`
+- checkpoint `run_id` must match target run
+- checkpoint rejects external raw input / provider response / imported snapshot
+- missing checkpoint returns `None`
+- malformed checkpoint file fail-fast
+- checkpoint store does not modify event log
 
 ## Tests
 
@@ -79,7 +87,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-172 passed
+190 passed
 ```
 
 Import boundary check:
@@ -98,7 +106,10 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - `ActionTypeRegistry`
 - memory write
 - external ingestion / `ImportedSnapshot`
-- checkpoint implementation
+- checkpoint-assisted recovery
+- Projector checkpoint integration
+- CheckpointService
+- checkpoint migration / version negotiation / integrity hash
 - SSE
 - auth
 - multi-agent concurrency
@@ -116,7 +127,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- checkpoint storage red tests
+- checkpoint-assisted projector rebuild red tests
 - event payload validation for projector
 
 不要直接进入 real LLM / memory / ingestion。

@@ -1,6 +1,6 @@
 # Isotope
 
-Isotope 是一个独立的 kernel-first agent runtime 项目。当前仓库用于沉淀最小 kernel slice：file event log、action chain、policy grants、artifact provenance、structured ResourceRef、projector replay、RunState rebuild、event/ref validation、event store hardening、approval boundary、action lifecycle hardening、artifact persistence、retrieval authorization、workspace binding、policy validation、action compiler validation、server facade input validation、success path executor event ownership、failure path executor event ownership 和 run completion invariants。
+Isotope 是一个独立的 kernel-first agent runtime 项目。当前仓库用于沉淀最小 kernel slice：file event log、action chain、policy grants、artifact provenance、structured ResourceRef、projector replay、RunState rebuild、event/ref validation、event store hardening、approval boundary、action lifecycle hardening、artifact persistence、retrieval authorization、workspace binding、policy validation、action compiler validation、server facade input validation、success/failure path executor event ownership、run completion invariants 和 checkpoint storage boundary。
 
 当前代码来自 `x-agent` 中的 Isotope staging snapshot。`x-agent` 不是 Isotope 的 canonical repo，后续 Isotope 的设计和实现应以本仓库为准。
 
@@ -8,7 +8,7 @@ Isotope 是一个独立的 kernel-first agent runtime 项目。当前仓库用�
 
 当前状态入口是 [docs/current-status.md](docs/current-status.md)。
 
-Checkpoint ownership 边界见 [docs/checkpoint-ownership-v0.1.md](docs/checkpoint-ownership-v0.1.md)；checkpoint 仍是 deferred capability，不是第二事实源。
+Checkpoint ownership 边界见 [docs/checkpoint-ownership-v0.1.md](docs/checkpoint-ownership-v0.1.md)；当前只实现 opaque checkpoint storage，不接入 projector rebuild，checkpoint 不是第二事实源。
 
 当前测试命令：
 
@@ -16,9 +16,9 @@ Checkpoint ownership 边界见 [docs/checkpoint-ownership-v0.1.md](docs/checkpoi
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 ```
 
-当前预期：`172 passed`。
+当前预期：`190 passed`。
 
-当前 deferred 边界：real LLM、`ActionTypeRegistry`、memory write、external ingestion / `ImportedSnapshot`、checkpoint implementation、SSE、auth、multi-agent concurrency、real HTTP API。
+当前 deferred 边界：real LLM、`ActionTypeRegistry`、memory write、external ingestion / `ImportedSnapshot`、checkpoint-assisted recovery、Projector checkpoint integration、CheckpointService、checkpoint migration / version negotiation / integrity hash、SSE、auth、multi-agent concurrency、real HTTP API。
 
 ## Current Slice
 
@@ -44,8 +44,9 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 - success path 的 `action.started`、`artifact.created`、`action.completed` 由 `Executor.execute(...)` append；artifact side effect 发生在 `action.started` 之后，server facade 不重复写这些 executor-owned events，只保留 `run.completed` 等 run-level 收口。
 - failure path 的 `action.failed` 由 `Executor.execute(...)` append，并沿用同一个 execution id；failed execution 不写 `artifact.created` / `action.completed` / `run.completed`，server facade 不重复写 failure events。
 - `RunProjector` 会校验 `run.completed` invariants：必须已有 completed execution，不能覆盖 running / failed / pending approval 状态，且 run completed 后不能再出现 action/artifact lifecycle events；projector 仍只消费 canonical events。
+- `FileCheckpointStore` 只做 run-scoped opaque checkpoint blob 存取和最小边界校验，不解释 projected state 业务语义，不修改 event log，不接入 projector rebuild。
 
-以下能力仍然 deferred：real LLM、`ActionTypeRegistry`、memory write、external ingestion、checkpoint implementation、SSE、auth、multi-agent concurrency、real HTTP API。
+以下能力仍然 deferred：real LLM、`ActionTypeRegistry`、memory write、external ingestion、checkpoint-assisted recovery、Projector checkpoint integration、CheckpointService、checkpoint migration / version negotiation / integrity hash、SSE、auth、multi-agent concurrency、real HTTP API。
 
 ## Verify
 
