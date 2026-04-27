@@ -16,7 +16,14 @@ class WorkspaceManager:
     """No-op/shared read-only workspace boundary for the first slice."""
 
     def get_binding(self, grants: dict[str, Any]) -> WorkspaceBinding:
-        mode = grants.get("workspace", {}).get("mode")
+        if not isinstance(grants, dict):
+            raise TypeError("workspace grants must be a dict")
+        workspace_grant = grants.get("workspace")
+        if not isinstance(workspace_grant, dict):
+            raise PermissionError("workspace grant is required")
+        mode = workspace_grant.get("mode")
+        if not mode:
+            raise PermissionError("workspace.mode is required")
         if mode != "shared_ro":
-            raise PermissionError("workspace mode is not granted")
+            raise PermissionError("workspace mode is not supported")
         return WorkspaceBinding(workspace_id="workspace_shared_ro", mode="shared_ro")
