@@ -1,0 +1,113 @@
+# Checkpoint Integrity v0.1
+
+状态：draft
+
+本文定义 checkpoint integrity/hash（检查点完整性校验 / 哈希）的 v0.1 边界。当前只定设计，不实现 hash，不修改 checkpoint schema 代码。
+
+## Purpose
+
+Checkpoint integrity/hash 的目的，是验证 checkpoint blob 自身是否自洽、是否被意外篡改或损坏。
+
+它不是新的事实来源，不用于证明 projected state 一定正确，也不能替代 canonical event log replay。
+
+## Decision
+
+v0.1 design decision：
+
+- integrity/hash 不是 source of truth。
+- integrity/hash 不能让 checkpoint 覆盖 canonical event log。
+- integrity/hash 不能跳过 event validation、lifecycle validation、prefix consistency validation。
+- hash mismatch 只能让 checkpoint 失效；恢复仍应回到 event log full rebuild。
+- malformed checkpoint file 仍然 fail fast。
+- v0.1 推荐使用 `sha256`。
+- hash 字段可以由 `FileCheckpointStore` 保存，但 storage 不解释业务状态。
+- 是否使用 checkpoint 仍由 `RunProjector` / checkpoint-assisted rebuild 决定。
+- 当前不实现 hash，不修改 checkpoint schema 代码。
+
+## Hard Boundaries
+
+- hash 不能修正 checkpoint。
+- hash 不能修正 event log。
+- hash 不能把 checkpoint 提升为事实源。
+- hash 不能让 projector 跳过 canonical event replay validation。
+- hash 不能让 projector 跳过 checkpoint state schema validation。
+- hash 不能让 projector 跳过 checkpoint prefix consistency validation。
+- hash mismatch 不能产生新的 state，只能触发 checkpoint invalidation / full rebuild。
+- 没有 hash 的 legacy checkpoint 不应被立即判为 malformed；v0 compatibility 可以允许它继续走现有 validation。
+- 一旦 checkpoint 中存在 hash 字段，就必须校验。
+
+## Hash Input
+
+v0.1 推荐 hash 输入使用 canonical JSON：
+
+- UTF-8 编码。
+- sorted keys。
+- deterministic separators。
+- 排除 `integrity` / `checkpoint_hash` 自身字段。
+
+hash 至少绑定以下 checkpoint 内容：
+
+- `run_id`
+- `projector_version`
+- `basis_event_id`
+- `state`
+- `created_at`
+
+如果后续加入 event prefix digest，应作为额外字段参与校验，但不能取代 replay validation。
+
+## Validation Behavior
+
+checkpoint-assisted rebuild 的 v0.1 行为应保持：
+
+1. 读取 checkpoint。
+2. 如果 checkpoint 没有 hash 字段，作为 legacy checkpoint 继续走现有 validation。
+3. 如果 checkpoint 有 hash 字段，先用 canonical JSON 重新计算 hash。
+4. 如果 hash mismatch，checkpoint 失效，fallback 到 event log full rebuild。
+5. 如果 hash match，仍继续执行现有 validation：
+   - event validation
+   - lifecycle validation
+   - checkpoint state schema validation
+   - prefix consistency validation
+6. 只有所有 validation 都通过，checkpoint 才能作为 replay basis。
+
+hash mismatch 与 checkpoint version 不兼容类似：只能让 checkpoint 不被使用，不能阻止 event log full rebuild。
+
+## Invalid Uses
+
+以下用法明确无效：
+
+- 用 hash 证明 checkpoint 比 event log 更可信。
+- 用 hash 跳过 malformed event log fail-fast。
+- 用 hash 跳过 lifecycle validation。
+- 用 hash 跳过 prefix consistency validation。
+- 用 hash 修复 checkpoint state。
+- 用 hash 修复 event log。
+- 把 hash 作为 external API 的长期协议承诺。
+- 让 `FileCheckpointStore` 根据 hash 决定业务状态。
+
+## Deferred
+
+当前仍不实现：
+
+- checkpoint hash generation。
+- checkpoint hash validation。
+- checkpoint integrity field schema。
+- event prefix digest。
+- signature / MAC。
+- key management。
+- migration / version negotiation。
+- server API / HTTP exposure。
+- automatic checkpoint scheduling。
+
+## Future TDD Notes
+
+后续实现必须先写 red tests，优先覆盖：
+
+- 无 hash 的 legacy checkpoint 继续走现有 validation。
+- 有 hash 且 hash match 的 checkpoint 仍必须走 state schema / prefix consistency validation。
+- hash mismatch fallback full rebuild。
+- malformed checkpoint file 仍 fail fast。
+- hash 输入排除 `integrity` / `checkpoint_hash` 自身字段。
+- hash 输入使用 deterministic JSON。
+- `FileCheckpointStore` 只保存 hash 字段，不解释业务状态。
+- event prefix digest 如加入，不能替代 replay validation。

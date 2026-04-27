@@ -8,7 +8,7 @@ Isotope 是一个独立的 kernel-first agent runtime 项目。当前仓库用�
 
 当前状态入口是 [docs/current-status.md](docs/current-status.md)。
 
-Checkpoint ownership 边界见 [docs/checkpoint-ownership-v0.1.md](docs/checkpoint-ownership-v0.1.md)；当前实现了 opaque checkpoint storage、最小 checkpoint-assisted projector rebuild、projector-owned checkpoint creation、checkpoint state schema validation、projector-owned checkpoint save boundary 和 checkpoint prefix consistency hardening，checkpoint 仍不是第二事实源。
+Checkpoint ownership 边界见 [docs/checkpoint-ownership-v0.1.md](docs/checkpoint-ownership-v0.1.md)；checkpoint integrity/hash 边界见 [docs/checkpoint-integrity-v0.1.md](docs/checkpoint-integrity-v0.1.md)。当前实现了 opaque checkpoint storage、最小 checkpoint-assisted projector rebuild、projector-owned checkpoint creation、checkpoint state schema validation、projector-owned checkpoint save boundary 和 checkpoint prefix consistency hardening，checkpoint 仍不是第二事实源。
 
 当前测试命令：
 

@@ -23,6 +23,7 @@ v0.1 决定：
 - checkpoint storage 不解释 checkpoint 语义。
 - v0.1 暂不新增独立 Checkpoint Service。
 - checkpoint schema 是 v0 candidate，不是永久协议。
+- checkpoint integrity/hash 的边界见 `docs/checkpoint-integrity-v0.1.md`。
 
 ## Hard Boundaries
 

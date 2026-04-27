@@ -140,6 +140,7 @@
 - fallback full rebuild still runs full event validation
 - lifecycle-invalid event log cannot be hidden by checkpoint mismatch fallback
 - `FileCheckpointStore` remains opaque and does not perform consistency checks
+- checkpoint integrity/hash design note 已落文档
 
 ## Tests
 
@@ -193,7 +194,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- checkpoint integrity/hash design note
+- checkpoint integrity/hash red tests
 - server-facing checkpoint boundary design note
 
 不要直接进入 real LLM / memory / ingestion。
