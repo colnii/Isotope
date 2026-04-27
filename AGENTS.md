@@ -8,10 +8,12 @@
 
 ## Development Rules
 
+- 每次开始新任务前，先读 `docs/current-status.md`。
 - 继续使用 TDD：先写 red tests，确认失败，再写最小实现。
 - 使用 `src layout`：源码在 `src/isotope_kernel/`，测试在 `tests/isotope_kernel/`。
 - 不要把 v0 implementation shape 误写成永久协议。
 - 保持 hard contracts 优先：action chain、policy grants、append-only canonical event log、projector-only replay、RunState rebuild、artifact provenance、ResourceRef。
+- 任何 deferred 能力必须先写 design/doc patch 和 red tests，不能直接实现。
 
 ## Current Slice
 
