@@ -27,6 +27,8 @@
 - projector replay
 - `RunState` rebuild
 - in-process server facade
+- event envelope validation
+- `ResourceRef` validation
 
 ## Deferred
 

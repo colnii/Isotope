@@ -21,6 +21,8 @@
 - `RunState` rebuild
 - in-process server facade
 - denied / failed / pending boundary
+- event envelope validation
+- `ResourceRef` validation
 
 ## Tests
 
@@ -33,7 +35,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-29 passed
+41 passed
 ```
 
 Import boundary check:
@@ -68,7 +70,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- event envelope / object schema hardening
 - minimal approval event boundary
+- event ordering / idempotency hardening
 
 不要直接进入 real LLM / memory / ingestion。
