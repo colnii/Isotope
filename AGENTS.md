@@ -49,12 +49,16 @@
 - policy decision outcome validation
 - denied decision no-effective-grants validation
 - required grants shape validation
+- action compiler input validation
+- runtime identity validation from runtime context
+- valid minimal intent to canonical `ActionProposal`
 
 ## Deferred
 
 以下能力仍然 deferred，不要在没有新计划和 red tests 前实现：
 
 - real LLM
+- ActionTypeRegistry
 - memory write
 - external ingestion
 - checkpoint

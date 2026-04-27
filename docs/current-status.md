@@ -7,6 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
+- 最新 implementation commit：`988a247066c4323555563f868edbbd6866aee5a3`。
 
 ## Implemented Slice
 
@@ -43,6 +44,9 @@
 - policy decision outcome validation
 - denied decision no-effective-grants validation
 - required grants shape validation
+- action compiler input validation
+- runtime identity validation from runtime context
+- valid minimal intent to canonical `ActionProposal`
 
 ## Tests
 
@@ -55,7 +59,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-92 passed
+116 passed
 ```
 
 Import boundary check:
@@ -71,6 +75,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 以下能力明确 deferred，不能在没有 design/doc patch 和 red tests 前直接实现：
 
 - real LLM
+- `ActionTypeRegistry`
 - memory write
 - external ingestion / `ImportedSnapshot`
 - checkpoint
@@ -91,6 +96,6 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 下一步建议优先做：
 
 - checkpoint design doc only
-- action compiler validation hardening
+- `InProcessServer` / server facade input boundary hardening
 
-不要直接进入 real LLM / memory / ingestion。
+尤其是 client request 的 malformed input 不应绕过 action compiler / policy / event store。不要直接进入 real LLM / memory / ingestion。
