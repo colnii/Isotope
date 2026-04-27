@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`71cd136f8d11748cf6c769bd589deacb76b95aab`。
+- 最新 implementation commit：`61275b7d4d38f8593071e8085c28114bc3ba0345`。
 
 ## Implemented Slice
 
@@ -57,6 +57,10 @@
 - `Executor.execute(...)` appends `artifact.created` and `action.completed`
 - server facade does not duplicate executor-owned success events
 - server facade remains responsible for run-level completion such as `run.completed`
+- failure path executor event ownership
+- `Executor.execute(...)` appends `action.failed` with the same execution id after started execution fails
+- failed execution does not append `artifact.created` / `action.completed` / `run.completed`
+- server facade does not duplicate executor-owned failure events
 
 ## Tests
 
@@ -69,7 +73,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-157 passed
+161 passed
 ```
 
 Import boundary check:
@@ -106,6 +110,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- failure path event ownership / atomicity review
+- checkpoint ownership design note
+- 或继续收紧 projector / run completion invariant
 
-当前 failure path 仍由 server facade 在 `executor.execute(...)` 抛错后补记 `action.started` / `action.failed`。后续需要决定是否也收进 `Executor`，或者明确保留为 runtime wrapper failure handling。不要直接进入 real LLM / memory / ingestion。
+不要直接进入 real LLM / memory / ingestion。

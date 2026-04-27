@@ -62,6 +62,10 @@
 - `Executor.execute(...)` appends `artifact.created` and `action.completed`
 - server facade does not duplicate executor-owned success events
 - server facade remains responsible for run-level completion such as `run.completed`
+- failure path executor event ownership
+- `Executor.execute(...)` appends `action.failed` with the same execution id
+- failed execution does not append `artifact.created` / `action.completed` / `run.completed`
+- server facade does not duplicate executor-owned failure events
 
 ## Deferred
 

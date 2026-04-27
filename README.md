@@ -1,6 +1,6 @@
 # Isotope
 
-Isotope 是一个独立的 kernel-first agent runtime 项目。当前仓库用于沉淀最小 kernel slice：file event log、action chain、policy grants、artifact provenance、structured ResourceRef、projector replay、RunState rebuild、event/ref validation、event store hardening、approval boundary、action lifecycle hardening、artifact persistence、retrieval authorization、workspace binding、policy validation、action compiler validation、server facade input validation 和 success path executor event ownership。
+Isotope 是一个独立的 kernel-first agent runtime 项目。当前仓库用于沉淀最小 kernel slice：file event log、action chain、policy grants、artifact provenance、structured ResourceRef、projector replay、RunState rebuild、event/ref validation、event store hardening、approval boundary、action lifecycle hardening、artifact persistence、retrieval authorization、workspace binding、policy validation、action compiler validation、server facade input validation、success path executor event ownership 和 failure path executor event ownership。
 
 当前代码来自 `x-agent` 中的 Isotope staging snapshot。`x-agent` 不是 Isotope 的 canonical repo，后续 Isotope 的设计和实现应以本仓库为准。
 
@@ -14,7 +14,7 @@ Isotope 是一个独立的 kernel-first agent runtime 项目。当前仓库用�
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 ```
 
-当前预期：`157 passed`。
+当前预期：`161 passed`。
 
 当前 deferred 边界：real LLM、`ActionTypeRegistry`、memory write、external ingestion / `ImportedSnapshot`、checkpoint、SSE、auth、multi-agent concurrency、real HTTP API。
 
@@ -40,6 +40,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 - `ActionCompiler` 会校验 malformed `intent` / `runtime_context`、runtime identity、`action`、`tool`、`requested_tools`、`workspace_mode` 和 `budget.seconds`，valid minimal intent 仍编译为 canonical `ActionProposal`。
 - `InProcessServer` / server facade 会校验 client request，invalid request 走受控 `ValueError`，不 append action lifecycle events，也不创建 artifact；`get_run_state` 仍允许 fresh process 从已有 event log rebuild。
 - success path 的 `action.started`、`artifact.created`、`action.completed` 由 `Executor.execute(...)` append；artifact side effect 发生在 `action.started` 之后，server facade 不重复写这些 executor-owned events，只保留 `run.completed` 等 run-level 收口。
+- failure path 的 `action.failed` 由 `Executor.execute(...)` append，并沿用同一个 execution id；failed execution 不写 `artifact.created` / `action.completed` / `run.completed`，server facade 不重复写 failure events。
 
 以下能力仍然 deferred：real LLM、`ActionTypeRegistry`、memory write、external ingestion、checkpoint、SSE、auth、multi-agent concurrency、real HTTP API。
 
