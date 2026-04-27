@@ -39,6 +39,9 @@
 - file-backed artifact persistence
 - fresh `ArtifactStore` metadata/content read
 - malformed artifact file fail-fast
+- retrieval authorization validation
+- summary-only retrieval boundary
+- retrieval content-read prevention
 
 ## Deferred
 

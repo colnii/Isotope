@@ -33,6 +33,9 @@
 - file-backed artifact persistence
 - fresh `ArtifactStore` metadata/content read
 - malformed artifact file fail-fast
+- retrieval authorization validation
+- summary-only retrieval boundary
+- retrieval content-read prevention
 
 ## Tests
 
@@ -45,7 +48,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-66 passed
+75 passed
 ```
 
 Import boundary check:
@@ -81,6 +84,6 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 下一步建议优先做：
 
 - checkpoint design doc only
-- retrieval authorization hardening
+- workspace binding hardening
 
 不要直接进入 real LLM / memory / ingestion。
