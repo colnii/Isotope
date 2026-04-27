@@ -34,6 +34,8 @@
 - malformed event log fail-fast
 - approval requested event boundary
 - pending approval projection
+- action lifecycle ordering validation
+- illegal lifecycle transition fail-fast
 
 ## Deferred
 

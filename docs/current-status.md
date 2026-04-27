@@ -28,6 +28,8 @@
 - malformed event log fail-fast
 - approval requested event boundary
 - pending approval projection
+- action lifecycle ordering validation
+- illegal lifecycle transition fail-fast
 
 ## Tests
 
@@ -40,7 +42,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-53 passed
+60 passed
 ```
 
 Import boundary check:
@@ -75,7 +77,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- action lifecycle state machine hardening
 - checkpoint design doc only
+- artifact persistence hardening
 
 不要直接进入 real LLM / memory / ingestion。
