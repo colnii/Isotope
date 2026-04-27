@@ -124,6 +124,19 @@
 - checkpoint artifact entry must contain `ref`, `artifact_type`, `summary`, `provenance`
 - malformed checkpoint state fail-fast with controlled `ValueError`
 - `FileCheckpointStore` remains opaque blob storage and does not interpret projected state
+- projector-owned checkpoint save boundary
+- `RunProjector.save_checkpoint(...)`
+- save boundary reads canonical events from `event_store.list_events(run_id)`
+- save boundary generates checkpoint through projector-owned `create_checkpoint(...)`
+- save boundary calls `checkpoint_store.save_checkpoint(run_id, checkpoint)`
+- saved checkpoint can be read by `load_latest_checkpoint(...)`
+- saved checkpoint can be used by `rebuild_with_checkpoint(...)` and remains equivalent to full rebuild
+- empty event log fail-fast without writing checkpoint
+- malformed or lifecycle-invalid event stream fail-fast without writing checkpoint
+- save checkpoint does not modify event log
+- save checkpoint does not read artifact store / executor state / server memory
+- checkpoint `basis_event_id` is the last event id in the event log
+- saved checkpoint still excludes artifact content / external raw input
 
 ## Deferred
 

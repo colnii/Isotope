@@ -2,7 +2,7 @@
 
 状态：draft
 
-本文定义 checkpoint ownership（检查点归属）和边界。当前实现只覆盖 opaque checkpoint storage、最小 checkpoint-assisted projector rebuild、projector-owned checkpoint creation 和 checkpoint state schema validation；checkpoint schema 仍是 v0 candidate。
+本文定义 checkpoint ownership（检查点归属）和边界。当前实现只覆盖 opaque checkpoint storage、最小 checkpoint-assisted projector rebuild、projector-owned checkpoint creation、checkpoint state schema validation 和 projector-owned checkpoint save boundary；checkpoint schema 仍是 v0 candidate。
 
 ## Purpose
 
@@ -125,11 +125,16 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - checkpoint state 的 `run_id`、`last_event_id`、run status、actions/artifacts shape 会在 projector 使用前校验。
 - checkpoint artifact entry 不得包含 `content`，且必须包含 `ref`、`artifact_type`、`summary`、`provenance`。
 - malformed checkpoint state fail-fast，抛受控 `ValueError`。
+- `RunProjector.save_checkpoint(...)` 只组合 `event_store.list_events(run_id)`、`create_checkpoint(...)` 和 `checkpoint_store.save_checkpoint(run_id, checkpoint)`。
+- save checkpoint 读取 canonical events，生成 projector-owned checkpoint，并交给 checkpoint store 保存。
+- save checkpoint 不修改 event log，不读取 artifact store / executor state / server memory。
+- empty event log 或 invalid event stream 会 fail-fast，且不写 checkpoint。
+- 保存后的 checkpoint 可读回，并可用于 `rebuild_with_checkpoint(...)`，结果与 full rebuild 等价。
 - checkpoint schema 仍被标记为 v0 candidate。
 
 后续实现必须先写 red tests，优先覆盖：
 
-- projector caller checkpoint save/read integration boundary。
 - checkpoint integrity/hash design note。
+- server-facing checkpoint boundary design note。
 - incompatible checkpoint state 与 event log 的冲突处理。
 - server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。

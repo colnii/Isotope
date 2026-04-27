@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`4503755cdb0aa3ab1ef20b90d99bda08aab2289e`。
+- 最新 implementation commit：`80e6370b30ebbc10d1f43b3da26df2f8d1e81151`。
 
 ## Implemented Slice
 
@@ -119,6 +119,19 @@
 - checkpoint artifact entry must contain `ref`, `artifact_type`, `summary`, `provenance`
 - malformed checkpoint state fail-fast with controlled `ValueError`
 - `FileCheckpointStore` remains opaque blob storage and does not interpret projected state
+- projector-owned checkpoint save boundary
+- `RunProjector.save_checkpoint(...)`
+- save boundary reads canonical events from `event_store.list_events(run_id)`
+- save boundary generates checkpoint through projector-owned `create_checkpoint(...)`
+- save boundary calls `checkpoint_store.save_checkpoint(run_id, checkpoint)`
+- saved checkpoint can be read by `load_latest_checkpoint(...)`
+- saved checkpoint can be used by `rebuild_with_checkpoint(...)` and remains equivalent to full rebuild
+- empty event log fail-fast without writing checkpoint
+- malformed or lifecycle-invalid event stream fail-fast without writing checkpoint
+- save checkpoint does not modify event log
+- save checkpoint does not read artifact store / executor state / server memory
+- checkpoint `basis_event_id` is the last event id in the event log
+- saved checkpoint still excludes artifact content / external raw input
 
 ## Tests
 
@@ -131,7 +144,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-256 passed
+269 passed
 ```
 
 Import boundary check:
@@ -171,7 +184,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- projector caller checkpoint save/read integration boundary
 - checkpoint integrity/hash design note
+- server-facing checkpoint boundary design note
 
 不要直接进入 real LLM / memory / ingestion。
