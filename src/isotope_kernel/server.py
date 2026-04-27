@@ -121,6 +121,17 @@ class InProcessServer:
                 "run_state": self.get_run_state(run_id),
             }
         if decision.outcome == "pending_user_approval":
+            self._append(
+                run_id,
+                "approval.requested",
+                {
+                    "approval_id": new_id("approval"),
+                    "run_id": run_id,
+                    "proposal_id": proposal.proposal_id,
+                    "decision_id": decision.decision_id,
+                    "action_type": proposal.action_type,
+                },
+            )
             return {
                 "status": "pending_user_approval",
                 "decision": decision,

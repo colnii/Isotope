@@ -53,6 +53,13 @@ class RunProjector:
                 }
                 if outcome == "pending_user_approval":
                     state.status = "pending_user_approval"
+        elif event.event_type == "approval.requested":
+            proposal_id = str(payload["proposal_id"])
+            action = state.actions.setdefault(proposal_id, {"proposal_id": proposal_id})
+            action["decision_id"] = payload.get("decision_id")
+            action["approval_id"] = payload.get("approval_id")
+            action["status"] = "pending_user_approval"
+            state.status = "pending_user_approval"
         elif event.event_type == "artifact.created":
             artifact = dict(payload["artifact"])
             state.artifacts.append(
