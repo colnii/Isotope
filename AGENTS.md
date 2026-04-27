@@ -29,6 +29,9 @@
 - in-process server facade
 - event envelope validation
 - `ResourceRef` validation
+- event ordering preservation
+- duplicate event protection
+- malformed event log fail-fast
 
 ## Deferred
 

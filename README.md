@@ -1,6 +1,6 @@
 # Isotope
 
-Isotope 是一个独立的 kernel-first agent runtime 项目。当前仓库用于沉淀最小 kernel slice：file event log、action chain、policy grants、artifact provenance、structured ResourceRef、projector replay、RunState rebuild 和 event/ref validation。
+Isotope 是一个独立的 kernel-first agent runtime 项目。当前仓库用于沉淀最小 kernel slice：file event log、action chain、policy grants、artifact provenance、structured ResourceRef、projector replay、RunState rebuild、event/ref validation 和 event store hardening。
 
 当前代码来自 `x-agent` 中的 Isotope staging snapshot。`x-agent` 不是 Isotope 的 canonical repo，后续 Isotope 的设计和实现应以本仓库为准。
 
@@ -14,7 +14,7 @@ Isotope 是一个独立的 kernel-first agent runtime 项目。当前仓库用�
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 ```
 
-当前预期：`41 passed`。
+当前预期：`48 passed`。
 
 当前 deferred 边界：real LLM、memory write、external ingestion / `ImportedSnapshot`、checkpoint、SSE、multi-agent concurrency、real HTTP API。
 
@@ -30,6 +30,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 - projector 只从 canonical events 重建 `RunState`。
 - in-process server facade 只暴露当前 slice 的同步调用入口，不包含 real HTTP。
 - event envelope 和 `ResourceRef` 有当前 v0 slice 的最小输入合法性保护。
+- file event log 保持 append order replay、同 run 内 duplicate event protection、malformed JSON fail-fast。
 
 以下能力仍然 deferred：real LLM、memory write、external ingestion、checkpoint、SSE、multi-agent concurrency、real HTTP API。
 
