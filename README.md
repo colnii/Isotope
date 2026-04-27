@@ -1,6 +1,6 @@
 # Isotope
 
-Isotope 是一个独立的 kernel-first agent runtime 项目。当前仓库用于沉淀最小 kernel slice：file event log、action chain、policy grants、artifact provenance、structured ResourceRef、projector replay、RunState rebuild、event/ref validation、event store hardening、approval boundary、action lifecycle hardening、artifact persistence、retrieval authorization 和 workspace binding。
+Isotope 是一个独立的 kernel-first agent runtime 项目。当前仓库用于沉淀最小 kernel slice：file event log、action chain、policy grants、artifact provenance、structured ResourceRef、projector replay、RunState rebuild、event/ref validation、event store hardening、approval boundary、action lifecycle hardening、artifact persistence、retrieval authorization、workspace binding 和 policy validation。
 
 当前代码来自 `x-agent` 中的 Isotope staging snapshot。`x-agent` 不是 Isotope 的 canonical repo，后续 Isotope 的设计和实现应以本仓库为准。
 
@@ -14,7 +14,7 @@ Isotope 是一个独立的 kernel-first agent runtime 项目。当前仓库用�
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 ```
 
-当前预期：`83 passed`。
+当前预期：`92 passed`。
 
 当前 deferred 边界：real LLM、memory write、external ingestion / `ImportedSnapshot`、checkpoint、SSE、multi-agent concurrency、real HTTP API。
 
@@ -36,6 +36,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 - artifact 使用 run-scoped file-backed persistence，fresh `ArtifactStore` 可读 metadata/content，malformed artifact file fail fast。
 - retrieval 只支持 summary by structured `ResourceRef`，必须有 summary grant，且不会读取 artifact content。
 - workspace binding 只接受 `PolicyDecision.grants` 中的 `shared_ro`，Executor 不回退到 requested capabilities。
+- policy 会校验 proposal 输入和 decision outcome/grants 最小形状，denied decision 不授予有效能力。
 
 以下能力仍然 deferred：real LLM、memory write、external ingestion、checkpoint、SSE、multi-agent concurrency、real HTTP API。
 

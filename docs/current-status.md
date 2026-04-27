@@ -39,6 +39,10 @@
 - workspace grants validation
 - shared_ro-only workspace binding
 - executor uses decision workspace grants only
+- policy proposal validation
+- policy decision outcome validation
+- denied decision no-effective-grants validation
+- required grants shape validation
 
 ## Tests
 
@@ -51,7 +55,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-83 passed
+92 passed
 ```
 
 Import boundary check:
@@ -87,6 +91,6 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 下一步建议优先做：
 
 - checkpoint design doc only
-- policy decision validation hardening
+- action compiler validation hardening
 
 不要直接进入 real LLM / memory / ingestion。

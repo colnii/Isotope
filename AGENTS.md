@@ -45,6 +45,10 @@
 - workspace grants validation
 - shared_ro-only workspace binding
 - executor uses decision workspace grants only
+- policy proposal validation
+- policy decision outcome validation
+- denied decision no-effective-grants validation
+- required grants shape validation
 
 ## Deferred
 
