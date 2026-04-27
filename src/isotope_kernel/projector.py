@@ -257,8 +257,10 @@ class RunProjector:
         basis_index = self._find_basis_index(canonical_events, checkpoint["basis_event_id"])
 
         # Validate prefix from canonical events before trusting the checkpoint state.
-        self.project(canonical_events[: basis_index + 1])
+        prefix_state = self.project(canonical_events[: basis_index + 1])
         state = self._run_state_from_checkpoint(checkpoint["state"], run_id, checkpoint["basis_event_id"])
+        if state != prefix_state:
+            return self.rebuild(run_id, event_store)
 
         for event in canonical_events[basis_index + 1 :]:
             self._validate_lifecycle(event)
