@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`80e6370b30ebbc10d1f43b3da26df2f8d1e81151`。
+- 最新 implementation commit：`d64cc0f2f064abb192960c5cd74434faae1d8067`。
 
 ## Implemented Slice
 
@@ -132,6 +132,14 @@
 - save checkpoint does not read artifact store / executor state / server memory
 - checkpoint `basis_event_id` is the last event id in the event log
 - saved checkpoint still excludes artifact content / external raw input
+- checkpoint prefix consistency hardening
+- `RunProjector.rebuild_with_checkpoint(...)` compares checkpoint state with event-log prefix projection at `basis_event_id`
+- checkpoint is used for replay only when checkpoint state matches prefix projection
+- checkpoint state `status` / `current_agent` / `actions` / `artifacts` mismatch falls back to full rebuild
+- checkpoint state with extra action or missing artifact falls back to full rebuild
+- fallback full rebuild still runs full event validation
+- lifecycle-invalid event log cannot be hidden by checkpoint mismatch fallback
+- `FileCheckpointStore` remains opaque and does not perform consistency checks
 
 ## Tests
 
@@ -144,7 +152,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-269 passed
+278 passed
 ```
 
 Import boundary check:
@@ -166,7 +174,8 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - server/API checkpoint integration
 - automatic checkpoint scheduling
 - CheckpointService
-- checkpoint migration / version negotiation / integrity hash
+- checkpoint integrity hash
+- checkpoint migration / version negotiation
 - SSE
 - auth
 - multi-agent concurrency

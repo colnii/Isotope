@@ -137,6 +137,14 @@
 - save checkpoint does not read artifact store / executor state / server memory
 - checkpoint `basis_event_id` is the last event id in the event log
 - saved checkpoint still excludes artifact content / external raw input
+- checkpoint prefix consistency hardening
+- `RunProjector.rebuild_with_checkpoint(...)` compares checkpoint state with event-log prefix projection at `basis_event_id`
+- checkpoint is used for replay only when checkpoint state matches prefix projection
+- checkpoint state `status` / `current_agent` / `actions` / `artifacts` mismatch falls back to full rebuild
+- checkpoint state with extra action or missing artifact falls back to full rebuild
+- fallback full rebuild still runs full event validation
+- lifecycle-invalid event log cannot be hidden by checkpoint mismatch fallback
+- `FileCheckpointStore` remains opaque and does not perform consistency checks
 
 ## Deferred
 
@@ -149,7 +157,8 @@
 - server/API checkpoint integration
 - automatic checkpoint scheduling
 - CheckpointService
-- checkpoint migration / version negotiation / integrity hash
+- checkpoint integrity hash
+- checkpoint migration / version negotiation
 - SSE
 - auth
 - multi-agent concurrency
