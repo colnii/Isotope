@@ -32,6 +32,8 @@
 - event ordering preservation
 - duplicate event protection
 - malformed event log fail-fast
+- approval requested event boundary
+- pending approval projection
 
 ## Deferred
 
