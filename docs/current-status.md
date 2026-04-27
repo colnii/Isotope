@@ -154,6 +154,9 @@
 - malformed checkpoint file remains fail-fast
 - `FileCheckpointStore` remains opaque and only stores hash fields
 - hash mismatch cannot hide lifecycle-invalid event log
+- server-facing checkpoint boundary design note 已落文档
+- `InProcessServer` 当前仍未接入 checkpoint
+- server read model 仍来自 projector，不直接读取 checkpoint state
 
 ## Tests
 
@@ -208,7 +211,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- server-facing checkpoint boundary design note
+- `InProcessServer.get_run_state` checkpoint-assisted rebuild TDD slice
 - event prefix digest design note
 
 不要直接进入 real LLM / memory / ingestion。

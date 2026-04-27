@@ -123,8 +123,9 @@ hash mismatch 与 checkpoint version 不兼容类似：只能让 checkpoint 不�
 - hash 输入使用 deterministic JSON。
 - `FileCheckpointStore` 只保存 hash 字段，不解释业务状态。
 - hash mismatch 不能隐藏 lifecycle-invalid event log。
+- server-facing checkpoint boundary 如需使用 checkpoint，只能调用 projector boundary，不能直接信任或解释 checkpoint。
 
 后续实现必须先写 red tests，优先覆盖：
 
 - event prefix digest 如加入，不能替代 replay validation。
-- server-facing checkpoint boundary 如需暴露 checkpoint，只能调用 projector boundary，不能直接信任或解释 checkpoint。
+- `InProcessServer.get_run_state(...)` checkpoint-assisted rebuild 如加入，必须保持 full rebuild 等价，且不能让 server 直接解释 checkpoint state。

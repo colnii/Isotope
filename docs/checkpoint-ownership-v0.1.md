@@ -42,7 +42,7 @@ v0.1 ownership 分工：
 
 - `RunProjector`：解释 canonical events，产出 projected state，执行 checkpoint-assisted rebuild，并负责生成 projector-owned checkpoint blob。
 - `FileCheckpointStore` / future storage layer：只保存和读取 opaque checkpoint blob，不解释 checkpoint 字段含义。
-- `InProcessServer` / future server API：当前未接入 checkpoint；未来可以请求 projector rebuild 或 server-facing checkpoint-assisted rebuild，但不能直接把 checkpoint 当成 state source。
+- `InProcessServer` / future server API：当前未接入 checkpoint；未来可以请求 projector rebuild 或 server-facing checkpoint-assisted rebuild，但不能直接把 checkpoint 当成 state source。server-facing 边界见 `docs/server-checkpoint-boundary-v0.1.md`。
 - future checkpoint storage：只是一种 storage concern，不是新的 truth layer。
 
 不新增独立 `CheckpointService`，除非后续 TDD 证明 projector/storage 边界无法承载最小实现。
@@ -148,6 +148,6 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 
 后续实现必须先写 red tests，优先覆盖：
 
-- server-facing checkpoint boundary design note。
+- `InProcessServer.get_run_state(...)` checkpoint-assisted rebuild TDD slice。
 - event prefix digest design note。
 - server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。

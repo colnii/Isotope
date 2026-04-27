@@ -16,6 +16,7 @@
 - 任何 deferred 能力必须先写 design/doc patch 和 red tests，不能直接实现。
 - 不得直接扩展 automatic checkpoint scheduling / server checkpoint API；checkpoint 相关实现必须遵守 `docs/checkpoint-ownership-v0.1.md`，并先写 red tests。
 - checkpoint hash 已有最小 validation；后续扩展 signature / MAC / key management 或 event prefix digest 前，必须先更新设计文档并写 red tests。
+- server-facing checkpoint 相关实现必须遵守 `docs/server-checkpoint-boundary-v0.1.md`；Server 不能直接解释 checkpoint state，必须通过 projector-owned boundary。
 
 ## Current Slice
 
@@ -155,6 +156,9 @@
 - hash match still runs checkpoint state schema validation and prefix consistency validation
 - malformed checkpoint file remains fail-fast
 - hash mismatch cannot hide lifecycle-invalid event log
+- server-facing checkpoint boundary design note
+- `InProcessServer` currently does not use checkpoint
+- server read model remains projector-owned and must not read checkpoint state directly
 
 ## Deferred
 
