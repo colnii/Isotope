@@ -25,6 +25,7 @@ class RunProjector:
 
     EXECUTABLE_DECISION_OUTCOMES = {"approved", "modified"}
     KNOWN_DECISION_OUTCOMES = {"approved", "modified", "denied", "pending_user_approval"}
+    PROJECTOR_VERSION = "run_projector@v1"
 
     def __init__(self) -> None:
         self._proposal_outcomes: dict[str, str] = {}
@@ -199,3 +200,50 @@ class RunProjector:
 
     def rebuild(self, run_id: str, event_store) -> RunState:
         return self.project(event_store.list_events(run_id))
+
+    def rebuild_with_checkpoint(
+        self,
+        run_id: str,
+        event_store,
+        checkpoint_store,
+        projector_version: str = PROJECTOR_VERSION,
+    ) -> RunState:
+        checkpoint = checkpoint_store.load_latest_checkpoint(run_id)
+        if checkpoint is None:
+            return self.rebuild(run_id, event_store)
+        if checkpoint["projector_version"] != projector_version:
+            return self.rebuild(run_id, event_store)
+        if checkpoint["run_id"] != run_id:
+            raise ValueError("checkpoint run_id must match rebuild run_id")
+
+        canonical_events = event_store.list_events(run_id)
+        basis_index = self._find_basis_index(canonical_events, checkpoint["basis_event_id"])
+
+        # Validate prefix from canonical events before trusting the checkpoint state.
+        self.project(canonical_events[: basis_index + 1])
+        state = self._run_state_from_checkpoint(checkpoint["state"])
+        if state.run_id and state.run_id != run_id:
+            raise ValueError("checkpoint state run_id must match rebuild run_id")
+
+        for event in canonical_events[basis_index + 1 :]:
+            self._validate_lifecycle(event)
+            self.apply(state, event)
+        return state
+
+    def _find_basis_index(self, canonical_events: list[CanonicalEvent], basis_event_id: str) -> int:
+        for index, event in enumerate(canonical_events):
+            if event.event_id == basis_event_id:
+                return index
+        raise ValueError("checkpoint basis_event_id not found")
+
+    def _run_state_from_checkpoint(self, state: dict[str, Any]) -> RunState:
+        if not isinstance(state, dict):
+            raise ValueError("checkpoint state must be a dict")
+        return RunState(
+            run_id=str(state.get("run_id", "")),
+            status=str(state.get("status", "unknown")),
+            current_agent=str(state.get("current_agent", "")),
+            actions=dict(state.get("actions", {})),
+            artifacts=list(state.get("artifacts", [])),
+            last_event_id=str(state.get("last_event_id", "")),
+        )
