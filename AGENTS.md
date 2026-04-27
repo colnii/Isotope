@@ -24,6 +24,7 @@
 - structured `ResourceRef`
 - projector replay
 - `RunState` rebuild
+- in-process server facade
 
 ## Deferred
 
@@ -35,7 +36,7 @@
 - checkpoint
 - SSE
 - multi-agent concurrency
-- server / real HTTP API
+- real HTTP API
 
 ## Verification
 

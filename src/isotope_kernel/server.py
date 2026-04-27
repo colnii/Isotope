@@ -1,2 +1,162 @@
 """In-process server facade boundary for the Isotope v0.1 slice."""
 
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+from .action_compiler import ActionCompiler
+from .artifact_store import ArtifactStore
+from .event_store import FileEventStore
+from .events import CanonicalEvent
+from .executor import Executor
+from .ids import new_id
+from .policy import PolicyEngine
+from .projector import RunProjector
+from .retrieval import RetrievalService
+from .workspace import WorkspaceManager
+
+
+class InProcessServer:
+    """Minimal in-process facade; this is not a real HTTP API."""
+
+    def __init__(self, root: Path):
+        self.root = Path(root)
+        self.event_store = FileEventStore(self.root)
+        self.artifact_store = ArtifactStore(self.root)
+        self.compiler = ActionCompiler()
+        self.policy = PolicyEngine()
+        self.workspace_manager = WorkspaceManager()
+        self.executor = Executor(
+            event_store=self.event_store,
+            artifact_store=self.artifact_store,
+            workspace_manager=self.workspace_manager,
+        )
+        self.retrieval = RetrievalService(self.artifact_store)
+        self._sessions: dict[str, dict[str, Any]] = {}
+        self._runs: dict[str, dict[str, Any]] = {}
+
+    def create_session(self) -> dict[str, str]:
+        session_id = new_id("session")
+        self._sessions[session_id] = {"session_id": session_id}
+        return {"session_id": session_id}
+
+    def create_run(self, session_id: str, goal: str) -> dict[str, str]:
+        run_id = new_id("run")
+        agent_id = "agent_supervisor"
+        thread_id = "thread_main"
+        self._runs[run_id] = {
+            "run_id": run_id,
+            "session_id": session_id,
+            "goal": goal,
+            "agent_id": agent_id,
+            "thread_id": thread_id,
+        }
+        self._append(run_id, "run.created", {"run_id": run_id, "session_id": session_id, "goal": goal})
+        self._append(run_id, "agent.created", {"agent_id": agent_id})
+        self._append(run_id, "thread.created", {"thread_id": thread_id, "agent_id": agent_id})
+        return {"run_id": run_id}
+
+    def submit_input(self, run_id: str, text: str) -> dict[str, Any]:
+        run = self._runs[run_id]
+        proposal = self.compiler.compile(
+            {
+                "action": "call_tool",
+                "tool": "write_artifact_tool",
+                "text": text,
+                "requested_tools": ["write_artifact_tool"],
+            },
+            {
+                "run_id": run_id,
+                "agent_id": run["agent_id"],
+                "thread_id": run["thread_id"],
+            },
+        )
+        self._append(
+            run_id,
+            "action.proposed",
+            {
+                "proposal_id": proposal.proposal_id,
+                "agent_id": proposal.agent_id,
+                "thread_id": proposal.thread_id,
+                "action_type": proposal.action_type,
+            },
+        )
+
+        decision = self.policy.decide(proposal)
+        self._append(
+            run_id,
+            "action.decided",
+            {
+                "decision_id": decision.decision_id,
+                "proposal_id": decision.proposal_id,
+                "outcome": decision.outcome,
+            },
+        )
+
+        execution = self.executor.execute(decision, proposal)
+        artifact = self.artifact_store.list_artifacts(run_id)[-1]
+        self._append(
+            run_id,
+            "action.started",
+            {
+                "execution_id": execution.execution_id,
+                "proposal_id": execution.proposal_id,
+                "decision_id": execution.decision_id,
+            },
+        )
+        self._append(
+            run_id,
+            "artifact.created",
+            {
+                "artifact": {
+                    "ref": artifact.ref.to_dict(),
+                    "artifact_type": artifact.artifact_type,
+                    "summary": artifact.summary,
+                    "provenance": dict(artifact.provenance),
+                }
+            },
+        )
+        self._append(
+            run_id,
+            "action.completed",
+            {
+                "execution_id": execution.execution_id,
+                "status": execution.status,
+                "artifact_refs": [artifact.ref.to_dict()],
+            },
+        )
+        self._append(run_id, "run.completed", {"status": "completed"})
+
+        state = self.get_run_state(run_id)
+        return {
+            "status": state.status,
+            "run_state": state,
+            "artifact_ref": artifact.ref,
+            "execution_id": execution.execution_id,
+        }
+
+    def get_run_state(self, run_id: str):
+        return RunProjector().rebuild(run_id, self.event_store)
+
+    def get_events(self, run_id: str) -> list[CanonicalEvent]:
+        return self.event_store.list_events(run_id)
+
+    def get_artifact_summary(self, ref, grants: dict) -> dict:
+        return self.retrieval.get_artifact_summary(ref, grants)
+
+    def ingest_external_input(self, raw_input: dict) -> dict[str, str]:
+        return {"status": "not_enabled", "capability": "external_ingestion"}
+
+    def create_checkpoint(self, run_id: str) -> dict[str, str]:
+        return {"status": "not_enabled", "capability": "checkpoint"}
+
+    def _append(self, run_id: str, event_type: str, payload: dict[str, Any]) -> CanonicalEvent:
+        event = CanonicalEvent(
+            event_id=new_id("evt"),
+            run_id=run_id,
+            event_type=event_type,
+            payload=payload,
+            created_at="2026-04-27T00:00:00Z",
+        )
+        return self.event_store.append(event)

@@ -14,6 +14,9 @@ Isotope 是一个独立的 kernel-first agent runtime 项目。当前仓库用�
 - artifact 带 execution provenance。
 - artifact identity 使用 structured `ResourceRef`。
 - projector 只从 canonical events 重建 `RunState`。
+- in-process server facade 只暴露当前 slice 的同步调用入口，不包含 real HTTP。
+
+以下能力仍然 deferred：real LLM、memory write、external ingestion、checkpoint、SSE、multi-agent concurrency、real HTTP API。
 
 ## Verify
 
