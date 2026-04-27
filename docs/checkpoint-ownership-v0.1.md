@@ -2,7 +2,7 @@
 
 状态：draft
 
-本文定义 checkpoint ownership（检查点归属）和边界。当前实现只覆盖 opaque checkpoint storage 和最小 checkpoint-assisted projector rebuild；checkpoint schema 仍是 v0 candidate。
+本文定义 checkpoint ownership（检查点归属）和边界。当前实现只覆盖 opaque checkpoint storage、最小 checkpoint-assisted projector rebuild 和 projector-owned checkpoint creation；checkpoint schema 仍是 v0 candidate。
 
 ## Purpose
 
@@ -19,8 +19,8 @@ v0.1 决定：
 - checkpoint 可以丢弃、重建、迁移；checkpoint 丢失不能影响事实正确性。
 - v0.1 采用 `Projector-owned checkpoint`。
 - Projector 负责产出 checkpoint。
-- EventStore 或后续 storage layer 只负责保存/读取 checkpoint blob。
-- EventStore 不解释 checkpoint 语义。
+- `FileCheckpointStore` 或后续 storage layer 只负责保存/读取 checkpoint blob。
+- checkpoint storage 不解释 checkpoint 语义。
 - v0.1 暂不新增独立 Checkpoint Service。
 - checkpoint schema 是 v0 candidate，不是永久协议。
 
@@ -39,7 +39,7 @@ v0.1 决定：
 
 v0.1 ownership 分工：
 
-- `RunProjector`：解释 canonical events，产出 projected state，执行 checkpoint-assisted rebuild，并在未来负责生成 checkpoint。
+- `RunProjector`：解释 canonical events，产出 projected state，执行 checkpoint-assisted rebuild，并负责生成 projector-owned checkpoint blob。
 - `FileCheckpointStore` / future storage layer：只保存和读取 opaque checkpoint blob，不解释 checkpoint 字段含义。
 - `InProcessServer` / future server API：当前未接入 checkpoint；未来可以请求 projector rebuild 或 server-facing checkpoint-assisted rebuild，但不能直接把 checkpoint 当成 state source。
 - future checkpoint storage：只是一种 storage concern，不是新的 truth layer。
@@ -95,7 +95,7 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 
 当前仍不实现：
 
-- checkpoint creation automation
+- automatic checkpoint scheduling
 - checkpoint compaction
 - checkpoint migration
 - checkpoint version negotiation
@@ -115,11 +115,15 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - malformed event log 不会因为 checkpoint 存在而被静默跳过。
 - `FileCheckpointStore` 只存取 checkpoint blob，不解释 projector state。
 - checkpoint 不包含 external raw input。
+- `RunProjector.create_checkpoint(...)` 只通过 canonical events 和 `project(...)` 生成 checkpoint。
+- checkpoint creation 不写 checkpoint store。
+- checkpoint creation 拒绝 empty events、malformed events 和 lifecycle-invalid events。
+- 创建出的 checkpoint 可由 `FileCheckpointStore` 保存，并可用于 `rebuild_with_checkpoint(...)`。
 - checkpoint schema 仍被标记为 v0 candidate。
 
 后续实现必须先写 red tests，优先覆盖：
 
-- projector-owned checkpoint creation。
 - checkpoint state schema hardening。
+- checkpoint save/read integration boundary for projector caller。
 - incompatible checkpoint state 与 event log 的冲突处理。
 - server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。

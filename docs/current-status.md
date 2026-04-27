@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`475c96173cfc16951ca4f6accef9078f9718c3c2`。
+- 最新 implementation commit：`340757ecbbd7bc17185c11694f4d9e90b7933e70`。
 
 ## Implemented Slice
 
@@ -92,8 +92,19 @@
 - checkpoint cannot hide malformed / lifecycle-invalid event log
 - checkpoint-assisted rebuild still runs canonical event validation / lifecycle validation
 - checkpoint-assisted rebuild has no server API integration
-- checkpoint creation automation remains deferred
 - no CheckpointService
+- projector-owned checkpoint creation
+- `RunProjector.create_checkpoint(...)`
+- checkpoint creation uses canonical events through `project(...)` and cannot bypass validation
+- checkpoint contains `run_id`, `projector_version`, `basis_event_id`, `state`, `created_at`
+- checkpoint `basis_event_id` equals the last replayed canonical event id
+- checkpoint state contains `run_id`, `status`, `current_agent`, `actions`, `artifacts`, `last_event_id`
+- checkpoint state excludes artifact content
+- checkpoint excludes external raw input / provider response / imported snapshot
+- malformed or lifecycle-invalid event stream cannot produce checkpoint
+- empty events cannot produce checkpoint
+- checkpoint creation returns a derived blob and does not write checkpoint store
+- created checkpoint can be saved by `FileCheckpointStore` and used by `rebuild_with_checkpoint(...)`
 
 ## Tests
 
@@ -106,7 +117,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-225 passed
+237 passed
 ```
 
 Import boundary check:
@@ -125,7 +136,8 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - `ActionTypeRegistry`
 - memory write
 - external ingestion / `ImportedSnapshot`
-- checkpoint creation automation
+- server/API checkpoint integration
+- automatic checkpoint scheduling
 - CheckpointService
 - checkpoint migration / version negotiation / integrity hash
 - SSE
@@ -145,7 +157,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- checkpoint creation by projector red tests
-- checkpoint-assisted rebuild hardening for checkpoint state schema
+- checkpoint state schema hardening
+- checkpoint save/read integration boundary for projector caller
 
 不要直接进入 real LLM / memory / ingestion。

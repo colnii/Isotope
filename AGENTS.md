@@ -14,7 +14,7 @@
 - 不要把 v0 implementation shape 误写成永久协议。
 - 保持 hard contracts 优先：action chain、policy grants、append-only canonical event log、projector-only replay、RunState rebuild、artifact provenance、ResourceRef。
 - 任何 deferred 能力必须先写 design/doc patch 和 red tests，不能直接实现。
-- 不得直接扩展 checkpoint creation automation / server checkpoint API；checkpoint 相关实现必须遵守 `docs/checkpoint-ownership-v0.1.md`，并先写 red tests。
+- 不得直接扩展 automatic checkpoint scheduling / server checkpoint API；checkpoint 相关实现必须遵守 `docs/checkpoint-ownership-v0.1.md`，并先写 red tests。
 
 ## Current Slice
 
@@ -97,8 +97,19 @@
 - checkpoint cannot hide malformed / lifecycle-invalid event log
 - checkpoint-assisted rebuild still runs canonical event validation / lifecycle validation
 - checkpoint-assisted rebuild has no server API integration
-- checkpoint creation automation remains deferred
 - no CheckpointService
+- projector-owned checkpoint creation
+- `RunProjector.create_checkpoint(...)`
+- checkpoint creation uses canonical events through `project(...)` and cannot bypass validation
+- checkpoint contains `run_id`, `projector_version`, `basis_event_id`, `state`, `created_at`
+- checkpoint `basis_event_id` equals the last replayed canonical event id
+- checkpoint state contains `run_id`, `status`, `current_agent`, `actions`, `artifacts`, `last_event_id`
+- checkpoint state excludes artifact content
+- checkpoint excludes external raw input / provider response / imported snapshot
+- malformed or lifecycle-invalid event stream cannot produce checkpoint
+- empty events cannot produce checkpoint
+- checkpoint creation returns a derived blob and does not write checkpoint store
+- created checkpoint can be saved by `FileCheckpointStore` and used by `rebuild_with_checkpoint(...)`
 
 ## Deferred
 
@@ -108,7 +119,8 @@
 - ActionTypeRegistry
 - memory write
 - external ingestion
-- checkpoint creation automation
+- server/API checkpoint integration
+- automatic checkpoint scheduling
 - CheckpointService
 - checkpoint migration / version negotiation / integrity hash
 - SSE
