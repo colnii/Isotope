@@ -30,6 +30,9 @@
 - pending approval projection
 - action lifecycle ordering validation
 - illegal lifecycle transition fail-fast
+- file-backed artifact persistence
+- fresh `ArtifactStore` metadata/content read
+- malformed artifact file fail-fast
 
 ## Tests
 
@@ -42,7 +45,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-60 passed
+66 passed
 ```
 
 Import boundary check:
@@ -78,6 +81,6 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 下一步建议优先做：
 
 - checkpoint design doc only
-- artifact persistence hardening
+- retrieval authorization hardening
 
 不要直接进入 real LLM / memory / ingestion。

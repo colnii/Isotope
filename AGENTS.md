@@ -36,6 +36,9 @@
 - pending approval projection
 - action lifecycle ordering validation
 - illegal lifecycle transition fail-fast
+- file-backed artifact persistence
+- fresh `ArtifactStore` metadata/content read
+- malformed artifact file fail-fast
 
 ## Deferred
 
