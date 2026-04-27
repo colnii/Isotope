@@ -151,27 +151,13 @@ class InProcessServer:
         try:
             execution = self.executor.execute(decision, proposal)
         except Exception as exc:
-            execution_id = new_id("exec")
-            self._append(
+            execution_id = self._latest_failed_execution_id(
                 run_id,
-                "action.started",
-                {
-                    "execution_id": execution_id,
-                    "proposal_id": proposal.proposal_id,
-                    "decision_id": decision.decision_id,
-                },
+                proposal_id=proposal.proposal_id,
+                decision_id=decision.decision_id,
             )
-            self._append(
-                run_id,
-                "action.failed",
-                {
-                    "execution_id": execution_id,
-                    "proposal_id": proposal.proposal_id,
-                    "decision_id": decision.decision_id,
-                    "status": "failed",
-                    "error": str(exc),
-                },
-            )
+            if not execution_id:
+                raise RuntimeError("executor failed without action.failed event") from exc
             return {
                 "status": "failed",
                 "decision": decision,
@@ -234,3 +220,12 @@ class InProcessServer:
             created_at="2026-04-27T00:00:00Z",
         )
         return self.event_store.append(event)
+
+    def _latest_failed_execution_id(self, run_id: str, proposal_id: str, decision_id: str) -> str:
+        for event in reversed(self.event_store.list_events(run_id)):
+            if event.event_type != "action.failed":
+                continue
+            payload = event.payload
+            if payload.get("proposal_id") == proposal_id and payload.get("decision_id") == decision_id:
+                return str(payload["execution_id"])
+        return ""

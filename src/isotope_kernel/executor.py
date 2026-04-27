@@ -21,62 +21,50 @@ class Executor:
         if decision.outcome == "denied":
             raise PermissionError("policy decision denied execution")
 
-        granted_tools = decision.grants.get("tools", [])
-        if "write_artifact_tool" not in granted_tools:
-            raise PermissionError("write_artifact_tool is not granted")
-
-        # This validates the granted workspace mode without consulting requested capabilities.
-        self.workspace_manager.get_binding(decision.grants)
-
-        execution = ActionExecution(
-            execution_id=new_id("exec"),
-            proposal_id=proposal.proposal_id,
-            decision_id=decision.decision_id,
-            action_type=proposal.action_type,
-            status="completed",
-            effective_grants_snapshot={
-                "tools": list(decision.grants.get("tools", [])),
-                "workspace": dict(decision.grants.get("workspace", {})),
-                "budget": dict(decision.grants.get("budget", {})),
-            },
-        )
+        execution_id = new_id("exec")
         self._append(
             proposal.run_id,
             "action.started",
             {
-                "execution_id": execution.execution_id,
-                "proposal_id": execution.proposal_id,
-                "decision_id": execution.decision_id,
+                "execution_id": execution_id,
+                "proposal_id": proposal.proposal_id,
+                "decision_id": decision.decision_id,
             },
         )
-        artifact = self.artifact_store.create_artifact(
-            run_id=proposal.run_id,
-            execution_id=execution.execution_id,
-            artifact_type="text",
-            summary="hello artifact",
-            content=str(proposal.payload.get("text", "")),
-        )
-        self._append(
-            proposal.run_id,
-            "artifact.created",
-            {
-                "artifact": {
-                    "ref": artifact.ref.to_dict(),
-                    "artifact_type": artifact.artifact_type,
-                    "summary": artifact.summary,
-                    "provenance": dict(artifact.provenance),
-                }
-            },
-        )
-        self._append(
-            proposal.run_id,
-            "action.completed",
-            {
-                "execution_id": execution.execution_id,
-                "status": execution.status,
-                "artifact_refs": [artifact.ref.to_dict()],
-            },
-        )
+
+        try:
+            granted_tools = decision.grants.get("tools", [])
+            if "write_artifact_tool" not in granted_tools:
+                raise PermissionError("write_artifact_tool is not granted")
+
+            # This validates the granted workspace mode without consulting requested capabilities.
+            self.workspace_manager.get_binding(decision.grants)
+
+            execution = ActionExecution(
+                execution_id=execution_id,
+                proposal_id=proposal.proposal_id,
+                decision_id=decision.decision_id,
+                action_type=proposal.action_type,
+                status="completed",
+                effective_grants_snapshot={
+                    "tools": list(decision.grants.get("tools", [])),
+                    "workspace": dict(decision.grants.get("workspace", {})),
+                    "budget": dict(decision.grants.get("budget", {})),
+                },
+            )
+            artifact = self.artifact_store.create_artifact(
+                run_id=proposal.run_id,
+                execution_id=execution.execution_id,
+                artifact_type="text",
+                summary="hello artifact",
+                content=str(proposal.payload.get("text", "")),
+            )
+        except Exception as exc:
+            self._append_failed(proposal, decision, execution_id, exc)
+            raise
+
+        self._append_artifact_created(proposal.run_id, artifact)
+        self._append_action_completed(proposal.run_id, execution, artifact)
         return execution
 
     def _append(self, run_id: str, event_type: str, payload: dict[str, Any]) -> CanonicalEvent:
@@ -88,3 +76,47 @@ class Executor:
             created_at="2026-04-27T00:00:00Z",
         )
         return self.event_store.append(event)
+
+    def _append_failed(
+        self,
+        proposal: ActionProposal,
+        decision: PolicyDecision,
+        execution_id: str,
+        exc: Exception,
+    ) -> CanonicalEvent:
+        return self._append(
+            proposal.run_id,
+            "action.failed",
+            {
+                "execution_id": execution_id,
+                "proposal_id": proposal.proposal_id,
+                "decision_id": decision.decision_id,
+                "status": "failed",
+                "error": str(exc),
+            },
+        )
+
+    def _append_artifact_created(self, run_id: str, artifact) -> CanonicalEvent:
+        return self._append(
+            run_id,
+            "artifact.created",
+            {
+                "artifact": {
+                    "ref": artifact.ref.to_dict(),
+                    "artifact_type": artifact.artifact_type,
+                    "summary": artifact.summary,
+                    "provenance": dict(artifact.provenance),
+                }
+            },
+        )
+
+    def _append_action_completed(self, run_id: str, execution: ActionExecution, artifact) -> CanonicalEvent:
+        return self._append(
+            run_id,
+            "action.completed",
+            {
+                "execution_id": execution.execution_id,
+                "status": execution.status,
+                "artifact_refs": [artifact.ref.to_dict()],
+            },
+        )

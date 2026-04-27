@@ -11,10 +11,10 @@ def _new_run(tmp_path):
 def _submit_failing_action(tmp_path, monkeypatch):
     api, run_id = _new_run(tmp_path)
 
-    def fail_execute(decision, proposal):
+    def fail_create_artifact(*args, **kwargs):
         raise RuntimeError("deterministic tool failure")
 
-    monkeypatch.setattr(api.executor, "execute", fail_execute)
+    monkeypatch.setattr(api.artifact_store, "create_artifact", fail_create_artifact)
     result = api.submit_tool_request(
         run_id,
         tool="write_artifact_tool",
