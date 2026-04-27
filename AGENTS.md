@@ -14,7 +14,7 @@
 - 不要把 v0 implementation shape 误写成永久协议。
 - 保持 hard contracts 优先：action chain、policy grants、append-only canonical event log、projector-only replay、RunState rebuild、artifact provenance、ResourceRef。
 - 任何 deferred 能力必须先写 design/doc patch 和 red tests，不能直接实现。
-- 不得直接扩展 automatic checkpoint scheduling / server checkpoint API；checkpoint 相关实现必须遵守 `docs/checkpoint-ownership-v0.1.md`，并先写 red tests。
+- 不得直接扩展 automatic checkpoint scheduling / public checkpoint API；checkpoint 相关实现必须遵守 `docs/checkpoint-ownership-v0.1.md`，并先写 red tests。
 - checkpoint hash 已有最小 validation；后续扩展 signature / MAC / key management 或 event prefix digest 前，必须先更新设计文档并写 red tests。
 - server-facing checkpoint 相关实现必须遵守 `docs/server-checkpoint-boundary-v0.1.md`；Server 不能直接解释 checkpoint state，必须通过 projector-owned boundary。
 
@@ -98,7 +98,7 @@
 - checkpoint run_id mismatch fail-fast
 - checkpoint cannot hide malformed / lifecycle-invalid event log
 - checkpoint-assisted rebuild still runs canonical event validation / lifecycle validation
-- checkpoint-assisted rebuild has no server API integration
+- checkpoint-assisted rebuild has no public checkpoint API integration
 - no CheckpointService
 - projector-owned checkpoint creation
 - `RunProjector.create_checkpoint(...)`
@@ -157,8 +157,15 @@
 - malformed checkpoint file remains fail-fast
 - hash mismatch cannot hide lifecycle-invalid event log
 - server-facing checkpoint boundary design note
-- `InProcessServer` currently does not use checkpoint
-- server read model remains projector-owned and must not read checkpoint state directly
+- `InProcessServer` read path checkpoint-assisted rebuild
+- `InProcessServer` constructor supports optional `checkpoint_store`
+- `get_run_state` uses full event log rebuild without `checkpoint_store`
+- `get_run_state` calls projector-owned `RunProjector.rebuild_with_checkpoint(...)` with `checkpoint_store`
+- server does not directly read or interpret checkpoint `state`
+- server does not create checkpoints or write checkpoint store from `get_run_state`
+- `create_checkpoint(...)` remains `not_enabled`
+- checkpoint missing / invalid / mismatch / incompatible falls back to full rebuild
+- lifecycle-invalid event log still fail-fast and cannot be hidden by checkpoint fallback
 
 ## Deferred
 
@@ -168,8 +175,8 @@
 - ActionTypeRegistry
 - memory write
 - external ingestion
-- server/API checkpoint integration
-- automatic checkpoint scheduling
+- public checkpoint API / HTTP endpoint
+- checkpoint save trigger / automatic checkpoint scheduling
 - CheckpointService
 - signature / MAC / key management
 - event prefix digest

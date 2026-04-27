@@ -2,11 +2,11 @@
 
 状态：draft
 
-本文定义未来 `InProcessServer` / Server API 如何使用 checkpoint（检查点），同时保持 canonical event log（规范事件日志）仍是唯一 source of truth。
+本文定义 `InProcessServer` / Server API 如何使用 checkpoint（检查点），同时保持 canonical event log（规范事件日志）仍是唯一 source of truth。
 
 ## Purpose
 
-Server-facing checkpoint boundary 的目的，是允许 server read path 在未来使用 checkpoint 加速 `RunState` rebuild，但不让 server 把 checkpoint 当成事实来源、状态修复工具或外部协议承诺。
+Server-facing checkpoint boundary 的目的，是允许 server read path 使用 checkpoint 加速 `RunState` rebuild，但不让 server 把 checkpoint 当成事实来源、状态修复工具或外部协议承诺。
 
 本设计只收口边界，不实现代码。
 
@@ -24,9 +24,14 @@ Server-facing checkpoint boundary 的目的，是允许 server read path 在未�
 
 当前未实现：
 
-- `InProcessServer` 尚未接入 checkpoint。
-- `get_run_state` 当前仍由 projector 从 event log rebuild。
-- Server read model 仍来自 projector，不直接读取 checkpoint state。
+- `InProcessServer` constructor 支持 optional `checkpoint_store`。
+- `get_run_state` 没有 `checkpoint_store` 时仍由 projector 从 event log full rebuild。
+- `get_run_state` 有 `checkpoint_store` 时调用 projector-owned `RunProjector.rebuild_with_checkpoint(...)`。
+- Server read model 仍来自 projector，不直接读取或解释 checkpoint state。
+- `get_run_state` 不创建 checkpoint，不写 checkpoint store。
+- `create_checkpoint(...)` 仍返回 `not_enabled`。
+- checkpoint missing / invalid / mismatch / incompatible 时 fallback full rebuild。
+- lifecycle-invalid event log 仍 fail-fast，不能被 checkpoint fallback 掩盖。
 - 没有 public checkpoint API。
 - 没有 automatic checkpoint scheduling。
 - 没有 `CheckpointService`。
@@ -37,7 +42,7 @@ v0.1 decision：
 
 - Server 不能把 checkpoint 当作 source of truth。
 - Server 不能直接解释 checkpoint `state`。
-- Server read path 如需使用 checkpoint，只能调用 projector-owned boundary，例如 `RunProjector.rebuild_with_checkpoint(...)`，或未来受控 wrapper。
+- Server read path 使用 checkpoint 时，只能调用 projector-owned boundary，例如 `RunProjector.rebuild_with_checkpoint(...)`，或未来受控 wrapper。
 - checkpoint missing / invalid / mismatch / incompatible 时，server-facing read 必须 fallback 到 canonical event log rebuild。
 - checkpoint 只能加速 read/rebuild，不能改变 read 语义。
 - 暂不暴露 public checkpoint endpoint。
@@ -60,14 +65,18 @@ v0.1 decision：
 
 ## v0 Candidate
 
-未来 v0 可以考虑：
+当前 v0 implementation choice：
 
 - `InProcessServer.get_run_state(run_id)` 使用 checkpoint-assisted rebuild。
 - 该 read path 等价于 full event log rebuild；checkpoint 只影响性能，不影响结果。
+- Server constructor 接收 optional `checkpoint_store`；没有 checkpoint store 时保持现有 full rebuild 行为。
+- checkpoint missing / invalid / mismatch / incompatible 时 fallback full rebuild。
+- event log 本身 malformed / lifecycle-invalid 时必须 fail fast。
+
+未来 v0 可以考虑：
+
 - 提供 internal-only checkpoint save trigger，例如 `save_checkpoint_for_run(run_id)`。
 - internal save trigger 只能调用 `RunProjector.save_checkpoint(...)`。
-- Server constructor 可以接收 optional `checkpoint_store`，但没有 checkpoint store 时必须保持现有 full rebuild 行为。
-- 如果 checkpoint-assisted rebuild 失败是 checkpoint 不可用类问题，可以回落 full rebuild；如果 event log 本身 malformed / lifecycle-invalid，必须 fail fast。
 
 这些是 v0 candidate，不是永久协议。
 
@@ -102,14 +111,19 @@ v0.1 decision：
 
 下一轮建议先做一个最小 TDD slice：
 
-- `InProcessServer.get_run_state(...)` 可选择 checkpoint-assisted rebuild。
-- 无 checkpoint 时，结果等价于 full rebuild。
-- checkpoint 可用时，结果等价于 full rebuild。
-- checkpoint mismatch / invalid / incompatible 时，fallback full rebuild。
+已覆盖的最小测试：
+
+- `InProcessServer(root)` 默认仍使用 full event log rebuild。
+- `InProcessServer(root, checkpoint_store=...)` 的 `get_run_state(...)` 通过 projector-owned checkpoint-assisted rebuild，结果等价于 full rebuild。
+- server 不返回被污染的 checkpoint state。
+- `get_run_state(...)` 不创建 checkpoint。
 - lifecycle-invalid event log 不能被 checkpoint fallback 隐藏。
-- server 不直接解释 checkpoint state。
-- server 不修改 event log。
-- server 不写 checkpoint，除非调用 future internal-only save boundary。
-- `FileCheckpointStore` 仍保持 opaque。
+- `create_checkpoint(...)` 仍返回 `not_enabled`。
+
+后续如继续扩展，应先写 red tests，优先覆盖：
+
+- internal-only checkpoint save trigger。
+- checkpoint save trigger 只能调用 `RunProjector.save_checkpoint(...)`。
+- public API 仍不得暴露 checkpoint state。
 
 暂不实现 public checkpoint API、automatic scheduling、`CheckpointService`、event prefix digest、signature / MAC / key management。

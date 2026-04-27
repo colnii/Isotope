@@ -42,7 +42,7 @@ v0.1 ownership 分工：
 
 - `RunProjector`：解释 canonical events，产出 projected state，执行 checkpoint-assisted rebuild，并负责生成 projector-owned checkpoint blob。
 - `FileCheckpointStore` / future storage layer：只保存和读取 opaque checkpoint blob，不解释 checkpoint 字段含义。
-- `InProcessServer` / future server API：当前未接入 checkpoint；未来可以请求 projector rebuild 或 server-facing checkpoint-assisted rebuild，但不能直接把 checkpoint 当成 state source。server-facing 边界见 `docs/server-checkpoint-boundary-v0.1.md`。
+- `InProcessServer` / future server API：当前 read path 已可选调用 projector-owned checkpoint-assisted rebuild，但不能直接把 checkpoint 当成 state source。public checkpoint API、save trigger 和 scheduling 仍 deferred；server-facing 边界见 `docs/server-checkpoint-boundary-v0.1.md`。
 - future checkpoint storage：只是一种 storage concern，不是新的 truth layer。
 
 不新增独立 `CheckpointService`，除非后续 TDD 证明 projector/storage 边界无法承载最小实现。
@@ -104,7 +104,8 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - event prefix digest
 - partial checkpoint
 - SessionState checkpoint
-- server API / HTTP exposure
+- public checkpoint API / HTTP exposure
+- checkpoint save trigger / automatic checkpoint scheduling
 - external ingestion integration
 
 ## Implementation Notes For Future TDD
@@ -144,10 +145,14 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - legacy checkpoint 无 hash 时仍走现有 validation path。
 - hash match 后仍继续执行 checkpoint state schema validation 和 prefix consistency validation。
 - `FileCheckpointStore` 仍只保存 opaque checkpoint blob，不解释 hash 或业务 state。
+- `InProcessServer.get_run_state(...)` 没有 checkpoint store 时仍走 full event log rebuild，有 checkpoint store 时调用 `RunProjector.rebuild_with_checkpoint(...)`。
+- server 不直接读取或解释 checkpoint state，不创建 checkpoint，不写 checkpoint store。
+- `create_checkpoint(...)` 仍返回 `not_enabled`。
+- checkpoint missing / invalid / mismatch / incompatible 时 fallback full rebuild；lifecycle-invalid event log 仍 fail-fast。
 - checkpoint schema 仍被标记为 v0 candidate。
 
 后续实现必须先写 red tests，优先覆盖：
 
-- `InProcessServer.get_run_state(...)` checkpoint-assisted rebuild TDD slice。
+- checkpoint save trigger / scheduling design note。
 - event prefix digest design note。
 - server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。

@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`17104fb51a29c8f0db1f615292ca90f87734d7cd`。
+- 最新 implementation commit：`633a1f06e55c40ab464ff783144bd04e2e0f6a9c`。
 
 ## Implemented Slice
 
@@ -91,7 +91,7 @@
 - checkpoint run_id mismatch fail-fast
 - checkpoint cannot hide malformed / lifecycle-invalid event log
 - checkpoint-assisted rebuild still runs canonical event validation / lifecycle validation
-- checkpoint-assisted rebuild has no server API integration
+- checkpoint-assisted rebuild has no public checkpoint API integration
 - no CheckpointService
 - projector-owned checkpoint creation
 - `RunProjector.create_checkpoint(...)`
@@ -155,8 +155,15 @@
 - `FileCheckpointStore` remains opaque and only stores hash fields
 - hash mismatch cannot hide lifecycle-invalid event log
 - server-facing checkpoint boundary design note 已落文档
-- `InProcessServer` 当前仍未接入 checkpoint
-- server read model 仍来自 projector，不直接读取 checkpoint state
+- `InProcessServer` read path checkpoint-assisted rebuild
+- `InProcessServer` constructor supports optional `checkpoint_store`
+- `get_run_state` uses full event log rebuild when no `checkpoint_store` is configured
+- `get_run_state` calls projector-owned `RunProjector.rebuild_with_checkpoint(...)` when `checkpoint_store` is configured
+- server does not directly read or interpret checkpoint `state`
+- server does not create checkpoints or write checkpoint store from `get_run_state`
+- `create_checkpoint(...)` remains `not_enabled`
+- checkpoint missing / invalid / mismatch / incompatible falls back to full rebuild
+- lifecycle-invalid event log still fail-fast and cannot be hidden by checkpoint fallback
 
 ## Tests
 
@@ -169,7 +176,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-290 passed
+296 passed
 ```
 
 Import boundary check:
@@ -188,8 +195,8 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - `ActionTypeRegistry`
 - memory write
 - external ingestion / `ImportedSnapshot`
-- server/API checkpoint integration
-- automatic checkpoint scheduling
+- public checkpoint API / HTTP endpoint
+- checkpoint save trigger / automatic checkpoint scheduling
 - CheckpointService
 - signature / MAC / key management
 - event prefix digest
@@ -211,7 +218,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- `InProcessServer.get_run_state` checkpoint-assisted rebuild TDD slice
+- checkpoint save trigger / scheduling design note
 - event prefix digest design note
 
 不要直接进入 real LLM / memory / ingestion。
