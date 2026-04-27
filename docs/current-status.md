@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`be761177280a21ccbe070013afb1fcafc5f4fb5c`。
+- 最新 implementation commit：`71cd136f8d11748cf6c769bd589deacb76b95aab`。
 
 ## Implemented Slice
 
@@ -52,6 +52,11 @@
 - invalid server request no action lifecycle event side effects
 - invalid server request no artifact side effects
 - fresh `RunState` rebuild remains event-log based
+- success path executor event ownership
+- `Executor.execute(...)` appends `action.started` before artifact side effect
+- `Executor.execute(...)` appends `artifact.created` and `action.completed`
+- server facade does not duplicate executor-owned success events
+- server facade remains responsible for run-level completion such as `run.completed`
 
 ## Tests
 
@@ -64,7 +69,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-150 passed
+157 passed
 ```
 
 Import boundary check:
@@ -101,7 +106,6 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- artifact/event atomicity boundary
-- executor event ownership review
+- failure path event ownership / atomicity review
 
-当前 server facade 仍自己 append `action.started` / `artifact.created` / `action.completed`。后续需要决定是否收紧 `Executor` 与 `Server` 的 event ownership 边界。不要直接进入 real LLM / memory / ingestion。
+当前 failure path 仍由 server facade 在 `executor.execute(...)` 抛错后补记 `action.started` / `action.failed`。后续需要决定是否也收进 `Executor`，或者明确保留为 runtime wrapper failure handling。不要直接进入 real LLM / memory / ingestion。

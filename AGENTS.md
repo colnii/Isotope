@@ -57,6 +57,11 @@
 - invalid server request no action lifecycle event side effects
 - invalid server request no artifact side effects
 - fresh `RunState` rebuild remains event-log based
+- success path executor event ownership
+- `Executor.execute(...)` appends `action.started` before artifact side effect
+- `Executor.execute(...)` appends `artifact.created` and `action.completed`
+- server facade does not duplicate executor-owned success events
+- server facade remains responsible for run-level completion such as `run.completed`
 
 ## Deferred
 
