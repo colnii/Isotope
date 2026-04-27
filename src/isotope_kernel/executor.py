@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+from .events import CanonicalEvent
 from .ids import new_id
 from .models import ActionExecution, ActionProposal, PolicyDecision
 
@@ -37,11 +40,51 @@ class Executor:
                 "budget": dict(decision.grants.get("budget", {})),
             },
         )
-        self.artifact_store.create_artifact(
+        self._append(
+            proposal.run_id,
+            "action.started",
+            {
+                "execution_id": execution.execution_id,
+                "proposal_id": execution.proposal_id,
+                "decision_id": execution.decision_id,
+            },
+        )
+        artifact = self.artifact_store.create_artifact(
             run_id=proposal.run_id,
             execution_id=execution.execution_id,
             artifact_type="text",
             summary="hello artifact",
             content=str(proposal.payload.get("text", "")),
         )
+        self._append(
+            proposal.run_id,
+            "artifact.created",
+            {
+                "artifact": {
+                    "ref": artifact.ref.to_dict(),
+                    "artifact_type": artifact.artifact_type,
+                    "summary": artifact.summary,
+                    "provenance": dict(artifact.provenance),
+                }
+            },
+        )
+        self._append(
+            proposal.run_id,
+            "action.completed",
+            {
+                "execution_id": execution.execution_id,
+                "status": execution.status,
+                "artifact_refs": [artifact.ref.to_dict()],
+            },
+        )
         return execution
+
+    def _append(self, run_id: str, event_type: str, payload: dict[str, Any]) -> CanonicalEvent:
+        event = CanonicalEvent(
+            event_id=new_id("evt"),
+            run_id=run_id,
+            event_type=event_type,
+            payload=payload,
+            created_at="2026-04-27T00:00:00Z",
+        )
+        return self.event_store.append(event)

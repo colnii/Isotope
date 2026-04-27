@@ -181,36 +181,6 @@ class InProcessServer:
             }
 
         artifact = self.artifact_store.list_artifacts(run_id)[-1]
-        self._append(
-            run_id,
-            "action.started",
-            {
-                "execution_id": execution.execution_id,
-                "proposal_id": execution.proposal_id,
-                "decision_id": execution.decision_id,
-            },
-        )
-        self._append(
-            run_id,
-            "artifact.created",
-            {
-                "artifact": {
-                    "ref": artifact.ref.to_dict(),
-                    "artifact_type": artifact.artifact_type,
-                    "summary": artifact.summary,
-                    "provenance": dict(artifact.provenance),
-                }
-            },
-        )
-        self._append(
-            run_id,
-            "action.completed",
-            {
-                "execution_id": execution.execution_id,
-                "status": execution.status,
-                "artifact_refs": [artifact.ref.to_dict()],
-            },
-        )
         self._append(run_id, "run.completed", {"status": "completed"})
 
         state = self.get_run_state(run_id)
