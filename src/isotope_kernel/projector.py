@@ -26,9 +26,18 @@ class RunProjector:
     def __init__(self) -> None:
         self._proposal_outcomes: dict[str, str] = {}
         self._execution_statuses: dict[str, str] = {}
+        self._run_completed = False
 
     def _validate_lifecycle(self, event: CanonicalEvent) -> None:
         payload = event.payload
+        if self._run_completed and event.event_type in {
+            "action.decided",
+            "action.started",
+            "action.failed",
+            "action.completed",
+            "artifact.created",
+        }:
+            raise ValueError("event after run.completed")
 
         if event.event_type == "action.decided":
             self._proposal_outcomes[str(payload["proposal_id"])] = str(payload.get("outcome", ""))
@@ -56,6 +65,20 @@ class RunProjector:
             if status == "completed":
                 raise ValueError("terminal execution already completed")
             self._execution_statuses[execution_id] = "failed"
+        elif event.event_type == "run.completed":
+            self._validate_run_completed()
+            self._run_completed = True
+
+    def _validate_run_completed(self) -> None:
+        statuses = set(self._execution_statuses.values())
+        if "failed" in statuses:
+            raise ValueError("run.completed after failed execution")
+        if "running" in statuses:
+            raise ValueError("run.completed while executions are still running")
+        if "pending_user_approval" in set(self._proposal_outcomes.values()):
+            raise ValueError("run.completed while approval is pending")
+        if "completed" not in statuses:
+            raise ValueError("run.completed requires a completed execution")
 
     def apply(self, state: RunState, event: CanonicalEvent) -> None:
         state.last_event_id = event.event_id
@@ -121,6 +144,7 @@ class RunProjector:
     def project(self, events: Iterable[CanonicalEvent]) -> RunState:
         self._proposal_outcomes = {}
         self._execution_statuses = {}
+        self._run_completed = False
         state = RunState()
         for event in events:
             self._validate_lifecycle(event)
