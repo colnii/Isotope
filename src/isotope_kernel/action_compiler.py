@@ -12,6 +12,15 @@ class ActionCompiler:
     """Compile compact model-facing intents into canonical proposals."""
 
     def compile(self, intent: dict[str, Any], runtime_context: dict[str, str]) -> ActionProposal:
+        if not isinstance(intent, dict):
+            raise ValueError("intent must be a dict")
+        if not isinstance(runtime_context, dict):
+            raise ValueError("runtime_context must be a dict")
+        for field_name in ("run_id", "agent_id", "thread_id"):
+            value = runtime_context.get(field_name)
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"runtime_context.{field_name} must be a non-empty string")
+
         if intent.get("action") != "call_tool":
             raise ValueError("unsupported compact action")
         tool = intent.get("tool")
@@ -21,6 +30,15 @@ class ActionCompiler:
         requested_tools = intent.get("requested_tools", [tool])
         if not isinstance(requested_tools, list):
             raise ValueError("requested_tools must be a list")
+
+        workspace_mode = intent.get("workspace_mode", "shared_ro")
+        if not isinstance(workspace_mode, str):
+            raise ValueError("workspace_mode must be a string")
+
+        budget = dict(intent.get("budget", {"seconds": 30}))
+        seconds = budget.get("seconds", 30)
+        if not isinstance(seconds, int) or seconds < 0:
+            raise ValueError("budget.seconds must be a non-negative integer")
 
         return ActionProposal(
             proposal_id=new_id("prop"),
@@ -34,7 +52,7 @@ class ActionCompiler:
             },
             requested_capabilities={
                 "tools": list(requested_tools),
-                "workspace": {"mode": intent.get("workspace_mode", "shared_ro")},
-                "budget": dict(intent.get("budget", {"seconds": 30})),
+                "workspace": {"mode": workspace_mode},
+                "budget": budget,
             },
         )
