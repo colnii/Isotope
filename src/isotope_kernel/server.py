@@ -21,9 +21,10 @@ from .workspace import WorkspaceManager
 class InProcessServer:
     """Minimal in-process facade; this is not a real HTTP API."""
 
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, checkpoint_store=None):
         self.root = Path(root)
         self.event_store = FileEventStore(self.root)
+        self.checkpoint_store = checkpoint_store
         self.artifact_store = ArtifactStore(self.root)
         self.compiler = ActionCompiler()
         self.policy = PolicyEngine()
@@ -179,7 +180,10 @@ class InProcessServer:
 
     def get_run_state(self, run_id: str):
         self._validate_read_run_id(run_id)
-        return RunProjector().rebuild(run_id, self.event_store)
+        project = RunProjector()
+        if self.checkpoint_store is None:
+            return project.rebuild(run_id, self.event_store)
+        return project.rebuild_with_checkpoint(run_id, self.event_store, self.checkpoint_store)
 
     def get_events(self, run_id: str) -> list[CanonicalEvent]:
         self._validate_read_run_id(run_id)
