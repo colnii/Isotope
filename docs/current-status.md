@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 当前代码基线 commit：`0f7ff198e02ca1a4fa9e57f24722a7d6d2e9a0ce`。
+- 最新 implementation commit：`2938d51a55534221aecba4b587da953578d71594`。
 
 ## Implemented Slice
 
@@ -62,6 +62,11 @@
 - failed execution does not append `artifact.created` / `action.completed` / `run.completed`
 - server facade does not duplicate executor-owned failure events
 - checkpoint ownership design note 已落文档
+- projector / run completion invariant hardening
+- `run.completed` requires a completed execution
+- `run.completed` cannot override running / failed / pending approval state
+- `run.completed` closes later action/artifact lifecycle events
+- projector remains canonical-event-only for run completion state
 
 ## Tests
 
@@ -74,7 +79,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-161 passed
+172 passed
 ```
 
 Import boundary check:
@@ -93,7 +98,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - `ActionTypeRegistry`
 - memory write
 - external ingestion / `ImportedSnapshot`
-- checkpoint
+- checkpoint implementation
 - SSE
 - auth
 - multi-agent concurrency
@@ -111,7 +116,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- projector / run completion invariant TDD
 - checkpoint storage red tests
+- event payload validation for projector
 
 不要直接进入 real LLM / memory / ingestion。

@@ -67,6 +67,11 @@
 - `Executor.execute(...)` appends `action.failed` with the same execution id
 - failed execution does not append `artifact.created` / `action.completed` / `run.completed`
 - server facade does not duplicate executor-owned failure events
+- projector / run completion invariant hardening
+- `run.completed` requires a completed execution
+- `run.completed` cannot override running / failed / pending approval state
+- `run.completed` closes later action/artifact lifecycle events
+- projector remains canonical-event-only for run completion state
 
 ## Deferred
 
@@ -76,7 +81,7 @@
 - ActionTypeRegistry
 - memory write
 - external ingestion
-- checkpoint
+- checkpoint implementation
 - SSE
 - auth
 - multi-agent concurrency
