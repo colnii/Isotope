@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`340757ecbbd7bc17185c11694f4d9e90b7933e70`。
+- 最新 implementation commit：`4503755cdb0aa3ab1ef20b90d99bda08aab2289e`。
 
 ## Implemented Slice
 
@@ -105,6 +105,20 @@
 - empty events cannot produce checkpoint
 - checkpoint creation returns a derived blob and does not write checkpoint store
 - created checkpoint can be saved by `FileCheckpointStore` and used by `rebuild_with_checkpoint(...)`
+- checkpoint state schema validation hardening
+- `RunProjector.rebuild_with_checkpoint(...)` validates checkpoint state schema only for compatible projector version
+- incompatible projector version still falls back to full rebuild even with malformed checkpoint state
+- checkpoint `state` must be a dict
+- checkpoint `state` must contain `run_id`, `status`, `current_agent`, `actions`, `artifacts`, `last_event_id`
+- checkpoint `state.run_id` must match rebuild target run_id
+- checkpoint `state.last_event_id` must equal checkpoint `basis_event_id`
+- checkpoint `state.status` must be a known run status
+- checkpoint `state.actions` must be a dict
+- checkpoint `state.artifacts` must be a list
+- checkpoint artifact entry cannot contain `content`
+- checkpoint artifact entry must contain `ref`, `artifact_type`, `summary`, `provenance`
+- malformed checkpoint state fail-fast with controlled `ValueError`
+- `FileCheckpointStore` remains opaque blob storage and does not interpret projected state
 
 ## Tests
 
@@ -117,7 +131,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-237 passed
+256 passed
 ```
 
 Import boundary check:
@@ -157,7 +171,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- checkpoint state schema hardening
-- checkpoint save/read integration boundary for projector caller
+- projector caller checkpoint save/read integration boundary
+- checkpoint integrity/hash design note
 
 不要直接进入 real LLM / memory / ingestion。

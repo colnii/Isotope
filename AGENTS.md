@@ -110,6 +110,20 @@
 - empty events cannot produce checkpoint
 - checkpoint creation returns a derived blob and does not write checkpoint store
 - created checkpoint can be saved by `FileCheckpointStore` and used by `rebuild_with_checkpoint(...)`
+- checkpoint state schema validation hardening
+- `RunProjector.rebuild_with_checkpoint(...)` validates checkpoint state schema only for compatible projector version
+- incompatible projector version still falls back to full rebuild even with malformed checkpoint state
+- checkpoint `state` must be a dict
+- checkpoint `state` must contain `run_id`, `status`, `current_agent`, `actions`, `artifacts`, `last_event_id`
+- checkpoint `state.run_id` must match rebuild target run_id
+- checkpoint `state.last_event_id` must equal checkpoint `basis_event_id`
+- checkpoint `state.status` must be a known run status
+- checkpoint `state.actions` must be a dict
+- checkpoint `state.artifacts` must be a list
+- checkpoint artifact entry cannot contain `content`
+- checkpoint artifact entry must contain `ref`, `artifact_type`, `summary`, `provenance`
+- malformed checkpoint state fail-fast with controlled `ValueError`
+- `FileCheckpointStore` remains opaque blob storage and does not interpret projected state
 
 ## Deferred
 

@@ -1,6 +1,6 @@
 # Isotope
 
-Isotope 是一个独立的 kernel-first agent runtime 项目。当前仓库用于沉淀最小 kernel slice：file event log、action chain、policy grants、artifact provenance、structured ResourceRef、projector replay、RunState rebuild、event/ref validation、event store hardening、approval boundary、action lifecycle hardening、artifact persistence、retrieval authorization、workspace binding、policy validation、action compiler validation、server facade input validation、success/failure path executor event ownership、run completion invariants、checkpoint storage boundary、projector event payload validation、checkpoint-assisted projector rebuild 和 projector-owned checkpoint creation。
+Isotope 是一个独立的 kernel-first agent runtime 项目。当前仓库用于沉淀最小 kernel slice：file event log、action chain、policy grants、artifact provenance、structured ResourceRef、projector replay、RunState rebuild、event/ref validation、event store hardening、approval boundary、action lifecycle hardening、artifact persistence、retrieval authorization、workspace binding、policy validation、action compiler validation、server facade input validation、success/failure path executor event ownership、run completion invariants、checkpoint storage boundary、projector event payload validation、checkpoint-assisted projector rebuild、projector-owned checkpoint creation 和 checkpoint state schema validation。
 
 当前代码来自 `x-agent` 中的 Isotope staging snapshot。`x-agent` 不是 Isotope 的 canonical repo，后续 Isotope 的设计和实现应以本仓库为准。
 
@@ -8,7 +8,7 @@ Isotope 是一个独立的 kernel-first agent runtime 项目。当前仓库用�
 
 当前状态入口是 [docs/current-status.md](docs/current-status.md)。
 
-Checkpoint ownership 边界见 [docs/checkpoint-ownership-v0.1.md](docs/checkpoint-ownership-v0.1.md)；当前实现了 opaque checkpoint storage、最小 checkpoint-assisted projector rebuild 和 projector-owned checkpoint creation，checkpoint 仍不是第二事实源。
+Checkpoint ownership 边界见 [docs/checkpoint-ownership-v0.1.md](docs/checkpoint-ownership-v0.1.md)；当前实现了 opaque checkpoint storage、最小 checkpoint-assisted projector rebuild、projector-owned checkpoint creation 和 checkpoint state schema validation，checkpoint 仍不是第二事实源。
 
 当前测试命令：
 
@@ -16,7 +16,7 @@ Checkpoint ownership 边界见 [docs/checkpoint-ownership-v0.1.md](docs/checkpoi
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 ```
 
-当前预期：`237 passed`。
+当前预期：`256 passed`。
 
 当前 deferred 边界：real LLM、`ActionTypeRegistry`、memory write、external ingestion / `ImportedSnapshot`、server/API checkpoint integration、automatic checkpoint scheduling、CheckpointService、checkpoint migration / version negotiation / integrity hash、SSE、auth、multi-agent concurrency、real HTTP API。
 
@@ -48,6 +48,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 - `RunProjector` 会对 action / artifact / approval event payload 做最小字段校验，malformed payload 受控 `ValueError` fail fast；`modified` decision 和 `approved` 一样允许进入 execution lifecycle，projector 仍不读取 artifact store / executor state / server memory / checkpoint。
 - `RunProjector.rebuild_with_checkpoint(...)` 支持最小 checkpoint-assisted rebuild：无 checkpoint 或 version 不兼容时回落完整 replay；checkpoint 可用时从 basis state 继续 replay 后续 canonical events，且仍验证完整 event log，不能隐藏 malformed / lifecycle-invalid events。
 - `RunProjector.create_checkpoint(...)` 支持 projector-owned checkpoint creation：checkpoint 由 canonical events 经 `project(...)` 生成，包含最小 projected state，拒绝 empty / malformed / lifecycle-invalid event stream，不写 checkpoint store，创建出的 checkpoint 可交由 `FileCheckpointStore` 保存并用于 assisted rebuild。
+- `RunProjector.rebuild_with_checkpoint(...)` 只在 checkpoint projector version 兼容时校验 checkpoint state schema：state 必须包含最小 projected state 字段、run/status/action/artifact shape 合法，artifact entry 不得包含 content；不兼容 version 仍回落 full rebuild，`FileCheckpointStore` 仍不解释 projected state。
 
 以下能力仍然 deferred：real LLM、`ActionTypeRegistry`、memory write、external ingestion、server/API checkpoint integration、automatic checkpoint scheduling、CheckpointService、checkpoint migration / version negotiation / integrity hash、SSE、auth、multi-agent concurrency、real HTTP API。
 
