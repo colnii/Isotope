@@ -42,6 +42,17 @@ class RunProjector:
                 "decision_id": payload.get("decision_id"),
                 "status": "running",
             }
+        elif event.event_type == "action.decided":
+            outcome = str(payload.get("outcome", ""))
+            if outcome in {"denied", "pending_user_approval"}:
+                proposal_id = str(payload["proposal_id"])
+                state.actions[proposal_id] = {
+                    "proposal_id": proposal_id,
+                    "decision_id": payload.get("decision_id"),
+                    "status": outcome,
+                }
+                if outcome == "pending_user_approval":
+                    state.status = "pending_user_approval"
         elif event.event_type == "artifact.created":
             artifact = dict(payload["artifact"])
             state.artifacts.append(
@@ -56,6 +67,13 @@ class RunProjector:
             execution_id = str(payload["execution_id"])
             action = state.actions.setdefault(execution_id, {"execution_id": execution_id})
             action["status"] = payload.get("status", "completed")
+        elif event.event_type == "action.failed":
+            execution_id = str(payload["execution_id"])
+            action = state.actions.setdefault(execution_id, {"execution_id": execution_id})
+            action["proposal_id"] = payload.get("proposal_id")
+            action["decision_id"] = payload.get("decision_id")
+            action["status"] = payload.get("status", "failed")
+            state.status = "failed"
         elif event.event_type == "run.completed":
             state.status = str(payload.get("status", "completed"))
 

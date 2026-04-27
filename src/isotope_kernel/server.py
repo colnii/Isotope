@@ -11,6 +11,7 @@ from .event_store import FileEventStore
 from .events import CanonicalEvent
 from .executor import Executor
 from .ids import new_id
+from .models import PolicyDecision
 from .policy import PolicyEngine
 from .projector import RunProjector
 from .retrieval import RetrievalService
@@ -58,13 +59,22 @@ class InProcessServer:
         return {"run_id": run_id}
 
     def submit_input(self, run_id: str, text: str) -> dict[str, Any]:
+        return self.submit_tool_request(run_id, tool="write_artifact_tool", text=text)
+
+    def submit_tool_request(
+        self,
+        run_id: str,
+        tool: str,
+        text: str,
+        requires_approval: bool = False,
+    ) -> dict[str, Any]:
         run = self._runs[run_id]
         proposal = self.compiler.compile(
             {
                 "action": "call_tool",
-                "tool": "write_artifact_tool",
+                "tool": tool,
                 "text": text,
-                "requested_tools": ["write_artifact_tool"],
+                "requested_tools": [tool],
             },
             {
                 "run_id": run_id,
@@ -84,6 +94,14 @@ class InProcessServer:
         )
 
         decision = self.policy.decide(proposal)
+        if requires_approval and decision.outcome != "denied":
+            decision = PolicyDecision(
+                decision_id=new_id("dec"),
+                proposal_id=proposal.proposal_id,
+                outcome="pending_user_approval",
+                grants=decision.grants,
+                reason_codes=["approval_required"],
+            )
         self._append(
             run_id,
             "action.decided",
@@ -91,10 +109,57 @@ class InProcessServer:
                 "decision_id": decision.decision_id,
                 "proposal_id": decision.proposal_id,
                 "outcome": decision.outcome,
+                "reason_codes": list(decision.reason_codes),
             },
         )
 
-        execution = self.executor.execute(decision, proposal)
+        if decision.outcome == "denied":
+            return {
+                "status": "denied",
+                "decision": decision,
+                "execution": None,
+                "run_state": self.get_run_state(run_id),
+            }
+        if decision.outcome == "pending_user_approval":
+            return {
+                "status": "pending_user_approval",
+                "decision": decision,
+                "execution": None,
+                "run_state": self.get_run_state(run_id),
+            }
+
+        try:
+            execution = self.executor.execute(decision, proposal)
+        except Exception as exc:
+            execution_id = new_id("exec")
+            self._append(
+                run_id,
+                "action.started",
+                {
+                    "execution_id": execution_id,
+                    "proposal_id": proposal.proposal_id,
+                    "decision_id": decision.decision_id,
+                },
+            )
+            self._append(
+                run_id,
+                "action.failed",
+                {
+                    "execution_id": execution_id,
+                    "proposal_id": proposal.proposal_id,
+                    "decision_id": decision.decision_id,
+                    "status": "failed",
+                    "error": str(exc),
+                },
+            )
+            return {
+                "status": "failed",
+                "decision": decision,
+                "execution": None,
+                "execution_id": execution_id,
+                "run_state": self.get_run_state(run_id),
+            }
+
         artifact = self.artifact_store.list_artifacts(run_id)[-1]
         self._append(
             run_id,
