@@ -2,7 +2,7 @@
 
 状态：draft
 
-本文定义 checkpoint ownership（检查点归属）和边界。当前实现只覆盖 opaque checkpoint storage、最小 checkpoint-assisted projector rebuild、projector-owned checkpoint creation、checkpoint state schema validation、projector-owned checkpoint save boundary 和 checkpoint prefix consistency hardening；checkpoint schema 仍是 v0 candidate。
+本文定义 checkpoint ownership（检查点归属）和边界。当前实现只覆盖 opaque checkpoint storage、最小 checkpoint-assisted projector rebuild、projector-owned checkpoint creation、checkpoint state schema validation、projector-owned checkpoint save boundary、checkpoint prefix consistency hardening 和 checkpoint integrity/hash validation；checkpoint schema 仍是 v0 candidate。
 
 ## Purpose
 
@@ -100,7 +100,8 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - checkpoint compaction
 - checkpoint migration
 - checkpoint version negotiation
-- checkpoint integrity hash
+- signature / MAC / key management
+- event prefix digest
 - partial checkpoint
 - SessionState checkpoint
 - server API / HTTP exposure
@@ -137,10 +138,16 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - checkpoint state 多出不存在的 action 或少了已有 artifact 时，fallback full rebuild。
 - fallback full rebuild 仍执行完整 event validation，lifecycle-invalid event log 不能被 checkpoint mismatch 隐藏。
 - `FileCheckpointStore` 保持 opaque，不负责 consistency check。
+- `RunProjector.create_checkpoint(...)` 会生成 `integrity`，使用 `algorithm: sha256` 和 `checkpoint_hash`。
+- checkpoint hash 输入使用 deterministic canonical JSON，并排除 `integrity` / `checkpoint_hash` 本身。
+- hash mismatch 只让 checkpoint 失效并 fallback full rebuild，不能掩盖 lifecycle-invalid event log。
+- legacy checkpoint 无 hash 时仍走现有 validation path。
+- hash match 后仍继续执行 checkpoint state schema validation 和 prefix consistency validation。
+- `FileCheckpointStore` 仍只保存 opaque checkpoint blob，不解释 hash 或业务 state。
 - checkpoint schema 仍被标记为 v0 candidate。
 
 后续实现必须先写 red tests，优先覆盖：
 
-- checkpoint integrity/hash design note。
 - server-facing checkpoint boundary design note。
+- event prefix digest design note。
 - server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。

@@ -15,7 +15,7 @@
 - 保持 hard contracts 优先：action chain、policy grants、append-only canonical event log、projector-only replay、RunState rebuild、artifact provenance、ResourceRef。
 - 任何 deferred 能力必须先写 design/doc patch 和 red tests，不能直接实现。
 - 不得直接扩展 automatic checkpoint scheduling / server checkpoint API；checkpoint 相关实现必须遵守 `docs/checkpoint-ownership-v0.1.md`，并先写 red tests。
-- 不得直接实现 checkpoint hash；实现前必须遵守 `docs/checkpoint-integrity-v0.1.md`，并先写 red tests。
+- checkpoint hash 已有最小 validation；后续扩展 signature / MAC / key management 或 event prefix digest 前，必须先更新设计文档并写 red tests。
 
 ## Current Slice
 
@@ -146,6 +146,15 @@
 - fallback full rebuild still runs full event validation
 - lifecycle-invalid event log cannot be hidden by checkpoint mismatch fallback
 - `FileCheckpointStore` remains opaque and does not perform consistency checks
+- checkpoint integrity/hash validation
+- `RunProjector.create_checkpoint(...)` generates `integrity`
+- checkpoint integrity uses `algorithm: sha256` and `checkpoint_hash`
+- checkpoint hash input uses deterministic canonical JSON and excludes `integrity` / `checkpoint_hash`
+- hash mismatch invalidates checkpoint and falls back to full rebuild
+- legacy checkpoint without hash still uses existing validation path
+- hash match still runs checkpoint state schema validation and prefix consistency validation
+- malformed checkpoint file remains fail-fast
+- hash mismatch cannot hide lifecycle-invalid event log
 
 ## Deferred
 
@@ -158,7 +167,8 @@
 - server/API checkpoint integration
 - automatic checkpoint scheduling
 - CheckpointService
-- checkpoint integrity hash
+- signature / MAC / key management
+- event prefix digest
 - checkpoint migration / version negotiation
 - SSE
 - auth

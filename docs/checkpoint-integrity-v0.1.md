@@ -2,7 +2,7 @@
 
 状态：draft
 
-本文定义 checkpoint integrity/hash（检查点完整性校验 / 哈希）的 v0.1 边界。当前只定设计，不实现 hash，不修改 checkpoint schema 代码。
+本文定义 checkpoint integrity/hash（检查点完整性校验 / 哈希）的 v0.1 边界。当前已实现最小 hash generation / validation，但它仍只是 checkpoint 可用性边界，不是事实来源。
 
 ## Purpose
 
@@ -22,7 +22,22 @@ v0.1 design decision：
 - v0.1 推荐使用 `sha256`。
 - hash 字段可以由 `FileCheckpointStore` 保存，但 storage 不解释业务状态。
 - 是否使用 checkpoint 仍由 `RunProjector` / checkpoint-assisted rebuild 决定。
-- 当前不实现 hash，不修改 checkpoint schema 代码。
+- 当前实现只覆盖最小 `sha256` checkpoint hash，不包含 signature / MAC / key management，也不包含 event prefix digest。
+
+当前实现状态：
+
+- `RunProjector.create_checkpoint(...)` 会生成 `integrity`。
+- `integrity` 包含 `algorithm: sha256` 和 `checkpoint_hash`。
+- hash 输入使用 deterministic canonical JSON。
+- hash 输入排除 `integrity` / `checkpoint_hash` 本身。
+- 相同 checkpoint 内容 hash 稳定。
+- checkpoint state 被改动会导致 integrity validation 失败。
+- `rebuild_with_checkpoint(...)` 遇到 hash mismatch 不采用 checkpoint，回退 full rebuild。
+- legacy checkpoint 无 hash 时仍走已有 validation path。
+- hash match 后仍要走 state schema validation 和 prefix consistency validation。
+- malformed checkpoint file 仍 fail-fast。
+- `FileCheckpointStore` 仍是 opaque storage，只保存 hash 字段，不解释业务 state。
+- hash mismatch 不能掩盖 lifecycle-invalid event log。
 
 ## Hard Boundaries
 
@@ -89,9 +104,6 @@ hash mismatch 与 checkpoint version 不兼容类似：只能让 checkpoint 不�
 
 当前仍不实现：
 
-- checkpoint hash generation。
-- checkpoint hash validation。
-- checkpoint integrity field schema。
 - event prefix digest。
 - signature / MAC。
 - key management。
@@ -101,7 +113,7 @@ hash mismatch 与 checkpoint version 不兼容类似：只能让 checkpoint 不�
 
 ## Future TDD Notes
 
-后续实现必须先写 red tests，优先覆盖：
+已覆盖的最小测试：
 
 - 无 hash 的 legacy checkpoint 继续走现有 validation。
 - 有 hash 且 hash match 的 checkpoint 仍必须走 state schema / prefix consistency validation。
@@ -110,4 +122,9 @@ hash mismatch 与 checkpoint version 不兼容类似：只能让 checkpoint 不�
 - hash 输入排除 `integrity` / `checkpoint_hash` 自身字段。
 - hash 输入使用 deterministic JSON。
 - `FileCheckpointStore` 只保存 hash 字段，不解释业务状态。
+- hash mismatch 不能隐藏 lifecycle-invalid event log。
+
+后续实现必须先写 red tests，优先覆盖：
+
 - event prefix digest 如加入，不能替代 replay validation。
+- server-facing checkpoint boundary 如需暴露 checkpoint，只能调用 projector boundary，不能直接信任或解释 checkpoint。

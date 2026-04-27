@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`d64cc0f2f064abb192960c5cd74434faae1d8067`。
+- 最新 implementation commit：`17104fb51a29c8f0db1f615292ca90f87734d7cd`。
 
 ## Implemented Slice
 
@@ -141,6 +141,19 @@
 - lifecycle-invalid event log cannot be hidden by checkpoint mismatch fallback
 - `FileCheckpointStore` remains opaque and does not perform consistency checks
 - checkpoint integrity/hash design note 已落文档
+- checkpoint integrity/hash validation
+- `RunProjector.create_checkpoint(...)` generates `integrity`
+- checkpoint integrity uses `algorithm: sha256` and `checkpoint_hash`
+- checkpoint hash input uses deterministic canonical JSON
+- checkpoint hash input excludes `integrity` / `checkpoint_hash`
+- identical checkpoint content produces stable hash
+- modified checkpoint state causes integrity validation failure
+- hash mismatch invalidates checkpoint and falls back to full rebuild
+- legacy checkpoint without hash still uses existing validation path
+- hash match still runs checkpoint state schema validation and prefix consistency validation
+- malformed checkpoint file remains fail-fast
+- `FileCheckpointStore` remains opaque and only stores hash fields
+- hash mismatch cannot hide lifecycle-invalid event log
 
 ## Tests
 
@@ -153,7 +166,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-278 passed
+290 passed
 ```
 
 Import boundary check:
@@ -175,7 +188,8 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - server/API checkpoint integration
 - automatic checkpoint scheduling
 - CheckpointService
-- checkpoint integrity hash
+- signature / MAC / key management
+- event prefix digest
 - checkpoint migration / version negotiation
 - SSE
 - auth
@@ -194,7 +208,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- checkpoint integrity/hash red tests
 - server-facing checkpoint boundary design note
+- event prefix digest design note
 
 不要直接进入 real LLM / memory / ingestion。
