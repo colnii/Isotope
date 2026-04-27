@@ -1,0 +1,63 @@
+"""Opaque checkpoint storage boundary for the Isotope v0.1 slice."""
+
+from __future__ import annotations
+
+import json
+from json import JSONDecodeError
+from pathlib import Path
+from typing import Any
+
+
+class FileCheckpointStore:
+    """Run-scoped checkpoint blob store.
+
+    This class only validates the storage boundary. It does not interpret
+    projected state semantics and does not participate in event log replay.
+    """
+
+    REQUIRED_FIELDS = {"run_id", "projector_version", "basis_event_id", "state", "created_at"}
+    FORBIDDEN_RAW_KEYS = {"raw_input", "provider_response", "imported_snapshot"}
+
+    def __init__(self, root: Path):
+        self.root = Path(root)
+
+    def checkpoint_path(self, run_id: str) -> Path:
+        return self.root / "runs" / run_id / "checkpoints" / "latest.json"
+
+    def save_checkpoint(self, run_id: str, checkpoint: dict[str, Any]) -> dict[str, Any]:
+        self._validate_checkpoint(run_id, checkpoint)
+        path = self.checkpoint_path(run_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(checkpoint, sort_keys=True), encoding="utf-8")
+        return checkpoint
+
+    def load_latest_checkpoint(self, run_id: str) -> dict[str, Any] | None:
+        path = self.checkpoint_path(run_id)
+        if not path.exists():
+            return None
+        try:
+            checkpoint = json.loads(path.read_text(encoding="utf-8"))
+        except JSONDecodeError as exc:
+            raise ValueError(f"malformed checkpoint file: {path}") from exc
+        if not isinstance(checkpoint, dict):
+            raise ValueError(f"malformed checkpoint file: {path}")
+        try:
+            self._validate_checkpoint(run_id, checkpoint)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"malformed checkpoint file: {path}") from exc
+        return checkpoint
+
+    def _validate_checkpoint(self, run_id: str, checkpoint: dict[str, Any]) -> None:
+        if not isinstance(checkpoint, dict):
+            raise TypeError("checkpoint must be a dict")
+
+        for field in sorted(self.REQUIRED_FIELDS):
+            if field not in checkpoint:
+                raise ValueError(f"checkpoint missing required field: {field}")
+
+        if checkpoint["run_id"] != run_id:
+            raise ValueError("checkpoint run_id must match save run_id")
+
+        for key in sorted(self.FORBIDDEN_RAW_KEYS):
+            if key in checkpoint:
+                raise ValueError(f"checkpoint cannot contain external raw input: {key}")
