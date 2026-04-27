@@ -16,15 +16,29 @@ class CanonicalEvent:
     payload: dict[str, Any]
     created_at: str
 
+    def __post_init__(self) -> None:
+        for field_name in ("event_id", "run_id", "event_type", "created_at"):
+            value = getattr(self, field_name)
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"{field_name} must be a non-empty string")
+        if not isinstance(self.payload, dict):
+            raise ValueError("payload must be a dict")
+
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "CanonicalEvent":
+        if not isinstance(data, dict):
+            raise ValueError("canonical event data must be a dict")
+        required = ("event_id", "run_id", "event_type", "payload", "created_at")
+        missing = [field_name for field_name in required if field_name not in data]
+        if missing:
+            raise ValueError(f"canonical event missing required fields: {', '.join(missing)}")
         return cls(
-            event_id=str(data["event_id"]),
-            run_id=str(data["run_id"]),
-            event_type=str(data["event_type"]),
-            payload=dict(data.get("payload", {})),
-            created_at=str(data["created_at"]),
+            event_id=data["event_id"],
+            run_id=data["run_id"],
+            event_type=data["event_type"],
+            payload=data["payload"],
+            created_at=data["created_at"],
         )

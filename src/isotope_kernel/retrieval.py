@@ -14,6 +14,8 @@ class RetrievalService:
     def get_artifact_summary(self, ref: ResourceRef, grants: dict) -> dict:
         if not isinstance(ref, ResourceRef):
             raise TypeError("artifact summary retrieval requires a structured ResourceRef")
+        if ref.ref_type != "artifact":
+            raise ValueError("artifact summary retrieval requires an artifact ResourceRef")
         if grants.get("artifact", {}).get("read") != "summary":
             raise PermissionError("artifact summary read is not granted")
 
