@@ -43,6 +43,9 @@ class InProcessServer:
         return {"session_id": session_id}
 
     def create_run(self, session_id: str, goal: str) -> dict[str, str]:
+        self._validate_existing_session_id(session_id)
+        self._validate_non_empty_string("goal", goal)
+
         run_id = new_id("run")
         agent_id = "agent_supervisor"
         thread_id = "thread_main"
@@ -68,6 +71,12 @@ class InProcessServer:
         text: str,
         requires_approval: bool = False,
     ) -> dict[str, Any]:
+        self._validate_existing_run_id(run_id)
+        self._validate_non_empty_string("tool", tool)
+        self._validate_non_empty_string("text", text)
+        if not isinstance(requires_approval, bool):
+            raise ValueError("requires_approval must be a bool")
+
         run = self._runs[run_id]
         proposal = self.compiler.compile(
             {
@@ -213,9 +222,11 @@ class InProcessServer:
         }
 
     def get_run_state(self, run_id: str):
+        self._validate_read_run_id(run_id)
         return RunProjector().rebuild(run_id, self.event_store)
 
     def get_events(self, run_id: str) -> list[CanonicalEvent]:
+        self._validate_read_run_id(run_id)
         return self.event_store.list_events(run_id)
 
     def get_artifact_summary(self, ref, grants: dict) -> dict:
@@ -226,6 +237,23 @@ class InProcessServer:
 
     def create_checkpoint(self, run_id: str) -> dict[str, str]:
         return {"status": "not_enabled", "capability": "checkpoint"}
+
+    def _validate_non_empty_string(self, field_name: str, value: object) -> None:
+        if not isinstance(value, str) or not value:
+            raise ValueError(f"{field_name} must be a non-empty string")
+
+    def _validate_existing_session_id(self, session_id: object) -> None:
+        self._validate_non_empty_string("session_id", session_id)
+        if session_id not in self._sessions:
+            raise ValueError("unknown session_id")
+
+    def _validate_existing_run_id(self, run_id: object) -> None:
+        self._validate_non_empty_string("run_id", run_id)
+        if run_id not in self._runs:
+            raise ValueError("unknown run_id")
+
+    def _validate_read_run_id(self, run_id: object) -> None:
+        self._validate_non_empty_string("run_id", run_id)
 
     def _append(self, run_id: str, event_type: str, payload: dict[str, Any]) -> CanonicalEvent:
         event = CanonicalEvent(
