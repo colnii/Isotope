@@ -132,7 +132,7 @@ def test_create_checkpoint_projects_canonical_events_and_returns_blob():
 def test_checkpoint_contains_required_fields():
     checkpoint = projector.RunProjector().create_checkpoint("run_001", _happy_path_events())
 
-    assert set(checkpoint) == {"run_id", "projector_version", "basis_event_id", "state", "created_at"}
+    assert set(checkpoint) == {"run_id", "projector_version", "basis_event_id", "state", "created_at", "integrity"}
 
 
 def test_checkpoint_basis_event_id_is_last_replayed_event_id():

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Iterable
@@ -230,13 +232,18 @@ class RunProjector:
         if state.run_id and state.run_id != run_id:
             raise ValueError("checkpoint state run_id must match checkpoint run_id")
 
-        return {
+        checkpoint = {
             "run_id": run_id,
             "projector_version": projector_version,
             "basis_event_id": canonical_events[-1].event_id,
             "state": asdict(state),
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
+        checkpoint["integrity"] = {
+            "algorithm": "sha256",
+            "checkpoint_hash": self._checkpoint_hash(self._checkpoint_payload_for_hash(checkpoint)),
+        }
+        return checkpoint
 
     def rebuild_with_checkpoint(
         self,
@@ -252,6 +259,8 @@ class RunProjector:
             return self.rebuild(run_id, event_store)
         if checkpoint["run_id"] != run_id:
             raise ValueError("checkpoint run_id must match rebuild run_id")
+        if not self._validate_checkpoint_integrity(checkpoint):
+            return self.rebuild(run_id, event_store)
 
         canonical_events = event_store.list_events(run_id)
         basis_index = self._find_basis_index(canonical_events, checkpoint["basis_event_id"])
@@ -266,6 +275,36 @@ class RunProjector:
             self._validate_lifecycle(event)
             self.apply(state, event)
         return state
+
+    def _checkpoint_payload_for_hash(self, checkpoint: dict[str, Any]) -> dict[str, Any]:
+        return {
+            key: value
+            for key, value in checkpoint.items()
+            if key not in {"integrity", "checkpoint_hash"}
+        }
+
+    def _checkpoint_hash(self, checkpoint_without_integrity: dict[str, Any]) -> str:
+        encoded = json.dumps(
+            checkpoint_without_integrity,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode("utf-8")
+        return hashlib.sha256(encoded).hexdigest()
+
+    def _validate_checkpoint_integrity(self, checkpoint: dict[str, Any]) -> bool:
+        integrity = checkpoint.get("integrity")
+        if integrity is None:
+            return True
+        if not isinstance(integrity, dict):
+            return False
+        if integrity.get("algorithm") != "sha256":
+            return False
+        checkpoint_hash = integrity.get("checkpoint_hash")
+        if not isinstance(checkpoint_hash, str) or not checkpoint_hash:
+            return False
+        expected = self._checkpoint_hash(self._checkpoint_payload_for_hash(checkpoint))
+        return checkpoint_hash == expected
 
     def _find_basis_index(self, canonical_events: list[CanonicalEvent], basis_event_id: str) -> int:
         for index, event in enumerate(canonical_events):
