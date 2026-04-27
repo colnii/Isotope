@@ -8,6 +8,8 @@ Isotope 是一个独立的 kernel-first agent runtime 项目。当前仓库用�
 
 当前状态入口是 [docs/current-status.md](docs/current-status.md)。
 
+Checkpoint ownership 边界见 [docs/checkpoint-ownership-v0.1.md](docs/checkpoint-ownership-v0.1.md)；checkpoint 仍是 deferred capability，不是第二事实源。
+
 当前测试命令：
 
 ```bash

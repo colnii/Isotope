@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`61275b7d4d38f8593071e8085c28114bc3ba0345`。
+- 当前代码基线 commit：`0f7ff198e02ca1a4fa9e57f24722a7d6d2e9a0ce`。
 
 ## Implemented Slice
 
@@ -61,6 +61,7 @@
 - `Executor.execute(...)` appends `action.failed` with the same execution id after started execution fails
 - failed execution does not append `artifact.created` / `action.completed` / `run.completed`
 - server facade does not duplicate executor-owned failure events
+- checkpoint ownership design note 已落文档
 
 ## Tests
 
@@ -110,7 +111,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- checkpoint ownership design note
-- 或继续收紧 projector / run completion invariant
+- projector / run completion invariant TDD
+- checkpoint storage red tests
 
 不要直接进入 real LLM / memory / ingestion。

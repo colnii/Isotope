@@ -14,6 +14,7 @@
 - 不要把 v0 implementation shape 误写成永久协议。
 - 保持 hard contracts 优先：action chain、policy grants、append-only canonical event log、projector-only replay、RunState rebuild、artifact provenance、ResourceRef。
 - 任何 deferred 能力必须先写 design/doc patch 和 red tests，不能直接实现。
+- 不得直接实现 checkpoint；实现前必须遵守 `docs/checkpoint-ownership-v0.1.md`，并先写 red tests。
 
 ## Current Slice
 
