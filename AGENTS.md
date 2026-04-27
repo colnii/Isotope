@@ -52,6 +52,11 @@
 - action compiler input validation
 - runtime identity validation from runtime context
 - valid minimal intent to canonical `ActionProposal`
+- server facade input validation
+- malformed client input controlled `ValueError`
+- invalid server request no action lifecycle event side effects
+- invalid server request no artifact side effects
+- fresh `RunState` rebuild remains event-log based
 
 ## Deferred
 
@@ -63,6 +68,7 @@
 - external ingestion
 - checkpoint
 - SSE
+- auth
 - multi-agent concurrency
 - real HTTP API
 

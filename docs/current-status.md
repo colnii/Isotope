@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`988a247066c4323555563f868edbbd6866aee5a3`。
+- 最新 implementation commit：`be761177280a21ccbe070013afb1fcafc5f4fb5c`。
 
 ## Implemented Slice
 
@@ -47,6 +47,11 @@
 - action compiler input validation
 - runtime identity validation from runtime context
 - valid minimal intent to canonical `ActionProposal`
+- server facade input validation
+- malformed client input controlled `ValueError`
+- invalid server request no action lifecycle event side effects
+- invalid server request no artifact side effects
+- fresh `RunState` rebuild remains event-log based
 
 ## Tests
 
@@ -59,7 +64,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-116 passed
+150 passed
 ```
 
 Import boundary check:
@@ -80,6 +85,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - external ingestion / `ImportedSnapshot`
 - checkpoint
 - SSE
+- auth
 - multi-agent concurrency
 - real HTTP API
 
@@ -95,7 +101,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- checkpoint design doc only
-- `InProcessServer` / server facade input boundary hardening
+- artifact/event atomicity boundary
+- executor event ownership review
 
-尤其是 client request 的 malformed input 不应绕过 action compiler / policy / event store。不要直接进入 real LLM / memory / ingestion。
+当前 server facade 仍自己 append `action.started` / `artifact.created` / `action.completed`。后续需要决定是否收紧 `Executor` 与 `Server` 的 event ownership 边界。不要直接进入 real LLM / memory / ingestion。
