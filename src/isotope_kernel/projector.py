@@ -23,6 +23,9 @@ class RunState:
 class RunProjector:
     """Project RunState only from canonical events."""
 
+    EXECUTABLE_DECISION_OUTCOMES = {"approved", "modified"}
+    KNOWN_DECISION_OUTCOMES = {"approved", "modified", "denied", "pending_user_approval"}
+
     def __init__(self) -> None:
         self._proposal_outcomes: dict[str, str] = {}
         self._execution_statuses: dict[str, str] = {}
@@ -30,6 +33,7 @@ class RunProjector:
 
     def _validate_lifecycle(self, event: CanonicalEvent) -> None:
         payload = event.payload
+        self._validate_event_payload(event)
         if self._run_completed and event.event_type in {
             "action.decided",
             "action.started",
@@ -40,7 +44,7 @@ class RunProjector:
             raise ValueError("event after run.completed")
 
         if event.event_type == "action.decided":
-            self._proposal_outcomes[str(payload["proposal_id"])] = str(payload.get("outcome", ""))
+            self._proposal_outcomes[str(payload["proposal_id"])] = str(payload["outcome"])
         elif event.event_type == "action.started":
             proposal_id = str(payload["proposal_id"])
             outcome = self._proposal_outcomes.get(proposal_id)
@@ -48,7 +52,7 @@ class RunProjector:
                 raise ValueError("action.started after denied decision")
             if outcome == "pending_user_approval":
                 raise ValueError("action.started after pending approval")
-            if outcome != "approved":
+            if outcome not in self.EXECUTABLE_DECISION_OUTCOMES:
                 raise ValueError("action.started before approved decision")
             self._execution_statuses[str(payload["execution_id"])] = "running"
         elif event.event_type == "action.completed":
@@ -79,6 +83,48 @@ class RunProjector:
             raise ValueError("run.completed while approval is pending")
         if "completed" not in statuses:
             raise ValueError("run.completed requires a completed execution")
+
+    def _validate_event_payload(self, event: CanonicalEvent) -> None:
+        payload = event.payload
+        if event.event_type == "action.decided":
+            self._require_fields(event.event_type, payload, ("proposal_id", "decision_id", "outcome"))
+            if payload["outcome"] not in self.KNOWN_DECISION_OUTCOMES:
+                raise ValueError("action.decided has unknown outcome")
+        elif event.event_type == "action.started":
+            self._require_fields(event.event_type, payload, ("execution_id", "proposal_id", "decision_id"))
+        elif event.event_type == "action.completed":
+            self._require_fields(event.event_type, payload, ("execution_id", "status", "artifact_refs"))
+            if payload["status"] != "completed":
+                raise ValueError("action.completed status must be completed")
+            if not isinstance(payload["artifact_refs"], list):
+                raise ValueError("action.completed artifact_refs must be a list")
+        elif event.event_type == "action.failed":
+            self._require_fields(event.event_type, payload, ("execution_id", "proposal_id", "decision_id", "status"))
+            if payload["status"] != "failed":
+                raise ValueError("action.failed status must be failed")
+        elif event.event_type == "artifact.created":
+            self._require_fields(event.event_type, payload, ("artifact",))
+            artifact = payload["artifact"]
+            if not isinstance(artifact, dict):
+                raise ValueError("artifact.created artifact must be a dict")
+            self._require_fields(
+                "artifact.created artifact",
+                artifact,
+                ("ref", "artifact_type", "summary", "provenance"),
+            )
+            if "content" in artifact:
+                raise ValueError("artifact.created artifact cannot contain content")
+        elif event.event_type == "approval.requested":
+            self._require_fields(
+                event.event_type,
+                payload,
+                ("approval_id", "proposal_id", "decision_id", "action_type"),
+            )
+
+    def _require_fields(self, label: str, payload: dict[str, Any], fields: tuple[str, ...]) -> None:
+        for field in fields:
+            if field not in payload:
+                raise ValueError(f"{label} missing required field: {field}")
 
     def apply(self, state: RunState, event: CanonicalEvent) -> None:
         state.last_event_id = event.event_id
