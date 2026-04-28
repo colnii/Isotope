@@ -38,6 +38,26 @@ class FileCheckpointStore:
         path = self.checkpoint_path(run_id)
         if not path.exists():
             return None
+        return self._load_checkpoint_file(run_id, path)
+
+    def load_checkpoint_candidates(self, run_id: str) -> list[dict[str, Any]]:
+        self._validate_run_id(run_id)
+        checkpoint_dir = self.root / "runs" / run_id / "checkpoints"
+        if not checkpoint_dir.exists():
+            return []
+
+        candidates = [
+            self._load_checkpoint_file(run_id, path)
+            for path in sorted(checkpoint_dir.glob("*.json"))
+            if path.is_file()
+        ]
+        return sorted(
+            candidates,
+            key=lambda checkpoint: str(checkpoint.get("created_at", "")),
+            reverse=True,
+        )
+
+    def _load_checkpoint_file(self, run_id: str, path: Path) -> dict[str, Any]:
         try:
             checkpoint = json.loads(path.read_text(encoding="utf-8"))
         except JSONDecodeError as exc:

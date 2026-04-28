@@ -257,26 +257,51 @@ class RunProjector:
         checkpoint_store,
         projector_version: str = PROJECTOR_VERSION,
     ) -> RunState:
-        checkpoint = checkpoint_store.load_latest_checkpoint(run_id)
-        if checkpoint is None:
-            return self.rebuild(run_id, event_store)
-        if not self._is_compatible_projector_version(checkpoint, projector_version):
-            return self.rebuild(run_id, event_store)
-        if checkpoint["run_id"] != run_id:
-            raise ValueError("checkpoint run_id must match rebuild run_id")
-        if not self._validate_checkpoint_integrity(checkpoint):
+        candidates = self._load_checkpoint_candidates(run_id, checkpoint_store)
+        if not candidates:
             return self.rebuild(run_id, event_store)
 
         canonical_events = event_store.list_events(run_id)
+        for checkpoint in candidates:
+            state = self._try_rebuild_from_checkpoint(
+                run_id,
+                canonical_events,
+                checkpoint,
+                projector_version,
+            )
+            if state is not None:
+                return state
+        return self.rebuild(run_id, event_store)
+
+    def _load_checkpoint_candidates(self, run_id: str, checkpoint_store) -> list[dict[str, Any]]:
+        if hasattr(checkpoint_store, "load_checkpoint_candidates"):
+            return checkpoint_store.load_checkpoint_candidates(run_id)
+        checkpoint = checkpoint_store.load_latest_checkpoint(run_id)
+        return [] if checkpoint is None else [checkpoint]
+
+    def _try_rebuild_from_checkpoint(
+        self,
+        run_id: str,
+        canonical_events: list[CanonicalEvent],
+        checkpoint: dict[str, Any],
+        projector_version: str,
+    ) -> RunState | None:
+        if not self._is_compatible_projector_version(checkpoint, projector_version):
+            return None
+        if checkpoint["run_id"] != run_id:
+            return None
+        if not self._validate_checkpoint_integrity(checkpoint):
+            return None
+
         basis_index = self._find_basis_index(canonical_events, checkpoint["basis_event_id"])
         if not self._validate_event_prefix_digest(checkpoint, canonical_events, basis_index):
-            return self.rebuild(run_id, event_store)
+            return None
 
         # Validate prefix from canonical events before trusting the checkpoint state.
         prefix_state = self.project(canonical_events[: basis_index + 1])
         state = self._run_state_from_checkpoint(checkpoint["state"], run_id, checkpoint["basis_event_id"])
         if state != prefix_state:
-            return self.rebuild(run_id, event_store)
+            return None
 
         for event in canonical_events[basis_index + 1 :]:
             self._validate_lifecycle(event)
