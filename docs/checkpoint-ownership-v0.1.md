@@ -31,6 +31,7 @@ v0.1 决定：
 - checkpoint retention / compaction 的边界见 `docs/checkpoint-retention-compaction-v0.1.md`。
 - checkpoint history / old-checkpoint fallback 的边界见 `docs/checkpoint-history-fallback-v0.1.md`。
 - checkpoint history index / retention policy 的边界见 `docs/checkpoint-history-index-retention-v0.1.md`。
+- checkpoint history save 的边界见 `docs/checkpoint-history-save-boundary-v0.1.md`。
 - checkpoint migration / version negotiation 的边界见 `docs/checkpoint-migration-versioning-v0.1.md`。
 - checkpoint schema version fields 的边界见 `docs/checkpoint-schema-version-fields-v0.1.md`。
 
@@ -107,6 +108,7 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 
 - automatic checkpoint scheduling
 - checkpoint history persistence from `save_checkpoint(...)`
+- checkpoint history save method
 - checkpoint history index
 - checkpoint GC
 - checkpoint retention policy
@@ -200,6 +202,11 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - history index 不是 source of truth，不能证明 checkpoint 有效。
 - retention / GC 只能作用于 checkpoint blobs 或 future index metadata，不能处理 canonical events。
 - corrupt / missing history index 不能让系统跳过 full event-log replay。
+- checkpoint history save boundary design note 已落文档。
+- future history save 不能绕过 `RunProjector.create_checkpoint(...)`。
+- invalid checkpoint 不能覆盖 latest，也不能进入 history。
+- candidate loading 不等于 save path 已经持久化 history。
+- latest write / history write failure ordering 必须先有明确策略。
 - server 不能直接选择、解释或信任 old checkpoint；仍必须走 projector-owned boundary。
 - checkpoint migration / version negotiation design note 已落文档。
 - checkpoint schema version fields design note 已落文档。
@@ -244,5 +251,6 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - event envelope schema registry boundary red tests。
 - checkpoint history index / retention boundary red tests。
 - checkpoint history persistence from `save_checkpoint(...)` boundary red tests。
+- checkpoint history save boundary red tests。
 - corrupt / missing history index fallback boundary red tests。
 - server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。

@@ -24,6 +24,7 @@ retention policy 的目的，是在不影响 canonical event log 的前提下，
 - 每个 candidate 仍必须通过 projector-owned validation chain 后才能作为 replay basis。
 - `save_checkpoint(...)` 仍只写 `runs/{run_id}/checkpoints/latest.json`。
 - `save_checkpoint(...)` 不创建 checkpoint history 文件。
+- checkpoint history save boundary design note 已落文档，见 `docs/checkpoint-history-save-boundary-v0.1.md`。
 - 当前没有 persisted history index。
 - 当前没有 retention policy。
 - 当前没有 checkpoint GC。
@@ -95,6 +96,8 @@ retention policy 可以考虑：
 
 retention / GC 应和 save path、fallback path 分开实现，不能顺手混进同一个 TDD slice。
 
+history save path 如果保留 checkpoint history，必须先遵守 `docs/checkpoint-history-save-boundary-v0.1.md`，不能静默改变 current latest-only save behavior。
+
 以上字段和策略只是 v0 candidate / schema sketch，不是当前实现协议。
 
 ## Invalid Uses
@@ -137,6 +140,7 @@ retention / GC 应和 save path、fallback path 分开实现，不能顺手混�
 - retention policy。
 - checkpoint GC。
 - checkpoint history persistence from `save_checkpoint(...)`。
+- checkpoint history save method。
 - `CheckpointService`。
 - public checkpoint inspection API。
 - automatic checkpoint scheduling。

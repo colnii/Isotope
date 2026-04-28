@@ -229,6 +229,11 @@
 - retention / GC can only apply to checkpoint blobs or future index metadata, never canonical event log
 - corrupt / missing history index cannot let the system skip full event-log replay
 - current latest-only save behavior remains unchanged
+- checkpoint history save boundary design note 已落文档
+- future history save cannot bypass `RunProjector.create_checkpoint(...)`
+- invalid checkpoint cannot overwrite latest or enter history
+- latest write / history write failure ordering must be explicit before implementation
+- candidate loading does not mean save path persists history
 - checkpoint migration / version negotiation design note 已落文档
 - current checkpoint uses `projector_version`; current projector version is `run_projector@v1`
 - incompatible checkpoint projector version invalidates checkpoint and falls back to full rebuild
@@ -302,6 +307,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - automatic checkpoint scheduling
 - CheckpointService
 - checkpoint history persistence from `save_checkpoint(...)`
+- checkpoint history save method
 - checkpoint history index
 - checkpoint GC
 - checkpoint retention policy
@@ -341,7 +347,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- checkpoint history save / retention boundary design review
+- checkpoint history save boundary red tests only after an explicit implementation slice
 - checkpoint history index / retention policy red tests only after an explicit implementation slice
 
 不要直接进入 real LLM / memory / ingestion。

@@ -42,6 +42,7 @@ checkpoint history / old-checkpoint fallback 的目的，是在 latest checkpoin
 - `CheckpointService`。
 
 checkpoint history index / retention policy 的边界见 `docs/checkpoint-history-index-retention-v0.1.md`。
+checkpoint history save 的边界见 `docs/checkpoint-history-save-boundary-v0.1.md`。
 
 ## Decision
 
@@ -98,6 +99,7 @@ v0.1 design decision：
 - 让 `save_checkpoint(...)` 保留最近 N 个 checkpoint。
 - checkpoint history index 自身需要 integrity / ordering / retention 边界。
 - retention / GC 和 fallback 选择逻辑分开设计，不能在 fallback slice 中顺手实现。
+- 如果 future save path 保留 history，必须遵守 `docs/checkpoint-history-save-boundary-v0.1.md`。
 
 更完整的 history index / retention policy sketch 见 `docs/checkpoint-history-index-retention-v0.1.md`。
 
@@ -183,6 +185,7 @@ v0.1 design decision：
 
 - checkpoint history index。
 - checkpoint history persistence from `save_checkpoint(...)`。
+- checkpoint history save boundary。
 - retention / GC。
 - corrupt / missing history index 不能跳过 full event-log replay。
 - server 不能直接解释 checkpoint history 或 checkpoint state。
