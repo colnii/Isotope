@@ -36,6 +36,7 @@ Checkpoint save trigger 的目标，是给已有 projector-owned checkpoint save
 - 没有 public checkpoint API。
 - 没有 `CheckpointService`。
 - event prefix digest 已有最小 validation；save trigger 不解释 digest。
+- checkpoint retention / compaction 只有 design note；save trigger 不执行 retention / compaction。
 
 ## Decision
 
@@ -61,6 +62,7 @@ v0.1 decision：
 - save trigger 不能在 empty event log 上写 checkpoint。
 - save trigger 不能把 checkpoint state 暴露给 public client。
 - save trigger 不能把 checkpoint hash match 当作事实正确性证明。
+- save trigger 不能因为 retention / compaction 设计存在而删除或修改 event log。
 - public client 不能直接提交 checkpoint state。
 
 ## v0 Candidate
@@ -96,7 +98,7 @@ v0.1 decision：
 当前仍 deferred：
 
 - automatic checkpoint scheduling。
-- checkpoint retention / compaction。
+- checkpoint retention / compaction implementation。
 - `CheckpointService`。
 - public checkpoint API / HTTP endpoint。
 - checkpoint inspection API。
@@ -121,5 +123,5 @@ v0.1 decision：
 后续如继续扩展，应先写 red tests，优先覆盖：
 
 - event prefix digest 后续扩展仍不能由 save trigger 自行计算、解释或信任 digest。
-- checkpoint retention / compaction design note。
+- `FileCheckpointStore` latest-only replacement boundary hardening。
 - public checkpoint API / HTTP endpoint 仍不实现。

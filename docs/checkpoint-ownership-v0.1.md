@@ -26,6 +26,7 @@ v0.1 决定：
 - checkpoint integrity/hash 的边界见 `docs/checkpoint-integrity-v0.1.md`。
 - checkpoint save trigger 的边界见 `docs/checkpoint-save-trigger-v0.1.md`。
 - event prefix digest 的边界见 `docs/event-prefix-digest-v0.1.md`。
+- checkpoint retention / compaction 的边界见 `docs/checkpoint-retention-compaction-v0.1.md`。
 
 ## Hard Boundaries
 
@@ -99,7 +100,7 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 当前仍不实现：
 
 - automatic checkpoint scheduling
-- checkpoint retention / compaction
+- checkpoint retention / compaction implementation
 - checkpoint migration
 - checkpoint version negotiation
 - signature / MAC / key management
@@ -154,6 +155,11 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - digest match 后仍继续执行 checkpoint state schema validation 和 prefix consistency validation。
 - legacy checkpoint 无 event prefix digest 仍走兼容路径，suffix events 仍会 replay。
 - `FileCheckpointStore` 不解释 digest，`InProcessServer` 没有 digest-specific 行为。
+- checkpoint retention / compaction design note 已落文档。
+- 当前 checkpoint storage 仍是 latest-only。
+- retention / compaction implementation 尚未实现。
+- retention / compaction 只能处理 checkpoint blobs，不能删除、重写、压缩或裁剪 canonical event log。
+- checkpoint 删除后仍必须能从 canonical event log full rebuild。
 - `InProcessServer.get_run_state(...)` 没有 checkpoint store 时仍走 full event log rebuild，有 checkpoint store 时调用 `RunProjector.rebuild_with_checkpoint(...)`。
 - server 不直接读取或解释 checkpoint state，不创建 checkpoint，不写 checkpoint store。
 - `create_checkpoint(...)` 仍返回 `not_enabled`。
@@ -166,6 +172,6 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 
 后续实现必须先写 red tests，优先覆盖：
 
-- checkpoint retention / compaction design note。
+- `FileCheckpointStore` latest-only replacement boundary hardening。
 - checkpoint migration / version negotiation design note。
 - server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。

@@ -8,7 +8,7 @@
 
 Server-facing checkpoint boundary 的目的，是允许 server read path 使用 checkpoint 加速 `RunState` rebuild，但不让 server 把 checkpoint 当成事实来源、状态修复工具或外部协议承诺。
 
-本设计只收口边界，不实现代码。
+本文收口 server-facing checkpoint 边界；当前 in-process read path 和 internal-only save trigger 已有最小实现，public API / scheduling / retention implementation 仍 deferred。
 
 ## Current State
 
@@ -21,7 +21,11 @@ Server-facing checkpoint boundary 的目的，是允许 server read path 使用 
 - checkpoint state schema validation。
 - checkpoint prefix consistency validation。
 - checkpoint integrity/hash validation。
+- event prefix digest validation。
 - checkpoint save trigger boundary design note。
+- checkpoint retention / compaction boundary design note。
+
+相关 retention / compaction 边界见 `docs/checkpoint-retention-compaction-v0.1.md`。
 
 当前 server read path：
 
@@ -41,6 +45,7 @@ Server-facing checkpoint boundary 的目的，是允许 server read path 使用 
 - 没有 public checkpoint API。
 - 没有 automatic checkpoint scheduling。
 - 没有 `CheckpointService`。
+- 没有 checkpoint retention / compaction implementation。
 
 ## Decision
 
@@ -66,6 +71,7 @@ v0.1 decision：
 - Server 不能修改 checkpoint state 来匹配 event log。
 - Server 不能修改 projected state 来“修复”状态。
 - Server 不能根据 checkpoint integrity/hash 判断业务状态正确。
+- Server 不能因为 checkpoint retention / compaction 存在而删除、重写、压缩或裁剪 canonical event log。
 - Server 不能让 checkpoint mismatch 阻止 full event log rebuild。
 - Server 不能把 checkpoint schema 当作 public API protocol。
 
@@ -107,8 +113,8 @@ v0.1 decision：
 - SSE integration。
 - automatic checkpoint scheduling。
 - `CheckpointService`。
-- event prefix digest。
 - signature / MAC / key management。
+- checkpoint retention / compaction implementation。
 - checkpoint migration / version negotiation。
 - `SessionState` checkpoint。
 - multi-run checkpoint coordination。
@@ -134,5 +140,6 @@ v0.1 decision：
 - trigger 不读取 artifact content、executor state 或 server memory。
 - empty / malformed / lifecycle-invalid event stream fail-fast，不写 checkpoint。
 - public API 仍不得暴露 checkpoint state。
+- checkpoint retention / compaction 如接入 server-facing flow，不能让 server 直接解释 checkpoint state，也不能影响 event log。
 
-暂不实现 public checkpoint API、automatic scheduling、`CheckpointService`、event prefix digest、signature / MAC / key management。
+暂不实现 public checkpoint API、automatic scheduling、`CheckpointService`、checkpoint retention / compaction implementation、signature / MAC / key management。

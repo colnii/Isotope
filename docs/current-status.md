@@ -194,6 +194,11 @@
 - suffix events still replay after digest-matched checkpoint
 - `FileCheckpointStore` remains opaque and does not interpret digest
 - `InProcessServer` has no digest-specific behavior
+- checkpoint retention / compaction design note 已落文档
+- current checkpoint storage remains latest-only
+- retention / compaction implementation is not implemented
+- retention / compaction cannot delete, rewrite, compress, or trim canonical event log
+- checkpoint deletion must still allow full rebuild from canonical event log
 
 ## Tests
 
@@ -228,7 +233,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - public checkpoint API / HTTP endpoint
 - automatic checkpoint scheduling
 - CheckpointService
-- checkpoint retention / compaction
+- checkpoint retention / compaction implementation
 - checkpoint inspection API
 - signature / MAC / key management
 - checkpoint migration / version negotiation
@@ -249,7 +254,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- checkpoint retention / compaction design note
+- `FileCheckpointStore` latest-only replacement boundary hardening
 - checkpoint migration / version negotiation design note
 
 不要直接进入 real LLM / memory / ingestion。
