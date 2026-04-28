@@ -195,6 +195,17 @@ class InProcessServer:
     def ingest_external_input(self, raw_input: dict) -> dict[str, str]:
         return {"status": "not_enabled", "capability": "external_ingestion"}
 
+    def save_checkpoint_for_run(self, run_id: str) -> dict[str, str]:
+        self._validate_read_run_id(run_id)
+        if self.checkpoint_store is None:
+            return {"status": "not_enabled", "capability": "checkpoint"}
+        checkpoint = RunProjector().save_checkpoint(run_id, self.event_store, self.checkpoint_store)
+        return {
+            "status": "saved",
+            "run_id": run_id,
+            "basis_event_id": checkpoint["basis_event_id"],
+        }
+
     def create_checkpoint(self, run_id: str) -> dict[str, str]:
         return {"status": "not_enabled", "capability": "checkpoint"}
 
