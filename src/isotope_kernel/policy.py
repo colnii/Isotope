@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from .action_registry import ActionTypeRegistry
 from .ids import new_id
 from .models import ActionProposal, PolicyDecision
 
 
 class PolicyEngine:
-    """Minimal fixed policy for the write_artifact_tool slice."""
+    """Minimal policy boundary backed by action/tool metadata."""
+
+    def __init__(self, registry: ActionTypeRegistry | None = None) -> None:
+        self.registry = registry if registry is not None else ActionTypeRegistry.default()
 
     def decide(self, proposal: ActionProposal) -> PolicyDecision:
         budget_seconds = self._validate_proposal(proposal)
@@ -16,20 +20,46 @@ class PolicyEngine:
 
         if not isinstance(proposal.action_type, str) or proposal.action_type != "call_tool":
             return self._denied(proposal, "unsupported_action")
-        if proposal.payload.get("tool") != "write_artifact_tool":
+        tool_name = proposal.payload.get("tool")
+        if not isinstance(tool_name, str) or not tool_name:
             return self._denied(proposal, "unsupported_tool")
-        if "write_artifact_tool" not in requested_tools:
+        try:
+            entry = self.registry.get_tool(tool_name)
+        except KeyError:
+            return self._denied(proposal, "unsupported_tool")
+        if not entry.enabled:
+            return self._denied(proposal, "disabled_tool")
+        if entry.action_type != proposal.action_type:
+            return self._denied(proposal, "unsupported_action")
+
+        required_capabilities = entry.required_capabilities
+        required_tools = required_capabilities.get("tools", [])
+        if not isinstance(required_tools, list):
+            raise ValueError("registry required_capabilities.tools must be a list")
+        if tool_name not in required_tools:
+            return self._denied(proposal, "tool_requirement_missing")
+        if tool_name not in requested_tools:
             return self._denied(proposal, "tool_not_requested")
 
+        required_budget = required_capabilities.get("budget", {})
+        if not isinstance(required_budget, dict):
+            raise ValueError("registry required_capabilities.budget must be a dict")
+        try:
+            budget_cap = int(required_budget.get("seconds", 30))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("registry budget.seconds must be int-like") from exc
+        if budget_cap < 0:
+            raise ValueError("registry budget.seconds must be non-negative")
+
         grants = {
-            "tools": ["write_artifact_tool"],
+            "tools": [tool_name],
             "workspace": {"mode": "shared_ro"},
-            "budget": {"seconds": min(budget_seconds, 60)},
+            "budget": {"seconds": min(budget_seconds, budget_cap)},
         }
         requested_matches = (
             requested_tools == grants["tools"]
             and requested_workspace.get("mode", "shared_ro") == "shared_ro"
-            and budget_seconds <= grants["budget"]["seconds"]
+            and budget_seconds <= budget_cap
         )
         return self._validated_decision(PolicyDecision(
             decision_id=new_id("dec"),
