@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`ceb34654e412a0b3a9f3abdae5b11706166dcfb7`。
+- 最新 implementation commit：`cbd8c7834bef59bd9695982e1561ba02137fd7cf`。
 
 ## Implemented Slice
 
@@ -284,7 +284,14 @@
 - disabled registry entry is rejected at compiler boundary
 - `ActionCompiler` still only creates requested capabilities, not grants
 - runtime identity still comes only from runtime context
-- registry is not yet wired into `PolicyEngine` / `Executor`
+- registry is wired into `PolicyEngine` requirement lookup
+- `PolicyEngine(registry=...)` accepts an explicit registry
+- `PolicyEngine` uses `ActionTypeRegistry.default()` when no registry is provided
+- `PolicyEngine` can approve registry-known tools when the proposal requested the tool
+- registry does not automatically approve actions
+- registry cannot expand `PolicyDecision.grants`
+- `PolicyEngine` still decides grants itself and reduces extra tools / elevated workspace / excessive budget requests
+- registry is not yet wired into `Executor`
 - registry must not replace `ActionCompiler` / `PolicyEngine` / `Executor`
 - registry must not expand `PolicyDecision.grants` or bypass action chain
 - checkpoint migration / version negotiation design note 已落文档
@@ -337,7 +344,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-412 passed
+419 passed
 ```
 
 Import boundary check:
@@ -353,7 +360,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 以下能力明确 deferred，不能在没有 design/doc patch 和 red tests 前直接实现：
 
 - real LLM
-- `ActionTypeRegistry` integration with `PolicyEngine` / `Executor`
+- `ActionTypeRegistry` integration with `Executor`
 - memory write
 - external ingestion / `ImportedSnapshot`
 - public checkpoint API / HTTP endpoint
@@ -399,10 +406,9 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- `PolicyEngine` registry requirement lookup red tests
-- policy registry tests should prove policy reads required capabilities from registry but still decides grants itself
-- `Executor` registry handler lookup red tests can follow after policy boundary is explicit
-- memory write/query boundary docs only if registry policy/executor lookup is not the immediate next slice
+- `Executor` registry handler lookup red tests
+- executor registry tests should prove executor resolves a handler through registry but still executes only with `PolicyDecision.grants`
+- memory write/query boundary docs only if executor registry lookup is not the immediate next slice
 - external ingestion / `ImportedSnapshot` boundary docs only after the next kernel surface is explicitly selected
 
 checkpoint v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC。不要直接进入 real LLM / memory implementation / ingestion implementation。

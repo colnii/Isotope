@@ -2,7 +2,7 @@
 
 状态：draft
 
-本文定义 `ActionTypeRegistry` 的最小边界。当前已实现 minimal registry module，并已接入 `ActionCompiler`；仍未接入 `PolicyEngine` / `Executor`，不引入 plugin system，不改变现有 action chain。
+本文定义 `ActionTypeRegistry` 的最小边界。当前已实现 minimal registry module，并已接入 `ActionCompiler` 和 `PolicyEngine` requirement lookup；仍未接入 `Executor`，不引入 plugin system，不改变现有 action chain。
 
 ## Purpose
 
@@ -27,7 +27,7 @@
 当前实现里：
 
 - `ActionCompiler` 可以把 compact intent 编译为 canonical `ActionProposal`，并已使用 registry lookup 校验 compact tool。
-- `PolicyEngine` 当前知道 `write_artifact_tool` 等有限工具。
+- `PolicyEngine` 已使用 registry requirement lookup，但仍自己决定 grants。
 - `Executor` 当前能执行 deterministic `write_artifact_tool`。
 - `ActionProposal -> PolicyDecision -> ActionExecution -> canonical events` 已有最小链路。
 - action/tool metadata 已有最小集中 registry module：`src/isotope_kernel/action_registry.py`。
@@ -45,8 +45,14 @@
 - disabled registry entry 会被 compiler 拒绝。
 - compiler 仍只生成 requested capabilities，不生成 grants。
 - runtime identity 仍只来自 runtime context。
-- registry 尚未接入 `PolicyEngine` / `Executor`。
-- checkpoint v0.1 已 frozen for current kernel slice；下一阶段建议先推进 registry boundary，而不是继续深挖 checkpoint。
+- registry 已接入 `PolicyEngine` requirement lookup。
+- `PolicyEngine(registry=...)` 可显式传入 registry。
+- 不传 registry 时，`PolicyEngine` 使用 `ActionTypeRegistry.default()`。
+- registry-known tool 只有在 proposal requested capabilities 请求该 tool 时才可能被 policy approve。
+- registry 不能自动批准 action，也不能扩大 `PolicyDecision.grants`。
+- policy 仍负责缩权：extra tool、更高 workspace request、超额 budget 会被 reduced / modified。
+- registry 尚未接入 `Executor`。
+- checkpoint v0.1 已 frozen for current kernel slice；下一阶段建议先推进 Executor registry boundary，而不是继续深挖 checkpoint。
 
 ## Hard Boundaries
 
@@ -92,11 +98,19 @@
 - explicit registry dependency injection and default registry fallback.
 - disabled registry entry rejection.
 
-下一轮 implementation 应只推进 policy lookup：
+当前 policy lookup integration 已覆盖：
 
 - `PolicyEngine` 读取 registry required capabilities。
 - policy 仍由自己决定 grants，不能因为 registry entry 存在就自动 approve。
-- unknown / disabled tool 在 compiler boundary 已 fail closed，policy tests 应聚焦 proposal / requirements / grants 边界。
+- unknown registry tool 在 policy boundary denied，不抛未受控异常。
+- disabled registry entry 不会被 policy approve。
+- registry 不能凭空把未 requested 的 tool 加入 grants。
+
+下一轮 implementation 应只推进 executor lookup：
+
+- `Executor` 使用 registry 做 handler lookup。
+- executor 仍只能使用 `PolicyDecision.grants`。
+- registry entry 不能携带 executable side-effect callback。
 
 仍然不引入：
 
@@ -167,9 +181,15 @@ registry 可能被三个模块读取，但职责不同：
 - compiler does not grant capabilities; it only forms requested capabilities.
 - registry remains limited to `call_tool` + `write_artifact_tool` for this slice.
 
-下一轮 red tests 建议优先覆盖：
+已完成的 policy integration tests 覆盖：
 
 - `PolicyEngine` uses registry requirements but still produces grants itself.
+- `PolicyEngine(registry=...)` accepts an explicit registry or otherwise uses the default registry.
+- unknown / disabled registry tools cannot be approved.
+- registry cannot auto-approve actions or expand `PolicyDecision.grants`.
+
+下一轮 red tests 建议优先覆盖：
+
 - `Executor` uses registry handler lookup but still executes only with `PolicyDecision.grants`.
 - no dynamic loading, no plugin discovery, no public extension API.
 

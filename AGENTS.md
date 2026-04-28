@@ -29,7 +29,7 @@
 - checkpoint schema version fields 相关实现必须遵守 `docs/checkpoint-schema-version-fields-v0.1.md`，并先写 red tests；当前只落设计边界，不得直接实现 `checkpoint_schema_version`、`state_schema_version`、`integrity_schema_version`、schema registry 或 migrator。
 - server-facing checkpoint 相关实现必须遵守 `docs/server-checkpoint-boundary-v0.1.md`；Server 不能直接解释 checkpoint state，必须通过 projector-owned boundary。
 - checkpoint save trigger 相关实现必须遵守 `docs/checkpoint-save-trigger-v0.1.md`；当前只允许 internal-only `save_checkpoint_for_run(...)`，不要复用 public-looking `create_checkpoint(...)`。
-- `ActionTypeRegistry` 相关实现必须先读 `docs/action-type-registry-v0.1.md` 并写 red tests；minimal registry module 已实现并已接入 `ActionCompiler`，但 registry 不能绕过 action chain、不能替代 policy / executor、不能扩大 `PolicyDecision.grants`。后续接入 `PolicyEngine` / `Executor` 必须分边界写 red tests。
+- `ActionTypeRegistry` 相关实现必须先读 `docs/action-type-registry-v0.1.md` 并写 red tests；minimal registry module 已实现并已接入 `ActionCompiler` 和 `PolicyEngine` requirement lookup，但 registry 不能绕过 action chain、不能替代 policy / executor、不能扩大 `PolicyDecision.grants`。后续接入 `Executor` 必须分边界写 red tests。
 
 ## Current Slice
 
@@ -262,7 +262,10 @@
 - disabled registry entry is rejected by compiler
 - compiler still produces requested capabilities only, not grants
 - runtime identity still comes only from runtime context
-- registry is not yet wired into `PolicyEngine` / `Executor`
+- registry is wired into `PolicyEngine` requirement lookup
+- policy still decides grants itself
+- registry cannot automatically approve actions or expand `PolicyDecision.grants`
+- registry is not yet wired into `Executor`
 - registry cannot replace compiler / policy / executor boundaries
 - `RunProjector.save_checkpoint(...)` remains latest-only
 - `InProcessServer.save_checkpoint_for_run(...)` remains latest-only by default
@@ -304,7 +307,7 @@
 以下能力仍然 deferred，不要在没有新计划和 red tests 前实现：
 
 - real LLM
-- ActionTypeRegistry integration with PolicyEngine / Executor
+- ActionTypeRegistry integration with Executor
 - memory write
 - external ingestion
 - public checkpoint API / HTTP endpoint
@@ -342,8 +345,7 @@
 
 下一阶段默认不要继续深挖 checkpoint。优先考虑：
 
-- `PolicyEngine` registry requirement lookup red tests
-- `Executor` registry handler lookup red tests after policy boundary is explicit
+- `Executor` registry handler lookup red tests
 - memory write/query boundary docs
 - external ingestion / `ImportedSnapshot` boundary docs
 
