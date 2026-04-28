@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`463a2195116394b603cba2c7cd1b2f4d7c8800b8`。
+- 最新 implementation commit：`7e3885c1b4b58999cf554b5abcb53d1e7346ff72`。
 
 ## Implemented Slice
 
@@ -210,9 +210,19 @@
 - retention / compaction cannot delete, rewrite, compress, or trim canonical event log
 - checkpoint deletion must still allow full rebuild from canonical event log
 - checkpoint history / old-checkpoint fallback design note 已落文档
-- current checkpoint storage remains latest-only; no checkpoint history index is implemented
-- current checkpoint fallback means full event-log replay, not fallback to an older checkpoint
-- old-checkpoint fallback remains deferred and cannot bypass the existing checkpoint validation chain
+- checkpoint candidate loading
+- `FileCheckpointStore.load_checkpoint_candidates(run_id)`
+- run-scoped checkpoint candidates load newest-to-oldest by checkpoint `created_at`
+- checkpoint candidate loading remains storage-opaque and does not interpret projector version / integrity / digest / state semantics
+- minimal projector-owned old-checkpoint fallback path
+- `RunProjector.rebuild_with_checkpoint(...)` can use checkpoint candidate chain when available
+- invalid latest checkpoint can fall back to an older fully valid candidate
+- every candidate must independently pass projector-owned validation chain before use
+- invalid candidate is not partially read as state
+- all invalid candidates fall back to full event-log rebuild
+- lifecycle-invalid event log cannot be hidden by older checkpoint fallback
+- `save_checkpoint(...)` remains latest-only replacement and does not create history files
+- no checkpoint history index is implemented
 - server cannot directly select, interpret, or trust old checkpoints outside projector-owned boundaries
 - checkpoint migration / version negotiation design note 已落文档
 - current checkpoint uses `projector_version`; current projector version is `run_projector@v1`
@@ -264,7 +274,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-352 passed
+360 passed
 ```
 
 Import boundary check:
@@ -286,11 +296,10 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - public checkpoint API / HTTP endpoint
 - automatic checkpoint scheduling
 - CheckpointService
-- checkpoint history
+- checkpoint history persistence from `save_checkpoint(...)`
 - checkpoint history index
 - checkpoint GC
 - checkpoint retention policy
-- old checkpoint fallback
 - checkpoint inspection API
 - signature / MAC / key management
 - checkpoint migration / version negotiation implementation
@@ -327,7 +336,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- checkpoint history / old-checkpoint fallback red tests
 - checkpoint history index / retention policy design review
+- checkpoint history save / retention boundary design review
 
 不要直接进入 real LLM / memory / ingestion。

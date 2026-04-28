@@ -2,7 +2,7 @@
 
 状态：draft
 
-本文定义 checkpoint ownership（检查点归属）和边界。当前实现只覆盖 opaque checkpoint storage、最小 checkpoint-assisted projector rebuild、projector-owned checkpoint creation、checkpoint state schema validation、projector-owned checkpoint save boundary、checkpoint prefix consistency hardening、checkpoint integrity/hash validation、event prefix digest validation、checkpoint projector version boundary hardening 和最小 event envelope version boundary；checkpoint schema 仍是 v0 candidate。
+本文定义 checkpoint ownership（检查点归属）和边界。当前实现只覆盖 opaque checkpoint storage、最小 checkpoint-assisted projector rebuild、projector-owned checkpoint creation、checkpoint state schema validation、projector-owned checkpoint save boundary、checkpoint prefix consistency hardening、checkpoint integrity/hash validation、event prefix digest validation、checkpoint candidate fallback、checkpoint projector version boundary hardening 和最小 event envelope version boundary；checkpoint schema 仍是 v0 candidate。
 
 ## Purpose
 
@@ -105,10 +105,10 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 当前仍不实现：
 
 - automatic checkpoint scheduling
-- checkpoint history
+- checkpoint history persistence from `save_checkpoint(...)`
+- checkpoint history index
 - checkpoint GC
 - checkpoint retention policy
-- old checkpoint fallback
 - checkpoint migration implementation
 - checkpoint version negotiation implementation
 - checkpoint migrator registry
@@ -184,10 +184,17 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - broader retention / compaction 仍 deferred。
 - retention / compaction 只能处理 checkpoint blobs，不能删除、重写、压缩或裁剪 canonical event log。
 - checkpoint 删除后仍必须能从 canonical event log full rebuild。
-- checkpoint history / old-checkpoint fallback design note 已落文档。
-- 当前没有 checkpoint history index 或 old-checkpoint fallback。
-- 当前 checkpoint 不可用时 fallback 的含义是 full canonical event-log replay，不是 fallback older checkpoint。
-- 如果未来实现 old-checkpoint fallback，每个候选 checkpoint 都必须独立通过 projector version、checkpoint integrity/hash、event prefix digest、event envelope version、checkpoint state schema 和 prefix consistency validation。
+- checkpoint history / old-checkpoint fallback boundary 已落文档。
+- `FileCheckpointStore.load_checkpoint_candidates(run_id)` 已实现，可按 checkpoint `created_at` newest-to-oldest 读取 run-scoped candidates。
+- candidate loading 仍保持 storage opaque，不解释 projector version、integrity、event prefix digest、event envelope version 或 projected state 语义。
+- `RunProjector.rebuild_with_checkpoint(...)` 可使用 candidate chain。
+- invalid latest checkpoint 后可尝试 older fully valid candidate。
+- 每个 candidate 仍必须独立通过 projector-owned validation chain。
+- invalid candidate 不能被部分读取或部分采用。
+- 所有 candidates 都 invalid 时，fallback full canonical event-log rebuild。
+- lifecycle-invalid event log 不能被 older checkpoint fallback 隐藏。
+- `save_checkpoint(...)` 仍是 latest-only replacement，不创建 checkpoint history 文件。
+- 当前没有 checkpoint history index、retention policy 或 GC。
 - server 不能直接选择、解释或信任 old checkpoint；仍必须走 projector-owned boundary。
 - checkpoint migration / version negotiation design note 已落文档。
 - checkpoint schema version fields design note 已落文档。
@@ -219,7 +226,7 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - `InProcessServer.get_run_state(...)` 没有 checkpoint store 时仍走 full event log rebuild，有 checkpoint store 时调用 `RunProjector.rebuild_with_checkpoint(...)`。
 - server 不直接读取或解释 checkpoint state，不创建 checkpoint，不写 checkpoint store。
 - `create_checkpoint(...)` 仍返回 `not_enabled`。
-- checkpoint missing / invalid / mismatch / incompatible 时 fallback full rebuild；lifecycle-invalid event log 仍 fail-fast。
+- checkpoint missing 或所有 candidates invalid 时 fallback full rebuild；lifecycle-invalid event log 仍 fail-fast。
 - checkpoint save trigger boundary design note 已落文档。
 - internal-only save trigger 已命名为 `save_checkpoint_for_run(...)`。
 - save trigger 只能调用 projector-owned `RunProjector.save_checkpoint(...)`，不能读取 artifact content / executor state / server memory 生成 state。
@@ -230,5 +237,6 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 
 - checkpoint schema version fields boundary red tests。
 - event envelope schema registry boundary red tests。
-- checkpoint history / old-checkpoint fallback boundary red tests。
+- checkpoint history index / retention boundary red tests。
+- checkpoint history persistence from `save_checkpoint(...)` boundary red tests。
 - server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。

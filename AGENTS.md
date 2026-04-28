@@ -19,8 +19,8 @@
 - event prefix digest 已有最小 validation；后续扩展必须遵守 `docs/event-prefix-digest-v0.1.md`，并先写 red tests。digest 不能替代 replay、lifecycle validation、state schema validation 或 prefix consistency validation。
 - event envelope versioning 相关实现必须遵守 `docs/event-envelope-versioning-v0.1.md`，并先写 red tests；最小 event envelope version boundary 已实现，但不得直接扩展 event envelope schema registry、event schema registry、payload schema registry、event migration 或 content-addressed event ids。
 - event envelope schema registry 相关实现必须遵守 `docs/event-envelope-schema-registry-v0.1.md`，并先写 red tests；当前只落设计边界，不得直接实现 registry lookup、payload schema registry、event migration、migrator registry 或 public inspection API。
-- checkpoint retention / compaction 相关实现必须遵守 `docs/checkpoint-retention-compaction-v0.1.md`，并先写 red tests；retention / compaction 不能删除、重写、压缩或裁剪 canonical event log。latest-only replacement boundary 已实现，但 checkpoint history / GC / scheduling 仍 deferred。
-- checkpoint history / old-checkpoint fallback 相关实现必须遵守 `docs/checkpoint-history-fallback-v0.1.md`，并先写 red tests；当前只有 latest checkpoint，fallback 表示 full event-log replay，不是 fallback older checkpoint。不得直接实现 checkpoint history index、old-checkpoint fallback、GC、retention policy 或让 server 直接解释 old checkpoint。
+- checkpoint retention / compaction 相关实现必须遵守 `docs/checkpoint-retention-compaction-v0.1.md`，并先写 red tests；retention / compaction 不能删除、重写、压缩或裁剪 canonical event log。latest-only replacement boundary 已实现，但 checkpoint history index、checkpoint history persistence、GC 和 scheduling 仍 deferred。
+- checkpoint history / old-checkpoint fallback 相关实现必须遵守 `docs/checkpoint-history-fallback-v0.1.md`，并先写 red tests；最小 projector-owned candidate fallback 已实现，但 `save_checkpoint(...)` 仍是 latest-only，不得直接实现 checkpoint history index、GC、retention policy、CheckpointService 或让 server 直接解释 old checkpoint。
 - checkpoint migration / version negotiation 相关实现必须遵守 `docs/checkpoint-migration-versioning-v0.1.md`，并先写 red tests；checkpoint projector version boundary hardening 已实现，但不得直接实现 migrator、schema registry、migrator registry 或 event log migration。
 - checkpoint schema version fields 相关实现必须遵守 `docs/checkpoint-schema-version-fields-v0.1.md`，并先写 red tests；当前只落设计边界，不得直接实现 `checkpoint_schema_version`、`state_schema_version`、`integrity_schema_version`、schema registry 或 migrator。
 - server-facing checkpoint 相关实现必须遵守 `docs/server-checkpoint-boundary-v0.1.md`；Server 不能直接解释 checkpoint state，必须通过 projector-owned boundary。
@@ -208,10 +208,18 @@
 - `checkpoint_path` / `save_checkpoint` / `load_latest_checkpoint` validate run_id path segment
 - retention / compaction only applies to checkpoint blobs, never canonical event log
 - checkpoint deletion must still allow full rebuild from canonical event log
-- checkpoint history / old-checkpoint fallback boundary design note
+- checkpoint history / old-checkpoint fallback minimal projector-owned path
+- `FileCheckpointStore.load_checkpoint_candidates(run_id)`
+- checkpoint candidates load newest-to-oldest by checkpoint `created_at`
+- candidate loading remains storage-opaque and does not interpret projector version / integrity / digest / state semantics
+- `RunProjector.rebuild_with_checkpoint(...)` can use candidate chain
+- invalid latest checkpoint can fall back to an older fully valid candidate
+- every candidate independently passes projector-owned validation chain before use
+- invalid candidate is not partially read as state
+- all invalid candidates fall back to full event-log rebuild
+- lifecycle-invalid event log cannot be hidden by older checkpoint fallback
 - current checkpoint storage remains latest-only without checkpoint history index
-- current checkpoint fallback means full event-log replay, not fallback to an older checkpoint
-- future old-checkpoint fallback must remain projector-owned and cannot bypass checkpoint validation chain
+- `save_checkpoint(...)` remains latest-only replacement and does not create history files
 - server cannot directly select or interpret old checkpoints
 - checkpoint migration / version negotiation boundary design note
 - current checkpoint uses `projector_version`; current projector version is `run_projector@v1`
@@ -256,11 +264,10 @@
 - public checkpoint API / HTTP endpoint
 - automatic checkpoint scheduling
 - CheckpointService
-- checkpoint history
+- checkpoint history persistence from save_checkpoint
 - checkpoint history index
 - checkpoint GC
 - checkpoint retention policy
-- old checkpoint fallback
 - checkpoint inspection API
 - signature / MAC / key management
 - checkpoint migration / version negotiation implementation

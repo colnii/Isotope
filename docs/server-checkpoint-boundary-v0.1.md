@@ -22,9 +22,11 @@ Server-facing checkpoint boundary 的目的，是允许 server read path 使用 
 - checkpoint prefix consistency validation。
 - checkpoint integrity/hash validation。
 - event prefix digest validation。
+- checkpoint candidate loading。
+- minimal projector-owned old-checkpoint fallback path。
 - checkpoint save trigger boundary design note。
 - checkpoint retention / compaction boundary design note。
-- checkpoint history / old-checkpoint fallback boundary design note。
+- checkpoint history / old-checkpoint fallback boundary。
 
 相关 retention / compaction 边界见 `docs/checkpoint-retention-compaction-v0.1.md`。
 checkpoint history / old-checkpoint fallback 边界见 `docs/checkpoint-history-fallback-v0.1.md`。
@@ -39,7 +41,9 @@ checkpoint history / old-checkpoint fallback 边界见 `docs/checkpoint-history-
 - `create_checkpoint(...)` 仍返回 `not_enabled`。
 - `save_checkpoint_for_run(...)` 已作为 internal-only manual save trigger 实现。
 - `save_checkpoint_for_run(...)` 只调用 projector-owned `RunProjector.save_checkpoint(...)`，不读取或解释 checkpoint state。
-- checkpoint missing / invalid / mismatch / incompatible 时 fallback full rebuild。
+- checkpoint missing 或所有 candidates invalid 时 fallback full rebuild。
+- projector-owned read path 可在 invalid latest checkpoint 后尝试 older fully valid checkpoint candidate。
+- server 不直接选择、解释或信任 old checkpoint，仍只调用 projector-owned boundary。
 - lifecycle-invalid event log 仍 fail-fast，不能被 checkpoint fallback 掩盖。
 
 当前仍未实现：
@@ -48,8 +52,9 @@ checkpoint history / old-checkpoint fallback 边界见 `docs/checkpoint-history-
 - 没有 automatic checkpoint scheduling。
 - 没有 `CheckpointService`。
 - 没有 broader checkpoint retention / compaction implementation。
-- 没有 checkpoint history。
-- 没有 old-checkpoint fallback。
+- 没有 checkpoint history index。
+- 没有 checkpoint history persistence from `save_checkpoint(...)`。
+- 没有 checkpoint GC / retention policy。
 
 ## Decision
 
@@ -58,7 +63,7 @@ v0.1 decision：
 - Server 不能把 checkpoint 当作 source of truth。
 - Server 不能直接解释 checkpoint `state`。
 - Server read path 使用 checkpoint 时，只能调用 projector-owned boundary，例如 `RunProjector.rebuild_with_checkpoint(...)`，或未来受控 wrapper。
-- checkpoint missing / invalid / mismatch / incompatible 时，server-facing read 必须 fallback 到 canonical event log rebuild。
+- checkpoint missing / invalid / mismatch / incompatible 时，server-facing read 必须通过 projector-owned boundary 尝试可用 candidate，或 fallback 到 canonical event log rebuild。
 - checkpoint 只能加速 read/rebuild，不能改变 read 语义。
 - 暂不暴露 public checkpoint endpoint。
 - 暂不实现 automatic checkpoint scheduling。
@@ -88,7 +93,9 @@ v0.1 decision：
 - `InProcessServer.get_run_state(run_id)` 使用 checkpoint-assisted rebuild。
 - 该 read path 等价于 full event log rebuild；checkpoint 只影响性能，不影响结果。
 - Server constructor 接收 optional `checkpoint_store`；没有 checkpoint store 时保持现有 full rebuild 行为。
-- checkpoint missing / invalid / mismatch / incompatible 时 fallback full rebuild。
+- checkpoint missing 或所有 candidates invalid 时 fallback full rebuild。
+- projector-owned `rebuild_with_checkpoint(...)` 可使用 candidate chain；如果 invalid latest checkpoint 后存在 older fully valid candidate，可以从该 candidate 继续 replay suffix events。
+- 所有 candidates invalid 时 fallback full rebuild。
 - event log 本身 malformed / lifecycle-invalid 时必须 fail fast。
 
 当前 v0 implementation choice 还包括：
@@ -121,9 +128,9 @@ v0.1 decision：
 - `CheckpointService`。
 - signature / MAC / key management。
 - broader checkpoint retention / compaction implementation。
-- checkpoint history。
 - checkpoint history index。
-- old-checkpoint fallback。
+- checkpoint history persistence from `save_checkpoint(...)`。
+- checkpoint GC / retention policy。
 - checkpoint migration / version negotiation。
 - `SessionState` checkpoint。
 - multi-run checkpoint coordination。
@@ -150,6 +157,6 @@ v0.1 decision：
 - empty / malformed / lifecycle-invalid event stream fail-fast，不写 checkpoint。
 - public API 仍不得暴露 checkpoint state。
 - checkpoint retention / compaction 如接入 server-facing flow，不能让 server 直接解释 checkpoint state，也不能影响 event log。
-- checkpoint history / old-checkpoint fallback 如接入 server-facing flow，server 仍不能直接选择或解释 checkpoint，只能调用 projector-owned boundary。
+- checkpoint history index / retention 如接入 server-facing flow，server 仍不能直接选择或解释 checkpoint，只能调用 projector-owned boundary。
 
-暂不实现 public checkpoint API、automatic scheduling、`CheckpointService`、broader checkpoint retention / compaction implementation、checkpoint history、old-checkpoint fallback、signature / MAC / key management。
+暂不实现 public checkpoint API、automatic scheduling、`CheckpointService`、broader checkpoint retention / compaction implementation、checkpoint history index、checkpoint history persistence from `save_checkpoint(...)`、signature / MAC / key management。
