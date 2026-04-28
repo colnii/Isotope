@@ -218,6 +218,17 @@ class RunProjector:
         checkpoint = self.create_checkpoint(run_id, canonical_events, projector_version)
         return checkpoint_store.save_checkpoint(run_id, checkpoint)
 
+    def save_checkpoint_history(
+        self,
+        run_id: str,
+        event_store,
+        checkpoint_store,
+        projector_version: str = PROJECTOR_VERSION,
+    ) -> dict[str, Any]:
+        canonical_events = event_store.list_events(run_id)
+        checkpoint = self.create_checkpoint(run_id, canonical_events, projector_version)
+        return checkpoint_store.save_checkpoint_history(run_id, checkpoint)
+
     def create_checkpoint(
         self,
         run_id: str,
