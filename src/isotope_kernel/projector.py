@@ -242,6 +242,10 @@ class RunProjector:
         checkpoint["integrity"] = {
             "algorithm": "sha256",
             "checkpoint_hash": self._checkpoint_hash(self._checkpoint_payload_for_hash(checkpoint)),
+            "event_digest_algorithm": "sha256",
+            "event_prefix_digest": self._event_prefix_digest(canonical_events),
+            "event_digest_basis_event_id": checkpoint["basis_event_id"],
+            "event_digest_event_count": len(canonical_events),
         }
         return checkpoint
 
@@ -264,6 +268,8 @@ class RunProjector:
 
         canonical_events = event_store.list_events(run_id)
         basis_index = self._find_basis_index(canonical_events, checkpoint["basis_event_id"])
+        if not self._validate_event_prefix_digest(checkpoint, canonical_events, basis_index):
+            return self.rebuild(run_id, event_store)
 
         # Validate prefix from canonical events before trusting the checkpoint state.
         prefix_state = self.project(canonical_events[: basis_index + 1])
@@ -305,6 +311,53 @@ class RunProjector:
             return False
         expected = self._checkpoint_hash(self._checkpoint_payload_for_hash(checkpoint))
         return checkpoint_hash == expected
+
+    def _event_prefix_payload(self, canonical_events: list[CanonicalEvent]) -> list[dict[str, Any]]:
+        return [
+            {
+                "event_id": event.event_id,
+                "run_id": event.run_id,
+                "event_type": event.event_type,
+                "payload": event.payload,
+                "created_at": event.created_at,
+            }
+            for event in canonical_events
+        ]
+
+    def _event_prefix_digest(self, canonical_events: list[CanonicalEvent]) -> str:
+        encoded = json.dumps(
+            self._event_prefix_payload(canonical_events),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode("utf-8")
+        return hashlib.sha256(encoded).hexdigest()
+
+    def _validate_event_prefix_digest(
+        self,
+        checkpoint: dict[str, Any],
+        canonical_events: list[CanonicalEvent],
+        basis_index: int,
+    ) -> bool:
+        integrity = checkpoint.get("integrity")
+        if not isinstance(integrity, dict):
+            return True
+        if "event_prefix_digest" not in integrity:
+            return True
+        if integrity.get("event_digest_algorithm") != "sha256":
+            return False
+        event_prefix_digest = integrity.get("event_prefix_digest")
+        if not isinstance(event_prefix_digest, str) or not event_prefix_digest:
+            return False
+        if integrity.get("event_digest_basis_event_id") != checkpoint["basis_event_id"]:
+            return False
+        event_count = integrity.get("event_digest_event_count")
+        if not isinstance(event_count, int) or isinstance(event_count, bool):
+            return False
+        if event_count != basis_index + 1:
+            return False
+        expected = self._event_prefix_digest(canonical_events[: basis_index + 1])
+        return event_prefix_digest == expected
 
     def _find_basis_index(self, canonical_events: list[CanonicalEvent], basis_event_id: str) -> int:
         for index, event in enumerate(canonical_events):
