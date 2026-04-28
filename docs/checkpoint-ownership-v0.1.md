@@ -25,6 +25,7 @@ v0.1 决定：
 - checkpoint schema 是 v0 candidate，不是永久协议。
 - checkpoint integrity/hash 的边界见 `docs/checkpoint-integrity-v0.1.md`。
 - checkpoint save trigger 的边界见 `docs/checkpoint-save-trigger-v0.1.md`。
+- event prefix digest 的边界见 `docs/event-prefix-digest-v0.1.md`。
 
 ## Hard Boundaries
 
@@ -102,7 +103,7 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - checkpoint migration
 - checkpoint version negotiation
 - signature / MAC / key management
-- event prefix digest
+- event prefix digest implementation
 - partial checkpoint
 - SessionState checkpoint
 - public checkpoint API / HTTP exposure
@@ -146,6 +147,8 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - legacy checkpoint 无 hash 时仍走现有 validation path。
 - hash match 后仍继续执行 checkpoint state schema validation 和 prefix consistency validation。
 - `FileCheckpointStore` 仍只保存 opaque checkpoint blob，不解释 hash 或业务 state。
+- event prefix digest design note 已落文档；当前尚未实现。
+- 未来 event prefix digest 只能让 checkpoint 失效并 fallback full rebuild，不能替代 canonical replay、lifecycle validation、checkpoint state schema validation 或 prefix consistency validation。
 - `InProcessServer.get_run_state(...)` 没有 checkpoint store 时仍走 full event log rebuild，有 checkpoint store 时调用 `RunProjector.rebuild_with_checkpoint(...)`。
 - server 不直接读取或解释 checkpoint state，不创建 checkpoint，不写 checkpoint store。
 - `create_checkpoint(...)` 仍返回 `not_enabled`。
@@ -158,6 +161,6 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 
 后续实现必须先写 red tests，优先覆盖：
 
-- event prefix digest design note。
+- event prefix digest validation TDD slice。
 - checkpoint retention / compaction design note。
 - server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。

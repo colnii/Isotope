@@ -22,7 +22,8 @@ v0.1 design decision：
 - v0.1 推荐使用 `sha256`。
 - hash 字段可以由 `FileCheckpointStore` 保存，但 storage 不解释业务状态。
 - 是否使用 checkpoint 仍由 `RunProjector` / checkpoint-assisted rebuild 决定。
-- 当前实现只覆盖最小 `sha256` checkpoint hash，不包含 signature / MAC / key management，也不包含 event prefix digest。
+- 当前实现只覆盖最小 `sha256` checkpoint hash，不包含 signature / MAC / key management，也不包含 event prefix digest implementation。
+- event prefix digest 的边界见 `docs/event-prefix-digest-v0.1.md`；当前只有 design note，尚未实现。
 
 当前实现状态：
 
@@ -68,7 +69,7 @@ hash 至少绑定以下 checkpoint 内容：
 - `state`
 - `created_at`
 
-如果后续加入 event prefix digest，应作为额外字段参与校验，但不能取代 replay validation。
+如果后续加入 event prefix digest，应作为额外字段参与校验，但不能取代 replay validation、lifecycle validation、checkpoint state schema validation 或 prefix consistency validation。
 
 ## Validation Behavior
 
@@ -104,7 +105,7 @@ hash mismatch 与 checkpoint version 不兼容类似：只能让 checkpoint 不�
 
 当前仍不实现：
 
-- event prefix digest。
+- event prefix digest implementation。
 - signature / MAC。
 - key management。
 - migration / version negotiation。
@@ -127,5 +128,5 @@ hash mismatch 与 checkpoint version 不兼容类似：只能让 checkpoint 不�
 
 后续实现必须先写 red tests，优先覆盖：
 
-- event prefix digest 如加入，不能替代 replay validation。
-- `InProcessServer.get_run_state(...)` checkpoint-assisted rebuild 如加入，必须保持 full rebuild 等价，且不能让 server 直接解释 checkpoint state。
+- event prefix digest 如加入，不能替代 replay validation / lifecycle validation / state schema validation / prefix consistency validation。
+- server-facing checkpoint 继续扩展时，必须保持 full rebuild 等价，且不能让 server 直接解释 checkpoint state。

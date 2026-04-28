@@ -177,6 +177,10 @@
 - saved checkpoint can be loaded by `FileCheckpointStore.load_latest_checkpoint(...)`
 - saved checkpoint can power `get_run_state(...)` checkpoint-assisted rebuild
 - `create_checkpoint(...)` remains `not_enabled`
+- event prefix digest design note 已落文档
+- checkpoint 当前已有自身 `sha256` integrity/hash 和 prefix consistency validation
+- checkpoint 当前还没有 event prefix digest implementation
+- event prefix digest 未来只能绑定 checkpoint 到 event-log prefix，不能替代 canonical replay / lifecycle validation / state schema validation / prefix consistency validation
 
 ## Tests
 
@@ -214,7 +218,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - checkpoint retention / compaction
 - checkpoint inspection API
 - signature / MAC / key management
-- event prefix digest
+- event prefix digest implementation
 - checkpoint migration / version negotiation
 - SSE
 - auth
@@ -233,7 +237,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- event prefix digest design note
+- event prefix digest validation TDD slice
 - checkpoint retention / compaction design note
 
 不要直接进入 real LLM / memory / ingestion。

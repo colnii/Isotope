@@ -8,7 +8,7 @@ Isotope 是一个独立的 kernel-first agent runtime 项目。当前仓库用�
 
 当前状态入口是 [docs/current-status.md](docs/current-status.md)。
 
-Checkpoint ownership 边界见 [docs/checkpoint-ownership-v0.1.md](docs/checkpoint-ownership-v0.1.md)；checkpoint integrity/hash 边界见 [docs/checkpoint-integrity-v0.1.md](docs/checkpoint-integrity-v0.1.md)；server-facing checkpoint 边界见 [docs/server-checkpoint-boundary-v0.1.md](docs/server-checkpoint-boundary-v0.1.md)；checkpoint save trigger 边界见 [docs/checkpoint-save-trigger-v0.1.md](docs/checkpoint-save-trigger-v0.1.md)。当前实现了 opaque checkpoint storage、最小 checkpoint-assisted projector rebuild、projector-owned checkpoint creation、checkpoint state schema validation、projector-owned checkpoint save boundary、checkpoint prefix consistency hardening 和 checkpoint integrity/hash validation，checkpoint 仍不是第二事实源。
+Checkpoint ownership 边界见 [docs/checkpoint-ownership-v0.1.md](docs/checkpoint-ownership-v0.1.md)；checkpoint integrity/hash 边界见 [docs/checkpoint-integrity-v0.1.md](docs/checkpoint-integrity-v0.1.md)；event prefix digest 边界见 [docs/event-prefix-digest-v0.1.md](docs/event-prefix-digest-v0.1.md)；server-facing checkpoint 边界见 [docs/server-checkpoint-boundary-v0.1.md](docs/server-checkpoint-boundary-v0.1.md)；checkpoint save trigger 边界见 [docs/checkpoint-save-trigger-v0.1.md](docs/checkpoint-save-trigger-v0.1.md)。当前实现了 opaque checkpoint storage、最小 checkpoint-assisted projector rebuild、projector-owned checkpoint creation、checkpoint state schema validation、projector-owned checkpoint save boundary、checkpoint prefix consistency hardening 和 checkpoint integrity/hash validation，checkpoint 仍不是第二事实源；event prefix digest 目前只有 design note，尚未实现。
 
 当前测试命令：
 
@@ -18,7 +18,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 
 当前预期：`303 passed`。
 
-当前 deferred 边界：real LLM、`ActionTypeRegistry`、memory write、external ingestion / `ImportedSnapshot`、public checkpoint API / HTTP endpoint、automatic checkpoint scheduling、CheckpointService、signature / MAC / key management、event prefix digest、checkpoint retention / compaction、checkpoint inspection API、checkpoint migration / version negotiation、SSE、auth、multi-agent concurrency、real HTTP API。`InProcessServer` read path 已可选使用 checkpoint-assisted rebuild；internal-only manual save trigger 已实现，但 server 仍不接收或解释 checkpoint state。
+当前 deferred 边界：real LLM、`ActionTypeRegistry`、memory write、external ingestion / `ImportedSnapshot`、public checkpoint API / HTTP endpoint、automatic checkpoint scheduling、CheckpointService、signature / MAC / key management、event prefix digest implementation、checkpoint retention / compaction、checkpoint inspection API、checkpoint migration / version negotiation、SSE、auth、multi-agent concurrency、real HTTP API。`InProcessServer` read path 已可选使用 checkpoint-assisted rebuild；internal-only manual save trigger 已实现，但 server 仍不接收或解释 checkpoint state。
 
 ## Current Slice
 
@@ -52,10 +52,11 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 - `RunProjector.save_checkpoint(...)` 支持 projector-owned checkpoint save boundary：从 `event_store.list_events(run_id)` 读取 canonical events，经 `create_checkpoint(...)` 生成 checkpoint，再调用 `checkpoint_store.save_checkpoint(...)` 保存；空日志或 invalid event stream fail-fast 且不写 checkpoint，不修改 event log，不读取 artifact store / executor state / server memory。
 - `RunProjector.rebuild_with_checkpoint(...)` 会比较 checkpoint state 与 `basis_event_id` 对应的 event-log prefix projection；只有一致时才从 checkpoint 继续 replay，不一致时 fallback full rebuild，且 fallback 仍执行完整 event validation；`FileCheckpointStore` 仍保持 opaque。
 - `RunProjector.create_checkpoint(...)` 会生成 checkpoint `integrity`，使用 `sha256` 和 deterministic canonical JSON 计算 `checkpoint_hash`；`rebuild_with_checkpoint(...)` 遇到 hash mismatch 只让 checkpoint 失效并 fallback full rebuild，hash match 后仍执行 state schema validation、prefix consistency validation 和 event/lifecycle validation；legacy checkpoint 无 hash 时继续走现有 validation path，`FileCheckpointStore` 仍只保存 opaque blob。
+- event prefix digest 已有 design note，但尚未实现；未来它只能把 checkpoint 绑定到 event-log prefix，digest mismatch 只能让 checkpoint 失效并 fallback full rebuild，digest match 也不能替代 replay、lifecycle validation、state schema validation 或 prefix consistency validation。
 - `InProcessServer.get_run_state(...)` 已可选使用 checkpoint-assisted rebuild：constructor 支持 optional `checkpoint_store`；没有 checkpoint store 时仍走 full event log rebuild，有 checkpoint store 时调用 projector-owned `RunProjector.rebuild_with_checkpoint(...)`；server 不直接解释 checkpoint state，checkpoint missing / invalid / mismatch / incompatible 时 fallback full rebuild，lifecycle-invalid event log 仍 fail-fast。
 - `InProcessServer.save_checkpoint_for_run(run_id)` 已实现为 internal-only manual trigger：没有 checkpoint store 时返回 `not_enabled`，有 checkpoint store 时只调用 projector-owned `RunProjector.save_checkpoint(...)`；返回最小 metadata，不返回 checkpoint state，不修改 event log，不读取 artifact content / executor state / server memory；`create_checkpoint(...)` 仍返回 `not_enabled`。
 
-以下能力仍然 deferred：real LLM、`ActionTypeRegistry`、memory write、external ingestion、public checkpoint API / HTTP endpoint、automatic checkpoint scheduling、CheckpointService、signature / MAC / key management、event prefix digest、checkpoint retention / compaction、checkpoint inspection API、checkpoint migration / version negotiation、SSE、auth、multi-agent concurrency、real HTTP API。
+以下能力仍然 deferred：real LLM、`ActionTypeRegistry`、memory write、external ingestion、public checkpoint API / HTTP endpoint、automatic checkpoint scheduling、CheckpointService、signature / MAC / key management、event prefix digest implementation、checkpoint retention / compaction、checkpoint inspection API、checkpoint migration / version negotiation、SSE、auth、multi-agent concurrency、real HTTP API。
 
 ## Verify
 
