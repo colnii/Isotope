@@ -17,7 +17,7 @@
 - 不得直接扩展 automatic checkpoint scheduling / public checkpoint API；checkpoint 相关实现必须遵守 `docs/checkpoint-ownership-v0.1.md`，并先写 red tests。
 - checkpoint hash 已有最小 validation；后续扩展 signature / MAC / key management 或 event prefix digest 前，必须先更新设计文档并写 red tests。
 - server-facing checkpoint 相关实现必须遵守 `docs/server-checkpoint-boundary-v0.1.md`；Server 不能直接解释 checkpoint state，必须通过 projector-owned boundary。
-- checkpoint save trigger 相关实现必须遵守 `docs/checkpoint-save-trigger-v0.1.md`；优先设计为 internal-only `save_checkpoint_for_run(...)`，不要复用 public-looking `create_checkpoint(...)`。
+- checkpoint save trigger 相关实现必须遵守 `docs/checkpoint-save-trigger-v0.1.md`；当前只允许 internal-only `save_checkpoint_for_run(...)`，不要复用 public-looking `create_checkpoint(...)`。
 
 ## Current Slice
 
@@ -168,8 +168,17 @@
 - checkpoint missing / invalid / mismatch / incompatible falls back to full rebuild
 - lifecycle-invalid event log still fail-fast and cannot be hidden by checkpoint fallback
 - checkpoint save trigger boundary design note
-- future internal-only save trigger should prefer `save_checkpoint_for_run(...)`
-- `create_checkpoint(...)` should remain `not_enabled` unless a rename/deprecation design changes it
+- internal-only checkpoint save trigger
+- `InProcessServer.save_checkpoint_for_run(run_id)`
+- `save_checkpoint_for_run(...)` returns `not_enabled` without configured `checkpoint_store`
+- `save_checkpoint_for_run(...)` only calls projector-owned `RunProjector.save_checkpoint(...)` when `checkpoint_store` is configured
+- saved checkpoint trigger returns minimal metadata and does not return full checkpoint state
+- saved checkpoint trigger does not modify event log
+- saved checkpoint trigger does not read artifact content / executor state / server memory
+- empty / malformed / lifecycle-invalid event stream fail-fast without writing checkpoint
+- saved checkpoint can be loaded by `FileCheckpointStore.load_latest_checkpoint(...)`
+- saved checkpoint can power `get_run_state(...)` checkpoint-assisted rebuild
+- `create_checkpoint(...)` remains `not_enabled`
 
 ## Deferred
 
@@ -180,7 +189,6 @@
 - memory write
 - external ingestion
 - public checkpoint API / HTTP endpoint
-- internal-only checkpoint save trigger implementation
 - automatic checkpoint scheduling
 - CheckpointService
 - checkpoint retention / compaction

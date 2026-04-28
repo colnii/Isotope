@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`633a1f06e55c40ab464ff783144bd04e2e0f6a9c`。
+- 最新 implementation commit：`117de6bc93307991d2a012b122d6667d2c7cc6eb`。
 
 ## Implemented Slice
 
@@ -165,8 +165,18 @@
 - checkpoint missing / invalid / mismatch / incompatible falls back to full rebuild
 - lifecycle-invalid event log still fail-fast and cannot be hidden by checkpoint fallback
 - checkpoint save trigger boundary design note 已落文档
-- future internal-only save trigger should prefer `save_checkpoint_for_run(...)`
-- `create_checkpoint(...)` should remain `not_enabled` unless a rename/deprecation design changes it
+- internal-only checkpoint save trigger
+- `InProcessServer.save_checkpoint_for_run(run_id)`
+- `save_checkpoint_for_run(...)` returns `not_enabled` without configured `checkpoint_store`
+- `save_checkpoint_for_run(...)` only calls projector-owned `RunProjector.save_checkpoint(...)` when `checkpoint_store` is configured
+- saved checkpoint trigger returns minimal metadata: `status`, `run_id`, `basis_event_id`
+- saved checkpoint trigger does not return full checkpoint state
+- saved checkpoint trigger does not modify event log
+- saved checkpoint trigger does not read artifact content / executor state / server memory
+- empty / malformed / lifecycle-invalid event stream fail-fast without writing checkpoint
+- saved checkpoint can be loaded by `FileCheckpointStore.load_latest_checkpoint(...)`
+- saved checkpoint can power `get_run_state(...)` checkpoint-assisted rebuild
+- `create_checkpoint(...)` remains `not_enabled`
 
 ## Tests
 
@@ -179,7 +189,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-296 passed
+303 passed
 ```
 
 Import boundary check:
@@ -199,7 +209,6 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - memory write
 - external ingestion / `ImportedSnapshot`
 - public checkpoint API / HTTP endpoint
-- internal-only checkpoint save trigger implementation
 - automatic checkpoint scheduling
 - CheckpointService
 - checkpoint retention / compaction
@@ -224,7 +233,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- internal-only server checkpoint save trigger TDD slice
 - event prefix digest design note
+- checkpoint retention / compaction design note
 
 不要直接进入 real LLM / memory / ingestion。

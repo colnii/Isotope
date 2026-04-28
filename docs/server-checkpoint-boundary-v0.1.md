@@ -31,13 +31,14 @@ Server-facing checkpoint boundary 的目的，是允许 server read path 使用 
 - Server read model 仍来自 projector，不直接读取或解释 checkpoint state。
 - `get_run_state` 不创建 checkpoint，不写 checkpoint store。
 - `create_checkpoint(...)` 仍返回 `not_enabled`。
+- `save_checkpoint_for_run(...)` 已作为 internal-only manual save trigger 实现。
+- `save_checkpoint_for_run(...)` 只调用 projector-owned `RunProjector.save_checkpoint(...)`，不读取或解释 checkpoint state。
 - checkpoint missing / invalid / mismatch / incompatible 时 fallback full rebuild。
 - lifecycle-invalid event log 仍 fail-fast，不能被 checkpoint fallback 掩盖。
 
 当前仍未实现：
 
 - 没有 public checkpoint API。
-- 没有 server save trigger implementation。
 - 没有 automatic checkpoint scheduling。
 - 没有 `CheckpointService`。
 
@@ -78,9 +79,9 @@ v0.1 decision：
 - checkpoint missing / invalid / mismatch / incompatible 时 fallback full rebuild。
 - event log 本身 malformed / lifecycle-invalid 时必须 fail fast。
 
-未来 v0 可以考虑：
+当前 v0 implementation choice 还包括：
 
-- 提供 internal-only checkpoint save trigger，例如 `save_checkpoint_for_run(run_id)`。
+- 提供 internal-only checkpoint save trigger：`save_checkpoint_for_run(run_id)`。
 - internal save trigger 只能调用 `RunProjector.save_checkpoint(...)`。
 - 不复用 public-looking `create_checkpoint(...)`；它当前仍应保持 `not_enabled`。
 
@@ -106,7 +107,6 @@ v0.1 decision：
 - SSE integration。
 - automatic checkpoint scheduling。
 - `CheckpointService`。
-- internal-only server save trigger implementation。
 - event prefix digest。
 - signature / MAC / key management。
 - checkpoint migration / version negotiation。
@@ -129,7 +129,7 @@ v0.1 decision：
 
 后续如继续扩展，应先写 red tests，优先覆盖：
 
-- internal-only checkpoint save trigger。
+- internal-only checkpoint save trigger 已实现，后续扩展仍需 red tests。
 - checkpoint save trigger 只能调用 `RunProjector.save_checkpoint(...)`。
 - trigger 不读取 artifact content、executor state 或 server memory。
 - empty / malformed / lifecycle-invalid event stream fail-fast，不写 checkpoint。

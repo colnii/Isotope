@@ -43,7 +43,7 @@ v0.1 ownership 分工：
 
 - `RunProjector`：解释 canonical events，产出 projected state，执行 checkpoint-assisted rebuild，并负责生成 projector-owned checkpoint blob。
 - `FileCheckpointStore` / future storage layer：只保存和读取 opaque checkpoint blob，不解释 checkpoint 字段含义。
-- `InProcessServer` / future server API：当前 read path 已可选调用 projector-owned checkpoint-assisted rebuild，但不能直接把 checkpoint 当成 state source。internal-only save trigger implementation、public checkpoint API 和 scheduling 仍 deferred；server-facing 边界见 `docs/server-checkpoint-boundary-v0.1.md`。
+- `InProcessServer` / future server API：当前 read path 已可选调用 projector-owned checkpoint-assisted rebuild，internal-only `save_checkpoint_for_run(...)` 已可调用 projector-owned checkpoint save boundary；server 不能直接把 checkpoint 当成 state source。public checkpoint API 和 scheduling 仍 deferred；server-facing 边界见 `docs/server-checkpoint-boundary-v0.1.md`。
 - future checkpoint storage：只是一种 storage concern，不是新的 truth layer。
 
 不新增独立 `CheckpointService`，除非后续 TDD 证明 projector/storage 边界无法承载最小实现。
@@ -106,7 +106,6 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - partial checkpoint
 - SessionState checkpoint
 - public checkpoint API / HTTP exposure
-- internal-only checkpoint save trigger implementation
 - checkpoint inspection API
 - external ingestion integration
 
@@ -152,13 +151,13 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - `create_checkpoint(...)` 仍返回 `not_enabled`。
 - checkpoint missing / invalid / mismatch / incompatible 时 fallback full rebuild；lifecycle-invalid event log 仍 fail-fast。
 - checkpoint save trigger boundary design note 已落文档。
-- future internal-only save trigger 应优先命名为 `save_checkpoint_for_run(...)`。
+- internal-only save trigger 已命名为 `save_checkpoint_for_run(...)`。
 - save trigger 只能调用 projector-owned `RunProjector.save_checkpoint(...)`，不能读取 artifact content / executor state / server memory 生成 state。
 - `create_checkpoint(...)` 不应被复用为 save trigger，除非先有明确 rename/deprecation 设计。
 - checkpoint schema 仍被标记为 v0 candidate。
 
 后续实现必须先写 red tests，优先覆盖：
 
-- internal-only server checkpoint save trigger TDD slice。
 - event prefix digest design note。
+- checkpoint retention / compaction design note。
 - server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。

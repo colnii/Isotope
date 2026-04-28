@@ -2,9 +2,9 @@
 
 状态：draft
 
-本文定义 checkpoint save trigger（检查点保存触发器）的 v0.1 边界：未来谁可以触发保存 checkpoint、何时保存、以及哪些能力仍然 deferred。
+本文定义 checkpoint save trigger（检查点保存触发器）的 v0.1 边界：谁可以触发保存 checkpoint、何时保存、以及哪些能力仍然 deferred。
 
-本轮只定设计，不实现代码。
+当前已实现 internal-only manual save trigger；本文继续作为边界说明，防止后续扩展误变成 public API、automatic scheduling 或第二事实源。
 
 ## Purpose
 
@@ -14,16 +14,24 @@ Checkpoint save trigger 的目标，是给已有 projector-owned checkpoint save
 
 ## Current State
 
-当前已实现：
-
 - `RunProjector.save_checkpoint(...)` 已存在。
 - `FileCheckpointStore` 已存在。
 - `InProcessServer.get_run_state(...)` 已可选使用 checkpoint-assisted rebuild。
+- `InProcessServer.save_checkpoint_for_run(run_id)` 已存在。
+- 这是 internal-only facade method，不是 public API。
+- server 未配置 `checkpoint_store` 时返回 `{"status": "not_enabled", "capability": "checkpoint"}`。
+- 配置 `checkpoint_store` 时，只调用 projector-owned `RunProjector.save_checkpoint(...)`。
+- 保存成功后返回最小 metadata，例如 `status` / `run_id` / `basis_event_id`。
+- 不返回完整 checkpoint state。
+- 不修改 event log。
+- 不读取 artifact content / executor state / server memory。
+- empty / malformed / lifecycle-invalid event stream fail-fast，且不写 checkpoint。
+- 保存后的 checkpoint 可由 `FileCheckpointStore.load_latest_checkpoint(...)` 读回。
+- 保存后的 checkpoint 可用于 `get_run_state(...)` checkpoint-assisted rebuild。
+- `InProcessServer.create_checkpoint(...)` 仍返回 `{"status": "not_enabled", "capability": "checkpoint"}`。
 
 当前仍未实现：
 
-- `InProcessServer.create_checkpoint(...)` 仍返回 `{"status": "not_enabled", "capability": "checkpoint"}`。
-- 没有 server save trigger。
 - 没有 automatic checkpoint scheduling。
 - 没有 public checkpoint API。
 - 没有 `CheckpointService`。
@@ -39,7 +47,7 @@ v0.1 decision：
 - save 失败不能伪造 checkpoint。
 - empty / malformed / lifecycle-invalid event stream 必须 fail-fast，不写 checkpoint。
 - `create_checkpoint(...)` 仍应保持 `not_enabled`，避免被误读为 public checkpoint API。
-- 后续 internal-only trigger 推荐命名为 `save_checkpoint_for_run(...)`。
+- internal-only trigger 名称为 `save_checkpoint_for_run(...)`。
 
 ## Hard Boundaries
 
@@ -56,17 +64,16 @@ v0.1 decision：
 
 ## v0 Candidate
 
-未来 v0 可以考虑：
+当前 v0 implementation choice：
 
-- 新增 internal-only `save_checkpoint_for_run(run_id)`。
-- 该 trigger 只用于维护、测试、recovery acceleration，不是 public API。
-- 可以由 `InProcessServer` facade 暴露为内部方法，但不能走 HTTP public endpoint。
+- `save_checkpoint_for_run(run_id)` 只用于维护、测试、recovery acceleration，不是 public API。
+- 由 `InProcessServer` facade 暴露为内部方法，但不能走 HTTP public endpoint。
 - 方法内部只组合：
   - `RunProjector.save_checkpoint(run_id, event_store, checkpoint_store)`
-  - optional minimal response shaping
-- 返回值可以是 schema sketch，例如：
-  - `{ "status": "saved", "run_id": "...", "basis_event_id": "...", "checkpoint_ref": "..." }`
-- 字段名仍是 example / schema sketch，不是永久协议。
+- minimal response shaping
+- 返回值当前只包含最小 metadata，例如：
+  - `{ "status": "saved", "run_id": "...", "basis_event_id": "..." }`
+- 字段名仍是 v0 implementation shape，不是永久协议。
 
 当前不实现 automatic scheduling；本设计只允许 manual/internal trigger。
 
@@ -87,7 +94,6 @@ v0.1 decision：
 
 当前仍 deferred：
 
-- internal-only server save trigger implementation。
 - automatic checkpoint scheduling。
 - checkpoint retention / compaction。
 - `CheckpointService`。
@@ -100,15 +106,20 @@ v0.1 decision：
 
 ## Future TDD Notes
 
-下一轮建议只实现 internal-only server save trigger：
+已覆盖的最小测试：
 
-- 优先新增 `InProcessServer.save_checkpoint_for_run(run_id)`，不要复用 `create_checkpoint(...)`。
-- `create_checkpoint(...)` 继续返回 `not_enabled`，除非先有明确 rename/deprecation 设计。
-- trigger 必须调用 `RunProjector.save_checkpoint(...)`。
+- `InProcessServer.save_checkpoint_for_run(run_id)` 已新增，未复用 `create_checkpoint(...)`。
+- `create_checkpoint(...)` 继续返回 `not_enabled`。
+- trigger 调用 `RunProjector.save_checkpoint(...)`。
 - trigger 不修改 event log。
 - trigger 不读取 artifact content、executor state 或 server memory。
 - empty event log fail-fast，不写 checkpoint。
 - malformed / lifecycle-invalid event stream fail-fast，不写 checkpoint。
 - saved checkpoint 可由 `FileCheckpointStore.load_latest_checkpoint(...)` 读回。
 - saved checkpoint 可用于 `get_run_state(...)` 的 checkpoint-assisted rebuild。
+
+后续如继续扩展，应先写 red tests，优先覆盖：
+
+- event prefix digest design note，不直接实现。
+- checkpoint retention / compaction design note。
 - public checkpoint API / HTTP endpoint 仍不实现。
