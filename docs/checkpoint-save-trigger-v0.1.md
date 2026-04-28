@@ -35,7 +35,7 @@ Checkpoint save trigger 的目标，是给已有 projector-owned checkpoint save
 - 没有 automatic checkpoint scheduling。
 - 没有 public checkpoint API。
 - 没有 `CheckpointService`。
-- event prefix digest 只有 design note，尚未实现。
+- event prefix digest 已有最小 validation；save trigger 不解释 digest。
 
 ## Decision
 
@@ -100,7 +100,6 @@ v0.1 decision：
 - `CheckpointService`。
 - public checkpoint API / HTTP endpoint。
 - checkpoint inspection API。
-- event prefix digest implementation。
 - signature / MAC / key management。
 - checkpoint migration / version negotiation。
 - `SessionState` checkpoint。
@@ -121,6 +120,6 @@ v0.1 decision：
 
 后续如继续扩展，应先写 red tests，优先覆盖：
 
-- event prefix digest validation TDD slice；save trigger 不能自行计算、解释或信任 digest。
+- event prefix digest 后续扩展仍不能由 save trigger 自行计算、解释或信任 digest。
 - checkpoint retention / compaction design note。
 - public checkpoint API / HTTP endpoint 仍不实现。

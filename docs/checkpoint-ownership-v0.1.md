@@ -2,7 +2,7 @@
 
 状态：draft
 
-本文定义 checkpoint ownership（检查点归属）和边界。当前实现只覆盖 opaque checkpoint storage、最小 checkpoint-assisted projector rebuild、projector-owned checkpoint creation、checkpoint state schema validation、projector-owned checkpoint save boundary、checkpoint prefix consistency hardening 和 checkpoint integrity/hash validation；checkpoint schema 仍是 v0 candidate。
+本文定义 checkpoint ownership（检查点归属）和边界。当前实现只覆盖 opaque checkpoint storage、最小 checkpoint-assisted projector rebuild、projector-owned checkpoint creation、checkpoint state schema validation、projector-owned checkpoint save boundary、checkpoint prefix consistency hardening、checkpoint integrity/hash validation 和 event prefix digest validation；checkpoint schema 仍是 v0 candidate。
 
 ## Purpose
 
@@ -103,7 +103,6 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - checkpoint migration
 - checkpoint version negotiation
 - signature / MAC / key management
-- event prefix digest implementation
 - partial checkpoint
 - SessionState checkpoint
 - public checkpoint API / HTTP exposure
@@ -147,8 +146,14 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - legacy checkpoint 无 hash 时仍走现有 validation path。
 - hash match 后仍继续执行 checkpoint state schema validation 和 prefix consistency validation。
 - `FileCheckpointStore` 仍只保存 opaque checkpoint blob，不解释 hash 或业务 state。
-- event prefix digest design note 已落文档；当前尚未实现。
-- 未来 event prefix digest 只能让 checkpoint 失效并 fallback full rebuild，不能替代 canonical replay、lifecycle validation、checkpoint state schema validation 或 prefix consistency validation。
+- event prefix digest design note 已落文档。
+- `RunProjector.create_checkpoint(...)` 会在 checkpoint `integrity` 中生成 event prefix digest metadata。
+- event prefix digest 使用 deterministic JSON / UTF-8，覆盖 run 内从第一条 event 到 `basis_event_id` 的 canonical event representation。
+- event append order 和 prefix payload 改动会影响 event prefix digest。
+- event prefix digest mismatch 只让 checkpoint 失效并 fallback full rebuild，不能替代 canonical replay、lifecycle validation、checkpoint state schema validation 或 prefix consistency validation。
+- digest match 后仍继续执行 checkpoint state schema validation 和 prefix consistency validation。
+- legacy checkpoint 无 event prefix digest 仍走兼容路径，suffix events 仍会 replay。
+- `FileCheckpointStore` 不解释 digest，`InProcessServer` 没有 digest-specific 行为。
 - `InProcessServer.get_run_state(...)` 没有 checkpoint store 时仍走 full event log rebuild，有 checkpoint store 时调用 `RunProjector.rebuild_with_checkpoint(...)`。
 - server 不直接读取或解释 checkpoint state，不创建 checkpoint，不写 checkpoint store。
 - `create_checkpoint(...)` 仍返回 `not_enabled`。
@@ -161,6 +166,6 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 
 后续实现必须先写 red tests，优先覆盖：
 
-- event prefix digest validation TDD slice。
 - checkpoint retention / compaction design note。
+- checkpoint migration / version negotiation design note。
 - server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。

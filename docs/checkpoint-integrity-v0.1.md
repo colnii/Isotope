@@ -22,8 +22,8 @@ v0.1 design decision：
 - v0.1 推荐使用 `sha256`。
 - hash 字段可以由 `FileCheckpointStore` 保存，但 storage 不解释业务状态。
 - 是否使用 checkpoint 仍由 `RunProjector` / checkpoint-assisted rebuild 决定。
-- 当前实现只覆盖最小 `sha256` checkpoint hash，不包含 signature / MAC / key management，也不包含 event prefix digest implementation。
-- event prefix digest 的边界见 `docs/event-prefix-digest-v0.1.md`；当前只有 design note，尚未实现。
+- 当前实现覆盖最小 `sha256` checkpoint hash 和最小 event prefix digest validation，不包含 signature / MAC / key management。
+- event prefix digest 的边界见 `docs/event-prefix-digest-v0.1.md`。
 
 当前实现状态：
 
@@ -39,6 +39,10 @@ v0.1 design decision：
 - malformed checkpoint file 仍 fail-fast。
 - `FileCheckpointStore` 仍是 opaque storage，只保存 hash 字段，不解释业务 state。
 - hash mismatch 不能掩盖 lifecycle-invalid event log。
+- `RunProjector.create_checkpoint(...)` 会在 `integrity` 中生成 event prefix digest metadata。
+- `rebuild_with_checkpoint(...)` 遇到 event prefix digest mismatch 会让 checkpoint invalid，并 fallback full rebuild。
+- digest match 后仍执行 checkpoint state schema validation 和 prefix consistency validation。
+- legacy checkpoint 无 event prefix digest 仍走兼容路径。
 
 ## Hard Boundaries
 
@@ -69,7 +73,7 @@ hash 至少绑定以下 checkpoint 内容：
 - `state`
 - `created_at`
 
-如果后续加入 event prefix digest，应作为额外字段参与校验，但不能取代 replay validation、lifecycle validation、checkpoint state schema validation 或 prefix consistency validation。
+event prefix digest 作为 `integrity` 下的额外字段参与 checkpoint 可用性校验，但不能取代 replay validation、lifecycle validation、checkpoint state schema validation 或 prefix consistency validation。
 
 ## Validation Behavior
 
@@ -105,7 +109,6 @@ hash mismatch 与 checkpoint version 不兼容类似：只能让 checkpoint 不�
 
 当前仍不实现：
 
-- event prefix digest implementation。
 - signature / MAC。
 - key management。
 - migration / version negotiation。
@@ -124,9 +127,12 @@ hash mismatch 与 checkpoint version 不兼容类似：只能让 checkpoint 不�
 - hash 输入使用 deterministic JSON。
 - `FileCheckpointStore` 只保存 hash 字段，不解释业务状态。
 - hash mismatch 不能隐藏 lifecycle-invalid event log。
+- event prefix digest metadata 由 `RunProjector.create_checkpoint(...)` 生成。
+- event prefix digest mismatch fallback full rebuild，且不能隐藏 lifecycle-invalid event log。
+- digest match 后仍执行 checkpoint state schema validation 和 prefix consistency validation。
 - server-facing checkpoint boundary 如需使用 checkpoint，只能调用 projector boundary，不能直接信任或解释 checkpoint。
 
 后续实现必须先写 red tests，优先覆盖：
 
-- event prefix digest 如加入，不能替代 replay validation / lifecycle validation / state schema validation / prefix consistency validation。
+- checkpoint retention / compaction 对 checkpoint integrity 和 event prefix digest 的影响。
 - server-facing checkpoint 继续扩展时，必须保持 full rebuild 等价，且不能让 server 直接解释 checkpoint state。

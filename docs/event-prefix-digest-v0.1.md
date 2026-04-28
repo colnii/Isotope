@@ -2,9 +2,9 @@
 
 状态：draft
 
-本文定义 event prefix digest（事件前缀摘要）的 v0.1 边界：未来 checkpoint 如何绑定到某个 canonical event log prefix，同时不把 digest 误用成新的 source of truth。
+本文定义 event prefix digest（事件前缀摘要）的 v0.1 边界：checkpoint 如何绑定到某个 canonical event log prefix，同时不把 digest 误用成新的 source of truth。
 
-本轮只落设计说明，不实现 digest，不修改 `RunProjector`、`FileCheckpointStore` 或 `InProcessServer`。
+当前已实现最小 event prefix digest validation；`FileCheckpointStore` 仍保持 opaque，`InProcessServer` 没有 digest-specific 行为。
 
 ## Purpose
 
@@ -19,8 +19,8 @@ event prefix digest 的目的，是在 checkpoint 被用作 replay basis 之前�
 - checkpoint 已有自身 `sha256` integrity/hash。
 - checkpoint hash 只校验 checkpoint blob 是否自洽、是否被改动。
 - checkpoint 已有 prefix consistency validation，会比较 checkpoint state 与 `basis_event_id` 对应的 prefix projection。
-- checkpoint 还没有 event prefix digest。
-- 当前 full regression：`303 passed`。
+- checkpoint 已有最小 event prefix digest validation。
+- 当前 full regression：`311 passed`。
 
 已有边界仍然有效：
 
@@ -31,7 +31,7 @@ event prefix digest 的目的，是在 checkpoint 被用作 replay basis 之前�
 
 ## Decision
 
-v0.1 design decision：
+v0.1 decision：
 
 - event prefix digest 是 checkpoint 可用性校验的一部分。
 - event prefix digest 用于把 checkpoint 绑定到 run 内从第一条 event 到 `basis_event_id` 的 canonical event prefix。
@@ -57,7 +57,7 @@ v0.1 design decision：
 
 ## v0 Candidate Shape
 
-event prefix digest 可以作为 checkpoint `integrity` 下的额外字段。
+event prefix digest 当前作为 checkpoint `integrity` 下的额外字段。
 
 Schema sketch：
 
@@ -74,12 +74,15 @@ Schema sketch：
 }
 ```
 
-这些字段名只是 v0 candidate / schema sketch，不是永久协议。
+这些字段名是当前 v0 implementation shape，不是永久协议。
 
-digest input 的 v0 candidate：
+digest input 的当前 v0 implementation shape：
 
-- 使用 deterministic canonical serialization。
+- 使用 deterministic JSON。
 - 使用 UTF-8。
+- 使用 `sort_keys=True`。
+- 使用 `separators=(",", ":")`。
+- 使用 `ensure_ascii=False`。
 - 保留 event append order。
 - 范围是 run 内从第一条 event 到 `basis_event_id` 的 prefix。
 - 至少包含每个 canonical event 的 `event_id`、`run_id`、`event_type`、`payload`、`created_at`。
@@ -87,7 +90,7 @@ digest input 的 v0 candidate：
 
 ## Validation Behavior
 
-未来如果实现 event prefix digest，checkpoint-assisted rebuild 的顺序应保持：
+checkpoint-assisted rebuild 的顺序：
 
 1. 读取 checkpoint。
 2. 校验 checkpoint blob integrity/hash。
@@ -99,6 +102,24 @@ digest input 的 v0 candidate：
 8. replay `basis_event_id` 之后的 suffix events。
 
 fallback full rebuild 仍必须执行完整 canonical event validation 和 lifecycle validation。
+
+当前已覆盖的最小行为：
+
+- `RunProjector.create_checkpoint(...)` 会在 `integrity` 中生成 event prefix digest metadata。
+- 当前字段包括 `event_digest_algorithm: "sha256"`、`event_prefix_digest`、`event_digest_basis_event_id`、`event_digest_event_count`。
+- digest 输入使用 deterministic JSON / UTF-8。
+- digest 输入覆盖 run 内从第一条 event 到 `basis_event_id` 的 prefix。
+- digest 输入包含 canonical event representation，至少包括 `event_id`、`run_id`、`event_type`、`payload`、`created_at`。
+- event append order 会影响 digest。
+- prefix event payload 改动会改变 digest。
+- `rebuild_with_checkpoint(...)` 遇到 event prefix digest mismatch 会让 checkpoint invalid，并 fallback full rebuild。
+- digest mismatch 不能隐藏 lifecycle-invalid event log。
+- digest match 后仍执行 checkpoint state schema validation。
+- digest match 后仍执行 prefix projection consistency validation。
+- legacy checkpoint 无 event prefix digest 仍走兼容路径。
+- suffix events 仍会 replay。
+- `FileCheckpointStore` 仍保持 opaque，不解释 digest。
+- `InProcessServer` 没有 digest-specific 行为。
 
 ## Open Questions
 
@@ -115,8 +136,6 @@ fallback full rebuild 仍必须执行完整 canonical event validation 和 lifec
 
 当前仍不实现：
 
-- event prefix digest implementation。
-- `RunProjector` digest calculation / validation。
 - `FileCheckpointStore` digest-specific behavior。
 - `InProcessServer` digest-specific behavior。
 - signature / MAC / key management。
@@ -126,12 +145,9 @@ fallback full rebuild 仍必须执行完整 canonical event validation 和 lifec
 
 ## Future TDD Notes
 
-下一轮如进入 implementation，应先写 red tests，优先覆盖：
+后续如继续扩展，应先写 red tests，优先覆盖：
 
-- `RunProjector.create_checkpoint(...)` 可选生成 event prefix digest。
-- `rebuild_with_checkpoint(...)` 遇到 prefix digest mismatch 时 fallback full rebuild。
-- digest mismatch 不能隐藏 lifecycle-invalid event log。
-- digest match 后仍执行 checkpoint state schema validation。
-- digest match 后仍执行 prefix projection consistency validation。
-- legacy checkpoint 无 event prefix digest 仍走当前兼容路径。
-- suffix events 仍被 replay。
+- checkpoint retention / compaction 对 event prefix digest 的影响。
+- checkpoint migration / version negotiation 对 digest metadata 的影响。
+- event envelope schema version 引入后 digest 输入如何版本化。
+- Merkle / chunked digest 是否需要替代当前 linear digest。

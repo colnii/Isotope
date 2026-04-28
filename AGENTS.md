@@ -16,7 +16,7 @@
 - 任何 deferred 能力必须先写 design/doc patch 和 red tests，不能直接实现。
 - 不得直接扩展 automatic checkpoint scheduling / public checkpoint API；checkpoint 相关实现必须遵守 `docs/checkpoint-ownership-v0.1.md`，并先写 red tests。
 - checkpoint hash 已有最小 validation；后续扩展 signature / MAC / key management 前，必须先更新设计文档并写 red tests。
-- event prefix digest 相关实现必须遵守 `docs/event-prefix-digest-v0.1.md`，并先写 red tests；digest 不能替代 replay、lifecycle validation、state schema validation 或 prefix consistency validation。
+- event prefix digest 已有最小 validation；后续扩展必须遵守 `docs/event-prefix-digest-v0.1.md`，并先写 red tests。digest 不能替代 replay、lifecycle validation、state schema validation 或 prefix consistency validation。
 - server-facing checkpoint 相关实现必须遵守 `docs/server-checkpoint-boundary-v0.1.md`；Server 不能直接解释 checkpoint state，必须通过 projector-owned boundary。
 - checkpoint save trigger 相关实现必须遵守 `docs/checkpoint-save-trigger-v0.1.md`；当前只允许 internal-only `save_checkpoint_for_run(...)`，不要复用 public-looking `create_checkpoint(...)`。
 
@@ -159,9 +159,17 @@
 - malformed checkpoint file remains fail-fast
 - hash mismatch cannot hide lifecycle-invalid event log
 - event prefix digest boundary design note
-- event prefix digest is not implemented yet
-- future event prefix digest can only invalidate checkpoint and fallback full rebuild
-- future event prefix digest cannot replace canonical replay / lifecycle validation / state schema validation / prefix consistency validation
+- event prefix digest minimal validation
+- `RunProjector.create_checkpoint(...)` writes event prefix digest metadata into checkpoint `integrity`
+- event prefix digest uses deterministic JSON / UTF-8 over canonical event representation through `basis_event_id`
+- event append order and prefix payload changes affect event prefix digest
+- event prefix digest mismatch invalidates checkpoint and falls back to full rebuild
+- event prefix digest mismatch cannot hide lifecycle-invalid event log
+- event prefix digest match still runs checkpoint state schema validation and prefix consistency validation
+- legacy checkpoint without event prefix digest still uses compatibility path
+- suffix events still replay after digest-matched checkpoint
+- `FileCheckpointStore` remains opaque and does not interpret digest
+- `InProcessServer` has no digest-specific behavior
 - server-facing checkpoint boundary design note
 - `InProcessServer` read path checkpoint-assisted rebuild
 - `InProcessServer` constructor supports optional `checkpoint_store`
@@ -199,7 +207,6 @@
 - checkpoint retention / compaction
 - checkpoint inspection API
 - signature / MAC / key management
-- event prefix digest implementation
 - checkpoint migration / version negotiation
 - SSE
 - auth

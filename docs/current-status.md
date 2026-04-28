@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`117de6bc93307991d2a012b122d6667d2c7cc6eb`。
+- 最新 implementation commit：`14be7537d0ec0509d96a2d8852646b20823c3a5b`。
 
 ## Implemented Slice
 
@@ -178,9 +178,22 @@
 - saved checkpoint can power `get_run_state(...)` checkpoint-assisted rebuild
 - `create_checkpoint(...)` remains `not_enabled`
 - event prefix digest design note 已落文档
-- checkpoint 当前已有自身 `sha256` integrity/hash 和 prefix consistency validation
-- checkpoint 当前还没有 event prefix digest implementation
-- event prefix digest 未来只能绑定 checkpoint 到 event-log prefix，不能替代 canonical replay / lifecycle validation / state schema validation / prefix consistency validation
+- event prefix digest minimal validation
+- `RunProjector.create_checkpoint(...)` writes event prefix digest metadata into checkpoint `integrity`
+- event prefix digest fields: `event_digest_algorithm`, `event_prefix_digest`, `event_digest_basis_event_id`, `event_digest_event_count`
+- event prefix digest uses deterministic JSON / UTF-8
+- event prefix digest covers canonical events from the first event through `basis_event_id`
+- event prefix digest input includes canonical event representation fields: `event_id`, `run_id`, `event_type`, `payload`, `created_at`
+- event append order affects event prefix digest
+- prefix event payload changes alter event prefix digest
+- event prefix digest mismatch invalidates checkpoint and falls back to full rebuild
+- event prefix digest mismatch cannot hide lifecycle-invalid event log
+- event prefix digest match still runs checkpoint state schema validation
+- event prefix digest match still runs prefix projection consistency validation
+- legacy checkpoint without event prefix digest still uses compatibility path
+- suffix events still replay after digest-matched checkpoint
+- `FileCheckpointStore` remains opaque and does not interpret digest
+- `InProcessServer` has no digest-specific behavior
 
 ## Tests
 
@@ -193,7 +206,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-303 passed
+311 passed
 ```
 
 Import boundary check:
@@ -218,7 +231,6 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - checkpoint retention / compaction
 - checkpoint inspection API
 - signature / MAC / key management
-- event prefix digest implementation
 - checkpoint migration / version negotiation
 - SSE
 - auth
@@ -237,7 +249,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- event prefix digest validation TDD slice
 - checkpoint retention / compaction design note
+- checkpoint migration / version negotiation design note
 
 不要直接进入 real LLM / memory / ingestion。
