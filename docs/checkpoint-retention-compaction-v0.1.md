@@ -4,7 +4,7 @@
 
 本文定义 checkpoint retention / compaction（检查点保留 / 压缩清理）的 v0.1 边界：checkpoint blob 如何保留、替换、清理，以及这些操作为什么绝不能影响 canonical event log。
 
-当前已实现 latest-only checkpoint storage boundary hardening、checkpoint candidate loading、最小 projector-owned old-checkpoint fallback path 和 explicit history candidate save method。`save_checkpoint(...)` 仍是 latest-only replacement，不自动保留 history；broader retention policy、checkpoint history index、GC、automatic scheduling 和 event log compaction 仍不实现。
+当前已实现 latest-only checkpoint storage boundary hardening、checkpoint candidate loading、最小 projector-owned old-checkpoint fallback path、explicit history candidate save method、projector-owned history save method 和 internal-only explicit server history save trigger。`save_checkpoint(...)` 仍是 latest-only replacement，不自动保留 history；broader retention policy、checkpoint history index、GC、automatic scheduling 和 event log compaction 仍不实现。
 
 ## Purpose
 
@@ -48,9 +48,10 @@ checkpoint retention / compaction 的目的，是控制 checkpoint blob 的存�
 - checkpoint history save 边界见 `docs/checkpoint-history-save-boundary-v0.1.md`。
 - checkpoint history save integration 边界见 `docs/checkpoint-history-save-integration-v0.1.md`。
 - `RunProjector.save_checkpoint_history(...)` 已实现为显式 projector-owned history save method。
-- server 当前还没有 automatic history save integration，latest save path 仍不自动写 history。
+- `InProcessServer.save_checkpoint_history_for_run(...)` 已实现为 internal-only explicit history save trigger。
+- latest/default save path 仍不自动写 history。
 - checkpoint migration / version negotiation design note 已落文档。
-- 当前 full regression：`379 passed`。
+- 当前 full regression：`391 passed`。
 
 当前没有实现：
 
@@ -155,7 +156,6 @@ v0.1 design decision：
 - checkpoint 文件命名与 `checkpoint_id`。
 - checkpoint history index 的完整性、顺序和错误处理。
 - `save_checkpoint(...)` semantic change / automatic history persistence。
-- server automatic history save integration。
 - retention 触发时机。
 - automatic checkpoint scheduling。
 - checkpoint GC。

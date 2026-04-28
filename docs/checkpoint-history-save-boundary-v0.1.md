@@ -31,12 +31,14 @@ checkpoint history save 的目的，是在 future save path 需要保留历史 c
 - 最小 projector-owned old-checkpoint fallback 已实现的是 read path，不是 save/history policy。
 - `InProcessServer.save_checkpoint_for_run(run_id)` 仍只调用 projector-owned `RunProjector.save_checkpoint(...)`。
 - `RunProjector.save_checkpoint_history(...)` 已实现为显式 projector-owned history save method。
-- server 当前还没有 automatic history save integration。
+- `InProcessServer.save_checkpoint_history_for_run(run_id)` 已实现为 internal-only explicit history save trigger。
+- server history save trigger 只委托 projector-owned `RunProjector.save_checkpoint_history(...)`，不直接调用 storage、不接收或解释 checkpoint state、不写 `latest.json`。
+- automatic history persistence from latest/default save path 仍未实现。
 - 当前没有 checkpoint history index。
 - 当前没有 retention policy。
 - 当前没有 checkpoint GC。
 - 当前没有 `CheckpointService`。
-- 当前 full regression：`379 passed`。
+- 当前 full regression：`391 passed`。
 
 ## Decision
 
@@ -136,7 +138,7 @@ history index 更新如果失败，应有明确 fallback：
 - history write 失败是否应该 fail whole save。
 - history index 更新失败是否要保留 checkpoint blob。
 - retention 是 save-time 执行，还是后台 / 手动执行。
-- server manual save trigger 是否允许触发 history save。
+- latest/default save trigger 是否允许自动触发 history save。
 - public checkpoint API 是否永远不暴露 history save。
 
 ## Deferred
@@ -145,7 +147,6 @@ history index 更新如果失败，应有明确 fallback：
 
 - `save_checkpoint(...)` semantic change。
 - automatic history persistence from `save_checkpoint(...)`。
-- server automatic history save integration。
 - checkpoint history index。
 - retention policy。
 - checkpoint GC。
@@ -163,7 +164,7 @@ history index 更新如果失败，应有明确 fallback：
 后续如继续实现，应先写 red tests，优先覆盖：
 
 - current `save_checkpoint(...)` 是否继续保持 latest-only。
-- projector/server caller 是否显式调用 `save_checkpoint_history(...)`。
+- projector/server caller 对 `save_checkpoint_history(...)` 的显式调用边界。
 - 显式 projector-owned history save method 的调用边界。
 - invalid checkpoint 不能覆盖 latest，也不能进入 history。
 - latest write / history write failure ordering。
@@ -171,6 +172,6 @@ history index 更新如果失败，应有明确 fallback：
 - history write 不读取 artifact content / executor state / server memory。
 - history candidate 可被 `load_checkpoint_candidates(run_id)` 读取。
 - retention / GC 不混入 history save slice。
-- server manual save trigger 是否调用 history save 的明确边界。
+- latest/default save trigger 是否调用 history save 的明确边界。
 
 不要在没有新 design patch 和 red tests 前实现 automatic history persistence from `save_checkpoint(...)`、history index、retention policy、checkpoint GC、public checkpoint API 或 `CheckpointService`。

@@ -31,12 +31,13 @@ retention policy 的目的，是在不影响 canonical event log 的前提下，
 - checkpoint history save boundary design note 已落文档，见 `docs/checkpoint-history-save-boundary-v0.1.md`。
 - checkpoint history save integration boundary design note 已落文档，见 `docs/checkpoint-history-save-integration-v0.1.md`。
 - `RunProjector.save_checkpoint_history(...)` 已实现为显式 projector-owned history save method。
-- server 当前还没有 automatic history save integration，latest save path 仍不自动写 history。
+- `InProcessServer.save_checkpoint_history_for_run(...)` 已实现为 internal-only explicit history save trigger。
+- latest/default save path 仍不自动写 history。
 - 当前没有 persisted history index。
 - 当前没有 retention policy。
 - 当前没有 checkpoint GC。
 - 当前没有 `CheckpointService`。
-- 当前 full regression：`379 passed`。
+- 当前 full regression：`391 passed`。
 
 ## Decision
 
@@ -147,7 +148,6 @@ history save path 如果保留 checkpoint history，必须先遵守 `docs/checkp
 - retention policy。
 - checkpoint GC。
 - `save_checkpoint(...)` semantic change / automatic history persistence。
-- server automatic history save integration。
 - `CheckpointService`。
 - public checkpoint inspection API。
 - automatic checkpoint scheduling。

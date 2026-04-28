@@ -40,39 +40,47 @@ Checkpoint save trigger 的目标，是给已有 projector-owned checkpoint save
 - checkpoint history save boundary design note 已落文档。
 - `FileCheckpointStore.save_checkpoint_history(...)` 已实现为 explicit history candidate save method。
 - `RunProjector.save_checkpoint_history(...)` 已实现为显式 projector-owned history save method。
-- 当前 save trigger 不触发 history save，仍只调用 `RunProjector.save_checkpoint(...)` 写 latest checkpoint。
+- `InProcessServer.save_checkpoint_history_for_run(run_id)` 已实现为 internal-only explicit history save trigger。
+- 未配置 `checkpoint_store` 时，history save trigger 返回 `not_enabled` / `checkpoint_history`。
+- 配置 `checkpoint_store` 时，history save trigger 只调用 projector-owned `RunProjector.save_checkpoint_history(...)`。
+- history save trigger 不直接调用 `checkpoint_store.save_checkpoint_history(...)`，不接收、不构造、不解释 checkpoint state。
+- history save trigger 返回最小 metadata，不返回 checkpoint state，不修改 event log，不写 `latest.json`。
+- `save_checkpoint_for_run(...)` 仍只调用 `RunProjector.save_checkpoint(...)` 写 latest checkpoint。
 
 ## Decision
 
 v0.1 decision：
 
-- checkpoint save trigger 只能调用 projector-owned `RunProjector.save_checkpoint(...)`。
-- checkpoint save trigger 不能自行生成 projected state。
-- checkpoint save trigger 不能接收 public client 提交的 checkpoint state。
+- latest checkpoint save trigger 只能调用 projector-owned `RunProjector.save_checkpoint(...)`。
+- history checkpoint save trigger 只能调用 projector-owned `RunProjector.save_checkpoint_history(...)`。
+- checkpoint save triggers 不能自行生成 projected state。
+- checkpoint save triggers 不能接收 public client 提交的 checkpoint state。
 - checkpoint save trigger 只能产生 derived checkpoint object，不改变 `RunState` 语义。
 - checkpoint save trigger 不能绕过 checkpoint history save boundary。
 - save 失败不能伪造 checkpoint。
 - empty / malformed / lifecycle-invalid event stream 必须 fail-fast，不写 checkpoint。
 - `create_checkpoint(...)` 仍应保持 `not_enabled`，避免被误读为 public checkpoint API。
 - internal-only trigger 名称为 `save_checkpoint_for_run(...)`。
+- internal-only history trigger 名称为 `save_checkpoint_history_for_run(...)`。
 
 ## Hard Boundaries
 
-- save trigger 不能修改 event log。
-- save trigger 不能读取 artifact content 来生成 projected state。
-- save trigger 不能读取 executor state 来生成 projected state。
-- save trigger 不能读取 server memory 来生成 projected state。
-- save trigger 不能绕过 `RunProjector.save_checkpoint(...)`。
-- save trigger 不能在 event stream invalid 时写 checkpoint。
-- save trigger 不能在 empty event log 上写 checkpoint。
-- save trigger 不能把 checkpoint state 暴露给 public client。
-- save trigger 不能把 checkpoint hash match 当作事实正确性证明。
-- save trigger 不能因为 retention / compaction 设计存在而删除或修改 event log。
+- save triggers 不能修改 event log。
+- save triggers 不能读取 artifact content 来生成 projected state。
+- save triggers 不能读取 executor state 来生成 projected state。
+- save triggers 不能读取 server memory 来生成 projected state。
+- latest save trigger 不能绕过 `RunProjector.save_checkpoint(...)`。
+- history save trigger 不能绕过 `RunProjector.save_checkpoint_history(...)`。
+- save triggers 不能在 event stream invalid 时写 checkpoint。
+- save triggers 不能在 empty event log 上写 checkpoint。
+- save triggers 不能把 checkpoint state 暴露给 public client。
+- save triggers 不能把 checkpoint hash match 当作事实正确性证明。
+- save triggers 不能因为 retention / compaction 设计存在而删除或修改 event log。
 - public client 不能直接提交 checkpoint state。
 
 ## v0 Candidate
 
-当前 v0 implementation choice：
+当前 latest v0 implementation choice：
 
 - `save_checkpoint_for_run(run_id)` 只用于维护、测试、recovery acceleration，不是 public API。
 - 由 `InProcessServer` facade 暴露为内部方法，但不能走 HTTP public endpoint。
@@ -84,6 +92,16 @@ v0.1 decision：
 - 字段名仍是 v0 implementation shape，不是永久协议。
 
 当前不实现 automatic scheduling；本设计只允许 manual/internal trigger。
+
+当前 history v0 implementation choice：
+
+- `save_checkpoint_history_for_run(run_id)` 是 internal-only explicit history save trigger。
+- method 内部只组合：
+  - `RunProjector.save_checkpoint_history(run_id, event_store, checkpoint_store)`
+- minimal response shaping
+- 返回值当前只包含最小 metadata，例如：
+  - `{ "status": "saved", "run_id": "...", "basis_event_id": "...", "checkpoint_kind": "history" }`
+- 字段名仍是 v0 implementation shape，不是永久协议。
 
 ## Invalid Uses
 
@@ -97,6 +115,7 @@ v0.1 decision：
 - save trigger 失败后返回伪造的 saved 状态。
 - save trigger 修改 event log 来匹配 checkpoint。
 - save trigger 修改 checkpoint state 来匹配 event log。
+- server 直接调用 storage 保存外部 checkpoint history state。
 
 ## Deferred
 
@@ -104,7 +123,6 @@ v0.1 decision：
 
 - automatic checkpoint scheduling。
 - `save_checkpoint(...)` semantic change / automatic history persistence。
-- server automatic history save integration。
 - checkpoint GC。
 - checkpoint retention policy。
 - `CheckpointService`。
@@ -133,5 +151,5 @@ v0.1 decision：
 - event prefix digest 后续扩展仍不能由 save trigger 自行计算、解释或信任 digest。
 - checkpoint migration / version negotiation design note。
 - checkpoint history / old-checkpoint fallback design note。
-- checkpoint history save integration boundary；explicit storage method 已存在，但 save trigger 仍不调用它。
+- checkpoint history save integration boundary；explicit server history trigger 已存在，但 latest save trigger 仍不调用 history save。
 - public checkpoint API / HTTP endpoint 仍不实现。

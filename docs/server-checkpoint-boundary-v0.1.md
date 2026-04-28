@@ -30,6 +30,8 @@ Server-facing checkpoint boundary 的目的，是允许 server read path 使用 
 - checkpoint history index / retention policy boundary design note。
 - checkpoint history save boundary design note。
 - explicit history candidate save method：`FileCheckpointStore.save_checkpoint_history(...)`。
+- projector-owned history save method：`RunProjector.save_checkpoint_history(...)`。
+- internal-only explicit server history save trigger：`InProcessServer.save_checkpoint_history_for_run(...)`。
 
 相关 retention / compaction 边界见 `docs/checkpoint-retention-compaction-v0.1.md`。
 checkpoint history / old-checkpoint fallback 边界见 `docs/checkpoint-history-fallback-v0.1.md`。
@@ -48,6 +50,12 @@ checkpoint history save 边界见 `docs/checkpoint-history-save-boundary-v0.1.md
 - `save_checkpoint_for_run(...)` 只调用 projector-owned `RunProjector.save_checkpoint(...)`，不读取或解释 checkpoint state。
 - `RunProjector.save_checkpoint_history(...)` 已实现为显式 projector-owned history save method。
 - `save_checkpoint_for_run(...)` 默认仍不调用 history save。
+- `save_checkpoint_history_for_run(...)` 已作为 internal-only explicit history save trigger 实现。
+- `save_checkpoint_history_for_run(...)` 没有配置 `checkpoint_store` 时返回 `not_enabled` / `checkpoint_history`。
+- `save_checkpoint_history_for_run(...)` 配置 `checkpoint_store` 时只调用 projector-owned `RunProjector.save_checkpoint_history(...)`。
+- `save_checkpoint_history_for_run(...)` 不直接调用 `checkpoint_store.save_checkpoint_history(...)`，不接收、不构造、不解释 checkpoint state。
+- `save_checkpoint_history_for_run(...)` 成功后只返回 `status`、`run_id`、`basis_event_id`、`checkpoint_kind`，不返回 checkpoint state。
+- `save_checkpoint_history_for_run(...)` 不修改 event log，不写 `latest.json`。
 - checkpoint missing 或所有 candidates invalid 时 fallback full rebuild。
 - projector-owned read path 可在 invalid latest checkpoint 后尝试 older fully valid checkpoint candidate。
 - server 不直接选择、解释或信任 old checkpoint，仍只调用 projector-owned boundary。
@@ -61,7 +69,6 @@ checkpoint history save 边界见 `docs/checkpoint-history-save-boundary-v0.1.md
 - 没有 broader checkpoint retention / compaction implementation。
 - 没有 checkpoint history index。
 - 没有 `save_checkpoint(...)` semantic change / automatic history persistence。
-- 没有 server automatic history save integration。
 - 没有 checkpoint GC / retention policy。
 
 ## Decision
@@ -113,6 +120,8 @@ v0.1 decision：
 
 - 提供 internal-only checkpoint save trigger：`save_checkpoint_for_run(run_id)`。
 - internal save trigger 只能调用 `RunProjector.save_checkpoint(...)`。
+- 提供 internal-only checkpoint history save trigger：`save_checkpoint_history_for_run(run_id)`。
+- internal history save trigger 只能调用 `RunProjector.save_checkpoint_history(...)`。
 - 不复用 public-looking `create_checkpoint(...)`；它当前仍应保持 `not_enabled`。
 
 这些是 v0 candidate，不是永久协议。
@@ -141,7 +150,6 @@ v0.1 decision：
 - broader checkpoint retention / compaction implementation。
 - checkpoint history index。
 - `save_checkpoint(...)` semantic change / automatic history persistence。
-- server automatic history save integration。
 - checkpoint GC / retention policy。
 - checkpoint migration / version negotiation。
 - `SessionState` checkpoint。
@@ -170,7 +178,7 @@ v0.1 decision：
 - public API 仍不得暴露 checkpoint state。
 - checkpoint retention / compaction 如接入 server-facing flow，不能让 server 直接解释 checkpoint state，也不能影响 event log。
 - checkpoint history index / retention 如接入 server-facing flow，server 仍不能直接选择或解释 checkpoint，只能调用 projector-owned boundary。
-- checkpoint history save 如接入 server-facing flow，server 仍不能接收或解释 checkpoint state；storage-level 和 projector-owned `save_checkpoint_history(...)` 已存在，但 server caller 仍需要显式 integration。
+- checkpoint history save 如继续扩展 server-facing flow，server 仍不能接收或解释 checkpoint state；storage-level、projector-owned method 和 explicit server trigger 已存在，但 public API / automatic persistence 仍 deferred。
 - corrupt / missing history index 如出现在 server-facing read path，不能让 server 跳过 full event-log replay。
 
-暂不实现 public checkpoint API、automatic scheduling、`CheckpointService`、broader checkpoint retention / compaction implementation、checkpoint history index、`save_checkpoint(...)` semantic change / automatic history persistence、server automatic history save integration、signature / MAC / key management。
+暂不实现 public checkpoint API、automatic scheduling、`CheckpointService`、broader checkpoint retention / compaction implementation、checkpoint history index、`save_checkpoint(...)` semantic change / automatic history persistence、signature / MAC / key management。

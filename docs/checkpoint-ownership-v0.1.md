@@ -52,7 +52,7 @@ v0.1 ownership 分工：
 
 - `RunProjector`：解释 canonical events，产出 projected state，执行 checkpoint-assisted rebuild，并负责生成 projector-owned checkpoint blob。
 - `FileCheckpointStore` / future storage layer：只保存和读取 opaque checkpoint blob，不解释 checkpoint 字段含义。
-- `InProcessServer` / future server API：当前 read path 已可选调用 projector-owned checkpoint-assisted rebuild，internal-only `save_checkpoint_for_run(...)` 已可调用 projector-owned checkpoint save boundary；server 不能直接把 checkpoint 当成 state source。public checkpoint API 和 scheduling 仍 deferred；server-facing 边界见 `docs/server-checkpoint-boundary-v0.1.md`。
+- `InProcessServer` / future server API：当前 read path 已可选调用 projector-owned checkpoint-assisted rebuild，internal-only `save_checkpoint_for_run(...)` 已可调用 projector-owned latest checkpoint save boundary，internal-only `save_checkpoint_history_for_run(...)` 已可调用 projector-owned history checkpoint save boundary；server 不能直接把 checkpoint 当成 state source。public checkpoint API 和 scheduling 仍 deferred；server-facing 边界见 `docs/server-checkpoint-boundary-v0.1.md`。
 - future checkpoint storage：只是一种 storage concern，不是新的 truth layer。
 
 不新增独立 `CheckpointService`，除非后续 TDD 证明 projector/storage 边界无法承载最小实现。
@@ -108,7 +108,6 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 
 - automatic checkpoint scheduling
 - `save_checkpoint(...)` semantic change / automatic history persistence
-- server automatic history save integration
 - checkpoint history index
 - checkpoint GC
 - checkpoint retention policy
@@ -205,6 +204,8 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - checkpoint history save boundary design note 已落文档。
 - `FileCheckpointStore.save_checkpoint_history(run_id, checkpoint)` 已实现为 explicit history candidate save method。
 - `RunProjector.save_checkpoint_history(...)` 已实现为显式 projector-owned history save method。
+- `InProcessServer.save_checkpoint_history_for_run(...)` 已实现为 internal-only explicit history save trigger。
+- server history save trigger 只委托 `RunProjector.save_checkpoint_history(...)`，不直接调用 storage、不返回 checkpoint state、不写 `latest.json`。
 - history save 不覆盖 `latest.json`，不修改 event log。
 - `FileCheckpointStore` 仍保持 opaque，不解释 checkpoint state / integrity / projector version。
 - `save_checkpoint(...)` 仍是 latest-only replacement，不自动保存 history。

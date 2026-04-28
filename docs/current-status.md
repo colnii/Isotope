@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`9edb90293881970e0bd25adf87b1de5e4bf4131b`。
+- 最新 implementation commit：`067d48c4d6e693ed305d5794fd18d0d71eddd90f`。
 
 ## Implemented Slice
 
@@ -251,7 +251,18 @@
 - empty / malformed / lifecycle-invalid event stream fail-fast without writing history candidate
 - `RunProjector.save_checkpoint(...)` remains latest-only
 - `InProcessServer.save_checkpoint_for_run(...)` still uses projector-owned latest save by default
-- server automatic history save integration is not implemented
+- internal-only explicit server checkpoint history save trigger
+- `InProcessServer.save_checkpoint_history_for_run(run_id)`
+- `save_checkpoint_history_for_run(...)` returns `not_enabled` with capability `checkpoint_history` when no `checkpoint_store` is configured
+- `save_checkpoint_history_for_run(...)` delegates only to projector-owned `RunProjector.save_checkpoint_history(run_id, self.event_store, self.checkpoint_store)`
+- server does not directly call `checkpoint_store.save_checkpoint_history(...)`
+- server does not receive, construct, or interpret checkpoint state for history save
+- successful server history save returns minimal metadata: `status`, `run_id`, `basis_event_id`, `checkpoint_kind`
+- server history save does not return checkpoint state
+- server history save does not modify event log
+- server history save does not write `latest.json`
+- `InProcessServer.save_checkpoint_for_run(...)` remains latest-only
+- `InProcessServer.create_checkpoint(...)` remains `not_enabled`
 - checkpoint migration / version negotiation design note 已落文档
 - current checkpoint uses `projector_version`; current projector version is `run_projector@v1`
 - incompatible checkpoint projector version invalidates checkpoint and falls back to full rebuild
@@ -302,7 +313,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-379 passed
+391 passed
 ```
 
 Import boundary check:
@@ -325,7 +336,6 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - automatic checkpoint scheduling
 - CheckpointService
 - `save_checkpoint(...)` semantic change / automatic history persistence
-- server automatic history save integration
 - checkpoint history index
 - checkpoint GC
 - checkpoint retention policy
@@ -366,6 +376,6 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 下一步建议优先做：
 
 - checkpoint history index / retention policy red tests only after an explicit implementation slice
-- checkpoint history save integration boundary if future projector/server callers need it
+- checkpoint retention / GC boundary review before any storage cleanup implementation
 
 不要直接进入 real LLM / memory / ingestion。

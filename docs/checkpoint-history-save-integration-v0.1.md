@@ -2,7 +2,7 @@
 
 状态：draft
 
-本文定义 checkpoint history save integration（检查点历史保存集成）的 v0.1 边界：在 `FileCheckpointStore.save_checkpoint_history(...)` 和 `RunProjector.save_checkpoint_history(...)` 已存在后，server 是否、何时、如何调用它。
+本文定义 checkpoint history save integration（检查点历史保存集成）的 v0.1 边界：在 `FileCheckpointStore.save_checkpoint_history(...)`、`RunProjector.save_checkpoint_history(...)` 和 `InProcessServer.save_checkpoint_history_for_run(...)` 已存在后，server 如何保持显式内部调用边界。
 
 本文不实现 history index、retention policy、GC、public checkpoint API 或 automatic scheduling。
 
@@ -35,10 +35,18 @@ checkpoint history save integration 的目的，是明确底层 storage method �
 - `RunProjector.save_checkpoint_history(...)` 不修改 event log。
 - empty / malformed / lifecycle-invalid event stream 会 fail-fast，不写 history candidate。
 - `InProcessServer.save_checkpoint_for_run(...)` 当前仍只走 projector-owned latest save。
-- server 还没有 automatic history save integration。
+- `InProcessServer.save_checkpoint_history_for_run(run_id)` 已实现为 internal-only explicit history save trigger。
+- 未配置 `checkpoint_store` 时，`save_checkpoint_history_for_run(...)` 返回 `{"status": "not_enabled", "capability": "checkpoint_history"}`。
+- 配置 `checkpoint_store` 时，`save_checkpoint_history_for_run(...)` 只调用 projector-owned `RunProjector().save_checkpoint_history(run_id, self.event_store, self.checkpoint_store)`。
+- server 不直接调用 `checkpoint_store.save_checkpoint_history(...)`。
+- server 不接收、不构造、不解释 checkpoint state。
+- server history save 成功后只返回最小 metadata：`status`、`run_id`、`basis_event_id`、`checkpoint_kind`。
+- server history save 不返回 checkpoint state。
+- server history save 不修改 event log。
+- server history save 不写 `latest.json`。
 - server 不能直接构造、解释或选择 checkpoint history state。
-- 当前 full regression：`379 passed`。
-- 最新 implementation commit：`9edb90293881970e0bd25adf87b1de5e4bf4131b`。
+- 当前 full regression：`391 passed`。
+- 最新 implementation commit：`067d48c4d6e693ed305d5794fd18d0d71eddd90f`。
 
 ## Decision
 
@@ -48,7 +56,7 @@ v0.1 design decision：
 - 当前不改变 `InProcessServer.save_checkpoint_for_run(...)` 默认语义。
 - 当前不让 latest save path 自动写 history candidate。
 - projector-owned history save integration 已通过显式 method 实现。
-- server history save integration 如未来实现，必须显式调用 projector-owned method。
+- server history save integration 已通过 explicit internal method 实现，并且必须继续显式调用 projector-owned method。
 - 不建议偷偷让 existing latest save 也写 history。
 - server 如未来触发 history save，只能调用 projector-owned boundary，不能直接调用 storage 保存外部 checkpoint state。
 - history save integration 不能修改 event log。
@@ -82,13 +90,15 @@ v0.1 design decision：
 - method 再调用 `checkpoint_store.save_checkpoint_history(run_id, checkpoint)`。
 - method 不修改 `RunProjector.save_checkpoint(...)` latest-only 语义。
 
-未来候选方向二：给 internal-only save trigger 增加显式选项。
+当前已实现方向二：新增 explicit internal-only server trigger。
 
-- 例如 internal caller 显式要求 history save。
+- `InProcessServer.save_checkpoint_history_for_run(run_id)`。
+- internal caller 显式要求 history save。
 - 默认仍 latest-only。
 - 不能通过 public HTTP / public API 暴露。
 - server 不能接收外部 checkpoint state。
 - server 只能委托 projector-owned method。
+- 返回值只包含 minimal metadata，不包含 checkpoint state。
 
 当前推荐：
 
@@ -104,6 +114,7 @@ v0.1 design decision：
 
 - 让 `RunProjector.save_checkpoint(...)` 静默开始写 history candidates。
 - 让 `InProcessServer.save_checkpoint_for_run(...)` 静默开始写 history candidates。
+- 让 `InProcessServer.save_checkpoint_history_for_run(...)` 变成 public API。
 - 让 public client 上传 checkpoint history candidate。
 - 让 public client 选择 checkpoint history entry 作为事实来源。
 - server 直接调用 `FileCheckpointStore.save_checkpoint_history(...)` 保存外部 checkpoint state。
@@ -118,7 +129,6 @@ v0.1 design decision：
 当前仍 deferred：
 
 - automatic history persistence from `save_checkpoint(...)`。
-- server automatic history save integration。
 - public checkpoint API。
 - public checkpoint HTTP endpoint。
 - checkpoint history index。
@@ -139,7 +149,8 @@ v0.1 design decision：
 - history save method 继续只调用 `checkpoint_store.save_checkpoint_history(...)`，不修改 event log。
 - empty / malformed / lifecycle-invalid event stream fail-fast，不写 history candidate。
 - history save failure 不伪造 success。
-- server 如有显式 history save option，必须只调用 projector-owned method。
+- `InProcessServer.save_checkpoint_history_for_run(...)` 必须只调用 projector-owned method。
+- `InProcessServer.save_checkpoint_history_for_run(...)` 不能返回 checkpoint state。
 - public checkpoint API 仍不暴露。
 
 不要在没有新 design patch 和 red tests 前实现 automatic history persistence、history index、retention policy、checkpoint GC、public checkpoint API 或 `CheckpointService`。
