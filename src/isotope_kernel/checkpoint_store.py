@@ -33,6 +33,14 @@ class FileCheckpointStore:
         path.write_text(json.dumps(checkpoint, sort_keys=True), encoding="utf-8")
         return checkpoint
 
+    def save_checkpoint_history(self, run_id: str, checkpoint: dict[str, Any]) -> dict[str, Any]:
+        self._validate_run_id(run_id)
+        self._validate_checkpoint(run_id, checkpoint)
+        path = self._history_checkpoint_path(run_id, checkpoint)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(checkpoint, sort_keys=True), encoding="utf-8")
+        return checkpoint
+
     def load_latest_checkpoint(self, run_id: str) -> dict[str, Any] | None:
         self._validate_run_id(run_id)
         path = self.checkpoint_path(run_id)
@@ -69,6 +77,21 @@ class FileCheckpointStore:
         except (TypeError, ValueError) as exc:
             raise ValueError(f"malformed checkpoint file: {path}") from exc
         return checkpoint
+
+    def _history_checkpoint_path(self, run_id: str, checkpoint: dict[str, Any]) -> Path:
+        checkpoint_dir = self.root / "runs" / run_id / "checkpoints"
+        created_at = self._safe_filename_part(checkpoint["created_at"])
+        basis_event_id = self._safe_filename_part(checkpoint["basis_event_id"])
+        return checkpoint_dir / f"checkpoint-{created_at}-{basis_event_id}.json"
+
+    def _safe_filename_part(self, value: Any) -> str:
+        safe = "".join(
+            char if char.isalnum() or char in "._-" else "_"
+            for char in str(value)
+        ).strip("._-")
+        if not safe or safe in {".", ".."}:
+            return "value"
+        return safe
 
     def _validate_checkpoint(self, run_id: str, checkpoint: dict[str, Any]) -> None:
         if not isinstance(checkpoint, dict):
