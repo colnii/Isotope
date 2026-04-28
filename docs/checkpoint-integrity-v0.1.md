@@ -44,6 +44,9 @@ v0.1 design decision：
 - `rebuild_with_checkpoint(...)` 遇到 event prefix digest mismatch 会让 checkpoint invalid，并 fallback full rebuild。
 - digest match 后仍执行 checkpoint state schema validation 和 prefix consistency validation。
 - legacy checkpoint 无 event prefix digest 仍走兼容路径。
+- checkpoint projector version boundary hardening 已实现：malformed / incompatible `projector_version` 会让 checkpoint invalid，并 fallback full rebuild。
+- malformed / incompatible version fallback 不读取 checkpoint state，且不能隐藏 lifecycle-invalid event log。
+- future schema sketch fields 不能 override `projector_version`。
 
 ## Hard Boundaries
 
@@ -136,6 +139,6 @@ hash mismatch 与 checkpoint version 不兼容类似：只能让 checkpoint 不�
 
 后续实现必须先写 red tests，优先覆盖：
 
-- checkpoint migration / version negotiation 对 checkpoint integrity 和 event prefix digest 的影响。
+- event envelope versioning 对 checkpoint integrity 和 event prefix digest 的影响。
 - checkpoint retention / compaction 对 checkpoint integrity 和 event prefix digest 的影响。
 - server-facing checkpoint 继续扩展时，必须保持 full rebuild 等价，且不能让 server 直接解释 checkpoint state。

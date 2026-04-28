@@ -2,7 +2,7 @@
 
 状态：draft
 
-本文定义 checkpoint ownership（检查点归属）和边界。当前实现只覆盖 opaque checkpoint storage、最小 checkpoint-assisted projector rebuild、projector-owned checkpoint creation、checkpoint state schema validation、projector-owned checkpoint save boundary、checkpoint prefix consistency hardening、checkpoint integrity/hash validation 和 event prefix digest validation；checkpoint schema 仍是 v0 candidate。
+本文定义 checkpoint ownership（检查点归属）和边界。当前实现只覆盖 opaque checkpoint storage、最小 checkpoint-assisted projector rebuild、projector-owned checkpoint creation、checkpoint state schema validation、projector-owned checkpoint save boundary、checkpoint prefix consistency hardening、checkpoint integrity/hash validation、event prefix digest validation 和 checkpoint projector version boundary hardening；checkpoint schema 仍是 v0 candidate。
 
 ## Purpose
 
@@ -175,6 +175,12 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - checkpoint migration / version negotiation design note 已落文档。
 - 当前 checkpoint 使用 `projector_version`；当前 projector version 是 `run_projector@v1`。
 - projector version 不兼容时，checkpoint 会失效并 fallback full rebuild。
+- malformed `projector_version` 不会被使用；non-string / empty `projector_version` 会让 checkpoint invalid 并 fallback full rebuild。
+- incompatible 或 malformed version fallback 不读取 checkpoint state，且不能隐藏 lifecycle-invalid event log。
+- valid `projector_version` override 参数仍控制兼容性，但 malformed version 不能因 caller 传同样 malformed 值而被接受。
+- future sketch fields 如 `checkpoint_schema_version` / `event_envelope_version` / `state_schema_version` 不能 override `projector_version`。
+- compatible checkpoint 带 future sketch fields 时仍按当前 validation chain 处理。
+- `FileCheckpointStore` 仍保持 opaque，不解释 version 字段。
 - checkpoint schema 仍是 v0 candidate，event envelope 仍是 slice-only shape。
 - migration / version negotiation 不能修改 canonical event log，不能伪造 state，不能跳过 checkpoint validation chain。
 - `InProcessServer.get_run_state(...)` 没有 checkpoint store 时仍走 full event log rebuild，有 checkpoint store 时调用 `RunProjector.rebuild_with_checkpoint(...)`。
@@ -189,6 +195,7 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 
 后续实现必须先写 red tests，优先覆盖：
 
-- projector version mismatch behavior hardening / malformed version fields。
+- event envelope versioning design note。
+- checkpoint schema version fields design note。
 - checkpoint history / old-checkpoint fallback design note。
 - server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。

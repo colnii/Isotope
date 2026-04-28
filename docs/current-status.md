@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`a669fde8c6a3be6fb36c6c228fbfa6451bb40655`。
+- 最新 implementation commit：`074ca5074b5739d8e89136cd190bb5b680044192`。
 
 ## Implemented Slice
 
@@ -215,6 +215,16 @@
 - checkpoint schema remains v0 candidate
 - event envelope remains slice-only shape, not final protocol
 - migration / version negotiation cannot modify canonical event log or skip checkpoint validation chain
+- checkpoint projector version boundary hardening
+- malformed `projector_version` is not used as compatible checkpoint version
+- non-string / empty `projector_version` invalidates checkpoint and falls back to full rebuild
+- incompatible or malformed version fallback does not read checkpoint state
+- incompatible or malformed version fallback cannot hide lifecycle-invalid event log
+- `projector_version` override still controls compatibility when valid
+- malformed `projector_version` cannot be accepted by passing the same malformed override
+- future sketch fields such as `checkpoint_schema_version`, `event_envelope_version`, and `state_schema_version` cannot override `projector_version`
+- compatible checkpoint with future sketch fields still follows the current validation chain
+- `FileCheckpointStore` remains opaque and does not interpret version fields
 
 ## Tests
 
@@ -227,7 +237,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-333 passed
+341 passed
 ```
 
 Import boundary check:
@@ -258,6 +268,8 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - checkpoint migration / version negotiation implementation
 - checkpoint migrator registry
 - schema registry
+- event envelope schema registry
+- audit event for checkpoint migration
 - event log compaction
 - SSE
 - auth
@@ -276,7 +288,8 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- harden projector version mismatch behavior / malformed version fields
+- event envelope versioning design note
+- checkpoint schema version fields design note
 - checkpoint history / old-checkpoint fallback design note
 
 不要直接进入 real LLM / memory / ingestion。

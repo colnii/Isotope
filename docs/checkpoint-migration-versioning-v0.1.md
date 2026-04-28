@@ -24,7 +24,8 @@ checkpoint migration / versioning 的目的，是在 checkpoint shape 或 projec
 - checkpoint integrity/hash validation 已实现。
 - event prefix digest validation 已实现。
 - checkpoint state schema validation 和 prefix consistency validation 已实现。
-- 当前 full regression：`333 passed`。
+- checkpoint projector version boundary hardening 已实现。
+- 当前 full regression：`341 passed`。
 
 当前没有实现：
 
@@ -35,12 +36,26 @@ checkpoint migration / versioning 的目的，是在 checkpoint shape 或 projec
 - event envelope version。
 - checkpoint schema version 字段。
 
+## Implementation Status
+
+当前已实现的 projector version boundary：
+
+- malformed `projector_version` 不会被使用。
+- non-string / empty `projector_version` 会让 checkpoint invalid，并 fallback full rebuild。
+- incompatible `projector_version` fallback 不读取 checkpoint state。
+- malformed / incompatible version fallback 不能隐藏 lifecycle-invalid event log。
+- `projector_version` override 参数仍控制兼容性，但 malformed version 不能因为 caller 传同样 malformed 值而被接受。
+- future sketch fields 如 `checkpoint_schema_version` / `event_envelope_version` / `state_schema_version` 不能 override `projector_version`。
+- compatible checkpoint 带 future sketch fields 时，仍按当前 validation chain 处理。
+- `FileCheckpointStore` 仍保持 opaque，不解释 version 字段。
+
 ## Decision
 
 v0.1 design decision：
 
 - 不兼容 checkpoint 不能被强行使用。
 - 当前没有 migrator 时，`projector_version` mismatch 只能让 checkpoint 失效，并 fallback full rebuild。
+- malformed `projector_version` 与 mismatch 一样，只能让 checkpoint 失效，并 fallback full rebuild。
 - migration / version negotiation 不能修改 canonical event log。
 - migration 不能伪造 projected state。
 - migrator 如果未来存在，也只能从 canonical events 和旧 derived checkpoint 生成新的 derived checkpoint。
@@ -73,8 +88,10 @@ v0.1 design decision：
 当前 v0 candidate 行为：
 
 - `projector_version` 不匹配继续 fallback full rebuild。
+- non-string / empty `projector_version` 继续 fallback full rebuild。
 - 无兼容 migrator 时，不尝试使用旧 checkpoint。
 - 不兼容 checkpoint 的存在不影响 canonical event log rebuild。
+- future schema sketch fields 不能覆盖 `projector_version` 兼容性判断。
 
 未来可以考虑在 checkpoint 中增加：
 
@@ -171,11 +188,10 @@ Schema sketch：
 
 下一轮如继续推进，应先写 red tests，优先覆盖：
 
-- projector version mismatch behavior hardening。
-- malformed `projector_version` 字段 fail-fast 或 fallback 行为。
+- event envelope versioning design note。
+- checkpoint schema version fields design note。
 - malformed future `checkpoint_schema_version` / `event_envelope_version` 字段的边界。
-- 不兼容 version fallback full rebuild 仍执行完整 event validation。
-- version mismatch 不能隐藏 lifecycle-invalid event log。
+- 不兼容 version fallback full rebuild 继续执行完整 event validation。
 - `FileCheckpointStore` 仍不解释 version 字段。
 
 不要直接实现 migrator、registry、event log migration 或 public checkpoint inspection API。
