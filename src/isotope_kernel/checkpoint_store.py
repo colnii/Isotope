@@ -22,9 +22,11 @@ class FileCheckpointStore:
         self.root = Path(root)
 
     def checkpoint_path(self, run_id: str) -> Path:
+        self._validate_run_id(run_id)
         return self.root / "runs" / run_id / "checkpoints" / "latest.json"
 
     def save_checkpoint(self, run_id: str, checkpoint: dict[str, Any]) -> dict[str, Any]:
+        self._validate_run_id(run_id)
         self._validate_checkpoint(run_id, checkpoint)
         path = self.checkpoint_path(run_id)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -32,6 +34,7 @@ class FileCheckpointStore:
         return checkpoint
 
     def load_latest_checkpoint(self, run_id: str) -> dict[str, Any] | None:
+        self._validate_run_id(run_id)
         path = self.checkpoint_path(run_id)
         if not path.exists():
             return None
@@ -61,3 +64,9 @@ class FileCheckpointStore:
         for key in sorted(self.FORBIDDEN_RAW_KEYS):
             if key in checkpoint:
                 raise ValueError(f"checkpoint cannot contain external raw input: {key}")
+
+    def _validate_run_id(self, run_id: str) -> None:
+        if not isinstance(run_id, str) or not run_id:
+            raise ValueError("run_id must be a non-empty path segment")
+        if run_id in {".", ".."} or "/" in run_id or "\\" in run_id:
+            raise ValueError("run_id must be a safe path segment")
