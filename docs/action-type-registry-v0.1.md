@@ -2,7 +2,7 @@
 
 状态：draft
 
-本文定义 `ActionTypeRegistry` 的最小边界，为下一轮 red tests 做准备。当前不实现 registry，不引入 plugin system，不改变现有 action chain。
+本文定义 `ActionTypeRegistry` 的最小边界。当前已实现 minimal registry module，但尚未接入 `ActionCompiler` / `PolicyEngine` / `Executor`；仍不引入 plugin system，不改变现有 action chain。
 
 ## Purpose
 
@@ -30,8 +30,15 @@
 - `PolicyEngine` 当前知道 `write_artifact_tool` 等有限工具。
 - `Executor` 当前能执行 deterministic `write_artifact_tool`。
 - `ActionProposal -> PolicyDecision -> ActionExecution -> canonical events` 已有最小链路。
-- action/tool metadata 还没有集中 registry。
-- `ActionTypeRegistry` 尚未实现。
+- action/tool metadata 已有最小集中 registry module：`src/isotope_kernel/action_registry.py`。
+- `ActionTypeEntry` 是当前 v0 slice 的最小 metadata model。
+- `ActionTypeRegistry.default()` 当前只包含 `call_tool` + `write_artifact_tool`。
+- `registry.tool_names()` 返回 `["write_artifact_tool"]`。
+- `registry.get_tool("write_artifact_tool")` 返回 metadata entry。
+- unknown tool lookup fail closed，抛 `KeyError`。
+- malformed registry entry fail fast。
+- registry entry 只包含 metadata，不携带 executable side-effect callback 字段。
+- registry 尚未接入 `ActionCompiler` / `PolicyEngine` / `Executor`。
 - checkpoint v0.1 已 frozen for current kernel slice；下一阶段建议先推进 registry boundary，而不是继续深挖 checkpoint。
 
 ## Hard Boundaries
@@ -63,11 +70,21 @@
 
 这些字段名只是 v0 candidate / schema sketch，不是稳定协议。
 
-第一轮 implementation 可以只覆盖：
+当前第一轮 implementation 已覆盖：
 
 - `call_tool` + `write_artifact_tool`
-- unknown tool denied / rejected
-- registry lookup 只服务 compiler / policy / executor 的最小边界
+- unknown tool fail-closed lookup
+- malformed registry entry fail-fast
+- metadata-only registry entry without executable side-effect callbacks
+
+下一轮 implementation 应只推进 compiler lookup：
+
+- `ActionCompiler` 用 registry 校验 action/tool 是否存在。
+- unknown compact tool 在 compiler boundary fail closed。
+- compiler 仍只能产出 canonical `ActionProposal`，不能让 raw intent 绕过 action chain。
+
+仍然不引入：
+
 - 不引入 dynamic loading
 - 不引入 third-party plugins
 - 不引入 remote execution
@@ -118,15 +135,24 @@ registry 可能被三个模块读取，但职责不同：
 
 ## Future TDD Notes
 
-下一轮 red tests 建议优先覆盖：
+已完成的第一批 tests 覆盖：
 
 - `ActionTypeRegistry` exists with a default v0 registry.
 - default registry contains only `call_tool` + `write_artifact_tool` for the current slice.
-- unknown action/tool fails closed in compiler / policy / executor boundary.
 - malformed registry entries fail fast.
+- unknown tool lookup fails closed.
+- registry entry does not expose executable side-effect callback fields.
+
+下一轮 red tests 建议优先覆盖：
+
+- `ActionCompiler` accepts an optional registry or otherwise uses the default registry.
+- compiler rejects unknown compact `tool` via registry lookup.
+- compiler rejects unsupported compact `action` without bypassing canonical `ActionProposal`.
+- compiler keeps runtime identity sourced from runtime context, not intent.
+- compiler does not grant capabilities; it only forms requested capabilities.
+- registry remains limited to `call_tool` + `write_artifact_tool` for this slice.
 - `PolicyEngine` uses registry requirements but still produces grants itself.
 - `Executor` uses registry handler lookup but still executes only with `PolicyDecision.grants`.
-- `ActionCompiler` still derives runtime identity from runtime context, not intent.
 - no dynamic loading, no plugin discovery, no public extension API.
 
 不要在没有 red tests 前直接实现 full plugin system、remote registry、schema registry、real LLM tool calling 或 third-party tool loading。
