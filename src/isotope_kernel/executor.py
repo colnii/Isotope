@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from .action_registry import ActionTypeRegistry
 from .events import CanonicalEvent
 from .ids import new_id
 from .models import ActionExecution, ActionProposal, PolicyDecision
@@ -12,10 +13,17 @@ from .models import ActionExecution, ActionProposal, PolicyDecision
 class Executor:
     """Execute authorized proposals using only PolicyDecision.grants."""
 
-    def __init__(self, event_store, artifact_store, workspace_manager):
+    def __init__(
+        self,
+        event_store,
+        artifact_store,
+        workspace_manager,
+        registry: ActionTypeRegistry | None = None,
+    ):
         self.event_store = event_store
         self.artifact_store = artifact_store
         self.workspace_manager = workspace_manager
+        self.registry = registry if registry is not None else ActionTypeRegistry.default()
 
     def execute(self, decision: PolicyDecision, proposal: ActionProposal) -> ActionExecution:
         if decision.outcome == "denied":
@@ -34,8 +42,19 @@ class Executor:
 
         try:
             granted_tools = decision.grants.get("tools", [])
-            if "write_artifact_tool" not in granted_tools:
-                raise PermissionError("write_artifact_tool is not granted")
+            tool_name = proposal.payload.get("tool")
+            if not isinstance(tool_name, str) or not tool_name:
+                raise PermissionError("unknown tool")
+            try:
+                entry = self.registry.get_tool(tool_name)
+            except KeyError as exc:
+                raise PermissionError(f"unknown tool {tool_name}") from exc
+            if not entry.enabled:
+                raise PermissionError(f"disabled tool {tool_name}")
+            if tool_name not in granted_tools:
+                raise PermissionError(f"{tool_name} is not granted")
+            if tool_name != "write_artifact_tool":
+                raise PermissionError(f"unsupported handler for tool {tool_name}")
 
             # This validates the granted workspace mode without consulting requested capabilities.
             self.workspace_manager.get_binding(decision.grants)
