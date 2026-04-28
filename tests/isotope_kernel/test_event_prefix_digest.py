@@ -138,6 +138,7 @@ def _event_prefix_payload(canonical_events):
             "event_type": event.event_type,
             "payload": event.payload,
             "created_at": event.created_at,
+            "event_envelope_version": event.event_envelope_version,
         }
         for event in canonical_events
     ]

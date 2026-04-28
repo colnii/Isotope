@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Iterable
 
-from .events import CanonicalEvent
+from .events import EVENT_ENVELOPE_VERSION, CanonicalEvent
 
 
 @dataclass
@@ -246,6 +246,7 @@ class RunProjector:
             "event_prefix_digest": self._event_prefix_digest(canonical_events),
             "event_digest_basis_event_id": checkpoint["basis_event_id"],
             "event_digest_event_count": len(canonical_events),
+            "event_digest_event_envelope_version": EVENT_ENVELOPE_VERSION,
         }
         return checkpoint
 
@@ -328,6 +329,7 @@ class RunProjector:
                 "event_type": event.event_type,
                 "payload": event.payload,
                 "created_at": event.created_at,
+                "event_envelope_version": event.event_envelope_version,
             }
             for event in canonical_events
         ]
@@ -363,6 +365,9 @@ class RunProjector:
         if not isinstance(event_count, int) or isinstance(event_count, bool):
             return False
         if event_count != basis_index + 1:
+            return False
+        event_envelope_version = integrity.get("event_digest_event_envelope_version")
+        if event_envelope_version is not None and event_envelope_version != EVENT_ENVELOPE_VERSION:
             return False
         expected = self._event_prefix_digest(canonical_events[: basis_index + 1])
         return event_prefix_digest == expected
