@@ -29,6 +29,7 @@
 - checkpoint schema version fields 相关实现必须遵守 `docs/checkpoint-schema-version-fields-v0.1.md`，并先写 red tests；当前只落设计边界，不得直接实现 `checkpoint_schema_version`、`state_schema_version`、`integrity_schema_version`、schema registry 或 migrator。
 - server-facing checkpoint 相关实现必须遵守 `docs/server-checkpoint-boundary-v0.1.md`；Server 不能直接解释 checkpoint state，必须通过 projector-owned boundary。
 - checkpoint save trigger 相关实现必须遵守 `docs/checkpoint-save-trigger-v0.1.md`；当前只允许 internal-only `save_checkpoint_for_run(...)`，不要复用 public-looking `create_checkpoint(...)`。
+- `ActionTypeRegistry` 相关实现必须先读 `docs/action-type-registry-v0.1.md` 并写 red tests；registry 不能绕过 action chain、不能替代 policy / executor、不能扩大 `PolicyDecision.grants`，第一轮只允许覆盖当前 `call_tool` + `write_artifact_tool` 的最小边界。
 
 ## Current Slice
 
@@ -249,6 +250,9 @@
 - checkpoint v0.1 scope freeze
 - checkpoint v0.1 is functionally sufficient for the current kernel slice
 - checkpoint history index / retention / GC remain deferred and are not the default next implementation target
+- `ActionTypeRegistry` minimal boundary design note
+- registry implementation remains deferred until red tests
+- registry cannot replace compiler / policy / executor boundaries
 - `RunProjector.save_checkpoint(...)` remains latest-only
 - `InProcessServer.save_checkpoint_for_run(...)` remains latest-only by default
 - latest write / history write failure ordering must be explicit before implementation
@@ -327,7 +331,8 @@
 
 下一阶段默认不要继续深挖 checkpoint。优先考虑：
 
-- `ActionTypeRegistry` minimal boundary docs / red tests
+- `ActionTypeRegistry` minimal boundary red tests
+- first registry slice should stay limited to `call_tool` + `write_artifact_tool`
 - memory write/query boundary docs
 - external ingestion / `ImportedSnapshot` boundary docs
 

@@ -144,7 +144,7 @@ approval 事件当前建议单独记录：
 
 ### Open Question
 
-- `ActionTypeRegistry` 的 schema、版本化、注册生命周期。
+- `ActionTypeRegistry` 的 schema、版本化、注册生命周期；当前最小边界见 `docs/action-type-registry-v0.1.md`。
 - `ActionExecution.result` 的统一形状。
 - retry / cancel / supersede 语义。
 - approval API 与 blocked/resume 的具体协议。
@@ -432,7 +432,7 @@ application-level orientation、persona、pedagogy、grading policy 和学习路
 
 当前 v0.1 不解决以下问题：
 
-- `ActionTypeRegistry` 的 schema、版本化、注册生命周期。
+- `ActionTypeRegistry` 的 schema、版本化、注册生命周期；当前最小边界见 `docs/action-type-registry-v0.1.md`。
 - `ActionExecution.result` 的统一形状。
 - retry / cancel / supersede 语义。
 - `RunState` / `SessionState` 的具体字段 schema。

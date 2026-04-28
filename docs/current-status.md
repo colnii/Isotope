@@ -267,6 +267,10 @@
 - checkpoint v0.1 is functionally sufficient for the current kernel slice
 - checkpoint line is frozen unless explicitly reopened by storage growth / performance / operational need
 - checkpoint history index / retention / GC remain deferred but are not the next implementation target
+- `ActionTypeRegistry` minimal boundary design note 已落文档
+- `ActionTypeRegistry` implementation remains deferred until red tests
+- registry must not replace `ActionCompiler` / `PolicyEngine` / `Executor`
+- registry must not expand `PolicyDecision.grants` or bypass action chain
 - checkpoint migration / version negotiation design note 已落文档
 - current checkpoint uses `projector_version`; current projector version is `run_projector@v1`
 - incompatible checkpoint projector version invalidates checkpoint and falls back to full rebuild
@@ -379,7 +383,8 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- `ActionTypeRegistry` minimal boundary docs / red tests
+- `ActionTypeRegistry` minimal boundary red tests
+- first registry red tests should cover `call_tool` + `write_artifact_tool`, unknown tool fail-closed, malformed registry entry fail-fast
 - memory write/query boundary docs only if `ActionTypeRegistry` is not the immediate next slice
 - external ingestion / `ImportedSnapshot` boundary docs only after the next kernel surface is explicitly selected
 
