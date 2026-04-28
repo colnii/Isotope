@@ -108,7 +108,7 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 
 - automatic checkpoint scheduling
 - `save_checkpoint(...)` semantic change / automatic history persistence
-- projector/server automatic history save integration
+- server automatic history save integration
 - checkpoint history index
 - checkpoint GC
 - checkpoint retention policy
@@ -204,6 +204,7 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - corrupt / missing history index 不能让系统跳过 full event-log replay。
 - checkpoint history save boundary design note 已落文档。
 - `FileCheckpointStore.save_checkpoint_history(run_id, checkpoint)` 已实现为 explicit history candidate save method。
+- `RunProjector.save_checkpoint_history(...)` 已实现为显式 projector-owned history save method。
 - history save 不覆盖 `latest.json`，不修改 event log。
 - `FileCheckpointStore` 仍保持 opaque，不解释 checkpoint state / integrity / projector version。
 - `save_checkpoint(...)` 仍是 latest-only replacement，不自动保存 history。
@@ -254,6 +255,6 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - event envelope schema registry boundary red tests。
 - checkpoint history index / retention boundary red tests。
 - automatic history persistence from `save_checkpoint(...)` boundary red tests。
-- projector/server history save integration boundary red tests。
+- server history save integration boundary red tests。
 - corrupt / missing history index fallback boundary red tests。
 - server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。

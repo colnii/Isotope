@@ -46,6 +46,8 @@ checkpoint history save 边界见 `docs/checkpoint-history-save-boundary-v0.1.md
 - `create_checkpoint(...)` 仍返回 `not_enabled`。
 - `save_checkpoint_for_run(...)` 已作为 internal-only manual save trigger 实现。
 - `save_checkpoint_for_run(...)` 只调用 projector-owned `RunProjector.save_checkpoint(...)`，不读取或解释 checkpoint state。
+- `RunProjector.save_checkpoint_history(...)` 已实现为显式 projector-owned history save method。
+- `save_checkpoint_for_run(...)` 默认仍不调用 history save。
 - checkpoint missing 或所有 candidates invalid 时 fallback full rebuild。
 - projector-owned read path 可在 invalid latest checkpoint 后尝试 older fully valid checkpoint candidate。
 - server 不直接选择、解释或信任 old checkpoint，仍只调用 projector-owned boundary。
@@ -59,7 +61,7 @@ checkpoint history save 边界见 `docs/checkpoint-history-save-boundary-v0.1.md
 - 没有 broader checkpoint retention / compaction implementation。
 - 没有 checkpoint history index。
 - 没有 `save_checkpoint(...)` semantic change / automatic history persistence。
-- 没有 projector/server automatic history save integration。
+- 没有 server automatic history save integration。
 - 没有 checkpoint GC / retention policy。
 
 ## Decision
@@ -139,7 +141,7 @@ v0.1 decision：
 - broader checkpoint retention / compaction implementation。
 - checkpoint history index。
 - `save_checkpoint(...)` semantic change / automatic history persistence。
-- projector/server automatic history save integration。
+- server automatic history save integration。
 - checkpoint GC / retention policy。
 - checkpoint migration / version negotiation。
 - `SessionState` checkpoint。
@@ -168,7 +170,7 @@ v0.1 decision：
 - public API 仍不得暴露 checkpoint state。
 - checkpoint retention / compaction 如接入 server-facing flow，不能让 server 直接解释 checkpoint state，也不能影响 event log。
 - checkpoint history index / retention 如接入 server-facing flow，server 仍不能直接选择或解释 checkpoint，只能调用 projector-owned boundary。
-- checkpoint history save 如接入 server-facing flow，server 仍不能接收或解释 checkpoint state；storage-level `save_checkpoint_history(...)` 已存在，但 server caller 仍需要受控 projector-owned integration。
+- checkpoint history save 如接入 server-facing flow，server 仍不能接收或解释 checkpoint state；storage-level 和 projector-owned `save_checkpoint_history(...)` 已存在，但 server caller 仍需要显式 integration。
 - corrupt / missing history index 如出现在 server-facing read path，不能让 server 跳过 full event-log replay。
 
-暂不实现 public checkpoint API、automatic scheduling、`CheckpointService`、broader checkpoint retention / compaction implementation、checkpoint history index、`save_checkpoint(...)` semantic change / automatic history persistence、projector/server automatic history save integration、signature / MAC / key management。
+暂不实现 public checkpoint API、automatic scheduling、`CheckpointService`、broader checkpoint retention / compaction implementation、checkpoint history index、`save_checkpoint(...)` semantic change / automatic history persistence、server automatic history save integration、signature / MAC / key management。

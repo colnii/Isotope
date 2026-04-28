@@ -39,6 +39,7 @@ Checkpoint save trigger 的目标，是给已有 projector-owned checkpoint save
 - latest-only checkpoint storage boundary hardening 已实现；save trigger 不执行 broader retention / compaction。
 - checkpoint history save boundary design note 已落文档。
 - `FileCheckpointStore.save_checkpoint_history(...)` 已实现为 explicit history candidate save method。
+- `RunProjector.save_checkpoint_history(...)` 已实现为显式 projector-owned history save method。
 - 当前 save trigger 不触发 history save，仍只调用 `RunProjector.save_checkpoint(...)` 写 latest checkpoint。
 
 ## Decision
@@ -103,7 +104,7 @@ v0.1 decision：
 
 - automatic checkpoint scheduling。
 - `save_checkpoint(...)` semantic change / automatic history persistence。
-- projector/server automatic history save integration。
+- server automatic history save integration。
 - checkpoint GC。
 - checkpoint retention policy。
 - `CheckpointService`。

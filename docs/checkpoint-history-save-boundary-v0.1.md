@@ -30,12 +30,13 @@ checkpoint history save 的目的，是在 future save path 需要保留历史 c
 - checkpoint history save integration boundary 已落文档，见 `docs/checkpoint-history-save-integration-v0.1.md`。
 - 最小 projector-owned old-checkpoint fallback 已实现的是 read path，不是 save/history policy。
 - `InProcessServer.save_checkpoint_for_run(run_id)` 仍只调用 projector-owned `RunProjector.save_checkpoint(...)`。
-- projector / server 当前还没有 history save integration。
+- `RunProjector.save_checkpoint_history(...)` 已实现为显式 projector-owned history save method。
+- server 当前还没有 automatic history save integration。
 - 当前没有 checkpoint history index。
 - 当前没有 retention policy。
 - 当前没有 checkpoint GC。
 - 当前没有 `CheckpointService`。
-- 当前 full regression：`369 passed`。
+- 当前 full regression：`379 passed`。
 
 ## Decision
 
@@ -144,8 +145,7 @@ history index 更新如果失败，应有明确 fallback：
 
 - `save_checkpoint(...)` semantic change。
 - automatic history persistence from `save_checkpoint(...)`。
-- projector/server automatic history save integration。
-- projector-owned history save method implementation。
+- server automatic history save integration。
 - checkpoint history index。
 - retention policy。
 - checkpoint GC。

@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`57636a1d6727d896371efb6a846c2003c31d19aa`。
+- 最新 implementation commit：`9edb90293881970e0bd25adf87b1de5e4bf4131b`。
 
 ## Implemented Slice
 
@@ -240,10 +240,18 @@
 - `FileCheckpointStore` remains opaque and does not interpret checkpoint state / integrity / projector version
 - `save_checkpoint(...)` remains latest-only replacement and does not automatically save history
 - checkpoint history save integration boundary design note 已落文档
-- projector / server history save integration is not implemented
-- `RunProjector.save_checkpoint(...)` still only calls latest save
+- projector-owned checkpoint history save method
+- `RunProjector.save_checkpoint_history(...)`
+- history save method reads canonical events from `event_store.list_events(run_id)`
+- history save method creates checkpoint through `RunProjector.create_checkpoint(...)`
+- history save method calls `checkpoint_store.save_checkpoint_history(run_id, checkpoint)`
+- history save method does not call `checkpoint_store.save_checkpoint(...)`
+- history save method does not write `latest.json`
+- history save method does not modify event log
+- empty / malformed / lifecycle-invalid event stream fail-fast without writing history candidate
+- `RunProjector.save_checkpoint(...)` remains latest-only
 - `InProcessServer.save_checkpoint_for_run(...)` still uses projector-owned latest save by default
-- future history integration must be explicit and projector-owned
+- server automatic history save integration is not implemented
 - checkpoint migration / version negotiation design note 已落文档
 - current checkpoint uses `projector_version`; current projector version is `run_projector@v1`
 - incompatible checkpoint projector version invalidates checkpoint and falls back to full rebuild
@@ -294,7 +302,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-369 passed
+379 passed
 ```
 
 Import boundary check:
@@ -317,7 +325,6 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - automatic checkpoint scheduling
 - CheckpointService
 - `save_checkpoint(...)` semantic change / automatic history persistence
-- projector-owned history save method implementation
 - server automatic history save integration
 - checkpoint history index
 - checkpoint GC
