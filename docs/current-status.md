@@ -243,6 +243,10 @@
 - checkpoint event envelope version mismatch invalidates checkpoint and falls back to full rebuild without reading checkpoint state
 - legacy checkpoint without event envelope version metadata still uses compatibility path
 - event envelope version mismatch cannot rewrite event log or make malformed events valid
+- event envelope schema registry design note 已落文档
+- current only event envelope version is `canonical_event_slice@v0`
+- no event envelope schema registry or registry lookup is implemented
+- future registry cannot rewrite event log, make malformed events valid, or generate state outside projector-owned boundary
 
 ## Tests
 
@@ -295,6 +299,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - event schema registry
 - payload schema registry
 - event envelope schema registry
+- event envelope registry lookup
 - event migration
 - audit event for checkpoint migration
 - content-addressed event ids
@@ -316,7 +321,6 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- event envelope schema registry design note
 - checkpoint history / old-checkpoint fallback design note
 
 不要直接进入 real LLM / memory / ingestion。

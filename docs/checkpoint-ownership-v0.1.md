@@ -27,6 +27,7 @@ v0.1 决定：
 - checkpoint save trigger 的边界见 `docs/checkpoint-save-trigger-v0.1.md`。
 - event prefix digest 的边界见 `docs/event-prefix-digest-v0.1.md`。
 - event envelope versioning 的边界见 `docs/event-envelope-versioning-v0.1.md`。
+- event envelope schema registry 的边界见 `docs/event-envelope-schema-registry-v0.1.md`。
 - checkpoint retention / compaction 的边界见 `docs/checkpoint-retention-compaction-v0.1.md`。
 - checkpoint migration / version negotiation 的边界见 `docs/checkpoint-migration-versioning-v0.1.md`。
 - checkpoint schema version fields 的边界见 `docs/checkpoint-schema-version-fields-v0.1.md`。
@@ -115,6 +116,7 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - state schema registry
 - integrity schema registry
 - event envelope schema registry
+- event envelope registry lookup
 - event schema registry
 - payload schema registry
 - event migration
@@ -197,6 +199,7 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - checkpoint schema 仍是 v0 candidate，event envelope 仍是 slice-only shape。
 - migration / version negotiation 不能修改 canonical event log，不能伪造 state，不能跳过 checkpoint validation chain。
 - event envelope versioning design note 已落文档。
+- event envelope schema registry design note 已落文档。
 - 当前 `CanonicalEvent` envelope 仍是 slice-only implementation shape。
 - 当前 event prefix digest 绑定的是当前 slice canonical event representation。
 - `CanonicalEvent` 当前有 `event_envelope_version`，默认值是 `canonical_event_slice@v0`。
@@ -206,6 +209,7 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - checkpoint event envelope version mismatch 只让 checkpoint 失效并 fallback full rebuild，且不能读取 checkpoint state。
 - legacy checkpoint 无 event envelope version metadata 仍走兼容路径。
 - event envelope versioning 不能重写 canonical event log，不能让 malformed event 变合法。
+- 当前没有 event envelope schema registry 或 registry lookup；future registry 不能重写 event log、不能解释 payload、不能让 server / checkpoint store 直接生成 state。
 - `InProcessServer.get_run_state(...)` 没有 checkpoint store 时仍走 full event log rebuild，有 checkpoint store 时调用 `RunProjector.rebuild_with_checkpoint(...)`。
 - server 不直接读取或解释 checkpoint state，不创建 checkpoint，不写 checkpoint store。
 - `create_checkpoint(...)` 仍返回 `not_enabled`。
@@ -219,6 +223,6 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 后续实现必须先写 red tests，优先覆盖：
 
 - checkpoint schema version fields boundary red tests。
-- event envelope schema registry design note。
+- event envelope schema registry boundary red tests。
 - checkpoint history / old-checkpoint fallback design note。
 - server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。

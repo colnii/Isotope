@@ -25,6 +25,8 @@ event prefix digest 的目的，是在 checkpoint 被用作 replay basis 之前�
 - event prefix digest input 已包含 `event_envelope_version`。
 - checkpoint integrity metadata 已记录 digest 绑定的 event envelope version：`event_digest_event_envelope_version`。
 - event envelope versioning design note 已落文档，边界见 `docs/event-envelope-versioning-v0.1.md`。
+- event envelope schema registry design note 已落文档，边界见 `docs/event-envelope-schema-registry-v0.1.md`。
+- 当前没有 event envelope schema registry，也没有 registry lookup。
 - 当前 full regression：`352 passed`。
 
 已有边界仍然有效：
@@ -44,6 +46,7 @@ v0.1 decision：
 - digest mismatch 只能让 checkpoint invalid，并 fallback 到 full event-log rebuild。
 - digest match 不能证明业务状态正确，只能说明参与 digest 的 prefix bytes / canonical event representation 一致。
 - digest metadata 必须明确绑定当前 event representation version。
+- future registry 如果存在，digest metadata 可以绑定 registry entry 或 representation version，但 registry 不能替代 replay validation。
 - legacy checkpoint 没有 prefix digest 时，仍按当前兼容路径处理，不能直接判 malformed。
 
 ## Hard Boundaries
@@ -139,6 +142,7 @@ fallback full rebuild 仍必须执行完整 canonical event validation 和 lifec
 以下问题当前不定为 Hard Contract：
 
 - canonical event serialization 的正式版本。
+- event envelope schema registry 是否参与 digest metadata。
 - linear digest 还是 Merkle / chunked digest。
 - event migration 后 digest 如何处理。
 - 是否需要把 event count / first_event_id / basis_event_id 全部纳入 digest metadata。
@@ -150,6 +154,8 @@ fallback full rebuild 仍必须执行完整 canonical event validation 和 lifec
 
 - `FileCheckpointStore` digest-specific behavior。
 - `InProcessServer` digest-specific behavior。
+- event envelope schema registry。
+- event envelope registry lookup。
 - event schema registry。
 - payload schema registry。
 - signature / MAC / key management。

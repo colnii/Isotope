@@ -4,7 +4,7 @@
 
 本文定义 event envelope versioning（事件信封版本化）的 v0.1 边界：当前 slice-only `CanonicalEvent` envelope 未来如何版本化，以及 event prefix digest（事件前缀摘要）如何绑定到明确的 event representation（事件表示）。
 
-当前已实现最小 event envelope version boundary：`CanonicalEvent` 带有当前 slice representation 的 `event_envelope_version`，checkpoint event prefix digest 也记录它绑定的 event representation version。本文件仍不是最终 protocol spec，schema registry 和 migration 仍 deferred。
+当前已实现最小 event envelope version boundary：`CanonicalEvent` 带有当前 slice representation 的 `event_envelope_version`，checkpoint event prefix digest 也记录它绑定的 event representation version。本文件仍不是最终 protocol spec；event envelope schema registry 只有设计说明，未实现 registry lookup，migration 仍 deferred。
 
 ## Purpose
 
@@ -26,6 +26,8 @@ event envelope versioning 的目的，是在不改变 canonical event log source
 - checkpoint integrity metadata 已记录 digest 绑定的 event envelope version：`event_digest_event_envelope_version`。
 - checkpoint event envelope version mismatch 会让 checkpoint invalid，并 fallback full rebuild，且不会读取 checkpoint state。
 - legacy checkpoint 缺少 event envelope version metadata 时，仍按兼容路径处理。
+- event envelope schema registry design note 已落文档，边界见 `docs/event-envelope-schema-registry-v0.1.md`。
+- 当前没有 event envelope schema registry，也没有 registry lookup。
 - 当前 full regression：`352 passed`。
 
 ## Decision
@@ -39,6 +41,7 @@ v0.1 design decision：
 - 老事件如果没有 version，只能按当前明确的 legacy slice representation 处理，不能由 caller 隐式猜测。
 - envelope version 不能只藏在 checkpoint 里；它必须出现在 event representation boundary 中，并影响 event serialization、digest、replay 和 projector validation。
 - 当前 `event_envelope_version` 是 v0 slice implementation shape，不是最终协议。
+- event envelope schema registry 如果未来实现，也不能改变 canonical event log source-of-truth 边界。
 - 本轮不实现 event schema registry 或 payload schema registry。
 
 ## Hard Boundaries
@@ -57,6 +60,7 @@ v0.1 design decision：
 - checkpoint 中的 version metadata 不能覆盖 event log 中的真实 event representation。
 - `FileCheckpointStore` 仍保持 opaque，不解释 event envelope version 或 payload schema。
 - `InProcessServer` 不能直接解释 event envelope version 来生成 state；仍必须通过 projector-owned boundary。
+- event envelope schema registry 不能让 server 或 checkpoint store 直接解释 event 并生成 state。
 
 ## v0 Candidate Shape
 
@@ -130,7 +134,8 @@ digest input 必须明确包含 event representation version。
 - event migration 是追加新事件、生成 derived view，还是只影响 checkpoint。
 - event ordering / idempotency 如何和 version 交互。
 - event prefix digest 跨 envelope version 是否可比较。
-- 是否需要 event envelope schema registry。
+- event envelope schema registry 未来采用代码内 static map，还是外部 schema 文件。
+- registry mismatch 是 fail fast，还是允许 explicit migrator。
 - 是否需要 payload schema registry。
 
 ## Invalid Uses
@@ -149,6 +154,8 @@ digest input 必须明确包含 event representation version。
 
 当前仍不实现：
 
+- event envelope schema registry。
+- event envelope registry lookup。
 - event schema registry。
 - payload schema registry。
 - event migration。
@@ -163,7 +170,7 @@ digest input 必须明确包含 event representation version。
 
 后续如继续推进，应先写 red tests，优先覆盖：
 
-- event envelope schema registry 是否需要，以及如何和当前 `canonical_event_slice@v0` 兼容。
+- event envelope schema registry boundary red tests。
 - event payload schema per `event_type` 如何版本化。
 - version mismatch 不能隐藏 malformed / lifecycle-invalid event log。
 - event envelope version 不得只由 checkpoint 决定。

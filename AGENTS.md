@@ -18,6 +18,7 @@
 - checkpoint hash 已有最小 validation；后续扩展 signature / MAC / key management 前，必须先更新设计文档并写 red tests。
 - event prefix digest 已有最小 validation；后续扩展必须遵守 `docs/event-prefix-digest-v0.1.md`，并先写 red tests。digest 不能替代 replay、lifecycle validation、state schema validation 或 prefix consistency validation。
 - event envelope versioning 相关实现必须遵守 `docs/event-envelope-versioning-v0.1.md`，并先写 red tests；最小 event envelope version boundary 已实现，但不得直接扩展 event envelope schema registry、event schema registry、payload schema registry、event migration 或 content-addressed event ids。
+- event envelope schema registry 相关实现必须遵守 `docs/event-envelope-schema-registry-v0.1.md`，并先写 red tests；当前只落设计边界，不得直接实现 registry lookup、payload schema registry、event migration、migrator registry 或 public inspection API。
 - checkpoint retention / compaction 相关实现必须遵守 `docs/checkpoint-retention-compaction-v0.1.md`，并先写 red tests；retention / compaction 不能删除、重写、压缩或裁剪 canonical event log。latest-only replacement boundary 已实现，但 checkpoint history / GC / scheduling 仍 deferred。
 - checkpoint migration / version negotiation 相关实现必须遵守 `docs/checkpoint-migration-versioning-v0.1.md`，并先写 red tests；checkpoint projector version boundary hardening 已实现，但不得直接实现 migrator、schema registry、migrator registry 或 event log migration。
 - checkpoint schema version fields 相关实现必须遵守 `docs/checkpoint-schema-version-fields-v0.1.md`，并先写 red tests；当前只落设计边界，不得直接实现 `checkpoint_schema_version`、`state_schema_version`、`integrity_schema_version`、schema registry 或 migrator。
@@ -232,6 +233,11 @@
 - checkpoint event envelope version mismatch invalidates checkpoint and falls back to full rebuild without reading checkpoint state
 - legacy checkpoint without event envelope version metadata remains supported
 - event envelope versioning cannot rewrite canonical event log or make malformed events valid
+- event envelope schema registry boundary design note
+- current only event envelope version is `canonical_event_slice@v0`
+- no event envelope schema registry or registry lookup is implemented
+- future registry cannot rewrite canonical event log or make malformed events valid
+- server and checkpoint store cannot use registry directly to generate state
 
 ## Deferred
 
@@ -260,6 +266,7 @@
 - state schema registry
 - integrity schema registry
 - event envelope schema registry
+- event envelope registry lookup
 - event schema registry
 - payload schema registry
 - event migration

@@ -23,6 +23,7 @@ checkpoint migration / versioning 的目的，是在 checkpoint shape 或 projec
 - checkpoint schema version fields design note 已落文档，边界见 `docs/checkpoint-schema-version-fields-v0.1.md`。
 - event envelope 仍是 slice-only shape，不是最终协议。
 - event envelope versioning design note 已落文档，最小 event envelope version boundary 已实现；边界见 `docs/event-envelope-versioning-v0.1.md`。
+- event envelope schema registry design note 已落文档，边界见 `docs/event-envelope-schema-registry-v0.1.md`。
 - `CanonicalEvent` 当前有 `event_envelope_version`，默认值是 `canonical_event_slice@v0`。
 - checkpoint integrity metadata 已记录 event prefix digest 绑定的 event envelope version。
 - checkpoint integrity/hash validation 已实现。
@@ -43,6 +44,7 @@ checkpoint migration / versioning 的目的，是在 checkpoint shape 或 projec
 - state schema version 字段。
 - integrity schema version 字段。
 - event envelope schema registry。
+- event envelope registry lookup。
 
 ## Implementation Status
 
@@ -55,6 +57,7 @@ checkpoint migration / versioning 的目的，是在 checkpoint shape 或 projec
 - `projector_version` override 参数仍控制兼容性，但 malformed version 不能因为 caller 传同样 malformed 值而被接受。
 - future sketch fields 如 `checkpoint_schema_version` / `state_schema_version` 不能 override `projector_version`；已实现的 event envelope version boundary 也不能 override `projector_version`。
 - checkpoint schema version fields 如果未来实现，也不能让 malformed checkpoint 合法，不能让 checkpoint state 被直接读取。
+- event envelope schema registry 如果未来实现，也不能让 malformed event 合法，不能替代 event migration。
 - compatible checkpoint 带 future sketch fields 时，仍按当前 validation chain 处理。
 - `FileCheckpointStore` 仍保持 opaque，不解释 version 字段。
 
@@ -90,6 +93,7 @@ v0.1 design decision：
 - migration / version negotiation 不能跳过 checkpoint integrity/hash validation。
 - migration / version negotiation 不能跳过 event prefix digest validation。
 - event envelope version mismatch 不能让 malformed event 变合法。
+- event envelope schema registry mismatch 只能 fail fast 或 checkpoint fallback，不能静默猜测。
 - checkpoint 中的 event envelope version metadata 不能覆盖 event log 的真实 representation。
 - migration 失败时必须 fallback full rebuild 或 fail fast；不能返回半迁移 state。
 - public client 不能提交 checkpoint state、migration adapter 或 version override。
@@ -166,6 +170,7 @@ Schema sketch：
 
 - checkpoint schema version 是否独立于 projector version。
 - future event envelope schema version 变化后，event prefix digest 如何迁移或比较；当前边界见 `docs/event-envelope-versioning-v0.1.md`。
+- event envelope schema registry 如何和 future event migration / migrator registry 协作。
 - event migration 后 digest 如何处理。
 - migration 是否保留 old checkpoint。
 - migration 失败是否 fallback full rebuild。
@@ -199,6 +204,7 @@ Schema sketch：
 - state schema registry。
 - integrity schema registry。
 - event envelope schema registry。
+- event envelope registry lookup。
 - event schema registry。
 - payload schema registry。
 - migrator registry。
@@ -213,7 +219,7 @@ Schema sketch：
 下一轮如继续推进，应先写 red tests，优先覆盖：
 
 - checkpoint schema version fields boundary red tests。
-- event envelope schema registry design note。
+- event envelope schema registry boundary red tests。
 - malformed future `checkpoint_schema_version` / `event_envelope_schema_version` 字段的边界。
 - 不兼容 version fallback full rebuild 继续执行完整 event validation。
 - `FileCheckpointStore` 仍不解释 version 字段。
