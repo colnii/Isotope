@@ -29,6 +29,7 @@ v0.1 决定：
 - event envelope versioning 的边界见 `docs/event-envelope-versioning-v0.1.md`。
 - checkpoint retention / compaction 的边界见 `docs/checkpoint-retention-compaction-v0.1.md`。
 - checkpoint migration / version negotiation 的边界见 `docs/checkpoint-migration-versioning-v0.1.md`。
+- checkpoint schema version fields 的边界见 `docs/checkpoint-schema-version-fields-v0.1.md`。
 
 ## Hard Boundaries
 
@@ -110,6 +111,9 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - checkpoint version negotiation implementation
 - checkpoint migrator registry
 - schema registry
+- checkpoint schema registry
+- state schema registry
+- integrity schema registry
 - event envelope schema registry
 - event schema registry
 - payload schema registry
@@ -178,7 +182,11 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - retention / compaction 只能处理 checkpoint blobs，不能删除、重写、压缩或裁剪 canonical event log。
 - checkpoint 删除后仍必须能从 canonical event log full rebuild。
 - checkpoint migration / version negotiation design note 已落文档。
+- checkpoint schema version fields design note 已落文档。
 - 当前 checkpoint 使用 `projector_version`；当前 projector version 是 `run_projector@v1`。
+- 当前实现仍以 `projector_version` 作为 checkpoint compatibility 的唯一已实现版本边界。
+- `checkpoint_schema_version` / `state_schema_version` / `integrity_schema_version` 目前还没有实现字段。
+- checkpoint schema version fields 不能覆盖 `projector_version`，不能让 malformed checkpoint 合法，不能让 checkpoint 成为第二事实源。
 - projector version 不兼容时，checkpoint 会失效并 fallback full rebuild。
 - malformed `projector_version` 不会被使用；non-string / empty `projector_version` 会让 checkpoint invalid 并 fallback full rebuild。
 - incompatible 或 malformed version fallback 不读取 checkpoint state，且不能隐藏 lifecycle-invalid event log。
@@ -210,7 +218,7 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 
 后续实现必须先写 red tests，优先覆盖：
 
-- checkpoint schema version fields design note。
+- checkpoint schema version fields boundary red tests。
 - event envelope schema registry design note。
 - checkpoint history / old-checkpoint fallback design note。
 - server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。

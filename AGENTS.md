@@ -20,6 +20,7 @@
 - event envelope versioning 相关实现必须遵守 `docs/event-envelope-versioning-v0.1.md`，并先写 red tests；最小 event envelope version boundary 已实现，但不得直接扩展 event envelope schema registry、event schema registry、payload schema registry、event migration 或 content-addressed event ids。
 - checkpoint retention / compaction 相关实现必须遵守 `docs/checkpoint-retention-compaction-v0.1.md`，并先写 red tests；retention / compaction 不能删除、重写、压缩或裁剪 canonical event log。latest-only replacement boundary 已实现，但 checkpoint history / GC / scheduling 仍 deferred。
 - checkpoint migration / version negotiation 相关实现必须遵守 `docs/checkpoint-migration-versioning-v0.1.md`，并先写 red tests；checkpoint projector version boundary hardening 已实现，但不得直接实现 migrator、schema registry、migrator registry 或 event log migration。
+- checkpoint schema version fields 相关实现必须遵守 `docs/checkpoint-schema-version-fields-v0.1.md`，并先写 red tests；当前只落设计边界，不得直接实现 `checkpoint_schema_version`、`state_schema_version`、`integrity_schema_version`、schema registry 或 migrator。
 - server-facing checkpoint 相关实现必须遵守 `docs/server-checkpoint-boundary-v0.1.md`；Server 不能直接解释 checkpoint state，必须通过 projector-owned boundary。
 - checkpoint save trigger 相关实现必须遵守 `docs/checkpoint-save-trigger-v0.1.md`；当前只允许 internal-only `save_checkpoint_for_run(...)`，不要复用 public-looking `create_checkpoint(...)`。
 
@@ -209,6 +210,12 @@
 - current checkpoint uses `projector_version`; current projector version is `run_projector@v1`
 - incompatible checkpoint projector version invalidates checkpoint and falls back to full rebuild
 - checkpoint schema remains v0 candidate and event envelope remains slice-only shape
+- checkpoint schema version fields boundary design note
+- `projector_version` remains the only implemented checkpoint compatibility version boundary
+- `checkpoint_schema_version` / `state_schema_version` / `integrity_schema_version` are not implemented fields
+- checkpoint schema version fields cannot override `projector_version`
+- checkpoint schema version fields cannot make checkpoint a source of truth
+- `FileCheckpointStore` remains opaque and does not interpret checkpoint schema fields
 - checkpoint projector version boundary hardening
 - malformed `projector_version` is never treated as compatible
 - incompatible or malformed version fallback does not read checkpoint state
@@ -245,7 +252,13 @@
 - signature / MAC / key management
 - checkpoint migration / version negotiation implementation
 - checkpoint migrator registry
+- checkpoint_schema_version field
+- state_schema_version field
+- integrity_schema_version field
 - schema registry
+- checkpoint schema registry
+- state schema registry
+- integrity schema registry
 - event envelope schema registry
 - event schema registry
 - payload schema registry

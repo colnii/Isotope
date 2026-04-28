@@ -20,6 +20,7 @@ checkpoint migration / versioning 的目的，是在 checkpoint shape 或 projec
 - `RunProjector.PROJECTOR_VERSION` 当前是 `run_projector@v1`。
 - `RunProjector.rebuild_with_checkpoint(...)` 遇到 projector version 不兼容时，会丢弃 checkpoint 并 fallback full rebuild。
 - checkpoint schema 仍是 v0 candidate，不是永久协议。
+- checkpoint schema version fields design note 已落文档，边界见 `docs/checkpoint-schema-version-fields-v0.1.md`。
 - event envelope 仍是 slice-only shape，不是最终协议。
 - event envelope versioning design note 已落文档，最小 event envelope version boundary 已实现；边界见 `docs/event-envelope-versioning-v0.1.md`。
 - `CanonicalEvent` 当前有 `event_envelope_version`，默认值是 `canonical_event_slice@v0`。
@@ -28,6 +29,8 @@ checkpoint migration / versioning 的目的，是在 checkpoint shape 或 projec
 - event prefix digest validation 已实现。
 - checkpoint state schema validation 和 prefix consistency validation 已实现。
 - checkpoint projector version boundary hardening 已实现。
+- 当前实现仍以 `projector_version` 作为 checkpoint compatibility 的唯一已实现版本边界。
+- `checkpoint_schema_version` / `state_schema_version` / `integrity_schema_version` 目前还没有实现字段。
 - 当前 full regression：`352 passed`。
 
 当前没有实现：
@@ -37,6 +40,8 @@ checkpoint migration / versioning 的目的，是在 checkpoint shape 或 projec
 - schema registry。
 - migrator registry。
 - checkpoint schema version 字段。
+- state schema version 字段。
+- integrity schema version 字段。
 - event envelope schema registry。
 
 ## Implementation Status
@@ -49,6 +54,7 @@ checkpoint migration / versioning 的目的，是在 checkpoint shape 或 projec
 - malformed / incompatible version fallback 不能隐藏 lifecycle-invalid event log。
 - `projector_version` override 参数仍控制兼容性，但 malformed version 不能因为 caller 传同样 malformed 值而被接受。
 - future sketch fields 如 `checkpoint_schema_version` / `state_schema_version` 不能 override `projector_version`；已实现的 event envelope version boundary 也不能 override `projector_version`。
+- checkpoint schema version fields 如果未来实现，也不能让 malformed checkpoint 合法，不能让 checkpoint state 被直接读取。
 - compatible checkpoint 带 future sketch fields 时，仍按当前 validation chain 处理。
 - `FileCheckpointStore` 仍保持 opaque，不解释 version 字段。
 
@@ -66,12 +72,14 @@ v0.1 design decision：
 - event replay 仍是最终恢复路径。
 - checkpoint hash、event prefix digest、state schema validation、prefix consistency validation 和 lifecycle validation 不能被 migration 跳过。
 - checkpoint schema 和 projector version 的字段名仍是 v0 candidate / schema sketch，不是永久协议。
+- checkpoint schema version fields 的详细边界见 `docs/checkpoint-schema-version-fields-v0.1.md`。
 - 当前 `event_envelope_version` 是 v0 slice implementation shape，不是最终 protocol；它不能只藏在 checkpoint 里，必须影响 event serialization、digest、replay 和 projector validation 的明确边界。
 
 ## Hard Boundaries
 
 - version mismatch 不能被忽略。
 - version mismatch 不能通过 server、storage 或 caller 直接覆盖。
+- checkpoint schema version mismatch 不能覆盖或绕过 `projector_version`。
 - 不兼容 checkpoint 不能作为 `RunState` source。
 - migration / version negotiation 不能删除、重写、压缩或裁剪 canonical events。
 - migration / version negotiation 不能把 checkpoint 写回 event log。
@@ -98,11 +106,13 @@ v0.1 design decision：
 - 无兼容 migrator 时，不尝试使用旧 checkpoint。
 - 不兼容 checkpoint 的存在不影响 canonical event log rebuild。
 - future schema sketch fields 不能覆盖 `projector_version` 兼容性判断；event envelope version mismatch 只能让 checkpoint invalid 并 fallback full rebuild。
+- `checkpoint_schema_version` / `state_schema_version` / `integrity_schema_version` 目前只是 sketch，不是当前实现契约。
 
 未来可以考虑在 checkpoint 中增加：
 
 - `checkpoint_schema_version`
 - `state_schema_version`
+- `integrity_schema_version`
 - `event_envelope_schema_version`
 - `migration_from`
 - `migration_adapter`
@@ -114,8 +124,11 @@ Schema sketch：
   "run_id": "run_001",
   "projector_version": "run_projector@v2",
   "checkpoint_schema_version": "checkpoint@v1",
-  "event_envelope_schema_version": "event_envelope@v1",
   "state_schema_version": "run_state@v1",
+  "event_envelope_schema_version": "event_envelope@v1",
+  "integrity": {
+    "integrity_schema_version": "checkpoint_integrity@v1"
+  },
   "migration_from": {
     "projector_version": "run_projector@v1"
   }
@@ -183,10 +196,11 @@ Schema sketch：
 - checkpoint migrator implementation。
 - version negotiation implementation。
 - checkpoint schema registry。
+- state schema registry。
+- integrity schema registry。
 - event envelope schema registry。
 - event schema registry。
 - payload schema registry。
-- state schema registry。
 - migrator registry。
 - audit event for checkpoint migration。
 - public checkpoint inspection API。
@@ -198,7 +212,7 @@ Schema sketch：
 
 下一轮如继续推进，应先写 red tests，优先覆盖：
 
-- checkpoint schema version fields design note。
+- checkpoint schema version fields boundary red tests。
 - event envelope schema registry design note。
 - malformed future `checkpoint_schema_version` / `event_envelope_schema_version` 字段的边界。
 - 不兼容 version fallback full rebuild 继续执行完整 event validation。

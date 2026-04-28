@@ -213,6 +213,11 @@
 - current checkpoint uses `projector_version`; current projector version is `run_projector@v1`
 - incompatible checkpoint projector version invalidates checkpoint and falls back to full rebuild
 - checkpoint schema remains v0 candidate
+- checkpoint schema version fields design note 已落文档
+- `projector_version` remains the only implemented checkpoint compatibility version boundary
+- `checkpoint_schema_version` / `state_schema_version` / `integrity_schema_version` are not implemented fields
+- checkpoint schema version fields cannot override `projector_version` or make checkpoint a source of truth
+- `FileCheckpointStore` remains opaque and does not interpret checkpoint schema fields
 - event envelope remains slice-only shape, not final protocol
 - migration / version negotiation cannot modify canonical event log or skip checkpoint validation chain
 - checkpoint projector version boundary hardening
@@ -280,7 +285,13 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - signature / MAC / key management
 - checkpoint migration / version negotiation implementation
 - checkpoint migrator registry
+- `checkpoint_schema_version` field
+- `state_schema_version` field
+- `integrity_schema_version` field
 - schema registry
+- checkpoint schema registry
+- state schema registry
+- integrity schema registry
 - event schema registry
 - payload schema registry
 - event envelope schema registry
@@ -305,7 +316,6 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- checkpoint schema version fields design note
 - event envelope schema registry design note
 - checkpoint history / old-checkpoint fallback design note
 

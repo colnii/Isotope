@@ -25,6 +25,7 @@ v0.1 design decision：
 - 当前实现覆盖最小 `sha256` checkpoint hash 和最小 event prefix digest validation，不包含 signature / MAC / key management。
 - event prefix digest 的边界见 `docs/event-prefix-digest-v0.1.md`。
 - checkpoint migration / version negotiation 的边界见 `docs/checkpoint-migration-versioning-v0.1.md`。
+- checkpoint schema version fields 的边界见 `docs/checkpoint-schema-version-fields-v0.1.md`。
 
 当前实现状态：
 
@@ -47,6 +48,8 @@ v0.1 design decision：
 - checkpoint projector version boundary hardening 已实现：malformed / incompatible `projector_version` 会让 checkpoint invalid，并 fallback full rebuild。
 - malformed / incompatible version fallback 不读取 checkpoint state，且不能隐藏 lifecycle-invalid event log。
 - future schema sketch fields 不能 override `projector_version`。
+- `checkpoint_schema_version` / `state_schema_version` / `integrity_schema_version` 目前还没有实现字段。
+- integrity schema version 如果未来实现，也不能跳过 hash validation 或让 checkpoint 成为 source of truth。
 
 ## Hard Boundaries
 
@@ -115,6 +118,7 @@ hash mismatch 与 checkpoint version 不兼容类似：只能让 checkpoint 不�
 
 - signature / MAC。
 - key management。
+- integrity schema version field。
 - checkpoint migration / version negotiation implementation。
 - schema registry / migrator registry。
 - server API / HTTP exposure。
@@ -140,5 +144,6 @@ hash mismatch 与 checkpoint version 不兼容类似：只能让 checkpoint 不�
 后续实现必须先写 red tests，优先覆盖：
 
 - event envelope versioning 对 checkpoint integrity 和 event prefix digest 的影响。
+- checkpoint schema version fields 对 checkpoint integrity 的影响。
 - checkpoint retention / compaction 对 checkpoint integrity 和 event prefix digest 的影响。
 - server-facing checkpoint 继续扩展时，必须保持 full rebuild 等价，且不能让 server 直接解释 checkpoint state。
