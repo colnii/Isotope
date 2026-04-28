@@ -4,7 +4,7 @@
 
 本文定义 event envelope versioning（事件信封版本化）的 v0.1 边界：当前 slice-only `CanonicalEvent` envelope 未来如何版本化，以及 event prefix digest（事件前缀摘要）如何绑定到明确的 event representation（事件表示）。
 
-本轮只做设计说明，不实现 event envelope version 字段、schema registry 或 migration。
+当前已实现最小 event envelope version boundary：`CanonicalEvent` 带有当前 slice representation 的 `event_envelope_version`，checkpoint event prefix digest 也记录它绑定的 event representation version。本文件仍不是最终 protocol spec，schema registry 和 migration 仍 deferred。
 
 ## Purpose
 
@@ -17,12 +17,16 @@ event envelope versioning 的目的，是在不改变 canonical event log source
 当前实现状态：
 
 - 当前 `CanonicalEvent` 仍是 slice-only implementation shape，不是最终协议。
-- 当前 envelope 大致包含 `event_id`、`run_id`、`event_type`、`payload`、`created_at`。
-- 当前没有显式 event envelope version 字段。
+- 当前 envelope 包含 `event_id`、`run_id`、`event_type`、`payload`、`created_at`、`event_envelope_version`。
+- 当前 `event_envelope_version` 默认值是 `canonical_event_slice@v0`，用于标记当前 slice event representation boundary。
+- legacy event JSON 缺少 `event_envelope_version` 时，按当前 slice legacy representation 读取并填入 `canonical_event_slice@v0`。
+- empty / non-string / unknown event envelope version 会被拒绝，抛受控 `ValueError`。
 - 当前 event prefix digest 已存在。
-- 当前 event prefix digest 绑定的是当前 slice 的 canonical event representation。
-- 当前可以把这个隐式表示在文档中称为 `canonical_event_slice@v0`，但这只是文档称呼，不是实现字段。
-- 当前 full regression：`341 passed`。
+- 当前 event prefix digest input 包含 `event_envelope_version`。
+- checkpoint integrity metadata 已记录 digest 绑定的 event envelope version：`event_digest_event_envelope_version`。
+- checkpoint event envelope version mismatch 会让 checkpoint invalid，并 fallback full rebuild，且不会读取 checkpoint state。
+- legacy checkpoint 缺少 event envelope version metadata 时，仍按兼容路径处理。
+- 当前 full regression：`352 passed`。
 
 ## Decision
 
@@ -31,10 +35,10 @@ v0.1 design decision：
 - append-only canonical event log 仍是唯一 source of truth。
 - event envelope versioning 不能重写 canonical event log。
 - event envelope versioning 不能让 malformed event 变合法。
-- 一旦引入显式 event envelope version，event prefix digest 必须明确绑定到某个 event representation version。
-- 老事件如果没有 version，只能按明确的 legacy slice representation 处理，不能隐式猜测。
-- envelope version 不能只藏在 checkpoint 里；它影响 event serialization、digest、replay 和 projector validation。
-- 本轮不实现 version 字段。
+- event prefix digest 必须明确绑定到当前 event representation version。
+- 老事件如果没有 version，只能按当前明确的 legacy slice representation 处理，不能由 caller 隐式猜测。
+- envelope version 不能只藏在 checkpoint 里；它必须出现在 event representation boundary 中，并影响 event serialization、digest、replay 和 projector validation。
+- 当前 `event_envelope_version` 是 v0 slice implementation shape，不是最终协议。
 - 本轮不实现 event schema registry 或 payload schema registry。
 
 ## Hard Boundaries
@@ -56,28 +60,28 @@ v0.1 design decision：
 
 ## v0 Candidate Shape
 
-当前隐式 event representation 可在文档中称为：
+当前 slice event representation 是：
 
 - `canonical_event_slice@v0`
 
-这个名字只用于设计讨论，不是当前实现字段。
+这个 version string 已作为当前 slice 的 `EVENT_ENVELOPE_VERSION` 使用，但它仍不是最终 protocol。
 
-未来显式字段可以考虑：
+当前最小 envelope shape：
 
 ```json
 {
   "event_id": "evt_001",
   "run_id": "run_001",
-  "event_envelope_version": "canonical_event@v1",
   "event_type": "run.created",
   "payload": {},
-  "created_at": "2026-04-28T00:00:00Z"
+  "created_at": "2026-04-28T00:00:00Z",
+  "event_envelope_version": "canonical_event_slice@v0"
 }
 ```
 
-字段名和 version string 都只是 v0 candidate / schema sketch，不是永久协议。
+字段名和 version string 是当前 v0 slice implementation shape，不是永久协议。
 
-未来 checkpoint integrity / event prefix digest metadata 可以考虑包含 event representation version，例如：
+当前 checkpoint integrity / event prefix digest metadata 包含 event representation version：
 
 ```json
 {
@@ -86,12 +90,12 @@ v0.1 design decision：
     "event_prefix_digest": "...",
     "event_digest_basis_event_id": "evt_123",
     "event_digest_event_count": 42,
-    "event_representation_version": "canonical_event@v1"
+    "event_digest_event_envelope_version": "canonical_event_slice@v0"
   }
 }
 ```
 
-这同样只是 schema sketch。event prefix digest 即使绑定 version，也不能替代 replay validation。
+这仍是当前 v0 slice implementation shape。event prefix digest 即使绑定 version，也不能替代 replay validation。
 
 ## Digest Binding
 
@@ -102,8 +106,9 @@ v0.1 design decision：
 - `event_type`
 - `payload`
 - `created_at`
+- `event_envelope_version`
 
-未来一旦引入 event envelope version，digest input 必须明确包含或绑定 event representation version。
+digest input 必须明确包含 event representation version。
 
 最低要求：
 
@@ -118,7 +123,7 @@ v0.1 design decision：
 以下问题当前不定为 Hard Contract：
 
 - version 是 per-event、per-run log，还是两者都有。
-- legacy no-version events 如何处理。
+- legacy no-version events 长期是否继续支持，以及支持多久。
 - event envelope version 是否参与 event id。
 - event envelope version 是否参与 content hash。
 - event payload schema per `event_type` 如何版本化。
@@ -144,7 +149,6 @@ v0.1 design decision：
 
 当前仍不实现：
 
-- event envelope version field。
 - event schema registry。
 - payload schema registry。
 - event migration。
@@ -159,8 +163,8 @@ v0.1 design decision：
 
 后续如继续推进，应先写 red tests，优先覆盖：
 
-- legacy no-version event 按 `canonical_event_slice@v0` 处理的边界。
-- event prefix digest metadata 绑定 event representation version。
+- event envelope schema registry 是否需要，以及如何和当前 `canonical_event_slice@v0` 兼容。
+- event payload schema per `event_type` 如何版本化。
 - version mismatch 不能隐藏 malformed / lifecycle-invalid event log。
 - event envelope version 不得只由 checkpoint 决定。
 - `FileCheckpointStore` 仍不解释 event envelope version。

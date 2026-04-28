@@ -2,7 +2,7 @@
 
 状态：draft
 
-本文定义 checkpoint ownership（检查点归属）和边界。当前实现只覆盖 opaque checkpoint storage、最小 checkpoint-assisted projector rebuild、projector-owned checkpoint creation、checkpoint state schema validation、projector-owned checkpoint save boundary、checkpoint prefix consistency hardening、checkpoint integrity/hash validation、event prefix digest validation 和 checkpoint projector version boundary hardening；checkpoint schema 仍是 v0 candidate。
+本文定义 checkpoint ownership（检查点归属）和边界。当前实现只覆盖 opaque checkpoint storage、最小 checkpoint-assisted projector rebuild、projector-owned checkpoint creation、checkpoint state schema validation、projector-owned checkpoint save boundary、checkpoint prefix consistency hardening、checkpoint integrity/hash validation、event prefix digest validation、checkpoint projector version boundary hardening 和最小 event envelope version boundary；checkpoint schema 仍是 v0 candidate。
 
 ## Purpose
 
@@ -110,10 +110,10 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - checkpoint version negotiation implementation
 - checkpoint migrator registry
 - schema registry
-- event envelope version field
 - event envelope schema registry
 - event schema registry
 - payload schema registry
+- event migration
 - signature / MAC / key management
 - partial checkpoint
 - SessionState checkpoint
@@ -183,7 +183,7 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - malformed `projector_version` 不会被使用；non-string / empty `projector_version` 会让 checkpoint invalid 并 fallback full rebuild。
 - incompatible 或 malformed version fallback 不读取 checkpoint state，且不能隐藏 lifecycle-invalid event log。
 - valid `projector_version` override 参数仍控制兼容性，但 malformed version 不能因 caller 传同样 malformed 值而被接受。
-- future sketch fields 如 `checkpoint_schema_version` / `event_envelope_version` / `state_schema_version` 不能 override `projector_version`。
+- future sketch fields 如 `checkpoint_schema_version` / `state_schema_version` 不能 override `projector_version`；event envelope version metadata 也不能 override `projector_version`。
 - compatible checkpoint 带 future sketch fields 时仍按当前 validation chain 处理。
 - `FileCheckpointStore` 仍保持 opaque，不解释 version 字段。
 - checkpoint schema 仍是 v0 candidate，event envelope 仍是 slice-only shape。
@@ -191,8 +191,12 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - event envelope versioning design note 已落文档。
 - 当前 `CanonicalEvent` envelope 仍是 slice-only implementation shape。
 - 当前 event prefix digest 绑定的是当前 slice canonical event representation。
-- 当前没有显式 event envelope version 字段；`canonical_event_slice@v0` 只是文档称呼。
-- 未来 event prefix digest metadata 应绑定明确的 event representation version。
+- `CanonicalEvent` 当前有 `event_envelope_version`，默认值是 `canonical_event_slice@v0`。
+- legacy event JSON 缺少 `event_envelope_version` 时按当前 slice legacy representation 读取。
+- empty / non-string / unknown event envelope version 会被拒绝。
+- event prefix digest input 包含 `event_envelope_version`，checkpoint integrity metadata 记录 digest 绑定的 event envelope version。
+- checkpoint event envelope version mismatch 只让 checkpoint 失效并 fallback full rebuild，且不能读取 checkpoint state。
+- legacy checkpoint 无 event envelope version metadata 仍走兼容路径。
 - event envelope versioning 不能重写 canonical event log，不能让 malformed event 变合法。
 - `InProcessServer.get_run_state(...)` 没有 checkpoint store 时仍走 full event log rebuild，有 checkpoint store 时调用 `RunProjector.rebuild_with_checkpoint(...)`。
 - server 不直接读取或解释 checkpoint state，不创建 checkpoint，不写 checkpoint store。
@@ -207,6 +211,6 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 后续实现必须先写 red tests，优先覆盖：
 
 - checkpoint schema version fields design note。
-- event envelope versioning red tests。
+- event envelope schema registry design note。
 - checkpoint history / old-checkpoint fallback design note。
 - server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。

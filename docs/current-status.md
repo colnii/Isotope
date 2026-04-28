@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`074ca5074b5739d8e89136cd190bb5b680044192`。
+- 最新 implementation commit：`463a2195116394b603cba2c7cd1b2f4d7c8800b8`。
 
 ## Implemented Slice
 
@@ -180,10 +180,10 @@
 - event prefix digest design note 已落文档
 - event prefix digest minimal validation
 - `RunProjector.create_checkpoint(...)` writes event prefix digest metadata into checkpoint `integrity`
-- event prefix digest fields: `event_digest_algorithm`, `event_prefix_digest`, `event_digest_basis_event_id`, `event_digest_event_count`
+- event prefix digest fields: `event_digest_algorithm`, `event_prefix_digest`, `event_digest_basis_event_id`, `event_digest_event_count`, `event_digest_event_envelope_version`
 - event prefix digest uses deterministic JSON / UTF-8
 - event prefix digest covers canonical events from the first event through `basis_event_id`
-- event prefix digest input includes canonical event representation fields: `event_id`, `run_id`, `event_type`, `payload`, `created_at`
+- event prefix digest input includes canonical event representation fields: `event_id`, `run_id`, `event_type`, `payload`, `created_at`, `event_envelope_version`
 - event append order affects event prefix digest
 - prefix event payload changes alter event prefix digest
 - event prefix digest mismatch invalidates checkpoint and falls back to full rebuild
@@ -222,17 +222,22 @@
 - incompatible or malformed version fallback cannot hide lifecycle-invalid event log
 - `projector_version` override still controls compatibility when valid
 - malformed `projector_version` cannot be accepted by passing the same malformed override
-- future sketch fields such as `checkpoint_schema_version`, `event_envelope_version`, and `state_schema_version` cannot override `projector_version`
+- future sketch fields such as `checkpoint_schema_version` and `state_schema_version` cannot override `projector_version`; event envelope version metadata also cannot override `projector_version`
 - compatible checkpoint with future sketch fields still follows the current validation chain
 - `FileCheckpointStore` remains opaque and does not interpret version fields
 - event envelope versioning design note 已落文档
-- current `CanonicalEvent` envelope remains slice-only implementation shape
-- current event envelope roughly contains `event_id`, `run_id`, `event_type`, `payload`, `created_at`
-- current event prefix digest binds to the current slice canonical event representation
-- current event log has no explicit event envelope version field
-- `canonical_event_slice@v0` is only a documentation label for the current implicit representation
-- future event prefix digest metadata should bind to an explicit event representation version
-- event envelope versioning cannot rewrite canonical event log or make malformed events valid
+- minimal event envelope version boundary
+- `CanonicalEvent` has `event_envelope_version`
+- default event envelope version is `canonical_event_slice@v0`
+- legacy event JSON without `event_envelope_version` is read as current slice legacy representation
+- empty / non-string / unknown event envelope version is rejected with controlled `ValueError`
+- current `CanonicalEvent` envelope remains slice-only implementation shape, not final protocol
+- current event envelope contains `event_id`, `run_id`, `event_type`, `payload`, `created_at`, `event_envelope_version`
+- event prefix digest input includes `event_envelope_version`
+- checkpoint integrity metadata records the digest-bound event envelope version
+- checkpoint event envelope version mismatch invalidates checkpoint and falls back to full rebuild without reading checkpoint state
+- legacy checkpoint without event envelope version metadata still uses compatibility path
+- event envelope version mismatch cannot rewrite event log or make malformed events valid
 
 ## Tests
 
@@ -245,7 +250,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-341 passed
+352 passed
 ```
 
 Import boundary check:
@@ -278,8 +283,8 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - schema registry
 - event schema registry
 - payload schema registry
-- event envelope version field
 - event envelope schema registry
+- event migration
 - audit event for checkpoint migration
 - content-addressed event ids
 - event log compaction
@@ -301,7 +306,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 下一步建议优先做：
 
 - checkpoint schema version fields design note
-- event envelope versioning red tests
+- event envelope schema registry design note
 - checkpoint history / old-checkpoint fallback design note
 
 不要直接进入 real LLM / memory / ingestion。
