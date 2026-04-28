@@ -27,8 +27,10 @@ checkpoint history save 的目的，是在 future save path 需要保留历史 c
 - `FileCheckpointStore` 仍保持 opaque，不解释 checkpoint state / integrity / projector version。
 - `FileCheckpointStore.load_checkpoint_candidates(run_id)` 已实现，可以读取 run-scoped candidates。
 - candidate loading 能读取 candidates，也能读取 explicit history save 写入的 candidates；这不改变 `save_checkpoint(...)` latest-only 语义。
+- checkpoint history save integration boundary 已落文档，见 `docs/checkpoint-history-save-integration-v0.1.md`。
 - 最小 projector-owned old-checkpoint fallback 已实现的是 read path，不是 save/history policy。
 - `InProcessServer.save_checkpoint_for_run(run_id)` 仍只调用 projector-owned `RunProjector.save_checkpoint(...)`。
+- projector / server 当前还没有 history save integration。
 - 当前没有 checkpoint history index。
 - 当前没有 retention policy。
 - 当前没有 checkpoint GC。
@@ -105,7 +107,7 @@ history index 更新如果失败，应有明确 fallback：
 
 具体策略仍是 open question，但不能隐式猜测。
 
-`save_checkpoint(...)` 当前继续 latest-only。是否让 projector/server save trigger 额外调用 `save_checkpoint_history(...)`，需要单独决策，避免 silently changing existing latest-only behavior。
+`save_checkpoint(...)` 当前继续 latest-only。是否让 projector/server save trigger 额外调用 `save_checkpoint_history(...)`，需要遵守 `docs/checkpoint-history-save-integration-v0.1.md` 并单独决策，避免 silently changing existing latest-only behavior。
 
 ## Invalid Uses
 
@@ -143,6 +145,7 @@ history index 更新如果失败，应有明确 fallback：
 - `save_checkpoint(...)` semantic change。
 - automatic history persistence from `save_checkpoint(...)`。
 - projector/server automatic history save integration。
+- projector-owned history save method implementation。
 - checkpoint history index。
 - retention policy。
 - checkpoint GC。
@@ -161,6 +164,7 @@ history index 更新如果失败，应有明确 fallback：
 
 - current `save_checkpoint(...)` 是否继续保持 latest-only。
 - projector/server caller 是否显式调用 `save_checkpoint_history(...)`。
+- 显式 projector-owned history save method 的调用边界。
 - invalid checkpoint 不能覆盖 latest，也不能进入 history。
 - latest write / history write failure ordering。
 - history write 不修改 event log。

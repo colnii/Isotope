@@ -46,6 +46,8 @@ checkpoint retention / compaction 的目的，是控制 checkpoint blob 的存�
 - checkpoint history / old-checkpoint fallback 边界见 `docs/checkpoint-history-fallback-v0.1.md`。
 - checkpoint history index / retention policy 边界见 `docs/checkpoint-history-index-retention-v0.1.md`。
 - checkpoint history save 边界见 `docs/checkpoint-history-save-boundary-v0.1.md`。
+- checkpoint history save integration 边界见 `docs/checkpoint-history-save-integration-v0.1.md`。
+- projector / server 当前还没有 history save integration，latest save path 仍不自动写 history。
 - checkpoint migration / version negotiation design note 已落文档。
 - 当前 full regression：`369 passed`。
 
@@ -152,6 +154,8 @@ v0.1 design decision：
 - checkpoint 文件命名与 `checkpoint_id`。
 - checkpoint history index 的完整性、顺序和错误处理。
 - `save_checkpoint(...)` semantic change / automatic history persistence。
+- projector-owned history save method implementation。
+- server automatic history save integration。
 - retention 触发时机。
 - automatic checkpoint scheduling。
 - checkpoint GC。

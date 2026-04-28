@@ -239,6 +239,11 @@
 - history candidates can be read by `load_checkpoint_candidates(run_id)` newest-to-oldest
 - `FileCheckpointStore` remains opaque and does not interpret checkpoint state / integrity / projector version
 - `save_checkpoint(...)` remains latest-only replacement and does not automatically save history
+- checkpoint history save integration boundary design note 已落文档
+- projector / server history save integration is not implemented
+- `RunProjector.save_checkpoint(...)` still only calls latest save
+- `InProcessServer.save_checkpoint_for_run(...)` still uses projector-owned latest save by default
+- future history integration must be explicit and projector-owned
 - checkpoint migration / version negotiation design note 已落文档
 - current checkpoint uses `projector_version`; current projector version is `run_projector@v1`
 - incompatible checkpoint projector version invalidates checkpoint and falls back to full rebuild
@@ -312,6 +317,8 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - automatic checkpoint scheduling
 - CheckpointService
 - `save_checkpoint(...)` semantic change / automatic history persistence
+- projector-owned history save method implementation
+- server automatic history save integration
 - checkpoint history index
 - checkpoint GC
 - checkpoint retention policy

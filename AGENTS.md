@@ -23,6 +23,7 @@
 - checkpoint history / old-checkpoint fallback 相关实现必须遵守 `docs/checkpoint-history-fallback-v0.1.md`，并先写 red tests；最小 projector-owned candidate fallback 已实现，但 `save_checkpoint(...)` 仍是 latest-only，不得直接实现 checkpoint history index、GC、retention policy、CheckpointService 或让 server 直接解释 old checkpoint。
 - checkpoint history index / retention policy 相关实现必须遵守 `docs/checkpoint-history-index-retention-v0.1.md`，并先写 red tests；history index 不是 source of truth，不能证明 checkpoint 有效，retention / GC 只能作用于 checkpoint blobs 或 future index metadata。
 - checkpoint history save 相关实现必须遵守 `docs/checkpoint-history-save-boundary-v0.1.md`，并先写 red tests；`FileCheckpointStore.save_checkpoint_history(...)` 已实现为 explicit history candidate save method，仍不得静默改变 `save_checkpoint(...)` latest-only 语义，也不得让 server 直接解释 history checkpoint state。
+- checkpoint history save integration 相关实现必须遵守 `docs/checkpoint-history-save-integration-v0.1.md`，并先写 red tests；projector/server 默认仍 latest-only，未来如接入 history save，优先新增显式 projector-owned method，不得让 server 直接写外部 checkpoint state。
 - checkpoint migration / version negotiation 相关实现必须遵守 `docs/checkpoint-migration-versioning-v0.1.md`，并先写 red tests；checkpoint projector version boundary hardening 已实现，但不得直接实现 migrator、schema registry、migrator registry 或 event log migration。
 - checkpoint schema version fields 相关实现必须遵守 `docs/checkpoint-schema-version-fields-v0.1.md`，并先写 red tests；当前只落设计边界，不得直接实现 `checkpoint_schema_version`、`state_schema_version`、`integrity_schema_version`、schema registry 或 migrator。
 - server-facing checkpoint 相关实现必须遵守 `docs/server-checkpoint-boundary-v0.1.md`；Server 不能直接解释 checkpoint state，必须通过 projector-owned boundary。
@@ -235,6 +236,10 @@
 - history candidates can be loaded newest-to-oldest by `load_checkpoint_candidates(run_id)`
 - `FileCheckpointStore` remains opaque and does not interpret checkpoint state / integrity / projector version
 - `save_checkpoint(...)` remains latest-only and does not automatically persist history
+- checkpoint history save integration boundary design note
+- projector / server history save integration is not implemented
+- `RunProjector.save_checkpoint(...)` remains latest-only
+- `InProcessServer.save_checkpoint_for_run(...)` remains latest-only by default
 - latest write / history write failure ordering must be explicit before implementation
 - checkpoint migration / version negotiation boundary design note
 - current checkpoint uses `projector_version`; current projector version is `run_projector@v1`
@@ -280,6 +285,8 @@
 - automatic checkpoint scheduling
 - CheckpointService
 - save_checkpoint semantic change / automatic history persistence
+- projector-owned history save method implementation
+- server automatic history save integration
 - checkpoint history index
 - checkpoint GC
 - checkpoint retention policy

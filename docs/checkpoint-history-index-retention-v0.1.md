@@ -29,6 +29,8 @@ retention policy 的目的，是在不影响 canonical event log 的前提下，
 - history save 不覆盖 latest，不修改 event log。
 - `FileCheckpointStore` 仍保持 opaque，不解释 checkpoint state / integrity / projector version。
 - checkpoint history save boundary design note 已落文档，见 `docs/checkpoint-history-save-boundary-v0.1.md`。
+- checkpoint history save integration boundary design note 已落文档，见 `docs/checkpoint-history-save-integration-v0.1.md`。
+- projector / server 当前还没有 history save integration，latest save path 仍不自动写 history。
 - 当前没有 persisted history index。
 - 当前没有 retention policy。
 - 当前没有 checkpoint GC。
@@ -145,6 +147,7 @@ history save path 如果保留 checkpoint history，必须先遵守 `docs/checkp
 - checkpoint GC。
 - `save_checkpoint(...)` semantic change / automatic history persistence。
 - projector/server automatic history save integration。
+- projector-owned history save method implementation。
 - `CheckpointService`。
 - public checkpoint inspection API。
 - automatic checkpoint scheduling。
