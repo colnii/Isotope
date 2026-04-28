@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`14be7537d0ec0509d96a2d8852646b20823c3a5b`。
+- 最新 implementation commit：`a669fde8c6a3be6fb36c6c228fbfa6451bb40655`。
 
 ## Implemented Slice
 
@@ -196,7 +196,17 @@
 - `InProcessServer` has no digest-specific behavior
 - checkpoint retention / compaction design note 已落文档
 - current checkpoint storage remains latest-only
-- retention / compaction implementation is not implemented
+- latest-only checkpoint storage boundary hardening
+- checkpoint path remains `runs/{run_id}/checkpoints/latest.json`
+- saving a second checkpoint for the same run replaces `latest.json`
+- latest-only replacement does not create checkpoint history files
+- invalid replacement does not overwrite the existing valid latest checkpoint
+- latest-only replacement does not modify event log
+- latest-only replacement does not create / delete / rewrite `events.jsonl`
+- `checkpoint_path` / `save_checkpoint` / `load_latest_checkpoint` validate run_id path segment
+- invalid run_id path segments fail fast with controlled `ValueError`
+- `FileCheckpointStore` remains opaque and does not interpret checkpoint business state
+- broader retention / compaction remains deferred
 - retention / compaction cannot delete, rewrite, compress, or trim canonical event log
 - checkpoint deletion must still allow full rebuild from canonical event log
 
@@ -211,7 +221,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-311 passed
+333 passed
 ```
 
 Import boundary check:
@@ -233,10 +243,14 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - public checkpoint API / HTTP endpoint
 - automatic checkpoint scheduling
 - CheckpointService
-- checkpoint retention / compaction implementation
+- checkpoint history
+- checkpoint GC
+- checkpoint retention policy
+- old checkpoint fallback
 - checkpoint inspection API
 - signature / MAC / key management
 - checkpoint migration / version negotiation
+- event log compaction
 - SSE
 - auth
 - multi-agent concurrency
@@ -254,7 +268,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- `FileCheckpointStore` latest-only replacement boundary hardening
 - checkpoint migration / version negotiation design note
+- checkpoint history / old-checkpoint fallback design note
 
 不要直接进入 real LLM / memory / ingestion。

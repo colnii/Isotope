@@ -4,7 +4,7 @@
 
 本文定义 checkpoint retention / compaction（检查点保留 / 压缩清理）的 v0.1 边界：checkpoint blob 如何保留、替换、清理，以及这些操作为什么绝不能影响 canonical event log。
 
-本轮只落设计说明，不实现 retention policy、checkpoint history、GC、automatic scheduling 或 event log compaction。
+当前已实现 latest-only checkpoint storage boundary hardening；broader retention policy、checkpoint history、GC、automatic scheduling 和 event log compaction 仍不实现。
 
 ## Purpose
 
@@ -22,13 +22,20 @@ checkpoint retention / compaction 的目的，是控制 checkpoint blob 的存�
 - `InProcessServer.save_checkpoint_for_run(...)` 已是 internal-only manual trigger。
 - checkpoint 已有 checkpoint hash。
 - checkpoint 已有 event prefix digest。
-- 当前 full regression：`311 passed`。
+- latest-only checkpoint storage boundary hardening 已实现。
+- checkpoint path 仍是 `runs/{run_id}/checkpoints/latest.json`。
+- 同一 run 第二次保存 checkpoint 会替换 `latest.json`。
+- invalid replacement 不会覆盖已有 valid latest checkpoint。
+- replacement 不修改 event log，也不创建 / 删除 / 重写 `events.jsonl`。
+- `checkpoint_path` / `save_checkpoint` / `load_latest_checkpoint` 都校验 run_id path segment。
+- `FileCheckpointStore` 仍保持 opaque，不解释 checkpoint business state。
+- 当前 full regression：`333 passed`。
 
 当前没有实现：
 
 - retention policy。
 - checkpoint history。
-- checkpoint compaction。
+- broader checkpoint compaction。
 - automatic checkpoint scheduling。
 - checkpoint GC。
 - event log compaction。
@@ -39,7 +46,8 @@ v0.1 design decision：
 
 - checkpoint retention / compaction 只能处理 checkpoint blobs。
 - retention / compaction 不能处理 canonical event log。
-- 当前可以继续使用 latest-only checkpoint，不急着保留 history。
+- 当前继续使用 latest-only checkpoint，不急着保留 history。
+- latest-only checkpoint storage boundary 已加固。
 - compaction 在本文中只表示清理旧 checkpoint blobs，不表示 event log compaction。
 - checkpoint 删除后，系统必须仍能从 canonical event log full rebuild。
 - `FileCheckpointStore` 仍保持 opaque，不解释业务 state。
@@ -68,8 +76,11 @@ v0.1 design decision：
 当前 v0 candidate：
 
 - 保持 latest-only checkpoint。
-- `save_checkpoint(...)` 可以继续替换 latest checkpoint blob。
-- latest-only replacement 不应触碰 event log。
+- `save_checkpoint(...)` 继续替换 latest checkpoint blob。
+- latest-only replacement 不触碰 event log。
+- latest-only replacement 不创建 checkpoint history 文件。
+- invalid replacement 不覆盖已有 valid latest checkpoint。
+- `run_id` 作为受控 path segment 校验。
 - latest-only replacement 后，missing / invalid latest checkpoint 仍 fallback full rebuild。
 
 未来可以考虑：
@@ -106,6 +117,7 @@ v0.1 design decision：
 - retention 触发时机。
 - automatic checkpoint scheduling。
 - checkpoint GC。
+- checkpoint retention policy。
 - checkpoint migration / version negotiation。
 - event log compaction；注意这不是 checkpoint compaction。
 - public checkpoint inspection API。
@@ -113,12 +125,20 @@ v0.1 design decision：
 
 ## Future TDD Notes
 
-下一轮如进入 implementation，应先写 red tests，优先覆盖：
+已覆盖的最小测试：
 
-- `FileCheckpointStore` latest-only replacement boundary hardening。
 - latest checkpoint replacement 不修改 event log。
+- latest checkpoint replacement 不创建 / 删除 / 重写 `events.jsonl`。
+- same-run second save replaces `latest.json` without history files。
+- invalid replacement does not overwrite existing valid latest checkpoint。
+- `checkpoint_path` / `save_checkpoint` / `load_latest_checkpoint` reject invalid run_id path segments。
 - latest checkpoint replacement 后 full rebuild 仍可用。
 - malformed latest checkpoint 不阻止 event log full rebuild。
 - retention / compaction 不读取 artifact content、executor state 或 server memory。
+
+后续如继续扩展，应先写 red tests，优先覆盖：
+
+- checkpoint migration / version negotiation design note。
+- checkpoint history / old-checkpoint fallback design note。
 
 不要直接实现 checkpoint history、GC、automatic scheduling 或 event log compaction。

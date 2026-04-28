@@ -100,7 +100,10 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 当前仍不实现：
 
 - automatic checkpoint scheduling
-- checkpoint retention / compaction implementation
+- checkpoint history
+- checkpoint GC
+- checkpoint retention policy
+- old checkpoint fallback
 - checkpoint migration
 - checkpoint version negotiation
 - signature / MAC / key management
@@ -157,7 +160,13 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - `FileCheckpointStore` 不解释 digest，`InProcessServer` 没有 digest-specific 行为。
 - checkpoint retention / compaction design note 已落文档。
 - 当前 checkpoint storage 仍是 latest-only。
-- retention / compaction implementation 尚未实现。
+- latest-only checkpoint storage boundary hardening 已实现。
+- checkpoint path 仍是 `runs/{run_id}/checkpoints/latest.json`。
+- 同一 run 第二次保存 checkpoint 会替换 `latest.json`，不创建 history 文件。
+- invalid replacement 不会覆盖已有 valid latest checkpoint。
+- replacement 不修改 event log，也不创建 / 删除 / 重写 `events.jsonl`。
+- `checkpoint_path` / `save_checkpoint` / `load_latest_checkpoint` 都校验 run_id path segment。
+- broader retention / compaction 仍 deferred。
 - retention / compaction 只能处理 checkpoint blobs，不能删除、重写、压缩或裁剪 canonical event log。
 - checkpoint 删除后仍必须能从 canonical event log full rebuild。
 - `InProcessServer.get_run_state(...)` 没有 checkpoint store 时仍走 full event log rebuild，有 checkpoint store 时调用 `RunProjector.rebuild_with_checkpoint(...)`。
@@ -172,6 +181,6 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 
 后续实现必须先写 red tests，优先覆盖：
 
-- `FileCheckpointStore` latest-only replacement boundary hardening。
 - checkpoint migration / version negotiation design note。
+- checkpoint history / old-checkpoint fallback design note。
 - server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。
