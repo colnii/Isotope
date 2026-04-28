@@ -206,6 +206,18 @@ class InProcessServer:
             "basis_event_id": checkpoint["basis_event_id"],
         }
 
+    def save_checkpoint_history_for_run(self, run_id: str) -> dict[str, str]:
+        self._validate_read_run_id(run_id)
+        if self.checkpoint_store is None:
+            return {"status": "not_enabled", "capability": "checkpoint_history"}
+        checkpoint = RunProjector().save_checkpoint_history(run_id, self.event_store, self.checkpoint_store)
+        return {
+            "status": "saved",
+            "run_id": run_id,
+            "basis_event_id": checkpoint["basis_event_id"],
+            "checkpoint_kind": "history",
+        }
+
     def create_checkpoint(self, run_id: str) -> dict[str, str]:
         return {"status": "not_enabled", "capability": "checkpoint"}
 
