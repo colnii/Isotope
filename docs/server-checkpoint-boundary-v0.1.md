@@ -24,8 +24,10 @@ Server-facing checkpoint boundary 的目的，是允许 server read path 使用 
 - event prefix digest validation。
 - checkpoint save trigger boundary design note。
 - checkpoint retention / compaction boundary design note。
+- checkpoint history / old-checkpoint fallback boundary design note。
 
 相关 retention / compaction 边界见 `docs/checkpoint-retention-compaction-v0.1.md`。
+checkpoint history / old-checkpoint fallback 边界见 `docs/checkpoint-history-fallback-v0.1.md`。
 
 当前 server read path：
 
@@ -45,7 +47,9 @@ Server-facing checkpoint boundary 的目的，是允许 server read path 使用 
 - 没有 public checkpoint API。
 - 没有 automatic checkpoint scheduling。
 - 没有 `CheckpointService`。
-- 没有 checkpoint retention / compaction implementation。
+- 没有 broader checkpoint retention / compaction implementation。
+- 没有 checkpoint history。
+- 没有 old-checkpoint fallback。
 
 ## Decision
 
@@ -72,6 +76,8 @@ v0.1 decision：
 - Server 不能修改 projected state 来“修复”状态。
 - Server 不能根据 checkpoint integrity/hash 判断业务状态正确。
 - Server 不能因为 checkpoint retention / compaction 存在而删除、重写、压缩或裁剪 canonical event log。
+- Server 不能直接选择、解释或信任 old checkpoint。
+- Server 如需使用 old-checkpoint fallback，仍只能调用 projector-owned boundary。
 - Server 不能让 checkpoint mismatch 阻止 full event log rebuild。
 - Server 不能把 checkpoint schema 当作 public API protocol。
 
@@ -114,7 +120,10 @@ v0.1 decision：
 - automatic checkpoint scheduling。
 - `CheckpointService`。
 - signature / MAC / key management。
-- checkpoint retention / compaction implementation。
+- broader checkpoint retention / compaction implementation。
+- checkpoint history。
+- checkpoint history index。
+- old-checkpoint fallback。
 - checkpoint migration / version negotiation。
 - `SessionState` checkpoint。
 - multi-run checkpoint coordination。
@@ -141,5 +150,6 @@ v0.1 decision：
 - empty / malformed / lifecycle-invalid event stream fail-fast，不写 checkpoint。
 - public API 仍不得暴露 checkpoint state。
 - checkpoint retention / compaction 如接入 server-facing flow，不能让 server 直接解释 checkpoint state，也不能影响 event log。
+- checkpoint history / old-checkpoint fallback 如接入 server-facing flow，server 仍不能直接选择或解释 checkpoint，只能调用 projector-owned boundary。
 
-暂不实现 public checkpoint API、automatic scheduling、`CheckpointService`、checkpoint retention / compaction implementation、signature / MAC / key management。
+暂不实现 public checkpoint API、automatic scheduling、`CheckpointService`、broader checkpoint retention / compaction implementation、checkpoint history、old-checkpoint fallback、signature / MAC / key management。

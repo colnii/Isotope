@@ -29,6 +29,7 @@ v0.1 决定：
 - event envelope versioning 的边界见 `docs/event-envelope-versioning-v0.1.md`。
 - event envelope schema registry 的边界见 `docs/event-envelope-schema-registry-v0.1.md`。
 - checkpoint retention / compaction 的边界见 `docs/checkpoint-retention-compaction-v0.1.md`。
+- checkpoint history / old-checkpoint fallback 的边界见 `docs/checkpoint-history-fallback-v0.1.md`。
 - checkpoint migration / version negotiation 的边界见 `docs/checkpoint-migration-versioning-v0.1.md`。
 - checkpoint schema version fields 的边界见 `docs/checkpoint-schema-version-fields-v0.1.md`。
 
@@ -183,6 +184,11 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - broader retention / compaction 仍 deferred。
 - retention / compaction 只能处理 checkpoint blobs，不能删除、重写、压缩或裁剪 canonical event log。
 - checkpoint 删除后仍必须能从 canonical event log full rebuild。
+- checkpoint history / old-checkpoint fallback design note 已落文档。
+- 当前没有 checkpoint history index 或 old-checkpoint fallback。
+- 当前 checkpoint 不可用时 fallback 的含义是 full canonical event-log replay，不是 fallback older checkpoint。
+- 如果未来实现 old-checkpoint fallback，每个候选 checkpoint 都必须独立通过 projector version、checkpoint integrity/hash、event prefix digest、event envelope version、checkpoint state schema 和 prefix consistency validation。
+- server 不能直接选择、解释或信任 old checkpoint；仍必须走 projector-owned boundary。
 - checkpoint migration / version negotiation design note 已落文档。
 - checkpoint schema version fields design note 已落文档。
 - 当前 checkpoint 使用 `projector_version`；当前 projector version 是 `run_projector@v1`。
@@ -224,5 +230,5 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 
 - checkpoint schema version fields boundary red tests。
 - event envelope schema registry boundary red tests。
-- checkpoint history / old-checkpoint fallback design note。
+- checkpoint history / old-checkpoint fallback boundary red tests。
 - server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。

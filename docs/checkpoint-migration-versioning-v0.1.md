@@ -30,6 +30,7 @@ checkpoint migration / versioning 的目的，是在 checkpoint shape 或 projec
 - event prefix digest validation 已实现。
 - checkpoint state schema validation 和 prefix consistency validation 已实现。
 - checkpoint projector version boundary hardening 已实现。
+- checkpoint history / old-checkpoint fallback design note 已落文档，边界见 `docs/checkpoint-history-fallback-v0.1.md`。
 - 当前实现仍以 `projector_version` 作为 checkpoint compatibility 的唯一已实现版本边界。
 - `checkpoint_schema_version` / `state_schema_version` / `integrity_schema_version` 目前还没有实现字段。
 - 当前 full regression：`352 passed`。
@@ -45,6 +46,9 @@ checkpoint migration / versioning 的目的，是在 checkpoint shape 或 projec
 - integrity schema version 字段。
 - event envelope schema registry。
 - event envelope registry lookup。
+- checkpoint history。
+- checkpoint history index。
+- old-checkpoint fallback。
 
 ## Implementation Status
 
@@ -174,6 +178,8 @@ Schema sketch：
 - event migration 后 digest 如何处理。
 - migration 是否保留 old checkpoint。
 - migration 失败是否 fallback full rebuild。
+- old-checkpoint fallback 是否允许使用 migration 后的 checkpoint candidate。
+- old-checkpoint fallback 与 checkpoint migrator registry 如何协作。
 - migration 是否需要 audit event。
 - 是否需要 checkpoint migrator registry。
 - 是否允许跨 projector major version 使用 checkpoint。
@@ -200,6 +206,9 @@ Schema sketch：
 
 - checkpoint migrator implementation。
 - version negotiation implementation。
+- checkpoint history。
+- checkpoint history index。
+- old-checkpoint fallback。
 - checkpoint schema registry。
 - state schema registry。
 - integrity schema registry。

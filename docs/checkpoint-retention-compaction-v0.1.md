@@ -4,7 +4,7 @@
 
 本文定义 checkpoint retention / compaction（检查点保留 / 压缩清理）的 v0.1 边界：checkpoint blob 如何保留、替换、清理，以及这些操作为什么绝不能影响 canonical event log。
 
-当前已实现 latest-only checkpoint storage boundary hardening；broader retention policy、checkpoint history、GC、automatic scheduling 和 event log compaction 仍不实现。
+当前已实现 latest-only checkpoint storage boundary hardening；checkpoint history / old-checkpoint fallback design note 已落文档，但 broader retention policy、checkpoint history、old-checkpoint fallback、GC、automatic scheduling 和 event log compaction 仍不实现。
 
 ## Purpose
 
@@ -29,13 +29,17 @@ checkpoint retention / compaction 的目的，是控制 checkpoint blob 的存�
 - replacement 不修改 event log，也不创建 / 删除 / 重写 `events.jsonl`。
 - `checkpoint_path` / `save_checkpoint` / `load_latest_checkpoint` 都校验 run_id path segment。
 - `FileCheckpointStore` 仍保持 opaque，不解释 checkpoint business state。
+- checkpoint history / old-checkpoint fallback design note 已落文档，边界见 `docs/checkpoint-history-fallback-v0.1.md`。
+- 当前 fallback 的含义是 fallback full event-log replay，不是 fallback older checkpoint。
 - checkpoint migration / version negotiation design note 已落文档。
-- 当前 full regression：`333 passed`。
+- 当前 full regression：`352 passed`。
 
 当前没有实现：
 
 - retention policy。
 - checkpoint history。
+- checkpoint history index。
+- old-checkpoint fallback。
 - broader checkpoint compaction。
 - automatic checkpoint scheduling。
 - checkpoint GC。
@@ -50,6 +54,8 @@ v0.1 design decision：
 - retention / compaction 不能处理 canonical event log。
 - 当前继续使用 latest-only checkpoint，不急着保留 history。
 - latest-only checkpoint storage boundary 已加固。
+- 当前 checkpoint invalid / incompatible / mismatch 时，只能 fallback full canonical event-log rebuild。
+- 当前不尝试读取更旧 checkpoint。
 - compaction 在本文中只表示清理旧 checkpoint blobs，不表示 event log compaction。
 - checkpoint 删除后，系统必须仍能从 canonical event log full rebuild。
 - `FileCheckpointStore` 仍保持 opaque，不解释业务 state。
@@ -71,6 +77,10 @@ v0.1 design decision：
 - checkpoint compaction 不能跳过 event prefix digest validation。
 - checkpoint retention 不能暴露 public checkpoint API。
 - checkpoint retention 不能把 checkpoint history 当成 public audit log。
+- old-checkpoint fallback 不能绕过 canonical event log validation。
+- old-checkpoint fallback 不能隐藏 malformed 或 lifecycle-invalid event log。
+- 每个候选 checkpoint 都必须独立通过 projector version、integrity/hash、event prefix digest、event envelope version、checkpoint state schema 和 prefix consistency validation。
+- server 不能直接选择、解释或信任 old checkpoint。
 - `FileCheckpointStore` 仍保持 opaque，不解释 checkpoint business state。
 
 ## v0 Candidate
@@ -83,7 +93,7 @@ v0.1 design decision：
 - latest-only replacement 不创建 checkpoint history 文件。
 - invalid replacement 不覆盖已有 valid latest checkpoint。
 - `run_id` 作为受控 path segment 校验。
-- latest-only replacement 后，missing / invalid latest checkpoint 仍 fallback full rebuild。
+- latest-only replacement 后，missing / invalid latest checkpoint 仍 fallback full rebuild，而不是 fallback older checkpoint。
 
 未来可以考虑：
 
@@ -92,6 +102,8 @@ v0.1 design decision：
 - retention metadata 包含 `checkpoint_id`、`created_at`、`basis_event_id`、`event_count`、`projector_version`。
 - 如果多个 checkpoint 可用，优先选择最新 compatible + valid checkpoint。
 - 如果最新 checkpoint invalid，fallback 更旧 checkpoint 或 full rebuild。
+- checkpoint history index 自身也需要 integrity / ordering / retention 边界。
+- retention / GC 应和 old-checkpoint fallback 设计分开，不在同一个实现 slice 中顺手完成。
 
 这些字段名和策略只是 v0 candidate / schema sketch，不是永久协议。
 
@@ -116,6 +128,7 @@ v0.1 design decision：
 - 是否保持 latest-only，还是保留最近 N 个 checkpoint。
 - checkpoint 文件命名与 `checkpoint_id`。
 - old checkpoint fallback 策略。
+- checkpoint history index 的完整性、顺序和错误处理。
 - retention 触发时机。
 - automatic checkpoint scheduling。
 - checkpoint GC。
@@ -142,7 +155,9 @@ v0.1 design decision：
 
 后续如继续扩展，应先写 red tests，优先覆盖：
 
-- projector version mismatch behavior hardening / malformed version fields。
-- checkpoint history / old-checkpoint fallback design note。
+- checkpoint history / old-checkpoint fallback boundary。
+- checkpoint history index integrity / ordering boundary。
+- old checkpoint fallback 时每个 candidate 都独立通过现有 validation chain。
+- lifecycle-invalid event log 不能被 older checkpoint fallback 隐藏。
 
-不要直接实现 checkpoint history、GC、automatic scheduling 或 event log compaction。
+不要直接实现 checkpoint history、old-checkpoint fallback、history index、GC、automatic scheduling 或 event log compaction。

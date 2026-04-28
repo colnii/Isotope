@@ -209,6 +209,11 @@
 - broader retention / compaction remains deferred
 - retention / compaction cannot delete, rewrite, compress, or trim canonical event log
 - checkpoint deletion must still allow full rebuild from canonical event log
+- checkpoint history / old-checkpoint fallback design note 已落文档
+- current checkpoint storage remains latest-only; no checkpoint history index is implemented
+- current checkpoint fallback means full event-log replay, not fallback to an older checkpoint
+- old-checkpoint fallback remains deferred and cannot bypass the existing checkpoint validation chain
+- server cannot directly select, interpret, or trust old checkpoints outside projector-owned boundaries
 - checkpoint migration / version negotiation design note 已落文档
 - current checkpoint uses `projector_version`; current projector version is `run_projector@v1`
 - incompatible checkpoint projector version invalidates checkpoint and falls back to full rebuild
@@ -282,6 +287,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - automatic checkpoint scheduling
 - CheckpointService
 - checkpoint history
+- checkpoint history index
 - checkpoint GC
 - checkpoint retention policy
 - old checkpoint fallback
@@ -321,6 +327,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- checkpoint history / old-checkpoint fallback design note
+- checkpoint history / old-checkpoint fallback red tests
+- checkpoint history index / retention policy design review
 
 不要直接进入 real LLM / memory / ingestion。
