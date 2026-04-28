@@ -39,6 +39,7 @@ checkpoint retention / compaction 的目的，是控制 checkpoint blob 的存�
 - lifecycle-invalid event log 不能被 older checkpoint fallback 隐藏。
 - `save_checkpoint(...)` 仍是 latest-only replacement，不创建 checkpoint history 文件。
 - checkpoint history / old-checkpoint fallback 边界见 `docs/checkpoint-history-fallback-v0.1.md`。
+- checkpoint history index / retention policy 边界见 `docs/checkpoint-history-index-retention-v0.1.md`。
 - checkpoint migration / version negotiation design note 已落文档。
 - 当前 full regression：`360 passed`。
 
@@ -67,6 +68,9 @@ v0.1 design decision：
 - checkpoint 删除后，系统必须仍能从 canonical event log full rebuild。
 - `FileCheckpointStore` 仍保持 opaque，不解释业务 state。
 - public client 不能通过 retention / compaction 能力提交、选择或读取 checkpoint state。
+- history index 不是 source of truth，不能证明 checkpoint 有效。
+- retention / GC 只能作用于 checkpoint blobs 或 future index metadata。
+- corrupt / missing history index 不能让系统跳过 full event-log replay。
 
 ## Hard Boundaries
 
@@ -112,6 +116,8 @@ v0.1 design decision：
 - retention metadata 包含 `checkpoint_id`、`created_at`、`basis_event_id`、`event_count`、`projector_version`。
 - checkpoint history index 自身也需要 integrity / ordering / retention 边界。
 - retention / GC 应和 candidate fallback 设计分开，不在同一个实现 slice 中顺手完成。
+
+更完整的 history index / retention policy sketch 见 `docs/checkpoint-history-index-retention-v0.1.md`。
 
 这些字段名和策略只是 v0 candidate / schema sketch，不是永久协议。
 
@@ -174,6 +180,7 @@ v0.1 design decision：
 - checkpoint history index integrity / ordering boundary。
 - checkpoint history persistence from `save_checkpoint(...)`。
 - checkpoint retention / GC。
+- corrupt / missing history index 不能跳过 full event-log replay。
 - server 不能直接解释 checkpoint history 或 checkpoint state。
 
 不要直接实现 checkpoint history index、GC、retention policy、automatic scheduling 或 event log compaction。

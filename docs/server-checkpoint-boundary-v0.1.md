@@ -27,9 +27,11 @@ Server-facing checkpoint boundary 的目的，是允许 server read path 使用 
 - checkpoint save trigger boundary design note。
 - checkpoint retention / compaction boundary design note。
 - checkpoint history / old-checkpoint fallback boundary。
+- checkpoint history index / retention policy boundary design note。
 
 相关 retention / compaction 边界见 `docs/checkpoint-retention-compaction-v0.1.md`。
 checkpoint history / old-checkpoint fallback 边界见 `docs/checkpoint-history-fallback-v0.1.md`。
+checkpoint history index / retention policy 边界见 `docs/checkpoint-history-index-retention-v0.1.md`。
 
 当前 server read path：
 
@@ -83,7 +85,9 @@ v0.1 decision：
 - Server 不能因为 checkpoint retention / compaction 存在而删除、重写、压缩或裁剪 canonical event log。
 - Server 不能直接选择、解释或信任 old checkpoint。
 - Server 如需使用 old-checkpoint fallback，仍只能调用 projector-owned boundary。
+- Server 不能直接解释 history index 或 checkpoint state 来生成 `RunState`。
 - Server 不能让 checkpoint mismatch 阻止 full event log rebuild。
+- Server 不能让 corrupt / missing history index 阻止 full event log rebuild。
 - Server 不能把 checkpoint schema 当作 public API protocol。
 
 ## v0 Candidate
@@ -158,5 +162,6 @@ v0.1 decision：
 - public API 仍不得暴露 checkpoint state。
 - checkpoint retention / compaction 如接入 server-facing flow，不能让 server 直接解释 checkpoint state，也不能影响 event log。
 - checkpoint history index / retention 如接入 server-facing flow，server 仍不能直接选择或解释 checkpoint，只能调用 projector-owned boundary。
+- corrupt / missing history index 如出现在 server-facing read path，不能让 server 跳过 full event-log replay。
 
 暂不实现 public checkpoint API、automatic scheduling、`CheckpointService`、broader checkpoint retention / compaction implementation、checkpoint history index、checkpoint history persistence from `save_checkpoint(...)`、signature / MAC / key management。

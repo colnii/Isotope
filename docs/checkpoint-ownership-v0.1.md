@@ -30,6 +30,7 @@ v0.1 决定：
 - event envelope schema registry 的边界见 `docs/event-envelope-schema-registry-v0.1.md`。
 - checkpoint retention / compaction 的边界见 `docs/checkpoint-retention-compaction-v0.1.md`。
 - checkpoint history / old-checkpoint fallback 的边界见 `docs/checkpoint-history-fallback-v0.1.md`。
+- checkpoint history index / retention policy 的边界见 `docs/checkpoint-history-index-retention-v0.1.md`。
 - checkpoint migration / version negotiation 的边界见 `docs/checkpoint-migration-versioning-v0.1.md`。
 - checkpoint schema version fields 的边界见 `docs/checkpoint-schema-version-fields-v0.1.md`。
 
@@ -195,6 +196,10 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - lifecycle-invalid event log 不能被 older checkpoint fallback 隐藏。
 - `save_checkpoint(...)` 仍是 latest-only replacement，不创建 checkpoint history 文件。
 - 当前没有 checkpoint history index、retention policy 或 GC。
+- checkpoint history index / retention policy design note 已落文档。
+- history index 不是 source of truth，不能证明 checkpoint 有效。
+- retention / GC 只能作用于 checkpoint blobs 或 future index metadata，不能处理 canonical events。
+- corrupt / missing history index 不能让系统跳过 full event-log replay。
 - server 不能直接选择、解释或信任 old checkpoint；仍必须走 projector-owned boundary。
 - checkpoint migration / version negotiation design note 已落文档。
 - checkpoint schema version fields design note 已落文档。
@@ -239,4 +244,5 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - event envelope schema registry boundary red tests。
 - checkpoint history index / retention boundary red tests。
 - checkpoint history persistence from `save_checkpoint(...)` boundary red tests。
+- corrupt / missing history index fallback boundary red tests。
 - server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。

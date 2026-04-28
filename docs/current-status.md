@@ -224,6 +224,11 @@
 - `save_checkpoint(...)` remains latest-only replacement and does not create history files
 - no checkpoint history index is implemented
 - server cannot directly select, interpret, or trust old checkpoints outside projector-owned boundaries
+- checkpoint history index / retention policy design note 已落文档
+- history index is not source of truth and cannot prove checkpoint validity
+- retention / GC can only apply to checkpoint blobs or future index metadata, never canonical event log
+- corrupt / missing history index cannot let the system skip full event-log replay
+- current latest-only save behavior remains unchanged
 - checkpoint migration / version negotiation design note 已落文档
 - current checkpoint uses `projector_version`; current projector version is `run_projector@v1`
 - incompatible checkpoint projector version invalidates checkpoint and falls back to full rebuild
@@ -336,7 +341,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- checkpoint history index / retention policy design review
 - checkpoint history save / retention boundary design review
+- checkpoint history index / retention policy red tests only after an explicit implementation slice
 
 不要直接进入 real LLM / memory / ingestion。
