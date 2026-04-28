@@ -4,7 +4,7 @@
 
 本文定义 checkpoint retention / compaction（检查点保留 / 压缩清理）的 v0.1 边界：checkpoint blob 如何保留、替换、清理，以及这些操作为什么绝不能影响 canonical event log。
 
-当前已实现 latest-only checkpoint storage boundary hardening、checkpoint candidate loading、最小 projector-owned old-checkpoint fallback path、explicit history candidate save method、projector-owned history save method 和 internal-only explicit server history save trigger。`save_checkpoint(...)` 仍是 latest-only replacement，不自动保留 history；broader retention policy、checkpoint history index、GC、automatic scheduling 和 event log compaction 仍不实现。
+当前已实现 latest-only checkpoint storage boundary hardening、checkpoint candidate loading、最小 projector-owned old-checkpoint fallback path、explicit history candidate save method、projector-owned history save method 和 internal-only explicit server history save trigger。checkpoint v0.1 已按 `docs/checkpoint-v0.1-scope-freeze.md` frozen for current kernel slice。`save_checkpoint(...)` 仍是 latest-only replacement，不自动保留 history；broader retention policy、checkpoint history index、GC、automatic scheduling 和 event log compaction 仍不实现。
 
 ## Purpose
 
@@ -47,6 +47,7 @@ checkpoint retention / compaction 的目的，是控制 checkpoint blob 的存�
 - checkpoint history index / retention policy 边界见 `docs/checkpoint-history-index-retention-v0.1.md`。
 - checkpoint history save 边界见 `docs/checkpoint-history-save-boundary-v0.1.md`。
 - checkpoint history save integration 边界见 `docs/checkpoint-history-save-integration-v0.1.md`。
+- checkpoint v0.1 scope freeze 见 `docs/checkpoint-v0.1-scope-freeze.md`。
 - `RunProjector.save_checkpoint_history(...)` 已实现为显式 projector-owned history save method。
 - `InProcessServer.save_checkpoint_history_for_run(...)` 已实现为 internal-only explicit history save trigger。
 - latest/default save path 仍不自动写 history。
@@ -63,6 +64,8 @@ checkpoint retention / compaction 的目的，是控制 checkpoint blob 的存�
 - checkpoint GC。
 - event log compaction。
 - checkpoint migration / version negotiation implementation。
+
+当前 checkpoint v0.1 freeze decision：retention policy、checkpoint history index 和 GC 暂不继续实现；只有出现真实 storage growth、performance 或 operational need 时，才显式 reopened。
 
 ## Decision
 
@@ -192,7 +195,7 @@ v0.1 design decision：
 - history save 不修改 event log。
 - invalid history checkpoint 不会写入 candidate file。
 
-后续如继续扩展，应先写 red tests，优先覆盖：
+后续如显式 reopened checkpoint retention / compaction scope，应先写 red tests，优先覆盖：
 
 - checkpoint history index integrity / ordering boundary。
 - automatic history persistence from `save_checkpoint(...)`。
@@ -201,4 +204,4 @@ v0.1 design decision：
 - corrupt / missing history index 不能跳过 full event-log replay。
 - server 不能直接解释 checkpoint history 或 checkpoint state。
 
-不要直接实现 checkpoint history index、GC、retention policy、automatic scheduling 或 event log compaction。
+不要默认继续实现 checkpoint history index、GC、retention policy、automatic scheduling 或 event log compaction；下一阶段应转向其他 kernel surface，优先 `ActionTypeRegistry` minimal boundary。

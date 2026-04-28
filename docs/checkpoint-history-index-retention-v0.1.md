@@ -2,7 +2,7 @@
 
 状态：draft
 
-本文定义 checkpoint history index（检查点历史索引）和 retention policy（保留策略）的 v0.1 边界。当前只落设计说明，不实现 history index、retention policy、GC 或 `CheckpointService`。
+本文定义 checkpoint history index（检查点历史索引）和 retention policy（保留策略）的 v0.1 边界。当前只落设计说明，不实现 history index、retention policy、GC 或 `CheckpointService`。checkpoint v0.1 已按 `docs/checkpoint-v0.1-scope-freeze.md` frozen for current kernel slice；本文不是下一步实现计划。
 
 ## Purpose
 
@@ -38,6 +38,8 @@ retention policy 的目的，是在不影响 canonical event log 的前提下，
 - 当前没有 checkpoint GC。
 - 当前没有 `CheckpointService`。
 - 当前 full regression：`391 passed`。
+- checkpoint v0.1 scope freeze 已落文档，见 `docs/checkpoint-v0.1-scope-freeze.md`。
+- checkpoint history index / retention / GC 暂不继续实现，除非 checkpoint scope 被明确 reopened。
 
 ## Decision
 
@@ -52,6 +54,7 @@ v0.1 design decision：
 - server 不能直接解释 history index 或 checkpoint state 来生成 `RunState`。
 - old-checkpoint fallback 不能隐藏 malformed / lifecycle-invalid event log。
 - 本轮不实现 history index、retention policy、GC 或 `CheckpointService`。
+- 当前 v0.1 freeze 后，这些项目不是默认下一步。
 
 ## Hard Boundaries
 
@@ -160,7 +163,7 @@ history save path 如果保留 checkpoint history，必须先遵守 `docs/checkp
 
 ## Future TDD Notes
 
-后续如继续实现，应先写 red tests，优先覆盖：
+后续如显式 reopened checkpoint history index / retention scope，应先写 red tests，优先覆盖：
 
 - history index corrupt / missing 行为。
 - deterministic newest-to-oldest candidate ordering through index。
@@ -170,4 +173,4 @@ history save path 如果保留 checkpoint history，必须先遵守 `docs/checkp
 - server 不能直接解释 history index 或 checkpoint state。
 - `FileCheckpointStore` 继续保持 opaque。
 
-不要在没有新 design patch 和 red tests 前实现 checkpoint history index、retention policy、checkpoint GC、public checkpoint inspection API 或 `CheckpointService`。
+不要在没有新 design patch、red tests 和明确 reopen decision 前实现 checkpoint history index、retention policy、checkpoint GC、public checkpoint inspection API 或 `CheckpointService`。默认下一阶段应转向 `ActionTypeRegistry` minimal boundary 等非 checkpoint kernel surface。

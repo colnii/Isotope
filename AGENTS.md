@@ -24,6 +24,7 @@
 - checkpoint history index / retention policy 相关实现必须遵守 `docs/checkpoint-history-index-retention-v0.1.md`，并先写 red tests；history index 不是 source of truth，不能证明 checkpoint 有效，retention / GC 只能作用于 checkpoint blobs 或 future index metadata。
 - checkpoint history save 相关实现必须遵守 `docs/checkpoint-history-save-boundary-v0.1.md`，并先写 red tests；`FileCheckpointStore.save_checkpoint_history(...)` 已实现为 explicit history candidate save method，仍不得静默改变 `save_checkpoint(...)` latest-only 语义，也不得让 server 直接解释 history checkpoint state。
 - checkpoint history save integration 相关实现必须遵守 `docs/checkpoint-history-save-integration-v0.1.md`，并先写 red tests；`RunProjector.save_checkpoint_history(...)` 和 `InProcessServer.save_checkpoint_history_for_run(...)` 已实现，但 `RunProjector.save_checkpoint(...)` 和 `InProcessServer.save_checkpoint_for_run(...)` 默认仍 latest-only，不得让 server 直接写外部 checkpoint state。
+- checkpoint v0.1 当前已按 `docs/checkpoint-v0.1-scope-freeze.md` frozen for current kernel slice；不要继续默认实现 checkpoint history index、retention policy、checkpoint GC、automatic scheduling、public checkpoint API 或 CheckpointService，除非用户明确 reopened checkpoint scope 并先落 design/doc patch + red tests。
 - checkpoint migration / version negotiation 相关实现必须遵守 `docs/checkpoint-migration-versioning-v0.1.md`，并先写 red tests；checkpoint projector version boundary hardening 已实现，但不得直接实现 migrator、schema registry、migrator registry 或 event log migration。
 - checkpoint schema version fields 相关实现必须遵守 `docs/checkpoint-schema-version-fields-v0.1.md`，并先写 red tests；当前只落设计边界，不得直接实现 `checkpoint_schema_version`、`state_schema_version`、`integrity_schema_version`、schema registry 或 migrator。
 - server-facing checkpoint 相关实现必须遵守 `docs/server-checkpoint-boundary-v0.1.md`；Server 不能直接解释 checkpoint state，必须通过 projector-owned boundary。
@@ -245,6 +246,9 @@
 - server history save trigger delegates only to projector-owned `RunProjector.save_checkpoint_history(...)`
 - server history save trigger returns minimal metadata and does not return checkpoint state
 - server history save trigger does not write `latest.json` or modify event log
+- checkpoint v0.1 scope freeze
+- checkpoint v0.1 is functionally sufficient for the current kernel slice
+- checkpoint history index / retention / GC remain deferred and are not the default next implementation target
 - `RunProjector.save_checkpoint(...)` remains latest-only
 - `InProcessServer.save_checkpoint_for_run(...)` remains latest-only by default
 - latest write / history write failure ordering must be explicit before implementation
@@ -318,6 +322,16 @@
 - auth
 - multi-agent concurrency
 - real HTTP API
+
+## Suggested Next Kernel Surface
+
+下一阶段默认不要继续深挖 checkpoint。优先考虑：
+
+- `ActionTypeRegistry` minimal boundary docs / red tests
+- memory write/query boundary docs
+- external ingestion / `ImportedSnapshot` boundary docs
+
+不要直接进入 real LLM、memory write implementation 或 external ingestion implementation。
 
 ## Verification
 

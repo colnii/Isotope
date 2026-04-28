@@ -263,6 +263,10 @@
 - server history save does not write `latest.json`
 - `InProcessServer.save_checkpoint_for_run(...)` remains latest-only
 - `InProcessServer.create_checkpoint(...)` remains `not_enabled`
+- checkpoint v0.1 scope freeze 已落文档
+- checkpoint v0.1 is functionally sufficient for the current kernel slice
+- checkpoint line is frozen unless explicitly reopened by storage growth / performance / operational need
+- checkpoint history index / retention / GC remain deferred but are not the next implementation target
 - checkpoint migration / version negotiation design note 已落文档
 - current checkpoint uses `projector_version`; current projector version is `run_projector@v1`
 - incompatible checkpoint projector version invalidates checkpoint and falls back to full rebuild
@@ -375,7 +379,8 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- checkpoint history index / retention policy red tests only after an explicit implementation slice
-- checkpoint retention / GC boundary review before any storage cleanup implementation
+- `ActionTypeRegistry` minimal boundary docs / red tests
+- memory write/query boundary docs only if `ActionTypeRegistry` is not the immediate next slice
+- external ingestion / `ImportedSnapshot` boundary docs only after the next kernel surface is explicitly selected
 
-不要直接进入 real LLM / memory / ingestion。
+checkpoint v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC。不要直接进入 real LLM / memory implementation / ingestion implementation。
