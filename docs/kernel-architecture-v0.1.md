@@ -144,7 +144,7 @@ Action Compiler 是 v0.1 推荐模块，用来隔离 model-facing protocol 和 c
 
 - compact protocol 用 JSON、tool calling、mini DSL，还是多模式。
 - repair / reprompt / escalate 规则。
-- `ActionTypeRegistry` 已由 Action Compiler 消费用于 compact tool lookup，并已由 Policy Engine 用于 requirement lookup；registry schema / 版本化仍未定，当前最小边界见 `docs/action-type-registry-v0.1.md`。
+- `ActionTypeRegistry` 已由 Action Compiler 消费用于 compact tool lookup、由 Policy Engine 用于 requirement lookup、由 Executor 用于 handler lookup；registry schema / 版本化仍未定，当前最小边界见 `docs/action-type-registry-v0.1.md`。
 
 ## 6. Policy Engine
 
@@ -440,7 +440,7 @@ External Ingestion Adapter 负责：
 
 v0.1 architecture 不解决以下问题：
 
-- `ActionTypeRegistry` 的 executor integration、schema 和版本化；compiler lookup 与 policy requirement lookup 已实现，当前最小边界见 `docs/action-type-registry-v0.1.md`。
+- `ActionTypeRegistry` 的 integration hardening、server wiring check、schema 和版本化；compiler lookup、policy requirement lookup 与 executor handler lookup 已实现，当前最小边界见 `docs/action-type-registry-v0.1.md`。
 - `ActionExecution.result` 形状。
 - retry / cancel / supersede 语义。
 - worker promotion 与 agent runtime loop 边界。

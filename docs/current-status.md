@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`cbd8c7834bef59bd9695982e1561ba02137fd7cf`。
+- 最新 implementation commit：`0362270fd220d512d3a2b069802ea1d49493ddaa`。
 
 ## Implemented Slice
 
@@ -291,7 +291,17 @@
 - registry does not automatically approve actions
 - registry cannot expand `PolicyDecision.grants`
 - `PolicyEngine` still decides grants itself and reduces extra tools / elevated workspace / excessive budget requests
-- registry is not yet wired into `Executor`
+- registry is wired into `Executor` handler lookup
+- `Executor(..., registry=...)` accepts an explicit registry
+- `Executor` uses `ActionTypeRegistry.default()` when no registry is provided
+- executor still only uses `PolicyDecision.grants`
+- registry cannot replace grants; if the tool is not granted, executor rejects execution
+- unknown granted tool fails closed with controlled `PermissionError`
+- disabled registry entry is rejected by executor
+- registry entry does not provide executable handler callback
+- current executor handler surface remains deterministic `write_artifact_tool` only
+- registry-known tools without a current slice handler fail closed as unsupported handler
+- executor success path event order remains `action.started`, `artifact.created`, `action.completed`
 - registry must not replace `ActionCompiler` / `PolicyEngine` / `Executor`
 - registry must not expand `PolicyDecision.grants` or bypass action chain
 - checkpoint migration / version negotiation design note 已落文档
@@ -344,7 +354,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-419 passed
+426 passed
 ```
 
 Import boundary check:
@@ -360,7 +370,6 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 以下能力明确 deferred，不能在没有 design/doc patch 和 red tests 前直接实现：
 
 - real LLM
-- `ActionTypeRegistry` integration with `Executor`
 - memory write
 - external ingestion / `ImportedSnapshot`
 - public checkpoint API / HTTP endpoint
@@ -406,9 +415,10 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- `Executor` registry handler lookup red tests
-- executor registry tests should prove executor resolves a handler through registry but still executes only with `PolicyDecision.grants`
-- memory write/query boundary docs only if executor registry lookup is not the immediate next slice
+- action registry integration hardening
+- server wiring check for action registry assumptions
+- deferred boundary review before choosing the next implementation slice
+- memory write/query boundary docs only if action registry hardening is not the immediate next slice
 - external ingestion / `ImportedSnapshot` boundary docs only after the next kernel surface is explicitly selected
 
 checkpoint v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC。不要直接进入 real LLM / memory implementation / ingestion implementation。

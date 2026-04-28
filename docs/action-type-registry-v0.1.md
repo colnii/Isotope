@@ -2,7 +2,7 @@
 
 状态：draft
 
-本文定义 `ActionTypeRegistry` 的最小边界。当前已实现 minimal registry module，并已接入 `ActionCompiler` 和 `PolicyEngine` requirement lookup；仍未接入 `Executor`，不引入 plugin system，不改变现有 action chain。
+本文定义 `ActionTypeRegistry` 的最小边界。当前已实现 minimal registry module，并已接入 `ActionCompiler`、`PolicyEngine` requirement lookup 和 `Executor` handler lookup；不引入 plugin system，不改变现有 action chain。
 
 ## Purpose
 
@@ -28,7 +28,7 @@
 
 - `ActionCompiler` 可以把 compact intent 编译为 canonical `ActionProposal`，并已使用 registry lookup 校验 compact tool。
 - `PolicyEngine` 已使用 registry requirement lookup，但仍自己决定 grants。
-- `Executor` 当前能执行 deterministic `write_artifact_tool`。
+- `Executor` 已使用 registry handler lookup，但当前仍只执行 deterministic `write_artifact_tool` handler。
 - `ActionProposal -> PolicyDecision -> ActionExecution -> canonical events` 已有最小链路。
 - action/tool metadata 已有最小集中 registry module：`src/isotope_kernel/action_registry.py`。
 - `ActionTypeEntry` 是当前 v0 slice 的最小 metadata model。
@@ -51,8 +51,14 @@
 - registry-known tool 只有在 proposal requested capabilities 请求该 tool 时才可能被 policy approve。
 - registry 不能自动批准 action，也不能扩大 `PolicyDecision.grants`。
 - policy 仍负责缩权：extra tool、更高 workspace request、超额 budget 会被 reduced / modified。
-- registry 尚未接入 `Executor`。
-- checkpoint v0.1 已 frozen for current kernel slice；下一阶段建议先推进 Executor registry boundary，而不是继续深挖 checkpoint。
+- registry 已接入 `Executor` handler lookup。
+- `Executor(..., registry=...)` 可显式传入 registry。
+- 不传 registry 时，`Executor` 使用 `ActionTypeRegistry.default()`。
+- executor 仍只能使用 `PolicyDecision.grants`。
+- registry 不能替代 grants，也不能提供 executable callback。
+- 当前 executor 仍只有 deterministic `write_artifact_tool` handler。
+- registry-known tools without a current slice handler fail closed as unsupported handler.
+- checkpoint v0.1 已 frozen for current kernel slice；下一阶段建议先做 action registry integration hardening / server wiring check / deferred boundary review，而不是继续深挖 checkpoint。
 
 ## Hard Boundaries
 
@@ -106,11 +112,21 @@
 - disabled registry entry 不会被 policy approve。
 - registry 不能凭空把未 requested 的 tool 加入 grants。
 
-下一轮 implementation 应只推进 executor lookup：
+当前 executor lookup integration 已覆盖：
 
 - `Executor` 使用 registry 做 handler lookup。
 - executor 仍只能使用 `PolicyDecision.grants`。
 - registry entry 不能携带 executable side-effect callback。
+- unknown granted tool 在 executor boundary fail closed，不继续使用 hardcoded tool error。
+- disabled registry entry 不会被 executor 执行。
+- registry-known tool 如果没有当前 slice handler，会受控 fail closed。
+- successful `write_artifact_tool` execution event order remains `action.started`, `artifact.created`, `action.completed`.
+
+下一轮 implementation 不应默认继续扩展 registry handler；应先选择：
+
+- action registry integration hardening。
+- server wiring check for action registry assumptions。
+- deferred boundary review。
 
 仍然不引入：
 
@@ -188,9 +204,17 @@ registry 可能被三个模块读取，但职责不同：
 - unknown / disabled registry tools cannot be approved.
 - registry cannot auto-approve actions or expand `PolicyDecision.grants`.
 
+已完成的 executor integration tests 覆盖：
+
+- `Executor` accepts an optional registry or otherwise uses the default registry.
+- executor uses registry handler lookup but still executes only with `PolicyDecision.grants`.
+- unknown / disabled registry tools fail closed at executor boundary.
+- registry-known tools without the current deterministic handler fail closed as unsupported handler.
+- registry-backed `write_artifact_tool` success keeps executor-owned event order unchanged.
+
 下一轮 red tests 建议优先覆盖：
 
-- `Executor` uses registry handler lookup but still executes only with `PolicyDecision.grants`.
+- action registry integration hardening / server wiring check / deferred boundary review.
 - no dynamic loading, no plugin discovery, no public extension API.
 
 不要在没有 red tests 前直接实现 full plugin system、remote registry、schema registry、real LLM tool calling 或 third-party tool loading。
