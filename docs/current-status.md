@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`7e3885c1b4b58999cf554b5abcb53d1e7346ff72`。
+- 最新 implementation commit：`57636a1d6727d896371efb6a846c2003c31d19aa`。
 
 ## Implemented Slice
 
@@ -230,10 +230,15 @@
 - corrupt / missing history index cannot let the system skip full event-log replay
 - current latest-only save behavior remains unchanged
 - checkpoint history save boundary design note 已落文档
-- future history save cannot bypass `RunProjector.create_checkpoint(...)`
-- invalid checkpoint cannot overwrite latest or enter history
-- latest write / history write failure ordering must be explicit before implementation
-- candidate loading does not mean save path persists history
+- explicit checkpoint history candidate save method
+- `FileCheckpointStore.save_checkpoint_history(run_id, checkpoint)`
+- history candidate files are written under `runs/{run_id}/checkpoints/` without using `latest.json`
+- `save_checkpoint_history(...)` does not overwrite `latest.json`
+- invalid history checkpoint is rejected before writing candidate files
+- history save does not modify event log
+- history candidates can be read by `load_checkpoint_candidates(run_id)` newest-to-oldest
+- `FileCheckpointStore` remains opaque and does not interpret checkpoint state / integrity / projector version
+- `save_checkpoint(...)` remains latest-only replacement and does not automatically save history
 - checkpoint migration / version negotiation design note 已落文档
 - current checkpoint uses `projector_version`; current projector version is `run_projector@v1`
 - incompatible checkpoint projector version invalidates checkpoint and falls back to full rebuild
@@ -284,7 +289,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-360 passed
+369 passed
 ```
 
 Import boundary check:
@@ -306,8 +311,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - public checkpoint API / HTTP endpoint
 - automatic checkpoint scheduling
 - CheckpointService
-- checkpoint history persistence from `save_checkpoint(...)`
-- checkpoint history save method
+- `save_checkpoint(...)` semantic change / automatic history persistence
 - checkpoint history index
 - checkpoint GC
 - checkpoint retention policy
@@ -347,7 +351,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- checkpoint history save boundary red tests only after an explicit implementation slice
 - checkpoint history index / retention policy red tests only after an explicit implementation slice
+- checkpoint history save integration boundary if future projector/server callers need it
 
 不要直接进入 real LLM / memory / ingestion。

@@ -19,10 +19,10 @@
 - event prefix digest 已有最小 validation；后续扩展必须遵守 `docs/event-prefix-digest-v0.1.md`，并先写 red tests。digest 不能替代 replay、lifecycle validation、state schema validation 或 prefix consistency validation。
 - event envelope versioning 相关实现必须遵守 `docs/event-envelope-versioning-v0.1.md`，并先写 red tests；最小 event envelope version boundary 已实现，但不得直接扩展 event envelope schema registry、event schema registry、payload schema registry、event migration 或 content-addressed event ids。
 - event envelope schema registry 相关实现必须遵守 `docs/event-envelope-schema-registry-v0.1.md`，并先写 red tests；当前只落设计边界，不得直接实现 registry lookup、payload schema registry、event migration、migrator registry 或 public inspection API。
-- checkpoint retention / compaction 相关实现必须遵守 `docs/checkpoint-retention-compaction-v0.1.md`，并先写 red tests；retention / compaction 不能删除、重写、压缩或裁剪 canonical event log。latest-only replacement boundary 已实现，但 checkpoint history index、checkpoint history persistence、GC 和 scheduling 仍 deferred。
+- checkpoint retention / compaction 相关实现必须遵守 `docs/checkpoint-retention-compaction-v0.1.md`，并先写 red tests；retention / compaction 不能删除、重写、压缩或裁剪 canonical event log。latest-only replacement boundary 和 explicit history candidate save method 已实现，但 checkpoint history index、`save_checkpoint(...)` automatic history persistence、GC 和 scheduling 仍 deferred。
 - checkpoint history / old-checkpoint fallback 相关实现必须遵守 `docs/checkpoint-history-fallback-v0.1.md`，并先写 red tests；最小 projector-owned candidate fallback 已实现，但 `save_checkpoint(...)` 仍是 latest-only，不得直接实现 checkpoint history index、GC、retention policy、CheckpointService 或让 server 直接解释 old checkpoint。
 - checkpoint history index / retention policy 相关实现必须遵守 `docs/checkpoint-history-index-retention-v0.1.md`，并先写 red tests；history index 不是 source of truth，不能证明 checkpoint 有效，retention / GC 只能作用于 checkpoint blobs 或 future index metadata。
-- checkpoint history save 相关实现必须遵守 `docs/checkpoint-history-save-boundary-v0.1.md`，并先写 red tests；不得绕过 `RunProjector.create_checkpoint(...)`，invalid checkpoint 不能覆盖 latest 或进入 history，不能静默改变 `save_checkpoint(...)` latest-only 语义。
+- checkpoint history save 相关实现必须遵守 `docs/checkpoint-history-save-boundary-v0.1.md`，并先写 red tests；`FileCheckpointStore.save_checkpoint_history(...)` 已实现为 explicit history candidate save method，仍不得静默改变 `save_checkpoint(...)` latest-only 语义，也不得让 server 直接解释 history checkpoint state。
 - checkpoint migration / version negotiation 相关实现必须遵守 `docs/checkpoint-migration-versioning-v0.1.md`，并先写 red tests；checkpoint projector version boundary hardening 已实现，但不得直接实现 migrator、schema registry、migrator registry 或 event log migration。
 - checkpoint schema version fields 相关实现必须遵守 `docs/checkpoint-schema-version-fields-v0.1.md`，并先写 red tests；当前只落设计边界，不得直接实现 `checkpoint_schema_version`、`state_schema_version`、`integrity_schema_version`、schema registry 或 migrator。
 - server-facing checkpoint 相关实现必须遵守 `docs/server-checkpoint-boundary-v0.1.md`；Server 不能直接解释 checkpoint state，必须通过 projector-owned boundary。
@@ -229,9 +229,12 @@
 - corrupt / missing history index cannot let the system skip full event-log replay
 - current latest-only save behavior remains unchanged
 - checkpoint history save boundary design note
-- future history save cannot bypass `RunProjector.create_checkpoint(...)`
-- invalid checkpoint cannot overwrite latest or enter history
-- candidate loading does not mean save path persists history
+- `FileCheckpointStore.save_checkpoint_history(run_id, checkpoint)` explicit history candidate save method
+- history save does not overwrite `latest.json`
+- history save does not modify event log
+- history candidates can be loaded newest-to-oldest by `load_checkpoint_candidates(run_id)`
+- `FileCheckpointStore` remains opaque and does not interpret checkpoint state / integrity / projector version
+- `save_checkpoint(...)` remains latest-only and does not automatically persist history
 - latest write / history write failure ordering must be explicit before implementation
 - checkpoint migration / version negotiation boundary design note
 - current checkpoint uses `projector_version`; current projector version is `run_projector@v1`
@@ -276,8 +279,7 @@
 - public checkpoint API / HTTP endpoint
 - automatic checkpoint scheduling
 - CheckpointService
-- checkpoint history persistence from save_checkpoint
-- checkpoint history save method
+- save_checkpoint semantic change / automatic history persistence
 - checkpoint history index
 - checkpoint GC
 - checkpoint retention policy

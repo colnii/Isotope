@@ -4,7 +4,7 @@
 
 本文定义 checkpoint retention / compaction（检查点保留 / 压缩清理）的 v0.1 边界：checkpoint blob 如何保留、替换、清理，以及这些操作为什么绝不能影响 canonical event log。
 
-当前已实现 latest-only checkpoint storage boundary hardening、checkpoint candidate loading 和最小 projector-owned old-checkpoint fallback path。`save_checkpoint(...)` 仍是 latest-only replacement，不自动保留 history；broader retention policy、checkpoint history index、GC、automatic scheduling 和 event log compaction 仍不实现。
+当前已实现 latest-only checkpoint storage boundary hardening、checkpoint candidate loading、最小 projector-owned old-checkpoint fallback path 和 explicit history candidate save method。`save_checkpoint(...)` 仍是 latest-only replacement，不自动保留 history；broader retention policy、checkpoint history index、GC、automatic scheduling 和 event log compaction 仍不实现。
 
 ## Purpose
 
@@ -38,18 +38,22 @@ checkpoint retention / compaction 的目的，是控制 checkpoint blob 的存�
 - 所有 candidates 都 invalid 时，会 fallback full event-log rebuild。
 - lifecycle-invalid event log 不能被 older checkpoint fallback 隐藏。
 - `save_checkpoint(...)` 仍是 latest-only replacement，不创建 checkpoint history 文件。
+- `FileCheckpointStore.save_checkpoint_history(run_id, checkpoint)` 已实现为 explicit history candidate save method。
+- history candidate 写入 run-scoped `checkpoints/` 目录下非 `latest.json` 文件。
+- history save 不覆盖 `latest.json`，不修改 event log。
+- invalid history checkpoint 在写入前被拒绝。
+- `FileCheckpointStore` 仍保持 opaque，不解释 checkpoint state / integrity / projector version。
 - checkpoint history / old-checkpoint fallback 边界见 `docs/checkpoint-history-fallback-v0.1.md`。
 - checkpoint history index / retention policy 边界见 `docs/checkpoint-history-index-retention-v0.1.md`。
 - checkpoint history save 边界见 `docs/checkpoint-history-save-boundary-v0.1.md`。
 - checkpoint migration / version negotiation design note 已落文档。
-- 当前 full regression：`360 passed`。
+- 当前 full regression：`369 passed`。
 
 当前没有实现：
 
 - retention policy。
 - checkpoint history index。
-- checkpoint history persistence from `save_checkpoint(...)`。
-- checkpoint history save method。
+- `save_checkpoint(...)` semantic change / automatic history persistence。
 - broader checkpoint compaction。
 - automatic checkpoint scheduling。
 - checkpoint GC。
@@ -105,6 +109,8 @@ v0.1 design decision：
 - latest-only replacement 不触碰 event log。
 - latest-only replacement 不创建 checkpoint history 文件。
 - invalid replacement 不覆盖已有 valid latest checkpoint。
+- `save_checkpoint_history(...)` 可显式保存 history candidate，但不改变 latest-only replacement 语义。
+- `save_checkpoint_history(...)` 不触碰 event log。
 - `run_id` 作为受控 path segment 校验。
 - `FileCheckpointStore.load_checkpoint_candidates(run_id)` 可读取 run-scoped checkpoint candidates。
 - candidate loading 按 `created_at` newest-to-oldest 读取，但 storage 不解释 checkpoint 业务语义。
@@ -145,7 +151,7 @@ v0.1 design decision：
 - 是否保持 latest-only，还是保留最近 N 个 checkpoint。
 - checkpoint 文件命名与 `checkpoint_id`。
 - checkpoint history index 的完整性、顺序和错误处理。
-- checkpoint history persistence from `save_checkpoint(...)`。
+- `save_checkpoint(...)` semantic change / automatic history persistence。
 - retention 触发时机。
 - automatic checkpoint scheduling。
 - checkpoint GC。
@@ -177,12 +183,16 @@ v0.1 design decision：
 - invalid candidate 不能被部分读取或部分采用。
 - all invalid candidates fallback full event-log rebuild。
 - lifecycle-invalid event log 不能被 older checkpoint fallback 隐藏。
+- explicit history candidate save method。
+- history save 不覆盖 latest checkpoint。
+- history save 不修改 event log。
+- invalid history checkpoint 不会写入 candidate file。
 
 后续如继续扩展，应先写 red tests，优先覆盖：
 
 - checkpoint history index integrity / ordering boundary。
-- checkpoint history persistence from `save_checkpoint(...)`。
-- checkpoint history save boundary。
+- automatic history persistence from `save_checkpoint(...)`。
+- projector/server history save integration boundary。
 - checkpoint retention / GC。
 - corrupt / missing history index 不能跳过 full event-log replay。
 - server 不能直接解释 checkpoint history 或 checkpoint state。

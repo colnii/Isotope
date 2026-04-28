@@ -37,7 +37,9 @@ Checkpoint save trigger 的目标，是给已有 projector-owned checkpoint save
 - 没有 `CheckpointService`。
 - event prefix digest 已有最小 validation；save trigger 不解释 digest。
 - latest-only checkpoint storage boundary hardening 已实现；save trigger 不执行 broader retention / compaction。
-- checkpoint history save boundary design note 已落文档；当前 save trigger 不触发 history save。
+- checkpoint history save boundary design note 已落文档。
+- `FileCheckpointStore.save_checkpoint_history(...)` 已实现为 explicit history candidate save method。
+- 当前 save trigger 不触发 history save，仍只调用 `RunProjector.save_checkpoint(...)` 写 latest checkpoint。
 
 ## Decision
 
@@ -100,8 +102,8 @@ v0.1 decision：
 当前仍 deferred：
 
 - automatic checkpoint scheduling。
-- checkpoint history persistence from `save_checkpoint(...)`。
-- checkpoint history save method。
+- `save_checkpoint(...)` semantic change / automatic history persistence。
+- projector/server automatic history save integration。
 - checkpoint GC。
 - checkpoint retention policy。
 - `CheckpointService`。
@@ -130,5 +132,5 @@ v0.1 decision：
 - event prefix digest 后续扩展仍不能由 save trigger 自行计算、解释或信任 digest。
 - checkpoint migration / version negotiation design note。
 - checkpoint history / old-checkpoint fallback design note。
-- checkpoint history save boundary design note。
+- checkpoint history save integration boundary；explicit storage method 已存在，但 save trigger 仍不调用它。
 - public checkpoint API / HTTP endpoint 仍不实现。

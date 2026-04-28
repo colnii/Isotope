@@ -24,12 +24,16 @@ retention policy 的目的，是在不影响 canonical event log 的前提下，
 - 每个 candidate 仍必须通过 projector-owned validation chain 后才能作为 replay basis。
 - `save_checkpoint(...)` 仍只写 `runs/{run_id}/checkpoints/latest.json`。
 - `save_checkpoint(...)` 不创建 checkpoint history 文件。
+- `FileCheckpointStore.save_checkpoint_history(run_id, checkpoint)` 已实现为 explicit history candidate save method。
+- `save_checkpoint_history(...)` 可写入非 `latest.json` history candidate。
+- history save 不覆盖 latest，不修改 event log。
+- `FileCheckpointStore` 仍保持 opaque，不解释 checkpoint state / integrity / projector version。
 - checkpoint history save boundary design note 已落文档，见 `docs/checkpoint-history-save-boundary-v0.1.md`。
 - 当前没有 persisted history index。
 - 当前没有 retention policy。
 - 当前没有 checkpoint GC。
 - 当前没有 `CheckpointService`。
-- 当前 full regression：`360 passed`。
+- 当前 full regression：`369 passed`。
 
 ## Decision
 
@@ -139,8 +143,8 @@ history save path 如果保留 checkpoint history，必须先遵守 `docs/checkp
 - checkpoint history index。
 - retention policy。
 - checkpoint GC。
-- checkpoint history persistence from `save_checkpoint(...)`。
-- checkpoint history save method。
+- `save_checkpoint(...)` semantic change / automatic history persistence。
+- projector/server automatic history save integration。
 - `CheckpointService`。
 - public checkpoint inspection API。
 - automatic checkpoint scheduling。

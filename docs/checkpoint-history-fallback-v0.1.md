@@ -29,12 +29,16 @@ checkpoint history / old-checkpoint fallback 的目的，是在 latest checkpoin
 - latest-only replacement boundary 已实现：同一 run 第二次保存 checkpoint 会替换 `latest.json`，不创建 history 文件。
 - invalid replacement 不会覆盖已有 valid latest checkpoint。
 - replacement 不修改 event log，也不创建 / 删除 / 重写 `events.jsonl`。
-- 当前 full regression：`360 passed`。
+- `FileCheckpointStore.save_checkpoint_history(run_id, checkpoint)` 已实现为 explicit history candidate save method。
+- history candidate save 不覆盖 `latest.json`，不修改 event log。
+- history candidate 可被 `load_checkpoint_candidates(run_id)` newest-to-oldest 读取。
+- `FileCheckpointStore` 仍保持 opaque，不解释 checkpoint state / integrity / projector version。
+- 当前 full regression：`369 passed`。
 
 当前没有实现：
 
 - checkpoint history index。
-- checkpoint history persistence from `save_checkpoint(...)`。
+- `save_checkpoint(...)` semantic change / automatic history persistence。
 - checkpoint GC。
 - retention policy。
 - public checkpoint inspection API。
@@ -87,6 +91,7 @@ v0.1 design decision：
 当前 v0 implementation choice：
 
 - 保留 latest checkpoint 语义。
+- explicit history candidate save method 已实现，但不改变 latest checkpoint 语义。
 - `FileCheckpointStore.load_checkpoint_candidates(run_id)` 从 run-scoped checkpoint directory 读取 candidate blobs。
 - fallback order 使用 checkpoint `created_at` newest-to-oldest scan。
 - 每个候选 checkpoint 先完整执行现有 checkpoint validation chain。
@@ -96,7 +101,7 @@ v0.1 design decision：
 未来可以考虑：
 
 - 增加 checkpoint history index。
-- 让 `save_checkpoint(...)` 保留最近 N 个 checkpoint。
+- 让 `save_checkpoint(...)` 自动保留最近 N 个 checkpoint。
 - checkpoint history index 自身需要 integrity / ordering / retention 边界。
 - retention / GC 和 fallback 选择逻辑分开设计，不能在 fallback slice 中顺手实现。
 - 如果 future save path 保留 history，必须遵守 `docs/checkpoint-history-save-boundary-v0.1.md`。
@@ -154,7 +159,7 @@ v0.1 design decision：
 当前仍不实现：
 
 - checkpoint history index。
-- checkpoint history persistence from `save_checkpoint(...)`。
+- `save_checkpoint(...)` semantic change / automatic history persistence。
 - checkpoint GC。
 - retention policy。
 - checkpoint inspection API。
@@ -180,12 +185,15 @@ v0.1 design decision：
 - all invalid candidates fallback full event-log rebuild。
 - lifecycle-invalid event log 不能被 older checkpoint fallback 隐藏。
 - `save_checkpoint(...)` 仍是 latest-only replacement，不创建 history 文件。
+- `FileCheckpointStore.save_checkpoint_history(...)` 可显式保存 history candidate。
+- history save 不改变 latest checkpoint。
+- history save 不修改 event log。
 
 后续如继续扩展，应先写 red tests，至少覆盖：
 
 - checkpoint history index。
-- checkpoint history persistence from `save_checkpoint(...)`。
-- checkpoint history save boundary。
+- automatic history persistence from `save_checkpoint(...)`。
+- projector/server history save integration boundary。
 - retention / GC。
 - corrupt / missing history index 不能跳过 full event-log replay。
 - server 不能直接解释 checkpoint history 或 checkpoint state。

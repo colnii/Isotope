@@ -2,7 +2,7 @@
 
 状态：draft
 
-本文定义 checkpoint history save（检查点历史保存）的 v0.1 边界。当前只做设计说明，不实现 checkpoint history persistence，不修改 `save_checkpoint(...)` 的 latest-only 行为。
+本文定义 checkpoint history save（检查点历史保存）的 v0.1 边界。当前已实现 explicit history candidate save method，但不修改 `save_checkpoint(...)` 的 latest-only 行为，也不引入 checkpoint history index、retention policy、GC 或 public API。
 
 ## Purpose
 
@@ -14,19 +14,26 @@ checkpoint history save 的目的，是在 future save path 需要保留历史 c
 
 当前实现状态：
 
-- `RunProjector.save_checkpoint(...)` 仍是 latest-only replacement。
+- `RunProjector.save_checkpoint(...)` 仍调用 latest-only replacement path。
 - `save_checkpoint(...)` 只写 `runs/{run_id}/checkpoints/latest.json`。
 - `save_checkpoint(...)` 不创建 checkpoint history 文件。
+- `FileCheckpointStore.save_checkpoint_history(run_id, checkpoint)` 已实现为 explicit history candidate save method。
+- `save_checkpoint_history(...)` 将 candidate 写入 `runs/{run_id}/checkpoints/` 下非 `latest.json` 文件。
+- `save_checkpoint_history(...)` 不覆盖或修改 `latest.json`。
+- `save_checkpoint_history(...)` 复用 run_id 和 checkpoint 基础 storage validation。
+- invalid checkpoint 在写入前被拒绝，不会产生 history candidate。
+- history save 不修改 canonical event log，也不创建 / 删除 / 重写 `events.jsonl`。
+- history save 后的 candidate 可由 `load_checkpoint_candidates(run_id)` 读取，并按 newest-to-oldest 返回。
+- `FileCheckpointStore` 仍保持 opaque，不解释 checkpoint state / integrity / projector version。
 - `FileCheckpointStore.load_checkpoint_candidates(run_id)` 已实现，可以读取 run-scoped candidates。
-- candidate loading 能读取 candidates 不等于 save path 已经持久化 history。
+- candidate loading 能读取 candidates，也能读取 explicit history save 写入的 candidates；这不改变 `save_checkpoint(...)` latest-only 语义。
 - 最小 projector-owned old-checkpoint fallback 已实现的是 read path，不是 save/history policy。
 - `InProcessServer.save_checkpoint_for_run(run_id)` 仍只调用 projector-owned `RunProjector.save_checkpoint(...)`。
-- 当前没有 checkpoint history persistence from `save_checkpoint(...)`。
 - 当前没有 checkpoint history index。
 - 当前没有 retention policy。
 - 当前没有 checkpoint GC。
 - 当前没有 `CheckpointService`。
-- 当前 full regression：`360 passed`。
+- 当前 full regression：`369 passed`。
 
 ## Decision
 
@@ -37,11 +44,12 @@ v0.1 design decision：
 - save path 不能跳过 `RunProjector.create_checkpoint(...)`。
 - save path 不能保存未经过 projector-owned creation 的 checkpoint。
 - invalid checkpoint 不能覆盖 latest。
-- invalid checkpoint 不能进入 history。
+- invalid checkpoint 不能进入 history candidate files。
 - history save 不能让 server 直接解释 checkpoint state。
 - history file / history index 失败不能破坏 event-log replay。
-- latest write 与 history write 的失败顺序必须有明确策略，不能留下误导性状态。
-- 本轮不修改当前 latest-only save behavior。
+- `save_checkpoint_history(...)` 是 storage boundary，不是 projector-owned checkpoint creation boundary；caller 仍必须维护 projector-owned creation 规则。
+- `save_checkpoint(...)` 与 `save_checkpoint_history(...)` 的组合、原子性和自动触发策略仍未实现。
+- 当前不修改 latest-only save behavior。
 
 ## Hard Boundaries
 
@@ -52,10 +60,11 @@ v0.1 design decision：
 - history save 不能修复坏 event log。
 - history save 不能跳过 event validation。
 - history save 不能跳过 lifecycle validation。
-- history save 不能跳过 `RunProjector.create_checkpoint(...)`。
+- history save integration 不能跳过 `RunProjector.create_checkpoint(...)`。
 - history save 不能保存外部提交的 checkpoint state。
 - invalid checkpoint 不能覆盖 `latest.json`。
 - invalid checkpoint 不能写入 history candidates。
+- history candidate file 不能命名为 `latest.json`。
 - history write failure 不能伪造 success。
 - history index failure 不能阻止 full event-log replay。
 - server 不能直接解释 history candidate 或 history index 来生成 `RunState`。
@@ -64,11 +73,19 @@ v0.1 design decision：
 
 ## v0 Candidate / Sketch
 
-未来可以考虑以下保存策略：
+当前已实现的 storage-level history save：
+
+- explicit method：`FileCheckpointStore.save_checkpoint_history(run_id, checkpoint)`。
+- candidate file 写入 run-scoped `checkpoints/` 目录。
+- candidate file 不使用 `latest.json`。
+- candidate file 可被 `load_checkpoint_candidates(run_id)` 读取。
+- store 层只做 storage boundary validation，不解释 checkpoint business state。
+
+未来可以考虑以下更高层保存策略：
 
 - 先写 immutable candidate file，再更新 `latest.json`。
 - 先写 `latest.json`，再 best-effort 写 history file。
-- 引入 explicit `save_checkpoint_history(...)`，不改变当前 `save_checkpoint(...)`。
+- 组合 `save_checkpoint(...)` 和 `save_checkpoint_history(...)`，但必须明确失败顺序。
 
 candidate filename 可以基于：
 
@@ -88,7 +105,7 @@ history index 更新如果失败，应有明确 fallback：
 
 具体策略仍是 open question，但不能隐式猜测。
 
-`save_checkpoint(...)` 是否继续 latest-only，还是新增参数 / 新方法，需要单独决策。当前推荐优先考虑新方法，避免 silently changing existing latest-only behavior。
+`save_checkpoint(...)` 当前继续 latest-only。是否让 projector/server save trigger 额外调用 `save_checkpoint_history(...)`，需要单独决策，避免 silently changing existing latest-only behavior。
 
 ## Invalid Uses
 
@@ -123,9 +140,9 @@ history index 更新如果失败，应有明确 fallback：
 
 当前仍不实现：
 
-- checkpoint history persistence。
-- checkpoint history save method。
 - `save_checkpoint(...)` semantic change。
+- automatic history persistence from `save_checkpoint(...)`。
+- projector/server automatic history save integration。
 - checkpoint history index。
 - retention policy。
 - checkpoint GC。
@@ -142,7 +159,8 @@ history index 更新如果失败，应有明确 fallback：
 
 后续如继续实现，应先写 red tests，优先覆盖：
 
-- current `save_checkpoint(...)` 是否保持 latest-only，或明确引入新 method。
+- current `save_checkpoint(...)` 是否继续保持 latest-only。
+- projector/server caller 是否显式调用 `save_checkpoint_history(...)`。
 - invalid checkpoint 不能覆盖 latest，也不能进入 history。
 - latest write / history write failure ordering。
 - history write 不修改 event log。
@@ -151,4 +169,4 @@ history index 更新如果失败，应有明确 fallback：
 - retention / GC 不混入 history save slice。
 - server manual save trigger 是否调用 history save 的明确边界。
 
-不要在没有新 design patch 和 red tests 前实现 checkpoint history persistence、history index、retention policy、checkpoint GC、public checkpoint API 或 `CheckpointService`。
+不要在没有新 design patch 和 red tests 前实现 automatic history persistence from `save_checkpoint(...)`、history index、retention policy、checkpoint GC、public checkpoint API 或 `CheckpointService`。
