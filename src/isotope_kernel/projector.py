@@ -259,7 +259,7 @@ class RunProjector:
         checkpoint = checkpoint_store.load_latest_checkpoint(run_id)
         if checkpoint is None:
             return self.rebuild(run_id, event_store)
-        if checkpoint["projector_version"] != projector_version:
+        if not self._is_compatible_projector_version(checkpoint, projector_version):
             return self.rebuild(run_id, event_store)
         if checkpoint["run_id"] != run_id:
             raise ValueError("checkpoint run_id must match rebuild run_id")
@@ -288,6 +288,14 @@ class RunProjector:
             for key, value in checkpoint.items()
             if key not in {"integrity", "checkpoint_hash"}
         }
+
+    def _is_compatible_projector_version(self, checkpoint: dict[str, Any], projector_version: Any) -> bool:
+        checkpoint_version = checkpoint.get("projector_version")
+        if not isinstance(checkpoint_version, str) or not checkpoint_version:
+            return False
+        if not isinstance(projector_version, str) or not projector_version:
+            return False
+        return checkpoint_version == projector_version
 
     def _checkpoint_hash(self, checkpoint_without_integrity: dict[str, Any]) -> str:
         encoded = json.dumps(
