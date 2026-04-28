@@ -17,6 +17,7 @@
 - 不得直接扩展 automatic checkpoint scheduling / public checkpoint API；checkpoint 相关实现必须遵守 `docs/checkpoint-ownership-v0.1.md`，并先写 red tests。
 - checkpoint hash 已有最小 validation；后续扩展 signature / MAC / key management 前，必须先更新设计文档并写 red tests。
 - event prefix digest 已有最小 validation；后续扩展必须遵守 `docs/event-prefix-digest-v0.1.md`，并先写 red tests。digest 不能替代 replay、lifecycle validation、state schema validation 或 prefix consistency validation。
+- event envelope versioning 相关实现必须遵守 `docs/event-envelope-versioning-v0.1.md`，并先写 red tests；当前只有 design note，不得直接实现 event envelope version field、event schema registry、payload schema registry、event migration 或 content-addressed event ids。
 - checkpoint retention / compaction 相关实现必须遵守 `docs/checkpoint-retention-compaction-v0.1.md`，并先写 red tests；retention / compaction 不能删除、重写、压缩或裁剪 canonical event log。latest-only replacement boundary 已实现，但 checkpoint history / GC / scheduling 仍 deferred。
 - checkpoint migration / version negotiation 相关实现必须遵守 `docs/checkpoint-migration-versioning-v0.1.md`，并先写 red tests；checkpoint projector version boundary hardening 已实现，但不得直接实现 migrator、schema registry、migrator registry 或 event log migration。
 - server-facing checkpoint 相关实现必须遵守 `docs/server-checkpoint-boundary-v0.1.md`；Server 不能直接解释 checkpoint state，必须通过 projector-owned boundary。
@@ -213,6 +214,12 @@
 - incompatible or malformed version fallback does not read checkpoint state
 - future schema sketch fields cannot override `projector_version`
 - `FileCheckpointStore` remains opaque and does not interpret version fields
+- event envelope versioning boundary design note
+- current `CanonicalEvent` envelope remains slice-only implementation shape
+- current event prefix digest binds to the current slice canonical event representation
+- no explicit event envelope version field is implemented
+- `canonical_event_slice@v0` is only a documentation label
+- event envelope versioning cannot rewrite canonical event log or make malformed events valid
 
 ## Deferred
 
@@ -234,8 +241,12 @@
 - checkpoint migration / version negotiation implementation
 - checkpoint migrator registry
 - schema registry
+- event envelope version field
 - event envelope schema registry
+- event schema registry
+- payload schema registry
 - audit event for checkpoint migration
+- content-addressed event ids
 - event log compaction
 - SSE
 - auth

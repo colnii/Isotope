@@ -21,6 +21,7 @@ checkpoint migration / versioning 的目的，是在 checkpoint shape 或 projec
 - `RunProjector.rebuild_with_checkpoint(...)` 遇到 projector version 不兼容时，会丢弃 checkpoint 并 fallback full rebuild。
 - checkpoint schema 仍是 v0 candidate，不是永久协议。
 - event envelope 仍是 slice-only shape，不是最终协议。
+- event envelope versioning design note 已落文档，边界见 `docs/event-envelope-versioning-v0.1.md`。
 - checkpoint integrity/hash validation 已实现。
 - event prefix digest validation 已实现。
 - checkpoint state schema validation 和 prefix consistency validation 已实现。
@@ -63,6 +64,7 @@ v0.1 design decision：
 - event replay 仍是最终恢复路径。
 - checkpoint hash、event prefix digest、state schema validation、prefix consistency validation 和 lifecycle validation 不能被 migration 跳过。
 - checkpoint schema、projector version 和 event envelope version 的字段名仍是 v0 candidate / schema sketch，不是永久协议。
+- event envelope version 如果未来引入，不能只藏在 checkpoint 里；它必须影响 event serialization、digest、replay 和 projector validation 的明确边界。
 
 ## Hard Boundaries
 
@@ -77,6 +79,8 @@ v0.1 design decision：
 - migration / version negotiation 不能跳过 prefix projection consistency validation。
 - migration / version negotiation 不能跳过 checkpoint integrity/hash validation。
 - migration / version negotiation 不能跳过 event prefix digest validation。
+- event envelope version mismatch 不能让 malformed event 变合法。
+- checkpoint 中的 event envelope version sketch field 不能覆盖 event log 的真实 representation。
 - migration 失败时必须 fallback full rebuild 或 fail fast；不能返回半迁移 state。
 - public client 不能提交 checkpoint state、migration adapter 或 version override。
 - `FileCheckpointStore` 仍保持 opaque，不解释 schema version 或业务 state。
@@ -118,6 +122,8 @@ Schema sketch：
 
 这些字段名只是 v0 candidate / schema sketch，不是当前实现协议。
 
+`event_envelope_version` 的更完整边界见 `docs/event-envelope-versioning-v0.1.md`。当前隐式 event representation 可在文档中称为 `canonical_event_slice@v0`，但这不是实现字段。
+
 ## Version Negotiation Flow
 
 当前无 migrator 时的流程：
@@ -144,7 +150,7 @@ Schema sketch：
 以下问题当前不定为 Hard Contract：
 
 - checkpoint schema version 是否独立于 projector version。
-- event envelope version 如何参与 event prefix digest。
+- event envelope version 如何参与 event prefix digest；当前设计说明见 `docs/event-envelope-versioning-v0.1.md`。
 - event migration 后 digest 如何处理。
 - migration 是否保留 old checkpoint。
 - migration 失败是否 fallback full rebuild。
@@ -176,6 +182,8 @@ Schema sketch：
 - version negotiation implementation。
 - checkpoint schema registry。
 - event envelope schema registry。
+- event schema registry。
+- payload schema registry。
 - state schema registry。
 - migrator registry。
 - audit event for checkpoint migration。
@@ -188,8 +196,8 @@ Schema sketch：
 
 下一轮如继续推进，应先写 red tests，优先覆盖：
 
-- event envelope versioning design note。
 - checkpoint schema version fields design note。
+- event envelope versioning red tests。
 - malformed future `checkpoint_schema_version` / `event_envelope_version` 字段的边界。
 - 不兼容 version fallback full rebuild 继续执行完整 event validation。
 - `FileCheckpointStore` 仍不解释 version 字段。

@@ -225,6 +225,14 @@
 - future sketch fields such as `checkpoint_schema_version`, `event_envelope_version`, and `state_schema_version` cannot override `projector_version`
 - compatible checkpoint with future sketch fields still follows the current validation chain
 - `FileCheckpointStore` remains opaque and does not interpret version fields
+- event envelope versioning design note 已落文档
+- current `CanonicalEvent` envelope remains slice-only implementation shape
+- current event envelope roughly contains `event_id`, `run_id`, `event_type`, `payload`, `created_at`
+- current event prefix digest binds to the current slice canonical event representation
+- current event log has no explicit event envelope version field
+- `canonical_event_slice@v0` is only a documentation label for the current implicit representation
+- future event prefix digest metadata should bind to an explicit event representation version
+- event envelope versioning cannot rewrite canonical event log or make malformed events valid
 
 ## Tests
 
@@ -268,8 +276,12 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - checkpoint migration / version negotiation implementation
 - checkpoint migrator registry
 - schema registry
+- event schema registry
+- payload schema registry
+- event envelope version field
 - event envelope schema registry
 - audit event for checkpoint migration
+- content-addressed event ids
 - event log compaction
 - SSE
 - auth
@@ -288,8 +300,8 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- event envelope versioning design note
 - checkpoint schema version fields design note
+- event envelope versioning red tests
 - checkpoint history / old-checkpoint fallback design note
 
 不要直接进入 real LLM / memory / ingestion。

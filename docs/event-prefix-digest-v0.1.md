@@ -20,7 +20,10 @@ event prefix digest 的目的，是在 checkpoint 被用作 replay basis 之前�
 - checkpoint hash 只校验 checkpoint blob 是否自洽、是否被改动。
 - checkpoint 已有 prefix consistency validation，会比较 checkpoint state 与 `basis_event_id` 对应的 prefix projection。
 - checkpoint 已有最小 event prefix digest validation。
-- 当前 full regression：`333 passed`。
+- 当前 event prefix digest 绑定的是当前 slice canonical event representation。
+- 当前没有显式 event envelope version 字段。
+- event envelope versioning design note 已落文档，边界见 `docs/event-envelope-versioning-v0.1.md`。
+- 当前 full regression：`341 passed`。
 
 已有边界仍然有效：
 
@@ -38,6 +41,7 @@ v0.1 decision：
 - event prefix digest 用于检测 checkpoint basis 之前的 event log 是否被改动、替换或重排。
 - digest mismatch 只能让 checkpoint invalid，并 fallback 到 full event-log rebuild。
 - digest match 不能证明业务状态正确，只能说明参与 digest 的 prefix bytes / canonical event representation 一致。
+- 一旦未来引入 event envelope version，digest metadata 必须明确绑定 event representation version。
 - legacy checkpoint 没有 prefix digest 时，仍按当前兼容路径处理，不能直接判 malformed。
 
 ## Hard Boundaries
@@ -53,6 +57,7 @@ v0.1 decision：
 - digest 不能修复 checkpoint state。
 - digest mismatch 不能产生 state，只能让 checkpoint 失效并 fallback full rebuild。
 - digest match 后仍必须继续执行现有 checkpoint validation chain。
+- digest 不能替代 event envelope versioning boundary。
 - malformed / lifecycle-invalid event log 不能因为 digest match 或 mismatch 被隐藏。
 
 ## v0 Candidate Shape
@@ -86,7 +91,10 @@ digest input 的当前 v0 implementation shape：
 - 保留 event append order。
 - 范围是 run 内从第一条 event 到 `basis_event_id` 的 prefix。
 - 至少包含每个 canonical event 的 `event_id`、`run_id`、`event_type`、`payload`、`created_at`。
+- 当前隐式 representation 可在文档中称为 `canonical_event_slice@v0`，但这不是实现字段。
 - suffix events 仍必须 replay，不能因为 prefix digest 存在而跳过。
+
+未来引入 event envelope version 后，digest metadata 应绑定 event representation version。字段名仍是 schema sketch，边界见 `docs/event-envelope-versioning-v0.1.md`。
 
 ## Validation Behavior
 
@@ -126,7 +134,7 @@ fallback full rebuild 仍必须执行完整 canonical event validation 和 lifec
 以下问题当前不定为 Hard Contract：
 
 - canonical event serialization 的正式版本。
-- 是否需要 event envelope version。
+- event envelope version 如何进入 digest metadata。
 - linear digest 还是 Merkle / chunked digest。
 - event migration 后 digest 如何处理。
 - 是否需要把 event count / first_event_id / basis_event_id 全部纳入 digest metadata。
@@ -138,6 +146,9 @@ fallback full rebuild 仍必须执行完整 canonical event validation 和 lifec
 
 - `FileCheckpointStore` digest-specific behavior。
 - `InProcessServer` digest-specific behavior。
+- event envelope version field。
+- event schema registry。
+- payload schema registry。
 - signature / MAC / key management。
 - checkpoint migration / version negotiation implementation。
 - broader checkpoint retention / compaction。
@@ -149,5 +160,5 @@ fallback full rebuild 仍必须执行完整 canonical event validation 和 lifec
 
 - checkpoint retention / compaction 对 event prefix digest 的影响。
 - checkpoint migration / version negotiation 对 digest metadata 的影响；边界见 `docs/checkpoint-migration-versioning-v0.1.md`。
-- event envelope schema version 引入后 digest 输入如何版本化。
+- event envelope schema version 引入后 digest 输入如何版本化；边界见 `docs/event-envelope-versioning-v0.1.md`。
 - Merkle / chunked digest 是否需要替代当前 linear digest。
