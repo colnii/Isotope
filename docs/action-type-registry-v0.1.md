@@ -2,7 +2,7 @@
 
 状态：draft
 
-本文定义 `ActionTypeRegistry` 的最小边界。当前已实现 minimal registry module，但尚未接入 `ActionCompiler` / `PolicyEngine` / `Executor`；仍不引入 plugin system，不改变现有 action chain。
+本文定义 `ActionTypeRegistry` 的最小边界。当前已实现 minimal registry module，并已接入 `ActionCompiler`；仍未接入 `PolicyEngine` / `Executor`，不引入 plugin system，不改变现有 action chain。
 
 ## Purpose
 
@@ -26,7 +26,7 @@
 
 当前实现里：
 
-- `ActionCompiler` 可以把 compact intent 编译为 canonical `ActionProposal`。
+- `ActionCompiler` 可以把 compact intent 编译为 canonical `ActionProposal`，并已使用 registry lookup 校验 compact tool。
 - `PolicyEngine` 当前知道 `write_artifact_tool` 等有限工具。
 - `Executor` 当前能执行 deterministic `write_artifact_tool`。
 - `ActionProposal -> PolicyDecision -> ActionExecution -> canonical events` 已有最小链路。
@@ -38,7 +38,14 @@
 - unknown tool lookup fail closed，抛 `KeyError`。
 - malformed registry entry fail fast。
 - registry entry 只包含 metadata，不携带 executable side-effect callback 字段。
-- registry 尚未接入 `ActionCompiler` / `PolicyEngine` / `Executor`。
+- registry 已接入 `ActionCompiler`。
+- `ActionCompiler(registry=...)` 可显式传入 registry。
+- 不传 registry 时，`ActionCompiler` 使用 `ActionTypeRegistry.default()`。
+- unknown compact tool 当前先在 compiler boundary 受控 `ValueError` fail closed。
+- disabled registry entry 会被 compiler 拒绝。
+- compiler 仍只生成 requested capabilities，不生成 grants。
+- runtime identity 仍只来自 runtime context。
+- registry 尚未接入 `PolicyEngine` / `Executor`。
 - checkpoint v0.1 已 frozen for current kernel slice；下一阶段建议先推进 registry boundary，而不是继续深挖 checkpoint。
 
 ## Hard Boundaries
@@ -77,11 +84,19 @@
 - malformed registry entry fail-fast
 - metadata-only registry entry without executable side-effect callbacks
 
-下一轮 implementation 应只推进 compiler lookup：
+当前 compiler lookup integration 已覆盖：
 
 - `ActionCompiler` 用 registry 校验 action/tool 是否存在。
 - unknown compact tool 在 compiler boundary fail closed。
 - compiler 仍只能产出 canonical `ActionProposal`，不能让 raw intent 绕过 action chain。
+- explicit registry dependency injection and default registry fallback.
+- disabled registry entry rejection.
+
+下一轮 implementation 应只推进 policy lookup：
+
+- `PolicyEngine` 读取 registry required capabilities。
+- policy 仍由自己决定 grants，不能因为 registry entry 存在就自动 approve。
+- unknown / disabled tool 在 compiler boundary 已 fail closed，policy tests 应聚焦 proposal / requirements / grants 边界。
 
 仍然不引入：
 
@@ -143,7 +158,7 @@ registry 可能被三个模块读取，但职责不同：
 - unknown tool lookup fails closed.
 - registry entry does not expose executable side-effect callback fields.
 
-下一轮 red tests 建议优先覆盖：
+已完成的 compiler integration tests 覆盖：
 
 - `ActionCompiler` accepts an optional registry or otherwise uses the default registry.
 - compiler rejects unknown compact `tool` via registry lookup.
@@ -151,6 +166,9 @@ registry 可能被三个模块读取，但职责不同：
 - compiler keeps runtime identity sourced from runtime context, not intent.
 - compiler does not grant capabilities; it only forms requested capabilities.
 - registry remains limited to `call_tool` + `write_artifact_tool` for this slice.
+
+下一轮 red tests 建议优先覆盖：
+
 - `PolicyEngine` uses registry requirements but still produces grants itself.
 - `Executor` uses registry handler lookup but still executes only with `PolicyDecision.grants`.
 - no dynamic loading, no plugin discovery, no public extension API.

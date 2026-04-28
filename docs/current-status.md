@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`10fe0f21b9913467d88a0befd819b5d32bd6d291`。
+- 最新 implementation commit：`ceb34654e412a0b3a9f3abdae5b11706166dcfb7`。
 
 ## Implemented Slice
 
@@ -276,7 +276,15 @@
 - unknown tool lookup fail-closed with `KeyError`
 - malformed registry entry fail-fast
 - registry entry carries metadata only, with no executable side-effect callback fields
-- registry is not yet wired into `ActionCompiler` / `PolicyEngine` / `Executor`
+- registry is wired into `ActionCompiler`
+- `ActionCompiler(registry=...)` accepts an explicit registry
+- `ActionCompiler` uses `ActionTypeRegistry.default()` when no registry is provided
+- `ActionCompiler` uses registry lookup for compact `tool`
+- unknown compact tool fails closed at compiler boundary with controlled `ValueError`
+- disabled registry entry is rejected at compiler boundary
+- `ActionCompiler` still only creates requested capabilities, not grants
+- runtime identity still comes only from runtime context
+- registry is not yet wired into `PolicyEngine` / `Executor`
 - registry must not replace `ActionCompiler` / `PolicyEngine` / `Executor`
 - registry must not expand `PolicyDecision.grants` or bypass action chain
 - checkpoint migration / version negotiation design note 已落文档
@@ -329,7 +337,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-404 passed
+412 passed
 ```
 
 Import boundary check:
@@ -345,7 +353,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 以下能力明确 deferred，不能在没有 design/doc patch 和 red tests 前直接实现：
 
 - real LLM
-- `ActionTypeRegistry` integration with `ActionCompiler` / `PolicyEngine` / `Executor`
+- `ActionTypeRegistry` integration with `PolicyEngine` / `Executor`
 - memory write
 - external ingestion / `ImportedSnapshot`
 - public checkpoint API / HTTP endpoint
@@ -391,10 +399,10 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- `ActionCompiler` registry lookup red tests
-- compiler registry tests should cover `call_tool` + `write_artifact_tool`, unknown tool fail-closed, malformed compact action/tool input, and no registry bypass of canonical `ActionProposal`
-- later slices may wire `PolicyEngine` / `Executor` to registry, but each boundary needs its own red tests
-- memory write/query boundary docs only if `ActionCompiler` registry lookup is not the immediate next slice
+- `PolicyEngine` registry requirement lookup red tests
+- policy registry tests should prove policy reads required capabilities from registry but still decides grants itself
+- `Executor` registry handler lookup red tests can follow after policy boundary is explicit
+- memory write/query boundary docs only if registry policy/executor lookup is not the immediate next slice
 - external ingestion / `ImportedSnapshot` boundary docs only after the next kernel surface is explicitly selected
 
 checkpoint v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC。不要直接进入 real LLM / memory implementation / ingestion implementation。
