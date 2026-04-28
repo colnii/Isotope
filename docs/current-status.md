@@ -164,6 +164,9 @@
 - `create_checkpoint(...)` remains `not_enabled`
 - checkpoint missing / invalid / mismatch / incompatible falls back to full rebuild
 - lifecycle-invalid event log still fail-fast and cannot be hidden by checkpoint fallback
+- checkpoint save trigger boundary design note 已落文档
+- future internal-only save trigger should prefer `save_checkpoint_for_run(...)`
+- `create_checkpoint(...)` should remain `not_enabled` unless a rename/deprecation design changes it
 
 ## Tests
 
@@ -196,8 +199,11 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - memory write
 - external ingestion / `ImportedSnapshot`
 - public checkpoint API / HTTP endpoint
-- checkpoint save trigger / automatic checkpoint scheduling
+- internal-only checkpoint save trigger implementation
+- automatic checkpoint scheduling
 - CheckpointService
+- checkpoint retention / compaction
+- checkpoint inspection API
 - signature / MAC / key management
 - event prefix digest
 - checkpoint migration / version negotiation
@@ -218,7 +224,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- checkpoint save trigger / scheduling design note
+- internal-only server checkpoint save trigger TDD slice
 - event prefix digest design note
 
 不要直接进入 real LLM / memory / ingestion。

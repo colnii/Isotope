@@ -21,8 +21,9 @@ Server-facing checkpoint boundary 的目的，是允许 server read path 使用 
 - checkpoint state schema validation。
 - checkpoint prefix consistency validation。
 - checkpoint integrity/hash validation。
+- checkpoint save trigger boundary design note。
 
-当前未实现：
+当前 server read path：
 
 - `InProcessServer` constructor 支持 optional `checkpoint_store`。
 - `get_run_state` 没有 `checkpoint_store` 时仍由 projector 从 event log full rebuild。
@@ -32,7 +33,11 @@ Server-facing checkpoint boundary 的目的，是允许 server read path 使用 
 - `create_checkpoint(...)` 仍返回 `not_enabled`。
 - checkpoint missing / invalid / mismatch / incompatible 时 fallback full rebuild。
 - lifecycle-invalid event log 仍 fail-fast，不能被 checkpoint fallback 掩盖。
+
+当前仍未实现：
+
 - 没有 public checkpoint API。
+- 没有 server save trigger implementation。
 - 没有 automatic checkpoint scheduling。
 - 没有 `CheckpointService`。
 
@@ -77,6 +82,7 @@ v0.1 decision：
 
 - 提供 internal-only checkpoint save trigger，例如 `save_checkpoint_for_run(run_id)`。
 - internal save trigger 只能调用 `RunProjector.save_checkpoint(...)`。
+- 不复用 public-looking `create_checkpoint(...)`；它当前仍应保持 `not_enabled`。
 
 这些是 v0 candidate，不是永久协议。
 
@@ -100,6 +106,7 @@ v0.1 decision：
 - SSE integration。
 - automatic checkpoint scheduling。
 - `CheckpointService`。
+- internal-only server save trigger implementation。
 - event prefix digest。
 - signature / MAC / key management。
 - checkpoint migration / version negotiation。
@@ -124,6 +131,8 @@ v0.1 decision：
 
 - internal-only checkpoint save trigger。
 - checkpoint save trigger 只能调用 `RunProjector.save_checkpoint(...)`。
+- trigger 不读取 artifact content、executor state 或 server memory。
+- empty / malformed / lifecycle-invalid event stream fail-fast，不写 checkpoint。
 - public API 仍不得暴露 checkpoint state。
 
 暂不实现 public checkpoint API、automatic scheduling、`CheckpointService`、event prefix digest、signature / MAC / key management。

@@ -24,6 +24,7 @@ v0.1 决定：
 - v0.1 暂不新增独立 Checkpoint Service。
 - checkpoint schema 是 v0 candidate，不是永久协议。
 - checkpoint integrity/hash 的边界见 `docs/checkpoint-integrity-v0.1.md`。
+- checkpoint save trigger 的边界见 `docs/checkpoint-save-trigger-v0.1.md`。
 
 ## Hard Boundaries
 
@@ -42,7 +43,7 @@ v0.1 ownership 分工：
 
 - `RunProjector`：解释 canonical events，产出 projected state，执行 checkpoint-assisted rebuild，并负责生成 projector-owned checkpoint blob。
 - `FileCheckpointStore` / future storage layer：只保存和读取 opaque checkpoint blob，不解释 checkpoint 字段含义。
-- `InProcessServer` / future server API：当前 read path 已可选调用 projector-owned checkpoint-assisted rebuild，但不能直接把 checkpoint 当成 state source。public checkpoint API、save trigger 和 scheduling 仍 deferred；server-facing 边界见 `docs/server-checkpoint-boundary-v0.1.md`。
+- `InProcessServer` / future server API：当前 read path 已可选调用 projector-owned checkpoint-assisted rebuild，但不能直接把 checkpoint 当成 state source。internal-only save trigger implementation、public checkpoint API 和 scheduling 仍 deferred；server-facing 边界见 `docs/server-checkpoint-boundary-v0.1.md`。
 - future checkpoint storage：只是一种 storage concern，不是新的 truth layer。
 
 不新增独立 `CheckpointService`，除非后续 TDD 证明 projector/storage 边界无法承载最小实现。
@@ -97,7 +98,7 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 当前仍不实现：
 
 - automatic checkpoint scheduling
-- checkpoint compaction
+- checkpoint retention / compaction
 - checkpoint migration
 - checkpoint version negotiation
 - signature / MAC / key management
@@ -105,7 +106,8 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - partial checkpoint
 - SessionState checkpoint
 - public checkpoint API / HTTP exposure
-- checkpoint save trigger / automatic checkpoint scheduling
+- internal-only checkpoint save trigger implementation
+- checkpoint inspection API
 - external ingestion integration
 
 ## Implementation Notes For Future TDD
@@ -149,10 +151,14 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - server 不直接读取或解释 checkpoint state，不创建 checkpoint，不写 checkpoint store。
 - `create_checkpoint(...)` 仍返回 `not_enabled`。
 - checkpoint missing / invalid / mismatch / incompatible 时 fallback full rebuild；lifecycle-invalid event log 仍 fail-fast。
+- checkpoint save trigger boundary design note 已落文档。
+- future internal-only save trigger 应优先命名为 `save_checkpoint_for_run(...)`。
+- save trigger 只能调用 projector-owned `RunProjector.save_checkpoint(...)`，不能读取 artifact content / executor state / server memory 生成 state。
+- `create_checkpoint(...)` 不应被复用为 save trigger，除非先有明确 rename/deprecation 设计。
 - checkpoint schema 仍被标记为 v0 candidate。
 
 后续实现必须先写 red tests，优先覆盖：
 
-- checkpoint save trigger / scheduling design note。
+- internal-only server checkpoint save trigger TDD slice。
 - event prefix digest design note。
 - server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。

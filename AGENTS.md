@@ -17,6 +17,7 @@
 - 不得直接扩展 automatic checkpoint scheduling / public checkpoint API；checkpoint 相关实现必须遵守 `docs/checkpoint-ownership-v0.1.md`，并先写 red tests。
 - checkpoint hash 已有最小 validation；后续扩展 signature / MAC / key management 或 event prefix digest 前，必须先更新设计文档并写 red tests。
 - server-facing checkpoint 相关实现必须遵守 `docs/server-checkpoint-boundary-v0.1.md`；Server 不能直接解释 checkpoint state，必须通过 projector-owned boundary。
+- checkpoint save trigger 相关实现必须遵守 `docs/checkpoint-save-trigger-v0.1.md`；优先设计为 internal-only `save_checkpoint_for_run(...)`，不要复用 public-looking `create_checkpoint(...)`。
 
 ## Current Slice
 
@@ -166,6 +167,9 @@
 - `create_checkpoint(...)` remains `not_enabled`
 - checkpoint missing / invalid / mismatch / incompatible falls back to full rebuild
 - lifecycle-invalid event log still fail-fast and cannot be hidden by checkpoint fallback
+- checkpoint save trigger boundary design note
+- future internal-only save trigger should prefer `save_checkpoint_for_run(...)`
+- `create_checkpoint(...)` should remain `not_enabled` unless a rename/deprecation design changes it
 
 ## Deferred
 
@@ -176,8 +180,11 @@
 - memory write
 - external ingestion
 - public checkpoint API / HTTP endpoint
-- checkpoint save trigger / automatic checkpoint scheduling
+- internal-only checkpoint save trigger implementation
+- automatic checkpoint scheduling
 - CheckpointService
+- checkpoint retention / compaction
+- checkpoint inspection API
 - signature / MAC / key management
 - event prefix digest
 - checkpoint migration / version negotiation
