@@ -18,6 +18,7 @@
 - checkpoint hash 已有最小 validation；后续扩展 signature / MAC / key management 前，必须先更新设计文档并写 red tests。
 - event prefix digest 已有最小 validation；后续扩展必须遵守 `docs/event-prefix-digest-v0.1.md`，并先写 red tests。digest 不能替代 replay、lifecycle validation、state schema validation 或 prefix consistency validation。
 - checkpoint retention / compaction 相关实现必须遵守 `docs/checkpoint-retention-compaction-v0.1.md`，并先写 red tests；retention / compaction 不能删除、重写、压缩或裁剪 canonical event log。latest-only replacement boundary 已实现，但 checkpoint history / GC / scheduling 仍 deferred。
+- checkpoint migration / version negotiation 相关实现必须遵守 `docs/checkpoint-migration-versioning-v0.1.md`，并先写 red tests；当前只有 design note，不得直接实现 migrator、schema registry、migrator registry 或 event log migration。
 - server-facing checkpoint 相关实现必须遵守 `docs/server-checkpoint-boundary-v0.1.md`；Server 不能直接解释 checkpoint state，必须通过 projector-owned boundary。
 - checkpoint save trigger 相关实现必须遵守 `docs/checkpoint-save-trigger-v0.1.md`；当前只允许 internal-only `save_checkpoint_for_run(...)`，不要复用 public-looking `create_checkpoint(...)`。
 
@@ -203,6 +204,10 @@
 - `checkpoint_path` / `save_checkpoint` / `load_latest_checkpoint` validate run_id path segment
 - retention / compaction only applies to checkpoint blobs, never canonical event log
 - checkpoint deletion must still allow full rebuild from canonical event log
+- checkpoint migration / version negotiation boundary design note
+- current checkpoint uses `projector_version`; current projector version is `run_projector@v1`
+- incompatible checkpoint projector version invalidates checkpoint and falls back to full rebuild
+- checkpoint schema remains v0 candidate and event envelope remains slice-only shape
 
 ## Deferred
 
@@ -221,7 +226,9 @@
 - old checkpoint fallback
 - checkpoint inspection API
 - signature / MAC / key management
-- checkpoint migration / version negotiation
+- checkpoint migration / version negotiation implementation
+- checkpoint migrator registry
+- schema registry
 - event log compaction
 - SSE
 - auth

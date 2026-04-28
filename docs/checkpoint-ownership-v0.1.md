@@ -27,6 +27,7 @@ v0.1 决定：
 - checkpoint save trigger 的边界见 `docs/checkpoint-save-trigger-v0.1.md`。
 - event prefix digest 的边界见 `docs/event-prefix-digest-v0.1.md`。
 - checkpoint retention / compaction 的边界见 `docs/checkpoint-retention-compaction-v0.1.md`。
+- checkpoint migration / version negotiation 的边界见 `docs/checkpoint-migration-versioning-v0.1.md`。
 
 ## Hard Boundaries
 
@@ -104,8 +105,10 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - checkpoint GC
 - checkpoint retention policy
 - old checkpoint fallback
-- checkpoint migration
-- checkpoint version negotiation
+- checkpoint migration implementation
+- checkpoint version negotiation implementation
+- checkpoint migrator registry
+- schema registry
 - signature / MAC / key management
 - partial checkpoint
 - SessionState checkpoint
@@ -169,6 +172,11 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - broader retention / compaction 仍 deferred。
 - retention / compaction 只能处理 checkpoint blobs，不能删除、重写、压缩或裁剪 canonical event log。
 - checkpoint 删除后仍必须能从 canonical event log full rebuild。
+- checkpoint migration / version negotiation design note 已落文档。
+- 当前 checkpoint 使用 `projector_version`；当前 projector version 是 `run_projector@v1`。
+- projector version 不兼容时，checkpoint 会失效并 fallback full rebuild。
+- checkpoint schema 仍是 v0 candidate，event envelope 仍是 slice-only shape。
+- migration / version negotiation 不能修改 canonical event log，不能伪造 state，不能跳过 checkpoint validation chain。
 - `InProcessServer.get_run_state(...)` 没有 checkpoint store 时仍走 full event log rebuild，有 checkpoint store 时调用 `RunProjector.rebuild_with_checkpoint(...)`。
 - server 不直接读取或解释 checkpoint state，不创建 checkpoint，不写 checkpoint store。
 - `create_checkpoint(...)` 仍返回 `not_enabled`。
@@ -181,6 +189,6 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 
 后续实现必须先写 red tests，优先覆盖：
 
-- checkpoint migration / version negotiation design note。
+- projector version mismatch behavior hardening / malformed version fields。
 - checkpoint history / old-checkpoint fallback design note。
 - server API 如需使用 checkpoint，只能调用 projector rebuild boundary，不能直接读取 checkpoint 当作 state source。

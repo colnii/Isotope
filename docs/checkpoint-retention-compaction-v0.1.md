@@ -29,6 +29,7 @@ checkpoint retention / compaction 的目的，是控制 checkpoint blob 的存�
 - replacement 不修改 event log，也不创建 / 删除 / 重写 `events.jsonl`。
 - `checkpoint_path` / `save_checkpoint` / `load_latest_checkpoint` 都校验 run_id path segment。
 - `FileCheckpointStore` 仍保持 opaque，不解释 checkpoint business state。
+- checkpoint migration / version negotiation design note 已落文档。
 - 当前 full regression：`333 passed`。
 
 当前没有实现：
@@ -39,6 +40,7 @@ checkpoint retention / compaction 的目的，是控制 checkpoint blob 的存�
 - automatic checkpoint scheduling。
 - checkpoint GC。
 - event log compaction。
+- checkpoint migration / version negotiation implementation。
 
 ## Decision
 
@@ -118,7 +120,9 @@ v0.1 design decision：
 - automatic checkpoint scheduling。
 - checkpoint GC。
 - checkpoint retention policy。
-- checkpoint migration / version negotiation。
+- checkpoint migration / version negotiation implementation。
+- checkpoint migrator registry。
+- schema registry。
 - event log compaction；注意这不是 checkpoint compaction。
 - public checkpoint inspection API。
 - `CheckpointService`。
@@ -138,7 +142,7 @@ v0.1 design decision：
 
 后续如继续扩展，应先写 red tests，优先覆盖：
 
-- checkpoint migration / version negotiation design note。
+- projector version mismatch behavior hardening / malformed version fields。
 - checkpoint history / old-checkpoint fallback design note。
 
 不要直接实现 checkpoint history、GC、automatic scheduling 或 event log compaction。

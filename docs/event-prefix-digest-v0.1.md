@@ -20,7 +20,7 @@ event prefix digest 的目的，是在 checkpoint 被用作 replay basis 之前�
 - checkpoint hash 只校验 checkpoint blob 是否自洽、是否被改动。
 - checkpoint 已有 prefix consistency validation，会比较 checkpoint state 与 `basis_event_id` 对应的 prefix projection。
 - checkpoint 已有最小 event prefix digest validation。
-- 当前 full regression：`311 passed`。
+- 当前 full regression：`333 passed`。
 
 已有边界仍然有效：
 
@@ -139,8 +139,8 @@ fallback full rebuild 仍必须执行完整 canonical event validation 和 lifec
 - `FileCheckpointStore` digest-specific behavior。
 - `InProcessServer` digest-specific behavior。
 - signature / MAC / key management。
-- checkpoint migration / version negotiation。
-- checkpoint retention / compaction。
+- checkpoint migration / version negotiation implementation。
+- broader checkpoint retention / compaction。
 - public checkpoint API / HTTP endpoint。
 
 ## Future TDD Notes
@@ -148,6 +148,6 @@ fallback full rebuild 仍必须执行完整 canonical event validation 和 lifec
 后续如继续扩展，应先写 red tests，优先覆盖：
 
 - checkpoint retention / compaction 对 event prefix digest 的影响。
-- checkpoint migration / version negotiation 对 digest metadata 的影响。
+- checkpoint migration / version negotiation 对 digest metadata 的影响；边界见 `docs/checkpoint-migration-versioning-v0.1.md`。
 - event envelope schema version 引入后 digest 输入如何版本化。
 - Merkle / chunked digest 是否需要替代当前 linear digest。

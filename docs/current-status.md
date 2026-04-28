@@ -209,6 +209,12 @@
 - broader retention / compaction remains deferred
 - retention / compaction cannot delete, rewrite, compress, or trim canonical event log
 - checkpoint deletion must still allow full rebuild from canonical event log
+- checkpoint migration / version negotiation design note 已落文档
+- current checkpoint uses `projector_version`; current projector version is `run_projector@v1`
+- incompatible checkpoint projector version invalidates checkpoint and falls back to full rebuild
+- checkpoint schema remains v0 candidate
+- event envelope remains slice-only shape, not final protocol
+- migration / version negotiation cannot modify canonical event log or skip checkpoint validation chain
 
 ## Tests
 
@@ -249,7 +255,9 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - old checkpoint fallback
 - checkpoint inspection API
 - signature / MAC / key management
-- checkpoint migration / version negotiation
+- checkpoint migration / version negotiation implementation
+- checkpoint migrator registry
+- schema registry
 - event log compaction
 - SSE
 - auth
@@ -268,7 +276,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- checkpoint migration / version negotiation design note
+- harden projector version mismatch behavior / malformed version fields
 - checkpoint history / old-checkpoint fallback design note
 
 不要直接进入 real LLM / memory / ingestion。
