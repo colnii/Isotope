@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`07c5cdb3bfdb6443a810d8add3bca560942881b7`。
+- 最新 implementation commit：`6288b77f70596f889823618a8127704704a7c06d`。
 
 ## Implemented Slice
 
@@ -361,7 +361,7 @@
 - deferred boundary review 已落文档
 - checkpoint v0.1 remains frozen by default
 - action registry wiring is complete for compiler / policy / executor / server
-- Memory Write / Query Boundary docs, first boundary tests, memory action-chain compiler/policy boundary tests, `MemoryRecord` v0 shape tests, executor memory handler not-enabled / provenance boundary tests, memory record persistence not-enabled boundary tests, and memory query authorization boundary tests have landed; next step is external ingestion boundary docs, public-open-source cleanup plan, or stopping at the current stable point
+- Memory Write / Query Boundary docs, first boundary tests, memory action-chain compiler/policy boundary tests, `MemoryRecord` v0 shape tests, executor memory handler not-enabled / provenance boundary tests, memory record persistence not-enabled boundary tests, memory query authorization boundary tests, and `memory.record_created` canonical event boundary tests have landed; next step is external ingestion boundary docs, public-open-source cleanup plan, or stopping at the current stable point
 - External Ingestion / `ImportedSnapshot` remains the next candidate after memory boundary
 - real LLM / HTTP / plugin system remain deferred
 - memory write / query boundary design note 已落文档
@@ -380,6 +380,16 @@
 - `NotEnabledMemoryQueryService` does not implement a real memory query engine
 - projector still does not read memory query service or memory store to advance `RunState`
 - server still has no public `query_memory(...)` API
+- `memory.record_created` canonical event boundary 已落地并通过测试
+- `RunState.memory_records` exists as a minimal read model
+- `RunProjector` supports and validates `memory.record_created`
+- `memory.record_created` projection includes only summary / refs / provenance-level metadata, not full content
+- `memory.record_created` rejects payload fields such as `content`, `full_content`, `artifact_content`, and `raw_content`
+- `memory.record_created` must bind to a completed `write_memory` execution
+- failed / denied / pending / non-`write_memory` execution cannot create a projected memory record
+- memory store still cannot directly advance `RunState`; only canonical events can
+- executor + not-enabled memory service still cannot produce successful memory writes or `memory.record_created`
+- server still has no public direct memory write or memory query API
 - memory action-chain boundary tests 已落地并通过
 - `ActionCompiler` supports registry-backed `write_memory` action boundary and required payload validation
 - valid `write_memory` intent preserves structured `content`, `summary`, `source_refs`, and `provenance`
@@ -430,7 +440,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-477 passed
+496 passed
 ```
 
 Import boundary check:

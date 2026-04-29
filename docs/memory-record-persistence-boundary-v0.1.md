@@ -28,13 +28,17 @@
 - `NotEnabledMemoryStore.save_record(...)` 会拒绝无 `ActionExecution`、无 `write_memory` grant、malformed record；valid record 也仍拒绝为 not-enabled。
 - rejected persistence 不留下 partial record。
 - rejected persistence 不 append `action.completed` 或 `memory.record_created`。
+- `memory.record_created` canonical event read-model boundary 已实现。
+- `RunState.memory_records` 只从 canonical `memory.record_created` event 投影 summary / refs / provenance-level metadata。
+- `memory.record_created` 必须绑定 completed `write_memory` execution，且不能包含 full content / artifact content。
+- projector 仍不读取 memory store 来推进 `RunState`。
 - memory write failure 路径仍是 `action.started -> action.failed`。
 - 当前没有 memory storage。
 - 当前没有 successful memory record persistence implementation。
 - 当前没有 successful durable memory write。
 - `NotEnabledMemoryQueryService` 已实现 query-time authorization not-enabled boundary，但不实现 query engine。
 - 当前没有 memory query implementation。
-- 当前测试基线是 `477 passed`。
+- 当前测试基线是 `496 passed`。
 
 ## 3. Hard Boundaries
 
@@ -69,11 +73,13 @@ memory service 不能自行批准 action，不能扩大 grants，不能绕过 ac
 
 ## 5. Event / State Relationship
 
-future success path 可以考虑 candidate event：
+future successful durable write path 应通过 canonical event 进入 read model。当前已实现的 v0 candidate event read-model boundary 是：
 
 - `memory.record_created`
 
 事件名只是 v0 candidate，不是永久协议。
+
+当前 `RunProjector` 已支持并校验 `memory.record_created`：它只投影 record id、execution id、summary、source refs、provenance、basis event、quality 等 metadata，不投影 `content` / `full_content` / `artifact_content` / `raw_content`。这个 boundary 只说明 canonical event 可以驱动 read model，不说明 memory store / successful persistence 已实现。
 
 successful write 应先有 action execution context。最小顺序应保持：
 
@@ -89,7 +95,7 @@ successful write 应先有 action execution context。最小顺序应保持：
 
 memory record persistence 不允许补写、改写或删除旧 event。它只能在当前 authorized execution 下产生新的 derived record 和对应审计事件。
 
-query result 不能直接推进 `RunState`。memory record presence 也不能让 projector 绕过 canonical event replay。
+query result 不能直接推进 `RunState`。memory store record presence 也不能让 projector 绕过 canonical event replay；只有 canonical `memory.record_created` event 可以更新 `RunState.memory_records`。
 
 ## 6. Store Shape Candidate
 
@@ -186,6 +192,18 @@ query result 不能变成 `RunState` native fact。若 query result 要影响 st
 - persistence failure does not append `action.completed` or `memory.record_created`。
 - projector rebuild does not read memory store to advance `RunState`。
 - query defaults to refs / summary / preview and does not expose full content by default.
+
+第二批 `memory.record_created` canonical event boundary tests 已落地并通过，但只覆盖 event/read-model boundary，不实现 successful durable storage。
+
+已覆盖：
+
+- `RunState.memory_records` minimal read model exists。
+- valid `memory.record_created` projects summary / refs / provenance metadata only。
+- `memory.record_created` rejects full content fields。
+- `memory.record_created` requires required payload fields and completed `write_memory` execution。
+- failed / denied / pending / non-`write_memory` execution is rejected。
+- executor + not-enabled memory service still cannot produce successful memory write。
+- server still has no public direct memory write API。
 
 下一批 red tests 可考虑：
 
