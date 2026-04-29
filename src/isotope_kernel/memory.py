@@ -16,6 +16,22 @@ def _has_write_memory_grant(grants: dict[str, Any] | None) -> bool:
     return isinstance(tools, list) and "write_memory" in tools
 
 
+def _memory_grants(grants: dict[str, Any]) -> dict[str, Any]:
+    memory_grants = grants.get("memory")
+    return memory_grants if isinstance(memory_grants, dict) else {}
+
+
+def _has_memory_query_grant(grants: dict[str, Any]) -> bool:
+    return _memory_grants(grants).get("query") is True
+
+
+def _has_controlled_expand_grant(grants: dict[str, Any]) -> bool:
+    memory_grants = _memory_grants(grants)
+    return memory_grants.get("controlled_expand") is True and (
+        "expand_budget" in memory_grants or "budget" in memory_grants
+    )
+
+
 def _validate_memory_record_shape(record: MemoryRecord | dict[str, Any]) -> None:
     if isinstance(record, MemoryRecord):
         return
@@ -63,6 +79,31 @@ class NotEnabledMemoryStore:
 
     def record_path(self, memory_id: str) -> Path:
         return self.root / "memory" / f"{memory_id}.json"
+
+
+class NotEnabledMemoryQueryService:
+    """Not-enabled query boundary; it validates auth shape before refusing."""
+
+    def __init__(self, memory_store=None) -> None:
+        self.memory_store = memory_store
+
+    def query(
+        self,
+        run_id: str,
+        query: str,
+        grants: dict[str, Any] | None = None,
+        caller_context: dict[str, Any] | None = None,
+        controlled_expand: bool = False,
+    ) -> dict[str, Any]:
+        if not isinstance(grants, dict):
+            raise ValueError("memory_query grants must be provided as a dict")
+        if not isinstance(caller_context, dict):
+            raise ValueError("memory_query caller_context must be provided as a dict")
+        if not _has_memory_query_grant(grants):
+            return {"status": "denied", "capability": "memory_query"}
+        if controlled_expand and not _has_controlled_expand_grant(grants):
+            return {"status": "denied", "capability": "memory_controlled_expand"}
+        return {"status": "not_enabled", "capability": "memory_query", "results": []}
 
 
 class NotEnabledMemoryService:
