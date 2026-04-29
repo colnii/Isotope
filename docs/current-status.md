@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`0362270fd220d512d3a2b069802ea1d49493ddaa`。
+- 最新 implementation commit：`e90d23db994755e8d8d9e09b08634c6fa7508d4d`。
 
 ## Implemented Slice
 
@@ -302,6 +302,11 @@
 - current executor handler surface remains deterministic `write_artifact_tool` only
 - registry-known tools without a current slice handler fail closed as unsupported handler
 - executor success path event order remains `action.started`, `artifact.created`, `action.completed`
+- registry is wired through `InProcessServer`
+- `InProcessServer(root, registry=...)` accepts an explicit registry
+- without an explicit registry, `InProcessServer` creates one shared default registry and passes it to compiler / policy / executor
+- custom registry entries can flow through compiler / policy / executor, but server does not dynamically execute unknown tools
+- registry-known tools without a current executor handler fail through controlled `action.failed`
 - registry must not replace `ActionCompiler` / `PolicyEngine` / `Executor`
 - registry must not expand `PolicyDecision.grants` or bypass action chain
 - checkpoint migration / version negotiation design note 已落文档
@@ -354,7 +359,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-426 passed
+431 passed
 ```
 
 Import boundary check:
@@ -386,6 +391,12 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - `checkpoint_schema_version` field
 - `state_schema_version` field
 - `integrity_schema_version` field
+- plugin system
+- dynamic action registration
+- third-party tools
+- remote tool discovery
+- public extension API
+- real LLM tool calling integration
 - schema registry
 - checkpoint schema registry
 - state schema registry
@@ -415,10 +426,8 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- action registry integration hardening
-- server wiring check for action registry assumptions
 - deferred boundary review before choosing the next implementation slice
-- memory write/query boundary docs only if action registry hardening is not the immediate next slice
-- external ingestion / `ImportedSnapshot` boundary docs only after the next kernel surface is explicitly selected
+- memory write/query boundary docs
+- external ingestion / `ImportedSnapshot` boundary docs
 
 checkpoint v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC。不要直接进入 real LLM / memory implementation / ingestion implementation。

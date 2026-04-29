@@ -2,7 +2,7 @@
 
 状态：draft
 
-本文定义 `ActionTypeRegistry` 的最小边界。当前已实现 minimal registry module，并已接入 `ActionCompiler`、`PolicyEngine` requirement lookup 和 `Executor` handler lookup；不引入 plugin system，不改变现有 action chain。
+本文定义 `ActionTypeRegistry` 的最小边界。当前已实现 minimal registry module，并已接入 `ActionCompiler`、`PolicyEngine` requirement lookup、`Executor` handler lookup 和 `InProcessServer` wiring；不引入 plugin system，不改变现有 action chain。
 
 ## Purpose
 
@@ -58,7 +58,12 @@
 - registry 不能替代 grants，也不能提供 executable callback。
 - 当前 executor 仍只有 deterministic `write_artifact_tool` handler。
 - registry-known tools without a current slice handler fail closed as unsupported handler.
-- checkpoint v0.1 已 frozen for current kernel slice；下一阶段建议先做 action registry integration hardening / server wiring check / deferred boundary review，而不是继续深挖 checkpoint。
+- registry 已接入 `InProcessServer` wiring。
+- `InProcessServer(root, registry=...)` 可显式传入 registry。
+- 不传 registry 时，`InProcessServer` 创建一个 shared default registry，并传给 compiler / policy / executor。
+- custom registry 可以贯穿 compiler / policy / executor，但 server 不会动态执行未知工具。
+- registry-known tools without a current slice handler still fail controlled at executor boundary.
+- checkpoint v0.1 已 frozen for current kernel slice；下一阶段建议先做 deferred boundary review，决定转向 memory write/query boundary 还是 external ingestion / `ImportedSnapshot` boundary，而不是继续深挖 checkpoint。
 
 ## Hard Boundaries
 
@@ -122,11 +127,20 @@
 - registry-known tool 如果没有当前 slice handler，会受控 fail closed。
 - successful `write_artifact_tool` execution event order remains `action.started`, `artifact.created`, `action.completed`.
 
+当前 server wiring integration 已覆盖：
+
+- `InProcessServer` 可显式接收 registry。
+- `InProcessServer` 不传 registry 时使用一个 shared default registry，而不是让 compiler / policy / executor 各自隐式创建不同 registry。
+- server 将同一个 registry 传给 `ActionCompiler` / `PolicyEngine` / `Executor`。
+- disabled registry entry 在 compiler boundary fail closed，不写 action lifecycle events 或 artifact。
+- custom registry-known tool 可以贯穿 compiler / policy / executor；如果没有当前 executor handler，会受控 `action.failed`，不会写 `artifact.created` / `action.completed` / `run.completed`。
+- server 不把 registry 变成 dynamic plugin system。
+
 下一轮 implementation 不应默认继续扩展 registry handler；应先选择：
 
-- action registry integration hardening。
-- server wiring check for action registry assumptions。
 - deferred boundary review。
+- memory write/query boundary。
+- external ingestion / `ImportedSnapshot` boundary。
 
 仍然不引入：
 
@@ -141,6 +155,7 @@ registry 可能被三个模块读取，但职责不同：
 - `ActionCompiler`：用 registry 校验 action/tool 是否存在、payload 是否足够形成 proposal。
 - `PolicyEngine`：用 registry 读取 required capabilities，但仍由 policy 决定 grants。
 - `Executor`：用 registry 解析 handler，但只能执行 grants 允许的 handler。
+- `InProcessServer`：只负责把同一个 registry 注入 compiler / policy / executor，不直接解释 registry state 或动态执行未知工具。
 
 关键分工：
 
@@ -160,6 +175,7 @@ registry 可能被三个模块读取，但职责不同：
 - registry 被 server 或 public client 当作 extension API。
 - registry 变成 dynamic plugin loader。
 - registry 跳过 existing `ActionCompiler` / `PolicyEngine` / `Executor` 边界。
+- server 用 registry entry 动态执行未知 tool。
 
 ## Deferred
 
@@ -212,9 +228,18 @@ registry 可能被三个模块读取，但职责不同：
 - registry-known tools without the current deterministic handler fail closed as unsupported handler.
 - registry-backed `write_artifact_tool` success keeps executor-owned event order unchanged.
 
+已完成的 server wiring tests 覆盖：
+
+- `InProcessServer` accepts an explicit registry.
+- server uses one shared default registry when no registry is passed.
+- disabled registry entry fails closed at compiler boundary before action lifecycle events.
+- custom registry can flow through compiler / policy / executor.
+- registry-known tools without current handler fail controlled and do not create artifacts or complete the run.
+- registry does not create a server dynamic plugin system.
+
 下一轮 red tests 建议优先覆盖：
 
-- action registry integration hardening / server wiring check / deferred boundary review.
+- deferred boundary review before choosing memory write/query or external ingestion.
 - no dynamic loading, no plugin discovery, no public extension API.
 
 不要在没有 red tests 前直接实现 full plugin system、remote registry、schema registry、real LLM tool calling 或 third-party tool loading。
