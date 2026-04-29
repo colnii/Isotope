@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`e90d23db994755e8d8d9e09b08634c6fa7508d4d`。
+- 最新 implementation commit：`af0a05ef2ab400aae30292beff4d6967fd5d0bce`。
 
 ## Implemented Slice
 
@@ -350,11 +350,17 @@
 - deferred boundary review 已落文档
 - checkpoint v0.1 remains frozen by default
 - action registry wiring is complete for compiler / policy / executor / server
-- Memory Write / Query Boundary docs have landed; next step is red tests, not implementation
+- Memory Write / Query Boundary docs and first boundary tests have landed; next step is action-chain/provenance red tests, not implementation
 - External Ingestion / `ImportedSnapshot` remains the next candidate after memory boundary
 - real LLM / HTTP / plugin system remain deferred
 - memory write / query boundary design note 已落文档
-- current memory service remains not-enabled
+- first memory boundary tests 已落地并通过
+- current memory service remains not-enabled with hardened rejection boundary
+- `NotEnabledMemoryService.write_record(...)` exists and rejects direct durable write without authorized execution
+- `NotEnabledMemoryService.query(...)` supports caller_context / grants shape while still returning controlled not-enabled boundary
+- memory query default result does not return full content / artifact content
+- projector still does not read memory store to advance `RunState`
+- server still has no public `query_memory(...)` API
 - durable memory write / storage / query implementation remains deferred
 - memory write must go through action / policy / execution / canonical event before implementation
 
@@ -369,7 +375,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-431 passed
+438 passed
 ```
 
 Import boundary check:
@@ -385,7 +391,13 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 以下能力明确 deferred，不能在没有 design/doc patch 和 red tests 前直接实现：
 
 - real LLM
-- memory write
+- memory storage
+- durable memory write
+- memory query engine
+- memory ranking / exposure
+- controlled expand
+- session memory promotion
+- vector index / embeddings
 - external ingestion / `ImportedSnapshot`
 - public checkpoint API / HTTP endpoint
 - automatic checkpoint scheduling
@@ -436,7 +448,8 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- first red tests for Memory Write / Query Boundary
+- memory action-chain red tests
+- memory provenance sketch / tests
 - External Ingestion / `ImportedSnapshot` Boundary after memory boundary
 
 checkpoint v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC。不要直接进入 real LLM / memory implementation / ingestion implementation。

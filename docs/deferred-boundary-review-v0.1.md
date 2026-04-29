@@ -16,7 +16,7 @@
 - canonical event log / projector：event log 仍是唯一 source of truth，projector 只从 canonical events rebuild `RunState`。
 - checkpoint v0.1：latest/history checkpoint save、assisted rebuild、candidate fallback、integrity/hash、event prefix digest、server read path 和 internal save triggers 已足够支撑当前 kernel slice，并已 frozen。
 - `ActionTypeRegistry`：minimal registry module 已实现，并已接入 `ActionCompiler` registry lookup、`PolicyEngine` requirement lookup、`Executor` handler lookup 和 `InProcessServer` shared registry wiring。
-- 当前测试基线：`431 passed`。
+- 当前测试基线：`438 passed`。
 
 当前 hard boundary 仍不变：
 
@@ -115,15 +115,16 @@ Real LLM、real HTTP 和 plugin system 继续 deferred。
 
 ## 7. Recommendation
 
-Memory Write / Query Boundary docs 已落地；默认下一步是第一批 memory boundary red tests。
+Memory Write / Query Boundary docs 和第一批 memory boundary tests 已落地；当前只 harden not-enabled / rejection boundary。
 
 推荐顺序：
 
 1. `docs/memory-write-query-boundary-v0.1.md` 已落文档。
-2. 下一步只写第一批 red tests。
-3. 不直接做完整 memory implementation。
-4. External Ingestion / `ImportedSnapshot` 排在 memory boundary 之后。
-5. real LLM / HTTP / plugin system 继续 deferred。
+2. 第一批 not-enabled / rejection boundary tests 已通过。
+3. 下一步可做 memory action-chain red tests 或 memory provenance sketch / tests。
+4. 不直接做完整 memory implementation。
+5. External Ingestion / `ImportedSnapshot` 排在 memory boundary 之后。
+6. real LLM / HTTP / plugin system 继续 deferred。
 
 理由：
 

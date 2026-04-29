@@ -13,12 +13,17 @@
 当前实现状态：
 
 - `MemoryService` 仍是 not-enabled boundary。
-- `NotEnabledMemoryService.query(...)` 当前只返回 `{"status": "not_enabled", "capability": "memory_query"}`。
+- `NotEnabledMemoryService.write_record(...)` 已存在，但 direct durable write without authorized execution 会受控拒绝。
+- `NotEnabledMemoryService.query(...)` 保持 legacy 调用兼容：`query("run_001", "anything")` 仍返回 `{"status": "not_enabled", "capability": "memory_query"}`。
+- `NotEnabledMemoryService.query(...)` 已支持 caller_context / grants shape，但仍只返回受控 not-enabled boundary，不实现真实 query。
+- query 默认不返回 full content / artifact content。
+- projector 仍不读取 memory store 推进 `RunState`。
+- server 仍没有 public `query_memory(...)` API。
 - 当前没有 durable memory write implementation。
 - 当前没有 memory storage。
 - 当前没有 memory query implementation。
 - 当前没有 vector index、ranking 或 controlled expand implementation。
-- 当前测试基线是 `431 passed`。
+- 当前测试基线是 `438 passed`。
 
 当前已有相关基础：
 
@@ -193,15 +198,22 @@ memory query 应和 retrieval boundary 对齐：
 
 ## 10. First Red Tests
 
-下一步只写 red tests，不实现 memory storage / write / query。
+第一批 memory boundary tests 已落地并通过，但只覆盖 not-enabled / rejection boundary，不实现 memory storage / write / query。
 
-第一批 red tests 建议覆盖：
+已覆盖：
 
-- `MemoryService` exists but durable write is still unavailable until action-chain path exists。
+- `NotEnabledMemoryService` exists and legacy query remains not-enabled。
 - direct durable memory write without authorized execution is rejected。
-- memory query requires explicit grants / caller context。
-- memory query returns refs / summary only, not full artifact content by default。
+- memory query accepts explicit grants / caller context shape but remains controlled not-enabled。
+- memory query result does not include full content / artifact content by default。
 - projector does not read memory store to advance `RunState`。
-- server memory query remains `not_enabled` until boundary is intentionally implemented。
+- server still has no public `query_memory(...)` API.
 
-这些 red tests 的目标是锁住边界：memory 必须通过 action/policy/execution/event 进入 durable state，query 只能是受控 recall，不能成为第二事实源。
+下一批 red tests 可覆盖：
+
+- memory action-chain proposal / policy / executor boundary。
+- memory provenance required fields。
+- memory query authorization and controlled expand budget sketch。
+- memory result cannot bypass artifact / `ResourceRef` authorization。
+
+这些 tests 的目标是锁住边界：memory 必须通过 action/policy/execution/event 进入 durable state，query 只能是受控 recall，不能成为第二事实源。

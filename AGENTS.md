@@ -31,7 +31,7 @@
 - checkpoint save trigger 相关实现必须遵守 `docs/checkpoint-save-trigger-v0.1.md`；当前只允许 internal-only `save_checkpoint_for_run(...)`，不要复用 public-looking `create_checkpoint(...)`。
 - `ActionTypeRegistry` 相关实现必须先读 `docs/action-type-registry-v0.1.md` 并写 red tests；minimal registry module 已实现并已接入 `ActionCompiler`、`PolicyEngine` requirement lookup、`Executor` handler lookup 和 `InProcessServer` wiring，但 registry 不能绕过 action chain、不能替代 policy / executor、不能扩大 `PolicyDecision.grants`。后续 action registry hardening 必须分边界写 red tests。
 - deferred boundary review 已落在 `docs/deferred-boundary-review-v0.1.md`；Memory Write / Query Boundary docs 已落文档，默认下一步只写 red tests，不要直接实现 memory write、external ingestion、real LLM、real HTTP 或 plugin system。
-- memory write / query 相关实现必须先读 `docs/memory-write-query-boundary-v0.1.md` 并写 red tests；当前 memory service 仍是 not-enabled，不得直接实现 memory storage、durable memory write、memory query 或修改 `NotEnabledMemoryService`。
+- memory write / query 相关实现必须先读 `docs/memory-write-query-boundary-v0.1.md` 并写 red tests；当前只完成 not-enabled / rejection boundary hardening，`NotEnabledMemoryService.write_record(...)` 会拒绝无 authorized execution 的 direct durable write，`query(...)` 支持 caller_context / grants 形状但仍不实现真实 query。不得直接实现 memory storage、durable memory write、memory query engine、ranking、controlled expand、vector index 或 public memory API。
 
 ## Current Slice
 
@@ -277,6 +277,12 @@
 - `InProcessServer` can accept an explicit registry and passes one shared registry to compiler / policy / executor
 - without an explicit registry, `InProcessServer` uses one shared default registry
 - custom registry can flow through server compiler / policy / executor, but server does not dynamically execute unknown tools
+- memory not-enabled boundary hardening
+- `NotEnabledMemoryService.write_record(...)` rejects direct durable write without authorized execution
+- `NotEnabledMemoryService.query(...)` accepts caller_context / grants shape but still returns controlled not-enabled boundary
+- memory query default result does not return full content / artifact content
+- projector does not read memory store to advance `RunState`
+- `InProcessServer` still has no public `query_memory(...)` API
 - `RunProjector.save_checkpoint(...)` remains latest-only
 - `InProcessServer.save_checkpoint_for_run(...)` remains latest-only by default
 - latest write / history write failure ordering must be explicit before implementation
@@ -317,7 +323,13 @@
 以下能力仍然 deferred，不要在没有新计划和 red tests 前实现：
 
 - real LLM
-- memory write
+- memory storage
+- durable memory write
+- memory query engine
+- ranking / exposure
+- controlled expand
+- session memory promotion
+- vector index / embeddings
 - external ingestion
 - public checkpoint API / HTTP endpoint
 - automatic checkpoint scheduling
@@ -354,7 +366,8 @@
 
 下一阶段默认不要继续深挖 checkpoint。优先考虑：
 
-- first red tests for Memory Write / Query Boundary
+- memory action-chain red tests
+- memory provenance sketch / tests
 - External Ingestion / `ImportedSnapshot` Boundary after memory boundary
 
 不要直接进入 real LLM、memory write implementation 或 external ingestion implementation。
