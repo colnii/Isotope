@@ -391,6 +391,11 @@
 - top-level `artifact_content` is not accepted by `MemoryRecord`
 - projector still does not read memory store to advance `RunState`
 - server still has no public `query_memory(...)` API
+- memory record persistence boundary design note 已落文档
+- future memory persistence is owned by `MemoryService` / future `MemoryStore`, not server / agent runtime
+- memory store is not source of truth; canonical event log remains the source of truth
+- future persisted memory record must still have structured content, source refs, and provenance
+- successful memory persistence / storage implementation remains deferred
 - successful durable memory write / storage / persistence / query implementation remains deferred
 - memory write must go through action / policy / execution / canonical event before implementation
 
@@ -480,7 +485,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- memory record persistence boundary docs / tests
+- memory record persistence boundary red tests
 - memory query authorization / controlled expand red tests
 - External Ingestion / `ImportedSnapshot` Boundary after memory boundary
 

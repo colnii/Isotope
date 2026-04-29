@@ -207,6 +207,8 @@ memory query 应和 retrieval boundary 对齐：
 
 ## 9. Deferred
 
+Memory record persistence boundary design note 已落在 `docs/memory-record-persistence-boundary-v0.1.md`。该文档只定义 future persistence ownership / event relationship / failure semantics，不实现 storage。
+
 以下能力继续 deferred：
 
 - real memory storage implementation。
@@ -277,7 +279,7 @@ memory query 应和 retrieval boundary 对齐：
 
 下一批 red tests / docs 可覆盖：
 
-- memory record persistence boundary docs / tests。
+- memory record persistence boundary red tests。
 - memory query authorization and controlled expand budget sketch。
 - memory result cannot bypass artifact / `ResourceRef` authorization。
 - external ingestion / `ImportedSnapshot` boundary docs。
