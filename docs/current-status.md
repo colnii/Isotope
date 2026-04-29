@@ -350,9 +350,13 @@
 - deferred boundary review 已落文档
 - checkpoint v0.1 remains frozen by default
 - action registry wiring is complete for compiler / policy / executor / server
-- default next boundary is Memory Write / Query docs and red tests, not implementation
+- Memory Write / Query Boundary docs have landed; next step is red tests, not implementation
 - External Ingestion / `ImportedSnapshot` remains the next candidate after memory boundary
 - real LLM / HTTP / plugin system remain deferred
+- memory write / query boundary design note 已落文档
+- current memory service remains not-enabled
+- durable memory write / storage / query implementation remains deferred
+- memory write must go through action / policy / execution / canonical event before implementation
 
 ## Tests
 
@@ -432,8 +436,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- Memory Write / Query Boundary docs
-- first red tests for memory write/query boundary after the docs are accepted
+- first red tests for Memory Write / Query Boundary
 - External Ingestion / `ImportedSnapshot` Boundary after memory boundary
 
 checkpoint v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC。不要直接进入 real LLM / memory implementation / ingestion implementation。

@@ -30,7 +30,8 @@
 - server-facing checkpoint 相关实现必须遵守 `docs/server-checkpoint-boundary-v0.1.md`；Server 不能直接解释 checkpoint state，必须通过 projector-owned boundary。
 - checkpoint save trigger 相关实现必须遵守 `docs/checkpoint-save-trigger-v0.1.md`；当前只允许 internal-only `save_checkpoint_for_run(...)`，不要复用 public-looking `create_checkpoint(...)`。
 - `ActionTypeRegistry` 相关实现必须先读 `docs/action-type-registry-v0.1.md` 并写 red tests；minimal registry module 已实现并已接入 `ActionCompiler`、`PolicyEngine` requirement lookup、`Executor` handler lookup 和 `InProcessServer` wiring，但 registry 不能绕过 action chain、不能替代 policy / executor、不能扩大 `PolicyDecision.grants`。后续 action registry hardening 必须分边界写 red tests。
-- deferred boundary review 已落在 `docs/deferred-boundary-review-v0.1.md`；默认下一步先做 Memory Write / Query Boundary docs 和 red tests，不要直接实现 memory write、external ingestion、real LLM、real HTTP 或 plugin system。
+- deferred boundary review 已落在 `docs/deferred-boundary-review-v0.1.md`；Memory Write / Query Boundary docs 已落文档，默认下一步只写 red tests，不要直接实现 memory write、external ingestion、real LLM、real HTTP 或 plugin system。
+- memory write / query 相关实现必须先读 `docs/memory-write-query-boundary-v0.1.md` 并写 red tests；当前 memory service 仍是 not-enabled，不得直接实现 memory storage、durable memory write、memory query 或修改 `NotEnabledMemoryService`。
 
 ## Current Slice
 
@@ -353,8 +354,7 @@
 
 下一阶段默认不要继续深挖 checkpoint。优先考虑：
 
-- Memory Write / Query Boundary docs
-- first red tests for memory write/query boundary after docs are accepted
+- first red tests for Memory Write / Query Boundary
 - External Ingestion / `ImportedSnapshot` Boundary after memory boundary
 
 不要直接进入 real LLM、memory write implementation 或 external ingestion implementation。

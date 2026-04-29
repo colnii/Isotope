@@ -115,12 +115,12 @@ Real LLM、real HTTP 和 plugin system 继续 deferred。
 
 ## 7. Recommendation
 
-默认下一步先做 Memory Write / Query Boundary docs。
+Memory Write / Query Boundary docs 已落地；默认下一步是第一批 memory boundary red tests。
 
 推荐顺序：
 
-1. 新增 `docs/memory-write-query-boundary-v0.1.md`。
-2. 只写 boundary docs 和第一批 red tests。
+1. `docs/memory-write-query-boundary-v0.1.md` 已落文档。
+2. 下一步只写第一批 red tests。
 3. 不直接做完整 memory implementation。
 4. External Ingestion / `ImportedSnapshot` 排在 memory boundary 之后。
 5. real LLM / HTTP / plugin system 继续 deferred。
@@ -133,14 +133,7 @@ Real LLM、real HTTP 和 plugin system 继续 deferred。
 
 ## 8. Next TDD Entry Point
 
-下一轮建议先做 docs-only：
-
-- 新增 `docs/memory-write-query-boundary-v0.1.md`。
-- 明确 durable memory write 必须由 authorized execution 触发。
-- 明确 memory query 是 retrieval-like recall，不是 mandatory loop stage。
-- 明确 memory 不能直接修改 `RunState`、event log 或 checkpoint。
-
-之后再做 red tests：
+下一轮建议做 red tests：
 
 - memory write action proposal / policy / executor boundary。
 - memory provenance required fields。
