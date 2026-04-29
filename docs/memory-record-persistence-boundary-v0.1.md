@@ -32,8 +32,9 @@
 - 当前没有 memory storage。
 - 当前没有 successful memory record persistence implementation。
 - 当前没有 successful durable memory write。
+- `NotEnabledMemoryQueryService` 已实现 query-time authorization not-enabled boundary，但不实现 query engine。
 - 当前没有 memory query implementation。
-- 当前测试基线是 `466 passed`。
+- 当前测试基线是 `477 passed`。
 
 ## 3. Hard Boundaries
 
@@ -136,6 +137,8 @@ duplicate / overwrite / supersession 暂不实现。open questions:
 
 future memory query 可以读取 persisted records，但 query 是 read-side recall，不是 run loop mandatory stage。
 
+当前 `NotEnabledMemoryQueryService` 只锁 query-time authorization boundary：它校验 explicit `grants` / `caller_context`，无 query grant 或无 controlled expand grant / budget 时 fail closed，不读取 memory store / full content。它不是 query engine，也不是 controlled expand implementation。
+
 默认 query result 应返回：
 
 - memory refs
@@ -186,7 +189,6 @@ query result 不能变成 `RunState` native fact。若 query result 要影响 st
 
 下一批 red tests 可考虑：
 
-- memory query authorization / controlled expand。
 - memory result cannot bypass artifact / `ResourceRef` authorization。
 - external ingestion / `ImportedSnapshot` boundary docs。
 - public-open-source cleanup plan。

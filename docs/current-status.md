@@ -361,7 +361,7 @@
 - deferred boundary review 已落文档
 - checkpoint v0.1 remains frozen by default
 - action registry wiring is complete for compiler / policy / executor / server
-- Memory Write / Query Boundary docs, first boundary tests, memory action-chain compiler/policy boundary tests, `MemoryRecord` v0 shape tests, executor memory handler not-enabled / provenance boundary tests, and memory record persistence not-enabled boundary tests have landed; next step is query authorization / controlled expand boundary tests, external ingestion boundary docs, public-open-source cleanup plan, or stopping at the current stable point
+- Memory Write / Query Boundary docs, first boundary tests, memory action-chain compiler/policy boundary tests, `MemoryRecord` v0 shape tests, executor memory handler not-enabled / provenance boundary tests, memory record persistence not-enabled boundary tests, and memory query authorization boundary tests have landed; next step is external ingestion boundary docs, public-open-source cleanup plan, or stopping at the current stable point
 - External Ingestion / `ImportedSnapshot` remains the next candidate after memory boundary
 - real LLM / HTTP / plugin system remain deferred
 - memory write / query boundary design note 已落文档
@@ -370,6 +370,16 @@
 - `NotEnabledMemoryService.write_record(...)` exists and rejects direct durable write without authorized execution
 - `NotEnabledMemoryService.query(...)` supports caller_context / grants shape while still returning controlled not-enabled boundary
 - memory query default result does not return full content / artifact content
+- memory query authorization boundary 已落地并通过测试
+- `NotEnabledMemoryQueryService` exists as a not-enabled / fail-closed query boundary
+- `NotEnabledMemoryQueryService.query(...)` validates explicit `grants` and `caller_context`
+- missing / malformed query grants or caller context are rejected with controlled `ValueError`
+- missing query grant returns controlled denial without reading memory store
+- `controlled_expand=True` without expand grant / budget returns controlled denial without reading full content
+- query result shape excludes full content, artifact content, raw content, and full text
+- `NotEnabledMemoryQueryService` does not implement a real memory query engine
+- projector still does not read memory query service or memory store to advance `RunState`
+- server still has no public `query_memory(...)` API
 - memory action-chain boundary tests 已落地并通过
 - `ActionCompiler` supports registry-backed `write_memory` action boundary and required payload validation
 - valid `write_memory` intent preserves structured `content`, `summary`, `source_refs`, and `provenance`
@@ -420,7 +430,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-466 passed
+477 passed
 ```
 
 Import boundary check:
@@ -443,7 +453,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - memory record index
 - memory server API
 - memory ranking / exposure
-- controlled expand
+- controlled expand implementation
 - session memory promotion
 - vector index / embeddings
 - external ingestion / `ImportedSnapshot`
@@ -496,7 +506,6 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- memory query authorization / controlled expand red tests
 - External Ingestion / `ImportedSnapshot` Boundary after memory boundary
 - public-open-source cleanup plan
 - 或停在当前稳定点

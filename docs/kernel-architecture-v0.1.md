@@ -371,7 +371,7 @@ Memory Service 不能绕过 action chain 直接提交 durable memory。durable m
 
 当前推荐 action type 名是 `write_memory` 和 `promote_memory`，但名称不是硬协议。
 
-当前 v0 slice 已有 `MemoryRecord` implementation shape，用于验证 structured content、source refs 和 execution/action provenance；executor memory handler not-enabled / provenance boundary 也已落地：authorized `write_memory` 在显式 `memory_service` 下会构造 record 并把 runtime execution provenance / grants 交给 memory service，但当前 not-enabled service 仍拒绝写入。memory record persistence not-enabled boundary 也已实现为 `NotEnabledMemoryStore`：它只拒绝保存并提供 empty `list_records(...)` / path locator，不写文件、不产生 success event、不留下 partial record。它不是最终 protocol，且不代表 storage / successful durable write / successful persistence / query engine 已实现。
+当前 v0 slice 已有 `MemoryRecord` implementation shape，用于验证 structured content、source refs 和 execution/action provenance；executor memory handler not-enabled / provenance boundary 也已落地：authorized `write_memory` 在显式 `memory_service` 下会构造 record 并把 runtime execution provenance / grants 交给 memory service，但当前 not-enabled service 仍拒绝写入。memory record persistence not-enabled boundary 也已实现为 `NotEnabledMemoryStore`：它只拒绝保存并提供 empty `list_records(...)` / path locator，不写文件、不产生 success event、不留下 partial record。memory query authorization not-enabled boundary 已实现为 `NotEnabledMemoryQueryService`：它校验 query grants / caller context，并在缺少 query grant 或 controlled expand grant / budget 时 fail closed，不读取 memory store / full content。它们不是最终 protocol，且不代表 storage / successful durable write / successful persistence / query engine / controlled expand 已实现。
 
 ### Open Question
 

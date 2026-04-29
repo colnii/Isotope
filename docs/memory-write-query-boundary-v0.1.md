@@ -16,6 +16,13 @@
 - `NotEnabledMemoryService.write_record(...)` 已存在，但 direct durable write without authorized execution 会受控拒绝。
 - `NotEnabledMemoryService.query(...)` 保持 legacy 调用兼容：`query("run_001", "anything")` 仍返回 `{"status": "not_enabled", "capability": "memory_query"}`。
 - `NotEnabledMemoryService.query(...)` 已支持 caller_context / grants shape，但仍只返回受控 not-enabled boundary，不实现真实 query。
+- `NotEnabledMemoryQueryService` 已作为 query-time authorization not-enabled boundary 实现。
+- `NotEnabledMemoryQueryService.query(...)` 会显式校验 `grants` 和 `caller_context`。
+- missing / malformed `grants` 或 `caller_context` 会受控 `ValueError` fail closed。
+- 无 memory query grant 时，不读取 memory store。
+- `controlled_expand=True` 但没有 expand grant / budget 时，受控拒绝且不读取 full content。
+- query result 默认不返回 full content、artifact content、raw content 或 full text。
+- `NotEnabledMemoryQueryService` 不是 query engine；controlled expand 仍未实现。
 - query 默认不返回 full content / artifact content。
 - memory action-chain boundary tests 已落地并通过。
 - `ActionCompiler` 已支持 registry-backed non-`call_tool` action type，只要 `intent.action` 与 registry entry `action_type` 匹配。
@@ -37,13 +44,14 @@
 - `NotEnabledMemoryStore.save_record(...)` 会拒绝无 `ActionExecution`、无 `write_memory` grant、malformed record；valid record 也仍拒绝为 not-enabled。
 - rejected persistence 不留下 partial record，不 append `action.completed` / `memory.record_created`。
 - projector 仍不读取 memory store 推进 `RunState`。
+- projector 仍不读取 memory query service 推进 `RunState`。
 - server 仍没有 public `query_memory(...)` API。
 - 当前没有 durable memory write implementation。
 - 当前没有 memory storage。
 - 当前没有 successful memory record persistence implementation。
 - 当前没有 memory query implementation。
 - 当前没有 vector index、ranking 或 controlled expand implementation。
-- 当前测试基线是 `466 passed`。
+- 当前测试基线是 `477 passed`。
 
 当前已有相关基础：
 
@@ -111,6 +119,16 @@ memory write 不能补写、改写或修复过去 event。它只能产生新的 
 ## 5. Memory Query Boundary
 
 memory query 是 read-side recall。
+
+当前最小实现只锁 not-enabled / fail-closed boundary：
+
+- `NotEnabledMemoryQueryService.query(...)` 必须显式接收 `grants` 和 `caller_context`。
+- missing / malformed `grants` 或 `caller_context` 受控拒绝，不能泄漏原生 `AttributeError` / `TypeError`。
+- 没有 query grant 时不能读取 memory store。
+- 请求 `controlled_expand=True` 时，缺少 expand grant / budget 不能读取 full content。
+- 返回结果不得包含 full content、artifact content、raw content 或 full text。
+
+这不是 memory query engine，也不是 controlled expand implementation。
 
 query result 应返回：
 
@@ -297,9 +315,20 @@ Memory record persistence boundary design note 已落在 `docs/memory-record-per
 - projector still does not read memory store to advance `RunState`。
 - query default shape still excludes full content / artifact content。
 
+第六批 memory query authorization not-enabled boundary tests 已落地并通过，但只覆盖 query-time auth / fail-closed，不实现 query engine 或 controlled expand。
+
+已覆盖：
+
+- `NotEnabledMemoryQueryService` exists。
+- missing / malformed `grants` 或 `caller_context` is controlled rejected。
+- missing query grant does not read memory store。
+- controlled expand without expand grant / budget does not read full content。
+- default query result excludes full content / artifact content / raw content。
+- projector still does not read memory query service or memory store to advance `RunState`。
+- server still has no public `query_memory(...)` API。
+
 下一批 red tests / docs 可覆盖：
 
-- memory query authorization and controlled expand budget sketch。
 - memory result cannot bypass artifact / `ResourceRef` authorization。
 - external ingestion / `ImportedSnapshot` boundary docs。
 - public-open-source cleanup plan。
