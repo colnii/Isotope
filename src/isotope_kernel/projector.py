@@ -20,6 +20,7 @@ class RunState:
     current_agent: str = ""
     actions: dict[str, dict[str, Any]] = field(default_factory=dict)
     artifacts: list[dict[str, Any]] = field(default_factory=list)
+    memory_records: list[dict[str, Any]] = field(default_factory=list)
     last_event_id: str = ""
 
 
@@ -35,7 +36,9 @@ class RunProjector:
 
     def __init__(self) -> None:
         self._proposal_outcomes: dict[str, str] = {}
+        self._proposal_action_types: dict[str, str] = {}
         self._execution_statuses: dict[str, str] = {}
+        self._execution_action_types: dict[str, str] = {}
         self._run_completed = False
 
     def _validate_lifecycle(self, event: CanonicalEvent) -> None:
@@ -47,10 +50,16 @@ class RunProjector:
             "action.failed",
             "action.completed",
             "artifact.created",
+            "memory.record_created",
         }:
             raise ValueError("event after run.completed")
 
-        if event.event_type == "action.decided":
+        if event.event_type == "action.proposed":
+            proposal_id = payload.get("proposal_id")
+            action_type = payload.get("action_type")
+            if isinstance(proposal_id, str) and isinstance(action_type, str):
+                self._proposal_action_types[proposal_id] = action_type
+        elif event.event_type == "action.decided":
             self._proposal_outcomes[str(payload["proposal_id"])] = str(payload["outcome"])
         elif event.event_type == "action.started":
             proposal_id = str(payload["proposal_id"])
@@ -62,6 +71,7 @@ class RunProjector:
             if outcome not in self.EXECUTABLE_DECISION_OUTCOMES:
                 raise ValueError("action.started before approved decision")
             self._execution_statuses[str(payload["execution_id"])] = "running"
+            self._execution_action_types[str(payload["execution_id"])] = self._proposal_action_types.get(proposal_id, "")
         elif event.event_type == "action.completed":
             execution_id = str(payload["execution_id"])
             status = self._execution_statuses.get(execution_id)
@@ -76,6 +86,8 @@ class RunProjector:
             if status == "completed":
                 raise ValueError("terminal execution already completed")
             self._execution_statuses[execution_id] = "failed"
+        elif event.event_type == "memory.record_created":
+            self._validate_memory_record_lifecycle(payload)
         elif event.event_type == "run.completed":
             self._validate_run_completed()
             self._run_completed = True
@@ -127,11 +139,43 @@ class RunProjector:
                 payload,
                 ("approval_id", "proposal_id", "decision_id", "action_type"),
             )
+        elif event.event_type == "memory.record_created":
+            self._validate_memory_record_created_payload(payload)
 
     def _require_fields(self, label: str, payload: dict[str, Any], fields: tuple[str, ...]) -> None:
         for field in fields:
             if field not in payload:
                 raise ValueError(f"{label} missing required field: {field}")
+
+    def _validate_memory_record_created_payload(self, payload: dict[str, Any]) -> None:
+        self._require_fields(
+            "memory.record_created",
+            payload,
+            ("record_id", "execution_id", "summary", "source_refs", "provenance", "basis_event_id"),
+        )
+        for field_name in ("content", "full_content", "artifact_content", "raw_content"):
+            if field_name in payload:
+                raise ValueError(f"memory.record_created cannot contain {field_name}")
+        if not isinstance(payload["source_refs"], list):
+            raise ValueError("memory.record_created source_refs must be a list")
+        if not isinstance(payload["provenance"], dict):
+            raise ValueError("memory.record_created provenance must be a dict")
+
+    def _validate_memory_record_lifecycle(self, payload: dict[str, Any]) -> None:
+        execution_id = str(payload["execution_id"])
+        status = self._execution_statuses.get(execution_id)
+        if status is None:
+            outcomes = set(self._proposal_outcomes.values())
+            if "denied" in outcomes:
+                raise ValueError("memory.record_created after denied decision")
+            if "pending_user_approval" in outcomes:
+                raise ValueError("memory.record_created after pending decision")
+            raise ValueError("memory.record_created requires completed write_memory execution")
+        if status != "completed":
+            raise ValueError(f"memory.record_created requires completed write_memory execution, got {status}")
+        action_type = self._execution_action_types.get(execution_id)
+        if action_type != "write_memory":
+            raise ValueError("memory.record_created requires completed write_memory execution")
 
     def apply(self, state: RunState, event: CanonicalEvent) -> None:
         state.last_event_id = event.event_id
@@ -191,12 +235,26 @@ class RunProjector:
             action["decision_id"] = payload.get("decision_id")
             action["status"] = payload.get("status", "failed")
             state.status = "failed"
+        elif event.event_type == "memory.record_created":
+            state.memory_records.append(
+                {
+                    "record_id": payload["record_id"],
+                    "execution_id": payload["execution_id"],
+                    "summary": payload["summary"],
+                    "source_refs": list(payload["source_refs"]),
+                    "provenance": dict(payload["provenance"]),
+                    "basis_event_id": payload["basis_event_id"],
+                    "quality": payload.get("quality"),
+                }
+            )
         elif event.event_type == "run.completed":
             state.status = str(payload.get("status", "completed"))
 
     def project(self, events: Iterable[CanonicalEvent]) -> RunState:
         self._proposal_outcomes = {}
+        self._proposal_action_types = {}
         self._execution_statuses = {}
+        self._execution_action_types = {}
         self._run_completed = False
         state = RunState()
         for event in events:
@@ -247,7 +305,7 @@ class RunProjector:
             "run_id": run_id,
             "projector_version": projector_version,
             "basis_event_id": canonical_events[-1].event_id,
-            "state": asdict(state),
+            "state": self._checkpoint_state_payload(state),
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
         checkpoint["integrity"] = {
@@ -325,6 +383,10 @@ class RunProjector:
             for key, value in checkpoint.items()
             if key not in {"integrity", "checkpoint_hash"}
         }
+
+    def _checkpoint_state_payload(self, state: RunState) -> dict[str, Any]:
+        state_payload = asdict(state)
+        return {field_name: state_payload[field_name] for field_name in self.CHECKPOINT_STATE_FIELDS}
 
     def _is_compatible_projector_version(self, checkpoint: dict[str, Any], projector_version: Any) -> bool:
         checkpoint_version = checkpoint.get("projector_version")
