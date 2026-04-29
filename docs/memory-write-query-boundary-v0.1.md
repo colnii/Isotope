@@ -32,13 +32,18 @@
 - memory write failure 不创建 artifact、不写 `action.completed`、不写 `memory.record_created`。
 - grants 缺少 `write_memory` 时，executor 不调用 memory service。
 - 没有传 `memory_service` 时，`write_memory` 仍是 unsupported handler。
+- memory record persistence not-enabled boundary 已落地并通过测试。
+- `NotEnabledMemoryStore` 支持 `save_record(...)`、`list_records(...)`、`record_path(...)`，但 `save_record(...)` 只做受控拒绝。
+- `NotEnabledMemoryStore.save_record(...)` 会拒绝无 `ActionExecution`、无 `write_memory` grant、malformed record；valid record 也仍拒绝为 not-enabled。
+- rejected persistence 不留下 partial record，不 append `action.completed` / `memory.record_created`。
 - projector 仍不读取 memory store 推进 `RunState`。
 - server 仍没有 public `query_memory(...)` API。
 - 当前没有 durable memory write implementation。
 - 当前没有 memory storage。
+- 当前没有 successful memory record persistence implementation。
 - 当前没有 memory query implementation。
 - 当前没有 vector index、ranking 或 controlled expand implementation。
-- 当前测试基线是 `458 passed`。
+- 当前测试基线是 `466 passed`。
 
 当前已有相关基础：
 
@@ -173,7 +178,7 @@ memory query 不应默认内联大块 artifact content。默认返回 summary / 
 - `scope` 只能是 `thread` / `run` / `session`。
 - top-level `artifact_content` 不被接受；memory 默认不内联 artifact content。
 
-当前仍不实现 memory record persistence、storage lookup、ref resolution 或 artifact content read。
+当前只实现 memory record persistence not-enabled boundary；仍不实现 successful persistence、storage lookup、record index、ref resolution 或 artifact content read。
 
 ## 7. Events / Action Chain
 
@@ -207,13 +212,15 @@ memory query 应和 retrieval boundary 对齐：
 
 ## 9. Deferred
 
-Memory record persistence boundary design note 已落在 `docs/memory-record-persistence-boundary-v0.1.md`。该文档只定义 future persistence ownership / event relationship / failure semantics，不实现 storage。
+Memory record persistence boundary design note 已落在 `docs/memory-record-persistence-boundary-v0.1.md`。`NotEnabledMemoryStore` 已实现为 unavailable persistence boundary，但只做受控拒绝，不实现 successful storage。
 
 以下能力继续 deferred：
 
 - real memory storage implementation。
 - successful durable memory write implementation。
 - memory query implementation。
+- successful memory record persistence implementation。
+- memory record index。
 - ranking / exposure strategy。
 - session memory promotion policy。
 - vector index。
@@ -225,7 +232,6 @@ Memory record persistence boundary design note 已落在 `docs/memory-record-per
 - real LLM recall loop。
 - memory migration / version negotiation。
 - memory inspection API。
-- memory record persistence。
 - server memory API。
 
 ## 10. First Red Tests
@@ -277,11 +283,26 @@ Memory record persistence boundary design note 已落在 `docs/memory-record-per
 - missing `write_memory` grant does not call memory service。
 - without `memory_service`, `write_memory` remains unsupported handler。
 
+第五批 memory record persistence not-enabled boundary tests 已落地并通过，但只覆盖 unavailable store / rejection boundary，不实现 successful persistence / storage / query。
+
+已覆盖：
+
+- `NotEnabledMemoryStore` exists。
+- direct persistence without `ActionExecution` is rejected。
+- direct persistence without `write_memory` grant is rejected。
+- malformed record is rejected。
+- valid record is still rejected as not-enabled。
+- rejected persistence leaves no partial record。
+- rejected persistence does not append `action.completed` or `memory.record_created`。
+- projector still does not read memory store to advance `RunState`。
+- query default shape still excludes full content / artifact content。
+
 下一批 red tests / docs 可覆盖：
 
-- memory record persistence boundary red tests。
 - memory query authorization and controlled expand budget sketch。
 - memory result cannot bypass artifact / `ResourceRef` authorization。
 - external ingestion / `ImportedSnapshot` boundary docs。
+- public-open-source cleanup plan。
+- 或停在当前稳定点。
 
 这些 tests 的目标是锁住边界：memory 必须通过 action/policy/execution/event 进入 durable state，query 只能是受控 recall，不能成为第二事实源。

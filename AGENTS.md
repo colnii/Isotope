@@ -31,8 +31,8 @@
 - checkpoint save trigger 相关实现必须遵守 `docs/checkpoint-save-trigger-v0.1.md`；当前只允许 internal-only `save_checkpoint_for_run(...)`，不要复用 public-looking `create_checkpoint(...)`。
 - `ActionTypeRegistry` 相关实现必须先读 `docs/action-type-registry-v0.1.md` 并写 red tests；minimal registry module 已实现并已接入 `ActionCompiler`、`PolicyEngine` requirement lookup、`Executor` handler lookup 和 `InProcessServer` wiring，但 registry 不能绕过 action chain、不能替代 policy / executor、不能扩大 `PolicyDecision.grants`。后续 action registry hardening 必须分边界写 red tests。
 - deferred boundary review 已落在 `docs/deferred-boundary-review-v0.1.md`；Memory Write / Query Boundary docs 已落文档，默认下一步只写 red tests，不要直接实现 memory write、external ingestion、real LLM、real HTTP 或 plugin system。
-- memory write / query 相关实现必须先读 `docs/memory-write-query-boundary-v0.1.md` 并写 red tests；当前已完成 not-enabled / rejection boundary hardening、memory action-chain compiler/policy boundary、`MemoryRecord` v0 implementation shape 和 executor memory handler not-enabled / provenance boundary，`NotEnabledMemoryService.write_record(...)` 会拒绝无 authorized execution 的 direct durable write，`query(...)` 支持 caller_context / grants 形状但仍不实现真实 query，`ActionCompiler` / `PolicyEngine` 可处理 registry-backed `write_memory` 边界。`MemoryRecord` 当前只是 slice-only shape，不是最终 protocol。`Executor` 可选注入 `memory_service`，authorized `write_memory` 会构造 record 并把 runtime execution provenance / grants 传给 memory service；当前 not-enabled service 仍拒绝，失败只写 `action.started -> action.failed`，不创建 artifact、不写 `action.completed` / `memory.record_created`。memory storage、successful durable memory write、memory query engine、memory record persistence、ranking、controlled expand、vector index 和 public memory API 仍 deferred，不得直接实现。
-- memory record persistence 相关实现必须先读 `docs/memory-record-persistence-boundary-v0.1.md` 并写 red tests；persistence 应由 `MemoryService` / future `MemoryStore` 负责，server / agent runtime 不能直接写 durable memory，memory store 不是 source of truth，projector 不能读取 memory store 推进 `RunState`。不得直接实现 memory storage、successful durable write、record index、vector search、ranking、compaction / GC 或 public memory API。
+- memory write / query 相关实现必须先读 `docs/memory-write-query-boundary-v0.1.md` 并写 red tests；当前已完成 not-enabled / rejection boundary hardening、memory action-chain compiler/policy boundary、`MemoryRecord` v0 implementation shape、executor memory handler not-enabled / provenance boundary 和 memory record persistence not-enabled boundary，`NotEnabledMemoryService.write_record(...)` 会拒绝无 authorized execution 的 direct durable write，`query(...)` 支持 caller_context / grants 形状但仍不实现真实 query，`ActionCompiler` / `PolicyEngine` 可处理 registry-backed `write_memory` 边界。`MemoryRecord` 当前只是 slice-only shape，不是最终 protocol。`Executor` 可选注入 `memory_service`，authorized `write_memory` 会构造 record 并把 runtime execution provenance / grants 传给 memory service；当前 not-enabled service 仍拒绝，失败只写 `action.started -> action.failed`，不创建 artifact、不写 `action.completed` / `memory.record_created`。`NotEnabledMemoryStore` 已存在，但 `save_record(...)` 只做受控拒绝，不写文件、不 append event、不留下 partial record。memory storage、successful durable memory write、memory query engine、successful memory record persistence implementation、record index、ranking、controlled expand、vector index 和 public memory API 仍 deferred，不得直接实现。
+- memory record persistence 相关实现必须先读 `docs/memory-record-persistence-boundary-v0.1.md` 并写 red tests；not-enabled persistence boundary 已实现为 `NotEnabledMemoryStore`，支持 `save_record(...)` / `list_records(...)` / `record_path(...)`，但无 `ActionExecution`、无 `write_memory` grant、malformed record、valid record 都会被受控拒绝。future successful persistence 应由 `MemoryService` / future `MemoryStore` 负责，server / agent runtime 不能直接写 durable memory，memory store 不是 source of truth，projector 不能读取 memory store 推进 `RunState`。不得直接实现 file-backed memory storage、successful durable write、record index、vector search、ranking、compaction / GC 或 public memory API。
 
 ## Current Slice
 
@@ -299,6 +299,12 @@
 - `MemoryRecord.provenance` must include `run_id`, `execution_id`, and `action_type`
 - `MemoryRecord.scope` is limited to `thread`, `run`, or `session`
 - `MemoryRecord` rejects top-level `artifact_content`
+- memory record persistence not-enabled boundary
+- `NotEnabledMemoryStore.save_record(...)` rejects missing `ActionExecution`
+- `NotEnabledMemoryStore.save_record(...)` rejects missing `write_memory` grant
+- `NotEnabledMemoryStore.save_record(...)` rejects malformed record shape
+- valid record is still rejected as not-enabled
+- rejected persistence leaves no partial record and emits no success event
 - projector does not read memory store to advance `RunState`
 - `InProcessServer` still has no public `query_memory(...)` API
 - `RunProjector.save_checkpoint(...)` remains latest-only
@@ -343,8 +349,9 @@
 - real LLM
 - memory storage
 - memory query engine
-- memory record persistence
+- successful memory record persistence implementation
 - successful durable memory write
+- memory record index
 - memory server API
 - ranking / exposure
 - controlled expand
@@ -386,9 +393,10 @@
 
 下一阶段默认不要继续深挖 checkpoint。优先考虑：
 
-- memory record persistence boundary red tests
 - memory query authorization / controlled expand red tests
 - External Ingestion / `ImportedSnapshot` Boundary after memory boundary
+- public-open-source cleanup plan
+- 或停在当前稳定点
 
 不要直接进入 real LLM、successful memory write / storage implementation 或 external ingestion implementation。
 

@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`2e4b1937c3c39a11349e8fb8d039738df0012411`。
+- 最新 implementation commit：`07c5cdb3bfdb6443a810d8add3bca560942881b7`。
 
 ## Implemented Slice
 
@@ -361,7 +361,7 @@
 - deferred boundary review 已落文档
 - checkpoint v0.1 remains frozen by default
 - action registry wiring is complete for compiler / policy / executor / server
-- Memory Write / Query Boundary docs, first boundary tests, memory action-chain compiler/policy boundary tests, `MemoryRecord` v0 shape tests, and executor memory handler not-enabled / provenance boundary tests have landed; next step is persistence / query boundary tests, not storage implementation
+- Memory Write / Query Boundary docs, first boundary tests, memory action-chain compiler/policy boundary tests, `MemoryRecord` v0 shape tests, executor memory handler not-enabled / provenance boundary tests, and memory record persistence not-enabled boundary tests have landed; next step is query authorization / controlled expand boundary tests, external ingestion boundary docs, public-open-source cleanup plan, or stopping at the current stable point
 - External Ingestion / `ImportedSnapshot` remains the next candidate after memory boundary
 - real LLM / HTTP / plugin system remain deferred
 - memory write / query boundary design note 已落文档
@@ -392,10 +392,20 @@
 - projector still does not read memory store to advance `RunState`
 - server still has no public `query_memory(...)` API
 - memory record persistence boundary design note 已落文档
+- memory record persistence not-enabled boundary 已落地并通过测试
+- `NotEnabledMemoryStore` exists as an unavailable persistence boundary
+- `NotEnabledMemoryStore.save_record(...)` rejects missing `ActionExecution`
+- `NotEnabledMemoryStore.save_record(...)` rejects missing `write_memory` grant
+- `NotEnabledMemoryStore.save_record(...)` rejects malformed record shape
+- valid record + valid execution + valid grant is still rejected as not-enabled
+- `NotEnabledMemoryStore.list_records(...)` returns an empty list
+- `NotEnabledMemoryStore.record_path(...)` returns a path-like locator without creating files
+- rejected persistence leaves no partial record
+- rejected persistence does not append `action.completed` or `memory.record_created`
 - future memory persistence is owned by `MemoryService` / future `MemoryStore`, not server / agent runtime
 - memory store is not source of truth; canonical event log remains the source of truth
 - future persisted memory record must still have structured content, source refs, and provenance
-- successful memory persistence / storage implementation remains deferred
+- successful memory record persistence / file-backed storage implementation remains deferred
 - successful durable memory write / storage / persistence / query implementation remains deferred
 - memory write must go through action / policy / execution / canonical event before implementation
 
@@ -410,7 +420,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-458 passed
+466 passed
 ```
 
 Import boundary check:
@@ -428,8 +438,9 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - real LLM
 - memory storage
 - memory query engine
-- memory record persistence
+- successful memory record persistence implementation
 - successful durable memory write
+- memory record index
 - memory server API
 - memory ranking / exposure
 - controlled expand
@@ -485,8 +496,9 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- memory record persistence boundary red tests
 - memory query authorization / controlled expand red tests
 - External Ingestion / `ImportedSnapshot` Boundary after memory boundary
+- public-open-source cleanup plan
+- 或停在当前稳定点
 
 checkpoint v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC。不要直接进入 real LLM / successful memory write / memory storage / ingestion implementation。
