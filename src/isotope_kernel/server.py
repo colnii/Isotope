@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .action_compiler import ActionCompiler
+from .action_registry import ActionTypeRegistry
 from .artifact_store import ArtifactStore
 from .event_store import FileEventStore
 from .events import CanonicalEvent
@@ -21,18 +22,25 @@ from .workspace import WorkspaceManager
 class InProcessServer:
     """Minimal in-process facade; this is not a real HTTP API."""
 
-    def __init__(self, root: Path, checkpoint_store=None):
+    def __init__(
+        self,
+        root: Path,
+        checkpoint_store=None,
+        registry: ActionTypeRegistry | None = None,
+    ):
         self.root = Path(root)
         self.event_store = FileEventStore(self.root)
         self.checkpoint_store = checkpoint_store
         self.artifact_store = ArtifactStore(self.root)
-        self.compiler = ActionCompiler()
-        self.policy = PolicyEngine()
+        self.registry = registry if registry is not None else ActionTypeRegistry.default()
+        self.compiler = ActionCompiler(registry=self.registry)
+        self.policy = PolicyEngine(registry=self.registry)
         self.workspace_manager = WorkspaceManager()
         self.executor = Executor(
             event_store=self.event_store,
             artifact_store=self.artifact_store,
             workspace_manager=self.workspace_manager,
+            registry=self.registry,
         )
         self.retrieval = RetrievalService(self.artifact_store)
         self._sessions: dict[str, dict[str, Any]] = {}
