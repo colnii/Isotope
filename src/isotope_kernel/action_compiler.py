@@ -26,10 +26,13 @@ class ActionCompiler:
             if not isinstance(value, str) or not value:
                 raise ValueError(f"runtime_context.{field_name} must be a non-empty string")
 
-        if intent.get("action") != "call_tool":
+        action = intent.get("action")
+        if not isinstance(action, str) or not action:
             raise ValueError("unsupported compact action")
         tool = intent.get("tool")
         if not isinstance(tool, str) or not tool:
+            if action != "call_tool":
+                raise ValueError("unsupported compact action")
             raise ValueError("compact intent requires a tool")
         try:
             registry_entry = self.registry.get_tool(tool)
@@ -37,6 +40,8 @@ class ActionCompiler:
             raise ValueError(f"unknown tool {tool}") from exc
         if not registry_entry.enabled:
             raise ValueError(f"disabled tool {tool}")
+        if action != registry_entry.action_type:
+            raise ValueError("unsupported compact action")
 
         requested_tools = intent.get(
             "requested_tools",
@@ -58,19 +63,45 @@ class ActionCompiler:
         if not isinstance(seconds, int) or seconds < 0:
             raise ValueError("budget.seconds must be a non-negative integer")
 
+        payload = self._payload_from_intent(intent, tool, registry_entry.payload_requirements)
         return ActionProposal(
             proposal_id=new_id("prop"),
             run_id=runtime_context["run_id"],
             agent_id=runtime_context["agent_id"],
             thread_id=runtime_context["thread_id"],
             action_type=registry_entry.action_type,
-            payload={
-                "tool": tool,
-                "text": intent.get("text", ""),
-            },
+            payload=payload,
             requested_capabilities={
                 "tools": list(requested_tools),
                 "workspace": {"mode": workspace_mode},
                 "budget": budget,
             },
         )
+
+    def _payload_from_intent(
+        self,
+        intent: dict[str, Any],
+        tool: str,
+        payload_requirements: dict[str, Any],
+    ) -> dict[str, Any]:
+        required_fields = payload_requirements.get("required", [])
+        if not isinstance(required_fields, list):
+            raise ValueError("payload_requirements.required must be a list")
+        missing_fields = [
+            field_name
+            for field_name in required_fields
+            if (
+                not isinstance(field_name, str)
+                or (field_name not in intent and field_name != "text")
+            )
+        ]
+        if missing_fields:
+            missing = ", ".join(str(field_name) for field_name in missing_fields)
+            raise ValueError(f"missing required payload fields: {missing}")
+
+        payload = {"tool": tool}
+        for field_name in required_fields:
+            payload[field_name] = deepcopy(intent.get(field_name, ""))
+        if "summary" in intent:
+            payload["summary"] = deepcopy(intent["summary"])
+        return payload

@@ -18,7 +18,7 @@ class PolicyEngine:
         requested_tools = proposal.requested_capabilities.get("tools", [])
         requested_workspace = proposal.requested_capabilities.get("workspace", {})
 
-        if not isinstance(proposal.action_type, str) or proposal.action_type != "call_tool":
+        if not isinstance(proposal.action_type, str) or not proposal.action_type:
             return self._denied(proposal, "unsupported_action")
         tool_name = proposal.payload.get("tool")
         if not isinstance(tool_name, str) or not tool_name:
