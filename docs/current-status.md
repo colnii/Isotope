@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`88b39f9c26a93010aa53d56996c702f4590d55a7`。
+- 最新 implementation commit：`2e4b1937c3c39a11349e8fb8d039738df0012411`。
 
 ## Implemented Slice
 
@@ -303,7 +303,14 @@
 - unknown granted tool fails closed with controlled `PermissionError`
 - disabled registry entry is rejected by executor
 - registry entry does not provide executable handler callback
-- current executor handler surface remains deterministic `write_artifact_tool` only
+- current successful executor side-effect handler surface remains deterministic `write_artifact_tool` only
+- `Executor` supports optional `memory_service` injection
+- with `memory_service` configured, authorized `write_memory` enters the executor memory handler not-enabled / provenance boundary
+- executor constructs a `MemoryRecord` / record from structured `write_memory` payload and passes runtime execution provenance to memory service
+- `NotEnabledMemoryService.write_record(...)` still rejects memory write, so failure path remains `action.started`, `action.failed`
+- memory write failure does not create artifact, does not append `action.completed`, and does not append `memory.record_created`
+- when grants do not include `write_memory`, executor rejects before calling memory service
+- without `memory_service`, `write_memory` remains an unsupported handler
 - registry-known tools without a current slice handler fail closed as unsupported handler
 - executor success path event order remains `action.started`, `artifact.created`, `action.completed`
 - registry is wired through `InProcessServer`
@@ -354,7 +361,7 @@
 - deferred boundary review 已落文档
 - checkpoint v0.1 remains frozen by default
 - action registry wiring is complete for compiler / policy / executor / server
-- Memory Write / Query Boundary docs, first boundary tests, memory action-chain compiler/policy boundary tests, and `MemoryRecord` v0 shape tests have landed; next step is executor memory-handler / persistence / query boundary tests, not storage implementation
+- Memory Write / Query Boundary docs, first boundary tests, memory action-chain compiler/policy boundary tests, `MemoryRecord` v0 shape tests, and executor memory handler not-enabled / provenance boundary tests have landed; next step is persistence / query boundary tests, not storage implementation
 - External Ingestion / `ImportedSnapshot` remains the next candidate after memory boundary
 - real LLM / HTTP / plugin system remain deferred
 - memory write / query boundary design note 已落文档
@@ -367,8 +374,14 @@
 - `ActionCompiler` supports registry-backed `write_memory` action boundary and required payload validation
 - valid `write_memory` intent preserves structured `content`, `summary`, `source_refs`, and `provenance`
 - `PolicyEngine` can evaluate registry-backed `write_memory` proposals without treating them as unsupported solely because they are not `call_tool`
-- authorized `write_memory` still fails controlled at executor boundary because no memory handler exists
-- executor does not create artifact or write memory record for unsupported `write_memory`
+- executor memory handler not-enabled / provenance boundary 已落地并通过测试
+- `Executor` supports optional `memory_service` injection
+- with `memory_service` configured, authorized `write_memory` enters memory handler boundary
+- executor constructs a `MemoryRecord` / record and passes runtime execution provenance to memory service
+- `NotEnabledMemoryService.write_record(...)` still rejects, so memory write failure path is `action.started`, `action.failed`
+- memory write failure does not create artifact, append `action.completed`, or append `memory.record_created`
+- if grants lack `write_memory`, executor does not call memory service
+- without `memory_service`, `write_memory` remains an unsupported handler
 - `MemoryRecord` v0 implementation shape 已新增
 - `MemoryRecord` is slice-only implementation shape, not final protocol
 - `MemoryRecord.content` must be a structured dict and cannot be raw transcript string
@@ -378,7 +391,7 @@
 - top-level `artifact_content` is not accepted by `MemoryRecord`
 - projector still does not read memory store to advance `RunState`
 - server still has no public `query_memory(...)` API
-- durable memory write / storage / query implementation remains deferred
+- successful durable memory write / storage / persistence / query implementation remains deferred
 - memory write must go through action / policy / execution / canonical event before implementation
 
 ## Tests
@@ -392,7 +405,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-452 passed
+458 passed
 ```
 
 Import boundary check:
@@ -409,10 +422,9 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 - real LLM
 - memory storage
-- durable memory write
 - memory query engine
 - memory record persistence
-- executor memory handler
+- successful durable memory write
 - memory server API
 - memory ranking / exposure
 - controlled expand
@@ -468,9 +480,8 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- executor memory handler not-enabled / provenance boundary
 - memory record persistence boundary docs / tests
 - memory query authorization / controlled expand red tests
 - External Ingestion / `ImportedSnapshot` Boundary after memory boundary
 
-checkpoint v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC。不要直接进入 real LLM / memory implementation / ingestion implementation。
+checkpoint v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC。不要直接进入 real LLM / successful memory write / memory storage / ingestion implementation。

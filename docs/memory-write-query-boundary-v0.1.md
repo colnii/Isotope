@@ -24,14 +24,21 @@
 - `PolicyEngine` 不再硬编码只接受 `call_tool`；registry-backed `write_memory` proposal 可以进入 policy decision。
 - `MemoryRecord` v0 implementation shape 已新增并通过测试；它只是 slice-only implementation shape，不是最终 protocol。
 - `MemoryRecord` 当前校验 structured dict `content`、list `source_refs`、包含 `run_id` / `execution_id` / `action_type` 的 `provenance`、`thread` / `run` / `session` scope，并拒绝 top-level `artifact_content`。
-- executor 当前仍没有 memory handler；authorized `write_memory` 会受控失败为 unsupported handler，不创建 artifact、不写 memory record。
+- executor memory handler not-enabled / provenance boundary 已落地并通过测试。
+- `Executor` 现在支持可选 `memory_service` 注入。
+- 如果传入 `memory_service`，authorized `write_memory` 会进入 memory handler boundary。
+- executor 会从 structured payload 构造 `MemoryRecord` / record，并把 runtime execution provenance 和 `PolicyDecision.grants` 传给 memory service。
+- 当前 `NotEnabledMemoryService.write_record(...)` 仍会受控拒绝，因此 memory write failure 路径是 `action.started -> action.failed`。
+- memory write failure 不创建 artifact、不写 `action.completed`、不写 `memory.record_created`。
+- grants 缺少 `write_memory` 时，executor 不调用 memory service。
+- 没有传 `memory_service` 时，`write_memory` 仍是 unsupported handler。
 - projector 仍不读取 memory store 推进 `RunState`。
 - server 仍没有 public `query_memory(...)` API。
 - 当前没有 durable memory write implementation。
 - 当前没有 memory storage。
 - 当前没有 memory query implementation。
 - 当前没有 vector index、ranking 或 controlled expand implementation。
-- 当前测试基线是 `452 passed`。
+- 当前测试基线是 `458 passed`。
 
 当前已有相关基础：
 
@@ -70,7 +77,7 @@ server / agent runtime 不能直接写 durable memory，也不能用 memory quer
 
 ## 4. Memory Write Boundary
 
-第一阶段只实现 action-chain 边界，不实现 storage、memory handler 或 durable write path。
+第一阶段只实现 action-chain 和 not-enabled handler boundary，不实现 storage、successful durable write path 或 query engine。
 
 `write_memory` action type 当前已可作为 registry-backed v0 candidate 进入 compiler / policy boundary，但名字仍是 v0 candidate，不是永久协议。
 
@@ -81,13 +88,14 @@ durable memory write 必须由 authorized execution 触发：
 - valid memory intent 必须保留 structured `content`、`source_refs`、`provenance`，可携带 `summary`。
 - policy 决定是否授予 memory write grants。
 - executor / memory service 只能基于 `PolicyDecision.grants` 写。
-- memory write 必须 append canonical event，不能作为 side-channel state mutation。
+- successful memory write 未来必须 append canonical event，不能作为 side-channel state mutation。当前 not-enabled handler boundary 只允许失败路径写 `action.failed`。
 
-MemoryRecord 必须带 source refs / execution provenance：
+MemoryRecord 必须带 source refs / execution provenance。当前 executor memory handler boundary 已在调用 memory service 前补齐 runtime provenance：
 
 - source refs 应指向 artifacts、events、resources 或 other memory refs。
 - provenance 至少应能追溯 run / thread / execution / action。
 - created_at 必须由受控 runtime path 生成。
+- executor 传给 memory service 的 record provenance 会包含 runtime `run_id`、`execution_id`、`action_type`。
 
 server / agent runtime 不能直接写 durable memory。public client 也不能直接提交 MemoryRecord。
 
@@ -202,7 +210,7 @@ memory query 应和 retrieval boundary 对齐：
 以下能力继续 deferred：
 
 - real memory storage implementation。
-- durable memory write implementation。
+- successful durable memory write implementation。
 - memory query implementation。
 - ranking / exposure strategy。
 - session memory promotion policy。
@@ -216,7 +224,6 @@ memory query 应和 retrieval boundary 对齐：
 - memory migration / version negotiation。
 - memory inspection API。
 - memory record persistence。
-- executor memory handler。
 - server memory API。
 
 ## 10. First Red Tests
@@ -232,14 +239,14 @@ memory query 应和 retrieval boundary 对齐：
 - projector does not read memory store to advance `RunState`。
 - server still has no public `query_memory(...)` API.
 
-第二批 memory action-chain boundary tests 已落地并通过，但只覆盖 compiler / policy boundary 和 executor unsupported-handler boundary，不实现 memory handler / storage / query。
+第二批 memory action-chain boundary tests 已落地并通过，但只覆盖 compiler / policy boundary 和 executor unsupported-handler boundary，不实现 storage / query。
 
 已覆盖：
 
 - `write_memory` intent 不能只是 raw text。
 - valid memory intent 会保留 structured payload：`content`、`summary`、`source_refs`、`provenance`。
 - registry-backed `write_memory` proposal 可以进入 `PolicyEngine` decision。
-- executor 没有 memory handler 时，authorized `write_memory` 会受控失败并写 `action.started -> action.failed`，不创建 artifact、不写 memory record。
+- executor 没有 `memory_service` 时，authorized `write_memory` 会受控失败并写 `action.started -> action.failed`，不创建 artifact、不写 memory record。
 - server 仍没有 direct memory write API。
 
 第三批 MemoryRecord shape tests 已落地并通过，但只覆盖 implementation shape / validation，不实现 persistence / storage / write / query。
@@ -254,9 +261,22 @@ memory query 应和 retrieval boundary 对齐：
 - `scope` is limited to `thread` / `run` / `session`。
 - top-level `artifact_content` is not accepted。
 
+第四批 executor memory handler not-enabled / provenance boundary tests 已落地并通过，但只覆盖 handler boundary 和 failure behavior，不实现 successful durable write / persistence / storage / query。
+
+已覆盖：
+
+- `Executor` accepts optional `memory_service`。
+- authorized `write_memory` with configured `memory_service` enters memory handler boundary。
+- executor constructs `MemoryRecord` / record from structured payload。
+- runtime execution provenance is passed to memory service。
+- `PolicyDecision.grants` is passed to memory service。
+- `NotEnabledMemoryService.write_record(...)` rejection writes `action.started -> action.failed`。
+- memory write failure does not create artifact, append `action.completed`, or append `memory.record_created`。
+- missing `write_memory` grant does not call memory service。
+- without `memory_service`, `write_memory` remains unsupported handler。
+
 下一批 red tests / docs 可覆盖：
 
-- executor memory handler not-enabled / provenance boundary。
 - memory record persistence boundary docs / tests。
 - memory query authorization and controlled expand budget sketch。
 - memory result cannot bypass artifact / `ResourceRef` authorization。

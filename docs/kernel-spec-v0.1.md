@@ -328,7 +328,7 @@ memory 默认不内联大块 artifact 内容。
 - provenance
 - append + supersession 更新语义
 
-当前 v0 slice 已有 `MemoryRecord` implementation shape，用于锁住 structured content / provenance / refs 的最小边界；它不是最终 protocol。
+当前 v0 slice 已有 `MemoryRecord` implementation shape，用于锁住 structured content / provenance / refs 的最小边界；executor memory handler not-enabled / provenance boundary 已落地，会在显式 `memory_service` 下把 authorized `write_memory` 转成带 runtime execution provenance 的 record 调用，但当前 not-enabled service 仍拒绝写入。它不是最终 protocol，也不代表 successful durable memory write / persistence / query engine 已实现。
 
 当前推荐 recall 路径是 `Memory Query + controlled expand`。controlled expand 不能绕过 retrieval policy。
 
