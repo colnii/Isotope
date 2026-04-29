@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`af0a05ef2ab400aae30292beff4d6967fd5d0bce`。
+- 最新 implementation commit：`87272fc602dbf7acad9f638552d61c7f875197d8`。
 
 ## Implemented Slice
 
@@ -280,6 +280,9 @@
 - `ActionCompiler(registry=...)` accepts an explicit registry
 - `ActionCompiler` uses `ActionTypeRegistry.default()` when no registry is provided
 - `ActionCompiler` uses registry lookup for compact `tool`
+- `ActionCompiler` supports registry-backed non-`call_tool` action types when `intent.action` matches the registry entry `action_type`
+- `ActionCompiler` checks registry `payload_requirements.required`
+- valid registry-backed `write_memory` intent preserves structured payload fields: `content`, `summary`, `source_refs`, `provenance`
 - unknown compact tool fails closed at compiler boundary with controlled `ValueError`
 - disabled registry entry is rejected at compiler boundary
 - `ActionCompiler` still only creates requested capabilities, not grants
@@ -288,6 +291,7 @@
 - `PolicyEngine(registry=...)` accepts an explicit registry
 - `PolicyEngine` uses `ActionTypeRegistry.default()` when no registry is provided
 - `PolicyEngine` can approve registry-known tools when the proposal requested the tool
+- `PolicyEngine` no longer hardcodes only `call_tool`; registry-backed `write_memory` proposals can enter policy decision
 - registry does not automatically approve actions
 - registry cannot expand `PolicyDecision.grants`
 - `PolicyEngine` still decides grants itself and reduces extra tools / elevated workspace / excessive budget requests
@@ -350,7 +354,7 @@
 - deferred boundary review 已落文档
 - checkpoint v0.1 remains frozen by default
 - action registry wiring is complete for compiler / policy / executor / server
-- Memory Write / Query Boundary docs and first boundary tests have landed; next step is action-chain/provenance red tests, not implementation
+- Memory Write / Query Boundary docs, first boundary tests, and memory action-chain compiler/policy boundary tests have landed; next step is provenance / MemoryRecord / executor memory-handler boundary tests, not storage implementation
 - External Ingestion / `ImportedSnapshot` remains the next candidate after memory boundary
 - real LLM / HTTP / plugin system remain deferred
 - memory write / query boundary design note 已落文档
@@ -359,6 +363,12 @@
 - `NotEnabledMemoryService.write_record(...)` exists and rejects direct durable write without authorized execution
 - `NotEnabledMemoryService.query(...)` supports caller_context / grants shape while still returning controlled not-enabled boundary
 - memory query default result does not return full content / artifact content
+- memory action-chain boundary tests 已落地并通过
+- `ActionCompiler` supports registry-backed `write_memory` action boundary and required payload validation
+- valid `write_memory` intent preserves structured `content`, `summary`, `source_refs`, and `provenance`
+- `PolicyEngine` can evaluate registry-backed `write_memory` proposals without treating them as unsupported solely because they are not `call_tool`
+- authorized `write_memory` still fails controlled at executor boundary because no memory handler exists
+- executor does not create artifact or write memory record for unsupported `write_memory`
 - projector still does not read memory store to advance `RunState`
 - server still has no public `query_memory(...)` API
 - durable memory write / storage / query implementation remains deferred
@@ -375,7 +385,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-438 passed
+443 passed
 ```
 
 Import boundary check:
@@ -394,6 +404,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - memory storage
 - durable memory write
 - memory query engine
+- memory record persistence
 - memory ranking / exposure
 - controlled expand
 - session memory promotion
@@ -448,8 +459,9 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- memory action-chain red tests
 - memory provenance sketch / tests
+- memory record v0 sketch tests
+- executor memory handler not-enabled / provenance boundary
 - External Ingestion / `ImportedSnapshot` Boundary after memory boundary
 
 checkpoint v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC。不要直接进入 real LLM / memory implementation / ingestion implementation。

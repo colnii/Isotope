@@ -17,13 +17,19 @@
 - `NotEnabledMemoryService.query(...)` 保持 legacy 调用兼容：`query("run_001", "anything")` 仍返回 `{"status": "not_enabled", "capability": "memory_query"}`。
 - `NotEnabledMemoryService.query(...)` 已支持 caller_context / grants shape，但仍只返回受控 not-enabled boundary，不实现真实 query。
 - query 默认不返回 full content / artifact content。
+- memory action-chain boundary tests 已落地并通过。
+- `ActionCompiler` 已支持 registry-backed non-`call_tool` action type，只要 `intent.action` 与 registry entry `action_type` 匹配。
+- `ActionCompiler` 会检查 registry `payload_requirements.required`。
+- valid `write_memory` intent 会保留 structured payload：`content`、`summary`、`source_refs`、`provenance`。
+- `PolicyEngine` 不再硬编码只接受 `call_tool`；registry-backed `write_memory` proposal 可以进入 policy decision。
+- executor 当前仍没有 memory handler；authorized `write_memory` 会受控失败为 unsupported handler，不创建 artifact、不写 memory record。
 - projector 仍不读取 memory store 推进 `RunState`。
 - server 仍没有 public `query_memory(...)` API。
 - 当前没有 durable memory write implementation。
 - 当前没有 memory storage。
 - 当前没有 memory query implementation。
 - 当前没有 vector index、ranking 或 controlled expand implementation。
-- 当前测试基线是 `438 passed`。
+- 当前测试基线是 `443 passed`。
 
 当前已有相关基础：
 
@@ -62,13 +68,15 @@ server / agent runtime 不能直接写 durable memory，也不能用 memory quer
 
 ## 4. Memory Write Boundary
 
-第一阶段只设计边界，不实现 storage 或 write path。
+第一阶段只实现 action-chain 边界，不实现 storage、memory handler 或 durable write path。
 
-未来可以有 `write_memory` action type，但名字仍是 v0 candidate，不是永久协议。
+`write_memory` action type 当前已可作为 registry-backed v0 candidate 进入 compiler / policy boundary，但名字仍是 v0 candidate，不是永久协议。
 
 durable memory write 必须由 authorized execution 触发：
 
 - compiler 只能生成 requested capabilities。
+- compiler 必须按 registry `payload_requirements.required` 校验 payload；`write_memory` 不能只是 raw text。
+- valid memory intent 必须保留 structured `content`、`source_refs`、`provenance`，可携带 `summary`。
 - policy 决定是否授予 memory write grants。
 - executor / memory service 只能基于 `PolicyDecision.grants` 写。
 - memory write 必须 append canonical event，不能作为 side-channel state mutation。
@@ -209,10 +217,21 @@ memory query 应和 retrieval boundary 对齐：
 - projector does not read memory store to advance `RunState`。
 - server still has no public `query_memory(...)` API.
 
+第二批 memory action-chain boundary tests 已落地并通过，但只覆盖 compiler / policy boundary 和 executor unsupported-handler boundary，不实现 memory handler / storage / query。
+
+已覆盖：
+
+- `write_memory` intent 不能只是 raw text。
+- valid memory intent 会保留 structured payload：`content`、`summary`、`source_refs`、`provenance`。
+- registry-backed `write_memory` proposal 可以进入 `PolicyEngine` decision。
+- executor 没有 memory handler 时，authorized `write_memory` 会受控失败并写 `action.started -> action.failed`，不创建 artifact、不写 memory record。
+- server 仍没有 direct memory write API。
+
 下一批 red tests 可覆盖：
 
-- memory action-chain proposal / policy / executor boundary。
 - memory provenance required fields。
+- MemoryRecord v0 sketch / persistence boundary。
+- executor memory handler not-enabled / provenance boundary。
 - memory query authorization and controlled expand budget sketch。
 - memory result cannot bypass artifact / `ResourceRef` authorization。
 

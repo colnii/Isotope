@@ -31,7 +31,7 @@
 - checkpoint save trigger 相关实现必须遵守 `docs/checkpoint-save-trigger-v0.1.md`；当前只允许 internal-only `save_checkpoint_for_run(...)`，不要复用 public-looking `create_checkpoint(...)`。
 - `ActionTypeRegistry` 相关实现必须先读 `docs/action-type-registry-v0.1.md` 并写 red tests；minimal registry module 已实现并已接入 `ActionCompiler`、`PolicyEngine` requirement lookup、`Executor` handler lookup 和 `InProcessServer` wiring，但 registry 不能绕过 action chain、不能替代 policy / executor、不能扩大 `PolicyDecision.grants`。后续 action registry hardening 必须分边界写 red tests。
 - deferred boundary review 已落在 `docs/deferred-boundary-review-v0.1.md`；Memory Write / Query Boundary docs 已落文档，默认下一步只写 red tests，不要直接实现 memory write、external ingestion、real LLM、real HTTP 或 plugin system。
-- memory write / query 相关实现必须先读 `docs/memory-write-query-boundary-v0.1.md` 并写 red tests；当前只完成 not-enabled / rejection boundary hardening，`NotEnabledMemoryService.write_record(...)` 会拒绝无 authorized execution 的 direct durable write，`query(...)` 支持 caller_context / grants 形状但仍不实现真实 query。不得直接实现 memory storage、durable memory write、memory query engine、ranking、controlled expand、vector index 或 public memory API。
+- memory write / query 相关实现必须先读 `docs/memory-write-query-boundary-v0.1.md` 并写 red tests；当前已完成 not-enabled / rejection boundary hardening 和 memory action-chain compiler/policy boundary，`NotEnabledMemoryService.write_record(...)` 会拒绝无 authorized execution 的 direct durable write，`query(...)` 支持 caller_context / grants 形状但仍不实现真实 query，`ActionCompiler` / `PolicyEngine` 可处理 registry-backed `write_memory` 边界。executor memory handler、memory storage、durable memory write、memory query engine、ranking、controlled expand、vector index 和 public memory API 仍 deferred，不得直接实现。
 
 ## Current Slice
 
@@ -281,6 +281,10 @@
 - `NotEnabledMemoryService.write_record(...)` rejects direct durable write without authorized execution
 - `NotEnabledMemoryService.query(...)` accepts caller_context / grants shape but still returns controlled not-enabled boundary
 - memory query default result does not return full content / artifact content
+- memory action-chain compiler / policy boundary
+- `ActionCompiler` can compile registry-backed `write_memory` intent with required structured payload
+- `PolicyEngine` can evaluate registry-backed `write_memory` proposal without treating non-`call_tool` as unsupported by default
+- executor still has no memory handler; authorized `write_memory` fails controlled without artifact or memory record creation
 - projector does not read memory store to advance `RunState`
 - `InProcessServer` still has no public `query_memory(...)` API
 - `RunProjector.save_checkpoint(...)` remains latest-only
@@ -366,8 +370,9 @@
 
 下一阶段默认不要继续深挖 checkpoint。优先考虑：
 
-- memory action-chain red tests
 - memory provenance sketch / tests
+- MemoryRecord v0 sketch tests
+- executor memory handler not-enabled / provenance boundary
 - External Ingestion / `ImportedSnapshot` Boundary after memory boundary
 
 不要直接进入 real LLM、memory write implementation 或 external ingestion implementation。

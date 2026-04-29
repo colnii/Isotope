@@ -26,7 +26,7 @@
 
 当前实现里：
 
-- `ActionCompiler` 可以把 compact intent 编译为 canonical `ActionProposal`，并已使用 registry lookup 校验 compact tool。
+- `ActionCompiler` 可以把 compact intent 编译为 canonical `ActionProposal`，并已使用 registry lookup 校验 compact tool / action type / payload requirements。
 - `PolicyEngine` 已使用 registry requirement lookup，但仍自己决定 grants。
 - `Executor` 已使用 registry handler lookup，但当前仍只执行 deterministic `write_artifact_tool` handler。
 - `ActionProposal -> PolicyDecision -> ActionExecution -> canonical events` 已有最小链路。
@@ -41,6 +41,9 @@
 - registry 已接入 `ActionCompiler`。
 - `ActionCompiler(registry=...)` 可显式传入 registry。
 - 不传 registry 时，`ActionCompiler` 使用 `ActionTypeRegistry.default()`。
+- `ActionCompiler` 支持 registry-backed non-`call_tool` action type，只要 `intent.action` 与 registry entry `action_type` 匹配。
+- `ActionCompiler` 会检查 registry `payload_requirements.required`。
+- valid `write_memory` intent 会保留 structured payload：`content`、`summary`、`source_refs`、`provenance`。
 - unknown compact tool 当前先在 compiler boundary 受控 `ValueError` fail closed。
 - disabled registry entry 会被 compiler 拒绝。
 - compiler 仍只生成 requested capabilities，不生成 grants。
@@ -48,6 +51,7 @@
 - registry 已接入 `PolicyEngine` requirement lookup。
 - `PolicyEngine(registry=...)` 可显式传入 registry。
 - 不传 registry 时，`PolicyEngine` 使用 `ActionTypeRegistry.default()`。
+- `PolicyEngine` 不再硬编码只接受 `call_tool`；registry-backed `write_memory` proposal 可以进入 policy decision。
 - registry-known tool 只有在 proposal requested capabilities 请求该 tool 时才可能被 policy approve。
 - registry 不能自动批准 action，也不能扩大 `PolicyDecision.grants`。
 - policy 仍负责缩权：extra tool、更高 workspace request、超额 budget 会被 reduced / modified。
@@ -104,6 +108,9 @@
 当前 compiler lookup integration 已覆盖：
 
 - `ActionCompiler` 用 registry 校验 action/tool 是否存在。
+- `ActionCompiler` 允许 registry-backed non-`call_tool` action type，只要 compact intent action 匹配 registry entry `action_type`。
+- `ActionCompiler` 执行 registry `payload_requirements.required` 校验。
+- `ActionCompiler` 对 valid `write_memory` intent 保留 structured `content`、`summary`、`source_refs`、`provenance` payload。
 - unknown compact tool 在 compiler boundary fail closed。
 - compiler 仍只能产出 canonical `ActionProposal`，不能让 raw intent 绕过 action chain。
 - explicit registry dependency injection and default registry fallback.
@@ -112,6 +119,7 @@
 当前 policy lookup integration 已覆盖：
 
 - `PolicyEngine` 读取 registry required capabilities。
+- `PolicyEngine` 允许 registry-backed non-`call_tool` proposal 进入 policy decision，只要 proposal action_type 与 registry entry action_type 匹配。
 - policy 仍由自己决定 grants，不能因为 registry entry 存在就自动 approve。
 - unknown registry tool 在 policy boundary denied，不抛未受控异常。
 - disabled registry entry 不会被 policy approve。
