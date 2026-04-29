@@ -39,6 +39,7 @@ class RunProjector:
         self._proposal_action_types: dict[str, str] = {}
         self._execution_statuses: dict[str, str] = {}
         self._execution_action_types: dict[str, str] = {}
+        self._memory_record_ids: set[str] = set()
         self._run_completed = False
 
     def _validate_lifecycle(self, event: CanonicalEvent) -> None:
@@ -51,6 +52,7 @@ class RunProjector:
             "action.completed",
             "artifact.created",
             "memory.record_created",
+            "memory.record_superseded",
         }:
             raise ValueError("event after run.completed")
 
@@ -88,6 +90,9 @@ class RunProjector:
             self._execution_statuses[execution_id] = "failed"
         elif event.event_type == "memory.record_created":
             self._validate_memory_record_lifecycle(payload)
+            self._memory_record_ids.add(str(payload["record_id"]))
+        elif event.event_type == "memory.record_superseded":
+            self._validate_memory_record_superseded_lifecycle(payload)
         elif event.event_type == "run.completed":
             self._validate_run_completed()
             self._run_completed = True
@@ -141,6 +146,8 @@ class RunProjector:
             )
         elif event.event_type == "memory.record_created":
             self._validate_memory_record_created_payload(payload)
+        elif event.event_type == "memory.record_superseded":
+            self._validate_memory_record_superseded_payload(payload)
 
     def _require_fields(self, label: str, payload: dict[str, Any], fields: tuple[str, ...]) -> None:
         for field in fields:
@@ -176,6 +183,43 @@ class RunProjector:
         action_type = self._execution_action_types.get(execution_id)
         if action_type != "write_memory":
             raise ValueError("memory.record_created requires completed write_memory execution")
+
+    def _validate_memory_record_superseded_payload(self, payload: dict[str, Any]) -> None:
+        self._require_fields(
+            "memory.record_superseded",
+            payload,
+            ("old_record_id", "new_record_id", "execution_id", "reason", "provenance", "basis_event_id"),
+        )
+        for field_name in ("content", "full_content", "artifact_content", "raw_content"):
+            if field_name in payload:
+                raise ValueError(f"memory.record_superseded cannot contain {field_name}")
+        if not isinstance(payload["provenance"], dict):
+            raise ValueError("memory.record_superseded provenance must be a dict")
+
+    def _validate_memory_record_superseded_lifecycle(self, payload: dict[str, Any]) -> None:
+        old_record_id = str(payload["old_record_id"])
+        new_record_id = str(payload["new_record_id"])
+        if old_record_id == new_record_id:
+            raise ValueError("memory.record_superseded old_record_id and new_record_id must not be the same")
+        if old_record_id not in self._memory_record_ids:
+            raise ValueError("memory.record_superseded old_record_id must reference an existing record")
+        if new_record_id not in self._memory_record_ids:
+            raise ValueError("memory.record_superseded new_record_id must reference an existing record")
+
+        execution_id = str(payload["execution_id"])
+        status = self._execution_statuses.get(execution_id)
+        if status is None:
+            outcomes = set(self._proposal_outcomes.values())
+            if "denied" in outcomes:
+                raise ValueError("memory.record_superseded after denied decision")
+            if "pending_user_approval" in outcomes:
+                raise ValueError("memory.record_superseded after pending decision")
+            raise ValueError("memory.record_superseded requires completed write_memory execution")
+        if status != "completed":
+            raise ValueError(f"memory.record_superseded requires completed write_memory execution, got {status}")
+        action_type = self._execution_action_types.get(execution_id)
+        if action_type != "write_memory":
+            raise ValueError("memory.record_superseded requires completed write_memory execution")
 
     def apply(self, state: RunState, event: CanonicalEvent) -> None:
         state.last_event_id = event.event_id
@@ -247,6 +291,15 @@ class RunProjector:
                     "quality": payload.get("quality"),
                 }
             )
+        elif event.event_type == "memory.record_superseded":
+            old_record_id = str(payload["old_record_id"])
+            for record in state.memory_records:
+                if record["record_id"] == old_record_id:
+                    record["status"] = "superseded"
+                    record["superseded_by"] = payload["new_record_id"]
+                    record["superseded_event_id"] = event.event_id
+                    record["superseded_reason"] = payload["reason"]
+                    break
         elif event.event_type == "run.completed":
             state.status = str(payload.get("status", "completed"))
 
@@ -255,6 +308,7 @@ class RunProjector:
         self._proposal_action_types = {}
         self._execution_statuses = {}
         self._execution_action_types = {}
+        self._memory_record_ids = set()
         self._run_completed = False
         state = RunState()
         for event in events:
