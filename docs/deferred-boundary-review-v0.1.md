@@ -16,7 +16,7 @@
 - canonical event log / projector：event log 仍是唯一 source of truth，projector 只从 canonical events rebuild `RunState`。
 - checkpoint v0.1：latest/history checkpoint save、assisted rebuild、candidate fallback、integrity/hash、event prefix digest、server read path 和 internal save triggers 已足够支撑当前 kernel slice，并已 frozen。
 - `ActionTypeRegistry`：minimal registry module 已实现，并已接入 `ActionCompiler` registry lookup、`PolicyEngine` requirement lookup、`Executor` handler lookup 和 `InProcessServer` shared registry wiring。
-- 当前测试基线：`443 passed`。
+- 当前测试基线：`452 passed`。
 
 当前 hard boundary 仍不变：
 
@@ -115,17 +115,18 @@ Real LLM、real HTTP 和 plugin system 继续 deferred。
 
 ## 7. Recommendation
 
-Memory Write / Query Boundary docs、第一批 memory boundary tests 和 memory action-chain compiler/policy boundary tests 已落地；当前只 harden not-enabled / rejection boundary 与 compiler/policy action-chain boundary。
+Memory Write / Query Boundary docs、第一批 memory boundary tests、memory action-chain compiler/policy boundary tests 和 `MemoryRecord` v0 shape tests 已落地；当前只 harden not-enabled / rejection boundary、compiler/policy action-chain boundary 与 MemoryRecord shape validation。
 
 推荐顺序：
 
 1. `docs/memory-write-query-boundary-v0.1.md` 已落文档。
 2. 第一批 not-enabled / rejection boundary tests 已通过。
 3. memory action-chain boundary tests 已通过：compiler 支持 registry-backed `write_memory` payload requirements，policy 可处理 registry-backed `write_memory` proposal。
-4. 下一步可做 memory provenance sketch / tests、MemoryRecord v0 sketch tests、executor memory handler not-enabled / provenance boundary，或 external ingestion boundary docs。
-5. 不直接做完整 memory implementation。
-6. External Ingestion / `ImportedSnapshot` 排在 memory boundary 之后。
-7. real LLM / HTTP / plugin system 继续 deferred。
+4. `MemoryRecord` v0 implementation shape 已通过测试：structured `content`、list `source_refs`、required provenance、limited scope、no top-level `artifact_content`。
+5. 下一步可做 executor memory handler not-enabled / provenance boundary、memory record persistence boundary docs/tests、memory query authorization / controlled expand red tests，或 external ingestion boundary docs。
+6. 不直接做完整 memory implementation。
+7. External Ingestion / `ImportedSnapshot` 排在 memory boundary 之后。
+8. real LLM / HTTP / plugin system 继续 deferred。
 
 理由：
 
@@ -137,10 +138,10 @@ Memory Write / Query Boundary docs、第一批 memory boundary tests 和 memory 
 
 下一轮建议选择以下 red tests / docs 之一：
 
-- memory provenance required fields。
-- MemoryRecord v0 sketch / persistence boundary。
 - executor memory handler not-enabled / provenance boundary。
+- memory record persistence boundary docs / tests。
 - memory query authorization boundary。
+- controlled expand red tests。
 - memory result cannot bypass artifact / ResourceRef authorization。
 - external ingestion / `ImportedSnapshot` boundary docs。
 

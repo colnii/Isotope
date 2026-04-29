@@ -22,6 +22,8 @@
 - `ActionCompiler` 会检查 registry `payload_requirements.required`。
 - valid `write_memory` intent 会保留 structured payload：`content`、`summary`、`source_refs`、`provenance`。
 - `PolicyEngine` 不再硬编码只接受 `call_tool`；registry-backed `write_memory` proposal 可以进入 policy decision。
+- `MemoryRecord` v0 implementation shape 已新增并通过测试；它只是 slice-only implementation shape，不是最终 protocol。
+- `MemoryRecord` 当前校验 structured dict `content`、list `source_refs`、包含 `run_id` / `execution_id` / `action_type` 的 `provenance`、`thread` / `run` / `session` scope，并拒绝 top-level `artifact_content`。
 - executor 当前仍没有 memory handler；authorized `write_memory` 会受控失败为 unsupported handler，不创建 artifact、不写 memory record。
 - projector 仍不读取 memory store 推进 `RunState`。
 - server 仍没有 public `query_memory(...)` API。
@@ -29,7 +31,7 @@
 - 当前没有 memory storage。
 - 当前没有 memory query implementation。
 - 当前没有 vector index、ranking 或 controlled expand implementation。
-- 当前测试基线是 `443 passed`。
+- 当前测试基线是 `452 passed`。
 
 当前已有相关基础：
 
@@ -115,9 +117,9 @@ memory query 不是每个 run 必跑的一步。runtime 可以按需要查询，
 
 memory query 不应默认内联大块 artifact content。默认返回 summary / preview / refs。
 
-## 6. MemoryRecord v0 Candidate Shape
+## 6. MemoryRecord v0 Implementation Shape
 
-以下字段只是 v0 candidate / sketch，不是最终协议：
+当前已有 slice-only `MemoryRecord` implementation shape。以下字段仍不是最终协议：
 
 ```python
 {
@@ -154,6 +156,16 @@ memory query 不应默认内联大块 artifact content。默认返回 summary / 
 - `created_at`：record creation time。
 - `supersedes`：可选 supersession relation。
 - `quality`：candidate quality / confidence / review marker。
+
+当前最小 validation：
+
+- `content` 必须是 structured dict，不能是 raw string transcript。
+- `source_refs` 必须是 list，不能退回 raw string handle。
+- `provenance` 必须是 dict，并包含 `run_id`、`execution_id`、`action_type`。
+- `scope` 只能是 `thread` / `run` / `session`。
+- top-level `artifact_content` 不被接受；memory 默认不内联 artifact content。
+
+当前仍不实现 memory record persistence、storage lookup、ref resolution 或 artifact content read。
 
 ## 7. Events / Action Chain
 
@@ -203,6 +215,9 @@ memory query 应和 retrieval boundary 对齐：
 - real LLM recall loop。
 - memory migration / version negotiation。
 - memory inspection API。
+- memory record persistence。
+- executor memory handler。
+- server memory API。
 
 ## 10. First Red Tests
 
@@ -227,12 +242,24 @@ memory query 应和 retrieval boundary 对齐：
 - executor 没有 memory handler 时，authorized `write_memory` 会受控失败并写 `action.started -> action.failed`，不创建 artifact、不写 memory record。
 - server 仍没有 direct memory write API。
 
-下一批 red tests 可覆盖：
+第三批 MemoryRecord shape tests 已落地并通过，但只覆盖 implementation shape / validation，不实现 persistence / storage / write / query。
 
-- memory provenance required fields。
-- MemoryRecord v0 sketch / persistence boundary。
+已覆盖：
+
+- `MemoryRecord` v0 shape exists。
+- valid `MemoryRecord` requires structured `content` and `provenance`。
+- raw transcript string content is rejected。
+- missing `run_id` / `execution_id` / `action_type` provenance is rejected。
+- `source_refs` must be list。
+- `scope` is limited to `thread` / `run` / `session`。
+- top-level `artifact_content` is not accepted。
+
+下一批 red tests / docs 可覆盖：
+
 - executor memory handler not-enabled / provenance boundary。
+- memory record persistence boundary docs / tests。
 - memory query authorization and controlled expand budget sketch。
 - memory result cannot bypass artifact / `ResourceRef` authorization。
+- external ingestion / `ImportedSnapshot` boundary docs。
 
 这些 tests 的目标是锁住边界：memory 必须通过 action/policy/execution/event 进入 durable state，query 只能是受控 recall，不能成为第二事实源。

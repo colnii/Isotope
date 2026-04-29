@@ -371,6 +371,8 @@ Memory Service 不能绕过 action chain 直接提交 durable memory。durable m
 
 当前推荐 action type 名是 `write_memory` 和 `promote_memory`，但名称不是硬协议。
 
+当前 v0 slice 已有 `MemoryRecord` implementation shape，用于验证 structured content、source refs 和 execution/action provenance；它不是最终 protocol，且不代表 storage / durable write / query engine 已实现。
+
 ### Open Question
 
 - `MemoryRecord` 最终 schema。

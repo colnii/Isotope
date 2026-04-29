@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`87272fc602dbf7acad9f638552d61c7f875197d8`。
+- 最新 implementation commit：`88b39f9c26a93010aa53d56996c702f4590d55a7`。
 
 ## Implemented Slice
 
@@ -354,7 +354,7 @@
 - deferred boundary review 已落文档
 - checkpoint v0.1 remains frozen by default
 - action registry wiring is complete for compiler / policy / executor / server
-- Memory Write / Query Boundary docs, first boundary tests, and memory action-chain compiler/policy boundary tests have landed; next step is provenance / MemoryRecord / executor memory-handler boundary tests, not storage implementation
+- Memory Write / Query Boundary docs, first boundary tests, memory action-chain compiler/policy boundary tests, and `MemoryRecord` v0 shape tests have landed; next step is executor memory-handler / persistence / query boundary tests, not storage implementation
 - External Ingestion / `ImportedSnapshot` remains the next candidate after memory boundary
 - real LLM / HTTP / plugin system remain deferred
 - memory write / query boundary design note 已落文档
@@ -369,6 +369,13 @@
 - `PolicyEngine` can evaluate registry-backed `write_memory` proposals without treating them as unsupported solely because they are not `call_tool`
 - authorized `write_memory` still fails controlled at executor boundary because no memory handler exists
 - executor does not create artifact or write memory record for unsupported `write_memory`
+- `MemoryRecord` v0 implementation shape 已新增
+- `MemoryRecord` is slice-only implementation shape, not final protocol
+- `MemoryRecord.content` must be a structured dict and cannot be raw transcript string
+- `MemoryRecord.source_refs` must be a list
+- `MemoryRecord.provenance` must include `run_id`, `execution_id`, and `action_type`
+- `MemoryRecord.scope` is limited to `thread`, `run`, or `session`
+- top-level `artifact_content` is not accepted by `MemoryRecord`
 - projector still does not read memory store to advance `RunState`
 - server still has no public `query_memory(...)` API
 - durable memory write / storage / query implementation remains deferred
@@ -385,7 +392,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-443 passed
+452 passed
 ```
 
 Import boundary check:
@@ -405,6 +412,8 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - durable memory write
 - memory query engine
 - memory record persistence
+- executor memory handler
+- memory server API
 - memory ranking / exposure
 - controlled expand
 - session memory promotion
@@ -459,9 +468,9 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- memory provenance sketch / tests
-- memory record v0 sketch tests
 - executor memory handler not-enabled / provenance boundary
+- memory record persistence boundary docs / tests
+- memory query authorization / controlled expand red tests
 - External Ingestion / `ImportedSnapshot` Boundary after memory boundary
 
 checkpoint v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC。不要直接进入 real LLM / memory implementation / ingestion implementation。
