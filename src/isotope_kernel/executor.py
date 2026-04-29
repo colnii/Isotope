@@ -7,7 +7,7 @@ from typing import Any
 from .action_registry import ActionTypeRegistry
 from .events import CanonicalEvent
 from .ids import new_id
-from .models import ActionExecution, ActionProposal, PolicyDecision
+from .models import ActionExecution, ActionProposal, MemoryRecord, PolicyDecision
 
 
 class Executor:
@@ -19,11 +19,13 @@ class Executor:
         artifact_store,
         workspace_manager,
         registry: ActionTypeRegistry | None = None,
+        memory_service=None,
     ):
         self.event_store = event_store
         self.artifact_store = artifact_store
         self.workspace_manager = workspace_manager
         self.registry = registry if registry is not None else ActionTypeRegistry.default()
+        self.memory_service = memory_service
 
     def execute(self, decision: PolicyDecision, proposal: ActionProposal) -> ActionExecution:
         if decision.outcome == "denied":
@@ -53,24 +55,22 @@ class Executor:
                 raise PermissionError(f"disabled tool {tool_name}")
             if tool_name not in granted_tools:
                 raise PermissionError(f"{tool_name} is not granted")
+            if tool_name == "write_memory" and self.memory_service is not None:
+                execution = self._new_execution(execution_id, proposal, decision, status="started")
+                record = self._memory_record_from_proposal(proposal, execution_id)
+                self.memory_service.write_record(
+                    record,
+                    execution=execution,
+                    grants=decision.grants,
+                )
+                raise PermissionError("memory_write success not enabled")
             if tool_name != "write_artifact_tool":
                 raise PermissionError(f"unsupported handler for tool {tool_name}")
 
             # This validates the granted workspace mode without consulting requested capabilities.
             self.workspace_manager.get_binding(decision.grants)
 
-            execution = ActionExecution(
-                execution_id=execution_id,
-                proposal_id=proposal.proposal_id,
-                decision_id=decision.decision_id,
-                action_type=proposal.action_type,
-                status="completed",
-                effective_grants_snapshot={
-                    "tools": list(decision.grants.get("tools", [])),
-                    "workspace": dict(decision.grants.get("workspace", {})),
-                    "budget": dict(decision.grants.get("budget", {})),
-                },
-            )
+            execution = self._new_execution(execution_id, proposal, decision, status="completed")
             artifact = self.artifact_store.create_artifact(
                 run_id=proposal.run_id,
                 execution_id=execution.execution_id,
@@ -85,6 +85,53 @@ class Executor:
         self._append_artifact_created(proposal.run_id, artifact)
         self._append_action_completed(proposal.run_id, execution, artifact)
         return execution
+
+    def _new_execution(
+        self,
+        execution_id: str,
+        proposal: ActionProposal,
+        decision: PolicyDecision,
+        *,
+        status: str,
+    ) -> ActionExecution:
+        return ActionExecution(
+            execution_id=execution_id,
+            proposal_id=proposal.proposal_id,
+            decision_id=decision.decision_id,
+            action_type=proposal.action_type,
+            status=status,
+            effective_grants_snapshot={
+                "tools": list(decision.grants.get("tools", [])),
+                "workspace": dict(decision.grants.get("workspace", {})),
+                "budget": dict(decision.grants.get("budget", {})),
+            },
+        )
+
+    def _memory_record_from_proposal(
+        self,
+        proposal: ActionProposal,
+        execution_id: str,
+    ) -> MemoryRecord:
+        payload = proposal.payload
+        provenance = dict(payload.get("provenance", {}))
+        provenance.update(
+            {
+                "run_id": proposal.run_id,
+                "execution_id": execution_id,
+                "action_type": proposal.action_type,
+            }
+        )
+        return MemoryRecord(
+            memory_id=new_id("mem"),
+            scope=str(payload.get("scope", "run")),
+            content=payload.get("content"),
+            summary=str(payload.get("summary", "")),
+            source_refs=payload.get("source_refs"),
+            provenance=provenance,
+            created_at="2026-04-27T00:00:00Z",
+            supersedes=list(payload.get("supersedes", [])),
+            quality=str(payload.get("quality", "unverified")),
+        )
 
     def _append(self, run_id: str, event_type: str, payload: dict[str, Any]) -> CanonicalEvent:
         event = CanonicalEvent(
