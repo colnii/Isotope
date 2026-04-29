@@ -347,6 +347,12 @@
 - current only event envelope version is `canonical_event_slice@v0`
 - no event envelope schema registry or registry lookup is implemented
 - future registry cannot rewrite event log, make malformed events valid, or generate state outside projector-owned boundary
+- deferred boundary review 已落文档
+- checkpoint v0.1 remains frozen by default
+- action registry wiring is complete for compiler / policy / executor / server
+- default next boundary is Memory Write / Query docs and red tests, not implementation
+- External Ingestion / `ImportedSnapshot` remains the next candidate after memory boundary
+- real LLM / HTTP / plugin system remain deferred
 
 ## Tests
 
@@ -426,8 +432,8 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- deferred boundary review before choosing the next implementation slice
-- memory write/query boundary docs
-- external ingestion / `ImportedSnapshot` boundary docs
+- Memory Write / Query Boundary docs
+- first red tests for memory write/query boundary after the docs are accepted
+- External Ingestion / `ImportedSnapshot` Boundary after memory boundary
 
 checkpoint v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC。不要直接进入 real LLM / memory implementation / ingestion implementation。
