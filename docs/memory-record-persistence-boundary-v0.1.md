@@ -31,6 +31,9 @@
 - `memory.record_created` canonical event read-model boundary 已实现。
 - `RunState.memory_records` 只从 canonical `memory.record_created` event 投影 summary / refs / provenance-level metadata。
 - `memory.record_created` 必须绑定 completed `write_memory` execution，且不能包含 full content / artifact content。
+- `memory.record_superseded` canonical event read-model boundary 已实现。
+- `memory.record_superseded` 只通过追加 canonical event 表达 supersession；旧 record 不被原地覆盖，只增加 supersession metadata 并指向已存在的新 record。
+- `memory.record_superseded` 必须绑定 completed `write_memory` execution，且不能包含 full content / artifact content / raw content。
 - projector 仍不读取 memory store 来推进 `RunState`。
 - memory write failure 路径仍是 `action.started -> action.failed`。
 - 当前没有 memory storage。
@@ -38,7 +41,7 @@
 - 当前没有 successful durable memory write。
 - `NotEnabledMemoryQueryService` 已实现 query-time authorization not-enabled boundary，但不实现 query engine。
 - 当前没有 memory query implementation。
-- 当前测试基线是 `496 passed`。
+- 当前测试基线是 `517 passed`。
 
 ## 3. Hard Boundaries
 
@@ -76,10 +79,11 @@ memory service 不能自行批准 action，不能扩大 grants，不能绕过 ac
 future successful durable write path 应通过 canonical event 进入 read model。当前已实现的 v0 candidate event read-model boundary 是：
 
 - `memory.record_created`
+- `memory.record_superseded`
 
 事件名只是 v0 candidate，不是永久协议。
 
-当前 `RunProjector` 已支持并校验 `memory.record_created`：它只投影 record id、execution id、summary、source refs、provenance、basis event、quality 等 metadata，不投影 `content` / `full_content` / `artifact_content` / `raw_content`。这个 boundary 只说明 canonical event 可以驱动 read model，不说明 memory store / successful persistence 已实现。
+当前 `RunProjector` 已支持并校验 `memory.record_created`：它只投影 record id、execution id、summary、source refs、provenance、basis event、quality 等 metadata，不投影 `content` / `full_content` / `artifact_content` / `raw_content`。当前 `RunProjector` 也已支持并校验 `memory.record_superseded`：它只增加 supersession metadata，保留旧 record 原始 summary / refs / provenance，要求 old/new record 都已存在且 supersession 绑定 completed `write_memory` execution。这个 boundary 只说明 canonical event 可以驱动 read model，不说明 memory store / successful persistence / successful update 已实现。
 
 successful write 应先有 action execution context。最小顺序应保持：
 
@@ -93,9 +97,9 @@ successful write 应先有 action execution context。最小顺序应保持：
 - `action.started`
 - `action.failed`
 
-memory record persistence 不允许补写、改写或删除旧 event。它只能在当前 authorized execution 下产生新的 derived record 和对应审计事件。
+memory record persistence 不允许补写、改写或删除旧 event。它只能在当前 authorized execution 下产生新的 derived record 和对应审计事件。memory update 语义必须通过 append-only supersession event 表达，不能原地覆盖旧 record。
 
-query result 不能直接推进 `RunState`。memory store record presence 也不能让 projector 绕过 canonical event replay；只有 canonical `memory.record_created` event 可以更新 `RunState.memory_records`。
+query result 不能直接推进 `RunState`。memory store record presence 也不能让 projector 绕过 canonical event replay；只有 canonical `memory.record_created` / `memory.record_superseded` event 可以更新 `RunState.memory_records` read model。
 
 ## 6. Store Shape Candidate
 
@@ -132,10 +136,10 @@ failure 不能留下 partial record。如果 store 写入无法保证原子性�
 
 record persistence failure 不应创建 artifact，不应 append `action.completed`，不应 append `memory.record_created`。
 
-duplicate / overwrite / supersession 暂不实现。open questions:
+duplicate / overwrite 仍暂不实现；supersession 当前只实现 canonical event read-model boundary，不实现 durable update / storage path。open questions:
 
 - duplicate `memory_id` 是 fail-fast、idempotent success，还是 create new revision。
-- `supersedes` 是否需要验证 target record exists。
+- future persistence store 的 `supersedes` 字段如何与 canonical `memory.record_superseded` event 对齐。
 - overwrite 是否永远禁止。
 - partial write cleanup 是否需要 diagnostic event。
 
@@ -164,6 +168,7 @@ query result 不能变成 `RunState` native fact。若 query result 要影响 st
 
 - memory storage implementation。
 - successful durable memory write。
+- successful memory update / supersession write implementation。
 - successful memory record persistence implementation。
 - record indexing。
 - vector embeddings。
@@ -204,6 +209,17 @@ query result 不能变成 `RunState` native fact。若 query result 要影响 st
 - failed / denied / pending / non-`write_memory` execution is rejected。
 - executor + not-enabled memory service still cannot produce successful memory write。
 - server still has no public direct memory write API。
+
+第三批 `memory.record_superseded` canonical event boundary tests 已落地并通过，但只覆盖 event/read-model boundary，不实现 successful durable update / storage。
+
+已覆盖：
+
+- valid `memory.record_superseded` marks old record superseded and points to an existing new record。
+- old record summary / refs / provenance are not overwritten。
+- `memory.record_superseded` requires old / new record ids, execution id, reason, provenance, and basis event。
+- missing old / new record, self-supersession, full content fields, and non-completed / non-`write_memory` execution are rejected。
+- executor + not-enabled memory service still cannot produce successful memory write or supersession。
+- server still has no public direct memory update / supersede API。
 
 下一批 red tests 可考虑：
 

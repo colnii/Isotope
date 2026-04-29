@@ -49,16 +49,21 @@
 - `memory.record_created` 只投影 summary / refs / provenance-level metadata，不投影 full content。
 - `memory.record_created` payload 拒绝 `content` / `full_content` / `artifact_content` / `raw_content`。
 - `memory.record_created` 必须绑定 completed `write_memory` execution；failed / denied / pending / non-`write_memory` execution 都会被拒绝。
-- 这是 canonical event projection boundary，不是 durable memory storage implementation。
+- `memory.record_superseded` canonical event read-model boundary 已落地并通过测试。
+- `RunProjector` 已支持并校验 `memory.record_superseded`。
+- supersession 只通过追加 canonical event 表达；旧 memory record 不被原地覆盖，只增加 supersession metadata 并指向已存在的新 record。
+- `memory.record_superseded` payload 拒绝 full content / artifact content / raw content，并要求绑定 completed `write_memory` execution。
+- failed / denied / pending / non-`write_memory` execution 不能 supersede memory record。
+- 这是 canonical event projection boundary，不是 durable memory storage 或 successful memory update implementation。
 - projector 仍不读取 memory store 推进 `RunState`。
 - projector 仍不读取 memory query service 推进 `RunState`。
-- server 仍没有 public direct memory write 或 `query_memory(...)` API。
+- server 仍没有 public direct memory write / update 或 `query_memory(...)` API。
 - 当前没有 durable memory write implementation。
 - 当前没有 memory storage。
 - 当前没有 successful memory record persistence implementation。
 - 当前没有 memory query implementation。
 - 当前没有 vector index、ranking 或 controlled expand implementation。
-- 当前测试基线是 `496 passed`。
+- 当前测试基线是 `517 passed`。
 
 当前已有相关基础：
 
@@ -108,7 +113,7 @@ durable memory write 必须由 authorized execution 触发：
 - valid memory intent 必须保留 structured `content`、`source_refs`、`provenance`，可携带 `summary`。
 - policy 决定是否授予 memory write grants。
 - executor / memory service 只能基于 `PolicyDecision.grants` 写。
-- successful memory write 未来必须 append canonical event，不能作为 side-channel state mutation。当前 projector 已支持 `memory.record_created` canonical event read-model boundary，但 not-enabled handler boundary 仍只允许失败路径写 `action.failed`。
+- successful memory write / update 未来必须 append canonical event，不能作为 side-channel state mutation。当前 projector 已支持 `memory.record_created` 与 `memory.record_superseded` canonical event read-model boundary，但 not-enabled handler boundary 仍只允许失败路径写 `action.failed`。
 
 MemoryRecord 必须带 source refs / execution provenance。当前 executor memory handler boundary 已在调用 memory service 前补齐 runtime provenance：
 
@@ -212,8 +217,9 @@ memory 相关事件名也只是 v0 candidate，不是永久 protocol。
 当前已实现的 canonical event read-model boundary：
 
 - `memory.record_created`
+- `memory.record_superseded`
 
-`memory.record_created` 当前只表示 projector 可从 canonical event log 投影 memory summary / refs / provenance metadata。它不表示 durable memory storage 已实现，也不允许 memory store 直接推进 `RunState`。
+`memory.record_created` 当前只表示 projector 可从 canonical event log 投影 memory summary / refs / provenance metadata。`memory.record_superseded` 当前只表示 projector 可从 canonical event log 投影 append-only supersession metadata：旧 record 不被覆盖，只被标记 superseded 并指向已存在的新 record。它们不表示 durable memory storage / successful memory update 已实现，也不允许 memory store 直接推进 `RunState`。
 
 可能的 future v0 event sketch：
 
@@ -227,6 +233,9 @@ hard requirement 不是这些具体名字，而是：
 - memory record creation 必须可通过 canonical event log 审计。
 - `memory.record_created` 必须绑定 completed `write_memory` execution。
 - `memory.record_created` 不能包含 full content / artifact content。
+- `memory.record_superseded` 必须绑定 completed `write_memory` execution。
+- `memory.record_superseded` 不能包含 full content / artifact content / raw content。
+- memory update 语义必须是 append-only supersession，不是原地修改。
 - query event 是否需要进入 canonical log 仍是 open question。
 - query result 不能直接推进 `RunState`。
 
@@ -250,6 +259,7 @@ Memory record persistence boundary design note 已落在 `docs/memory-record-per
 
 - real memory storage implementation。
 - successful durable memory write implementation。
+- successful memory update / supersession write implementation。
 - memory query implementation。
 - successful memory record persistence implementation。
 - memory record index。

@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`6288b77f70596f889823618a8127704704a7c06d`。
+- 最新 implementation commit：`31a8287dfc779909a0eeea0d6f954dd308adc8e3`。
 
 ## Implemented Slice
 
@@ -361,7 +361,7 @@
 - deferred boundary review 已落文档
 - checkpoint v0.1 remains frozen by default
 - action registry wiring is complete for compiler / policy / executor / server
-- Memory Write / Query Boundary docs, first boundary tests, memory action-chain compiler/policy boundary tests, `MemoryRecord` v0 shape tests, executor memory handler not-enabled / provenance boundary tests, memory record persistence not-enabled boundary tests, memory query authorization boundary tests, and `memory.record_created` canonical event boundary tests have landed; next step is external ingestion boundary docs, public-open-source cleanup plan, or stopping at the current stable point
+- Memory Write / Query Boundary docs, first boundary tests, memory action-chain compiler/policy boundary tests, `MemoryRecord` v0 shape tests, executor memory handler not-enabled / provenance boundary tests, memory record persistence not-enabled boundary tests, memory query authorization boundary tests, `memory.record_created` canonical event boundary tests, and `memory.record_superseded` canonical event boundary tests have landed; next step is external ingestion boundary docs, public-open-source cleanup plan, or stopping at the current stable point
 - External Ingestion / `ImportedSnapshot` remains the next candidate after memory boundary
 - real LLM / HTTP / plugin system remain deferred
 - memory write / query boundary design note 已落文档
@@ -387,9 +387,16 @@
 - `memory.record_created` rejects payload fields such as `content`, `full_content`, `artifact_content`, and `raw_content`
 - `memory.record_created` must bind to a completed `write_memory` execution
 - failed / denied / pending / non-`write_memory` execution cannot create a projected memory record
+- `memory.record_superseded` canonical event boundary 已落地并通过测试
+- `RunProjector` supports and validates `memory.record_superseded`
+- supersession is append-only canonical event metadata; old memory record summary / refs / provenance are not overwritten
+- old memory record is marked superseded and points to an already-created new record
+- `memory.record_superseded` rejects missing old / new record, `old_record_id == new_record_id`, and full content fields
+- `memory.record_superseded` must bind to a completed `write_memory` execution
+- failed / denied / pending / non-`write_memory` execution cannot supersede a memory record
 - memory store still cannot directly advance `RunState`; only canonical events can
-- executor + not-enabled memory service still cannot produce successful memory writes or `memory.record_created`
-- server still has no public direct memory write or memory query API
+- executor + not-enabled memory service still cannot produce successful memory writes, updates, `memory.record_created`, or `memory.record_superseded`
+- server still has no public direct memory write, memory update, or memory query API
 - memory action-chain boundary tests 已落地并通过
 - `ActionCompiler` supports registry-backed `write_memory` action boundary and required payload validation
 - valid `write_memory` intent preserves structured `content`, `summary`, `source_refs`, and `provenance`
@@ -421,12 +428,12 @@
 - `NotEnabledMemoryStore.list_records(...)` returns an empty list
 - `NotEnabledMemoryStore.record_path(...)` returns a path-like locator without creating files
 - rejected persistence leaves no partial record
-- rejected persistence does not append `action.completed` or `memory.record_created`
+- rejected persistence does not append `action.completed`, `memory.record_created`, or `memory.record_superseded`
 - future memory persistence is owned by `MemoryService` / future `MemoryStore`, not server / agent runtime
 - memory store is not source of truth; canonical event log remains the source of truth
 - future persisted memory record must still have structured content, source refs, and provenance
 - successful memory record persistence / file-backed storage implementation remains deferred
-- successful durable memory write / storage / persistence / query implementation remains deferred
+- successful durable memory write / update / storage / persistence / query implementation remains deferred
 - memory write must go through action / policy / execution / canonical event before implementation
 
 ## Tests
@@ -440,7 +447,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-496 passed
+517 passed
 ```
 
 Import boundary check:
@@ -460,6 +467,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - memory query engine
 - successful memory record persistence implementation
 - successful durable memory write
+- successful memory update / supersession write implementation
 - memory record index
 - memory server API
 - memory ranking / exposure
