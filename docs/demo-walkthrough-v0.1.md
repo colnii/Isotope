@@ -10,6 +10,8 @@
 
 这个 demo 的目的不是展示完整产品，而是让外部读者看到 kernel contract 已经能闭合。
 
+如果想先看流程图，见 `docs/demo-architecture-v0.1.md`。那份图只解释 v0.1 demo runtime path，不是完整 Isotope 架构图。
+
 ## 2. Quick Run
 
 标准安装和运行路径：
