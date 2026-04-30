@@ -14,6 +14,7 @@
 - lightweight tag `v0.1-demo` 已创建并推送，指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`。
 - GitHub Release draft 已准备在 `docs/release-draft-v0.1-demo.md`；尚未发布 GitHub Release。`main` 允许在 tag 后继续有 docs/status 更新，tag 仍是 demo acceptance anchor。
 - v0.2 roadmap 已开始，见 `docs/v0.2-roadmap.md`。Track D: Demo / Docs Polish 当前已 effectively complete / closed for now；默认下一阶段进入 Track A: HTTP API Minimal Surface。
+- Track A: HTTP API Minimal Surface design 已开始，见 `docs/http-api-minimal-surface-v0.2.md`。当前只落边界文档，尚未实现 HTTP server / framework / tests。
 - v0.1 demo walkthrough 已补充，见 `docs/demo-walkthrough-v0.1.md`。它解释 demo 运行内容、内部步骤、plain text / JSON 输出字段、证明范围、非目标和 troubleshooting。
 - v0.1 demo architecture diagram 已补充，见 `docs/demo-architecture-v0.1.md`。它解释 demo runtime path，不是完整 Isotope 架构图。
 
@@ -389,8 +390,10 @@
 - GitHub Release draft exists: `docs/release-draft-v0.1-demo.md`
 - no GitHub Release has been published from the draft
 - v0.2 roadmap draft exists: `docs/v0.2-roadmap.md`
+- HTTP API Minimal Surface v0.2 draft exists: `docs/http-api-minimal-surface-v0.2.md`
 - recommended v0.2 order is Demo / Docs Polish, HTTP API Minimal Surface, External Ingestion / ImportedSnapshot, then Real Memory Storage Slice
 - Track D: Demo / Docs Polish is effectively complete / closed for now with README quick start, `docs/demo-walkthrough-v0.1.md`, `docs/demo-architecture-v0.1.md`, `docs/v0.1-demo-acceptance.md`, limitations / non-goals, and CI smoke status
+- Track A design has started, but no HTTP server module, web framework, HTTP tests, auth, SSE, memory query API, external ingestion API, or full artifact content API is implemented
 - demo walkthrough explains what `python -m isotope_kernel.demo` runs, what output fields mean, what the demo proves, what it does not prove, and common setup / CI troubleshooting
 - demo architecture diagram explains the v0.1 runtime path with a Mermaid flow; it is not the full Isotope architecture
 - packaging / install smoke coverage 已落地：`tests/isotope_kernel/test_packaging_smoke.py`
@@ -573,8 +576,8 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- Track A: HTTP API Minimal Surface design note / red tests
+- Track A: HTTP API Minimal Surface red tests from `docs/http-api-minimal-surface-v0.2.md`
 - optional Track D polish can continue later, but it no longer blocks v0.2 implementation
 - 或停在当前稳定点
 
-checkpoint v0.1 和 memory v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D 已 effectively complete / closed for now，下一阶段默认进入 Track A: HTTP API Minimal Surface；不要直接进入 real LLM / successful memory write / memory storage / ingestion implementation。
+checkpoint v0.1 和 memory v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D 已 effectively complete / closed for now，Track A HTTP API Minimal Surface design 已开始，下一步默认写 HTTP API boundary red tests；不要直接进入 HTTP implementation、real LLM、successful memory write / memory storage / ingestion implementation。

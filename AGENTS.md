@@ -22,7 +22,8 @@
 
 - `v0.1-demo` developer demo is accepted; baseline is `568 passed`.
 - Track D: Demo / Docs Polish is effectively complete / closed for now.
-- Default next surface: Track A, HTTP API Minimal Surface design note / red tests.
+- Current Track A design doc: [docs/http-api-minimal-surface-v0.2.md](docs/http-api-minimal-surface-v0.2.md).
+- Default next step: HTTP API Minimal Surface red tests; do not implement HTTP before red tests.
 - Optional docs polish can continue later, but it should not block v0.2 implementation.
 
 ## Common Verification
@@ -53,3 +54,4 @@ git status --short
 - Demo architecture: [docs/demo-architecture-v0.1.md](docs/demo-architecture-v0.1.md)
 - v0.1 demo acceptance: [docs/v0.1-demo-acceptance.md](docs/v0.1-demo-acceptance.md)
 - v0.2 roadmap: [docs/v0.2-roadmap.md](docs/v0.2-roadmap.md)
+- HTTP API minimal surface: [docs/http-api-minimal-surface-v0.2.md](docs/http-api-minimal-surface-v0.2.md)
