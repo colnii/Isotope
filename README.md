@@ -89,7 +89,7 @@ Checkpoint v0.1 当前已足够支撑 kernel slice；除非出现明确 storage 
 
 v0.1 demo 当前已 accepted as developer demo，验收证据见 [docs/v0.1-demo-acceptance.md](docs/v0.1-demo-acceptance.md)：`568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过。`v0.1-demo` lightweight tag 已创建并指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`；GitHub Release draft 已准备在 [docs/release-draft-v0.1-demo.md](docs/release-draft-v0.1-demo.md)，但尚未发布 GitHub Release。它仍不是产品级 runtime。
 
-v0.2 roadmap 已开始，见 [docs/v0.2-roadmap.md](docs/v0.2-roadmap.md)。推荐先做 Demo / Docs Polish，让新读者更容易跑通并理解 v0.1 demo，再进入 HTTP API Minimal Surface；External Ingestion / `ImportedSnapshot` 和 real memory storage 排在后面。
+v0.2 roadmap 已开始，见 [docs/v0.2-roadmap.md](docs/v0.2-roadmap.md)。Track D: Demo / Docs Polish 当前已 effectively complete / closed for now：README quick start、demo walkthrough、demo architecture、v0.1 demo acceptance、limitations / non-goals 和 CI smoke status 都已覆盖。后续仍可继续 polish，但不阻塞 v0.2 implementation；下一阶段默认进入 Track A: HTTP API Minimal Surface。External Ingestion / `ImportedSnapshot` 和 real memory storage 排在后面。
 
 v0.1 demo walkthrough 已补充，见 [docs/demo-walkthrough-v0.1.md](docs/demo-walkthrough-v0.1.md)。它解释 demo 运行的 deterministic kernel loop、plain text / JSON 输出字段、证明了什么、不证明什么，以及 `pytest` / editable install / CI smoke 的常见排错路径。
 

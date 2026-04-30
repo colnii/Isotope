@@ -152,10 +152,10 @@ Memory Write / Query Boundary docs、第一批 memory boundary tests、memory ac
 
 ## 8. Next TDD Entry Point
 
-demo entrypoint TDD 已完成。v0.2 roadmap 已开始。下一轮建议优先选择以下 docs / red tests 之一：
+demo entrypoint TDD 已完成。v0.2 roadmap 已开始，且 Track D: Demo / Docs Polish 当前已 effectively complete / closed for now。下一轮建议优先选择以下 docs / red tests 之一：
 
-- Track D: Demo / Docs Polish from `docs/v0.2-roadmap.md`。
 - Track A: HTTP API Minimal Surface design note / red tests。
+- optional Track D polish from `docs/v0.2-roadmap.md` if explicitly requested。
 - memory result cannot bypass artifact / ResourceRef authorization。
 - external ingestion / `ImportedSnapshot` boundary docs。
 - optional GitHub Release publication from `docs/release-draft-v0.1-demo.md`。

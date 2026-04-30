@@ -36,7 +36,7 @@
 - memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for v0.1 demo planning；当前只展示 boundary / read-model / checkpoint contract，不展示 durable memory product capability。除非用户明确 reopened memory scope 并先落 design/doc patch + red tests，不要继续实现 real memory storage、successful write/update、query engine、controlled expand、ranking、index、compaction 或 public memory API。
 - demo entrypoint 已实现，相关变更必须先读 `docs/demo-entrypoint-v0.1.md` 并写 red tests；v0.1 demo acceptance 已收口在 `docs/v0.1-demo-acceptance.md`，当前状态是 `accepted as developer demo`，不是产品级 runtime。`v0.1-demo` lightweight tag 已创建并指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`；GitHub Release draft 已准备在 `docs/release-draft-v0.1-demo.md`，但未发布 GitHub Release。`python -m isotope_kernel.demo` 展示本地 deterministic kernel 闭环，不是 CLI framework、HTTP server、real LLM、external ingestion、plugin system 或 memory product demo。demo 必须使用临时目录，不在 repo 根目录写 `runs/` / `artifacts/` / `checkpoints/`；输出不得包含 full artifact content 或 memory full content。packaging smoke 已覆盖 `pyproject.toml` metadata、src-layout package discovery、editable install 后 import `isotope_kernel`、installed demo plain / JSON，以及 repo-root side-effect 防回归。
 - GitHub Actions CI smoke 已实现于 `.github/workflows/ci.yml`，并由 `tests/isotope_kernel/test_ci_workflow.py` 锁定。CI 在 `push` / `pull_request` 上用 Python `3.12` 运行 full kernel tests 和 demo plain / JSON smoke；install step 必须使用已有 test extra：`python -m pip install -e ".[test]"`。最新远端 GitHub Actions run 已由网页确认通过。这是最小 smoke，不是 release、coverage、lint、matrix 或 real integration service pipeline。
-- v0.2 roadmap 已落在 `docs/v0.2-roadmap.md`。Track D: Demo / Docs Polish 已开始，`docs/demo-walkthrough-v0.1.md` 解释 demo 运行内容、输出字段、证明范围、非目标和 troubleshooting，`docs/demo-architecture-v0.1.md` 用 Mermaid flow 解释 demo runtime path。默认下一步继续降低新读者跑通和理解成本；再考虑 Track A: HTTP API Minimal Surface。不要直接跳到 HTTP implementation、external ingestion implementation 或 real memory storage implementation。
+- v0.2 roadmap 已落在 `docs/v0.2-roadmap.md`。Track D: Demo / Docs Polish 当前已 effectively complete / closed for now：README quick start、`docs/demo-walkthrough-v0.1.md`、`docs/demo-architecture-v0.1.md`、`docs/v0.1-demo-acceptance.md`、limitations / non-goals 和 CI smoke status 已覆盖。后续仍可继续 polish，但不阻塞 v0.2 implementation；默认下一步进入 Track A: HTTP API Minimal Surface design note / red tests。不要直接跳到 HTTP implementation、external ingestion implementation 或 real memory storage implementation。
 
 ## Current Slice
 
@@ -430,10 +430,9 @@
 
 下一阶段默认不要继续深挖 checkpoint 或 memory storage/query。优先考虑：
 
-- External Ingestion / `ImportedSnapshot` Boundary after demo entrypoint scope
-- Continue Track D: Demo / Docs Polish from `docs/v0.2-roadmap.md`
-- README presentation polish / sample JSON
 - Track A: HTTP API Minimal Surface design note / red tests
+- optional Track D polish from `docs/v0.2-roadmap.md` if explicitly requested
+- External Ingestion / `ImportedSnapshot` Boundary after HTTP API surface
 - 或停在当前稳定点
 
 不要直接进入 real LLM、successful memory write / storage implementation、memory query engine、controlled expand implementation、HTTP implementation 或 external ingestion implementation。不要在没有用户明确要求时发布 GitHub Release；release draft 只是可粘贴文本。
