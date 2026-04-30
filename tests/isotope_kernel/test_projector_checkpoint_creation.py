@@ -144,7 +144,15 @@ def test_checkpoint_basis_event_id_is_last_replayed_event_id():
 def test_checkpoint_state_contains_minimal_projected_state_fields():
     checkpoint = projector.RunProjector().create_checkpoint("run_001", _happy_path_events())
 
-    assert set(checkpoint["state"]) == {"run_id", "status", "current_agent", "actions", "artifacts", "last_event_id"}
+    assert set(checkpoint["state"]) == {
+        "run_id",
+        "status",
+        "current_agent",
+        "actions",
+        "artifacts",
+        "memory_records",
+        "last_event_id",
+    }
     assert checkpoint["state"]["run_id"] == "run_001"
 
 

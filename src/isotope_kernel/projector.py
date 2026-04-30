@@ -30,8 +30,32 @@ class RunProjector:
     EXECUTABLE_DECISION_OUTCOMES = {"approved", "modified"}
     KNOWN_DECISION_OUTCOMES = {"approved", "modified", "denied", "pending_user_approval"}
     KNOWN_RUN_STATUSES = {"unknown", "running", "pending_user_approval", "failed", "completed"}
-    CHECKPOINT_STATE_FIELDS = ("run_id", "status", "current_agent", "actions", "artifacts", "last_event_id")
+    CHECKPOINT_STATE_FIELDS = (
+        "run_id",
+        "status",
+        "current_agent",
+        "actions",
+        "artifacts",
+        "memory_records",
+        "last_event_id",
+    )
+    CHECKPOINT_REQUIRED_STATE_FIELDS = ("run_id", "status", "current_agent", "actions", "artifacts", "last_event_id")
     CHECKPOINT_ARTIFACT_FIELDS = ("ref", "artifact_type", "summary", "provenance")
+    CHECKPOINT_MEMORY_RECORD_FIELDS = ("record_id", "summary", "source_refs", "provenance")
+    CHECKPOINT_MEMORY_RECORD_FORBIDDEN_FIELDS = ("content", "full_content", "artifact_content", "raw_content")
+    CHECKPOINT_MEMORY_RECORD_ALLOWED_FIELDS = {
+        "record_id",
+        "execution_id",
+        "summary",
+        "source_refs",
+        "provenance",
+        "basis_event_id",
+        "quality",
+        "status",
+        "superseded_by",
+        "superseded_event_id",
+        "superseded_reason",
+    }
     PROJECTOR_VERSION = "run_projector@v1"
 
     def __init__(self) -> None:
@@ -533,7 +557,7 @@ class RunProjector:
     def _run_state_from_checkpoint(self, state: dict[str, Any], run_id: str, basis_event_id: str) -> RunState:
         if not isinstance(state, dict):
             raise ValueError("checkpoint state must be a dict")
-        for field in self.CHECKPOINT_STATE_FIELDS:
+        for field in self.CHECKPOINT_REQUIRED_STATE_FIELDS:
             if field not in state:
                 raise ValueError(f"checkpoint state missing required field: {field}")
         if state["run_id"] != run_id:
@@ -546,14 +570,20 @@ class RunProjector:
             raise ValueError("checkpoint state actions must be a dict")
         if not isinstance(state["artifacts"], list):
             raise ValueError("checkpoint state artifacts must be a list")
+        memory_records = state.get("memory_records", [])
+        if not isinstance(memory_records, list):
+            raise ValueError("checkpoint state memory_records must be a list")
         for artifact in state["artifacts"]:
             self._validate_checkpoint_artifact(artifact)
+        for record in memory_records:
+            self._validate_checkpoint_memory_record(record)
         return RunState(
             run_id=str(state.get("run_id", "")),
             status=str(state.get("status", "unknown")),
             current_agent=str(state.get("current_agent", "")),
             actions=dict(state.get("actions", {})),
             artifacts=list(state.get("artifacts", [])),
+            memory_records=list(memory_records),
             last_event_id=str(state.get("last_event_id", "")),
         )
 
@@ -565,3 +595,37 @@ class RunProjector:
         for field in self.CHECKPOINT_ARTIFACT_FIELDS:
             if field not in artifact:
                 raise ValueError(f"checkpoint artifact entry missing required field: {field}")
+
+    def _validate_checkpoint_memory_record(self, record: Any) -> None:
+        if not isinstance(record, dict):
+            raise ValueError("checkpoint memory record entry must be a dict")
+        for field_name in self.CHECKPOINT_MEMORY_RECORD_FORBIDDEN_FIELDS:
+            if field_name in record:
+                raise ValueError(f"checkpoint memory record entry cannot contain {field_name}")
+        for field_name in self.CHECKPOINT_MEMORY_RECORD_FIELDS:
+            if field_name not in record:
+                raise ValueError(f"checkpoint memory record entry missing required field: {field_name}")
+        if not isinstance(record["source_refs"], list):
+            raise ValueError("checkpoint memory record source_refs must be a list")
+        if not isinstance(record["provenance"], dict):
+            raise ValueError("checkpoint memory record provenance must be a dict")
+        unexpected_fields = set(record) - self.CHECKPOINT_MEMORY_RECORD_ALLOWED_FIELDS
+        if unexpected_fields:
+            field_name = sorted(unexpected_fields)[0]
+            raise ValueError(f"checkpoint memory record entry has unknown field: {field_name}")
+        self._validate_checkpoint_memory_supersession(record)
+
+    def _validate_checkpoint_memory_supersession(self, record: dict[str, Any]) -> None:
+        supersession_fields = ("superseded_by", "superseded_event_id", "superseded_reason")
+        has_supersession = record.get("status") == "superseded" or any(field in record for field in supersession_fields)
+        if not has_supersession:
+            return
+        for field_name in supersession_fields:
+            if field_name not in record:
+                raise ValueError(f"checkpoint superseded memory record missing required field: {field_name}")
+        if not isinstance(record["superseded_by"], str):
+            raise ValueError("checkpoint superseded_by must be a string")
+        if not isinstance(record["superseded_event_id"], str):
+            raise ValueError("checkpoint superseded_event_id must be a string")
+        if not isinstance(record["superseded_reason"], str) or not record["superseded_reason"]:
+            raise ValueError("checkpoint superseded_reason must be a non-empty string")
