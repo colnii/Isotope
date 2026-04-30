@@ -18,6 +18,7 @@
 - `ActionTypeRegistry`：minimal registry module 已实现，并已接入 `ActionCompiler` registry lookup、`PolicyEngine` requirement lookup、`Executor` handler lookup 和 `InProcessServer` shared registry wiring。
 - memory v0.1：not-enabled write/query/persistence boundaries、`MemoryRecord` shape、`write_memory` compiler/policy/executor boundary、canonical memory read model、append-only supersession、event-log replay 和 checkpoint-assisted rebuild 已足够支撑 v0.1 demo planning，并已 frozen 到 boundary / read-model / checkpoint 范围。
 - v0.1 demo entrypoint 已实现：`python -m isotope_kernel.demo` 输出 plain text summary，`--json` 输出 JSON summary，真实验证 event replay 和 checkpoint-assisted rebuild。
+- v0.1 demo acceptance 已收口：状态是 `accepted as developer demo`，验收依据包括 `568 passed`、demo plain / JSON success、editable install smoke、GitHub Actions CI passed、no `x_agent.*` imports 和 `/home/lumber/Github/x-agent` untouched。
 - packaging / install smoke coverage 已落地：当前 `pyproject.toml` metadata、src-layout discovery、editable install、installed import、installed demo plain / JSON 和 repo-root side-effect boundary 已通过测试。
 - GitHub Actions CI smoke workflow 已落地：在 `push` / `pull_request` 上使用 Python `3.12`，通过 `python -m pip install -e ".[test]"` 安装 test dependency 后运行 full tests 和 demo plain / JSON smoke；latest remote GitHub Actions run 已由网页确认通过。它不是 release、coverage、lint matrix 或 real integration services pipeline。
 - 当前测试基线：`568 passed`。
@@ -135,7 +136,7 @@ Memory Write / Query Boundary docs、第一批 memory boundary tests、memory ac
 9. `memory.record_superseded` canonical event read-model boundary 已通过测试：memory update 语义是 append-only supersession，不是原地修改；旧 record 只增加 supersession metadata 并指向已存在的新 record，且 event 必须绑定 completed `write_memory` execution；executor + not-enabled memory service 仍不会产生 successful memory update。
 10. memory read-model checkpoint boundary 已通过测试：`RunProjector.create_checkpoint(...)` 包含 `memory_records`，`RunProjector.rebuild_with_checkpoint(...)` 可从 checkpoint + suffix events 恢复 `memory_records`，schema / prefix consistency 会拒绝 full content 和 malformed memory read model。
 11. memory v0.1 scope 已 frozen for demo planning：当前可展示 boundary / read-model / checkpoint contract，但不展示 durable storage/query product capability。
-12. `docs/demo-entrypoint-v0.1.md` 已定义并实现 demo scope：一个本地 module entrypoint 展示 deterministic kernel 闭环，不展示完整产品。
+12. `docs/demo-entrypoint-v0.1.md` 已定义并实现 demo scope；`docs/v0.1-demo-acceptance.md` 已将当前 demo accepted as developer demo：一个本地 module entrypoint 展示 deterministic kernel 闭环，不展示完整产品。
 13. 下一步可选择 external ingestion boundary docs、memory result cannot bypass artifact / `ResourceRef` authorization red tests、public-open-source cleanup plan，或停在当前稳定点。
 14. 不直接做完整 memory implementation。
 15. External Ingestion / `ImportedSnapshot` 排在 demo entrypoint scope 之后。
@@ -153,7 +154,8 @@ demo entrypoint TDD 已完成。下一轮建议选择以下 red tests / docs 之
 
 - memory result cannot bypass artifact / ResourceRef authorization。
 - external ingestion / `ImportedSnapshot` boundary docs。
+- demo tag decision。
 - public-open-source cleanup plan。
 - 或停在当前稳定点。
 
-不要直接进入 memory storage implementation、memory query engine、controlled expand implementation、real LLM、external ingestion implementation、HTTP、SSE、plugin system 或 dynamic tool loading。
+不要直接进入 memory storage implementation、memory query engine、controlled expand implementation、real LLM、external ingestion implementation、HTTP、SSE、plugin system 或 dynamic tool loading。不要在没有用户明确要求时创建 tag；demo tag 留给单独决策。

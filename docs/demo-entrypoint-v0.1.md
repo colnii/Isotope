@@ -2,6 +2,8 @@
 
 状态：`implemented`
 
+Acceptance：`accepted as developer demo`，详见 `docs/v0.1-demo-acceptance.md`。
+
 ## 1. Purpose
 
 本文定义 v0.1 demo 的最小展示路径：用一个本地可运行命令展示 Isotope kernel 的核心闭环，而不是展示完整产品。
@@ -19,6 +21,16 @@ demo entrypoint 的目标是给开发者和 reviewer 一个稳定的 smoke path�
 - `.github/workflows/ci.yml`
 - `python -m isotope_kernel.demo`
 - `python -m isotope_kernel.demo --json`
+
+当前验收证据：
+
+- local tests: `568 passed`
+- demo plain text: success
+- demo JSON: success
+- editable install smoke: covered
+- GitHub Actions CI: passed by web UI confirmation
+- no `x_agent.*` imports
+- `/home/lumber/Github/x-agent` untouched
 
 ## 2. Demo Goal
 
@@ -146,7 +158,7 @@ JSON 输出不得包含 full artifact content、memory full content、raw provid
 - external ingestion
 - plugin system
 - multi-user auth
-- packaging / release automation
+- production release packaging
 
 ## 9. Implemented Tests
 

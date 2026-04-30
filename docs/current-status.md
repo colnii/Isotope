@@ -10,6 +10,7 @@
 - 最新 implementation commit：`f8990d7bacdd5f2fd60a8c6a8cfa9aa49de3e86d`。
 - memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for v0.1 demo planning：当前 memory 线只声明 boundary / read-model / checkpoint 能力，不声明 durable storage 或 query engine 已完成。
 - v0.1 demo entrypoint 已实现，详见 `docs/demo-entrypoint-v0.1.md`；`python -m isotope_kernel.demo` 可输出 plain text summary，`--json` 可输出 JSON summary。
+- v0.1 developer demo 已按 `docs/v0.1-demo-acceptance.md` accepted：当前验收依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过。
 
 ## Implemented Slice
 
@@ -376,6 +377,9 @@
 - demo verifies event replay and checkpoint-assisted rebuild from real generated events
 - demo uses temp storage and does not write repo-root `runs/`, `artifacts/`, or `checkpoints`
 - demo reports memory boundary status as `boundary_only`
+- v0.1 demo acceptance 已落文档：`docs/v0.1-demo-acceptance.md`
+- current demo acceptance status is `accepted as developer demo`, not product runtime
+- demo acceptance evidence includes local `568 passed`, demo plain / JSON success, editable install smoke, remote GitHub Actions CI success, no `x_agent.*` imports, and `/home/lumber/Github/x-agent` untouched
 - packaging / install smoke coverage 已落地：`tests/isotope_kernel/test_packaging_smoke.py`
 - current `pyproject.toml` metadata / src-layout package discovery / editable install path 已通过 smoke
 - editable install 后可 import `isotope_kernel`，并可运行 installed `python -m isotope_kernel.demo` / `python -m isotope_kernel.demo --json`
@@ -558,6 +562,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 - External Ingestion / `ImportedSnapshot` Boundary after demo entrypoint scope
 - public-open-source cleanup plan
+- create a demo tag in a separate explicit tag decision
 - 或停在当前稳定点
 
-checkpoint v0.1 和 memory v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现，只展示 kernel 闭环，不展示完整产品。下一阶段可选择 external ingestion boundary docs、public-open-source cleanup plan，或停在当前稳定点；不要直接进入 real LLM / successful memory write / memory storage / ingestion implementation。
+checkpoint v0.1 和 memory v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。本轮不创建 tag；下一阶段可选择 demo tag decision、external ingestion boundary docs、public-open-source cleanup plan，或停在当前稳定点；不要直接进入 real LLM / successful memory write / memory storage / ingestion implementation。
