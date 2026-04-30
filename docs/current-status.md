@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`95a7634bfde6f00fbd700e2f85333e3eee84c661`。
+- 最新 implementation commit：`f8990d7bacdd5f2fd60a8c6a8cfa9aa49de3e86d`。
 - memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for v0.1 demo planning：当前 memory 线只声明 boundary / read-model / checkpoint 能力，不声明 durable storage 或 query engine 已完成。
 - v0.1 demo entrypoint 已实现，详见 `docs/demo-entrypoint-v0.1.md`；`python -m isotope_kernel.demo` 可输出 plain text summary，`--json` 可输出 JSON summary。
 
@@ -382,7 +382,9 @@
 - installed demo 仍使用 temp storage，不在 repo root 写 `runs/` / `artifacts/` / `checkpoints`
 - minimal GitHub Actions CI smoke workflow 已落地：`.github/workflows/ci.yml`
 - CI runs on `push` / `pull_request` with `ubuntu-latest` and Python `3.12`
-- CI performs editable install, then runs full kernel tests plus demo plain / JSON smoke
+- CI performs editable install with the existing test extra: `python -m pip install -e ".[test]"`
+- CI then runs full kernel tests plus demo plain / JSON smoke
+- latest remote GitHub Actions CI run has been confirmed green from the GitHub Actions web UI
 - CI smoke does not require secrets, release automation, coverage, lint matrix, or real integration services
 - External Ingestion / `ImportedSnapshot` remains a later candidate after demo entrypoint scope
 - real LLM / HTTP / plugin system remain deferred

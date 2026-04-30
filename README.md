@@ -96,17 +96,24 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --json
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install -U pip pytest
-.venv/bin/python -m pip install -e .
+.venv/bin/python -m pip install -U pip
+.venv/bin/python -m pip install -e ".[test]"
 .venv/bin/python -m isotope_kernel.demo
 .venv/bin/python -m isotope_kernel.demo --json
 ```
 
-packaging smoke 覆盖 `pyproject.toml` metadata、src-layout package discovery、installed import、installed demo plain / JSON，以及 repo 根目录无 `runs/` / `artifacts/` / `checkpoints/` 副作用。demo 使用临时目录，不污染 repo 根目录。它不展示 real LLM、HTTP server、UI、real durable memory storage/query、external ingestion 或 plugin system。
+packaging smoke 覆盖 `pyproject.toml` metadata、src-layout package discovery、installed import、installed demo plain / JSON，以及 repo 根目录无 `runs/` / `artifacts/` / `checkpoints/` 副作用。`pyproject.toml` 已提供 `test` optional dependency，测试 / CI 安装路径使用 `python -m pip install -e ".[test]"`。demo 使用临时目录，不污染 repo 根目录。它不展示 real LLM、HTTP server、UI、real durable memory storage/query、external ingestion 或 plugin system。
 
 ## CI
 
-`.github/workflows/ci.yml` 是最小 GitHub Actions smoke workflow。它在 `push` / `pull_request` 时运行，使用 `ubuntu-latest` 和 Python `3.12`，执行 editable install 后跑：
+`.github/workflows/ci.yml` 是最小 GitHub Actions smoke workflow。它在 `push` / `pull_request` 时运行，使用 `ubuntu-latest` 和 Python `3.12`，执行 editable install with test extra 后跑：
+
+```bash
+python -m pip install -U pip
+python -m pip install -e ".[test]"
+```
+
+随后运行：
 
 ```bash
 python -m pytest tests/isotope_kernel -q
@@ -114,13 +121,13 @@ python -m isotope_kernel.demo
 python -m isotope_kernel.demo --json
 ```
 
-该 CI 只覆盖 full tests + demo plain / JSON smoke；不包含 release、coverage、lint、matrix、secrets 或 real integration services。
+最新远端 GitHub Actions run 已由网页确认通过。该 CI 只覆盖 full tests + demo plain / JSON smoke；不包含 release、coverage、lint、matrix、secrets 或 real integration services。
 
 ## Verify
 
 ```bash
 python -m venv .venv
-.venv/bin/python -m pip install -U pip pytest
-.venv/bin/python -m pip install -e .
+.venv/bin/python -m pip install -U pip
+.venv/bin/python -m pip install -e ".[test]"
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 ```

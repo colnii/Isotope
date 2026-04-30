@@ -72,8 +72,8 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --json
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install -U pip pytest
-.venv/bin/python -m pip install -e .
+.venv/bin/python -m pip install -U pip
+.venv/bin/python -m pip install -e ".[test]"
 .venv/bin/python -m isotope_kernel.demo
 .venv/bin/python -m isotope_kernel.demo --json
 ```
@@ -179,10 +179,11 @@ JSON 输出不得包含 full artifact content、memory full content、raw provid
 - `.github/workflows/ci.yml` exists。
 - workflow 在 `push` / `pull_request` 时触发。
 - workflow 使用 `ubuntu-latest` 和 Python `3.12`。
-- workflow 执行 editable install。
+- workflow 执行 editable install with test extra：`python -m pip install -e ".[test]"`。
 - workflow 运行 `python -m pytest tests/isotope_kernel -q`。
 - workflow 运行 demo plain / JSON smoke。
 - workflow 不需要 secrets，不引用本地绝对路径，不引用 `x-agent` / `x_agent`。
 - workflow 不引入 release、coverage、lint matrix 或 real integration services。
+- latest remote GitHub Actions run 已由网页确认通过。
 
 该 demo 仍是 developer demo，不是产品 CLI。后续扩展必须继续保持 no real LLM / no network / no repo-root side effects / summary-only output 边界。
