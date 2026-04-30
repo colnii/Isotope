@@ -63,6 +63,7 @@
 - checkpoint state schema 会校验 memory record shape 与 supersession metadata。
 - checkpoint prefix consistency 已覆盖 `memory_records`。
 - event-log replay 与 checkpoint-assisted replay 都不读取 memory store 或 query service。
+- memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for demo planning：当前可展示 boundary / read-model / checkpoint contract，不应展示为 completed durable memory storage 或 query engine。
 - projector 仍不读取 memory store 推进 `RunState`。
 - projector 仍不读取 memory query service 推进 `RunState`。
 - server 仍没有 public direct memory write / update 或 `query_memory(...)` API。
@@ -385,11 +386,11 @@ Memory record persistence boundary design note 已落在 `docs/memory-record-per
 - checkpoint prefix consistency covers memory read model mismatch。
 - projector does not read memory store or query service for checkpoint-assisted rebuild。
 
-下一批 red tests / docs 可覆盖：
+下一阶段默认转向 v0.1 demo entrypoint planning。若 scope 被明确 reopened，后续 red tests / docs 可覆盖：
 
 - memory result cannot bypass artifact / `ResourceRef` authorization。
 - external ingestion / `ImportedSnapshot` boundary docs。
 - public-open-source cleanup plan。
 - 或停在当前稳定点。
 
-这些 tests 的目标是锁住边界：memory 必须通过 action/policy/execution/event 进入 durable state，query 只能是受控 recall，不能成为第二事实源。
+这些 tests 的目标仍是锁住边界：memory 必须通过 action/policy/execution/event 进入 durable state，query 只能是受控 recall，不能成为第二事实源。不要在 v0.1 demo 前默认继续实现 memory storage、successful write、query engine 或 controlled expand。

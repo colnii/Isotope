@@ -30,9 +30,10 @@
 - server-facing checkpoint 相关实现必须遵守 `docs/server-checkpoint-boundary-v0.1.md`；Server 不能直接解释 checkpoint state，必须通过 projector-owned boundary。
 - checkpoint save trigger 相关实现必须遵守 `docs/checkpoint-save-trigger-v0.1.md`；当前只允许 internal-only `save_checkpoint_for_run(...)`，不要复用 public-looking `create_checkpoint(...)`。
 - `ActionTypeRegistry` 相关实现必须先读 `docs/action-type-registry-v0.1.md` 并写 red tests；minimal registry module 已实现并已接入 `ActionCompiler`、`PolicyEngine` requirement lookup、`Executor` handler lookup 和 `InProcessServer` wiring，但 registry 不能绕过 action chain、不能替代 policy / executor、不能扩大 `PolicyDecision.grants`。后续 action registry hardening 必须分边界写 red tests。
-- deferred boundary review 已落在 `docs/deferred-boundary-review-v0.1.md`；Memory Write / Query Boundary docs 已落文档，默认下一步只写 red tests，不要直接实现 memory write、external ingestion、real LLM、real HTTP 或 plugin system。
+- deferred boundary review 已落在 `docs/deferred-boundary-review-v0.1.md`；Memory Write / Query Boundary docs 已落文档且 memory v0.1 scope 已 frozen，默认下一阶段转向 v0.1 demo entrypoint planning。不要直接实现 memory write/storage/query、external ingestion implementation、real LLM、real HTTP 或 plugin system。
 - memory write / query 相关实现必须先读 `docs/memory-write-query-boundary-v0.1.md` 并写 red tests；当前已完成 not-enabled / rejection boundary hardening、memory action-chain compiler/policy boundary、`MemoryRecord` v0 implementation shape、executor memory handler not-enabled / provenance boundary、memory record persistence not-enabled boundary、memory query authorization not-enabled boundary、`memory.record_created` / `memory.record_superseded` canonical event read-model boundary 和 memory read-model checkpoint boundary，`NotEnabledMemoryService.write_record(...)` 会拒绝无 authorized execution 的 direct durable write，legacy `query(...)` 仍是 not-enabled。`NotEnabledMemoryQueryService` 已存在，但只锁 query-time auth boundary：会校验 explicit `grants` / `caller_context`，无 query grant 或无 controlled expand grant / budget 时 fail closed，不读取 memory store 或 full content。`ActionCompiler` / `PolicyEngine` 可处理 registry-backed `write_memory` 边界。`MemoryRecord` 当前只是 slice-only shape，不是最终 protocol。`Executor` 可选注入 `memory_service`，authorized `write_memory` 会构造 record 并把 runtime execution provenance / grants 传给 memory service；当前 not-enabled service 仍拒绝，失败只写 `action.started -> action.failed`，不创建 artifact、不写 `action.completed` / `memory.record_created` / `memory.record_superseded`。`RunProjector` 只从 valid canonical memory events 投影 `RunState.memory_records` 的 summary / refs / provenance / supersession metadata，不读取 memory store、不投影 full content；memory creation / supersession events 必须绑定 completed `write_memory` execution，且 supersession 只能 append-only 标记旧 record，不原地覆盖。`RunProjector.create_checkpoint(...)` 会把 `memory_records` read model 写入 checkpoint state；`RunProjector.rebuild_with_checkpoint(...)` 可从 checkpoint + suffix events 恢复 `memory_records`，并校验 memory record shape、supersession metadata 和 full-content 禁止字段；prefix consistency 覆盖 memory read model。`NotEnabledMemoryStore` 已存在，但 `save_record(...)` 只做受控拒绝，不写文件、不 append event、不留下 partial record。memory storage、successful durable memory write/update、memory query engine、successful memory record persistence implementation、record index、ranking、controlled expand implementation、vector index 和 public memory API 仍 deferred，不得直接实现。
 - memory record persistence 相关实现必须先读 `docs/memory-record-persistence-boundary-v0.1.md` 并写 red tests；not-enabled persistence boundary 已实现为 `NotEnabledMemoryStore`，支持 `save_record(...)` / `list_records(...)` / `record_path(...)`，但无 `ActionExecution`、无 `write_memory` grant、malformed record、valid record 都会被受控拒绝。future successful persistence 应由 `MemoryService` / future `MemoryStore` 负责，server / agent runtime 不能直接写 durable memory，memory store 不是 source of truth，projector 不能读取 memory store 推进 `RunState`；successful memory update 也必须通过 append-only canonical supersession event 表达，不能原地覆盖旧 record。不得直接实现 file-backed memory storage、successful durable write/update、record index、vector search、ranking、compaction / GC 或 public memory API。
+- memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for v0.1 demo planning；当前只展示 boundary / read-model / checkpoint contract，不展示 durable memory product capability。除非用户明确 reopened memory scope 并先落 design/doc patch + red tests，不要继续实现 real memory storage、successful write/update、query engine、controlled expand、ranking、index、compaction 或 public memory API。下一阶段默认转向 v0.1 demo entrypoint planning。
 
 ## Current Slice
 
@@ -424,13 +425,14 @@
 
 ## Suggested Next Kernel Surface
 
-下一阶段默认不要继续深挖 checkpoint。优先考虑：
+下一阶段默认不要继续深挖 checkpoint 或 memory storage/query。优先考虑：
 
-- External Ingestion / `ImportedSnapshot` Boundary after memory boundary
+- v0.1 demo entrypoint planning
+- External Ingestion / `ImportedSnapshot` Boundary after demo entrypoint scope
 - public-open-source cleanup plan
 - 或停在当前稳定点
 
-不要直接进入 real LLM、successful memory write / storage implementation 或 external ingestion implementation。
+不要直接进入 real LLM、successful memory write / storage implementation、memory query engine、controlled expand implementation 或 external ingestion implementation。
 
 ## Verification
 

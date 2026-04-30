@@ -8,6 +8,7 @@
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
 - 最新 implementation commit：`a1eb7829e25edb9e9d805c48272bb051bb5b7f99`。
+- memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for v0.1 demo planning：当前 memory 线只声明 boundary / read-model / checkpoint 能力，不声明 durable storage 或 query engine 已完成。
 
 ## Implemented Slice
 
@@ -364,8 +365,11 @@
 - deferred boundary review 已落文档
 - checkpoint v0.1 remains frozen by default
 - action registry wiring is complete for compiler / policy / executor / server
-- Memory Write / Query Boundary docs, first boundary tests, memory action-chain compiler/policy boundary tests, `MemoryRecord` v0 shape tests, executor memory handler not-enabled / provenance boundary tests, memory record persistence not-enabled boundary tests, memory query authorization boundary tests, `memory.record_created` canonical event boundary tests, `memory.record_superseded` canonical event boundary tests, and memory read-model checkpoint boundary tests have landed; next step is external ingestion boundary docs, public-open-source cleanup plan, or stopping at the current stable point
-- External Ingestion / `ImportedSnapshot` remains the next candidate after memory boundary
+- Memory Write / Query Boundary docs, first boundary tests, memory action-chain compiler/policy boundary tests, `MemoryRecord` v0 shape tests, executor memory handler not-enabled / provenance boundary tests, memory record persistence not-enabled boundary tests, memory query authorization boundary tests, `memory.record_created` canonical event boundary tests, `memory.record_superseded` canonical event boundary tests, and memory read-model checkpoint boundary tests have landed
+- memory v0.1 scope freeze 已落文档
+- memory v0.1 is frozen to boundary / read-model / checkpoint for demo planning
+- next step is v0.1 demo entrypoint planning, not deeper memory storage / query implementation
+- External Ingestion / `ImportedSnapshot` remains a later candidate after demo entrypoint scope
 - real LLM / HTTP / plugin system remain deferred
 - memory write / query boundary design note 已落文档
 - first memory boundary tests 已落地并通过
@@ -535,8 +539,9 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- External Ingestion / `ImportedSnapshot` Boundary after memory boundary
+- v0.1 demo entrypoint planning
+- External Ingestion / `ImportedSnapshot` Boundary after demo entrypoint scope
 - public-open-source cleanup plan
 - 或停在当前稳定点
 
-checkpoint v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC。不要直接进入 real LLM / successful memory write / memory storage / ingestion implementation。
+checkpoint v0.1 和 memory v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。下一阶段默认转向 v0.1 demo entrypoint，不要直接进入 real LLM / successful memory write / memory storage / ingestion implementation。

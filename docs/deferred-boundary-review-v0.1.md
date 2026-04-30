@@ -16,6 +16,7 @@
 - canonical event log / projector：event log 仍是唯一 source of truth，projector 只从 canonical events rebuild `RunState`。
 - checkpoint v0.1：latest/history checkpoint save、assisted rebuild、candidate fallback、integrity/hash、event prefix digest、server read path 和 internal save triggers 已足够支撑当前 kernel slice，并已 frozen。
 - `ActionTypeRegistry`：minimal registry module 已实现，并已接入 `ActionCompiler` registry lookup、`PolicyEngine` requirement lookup、`Executor` handler lookup 和 `InProcessServer` shared registry wiring。
+- memory v0.1：not-enabled write/query/persistence boundaries、`MemoryRecord` shape、`write_memory` compiler/policy/executor boundary、canonical memory read model、append-only supersession、event-log replay 和 checkpoint-assisted rebuild 已足够支撑 v0.1 demo planning，并已 frozen 到 boundary / read-model / checkpoint 范围。
 - 当前测试基线：`539 passed`。
 
 当前 hard boundary 仍不变：
@@ -36,6 +37,7 @@
 - real HTTP。
 - external provider integration。
 - memory write implementation。
+- memory storage / query engine 深挖。
 - public extension API。
 - public checkpoint API。
 - automatic checkpoint scheduling。
@@ -44,7 +46,7 @@
 
 ## 4. Candidate A: Memory Write / Query Boundary
 
-Memory Write / Query Boundary 更贴近 kernel 内部能力，适合作为下一阶段默认候选。
+Memory Write / Query Boundary 更贴近 kernel 内部能力，已作为上一阶段默认候选完成到 v0.1 frozen 范围。当前不要继续默认推进 storage/query implementation；后续只有在 demo 或 operational need 明确 reopened scope 后再扩展。
 
 优点：
 
@@ -129,10 +131,11 @@ Memory Write / Query Boundary docs、第一批 memory boundary tests、memory ac
 8. `memory.record_created` canonical event read-model boundary 已通过测试：`RunState.memory_records` 只由 canonical event 投影 summary / refs / provenance metadata，要求 completed `write_memory` execution，拒绝 full content 字段；executor + not-enabled memory service 仍不会产生 successful memory write。
 9. `memory.record_superseded` canonical event read-model boundary 已通过测试：memory update 语义是 append-only supersession，不是原地修改；旧 record 只增加 supersession metadata 并指向已存在的新 record，且 event 必须绑定 completed `write_memory` execution；executor + not-enabled memory service 仍不会产生 successful memory update。
 10. memory read-model checkpoint boundary 已通过测试：`RunProjector.create_checkpoint(...)` 包含 `memory_records`，`RunProjector.rebuild_with_checkpoint(...)` 可从 checkpoint + suffix events 恢复 `memory_records`，schema / prefix consistency 会拒绝 full content 和 malformed memory read model。
-11. 下一步可做 external ingestion boundary docs、memory result cannot bypass artifact / `ResourceRef` authorization red tests、public-open-source cleanup plan，或停在当前稳定点。
-12. 不直接做完整 memory implementation。
-13. External Ingestion / `ImportedSnapshot` 排在 memory boundary 之后。
-14. real LLM / HTTP / plugin system 继续 deferred。
+11. memory v0.1 scope 已 frozen for demo planning：当前可展示 boundary / read-model / checkpoint contract，但不展示 durable storage/query product capability。
+12. 下一步默认转向 v0.1 demo entrypoint planning；之后再选择 external ingestion boundary docs、memory result cannot bypass artifact / `ResourceRef` authorization red tests、public-open-source cleanup plan，或停在当前稳定点。
+13. 不直接做完整 memory implementation。
+14. External Ingestion / `ImportedSnapshot` 排在 demo entrypoint scope 之后。
+15. real LLM / HTTP / plugin system 继续 deferred。
 
 理由：
 
@@ -142,11 +145,15 @@ Memory Write / Query Boundary docs、第一批 memory boundary tests、memory ac
 
 ## 8. Next TDD Entry Point
 
-下一轮建议选择以下 red tests / docs 之一：
+下一轮建议先做：
+
+- v0.1 demo entrypoint planning。
+
+如果 demo entrypoint scope 已明确，后续再选择以下 red tests / docs 之一：
 
 - memory result cannot bypass artifact / ResourceRef authorization。
 - external ingestion / `ImportedSnapshot` boundary docs。
 - public-open-source cleanup plan。
 - 或停在当前稳定点。
 
-不要直接进入 memory storage implementation、real LLM、external ingestion、HTTP、SSE、plugin system 或 dynamic tool loading。
+不要直接进入 memory storage implementation、memory query engine、controlled expand implementation、real LLM、external ingestion implementation、HTTP、SSE、plugin system 或 dynamic tool loading。

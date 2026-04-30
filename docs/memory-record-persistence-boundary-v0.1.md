@@ -42,6 +42,7 @@
 - checkpoint state schema 会校验 memory record shape 和 supersession metadata。
 - checkpoint prefix consistency 已覆盖 `memory_records`。
 - checkpoint-assisted rebuild 仍不读取 memory store 或 query service。
+- memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for demo planning：当前 persistence 线只证明 not-enabled store boundary、canonical event read model 和 checkpoint boundary，不证明 real storage 已可用。
 - memory write failure 路径仍是 `action.started -> action.failed`。
 - 当前没有 memory storage。
 - 当前没有 successful memory record persistence implementation。
@@ -241,7 +242,7 @@ query result 不能变成 `RunState` native fact。若 query result 要影响 st
 - executor + not-enabled memory service still cannot produce successful memory write or supersession。
 - server still has no public direct memory update / supersede API。
 
-下一批 red tests 可考虑：
+下一阶段默认转向 v0.1 demo entrypoint planning。若 memory scope 被明确 reopened，后续 red tests 可考虑：
 
 - memory result cannot bypass artifact / `ResourceRef` authorization。
 - external ingestion / `ImportedSnapshot` boundary docs。
