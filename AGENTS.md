@@ -31,7 +31,7 @@
 - checkpoint save trigger 相关实现必须遵守 `docs/checkpoint-save-trigger-v0.1.md`；当前只允许 internal-only `save_checkpoint_for_run(...)`，不要复用 public-looking `create_checkpoint(...)`。
 - `ActionTypeRegistry` 相关实现必须先读 `docs/action-type-registry-v0.1.md` 并写 red tests；minimal registry module 已实现并已接入 `ActionCompiler`、`PolicyEngine` requirement lookup、`Executor` handler lookup 和 `InProcessServer` wiring，但 registry 不能绕过 action chain、不能替代 policy / executor、不能扩大 `PolicyDecision.grants`。后续 action registry hardening 必须分边界写 red tests。
 - deferred boundary review 已落在 `docs/deferred-boundary-review-v0.1.md`；Memory Write / Query Boundary docs 已落文档，默认下一步只写 red tests，不要直接实现 memory write、external ingestion、real LLM、real HTTP 或 plugin system。
-- memory write / query 相关实现必须先读 `docs/memory-write-query-boundary-v0.1.md` 并写 red tests；当前已完成 not-enabled / rejection boundary hardening、memory action-chain compiler/policy boundary、`MemoryRecord` v0 implementation shape、executor memory handler not-enabled / provenance boundary、memory record persistence not-enabled boundary、memory query authorization not-enabled boundary、`memory.record_created` 和 `memory.record_superseded` canonical event read-model boundary，`NotEnabledMemoryService.write_record(...)` 会拒绝无 authorized execution 的 direct durable write，legacy `query(...)` 仍是 not-enabled。`NotEnabledMemoryQueryService` 已存在，但只锁 query-time auth boundary：会校验 explicit `grants` / `caller_context`，无 query grant 或无 controlled expand grant / budget 时 fail closed，不读取 memory store 或 full content。`ActionCompiler` / `PolicyEngine` 可处理 registry-backed `write_memory` 边界。`MemoryRecord` 当前只是 slice-only shape，不是最终 protocol。`Executor` 可选注入 `memory_service`，authorized `write_memory` 会构造 record 并把 runtime execution provenance / grants 传给 memory service；当前 not-enabled service 仍拒绝，失败只写 `action.started -> action.failed`，不创建 artifact、不写 `action.completed` / `memory.record_created` / `memory.record_superseded`。`RunProjector` 只从 valid canonical memory events 投影 `RunState.memory_records` 的 summary / refs / provenance / supersession metadata，不读取 memory store、不投影 full content；memory creation / supersession events 必须绑定 completed `write_memory` execution，且 supersession 只能 append-only 标记旧 record，不原地覆盖。`NotEnabledMemoryStore` 已存在，但 `save_record(...)` 只做受控拒绝，不写文件、不 append event、不留下 partial record。memory storage、successful durable memory write/update、memory query engine、successful memory record persistence implementation、record index、ranking、controlled expand implementation、vector index 和 public memory API 仍 deferred，不得直接实现。
+- memory write / query 相关实现必须先读 `docs/memory-write-query-boundary-v0.1.md` 并写 red tests；当前已完成 not-enabled / rejection boundary hardening、memory action-chain compiler/policy boundary、`MemoryRecord` v0 implementation shape、executor memory handler not-enabled / provenance boundary、memory record persistence not-enabled boundary、memory query authorization not-enabled boundary、`memory.record_created` / `memory.record_superseded` canonical event read-model boundary 和 memory read-model checkpoint boundary，`NotEnabledMemoryService.write_record(...)` 会拒绝无 authorized execution 的 direct durable write，legacy `query(...)` 仍是 not-enabled。`NotEnabledMemoryQueryService` 已存在，但只锁 query-time auth boundary：会校验 explicit `grants` / `caller_context`，无 query grant 或无 controlled expand grant / budget 时 fail closed，不读取 memory store 或 full content。`ActionCompiler` / `PolicyEngine` 可处理 registry-backed `write_memory` 边界。`MemoryRecord` 当前只是 slice-only shape，不是最终 protocol。`Executor` 可选注入 `memory_service`，authorized `write_memory` 会构造 record 并把 runtime execution provenance / grants 传给 memory service；当前 not-enabled service 仍拒绝，失败只写 `action.started -> action.failed`，不创建 artifact、不写 `action.completed` / `memory.record_created` / `memory.record_superseded`。`RunProjector` 只从 valid canonical memory events 投影 `RunState.memory_records` 的 summary / refs / provenance / supersession metadata，不读取 memory store、不投影 full content；memory creation / supersession events 必须绑定 completed `write_memory` execution，且 supersession 只能 append-only 标记旧 record，不原地覆盖。`RunProjector.create_checkpoint(...)` 会把 `memory_records` read model 写入 checkpoint state；`RunProjector.rebuild_with_checkpoint(...)` 可从 checkpoint + suffix events 恢复 `memory_records`，并校验 memory record shape、supersession metadata 和 full-content 禁止字段；prefix consistency 覆盖 memory read model。`NotEnabledMemoryStore` 已存在，但 `save_record(...)` 只做受控拒绝，不写文件、不 append event、不留下 partial record。memory storage、successful durable memory write/update、memory query engine、successful memory record persistence implementation、record index、ranking、controlled expand implementation、vector index 和 public memory API 仍 deferred，不得直接实现。
 - memory record persistence 相关实现必须先读 `docs/memory-record-persistence-boundary-v0.1.md` 并写 red tests；not-enabled persistence boundary 已实现为 `NotEnabledMemoryStore`，支持 `save_record(...)` / `list_records(...)` / `record_path(...)`，但无 `ActionExecution`、无 `write_memory` grant、malformed record、valid record 都会被受控拒绝。future successful persistence 应由 `MemoryService` / future `MemoryStore` 负责，server / agent runtime 不能直接写 durable memory，memory store 不是 source of truth，projector 不能读取 memory store 推进 `RunState`；successful memory update 也必须通过 append-only canonical supersession event 表达，不能原地覆盖旧 record。不得直接实现 file-backed memory storage、successful durable write/update、record index、vector search、ranking、compaction / GC 或 public memory API。
 
 ## Current Slice
@@ -121,8 +121,8 @@
 - checkpoint creation uses canonical events through `project(...)` and cannot bypass validation
 - checkpoint contains `run_id`, `projector_version`, `basis_event_id`, `state`, `created_at`
 - checkpoint `basis_event_id` equals the last replayed canonical event id
-- checkpoint state contains `run_id`, `status`, `current_agent`, `actions`, `artifacts`, `last_event_id`
-- checkpoint state excludes artifact content
+- checkpoint state contains `run_id`, `status`, `current_agent`, `actions`, `artifacts`, `memory_records`, `last_event_id`
+- checkpoint state excludes artifact content and memory full content
 - checkpoint excludes external raw input / provider response / imported snapshot
 - malformed or lifecycle-invalid event stream cannot produce checkpoint
 - empty events cannot produce checkpoint
@@ -132,14 +132,17 @@
 - `RunProjector.rebuild_with_checkpoint(...)` validates checkpoint state schema only for compatible projector version
 - incompatible projector version still falls back to full rebuild even with malformed checkpoint state
 - checkpoint `state` must be a dict
-- checkpoint `state` must contain `run_id`, `status`, `current_agent`, `actions`, `artifacts`, `last_event_id`
+- new checkpoint `state` includes `memory_records`; legacy checkpoint without `memory_records` remains compatible
 - checkpoint `state.run_id` must match rebuild target run_id
 - checkpoint `state.last_event_id` must equal checkpoint `basis_event_id`
 - checkpoint `state.status` must be a known run status
 - checkpoint `state.actions` must be a dict
 - checkpoint `state.artifacts` must be a list
+- checkpoint `state.memory_records` must be a list when present
 - checkpoint artifact entry cannot contain `content`
 - checkpoint artifact entry must contain `ref`, `artifact_type`, `summary`, `provenance`
+- checkpoint memory record entry cannot contain `content`, `full_content`, `artifact_content`, or `raw_content`
+- checkpoint memory record entry must contain summary / refs / provenance-level metadata and valid supersession metadata when superseded
 - malformed checkpoint state fail-fast with controlled `ValueError`
 - `FileCheckpointStore` remains opaque blob storage and does not interpret projected state
 - projector-owned checkpoint save boundary
@@ -158,7 +161,7 @@
 - checkpoint prefix consistency hardening
 - `RunProjector.rebuild_with_checkpoint(...)` compares checkpoint state with event-log prefix projection at `basis_event_id`
 - checkpoint is used for replay only when checkpoint state matches prefix projection
-- checkpoint state `status` / `current_agent` / `actions` / `artifacts` mismatch falls back to full rebuild
+- checkpoint state `status` / `current_agent` / `actions` / `artifacts` / `memory_records` mismatch falls back to full rebuild
 - checkpoint state with extra action or missing artifact falls back to full rebuild
 - fallback full rebuild still runs full event validation
 - lifecycle-invalid event log cannot be hidden by checkpoint mismatch fallback
@@ -328,6 +331,11 @@
 - `memory.record_superseded` rejects missing old / new record, self-supersession, and full content fields
 - `memory.record_superseded` must bind to a completed `write_memory` execution
 - failed / denied / pending / non-`write_memory` execution cannot supersede a projected memory record
+- memory read-model checkpoint boundary
+- `RunProjector.create_checkpoint(...)` includes `memory_records` in checkpoint state
+- `RunProjector.rebuild_with_checkpoint(...)` restores `memory_records` from checkpoint + suffix events
+- checkpoint memory records exclude full content / artifact content / raw content
+- checkpoint prefix consistency covers memory read model mismatch
 - memory store cannot directly advance `RunState`
 - executor + not-enabled memory service still cannot produce `memory.record_created` or `memory.record_superseded`
 - `InProcessServer` still has no public `query_memory(...)` API

@@ -16,7 +16,7 @@
 - canonical event log / projector：event log 仍是唯一 source of truth，projector 只从 canonical events rebuild `RunState`。
 - checkpoint v0.1：latest/history checkpoint save、assisted rebuild、candidate fallback、integrity/hash、event prefix digest、server read path 和 internal save triggers 已足够支撑当前 kernel slice，并已 frozen。
 - `ActionTypeRegistry`：minimal registry module 已实现，并已接入 `ActionCompiler` registry lookup、`PolicyEngine` requirement lookup、`Executor` handler lookup 和 `InProcessServer` shared registry wiring。
-- 当前测试基线：`517 passed`。
+- 当前测试基线：`539 passed`。
 
 当前 hard boundary 仍不变：
 
@@ -115,7 +115,7 @@ Real LLM、real HTTP 和 plugin system 继续 deferred。
 
 ## 7. Recommendation
 
-Memory Write / Query Boundary docs、第一批 memory boundary tests、memory action-chain compiler/policy boundary tests、`MemoryRecord` v0 shape tests、executor memory handler not-enabled / provenance boundary tests、memory record persistence not-enabled boundary tests、memory query authorization not-enabled boundary tests、`memory.record_created` canonical event boundary tests 和 `memory.record_superseded` canonical event boundary tests 已落地；当前只 harden not-enabled / rejection boundary、compiler/policy action-chain boundary、MemoryRecord shape validation、executor failure/provenance boundary、unavailable persistence store boundary、query-time authorization boundary 与 canonical event read-model boundary。
+Memory Write / Query Boundary docs、第一批 memory boundary tests、memory action-chain compiler/policy boundary tests、`MemoryRecord` v0 shape tests、executor memory handler not-enabled / provenance boundary tests、memory record persistence not-enabled boundary tests、memory query authorization boundary tests、`memory.record_created` canonical event boundary tests、`memory.record_superseded` canonical event boundary tests 和 memory read-model checkpoint boundary tests 已落地；当前只 harden not-enabled / rejection boundary、compiler/policy action-chain boundary、MemoryRecord shape validation、executor failure/provenance boundary、unavailable persistence store boundary、query-time authorization boundary、canonical event read-model boundary 与 checkpoint read-model boundary。
 
 推荐顺序：
 
@@ -128,10 +128,11 @@ Memory Write / Query Boundary docs、第一批 memory boundary tests、memory ac
 7. memory query authorization not-enabled boundary 已通过测试：`NotEnabledMemoryQueryService.query(...)` 校验 explicit grants / caller_context；无 query grant 或无 controlled expand grant / budget 时 fail closed，不读取 memory store / full content。
 8. `memory.record_created` canonical event read-model boundary 已通过测试：`RunState.memory_records` 只由 canonical event 投影 summary / refs / provenance metadata，要求 completed `write_memory` execution，拒绝 full content 字段；executor + not-enabled memory service 仍不会产生 successful memory write。
 9. `memory.record_superseded` canonical event read-model boundary 已通过测试：memory update 语义是 append-only supersession，不是原地修改；旧 record 只增加 supersession metadata 并指向已存在的新 record，且 event 必须绑定 completed `write_memory` execution；executor + not-enabled memory service 仍不会产生 successful memory update。
-10. 下一步可做 external ingestion boundary docs、memory result cannot bypass artifact / `ResourceRef` authorization red tests、public-open-source cleanup plan，或停在当前稳定点。
-11. 不直接做完整 memory implementation。
-12. External Ingestion / `ImportedSnapshot` 排在 memory boundary 之后。
-13. real LLM / HTTP / plugin system 继续 deferred。
+10. memory read-model checkpoint boundary 已通过测试：`RunProjector.create_checkpoint(...)` 包含 `memory_records`，`RunProjector.rebuild_with_checkpoint(...)` 可从 checkpoint + suffix events 恢复 `memory_records`，schema / prefix consistency 会拒绝 full content 和 malformed memory read model。
+11. 下一步可做 external ingestion boundary docs、memory result cannot bypass artifact / `ResourceRef` authorization red tests、public-open-source cleanup plan，或停在当前稳定点。
+12. 不直接做完整 memory implementation。
+13. External Ingestion / `ImportedSnapshot` 排在 memory boundary 之后。
+14. real LLM / HTTP / plugin system 继续 deferred。
 
 理由：
 

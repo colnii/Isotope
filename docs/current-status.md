@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`31a8287dfc779909a0eeea0d6f954dd308adc8e3`。
+- 最新 implementation commit：`a1eb7829e25edb9e9d805c48272bb051bb5b7f99`。
 
 ## Implemented Slice
 
@@ -98,8 +98,8 @@
 - checkpoint creation uses canonical events through `project(...)` and cannot bypass validation
 - checkpoint contains `run_id`, `projector_version`, `basis_event_id`, `state`, `created_at`
 - checkpoint `basis_event_id` equals the last replayed canonical event id
-- checkpoint state contains `run_id`, `status`, `current_agent`, `actions`, `artifacts`, `last_event_id`
-- checkpoint state excludes artifact content
+- checkpoint state contains `run_id`, `status`, `current_agent`, `actions`, `artifacts`, `memory_records`, `last_event_id`
+- checkpoint state excludes artifact content and memory full content
 - checkpoint excludes external raw input / provider response / imported snapshot
 - malformed or lifecycle-invalid event stream cannot produce checkpoint
 - empty events cannot produce checkpoint
@@ -109,14 +109,17 @@
 - `RunProjector.rebuild_with_checkpoint(...)` validates checkpoint state schema only for compatible projector version
 - incompatible projector version still falls back to full rebuild even with malformed checkpoint state
 - checkpoint `state` must be a dict
-- checkpoint `state` must contain `run_id`, `status`, `current_agent`, `actions`, `artifacts`, `last_event_id`
+- new checkpoint `state` contains `memory_records`; legacy checkpoint without `memory_records` still uses the compatibility path
 - checkpoint `state.run_id` must match rebuild target run_id
 - checkpoint `state.last_event_id` must equal checkpoint `basis_event_id`
 - checkpoint `state.status` must be a known run status
 - checkpoint `state.actions` must be a dict
 - checkpoint `state.artifacts` must be a list
+- checkpoint `state.memory_records` must be a list when present
 - checkpoint artifact entry cannot contain `content`
 - checkpoint artifact entry must contain `ref`, `artifact_type`, `summary`, `provenance`
+- checkpoint memory record entry cannot contain `content`, `full_content`, `artifact_content`, or `raw_content`
+- checkpoint memory record entry must contain summary / refs / provenance-level metadata and valid supersession metadata when superseded
 - malformed checkpoint state fail-fast with controlled `ValueError`
 - `FileCheckpointStore` remains opaque blob storage and does not interpret projected state
 - projector-owned checkpoint save boundary
@@ -135,7 +138,7 @@
 - checkpoint prefix consistency hardening
 - `RunProjector.rebuild_with_checkpoint(...)` compares checkpoint state with event-log prefix projection at `basis_event_id`
 - checkpoint is used for replay only when checkpoint state matches prefix projection
-- checkpoint state `status` / `current_agent` / `actions` / `artifacts` mismatch falls back to full rebuild
+- checkpoint state `status` / `current_agent` / `actions` / `artifacts` / `memory_records` mismatch falls back to full rebuild
 - checkpoint state with extra action or missing artifact falls back to full rebuild
 - fallback full rebuild still runs full event validation
 - lifecycle-invalid event log cannot be hidden by checkpoint mismatch fallback
@@ -361,7 +364,7 @@
 - deferred boundary review 已落文档
 - checkpoint v0.1 remains frozen by default
 - action registry wiring is complete for compiler / policy / executor / server
-- Memory Write / Query Boundary docs, first boundary tests, memory action-chain compiler/policy boundary tests, `MemoryRecord` v0 shape tests, executor memory handler not-enabled / provenance boundary tests, memory record persistence not-enabled boundary tests, memory query authorization boundary tests, `memory.record_created` canonical event boundary tests, and `memory.record_superseded` canonical event boundary tests have landed; next step is external ingestion boundary docs, public-open-source cleanup plan, or stopping at the current stable point
+- Memory Write / Query Boundary docs, first boundary tests, memory action-chain compiler/policy boundary tests, `MemoryRecord` v0 shape tests, executor memory handler not-enabled / provenance boundary tests, memory record persistence not-enabled boundary tests, memory query authorization boundary tests, `memory.record_created` canonical event boundary tests, `memory.record_superseded` canonical event boundary tests, and memory read-model checkpoint boundary tests have landed; next step is external ingestion boundary docs, public-open-source cleanup plan, or stopping at the current stable point
 - External Ingestion / `ImportedSnapshot` remains the next candidate after memory boundary
 - real LLM / HTTP / plugin system remain deferred
 - memory write / query boundary design note 已落文档
@@ -397,6 +400,14 @@
 - memory store still cannot directly advance `RunState`; only canonical events can
 - executor + not-enabled memory service still cannot produce successful memory writes, updates, `memory.record_created`, or `memory.record_superseded`
 - server still has no public direct memory write, memory update, or memory query API
+- memory read-model checkpoint boundary 已落地并通过测试
+- `RunProjector.create_checkpoint(...)` includes `memory_records` in checkpoint state
+- `RunProjector.rebuild_with_checkpoint(...)` can restore `memory_records` from checkpoint state and replay suffix events
+- checkpoint memory records contain only summary / refs / provenance / supersession metadata
+- checkpoint memory records reject `content`, `full_content`, `artifact_content`, and `raw_content`
+- checkpoint state schema validates memory record shape and supersession metadata before use
+- checkpoint prefix consistency covers `memory_records`; mismatch falls back to full event-log rebuild
+- event-log replay and checkpoint-assisted replay still do not read memory store or memory query service
 - memory action-chain boundary tests 已落地并通过
 - `ActionCompiler` supports registry-backed `write_memory` action boundary and required payload validation
 - valid `write_memory` intent preserves structured `content`, `summary`, `source_refs`, and `provenance`
@@ -447,7 +458,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-517 passed
+539 passed
 ```
 
 Import boundary check:

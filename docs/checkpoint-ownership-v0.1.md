@@ -65,7 +65,7 @@ v0.1 checkpoint 至少应绑定：
 - `run_id`
 - `projector_version`
 - `basis_event_id` 或等价的 last applied event cursor
-- projected state snapshot
+- projected state snapshot，包括 `memory_records` read model 的 summary / refs / provenance / supersession metadata
 - `created_at`
 
 这些字段是当前推荐 shape，用于 future TDD 的测试方向，不是永久协议。
@@ -75,6 +75,7 @@ checkpoint 不应包含：
 - external raw input
 - provider raw response
 - tool raw stderr/stdout 全量内容
+- memory full content / artifact content / raw content
 - 未经 event log 或 artifact/provenance 边界管理的大内容
 - 用于修正 event log 的 patch
 
@@ -147,9 +148,11 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - 创建出的 checkpoint 可由 `FileCheckpointStore` 保存，并可用于 `rebuild_with_checkpoint(...)`。
 - `RunProjector.rebuild_with_checkpoint(...)` 只在 checkpoint projector version 兼容时校验 checkpoint state schema。
 - checkpoint version 不兼容时仍 fallback full rebuild，不因 malformed checkpoint state 失败。
-- checkpoint state 必须是 dict，并包含 `run_id`、`status`、`current_agent`、`actions`、`artifacts`、`last_event_id`。
+- new checkpoint state 必须是 dict，并包含 `run_id`、`status`、`current_agent`、`actions`、`artifacts`、`memory_records`、`last_event_id`；legacy checkpoint 缺少 `memory_records` 仍走兼容路径。
 - checkpoint state 的 `run_id`、`last_event_id`、run status、actions/artifacts shape 会在 projector 使用前校验。
 - checkpoint artifact entry 不得包含 `content`，且必须包含 `ref`、`artifact_type`、`summary`、`provenance`。
+- checkpoint memory record entry 只能包含 summary / refs / provenance / supersession metadata，不得包含 `content`、`full_content`、`artifact_content` 或 `raw_content`。
+- checkpoint memory record shape 和 supersession metadata 会在 projector 使用前校验。
 - malformed checkpoint state fail-fast，抛受控 `ValueError`。
 - `RunProjector.save_checkpoint(...)` 只组合 `event_store.list_events(run_id)`、`create_checkpoint(...)` 和 `checkpoint_store.save_checkpoint(run_id, checkpoint)`。
 - save checkpoint 读取 canonical events，生成 projector-owned checkpoint，并交给 checkpoint store 保存。
@@ -158,8 +161,9 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - 保存后的 checkpoint 可读回，并可用于 `rebuild_with_checkpoint(...)`，结果与 full rebuild 等价。
 - `RunProjector.rebuild_with_checkpoint(...)` 会比较 checkpoint state 与 `basis_event_id` 对应的 event-log prefix projection。
 - 只有 checkpoint state 与 prefix projection 一致时，才从 checkpoint 继续 replay basis 之后的 events。
-- checkpoint state 的 `status` / `current_agent` / `actions` / `artifacts` 不一致时，fallback full rebuild。
+- checkpoint state 的 `status` / `current_agent` / `actions` / `artifacts` / `memory_records` 不一致时，fallback full rebuild。
 - checkpoint state 多出不存在的 action 或少了已有 artifact 时，fallback full rebuild。
+- checkpoint state 中 memory read model 与 event-log prefix projection 不一致时，fallback full rebuild。
 - fallback full rebuild 仍执行完整 event validation，lifecycle-invalid event log 不能被 checkpoint mismatch 隐藏。
 - `FileCheckpointStore` 保持 opaque，不负责 consistency check。
 - `RunProjector.create_checkpoint(...)` 会生成 `integrity`，使用 `algorithm: sha256` 和 `checkpoint_hash`。
@@ -211,6 +215,8 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - `FileCheckpointStore` 仍保持 opaque，不解释 checkpoint state / integrity / projector version。
 - `save_checkpoint(...)` 仍是 latest-only replacement，不自动保存 history。
 - checkpoint v0.1 已足够支撑当前 kernel slice；history index、retention policy、checkpoint GC、automatic scheduling、public checkpoint API 和 `CheckpointService` 暂不继续实现，除非 checkpoint scope 被明确 reopened。
+- memory read-model checkpoint boundary 已实现：`RunProjector.create_checkpoint(...)` 会包含 `memory_records`，`RunProjector.rebuild_with_checkpoint(...)` 可从 checkpoint + suffix events 恢复 `memory_records`，并且 event-log replay / checkpoint-assisted replay 都不读取 memory store 或 query service。
+- 这只是 checkpoint/read-model boundary，不是 durable memory storage、successful memory write/update 或 memory query engine。
 - invalid checkpoint 不能覆盖 latest，也不能进入 history。
 - candidate loading 不等于 save path 已经持久化 history。
 - latest write / history write failure ordering 必须先有明确策略。

@@ -55,6 +55,14 @@
 - `memory.record_superseded` payload 拒绝 full content / artifact content / raw content，并要求绑定 completed `write_memory` execution。
 - failed / denied / pending / non-`write_memory` execution 不能 supersede memory record。
 - 这是 canonical event projection boundary，不是 durable memory storage 或 successful memory update implementation。
+- memory read-model checkpoint boundary 已落地并通过测试。
+- `RunProjector.create_checkpoint(...)` 会把 `memory_records` read model 写入 checkpoint state。
+- `RunProjector.rebuild_with_checkpoint(...)` 可从 checkpoint + suffix events 恢复 `memory_records`。
+- checkpoint memory records 只包含 summary / refs / provenance / supersession metadata。
+- checkpoint memory records 拒绝 `content` / `full_content` / `artifact_content` / `raw_content`。
+- checkpoint state schema 会校验 memory record shape 与 supersession metadata。
+- checkpoint prefix consistency 已覆盖 `memory_records`。
+- event-log replay 与 checkpoint-assisted replay 都不读取 memory store 或 query service。
 - projector 仍不读取 memory store 推进 `RunState`。
 - projector 仍不读取 memory query service 推进 `RunState`。
 - server 仍没有 public direct memory write / update 或 `query_memory(...)` API。
@@ -63,7 +71,7 @@
 - 当前没有 successful memory record persistence implementation。
 - 当前没有 memory query implementation。
 - 当前没有 vector index、ranking 或 controlled expand implementation。
-- 当前测试基线是 `517 passed`。
+- 当前测试基线是 `539 passed`。
 
 当前已有相关基础：
 
@@ -102,7 +110,7 @@ server / agent runtime 不能直接写 durable memory，也不能用 memory quer
 
 ## 4. Memory Write Boundary
 
-第一阶段只实现 action-chain、canonical event read-model 和 not-enabled handler boundary，不实现 storage、successful durable write path 或 query engine。
+第一阶段只实现 action-chain、canonical event read-model、checkpoint read-model 和 not-enabled handler boundary，不实现 storage、successful durable write path 或 query engine。
 
 `write_memory` action type 当前已可作为 registry-backed v0 candidate 进入 compiler / policy boundary，但名字仍是 v0 candidate，不是永久协议。
 
@@ -208,7 +216,7 @@ memory query 不应默认内联大块 artifact content。默认返回 summary / 
 - `scope` 只能是 `thread` / `run` / `session`。
 - top-level `artifact_content` 不被接受；memory 默认不内联 artifact content。
 
-当前只实现 memory record persistence not-enabled boundary；仍不实现 successful persistence、storage lookup、record index、ref resolution 或 artifact content read。
+当前只实现 memory record persistence not-enabled boundary 和 checkpoint read-model boundary；仍不实现 successful persistence、storage lookup、record index、ref resolution 或 artifact content read。
 
 ## 7. Events / Action Chain
 
@@ -219,7 +227,7 @@ memory 相关事件名也只是 v0 candidate，不是永久 protocol。
 - `memory.record_created`
 - `memory.record_superseded`
 
-`memory.record_created` 当前只表示 projector 可从 canonical event log 投影 memory summary / refs / provenance metadata。`memory.record_superseded` 当前只表示 projector 可从 canonical event log 投影 append-only supersession metadata：旧 record 不被覆盖，只被标记 superseded 并指向已存在的新 record。它们不表示 durable memory storage / successful memory update 已实现，也不允许 memory store 直接推进 `RunState`。
+`memory.record_created` 当前只表示 projector 可从 canonical event log 投影 memory summary / refs / provenance metadata。`memory.record_superseded` 当前只表示 projector 可从 canonical event log 投影 append-only supersession metadata：旧 record 不被覆盖，只被标记 superseded 并指向已存在的新 record。`RunProjector` 当前也能把 `RunState.memory_records` 写入 checkpoint，并从 checkpoint + suffix events 恢复该 read model；checkpoint 中仍只能保存 summary / refs / provenance / supersession metadata，不能夹带 full content。它们不表示 durable memory storage / successful memory update 已实现，也不允许 memory store 直接推进 `RunState`。
 
 可能的 future v0 event sketch：
 
@@ -364,6 +372,18 @@ Memory record persistence boundary design note 已落在 `docs/memory-record-per
 - failed / denied / pending / non-`write_memory` execution is rejected。
 - executor + not-enabled memory service still cannot create `memory.record_created`。
 - server still has no public direct memory write API。
+
+第八批 memory read-model checkpoint boundary tests 已落地并通过，但只覆盖 checkpoint/read-model boundary，不实现 durable memory storage 或 query engine。
+
+已覆盖：
+
+- event-log replay reconstructs `RunState.memory_records`。
+- `RunProjector.create_checkpoint(...)` includes `memory_records` in checkpoint state。
+- `RunProjector.rebuild_with_checkpoint(...)` restores `memory_records` from checkpoint + suffix events。
+- checkpoint memory records exclude `content`、`full_content`、`artifact_content`、`raw_content`。
+- checkpoint state schema validates memory record shape and supersession metadata。
+- checkpoint prefix consistency covers memory read model mismatch。
+- projector does not read memory store or query service for checkpoint-assisted rebuild。
 
 下一批 red tests / docs 可覆盖：
 

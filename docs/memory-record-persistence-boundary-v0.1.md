@@ -35,13 +35,20 @@
 - `memory.record_superseded` 只通过追加 canonical event 表达 supersession；旧 record 不被原地覆盖，只增加 supersession metadata 并指向已存在的新 record。
 - `memory.record_superseded` 必须绑定 completed `write_memory` execution，且不能包含 full content / artifact content / raw content。
 - projector 仍不读取 memory store 来推进 `RunState`。
+- memory read-model checkpoint boundary 已实现。
+- `RunProjector.create_checkpoint(...)` 会把 `memory_records` read model 写入 checkpoint state。
+- `RunProjector.rebuild_with_checkpoint(...)` 可从 checkpoint + suffix events 恢复 `memory_records`。
+- checkpoint memory records 只包含 summary / refs / provenance / supersession metadata，不包含 full content / artifact content / raw content。
+- checkpoint state schema 会校验 memory record shape 和 supersession metadata。
+- checkpoint prefix consistency 已覆盖 `memory_records`。
+- checkpoint-assisted rebuild 仍不读取 memory store 或 query service。
 - memory write failure 路径仍是 `action.started -> action.failed`。
 - 当前没有 memory storage。
 - 当前没有 successful memory record persistence implementation。
 - 当前没有 successful durable memory write。
 - `NotEnabledMemoryQueryService` 已实现 query-time authorization not-enabled boundary，但不实现 query engine。
 - 当前没有 memory query implementation。
-- 当前测试基线是 `517 passed`。
+- 当前测试基线是 `539 passed`。
 
 ## 3. Hard Boundaries
 
@@ -100,6 +107,8 @@ successful write 应先有 action execution context。最小顺序应保持：
 memory record persistence 不允许补写、改写或删除旧 event。它只能在当前 authorized execution 下产生新的 derived record 和对应审计事件。memory update 语义必须通过 append-only supersession event 表达，不能原地覆盖旧 record。
 
 query result 不能直接推进 `RunState`。memory store record presence 也不能让 projector 绕过 canonical event replay；只有 canonical `memory.record_created` / `memory.record_superseded` event 可以更新 `RunState.memory_records` read model。
+
+checkpoint 也只是 canonical event replay 的派生优化。`RunState.memory_records` 可以进入 checkpoint 并通过 checkpoint-assisted rebuild 恢复，但 checkpoint 中只能保存 summary / refs / provenance / supersession metadata，不能保存 full content；如果 checkpoint state 与 event-log prefix projection 不一致，仍以 canonical event log replay 为准。
 
 ## 6. Store Shape Candidate
 
@@ -218,6 +227,17 @@ query result 不能变成 `RunState` native fact。若 query result 要影响 st
 - old record summary / refs / provenance are not overwritten。
 - `memory.record_superseded` requires old / new record ids, execution id, reason, provenance, and basis event。
 - missing old / new record, self-supersession, full content fields, and non-completed / non-`write_memory` execution are rejected。
+
+第四批 memory read-model checkpoint boundary tests 已落地并通过，但只覆盖 checkpoint/read-model boundary，不实现 durable memory storage 或 query engine。
+
+已覆盖：
+
+- `RunState.memory_records` can rebuild from event log replay and checkpoint-assisted replay。
+- checkpoint state includes `memory_records` read model。
+- checkpoint memory records exclude full content / artifact content / raw content。
+- checkpoint schema validates memory record shape and supersession metadata。
+- checkpoint prefix consistency covers memory read model mismatch。
+- projector does not read memory store / query service to fill checkpoint state。
 - executor + not-enabled memory service still cannot produce successful memory write or supersession。
 - server still has no public direct memory update / supersede API。
 
