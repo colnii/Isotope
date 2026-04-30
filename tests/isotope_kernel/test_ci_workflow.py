@@ -25,6 +25,15 @@ def _contains_command(text: str, command: str) -> bool:
     return command in normalized
 
 
+def _contains_editable_test_extra_install(text: str) -> bool:
+    normalized = re.sub(r"\s+", " ", text)
+    commands = (
+        'python -m pip install -e ".[test]"',
+        "python -m pip install -e '.[test]'",
+    )
+    return any(command in normalized for command in commands)
+
+
 def test_ci_workflow_file_exists():
     assert CI_WORKFLOW.exists(), "expected .github/workflows/ci.yml to define CI smoke"
 
@@ -50,11 +59,11 @@ def test_ci_workflow_sets_python_version():
     assert re.search(r"(?m)^\s*python-version\s*:\s*['\"]?3\.(11|12)['\"]?\s*$", text)
 
 
-def test_ci_workflow_installs_editable_project():
+def test_ci_workflow_installs_editable_project_with_test_extra():
     text = _workflow_text()
 
     assert _contains_command(text, "python -m pip install -U pip")
-    assert _contains_command(text, "python -m pip install -e .")
+    assert _contains_editable_test_extra_install(text)
 
 
 def test_ci_workflow_runs_full_kernel_tests():
