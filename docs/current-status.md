@@ -7,9 +7,9 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`a1eb7829e25edb9e9d805c48272bb051bb5b7f99`。
+- 最新 implementation commit：`a431f3ad0065a2173a91fb863929f0293d67d9a0`。
 - memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for v0.1 demo planning：当前 memory 线只声明 boundary / read-model / checkpoint 能力，不声明 durable storage 或 query engine 已完成。
-- v0.1 demo entrypoint 计划已落在 `docs/demo-entrypoint-v0.1.md`；当前还没有 `python -m isotope_kernel.demo` 实现，下一轮应先写 red tests。
+- v0.1 demo entrypoint 已实现，详见 `docs/demo-entrypoint-v0.1.md`；`python -m isotope_kernel.demo` 可输出 plain text summary，`--json` 可输出 JSON summary。
 
 ## Implemented Slice
 
@@ -370,7 +370,12 @@
 - memory v0.1 scope freeze 已落文档
 - memory v0.1 is frozen to boundary / read-model / checkpoint for demo planning
 - Demo Entrypoint v0.1 design / implementation plan 已落文档
-- next step is demo entrypoint red tests, not deeper memory storage / query implementation
+- minimal v0.1 demo entrypoint 已实现
+- `python -m isotope_kernel.demo` runs a deterministic artifact-producing kernel loop
+- `python -m isotope_kernel.demo --json` emits parseable JSON summary
+- demo verifies event replay and checkpoint-assisted rebuild from real generated events
+- demo uses temp storage and does not write repo-root `runs/`, `artifacts/`, or `checkpoints`
+- demo reports memory boundary status as `boundary_only`
 - External Ingestion / `ImportedSnapshot` remains a later candidate after demo entrypoint scope
 - real LLM / HTTP / plugin system remain deferred
 - memory write / query boundary design note 已落文档
@@ -464,7 +469,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-539 passed
+549 passed
 ```
 
 Import boundary check:
@@ -541,9 +546,8 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- demo entrypoint red tests
 - External Ingestion / `ImportedSnapshot` Boundary after demo entrypoint scope
 - public-open-source cleanup plan
 - 或停在当前稳定点
 
-checkpoint v0.1 和 memory v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。下一阶段默认进入 v0.1 demo entrypoint red tests；demo 只展示 kernel 闭环，不展示完整产品。不要直接进入 real LLM / successful memory write / memory storage / ingestion implementation。
+checkpoint v0.1 和 memory v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现，只展示 kernel 闭环，不展示完整产品。下一阶段可选择 external ingestion boundary docs、public-open-source cleanup plan，或停在当前稳定点；不要直接进入 real LLM / successful memory write / memory storage / ingestion implementation。

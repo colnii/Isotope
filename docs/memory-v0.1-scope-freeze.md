@@ -51,7 +51,7 @@
 
 v0.1 demo 可以展示 memory boundaries 和 read model，但不要把 memory 当作已完成产品能力展示。
 
-demo entrypoint 计划见 `docs/demo-entrypoint-v0.1.md`。该 demo 应把 memory 输出标记为 `boundary_only`，避免误解为 storage/query product capability。
+demo entrypoint 已实现，见 `docs/demo-entrypoint-v0.1.md`。该 demo 把 memory 输出标记为 `boundary_only`，避免误解为 storage/query product capability。
 
 推荐 demo wording：
 

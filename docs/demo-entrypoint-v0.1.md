@@ -1,6 +1,6 @@
 # Demo Entrypoint v0.1
 
-状态：`draft for implementation`
+状态：`implemented`
 
 ## 1. Purpose
 
@@ -8,7 +8,14 @@
 
 demo entrypoint 的目标是给开发者和 reviewer 一个稳定的 smoke path：不需要 real LLM、不需要 HTTP server、不需要外部 provider，也不需要真实 durable memory storage。它只展示当前 kernel slice 已经具备的 deterministic contract。
 
-当前测试基线：`539 passed`。
+当前测试基线：`549 passed`。
+
+当前实现：
+
+- `src/isotope_kernel/demo.py`
+- `tests/isotope_kernel/test_demo_entrypoint.py`
+- `python -m isotope_kernel.demo`
+- `python -m isotope_kernel.demo --json`
 
 ## 2. Demo Goal
 
@@ -60,12 +67,12 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --json
 
 后续如果需要稳定 CLI，再单独设计 `python -m isotope_kernel.cli demo` 或 console script。本轮不引入。
 
-## 5. Proposed Files
+## 5. Implemented Files
 
-下一轮实现建议只涉及：
+当前实现涉及：
 
-- Create: `src/isotope_kernel/demo.py`
-- Create: `tests/isotope_kernel/test_demo_entrypoint.py`
+- `src/isotope_kernel/demo.py`
+- `tests/isotope_kernel/test_demo_entrypoint.py`
 - Maybe modify: `README.md`
 - Maybe modify: `AGENTS.md`
 
@@ -131,7 +138,7 @@ JSON 输出不得包含 full artifact content、memory full content、raw provid
 
 ## 9. First Red Tests
 
-下一轮 red phase 建议新增 `tests/isotope_kernel/test_demo_entrypoint.py`，覆盖：
+`tests/isotope_kernel/test_demo_entrypoint.py` 已落地并通过，覆盖：
 
 - `python -m isotope_kernel.demo` 能运行成功。
 - plain text 输出包含 run status / artifact ref / replay ok / checkpoint ok。
@@ -141,5 +148,6 @@ JSON 输出不得包含 full artifact content、memory full content、raw provid
 - demo 不 import `x_agent.*`。
 - demo 不调用 real LLM / network。
 - demo memory status 明确是 `boundary_only`。
+- replay / checkpoint 验证来自真实 event log / checkpoint-assisted rebuild，不是 hardcoded true。
 
-red phase 只新增测试，不实现 `src/isotope_kernel/demo.py`。green phase 再新增 module entrypoint。
+该 demo 仍是 developer demo，不是产品 CLI。后续扩展必须继续保持 no real LLM / no network / no repo-root side effects / summary-only output 边界。
