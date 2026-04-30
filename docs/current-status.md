@@ -13,6 +13,7 @@
 - v0.1 developer demo 已按 `docs/v0.1-demo-acceptance.md` accepted：当前验收依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过。
 - lightweight tag `v0.1-demo` 已创建并推送，指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`。
 - GitHub Release draft 已准备在 `docs/release-draft-v0.1-demo.md`；尚未发布 GitHub Release。`main` 允许在 tag 后继续有 docs/status 更新，tag 仍是 demo acceptance anchor。
+- v0.2 roadmap 已开始，见 `docs/v0.2-roadmap.md`。默认推荐顺序是先做 Track D: Demo / Docs Polish，再进入 Track A: HTTP API Minimal Surface。
 
 ## Implemented Slice
 
@@ -385,6 +386,8 @@
 - lightweight demo tag exists: `v0.1-demo` -> `b3d4e328e74378bec2fb524deb85233df5a5d4eb`
 - GitHub Release draft exists: `docs/release-draft-v0.1-demo.md`
 - no GitHub Release has been published from the draft
+- v0.2 roadmap draft exists: `docs/v0.2-roadmap.md`
+- recommended v0.2 order is Demo / Docs Polish, HTTP API Minimal Surface, External Ingestion / ImportedSnapshot, then Real Memory Storage Slice
 - packaging / install smoke coverage 已落地：`tests/isotope_kernel/test_packaging_smoke.py`
 - current `pyproject.toml` metadata / src-layout package discovery / editable install path 已通过 smoke
 - editable install 后可 import `isotope_kernel`，并可运行 installed `python -m isotope_kernel.demo` / `python -m isotope_kernel.demo --json`
@@ -565,9 +568,8 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- External Ingestion / `ImportedSnapshot` Boundary after demo entrypoint scope
-- public-open-source cleanup plan
-- optionally publish a GitHub Release from `docs/release-draft-v0.1-demo.md`
+- Track D: Demo / Docs Polish from `docs/v0.2-roadmap.md`
+- then Track A: HTTP API Minimal Surface design note / red tests
 - 或停在当前稳定点
 
-checkpoint v0.1 和 memory v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；下一阶段可选择发布 GitHub Release、external ingestion boundary docs、public-open-source cleanup plan，或停在当前稳定点；不要直接进入 real LLM / successful memory write / memory storage / ingestion implementation。
+checkpoint v0.1 和 memory v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 roadmap 已开始，下一阶段默认先降低 demo/docs 理解成本，再考虑 HTTP API Minimal Surface；不要直接进入 real LLM / successful memory write / memory storage / ingestion implementation。

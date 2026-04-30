@@ -22,6 +22,7 @@
 - packaging / install smoke coverage 已落地：当前 `pyproject.toml` metadata、src-layout discovery、editable install、installed import、installed demo plain / JSON 和 repo-root side-effect boundary 已通过测试。
 - GitHub Actions CI smoke workflow 已落地：在 `push` / `pull_request` 上使用 Python `3.12`，通过 `python -m pip install -e ".[test]"` 安装 test dependency 后运行 full tests 和 demo plain / JSON smoke；latest remote GitHub Actions run 已由网页确认通过。它不是 release、coverage、lint matrix 或 real integration services pipeline。
 - `v0.1-demo` lightweight tag 已创建并推送，指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`；GitHub Release draft 已准备在 `docs/release-draft-v0.1-demo.md`，但尚未发布 GitHub Release。
+- v0.2 roadmap 已落文档：`docs/v0.2-roadmap.md`。推荐顺序是 Demo / Docs Polish、HTTP API Minimal Surface、External Ingestion / `ImportedSnapshot`、Real Memory Storage Slice。
 - 当前测试基线：`568 passed`。
 
 当前 hard boundary 仍不变：
@@ -151,12 +152,14 @@ Memory Write / Query Boundary docs、第一批 memory boundary tests、memory ac
 
 ## 8. Next TDD Entry Point
 
-demo entrypoint TDD 已完成。下一轮建议选择以下 red tests / docs 之一：
+demo entrypoint TDD 已完成。v0.2 roadmap 已开始。下一轮建议优先选择以下 docs / red tests 之一：
 
+- Track D: Demo / Docs Polish from `docs/v0.2-roadmap.md`。
+- Track A: HTTP API Minimal Surface design note / red tests。
 - memory result cannot bypass artifact / ResourceRef authorization。
 - external ingestion / `ImportedSnapshot` boundary docs。
 - optional GitHub Release publication from `docs/release-draft-v0.1-demo.md`。
 - public-open-source cleanup plan。
 - 或停在当前稳定点。
 
-不要直接进入 memory storage implementation、memory query engine、controlled expand implementation、real LLM、external ingestion implementation、HTTP、SSE、plugin system 或 dynamic tool loading。不要在没有用户明确要求时发布 GitHub Release；release draft 只是可粘贴文本。
+不要直接进入 memory storage implementation、memory query engine、controlled expand implementation、real LLM、external ingestion implementation、HTTP implementation、SSE、plugin system 或 dynamic tool loading。不要在没有用户明确要求时发布 GitHub Release；release draft 只是可粘贴文本。
