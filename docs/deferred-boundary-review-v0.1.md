@@ -18,7 +18,8 @@
 - `ActionTypeRegistry`：minimal registry module 已实现，并已接入 `ActionCompiler` registry lookup、`PolicyEngine` requirement lookup、`Executor` handler lookup 和 `InProcessServer` shared registry wiring。
 - memory v0.1：not-enabled write/query/persistence boundaries、`MemoryRecord` shape、`write_memory` compiler/policy/executor boundary、canonical memory read model、append-only supersession、event-log replay 和 checkpoint-assisted rebuild 已足够支撑 v0.1 demo planning，并已 frozen 到 boundary / read-model / checkpoint 范围。
 - v0.1 demo entrypoint 已实现：`python -m isotope_kernel.demo` 输出 plain text summary，`--json` 输出 JSON summary，真实验证 event replay 和 checkpoint-assisted rebuild。
-- 当前测试基线：`549 passed`。
+- packaging / install smoke coverage 已落地：当前 `pyproject.toml` metadata、src-layout discovery、editable install、installed import、installed demo plain / JSON 和 repo-root side-effect boundary 已通过测试。
+- 当前测试基线：`557 passed`。
 
 当前 hard boundary 仍不变：
 

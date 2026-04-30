@@ -8,12 +8,13 @@
 
 demo entrypoint 的目标是给开发者和 reviewer 一个稳定的 smoke path：不需要 real LLM、不需要 HTTP server、不需要外部 provider，也不需要真实 durable memory storage。它只展示当前 kernel slice 已经具备的 deterministic contract。
 
-当前测试基线：`549 passed`。
+当前测试基线：`557 passed`。
 
 当前实现：
 
 - `src/isotope_kernel/demo.py`
 - `tests/isotope_kernel/test_demo_entrypoint.py`
+- `tests/isotope_kernel/test_packaging_smoke.py`
 - `python -m isotope_kernel.demo`
 - `python -m isotope_kernel.demo --json`
 
@@ -65,6 +66,16 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --json
 ```
 
+标准 editable install 路径也已通过 smoke：
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -U pip pytest
+.venv/bin/python -m pip install -e .
+.venv/bin/python -m isotope_kernel.demo
+.venv/bin/python -m isotope_kernel.demo --json
+```
+
 后续如果需要稳定 CLI，再单独设计 `python -m isotope_kernel.cli demo` 或 console script。本轮不引入。
 
 ## 5. Implemented Files
@@ -73,8 +84,7 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --json
 
 - `src/isotope_kernel/demo.py`
 - `tests/isotope_kernel/test_demo_entrypoint.py`
-- Maybe modify: `README.md`
-- Maybe modify: `AGENTS.md`
+- `tests/isotope_kernel/test_packaging_smoke.py`
 
 不应修改：
 
@@ -136,7 +146,7 @@ JSON 输出不得包含 full artifact content、memory full content、raw provid
 - multi-user auth
 - packaging / release automation
 
-## 9. First Red Tests
+## 9. Implemented Tests
 
 `tests/isotope_kernel/test_demo_entrypoint.py` 已落地并通过，覆盖：
 
@@ -149,5 +159,17 @@ JSON 输出不得包含 full artifact content、memory full content、raw provid
 - demo 不调用 real LLM / network。
 - demo memory status 明确是 `boundary_only`。
 - replay / checkpoint 验证来自真实 event log / checkpoint-assisted rebuild，不是 hardcoded true。
+
+`tests/isotope_kernel/test_packaging_smoke.py` 已落地并通过，覆盖：
+
+- `pyproject.toml` exists and carries minimum project metadata。
+- pytest test dependency / optional dependency group exists。
+- src-layout package discovery covers `src/isotope_kernel`。
+- editable install 后可以 import `isotope_kernel`。
+- editable install 后可以运行 installed `python -m isotope_kernel.demo`。
+- editable install 后可以运行 installed `python -m isotope_kernel.demo --json`。
+- installed demo JSON 包含 run / artifact / replay / checkpoint / memory summary。
+- installed demo 不在 repo 根目录写 `runs/` / `artifacts/` / `checkpoints/`。
+- installed package source 不 import `x_agent.*`。
 
 该 demo 仍是 developer demo，不是产品 CLI。后续扩展必须继续保持 no real LLM / no network / no repo-root side effects / summary-only output 边界。

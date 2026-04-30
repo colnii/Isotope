@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`a431f3ad0065a2173a91fb863929f0293d67d9a0`。
+- 最新 implementation commit：`29e975aabd7b6d2d6611dc74017b68e7d421fdea`。
 - memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for v0.1 demo planning：当前 memory 线只声明 boundary / read-model / checkpoint 能力，不声明 durable storage 或 query engine 已完成。
 - v0.1 demo entrypoint 已实现，详见 `docs/demo-entrypoint-v0.1.md`；`python -m isotope_kernel.demo` 可输出 plain text summary，`--json` 可输出 JSON summary。
 
@@ -376,6 +376,10 @@
 - demo verifies event replay and checkpoint-assisted rebuild from real generated events
 - demo uses temp storage and does not write repo-root `runs/`, `artifacts/`, or `checkpoints`
 - demo reports memory boundary status as `boundary_only`
+- packaging / install smoke coverage 已落地：`tests/isotope_kernel/test_packaging_smoke.py`
+- current `pyproject.toml` metadata / src-layout package discovery / editable install path 已通过 smoke
+- editable install 后可 import `isotope_kernel`，并可运行 installed `python -m isotope_kernel.demo` / `python -m isotope_kernel.demo --json`
+- installed demo 仍使用 temp storage，不在 repo root 写 `runs/` / `artifacts/` / `checkpoints`
 - External Ingestion / `ImportedSnapshot` remains a later candidate after demo entrypoint scope
 - real LLM / HTTP / plugin system remain deferred
 - memory write / query boundary design note 已落文档
@@ -469,7 +473,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-549 passed
+557 passed
 ```
 
 Import boundary check:
