@@ -21,6 +21,7 @@
 - v0.1 demo acceptance 已收口：状态是 `accepted as developer demo`，验收依据包括 `568 passed`、demo plain / JSON success、editable install smoke、GitHub Actions CI passed、no `x_agent.*` imports 和 `/home/lumber/Github/x-agent` untouched。
 - packaging / install smoke coverage 已落地：当前 `pyproject.toml` metadata、src-layout discovery、editable install、installed import、installed demo plain / JSON 和 repo-root side-effect boundary 已通过测试。
 - GitHub Actions CI smoke workflow 已落地：在 `push` / `pull_request` 上使用 Python `3.12`，通过 `python -m pip install -e ".[test]"` 安装 test dependency 后运行 full tests 和 demo plain / JSON smoke；latest remote GitHub Actions run 已由网页确认通过。它不是 release、coverage、lint matrix 或 real integration services pipeline。
+- `v0.1-demo` lightweight tag 已创建并推送，指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`；GitHub Release draft 已准备在 `docs/release-draft-v0.1-demo.md`，但尚未发布 GitHub Release。
 - 当前测试基线：`568 passed`。
 
 当前 hard boundary 仍不变：
@@ -154,8 +155,8 @@ demo entrypoint TDD 已完成。下一轮建议选择以下 red tests / docs 之
 
 - memory result cannot bypass artifact / ResourceRef authorization。
 - external ingestion / `ImportedSnapshot` boundary docs。
-- demo tag decision。
+- optional GitHub Release publication from `docs/release-draft-v0.1-demo.md`。
 - public-open-source cleanup plan。
 - 或停在当前稳定点。
 
-不要直接进入 memory storage implementation、memory query engine、controlled expand implementation、real LLM、external ingestion implementation、HTTP、SSE、plugin system 或 dynamic tool loading。不要在没有用户明确要求时创建 tag；demo tag 留给单独决策。
+不要直接进入 memory storage implementation、memory query engine、controlled expand implementation、real LLM、external ingestion implementation、HTTP、SSE、plugin system 或 dynamic tool loading。不要在没有用户明确要求时发布 GitHub Release；release draft 只是可粘贴文本。
