@@ -19,7 +19,8 @@
 - memory v0.1：not-enabled write/query/persistence boundaries、`MemoryRecord` shape、`write_memory` compiler/policy/executor boundary、canonical memory read model、append-only supersession、event-log replay 和 checkpoint-assisted rebuild 已足够支撑 v0.1 demo planning，并已 frozen 到 boundary / read-model / checkpoint 范围。
 - v0.1 demo entrypoint 已实现：`python -m isotope_kernel.demo` 输出 plain text summary，`--json` 输出 JSON summary，真实验证 event replay 和 checkpoint-assisted rebuild。
 - packaging / install smoke coverage 已落地：当前 `pyproject.toml` metadata、src-layout discovery、editable install、installed import、installed demo plain / JSON 和 repo-root side-effect boundary 已通过测试。
-- 当前测试基线：`557 passed`。
+- GitHub Actions CI smoke workflow 已落地：在 `push` / `pull_request` 上运行 full tests 和 demo plain / JSON smoke；它不是 release、coverage、lint matrix 或 real integration services pipeline。
+- 当前测试基线：`568 passed`。
 
 当前 hard boundary 仍不变：
 

@@ -8,13 +8,15 @@
 
 demo entrypoint 的目标是给开发者和 reviewer 一个稳定的 smoke path：不需要 real LLM、不需要 HTTP server、不需要外部 provider，也不需要真实 durable memory storage。它只展示当前 kernel slice 已经具备的 deterministic contract。
 
-当前测试基线：`557 passed`。
+当前测试基线：`568 passed`。
 
 当前实现：
 
 - `src/isotope_kernel/demo.py`
 - `tests/isotope_kernel/test_demo_entrypoint.py`
 - `tests/isotope_kernel/test_packaging_smoke.py`
+- `tests/isotope_kernel/test_ci_workflow.py`
+- `.github/workflows/ci.yml`
 - `python -m isotope_kernel.demo`
 - `python -m isotope_kernel.demo --json`
 
@@ -171,5 +173,16 @@ JSON 输出不得包含 full artifact content、memory full content、raw provid
 - installed demo JSON 包含 run / artifact / replay / checkpoint / memory summary。
 - installed demo 不在 repo 根目录写 `runs/` / `artifacts/` / `checkpoints/`。
 - installed package source 不 import `x_agent.*`。
+
+`tests/isotope_kernel/test_ci_workflow.py` 已落地并通过，覆盖：
+
+- `.github/workflows/ci.yml` exists。
+- workflow 在 `push` / `pull_request` 时触发。
+- workflow 使用 `ubuntu-latest` 和 Python `3.12`。
+- workflow 执行 editable install。
+- workflow 运行 `python -m pytest tests/isotope_kernel -q`。
+- workflow 运行 demo plain / JSON smoke。
+- workflow 不需要 secrets，不引用本地绝对路径，不引用 `x-agent` / `x_agent`。
+- workflow 不引入 release、coverage、lint matrix 或 real integration services。
 
 该 demo 仍是 developer demo，不是产品 CLI。后续扩展必须继续保持 no real LLM / no network / no repo-root side effects / summary-only output 边界。
