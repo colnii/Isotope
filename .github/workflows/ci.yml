@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package
+        run: |
+          python -m pip install -U pip
+          python -m pip install -e .
+
+      - name: Run kernel tests
+        run: python -m pytest tests/isotope_kernel -q
+
+      - name: Run demo smoke
+        run: |
+          python -m isotope_kernel.demo
+          python -m isotope_kernel.demo --json
