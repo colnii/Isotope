@@ -14,6 +14,7 @@
 - lightweight tag `v0.1-demo` 已创建并推送，指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`。
 - GitHub Release draft 已准备在 `docs/release-draft-v0.1-demo.md`；尚未发布 GitHub Release。`main` 允许在 tag 后继续有 docs/status 更新，tag 仍是 demo acceptance anchor。
 - v0.2 roadmap 已开始，见 `docs/v0.2-roadmap.md`。默认推荐顺序是先做 Track D: Demo / Docs Polish，再进入 Track A: HTTP API Minimal Surface。
+- v0.1 demo walkthrough 已补充，见 `docs/demo-walkthrough-v0.1.md`。它解释 demo 运行内容、内部步骤、plain text / JSON 输出字段、证明范围、非目标和 troubleshooting。
 
 ## Implemented Slice
 
@@ -388,6 +389,8 @@
 - no GitHub Release has been published from the draft
 - v0.2 roadmap draft exists: `docs/v0.2-roadmap.md`
 - recommended v0.2 order is Demo / Docs Polish, HTTP API Minimal Surface, External Ingestion / ImportedSnapshot, then Real Memory Storage Slice
+- Track D: Demo / Docs Polish has started with `docs/demo-walkthrough-v0.1.md`
+- demo walkthrough explains what `python -m isotope_kernel.demo` runs, what output fields mean, what the demo proves, what it does not prove, and common setup / CI troubleshooting
 - packaging / install smoke coverage 已落地：`tests/isotope_kernel/test_packaging_smoke.py`
 - current `pyproject.toml` metadata / src-layout package discovery / editable install path 已通过 smoke
 - editable install 后可 import `isotope_kernel`，并可运行 installed `python -m isotope_kernel.demo` / `python -m isotope_kernel.demo --json`
@@ -569,7 +572,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 下一步建议优先做：
 
 - Track D: Demo / Docs Polish from `docs/v0.2-roadmap.md`
-- then Track A: HTTP API Minimal Surface design note / red tests
+- continue Track D with architecture diagram / README presentation polish, then Track A: HTTP API Minimal Surface design note / red tests
 - 或停在当前稳定点
 
-checkpoint v0.1 和 memory v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 roadmap 已开始，下一阶段默认先降低 demo/docs 理解成本，再考虑 HTTP API Minimal Surface；不要直接进入 real LLM / successful memory write / memory storage / ingestion implementation。
+checkpoint v0.1 和 memory v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D 已开始，下一阶段默认继续降低 demo/docs 理解成本，再考虑 HTTP API Minimal Surface；不要直接进入 real LLM / successful memory write / memory storage / ingestion implementation。
