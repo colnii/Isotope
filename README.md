@@ -1,141 +1,48 @@
 # Isotope
 
-Isotope 是一个独立的 kernel-first agent runtime 项目。当前仓库用于沉淀最小 kernel slice：file event log、action chain、policy grants、artifact provenance、structured ResourceRef、projector replay、RunState rebuild、event/ref validation、event store hardening、approval boundary、action lifecycle hardening、artifact persistence、retrieval authorization、workspace binding、policy validation、action compiler validation、server facade input validation、success/failure path executor event ownership、run completion invariants、checkpoint storage boundary、projector event payload validation、checkpoint-assisted projector rebuild、projector-owned checkpoint creation、checkpoint state schema validation、projector-owned checkpoint save boundary、checkpoint prefix consistency、checkpoint integrity/hash validation、event prefix digest validation、checkpoint projector version boundary hardening、event envelope version boundary、minimal `ActionTypeRegistry` module、`ActionCompiler` registry lookup、`PolicyEngine` registry requirement lookup、`Executor` registry handler lookup、`InProcessServer` shared registry wiring、memory not-enabled boundary hardening、memory action-chain compiler/policy boundary、`MemoryRecord` v0 implementation shape、executor memory handler not-enabled / provenance boundary、memory record persistence not-enabled boundary、memory query authorization not-enabled boundary、`memory.record_created` canonical event read-model boundary、`memory.record_superseded` canonical event read-model boundary 和 memory read-model checkpoint boundary。
+Isotope 是一个独立的 kernel-first agent runtime 项目，用来验证 canonical event log、policy-gated execution、artifact provenance、projector replay 和 checkpoint-assisted rebuild 等内核边界。
 
-当前代码来自 `x-agent` 中的 Isotope staging snapshot。`x-agent` 不是 Isotope 的 canonical repo，后续 Isotope 的设计和实现应以本仓库为准。
+当前状态：`v0.1-demo` developer demo 已完成并打 tag；当前本地 baseline 是 `568 passed`。详细状态见 [docs/current-status.md](docs/current-status.md)。
 
-## Current Status
-
-当前状态入口是 [docs/current-status.md](docs/current-status.md)。
-
-Checkpoint ownership 边界见 [docs/checkpoint-ownership-v0.1.md](docs/checkpoint-ownership-v0.1.md)；checkpoint v0.1 scope freeze 见 [docs/checkpoint-v0.1-scope-freeze.md](docs/checkpoint-v0.1-scope-freeze.md)；`ActionTypeRegistry` boundary 见 [docs/action-type-registry-v0.1.md](docs/action-type-registry-v0.1.md)；deferred boundary review 见 [docs/deferred-boundary-review-v0.1.md](docs/deferred-boundary-review-v0.1.md)；memory write / query 边界见 [docs/memory-write-query-boundary-v0.1.md](docs/memory-write-query-boundary-v0.1.md)；memory record persistence 边界见 [docs/memory-record-persistence-boundary-v0.1.md](docs/memory-record-persistence-boundary-v0.1.md)；memory v0.1 scope freeze 见 [docs/memory-v0.1-scope-freeze.md](docs/memory-v0.1-scope-freeze.md)；v0.1 demo entrypoint 见 [docs/demo-entrypoint-v0.1.md](docs/demo-entrypoint-v0.1.md)；v0.1 demo walkthrough 见 [docs/demo-walkthrough-v0.1.md](docs/demo-walkthrough-v0.1.md)；v0.1 demo architecture 见 [docs/demo-architecture-v0.1.md](docs/demo-architecture-v0.1.md)；v0.1 demo acceptance 见 [docs/v0.1-demo-acceptance.md](docs/v0.1-demo-acceptance.md)；v0.1 demo release draft 见 [docs/release-draft-v0.1-demo.md](docs/release-draft-v0.1-demo.md)；v0.2 roadmap 见 [docs/v0.2-roadmap.md](docs/v0.2-roadmap.md)；checkpoint integrity/hash 边界见 [docs/checkpoint-integrity-v0.1.md](docs/checkpoint-integrity-v0.1.md)；event prefix digest 边界见 [docs/event-prefix-digest-v0.1.md](docs/event-prefix-digest-v0.1.md)；event envelope versioning 边界见 [docs/event-envelope-versioning-v0.1.md](docs/event-envelope-versioning-v0.1.md)；event envelope schema registry 边界见 [docs/event-envelope-schema-registry-v0.1.md](docs/event-envelope-schema-registry-v0.1.md)；checkpoint retention / compaction 边界见 [docs/checkpoint-retention-compaction-v0.1.md](docs/checkpoint-retention-compaction-v0.1.md)；checkpoint history / old-checkpoint fallback 边界见 [docs/checkpoint-history-fallback-v0.1.md](docs/checkpoint-history-fallback-v0.1.md)；checkpoint history index / retention policy 边界见 [docs/checkpoint-history-index-retention-v0.1.md](docs/checkpoint-history-index-retention-v0.1.md)；checkpoint history save 边界见 [docs/checkpoint-history-save-boundary-v0.1.md](docs/checkpoint-history-save-boundary-v0.1.md)；checkpoint history save integration 边界见 [docs/checkpoint-history-save-integration-v0.1.md](docs/checkpoint-history-save-integration-v0.1.md)；checkpoint migration / versioning 边界见 [docs/checkpoint-migration-versioning-v0.1.md](docs/checkpoint-migration-versioning-v0.1.md)；checkpoint schema version fields 边界见 [docs/checkpoint-schema-version-fields-v0.1.md](docs/checkpoint-schema-version-fields-v0.1.md)；server-facing checkpoint 边界见 [docs/server-checkpoint-boundary-v0.1.md](docs/server-checkpoint-boundary-v0.1.md)；checkpoint save trigger 边界见 [docs/checkpoint-save-trigger-v0.1.md](docs/checkpoint-save-trigger-v0.1.md)。
-
-当前实现了 opaque checkpoint storage、最小 checkpoint-assisted projector rebuild、projector-owned checkpoint creation、checkpoint state schema validation、projector-owned checkpoint save boundary、projector-owned checkpoint history save method、internal-only explicit server checkpoint history save trigger、checkpoint prefix consistency hardening、checkpoint integrity/hash validation、event prefix digest validation、latest-only checkpoint storage boundary hardening、checkpoint candidate loading、最小 projector-owned old-checkpoint fallback、explicit checkpoint history candidate save method、checkpoint projector version boundary hardening、最小 event envelope version boundary、minimal `ActionTypeRegistry` module、`ActionCompiler` registry lookup、`PolicyEngine` registry requirement lookup、`Executor` registry handler lookup、`InProcessServer` shared registry wiring、memory not-enabled / rejection boundary、memory action-chain compiler/policy boundary、`MemoryRecord` v0 implementation shape、executor memory handler not-enabled / provenance boundary、memory record persistence not-enabled boundary、memory query authorization not-enabled boundary、`memory.record_created` canonical event read-model boundary、`memory.record_superseded` canonical event read-model boundary、memory read-model checkpoint boundary、最小 v0.1 demo entrypoint、packaging / install smoke coverage 和 GitHub Actions CI smoke workflow；checkpoint v0.1 已 frozen for current kernel slice。
-
-`ActionTypeRegistry.default()` 当前只包含 `call_tool` + `write_artifact_tool`，支持 `tool_names()` / `get_tool(...)`，unknown tool lookup fail-closed，malformed entry fail-fast，entry 只携带 metadata、不携带 executable side-effect callback。`ActionCompiler` 已使用 registry lookup：可显式传入 registry，不传时使用 default registry；支持 registry-backed non-`call_tool` action type，只要 `intent.action` 与 registry entry `action_type` 匹配；会检查 registry `payload_requirements.required`；valid `write_memory` intent 会保留 structured payload（`content` / `summary` / `source_refs` / `provenance`）；unknown compact tool 现在先在 compiler boundary 受控 `ValueError` fail closed；disabled registry entry 也会被 compiler 拒绝；compiler 仍只生成 requested capabilities，不生成 grants，runtime identity 仍只来自 runtime context。`PolicyEngine` 已使用 registry requirement lookup：可显式传入 registry，不传时使用 default registry；不再硬编码只接受 `call_tool`，registry-backed `write_memory` proposal 可以进入 policy decision；policy 仍自己决定 grants，registry 不能自动 approve，也不能扩大 `PolicyDecision.grants`。`Executor` 已使用 registry handler lookup：可显式传入 registry，不传时使用 default registry；executor 仍只能使用 `PolicyDecision.grants`，registry 不能替代 grants，也不能提供 executable callback；当前 successful side-effect handler 仍只有 deterministic `write_artifact_tool`。`Executor` 现在支持可选 `memory_service` 注入：传入后，authorized `write_memory` 会进入 memory handler not-enabled / provenance boundary，构造 `MemoryRecord` / record 并把 runtime execution provenance 与 grants 交给 memory service；`NotEnabledMemoryService.write_record(...)` 仍受控拒绝，所以失败路径是 `action.started -> action.failed`，不创建 artifact、不写 `action.completed`、不写 `memory.record_created`。没有 `memory_service` 时，`write_memory` 仍是 unsupported handler；grants 缺少 `write_memory` 时不会调用 memory service。`InProcessServer` 已支持显式传入 registry；不传 registry 时会创建 shared default registry，并把同一个 registry 传给 compiler / policy / executor。custom registry 可以贯穿 server 内部 action path，但 server 不会动态执行未知工具。
-
-event envelope schema registry、checkpoint schema version fields、checkpoint history index / retention policy 目前只有设计边界，未实现 registry/字段/index/retention；checkpoint migration / version negotiation 仍未实现 migrator 或 registry。checkpoint 仍不是第二事实源，`save_checkpoint(...)` 和 `save_checkpoint_for_run(...)` 仍是 latest-only，automatic history persistence、automatic scheduling 和 broader retention / compaction 仍 deferred。
-
-memory record persistence boundary 已有 design note，且 not-enabled boundary 已实现：`NotEnabledMemoryStore` 支持 `save_record(...)`、`list_records(...)`、`record_path(...)`，但 `save_record(...)` 只做受控拒绝。无 `ActionExecution`、无 `write_memory` grant、malformed record 都会被拒绝；valid record 也仍拒绝为 not-enabled。rejected persistence 不留下 partial record，不 append `action.completed` / `memory.record_created` / `memory.record_superseded`；projector 仍不读取 memory store 推进 `RunState`。当前仍没有 successful durable memory write/update、file-backed memory storage、record index 或 query engine。
-
-memory query authorization boundary 也已有最小 not-enabled 实现：`NotEnabledMemoryQueryService` 会校验 explicit `grants` 和 `caller_context`，缺失或 malformed 时受控拒绝；无 query grant 时不读取 memory store；`controlled_expand=True` 但无 expand grant / budget 时受控拒绝且不读取 full content。query result 不返回 full content / artifact content / raw content；这不是 memory query engine，也不实现 controlled expand。server 仍没有 public `query_memory(...)` API，projector 仍不读取 memory store / query service。
-
-`memory.record_created` 和 `memory.record_superseded` canonical event read-model boundary 已实现：`RunState.memory_records` 只投影 summary / refs / provenance-level metadata，不投影 full content；`RunProjector` 会校验 `memory.record_created` payload，并要求它绑定 completed `write_memory` execution。`memory.record_superseded` 只通过追加 canonical event 表达 append-only supersession：旧 record 不被原地覆盖，只增加 supersession metadata 并指向已存在的新 record；payload 拒绝 full content / artifact content / raw content，并要求绑定 completed `write_memory` execution。`RunProjector.create_checkpoint(...)` 现在会把 `memory_records` read model 写入 checkpoint state；`RunProjector.rebuild_with_checkpoint(...)` 可从 checkpoint + suffix events 恢复 `memory_records`，并校验 memory record shape、supersession metadata 和 full-content 禁止字段。checkpoint prefix consistency 覆盖 `memory_records`，event-log replay / checkpoint-assisted replay 都不读取 memory store 或 query service。这个边界只是 canonical event projection + checkpoint read-model boundary，不是 durable memory storage 或 successful memory update；executor + not-enabled memory service 仍不会产生 successful memory write/update、`memory.record_created` 或 `memory.record_superseded`，server 仍无 public direct memory write / query / update API。
-
-当前测试命令：
-
-```bash
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
-```
-
-当前预期：`568 passed`。
-
-当前 deferred 边界：real LLM、memory storage、successful durable memory write、successful memory update / supersession write、memory query engine、successful memory record persistence implementation、memory record index、memory server API、ranking / exposure、controlled expand implementation、session memory promotion、vector index / embeddings、external ingestion / `ImportedSnapshot`、public checkpoint API / HTTP endpoint、automatic checkpoint scheduling、CheckpointService、signature / MAC / key management、`save_checkpoint(...)` semantic change / automatic history persistence、checkpoint history index、checkpoint GC、checkpoint retention policy、checkpoint inspection API、checkpoint migration / version negotiation implementation、`checkpoint_schema_version` field、`state_schema_version` field、`integrity_schema_version` field、plugin system、dynamic action registration、third-party tools、remote tool discovery、public extension API、real LLM tool calling integration、schema registry、payload registry、migrator registry、checkpoint schema registry、state schema registry、integrity schema registry、event envelope schema registry、event envelope registry lookup、event schema registry、payload schema registry、event migration、audit event for checkpoint migration、content-addressed event ids、event log compaction、SSE、auth、multi-agent concurrency、real HTTP API。`InProcessServer` read path 已可选使用 checkpoint-assisted rebuild；internal-only latest save trigger 和 explicit history save trigger 已实现，但 server 仍不接收或解释 checkpoint state。
-
-## Current Slice
-
-当前 slice 只验证最小闭环：
-
-- compact intent 编译为 `ActionProposal` 后才能进入 policy。
-- executor 只能使用 `PolicyDecision.grants`。
-- file event log 使用 JSONL append-only。
-- artifact 带 execution provenance。
-- artifact identity 使用 structured `ResourceRef`。
-- projector 只从 canonical events 重建 `RunState`。
-- in-process server facade 只暴露当前 slice 的同步调用入口，不包含 real HTTP。
-- event envelope 和 `ResourceRef` 有当前 v0 slice 的最小输入合法性保护。
-- file event log 保持 append order replay、同 run 内 duplicate event protection、malformed JSON fail-fast。
-- pending approval 会写入 `approval.requested` 并由 projector 从 event log 投影。
-- projector 对 action lifecycle ordering 做最小 validation，非法转换 fail fast。
-- artifact 使用 run-scoped file-backed persistence，fresh `ArtifactStore` 可读 metadata/content，malformed artifact file fail fast。
-- retrieval 只支持 summary by structured `ResourceRef`，必须有 summary grant，且不会读取 artifact content。
-- workspace binding 只接受 `PolicyDecision.grants` 中的 `shared_ro`，Executor 不回退到 requested capabilities。
-- policy 会校验 proposal 输入和 decision outcome/grants 最小形状，denied decision 不授予有效能力。
-- `ActionCompiler` 会校验 malformed `intent` / `runtime_context`、runtime identity、`action`、`tool`、`requested_tools`、`workspace_mode` 和 `budget.seconds`，并通过 `ActionTypeRegistry` lookup 校验 compact tool；valid minimal intent 仍编译为 canonical `ActionProposal`。
-- `InProcessServer` / server facade 会校验 client request，invalid request 走受控 `ValueError`，不 append action lifecycle events，也不创建 artifact；`get_run_state` 仍允许 fresh process 从已有 event log rebuild。
-- success path 的 `action.started`、`artifact.created`、`action.completed` 由 `Executor.execute(...)` append；artifact side effect 发生在 `action.started` 之后，server facade 不重复写这些 executor-owned events，只保留 `run.completed` 等 run-level 收口。
-- failure path 的 `action.failed` 由 `Executor.execute(...)` append，并沿用同一个 execution id；failed execution 不写 `artifact.created` / `action.completed` / `run.completed`，server facade 不重复写 failure events。
-- `RunProjector` 会校验 `run.completed` invariants：必须已有 completed execution，不能覆盖 running / failed / pending approval 状态，且 run completed 后不能再出现 action/artifact lifecycle events；projector 仍只消费 canonical events。
-- `FileCheckpointStore` 只做 run-scoped opaque checkpoint blob 存取和最小边界校验，不解释 projected state 业务语义，不修改 event log。
-- `RunProjector` 会对 action / artifact / approval event payload 做最小字段校验，malformed payload 受控 `ValueError` fail fast；`modified` decision 和 `approved` 一样允许进入 execution lifecycle，projector 仍不读取 artifact store / executor state / server memory / checkpoint。
-- `RunProjector.rebuild_with_checkpoint(...)` 支持最小 checkpoint-assisted rebuild：无 checkpoint 或 version 不兼容时回落完整 replay；checkpoint 可用时从 basis state 继续 replay 后续 canonical events，且仍验证完整 event log，不能隐藏 malformed / lifecycle-invalid events。
-- `RunProjector.create_checkpoint(...)` 支持 projector-owned checkpoint creation：checkpoint 由 canonical events 经 `project(...)` 生成，包含最小 projected state，拒绝 empty / malformed / lifecycle-invalid event stream，不写 checkpoint store，创建出的 checkpoint 可交由 `FileCheckpointStore` 保存并用于 assisted rebuild。
-- `RunProjector.rebuild_with_checkpoint(...)` 只在 checkpoint projector version 兼容时校验 checkpoint state schema：state 必须包含最小 projected state 字段、run/status/action/artifact shape 合法，artifact entry 不得包含 content；不兼容 version 仍回落 full rebuild，`FileCheckpointStore` 仍不解释 projected state。
-- `RunProjector.save_checkpoint(...)` 支持 projector-owned checkpoint save boundary：从 `event_store.list_events(run_id)` 读取 canonical events，经 `create_checkpoint(...)` 生成 checkpoint，再调用 `checkpoint_store.save_checkpoint(...)` 保存；空日志或 invalid event stream fail-fast 且不写 checkpoint，不修改 event log，不读取 artifact store / executor state / server memory。
-- `RunProjector.rebuild_with_checkpoint(...)` 会比较 checkpoint state 与 `basis_event_id` 对应的 event-log prefix projection；只有一致时才从 checkpoint 继续 replay，不一致时 fallback full rebuild，且 fallback 仍执行完整 event validation；`FileCheckpointStore` 仍保持 opaque。
-- `RunProjector.create_checkpoint(...)` 会生成 checkpoint `integrity`，使用 `sha256` 和 deterministic canonical JSON 计算 `checkpoint_hash`；`rebuild_with_checkpoint(...)` 遇到 hash mismatch 只让 checkpoint 失效并 fallback full rebuild，hash match 后仍执行 state schema validation、prefix consistency validation 和 event/lifecycle validation；legacy checkpoint 无 hash 时继续走现有 validation path，`FileCheckpointStore` 仍只保存 opaque blob。
-- `RunProjector.create_checkpoint(...)` 会在 checkpoint `integrity` 中生成最小 event prefix digest metadata：`event_digest_algorithm: "sha256"`、`event_prefix_digest`、`event_digest_basis_event_id`、`event_digest_event_count`、`event_digest_event_envelope_version`；digest 输入使用 deterministic JSON / UTF-8，覆盖 run 内第一条 event 到 `basis_event_id` 的 canonical event representation，包含 `event_envelope_version`，event append order 和 prefix payload / envelope version 改动都会影响 digest；`rebuild_with_checkpoint(...)` 遇到 digest mismatch 会让 checkpoint invalid 并 fallback full rebuild，digest match 后仍执行 state schema validation、prefix consistency validation 和 suffix replay，legacy checkpoint 无 event prefix digest 时继续走兼容路径；`FileCheckpointStore` 仍保持 opaque，`InProcessServer` 没有 digest-specific 行为。
-- `InProcessServer.get_run_state(...)` 已可选使用 checkpoint-assisted rebuild：constructor 支持 optional `checkpoint_store`；没有 checkpoint store 时仍走 full event log rebuild，有 checkpoint store 时调用 projector-owned `RunProjector.rebuild_with_checkpoint(...)`；server 不直接解释 checkpoint state，checkpoint missing 或所有 candidates invalid 时 fallback full rebuild，lifecycle-invalid event log 仍 fail-fast。
-- `InProcessServer.save_checkpoint_for_run(run_id)` 已实现为 internal-only manual trigger：没有 checkpoint store 时返回 `not_enabled`，有 checkpoint store 时只调用 projector-owned `RunProjector.save_checkpoint(...)`；返回最小 metadata，不返回 checkpoint state，不修改 event log，不读取 artifact content / executor state / server memory；`create_checkpoint(...)` 仍返回 `not_enabled`。
-- checkpoint retention / compaction 已有 design note；latest-only checkpoint storage boundary hardening 已实现：checkpoint path 仍是 `runs/{run_id}/checkpoints/latest.json`，同一 run 第二次保存会替换 `latest.json`，不创建 checkpoint history 文件；invalid replacement 不会覆盖已有 valid latest checkpoint；replacement 不修改 event log，也不创建 / 删除 / 重写 `events.jsonl`；`checkpoint_path` / `save_checkpoint` / `load_latest_checkpoint` 都会校验 run_id path segment。broader retention / compaction 仍 deferred，`FileCheckpointStore` 仍保持 opaque，不解释 checkpoint business state。
-- checkpoint history / old-checkpoint fallback 已有 design note，且最小 projector-owned path 已实现：`FileCheckpointStore.load_checkpoint_candidates(run_id)` 可按 checkpoint `created_at` newest-to-oldest 读取 run-scoped candidates，但 storage 仍保持 opaque，不解释 projector version / integrity / digest / state 语义；`RunProjector.rebuild_with_checkpoint(...)` 可在 invalid latest checkpoint 后尝试 older fully valid candidate。每个 candidate 都必须独立通过 projector-owned validation chain，invalid candidate 不能被部分读取；所有 candidates invalid 时 fallback full event-log rebuild，lifecycle-invalid event log 不能被 older checkpoint fallback 隐藏。`save_checkpoint(...)` 仍是 latest-only replacement，不创建 history 文件；当前仍没有 checkpoint history index / retention / GC / `CheckpointService`。
-- checkpoint history index / retention policy 已有 design note：history index 不是 source of truth，不能证明 checkpoint 有效；retention / GC 只能作用于 checkpoint blobs 或 future index metadata，不能删除、重写、压缩或裁剪 canonical event log；corrupt / missing history index 不能让系统跳过 full event-log replay。当前 latest-only save behavior 不变。
-- checkpoint history save boundary 已有 design note，且 explicit history candidate save method 已实现：`FileCheckpointStore.save_checkpoint_history(run_id, checkpoint)` 可将 history candidate 写入 `runs/{run_id}/checkpoints/` 下非 `latest.json` 文件；invalid checkpoint 会在写入前被拒绝，history save 不覆盖 latest、不修改 event log，candidate 可被 `load_checkpoint_candidates(run_id)` newest-to-oldest 读取。`FileCheckpointStore` 仍保持 opaque，不解释 checkpoint state / integrity / projector version；`save_checkpoint(...)` 仍是 latest-only，不自动保存 history。
-- checkpoint history save integration boundary 已有 design note，且 projector-owned method 与 explicit server trigger 已实现：`RunProjector.save_checkpoint_history(...)` 从 event store 读取 canonical events，经 `RunProjector.create_checkpoint(...)` 生成 checkpoint，再调用 `checkpoint_store.save_checkpoint_history(...)` 保存 history candidate；它不调用 `checkpoint_store.save_checkpoint(...)`，不写 `latest.json`，不修改 event log。`InProcessServer.save_checkpoint_history_for_run(run_id)` 是 internal-only explicit history save trigger：未配置 checkpoint store 时返回 `not_enabled` / `checkpoint_history`，配置后只委托 projector-owned history save，返回 `status` / `run_id` / `basis_event_id` / `checkpoint_kind` 最小 metadata，不返回 checkpoint state、不写 `latest.json`、不直接调用 storage。`RunProjector.save_checkpoint(...)` 和 `InProcessServer.save_checkpoint_for_run(...)` 默认仍 latest-only，automatic history persistence 仍 deferred。
-- checkpoint migration / versioning 已有 design note，且 checkpoint projector version boundary hardening 已实现：当前 checkpoint 使用 `projector_version`，当前 projector version 是 `run_projector@v1`；non-string / empty / incompatible `projector_version` 会让 checkpoint invalid 并 fallback full rebuild，且 fallback 不读取 checkpoint state、不能隐藏 lifecycle-invalid event log。valid `projector_version` override 仍控制兼容性，但 malformed version 不能因 caller 传同样 malformed 值而被接受；future sketch fields 如 `checkpoint_schema_version` / `state_schema_version` 不能 override `projector_version`。checkpoint schema 仍是 v0 candidate，event envelope 仍是 slice-only shape，migrator / registry / version negotiation implementation 仍 deferred。
-- checkpoint schema version fields 已有 design note：当前实现仍以 `projector_version` 作为 checkpoint compatibility 的唯一已实现版本边界；`checkpoint_schema_version` / `state_schema_version` / `integrity_schema_version` 目前还没有实现字段，不能覆盖 `projector_version`，不能让 malformed checkpoint 合法，不能让 server 或 storage 直接解释 checkpoint state。
-- event envelope versioning 最小边界已实现：`CanonicalEvent` 有 `event_envelope_version`，默认值是当前 slice representation `canonical_event_slice@v0`；legacy event JSON 缺少 version 时按当前 slice legacy 读取，empty / non-string / unknown version 会被拒绝。event prefix digest input 已包含 `event_envelope_version`，checkpoint integrity metadata 已记录 digest 绑定的 event envelope version；checkpoint event envelope version mismatch 只会让 checkpoint invalid 并 fallback full rebuild，不读取 checkpoint state、不改写 event log、不让 malformed event 变合法。该字段仍是当前 v0 slice implementation shape，不是最终 protocol。
-- event envelope schema registry 已有 design note：当前只有单一 event envelope version `canonical_event_slice@v0`，没有 registry 或 registry lookup；future registry 只能描述 envelope representation，不能解释 payload、不能重写 event log、不能让 checkpoint 成为第二事实源，server / checkpoint store 仍不能直接用 registry 生成 state。
-- minimal `ActionTypeRegistry` module 已实现并接入 `ActionCompiler`、`PolicyEngine` requirement lookup、`Executor` handler lookup 和 `InProcessServer` wiring：`ActionTypeEntry` 是最小 metadata model，`ActionTypeRegistry.default()` 当前只包含 `call_tool` + `write_artifact_tool`，`tool_names()` 返回 `["write_artifact_tool"]`，`get_tool("write_artifact_tool")` 返回 entry，unknown tool lookup 以 `KeyError` fail-closed，malformed registry entry fail-fast。registry entry 只包含 metadata，不携带 `execute` / `append_event` / `write_artifact` 等 executable side-effect callback。`ActionCompiler` 可显式传入 registry，不传时使用 default registry；unknown compact tool 在 compiler boundary 受控 `ValueError` fail closed，disabled registry entry 被拒绝；compiler 仍只生成 requested capabilities，不能生成 grants。`PolicyEngine` 可显式传入 registry，不传时使用 default registry；policy 从 registry 读取 required capabilities，但仍自己决定 grants，registry 不能自动 approve action，也不能扩大 `PolicyDecision.grants`。`Executor` 可显式传入 registry，不传时使用 default registry；executor 从 registry 做 handler lookup，但仍只能使用 `PolicyDecision.grants`，当前只执行 deterministic `write_artifact_tool` handler，不引入 dynamic plugin system。`InProcessServer` 可显式传入 registry；不传时使用 shared default registry，并把同一个 registry 传给 compiler / policy / executor。
-- Memory Write / Query Boundary 文档和 tests 已落地；当前实现了 not-enabled / rejection boundary、memory action-chain compiler/policy boundary、`MemoryRecord` v0 implementation shape、executor memory handler not-enabled / provenance boundary、memory record persistence not-enabled boundary、memory query authorization not-enabled boundary、`memory.record_created` / `memory.record_superseded` canonical event read-model boundary 和 memory read-model checkpoint boundary：`NotEnabledMemoryService.write_record(...)` 存在并拒绝无 authorized execution 的 direct durable write；`NotEnabledMemoryService.query(...)` 保持 legacy not-enabled boundary；`NotEnabledMemoryQueryService.query(...)` 会校验 explicit `grants` / `caller_context`，无 query grant 或无 expand grant / budget 时受控 fail closed，不读取 memory store / full content；query 默认不返回 full content / artifact content / raw content；`ActionCompiler` 支持 registry-backed `write_memory` action 并检查 required structured payload；`PolicyEngine` 可处理 registry-backed `write_memory` proposal；`MemoryRecord` 是 slice-only implementation shape，不是最终 protocol，当前校验 structured `content`、list `source_refs`、含 `run_id` / `execution_id` / `action_type` 的 `provenance`、`thread` / `run` / `session` scope，并拒绝 top-level `artifact_content`；`Executor` 可选注入 `memory_service`，authorized `write_memory` 会构造 record 并把 runtime execution provenance / grants 传给 memory service，但当前 not-enabled service 仍拒绝，失败只写 `action.started -> action.failed`，不创建 artifact、不写 `action.completed` / `memory.record_created` / `memory.record_superseded`；`RunProjector` 只从 valid canonical memory events 投影 `RunState.memory_records` summary / refs / provenance / supersession metadata，不读取 memory store，不投影 full content，并且 checkpoint-assisted rebuild 可恢复该 read model；`memory.record_superseded` 只表达 append-only supersession，不覆盖旧 record；`NotEnabledMemoryStore.save_record(...)` 也只做 not-enabled persistence boundary rejection，不写文件、不 append event、不留下 partial record；未传 `memory_service` 时 `write_memory` 仍是 unsupported handler；server 仍没有 public direct memory write、update 或 `query_memory(...)` API。
-
-以下能力仍然 deferred：real LLM、memory storage、successful durable memory write、successful memory update / supersession write、memory query engine、successful memory record persistence implementation、memory record index、memory server API、ranking / exposure、controlled expand implementation、session memory promotion、vector index / embeddings、external ingestion、public checkpoint API / HTTP endpoint、automatic checkpoint scheduling、CheckpointService、signature / MAC / key management、`save_checkpoint(...)` semantic change / automatic history persistence、checkpoint history index、checkpoint GC、checkpoint retention policy、checkpoint inspection API、checkpoint migration / version negotiation implementation、`checkpoint_schema_version` field、`state_schema_version` field、`integrity_schema_version` field、plugin system、dynamic action registration、third-party tools、remote tool discovery、public extension API、real LLM tool calling integration、schema registry、payload registry、migrator registry、checkpoint schema registry、state schema registry、integrity schema registry、event envelope schema registry、event envelope registry lookup、event schema registry、payload schema registry、event migration、audit event for checkpoint migration、content-addressed event ids、event log compaction、SSE、auth、multi-agent concurrency、real HTTP API。
-
-Checkpoint v0.1 当前已足够支撑 kernel slice；除非出现明确 storage growth / performance / operational need，不应继续默认实现 checkpoint history index、retention 或 GC。Action registry server wiring 已完成；memory not-enabled boundary、action-chain compiler/policy boundary、`MemoryRecord` v0 shape、executor memory handler not-enabled / provenance boundary、memory record persistence not-enabled boundary、memory query authorization not-enabled boundary、`memory.record_created` / `memory.record_superseded` canonical event read-model boundary 和 memory read-model checkpoint boundary 已 harden。memory v0.1 scope 已 frozen for demo planning：当前可以展示 boundary / read-model / checkpoint contract，但 successful durable memory write / update / persistence / storage / query implementation 仍 deferred。v0.1 demo entrypoint 已实现，目标是展示 kernel 闭环，不展示完整产品。不要继续默认深挖 full memory storage/query，也不要直接进入 ingestion implementation。
-
-## Demo
-
-本地 deterministic demo entrypoint 可展示 session / run / action chain、policy grants、artifact provenance、canonical events、projector `RunState`、event replay、checkpoint-assisted rebuild，以及 memory boundary status `boundary_only`。
-
-v0.1 demo 当前已 accepted as developer demo，验收证据见 [docs/v0.1-demo-acceptance.md](docs/v0.1-demo-acceptance.md)：`568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过。`v0.1-demo` lightweight tag 已创建并指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`；GitHub Release draft 已准备在 [docs/release-draft-v0.1-demo.md](docs/release-draft-v0.1-demo.md)，但尚未发布 GitHub Release。它仍不是产品级 runtime。
-
-v0.2 roadmap 已开始，见 [docs/v0.2-roadmap.md](docs/v0.2-roadmap.md)。Track D: Demo / Docs Polish 当前已 effectively complete / closed for now：README quick start、demo walkthrough、demo architecture、v0.1 demo acceptance、limitations / non-goals 和 CI smoke status 都已覆盖。后续仍可继续 polish，但不阻塞 v0.2 implementation；下一阶段默认进入 Track A: HTTP API Minimal Surface。External Ingestion / `ImportedSnapshot` 和 real memory storage 排在后面。
-
-v0.1 demo walkthrough 已补充，见 [docs/demo-walkthrough-v0.1.md](docs/demo-walkthrough-v0.1.md)。它解释 demo 运行的 deterministic kernel loop、plain text / JSON 输出字段、证明了什么、不证明什么，以及 `pytest` / editable install / CI smoke 的常见排错路径。
-
-v0.1 demo architecture diagram 已补充，见 [docs/demo-architecture-v0.1.md](docs/demo-architecture-v0.1.md)。它用 Mermaid flow 解释 demo runtime path：input -> server -> deterministic agent runtime -> compiler / policy / executor -> artifact / canonical events -> projector / `RunState` -> checkpoint / replay；这不是完整 Isotope 架构图。
-
-```bash
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --json
-```
-
-标准 editable install 路径也已通过 smoke coverage：
+## Quick Start
 
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -U pip
 .venv/bin/python -m pip install -e ".[test]"
+.venv/bin/python -m pytest tests/isotope_kernel -q
 .venv/bin/python -m isotope_kernel.demo
 .venv/bin/python -m isotope_kernel.demo --json
 ```
 
-packaging smoke 覆盖 `pyproject.toml` metadata、src-layout package discovery、installed import、installed demo plain / JSON，以及 repo 根目录无 `runs/` / `artifacts/` / `checkpoints/` 副作用。`pyproject.toml` 已提供 `test` optional dependency，测试 / CI 安装路径使用 `python -m pip install -e ".[test]"`。demo 使用临时目录，不污染 repo 根目录。它不展示 real LLM、HTTP server、UI、real durable memory storage/query、external ingestion 或 plugin system。
+## What Works
+
+- Deterministic v0.1 demo entrypoint: `python -m isotope_kernel.demo`.
+- Session / run creation through the in-process kernel path.
+- `ActionCompiler -> PolicyEngine -> Executor` action chain with `PolicyDecision.grants` enforcement.
+- Artifact creation with execution provenance and structured refs.
+- Canonical event log, `RunProjector` read model, event replay, and checkpoint-assisted rebuild.
+- Memory boundary/read-model/checkpoint contracts with `memory_status: boundary_only`.
+- Editable install smoke and GitHub Actions smoke CI.
+
+## What Does Not Work Yet
+
+- Real LLM integration.
+- HTTP API / hosted server.
+- UI.
+- Real durable memory storage or query engine.
+- External ingestion / `ImportedSnapshot`.
+- Plugin system or dynamic tool loading.
+- Production release packaging.
+
+## Docs
+
+- Current status: [docs/current-status.md](docs/current-status.md)
+- Demo walkthrough: [docs/demo-walkthrough-v0.1.md](docs/demo-walkthrough-v0.1.md)
+- Demo architecture: [docs/demo-architecture-v0.1.md](docs/demo-architecture-v0.1.md)
+- v0.1 demo acceptance: [docs/v0.1-demo-acceptance.md](docs/v0.1-demo-acceptance.md)
+- v0.2 roadmap: [docs/v0.2-roadmap.md](docs/v0.2-roadmap.md)
 
 ## CI
 
-`.github/workflows/ci.yml` 是最小 GitHub Actions smoke workflow。它在 `push` / `pull_request` 时运行，使用 `ubuntu-latest` 和 Python `3.12`，执行 editable install with test extra 后跑：
-
-```bash
-python -m pip install -U pip
-python -m pip install -e ".[test]"
-```
-
-随后运行：
-
-```bash
-python -m pytest tests/isotope_kernel -q
-python -m isotope_kernel.demo
-python -m isotope_kernel.demo --json
-```
-
-最新远端 GitHub Actions run 已由网页确认通过。该 CI 只覆盖 full tests + demo plain / JSON smoke；不包含 release、coverage、lint、matrix、secrets 或 real integration services。
-
-## Verify
-
-```bash
-python -m venv .venv
-.venv/bin/python -m pip install -U pip
-.venv/bin/python -m pip install -e ".[test]"
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
-```
+GitHub Actions runs a minimal smoke workflow on push / pull request: editable install with `.[test]`, full `tests/isotope_kernel`, and demo plain / JSON smoke. It is not a release, coverage, lint matrix, or real integration pipeline.

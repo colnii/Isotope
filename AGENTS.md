@@ -2,443 +2,54 @@
 
 ## Repo Boundary
 
-- `isotope` 是独立的 kernel-first agent runtime 项目。
-- 当前代码来自 `x-agent` staging snapshot，但 `x-agent` 不是 canonical repo。
-- 不得 import `x_agent.*`，也不要复制 `src/x_agent/`、assessment pipeline、sample grading assets、runs 或 benchmark artifacts。
+- `/home/lumber/Github/isotope` is the dedicated Isotope repo.
+- `x-agent` is not the canonical repo for Isotope.
+- Do not import `x_agent.*`.
+- Do not modify `/home/lumber/Github/x-agent` unless the user explicitly asks.
+- Keep source under `src/isotope_kernel/` and tests under `tests/isotope_kernel/`.
 
-## Development Rules
+## Workflow
 
-- 每次开始新任务前，先读 `docs/current-status.md`。
-- 继续使用 TDD：先写 red tests，确认失败，再写最小实现。
-- 使用 `src layout`：源码在 `src/isotope_kernel/`，测试在 `tests/isotope_kernel/`。
-- 不要把 v0 implementation shape 误写成永久协议。
-- 保持 hard contracts 优先：action chain、policy grants、append-only canonical event log、projector-only replay、RunState rebuild、artifact provenance、ResourceRef。
-- 任何 deferred 能力必须先写 design/doc patch 和 red tests，不能直接实现。
-- 不得直接扩展 automatic checkpoint scheduling / public checkpoint API；checkpoint 相关实现必须遵守 `docs/checkpoint-ownership-v0.1.md`，并先写 red tests。
-- checkpoint hash 已有最小 validation；后续扩展 signature / MAC / key management 前，必须先更新设计文档并写 red tests。
-- event prefix digest 已有最小 validation；后续扩展必须遵守 `docs/event-prefix-digest-v0.1.md`，并先写 red tests。digest 不能替代 replay、lifecycle validation、state schema validation 或 prefix consistency validation。
-- event envelope versioning 相关实现必须遵守 `docs/event-envelope-versioning-v0.1.md`，并先写 red tests；最小 event envelope version boundary 已实现，但不得直接扩展 event envelope schema registry、event schema registry、payload schema registry、event migration 或 content-addressed event ids。
-- event envelope schema registry 相关实现必须遵守 `docs/event-envelope-schema-registry-v0.1.md`，并先写 red tests；当前只落设计边界，不得直接实现 registry lookup、payload schema registry、event migration、migrator registry 或 public inspection API。
-- checkpoint retention / compaction 相关实现必须遵守 `docs/checkpoint-retention-compaction-v0.1.md`，并先写 red tests；retention / compaction 不能删除、重写、压缩或裁剪 canonical event log。latest-only replacement boundary 和 explicit history candidate save method 已实现，但 checkpoint history index、`save_checkpoint(...)` automatic history persistence、GC 和 scheduling 仍 deferred。
-- checkpoint history / old-checkpoint fallback 相关实现必须遵守 `docs/checkpoint-history-fallback-v0.1.md`，并先写 red tests；最小 projector-owned candidate fallback 已实现，但 `save_checkpoint(...)` 仍是 latest-only，不得直接实现 checkpoint history index、GC、retention policy、CheckpointService 或让 server 直接解释 old checkpoint。
-- checkpoint history index / retention policy 相关实现必须遵守 `docs/checkpoint-history-index-retention-v0.1.md`，并先写 red tests；history index 不是 source of truth，不能证明 checkpoint 有效，retention / GC 只能作用于 checkpoint blobs 或 future index metadata。
-- checkpoint history save 相关实现必须遵守 `docs/checkpoint-history-save-boundary-v0.1.md`，并先写 red tests；`FileCheckpointStore.save_checkpoint_history(...)` 已实现为 explicit history candidate save method，仍不得静默改变 `save_checkpoint(...)` latest-only 语义，也不得让 server 直接解释 history checkpoint state。
-- checkpoint history save integration 相关实现必须遵守 `docs/checkpoint-history-save-integration-v0.1.md`，并先写 red tests；`RunProjector.save_checkpoint_history(...)` 和 `InProcessServer.save_checkpoint_history_for_run(...)` 已实现，但 `RunProjector.save_checkpoint(...)` 和 `InProcessServer.save_checkpoint_for_run(...)` 默认仍 latest-only，不得让 server 直接写外部 checkpoint state。
-- checkpoint v0.1 当前已按 `docs/checkpoint-v0.1-scope-freeze.md` frozen for current kernel slice；不要继续默认实现 checkpoint history index、retention policy、checkpoint GC、automatic scheduling、public checkpoint API 或 CheckpointService，除非用户明确 reopened checkpoint scope 并先落 design/doc patch + red tests。
-- checkpoint migration / version negotiation 相关实现必须遵守 `docs/checkpoint-migration-versioning-v0.1.md`，并先写 red tests；checkpoint projector version boundary hardening 已实现，但不得直接实现 migrator、schema registry、migrator registry 或 event log migration。
-- checkpoint schema version fields 相关实现必须遵守 `docs/checkpoint-schema-version-fields-v0.1.md`，并先写 red tests；当前只落设计边界，不得直接实现 `checkpoint_schema_version`、`state_schema_version`、`integrity_schema_version`、schema registry 或 migrator。
-- server-facing checkpoint 相关实现必须遵守 `docs/server-checkpoint-boundary-v0.1.md`；Server 不能直接解释 checkpoint state，必须通过 projector-owned boundary。
-- checkpoint save trigger 相关实现必须遵守 `docs/checkpoint-save-trigger-v0.1.md`；当前只允许 internal-only `save_checkpoint_for_run(...)`，不要复用 public-looking `create_checkpoint(...)`。
-- `ActionTypeRegistry` 相关实现必须先读 `docs/action-type-registry-v0.1.md` 并写 red tests；minimal registry module 已实现并已接入 `ActionCompiler`、`PolicyEngine` requirement lookup、`Executor` handler lookup 和 `InProcessServer` wiring，但 registry 不能绕过 action chain、不能替代 policy / executor、不能扩大 `PolicyDecision.grants`。后续 action registry hardening 必须分边界写 red tests。
-- deferred boundary review 已落在 `docs/deferred-boundary-review-v0.1.md`；Memory Write / Query Boundary docs 已落文档且 memory v0.1 scope 已 frozen；demo entrypoint 已实现。不要直接实现 memory write/storage/query、external ingestion implementation、real LLM、real HTTP 或 plugin system。
-- memory write / query 相关实现必须先读 `docs/memory-write-query-boundary-v0.1.md` 并写 red tests；当前已完成 not-enabled / rejection boundary hardening、memory action-chain compiler/policy boundary、`MemoryRecord` v0 implementation shape、executor memory handler not-enabled / provenance boundary、memory record persistence not-enabled boundary、memory query authorization not-enabled boundary、`memory.record_created` / `memory.record_superseded` canonical event read-model boundary 和 memory read-model checkpoint boundary，`NotEnabledMemoryService.write_record(...)` 会拒绝无 authorized execution 的 direct durable write，legacy `query(...)` 仍是 not-enabled。`NotEnabledMemoryQueryService` 已存在，但只锁 query-time auth boundary：会校验 explicit `grants` / `caller_context`，无 query grant 或无 controlled expand grant / budget 时 fail closed，不读取 memory store 或 full content。`ActionCompiler` / `PolicyEngine` 可处理 registry-backed `write_memory` 边界。`MemoryRecord` 当前只是 slice-only shape，不是最终 protocol。`Executor` 可选注入 `memory_service`，authorized `write_memory` 会构造 record 并把 runtime execution provenance / grants 传给 memory service；当前 not-enabled service 仍拒绝，失败只写 `action.started -> action.failed`，不创建 artifact、不写 `action.completed` / `memory.record_created` / `memory.record_superseded`。`RunProjector` 只从 valid canonical memory events 投影 `RunState.memory_records` 的 summary / refs / provenance / supersession metadata，不读取 memory store、不投影 full content；memory creation / supersession events 必须绑定 completed `write_memory` execution，且 supersession 只能 append-only 标记旧 record，不原地覆盖。`RunProjector.create_checkpoint(...)` 会把 `memory_records` read model 写入 checkpoint state；`RunProjector.rebuild_with_checkpoint(...)` 可从 checkpoint + suffix events 恢复 `memory_records`，并校验 memory record shape、supersession metadata 和 full-content 禁止字段；prefix consistency 覆盖 memory read model。`NotEnabledMemoryStore` 已存在，但 `save_record(...)` 只做受控拒绝，不写文件、不 append event、不留下 partial record。memory storage、successful durable memory write/update、memory query engine、successful memory record persistence implementation、record index、ranking、controlled expand implementation、vector index 和 public memory API 仍 deferred，不得直接实现。
-- memory record persistence 相关实现必须先读 `docs/memory-record-persistence-boundary-v0.1.md` 并写 red tests；not-enabled persistence boundary 已实现为 `NotEnabledMemoryStore`，支持 `save_record(...)` / `list_records(...)` / `record_path(...)`，但无 `ActionExecution`、无 `write_memory` grant、malformed record、valid record 都会被受控拒绝。future successful persistence 应由 `MemoryService` / future `MemoryStore` 负责，server / agent runtime 不能直接写 durable memory，memory store 不是 source of truth，projector 不能读取 memory store 推进 `RunState`；successful memory update 也必须通过 append-only canonical supersession event 表达，不能原地覆盖旧 record。不得直接实现 file-backed memory storage、successful durable write/update、record index、vector search、ranking、compaction / GC 或 public memory API。
-- memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for v0.1 demo planning；当前只展示 boundary / read-model / checkpoint contract，不展示 durable memory product capability。除非用户明确 reopened memory scope 并先落 design/doc patch + red tests，不要继续实现 real memory storage、successful write/update、query engine、controlled expand、ranking、index、compaction 或 public memory API。
-- demo entrypoint 已实现，相关变更必须先读 `docs/demo-entrypoint-v0.1.md` 并写 red tests；v0.1 demo acceptance 已收口在 `docs/v0.1-demo-acceptance.md`，当前状态是 `accepted as developer demo`，不是产品级 runtime。`v0.1-demo` lightweight tag 已创建并指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`；GitHub Release draft 已准备在 `docs/release-draft-v0.1-demo.md`，但未发布 GitHub Release。`python -m isotope_kernel.demo` 展示本地 deterministic kernel 闭环，不是 CLI framework、HTTP server、real LLM、external ingestion、plugin system 或 memory product demo。demo 必须使用临时目录，不在 repo 根目录写 `runs/` / `artifacts/` / `checkpoints/`；输出不得包含 full artifact content 或 memory full content。packaging smoke 已覆盖 `pyproject.toml` metadata、src-layout package discovery、editable install 后 import `isotope_kernel`、installed demo plain / JSON，以及 repo-root side-effect 防回归。
-- GitHub Actions CI smoke 已实现于 `.github/workflows/ci.yml`，并由 `tests/isotope_kernel/test_ci_workflow.py` 锁定。CI 在 `push` / `pull_request` 上用 Python `3.12` 运行 full kernel tests 和 demo plain / JSON smoke；install step 必须使用已有 test extra：`python -m pip install -e ".[test]"`。最新远端 GitHub Actions run 已由网页确认通过。这是最小 smoke，不是 release、coverage、lint、matrix 或 real integration service pipeline。
-- v0.2 roadmap 已落在 `docs/v0.2-roadmap.md`。Track D: Demo / Docs Polish 当前已 effectively complete / closed for now：README quick start、`docs/demo-walkthrough-v0.1.md`、`docs/demo-architecture-v0.1.md`、`docs/v0.1-demo-acceptance.md`、limitations / non-goals 和 CI smoke status 已覆盖。后续仍可继续 polish，但不阻塞 v0.2 implementation；默认下一步进入 Track A: HTTP API Minimal Surface design note / red tests。不要直接跳到 HTTP implementation、external ingestion implementation 或 real memory storage implementation。
+- Read [docs/current-status.md](docs/current-status.md) before starting a new Isotope task.
+- Follow TDD for implementation work: write red tests first, keep them uncommitted, then implement the smallest green slice and commit after verification.
+- For docs-only tasks, do not modify `src/`, `tests/`, `.github/`, or `pyproject.toml`.
+- After behavior changes, sync `README.md`, `AGENTS.md`, and affected docs/status files in the same task.
+- Keep detailed status, deferred capability lists, and design boundaries in `docs/`; keep README and AGENTS short.
+- Verify `/home/lumber/Github/x-agent` stays untouched on every scoped Isotope task.
+- Do not change tags or publish GitHub Releases unless explicitly requested.
 
-## Current Slice
+## Current Phase
 
-当前 slice 只覆盖：
+- `v0.1-demo` developer demo is accepted; baseline is `568 passed`.
+- Track D: Demo / Docs Polish is effectively complete / closed for now.
+- Default next surface: Track A, HTTP API Minimal Surface design note / red tests.
+- Optional docs polish can continue later, but it should not block v0.2 implementation.
 
-- file event log
-- action chain
-- `PolicyDecision.grants`
-- artifact provenance
-- structured `ResourceRef`
-- projector replay
-- `RunState` rebuild
-- in-process server facade
-- event envelope validation
-- `ResourceRef` validation
-- event ordering preservation
-- duplicate event protection
-- malformed event log fail-fast
-- approval requested event boundary
-- pending approval projection
-- action lifecycle ordering validation
-- illegal lifecycle transition fail-fast
-- file-backed artifact persistence
-- fresh `ArtifactStore` metadata/content read
-- malformed artifact file fail-fast
-- retrieval authorization validation
-- summary-only retrieval boundary
-- retrieval content-read prevention
-- workspace grants validation
-- shared_ro-only workspace binding
-- executor uses decision workspace grants only
-- policy proposal validation
-- policy decision outcome validation
-- denied decision no-effective-grants validation
-- required grants shape validation
-- action compiler input validation
-- runtime identity validation from runtime context
-- valid minimal intent to canonical `ActionProposal`
-- server facade input validation
-- malformed client input controlled `ValueError`
-- invalid server request no action lifecycle event side effects
-- invalid server request no artifact side effects
-- fresh `RunState` rebuild remains event-log based
-- success path executor event ownership
-- `Executor.execute(...)` appends `action.started` before artifact side effect
-- `Executor.execute(...)` appends `artifact.created` and `action.completed`
-- server facade does not duplicate executor-owned success events
-- server facade remains responsible for run-level completion such as `run.completed`
-- failure path executor event ownership
-- `Executor.execute(...)` appends `action.failed` with the same execution id
-- failed execution does not append `artifact.created` / `action.completed` / `run.completed`
-- server facade does not duplicate executor-owned failure events
-- projector / run completion invariant hardening
-- `run.completed` requires a completed execution
-- `run.completed` cannot override running / failed / pending approval state
-- `run.completed` closes later action/artifact lifecycle events
-- projector remains canonical-event-only for run completion state
-- checkpoint storage boundary
-- `FileCheckpointStore` run-scoped opaque blob save/load
-- checkpoint required fields: `run_id`, `projector_version`, `basis_event_id`, `state`, `created_at`
-- checkpoint `run_id` must match target run
-- checkpoint rejects external raw input / provider response / imported snapshot
-- missing checkpoint returns `None`
-- malformed checkpoint file fail-fast
-- checkpoint store does not modify event log
-- projector event payload validation hardening
-- `PolicyDecision.modified` enters execution lifecycle like `approved`
-- malformed projector event payload fail-fast with controlled `ValueError`
-- projector validates action decided/started/completed/failed payloads
-- projector validates artifact created payload and rejects projected content
-- projector validates approval requested payload
-- projector remains canonical-event-only and does not read artifact store / executor state / server memory / checkpoint
-- minimal checkpoint-assisted projector rebuild
-- `RunProjector.rebuild_with_checkpoint(...)`
-- no checkpoint falls back to full event log rebuild
-- incompatible checkpoint version falls back to full event log rebuild
-- compatible checkpoint replays canonical events after `basis_event_id`
-- missing checkpoint basis event fail-fast
-- checkpoint run_id mismatch fail-fast
-- checkpoint cannot hide malformed / lifecycle-invalid event log
-- checkpoint-assisted rebuild still runs canonical event validation / lifecycle validation
-- checkpoint-assisted rebuild has no public checkpoint API integration
-- no CheckpointService
-- projector-owned checkpoint creation
-- `RunProjector.create_checkpoint(...)`
-- checkpoint creation uses canonical events through `project(...)` and cannot bypass validation
-- checkpoint contains `run_id`, `projector_version`, `basis_event_id`, `state`, `created_at`
-- checkpoint `basis_event_id` equals the last replayed canonical event id
-- checkpoint state contains `run_id`, `status`, `current_agent`, `actions`, `artifacts`, `memory_records`, `last_event_id`
-- checkpoint state excludes artifact content and memory full content
-- checkpoint excludes external raw input / provider response / imported snapshot
-- malformed or lifecycle-invalid event stream cannot produce checkpoint
-- empty events cannot produce checkpoint
-- checkpoint creation returns a derived blob and does not write checkpoint store
-- created checkpoint can be saved by `FileCheckpointStore` and used by `rebuild_with_checkpoint(...)`
-- checkpoint state schema validation hardening
-- `RunProjector.rebuild_with_checkpoint(...)` validates checkpoint state schema only for compatible projector version
-- incompatible projector version still falls back to full rebuild even with malformed checkpoint state
-- checkpoint `state` must be a dict
-- new checkpoint `state` includes `memory_records`; legacy checkpoint without `memory_records` remains compatible
-- checkpoint `state.run_id` must match rebuild target run_id
-- checkpoint `state.last_event_id` must equal checkpoint `basis_event_id`
-- checkpoint `state.status` must be a known run status
-- checkpoint `state.actions` must be a dict
-- checkpoint `state.artifacts` must be a list
-- checkpoint `state.memory_records` must be a list when present
-- checkpoint artifact entry cannot contain `content`
-- checkpoint artifact entry must contain `ref`, `artifact_type`, `summary`, `provenance`
-- checkpoint memory record entry cannot contain `content`, `full_content`, `artifact_content`, or `raw_content`
-- checkpoint memory record entry must contain summary / refs / provenance-level metadata and valid supersession metadata when superseded
-- malformed checkpoint state fail-fast with controlled `ValueError`
-- `FileCheckpointStore` remains opaque blob storage and does not interpret projected state
-- projector-owned checkpoint save boundary
-- `RunProjector.save_checkpoint(...)`
-- save boundary reads canonical events from `event_store.list_events(run_id)`
-- save boundary generates checkpoint through projector-owned `create_checkpoint(...)`
-- save boundary calls `checkpoint_store.save_checkpoint(run_id, checkpoint)`
-- saved checkpoint can be read by `load_latest_checkpoint(...)`
-- saved checkpoint can be used by `rebuild_with_checkpoint(...)` and remains equivalent to full rebuild
-- empty event log fail-fast without writing checkpoint
-- malformed or lifecycle-invalid event stream fail-fast without writing checkpoint
-- save checkpoint does not modify event log
-- save checkpoint does not read artifact store / executor state / server memory
-- checkpoint `basis_event_id` is the last event id in the event log
-- saved checkpoint still excludes artifact content / external raw input
-- checkpoint prefix consistency hardening
-- `RunProjector.rebuild_with_checkpoint(...)` compares checkpoint state with event-log prefix projection at `basis_event_id`
-- checkpoint is used for replay only when checkpoint state matches prefix projection
-- checkpoint state `status` / `current_agent` / `actions` / `artifacts` / `memory_records` mismatch falls back to full rebuild
-- checkpoint state with extra action or missing artifact falls back to full rebuild
-- fallback full rebuild still runs full event validation
-- lifecycle-invalid event log cannot be hidden by checkpoint mismatch fallback
-- `FileCheckpointStore` remains opaque and does not perform consistency checks
-- checkpoint integrity/hash validation
-- `RunProjector.create_checkpoint(...)` generates `integrity`
-- checkpoint integrity uses `algorithm: sha256` and `checkpoint_hash`
-- checkpoint hash input uses deterministic canonical JSON and excludes `integrity` / `checkpoint_hash`
-- hash mismatch invalidates checkpoint and falls back to full rebuild
-- legacy checkpoint without hash still uses existing validation path
-- hash match still runs checkpoint state schema validation and prefix consistency validation
-- malformed checkpoint file remains fail-fast
-- hash mismatch cannot hide lifecycle-invalid event log
-- event prefix digest boundary design note
-- event prefix digest minimal validation
-- `RunProjector.create_checkpoint(...)` writes event prefix digest metadata into checkpoint `integrity`
-- event prefix digest uses deterministic JSON / UTF-8 over canonical event representation through `basis_event_id`, including `event_envelope_version`
-- event append order and prefix payload changes affect event prefix digest
-- event prefix digest mismatch invalidates checkpoint and falls back to full rebuild
-- event prefix digest mismatch cannot hide lifecycle-invalid event log
-- event prefix digest match still runs checkpoint state schema validation and prefix consistency validation
-- legacy checkpoint without event prefix digest still uses compatibility path
-- suffix events still replay after digest-matched checkpoint
-- `FileCheckpointStore` remains opaque and does not interpret digest
-- `InProcessServer` has no digest-specific behavior
-- server-facing checkpoint boundary design note
-- `InProcessServer` read path checkpoint-assisted rebuild
-- `InProcessServer` constructor supports optional `checkpoint_store`
-- `get_run_state` uses full event log rebuild without `checkpoint_store`
-- `get_run_state` calls projector-owned `RunProjector.rebuild_with_checkpoint(...)` with `checkpoint_store`
-- server does not directly read or interpret checkpoint `state`
-- server does not create checkpoints or write checkpoint store from `get_run_state`
-- `create_checkpoint(...)` remains `not_enabled`
-- checkpoint missing / invalid / mismatch / incompatible falls back to full rebuild
-- lifecycle-invalid event log still fail-fast and cannot be hidden by checkpoint fallback
-- checkpoint save trigger boundary design note
-- internal-only checkpoint save trigger
-- `InProcessServer.save_checkpoint_for_run(run_id)`
-- `save_checkpoint_for_run(...)` returns `not_enabled` without configured `checkpoint_store`
-- `save_checkpoint_for_run(...)` only calls projector-owned `RunProjector.save_checkpoint(...)` when `checkpoint_store` is configured
-- saved checkpoint trigger returns minimal metadata and does not return full checkpoint state
-- saved checkpoint trigger does not modify event log
-- saved checkpoint trigger does not read artifact content / executor state / server memory
-- empty / malformed / lifecycle-invalid event stream fail-fast without writing checkpoint
-- saved checkpoint can be loaded by `FileCheckpointStore.load_latest_checkpoint(...)`
-- saved checkpoint can power `get_run_state(...)` checkpoint-assisted rebuild
-- `create_checkpoint(...)` remains `not_enabled`
-- checkpoint retention / compaction boundary design note
-- current checkpoint storage remains latest-only
-- latest-only checkpoint storage boundary hardening
-- checkpoint path remains `runs/{run_id}/checkpoints/latest.json`
-- same-run checkpoint save replaces `latest.json` without creating history files
-- invalid replacement does not overwrite existing valid latest checkpoint
-- latest-only replacement does not create / delete / rewrite `events.jsonl`
-- `checkpoint_path` / `save_checkpoint` / `load_latest_checkpoint` validate run_id path segment
-- retention / compaction only applies to checkpoint blobs, never canonical event log
-- checkpoint deletion must still allow full rebuild from canonical event log
-- checkpoint history / old-checkpoint fallback minimal projector-owned path
-- `FileCheckpointStore.load_checkpoint_candidates(run_id)`
-- checkpoint candidates load newest-to-oldest by checkpoint `created_at`
-- candidate loading remains storage-opaque and does not interpret projector version / integrity / digest / state semantics
-- `RunProjector.rebuild_with_checkpoint(...)` can use candidate chain
-- invalid latest checkpoint can fall back to an older fully valid candidate
-- every candidate independently passes projector-owned validation chain before use
-- invalid candidate is not partially read as state
-- all invalid candidates fall back to full event-log rebuild
-- lifecycle-invalid event log cannot be hidden by older checkpoint fallback
-- current checkpoint storage remains latest-only without checkpoint history index
-- `save_checkpoint(...)` remains latest-only replacement and does not create history files
-- server cannot directly select or interpret old checkpoints
-- checkpoint history index / retention policy boundary design note
-- history index is not source of truth and cannot prove checkpoint validity
-- retention / GC can only apply to checkpoint blobs or future index metadata
-- corrupt / missing history index cannot let the system skip full event-log replay
-- current latest-only save behavior remains unchanged
-- checkpoint history save boundary design note
-- `FileCheckpointStore.save_checkpoint_history(run_id, checkpoint)` explicit history candidate save method
-- history save does not overwrite `latest.json`
-- history save does not modify event log
-- history candidates can be loaded newest-to-oldest by `load_checkpoint_candidates(run_id)`
-- `FileCheckpointStore` remains opaque and does not interpret checkpoint state / integrity / projector version
-- `save_checkpoint(...)` remains latest-only and does not automatically persist history
-- checkpoint history save integration boundary design note
-- `RunProjector.save_checkpoint_history(...)`
-- projector-owned history save reads canonical events, creates checkpoint, and calls `checkpoint_store.save_checkpoint_history(...)`
-- projector-owned history save does not call latest save, write `latest.json`, or modify event log
-- `InProcessServer.save_checkpoint_history_for_run(run_id)`
-- server history save trigger returns `not_enabled` with capability `checkpoint_history` when no `checkpoint_store` is configured
-- server history save trigger delegates only to projector-owned `RunProjector.save_checkpoint_history(...)`
-- server history save trigger returns minimal metadata and does not return checkpoint state
-- server history save trigger does not write `latest.json` or modify event log
-- checkpoint v0.1 scope freeze
-- checkpoint v0.1 is functionally sufficient for the current kernel slice
-- checkpoint history index / retention / GC remain deferred and are not the default next implementation target
-- minimal `ActionTypeRegistry` module
-- `ActionTypeEntry` metadata model
-- default registry contains only current slice `call_tool` + `write_artifact_tool`
-- `registry.tool_names()` / `registry.get_tool(...)` minimal lookup boundary
-- unknown tool lookup fail-closed with `KeyError`
-- malformed registry entry fail-fast
-- registry entry contains metadata only and no executable side-effect callback
-- registry is wired into `ActionCompiler`
-- unknown compact tool fails closed at compiler boundary
-- disabled registry entry is rejected by compiler
-- compiler still produces requested capabilities only, not grants
-- runtime identity still comes only from runtime context
-- registry is wired into `PolicyEngine` requirement lookup
-- policy still decides grants itself
-- registry cannot automatically approve actions or expand `PolicyDecision.grants`
-- registry is wired into `Executor` handler lookup
-- executor still uses only `PolicyDecision.grants`
-- current executor handler surface remains deterministic `write_artifact_tool` only
-- registry entry does not provide executable handler callback
-- registry-known tools without a current handler fail closed as unsupported handler
-- registry cannot replace compiler / policy / executor boundaries
-- registry is wired through `InProcessServer`
-- `InProcessServer` can accept an explicit registry and passes one shared registry to compiler / policy / executor
-- without an explicit registry, `InProcessServer` uses one shared default registry
-- custom registry can flow through server compiler / policy / executor, but server does not dynamically execute unknown tools
-- memory not-enabled boundary hardening
-- `NotEnabledMemoryService.write_record(...)` rejects direct durable write without authorized execution
-- `NotEnabledMemoryService.query(...)` accepts caller_context / grants shape but still returns controlled not-enabled boundary
-- memory query default result does not return full content / artifact content
-- memory action-chain compiler / policy boundary
-- `ActionCompiler` can compile registry-backed `write_memory` intent with required structured payload
-- `PolicyEngine` can evaluate registry-backed `write_memory` proposal without treating non-`call_tool` as unsupported by default
-- executor memory handler not-enabled / provenance boundary
-- `Executor` supports optional `memory_service` injection
-- authorized `write_memory` enters memory handler boundary only when `memory_service` is configured
-- executor constructs a `MemoryRecord` / record and passes runtime execution provenance / grants to memory service
-- memory write failure from `NotEnabledMemoryService.write_record(...)` writes `action.started -> action.failed`
-- memory write failure does not create artifact, append `action.completed`, or append `memory.record_created`
-- missing `write_memory` grant does not call memory service
-- without `memory_service`, `write_memory` remains unsupported handler
-- `MemoryRecord` v0 implementation shape
-- `MemoryRecord.content` must be structured dict, not raw transcript string
-- `MemoryRecord.source_refs` must be list
-- `MemoryRecord.provenance` must include `run_id`, `execution_id`, and `action_type`
-- `MemoryRecord.scope` is limited to `thread`, `run`, or `session`
-- `MemoryRecord` rejects top-level `artifact_content`
-- memory record persistence not-enabled boundary
-- `NotEnabledMemoryStore.save_record(...)` rejects missing `ActionExecution`
-- `NotEnabledMemoryStore.save_record(...)` rejects missing `write_memory` grant
-- `NotEnabledMemoryStore.save_record(...)` rejects malformed record shape
-- valid record is still rejected as not-enabled
-- rejected persistence leaves no partial record and emits no success event
-- memory query authorization not-enabled boundary
-- `NotEnabledMemoryQueryService.query(...)` validates explicit grants and caller context
-- missing / malformed query auth shape is controlled rejected
-- missing memory query grant does not read memory store
-- controlled expand without expand grant / budget does not read full content
-- query result shape excludes full content / artifact content / raw content
-- `NotEnabledMemoryQueryService` is not a query engine
-- projector does not read memory store to advance `RunState`
-- projector does not read memory query service to advance `RunState`
-- `memory.record_created` canonical event read-model boundary
-- `RunState.memory_records` exists as a minimal read model
-- `RunProjector` validates `memory.record_created` payload
-- `RunProjector` projects only memory summary / refs / provenance metadata, not full content
-- `memory.record_created` rejects `content`, `full_content`, `artifact_content`, and `raw_content`
-- `memory.record_created` must bind to a completed `write_memory` execution
-- failed / denied / pending / non-`write_memory` execution cannot create a projected memory record
-- `memory.record_superseded` canonical event read-model boundary
-- `RunProjector` validates `memory.record_superseded` payload
-- `memory.record_superseded` expresses append-only supersession; old memory record summary / refs / provenance are not overwritten
-- `memory.record_superseded` marks the old record as superseded and points to an existing new record
-- `memory.record_superseded` rejects missing old / new record, self-supersession, and full content fields
-- `memory.record_superseded` must bind to a completed `write_memory` execution
-- failed / denied / pending / non-`write_memory` execution cannot supersede a projected memory record
-- memory read-model checkpoint boundary
-- `RunProjector.create_checkpoint(...)` includes `memory_records` in checkpoint state
-- `RunProjector.rebuild_with_checkpoint(...)` restores `memory_records` from checkpoint + suffix events
-- checkpoint memory records exclude full content / artifact content / raw content
-- checkpoint prefix consistency covers memory read model mismatch
-- memory store cannot directly advance `RunState`
-- executor + not-enabled memory service still cannot produce `memory.record_created` or `memory.record_superseded`
-- `InProcessServer` still has no public `query_memory(...)` API
-- `RunProjector.save_checkpoint(...)` remains latest-only
-- `InProcessServer.save_checkpoint_for_run(...)` remains latest-only by default
-- latest write / history write failure ordering must be explicit before implementation
-- checkpoint migration / version negotiation boundary design note
-- current checkpoint uses `projector_version`; current projector version is `run_projector@v1`
-- incompatible checkpoint projector version invalidates checkpoint and falls back to full rebuild
-- checkpoint schema remains v0 candidate and event envelope remains slice-only shape
-- checkpoint schema version fields boundary design note
-- `projector_version` remains the only implemented checkpoint compatibility version boundary
-- `checkpoint_schema_version` / `state_schema_version` / `integrity_schema_version` are not implemented fields
-- checkpoint schema version fields cannot override `projector_version`
-- checkpoint schema version fields cannot make checkpoint a source of truth
-- `FileCheckpointStore` remains opaque and does not interpret checkpoint schema fields
-- checkpoint projector version boundary hardening
-- malformed `projector_version` is never treated as compatible
-- incompatible or malformed version fallback does not read checkpoint state
-- future schema sketch fields cannot override `projector_version`
-- `FileCheckpointStore` remains opaque and does not interpret version fields
-- event envelope versioning boundary design note
-- minimal event envelope version boundary
-- `CanonicalEvent` has `event_envelope_version`
-- default event envelope version is `canonical_event_slice@v0`
-- legacy event JSON without `event_envelope_version` is read as current slice legacy representation
-- empty / non-string / unknown event envelope version is rejected
-- event prefix digest input includes `event_envelope_version`
-- checkpoint integrity metadata records the digest-bound event envelope version
-- checkpoint event envelope version mismatch invalidates checkpoint and falls back to full rebuild without reading checkpoint state
-- legacy checkpoint without event envelope version metadata remains supported
-- event envelope versioning cannot rewrite canonical event log or make malformed events valid
-- event envelope schema registry boundary design note
-- current only event envelope version is `canonical_event_slice@v0`
-- no event envelope schema registry or registry lookup is implemented
-- future registry cannot rewrite canonical event log or make malformed events valid
-- server and checkpoint store cannot use registry directly to generate state
-
-## Deferred
-
-以下能力仍然 deferred，不要在没有新计划和 red tests 前实现：
-
-- real LLM
-- memory storage
-- memory query engine
-- successful memory record persistence implementation
-- successful durable memory write
-- successful memory update / supersession write implementation
-- memory record index
-- memory server API
-- ranking / exposure
-- controlled expand implementation
-- session memory promotion
-- vector index / embeddings
-- external ingestion
-- public checkpoint API / HTTP endpoint
-- automatic checkpoint scheduling
-- CheckpointService
-- save_checkpoint semantic change / automatic history persistence
-- checkpoint history index
-- checkpoint GC
-- checkpoint retention policy
-- checkpoint inspection API
-- signature / MAC / key management
-- checkpoint migration / version negotiation implementation
-- checkpoint migrator registry
-- checkpoint_schema_version field
-- state_schema_version field
-- integrity_schema_version field
-- schema registry
-- checkpoint schema registry
-- state schema registry
-- integrity schema registry
-- event envelope schema registry
-- event envelope registry lookup
-- event schema registry
-- payload schema registry
-- event migration
-- audit event for checkpoint migration
-- content-addressed event ids
-- event log compaction
-- SSE
-- auth
-- multi-agent concurrency
-- real HTTP API
-
-## Suggested Next Kernel Surface
-
-下一阶段默认不要继续深挖 checkpoint 或 memory storage/query。优先考虑：
-
-- Track A: HTTP API Minimal Surface design note / red tests
-- optional Track D polish from `docs/v0.2-roadmap.md` if explicitly requested
-- External Ingestion / `ImportedSnapshot` Boundary after HTTP API surface
-- 或停在当前稳定点
-
-不要直接进入 real LLM、successful memory write / storage implementation、memory query engine、controlled expand implementation、HTTP implementation 或 external ingestion implementation。不要在没有用户明确要求时发布 GitHub Release；release draft 只是可粘贴文本。
-
-## Verification
+## Common Verification
 
 ```bash
+cd /home/lumber/Github/isotope
+
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
+
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo
+
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --json
+
+rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel || true
+
+git -C /home/lumber/Github/x-agent status --short \
+  src/x_agent src/isotope_kernel tests/isotope_kernel docs/isotope
+
+git diff -- src tests .github pyproject.toml
+
+git status --short
 ```
+
+## Docs Entrypoints
+
+- Current status: [docs/current-status.md](docs/current-status.md)
+- Demo walkthrough: [docs/demo-walkthrough-v0.1.md](docs/demo-walkthrough-v0.1.md)
+- Demo architecture: [docs/demo-architecture-v0.1.md](docs/demo-architecture-v0.1.md)
+- v0.1 demo acceptance: [docs/v0.1-demo-acceptance.md](docs/v0.1-demo-acceptance.md)
+- v0.2 roadmap: [docs/v0.2-roadmap.md](docs/v0.2-roadmap.md)
