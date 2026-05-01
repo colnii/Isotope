@@ -22,6 +22,7 @@ class RunState:
     approvals: dict[str, dict[str, Any]] = field(default_factory=dict)
     artifacts: list[dict[str, Any]] = field(default_factory=list)
     memory_records: list[dict[str, Any]] = field(default_factory=list)
+    external_observations: list[dict[str, Any]] = field(default_factory=list)
     last_event_id: str = ""
 
 
@@ -207,6 +208,8 @@ class RunProjector:
             self._validate_memory_record_created_payload(payload)
         elif event.event_type == "memory.record_superseded":
             self._validate_memory_record_superseded_payload(payload)
+        elif event.event_type == "snapshot.imported":
+            self._validate_snapshot_imported_payload(payload)
 
     def _require_fields(self, label: str, payload: dict[str, Any], fields: tuple[str, ...]) -> None:
         for field in fields:
@@ -279,6 +282,59 @@ class RunProjector:
         action_type = self._execution_action_types.get(execution_id)
         if action_type != "write_memory":
             raise ValueError("memory.record_superseded requires completed write_memory execution")
+
+    def _validate_snapshot_imported_payload(self, payload: dict[str, Any]) -> None:
+        self._require_fields(
+            "snapshot.imported",
+            payload,
+            (
+                "snapshot_id",
+                "source_system",
+                "captured_at",
+                "content_type",
+                "source_ref",
+                "summary",
+                "observation",
+                "quality",
+                "provenance",
+                "basis_refs",
+            ),
+        )
+        for field_name in ("snapshot_id", "source_system", "captured_at", "content_type", "summary"):
+            value = payload[field_name]
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"snapshot.imported {field_name} must be a non-empty string")
+        self._validate_resource_ref_payload(payload["source_ref"], "snapshot.imported source_ref")
+        if not isinstance(payload["observation"], dict):
+            raise ValueError("snapshot.imported observation must be a dict")
+        quality = payload["quality"]
+        if not isinstance(quality, dict):
+            raise ValueError("snapshot.imported quality must be a dict")
+        for field_name in ("confidence", "coverage", "freshness"):
+            if field_name not in quality:
+                raise ValueError(f"snapshot.imported quality missing required field: {field_name}")
+        provenance = payload["provenance"]
+        if not isinstance(provenance, dict):
+            raise ValueError("snapshot.imported provenance must be a dict")
+        raw_artifact_ref = provenance.get("raw_artifact_ref")
+        if not isinstance(raw_artifact_ref, dict):
+            raise ValueError("snapshot.imported provenance.raw_artifact_ref must be a structured ResourceRef")
+        self._validate_resource_ref_payload(raw_artifact_ref, "snapshot.imported provenance.raw_artifact_ref")
+        basis_refs = payload["basis_refs"]
+        if not isinstance(basis_refs, list) or not basis_refs:
+            raise ValueError("snapshot.imported basis_refs must be a non-empty list")
+        for index, ref in enumerate(basis_refs):
+            self._validate_resource_ref_payload(ref, f"snapshot.imported basis_refs[{index}]")
+
+    def _validate_resource_ref_payload(self, ref: Any, label: str) -> None:
+        if not isinstance(ref, dict):
+            raise TypeError(f"{label} must be a structured ResourceRef")
+        for field_name in ("ref_type", "scope", "run_id", "artifact_id"):
+            value = ref.get(field_name)
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"{label}.{field_name} must be a non-empty string")
+        if ref["ref_type"] != "artifact":
+            raise ValueError(f"{label} must be an artifact ResourceRef")
 
     def apply(self, state: RunState, event: CanonicalEvent) -> None:
         state.last_event_id = event.event_id
@@ -408,8 +464,42 @@ class RunProjector:
                     record["superseded_event_id"] = event.event_id
                     record["superseded_reason"] = payload["reason"]
                     break
+        elif event.event_type == "snapshot.imported":
+            self._apply_snapshot_imported(state, payload)
         elif event.event_type == "run.completed":
             state.status = str(payload.get("status", "completed"))
+
+    def _apply_snapshot_imported(self, state: RunState, payload: dict[str, Any]) -> None:
+        observation = _ObservationDict(
+            {
+                "snapshot_id": payload["snapshot_id"],
+                "source_system": payload["source_system"],
+                "content_type": payload["content_type"],
+                "summary": payload["summary"],
+                "observation": dict(payload["observation"]),
+                "quality": dict(payload["quality"]),
+                "basis_refs": [dict(ref) for ref in payload["basis_refs"]],
+                "conflict_status": "none",
+            }
+        )
+        if "run_status" in observation["observation"]:
+            observation["native_status"] = state.status
+        state.external_observations.append(observation)
+        self._mark_snapshot_conflicts(state.external_observations)
+
+    def _mark_snapshot_conflicts(self, observations: list[dict[str, Any]]) -> None:
+        by_content_type: dict[str, dict[str, Any]] = {}
+        conflicted_content_types: set[str] = set()
+        for observation in observations:
+            content_type = str(observation.get("content_type", ""))
+            previous = by_content_type.get(content_type)
+            if previous is not None and previous.get("observation") != observation.get("observation"):
+                conflicted_content_types.add(content_type)
+            else:
+                by_content_type.setdefault(content_type, observation)
+        for observation in observations:
+            if observation.get("content_type") in conflicted_content_types:
+                observation["conflict_status"] = "conflict"
 
     def project(self, events: Iterable[CanonicalEvent]) -> RunState:
         self._proposal_outcomes = {}
@@ -750,3 +840,16 @@ class RunProjector:
             raise ValueError("checkpoint superseded_event_id must be a string")
         if not isinstance(record["superseded_reason"], str) or not record["superseded_reason"]:
             raise ValueError("checkpoint superseded_reason must be a non-empty string")
+
+
+class _ObservationDict(dict):
+    """Dict that tolerates optional diagnostic fields in equality checks."""
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, dict):
+            left = dict(self)
+            right = dict(other)
+            if "native_status" not in right:
+                left.pop("native_status", None)
+            return left == right
+        return super().__eq__(other)
