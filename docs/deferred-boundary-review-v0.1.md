@@ -23,8 +23,8 @@
 - GitHub Actions CI smoke workflow 已落地：在 `push` / `pull_request` 上使用 Python `3.12`，通过 `python -m pip install -e ".[test]"` 安装 test dependency 后运行 full tests 和 demo plain / JSON smoke；latest remote GitHub Actions run 已由网页确认通过。它不是 release、coverage、lint matrix 或 real integration services pipeline。
 - `v0.1-demo` lightweight tag 已创建并推送，指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`；GitHub Release draft 已准备在 `docs/release-draft-v0.1-demo.md`，但尚未发布 GitHub Release。
 - v0.2 roadmap 已落文档：`docs/v0.2-roadmap.md`。当前推荐顺序是 Demo / Docs Polish、HTTP API Minimal Surface、Artifact Content Read Policy / Controlled Full-Content Retrieval、External Ingestion / `ImportedSnapshot`，再考虑 memory query / storage。
-- Track C boundary doc 已落地：`docs/artifact-content-read-policy-v0.2.md`。第一批 retrieval boundary 已实现：summary retrieval 返回 summary / ref / provenance，controlled full-content retrieval 要求 structured `ResourceRef`、grants、caller context 和 purpose；HTTP full-content route 仍 `501 not_enabled`。
-- 当前测试基线：`669 passed`。
+- Track C boundary doc 已落地：`docs/artifact-content-read-policy-v0.2.md`。retrieval boundary 已实现：summary retrieval 返回 summary / ref / provenance，controlled full-content retrieval 要求 structured `ResourceRef`、grants、caller context 和 purpose；HTTP full-content route 仍 `501 not_enabled`，且已有 `allow_artifact_content=False` enablement guard。
+- 当前测试基线：`682 passed`。
 
 当前 hard boundary 仍不变：
 

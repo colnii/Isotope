@@ -1,6 +1,6 @@
 # Artifact Content Read Policy v0.2
 
-状态：`first green slice implemented`
+状态：`first green slices implemented`
 
 ## 1. Purpose
 
@@ -8,7 +8,7 @@ Track C 的目标是定义 artifact full content（artifact 完整内容）什�
 
 当前 v0.1 / v0.2 demo 已证明 artifact summary / ref / provenance 可以通过 canonical event 和 HTTP facade 被安全展示。但如果 v0.2 要更像可用 runtime，只展示 summary 还不够：调用方最终需要在明确授权下读取 artifact content。这个读取路径必须保持 ref-first、grant-gated、summary-by-default，不能绕过 kernel hard contracts。
 
-本文件定义 Track C boundary，并记录第一批 green slice。当前实现只覆盖 in-process retrieval boundary；它不实现 HTTP content endpoint、ranking、semantic search、binary streaming、memory controlled expand 或 real server。
+本文件定义 Track C boundary，并记录已完成的 early green slices。当前实现覆盖 in-process retrieval boundary 和 HTTP full-content enablement guard；它不实现 HTTP content endpoint、ranking、semantic search、binary streaming、memory controlled expand 或 real server。
 
 ## 2. Current Surface
 
@@ -30,6 +30,8 @@ Track C 的目标是定义 artifact full content（artifact 完整内容）什�
 - checkpoint state 不夹带 artifact content。
 - HTTP summary route `GET /artifacts/{artifact_id}/summary` 只返回 summary / ref / provenance。
 - HTTP full content route `GET /artifacts/{artifact_id}/content` 当前仍是 deferred `501 not_enabled`。
+- `HttpApiApp` 已有显式 `allow_artifact_content=False` guard；默认关闭。
+- 即使 `allow_artifact_content=True`，如果没有 retrieval service / grants / caller context / purpose wiring，route 仍 fail closed，不读取 content。
 
 ## 3. Hard Boundaries
 
@@ -121,7 +123,17 @@ RetrievalService.get_artifact_content(
 
 HTTP Track A 当前 closed。Track C 默认不重新打开 real HTTP server。
 
-`GET /artifacts/{artifact_id}/content` 当前保持 deferred `501 not_enabled`，直到单独 red tests 明确要求打开 in-process facade content endpoint。
+`GET /artifacts/{artifact_id}/content` 当前保持 deferred `501 not_enabled`。
+
+当前 HTTP guard shape：
+
+- `create_http_app(..., allow_artifact_content=False)` 默认关闭。
+- `HttpApiApp.allow_artifact_content` 是显式 guard，不是 product feature flag。
+- `allow_artifact_content=True` 在没有 retrieval service wiring 时仍返回 `501 not_enabled`。
+- guard 不读取 artifact content，不创建 events / actions / artifacts，不改变 demo 输出。
+- route inventory 仍不能把 full-content route 标成 supported。
+
+直到单独 red tests 明确要求打开 in-process facade content endpoint，HTTP route 都不能返回 full content。
 
 如果后续打开该 route，必须满足：
 
@@ -151,7 +163,7 @@ HTTP Track A 当前 closed。Track C 默认不重新打开 real HTTP server。
 
 ## 8. First Tests
 
-第一批 tests 已落地：
+第一批 retrieval tests 已落地：
 
 ```text
 tests/isotope_kernel/test_artifact_content_read_policy.py
@@ -176,9 +188,24 @@ tests/isotope_kernel/test_http_api_artifact_content_boundary.py
 - HTTP full content route 仍 `501 not_enabled`，直到对应 green slice 明确打开。
 - HTTP summary route 继续不返回 content / raw content。
 
+第二批 HTTP enablement guard tests 已落地：
+
+```text
+tests/isotope_kernel/test_http_api_artifact_content_enablement_guard.py
+```
+
+第二批 tests 覆盖：
+
+- default `create_http_app(...)` exposes `allow_artifact_content=False`。
+- default full-content route remains `501 not_enabled` even with grants / purpose / ref-shaped input。
+- `allow_artifact_content=True` without retrieval wiring still fails closed。
+- bad request context and raw id / URI string attempts do not read content。
+- route inventory keeps full-content route absent / deferred rather than supported。
+- demo output does not imply artifact content is available。
+
 ## 9. Acceptance For This Boundary
 
-Track C 的第一段当前已满足：
+Track C 的 early slices 当前已满足：
 
 - artifact summary path 仍 summary-only。
 - controlled full-content read 的 authorization shape 已由 tests 固定。
@@ -186,4 +213,5 @@ Track C 的第一段当前已满足：
 - structured `ResourceRef` 是唯一 accepted reference shape。
 - caller context / grants 是必填。
 - projector / checkpoint / HTTP summary route 仍不暴露 full content。
+- HTTP full-content route has an explicit enablement guard and still remains not enabled.
 - real HTTP server、external ingestion、memory controlled expand、ranking 和 semantic retrieval 仍 deferred。

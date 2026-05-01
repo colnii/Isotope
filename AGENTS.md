@@ -20,12 +20,12 @@
 
 ## Current Phase
 
-- `v0.1-demo` developer demo is accepted; baseline is `669 passed`.
+- `v0.1-demo` developer demo is accepted; baseline is `682 passed`.
 - Track D: Demo / Docs Polish is effectively complete / closed for now.
 - Current Track A design doc: [docs/http-api-minimal-surface-v0.2.md](docs/http-api-minimal-surface-v0.2.md).
 - Track A has in-process `HttpApiApp` / `create_http_app(...)`, request validation / no-side-effect error boundary, response contract, demo smoke, duplicate-submit idempotency boundary, route inventory, and deferred route contract; it is effectively complete / closed for now and is not a real listening HTTP server.
 - Current Track C design doc: [docs/artifact-content-read-policy-v0.2.md](docs/artifact-content-read-policy-v0.2.md).
-- Track C first green slice is implemented: summary retrieval remains summary/ref/provenance-only, and controlled full-content retrieval requires structured `ResourceRef`, grants, caller context, and purpose.
+- Track C first green slices are implemented: retrieval requires structured `ResourceRef`, grants, caller context, and purpose; HTTP full-content route has an explicit enablement guard but still returns `501 not_enabled`.
 - Real server boundary design only if Track A is explicitly reopened.
 - Optional docs polish can continue later, but it should not block v0.2 implementation.
 
