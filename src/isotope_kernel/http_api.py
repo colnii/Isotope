@@ -6,6 +6,8 @@ not commit the project to a web framework.
 
 from __future__ import annotations
 
+import json
+from copy import deepcopy
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -40,6 +42,7 @@ class HttpApiApp:
     def __init__(self, root_path: Path | str):
         self.root_path = Path(root_path)
         self.server = InProcessServer(self.root_path)
+        self._idempotency_cache: dict[str, dict[str, Any]] = {}
 
     def routes(self) -> list[tuple[str, str]]:
         return list(self._ROUTES)
@@ -51,6 +54,38 @@ class HttpApiApp:
         json: dict[str, Any] | None = None,
     ) -> HttpResponse:
         method = method.upper()
+        try:
+            idempotency_key = self._extract_idempotency_key(json)
+        except ValueError as exc:
+            return self._error(400, "bad_request", str(exc))
+
+        body_fingerprint = self._body_fingerprint(json) if idempotency_key is not None else None
+        if idempotency_key is not None:
+            replay_or_conflict = self._idempotency_replay_or_conflict(
+                idempotency_key,
+                method,
+                path,
+                body_fingerprint,
+            )
+            if replay_or_conflict is not None:
+                return replay_or_conflict
+
+        response = self._dispatch_request(method, path, json)
+        if idempotency_key is not None and 200 <= response.status_code < 300:
+            self._idempotency_cache[idempotency_key] = {
+                "method": method,
+                "path": path,
+                "body_fingerprint": body_fingerprint,
+                "response": self._copy_response(response),
+            }
+        return response
+
+    def _dispatch_request(
+        self,
+        method: str,
+        path: str,
+        json_body: dict[str, Any] | None,
+    ) -> HttpResponse:
         parts = self._split_path(path)
         allowed_methods = self._allowed_methods(parts) if parts else set()
 
@@ -68,7 +103,7 @@ class HttpApiApp:
             if method == "POST" and parts == ["sessions"]:
                 return self._json(201, self.server.create_session())
             if method == "POST" and len(parts) == 3 and parts[0] == "sessions" and parts[2] == "runs":
-                body = self._require_body(json, required_fields=("goal",))
+                body = self._require_body(json_body, required_fields=("goal",))
                 if parts[1] not in self.server._sessions:
                     return self._error(404, "not_found", "session not found")
                 return self._json(
@@ -76,7 +111,7 @@ class HttpApiApp:
                     self.server.create_run(parts[1], goal=body["goal"]),
                 )
             if method == "POST" and len(parts) == 3 and parts[0] == "runs" and parts[2] == "input":
-                body = self._require_body(json, required_fields=("text",))
+                body = self._require_body(json_body, required_fields=("text",))
                 if not self._run_exists(parts[1]):
                     return self._error(404, "not_found", "run not found")
                 result = self.server.submit_input(parts[1], text=body["text"])
@@ -165,6 +200,44 @@ class HttpApiApp:
                 "error": error,
             },
         )
+
+    def _extract_idempotency_key(self, body: Any) -> str | None:
+        if not isinstance(body, dict) or "idempotency_key" not in body:
+            return None
+        key = body["idempotency_key"]
+        if not isinstance(key, str) or not key:
+            raise ValueError("idempotency_key must be a non-empty string")
+        return key
+
+    def _body_fingerprint(self, body: Any) -> str:
+        return json.dumps(body, sort_keys=True, separators=(",", ":"), default=repr)
+
+    def _idempotency_replay_or_conflict(
+        self,
+        key: str,
+        method: str,
+        path: str,
+        body_fingerprint: str | None,
+    ) -> HttpResponse | None:
+        entry = self._idempotency_cache.get(key)
+        if entry is None:
+            return None
+        if entry["method"] != method or entry["path"] != path:
+            return self._error(
+                409,
+                "idempotency_conflict",
+                "idempotency key was already used for a different method or path",
+            )
+        if entry["body_fingerprint"] != body_fingerprint:
+            return self._error(
+                409,
+                "idempotency_conflict",
+                "idempotency key was already used with a different request body",
+            )
+        return self._copy_response(entry["response"])
+
+    def _copy_response(self, response: HttpResponse) -> HttpResponse:
+        return HttpResponse(status_code=response.status_code, body=deepcopy(response.body))
 
     def _split_path(self, path: str) -> list[str]:
         if not isinstance(path, str) or not path.startswith("/"):
