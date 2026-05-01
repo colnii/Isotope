@@ -158,6 +158,19 @@ class HttpApiApp:
                     return self._error(404, "not_found", "run not found")
                 result = self.server.submit_input(parts[1], text=body["text"])
                 return self._json(200, self._submit_result_to_dict(result))
+            if (
+                method == "POST"
+                and len(parts) == 5
+                and parts[0] == "runs"
+                and parts[2] == "approvals"
+                and parts[4] == "resolve"
+            ):
+                if not self._approval_known_for_run(parts[3], parts[1]):
+                    return self._error(404, "not_found", "approval not found")
+                result = self.server.resolve_approval(parts[3], json_body)
+                if result.get("run_state") is not None and result["run_state"].run_id != parts[1]:
+                    return self._error(404, "not_found", "approval not found")
+                return self._json(200, self._submit_result_to_dict(result))
             if method == "GET" and len(parts) == 2 and parts[0] == "runs":
                 if not self._run_exists(parts[1]):
                     return self._error(404, "not_found", "run not found")
@@ -174,6 +187,11 @@ class HttpApiApp:
         except PermissionError as exc:
             return self._error(403, "forbidden", str(exc))
         except (FileNotFoundError, ValueError) as exc:
+            message = str(exc)
+            if "unknown approval" in message:
+                return self._error(404, "not_found", "approval not found")
+            if "already resolved" in message or "conflict" in message:
+                return self._error(409, "approval_already_resolved", message)
             return self._error(400, "bad_request", str(exc))
 
         return self._error(404, "not_found", "route not found")
@@ -340,6 +358,16 @@ class HttpApiApp:
 
     def _run_exists(self, run_id: str) -> bool:
         return run_id in self.server._runs or self.server.event_store.event_path(run_id).exists()
+
+    def _approval_known_for_run(self, approval_id: str, run_id: str) -> bool:
+        pending = self.server._pending_approvals.get(approval_id)
+        if pending is not None:
+            return pending.get("run_id") == run_id
+        resolved = self.server._resolved_approvals.get(approval_id)
+        if resolved is None:
+            return False
+        state = resolved.get("run_state")
+        return getattr(state, "run_id", None) == run_id
 
 
 def create_http_app(

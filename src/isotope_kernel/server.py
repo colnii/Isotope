@@ -45,6 +45,8 @@ class InProcessServer:
         self.retrieval = RetrievalService(self.artifact_store)
         self._sessions: dict[str, dict[str, Any]] = {}
         self._runs: dict[str, dict[str, Any]] = {}
+        self._pending_approvals: dict[str, dict[str, Any]] = {}
+        self._resolved_approvals: dict[str, dict[str, Any]] = {}
 
     def create_session(self) -> dict[str, str]:
         session_id = new_id("session")
@@ -139,17 +141,23 @@ class InProcessServer:
                 "run_state": self.get_run_state(run_id),
             }
         if decision.outcome == "pending_user_approval":
+            approval_id = new_id("approval")
             self._append(
                 run_id,
                 "approval.requested",
                 {
-                    "approval_id": new_id("approval"),
+                    "approval_id": approval_id,
                     "run_id": run_id,
                     "proposal_id": proposal.proposal_id,
                     "decision_id": decision.decision_id,
                     "action_type": proposal.action_type,
                 },
             )
+            self._pending_approvals[approval_id] = {
+                "run_id": run_id,
+                "proposal": proposal,
+                "decision": decision,
+            }
             return {
                 "status": "pending_user_approval",
                 "decision": decision,
@@ -185,6 +193,87 @@ class InProcessServer:
             "artifact_ref": artifact.ref,
             "execution_id": execution.execution_id,
         }
+
+    def resolve_approval(self, approval_id: str, resolution: dict[str, Any]) -> dict[str, Any]:
+        self._validate_non_empty_string("approval_id", approval_id)
+        body = self._validate_approval_resolution_body(resolution)
+
+        if approval_id in self._resolved_approvals:
+            raise ValueError("approval already resolved")
+
+        pending = self._pending_approvals.get(approval_id)
+        if pending is None:
+            raise ValueError("unknown approval")
+
+        run_id = pending["run_id"]
+        approval_event = self._find_approval_requested_event(run_id, approval_id)
+        if approval_event is None:
+            raise ValueError("unknown approval")
+        approval_payload = approval_event.payload
+
+        self._append(
+            run_id,
+            "approval.resolved",
+            {
+                "approval_id": approval_id,
+                "run_id": run_id,
+                "proposal_id": approval_payload["proposal_id"],
+                "decision_id": approval_payload["decision_id"],
+                "resolution": body["resolution"],
+                "reason": body["reason"],
+                "resolver": body["resolver"],
+                "basis_event_id": approval_event.event_id,
+            },
+        )
+
+        if body["resolution"] == "denied":
+            result = {
+                "status": "denied",
+                "run_state": self.get_run_state(run_id),
+            }
+            self._resolved_approvals[approval_id] = result
+            return result
+
+        original_decision: PolicyDecision = pending["decision"]
+        proposal = pending["proposal"]
+        executable_decision = PolicyDecision(
+            decision_id=original_decision.decision_id,
+            proposal_id=original_decision.proposal_id,
+            outcome="approved",
+            grants=original_decision.grants,
+            reason_codes=list(original_decision.reason_codes),
+        )
+
+        try:
+            execution = self.executor.execute(executable_decision, proposal)
+        except Exception as exc:
+            execution_id = self._latest_failed_execution_id(
+                run_id,
+                proposal_id=proposal.proposal_id,
+                decision_id=executable_decision.decision_id,
+            )
+            if not execution_id:
+                raise RuntimeError("executor failed without action.failed event") from exc
+            result = {
+                "status": "failed",
+                "execution": None,
+                "execution_id": execution_id,
+                "run_state": self.get_run_state(run_id),
+            }
+            self._resolved_approvals[approval_id] = result
+            return result
+
+        artifact = self.artifact_store.list_artifacts(run_id)[-1]
+        self._append(run_id, "run.completed", {"status": "completed"})
+        state = self.get_run_state(run_id)
+        result = {
+            "status": state.status,
+            "run_state": state,
+            "artifact_ref": artifact.ref,
+            "execution_id": execution.execution_id,
+        }
+        self._resolved_approvals[approval_id] = result
+        return result
 
     def get_run_state(self, run_id: str):
         self._validate_read_run_id(run_id)
@@ -229,6 +318,24 @@ class InProcessServer:
     def create_checkpoint(self, run_id: str) -> dict[str, str]:
         return {"status": "not_enabled", "capability": "checkpoint"}
 
+    def _validate_approval_resolution_body(self, body: object) -> dict[str, str]:
+        if not isinstance(body, dict):
+            raise ValueError("resolution body must be a dict")
+        resolution = body.get("resolution")
+        if resolution not in {"approved", "denied"}:
+            raise ValueError("resolution must be approved or denied")
+        reason = body.get("reason")
+        if not isinstance(reason, str) or not reason:
+            raise ValueError("reason must be a non-empty string")
+        resolver = body.get("resolver")
+        if not isinstance(resolver, str) or not resolver:
+            raise ValueError("resolver must be a non-empty string")
+        return {
+            "resolution": resolution,
+            "reason": reason,
+            "resolver": resolver,
+        }
+
     def _validate_non_empty_string(self, field_name: str, value: object) -> None:
         if not isinstance(value, str) or not value:
             raise ValueError(f"{field_name} must be a non-empty string")
@@ -255,6 +362,12 @@ class InProcessServer:
             created_at="2026-04-27T00:00:00Z",
         )
         return self.event_store.append(event)
+
+    def _find_approval_requested_event(self, run_id: str, approval_id: str) -> CanonicalEvent | None:
+        for event in self.event_store.list_events(run_id):
+            if event.event_type == "approval.requested" and event.payload.get("approval_id") == approval_id:
+                return event
+        return None
 
     def _latest_failed_execution_id(self, run_id: str, proposal_id: str, decision_id: str) -> str:
         for event in reversed(self.event_store.list_events(run_id)):

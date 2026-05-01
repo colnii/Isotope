@@ -63,6 +63,8 @@ class RunProjector:
         self._proposal_action_types: dict[str, str] = {}
         self._execution_statuses: dict[str, str] = {}
         self._execution_action_types: dict[str, str] = {}
+        self._approval_proposals: dict[str, str] = {}
+        self._approval_resolutions: set[str] = set()
         self._memory_record_ids: set[str] = set()
         self._run_completed = False
 
@@ -112,6 +114,23 @@ class RunProjector:
             if status == "completed":
                 raise ValueError("terminal execution already completed")
             self._execution_statuses[execution_id] = "failed"
+        elif event.event_type == "approval.requested":
+            self._approval_proposals[str(payload["approval_id"])] = str(payload["proposal_id"])
+        elif event.event_type == "approval.resolved":
+            approval_id = str(payload["approval_id"])
+            proposal_id = str(payload["proposal_id"])
+            if approval_id in self._approval_resolutions:
+                raise ValueError("approval.resolved duplicate approval_id")
+            if self._approval_proposals.get(approval_id) != proposal_id:
+                raise ValueError("approval.resolved requires pending approval")
+            if self._proposal_outcomes.get(proposal_id) != "pending_user_approval":
+                raise ValueError("approval.resolved requires pending approval")
+            resolution = str(payload["resolution"])
+            if resolution == "approved":
+                self._proposal_outcomes[proposal_id] = "approved"
+            elif resolution == "denied":
+                self._proposal_outcomes[proposal_id] = "denied"
+            self._approval_resolutions.add(approval_id)
         elif event.event_type == "memory.record_created":
             self._validate_memory_record_lifecycle(payload)
             self._memory_record_ids.add(str(payload["record_id"]))
@@ -166,8 +185,16 @@ class RunProjector:
             self._require_fields(
                 event.event_type,
                 payload,
-                ("approval_id", "proposal_id", "decision_id", "action_type"),
+                ("approval_id", "run_id", "proposal_id", "decision_id", "action_type"),
             )
+        elif event.event_type == "approval.resolved":
+            self._require_fields(
+                event.event_type,
+                payload,
+                ("approval_id", "run_id", "proposal_id", "decision_id", "resolution", "reason", "resolver"),
+            )
+            if payload["resolution"] not in {"approved", "denied"}:
+                raise ValueError("approval.resolved resolution must be approved or denied")
         elif event.event_type == "memory.record_created":
             self._validate_memory_record_created_payload(payload)
         elif event.event_type == "memory.record_superseded":
@@ -282,6 +309,17 @@ class RunProjector:
             action["approval_id"] = payload.get("approval_id")
             action["status"] = "pending_user_approval"
             state.status = "pending_user_approval"
+        elif event.event_type == "approval.resolved":
+            proposal_id = str(payload["proposal_id"])
+            action = state.actions.setdefault(proposal_id, {"proposal_id": proposal_id})
+            action["decision_id"] = payload.get("decision_id")
+            action["approval_id"] = payload.get("approval_id")
+            action["approval_resolution"] = payload.get("resolution")
+            action["approval_resolved_event_id"] = event.event_id
+            action["approval_reason"] = payload.get("reason")
+            action["status"] = "approved" if payload.get("resolution") == "approved" else "denied"
+            if payload.get("resolution") == "approved":
+                state.status = "running"
         elif event.event_type == "artifact.created":
             artifact = dict(payload["artifact"])
             state.artifacts.append(
@@ -332,6 +370,8 @@ class RunProjector:
         self._proposal_action_types = {}
         self._execution_statuses = {}
         self._execution_action_types = {}
+        self._approval_proposals = {}
+        self._approval_resolutions = set()
         self._memory_record_ids = set()
         self._run_completed = False
         state = RunState()
