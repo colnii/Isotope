@@ -30,13 +30,20 @@ class HttpApiApp:
     """Minimal in-process HTTP-like app for the kernel runtime boundary."""
 
     _ROUTES: tuple[tuple[str, str], ...] = (
+        ("GET", "/health"),
         ("POST", "/sessions"),
         ("POST", "/sessions/{session_id}/runs"),
         ("POST", "/runs/{run_id}/input"),
         ("GET", "/runs/{run_id}"),
         ("GET", "/runs/{run_id}/events"),
         ("GET", "/artifacts/{artifact_id}/summary"),
-        ("GET", "/health"),
+    )
+    _DEFERRED_ROUTES: tuple[tuple[str, str, str], ...] = (
+        ("POST", "/runs/{run_id}/memory/query", "memory_query"),
+        ("POST", "/external-ingestion", "external_ingestion"),
+        ("GET", "/runs/{run_id}/events/stream", "sse_stream"),
+        ("POST", "/runs/{run_id}/approvals", "approval_api"),
+        ("GET", "/artifacts/{artifact_id}/content", "artifact_content"),
     )
 
     def __init__(self, root_path: Path | str):
@@ -46,6 +53,19 @@ class HttpApiApp:
 
     def routes(self) -> list[tuple[str, str]]:
         return list(self._ROUTES)
+
+    def list_routes(self) -> dict[str, Any]:
+        return {
+            "status": "ok",
+            "routes": [
+                {
+                    "method": method,
+                    "path": route,
+                    "status": "supported",
+                }
+                for method, route in self._ROUTES
+            ],
+        }
 
     def request(
         self,
@@ -97,7 +117,18 @@ class HttpApiApp:
                 allowed_methods=sorted(allowed_methods),
             )
 
+        deferred_capability = self._deferred_capability(method, parts)
+        if deferred_capability is not None:
+            return self._error(
+                501,
+                "not_enabled",
+                f"{deferred_capability} is not enabled",
+                capability=deferred_capability,
+            )
+
         try:
+            if method == "GET" and parts == ["routes"]:
+                return self._json(200, self.list_routes())
             if method == "GET" and parts == ["health"]:
                 return self._json(200, {"status": "ok"})
             if method == "POST" and parts == ["sessions"]:
@@ -135,6 +166,12 @@ class HttpApiApp:
             return self._error(400, "bad_request", str(exc))
 
         return self._error(404, "not_found", "route not found")
+
+    def _deferred_capability(self, method: str, parts: list[str]) -> str | None:
+        for deferred_method, route, capability in self._DEFERRED_ROUTES:
+            if method == deferred_method and self._route_matches(route, parts):
+                return capability
+        return None
 
     def _find_artifact_summary(self, artifact_id: str) -> dict[str, Any] | None:
         runs_root = self.root_path / "runs"
