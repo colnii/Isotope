@@ -16,6 +16,7 @@
 - v0.2 roadmap 已开始，见 `docs/v0.2-roadmap.md`。Track D: Demo / Docs Polish 当前已 effectively complete / closed for now；Track A: HTTP API Minimal Surface 当前也已 effectively complete / closed for now，已完成 minimal surface、request validation / no-side-effect error boundary、response contract、demo smoke、idempotency boundary、route inventory 和 deferred route contract slices。
 - v0.2 next-track selection 已落文档，见 `docs/v0.2-next-track-selection.md`。该 recommendation 已执行到 Track C closure；后续默认不进入 real HTTP server。
 - Track C: Artifact Content Read Policy 见 `docs/artifact-content-read-policy-v0.2.md`，当前已 effectively complete / closed for now。controlled full-content retrieval boundary 已实现：summary retrieval 返回 summary / ref / provenance 且不返回 full content；full-content retrieval 必须使用 structured `ResourceRef`，并要求 grants、caller context 和 purpose。HTTP full-content route 仍 deferred / `501 not_enabled`，并已有显式 `allow_artifact_content=False` enablement guard。
+- v0.2 mid-cycle review 已落文档，见 `docs/v0.2-mid-cycle-review.md`。推荐下一阶段选择 Track E: Minimal Approval Pause / Resume Boundary；不要默认转向 real HTTP server、memory query engine 或 external ingestion implementation。
 - Track A: HTTP API Minimal Surface 见 `docs/http-api-minimal-surface-v0.2.md`。当前实现是 in-process `HttpApiApp` / `create_http_app(...)`，不是监听端口的真实网络服务；没有引入 FastAPI / Flask / 新依赖。
 - v0.1 demo walkthrough 已补充，见 `docs/demo-walkthrough-v0.1.md`。它解释 demo 运行内容、内部步骤、plain text / JSON 输出字段、证明范围、非目标和 troubleshooting。
 - v0.1 demo architecture diagram 已补充，见 `docs/demo-architecture-v0.1.md`。它解释 demo runtime path，不是完整 Isotope 架构图。
@@ -395,7 +396,8 @@
 - HTTP API Minimal Surface v0.2 status doc exists: `docs/http-api-minimal-surface-v0.2.md`
 - v0.2 next-track selection exists: `docs/v0.2-next-track-selection.md`
 - Artifact Content Read Policy v0.2 boundary doc exists: `docs/artifact-content-read-policy-v0.2.md`
-- recommended v0.2 order is Demo / Docs Polish, HTTP API Minimal Surface, artifact content read policy / controlled retrieval, External Ingestion / ImportedSnapshot, approval pause/resume, memory query/storage review, then real HTTP adapter only if explicitly reopened
+- v0.2 mid-cycle review exists: `docs/v0.2-mid-cycle-review.md`
+- recommended v0.2 order is Demo / Docs Polish, HTTP API Minimal Surface, artifact content read policy / controlled retrieval, approval pause/resume, External Ingestion / ImportedSnapshot, memory query/storage review, then real HTTP adapter only if explicitly reopened
 - Track D: Demo / Docs Polish is effectively complete / closed for now with README quick start, `docs/demo-walkthrough-v0.1.md`, `docs/demo-architecture-v0.1.md`, `docs/v0.1-demo-acceptance.md`, limitations / non-goals, and CI smoke status
 - Track A: HTTP API Minimal Surface is effectively complete / closed for now after landing in-process HTTP API slices for minimal surface, request validation / no-side-effect error boundary, response contract, demo smoke, idempotency / duplicate-submit boundary, route inventory, and deferred route contract; no real listening server, web framework, auth, SSE, memory query API, external ingestion API, or full artifact content API is implemented
 - demo walkthrough explains what `python -m isotope_kernel.demo` runs, what output fields mean, what the demo proves, what it does not prove, and common setup / CI troubleshooting
@@ -451,7 +453,7 @@
 - CI then runs full kernel tests plus demo plain / JSON smoke
 - latest remote GitHub Actions CI run has been confirmed green from the GitHub Actions web UI
 - CI smoke does not require secrets, release automation, coverage, lint matrix, or real integration services
-- External Ingestion / `ImportedSnapshot` remains a later candidate after demo entrypoint scope
+- External Ingestion / `ImportedSnapshot` remains a later candidate after approval boundary unless explicitly selected instead
 - real LLM / real listening HTTP / plugin system remain deferred
 - memory write / query boundary design note 已落文档
 - first memory boundary tests 已落地并通过
@@ -621,11 +623,11 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- Track F: External Ingestion / `ImportedSnapshot` boundary docs / red tests, if v0.2 continues toward ingestion
-- Track E: Minimal Approval Pause / Resume boundary docs / red tests, if v0.2 should demonstrate human-gated execution
+- Track E: Minimal Approval Pause / Resume boundary docs / red tests as the next selected track
+- Track F: External Ingestion / `ImportedSnapshot` boundary docs / red tests after approval boundary, or if explicitly selected instead
 - reopen Track C only with an explicit design / red-test request, such as HTTP content route boundary
 - real listening HTTP server boundary design only if Track A is explicitly reopened
 - optional Track D polish can continue later, but it no longer blocks v0.2 implementation
 - 或停在当前稳定点
 
-checkpoint v0.1、memory v0.1、Track A HTTP API Minimal Surface 和 Track C Artifact Content Read Policy 当前 frozen / closed unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D、Track A 和 Track C 都已 effectively complete / closed for now；HTTP full-content route 仍 `501 not_enabled`，ranking、semantic retrieval、memory controlled expand 和 real listening HTTP server 仍 deferred。不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage / ingestion implementation。
+checkpoint v0.1、memory v0.1、Track A HTTP API Minimal Surface 和 Track C Artifact Content Read Policy 当前 frozen / closed unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D、Track A 和 Track C 都已 effectively complete / closed for now；mid-cycle review 推荐下一阶段进入 Track E approval pause / resume boundary docs / red tests。HTTP full-content route 仍 `501 not_enabled`，ranking、semantic retrieval、memory controlled expand、external ingestion implementation 和 real listening HTTP server 仍 deferred。不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage / ingestion implementation。

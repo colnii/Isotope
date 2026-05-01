@@ -22,8 +22,9 @@
 - packaging / install smoke coverage 已落地：当前 `pyproject.toml` metadata、src-layout discovery、editable install、installed import、installed demo plain / JSON 和 repo-root side-effect boundary 已通过测试。
 - GitHub Actions CI smoke workflow 已落地：在 `push` / `pull_request` 上使用 Python `3.12`，通过 `python -m pip install -e ".[test]"` 安装 test dependency 后运行 full tests 和 demo plain / JSON smoke；latest remote GitHub Actions run 已由网页确认通过。它不是 release、coverage、lint matrix 或 real integration services pipeline。
 - `v0.1-demo` lightweight tag 已创建并推送，指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`；GitHub Release draft 已准备在 `docs/release-draft-v0.1-demo.md`，但尚未发布 GitHub Release。
-- v0.2 roadmap 已落文档：`docs/v0.2-roadmap.md`。当前推荐顺序是 Demo / Docs Polish、HTTP API Minimal Surface、Artifact Content Read Policy / Controlled Full-Content Retrieval、External Ingestion / `ImportedSnapshot`，再考虑 memory query / storage。
+- v0.2 roadmap 已落文档：`docs/v0.2-roadmap.md`。当前推荐顺序是 Demo / Docs Polish、HTTP API Minimal Surface、Artifact Content Read Policy / Controlled Full-Content Retrieval、Minimal Approval Pause / Resume Boundary、External Ingestion / `ImportedSnapshot`，再考虑 memory query / storage。
 - Track C boundary doc 已落地并 closed for now：`docs/artifact-content-read-policy-v0.2.md`。retrieval boundary 已实现：summary retrieval 返回 summary / ref / provenance，controlled full-content retrieval 要求 structured `ResourceRef`、grants、caller context 和 purpose；HTTP full-content route 仍 `501 not_enabled`，且已有 `allow_artifact_content=False` enablement guard。
+- v0.2 mid-cycle review 已落文档：`docs/v0.2-mid-cycle-review.md`。当前下一默认 track 是 Track E: Minimal Approval Pause / Resume Boundary；real HTTP server、memory query engine 和 external ingestion implementation 仍 deferred。
 - 当前测试基线：`682 passed`。
 
 当前 hard boundary 仍不变：
@@ -79,7 +80,7 @@ Memory Write / Query Boundary 更贴近 kernel 内部能力，已作为上一阶
 
 ## 5. Candidate B: External Ingestion / ImportedSnapshot Boundary
 
-External Ingestion / `ImportedSnapshot` Boundary 是第二优先级候选。
+External Ingestion / `ImportedSnapshot` Boundary 仍是重要候选；在当前 v0.2 mid-cycle review 后，它排在 approval pause / resume boundary 之后，除非用户显式改选。
 
 优点：
 
@@ -154,10 +155,10 @@ Memory Write / Query Boundary docs、第一批 memory boundary tests、memory ac
 
 ## 8. Next TDD Entry Point
 
-demo entrypoint TDD 已完成。v0.2 roadmap 已开始，Track D: Demo / Docs Polish、Track A: HTTP API Minimal Surface 和 Track C: Artifact Content Read Policy 当前都已 effectively complete / closed for now。下一轮建议优先选择以下 docs / red tests 之一：
+demo entrypoint TDD 已完成。v0.2 roadmap 已开始，Track D: Demo / Docs Polish、Track A: HTTP API Minimal Surface 和 Track C: Artifact Content Read Policy 当前都已 effectively complete / closed for now。mid-cycle review 推荐下一轮优先选择：
 
-- Track F: External Ingestion / `ImportedSnapshot` boundary docs after artifact access policy is clearer。
-- Track E: Minimal Approval Pause / Resume boundary docs if v0.2 should demonstrate human-gated execution。
+- Track E: Minimal Approval Pause / Resume boundary docs / red tests。
+- Track F: External Ingestion / `ImportedSnapshot` boundary docs after approval boundary, or if explicitly selected instead。
 - Artifact Content Read Policy / Controlled Full-Content Retrieval next slice only if Track C is explicitly reopened.
 - real server boundary design only if Track A is explicitly reopened。
 - optional Track D polish from `docs/v0.2-roadmap.md` if explicitly requested。
