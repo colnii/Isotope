@@ -52,7 +52,9 @@ class HttpApiApp:
     ) -> HttpResponse:
         method = method.upper()
         parts = self._split_path(path)
-        body = json if json is not None else {}
+
+        if parts and self._allowed_methods(parts) and method not in self._allowed_methods(parts):
+            return self._json(405, {"status": "method_not_allowed", "error": "method_not_allowed"})
 
         try:
             if method == "GET" and parts == ["health"]:
@@ -60,16 +62,26 @@ class HttpApiApp:
             if method == "POST" and parts == ["sessions"]:
                 return self._json(201, self.server.create_session())
             if method == "POST" and len(parts) == 3 and parts[0] == "sessions" and parts[2] == "runs":
+                body = self._require_body(json, required_fields=("goal",))
+                if parts[1] not in self.server._sessions:
+                    return self._json(404, {"status": "not_found", "error": "not_found"})
                 return self._json(
                     201,
-                    self.server.create_run(parts[1], goal=str(body.get("goal", "default goal"))),
+                    self.server.create_run(parts[1], goal=body["goal"]),
                 )
             if method == "POST" and len(parts) == 3 and parts[0] == "runs" and parts[2] == "input":
-                result = self.server.submit_input(parts[1], text=str(body.get("text", "")))
+                body = self._require_body(json, required_fields=("text",))
+                if not self._run_exists(parts[1]):
+                    return self._json(404, {"status": "not_found", "error": "not_found"})
+                result = self.server.submit_input(parts[1], text=body["text"])
                 return self._json(200, self._submit_result_to_dict(result))
             if method == "GET" and len(parts) == 2 and parts[0] == "runs":
+                if not self._run_exists(parts[1]):
+                    return self._json(404, {"status": "not_found", "error": "not_found"})
                 return self._json(200, self._run_state_to_dict(self.server.get_run_state(parts[1])))
             if method == "GET" and len(parts) == 3 and parts[0] == "runs" and parts[2] == "events":
+                if not self._run_exists(parts[1]):
+                    return self._json(404, {"status": "not_found", "error": "not_found"})
                 return self._json(200, [event.to_dict() for event in self.server.get_events(parts[1])])
             if method == "GET" and len(parts) == 3 and parts[0] == "artifacts" and parts[2] == "summary":
                 summary = self._find_artifact_summary(parts[1])
@@ -132,6 +144,36 @@ class HttpApiApp:
         if not isinstance(path, str) or not path.startswith("/"):
             return []
         return [part for part in path.split("/") if part]
+
+    def _allowed_methods(self, parts: list[str]) -> set[str]:
+        methods: set[str] = set()
+        for method, route in self._ROUTES:
+            if self._route_matches(route, parts):
+                methods.add(method)
+        return methods
+
+    def _route_matches(self, route: str, parts: list[str]) -> bool:
+        route_parts = self._split_path(route)
+        if len(route_parts) != len(parts):
+            return False
+        return all(
+            expected == actual or (expected.startswith("{") and expected.endswith("}"))
+            for expected, actual in zip(route_parts, parts, strict=True)
+        )
+
+    def _require_body(self, body: Any, required_fields: tuple[str, ...]) -> dict[str, str]:
+        if not isinstance(body, dict):
+            raise ValueError("request body must be a JSON object")
+        validated: dict[str, str] = {}
+        for field in required_fields:
+            value = body.get(field)
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"{field} must be a non-empty string")
+            validated[field] = value
+        return validated
+
+    def _run_exists(self, run_id: str) -> bool:
+        return run_id in self.server._runs or self.server.event_store.event_path(run_id).exists()
 
 
 def create_http_app(root_path: Path | str) -> HttpApiApp:
