@@ -20,10 +20,11 @@
 
 ## Current Phase
 
-- `v0.1-demo` developer demo is accepted; baseline is `568 passed`.
+- `v0.1-demo` developer demo is accepted; baseline is `584 passed`.
 - Track D: Demo / Docs Polish is effectively complete / closed for now.
 - Current Track A design doc: [docs/http-api-minimal-surface-v0.2.md](docs/http-api-minimal-surface-v0.2.md).
-- Default next step: HTTP API Minimal Surface red tests; do not implement HTTP before red tests.
+- Track A first green slice is implemented as in-process `HttpApiApp` / `create_http_app(...)`; it is not a real listening HTTP server.
+- Default next step: Track A hardening / real server boundary design, or Track B external ingestion boundary, only after red tests.
 - Optional docs polish can continue later, but it should not block v0.2 implementation.
 
 ## Common Verification

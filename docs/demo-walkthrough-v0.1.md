@@ -96,7 +96,7 @@ JSON 输出适合脚本或 CI smoke 检查，字段名与 plain text 一致。
 这个 demo 不证明：
 
 - real LLM agent 已可用。
-- HTTP API 已可用。
+- real listening HTTP server / hosted API 已可用。
 - UI 已可用。
 - real memory storage / query 已可用。
 - external ingestion 已可用。

@@ -7,14 +7,14 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`f8990d7bacdd5f2fd60a8c6a8cfa9aa49de3e86d`。
+- 最新 implementation commit：`bff16c153d2279c6c6cd69de927c69a65f7b91b5`。
 - memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for v0.1 demo planning：当前 memory 线只声明 boundary / read-model / checkpoint 能力，不声明 durable storage 或 query engine 已完成。
 - v0.1 demo entrypoint 已实现，详见 `docs/demo-entrypoint-v0.1.md`；`python -m isotope_kernel.demo` 可输出 plain text summary，`--json` 可输出 JSON summary。
-- v0.1 developer demo 已按 `docs/v0.1-demo-acceptance.md` accepted：当前验收依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过。
+- v0.1 developer demo 已按 `docs/v0.1-demo-acceptance.md` accepted：acceptance anchor 当时依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过；当前 baseline 已随 Track A green slice 更新为 `584 passed`。
 - lightweight tag `v0.1-demo` 已创建并推送，指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`。
 - GitHub Release draft 已准备在 `docs/release-draft-v0.1-demo.md`；尚未发布 GitHub Release。`main` 允许在 tag 后继续有 docs/status 更新，tag 仍是 demo acceptance anchor。
-- v0.2 roadmap 已开始，见 `docs/v0.2-roadmap.md`。Track D: Demo / Docs Polish 当前已 effectively complete / closed for now；默认下一阶段进入 Track A: HTTP API Minimal Surface。
-- Track A: HTTP API Minimal Surface design 已开始，见 `docs/http-api-minimal-surface-v0.2.md`。当前只落边界文档，尚未实现 HTTP server / framework / tests。
+- v0.2 roadmap 已开始，见 `docs/v0.2-roadmap.md`。Track D: Demo / Docs Polish 当前已 effectively complete / closed for now；Track A: HTTP API Minimal Surface 第一批 green slice 已实现。
+- Track A: HTTP API Minimal Surface 见 `docs/http-api-minimal-surface-v0.2.md`。当前实现是 in-process `HttpApiApp` / `create_http_app(...)`，不是监听端口的真实网络服务；没有引入 FastAPI / Flask / 新依赖。
 - v0.1 demo walkthrough 已补充，见 `docs/demo-walkthrough-v0.1.md`。它解释 demo 运行内容、内部步骤、plain text / JSON 输出字段、证明范围、非目标和 troubleshooting。
 - v0.1 demo architecture diagram 已补充，见 `docs/demo-architecture-v0.1.md`。它解释 demo runtime path，不是完整 Isotope 架构图。
 
@@ -385,17 +385,28 @@
 - demo reports memory boundary status as `boundary_only`
 - v0.1 demo acceptance 已落文档：`docs/v0.1-demo-acceptance.md`
 - current demo acceptance status is `accepted as developer demo`, not product runtime
-- demo acceptance evidence includes local `568 passed`, demo plain / JSON success, editable install smoke, remote GitHub Actions CI success, no `x_agent.*` imports, and `/home/lumber/Github/x-agent` untouched
+- demo acceptance evidence includes local `568 passed` at the v0.1 acceptance anchor; current mainline baseline is `584 passed` after the Track A HTTP API boundary slice
 - lightweight demo tag exists: `v0.1-demo` -> `b3d4e328e74378bec2fb524deb85233df5a5d4eb`
 - GitHub Release draft exists: `docs/release-draft-v0.1-demo.md`
 - no GitHub Release has been published from the draft
 - v0.2 roadmap draft exists: `docs/v0.2-roadmap.md`
-- HTTP API Minimal Surface v0.2 draft exists: `docs/http-api-minimal-surface-v0.2.md`
+- HTTP API Minimal Surface v0.2 status doc exists: `docs/http-api-minimal-surface-v0.2.md`
 - recommended v0.2 order is Demo / Docs Polish, HTTP API Minimal Surface, External Ingestion / ImportedSnapshot, then Real Memory Storage Slice
 - Track D: Demo / Docs Polish is effectively complete / closed for now with README quick start, `docs/demo-walkthrough-v0.1.md`, `docs/demo-architecture-v0.1.md`, `docs/v0.1-demo-acceptance.md`, limitations / non-goals, and CI smoke status
-- Track A design has started, but no HTTP server module, web framework, HTTP tests, auth, SSE, memory query API, external ingestion API, or full artifact content API is implemented
+- Track A first green slice has landed as an in-process HTTP API boundary; no real listening server, web framework, auth, SSE, memory query API, external ingestion API, or full artifact content API is implemented
 - demo walkthrough explains what `python -m isotope_kernel.demo` runs, what output fields mean, what the demo proves, what it does not prove, and common setup / CI troubleshooting
 - demo architecture diagram explains the v0.1 runtime path with a Mermaid flow; it is not the full Isotope architecture
+- HTTP API Minimal Surface first green slice 已落地：`src/isotope_kernel/http_api.py`
+- `isotope_kernel.http_api.create_http_app(...)` returns an in-process `HttpApiApp`
+- `HttpApiApp` exposes only the minimal v0.2 route surface: sessions, runs, input submission, run state, run events, artifact summary, and health
+- HTTP API boundary tests 已落地并通过：`tests/isotope_kernel/test_http_api_boundary.py`
+- current HTTP API boundary is test-client style and does not listen on a port
+- no FastAPI / Flask / ASGI / WSGI framework or new dependency has been introduced
+- `POST /runs/{run_id}/input` delegates to existing `InProcessServer.submit_input(...)` and therefore still goes through the action chain
+- `GET /runs/{run_id}` returns projector read model
+- `GET /runs/{run_id}/events` returns canonical event log view
+- `GET /artifacts/{artifact_id}/summary` returns summary / ref / provenance from canonical `artifact.created` event and does not return full content / raw content
+- memory query, external ingestion, approval API, SSE / streaming, real listening HTTP server, hosted deployment, and full artifact content endpoint remain deferred / not enabled
 - packaging / install smoke coverage 已落地：`tests/isotope_kernel/test_packaging_smoke.py`
 - current `pyproject.toml` metadata / src-layout package discovery / editable install path 已通过 smoke
 - editable install 后可 import `isotope_kernel`，并可运行 installed `python -m isotope_kernel.demo` / `python -m isotope_kernel.demo --json`
@@ -499,7 +510,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-568 passed
+584 passed
 ```
 
 Import boundary check:
@@ -562,7 +573,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - SSE
 - auth
 - multi-agent concurrency
-- real HTTP API
+- real listening HTTP server / hosted HTTP API
 
 ## Forbidden
 
@@ -576,8 +587,8 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- Track A: HTTP API Minimal Surface red tests from `docs/http-api-minimal-surface-v0.2.md`
+- Track A: HTTP API Minimal Surface hardening / real server boundary design, if explicitly chosen
 - optional Track D polish can continue later, but it no longer blocks v0.2 implementation
 - 或停在当前稳定点
 
-checkpoint v0.1 和 memory v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D 已 effectively complete / closed for now，Track A HTTP API Minimal Surface design 已开始，下一步默认写 HTTP API boundary red tests；不要直接进入 HTTP implementation、real LLM、successful memory write / memory storage / ingestion implementation。
+checkpoint v0.1 和 memory v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D 已 effectively complete / closed for now，Track A HTTP API Minimal Surface 第一批 in-process boundary 已实现；不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage / ingestion implementation。
