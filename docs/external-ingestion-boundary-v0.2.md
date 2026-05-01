@@ -1,6 +1,6 @@
 # External Ingestion Boundary v0.2
 
-状态：`draft boundary`
+状态：`first boundary green complete`
 
 ## 1. Purpose
 
@@ -24,6 +24,15 @@ Current completed surfaces relevant to this track:
 - HTTP external ingestion routes are still deferred / `not_enabled`.
 - Projector rebuilds `RunState` from canonical events and validated checkpoints, not from external raw input.
 - Memory remains `boundary_only`; there is no durable memory storage or query engine.
+- `src/isotope_kernel/ingestion.py` exists as the first not-enabled / artifact-only boundary.
+- `ImportedSnapshot` exists as a slice-only model.
+- `snapshot.imported` canonical events can project imported observations into `RunState.external_observations`.
+- Imported observations do not overwrite native `RunState.status` or action status.
+- Projector does not read raw artifact content when projecting imported snapshots.
+- Native canonical state takes priority over imported observations.
+- Conflicting snapshots are marked as conflict instead of merged into fake certainty.
+- `server.ingest_external_input(...)` remains fail-closed / `not_enabled`.
+- Current baseline after the first green slice is `752 passed`.
 
 ## 4. Hard Boundaries
 
@@ -130,14 +139,14 @@ Current HTTP external ingestion routes remain deferred / `not_enabled`. If a fut
 - UI for conflicts
 - memory ingestion or memory query integration
 
-## 11. First Red Tests
+## 11. First Tests
 
-Recommended first red test files:
+Completed first test files:
 
 - `tests/isotope_kernel/test_external_ingestion_boundary.py`
 - `tests/isotope_kernel/test_imported_snapshot_projection_boundary.py`
 
-Initial test goals:
+Covered goals:
 
 - raw external input can only be saved as artifact, not directly advance `RunState`.
 - malformed external input is artifact-only or rejected, and cannot produce state.
@@ -149,3 +158,5 @@ Initial test goals:
 - native canonical event wins over imported snapshot.
 - snapshot ref must be structured `ResourceRef`, not a URI string.
 - external ingestion routes / APIs remain deferred or `not_enabled`.
+
+These tests define only the first Track F boundary slice. They do not implement a real provider adapter, external webhook, OpenAI / Responses / GitHub integration, external ingestion HTTP API, or imported-observation-driven native state.
