@@ -12,6 +12,7 @@
 
 - 盘点前 existing docs Markdown：40 个。
 - 加上本文后 docs Markdown：41 个。
+- 加上 Track E boundary doc 后 docs Markdown：42 个。
 
 ## 2. Current entrypoints
 
@@ -30,9 +31,9 @@
 
 ## 3. Active track docs
 
-当前 active planning surface 是 Track E，但 Track E 专门文档尚未创建。
+当前 active planning surface 是 Track E，边界文档已创建，下一步应进入 red tests。
 
-- Planned: `docs/approval-pause-resume-boundary-v0.2.md`
+- `docs/approval-pause-resume-boundary-v0.2.md`：Track E approval pause / resume boundary，active / next red tests。
 - Supporting current docs:
   - `docs/v0.2-mid-cycle-review.md`
   - `docs/v0.2-roadmap.md`
@@ -42,7 +43,7 @@
   - `docs/kernel-architecture-v0.1.md`
   - `docs/kernel-living-spec.md`
 
-Track E 进入 TDD 前，应先写 boundary docs，再写 red tests。不要直接实现 approval resume。
+Track E 进入 TDD 时，应先写 approval resolution / HTTP approval red tests。不要直接实现完整 approval product。
 
 ## 4. Closed track docs
 
@@ -112,6 +113,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | --- | --- | --- |
 | `docs/README.md` | Kernel current-truth reading order | current entrypoint |
 | `docs/action-type-registry-v0.1.md` | Action registry design/status | closed / reference |
+| `docs/approval-pause-resume-boundary-v0.2.md` | Track E approval pause / resume boundary | active / next red tests |
 | `docs/artifact-content-read-policy-v0.2.md` | Track C boundary | closed for now |
 | `docs/checkpoint-history-fallback-v0.1.md` | Checkpoint fallback boundary | closed / frozen |
 | `docs/checkpoint-history-index-retention-v0.1.md` | Checkpoint history index / retention boundary | closed / frozen |
@@ -158,7 +160,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 - `docs/tracks/`
   - `http-api-minimal-surface-v0.2.md`
   - `artifact-content-read-policy-v0.2.md`
-  - future `approval-pause-resume-boundary-v0.2.md`
+  - `approval-pause-resume-boundary-v0.2.md`
   - `v0.2-roadmap.md`
   - `v0.2-mid-cycle-review.md`
   - `v0.2-next-track-selection.md`
@@ -193,6 +195,7 @@ Do not move these files until a dedicated migration pass updates links and valid
 - `docs/v0.2-next-track-selection.md`
 - `docs/http-api-minimal-surface-v0.2.md`
 - `docs/artifact-content-read-policy-v0.2.md`
+- `docs/approval-pause-resume-boundary-v0.2.md`
 - `docs/demo-walkthrough-v0.1.md`
 - `docs/demo-architecture-v0.1.md`
 - `docs/v0.1-demo-acceptance.md`
