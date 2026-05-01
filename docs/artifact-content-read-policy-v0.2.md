@@ -1,6 +1,6 @@
 # Artifact Content Read Policy v0.2
 
-状态：`first green slices implemented`
+状态：`effectively complete / closed for now`
 
 ## 1. Purpose
 
@@ -8,7 +8,7 @@ Track C 的目标是定义 artifact full content（artifact 完整内容）什�
 
 当前 v0.1 / v0.2 demo 已证明 artifact summary / ref / provenance 可以通过 canonical event 和 HTTP facade 被安全展示。但如果 v0.2 要更像可用 runtime，只展示 summary 还不够：调用方最终需要在明确授权下读取 artifact content。这个读取路径必须保持 ref-first、grant-gated、summary-by-default，不能绕过 kernel hard contracts。
 
-本文件定义 Track C boundary，并记录已完成的 early green slices。当前实现覆盖 in-process retrieval boundary 和 HTTP full-content enablement guard；它不实现 HTTP content endpoint、ranking、semantic search、binary streaming、memory controlled expand 或 real server。
+本文件定义 Track C boundary，并记录当前 closure 状态。当前实现覆盖 in-process retrieval boundary 和 HTTP full-content enablement guard；它不实现 HTTP content endpoint、ranking、semantic search、binary streaming、memory controlled expand 或 real server。
 
 ## 2. Current Surface
 
@@ -205,7 +205,7 @@ tests/isotope_kernel/test_http_api_artifact_content_enablement_guard.py
 
 ## 9. Acceptance For This Boundary
 
-Track C 的 early slices 当前已满足：
+Track C 当前可以 effectively complete / closed for now。已满足：
 
 - artifact summary path 仍 summary-only。
 - controlled full-content read 的 authorization shape 已由 tests 固定。
@@ -215,3 +215,5 @@ Track C 的 early slices 当前已满足：
 - projector / checkpoint / HTTP summary route 仍不暴露 full content。
 - HTTP full-content route has an explicit enablement guard and still remains not enabled.
 - real HTTP server、external ingestion、memory controlled expand、ranking 和 semantic retrieval 仍 deferred。
+
+如果后续重新打开 Track C，默认下一步必须先写新的 design / red tests；不能直接开启 HTTP full-content route，也不能把 retrieval boundary 扩展成 ranking / semantic retrieval / memory controlled expand。

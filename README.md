@@ -2,7 +2,7 @@
 
 Isotope 是一个独立的 kernel-first agent runtime 项目，用来验证 canonical event log、policy-gated execution、artifact provenance、projector replay 和 checkpoint-assisted rebuild 等内核边界。
 
-当前状态：`v0.1-demo` developer demo 已完成并打 tag；当前本地 baseline 是 `682 passed`。Track A: HTTP API Minimal Surface 已 effectively complete / closed for now；Track C artifact content retrieval boundary 和 HTTP full-content enablement guard 已实现，详细状态见 [docs/current-status.md](docs/current-status.md)。
+当前状态：`v0.1-demo` developer demo 已完成并打 tag；当前本地 baseline 是 `682 passed`。Track A: HTTP API Minimal Surface 和 Track C: Artifact Content Read Policy 都已 effectively complete / closed for now，详细状态见 [docs/current-status.md](docs/current-status.md)。
 
 ## Quick Start
 
@@ -21,7 +21,7 @@ python3 -m venv .venv
 - Session / run creation through the in-process kernel path.
 - `ActionCompiler -> PolicyEngine -> Executor` action chain with `PolicyDecision.grants` enforcement.
 - Artifact creation with execution provenance and structured refs.
-- Controlled artifact content retrieval boundary through structured `ResourceRef`, explicit grants, caller context, and purpose; HTTP full-content route remains guarded and not enabled by default.
+- Controlled artifact content retrieval boundary through structured `ResourceRef`, explicit grants, caller context, and purpose; HTTP full-content route remains deferred / not enabled.
 - Canonical event log, `RunProjector` read model, event replay, and checkpoint-assisted rebuild.
 - Memory boundary/read-model/checkpoint contracts with `memory_status: boundary_only`.
 - Minimal in-process `HttpApiApp` / `create_http_app(...)` boundary for session/run/input/state/events/artifact summary, with request validation, response contract, idempotency, route inventory, and deferred route contract tests.
