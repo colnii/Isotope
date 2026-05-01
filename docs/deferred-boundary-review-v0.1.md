@@ -26,7 +26,8 @@
 - Track C boundary doc 已落地并 closed for now：`docs/artifact-content-read-policy-v0.2.md`。retrieval boundary 已实现：summary retrieval 返回 summary / ref / provenance，controlled full-content retrieval 要求 structured `ResourceRef`、grants、caller context 和 purpose；HTTP full-content route 仍 `501 not_enabled`，且已有 `allow_artifact_content=False` enablement guard。
 - v0.2 mid-cycle review 已落文档：`docs/v0.2-mid-cycle-review.md`。其推荐的 Track E: Minimal Approval Pause / Resume Boundary 已执行到 effectively complete / closed for now；real HTTP server、memory query engine 和 external ingestion implementation 仍 deferred。
 - Track E boundary doc 和 green slices 已落地：`docs/approval-pause-resume-boundary-v0.2.md`。pending approval 可 resolve；approved path append `approval.resolved` 后通过现有 executor path resume；denied path append `approval.resolved` 但不执行；duplicate resolution 是受控 conflict；`RunState.approvals` / HTTP run read model 可表达 pending / approved / denied approval summary，并可通过 event replay / checkpoint-assisted rebuild 恢复。这仍不是完整 approval product implementation。
-- 当前测试基线：`726 passed`。
+- v0.2 demo scenario 已落地：`python -m isotope_kernel.demo --scenario v0.2` / `--json` 展示 in-process HTTP facade、approval pause/resume、controlled artifact content policy、checkpoint 和 memory `boundary_only`，但不打开 real HTTP server、memory storage/query 或 HTTP full-content route。
+- 当前测试基线：`735 passed`。
 
 当前 hard boundary 仍不变：
 

@@ -2,7 +2,7 @@
 
 Isotope 是一个独立的 kernel-first agent runtime 项目，用来验证 canonical event log、policy-gated execution、artifact provenance、projector replay 和 checkpoint-assisted rebuild 等内核边界。
 
-当前状态：`v0.1-demo` developer demo 已完成并打 tag；当前本地 baseline 是 `726 passed`。Track A: HTTP API Minimal Surface、Track C: Artifact Content Read Policy 和 Track E: Approval Pause / Resume Boundary 都已 effectively complete / closed for now，详细状态见 [docs/current-status.md](docs/current-status.md)。
+当前状态：`v0.1-demo` developer demo 已完成并打 tag；当前本地 baseline 是 `735 passed`。Track A: HTTP API Minimal Surface、Track C: Artifact Content Read Policy 和 Track E: Approval Pause / Resume Boundary 都已 effectively complete / closed for now；v0.2 demo scenario 已可用，详细状态见 [docs/current-status.md](docs/current-status.md)。
 
 ## Quick Start
 
@@ -13,11 +13,14 @@ python3 -m venv .venv
 .venv/bin/python -m pytest tests/isotope_kernel -q
 .venv/bin/python -m isotope_kernel.demo
 .venv/bin/python -m isotope_kernel.demo --json
+.venv/bin/python -m isotope_kernel.demo --scenario v0.2
+.venv/bin/python -m isotope_kernel.demo --scenario v0.2 --json
 ```
 
 ## What Works
 
 - Deterministic v0.1 demo entrypoint: `python -m isotope_kernel.demo`.
+- Explicit v0.2 demo scenario: `python -m isotope_kernel.demo --scenario v0.2`, covering the in-process HTTP facade, approval pause / resume, controlled artifact content policy, checkpoint, and memory `boundary_only` status.
 - Session / run creation through the in-process kernel path.
 - `ActionCompiler -> PolicyEngine -> Executor` action chain with `PolicyDecision.grants` enforcement.
 - Artifact creation with execution provenance and structured refs.

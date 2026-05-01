@@ -20,15 +20,15 @@
 
 ## Current Phase
 
-- `v0.1-demo` developer demo is accepted; baseline is `726 passed`.
+- `v0.1-demo` developer demo is accepted; baseline is `735 passed`.
 - Track D: Demo / Docs Polish is effectively complete / closed for now.
 - Current Track A design doc: [docs/http-api-minimal-surface-v0.2.md](docs/http-api-minimal-surface-v0.2.md).
 - Track A has in-process `HttpApiApp` / `create_http_app(...)`, request validation / no-side-effect error boundary, response contract, demo smoke, duplicate-submit idempotency boundary, route inventory, and deferred route contract; it is effectively complete / closed for now and is not a real listening HTTP server.
 - Current Track C design doc: [docs/artifact-content-read-policy-v0.2.md](docs/artifact-content-read-policy-v0.2.md).
 - Track C: Artifact Content Read Policy is effectively complete / closed for now: retrieval requires structured `ResourceRef`, grants, caller context, and purpose; HTTP full-content route has an explicit enablement guard but still returns `501 not_enabled`.
 - Track E: Approval Pause / Resume Boundary is effectively complete / closed for now. Approval resolution plus run-state / HTTP read-model green slices are complete; UI / auth / notification / scheduler / complex DSL remain deferred.
-- v0.2 demo readiness is documented in [docs/v0.2-demo-readiness.md](docs/v0.2-demo-readiness.md); current demo does not yet visibly exercise Track A / C / E.
-- v0.2 demo scenario boundary is documented in [docs/v0.2-demo-scenario.md](docs/v0.2-demo-scenario.md); do red tests before adding `--scenario v0.2`.
+- v0.2 demo readiness is documented in [docs/v0.2-demo-readiness.md](docs/v0.2-demo-readiness.md).
+- v0.2 demo scenario is implemented and documented in [docs/v0.2-demo-scenario.md](docs/v0.2-demo-scenario.md): `--scenario v0.2` visibly exercises Track A / C / E without real HTTP server, network listener, memory storage/query, or HTTP full-content route.
 - Real server boundary design only if Track A is explicitly reopened; artifact content HTTP route implementation only if Track C is explicitly reopened.
 - Optional docs polish can continue later, but it should not block v0.2 implementation.
 
@@ -42,6 +42,10 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo
 
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --json
+
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2
+
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2 --json
 
 rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel || true
 

@@ -31,6 +31,15 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --json
 ```
 
+v0.2 另有 explicit scenario，用来展示 Track A / C / E 的 in-process boundary，默认 v0.1 demo 仍保持兼容：
+
+```bash
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2 --json
+```
+
+v0.2 scenario 仍不启动 real HTTP server / network listener，不调用 real LLM，不实现 memory storage/query，也不打开 HTTP full-content route。
+
 ## 3. What Happens Internally
 
 demo 按顺序执行：

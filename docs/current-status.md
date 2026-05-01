@@ -7,10 +7,10 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`38dfd006b2bf2f080a0066be63c8e73886b89528`。
+- 最新 implementation commit：`4bf162cc3e15b6fa7784b38abdf31cbbf0d7b3b1`。
 - memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for v0.1 demo planning：当前 memory 线只声明 boundary / read-model / checkpoint 能力，不声明 durable storage 或 query engine 已完成。
 - v0.1 demo entrypoint 已实现，详见 `docs/demo-entrypoint-v0.1.md`；`python -m isotope_kernel.demo` 可输出 plain text summary，`--json` 可输出 JSON summary。
-- v0.1 developer demo 已按 `docs/v0.1-demo-acceptance.md` accepted：acceptance anchor 当时依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过；当前 baseline 已随 Track E approval run-state invariants slice 更新为 `726 passed`。
+- v0.1 developer demo 已按 `docs/v0.1-demo-acceptance.md` accepted：acceptance anchor 当时依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过；当前 baseline 已随 v0.2 demo scenario slice 更新为 `735 passed`。
 - lightweight tag `v0.1-demo` 已创建并推送，指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`。
 - GitHub Release draft 已准备在 `docs/release-draft-v0.1-demo.md`；尚未发布 GitHub Release。`main` 允许在 tag 后继续有 docs/status 更新，tag 仍是 demo acceptance anchor。
 - v0.2 roadmap 已开始，见 `docs/v0.2-roadmap.md`。Track D: Demo / Docs Polish 当前已 effectively complete / closed for now；Track A: HTTP API Minimal Surface 当前也已 effectively complete / closed for now，已完成 minimal surface、request validation / no-side-effect error boundary、response contract、demo smoke、idempotency boundary、route inventory 和 deferred route contract slices。
@@ -18,8 +18,8 @@
 - Track C: Artifact Content Read Policy 见 `docs/artifact-content-read-policy-v0.2.md`，当前已 effectively complete / closed for now。controlled full-content retrieval boundary 已实现：summary retrieval 返回 summary / ref / provenance 且不返回 full content；full-content retrieval 必须使用 structured `ResourceRef`，并要求 grants、caller context 和 purpose。HTTP full-content route 仍 deferred / `501 not_enabled`，并已有显式 `allow_artifact_content=False` enablement guard。
 - v0.2 mid-cycle review 已落文档，见 `docs/v0.2-mid-cycle-review.md`。该 recommendation 已执行到 Track E closure；不要默认转向 real HTTP server、memory query engine 或 external ingestion implementation。
 - Track E approval pause / resume boundary 见 `docs/approval-pause-resume-boundary-v0.2.md`，当前已 effectively complete / closed for now：pending approval 可 resolve；approved path append `approval.resolved` 后通过现有 executor path resume；approved resume 使用原 `PolicyDecision.grants`；denied path append `approval.resolved` 但不创建 execution / artifact；duplicate resolution 是受控 conflict；`RunState.approvals` 和 HTTP run read model 可表达 pending / approved / denied approval summary；event-log replay 和 checkpoint-assisted rebuild 可恢复 approval read model。它仍不是完整 approval product。
-- v0.2 demo readiness review 已落文档，见 `docs/v0.2-demo-readiness.md`。当前 demo 仍展示 v0.1 deterministic kernel loop：event log / replay / checkpoint / artifact summary / memory boundary；它尚未展示 Track A HTTP facade、Track C controlled full-content retrieval 或 Track E approval pause / resume。该 gap 不是 bug；若目标是外部展示，建议先做 v0.2 demo scenario expansion，再进入 Track F。
-- v0.2 demo scenario boundary 已落文档，见 `docs/v0.2-demo-scenario.md`。建议新增 explicit `--scenario v0.2`，展示 `HttpApiApp` facade、controlled artifact content retrieval policy 和 approval pause / resume，同时保持 default v0.1 demo 兼容、no real HTTP server、no network、no memory storage/query。
+- v0.2 demo readiness review 已落文档，见 `docs/v0.2-demo-readiness.md`。此前记录的 Track A / C / E 展示 gap 已通过 v0.2 demo scenario 关闭。
+- v0.2 demo scenario 已落地，见 `docs/v0.2-demo-scenario.md`。`python -m isotope_kernel.demo --scenario v0.2` 和 `python -m isotope_kernel.demo --scenario v0.2 --json` 已可运行，展示 `HttpApiApp` facade、controlled artifact content retrieval policy、approval pause / resume、checkpoint 和 memory `boundary_only`，同时保持 default v0.1 demo 兼容、no real HTTP server、no network listener、no memory storage/query、HTTP full-content route 仍 `not_enabled` / deferred。
 - docs inventory 已落文档，见 `docs/docs-inventory.md`。当前只盘点和规划未来整理方向；尚未移动、删除或合并任何 docs 文件。
 - Track A: HTTP API Minimal Surface 见 `docs/http-api-minimal-surface-v0.2.md`。当前实现是 in-process `HttpApiApp` / `create_http_app(...)`，不是监听端口的真实网络服务；没有引入 FastAPI / Flask / 新依赖。
 - v0.1 demo walkthrough 已补充，见 `docs/demo-walkthrough-v0.1.md`。它解释 demo 运行内容、内部步骤、plain text / JSON 输出字段、证明范围、非目标和 troubleshooting。
@@ -399,12 +399,17 @@
 - minimal v0.1 demo entrypoint 已实现
 - `python -m isotope_kernel.demo` runs a deterministic artifact-producing kernel loop
 - `python -m isotope_kernel.demo --json` emits parseable JSON summary
+- `python -m isotope_kernel.demo --scenario v0.2` runs an explicit v0.2 developer demo scenario
+- `python -m isotope_kernel.demo --scenario v0.2 --json` emits parseable v0.2 JSON summary
+- v0.2 scenario demonstrates the in-process `HttpApiApp` facade, approval pause / resume, controlled artifact content retrieval policy, checkpoint, and memory `boundary_only`
+- v0.2 scenario does not start a real HTTP server / network listener, does not call a real LLM, does not implement memory storage/query, and does not open the HTTP full-content route
+- v0.2 JSON output reports `http_api_ok`, `approval_ok`, `artifact_content_policy_ok`, `checkpoint_ok`, and `memory_status`, without artifact full content
 - demo verifies event replay and checkpoint-assisted rebuild from real generated events
 - demo uses temp storage and does not write repo-root `runs/`, `artifacts/`, or `checkpoints`
 - demo reports memory boundary status as `boundary_only`
 - v0.1 demo acceptance 已落文档：`docs/v0.1-demo-acceptance.md`
 - current demo acceptance status is `accepted as developer demo`, not product runtime
-- demo acceptance evidence includes local `568 passed` at the v0.1 acceptance anchor; current mainline baseline is `726 passed` after the Track E approval run-state invariants slice
+- demo acceptance evidence includes local `568 passed` at the v0.1 acceptance anchor; current mainline baseline is `735 passed` after the v0.2 demo scenario slice
 - lightweight demo tag exists: `v0.1-demo` -> `b3d4e328e74378bec2fb524deb85233df5a5d4eb`
 - GitHub Release draft exists: `docs/release-draft-v0.1-demo.md`
 - no GitHub Release has been published from the draft
@@ -428,6 +433,7 @@
 - HTTP API idempotency boundary tests 已落地并通过：`tests/isotope_kernel/test_http_api_idempotency_boundary.py`
 - HTTP API route inventory tests 已落地并通过：`tests/isotope_kernel/test_http_api_route_inventory.py`
 - HTTP API deferred routes contract tests 已落地并通过：`tests/isotope_kernel/test_http_api_deferred_routes.py`
+- v0.2 demo scenario tests 已落地并通过：`tests/isotope_kernel/test_demo_v0_2_scenario.py`
 - current HTTP API boundary is test-client style and does not listen on a port
 - no FastAPI / Flask / ASGI / WSGI framework or new dependency has been introduced
 - malformed / missing request body, method mismatch, unknown session, unknown run, and unknown artifact summary now return controlled 400 / 404 / 405 style responses
@@ -572,7 +578,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-726 passed
+735 passed
 ```
 
 Import boundary check:
@@ -649,13 +655,11 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- v0.2 demo scenario expansion if the next goal is an external-facing developer demo that visibly exercises Track A / C / E
-- first red tests for scenario expansion should start with `tests/isotope_kernel/test_demo_v0_2_scenario.py`
-- Track F: External Ingestion / `ImportedSnapshot` boundary docs / red tests after demo readiness gap is accepted or after scenario expansion
+- Track F: External Ingestion / `ImportedSnapshot` boundary docs / red tests if the next goal is a new kernel boundary after the v0.2 scenario
 - reopen Track E only with an explicit design / red-test request, such as product approval UI / auth / scheduler boundary
 - reopen Track C only with an explicit design / red-test request, such as HTTP content route boundary
 - real listening HTTP server boundary design only if Track A is explicitly reopened
 - optional Track D polish can continue later, but it no longer blocks v0.2 implementation
 - 或停在当前稳定点
 
-checkpoint v0.1、memory v0.1、Track A HTTP API Minimal Surface、Track C Artifact Content Read Policy 和 Track E Approval Pause / Resume Boundary 当前 frozen / closed unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D、Track A、Track C 和 Track E 都已 effectively complete / closed for now。当前 demo 尚未可视化展示 Track A / C / E；这不是 bug，但如果要形成更适合外部读者的 v0.2 developer demo，应先做 scenario expansion。HTTP full-content route 仍 `501 not_enabled`，ranking、semantic retrieval、memory controlled expand、external ingestion implementation 和 real listening HTTP server 仍 deferred。不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage / ingestion implementation。
+checkpoint v0.1、memory v0.1、Track A HTTP API Minimal Surface、Track C Artifact Content Read Policy 和 Track E Approval Pause / Resume Boundary 当前 frozen / closed unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D、Track A、Track C 和 Track E 都已 effectively complete / closed for now。v0.2 demo scenario 已实现并可通过 `--scenario v0.2` 展示 Track A / C / E 的 in-process boundary。HTTP full-content route 仍 `501 not_enabled`，ranking、semantic retrieval、memory controlled expand、external ingestion implementation 和 real listening HTTP server 仍 deferred。不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage / ingestion implementation。
