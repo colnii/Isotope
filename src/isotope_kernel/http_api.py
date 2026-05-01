@@ -52,9 +52,15 @@ class HttpApiApp:
     ) -> HttpResponse:
         method = method.upper()
         parts = self._split_path(path)
+        allowed_methods = self._allowed_methods(parts) if parts else set()
 
-        if parts and self._allowed_methods(parts) and method not in self._allowed_methods(parts):
-            return self._json(405, {"status": "method_not_allowed", "error": "method_not_allowed"})
+        if parts and allowed_methods and method not in allowed_methods:
+            return self._error(
+                405,
+                "method_not_allowed",
+                "method not allowed",
+                allowed_methods=sorted(allowed_methods),
+            )
 
         try:
             if method == "GET" and parts == ["health"]:
@@ -64,7 +70,7 @@ class HttpApiApp:
             if method == "POST" and len(parts) == 3 and parts[0] == "sessions" and parts[2] == "runs":
                 body = self._require_body(json, required_fields=("goal",))
                 if parts[1] not in self.server._sessions:
-                    return self._json(404, {"status": "not_found", "error": "not_found"})
+                    return self._error(404, "not_found", "session not found")
                 return self._json(
                     201,
                     self.server.create_run(parts[1], goal=body["goal"]),
@@ -72,28 +78,28 @@ class HttpApiApp:
             if method == "POST" and len(parts) == 3 and parts[0] == "runs" and parts[2] == "input":
                 body = self._require_body(json, required_fields=("text",))
                 if not self._run_exists(parts[1]):
-                    return self._json(404, {"status": "not_found", "error": "not_found"})
+                    return self._error(404, "not_found", "run not found")
                 result = self.server.submit_input(parts[1], text=body["text"])
                 return self._json(200, self._submit_result_to_dict(result))
             if method == "GET" and len(parts) == 2 and parts[0] == "runs":
                 if not self._run_exists(parts[1]):
-                    return self._json(404, {"status": "not_found", "error": "not_found"})
+                    return self._error(404, "not_found", "run not found")
                 return self._json(200, self._run_state_to_dict(self.server.get_run_state(parts[1])))
             if method == "GET" and len(parts) == 3 and parts[0] == "runs" and parts[2] == "events":
                 if not self._run_exists(parts[1]):
-                    return self._json(404, {"status": "not_found", "error": "not_found"})
+                    return self._error(404, "not_found", "run not found")
                 return self._json(200, [event.to_dict() for event in self.server.get_events(parts[1])])
             if method == "GET" and len(parts) == 3 and parts[0] == "artifacts" and parts[2] == "summary":
                 summary = self._find_artifact_summary(parts[1])
                 if summary is None:
-                    return self._json(404, {"status": "not_found"})
+                    return self._error(404, "not_found", "artifact not found")
                 return self._json(200, summary)
         except PermissionError as exc:
-            return self._json(403, {"status": "forbidden", "error": str(exc)})
+            return self._error(403, "forbidden", str(exc))
         except (FileNotFoundError, ValueError) as exc:
-            return self._json(400, {"status": "bad_request", "error": str(exc)})
+            return self._error(400, "bad_request", str(exc))
 
-        return self._json(404, {"status": "not_found"})
+        return self._error(404, "not_found", "route not found")
 
     def _find_artifact_summary(self, artifact_id: str) -> dict[str, Any] | None:
         runs_root = self.root_path / "runs"
@@ -139,6 +145,26 @@ class HttpApiApp:
         body: dict[str, Any] | list[dict[str, Any]],
     ) -> HttpResponse:
         return HttpResponse(status_code=status_code, body=body)
+
+    def _error(
+        self,
+        status_code: int,
+        code: str,
+        message: str,
+        **details: Any,
+    ) -> HttpResponse:
+        error: dict[str, Any] = {
+            "code": code,
+            "message": message,
+        }
+        error.update(details)
+        return self._json(
+            status_code,
+            {
+                "status": code,
+                "error": error,
+            },
+        )
 
     def _split_path(self, path: str) -> list[str]:
         if not isinstance(path, str) or not path.startswith("/"):
