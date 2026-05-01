@@ -7,15 +7,15 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`6e043149904fd3f1f7c5ad70caf7b1bbdabc5785`。
+- 最新 implementation commit：`c12cbb2e67c442beda6dcdf99eff2fa179ba11ff`。
 - memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for v0.1 demo planning：当前 memory 线只声明 boundary / read-model / checkpoint 能力，不声明 durable storage 或 query engine 已完成。
 - v0.1 demo entrypoint 已实现，详见 `docs/demo-entrypoint-v0.1.md`；`python -m isotope_kernel.demo` 可输出 plain text summary，`--json` 可输出 JSON summary。
-- v0.1 developer demo 已按 `docs/v0.1-demo-acceptance.md` accepted：acceptance anchor 当时依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过；当前 baseline 已随 Track A route inventory / deferred routes contract slice 更新为 `647 passed`。
+- v0.1 developer demo 已按 `docs/v0.1-demo-acceptance.md` accepted：acceptance anchor 当时依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过；当前 baseline 已随 Track C artifact content retrieval boundary slice 更新为 `669 passed`。
 - lightweight tag `v0.1-demo` 已创建并推送，指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`。
 - GitHub Release draft 已准备在 `docs/release-draft-v0.1-demo.md`；尚未发布 GitHub Release。`main` 允许在 tag 后继续有 docs/status 更新，tag 仍是 demo acceptance anchor。
 - v0.2 roadmap 已开始，见 `docs/v0.2-roadmap.md`。Track D: Demo / Docs Polish 当前已 effectively complete / closed for now；Track A: HTTP API Minimal Surface 当前也已 effectively complete / closed for now，已完成 minimal surface、request validation / no-side-effect error boundary、response contract、demo smoke、idempotency boundary、route inventory 和 deferred route contract slices。
 - v0.2 next-track selection 已落文档，见 `docs/v0.2-next-track-selection.md`。推荐下一阶段选择 artifact content read policy / controlled full-content retrieval boundary，而不是 real HTTP server。
-- Track C: Artifact Content Read Policy boundary 已开始，见 `docs/artifact-content-read-policy-v0.2.md`。当前只定义 controlled full-content retrieval 的边界和 red tests 入口，不实现 full content retrieval API。
+- Track C: Artifact Content Read Policy boundary 已开始，见 `docs/artifact-content-read-policy-v0.2.md`。第一批 controlled full-content retrieval boundary 已实现：summary retrieval 返回 summary / ref / provenance 且不返回 full content；full-content retrieval 必须使用 structured `ResourceRef`，并要求 grants、caller context 和 purpose。HTTP full-content route 仍 deferred / `501 not_enabled`。
 - Track A: HTTP API Minimal Surface 见 `docs/http-api-minimal-surface-v0.2.md`。当前实现是 in-process `HttpApiApp` / `create_http_app(...)`，不是监听端口的真实网络服务；没有引入 FastAPI / Flask / 新依赖。
 - v0.1 demo walkthrough 已补充，见 `docs/demo-walkthrough-v0.1.md`。它解释 demo 运行内容、内部步骤、plain text / JSON 输出字段、证明范围、非目标和 troubleshooting。
 - v0.1 demo architecture diagram 已补充，见 `docs/demo-architecture-v0.1.md`。它解释 demo runtime path，不是完整 Isotope 架构图。
@@ -387,7 +387,7 @@
 - demo reports memory boundary status as `boundary_only`
 - v0.1 demo acceptance 已落文档：`docs/v0.1-demo-acceptance.md`
 - current demo acceptance status is `accepted as developer demo`, not product runtime
-- demo acceptance evidence includes local `568 passed` at the v0.1 acceptance anchor; current mainline baseline is `647 passed` after the Track A HTTP API route inventory / deferred routes contract slice
+- demo acceptance evidence includes local `568 passed` at the v0.1 acceptance anchor; current mainline baseline is `669 passed` after the Track C artifact content retrieval boundary slice
 - lightweight demo tag exists: `v0.1-demo` -> `b3d4e328e74378bec2fb524deb85233df5a5d4eb`
 - GitHub Release draft exists: `docs/release-draft-v0.1-demo.md`
 - no GitHub Release has been published from the draft
@@ -430,8 +430,14 @@
 - `GET /artifacts/{artifact_id}/summary` returns summary / ref / provenance from canonical `artifact.created` event and does not return full content / raw content
 - memory query, external ingestion, approval API, SSE / streaming, real listening HTTP server, hosted deployment, and full artifact content endpoint remain deferred / not enabled
 - next selected v0.2 track is artifact content read policy / controlled full-content retrieval boundary
-- Track C boundary doc now specifies summary-only default, structured `ResourceRef`, explicit grants, caller context / purpose, controlled denial / downgrade semantics, and no implicit content read by projector / checkpoint / HTTP summary route
-- this selection keeps real HTTP server, memory query engine, external ingestion implementation, approval resume flow, ranking, semantic retrieval, binary streaming, and full artifact content endpoint implementation deferred until separate red tests
+- Track C artifact content read policy tests 已落地并通过：`tests/isotope_kernel/test_artifact_content_read_policy.py`
+- Track C HTTP artifact content boundary tests 已落地并通过：`tests/isotope_kernel/test_http_api_artifact_content_boundary.py`
+- `RetrievalService.get_artifact_summary(...)` returns summary / ref / provenance and still does not return full content
+- `RetrievalService.get_artifact_content(...)` is the controlled full-content retrieval boundary
+- full-content retrieval accepts only structured `ResourceRef`, rejects URI string / raw artifact id, requires grants plus caller context / purpose, fails closed before content read when unauthorized, and reads content only when grants explicitly allow full content
+- Track C first green slice did not modify projector / server / executor / event store, did not modify HTTP routes, and did not add dependencies
+- HTTP full-content route remains deferred / stable `501 not_enabled`
+- this Track C slice keeps real HTTP server, memory query engine, external ingestion implementation, approval resume flow, ranking, semantic retrieval, memory controlled expand, binary streaming, and full artifact content HTTP endpoint implementation deferred until separate design / red tests
 - packaging / install smoke coverage 已落地：`tests/isotope_kernel/test_packaging_smoke.py`
 - current `pyproject.toml` metadata / src-layout package discovery / editable install path 已通过 smoke
 - editable install 后可 import `isotope_kernel`，并可运行 installed `python -m isotope_kernel.demo` / `python -m isotope_kernel.demo --json`
@@ -535,7 +541,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-647 passed
+669 passed
 ```
 
 Import boundary check:
@@ -612,10 +618,10 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- artifact content read policy / controlled full-content retrieval red tests, if v0.2 work continues
+- decide the next Track C slice, such as HTTP content route boundary design / red tests, only if explicitly selected
 - Track F: External Ingestion / `ImportedSnapshot` boundary docs / red tests after artifact content access policy is clearer
 - real listening HTTP server boundary design only if Track A is explicitly reopened
 - optional Track D polish can continue later, but it no longer blocks v0.2 implementation
 - 或停在当前稳定点
 
-checkpoint v0.1、memory v0.1 和 Track A HTTP API Minimal Surface 当前 frozen / closed unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D 已 effectively complete / closed for now，Track A HTTP API Minimal Surface 已 effectively complete / closed for now；下一推荐 track 是 artifact content read policy / controlled full-content retrieval boundary。不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage / ingestion implementation。
+checkpoint v0.1、memory v0.1 和 Track A HTTP API Minimal Surface 当前 frozen / closed unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D 已 effectively complete / closed for now，Track A HTTP API Minimal Surface 已 effectively complete / closed for now；Track C 第一批 artifact content retrieval boundary 已落地，但 HTTP full-content route、ranking、semantic retrieval、memory controlled expand 和 real listening HTTP server 仍 deferred。不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage / ingestion implementation。

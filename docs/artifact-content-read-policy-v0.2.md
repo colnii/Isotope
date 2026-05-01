@@ -1,6 +1,6 @@
 # Artifact Content Read Policy v0.2
 
-状态：`draft boundary`
+状态：`first green slice implemented`
 
 ## 1. Purpose
 
@@ -8,7 +8,7 @@ Track C 的目标是定义 artifact full content（artifact 完整内容）什�
 
 当前 v0.1 / v0.2 demo 已证明 artifact summary / ref / provenance 可以通过 canonical event 和 HTTP facade 被安全展示。但如果 v0.2 要更像可用 runtime，只展示 summary 还不够：调用方最终需要在明确授权下读取 artifact content。这个读取路径必须保持 ref-first、grant-gated、summary-by-default，不能绕过 kernel hard contracts。
 
-本文件只定义 boundary。它不实现 retrieval engine、HTTP content endpoint、ranking、semantic search、binary streaming 或 real server。
+本文件定义 Track C boundary，并记录第一批 green slice。当前实现只覆盖 in-process retrieval boundary；它不实现 HTTP content endpoint、ranking、semantic search、binary streaming、memory controlled expand 或 real server。
 
 ## 2. Current Surface
 
@@ -18,6 +18,12 @@ Track C 的目标是定义 artifact full content（artifact 完整内容）什�
 - `ArtifactStore.get_metadata(...)` 可以读取 artifact metadata / summary。
 - `ArtifactStore.get_content(...)` 是 lower-level store primitive，但不是 public read policy。
 - `RetrievalService.get_artifact_summary(...)` 已要求 structured `ResourceRef` 和 explicit grants。
+- `RetrievalService.get_artifact_summary(...)` 当前返回 summary / ref / provenance，仍不返回 full content。
+- `RetrievalService.get_artifact_content(...)` 已作为 controlled full-content retrieval boundary 实现。
+- full-content retrieval 只接受 structured `ResourceRef`，拒绝 URI string / raw artifact id。
+- full-content retrieval 要求 explicit grants、caller context 和 purpose。
+- grants 未授权 full content 时会在读取 content 前 fail closed。
+- grants 授权 full content 时才读取并返回 content。
 - summary retrieval 已有 no-full-content-read 防回归测试。
 - artifact created event 只携带 summary / ref / provenance，不携带 content。
 - projector 只从 canonical events 投影 `RunState`，不读取 artifact content。
@@ -41,7 +47,7 @@ Track C 必须继续守住这些边界：
 
 ## 4. v0.2 Minimal Goal
 
-v0.2 最小目标是新增一个 controlled full-content retrieval boundary：
+v0.2 第一批 green slice 已新增 controlled full-content retrieval boundary：
 
 - full content 必须显式请求，例如 requested view / mode 是 `full`。
 - request 必须携带 structured `ResourceRef`。
@@ -51,9 +57,9 @@ v0.2 最小目标是新增一个 controlled full-content retrieval boundary：
 - missing / malformed grants 必须受控拒绝。
 - missing / malformed caller context 必须受控拒绝。
 - URI string ref 必须拒绝。
-- denied retrieval 应返回 denial 或抛受控 authorization error。
-- downgraded retrieval 可以返回 summary view，但必须显式标记为 downgraded / limited，不能假装 full content 已返回。
-- success response 只能在 full-content grant 明确允许时包含 content。
+- denied retrieval 当前使用受控 exception fail closed。
+- downgraded retrieval 仍是允许的未来策略，但当前实现选择 fail closed。
+- success response 只在 full-content grant 明确允许时包含 content。
 
 这仍是 in-process retrieval boundary，不是 hosted content API。
 
@@ -61,7 +67,7 @@ v0.2 最小目标是新增一个 controlled full-content retrieval boundary：
 
 字段名是 v0 candidate，不是永久 protocol。
 
-可能的 service shape：
+当前 service shape：
 
 ```python
 RetrievalService.get_artifact_content(
@@ -73,7 +79,7 @@ RetrievalService.get_artifact_content(
 ) -> dict
 ```
 
-可能的 success response：
+当前 success response：
 
 ```python
 {
@@ -87,7 +93,7 @@ RetrievalService.get_artifact_content(
 }
 ```
 
-可能的 downgraded response：
+未来如果选择 downgrade，可使用类似 response：
 
 ```python
 {
@@ -100,7 +106,7 @@ RetrievalService.get_artifact_content(
 }
 ```
 
-可能的 denial response / exception：
+当前 denial 采用受控 exception；未来如果选择 dict-based denial，可使用类似 response：
 
 ```python
 {
@@ -109,7 +115,7 @@ RetrievalService.get_artifact_content(
 }
 ```
 
-v0 green slice 可以选择 exception-based denial 或 dict-based denial；测试应先锁定一种行为，避免混合语义。
+当前 green slice 锁定 exception-based denial，避免在同一 boundary 内混合 dict-based denial。
 
 ## 6. HTTP Boundary
 
@@ -143,16 +149,16 @@ HTTP Track A 当前 closed。Track C 默认不重新打开 real HTTP server。
 - audit-event design for artifact read
 - public hosted content API
 
-## 8. First Red Tests
+## 8. First Tests
 
-下一轮建议新增：
+第一批 tests 已落地：
 
 ```text
 tests/isotope_kernel/test_artifact_content_read_policy.py
 tests/isotope_kernel/test_http_api_artifact_content_boundary.py
 ```
 
-第一批 red tests 应覆盖：
+第一批 tests 覆盖：
 
 - retrieval summary 不返回 full content。
 - full content request 必须带 structured `ResourceRef`。
@@ -161,7 +167,7 @@ tests/isotope_kernel/test_http_api_artifact_content_boundary.py
 - malformed grants 被拒绝。
 - missing caller context 被拒绝。
 - malformed caller context 被拒绝。
-- grants 不允许 full content 时返回 downgraded summary 或 denied。
+- grants 不允许 full content 时受控拒绝，且不会读取 content。
 - grants 允许 full content 时才返回 content。
 - full content read 不产生 canonical event。
 - full content read 不修改 `RunState`。
@@ -172,7 +178,7 @@ tests/isotope_kernel/test_http_api_artifact_content_boundary.py
 
 ## 9. Acceptance For This Boundary
 
-Track C 的第一段可以被认为完成，当：
+Track C 的第一段当前已满足：
 
 - artifact summary path 仍 summary-only。
 - controlled full-content read 的 authorization shape 已由 tests 固定。
