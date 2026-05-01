@@ -7,13 +7,13 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`a15e60c45517b8e7c055d49ce3ff89cd91683b4c`。
+- 最新 implementation commit：`10c81d43528cda73159cc938f61145ed9fb71cf6`。
 - memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for v0.1 demo planning：当前 memory 线只声明 boundary / read-model / checkpoint 能力，不声明 durable storage 或 query engine 已完成。
 - v0.1 demo entrypoint 已实现，详见 `docs/demo-entrypoint-v0.1.md`；`python -m isotope_kernel.demo` 可输出 plain text summary，`--json` 可输出 JSON summary。
-- v0.1 developer demo 已按 `docs/v0.1-demo-acceptance.md` accepted：acceptance anchor 当时依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过；当前 baseline 已随 Track A response contract / demo smoke slice 更新为 `619 passed`。
+- v0.1 developer demo 已按 `docs/v0.1-demo-acceptance.md` accepted：acceptance anchor 当时依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过；当前 baseline 已随 Track A idempotency boundary slice 更新为 `630 passed`。
 - lightweight tag `v0.1-demo` 已创建并推送，指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`。
 - GitHub Release draft 已准备在 `docs/release-draft-v0.1-demo.md`；尚未发布 GitHub Release。`main` 允许在 tag 后继续有 docs/status 更新，tag 仍是 demo acceptance anchor。
-- v0.2 roadmap 已开始，见 `docs/v0.2-roadmap.md`。Track D: Demo / Docs Polish 当前已 effectively complete / closed for now；Track A: HTTP API Minimal Surface 已完成 minimal surface、request validation / no-side-effect error boundary、response contract 和 demo smoke slices。
+- v0.2 roadmap 已开始，见 `docs/v0.2-roadmap.md`。Track D: Demo / Docs Polish 当前已 effectively complete / closed for now；Track A: HTTP API Minimal Surface 已完成 minimal surface、request validation / no-side-effect error boundary、response contract、demo smoke 和 idempotency boundary slices。
 - Track A: HTTP API Minimal Surface 见 `docs/http-api-minimal-surface-v0.2.md`。当前实现是 in-process `HttpApiApp` / `create_http_app(...)`，不是监听端口的真实网络服务；没有引入 FastAPI / Flask / 新依赖。
 - v0.1 demo walkthrough 已补充，见 `docs/demo-walkthrough-v0.1.md`。它解释 demo 运行内容、内部步骤、plain text / JSON 输出字段、证明范围、非目标和 troubleshooting。
 - v0.1 demo architecture diagram 已补充，见 `docs/demo-architecture-v0.1.md`。它解释 demo runtime path，不是完整 Isotope 架构图。
@@ -385,7 +385,7 @@
 - demo reports memory boundary status as `boundary_only`
 - v0.1 demo acceptance 已落文档：`docs/v0.1-demo-acceptance.md`
 - current demo acceptance status is `accepted as developer demo`, not product runtime
-- demo acceptance evidence includes local `568 passed` at the v0.1 acceptance anchor; current mainline baseline is `619 passed` after the Track A HTTP API response contract / demo smoke slice
+- demo acceptance evidence includes local `568 passed` at the v0.1 acceptance anchor; current mainline baseline is `630 passed` after the Track A HTTP API idempotency boundary slice
 - lightweight demo tag exists: `v0.1-demo` -> `b3d4e328e74378bec2fb524deb85233df5a5d4eb`
 - GitHub Release draft exists: `docs/release-draft-v0.1-demo.md`
 - no GitHub Release has been published from the draft
@@ -393,7 +393,7 @@
 - HTTP API Minimal Surface v0.2 status doc exists: `docs/http-api-minimal-surface-v0.2.md`
 - recommended v0.2 order is Demo / Docs Polish, HTTP API Minimal Surface, External Ingestion / ImportedSnapshot, then Real Memory Storage Slice
 - Track D: Demo / Docs Polish is effectively complete / closed for now with README quick start, `docs/demo-walkthrough-v0.1.md`, `docs/demo-architecture-v0.1.md`, `docs/v0.1-demo-acceptance.md`, limitations / non-goals, and CI smoke status
-- Track A has landed in-process HTTP API slices for minimal surface, request validation / no-side-effect error boundary, response contract, and demo smoke; no real listening server, web framework, auth, SSE, memory query API, external ingestion API, or full artifact content API is implemented
+- Track A has landed in-process HTTP API slices for minimal surface, request validation / no-side-effect error boundary, response contract, demo smoke, and idempotency / duplicate-submit boundary; no real listening server, web framework, auth, SSE, memory query API, external ingestion API, or full artifact content API is implemented
 - demo walkthrough explains what `python -m isotope_kernel.demo` runs, what output fields mean, what the demo proves, what it does not prove, and common setup / CI troubleshooting
 - demo architecture diagram explains the v0.1 runtime path with a Mermaid flow; it is not the full Isotope architecture
 - HTTP API Minimal Surface slices 已落地：`src/isotope_kernel/http_api.py`
@@ -403,12 +403,17 @@
 - HTTP API request validation tests 已落地并通过：`tests/isotope_kernel/test_http_api_request_validation.py`
 - HTTP API response contract tests 已落地并通过：`tests/isotope_kernel/test_http_api_response_contract.py`
 - HTTP API facade demo smoke tests 已落地并通过：`tests/isotope_kernel/test_http_api_demo_smoke.py`
+- HTTP API idempotency boundary tests 已落地并通过：`tests/isotope_kernel/test_http_api_idempotency_boundary.py`
 - current HTTP API boundary is test-client style and does not listen on a port
 - no FastAPI / Flask / ASGI / WSGI framework or new dependency has been introduced
 - malformed / missing request body, method mismatch, unknown session, unknown run, and unknown artifact summary now return controlled 400 / 404 / 405 style responses
 - error requests do not create run events, action lifecycle events, or artifact side effects
 - HTTP responses expose stable `status_code` plus JSON-compatible body; errors use stable nested `error.code` / `error.message` shape while preserving top-level `status`
 - HTTP facade demo smoke covers create session -> create run -> submit input -> get run state -> get events -> get artifact summary without network or listening sockets
+- HTTP facade has per-`HttpApiApp` in-memory idempotency cache for JSON `idempotency_key`
+- duplicate `POST /sessions`, `POST /sessions/{session_id}/runs`, and `POST /runs/{run_id}/input` with the same key and same body replay the same response without duplicate session/run/action/artifact side effects
+- idempotency key reuse across method/path or with different body returns controlled `409` and no second side effect
+- `idempotency_key` stays out of canonical events; this is not distributed idempotency and does not modify event-store append-only semantics
 - `POST /runs/{run_id}/input` delegates to existing `InProcessServer.submit_input(...)` and therefore still goes through the action chain
 - `GET /runs/{run_id}` returns projector read model
 - `GET /runs/{run_id}/events` returns canonical event log view
@@ -517,7 +522,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-619 passed
+630 passed
 ```
 
 Import boundary check:
@@ -598,4 +603,4 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - optional Track D polish can continue later, but it no longer blocks v0.2 implementation
 - 或停在当前稳定点
 
-checkpoint v0.1 和 memory v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D 已 effectively complete / closed for now，Track A HTTP API Minimal Surface 已完成 minimal surface、request validation / no-side-effect error boundary、response contract 和 demo smoke；不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage / ingestion implementation。
+checkpoint v0.1 和 memory v0.1 当前 frozen unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D 已 effectively complete / closed for now，Track A HTTP API Minimal Surface 已完成 minimal surface、request validation / no-side-effect error boundary、response contract、demo smoke 和 idempotency boundary；不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage / ingestion implementation。

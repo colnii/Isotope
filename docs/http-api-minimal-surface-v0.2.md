@@ -1,6 +1,6 @@
 # HTTP API Minimal Surface v0.2
 
-状态：`surface, request validation, response contract, and demo smoke slices implemented`
+状态：`surface, request validation, response contract, demo smoke, and idempotency slices implemented`
 
 ## 1. Purpose
 
@@ -8,7 +8,7 @@ v0.2 HTTP API 的目标，是把当前 in-process demo 能力暴露成最小 ser
 
 这个 surface 应先证明现有 kernel loop 可以被外部进程以 HTTP 方式驱动和读取：create session、create run、submit input、read projected run state、read canonical events、read artifact summary。它不是 auth / streaming / hosted service / production API 设计。
 
-当前 green slices 已实现为 in-process `HttpApiApp` / `create_http_app(...)`，并补齐 request validation / no-side-effect error boundary、response contract 和 HTTP facade demo smoke。它是 test-client style boundary，不监听端口，不引入 FastAPI / Flask / 新依赖，也不是 production HTTP server。
+当前 green slices 已实现为 in-process `HttpApiApp` / `create_http_app(...)`，并补齐 request validation / no-side-effect error boundary、response contract、HTTP facade demo smoke 和 duplicate-submit idempotency boundary。它是 test-client style boundary，不监听端口，不引入 FastAPI / Flask / 新依赖，也不是 production HTTP server。
 
 ## 2. Hard Boundaries
 
@@ -21,6 +21,8 @@ v0.2 HTTP API 的目标，是把当前 in-process demo 能力暴露成最小 ser
 - API response 不能暴露 artifact full content，除非后续 retrieval policy 明确允许。
 - HTTP handlers 不能直接解释 checkpoint state；checkpoint-assisted rebuild 仍必须走 projector-owned boundary。
 - HTTP handlers 不能直接读取 executor in-memory state 作为 run truth。
+- HTTP idempotency 只是 in-process `HttpApiApp` request boundary，不是 distributed idempotency、database-backed dedupe 或 canonical event source of truth。
+- `idempotency_key` 不能写入 canonical events。
 
 ## 3. Minimal Endpoints
 
@@ -141,6 +143,24 @@ tests/isotope_kernel/test_http_api_request_validation.py
 - `POST /runs/{run_id}/input` requires non-empty string `text` and does not implicitly `str(...)`-coerce invalid values。
 - invalid requests do not produce action lifecycle events or artifact side effects。
 - deferred memory query / external ingestion / SSE / full artifact content routes remain absent / not enabled。
+
+第四批 idempotency / duplicate-submit boundary tests 已新增并通过：
+
+```text
+tests/isotope_kernel/test_http_api_idempotency_boundary.py
+```
+
+覆盖点：
+
+- `POST /sessions` 不带 `idempotency_key` 时每次创建新 session。
+- `POST /sessions` / `POST /sessions/{session_id}/runs` / `POST /runs/{run_id}/input` 带相同 `idempotency_key` 和相同 body 时 replay 同一个 response。
+- duplicate submit 不重复创建 session / run events / action lifecycle events / artifact。
+- same `idempotency_key` 跨不同 method / path 复用时返回 controlled `409`，且无第二次 side effect。
+- same `idempotency_key` 搭配不同 body 时返回 controlled `409`，且无第二次 side effect。
+- `idempotency_key` 不进入 canonical event log。
+- idempotency cache 是 per-`HttpApiApp` in-memory cache；重启 / 新 app instance 后不保证 dedupe。
+- malformed request 不缓存为 success；后续同 key valid retry 可继续走正常路径。
+- deferred routes 不因 `idempotency_key` 获得 side effect。
 
 第三批 response contract / demo smoke tests 已新增并通过：
 
