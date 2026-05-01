@@ -1,6 +1,6 @@
 # HTTP API Minimal Surface v0.2
 
-状态：`surface, request validation, response contract, demo smoke, and idempotency slices implemented`
+状态：`surface, request validation, response contract, demo smoke, idempotency, route inventory, and deferred route contract slices implemented`
 
 ## 1. Purpose
 
@@ -8,7 +8,7 @@ v0.2 HTTP API 的目标，是把当前 in-process demo 能力暴露成最小 ser
 
 这个 surface 应先证明现有 kernel loop 可以被外部进程以 HTTP 方式驱动和读取：create session、create run、submit input、read projected run state、read canonical events、read artifact summary。它不是 auth / streaming / hosted service / production API 设计。
 
-当前 green slices 已实现为 in-process `HttpApiApp` / `create_http_app(...)`，并补齐 request validation / no-side-effect error boundary、response contract、HTTP facade demo smoke 和 duplicate-submit idempotency boundary。它是 test-client style boundary，不监听端口，不引入 FastAPI / Flask / 新依赖，也不是 production HTTP server。
+当前 green slices 已实现为 in-process `HttpApiApp` / `create_http_app(...)`，并补齐 request validation / no-side-effect error boundary、response contract、HTTP facade demo smoke、duplicate-submit idempotency boundary、route inventory 和 deferred route contract。它是 test-client style boundary，不监听端口，不引入 FastAPI / Flask / 新依赖，也不是 production HTTP server。
 
 ## 2. Hard Boundaries
 
@@ -39,6 +39,8 @@ GET  /health
 ```
 
 当前 `HttpApiApp.routes()` 只暴露上述 minimal surface。deferred endpoints 不在 route table 中，并以 not found / not enabled 风格处理。
+
+当前 `HttpApiApp.list_routes()` 和 metadata endpoint `GET /routes` 暴露 route inventory。inventory 只把当前 supported routes 标成 `supported`；memory query、external ingestion、SSE / stream、approval API 和 full artifact content 不能被标成 supported。
 
 暂不实现：
 
@@ -100,6 +102,32 @@ run 创建只能产生当前 runtime/service boundary 允许的 canonical events
 
 它只回答 server process 是否可响应，不证明 event log、artifact store、checkpoint store 或 memory boundary 已完成业务动作。
 
+### GET /routes
+
+返回当前 in-process HTTP facade 的 route inventory。
+
+该 endpoint 是 developer-facing metadata surface，不是 hosted API discovery protocol。它返回 supported route method / path / status，不暴露 Python handler、bound method、internal object repr，也不把 deferred 功能列为 supported。
+
+### Deferred route contract
+
+以下 route 当前有稳定 deferred response，但不实现对应能力：
+
+```text
+POST /runs/{run_id}/memory/query
+POST /external-ingestion
+GET  /runs/{run_id}/events/stream
+POST /runs/{run_id}/approvals
+GET  /artifacts/{artifact_id}/content
+```
+
+当前返回：
+
+```json
+{"status": "not_enabled", "error": {"code": "not_enabled", "message": "...", "capability": "..."}}
+```
+
+HTTP status code 是 `501`。这些 route 不能创建 events、actions、artifacts，不能读取 artifact full content、memory store 或 external raw input。
+
 ## 5. Transport Choice
 
 v0.2 可以使用 Python 标准库或轻量依赖，但先不要承诺长期 framework。
@@ -144,6 +172,24 @@ tests/isotope_kernel/test_http_api_request_validation.py
 - invalid requests do not produce action lifecycle events or artifact side effects。
 - deferred memory query / external ingestion / SSE / full artifact content routes remain absent / not enabled。
 
+第三批 response contract / demo smoke tests 已新增并通过：
+
+```text
+tests/isotope_kernel/test_http_api_response_contract.py
+tests/isotope_kernel/test_http_api_demo_smoke.py
+```
+
+覆盖点：
+
+- every response exposes `status_code` and JSON-compatible `body` / `.json()` output。
+- success responses do not return Python dataclasses, raw objects, or internal repr strings。
+- error responses use stable shape: `{"status": code, "error": {"code": code, "message": message}}`，with optional minimal details such as `allowed_methods` for `405`。
+- `400` / `404` / `405` / `200` / `201` responses keep the same response contract。
+- method mismatch can report allowed methods without leaking internal routing details。
+- response bodies do not contain artifact full content / raw content。
+- HTTP facade demo smoke runs the full session -> run -> input -> state -> events -> artifact summary path without opening sockets or listening on a port。
+- deferred memory query / external ingestion / SSE / full artifact content routes remain absent / not enabled。
+
 第四批 idempotency / duplicate-submit boundary tests 已新增并通过：
 
 ```text
@@ -162,23 +208,22 @@ tests/isotope_kernel/test_http_api_idempotency_boundary.py
 - malformed request 不缓存为 success；后续同 key valid retry 可继续走正常路径。
 - deferred routes 不因 `idempotency_key` 获得 side effect。
 
-第三批 response contract / demo smoke tests 已新增并通过：
+第五批 route inventory / deferred route contract tests 已新增并通过：
 
 ```text
-tests/isotope_kernel/test_http_api_response_contract.py
-tests/isotope_kernel/test_http_api_demo_smoke.py
+tests/isotope_kernel/test_http_api_route_inventory.py
+tests/isotope_kernel/test_http_api_deferred_routes.py
 ```
 
 覆盖点：
 
-- every response exposes `status_code` and JSON-compatible `body` / `.json()` output。
-- success responses do not return Python dataclasses, raw objects, or internal repr strings。
-- error responses use stable shape: `{"status": code, "error": {"code": code, "message": message}}`，with optional minimal details such as `allowed_methods` for `405`。
-- `400` / `404` / `405` / `200` / `201` responses keep the same response contract。
-- method mismatch can report allowed methods without leaking internal routing details。
-- response bodies do not contain artifact full content / raw content。
-- HTTP facade demo smoke runs the full session -> run -> input -> state -> events -> artifact summary path without opening sockets or listening on a port。
-- deferred memory query / external ingestion / SSE / full artifact content routes remain absent / not enabled。
+- `HttpApiApp.list_routes()` returns stable supported route inventory。
+- `GET /routes` returns the same JSON-compatible inventory。
+- legacy `HttpApiApp.routes()` remains a minimal tuple surface for supported routes。
+- inventory does not mark memory query、external ingestion、SSE / stream、approval API 或 full artifact content routes as supported。
+- deferred routes return stable `501 not_enabled` with explicit `error.capability`。
+- deferred routes do not create events / actions / artifacts。
+- deferred full artifact content route does not read artifact full content。
 
 ## 7. Still Deferred
 
