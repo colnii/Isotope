@@ -17,6 +17,7 @@
 - v0.2 next-track selection 已落文档，见 `docs/v0.2-next-track-selection.md`。该 recommendation 已执行到 Track C closure；后续默认不进入 real HTTP server。
 - Track C: Artifact Content Read Policy 见 `docs/artifact-content-read-policy-v0.2.md`，当前已 effectively complete / closed for now。controlled full-content retrieval boundary 已实现：summary retrieval 返回 summary / ref / provenance 且不返回 full content；full-content retrieval 必须使用 structured `ResourceRef`，并要求 grants、caller context 和 purpose。HTTP full-content route 仍 deferred / `501 not_enabled`，并已有显式 `allow_artifact_content=False` enablement guard。
 - v0.2 mid-cycle review 已落文档，见 `docs/v0.2-mid-cycle-review.md`。推荐下一阶段选择 Track E: Minimal Approval Pause / Resume Boundary；不要默认转向 real HTTP server、memory query engine 或 external ingestion implementation。
+- docs inventory 已落文档，见 `docs/docs-inventory.md`。当前只盘点和规划未来整理方向；尚未移动、删除或合并任何 docs 文件。
 - Track A: HTTP API Minimal Surface 见 `docs/http-api-minimal-surface-v0.2.md`。当前实现是 in-process `HttpApiApp` / `create_http_app(...)`，不是监听端口的真实网络服务；没有引入 FastAPI / Flask / 新依赖。
 - v0.1 demo walkthrough 已补充，见 `docs/demo-walkthrough-v0.1.md`。它解释 demo 运行内容、内部步骤、plain text / JSON 输出字段、证明范围、非目标和 troubleshooting。
 - v0.1 demo architecture diagram 已补充，见 `docs/demo-architecture-v0.1.md`。它解释 demo runtime path，不是完整 Isotope 架构图。
