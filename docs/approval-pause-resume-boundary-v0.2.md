@@ -1,6 +1,6 @@
 # Approval Pause / Resume Boundary v0.2
 
-状态：`run-state read model slice complete`
+状态：`effectively complete / closed for now`
 
 ## 1. Purpose
 
@@ -22,7 +22,7 @@ Track E 当前值得做，因为 approval 是 action chain / policy / blocked ru
 
 ## 3. Current Surface
 
-当前仓库已经有最小 approval pause / resolve / resume surface：
+当前仓库已经有最小 approval pause / resolve / resume surface。Track E 当前关闭在 boundary / read-model scope；这不是完整 approval product：
 
 - `PolicyDecision` outcome 已支持 `pending_user_approval`。
 - `InProcessServer.submit_tool_request(..., requires_approval=True)` 可以产生 pending approval path。
@@ -42,7 +42,7 @@ Track E 当前值得做，因为 approval 是 action chain / policy / blocked ru
 - HTTP `GET /runs/{run_id}` 暴露 JSON-compatible approval read model，不暴露 internal Python object repr。
 - HTTP API 目前仍是 in-process facade，已提供 minimal approval resolve route。
 
-当前仍不是完整 approval product：
+仍明确不是完整 approval product：
 
 - 没有 approval UI。
 - 没有 auth / identity。
@@ -67,7 +67,7 @@ Track E v0.2 不做：
 
 ## 5. Minimal v0.2 Goal
 
-Track E 的最小目标：
+Track E 的最小目标当前已完成：
 
 - action can pause as `pending_user_approval`。已完成。
 - canonical `approval.requested` 继续作为 pending request event。已完成。
@@ -198,3 +198,18 @@ Future HTTP work may add an in-process approval endpoint, but it must:
 - real LLM approval prompts。
 - external approval provider integration。
 - distributed idempotency / durable approval queue。
+
+## 11. Closure Criteria
+
+Track E 当前可视为 `effectively complete / closed for now`，因为已覆盖：
+
+- `approval.requested` / `approval.resolved` canonical event boundary。
+- pending approval 不执行、不创建 artifact。
+- approved resolution append `approval.resolved` 后通过现有 executor path resume。
+- approved resume 使用原 `PolicyDecision.grants`，不使用 resolution body forged grants。
+- denied resolution append `approval.resolved`，不执行、不创建 artifact。
+- duplicate resolution 受控 conflict。
+- pending / approved / denied approval read model 可从 event replay 和 checkpoint-assisted rebuild 恢复。
+- HTTP approval resolve route 仍是 in-process facade，不是真实网络服务。
+
+后续只有在明确 reopen Track E 时，才继续设计 approval UI、auth / identity、notification、timeout scheduler、complex approval DSL 或 durable approval queue。

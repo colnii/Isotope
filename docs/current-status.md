@@ -16,8 +16,8 @@
 - v0.2 roadmap 已开始，见 `docs/v0.2-roadmap.md`。Track D: Demo / Docs Polish 当前已 effectively complete / closed for now；Track A: HTTP API Minimal Surface 当前也已 effectively complete / closed for now，已完成 minimal surface、request validation / no-side-effect error boundary、response contract、demo smoke、idempotency boundary、route inventory 和 deferred route contract slices。
 - v0.2 next-track selection 已落文档，见 `docs/v0.2-next-track-selection.md`。该 recommendation 已执行到 Track C closure；后续默认不进入 real HTTP server。
 - Track C: Artifact Content Read Policy 见 `docs/artifact-content-read-policy-v0.2.md`，当前已 effectively complete / closed for now。controlled full-content retrieval boundary 已实现：summary retrieval 返回 summary / ref / provenance 且不返回 full content；full-content retrieval 必须使用 structured `ResourceRef`，并要求 grants、caller context 和 purpose。HTTP full-content route 仍 deferred / `501 not_enabled`，并已有显式 `allow_artifact_content=False` enablement guard。
-- v0.2 mid-cycle review 已落文档，见 `docs/v0.2-mid-cycle-review.md`。推荐下一阶段选择 Track E: Minimal Approval Pause / Resume Boundary；不要默认转向 real HTTP server、memory query engine 或 external ingestion implementation。
-- Track E approval pause / resume boundary 见 `docs/approval-pause-resume-boundary-v0.2.md`，前两批 green slices 已完成：pending approval 可 resolve；approved path append `approval.resolved` 后通过现有 executor path resume；denied path append `approval.resolved` 但不创建 execution / artifact；duplicate resolution 是受控 conflict；`RunState.approvals` 和 HTTP run read model 可表达 pending / approved / denied approval summary；event-log replay 和 checkpoint-assisted rebuild 可恢复 approval read model。它仍不是完整 approval product。
+- v0.2 mid-cycle review 已落文档，见 `docs/v0.2-mid-cycle-review.md`。该 recommendation 已执行到 Track E closure；不要默认转向 real HTTP server、memory query engine 或 external ingestion implementation。
+- Track E approval pause / resume boundary 见 `docs/approval-pause-resume-boundary-v0.2.md`，当前已 effectively complete / closed for now：pending approval 可 resolve；approved path append `approval.resolved` 后通过现有 executor path resume；approved resume 使用原 `PolicyDecision.grants`；denied path append `approval.resolved` 但不创建 execution / artifact；duplicate resolution 是受控 conflict；`RunState.approvals` 和 HTTP run read model 可表达 pending / approved / denied approval summary；event-log replay 和 checkpoint-assisted rebuild 可恢复 approval read model。它仍不是完整 approval product。
 - docs inventory 已落文档，见 `docs/docs-inventory.md`。当前只盘点和规划未来整理方向；尚未移动、删除或合并任何 docs 文件。
 - Track A: HTTP API Minimal Surface 见 `docs/http-api-minimal-surface-v0.2.md`。当前实现是 in-process `HttpApiApp` / `create_http_app(...)`，不是监听端口的真实网络服务；没有引入 FastAPI / Flask / 新依赖。
 - v0.1 demo walkthrough 已补充，见 `docs/demo-walkthrough-v0.1.md`。它解释 demo 运行内容、内部步骤、plain text / JSON 输出字段、证明范围、非目标和 troubleshooting。
@@ -53,6 +53,7 @@
 - approval read model checkpoint-assisted rebuild
 - HTTP run-state response includes approval read model
 - HTTP facade in-process approval resolve route
+- Track E approval pause / resume boundary effectively complete / closed for now
 - action lifecycle ordering validation
 - illegal lifecycle transition fail-fast
 - file-backed artifact persistence
@@ -453,6 +454,7 @@
 - duplicate resolution does not change projected approval state
 - checkpoint state includes `approvals`, validates approval shape, and checkpoint-assisted rebuild can restore approval read model
 - approval read model does not read server / executor in-memory state
+- Track E is effectively complete / closed for now; approval UI / auth / notification / timeout scheduler / complex DSL / real HTTP server remain deferred
 - selected v0.2 Track C artifact content read policy / controlled full-content retrieval boundary has been completed to closed-for-now scope
 - Track C artifact content read policy tests 已落地并通过：`tests/isotope_kernel/test_artifact_content_read_policy.py`
 - Track C HTTP artifact content boundary tests 已落地并通过：`tests/isotope_kernel/test_http_api_artifact_content_boundary.py`
@@ -645,11 +647,11 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- Track E: Minimal Approval Pause / Resume follow-up tests only if explicitly selected; approval resolution and run-state read-model slices are complete
-- Track F: External Ingestion / `ImportedSnapshot` boundary docs / red tests after approval boundary, or if explicitly selected instead
+- Track F: External Ingestion / `ImportedSnapshot` boundary docs / red tests after Track E closure, or if explicitly selected instead
+- reopen Track E only with an explicit design / red-test request, such as product approval UI / auth / scheduler boundary
 - reopen Track C only with an explicit design / red-test request, such as HTTP content route boundary
 - real listening HTTP server boundary design only if Track A is explicitly reopened
 - optional Track D polish can continue later, but it no longer blocks v0.2 implementation
 - 或停在当前稳定点
 
-checkpoint v0.1、memory v0.1、Track A HTTP API Minimal Surface 和 Track C Artifact Content Read Policy 当前 frozen / closed unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D、Track A 和 Track C 都已 effectively complete / closed for now；Track E approval pause / resume boundary 已完成 approval resolution 和 run-state read-model green slices，仍不包含 approval UI、auth / identity、notification、timeout scheduler、complex approval DSL 或 real HTTP server。HTTP full-content route 仍 `501 not_enabled`，ranking、semantic retrieval、memory controlled expand、external ingestion implementation 和 real listening HTTP server 仍 deferred。不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage / ingestion implementation。
+checkpoint v0.1、memory v0.1、Track A HTTP API Minimal Surface、Track C Artifact Content Read Policy 和 Track E Approval Pause / Resume Boundary 当前 frozen / closed unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D、Track A、Track C 和 Track E 都已 effectively complete / closed for now；Track E 已覆盖 approval requested / resolved、approved resume、denied no-execute、duplicate conflict、replay 和 checkpoint read model，仍不包含 approval UI、auth / identity、notification、timeout scheduler、complex approval DSL 或 real HTTP server。HTTP full-content route 仍 `501 not_enabled`，ranking、semantic retrieval、memory controlled expand、external ingestion implementation 和 real listening HTTP server 仍 deferred。不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage / ingestion implementation。

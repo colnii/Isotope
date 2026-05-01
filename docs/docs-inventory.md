@@ -20,7 +20,7 @@
 
 - `docs/current-status.md`：当前状态入口，开始新任务前先读。
 - `docs/v0.2-roadmap.md`：v0.2 track 状态和推荐顺序。
-- `docs/v0.2-mid-cycle-review.md`：当前 mid-cycle decision，推荐下一阶段进入 Track E approval pause / resume boundary。
+- `docs/v0.2-mid-cycle-review.md`：mid-cycle decision，曾推荐进入 Track E；该 recommendation 已执行到 closure。
 - `docs/v0.2-next-track-selection.md`：Track C selection 的历史决策记录，已执行到 closure。
 - `docs/README.md`：kernel current-truth 文档包的阅读顺序入口。
 
@@ -31,9 +31,9 @@
 
 ## 3. Active track docs
 
-当前 active planning surface 是 Track E，边界文档、approval resolution slice 和 approval read-model slice 已创建 / 完成。
+当前没有必须继续扩展的 active implementation track。Track E boundary 已 effectively complete / closed for now；后续如进入 Track F external ingestion，应先新增 boundary doc / red tests。
 
-- `docs/approval-pause-resume-boundary-v0.2.md`：Track E approval pause / resume boundary，active / run-state read model slice complete。
+- `docs/approval-pause-resume-boundary-v0.2.md`：Track E approval pause / resume boundary，closed for now。
 - Supporting current docs:
   - `docs/v0.2-mid-cycle-review.md`
   - `docs/v0.2-roadmap.md`
@@ -43,7 +43,7 @@
   - `docs/kernel-architecture-v0.1.md`
   - `docs/kernel-living-spec.md`
 
-Track E 后续只在明确选择时继续扩展。不要直接实现完整 approval product。
+Track E 后续只在明确 reopen 时继续扩展。不要直接实现完整 approval product。
 
 ## 4. Closed track docs
 
@@ -113,7 +113,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | --- | --- | --- |
 | `docs/README.md` | Kernel current-truth reading order | current entrypoint |
 | `docs/action-type-registry-v0.1.md` | Action registry design/status | closed / reference |
-| `docs/approval-pause-resume-boundary-v0.2.md` | Track E approval pause / resume boundary | active / run-state read model slice complete |
+| `docs/approval-pause-resume-boundary-v0.2.md` | Track E approval pause / resume boundary | closed for now |
 | `docs/artifact-content-read-policy-v0.2.md` | Track C boundary | closed for now |
 | `docs/checkpoint-history-fallback-v0.1.md` | Checkpoint fallback boundary | closed / frozen |
 | `docs/checkpoint-history-index-retention-v0.1.md` | Checkpoint history index / retention boundary | closed / frozen |
