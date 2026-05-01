@@ -20,7 +20,7 @@
 
 ## Current Phase
 
-- `v0.1-demo` developer demo is accepted; baseline is `735 passed`.
+- `v0.1-demo` and `v0.2-demo` developer demo tags exist; baseline is `735 passed`.
 - Track D: Demo / Docs Polish is effectively complete / closed for now.
 - Current Track A design doc: [docs/http-api-minimal-surface-v0.2.md](docs/http-api-minimal-surface-v0.2.md).
 - Track A has in-process `HttpApiApp` / `create_http_app(...)`, request validation / no-side-effect error boundary, response contract, demo smoke, duplicate-submit idempotency boundary, route inventory, and deferred route contract; it is effectively complete / closed for now and is not a real listening HTTP server.
@@ -29,7 +29,7 @@
 - Track E: Approval Pause / Resume Boundary is effectively complete / closed for now. Approval resolution plus run-state / HTTP read-model green slices are complete; UI / auth / notification / scheduler / complex DSL remain deferred.
 - v0.2 demo readiness is documented in [docs/v0.2-demo-readiness.md](docs/v0.2-demo-readiness.md).
 - v0.2 demo scenario is implemented and documented in [docs/v0.2-demo-scenario.md](docs/v0.2-demo-scenario.md): `--scenario v0.2` visibly exercises Track A / C / E without real HTTP server, network listener, memory storage/query, or HTTP full-content route.
-- v0.2 developer demo acceptance is documented in [docs/v0.2-demo-acceptance.md](docs/v0.2-demo-acceptance.md); it recommends preparing a `v0.2-demo` tag, but do not create tags unless explicitly requested.
+- v0.2 developer demo acceptance is documented in [docs/v0.2-demo-acceptance.md](docs/v0.2-demo-acceptance.md); `v0.2-demo` is already tagged, but no GitHub Release has been published.
 - Real server boundary design only if Track A is explicitly reopened; artifact content HTTP route implementation only if Track C is explicitly reopened.
 - Optional docs polish can continue later, but it should not block v0.2 implementation.
 

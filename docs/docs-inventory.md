@@ -25,7 +25,7 @@
 - `docs/v0.2-roadmap.md`：v0.2 track 状态和推荐顺序。
 - `docs/v0.2-demo-readiness.md`：v0.2 developer demo readiness review，记录此前 demo 展示范围和已关闭的 Track A / C / E scenario gap。
 - `docs/v0.2-demo-scenario.md`：v0.2 demo scenario boundary / status，记录 implemented `--scenario v0.2` scope。
-- `docs/v0.2-demo-acceptance.md`：v0.2 developer demo acceptance，记录 tag readiness 建议和 non-goals。
+- `docs/v0.2-demo-acceptance.md`：v0.2 developer demo acceptance，记录 `v0.2-demo` tag 状态和 non-goals。
 - `docs/v0.2-mid-cycle-review.md`：mid-cycle decision，曾推荐进入 Track E；该 recommendation 已执行到 closure。
 - `docs/v0.2-next-track-selection.md`：Track C selection 的历史决策记录，已执行到 closure。
 - `docs/README.md`：kernel current-truth 文档包的阅读顺序入口。
@@ -61,7 +61,7 @@ Track E 后续只在明确 reopen 时继续扩展。不要直接实现完整 app
 - `docs/demo-walkthrough-v0.1.md`：demo walkthrough，current。
 - `docs/demo-architecture-v0.1.md`：demo architecture diagram，current。
 - `docs/v0.1-demo-acceptance.md`：developer demo acceptance，closed。
-- `docs/v0.2-demo-acceptance.md`：v0.2 developer demo acceptance，accepted / tag-ready pending user confirmation。
+- `docs/v0.2-demo-acceptance.md`：v0.2 developer demo acceptance，accepted / tagged。
 - `docs/release-draft-v0.1-demo.md`：GitHub Release draft，未发布。
 
 ### Track A: HTTP API Minimal Surface
@@ -156,7 +156,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | `docs/release-draft-v0.1-demo.md` | Release draft text | draft / not published |
 | `docs/server-checkpoint-boundary-v0.1.md` | Server checkpoint boundary | closed / frozen |
 | `docs/v0.1-demo-acceptance.md` | Demo acceptance record | closed |
-| `docs/v0.2-demo-acceptance.md` | v0.2 demo acceptance record | accepted / tag-ready |
+| `docs/v0.2-demo-acceptance.md` | v0.2 demo acceptance record | accepted / tagged |
 | `docs/v0.2-demo-readiness.md` | v0.2 demo readiness review | current review |
 | `docs/v0.2-demo-scenario.md` | v0.2 demo scenario boundary / status | implemented |
 | `docs/v0.2-mid-cycle-review.md` | v0.2 next-track review | current decision |

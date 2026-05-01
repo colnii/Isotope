@@ -27,7 +27,7 @@
 - v0.2 mid-cycle review 已落文档：`docs/v0.2-mid-cycle-review.md`。其推荐的 Track E: Minimal Approval Pause / Resume Boundary 已执行到 effectively complete / closed for now；real HTTP server、memory query engine 和 external ingestion implementation 仍 deferred。
 - Track E boundary doc 和 green slices 已落地：`docs/approval-pause-resume-boundary-v0.2.md`。pending approval 可 resolve；approved path append `approval.resolved` 后通过现有 executor path resume；denied path append `approval.resolved` 但不执行；duplicate resolution 是受控 conflict；`RunState.approvals` / HTTP run read model 可表达 pending / approved / denied approval summary，并可通过 event replay / checkpoint-assisted rebuild 恢复。这仍不是完整 approval product implementation。
 - v0.2 demo scenario 已落地：`python -m isotope_kernel.demo --scenario v0.2` / `--json` 展示 in-process HTTP facade、approval pause/resume、controlled artifact content policy、checkpoint 和 memory `boundary_only`，但不打开 real HTTP server、memory storage/query 或 HTTP full-content route。
-- v0.2 demo acceptance 已落文档：`docs/v0.2-demo-acceptance.md`。当前满足 `v0.2 developer demo` acceptance，可准备 `v0.2-demo` tag readiness check；本 review 不创建 tag、不发布 release。
+- v0.2 demo acceptance 已落文档：`docs/v0.2-demo-acceptance.md`。当前满足 `v0.2 developer demo` acceptance；`v0.2-demo` lightweight tag 已创建并推送，指向 `09319e7407116d9f99f4a18853d4df23a8714720`。GitHub Release 未发布；这是 developer demo tag，不是 product release。
 - 当前测试基线：`735 passed`。
 
 当前 hard boundary 仍不变：
