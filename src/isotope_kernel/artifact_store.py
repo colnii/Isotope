@@ -60,13 +60,21 @@ class ArtifactStore:
                     seen.add(artifact.artifact_id)
         return artifacts
 
-    def get_metadata(self, artifact_ref: ResourceRef | str) -> dict[str, str]:
+    def get_metadata(
+        self,
+        artifact_ref: ResourceRef | str,
+        *,
+        include_provenance: bool = False,
+    ) -> dict[str, Any]:
         artifact = self._get_artifact(artifact_ref)
-        return {
+        metadata = {
             "artifact_id": artifact.artifact_id,
             "artifact_type": artifact.artifact_type,
             "summary": artifact.summary,
         }
+        if include_provenance:
+            metadata["provenance"] = dict(artifact.provenance)
+        return metadata
 
     def get_content(self, artifact_ref: ResourceRef | str) -> str:
         return self._get_artifact(artifact_ref).content

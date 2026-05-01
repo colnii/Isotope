@@ -88,6 +88,7 @@ def test_retrieval_summary_uses_resource_ref_not_uri_string(tmp_path):
         "ref": artifact.ref.to_dict(),
         "artifact_type": "text",
         "summary": "hello artifact",
+        "provenance": {"execution_id": "exec_001"},
     }
     with pytest.raises(TypeError):
         service.get_artifact_summary(
