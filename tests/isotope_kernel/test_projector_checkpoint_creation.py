@@ -149,6 +149,7 @@ def test_checkpoint_state_contains_minimal_projected_state_fields():
         "status",
         "current_agent",
         "actions",
+        "approvals",
         "artifacts",
         "memory_records",
         "last_event_id",

@@ -19,6 +19,7 @@ class RunState:
     status: str = "unknown"
     current_agent: str = ""
     actions: dict[str, dict[str, Any]] = field(default_factory=dict)
+    approvals: dict[str, dict[str, Any]] = field(default_factory=dict)
     artifacts: list[dict[str, Any]] = field(default_factory=list)
     memory_records: list[dict[str, Any]] = field(default_factory=list)
     last_event_id: str = ""
@@ -29,12 +30,13 @@ class RunProjector:
 
     EXECUTABLE_DECISION_OUTCOMES = {"approved", "modified"}
     KNOWN_DECISION_OUTCOMES = {"approved", "modified", "denied", "pending_user_approval"}
-    KNOWN_RUN_STATUSES = {"unknown", "running", "pending_user_approval", "failed", "completed"}
+    KNOWN_RUN_STATUSES = {"unknown", "running", "pending_user_approval", "denied", "failed", "completed"}
     CHECKPOINT_STATE_FIELDS = (
         "run_id",
         "status",
         "current_agent",
         "actions",
+        "approvals",
         "artifacts",
         "memory_records",
         "last_event_id",
@@ -61,6 +63,8 @@ class RunProjector:
     def __init__(self) -> None:
         self._proposal_outcomes: dict[str, str] = {}
         self._proposal_action_types: dict[str, str] = {}
+        self._proposal_reason_codes: dict[str, list[str]] = {}
+        self._proposal_summaries: dict[str, dict[str, Any]] = {}
         self._execution_statuses: dict[str, str] = {}
         self._execution_action_types: dict[str, str] = {}
         self._approval_proposals: dict[str, str] = {}
@@ -87,8 +91,12 @@ class RunProjector:
             action_type = payload.get("action_type")
             if isinstance(proposal_id, str) and isinstance(action_type, str):
                 self._proposal_action_types[proposal_id] = action_type
+                self._proposal_summaries[proposal_id] = {"action_type": action_type}
         elif event.event_type == "action.decided":
-            self._proposal_outcomes[str(payload["proposal_id"])] = str(payload["outcome"])
+            proposal_id = str(payload["proposal_id"])
+            self._proposal_outcomes[proposal_id] = str(payload["outcome"])
+            reason_codes = payload.get("reason_codes", [])
+            self._proposal_reason_codes[proposal_id] = list(reason_codes) if isinstance(reason_codes, list) else []
         elif event.event_type == "action.started":
             proposal_id = str(payload["proposal_id"])
             outcome = self._proposal_outcomes.get(proposal_id)
@@ -308,18 +316,56 @@ class RunProjector:
             action["decision_id"] = payload.get("decision_id")
             action["approval_id"] = payload.get("approval_id")
             action["status"] = "pending_user_approval"
+            approval_id = str(payload["approval_id"])
+            state.approvals[approval_id] = {
+                "approval_id": approval_id,
+                "run_id": payload.get("run_id", event.run_id),
+                "proposal_id": proposal_id,
+                "decision_id": payload.get("decision_id"),
+                "status": "pending",
+                "reason_codes": list(self._proposal_reason_codes.get(proposal_id, [])),
+                "requested_action_summary": dict(
+                    self._proposal_summaries.get(
+                        proposal_id,
+                        {"action_type": payload.get("action_type")},
+                    )
+                ),
+            }
             state.status = "pending_user_approval"
         elif event.event_type == "approval.resolved":
             proposal_id = str(payload["proposal_id"])
             action = state.actions.setdefault(proposal_id, {"proposal_id": proposal_id})
             action["decision_id"] = payload.get("decision_id")
-            action["approval_id"] = payload.get("approval_id")
+            approval_id = str(payload["approval_id"])
+            action["approval_id"] = approval_id
             action["approval_resolution"] = payload.get("resolution")
             action["approval_resolved_event_id"] = event.event_id
             action["approval_reason"] = payload.get("reason")
-            action["status"] = "approved" if payload.get("resolution") == "approved" else "denied"
-            if payload.get("resolution") == "approved":
+            resolution = payload.get("resolution")
+            action["status"] = "approved" if resolution == "approved" else "denied"
+            approval = state.approvals.setdefault(
+                approval_id,
+                {
+                    "approval_id": approval_id,
+                    "run_id": payload.get("run_id", event.run_id),
+                    "proposal_id": proposal_id,
+                    "decision_id": payload.get("decision_id"),
+                },
+            )
+            approval.update(
+                {
+                    "status": resolution,
+                    "resolution": resolution,
+                    "reason": payload.get("reason"),
+                    "resolver": payload.get("resolver"),
+                    "resolved_event_id": event.event_id,
+                    "basis_event_id": payload.get("basis_event_id"),
+                }
+            )
+            if resolution == "approved":
                 state.status = "running"
+            else:
+                state.status = "denied"
         elif event.event_type == "artifact.created":
             artifact = dict(payload["artifact"])
             state.artifacts.append(
@@ -368,6 +414,8 @@ class RunProjector:
     def project(self, events: Iterable[CanonicalEvent]) -> RunState:
         self._proposal_outcomes = {}
         self._proposal_action_types = {}
+        self._proposal_reason_codes = {}
+        self._proposal_summaries = {}
         self._execution_statuses = {}
         self._execution_action_types = {}
         self._approval_proposals = {}
@@ -608,6 +656,9 @@ class RunProjector:
             raise ValueError("checkpoint state status must be known")
         if not isinstance(state["actions"], dict):
             raise ValueError("checkpoint state actions must be a dict")
+        approvals = state.get("approvals", {})
+        if not isinstance(approvals, dict):
+            raise ValueError("checkpoint state approvals must be a dict")
         if not isinstance(state["artifacts"], list):
             raise ValueError("checkpoint state artifacts must be a list")
         memory_records = state.get("memory_records", [])
@@ -615,6 +666,8 @@ class RunProjector:
             raise ValueError("checkpoint state memory_records must be a list")
         for artifact in state["artifacts"]:
             self._validate_checkpoint_artifact(artifact)
+        for approval_id, approval in approvals.items():
+            self._validate_checkpoint_approval(approval_id, approval)
         for record in memory_records:
             self._validate_checkpoint_memory_record(record)
         return RunState(
@@ -622,6 +675,7 @@ class RunProjector:
             status=str(state.get("status", "unknown")),
             current_agent=str(state.get("current_agent", "")),
             actions=dict(state.get("actions", {})),
+            approvals=dict(approvals),
             artifacts=list(state.get("artifacts", [])),
             memory_records=list(memory_records),
             last_event_id=str(state.get("last_event_id", "")),
@@ -635,6 +689,33 @@ class RunProjector:
         for field in self.CHECKPOINT_ARTIFACT_FIELDS:
             if field not in artifact:
                 raise ValueError(f"checkpoint artifact entry missing required field: {field}")
+
+    def _validate_checkpoint_approval(self, approval_id: Any, approval: Any) -> None:
+        if not isinstance(approval_id, str) or not approval_id:
+            raise ValueError("checkpoint approval id must be a non-empty string")
+        if not isinstance(approval, dict):
+            raise ValueError("checkpoint approval entry must be a dict")
+        for field_name in ("approval_id", "run_id", "proposal_id", "decision_id", "status"):
+            if field_name not in approval:
+                raise ValueError(f"checkpoint approval entry missing required field: {field_name}")
+        if approval["approval_id"] != approval_id:
+            raise ValueError("checkpoint approval id must match entry approval_id")
+        status = approval["status"]
+        if status not in {"pending", "approved", "denied"}:
+            raise ValueError("checkpoint approval status must be known")
+        if status == "pending":
+            reason_codes = approval.get("reason_codes")
+            if not isinstance(reason_codes, list):
+                raise ValueError("checkpoint pending approval reason_codes must be a list")
+            if not isinstance(approval.get("requested_action_summary"), dict):
+                raise ValueError("checkpoint pending approval requested_action_summary must be a dict")
+        else:
+            if approval.get("resolution") != status:
+                raise ValueError("checkpoint resolved approval resolution must match status")
+            for field_name in ("reason", "resolver", "resolved_event_id"):
+                value = approval.get(field_name)
+                if not isinstance(value, str) or not value:
+                    raise ValueError(f"checkpoint resolved approval missing required field: {field_name}")
 
     def _validate_checkpoint_memory_record(self, record: Any) -> None:
         if not isinstance(record, dict):
