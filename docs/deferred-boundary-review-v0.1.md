@@ -23,7 +23,7 @@
 - GitHub Actions CI smoke workflow 已落地：在 `push` / `pull_request` 上使用 Python `3.12`，通过 `python -m pip install -e ".[test]"` 安装 test dependency 后运行 full tests 和 demo plain / JSON smoke；latest remote GitHub Actions run 已由网页确认通过。它不是 release、coverage、lint matrix 或 real integration services pipeline。
 - `v0.1-demo` lightweight tag 已创建并推送，指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`；GitHub Release draft 已准备在 `docs/release-draft-v0.1-demo.md`，但尚未发布 GitHub Release。
 - v0.2 roadmap 已落文档：`docs/v0.2-roadmap.md`。推荐顺序是 Demo / Docs Polish、HTTP API Minimal Surface、External Ingestion / `ImportedSnapshot`、Real Memory Storage Slice。
-- 当前测试基线：`606 passed`。
+- 当前测试基线：`619 passed`。
 
 当前 hard boundary 仍不变：
 
@@ -110,7 +110,7 @@ Real LLM、real listening HTTP server 和 plugin system 继续 deferred。
 - 当前 kernel 还需要先稳定 memory / ingestion 的 data boundary。
 - real provider integration 会引入 auth、timeouts、rate limits、payload drift 和 provider-specific behavior。
 - plugin system 会放大 action registry 的 surface，容易过早变成 public extension API。
-- in-process HTTP API boundary minimal surface 和 request validation / no-side-effect error boundary 已实现；real listening HTTP server / SSE 仍会引入 API lifecycle、auth 和 streaming semantics，暂不默认展开。
+- in-process HTTP API boundary minimal surface、request validation / no-side-effect error boundary、response contract 和 demo smoke 已实现；real listening HTTP server / SSE 仍会引入 API lifecycle、auth 和 streaming semantics，暂不默认展开。
 
 当前不应实现：
 
@@ -139,7 +139,7 @@ Memory Write / Query Boundary docs、第一批 memory boundary tests、memory ac
 10. memory read-model checkpoint boundary 已通过测试：`RunProjector.create_checkpoint(...)` 包含 `memory_records`，`RunProjector.rebuild_with_checkpoint(...)` 可从 checkpoint + suffix events 恢复 `memory_records`，schema / prefix consistency 会拒绝 full content 和 malformed memory read model。
 11. memory v0.1 scope 已 frozen for demo planning：当前可展示 boundary / read-model / checkpoint contract，但不展示 durable storage/query product capability。
 12. `docs/demo-entrypoint-v0.1.md` 已定义并实现 demo scope；`docs/v0.1-demo-acceptance.md` 已将当前 demo accepted as developer demo：一个本地 module entrypoint 展示 deterministic kernel 闭环，不展示完整产品。
-13. Track A: HTTP API Minimal Surface minimal surface 和 request validation / no-side-effect error boundary 已实现：`HttpApiApp` / `create_http_app(...)` 支持 minimal session/run/input/state/events/artifact-summary/health surface，并对 malformed body、method mismatch、unknown session/run/artifact 做受控响应；它仍不是 real listening HTTP server。
+13. Track A: HTTP API Minimal Surface minimal surface、request validation / no-side-effect error boundary、response contract 和 demo smoke 已实现：`HttpApiApp` / `create_http_app(...)` 支持 minimal session/run/input/state/events/artifact-summary/health surface，并对 malformed body、method mismatch、unknown session/run/artifact 做受控响应；response body 使用稳定 JSON-compatible contract；它仍不是 real listening HTTP server。
 14. 下一步可选择 Track A hardening / real server boundary design、external ingestion boundary docs、memory result cannot bypass artifact / `ResourceRef` authorization red tests、public-open-source cleanup plan，或停在当前稳定点。
 15. 不直接做完整 memory implementation。
 16. External Ingestion / `ImportedSnapshot` 排在 demo entrypoint scope 之后。
@@ -153,7 +153,7 @@ Memory Write / Query Boundary docs、第一批 memory boundary tests、memory ac
 
 ## 8. Next TDD Entry Point
 
-demo entrypoint TDD 已完成。v0.2 roadmap 已开始，Track D: Demo / Docs Polish 当前已 effectively complete / closed for now，Track A: HTTP API Minimal Surface minimal surface 和 request validation / no-side-effect error boundary 已实现。下一轮建议优先选择以下 docs / red tests 之一：
+demo entrypoint TDD 已完成。v0.2 roadmap 已开始，Track D: Demo / Docs Polish 当前已 effectively complete / closed for now，Track A: HTTP API Minimal Surface minimal surface、request validation / no-side-effect error boundary、response contract 和 demo smoke 已实现。下一轮建议优先选择以下 docs / red tests 之一：
 
 - Track A: HTTP API hardening / real server boundary design。
 - optional Track D polish from `docs/v0.2-roadmap.md` if explicitly requested。

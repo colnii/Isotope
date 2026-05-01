@@ -1,6 +1,6 @@
 # HTTP API Minimal Surface v0.2
 
-状态：`surface and request validation slices implemented`
+状态：`surface, request validation, response contract, and demo smoke slices implemented`
 
 ## 1. Purpose
 
@@ -8,7 +8,7 @@ v0.2 HTTP API 的目标，是把当前 in-process demo 能力暴露成最小 ser
 
 这个 surface 应先证明现有 kernel loop 可以被外部进程以 HTTP 方式驱动和读取：create session、create run、submit input、read projected run state、read canonical events、read artifact summary。它不是 auth / streaming / hosted service / production API 设计。
 
-当前前两批 green slice 已实现为 in-process `HttpApiApp` / `create_http_app(...)`，并补齐 request validation / no-side-effect error boundary。它是 test-client style boundary，不监听端口，不引入 FastAPI / Flask / 新依赖，也不是 production HTTP server。
+当前 green slices 已实现为 in-process `HttpApiApp` / `create_http_app(...)`，并补齐 request validation / no-side-effect error boundary、response contract 和 HTTP facade demo smoke。它是 test-client style boundary，不监听端口，不引入 FastAPI / Flask / 新依赖，也不是 production HTTP server。
 
 ## 2. Hard Boundaries
 
@@ -140,6 +140,24 @@ tests/isotope_kernel/test_http_api_request_validation.py
 - unknown session / run / artifact returns controlled `404` without creating run state, action events, or artifacts。
 - `POST /runs/{run_id}/input` requires non-empty string `text` and does not implicitly `str(...)`-coerce invalid values。
 - invalid requests do not produce action lifecycle events or artifact side effects。
+- deferred memory query / external ingestion / SSE / full artifact content routes remain absent / not enabled。
+
+第三批 response contract / demo smoke tests 已新增并通过：
+
+```text
+tests/isotope_kernel/test_http_api_response_contract.py
+tests/isotope_kernel/test_http_api_demo_smoke.py
+```
+
+覆盖点：
+
+- every response exposes `status_code` and JSON-compatible `body` / `.json()` output。
+- success responses do not return Python dataclasses, raw objects, or internal repr strings。
+- error responses use stable shape: `{"status": code, "error": {"code": code, "message": message}}`，with optional minimal details such as `allowed_methods` for `405`。
+- `400` / `404` / `405` / `200` / `201` responses keep the same response contract。
+- method mismatch can report allowed methods without leaking internal routing details。
+- response bodies do not contain artifact full content / raw content。
+- HTTP facade demo smoke runs the full session -> run -> input -> state -> events -> artifact summary path without opening sockets or listening on a port。
 - deferred memory query / external ingestion / SSE / full artifact content routes remain absent / not enabled。
 
 ## 7. Still Deferred
