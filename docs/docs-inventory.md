@@ -31,9 +31,9 @@
 
 ## 3. Active track docs
 
-当前 active planning surface 是 Track E，边界文档和第一批 green slice 已创建 / 完成。
+当前 active planning surface 是 Track E，边界文档、approval resolution slice 和 approval read-model slice 已创建 / 完成。
 
-- `docs/approval-pause-resume-boundary-v0.2.md`：Track E approval pause / resume boundary，active / first green slice complete。
+- `docs/approval-pause-resume-boundary-v0.2.md`：Track E approval pause / resume boundary，active / run-state read model slice complete。
 - Supporting current docs:
   - `docs/v0.2-mid-cycle-review.md`
   - `docs/v0.2-roadmap.md`
@@ -113,7 +113,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | --- | --- | --- |
 | `docs/README.md` | Kernel current-truth reading order | current entrypoint |
 | `docs/action-type-registry-v0.1.md` | Action registry design/status | closed / reference |
-| `docs/approval-pause-resume-boundary-v0.2.md` | Track E approval pause / resume boundary | active / first green slice complete |
+| `docs/approval-pause-resume-boundary-v0.2.md` | Track E approval pause / resume boundary | active / run-state read model slice complete |
 | `docs/artifact-content-read-policy-v0.2.md` | Track C boundary | closed for now |
 | `docs/checkpoint-history-fallback-v0.1.md` | Checkpoint fallback boundary | closed / frozen |
 | `docs/checkpoint-history-index-retention-v0.1.md` | Checkpoint history index / retention boundary | closed / frozen |

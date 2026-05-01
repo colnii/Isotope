@@ -25,8 +25,8 @@
 - v0.2 roadmap 已落文档：`docs/v0.2-roadmap.md`。当前推荐顺序是 Demo / Docs Polish、HTTP API Minimal Surface、Artifact Content Read Policy / Controlled Full-Content Retrieval、Minimal Approval Pause / Resume Boundary、External Ingestion / `ImportedSnapshot`，再考虑 memory query / storage。
 - Track C boundary doc 已落地并 closed for now：`docs/artifact-content-read-policy-v0.2.md`。retrieval boundary 已实现：summary retrieval 返回 summary / ref / provenance，controlled full-content retrieval 要求 structured `ResourceRef`、grants、caller context 和 purpose；HTTP full-content route 仍 `501 not_enabled`，且已有 `allow_artifact_content=False` enablement guard。
 - v0.2 mid-cycle review 已落文档：`docs/v0.2-mid-cycle-review.md`。当前下一默认 track 是 Track E: Minimal Approval Pause / Resume Boundary；real HTTP server、memory query engine 和 external ingestion implementation 仍 deferred。
-- Track E boundary doc 和第一批 green slice 已落地：`docs/approval-pause-resume-boundary-v0.2.md`。pending approval 可 resolve；approved path append `approval.resolved` 后通过现有 executor path resume；denied path append `approval.resolved` 但不执行；这仍不是完整 approval product implementation。
-- 当前测试基线：`711 passed`。
+- Track E boundary doc 和前两批 green slices 已落地：`docs/approval-pause-resume-boundary-v0.2.md`。pending approval 可 resolve；approved path append `approval.resolved` 后通过现有 executor path resume；denied path append `approval.resolved` 但不执行；`RunState.approvals` / HTTP run read model 可表达 pending / approved / denied approval summary，并可通过 event replay / checkpoint-assisted rebuild 恢复。这仍不是完整 approval product implementation。
+- 当前测试基线：`726 passed`。
 
 当前 hard boundary 仍不变：
 
@@ -158,7 +158,7 @@ Memory Write / Query Boundary docs、第一批 memory boundary tests、memory ac
 
 demo entrypoint TDD 已完成。v0.2 roadmap 已开始，Track D: Demo / Docs Polish、Track A: HTTP API Minimal Surface 和 Track C: Artifact Content Read Policy 当前都已 effectively complete / closed for now。mid-cycle review 推荐下一轮优先选择：
 
-- Track E: Minimal Approval Pause / Resume follow-up only if explicitly selected；first approval resolution / HTTP approval green slice 已完成。
+- Track E: Minimal Approval Pause / Resume follow-up only if explicitly selected；approval resolution / HTTP approval 和 approval read-model green slices 已完成。
 - Track F: External Ingestion / `ImportedSnapshot` boundary docs after approval boundary, or if explicitly selected instead。
 - Artifact Content Read Policy / Controlled Full-Content Retrieval next slice only if Track C is explicitly reopened.
 - real server boundary design only if Track A is explicitly reopened。

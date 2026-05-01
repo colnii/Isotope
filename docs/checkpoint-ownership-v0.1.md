@@ -65,7 +65,7 @@ v0.1 checkpoint 至少应绑定：
 - `run_id`
 - `projector_version`
 - `basis_event_id` 或等价的 last applied event cursor
-- projected state snapshot，包括 `memory_records` read model 的 summary / refs / provenance / supersession metadata
+- projected state snapshot，包括 `approvals` read model 和 `memory_records` read model 的 summary / refs / provenance / supersession metadata
 - `created_at`
 
 这些字段是当前推荐 shape，用于 future TDD 的测试方向，不是永久协议。
@@ -148,7 +148,7 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - 创建出的 checkpoint 可由 `FileCheckpointStore` 保存，并可用于 `rebuild_with_checkpoint(...)`。
 - `RunProjector.rebuild_with_checkpoint(...)` 只在 checkpoint projector version 兼容时校验 checkpoint state schema。
 - checkpoint version 不兼容时仍 fallback full rebuild，不因 malformed checkpoint state 失败。
-- new checkpoint state 必须是 dict，并包含 `run_id`、`status`、`current_agent`、`actions`、`artifacts`、`memory_records`、`last_event_id`；legacy checkpoint 缺少 `memory_records` 仍走兼容路径。
+- new checkpoint state 必须是 dict，并包含 `run_id`、`status`、`current_agent`、`actions`、`approvals`、`artifacts`、`memory_records`、`last_event_id`；legacy checkpoint 缺少 `approvals` 或 `memory_records` 仍走兼容路径。
 - checkpoint state 的 `run_id`、`last_event_id`、run status、actions/artifacts shape 会在 projector 使用前校验。
 - checkpoint artifact entry 不得包含 `content`，且必须包含 `ref`、`artifact_type`、`summary`、`provenance`。
 - checkpoint memory record entry 只能包含 summary / refs / provenance / supersession metadata，不得包含 `content`、`full_content`、`artifact_content` 或 `raw_content`。
@@ -161,7 +161,7 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 - 保存后的 checkpoint 可读回，并可用于 `rebuild_with_checkpoint(...)`，结果与 full rebuild 等价。
 - `RunProjector.rebuild_with_checkpoint(...)` 会比较 checkpoint state 与 `basis_event_id` 对应的 event-log prefix projection。
 - 只有 checkpoint state 与 prefix projection 一致时，才从 checkpoint 继续 replay basis 之后的 events。
-- checkpoint state 的 `status` / `current_agent` / `actions` / `artifacts` / `memory_records` 不一致时，fallback full rebuild。
+- checkpoint state 的 `status` / `current_agent` / `actions` / `approvals` / `artifacts` / `memory_records` 不一致时，fallback full rebuild。
 - checkpoint state 多出不存在的 action 或少了已有 artifact 时，fallback full rebuild。
 - checkpoint state 中 memory read model 与 event-log prefix projection 不一致时，fallback full rebuild。
 - fallback full rebuild 仍执行完整 event validation，lifecycle-invalid event log 不能被 checkpoint mismatch 隐藏。

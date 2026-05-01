@@ -7,17 +7,17 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`2b3ebb97d866ccf404dcd187bdf4dc0b06a5ee96`。
+- 最新 implementation commit：`38dfd006b2bf2f080a0066be63c8e73886b89528`。
 - memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for v0.1 demo planning：当前 memory 线只声明 boundary / read-model / checkpoint 能力，不声明 durable storage 或 query engine 已完成。
 - v0.1 demo entrypoint 已实现，详见 `docs/demo-entrypoint-v0.1.md`；`python -m isotope_kernel.demo` 可输出 plain text summary，`--json` 可输出 JSON summary。
-- v0.1 developer demo 已按 `docs/v0.1-demo-acceptance.md` accepted：acceptance anchor 当时依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过；当前 baseline 已随 Track E approval resolution boundary slice 更新为 `711 passed`。
+- v0.1 developer demo 已按 `docs/v0.1-demo-acceptance.md` accepted：acceptance anchor 当时依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过；当前 baseline 已随 Track E approval run-state invariants slice 更新为 `726 passed`。
 - lightweight tag `v0.1-demo` 已创建并推送，指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`。
 - GitHub Release draft 已准备在 `docs/release-draft-v0.1-demo.md`；尚未发布 GitHub Release。`main` 允许在 tag 后继续有 docs/status 更新，tag 仍是 demo acceptance anchor。
 - v0.2 roadmap 已开始，见 `docs/v0.2-roadmap.md`。Track D: Demo / Docs Polish 当前已 effectively complete / closed for now；Track A: HTTP API Minimal Surface 当前也已 effectively complete / closed for now，已完成 minimal surface、request validation / no-side-effect error boundary、response contract、demo smoke、idempotency boundary、route inventory 和 deferred route contract slices。
 - v0.2 next-track selection 已落文档，见 `docs/v0.2-next-track-selection.md`。该 recommendation 已执行到 Track C closure；后续默认不进入 real HTTP server。
 - Track C: Artifact Content Read Policy 见 `docs/artifact-content-read-policy-v0.2.md`，当前已 effectively complete / closed for now。controlled full-content retrieval boundary 已实现：summary retrieval 返回 summary / ref / provenance 且不返回 full content；full-content retrieval 必须使用 structured `ResourceRef`，并要求 grants、caller context 和 purpose。HTTP full-content route 仍 deferred / `501 not_enabled`，并已有显式 `allow_artifact_content=False` enablement guard。
 - v0.2 mid-cycle review 已落文档，见 `docs/v0.2-mid-cycle-review.md`。推荐下一阶段选择 Track E: Minimal Approval Pause / Resume Boundary；不要默认转向 real HTTP server、memory query engine 或 external ingestion implementation。
-- Track E approval pause / resume boundary 见 `docs/approval-pause-resume-boundary-v0.2.md`，第一批 green slice 已完成：pending approval 可 resolve；approved path append `approval.resolved` 后通过现有 executor path resume；denied path append `approval.resolved` 但不创建 execution / artifact；duplicate resolution 是受控 conflict；HTTP facade 有 in-process approval resolve route。它仍不是完整 approval product。
+- Track E approval pause / resume boundary 见 `docs/approval-pause-resume-boundary-v0.2.md`，前两批 green slices 已完成：pending approval 可 resolve；approved path append `approval.resolved` 后通过现有 executor path resume；denied path append `approval.resolved` 但不创建 execution / artifact；duplicate resolution 是受控 conflict；`RunState.approvals` 和 HTTP run read model 可表达 pending / approved / denied approval summary；event-log replay 和 checkpoint-assisted rebuild 可恢复 approval read model。它仍不是完整 approval product。
 - docs inventory 已落文档，见 `docs/docs-inventory.md`。当前只盘点和规划未来整理方向；尚未移动、删除或合并任何 docs 文件。
 - Track A: HTTP API Minimal Surface 见 `docs/http-api-minimal-surface-v0.2.md`。当前实现是 in-process `HttpApiApp` / `create_http_app(...)`，不是监听端口的真实网络服务；没有引入 FastAPI / Flask / 新依赖。
 - v0.1 demo walkthrough 已补充，见 `docs/demo-walkthrough-v0.1.md`。它解释 demo 运行内容、内部步骤、plain text / JSON 输出字段、证明范围、非目标和 troubleshooting。
@@ -49,6 +49,9 @@
 - approved approval uses original `PolicyDecision.grants` and ignores forged resolution grants
 - denied approval does not create execution / artifact
 - duplicate approval resolution is controlled conflict
+- approval read model in `RunState.approvals`
+- approval read model checkpoint-assisted rebuild
+- HTTP run-state response includes approval read model
 - HTTP facade in-process approval resolve route
 - action lifecycle ordering validation
 - illegal lifecycle transition fail-fast
@@ -119,7 +122,7 @@
 - checkpoint creation uses canonical events through `project(...)` and cannot bypass validation
 - checkpoint contains `run_id`, `projector_version`, `basis_event_id`, `state`, `created_at`
 - checkpoint `basis_event_id` equals the last replayed canonical event id
-- checkpoint state contains `run_id`, `status`, `current_agent`, `actions`, `artifacts`, `memory_records`, `last_event_id`
+- checkpoint state contains `run_id`, `status`, `current_agent`, `actions`, `approvals`, `artifacts`, `memory_records`, `last_event_id`
 - checkpoint state excludes artifact content and memory full content
 - checkpoint excludes external raw input / provider response / imported snapshot
 - malformed or lifecycle-invalid event stream cannot produce checkpoint
@@ -130,11 +133,12 @@
 - `RunProjector.rebuild_with_checkpoint(...)` validates checkpoint state schema only for compatible projector version
 - incompatible projector version still falls back to full rebuild even with malformed checkpoint state
 - checkpoint `state` must be a dict
-- new checkpoint `state` contains `memory_records`; legacy checkpoint without `memory_records` still uses the compatibility path
+- new checkpoint `state` contains `approvals` and `memory_records`; legacy checkpoint without `approvals` / `memory_records` still uses the compatibility path
 - checkpoint `state.run_id` must match rebuild target run_id
 - checkpoint `state.last_event_id` must equal checkpoint `basis_event_id`
 - checkpoint `state.status` must be a known run status
 - checkpoint `state.actions` must be a dict
+- checkpoint `state.approvals` must be a dict when present
 - checkpoint `state.artifacts` must be a list
 - checkpoint `state.memory_records` must be a list when present
 - checkpoint artifact entry cannot contain `content`
@@ -159,7 +163,7 @@
 - checkpoint prefix consistency hardening
 - `RunProjector.rebuild_with_checkpoint(...)` compares checkpoint state with event-log prefix projection at `basis_event_id`
 - checkpoint is used for replay only when checkpoint state matches prefix projection
-- checkpoint state `status` / `current_agent` / `actions` / `artifacts` / `memory_records` mismatch falls back to full rebuild
+- checkpoint state `status` / `current_agent` / `actions` / `approvals` / `artifacts` / `memory_records` mismatch falls back to full rebuild
 - checkpoint state with extra action or missing artifact falls back to full rebuild
 - fallback full rebuild still runs full event validation
 - lifecycle-invalid event log cannot be hidden by checkpoint mismatch fallback
@@ -397,7 +401,7 @@
 - demo reports memory boundary status as `boundary_only`
 - v0.1 demo acceptance 已落文档：`docs/v0.1-demo-acceptance.md`
 - current demo acceptance status is `accepted as developer demo`, not product runtime
-- demo acceptance evidence includes local `568 passed` at the v0.1 acceptance anchor; current mainline baseline is `711 passed` after the Track E approval resolution boundary slice
+- demo acceptance evidence includes local `568 passed` at the v0.1 acceptance anchor; current mainline baseline is `726 passed` after the Track E approval run-state invariants slice
 - lightweight demo tag exists: `v0.1-demo` -> `b3d4e328e74378bec2fb524deb85233df5a5d4eb`
 - GitHub Release draft exists: `docs/release-draft-v0.1-demo.md`
 - no GitHub Release has been published from the draft
@@ -436,10 +440,19 @@
 - idempotency key reuse across method/path or with different body returns controlled `409` and no second side effect
 - `idempotency_key` stays out of canonical events; this is not distributed idempotency and does not modify event-store append-only semantics
 - `POST /runs/{run_id}/input` delegates to existing `InProcessServer.submit_input(...)` and therefore still goes through the action chain
-- `GET /runs/{run_id}` returns projector read model
+- `GET /runs/{run_id}` returns projector read model, including approval read model when present
 - `GET /runs/{run_id}/events` returns canonical event log view
 - `GET /artifacts/{artifact_id}/summary` returns summary / ref / provenance from canonical `artifact.created` event and does not return full content / raw content
 - memory query, external ingestion, approval UI / auth / notification / timeout scheduler / complex approval DSL, SSE / streaming, real listening HTTP server, hosted deployment, and full artifact content endpoint remain deferred / not enabled
+- Track E run-state invariants tests 已落地并通过：`tests/isotope_kernel/test_approval_run_state_invariants.py`
+- Track E HTTP approval read-model tests 已落地并通过：`tests/isotope_kernel/test_http_api_approval_state_read_model.py`
+- `RunState.approvals` now records pending / approved / denied approval summaries from canonical events
+- pending approval state includes approval id, proposal id, decision id, reason codes, and requested action summary
+- approved approval state resolves pending signal, records resolver / reason / basis event, then exposes execution / artifact summaries after executor resume
+- denied approval state resolves pending signal to `denied`, does not create execution / artifact, and remains replayable
+- duplicate resolution does not change projected approval state
+- checkpoint state includes `approvals`, validates approval shape, and checkpoint-assisted rebuild can restore approval read model
+- approval read model does not read server / executor in-memory state
 - selected v0.2 Track C artifact content read policy / controlled full-content retrieval boundary has been completed to closed-for-now scope
 - Track C artifact content read policy tests 已落地并通过：`tests/isotope_kernel/test_artifact_content_read_policy.py`
 - Track C HTTP artifact content boundary tests 已落地并通过：`tests/isotope_kernel/test_http_api_artifact_content_boundary.py`
@@ -555,7 +568,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-711 passed
+726 passed
 ```
 
 Import boundary check:
@@ -632,11 +645,11 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- Track E: Minimal Approval Pause / Resume follow-up tests only if explicitly selected; first approval resolution / HTTP approval green slice is complete
+- Track E: Minimal Approval Pause / Resume follow-up tests only if explicitly selected; approval resolution and run-state read-model slices are complete
 - Track F: External Ingestion / `ImportedSnapshot` boundary docs / red tests after approval boundary, or if explicitly selected instead
 - reopen Track C only with an explicit design / red-test request, such as HTTP content route boundary
 - real listening HTTP server boundary design only if Track A is explicitly reopened
 - optional Track D polish can continue later, but it no longer blocks v0.2 implementation
 - 或停在当前稳定点
 
-checkpoint v0.1、memory v0.1、Track A HTTP API Minimal Surface 和 Track C Artifact Content Read Policy 当前 frozen / closed unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D、Track A 和 Track C 都已 effectively complete / closed for now；Track E approval pause / resume boundary 第一批 green slice 已完成，仍不包含 approval UI、auth / identity、notification、timeout scheduler、complex approval DSL 或 real HTTP server。HTTP full-content route 仍 `501 not_enabled`，ranking、semantic retrieval、memory controlled expand、external ingestion implementation 和 real listening HTTP server 仍 deferred。不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage / ingestion implementation。
+checkpoint v0.1、memory v0.1、Track A HTTP API Minimal Surface 和 Track C Artifact Content Read Policy 当前 frozen / closed unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D、Track A 和 Track C 都已 effectively complete / closed for now；Track E approval pause / resume boundary 已完成 approval resolution 和 run-state read-model green slices，仍不包含 approval UI、auth / identity、notification、timeout scheduler、complex approval DSL 或 real HTTP server。HTTP full-content route 仍 `501 not_enabled`，ranking、semantic retrieval、memory controlled expand、external ingestion implementation 和 real listening HTTP server 仍 deferred。不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage / ingestion implementation。

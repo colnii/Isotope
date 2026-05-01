@@ -1,6 +1,6 @@
 # Approval Pause / Resume Boundary v0.2
 
-状态：`first green slice complete`
+状态：`run-state read model slice complete`
 
 ## 1. Purpose
 
@@ -32,11 +32,14 @@ Track E 当前值得做，因为 approval 是 action chain / policy / blocked ru
 - approved resume 使用原 `PolicyDecision.grants`，不会使用 resolution body 中的 forged grants。
 - denied resolution 会 append canonical `approval.resolved`，但不创建 execution / artifact。
 - duplicate resolution 受控 conflict：server 抛 `ValueError("approval already resolved")`，HTTP facade 返回 `409 approval_already_resolved`。
-- projector 能记录 pending approval 基本状态。
+- `RunState.approvals` 已作为最小 approval read model 落地。
+- projector 能记录 pending / approved / denied approval summary。
 - projector replay 能恢复 pending / resolved approval state。
+- checkpoint-assisted rebuild 能恢复 approval read model。
 - pending approval 不创建 `ActionExecution`。
 - pending approval 不创建 artifact。
 - pending approval 可从 event log rebuild。
+- HTTP `GET /runs/{run_id}` 暴露 JSON-compatible approval read model，不暴露 internal Python object repr。
 - HTTP API 目前仍是 in-process facade，已提供 minimal approval resolve route。
 
 当前仍不是完整 approval product：
@@ -72,6 +75,7 @@ Track E 的最小目标：
 - approved resolution appends canonical event and resumes execution through existing action / executor boundary。已完成。
 - denied resolution appends canonical event and does not execute。已完成。
 - projector state can be rebuilt from event log。已完成。
+- projector state can be rebuilt from checkpoint + suffix events。已完成。
 - duplicate resolve is controlled as conflict。已完成。
 - resolving unknown / stale / malformed approval fails closed。已完成。
 - HTTP approval resolve route remains in-process。已完成。
@@ -118,6 +122,13 @@ Candidate future event:
 
 The projector may expose pending / resolved approval state in `RunState`, but it must derive that state only from canonical events. It must not read an approval store, HTTP facade cache, executor memory, or client request body directly.
 
+Current `RunState.approvals` read model is deliberately minimal:
+
+- pending approval entries contain `approval_id`, `run_id`, `proposal_id`, `decision_id`, `status: pending`, `reason_codes`, and `requested_action_summary`。
+- approved entries keep the approval identity and record `status: approved`, `resolution`, `reason`, `resolver`, `resolved_event_id`, and `basis_event_id`。
+- denied entries use the same resolved shape with `status: denied` and do not create execution / artifact summaries。
+- checkpoint state includes `approvals` and validates approval shape before using checkpoint-assisted rebuild。
+
 ## 8. Server / HTTP Boundary
 
 Future server work may add a minimal in-process resolve method, but it must:
@@ -159,6 +170,21 @@ Future HTTP work may add an in-process approval endpoint, but it must:
 - denied approval cannot create artifact。
 - server / HTTP approval route remains in-process; no real network listener。
 - HTTP approval collection route remains deferred / `501 not_enabled`。
+
+第二批 run-state invariants tests 已落地并通过：
+
+- `tests/isotope_kernel/test_approval_run_state_invariants.py`
+- `tests/isotope_kernel/test_http_api_approval_state_read_model.py`
+
+第二批测试覆盖：
+
+- pending approval 后 `RunState` 有 explicit approval read model。
+- pending approval 不把 run 标成 completed，不创建 execution / artifact。
+- approved resolution 后 pending signal 变成 approved summary，execution / artifact summary 出现，run 可 completed。
+- denied resolution 后 approval summary 变成 denied，不创建 execution / artifact，run state 稳定为 denied。
+- duplicate resolution 不改变 projected state。
+- replay from event log 和 checkpoint-assisted rebuild 都能恢复 approval read model。
+- HTTP `GET /runs/{run_id}` 暴露 approval read model，`GET /runs/{run_id}/events` 仍返回 canonical events。
 
 ## 10. Deferred After This Boundary
 
