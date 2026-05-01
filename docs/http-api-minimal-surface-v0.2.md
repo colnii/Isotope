@@ -1,6 +1,6 @@
 # HTTP API Minimal Surface v0.2
 
-状态：`surface, request validation, response contract, demo smoke, idempotency, route inventory, and deferred route contract slices implemented`
+状态：`effectively complete / closed for now`
 
 ## 1. Purpose
 
@@ -9,6 +9,8 @@ v0.2 HTTP API 的目标，是把当前 in-process demo 能力暴露成最小 ser
 这个 surface 应先证明现有 kernel loop 可以被外部进程以 HTTP 方式驱动和读取：create session、create run、submit input、read projected run state、read canonical events、read artifact summary。它不是 auth / streaming / hosted service / production API 设计。
 
 当前 green slices 已实现为 in-process `HttpApiApp` / `create_http_app(...)`，并补齐 request validation / no-side-effect error boundary、response contract、HTTP facade demo smoke、duplicate-submit idempotency boundary、route inventory 和 deferred route contract。它是 test-client style boundary，不监听端口，不引入 FastAPI / Flask / 新依赖，也不是 production HTTP server。
+
+Track A 当前可标记为 effectively complete / closed for now。后续可以单独 reopen real listening HTTP server / ASGI / auth / streaming design，但这些不属于当前 minimal surface closure。
 
 ## 2. Hard Boundaries
 

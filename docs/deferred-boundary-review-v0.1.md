@@ -140,7 +140,7 @@ Memory Write / Query Boundary docs、第一批 memory boundary tests、memory ac
 11. memory v0.1 scope 已 frozen for demo planning：当前可展示 boundary / read-model / checkpoint contract，但不展示 durable storage/query product capability。
 12. `docs/demo-entrypoint-v0.1.md` 已定义并实现 demo scope；`docs/v0.1-demo-acceptance.md` 已将当前 demo accepted as developer demo：一个本地 module entrypoint 展示 deterministic kernel 闭环，不展示完整产品。
 13. Track A: HTTP API Minimal Surface minimal surface、request validation / no-side-effect error boundary、response contract、demo smoke、idempotency boundary、route inventory 和 deferred route contract 已实现：`HttpApiApp` / `create_http_app(...)` 支持 minimal session/run/input/state/events/artifact-summary/health surface，并对 malformed body、method mismatch、unknown session/run/artifact 做受控响应；response body 使用稳定 JSON-compatible contract；duplicate submit 使用 per-app in-memory `idempotency_key` cache，不进入 canonical events；route inventory 只标记 supported routes；deferred memory query / external ingestion / SSE / approval / full artifact content routes 返回 stable `501 not_enabled` 且无 side effect；它仍不是 real listening HTTP server。
-14. 下一步可选择 Track A closure / real server boundary design、external ingestion boundary docs、memory result cannot bypass artifact / `ResourceRef` authorization red tests、public-open-source cleanup plan，或停在当前稳定点。
+14. Track A 当前已 effectively complete / closed for now；下一步可选择 external ingestion boundary docs、memory result cannot bypass artifact / `ResourceRef` authorization red tests、public-open-source cleanup plan，或停在当前稳定点。real server boundary design 只有在 Track A 被显式 reopened 时再做。
 15. 不直接做完整 memory implementation。
 16. External Ingestion / `ImportedSnapshot` 排在 demo entrypoint scope 之后。
 17. real LLM / real listening HTTP server / plugin system 继续 deferred。
@@ -153,12 +153,12 @@ Memory Write / Query Boundary docs、第一批 memory boundary tests、memory ac
 
 ## 8. Next TDD Entry Point
 
-demo entrypoint TDD 已完成。v0.2 roadmap 已开始，Track D: Demo / Docs Polish 当前已 effectively complete / closed for now，Track A: HTTP API Minimal Surface minimal surface、request validation / no-side-effect error boundary、response contract、demo smoke、idempotency boundary、route inventory 和 deferred route contract 已实现。下一轮建议优先选择以下 docs / red tests 之一：
+demo entrypoint TDD 已完成。v0.2 roadmap 已开始，Track D: Demo / Docs Polish 当前已 effectively complete / closed for now，Track A: HTTP API Minimal Surface minimal surface、request validation / no-side-effect error boundary、response contract、demo smoke、idempotency boundary、route inventory 和 deferred route contract 已实现并 effectively complete / closed for now。下一轮建议优先选择以下 docs / red tests 之一：
 
-- Track A: HTTP API hardening / real server boundary design。
+- Track B: External Ingestion / `ImportedSnapshot` boundary docs。
+- real server boundary design only if Track A is explicitly reopened。
 - optional Track D polish from `docs/v0.2-roadmap.md` if explicitly requested。
 - memory result cannot bypass artifact / ResourceRef authorization。
-- external ingestion / `ImportedSnapshot` boundary docs。
 - optional GitHub Release publication from `docs/release-draft-v0.1-demo.md`。
 - public-open-source cleanup plan。
 - 或停在当前稳定点。
