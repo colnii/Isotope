@@ -1,6 +1,6 @@
 # Approval Pause / Resume Boundary v0.2
 
-状态：`draft for red tests`
+状态：`first green slice complete`
 
 ## 1. Purpose
 
@@ -22,23 +22,31 @@ Track E 当前值得做，因为 approval 是 action chain / policy / blocked ru
 
 ## 3. Current Surface
 
-当前仓库已经有最小 pending approval surface：
+当前仓库已经有最小 approval pause / resolve / resume surface：
 
 - `PolicyDecision` outcome 已支持 `pending_user_approval`。
 - `InProcessServer.submit_tool_request(..., requires_approval=True)` 可以产生 pending approval path。
 - canonical `approval.requested` event boundary 已存在。
+- `InProcessServer.resolve_approval(...)` 已支持 minimal explicit resolution。
+- approved resolution 会 append canonical `approval.resolved`，然后通过现有 executor path resume。
+- approved resume 使用原 `PolicyDecision.grants`，不会使用 resolution body 中的 forged grants。
+- denied resolution 会 append canonical `approval.resolved`，但不创建 execution / artifact。
+- duplicate resolution 受控 conflict：server 抛 `ValueError("approval already resolved")`，HTTP facade 返回 `409 approval_already_resolved`。
 - projector 能记录 pending approval 基本状态。
+- projector replay 能恢复 pending / resolved approval state。
 - pending approval 不创建 `ActionExecution`。
 - pending approval 不创建 artifact。
 - pending approval 可从 event log rebuild。
-- HTTP API 目前是 in-process facade，并已有 deferred approval route contract。
+- HTTP API 目前仍是 in-process facade，已提供 minimal approval resolve route。
 
-当前仍缺少 explicit resolve / resume path：
+当前仍不是完整 approval product：
 
-- 还没有 approved resolution 的 canonical event / server boundary。
-- 还没有 denied resolution 的 canonical event / server boundary。
-- 还没有 resume execution through existing executor boundary。
-- HTTP approval API 仍 deferred / `501 not_enabled`。
+- 没有 approval UI。
+- 没有 auth / identity。
+- 没有 notification。
+- 没有 timeout scheduler。
+- 没有 complex approval policy DSL。
+- 没有 real HTTP network server。
 
 ## 4. Non-Goals
 
@@ -58,17 +66,17 @@ Track E v0.2 不做：
 
 Track E 的最小目标：
 
-- action can pause as `pending_user_approval`。
-- canonical `approval.requested` 继续作为 pending request event。
-- 增加 explicit resolve path。
-- approved resolution appends canonical event and resumes execution through existing action / executor boundary。
-- denied resolution appends canonical event and does not execute。
-- projector state can be rebuilt from event log。
-- duplicate resolve is controlled: either idempotent or rejected consistently。
-- resolving unknown / stale / malformed approval fails closed。
-- HTTP approval route can remain in-process and deferred until a separate green slice explicitly opens it。
+- action can pause as `pending_user_approval`。已完成。
+- canonical `approval.requested` 继续作为 pending request event。已完成。
+- 增加 explicit resolve path。已完成。
+- approved resolution appends canonical event and resumes execution through existing action / executor boundary。已完成。
+- denied resolution appends canonical event and does not execute。已完成。
+- projector state can be rebuilt from event log。已完成。
+- duplicate resolve is controlled as conflict。已完成。
+- resolving unknown / stale / malformed approval fails closed。已完成。
+- HTTP approval resolve route remains in-process。已完成。
 
-候选 event 名称可以是 `approval.resolved`，但它仍是 v0.2 candidate，不是永久协议承诺。
+`approval.resolved` 已作为 v0.2 slice event 落地，但仍不是永久协议承诺。
 
 ## 6. Hard Boundaries
 
@@ -129,9 +137,9 @@ Future HTTP work may add an in-process approval endpoint, but it must:
 - not introduce FastAPI / Flask / new dependencies。
 - not imply multi-user auth or product approval workflow。
 
-## 9. First Red Tests
+## 9. First Tests
 
-下一轮 red phase 建议新增：
+第一批 tests 已落地并通过：
 
 - `tests/isotope_kernel/test_approval_resolution_boundary.py`
 - `tests/isotope_kernel/test_http_api_approval_boundary.py`
@@ -150,7 +158,7 @@ Future HTTP work may add an in-process approval endpoint, but it must:
 - approved resume cannot invent grants。
 - denied approval cannot create artifact。
 - server / HTTP approval route remains in-process; no real network listener。
-- HTTP approval route remains deferred until explicitly opened by the green slice。
+- HTTP approval collection route remains deferred / `501 not_enabled`。
 
 ## 10. Deferred After This Boundary
 

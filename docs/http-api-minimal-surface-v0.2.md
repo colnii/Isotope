@@ -42,14 +42,14 @@ GET  /health
 
 当前 `HttpApiApp.routes()` 只暴露上述 minimal surface。deferred endpoints 不在 route table 中，并以 not found / not enabled 风格处理。
 
-当前 `HttpApiApp.list_routes()` 和 metadata endpoint `GET /routes` 暴露 route inventory。inventory 只把当前 supported routes 标成 `supported`；memory query、external ingestion、SSE / stream、approval API 和 full artifact content 不能被标成 supported。
+当前 `HttpApiApp.list_routes()` 和 metadata endpoint `GET /routes` 暴露 route inventory。inventory 只把当前 supported routes 标成 `supported`；memory query、external ingestion、SSE / stream、approval product / collection API 和 full artifact content 不能被标成 supported。Track E 已有单独的 in-process approval resolve route，但它不是完整 approval product API。
 
 暂不实现：
 
 - SSE / streaming
 - auth
 - multi-user
-- approval API
+- approval product / collection API
 - memory query API
 - external ingestion API
 - full artifact content API
@@ -222,7 +222,7 @@ tests/isotope_kernel/test_http_api_deferred_routes.py
 - `HttpApiApp.list_routes()` returns stable supported route inventory。
 - `GET /routes` returns the same JSON-compatible inventory。
 - legacy `HttpApiApp.routes()` remains a minimal tuple surface for supported routes。
-- inventory does not mark memory query、external ingestion、SSE / stream、approval API 或 full artifact content routes as supported。
+- inventory does not mark memory query、external ingestion、SSE / stream、approval product / collection API 或 full artifact content routes as supported。
 - deferred routes return stable `501 not_enabled` with explicit `error.capability`。
 - deferred routes do not create events / actions / artifacts。
 - deferred full artifact content route does not read artifact full content。
@@ -233,7 +233,7 @@ tests/isotope_kernel/test_http_api_deferred_routes.py
 - FastAPI / Flask / ASGI / WSGI framework commitment
 - auth / multi-user
 - SSE / streaming
-- approval API
+- approval product / collection API
 - memory query API
 - external ingestion API
 - full artifact content API

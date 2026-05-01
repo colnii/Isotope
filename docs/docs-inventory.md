@@ -31,9 +31,9 @@
 
 ## 3. Active track docs
 
-当前 active planning surface 是 Track E，边界文档已创建，下一步应进入 red tests。
+当前 active planning surface 是 Track E，边界文档和第一批 green slice 已创建 / 完成。
 
-- `docs/approval-pause-resume-boundary-v0.2.md`：Track E approval pause / resume boundary，active / next red tests。
+- `docs/approval-pause-resume-boundary-v0.2.md`：Track E approval pause / resume boundary，active / first green slice complete。
 - Supporting current docs:
   - `docs/v0.2-mid-cycle-review.md`
   - `docs/v0.2-roadmap.md`
@@ -43,7 +43,7 @@
   - `docs/kernel-architecture-v0.1.md`
   - `docs/kernel-living-spec.md`
 
-Track E 进入 TDD 时，应先写 approval resolution / HTTP approval red tests。不要直接实现完整 approval product。
+Track E 后续只在明确选择时继续扩展。不要直接实现完整 approval product。
 
 ## 4. Closed track docs
 
@@ -113,7 +113,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | --- | --- | --- |
 | `docs/README.md` | Kernel current-truth reading order | current entrypoint |
 | `docs/action-type-registry-v0.1.md` | Action registry design/status | closed / reference |
-| `docs/approval-pause-resume-boundary-v0.2.md` | Track E approval pause / resume boundary | active / next red tests |
+| `docs/approval-pause-resume-boundary-v0.2.md` | Track E approval pause / resume boundary | active / first green slice complete |
 | `docs/artifact-content-read-policy-v0.2.md` | Track C boundary | closed for now |
 | `docs/checkpoint-history-fallback-v0.1.md` | Checkpoint fallback boundary | closed / frozen |
 | `docs/checkpoint-history-index-retention-v0.1.md` | Checkpoint history index / retention boundary | closed / frozen |
