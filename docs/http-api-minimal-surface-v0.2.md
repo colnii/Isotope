@@ -1,6 +1,6 @@
 # HTTP API Minimal Surface v0.2
 
-状态：`first green slice implemented`
+状态：`surface and request validation slices implemented`
 
 ## 1. Purpose
 
@@ -8,7 +8,7 @@ v0.2 HTTP API 的目标，是把当前 in-process demo 能力暴露成最小 ser
 
 这个 surface 应先证明现有 kernel loop 可以被外部进程以 HTTP 方式驱动和读取：create session、create run、submit input、read projected run state、read canonical events、read artifact summary。它不是 auth / streaming / hosted service / production API 设计。
 
-当前第一批 green slice 已实现为 in-process `HttpApiApp` / `create_http_app(...)`。它是 test-client style boundary，不监听端口，不引入 FastAPI / Flask / 新依赖，也不是 production HTTP server。
+当前前两批 green slice 已实现为 in-process `HttpApiApp` / `create_http_app(...)`，并补齐 request validation / no-side-effect error boundary。它是 test-client style boundary，不监听端口，不引入 FastAPI / Flask / 新依赖，也不是 production HTTP server。
 
 ## 2. Hard Boundaries
 
@@ -104,9 +104,9 @@ v0.2 可以使用 Python 标准库或轻量依赖，但先不要承诺长期 fra
 
 HTTP 是当前 implementation choice，不是永久 transport contract。后续如果引入 ASGI / WSGI / framework / hosted deployment，应先写独立 design note 和 red tests，避免把 framework assumptions 泄漏进 kernel contract。
 
-## 6. Implemented First Slice
+## 6. Implemented Slices
 
-第一批 boundary tests 已新增并通过：
+第一批 minimal surface boundary tests 已新增并通过：
 
 ```text
 tests/isotope_kernel/test_http_api_boundary.py
@@ -125,6 +125,22 @@ tests/isotope_kernel/test_http_api_boundary.py
 - HTTP layer 不读取 checkpoint state 作为 truth。
 
 这些 tests 只锁 server-facing boundary，不引入 real LLM、auth、streaming、external ingestion、memory query engine 或 hosted deployment。
+
+第二批 request validation boundary tests 已新增并通过：
+
+```text
+tests/isotope_kernel/test_http_api_request_validation.py
+```
+
+覆盖点：
+
+- unsupported route returns controlled `404` without events。
+- known path with method mismatch returns controlled `405` without events。
+- malformed / missing request body returns controlled `400` without events。
+- unknown session / run / artifact returns controlled `404` without creating run state, action events, or artifacts。
+- `POST /runs/{run_id}/input` requires non-empty string `text` and does not implicitly `str(...)`-coerce invalid values。
+- invalid requests do not produce action lifecycle events or artifact side effects。
+- deferred memory query / external ingestion / SSE / full artifact content routes remain absent / not enabled。
 
 ## 7. Still Deferred
 
