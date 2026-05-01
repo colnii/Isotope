@@ -46,9 +46,17 @@ class HttpApiApp:
         ("GET", "/artifacts/{artifact_id}/content", "artifact_content"),
     )
 
-    def __init__(self, root_path: Path | str):
+    def __init__(
+        self,
+        root_path: Path | str,
+        *,
+        allow_artifact_content: bool = False,
+        artifact_content_retrieval_service: Any | None = None,
+    ):
         self.root_path = Path(root_path)
         self.server = InProcessServer(self.root_path)
+        self.allow_artifact_content = allow_artifact_content
+        self.artifact_content_retrieval_service = artifact_content_retrieval_service
         self._idempotency_cache: dict[str, dict[str, Any]] = {}
 
     def routes(self) -> list[tuple[str, str]]:
@@ -117,6 +125,9 @@ class HttpApiApp:
                 allowed_methods=sorted(allowed_methods),
             )
 
+        if method == "GET" and self._route_matches("/artifacts/{artifact_id}/content", parts):
+            return self._artifact_content_guard()
+
         deferred_capability = self._deferred_capability(method, parts)
         if deferred_capability is not None:
             return self._error(
@@ -166,6 +177,25 @@ class HttpApiApp:
             return self._error(400, "bad_request", str(exc))
 
         return self._error(404, "not_found", "route not found")
+
+    def _artifact_content_guard(self) -> HttpResponse:
+        if not self.allow_artifact_content:
+            return self._content_not_enabled()
+        if self.artifact_content_retrieval_service is None:
+            return self._content_not_enabled()
+
+        # The explicit enablement guard exists before opening the route. A later
+        # slice must wire RetrievalService.get_artifact_content(...) and its
+        # ResourceRef / grants / caller_context / purpose checks here.
+        return self._content_not_enabled()
+
+    def _content_not_enabled(self) -> HttpResponse:
+        return self._error(
+            501,
+            "not_enabled",
+            "artifact_content is not enabled",
+            capability="artifact_content",
+        )
 
     def _deferred_capability(self, method: str, parts: list[str]) -> str | None:
         for deferred_method, route, capability in self._DEFERRED_ROUTES:
@@ -312,5 +342,14 @@ class HttpApiApp:
         return run_id in self.server._runs or self.server.event_store.event_path(run_id).exists()
 
 
-def create_http_app(root_path: Path | str) -> HttpApiApp:
-    return HttpApiApp(root_path=root_path)
+def create_http_app(
+    root_path: Path | str,
+    *,
+    allow_artifact_content: bool = False,
+    artifact_content_retrieval_service: Any | None = None,
+) -> HttpApiApp:
+    return HttpApiApp(
+        root_path=root_path,
+        allow_artifact_content=allow_artifact_content,
+        artifact_content_retrieval_service=artifact_content_retrieval_service,
+    )
