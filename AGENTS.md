@@ -29,6 +29,7 @@
 - Track E: Approval Pause / Resume Boundary is effectively complete / closed for now. Approval resolution plus run-state / HTTP read-model green slices are complete; UI / auth / notification / scheduler / complex DSL remain deferred.
 - v0.2 demo readiness is documented in [docs/v0.2-demo-readiness.md](docs/v0.2-demo-readiness.md).
 - v0.2 demo scenario is implemented and documented in [docs/v0.2-demo-scenario.md](docs/v0.2-demo-scenario.md): `--scenario v0.2` visibly exercises Track A / C / E without real HTTP server, network listener, memory storage/query, or HTTP full-content route.
+- v0.2 developer demo acceptance is documented in [docs/v0.2-demo-acceptance.md](docs/v0.2-demo-acceptance.md); it recommends preparing a `v0.2-demo` tag, but do not create tags unless explicitly requested.
 - Real server boundary design only if Track A is explicitly reopened; artifact content HTTP route implementation only if Track C is explicitly reopened.
 - Optional docs polish can continue later, but it should not block v0.2 implementation.
 
@@ -63,6 +64,7 @@ git status --short
 - Demo walkthrough: [docs/demo-walkthrough-v0.1.md](docs/demo-walkthrough-v0.1.md)
 - Demo architecture: [docs/demo-architecture-v0.1.md](docs/demo-architecture-v0.1.md)
 - v0.1 demo acceptance: [docs/v0.1-demo-acceptance.md](docs/v0.1-demo-acceptance.md)
+- v0.2 demo acceptance: [docs/v0.2-demo-acceptance.md](docs/v0.2-demo-acceptance.md)
 - v0.2 roadmap: [docs/v0.2-roadmap.md](docs/v0.2-roadmap.md)
 - v0.2 demo readiness: [docs/v0.2-demo-readiness.md](docs/v0.2-demo-readiness.md)
 - v0.2 demo scenario: [docs/v0.2-demo-scenario.md](docs/v0.2-demo-scenario.md)

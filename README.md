@@ -2,7 +2,7 @@
 
 Isotope 是一个独立的 kernel-first agent runtime 项目，用来验证 canonical event log、policy-gated execution、artifact provenance、projector replay 和 checkpoint-assisted rebuild 等内核边界。
 
-当前状态：`v0.1-demo` developer demo 已完成并打 tag；当前本地 baseline 是 `735 passed`。Track A: HTTP API Minimal Surface、Track C: Artifact Content Read Policy 和 Track E: Approval Pause / Resume Boundary 都已 effectively complete / closed for now；v0.2 demo scenario 已可用，详细状态见 [docs/current-status.md](docs/current-status.md)。
+当前状态：`v0.1-demo` developer demo 已完成并打 tag；当前本地 baseline 是 `735 passed`。Track A: HTTP API Minimal Surface、Track C: Artifact Content Read Policy 和 Track E: Approval Pause / Resume Boundary 都已 effectively complete / closed for now；v0.2 developer demo 已 accepted，详细状态见 [docs/current-status.md](docs/current-status.md)。
 
 ## Quick Start
 
@@ -47,6 +47,7 @@ python3 -m venv .venv
 - Demo walkthrough: [docs/demo-walkthrough-v0.1.md](docs/demo-walkthrough-v0.1.md)
 - Demo architecture: [docs/demo-architecture-v0.1.md](docs/demo-architecture-v0.1.md)
 - v0.1 demo acceptance: [docs/v0.1-demo-acceptance.md](docs/v0.1-demo-acceptance.md)
+- v0.2 demo acceptance: [docs/v0.2-demo-acceptance.md](docs/v0.2-demo-acceptance.md)
 - v0.2 roadmap: [docs/v0.2-roadmap.md](docs/v0.2-roadmap.md)
 - v0.2 demo readiness: [docs/v0.2-demo-readiness.md](docs/v0.2-demo-readiness.md)
 - v0.2 demo scenario: [docs/v0.2-demo-scenario.md](docs/v0.2-demo-scenario.md)
