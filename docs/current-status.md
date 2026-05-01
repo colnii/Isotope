@@ -14,6 +14,7 @@
 - lightweight tag `v0.1-demo` 已创建并推送，指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`。
 - GitHub Release draft 已准备在 `docs/release-draft-v0.1-demo.md`；尚未发布 GitHub Release。`main` 允许在 tag 后继续有 docs/status 更新，tag 仍是 demo acceptance anchor。
 - v0.2 roadmap 已开始，见 `docs/v0.2-roadmap.md`。Track D: Demo / Docs Polish 当前已 effectively complete / closed for now；Track A: HTTP API Minimal Surface 当前也已 effectively complete / closed for now，已完成 minimal surface、request validation / no-side-effect error boundary、response contract、demo smoke、idempotency boundary、route inventory 和 deferred route contract slices。
+- v0.2 next-track selection 已落文档，见 `docs/v0.2-next-track-selection.md`。推荐下一阶段选择 artifact content read policy / controlled full-content retrieval boundary，而不是 real HTTP server。
 - Track A: HTTP API Minimal Surface 见 `docs/http-api-minimal-surface-v0.2.md`。当前实现是 in-process `HttpApiApp` / `create_http_app(...)`，不是监听端口的真实网络服务；没有引入 FastAPI / Flask / 新依赖。
 - v0.1 demo walkthrough 已补充，见 `docs/demo-walkthrough-v0.1.md`。它解释 demo 运行内容、内部步骤、plain text / JSON 输出字段、证明范围、非目标和 troubleshooting。
 - v0.1 demo architecture diagram 已补充，见 `docs/demo-architecture-v0.1.md`。它解释 demo runtime path，不是完整 Isotope 架构图。
@@ -391,7 +392,8 @@
 - no GitHub Release has been published from the draft
 - v0.2 roadmap draft exists: `docs/v0.2-roadmap.md`
 - HTTP API Minimal Surface v0.2 status doc exists: `docs/http-api-minimal-surface-v0.2.md`
-- recommended v0.2 order is Demo / Docs Polish, HTTP API Minimal Surface, External Ingestion / ImportedSnapshot, then Real Memory Storage Slice
+- v0.2 next-track selection exists: `docs/v0.2-next-track-selection.md`
+- recommended v0.2 order is Demo / Docs Polish, HTTP API Minimal Surface, artifact content read policy / controlled retrieval, External Ingestion / ImportedSnapshot, approval pause/resume, memory query/storage review, then real HTTP adapter only if explicitly reopened
 - Track D: Demo / Docs Polish is effectively complete / closed for now with README quick start, `docs/demo-walkthrough-v0.1.md`, `docs/demo-architecture-v0.1.md`, `docs/v0.1-demo-acceptance.md`, limitations / non-goals, and CI smoke status
 - Track A: HTTP API Minimal Surface is effectively complete / closed for now after landing in-process HTTP API slices for minimal surface, request validation / no-side-effect error boundary, response contract, demo smoke, idempotency / duplicate-submit boundary, route inventory, and deferred route contract; no real listening server, web framework, auth, SSE, memory query API, external ingestion API, or full artifact content API is implemented
 - demo walkthrough explains what `python -m isotope_kernel.demo` runs, what output fields mean, what the demo proves, what it does not prove, and common setup / CI troubleshooting
@@ -425,6 +427,8 @@
 - `GET /runs/{run_id}/events` returns canonical event log view
 - `GET /artifacts/{artifact_id}/summary` returns summary / ref / provenance from canonical `artifact.created` event and does not return full content / raw content
 - memory query, external ingestion, approval API, SSE / streaming, real listening HTTP server, hosted deployment, and full artifact content endpoint remain deferred / not enabled
+- next selected v0.2 track is artifact content read policy / controlled full-content retrieval boundary
+- this selection keeps real HTTP server, memory query engine, external ingestion implementation, approval resume flow, and full artifact content endpoint deferred until separate docs / red tests
 - packaging / install smoke coverage 已落地：`tests/isotope_kernel/test_packaging_smoke.py`
 - current `pyproject.toml` metadata / src-layout package discovery / editable install path 已通过 smoke
 - editable install 后可 import `isotope_kernel`，并可运行 installed `python -m isotope_kernel.demo` / `python -m isotope_kernel.demo --json`
@@ -605,9 +609,10 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 
 下一步建议优先做：
 
-- Track B: External Ingestion / `ImportedSnapshot` boundary docs / red tests, if v0.2 work continues
+- artifact content read policy / controlled full-content retrieval boundary docs / red tests, if v0.2 work continues
+- Track F: External Ingestion / `ImportedSnapshot` boundary docs / red tests after artifact content access policy is clearer
 - real listening HTTP server boundary design only if Track A is explicitly reopened
 - optional Track D polish can continue later, but it no longer blocks v0.2 implementation
 - 或停在当前稳定点
 
-checkpoint v0.1、memory v0.1 和 Track A HTTP API Minimal Surface 当前 frozen / closed unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D 已 effectively complete / closed for now，Track A HTTP API Minimal Surface 已 effectively complete / closed for now；不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage / ingestion implementation。
+checkpoint v0.1、memory v0.1 和 Track A HTTP API Minimal Surface 当前 frozen / closed unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D 已 effectively complete / closed for now，Track A HTTP API Minimal Surface 已 effectively complete / closed for now；下一推荐 track 是 artifact content read policy / controlled full-content retrieval boundary。不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage / ingestion implementation。

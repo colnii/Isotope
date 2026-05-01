@@ -2,7 +2,7 @@
 
 Isotope 是一个独立的 kernel-first agent runtime 项目，用来验证 canonical event log、policy-gated execution、artifact provenance、projector replay 和 checkpoint-assisted rebuild 等内核边界。
 
-当前状态：`v0.1-demo` developer demo 已完成并打 tag；当前本地 baseline 是 `647 passed`。Track A: HTTP API Minimal Surface 已 effectively complete / closed for now，详细状态见 [docs/current-status.md](docs/current-status.md)。
+当前状态：`v0.1-demo` developer demo 已完成并打 tag；当前本地 baseline 是 `647 passed`。Track A: HTTP API Minimal Surface 已 effectively complete / closed for now；下一推荐 track 是 artifact content read policy，详细状态见 [docs/current-status.md](docs/current-status.md)。
 
 ## Quick Start
 
@@ -43,6 +43,7 @@ python3 -m venv .venv
 - Demo architecture: [docs/demo-architecture-v0.1.md](docs/demo-architecture-v0.1.md)
 - v0.1 demo acceptance: [docs/v0.1-demo-acceptance.md](docs/v0.1-demo-acceptance.md)
 - v0.2 roadmap: [docs/v0.2-roadmap.md](docs/v0.2-roadmap.md)
+- v0.2 next-track selection: [docs/v0.2-next-track-selection.md](docs/v0.2-next-track-selection.md)
 - HTTP API minimal surface: [docs/http-api-minimal-surface-v0.2.md](docs/http-api-minimal-surface-v0.2.md)
 
 ## CI

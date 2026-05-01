@@ -24,7 +24,8 @@
 - Track D: Demo / Docs Polish is effectively complete / closed for now.
 - Current Track A design doc: [docs/http-api-minimal-surface-v0.2.md](docs/http-api-minimal-surface-v0.2.md).
 - Track A has in-process `HttpApiApp` / `create_http_app(...)`, request validation / no-side-effect error boundary, response contract, demo smoke, duplicate-submit idempotency boundary, route inventory, and deferred route contract; it is effectively complete / closed for now and is not a real listening HTTP server.
-- Default next step: Track B external ingestion boundary, or real server boundary design only if Track A is explicitly reopened, after red tests.
+- Default next step: artifact content read policy / controlled full-content retrieval boundary, after docs and red tests.
+- Real server boundary design only if Track A is explicitly reopened.
 - Optional docs polish can continue later, but it should not block v0.2 implementation.
 
 ## Common Verification
@@ -55,4 +56,5 @@ git status --short
 - Demo architecture: [docs/demo-architecture-v0.1.md](docs/demo-architecture-v0.1.md)
 - v0.1 demo acceptance: [docs/v0.1-demo-acceptance.md](docs/v0.1-demo-acceptance.md)
 - v0.2 roadmap: [docs/v0.2-roadmap.md](docs/v0.2-roadmap.md)
+- v0.2 next-track selection: [docs/v0.2-next-track-selection.md](docs/v0.2-next-track-selection.md)
 - HTTP API minimal surface: [docs/http-api-minimal-surface-v0.2.md](docs/http-api-minimal-surface-v0.2.md)
