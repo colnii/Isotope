@@ -45,6 +45,7 @@ python3 -m venv .venv
 - Demo architecture: [docs/demo-architecture-v0.1.md](docs/demo-architecture-v0.1.md)
 - v0.1 demo acceptance: [docs/v0.1-demo-acceptance.md](docs/v0.1-demo-acceptance.md)
 - v0.2 roadmap: [docs/v0.2-roadmap.md](docs/v0.2-roadmap.md)
+- v0.2 demo readiness: [docs/v0.2-demo-readiness.md](docs/v0.2-demo-readiness.md)
 - v0.2 next-track selection: [docs/v0.2-next-track-selection.md](docs/v0.2-next-track-selection.md)
 - v0.2 mid-cycle review: [docs/v0.2-mid-cycle-review.md](docs/v0.2-mid-cycle-review.md)
 - Approval pause / resume boundary: [docs/approval-pause-resume-boundary-v0.2.md](docs/approval-pause-resume-boundary-v0.2.md)
