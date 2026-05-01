@@ -19,6 +19,7 @@
 - v0.2 mid-cycle review 已落文档，见 `docs/v0.2-mid-cycle-review.md`。该 recommendation 已执行到 Track E closure；不要默认转向 real HTTP server、memory query engine 或 external ingestion implementation。
 - Track E approval pause / resume boundary 见 `docs/approval-pause-resume-boundary-v0.2.md`，当前已 effectively complete / closed for now：pending approval 可 resolve；approved path append `approval.resolved` 后通过现有 executor path resume；approved resume 使用原 `PolicyDecision.grants`；denied path append `approval.resolved` 但不创建 execution / artifact；duplicate resolution 是受控 conflict；`RunState.approvals` 和 HTTP run read model 可表达 pending / approved / denied approval summary；event-log replay 和 checkpoint-assisted rebuild 可恢复 approval read model。它仍不是完整 approval product。
 - v0.2 demo readiness review 已落文档，见 `docs/v0.2-demo-readiness.md`。当前 demo 仍展示 v0.1 deterministic kernel loop：event log / replay / checkpoint / artifact summary / memory boundary；它尚未展示 Track A HTTP facade、Track C controlled full-content retrieval 或 Track E approval pause / resume。该 gap 不是 bug；若目标是外部展示，建议先做 v0.2 demo scenario expansion，再进入 Track F。
+- v0.2 demo scenario boundary 已落文档，见 `docs/v0.2-demo-scenario.md`。建议新增 explicit `--scenario v0.2`，展示 `HttpApiApp` facade、controlled artifact content retrieval policy 和 approval pause / resume，同时保持 default v0.1 demo 兼容、no real HTTP server、no network、no memory storage/query。
 - docs inventory 已落文档，见 `docs/docs-inventory.md`。当前只盘点和规划未来整理方向；尚未移动、删除或合并任何 docs 文件。
 - Track A: HTTP API Minimal Surface 见 `docs/http-api-minimal-surface-v0.2.md`。当前实现是 in-process `HttpApiApp` / `create_http_app(...)`，不是监听端口的真实网络服务；没有引入 FastAPI / Flask / 新依赖。
 - v0.1 demo walkthrough 已补充，见 `docs/demo-walkthrough-v0.1.md`。它解释 demo 运行内容、内部步骤、plain text / JSON 输出字段、证明范围、非目标和 troubleshooting。
@@ -649,6 +650,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 下一步建议优先做：
 
 - v0.2 demo scenario expansion if the next goal is an external-facing developer demo that visibly exercises Track A / C / E
+- first red tests for scenario expansion should start with `tests/isotope_kernel/test_demo_v0_2_scenario.py`
 - Track F: External Ingestion / `ImportedSnapshot` boundary docs / red tests after demo readiness gap is accepted or after scenario expansion
 - reopen Track E only with an explicit design / red-test request, such as product approval UI / auth / scheduler boundary
 - reopen Track C only with an explicit design / red-test request, such as HTTP content route boundary

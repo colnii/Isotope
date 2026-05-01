@@ -14,6 +14,7 @@
 - 加上本文后 docs Markdown：41 个。
 - 加上 Track E boundary doc 后 docs Markdown：42 个。
 - 加上 v0.2 demo readiness review 后 docs Markdown：43 个。
+- 加上 v0.2 demo scenario boundary 后 docs Markdown：44 个。
 
 ## 2. Current entrypoints
 
@@ -22,6 +23,7 @@
 - `docs/current-status.md`：当前状态入口，开始新任务前先读。
 - `docs/v0.2-roadmap.md`：v0.2 track 状态和推荐顺序。
 - `docs/v0.2-demo-readiness.md`：v0.2 developer demo readiness review，记录当前 demo 展示范围和 Track A / C / E scenario gap。
+- `docs/v0.2-demo-scenario.md`：v0.2 demo scenario boundary，定义 future `--scenario v0.2` red-test scope。
 - `docs/v0.2-mid-cycle-review.md`：mid-cycle decision，曾推荐进入 Track E；该 recommendation 已执行到 closure。
 - `docs/v0.2-next-track-selection.md`：Track C selection 的历史决策记录，已执行到 closure。
 - `docs/README.md`：kernel current-truth 文档包的阅读顺序入口。
@@ -152,6 +154,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | `docs/server-checkpoint-boundary-v0.1.md` | Server checkpoint boundary | closed / frozen |
 | `docs/v0.1-demo-acceptance.md` | Demo acceptance record | closed |
 | `docs/v0.2-demo-readiness.md` | v0.2 demo readiness review | current review |
+| `docs/v0.2-demo-scenario.md` | v0.2 demo scenario boundary | draft for TDD |
 | `docs/v0.2-mid-cycle-review.md` | v0.2 next-track review | current decision |
 | `docs/v0.2-next-track-selection.md` | Track C selection record | historical decision |
 | `docs/v0.2-roadmap.md` | v0.2 roadmap | current entrypoint |
