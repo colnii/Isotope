@@ -30,6 +30,7 @@
 - v0.2 demo readiness is documented in [docs/v0.2-demo-readiness.md](docs/v0.2-demo-readiness.md).
 - v0.2 demo scenario is implemented and documented in [docs/v0.2-demo-scenario.md](docs/v0.2-demo-scenario.md): `--scenario v0.2` visibly exercises Track A / C / E without real HTTP server, network listener, memory storage/query, or HTTP full-content route.
 - v0.2 developer demo acceptance is documented in [docs/v0.2-demo-acceptance.md](docs/v0.2-demo-acceptance.md); `v0.2-demo` is already tagged, but no GitHub Release has been published.
+- Track F design boundary is documented in [docs/external-ingestion-boundary-v0.2.md](docs/external-ingestion-boundary-v0.2.md); next work should be red tests, not provider implementation.
 - Real server boundary design only if Track A is explicitly reopened; artifact content HTTP route implementation only if Track C is explicitly reopened.
 - Optional docs polish can continue later, but it should not block v0.2 implementation.
 
@@ -66,6 +67,7 @@ git status --short
 - v0.1 demo acceptance: [docs/v0.1-demo-acceptance.md](docs/v0.1-demo-acceptance.md)
 - v0.2 demo acceptance: [docs/v0.2-demo-acceptance.md](docs/v0.2-demo-acceptance.md)
 - v0.2 roadmap: [docs/v0.2-roadmap.md](docs/v0.2-roadmap.md)
+- External ingestion boundary: [docs/external-ingestion-boundary-v0.2.md](docs/external-ingestion-boundary-v0.2.md)
 - v0.2 demo readiness: [docs/v0.2-demo-readiness.md](docs/v0.2-demo-readiness.md)
 - v0.2 demo scenario: [docs/v0.2-demo-scenario.md](docs/v0.2-demo-scenario.md)
 - v0.2 next-track selection: [docs/v0.2-next-track-selection.md](docs/v0.2-next-track-selection.md)

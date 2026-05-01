@@ -21,6 +21,7 @@
 - v0.2 demo readiness review 已落文档，见 `docs/v0.2-demo-readiness.md`。此前记录的 Track A / C / E 展示 gap 已通过 v0.2 demo scenario 关闭。
 - v0.2 demo scenario 已落地，见 `docs/v0.2-demo-scenario.md`。`python -m isotope_kernel.demo --scenario v0.2` 和 `python -m isotope_kernel.demo --scenario v0.2 --json` 已可运行，展示 `HttpApiApp` facade、controlled artifact content retrieval policy、approval pause / resume、checkpoint 和 memory `boundary_only`，同时保持 default v0.1 demo 兼容、no real HTTP server、no network listener、no memory storage/query、HTTP full-content route 仍 `not_enabled` / deferred。
 - v0.2 demo acceptance 已落文档，见 `docs/v0.2-demo-acceptance.md`。当前满足 `v0.2 developer demo` acceptance：baseline `735 passed`，v0.1 / v0.2 demo plain / JSON 成功，Track A / C / E 已在 v0.2 scenario 中可见。lightweight tag `v0.2-demo` 已创建并推送，指向 `09319e7407116d9f99f4a18853d4df23a8714720`；GitHub Release 未发布。这是 developer demo tag，不是 product release。
+- Track F external ingestion boundary 已开始设计，见 `docs/external-ingestion-boundary-v0.2.md`。当前只定义 boundary 和 first red tests：external raw input 不能直接推进 `RunState` / `SessionState`，accepted `ImportedSnapshot` 必须由 canonical `snapshot.imported` event 引入，projector 仍只消费 canonical events；真实 provider adapter / external ingestion implementation 仍 deferred。
 - docs inventory 已落文档，见 `docs/docs-inventory.md`。当前只盘点和规划未来整理方向；尚未移动、删除或合并任何 docs 文件。
 - Track A: HTTP API Minimal Surface 见 `docs/http-api-minimal-surface-v0.2.md`。当前实现是 in-process `HttpApiApp` / `create_http_app(...)`，不是监听端口的真实网络服务；没有引入 FastAPI / Flask / 新依赖。
 - v0.1 demo walkthrough 已补充，见 `docs/demo-walkthrough-v0.1.md`。它解释 demo 运行内容、内部步骤、plain text / JSON 输出字段、证明范围、非目标和 troubleshooting。
@@ -412,6 +413,7 @@
 - current demo acceptance status is `accepted as developer demo`, not product runtime
 - demo acceptance evidence includes local `568 passed` at the v0.1 acceptance anchor; current mainline baseline is `735 passed` after the v0.2 demo scenario slice
 - v0.2 demo acceptance 已落文档：`docs/v0.2-demo-acceptance.md`
+- Track F external ingestion boundary design 已落文档：`docs/external-ingestion-boundary-v0.2.md`
 - current v0.2 demo acceptance status is `accepted as v0.2 developer demo`, not product runtime
 - v0.2 acceptance evidence includes `735 passed`, v0.1 demo plain / JSON success, v0.2 demo plain / JSON success, configured CI smoke, no `x_agent.*` imports, and `/home/lumber/Github/x-agent` untouched
 - lightweight demo tag exists: `v0.2-demo` -> `09319e7407116d9f99f4a18853d4df23a8714720`
@@ -490,7 +492,7 @@
 - CI then runs full kernel tests plus demo plain / JSON smoke
 - latest remote GitHub Actions CI run has been confirmed green from the GitHub Actions web UI
 - CI smoke does not require secrets, release automation, coverage, lint matrix, or real integration services
-- External Ingestion / `ImportedSnapshot` remains a later candidate after approval boundary unless explicitly selected instead
+- External Ingestion / `ImportedSnapshot` has a Track F boundary doc; implementation remains deferred until red tests / green slice are explicitly requested
 - real LLM / real listening HTTP / plugin system remain deferred
 - memory write / query boundary design note 已落文档
 - first memory boundary tests 已落地并通过
@@ -661,11 +663,11 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 下一步建议优先做：
 
 - optional GitHub Release draft for `v0.2-demo` if explicitly requested; do not publish a Release without a separate request
-- Track F: External Ingestion / `ImportedSnapshot` boundary docs / red tests if the next goal is a new kernel boundary after acceptance
+- Track F: External Ingestion / `ImportedSnapshot` first red tests based on `docs/external-ingestion-boundary-v0.2.md`
 - reopen Track E only with an explicit design / red-test request, such as product approval UI / auth / scheduler boundary
 - reopen Track C only with an explicit design / red-test request, such as HTTP content route boundary
 - real listening HTTP server boundary design only if Track A is explicitly reopened
 - optional Track D polish can continue later, but it no longer blocks v0.2 implementation
 - 或停在当前稳定点
 
-checkpoint v0.1、memory v0.1、Track A HTTP API Minimal Surface、Track C Artifact Content Read Policy 和 Track E Approval Pause / Resume Boundary 当前 frozen / closed unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D、Track A、Track C 和 Track E 都已 effectively complete / closed for now。v0.2 demo scenario 已实现并可通过 `--scenario v0.2` 展示 Track A / C / E 的 in-process boundary；v0.2 developer demo 当前已 accepted，`v0.2-demo` tag 已创建并推送，GitHub Release 未发布。这是 developer demo tag，不是 product release。HTTP full-content route 仍 `501 not_enabled`，ranking、semantic retrieval、memory controlled expand、external ingestion implementation 和 real listening HTTP server 仍 deferred。不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage / ingestion implementation。
+checkpoint v0.1、memory v0.1、Track A HTTP API Minimal Surface、Track C Artifact Content Read Policy 和 Track E Approval Pause / Resume Boundary 当前 frozen / closed unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D、Track A、Track C 和 Track E 都已 effectively complete / closed for now。v0.2 demo scenario 已实现并可通过 `--scenario v0.2` 展示 Track A / C / E 的 in-process boundary；v0.2 developer demo 当前已 accepted，`v0.2-demo` tag 已创建并推送，GitHub Release 未发布。这是 developer demo tag，不是 product release。Track F external ingestion 当前只有 boundary doc：raw external input 不能直接推进 state，`ImportedSnapshot` 必须通过 canonical event 接纳，projector 只消费 canonical events。HTTP full-content route 仍 `501 not_enabled`，ranking、semantic retrieval、memory controlled expand、external ingestion implementation 和 real listening HTTP server 仍 deferred。不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage / ingestion implementation。
