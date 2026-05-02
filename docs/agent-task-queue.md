@@ -85,36 +85,47 @@ git status --short
 
 ## 6. Current Batch
 
-Batch name: `Usability Friction Reduction Package 2`
+Batch name: `Usability Friction Round 1 Closure + First App Spike Decision`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: reduce approval-tool-runner submit-action friction without opening product surfaces.
+Goal: close approval-tool-runner round 1 friction and decide the first app spike candidate without implementing it.
 
 Tasks:
 
-1. Submit Tool Request Friction Review: complete; added `docs/submit-tool-request-friction-review.md`.
-2. Submit Action Helper Boundary Docs: complete; added `docs/submit-action-helper-boundary-v0.2.md`.
-3. Submit Action Helper Red Tests: complete; added `tests/isotope_kernel/test_submit_action_helper.py`.
-4. Submit Action Helper Green Slice: complete; added `InProcessServer.submit_action(...)`.
-5. Approval Tool Runner Glue Reduction: complete; approval-tool-runner demo now uses approval lookup helper, workspace binding helper, and submit action helper.
-6. Docs / status sync + queue update: complete; stop for user review.
+1. Usability Friction Round 1 Closure Review: complete; added `docs/usability-friction-round-1-review.md`.
+2. First App Spike Readiness Review: complete; added `docs/first-app-spike-readiness.md`.
+3. Select or Stop: complete; selected `artifact review flow` for red-tests-only next batch.
+4. Docs / status sync + queue update: complete; stop for user review.
 
 Evidence:
 
-- Submit action helper red targeted result: `5 failed, 1 passed`.
-- Full with submit action helper red tests: `5 failed, 860 passed`; failures were from this package.
-- Submit action helper targeted green result: `6 passed`.
 - Full regression: `865 passed`.
 - v0.1 demo plain / JSON: pass.
 - v0.2 demo plain / JSON: pass.
 - approval-tool-runner demo plain / JSON: pass.
+- Round 1 friction removed: approval id lookup event scan, manual `workspace.bound` glue, raw `submit_tool_request(...)` demo glue.
+- Remaining friction: HTTP `/runs/{run_id}/input` has no approval flag; defer until explicit HTTP boundary.
+- Recommended next candidate: `artifact review flow`.
+- No real HTTP server / real LLM / provider adapter / filesystem mutation / container / git worktree / process spawn / dependency.
+
+### Previous Batch Snapshot: Usability Friction Reduction Package 2
+
+Batch name: `Usability Friction Reduction Package 2`
+
+Status: `complete`
+
+Evidence:
+
+- Added `docs/submit-tool-request-friction-review.md`.
+- Added `docs/submit-action-helper-boundary-v0.2.md`.
+- Added `tests/isotope_kernel/test_submit_action_helper.py`.
 - Added `InProcessServer.submit_action(run_id, intent, requires_approval=False)`.
 - Existing `submit_tool_request(...)` remains public / compatible.
 - Updated `approval-tool-runner` demo to stop directly calling raw `submit_tool_request(...)`.
-- No real HTTP server / real LLM / provider adapter / filesystem mutation / container / git worktree / process spawn / dependency.
+- Full regression after package: `865 passed`.
 
 ### Previous Batch Snapshot: Usability Friction Reduction Package 1
 
@@ -259,16 +270,17 @@ Scope:
 
 ## 7. Next Suggested Batch
 
-Batch name: `HTTP Approval Input Boundary Review`
+Batch name: `First App Spike Red Tests`
 
-Status: `pending_user_confirmation`
+Status: `ready_red_only`
 
 Possible shape:
 
-- docs-only review of whether `POST /runs/{run_id}/input` should gain an approval-gated option or stay simple
-- compare HTTP facade route shape vs keeping approval-gated submission server-only
-- do not implement HTTP route without explicit user confirmation and red tests
-- keep real HTTP server / product approval API deferred
+- candidate: `artifact review flow`
+- add red tests only, likely `tests/isotope_kernel/test_app_spike_artifact_review_flow.py`
+- define CLI / in-process scenario shape without implementation
+- verify summary-only default, controlled content retrieval boundary, `ResourceRef`, HTTP full-content route still `not_enabled`, replay / checkpoint, and no real filesystem / LLM / HTTP server
+- stop after red tests; green implementation requires explicit user confirmation or a queue update that allows green
 
 ## 8. Completed Batch Log
 

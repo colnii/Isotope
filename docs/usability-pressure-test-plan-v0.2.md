@@ -1,6 +1,6 @@
 # Usability Pressure Test Plan v0.2
 
-状态：`first slice complete; submit action friction reduced`
+状态：`first slice complete; round 1 friction closed`
 
 ## 1. Purpose
 
@@ -137,3 +137,26 @@ API friction review 已落文档：`docs/approval-tool-runner-friction-review.md
 - automatic retry / scheduler / process kill
 
 approval lookup/read helper 已降低 demo/client event-scan glue；workspace binding helper 已降低 manual `workspace.bound` glue；submit action helper 已降低 raw `submit_tool_request(...)` glue。remaining API friction 是 HTTP `/runs/{run_id}/input` 仍没有 approval flag；不要直接产品化 HTTP input、workspace filesystem mutation 或 real tool runner。
+
+## 10. Round 1 Closure And Next Spike
+
+Round 1 closure review 见 `docs/usability-friction-round-1-review.md`。
+
+当前判断：
+
+- `approval-tool-runner` now reasonable as developer demo。
+- 第一轮主要 glue friction 已由 approval lookup helper、workspace binding helper 和 submit action helper 收口。
+- 不建议继续默认扩展同一个 spike。
+
+First app spike readiness review 见 `docs/first-app-spike-readiness.md`。
+
+下一推荐 candidate：`artifact review flow`。
+
+Next batch should be red-tests-only:
+
+- define scenario shape
+- prove summary-only default
+- prove controlled full-content retrieval boundary
+- keep HTTP full-content route `not_enabled`
+- keep no real filesystem / real LLM / real HTTP server
+- stop before green unless explicitly authorized
