@@ -9,7 +9,7 @@
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
 - 最新 implementation commit：`a2099c022ed7a8f477ad16ce839ab22cbc989b97`。
 - memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for v0.1 demo planning：当前 memory 线只声明 boundary / read-model / checkpoint 能力，不声明 durable storage 或 query engine 已完成。
-- v0.1 demo entrypoint 已实现，详见 `docs/demo-entrypoint-v0.1.md`；`python -m isotope_kernel.demo` 可输出 plain text summary，`--json` 可输出 JSON summary。
+- v0.1 demo entrypoint 已实现，详见 `docs/demo/demo-entrypoint-v0.1.md`；`python -m isotope_kernel.demo` 可输出 plain text summary，`--json` 可输出 JSON summary。
 - v0.1 developer demo 已按 `docs/v0.1-demo-acceptance.md` accepted：acceptance anchor 当时依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过；当前 baseline 已随 Track F external observation read-model invariants slice 更新为 `765 passed`。
 - lightweight tag `v0.1-demo` 已创建并推送，指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`。
 - GitHub Release draft 已迁移到 `docs/release/release-draft-v0.1-demo.md`；旧路径 `docs/release-draft-v0.1-demo.md` 保留为 compatibility stub。尚未发布 GitHub Release。`main` 允许在 tag 后继续有 docs/status 更新，tag 仍是 demo acceptance anchor。
@@ -26,10 +26,10 @@
 - v0.2 cycle closure review 已记录在 `docs/v0.2-cycle-closure-review.md`。当前建议暂停 v0.2 implementation，进入 cleanup / docs organization / external review mode；Track B real HTTP adapter、Track G memory query 和 real integrations 继续 deferred。
 - docs inventory 已落文档，见 `docs/docs-inventory.md`。当前只盘点和规划未来整理方向；尚未移动、删除或合并任何 docs 文件。
 - docs migration plan 已落文档，见 `docs/docs-migration-plan.md`。当前只定义未来目录结构、迁移表、链接更新、验证和 rollback 规则；尚未移动、删除或合并任何 docs 文件。
-- docs migration Phase 1a 已执行：release draft 已迁移到 `docs/release/`，旧路径保留 stub，未移动其他文档。Phase 1 dry-run 和后续 checklist 见 `docs/docs-migration-phase-1-dry-run.md`。
+- docs migration Phase 1a / 1b 已执行：release draft 已迁移到 `docs/release/`，v0.1 demo explainer docs 已迁移到 `docs/demo/`，旧路径均保留 stub。Phase 1 dry-run 和后续 checklist 见 `docs/docs-migration-phase-1-dry-run.md`。
 - Track A: HTTP API Minimal Surface 见 `docs/http-api-minimal-surface-v0.2.md`。当前实现是 in-process `HttpApiApp` / `create_http_app(...)`，不是监听端口的真实网络服务；没有引入 FastAPI / Flask / 新依赖。
-- v0.1 demo walkthrough 已补充，见 `docs/demo-walkthrough-v0.1.md`。它解释 demo 运行内容、内部步骤、plain text / JSON 输出字段、证明范围、非目标和 troubleshooting。
-- v0.1 demo architecture diagram 已补充，见 `docs/demo-architecture-v0.1.md`。它解释 demo runtime path，不是完整 Isotope 架构图。
+- v0.1 demo walkthrough 已补充，见 `docs/demo/demo-walkthrough-v0.1.md`。它解释 demo 运行内容、内部步骤、plain text / JSON 输出字段、证明范围、非目标和 troubleshooting。
+- v0.1 demo architecture diagram 已补充，见 `docs/demo/demo-architecture-v0.1.md`。它解释 demo runtime path，不是完整 Isotope 架构图。
 
 ## Implemented Slice
 
@@ -433,7 +433,7 @@
 - Artifact Content Read Policy v0.2 boundary doc exists: `docs/artifact-content-read-policy-v0.2.md`
 - v0.2 mid-cycle review exists: `docs/v0.2-mid-cycle-review.md`
 - recommended v0.2 order is Demo / Docs Polish, HTTP API Minimal Surface, artifact content read policy / controlled retrieval, approval pause/resume, External Ingestion / ImportedSnapshot, memory query/storage review, then real HTTP adapter only if explicitly reopened
-- Track D: Demo / Docs Polish is effectively complete / closed for now with README quick start, `docs/demo-walkthrough-v0.1.md`, `docs/demo-architecture-v0.1.md`, `docs/v0.1-demo-acceptance.md`, limitations / non-goals, and CI smoke status
+- Track D: Demo / Docs Polish is effectively complete / closed for now with README quick start, `docs/demo/demo-walkthrough-v0.1.md`, `docs/demo/demo-architecture-v0.1.md`, `docs/v0.1-demo-acceptance.md`, limitations / non-goals, and CI smoke status
 - Track A: HTTP API Minimal Surface is effectively complete / closed for now after landing in-process HTTP API slices for minimal surface, request validation / no-side-effect error boundary, response contract, demo smoke, idempotency / duplicate-submit boundary, route inventory, and deferred route contract; no real listening server, web framework, auth, SSE, memory query API, external ingestion API, or full artifact content API is implemented
 - demo walkthrough explains what `python -m isotope_kernel.demo` runs, what output fields mean, what the demo proves, what it does not prove, and common setup / CI troubleshooting
 - demo architecture diagram explains the v0.1 runtime path with a Mermaid flow; it is not the full Isotope architecture

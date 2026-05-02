@@ -8,7 +8,7 @@
 
 本轮只写计划，不移动、不删除、不合并任何文档，不批量修改链接，不修改 `src/`、`tests/`、`.github/` 或 `pyproject.toml`。
 
-Phase 1 dry-run 已记录在 `docs/docs-migration-phase-1-dry-run.md`。Phase 1a 已执行：release draft 已迁移到 `docs/release/release-draft-v0.1-demo.md`，旧路径 `docs/release-draft-v0.1-demo.md` 保留为 compatibility stub。下一批默认是 Phase 1b demo docs，除非用户另行指定。
+Phase 1 dry-run 已记录在 `docs/docs-migration-phase-1-dry-run.md`。Phase 1a 已执行：release draft 已迁移到 `docs/release/release-draft-v0.1-demo.md`，旧路径 `docs/release-draft-v0.1-demo.md` 保留为 compatibility stub。Phase 1b 已执行：v0.1 demo explainer docs 已迁移到 `docs/demo/`，旧路径保留 compatibility stubs。下一批默认是 Phase 1c closed track docs，除非用户另行指定。
 
 ## 2. Target Directory Structure
 
@@ -52,7 +52,7 @@ docs/
 Recommended order:
 
 1. Phase 1a completed: `docs/release/release-draft-v0.1-demo.md` now holds the full release draft; `docs/release-draft-v0.1-demo.md` is an old-path stub.
-2. Phase 1b: Move demo docs to `docs/demo/` with stubs and same-commit link updates.
+2. Phase 1b completed: v0.1 demo explainer docs moved to `docs/demo/` with old-path stubs.
 3. Phase 1c: Move closed Track A / C / E docs to `docs/tracks/` with stubs and same-commit link updates.
 4. Move checkpoint docs as one batch.
 5. Move memory docs as one batch.
@@ -61,7 +61,7 @@ Recommended order:
 8. Move status entrypoints only after README / AGENTS / current-status / roadmap link checks are stable.
 9. Only after one stable cycle, consider deleting compatibility stubs.
 
-Do not combine Phase 1b / 1c unless there is a specific review reason to take the extra link risk.
+Do not combine Phase 1c with later checkpoint / memory / kernel migrations unless there is a specific review reason to take the extra link risk.
 
 ## 5. Do Not Move In First Wave
 
@@ -105,9 +105,9 @@ Reason: README, AGENTS, current-status, roadmap, and recent task instructions li
 | `docs/commitment-levels.md` | `docs/kernel/commitment-levels.md` | kernel | No | Medium | Current reference; move with kernel batch. |
 | `docs/current-status.md` | `docs/current-status.md` first; later `docs/status/current-status.md` | status entrypoint | No | High | Stable entrypoint; do not move in first migration. |
 | `docs/deferred-boundary-review-v0.1.md` | `docs/tracks/deferred-boundary-review-v0.1.md` | track/status | No | High | Current deferred-surface reference; move with track docs. |
-| `docs/demo-architecture-v0.1.md` | `docs/demo/demo-architecture-v0.1.md` | demo | No | High | README links directly; needs stub if moved. |
-| `docs/demo-entrypoint-v0.1.md` | `docs/demo/demo-entrypoint-v0.1.md` | demo | No | Medium | Move with demo batch. |
-| `docs/demo-walkthrough-v0.1.md` | `docs/demo/demo-walkthrough-v0.1.md` | demo | No | High | README links directly; needs stub if moved. |
+| `docs/demo-architecture-v0.1.md` | `docs/demo/demo-architecture-v0.1.md` | demo | Done | Low | Phase 1b completed; old path is a stub, new path holds the full doc. |
+| `docs/demo-entrypoint-v0.1.md` | `docs/demo/demo-entrypoint-v0.1.md` | demo | Done | Low | Phase 1b completed; old path is a stub, new path holds the full doc. |
+| `docs/demo-walkthrough-v0.1.md` | `docs/demo/demo-walkthrough-v0.1.md` | demo | Done | Low | Phase 1b completed; old path is a stub, new path holds the full doc. |
 | `docs/docs-inventory.md` | `docs/docs-inventory.md` first; later `docs/status/docs-inventory.md` | status entrypoint | No | High | Keep until migration plan itself is executed. |
 | `docs/docs-migration-phase-1-dry-run.md` | `docs/status/docs-migration-phase-1-dry-run.md` later | status entrypoint | No | Medium | Current dry-run checklist; do not move during Phase 1 execution. |
 | `docs/docs-migration-plan.md` | `docs/docs-migration-plan.md` first; later `docs/status/docs-migration-plan.md` | status entrypoint | No | High | This plan is the migration control doc; do not move during execution planning. |
