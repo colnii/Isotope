@@ -1,6 +1,6 @@
 # Usability Pressure Test Plan v0.2
 
-状态：`artifact review flow first slice complete`
+状态：`artifact review flow and demo trace first slices complete`
 
 ## 1. Purpose
 
@@ -14,9 +14,12 @@
 
 ```bash
 python -m isotope_kernel.demo --scenario approval-tool-runner
+python -m isotope_kernel.demo --scenario approval-tool-runner --trace
 python -m isotope_kernel.demo --scenario approval-tool-runner --json
 python -m isotope_kernel.demo --scenario artifact-review
+python -m isotope_kernel.demo --scenario artifact-review --trace
 python -m isotope_kernel.demo --scenario artifact-review --json
+python -m isotope_kernel.demo --scenario v0.2 --trace
 ```
 
 ## 2. Current Kernel Readiness
@@ -36,7 +39,7 @@ python -m isotope_kernel.demo --scenario artifact-review --json
 - Retry / Cancel / Supersede read model。
 - event replay and checkpoint-assisted rebuild。
 
-当前 baseline：`876 passed`。
+当前 baseline：`883 passed`。
 
 ## 3. Hard Boundaries
 
@@ -208,3 +211,31 @@ Friction review: `docs/artifact-review-flow-friction-review.md`。
 - review artifact handoff 经 `submit_action(...)` 已足够自然。
 
 Next suggested batch: `Source Artifact Setup Helper`.
+
+## 12. Demo Trace Mode
+
+状态：`first slice complete`
+
+Commands:
+
+```bash
+python -m isotope_kernel.demo --scenario artifact-review --trace
+python -m isotope_kernel.demo --scenario approval-tool-runner --trace
+python -m isotope_kernel.demo --scenario v0.2 --trace
+```
+
+当前展示：
+
+- human-readable step trace for session / run / action / policy / artifact / replay / checkpoint.
+- default plain output remains unchanged.
+- `--json` remains the machine-readable contract and takes precedence over `--trace` when both are passed.
+- trace output stays summary / ref / status oriented and does not print artifact full content.
+
+仍不展示：
+
+- real LLM
+- real HTTP server / network listener
+- real provider adapter
+- real filesystem mutation
+- semantic retrieval / ranking
+- memory query engine

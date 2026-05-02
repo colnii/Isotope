@@ -33,11 +33,14 @@ def main(argv: list[str] | None = None) -> int:
         help="demo scenario to run",
     )
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
+    parser.add_argument("--trace", action="store_true", help="print human-readable execution trace")
     args = parser.parse_args(argv)
 
     result = run_demo(scenario=args.scenario)
     if args.json:
         print(json.dumps(result, sort_keys=True))
+    elif args.trace:
+        print(_format_trace(result))
     else:
         print(_format_plain_text(result))
     return 0
@@ -659,6 +662,99 @@ def _format_plain_text(result: dict[str, Any]) -> str:
         f"memory_status: {result['memory_status']}",
     ]
     return "\n".join(lines)
+
+
+def _format_trace(result: dict[str, Any]) -> str:
+    scenario = result.get("scenario", "v0.1")
+    if scenario == "artifact-review":
+        return _format_artifact_review_trace(result)
+    if scenario == "approval-tool-runner":
+        return _format_approval_tool_runner_trace(result)
+    if scenario == "v0.2":
+        return _format_v0_2_trace(result)
+    return _format_v0_1_trace(result)
+
+
+def _format_v0_1_trace(result: dict[str, Any]) -> str:
+    steps = [
+        f"create session: {result['session_id']}",
+        f"create run: {result['run_id']}",
+        "submit input through in-process server",
+        f"policy approved action: {result['action_outcome']}",
+        f"create artifact summary/ref: {_artifact_id(result.get('artifact_ref', {}))}",
+        f"replay verified: {_bool_text(result['replay_ok'])}",
+        f"checkpoint verified: {_bool_text(result['checkpoint_ok'])}",
+    ]
+    return _format_trace_steps("v0.1", steps)
+
+
+def _format_v0_2_trace(result: dict[str, Any]) -> str:
+    steps = [
+        f"create session through HTTP facade: {result['session_id']}",
+        f"create run through HTTP facade: {result['run_id']}",
+        "submit input through HTTP facade",
+        f"policy approved action: {_bool_text(result['http_api_ok'])}",
+        f"create artifact summary/ref: event_count={result['event_count']}",
+        f"controlled retrieval allowed: {_bool_text(result['artifact_content_policy_ok'])}",
+        f"approval flow verified: {_bool_text(result['approval_ok'])}",
+        f"replay verified: {_bool_text(result['http_api_ok'])}",
+        f"checkpoint verified: {_bool_text(result['checkpoint_ok'])}",
+        f"HTTP full-content route remains: {result['http_full_content_route_status']}",
+        f"memory query remains: {result['memory_query_status']}",
+    ]
+    return _format_trace_steps(result["scenario"], steps)
+
+
+def _format_approval_tool_runner_trace(result: dict[str, Any]) -> str:
+    steps = [
+        f"create session: {result['session_id']}",
+        f"create run: {result['run_id']}",
+        "propose approval-gated tool action",
+        f"policy requested approval: {_bool_text(result['approval_pending_before_resume'])}",
+        f"bind shared_ro workspace: {_bool_text(result['workspace_binding_ok'])}",
+        f"approval resolved as approved: {_bool_text(result['approval_ok'])}",
+        f"action completed and artifact ref created: {_artifact_id(result['artifact_ref'])}",
+        f"artifact handoff verified: {_bool_text(result['artifact_handoff_ok'])}",
+        f"replay verified: {_bool_text(result['replay_ok'])}",
+        f"checkpoint verified: {_bool_text(result['checkpoint_ok'])}",
+        f"HTTP full-content route remains: {result['http_full_content_route_status']}",
+    ]
+    return _format_trace_steps(result["scenario"], steps)
+
+
+def _format_artifact_review_trace(result: dict[str, Any]) -> str:
+    steps = [
+        f"create session: {result['session_id']}",
+        f"create run: {result['run_id']}",
+        "create source action and policy decision: approved",
+        f"create source artifact summary/ref: {_artifact_id(result['artifact_ref'])}",
+        f"read source artifact summary only: {_bool_text(result['summary_only_ok'])}",
+        f"policy approved controlled retrieval: {_bool_text(result['controlled_retrieval_ok'])}",
+        "propose review action through action chain",
+        f"create review artifact summary/ref: {_artifact_id(result['review_artifact_ref'])}",
+        f"action completed: {_bool_text(result['review_action_chain_ok'])}",
+        f"replay verified: {_bool_text(result['replay_ok'])}",
+        f"checkpoint verified: {_bool_text(result['checkpoint_ok'])}",
+        f"HTTP full-content route remains: {result['http_full_content_route_status']}",
+    ]
+    return _format_trace_steps(result["scenario"], steps)
+
+
+def _format_trace_steps(scenario: str, steps: list[str]) -> str:
+    lines = [f"scenario: {scenario}"]
+    lines.extend(f"[{index}] {step}" for index, step in enumerate(steps, start=1))
+    return "\n".join(lines)
+
+
+def _artifact_id(ref: dict[str, Any]) -> str:
+    artifact_id = ref.get("artifact_id")
+    if isinstance(artifact_id, str) and artifact_id:
+        return artifact_id
+    return "available"
+
+
+def _bool_text(value: Any) -> str:
+    return str(bool(value)).lower()
 
 
 def _format_v0_2_plain_text(result: dict[str, Any]) -> str:

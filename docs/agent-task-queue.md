@@ -68,10 +68,13 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --json
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2 --trace
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2 --json
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario approval-tool-runner
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario approval-tool-runner --trace
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario approval-tool-runner --json
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario artifact-review
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario artifact-review --trace
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario artifact-review --json
 
 rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel || true
@@ -83,7 +86,7 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 baseline：`876 passed`。
+当前 baseline：`883 passed`。
 
 ## 6. Current Batch
 
@@ -112,6 +115,20 @@ Evidence:
 - Classification: source setup is a facade / helper gap; controlled retrieval verbosity is acceptable v0 shape; review artifact handoff through `submit_action(...)` is acceptable.
 - Recommendation: A. source artifact setup helper.
 - No code changed; no real HTTP server / real LLM / provider adapter / memory query engine / filesystem mutation / container / git worktree / process spawn / dependency.
+
+### User-Directed Follow-up: Demo Trace Mode
+
+Status: `complete`
+
+Evidence:
+
+- Added `--trace` for `v0.2`, `approval-tool-runner`, and `artifact-review`.
+- Red targeted result: `6 failed, 1 passed`; failures were expected because `--trace` was unsupported.
+- Targeted green result: `7 passed`.
+- Full regression: `883 passed`.
+- `--trace` is human-readable only and keeps `--json` compatible.
+- Trace output does not expose artifact full content.
+- No real HTTP server / real LLM / provider adapter / filesystem mutation / dependency.
 
 ### Previous Batch Snapshot: Artifact Review Flow Spike
 

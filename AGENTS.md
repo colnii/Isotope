@@ -21,7 +21,7 @@
 
 ## Current Phase
 
-- `v0.1-demo` and `v0.2-demo` developer demo tags exist; baseline is `876 passed`.
+- `v0.1-demo` and `v0.2-demo` developer demo tags exist; baseline is `883 passed`.
 - Track D: Demo / Docs Polish is effectively complete / closed for now.
 - Current Track A design doc: [docs/http-api-minimal-surface-v0.2.md](docs/http-api-minimal-surface-v0.2.md).
 - Track A has in-process `HttpApiApp` / `create_http_app(...)`, request validation / no-side-effect error boundary, response contract, demo smoke, duplicate-submit idempotency boundary, route inventory, and deferred route contract; it is effectively complete / closed for now and is not a real listening HTTP server.
@@ -30,6 +30,7 @@
 - Track E: Approval Pause / Resume Boundary is effectively complete / closed for now. Approval resolution plus run-state / HTTP read-model green slices are complete; UI / auth / notification / scheduler / complex DSL remain deferred.
 - v0.2 demo readiness is documented in [docs/demo/v0.2-demo-readiness.md](docs/demo/v0.2-demo-readiness.md).
 - v0.2 demo scenario is implemented and documented in [docs/demo/v0.2-demo-scenario.md](docs/demo/v0.2-demo-scenario.md): `--scenario v0.2` visibly exercises Track A / C / E without real HTTP server, network listener, memory storage/query, or HTTP full-content route.
+- Demo trace mode is implemented for `--scenario v0.2 --trace`, `--scenario approval-tool-runner --trace`, and `--scenario artifact-review --trace`; it is human-readable only, keeps `--json` compatible, and does not expose artifact full content.
 - v0.2 developer demo acceptance is documented in [docs/demo/v0.2-demo-acceptance.md](docs/demo/v0.2-demo-acceptance.md); `v0.2-demo` is already tagged, but no GitHub Release has been published.
 - Post-tag delta is documented in [docs/post-v0.2-tag-delta.md](docs/post-v0.2-tag-delta.md): current `main` is ahead of `v0.2-demo` with Track F external ingestion boundary work, Agent / Worker lifecycle first slice, Workspace substrate first slice, and Retry / Cancel / Supersede stabilization slice; do not move the tag or create `v0.2.1-demo` unless explicitly requested.
 - Track F: External Ingestion is effectively complete / closed for now at boundary / read-model / checkpoint scope: `ingestion.py`, `ImportedSnapshot`, and `snapshot.imported` projection into checkpointable `RunState.external_observations`; provider adapters, webhooks, and public ingestion API remain deferred.
@@ -53,13 +54,19 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --json
 
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2
 
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2 --trace
+
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2 --json
 
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario approval-tool-runner
 
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario approval-tool-runner --trace
+
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario approval-tool-runner --json
 
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario artifact-review
+
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario artifact-review --trace
 
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario artifact-review --json
 
