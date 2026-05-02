@@ -62,7 +62,7 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 baseline：`806 passed`。
+当前 baseline：`820 passed`。
 
 ## 5. Current Batch
 
@@ -70,9 +70,15 @@ Batch name: `Retry / Cancel / Supersede Boundary Planning`
 
 Timebox: 45-60 min
 
-Status: `in_progress`
+Status: `complete`
 
 Goal: define the action lifecycle boundary for retry / cancel / supersede without opening implementation.
+
+Green slice addendum:
+
+- User confirmed continuing into `Retry / Cancel / Supersede Green Slice`.
+- Implemented minimal projector-level retry / cancel / supersede boundary.
+- No scheduler / process kill / real concurrency / new dependency.
 
 ### Task 1: Retry / Cancel / Supersede Boundary docs-only
 
@@ -111,7 +117,17 @@ Completion requirement:
 
 ### Task 2: Retry / Cancel / Supersede red tests only
 
-Status: `ready`
+Status: `complete`
+
+Evidence:
+
+- Added red tests:
+  - `tests/isotope_kernel/test_action_retry_boundary.py`
+  - `tests/isotope_kernel/test_action_cancel_boundary.py`
+  - `tests/isotope_kernel/test_action_supersede_boundary.py`
+- Targeted result: `11 failed, 3 passed`.
+- Full regression result with red tests present: `11 failed, 809 passed`; failures are limited to the three new red-test files.
+- No implementation started.
 
 Scope:
 
@@ -140,7 +156,24 @@ Stop rule:
 
 ### Task 3: Stop For User Review
 
-Status: `blocked until Task 2 complete`
+Status: `complete`
+
+Evidence:
+
+- Stopped after red phase.
+- Do not enter green phase without user confirmation.
+
+### Task 4: Retry / Cancel / Supersede green slice
+
+Status: `complete`
+
+Evidence:
+
+- Targeted result after green: `14 passed`.
+- Full regression result after green: `820 passed`.
+- Updated checkpoint expected fields because `action_retries`, `action_cancellations`, and `action_supersessions` are now `RunState` read-model fields.
+- No red test assertions changed.
+- No scheduler, process kill, real concurrency, event store semantic change, executor grants semantic change, or new dependency.
 
 Scope:
 
@@ -151,17 +184,15 @@ Scope:
 
 ## 6. Next Suggested Batch
 
-If the user confirms after reviewing red results, the next batch should be:
+Next suggested batch:
 
-Batch name: `Retry / Cancel / Supersede Green Slice`
+Batch name: `Workspace Lease / Path Safety Boundary Planning`
 
 Likely scope:
 
-- implement minimal lifecycle projection
-- keep event store append-only
-- keep executor grants semantics unchanged
-- update checkpoint expected fields only if new read-model fields enter `RunState`
-- docs/status sync after green
+- docs-only lease / path-safety boundary
+- red tests only if explicitly included in the next queue
+- keep no filesystem mutation / no container / no git worktree / no remote executor
 
 Do not start this next batch without explicit user confirmation or an updated queue that marks it as Current Batch.
 

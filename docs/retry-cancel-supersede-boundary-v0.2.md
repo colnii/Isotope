@@ -1,6 +1,6 @@
 # Retry / Cancel / Supersede Boundary v0.2
 
-状态：`draft`
+状态：`first slice complete`
 
 ## 1. Purpose
 
@@ -28,7 +28,7 @@ Retry / cancel / supersede 是 Workspace substrate first slice 之后需要补�
 - `run.completed` 不能覆盖 running / failed / pending approval state。
 - checkpoint state 已包含 `actions`、`approvals`、`agents`、`workers`、`workspaces`、`memory_records` 和 `external_observations` 等 read model。
 
-这些能力可以支撑 retry / cancel / supersede 的第一批 red tests，但当前尚未实现 action-level retry / cancel / supersede read model。
+这些能力支撑了 retry / cancel / supersede 的第一批 green slice。当前已实现 action-level retry / cancel / supersede read model；仍不实现 scheduler、process kill 或 automatic retry engine。
 
 ## 3. Boundary Definitions
 
@@ -102,13 +102,13 @@ Supersede 指一个 action proposal / attempt 被 replacement proposal 取代。
 - read model 不读取 executor/server in-memory state。
 - read model 不读取 artifact full content 或 workspace filesystem。
 
-建议 first slice 可以新增：
+First slice 已新增：
 
 - `RunState.action_retries`
 - `RunState.action_cancellations`
 - `RunState.action_supersessions`
 
-也可以选择把字段收敛进 existing `RunState.actions`，但必须让 lineage / status / basis event 明确可测。
+这些字段已经进入 checkpoint state，并可通过 checkpoint-assisted rebuild 恢复。Existing `RunState.actions` 仍保留 execution-level status；retry / cancel / supersede lineage 保存在单独 read model 中。
 
 ## 6. Interaction Risks
 
@@ -160,9 +160,9 @@ Supersede 指一个 action proposal / attempt 被 replacement proposal 取代。
 - real job queue
 - product-level audit dashboard
 
-## 9. First Red Tests
+## 9. First Green Slice
 
-建议第一批 red tests：
+第一批 tests 已落地并通过：
 
 - `tests/isotope_kernel/test_action_retry_boundary.py`
 - `tests/isotope_kernel/test_action_cancel_boundary.py`
@@ -187,7 +187,7 @@ Supersede 指一个 action proposal / attempt 被 replacement proposal 取代。
 
 Current repo status:
 
-- tests baseline before red phase: `806 passed`
-- retry / cancel / supersede implementation: not started
-- current document: boundary draft only
-- next queue task: write red tests only, then stop for user review
+- tests baseline after first green slice: `820 passed`
+- retry / cancel / supersede first slice: complete
+- current implementation: projector-level canonical event validation, read model, replay, and checkpoint support
+- not implemented: scheduler, automatic retry engine, process kill, tool-level cancellation, real concurrency

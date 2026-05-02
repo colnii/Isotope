@@ -2,11 +2,11 @@
 
 Isotope 是一个独立的 kernel-first agent runtime 项目，用来验证 canonical event log、policy-gated execution、artifact provenance、projector replay 和 checkpoint-assisted rebuild 等内核边界。
 
-当前状态：`v0.1-demo` 和 `v0.2-demo` developer demo tags 已存在；当前本地 baseline 是 `806 passed`。Track A: HTTP API Minimal Surface、Track C: Artifact Content Read Policy、Track E: Approval Pause / Resume Boundary 和 Track F: External Ingestion 都已 effectively complete / closed for now；Agent / Worker lifecycle first slice 已 complete。GitHub Release 未发布，详细状态见 [docs/current-status.md](docs/current-status.md)。
+当前状态：`v0.1-demo` 和 `v0.2-demo` developer demo tags 已存在；当前本地 baseline 是 `820 passed`。Track A: HTTP API Minimal Surface、Track C: Artifact Content Read Policy、Track E: Approval Pause / Resume Boundary 和 Track F: External Ingestion 都已 effectively complete / closed for now；Agent / Worker lifecycle、Workspace substrate 和 Retry / Cancel / Supersede first slices 已 complete。GitHub Release 未发布，详细状态见 [docs/current-status.md](docs/current-status.md)。
 
-`main` 当前 ahead of `v0.2-demo`，主要增量是 Track F external ingestion boundary、Agent / Worker lifecycle first slice 和 Workspace substrate first slice；delta 记录见 [docs/post-v0.2-tag-delta.md](docs/post-v0.2-tag-delta.md)。暂不移动 `v0.2-demo` tag，也不发布 GitHub Release。
+`main` 当前 ahead of `v0.2-demo`，主要增量是 Track F external ingestion boundary、Agent / Worker lifecycle first slice、Workspace substrate first slice 和 Retry / Cancel / Supersede first slice；delta 记录见 [docs/post-v0.2-tag-delta.md](docs/post-v0.2-tag-delta.md)。暂不移动 `v0.2-demo` tag，也不发布 GitHub Release。
 
-当前 v0.2 implementation cycle 已建议暂停，进入 cleanup / docs organization / external review mode；Kernel Gap Review 后已新增 Agent / Worker lifecycle boundary 和 Workspace substrate boundary，且两者 first slice 均已 complete，见 [docs/workspace-substrate-boundary-v0.2.md](docs/workspace-substrate-boundary-v0.2.md)。
+当前 v0.2 implementation cycle 已建议暂停，进入 cleanup / docs organization / external review mode；Kernel Gap Review 后已新增 Agent / Worker lifecycle、Workspace substrate 和 Retry / Cancel / Supersede boundary，且 first slices 均已 complete。
 
 后续 45-60 分钟批次任务由 [docs/agent-task-queue.md](docs/agent-task-queue.md) 管理；agent 每轮应先读 queue，不要自行进入未列出的新 Track。
 
@@ -38,6 +38,7 @@ python3 -m venv .venv
 - External ingestion boundary: `ImportedSnapshot` can be accepted through canonical `snapshot.imported` into checkpointable `RunState.external_observations` without overriding native state; conflicts are explicit, provider adapters and HTTP ingestion remain not enabled.
 - Agent / Worker lifecycle first slice: `RunState.agents` / `RunState.workers`, delegation policy gate, worker lifecycle projection, worker action grants boundary, and checkpoint-assisted rebuild.
 - Workspace substrate first slice: `RunState.workspaces`, canonical `workspace.bound`, grants-bound `shared_ro` binding, replay, and checkpoint support.
+- Retry / Cancel / Supersede first slice: action lifecycle read models for retries, cancellations, and supersessions with replay and checkpoint support.
 - Editable install smoke and GitHub Actions smoke CI.
 
 ## What Does Not Work Yet
@@ -67,6 +68,7 @@ python3 -m venv .venv
 - Kernel gap review: [docs/kernel-gap-review-v0.2.md](docs/kernel-gap-review-v0.2.md)
 - Agent / Worker lifecycle boundary: [docs/agent-worker-lifecycle-boundary-v0.2.md](docs/agent-worker-lifecycle-boundary-v0.2.md)
 - Workspace substrate boundary: [docs/workspace-substrate-boundary-v0.2.md](docs/workspace-substrate-boundary-v0.2.md)
+- Retry / Cancel / Supersede boundary: [docs/retry-cancel-supersede-boundary-v0.2.md](docs/retry-cancel-supersede-boundary-v0.2.md)
 - Docs migration plan: [docs/docs-migration-plan.md](docs/docs-migration-plan.md)
 - v0.2 demo readiness: [docs/demo/v0.2-demo-readiness.md](docs/demo/v0.2-demo-readiness.md)
 - v0.2 demo scenario: [docs/demo/v0.2-demo-scenario.md](docs/demo/v0.2-demo-scenario.md)

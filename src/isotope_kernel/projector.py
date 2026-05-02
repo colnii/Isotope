@@ -22,6 +22,9 @@ class RunState:
     workers: dict[str, dict[str, Any]] = field(default_factory=dict)
     workspaces: dict[str, dict[str, Any]] = field(default_factory=dict)
     actions: dict[str, dict[str, Any]] = field(default_factory=dict)
+    action_retries: dict[str, dict[str, Any]] = field(default_factory=dict)
+    action_cancellations: dict[str, dict[str, Any]] = field(default_factory=dict)
+    action_supersessions: dict[str, dict[str, Any]] = field(default_factory=dict)
     approvals: dict[str, dict[str, Any]] = field(default_factory=dict)
     artifacts: list[dict[str, Any]] = field(default_factory=list)
     memory_records: list[dict[str, Any]] = field(default_factory=list)
@@ -43,6 +46,9 @@ class RunProjector:
         "workers",
         "workspaces",
         "actions",
+        "action_retries",
+        "action_cancellations",
+        "action_supersessions",
         "approvals",
         "artifacts",
         "memory_records",
@@ -97,6 +103,8 @@ class RunProjector:
         self._proposal_grants: dict[str, dict[str, Any]] = {}
         self._execution_statuses: dict[str, str] = {}
         self._execution_action_types: dict[str, str] = {}
+        self._proposal_execution_ids: dict[str, str] = {}
+        self._retry_requests: dict[str, dict[str, Any]] = {}
         self._approval_proposals: dict[str, str] = {}
         self._approval_resolutions: set[str] = set()
         self._delegation_proposals: dict[str, dict[str, Any]] = {}
@@ -114,6 +122,11 @@ class RunProjector:
             "action.started",
             "action.failed",
             "action.completed",
+            "action.retry_requested",
+            "action.retry_created",
+            "action.cancel_requested",
+            "action.cancelled",
+            "action.superseded",
             "artifact.created",
             "memory.record_created",
             "memory.record_superseded",
@@ -152,6 +165,7 @@ class RunProjector:
                 raise ValueError("worker action requires policy grants")
             self._execution_statuses[str(payload["execution_id"])] = "running"
             self._execution_action_types[str(payload["execution_id"])] = self._proposal_action_types.get(proposal_id, "")
+            self._proposal_execution_ids[proposal_id] = str(payload["execution_id"])
         elif event.event_type == "delegation.proposed":
             self._delegation_proposals[str(payload["delegation_id"])] = dict(payload)
         elif event.event_type == "delegation.decided":
@@ -189,6 +203,10 @@ class RunProjector:
                 raise ValueError("action.completed before action.started")
             if status == "failed":
                 raise ValueError("terminal execution already failed")
+            if status == "cancelled":
+                raise ValueError("action.completed after action.cancelled")
+            if status == "superseded":
+                raise ValueError("action.completed after action.superseded")
             self._execution_statuses[execution_id] = "completed"
         elif event.event_type == "action.failed":
             execution_id = str(payload["execution_id"])
@@ -196,6 +214,38 @@ class RunProjector:
             if status == "completed":
                 raise ValueError("terminal execution already completed")
             self._execution_statuses[execution_id] = "failed"
+        elif event.event_type == "action.retry_requested":
+            original_execution_id = str(payload["original_execution_id"])
+            if self._execution_statuses.get(original_execution_id) != "failed":
+                raise ValueError("action.retry_requested requires failed execution")
+            self._retry_requests[str(payload["retry_id"])] = dict(payload)
+        elif event.event_type == "action.retry_created":
+            retry_id = str(payload["retry_id"])
+            retry_request = self._retry_requests.get(retry_id)
+            if retry_request is None:
+                raise ValueError("action.retry_created requires action.retry_requested")
+            if payload["original_proposal_id"] != retry_request["original_proposal_id"]:
+                raise ValueError("action.retry_created original_proposal_id must match retry request")
+        elif event.event_type == "action.cancel_requested":
+            execution_id = str(payload["execution_id"])
+            status = self._execution_statuses.get(execution_id)
+            if status in {"completed", "failed", "cancelled", "superseded"}:
+                raise ValueError("action.cancel_requested after terminal action state")
+            if status != "running":
+                raise ValueError("action.cancel_requested requires running action")
+        elif event.event_type == "action.cancelled":
+            execution_id = str(payload["execution_id"])
+            if self._execution_statuses.get(execution_id) != "running":
+                raise ValueError("action.cancelled requires running action")
+            self._execution_statuses[execution_id] = "cancelled"
+        elif event.event_type == "action.superseded":
+            old_proposal_id = str(payload["old_proposal_id"])
+            execution_id = self._proposal_execution_ids.get(old_proposal_id)
+            if execution_id is None:
+                raise ValueError("action.superseded requires started action")
+            if self._execution_statuses.get(execution_id) != "running":
+                raise ValueError("action.superseded requires running action")
+            self._execution_statuses[execution_id] = "superseded"
         elif event.event_type == "approval.requested":
             self._approval_proposals[str(payload["approval_id"])] = str(payload["proposal_id"])
         elif event.event_type == "approval.resolved":
@@ -264,6 +314,40 @@ class RunProjector:
             self._require_fields(event.event_type, payload, ("execution_id", "proposal_id", "decision_id", "status"))
             if payload["status"] != "failed":
                 raise ValueError("action.failed status must be failed")
+        elif event.event_type == "action.retry_requested":
+            self._require_fields(
+                event.event_type,
+                payload,
+                ("retry_id", "run_id", "original_proposal_id", "original_execution_id", "reason", "requested_by"),
+            )
+        elif event.event_type == "action.retry_created":
+            self._require_fields(
+                event.event_type,
+                payload,
+                ("retry_id", "new_proposal_id", "original_proposal_id", "basis_event_id", "policy_basis"),
+            )
+            if not isinstance(payload["policy_basis"], dict):
+                raise ValueError("action.retry_created policy_basis must be a dict")
+        elif event.event_type == "action.cancel_requested":
+            self._require_fields(
+                event.event_type,
+                payload,
+                ("cancel_id", "run_id", "proposal_id", "execution_id", "reason", "requested_by"),
+            )
+        elif event.event_type == "action.cancelled":
+            self._require_fields(
+                event.event_type,
+                payload,
+                ("cancel_id", "proposal_id", "execution_id", "status", "basis_event_id", "reason"),
+            )
+            if payload["status"] != "cancelled":
+                raise ValueError("action.cancelled status must be cancelled")
+        elif event.event_type == "action.superseded":
+            self._require_fields(
+                event.event_type,
+                payload,
+                ("supersession_id", "old_proposal_id", "new_proposal_id", "reason", "basis_event_id"),
+            )
         elif event.event_type == "artifact.created":
             self._require_fields(event.event_type, payload, ("artifact",))
             artifact = payload["artifact"]
@@ -675,6 +759,63 @@ class RunProjector:
             action["decision_id"] = payload.get("decision_id")
             action["status"] = payload.get("status", "failed")
             state.status = "failed"
+        elif event.event_type == "action.retry_requested":
+            retry_id = str(payload["retry_id"])
+            state.action_retries[retry_id] = {
+                "retry_id": retry_id,
+                "original_proposal_id": payload["original_proposal_id"],
+                "original_execution_id": payload["original_execution_id"],
+                "status": "requested",
+                "basis_event_id": event.event_id,
+            }
+        elif event.event_type == "action.retry_created":
+            retry_id = str(payload["retry_id"])
+            retry = state.action_retries.setdefault(retry_id, {"retry_id": retry_id})
+            retry.update(
+                {
+                    "original_proposal_id": payload["original_proposal_id"],
+                    "original_execution_id": retry.get("original_execution_id"),
+                    "new_proposal_id": payload["new_proposal_id"],
+                    "status": "created",
+                    "basis_event_id": payload["basis_event_id"],
+                }
+            )
+        elif event.event_type == "action.cancel_requested":
+            cancel_id = str(payload["cancel_id"])
+            state.action_cancellations[cancel_id] = {
+                "cancel_id": cancel_id,
+                "proposal_id": payload["proposal_id"],
+                "execution_id": payload["execution_id"],
+                "status": "requested",
+                "basis_event_id": event.event_id,
+            }
+        elif event.event_type == "action.cancelled":
+            cancel_id = str(payload["cancel_id"])
+            cancellation = state.action_cancellations.setdefault(cancel_id, {"cancel_id": cancel_id})
+            cancellation.update(
+                {
+                    "proposal_id": payload["proposal_id"],
+                    "execution_id": payload["execution_id"],
+                    "status": "cancelled",
+                    "basis_event_id": payload["basis_event_id"],
+                }
+            )
+            execution_id = str(payload["execution_id"])
+            action = state.actions.setdefault(execution_id, {"execution_id": execution_id})
+            action["status"] = "cancelled"
+        elif event.event_type == "action.superseded":
+            supersession_id = str(payload["supersession_id"])
+            state.action_supersessions[supersession_id] = {
+                "supersession_id": supersession_id,
+                "old_proposal_id": payload["old_proposal_id"],
+                "new_proposal_id": payload["new_proposal_id"],
+                "status": "created",
+                "basis_event_id": payload["basis_event_id"],
+            }
+            execution_id = self._proposal_execution_ids.get(str(payload["old_proposal_id"]))
+            if execution_id is not None:
+                action = state.actions.setdefault(execution_id, {"execution_id": execution_id})
+                action["status"] = "superseded"
         elif event.event_type == "memory.record_created":
             state.memory_records.append(
                 {
@@ -1124,6 +1265,15 @@ class RunProjector:
             raise ValueError("checkpoint state workspaces must be a dict")
         if not isinstance(state["actions"], dict):
             raise ValueError("checkpoint state actions must be a dict")
+        action_retries = state.get("action_retries", {})
+        if not isinstance(action_retries, dict):
+            raise ValueError("checkpoint state action_retries must be a dict")
+        action_cancellations = state.get("action_cancellations", {})
+        if not isinstance(action_cancellations, dict):
+            raise ValueError("checkpoint state action_cancellations must be a dict")
+        action_supersessions = state.get("action_supersessions", {})
+        if not isinstance(action_supersessions, dict):
+            raise ValueError("checkpoint state action_supersessions must be a dict")
         approvals = state.get("approvals", {})
         if not isinstance(approvals, dict):
             raise ValueError("checkpoint state approvals must be a dict")
@@ -1157,6 +1307,9 @@ class RunProjector:
             workers=dict(workers),
             workspaces=dict(workspaces),
             actions=dict(state.get("actions", {})),
+            action_retries=dict(action_retries),
+            action_cancellations=dict(action_cancellations),
+            action_supersessions=dict(action_supersessions),
             approvals=dict(approvals),
             artifacts=list(state.get("artifacts", [])),
             memory_records=list(memory_records),

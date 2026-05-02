@@ -156,7 +156,7 @@ The slice should not turn workspace into product infrastructure. It should only 
 
 Current repo status remains:
 
-- tests baseline: `806 passed`
+- current repo baseline: `820 passed`
 - current workspace implementation: `WorkspaceManager` shared read-only / grants validation plus `RunState.workspaces` projection
 - no real substrate implementation from this document
 - first tests are implemented and green
