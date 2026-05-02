@@ -19,6 +19,7 @@
 - 加上 Track F external ingestion boundary 后 docs Markdown：46 个。
 - 加上 post v0.2 tag delta review 后 docs Markdown：47 个。
 - 加上 v0.2 cycle closure review 后 docs Markdown：48 个。
+- 加上 docs migration plan 后 docs Markdown：49 个。
 
 ## 2. Current entrypoints
 
@@ -26,6 +27,7 @@
 
 - `docs/current-status.md`：当前状态入口，开始新任务前先读。
 - `docs/v0.2-roadmap.md`：v0.2 track 状态和推荐顺序。
+- `docs/docs-migration-plan.md`：docs directory migration execution plan；当前只计划，不移动文件。
 - `docs/v0.2-demo-readiness.md`：v0.2 developer demo readiness review，记录此前 demo 展示范围和已关闭的 Track A / C / E scenario gap。
 - `docs/v0.2-demo-scenario.md`：v0.2 demo scenario boundary / status，记录 implemented `--scenario v0.2` scope。
 - `docs/v0.2-demo-acceptance.md`：v0.2 developer demo acceptance，记录 `v0.2-demo` tag 状态和 non-goals。
@@ -146,6 +148,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | `docs/demo-architecture-v0.1.md` | Demo architecture diagram | current demo doc |
 | `docs/demo-entrypoint-v0.1.md` | Demo entrypoint design | closed / implemented |
 | `docs/demo-walkthrough-v0.1.md` | Demo walkthrough | current demo doc |
+| `docs/docs-migration-plan.md` | Docs directory migration execution plan | current plan |
 | `docs/event-envelope-schema-registry-v0.1.md` | Event schema registry boundary | closed / reference |
 | `docs/event-envelope-versioning-v0.1.md` | Event envelope versioning boundary | closed / reference |
 | `docs/event-prefix-digest-v0.1.md` | Event prefix digest boundary | closed / reference |
