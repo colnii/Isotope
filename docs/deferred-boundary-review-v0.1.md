@@ -28,7 +28,7 @@
 - Track E boundary doc 和 green slices 已落地：`docs/approval-pause-resume-boundary-v0.2.md`。pending approval 可 resolve；approved path append `approval.resolved` 后通过现有 executor path resume；denied path append `approval.resolved` 但不执行；duplicate resolution 是受控 conflict；`RunState.approvals` / HTTP run read model 可表达 pending / approved / denied approval summary，并可通过 event replay / checkpoint-assisted rebuild 恢复。这仍不是完整 approval product implementation。
 - v0.2 demo scenario 已落地：`python -m isotope_kernel.demo --scenario v0.2` / `--json` 展示 in-process HTTP facade、approval pause/resume、controlled artifact content policy、checkpoint 和 memory `boundary_only`，但不打开 real HTTP server、memory storage/query 或 HTTP full-content route。
 - v0.2 demo acceptance 已落文档：`docs/v0.2-demo-acceptance.md`。当前满足 `v0.2 developer demo` acceptance；`v0.2-demo` lightweight tag 已创建并推送，指向 `09319e7407116d9f99f4a18853d4df23a8714720`。GitHub Release 未发布；这是 developer demo tag，不是 product release。
-- Track F external ingestion boundary and external observation read-model invariants slices 已落地：`docs/external-ingestion-boundary-v0.2.md`。当前已有 `ingestion.py` boundary、`ImportedSnapshot` slice model、`snapshot.imported` projection into checkpointable `RunState.external_observations`，并保持 provider adapters、external callbacks / webhooks 和 public ingestion API deferred。
+- Track F external ingestion boundary and external observation read-model invariants slices 已落地并 effectively complete / closed for now：`docs/external-ingestion-boundary-v0.2.md`。当前已有 `ingestion.py` boundary、`ImportedSnapshot` slice model、`snapshot.imported` projection into checkpointable `RunState.external_observations`，并保持 provider adapters、external callbacks / webhooks 和 public ingestion API deferred。
 - 当前测试基线：`765 passed`。
 
 当前 hard boundary 仍不变：
@@ -84,7 +84,7 @@ Memory Write / Query Boundary 更贴近 kernel 内部能力，已作为上一阶
 
 ## 5. Candidate B: External Ingestion / ImportedSnapshot Boundary
 
-External Ingestion / `ImportedSnapshot` Boundary 已完成 Track F boundary 和 external observation read-model invariants slices，详见 `docs/external-ingestion-boundary-v0.2.md`。当前实现覆盖 not-enabled / artifact-only ingestion boundary、`ImportedSnapshot` slice model、`snapshot.imported` external observation projection、conflict marking、native-state priority 和 checkpoint-assisted rebuild；不实现 provider adapter、external webhook 或 ingestion API。
+External Ingestion / `ImportedSnapshot` Boundary 已完成 Track F boundary 和 external observation read-model invariants slices，并已 effectively complete / closed for now，详见 `docs/external-ingestion-boundary-v0.2.md`。当前实现覆盖 not-enabled / artifact-only ingestion boundary、`ImportedSnapshot` slice model、`snapshot.imported` external observation projection、conflict marking、native-state priority 和 checkpoint-assisted rebuild；不实现 provider adapter、external webhook 或 ingestion API。
 
 优点：
 
@@ -150,7 +150,7 @@ Memory Write / Query Boundary docs、第一批 memory boundary tests、memory ac
 13. Track A: HTTP API Minimal Surface minimal surface、request validation / no-side-effect error boundary、response contract、demo smoke、idempotency boundary、route inventory 和 deferred route contract 已实现：`HttpApiApp` / `create_http_app(...)` 支持 minimal session/run/input/state/events/artifact-summary/health surface，并对 malformed body、method mismatch、unknown session/run/artifact 做受控响应；response body 使用稳定 JSON-compatible contract；duplicate submit 使用 per-app in-memory `idempotency_key` cache，不进入 canonical events；route inventory 只标记 supported routes；deferred memory query / external ingestion / SSE / approval / full artifact content routes 返回 stable `501 not_enabled` 且无 side effect；它仍不是 real listening HTTP server。
 14. Track A 当前已 effectively complete / closed for now；`docs/v0.2-next-track-selection.md` 已选择 Artifact Content Read Policy / Controlled Full-Content Retrieval 作为下一默认 track，且 Track C 已执行到 effectively complete / closed for now。real server boundary design 只有在 Track A 被显式 reopened 时再做。
 15. 不直接做完整 memory implementation。
-16. External Ingestion / `ImportedSnapshot` 已完成 Track F boundary 和 external observation read-model invariants slices；real provider adapter、external callback / webhook、OpenAI / Responses / GitHub integration 和 public ingestion API 仍 deferred。
+16. External Ingestion / `ImportedSnapshot` 已完成 Track F boundary 和 external observation read-model invariants slices，并已 closed for now；real provider adapter、external callback / webhook、OpenAI / Responses / GitHub integration 和 public ingestion API 仍 deferred。
 17. real LLM / real listening HTTP server / plugin system 继续 deferred。
 
 理由：
@@ -164,7 +164,7 @@ Memory Write / Query Boundary docs、第一批 memory boundary tests、memory ac
 demo entrypoint TDD 已完成。v0.2 roadmap 已开始，Track D: Demo / Docs Polish、Track A: HTTP API Minimal Surface 和 Track C: Artifact Content Read Policy 当前都已 effectively complete / closed for now。mid-cycle review 推荐下一轮优先选择：
 
 - Track E: Minimal Approval Pause / Resume 只有在明确 reopen 时继续；approval resolution / HTTP approval 和 approval read-model green slices 已完成并 closed for now。
-- Track F: next External Ingestion / `ImportedSnapshot` slice only with explicit design / red-test request; boundary and read-model invariant slices are complete。
+- Track F: closed for now; reopen only with explicit design / red-test request, such as provider adapter, webhook, HTTP ingestion API, or reconciliation boundary。
 - Artifact Content Read Policy / Controlled Full-Content Retrieval next slice only if Track C is explicitly reopened.
 - real server boundary design only if Track A is explicitly reopened。
 - optional Track D polish from `docs/v0.2-roadmap.md` if explicitly requested。

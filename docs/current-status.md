@@ -21,7 +21,7 @@
 - v0.2 demo readiness review 已落文档，见 `docs/v0.2-demo-readiness.md`。此前记录的 Track A / C / E 展示 gap 已通过 v0.2 demo scenario 关闭。
 - v0.2 demo scenario 已落地，见 `docs/v0.2-demo-scenario.md`。`python -m isotope_kernel.demo --scenario v0.2` 和 `python -m isotope_kernel.demo --scenario v0.2 --json` 已可运行，展示 `HttpApiApp` facade、controlled artifact content retrieval policy、approval pause / resume、checkpoint 和 memory `boundary_only`，同时保持 default v0.1 demo 兼容、no real HTTP server、no network listener、no memory storage/query、HTTP full-content route 仍 `not_enabled` / deferred。
 - v0.2 demo acceptance 已落文档，见 `docs/v0.2-demo-acceptance.md`。acceptance anchor 依据是 `735 passed`，v0.1 / v0.2 demo plain / JSON 成功，Track A / C / E 已在 v0.2 scenario 中可见。lightweight tag `v0.2-demo` 已创建并推送，指向 `09319e7407116d9f99f4a18853d4df23a8714720`；GitHub Release 未发布。这是 developer demo tag，不是 product release。当前 mainline baseline 是 `765 passed`。
-- Track F external ingestion boundary read-model invariants slice 已完成，见 `docs/external-ingestion-boundary-v0.2.md`。当前已有 `ingestion.py` boundary、`ImportedSnapshot` slice model、`snapshot.imported` canonical event projection 到 `RunState.external_observations`；external observation read model 保留 snapshot id / type / source / freshness / quality / provenance / basis refs / status，进入 checkpoint state 并可通过 checkpoint-assisted rebuild 恢复。imported observation 不覆盖 native `RunState.status` / action status，projector 不读取 raw artifact content，native canonical state 优先，duplicate snapshot identity 受控，conflicting snapshots 标记 conflict。真实 provider adapter、external callback / webhook、OpenAI / Responses / GitHub integration、external ingestion HTTP API 和 imported-observation-driven native state 仍 deferred；HTTP `/external-ingestion` 仍 `501 not_enabled`，`server.ingest_external_input(...)` 仍 fail-closed / `not_enabled`。
+- Track F external ingestion / `ImportedSnapshot` boundary 当前已 effectively complete / closed for now，见 `docs/external-ingestion-boundary-v0.2.md`。当前已有 `ingestion.py` fail-closed boundary、`ImportedSnapshot` slice model、`snapshot.imported` canonical event projection 到 `RunState.external_observations`；external observation read model 保留 snapshot id / type / source / freshness / quality / provenance / basis refs / status，进入 checkpoint state 并可通过 checkpoint-assisted rebuild 恢复。imported observation 不覆盖 native `RunState.status` / action status，projector 不读取 raw artifact content，native canonical state 优先，duplicate snapshot identity 受控，conflicting snapshots 标记 conflict。真实 provider adapter、external callback / webhook、OpenAI / Responses / GitHub integration、external ingestion HTTP API 和 imported-observation-driven native state 仍 deferred；HTTP `/external-ingestion` 仍 `501 not_enabled`，`server.ingest_external_input(...)` 仍 fail-closed / `not_enabled`。
 - docs inventory 已落文档，见 `docs/docs-inventory.md`。当前只盘点和规划未来整理方向；尚未移动、删除或合并任何 docs 文件。
 - Track A: HTTP API Minimal Surface 见 `docs/http-api-minimal-surface-v0.2.md`。当前实现是 in-process `HttpApiApp` / `create_http_app(...)`，不是监听端口的真实网络服务；没有引入 FastAPI / Flask / 新依赖。
 - v0.1 demo walkthrough 已补充，见 `docs/demo-walkthrough-v0.1.md`。它解释 demo 运行内容、内部步骤、plain text / JSON 输出字段、证明范围、非目标和 troubleshooting。
@@ -127,7 +127,7 @@
 - checkpoint creation uses canonical events through `project(...)` and cannot bypass validation
 - checkpoint contains `run_id`, `projector_version`, `basis_event_id`, `state`, `created_at`
 - checkpoint `basis_event_id` equals the last replayed canonical event id
-- checkpoint state contains `run_id`, `status`, `current_agent`, `actions`, `approvals`, `artifacts`, `memory_records`, `last_event_id`
+- checkpoint state contains `run_id`, `status`, `current_agent`, `actions`, `approvals`, `artifacts`, `memory_records`, `external_observations`, `last_event_id`
 - checkpoint state excludes artifact content and memory full content
 - checkpoint excludes external raw input / provider response / imported snapshot
 - malformed or lifecycle-invalid event stream cannot produce checkpoint
@@ -138,7 +138,7 @@
 - `RunProjector.rebuild_with_checkpoint(...)` validates checkpoint state schema only for compatible projector version
 - incompatible projector version still falls back to full rebuild even with malformed checkpoint state
 - checkpoint `state` must be a dict
-- new checkpoint `state` contains `approvals` and `memory_records`; legacy checkpoint without `approvals` / `memory_records` still uses the compatibility path
+- new checkpoint `state` contains `approvals`, `memory_records`, and `external_observations`; legacy checkpoint without `approvals` / `memory_records` / `external_observations` still uses the compatibility path
 - checkpoint `state.run_id` must match rebuild target run_id
 - checkpoint `state.last_event_id` must equal checkpoint `basis_event_id`
 - checkpoint `state.status` must be a known run status
@@ -146,10 +146,13 @@
 - checkpoint `state.approvals` must be a dict when present
 - checkpoint `state.artifacts` must be a list
 - checkpoint `state.memory_records` must be a list when present
+- checkpoint `state.external_observations` must be a list when present
 - checkpoint artifact entry cannot contain `content`
 - checkpoint artifact entry must contain `ref`, `artifact_type`, `summary`, `provenance`
 - checkpoint memory record entry cannot contain `content`, `full_content`, `artifact_content`, or `raw_content`
 - checkpoint memory record entry must contain summary / refs / provenance-level metadata and valid supersession metadata when superseded
+- checkpoint external observation entry cannot contain `content`, `full_content`, `artifact_content`, or `raw_content`
+- checkpoint external observation entry must contain snapshot / source / freshness / quality / provenance / basis refs / status-level metadata
 - malformed checkpoint state fail-fast with controlled `ValueError`
 - `FileCheckpointStore` remains opaque blob storage and does not interpret projected state
 - projector-owned checkpoint save boundary
@@ -168,7 +171,7 @@
 - checkpoint prefix consistency hardening
 - `RunProjector.rebuild_with_checkpoint(...)` compares checkpoint state with event-log prefix projection at `basis_event_id`
 - checkpoint is used for replay only when checkpoint state matches prefix projection
-- checkpoint state `status` / `current_agent` / `actions` / `approvals` / `artifacts` / `memory_records` mismatch falls back to full rebuild
+- checkpoint state `status` / `current_agent` / `actions` / `approvals` / `artifacts` / `memory_records` / `external_observations` mismatch falls back to full rebuild
 - checkpoint state with extra action or missing artifact falls back to full rebuild
 - fallback full rebuild still runs full event validation
 - lifecycle-invalid event log cannot be hidden by checkpoint mismatch fallback
@@ -413,7 +416,7 @@
 - current demo acceptance status is `accepted as developer demo`, not product runtime
 - demo acceptance evidence includes local `568 passed` at the v0.1 acceptance anchor; current mainline baseline is `765 passed` after the Track F external observation read-model invariants slice
 - v0.2 demo acceptance 已落文档：`docs/v0.2-demo-acceptance.md`
-- Track F external ingestion boundary and external observation read-model invariants slices 已落地：`docs/external-ingestion-boundary-v0.2.md`
+- Track F external ingestion boundary and external observation read-model invariants slices 已落地，并已 closed for now：`docs/external-ingestion-boundary-v0.2.md`
 - current v0.2 demo acceptance status is `accepted as v0.2 developer demo`, not product runtime
 - v0.2 acceptance evidence includes `735 passed` at the tag anchor, v0.1 demo plain / JSON success, v0.2 demo plain / JSON success, configured CI smoke, no `x_agent.*` imports, and `/home/lumber/Github/x-agent` untouched; current mainline baseline is `765 passed`
 - lightweight demo tag exists: `v0.2-demo` -> `09319e7407116d9f99f4a18853d4df23a8714720`
@@ -492,7 +495,7 @@
 - CI then runs full kernel tests plus demo plain / JSON smoke
 - latest remote GitHub Actions CI run has been confirmed green from the GitHub Actions web UI
 - CI smoke does not require secrets, release automation, coverage, lint matrix, or real integration services
-- External Ingestion / `ImportedSnapshot` has Track F boundary and read-model invariant slices: `ingestion.py`, `ImportedSnapshot`, and `snapshot.imported` projection into `RunState.external_observations`
+- External Ingestion / `ImportedSnapshot` is effectively complete / closed for now at boundary / read-model / checkpoint scope: `ingestion.py`, `ImportedSnapshot`, and `snapshot.imported` projection into `RunState.external_observations`
 - raw external input remains artifact-only / rejected / not-enabled at the ingestion boundary and cannot directly advance `RunState` / `SessionState`
 - `RunState.external_observations` has a stable read-model shape with snapshot id / type / source / freshness / quality / provenance / basis refs / observation status
 - checkpoint state includes `external_observations`, and checkpoint-assisted rebuild restores the same observation read model as event-log replay
@@ -674,11 +677,11 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 下一步建议优先做：
 
 - optional GitHub Release draft for `v0.2-demo` if explicitly requested; do not publish a Release without a separate request
-- Track F: next external ingestion slice only with a new design / red-test request; boundary and external observation read-model invariant slices are complete
+- Track F: closed for now; reopen only with a new design / red-test request such as provider adapter, webhook, HTTP ingestion API, or reconciliation boundary
 - reopen Track E only with an explicit design / red-test request, such as product approval UI / auth / scheduler boundary
 - reopen Track C only with an explicit design / red-test request, such as HTTP content route boundary
 - real listening HTTP server boundary design only if Track A is explicitly reopened
 - optional Track D polish can continue later, but it no longer blocks v0.2 implementation
 - 或停在当前稳定点
 
-checkpoint v0.1、memory v0.1、Track A HTTP API Minimal Surface、Track C Artifact Content Read Policy 和 Track E Approval Pause / Resume Boundary 当前 frozen / closed unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D、Track A、Track C 和 Track E 都已 effectively complete / closed for now。v0.2 demo scenario 已实现并可通过 `--scenario v0.2` 展示 Track A / C / E 的 in-process boundary；v0.2 developer demo 当前已 accepted，`v0.2-demo` tag 已创建并推送，GitHub Release 未发布。这是 developer demo tag，不是 product release。Track F external ingestion boundary 和 external observation read-model invariants 已完成：raw external input 不能直接推进 state，`ImportedSnapshot` 必须通过 canonical `snapshot.imported` event 接纳，projector 只消费 canonical events 并投影到 `RunState.external_observations`，read model 保留 quality / provenance / freshness / basis refs / conflict metadata，并进入 checkpoint state；checkpoint-assisted rebuild 可恢复 external observations。不读取 raw artifact content、不覆盖 native state，duplicate snapshot identity 受控，conflicting snapshots 标记 conflict。HTTP full-content route 和 HTTP `/external-ingestion` 仍 `501 not_enabled`，ranking、semantic retrieval、memory controlled expand、real provider adapter、external webhook / callback、OpenAI / Responses / GitHub integration 和 real listening HTTP server 仍 deferred。不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage、real provider adapter 或 external ingestion HTTP API implementation。
+checkpoint v0.1、memory v0.1、Track A HTTP API Minimal Surface、Track C Artifact Content Read Policy、Track E Approval Pause / Resume Boundary 和 Track F External Ingestion / ImportedSnapshot 当前 frozen / closed unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D、Track A、Track C、Track E 和 Track F 都已 effectively complete / closed for now。v0.2 demo scenario 已实现并可通过 `--scenario v0.2` 展示 Track A / C / E 的 in-process boundary；v0.2 developer demo 当前已 accepted，`v0.2-demo` tag 已创建并推送，GitHub Release 未发布。这是 developer demo tag，不是 product release。Track F external ingestion boundary 和 external observation read-model invariants 已完成：raw external input 不能直接推进 state，`ImportedSnapshot` 必须通过 canonical `snapshot.imported` event 接纳，projector 只消费 canonical events 并投影到 `RunState.external_observations`，read model 保留 quality / provenance / freshness / basis refs / conflict metadata，并进入 checkpoint state；checkpoint-assisted rebuild 可恢复 external observations。不读取 raw artifact content、不覆盖 native state，duplicate snapshot identity 受控，conflicting snapshots 标记 conflict。HTTP full-content route 和 HTTP `/external-ingestion` 仍 `501 not_enabled`，ranking、semantic retrieval、memory controlled expand、real provider adapter、external webhook / callback、OpenAI / Responses / GitHub integration 和 real listening HTTP server 仍 deferred。不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage、real provider adapter 或 external ingestion HTTP API implementation。

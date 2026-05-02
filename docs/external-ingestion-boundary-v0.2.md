@@ -1,12 +1,14 @@
 # External Ingestion Boundary v0.2
 
-状态：`read-model invariants green complete`
+状态：`effectively complete / closed for now`
 
 ## 1. Purpose
 
 Track F defines the minimum boundary for external ingestion / `ImportedSnapshot`.
 
 The goal is not to integrate a real provider. The goal is to prevent external raw input from becoming a second source of truth or directly mutating `RunState` / `SessionState`.
+
+Closure decision: Track F is closed for now at boundary / read-model / checkpoint support. It is not a provider integration, webhook, network listener, external ingestion HTTP API, or production ingestion system.
 
 ## 2. Why This Track Now
 
@@ -187,7 +189,7 @@ Covered goals:
 - snapshot ref must be structured `ResourceRef`, not a URI string.
 - external ingestion routes / APIs remain deferred or `not_enabled`.
 
-These tests define only the first Track F boundary slice. They do not implement a real provider adapter, external webhook, OpenAI / Responses / GitHub integration, external ingestion HTTP API, or imported-observation-driven native state.
+These first tests define only the initial boundary slice. They do not implement a real provider adapter, external webhook, OpenAI / Responses / GitHub integration, external ingestion HTTP API, or imported-observation-driven native state.
 
 Completed read-model invariant test files:
 
@@ -207,3 +209,21 @@ Covered goals:
 - native canonical state has priority over imported observations.
 
 These tests extend the Track F boundary without implementing provider adapters, network callbacks, HTTP ingestion, or imported-observation-driven native state.
+
+## 13. Closure Criteria
+
+Track F can be treated as effectively complete for the current v0.2 cycle because:
+
+- raw external input cannot directly update `RunState` / `SessionState`
+- `ingestion.py` remains a fail-closed / not-enabled boundary
+- `ImportedSnapshot` exists only as a slice model, not a final protocol
+- accepted imported snapshots enter through canonical `snapshot.imported`
+- projector only projects into `RunState.external_observations`
+- imported observations do not override native run/action status
+- external observations can be restored by event replay and checkpoint-assisted rebuild
+- conflicts are explicit in the read model instead of merged into deterministic native facts
+- projector does not read raw artifact content
+- HTTP `/external-ingestion` remains `501 not_enabled`
+- no provider adapter, webhook, network listener, or new dependency exists
+
+Any future Track F work should start with a new design note / red tests and should not directly implement real provider adapters or public ingestion APIs.

@@ -2,7 +2,7 @@
 
 Isotope 是一个独立的 kernel-first agent runtime 项目，用来验证 canonical event log、policy-gated execution、artifact provenance、projector replay 和 checkpoint-assisted rebuild 等内核边界。
 
-当前状态：`v0.1-demo` 和 `v0.2-demo` developer demo tags 已存在；当前本地 baseline 是 `765 passed`。Track A: HTTP API Minimal Surface、Track C: Artifact Content Read Policy 和 Track E: Approval Pause / Resume Boundary 都已 effectively complete / closed for now；Track F: External Ingestion 已完成 boundary / read-model invariant slices；GitHub Release 未发布，详细状态见 [docs/current-status.md](docs/current-status.md)。
+当前状态：`v0.1-demo` 和 `v0.2-demo` developer demo tags 已存在；当前本地 baseline 是 `765 passed`。Track A: HTTP API Minimal Surface、Track C: Artifact Content Read Policy、Track E: Approval Pause / Resume Boundary 和 Track F: External Ingestion 都已 effectively complete / closed for now；GitHub Release 未发布，详细状态见 [docs/current-status.md](docs/current-status.md)。
 
 ## Quick Start
 

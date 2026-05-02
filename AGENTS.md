@@ -30,7 +30,7 @@
 - v0.2 demo readiness is documented in [docs/v0.2-demo-readiness.md](docs/v0.2-demo-readiness.md).
 - v0.2 demo scenario is implemented and documented in [docs/v0.2-demo-scenario.md](docs/v0.2-demo-scenario.md): `--scenario v0.2` visibly exercises Track A / C / E without real HTTP server, network listener, memory storage/query, or HTTP full-content route.
 - v0.2 developer demo acceptance is documented in [docs/v0.2-demo-acceptance.md](docs/v0.2-demo-acceptance.md); `v0.2-demo` is already tagged, but no GitHub Release has been published.
-- Track F: External Ingestion has boundary and read-model invariant green slices: `ingestion.py`, `ImportedSnapshot`, and `snapshot.imported` projection into checkpointable `RunState.external_observations`; provider adapters, webhooks, and public ingestion API remain deferred.
+- Track F: External Ingestion is effectively complete / closed for now at boundary / read-model / checkpoint scope: `ingestion.py`, `ImportedSnapshot`, and `snapshot.imported` projection into checkpointable `RunState.external_observations`; provider adapters, webhooks, and public ingestion API remain deferred.
 - Real server boundary design only if Track A is explicitly reopened; artifact content HTTP route implementation only if Track C is explicitly reopened.
 - Optional docs polish can continue later, but it should not block v0.2 implementation.
 
