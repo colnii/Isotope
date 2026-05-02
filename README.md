@@ -8,7 +8,7 @@ Isotope 是一个独立的 kernel-first agent runtime 项目，用来验证 cano
 
 当前 v0.2 implementation cycle 已建议暂停，进入 cleanup / docs organization / external review mode；Kernel Gap Review 后已新增 Agent / Worker lifecycle、Workspace substrate 和 Retry / Cancel / Supersede boundary，且当前 kernel boundary slices 均已 complete。
 
-后续 rolling batch mode 由 [docs/agent-task-queue.md](docs/agent-task-queue.md) 管理；默认 session timebox 是 45-60 分钟，agent 每轮应先读 queue，不要自行进入未列出的新 Track 或为了凑时间 invent work。Second App Spike Selection 已推荐 `external snapshot review`；该 second app spike 已 closed for now，下一步建议做 `App Spike Coverage Review` 或 `Kernel Gap Review Refresh`。
+后续 rolling batch mode 由 [docs/agent-task-queue.md](docs/agent-task-queue.md) 管理；默认 session timebox 是 45-60 分钟，agent 每轮应先读 queue，不要自行进入未列出的新 Track 或为了凑时间 invent work。App Spike Coverage Review 已完成，当前建议下一步做 `Kernel Gap Review Refresh`，而不是直接开第三个 app spike。
 
 ## Quick Start
 
@@ -91,6 +91,7 @@ python3 -m venv .venv
 - Artifact review flow closure review: [docs/artifact-review-flow-closure-review.md](docs/artifact-review-flow-closure-review.md)
 - Second app spike selection: [docs/second-app-spike-selection.md](docs/second-app-spike-selection.md)
 - External snapshot review closure review: [docs/external-snapshot-review-closure-review.md](docs/external-snapshot-review-closure-review.md)
+- App spike coverage review: [docs/app-spike-coverage-review.md](docs/app-spike-coverage-review.md)
 - Source artifact setup helper boundary: [docs/source-artifact-setup-helper-boundary-v0.2.md](docs/source-artifact-setup-helper-boundary-v0.2.md)
 - Source artifact helper closure review: [docs/source-artifact-helper-closure-review.md](docs/source-artifact-helper-closure-review.md)
 - Artifact review provenance helper boundary: [docs/artifact-review-provenance-helper-boundary-v0.2.md](docs/artifact-review-provenance-helper-boundary-v0.2.md)

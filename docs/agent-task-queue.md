@@ -93,21 +93,39 @@ git status --short
 
 ## 6. Current Batch
 
-Batch name: `External Snapshot Review Closure Review`
+Batch name: `App Spike Coverage Review`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: docs-only closure review for the deterministic in-process `external-snapshot-review` scenario.
+Goal: docs-only horizontal coverage review across completed app spikes.
 
 Tasks:
 
-1. Review `external-snapshot-review` for Track F boundary coverage: complete.
-2. Confirm no provider adapter / webhook / network listener / real HTTP server / real LLM / filesystem mutation / memory query engine: complete.
-3. Confirm HTTP `/external-ingestion` remains `not_enabled`: complete.
+1. Compare completed app spikes: complete.
+2. Identify covered and uncovered kernel surfaces: complete.
+3. Distinguish blocker friction from product polish / deferred integration: complete.
 4. Docs / status sync: complete.
-5. Queue update: complete; next suggested batch set to `App Spike Coverage Review`.
+5. Queue update: complete; next suggested batch set to `Kernel Gap Review Refresh`.
+
+Evidence:
+
+- Full regression: `913 passed`.
+- artifact-review trace regression: pass.
+- `python -m isotope_kernel.demo --scenario external-snapshot-review --trace`: pass.
+- approval-tool-runner trace regression: pass.
+- Coverage review doc: `docs/app-spike-coverage-review.md`.
+- First app spike `artifact-review` covers artifact / content policy / provenance / ResourceRef / replay / checkpoint.
+- Second app spike `external-snapshot-review` covers ImportedSnapshot / external observations / conflict diagnostics / native state priority / replay / checkpoint.
+- Next recommended path: `Kernel Gap Review Refresh`.
+- No real provider adapter / webhook / real HTTP server / real LLM / filesystem mutation / memory query engine / dependency.
+
+### Previous Batch Snapshot: External Snapshot Review Closure Review
+
+Batch name: `External Snapshot Review Closure Review`
+
+Status: `complete`
 
 Evidence:
 
@@ -446,19 +464,21 @@ Scope:
 
 ## 7. Next Suggested Batch
 
-Batch name: `App Spike Coverage Review`
+Batch name: `Kernel Gap Review Refresh`
 
 Status: `ready_docs_only`
 
 Possible tasks:
 
-1. Compare completed app spikes:
-   - first app spike: `artifact-review`
-   - second app spike: `external-snapshot-review`
-2. Summarize coverage across artifact / provenance, content policy, external observations, conflicts, replay, checkpoint, approval, workspace, and action lifecycle.
-3. Identify remaining app-spike gaps without opening real provider / real server / real LLM / filesystem / memory query surfaces.
-4. Decide whether the next docs-only step should be `Kernel Gap Review Refresh`.
-5. Stop if selecting another app spike requires product / user judgment.
+1. Re-read `docs/kernel-gap-review-v0.2.md` against completed app spikes.
+2. Re-rank:
+   - worker / delegation
+   - workspace beyond binding helper
+   - retry / cancel / supersede app composition
+   - memory boundary
+   - HTTP facade ergonomics
+3. Decide whether the next implementation should be boundary docs, red tests, another app spike, or pause for external review.
+4. Stop if the decision requires product / user judgment.
 
 Constraints:
 

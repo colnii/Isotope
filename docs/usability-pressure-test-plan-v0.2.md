@@ -1,6 +1,6 @@
 # Usability Pressure Test Plan v0.2
 
-状态：`external-snapshot-review second app spike complete / closed for now`
+状态：`app spike coverage reviewed; recommend Kernel Gap Review Refresh`
 
 ## 1. Purpose
 
@@ -303,7 +303,7 @@ Remaining friction is optional polish, not blocker-level kernel or app-spike fri
 - review content remains deterministic because there is still no real LLM。
 - a product-level artifact review facade remains intentionally deferred。
 
-Next suggested batch: `Second App Spike Selection`, docs-only by default. Stop if selecting the next spike requires product / user judgment.
+Follow-up completed by section 16: `Second App Spike Selection`.
 
 ## 16. Second App Spike Selection
 
@@ -364,7 +364,23 @@ python -m isotope_kernel.demo --scenario external-snapshot-review --json
 - memory query / storage engine
 - imported observation driving native state
 
-Next suggested batch: `App Spike Coverage Review`, docs-only by default. If the goal is to return to kernel design backlog instead, use `Kernel Gap Review Refresh`. Do not open real provider / webhook / HTTP ingestion surfaces without a new boundary and red tests.
+Follow-up completed by section 18: `App Spike Coverage Review`. Do not open real provider / webhook / HTTP ingestion surfaces without a new boundary and red tests.
+
+## 18. App Spike Coverage Review
+
+状态：`complete`
+
+Coverage review: `docs/app-spike-coverage-review.md`
+
+Current conclusion:
+
+- `artifact-review` proves artifact summary / `ResourceRef` / controlled content policy / provenance / review artifact handoff in an app-shaped flow。
+- `external-snapshot-review` proves `ImportedSnapshot` / `snapshot.imported` / external observations / conflict diagnostics / native state priority in an app-shaped flow。
+- `approval-tool-runner` already adds pressure on approval / workspace binding / action submission ergonomics。
+- No blocker-level friction remains for the current two app spikes。
+- Remaining uncovered areas are worker/delegation, workspace beyond binding, retry/cancel/supersede app composition, memory boundary, and HTTP facade ergonomics。
+
+Next suggested batch: `Kernel Gap Review Refresh`, docs-only by default. Do not start a third app spike until the refreshed gap review decides whether worker handoff, workspace, or retry/cancel/supersede pressure is the right next slice.
 
 ## 12. Demo Trace Mode
 
