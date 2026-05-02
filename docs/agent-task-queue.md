@@ -86,23 +86,42 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 baseline：`892 passed`。
+当前 baseline：`898 passed`。
 
 ## 6. Current Batch
 
-Batch name: `Source Artifact Helper Closure Review`
+Batch name: `Artifact Review Provenance Helper Package`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: review whether `InProcessServer.create_source_artifact(...)` fully closes source artifact setup friction without creating a product artifact upload API.
+Goal: remove artifact-review demo/client event-scan glue for source artifact `artifact.created` basis event lookup without creating a product-level artifact review API.
 
 Tasks:
 
-1. Closure Review: complete; added `docs/source-artifact-helper-closure-review.md`.
-2. Docs / status sync: complete.
-3. Queue update: complete; next suggested batch set to `Artifact Review Flow Second Friction Review`.
+1. Boundary docs: complete; added `docs/artifact-review-provenance-helper-boundary-v0.2.md`.
+2. Red tests: complete; added `tests/isotope_kernel/test_artifact_provenance_helper.py` and extended `tests/isotope_kernel/test_artifact_review_flow_spike.py`.
+3. Green implementation: complete; added `InProcessServer.get_artifact_record(...)` and updated `artifact-review` demo.
+4. Docs / status sync: complete.
+5. Queue update: complete; next suggested batch set to `Artifact Review Flow Closure Review`.
+
+Evidence:
+
+- Red targeted result: `6 failed, 5 passed`; failures were expected because `get_artifact_record(...)` did not exist and `artifact-review` still scanned raw events for source basis metadata.
+- Targeted green result: `11 passed`.
+- Full regression: `898 passed`.
+- artifact-review demo plain / JSON / trace: pass.
+- Helper behavior: accepts structured `ResourceRef` only; returns artifact id / type / summary / ref / provenance / source `artifact.created` basis event metadata; does not return full content; does not append events.
+- `artifact-review` demo no longer scans raw events to find the source artifact `artifact.created` basis event.
+- HTTP full-content route remains `not_enabled`.
+- No product artifact review facade / real filesystem upload / binary streaming / real HTTP server / real LLM / provider adapter / memory query engine / container / git worktree / process spawn / dependency.
+
+### Previous Batch Snapshot: Source Artifact Helper Closure Review
+
+Batch name: `Source Artifact Helper Closure Review`
+
+Status: `complete`
 
 Evidence:
 
@@ -351,15 +370,15 @@ Scope:
 
 ## 7. Next Suggested Batch
 
-Batch name: `Artifact Review Flow Second Friction Review`
+Batch name: `Artifact Review Flow Closure Review`
 
 Status: `ready_docs_only`
 
 Possible tasks:
 
-1. Review remaining `artifact-review` demo glue after source artifact helper closure.
-2. Decide whether review provenance basis event lookup needs a helper or is acceptable v0 demo glue.
-3. Keep controlled full-content retrieval explicit unless repeated app spikes prove a helper is needed.
+1. Review `artifact-review` after source artifact helper and artifact provenance helper.
+2. Decide whether the spike can be marked closed / useful as first app spike.
+3. Identify remaining friction: controlled full-content retrieval verbosity, lack of product artifact review facade, or review-specific helper gaps.
 4. Docs/status sync and queue update only unless a clear bug is found.
 
 Constraints:

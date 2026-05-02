@@ -2,7 +2,7 @@
 
 Isotope 是一个独立的 kernel-first agent runtime 项目，用来验证 canonical event log、policy-gated execution、artifact provenance、projector replay 和 checkpoint-assisted rebuild 等内核边界。
 
-当前状态：`v0.1-demo` 和 `v0.2-demo` developer demo tags 已存在；当前本地 baseline 是 `892 passed`。Track A: HTTP API Minimal Surface、Track C: Artifact Content Read Policy、Track E: Approval Pause / Resume Boundary 和 Track F: External Ingestion 都已 effectively complete / closed for now；Agent / Worker lifecycle、Workspace substrate、Retry / Cancel / Supersede、approval-gated tool runner usability spike、approval lookup helper、workspace binding helper、submit action helper、artifact review flow、demo trace mode 和 source artifact setup helper first slices 已 complete，source artifact helper closure review 已 closed。GitHub Release 未发布，详细状态见 [docs/current-status.md](docs/current-status.md)。
+当前状态：`v0.1-demo` 和 `v0.2-demo` developer demo tags 已存在；当前本地 baseline 是 `898 passed`。Track A: HTTP API Minimal Surface、Track C: Artifact Content Read Policy、Track E: Approval Pause / Resume Boundary 和 Track F: External Ingestion 都已 effectively complete / closed for now；Agent / Worker lifecycle、Workspace substrate、Retry / Cancel / Supersede、approval-gated tool runner usability spike、approval lookup helper、workspace binding helper、submit action helper、artifact review flow、demo trace mode、source artifact setup helper 和 artifact provenance helper first slices 已 complete。GitHub Release 未发布，详细状态见 [docs/current-status.md](docs/current-status.md)。
 
 `main` 当前 ahead of `v0.2-demo`，主要增量是 Track F external ingestion boundary、Agent / Worker lifecycle first slice、Workspace substrate first slice 和 Retry / Cancel / Supersede stabilization slice；delta 记录见 [docs/post-v0.2-tag-delta.md](docs/post-v0.2-tag-delta.md)。暂不移动 `v0.2-demo` tag，也不发布 GitHub Release。
 
@@ -35,7 +35,7 @@ python3 -m venv .venv
 - Deterministic v0.1 demo entrypoint: `python -m isotope_kernel.demo`.
 - Explicit v0.2 demo scenario: `python -m isotope_kernel.demo --scenario v0.2`, covering the in-process HTTP facade, approval pause / resume, controlled artifact content policy, checkpoint, and memory `boundary_only` status.
 - Approval-gated tool runner usability spike: `python -m isotope_kernel.demo --scenario approval-tool-runner`, covering approval pause / resume, workspace binding read model, artifact / `ResourceRef` handoff, replay, and checkpoint without real HTTP server, real LLM, provider adapter, or filesystem mutation; approval lookup/read helper, workspace binding helper, and `submit_action(...)` now remove the event-scan, manual `workspace.bound`, and raw `submit_tool_request(...)` demo glue.
-- Artifact review flow usability spike: `python -m isotope_kernel.demo --scenario artifact-review`, covering artifact summary / `ResourceRef`, controlled retrieval policy, reviewer action chain, review artifact handoff, replay, and checkpoint without real HTTP server, real LLM, provider adapter, semantic retrieval / ranking, or filesystem mutation; HTTP full-content route remains `not_enabled`. `InProcessServer.create_source_artifact(...)` now removes private `_append(...)` source setup glue from the demo.
+- Artifact review flow usability spike: `python -m isotope_kernel.demo --scenario artifact-review`, covering artifact summary / `ResourceRef`, controlled retrieval policy, reviewer action chain, review artifact handoff, replay, and checkpoint without real HTTP server, real LLM, provider adapter, semantic retrieval / ranking, or filesystem mutation; HTTP full-content route remains `not_enabled`. `InProcessServer.create_source_artifact(...)` removes private `_append(...)` source setup glue, and `InProcessServer.get_artifact_record(...)` removes source artifact basis-event scan glue from the demo.
 - Demo trace mode: `--trace` is available for `v0.2`, `approval-tool-runner`, and `artifact-review` to print human-readable runtime steps; default plain output and `--json` remain compatible, and trace does not expose artifact full content.
 - Session / run creation through the in-process kernel path.
 - `ActionCompiler -> PolicyEngine -> Executor` action chain with `PolicyDecision.grants` enforcement.
@@ -86,6 +86,7 @@ python3 -m venv .venv
 - Artifact review flow friction review: [docs/artifact-review-flow-friction-review.md](docs/artifact-review-flow-friction-review.md)
 - Source artifact setup helper boundary: [docs/source-artifact-setup-helper-boundary-v0.2.md](docs/source-artifact-setup-helper-boundary-v0.2.md)
 - Source artifact helper closure review: [docs/source-artifact-helper-closure-review.md](docs/source-artifact-helper-closure-review.md)
+- Artifact review provenance helper boundary: [docs/artifact-review-provenance-helper-boundary-v0.2.md](docs/artifact-review-provenance-helper-boundary-v0.2.md)
 - Approval tool runner friction review: [docs/approval-tool-runner-friction-review.md](docs/approval-tool-runner-friction-review.md)
 - Submit action helper boundary: [docs/submit-action-helper-boundary-v0.2.md](docs/submit-action-helper-boundary-v0.2.md)
 - Docs migration plan: [docs/docs-migration-plan.md](docs/docs-migration-plan.md)

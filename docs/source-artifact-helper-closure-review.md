@@ -77,10 +77,13 @@ Still not implemented:
 
 The source artifact setup friction is closed.
 
-Remaining `artifact-review` friction is narrower:
+Remaining `artifact-review` friction after this closure was narrower:
 
-- review provenance still finds the source `artifact.created` basis event by scanning run events in demo glue。
-- controlled full-content retrieval remains verbose but intentionally explicit for Track C and is acceptable v0 shape。
+- review provenance still found the source `artifact.created` basis event by scanning run events in demo glue。
+
+That follow-up has now been handled by `InProcessServer.get_artifact_record(...)`; see `docs/artifact-review-provenance-helper-boundary-v0.2.md`.
+
+Still intentionally not solved:
+
+- controlled full-content retrieval remains verbose but explicitly grants-bound for Track C。
 - there is still no product-level artifact review facade, by design。
-
-Recommended next batch: `Artifact Review Flow Second Friction Review`, docs-only by default. It should decide whether the basis-event lookup deserves a read helper or whether it is acceptable demo glue.

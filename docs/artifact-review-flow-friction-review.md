@@ -1,6 +1,6 @@
 # Artifact Review Flow Friction Review
 
-状态：`complete; source artifact setup helper closed`
+状态：`complete; source artifact setup and provenance helper closed`
 
 ## 1. Purpose
 
@@ -39,6 +39,7 @@
 | --- | --- | --- | --- |
 | Source artifact setup used to hand-write `action.proposed`, `action.decided`, `action.started`, `artifact.created`, and `action.completed` via `server._append(...)`. | facade / helper gap | Demo used private server API and manual event sequencing to prepare a normal source artifact. That was awkward for app spikes and easy to copy incorrectly. | Implemented by `InProcessServer.create_source_artifact(...)`. |
 | Source artifact setup used to directly combine `artifact_store.create_artifact(...)` with manual canonical event append. | facade / helper gap | Artifact persistence and provenance event ownership were correct, but caller knew too much event plumbing. | Helper now owns the minimal canonical event sequence and returns summary / ref / provenance. |
+| Source artifact basis event lookup scanned raw events in demo glue. | read helper gap | Review provenance needed the source `artifact.created` basis event, but demo should not need to walk raw event logs for that. | Implemented by `InProcessServer.get_artifact_record(...)`. |
 | Controlled full-content retrieval requires explicit `get_artifact_content(ref, grants, caller_context, purpose)`. | acceptable v0 shape / future helper ergonomics | The explicit call is intentionally strict and protects Track C boundaries. It is verbose but not wrong. | Keep as-is for now; optionally wrap later only if repeated app spikes need it. |
 | Review action handoff uses `submit_action(...)` and returns artifact ref / ids. | acceptable current helper | This is the desired pattern after submit-action helper work. | Keep as-is. |
 | Review summary is deterministic and fixed text. | demo-only | It proves flow shape without real LLM. | Keep as-is until a later spike explicitly needs richer deterministic review logic. |
@@ -144,15 +145,21 @@ Current behavior:
 
 This remains a deterministic in-process setup helper, not a product artifact upload API.
 
-## 10. Remaining Friction
+## 10. Artifact Provenance Helper Outcome
+
+`InProcessServer.get_artifact_record(...)` now returns summary / structured ref / provenance / source `artifact.created` basis event metadata without returning full content or appending events.
+
+`artifact-review` now uses that helper to construct review provenance. Demo/client code no longer scans raw events for the source artifact created event.
+
+## 11. Remaining Friction
 
 Source artifact setup is closed.
 
 Remaining `artifact-review` friction:
 
-- review provenance still finds the source `artifact.created` basis event by scanning events in demo glue。
 - controlled retrieval remains explicit by design。
+- product-level artifact review facade remains intentionally deferred。
 
-Next suggested batch: `Artifact Review Flow Second Friction Review`, docs-only by default.
+Next suggested batch: `Artifact Review Flow Closure Review`, docs-only by default.
 
 Stop if the next slice requires product review semantics, real filesystem mutation, real LLM, real HTTP server, provider adapter, memory query engine, event store semantic changes, executor grants semantic changes, new dependency, or `/home/lumber/Github/x-agent` changes.

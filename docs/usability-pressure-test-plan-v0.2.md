@@ -1,6 +1,6 @@
 # Usability Pressure Test Plan v0.2
 
-状态：`artifact review flow, demo trace, and source artifact setup helper closed`
+状态：`artifact review flow, demo trace, source artifact setup helper, and artifact provenance helper complete`
 
 ## 1. Purpose
 
@@ -39,7 +39,7 @@ python -m isotope_kernel.demo --scenario v0.2 --trace
 - Retry / Cancel / Supersede read model。
 - event replay and checkpoint-assisted rebuild。
 
-当前 baseline：`892 passed`。
+当前 baseline：`898 passed`。
 
 ## 3. Hard Boundaries
 
@@ -207,6 +207,7 @@ Friction review: `docs/artifact-review-flow-friction-review.md`。
 - `artifact-review` 是有用的 first app spike。
 - 没有发现 kernel correctness bug。
 - 原主要 friction 是 source artifact setup 仍需要 demo glue：直接调用 private `server._append(...)` 手工追加 source action / artifact lifecycle events。该 gap 已由 `InProcessServer.create_source_artifact(...)` 解决并 closure-reviewed。
+- 后续 source artifact `artifact.created` basis event lookup 也已由 `InProcessServer.get_artifact_record(...)` 解决；demo 不再扫描 raw events 来构造 review provenance。
 - controlled full-content retrieval 显式传入 grants + caller context + purpose 是可接受 v0 shape，不应为了省参数放松 Track C boundary。
 - review artifact handoff 经 `submit_action(...)` 已足够自然。
 
@@ -244,12 +245,39 @@ Closure review: `docs/source-artifact-helper-closure-review.md`。
 
 Closure result: source artifact setup helper is closed / complete for now.
 
+Remaining friction after source helper closure:
+
+- review provenance still scanned events to find the source `artifact.created` basis event。
+
+That follow-up is now handled by `InProcessServer.get_artifact_record(...)`; see `docs/artifact-review-provenance-helper-boundary-v0.2.md`.
+
+Still intentionally not solved:
+
+- controlled full-content retrieval remains intentionally explicit and is acceptable v0 shape。
+- product artifact review facade remains deferred。
+
+## 14. Artifact Provenance Helper
+
+状态：`first slice complete`
+
+Boundary doc: `docs/artifact-review-provenance-helper-boundary-v0.2.md`
+
+Current helper:
+
+- `InProcessServer.get_artifact_record(ref)`
+- accepts structured `ResourceRef` only。
+- rejects URI string / raw artifact id。
+- returns artifact id, type, summary, ref, provenance, and source `artifact.created` basis event metadata。
+- does not return full content。
+- does not append events。
+- keeps HTTP full-content route `not_enabled`。
+
+`artifact-review` demo now uses this helper for source review provenance instead of scanning raw events for the source artifact `artifact.created` event.
+
 Remaining friction:
 
-- review provenance still scans events to find the source `artifact.created` basis event。
-- controlled full-content retrieval remains intentionally explicit and is acceptable v0 shape。
-
-Next suggested batch: `Artifact Review Flow Second Friction Review`.
+- controlled full-content retrieval remains intentionally explicit with grants + caller context + purpose。
+- there is still no product-level artifact review facade, by design。
 
 ## 12. Demo Trace Mode
 
