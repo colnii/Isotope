@@ -244,11 +244,7 @@ def _run_approval_tool_runner_spike(root: Path) -> dict[str, Any]:
     if not approval_id:
         raise RuntimeError("approval-gated tool runner spike did not request approval")
 
-    # Current kernel has a workspace read model, but no product-level binding API yet.
-    # The pressure test appends the canonical slice event explicitly and reports
-    # that friction in the summary instead of hiding it behind a fake product API.
-    _append_workspace_binding_event(
-        app.server,
+    app.server.bind_workspace(
         run_id=run_id,
         decision=pending["decision"],
     )
@@ -362,7 +358,6 @@ def _run_approval_tool_runner_spike(root: Path) -> dict[str, Any]:
         "memory_query_status": "not_enabled",
         "api_friction": [
             "approval-gated input currently uses server.submit_tool_request because POST /runs/{run_id}/input has no approval flag",
-            "workspace binding currently requires an explicit workspace.bound event in the spike",
         ],
     }
 

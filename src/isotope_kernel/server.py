@@ -299,6 +299,54 @@ class InProcessServer:
             raise ValueError("unknown approval")
         return deepcopy(approval)
 
+    def bind_workspace(
+        self,
+        run_id: str,
+        decision: PolicyDecision,
+        bound_to: dict[str, Any] | None = None,
+        lease_status: str = "active",
+    ) -> dict[str, Any]:
+        self._validate_existing_run_id(run_id)
+        if not isinstance(decision, PolicyDecision):
+            raise TypeError("decision must be a PolicyDecision")
+        if bound_to is None:
+            bound_to = {"agent_id": self._runs[run_id]["agent_id"]}
+        if not isinstance(bound_to, dict) or not bound_to:
+            raise ValueError("bound_to must be a non-empty dict")
+        has_binding_subject = any(
+            isinstance(bound_to.get(field), str) and bound_to.get(field)
+            for field in ("agent_id", "execution_id")
+        )
+        if not has_binding_subject:
+            raise ValueError("bound_to must include agent_id or execution_id")
+        if lease_status not in {"active", "released"}:
+            raise ValueError("lease_status must be active or released")
+
+        binding = self.workspace_manager.get_binding(decision.grants)
+        workspace_grant = decision.grants["workspace"]
+        event = self._append(
+            run_id,
+            "workspace.bound",
+            {
+                "workspace_id": binding.workspace_id,
+                "run_id": run_id,
+                "mode": binding.mode,
+                "bound_to": dict(bound_to),
+                "lease_status": lease_status,
+                "provenance": {
+                    "decision_id": decision.decision_id,
+                    "grant_basis": {
+                        "workspace": dict(workspace_grant),
+                    },
+                },
+            },
+        )
+        state = self.get_run_state(run_id)
+        workspace_binding = state.workspaces.get(binding.workspace_id)
+        if workspace_binding is None:
+            raise RuntimeError(f"workspace binding was not projected from {event.event_id}")
+        return deepcopy(workspace_binding)
+
     def get_events(self, run_id: str) -> list[CanonicalEvent]:
         self._validate_read_run_id(run_id)
         return self.event_store.list_events(run_id)
