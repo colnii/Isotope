@@ -1,6 +1,6 @@
 # Usability Pressure Test Plan v0.2
 
-状态：`artifact-review first app spike complete / closed for now`
+状态：`external-snapshot-review second app spike first slice complete`
 
 ## 1. Purpose
 
@@ -19,6 +19,9 @@ python -m isotope_kernel.demo --scenario approval-tool-runner --json
 python -m isotope_kernel.demo --scenario artifact-review
 python -m isotope_kernel.demo --scenario artifact-review --trace
 python -m isotope_kernel.demo --scenario artifact-review --json
+python -m isotope_kernel.demo --scenario external-snapshot-review
+python -m isotope_kernel.demo --scenario external-snapshot-review --trace
+python -m isotope_kernel.demo --scenario external-snapshot-review --json
 python -m isotope_kernel.demo --scenario v0.2 --trace
 ```
 
@@ -39,7 +42,7 @@ python -m isotope_kernel.demo --scenario v0.2 --trace
 - Retry / Cancel / Supersede read model。
 - event replay and checkpoint-assisted rebuild。
 
-当前 baseline：`898 passed`。
+当前 baseline：`913 passed`。
 
 ## 3. Hard Boundaries
 
@@ -304,15 +307,16 @@ Next suggested batch: `Second App Spike Selection`, docs-only by default. Stop i
 
 ## 16. Second App Spike Selection
 
-状态：`complete; external snapshot review recommended`
+状态：`complete; external snapshot review first slice implemented`
 
 Selection doc: `docs/second-app-spike-selection.md`
 
 Current recommendation:
 
 - next app spike candidate: `external snapshot review`
-- next batch: `External Snapshot Review Red Tests`
-- mode: red-only; no implementation until explicitly allowed
+- current implemented scenario: `python -m isotope_kernel.demo --scenario external-snapshot-review`
+- current implemented trace: `python -m isotope_kernel.demo --scenario external-snapshot-review --trace`
+- current implemented JSON: `python -m isotope_kernel.demo --scenario external-snapshot-review --json`
 
 Reasoning:
 
@@ -322,6 +326,43 @@ Reasoning:
 - It can stay deterministic / in-process and does not require provider adapter, webhook, real HTTP server, real LLM, filesystem mutation, or memory query engine。
 
 Do not select worker handoff, approval-gated workspace task, or memory boundary review as the immediate next spike unless explicitly reopened. They remain useful later candidates, but each has higher overlap or higher risk of product-surface drift.
+
+## 17. External Snapshot Review Spike
+
+状态：`first slice complete`
+
+Commands:
+
+```bash
+python -m isotope_kernel.demo --scenario external-snapshot-review
+python -m isotope_kernel.demo --scenario external-snapshot-review --trace
+python -m isotope_kernel.demo --scenario external-snapshot-review --json
+```
+
+当前展示：
+
+- deterministic / in-process scenario。
+- creates session / run through the existing in-process facade。
+- appends deterministic canonical `snapshot.imported` events。
+- projects imported observations into `RunState.external_observations`。
+- records conflict diagnostics when snapshots disagree。
+- preserves native `RunState.status` and action status。
+- verifies replay and checkpoint-assisted rebuild。
+- reports `provider_status: boundary_only`。
+- keeps HTTP `/external-ingestion` at `not_enabled`。
+- does not return raw external content or full artifact content。
+
+仍不包含：
+
+- real provider adapter
+- webhook / external callback
+- real HTTP server / network listener
+- real LLM
+- filesystem mutation
+- memory query / storage engine
+- imported observation driving native state
+
+Next suggested batch: `External Snapshot Review Friction Review`, docs-only by default. Stop if extending the flow requires product / user judgment or opens real provider / webhook / HTTP ingestion surfaces.
 
 ## 12. Demo Trace Mode
 
@@ -333,6 +374,7 @@ Commands:
 python -m isotope_kernel.demo --scenario artifact-review --trace
 python -m isotope_kernel.demo --scenario approval-tool-runner --trace
 python -m isotope_kernel.demo --scenario v0.2 --trace
+python -m isotope_kernel.demo --scenario external-snapshot-review --trace
 ```
 
 当前展示：

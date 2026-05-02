@@ -76,6 +76,9 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario approval-tool-
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario artifact-review
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario artifact-review --trace
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario artifact-review --json
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario external-snapshot-review
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario external-snapshot-review --trace
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario external-snapshot-review --json
 
 rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel || true
 
@@ -86,25 +89,42 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 baseline：`898 passed`。
+当前 baseline：`913 passed`。
 
 ## 6. Current Batch
 
-Batch name: `Second App Spike Selection`
+Batch name: `External Snapshot Review Green Slice`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: choose the second app-shaped usability pressure test candidate without writing code, adding tests, or implementing a new scenario.
+Goal: implement the minimal deterministic in-process `external-snapshot-review` scenario from the red tests.
 
 Tasks:
 
-1. Compare at least three candidates: complete.
-2. Select one candidate if no product / user judgment is needed: complete.
-3. Add selection doc: complete; added `docs/second-app-spike-selection.md`.
-4. Docs / status sync: complete.
-5. Queue update: complete; next suggested batch set to `External Snapshot Review Red Tests`.
+1. Red tests from previous batch: complete.
+2. Green implementation in `src/isotope_kernel/demo.py`: complete.
+3. Docs / status sync: complete.
+4. Queue update: complete; next suggested batch set to `External Snapshot Review Friction Review`.
+
+Evidence:
+
+- Targeted green: `15 passed`.
+- Full regression: `913 passed`.
+- `python -m isotope_kernel.demo --scenario external-snapshot-review`: pass.
+- `python -m isotope_kernel.demo --scenario external-snapshot-review --json`: pass.
+- `python -m isotope_kernel.demo --scenario external-snapshot-review --trace`: pass.
+- artifact-review trace regression: pass.
+- Scenario covers deterministic `snapshot.imported`, `RunState.external_observations`, conflict diagnostics, native state priority, replay, and checkpoint.
+- HTTP `/external-ingestion` remains `not_enabled`.
+- No real provider adapter / webhook / real HTTP server / real LLM / filesystem mutation / memory query engine / dependency.
+
+### Previous Batch Snapshot: Second App Spike Selection
+
+Batch name: `Second App Spike Selection`
+
+Status: `complete`
 
 Evidence:
 
@@ -406,24 +426,21 @@ Scope:
 
 ## 7. Next Suggested Batch
 
-Batch name: `External Snapshot Review Red Tests`
+Batch name: `External Snapshot Review Friction Review`
 
-Status: `ready_red_only`
+Status: `ready_docs_only`
 
 Possible tasks:
 
-1. Add red tests only for `external snapshot review`.
-2. Suggested files:
-   - `tests/isotope_kernel/test_external_snapshot_review_spike.py`
-   - `tests/isotope_kernel/test_external_snapshot_review_read_model.py`
-3. Cover deterministic in-process scenario shape, imported snapshot observations, conflict diagnostics, native state priority, replay, checkpoint, and disabled HTTP `/external-ingestion`.
-4. Do not implement the scenario in the red-only batch.
-5. Stop if red tests unexpectedly pass or require product / user judgment.
+1. Review `external-snapshot-review` spike for developer ergonomics.
+2. Distinguish kernel issue / helper gap / demo glue / acceptable v0 shape.
+3. Confirm it did not open provider adapter, webhook, HTTP ingestion API, real HTTP server, real LLM, filesystem mutation, or memory query engine.
+4. Decide whether the spike can be marked first slice complete / closed for now.
+5. Stop if the next step requires product / user judgment.
 
 Constraints:
 
-- red tests only.
-- no implementation unless a later queue entry explicitly allows green phase.
+- docs-only unless a correctness bug is found.
 - no real provider adapter / webhook.
 - no real filesystem mutation.
 - no real LLM.
