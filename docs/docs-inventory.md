@@ -17,6 +17,7 @@
 - 加上 v0.2 demo scenario boundary 后 docs Markdown：44 个。
 - 加上 v0.2 demo acceptance 后 docs Markdown：45 个。
 - 加上 Track F external ingestion boundary 后 docs Markdown：46 个。
+- 加上 post v0.2 tag delta review 后 docs Markdown：47 个。
 
 ## 2. Current entrypoints
 
@@ -27,6 +28,7 @@
 - `docs/v0.2-demo-readiness.md`：v0.2 developer demo readiness review，记录此前 demo 展示范围和已关闭的 Track A / C / E scenario gap。
 - `docs/v0.2-demo-scenario.md`：v0.2 demo scenario boundary / status，记录 implemented `--scenario v0.2` scope。
 - `docs/v0.2-demo-acceptance.md`：v0.2 developer demo acceptance，记录 `v0.2-demo` tag 状态和 non-goals。
+- `docs/post-v0.2-tag-delta.md`：记录 `v0.2-demo` tag 之后 `main` 的 Track F 增量，以及暂不创建 `v0.2.1-demo` 的判断。
 - `docs/v0.2-mid-cycle-review.md`：mid-cycle decision，曾推荐进入 Track E；该 recommendation 已执行到 closure。
 - `docs/v0.2-next-track-selection.md`：Track C selection 的历史决策记录，已执行到 closure。
 - `docs/README.md`：kernel current-truth 文档包的阅读顺序入口。
@@ -156,6 +158,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | `docs/memory-record-persistence-boundary-v0.1.md` | Memory persistence boundary | closed / frozen |
 | `docs/memory-v0.1-scope-freeze.md` | Memory scope freeze | closed / frozen |
 | `docs/memory-write-query-boundary-v0.1.md` | Memory write/query boundary | closed / frozen |
+| `docs/post-v0.2-tag-delta.md` | Post-tag mainline delta review | current review |
 | `docs/release-draft-v0.1-demo.md` | Release draft text | draft / not published |
 | `docs/server-checkpoint-boundary-v0.1.md` | Server checkpoint boundary | closed / frozen |
 | `docs/v0.1-demo-acceptance.md` | Demo acceptance record | closed |

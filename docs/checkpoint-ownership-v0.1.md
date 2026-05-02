@@ -43,7 +43,7 @@ v0.1 决定：
 - checkpoint 不能让 projector 跳过 canonical event validation。
 - checkpoint 不能包含 external raw input。
 - checkpoint 不参与 external ingestion。
-- checkpoint 不接收 `ImportedSnapshot`。
+- checkpoint 不接收 raw `ImportedSnapshot` 或 provider payload；当前 checkpoint state 可以包含由 canonical `snapshot.imported` event 投影出的 `external_observations` read model。
 - checkpoint 不能改变 `RunState` / `SessionState` 的事实来源边界。
 - 如果 checkpoint 与 event log 冲突，以 event log replay 为准。
 
@@ -65,7 +65,7 @@ v0.1 checkpoint 至少应绑定：
 - `run_id`
 - `projector_version`
 - `basis_event_id` 或等价的 last applied event cursor
-- projected state snapshot，包括 `approvals` read model 和 `memory_records` read model 的 summary / refs / provenance / supersession metadata
+- projected state snapshot，包括 `approvals` read model、`memory_records` read model 的 summary / refs / provenance / supersession metadata，以及 `external_observations` read model 的 quality / provenance / freshness / basis refs / conflict metadata
 - `created_at`
 
 这些字段是当前推荐 shape，用于 future TDD 的测试方向，不是永久协议。
@@ -97,7 +97,7 @@ checkpoint 只缩短 replay 距离，不改变 replay 语义。
 以下用法明确无效：
 
 - 直接从 checkpoint 写回或覆盖 event log。
-- 用 checkpoint 接收 external ingestion 或 `ImportedSnapshot`。
+- 用 checkpoint 接收 external ingestion、raw `ImportedSnapshot` 或 provider payload。
 - 在 event log 缺失时，用 checkpoint 假装事实完整。
 - 因 checkpoint 存在而跳过 malformed event log fail-fast。
 - 在 checkpoint version 不兼容时继续恢复。
