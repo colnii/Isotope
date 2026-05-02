@@ -197,4 +197,14 @@ python -m isotope_kernel.demo --scenario artifact-review --json
 - semantic retrieval / ranking
 - memory query engine
 
-Next suggested batch: `Artifact Review Flow Friction Review`.
+Friction review: `docs/artifact-review-flow-friction-review.md`。
+
+结论：
+
+- `artifact-review` 是有用的 first app spike。
+- 没有发现 kernel correctness bug。
+- 主要 friction 是 source artifact setup 仍需要 demo glue：直接调用 private `server._append(...)` 手工追加 source action / artifact lifecycle events。
+- controlled full-content retrieval 显式传入 grants + caller context + purpose 是可接受 v0 shape，不应为了省参数放松 Track C boundary。
+- review artifact handoff 经 `submit_action(...)` 已足够自然。
+
+Next suggested batch: `Source Artifact Setup Helper`.

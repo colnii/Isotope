@@ -87,20 +87,37 @@ git status --short
 
 ## 6. Current Batch
 
-Batch name: `Artifact Review Flow Spike`
+Batch name: `Artifact Review Flow Friction Review`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: implement the first app spike candidate selected by the previous readiness review.
+Goal: review the `artifact-review` spike API friction and decide the next bounded helper slice.
 
 Tasks:
 
-1. Artifact Review Flow Red Tests: complete; added `tests/isotope_kernel/test_artifact_review_flow_spike.py` and `tests/isotope_kernel/test_artifact_review_flow_read_model.py`.
-2. Green Implementation: complete; added `python -m isotope_kernel.demo --scenario artifact-review` and JSON output.
-3. Docs / status sync: complete.
-4. Queue update: complete; stop for user review.
+1. Artifact Review Flow Friction Review: complete; added `docs/artifact-review-flow-friction-review.md`.
+2. Queue Update: complete; next suggested batch set to `Source Artifact Setup Helper`.
+
+Evidence:
+
+- Full regression: `876 passed`.
+- v0.1 demo plain / JSON: pass.
+- v0.2 demo plain / JSON: pass.
+- approval-tool-runner demo plain / JSON: pass.
+- artifact-review demo plain / JSON: pass.
+- Review conclusion: `artifact-review` is useful and exposed no kernel correctness bug.
+- Main friction: source artifact setup still uses demo glue and private `server._append(...)` to hand-write canonical source action / artifact lifecycle events.
+- Classification: source setup is a facade / helper gap; controlled retrieval verbosity is acceptable v0 shape; review artifact handoff through `submit_action(...)` is acceptable.
+- Recommendation: A. source artifact setup helper.
+- No code changed; no real HTTP server / real LLM / provider adapter / memory query engine / filesystem mutation / container / git worktree / process spawn / dependency.
+
+### Previous Batch Snapshot: Artifact Review Flow Spike
+
+Batch name: `Artifact Review Flow Spike`
+
+Status: `complete`
 
 Evidence:
 
@@ -287,16 +304,27 @@ Scope:
 
 ## 7. Next Suggested Batch
 
-Batch name: `Artifact Review Flow Friction Review`
+Batch name: `Source Artifact Setup Helper`
 
-Status: `ready_docs_only`
+Status: `ready`
 
 Possible tasks:
 
-- review `artifact-review` demo API friction
-- distinguish kernel issue / helper issue / demo glue / acceptable v0 shape
-- decide whether the source artifact setup should remain demo glue or become a helper boundary
-- do not implement follow-up until review identifies a clear next slice
+1. Source artifact setup helper boundary docs.
+2. Red tests for a server/helper source artifact setup path.
+3. Green implementation if red tests fail as expected and no stop condition fires.
+4. Update `artifact-review` demo to stop using private `server._append(...)` for source artifact setup.
+5. Docs/status sync and queue update.
+
+Constraints:
+
+- helper must append canonical source action / artifact lifecycle events through existing event path.
+- helper must return summary / structured `ResourceRef` / provenance, not full content.
+- no real filesystem mutation.
+- no real LLM.
+- no real HTTP server / provider adapter / memory query engine.
+- no event store append-only semantic changes.
+- no executor grants semantic changes.
 
 ## 8. Completed Batch Log
 

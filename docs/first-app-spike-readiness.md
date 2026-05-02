@@ -129,4 +129,6 @@ The first slice proves:
 - HTTP full-content route remains `not_enabled`
 - replay and checkpoint restore review artifact summaries
 
-Remaining recommended work: run an `Artifact Review Flow Friction Review` before expanding the scenario.
+Friction review is complete: `docs/artifact-review-flow-friction-review.md`.
+
+Remaining recommended work: implement a narrow `Source Artifact Setup Helper` to remove private `_append(...)` source setup glue before expanding the scenario.
