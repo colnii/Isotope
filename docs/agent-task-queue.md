@@ -90,21 +90,40 @@ git status --short
 
 ## 6. Current Batch
 
-Batch name: `Artifact Review Provenance Helper Package`
+Batch name: `Artifact Review Flow Closure Review`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: remove artifact-review demo/client event-scan glue for source artifact `artifact.created` basis event lookup without creating a product-level artifact review API.
+Goal: review whether `artifact-review` first app spike can be marked first app spike complete / closed for now after source artifact helper and artifact provenance helper slices.
 
 Tasks:
 
-1. Boundary docs: complete; added `docs/artifact-review-provenance-helper-boundary-v0.2.md`.
-2. Red tests: complete; added `tests/isotope_kernel/test_artifact_provenance_helper.py` and extended `tests/isotope_kernel/test_artifact_review_flow_spike.py`.
-3. Green implementation: complete; added `InProcessServer.get_artifact_record(...)` and updated `artifact-review` demo.
-4. Docs / status sync: complete.
-5. Queue update: complete; next suggested batch set to `Artifact Review Flow Closure Review`.
+1. Review current `artifact-review` code and tests: complete.
+2. Confirm no private `server._append(...)` source setup glue: complete.
+3. Confirm no raw event scan for source artifact basis event: complete.
+4. Add closure doc and sync status docs: complete.
+5. Queue update: complete; next suggested batch set to `Second App Spike Selection`.
+
+Evidence:
+
+- Closure review doc: `docs/artifact-review-flow-closure-review.md`.
+- Full regression: `898 passed`.
+- artifact-review demo plain / JSON / trace: pass.
+- approval-tool-runner trace: pass.
+- Source artifact setup uses `InProcessServer.create_source_artifact(...)`, not private `server._append(...)`.
+- Review provenance uses `InProcessServer.get_artifact_record(...)`, not demo/client raw event scanning for source basis metadata.
+- Flow still covers action chain, policy / grants, artifact summary / structured `ResourceRef` / provenance, controlled content retrieval policy, replay, checkpoint, and disabled HTTP full-content route.
+- HTTP full-content route remains `not_enabled`.
+- No product artifact review facade / real filesystem upload / binary streaming / real HTTP server / real LLM / provider adapter / memory query engine / container / git worktree / process spawn / dependency.
+- Remaining friction is optional polish: explicit controlled retrieval parameters, deterministic review content, and no product artifact review facade.
+
+### Previous Batch Snapshot: Artifact Review Provenance Helper Package
+
+Batch name: `Artifact Review Provenance Helper Package`
+
+Status: `complete`
 
 Evidence:
 
@@ -370,24 +389,26 @@ Scope:
 
 ## 7. Next Suggested Batch
 
-Batch name: `Artifact Review Flow Closure Review`
+Batch name: `Second App Spike Selection`
 
 Status: `ready_docs_only`
 
 Possible tasks:
 
-1. Review `artifact-review` after source artifact helper and artifact provenance helper.
-2. Decide whether the spike can be marked closed / useful as first app spike.
-3. Identify remaining friction: controlled full-content retrieval verbosity, lack of product artifact review facade, or review-specific helper gaps.
-4. Docs/status sync and queue update only unless a clear bug is found.
+1. Review what `approval-tool-runner` and `artifact-review` proved.
+2. Compare the next pressure-test candidates without implementing them.
+3. Decide whether a second app spike is useful now or whether to refresh Kernel Gap Review first.
+4. If one candidate is clearly best and does not require product judgment, update queue with red-tests-only next batch.
+5. If the choice requires product / user judgment, mark queue `blocked_for_user_decision` and stop.
 
 Constraints:
 
 - docs-only by default.
+- do not start red tests or implementation in this batch unless queue is explicitly updated by user.
 - no real filesystem mutation.
 - no real LLM.
 - no real HTTP server / provider adapter / memory query engine.
-- no product artifact review facade without a separate boundary doc and red tests.
+- no product app facade without a separate boundary doc and red tests.
 - no event store append-only semantic changes.
 - no executor grants semantic changes.
 

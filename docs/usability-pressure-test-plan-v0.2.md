@@ -1,6 +1,6 @@
 # Usability Pressure Test Plan v0.2
 
-状态：`artifact review flow, demo trace, source artifact setup helper, and artifact provenance helper complete`
+状态：`artifact-review first app spike complete / closed for now`
 
 ## 1. Purpose
 
@@ -278,6 +278,29 @@ Remaining friction:
 
 - controlled full-content retrieval remains intentionally explicit with grants + caller context + purpose。
 - there is still no product-level artifact review facade, by design。
+
+## 15. Artifact Review Flow Closure
+
+状态：`first app spike complete / closed for now`
+
+Closure review: `docs/artifact-review-flow-closure-review.md`
+
+当前 closure 判断：
+
+- `artifact-review` no longer uses private `server._append(...)` for source setup。
+- `artifact-review` no longer scans raw events to find the source artifact basis event。
+- source artifact setup now uses `InProcessServer.create_source_artifact(...)`。
+- review provenance now uses `InProcessServer.get_artifact_record(...)`。
+- the flow still exercises action chain, policy / grants, artifact summary / `ResourceRef` / provenance, controlled content retrieval policy, replay, checkpoint, and disabled HTTP full-content route。
+- output remains summary / ref / status oriented and does not expose artifact full content。
+
+Remaining friction is optional polish, not blocker-level kernel or app-spike friction:
+
+- controlled full-content retrieval is explicit by design。
+- review content remains deterministic because there is still no real LLM。
+- a product-level artifact review facade remains intentionally deferred。
+
+Next suggested batch: `Second App Spike Selection`, docs-only by default. Stop if selecting the next spike requires product / user judgment.
 
 ## 12. Demo Trace Mode
 

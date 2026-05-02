@@ -1,6 +1,6 @@
 # Artifact Review Flow Friction Review
 
-状态：`complete; source artifact setup and provenance helper closed`
+状态：`complete; artifact-review first app spike closed for now`
 
 ## 1. Purpose
 
@@ -151,7 +151,20 @@ This remains a deterministic in-process setup helper, not a product artifact upl
 
 `artifact-review` now uses that helper to construct review provenance. Demo/client code no longer scans raw events for the source artifact created event.
 
-## 11. Remaining Friction
+## 11. Flow Closure
+
+Closure review: `docs/artifact-review-flow-closure-review.md`
+
+Current closure judgment:
+
+- `artifact-review` no longer uses private `server._append(...)` source setup glue。
+- `artifact-review` no longer scans raw events to find the source artifact basis event。
+- source artifact setup uses `InProcessServer.create_source_artifact(...)`。
+- review provenance uses `InProcessServer.get_artifact_record(...)`。
+- the flow still covers action chain, policy / grants, artifact summary / `ResourceRef` / provenance, controlled retrieval policy, replay, checkpoint, and disabled HTTP full-content route。
+- the first app spike is complete / closed for now。
+
+## 12. Remaining Friction
 
 Source artifact setup is closed.
 
@@ -160,6 +173,6 @@ Remaining `artifact-review` friction:
 - controlled retrieval remains explicit by design。
 - product-level artifact review facade remains intentionally deferred。
 
-Next suggested batch: `Artifact Review Flow Closure Review`, docs-only by default.
+Next suggested batch: `Second App Spike Selection`, docs-only by default.
 
 Stop if the next slice requires product review semantics, real filesystem mutation, real LLM, real HTTP server, provider adapter, memory query engine, event store semantic changes, executor grants semantic changes, new dependency, or `/home/lumber/Github/x-agent` changes.

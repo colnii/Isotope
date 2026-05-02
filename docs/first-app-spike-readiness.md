@@ -135,4 +135,8 @@ Source artifact setup helper is complete: `docs/source-artifact-setup-helper-bou
 
 Source artifact helper closure review is complete: `docs/source-artifact-helper-closure-review.md`.
 
-Remaining recommended work: run a docs-only artifact review flow second friction review before expanding the scenario.
+Artifact provenance helper is complete: `docs/artifact-review-provenance-helper-boundary-v0.2.md`.
+
+Artifact review flow closure review is complete: `docs/artifact-review-flow-closure-review.md`.
+
+Current judgment: `artifact-review` is first app spike complete / closed for now. Remaining friction is optional polish, not blocker-level friction. The next recommended step is docs-only `Second App Spike Selection`, not further expansion of this scenario by default.
