@@ -14,19 +14,31 @@
   - `docs/current-status.md`
   - `docs/v0.2-roadmap.md`
   - `docs/agent-task-queue.md`
-- 默认 batch timebox 是 45-60 min。
-- 每个 batch 应包含 3-5 个连续小任务，形成一个 work package。
-- 按 Current Batch 顺序执行任务，不要因为单个小任务完成就停下来等待用户。
 - 每个 implementation task 默认遵守 red -> green -> docs/status sync。
 - docs-only task 不得改 `src/`、`tests/`、`.github/` 或 `pyproject.toml`。
 - red-only task 只写 failing tests，不实现，不提交，除非 queue 明确要求继续 green。
 - 每完成一个小任务，可以在本文件记录 status / evidence，但继续执行同一 batch 的后续任务。
-- 只有遇到 stop condition，或整个 batch 完成，才停下来汇报。
-- 每个 batch 完成后，必须跑完整验证、docs/status sync、commit + push、更新 next suggested batch，然后停给用户 review。
 - 不要自行进入未列出的新 Track。
 - 如果 queue 与用户最新明确指令冲突，以用户最新明确指令为准，并同步 queue。
 
-## 3. Stop Conditions
+## 3. Execution Mode
+
+Rolling batch mode.
+
+Default session timebox: `45-60 min`.
+
+Rules:
+
+- Execute Current Batch first.
+- If Current Batch is clean and time remains, continue with Next Suggested Batch.
+- Promote Next Suggested Batch to Current Batch only after updating this queue.
+- Each batch must finish with verification and commit / push before starting the next.
+- Do not stop after every batch unless a stop condition fires.
+- Stop when the timebox is near, a stop condition fires, there is no clear next batch, or the next batch requires user decision.
+- Do not invent unlisted work just to fill time.
+- If selecting a spike requires product / user judgment, stop instead of choosing arbitrarily.
+
+## 4. Stop Conditions
 
 遇到以下情况必须停止并汇报，不继续：
 
@@ -41,9 +53,10 @@
 - 需要修改 event store append-only 语义
 - 需要进入 real concurrency / process spawn / container / git worktree
 - docs/code 状态冲突且无法确定 source of truth
+- selecting a spike requires product / user judgment
 - 用户明确要求暂停
 
-## 4. Verification Baseline
+## 5. Verification Baseline
 
 每个 batch 至少跑：
 
@@ -68,117 +81,99 @@ git status --short
 
 当前 baseline：`831 passed`。
 
-## 5. Current Batch
-
-Batch name: `Retry / Cancel / Supersede Stabilization`
-
-Timebox: 45-60 min
-
-Status: `complete`
-
-Goal: stabilize the first Retry / Cancel / Supersede slice as one 45-60 minute work package, then stop for user review.
-
-### Task 1: Retry / Cancel / Supersede closure review
-
-Status: `complete`
-
-Evidence:
-
-- Reviewed `projector.py`, RCS tests, checkpoint expectations, and docs.
-- Boundary remains first-slice complete; no scheduler / process kill / real concurrency was introduced.
-
-Scope:
-
-- review recent implementation
-- confirm current boundary can be marked first slice complete
-- docs-only unless bug found
-
-### Task 2: Retry / Cancel / Supersede malformed event hardening
-
-Status: `complete`
-
-Evidence:
-
-- Added red tests for retry basis mismatch, retry replacement identity reuse, stale projector retry request state, cancel proposal / execution mismatch, missing cancel request, cancel basis mismatch, supersede basis mismatch, and supersede replacement identity reuse.
-- Red result before implementation: `8 failed, 17 passed`.
-- Green result after implementation: targeted RCS tests `25 passed`.
-
-Scope:
-
-- red -> green
-- add tests for malformed retry / cancel / supersede payloads
-- ensure controlled `ValueError`
-- ensure no partial read model mutation
-
-### Task 3: Retry / Cancel / Supersede checkpoint/replay hardening
-
-Status: `complete`
-
-Evidence:
-
-- Added checkpoint-assisted rebuild checks for retry, cancel, and supersede read models.
-- Verified assisted rebuild matches full event replay for all three RCS read-model fields.
-
-Scope:
-
-- red -> green if needed
-- ensure retry / cancel / supersede read-model fields replay and checkpoint-assisted rebuild consistently
-- if already covered, document evidence and skip implementation
-
-### Task 4: Docs/status sync
-
-Status: `complete`
-
-Evidence:
-
-- Synced RCS boundary doc, current status, roadmap, queue, README, and AGENTS.
-- Baseline updated to `831 passed`.
-
-Scope:
-
-- update `docs/retry-cancel-supersede-boundary-v0.2.md`
-- update `docs/current-status.md`
-- update `docs/v0.2-roadmap.md`
-- update `docs/agent-task-queue.md`
-- update README / AGENTS only if needed
-
-### Task 5: Stop for user review
-
-Status: `complete`
-
-Evidence:
-
-- Current batch is complete.
-- Next suggested batch remains planning-only until user confirms.
-
-Scope:
-
-- do not start next batch
-- report results and next suggested batch
-
-## 6. Next Suggested Batch
+## 6. Current Batch
 
 Batch name: `Kernel Usability Pressure Test Planning`
 
-Possible tasks:
+Timebox: part of rolling 45-60 min session
 
-- docs-only pressure test boundary
-- define first tiny app spike candidate
-- decide whether Agent / Workspace / RCS are sufficient to begin
+Status: `ready`
 
-Do not start this next batch without explicit user confirmation or an updated queue that marks it as Current Batch.
+Goal: define the first usability pressure test boundary and decide whether the current kernel slices are enough to begin a tiny app spike.
 
-## 7. Maintenance
+### Task 1: Docs-only usability pressure test boundary
+
+Status: `ready`
+
+Scope:
+
+- add `docs/usability-pressure-test-plan-v0.2.md`
+- judge what the first tiny app spike should be
+- no implementation
+- no new tests
+
+### Task 2: Decide first tiny app spike candidate
+
+Status: `ready`
+
+Compare:
+
+- file summarizer
+- artifact review flow
+- approval-gated tool runner
+- research assistant mini flow
+
+Scope:
+
+- select one spike that best fits the current kernel
+- explain why it fits better than the alternatives
+- if product / user judgment is required, stop instead of choosing arbitrarily
+
+### Task 3: Update queue
+
+Status: `ready`
+
+Scope:
+
+- if safe to continue, set Next Suggested Batch to selected spike red tests only
+- if user judgment is required, stop
+- do not start implementation unless the queue explicitly marks it safe
+
+## 7. Next Suggested Batch
+
+Batch name: `Selected Usability Spike Red Tests`
+
+Status: `pending current batch decision`
+
+Possible shape:
+
+- add spike-specific tests
+- red phase only
+- no implementation unless Current Batch explicitly marks it safe
+
+Do not start this next batch if selecting the spike requires product / user judgment.
+
+## 8. Completed Batch Log
+
+### Retry / Cancel / Supersede Stabilization
+
+Status: `complete`
+
+Evidence:
+
+- Targeted RCS tests: `25 passed`.
+- Full regression: `831 passed`.
+- Added basis linkage / replacement identity / cancel request ordering / projector reuse hardening.
+- Verified retry / cancel / supersede checkpoint-assisted rebuild.
+- No scheduler / process kill / tool-level cancellation / real concurrency / new dependency.
+
+## 9. Maintenance
 
 When a task completes:
 
 - change its status from `ready` / `in_progress` to `complete`
 - add a short evidence note with tests / demo / commit hash if committed
 - update Current Batch status when all tasks are complete
-- write the next suggested batch without starting it
+- write or promote the next suggested batch before starting it
 
 When a stop condition triggers:
 
 - leave the incomplete task status as `blocked`
 - record the stop reason
 - do not continue with later tasks
+
+When rolling forward:
+
+- first update this queue so the promoted batch is visible as Current Batch
+- commit / push the completed batch before beginning the promoted batch
+- do not invent unlisted work just to fill time
