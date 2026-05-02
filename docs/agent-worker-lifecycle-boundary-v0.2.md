@@ -1,6 +1,6 @@
 # Agent / Worker Lifecycle Boundary v0.2
 
-状态：`first green slice implemented`
+状态：`first slice complete`
 
 ## 1. Purpose
 
@@ -28,7 +28,7 @@ Agent / Worker lifecycle 是 Kernel Gap Review v0.2 后的最高优先级 kernel
 - approval boundary：pending / approved / denied / duplicate conflict 已可 event-source 和 checkpoint。
 - workspace boundary：当前只有 `shared_ro` grants binding。
 
-这些能力证明 kernel 可以约束 execution。当前 first green slice 已把 supervisor / worker / delegation read model 接入 `RunProjector`，但仍不是 real multi-agent runtime。
+这些能力证明 kernel 可以约束 execution。当前 first slice 已把 supervisor / worker / delegation read model 接入 `RunProjector`，但仍不是 real multi-agent runtime。
 
 ## 3. Current Gaps
 
@@ -39,8 +39,8 @@ Agent / Worker lifecycle 是 Kernel Gap Review v0.2 后的最高优先级 kernel
 - delegation proposal / policy decision 已有 projector-level boundary，但还没有 product-level delegation API。
 - worker promotion / persistence 未定义。
 - worker workspace binding 仍只有 shared read-only boundary。
-- worker failure / cancellation / supersede 未定义。
-- worker result handoff 未定义。
+- worker failure / cancellation 已有 first-slice status；supersede 未定义。
+- worker result handoff 已有 artifact / `ResourceRef` / event boundary；更复杂 handoff 未定义。
 - multi-worker concurrency 未定义。
 - worker read model 已进入 `RunState.workers`；agent read model 已进入 `RunState.agents`。
 
@@ -164,9 +164,9 @@ Worker result 不能直接写 native run state。允许的 handoff 形态：
 - worker auth / identity
 - production queue / job runner
 
-## 7. Implemented First Green Slice
+## 7. Implemented First Slice
 
-第一批 red tests 已落地并 green：
+第一批 red tests 已落地并 green，当前可标为 first slice complete：
 
 - `tests/isotope_kernel/test_agent_worker_lifecycle_boundary.py`
 - `tests/isotope_kernel/test_delegation_policy_boundary.py`
@@ -190,7 +190,7 @@ Worker result 不能直接写 native run state。允许的 handoff 形态：
 
 ## 8. Acceptance For This Boundary
 
-该 boundary 当前可以被视为 first-slice green，当：
+该 boundary 当前可以被视为 first slice complete：
 
 - worker lifecycle 不再只是 `agent_runtime.py` placeholder。
 - delegation / worker creation 的 policy path 明确。

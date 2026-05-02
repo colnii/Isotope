@@ -36,7 +36,7 @@
 
 | Area | Current status | Risk if deferred | Refactor difficulty if wrong | Blocks usability pressure test? | Suggested next action |
 | --- | --- | --- | --- | --- | --- |
-| Agent / worker lifecycle | first green slice | 中高：已有 `RunState.agents` / `RunState.workers`、delegation policy gate、event-sourced lifecycle 和 checkpoint support，但仍没有 real worker runtime / concurrency | 高 | 部分阻塞；workspace substrate 现在是更直接 blocker | keep slice narrow, move to workspace boundary |
+| Agent / worker lifecycle | first slice complete | 中高：已有 `RunState.agents` / `RunState.workers`、delegation policy gate、event-sourced lifecycle 和 checkpoint support，但仍没有 real worker runtime / concurrency | 高 | 部分阻塞；workspace substrate 现在是更直接 blocker | keep slice narrow, move to workspace boundary |
 | Delegation loop | missing | 中高：没有 delegation contract 时，多 worker / child task 容易变成 ad hoc server calls | 高 | 是，阻塞复杂 scenario | defer until agent / worker lifecycle drafted |
 | Real model loop | missing | 中：过早接 real LLM 会掩盖 kernel contract 缺口 | 中高 | 不阻塞当前 in-process pressure test | defer |
 | Workspace substrate | boundary-only | 高：当前只支持 `shared_ro` grants binding；真实 workspace read/write/isolation 如果晚设计，会影响 executor/tool/artifact/policy 边界 | 高 | 是，阻塞真实 tool pressure test | docs-only boundary, then red tests for workspace grants and isolation |
@@ -65,7 +65,7 @@
 - 当前 `agent_runtime.py` 只是 boundary placeholder；如果先做 real HTTP server 或 provider adapter，runtime orchestration 会在没有 contract 的情况下扩散。
 - 设计应先回答：worker identity、run ownership、step loop、who proposes action、who waits、who resumes、who records lifecycle events。
 
-当前设计入口：`docs/agent-worker-lifecycle-boundary-v0.2.md`。第一批 red tests 已 green：supervisor / worker read model、delegation policy gate、worker lifecycle event sourcing、worker workspace grants、result handoff、replay 和 checkpoint support 均已锁住。下一步不要实现 real model loop，应转入 Workspace substrate boundary。
+当前设计入口：`docs/agent-worker-lifecycle-boundary-v0.2.md`。第一批 red tests 已 green，first slice 可标为 complete：supervisor / worker read model、delegation policy gate、worker lifecycle event sourcing、worker workspace grants、result handoff、replay 和 checkpoint support 均已锁住。下一步不要实现 real model loop，应转入 Workspace substrate boundary。
 
 ### 4.2 Workspace Substrate
 
@@ -151,7 +151,7 @@
 - Retry / cancel / supersede lifecycle 未定义
 - Policy profile / action registry versioning 未定义
 
-结论：Agent / Worker Lifecycle first green slice 已落地；下一步应继续补 Workspace Substrate 设计，再进入更真实的 usability pressure test。
+结论：Agent / Worker Lifecycle first slice 已 complete；下一步应继续补 Workspace Substrate 设计，再进入更真实的 usability pressure test。
 
 ## 7. Non-Goals For This Review
 
