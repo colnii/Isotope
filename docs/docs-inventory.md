@@ -29,6 +29,7 @@
 - 加上 Agent / Worker Lifecycle Boundary v0.2 后 docs Markdown：60 个。
 - 加上 Workspace Substrate Boundary v0.2 后 docs Markdown：61 个。当前仍不移动 docs 文件；workspace binding read model / policy boundary first slice 已 complete。
 - 加上 Agent Task Queue 后 docs Markdown：62 个。当前用于后续 45-60 分钟批次自动推进，先从 Retry / Cancel / Supersede Boundary Planning 开始。
+- 加上 Retry / Cancel / Supersede Boundary v0.2 后 docs Markdown：63 个。当前只定义 boundary 和 red-test 方向，实现尚未开始。
 
 ## 2. Current entrypoints
 
@@ -47,6 +48,7 @@
 - `docs/kernel-gap-review-v0.2.md`：v0.2 kernel gap review，记录稳定子系统、kernel gaps、优先级和下一步设计建议。
 - `docs/agent-worker-lifecycle-boundary-v0.2.md`：Agent / Worker lifecycle boundary，记录 supervisor / worker / delegation / worker read model / workspace binding / result handoff 的 first-slice design。
 - `docs/workspace-substrate-boundary-v0.2.md`：Workspace substrate boundary，记录 workspace as policy-bound execution resource、binding / lease / path safety / artifact capture / deferred substrate 的 first-slice complete 状态。
+- `docs/retry-cancel-supersede-boundary-v0.2.md`：Retry / Cancel / Supersede boundary，记录 action lifecycle retry / cancel / supersede 的 draft contract 和 red-test plan。
 - `docs/v0.2-mid-cycle-review.md`：mid-cycle decision，曾推荐进入 Track E；该 recommendation 已执行到 closure。
 - `docs/v0.2-next-track-selection.md`：Track C selection 的历史决策记录，已执行到 closure。
 - `docs/README.md`：kernel current-truth 文档包的阅读顺序入口。
@@ -64,7 +66,8 @@
 
 当前自动推进入口是 `docs/agent-task-queue.md`。Current Batch 是 `Retry / Cancel / Supersede Boundary Planning`，只允许先做 boundary docs 和 red tests；red-only task 后必须停，不进入 green phase。
 
-- `docs/agent-task-queue.md`：active queue，Current Batch ready。
+- `docs/agent-task-queue.md`：active queue，Current Batch in progress; Task 2 red tests ready。
+- `docs/retry-cancel-supersede-boundary-v0.2.md`：active boundary draft，next task is red tests only。
 - `docs/agent-worker-lifecycle-boundary-v0.2.md`：Agent / Worker lifecycle boundary，first slice complete。
 - `docs/workspace-substrate-boundary-v0.2.md`：Workspace substrate boundary，first slice complete。
 - `docs/external-ingestion-boundary-v0.2.md`：Track F external ingestion / `ImportedSnapshot` boundary，closed for now。
@@ -205,6 +208,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | `docs/post-v0.2-tag-delta.md` | Post-tag mainline delta review | current review |
 | `docs/release/release-draft-v0.1-demo.md` | Release draft text | draft / not published |
 | `docs/release-draft-v0.1-demo.md` | Release draft compatibility stub | stub / keep for one cycle |
+| `docs/retry-cancel-supersede-boundary-v0.2.md` | Retry / cancel / supersede action lifecycle boundary | draft / active queue |
 | `docs/server-checkpoint-boundary-v0.1.md` | Server checkpoint boundary | closed / frozen |
 | `docs/demo/v0.1-demo-acceptance.md` | Demo acceptance record | closed |
 | `docs/v0.2-cycle-closure-review.md` | v0.2 cycle closure decision | current review |

@@ -70,13 +70,19 @@ Batch name: `Retry / Cancel / Supersede Boundary Planning`
 
 Timebox: 45-60 min
 
-Status: `ready`
+Status: `in_progress`
 
 Goal: define the action lifecycle boundary for retry / cancel / supersede without opening implementation.
 
 ### Task 1: Retry / Cancel / Supersede Boundary docs-only
 
-Status: `ready`
+Status: `complete`
+
+Evidence:
+
+- Added `docs/retry-cancel-supersede-boundary-v0.2.md`.
+- Synced docs/status.
+- Implementation and red tests not started in this task.
 
 Scope:
 
@@ -105,7 +111,7 @@ Completion requirement:
 
 ### Task 2: Retry / Cancel / Supersede red tests only
 
-Status: `blocked until Task 1 complete`
+Status: `ready`
 
 Scope:
 
