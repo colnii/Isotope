@@ -1,6 +1,6 @@
 # Approval Tool Runner API Friction Review
 
-状态：`current; approval lookup and workspace binding helpers implemented`
+状态：`current; approval lookup, workspace binding, and submit action helpers implemented`
 
 ## 1. Purpose
 
@@ -12,14 +12,14 @@
 
 - `python -m isotope_kernel.demo --scenario approval-tool-runner`
 - `python -m isotope_kernel.demo --scenario approval-tool-runner --json`
-- full regression after workspace helper slice: `859 passed`
+- full regression after submit action helper slice: `865 passed`
 - spike 仍 deterministic / in-process / no real HTTP server / no real LLM / no provider adapter / no filesystem mutation
 
 ## 2. Friction Summary
 
 | Friction | Evidence | Classification | Impact | Suggested action |
 | --- | --- | --- | --- | --- |
-| approval-gated input uses `server.submit_tool_request(...)` | demo cannot express `requires_approval=True` through current HTTP `/runs/{run_id}/input` path | facade / helper gap | medium | do after approval lookup helper, unless the next spike needs this first |
+| approval-gated input used `server.submit_tool_request(...)` | demo could not express approval-gated action through a compact action helper | facade / helper gap | medium | fixed by `InProcessServer.submit_action(...)` |
 | approval id lookup scans canonical events | demo used to find `approval_id` by scanning events after pending approval | read-model helper gap | medium-high | fixed by approval lookup helper |
 | workspace binding uses explicit `workspace.bound` | demo previously appended a canonical workspace binding event for the spike | kernel / server integration gap | high, but bounded | fixed by workspace binding helper |
 
@@ -29,11 +29,13 @@ No correctness bug was found in the current spike. The awkwardness is useful evi
 
 ### Does `server.submit_tool_request(...)` show a missing approval-gated helper?
 
-Yes, but this is primarily a facade/helper gap, not a kernel contract bug.
+Yes, and this has now been reduced by a server-level facade helper. It was primarily a facade/helper gap, not a kernel contract bug.
 
 The kernel already supports pending approval, canonical `approval.requested`, `approval.resolved`, resume through the executor path, and original `PolicyDecision.grants` preservation. The awkward part is that the demo needs to call the server helper directly because the current HTTP facade input route only models plain text input.
 
-What is missing is a natural helper such as a server-level approval-gated action submission API, or an explicit facade option that can request approval without bypassing action chain / policy / event log. This should not be rushed into the HTTP route shape until tests define whether the helper belongs in `InProcessServer`, `HttpApiApp`, or a scenario-oriented facade.
+The first helper slice adds `InProcessServer.submit_action(...)`. It accepts compact `call_tool` intent, still compiles to canonical `ActionProposal`, still runs policy, still uses `PolicyDecision.grants`, still preserves approval pause / resume, and still executes through the existing executor path.
+
+What remains missing is an HTTP input route decision. `POST /runs/{run_id}/input` still has no approval flag, and that should not be rushed into Track A without a separate boundary.
 
 ### Should approval id scanning become a read helper?
 
@@ -69,14 +71,14 @@ This does not silently become filesystem mutation, container setup, git worktree
 Kernel-layer issues:
 
 - Workspace binding ownership is integrated into a minimal server helper for `shared_ro`.
-- Future approval-gated action submission must still prove it cannot bypass action chain, policy, or canonical events.
+- Approval-gated action submission now has a narrow server helper and still cannot bypass action chain, policy, or canonical events.
 - Any workspace helper must prove requested mode cannot exceed `PolicyDecision.grants`.
 
 Facade/helper issues:
 
 - Approval lookup should use projected `RunState.approvals` instead of event scans.
 - A narrow helper can hide common read-model plumbing without changing kernel semantics.
-- An approval-gated submission helper may be useful later, but should be tested separately from read lookup.
+- `InProcessServer.submit_action(...)` is the current in-process helper; it is not a product API.
 
 Demo glue issues:
 
@@ -86,7 +88,8 @@ Demo glue issues:
 
 Acceptable v0 shape for now:
 
-- `server.submit_tool_request(..., requires_approval=True)` is explicit and still goes through policy / approval / executor boundaries.
+- `server.submit_tool_request(..., requires_approval=True)` remains compatible and still goes through policy / approval / executor boundaries.
+- `server.submit_action(..., requires_approval=True)` is the preferred current demo/helper surface for compact approval-gated actions.
 - `InProcessServer.bind_workspace(...)` is tolerable in v0 because it still creates only a canonical read-model binding and does not imply real workspace substrate.
 - No product-facing approval API, workspace API, real filesystem mutation, or real HTTP server is implied.
 
@@ -94,9 +97,17 @@ Acceptable v0 shape for now:
 
 ### A. Add ergonomic server helper for approval-gated action submission
 
-Useful, but not first.
+Implemented.
 
-This would make scenario code cleaner, but it risks mixing two concerns: action submission semantics and approval lookup ergonomics. It should follow a smaller read-helper slice unless a future pressure test specifically needs a one-call submit-and-return-approval shape.
+Implemented first slice:
+
+- `InProcessServer.submit_action(run_id, intent, requires_approval=False)`
+- compact `call_tool` intent enters the same canonical action chain
+- helper returns proposal / decision / approval / execution ids as applicable
+- pending approval does not execute or create artifact
+- requested capabilities cannot become grants
+- existing `submit_tool_request(...)` remains compatible
+- `approval-tool-runner` demo no longer calls raw `submit_tool_request(...)`
 
 ### B. Add approval lookup/read helper
 
@@ -136,14 +147,14 @@ The spike exposed concrete ergonomics gaps. Moving on immediately would leave th
 
 ## 6. Recommendation
 
-Recommended next batch after these helpers: reassess remaining spike friction before deciding whether an approval-gated submission helper is worth a separate boundary.
+Recommended next batch after these helpers: reassess remaining spike friction before deciding whether HTTP approval-gated input deserves a separate boundary.
 
 Rationale:
 
 - approval id event-scan glue is now removed.
 - workspace binding manual event glue is now removed.
-- `server.submit_tool_request(..., requires_approval=True)` remains the only visible API friction in the current approval-tool-runner spike.
-- approval-gated submission helper should still be protected by a dedicated boundary before implementation.
+- `server.submit_action(..., requires_approval=True)` now removes the raw helper glue from the current approval-tool-runner spike.
+- the remaining approval-gated submission friction is HTTP facade shape, not the server helper.
 
 Do not solve in the next batch:
 

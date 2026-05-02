@@ -1,10 +1,10 @@
 # Submit Tool Request Friction Review
 
-状态：`current; helper recommended`
+状态：`current; helper implemented`
 
 ## 1. Purpose
 
-本文 review `approval-tool-runner` spike 暴露的 remaining API friction：approval-gated input 仍需要直接调用 `InProcessServer.submit_tool_request(...)`。
+本文 review `approval-tool-runner` spike 曾暴露的 API friction：approval-gated input 需要直接调用 `InProcessServer.submit_tool_request(...)`。该 friction 当前已由 `InProcessServer.submit_action(...)` first slice 降低。
 
 本轮目标不是产品化 tool runner，也不是打开 HTTP product API。目标是判断这个 friction 属于 kernel design issue、server facade/helper gap、demo glue，还是可接受的 v0 shape。
 
@@ -12,13 +12,13 @@
 
 - `python -m isotope_kernel.demo --scenario approval-tool-runner`
 - `python -m isotope_kernel.demo --scenario approval-tool-runner --json`
-- full regression after workspace binding helper slice: `859 passed`
+- full regression after submit action helper slice: `865 passed`
 - approval lookup/read helper 已移除 event-scan approval id glue
 - workspace binding helper 已移除 manual `workspace.bound` glue
 
 ## 2. Finding
 
-`submit_tool_request(...)` 本身不是 correctness bug。它已经走：
+`submit_tool_request(...)` 本身不是 correctness bug，且仍保持兼容。它已经走：
 
 - compact intent -> canonical `ActionProposal`
 - `PolicyEngine.decide(...)`
@@ -28,18 +28,18 @@
 - artifact / `ResourceRef` handoff
 - event replay / checkpoint read model
 
-friction 在于命名和返回形状太接近 internal tool request：
+原 friction 在于命名和返回形状太接近 internal tool request：
 
 - demo 想表达的是 “submit an action that may require approval”，不是 “directly submit a tool request”。
 - helper caller 需要知道 `tool` / `text` / `requires_approval` 这组低层参数。
 - helper result 对 approval path 缺少一眼可读的 `proposal_id` / `decision_id` / `approval_id` summary。
-- `approval-tool-runner` JSON 仍记录 `submit_tool_request(...)`，使外部读者容易误解当前推荐 API 就是 raw tool helper。
+- `approval-tool-runner` JSON 曾记录 `submit_tool_request(...)`，使外部读者容易误解当前推荐 API 就是 raw tool helper。
 
 ## 3. Classification
 
 | Friction | Classification | Kernel impact | Suggested action |
 | --- | --- | --- | --- |
-| `submit_tool_request(...)` naming exposes tool-specific surface | server facade/helper gap | low | add narrow `submit_action(...)` helper |
+| `submit_tool_request(...)` naming exposes tool-specific surface | server facade/helper gap | low | fixed by narrow `submit_action(...)` helper |
 | approval-gated submission needs explicit `requires_approval=True` | server facade/helper gap | low-medium | keep explicit flag for now; do not infer approval |
 | result lacks compact id summary | helper shape gap | low | return proposal / decision / approval / execution ids |
 | direct HTTP `/runs/{run_id}/input` has no approval flag | deferred HTTP facade question | medium | defer; do not productize HTTP route in this slice |
@@ -138,13 +138,16 @@ Test goals:
 - existing `submit_tool_request(...)` behavior remains compatible
 - `approval-tool-runner` demo no longer calls raw `submit_tool_request(...)`
 
-## 8. Recommendation
+## 8. Outcome
 
-Proceed with a narrow `submit_action(...)` first slice.
+Narrow `submit_action(...)` first slice 已完成。
 
-Rationale:
+Outcome:
 
-- It directly addresses the only remaining visible friction in the current spike.
-- It does not require changing kernel contracts.
-- It keeps the HTTP facade deferred.
-- It reduces demo glue without hiding approval, workspace, artifact, replay, or checkpoint boundaries.
+- `InProcessServer.submit_action(...)` accepts compact `call_tool` intent.
+- It shares the same canonical action submission path as `submit_tool_request(...)`.
+- It returns proposal / decision / approval / execution ids as applicable.
+- It does not change approval resolution semantics.
+- It does not change event store append-only or executor grants semantics.
+- `approval-tool-runner` demo no longer directly calls raw `submit_tool_request(...)`.
+- HTTP approval-gated input remains deferred for a separate boundary.

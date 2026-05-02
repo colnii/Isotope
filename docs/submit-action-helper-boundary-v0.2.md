@@ -1,6 +1,6 @@
 # Submit Action Helper Boundary v0.2
 
-状态：`boundary; ready for red tests`
+状态：`first slice complete`
 
 ## 1. Purpose
 
@@ -10,7 +10,7 @@
 
 ## 2. Current Problem
 
-当前 demo/client 为了表达 approval-gated action，需要调用：
+helper 落地前，demo/client 为了表达 approval-gated action，需要调用：
 
 ```python
 server.submit_tool_request(
@@ -42,7 +42,14 @@ server.submit_action(
 )
 ```
 
-第一 slice 只要求支持现有 `call_tool` compact intent。不要泛化成 product action API。
+第一 slice 只支持现有 `call_tool` compact intent。不要泛化成 product action API。
+
+当前实现：
+
+- `InProcessServer.submit_action(...)`
+- `submit_tool_request(...)` 保持兼容，并共用内部 submission path
+- `approval-tool-runner` demo 已改用 `submit_action(...)`
+- full regression after green: `865 passed`
 
 ## 4. Required Semantics
 
@@ -99,7 +106,7 @@ No existing approval resolution, workspace binding, executor, or event store sem
 
 ## 7. Approval Tool Runner Usage
 
-After the helper exists, `approval-tool-runner` should use:
+`approval-tool-runner` now uses:
 
 - `submit_action(...)` for approval-gated submission
 - `get_pending_approvals(...)` / `get_approval(...)` for approval lookup
@@ -150,3 +157,7 @@ Still deferred:
 - completed path returns execution id and artifact ref
 - existing `submit_tool_request(...)` remains compatible
 - `approval-tool-runner` demo uses `submit_action(...)` instead of raw `submit_tool_request(...)`
+
+Current test file:
+
+- `tests/isotope_kernel/test_submit_action_helper.py`

@@ -21,7 +21,7 @@
 
 ## Current Phase
 
-- `v0.1-demo` and `v0.2-demo` developer demo tags exist; baseline is `859 passed`.
+- `v0.1-demo` and `v0.2-demo` developer demo tags exist; baseline is `865 passed`.
 - Track D: Demo / Docs Polish is effectively complete / closed for now.
 - Current Track A design doc: [docs/http-api-minimal-surface-v0.2.md](docs/http-api-minimal-surface-v0.2.md).
 - Track A has in-process `HttpApiApp` / `create_http_app(...)`, request validation / no-side-effect error boundary, response contract, demo smoke, duplicate-submit idempotency boundary, route inventory, and deferred route contract; it is effectively complete / closed for now and is not a real listening HTTP server.
@@ -36,7 +36,7 @@
 - v0.2 cycle closure is documented in [docs/v0.2-cycle-closure-review.md](docs/v0.2-cycle-closure-review.md). Default next mode is cleanup / docs organization / external review, not more runtime implementation.
 - Kernel Gap Review is documented in [docs/kernel-gap-review-v0.2.md](docs/kernel-gap-review-v0.2.md). Agent / Worker lifecycle boundary is now documented in [docs/agent-worker-lifecycle-boundary-v0.2.md](docs/agent-worker-lifecycle-boundary-v0.2.md), and the first slice is complete: `RunState.agents` / `RunState.workers`, delegation policy gate, checkpoint support, no real concurrency. Workspace substrate first slice is complete and documented in [docs/workspace-substrate-boundary-v0.2.md](docs/workspace-substrate-boundary-v0.2.md): `RunState.workspaces`, canonical `workspace.bound`, grants-bound `shared_ro` binding, replay, and checkpoint support; no container / git worktree / remote executor. Retry / Cancel / Supersede stabilization slice is complete and documented in [docs/retry-cancel-supersede-boundary-v0.2.md](docs/retry-cancel-supersede-boundary-v0.2.md): action lifecycle read models, basis linkage hardening, replay, and checkpoint support; no scheduler / process kill / real concurrency. Do not jump straight to real HTTP server, real LLM, memory query/promotion, provider adapter, or domain packs.
 - Docs migration planning is documented in [docs/docs-migration-plan.md](docs/docs-migration-plan.md). Phase 1 is closed / paused after `docs/release/` and `docs/demo/` migrations; do not move more docs files unless a task explicitly asks for migration execution.
-- Mainline batch automation is documented in [docs/agent-task-queue.md](docs/agent-task-queue.md). It uses rolling batch mode with a 45-60 min session timebox. Approval lookup and workspace binding helper first slices are complete; next suggested batch requires user confirmation before continuing.
+- Mainline batch automation is documented in [docs/agent-task-queue.md](docs/agent-task-queue.md). It uses rolling batch mode with a 45-60 min session timebox. Approval lookup, workspace binding, and submit action helper first slices are complete; next suggested batch requires user confirmation before continuing.
 - Real server boundary design only if Track A is explicitly reopened; artifact content HTTP route implementation only if Track C is explicitly reopened.
 - Optional docs polish can continue later, but it should not block v0.2 implementation.
 
@@ -87,6 +87,7 @@ git status --short
 - Retry / Cancel / Supersede boundary: [docs/retry-cancel-supersede-boundary-v0.2.md](docs/retry-cancel-supersede-boundary-v0.2.md)
 - Usability pressure test plan: [docs/usability-pressure-test-plan-v0.2.md](docs/usability-pressure-test-plan-v0.2.md)
 - Approval tool runner friction review: [docs/approval-tool-runner-friction-review.md](docs/approval-tool-runner-friction-review.md)
+- Submit action helper boundary: [docs/submit-action-helper-boundary-v0.2.md](docs/submit-action-helper-boundary-v0.2.md)
 - Docs migration plan: [docs/docs-migration-plan.md](docs/docs-migration-plan.md)
 - v0.2 demo readiness: [docs/demo/v0.2-demo-readiness.md](docs/demo/v0.2-demo-readiness.md)
 - v0.2 demo scenario: [docs/demo/v0.2-demo-scenario.md](docs/demo/v0.2-demo-scenario.md)

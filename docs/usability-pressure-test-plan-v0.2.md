@@ -1,6 +1,6 @@
 # Usability Pressure Test Plan v0.2
 
-状态：`first slice complete; friction reduced`
+状态：`first slice complete; submit action friction reduced`
 
 ## 1. Purpose
 
@@ -34,7 +34,7 @@ python -m isotope_kernel.demo --scenario approval-tool-runner --json
 - Retry / Cancel / Supersede read model。
 - event replay and checkpoint-assisted rebuild。
 
-当前 baseline：`859 passed`。
+当前 baseline：`865 passed`。
 
 ## 3. Hard Boundaries
 
@@ -103,7 +103,7 @@ python -m isotope_kernel.demo --scenario approval-tool-runner --json
 
 这个 spike 有意记录当前 kernel API awkwardness（不顺手处），不要把它隐藏成假 product API：
 
-- approval-gated input 目前需要直接调用 `server.submit_tool_request(..., requires_approval=True)`；`POST /runs/{run_id}/input` 还没有 approval flag。
+- approval-gated input 已改用 `server.submit_action(..., requires_approval=True)`；`POST /runs/{run_id}/input` 仍没有 approval flag。
 - workspace binding helper 已改用 `InProcessServer.bind_workspace(...)`；demo 不再手写 canonical `workspace.bound` payload。
 - `approval_id` discovery 已改用 approval lookup/read helper；demo 不再扫描 canonical events 找 approval id。
 
@@ -115,7 +115,7 @@ API friction review 已落文档：`docs/approval-tool-runner-friction-review.md
 
 结论：
 
-- `server.submit_tool_request(..., requires_approval=True)` 暴露 facade/helper gap，但不是 kernel correctness bug。
+- `server.submit_tool_request(..., requires_approval=True)` 曾暴露 facade/helper gap，但不是 kernel correctness bug；当前已由 `InProcessServer.submit_action(...)` first slice 降低。
 - `approval_id` discovery 扫描 canonical events 的 read-model helper gap 已处理。
 - manual `workspace.bound` 暴露 workspace binding ownership / server integration gap；该 gap 已用最小 server helper first slice 降低，但仍不代表真实 workspace substrate。
 - 不建议直接产品化 HTTP input、real tool runner、workspace filesystem mutation 或 approval UI。
@@ -136,4 +136,4 @@ API friction review 已落文档：`docs/approval-tool-runner-friction-review.md
 - product UI
 - automatic retry / scheduler / process kill
 
-approval lookup/read helper 已降低 demo/client event-scan glue；workspace binding helper 已降低 manual `workspace.bound` glue。remaining API friction 是 approval-gated input 仍使用 `server.submit_tool_request(..., requires_approval=True)`；不要直接产品化 HTTP input、workspace filesystem mutation 或 real tool runner。
+approval lookup/read helper 已降低 demo/client event-scan glue；workspace binding helper 已降低 manual `workspace.bound` glue；submit action helper 已降低 raw `submit_tool_request(...)` glue。remaining API friction 是 HTTP `/runs/{run_id}/input` 仍没有 approval flag；不要直接产品化 HTTP input、workspace filesystem mutation 或 real tool runner。

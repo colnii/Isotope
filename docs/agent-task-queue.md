@@ -81,39 +81,54 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 baseline：`859 passed`。
+当前 baseline：`865 passed`。
 
 ## 6. Current Batch
 
-Batch name: `Usability Friction Reduction Package 1`
+Batch name: `Usability Friction Reduction Package 2`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: reduce approval-tool-runner developer friction without opening product surfaces.
+Goal: reduce approval-tool-runner submit-action friction without opening product surfaces.
 
 Tasks:
 
-1. Approval Lookup Helper Closure Review: complete; helper first slice remains clean.
-2. Workspace Binding Helper Friction Review: complete; added `docs/workspace-binding-helper-friction-review.md`.
-3. Workspace Binding Helper Boundary Docs: complete; added `docs/workspace-binding-helper-boundary-v0.2.md`.
-4. Workspace Binding Helper Red Tests: complete; added `tests/isotope_kernel/test_workspace_binding_helper.py`.
-5. Workspace Binding Helper Green Slice: complete; added `InProcessServer.bind_workspace(...)` and updated approval-tool-runner demo.
+1. Submit Tool Request Friction Review: complete; added `docs/submit-tool-request-friction-review.md`.
+2. Submit Action Helper Boundary Docs: complete; added `docs/submit-action-helper-boundary-v0.2.md`.
+3. Submit Action Helper Red Tests: complete; added `tests/isotope_kernel/test_submit_action_helper.py`.
+4. Submit Action Helper Green Slice: complete; added `InProcessServer.submit_action(...)`.
+5. Approval Tool Runner Glue Reduction: complete; approval-tool-runner demo now uses approval lookup helper, workspace binding helper, and submit action helper.
 6. Docs / status sync + queue update: complete; stop for user review.
 
 Evidence:
 
-- Workspace helper red targeted result: `6 failed`.
-- Full with workspace helper red tests: `6 failed, 853 passed`; failures were from this package.
-- Workspace helper targeted green result: `6 passed`.
-- Full regression: `859 passed`.
+- Submit action helper red targeted result: `5 failed, 1 passed`.
+- Full with submit action helper red tests: `5 failed, 860 passed`; failures were from this package.
+- Submit action helper targeted green result: `6 passed`.
+- Full regression: `865 passed`.
 - v0.1 demo plain / JSON: pass.
 - v0.2 demo plain / JSON: pass.
 - approval-tool-runner demo plain / JSON: pass.
-- Added `InProcessServer.bind_workspace(run_id, decision, bound_to=None)`.
-- Updated `approval-tool-runner` demo to stop hand-writing `workspace.bound` payload.
+- Added `InProcessServer.submit_action(run_id, intent, requires_approval=False)`.
+- Existing `submit_tool_request(...)` remains public / compatible.
+- Updated `approval-tool-runner` demo to stop directly calling raw `submit_tool_request(...)`.
 - No real HTTP server / real LLM / provider adapter / filesystem mutation / container / git worktree / process spawn / dependency.
+
+### Previous Batch Snapshot: Usability Friction Reduction Package 1
+
+Batch name: `Usability Friction Reduction Package 1`
+
+Status: `complete`
+
+Evidence:
+
+- Approval lookup helper closure review found no bug.
+- Workspace binding helper friction review and boundary docs landed.
+- Added `InProcessServer.bind_workspace(...)`.
+- Updated `approval-tool-runner` demo to stop hand-writing `workspace.bound` payload.
+- Full regression after package: `859 passed`.
 
 ### Previous Batch Snapshot: Approval Tool Runner API Friction Review
 
@@ -218,7 +233,7 @@ Closure:
 
 - `approval-gated tool runner` first slice is complete.
 - It exercises approval pause / resume, workspace binding read model, artifact / `ResourceRef` handoff, replay, checkpoint, and in-process HTTP facade.
-- Exposed API friction at that time: approval-gated input used `server.submit_tool_request(...)`, workspace binding required explicit `workspace.bound`, and `approval_id` lookup scanned events. Later helper slices have resolved approval lookup and workspace binding glue; remaining friction is approval-gated input submission.
+- Exposed API friction at that time: approval-gated input used `server.submit_tool_request(...)`, workspace binding required explicit `workspace.bound`, and `approval_id` lookup scanned events. Later helper slices have resolved approval lookup, workspace binding glue, and server-level submit action glue; remaining friction is HTTP approval-gated input shape.
 
 ### Task 5: Update queue with next suggested batch
 
@@ -244,16 +259,16 @@ Scope:
 
 ## 7. Next Suggested Batch
 
-Batch name: `Approval-Gated Submission Helper Boundary`
+Batch name: `HTTP Approval Input Boundary Review`
 
 Status: `pending_user_confirmation`
 
 Possible shape:
 
-- docs-only boundary for a less awkward approval-gated action submission helper
-- decide whether helper belongs in `InProcessServer`, `HttpApiApp`, or scenario-only facade
-- if confirmed, red tests for replacing direct `server.submit_tool_request(..., requires_approval=True)` usage
-- do not implement without explicit user confirmation
+- docs-only review of whether `POST /runs/{run_id}/input` should gain an approval-gated option or stay simple
+- compare HTTP facade route shape vs keeping approval-gated submission server-only
+- do not implement HTTP route without explicit user confirmation and red tests
+- keep real HTTP server / product approval API deferred
 
 ## 8. Completed Batch Log
 
@@ -274,7 +289,26 @@ Evidence:
 - Added `InProcessServer.bind_workspace(...)`.
 - Updated `approval-tool-runner` demo to use helper instead of manual `workspace.bound`.
 - No real HTTP server / real LLM / provider adapter / filesystem mutation / container / git worktree / process spawn / new dependency.
-- Stop reason: package complete; next approval-gated submission helper boundary needs user confirmation.
+- Stop reason: package complete; next approval-gated submission helper boundary needed user confirmation and was later completed in Package 2.
+
+### Usability Friction Reduction Package 2
+
+Status: `complete`
+
+Evidence:
+
+- Added `docs/submit-tool-request-friction-review.md`.
+- Added `docs/submit-action-helper-boundary-v0.2.md`.
+- Added `tests/isotope_kernel/test_submit_action_helper.py`.
+- Red targeted result: `5 failed, 1 passed`.
+- Full with red tests: `5 failed, 860 passed`.
+- Targeted green result: `6 passed`.
+- Full regression: `865 passed`.
+- Added `InProcessServer.submit_action(...)`.
+- Existing `submit_tool_request(...)` remains compatible.
+- Updated `approval-tool-runner` demo to use submit action helper plus existing approval lookup and workspace binding helpers.
+- No real HTTP server / real LLM / provider adapter / filesystem mutation / container / git worktree / process spawn / new dependency.
+- Stop reason: package complete; next HTTP approval input boundary requires user confirmation.
 
 ### Approval Lookup Helper Boundary
 

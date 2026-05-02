@@ -32,7 +32,7 @@ Commits included in `v0.2-demo..main` at this review:
 - `8474d78` docs: close external ingestion boundary track
 - `68ea007` docs: review post v0.2 tag delta
 
-The main technical delta is Track F: External Ingestion / `ImportedSnapshot` Boundary, followed by Agent / Worker lifecycle first slice, Workspace substrate first slice, Retry / Cancel / Supersede stabilization slice, approval lookup helper, and workspace binding helper.
+The main technical delta is Track F: External Ingestion / `ImportedSnapshot` Boundary, followed by Agent / Worker lifecycle first slice, Workspace substrate first slice, Retry / Cancel / Supersede stabilization slice, approval lookup helper, workspace binding helper, and submit action helper.
 
 ## 4. What Track F Adds
 
@@ -66,7 +66,7 @@ HTTP `/external-ingestion` remains `501 not_enabled`.
 
 Do not move or force-update `v0.2-demo`.
 
-Default recommendation: do not create `v0.2.1-demo` yet. Keep `v0.2-demo` as the accepted developer demo anchor and document that `main` is ahead of the tag with Track F boundary work, Agent / Worker lifecycle first slice, Workspace substrate first slice, Retry / Cancel / Supersede stabilization slice, approval lookup helper, and workspace binding helper.
+Default recommendation: do not create `v0.2.1-demo` yet. Keep `v0.2-demo` as the accepted developer demo anchor and document that `main` is ahead of the tag with Track F boundary work, Agent / Worker lifecycle first slice, Workspace substrate first slice, Retry / Cancel / Supersede stabilization slice, approval lookup helper, workspace binding helper, and submit action helper.
 
 Create a future `v0.2.1-demo` only if a reviewer or external reader needs a fixed tag that includes Track F external ingestion boundary / read-model / checkpoint support plus later agent / workspace / action-lifecycle first slices.
 
@@ -88,4 +88,4 @@ Current expected full regression baseline after later mainline slices is `831 pa
 
 `docs/v0.2-cycle-closure-review.md` records the current v0.2 cycle closure decision.
 
-Default next mode is cleanup / docs organization / external review, not additional runtime implementation. `v0.2.1-demo` remains optional and should only be prepared if an external reviewer needs a fixed tag that includes Track F, Agent / Worker lifecycle, Workspace substrate, Retry / Cancel / Supersede stabilization, approval lookup, and workspace binding helper slices.
+Default next mode is cleanup / docs organization / external review, not additional runtime implementation. `v0.2.1-demo` remains optional and should only be prepared if an external reviewer needs a fixed tag that includes Track F, Agent / Worker lifecycle, Workspace substrate, Retry / Cancel / Supersede stabilization, approval lookup, workspace binding, and submit action helper slices.

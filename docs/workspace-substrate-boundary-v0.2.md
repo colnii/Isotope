@@ -159,9 +159,9 @@ The slice should not turn workspace into product infrastructure. It should only 
 
 Current repo status remains:
 
-- current repo baseline: `859 passed`
+- current repo baseline: `865 passed`
 - current workspace implementation: `WorkspaceManager` shared read-only / grants validation, `RunState.workspaces` projection, and `InProcessServer.bind_workspace(...)`
 - no real substrate implementation from this document
 - first tests are implemented and green
 - closure review: `first slice complete`
-- next step, if requested: lease/path-safety boundary design or approval-gated submission helper, not real filesystem substrate
+- next step, if requested: lease/path-safety boundary design or HTTP approval input boundary, not real filesystem substrate

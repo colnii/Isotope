@@ -7,10 +7,10 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`53ab8ea20f566924b624ff8f15810163fd9833bd`。
+- 最新 implementation commit：`5c88f1b`。
 - memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for v0.1 demo planning：当前 memory 线只声明 boundary / read-model / checkpoint 能力，不声明 durable storage 或 query engine 已完成。
 - v0.1 demo entrypoint 已实现，详见 `docs/demo/demo-entrypoint-v0.1.md`；`python -m isotope_kernel.demo` 可输出 plain text summary，`--json` 可输出 JSON summary。
-- v0.1 developer demo 已按 `docs/demo/v0.1-demo-acceptance.md` accepted：acceptance anchor 当时依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过；当前 baseline 已随 workspace binding helper 更新为 `859 passed`。
+- v0.1 developer demo 已按 `docs/demo/v0.1-demo-acceptance.md` accepted：acceptance anchor 当时依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过；当前 baseline 已随 submit action helper 更新为 `865 passed`。
 - lightweight tag `v0.1-demo` 已创建并推送，指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`。
 - GitHub Release draft 已迁移到 `docs/release/release-draft-v0.1-demo.md`；旧路径 `docs/release-draft-v0.1-demo.md` 保留为 compatibility stub。尚未发布 GitHub Release。`main` 允许在 tag 后继续有 docs/status 更新，tag 仍是 demo acceptance anchor。
 - v0.2 roadmap 已开始，见 `docs/v0.2-roadmap.md`。Track D: Demo / Docs Polish 当前已 effectively complete / closed for now；Track A: HTTP API Minimal Surface 当前也已 effectively complete / closed for now，已完成 minimal surface、request validation / no-side-effect error boundary、response contract、demo smoke、idempotency boundary、route inventory 和 deferred route contract slices。
@@ -21,16 +21,17 @@
 - v0.2 demo readiness review 已落文档，见 `docs/demo/v0.2-demo-readiness.md`。此前记录的 Track A / C / E 展示 gap 已通过 v0.2 demo scenario 关闭。
 - v0.2 demo scenario 已落地，见 `docs/demo/v0.2-demo-scenario.md`。`python -m isotope_kernel.demo --scenario v0.2` 和 `python -m isotope_kernel.demo --scenario v0.2 --json` 已可运行，展示 `HttpApiApp` facade、controlled artifact content retrieval policy、approval pause / resume、checkpoint 和 memory `boundary_only`，同时保持 default v0.1 demo 兼容、no real HTTP server、no network listener、no memory storage/query、HTTP full-content route 仍 `not_enabled` / deferred。
 - approval-gated tool runner usability spike 已落地，见 `docs/usability-pressure-test-plan-v0.2.md`。`python -m isotope_kernel.demo --scenario approval-tool-runner` 和 `python -m isotope_kernel.demo --scenario approval-tool-runner --json` 已可运行，展示 approval pause / resume、workspace binding read model、artifact / `ResourceRef` handoff、replay 和 checkpoint，同时保持 deterministic / in-process / no real HTTP server / no real LLM / no provider adapter / no filesystem mutation。
-- Approval Tool Runner API Friction Review 已落文档，见 `docs/approval-tool-runner-friction-review.md`。结论：当前 spike 没暴露 correctness bug，但 developer ergonomics 仍偏 raw；approval id event-scan friction 已由 lookup/read helper 解决，manual `workspace.bound` glue 已由 workspace binding helper 解决。remaining friction 是 `server.submit_tool_request(..., requires_approval=True)` 仍偏 low-level。
+- Approval Tool Runner API Friction Review 已落文档，见 `docs/approval-tool-runner-friction-review.md`。结论：当前 spike 没暴露 correctness bug，但 developer ergonomics 仍偏 raw；approval id event-scan friction 已由 lookup/read helper 解决，manual `workspace.bound` glue 已由 workspace binding helper 解决，approval-gated submission friction 已由 `InProcessServer.submit_action(...)` helper 降低。remaining friction 主要是 HTTP `/runs/{run_id}/input` 仍没有 approval flag，且不应在未重新设计 Track A 时产品化。
 - Approval lookup/read helper 已实现：`InProcessServer.get_pending_approvals(run_id)` 和 `InProcessServer.get_approval(run_id, approval_id)` 从 projected `RunState.approvals` 返回 copied approval summaries；in-process HTTP facade 支持 `GET /runs/{run_id}/approvals` 和 `GET /runs/{run_id}/approvals/{approval_id}` read helper route，但 route inventory 仍不把 approval collection product API 标成 supported。`approval-tool-runner` demo 已停止扫描 events 找 `approval_id`。
 - Workspace binding helper 已实现，见 `docs/workspace-binding-helper-boundary-v0.2.md` 和 `docs/workspace-binding-helper-friction-review.md`。`InProcessServer.bind_workspace(run_id, decision, bound_to=None)` 使用 `WorkspaceManager.get_binding(decision.grants)` 派生 grants-bound `shared_ro` binding，append canonical `workspace.bound`，再从 projected `RunState.workspaces` 返回 copied binding summary。`approval-tool-runner` demo 已停止手写 `workspace.bound` payload；当前仍没有 HTTP workspace product route，也没有 filesystem mutation / container / git worktree / process spawn。
-- v0.2 demo acceptance 已落文档，见 `docs/demo/v0.2-demo-acceptance.md`。acceptance anchor 依据是 `735 passed`，v0.1 / v0.2 demo plain / JSON 成功，Track A / C / E 已在 v0.2 scenario 中可见。lightweight tag `v0.2-demo` 已创建并推送，指向 `09319e7407116d9f99f4a18853d4df23a8714720`；GitHub Release 未发布。这是 developer demo tag，不是 product release。当前 mainline baseline 是 `859 passed`。
+- Submit action helper 已实现，见 `docs/submit-tool-request-friction-review.md` 和 `docs/submit-action-helper-boundary-v0.2.md`。`InProcessServer.submit_action(run_id, intent, requires_approval=False)` 接受 compact `call_tool` intent，仍编译到 canonical `ActionProposal`，走 `PolicyDecision.grants`、approval boundary 和 executor path，并返回 proposal / decision / approval / execution ids。`submit_tool_request(...)` 保持兼容；`approval-tool-runner` demo 已改用 `submit_action(...)`，不再直接调用 raw `submit_tool_request(...)`。
+- v0.2 demo acceptance 已落文档，见 `docs/demo/v0.2-demo-acceptance.md`。acceptance anchor 依据是 `735 passed`，v0.1 / v0.2 demo plain / JSON 成功，Track A / C / E 已在 v0.2 scenario 中可见。lightweight tag `v0.2-demo` 已创建并推送，指向 `09319e7407116d9f99f4a18853d4df23a8714720`；GitHub Release 未发布。这是 developer demo tag，不是 product release。当前 mainline baseline 是 `865 passed`。
 - Track F external ingestion / `ImportedSnapshot` boundary 当前已 effectively complete / closed for now，见 `docs/external-ingestion-boundary-v0.2.md`。当前已有 `ingestion.py` fail-closed boundary、`ImportedSnapshot` slice model、`snapshot.imported` canonical event projection 到 `RunState.external_observations`；external observation read model 保留 snapshot id / type / source / freshness / quality / provenance / basis refs / status，进入 checkpoint state 并可通过 checkpoint-assisted rebuild 恢复。imported observation 不覆盖 native `RunState.status` / action status，projector 不读取 raw artifact content，native canonical state 优先，duplicate snapshot identity 受控，conflicting snapshots 标记 conflict。真实 provider adapter、external callback / webhook、OpenAI / Responses / GitHub integration、external ingestion HTTP API 和 imported-observation-driven native state 仍 deferred；HTTP `/external-ingestion` 仍 `501 not_enabled`，`server.ingest_external_input(...)` 仍 fail-closed / `not_enabled`。
-- Post `v0.2-demo` tag delta 已记录在 `docs/post-v0.2-tag-delta.md`。当前 `main` ahead of `v0.2-demo` 的主要增量是 Track F external ingestion boundary / read-model / checkpoint support、Agent / Worker lifecycle first slice、Workspace substrate first slice、Retry / Cancel / Supersede stabilization slice、approval lookup helper 和 workspace binding helper。默认不移动 `v0.2-demo`，也暂不创建 `v0.2.1-demo`；只有外部 reviewer 需要固定包含这些 post-tag slices 的锚点时再准备新 tag。
+- Post `v0.2-demo` tag delta 已记录在 `docs/post-v0.2-tag-delta.md`。当前 `main` ahead of `v0.2-demo` 的主要增量是 Track F external ingestion boundary / read-model / checkpoint support、Agent / Worker lifecycle first slice、Workspace substrate first slice、Retry / Cancel / Supersede stabilization slice、approval lookup helper、workspace binding helper 和 submit action helper。默认不移动 `v0.2-demo`，也暂不创建 `v0.2.1-demo`；只有外部 reviewer 需要固定包含这些 post-tag slices 的锚点时再准备新 tag。
 - v0.2 cycle closure review 已记录在 `docs/v0.2-cycle-closure-review.md`。当前建议暂停 v0.2 implementation，进入 cleanup / docs organization / external review mode；Track B real HTTP adapter、Track G memory query 和 real integrations 继续 deferred。
 - docs inventory 已落文档，见 `docs/docs-inventory.md`。当前记录已迁移 docs、compatibility stubs 和后续整理方向。
 - docs migration plan 已落文档，见 `docs/docs-migration-plan.md`。Phase 1 当前 closed / paused；后续不默认继续迁移 track / checkpoint / memory / kernel / current-status / roadmap docs。
-- agent task queue 已落文档，见 `docs/agent-task-queue.md`。后续默认使用 rolling batch mode：session timebox 为 45-60 min，先读 `docs/current-status.md`、`docs/v0.2-roadmap.md` 和 `docs/agent-task-queue.md`，执行 Current Batch；如果 clean 且时间充足，可以在更新 queue、完成验证和 commit / push 后把 Next Suggested Batch 提升为 Current Batch 继续执行。不要为了凑时间做未列出的任务，遇到 stop condition 或需要产品 / 用户判断时必须停。`Usability Friction Reduction Package 1` 当前 complete；Next Suggested Package 需要用户确认后再进入。
+- agent task queue 已落文档，见 `docs/agent-task-queue.md`。后续默认使用 rolling batch mode：session timebox 为 45-60 min，先读 `docs/current-status.md`、`docs/v0.2-roadmap.md` 和 `docs/agent-task-queue.md`，执行 Current Batch；如果 clean 且时间充足，可以在更新 queue、完成验证和 commit / push 后把 Next Suggested Batch 提升为 Current Batch 继续执行。不要为了凑时间做未列出的任务，遇到 stop condition 或需要产品 / 用户判断时必须停。`Usability Friction Reduction Package 2` 当前 complete；Next Suggested Package 需要用户确认后再进入。
 - Retry / Cancel / Supersede Boundary v0.2 first slice 和 stabilization slice 当前 complete，见 `docs/retry-cancel-supersede-boundary-v0.2.md`。当前已覆盖 `RunState.action_retries` / `RunState.action_cancellations` / `RunState.action_supersessions` read model、canonical retry / cancel / supersede slice events、malformed event fail-fast、basis linkage validation、replacement identity validation、projector reuse state reset、replay 和 checkpoint-assisted rebuild support。仍不实现 scheduler、automatic retry engine、process kill、tool-level cancellation 或 real concurrency。
 - docs migration Phase 1a / 1b / 1c 已执行并 audit clean：release draft 已迁移到 `docs/release/`，v0.1 demo explainer docs 和 demo acceptance/readiness/scenario docs 已迁移到 `docs/demo/`，旧路径均保留 stub。Phase 1 dry-run 和后续 checklist 见 `docs/docs-migration-phase-1-dry-run.md`。下一阶段可以转入 Kernel Gap Review。
 - Kernel Gap Review v0.2 已落文档，见 `docs/kernel-gap-review-v0.2.md`。当前判断：kernel 还不能宣布完成；下一块 kernel design 应优先做 Agent / worker lifecycle，其次是 Workspace substrate，再考虑 retry / cancel / supersede 和 policy profile / action registry versioning。real HTTP server、real LLM loop、memory storage/query/promotion、provider adapter/webhook、retrieval ranking 和 domain pack system 仍不应优先打开。
@@ -468,11 +469,11 @@
 - demo reports memory boundary status as `boundary_only`
 - v0.1 demo acceptance 已落文档：`docs/demo/v0.1-demo-acceptance.md`
 - current demo acceptance status is `accepted as developer demo`, not product runtime
-- demo acceptance evidence includes local `568 passed` at the v0.1 acceptance anchor; current mainline baseline is `859 passed` after the workspace binding helper slice
+- demo acceptance evidence includes local `568 passed` at the v0.1 acceptance anchor; current mainline baseline is `865 passed` after the submit action helper slice
 - v0.2 demo acceptance 已落文档：`docs/demo/v0.2-demo-acceptance.md`
 - Track F external ingestion boundary and external observation read-model invariants slices 已落地，并已 closed for now：`docs/external-ingestion-boundary-v0.2.md`
 - current v0.2 demo acceptance status is `accepted as v0.2 developer demo`, not product runtime
-- v0.2 acceptance evidence includes `735 passed` at the tag anchor, v0.1 demo plain / JSON success, v0.2 demo plain / JSON success, configured CI smoke, no `x_agent.*` imports, and `/home/lumber/Github/x-agent` untouched; current mainline baseline is `859 passed`
+- v0.2 acceptance evidence includes `735 passed` at the tag anchor, v0.1 demo plain / JSON success, v0.2 demo plain / JSON success, configured CI smoke, no `x_agent.*` imports, and `/home/lumber/Github/x-agent` untouched; current mainline baseline is `865 passed`
 - lightweight demo tag exists: `v0.2-demo` -> `09319e7407116d9f99f4a18853d4df23a8714720`
 - lightweight demo tag exists: `v0.1-demo` -> `b3d4e328e74378bec2fb524deb85233df5a5d4eb`
 - GitHub Release draft exists: `docs/release/release-draft-v0.1-demo.md`
@@ -650,7 +651,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-859 passed
+865 passed
 ```
 
 Import boundary check:
@@ -733,7 +734,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 下一步建议优先做：
 
 - optional GitHub Release draft for `v0.2-demo` if explicitly requested; do not publish a Release without a separate request
-- follow `docs/agent-task-queue.md` rolling batch mode；`Approval Lookup Helper Boundary` 和 workspace binding helper 已完成，降低了 approval id event-scan glue 和 manual `workspace.bound` glue。下一步不要自动继续；需要用户确认后再选择 approval-gated submission helper 或其他 pressure-test follow-up。
+- follow `docs/agent-task-queue.md` rolling batch mode；`Approval Lookup Helper Boundary`、workspace binding helper 和 submit action helper 已完成，降低了 approval id event-scan glue、manual `workspace.bound` glue 和 raw `submit_tool_request(...)` glue。下一步不要自动继续；需要用户确认后再选择 HTTP approval input boundary 或其他 pressure-test follow-up。
 - Workspace Substrate Boundary v0.2 first slice complete；后续如继续 workspace，应先做 lease/path-safety boundary design
 - Track F: closed for now; reopen only with a new design / red-test request such as provider adapter, webhook, HTTP ingestion API, or reconciliation boundary
 - reopen Track E only with an explicit design / red-test request, such as product approval UI / auth / scheduler boundary

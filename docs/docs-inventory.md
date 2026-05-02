@@ -32,7 +32,8 @@
 - 加上 Retry / Cancel / Supersede Boundary v0.2 后 docs Markdown：63 个。当前 first green slice 已 complete。
 - 加上 Usability Pressure Test Plan v0.2 后 docs Markdown：64 个。`approval-gated tool runner` first slice 已实现，当前用于记录 pressure test scope、green status 和 exposed API friction。
 - 加上 Approval Tool Runner API Friction Review 后 docs Markdown：65 个。当前用于记录 spike 暴露的 developer ergonomics 问题；approval lookup/read helper 已完成。
-- 加上 Workspace Binding Helper Friction Review 和 Boundary docs 后 docs Markdown：67 个。workspace binding helper first slice 已完成，remaining pressure-test friction 是 approval-gated submission helper。
+- 加上 Workspace Binding Helper Friction Review 和 Boundary docs 后 docs Markdown：67 个。workspace binding helper first slice 已完成。
+- 加上 Submit Tool Request Friction Review 和 Submit Action Helper Boundary docs 后 docs Markdown：69 个。submit action helper first slice 已完成，remaining pressure-test friction 是 HTTP approval-gated input boundary。
 
 ## 2. Current entrypoints
 
@@ -53,9 +54,11 @@
 - `docs/workspace-substrate-boundary-v0.2.md`：Workspace substrate boundary，记录 workspace as policy-bound execution resource、binding / lease / path safety / artifact capture / deferred substrate 的 first-slice complete 状态。
 - `docs/retry-cancel-supersede-boundary-v0.2.md`：Retry / Cancel / Supersede boundary，记录 action lifecycle retry / cancel / supersede 的 first-slice contract 和 green status。
 - `docs/usability-pressure-test-plan-v0.2.md`：Kernel usability pressure test plan，记录 tiny app spike candidate review、approved `approval-gated tool runner` first slice 和 API friction。
-- `docs/approval-tool-runner-friction-review.md`：Approval-gated tool runner API friction review，记录 `submit_tool_request(...)`、approval lookup helper 和 `workspace.bound` ergonomics 分层。
+- `docs/approval-tool-runner-friction-review.md`：Approval-gated tool runner API friction review，记录 `submit_tool_request(...)` friction、approval lookup helper、workspace binding helper 和 `submit_action(...)` outcome。
 - `docs/workspace-binding-helper-friction-review.md`：Workspace binding helper friction review，记录 manual `workspace.bound` glue 的分层和 helper outcome。
 - `docs/workspace-binding-helper-boundary-v0.2.md`：Workspace binding helper boundary，记录 `InProcessServer.bind_workspace(...)` first-slice contract。
+- `docs/submit-tool-request-friction-review.md`：Submit tool request friction review，记录 raw `submit_tool_request(...)` demo glue 的分层和 helper outcome。
+- `docs/submit-action-helper-boundary-v0.2.md`：Submit action helper boundary，记录 `InProcessServer.submit_action(...)` first-slice contract。
 - `docs/v0.2-mid-cycle-review.md`：mid-cycle decision，曾推荐进入 Track E；该 recommendation 已执行到 closure。
 - `docs/v0.2-next-track-selection.md`：Track C selection 的历史决策记录，已执行到 closure。
 - `docs/README.md`：kernel current-truth 文档包的阅读顺序入口。
@@ -71,13 +74,15 @@
 
 当前默认下一步是 docs-only kernel gap backlog，而不是 implementation track。`docs/agent-worker-lifecycle-boundary-v0.2.md` 已定义 Agent / Worker lifecycle boundary，`docs/workspace-substrate-boundary-v0.2.md` 已定义 Workspace substrate boundary，`docs/retry-cancel-supersede-boundary-v0.2.md` 已定义 Retry / Cancel / Supersede boundary；三者 first slice 均已 complete。后续可继续 lease/path-safety boundary design。
 
-当前自动推进入口是 `docs/agent-task-queue.md`。`Approval-Gated Tool Runner Spike` 已完成，API friction review 已落文档，approval lookup/read helper 和 workspace binding helper 已完成；next suggested package 需要用户确认后再执行。
+当前自动推进入口是 `docs/agent-task-queue.md`。`Approval-Gated Tool Runner Spike` 已完成，API friction review 已落文档，approval lookup/read helper、workspace binding helper 和 submit action helper 已完成；next suggested package 需要用户确认后再执行。
 
 - `docs/agent-task-queue.md`：active queue，Current Batch complete；Next Suggested Batch requires user confirmation。
 - `docs/usability-pressure-test-plan-v0.2.md`：current pressure-test planning doc，`approval-gated tool runner` first slice complete and friction reviewed。
 - `docs/approval-tool-runner-friction-review.md`：current API ergonomics review；approval lookup/read and workspace binding helper slices are complete。
 - `docs/workspace-binding-helper-friction-review.md`：current workspace helper friction review；implemented。
 - `docs/workspace-binding-helper-boundary-v0.2.md`：current workspace helper boundary；first slice complete。
+- `docs/submit-tool-request-friction-review.md`：current submit tool request friction review；implemented。
+- `docs/submit-action-helper-boundary-v0.2.md`：current submit action helper boundary；first slice complete。
 - `docs/retry-cancel-supersede-boundary-v0.2.md`：Retry / Cancel / Supersede boundary，first slice complete。
 - `docs/agent-worker-lifecycle-boundary-v0.2.md`：Agent / Worker lifecycle boundary，first slice complete。
 - `docs/workspace-substrate-boundary-v0.2.md`：Workspace substrate boundary，first slice complete。
