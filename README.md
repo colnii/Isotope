@@ -4,9 +4,9 @@ Isotope 是一个独立的 kernel-first agent runtime 项目，用来验证 cano
 
 当前状态：`v0.1-demo` 和 `v0.2-demo` developer demo tags 已存在；当前本地 baseline 是 `806 passed`。Track A: HTTP API Minimal Surface、Track C: Artifact Content Read Policy、Track E: Approval Pause / Resume Boundary 和 Track F: External Ingestion 都已 effectively complete / closed for now；Agent / Worker lifecycle first slice 已 complete。GitHub Release 未发布，详细状态见 [docs/current-status.md](docs/current-status.md)。
 
-`main` 当前 ahead of `v0.2-demo`，主要增量是 Track F external ingestion boundary；delta 记录见 [docs/post-v0.2-tag-delta.md](docs/post-v0.2-tag-delta.md)。暂不移动 `v0.2-demo` tag，也不发布 GitHub Release。
+`main` 当前 ahead of `v0.2-demo`，主要增量是 Track F external ingestion boundary、Agent / Worker lifecycle first slice 和 Workspace substrate first slice；delta 记录见 [docs/post-v0.2-tag-delta.md](docs/post-v0.2-tag-delta.md)。暂不移动 `v0.2-demo` tag，也不发布 GitHub Release。
 
-当前 v0.2 implementation cycle 已建议暂停，进入 cleanup / docs organization / external review mode；Kernel Gap Review 后已新增 Agent / Worker lifecycle boundary，并已完成 first slice；Workspace substrate boundary 也已定义，见 [docs/workspace-substrate-boundary-v0.2.md](docs/workspace-substrate-boundary-v0.2.md)。
+当前 v0.2 implementation cycle 已建议暂停，进入 cleanup / docs organization / external review mode；Kernel Gap Review 后已新增 Agent / Worker lifecycle boundary 和 Workspace substrate boundary，且两者 first slice 均已 complete，见 [docs/workspace-substrate-boundary-v0.2.md](docs/workspace-substrate-boundary-v0.2.md)。
 
 ## Quick Start
 

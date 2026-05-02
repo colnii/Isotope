@@ -10,7 +10,7 @@
 
 - tests: `806 passed`
 - `v0.2-demo` tag 已存在，指向 `09319e7407116d9f99f4a18853d4df23a8714720`
-- 当前 `main` 已在 tag 后完成 Track F External Ingestion / `ImportedSnapshot` boundary
+- 当前 `main` 已在 tag 后完成 Track F External Ingestion / `ImportedSnapshot` boundary、Agent / Worker lifecycle first slice 和 Workspace substrate first slice
 - Track D / A / C / E / F 已 effectively complete / closed for now
 - docs migration Phase 1 已 closed / paused
 
@@ -31,6 +31,7 @@
 | External observation boundary | implemented boundary | `ImportedSnapshot` / `snapshot.imported` / `external_observations` / conflict / checkpoint support 已覆盖 |
 | Memory boundary | boundary-only | memory records/read model/checkpoint boundary exists；durable storage/query/promotion 仍 deferred |
 | In-process HTTP facade | implemented boundary | `HttpApiApp` / `create_http_app(...)` 支持 minimal route inventory、validation、idempotency、deferred route contract |
+| Workspace binding boundary | first slice complete | `RunState.workspaces`、canonical `workspace.bound`、grants-bound `shared_ro` binding、replay 和 checkpoint support 已覆盖 |
 
 ## 3. Gap Review
 
@@ -39,7 +40,7 @@
 | Agent / worker lifecycle | first slice complete | 中高：已有 `RunState.agents` / `RunState.workers`、delegation policy gate、event-sourced lifecycle 和 checkpoint support，但仍没有 real worker runtime / concurrency | 高 | 部分阻塞；workspace substrate 现在是更直接 blocker | keep slice narrow, move to workspace boundary |
 | Delegation loop | missing | 中高：没有 delegation contract 时，多 worker / child task 容易变成 ad hoc server calls | 高 | 是，阻塞复杂 scenario | defer until agent / worker lifecycle drafted |
 | Real model loop | missing | 中：过早接 real LLM 会掩盖 kernel contract 缺口 | 中高 | 不阻塞当前 in-process pressure test | defer |
-| Workspace substrate | first green slice implemented | 中高：当前已有 `RunState.workspaces` / `workspace.bound` / checkpoint support，但真实 workspace read/write/isolation 仍未设计 | 高 | 部分阻塞；lease/path-safety 是下一 blocker | closure review, then lease/path-safety boundary |
+| Workspace substrate | first slice complete | 中高：当前已有 `RunState.workspaces` / `workspace.bound` / checkpoint support，但真实 workspace read/write/isolation 仍未设计 | 高 | 部分阻塞；lease/path-safety 是下一 blocker | lease/path-safety boundary |
 | Action type registry versioning | partial / boundary | 中高：当前 registry 是固定 minimal entries，缺少 action schema evolution / compatibility contract | 中高 | 部分阻塞 | docs-only design tied to policy profile |
 | Tool protocol | sketch | 中高：tool result/error/resource contract 不清会污染 event schema 和 executor ownership | 高 | 是，阻塞 external tool pressure test | docs-only protocol note after workspace boundary |
 | Retry / cancel / supersede | missing | 高：失败恢复、user stop、replacement action 都会影响 lifecycle ordering、run status 和 checkpoint consistency | 高 | 是，阻塞 longer-running usability pressure test | docs-only event/state machine design, then red tests |
@@ -77,7 +78,7 @@
 - 一旦进入真实 tool / file / sandbox pressure test，workspace grants、read/write modes、path scope、artifact handoff 和 cleanup 都会成为 hard boundary。
 - 如果 workspace substrate 设计错误，后续 executor、tool protocol、artifact provenance 和 policy profile 都要返工。
 
-当前设计入口：`docs/workspace-substrate-boundary-v0.2.md`。第一批 red tests 已 green，当前已固定 workspace 是 policy-bound execution resource、`RunState.workspaces` read model、canonical `workspace.bound`、binding must be policy-granted、write / isolated mode 不可隐式升级、artifact capture 必须走 artifact / provenance、projector 不能读取 workspace files 推进 native state、checkpoint-assisted rebuild 可恢复 workspace binding。下一步不要直接实现真实 substrate，应先做 closure review 或 lease/path-safety boundary。
+当前设计入口：`docs/workspace-substrate-boundary-v0.2.md`。第一批 slice 已 complete，当前已固定 workspace 是 policy-bound execution resource、`RunState.workspaces` read model、canonical `workspace.bound`、binding must be policy-granted、write / isolated mode 不可隐式升级、artifact capture 必须走 artifact / provenance、projector 不能读取 workspace files 推进 native state、checkpoint-assisted rebuild 可恢复 workspace binding。下一步不要直接实现真实 substrate，应先做 lease/path-safety boundary。
 
 ### 4.3 Retry / Cancel / Supersede
 
@@ -151,7 +152,7 @@
 - Retry / cancel / supersede lifecycle 未定义
 - Policy profile / action registry versioning 未定义
 
-结论：Agent / Worker Lifecycle first slice 已 complete，Workspace Substrate first green slice 已 implemented；下一步应做 Workspace closure review 或 lease/path-safety boundary，再进入更真实的 usability pressure test。
+结论：Agent / Worker Lifecycle first slice 已 complete，Workspace Substrate first slice 已 complete；下一步应做 lease/path-safety boundary，再进入更真实的 usability pressure test。
 
 ## 7. Non-Goals For This Review
 

@@ -27,7 +27,7 @@
 - Docs migration Phase 1 当前 closed / paused；后续暂不迁移 track / checkpoint / memory / kernel / current-status / roadmap docs，除非用户明确请求。
 - 加上 Kernel Gap Review v0.2 后 docs Markdown：59 个。当前下一阶段建议优先补 Agent / worker lifecycle 和 Workspace substrate 设计，而不是继续迁移文档或打开 real integrations。
 - 加上 Agent / Worker Lifecycle Boundary v0.2 后 docs Markdown：60 个。
-- 加上 Workspace Substrate Boundary v0.2 后 docs Markdown：61 个。当前仍不移动 docs 文件；workspace binding read model / policy boundary first green slice 已实现。
+- 加上 Workspace Substrate Boundary v0.2 后 docs Markdown：61 个。当前仍不移动 docs 文件；workspace binding read model / policy boundary first slice 已 complete。
 
 ## 2. Current entrypoints
 
@@ -40,11 +40,11 @@
 - `docs/demo/v0.2-demo-readiness.md`：v0.2 developer demo readiness review，记录此前 demo 展示范围和已关闭的 Track A / C / E scenario gap。
 - `docs/demo/v0.2-demo-scenario.md`：v0.2 demo scenario boundary / status，记录 implemented `--scenario v0.2` scope。
 - `docs/demo/v0.2-demo-acceptance.md`：v0.2 developer demo acceptance，记录 `v0.2-demo` tag 状态和 non-goals。
-- `docs/post-v0.2-tag-delta.md`：记录 `v0.2-demo` tag 之后 `main` 的 Track F 增量，以及暂不创建 `v0.2.1-demo` 的判断。
+- `docs/post-v0.2-tag-delta.md`：记录 `v0.2-demo` tag 之后 `main` 的 Track F / Agent Worker / Workspace 增量，以及暂不创建 `v0.2.1-demo` 的判断。
 - `docs/v0.2-cycle-closure-review.md`：记录当前 v0.2 implementation cycle closure，建议进入 cleanup / docs organization / external review mode。
 - `docs/kernel-gap-review-v0.2.md`：v0.2 kernel gap review，记录稳定子系统、kernel gaps、优先级和下一步设计建议。
 - `docs/agent-worker-lifecycle-boundary-v0.2.md`：Agent / Worker lifecycle boundary，记录 supervisor / worker / delegation / worker read model / workspace binding / result handoff 的 first-slice design。
-- `docs/workspace-substrate-boundary-v0.2.md`：Workspace substrate boundary，记录 workspace as policy-bound execution resource、binding / lease / path safety / artifact capture / deferred substrate 的 first-slice design。
+- `docs/workspace-substrate-boundary-v0.2.md`：Workspace substrate boundary，记录 workspace as policy-bound execution resource、binding / lease / path safety / artifact capture / deferred substrate 的 first-slice complete 状态。
 - `docs/v0.2-mid-cycle-review.md`：mid-cycle decision，曾推荐进入 Track E；该 recommendation 已执行到 closure。
 - `docs/v0.2-next-track-selection.md`：Track C selection 的历史决策记录，已执行到 closure。
 - `docs/README.md`：kernel current-truth 文档包的阅读顺序入口。
@@ -58,10 +58,10 @@
 
 当前没有默认打开的 implementation track。Track F external ingestion 当前已完成 boundary 和 external observation read-model invariant green slices，并已 effectively complete / closed for now；下一步如继续，应先写新的 red tests，不要直接实现 provider adapter / ingestion API。
 
-当前默认下一步是 docs-only kernel gap backlog，而不是 implementation track。`docs/agent-worker-lifecycle-boundary-v0.2.md` 已定义 Agent / Worker lifecycle boundary，`docs/workspace-substrate-boundary-v0.2.md` 已定义 Workspace substrate boundary；workspace binding read model / policy boundary first green slice 已实现。后续可做 closure review，或继续 lease/path-safety boundary design。
+当前默认下一步是 docs-only kernel gap backlog，而不是 implementation track。`docs/agent-worker-lifecycle-boundary-v0.2.md` 已定义 Agent / Worker lifecycle boundary，`docs/workspace-substrate-boundary-v0.2.md` 已定义 Workspace substrate boundary；workspace binding read model / policy boundary first slice 已 complete。后续可继续 lease/path-safety boundary design。
 
-- `docs/agent-worker-lifecycle-boundary-v0.2.md`：Agent / Worker lifecycle boundary，draft boundary。
-- `docs/workspace-substrate-boundary-v0.2.md`：Workspace substrate boundary，draft boundary。
+- `docs/agent-worker-lifecycle-boundary-v0.2.md`：Agent / Worker lifecycle boundary，first slice complete。
+- `docs/workspace-substrate-boundary-v0.2.md`：Workspace substrate boundary，first slice complete。
 - `docs/external-ingestion-boundary-v0.2.md`：Track F external ingestion / `ImportedSnapshot` boundary，closed for now。
 - `docs/approval-pause-resume-boundary-v0.2.md`：Track E approval pause / resume boundary，closed for now。
 - Supporting current docs:
@@ -155,7 +155,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | --- | --- | --- |
 | `docs/README.md` | Kernel current-truth reading order | current entrypoint |
 | `docs/action-type-registry-v0.1.md` | Action registry design/status | closed / reference |
-| `docs/agent-worker-lifecycle-boundary-v0.2.md` | Agent / Worker lifecycle boundary | draft boundary |
+| `docs/agent-worker-lifecycle-boundary-v0.2.md` | Agent / Worker lifecycle boundary | first slice complete |
 | `docs/approval-pause-resume-boundary-v0.2.md` | Track E approval pause / resume boundary | closed for now |
 | `docs/artifact-content-read-policy-v0.2.md` | Track C boundary | closed for now |
 | `docs/checkpoint-history-fallback-v0.1.md` | Checkpoint fallback boundary | closed / frozen |

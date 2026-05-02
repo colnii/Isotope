@@ -1,6 +1,6 @@
 # Workspace Substrate Boundary v0.2
 
-状态：`first green slice implemented`
+状态：`first slice complete`
 
 ## 1. Purpose
 
@@ -11,7 +11,7 @@ Workspace substrate 是 Agent / Worker lifecycle first slice 之后的下一块 
 - 真实 usability pressure test 会很快碰到文件读写、path safety、artifact capture、cleanup 和 rollback / diff tracking。
 - 如果 workspace substrate 晚于 tool protocol 或 real executor 设计，后续 executor、artifact provenance、policy profile 和 worker lifecycle 都容易返工。
 
-本文件定义 v0.2 / v0.3 的最小边界。第一批 green slice 已实现 workspace binding read model 和 policy boundary；它仍不实现真实 substrate。
+本文件定义 v0.2 / v0.3 的最小边界。第一批 slice 已完成 workspace binding read model 和 policy boundary；它仍不实现真实 substrate。
 
 ## 2. Current Capabilities
 
@@ -59,9 +59,9 @@ Workspace substrate 是 Agent / Worker lifecycle first slice 之后的下一块 
 - Path access must be mediated by workspace handle / binding, not raw string paths from model output.
 - Workspace binding state must be replayable from canonical events if it enters `RunState`.
 
-## 5. Implemented First Slice
+## 5. Completed First Slice
 
-当前 first green slice includes：
+当前 first slice includes：
 
 - `RunState.workspaces` read model。
 - canonical `workspace.bound` slice event。
@@ -102,7 +102,7 @@ Explicitly deferred:
 - multi-user workspace isolation
 - path virtualization beyond first safety checks
 
-These should not be pulled into the first green slice.
+These should not be pulled into the completed first slice.
 
 ## 8. First Tests
 
@@ -160,4 +160,5 @@ Current repo status remains:
 - current workspace implementation: `WorkspaceManager` shared read-only / grants validation plus `RunState.workspaces` projection
 - no real substrate implementation from this document
 - first tests are implemented and green
-- next step, if requested: closure review or lease/path-safety boundary design
+- closure review: `first slice complete`
+- next step, if requested: lease/path-safety boundary design
