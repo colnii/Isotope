@@ -139,7 +139,8 @@ Follow-up executed: `Kernel Gap Review Refresh`, docs-only.
 Refresh outcome:
 
 - `docs/kernel-gap-review-refresh-v0.2.md` now records first-slice enough surfaces and still-open kernel-level gaps。
-- Recommended next batch is `Workspace Resource Lifecycle Boundary`。
+- Follow-up boundary is `docs/workspace-resource-lifecycle-boundary-v0.2.md`。
+- Recommended next batch is red-only `Workspace Resource Lifecycle Red Tests`。
 - Worker handoff app spike should wait until workspace lifecycle and policy/profile boundaries are clearer。
 
 Do not open real provider adapter, real HTTP server, real LLM, memory query engine, filesystem mutation, container, git worktree, tag, or release work.

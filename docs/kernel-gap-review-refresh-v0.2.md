@@ -1,6 +1,6 @@
 # Kernel Gap Review Refresh v0.2
 
-状态：`current refresh`
+状态：`current refresh; workspace lifecycle boundary defined`
 
 ## 1. Purpose
 
@@ -90,6 +90,8 @@ Recommended next batch:
   - define path-safety intent boundary without reading or mutating filesystem
   - define artifact-capture boundary from workspace resource to artifact/provenance
   - list first red tests, but do not implement in the docs-only batch
+
+Follow-up: `docs/workspace-resource-lifecycle-boundary-v0.2.md` now defines this docs-only boundary. The next implementation-facing step should be red tests for workspace lease lifecycle and artifact capture, not real filesystem substrate.
 
 Stop conditions:
 

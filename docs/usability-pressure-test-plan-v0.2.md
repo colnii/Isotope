@@ -1,6 +1,6 @@
 # Usability Pressure Test Plan v0.2
 
-状态：`kernel gap refresh complete; recommend Workspace Resource Lifecycle Boundary`
+状态：`workspace resource lifecycle boundary defined; recommend red tests`
 
 ## 1. Purpose
 
@@ -392,7 +392,8 @@ Current conclusion:
 
 - agent / worker lifecycle, Workspace substrate first slice, Retry / Cancel / Supersede stabilization slice, HTTP facade, approval pause / resume, external ingestion boundary, and artifact content read policy are first-slice enough。
 - Still-open kernel-level gaps are workspace resource lifecycle, policy profile / action registry versioning, retry / cancel / supersede runtime integration, worker handoff app composition, session / run lifecycle, error taxonomy, event schema registry, and tool protocol。
-- Recommended next batch: docs-only `Workspace Resource Lifecycle Boundary`。
+- Follow-up boundary: `docs/workspace-resource-lifecycle-boundary-v0.2.md`。
+- Recommended next batch: red-only `Workspace Resource Lifecycle Red Tests`。
 - Do not directly open a third app spike, real HTTP server, real LLM, provider adapter, memory query engine, or filesystem/container substrate.
 
 ## 12. Demo Trace Mode

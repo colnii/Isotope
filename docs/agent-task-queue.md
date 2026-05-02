@@ -93,13 +93,42 @@ git status --short
 
 ## 6. Current Batch
 
-Batch name: `Kernel Gap Review Refresh`
+Batch name: `Workspace Resource Lifecycle Boundary`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: docs-only refresh of kernel gaps after the completed app spikes and helper slices.
+Goal: docs-only boundary for workspace lease / release / artifact-capture lifecycle after the current `workspace.bound` first slice.
+
+Tasks:
+
+1. Define binding vs lease semantics: complete.
+2. Define candidate canonical workspace lifecycle events: complete.
+3. Define candidate `RunState.workspaces` lifecycle read model: complete.
+4. Define hard contracts and deferred substrate list: complete.
+5. List first red tests for lease lifecycle and artifact capture: complete.
+6. Docs / status sync: complete.
+7. Queue update: complete; next suggested batch set to `Workspace Resource Lifecycle Red Tests`.
+
+Evidence:
+
+- Full regression: `913 passed`.
+- artifact-review trace regression: pass.
+- external-snapshot-review trace regression: pass.
+- Boundary doc: `docs/workspace-resource-lifecycle-boundary-v0.2.md`.
+- Boundary keeps workspace as policy-bound resource, not agent identity.
+- Binding and lease are separate.
+- Candidate events: `workspace.lease_created`, `workspace.bound`, `workspace.released`, deferred `workspace.release_failed`, optional `workspace.artifact_captured`.
+- First red test recommendation: `tests/isotope_kernel/test_workspace_lease_lifecycle_boundary.py` and `tests/isotope_kernel/test_workspace_artifact_capture_boundary.py`.
+- No code / tests changed.
+- No real filesystem mutation / container / git worktree / remote executor / cleanup scheduler / dependency.
+
+### Previous Batch Snapshot: Kernel Gap Review Refresh
+
+Batch name: `Kernel Gap Review Refresh`
+
+Status: `complete`
 
 Tasks:
 
@@ -483,21 +512,22 @@ Scope:
 
 ## 7. Next Suggested Batch
 
-Batch name: `Workspace Resource Lifecycle Boundary`
+Batch name: `Workspace Resource Lifecycle Red Tests`
 
-Status: `ready_docs_only`
+Status: `ready_red_only`
 
 Possible tasks:
 
-1. Docs-only boundary for workspace resource lifecycle after the current `workspace.bound` first slice.
-2. Define lease / release / expired / revoked read-model boundaries without implementing a cleanup scheduler.
-3. Define workspace mode contract beyond `shared_ro` without enabling real writes.
-4. Define path-safety intent and artifact-capture boundary without reading or mutating filesystem.
-5. List first red tests for the next batch, but do not implement them in this docs-only batch.
+1. Add red tests only:
+   - `tests/isotope_kernel/test_workspace_lease_lifecycle_boundary.py`
+   - `tests/isotope_kernel/test_workspace_artifact_capture_boundary.py`
+2. Cover `workspace.lease_created`, `workspace.released`, optional `workspace.artifact_captured`, replay, checkpoint, malformed events, and no filesystem reads.
+3. Do not implement green slice in the red-only batch unless the user explicitly asks.
+4. Stop if red tests unexpectedly pass or require real filesystem / container / git worktree / process spawn decisions.
 
 Constraints:
 
-- docs-only unless a correctness bug is found.
+- red-only unless queue is explicitly updated to green.
 - no real filesystem mutation / container / git worktree / process spawn / remote executor.
 - no cleanup scheduler.
 - no product workspace API.

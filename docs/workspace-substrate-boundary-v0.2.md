@@ -13,6 +13,8 @@ Workspace substrate 是 Agent / Worker lifecycle first slice 之后的下一块 
 
 本文件定义 v0.2 / v0.3 的最小边界。第一批 slice 已完成 workspace binding read model 和 policy boundary；它仍不实现真实 substrate。
 
+后续 resource lifecycle boundary 已单独定义在 `docs/workspace-resource-lifecycle-boundary-v0.2.md`。该文档只定义 lease / release / artifact-capture 边界，不代表真实 filesystem substrate 已实现。
+
 ## 2. Current Capabilities
 
 当前已有能力仍然很窄：
@@ -35,10 +37,10 @@ Workspace substrate 是 Agent / Worker lifecycle first slice 之后的下一块 
 
 当前缺口：
 
-- workspace lease lifecycle 尚未定义。
+- workspace lease lifecycle 已有 docs-only boundary，但尚未实现。
 - path safety 规则尚未定义。
 - write permission / read-only enforcement 还没有真实 substrate。
-- artifact capture from workspace 还没有 boundary。
+- artifact capture from workspace 已有 docs-only boundary，但尚未实现。
 - workspace cleanup 尚未定义。
 - isolated workspace substrate 尚未实现。
 - rollback / diff tracking 尚未定义。
@@ -82,10 +84,10 @@ Workspace substrate 是 Agent / Worker lifecycle first slice 之后的下一块 
 
 v0.2 / v0.3 minimal target should stay small:
 
-- define lease release / expiry lifecycle if needed。
+- implement lease create / release / expiry lifecycle only after red tests。
 - keep first substrate no-op / `shared_ro` only。
 - define path safety checks before any file mutation。
-- define artifact capture from workspace without making workspace files native state。
+- implement artifact capture linkage without making workspace files native state。
 - decide whether lease release belongs in `RunState.workspaces` or separate diagnostics。
 
 This is a kernel boundary slice, not an execution sandbox.
@@ -159,9 +161,9 @@ The slice should not turn workspace into product infrastructure. It should only 
 
 Current repo status remains:
 
-- current repo baseline: `865 passed`
+- current repo baseline: `913 passed`
 - current workspace implementation: `WorkspaceManager` shared read-only / grants validation, `RunState.workspaces` projection, and `InProcessServer.bind_workspace(...)`
 - no real substrate implementation from this document
 - first tests are implemented and green
 - closure review: `first slice complete`
-- next step, if requested: lease/path-safety boundary design or HTTP approval input boundary, not real filesystem substrate
+- next step, if requested: workspace lease lifecycle / artifact capture red tests from `docs/workspace-resource-lifecycle-boundary-v0.2.md`, not real filesystem substrate
