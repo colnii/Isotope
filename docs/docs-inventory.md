@@ -38,9 +38,9 @@
 
 ## 3. Active track docs
 
-Track F external ingestion 当前已完成第一批 boundary green slice；下一步如继续，应先写新的 red tests，不要直接实现 provider adapter / ingestion API。
+Track F external ingestion 当前已完成 boundary 和 external observation read-model invariant green slices；下一步如继续，应先写新的 red tests，不要直接实现 provider adapter / ingestion API。
 
-- `docs/external-ingestion-boundary-v0.2.md`：Track F external ingestion / `ImportedSnapshot` boundary，first green slice complete。
+- `docs/external-ingestion-boundary-v0.2.md`：Track F external ingestion / `ImportedSnapshot` boundary，read-model invariants green complete。
 - `docs/approval-pause-resume-boundary-v0.2.md`：Track E approval pause / resume boundary，closed for now。
 - Supporting current docs:
   - `docs/v0.2-mid-cycle-review.md`
@@ -145,7 +145,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | `docs/event-envelope-schema-registry-v0.1.md` | Event schema registry boundary | closed / reference |
 | `docs/event-envelope-versioning-v0.1.md` | Event envelope versioning boundary | closed / reference |
 | `docs/event-prefix-digest-v0.1.md` | Event prefix digest boundary | closed / reference |
-| `docs/external-ingestion-boundary-v0.2.md` | Track F external ingestion boundary | first green slice complete |
+| `docs/external-ingestion-boundary-v0.2.md` | Track F external ingestion boundary | read-model invariants green complete |
 | `docs/http-api-minimal-surface-v0.2.md` | Track A HTTP API boundary | closed for now |
 | `docs/implementation-plan-v0.1.md` | Initial implementation plan | historical / reference |
 | `docs/kernel-architecture-v0.1.md` | Kernel architecture draft | current reference |

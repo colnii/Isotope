@@ -20,7 +20,7 @@
 
 ## Current Phase
 
-- `v0.1-demo` and `v0.2-demo` developer demo tags exist; baseline is `752 passed`.
+- `v0.1-demo` and `v0.2-demo` developer demo tags exist; baseline is `765 passed`.
 - Track D: Demo / Docs Polish is effectively complete / closed for now.
 - Current Track A design doc: [docs/http-api-minimal-surface-v0.2.md](docs/http-api-minimal-surface-v0.2.md).
 - Track A has in-process `HttpApiApp` / `create_http_app(...)`, request validation / no-side-effect error boundary, response contract, demo smoke, duplicate-submit idempotency boundary, route inventory, and deferred route contract; it is effectively complete / closed for now and is not a real listening HTTP server.
@@ -30,7 +30,7 @@
 - v0.2 demo readiness is documented in [docs/v0.2-demo-readiness.md](docs/v0.2-demo-readiness.md).
 - v0.2 demo scenario is implemented and documented in [docs/v0.2-demo-scenario.md](docs/v0.2-demo-scenario.md): `--scenario v0.2` visibly exercises Track A / C / E without real HTTP server, network listener, memory storage/query, or HTTP full-content route.
 - v0.2 developer demo acceptance is documented in [docs/v0.2-demo-acceptance.md](docs/v0.2-demo-acceptance.md); `v0.2-demo` is already tagged, but no GitHub Release has been published.
-- Track F: External Ingestion has a first green boundary slice: `ingestion.py`, `ImportedSnapshot`, and `snapshot.imported` projection into `RunState.external_observations`; provider adapters, webhooks, and public ingestion API remain deferred.
+- Track F: External Ingestion has boundary and read-model invariant green slices: `ingestion.py`, `ImportedSnapshot`, and `snapshot.imported` projection into checkpointable `RunState.external_observations`; provider adapters, webhooks, and public ingestion API remain deferred.
 - Real server boundary design only if Track A is explicitly reopened; artifact content HTTP route implementation only if Track C is explicitly reopened.
 - Optional docs polish can continue later, but it should not block v0.2 implementation.
 

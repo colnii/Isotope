@@ -1,6 +1,6 @@
 # External Ingestion Boundary v0.2
 
-状态：`first boundary green complete`
+状态：`read-model invariants green complete`
 
 ## 1. Purpose
 
@@ -27,12 +27,15 @@ Current completed surfaces relevant to this track:
 - `src/isotope_kernel/ingestion.py` exists as the first not-enabled / artifact-only boundary.
 - `ImportedSnapshot` exists as a slice-only model.
 - `snapshot.imported` canonical events can project imported observations into `RunState.external_observations`.
+- `RunState.external_observations` now has a stable read-model shape for snapshot id, type, source, freshness, quality, provenance, basis refs, and observation status.
+- `external_observations` is included in checkpoint state and restored by checkpoint-assisted rebuild.
 - Imported observations do not overwrite native `RunState.status` or action status.
 - Projector does not read raw artifact content when projecting imported snapshots.
 - Native canonical state takes priority over imported observations.
 - Conflicting snapshots are marked as conflict instead of merged into fake certainty.
+- Duplicate snapshot identity is controlled and cannot create inconsistent duplicate observations.
 - `server.ingest_external_input(...)` remains fail-closed / `not_enabled`.
-- Current baseline after the first green slice is `752 passed`.
+- Current baseline after the read-model invariants slice is `765 passed`.
 
 ## 4. Hard Boundaries
 
@@ -114,7 +117,32 @@ Examples:
 
 In all cases, the read model must preserve uncertainty instead of manufacturing certainty.
 
-## 9. HTTP / API Relationship
+## 9. Read Model / Checkpoint Invariants
+
+`RunState.external_observations` is a projected diagnostics/read-model area, not native state. Each observation must retain:
+
+- `snapshot_id`
+- `snapshot_type`
+- `source_system`
+- `captured_at`
+- `quality` with confidence / coverage / freshness-level metadata
+- `provenance` with structured raw artifact `ResourceRef`
+- `basis_refs`
+- observation status / conflict status
+
+The checkpoint state includes `external_observations` because it is part of the `RunState` read model. Checkpoint-assisted rebuild must restore the same observation read model as event-log replay, while still validating shape, rejecting raw content fields, and falling back / failing consistently on malformed state.
+
+External observations must never:
+
+- overwrite native `RunState.status`
+- overwrite native action status
+- read raw artifact content during projection
+- merge conflicting imported snapshots into a deterministic native fact
+- become a second source of truth
+
+Conflict metadata must preserve the basis refs that caused the conflict so replay and checkpoint-assisted rebuild remain auditable.
+
+## 10. HTTP / API Relationship
 
 Track F does not open a public ingestion API in this boundary document.
 
@@ -126,7 +154,7 @@ Current HTTP external ingestion routes remain deferred / `not_enabled`. If a fut
 - reject URI string shortcuts when structured `ResourceRef` is required
 - return stable error shape for malformed or unsupported input
 
-## 10. Deferred
+## 11. Deferred
 
 - real provider adapter
 - OpenAI / Responses ingestion
@@ -139,7 +167,7 @@ Current HTTP external ingestion routes remain deferred / `not_enabled`. If a fut
 - UI for conflicts
 - memory ingestion or memory query integration
 
-## 11. First Tests
+## 12. Tests
 
 Completed first test files:
 
@@ -160,3 +188,22 @@ Covered goals:
 - external ingestion routes / APIs remain deferred or `not_enabled`.
 
 These tests define only the first Track F boundary slice. They do not implement a real provider adapter, external webhook, OpenAI / Responses / GitHub integration, external ingestion HTTP API, or imported-observation-driven native state.
+
+Completed read-model invariant test files:
+
+- `tests/isotope_kernel/test_external_observation_read_model.py`
+- `tests/isotope_kernel/test_external_observation_conflicts.py`
+
+Covered goals:
+
+- `RunState.external_observations` has a stable shape with source, freshness, quality, provenance, basis refs, and status.
+- observations do not include raw artifact full content.
+- observations do not change native run status or action status.
+- event-log replay restores the same observation read model.
+- checkpoint-assisted rebuild restores the same observation read model.
+- malformed observation payloads fail fast and do not create partial observations.
+- duplicate snapshot identity is controlled.
+- conflicting observations are marked conflict and preserve basis refs.
+- native canonical state has priority over imported observations.
+
+These tests extend the Track F boundary without implementing provider adapters, network callbacks, HTTP ingestion, or imported-observation-driven native state.

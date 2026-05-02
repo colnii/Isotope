@@ -7,10 +7,10 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`909ce95c61c787a158081b96ca433a4d0a5b6a40`。
+- 最新 implementation commit：`a2099c022ed7a8f477ad16ce839ab22cbc989b97`。
 - memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for v0.1 demo planning：当前 memory 线只声明 boundary / read-model / checkpoint 能力，不声明 durable storage 或 query engine 已完成。
 - v0.1 demo entrypoint 已实现，详见 `docs/demo-entrypoint-v0.1.md`；`python -m isotope_kernel.demo` 可输出 plain text summary，`--json` 可输出 JSON summary。
-- v0.1 developer demo 已按 `docs/v0.1-demo-acceptance.md` accepted：acceptance anchor 当时依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过；当前 baseline 已随 Track F external ingestion boundary slice 更新为 `752 passed`。
+- v0.1 developer demo 已按 `docs/v0.1-demo-acceptance.md` accepted：acceptance anchor 当时依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过；当前 baseline 已随 Track F external observation read-model invariants slice 更新为 `765 passed`。
 - lightweight tag `v0.1-demo` 已创建并推送，指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`。
 - GitHub Release draft 已准备在 `docs/release-draft-v0.1-demo.md`；尚未发布 GitHub Release。`main` 允许在 tag 后继续有 docs/status 更新，tag 仍是 demo acceptance anchor。
 - v0.2 roadmap 已开始，见 `docs/v0.2-roadmap.md`。Track D: Demo / Docs Polish 当前已 effectively complete / closed for now；Track A: HTTP API Minimal Surface 当前也已 effectively complete / closed for now，已完成 minimal surface、request validation / no-side-effect error boundary、response contract、demo smoke、idempotency boundary、route inventory 和 deferred route contract slices。
@@ -20,8 +20,8 @@
 - Track E approval pause / resume boundary 见 `docs/approval-pause-resume-boundary-v0.2.md`，当前已 effectively complete / closed for now：pending approval 可 resolve；approved path append `approval.resolved` 后通过现有 executor path resume；approved resume 使用原 `PolicyDecision.grants`；denied path append `approval.resolved` 但不创建 execution / artifact；duplicate resolution 是受控 conflict；`RunState.approvals` 和 HTTP run read model 可表达 pending / approved / denied approval summary；event-log replay 和 checkpoint-assisted rebuild 可恢复 approval read model。它仍不是完整 approval product。
 - v0.2 demo readiness review 已落文档，见 `docs/v0.2-demo-readiness.md`。此前记录的 Track A / C / E 展示 gap 已通过 v0.2 demo scenario 关闭。
 - v0.2 demo scenario 已落地，见 `docs/v0.2-demo-scenario.md`。`python -m isotope_kernel.demo --scenario v0.2` 和 `python -m isotope_kernel.demo --scenario v0.2 --json` 已可运行，展示 `HttpApiApp` facade、controlled artifact content retrieval policy、approval pause / resume、checkpoint 和 memory `boundary_only`，同时保持 default v0.1 demo 兼容、no real HTTP server、no network listener、no memory storage/query、HTTP full-content route 仍 `not_enabled` / deferred。
-- v0.2 demo acceptance 已落文档，见 `docs/v0.2-demo-acceptance.md`。acceptance anchor 依据是 `735 passed`，v0.1 / v0.2 demo plain / JSON 成功，Track A / C / E 已在 v0.2 scenario 中可见。lightweight tag `v0.2-demo` 已创建并推送，指向 `09319e7407116d9f99f4a18853d4df23a8714720`；GitHub Release 未发布。这是 developer demo tag，不是 product release。当前 mainline baseline 是 `752 passed`。
-- Track F external ingestion boundary 第一批 green slice 已完成，见 `docs/external-ingestion-boundary-v0.2.md`。当前已有 `ingestion.py` boundary、`ImportedSnapshot` slice model、`snapshot.imported` canonical event projection 到 `RunState.external_observations`；imported observation 不覆盖 native `RunState.status` / action status，projector 不读取 raw artifact content，native canonical state 优先，conflicting snapshots 标记 conflict。真实 provider adapter、external callback / webhook、OpenAI / Responses / GitHub integration、external ingestion HTTP API 和 imported-observation-driven native state 仍 deferred；HTTP `/external-ingestion` 仍 `501 not_enabled`，`server.ingest_external_input(...)` 仍 fail-closed / `not_enabled`。
+- v0.2 demo acceptance 已落文档，见 `docs/v0.2-demo-acceptance.md`。acceptance anchor 依据是 `735 passed`，v0.1 / v0.2 demo plain / JSON 成功，Track A / C / E 已在 v0.2 scenario 中可见。lightweight tag `v0.2-demo` 已创建并推送，指向 `09319e7407116d9f99f4a18853d4df23a8714720`；GitHub Release 未发布。这是 developer demo tag，不是 product release。当前 mainline baseline 是 `765 passed`。
+- Track F external ingestion boundary read-model invariants slice 已完成，见 `docs/external-ingestion-boundary-v0.2.md`。当前已有 `ingestion.py` boundary、`ImportedSnapshot` slice model、`snapshot.imported` canonical event projection 到 `RunState.external_observations`；external observation read model 保留 snapshot id / type / source / freshness / quality / provenance / basis refs / status，进入 checkpoint state 并可通过 checkpoint-assisted rebuild 恢复。imported observation 不覆盖 native `RunState.status` / action status，projector 不读取 raw artifact content，native canonical state 优先，duplicate snapshot identity 受控，conflicting snapshots 标记 conflict。真实 provider adapter、external callback / webhook、OpenAI / Responses / GitHub integration、external ingestion HTTP API 和 imported-observation-driven native state 仍 deferred；HTTP `/external-ingestion` 仍 `501 not_enabled`，`server.ingest_external_input(...)` 仍 fail-closed / `not_enabled`。
 - docs inventory 已落文档，见 `docs/docs-inventory.md`。当前只盘点和规划未来整理方向；尚未移动、删除或合并任何 docs 文件。
 - Track A: HTTP API Minimal Surface 见 `docs/http-api-minimal-surface-v0.2.md`。当前实现是 in-process `HttpApiApp` / `create_http_app(...)`，不是监听端口的真实网络服务；没有引入 FastAPI / Flask / 新依赖。
 - v0.1 demo walkthrough 已补充，见 `docs/demo-walkthrough-v0.1.md`。它解释 demo 运行内容、内部步骤、plain text / JSON 输出字段、证明范围、非目标和 troubleshooting。
@@ -411,11 +411,11 @@
 - demo reports memory boundary status as `boundary_only`
 - v0.1 demo acceptance 已落文档：`docs/v0.1-demo-acceptance.md`
 - current demo acceptance status is `accepted as developer demo`, not product runtime
-- demo acceptance evidence includes local `568 passed` at the v0.1 acceptance anchor; current mainline baseline is `752 passed` after the Track F external ingestion boundary slice
+- demo acceptance evidence includes local `568 passed` at the v0.1 acceptance anchor; current mainline baseline is `765 passed` after the Track F external observation read-model invariants slice
 - v0.2 demo acceptance 已落文档：`docs/v0.2-demo-acceptance.md`
-- Track F external ingestion boundary 第一批 green slice 已落地：`docs/external-ingestion-boundary-v0.2.md`
+- Track F external ingestion boundary and external observation read-model invariants slices 已落地：`docs/external-ingestion-boundary-v0.2.md`
 - current v0.2 demo acceptance status is `accepted as v0.2 developer demo`, not product runtime
-- v0.2 acceptance evidence includes `735 passed` at the tag anchor, v0.1 demo plain / JSON success, v0.2 demo plain / JSON success, configured CI smoke, no `x_agent.*` imports, and `/home/lumber/Github/x-agent` untouched; current mainline baseline is `752 passed`
+- v0.2 acceptance evidence includes `735 passed` at the tag anchor, v0.1 demo plain / JSON success, v0.2 demo plain / JSON success, configured CI smoke, no `x_agent.*` imports, and `/home/lumber/Github/x-agent` untouched; current mainline baseline is `765 passed`
 - lightweight demo tag exists: `v0.2-demo` -> `09319e7407116d9f99f4a18853d4df23a8714720`
 - lightweight demo tag exists: `v0.1-demo` -> `b3d4e328e74378bec2fb524deb85233df5a5d4eb`
 - GitHub Release draft exists: `docs/release-draft-v0.1-demo.md`
@@ -492,11 +492,13 @@
 - CI then runs full kernel tests plus demo plain / JSON smoke
 - latest remote GitHub Actions CI run has been confirmed green from the GitHub Actions web UI
 - CI smoke does not require secrets, release automation, coverage, lint matrix, or real integration services
-- External Ingestion / `ImportedSnapshot` has a first Track F green boundary slice: `ingestion.py`, `ImportedSnapshot`, and `snapshot.imported` projection into `RunState.external_observations`
+- External Ingestion / `ImportedSnapshot` has Track F boundary and read-model invariant slices: `ingestion.py`, `ImportedSnapshot`, and `snapshot.imported` projection into `RunState.external_observations`
 - raw external input remains artifact-only / rejected / not-enabled at the ingestion boundary and cannot directly advance `RunState` / `SessionState`
+- `RunState.external_observations` has a stable read-model shape with snapshot id / type / source / freshness / quality / provenance / basis refs / observation status
+- checkpoint state includes `external_observations`, and checkpoint-assisted rebuild restores the same observation read model as event-log replay
 - imported observations do not overwrite native `RunState.status` or action status; native canonical state wins over imported observations
 - projector does not read raw artifact content for `snapshot.imported`
-- conflicting imported snapshots are marked conflict rather than merged into deterministic native state
+- duplicate snapshot identity is controlled, and conflicting imported snapshots are marked conflict rather than merged into deterministic native state
 - HTTP `/external-ingestion` remains stable `501 not_enabled`; `server.ingest_external_input(...)` remains fail-closed / `not_enabled`
 - no real provider adapter, external webhook / callback, OpenAI / Responses / GitHub integration, public ingestion API, or dependency was added
 - real LLM / real listening HTTP / plugin system remain deferred
@@ -591,7 +593,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-752 passed
+765 passed
 ```
 
 Import boundary check:
@@ -672,11 +674,11 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 下一步建议优先做：
 
 - optional GitHub Release draft for `v0.2-demo` if explicitly requested; do not publish a Release without a separate request
-- Track F: next external ingestion slice only with a new design / red-test request; first boundary green slice is complete
+- Track F: next external ingestion slice only with a new design / red-test request; boundary and external observation read-model invariant slices are complete
 - reopen Track E only with an explicit design / red-test request, such as product approval UI / auth / scheduler boundary
 - reopen Track C only with an explicit design / red-test request, such as HTTP content route boundary
 - real listening HTTP server boundary design only if Track A is explicitly reopened
 - optional Track D polish can continue later, but it no longer blocks v0.2 implementation
 - 或停在当前稳定点
 
-checkpoint v0.1、memory v0.1、Track A HTTP API Minimal Surface、Track C Artifact Content Read Policy 和 Track E Approval Pause / Resume Boundary 当前 frozen / closed unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D、Track A、Track C 和 Track E 都已 effectively complete / closed for now。v0.2 demo scenario 已实现并可通过 `--scenario v0.2` 展示 Track A / C / E 的 in-process boundary；v0.2 developer demo 当前已 accepted，`v0.2-demo` tag 已创建并推送，GitHub Release 未发布。这是 developer demo tag，不是 product release。Track F external ingestion 第一批 green slice 已完成：raw external input 不能直接推进 state，`ImportedSnapshot` 必须通过 canonical `snapshot.imported` event 接纳，projector 只消费 canonical events 并投影到 `RunState.external_observations`，不读取 raw artifact content、不覆盖 native state，conflicting snapshots 标记 conflict。HTTP full-content route 和 HTTP `/external-ingestion` 仍 `501 not_enabled`，ranking、semantic retrieval、memory controlled expand、real provider adapter、external webhook / callback、OpenAI / Responses / GitHub integration 和 real listening HTTP server 仍 deferred。不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage、real provider adapter 或 external ingestion HTTP API implementation。
+checkpoint v0.1、memory v0.1、Track A HTTP API Minimal Surface、Track C Artifact Content Read Policy 和 Track E Approval Pause / Resume Boundary 当前 frozen / closed unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已准备但未发布 GitHub Release；v0.2 Track D、Track A、Track C 和 Track E 都已 effectively complete / closed for now。v0.2 demo scenario 已实现并可通过 `--scenario v0.2` 展示 Track A / C / E 的 in-process boundary；v0.2 developer demo 当前已 accepted，`v0.2-demo` tag 已创建并推送，GitHub Release 未发布。这是 developer demo tag，不是 product release。Track F external ingestion boundary 和 external observation read-model invariants 已完成：raw external input 不能直接推进 state，`ImportedSnapshot` 必须通过 canonical `snapshot.imported` event 接纳，projector 只消费 canonical events 并投影到 `RunState.external_observations`，read model 保留 quality / provenance / freshness / basis refs / conflict metadata，并进入 checkpoint state；checkpoint-assisted rebuild 可恢复 external observations。不读取 raw artifact content、不覆盖 native state，duplicate snapshot identity 受控，conflicting snapshots 标记 conflict。HTTP full-content route 和 HTTP `/external-ingestion` 仍 `501 not_enabled`，ranking、semantic retrieval、memory controlled expand、real provider adapter、external webhook / callback、OpenAI / Responses / GitHub integration 和 real listening HTTP server 仍 deferred。不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage、real provider adapter 或 external ingestion HTTP API implementation。
