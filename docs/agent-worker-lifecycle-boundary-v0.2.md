@@ -1,6 +1,6 @@
 # Agent / Worker Lifecycle Boundary v0.2
 
-状态：`draft boundary`
+状态：`first green slice implemented`
 
 ## 1. Purpose
 
@@ -28,21 +28,21 @@ Agent / Worker lifecycle 是 Kernel Gap Review v0.2 后的最高优先级 kernel
 - approval boundary：pending / approved / denied / duplicate conflict 已可 event-source 和 checkpoint。
 - workspace boundary：当前只有 `shared_ro` grants binding。
 
-这些能力证明 kernel 可以约束 execution，但还没有正式定义 worker lifecycle。
+这些能力证明 kernel 可以约束 execution。当前 first green slice 已把 supervisor / worker / delegation read model 接入 `RunProjector`，但仍不是 real multi-agent runtime。
 
 ## 3. Current Gaps
 
 当前缺口：
 
-- worker spawn 还没有 canonical event / state machine。
-- worker state machine 未定义。
-- delegation proposal / policy decision 未定义。
+- worker spawn 只有 slice-only canonical event / read model，不是真实 spawn。
+- worker state machine 只有 first-slice statuses：`created` / `running` / `completed` / `failed` / `cancelled`。
+- delegation proposal / policy decision 已有 projector-level boundary，但还没有 product-level delegation API。
 - worker promotion / persistence 未定义。
 - worker workspace binding 仍只有 shared read-only boundary。
 - worker failure / cancellation / supersede 未定义。
 - worker result handoff 未定义。
 - multi-worker concurrency 未定义。
-- worker read model 还不是 `RunState` 的一等 projection。
+- worker read model 已进入 `RunState.workers`；agent read model 已进入 `RunState.agents`。
 
 这些缺口不应通过直接实现 real LLM / process spawn 来补。先定义 boundary，再进入 red tests。
 
@@ -65,31 +65,45 @@ v0.2 / v0.3 minimal target 只定义 lifecycle shape，不承诺完整 implement
 
 ### 5.1 AgentInstance Read Model
 
-`AgentInstance` read model 应至少表达：
+First green slice 中，`AgentInstance` read model 已由 `RunProjector` 从 canonical events 投影到 `RunState.agents`。当前至少表达：
 
 - `agent_id`
 - `run_id`
 - `role`: `supervisor` or `worker`
-- `status`: `created`, `ready`, `running`, `blocked`, `completed`, `failed`, `cancelled`
+- `status`: `created`, `running`, `completed`, `failed`, `cancelled`
 - `parent_agent_id`
 - `delegation_id`
-- `workspace_ref` or granted workspace binding summary
 - `created_event_id`
 - `last_event_id`
 
-该 read model 必须由 projector 从 canonical events 派生。
+该 read model 只由 projector 从 canonical events 派生。
+
+`Worker` read model 已由 `RunProjector` 投影到 `RunState.workers`，包含：
+
+- `worker_id`
+- `agent_id`
+- `parent_agent_id`
+- `delegation_id`
+- `decision_id`
+- `status`
+- `requested_capabilities`
+- `grants`
+- `workspace`
+- `result_refs`
+- `created_event_id`
+- `last_event_id`
+
+`RunProjector.create_checkpoint(...)` 的 checkpoint state 现在包含 `agents` / `workers`，与 `approvals` / `memory_records` / `external_observations` 一样作为 read-model projection 保存；checkpoint-assisted rebuild 可以恢复同等 agent / worker read model。
 
 ### 5.2 Worker Lifecycle Events
 
-第一批 boundary 可以先定义这些 canonical events：
+第一批 boundary 已使用这些 slice-only canonical events：
 
 - `agent.created`
-- `agent.ready`
 - `delegation.proposed`
 - `delegation.decided`
 - `worker.created`
 - `worker.started`
-- `worker.blocked`
 - `worker.completed`
 - `worker.failed`
 - `worker.cancelled`
@@ -150,14 +164,14 @@ Worker result 不能直接写 native run state。允许的 handoff 形态：
 - worker auth / identity
 - production queue / job runner
 
-## 7. First Red Tests
+## 7. Implemented First Green Slice
 
-建议下一批 red tests：
+第一批 red tests 已落地并 green：
 
 - `tests/isotope_kernel/test_agent_worker_lifecycle_boundary.py`
 - `tests/isotope_kernel/test_delegation_policy_boundary.py`
 
-测试目标：
+当前覆盖：
 
 - supervisor exists as first-class agent instance。
 - worker spawn requires canonical delegation proposal。
@@ -172,12 +186,16 @@ Worker result 不能直接写 native run state。允许的 handoff 形态：
 - worker result handoff uses artifact / ref / event, not direct state mutation。
 - no real concurrency / process spawn in first slice。
 
+同时最小同步了既有 checkpoint creation expected fields：`agents` / `workers` 与 `approvals`、`memory_records`、`external_observations` 一样属于 checkpointed `RunState` read model。
+
 ## 8. Acceptance For This Boundary
 
-该 boundary 可以被视为 docs-ready，当：
+该 boundary 当前可以被视为 first-slice green，当：
 
 - worker lifecycle 不再只是 `agent_runtime.py` placeholder。
 - delegation / worker creation 的 policy path 明确。
 - worker read model 的 projected shape 明确。
 - workspace binding、result handoff、approval / failure / cancel interactions 有 first-slice stance。
 - deferred list 明确，避免被误解成 multi-agent product。
+
+下一步不是 real concurrency，而是 Workspace substrate boundary design。

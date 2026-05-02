@@ -7,10 +7,10 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`a2099c022ed7a8f477ad16ce839ab22cbc989b97`。
+- 最新 implementation commit：`1786a58d7e5de2d1fa5a202f22620e7a9c3d239d`。
 - memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for v0.1 demo planning：当前 memory 线只声明 boundary / read-model / checkpoint 能力，不声明 durable storage 或 query engine 已完成。
 - v0.1 demo entrypoint 已实现，详见 `docs/demo/demo-entrypoint-v0.1.md`；`python -m isotope_kernel.demo` 可输出 plain text summary，`--json` 可输出 JSON summary。
-- v0.1 developer demo 已按 `docs/demo/v0.1-demo-acceptance.md` accepted：acceptance anchor 当时依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过；当前 baseline 已随 Track F external observation read-model invariants slice 更新为 `765 passed`。
+- v0.1 developer demo 已按 `docs/demo/v0.1-demo-acceptance.md` accepted：acceptance anchor 当时依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过；当前 baseline 已随 Agent / Worker lifecycle first green slice 更新为 `786 passed`。
 - lightweight tag `v0.1-demo` 已创建并推送，指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`。
 - GitHub Release draft 已迁移到 `docs/release/release-draft-v0.1-demo.md`；旧路径 `docs/release-draft-v0.1-demo.md` 保留为 compatibility stub。尚未发布 GitHub Release。`main` 允许在 tag 后继续有 docs/status 更新，tag 仍是 demo acceptance anchor。
 - v0.2 roadmap 已开始，见 `docs/v0.2-roadmap.md`。Track D: Demo / Docs Polish 当前已 effectively complete / closed for now；Track A: HTTP API Minimal Surface 当前也已 effectively complete / closed for now，已完成 minimal surface、request validation / no-side-effect error boundary、response contract、demo smoke、idempotency boundary、route inventory 和 deferred route contract slices。
@@ -20,15 +20,15 @@
 - Track E approval pause / resume boundary 见 `docs/approval-pause-resume-boundary-v0.2.md`，当前已 effectively complete / closed for now：pending approval 可 resolve；approved path append `approval.resolved` 后通过现有 executor path resume；approved resume 使用原 `PolicyDecision.grants`；denied path append `approval.resolved` 但不创建 execution / artifact；duplicate resolution 是受控 conflict；`RunState.approvals` 和 HTTP run read model 可表达 pending / approved / denied approval summary；event-log replay 和 checkpoint-assisted rebuild 可恢复 approval read model。它仍不是完整 approval product。
 - v0.2 demo readiness review 已落文档，见 `docs/demo/v0.2-demo-readiness.md`。此前记录的 Track A / C / E 展示 gap 已通过 v0.2 demo scenario 关闭。
 - v0.2 demo scenario 已落地，见 `docs/demo/v0.2-demo-scenario.md`。`python -m isotope_kernel.demo --scenario v0.2` 和 `python -m isotope_kernel.demo --scenario v0.2 --json` 已可运行，展示 `HttpApiApp` facade、controlled artifact content retrieval policy、approval pause / resume、checkpoint 和 memory `boundary_only`，同时保持 default v0.1 demo 兼容、no real HTTP server、no network listener、no memory storage/query、HTTP full-content route 仍 `not_enabled` / deferred。
-- v0.2 demo acceptance 已落文档，见 `docs/demo/v0.2-demo-acceptance.md`。acceptance anchor 依据是 `735 passed`，v0.1 / v0.2 demo plain / JSON 成功，Track A / C / E 已在 v0.2 scenario 中可见。lightweight tag `v0.2-demo` 已创建并推送，指向 `09319e7407116d9f99f4a18853d4df23a8714720`；GitHub Release 未发布。这是 developer demo tag，不是 product release。当前 mainline baseline 是 `765 passed`。
+- v0.2 demo acceptance 已落文档，见 `docs/demo/v0.2-demo-acceptance.md`。acceptance anchor 依据是 `735 passed`，v0.1 / v0.2 demo plain / JSON 成功，Track A / C / E 已在 v0.2 scenario 中可见。lightweight tag `v0.2-demo` 已创建并推送，指向 `09319e7407116d9f99f4a18853d4df23a8714720`；GitHub Release 未发布。这是 developer demo tag，不是 product release。当前 mainline baseline 是 `786 passed`。
 - Track F external ingestion / `ImportedSnapshot` boundary 当前已 effectively complete / closed for now，见 `docs/external-ingestion-boundary-v0.2.md`。当前已有 `ingestion.py` fail-closed boundary、`ImportedSnapshot` slice model、`snapshot.imported` canonical event projection 到 `RunState.external_observations`；external observation read model 保留 snapshot id / type / source / freshness / quality / provenance / basis refs / status，进入 checkpoint state 并可通过 checkpoint-assisted rebuild 恢复。imported observation 不覆盖 native `RunState.status` / action status，projector 不读取 raw artifact content，native canonical state 优先，duplicate snapshot identity 受控，conflicting snapshots 标记 conflict。真实 provider adapter、external callback / webhook、OpenAI / Responses / GitHub integration、external ingestion HTTP API 和 imported-observation-driven native state 仍 deferred；HTTP `/external-ingestion` 仍 `501 not_enabled`，`server.ingest_external_input(...)` 仍 fail-closed / `not_enabled`。
-- Post `v0.2-demo` tag delta 已记录在 `docs/post-v0.2-tag-delta.md`。当前 `main` ahead of `v0.2-demo` 的主要增量是 Track F external ingestion boundary / read-model / checkpoint support。默认不移动 `v0.2-demo`，也暂不创建 `v0.2.1-demo`；只有外部 reviewer 需要固定包含 Track F 的锚点时再准备新 tag。
+- Post `v0.2-demo` tag delta 已记录在 `docs/post-v0.2-tag-delta.md`。当前 `main` ahead of `v0.2-demo` 的主要增量是 Track F external ingestion boundary / read-model / checkpoint support，以及 Agent / Worker lifecycle first green slice。默认不移动 `v0.2-demo`，也暂不创建 `v0.2.1-demo`；只有外部 reviewer 需要固定包含 Track F / Agent Worker slice 的锚点时再准备新 tag。
 - v0.2 cycle closure review 已记录在 `docs/v0.2-cycle-closure-review.md`。当前建议暂停 v0.2 implementation，进入 cleanup / docs organization / external review mode；Track B real HTTP adapter、Track G memory query 和 real integrations 继续 deferred。
 - docs inventory 已落文档，见 `docs/docs-inventory.md`。当前记录已迁移 docs、compatibility stubs 和后续整理方向。
 - docs migration plan 已落文档，见 `docs/docs-migration-plan.md`。Phase 1 当前 closed / paused；后续不默认继续迁移 track / checkpoint / memory / kernel / current-status / roadmap docs。
 - docs migration Phase 1a / 1b / 1c 已执行并 audit clean：release draft 已迁移到 `docs/release/`，v0.1 demo explainer docs 和 demo acceptance/readiness/scenario docs 已迁移到 `docs/demo/`，旧路径均保留 stub。Phase 1 dry-run 和后续 checklist 见 `docs/docs-migration-phase-1-dry-run.md`。下一阶段可以转入 Kernel Gap Review。
 - Kernel Gap Review v0.2 已落文档，见 `docs/kernel-gap-review-v0.2.md`。当前判断：kernel 还不能宣布完成；下一块 kernel design 应优先做 Agent / worker lifecycle，其次是 Workspace substrate，再考虑 retry / cancel / supersede 和 policy profile / action registry versioning。real HTTP server、real LLM loop、memory storage/query/promotion、provider adapter/webhook、retrieval ranking 和 domain pack system 仍不应优先打开。
-- Agent / Worker Lifecycle Boundary v0.2 已落文档，见 `docs/agent-worker-lifecycle-boundary-v0.2.md`。当前只定义 boundary，不实现 worker spawn / real concurrency / process isolation / real model loop；第一批 red tests 应锁定 supervisor/worker read model、delegation policy gate、worker event sourcing、workspace grants 和 result handoff。
+- Agent / Worker Lifecycle Boundary v0.2 已完成 first green slice，见 `docs/agent-worker-lifecycle-boundary-v0.2.md`。当前已覆盖 `RunState.agents` / `RunState.workers` read model、supervisor first-class projection、delegation proposal / policy decision gate、denied delegation no-worker、approved / modified delegation creates worker、worker lifecycle event projection、worker action requires policy grants、workspace binding from grants、result handoff through `ResourceRef`、event replay 和 checkpoint-assisted rebuild。仍不实现 worker spawn / real concurrency / process isolation / remote worker / real model loop。
 - Track A: HTTP API Minimal Surface 见 `docs/http-api-minimal-surface-v0.2.md`。当前实现是 in-process `HttpApiApp` / `create_http_app(...)`，不是监听端口的真实网络服务；没有引入 FastAPI / Flask / 新依赖。
 - v0.1 demo walkthrough 已补充，见 `docs/demo/demo-walkthrough-v0.1.md`。它解释 demo 运行内容、内部步骤、plain text / JSON 输出字段、证明范围、非目标和 troubleshooting。
 - v0.1 demo architecture diagram 已补充，见 `docs/demo/demo-architecture-v0.1.md`。它解释 demo runtime path，不是完整 Isotope 架构图。
@@ -111,6 +111,18 @@
 - malformed checkpoint file fail-fast
 - checkpoint store does not modify event log
 - projector event payload validation hardening
+- agent / worker lifecycle first green slice
+- `RunState.agents` / `RunState.workers` read model
+- supervisor agent instance projection from canonical events
+- delegation proposal / policy decision boundary
+- denied delegation does not create worker
+- approved / modified delegation creates worker read model
+- worker lifecycle statuses: `created`, `running`, `completed`, `failed`, `cancelled`
+- worker lifecycle replay and checkpoint-assisted rebuild
+- worker-created action requires policy grants before `action.started`
+- worker workspace binding comes from `PolicyDecision.grants`
+- worker result handoff uses artifact `ResourceRef` / canonical event and does not directly mutate native run state
+- no real concurrency / process spawn
 - `PolicyDecision.modified` enters execution lifecycle like `approved`
 - malformed projector event payload fail-fast with controlled `ValueError`
 - projector validates action decided/started/completed/failed payloads
@@ -133,7 +145,7 @@
 - checkpoint creation uses canonical events through `project(...)` and cannot bypass validation
 - checkpoint contains `run_id`, `projector_version`, `basis_event_id`, `state`, `created_at`
 - checkpoint `basis_event_id` equals the last replayed canonical event id
-- checkpoint state contains `run_id`, `status`, `current_agent`, `actions`, `approvals`, `artifacts`, `memory_records`, `external_observations`, `last_event_id`
+- checkpoint state contains `run_id`, `status`, `current_agent`, `agents`, `workers`, `actions`, `approvals`, `artifacts`, `memory_records`, `external_observations`, `last_event_id`
 - checkpoint state excludes artifact content and memory full content
 - checkpoint excludes external raw input / provider response / imported snapshot
 - malformed or lifecycle-invalid event stream cannot produce checkpoint
@@ -144,10 +156,12 @@
 - `RunProjector.rebuild_with_checkpoint(...)` validates checkpoint state schema only for compatible projector version
 - incompatible projector version still falls back to full rebuild even with malformed checkpoint state
 - checkpoint `state` must be a dict
-- new checkpoint `state` contains `approvals`, `memory_records`, and `external_observations`; legacy checkpoint without `approvals` / `memory_records` / `external_observations` still uses the compatibility path
+- new checkpoint `state` contains `agents`, `workers`, `approvals`, `memory_records`, and `external_observations`; legacy checkpoint without `agents` / `workers` / `approvals` / `memory_records` / `external_observations` still uses the compatibility path
 - checkpoint `state.run_id` must match rebuild target run_id
 - checkpoint `state.last_event_id` must equal checkpoint `basis_event_id`
 - checkpoint `state.status` must be a known run status
+- checkpoint `state.agents` must be a dict when present
+- checkpoint `state.workers` must be a dict when present
 - checkpoint `state.actions` must be a dict
 - checkpoint `state.approvals` must be a dict when present
 - checkpoint `state.artifacts` must be a list
@@ -159,6 +173,8 @@
 - checkpoint memory record entry must contain summary / refs / provenance-level metadata and valid supersession metadata when superseded
 - checkpoint external observation entry cannot contain `content`, `full_content`, `artifact_content`, or `raw_content`
 - checkpoint external observation entry must contain snapshot / source / freshness / quality / provenance / basis refs / status-level metadata
+- checkpoint agent entries must have matching id / role / known status
+- checkpoint worker entries must have matching id / policy grants / workspace / known status and structured result refs
 - malformed checkpoint state fail-fast with controlled `ValueError`
 - `FileCheckpointStore` remains opaque blob storage and does not interpret projected state
 - projector-owned checkpoint save boundary
@@ -177,7 +193,7 @@
 - checkpoint prefix consistency hardening
 - `RunProjector.rebuild_with_checkpoint(...)` compares checkpoint state with event-log prefix projection at `basis_event_id`
 - checkpoint is used for replay only when checkpoint state matches prefix projection
-- checkpoint state `status` / `current_agent` / `actions` / `approvals` / `artifacts` / `memory_records` / `external_observations` mismatch falls back to full rebuild
+- checkpoint state `status` / `current_agent` / `agents` / `workers` / `actions` / `approvals` / `artifacts` / `memory_records` / `external_observations` mismatch falls back to full rebuild
 - checkpoint state with extra action or missing artifact falls back to full rebuild
 - fallback full rebuild still runs full event validation
 - lifecycle-invalid event log cannot be hidden by checkpoint mismatch fallback
@@ -420,11 +436,11 @@
 - demo reports memory boundary status as `boundary_only`
 - v0.1 demo acceptance 已落文档：`docs/demo/v0.1-demo-acceptance.md`
 - current demo acceptance status is `accepted as developer demo`, not product runtime
-- demo acceptance evidence includes local `568 passed` at the v0.1 acceptance anchor; current mainline baseline is `765 passed` after the Track F external observation read-model invariants slice
+- demo acceptance evidence includes local `568 passed` at the v0.1 acceptance anchor; current mainline baseline is `786 passed` after the Agent / Worker lifecycle first green slice
 - v0.2 demo acceptance 已落文档：`docs/demo/v0.2-demo-acceptance.md`
 - Track F external ingestion boundary and external observation read-model invariants slices 已落地，并已 closed for now：`docs/external-ingestion-boundary-v0.2.md`
 - current v0.2 demo acceptance status is `accepted as v0.2 developer demo`, not product runtime
-- v0.2 acceptance evidence includes `735 passed` at the tag anchor, v0.1 demo plain / JSON success, v0.2 demo plain / JSON success, configured CI smoke, no `x_agent.*` imports, and `/home/lumber/Github/x-agent` untouched; current mainline baseline is `765 passed`
+- v0.2 acceptance evidence includes `735 passed` at the tag anchor, v0.1 demo plain / JSON success, v0.2 demo plain / JSON success, configured CI smoke, no `x_agent.*` imports, and `/home/lumber/Github/x-agent` untouched; current mainline baseline is `786 passed`
 - lightweight demo tag exists: `v0.2-demo` -> `09319e7407116d9f99f4a18853d4df23a8714720`
 - lightweight demo tag exists: `v0.1-demo` -> `b3d4e328e74378bec2fb524deb85233df5a5d4eb`
 - GitHub Release draft exists: `docs/release/release-draft-v0.1-demo.md`
@@ -602,7 +618,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-765 passed
+786 passed
 ```
 
 Import boundary check:
@@ -690,4 +706,4 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 - optional Track D polish can continue later, but it no longer blocks v0.2 implementation
 - 或停在当前稳定点
 
-checkpoint v0.1、memory v0.1、Track A HTTP API Minimal Surface、Track C Artifact Content Read Policy、Track E Approval Pause / Resume Boundary 和 Track F External Ingestion / ImportedSnapshot 当前 frozen / closed unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已迁移到 `docs/release/` 但未发布 GitHub Release；v0.2 Track D、Track A、Track C、Track E 和 Track F 都已 effectively complete / closed for now。v0.2 demo scenario 已实现并可通过 `--scenario v0.2` 展示 Track A / C / E 的 in-process boundary；v0.2 developer demo 当前已 accepted，`v0.2-demo` tag 已创建并推送，GitHub Release 未发布。这是 developer demo tag，不是 product release。Track F external ingestion boundary 和 external observation read-model invariants 已完成：raw external input 不能直接推进 state，`ImportedSnapshot` 必须通过 canonical `snapshot.imported` event 接纳，projector 只消费 canonical events 并投影到 `RunState.external_observations`，read model 保留 quality / provenance / freshness / basis refs / conflict metadata，并进入 checkpoint state；checkpoint-assisted rebuild 可恢复 external observations。不读取 raw artifact content、不覆盖 native state，duplicate snapshot identity 受控，conflicting snapshots 标记 conflict。HTTP full-content route 和 HTTP `/external-ingestion` 仍 `501 not_enabled`，ranking、semantic retrieval、memory controlled expand、real provider adapter、external webhook / callback、OpenAI / Responses / GitHub integration 和 real listening HTTP server 仍 deferred。不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage、real provider adapter 或 external ingestion HTTP API implementation。
+checkpoint v0.1、memory v0.1、Track A HTTP API Minimal Surface、Track C Artifact Content Read Policy、Track E Approval Pause / Resume Boundary 和 Track F External Ingestion / ImportedSnapshot 当前 frozen / closed unless explicitly reopened；不要继续默认深挖 checkpoint history index / retention / GC，也不要继续默认深挖 memory storage / query engine / controlled expand。v0.1 demo entrypoint 已实现并 accepted as developer demo，只展示 kernel 闭环，不展示完整产品。`v0.1-demo` tag 已创建，release draft 已迁移到 `docs/release/` 但未发布 GitHub Release；v0.2 Track D、Track A、Track C、Track E 和 Track F 都已 effectively complete / closed for now。v0.2 demo scenario 已实现并可通过 `--scenario v0.2` 展示 Track A / C / E 的 in-process boundary；v0.2 developer demo 当前已 accepted，`v0.2-demo` tag 已创建并推送，GitHub Release 未发布。这是 developer demo tag，不是 product release。Track F external ingestion boundary 和 external observation read-model invariants 已完成：raw external input 不能直接推进 state，`ImportedSnapshot` 必须通过 canonical `snapshot.imported` event 接纳，projector 只消费 canonical events 并投影到 `RunState.external_observations`，read model 保留 quality / provenance / freshness / basis refs / conflict metadata，并进入 checkpoint state；checkpoint-assisted rebuild 可恢复 external observations。Agent / Worker lifecycle first green slice 已完成：`RunState.agents` / `RunState.workers`、delegation policy gate、worker lifecycle projection、worker action grants boundary、result handoff 和 checkpoint support 已覆盖，但不实现 real concurrency / process spawn。不读取 raw artifact content、不覆盖 native state，duplicate snapshot identity 受控，conflicting snapshots 标记 conflict。HTTP full-content route 和 HTTP `/external-ingestion` 仍 `501 not_enabled`，ranking、semantic retrieval、memory controlled expand、real provider adapter、external webhook / callback、OpenAI / Responses / GitHub integration 和 real listening HTTP server 仍 deferred。不要直接进入 real listening HTTP server、real LLM、successful memory write / memory storage、real provider adapter 或 external ingestion HTTP API implementation。
