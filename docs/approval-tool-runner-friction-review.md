@@ -1,6 +1,6 @@
 # Approval Tool Runner API Friction Review
 
-状态：`current; approval lookup helper implemented`
+状态：`current; approval lookup and workspace binding helpers implemented`
 
 ## 1. Purpose
 
@@ -12,7 +12,7 @@
 
 - `python -m isotope_kernel.demo --scenario approval-tool-runner`
 - `python -m isotope_kernel.demo --scenario approval-tool-runner --json`
-- full regression after helper slice: `853 passed`
+- full regression after workspace helper slice: `859 passed`
 - spike 仍 deterministic / in-process / no real HTTP server / no real LLM / no provider adapter / no filesystem mutation
 
 ## 2. Friction Summary
@@ -21,7 +21,7 @@
 | --- | --- | --- | --- | --- |
 | approval-gated input uses `server.submit_tool_request(...)` | demo cannot express `requires_approval=True` through current HTTP `/runs/{run_id}/input` path | facade / helper gap | medium | do after approval lookup helper, unless the next spike needs this first |
 | approval id lookup scans canonical events | demo used to find `approval_id` by scanning events after pending approval | read-model helper gap | medium-high | fixed by approval lookup helper |
-| workspace binding uses explicit `workspace.bound` | demo manually appends a canonical workspace binding event for the spike | kernel / server integration gap | high, but broader | design separately before implementation |
+| workspace binding uses explicit `workspace.bound` | demo previously appended a canonical workspace binding event for the spike | kernel / server integration gap | high, but bounded | fixed by workspace binding helper |
 
 No correctness bug was found in the current spike. The awkwardness is useful evidence that the kernel surface is still too raw for developer ergonomics, not evidence that the event-sourced contracts are broken.
 
@@ -53,15 +53,22 @@ The helper reads projected approval summaries, does not append events, and does 
 
 Yes, but this is a larger kernel / server integration gap.
 
-`workspace.bound` is already the correct canonical event shape for the first workspace substrate slice. The friction is ownership: the spike currently creates the binding explicitly, while a real developer path would expect a policy-granted workspace binding helper or server boundary to create it.
+`workspace.bound` is already the correct canonical event shape for the first workspace substrate slice. The friction was ownership: the spike used to create the binding explicitly, while a real developer path expects a policy-granted workspace binding helper or server boundary to create it.
 
-This should be solved carefully because it touches policy grants, worker / execution binding, artifact capture expectations, and eventual path-safety semantics. It should not silently become filesystem mutation, container setup, git worktree creation, or remote executor integration.
+The first helper slice now solves only the ownership friction:
+
+- `InProcessServer.bind_workspace(run_id, decision, bound_to=None)` uses `WorkspaceManager.get_binding(decision.grants)`.
+- It appends canonical `workspace.bound`.
+- It returns the projected `RunState.workspaces` summary.
+- The approval-tool-runner demo no longer hand-writes the event payload.
+
+This does not silently become filesystem mutation, container setup, git worktree creation, or remote executor integration.
 
 ## 4. Layering
 
 Kernel-layer issues:
 
-- Workspace binding ownership is not yet integrated into a server / execution boundary.
+- Workspace binding ownership is integrated into a minimal server helper for `shared_ro`.
 - Future approval-gated action submission must still prove it cannot bypass action chain, policy, or canonical events.
 - Any workspace helper must prove requested mode cannot exceed `PolicyDecision.grants`.
 
@@ -74,13 +81,13 @@ Facade/helper issues:
 Demo glue issues:
 
 - The spike previously had `_latest_approval_id(...)` event scan glue; the current demo uses approval lookup/read helper instead.
-- The spike currently has explicit `workspace.bound` append glue.
+- The spike no longer has explicit `workspace.bound` append glue; it uses `InProcessServer.bind_workspace(...)`.
 - These are acceptable in a pressure test only because the JSON output records the friction instead of hiding it.
 
 Acceptable v0 shape for now:
 
 - `server.submit_tool_request(..., requires_approval=True)` is explicit and still goes through policy / approval / executor boundaries.
-- Manual `workspace.bound` is tolerable in a spike because workspace substrate is still first-slice read model only.
+- `InProcessServer.bind_workspace(...)` is tolerable in v0 because it still creates only a canonical read-model binding and does not imply real workspace substrate.
 - No product-facing approval API, workspace API, real filesystem mutation, or real HTTP server is implied.
 
 ## 5. Candidate Next Steps
@@ -108,9 +115,18 @@ Implemented first slice:
 
 ### C. Add workspace binding helper
 
-Important, but should be a separate design slice.
+Implemented as a narrow server helper.
 
-This likely belongs closer to kernel/server integration because it decides who owns `workspace.bound` event creation. It should stay constrained to `shared_ro` / no filesystem mutation until path safety and substrate design are reopened.
+Implemented first slice:
+
+- red / green tests for server workspace binding helper
+- helper requires a known run and a `PolicyDecision`
+- helper uses `PolicyDecision.grants`, not requested capabilities
+- unsupported workspace modes fail closed before event append
+- helper appends canonical `workspace.bound`
+- helper returns copied projected workspace binding summary
+- approval-tool-runner demo uses the helper
+- no HTTP route, filesystem mutation, container, git worktree, remote executor, process spawn, or dependency
 
 ### D. Keep spike as-is and move to another pressure test
 
@@ -120,14 +136,14 @@ The spike exposed concrete ergonomics gaps. Moving on immediately would leave th
 
 ## 6. Recommendation
 
-Recommended next batch after this helper: reassess remaining spike friction before choosing between approval-gated submission helper and workspace binding helper.
+Recommended next batch after these helpers: reassess remaining spike friction before deciding whether an approval-gated submission helper is worth a separate boundary.
 
 Rationale:
 
 - approval id event-scan glue is now removed.
-- `server.submit_tool_request(..., requires_approval=True)` remains a facade/helper gap.
-- explicit `workspace.bound` remains the broader kernel / server integration gap.
-- workspace binding integration should still be protected by a dedicated boundary before implementation.
+- workspace binding manual event glue is now removed.
+- `server.submit_tool_request(..., requires_approval=True)` remains the only visible API friction in the current approval-tool-runner spike.
+- approval-gated submission helper should still be protected by a dedicated boundary before implementation.
 
 Do not solve in the next batch:
 

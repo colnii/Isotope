@@ -25,6 +25,7 @@ Workspace substrate 是 Agent / Worker lifecycle first slice 之后的下一块 
 - 未授权或 unsupported workspace mode 会 fail closed。
 - `RunState.workspaces` read model 已存在。
 - canonical `workspace.bound` slice event 已可投影。
+- `InProcessServer.bind_workspace(...)` helper 已存在，用于从 `PolicyDecision.grants` 创建 canonical binding event。
 - workspace binding 进入 checkpoint state，并可通过 event replay / checkpoint-assisted rebuild 恢复。
 - malformed `workspace.bound` / malformed grant provenance 会 fail fast。
 
@@ -75,6 +76,7 @@ Workspace substrate 是 Agent / Worker lifecycle first slice 之后的下一块 
 - checkpoint-assisted rebuild restores `workspaces`。
 - projector does not read filesystem / workspace path content。
 - workspace binding does not modify native run / action status。
+- server helper returns projected workspace binding summary without exposing product workspace API。
 
 ## 6. Remaining Minimal Target
 
@@ -135,6 +137,7 @@ The implemented green slice is:
 - `shared_ro` remains the only accepted mode。
 - write / isolated requests fail closed。
 - checkpoint state includes workspace binding。
+- `InProcessServer.bind_workspace(...)` reduces manual `workspace.bound` glue for pressure-test scenarios。
 - no actual filesystem reads from projector。
 - no real process, thread, container, worktree, or remote executor。
 
@@ -156,9 +159,9 @@ The slice should not turn workspace into product infrastructure. It should only 
 
 Current repo status remains:
 
-- current repo baseline: `831 passed`
-- current workspace implementation: `WorkspaceManager` shared read-only / grants validation plus `RunState.workspaces` projection
+- current repo baseline: `859 passed`
+- current workspace implementation: `WorkspaceManager` shared read-only / grants validation, `RunState.workspaces` projection, and `InProcessServer.bind_workspace(...)`
 - no real substrate implementation from this document
 - first tests are implemented and green
 - closure review: `first slice complete`
-- next step, if requested: lease/path-safety boundary design
+- next step, if requested: lease/path-safety boundary design or approval-gated submission helper, not real filesystem substrate

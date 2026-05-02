@@ -2,7 +2,7 @@
 
 Isotope 是一个独立的 kernel-first agent runtime 项目，用来验证 canonical event log、policy-gated execution、artifact provenance、projector replay 和 checkpoint-assisted rebuild 等内核边界。
 
-当前状态：`v0.1-demo` 和 `v0.2-demo` developer demo tags 已存在；当前本地 baseline 是 `853 passed`。Track A: HTTP API Minimal Surface、Track C: Artifact Content Read Policy、Track E: Approval Pause / Resume Boundary 和 Track F: External Ingestion 都已 effectively complete / closed for now；Agent / Worker lifecycle、Workspace substrate、Retry / Cancel / Supersede、approval-gated tool runner usability spike 和 approval lookup helper first slices 已 complete。GitHub Release 未发布，详细状态见 [docs/current-status.md](docs/current-status.md)。
+当前状态：`v0.1-demo` 和 `v0.2-demo` developer demo tags 已存在；当前本地 baseline 是 `859 passed`。Track A: HTTP API Minimal Surface、Track C: Artifact Content Read Policy、Track E: Approval Pause / Resume Boundary 和 Track F: External Ingestion 都已 effectively complete / closed for now；Agent / Worker lifecycle、Workspace substrate、Retry / Cancel / Supersede、approval-gated tool runner usability spike、approval lookup helper 和 workspace binding helper first slices 已 complete。GitHub Release 未发布，详细状态见 [docs/current-status.md](docs/current-status.md)。
 
 `main` 当前 ahead of `v0.2-demo`，主要增量是 Track F external ingestion boundary、Agent / Worker lifecycle first slice、Workspace substrate first slice 和 Retry / Cancel / Supersede stabilization slice；delta 记录见 [docs/post-v0.2-tag-delta.md](docs/post-v0.2-tag-delta.md)。暂不移动 `v0.2-demo` tag，也不发布 GitHub Release。
 
@@ -29,7 +29,7 @@ python3 -m venv .venv
 
 - Deterministic v0.1 demo entrypoint: `python -m isotope_kernel.demo`.
 - Explicit v0.2 demo scenario: `python -m isotope_kernel.demo --scenario v0.2`, covering the in-process HTTP facade, approval pause / resume, controlled artifact content policy, checkpoint, and memory `boundary_only` status.
-- Approval-gated tool runner usability spike: `python -m isotope_kernel.demo --scenario approval-tool-runner`, covering approval pause / resume, workspace binding read model, artifact / `ResourceRef` handoff, replay, and checkpoint without real HTTP server, real LLM, provider adapter, or filesystem mutation; approval lookup/read helper now removes event-scan approval id glue.
+- Approval-gated tool runner usability spike: `python -m isotope_kernel.demo --scenario approval-tool-runner`, covering approval pause / resume, workspace binding read model, artifact / `ResourceRef` handoff, replay, and checkpoint without real HTTP server, real LLM, provider adapter, or filesystem mutation; approval lookup/read helper and workspace binding helper now remove the event-scan and manual `workspace.bound` glue.
 - Session / run creation through the in-process kernel path.
 - `ActionCompiler -> PolicyEngine -> Executor` action chain with `PolicyDecision.grants` enforcement.
 - Artifact creation with execution provenance and structured refs.
@@ -71,6 +71,7 @@ python3 -m venv .venv
 - Kernel gap review: [docs/kernel-gap-review-v0.2.md](docs/kernel-gap-review-v0.2.md)
 - Agent / Worker lifecycle boundary: [docs/agent-worker-lifecycle-boundary-v0.2.md](docs/agent-worker-lifecycle-boundary-v0.2.md)
 - Workspace substrate boundary: [docs/workspace-substrate-boundary-v0.2.md](docs/workspace-substrate-boundary-v0.2.md)
+- Workspace binding helper boundary: [docs/workspace-binding-helper-boundary-v0.2.md](docs/workspace-binding-helper-boundary-v0.2.md)
 - Retry / Cancel / Supersede boundary: [docs/retry-cancel-supersede-boundary-v0.2.md](docs/retry-cancel-supersede-boundary-v0.2.md)
 - Usability pressure test plan: [docs/usability-pressure-test-plan-v0.2.md](docs/usability-pressure-test-plan-v0.2.md)
 - Approval tool runner friction review: [docs/approval-tool-runner-friction-review.md](docs/approval-tool-runner-friction-review.md)

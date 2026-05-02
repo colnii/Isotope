@@ -81,36 +81,39 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 baseline：`853 passed`。
+当前 baseline：`859 passed`。
 
 ## 6. Current Batch
 
-Batch name: `Approval Lookup Helper Boundary`
+Batch name: `Usability Friction Reduction Package 1`
 
-Timebox: one small batch within rolling `45-60 min` session
+Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: remove approval id event-scan glue from demo/client paths by adding the smallest approval lookup/read helper.
+Goal: reduce approval-tool-runner developer friction without opening product surfaces.
 
 Tasks:
 
-1. Add red tests for server approval lookup/read helper and in-process HTTP lookup helper.
-2. Implement minimal server helper using projected `RunState.approvals`.
-3. Update `approval-tool-runner` demo to use the helper instead of scanning events.
-4. Sync docs/status and this queue.
-5. Stop for user review; do not enter another unconfirmed batch.
+1. Approval Lookup Helper Closure Review: complete; helper first slice remains clean.
+2. Workspace Binding Helper Friction Review: complete; added `docs/workspace-binding-helper-friction-review.md`.
+3. Workspace Binding Helper Boundary Docs: complete; added `docs/workspace-binding-helper-boundary-v0.2.md`.
+4. Workspace Binding Helper Red Tests: complete; added `tests/isotope_kernel/test_workspace_binding_helper.py`.
+5. Workspace Binding Helper Green Slice: complete; added `InProcessServer.bind_workspace(...)` and updated approval-tool-runner demo.
+6. Docs / status sync + queue update: complete; stop for user review.
 
 Evidence:
 
-- Red targeted result: `10 failed, 1 passed`.
-- Full with red tests: `10 failed, 843 passed`; failures were from this batch.
-- Green targeted result: `11 passed`.
-- Full regression: `853 passed`.
-- Added `InProcessServer.get_pending_approvals(run_id)`.
-- Added `InProcessServer.get_approval(run_id, approval_id)`.
-- Added in-process HTTP read helper routes for `GET /runs/{run_id}/approvals` and `GET /runs/{run_id}/approvals/{approval_id}` without adding them to supported product inventory.
-- Updated `approval-tool-runner` demo to stop scanning events for `approval_id`.
+- Workspace helper red targeted result: `6 failed`.
+- Full with workspace helper red tests: `6 failed, 853 passed`; failures were from this package.
+- Workspace helper targeted green result: `6 passed`.
+- Full regression: `859 passed`.
+- v0.1 demo plain / JSON: pass.
+- v0.2 demo plain / JSON: pass.
+- approval-tool-runner demo plain / JSON: pass.
+- Added `InProcessServer.bind_workspace(run_id, decision, bound_to=None)`.
+- Updated `approval-tool-runner` demo to stop hand-writing `workspace.bound` payload.
+- No real HTTP server / real LLM / provider adapter / filesystem mutation / container / git worktree / process spawn / dependency.
 
 ### Previous Batch Snapshot: Approval Tool Runner API Friction Review
 
@@ -215,7 +218,7 @@ Closure:
 
 - `approval-gated tool runner` first slice is complete.
 - It exercises approval pause / resume, workspace binding read model, artifact / `ResourceRef` handoff, replay, checkpoint, and in-process HTTP facade.
-- Exposed API friction: approval-gated input uses `server.submit_tool_request(...)`, workspace binding requires explicit `workspace.bound`, and `approval_id` lookup scans events.
+- Exposed API friction at that time: approval-gated input used `server.submit_tool_request(...)`, workspace binding required explicit `workspace.bound`, and `approval_id` lookup scanned events. Later helper slices have resolved approval lookup and workspace binding glue; remaining friction is approval-gated input submission.
 
 ### Task 5: Update queue with next suggested batch
 
@@ -241,18 +244,37 @@ Scope:
 
 ## 7. Next Suggested Batch
 
-Batch name: `Remaining Approval Tool Runner Friction Reassessment`
+Batch name: `Approval-Gated Submission Helper Boundary`
 
 Status: `pending_user_confirmation`
 
 Possible shape:
 
-- docs-only reassessment of remaining spike friction
-- decide whether to do approval-gated submission helper next
-- decide whether to do workspace binding helper / policy integration next
-- do not implement either helper without a new explicit user request
+- docs-only boundary for a less awkward approval-gated action submission helper
+- decide whether helper belongs in `InProcessServer`, `HttpApiApp`, or scenario-only facade
+- if confirmed, red tests for replacing direct `server.submit_tool_request(..., requires_approval=True)` usage
+- do not implement without explicit user confirmation
 
 ## 8. Completed Batch Log
+
+### Usability Friction Reduction Package 1
+
+Status: `complete`
+
+Evidence:
+
+- Approval lookup helper closure review found no bug; helper remains first slice complete.
+- Added `docs/workspace-binding-helper-friction-review.md`.
+- Added `docs/workspace-binding-helper-boundary-v0.2.md`.
+- Added `tests/isotope_kernel/test_workspace_binding_helper.py`.
+- Workspace helper red targeted result: `6 failed`.
+- Full with red tests: `6 failed, 853 passed`.
+- Targeted green result: `6 passed`.
+- Full regression: `859 passed`.
+- Added `InProcessServer.bind_workspace(...)`.
+- Updated `approval-tool-runner` demo to use helper instead of manual `workspace.bound`.
+- No real HTTP server / real LLM / provider adapter / filesystem mutation / container / git worktree / process spawn / new dependency.
+- Stop reason: package complete; next approval-gated submission helper boundary needs user confirmation.
 
 ### Approval Lookup Helper Boundary
 
