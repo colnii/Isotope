@@ -14,7 +14,7 @@ Follow-up status: Phase 1b v0.1 demo explainer migration 已执行。Full explai
 
 Follow-up status: Phase 1c demo acceptance / readiness / scenario migration 已执行。Full docs now live at `docs/demo/v0.1-demo-acceptance.md`, `docs/demo/v0.2-demo-readiness.md`, `docs/demo/v0.2-demo-scenario.md`, and `docs/demo/v0.2-demo-acceptance.md`; old paths remain as compatibility stubs.
 
-Closure status: Phase 1 is now closed / paused. Do not continue into track, checkpoint, memory, kernel, current-status, or roadmap migrations unless explicitly requested. Kernel Gap Review has landed in `docs/kernel-gap-review-v0.2.md`; the next default workstream is Agent / worker lifecycle boundary design.
+Closure status: Phase 1 is now closed / paused. Do not continue into track, checkpoint, memory, kernel, current-status, or roadmap migrations unless explicitly requested. Kernel Gap Review has landed in `docs/kernel-gap-review-v0.2.md`; Agent / Worker lifecycle boundary has landed in `docs/agent-worker-lifecycle-boundary-v0.2.md`; the next default workstream is the corresponding red tests or Workspace substrate boundary design.
 
 ## 2. Phase 1 Scope
 
@@ -140,7 +140,7 @@ If the migration is not committed yet, prefer restoring the specific moved files
 
 ## 9. Recommendation
 
-Phase 1 closure 后，下一步默认不继续 migration；Kernel Gap Review 已落地，后续默认转入 Agent / worker lifecycle boundary design。
+Phase 1 closure 后，下一步默认不继续 migration；Kernel Gap Review 和 Agent / Worker lifecycle boundary 已落地，后续默认转入对应 red tests 或 Workspace substrate boundary design。
 
 如果用户明确要求继续 migration，建议迁移 closed Track A / C / E docs 到 `docs/tracks/` 并为每个旧路径保留 stub。不要和 checkpoint / memory / kernel docs 迁移合并。
 

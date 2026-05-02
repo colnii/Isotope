@@ -65,7 +65,7 @@
 - 当前 `agent_runtime.py` 只是 boundary placeholder；如果先做 real HTTP server 或 provider adapter，runtime orchestration 会在没有 contract 的情况下扩散。
 - 设计应先回答：worker identity、run ownership、step loop、who proposes action、who waits、who resumes、who records lifecycle events。
 
-建议下一步：先写 `docs/agent-worker-lifecycle-boundary-v0.2.md`，不要实现 real model loop。
+当前设计入口：`docs/agent-worker-lifecycle-boundary-v0.2.md`。下一步应先写 red tests 锁定 supervisor / worker / delegation boundary，不要实现 real model loop。
 
 ### 4.2 Workspace Substrate
 
@@ -118,7 +118,7 @@
 
 下一块 kernel design 建议优先做：
 
-1. Agent / worker lifecycle boundary
+1. Agent / worker lifecycle boundary (documented in `docs/agent-worker-lifecycle-boundary-v0.2.md`)
 2. Workspace substrate boundary
 3. Retry / cancel / supersede lifecycle boundary
 4. Policy profile / action registry versioning boundary
@@ -152,7 +152,7 @@
 - Retry / cancel / supersede lifecycle 未定义
 - Policy profile / action registry versioning 未定义
 
-结论：先补 Agent / Worker Lifecycle 和 Workspace Substrate 设计，再进入更真实的 usability pressure test。
+结论：Agent / Worker Lifecycle boundary 已先落文档；下一步应写 red tests，并继续补 Workspace Substrate 设计，再进入更真实的 usability pressure test。
 
 ## 7. Non-Goals For This Review
 
