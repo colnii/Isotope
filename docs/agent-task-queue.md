@@ -85,6 +85,30 @@ git status --short
 
 ## 6. Current Batch
 
+Batch name: `Approval Tool Runner API Friction Review`
+
+Timebox: part of rolling `45-60 min` session
+
+Status: `complete`
+
+Goal: review API awkwardness exposed by the completed `approval-gated tool runner` pressure test without implementing a new helper yet.
+
+Tasks:
+
+1. Review `submit_tool_request(...)`, approval id lookup, and manual `workspace.bound` friction.
+2. Classify each issue as kernel design, facade/helper gap, demo glue, or acceptable v0 shape.
+3. Write `docs/approval-tool-runner-friction-review.md`.
+4. Sync status docs and this queue.
+5. Stop for user review before starting the next helper slice.
+
+Evidence:
+
+- Added `docs/approval-tool-runner-friction-review.md`.
+- Recommended next batch: `Approval Lookup Helper Boundary`.
+- No `src/` or `tests/` changes were required.
+
+### Previous Batch Snapshot: Approval-Gated Tool Runner Spike
+
 Batch name: `Approval-Gated Tool Runner Spike`
 
 Timebox: `45-60 min`
@@ -198,19 +222,33 @@ Scope:
 
 ## 7. Next Suggested Batch
 
-Batch name: `Approval Tool Runner API Friction Review`
+Batch name: `Approval Lookup Helper Boundary`
 
-Status: `ready_after_user_review`
+Status: `pending_user_confirmation`
 
 Possible shape:
 
-- docs-only review of API awkwardness exposed by the spike
-- decide whether approval-gated input needs a first-class facade
-- decide whether workspace binding needs a server-level helper instead of direct event append
-- decide whether approval lookup needs a read helper
-- no implementation until user confirms
+- red tests for approval lookup/read helper
+- green minimal helper if the user confirms implementation
+- helper should read projected `RunState.approvals`, not scan events in demo code
+- keep HTTP route changes out unless explicitly requested
+- no workspace binding helper in this batch
+- no product approval UI / auth / scheduler
 
 ## 8. Completed Batch Log
+
+### Approval Tool Runner API Friction Review
+
+Status: `complete`
+
+Evidence:
+
+- Added `docs/approval-tool-runner-friction-review.md`.
+- Classified `server.submit_tool_request(...)` as a facade/helper gap.
+- Classified event-scan approval id lookup as a read-model helper gap.
+- Classified explicit `workspace.bound` append as a broader workspace/server integration gap.
+- Recommended `Approval Lookup Helper Boundary` as the next smallest safe slice.
+- Stop reason: next helper slice requires user confirmation.
 
 ### Approval-Gated Tool Runner Spike
 

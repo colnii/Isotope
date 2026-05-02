@@ -29,7 +29,7 @@ python3 -m venv .venv
 
 - Deterministic v0.1 demo entrypoint: `python -m isotope_kernel.demo`.
 - Explicit v0.2 demo scenario: `python -m isotope_kernel.demo --scenario v0.2`, covering the in-process HTTP facade, approval pause / resume, controlled artifact content policy, checkpoint, and memory `boundary_only` status.
-- Approval-gated tool runner usability spike: `python -m isotope_kernel.demo --scenario approval-tool-runner`, covering approval pause / resume, workspace binding read model, artifact / `ResourceRef` handoff, replay, and checkpoint without real HTTP server, real LLM, provider adapter, or filesystem mutation.
+- Approval-gated tool runner usability spike: `python -m isotope_kernel.demo --scenario approval-tool-runner`, covering approval pause / resume, workspace binding read model, artifact / `ResourceRef` handoff, replay, and checkpoint without real HTTP server, real LLM, provider adapter, or filesystem mutation; API friction review recommends approval lookup/read helper next.
 - Session / run creation through the in-process kernel path.
 - `ActionCompiler -> PolicyEngine -> Executor` action chain with `PolicyDecision.grants` enforcement.
 - Artifact creation with execution provenance and structured refs.
@@ -73,6 +73,7 @@ python3 -m venv .venv
 - Workspace substrate boundary: [docs/workspace-substrate-boundary-v0.2.md](docs/workspace-substrate-boundary-v0.2.md)
 - Retry / Cancel / Supersede boundary: [docs/retry-cancel-supersede-boundary-v0.2.md](docs/retry-cancel-supersede-boundary-v0.2.md)
 - Usability pressure test plan: [docs/usability-pressure-test-plan-v0.2.md](docs/usability-pressure-test-plan-v0.2.md)
+- Approval tool runner friction review: [docs/approval-tool-runner-friction-review.md](docs/approval-tool-runner-friction-review.md)
 - Docs migration plan: [docs/docs-migration-plan.md](docs/docs-migration-plan.md)
 - v0.2 demo readiness: [docs/demo/v0.2-demo-readiness.md](docs/demo/v0.2-demo-readiness.md)
 - v0.2 demo scenario: [docs/demo/v0.2-demo-scenario.md](docs/demo/v0.2-demo-scenario.md)

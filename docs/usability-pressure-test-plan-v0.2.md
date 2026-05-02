@@ -1,6 +1,6 @@
 # Usability Pressure Test Plan v0.2
 
-状态：`first slice complete`
+状态：`first slice complete; friction reviewed`
 
 ## 1. Purpose
 
@@ -108,7 +108,20 @@ python -m isotope_kernel.demo --scenario approval-tool-runner --json
 
 这些是后续 API ergonomics（易用性）候选，不是本 slice 要补的功能。
 
-## 8. Closure
+## 8. Friction Review
+
+API friction review 已落文档：`docs/approval-tool-runner-friction-review.md`。
+
+结论：
+
+- `server.submit_tool_request(..., requires_approval=True)` 暴露 facade/helper gap，但不是 kernel correctness bug。
+- `approval_id` discovery 扫描 canonical events 是 read-model helper gap，推荐下一批优先处理。
+- manual `workspace.bound` 暴露 workspace binding ownership / server integration gap，但范围更大，应该单独设计。
+- 不建议直接产品化 HTTP input、real tool runner、workspace filesystem mutation 或 approval UI。
+
+推荐下一步：`Approval Lookup Helper Boundary`。
+
+## 9. Closure
 
 当前判断：`approval-gated tool runner` first slice complete。
 
@@ -122,4 +135,4 @@ python -m isotope_kernel.demo --scenario approval-tool-runner --json
 - product UI
 - automatic retry / scheduler / process kill
 
-下一步建议停下来 review exposed API friction，再决定是否做 approval input ergonomics / workspace binding facade / approval lookup helper 的 docs-only boundary。
+下一步建议先做 approval lookup/read helper，降低 demo/client event-scan glue；approval input ergonomics 和 workspace binding facade 应分别作为后续独立 boundary。
