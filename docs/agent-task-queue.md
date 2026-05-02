@@ -93,20 +93,40 @@ git status --short
 
 ## 6. Current Batch
 
-Batch name: `External Snapshot Review Green Slice`
+Batch name: `External Snapshot Review Closure Review`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: implement the minimal deterministic in-process `external-snapshot-review` scenario from the red tests.
+Goal: docs-only closure review for the deterministic in-process `external-snapshot-review` scenario.
 
 Tasks:
 
-1. Red tests from previous batch: complete.
-2. Green implementation in `src/isotope_kernel/demo.py`: complete.
-3. Docs / status sync: complete.
-4. Queue update: complete; next suggested batch set to `External Snapshot Review Friction Review`.
+1. Review `external-snapshot-review` for Track F boundary coverage: complete.
+2. Confirm no provider adapter / webhook / network listener / real HTTP server / real LLM / filesystem mutation / memory query engine: complete.
+3. Confirm HTTP `/external-ingestion` remains `not_enabled`: complete.
+4. Docs / status sync: complete.
+5. Queue update: complete; next suggested batch set to `App Spike Coverage Review`.
+
+Evidence:
+
+- Full regression: `913 passed`.
+- `python -m isotope_kernel.demo --scenario external-snapshot-review`: pass.
+- `python -m isotope_kernel.demo --scenario external-snapshot-review --json`: pass.
+- `python -m isotope_kernel.demo --scenario external-snapshot-review --trace`: pass.
+- artifact-review trace regression: pass.
+- Closure review doc: `docs/external-snapshot-review-closure-review.md`.
+- Scenario covers deterministic `ImportedSnapshot` payloads, canonical `snapshot.imported`, `RunState.external_observations`, conflict diagnostics, native state priority, replay, and checkpoint.
+- HTTP `/external-ingestion` remains `not_enabled`.
+- JSON / trace do not expose raw external content or artifact full content.
+- No real provider adapter / webhook / real HTTP server / real LLM / filesystem mutation / memory query engine / dependency.
+
+### Previous Batch Snapshot: External Snapshot Review Green Slice
+
+Batch name: `External Snapshot Review Green Slice`
+
+Status: `complete`
 
 Evidence:
 
@@ -426,17 +446,19 @@ Scope:
 
 ## 7. Next Suggested Batch
 
-Batch name: `External Snapshot Review Friction Review`
+Batch name: `App Spike Coverage Review`
 
 Status: `ready_docs_only`
 
 Possible tasks:
 
-1. Review `external-snapshot-review` spike for developer ergonomics.
-2. Distinguish kernel issue / helper gap / demo glue / acceptable v0 shape.
-3. Confirm it did not open provider adapter, webhook, HTTP ingestion API, real HTTP server, real LLM, filesystem mutation, or memory query engine.
-4. Decide whether the spike can be marked first slice complete / closed for now.
-5. Stop if the next step requires product / user judgment.
+1. Compare completed app spikes:
+   - first app spike: `artifact-review`
+   - second app spike: `external-snapshot-review`
+2. Summarize coverage across artifact / provenance, content policy, external observations, conflicts, replay, checkpoint, approval, workspace, and action lifecycle.
+3. Identify remaining app-spike gaps without opening real provider / real server / real LLM / filesystem / memory query surfaces.
+4. Decide whether the next docs-only step should be `Kernel Gap Review Refresh`.
+5. Stop if selecting another app spike requires product / user judgment.
 
 Constraints:
 

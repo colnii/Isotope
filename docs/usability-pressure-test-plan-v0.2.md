@@ -1,6 +1,6 @@
 # Usability Pressure Test Plan v0.2
 
-状态：`external-snapshot-review second app spike first slice complete`
+状态：`external-snapshot-review second app spike complete / closed for now`
 
 ## 1. Purpose
 
@@ -307,7 +307,7 @@ Next suggested batch: `Second App Spike Selection`, docs-only by default. Stop i
 
 ## 16. Second App Spike Selection
 
-状态：`complete; external snapshot review first slice implemented`
+状态：`complete; external snapshot review second app spike closed for now`
 
 Selection doc: `docs/second-app-spike-selection.md`
 
@@ -329,7 +329,9 @@ Do not select worker handoff, approval-gated workspace task, or memory boundary 
 
 ## 17. External Snapshot Review Spike
 
-状态：`first slice complete`
+状态：`second app spike complete / closed for now`
+
+Closure review: `docs/external-snapshot-review-closure-review.md`
 
 Commands:
 
@@ -362,7 +364,7 @@ python -m isotope_kernel.demo --scenario external-snapshot-review --json
 - memory query / storage engine
 - imported observation driving native state
 
-Next suggested batch: `External Snapshot Review Friction Review`, docs-only by default. Stop if extending the flow requires product / user judgment or opens real provider / webhook / HTTP ingestion surfaces.
+Next suggested batch: `App Spike Coverage Review`, docs-only by default. If the goal is to return to kernel design backlog instead, use `Kernel Gap Review Refresh`. Do not open real provider / webhook / HTTP ingestion surfaces without a new boundary and red tests.
 
 ## 12. Demo Trace Mode
 
