@@ -155,3 +155,20 @@ def test_artifact_review_demo_source_does_not_import_network_listener_dependenci
         for module in imports
         for forbidden in FORBIDDEN_NETWORK_IMPORT_PREFIXES
     )
+
+
+def test_artifact_review_demo_uses_artifact_record_helper_for_source_provenance():
+    source = DEMO_SOURCE.read_text(encoding="utf-8")
+    function_source = ast.get_source_segment(
+        source,
+        next(
+            node
+            for node in ast.walk(ast.parse(source))
+            if isinstance(node, ast.FunctionDef) and node.name == "_run_artifact_review_spike"
+        ),
+    )
+
+    assert function_source is not None
+    assert "get_artifact_record(" in function_source
+    assert "for event in reversed(app.server.get_events(run_id))" not in function_source
+    assert "event.payload[\"artifact\"][\"ref\"] == source_artifact.ref.to_dict()" not in function_source

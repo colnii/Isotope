@@ -16,6 +16,7 @@ from .ids import new_id
 from .models import PolicyDecision
 from .policy import PolicyEngine
 from .projector import RunProjector
+from .refs import ResourceRef
 from .retrieval import RetrievalService
 from .workspace import WorkspaceManager
 
@@ -451,6 +452,27 @@ class InProcessServer:
             "run_state": state,
         }
 
+    def get_artifact_record(self, ref: ResourceRef) -> dict[str, Any]:
+        if not isinstance(ref, ResourceRef):
+            raise TypeError("artifact record requires a structured ResourceRef")
+        if ref.ref_type != "artifact":
+            raise ValueError("artifact record requires an artifact ResourceRef")
+
+        metadata = self.artifact_store.get_metadata(ref, include_provenance=True)
+        basis_event = self._find_artifact_created_event(ref)
+        if basis_event is None:
+            raise ValueError("artifact.created event not found")
+        return {
+            "artifact_id": ref.artifact_id,
+            "artifact_type": metadata["artifact_type"],
+            "summary": metadata["summary"],
+            "ref": ref.to_dict(),
+            "provenance": dict(metadata["provenance"]),
+            "basis_event_id": basis_event.event_id,
+            "basis_event_type": basis_event.event_type,
+            "basis_created_at": basis_event.created_at,
+        }
+
     def get_events(self, run_id: str) -> list[CanonicalEvent]:
         self._validate_read_run_id(run_id)
         return self.event_store.list_events(run_id)
@@ -552,6 +574,18 @@ class InProcessServer:
     def _find_approval_requested_event(self, run_id: str, approval_id: str) -> CanonicalEvent | None:
         for event in self.event_store.list_events(run_id):
             if event.event_type == "approval.requested" and event.payload.get("approval_id") == approval_id:
+                return event
+        return None
+
+    def _find_artifact_created_event(self, ref: ResourceRef) -> CanonicalEvent | None:
+        expected_ref = ref.to_dict()
+        for event in self.event_store.list_events(ref.run_id):
+            if event.event_type != "artifact.created":
+                continue
+            artifact = event.payload.get("artifact")
+            if not isinstance(artifact, dict):
+                raise ValueError("malformed artifact.created event")
+            if artifact.get("ref") == expected_ref:
                 return event
         return None
 

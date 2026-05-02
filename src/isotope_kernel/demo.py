@@ -388,28 +388,24 @@ def _run_artifact_review_spike(root: Path) -> dict[str, Any]:
         summary="source artifact summary",
         content="source artifact durable content",
     )
-    source_artifact = app.server.artifact_store.list_artifacts(run_id)[-1]
-    source_artifact_event_id = ""
-    for event in reversed(app.server.get_events(run_id)):
-        if event.event_type == "artifact.created" and event.payload["artifact"]["ref"] == source_artifact.ref.to_dict():
-            source_artifact_event_id = event.event_id
-            break
+    source_artifact_ref = source_setup["artifact_ref"]
+    source_record = app.server.get_artifact_record(source_artifact_ref)
 
     source_summary = app.server.retrieval.get_artifact_summary(
-        source_artifact.ref,
+        source_artifact_ref,
         {"artifact": {"read": "summary"}},
     )
     controlled_retrieval = app.server.retrieval.get_artifact_content(
-        source_artifact.ref,
+        source_artifact_ref,
         grants={"artifact": {"read": "full"}},
         caller_context={
             "caller": "artifact_review_demo",
             "run_id": run_id,
-            "source_artifact_id": source_artifact.artifact_id,
+            "source_artifact_id": source_record["artifact_id"],
         },
         purpose="artifact_review_flow",
     )
-    summary_only_ok = "content" not in source_summary and source_summary["ref"] == source_artifact.ref.to_dict()
+    summary_only_ok = "content" not in source_summary and source_summary["ref"] == source_artifact_ref.to_dict()
     controlled_retrieval_ok = (
         controlled_retrieval.get("status") == "ok"
         and controlled_retrieval.get("view") == "full"
@@ -431,7 +427,7 @@ def _run_artifact_review_spike(root: Path) -> dict[str, Any]:
     events_response = app.request("GET", f"/runs/{run_id}/events")
     source_summary_response = app.request(
         "GET",
-        f"/artifacts/{source_artifact.artifact_id}/summary",
+        f"/artifacts/{source_record['artifact_id']}/summary",
     )
     review_summary_response = app.request(
         "GET",
@@ -439,7 +435,7 @@ def _run_artifact_review_spike(root: Path) -> dict[str, Any]:
     )
     http_full_content_response = app.request(
         "GET",
-        f"/artifacts/{source_artifact.artifact_id}/content",
+        f"/artifacts/{source_record['artifact_id']}/content",
     )
 
     replay_state = RunProjector().rebuild(run_id, app.server.event_store)
@@ -463,12 +459,12 @@ def _run_artifact_review_spike(root: Path) -> dict[str, Any]:
     )
     review_decision = {
         "status": "accepted",
-        "source_ref": source_artifact.ref.to_dict(),
+        "source_ref": source_artifact_ref.to_dict(),
         "basis_summary": source_summary["summary"],
         "review_artifact_ref": review_artifact_ref,
         "provenance": {
-            "source_ref": source_artifact.ref.to_dict(),
-            "source_basis_event_id": source_artifact_event_id,
+            "source_ref": source_artifact_ref.to_dict(),
+            "source_basis_event_id": source_record["basis_event_id"],
             "review_artifact_ref": review_artifact_ref,
             "review_execution_id": review_result["execution_id"],
         },
@@ -511,9 +507,10 @@ def _run_artifact_review_spike(root: Path) -> dict[str, Any]:
             and checkpoint_ok
             and replay_state.status == "completed"
         ),
-        "artifact_ref": source_artifact.ref.to_dict(),
+        "artifact_ref": source_artifact_ref.to_dict(),
         "review_artifact_ref": review_artifact_ref,
         "source_summary": source_summary,
+        "source_artifact_record": source_record,
         "source_setup": {
             "status": source_setup["status"],
             "proposal_id": source_setup["proposal_id"],
