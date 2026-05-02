@@ -8,9 +8,9 @@
 
 当前基线：
 
-- tests: `820 passed`
+- tests: `831 passed`
 - `v0.2-demo` tag 已存在，指向 `09319e7407116d9f99f4a18853d4df23a8714720`
-- 当前 `main` 已在 tag 后完成 Track F External Ingestion / `ImportedSnapshot` boundary、Agent / Worker lifecycle first slice、Workspace substrate first slice 和 Retry / Cancel / Supersede first slice
+- 当前 `main` 已在 tag 后完成 Track F External Ingestion / `ImportedSnapshot` boundary、Agent / Worker lifecycle first slice、Workspace substrate first slice 和 Retry / Cancel / Supersede stabilization slice
 - Track D / A / C / E / F 已 effectively complete / closed for now
 - docs migration Phase 1 已 closed / paused
 
@@ -32,7 +32,7 @@
 | Memory boundary | boundary-only | memory records/read model/checkpoint boundary exists；durable storage/query/promotion 仍 deferred |
 | In-process HTTP facade | implemented boundary | `HttpApiApp` / `create_http_app(...)` 支持 minimal route inventory、validation、idempotency、deferred route contract |
 | Workspace binding boundary | first slice complete | `RunState.workspaces`、canonical `workspace.bound`、grants-bound `shared_ro` binding、replay 和 checkpoint support 已覆盖 |
-| Retry / Cancel / Supersede | first slice complete | `RunState.action_retries` / `action_cancellations` / `action_supersessions`、slice events、replay 和 checkpoint support 已覆盖 |
+| Retry / Cancel / Supersede | stabilization slice complete | `RunState.action_retries` / `action_cancellations` / `action_supersessions`、slice events、basis linkage hardening、replay 和 checkpoint support 已覆盖 |
 
 ## 3. Gap Review
 
@@ -44,7 +44,7 @@
 | Workspace substrate | first slice complete | 中高：当前已有 `RunState.workspaces` / `workspace.bound` / checkpoint support，但真实 workspace read/write/isolation 仍未设计 | 高 | 部分阻塞；lease/path-safety 是下一 blocker | lease/path-safety boundary |
 | Action type registry versioning | partial / boundary | 中高：当前 registry 是固定 minimal entries，缺少 action schema evolution / compatibility contract | 中高 | 部分阻塞 | docs-only design tied to policy profile |
 | Tool protocol | sketch | 中高：tool result/error/resource contract 不清会污染 event schema 和 executor ownership | 高 | 是，阻塞 external tool pressure test | docs-only protocol note after workspace boundary |
-| Retry / cancel / supersede | first slice complete | 中：lineage / cancel / supersede read model 已有，但仍没有 automatic retry engine、scheduler、process kill 或 tool-level cancellation | 中高 | 不阻塞 first pressure test；阻塞 long-running product runtime | defer product runtime; next gap can be workspace lease/path safety |
+| Retry / cancel / supersede | stabilization slice complete | 中：lineage / cancel / supersede read model 已有，并已 harden basis refs / replacement identity / cancel request ordering / projector reuse reset；但仍没有 automatic retry engine、scheduler、process kill 或 tool-level cancellation | 中高 | 不阻塞 first pressure test；阻塞 long-running product runtime | defer product runtime; next gap can be pressure test planning |
 | Approval full state machine | boundary-only | 中：minimal approve/deny 已有，但 timeout, withdrawn, superseded, expired, audit identity 都未定义 | 中 | 不阻塞 current demo；阻塞 product-like approval | defer beyond minimal pressure test |
 | Memory storage / query / promotion | boundary-only | 中：长期 deferred 会限制 continuity；过早实现又会误导为 memory product | 高 | 不阻塞 kernel boundary pressure test | defer; keep memory promotion separate from session continuity design |
 | Retrieval ranking / budget / slicing | missing | 中：controlled artifact content read 已有，但 ranking/budget 会影响 future memory/search UX | 中高 | 不阻塞 current pressure test | defer until retrieval use case exists |
@@ -83,12 +83,12 @@
 
 ### 4.3 Retry / Cancel / Supersede
 
-优先级：first slice complete。
+优先级：stabilization slice complete。
 
 原因：
 
 - 这是 run/action lifecycle 的缺口，直接影响 projector invariants、checkpoint prefix consistency 和 approval/external observation read model。
-- 当前 first slice 已定义并实现 projector-level event validation、read model、replay 和 checkpoint support。
+- 当前 slice 已定义并实现 projector-level event validation、basis linkage hardening、read model、replay 和 checkpoint support。
 - 仍不应直接实现 scheduler、process kill、tool-level cancellation 或 automatic retry engine。
 
 当前设计入口：`docs/retry-cancel-supersede-boundary-v0.2.md`。下一步如继续，应先定义 product-runtime scope，而不是直接接真实 scheduler。
@@ -154,7 +154,7 @@
 - Retry / cancel / supersede product-runtime behavior still excludes scheduler / process kill / tool-level cancellation
 - Policy profile / action registry versioning 未定义
 
-结论：Agent / Worker Lifecycle first slice、Workspace Substrate first slice 和 Retry / Cancel / Supersede first slice 已 complete；下一步应做 workspace lease/path-safety boundary，再进入更真实的 usability pressure test。
+结论：Agent / Worker Lifecycle first slice、Workspace Substrate first slice 和 Retry / Cancel / Supersede stabilization slice 已 complete；下一步应做 Kernel Usability Pressure Test Planning，先判断是否可以进入 tiny app pressure test。
 
 ## 7. Non-Goals For This Review
 

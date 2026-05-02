@@ -28,7 +28,7 @@ Retry / cancel / supersede 是 Workspace substrate first slice 之后需要补�
 - `run.completed` 不能覆盖 running / failed / pending approval state。
 - checkpoint state 已包含 `actions`、`approvals`、`agents`、`workers`、`workspaces`、`memory_records` 和 `external_observations` 等 read model。
 
-这些能力支撑了 retry / cancel / supersede 的第一批 green slice。当前已实现 action-level retry / cancel / supersede read model；仍不实现 scheduler、process kill 或 automatic retry engine。
+这些能力支撑了 retry / cancel / supersede 的第一批 green slice。当前已实现 action-level retry / cancel / supersede read model，并已完成 stabilization hardening：basis event linkage、replacement identity、cancel request ordering、projector reuse state reset，以及 checkpoint-assisted rebuild 等关键不变量都有测试覆盖。仍不实现 scheduler、process kill 或 automatic retry engine。
 
 ## 3. Boundary Definitions
 
@@ -85,7 +85,7 @@ Supersede 指一个 action proposal / attempt 被 replacement proposal 取代。
 | `action.retry_requested` | `retry_id`, `run_id`, `original_proposal_id`, `original_execution_id`, `reason`, `requested_by` |
 | `action.retry_created` | `retry_id`, `new_proposal_id`, `original_proposal_id`, `basis_event_id`, `policy_basis` |
 | `action.cancel_requested` | `cancel_id`, `run_id`, `proposal_id`, `execution_id` if running, `reason`, `requested_by` |
-| `action.cancelled` | `cancel_id`, `proposal_id`, `status`, `basis_event_id`, `reason` |
+| `action.cancelled` | `cancel_id`, `proposal_id`, `execution_id`, `status`, `basis_event_id`, `reason` |
 | `action.superseded` | `supersession_id`, `old_proposal_id`, `new_proposal_id`, `reason`, `basis_event_id` |
 
 如果 implementation slice 选择更小 event set，也必须保留 lineage、policy basis、basis refs 和 replayability。
@@ -99,6 +99,7 @@ Supersede 指一个 action proposal / attempt 被 replacement proposal 取代。
 - checkpoint-assisted rebuild 与 full event replay 等价。
 - malformed lifecycle events fail fast。
 - lifecycle-invalid sequence fail fast。
+- retry / cancel / supersede basis refs must point at the expected canonical event.
 - read model 不读取 executor/server in-memory state。
 - read model 不读取 artifact full content 或 workspace filesystem。
 
@@ -183,11 +184,31 @@ First slice 已新增：
 | Checkpoint | read model survives checkpoint-assisted rebuild if included in `RunState` |
 | No product runtime | no scheduler / process kill / real concurrency in first slice |
 
-## 10. Status For Current Repo
+## 10. Stabilization Slice
+
+当前 stabilization batch 已补充并通过：
+
+- malformed / inconsistent retry created events fail fast：
+  - `action.retry_created.basis_event_id` 必须指向对应 `action.retry_requested` event。
+  - retry replacement proposal 必须使用新的 proposal identity。
+  - projector reuse 不得携带 stale retry request internal state。
+- malformed / inconsistent cancel events fail fast：
+  - `action.cancel_requested.proposal_id` 必须匹配 running execution 的 proposal。
+  - `action.cancelled` 必须有对应 `action.cancel_requested`。
+  - `action.cancelled.basis_event_id` 必须指向对应 request event。
+- malformed / inconsistent supersede events fail fast：
+  - `action.superseded.basis_event_id` 必须指向 old action start event。
+  - replacement proposal 必须使用新的 proposal identity。
+- retry / cancel / supersede read-model fields all match full replay after checkpoint-assisted rebuild。
+
+这些 hardening 仍保持 projector-level boundary；没有新增 scheduler、process kill、tool-level cancellation、real concurrency、event store semantic change 或 executor grants semantic change。
+
+## 11. Status For Current Repo
 
 Current repo status:
 
-- tests baseline after first green slice: `820 passed`
+- tests baseline after stabilization slice: `831 passed`
 - retry / cancel / supersede first slice: complete
+- retry / cancel / supersede stabilization slice: complete
 - current implementation: projector-level canonical event validation, read model, replay, and checkpoint support
 - not implemented: scheduler, automatic retry engine, process kill, tool-level cancellation, real concurrency

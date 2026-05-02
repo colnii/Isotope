@@ -1,6 +1,6 @@
 import pytest
 
-from isotope_kernel import events, projector
+from isotope_kernel import checkpoint_store, event_store, events, projector
 
 
 ARTIFACT_REF = {
@@ -95,6 +95,11 @@ def _without(mapping: dict, key: str) -> dict:
     return result
 
 
+def _write_events(store, canonical_events):
+    for event in canonical_events:
+        store.append(event)
+
+
 def test_supersede_links_old_and_replacement_proposals():
     state = projector.RunProjector().project(
         [*_started_action_events(), _superseded(), _proposal("evt_006", "prop_replacement_001")]
@@ -151,3 +156,28 @@ def test_malformed_supersede_event_fails_fast():
 
     with pytest.raises(ValueError, match="action.superseded missing required field: supersession_id"):
         projector.RunProjector().project([*_started_action_events(), _event("evt_005", "action.superseded", payload)])
+
+
+def test_supersede_basis_event_must_match_started_event():
+    with pytest.raises(ValueError, match="action.superseded basis_event_id must match old action start event"):
+        projector.RunProjector().project([*_started_action_events(), _superseded(basis_event_id="evt_wrong")])
+
+
+def test_supersede_must_use_new_replacement_proposal_identity():
+    with pytest.raises(ValueError, match="action.superseded new_proposal_id must differ from old_proposal_id"):
+        projector.RunProjector().project([*_started_action_events(), _superseded(new_proposal_id="prop_001")])
+
+
+def test_supersede_read_model_checkpoint_assisted_rebuild_matches_full_replay(tmp_path):
+    canonical_events = [*_started_action_events(), _superseded(), _proposal("evt_006", "prop_replacement_001")]
+    events_store = event_store.FileEventStore(tmp_path)
+    checkpoints = checkpoint_store.FileCheckpointStore(tmp_path)
+    _write_events(events_store, canonical_events)
+    checkpoint = projector.RunProjector().create_checkpoint("run_001", canonical_events[:5])
+    checkpoints.save_checkpoint("run_001", checkpoint)
+
+    assisted = projector.RunProjector().rebuild_with_checkpoint("run_001", events_store, checkpoints)
+    full = projector.RunProjector().project(canonical_events)
+
+    assert assisted == full
+    assert assisted.action_supersessions["supersede_001"]["status"] == "created"

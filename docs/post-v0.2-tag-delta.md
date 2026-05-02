@@ -13,7 +13,7 @@
 - `v0.2-demo` tag: `09319e7407116d9f99f4a18853d4df23a8714720`
 - current `main` after original delta review: `68ea007bff9a1c7f44dff6b6806939eeec1b4eb9`
 - current mainline has advanced after that review; verify exact HEAD with `git rev-parse HEAD`
-- current baseline: `820 passed`
+- current baseline: `831 passed`
 - GitHub Release: not published
 - release meaning: developer demo only, not product release
 
@@ -32,7 +32,7 @@ Commits included in `v0.2-demo..main` at this review:
 - `8474d78` docs: close external ingestion boundary track
 - `68ea007` docs: review post v0.2 tag delta
 
-The main technical delta is Track F: External Ingestion / `ImportedSnapshot` Boundary, followed by Agent / Worker lifecycle first slice, Workspace substrate first slice, and Retry / Cancel / Supersede first slice.
+The main technical delta is Track F: External Ingestion / `ImportedSnapshot` Boundary, followed by Agent / Worker lifecycle first slice, Workspace substrate first slice, and Retry / Cancel / Supersede stabilization slice.
 
 ## 4. What Track F Adds
 
@@ -66,7 +66,7 @@ HTTP `/external-ingestion` remains `501 not_enabled`.
 
 Do not move or force-update `v0.2-demo`.
 
-Default recommendation: do not create `v0.2.1-demo` yet. Keep `v0.2-demo` as the accepted developer demo anchor and document that `main` is ahead of the tag with Track F boundary work, Agent / Worker lifecycle first slice, Workspace substrate first slice, and Retry / Cancel / Supersede first slice.
+Default recommendation: do not create `v0.2.1-demo` yet. Keep `v0.2-demo` as the accepted developer demo anchor and document that `main` is ahead of the tag with Track F boundary work, Agent / Worker lifecycle first slice, Workspace substrate first slice, and Retry / Cancel / Supersede stabilization slice.
 
 Create a future `v0.2.1-demo` only if a reviewer or external reader needs a fixed tag that includes Track F external ingestion boundary / read-model / checkpoint support plus later agent / workspace / action-lifecycle first slices.
 
@@ -82,10 +82,10 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2 --json
 ```
 
-Current expected full regression baseline after later mainline slices is `820 passed`.
+Current expected full regression baseline after later mainline slices is `831 passed`.
 
 ## 8. Cycle Closure
 
 `docs/v0.2-cycle-closure-review.md` records the current v0.2 cycle closure decision.
 
-Default next mode is cleanup / docs organization / external review, not additional runtime implementation. `v0.2.1-demo` remains optional and should only be prepared if an external reviewer needs a fixed tag that includes Track F, Agent / Worker lifecycle, Workspace substrate, and Retry / Cancel / Supersede first slices.
+Default next mode is cleanup / docs organization / external review, not additional runtime implementation. `v0.2.1-demo` remains optional and should only be prepared if an external reviewer needs a fixed tag that includes Track F, Agent / Worker lifecycle, Workspace substrate, and Retry / Cancel / Supersede stabilization slices.

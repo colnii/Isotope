@@ -103,8 +103,11 @@ class RunProjector:
         self._proposal_grants: dict[str, dict[str, Any]] = {}
         self._execution_statuses: dict[str, str] = {}
         self._execution_action_types: dict[str, str] = {}
+        self._execution_proposals: dict[str, str] = {}
         self._proposal_execution_ids: dict[str, str] = {}
+        self._proposal_start_event_ids: dict[str, str] = {}
         self._retry_requests: dict[str, dict[str, Any]] = {}
+        self._cancel_requests: dict[str, dict[str, Any]] = {}
         self._approval_proposals: dict[str, str] = {}
         self._approval_resolutions: set[str] = set()
         self._delegation_proposals: dict[str, dict[str, Any]] = {}
@@ -165,7 +168,9 @@ class RunProjector:
                 raise ValueError("worker action requires policy grants")
             self._execution_statuses[str(payload["execution_id"])] = "running"
             self._execution_action_types[str(payload["execution_id"])] = self._proposal_action_types.get(proposal_id, "")
+            self._execution_proposals[str(payload["execution_id"])] = proposal_id
             self._proposal_execution_ids[proposal_id] = str(payload["execution_id"])
+            self._proposal_start_event_ids[proposal_id] = event.event_id
         elif event.event_type == "delegation.proposed":
             self._delegation_proposals[str(payload["delegation_id"])] = dict(payload)
         elif event.event_type == "delegation.decided":
@@ -218,7 +223,11 @@ class RunProjector:
             original_execution_id = str(payload["original_execution_id"])
             if self._execution_statuses.get(original_execution_id) != "failed":
                 raise ValueError("action.retry_requested requires failed execution")
-            self._retry_requests[str(payload["retry_id"])] = dict(payload)
+            if self._execution_proposals.get(original_execution_id) != payload["original_proposal_id"]:
+                raise ValueError("action.retry_requested original_proposal_id must match original execution")
+            retry_request = dict(payload)
+            retry_request["_request_event_id"] = event.event_id
+            self._retry_requests[str(payload["retry_id"])] = retry_request
         elif event.event_type == "action.retry_created":
             retry_id = str(payload["retry_id"])
             retry_request = self._retry_requests.get(retry_id)
@@ -226,6 +235,10 @@ class RunProjector:
                 raise ValueError("action.retry_created requires action.retry_requested")
             if payload["original_proposal_id"] != retry_request["original_proposal_id"]:
                 raise ValueError("action.retry_created original_proposal_id must match retry request")
+            if payload["basis_event_id"] != retry_request["_request_event_id"]:
+                raise ValueError("action.retry_created basis_event_id must match action.retry_requested")
+            if payload["new_proposal_id"] == payload["original_proposal_id"]:
+                raise ValueError("action.retry_created new_proposal_id must differ from original_proposal_id")
         elif event.event_type == "action.cancel_requested":
             execution_id = str(payload["execution_id"])
             status = self._execution_statuses.get(execution_id)
@@ -233,13 +246,31 @@ class RunProjector:
                 raise ValueError("action.cancel_requested after terminal action state")
             if status != "running":
                 raise ValueError("action.cancel_requested requires running action")
+            if self._execution_proposals.get(execution_id) != payload["proposal_id"]:
+                raise ValueError("action.cancel_requested proposal_id must match execution proposal")
+            cancel_request = dict(payload)
+            cancel_request["_request_event_id"] = event.event_id
+            self._cancel_requests[str(payload["cancel_id"])] = cancel_request
         elif event.event_type == "action.cancelled":
+            cancel_request = self._cancel_requests.get(str(payload["cancel_id"]))
+            if cancel_request is None:
+                raise ValueError("action.cancelled requires action.cancel_requested")
+            if payload["basis_event_id"] != cancel_request["_request_event_id"]:
+                raise ValueError("action.cancelled basis_event_id must match action.cancel_requested")
+            if payload["proposal_id"] != cancel_request["proposal_id"]:
+                raise ValueError("action.cancelled proposal_id must match action.cancel_requested")
+            if payload["execution_id"] != cancel_request["execution_id"]:
+                raise ValueError("action.cancelled execution_id must match action.cancel_requested")
             execution_id = str(payload["execution_id"])
             if self._execution_statuses.get(execution_id) != "running":
                 raise ValueError("action.cancelled requires running action")
             self._execution_statuses[execution_id] = "cancelled"
         elif event.event_type == "action.superseded":
             old_proposal_id = str(payload["old_proposal_id"])
+            if payload["new_proposal_id"] == payload["old_proposal_id"]:
+                raise ValueError("action.superseded new_proposal_id must differ from old_proposal_id")
+            if payload["basis_event_id"] != self._proposal_start_event_ids.get(old_proposal_id):
+                raise ValueError("action.superseded basis_event_id must match old action start event")
             execution_id = self._proposal_execution_ids.get(old_proposal_id)
             if execution_id is None:
                 raise ValueError("action.superseded requires started action")
@@ -1014,6 +1045,11 @@ class RunProjector:
         self._proposal_grants = {}
         self._execution_statuses = {}
         self._execution_action_types = {}
+        self._execution_proposals = {}
+        self._proposal_execution_ids = {}
+        self._proposal_start_event_ids = {}
+        self._retry_requests = {}
+        self._cancel_requests = {}
         self._approval_proposals = {}
         self._approval_resolutions = set()
         self._delegation_proposals = {}

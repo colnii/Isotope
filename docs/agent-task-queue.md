@@ -66,7 +66,7 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 baseline：`820 passed`。
+当前 baseline：`831 passed`。
 
 ## 5. Current Batch
 
@@ -74,13 +74,18 @@ Batch name: `Retry / Cancel / Supersede Stabilization`
 
 Timebox: 45-60 min
 
-Status: `ready`
+Status: `complete`
 
 Goal: stabilize the first Retry / Cancel / Supersede slice as one 45-60 minute work package, then stop for user review.
 
 ### Task 1: Retry / Cancel / Supersede closure review
 
-Status: `ready`
+Status: `complete`
+
+Evidence:
+
+- Reviewed `projector.py`, RCS tests, checkpoint expectations, and docs.
+- Boundary remains first-slice complete; no scheduler / process kill / real concurrency was introduced.
 
 Scope:
 
@@ -90,7 +95,13 @@ Scope:
 
 ### Task 2: Retry / Cancel / Supersede malformed event hardening
 
-Status: `ready`
+Status: `complete`
+
+Evidence:
+
+- Added red tests for retry basis mismatch, retry replacement identity reuse, stale projector retry request state, cancel proposal / execution mismatch, missing cancel request, cancel basis mismatch, supersede basis mismatch, and supersede replacement identity reuse.
+- Red result before implementation: `8 failed, 17 passed`.
+- Green result after implementation: targeted RCS tests `25 passed`.
 
 Scope:
 
@@ -101,7 +112,12 @@ Scope:
 
 ### Task 3: Retry / Cancel / Supersede checkpoint/replay hardening
 
-Status: `ready`
+Status: `complete`
+
+Evidence:
+
+- Added checkpoint-assisted rebuild checks for retry, cancel, and supersede read models.
+- Verified assisted rebuild matches full event replay for all three RCS read-model fields.
 
 Scope:
 
@@ -111,7 +127,12 @@ Scope:
 
 ### Task 4: Docs/status sync
 
-Status: `ready`
+Status: `complete`
+
+Evidence:
+
+- Synced RCS boundary doc, current status, roadmap, queue, README, and AGENTS.
+- Baseline updated to `831 passed`.
 
 Scope:
 
@@ -123,7 +144,12 @@ Scope:
 
 ### Task 5: Stop for user review
 
-Status: `ready`
+Status: `complete`
+
+Evidence:
+
+- Current batch is complete.
+- Next suggested batch remains planning-only until user confirms.
 
 Scope:
 

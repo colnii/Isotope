@@ -1,6 +1,6 @@
 import pytest
 
-from isotope_kernel import events, projector
+from isotope_kernel import checkpoint_store, event_store, events, projector
 
 
 ARTIFACT_REF = {
@@ -103,6 +103,11 @@ def _running_action_events():
     return [_run_created(), _proposal(), _decision(), _started()]
 
 
+def _write_events(store, canonical_events):
+    for event in canonical_events:
+        store.append(event)
+
+
 def test_cancelled_action_is_projected_from_canonical_events():
     state = projector.RunProjector().project([*_running_action_events(), _cancel_requested(), _cancelled()])
 
@@ -134,3 +139,37 @@ def test_cancel_checkpoint_state_contains_cancellation_read_model():
 def test_existing_projector_still_rejects_completion_before_start():
     with pytest.raises(ValueError, match="action.completed before action.started"):
         projector.RunProjector().project([_run_created(), _proposal(), _decision(), _completed("evt_004")])
+
+
+def test_cancel_requested_proposal_must_match_running_execution():
+    with pytest.raises(ValueError, match="action.cancel_requested proposal_id must match execution proposal"):
+        projector.RunProjector().project(
+            [*_running_action_events(), _cancel_requested(proposal_id="prop_other")]
+        )
+
+
+def test_cancelled_requires_prior_cancel_request():
+    with pytest.raises(ValueError, match="action.cancelled requires action.cancel_requested"):
+        projector.RunProjector().project([*_running_action_events(), _cancelled()])
+
+
+def test_cancelled_basis_event_must_match_cancel_request():
+    with pytest.raises(ValueError, match="action.cancelled basis_event_id must match action.cancel_requested"):
+        projector.RunProjector().project(
+            [*_running_action_events(), _cancel_requested(), _cancelled(basis_event_id="evt_wrong")]
+        )
+
+
+def test_cancel_read_model_checkpoint_assisted_rebuild_matches_full_replay(tmp_path):
+    canonical_events = [*_running_action_events(), _cancel_requested(), _cancelled()]
+    events_store = event_store.FileEventStore(tmp_path)
+    checkpoints = checkpoint_store.FileCheckpointStore(tmp_path)
+    _write_events(events_store, canonical_events)
+    checkpoint = projector.RunProjector().create_checkpoint("run_001", canonical_events[:5])
+    checkpoints.save_checkpoint("run_001", checkpoint)
+
+    assisted = projector.RunProjector().rebuild_with_checkpoint("run_001", events_store, checkpoints)
+    full = projector.RunProjector().project(canonical_events)
+
+    assert assisted == full
+    assert assisted.action_cancellations["cancel_001"]["status"] == "cancelled"

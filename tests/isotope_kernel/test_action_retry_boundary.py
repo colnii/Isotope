@@ -1,6 +1,6 @@
 import pytest
 
-from isotope_kernel import events, projector
+from isotope_kernel import checkpoint_store, event_store, events, projector
 
 
 def _event(event_id: str, event_type: str, payload: dict):
@@ -102,6 +102,11 @@ def _without(mapping: dict, key: str) -> dict:
     return result
 
 
+def _write_events(store, canonical_events):
+    for event in canonical_events:
+        store.append(event)
+
+
 def test_retry_read_model_preserves_original_action_lineage():
     state = projector.RunProjector().project([*_failed_action_events(), _retry_requested(), _retry_created()])
 
@@ -145,3 +150,48 @@ def test_retry_request_malformed_event_fails_fast():
 
     with pytest.raises(ValueError, match="action.retry_requested missing required field: retry_id"):
         projector.RunProjector().project([*_failed_action_events(), _event("evt_006", "action.retry_requested", payload)])
+
+
+def test_retry_created_basis_event_must_match_retry_request():
+    with pytest.raises(ValueError, match="action.retry_created basis_event_id must match action.retry_requested"):
+        projector.RunProjector().project(
+            [
+                *_failed_action_events(),
+                _retry_requested(),
+                _retry_created(basis_event_id="evt_wrong"),
+            ]
+        )
+
+
+def test_retry_created_must_use_new_proposal_identity():
+    with pytest.raises(ValueError, match="action.retry_created new_proposal_id must differ from original_proposal_id"):
+        projector.RunProjector().project(
+            [
+                *_failed_action_events(),
+                _retry_requested(),
+                _retry_created(new_proposal_id="prop_001"),
+            ]
+        )
+
+
+def test_projector_reuse_does_not_allow_stale_retry_request_state():
+    project = projector.RunProjector()
+    project.project([*_failed_action_events(), _retry_requested()])
+
+    with pytest.raises(ValueError, match="action.retry_created requires action.retry_requested"):
+        project.project([*_failed_action_events(), _retry_created()])
+
+
+def test_retry_read_model_checkpoint_assisted_rebuild_matches_full_replay(tmp_path):
+    canonical_events = [*_failed_action_events(), _retry_requested(), _retry_created()]
+    events_store = event_store.FileEventStore(tmp_path)
+    checkpoints = checkpoint_store.FileCheckpointStore(tmp_path)
+    _write_events(events_store, canonical_events)
+    checkpoint = projector.RunProjector().create_checkpoint("run_001", canonical_events[:6])
+    checkpoints.save_checkpoint("run_001", checkpoint)
+
+    assisted = projector.RunProjector().rebuild_with_checkpoint("run_001", events_store, checkpoints)
+    full = projector.RunProjector().project(canonical_events)
+
+    assert assisted == full
+    assert assisted.action_retries["retry_001"]["status"] == "created"
