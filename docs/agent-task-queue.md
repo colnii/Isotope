@@ -71,6 +71,8 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2 --json
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario approval-tool-runner
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario approval-tool-runner --json
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario artifact-review
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario artifact-review --json
 
 rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel || true
 
@@ -81,35 +83,50 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 baseline：`865 passed`。
+当前 baseline：`876 passed`。
 
 ## 6. Current Batch
 
-Batch name: `Usability Friction Round 1 Closure + First App Spike Decision`
+Batch name: `Artifact Review Flow Spike`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: close approval-tool-runner round 1 friction and decide the first app spike candidate without implementing it.
+Goal: implement the first app spike candidate selected by the previous readiness review.
 
 Tasks:
 
-1. Usability Friction Round 1 Closure Review: complete; added `docs/usability-friction-round-1-review.md`.
-2. First App Spike Readiness Review: complete; added `docs/first-app-spike-readiness.md`.
-3. Select or Stop: complete; selected `artifact review flow` for red-tests-only next batch.
-4. Docs / status sync + queue update: complete; stop for user review.
+1. Artifact Review Flow Red Tests: complete; added `tests/isotope_kernel/test_artifact_review_flow_spike.py` and `tests/isotope_kernel/test_artifact_review_flow_read_model.py`.
+2. Green Implementation: complete; added `python -m isotope_kernel.demo --scenario artifact-review` and JSON output.
+3. Docs / status sync: complete.
+4. Queue update: complete; stop for user review.
+
+Evidence:
+
+- Red result: `10 failed, 1 passed`; failures were expected because `artifact-review` scenario was unsupported.
+- Targeted green: `11 passed`.
+- Full regression: `876 passed`.
+- v0.1 demo plain / JSON: pass.
+- v0.2 demo plain / JSON: pass.
+- approval-tool-runner demo plain / JSON: pass.
+- artifact-review demo plain / JSON: pass.
+- Flow uses artifact summary / structured `ResourceRef`, controlled retrieval policy, reviewer action chain, review artifact handoff, replay, and checkpoint.
+- HTTP full-content route remains `not_enabled`.
+- No real HTTP server / real LLM / provider adapter / filesystem mutation / container / git worktree / process spawn / dependency.
+
+### Previous Batch Snapshot: Usability Friction Round 1 Closure + First App Spike Decision
+
+Batch name: `Usability Friction Round 1 Closure + First App Spike Decision`
+
+Status: `complete`
 
 Evidence:
 
 - Full regression: `865 passed`.
-- v0.1 demo plain / JSON: pass.
-- v0.2 demo plain / JSON: pass.
-- approval-tool-runner demo plain / JSON: pass.
-- Round 1 friction removed: approval id lookup event scan, manual `workspace.bound` glue, raw `submit_tool_request(...)` demo glue.
-- Remaining friction: HTTP `/runs/{run_id}/input` has no approval flag; defer until explicit HTTP boundary.
-- Recommended next candidate: `artifact review flow`.
-- No real HTTP server / real LLM / provider adapter / filesystem mutation / container / git worktree / process spawn / dependency.
+- Selected `artifact review flow` for the next app spike.
+- Added `docs/usability-friction-round-1-review.md`.
+- Added `docs/first-app-spike-readiness.md`.
 
 ### Previous Batch Snapshot: Usability Friction Reduction Package 2
 
@@ -270,17 +287,16 @@ Scope:
 
 ## 7. Next Suggested Batch
 
-Batch name: `First App Spike Red Tests`
+Batch name: `Artifact Review Flow Friction Review`
 
-Status: `ready_red_only`
+Status: `ready_docs_only`
 
-Possible shape:
+Possible tasks:
 
-- candidate: `artifact review flow`
-- add red tests only, likely `tests/isotope_kernel/test_app_spike_artifact_review_flow.py`
-- define CLI / in-process scenario shape without implementation
-- verify summary-only default, controlled content retrieval boundary, `ResourceRef`, HTTP full-content route still `not_enabled`, replay / checkpoint, and no real filesystem / LLM / HTTP server
-- stop after red tests; green implementation requires explicit user confirmation or a queue update that allows green
+- review `artifact-review` demo API friction
+- distinguish kernel issue / helper issue / demo glue / acceptable v0 shape
+- decide whether the source artifact setup should remain demo glue or become a helper boundary
+- do not implement follow-up until review identifies a clear next slice
 
 ## 8. Completed Batch Log
 

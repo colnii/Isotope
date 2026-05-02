@@ -7,10 +7,10 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation commit：`5c88f1b`。
+- 最新 implementation commit：`85af7e1`。
 - memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for v0.1 demo planning：当前 memory 线只声明 boundary / read-model / checkpoint 能力，不声明 durable storage 或 query engine 已完成。
 - v0.1 demo entrypoint 已实现，详见 `docs/demo/demo-entrypoint-v0.1.md`；`python -m isotope_kernel.demo` 可输出 plain text summary，`--json` 可输出 JSON summary。
-- v0.1 developer demo 已按 `docs/demo/v0.1-demo-acceptance.md` accepted：acceptance anchor 当时依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过；当前 baseline 已随 submit action helper 更新为 `865 passed`。
+- v0.1 developer demo 已按 `docs/demo/v0.1-demo-acceptance.md` accepted：acceptance anchor 当时依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过；当前 baseline 已随 artifact review flow spike 更新为 `876 passed`。
 - lightweight tag `v0.1-demo` 已创建并推送，指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`。
 - GitHub Release draft 已迁移到 `docs/release/release-draft-v0.1-demo.md`；旧路径 `docs/release-draft-v0.1-demo.md` 保留为 compatibility stub。尚未发布 GitHub Release。`main` 允许在 tag 后继续有 docs/status 更新，tag 仍是 demo acceptance anchor。
 - v0.2 roadmap 已开始，见 `docs/v0.2-roadmap.md`。Track D: Demo / Docs Polish 当前已 effectively complete / closed for now；Track A: HTTP API Minimal Surface 当前也已 effectively complete / closed for now，已完成 minimal surface、request validation / no-side-effect error boundary、response contract、demo smoke、idempotency boundary、route inventory 和 deferred route contract slices。
@@ -26,14 +26,15 @@
 - Workspace binding helper 已实现，见 `docs/workspace-binding-helper-boundary-v0.2.md` 和 `docs/workspace-binding-helper-friction-review.md`。`InProcessServer.bind_workspace(run_id, decision, bound_to=None)` 使用 `WorkspaceManager.get_binding(decision.grants)` 派生 grants-bound `shared_ro` binding，append canonical `workspace.bound`，再从 projected `RunState.workspaces` 返回 copied binding summary。`approval-tool-runner` demo 已停止手写 `workspace.bound` payload；当前仍没有 HTTP workspace product route，也没有 filesystem mutation / container / git worktree / process spawn。
 - Submit action helper 已实现，见 `docs/submit-tool-request-friction-review.md` 和 `docs/submit-action-helper-boundary-v0.2.md`。`InProcessServer.submit_action(run_id, intent, requires_approval=False)` 接受 compact `call_tool` intent，仍编译到 canonical `ActionProposal`，走 `PolicyDecision.grants`、approval boundary 和 executor path，并返回 proposal / decision / approval / execution ids。`submit_tool_request(...)` 保持兼容；`approval-tool-runner` demo 已改用 `submit_action(...)`，不再直接调用 raw `submit_tool_request(...)`。
 - Usability Friction Round 1 Review 已落文档，见 `docs/usability-friction-round-1-review.md`。当前判断：approval lookup helper、workspace binding helper 和 submit action helper 已移除第一轮主要 demo glue；`approval-tool-runner` 现在是 reasonable developer demo，不应继续默认扩展。
-- First App Spike Readiness Review 已落文档，见 `docs/first-app-spike-readiness.md`。下一推荐 candidate 是 `artifact review flow`，先进入 red-tests-only batch；它应复用 artifact summary、controlled content retrieval、`ResourceRef`、HTTP facade、replay 和 checkpoint，不打开 real filesystem / real LLM / real HTTP server。
-- v0.2 demo acceptance 已落文档，见 `docs/demo/v0.2-demo-acceptance.md`。acceptance anchor 依据是 `735 passed`，v0.1 / v0.2 demo plain / JSON 成功，Track A / C / E 已在 v0.2 scenario 中可见。lightweight tag `v0.2-demo` 已创建并推送，指向 `09319e7407116d9f99f4a18853d4df23a8714720`；GitHub Release 未发布。这是 developer demo tag，不是 product release。当前 mainline baseline 是 `865 passed`。
+- First App Spike Readiness Review 已落文档，见 `docs/first-app-spike-readiness.md`。recommendation 已执行到 artifact review flow first slice。
+- Artifact review flow usability spike 已落地：`python -m isotope_kernel.demo --scenario artifact-review` 和 `python -m isotope_kernel.demo --scenario artifact-review --json` 已可运行。该 flow 从 existing artifact summary / structured `ResourceRef` 开始，reviewer action 走 canonical action chain，review result 通过 artifact / `ResourceRef` / canonical events handoff；controlled full-content retrieval 只在 retrieval layer 用 grants + caller context + purpose 验证，demo / helper 输出不包含 full content。HTTP full-content route 仍 `not_enabled`，replay / checkpoint 可恢复 review summary；没有 real HTTP server、real LLM、provider adapter、semantic retrieval / ranking、memory query engine 或 real filesystem mutation。
+- v0.2 demo acceptance 已落文档，见 `docs/demo/v0.2-demo-acceptance.md`。acceptance anchor 依据是 `735 passed`，v0.1 / v0.2 demo plain / JSON 成功，Track A / C / E 已在 v0.2 scenario 中可见。lightweight tag `v0.2-demo` 已创建并推送，指向 `09319e7407116d9f99f4a18853d4df23a8714720`；GitHub Release 未发布。这是 developer demo tag，不是 product release。当前 mainline baseline 是 `876 passed`。
 - Track F external ingestion / `ImportedSnapshot` boundary 当前已 effectively complete / closed for now，见 `docs/external-ingestion-boundary-v0.2.md`。当前已有 `ingestion.py` fail-closed boundary、`ImportedSnapshot` slice model、`snapshot.imported` canonical event projection 到 `RunState.external_observations`；external observation read model 保留 snapshot id / type / source / freshness / quality / provenance / basis refs / status，进入 checkpoint state 并可通过 checkpoint-assisted rebuild 恢复。imported observation 不覆盖 native `RunState.status` / action status，projector 不读取 raw artifact content，native canonical state 优先，duplicate snapshot identity 受控，conflicting snapshots 标记 conflict。真实 provider adapter、external callback / webhook、OpenAI / Responses / GitHub integration、external ingestion HTTP API 和 imported-observation-driven native state 仍 deferred；HTTP `/external-ingestion` 仍 `501 not_enabled`，`server.ingest_external_input(...)` 仍 fail-closed / `not_enabled`。
 - Post `v0.2-demo` tag delta 已记录在 `docs/post-v0.2-tag-delta.md`。当前 `main` ahead of `v0.2-demo` 的主要增量是 Track F external ingestion boundary / read-model / checkpoint support、Agent / Worker lifecycle first slice、Workspace substrate first slice、Retry / Cancel / Supersede stabilization slice、approval lookup helper、workspace binding helper 和 submit action helper。默认不移动 `v0.2-demo`，也暂不创建 `v0.2.1-demo`；只有外部 reviewer 需要固定包含这些 post-tag slices 的锚点时再准备新 tag。
 - v0.2 cycle closure review 已记录在 `docs/v0.2-cycle-closure-review.md`。当前建议暂停 v0.2 implementation，进入 cleanup / docs organization / external review mode；Track B real HTTP adapter、Track G memory query 和 real integrations 继续 deferred。
 - docs inventory 已落文档，见 `docs/docs-inventory.md`。当前记录已迁移 docs、compatibility stubs 和后续整理方向。
 - docs migration plan 已落文档，见 `docs/docs-migration-plan.md`。Phase 1 当前 closed / paused；后续不默认继续迁移 track / checkpoint / memory / kernel / current-status / roadmap docs。
-- agent task queue 已落文档，见 `docs/agent-task-queue.md`。后续默认使用 rolling batch mode：session timebox 为 45-60 min，先读 `docs/current-status.md`、`docs/v0.2-roadmap.md` 和 `docs/agent-task-queue.md`，执行 Current Batch；如果 clean 且时间充足，可以在更新 queue、完成验证和 commit / push 后把 Next Suggested Batch 提升为 Current Batch 继续执行。不要为了凑时间做未列出的任务，遇到 stop condition 或需要产品 / 用户判断时必须停。`Usability Friction Round 1 Closure + First App Spike Decision` 当前 complete；Next Suggested Batch 是 `First App Spike Red Tests`，red tests only。
+- agent task queue 已落文档，见 `docs/agent-task-queue.md`。后续默认使用 rolling batch mode：session timebox 为 45-60 min，先读 `docs/current-status.md`、`docs/v0.2-roadmap.md` 和 `docs/agent-task-queue.md`，执行 Current Batch；如果 clean 且时间充足，可以在更新 queue、完成验证和 commit / push 后把 Next Suggested Batch 提升为 Current Batch 继续执行。不要为了凑时间做未列出的任务，遇到 stop condition 或需要产品 / 用户判断时必须停。`Artifact Review Flow Spike` 当前 complete；Next Suggested Batch 是 `Artifact Review Flow Friction Review`。
 - Retry / Cancel / Supersede Boundary v0.2 first slice 和 stabilization slice 当前 complete，见 `docs/retry-cancel-supersede-boundary-v0.2.md`。当前已覆盖 `RunState.action_retries` / `RunState.action_cancellations` / `RunState.action_supersessions` read model、canonical retry / cancel / supersede slice events、malformed event fail-fast、basis linkage validation、replacement identity validation、projector reuse state reset、replay 和 checkpoint-assisted rebuild support。仍不实现 scheduler、automatic retry engine、process kill、tool-level cancellation 或 real concurrency。
 - docs migration Phase 1a / 1b / 1c 已执行并 audit clean：release draft 已迁移到 `docs/release/`，v0.1 demo explainer docs 和 demo acceptance/readiness/scenario docs 已迁移到 `docs/demo/`，旧路径均保留 stub。Phase 1 dry-run 和后续 checklist 见 `docs/docs-migration-phase-1-dry-run.md`。下一阶段可以转入 Kernel Gap Review。
 - Kernel Gap Review v0.2 已落文档，见 `docs/kernel-gap-review-v0.2.md`。当前判断：kernel 还不能宣布完成；下一块 kernel design 应优先做 Agent / worker lifecycle，其次是 Workspace substrate，再考虑 retry / cancel / supersede 和 policy profile / action registry versioning。real HTTP server、real LLM loop、memory storage/query/promotion、provider adapter/webhook、retrieval ranking 和 domain pack system 仍不应优先打开。
@@ -95,6 +96,12 @@
 - spike exercises approval pause / resume, `workspace.bound` read model, artifact / `ResourceRef` handoff, replay and checkpoint
 - spike records API friction instead of hiding it behind fake product API
 - spike remains deterministic / in-process with no real LLM / network listener / provider adapter / filesystem mutation
+- artifact review flow usability spike first slice
+- `python -m isotope_kernel.demo --scenario artifact-review`
+- `python -m isotope_kernel.demo --scenario artifact-review --json`
+- spike exercises artifact summary / structured `ResourceRef`, controlled content retrieval policy, reviewer action chain, review artifact handoff, replay and checkpoint
+- spike keeps HTTP full-content route `not_enabled`
+- spike remains deterministic / in-process with no real LLM / network listener / provider adapter / semantic retrieval / ranking / filesystem mutation
 - file-backed artifact persistence
 - fresh `ArtifactStore` metadata/content read
 - malformed artifact file fail-fast
@@ -471,11 +478,11 @@
 - demo reports memory boundary status as `boundary_only`
 - v0.1 demo acceptance 已落文档：`docs/demo/v0.1-demo-acceptance.md`
 - current demo acceptance status is `accepted as developer demo`, not product runtime
-- demo acceptance evidence includes local `568 passed` at the v0.1 acceptance anchor; current mainline baseline is `865 passed` after the submit action helper slice
+- demo acceptance evidence includes local `568 passed` at the v0.1 acceptance anchor; current mainline baseline is `876 passed` after the artifact review flow spike
 - v0.2 demo acceptance 已落文档：`docs/demo/v0.2-demo-acceptance.md`
 - Track F external ingestion boundary and external observation read-model invariants slices 已落地，并已 closed for now：`docs/external-ingestion-boundary-v0.2.md`
 - current v0.2 demo acceptance status is `accepted as v0.2 developer demo`, not product runtime
-- v0.2 acceptance evidence includes `735 passed` at the tag anchor, v0.1 demo plain / JSON success, v0.2 demo plain / JSON success, configured CI smoke, no `x_agent.*` imports, and `/home/lumber/Github/x-agent` untouched; current mainline baseline is `865 passed`
+- v0.2 acceptance evidence includes `735 passed` at the tag anchor, v0.1 demo plain / JSON success, v0.2 demo plain / JSON success, configured CI smoke, no `x_agent.*` imports, and `/home/lumber/Github/x-agent` untouched; current mainline baseline is `876 passed`
 - lightweight demo tag exists: `v0.2-demo` -> `09319e7407116d9f99f4a18853d4df23a8714720`
 - lightweight demo tag exists: `v0.1-demo` -> `b3d4e328e74378bec2fb524deb85233df5a5d4eb`
 - GitHub Release draft exists: `docs/release/release-draft-v0.1-demo.md`
@@ -653,7 +660,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 当前预期结果：
 
 ```text
-865 passed
+876 passed
 ```
 
 Import boundary check:
@@ -736,7 +743,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 下一步建议优先做：
 
 - optional GitHub Release draft for `v0.2-demo` if explicitly requested; do not publish a Release without a separate request
-- follow `docs/agent-task-queue.md` rolling batch mode；`Approval Lookup Helper Boundary`、workspace binding helper 和 submit action helper 已完成，降低了 approval id event-scan glue、manual `workspace.bound` glue 和 raw `submit_tool_request(...)` glue。下一步推荐 `artifact review flow` red tests only；green implementation 仍需后续明确授权。
+- follow `docs/agent-task-queue.md` rolling batch mode；artifact review flow first slice 已完成。下一步推荐 `Artifact Review Flow Friction Review`，docs-only unless bug found。
 - Workspace Substrate Boundary v0.2 first slice complete；后续如继续 workspace，应先做 lease/path-safety boundary design
 - Track F: closed for now; reopen only with a new design / red-test request such as provider adapter, webhook, HTTP ingestion API, or reconciliation boundary
 - reopen Track E only with an explicit design / red-test request, such as product approval UI / auth / scheduler boundary

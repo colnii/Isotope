@@ -1,6 +1,6 @@
 # Usability Pressure Test Plan v0.2
 
-状态：`first slice complete; round 1 friction closed`
+状态：`artifact review flow first slice complete`
 
 ## 1. Purpose
 
@@ -15,6 +15,8 @@
 ```bash
 python -m isotope_kernel.demo --scenario approval-tool-runner
 python -m isotope_kernel.demo --scenario approval-tool-runner --json
+python -m isotope_kernel.demo --scenario artifact-review
+python -m isotope_kernel.demo --scenario artifact-review --json
 ```
 
 ## 2. Current Kernel Readiness
@@ -34,7 +36,7 @@ python -m isotope_kernel.demo --scenario approval-tool-runner --json
 - Retry / Cancel / Supersede read model。
 - event replay and checkpoint-assisted rebuild。
 
-当前 baseline：`865 passed`。
+当前 baseline：`876 passed`。
 
 ## 3. Hard Boundaries
 
@@ -152,7 +154,9 @@ First app spike readiness review 见 `docs/first-app-spike-readiness.md`。
 
 下一推荐 candidate：`artifact review flow`。
 
-Next batch should be red-tests-only:
+该 candidate 已在后续 package 中实现为 first slice。
+
+Original red-test goals:
 
 - define scenario shape
 - prove summary-only default
@@ -160,3 +164,37 @@ Next batch should be red-tests-only:
 - keep HTTP full-content route `not_enabled`
 - keep no real filesystem / real LLM / real HTTP server
 - stop before green unless explicitly authorized
+
+## 11. Artifact Review Flow Spike
+
+状态：`first slice complete`
+
+Commands:
+
+```bash
+python -m isotope_kernel.demo --scenario artifact-review
+python -m isotope_kernel.demo --scenario artifact-review --json
+```
+
+当前展示：
+
+- deterministic / in-process flow
+- existing artifact summary / structured `ResourceRef`
+- reviewer action through canonical action chain
+- review artifact / `ResourceRef` handoff
+- controlled full-content retrieval only inside retrieval layer with grants + caller context + purpose
+- demo / helper JSON output remains summary / ref / provenance only
+- HTTP full-content route remains `not_enabled`
+- replay and checkpoint-assisted rebuild recover review artifact summaries
+- memory remains `boundary_only`
+
+仍不展示：
+
+- real LLM
+- real HTTP server / network listener
+- real provider adapter
+- real filesystem mutation
+- semantic retrieval / ranking
+- memory query engine
+
+Next suggested batch: `Artifact Review Flow Friction Review`.

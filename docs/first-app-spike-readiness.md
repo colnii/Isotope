@@ -1,12 +1,12 @@
 # First App Spike Readiness
 
-状态：`ready for red-tests-only artifact review flow`
+状态：`artifact review flow first slice complete`
 
 ## 1. Purpose
 
 本文判断当前 kernel 是否已经足够进入 first app spike（第一个小应用尖刺验证），并选择下一批 red tests 的候选。
 
-它不是 implementation plan，也不授权直接实现 app。下一步只应进入 red-tests-only batch，除非用户或 queue 明确允许 green。
+它最初不是 implementation plan，也不授权直接实现 app。后续 package 已明确允许 red -> green，因此本文现在同时记录 first-slice outcome。
 
 ## 2. Current Kernel Readiness
 
@@ -49,7 +49,7 @@
 
 ## 4. Recommendation
 
-Choose `artifact review flow` for the next red-tests-only batch.
+Choose `artifact review flow` for the next app spike.
 
 Reasons:
 
@@ -64,7 +64,7 @@ Reasons:
 
 ## 5. Proposed Red-Test Scope
 
-Suggested next batch name:
+Original suggested batch name:
 
 - `First App Spike Red Tests`
 
@@ -88,7 +88,7 @@ Red-test goals:
 
 ## 6. Non-Goals
 
-Do not implement in the next red-tests-only batch:
+Original red-tests-only non-goals before implementation authorization:
 
 - app scenario implementation
 - real file reader
@@ -108,4 +108,25 @@ The candidate choice does not require further product judgment for red tests bec
 - repo evidence supports it as the lowest-risk next app-shaped pressure test
 - the next step is only red tests, not implementation
 
-Green implementation still requires either explicit user confirmation or a queue update that clearly allows it.
+Green implementation was explicitly allowed by the follow-up package and is now complete.
+
+## 8. Implementation Outcome
+
+Implemented scenario:
+
+```bash
+python -m isotope_kernel.demo --scenario artifact-review
+python -m isotope_kernel.demo --scenario artifact-review --json
+```
+
+The first slice proves:
+
+- existing artifact summary / `ResourceRef` can seed an app-shaped review flow
+- reviewer action still uses canonical action chain
+- review result handoff uses artifact / `ResourceRef` / canonical events
+- controlled full-content retrieval is only used inside retrieval layer with grants + caller context + purpose
+- demo / helper output does not expose full artifact content
+- HTTP full-content route remains `not_enabled`
+- replay and checkpoint restore review artifact summaries
+
+Remaining recommended work: run an `Artifact Review Flow Friction Review` before expanding the scenario.
