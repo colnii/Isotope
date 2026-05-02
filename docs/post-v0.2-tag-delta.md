@@ -11,7 +11,7 @@
 ## 2. Anchors
 
 - `v0.2-demo` tag: `09319e7407116d9f99f4a18853d4df23a8714720`
-- current `main` at review: `8474d78fbd4723674756ca2dba21dc8bcea2bf72`
+- current `main` after this delta review: `68ea007bff9a1c7f44dff6b6806939eeec1b4eb9`
 - current baseline: `765 passed`
 - GitHub Release: not published
 - release meaning: developer demo only, not product release
@@ -29,6 +29,7 @@ Commits included in `v0.2-demo..main` at this review:
 - `a2099c0` feat: add external observation read model invariants
 - `2a877a2` docs: sync external observation status
 - `8474d78` docs: close external ingestion boundary track
+- `68ea007` docs: review post v0.2 tag delta
 
 The main technical delta is Track F: External Ingestion / `ImportedSnapshot` Boundary.
 
@@ -81,3 +82,9 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2 --json
 ```
 
 At this review, the expected full regression baseline is `765 passed`.
+
+## 8. Cycle Closure
+
+`docs/v0.2-cycle-closure-review.md` records the current v0.2 cycle closure decision.
+
+Default next mode is cleanup / docs organization / external review, not additional runtime implementation. `v0.2.1-demo` remains optional and should only be prepared if an external reviewer needs a fixed tag that includes Track F.
