@@ -93,21 +93,40 @@ git status --short
 
 ## 6. Current Batch
 
-Batch name: `App Spike Coverage Review`
+Batch name: `Kernel Gap Review Refresh`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: docs-only horizontal coverage review across completed app spikes.
+Goal: docs-only refresh of kernel gaps after the completed app spikes and helper slices.
 
 Tasks:
 
-1. Compare completed app spikes: complete.
-2. Identify covered and uncovered kernel surfaces: complete.
-3. Distinguish blocker friction from product polish / deferred integration: complete.
-4. Docs / status sync: complete.
-5. Queue update: complete; next suggested batch set to `Kernel Gap Review Refresh`.
+1. Review current kernel surfaces against `src/isotope_kernel/`: complete.
+2. Compare original kernel gaps against current first-slice coverage: complete.
+3. Separate kernel-level gaps from not-now product / integration gaps: complete.
+4. Recommend next path among worker handoff, workspace lifecycle, RCS runtime integration, policy/profile versioning, and external review package: complete.
+5. Docs / status sync: complete.
+6. Queue update: complete; next suggested batch set to `Workspace Resource Lifecycle Boundary`.
+
+Evidence:
+
+- Full regression: `913 passed`.
+- artifact-review trace regression: pass.
+- external-snapshot-review trace regression: pass.
+- approval-tool-runner trace regression: pass.
+- Refresh doc: `docs/kernel-gap-review-refresh-v0.2.md`.
+- First-slice enough: agent / worker lifecycle, workspace substrate, retry / cancel / supersede, HTTP facade, approval pause / resume, external ingestion boundary, artifact content read policy.
+- Still-open kernel gaps: workspace resource lifecycle, policy profile / action registry versioning, retry / cancel / supersede runtime integration, worker handoff app composition, session / run lifecycle, error taxonomy, event schema registry, tool protocol.
+- Next recommended path: `Workspace Resource Lifecycle Boundary`.
+- No real provider adapter / webhook / real HTTP server / real LLM / filesystem mutation / container / memory query engine / dependency.
+
+### Previous Batch Snapshot: App Spike Coverage Review
+
+Batch name: `App Spike Coverage Review`
+
+Status: `complete`
 
 Evidence:
 
@@ -118,7 +137,7 @@ Evidence:
 - Coverage review doc: `docs/app-spike-coverage-review.md`.
 - First app spike `artifact-review` covers artifact / content policy / provenance / ResourceRef / replay / checkpoint.
 - Second app spike `external-snapshot-review` covers ImportedSnapshot / external observations / conflict diagnostics / native state priority / replay / checkpoint.
-- Next recommended path: `Kernel Gap Review Refresh`.
+- Next recommended path was `Kernel Gap Review Refresh`; this has now been completed.
 - No real provider adapter / webhook / real HTTP server / real LLM / filesystem mutation / memory query engine / dependency.
 
 ### Previous Batch Snapshot: External Snapshot Review Closure Review
@@ -464,33 +483,29 @@ Scope:
 
 ## 7. Next Suggested Batch
 
-Batch name: `Kernel Gap Review Refresh`
+Batch name: `Workspace Resource Lifecycle Boundary`
 
 Status: `ready_docs_only`
 
 Possible tasks:
 
-1. Re-read `docs/kernel-gap-review-v0.2.md` against completed app spikes.
-2. Re-rank:
-   - worker / delegation
-   - workspace beyond binding helper
-   - retry / cancel / supersede app composition
-   - memory boundary
-   - HTTP facade ergonomics
-3. Decide whether the next implementation should be boundary docs, red tests, another app spike, or pause for external review.
-4. Stop if the decision requires product / user judgment.
+1. Docs-only boundary for workspace resource lifecycle after the current `workspace.bound` first slice.
+2. Define lease / release / expired / revoked read-model boundaries without implementing a cleanup scheduler.
+3. Define workspace mode contract beyond `shared_ro` without enabling real writes.
+4. Define path-safety intent and artifact-capture boundary without reading or mutating filesystem.
+5. List first red tests for the next batch, but do not implement them in this docs-only batch.
 
 Constraints:
 
 - docs-only unless a correctness bug is found.
-- no real provider adapter / webhook.
-- no real filesystem mutation.
-- no real LLM.
-- no real HTTP server / provider adapter / memory query engine.
-- no product external ingestion API.
-- imported observations must not override native state.
+- no real filesystem mutation / container / git worktree / process spawn / remote executor.
+- no cleanup scheduler.
+- no product workspace API.
+- workspace identity must not become agent identity.
+- projector must not read workspace files.
+- executor grants semantics must not change.
+- no real HTTP server / real LLM / provider adapter / memory query engine.
 - no event store append-only semantic changes.
-- no executor grants semantic changes.
 
 ## 8. Completed Batch Log
 

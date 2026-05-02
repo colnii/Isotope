@@ -42,7 +42,8 @@
 - 加上 Artifact Review Flow Closure Review 后 docs Markdown：76 个。`artifact-review` first app spike 已 complete / closed for now。
 - 加上 Second App Spike Selection 后 docs Markdown：77 个。当前推荐 `external snapshot review`，该 second app spike 后续已实现。
 - 加上 External Snapshot Review Closure Review 后 docs Markdown：78 个。`external-snapshot-review` second app spike 已 complete / closed for now。
-- 加上 App Spike Coverage Review 后 docs Markdown：79 个。当前建议下一步做 `Kernel Gap Review Refresh`，不要直接开第三个 app spike。
+- 加上 App Spike Coverage Review 后 docs Markdown：79 个。该 recommendation 已执行到 `Kernel Gap Review Refresh`。
+- 加上 Kernel Gap Review Refresh 后 docs Markdown：80 个。当前建议下一步做 docs-only `Workspace Resource Lifecycle Boundary`，不要直接开第三个 app spike 或 real integration。
 
 ## 2. Current entrypoints
 
@@ -59,6 +60,7 @@
 - `docs/post-v0.2-tag-delta.md`：记录 `v0.2-demo` tag 之后 `main` 的 Track F / Agent Worker / Workspace 增量，以及暂不创建 `v0.2.1-demo` 的判断。
 - `docs/v0.2-cycle-closure-review.md`：记录当前 v0.2 implementation cycle closure，建议进入 cleanup / docs organization / external review mode。
 - `docs/kernel-gap-review-v0.2.md`：v0.2 kernel gap review，记录稳定子系统、kernel gaps、优先级和下一步设计建议。
+- `docs/kernel-gap-review-refresh-v0.2.md`：app spike 后的 kernel gap refresh，记录 first-slice enough surfaces、still-open kernel gaps 和 Workspace Resource Lifecycle next-step recommendation。
 - `docs/agent-worker-lifecycle-boundary-v0.2.md`：Agent / Worker lifecycle boundary，记录 supervisor / worker / delegation / worker read model / workspace binding / result handoff 的 first-slice design。
 - `docs/workspace-substrate-boundary-v0.2.md`：Workspace substrate boundary，记录 workspace as policy-bound execution resource、binding / lease / path safety / artifact capture / deferred substrate 的 first-slice complete 状态。
 - `docs/retry-cancel-supersede-boundary-v0.2.md`：Retry / Cancel / Supersede boundary，记录 action lifecycle retry / cancel / supersede 的 first-slice contract 和 green status。
@@ -91,15 +93,16 @@
 
 当前没有默认打开的 implementation track。Track F external ingestion 当前已完成 boundary 和 external observation read-model invariant green slices，并已 effectively complete / closed for now；`external-snapshot-review` second app spike 已 closed for now，不要直接实现 provider adapter / ingestion API。
 
-当前默认下一步是 docs-only `Kernel Gap Review Refresh`，不是 green implementation track。`docs/agent-worker-lifecycle-boundary-v0.2.md` 已定义 Agent / Worker lifecycle boundary，`docs/workspace-substrate-boundary-v0.2.md` 已定义 Workspace substrate boundary，`docs/retry-cancel-supersede-boundary-v0.2.md` 已定义 Retry / Cancel / Supersede boundary；三者 first slice 均已 complete。后续可继续 lease/path-safety boundary design，或先 refresh worker/delegation、workspace beyond binding、retry/cancel/supersede、memory boundary 和 HTTP facade ergonomics priority。
+当前默认下一步是 docs-only `Workspace Resource Lifecycle Boundary`，不是 green implementation track。`docs/kernel-gap-review-refresh-v0.2.md` 已刷新 app spike 后的 kernel gaps；`docs/agent-worker-lifecycle-boundary-v0.2.md` 已定义 Agent / Worker lifecycle boundary，`docs/workspace-substrate-boundary-v0.2.md` 已定义 Workspace substrate boundary，`docs/retry-cancel-supersede-boundary-v0.2.md` 已定义 Retry / Cancel / Supersede boundary；三者 first slice 均已 complete。后续应先澄清 workspace lease / mode / path-safety / release / artifact-capture boundary，再考虑 policy/profile versioning、RCS runtime integration 或 worker handoff app spike。
 
 当前自动推进入口是 `docs/agent-task-queue.md`。`Approval-Gated Tool Runner Spike` 已完成，API friction review 已落文档，approval lookup/read helper、workspace binding helper 和 submit action helper 已完成；artifact review flow first slice、friction review、source artifact setup helper closure review、artifact provenance helper first slice、artifact review flow closure review、second app spike selection、external snapshot review closure review 和 app spike coverage review 已完成。
 
-- `docs/agent-task-queue.md`：active queue，Current Batch complete；Next Suggested Batch is `Kernel Gap Review Refresh` with `ready_docs_only` status。
+- `docs/agent-task-queue.md`：active queue，Current Batch complete；Next Suggested Batch is `Workspace Resource Lifecycle Boundary` with `ready_docs_only` status。
 - `docs/usability-pressure-test-plan-v0.2.md`：current pressure-test planning doc，`approval-gated tool runner` first slice complete and friction reviewed。
 - `docs/second-app-spike-selection.md`：second app spike selection；recommended `external snapshot review`。
 - `docs/external-snapshot-review-closure-review.md`：current external snapshot review closure review；second app spike complete / closed for now。
-- `docs/app-spike-coverage-review.md`：current app spike coverage review；recommends `Kernel Gap Review Refresh` before a third app spike。
+- `docs/app-spike-coverage-review.md`：app spike coverage review；recommendation executed by Kernel Gap Review Refresh。
+- `docs/kernel-gap-review-refresh-v0.2.md`：current kernel gap refresh；recommends `Workspace Resource Lifecycle Boundary` before a third app spike。
 - `docs/artifact-review-flow-friction-review.md`：artifact review flow friction review；source artifact setup and provenance helpers closed。
 - `docs/artifact-review-flow-closure-review.md`：current artifact review closure review；first app spike complete / closed for now。
 - `docs/source-artifact-setup-helper-boundary-v0.2.md`：current source artifact setup helper boundary；closed。
@@ -217,7 +220,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | `docs/artifact-review-flow-friction-review.md` | Artifact review flow friction review | closed / reference |
 | `docs/second-app-spike-selection.md` | Second app spike selection | closed / reference |
 | `docs/external-snapshot-review-closure-review.md` | External snapshot review closure review | second app spike closed for now |
-| `docs/app-spike-coverage-review.md` | App spike coverage review | current review |
+| `docs/app-spike-coverage-review.md` | App spike coverage review | closed / reference |
 | `docs/checkpoint-history-fallback-v0.1.md` | Checkpoint fallback boundary | closed / frozen |
 | `docs/checkpoint-history-index-retention-v0.1.md` | Checkpoint history index / retention boundary | closed / frozen |
 | `docs/checkpoint-history-save-boundary-v0.1.md` | Checkpoint history save boundary | closed / frozen |
@@ -249,7 +252,8 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | `docs/implementation-plan-v0.1.md` | Initial implementation plan | historical / reference |
 | `docs/kernel-architecture-v0.1.md` | Kernel architecture draft | current reference |
 | `docs/kernel-decision-log.md` | Decision log | current reference |
-| `docs/kernel-gap-review-v0.2.md` | Kernel gap review / next design backlog | current review |
+| `docs/kernel-gap-review-v0.2.md` | Kernel gap review / next design backlog | historical review |
+| `docs/kernel-gap-review-refresh-v0.2.md` | Kernel gap refresh after app spikes | current review |
 | `docs/kernel-living-spec.md` | Living spec draft | current reference |
 | `docs/kernel-one-pager.md` | Kernel one-pager | current reference |
 | `docs/kernel-spec-v0.1.md` | Kernel spec draft | current reference |
@@ -294,6 +298,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
   - `agent-worker-lifecycle-boundary-v0.2.md`
   - `kernel-*.md`
   - `kernel-gap-review-v0.2.md`
+  - `kernel-gap-review-refresh-v0.2.md`
   - `commitment-levels.md`
   - `action-type-registry-v0.1.md`
   - `event-envelope-*.md`
@@ -334,6 +339,7 @@ Do not move these files until a dedicated migration pass updates links and valid
 - `docs/kernel-spec-v0.1.md`
 - `docs/kernel-architecture-v0.1.md`
 - `docs/kernel-gap-review-v0.2.md`
+- `docs/kernel-gap-review-refresh-v0.2.md`
 - `docs/kernel-living-spec.md`
 
 Reasons:
@@ -350,7 +356,7 @@ Recommended future migration sequence:
 2. Phase 1b has executed: `docs/demo/demo-entrypoint-v0.1.md`, `docs/demo/demo-walkthrough-v0.1.md`, and `docs/demo/demo-architecture-v0.1.md` are full docs; old paths are stubs.
 3. Phase 1c has executed: `docs/demo/v0.1-demo-acceptance.md`, `docs/demo/v0.2-demo-readiness.md`, `docs/demo/v0.2-demo-scenario.md`, and `docs/demo/v0.2-demo-acceptance.md` are full docs; old paths are stubs.
 4. Phase 1 is closed / paused. Do not continue track / checkpoint / memory / kernel / status-entrypoint migrations unless explicitly requested.
-5. Kernel Gap Review has started in `docs/kernel-gap-review-v0.2.md`; Agent / Worker lifecycle boundary design now lives in `docs/agent-worker-lifecycle-boundary-v0.2.md`.
+5. Kernel Gap Review has started in `docs/kernel-gap-review-v0.2.md`; refresh lives in `docs/kernel-gap-review-refresh-v0.2.md`; Agent / Worker lifecycle boundary design now lives in `docs/agent-worker-lifecycle-boundary-v0.2.md`.
 6. If migration is reopened, move closed Track A / C / E docs to `docs/tracks/` and leave stubs.
 7. Add target subdirectories only in the migration commit that needs them.
 8. Update README / AGENTS / current-status / roadmap links in the same patch as any move.

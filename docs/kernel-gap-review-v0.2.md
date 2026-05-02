@@ -1,6 +1,8 @@
 # Kernel Gap Review v0.2
 
-状态：`current review`
+状态：`historical review`
+
+> Refresh note: newer app-spike evidence and post-review helper slices are summarized in `docs/kernel-gap-review-refresh-v0.2.md`. This document remains the original v0.2 kernel gap baseline.
 
 ## 1. Purpose
 

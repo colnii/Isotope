@@ -1,6 +1,6 @@
 # Usability Pressure Test Plan v0.2
 
-状态：`app spike coverage reviewed; recommend Kernel Gap Review Refresh`
+状态：`kernel gap refresh complete; recommend Workspace Resource Lifecycle Boundary`
 
 ## 1. Purpose
 
@@ -380,7 +380,20 @@ Current conclusion:
 - No blocker-level friction remains for the current two app spikes。
 - Remaining uncovered areas are worker/delegation, workspace beyond binding, retry/cancel/supersede app composition, memory boundary, and HTTP facade ergonomics。
 
-Next suggested batch: `Kernel Gap Review Refresh`, docs-only by default. Do not start a third app spike until the refreshed gap review decides whether worker handoff, workspace, or retry/cancel/supersede pressure is the right next slice.
+Follow-up completed by section 19: `Kernel Gap Review Refresh`. Do not start a third app spike until the workspace resource lifecycle and related kernel-level gaps are clarified.
+
+## 19. Kernel Gap Review Refresh
+
+状态：`complete`
+
+Refresh review: `docs/kernel-gap-review-refresh-v0.2.md`
+
+Current conclusion:
+
+- agent / worker lifecycle, Workspace substrate first slice, Retry / Cancel / Supersede stabilization slice, HTTP facade, approval pause / resume, external ingestion boundary, and artifact content read policy are first-slice enough。
+- Still-open kernel-level gaps are workspace resource lifecycle, policy profile / action registry versioning, retry / cancel / supersede runtime integration, worker handoff app composition, session / run lifecycle, error taxonomy, event schema registry, and tool protocol。
+- Recommended next batch: docs-only `Workspace Resource Lifecycle Boundary`。
+- Do not directly open a third app spike, real HTTP server, real LLM, provider adapter, memory query engine, or filesystem/container substrate.
 
 ## 12. Demo Trace Mode
 

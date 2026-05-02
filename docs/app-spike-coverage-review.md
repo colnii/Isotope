@@ -1,6 +1,6 @@
 # App Spike Coverage Review
 
-状态：`complete; recommend Kernel Gap Review Refresh next`
+状态：`complete; Kernel Gap Review Refresh executed`
 
 ## 1. Purpose
 
@@ -109,7 +109,7 @@ Reasoning:
 
 Option C, pause implementation and enter docs cleanup / external review mode, is also safe if the goal is to stabilize the current story for reviewers.
 
-Option A, a third app spike, should wait until after a Kernel Gap Review Refresh unless the user explicitly wants more usability pressure now.
+Option A, a third app spike, should wait until after Kernel Gap Review Refresh unless the user explicitly wants more usability pressure now. That refresh has now landed in `docs/kernel-gap-review-refresh-v0.2.md` and recommends `Workspace Resource Lifecycle Boundary` next.
 
 ## 7. If A Third App Spike Is Requested Later
 
@@ -132,14 +132,14 @@ Stop conditions for that future spike:
 
 Do not start this third spike from this review.
 
-## 8. Next Suggested Batch
+## 8. Follow-Up
 
-Next suggested batch: `Kernel Gap Review Refresh`, docs-only by default.
+Follow-up executed: `Kernel Gap Review Refresh`, docs-only.
 
-Suggested scope:
+Refresh outcome:
 
-- Re-read `docs/kernel-gap-review-v0.2.md` against current completed app spikes。
-- Update priority for worker/delegation, workspace substrate, retry/cancel/supersede, memory boundary, and HTTP facade ergonomics。
-- Decide whether any next implementation should be a boundary doc, red tests, or no implementation。
+- `docs/kernel-gap-review-refresh-v0.2.md` now records first-slice enough surfaces and still-open kernel-level gaps。
+- Recommended next batch is `Workspace Resource Lifecycle Boundary`。
+- Worker handoff app spike should wait until workspace lifecycle and policy/profile boundaries are clearer。
 
 Do not open real provider adapter, real HTTP server, real LLM, memory query engine, filesystem mutation, container, git worktree, tag, or release work.
