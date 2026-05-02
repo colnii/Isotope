@@ -11,7 +11,9 @@ from typing import Any
 
 from .checkpoint_store import FileCheckpointStore
 from .http_api import create_http_app
+from .models import ImportedSnapshot
 from .projector import RunProjector
+from .refs import make_artifact_ref
 from .server import InProcessServer
 
 
@@ -28,7 +30,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run an Isotope developer demo.")
     parser.add_argument(
         "--scenario",
-        choices=("v0.1", "v0.2", "approval-tool-runner", "artifact-review"),
+        choices=("v0.1", "v0.2", "approval-tool-runner", "artifact-review", "external-snapshot-review"),
         default="v0.1",
         help="demo scenario to run",
     )
@@ -97,6 +99,8 @@ def _run_scenario(root: Path, *, scenario: str) -> dict[str, Any]:
         return _run_approval_tool_runner_spike(root)
     if scenario == "artifact-review":
         return _run_artifact_review_spike(root)
+    if scenario == "external-snapshot-review":
+        return _run_external_snapshot_review_spike(root)
     raise ValueError(f"unsupported scenario: {scenario}")
 
 
@@ -551,6 +555,181 @@ def _run_artifact_review_spike(root: Path) -> dict[str, Any]:
     }
 
 
+def _run_external_snapshot_review_spike(root: Path) -> dict[str, Any]:
+    root.mkdir(parents=True, exist_ok=True)
+    app = create_http_app(root)
+
+    session_response = app.request("POST", "/sessions", {})
+    session_id = session_response.body["session_id"]  # type: ignore[index]
+    run_response = app.request(
+        "POST",
+        f"/sessions/{session_id}/runs",
+        {"goal": "external snapshot review spike"},
+    )
+    run_id = run_response.body["run_id"]  # type: ignore[index]
+    input_response = app.request(
+        "POST",
+        f"/runs/{run_id}/input",
+        {"text": "native kernel state remains canonical"},
+    )
+    native_state = app.server.get_run_state(run_id)
+    native_actions = {key: dict(value) for key, value in native_state.actions.items()}
+
+    app.server._append(
+        run_id,
+        "snapshot.imported",
+        _external_snapshot_payload(
+            run_id,
+            "snapshot_001",
+            claimed_status="completed",
+            source_artifact_id="external_raw_snapshot_001",
+            confidence=0.76,
+        ),
+    )
+    app.server._append(
+        run_id,
+        "snapshot.imported",
+        _external_snapshot_payload(
+            run_id,
+            "snapshot_002",
+            claimed_status="failed",
+            source_artifact_id="external_raw_snapshot_002",
+            confidence=0.61,
+        ),
+    )
+
+    events = app.server.get_events(run_id)
+    replay_state = RunProjector().rebuild(run_id, app.server.event_store)
+    final_state = app.server.get_run_state(run_id)
+    checkpoint_store = FileCheckpointStore(root / "external-snapshot-review-checkpoints")
+    checkpoint = RunProjector().save_checkpoint(run_id, app.server.event_store, checkpoint_store)
+    checkpoint_state = RunProjector().rebuild_with_checkpoint(
+        run_id,
+        app.server.event_store,
+        checkpoint_store,
+    )
+
+    http_external_ingestion_response = app.request(
+        "POST",
+        "/external-ingestion",
+        json={"source_system": "example_provider"},
+    )
+    event_types = [event.event_type for event in events]
+    external_observations = [dict(observation) for observation in replay_state.external_observations]
+    conflict_diagnostics = [
+        {
+            "snapshot_id": observation["snapshot_id"],
+            "snapshot_type": observation["snapshot_type"],
+            "status": observation["status"],
+            "conflict_status": observation["conflict_status"],
+            "native_status": observation.get("native_status"),
+            "basis_refs": [dict(ref) for ref in observation["basis_refs"]],
+        }
+        for observation in external_observations
+        if observation.get("conflict_status") == "conflict"
+    ]
+    native_state_preserved = (
+        replay_state.status == native_state.status
+        and {key: dict(value) for key, value in replay_state.actions.items()} == native_actions
+    )
+    replay_ok = asdict(replay_state) == asdict(final_state)
+    checkpoint_ok = asdict(checkpoint_state) == asdict(replay_state)
+    snapshot_imported_ok = (
+        event_types.count("snapshot.imported") >= 2
+        and len(external_observations) >= 2
+        and bool(conflict_diagnostics)
+    )
+    http_api_ok = (
+        session_response.status_code == 201
+        and run_response.status_code == 201
+        and input_response.status_code == 200
+    )
+
+    return {
+        "scenario": "external-snapshot-review",
+        "session_id": session_id,
+        "run_id": run_id,
+        "run_status": replay_state.status,
+        "transport": "in_process",
+        "http_api_ok": http_api_ok,
+        "snapshot_imported_ok": snapshot_imported_ok,
+        "external_observation_count": len(external_observations),
+        "external_observations": external_observations,
+        "conflict_diagnostics_count": len(conflict_diagnostics),
+        "conflict_diagnostics": conflict_diagnostics,
+        "native_state_preserved": native_state_preserved,
+        "native_run_status": native_state.status,
+        "native_action_statuses": {
+            execution_id: action.get("status")
+            for execution_id, action in native_actions.items()
+        },
+        "replay_ok": replay_ok,
+        "checkpoint_ok": checkpoint_ok,
+        "checkpoint_basis_event_id": checkpoint["basis_event_id"],
+        "replay_external_observations": [dict(observation) for observation in replay_state.external_observations],
+        "checkpoint_external_observations": [
+            dict(observation) for observation in checkpoint_state.external_observations
+        ],
+        "event_count": len(event_types),
+        "event_types": event_types,
+        "http_external_ingestion_route_status": _deferred_status(http_external_ingestion_response),
+        "provider_status": "boundary_only",
+        "network_listener_status": "not_used",
+        "model_status": "not_used",
+        "filesystem_mutation_status": "not_used",
+        "memory_status": "boundary_only",
+        "memory_query_status": "not_enabled",
+        "memory_storage_status": "not_enabled",
+        "projector_raw_content_read_status": "not_used",
+    }
+
+
+def _external_snapshot_payload(
+    run_id: str,
+    snapshot_id: str,
+    *,
+    claimed_status: str,
+    source_artifact_id: str,
+    confidence: float,
+) -> dict[str, Any]:
+    source_ref = make_artifact_ref(run_id, source_artifact_id)
+    snapshot = ImportedSnapshot(
+        snapshot_id=snapshot_id,
+        source_system="example_provider",
+        captured_at="2026-05-01T00:03:00Z",
+        content_type="run_status",
+        source_ref=source_ref,
+        summary=f"provider claims run is {claimed_status}",
+        observation={
+            "subject": {"type": "run", "id": run_id},
+            "run_status": claimed_status,
+        },
+        quality={
+            "confidence": confidence,
+            "coverage": "partial",
+            "freshness": "fresh",
+        },
+        provenance={
+            "provider": "example_provider",
+            "capture_id": f"capture_{snapshot_id}",
+            "raw_artifact_ref": source_ref.to_dict(),
+        },
+        basis_refs=[source_ref.to_dict()],
+    )
+    return {
+        "snapshot_id": snapshot.snapshot_id,
+        "source_system": snapshot.source_system,
+        "captured_at": snapshot.captured_at,
+        "content_type": snapshot.content_type,
+        "source_ref": snapshot.source_ref.to_dict(),
+        "summary": snapshot.summary,
+        "observation": dict(snapshot.observation),
+        "quality": dict(snapshot.quality),
+        "provenance": dict(snapshot.provenance),
+        "basis_refs": [dict(ref) for ref in snapshot.basis_refs],
+    }
+
+
 def _append_workspace_binding_event(
     server: Any,
     *,
@@ -601,6 +780,8 @@ def _latest_action_status(actions: dict[str, dict[str, Any]]) -> str:
 
 
 def _format_plain_text(result: dict[str, Any]) -> str:
+    if result.get("scenario") == "external-snapshot-review":
+        return _format_external_snapshot_review_plain_text(result)
     if result.get("scenario") == "artifact-review":
         return _format_artifact_review_plain_text(result)
     if result.get("scenario") == "approval-tool-runner":
@@ -624,6 +805,8 @@ def _format_plain_text(result: dict[str, Any]) -> str:
 
 def _format_trace(result: dict[str, Any]) -> str:
     scenario = result.get("scenario", "v0.1")
+    if scenario == "external-snapshot-review":
+        return _format_external_snapshot_review_trace(result)
     if scenario == "artifact-review":
         return _format_artifact_review_trace(result)
     if scenario == "approval-tool-runner":
@@ -698,6 +881,22 @@ def _format_artifact_review_trace(result: dict[str, Any]) -> str:
     return _format_trace_steps(result["scenario"], steps)
 
 
+def _format_external_snapshot_review_trace(result: dict[str, Any]) -> str:
+    steps = [
+        f"create session: {result['session_id']}",
+        f"create run: {result['run_id']}",
+        "create native action/artifact before importing external observations",
+        f"append deterministic snapshot.imported events: {result['external_observation_count']}",
+        f"conflict diagnostics recorded: {result['conflict_diagnostics_count']}",
+        f"native state preserved: {_bool_text(result['native_state_preserved'])}",
+        f"replay verified: {_bool_text(result['replay_ok'])}",
+        f"checkpoint verified: {_bool_text(result['checkpoint_ok'])}",
+        f"external ingestion HTTP route remains: {result['http_external_ingestion_route_status']}",
+        f"provider status: {result['provider_status']}",
+    ]
+    return _format_trace_steps(result["scenario"], steps)
+
+
 def _format_trace_steps(scenario: str, steps: list[str]) -> str:
     lines = [f"scenario: {scenario}"]
     lines.extend(f"[{index}] {step}" for index, step in enumerate(steps, start=1))
@@ -768,6 +967,27 @@ def _format_artifact_review_plain_text(result: dict[str, Any]) -> str:
         f"checkpoint_ok: {str(result['checkpoint_ok']).lower()}",
         f"http_full_content_route_status: {result['http_full_content_route_status']}",
         f"filesystem_mutation_status: {result['filesystem_mutation_status']}",
+        f"model_status: {result['model_status']}",
+        f"memory_status: {result['memory_status']}",
+    ]
+    return "\n".join(lines)
+
+
+def _format_external_snapshot_review_plain_text(result: dict[str, Any]) -> str:
+    lines = [
+        f"scenario: {result['scenario']}",
+        f"session_id: {result['session_id']}",
+        f"run_id: {result['run_id']}",
+        f"run_status: {result['run_status']}",
+        f"transport: {result['transport']}",
+        f"snapshot_imported_ok: {str(result['snapshot_imported_ok']).lower()}",
+        f"external_observation_count: {result['external_observation_count']}",
+        f"conflict_diagnostics_count: {result['conflict_diagnostics_count']}",
+        f"native_state_preserved: {str(result['native_state_preserved']).lower()}",
+        f"replay_ok: {str(result['replay_ok']).lower()}",
+        f"checkpoint_ok: {str(result['checkpoint_ok']).lower()}",
+        f"http_external_ingestion_route_status: {result['http_external_ingestion_route_status']}",
+        f"provider_status: {result['provider_status']}",
         f"model_status: {result['model_status']}",
         f"memory_status: {result['memory_status']}",
     ]
