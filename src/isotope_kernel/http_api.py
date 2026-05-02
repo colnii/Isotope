@@ -158,6 +158,31 @@ class HttpApiApp:
                     return self._error(404, "not_found", "run not found")
                 result = self.server.submit_input(parts[1], text=body["text"])
                 return self._json(200, self._submit_result_to_dict(result))
+            if method == "GET" and len(parts) == 3 and parts[0] == "runs" and parts[2] == "approvals":
+                if not self._run_exists(parts[1]):
+                    return self._error(404, "not_found", "run not found")
+                return self._json(
+                    200,
+                    {
+                        "status": "ok",
+                        "pending_approvals": self.server.get_pending_approvals(parts[1]),
+                    },
+                )
+            if (
+                method == "GET"
+                and len(parts) == 4
+                and parts[0] == "runs"
+                and parts[2] == "approvals"
+            ):
+                if not self._run_exists(parts[1]):
+                    return self._error(404, "not_found", "run not found")
+                try:
+                    approval = self.server.get_approval(parts[1], parts[3])
+                except ValueError as exc:
+                    if "unknown approval" in str(exc):
+                        return self._error(404, "not_found", "approval not found")
+                    raise
+                return self._json(200, {"status": "ok", "approval": approval})
             if (
                 method == "POST"
                 and len(parts) == 5

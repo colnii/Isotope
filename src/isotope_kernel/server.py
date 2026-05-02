@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -282,6 +283,22 @@ class InProcessServer:
             return project.rebuild(run_id, self.event_store)
         return project.rebuild_with_checkpoint(run_id, self.event_store, self.checkpoint_store)
 
+    def get_pending_approvals(self, run_id: str) -> list[dict[str, Any]]:
+        state = self._get_approval_read_state(run_id)
+        return [
+            deepcopy(approval)
+            for approval in state.approvals.values()
+            if approval.get("status") == "pending"
+        ]
+
+    def get_approval(self, run_id: str, approval_id: str) -> dict[str, Any]:
+        self._validate_non_empty_string("approval_id", approval_id)
+        state = self._get_approval_read_state(run_id)
+        approval = state.approvals.get(approval_id)
+        if approval is None:
+            raise ValueError("unknown approval")
+        return deepcopy(approval)
+
     def get_events(self, run_id: str) -> list[CanonicalEvent]:
         self._validate_read_run_id(run_id)
         return self.event_store.list_events(run_id)
@@ -352,6 +369,17 @@ class InProcessServer:
 
     def _validate_read_run_id(self, run_id: object) -> None:
         self._validate_non_empty_string("run_id", run_id)
+
+    def _get_approval_read_state(self, run_id: str):
+        self._validate_known_run_id(run_id)
+        return self.get_run_state(run_id)
+
+    def _validate_known_run_id(self, run_id: object) -> None:
+        self._validate_non_empty_string("run_id", run_id)
+        if not isinstance(run_id, str):
+            raise ValueError("run_id must be a non-empty string")
+        if run_id not in self._runs and not self.event_store.event_path(run_id).exists():
+            raise ValueError("unknown run_id")
 
     def _append(self, run_id: str, event_type: str, payload: dict[str, Any]) -> CanonicalEvent:
         event = CanonicalEvent(

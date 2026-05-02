@@ -185,7 +185,8 @@ def _approval_flow_ok(root: Path, app: Any) -> bool:
         text="approved artifact",
         requires_approval=True,
     )
-    approval_id = _latest_approval_id(app.server.get_events(approval_run_id))
+    pending_approvals = app.server.get_pending_approvals(approval_run_id)
+    approval_id = pending_approvals[0]["approval_id"] if pending_approvals else ""
     if pending["status"] != "pending_user_approval" or not approval_id:
         return False
 
@@ -238,7 +239,8 @@ def _run_approval_tool_runner_spike(root: Path) -> dict[str, Any]:
         requires_approval=True,
     )
     pending_state = app.server.get_run_state(run_id)
-    approval_id = _latest_approval_id(app.server.get_events(run_id))
+    pending_approvals = app.server.get_pending_approvals(run_id)
+    approval_id = pending_approvals[0]["approval_id"] if pending_approvals else ""
     if not approval_id:
         raise RuntimeError("approval-gated tool runner spike did not request approval")
 
@@ -361,7 +363,6 @@ def _run_approval_tool_runner_spike(root: Path) -> dict[str, Any]:
         "api_friction": [
             "approval-gated input currently uses server.submit_tool_request because POST /runs/{run_id}/input has no approval flag",
             "workspace binding currently requires an explicit workspace.bound event in the spike",
-            "approval_id discovery currently scans canonical events",
         ],
     }
 
