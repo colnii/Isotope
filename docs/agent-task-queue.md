@@ -69,6 +69,8 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --json
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2 --json
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario approval-tool-runner
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario approval-tool-runner --json
 
 rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel || true
 
@@ -79,93 +81,154 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 baseline：`831 passed`。
+当前 baseline：`842 passed`。
 
 ## 6. Current Batch
 
-Batch name: `Kernel Usability Pressure Test Planning`
+Batch name: `Approval-Gated Tool Runner Spike`
 
-Timebox: part of rolling 45-60 min session
+Timebox: `45-60 min`
 
-Status: `blocked_for_user_decision`
+Status: `complete`
 
-Goal: define the first usability pressure test boundary and decide whether the current kernel slices are enough to begin a tiny app spike.
+Goal: implement the confirmed `approval-gated tool runner` usability pressure test spike as a deterministic in-process scenario.
 
-### Task 1: Docs-only usability pressure test boundary
+Constraints:
+
+- deterministic
+- in-process
+- no real LLM
+- no real HTTP server
+- no external provider
+- no real filesystem mutation
+- use existing artifact / `write_artifact_tool` path
+- exercise approval pause / resume
+- exercise workspace binding read model
+- produce artifact / `ResourceRef` handoff
+- verify replay and checkpoint
+- expose whether the kernel API feels awkward
+
+### Task 1: Red tests for spike CLI / in-process scenario
 
 Status: `complete`
 
 Scope:
 
-- add `docs/usability-pressure-test-plan-v0.2.md`
-- judge what the first tiny app spike should be
-- no implementation
-- no new tests
+- add spike-specific tests
+- verify red against missing scenario
+- do not stop after red unless a stop condition fires
 
 Evidence:
 
-- Added `docs/usability-pressure-test-plan-v0.2.md`.
-- Current technical recommendation is `approval-gated tool runner`.
+- Added `tests/isotope_kernel/test_usability_spike_approval_tool_runner.py`.
+- Added `tests/isotope_kernel/test_usability_spike_approval_tool_runner_read_model.py`.
+- Red result: `10 failed, 1 passed`, failing because `approval-tool-runner` scenario was unsupported.
 
-### Task 2: Decide first tiny app spike candidate
-
-Status: `blocked_for_user_decision`
-
-Compare:
-
-- file summarizer
-- artifact review flow
-- approval-gated tool runner
-- research assistant mini flow
-
-Scope:
-
-- select one spike that best fits the current kernel
-- explain why it fits better than the alternatives
-- if product / user judgment is required, stop instead of choosing arbitrarily
-
-Decision:
-
-- `approval-gated tool runner` is the technical recommendation because it exercises HTTP facade, action chain, policy grants, approval pause / resume, workspace binding, artifact handoff, replay, and checkpoint without real network / real LLM.
-- This still requires product / user judgment because it frames the first spike as a tool-runner path rather than artifact review, file summarization, or research-assistant behavior.
-- Stop condition fired: selecting a spike requires product / user judgment.
-
-### Task 3: Update queue
+### Task 2: Green implementation for minimal spike
 
 Status: `complete`
 
 Scope:
 
-- if safe to continue, set Next Suggested Batch to selected spike red tests only
-- if user judgment is required, stop
-- do not start implementation unless the queue explicitly marks it safe
+- implement the smallest deterministic scenario
+- prefer `src/isotope_kernel/demo.py`
+- keep kernel core changes minimal
+- do not introduce real network / LLM / provider / filesystem mutation
 
 Evidence:
 
-- Next Suggested Batch remains blocked pending explicit user selection.
-- Do not start red tests until the user confirms the spike candidate.
+- Implemented `python -m isotope_kernel.demo --scenario approval-tool-runner`.
+- Implemented `python -m isotope_kernel.demo --scenario approval-tool-runner --json`.
+- Targeted tests: `11 passed`.
+- Full regression: `842 passed`.
+- Implementation changed `src/isotope_kernel/demo.py` only; no real HTTP server / LLM / provider / filesystem mutation.
+
+### Task 3: Docs/status sync
+
+Status: `complete`
+
+Scope:
+
+- update `docs/usability-pressure-test-plan-v0.2.md`
+- update `docs/current-status.md`
+- update `docs/v0.2-roadmap.md`
+- update `docs/agent-task-queue.md`
+- README / AGENTS only if needed
+
+Evidence:
+
+- Updated status docs for `842 passed` and first-slice completion.
+
+### Task 4: Spike closure review
+
+Status: `complete`
+
+Scope:
+
+- confirm the spike is first slice complete or record remaining gaps
+- docs-only unless a bug is found
+
+Closure:
+
+- `approval-gated tool runner` first slice is complete.
+- It exercises approval pause / resume, workspace binding read model, artifact / `ResourceRef` handoff, replay, checkpoint, and in-process HTTP facade.
+- Exposed API friction: approval-gated input uses `server.submit_tool_request(...)`, workspace binding requires explicit `workspace.bound`, and `approval_id` lookup scans events.
+
+### Task 5: Update queue with next suggested batch
+
+Status: `complete`
+
+Scope:
+
+- write the next suggested batch
+- do not start it in this session
+
+Evidence:
+
+- Next Suggested Batch set to API friction review.
+
+### Task 6: Stop for user review
+
+Status: `complete`
+
+Scope:
+
+- report verification, commit, push, and current status
+- do not continue to the next batch
 
 ## 7. Next Suggested Batch
 
-Batch name: `Selected Usability Spike Red Tests`
+Batch name: `Approval Tool Runner API Friction Review`
 
-Status: `blocked_pending_user_selection`
+Status: `ready_after_user_review`
 
 Possible shape:
 
-- add spike-specific tests
-- red phase only
-- no implementation unless Current Batch explicitly marks it safe
-
-Recommended candidate if user confirms: `approval-gated tool runner`.
-
-Do not start this next batch until the user explicitly selects a spike candidate.
+- docs-only review of API awkwardness exposed by the spike
+- decide whether approval-gated input needs a first-class facade
+- decide whether workspace binding needs a server-level helper instead of direct event append
+- decide whether approval lookup needs a read helper
+- no implementation until user confirms
 
 ## 8. Completed Batch Log
 
+### Approval-Gated Tool Runner Spike
+
+Status: `complete`
+
+Evidence:
+
+- Red result: `10 failed, 1 passed`.
+- Targeted green result: `11 passed`.
+- Full regression: `842 passed`.
+- New scenario: `python -m isotope_kernel.demo --scenario approval-tool-runner`.
+- New JSON scenario: `python -m isotope_kernel.demo --scenario approval-tool-runner --json`.
+- No real HTTP server / LLM / provider / filesystem mutation / container / process spawn / dependency.
+- Stop reason: batch completed; wait for user review before starting API friction follow-up.
+
 ### Kernel Usability Pressure Test Planning
 
-Status: `blocked_for_user_decision`
+Status: `complete`
 
 Evidence:
 
@@ -173,6 +236,7 @@ Evidence:
 - Compared file summarizer, artifact review flow, approval-gated tool runner, and research assistant mini flow.
 - Technical recommendation: `approval-gated tool runner`.
 - Stop reason: selecting the spike requires product / user judgment, so no red tests were started.
+- User later confirmed `approval-gated tool runner` as the selected spike.
 
 ### Retry / Cancel / Supersede Stabilization
 

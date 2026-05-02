@@ -28,7 +28,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run an Isotope developer demo.")
     parser.add_argument(
         "--scenario",
-        choices=("v0.1", "v0.2"),
+        choices=("v0.1", "v0.2", "approval-tool-runner"),
         default="v0.1",
         help="demo scenario to run",
     )
@@ -90,6 +90,8 @@ def _run_scenario(root: Path, *, scenario: str) -> dict[str, Any]:
         return _run_demo(root)
     if scenario == "v0.2":
         return _run_v0_2_demo(root)
+    if scenario == "approval-tool-runner":
+        return _run_approval_tool_runner_spike(root)
     raise ValueError(f"unsupported scenario: {scenario}")
 
 
@@ -216,6 +218,180 @@ def _approval_flow_ok(root: Path, app: Any) -> bool:
     )
 
 
+def _run_approval_tool_runner_spike(root: Path) -> dict[str, Any]:
+    root.mkdir(parents=True, exist_ok=True)
+    app = create_http_app(root)
+
+    session_response = app.request("POST", "/sessions", {})
+    session_id = session_response.body["session_id"]  # type: ignore[index]
+    run_response = app.request(
+        "POST",
+        f"/sessions/{session_id}/runs",
+        {"goal": "approval-gated tool runner spike"},
+    )
+    run_id = run_response.body["run_id"]  # type: ignore[index]
+
+    pending = app.server.submit_tool_request(
+        run_id,
+        tool="write_artifact_tool",
+        text="approval-gated tool output",
+        requires_approval=True,
+    )
+    pending_state = app.server.get_run_state(run_id)
+    approval_id = _latest_approval_id(app.server.get_events(run_id))
+    if not approval_id:
+        raise RuntimeError("approval-gated tool runner spike did not request approval")
+
+    # Current kernel has a workspace read model, but no product-level binding API yet.
+    # The pressure test appends the canonical slice event explicitly and reports
+    # that friction in the summary instead of hiding it behind a fake product API.
+    _append_workspace_binding_event(
+        app.server,
+        run_id=run_id,
+        decision=pending["decision"],
+    )
+
+    pending_http_state_response = app.request("GET", f"/runs/{run_id}")
+    resolve_response = app.request(
+        "POST",
+        f"/runs/{run_id}/approvals/{approval_id}/resolve",
+        {
+            "resolution": "approved",
+            "reason": "approval-gated spike",
+            "resolver": "developer_demo",
+        },
+    )
+    state_response = app.request("GET", f"/runs/{run_id}")
+    events_response = app.request("GET", f"/runs/{run_id}/events")
+
+    replay_state = RunProjector().rebuild(run_id, app.server.event_store)
+    checkpoint_store = FileCheckpointStore(root / "approval-tool-runner-checkpoints")
+    checkpoint = RunProjector().save_checkpoint(run_id, app.server.event_store, checkpoint_store)
+    checkpoint_state = RunProjector().rebuild_with_checkpoint(
+        run_id,
+        app.server.event_store,
+        checkpoint_store,
+    )
+
+    artifact = app.server.artifact_store.list_artifacts(run_id)[-1]
+    artifact_ref = artifact.ref.to_dict()
+    artifact_summary_response = app.request(
+        "GET",
+        f"/artifacts/{artifact.artifact_id}/summary",
+    )
+    http_full_content_response = app.request("GET", f"/artifacts/{artifact.artifact_id}/content")
+
+    final_state = app.server.get_run_state(run_id)
+    event_types = [event.event_type for event in app.server.get_events(run_id)]
+    workspace_binding = replay_state.workspaces.get("workspace_shared_ro", {})
+    replay_workspaces = dict(replay_state.workspaces)
+    checkpoint_workspaces = dict(checkpoint_state.workspaces)
+    pending_before_resume = (
+        pending["status"] == "pending_user_approval"
+        and pending_state.status == "pending_user_approval"
+    )
+    approval_ok = (
+        "approval.requested" in event_types
+        and "approval.resolved" in event_types
+        and event_types.index("approval.requested") < event_types.index("approval.resolved")
+        and event_types.index("approval.resolved") < event_types.index("action.started")
+        and resolve_response.status_code == 200
+    )
+    workspace_binding_ok = (
+        "workspace.bound" in event_types
+        and workspace_binding.get("workspace_id") == "workspace_shared_ro"
+        and workspace_binding.get("mode") == "shared_ro"
+        and workspace_binding.get("lease_status") == "active"
+        and event_types.index("workspace.bound") < event_types.index("action.started")
+    )
+    artifact_handoff_ok = (
+        artifact_summary_response.status_code == 200
+        and artifact_ref.get("ref_type") == "artifact"
+        and artifact_ref.get("scope") == "run"
+        and artifact_ref.get("run_id") == run_id
+        and "artifact.created" in event_types
+    )
+    replay_ok = asdict(replay_state) == asdict(final_state)
+    checkpoint_ok = asdict(checkpoint_state) == asdict(replay_state)
+    http_api_ok = (
+        session_response.status_code == 201
+        and run_response.status_code == 201
+        and pending_http_state_response.status_code == 200
+        and state_response.status_code == 200
+        and events_response.status_code == 200
+    )
+
+    return {
+        "scenario": "approval-tool-runner",
+        "session_id": session_id,
+        "run_id": run_id,
+        "run_status": replay_state.status,
+        "transport": "in_process",
+        "http_api_ok": http_api_ok,
+        "approval_tool_runner_ok": (
+            pending_before_resume
+            and approval_ok
+            and workspace_binding_ok
+            and artifact_handoff_ok
+            and replay_ok
+            and checkpoint_ok
+        ),
+        "approval_pending_before_resume": pending_before_resume,
+        "approval_ok": approval_ok,
+        "workspace_binding_ok": workspace_binding_ok,
+        "artifact_handoff_ok": artifact_handoff_ok,
+        "replay_ok": replay_ok,
+        "checkpoint_ok": checkpoint_ok,
+        "checkpoint_basis_event_id": checkpoint["basis_event_id"],
+        "replay_workspaces_ok": replay_workspaces == final_state.workspaces,
+        "checkpoint_workspaces_ok": checkpoint_workspaces == replay_workspaces,
+        "workspace_binding": dict(workspace_binding),
+        "replay_workspaces": replay_workspaces,
+        "checkpoint_workspaces": checkpoint_workspaces,
+        "artifact_ref": artifact_ref,
+        "artifact_summary": artifact.summary,
+        "event_count": len(event_types),
+        "event_types": event_types,
+        "http_full_content_route_status": _deferred_status(http_full_content_response),
+        "filesystem_mutation_status": "not_used",
+        "network_listener_status": "not_used",
+        "model_status": "not_used",
+        "memory_status": "boundary_only",
+        "memory_query_status": "not_enabled",
+        "api_friction": [
+            "approval-gated input currently uses server.submit_tool_request because POST /runs/{run_id}/input has no approval flag",
+            "workspace binding currently requires an explicit workspace.bound event in the spike",
+            "approval_id discovery currently scans canonical events",
+        ],
+    }
+
+
+def _append_workspace_binding_event(
+    server: Any,
+    *,
+    run_id: str,
+    decision: Any,
+) -> None:
+    workspace_grant = decision.grants.get("workspace", {})
+    server._append(
+        run_id,
+        "workspace.bound",
+        {
+            "workspace_id": "workspace_shared_ro",
+            "run_id": run_id,
+            "mode": workspace_grant.get("mode", "shared_ro"),
+            "bound_to": {"agent_id": "agent_supervisor"},
+            "lease_status": "active",
+            "provenance": {
+                "decision_id": decision.decision_id,
+                "grant_basis": {
+                    "workspace": dict(workspace_grant),
+                },
+            },
+        },
+    )
+
+
 def _latest_approval_id(events: list[Any]) -> str:
     for event in reversed(events):
         if event.event_type == "approval.requested":
@@ -240,6 +416,8 @@ def _latest_action_status(actions: dict[str, dict[str, Any]]) -> str:
 
 
 def _format_plain_text(result: dict[str, Any]) -> str:
+    if result.get("scenario") == "approval-tool-runner":
+        return _format_approval_tool_runner_plain_text(result)
     if result.get("scenario") == "v0.2":
         return _format_v0_2_plain_text(result)
     lines = [
@@ -268,6 +446,28 @@ def _format_v0_2_plain_text(result: dict[str, Any]) -> str:
         f"artifact_content_policy_ok: {str(result['artifact_content_policy_ok']).lower()}",
         f"checkpoint_ok: {str(result['checkpoint_ok']).lower()}",
         f"http_full_content_route_status: {result['http_full_content_route_status']}",
+        f"memory_status: {result['memory_status']}",
+    ]
+    return "\n".join(lines)
+
+
+def _format_approval_tool_runner_plain_text(result: dict[str, Any]) -> str:
+    lines = [
+        f"scenario: {result['scenario']}",
+        f"session_id: {result['session_id']}",
+        f"run_id: {result['run_id']}",
+        f"run_status: {result['run_status']}",
+        f"transport: {result['transport']}",
+        f"approval_tool_runner_ok: {str(result['approval_tool_runner_ok']).lower()}",
+        f"approval_pending_before_resume: {str(result['approval_pending_before_resume']).lower()}",
+        f"approval_ok: {str(result['approval_ok']).lower()}",
+        f"workspace_binding_ok: {str(result['workspace_binding_ok']).lower()}",
+        f"artifact_handoff_ok: {str(result['artifact_handoff_ok']).lower()}",
+        f"replay_ok: {str(result['replay_ok']).lower()}",
+        f"checkpoint_ok: {str(result['checkpoint_ok']).lower()}",
+        f"http_full_content_route_status: {result['http_full_content_route_status']}",
+        f"filesystem_mutation_status: {result['filesystem_mutation_status']}",
+        f"model_status: {result['model_status']}",
         f"memory_status: {result['memory_status']}",
     ]
     return "\n".join(lines)

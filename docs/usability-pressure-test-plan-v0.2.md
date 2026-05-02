@@ -1,6 +1,6 @@
 # Usability Pressure Test Plan v0.2
 
-状态：`requires user decision`
+状态：`first slice complete`
 
 ## 1. Purpose
 
@@ -8,7 +8,14 @@
 
 目标是回答一个窄问题：在 Track A / C / E / F、Agent / Worker lifecycle first slice、Workspace substrate first slice 和 Retry / Cancel / Supersede stabilization slice 已完成后，Isotope 是否已经足够开始一个 tiny app spike（小应用尖刺验证），用来检验 kernel boundary 在更接近真实使用路径里的可读性和组合性。
 
-本阶段不新增实现、不新增测试、不打开真实集成。
+原 planning 阶段不新增实现、不新增测试、不打开真实集成。用户已确认选择 `approval-gated tool runner` 后，first slice 已按 TDD 落地为 deterministic in-process demo scenario。
+
+新增命令：
+
+```bash
+python -m isotope_kernel.demo --scenario approval-tool-runner
+python -m isotope_kernel.demo --scenario approval-tool-runner --json
+```
 
 ## 2. Current Kernel Readiness
 
@@ -27,7 +34,7 @@
 - Retry / Cancel / Supersede read model。
 - event replay and checkpoint-assisted rebuild。
 
-当前 baseline：`831 passed`。
+当前 baseline：`842 passed`。
 
 ## 3. Hard Boundaries
 
@@ -67,38 +74,52 @@
 
 但该选择仍包含产品/用户判断：这个 spike 会把 Isotope 展示成“approval-gated tool runner”方向，而不是 artifact review 或 research assistant 方向。按 `docs/agent-task-queue.md` stop condition，本轮不把它正式选为 next implementation batch。
 
-## 6. If Approved: First Red Tests
+## 6. Implemented First Slice
 
-如果用户确认选择 `approval-gated tool runner`，下一批建议只做 red tests。
+用户已确认选择 `approval-gated tool runner`。
 
-建议测试文件：
+已新增测试文件：
 
 - `tests/isotope_kernel/test_usability_spike_approval_tool_runner.py`
 - `tests/isotope_kernel/test_usability_spike_approval_tool_runner_read_model.py`
 
-建议测试目标：
+当前 green scope：
 
 - spike 使用 in-process server / `HttpApiApp`，不监听端口。
-- create session / run / submit input / read run state / read events 可走通。
-- 一个 deterministic tool action 需要 approval，pending state 可见。
+- create session / run / read run state / read events 通过 HTTP facade 可走通。
+- deterministic `write_artifact_tool` action 先进入 pending approval。
 - approved resolution 通过现有 executor path resume。
-- denied resolution 不执行、不产 artifact。
-- action 使用 `PolicyDecision.grants`，不使用 resolution body forged grants。
-- workspace binding 来自 grants，默认仍是 `shared_ro` / no filesystem mutation。
-- result handoff 使用 artifact summary / `ResourceRef` / provenance。
+- action 使用原 `PolicyDecision.grants`。
+- workspace binding 通过 canonical `workspace.bound` 进入 `RunState.workspaces`。
+- workspace binding 仍是 `shared_ro`，没有 filesystem mutation。
+- result handoff 使用 artifact summary / structured `ResourceRef` / provenance。
 - JSON / read model 不包含 artifact full content。
 - HTTP full-content route 仍 `501 not_enabled`。
 - event replay 和 checkpoint-assisted rebuild 得到同等 read model。
 - 不实现 real scheduler、process kill、tool-level cancellation、real concurrency、real LLM、provider adapter 或 memory query。
 
-## 7. Decision State
+## 7. API Friction Exposed
 
-当前状态：`requires user decision`。
+这个 spike 有意记录当前 kernel API awkwardness（不顺手处），不要把它隐藏成假 product API：
 
-本轮只给出技术推荐，不进入 red tests。
+- approval-gated input 目前需要直接调用 `server.submit_tool_request(..., requires_approval=True)`；`POST /runs/{run_id}/input` 还没有 approval flag。
+- workspace binding read model 目前需要 spike 显式 append canonical `workspace.bound` event；还没有 product-level workspace binding facade。
+- `approval_id` discovery 目前通过扫描 canonical events 完成；还没有专用 read helper。
 
-需要用户确认：
+这些是后续 API ergonomics（易用性）候选，不是本 slice 要补的功能。
 
-- 是否选择 `approval-gated tool runner` 作为第一个 usability spike。
-- 或改选 `artifact review flow` / `file summarizer` / `research assistant mini flow`。
-- 或先继续 docs-only pressure-test planning，不开测试。
+## 8. Closure
+
+当前判断：`approval-gated tool runner` first slice complete。
+
+仍不包含：
+
+- real HTTP server / network listener
+- real LLM
+- external provider
+- real filesystem mutation
+- container / process spawn
+- product UI
+- automatic retry / scheduler / process kill
+
+下一步建议停下来 review exposed API friction，再决定是否做 approval input ergonomics / workspace binding facade / approval lookup helper 的 docs-only boundary。
