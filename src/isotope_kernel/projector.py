@@ -20,6 +20,7 @@ class RunState:
     current_agent: str = ""
     agents: dict[str, dict[str, Any]] = field(default_factory=dict)
     workers: dict[str, dict[str, Any]] = field(default_factory=dict)
+    workspaces: dict[str, dict[str, Any]] = field(default_factory=dict)
     actions: dict[str, dict[str, Any]] = field(default_factory=dict)
     approvals: dict[str, dict[str, Any]] = field(default_factory=dict)
     artifacts: list[dict[str, Any]] = field(default_factory=list)
@@ -40,6 +41,7 @@ class RunProjector:
         "current_agent",
         "agents",
         "workers",
+        "workspaces",
         "actions",
         "approvals",
         "artifacts",
@@ -115,6 +117,7 @@ class RunProjector:
             "artifact.created",
             "memory.record_created",
             "memory.record_superseded",
+            "workspace.bound",
         }:
             raise ValueError("event after run.completed")
 
@@ -177,6 +180,8 @@ class RunProjector:
             self._validate_worker_lifecycle_transition(payload, event.event_type)
         elif event.event_type == "worker.result_handed_off":
             self._validate_worker_lifecycle_transition(payload, event.event_type)
+        elif event.event_type == "workspace.bound":
+            self._validate_workspace_bound_lifecycle(payload, event)
         elif event.event_type == "action.completed":
             execution_id = str(payload["execution_id"])
             status = self._execution_statuses.get(execution_id)
@@ -301,6 +306,8 @@ class RunProjector:
             self._validate_worker_status_payload(payload, event.event_type)
         elif event.event_type == "worker.result_handed_off":
             self._validate_worker_result_handoff_payload(payload)
+        elif event.event_type == "workspace.bound":
+            self._validate_workspace_bound_payload(payload, event)
 
     def _require_fields(self, label: str, payload: dict[str, Any], fields: tuple[str, ...]) -> None:
         for field in fields:
@@ -370,6 +377,46 @@ class RunProjector:
             ("worker_id", "delegation_id", "artifact_ref", "summary"),
         )
         self._validate_resource_ref_payload(payload["artifact_ref"], "worker.result_handed_off artifact_ref")
+
+    def _validate_workspace_bound_payload(self, payload: dict[str, Any], event: CanonicalEvent) -> None:
+        self._require_fields(
+            "workspace.bound",
+            payload,
+            ("workspace_id", "run_id", "mode", "bound_to", "lease_status", "provenance"),
+        )
+        for field_name in ("workspace_id", "run_id", "mode", "lease_status"):
+            value = payload[field_name]
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"workspace.bound {field_name} must be a non-empty string")
+        if payload["run_id"] != event.run_id:
+            raise ValueError("workspace.bound run_id must match event run_id")
+        if payload["mode"] != "shared_ro":
+            raise PermissionError("workspace mode is not supported")
+        if payload["lease_status"] not in {"active", "released"}:
+            raise ValueError("workspace.bound lease_status must be active or released")
+        bound_to = payload["bound_to"]
+        if not isinstance(bound_to, dict):
+            raise ValueError("workspace.bound bound_to must be a dict")
+        if not any(isinstance(bound_to.get(field_name), str) and bound_to[field_name] for field_name in ("agent_id", "execution_id")):
+            raise ValueError("workspace.bound bound_to must include agent_id or execution_id")
+        provenance = payload["provenance"]
+        if not isinstance(provenance, dict):
+            raise ValueError("workspace.bound provenance must be a dict")
+        decision_id = provenance.get("decision_id")
+        if not isinstance(decision_id, str) or not decision_id:
+            raise ValueError("workspace.bound provenance.decision_id is required")
+        grant_basis = provenance.get("grant_basis")
+        if not isinstance(grant_basis, dict):
+            raise ValueError("workspace.bound provenance.grant_basis must be a dict")
+        workspace_grant = grant_basis.get("workspace")
+        if not isinstance(workspace_grant, dict):
+            raise ValueError("workspace.bound provenance.grant_basis.workspace must be a dict")
+        if workspace_grant.get("mode") != payload["mode"]:
+            raise PermissionError("workspace.bound mode must match workspace grant")
+
+    def _validate_workspace_bound_lifecycle(self, payload: dict[str, Any], event: CanonicalEvent) -> None:
+        if payload["run_id"] != event.run_id:
+            raise ValueError("workspace.bound run_id must match event run_id")
 
     def _validate_memory_record_created_payload(self, payload: dict[str, Any]) -> None:
         self._require_fields(
@@ -538,6 +585,8 @@ class RunProjector:
             self._apply_worker_status(state, payload, event)
         elif event.event_type == "worker.result_handed_off":
             self._apply_worker_result_handoff(state, payload, event)
+        elif event.event_type == "workspace.bound":
+            self._apply_workspace_bound(state, payload, event)
         elif event.event_type == "action.decided":
             outcome = str(payload.get("outcome", ""))
             if outcome in {"denied", "pending_user_approval"}:
@@ -711,6 +760,18 @@ class RunProjector:
         result_refs.append(dict(payload["artifact_ref"]))
         worker["result_summary"] = payload["summary"]
         worker["last_event_id"] = event.event_id
+
+    def _apply_workspace_bound(self, state: RunState, payload: dict[str, Any], event: CanonicalEvent) -> None:
+        workspace_id = str(payload["workspace_id"])
+        state.workspaces[workspace_id] = {
+            "workspace_id": workspace_id,
+            "run_id": payload["run_id"],
+            "mode": payload["mode"],
+            "bound_to": dict(payload["bound_to"]),
+            "lease_status": payload["lease_status"],
+            "provenance": dict(payload["provenance"]),
+            "basis_event_id": event.event_id,
+        }
 
     def _apply_snapshot_imported(self, state: RunState, payload: dict[str, Any]) -> None:
         source_ref = dict(payload["source_ref"])
@@ -1058,6 +1119,9 @@ class RunProjector:
         workers = state.get("workers", {})
         if not isinstance(workers, dict):
             raise ValueError("checkpoint state workers must be a dict")
+        workspaces = state.get("workspaces", {})
+        if not isinstance(workspaces, dict):
+            raise ValueError("checkpoint state workspaces must be a dict")
         if not isinstance(state["actions"], dict):
             raise ValueError("checkpoint state actions must be a dict")
         approvals = state.get("approvals", {})
@@ -1077,6 +1141,8 @@ class RunProjector:
             self._validate_checkpoint_agent(agent_id, agent)
         for worker_id, worker in workers.items():
             self._validate_checkpoint_worker(worker_id, worker)
+        for workspace_id, workspace in workspaces.items():
+            self._validate_checkpoint_workspace(workspace_id, workspace)
         for approval_id, approval in approvals.items():
             self._validate_checkpoint_approval(approval_id, approval)
         for record in memory_records:
@@ -1089,6 +1155,7 @@ class RunProjector:
             current_agent=str(state.get("current_agent", "")),
             agents=dict(agents),
             workers=dict(workers),
+            workspaces=dict(workspaces),
             actions=dict(state.get("actions", {})),
             approvals=dict(approvals),
             artifacts=list(state.get("artifacts", [])),
@@ -1139,6 +1206,32 @@ class RunProjector:
             raise ValueError("checkpoint worker result_refs must be a list")
         for index, ref in enumerate(result_refs):
             self._validate_resource_ref_payload(ref, f"checkpoint worker result_refs[{index}]")
+
+    def _validate_checkpoint_workspace(self, workspace_id: Any, workspace: Any) -> None:
+        if not isinstance(workspace_id, str) or not workspace_id:
+            raise ValueError("checkpoint workspace id must be a non-empty string")
+        if not isinstance(workspace, dict):
+            raise ValueError("checkpoint workspace entry must be a dict")
+        for field_name in ("workspace_id", "run_id", "mode", "bound_to", "lease_status", "provenance", "basis_event_id"):
+            if field_name not in workspace:
+                raise ValueError(f"checkpoint workspace entry missing required field: {field_name}")
+        if workspace["workspace_id"] != workspace_id:
+            raise ValueError("checkpoint workspace id must match entry workspace_id")
+        if workspace["mode"] != "shared_ro":
+            raise ValueError("checkpoint workspace mode must be shared_ro")
+        if workspace["lease_status"] not in {"active", "released"}:
+            raise ValueError("checkpoint workspace lease_status must be known")
+        if not isinstance(workspace["bound_to"], dict):
+            raise ValueError("checkpoint workspace bound_to must be a dict")
+        if not any(
+            isinstance(workspace["bound_to"].get(field_name), str) and workspace["bound_to"][field_name]
+            for field_name in ("agent_id", "execution_id")
+        ):
+            raise ValueError("checkpoint workspace bound_to must include agent_id or execution_id")
+        if not isinstance(workspace["provenance"], dict):
+            raise ValueError("checkpoint workspace provenance must be a dict")
+        if not isinstance(workspace["basis_event_id"], str) or not workspace["basis_event_id"]:
+            raise ValueError("checkpoint workspace basis_event_id must be a non-empty string")
 
     def _validate_checkpoint_artifact(self, artifact: Any) -> None:
         if not isinstance(artifact, dict):

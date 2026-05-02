@@ -150,6 +150,7 @@ def test_checkpoint_state_contains_minimal_projected_state_fields():
         "current_agent",
         "agents",
         "workers",
+        "workspaces",
         "actions",
         "approvals",
         "artifacts",
