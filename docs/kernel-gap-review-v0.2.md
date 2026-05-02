@@ -39,7 +39,7 @@
 | Agent / worker lifecycle | first slice complete | 中高：已有 `RunState.agents` / `RunState.workers`、delegation policy gate、event-sourced lifecycle 和 checkpoint support，但仍没有 real worker runtime / concurrency | 高 | 部分阻塞；workspace substrate 现在是更直接 blocker | keep slice narrow, move to workspace boundary |
 | Delegation loop | missing | 中高：没有 delegation contract 时，多 worker / child task 容易变成 ad hoc server calls | 高 | 是，阻塞复杂 scenario | defer until agent / worker lifecycle drafted |
 | Real model loop | missing | 中：过早接 real LLM 会掩盖 kernel contract 缺口 | 中高 | 不阻塞当前 in-process pressure test | defer |
-| Workspace substrate | boundary-only | 高：当前只支持 `shared_ro` grants binding；真实 workspace read/write/isolation 如果晚设计，会影响 executor/tool/artifact/policy 边界 | 高 | 是，阻塞真实 tool pressure test | docs-only boundary, then red tests for workspace grants and isolation |
+| Workspace substrate | docs-only boundary started | 高：当前只支持 `shared_ro` grants binding；真实 workspace read/write/isolation 如果晚设计，会影响 executor/tool/artifact/policy 边界 | 高 | 是，阻塞真实 tool pressure test | red tests for workspace binding read model and policy boundary |
 | Action type registry versioning | partial / boundary | 中高：当前 registry 是固定 minimal entries，缺少 action schema evolution / compatibility contract | 中高 | 部分阻塞 | docs-only design tied to policy profile |
 | Tool protocol | sketch | 中高：tool result/error/resource contract 不清会污染 event schema 和 executor ownership | 高 | 是，阻塞 external tool pressure test | docs-only protocol note after workspace boundary |
 | Retry / cancel / supersede | missing | 高：失败恢复、user stop、replacement action 都会影响 lifecycle ordering、run status 和 checkpoint consistency | 高 | 是，阻塞 longer-running usability pressure test | docs-only event/state machine design, then red tests |
@@ -77,7 +77,7 @@
 - 一旦进入真实 tool / file / sandbox pressure test，workspace grants、read/write modes、path scope、artifact handoff 和 cleanup 都会成为 hard boundary。
 - 如果 workspace substrate 设计错误，后续 executor、tool protocol、artifact provenance 和 policy profile 都要返工。
 
-建议：在 Agent / Worker Lifecycle 后做 workspace boundary 设计与 red tests。
+当前设计入口：`docs/workspace-substrate-boundary-v0.2.md`。该文档已固定 workspace 是 policy-bound execution resource、binding must be policy-granted、write / isolated mode 不可隐式升级、artifact capture 必须走 artifact / provenance、projector 不能读取 workspace files 推进 native state。下一步应写 workspace binding read model / policy boundary red tests。
 
 ### 4.3 Retry / Cancel / Supersede
 
@@ -151,7 +151,7 @@
 - Retry / cancel / supersede lifecycle 未定义
 - Policy profile / action registry versioning 未定义
 
-结论：Agent / Worker Lifecycle first slice 已 complete；下一步应继续补 Workspace Substrate 设计，再进入更真实的 usability pressure test。
+结论：Agent / Worker Lifecycle first slice 已 complete，Workspace Substrate boundary doc 已落地；下一步应写 workspace binding / policy boundary red tests，再进入更真实的 usability pressure test。
 
 ## 7. Non-Goals For This Review
 

@@ -6,7 +6,7 @@ Isotope 是一个独立的 kernel-first agent runtime 项目，用来验证 cano
 
 `main` 当前 ahead of `v0.2-demo`，主要增量是 Track F external ingestion boundary；delta 记录见 [docs/post-v0.2-tag-delta.md](docs/post-v0.2-tag-delta.md)。暂不移动 `v0.2-demo` tag，也不发布 GitHub Release。
 
-当前 v0.2 implementation cycle 已建议暂停，进入 cleanup / docs organization / external review mode；Kernel Gap Review 后已新增 Agent / Worker lifecycle boundary，并已完成 first slice；下一步默认进入 Workspace substrate design，见 [docs/agent-worker-lifecycle-boundary-v0.2.md](docs/agent-worker-lifecycle-boundary-v0.2.md)。
+当前 v0.2 implementation cycle 已建议暂停，进入 cleanup / docs organization / external review mode；Kernel Gap Review 后已新增 Agent / Worker lifecycle boundary，并已完成 first slice；Workspace substrate boundary 也已定义，见 [docs/workspace-substrate-boundary-v0.2.md](docs/workspace-substrate-boundary-v0.2.md)。
 
 ## Quick Start
 
@@ -35,6 +35,7 @@ python3 -m venv .venv
 - Minimal approval resolution / read model boundary: approved resumes through existing executor path with original `PolicyDecision.grants`; denied does not execute; pending / approved / denied approval state is replayable and checkpointable.
 - External ingestion boundary: `ImportedSnapshot` can be accepted through canonical `snapshot.imported` into checkpointable `RunState.external_observations` without overriding native state; conflicts are explicit, provider adapters and HTTP ingestion remain not enabled.
 - Agent / Worker lifecycle first slice: `RunState.agents` / `RunState.workers`, delegation policy gate, worker lifecycle projection, worker action grants boundary, and checkpoint-assisted rebuild.
+- Workspace substrate boundary: workspace is a policy-bound execution resource; current implementation remains `shared_ro` / grants validation only.
 - Editable install smoke and GitHub Actions smoke CI.
 
 ## What Does Not Work Yet
@@ -47,6 +48,7 @@ python3 -m venv .venv
 - Plugin system or dynamic tool loading.
 - Production release packaging.
 - Real worker concurrency / process spawning / remote worker runtime.
+- Container / git worktree / remote executor workspace substrate.
 
 ## Docs
 
@@ -61,6 +63,7 @@ python3 -m venv .venv
 - v0.2 cycle closure review: [docs/v0.2-cycle-closure-review.md](docs/v0.2-cycle-closure-review.md)
 - Kernel gap review: [docs/kernel-gap-review-v0.2.md](docs/kernel-gap-review-v0.2.md)
 - Agent / Worker lifecycle boundary: [docs/agent-worker-lifecycle-boundary-v0.2.md](docs/agent-worker-lifecycle-boundary-v0.2.md)
+- Workspace substrate boundary: [docs/workspace-substrate-boundary-v0.2.md](docs/workspace-substrate-boundary-v0.2.md)
 - Docs migration plan: [docs/docs-migration-plan.md](docs/docs-migration-plan.md)
 - v0.2 demo readiness: [docs/demo/v0.2-demo-readiness.md](docs/demo/v0.2-demo-readiness.md)
 - v0.2 demo scenario: [docs/demo/v0.2-demo-scenario.md](docs/demo/v0.2-demo-scenario.md)
