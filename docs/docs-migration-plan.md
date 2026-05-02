@@ -8,7 +8,7 @@
 
 本轮只写计划，不移动、不删除、不合并任何文档，不批量修改链接，不修改 `src/`、`tests/`、`.github/` 或 `pyproject.toml`。
 
-Phase 1 dry-run 已记录在 `docs/docs-migration-phase-1-dry-run.md`。该 dry-run 没有移动文件，建议下一轮 actual migration 先做最小 Phase 1a：只迁移 release draft 到 `docs/release/` 并保留旧路径 stub。
+Phase 1 dry-run 已记录在 `docs/docs-migration-phase-1-dry-run.md`。Phase 1a 已执行：release draft 已迁移到 `docs/release/release-draft-v0.1-demo.md`，旧路径 `docs/release-draft-v0.1-demo.md` 保留为 compatibility stub。下一批默认是 Phase 1b demo docs，除非用户另行指定。
 
 ## 2. Target Directory Structure
 
@@ -51,7 +51,7 @@ docs/
 
 Recommended order:
 
-1. Phase 1a: Create `docs/release/` and move only `docs/release-draft-v0.1-demo.md` with an old-path stub.
+1. Phase 1a completed: `docs/release/release-draft-v0.1-demo.md` now holds the full release draft; `docs/release-draft-v0.1-demo.md` is an old-path stub.
 2. Phase 1b: Move demo docs to `docs/demo/` with stubs and same-commit link updates.
 3. Phase 1c: Move closed Track A / C / E docs to `docs/tracks/` with stubs and same-commit link updates.
 4. Move checkpoint docs as one batch.
@@ -61,7 +61,7 @@ Recommended order:
 8. Move status entrypoints only after README / AGENTS / current-status / roadmap link checks are stable.
 9. Only after one stable cycle, consider deleting compatibility stubs.
 
-Do not combine Phase 1a / 1b / 1c unless there is a specific review reason to take the extra link risk.
+Do not combine Phase 1b / 1c unless there is a specific review reason to take the extra link risk.
 
 ## 5. Do Not Move In First Wave
 
@@ -126,7 +126,7 @@ Reason: README, AGENTS, current-status, roadmap, and recent task instructions li
 | `docs/memory-v0.1-scope-freeze.md` | `docs/memory/memory-v0.1-scope-freeze.md` | memory | No | High | Current memory scope reference. |
 | `docs/memory-write-query-boundary-v0.1.md` | `docs/memory/memory-write-query-boundary-v0.1.md` | memory | No | Medium | Move with memory batch. |
 | `docs/post-v0.2-tag-delta.md` | `docs/status/post-v0.2-tag-delta.md` | status | No | High | Recent review doc; keep until status docs move together. |
-| `docs/release-draft-v0.1-demo.md` | `docs/release/release-draft-v0.1-demo.md` | release | No | Medium | Move with release docs; not published. |
+| `docs/release-draft-v0.1-demo.md` | `docs/release/release-draft-v0.1-demo.md` | release | Done | Low | Phase 1a completed; old path is a stub, new path holds the release draft. |
 | `docs/server-checkpoint-boundary-v0.1.md` | `docs/checkpoint/server-checkpoint-boundary-v0.1.md` | checkpoint | No | Medium | Move with checkpoint batch. |
 | `docs/v0.1-demo-acceptance.md` | `docs/demo/v0.1-demo-acceptance.md` | demo | No | High | Tag/acceptance doc; needs stub if moved. |
 | `docs/v0.2-cycle-closure-review.md` | `docs/status/v0.2-cycle-closure-review.md` | status | No | High | Current closure record; keep until status docs move together. |

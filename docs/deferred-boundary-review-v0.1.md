@@ -21,7 +21,7 @@
 - v0.1 demo acceptance 已收口：状态是 `accepted as developer demo`，acceptance anchor 当时依据包括 `568 passed`、demo plain / JSON success、editable install smoke、GitHub Actions CI passed、no `x_agent.*` imports 和 `/home/lumber/Github/x-agent` untouched。
 - packaging / install smoke coverage 已落地：当前 `pyproject.toml` metadata、src-layout discovery、editable install、installed import、installed demo plain / JSON 和 repo-root side-effect boundary 已通过测试。
 - GitHub Actions CI smoke workflow 已落地：在 `push` / `pull_request` 上使用 Python `3.12`，通过 `python -m pip install -e ".[test]"` 安装 test dependency 后运行 full tests 和 demo plain / JSON smoke；latest remote GitHub Actions run 已由网页确认通过。它不是 release、coverage、lint matrix 或 real integration services pipeline。
-- `v0.1-demo` lightweight tag 已创建并推送，指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`；GitHub Release draft 已准备在 `docs/release-draft-v0.1-demo.md`，但尚未发布 GitHub Release。
+- `v0.1-demo` lightweight tag 已创建并推送，指向 `b3d4e328e74378bec2fb524deb85233df5a5d4eb`；GitHub Release draft 已迁移到 `docs/release/release-draft-v0.1-demo.md`，但尚未发布 GitHub Release。
 - v0.2 roadmap 已落文档：`docs/v0.2-roadmap.md`。当前推荐顺序是 Demo / Docs Polish、HTTP API Minimal Surface、Artifact Content Read Policy / Controlled Full-Content Retrieval、Minimal Approval Pause / Resume Boundary、External Ingestion / `ImportedSnapshot`，再考虑 memory query / storage。
 - Track C boundary doc 已落地并 closed for now：`docs/artifact-content-read-policy-v0.2.md`。retrieval boundary 已实现：summary retrieval 返回 summary / ref / provenance，controlled full-content retrieval 要求 structured `ResourceRef`、grants、caller context 和 purpose；HTTP full-content route 仍 `501 not_enabled`，且已有 `allow_artifact_content=False` enablement guard。
 - v0.2 mid-cycle review 已落文档：`docs/v0.2-mid-cycle-review.md`。其推荐的 Track E: Minimal Approval Pause / Resume Boundary 已执行到 effectively complete / closed for now；real HTTP server、memory query engine 和 real provider / external ingestion API implementation 仍 deferred。
@@ -169,7 +169,7 @@ demo entrypoint TDD 已完成。v0.2 roadmap 已开始，Track D: Demo / Docs Po
 - real server boundary design only if Track A is explicitly reopened。
 - optional Track D polish from `docs/v0.2-roadmap.md` if explicitly requested。
 - memory result cannot bypass artifact / ResourceRef authorization。
-- optional GitHub Release publication from `docs/release-draft-v0.1-demo.md`。
+- optional GitHub Release publication from `docs/release/release-draft-v0.1-demo.md`。
 - public-open-source cleanup plan。
 - 或停在当前稳定点。
 

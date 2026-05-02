@@ -1,12 +1,14 @@
 # Docs Migration Phase 1 Dry Run
 
-状态：`dry-run only`
+状态：`dry-run completed; Phase 1a executed`
 
 ## 1. Purpose
 
 本文基于 `docs/docs-migration-plan.md` 对第一阶段 docs directory migration 做 dry-run。目标是先识别低风险迁移候选、现有引用风险、stub 需求、执行命令和 rollback 规则。
 
-本轮不移动、不重命名、不删除、不合并任何文件，不批量改链接，不修改 `src/`、`tests/`、`.github/` 或 `pyproject.toml`。
+Dry-run 本身没有移动、不重命名、不删除、不合并任何文件，不批量改链接，不修改 `src/`、`tests/`、`.github/` 或 `pyproject.toml`。
+
+Follow-up status: Phase 1a release draft migration 已执行。Full release draft now lives at `docs/release/release-draft-v0.1-demo.md`; old path `docs/release-draft-v0.1-demo.md` remains as a compatibility stub.
 
 ## 2. Phase 1 Scope
 
@@ -24,7 +26,7 @@ Phase 1 应只迁移低风险或已关闭的文档。不要在第一批移动稳
 
 推荐第一批实际迁移候选：
 
-- Release draft: `docs/release-draft-v0.1-demo.md` -> `docs/release/`
+- Release draft: `docs/release-draft-v0.1-demo.md` -> `docs/release/` completed in Phase 1a
 - Demo docs: walkthrough / architecture / entrypoint / acceptance / readiness / scenario -> `docs/demo/`
 - Closed track docs: Track A / C / E -> `docs/tracks/`
 
@@ -34,7 +36,7 @@ Track F 文档暂不列入实际第一批迁移。它刚完成 closure，且 `ma
 
 | Candidate file | Proposed path | Current references | Link risk | Stub needed? |
 | --- | --- | --- | --- | --- |
-| `docs/release-draft-v0.1-demo.md` | `docs/release/release-draft-v0.1-demo.md` | `docs/current-status.md`, `docs/v0.1-demo-acceptance.md`, `docs/v0.2-roadmap.md`, `docs/deferred-boundary-review-v0.1.md`, `docs/docs-inventory.md` | Medium | Yes, until release links settle. |
+| `docs/release-draft-v0.1-demo.md` | `docs/release/release-draft-v0.1-demo.md` | `docs/current-status.md`, `docs/v0.1-demo-acceptance.md`, `docs/v0.2-roadmap.md`, `docs/deferred-boundary-review-v0.1.md`, `docs/docs-inventory.md` | Low after Phase 1a | Stub exists. |
 | `docs/demo-entrypoint-v0.1.md` | `docs/demo/demo-entrypoint-v0.1.md` | `docs/current-status.md`, `docs/memory-v0.1-scope-freeze.md`, `docs/deferred-boundary-review-v0.1.md`, `docs/docs-inventory.md` | Medium | Yes. |
 | `docs/demo-walkthrough-v0.1.md` | `docs/demo/demo-walkthrough-v0.1.md` | `README.md`, `AGENTS.md`, `docs/current-status.md`, `docs/v0.1-demo-acceptance.md`, `docs/v0.2-roadmap.md`, `docs/docs-inventory.md` | High | Yes. |
 | `docs/demo-architecture-v0.1.md` | `docs/demo/demo-architecture-v0.1.md` | `README.md`, `AGENTS.md`, `docs/current-status.md`, `docs/v0.1-demo-acceptance.md`, `docs/demo-walkthrough-v0.1.md`, `docs/v0.2-roadmap.md`, `docs/docs-inventory.md` | High | Yes. |
@@ -48,9 +50,9 @@ Track F 文档暂不列入实际第一批迁移。它刚完成 closure，且 `ma
 
 ## 4. Dry-Run Decision
 
-建议下一轮不要一次性移动全部 Phase 1 候选。更安全的执行顺序：
+Phase 1a 已执行。后续仍建议不要一次性移动全部剩余 Phase 1 候选。更安全的执行顺序：
 
-1. Phase 1a: 只迁移 `docs/release-draft-v0.1-demo.md` 到 `docs/release/`，并在旧路径留 stub。
+1. Phase 1a: completed; release draft 已迁移到 `docs/release/`，旧路径留 stub。
 2. Phase 1b: 迁移 demo docs 到 `docs/demo/`，所有旧路径保留 stub，并同步 README / AGENTS / current-status / roadmap / inventory 链接。
 3. Phase 1c: 迁移 closed Track A / C / E docs 到 `docs/tracks/`，旧路径保留 stub。
 
@@ -62,7 +64,7 @@ Track F 文档暂不列入实际第一批迁移。它刚完成 closure，且 `ma
 
 ## 5. Execution Checklist For Future Migration
 
-本轮不执行以下命令。下一轮实际迁移时可按批次使用：
+Phase 1a 已执行。以下命令保留为后续迁移批次的 checklist 模板；不要重复执行已经完成的 `git mv`，除非是在回放迁移步骤。
 
 ```bash
 mkdir -p docs/release docs/demo docs/tracks
@@ -131,6 +133,6 @@ If the migration is not committed yet, prefer restoring the specific moved files
 
 ## 9. Recommendation
 
-下一轮可以执行 actual migration，但建议只做 Phase 1a：迁移 release draft 到 `docs/release/` 并保留 stub。这样能验证目录迁移机制、stub 策略和 link checks，而不会一次性触碰 README / AGENTS 的高频 demo links。
+下一轮如继续 migration，建议做 Phase 1b：迁移 demo docs 到 `docs/demo/` 并为每个旧路径保留 stub。不要和 Track docs 迁移合并。
 
-本轮 dry-run 没有移动、删除、重命名或合并任何文档。
+Dry-run 本身没有移动、删除、重命名或合并任何文档；Phase 1a 后续单独迁移了 release draft，并保留旧路径 stub。

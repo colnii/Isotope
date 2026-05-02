@@ -21,6 +21,7 @@
 - 加上 v0.2 cycle closure review 后 docs Markdown：48 个。
 - 加上 docs migration plan 后 docs Markdown：49 个。
 - 加上 docs migration phase 1 dry-run 后 docs Markdown：50 个。
+- Phase 1a 迁移 release draft 后 docs Markdown：51 个，其中旧 `docs/release-draft-v0.1-demo.md` 是 compatibility stub。
 
 ## 2. Current entrypoints
 
@@ -28,8 +29,8 @@
 
 - `docs/current-status.md`：当前状态入口，开始新任务前先读。
 - `docs/v0.2-roadmap.md`：v0.2 track 状态和推荐顺序。
-- `docs/docs-migration-plan.md`：docs directory migration execution plan；当前只计划，不移动文件。
-- `docs/docs-migration-phase-1-dry-run.md`：Phase 1 dry-run checklist；当前建议下一轮先执行最小 Phase 1a，仍未移动文件。
+- `docs/docs-migration-plan.md`：docs directory migration execution plan；Phase 1a release draft migration 已执行。
+- `docs/docs-migration-phase-1-dry-run.md`：Phase 1 dry-run checklist；Phase 1a 已执行，下一批默认是 Phase 1b demo docs。
 - `docs/v0.2-demo-readiness.md`：v0.2 developer demo readiness review，记录此前 demo 展示范围和已关闭的 Track A / C / E scenario gap。
 - `docs/v0.2-demo-scenario.md`：v0.2 demo scenario boundary / status，记录 implemented `--scenario v0.2` scope。
 - `docs/v0.2-demo-acceptance.md`：v0.2 developer demo acceptance，记录 `v0.2-demo` tag 状态和 non-goals。
@@ -72,7 +73,8 @@ Track E / Track F 后续只在明确 reopen 时继续扩展。Track F 后续应�
 - `docs/demo-architecture-v0.1.md`：demo architecture diagram，current。
 - `docs/v0.1-demo-acceptance.md`：developer demo acceptance，closed。
 - `docs/v0.2-demo-acceptance.md`：v0.2 developer demo acceptance，accepted / tagged。
-- `docs/release-draft-v0.1-demo.md`：GitHub Release draft，未发布。
+- `docs/release/release-draft-v0.1-demo.md`：GitHub Release draft，未发布。
+- `docs/release-draft-v0.1-demo.md`：release draft compatibility stub，保留旧入口避免链接断裂。
 
 ### Track A: HTTP API Minimal Surface
 
@@ -167,7 +169,8 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | `docs/memory-v0.1-scope-freeze.md` | Memory scope freeze | closed / frozen |
 | `docs/memory-write-query-boundary-v0.1.md` | Memory write/query boundary | closed / frozen |
 | `docs/post-v0.2-tag-delta.md` | Post-tag mainline delta review | current review |
-| `docs/release-draft-v0.1-demo.md` | Release draft text | draft / not published |
+| `docs/release/release-draft-v0.1-demo.md` | Release draft text | draft / not published |
+| `docs/release-draft-v0.1-demo.md` | Release draft compatibility stub | stub / keep for one cycle |
 | `docs/server-checkpoint-boundary-v0.1.md` | Server checkpoint boundary | closed / frozen |
 | `docs/v0.1-demo-acceptance.md` | Demo acceptance record | closed |
 | `docs/v0.2-cycle-closure-review.md` | v0.2 cycle closure decision | current review |
@@ -241,8 +244,8 @@ Reasons:
 
 Recommended future migration sequence:
 
-1. Use `docs/docs-migration-phase-1-dry-run.md` as the Phase 1 checklist.
-2. Execute Phase 1a first: move only `docs/release-draft-v0.1-demo.md` to `docs/release/` and leave a stub.
+1. Phase 1a has executed: `docs/release/release-draft-v0.1-demo.md` is the full release draft, and `docs/release-draft-v0.1-demo.md` is a stub.
+2. Execute Phase 1b next only if requested: move demo docs to `docs/demo/` and leave stubs.
 3. Add target subdirectories only in the migration commit that needs them.
 4. Update README / AGENTS / current-status / roadmap links in the same patch as any move.
 5. Leave short stub files at old paths for at least one cycle, or add a compatibility index if stubs are not desired.
