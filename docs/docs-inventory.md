@@ -24,6 +24,7 @@
 - Phase 1a 迁移 release draft 后 docs Markdown：51 个，其中旧 `docs/release-draft-v0.1-demo.md` 是 compatibility stub。
 - Phase 1b 迁移 v0.1 demo explainer docs 后 docs Markdown：54 个，其中旧 demo explainer paths 是 compatibility stubs。
 - Phase 1c 迁移 demo acceptance / readiness / scenario docs 后 docs Markdown：58 个，其中旧 demo acceptance / readiness / scenario paths 是 compatibility stubs。
+- Docs migration Phase 1 当前 closed / paused；后续暂不迁移 track / checkpoint / memory / kernel / current-status / roadmap docs，除非用户明确请求。
 
 ## 2. Current entrypoints
 
@@ -31,8 +32,8 @@
 
 - `docs/current-status.md`：当前状态入口，开始新任务前先读。
 - `docs/v0.2-roadmap.md`：v0.2 track 状态和推荐顺序。
-- `docs/docs-migration-plan.md`：docs directory migration execution plan；Phase 1a release draft migration、Phase 1b demo explainer migration 和 Phase 1c demo acceptance/readiness/scenario migration 已执行。
-- `docs/docs-migration-phase-1-dry-run.md`：Phase 1 dry-run checklist；Phase 1a / 1b / 1c 已执行，下一批默认是 closed Track A / C / E docs。
+- `docs/docs-migration-plan.md`：docs directory migration execution plan；Phase 1a release draft migration、Phase 1b demo explainer migration 和 Phase 1c demo acceptance/readiness/scenario migration 已执行；Phase 1 closed / paused。
+- `docs/docs-migration-phase-1-dry-run.md`：Phase 1 dry-run checklist；Phase 1a / 1b / 1c 已执行；Phase 1 closed / paused。
 - `docs/demo/v0.2-demo-readiness.md`：v0.2 developer demo readiness review，记录此前 demo 展示范围和已关闭的 Track A / C / E scenario gap。
 - `docs/demo/v0.2-demo-scenario.md`：v0.2 demo scenario boundary / status，记录 implemented `--scenario v0.2` scope。
 - `docs/demo/v0.2-demo-acceptance.md`：v0.2 developer demo acceptance，记录 `v0.2-demo` tag 状态和 non-goals。
@@ -265,12 +266,14 @@ Recommended future migration sequence:
 1. Phase 1a has executed: `docs/release/release-draft-v0.1-demo.md` is the full release draft, and `docs/release-draft-v0.1-demo.md` is a stub.
 2. Phase 1b has executed: `docs/demo/demo-entrypoint-v0.1.md`, `docs/demo/demo-walkthrough-v0.1.md`, and `docs/demo/demo-architecture-v0.1.md` are full docs; old paths are stubs.
 3. Phase 1c has executed: `docs/demo/v0.1-demo-acceptance.md`, `docs/demo/v0.2-demo-readiness.md`, `docs/demo/v0.2-demo-scenario.md`, and `docs/demo/v0.2-demo-acceptance.md` are full docs; old paths are stubs.
-4. Execute the next phase only if requested: move closed Track A / C / E docs to `docs/tracks/` and leave stubs.
-5. Add target subdirectories only in the migration commit that needs them.
-6. Update README / AGENTS / current-status / roadmap links in the same patch as any move.
-7. Leave short stub files at old paths for at least one cycle, or add a compatibility index if stubs are not desired.
-8. Run link checks with `rg` for every old basename and ensure no stale references remain.
-9. Run the normal verification suite.
-10. Commit moves separately from content rewrites to keep review clean.
+4. Phase 1 is closed / paused. Do not continue track / checkpoint / memory / kernel / status-entrypoint migrations unless explicitly requested.
+5. The next default workstream can be Kernel Gap Review.
+6. If migration is reopened, move closed Track A / C / E docs to `docs/tracks/` and leave stubs.
+7. Add target subdirectories only in the migration commit that needs them.
+8. Update README / AGENTS / current-status / roadmap links in the same patch as any move.
+9. Leave short stub files at old paths for at least one cycle, or add a compatibility index if stubs are not desired.
+10. Run link checks with `rg` for every old basename and ensure no stale references remain.
+11. Run the normal verification suite.
+12. Commit moves separately from content rewrites to keep review clean.
 
 Do not combine directory migration with implementation work.

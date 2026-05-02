@@ -1,6 +1,6 @@
 # Docs Migration Phase 1 Dry Run
 
-状态：`dry-run completed; Phase 1a / 1b / 1c executed`
+状态：`dry-run completed; Phase 1 closed / paused`
 
 ## 1. Purpose
 
@@ -13,6 +13,8 @@ Follow-up status: Phase 1a release draft migration 已执行。Full release draf
 Follow-up status: Phase 1b v0.1 demo explainer migration 已执行。Full explainer docs now live at `docs/demo/demo-entrypoint-v0.1.md`, `docs/demo/demo-walkthrough-v0.1.md`, and `docs/demo/demo-architecture-v0.1.md`; old paths remain as compatibility stubs.
 
 Follow-up status: Phase 1c demo acceptance / readiness / scenario migration 已执行。Full docs now live at `docs/demo/v0.1-demo-acceptance.md`, `docs/demo/v0.2-demo-readiness.md`, `docs/demo/v0.2-demo-scenario.md`, and `docs/demo/v0.2-demo-acceptance.md`; old paths remain as compatibility stubs.
+
+Closure status: Phase 1 is now closed / paused. Do not continue into track, checkpoint, memory, kernel, current-status, or roadmap migrations unless explicitly requested. The next default workstream can be Kernel Gap Review.
 
 ## 2. Phase 1 Scope
 
@@ -32,7 +34,7 @@ Phase 1 应只迁移低风险或已关闭的文档。不要在第一批移动稳
 
 - Release draft: `docs/release-draft-v0.1-demo.md` -> `docs/release/` completed in Phase 1a
 - Demo docs: walkthrough / architecture / entrypoint -> `docs/demo/` completed in Phase 1b; acceptance / readiness / scenario -> `docs/demo/` completed in Phase 1c.
-- Closed track docs: Track A / C / E -> `docs/tracks/`
+- Closed track docs: Track A / C / E -> `docs/tracks/` remains deferred after Phase 1 closure.
 
 Track F 文档暂不列入实际第一批迁移。它刚完成 closure，且 `main` ahead of `v0.2-demo` 的增量说明仍依赖该路径。
 
@@ -54,22 +56,22 @@ Track F 文档暂不列入实际第一批迁移。它刚完成 closure，且 `ma
 
 ## 4. Dry-Run Decision
 
-Phase 1a / 1b 已执行。后续仍建议不要一次性移动全部剩余 Phase 1 候选。更安全的执行顺序：
+Phase 1a / 1b / 1c 已执行。Phase 1 当前 closed / paused，不再默认继续迁移剩余候选。已执行顺序：
 
 1. Phase 1a: completed; release draft 已迁移到 `docs/release/`，旧路径留 stub。
 2. Phase 1b: completed; v0.1 demo explainer docs 已迁移到 `docs/demo/`，旧路径留 stub。
 3. Phase 1c: completed; demo acceptance / readiness / scenario docs 已迁移到 `docs/demo/`，旧路径留 stub。
-4. Next recommended phase: 迁移 closed Track A / C / E docs 到 `docs/tracks/`，旧路径保留 stub。
+4. Stop here for Phase 1 closure. Track / checkpoint / memory / kernel / status-entrypoint migrations stay deferred unless explicitly requested.
 
 原因：
 
 - Release draft 不是当前 quick-start 入口，单独迁移风险最低。
 - Demo docs 被 README / AGENTS 直接引用，应该单独做一批，便于 review。
-- Closed track docs 链接密度高，但语义已经 stable，适合作为第三批迁移。
+- Closed track docs 链接密度高；虽然语义已经 stable，但 Phase 1 closure 选择暂不继续迁移，避免 cleanup 阶段继续扩大链接 churn。
 
 ## 5. Execution Checklist For Future Migration
 
-Phase 1a / 1b 已执行。以下命令保留为后续迁移批次的 checklist 模板；不要重复执行已经完成的 `git mv`，除非是在回放迁移步骤。
+Phase 1a / 1b / 1c 已执行。以下命令保留为后续迁移批次的 checklist 模板；不要重复执行已经完成的 `git mv`，除非是在回放迁移步骤。
 
 ```bash
 mkdir -p docs/release docs/demo docs/tracks
@@ -138,6 +140,8 @@ If the migration is not committed yet, prefer restoring the specific moved files
 
 ## 9. Recommendation
 
-下一轮如继续 migration，建议迁移 closed Track A / C / E docs 到 `docs/tracks/` 并为每个旧路径保留 stub。不要和 checkpoint / memory / kernel docs 迁移合并。
+Phase 1 closure 后，下一步默认不继续 migration；可以转入 Kernel Gap Review。
+
+如果用户明确要求继续 migration，建议迁移 closed Track A / C / E docs 到 `docs/tracks/` 并为每个旧路径保留 stub。不要和 checkpoint / memory / kernel docs 迁移合并。
 
 Dry-run 本身没有移动、删除、重命名或合并任何文档；Phase 1a 后续单独迁移了 release draft，并保留旧路径 stub；Phase 1b 后续单独迁移了 v0.1 demo explainer docs，并保留旧路径 stubs。

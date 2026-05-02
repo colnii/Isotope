@@ -1,6 +1,6 @@
 # Docs Migration Plan
 
-状态：`draft execution plan`
+状态：`phase 1 closed / paused`
 
 ## 1. Purpose
 
@@ -8,7 +8,9 @@
 
 本轮只写计划，不移动、不删除、不合并任何文档，不批量修改链接，不修改 `src/`、`tests/`、`.github/` 或 `pyproject.toml`。
 
-Phase 1 dry-run 已记录在 `docs/docs-migration-phase-1-dry-run.md`。Phase 1a 已执行：release draft 已迁移到 `docs/release/release-draft-v0.1-demo.md`，旧路径 `docs/release-draft-v0.1-demo.md` 保留为 compatibility stub。Phase 1b 已执行：v0.1 demo explainer docs 已迁移到 `docs/demo/`，旧路径保留 compatibility stubs。Phase 1c 已执行：demo acceptance / readiness / scenario docs 已迁移到 `docs/demo/`，旧路径保留 compatibility stubs。下一批默认是 closed Track A / C / E docs，除非用户另行指定。
+Phase 1 dry-run 已记录在 `docs/docs-migration-phase-1-dry-run.md`。Phase 1a 已执行：release draft 已迁移到 `docs/release/release-draft-v0.1-demo.md`，旧路径 `docs/release-draft-v0.1-demo.md` 保留为 compatibility stub。Phase 1b 已执行：v0.1 demo explainer docs 已迁移到 `docs/demo/`，旧路径保留 compatibility stubs。Phase 1c 已执行：demo acceptance / readiness / scenario docs 已迁移到 `docs/demo/`，旧路径保留 compatibility stubs。
+
+Phase 1 当前 closed / paused。不要继续迁移 track docs、checkpoint docs、memory docs、kernel docs、`docs/current-status.md` 或 `docs/v0.2-roadmap.md`，除非用户明确请求下一批迁移。默认下一阶段可以进入 Kernel Gap Review。
 
 ## 2. Target Directory Structure
 
@@ -54,15 +56,28 @@ Recommended order:
 1. Phase 1a completed: `docs/release/release-draft-v0.1-demo.md` now holds the full release draft; `docs/release-draft-v0.1-demo.md` is an old-path stub.
 2. Phase 1b completed: v0.1 demo explainer docs moved to `docs/demo/` with old-path stubs.
 3. Phase 1c completed: demo acceptance / readiness / scenario docs moved to `docs/demo/` with old-path stubs.
-4. Move closed Track A / C / E docs to `docs/tracks/` with stubs and same-commit link updates.
-5. Move checkpoint docs as one batch.
-6. Move memory docs as one batch.
-7. Move remaining track docs only after recent Track F links settle.
-8. Move kernel docs as one batch.
-9. Move status entrypoints only after README / AGENTS / current-status / roadmap link checks are stable.
-10. Only after one stable cycle, consider deleting compatibility stubs.
+4. Pause migration after Phase 1c; do not move track / checkpoint / memory / kernel / status entrypoint docs by default.
+5. If migration is explicitly reopened later, move closed Track A / C / E docs to `docs/tracks/` with stubs and same-commit link updates.
+6. Move checkpoint docs only as a separate later batch.
+7. Move memory docs only as a separate later batch.
+8. Move remaining track docs only after recent Track F links settle.
+9. Move kernel docs only as a separate later batch.
+10. Move status entrypoints only after README / AGENTS / current-status / roadmap link checks are stable.
+11. Only after one stable cycle, consider deleting compatibility stubs.
 
 Do not combine the next track-doc migration with later checkpoint / memory / kernel migrations unless there is a specific review reason to take the extra link risk.
+
+## 4.1 Phase 1 Closure Decision
+
+Phase 1 is closed / paused at the current state:
+
+- migrated: `docs/release/`
+- migrated: `docs/demo/`
+- old paths for moved docs remain as compatibility stubs
+- Markdown links were audited after Phase 1c and resolved cleanly
+- no code, tests, `.github`, or `pyproject.toml` changes are part of this migration phase
+
+Do not continue with track, checkpoint, memory, kernel, current-status, or roadmap migrations as an implied follow-up. The next default workstream is Kernel Gap Review unless the user explicitly asks for another docs migration batch.
 
 ## 5. Do Not Move In First Wave
 
@@ -80,7 +95,7 @@ Keep these in place until at least one dedicated migration pass proves links are
 - `docs/artifact-content-read-policy-v0.2.md`
 - `docs/http-api-minimal-surface-v0.2.md`
 
-Reason: README, AGENTS, current-status, roadmap, and recent task instructions link to these paths directly.
+Reason: README, AGENTS, current-status, roadmap, and recent task instructions link to these paths directly. Phase 1 closure keeps these paths stable for external review and the next Kernel Gap Review.
 
 ## 6. Migration Table
 
