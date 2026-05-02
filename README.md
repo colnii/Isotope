@@ -8,6 +8,8 @@ Isotope 是一个独立的 kernel-first agent runtime 项目，用来验证 cano
 
 当前 v0.2 implementation cycle 已建议暂停，进入 cleanup / docs organization / external review mode；Kernel Gap Review 后已新增 Agent / Worker lifecycle boundary 和 Workspace substrate boundary，且两者 first slice 均已 complete，见 [docs/workspace-substrate-boundary-v0.2.md](docs/workspace-substrate-boundary-v0.2.md)。
 
+后续 45-60 分钟批次任务由 [docs/agent-task-queue.md](docs/agent-task-queue.md) 管理；agent 每轮应先读 queue，不要自行进入未列出的新 Track。
+
 ## Quick Start
 
 ```bash
@@ -53,6 +55,7 @@ python3 -m venv .venv
 ## Docs
 
 - Current status: [docs/current-status.md](docs/current-status.md)
+- Agent task queue: [docs/agent-task-queue.md](docs/agent-task-queue.md)
 - Demo walkthrough: [docs/demo/demo-walkthrough-v0.1.md](docs/demo/demo-walkthrough-v0.1.md)
 - Demo architecture: [docs/demo/demo-architecture-v0.1.md](docs/demo/demo-architecture-v0.1.md)
 - v0.1 demo acceptance: [docs/demo/v0.1-demo-acceptance.md](docs/demo/v0.1-demo-acceptance.md)

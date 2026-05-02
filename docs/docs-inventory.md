@@ -28,6 +28,7 @@
 - 加上 Kernel Gap Review v0.2 后 docs Markdown：59 个。当前下一阶段建议优先补 Agent / worker lifecycle 和 Workspace substrate 设计，而不是继续迁移文档或打开 real integrations。
 - 加上 Agent / Worker Lifecycle Boundary v0.2 后 docs Markdown：60 个。
 - 加上 Workspace Substrate Boundary v0.2 后 docs Markdown：61 个。当前仍不移动 docs 文件；workspace binding read model / policy boundary first slice 已 complete。
+- 加上 Agent Task Queue 后 docs Markdown：62 个。当前用于后续 45-60 分钟批次自动推进，先从 Retry / Cancel / Supersede Boundary Planning 开始。
 
 ## 2. Current entrypoints
 
@@ -35,6 +36,7 @@
 
 - `docs/current-status.md`：当前状态入口，开始新任务前先读。
 - `docs/v0.2-roadmap.md`：v0.2 track 状态和推荐顺序。
+- `docs/agent-task-queue.md`：主线 agent task queue，记录 Current Batch、Stop Conditions 和后续 batch 建议。
 - `docs/docs-migration-plan.md`：docs directory migration execution plan；Phase 1a release draft migration、Phase 1b demo explainer migration 和 Phase 1c demo acceptance/readiness/scenario migration 已执行；Phase 1 closed / paused。
 - `docs/docs-migration-phase-1-dry-run.md`：Phase 1 dry-run checklist；Phase 1a / 1b / 1c 已执行；Phase 1 closed / paused。
 - `docs/demo/v0.2-demo-readiness.md`：v0.2 developer demo readiness review，记录此前 demo 展示范围和已关闭的 Track A / C / E scenario gap。
@@ -60,6 +62,9 @@
 
 当前默认下一步是 docs-only kernel gap backlog，而不是 implementation track。`docs/agent-worker-lifecycle-boundary-v0.2.md` 已定义 Agent / Worker lifecycle boundary，`docs/workspace-substrate-boundary-v0.2.md` 已定义 Workspace substrate boundary；workspace binding read model / policy boundary first slice 已 complete。后续可继续 lease/path-safety boundary design。
 
+当前自动推进入口是 `docs/agent-task-queue.md`。Current Batch 是 `Retry / Cancel / Supersede Boundary Planning`，只允许先做 boundary docs 和 red tests；red-only task 后必须停，不进入 green phase。
+
+- `docs/agent-task-queue.md`：active queue，Current Batch ready。
 - `docs/agent-worker-lifecycle-boundary-v0.2.md`：Agent / Worker lifecycle boundary，first slice complete。
 - `docs/workspace-substrate-boundary-v0.2.md`：Workspace substrate boundary，first slice complete。
 - `docs/external-ingestion-boundary-v0.2.md`：Track F external ingestion / `ImportedSnapshot` boundary，closed for now。
@@ -155,6 +160,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | --- | --- | --- |
 | `docs/README.md` | Kernel current-truth reading order | current entrypoint |
 | `docs/action-type-registry-v0.1.md` | Action registry design/status | closed / reference |
+| `docs/agent-task-queue.md` | Mainline agent batch queue | active |
 | `docs/agent-worker-lifecycle-boundary-v0.2.md` | Agent / Worker lifecycle boundary | first slice complete |
 | `docs/approval-pause-resume-boundary-v0.2.md` | Track E approval pause / resume boundary | closed for now |
 | `docs/artifact-content-read-policy-v0.2.md` | Track C boundary | closed for now |

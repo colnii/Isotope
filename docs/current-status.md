@@ -26,6 +26,7 @@
 - v0.2 cycle closure review 已记录在 `docs/v0.2-cycle-closure-review.md`。当前建议暂停 v0.2 implementation，进入 cleanup / docs organization / external review mode；Track B real HTTP adapter、Track G memory query 和 real integrations 继续 deferred。
 - docs inventory 已落文档，见 `docs/docs-inventory.md`。当前记录已迁移 docs、compatibility stubs 和后续整理方向。
 - docs migration plan 已落文档，见 `docs/docs-migration-plan.md`。Phase 1 当前 closed / paused；后续不默认继续迁移 track / checkpoint / memory / kernel / current-status / roadmap docs。
+- agent task queue 已落文档，见 `docs/agent-task-queue.md`。后续 45-60 分钟批次自动推进应先读 `docs/current-status.md`、`docs/v0.2-roadmap.md` 和 `docs/agent-task-queue.md`，按 Current Batch 执行，并在 stop condition 触发时停止。
 - docs migration Phase 1a / 1b / 1c 已执行并 audit clean：release draft 已迁移到 `docs/release/`，v0.1 demo explainer docs 和 demo acceptance/readiness/scenario docs 已迁移到 `docs/demo/`，旧路径均保留 stub。Phase 1 dry-run 和后续 checklist 见 `docs/docs-migration-phase-1-dry-run.md`。下一阶段可以转入 Kernel Gap Review。
 - Kernel Gap Review v0.2 已落文档，见 `docs/kernel-gap-review-v0.2.md`。当前判断：kernel 还不能宣布完成；下一块 kernel design 应优先做 Agent / worker lifecycle，其次是 Workspace substrate，再考虑 retry / cancel / supersede 和 policy profile / action registry versioning。real HTTP server、real LLM loop、memory storage/query/promotion、provider adapter/webhook、retrieval ranking 和 domain pack system 仍不应优先打开。
 - Agent / Worker Lifecycle Boundary v0.2 first slice 当前 complete，见 `docs/agent-worker-lifecycle-boundary-v0.2.md`。当前已覆盖 `RunState.agents` / `RunState.workers` read model、supervisor first-class projection、delegation proposal / policy decision gate、denied delegation no-worker、approved / modified delegation creates worker、worker lifecycle event projection、worker action requires policy grants、workspace binding from grants、result handoff through `ResourceRef`、event replay 和 checkpoint-assisted rebuild。仍不实现 worker spawn / real concurrency / process isolation / remote worker / real model loop。
@@ -705,7 +706,8 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 下一步建议优先做：
 
 - optional GitHub Release draft for `v0.2-demo` if explicitly requested; do not publish a Release without a separate request
-- Workspace Substrate Boundary v0.2 first slice complete；下一步如继续，应先做 lease/path-safety boundary design
+- follow `docs/agent-task-queue.md` Current Batch；当前 queue 是 `Retry / Cancel / Supersede Boundary Planning`
+- Workspace Substrate Boundary v0.2 first slice complete；后续如继续 workspace，应先做 lease/path-safety boundary design
 - Track F: closed for now; reopen only with a new design / red-test request such as provider adapter, webhook, HTTP ingestion API, or reconciliation boundary
 - reopen Track E only with an explicit design / red-test request, such as product approval UI / auth / scheduler boundary
 - reopen Track C only with an explicit design / red-test request, such as HTTP content route boundary

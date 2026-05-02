@@ -11,6 +11,7 @@
 ## Workflow
 
 - Read [docs/current-status.md](docs/current-status.md) before starting a new Isotope task.
+- For queued mainline work, also read [docs/v0.2-roadmap.md](docs/v0.2-roadmap.md) and [docs/agent-task-queue.md](docs/agent-task-queue.md), then follow the Current Batch and Stop Conditions.
 - Follow TDD for implementation work: write red tests first, keep them uncommitted, then implement the smallest green slice and commit after verification.
 - For docs-only tasks, do not modify `src/`, `tests/`, `.github/`, or `pyproject.toml`.
 - After behavior changes, sync `README.md`, `AGENTS.md`, and affected docs/status files in the same task.
@@ -35,6 +36,7 @@
 - v0.2 cycle closure is documented in [docs/v0.2-cycle-closure-review.md](docs/v0.2-cycle-closure-review.md). Default next mode is cleanup / docs organization / external review, not more runtime implementation.
 - Kernel Gap Review is documented in [docs/kernel-gap-review-v0.2.md](docs/kernel-gap-review-v0.2.md). Agent / Worker lifecycle boundary is now documented in [docs/agent-worker-lifecycle-boundary-v0.2.md](docs/agent-worker-lifecycle-boundary-v0.2.md), and the first slice is complete: `RunState.agents` / `RunState.workers`, delegation policy gate, checkpoint support, no real concurrency. Workspace substrate first slice is complete and documented in [docs/workspace-substrate-boundary-v0.2.md](docs/workspace-substrate-boundary-v0.2.md): `RunState.workspaces`, canonical `workspace.bound`, grants-bound `shared_ro` binding, replay, and checkpoint support; no container / git worktree / remote executor. Do not jump straight to real HTTP server, real LLM, memory query/promotion, provider adapter, or domain packs.
 - Docs migration planning is documented in [docs/docs-migration-plan.md](docs/docs-migration-plan.md). Phase 1 is closed / paused after `docs/release/` and `docs/demo/` migrations; do not move more docs files unless a task explicitly asks for migration execution.
+- Mainline batch automation is documented in [docs/agent-task-queue.md](docs/agent-task-queue.md). Current Batch is `Retry / Cancel / Supersede Boundary Planning`; do not start unlisted tracks or enter green phase for red-only tasks.
 - Real server boundary design only if Track A is explicitly reopened; artifact content HTTP route implementation only if Track C is explicitly reopened.
 - Optional docs polish can continue later, but it should not block v0.2 implementation.
 
@@ -66,6 +68,7 @@ git status --short
 ## Docs Entrypoints
 
 - Current status: [docs/current-status.md](docs/current-status.md)
+- Agent task queue: [docs/agent-task-queue.md](docs/agent-task-queue.md)
 - Demo walkthrough: [docs/demo/demo-walkthrough-v0.1.md](docs/demo/demo-walkthrough-v0.1.md)
 - Demo architecture: [docs/demo/demo-architecture-v0.1.md](docs/demo/demo-architecture-v0.1.md)
 - v0.1 demo acceptance: [docs/demo/v0.1-demo-acceptance.md](docs/demo/v0.1-demo-acceptance.md)
