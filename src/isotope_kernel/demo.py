@@ -383,66 +383,17 @@ def _run_artifact_review_spike(root: Path) -> dict[str, Any]:
     )
     run_id = run_response.body["run_id"]  # type: ignore[index]
 
-    source_proposal_id = "prop_source"
-    source_decision_id = "dec_source"
-    source_execution_id = "exec_source"
-    app.server._append(
+    source_setup = app.server.create_source_artifact(
         run_id,
-        "action.proposed",
-        {
-            "proposal_id": source_proposal_id,
-            "agent_id": "agent_supervisor",
-            "thread_id": "thread_main",
-            "action_type": "call_tool",
-        },
-    )
-    app.server._append(
-        run_id,
-        "action.decided",
-        {
-            "decision_id": source_decision_id,
-            "proposal_id": source_proposal_id,
-            "outcome": "approved",
-            "reason_codes": [],
-        },
-    )
-    app.server._append(
-        run_id,
-        "action.started",
-        {
-            "execution_id": source_execution_id,
-            "proposal_id": source_proposal_id,
-            "decision_id": source_decision_id,
-        },
-    )
-    source_artifact = app.server.artifact_store.create_artifact(
-        run_id=run_id,
-        execution_id=source_execution_id,
-        artifact_type="text",
         summary="source artifact summary",
         content="source artifact durable content",
     )
-    source_artifact_event = app.server._append(
-        run_id,
-        "artifact.created",
-        {
-            "artifact": {
-                "ref": source_artifact.ref.to_dict(),
-                "artifact_type": source_artifact.artifact_type,
-                "summary": source_artifact.summary,
-                "provenance": dict(source_artifact.provenance),
-            }
-        },
-    )
-    app.server._append(
-        run_id,
-        "action.completed",
-        {
-            "execution_id": source_execution_id,
-            "status": "completed",
-            "artifact_refs": [source_artifact.ref.to_dict()],
-        },
-    )
+    source_artifact = app.server.artifact_store.list_artifacts(run_id)[-1]
+    source_artifact_event_id = ""
+    for event in reversed(app.server.get_events(run_id)):
+        if event.event_type == "artifact.created" and event.payload["artifact"]["ref"] == source_artifact.ref.to_dict():
+            source_artifact_event_id = event.event_id
+            break
 
     source_summary = app.server.retrieval.get_artifact_summary(
         source_artifact.ref,
@@ -517,7 +468,7 @@ def _run_artifact_review_spike(root: Path) -> dict[str, Any]:
         "review_artifact_ref": review_artifact_ref,
         "provenance": {
             "source_ref": source_artifact.ref.to_dict(),
-            "source_basis_event_id": source_artifact_event.event_id,
+            "source_basis_event_id": source_artifact_event_id,
             "review_artifact_ref": review_artifact_ref,
             "review_execution_id": review_result["execution_id"],
         },
@@ -563,6 +514,16 @@ def _run_artifact_review_spike(root: Path) -> dict[str, Any]:
         "artifact_ref": source_artifact.ref.to_dict(),
         "review_artifact_ref": review_artifact_ref,
         "source_summary": source_summary,
+        "source_setup": {
+            "status": source_setup["status"],
+            "proposal_id": source_setup["proposal_id"],
+            "decision_id": source_setup["decision_id"],
+            "execution_id": source_setup["execution_id"],
+            "artifact_ref": source_setup["artifact_ref"].to_dict(),
+            "artifact_summary": source_setup["artifact_summary"],
+            "artifact_type": source_setup["artifact_type"],
+            "provenance": dict(source_setup["provenance"]),
+        },
         "review_summary": review_artifact.summary,
         "review_decision": review_decision,
         "review_artifact_provenance": dict(review_artifact_state["provenance"]),

@@ -71,11 +71,14 @@ class Executor:
             self.workspace_manager.get_binding(decision.grants)
 
             execution = self._new_execution(execution_id, proposal, decision, status="completed")
+            summary = proposal.payload.get("summary", "hello artifact")
+            if not isinstance(summary, str) or not summary:
+                summary = "hello artifact"
             artifact = self.artifact_store.create_artifact(
                 run_id=proposal.run_id,
                 execution_id=execution.execution_id,
                 artifact_type="text",
-                summary="hello artifact",
+                summary=summary,
                 content=str(proposal.payload.get("text", "")),
             )
         except Exception as exc:

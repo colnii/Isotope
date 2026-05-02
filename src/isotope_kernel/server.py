@@ -383,6 +383,74 @@ class InProcessServer:
             raise RuntimeError(f"workspace binding was not projected from {event.event_id}")
         return deepcopy(workspace_binding)
 
+    def create_source_artifact(
+        self,
+        run_id: str,
+        *,
+        summary: str,
+        content: str,
+        artifact_type: str = "text",
+    ) -> dict[str, Any]:
+        self._validate_existing_run_id(run_id)
+        self._validate_non_empty_string("summary", summary)
+        self._validate_non_empty_string("content", content)
+        if artifact_type != "text":
+            raise ValueError("artifact_type must be text")
+
+        run = self._runs[run_id]
+        proposal = self.compiler.compile(
+            {
+                "action": "call_tool",
+                "tool": "write_artifact_tool",
+                "text": content,
+                "summary": summary,
+            },
+            {
+                "run_id": run_id,
+                "agent_id": run["agent_id"],
+                "thread_id": run["thread_id"],
+            },
+        )
+        self._append(
+            run_id,
+            "action.proposed",
+            {
+                "proposal_id": proposal.proposal_id,
+                "agent_id": proposal.agent_id,
+                "thread_id": proposal.thread_id,
+                "action_type": proposal.action_type,
+            },
+        )
+
+        decision = self.policy.decide(proposal)
+        self._append(
+            run_id,
+            "action.decided",
+            {
+                "decision_id": decision.decision_id,
+                "proposal_id": decision.proposal_id,
+                "outcome": decision.outcome,
+                "reason_codes": list(decision.reason_codes),
+            },
+        )
+        if decision.outcome == "denied":
+            raise PermissionError("source artifact setup denied by policy")
+
+        execution = self.executor.execute(decision, proposal)
+        artifact = self.artifact_store.list_artifacts(run_id)[-1]
+        state = self.get_run_state(run_id)
+        return {
+            "status": execution.status,
+            "proposal_id": proposal.proposal_id,
+            "decision_id": decision.decision_id,
+            "execution_id": execution.execution_id,
+            "artifact_ref": artifact.ref,
+            "artifact_summary": artifact.summary,
+            "artifact_type": artifact.artifact_type,
+            "provenance": dict(artifact.provenance),
+            "run_state": state,
+        }
+
     def get_events(self, run_id: str) -> list[CanonicalEvent]:
         self._validate_read_run_id(run_id)
         return self.event_store.list_events(run_id)
