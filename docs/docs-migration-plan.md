@@ -10,7 +10,7 @@
 
 Phase 1 dry-run 已记录在 `docs/docs-migration-phase-1-dry-run.md`。Phase 1a 已执行：release draft 已迁移到 `docs/release/release-draft-v0.1-demo.md`，旧路径 `docs/release-draft-v0.1-demo.md` 保留为 compatibility stub。Phase 1b 已执行：v0.1 demo explainer docs 已迁移到 `docs/demo/`，旧路径保留 compatibility stubs。Phase 1c 已执行：demo acceptance / readiness / scenario docs 已迁移到 `docs/demo/`，旧路径保留 compatibility stubs。
 
-Phase 1 当前 closed / paused。不要继续迁移 track docs、checkpoint docs、memory docs、kernel docs、`docs/current-status.md` 或 `docs/v0.2-roadmap.md`，除非用户明确请求下一批迁移。默认下一阶段可以进入 Kernel Gap Review。
+Phase 1 当前 closed / paused。不要继续迁移 track docs、checkpoint docs、memory docs、kernel docs、`docs/current-status.md` 或 `docs/v0.2-roadmap.md`，除非用户明确请求下一批迁移。Kernel Gap Review 已在 `docs/kernel-gap-review-v0.2.md` 落地，默认下一阶段转向 Agent / worker lifecycle boundary design。
 
 ## 2. Target Directory Structure
 
@@ -77,7 +77,7 @@ Phase 1 is closed / paused at the current state:
 - Markdown links were audited after Phase 1c and resolved cleanly
 - no code, tests, `.github`, or `pyproject.toml` changes are part of this migration phase
 
-Do not continue with track, checkpoint, memory, kernel, current-status, or roadmap migrations as an implied follow-up. The next default workstream is Kernel Gap Review unless the user explicitly asks for another docs migration batch.
+Do not continue with track, checkpoint, memory, kernel, current-status, or roadmap migrations as an implied follow-up. Kernel Gap Review has landed; the next default workstream is Agent / worker lifecycle boundary design unless the user explicitly asks for another docs migration batch.
 
 ## 5. Do Not Move In First Wave
 
@@ -95,7 +95,7 @@ Keep these in place until at least one dedicated migration pass proves links are
 - `docs/artifact-content-read-policy-v0.2.md`
 - `docs/http-api-minimal-surface-v0.2.md`
 
-Reason: README, AGENTS, current-status, roadmap, and recent task instructions link to these paths directly. Phase 1 closure keeps these paths stable for external review and the next Kernel Gap Review.
+Reason: README, AGENTS, current-status, roadmap, and recent task instructions link to these paths directly. Phase 1 closure keeps these paths stable for external review and the post-review Agent / worker lifecycle boundary design.
 
 ## 6. Migration Table
 

@@ -27,6 +27,7 @@
 - docs inventory 已落文档，见 `docs/docs-inventory.md`。当前记录已迁移 docs、compatibility stubs 和后续整理方向。
 - docs migration plan 已落文档，见 `docs/docs-migration-plan.md`。Phase 1 当前 closed / paused；后续不默认继续迁移 track / checkpoint / memory / kernel / current-status / roadmap docs。
 - docs migration Phase 1a / 1b / 1c 已执行并 audit clean：release draft 已迁移到 `docs/release/`，v0.1 demo explainer docs 和 demo acceptance/readiness/scenario docs 已迁移到 `docs/demo/`，旧路径均保留 stub。Phase 1 dry-run 和后续 checklist 见 `docs/docs-migration-phase-1-dry-run.md`。下一阶段可以转入 Kernel Gap Review。
+- Kernel Gap Review v0.2 已落文档，见 `docs/kernel-gap-review-v0.2.md`。当前判断：kernel 还不能宣布完成；下一块 kernel design 应优先做 Agent / worker lifecycle，其次是 Workspace substrate，再考虑 retry / cancel / supersede 和 policy profile / action registry versioning。real HTTP server、real LLM loop、memory storage/query/promotion、provider adapter/webhook、retrieval ranking 和 domain pack system 仍不应优先打开。
 - Track A: HTTP API Minimal Surface 见 `docs/http-api-minimal-surface-v0.2.md`。当前实现是 in-process `HttpApiApp` / `create_http_app(...)`，不是监听端口的真实网络服务；没有引入 FastAPI / Flask / 新依赖。
 - v0.1 demo walkthrough 已补充，见 `docs/demo/demo-walkthrough-v0.1.md`。它解释 demo 运行内容、内部步骤、plain text / JSON 输出字段、证明范围、非目标和 troubleshooting。
 - v0.1 demo architecture diagram 已补充，见 `docs/demo/demo-architecture-v0.1.md`。它解释 demo runtime path，不是完整 Isotope 架构图。

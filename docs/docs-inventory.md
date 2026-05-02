@@ -25,6 +25,7 @@
 - Phase 1b 迁移 v0.1 demo explainer docs 后 docs Markdown：54 个，其中旧 demo explainer paths 是 compatibility stubs。
 - Phase 1c 迁移 demo acceptance / readiness / scenario docs 后 docs Markdown：58 个，其中旧 demo acceptance / readiness / scenario paths 是 compatibility stubs。
 - Docs migration Phase 1 当前 closed / paused；后续暂不迁移 track / checkpoint / memory / kernel / current-status / roadmap docs，除非用户明确请求。
+- 加上 Kernel Gap Review v0.2 后 docs Markdown：59 个。当前下一阶段建议优先补 Agent / worker lifecycle 和 Workspace substrate 设计，而不是继续迁移文档或打开 real integrations。
 
 ## 2. Current entrypoints
 
@@ -39,6 +40,7 @@
 - `docs/demo/v0.2-demo-acceptance.md`：v0.2 developer demo acceptance，记录 `v0.2-demo` tag 状态和 non-goals。
 - `docs/post-v0.2-tag-delta.md`：记录 `v0.2-demo` tag 之后 `main` 的 Track F 增量，以及暂不创建 `v0.2.1-demo` 的判断。
 - `docs/v0.2-cycle-closure-review.md`：记录当前 v0.2 implementation cycle closure，建议进入 cleanup / docs organization / external review mode。
+- `docs/kernel-gap-review-v0.2.md`：v0.2 kernel gap review，记录稳定子系统、kernel gaps、优先级和下一步设计建议。
 - `docs/v0.2-mid-cycle-review.md`：mid-cycle decision，曾推荐进入 Track E；该 recommendation 已执行到 closure。
 - `docs/v0.2-next-track-selection.md`：Track C selection 的历史决策记录，已执行到 closure。
 - `docs/README.md`：kernel current-truth 文档包的阅读顺序入口。
@@ -51,6 +53,8 @@
 ## 3. Active track docs
 
 当前没有默认打开的 implementation track。Track F external ingestion 当前已完成 boundary 和 external observation read-model invariant green slices，并已 effectively complete / closed for now；下一步如继续，应先写新的 red tests，不要直接实现 provider adapter / ingestion API。
+
+当前默认下一步是 docs-only kernel gap backlog，而不是 implementation track。优先级见 `docs/kernel-gap-review-v0.2.md`：Agent / worker lifecycle、Workspace substrate、retry / cancel / supersede、policy profile / action registry versioning。
 
 - `docs/external-ingestion-boundary-v0.2.md`：Track F external ingestion / `ImportedSnapshot` boundary，closed for now。
 - `docs/approval-pause-resume-boundary-v0.2.md`：Track E approval pause / resume boundary，closed for now。
@@ -128,6 +132,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 - `docs/commitment-levels.md`
 - `docs/kernel-spec-v0.1.md`
 - `docs/kernel-architecture-v0.1.md`
+- `docs/kernel-gap-review-v0.2.md`
 - `docs/kernel-decision-log.md`
 - `docs/kernel-living-spec.md`
 - `docs/implementation-plan-v0.1.md`
@@ -177,6 +182,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | `docs/implementation-plan-v0.1.md` | Initial implementation plan | historical / reference |
 | `docs/kernel-architecture-v0.1.md` | Kernel architecture draft | current reference |
 | `docs/kernel-decision-log.md` | Decision log | current reference |
+| `docs/kernel-gap-review-v0.2.md` | Kernel gap review / next design backlog | current review |
 | `docs/kernel-living-spec.md` | Living spec draft | current reference |
 | `docs/kernel-one-pager.md` | Kernel one-pager | current reference |
 | `docs/kernel-spec-v0.1.md` | Kernel spec draft | current reference |
@@ -213,6 +219,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
   - `v0.2-next-track-selection.md`
 - `docs/kernel/`
   - `kernel-*.md`
+  - `kernel-gap-review-v0.2.md`
   - `commitment-levels.md`
   - `action-type-registry-v0.1.md`
   - `event-envelope-*.md`
@@ -251,6 +258,7 @@ Do not move these files until a dedicated migration pass updates links and valid
 - `docs/approval-pause-resume-boundary-v0.2.md`
 - `docs/kernel-spec-v0.1.md`
 - `docs/kernel-architecture-v0.1.md`
+- `docs/kernel-gap-review-v0.2.md`
 - `docs/kernel-living-spec.md`
 
 Reasons:
@@ -267,7 +275,7 @@ Recommended future migration sequence:
 2. Phase 1b has executed: `docs/demo/demo-entrypoint-v0.1.md`, `docs/demo/demo-walkthrough-v0.1.md`, and `docs/demo/demo-architecture-v0.1.md` are full docs; old paths are stubs.
 3. Phase 1c has executed: `docs/demo/v0.1-demo-acceptance.md`, `docs/demo/v0.2-demo-readiness.md`, `docs/demo/v0.2-demo-scenario.md`, and `docs/demo/v0.2-demo-acceptance.md` are full docs; old paths are stubs.
 4. Phase 1 is closed / paused. Do not continue track / checkpoint / memory / kernel / status-entrypoint migrations unless explicitly requested.
-5. The next default workstream can be Kernel Gap Review.
+5. Kernel Gap Review has started in `docs/kernel-gap-review-v0.2.md`; next default workstream is Agent / worker lifecycle boundary design.
 6. If migration is reopened, move closed Track A / C / E docs to `docs/tracks/` and leave stubs.
 7. Add target subdirectories only in the migration commit that needs them.
 8. Update README / AGENTS / current-status / roadmap links in the same patch as any move.
