@@ -76,6 +76,19 @@ class InProcessServer:
     def submit_input(self, run_id: str, text: str) -> dict[str, Any]:
         return self.submit_tool_request(run_id, tool="write_artifact_tool", text=text)
 
+    def submit_action(
+        self,
+        run_id: str,
+        intent: dict[str, Any],
+        requires_approval: bool = False,
+    ) -> dict[str, Any]:
+        self._validate_action_intent(intent)
+        return self._submit_action_internal(
+            run_id,
+            deepcopy(intent),
+            requires_approval=requires_approval,
+        )
+
     def submit_tool_request(
         self,
         run_id: str,
@@ -89,14 +102,30 @@ class InProcessServer:
         if not isinstance(requires_approval, bool):
             raise ValueError("requires_approval must be a bool")
 
-        run = self._runs[run_id]
-        proposal = self.compiler.compile(
+        return self._submit_action_internal(
+            run_id,
             {
                 "action": "call_tool",
                 "tool": tool,
                 "text": text,
                 "requested_tools": [tool],
             },
+            requires_approval=requires_approval,
+        )
+
+    def _submit_action_internal(
+        self,
+        run_id: str,
+        intent: dict[str, Any],
+        requires_approval: bool,
+    ) -> dict[str, Any]:
+        self._validate_existing_run_id(run_id)
+        if not isinstance(requires_approval, bool):
+            raise ValueError("requires_approval must be a bool")
+
+        run = self._runs[run_id]
+        proposal = self.compiler.compile(
+            intent,
             {
                 "run_id": run_id,
                 "agent_id": run["agent_id"],
@@ -133,11 +162,16 @@ class InProcessServer:
                 "reason_codes": list(decision.reason_codes),
             },
         )
+        result_base = {
+            "proposal_id": proposal.proposal_id,
+            "decision_id": decision.decision_id,
+            "decision": decision,
+        }
 
         if decision.outcome == "denied":
             return {
+                **result_base,
                 "status": "denied",
-                "decision": decision,
                 "execution": None,
                 "run_state": self.get_run_state(run_id),
             }
@@ -160,8 +194,9 @@ class InProcessServer:
                 "decision": decision,
             }
             return {
+                **result_base,
                 "status": "pending_user_approval",
-                "decision": decision,
+                "approval_id": approval_id,
                 "execution": None,
                 "run_state": self.get_run_state(run_id),
             }
@@ -177,8 +212,8 @@ class InProcessServer:
             if not execution_id:
                 raise RuntimeError("executor failed without action.failed event") from exc
             return {
+                **result_base,
                 "status": "failed",
-                "decision": decision,
                 "execution": None,
                 "execution_id": execution_id,
                 "run_state": self.get_run_state(run_id),
@@ -189,6 +224,7 @@ class InProcessServer:
 
         state = self.get_run_state(run_id)
         return {
+            **result_base,
             "status": state.status,
             "run_state": state,
             "artifact_ref": artifact.ref,
@@ -400,6 +436,12 @@ class InProcessServer:
             "reason": reason,
             "resolver": resolver,
         }
+
+    def _validate_action_intent(self, intent: object) -> None:
+        if not isinstance(intent, dict):
+            raise ValueError("intent must be a dict")
+        if not intent:
+            raise ValueError("intent must be a non-empty dict")
 
     def _validate_non_empty_string(self, field_name: str, value: object) -> None:
         if not isinstance(value, str) or not value:

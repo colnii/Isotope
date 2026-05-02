@@ -232,10 +232,13 @@ def _run_approval_tool_runner_spike(root: Path) -> dict[str, Any]:
     )
     run_id = run_response.body["run_id"]  # type: ignore[index]
 
-    pending = app.server.submit_tool_request(
+    pending = app.server.submit_action(
         run_id,
-        tool="write_artifact_tool",
-        text="approval-gated tool output",
+        {
+            "action": "call_tool",
+            "tool": "write_artifact_tool",
+            "text": "approval-gated tool output",
+        },
         requires_approval=True,
     )
     pending_state = app.server.get_run_state(run_id)
@@ -357,7 +360,7 @@ def _run_approval_tool_runner_spike(root: Path) -> dict[str, Any]:
         "memory_status": "boundary_only",
         "memory_query_status": "not_enabled",
         "api_friction": [
-            "approval-gated input currently uses server.submit_tool_request because POST /runs/{run_id}/input has no approval flag",
+            "approval-gated input now uses server.submit_action; HTTP /runs/{run_id}/input still has no approval flag",
         ],
     }
 
