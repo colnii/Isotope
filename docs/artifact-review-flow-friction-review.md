@@ -1,6 +1,6 @@
 # Artifact Review Flow Friction Review
 
-状态：`complete; source artifact setup helper recommended`
+状态：`complete; source artifact setup helper implemented`
 
 ## 1. Purpose
 
@@ -37,8 +37,8 @@
 
 | Friction | Classification | Why it matters | Suggested action |
 | --- | --- | --- | --- |
-| Source artifact setup still hand-writes `action.proposed`, `action.decided`, `action.started`, `artifact.created`, and `action.completed` via `server._append(...)`. | facade / helper gap | Demo uses private server API and manual event sequencing to prepare a normal source artifact. That is awkward for app spikes and easy to copy incorrectly. | Add a source artifact setup helper. |
-| Source artifact setup directly combines `artifact_store.create_artifact(...)` with manual canonical event append. | facade / helper gap | Artifact persistence and provenance event ownership are correct, but caller must know too much event plumbing. | Helper should own the minimal canonical event sequence and return summary / ref / provenance. |
+| Source artifact setup used to hand-write `action.proposed`, `action.decided`, `action.started`, `artifact.created`, and `action.completed` via `server._append(...)`. | facade / helper gap | Demo used private server API and manual event sequencing to prepare a normal source artifact. That was awkward for app spikes and easy to copy incorrectly. | Implemented by `InProcessServer.create_source_artifact(...)`. |
+| Source artifact setup used to directly combine `artifact_store.create_artifact(...)` with manual canonical event append. | facade / helper gap | Artifact persistence and provenance event ownership were correct, but caller knew too much event plumbing. | Helper now owns the minimal canonical event sequence and returns summary / ref / provenance. |
 | Controlled full-content retrieval requires explicit `get_artifact_content(ref, grants, caller_context, purpose)`. | acceptable v0 shape / future helper ergonomics | The explicit call is intentionally strict and protects Track C boundaries. It is verbose but not wrong. | Keep as-is for now; optionally wrap later only if repeated app spikes need it. |
 | Review action handoff uses `submit_action(...)` and returns artifact ref / ids. | acceptable current helper | This is the desired pattern after submit-action helper work. | Keep as-is. |
 | Review summary is deterministic and fixed text. | demo-only | It proves flow shape without real LLM. | Keep as-is until a later spike explicitly needs richer deterministic review logic. |
@@ -58,7 +58,7 @@ The main awkwardness is not the event-sourced contract itself. It is that prepar
 
 ## 5. Helper / Facade-Level Findings
 
-The clearest helper gap is source artifact setup.
+The clearest helper gap was source artifact setup.
 
 A minimal helper should:
 
@@ -70,7 +70,7 @@ A minimal helper should:
 - avoid real LLM, real HTTP server, provider adapter, semantic retrieval, ranking, memory query, container, git worktree, or process spawn.
 - preserve event store append-only semantics and executor grants semantics.
 
-This helper should reduce demo glue without changing the kernel truth model.
+The implemented helper reduces demo glue without changing the kernel truth model.
 
 ## 6. Demo-Only Findings
 
@@ -95,7 +95,7 @@ It complements `approval-tool-runner` by pressure testing a different path:
 - replay / checkpoint
 - HTTP full-content route staying disabled
 
-It also exposed a concrete API friction: source artifact setup is too manual for repeated app spikes.
+It also exposed a concrete API friction: source artifact setup was too manual for repeated app spikes.
 
 ## 8. Next Step Recommendation
 
@@ -115,18 +115,40 @@ Why not D. leave as-is:
 
 - Continuing app spikes with private `_append(...)` setup glue would make demos brittle and encourage callers to bypass intended server-level helpers.
 
-No product / user decision is needed for the next helper slice if it stays limited to source artifact setup and does not define a product-level artifact review API.
+No product / user decision was needed for the helper slice because it stayed limited to source artifact setup and did not define a product-level artifact review API.
 
-## 9. Proposed Next Batch
+## 9. Source Helper Outcome
 
-Batch name: `Source Artifact Setup Helper`
+The first helper slice is complete.
+
+Implemented helper:
+
+- `InProcessServer.create_source_artifact(...)`
+
+Current behavior:
+
+- validates `run_id`, `summary`, `content`, and `artifact_type` before side effects。
+- uses existing compiler / policy / executor path。
+- appends canonical action + artifact lifecycle events。
+- returns status, proposal id, decision id, execution id, artifact ref, artifact summary, artifact type, provenance, and run state。
+- does not return artifact full content。
+- does not append `run.completed` during source setup。
+- is replayable and checkpoint-assisted rebuildable。
+- leaves HTTP full-content route `not_enabled`。
+
+`artifact-review` demo now uses this helper instead of private `server._append(...)` source setup glue.
+
+This remains a deterministic in-process setup helper, not a product artifact upload API.
+
+## 10. Proposed Next Batch
+
+Batch name: `Source Artifact Helper Closure Review`
 
 Suggested tasks:
 
-1. Docs-only helper boundary.
-2. Red tests for server/helper source artifact setup.
-3. Minimal green helper if red is clean.
-4. Update `artifact-review` demo to stop calling private `_append(...)` for source artifact setup.
-5. Docs/status sync and queue update.
+1. Review `create_source_artifact(...)` helper boundary.
+2. Confirm `artifact-review` no longer uses private source setup glue.
+3. Confirm no product upload / real filesystem / binary streaming scope leaked in.
+4. Docs-only closure unless a clear bug is found.
 
 Stop if the helper requires product review semantics, real filesystem mutation, real LLM, real HTTP server, provider adapter, memory query engine, event store semantic changes, executor grants semantic changes, new dependency, or `/home/lumber/Github/x-agent` changes.

@@ -86,32 +86,51 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 baseline：`883 passed`。
+当前 baseline：`892 passed`。
 
 ## 6. Current Batch
 
-Batch name: `Artifact Review Flow Friction Review`
+Batch name: `Source Artifact Setup Helper`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: review the `artifact-review` spike API friction and decide the next bounded helper slice.
+Goal: remove private source artifact setup glue from the `artifact-review` spike without creating a product artifact upload API.
 
 Tasks:
 
-1. Artifact Review Flow Friction Review: complete; added `docs/artifact-review-flow-friction-review.md`.
-2. Queue Update: complete; next suggested batch set to `Source Artifact Setup Helper`.
+1. Source Artifact Setup Helper Boundary Docs: complete; added `docs/source-artifact-setup-helper-boundary-v0.2.md`.
+2. Red Tests: complete; added `tests/isotope_kernel/test_source_artifact_setup_helper.py`.
+3. Green Implementation: complete; added `InProcessServer.create_source_artifact(...)` and updated `artifact-review` demo.
+4. Docs / status sync: complete.
+5. Queue update: complete; next suggested batch set to `Source Artifact Helper Closure Review`.
+
+Evidence:
+
+- Red targeted result: `9 failed, 11 passed`; failures were expected because `create_source_artifact(...)` did not exist and `artifact-review` still used private `_append(...)` setup glue.
+- Targeted green result: `20 passed`.
+- Full regression: `892 passed`.
+- v0.1 demo plain / JSON: pass.
+- v0.2 demo plain / JSON: pass.
+- approval-tool-runner demo plain / JSON: pass.
+- artifact-review demo plain / JSON / trace: pass.
+- Helper behavior: validates request, uses existing compiler / policy / executor path, appends canonical action + artifact events, returns summary / structured `ResourceRef` / provenance, and does not append `run.completed`.
+- `artifact-review` demo no longer uses private `server._append(...)` source setup glue.
+- HTTP full-content route remains `not_enabled`.
+- No real filesystem upload / binary streaming / real HTTP server / real LLM / provider adapter / memory query engine / container / git worktree / process spawn / dependency.
+
+### Previous Batch Snapshot: Artifact Review Flow Friction Review
+
+Batch name: `Artifact Review Flow Friction Review`
+
+Status: `complete`
 
 Evidence:
 
 - Full regression: `876 passed`.
-- v0.1 demo plain / JSON: pass.
-- v0.2 demo plain / JSON: pass.
-- approval-tool-runner demo plain / JSON: pass.
-- artifact-review demo plain / JSON: pass.
 - Review conclusion: `artifact-review` is useful and exposed no kernel correctness bug.
-- Main friction: source artifact setup still uses demo glue and private `server._append(...)` to hand-write canonical source action / artifact lifecycle events.
+- Main friction: source artifact setup used demo glue and private `server._append(...)` to hand-write canonical source action / artifact lifecycle events.
 - Classification: source setup is a facade / helper gap; controlled retrieval verbosity is acceptable v0 shape; review artifact handoff through `submit_action(...)` is acceptable.
 - Recommendation: A. source artifact setup helper.
 - No code changed; no real HTTP server / real LLM / provider adapter / memory query engine / filesystem mutation / container / git worktree / process spawn / dependency.
@@ -321,22 +340,21 @@ Scope:
 
 ## 7. Next Suggested Batch
 
-Batch name: `Source Artifact Setup Helper`
+Batch name: `Source Artifact Helper Closure Review`
 
-Status: `ready`
+Status: `ready_docs_only`
 
 Possible tasks:
 
-1. Source artifact setup helper boundary docs.
-2. Red tests for a server/helper source artifact setup path.
-3. Green implementation if red tests fail as expected and no stop condition fires.
-4. Update `artifact-review` demo to stop using private `server._append(...)` for source artifact setup.
-5. Docs/status sync and queue update.
+1. Review `InProcessServer.create_source_artifact(...)`.
+2. Confirm `artifact-review` no longer uses private source setup glue.
+3. Confirm helper remains deterministic / in-process and does not become product upload API.
+4. Confirm no real filesystem upload / binary streaming / real HTTP server / provider adapter / memory query scope leaked in.
+5. Docs/status sync and queue update only unless a clear bug is found.
 
 Constraints:
 
-- helper must append canonical source action / artifact lifecycle events through existing event path.
-- helper must return summary / structured `ResourceRef` / provenance, not full content.
+- docs-only by default.
 - no real filesystem mutation.
 - no real LLM.
 - no real HTTP server / provider adapter / memory query engine.

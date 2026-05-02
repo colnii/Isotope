@@ -1,6 +1,6 @@
 # Usability Pressure Test Plan v0.2
 
-状态：`artifact review flow and demo trace first slices complete`
+状态：`artifact review flow, demo trace, and source artifact setup helper first slices complete`
 
 ## 1. Purpose
 
@@ -39,7 +39,7 @@ python -m isotope_kernel.demo --scenario v0.2 --trace
 - Retry / Cancel / Supersede read model。
 - event replay and checkpoint-assisted rebuild。
 
-当前 baseline：`883 passed`。
+当前 baseline：`892 passed`。
 
 ## 3. Hard Boundaries
 
@@ -210,7 +210,37 @@ Friction review: `docs/artifact-review-flow-friction-review.md`。
 - controlled full-content retrieval 显式传入 grants + caller context + purpose 是可接受 v0 shape，不应为了省参数放松 Track C boundary。
 - review artifact handoff 经 `submit_action(...)` 已足够自然。
 
-Next suggested batch: `Source Artifact Setup Helper`.
+## 13. Source Artifact Setup Helper
+
+状态：`first slice complete`
+
+Boundary doc: `docs/source-artifact-setup-helper-boundary-v0.2.md`
+
+当前 helper:
+
+- `InProcessServer.create_source_artifact(...)`
+- accepts deterministic in-process `summary` / `content` / optional `artifact_type="text"`
+- validates before appending events or writing artifact state
+- uses existing compiler / policy / executor path
+- appends canonical action + artifact lifecycle events
+- returns artifact summary / structured `ResourceRef` / provenance
+- does not return full content
+- does not append `run.completed`, so app-shaped flows can continue through later review actions
+- is replayable and checkpoint-assisted rebuildable
+
+`artifact-review` demo now uses this helper instead of private `server._append(...)` source setup glue.
+
+Still not included:
+
+- product artifact upload API
+- real filesystem upload
+- binary streaming
+- real HTTP server
+- provider adapter
+- memory query engine
+- artifact review product facade
+
+Next suggested batch: `Source Artifact Helper Closure Review`.
 
 ## 12. Demo Trace Mode
 

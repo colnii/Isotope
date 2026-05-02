@@ -131,4 +131,6 @@ The first slice proves:
 
 Friction review is complete: `docs/artifact-review-flow-friction-review.md`.
 
-Remaining recommended work: implement a narrow `Source Artifact Setup Helper` to remove private `_append(...)` source setup glue before expanding the scenario.
+Source artifact setup helper is complete: `docs/source-artifact-setup-helper-boundary-v0.2.md`.
+
+Remaining recommended work: run a docs-only source artifact helper closure review before expanding the scenario.
