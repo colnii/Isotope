@@ -1,6 +1,6 @@
 # Usability Pressure Test Plan v0.2
 
-状态：`artifact review flow, demo trace, and source artifact setup helper first slices complete`
+状态：`artifact review flow, demo trace, and source artifact setup helper closed`
 
 ## 1. Purpose
 
@@ -206,13 +206,13 @@ Friction review: `docs/artifact-review-flow-friction-review.md`。
 
 - `artifact-review` 是有用的 first app spike。
 - 没有发现 kernel correctness bug。
-- 主要 friction 是 source artifact setup 仍需要 demo glue：直接调用 private `server._append(...)` 手工追加 source action / artifact lifecycle events。
+- 原主要 friction 是 source artifact setup 仍需要 demo glue：直接调用 private `server._append(...)` 手工追加 source action / artifact lifecycle events。该 gap 已由 `InProcessServer.create_source_artifact(...)` 解决并 closure-reviewed。
 - controlled full-content retrieval 显式传入 grants + caller context + purpose 是可接受 v0 shape，不应为了省参数放松 Track C boundary。
 - review artifact handoff 经 `submit_action(...)` 已足够自然。
 
 ## 13. Source Artifact Setup Helper
 
-状态：`first slice complete`
+状态：`closed / complete`
 
 Boundary doc: `docs/source-artifact-setup-helper-boundary-v0.2.md`
 
@@ -240,7 +240,16 @@ Still not included:
 - memory query engine
 - artifact review product facade
 
-Next suggested batch: `Source Artifact Helper Closure Review`.
+Closure review: `docs/source-artifact-helper-closure-review.md`。
+
+Closure result: source artifact setup helper is closed / complete for now.
+
+Remaining friction:
+
+- review provenance still scans events to find the source `artifact.created` basis event。
+- controlled full-content retrieval remains intentionally explicit and is acceptable v0 shape。
+
+Next suggested batch: `Artifact Review Flow Second Friction Review`.
 
 ## 12. Demo Trace Mode
 

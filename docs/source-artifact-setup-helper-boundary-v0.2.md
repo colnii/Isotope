@@ -1,6 +1,6 @@
 # Source Artifact Setup Helper Boundary v0.2
 
-状态：`first slice complete`
+状态：`closed / complete`
 
 ## 1. Purpose
 
@@ -87,6 +87,7 @@ Implemented:
 
 - `InProcessServer.create_source_artifact(...)`
 - tests in `tests/isotope_kernel/test_source_artifact_setup_helper.py`
+- closure review in `docs/source-artifact-helper-closure-review.md`
 
 Current behavior:
 

@@ -90,21 +90,35 @@ git status --short
 
 ## 6. Current Batch
 
-Batch name: `Source Artifact Setup Helper`
+Batch name: `Source Artifact Helper Closure Review`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: remove private source artifact setup glue from the `artifact-review` spike without creating a product artifact upload API.
+Goal: review whether `InProcessServer.create_source_artifact(...)` fully closes source artifact setup friction without creating a product artifact upload API.
 
 Tasks:
 
-1. Source Artifact Setup Helper Boundary Docs: complete; added `docs/source-artifact-setup-helper-boundary-v0.2.md`.
-2. Red Tests: complete; added `tests/isotope_kernel/test_source_artifact_setup_helper.py`.
-3. Green Implementation: complete; added `InProcessServer.create_source_artifact(...)` and updated `artifact-review` demo.
-4. Docs / status sync: complete.
-5. Queue update: complete; next suggested batch set to `Source Artifact Helper Closure Review`.
+1. Closure Review: complete; added `docs/source-artifact-helper-closure-review.md`.
+2. Docs / status sync: complete.
+3. Queue update: complete; next suggested batch set to `Artifact Review Flow Second Friction Review`.
+
+Evidence:
+
+- Full regression: `892 passed`.
+- artifact-review demo plain / JSON / trace: pass.
+- Helper behavior: validates request, uses existing compiler / policy / executor path, appends canonical action + artifact events, returns summary / structured `ResourceRef` / provenance, and does not append `run.completed`.
+- `artifact-review` demo no longer uses private `server._append(...)` source setup glue.
+- HTTP full-content route remains `not_enabled`.
+- No real filesystem upload / binary streaming / real HTTP server / real LLM / provider adapter / memory query engine / container / git worktree / process spawn / dependency.
+- Coverage note: malformed input, provenance, no full content, no `run.completed`, replay / checkpoint, and HTTP route disabled are covered. Helper-specific policy modified / denied tests are not present because this helper exposes no requested capability knobs; generic policy tests cover modified / denied decisions.
+
+### Previous Batch Snapshot: Source Artifact Setup Helper
+
+Batch name: `Source Artifact Setup Helper`
+
+Status: `complete`
 
 Evidence:
 
@@ -115,10 +129,7 @@ Evidence:
 - v0.2 demo plain / JSON: pass.
 - approval-tool-runner demo plain / JSON: pass.
 - artifact-review demo plain / JSON / trace: pass.
-- Helper behavior: validates request, uses existing compiler / policy / executor path, appends canonical action + artifact events, returns summary / structured `ResourceRef` / provenance, and does not append `run.completed`.
-- `artifact-review` demo no longer uses private `server._append(...)` source setup glue.
-- HTTP full-content route remains `not_enabled`.
-- No real filesystem upload / binary streaming / real HTTP server / real LLM / provider adapter / memory query engine / container / git worktree / process spawn / dependency.
+- Added `InProcessServer.create_source_artifact(...)` and updated `artifact-review` demo.
 
 ### Previous Batch Snapshot: Artifact Review Flow Friction Review
 
@@ -340,17 +351,16 @@ Scope:
 
 ## 7. Next Suggested Batch
 
-Batch name: `Source Artifact Helper Closure Review`
+Batch name: `Artifact Review Flow Second Friction Review`
 
 Status: `ready_docs_only`
 
 Possible tasks:
 
-1. Review `InProcessServer.create_source_artifact(...)`.
-2. Confirm `artifact-review` no longer uses private source setup glue.
-3. Confirm helper remains deterministic / in-process and does not become product upload API.
-4. Confirm no real filesystem upload / binary streaming / real HTTP server / provider adapter / memory query scope leaked in.
-5. Docs/status sync and queue update only unless a clear bug is found.
+1. Review remaining `artifact-review` demo glue after source artifact helper closure.
+2. Decide whether review provenance basis event lookup needs a helper or is acceptable v0 demo glue.
+3. Keep controlled full-content retrieval explicit unless repeated app spikes prove a helper is needed.
+4. Docs/status sync and queue update only unless a clear bug is found.
 
 Constraints:
 
@@ -358,6 +368,7 @@ Constraints:
 - no real filesystem mutation.
 - no real LLM.
 - no real HTTP server / provider adapter / memory query engine.
+- no product artifact review facade without a separate boundary doc and red tests.
 - no event store append-only semantic changes.
 - no executor grants semantic changes.
 

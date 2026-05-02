@@ -37,6 +37,7 @@
 - 加上 Usability Friction Round 1 Review 和 First App Spike Readiness 后 docs Markdown：71 个。第一轮 usability friction 已收口；artifact review flow first slice 后续已实现。
 - 加上 Artifact Review Flow Friction Review 后 docs Markdown：72 个。当前建议下一批做 source artifact setup helper，先移除 private `_append(...)` demo glue，不打开 product artifact review facade。
 - 加上 Source Artifact Setup Helper Boundary 后 docs Markdown：73 个。source artifact setup helper first slice 已完成，`artifact-review` demo 不再手写 private `_append(...)` source setup glue。
+- 加上 Source Artifact Helper Closure Review 后 docs Markdown：74 个。source artifact helper 已 closed；下一步仅建议 review artifact-review remaining friction。
 
 ## 2. Current entrypoints
 
@@ -66,6 +67,7 @@
 - `docs/first-app-spike-readiness.md`：First app spike readiness review，选择并记录 `artifact review flow` first slice outcome。
 - `docs/artifact-review-flow-friction-review.md`：Artifact review flow friction review，记录 source artifact setup glue 分层和 source artifact setup helper recommendation。
 - `docs/source-artifact-setup-helper-boundary-v0.2.md`：Source artifact setup helper boundary，记录 `InProcessServer.create_source_artifact(...)` first-slice contract。
+- `docs/source-artifact-helper-closure-review.md`：Source artifact helper closure review，记录 closure 判断、coverage note 和 remaining artifact-review friction。
 - `docs/v0.2-mid-cycle-review.md`：mid-cycle decision，曾推荐进入 Track E；该 recommendation 已执行到 closure。
 - `docs/v0.2-next-track-selection.md`：Track C selection 的历史决策记录，已执行到 closure。
 - `docs/README.md`：kernel current-truth 文档包的阅读顺序入口。
@@ -81,12 +83,13 @@
 
 当前默认下一步是 docs-only kernel gap backlog，而不是 implementation track。`docs/agent-worker-lifecycle-boundary-v0.2.md` 已定义 Agent / Worker lifecycle boundary，`docs/workspace-substrate-boundary-v0.2.md` 已定义 Workspace substrate boundary，`docs/retry-cancel-supersede-boundary-v0.2.md` 已定义 Retry / Cancel / Supersede boundary；三者 first slice 均已 complete。后续可继续 lease/path-safety boundary design。
 
-当前自动推进入口是 `docs/agent-task-queue.md`。`Approval-Gated Tool Runner Spike` 已完成，API friction review 已落文档，approval lookup/read helper、workspace binding helper 和 submit action helper 已完成；artifact review flow first slice、friction review 和 source artifact setup helper first slice 已完成。
+当前自动推进入口是 `docs/agent-task-queue.md`。`Approval-Gated Tool Runner Spike` 已完成，API friction review 已落文档，approval lookup/read helper、workspace binding helper 和 submit action helper 已完成；artifact review flow first slice、friction review 和 source artifact setup helper closure review 已完成。
 
-- `docs/agent-task-queue.md`：active queue，Current Batch complete；Next Suggested Batch is `Source Artifact Helper Closure Review` with `ready_docs_only` status。
+- `docs/agent-task-queue.md`：active queue，Current Batch complete；Next Suggested Batch is `Artifact Review Flow Second Friction Review` with `ready_docs_only` status。
 - `docs/usability-pressure-test-plan-v0.2.md`：current pressure-test planning doc，`approval-gated tool runner` first slice complete and friction reviewed。
-- `docs/artifact-review-flow-friction-review.md`：current artifact review flow friction review；source artifact setup helper implemented。
-- `docs/source-artifact-setup-helper-boundary-v0.2.md`：current source artifact setup helper boundary；first slice complete。
+- `docs/artifact-review-flow-friction-review.md`：current artifact review flow friction review；source artifact setup helper closed。
+- `docs/source-artifact-setup-helper-boundary-v0.2.md`：current source artifact setup helper boundary；closed。
+- `docs/source-artifact-helper-closure-review.md`：current source artifact helper closure review；closed。
 - `docs/approval-tool-runner-friction-review.md`：current API ergonomics review；approval lookup/read, workspace binding, and submit action helper slices are complete。
 - `docs/workspace-binding-helper-friction-review.md`：current workspace helper friction review；implemented。
 - `docs/workspace-binding-helper-boundary-v0.2.md`：current workspace helper boundary；first slice complete。
@@ -238,7 +241,8 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | `docs/release-draft-v0.1-demo.md` | Release draft compatibility stub | stub / keep for one cycle |
 | `docs/retry-cancel-supersede-boundary-v0.2.md` | Retry / cancel / supersede action lifecycle boundary | first slice complete |
 | `docs/server-checkpoint-boundary-v0.1.md` | Server checkpoint boundary | closed / frozen |
-| `docs/source-artifact-setup-helper-boundary-v0.2.md` | Source artifact setup helper boundary | first slice complete |
+| `docs/source-artifact-helper-closure-review.md` | Source artifact helper closure review | closed |
+| `docs/source-artifact-setup-helper-boundary-v0.2.md` | Source artifact setup helper boundary | closed |
 | `docs/usability-pressure-test-plan-v0.2.md` | Kernel usability pressure test / spike status | first slice complete |
 | `docs/workspace-binding-helper-boundary-v0.2.md` | Workspace binding helper boundary | first slice complete |
 | `docs/workspace-binding-helper-friction-review.md` | Workspace binding helper friction review | implemented |

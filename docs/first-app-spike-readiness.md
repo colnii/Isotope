@@ -133,4 +133,6 @@ Friction review is complete: `docs/artifact-review-flow-friction-review.md`.
 
 Source artifact setup helper is complete: `docs/source-artifact-setup-helper-boundary-v0.2.md`.
 
-Remaining recommended work: run a docs-only source artifact helper closure review before expanding the scenario.
+Source artifact helper closure review is complete: `docs/source-artifact-helper-closure-review.md`.
+
+Remaining recommended work: run a docs-only artifact review flow second friction review before expanding the scenario.

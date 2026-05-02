@@ -1,6 +1,6 @@
 # Artifact Review Flow Friction Review
 
-状态：`complete; source artifact setup helper implemented`
+状态：`complete; source artifact setup helper closed`
 
 ## 1. Purpose
 
@@ -119,11 +119,15 @@ No product / user decision was needed for the helper slice because it stayed lim
 
 ## 9. Source Helper Outcome
 
-The first helper slice is complete.
+The first helper slice is complete and closure-reviewed.
 
 Implemented helper:
 
 - `InProcessServer.create_source_artifact(...)`
+
+Closure review:
+
+- `docs/source-artifact-helper-closure-review.md`
 
 Current behavior:
 
@@ -140,15 +144,15 @@ Current behavior:
 
 This remains a deterministic in-process setup helper, not a product artifact upload API.
 
-## 10. Proposed Next Batch
+## 10. Remaining Friction
 
-Batch name: `Source Artifact Helper Closure Review`
+Source artifact setup is closed.
 
-Suggested tasks:
+Remaining `artifact-review` friction:
 
-1. Review `create_source_artifact(...)` helper boundary.
-2. Confirm `artifact-review` no longer uses private source setup glue.
-3. Confirm no product upload / real filesystem / binary streaming scope leaked in.
-4. Docs-only closure unless a clear bug is found.
+- review provenance still finds the source `artifact.created` basis event by scanning events in demo glue。
+- controlled retrieval remains explicit by design。
 
-Stop if the helper requires product review semantics, real filesystem mutation, real LLM, real HTTP server, provider adapter, memory query engine, event store semantic changes, executor grants semantic changes, new dependency, or `/home/lumber/Github/x-agent` changes.
+Next suggested batch: `Artifact Review Flow Second Friction Review`, docs-only by default.
+
+Stop if the next slice requires product review semantics, real filesystem mutation, real LLM, real HTTP server, provider adapter, memory query engine, event store semantic changes, executor grants semantic changes, new dependency, or `/home/lumber/Github/x-agent` changes.
