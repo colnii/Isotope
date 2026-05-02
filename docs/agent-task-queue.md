@@ -89,27 +89,60 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 baseline：`913 passed`。
+当前 baseline：`942 passed`。
 
 ## 6. Current Batch
 
-Batch name: `Workspace Resource Lifecycle Boundary`
+Batch name: `Workspace Resource Lifecycle Green Slice`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: docs-only boundary for workspace lease / release / artifact-capture lifecycle after the current `workspace.bound` first slice.
+Goal: implement projector/read-model/event validation support for workspace lease / release / artifact-capture lifecycle after red tests.
 
 Tasks:
 
-1. Define binding vs lease semantics: complete.
-2. Define candidate canonical workspace lifecycle events: complete.
-3. Define candidate `RunState.workspaces` lifecycle read model: complete.
-4. Define hard contracts and deferred substrate list: complete.
-5. List first red tests for lease lifecycle and artifact capture: complete.
-6. Docs / status sync: complete.
-7. Queue update: complete; next suggested batch set to `Workspace Resource Lifecycle Red Tests`.
+1. Keep prior red tests uncommitted until green: complete.
+2. Implement `workspace.lease_created`, `workspace.released`, and `workspace.artifact_captured` validation / projection: complete.
+3. Preserve `shared_ro` fail-closed mode boundary and no-filesystem substrate: complete.
+4. Verify targeted tests and full regression: complete.
+5. Docs / status sync: complete.
+6. Queue update: complete; next suggested batch set to `Workspace Resource Lifecycle Closure Review`.
+
+Evidence:
+
+- Targeted workspace lifecycle tests: `29 passed`.
+- Full regression: `942 passed`.
+- artifact-review trace regression: pass.
+- external-snapshot-review trace regression: pass.
+- Tests: `tests/isotope_kernel/test_workspace_lease_lifecycle_boundary.py` and `tests/isotope_kernel/test_workspace_artifact_capture_boundary.py`.
+- Code: `src/isotope_kernel/projector.py`.
+- Supported events: `workspace.lease_created`, `workspace.bound`, `workspace.released`, `workspace.artifact_captured`.
+- `RunState.workspaces` now includes lease / release / artifact-ref linkage fields and restores via replay / checkpoint-assisted rebuild.
+- No real filesystem mutation / container / git worktree / remote executor / cleanup scheduler / dependency.
+
+### Previous Batch Snapshot: Workspace Resource Lifecycle Red Tests
+
+Batch name: `Workspace Resource Lifecycle Red Tests`
+
+Status: `complete`
+
+Evidence:
+
+- Targeted red result: `24 failed, 5 passed`.
+- Full regression with red tests: `24 failed, 918 passed`.
+- Failures were only from the new workspace lifecycle / capture tests.
+- Added:
+  - `tests/isotope_kernel/test_workspace_lease_lifecycle_boundary.py`
+  - `tests/isotope_kernel/test_workspace_artifact_capture_boundary.py`
+- No `src` / docs changes in red-only batch.
+
+### Previous Batch Snapshot: Workspace Resource Lifecycle Boundary
+
+Batch name: `Workspace Resource Lifecycle Boundary`
+
+Status: `complete`
 
 Evidence:
 
@@ -512,22 +545,21 @@ Scope:
 
 ## 7. Next Suggested Batch
 
-Batch name: `Workspace Resource Lifecycle Red Tests`
+Batch name: `Workspace Resource Lifecycle Closure Review`
 
-Status: `ready_red_only`
+Status: `ready_docs_only`
 
 Possible tasks:
 
-1. Add red tests only:
-   - `tests/isotope_kernel/test_workspace_lease_lifecycle_boundary.py`
-   - `tests/isotope_kernel/test_workspace_artifact_capture_boundary.py`
-2. Cover `workspace.lease_created`, `workspace.released`, optional `workspace.artifact_captured`, replay, checkpoint, malformed events, and no filesystem reads.
-3. Do not implement green slice in the red-only batch unless the user explicitly asks.
-4. Stop if red tests unexpectedly pass or require real filesystem / container / git worktree / process spawn decisions.
+1. Review `workspace.lease_created`, `workspace.released`, and `workspace.artifact_captured` first green slice.
+2. Confirm `RunState.workspaces` lifecycle read model, replay, and checkpoint-assisted rebuild are coherent.
+3. Confirm malformed events fail fast and unsupported modes remain fail-closed.
+4. Confirm no real filesystem / container / git worktree / remote executor / product workspace file API was introduced.
+5. Docs/status sync and decide whether the slice can be marked first-slice complete / closed for now.
 
 Constraints:
 
-- red-only unless queue is explicitly updated to green.
+- docs-only unless a correctness bug is found.
 - no real filesystem mutation / container / git worktree / process spawn / remote executor.
 - no cleanup scheduler.
 - no product workspace API.

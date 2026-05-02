@@ -44,7 +44,7 @@
 - 加上 External Snapshot Review Closure Review 后 docs Markdown：78 个。`external-snapshot-review` second app spike 已 complete / closed for now。
 - 加上 App Spike Coverage Review 后 docs Markdown：79 个。该 recommendation 已执行到 `Kernel Gap Review Refresh`。
 - 加上 Kernel Gap Review Refresh 后 docs Markdown：80 个。该 recommendation 已执行到 `Workspace Resource Lifecycle Boundary`。
-- 加上 Workspace Resource Lifecycle Boundary 后 docs Markdown：81 个。当前建议下一步做 red-only workspace lease lifecycle / artifact capture tests，不实现 real filesystem substrate。
+- 加上 Workspace Resource Lifecycle Boundary 后 docs Markdown：81 个。Workspace Resource Lifecycle first green slice 已完成；当前建议下一步做 closure review，不实现 real filesystem substrate。
 
 ## 2. Current entrypoints
 
@@ -95,11 +95,11 @@
 
 当前没有默认打开的 implementation track。Track F external ingestion 当前已完成 boundary 和 external observation read-model invariant green slices，并已 effectively complete / closed for now；`external-snapshot-review` second app spike 已 closed for now，不要直接实现 provider adapter / ingestion API。
 
-当前默认下一步是 red-only `Workspace Resource Lifecycle Red Tests`，不是 green implementation track。`docs/kernel-gap-review-refresh-v0.2.md` 已刷新 app spike 后的 kernel gaps；`docs/workspace-resource-lifecycle-boundary-v0.2.md` 已定义 workspace lease / mode / path-safety / release / artifact-capture boundary；`docs/agent-worker-lifecycle-boundary-v0.2.md`、`docs/workspace-substrate-boundary-v0.2.md` 和 `docs/retry-cancel-supersede-boundary-v0.2.md` 三者 first slice 均已 complete。后续应先写 red tests，再考虑 implementation。
+当前默认下一步是 `Workspace Resource Lifecycle Closure Review`，不是 real filesystem substrate。`docs/kernel-gap-review-refresh-v0.2.md` 已刷新 app spike 后的 kernel gaps；`docs/workspace-resource-lifecycle-boundary-v0.2.md` 已定义并实现 workspace lease / release / artifact-capture first green slice；`docs/agent-worker-lifecycle-boundary-v0.2.md`、`docs/workspace-substrate-boundary-v0.2.md` 和 `docs/retry-cancel-supersede-boundary-v0.2.md` 三者 first slice 均已 complete。后续应先 closure review，再考虑下一 kernel boundary。
 
 当前自动推进入口是 `docs/agent-task-queue.md`。`Approval-Gated Tool Runner Spike` 已完成，API friction review 已落文档，approval lookup/read helper、workspace binding helper 和 submit action helper 已完成；artifact review flow first slice、friction review、source artifact setup helper closure review、artifact provenance helper first slice、artifact review flow closure review、second app spike selection、external snapshot review closure review 和 app spike coverage review 已完成。
 
-- `docs/agent-task-queue.md`：active queue，Current Batch complete；Next Suggested Batch is `Workspace Resource Lifecycle Red Tests` with `ready_red_only` status。
+- `docs/agent-task-queue.md`：active queue，Current Batch complete；Next Suggested Batch is `Workspace Resource Lifecycle Closure Review` with `ready_docs_only` status。
 - `docs/usability-pressure-test-plan-v0.2.md`：current pressure-test planning doc，`approval-gated tool runner` first slice complete and friction reviewed。
 - `docs/second-app-spike-selection.md`：second app spike selection；recommended `external snapshot review`。
 - `docs/external-snapshot-review-closure-review.md`：current external snapshot review closure review；second app spike complete / closed for now。

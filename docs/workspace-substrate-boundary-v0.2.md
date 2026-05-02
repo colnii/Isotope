@@ -37,10 +37,10 @@ Workspace substrate 是 Agent / Worker lifecycle first slice 之后的下一块 
 
 当前缺口：
 
-- workspace lease lifecycle 已有 docs-only boundary，但尚未实现。
+- workspace lease lifecycle 已有 first green slice：`workspace.lease_created` / `workspace.released` 可投影、replay 和 checkpoint。
 - path safety 规则尚未定义。
 - write permission / read-only enforcement 还没有真实 substrate。
-- artifact capture from workspace 已有 docs-only boundary，但尚未实现。
+- artifact capture from workspace 已有 first green slice：`workspace.artifact_captured` 只链接 artifact `ResourceRef`，不读取 workspace files。
 - workspace cleanup 尚未定义。
 - isolated workspace substrate 尚未实现。
 - rollback / diff tracking 尚未定义。
@@ -161,9 +161,9 @@ The slice should not turn workspace into product infrastructure. It should only 
 
 Current repo status remains:
 
-- current repo baseline: `913 passed`
-- current workspace implementation: `WorkspaceManager` shared read-only / grants validation, `RunState.workspaces` projection, and `InProcessServer.bind_workspace(...)`
+- current repo baseline: `942 passed`
+- current workspace implementation: `WorkspaceManager` shared read-only / grants validation, `RunState.workspaces` projection, `InProcessServer.bind_workspace(...)`, and first-slice lease / release / artifact-capture read-model support
 - no real substrate implementation from this document
 - first tests are implemented and green
 - closure review: `first slice complete`
-- next step, if requested: workspace lease lifecycle / artifact capture red tests from `docs/workspace-resource-lifecycle-boundary-v0.2.md`, not real filesystem substrate
+- next step, if requested: workspace resource lifecycle closure review, not real filesystem substrate

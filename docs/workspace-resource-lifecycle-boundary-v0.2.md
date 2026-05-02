@@ -1,6 +1,6 @@
 # Workspace Resource Lifecycle Boundary v0.2
 
-状态：`boundary defined; no implementation yet`
+状态：`first green slice complete; real substrate deferred`
 
 ## 1. Purpose
 
@@ -10,18 +10,21 @@
 
 - `RunState.workspaces`
 - canonical `workspace.bound`
+- canonical `workspace.lease_created`
+- canonical `workspace.released`
+- canonical `workspace.artifact_captured` as artifact-ref linkage
 - `InProcessServer.bind_workspace(...)` helper
 - grants-driven `shared_ro` workspace mode
+- replay / checkpoint-assisted rebuild for workspace lifecycle read model
 - no real filesystem mutation / no container / no git worktree
 
 当前缺口：
 
-- lease 如何创建 / 释放。
 - mode 是否可以升级 / 降级。
 - workspace resource identity 如何表达。
-- artifact capture 和 workspace file content 的边界。
-- release / cleanup / expired lease 如何进入 canonical event log。
-- projector 是否仍只能看 events，不能读 workspace files。
+- `workspace.release_failed` / cleanup diagnostics。
+- path-safety / write-mode behavior。
+- real workspace substrate identity beyond deterministic `shared_ro`。
 
 ## 2. Definitions
 
@@ -40,16 +43,17 @@ Binding 和 lease 必须区分：
 
 | Event | Purpose | First-slice stance |
 | --- | --- | --- |
-| `workspace.lease_created` | 创建 workspace resource lifecycle record，固定 `workspace_id`、`run_id`、initial mode、policy basis 和 creator basis | recommended next red-test target |
+| `workspace.lease_created` | 创建 workspace resource lifecycle record，固定 `workspace_id`、`run_id`、initial mode、policy basis 和 creator basis | implemented in first green slice |
 | `workspace.bound` | 把 existing workspace resource 或 current shared resource 绑定给 agent / worker / execution | already implemented as binding first slice |
-| `workspace.released` | 通过 append-only event 表达 release / revoke / expired 等终止状态 | recommended next red-test target |
+| `workspace.released` | 通过 append-only event 表达 release / revoke / expired 等终止状态 | implemented in first green slice for released status |
 | `workspace.release_failed` | 记录 release / cleanup 尝试失败的 diagnostics，不改变 hidden state | deferred unless cleanup attempt exists |
-| `workspace.artifact_captured` | 只记录 workspace resource 到 artifact / `ResourceRef` 的 linkage；artifact 本体仍必须是 `artifact.created` / artifact provenance path | optional next red-test target; do not replace artifact events |
+| `workspace.artifact_captured` | 只记录 workspace resource 到 artifact / `ResourceRef` 的 linkage；artifact 本体仍必须是 `artifact.created` / artifact provenance path | implemented in first green slice as linkage only |
 
-Open question for first implementation:
+First-slice decision:
 
-- `workspace.lease_created` 是否必须先于 `workspace.bound`，还是对 existing `shared_ro` slice 允许 `workspace.bound` 作为 compatibility shortcut。
-- Recommendation: new lifecycle tests should require `lease_created -> bound -> released` for new resource lifecycle paths, while existing `workspace.bound` tests remain compatibility coverage.
+- New lifecycle paths use `workspace.lease_created -> workspace.bound -> workspace.released`.
+- Existing `workspace.bound` remains a compatibility shortcut for the earlier binding first slice.
+- `workspace.artifact_captured` requires a prior `artifact.created` event and only links a structured artifact `ResourceRef`; it does not replace the artifact event path.
 
 ## 4. Minimal Read Model Candidate
 
@@ -147,9 +151,36 @@ Explicitly deferred:
 - multi-user isolation
 - process kill / tool-level cancellation
 
-## 9. First Red Tests Recommendation
+## 9. First Green Slice Evidence
 
-Suggested files:
+Implemented tests:
+
+- `tests/isotope_kernel/test_workspace_lease_lifecycle_boundary.py`
+- `tests/isotope_kernel/test_workspace_artifact_capture_boundary.py`
+
+Current behavior:
+
+- `workspace.lease_created` projects a lifecycle entry into `RunState.workspaces`.
+- `workspace.bound` preserves grants / creator basis when lifecycle context exists, while keeping the earlier direct-binding compatibility path.
+- `workspace.released` updates `lease_status`, `released_by`, `released_at`, `last_event_id`, and release basis metadata.
+- `workspace.artifact_captured` links a workspace to a structured artifact `ResourceRef` after the canonical `artifact.created` event exists.
+- malformed lease / release / capture payloads fail fast with controlled exceptions.
+- unknown or already released workspace release fails fast.
+- replay and checkpoint-assisted rebuild restore the same lifecycle read model.
+- unsupported workspace modes remain fail-closed.
+
+Still not implemented:
+
+- real filesystem reads / writes
+- product workspace file/content API
+- container / git worktree / remote executor
+- cleanup scheduler
+- binary streaming
+- `workspace.release_failed`
+
+## 10. Original First Red Tests (Implemented)
+
+Implemented files:
 
 - `tests/isotope_kernel/test_workspace_lease_lifecycle_boundary.py`
 - `tests/isotope_kernel/test_workspace_artifact_capture_boundary.py`
@@ -177,7 +208,7 @@ Recommended coverage for `test_workspace_artifact_capture_boundary.py`:
 - HTTP full-content route remains `not_enabled`.
 - no real filesystem mutation / container / git worktree / process spawn.
 
-## 10. Stop Conditions For Implementation
+## 11. Stop Conditions For Implementation
 
 Stop before implementation if a future slice requires:
 
@@ -189,6 +220,6 @@ Stop before implementation if a future slice requires:
 - making projector read workspace files.
 - product workspace upload / browse / cleanup API.
 
-## 11. Decision
+## 12. Decision
 
-Workspace resource lifecycle should be the next kernel boundary after the current binding first slice. The immediate next safe step is red tests for event-sourced lease / release / artifact-capture read model, while keeping actual substrate no-op / `shared_ro` and avoiding all real filesystem or sandbox behavior.
+Workspace resource lifecycle first green slice is complete at read-model / validation scope. The next safe step is closure review, not real filesystem or sandbox behavior.
