@@ -18,6 +18,8 @@ class RunState:
     run_id: str = ""
     status: str = "unknown"
     current_agent: str = ""
+    agents: dict[str, dict[str, Any]] = field(default_factory=dict)
+    workers: dict[str, dict[str, Any]] = field(default_factory=dict)
     actions: dict[str, dict[str, Any]] = field(default_factory=dict)
     approvals: dict[str, dict[str, Any]] = field(default_factory=dict)
     artifacts: list[dict[str, Any]] = field(default_factory=list)
@@ -36,6 +38,8 @@ class RunProjector:
         "run_id",
         "status",
         "current_agent",
+        "agents",
+        "workers",
         "actions",
         "approvals",
         "artifacts",
@@ -87,10 +91,16 @@ class RunProjector:
         self._proposal_action_types: dict[str, str] = {}
         self._proposal_reason_codes: dict[str, list[str]] = {}
         self._proposal_summaries: dict[str, dict[str, Any]] = {}
+        self._proposal_agents: dict[str, str] = {}
+        self._proposal_grants: dict[str, dict[str, Any]] = {}
         self._execution_statuses: dict[str, str] = {}
         self._execution_action_types: dict[str, str] = {}
         self._approval_proposals: dict[str, str] = {}
         self._approval_resolutions: set[str] = set()
+        self._delegation_proposals: dict[str, dict[str, Any]] = {}
+        self._delegation_decisions: dict[str, dict[str, Any]] = {}
+        self._workers: dict[str, dict[str, Any]] = {}
+        self._worker_agent_ids: set[str] = set()
         self._memory_record_ids: set[str] = set()
         self._run_completed = False
 
@@ -114,11 +124,17 @@ class RunProjector:
             if isinstance(proposal_id, str) and isinstance(action_type, str):
                 self._proposal_action_types[proposal_id] = action_type
                 self._proposal_summaries[proposal_id] = {"action_type": action_type}
+                agent_id = payload.get("agent_id")
+                if isinstance(agent_id, str) and agent_id:
+                    self._proposal_agents[proposal_id] = agent_id
         elif event.event_type == "action.decided":
             proposal_id = str(payload["proposal_id"])
             self._proposal_outcomes[proposal_id] = str(payload["outcome"])
             reason_codes = payload.get("reason_codes", [])
             self._proposal_reason_codes[proposal_id] = list(reason_codes) if isinstance(reason_codes, list) else []
+            grants = payload.get("grants")
+            if isinstance(grants, dict):
+                self._proposal_grants[proposal_id] = dict(grants)
         elif event.event_type == "action.started":
             proposal_id = str(payload["proposal_id"])
             outcome = self._proposal_outcomes.get(proposal_id)
@@ -128,8 +144,39 @@ class RunProjector:
                 raise ValueError("action.started after pending approval")
             if outcome not in self.EXECUTABLE_DECISION_OUTCOMES:
                 raise ValueError("action.started before approved decision")
+            agent_id = self._proposal_agents.get(proposal_id, "")
+            if agent_id in self._worker_agent_ids and proposal_id not in self._proposal_grants:
+                raise ValueError("worker action requires policy grants")
             self._execution_statuses[str(payload["execution_id"])] = "running"
             self._execution_action_types[str(payload["execution_id"])] = self._proposal_action_types.get(proposal_id, "")
+        elif event.event_type == "delegation.proposed":
+            self._delegation_proposals[str(payload["delegation_id"])] = dict(payload)
+        elif event.event_type == "delegation.decided":
+            delegation_id = str(payload["delegation_id"])
+            if delegation_id not in self._delegation_proposals:
+                raise ValueError("delegation.decided requires delegation.proposed")
+            self._delegation_decisions[delegation_id] = dict(payload)
+        elif event.event_type == "worker.created":
+            delegation_id = str(payload["delegation_id"])
+            if delegation_id not in self._delegation_proposals:
+                raise ValueError("worker.created requires approved delegation via delegation.proposed")
+            decision = self._delegation_decisions.get(delegation_id)
+            if decision is None:
+                raise ValueError("worker.created requires delegation.decided")
+            outcome = decision.get("outcome")
+            if outcome == "denied":
+                raise ValueError("denied delegation cannot create worker")
+            if outcome not in self.EXECUTABLE_DECISION_OUTCOMES:
+                raise ValueError("worker.created requires approved delegation")
+            if payload.get("decision_id") != decision.get("decision_id"):
+                raise ValueError("worker.created decision_id must match delegation.decided")
+            worker_id = str(payload["worker_id"])
+            self._workers[worker_id] = dict(payload)
+            self._worker_agent_ids.add(str(payload["agent_id"]))
+        elif event.event_type in {"worker.started", "worker.completed", "worker.failed", "worker.cancelled"}:
+            self._validate_worker_lifecycle_transition(payload, event.event_type)
+        elif event.event_type == "worker.result_handed_off":
+            self._validate_worker_lifecycle_transition(payload, event.event_type)
         elif event.event_type == "action.completed":
             execution_id = str(payload["execution_id"])
             status = self._execution_statuses.get(execution_id)
@@ -170,6 +217,14 @@ class RunProjector:
             self._validate_run_completed()
             self._run_completed = True
 
+    def _validate_worker_lifecycle_transition(self, payload: dict[str, Any], event_type: str) -> None:
+        worker_id = str(payload["worker_id"])
+        worker = self._workers.get(worker_id)
+        if worker is None:
+            raise ValueError(f"{event_type} requires worker.created")
+        if payload.get("delegation_id") != worker.get("delegation_id"):
+            raise ValueError(f"{event_type} delegation_id must match worker.created")
+
     def _validate_run_completed(self) -> None:
         statuses = set(self._execution_statuses.values())
         if "failed" in statuses:
@@ -183,10 +238,15 @@ class RunProjector:
 
     def _validate_event_payload(self, event: CanonicalEvent) -> None:
         payload = event.payload
-        if event.event_type == "action.decided":
+        if event.event_type == "agent.created":
+            self._require_fields(event.event_type, payload, ("agent_id",))
+        elif event.event_type == "action.decided":
             self._require_fields(event.event_type, payload, ("proposal_id", "decision_id", "outcome"))
             if payload["outcome"] not in self.KNOWN_DECISION_OUTCOMES:
                 raise ValueError("action.decided has unknown outcome")
+            grants = payload.get("grants")
+            if grants is not None and not isinstance(grants, dict):
+                raise ValueError("action.decided grants must be a dict")
         elif event.event_type == "action.started":
             self._require_fields(event.event_type, payload, ("execution_id", "proposal_id", "decision_id"))
         elif event.event_type == "action.completed":
@@ -231,11 +291,85 @@ class RunProjector:
             self._validate_memory_record_superseded_payload(payload)
         elif event.event_type == "snapshot.imported":
             self._validate_snapshot_imported_payload(payload)
+        elif event.event_type == "delegation.proposed":
+            self._validate_delegation_proposed_payload(payload)
+        elif event.event_type == "delegation.decided":
+            self._validate_delegation_decided_payload(payload)
+        elif event.event_type == "worker.created":
+            self._validate_worker_created_payload(payload)
+        elif event.event_type in {"worker.started", "worker.completed", "worker.failed", "worker.cancelled"}:
+            self._validate_worker_status_payload(payload, event.event_type)
+        elif event.event_type == "worker.result_handed_off":
+            self._validate_worker_result_handoff_payload(payload)
 
     def _require_fields(self, label: str, payload: dict[str, Any], fields: tuple[str, ...]) -> None:
         for field in fields:
             if field not in payload:
                 raise ValueError(f"{label} missing required field: {field}")
+
+    def _validate_delegation_proposed_payload(self, payload: dict[str, Any]) -> None:
+        self._require_fields(
+            "delegation.proposed",
+            payload,
+            ("delegation_id", "run_id", "parent_agent_id", "requested_worker_role", "requested_capabilities"),
+        )
+        if not isinstance(payload["requested_capabilities"], dict):
+            raise ValueError("delegation.proposed requested_capabilities must be a dict")
+
+    def _validate_delegation_decided_payload(self, payload: dict[str, Any]) -> None:
+        self._require_fields(
+            "delegation.decided",
+            payload,
+            ("delegation_id", "decision_id", "outcome", "grants"),
+        )
+        if payload["outcome"] not in {"approved", "modified", "denied"}:
+            raise ValueError("delegation.decided outcome must be approved, modified, or denied")
+        if not isinstance(payload["grants"], dict):
+            raise ValueError("delegation.decided grants must be a dict")
+
+    def _validate_worker_created_payload(self, payload: dict[str, Any]) -> None:
+        self._require_fields(
+            "worker.created",
+            payload,
+            (
+                "worker_id",
+                "agent_id",
+                "run_id",
+                "parent_agent_id",
+                "delegation_id",
+                "decision_id",
+                "role",
+                "status",
+                "workspace",
+            ),
+        )
+        if payload["status"] != "created":
+            raise ValueError("worker.created status must be created")
+        if not isinstance(payload["workspace"], dict):
+            raise ValueError("worker.created workspace must be a dict")
+
+    def _validate_worker_status_payload(self, payload: dict[str, Any], event_type: str) -> None:
+        self._require_fields(event_type, payload, ("worker_id", "delegation_id", "status"))
+        expected_status = {
+            "worker.started": "running",
+            "worker.completed": "completed",
+            "worker.failed": "failed",
+            "worker.cancelled": "cancelled",
+        }[event_type]
+        if payload["status"] != expected_status:
+            raise ValueError(f"{event_type} status must be {expected_status}")
+        if event_type == "worker.failed" and "error" not in payload:
+            raise ValueError("worker.failed missing required field: error")
+        if event_type == "worker.cancelled" and "reason" not in payload:
+            raise ValueError("worker.cancelled missing required field: reason")
+
+    def _validate_worker_result_handoff_payload(self, payload: dict[str, Any]) -> None:
+        self._require_fields(
+            "worker.result_handed_off",
+            payload,
+            ("worker_id", "delegation_id", "artifact_ref", "summary"),
+        )
+        self._validate_resource_ref_payload(payload["artifact_ref"], "worker.result_handed_off artifact_ref")
 
     def _validate_memory_record_created_payload(self, payload: dict[str, Any]) -> None:
         self._require_fields(
@@ -374,15 +508,36 @@ class RunProjector:
             state.run_id = str(payload.get("run_id", event.run_id))
             state.status = "running"
         elif event.event_type == "agent.created":
-            state.current_agent = str(payload.get("agent_id", ""))
+            agent_id = str(payload["agent_id"])
+            state.current_agent = agent_id
+            state.agents[agent_id] = {
+                "agent_id": agent_id,
+                "run_id": payload.get("run_id", event.run_id),
+                "role": payload.get("role", "supervisor"),
+                "status": payload.get("status", "created"),
+                "created_event_id": event.event_id,
+                "last_event_id": event.event_id,
+            }
         elif event.event_type == "action.started":
             execution_id = str(payload["execution_id"])
+            proposal_id = str(payload.get("proposal_id", ""))
             state.actions[execution_id] = {
                 "execution_id": execution_id,
-                "proposal_id": payload.get("proposal_id"),
+                "proposal_id": proposal_id,
                 "decision_id": payload.get("decision_id"),
+                "agent_id": self._proposal_agents.get(proposal_id),
                 "status": "running",
             }
+        elif event.event_type == "delegation.proposed":
+            pass
+        elif event.event_type == "delegation.decided":
+            pass
+        elif event.event_type == "worker.created":
+            self._apply_worker_created(state, payload, event)
+        elif event.event_type in {"worker.started", "worker.completed", "worker.failed", "worker.cancelled"}:
+            self._apply_worker_status(state, payload, event)
+        elif event.event_type == "worker.result_handed_off":
+            self._apply_worker_result_handoff(state, payload, event)
         elif event.event_type == "action.decided":
             outcome = str(payload.get("outcome", ""))
             if outcome in {"denied", "pending_user_approval"}:
@@ -497,6 +652,66 @@ class RunProjector:
         elif event.event_type == "run.completed":
             state.status = str(payload.get("status", "completed"))
 
+    def _apply_worker_created(self, state: RunState, payload: dict[str, Any], event: CanonicalEvent) -> None:
+        worker_id = str(payload["worker_id"])
+        delegation_id = str(payload["delegation_id"])
+        proposal = self._delegation_proposals[delegation_id]
+        decision = self._delegation_decisions[delegation_id]
+        grants = dict(decision["grants"])
+        workspace = dict(grants.get("workspace", payload["workspace"]))
+        worker = {
+            "worker_id": worker_id,
+            "agent_id": payload["agent_id"],
+            "run_id": payload.get("run_id", event.run_id),
+            "parent_agent_id": payload["parent_agent_id"],
+            "delegation_id": delegation_id,
+            "decision_id": payload["decision_id"],
+            "role": payload["role"],
+            "status": "created",
+            "requested_capabilities": dict(proposal["requested_capabilities"]),
+            "grants": grants,
+            "workspace": workspace,
+            "result_refs": [],
+            "created_event_id": event.event_id,
+            "last_event_id": event.event_id,
+        }
+        state.workers[worker_id] = worker
+        agent_id = str(payload["agent_id"])
+        state.agents[agent_id] = {
+            "agent_id": agent_id,
+            "run_id": payload.get("run_id", event.run_id),
+            "role": payload["role"],
+            "status": "created",
+            "parent_agent_id": payload["parent_agent_id"],
+            "delegation_id": delegation_id,
+            "worker_id": worker_id,
+            "created_event_id": event.event_id,
+            "last_event_id": event.event_id,
+        }
+
+    def _apply_worker_status(self, state: RunState, payload: dict[str, Any], event: CanonicalEvent) -> None:
+        worker_id = str(payload["worker_id"])
+        worker = state.workers.setdefault(worker_id, {"worker_id": worker_id})
+        status = str(payload["status"])
+        worker["status"] = status
+        worker["last_event_id"] = event.event_id
+        if "error" in payload:
+            worker["error"] = payload["error"]
+        if "reason" in payload:
+            worker["reason"] = payload["reason"]
+        agent_id = worker.get("agent_id")
+        if isinstance(agent_id, str) and agent_id in state.agents:
+            state.agents[agent_id]["status"] = status
+            state.agents[agent_id]["last_event_id"] = event.event_id
+
+    def _apply_worker_result_handoff(self, state: RunState, payload: dict[str, Any], event: CanonicalEvent) -> None:
+        worker_id = str(payload["worker_id"])
+        worker = state.workers.setdefault(worker_id, {"worker_id": worker_id})
+        result_refs = worker.setdefault("result_refs", [])
+        result_refs.append(dict(payload["artifact_ref"]))
+        worker["result_summary"] = payload["summary"]
+        worker["last_event_id"] = event.event_id
+
     def _apply_snapshot_imported(self, state: RunState, payload: dict[str, Any]) -> None:
         source_ref = dict(payload["source_ref"])
         provenance = dict(payload["provenance"])
@@ -593,10 +808,16 @@ class RunProjector:
         self._proposal_action_types = {}
         self._proposal_reason_codes = {}
         self._proposal_summaries = {}
+        self._proposal_agents = {}
+        self._proposal_grants = {}
         self._execution_statuses = {}
         self._execution_action_types = {}
         self._approval_proposals = {}
         self._approval_resolutions = set()
+        self._delegation_proposals = {}
+        self._delegation_decisions = {}
+        self._workers = {}
+        self._worker_agent_ids = set()
         self._memory_record_ids = set()
         self._run_completed = False
         state = RunState()
@@ -831,6 +1052,12 @@ class RunProjector:
             raise ValueError("checkpoint state last_event_id must match basis_event_id")
         if state["status"] not in self.KNOWN_RUN_STATUSES:
             raise ValueError("checkpoint state status must be known")
+        agents = state.get("agents", {})
+        if not isinstance(agents, dict):
+            raise ValueError("checkpoint state agents must be a dict")
+        workers = state.get("workers", {})
+        if not isinstance(workers, dict):
+            raise ValueError("checkpoint state workers must be a dict")
         if not isinstance(state["actions"], dict):
             raise ValueError("checkpoint state actions must be a dict")
         approvals = state.get("approvals", {})
@@ -846,6 +1073,10 @@ class RunProjector:
             raise ValueError("checkpoint state external_observations must be a list")
         for artifact in state["artifacts"]:
             self._validate_checkpoint_artifact(artifact)
+        for agent_id, agent in agents.items():
+            self._validate_checkpoint_agent(agent_id, agent)
+        for worker_id, worker in workers.items():
+            self._validate_checkpoint_worker(worker_id, worker)
         for approval_id, approval in approvals.items():
             self._validate_checkpoint_approval(approval_id, approval)
         for record in memory_records:
@@ -856,6 +1087,8 @@ class RunProjector:
             run_id=str(state.get("run_id", "")),
             status=str(state.get("status", "unknown")),
             current_agent=str(state.get("current_agent", "")),
+            agents=dict(agents),
+            workers=dict(workers),
             actions=dict(state.get("actions", {})),
             approvals=dict(approvals),
             artifacts=list(state.get("artifacts", [])),
@@ -863,6 +1096,49 @@ class RunProjector:
             external_observations=list(external_observations),
             last_event_id=str(state.get("last_event_id", "")),
         )
+
+    def _validate_checkpoint_agent(self, agent_id: Any, agent: Any) -> None:
+        if not isinstance(agent_id, str) or not agent_id:
+            raise ValueError("checkpoint agent id must be a non-empty string")
+        if not isinstance(agent, dict):
+            raise ValueError("checkpoint agent entry must be a dict")
+        if agent.get("agent_id") != agent_id:
+            raise ValueError("checkpoint agent id must match entry agent_id")
+        if not isinstance(agent.get("role"), str) or not agent["role"]:
+            raise ValueError("checkpoint agent role must be a non-empty string")
+        if agent.get("status") not in {"created", "running", "completed", "failed", "cancelled"}:
+            raise ValueError("checkpoint agent status must be known")
+
+    def _validate_checkpoint_worker(self, worker_id: Any, worker: Any) -> None:
+        if not isinstance(worker_id, str) or not worker_id:
+            raise ValueError("checkpoint worker id must be a non-empty string")
+        if not isinstance(worker, dict):
+            raise ValueError("checkpoint worker entry must be a dict")
+        for field_name in (
+            "worker_id",
+            "agent_id",
+            "parent_agent_id",
+            "delegation_id",
+            "decision_id",
+            "status",
+            "grants",
+            "workspace",
+        ):
+            if field_name not in worker:
+                raise ValueError(f"checkpoint worker entry missing required field: {field_name}")
+        if worker["worker_id"] != worker_id:
+            raise ValueError("checkpoint worker id must match entry worker_id")
+        if worker["status"] not in {"created", "running", "completed", "failed", "cancelled"}:
+            raise ValueError("checkpoint worker status must be known")
+        if not isinstance(worker["grants"], dict):
+            raise ValueError("checkpoint worker grants must be a dict")
+        if not isinstance(worker["workspace"], dict):
+            raise ValueError("checkpoint worker workspace must be a dict")
+        result_refs = worker.get("result_refs", [])
+        if not isinstance(result_refs, list):
+            raise ValueError("checkpoint worker result_refs must be a list")
+        for index, ref in enumerate(result_refs):
+            self._validate_resource_ref_payload(ref, f"checkpoint worker result_refs[{index}]")
 
     def _validate_checkpoint_artifact(self, artifact: Any) -> None:
         if not isinstance(artifact, dict):
