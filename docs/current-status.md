@@ -26,7 +26,7 @@
 - v0.2 cycle closure review 已记录在 `docs/v0.2-cycle-closure-review.md`。当前建议暂停 v0.2 implementation，进入 cleanup / docs organization / external review mode；Track B real HTTP adapter、Track G memory query 和 real integrations 继续 deferred。
 - docs inventory 已落文档，见 `docs/docs-inventory.md`。当前记录已迁移 docs、compatibility stubs 和后续整理方向。
 - docs migration plan 已落文档，见 `docs/docs-migration-plan.md`。Phase 1 当前 closed / paused；后续不默认继续迁移 track / checkpoint / memory / kernel / current-status / roadmap docs。
-- agent task queue 已落文档，见 `docs/agent-task-queue.md`。后续 45-60 分钟批次自动推进应先读 `docs/current-status.md`、`docs/v0.2-roadmap.md` 和 `docs/agent-task-queue.md`，按 Current Batch 执行，并在 stop condition 触发时停止。
+- agent task queue 已落文档，见 `docs/agent-task-queue.md`。后续默认以 45-60 分钟 work package 自动推进：每个 batch 包含 3-5 个连续小任务，先读 `docs/current-status.md`、`docs/v0.2-roadmap.md` 和 `docs/agent-task-queue.md`，按 Current Batch 执行；只有遇到 stop condition 或 batch 完成后才停给用户 review。
 - Retry / Cancel / Supersede Boundary v0.2 first slice 当前 complete，见 `docs/retry-cancel-supersede-boundary-v0.2.md`。当前已覆盖 `RunState.action_retries` / `RunState.action_cancellations` / `RunState.action_supersessions` read model、canonical retry / cancel / supersede slice events、malformed event fail-fast、replay 和 checkpoint support。仍不实现 scheduler、automatic retry engine、process kill、tool-level cancellation 或 real concurrency。
 - docs migration Phase 1a / 1b / 1c 已执行并 audit clean：release draft 已迁移到 `docs/release/`，v0.1 demo explainer docs 和 demo acceptance/readiness/scenario docs 已迁移到 `docs/demo/`，旧路径均保留 stub。Phase 1 dry-run 和后续 checklist 见 `docs/docs-migration-phase-1-dry-run.md`。下一阶段可以转入 Kernel Gap Review。
 - Kernel Gap Review v0.2 已落文档，见 `docs/kernel-gap-review-v0.2.md`。当前判断：kernel 还不能宣布完成；下一块 kernel design 应优先做 Agent / worker lifecycle，其次是 Workspace substrate，再考虑 retry / cancel / supersede 和 policy profile / action registry versioning。real HTTP server、real LLM loop、memory storage/query/promotion、provider adapter/webhook、retrieval ranking 和 domain pack system 仍不应优先打开。
@@ -717,7 +717,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 下一步建议优先做：
 
 - optional GitHub Release draft for `v0.2-demo` if explicitly requested; do not publish a Release without a separate request
-- follow `docs/agent-task-queue.md` Current Batch；Retry / Cancel / Supersede first slice 已 complete，下一批建议只在用户确认后开始
+- follow `docs/agent-task-queue.md` Current Batch；当前 batch 是 `Retry / Cancel / Supersede Stabilization`，timebox 为 45-60 min，目标是 closure review、malformed event hardening、checkpoint/replay hardening、docs/status sync，然后停给用户 review
 - Workspace Substrate Boundary v0.2 first slice complete；后续如继续 workspace，应先做 lease/path-safety boundary design
 - Track F: closed for now; reopen only with a new design / red-test request such as provider adapter, webhook, HTTP ingestion API, or reconciliation boundary
 - reopen Track E only with an explicit design / red-test request, such as product approval UI / auth / scheduler boundary

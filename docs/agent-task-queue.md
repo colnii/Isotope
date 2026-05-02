@@ -14,12 +14,15 @@
   - `docs/current-status.md`
   - `docs/v0.2-roadmap.md`
   - `docs/agent-task-queue.md`
-- 按 Current Batch 顺序执行任务。
+- 默认 batch timebox 是 45-60 min。
+- 每个 batch 应包含 3-5 个连续小任务，形成一个 work package。
+- 按 Current Batch 顺序执行任务，不要因为单个小任务完成就停下来等待用户。
 - 每个 implementation task 默认遵守 red -> green -> docs/status sync。
 - docs-only task 不得改 `src/`、`tests/`、`.github/` 或 `pyproject.toml`。
 - red-only task 只写 failing tests，不实现，不提交，除非 queue 明确要求继续 green。
-- 每完成一个任务，更新本文件的 task status。
-- 每个 batch 完成后，写清 next suggested batch。
+- 每完成一个小任务，可以在本文件记录 status / evidence，但继续执行同一 batch 的后续任务。
+- 只有遇到 stop condition，或整个 batch 完成，才停下来汇报。
+- 每个 batch 完成后，必须跑完整验证、docs/status sync、commit + push、更新 next suggested batch，然后停给用户 review。
 - 不要自行进入未列出的新 Track。
 - 如果 queue 与用户最新明确指令冲突，以用户最新明确指令为准，并同步 queue。
 
@@ -28,7 +31,7 @@
 遇到以下情况必须停止并汇报，不继续：
 
 - full regression 出现非本批失败
-- red tests 意外全绿
+- red tests 意外全绿且无法说明是已有覆盖
 - 需要新增依赖
 - 需要修改 `/home/lumber/Github/x-agent`
 - 需要创建或修改 tag
@@ -36,6 +39,7 @@
 - 需要重写已 closed 的 kernel contract
 - 需要实现 real HTTP server / real LLM / provider adapter / memory query engine
 - 需要修改 event store append-only 语义
+- 需要进入 real concurrency / process spawn / container / git worktree
 - docs/code 状态冲突且无法确定 source of truth
 - 用户明确要求暂停
 
@@ -66,133 +70,75 @@ git status --short
 
 ## 5. Current Batch
 
-Batch name: `Retry / Cancel / Supersede Boundary Planning`
+Batch name: `Retry / Cancel / Supersede Stabilization`
 
 Timebox: 45-60 min
 
-Status: `complete`
+Status: `ready`
 
-Goal: define the action lifecycle boundary for retry / cancel / supersede without opening implementation.
+Goal: stabilize the first Retry / Cancel / Supersede slice as one 45-60 minute work package, then stop for user review.
 
-Green slice addendum:
+### Task 1: Retry / Cancel / Supersede closure review
 
-- User confirmed continuing into `Retry / Cancel / Supersede Green Slice`.
-- Implemented minimal projector-level retry / cancel / supersede boundary.
-- No scheduler / process kill / real concurrency / new dependency.
-
-### Task 1: Retry / Cancel / Supersede Boundary docs-only
-
-Status: `complete`
-
-Evidence:
-
-- Added `docs/retry-cancel-supersede-boundary-v0.2.md`.
-- Synced docs/status.
-- Implementation and red tests not started in this task.
+Status: `ready`
 
 Scope:
 
-- 新增 `docs/retry-cancel-supersede-boundary-v0.2.md`
-- 不写实现
-- 不新增测试
-- 说明 action lifecycle 里 retry / cancel / supersede 的最小 kernel 边界
+- review recent implementation
+- confirm current boundary can be marked first slice complete
+- docs-only unless bug found
 
-Expected contents:
+### Task 2: Retry / Cancel / Supersede malformed event hardening
 
-- why this boundary is next after Workspace Substrate first slice
-- current implemented lifecycle facts
-- retry / cancel / supersede definitions
-- canonical event candidates
-- projector / checkpoint expectations
-- approval / worker / workspace interaction risks
-- explicit non-goals
-- first red tests recommendation
-
-Completion requirement:
-
-- docs/status synced
-- no `src/` / `tests/` / `.github/` / `pyproject.toml` changes
-- verification baseline passes
-- queue updated before commit
-
-### Task 2: Retry / Cancel / Supersede red tests only
-
-Status: `complete`
-
-Evidence:
-
-- Added red tests:
-  - `tests/isotope_kernel/test_action_retry_boundary.py`
-  - `tests/isotope_kernel/test_action_cancel_boundary.py`
-  - `tests/isotope_kernel/test_action_supersede_boundary.py`
-- Targeted result: `11 failed, 3 passed`.
-- Full regression result with red tests present: `11 failed, 809 passed`; failures are limited to the three new red-test files.
-- No implementation started.
+Status: `ready`
 
 Scope:
 
-- 新增 suggested tests:
-  - `tests/isotope_kernel/test_action_retry_boundary.py`
-  - `tests/isotope_kernel/test_action_cancel_boundary.py`
-  - `tests/isotope_kernel/test_action_supersede_boundary.py`
-- only red phase
-- no implementation
-- no docs expansion beyond status / queue update
+- red -> green
+- add tests for malformed retry / cancel / supersede payloads
+- ensure controlled `ValueError`
+- ensure no partial read model mutation
 
-Expected red focus:
+### Task 3: Retry / Cancel / Supersede checkpoint/replay hardening
 
-- retry must not mutate prior action state directly
-- retry must preserve lineage to original proposal / execution
-- cancel must append canonical event and stop later execution where allowed
-- supersede must link old and replacement proposal
-- cancelled / superseded actions must remain replayable
-- checkpoint-assisted rebuild must preserve lifecycle read model
-- retry / cancel / supersede cannot bypass policy grants
-
-Stop rule:
-
-- If these tests are unexpectedly green, stop and report.
-- Do not start green phase in this batch.
-
-### Task 3: Stop For User Review
-
-Status: `complete`
-
-Evidence:
-
-- Stopped after red phase.
-- Do not enter green phase without user confirmation.
-
-### Task 4: Retry / Cancel / Supersede green slice
-
-Status: `complete`
-
-Evidence:
-
-- Targeted result after green: `14 passed`.
-- Full regression result after green: `820 passed`.
-- Updated checkpoint expected fields because `action_retries`, `action_cancellations`, and `action_supersessions` are now `RunState` read-model fields.
-- No red test assertions changed.
-- No scheduler, process kill, real concurrency, event store semantic change, executor grants semantic change, or new dependency.
+Status: `ready`
 
 Scope:
 
-- Do not enter green phase.
-- Report red results and expected failure points.
-- Recommend the next batch.
-- Update this queue with Current Batch status.
+- red -> green if needed
+- ensure retry / cancel / supersede read-model fields replay and checkpoint-assisted rebuild consistently
+- if already covered, document evidence and skip implementation
+
+### Task 4: Docs/status sync
+
+Status: `ready`
+
+Scope:
+
+- update `docs/retry-cancel-supersede-boundary-v0.2.md`
+- update `docs/current-status.md`
+- update `docs/v0.2-roadmap.md`
+- update `docs/agent-task-queue.md`
+- update README / AGENTS only if needed
+
+### Task 5: Stop for user review
+
+Status: `ready`
+
+Scope:
+
+- do not start next batch
+- report results and next suggested batch
 
 ## 6. Next Suggested Batch
 
-Next suggested batch:
+Batch name: `Kernel Usability Pressure Test Planning`
 
-Batch name: `Workspace Lease / Path Safety Boundary Planning`
+Possible tasks:
 
-Likely scope:
-
-- docs-only lease / path-safety boundary
-- red tests only if explicitly included in the next queue
-- keep no filesystem mutation / no container / no git worktree / no remote executor
+- docs-only pressure test boundary
+- define first tiny app spike candidate
+- decide whether Agent / Workspace / RCS are sufficient to begin
 
 Do not start this next batch without explicit user confirmation or an updated queue that marks it as Current Batch.
 
