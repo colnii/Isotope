@@ -1,0 +1,104 @@
+# Usability Pressure Test Plan v0.2
+
+状态：`requires user decision`
+
+## 1. Purpose
+
+本文定义第一个 usability pressure test（可用性压力测试）候选范围。它不是 implementation plan，也不是产品路线承诺。
+
+目标是回答一个窄问题：在 Track A / C / E / F、Agent / Worker lifecycle first slice、Workspace substrate first slice 和 Retry / Cancel / Supersede stabilization slice 已完成后，Isotope 是否已经足够开始一个 tiny app spike（小应用尖刺验证），用来检验 kernel boundary 在更接近真实使用路径里的可读性和组合性。
+
+本阶段不新增实现、不新增测试、不打开真实集成。
+
+## 2. Current Kernel Readiness
+
+当前可以被 pressure test 使用的 kernel slice：
+
+- deterministic in-process runtime。
+- `HttpApiApp` facade，不监听端口。
+- action chain: `ActionCompiler -> PolicyEngine -> Executor`。
+- `PolicyDecision.grants` enforcement。
+- artifact / `ResourceRef` / provenance。
+- controlled artifact content retrieval boundary。
+- approval pause / resume boundary。
+- external observation boundary。
+- Agent / Worker lifecycle read model。
+- Workspace `shared_ro` binding read model。
+- Retry / Cancel / Supersede read model。
+- event replay and checkpoint-assisted rebuild。
+
+当前 baseline：`831 passed`。
+
+## 3. Hard Boundaries
+
+第一个 tiny app spike 必须遵守：
+
+- no real HTTP server / network listener。
+- no real LLM。
+- no provider adapter / webhook / external callback。
+- no durable memory storage / query engine。
+- no new dependency。
+- no container / git worktree / remote executor。
+- no product UI。
+- no tag / GitHub Release。
+- 不绕过 action chain / policy / event log / projector。
+- 不把 artifact full content、workspace file content 或 external raw input 当成 native state。
+
+## 4. Candidate Comparison
+
+| Candidate | Visible value | Kernel contracts exercised | Risk | Product judgment needed? | Fit |
+| --- | --- | --- | --- | --- | --- |
+| file summarizer | 容易理解，外部读者能快速感知用途 | workspace binding、artifact capture、retrieval policy | 容易暗示 real file IO、path safety、LLM summary 已可用；当前 workspace 仍是 `shared_ro` boundary | medium | not first |
+| artifact review flow | 很适合验证 artifact summary / full-content policy / provenance | artifact / `ResourceRef` / controlled content retrieval / checkpoint | 可见价值偏窄，较少压力测试 worker、workspace、approval、retry / cancel / supersede 的组合 | low | acceptable but shallow |
+| approval-gated tool runner | 能清楚展示 action chain、policy grants、approval pause / resume、workspace grant、artifact handoff、HTTP facade 和 replay / checkpoint | Track A / C / E、Agent / Workspace、RCS read model 都能被窄范围触达 | 需要谨慎避免被理解为真实 tool runner、real filesystem mutation 或 process execution | medium | recommended |
+| research assistant mini flow | 对外展示价值高 | 可能触达 memory、retrieval、external observation、artifact review | 容易牵出 real LLM、semantic retrieval、ranking、provider adapter 和 memory query，当前风险最高 | high | defer |
+
+## 5. Recommendation
+
+推荐候选：`approval-gated tool runner`。
+
+原因：
+
+- 它最能验证当前 kernel 已完成的组合边界，而不是只展示单点 capability。
+- 可以保持 deterministic / in-process / no-network / no-real-LLM。
+- 可以通过 approval gate 明确展示 user decision boundary，但不需要 product UI。
+- 可以要求 tool action 只在 policy grants 允许后执行，并通过 artifact / `ResourceRef` handoff 结果。
+- 可以确认 HTTP facade、event replay、checkpoint-assisted rebuild 和 read model 在同一 tiny app flow 中协同工作。
+
+但该选择仍包含产品/用户判断：这个 spike 会把 Isotope 展示成“approval-gated tool runner”方向，而不是 artifact review 或 research assistant 方向。按 `docs/agent-task-queue.md` stop condition，本轮不把它正式选为 next implementation batch。
+
+## 6. If Approved: First Red Tests
+
+如果用户确认选择 `approval-gated tool runner`，下一批建议只做 red tests。
+
+建议测试文件：
+
+- `tests/isotope_kernel/test_usability_spike_approval_tool_runner.py`
+- `tests/isotope_kernel/test_usability_spike_approval_tool_runner_read_model.py`
+
+建议测试目标：
+
+- spike 使用 in-process server / `HttpApiApp`，不监听端口。
+- create session / run / submit input / read run state / read events 可走通。
+- 一个 deterministic tool action 需要 approval，pending state 可见。
+- approved resolution 通过现有 executor path resume。
+- denied resolution 不执行、不产 artifact。
+- action 使用 `PolicyDecision.grants`，不使用 resolution body forged grants。
+- workspace binding 来自 grants，默认仍是 `shared_ro` / no filesystem mutation。
+- result handoff 使用 artifact summary / `ResourceRef` / provenance。
+- JSON / read model 不包含 artifact full content。
+- HTTP full-content route 仍 `501 not_enabled`。
+- event replay 和 checkpoint-assisted rebuild 得到同等 read model。
+- 不实现 real scheduler、process kill、tool-level cancellation、real concurrency、real LLM、provider adapter 或 memory query。
+
+## 7. Decision State
+
+当前状态：`requires user decision`。
+
+本轮只给出技术推荐，不进入 red tests。
+
+需要用户确认：
+
+- 是否选择 `approval-gated tool runner` 作为第一个 usability spike。
+- 或改选 `artifact review flow` / `file summarizer` / `research assistant mini flow`。
+- 或先继续 docs-only pressure-test planning，不开测试。

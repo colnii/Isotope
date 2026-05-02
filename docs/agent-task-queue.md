@@ -87,13 +87,13 @@ Batch name: `Kernel Usability Pressure Test Planning`
 
 Timebox: part of rolling 45-60 min session
 
-Status: `ready`
+Status: `blocked_for_user_decision`
 
 Goal: define the first usability pressure test boundary and decide whether the current kernel slices are enough to begin a tiny app spike.
 
 ### Task 1: Docs-only usability pressure test boundary
 
-Status: `ready`
+Status: `complete`
 
 Scope:
 
@@ -102,9 +102,14 @@ Scope:
 - no implementation
 - no new tests
 
+Evidence:
+
+- Added `docs/usability-pressure-test-plan-v0.2.md`.
+- Current technical recommendation is `approval-gated tool runner`.
+
 ### Task 2: Decide first tiny app spike candidate
 
-Status: `ready`
+Status: `blocked_for_user_decision`
 
 Compare:
 
@@ -119,9 +124,15 @@ Scope:
 - explain why it fits better than the alternatives
 - if product / user judgment is required, stop instead of choosing arbitrarily
 
+Decision:
+
+- `approval-gated tool runner` is the technical recommendation because it exercises HTTP facade, action chain, policy grants, approval pause / resume, workspace binding, artifact handoff, replay, and checkpoint without real network / real LLM.
+- This still requires product / user judgment because it frames the first spike as a tool-runner path rather than artifact review, file summarization, or research-assistant behavior.
+- Stop condition fired: selecting a spike requires product / user judgment.
+
 ### Task 3: Update queue
 
-Status: `ready`
+Status: `complete`
 
 Scope:
 
@@ -129,11 +140,16 @@ Scope:
 - if user judgment is required, stop
 - do not start implementation unless the queue explicitly marks it safe
 
+Evidence:
+
+- Next Suggested Batch remains blocked pending explicit user selection.
+- Do not start red tests until the user confirms the spike candidate.
+
 ## 7. Next Suggested Batch
 
 Batch name: `Selected Usability Spike Red Tests`
 
-Status: `pending current batch decision`
+Status: `blocked_pending_user_selection`
 
 Possible shape:
 
@@ -141,9 +157,22 @@ Possible shape:
 - red phase only
 - no implementation unless Current Batch explicitly marks it safe
 
-Do not start this next batch if selecting the spike requires product / user judgment.
+Recommended candidate if user confirms: `approval-gated tool runner`.
+
+Do not start this next batch until the user explicitly selects a spike candidate.
 
 ## 8. Completed Batch Log
+
+### Kernel Usability Pressure Test Planning
+
+Status: `blocked_for_user_decision`
+
+Evidence:
+
+- Added `docs/usability-pressure-test-plan-v0.2.md`.
+- Compared file summarizer, artifact review flow, approval-gated tool runner, and research assistant mini flow.
+- Technical recommendation: `approval-gated tool runner`.
+- Stop reason: selecting the spike requires product / user judgment, so no red tests were started.
 
 ### Retry / Cancel / Supersede Stabilization
 

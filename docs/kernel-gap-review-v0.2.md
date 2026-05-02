@@ -154,7 +154,7 @@
 - Retry / cancel / supersede product-runtime behavior still excludes scheduler / process kill / tool-level cancellation
 - Policy profile / action registry versioning 未定义
 
-结论：Agent / Worker Lifecycle first slice、Workspace Substrate first slice 和 Retry / Cancel / Supersede stabilization slice 已 complete；下一步应做 Kernel Usability Pressure Test Planning，先判断是否可以进入 tiny app pressure test。
+结论：Agent / Worker Lifecycle first slice、Workspace Substrate first slice 和 Retry / Cancel / Supersede stabilization slice 已 complete；Kernel Usability Pressure Test Planning 已完成 docs-only review，见 `docs/usability-pressure-test-plan-v0.2.md`。当前技术推荐 `approval-gated tool runner`，但是否选择该 spike 需要产品 / 用户确认。
 
 ## 7. Non-Goals For This Review
 
