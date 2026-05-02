@@ -302,6 +302,27 @@ Remaining friction is optional polish, not blocker-level kernel or app-spike fri
 
 Next suggested batch: `Second App Spike Selection`, docs-only by default. Stop if selecting the next spike requires product / user judgment.
 
+## 16. Second App Spike Selection
+
+状态：`complete; external snapshot review recommended`
+
+Selection doc: `docs/second-app-spike-selection.md`
+
+Current recommendation:
+
+- next app spike candidate: `external snapshot review`
+- next batch: `External Snapshot Review Red Tests`
+- mode: red-only; no implementation until explicitly allowed
+
+Reasoning:
+
+- `artifact-review` already covered artifact / content policy / provenance / replay / checkpoint。
+- `approval-tool-runner` already covered approval / workspace binding / artifact handoff / replay / checkpoint。
+- `external snapshot review` covers Track F surfaces that remain unexercised by an app-shaped flow: `ImportedSnapshot`, external observations, conflict diagnostics, native state priority, replay, and checkpoint。
+- It can stay deterministic / in-process and does not require provider adapter, webhook, real HTTP server, real LLM, filesystem mutation, or memory query engine。
+
+Do not select worker handoff, approval-gated workspace task, or memory boundary review as the immediate next spike unless explicitly reopened. They remain useful later candidates, but each has higher overlap or higher risk of product-surface drift.
+
 ## 12. Demo Trace Mode
 
 状态：`first slice complete`

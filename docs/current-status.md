@@ -7,7 +7,7 @@
 - `isotope` 是独立的 kernel-first agent runtime 项目。
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
-- 最新 implementation slice commit：`475fadc`（artifact provenance helper）；当前 docs/status sync target 是 artifact review flow closure review。
+- 最新 implementation slice commit：`475fadc`（artifact provenance helper）；当前 docs/status sync target 是 second app spike selection。
 - memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for v0.1 demo planning：当前 memory 线只声明 boundary / read-model / checkpoint 能力，不声明 durable storage 或 query engine 已完成。
 - v0.1 demo entrypoint 已实现，详见 `docs/demo/demo-entrypoint-v0.1.md`；`python -m isotope_kernel.demo` 可输出 plain text summary，`--json` 可输出 JSON summary。
 - v0.1 developer demo 已按 `docs/demo/v0.1-demo-acceptance.md` accepted：acceptance anchor 当时依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过；当前 baseline 已随 artifact provenance helper 更新为 `898 passed`。
@@ -30,6 +30,7 @@
 - Artifact review flow usability spike 已落地：`python -m isotope_kernel.demo --scenario artifact-review`、`python -m isotope_kernel.demo --scenario artifact-review --trace` 和 `python -m isotope_kernel.demo --scenario artifact-review --json` 已可运行。该 flow 从 existing artifact summary / structured `ResourceRef` 开始，reviewer action 走 canonical action chain，review result 通过 artifact / `ResourceRef` / canonical events handoff；controlled full-content retrieval 只在 retrieval layer 用 grants + caller context + purpose 验证，demo / helper 输出不包含 full content。HTTP full-content route 仍 `not_enabled`，replay / checkpoint 可恢复 review summary；没有 real HTTP server、real LLM、provider adapter、semantic retrieval / ranking、memory query engine 或 real filesystem mutation。
 - Artifact Review Flow Friction Review 已落文档，见 `docs/artifact-review-flow-friction-review.md`。结论：spike 有用且未暴露 kernel correctness bug；原主要 friction 是 source artifact setup 通过 demo glue / private `server._append(...)` 手工拼 canonical action + artifact event sequence，该 gap 已由 Source Artifact Setup Helper 关闭；source artifact `artifact.created` basis event scan glue 也已由 Artifact Provenance Helper 关闭。仍不得打开 real filesystem mutation、real LLM、real HTTP server、provider adapter、memory query engine 或 product-level artifact review facade。
 - Artifact Review Flow Closure Review 已落文档，见 `docs/artifact-review-flow-closure-review.md`。当前判断：`artifact-review` first app spike 可以标为 first app spike complete / closed for now；remaining friction 只是 controlled full-content retrieval verbosity、deterministic review content 和缺少 product artifact review facade，均不是 blocker。
+- Second App Spike Selection 已落文档，见 `docs/second-app-spike-selection.md`。当前推荐第二个 app spike 选择 `external snapshot review`，因为它覆盖 `artifact-review` 和 `approval-tool-runner` 未充分压力测试的 Track F / `ImportedSnapshot` / `RunState.external_observations` / conflict diagnostics / native state priority，同时仍可保持 deterministic / in-process / no provider adapter / no real HTTP server / no real LLM / no filesystem mutation / no memory query engine。下一批建议只做 External Snapshot Review red tests，不直接 green implementation。
 - Source Artifact Setup Helper 已实现并 closed，见 `docs/source-artifact-setup-helper-boundary-v0.2.md` 和 `docs/source-artifact-helper-closure-review.md`。`InProcessServer.create_source_artifact(...)` 为 deterministic in-process setup 提供受控 helper：先 validate，再通过 existing compiler / policy / executor path 追加 canonical action + artifact events，返回 artifact summary / structured `ResourceRef` / provenance，不返回 full content，不追加 `run.completed`，并且可 replay / checkpoint-assisted rebuild。`artifact-review` demo 已停止使用 private `server._append(...)` 做 source setup；HTTP full-content route 仍 `not_enabled`，没有 real filesystem upload / binary streaming / real HTTP server / provider adapter / memory query engine。
 - Artifact Provenance Helper 已实现，见 `docs/artifact-review-provenance-helper-boundary-v0.2.md`。`InProcessServer.get_artifact_record(ref)` 只接受 structured `ResourceRef`，返回 artifact id / type / summary / ref / provenance / basis `artifact.created` event metadata，不返回 full content，不 append events，不打开 HTTP full-content route。`artifact-review` demo 已停止扫描 raw events 来找 source artifact basis event；HTTP full-content route 仍 `not_enabled`。
 - v0.2 demo acceptance 已落文档，见 `docs/demo/v0.2-demo-acceptance.md`。acceptance anchor 依据是 `735 passed`，v0.1 / v0.2 demo plain / JSON 成功，Track A / C / E 已在 v0.2 scenario 中可见。lightweight tag `v0.2-demo` 已创建并推送，指向 `09319e7407116d9f99f4a18853d4df23a8714720`；GitHub Release 未发布。这是 developer demo tag，不是 product release。当前 mainline baseline 是 `898 passed`。
@@ -38,7 +39,7 @@
 - v0.2 cycle closure review 已记录在 `docs/v0.2-cycle-closure-review.md`。当前建议暂停 v0.2 implementation，进入 cleanup / docs organization / external review mode；Track B real HTTP adapter、Track G memory query 和 real integrations 继续 deferred。
 - docs inventory 已落文档，见 `docs/docs-inventory.md`。当前记录已迁移 docs、compatibility stubs 和后续整理方向。
 - docs migration plan 已落文档，见 `docs/docs-migration-plan.md`。Phase 1 当前 closed / paused；后续不默认继续迁移 track / checkpoint / memory / kernel / current-status / roadmap docs。
-- agent task queue 已落文档，见 `docs/agent-task-queue.md`。后续默认使用 rolling batch mode：session timebox 为 45-60 min，先读 `docs/current-status.md`、`docs/v0.2-roadmap.md` 和 `docs/agent-task-queue.md`，执行 Current Batch；如果 clean 且时间充足，可以在更新 queue、完成验证和 commit / push 后把 Next Suggested Batch 提升为 Current Batch 继续执行。不要为了凑时间做未列出的任务，遇到 stop condition 或需要产品 / 用户判断时必须停。Artifact Review Flow Closure Review 当前 complete；Next Suggested Batch 是 `Second App Spike Selection`。
+- agent task queue 已落文档，见 `docs/agent-task-queue.md`。后续默认使用 rolling batch mode：session timebox 为 45-60 min，先读 `docs/current-status.md`、`docs/v0.2-roadmap.md` 和 `docs/agent-task-queue.md`，执行 Current Batch；如果 clean 且时间充足，可以在更新 queue、完成验证和 commit / push 后把 Next Suggested Batch 提升为 Current Batch 继续执行。不要为了凑时间做未列出的任务，遇到 stop condition 或需要产品 / 用户判断时必须停。Second App Spike Selection 当前 complete；Next Suggested Batch 是 `External Snapshot Review Red Tests`，red-only。
 - Retry / Cancel / Supersede Boundary v0.2 first slice 和 stabilization slice 当前 complete，见 `docs/retry-cancel-supersede-boundary-v0.2.md`。当前已覆盖 `RunState.action_retries` / `RunState.action_cancellations` / `RunState.action_supersessions` read model、canonical retry / cancel / supersede slice events、malformed event fail-fast、basis linkage validation、replacement identity validation、projector reuse state reset、replay 和 checkpoint-assisted rebuild support。仍不实现 scheduler、automatic retry engine、process kill、tool-level cancellation 或 real concurrency。
 - docs migration Phase 1a / 1b / 1c 已执行并 audit clean：release draft 已迁移到 `docs/release/`，v0.1 demo explainer docs 和 demo acceptance/readiness/scenario docs 已迁移到 `docs/demo/`，旧路径均保留 stub。Phase 1 dry-run 和后续 checklist 见 `docs/docs-migration-phase-1-dry-run.md`。下一阶段可以转入 Kernel Gap Review。
 - Kernel Gap Review v0.2 已落文档，见 `docs/kernel-gap-review-v0.2.md`。当前判断：kernel 还不能宣布完成；下一块 kernel design 应优先做 Agent / worker lifecycle，其次是 Workspace substrate，再考虑 retry / cancel / supersede 和 policy profile / action registry versioning。real HTTP server、real LLM loop、memory storage/query/promotion、provider adapter/webhook、retrieval ranking 和 domain pack system 仍不应优先打开。
@@ -126,6 +127,9 @@
 - `artifact-review` demo no longer scans raw events to find source artifact basis event
 - artifact-review first app spike complete / closed for now
 - `docs/artifact-review-flow-closure-review.md`
+- second app spike selection complete
+- recommended next spike: `external snapshot review`
+- `docs/second-app-spike-selection.md`
 - file-backed artifact persistence
 - fresh `ArtifactStore` metadata/content read
 - malformed artifact file fail-fast
@@ -768,7 +772,7 @@ rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel ||
 下一步建议优先做：
 
 - optional GitHub Release draft for `v0.2-demo` if explicitly requested; do not publish a Release without a separate request
-- follow `docs/agent-task-queue.md` rolling batch mode；Artifact Review Flow Closure Review 已完成。下一步推荐 `Second App Spike Selection`，docs-only by default；如选择下一个 spike 需要产品 / 用户判断，则停止汇报，不直接实现。
+- follow `docs/agent-task-queue.md` rolling batch mode；Second App Spike Selection 已完成。下一步推荐 `External Snapshot Review Red Tests`，red-only；不要直接 green implementation，除非后续 queue 或用户明确允许。
 - Workspace Substrate Boundary v0.2 first slice complete；后续如继续 workspace，应先做 lease/path-safety boundary design
 - Track F: closed for now; reopen only with a new design / red-test request such as provider adapter, webhook, HTTP ingestion API, or reconciliation boundary
 - reopen Track E only with an explicit design / red-test request, such as product approval UI / auth / scheduler boundary

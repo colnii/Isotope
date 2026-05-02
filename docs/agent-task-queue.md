@@ -90,21 +90,38 @@ git status --short
 
 ## 6. Current Batch
 
-Batch name: `Artifact Review Flow Closure Review`
+Batch name: `Second App Spike Selection`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: review whether `artifact-review` first app spike can be marked first app spike complete / closed for now after source artifact helper and artifact provenance helper slices.
+Goal: choose the second app-shaped usability pressure test candidate without writing code, adding tests, or implementing a new scenario.
 
 Tasks:
 
-1. Review current `artifact-review` code and tests: complete.
-2. Confirm no private `server._append(...)` source setup glue: complete.
-3. Confirm no raw event scan for source artifact basis event: complete.
-4. Add closure doc and sync status docs: complete.
-5. Queue update: complete; next suggested batch set to `Second App Spike Selection`.
+1. Compare at least three candidates: complete.
+2. Select one candidate if no product / user judgment is needed: complete.
+3. Add selection doc: complete; added `docs/second-app-spike-selection.md`.
+4. Docs / status sync: complete.
+5. Queue update: complete; next suggested batch set to `External Snapshot Review Red Tests`.
+
+Evidence:
+
+- Full regression: `898 passed`.
+- artifact-review demo plain / JSON / trace: pass.
+- approval-tool-runner trace: pass.
+- Recommended candidate: `external snapshot review`.
+- Reason: it covers `ImportedSnapshot`, `RunState.external_observations`, conflict diagnostics, native state priority, replay, and checkpoint, which were not app-pressure-tested by `approval-tool-runner` or `artifact-review`.
+- Not selected now: `approval-gated workspace task` because it overlaps `approval-tool-runner` and combines too many surfaces; `worker handoff task` because it risks multi-agent product drift before real concurrency exists; `memory boundary review` because it risks reopening memory query/storage/promotion.
+- No code / tests changed.
+- No real provider adapter / webhook / real HTTP server / real LLM / filesystem mutation / memory query engine / dependency.
+
+### Previous Batch Snapshot: Artifact Review Flow Closure Review
+
+Batch name: `Artifact Review Flow Closure Review`
+
+Status: `complete`
 
 Evidence:
 
@@ -389,26 +406,30 @@ Scope:
 
 ## 7. Next Suggested Batch
 
-Batch name: `Second App Spike Selection`
+Batch name: `External Snapshot Review Red Tests`
 
-Status: `ready_docs_only`
+Status: `ready_red_only`
 
 Possible tasks:
 
-1. Review what `approval-tool-runner` and `artifact-review` proved.
-2. Compare the next pressure-test candidates without implementing them.
-3. Decide whether a second app spike is useful now or whether to refresh Kernel Gap Review first.
-4. If one candidate is clearly best and does not require product judgment, update queue with red-tests-only next batch.
-5. If the choice requires product / user judgment, mark queue `blocked_for_user_decision` and stop.
+1. Add red tests only for `external snapshot review`.
+2. Suggested files:
+   - `tests/isotope_kernel/test_external_snapshot_review_spike.py`
+   - `tests/isotope_kernel/test_external_snapshot_review_read_model.py`
+3. Cover deterministic in-process scenario shape, imported snapshot observations, conflict diagnostics, native state priority, replay, checkpoint, and disabled HTTP `/external-ingestion`.
+4. Do not implement the scenario in the red-only batch.
+5. Stop if red tests unexpectedly pass or require product / user judgment.
 
 Constraints:
 
-- docs-only by default.
-- do not start red tests or implementation in this batch unless queue is explicitly updated by user.
+- red tests only.
+- no implementation unless a later queue entry explicitly allows green phase.
+- no real provider adapter / webhook.
 - no real filesystem mutation.
 - no real LLM.
 - no real HTTP server / provider adapter / memory query engine.
-- no product app facade without a separate boundary doc and red tests.
+- no product external ingestion API.
+- imported observations must not override native state.
 - no event store append-only semantic changes.
 - no executor grants semantic changes.
 
