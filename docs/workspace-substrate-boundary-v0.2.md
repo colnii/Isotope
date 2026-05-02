@@ -1,6 +1,6 @@
 # Workspace Substrate Boundary v0.2
 
-状态：`draft boundary`
+状态：`first green slice implemented`
 
 ## 1. Purpose
 
@@ -11,11 +11,11 @@ Workspace substrate 是 Agent / Worker lifecycle first slice 之后的下一块 
 - 真实 usability pressure test 会很快碰到文件读写、path safety、artifact capture、cleanup 和 rollback / diff tracking。
 - 如果 workspace substrate 晚于 tool protocol 或 real executor 设计，后续 executor、artifact provenance、policy profile 和 worker lifecycle 都容易返工。
 
-本文件只定义 v0.2 / v0.3 的最小边界和第一批 red tests，不实现新 substrate。
+本文件定义 v0.2 / v0.3 的最小边界。第一批 green slice 已实现 workspace binding read model 和 policy boundary；它仍不实现真实 substrate。
 
 ## 2. Current Capabilities
 
-当前已有能力很窄：
+当前已有能力仍然很窄：
 
 - `WorkspaceManager` 存在。
 - 当前 binding 是 no-op / shared read-only shape。
@@ -23,15 +23,17 @@ Workspace substrate 是 Agent / Worker lifecycle first slice 之后的下一块 
 - workspace access 必须来自 `PolicyDecision.grants`。
 - executor 调用 workspace manager 时使用 decision grants，不使用 action requested capabilities。
 - 未授权或 unsupported workspace mode 会 fail closed。
+- `RunState.workspaces` read model 已存在。
+- canonical `workspace.bound` slice event 已可投影。
+- workspace binding 进入 checkpoint state，并可通过 event replay / checkpoint-assisted rebuild 恢复。
+- malformed `workspace.bound` / malformed grant provenance 会 fail fast。
 
-这些能力足够证明 executor 不会直接使用 requested broad workspace，但还不足以支撑真实文件读写或 worker workspace lifecycle。
+这些能力足够证明 executor 不会直接使用 requested broad workspace，且 workspace binding 状态来自 canonical event；但还不足以支撑真实文件读写、isolated substrate 或 worker workspace lease lifecycle。
 
 ## 3. Current Gaps
 
 当前缺口：
 
-- workspace identity 还不是一等 read model。
-- workspace binding event 尚未定义。
 - workspace lease lifecycle 尚未定义。
 - path safety 规则尚未定义。
 - write permission / read-only enforcement 还没有真实 substrate。
@@ -57,21 +59,36 @@ Workspace substrate 是 Agent / Worker lifecycle first slice 之后的下一块 
 - Path access must be mediated by workspace handle / binding, not raw string paths from model output.
 - Workspace binding state must be replayable from canonical events if it enters `RunState`.
 
-## 5. Minimal Target
+## 5. Implemented First Slice
+
+当前 first green slice includes：
+
+- `RunState.workspaces` read model。
+- canonical `workspace.bound` slice event。
+- binding fields: `workspace_id`, `run_id`, `mode`, `bound_to`, `lease_status`, `provenance`, `basis_event_id`。
+- binding validation requires policy grant provenance。
+- only `shared_ro` is accepted。
+- write / shared_rw / isolated modes fail closed。
+- worker / executor cannot upgrade requested workspace beyond grants。
+- replay restores the same workspace binding read model。
+- checkpoint state includes `workspaces`。
+- checkpoint-assisted rebuild restores `workspaces`。
+- projector does not read filesystem / workspace path content。
+- workspace binding does not modify native run / action status。
+
+## 6. Remaining Minimal Target
 
 v0.2 / v0.3 minimal target should stay small:
 
-- define workspace binding read model。
-- define canonical events for workspace binding / lease lifecycle。
+- define lease release / expiry lifecycle if needed。
 - keep first substrate no-op / `shared_ro` only。
-- prove binding is policy-granted and replayable。
-- prove write / isolated modes fail closed until explicitly enabled。
-- prove projector does not read filesystem。
-- add checkpoint support if workspace binding becomes part of `RunState`。
+- define path safety checks before any file mutation。
+- define artifact capture from workspace without making workspace files native state。
+- decide whether lease release belongs in `RunState.workspaces` or separate diagnostics。
 
 This is a kernel boundary slice, not an execution sandbox.
 
-## 6. Deferred
+## 7. Deferred
 
 Explicitly deferred:
 
@@ -87,9 +104,9 @@ Explicitly deferred:
 
 These should not be pulled into the first green slice.
 
-## 7. First Red Tests
+## 8. First Tests
 
-Suggested first red test files:
+Implemented first test files:
 
 - `tests/isotope_kernel/test_workspace_binding_read_model.py`
 - `tests/isotope_kernel/test_workspace_policy_boundary.py`
@@ -108,22 +125,22 @@ Suggested coverage:
 | Projector safety | projector does not read filesystem |
 | Deferred substrate | no container / git worktree / remote executor in first slice |
 
-## 8. Expected First Green Shape
+## 9. First Green Shape
 
-The smallest acceptable green slice is likely:
+The implemented green slice is:
 
-- event names such as `workspace.bound` / `workspace.released`, or equivalent slice-only names。
-- `RunState.workspaces` or equivalent read model if tests choose to expose binding state directly。
+- `workspace.bound` slice-only event。
+- `RunState.workspaces` read model。
 - validation that `workspace.mode` comes from policy grants。
 - `shared_ro` remains the only accepted mode。
 - write / isolated requests fail closed。
-- checkpoint state includes workspace binding only if the read model is added。
+- checkpoint state includes workspace binding。
 - no actual filesystem reads from projector。
 - no real process, thread, container, worktree, or remote executor。
 
 The slice should not turn workspace into product infrastructure. It should only make later worker / tool execution pressure tests safer.
 
-## 9. Non-Goals
+## 10. Non-Goals
 
 - real sandbox
 - real filesystem mutation
@@ -135,12 +152,12 @@ The slice should not turn workspace into product infrastructure. It should only 
 - cleanup daemon
 - remote execution
 
-## 10. Status For Current Repo
+## 11. Status For Current Repo
 
 Current repo status remains:
 
-- tests baseline: `786 passed`
-- current workspace implementation: `WorkspaceManager` shared read-only / grants validation only
-- no new substrate implementation from this document
-- no new tests from this document
-- next step, if requested: first red tests for workspace binding read model and policy boundary
+- tests baseline: `806 passed`
+- current workspace implementation: `WorkspaceManager` shared read-only / grants validation plus `RunState.workspaces` projection
+- no real substrate implementation from this document
+- first tests are implemented and green
+- next step, if requested: closure review or lease/path-safety boundary design

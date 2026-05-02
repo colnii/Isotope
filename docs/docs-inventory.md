@@ -27,7 +27,7 @@
 - Docs migration Phase 1 当前 closed / paused；后续暂不迁移 track / checkpoint / memory / kernel / current-status / roadmap docs，除非用户明确请求。
 - 加上 Kernel Gap Review v0.2 后 docs Markdown：59 个。当前下一阶段建议优先补 Agent / worker lifecycle 和 Workspace substrate 设计，而不是继续迁移文档或打开 real integrations。
 - 加上 Agent / Worker Lifecycle Boundary v0.2 后 docs Markdown：60 个。
-- 加上 Workspace Substrate Boundary v0.2 后 docs Markdown：61 个。当前仍不移动 docs 文件；下一步可写 workspace binding read model / policy boundary red tests。
+- 加上 Workspace Substrate Boundary v0.2 后 docs Markdown：61 个。当前仍不移动 docs 文件；workspace binding read model / policy boundary first green slice 已实现。
 
 ## 2. Current entrypoints
 
@@ -58,7 +58,7 @@
 
 当前没有默认打开的 implementation track。Track F external ingestion 当前已完成 boundary 和 external observation read-model invariant green slices，并已 effectively complete / closed for now；下一步如继续，应先写新的 red tests，不要直接实现 provider adapter / ingestion API。
 
-当前默认下一步是 docs-only kernel gap backlog，而不是 implementation track。`docs/agent-worker-lifecycle-boundary-v0.2.md` 已定义 Agent / Worker lifecycle boundary，`docs/workspace-substrate-boundary-v0.2.md` 已定义 Workspace substrate boundary；后续可进入 workspace binding read model / policy boundary red tests。
+当前默认下一步是 docs-only kernel gap backlog，而不是 implementation track。`docs/agent-worker-lifecycle-boundary-v0.2.md` 已定义 Agent / Worker lifecycle boundary，`docs/workspace-substrate-boundary-v0.2.md` 已定义 Workspace substrate boundary；workspace binding read model / policy boundary first green slice 已实现。后续可做 closure review，或继续 lease/path-safety boundary design。
 
 - `docs/agent-worker-lifecycle-boundary-v0.2.md`：Agent / Worker lifecycle boundary，draft boundary。
 - `docs/workspace-substrate-boundary-v0.2.md`：Workspace substrate boundary，draft boundary。
