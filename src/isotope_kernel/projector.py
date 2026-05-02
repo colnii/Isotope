@@ -40,12 +40,33 @@ class RunProjector:
         "approvals",
         "artifacts",
         "memory_records",
+        "external_observations",
         "last_event_id",
     )
     CHECKPOINT_REQUIRED_STATE_FIELDS = ("run_id", "status", "current_agent", "actions", "artifacts", "last_event_id")
     CHECKPOINT_ARTIFACT_FIELDS = ("ref", "artifact_type", "summary", "provenance")
     CHECKPOINT_MEMORY_RECORD_FIELDS = ("record_id", "summary", "source_refs", "provenance")
     CHECKPOINT_MEMORY_RECORD_FORBIDDEN_FIELDS = ("content", "full_content", "artifact_content", "raw_content")
+    CHECKPOINT_EXTERNAL_OBSERVATION_FORBIDDEN_FIELDS = (
+        "content",
+        "full_content",
+        "artifact_content",
+        "raw_content",
+    )
+    CHECKPOINT_EXTERNAL_OBSERVATION_FIELDS = (
+        "snapshot_id",
+        "snapshot_type",
+        "source_system",
+        "captured_at",
+        "source_ref",
+        "summary",
+        "observation",
+        "quality",
+        "provenance",
+        "basis_refs",
+        "status",
+        "conflict_status",
+    )
     CHECKPOINT_MEMORY_RECORD_ALLOWED_FIELDS = {
         "record_id",
         "execution_id",
@@ -325,6 +346,13 @@ class RunProjector:
             raise ValueError("snapshot.imported basis_refs must be a non-empty list")
         for index, ref in enumerate(basis_refs):
             self._validate_resource_ref_payload(ref, f"snapshot.imported basis_refs[{index}]")
+        for field_name in self.CHECKPOINT_EXTERNAL_OBSERVATION_FORBIDDEN_FIELDS:
+            if field_name in payload:
+                raise ValueError(f"snapshot.imported cannot contain {field_name}")
+            if field_name in payload["observation"]:
+                raise ValueError(f"snapshot.imported observation cannot contain {field_name}")
+            if field_name in provenance:
+                raise ValueError(f"snapshot.imported provenance cannot contain {field_name}")
 
     def _validate_resource_ref_payload(self, ref: Any, label: str) -> None:
         if not isinstance(ref, dict):
@@ -470,36 +498,95 @@ class RunProjector:
             state.status = str(payload.get("status", "completed"))
 
     def _apply_snapshot_imported(self, state: RunState, payload: dict[str, Any]) -> None:
+        source_ref = dict(payload["source_ref"])
+        provenance = dict(payload["provenance"])
         observation = _ObservationDict(
             {
                 "snapshot_id": payload["snapshot_id"],
+                "snapshot_type": payload["content_type"],
                 "source_system": payload["source_system"],
+                "captured_at": payload["captured_at"],
                 "content_type": payload["content_type"],
+                "source_ref": source_ref,
                 "summary": payload["summary"],
                 "observation": dict(payload["observation"]),
                 "quality": dict(payload["quality"]),
+                "provenance": provenance,
                 "basis_refs": [dict(ref) for ref in payload["basis_refs"]],
+                "status": "imported",
                 "conflict_status": "none",
             }
         )
         if "run_status" in observation["observation"]:
             observation["native_status"] = state.status
+        existing = self._find_external_observation(state.external_observations, observation["snapshot_id"])
+        if existing is not None:
+            self._merge_duplicate_external_observation(existing, observation)
+            self._mark_snapshot_conflicts(state.external_observations)
+            return
         state.external_observations.append(observation)
         self._mark_snapshot_conflicts(state.external_observations)
 
+    def _find_external_observation(
+        self,
+        observations: list[dict[str, Any]],
+        snapshot_id: Any,
+    ) -> dict[str, Any] | None:
+        for observation in observations:
+            if observation.get("snapshot_id") == snapshot_id:
+                return observation
+        return None
+
+    def _merge_duplicate_external_observation(
+        self,
+        existing: dict[str, Any],
+        incoming: dict[str, Any],
+    ) -> None:
+        if existing.get("observation") != incoming.get("observation"):
+            existing["conflict_status"] = "conflict"
+            existing["status"] = "conflict"
+        self._merge_basis_refs(existing, incoming.get("basis_refs", []))
+
+    def _merge_basis_refs(self, observation: dict[str, Any], refs: list[Any]) -> None:
+        existing_refs = observation.setdefault("basis_refs", [])
+        seen = {self._stable_json(ref) for ref in existing_refs}
+        for ref in refs:
+            key = self._stable_json(ref)
+            if key not in seen:
+                existing_refs.append(dict(ref))
+                seen.add(key)
+
+    def _stable_json(self, value: Any) -> str:
+        return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
     def _mark_snapshot_conflicts(self, observations: list[dict[str, Any]]) -> None:
-        by_content_type: dict[str, dict[str, Any]] = {}
-        conflicted_content_types: set[str] = set()
+        by_subject: dict[str, dict[str, Any]] = {}
+        conflicted_subjects: set[str] = set()
         for observation in observations:
-            content_type = str(observation.get("content_type", ""))
-            previous = by_content_type.get(content_type)
+            subject_key = self._external_observation_subject_key(observation)
+            previous = by_subject.get(subject_key)
             if previous is not None and previous.get("observation") != observation.get("observation"):
-                conflicted_content_types.add(content_type)
+                conflicted_subjects.add(subject_key)
             else:
-                by_content_type.setdefault(content_type, observation)
+                by_subject.setdefault(subject_key, observation)
         for observation in observations:
-            if observation.get("content_type") in conflicted_content_types:
+            if observation.get("conflict_status") == "conflict":
+                observation["status"] = "conflict"
+            elif observation.get("status") != "conflict":
+                observation["status"] = "imported"
+            if self._external_observation_subject_key(observation) in conflicted_subjects:
                 observation["conflict_status"] = "conflict"
+                observation["status"] = "conflict"
+
+    def _external_observation_subject_key(self, observation: dict[str, Any]) -> str:
+        observed = observation.get("observation")
+        subject = observed.get("subject") if isinstance(observed, dict) else None
+        return self._stable_json(
+            {
+                "snapshot_type": observation.get("snapshot_type") or observation.get("content_type"),
+                "subject": subject if subject is not None else observation.get("content_type"),
+            }
+        )
 
     def project(self, events: Iterable[CanonicalEvent]) -> RunState:
         self._proposal_outcomes = {}
@@ -754,12 +841,17 @@ class RunProjector:
         memory_records = state.get("memory_records", [])
         if not isinstance(memory_records, list):
             raise ValueError("checkpoint state memory_records must be a list")
+        external_observations = state.get("external_observations", [])
+        if not isinstance(external_observations, list):
+            raise ValueError("checkpoint state external_observations must be a list")
         for artifact in state["artifacts"]:
             self._validate_checkpoint_artifact(artifact)
         for approval_id, approval in approvals.items():
             self._validate_checkpoint_approval(approval_id, approval)
         for record in memory_records:
             self._validate_checkpoint_memory_record(record)
+        for observation in external_observations:
+            self._validate_checkpoint_external_observation(observation)
         return RunState(
             run_id=str(state.get("run_id", "")),
             status=str(state.get("status", "unknown")),
@@ -768,6 +860,7 @@ class RunProjector:
             approvals=dict(approvals),
             artifacts=list(state.get("artifacts", [])),
             memory_records=list(memory_records),
+            external_observations=list(external_observations),
             last_event_id=str(state.get("last_event_id", "")),
         )
 
@@ -841,15 +934,64 @@ class RunProjector:
         if not isinstance(record["superseded_reason"], str) or not record["superseded_reason"]:
             raise ValueError("checkpoint superseded_reason must be a non-empty string")
 
+    def _validate_checkpoint_external_observation(self, observation: Any) -> None:
+        if not isinstance(observation, dict):
+            raise ValueError("checkpoint external observation entry must be a dict")
+        for field_name in self.CHECKPOINT_EXTERNAL_OBSERVATION_FORBIDDEN_FIELDS:
+            if field_name in observation:
+                raise ValueError(f"checkpoint external observation entry cannot contain {field_name}")
+        for field_name in self.CHECKPOINT_EXTERNAL_OBSERVATION_FIELDS:
+            if field_name not in observation:
+                raise ValueError(f"checkpoint external observation entry missing required field: {field_name}")
+        if observation["status"] not in {"imported", "conflict"}:
+            raise ValueError("checkpoint external observation status must be imported or conflict")
+        if observation["conflict_status"] not in {"none", "conflict"}:
+            raise ValueError("checkpoint external observation conflict_status must be known")
+        self._validate_resource_ref_payload(observation["source_ref"], "checkpoint external observation source_ref")
+        if not isinstance(observation["observation"], dict):
+            raise ValueError("checkpoint external observation observation must be a dict")
+        for field_name in self.CHECKPOINT_EXTERNAL_OBSERVATION_FORBIDDEN_FIELDS:
+            if field_name in observation["observation"]:
+                raise ValueError(f"checkpoint external observation observation cannot contain {field_name}")
+        quality = observation["quality"]
+        if not isinstance(quality, dict):
+            raise ValueError("checkpoint external observation quality must be a dict")
+        for field_name in ("confidence", "coverage", "freshness"):
+            if field_name not in quality:
+                raise ValueError(f"checkpoint external observation quality missing required field: {field_name}")
+        provenance = observation["provenance"]
+        if not isinstance(provenance, dict):
+            raise ValueError("checkpoint external observation provenance must be a dict")
+        for field_name in self.CHECKPOINT_EXTERNAL_OBSERVATION_FORBIDDEN_FIELDS:
+            if field_name in provenance:
+                raise ValueError(f"checkpoint external observation provenance cannot contain {field_name}")
+        raw_artifact_ref = provenance.get("raw_artifact_ref")
+        self._validate_resource_ref_payload(raw_artifact_ref, "checkpoint external observation raw_artifact_ref")
+        basis_refs = observation["basis_refs"]
+        if not isinstance(basis_refs, list) or not basis_refs:
+            raise ValueError("checkpoint external observation basis_refs must be a non-empty list")
+        for index, ref in enumerate(basis_refs):
+            self._validate_resource_ref_payload(ref, f"checkpoint external observation basis_refs[{index}]")
+
 
 class _ObservationDict(dict):
     """Dict that tolerates optional diagnostic fields in equality checks."""
+
+    OPTIONAL_COMPAT_FIELDS = {
+        "snapshot_type",
+        "captured_at",
+        "source_ref",
+        "provenance",
+        "status",
+        "native_status",
+    }
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, dict):
             left = dict(self)
             right = dict(other)
-            if "native_status" not in right:
-                left.pop("native_status", None)
+            for field_name in self.OPTIONAL_COMPAT_FIELDS:
+                if field_name not in right:
+                    left.pop(field_name, None)
             return left == right
         return super().__eq__(other)
