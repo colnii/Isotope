@@ -1,6 +1,6 @@
 # Approval Tool Runner API Friction Review
 
-状态：`current`
+状态：`current; approval lookup helper implemented`
 
 ## 1. Purpose
 
@@ -12,7 +12,7 @@
 
 - `python -m isotope_kernel.demo --scenario approval-tool-runner`
 - `python -m isotope_kernel.demo --scenario approval-tool-runner --json`
-- full regression: `842 passed`
+- full regression after helper slice: `853 passed`
 - spike 仍 deterministic / in-process / no real HTTP server / no real LLM / no provider adapter / no filesystem mutation
 
 ## 2. Friction Summary
@@ -20,7 +20,7 @@
 | Friction | Evidence | Classification | Impact | Suggested action |
 | --- | --- | --- | --- | --- |
 | approval-gated input uses `server.submit_tool_request(...)` | demo cannot express `requires_approval=True` through current HTTP `/runs/{run_id}/input` path | facade / helper gap | medium | do after approval lookup helper, unless the next spike needs this first |
-| approval id lookup scans canonical events | demo finds `approval_id` by scanning events after pending approval | read-model helper gap | medium-high | do next |
+| approval id lookup scans canonical events | demo used to find `approval_id` by scanning events after pending approval | read-model helper gap | medium-high | fixed by approval lookup helper |
 | workspace binding uses explicit `workspace.bound` | demo manually appends a canonical workspace binding event for the spike | kernel / server integration gap | high, but broader | design separately before implementation |
 
 No correctness bug was found in the current spike. The awkwardness is useful evidence that the kernel surface is still too raw for developer ergonomics, not evidence that the event-sourced contracts are broken.
@@ -41,13 +41,13 @@ Yes. This is the lowest-risk next improvement.
 
 The read model already carries approval state in `RunState.approvals`. A client or demo should not need to scan canonical events just to discover the pending approval created by a submission. Event scanning is acceptable for diagnostics, but awkward for normal use.
 
-A minimal helper could expose pending approvals from the projected read model, for example:
+The minimal helper now exposes pending approvals from the projected read model:
 
-- get pending approvals for a run
-- get one approval by `approval_id`
-- return the new pending approval summary as part of an approval-gated submission result
+- `InProcessServer.get_pending_approvals(run_id)`
+- `InProcessServer.get_approval(run_id, approval_id)`
+- in-process HTTP lookup routes for `GET /runs/{run_id}/approvals` and `GET /runs/{run_id}/approvals/{approval_id}`
 
-The first two are safer because they do not change submission semantics.
+The helper reads projected approval summaries, does not append events, and does not change approval resolution semantics. The `approval-tool-runner` demo now uses the helper instead of scanning canonical events for `approval_id`.
 
 ### Does manual `workspace.bound` show missing workspace binding integration?
 
@@ -73,7 +73,7 @@ Facade/helper issues:
 
 Demo glue issues:
 
-- The spike currently has `_latest_approval_id(...)` event scan glue.
+- The spike previously had `_latest_approval_id(...)` event scan glue; the current demo uses approval lookup/read helper instead.
 - The spike currently has explicit `workspace.bound` append glue.
 - These are acceptable in a pressure test only because the JSON output records the friction instead of hiding it.
 
@@ -93,17 +93,18 @@ This would make scenario code cleaner, but it risks mixing two concerns: action 
 
 ### B. Add approval lookup/read helper
 
-Recommended next.
+Implemented.
 
 This is the smallest clear win. It removes event scan glue, uses existing projected approval state, and does not require changing event store append-only semantics, executor grants semantics, workspace binding ownership, HTTP route inventory, or action lifecycle rules.
 
-Suggested first slice:
+Implemented first slice:
 
-- red tests for `get_pending_approvals(run_id)` or equivalent
-- red tests for `get_approval(run_id, approval_id)` or equivalent
-- helper reads projected state, not executor / server mutable internals
-- unknown run / approval returns controlled error or empty pending list as specified by tests
-- no new HTTP route unless explicitly chosen
+- red / green tests for `get_pending_approvals(run_id)` and `get_approval(run_id, approval_id)`
+- helper reads projected `RunState.approvals`
+- unknown run / approval returns controlled errors
+- lookup does not append events
+- helper returns copied JSON-compatible summaries
+- in-process HTTP lookup route exists, but the supported route inventory still does not productize approval collection routes
 
 ### C. Add workspace binding helper
 
@@ -119,14 +120,14 @@ The spike exposed concrete ergonomics gaps. Moving on immediately would leave th
 
 ## 6. Recommendation
 
-Recommended next batch: `Approval Lookup Helper Boundary`.
+Recommended next batch after this helper: reassess remaining spike friction before choosing between approval-gated submission helper and workspace binding helper.
 
 Rationale:
 
-- It is the smallest developer ergonomics improvement with clear evidence from the spike.
-- It uses existing `RunState.approvals`, so it does not reopen closed approval contracts.
-- It avoids premature product API design.
-- It keeps workspace binding integration deferred until a dedicated boundary can protect policy and path-safety constraints.
+- approval id event-scan glue is now removed.
+- `server.submit_tool_request(..., requires_approval=True)` remains a facade/helper gap.
+- explicit `workspace.bound` remains the broader kernel / server integration gap.
+- workspace binding integration should still be protected by a dedicated boundary before implementation.
 
 Do not solve in the next batch:
 
@@ -138,4 +139,3 @@ Do not solve in the next batch:
 - container / git worktree / remote executor
 - provider adapter
 - memory query engine
-

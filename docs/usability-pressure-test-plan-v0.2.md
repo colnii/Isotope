@@ -34,7 +34,7 @@ python -m isotope_kernel.demo --scenario approval-tool-runner --json
 - Retry / Cancel / Supersede read model。
 - event replay and checkpoint-assisted rebuild。
 
-当前 baseline：`842 passed`。
+当前 baseline：`853 passed`。
 
 ## 3. Hard Boundaries
 
@@ -104,7 +104,7 @@ python -m isotope_kernel.demo --scenario approval-tool-runner --json
 
 - approval-gated input 目前需要直接调用 `server.submit_tool_request(..., requires_approval=True)`；`POST /runs/{run_id}/input` 还没有 approval flag。
 - workspace binding read model 目前需要 spike 显式 append canonical `workspace.bound` event；还没有 product-level workspace binding facade。
-- `approval_id` discovery 目前通过扫描 canonical events 完成；还没有专用 read helper。
+- `approval_id` discovery 已改用 approval lookup/read helper；demo 不再扫描 canonical events 找 approval id。
 
 这些是后续 API ergonomics（易用性）候选，不是本 slice 要补的功能。
 
@@ -115,11 +115,11 @@ API friction review 已落文档：`docs/approval-tool-runner-friction-review.md
 结论：
 
 - `server.submit_tool_request(..., requires_approval=True)` 暴露 facade/helper gap，但不是 kernel correctness bug。
-- `approval_id` discovery 扫描 canonical events 是 read-model helper gap，推荐下一批优先处理。
+- `approval_id` discovery 扫描 canonical events 的 read-model helper gap 已处理。
 - manual `workspace.bound` 暴露 workspace binding ownership / server integration gap，但范围更大，应该单独设计。
 - 不建议直接产品化 HTTP input、real tool runner、workspace filesystem mutation 或 approval UI。
 
-推荐下一步：`Approval Lookup Helper Boundary`。
+已完成：`Approval Lookup Helper Boundary`。
 
 ## 9. Closure
 
@@ -135,4 +135,4 @@ API friction review 已落文档：`docs/approval-tool-runner-friction-review.md
 - product UI
 - automatic retry / scheduler / process kill
 
-下一步建议先做 approval lookup/read helper，降低 demo/client event-scan glue；approval input ergonomics 和 workspace binding facade 应分别作为后续独立 boundary。
+approval lookup/read helper 已降低 demo/client event-scan glue；approval input ergonomics 和 workspace binding facade 应分别作为后续独立 boundary，不要直接产品化。
