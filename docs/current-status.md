@@ -26,6 +26,7 @@
 - v0.2 cycle closure review 已记录在 `docs/v0.2-cycle-closure-review.md`。当前建议暂停 v0.2 implementation，进入 cleanup / docs organization / external review mode；Track B real HTTP adapter、Track G memory query 和 real integrations 继续 deferred。
 - docs inventory 已落文档，见 `docs/docs-inventory.md`。当前只盘点和规划未来整理方向；尚未移动、删除或合并任何 docs 文件。
 - docs migration plan 已落文档，见 `docs/docs-migration-plan.md`。当前只定义未来目录结构、迁移表、链接更新、验证和 rollback 规则；尚未移动、删除或合并任何 docs 文件。
+- docs migration phase 1 dry-run 已落文档，见 `docs/docs-migration-phase-1-dry-run.md`。当前建议下一轮先做最小 Phase 1a：只迁移 release draft 到 `docs/release/` 并保留旧路径 stub；本轮仍未移动、删除、重命名或合并任何 docs 文件。
 - Track A: HTTP API Minimal Surface 见 `docs/http-api-minimal-surface-v0.2.md`。当前实现是 in-process `HttpApiApp` / `create_http_app(...)`，不是监听端口的真实网络服务；没有引入 FastAPI / Flask / 新依赖。
 - v0.1 demo walkthrough 已补充，见 `docs/demo-walkthrough-v0.1.md`。它解释 demo 运行内容、内部步骤、plain text / JSON 输出字段、证明范围、非目标和 troubleshooting。
 - v0.1 demo architecture diagram 已补充，见 `docs/demo-architecture-v0.1.md`。它解释 demo runtime path，不是完整 Isotope 架构图。

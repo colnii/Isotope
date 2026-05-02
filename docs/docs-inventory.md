@@ -20,6 +20,7 @@
 - 加上 post v0.2 tag delta review 后 docs Markdown：47 个。
 - 加上 v0.2 cycle closure review 后 docs Markdown：48 个。
 - 加上 docs migration plan 后 docs Markdown：49 个。
+- 加上 docs migration phase 1 dry-run 后 docs Markdown：50 个。
 
 ## 2. Current entrypoints
 
@@ -28,6 +29,7 @@
 - `docs/current-status.md`：当前状态入口，开始新任务前先读。
 - `docs/v0.2-roadmap.md`：v0.2 track 状态和推荐顺序。
 - `docs/docs-migration-plan.md`：docs directory migration execution plan；当前只计划，不移动文件。
+- `docs/docs-migration-phase-1-dry-run.md`：Phase 1 dry-run checklist；当前建议下一轮先执行最小 Phase 1a，仍未移动文件。
 - `docs/v0.2-demo-readiness.md`：v0.2 developer demo readiness review，记录此前 demo 展示范围和已关闭的 Track A / C / E scenario gap。
 - `docs/v0.2-demo-scenario.md`：v0.2 demo scenario boundary / status，记录 implemented `--scenario v0.2` scope。
 - `docs/v0.2-demo-acceptance.md`：v0.2 developer demo acceptance，记录 `v0.2-demo` tag 状态和 non-goals。
@@ -148,6 +150,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | `docs/demo-architecture-v0.1.md` | Demo architecture diagram | current demo doc |
 | `docs/demo-entrypoint-v0.1.md` | Demo entrypoint design | closed / implemented |
 | `docs/demo-walkthrough-v0.1.md` | Demo walkthrough | current demo doc |
+| `docs/docs-migration-phase-1-dry-run.md` | Docs migration phase 1 dry-run checklist | current plan |
 | `docs/docs-migration-plan.md` | Docs directory migration execution plan | current plan |
 | `docs/event-envelope-schema-registry-v0.1.md` | Event schema registry boundary | closed / reference |
 | `docs/event-envelope-versioning-v0.1.md` | Event envelope versioning boundary | closed / reference |
@@ -202,6 +205,8 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
   - `v0.1-demo-acceptance.md`
 - `docs/release/`
   - `release-draft-v0.1-demo.md`
+- `docs/status/`
+  - `docs-migration-phase-1-dry-run.md` later, after phase 1 execution docs settle
 - `docs/archive/` or `docs/history/`
   - `implementation-plan-v0.1.md`
   - `coding-plan-v0.1.md`
@@ -213,6 +218,7 @@ Do not move these files until a dedicated migration pass updates links and valid
 
 - `docs/current-status.md`
 - `docs/v0.2-roadmap.md`
+- `docs/docs-migration-phase-1-dry-run.md`
 - `docs/v0.2-mid-cycle-review.md`
 - `docs/v0.2-next-track-selection.md`
 - `docs/http-api-minimal-surface-v0.2.md`
@@ -235,12 +241,13 @@ Reasons:
 
 Recommended future migration sequence:
 
-1. Create `docs/docs-migration-plan.md` with exact old path -> new path mapping.
-2. Add target subdirectories without moving files yet.
-3. Update README / AGENTS / current-status / roadmap links in the same patch as any move.
-4. Leave short stub files at old paths for at least one cycle, or add a compatibility index if stubs are not desired.
-5. Run link checks with `rg` for every old basename and ensure no stale references remain.
-6. Run the normal verification suite.
-7. Commit moves separately from content rewrites to keep review clean.
+1. Use `docs/docs-migration-phase-1-dry-run.md` as the Phase 1 checklist.
+2. Execute Phase 1a first: move only `docs/release-draft-v0.1-demo.md` to `docs/release/` and leave a stub.
+3. Add target subdirectories only in the migration commit that needs them.
+4. Update README / AGENTS / current-status / roadmap links in the same patch as any move.
+5. Leave short stub files at old paths for at least one cycle, or add a compatibility index if stubs are not desired.
+6. Run link checks with `rg` for every old basename and ensure no stale references remain.
+7. Run the normal verification suite.
+8. Commit moves separately from content rewrites to keep review clean.
 
 Do not combine directory migration with implementation work.
