@@ -2,7 +2,7 @@
 
 状态：`implemented`
 
-Acceptance：`accepted as developer demo`，详见 `docs/v0.1-demo-acceptance.md`。
+Acceptance：`accepted as developer demo`，详见 `docs/demo/v0.1-demo-acceptance.md`。
 
 ## 1. Purpose
 

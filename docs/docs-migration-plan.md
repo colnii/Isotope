@@ -8,7 +8,7 @@
 
 本轮只写计划，不移动、不删除、不合并任何文档，不批量修改链接，不修改 `src/`、`tests/`、`.github/` 或 `pyproject.toml`。
 
-Phase 1 dry-run 已记录在 `docs/docs-migration-phase-1-dry-run.md`。Phase 1a 已执行：release draft 已迁移到 `docs/release/release-draft-v0.1-demo.md`，旧路径 `docs/release-draft-v0.1-demo.md` 保留为 compatibility stub。Phase 1b 已执行：v0.1 demo explainer docs 已迁移到 `docs/demo/`，旧路径保留 compatibility stubs。下一批默认是 Phase 1c closed track docs，除非用户另行指定。
+Phase 1 dry-run 已记录在 `docs/docs-migration-phase-1-dry-run.md`。Phase 1a 已执行：release draft 已迁移到 `docs/release/release-draft-v0.1-demo.md`，旧路径 `docs/release-draft-v0.1-demo.md` 保留为 compatibility stub。Phase 1b 已执行：v0.1 demo explainer docs 已迁移到 `docs/demo/`，旧路径保留 compatibility stubs。Phase 1c 已执行：demo acceptance / readiness / scenario docs 已迁移到 `docs/demo/`，旧路径保留 compatibility stubs。下一批默认是 closed Track A / C / E docs，除非用户另行指定。
 
 ## 2. Target Directory Structure
 
@@ -53,15 +53,16 @@ Recommended order:
 
 1. Phase 1a completed: `docs/release/release-draft-v0.1-demo.md` now holds the full release draft; `docs/release-draft-v0.1-demo.md` is an old-path stub.
 2. Phase 1b completed: v0.1 demo explainer docs moved to `docs/demo/` with old-path stubs.
-3. Phase 1c: Move closed Track A / C / E docs to `docs/tracks/` with stubs and same-commit link updates.
-4. Move checkpoint docs as one batch.
-5. Move memory docs as one batch.
-6. Move remaining track docs only after recent Track F links settle.
-7. Move kernel docs as one batch.
-8. Move status entrypoints only after README / AGENTS / current-status / roadmap link checks are stable.
-9. Only after one stable cycle, consider deleting compatibility stubs.
+3. Phase 1c completed: demo acceptance / readiness / scenario docs moved to `docs/demo/` with old-path stubs.
+4. Move closed Track A / C / E docs to `docs/tracks/` with stubs and same-commit link updates.
+5. Move checkpoint docs as one batch.
+6. Move memory docs as one batch.
+7. Move remaining track docs only after recent Track F links settle.
+8. Move kernel docs as one batch.
+9. Move status entrypoints only after README / AGENTS / current-status / roadmap link checks are stable.
+10. Only after one stable cycle, consider deleting compatibility stubs.
 
-Do not combine Phase 1c with later checkpoint / memory / kernel migrations unless there is a specific review reason to take the extra link risk.
+Do not combine the next track-doc migration with later checkpoint / memory / kernel migrations unless there is a specific review reason to take the extra link risk.
 
 ## 5. Do Not Move In First Wave
 
@@ -74,7 +75,6 @@ Keep these in place until at least one dedicated migration pass proves links are
 - `docs/docs-migration-phase-1-dry-run.md`
 - `docs/v0.2-cycle-closure-review.md`
 - `docs/post-v0.2-tag-delta.md`
-- `docs/v0.2-demo-acceptance.md`
 - `docs/external-ingestion-boundary-v0.2.md`
 - `docs/approval-pause-resume-boundary-v0.2.md`
 - `docs/artifact-content-read-policy-v0.2.md`
@@ -128,11 +128,11 @@ Reason: README, AGENTS, current-status, roadmap, and recent task instructions li
 | `docs/post-v0.2-tag-delta.md` | `docs/status/post-v0.2-tag-delta.md` | status | No | High | Recent review doc; keep until status docs move together. |
 | `docs/release-draft-v0.1-demo.md` | `docs/release/release-draft-v0.1-demo.md` | release | Done | Low | Phase 1a completed; old path is a stub, new path holds the release draft. |
 | `docs/server-checkpoint-boundary-v0.1.md` | `docs/checkpoint/server-checkpoint-boundary-v0.1.md` | checkpoint | No | Medium | Move with checkpoint batch. |
-| `docs/v0.1-demo-acceptance.md` | `docs/demo/v0.1-demo-acceptance.md` | demo | No | High | Tag/acceptance doc; needs stub if moved. |
+| `docs/v0.1-demo-acceptance.md` | `docs/demo/v0.1-demo-acceptance.md` | demo | Done | Low | Phase 1c completed; old path is a stub, new path holds the full doc. |
 | `docs/v0.2-cycle-closure-review.md` | `docs/status/v0.2-cycle-closure-review.md` | status | No | High | Current closure record; keep until status docs move together. |
-| `docs/v0.2-demo-acceptance.md` | `docs/demo/v0.2-demo-acceptance.md` | demo/status | No | High | Tag acceptance doc; needs stub if moved. |
-| `docs/v0.2-demo-readiness.md` | `docs/demo/v0.2-demo-readiness.md` | demo/status | No | High | Recent review doc; linked from status. |
-| `docs/v0.2-demo-scenario.md` | `docs/demo/v0.2-demo-scenario.md` | demo | No | High | Current demo scenario doc; linked from README / AGENTS. |
+| `docs/v0.2-demo-acceptance.md` | `docs/demo/v0.2-demo-acceptance.md` | demo/status | Done | Low | Phase 1c completed; old path is a stub, new path holds the full doc. |
+| `docs/v0.2-demo-readiness.md` | `docs/demo/v0.2-demo-readiness.md` | demo/status | Done | Low | Phase 1c completed; old path is a stub, new path holds the full doc. |
+| `docs/v0.2-demo-scenario.md` | `docs/demo/v0.2-demo-scenario.md` | demo | Done | Low | Phase 1c completed; old path is a stub, new path holds the full doc. |
 | `docs/v0.2-mid-cycle-review.md` | `docs/status/v0.2-mid-cycle-review.md` | status | No | Medium | Historical decision but still referenced. |
 | `docs/v0.2-next-track-selection.md` | `docs/status/v0.2-next-track-selection.md` | status | No | Medium | Historical decision but still referenced. |
 | `docs/v0.2-roadmap.md` | `docs/v0.2-roadmap.md` first; later `docs/status/v0.2-roadmap.md` | status entrypoint | No | High | Stable entrypoint; do not move in first migration. |

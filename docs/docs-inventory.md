@@ -23,6 +23,7 @@
 - 加上 docs migration phase 1 dry-run 后 docs Markdown：50 个。
 - Phase 1a 迁移 release draft 后 docs Markdown：51 个，其中旧 `docs/release-draft-v0.1-demo.md` 是 compatibility stub。
 - Phase 1b 迁移 v0.1 demo explainer docs 后 docs Markdown：54 个，其中旧 demo explainer paths 是 compatibility stubs。
+- Phase 1c 迁移 demo acceptance / readiness / scenario docs 后 docs Markdown：58 个，其中旧 demo acceptance / readiness / scenario paths 是 compatibility stubs。
 
 ## 2. Current entrypoints
 
@@ -30,11 +31,11 @@
 
 - `docs/current-status.md`：当前状态入口，开始新任务前先读。
 - `docs/v0.2-roadmap.md`：v0.2 track 状态和推荐顺序。
-- `docs/docs-migration-plan.md`：docs directory migration execution plan；Phase 1a release draft migration 和 Phase 1b demo explainer migration 已执行。
-- `docs/docs-migration-phase-1-dry-run.md`：Phase 1 dry-run checklist；Phase 1a / 1b 已执行，下一批默认是 Phase 1c closed track docs。
-- `docs/v0.2-demo-readiness.md`：v0.2 developer demo readiness review，记录此前 demo 展示范围和已关闭的 Track A / C / E scenario gap。
-- `docs/v0.2-demo-scenario.md`：v0.2 demo scenario boundary / status，记录 implemented `--scenario v0.2` scope。
-- `docs/v0.2-demo-acceptance.md`：v0.2 developer demo acceptance，记录 `v0.2-demo` tag 状态和 non-goals。
+- `docs/docs-migration-plan.md`：docs directory migration execution plan；Phase 1a release draft migration、Phase 1b demo explainer migration 和 Phase 1c demo acceptance/readiness/scenario migration 已执行。
+- `docs/docs-migration-phase-1-dry-run.md`：Phase 1 dry-run checklist；Phase 1a / 1b / 1c 已执行，下一批默认是 closed Track A / C / E docs。
+- `docs/demo/v0.2-demo-readiness.md`：v0.2 developer demo readiness review，记录此前 demo 展示范围和已关闭的 Track A / C / E scenario gap。
+- `docs/demo/v0.2-demo-scenario.md`：v0.2 demo scenario boundary / status，记录 implemented `--scenario v0.2` scope。
+- `docs/demo/v0.2-demo-acceptance.md`：v0.2 developer demo acceptance，记录 `v0.2-demo` tag 状态和 non-goals。
 - `docs/post-v0.2-tag-delta.md`：记录 `v0.2-demo` tag 之后 `main` 的 Track F 增量，以及暂不创建 `v0.2.1-demo` 的判断。
 - `docs/v0.2-cycle-closure-review.md`：记录当前 v0.2 implementation cycle closure，建议进入 cleanup / docs organization / external review mode。
 - `docs/v0.2-mid-cycle-review.md`：mid-cycle decision，曾推荐进入 Track E；该 recommendation 已执行到 closure。
@@ -75,8 +76,14 @@ Track E / Track F 后续只在明确 reopen 时继续扩展。Track F 后续应�
 - `docs/demo-entrypoint-v0.1.md`：demo entrypoint compatibility stub。
 - `docs/demo-walkthrough-v0.1.md`：demo walkthrough compatibility stub。
 - `docs/demo-architecture-v0.1.md`：demo architecture compatibility stub。
-- `docs/v0.1-demo-acceptance.md`：developer demo acceptance，closed。
-- `docs/v0.2-demo-acceptance.md`：v0.2 developer demo acceptance，accepted / tagged。
+- `docs/demo/v0.1-demo-acceptance.md`：developer demo acceptance，closed。
+- `docs/demo/v0.2-demo-acceptance.md`：v0.2 developer demo acceptance，accepted / tagged。
+- `docs/demo/v0.2-demo-readiness.md`：v0.2 developer demo readiness review，current。
+- `docs/demo/v0.2-demo-scenario.md`：v0.2 demo scenario boundary / status，implemented。
+- `docs/v0.1-demo-acceptance.md`：v0.1 demo acceptance compatibility stub。
+- `docs/v0.2-demo-acceptance.md`：v0.2 demo acceptance compatibility stub。
+- `docs/v0.2-demo-readiness.md`：v0.2 demo readiness compatibility stub。
+- `docs/v0.2-demo-scenario.md`：v0.2 demo scenario compatibility stub。
 - `docs/release/release-draft-v0.1-demo.md`：GitHub Release draft，未发布。
 - `docs/release-draft-v0.1-demo.md`：release draft compatibility stub，保留旧入口避免链接断裂。
 
@@ -179,11 +186,15 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | `docs/release/release-draft-v0.1-demo.md` | Release draft text | draft / not published |
 | `docs/release-draft-v0.1-demo.md` | Release draft compatibility stub | stub / keep for one cycle |
 | `docs/server-checkpoint-boundary-v0.1.md` | Server checkpoint boundary | closed / frozen |
-| `docs/v0.1-demo-acceptance.md` | Demo acceptance record | closed |
+| `docs/demo/v0.1-demo-acceptance.md` | Demo acceptance record | closed |
 | `docs/v0.2-cycle-closure-review.md` | v0.2 cycle closure decision | current review |
-| `docs/v0.2-demo-acceptance.md` | v0.2 demo acceptance record | accepted / tagged |
-| `docs/v0.2-demo-readiness.md` | v0.2 demo readiness review | current review |
-| `docs/v0.2-demo-scenario.md` | v0.2 demo scenario boundary / status | implemented |
+| `docs/demo/v0.2-demo-acceptance.md` | v0.2 demo acceptance record | accepted / tagged |
+| `docs/demo/v0.2-demo-readiness.md` | v0.2 demo readiness review | current review |
+| `docs/demo/v0.2-demo-scenario.md` | v0.2 demo scenario boundary / status | implemented |
+| `docs/v0.1-demo-acceptance.md` | v0.1 demo acceptance compatibility stub | stub / keep for one cycle |
+| `docs/v0.2-demo-acceptance.md` | v0.2 demo acceptance compatibility stub | stub / keep for one cycle |
+| `docs/v0.2-demo-readiness.md` | v0.2 demo readiness compatibility stub | stub / keep for one cycle |
+| `docs/v0.2-demo-scenario.md` | v0.2 demo scenario compatibility stub | stub / keep for one cycle |
 | `docs/v0.2-mid-cycle-review.md` | v0.2 next-track review | current decision |
 | `docs/v0.2-next-track-selection.md` | Track C selection record | historical decision |
 | `docs/v0.2-roadmap.md` | v0.2 roadmap | current entrypoint |
@@ -213,6 +224,9 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 - `docs/demo/`
   - `demo-*.md`
   - `v0.1-demo-acceptance.md`
+  - `v0.2-demo-acceptance.md`
+  - `v0.2-demo-readiness.md`
+  - `v0.2-demo-scenario.md`
 - `docs/release/`
   - `release-draft-v0.1-demo.md`
 - `docs/status/`
@@ -234,7 +248,6 @@ Do not move these files until a dedicated migration pass updates links and valid
 - `docs/http-api-minimal-surface-v0.2.md`
 - `docs/artifact-content-read-policy-v0.2.md`
 - `docs/approval-pause-resume-boundary-v0.2.md`
-- `docs/v0.1-demo-acceptance.md`
 - `docs/kernel-spec-v0.1.md`
 - `docs/kernel-architecture-v0.1.md`
 - `docs/kernel-living-spec.md`
@@ -251,12 +264,13 @@ Recommended future migration sequence:
 
 1. Phase 1a has executed: `docs/release/release-draft-v0.1-demo.md` is the full release draft, and `docs/release-draft-v0.1-demo.md` is a stub.
 2. Phase 1b has executed: `docs/demo/demo-entrypoint-v0.1.md`, `docs/demo/demo-walkthrough-v0.1.md`, and `docs/demo/demo-architecture-v0.1.md` are full docs; old paths are stubs.
-3. Execute Phase 1c next only if requested: move closed Track A / C / E docs to `docs/tracks/` and leave stubs.
-4. Add target subdirectories only in the migration commit that needs them.
-5. Update README / AGENTS / current-status / roadmap links in the same patch as any move.
-6. Leave short stub files at old paths for at least one cycle, or add a compatibility index if stubs are not desired.
-7. Run link checks with `rg` for every old basename and ensure no stale references remain.
-8. Run the normal verification suite.
-9. Commit moves separately from content rewrites to keep review clean.
+3. Phase 1c has executed: `docs/demo/v0.1-demo-acceptance.md`, `docs/demo/v0.2-demo-readiness.md`, `docs/demo/v0.2-demo-scenario.md`, and `docs/demo/v0.2-demo-acceptance.md` are full docs; old paths are stubs.
+4. Execute the next phase only if requested: move closed Track A / C / E docs to `docs/tracks/` and leave stubs.
+5. Add target subdirectories only in the migration commit that needs them.
+6. Update README / AGENTS / current-status / roadmap links in the same patch as any move.
+7. Leave short stub files at old paths for at least one cycle, or add a compatibility index if stubs are not desired.
+8. Run link checks with `rg` for every old basename and ensure no stale references remain.
+9. Run the normal verification suite.
+10. Commit moves separately from content rewrites to keep review clean.
 
 Do not combine directory migration with implementation work.

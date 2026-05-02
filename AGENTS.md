@@ -27,9 +27,9 @@
 - Current Track C design doc: [docs/artifact-content-read-policy-v0.2.md](docs/artifact-content-read-policy-v0.2.md).
 - Track C: Artifact Content Read Policy is effectively complete / closed for now: retrieval requires structured `ResourceRef`, grants, caller context, and purpose; HTTP full-content route has an explicit enablement guard but still returns `501 not_enabled`.
 - Track E: Approval Pause / Resume Boundary is effectively complete / closed for now. Approval resolution plus run-state / HTTP read-model green slices are complete; UI / auth / notification / scheduler / complex DSL remain deferred.
-- v0.2 demo readiness is documented in [docs/v0.2-demo-readiness.md](docs/v0.2-demo-readiness.md).
-- v0.2 demo scenario is implemented and documented in [docs/v0.2-demo-scenario.md](docs/v0.2-demo-scenario.md): `--scenario v0.2` visibly exercises Track A / C / E without real HTTP server, network listener, memory storage/query, or HTTP full-content route.
-- v0.2 developer demo acceptance is documented in [docs/v0.2-demo-acceptance.md](docs/v0.2-demo-acceptance.md); `v0.2-demo` is already tagged, but no GitHub Release has been published.
+- v0.2 demo readiness is documented in [docs/demo/v0.2-demo-readiness.md](docs/demo/v0.2-demo-readiness.md).
+- v0.2 demo scenario is implemented and documented in [docs/demo/v0.2-demo-scenario.md](docs/demo/v0.2-demo-scenario.md): `--scenario v0.2` visibly exercises Track A / C / E without real HTTP server, network listener, memory storage/query, or HTTP full-content route.
+- v0.2 developer demo acceptance is documented in [docs/demo/v0.2-demo-acceptance.md](docs/demo/v0.2-demo-acceptance.md); `v0.2-demo` is already tagged, but no GitHub Release has been published.
 - Post-tag delta is documented in [docs/post-v0.2-tag-delta.md](docs/post-v0.2-tag-delta.md): current `main` is ahead of `v0.2-demo` with Track F external ingestion boundary work; do not move the tag or create `v0.2.1-demo` unless explicitly requested.
 - Track F: External Ingestion is effectively complete / closed for now at boundary / read-model / checkpoint scope: `ingestion.py`, `ImportedSnapshot`, and `snapshot.imported` projection into checkpointable `RunState.external_observations`; provider adapters, webhooks, and public ingestion API remain deferred.
 - v0.2 cycle closure is documented in [docs/v0.2-cycle-closure-review.md](docs/v0.2-cycle-closure-review.md). Default next mode is cleanup / docs organization / external review, not more runtime implementation.
@@ -67,15 +67,15 @@ git status --short
 - Current status: [docs/current-status.md](docs/current-status.md)
 - Demo walkthrough: [docs/demo/demo-walkthrough-v0.1.md](docs/demo/demo-walkthrough-v0.1.md)
 - Demo architecture: [docs/demo/demo-architecture-v0.1.md](docs/demo/demo-architecture-v0.1.md)
-- v0.1 demo acceptance: [docs/v0.1-demo-acceptance.md](docs/v0.1-demo-acceptance.md)
-- v0.2 demo acceptance: [docs/v0.2-demo-acceptance.md](docs/v0.2-demo-acceptance.md)
+- v0.1 demo acceptance: [docs/demo/v0.1-demo-acceptance.md](docs/demo/v0.1-demo-acceptance.md)
+- v0.2 demo acceptance: [docs/demo/v0.2-demo-acceptance.md](docs/demo/v0.2-demo-acceptance.md)
 - v0.2 roadmap: [docs/v0.2-roadmap.md](docs/v0.2-roadmap.md)
 - External ingestion boundary: [docs/external-ingestion-boundary-v0.2.md](docs/external-ingestion-boundary-v0.2.md)
 - Post v0.2 tag delta: [docs/post-v0.2-tag-delta.md](docs/post-v0.2-tag-delta.md)
 - v0.2 cycle closure review: [docs/v0.2-cycle-closure-review.md](docs/v0.2-cycle-closure-review.md)
 - Docs migration plan: [docs/docs-migration-plan.md](docs/docs-migration-plan.md)
-- v0.2 demo readiness: [docs/v0.2-demo-readiness.md](docs/v0.2-demo-readiness.md)
-- v0.2 demo scenario: [docs/v0.2-demo-scenario.md](docs/v0.2-demo-scenario.md)
+- v0.2 demo readiness: [docs/demo/v0.2-demo-readiness.md](docs/demo/v0.2-demo-readiness.md)
+- v0.2 demo scenario: [docs/demo/v0.2-demo-scenario.md](docs/demo/v0.2-demo-scenario.md)
 - v0.2 next-track selection: [docs/v0.2-next-track-selection.md](docs/v0.2-next-track-selection.md)
 - v0.2 mid-cycle review: [docs/v0.2-mid-cycle-review.md](docs/v0.2-mid-cycle-review.md)
 - Approval pause / resume boundary: [docs/approval-pause-resume-boundary-v0.2.md](docs/approval-pause-resume-boundary-v0.2.md)
