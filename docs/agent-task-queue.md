@@ -89,46 +89,47 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 baseline：`959 passed`。
+当前 baseline：`974 passed`。
 
 ## 6. Current Batch
 
-Batch name: `Retry / Cancel / Supersede Runtime Integration Boundary`
+Batch name: `Retry / Cancel / Supersede Runtime Integration Green Slice`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: define runtime-level retry / cancel / supersede request boundary without scheduler, process kill, tool-level cancellation, real concurrency, or executor grants semantic changes.
+Goal: implement minimal runtime-level retry / cancel / supersede helpers without scheduler, process kill, tool-level cancellation, real concurrency, product HTTP routes, or executor grants semantic changes.
 
 Tasks:
 
-1. Define runtime-level retry / cancel / supersede request boundary: complete.
-2. Clarify accepted / rejected / effective-state semantics: complete.
-3. Document logical cancellation, replacement proposal / execution, basis action / execution, and append-only constraints: complete.
-4. Docs / status sync: complete.
-5. Queue update: complete; next suggested batch set to `Retry / Cancel / Supersede Runtime Integration Red Tests`.
+1. Add runtime red tests: complete.
+2. Implement `InProcessServer.request_retry(...)`: complete.
+3. Implement `InProcessServer.request_cancel(...)`: complete.
+4. Implement `InProcessServer.request_supersede(...)`: complete.
+5. Docs / status sync: complete.
+6. Queue update: complete; next suggested batch set to `Retry / Cancel / Supersede Runtime Integration Closure Review`.
 
 Evidence:
 
 - Boundary doc: `docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md`.
-- Full regression after docs sync: `959 passed`.
+- Targeted runtime integration tests: `15 passed`.
+- Full regression after green slice: `974 passed`.
 - Trace checks: `artifact-review` and `external-snapshot-review` pass.
 - Boundary keeps scheduler, process kill, timeout engine, tool-level cancellation hooks, real concurrency, distributed locks, product HTTP routes, plugin loading, policy DSL, migration framework, and executor grants semantic changes out of scope.
 
 ## 7. Next Suggested Batch
 
-Batch name: `Retry / Cancel / Supersede Runtime Integration Red Tests`
+Batch name: `Retry / Cancel / Supersede Runtime Integration Closure Review`
 
-Status: `ready_red_only`
+Status: `ready_docs_only`
 
 Possible tasks:
 
-1. Add `tests/isotope_kernel/test_retry_runtime_integration_boundary.py`.
-2. Add `tests/isotope_kernel/test_cancel_runtime_integration_boundary.py`.
-3. Add `tests/isotope_kernel/test_supersede_runtime_integration_boundary.py`.
-4. Keep red-only unless queue / user explicitly authorizes green implementation.
-5. Stop if red tests unexpectedly pass, require scheduler/process kill/real concurrency, or require executor grants / event store semantic changes.
+1. Review `request_retry(...)`, `request_cancel(...)`, `request_supersede(...)`, projector validation, and tests.
+2. Confirm helper slice can be marked first slice complete / closed for now.
+3. Keep docs-only unless a clear correctness bug is found.
+4. Keep scheduler, process kill, timeout engine, tool-level cancellation hooks, real concurrency, product HTTP routes, and executor grants semantic changes out of scope.
 
 Alternative if user chooses usability instead:
 
@@ -137,6 +138,22 @@ Alternative if user chooses usability instead:
 Alternative if user chooses pause/review:
 
 - `External Review Package Refresh`
+
+### Previous Batch Snapshot: Retry / Cancel / Supersede Runtime Integration Red Tests
+
+Batch name: `Retry / Cancel / Supersede Runtime Integration Red Tests`
+
+Status: `complete`
+
+Evidence:
+
+- Added:
+  - `tests/isotope_kernel/test_retry_runtime_integration_boundary.py`
+  - `tests/isotope_kernel/test_cancel_runtime_integration_boundary.py`
+  - `tests/isotope_kernel/test_supersede_runtime_integration_boundary.py`
+- Targeted red result: `12 failed, 3 passed`.
+- Full regression with red tests: `12 failed, 962 passed`.
+- Failures were only missing `InProcessServer.request_retry(...)`, `request_cancel(...)`, and `request_supersede(...)` helpers.
 
 ### Previous Batch Snapshot: Policy Registry Version Basis Closure Review
 

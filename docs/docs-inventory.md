@@ -48,7 +48,7 @@
 - 加上 Workspace Resource Lifecycle Closure Review 后 docs Markdown：82 个。Workspace Resource Lifecycle first slice 已 complete / closed for now；当前建议下一步做 Policy Profile / Action Registry Versioning Boundary，不实现 real filesystem substrate。
 - Policy Profile / Action Registry Versioning first slice 已完成后 docs Markdown：83 个。
 - 加上 Policy Registry Version Basis Closure Review 后 docs Markdown：84 个。Policy Profile / Action Registry Versioning first slice 已 complete / closed for now；当前建议下一步做 Retry / Cancel / Supersede Runtime Integration Boundary，不实现 plugin marketplace、policy DSL 或 migration framework。
-- 加上 Retry / Cancel / Supersede Runtime Integration Boundary 后 docs Markdown：85 个。runtime request acceptance / rejection、logical cancel、replacement identity 和 allowed / disallowed transitions 已定义；当前建议下一步做 red tests，不实现 scheduler、process kill 或 real concurrency。
+- 加上 Retry / Cancel / Supersede Runtime Integration Boundary 后 docs Markdown：85 个。runtime request acceptance / rejection、logical cancel、replacement identity 和 allowed / disallowed transitions 已定义；runtime helper first green slice 已完成，当前建议下一步做 closure review，不实现 scheduler、process kill 或 real concurrency。
 
 ## 2. Current entrypoints
 
@@ -73,7 +73,7 @@
 - `docs/policy-profile-action-registry-versioning-boundary-v0.2.md`：Policy Profile / Action Registry Versioning boundary，记录 registry/profile basis metadata、stable reason code 和 first green slice evidence。
 - `docs/policy-registry-version-basis-closure-review.md`：Policy Registry Version Basis closure review，记录 first slice complete / closed for now 判断、basis metadata summary、remaining friction 和 next path。
 - `docs/retry-cancel-supersede-boundary-v0.2.md`：Retry / Cancel / Supersede boundary，记录 action lifecycle retry / cancel / supersede 的 first-slice contract 和 green status。
-- `docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md`：Retry / Cancel / Supersede runtime integration boundary，记录 runtime request contract、logical cancel、replacement identity、state transition rules 和 first red tests recommendation。
+- `docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md`：Retry / Cancel / Supersede runtime integration boundary，记录 runtime request contract、logical cancel、replacement identity、state transition rules、first green slice evidence 和 closure-review next step。
 - `docs/usability-pressure-test-plan-v0.2.md`：Kernel usability pressure test plan，记录 tiny app spike candidate review、approved `approval-gated tool runner` first slice 和 API friction。
 - `docs/approval-tool-runner-friction-review.md`：Approval-gated tool runner API friction review，记录 `submit_tool_request(...)` friction、approval lookup helper、workspace binding helper 和 `submit_action(...)` outcome。
 - `docs/workspace-binding-helper-friction-review.md`：Workspace binding helper friction review，记录 manual `workspace.bound` glue 的分层和 helper outcome。
@@ -103,16 +103,16 @@
 
 当前没有默认打开的 implementation track。Track F external ingestion 当前已完成 boundary 和 external observation read-model invariant green slices，并已 effectively complete / closed for now；`external-snapshot-review` second app spike 已 closed for now，不要直接实现 provider adapter / ingestion API。
 
-当前默认下一步是 `Retry / Cancel / Supersede Runtime Integration Red Tests`，不是 plugin marketplace、policy DSL、migration framework、scheduler、process kill 或 real filesystem substrate。`docs/kernel-gap-review-refresh-v0.2.md` 已刷新 app spike 后的 kernel gaps；`docs/workspace-resource-lifecycle-boundary-v0.2.md` 已定义并实现 workspace lease / release / artifact-capture first green slice；`docs/workspace-resource-lifecycle-closure-review.md` 已标记该 slice complete / closed for now；`docs/policy-profile-action-registry-versioning-boundary-v0.2.md` 已定义并实现 registry/profile basis first slice；`docs/policy-registry-version-basis-closure-review.md` 已标记该 slice complete / closed for now；`docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md` 已定义 runtime integration docs-only boundary；`docs/agent-worker-lifecycle-boundary-v0.2.md`、`docs/workspace-substrate-boundary-v0.2.md` 和 `docs/retry-cancel-supersede-boundary-v0.2.md` 三者 first slice 均已 complete。
+当前默认下一步是 `Retry / Cancel / Supersede Runtime Integration Closure Review`，不是 plugin marketplace、policy DSL、migration framework、scheduler、process kill 或 real filesystem substrate。`docs/kernel-gap-review-refresh-v0.2.md` 已刷新 app spike 后的 kernel gaps；`docs/workspace-resource-lifecycle-boundary-v0.2.md` 已定义并实现 workspace lease / release / artifact-capture first green slice；`docs/workspace-resource-lifecycle-closure-review.md` 已标记该 slice complete / closed for now；`docs/policy-profile-action-registry-versioning-boundary-v0.2.md` 已定义并实现 registry/profile basis first slice；`docs/policy-registry-version-basis-closure-review.md` 已标记该 slice complete / closed for now；`docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md` 已定义并实现 runtime integration helper first green slice；`docs/agent-worker-lifecycle-boundary-v0.2.md`、`docs/workspace-substrate-boundary-v0.2.md` 和 `docs/retry-cancel-supersede-boundary-v0.2.md` 三者 first slice 均已 complete。
 
 当前自动推进入口是 `docs/agent-task-queue.md`。`Approval-Gated Tool Runner Spike` 已完成，API friction review 已落文档，approval lookup/read helper、workspace binding helper 和 submit action helper 已完成；artifact review flow first slice、friction review、source artifact setup helper closure review、artifact provenance helper first slice、artifact review flow closure review、second app spike selection、external snapshot review closure review 和 app spike coverage review 已完成。
 
-- `docs/agent-task-queue.md`：active queue，Current Batch complete；Next Suggested Batch is `Retry / Cancel / Supersede Runtime Integration Red Tests` with `ready_red_only` status。
+- `docs/agent-task-queue.md`：active queue，Current Batch complete；Next Suggested Batch is `Retry / Cancel / Supersede Runtime Integration Closure Review` with `ready_docs_only` status。
 - `docs/usability-pressure-test-plan-v0.2.md`：current pressure-test planning doc，`approval-gated tool runner` first slice complete and friction reviewed。
 - `docs/second-app-spike-selection.md`：second app spike selection；recommended `external snapshot review`。
 - `docs/external-snapshot-review-closure-review.md`：current external snapshot review closure review；second app spike complete / closed for now。
 - `docs/app-spike-coverage-review.md`：app spike coverage review；recommendation executed by Kernel Gap Review Refresh。
-- `docs/kernel-gap-review-refresh-v0.2.md`：current kernel gap refresh；after policy/profile first slice closure and RCS runtime boundary docs, recommends Retry / Cancel / Supersede Runtime Integration Red Tests next。
+- `docs/kernel-gap-review-refresh-v0.2.md`：current kernel gap refresh；after policy/profile first slice closure and RCS runtime helper green slice, recommends Retry / Cancel / Supersede Runtime Integration Closure Review next。
 - `docs/policy-profile-action-registry-versioning-boundary-v0.2.md`：current policy/profile versioning boundary；records first green slice for registry / policy basis metadata。
 - `docs/policy-registry-version-basis-closure-review.md`：current policy/profile versioning closure review；records first slice complete / closed for now。
 - `docs/workspace-resource-lifecycle-boundary-v0.2.md`：current workspace lifecycle boundary；first slice complete / closed for now。
@@ -130,7 +130,7 @@
 - `docs/usability-friction-round-1-review.md`：current round 1 friction closure review；closed。
 - `docs/first-app-spike-readiness.md`：current app spike readiness review；artifact review flow first slice complete。
 - `docs/retry-cancel-supersede-boundary-v0.2.md`：Retry / Cancel / Supersede boundary，first slice complete。
-- `docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md`：Retry / Cancel / Supersede runtime integration boundary，docs-only boundary defined。
+- `docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md`：Retry / Cancel / Supersede runtime integration boundary，first green slice complete。
 - `docs/agent-worker-lifecycle-boundary-v0.2.md`：Agent / Worker lifecycle boundary，first slice complete。
 - `docs/workspace-substrate-boundary-v0.2.md`：Workspace substrate boundary，first slice complete。
 - `docs/external-ingestion-boundary-v0.2.md`：Track F external ingestion / `ImportedSnapshot` boundary，closed for now。
@@ -281,7 +281,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | `docs/release/release-draft-v0.1-demo.md` | Release draft text | draft / not published |
 | `docs/release-draft-v0.1-demo.md` | Release draft compatibility stub | stub / keep for one cycle |
 | `docs/retry-cancel-supersede-boundary-v0.2.md` | Retry / cancel / supersede action lifecycle boundary | first slice complete |
-| `docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md` | Retry / cancel / supersede runtime integration boundary | docs-only boundary defined |
+| `docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md` | Retry / cancel / supersede runtime integration boundary | first green slice complete |
 | `docs/server-checkpoint-boundary-v0.1.md` | Server checkpoint boundary | closed / frozen |
 | `docs/source-artifact-helper-closure-review.md` | Source artifact helper closure review | closed |
 | `docs/source-artifact-setup-helper-boundary-v0.2.md` | Source artifact setup helper boundary | closed |

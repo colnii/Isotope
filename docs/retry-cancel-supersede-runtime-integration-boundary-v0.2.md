@@ -1,12 +1,12 @@
 # Retry / Cancel / Supersede Runtime Integration Boundary v0.2
 
-状态：`boundary defined; red tests next`
+状态：`first green slice complete; closure review next`
 
 ## 1. Purpose
 
-当前 Retry / Cancel / Supersede 已有 projector-level canonical events、read model、basis linkage hardening、replay 和 checkpoint-assisted rebuild。它证明了 lifecycle facts 可以被 event-sourced（事件溯源）表达，但还没有定义 runtime integration（运行时集成）层应该如何接受 retry / cancel / supersede request。
+当前 Retry / Cancel / Supersede 已有 projector-level canonical events、read model、basis linkage hardening、replay 和 checkpoint-assisted rebuild。Runtime integration（运行时集成）first green slice 已实现最小 in-process helpers：`InProcessServer.request_retry(...)`、`request_cancel(...)` 和 `request_supersede(...)`。
 
-本文定义最小 runtime contract。目标不是实现 scheduler、process kill、automatic retry engine 或 real concurrency，而是先明确 server / helper / runtime facade 后续如何把 request 变成 canonical events，同时保持 executor grants、event store append-only 和 projector-only read model contract。
+本文定义最小 runtime contract，并记录 first green slice evidence。目标不是实现 scheduler、process kill、automatic retry engine 或 real concurrency，而是先明确 server / helper / runtime facade 如何把 request 变成 canonical events，同时保持 executor grants、event store append-only 和 projector-only read model contract。
 
 ## 2. Definitions
 
@@ -36,7 +36,7 @@
 
 ## 3. Hard Contracts
 
-后续 runtime integration 必须遵守：
+当前 runtime integration helper slice 必须遵守：
 
 - retry / cancel / supersede request must be canonical event-backed.
 - request 不得直接 mutate existing action / execution / `RunState` / `SessionState`。
@@ -179,7 +179,42 @@ Explicitly deferred:
 - product HTTP routes
 - workspace cleanup / rollback side effects
 
-## 10. First Red Tests Recommendation
+## 10. First Green Slice Evidence
+
+当前 green slice 已实现：
+
+- `InProcessServer.request_retry(...)`
+  - accepts failed action retry.
+  - accepts completed action retry only when `explicit_rerun=True`.
+  - appends `action.retry_requested` and `action.retry_created`.
+  - returns retry id, basis proposal / execution ids, and replacement proposal / execution ids.
+  - does not mutate the old execution state in place.
+- `InProcessServer.request_cancel(...)`
+  - accepts pending-approval logical cancel request.
+  - rejects completed / failed terminal action cancellation without partial events.
+  - appends `action.cancel_requested`.
+  - returns `logical_only=True` and `process_kill=False`.
+- `InProcessServer.request_supersede(...)`
+  - requires replacement intent or replacement proposal identity.
+  - appends `action.superseded`.
+  - links old proposal / execution to replacement proposal / execution identity.
+  - preserves completed old action status instead of rewriting it in place.
+
+Verification evidence:
+
+- targeted runtime tests: `15 passed`.
+- full regression: `974 passed`.
+
+Still absent by design:
+
+- scheduler / retry backoff policy engine.
+- timeout engine.
+- process kill / thread interruption.
+- tool-level cancellation hooks.
+- product HTTP retry / cancel / supersede routes.
+- real concurrency / distributed locks.
+
+## 11. First Red Tests Recommendation
 
 Suggested files:
 
@@ -204,7 +239,13 @@ Recommended coverage:
 - replay and checkpoint-assisted rebuild recover runtime request read models.
 - no scheduler / process kill / real concurrency / product HTTP route / dependency appears.
 
-## 11. Stop Conditions For Future Implementation
+These tests now exist and pass:
+
+- `tests/isotope_kernel/test_retry_runtime_integration_boundary.py`
+- `tests/isotope_kernel/test_cancel_runtime_integration_boundary.py`
+- `tests/isotope_kernel/test_supersede_runtime_integration_boundary.py`
+
+## 12. Stop Conditions For Future Implementation
 
 Stop before implementation if the slice requires:
 
