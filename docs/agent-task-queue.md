@@ -93,37 +93,34 @@ git status --short
 
 ## 6. Current Batch
 
-Batch name: `Retry / Cancel / Supersede Runtime Integration Closure Review`
+Batch name: `Event Schema Registry / Compatibility Boundary`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: close the runtime-level retry / cancel / supersede helper first slice without scheduler, process kill, tool-level cancellation, real concurrency, product HTTP routes, or executor grants semantic changes.
+Goal: define the minimal event schema compatibility contract as a docs-only artifact.
 
 Tasks:
 
-1. Review `InProcessServer.request_retry(...)`: complete.
-2. Review `InProcessServer.request_cancel(...)`: complete.
-3. Review `InProcessServer.request_supersede(...)`: complete.
-4. Confirm deferred boundaries: complete.
-5. Docs / status sync: complete.
-6. Queue update: complete; next suggested batch set to `Event Schema Registry / Compatibility Boundary`.
+1. Create `docs/event-schema-compatibility-boundary-v0.2.md`: complete.
+2. Clarify current implicit contract (single envelope version, version rejection, event type surface, digest binding): complete.
+3. Recommend first red tests for future evolution: complete.
+4. Keep docs-only; no src/test/pyproject changes.
+5. Queue update: complete; next suggested batch set to ...
 
 Evidence:
 
-- Boundary doc: `docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md`.
-- Closure doc: `docs/retry-cancel-supersede-runtime-closure-review.md`.
-- Targeted runtime integration tests: `15 passed`.
-- Full regression after green slice: `974 passed`.
-- Trace checks: `artifact-review` and `external-snapshot-review` pass.
-- Boundary keeps scheduler, process kill, timeout engine, tool-level cancellation hooks, real concurrency, distributed locks, product HTTP routes, plugin loading, policy DSL, migration framework, and executor grants semantic changes out of scope.
+- Boundary doc: `docs/event-schema-compatibility-boundary-v0.2.md`.
+- Documents hard contract: append-only, version gateway, no silent fallback, event type surface, projector ownership, checkpoint binding, etc.
+- References existing design notes without implementing anything.
+- No code changes; `974 passed` baseline unaffected.
 
 ## 7. Next Suggested Batch
 
-Batch name: `Event Schema Registry / Compatibility Boundary`
+Batch name: `Worker Handoff App Spike Selection`
 
-Status: `ready_docs_only`
+Status: `ready_docs_only` (requires user product judgement)
 
 Possible tasks:
 
@@ -133,13 +130,14 @@ Possible tasks:
 4. Keep docs-only unless a clear correctness bug is found.
 5. Keep migration framework, plugin marketplace, policy DSL, real integrations, product UI, and event-store semantic changes out of scope.
 
-Alternative if user chooses usability instead:
-
-- `Worker Handoff App Spike Selection`
-
 Alternative if user chooses pause/review:
 
 - `External Review Package Refresh`
+
+Or if deeper kernel work is desired:
+
+- `Session / Run Lifecycle Boundary`
+
 
 ### Previous Batch Snapshot: Retry / Cancel / Supersede Runtime Integration Green Slice
 
