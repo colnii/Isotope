@@ -93,41 +93,44 @@ git status --short
 
 ## 6. Current Batch
 
-Batch name: `Workspace Resource Lifecycle Closure Review`
+Batch name: `Policy Profile / Action Registry Versioning Boundary`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: review whether the workspace lease / release / artifact-capture first slice can be marked first-slice complete / closed for now.
+Goal: define a docs-only kernel contract for registry/version basis, policy profile/version basis, and stable reason codes before adding more action/tool/policy surfaces.
 
 Tasks:
 
-1. Confirm `workspace.lease_created` / `workspace.released` / `workspace.artifact_captured` projection, replay, and checkpoint coverage: complete.
-2. Confirm artifact capture only links structured artifact `ResourceRef` and does not store full content: complete.
-3. Confirm no real filesystem / container / git worktree / remote executor / product workspace file API was opened: complete.
-4. Write closure review doc: complete.
+1. Define `ActionTypeRegistry`, `registry_version`, `ActionTypeEntry`, `PolicyProfile`, `policy_profile_id`, `policy_version`, and `reason_code`: complete.
+2. Define hard contracts for proposal registry basis, decision policy basis, grants snapshot execution, and replay independence from mutable defaults: complete.
+3. Define minimal event / read-model / checkpoint implications: complete.
+4. Record deferred product / migration surfaces: complete.
 5. Docs / status sync: complete.
-6. Queue update: complete; next suggested batch set to `Policy Profile / Action Registry Versioning Boundary`.
+6. Queue update: complete; next suggested batch set to `Policy Profile / Action Registry Versioning Red Tests`.
 
 Evidence:
 
-- Closure doc: `docs/workspace-resource-lifecycle-closure-review.md`.
+- Boundary doc: `docs/policy-profile-action-registry-versioning-boundary-v0.2.md`.
 - Full regression baseline remains `942 passed`.
-- `workspace.lease_created`, `workspace.released`, and `workspace.artifact_captured` are closed at projector/read-model/checkpoint scope.
-- Remaining work is deferred: `workspace.release_failed`, path-safety, write / isolated modes, cleanup scheduler, real filesystem substrate, container, git worktree, remote executor, and product workspace file/content API.
+- First red tests recommendation:
+  - `tests/isotope_kernel/test_action_registry_version_basis.py`
+  - `tests/isotope_kernel/test_policy_profile_version_basis.py`
+- Deferred: plugin marketplace, dynamic plugin loading, remote registry loading, signed registry bundles, policy DSL, product policy UI, multi-tenant policy profile management, and schema migration framework.
 
 ## 7. Next Suggested Batch
 
-Batch name: `Policy Profile / Action Registry Versioning Boundary`
+Batch name: `Policy Profile / Action Registry Versioning Red Tests`
 
-Status: `ready_docs_only`
+Status: `ready_red_only`
 
 Possible tasks:
 
-1. Add docs-only boundary for policy profile identity, action type registry versioning, schema compatibility, and grants/action mode drift control.
-2. Recommend first red tests for profile / registry versioning, but do not implement unless explicitly requested.
-3. Keep real plugin loading, product policy UI, dynamic marketplace, real LLM, real HTTP server, provider adapter, memory query engine, filesystem substrate, and tag/release work out of scope.
+1. Add `tests/isotope_kernel/test_action_registry_version_basis.py`.
+2. Add `tests/isotope_kernel/test_policy_profile_version_basis.py`.
+3. Red phase only unless the user explicitly requests green.
+4. Keep real plugin loading, product policy UI, dynamic marketplace, real LLM, real HTTP server, provider adapter, memory query engine, filesystem substrate, and tag/release work out of scope.
 
 Alternative if user chooses usability instead:
 
@@ -136,6 +139,19 @@ Alternative if user chooses usability instead:
 Alternative if user chooses pause/review:
 
 - `External Review Package Refresh`
+
+### Previous Batch Snapshot: Workspace Resource Lifecycle Closure Review
+
+Batch name: `Workspace Resource Lifecycle Closure Review`
+
+Status: `complete`
+
+Evidence:
+
+- Closure doc: `docs/workspace-resource-lifecycle-closure-review.md`.
+- Full regression: `942 passed`.
+- `workspace.lease_created`, `workspace.released`, and `workspace.artifact_captured` are closed at projector/read-model/checkpoint scope.
+- Remaining work is deferred: `workspace.release_failed`, path-safety, write / isolated modes, cleanup scheduler, real filesystem substrate, container, git worktree, remote executor, and product workspace file/content API.
 
 ### Previous Batch Snapshot: Workspace Resource Lifecycle Green Slice
 

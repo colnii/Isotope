@@ -1,8 +1,10 @@
 # ActionTypeRegistry v0.1
 
-状态：draft
+状态：draft; versioning boundary defined separately
 
 本文定义 `ActionTypeRegistry` 的最小边界。当前已实现 minimal registry module，并已接入 `ActionCompiler`、`PolicyEngine` requirement lookup、`Executor` handler lookup 和 `InProcessServer` wiring；不引入 plugin system，不改变现有 action chain。
+
+Versioning follow-up 已单独定义在 `docs/policy-profile-action-registry-versioning-boundary-v0.2.md`。该 follow-up 要求后续 `ActionProposal` / `action.proposed` 记录 registry/version basis，`PolicyDecision` / `action.decided` 记录 policy profile/version basis，并保持 executor 只执行 grants snapshot；它不代表 plugin marketplace、dynamic loading、policy DSL 或 migration framework 已实现。
 
 ## Purpose
 
@@ -247,7 +249,8 @@ registry 可能被三个模块读取，但职责不同：
 
 下一轮 red tests 建议优先覆盖：
 
-- deferred boundary review before choosing memory write/query or external ingestion.
+- `tests/isotope_kernel/test_action_registry_version_basis.py`
+- `tests/isotope_kernel/test_policy_profile_version_basis.py`
 - no dynamic loading, no plugin discovery, no public extension API.
 
 不要在没有 red tests 前直接实现 full plugin system、remote registry、schema registry、real LLM tool calling 或 third-party tool loading。

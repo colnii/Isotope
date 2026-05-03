@@ -8,7 +8,7 @@ Isotope 是一个独立的 kernel-first agent runtime 项目，用来验证 cano
 
 当前 v0.2 implementation cycle 已建议暂停，进入 cleanup / docs organization / external review mode；Kernel Gap Review 后已新增 Agent / Worker lifecycle、Workspace substrate、Workspace Resource Lifecycle 和 Retry / Cancel / Supersede boundary，且当前 kernel boundary slices 均已 complete / closed for now。
 
-后续 rolling batch mode 由 [docs/agent-task-queue.md](docs/agent-task-queue.md) 管理；默认 session timebox 是 45-60 分钟，agent 每轮应先读 queue，不要自行进入未列出的新 Track 或为了凑时间 invent work。Workspace Resource Lifecycle first slice 已 closed for now，当前建议下一步做 Policy Profile / Action Registry Versioning Boundary，而不是直接开第三个 app spike 或 real integration。
+后续 rolling batch mode 由 [docs/agent-task-queue.md](docs/agent-task-queue.md) 管理；默认 session timebox 是 45-60 分钟，agent 每轮应先读 queue，不要自行进入未列出的新 Track 或为了凑时间 invent work。Policy Profile / Action Registry Versioning Boundary 已定义，当前建议下一步做 registry/profile basis red tests，而不是直接开第三个 app spike、plugin marketplace、policy DSL 或 real integration。
 
 ## Quick Start
 
@@ -86,6 +86,7 @@ python3 -m venv .venv
 - Workspace substrate boundary: [docs/workspace-substrate-boundary-v0.2.md](docs/workspace-substrate-boundary-v0.2.md)
 - Workspace resource lifecycle boundary: [docs/workspace-resource-lifecycle-boundary-v0.2.md](docs/workspace-resource-lifecycle-boundary-v0.2.md)
 - Workspace resource lifecycle closure review: [docs/workspace-resource-lifecycle-closure-review.md](docs/workspace-resource-lifecycle-closure-review.md)
+- Policy profile / action registry versioning boundary: [docs/policy-profile-action-registry-versioning-boundary-v0.2.md](docs/policy-profile-action-registry-versioning-boundary-v0.2.md)
 - Workspace binding helper boundary: [docs/workspace-binding-helper-boundary-v0.2.md](docs/workspace-binding-helper-boundary-v0.2.md)
 - Retry / Cancel / Supersede boundary: [docs/retry-cancel-supersede-boundary-v0.2.md](docs/retry-cancel-supersede-boundary-v0.2.md)
 - Usability pressure test plan: [docs/usability-pressure-test-plan-v0.2.md](docs/usability-pressure-test-plan-v0.2.md)
