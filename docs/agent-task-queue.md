@@ -93,27 +93,26 @@ git status --short
 
 ## 6. Current Batch
 
-Batch name: `Policy Registry Version Basis Green Slice`
+Batch name: `Policy Registry Version Basis Closure Review`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: implement the first registry/profile basis metadata slice without plugin system, policy DSL, marketplace, or migration framework.
+Goal: review and close the first registry/profile basis metadata slice without plugin system, policy DSL, marketplace, or migration framework.
 
 Tasks:
 
-1. Add red tests for registry version basis and policy profile version basis: complete.
-2. Add `ActionTypeRegistry.registry_id` / `registry_version` metadata: complete.
-3. Add `ActionProposal` / `action.proposed` registry basis: complete.
-4. Add `PolicyEngine.policy_profile_id` / `policy_version` and `PolicyDecision` / `action.decided` policy basis: complete.
-5. Project registry / policy basis into `RunState.actions` and checkpoints through action summaries: complete.
-6. Docs / status sync: complete.
-7. Queue update: complete; next suggested batch set to `Policy Registry Version Basis Closure Review`.
+1. Review `ActionTypeRegistry`, `ActionCompiler`, `PolicyEngine`, `InProcessServer`, and `RunProjector` basis metadata handling: complete.
+2. Confirm first slice can be marked complete / closed for now: complete.
+3. Confirm no plugin loading, policy DSL, marketplace, product policy UI, migration framework, real HTTP server, real LLM, provider adapter, memory query engine, filesystem substrate, or new dependency was introduced: complete.
+4. Docs / status sync: complete.
+5. Queue update: complete; next suggested batch set to `Retry / Cancel / Supersede Runtime Integration Boundary`.
 
 Evidence:
 
 - Boundary doc: `docs/policy-profile-action-registry-versioning-boundary-v0.2.md`.
+- Closure doc: `docs/policy-registry-version-basis-closure-review.md`.
 - Targeted tests: `17 passed`.
 - Full regression: `959 passed`.
 - Test files:
@@ -124,16 +123,16 @@ Evidence:
 
 ## 7. Next Suggested Batch
 
-Batch name: `Policy Registry Version Basis Closure Review`
+Batch name: `Retry / Cancel / Supersede Runtime Integration Boundary`
 
 Status: `ready_docs_only`
 
 Possible tasks:
 
-1. Review `ActionTypeRegistry`, `ActionCompiler`, `PolicyEngine`, `InProcessServer`, and `RunProjector` basis metadata handling.
-2. Confirm first slice can be marked complete / closed for now.
-3. Docs-only unless a clear correctness bug is found.
-4. Keep real plugin loading, product policy UI, dynamic marketplace, policy DSL, migration framework, real LLM, real HTTP server, provider adapter, memory query engine, filesystem substrate, and tag/release work out of scope.
+1. Define runtime-level retry / cancel / supersede request boundary.
+2. Clarify accepted / rejected / effective state semantics without scheduler, process kill, tool-level cancellation, or real concurrency.
+3. Keep docs-only unless a clear correctness bug is found.
+4. Keep plugin loading, product policy UI, dynamic marketplace, policy DSL, migration framework, real LLM, real HTTP server, provider adapter, memory query engine, filesystem substrate, and tag/release work out of scope.
 
 Alternative if user chooses usability instead:
 

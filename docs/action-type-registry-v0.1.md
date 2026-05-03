@@ -1,10 +1,10 @@
 # ActionTypeRegistry v0.1
 
-状态：draft; versioning first slice implemented separately
+状态：draft; versioning first slice closed separately
 
 本文定义 `ActionTypeRegistry` 的最小边界。当前已实现 minimal registry module，并已接入 `ActionCompiler`、`PolicyEngine` requirement lookup、`Executor` handler lookup 和 `InProcessServer` wiring；不引入 plugin system，不改变现有 action chain。
 
-Versioning follow-up 已单独定义在 `docs/policy-profile-action-registry-versioning-boundary-v0.2.md`。该 follow-up first slice 已实现 `ActionProposal` / `action.proposed` registry/version basis、`PolicyDecision` / `action.decided` policy profile/version basis，并保持 executor 只执行 grants snapshot；它不代表 plugin marketplace、dynamic loading、policy DSL 或 migration framework 已实现。
+Versioning follow-up 已单独定义在 `docs/policy-profile-action-registry-versioning-boundary-v0.2.md`，closure review 见 `docs/policy-registry-version-basis-closure-review.md`。该 follow-up first slice 已实现并 closed for now：`ActionProposal` / `action.proposed` registry/version basis、`PolicyDecision` / `action.decided` policy profile/version basis，并保持 executor 只执行 grants snapshot；它不代表 plugin marketplace、dynamic loading、policy DSL 或 migration framework 已实现。
 
 ## Purpose
 

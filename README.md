@@ -2,13 +2,13 @@
 
 Isotope 是一个独立的 kernel-first agent runtime 项目，用来验证 canonical event log、policy-gated execution、artifact provenance、projector replay 和 checkpoint-assisted rebuild 等内核边界。
 
-当前状态：`v0.1-demo` 和 `v0.2-demo` developer demo tags 已存在；当前本地 baseline 是 `959 passed`。Track A: HTTP API Minimal Surface、Track C: Artifact Content Read Policy、Track E: Approval Pause / Resume Boundary 和 Track F: External Ingestion 都已 effectively complete / closed for now；Agent / Worker lifecycle、Workspace substrate、Workspace Resource Lifecycle、Retry / Cancel / Supersede、approval-gated tool runner usability spike、approval lookup helper、workspace binding helper、submit action helper、artifact review flow、demo trace mode、source artifact setup helper、artifact provenance helper、external snapshot review second app spike 和 Policy Profile / Action Registry Versioning first slice 已 complete；artifact-review first app spike 和 external-snapshot-review second app spike 均已 closed for now。GitHub Release 未发布，详细状态见 [docs/current-status.md](docs/current-status.md)。
+当前状态：`v0.1-demo` 和 `v0.2-demo` developer demo tags 已存在；当前本地 baseline 是 `959 passed`。Track A: HTTP API Minimal Surface、Track C: Artifact Content Read Policy、Track E: Approval Pause / Resume Boundary 和 Track F: External Ingestion 都已 effectively complete / closed for now；Agent / Worker lifecycle、Workspace substrate、Workspace Resource Lifecycle、Retry / Cancel / Supersede、approval-gated tool runner usability spike、approval lookup helper、workspace binding helper、submit action helper、artifact review flow、demo trace mode、source artifact setup helper、artifact provenance helper、external snapshot review second app spike 和 Policy Profile / Action Registry Versioning first slice 已 complete / closed for now；artifact-review first app spike 和 external-snapshot-review second app spike 均已 closed for now。GitHub Release 未发布，详细状态见 [docs/current-status.md](docs/current-status.md)。
 
 `main` 当前 ahead of `v0.2-demo`，主要增量是 Track F external ingestion boundary、Agent / Worker lifecycle first slice、Workspace substrate first slice 和 Retry / Cancel / Supersede stabilization slice；delta 记录见 [docs/post-v0.2-tag-delta.md](docs/post-v0.2-tag-delta.md)。暂不移动 `v0.2-demo` tag，也不发布 GitHub Release。
 
 当前 v0.2 implementation cycle 已建议暂停，进入 cleanup / docs organization / external review mode；Kernel Gap Review 后已新增 Agent / Worker lifecycle、Workspace substrate、Workspace Resource Lifecycle 和 Retry / Cancel / Supersede boundary，且当前 kernel boundary slices 均已 complete / closed for now。
 
-后续 rolling batch mode 由 [docs/agent-task-queue.md](docs/agent-task-queue.md) 管理；默认 session timebox 是 45-60 分钟，agent 每轮应先读 queue，不要自行进入未列出的新 Track 或为了凑时间 invent work。Policy Profile / Action Registry Versioning first slice 已实现 registry/profile basis metadata，当前建议下一步做 closure review，而不是直接开第三个 app spike、plugin marketplace、policy DSL 或 real integration。
+后续 rolling batch mode 由 [docs/agent-task-queue.md](docs/agent-task-queue.md) 管理；默认 session timebox 是 45-60 分钟，agent 每轮应先读 queue，不要自行进入未列出的新 Track 或为了凑时间 invent work。Policy Profile / Action Registry Versioning first slice 已 closed for now；当前建议下一步是 Retry / Cancel / Supersede Runtime Integration Boundary，而不是直接开第三个 app spike、plugin marketplace、policy DSL 或 real integration。
 
 ## Quick Start
 
@@ -88,6 +88,7 @@ python3 -m venv .venv
 - Workspace resource lifecycle boundary: [docs/workspace-resource-lifecycle-boundary-v0.2.md](docs/workspace-resource-lifecycle-boundary-v0.2.md)
 - Workspace resource lifecycle closure review: [docs/workspace-resource-lifecycle-closure-review.md](docs/workspace-resource-lifecycle-closure-review.md)
 - Policy profile / action registry versioning boundary: [docs/policy-profile-action-registry-versioning-boundary-v0.2.md](docs/policy-profile-action-registry-versioning-boundary-v0.2.md)
+- Policy registry version basis closure review: [docs/policy-registry-version-basis-closure-review.md](docs/policy-registry-version-basis-closure-review.md)
 - Workspace binding helper boundary: [docs/workspace-binding-helper-boundary-v0.2.md](docs/workspace-binding-helper-boundary-v0.2.md)
 - Retry / Cancel / Supersede boundary: [docs/retry-cancel-supersede-boundary-v0.2.md](docs/retry-cancel-supersede-boundary-v0.2.md)
 - Usability pressure test plan: [docs/usability-pressure-test-plan-v0.2.md](docs/usability-pressure-test-plan-v0.2.md)

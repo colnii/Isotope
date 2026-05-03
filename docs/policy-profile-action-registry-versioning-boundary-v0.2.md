@@ -1,6 +1,6 @@
 # Policy Profile / Action Registry Versioning Boundary v0.2
 
-状态：`first green slice complete; plugin / policy DSL / migration deferred`
+状态：`first slice complete / closed for now; plugin / policy DSL / migration deferred`
 
 ## 1. Purpose
 
@@ -14,7 +14,7 @@
 - modified / denied decision 的 `reason_codes` 是否足够稳定？
 - demo / tests 如何避免隐式依赖当前 global default registry？
 
-本文定义最小 kernel contract（内核契约）。当前 first green slice 已实现 registry/profile basis metadata，但仍不引入 plugin system、marketplace、policy DSL 或 migration framework。
+本文定义最小 kernel contract（内核契约）。当前 first slice 已实现并通过 closure review：registry/profile basis metadata 已进入 proposal / decision / canonical event payload / action read model，但仍不引入 plugin system、marketplace、policy DSL 或 migration framework。
 
 ## 2. Definitions
 
@@ -283,4 +283,6 @@ Stop before implementation if a future slice requires:
 
 ## 11. Decision
 
-Policy Profile / Action Registry Versioning first slice is now implemented at metadata / event payload / read-model validation scope. The safe next step is closure review, not plugin loading, policy DSL, marketplace, remote registry loading, or migration framework.
+Policy Profile / Action Registry Versioning first slice is now complete / closed for now at metadata / event payload / read-model validation scope. Closure review is recorded in `docs/policy-registry-version-basis-closure-review.md`.
+
+The safe next step is Retry / Cancel / Supersede Runtime Integration Boundary if continuing kernel work. Do not move from this slice into plugin loading, policy DSL, marketplace, remote registry loading, product policy UI, or migration framework without a new explicit boundary.
