@@ -44,7 +44,8 @@
 - 加上 External Snapshot Review Closure Review 后 docs Markdown：78 个。`external-snapshot-review` second app spike 已 complete / closed for now。
 - 加上 App Spike Coverage Review 后 docs Markdown：79 个。该 recommendation 已执行到 `Kernel Gap Review Refresh`。
 - 加上 Kernel Gap Review Refresh 后 docs Markdown：80 个。该 recommendation 已执行到 `Workspace Resource Lifecycle Boundary`。
-- 加上 Workspace Resource Lifecycle Boundary 后 docs Markdown：81 个。Workspace Resource Lifecycle first green slice 已完成；当前建议下一步做 closure review，不实现 real filesystem substrate。
+- 加上 Workspace Resource Lifecycle Boundary 后 docs Markdown：81 个。Workspace Resource Lifecycle first green slice 已完成。
+- 加上 Workspace Resource Lifecycle Closure Review 后 docs Markdown：82 个。Workspace Resource Lifecycle first slice 已 complete / closed for now；当前建议下一步做 Policy Profile / Action Registry Versioning Boundary，不实现 real filesystem substrate。
 
 ## 2. Current entrypoints
 
@@ -64,7 +65,8 @@
 - `docs/kernel-gap-review-refresh-v0.2.md`：app spike 后的 kernel gap refresh，记录 first-slice enough surfaces、still-open kernel gaps 和 Workspace Resource Lifecycle next-step recommendation。
 - `docs/agent-worker-lifecycle-boundary-v0.2.md`：Agent / Worker lifecycle boundary，记录 supervisor / worker / delegation / worker read model / workspace binding / result handoff 的 first-slice design。
 - `docs/workspace-substrate-boundary-v0.2.md`：Workspace substrate boundary，记录 workspace as policy-bound execution resource、binding / lease / path safety / artifact capture / deferred substrate 的 first-slice complete 状态。
-- `docs/workspace-resource-lifecycle-boundary-v0.2.md`：Workspace resource lifecycle boundary，记录 binding vs lease、candidate events、read-model shape、artifact capture boundary 和 red-test recommendations。
+- `docs/workspace-resource-lifecycle-boundary-v0.2.md`：Workspace resource lifecycle boundary，记录 binding vs lease、candidate events、read-model shape、artifact capture boundary 和 first-slice evidence。
+- `docs/workspace-resource-lifecycle-closure-review.md`：Workspace resource lifecycle closure review，记录 first slice complete / closed for now 判断、read-model fields、remaining deferred substrate 和 next path。
 - `docs/retry-cancel-supersede-boundary-v0.2.md`：Retry / Cancel / Supersede boundary，记录 action lifecycle retry / cancel / supersede 的 first-slice contract 和 green status。
 - `docs/usability-pressure-test-plan-v0.2.md`：Kernel usability pressure test plan，记录 tiny app spike candidate review、approved `approval-gated tool runner` first slice 和 API friction。
 - `docs/approval-tool-runner-friction-review.md`：Approval-gated tool runner API friction review，记录 `submit_tool_request(...)` friction、approval lookup helper、workspace binding helper 和 `submit_action(...)` outcome。
@@ -95,17 +97,18 @@
 
 当前没有默认打开的 implementation track。Track F external ingestion 当前已完成 boundary 和 external observation read-model invariant green slices，并已 effectively complete / closed for now；`external-snapshot-review` second app spike 已 closed for now，不要直接实现 provider adapter / ingestion API。
 
-当前默认下一步是 `Workspace Resource Lifecycle Closure Review`，不是 real filesystem substrate。`docs/kernel-gap-review-refresh-v0.2.md` 已刷新 app spike 后的 kernel gaps；`docs/workspace-resource-lifecycle-boundary-v0.2.md` 已定义并实现 workspace lease / release / artifact-capture first green slice；`docs/agent-worker-lifecycle-boundary-v0.2.md`、`docs/workspace-substrate-boundary-v0.2.md` 和 `docs/retry-cancel-supersede-boundary-v0.2.md` 三者 first slice 均已 complete。后续应先 closure review，再考虑下一 kernel boundary。
+当前默认下一步是 `Policy Profile / Action Registry Versioning Boundary`，不是 real filesystem substrate。`docs/kernel-gap-review-refresh-v0.2.md` 已刷新 app spike 后的 kernel gaps；`docs/workspace-resource-lifecycle-boundary-v0.2.md` 已定义并实现 workspace lease / release / artifact-capture first green slice；`docs/workspace-resource-lifecycle-closure-review.md` 已标记该 slice complete / closed for now；`docs/agent-worker-lifecycle-boundary-v0.2.md`、`docs/workspace-substrate-boundary-v0.2.md` 和 `docs/retry-cancel-supersede-boundary-v0.2.md` 三者 first slice 均已 complete。
 
 当前自动推进入口是 `docs/agent-task-queue.md`。`Approval-Gated Tool Runner Spike` 已完成，API friction review 已落文档，approval lookup/read helper、workspace binding helper 和 submit action helper 已完成；artifact review flow first slice、friction review、source artifact setup helper closure review、artifact provenance helper first slice、artifact review flow closure review、second app spike selection、external snapshot review closure review 和 app spike coverage review 已完成。
 
-- `docs/agent-task-queue.md`：active queue，Current Batch complete；Next Suggested Batch is `Workspace Resource Lifecycle Closure Review` with `ready_docs_only` status。
+- `docs/agent-task-queue.md`：active queue，Current Batch complete；Next Suggested Batch is `Policy Profile / Action Registry Versioning Boundary` with `ready_docs_only` status。
 - `docs/usability-pressure-test-plan-v0.2.md`：current pressure-test planning doc，`approval-gated tool runner` first slice complete and friction reviewed。
 - `docs/second-app-spike-selection.md`：second app spike selection；recommended `external snapshot review`。
 - `docs/external-snapshot-review-closure-review.md`：current external snapshot review closure review；second app spike complete / closed for now。
 - `docs/app-spike-coverage-review.md`：app spike coverage review；recommendation executed by Kernel Gap Review Refresh。
-- `docs/kernel-gap-review-refresh-v0.2.md`：current kernel gap refresh；recommends `Workspace Resource Lifecycle Boundary` before a third app spike。
-- `docs/workspace-resource-lifecycle-boundary-v0.2.md`：current workspace lifecycle boundary；recommends red-only lease lifecycle / artifact capture tests。
+- `docs/kernel-gap-review-refresh-v0.2.md`：current kernel gap refresh；after workspace lifecycle closure, recommends Policy Profile / Action Registry Versioning next。
+- `docs/workspace-resource-lifecycle-boundary-v0.2.md`：current workspace lifecycle boundary；first slice complete / closed for now。
+- `docs/workspace-resource-lifecycle-closure-review.md`：current workspace lifecycle closure review；records first slice complete / closed for now。
 - `docs/artifact-review-flow-friction-review.md`：artifact review flow friction review；source artifact setup and provenance helpers closed。
 - `docs/artifact-review-flow-closure-review.md`：current artifact review closure review；first app spike complete / closed for now。
 - `docs/source-artifact-setup-helper-boundary-v0.2.md`：current source artifact setup helper boundary；closed。
@@ -273,7 +276,8 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | `docs/usability-pressure-test-plan-v0.2.md` | Kernel usability pressure test / spike status | two app spikes closed for now |
 | `docs/workspace-binding-helper-boundary-v0.2.md` | Workspace binding helper boundary | first slice complete |
 | `docs/workspace-binding-helper-friction-review.md` | Workspace binding helper friction review | implemented |
-| `docs/workspace-resource-lifecycle-boundary-v0.2.md` | Workspace resource lifecycle boundary | boundary defined |
+| `docs/workspace-resource-lifecycle-boundary-v0.2.md` | Workspace resource lifecycle boundary | first slice closed for now |
+| `docs/workspace-resource-lifecycle-closure-review.md` | Workspace resource lifecycle closure review | first slice closed for now |
 | `docs/demo/v0.1-demo-acceptance.md` | Demo acceptance record | closed |
 | `docs/v0.2-cycle-closure-review.md` | v0.2 cycle closure decision | current review |
 | `docs/demo/v0.2-demo-acceptance.md` | v0.2 demo acceptance record | accepted / tagged |

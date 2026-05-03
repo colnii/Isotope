@@ -1,6 +1,6 @@
 # Kernel Gap Review Refresh v0.2
 
-状态：`current refresh; workspace lifecycle first green slice complete`
+状态：`current refresh; workspace lifecycle first slice closed for now`
 
 ## 1. Purpose
 
@@ -37,7 +37,7 @@
 
 | Gap | Why it is kernel-level | Risk if deferred | Suggested next action |
 | --- | --- | --- | --- |
-| Workspace resource lifecycle | first green slice 已覆盖 `workspace.lease_created`、`workspace.released`、`workspace.artifact_captured` read model；仍缺 path-safety intent、write/read mode contract 和 cleanup / release failure diagnostics | worker handoff、tool protocol 和 retry/cancel runtime 后续仍会依赖 workspace lifecycle；如果现在打开真实 substrate 会过早产品化 | closure review next; defer real substrate |
+| Workspace resource lifecycle | first slice 已 closed for now，覆盖 `workspace.lease_created`、`workspace.released`、`workspace.artifact_captured` read model；仍缺 path-safety intent、write/read mode contract 和 cleanup / release failure diagnostics | worker handoff、tool protocol 和 retry/cancel runtime 后续仍会依赖 workspace lifecycle；如果现在打开真实 substrate 会过早产品化 | closed for now; defer real substrate |
 | Worker handoff app composition | worker lifecycle read model 已有，但 app-level composition 还没证明 worker result handoff、workspace grants、delegation policy 和 artifact refs 在一个 scenario 中自然协作 | 继续做 worker demo 可能暴露 workspace / policy / RCS contract gaps；若现在直接做 product multi-agent，会过早膨胀 | after workspace lifecycle boundary, consider `Worker Handoff App Spike` |
 | Retry / cancel / supersede runtime integration | projector-level lifecycle 已稳，但 runtime 何时接受 retry/cancel/supersede request、如何表达 accepted/rejected/effective state 仍薄 | 长任务、worker handoff、approval denial 后的 recovery 都会需要这个 contract；若直接做 scheduler/process kill 会破坏边界 | boundary review after workspace lifecycle; no scheduler/process kill |
 | Policy profile / action registry versioning | current policy is slice-level validation；缺 named policy profile、capability set、action type schema compatibility 和 versioned registry decision | helper / demo 越多，requested capabilities、grants、workspace modes 和 action schemas 越容易漂移 | docs-only `Policy/Profile Versioning Boundary` before broader app APIs |
@@ -65,32 +65,38 @@
 | Option | Judgment | Reason |
 | --- | --- | --- |
 | A. Worker Handoff App Spike | useful but not first | It would pressure a valuable untested surface, but it depends on workspace lifecycle and policy/profile clarity. Doing it now risks making a demo-specific worker composition API. |
-| B. Workspace Resource Lifecycle Boundary | first green slice complete | It clarified lease, release, artifact-capture linkage and checkpoint/replay without opening real filesystem substrate. The next step is closure review, not more substrate implementation. |
-| C. Retry/Cancel/Supersede Runtime Integration Boundary | third | Needed for longer-running workflows, but runtime integration should follow workspace lifecycle because cancel/supersede effects depend on execution resource ownership. |
-| D. Policy/Profile Versioning Boundary | second | It prevents grants/action schema drift and will constrain workspace modes, helper APIs, worker delegation and future app spikes. |
+| B. Workspace Resource Lifecycle Boundary | complete / closed for now | It clarified lease, release, artifact-capture linkage and checkpoint/replay without opening real filesystem substrate. |
+| C. Retry/Cancel/Supersede Runtime Integration Boundary | third | Needed for longer-running workflows, but runtime integration should follow policy/profile versioning because cancel/supersede effects depend on action schema and grants semantics. |
+| D. Policy/Profile Versioning Boundary | next | It prevents grants/action schema drift and will constrain workspace modes, helper APIs, worker delegation and future app spikes. |
 | E. Pause implementation and prepare external review package | safe alternative | If the goal is external communication rather than kernel progress, current docs + demos are enough for a review package. It should not block B if continuing kernel work. |
 
 Recommended order:
 
-1. `Workspace Resource Lifecycle Closure Review`
-2. `Policy/Profile Versioning Boundary`
-3. `Retry/Cancel/Supersede Runtime Integration Boundary`
-4. `Worker Handoff App Spike`
-5. optional external review package, if the near-term goal is reviewer handoff instead of more kernel design
+1. `Policy/Profile Versioning Boundary`
+2. `Retry/Cancel/Supersede Runtime Integration Boundary`
+3. `Worker Handoff App Spike`
+4. optional external review package, if the near-term goal is reviewer handoff instead of more kernel design
 
 ## 6. Next Batch Shape
 
-Recommended next batch:
+Completed follow-up:
 
 - Batch name: `Workspace Resource Lifecycle Closure Review`
 - Type: docs-only closure review
-- Goals:
-  - confirm `workspace.lease_created` / `workspace.released` / `workspace.artifact_captured` first green slice is coherent
-  - confirm replay / checkpoint coverage and fail-fast validation
-  - confirm no real filesystem / container / git worktree / remote executor / product workspace API was opened
-  - decide whether the slice can be marked first-slice complete / closed for now
+- Result: `first slice complete / closed for now`
+- Closure doc: `docs/workspace-resource-lifecycle-closure-review.md`
 
-Follow-up: `docs/workspace-resource-lifecycle-boundary-v0.2.md` now records first green slice evidence. The next implementation-facing step should not be real filesystem substrate unless a new boundary explicitly asks for it.
+Recommended next batch:
+
+- Batch name: `Policy Profile / Action Registry Versioning Boundary`
+- Type: docs-only boundary
+- Goals:
+  - define policy profile identity / versioning shape
+  - define action type registry versioning and compatibility boundary
+  - keep helper APIs and future app spikes tied to `PolicyDecision.grants`, not requested capabilities
+  - do not implement dynamic plugin loading or product policy UI
+
+Follow-up: `docs/workspace-resource-lifecycle-boundary-v0.2.md` and `docs/workspace-resource-lifecycle-closure-review.md` now record the closed first slice. The next implementation-facing step should not be real filesystem substrate unless a new boundary explicitly asks for it.
 
 Stop conditions:
 
@@ -102,4 +108,4 @@ Stop conditions:
 
 ## 7. Decision
 
-Kernel is not complete, but the current boundary package is no longer blocked by artifact/external-observation proof gaps. Workspace Resource Lifecycle now has a first green slice; the next useful step is closure review, then a fresh prioritization before opening policy/profile versioning, retry/cancel runtime integration, worker handoff, or any real workspace substrate.
+Kernel is not complete, but the current boundary package is no longer blocked by artifact/external-observation proof gaps. Workspace Resource Lifecycle now has a closed first slice; the next useful kernel boundary is Policy Profile / Action Registry Versioning, not real workspace substrate.

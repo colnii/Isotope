@@ -13,7 +13,7 @@ Workspace substrate 是 Agent / Worker lifecycle first slice 之后的下一块 
 
 本文件定义 v0.2 / v0.3 的最小边界。第一批 slice 已完成 workspace binding read model 和 policy boundary；它仍不实现真实 substrate。
 
-后续 resource lifecycle boundary 已单独定义在 `docs/workspace-resource-lifecycle-boundary-v0.2.md`。该文档只定义 lease / release / artifact-capture 边界，不代表真实 filesystem substrate 已实现。
+后续 resource lifecycle boundary 已单独定义在 `docs/workspace-resource-lifecycle-boundary-v0.2.md`，closure review 见 `docs/workspace-resource-lifecycle-closure-review.md`。该文档只定义 lease / release / artifact-capture 边界，不代表真实 filesystem substrate 已实现。
 
 ## 2. Current Capabilities
 
@@ -165,5 +165,5 @@ Current repo status remains:
 - current workspace implementation: `WorkspaceManager` shared read-only / grants validation, `RunState.workspaces` projection, `InProcessServer.bind_workspace(...)`, and first-slice lease / release / artifact-capture read-model support
 - no real substrate implementation from this document
 - first tests are implemented and green
-- closure review: `first slice complete`
-- next step, if requested: workspace resource lifecycle closure review, not real filesystem substrate
+- workspace resource lifecycle closure review: `first slice complete / closed for now`
+- next step, if requested: Policy Profile / Action Registry Versioning Boundary, not real filesystem substrate

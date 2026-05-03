@@ -93,22 +93,55 @@ git status --short
 
 ## 6. Current Batch
 
-Batch name: `Workspace Resource Lifecycle Green Slice`
+Batch name: `Workspace Resource Lifecycle Closure Review`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: implement projector/read-model/event validation support for workspace lease / release / artifact-capture lifecycle after red tests.
+Goal: review whether the workspace lease / release / artifact-capture first slice can be marked first-slice complete / closed for now.
 
 Tasks:
 
-1. Keep prior red tests uncommitted until green: complete.
-2. Implement `workspace.lease_created`, `workspace.released`, and `workspace.artifact_captured` validation / projection: complete.
-3. Preserve `shared_ro` fail-closed mode boundary and no-filesystem substrate: complete.
-4. Verify targeted tests and full regression: complete.
+1. Confirm `workspace.lease_created` / `workspace.released` / `workspace.artifact_captured` projection, replay, and checkpoint coverage: complete.
+2. Confirm artifact capture only links structured artifact `ResourceRef` and does not store full content: complete.
+3. Confirm no real filesystem / container / git worktree / remote executor / product workspace file API was opened: complete.
+4. Write closure review doc: complete.
 5. Docs / status sync: complete.
-6. Queue update: complete; next suggested batch set to `Workspace Resource Lifecycle Closure Review`.
+6. Queue update: complete; next suggested batch set to `Policy Profile / Action Registry Versioning Boundary`.
+
+Evidence:
+
+- Closure doc: `docs/workspace-resource-lifecycle-closure-review.md`.
+- Full regression baseline remains `942 passed`.
+- `workspace.lease_created`, `workspace.released`, and `workspace.artifact_captured` are closed at projector/read-model/checkpoint scope.
+- Remaining work is deferred: `workspace.release_failed`, path-safety, write / isolated modes, cleanup scheduler, real filesystem substrate, container, git worktree, remote executor, and product workspace file/content API.
+
+## 7. Next Suggested Batch
+
+Batch name: `Policy Profile / Action Registry Versioning Boundary`
+
+Status: `ready_docs_only`
+
+Possible tasks:
+
+1. Add docs-only boundary for policy profile identity, action type registry versioning, schema compatibility, and grants/action mode drift control.
+2. Recommend first red tests for profile / registry versioning, but do not implement unless explicitly requested.
+3. Keep real plugin loading, product policy UI, dynamic marketplace, real LLM, real HTTP server, provider adapter, memory query engine, filesystem substrate, and tag/release work out of scope.
+
+Alternative if user chooses usability instead:
+
+- `Worker Handoff App Spike Selection`
+
+Alternative if user chooses pause/review:
+
+- `External Review Package Refresh`
+
+### Previous Batch Snapshot: Workspace Resource Lifecycle Green Slice
+
+Batch name: `Workspace Resource Lifecycle Green Slice`
+
+Status: `complete`
 
 Evidence:
 
@@ -542,32 +575,6 @@ Scope:
 
 - report verification, commit, push, and current status
 - do not continue to the next batch
-
-## 7. Next Suggested Batch
-
-Batch name: `Workspace Resource Lifecycle Closure Review`
-
-Status: `ready_docs_only`
-
-Possible tasks:
-
-1. Review `workspace.lease_created`, `workspace.released`, and `workspace.artifact_captured` first green slice.
-2. Confirm `RunState.workspaces` lifecycle read model, replay, and checkpoint-assisted rebuild are coherent.
-3. Confirm malformed events fail fast and unsupported modes remain fail-closed.
-4. Confirm no real filesystem / container / git worktree / remote executor / product workspace file API was introduced.
-5. Docs/status sync and decide whether the slice can be marked first-slice complete / closed for now.
-
-Constraints:
-
-- docs-only unless a correctness bug is found.
-- no real filesystem mutation / container / git worktree / process spawn / remote executor.
-- no cleanup scheduler.
-- no product workspace API.
-- workspace identity must not become agent identity.
-- projector must not read workspace files.
-- executor grants semantics must not change.
-- no real HTTP server / real LLM / provider adapter / memory query engine.
-- no event store append-only semantic changes.
 
 ## 8. Completed Batch Log
 

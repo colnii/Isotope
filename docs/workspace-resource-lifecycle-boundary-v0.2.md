@@ -1,6 +1,6 @@
 # Workspace Resource Lifecycle Boundary v0.2
 
-状态：`first green slice complete; real substrate deferred`
+状态：`first slice complete / closed for now; real substrate deferred`
 
 ## 1. Purpose
 
@@ -178,6 +178,12 @@ Still not implemented:
 - binary streaming
 - `workspace.release_failed`
 
+Closure review:
+
+- `docs/workspace-resource-lifecycle-closure-review.md`
+- judgment: `first slice complete / closed for now`
+- next recommended kernel path: `Policy Profile / Action Registry Versioning Boundary`
+
 ## 10. Original First Red Tests (Implemented)
 
 Implemented files:
@@ -222,4 +228,4 @@ Stop before implementation if a future slice requires:
 
 ## 12. Decision
 
-Workspace resource lifecycle first green slice is complete at read-model / validation scope. The next safe step is closure review, not real filesystem or sandbox behavior.
+Workspace resource lifecycle first slice is complete / closed for now at read-model / validation scope. The next safe kernel step is Policy Profile / Action Registry Versioning Boundary, not real filesystem or sandbox behavior.
