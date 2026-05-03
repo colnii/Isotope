@@ -1,6 +1,6 @@
 # Kernel Gap Review Refresh v0.2
 
-状态：`current refresh; RCS runtime integration helper slice complete`
+状态：`current refresh; RCS runtime integration first slice closed`
 
 ## 1. Purpose
 
@@ -25,7 +25,7 @@
 | --- | --- | --- | --- |
 | Agent / worker lifecycle | `RunState.agents` / `RunState.workers` read model、supervisor projection、delegation proposal / policy gate、worker lifecycle events、worker grants 和 checkpoint support 已有 | `projector.py` 投影 agents/workers；tests 覆盖 delegation policy、replay、checkpoint；docs/agent-worker-lifecycle-boundary-v0.2.md | real concurrency、process spawn、remote worker、model planning loop |
 | Workspace substrate | `RunState.workspaces`、canonical `workspace.bound`、grants-bound `shared_ro` binding、server `bind_workspace(...)` helper、workspace lease / release / artifact-capture first slice、replay / checkpoint 已有 | workspace tests、approval-tool-runner spike、docs/workspace-substrate-boundary-v0.2.md、docs/workspace-resource-lifecycle-boundary-v0.2.md | path-safety engine、write mode、cleanup scheduler、container / git worktree |
-| Retry / cancel / supersede | action lifecycle read models、canonical slice events、basis linkage validation、replacement identity validation、checkpoint support 已有；runtime integration helper slice 已完成 | `RunState.action_retries` / `action_cancellations` / `action_supersessions`；`InProcessServer.request_retry(...)` / `request_cancel(...)` / `request_supersede(...)`；docs/retry-cancel-supersede-boundary-v0.2.md；docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md | automatic retry engine、scheduler、process kill、tool-level cancellation、runtime orchestration |
+| Retry / cancel / supersede | action lifecycle read models、canonical slice events、basis linkage validation、replacement identity validation、checkpoint support 已有；runtime integration first slice 已完成 closure review | `RunState.action_retries` / `action_cancellations` / `action_supersessions`；`InProcessServer.request_retry(...)` / `request_cancel(...)` / `request_supersede(...)`；docs/retry-cancel-supersede-boundary-v0.2.md；docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md；docs/retry-cancel-supersede-runtime-closure-review.md | automatic retry engine、scheduler、process kill、tool-level cancellation、runtime orchestration |
 | HTTP facade | in-process `HttpApiApp` route inventory、request validation、stable error shape、deferred routes、approval/read helper routes 已有 | Track A tests and v0.2 demo scenario | real listening server、framework choice、auth、SSE / streaming |
 | Approval pause / resume | `approval.requested` / `approval.resolved`、approved resume、denied no-execute、duplicate conflict、read helpers、HTTP in-process resolve/read routes 已有 | Track E tests、approval-tool-runner spike | product UI、identity/auth、notification、timeout scheduler、full approval state machine |
 | External ingestion boundary | `ingestion.py` fail-closed boundary、`ImportedSnapshot` slice model、`snapshot.imported` -> `RunState.external_observations`、conflict diagnostics、native state priority、checkpoint support 已有 | Track F tests、external-snapshot-review spike | provider adapter、webhook、external ingestion product API、reconciliation engine |
@@ -40,7 +40,7 @@
 | --- | --- | --- | --- |
 | Workspace resource lifecycle | first slice 已 closed for now，覆盖 `workspace.lease_created`、`workspace.released`、`workspace.artifact_captured` read model；仍缺 path-safety intent、write/read mode contract 和 cleanup / release failure diagnostics | worker handoff、tool protocol 和 retry/cancel runtime 后续仍会依赖 workspace lifecycle；如果现在打开真实 substrate 会过早产品化 | closed for now; defer real substrate |
 | Worker handoff app composition | worker lifecycle read model 已有，但 app-level composition 还没证明 worker result handoff、workspace grants、delegation policy 和 artifact refs 在一个 scenario 中自然协作 | 继续做 worker demo 可能暴露 workspace / policy / RCS contract gaps；若现在直接做 product multi-agent，会过早膨胀 | after workspace lifecycle boundary, consider `Worker Handoff App Spike` |
-| Retry / cancel / supersede runtime integration | helper first slice 已完成：request helpers append canonical events, preserve old action state, reject terminal cancel, and expose replacement identity；仍缺 scheduler / process integration by design | 长任务、worker handoff、approval denial 后的 recovery 都会继续依赖这个 contract；若直接做 scheduler/process kill 会破坏边界 | closure review next; no scheduler/process kill |
+| Retry / cancel / supersede runtime integration | helper first slice 已完成并 closed for now：request helpers append canonical events, preserve old action state, reject terminal cancel, and expose replacement identity；仍缺 scheduler / process integration by design | 长任务、worker handoff、approval denial 后的 recovery 都会继续依赖这个 contract；若直接做 scheduler/process kill 会破坏边界 | closed for now; no scheduler/process kill |
 | Policy profile / action registry versioning | first slice 已完成并 closed for now；后续仍缺 reason-code taxonomy、event schema registry 和 compatibility / migration story | helper / demo 越多，requested capabilities、grants、workspace modes 和 action schemas 越容易漂移 | closed for now; defer plugin / DSL / migration |
 | Session / run lifecycle | session/run 能创建和 replay，但 multi-run continuity、run pause/finalization/cancel/supersede、session history visibility 仍未成 contract | app spikes 目前多是 single-run；一旦做 app-like workflow，run boundaries 会变成 hidden glue | docs-only lifecycle review; do not mix with memory promotion |
 | Error taxonomy | server/helper/HTTP/projector 都有 controlled errors，但 error code taxonomy 还不是统一 kernel contract | facade/helper 增长后，客户端难以稳定处理 unknown / malformed / conflict / not_enabled / policy denied | small docs/red-test slice after next boundary |
@@ -67,13 +67,13 @@
 | --- | --- | --- |
 | A. Worker Handoff App Spike | useful but not first | It would pressure a valuable untested surface, but it depends on workspace lifecycle and policy/profile clarity. Doing it now risks making a demo-specific worker composition API. |
 | B. Workspace Resource Lifecycle Boundary | complete / closed for now | It clarified lease, release, artifact-capture linkage and checkpoint/replay without opening real filesystem substrate. |
-| C. Retry/Cancel/Supersede Runtime Integration Boundary | first green slice complete; closure review next | Needed for longer-running workflows, and policy/profile basis is now closed enough to make action lifecycle runtime semantics inspectable. |
+| C. Retry/Cancel/Supersede Runtime Integration Boundary | first slice closed for now | Needed for longer-running workflows, and policy/profile basis is now closed enough to make action lifecycle runtime semantics inspectable. |
 | D. Policy/Profile Versioning Boundary | first slice closed for now | It now prevents missing basis metadata in proposals / decisions / events; future work is taxonomy / compatibility, not plugin or DSL. |
 | E. Pause implementation and prepare external review package | safe alternative | If the goal is external communication rather than kernel progress, current docs + demos are enough for a review package. It should not block B if continuing kernel work. |
 
 Recommended order:
 
-1. `Retry/Cancel/Supersede Runtime Integration Closure Review`
+1. `Event Schema Registry / Compatibility Boundary`
 2. `Worker Handoff App Spike`
 3. `External Review Package Refresh`, if the near-term goal is reviewer handoff instead of more kernel design
 
@@ -111,13 +111,20 @@ Completed follow-up:
 - Type: docs-only boundary
 - Result: boundary defined in `docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md`
 
-Recommended next batch:
+Completed follow-up:
 
 - Batch name: `Retry / Cancel / Supersede Runtime Integration Closure Review`
 - Type: docs-only closure review
+- Result: `first slice complete / closed for now`
+- Closure doc: `docs/retry-cancel-supersede-runtime-closure-review.md`
+
+Recommended next batch:
+
+- Batch name: `Event Schema Registry / Compatibility Boundary`
+- Type: docs-only boundary
 - Goals:
-  - confirm `request_retry(...)` / `request_cancel(...)` / `request_supersede(...)` first slice can be marked complete / closed for now
-  - keep scheduler, process kill, real concurrency, plugin loading, policy DSL, migration framework, and executor grants semantic changes out of scope
+  - define minimal event schema compatibility contract before adding more event shapes
+  - keep migration framework, plugin marketplace, policy DSL, real integrations, and product UI out of scope
 
 Follow-up: `docs/workspace-resource-lifecycle-boundary-v0.2.md` / `docs/workspace-resource-lifecycle-closure-review.md` and `docs/policy-registry-version-basis-closure-review.md` now record the closed first slices. The next implementation-facing step should not be real filesystem substrate or plugin/policy infrastructure unless a new boundary explicitly asks for it.
 
@@ -131,4 +138,4 @@ Stop conditions:
 
 ## 7. Decision
 
-Kernel is not complete, but the current boundary package is no longer blocked by artifact/external-observation proof gaps. Workspace Resource Lifecycle and Policy Profile / Action Registry Versioning both have closed first slices, and Retry / Cancel / Supersede Runtime Integration helper slice is now green. The next useful step is closure review for that helper slice, not plugin marketplace, policy DSL, migration framework, real workspace substrate, scheduler/process kill, real HTTP server, or real LLM.
+Kernel is not complete, but the current boundary package is no longer blocked by artifact/external-observation proof gaps. Workspace Resource Lifecycle, Policy Profile / Action Registry Versioning, and Retry / Cancel / Supersede Runtime Integration now have closed first slices. The next useful step is an Event Schema Registry / Compatibility Boundary, not plugin marketplace, policy DSL, migration framework, real workspace substrate, scheduler/process kill, real HTTP server, or real LLM.

@@ -1,6 +1,6 @@
 # Retry / Cancel / Supersede Boundary v0.2
 
-状态：`first slice complete; stabilization complete; runtime integration helper slice complete`
+状态：`first slice complete; stabilization complete; runtime integration first slice closed`
 
 ## 1. Purpose
 
@@ -28,7 +28,7 @@ Retry / cancel / supersede 是 Workspace substrate first slice 之后需要补�
 - `run.completed` 不能覆盖 running / failed / pending approval state。
 - checkpoint state 已包含 `actions`、`approvals`、`agents`、`workers`、`workspaces`、`memory_records` 和 `external_observations` 等 read model。
 
-这些能力支撑了 retry / cancel / supersede 的第一批 green slice。当前已实现 action-level retry / cancel / supersede read model，并已完成 stabilization hardening：basis event linkage、replacement identity、cancel request ordering、projector reuse state reset，以及 checkpoint-assisted rebuild 等关键不变量都有测试覆盖。runtime integration follow-up 已单独定义并完成 first green slice，见 `docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md`：它提供 in-process `request_retry(...)` / `request_cancel(...)` / `request_supersede(...)` helpers，不实现 scheduler、process kill 或 automatic retry engine。
+这些能力支撑了 retry / cancel / supersede 的第一批 green slice。当前已实现 action-level retry / cancel / supersede read model，并已完成 stabilization hardening：basis event linkage、replacement identity、cancel request ordering、projector reuse state reset，以及 checkpoint-assisted rebuild 等关键不变量都有测试覆盖。runtime integration follow-up 已单独定义、实现并完成 closure review，见 `docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md` 和 `docs/retry-cancel-supersede-runtime-closure-review.md`：它提供 in-process `request_retry(...)` / `request_cancel(...)` / `request_supersede(...)` helpers，不实现 scheduler、process kill 或 automatic retry engine。
 
 ## 3. Boundary Definitions
 
@@ -211,6 +211,7 @@ Current repo status:
 - retry / cancel / supersede first slice: complete
 - retry / cancel / supersede stabilization slice: complete
 - runtime integration helper slice: complete in `docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md`
+- runtime integration closure review: complete in `docs/retry-cancel-supersede-runtime-closure-review.md`
 - runtime integration tests: `15 passed`
 - current implementation: projector-level canonical event validation, read model, replay, checkpoint support, and in-process runtime helpers
 - not implemented: scheduler, automatic retry engine, process kill, tool-level cancellation, real concurrency

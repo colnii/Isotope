@@ -93,26 +93,27 @@ git status --short
 
 ## 6. Current Batch
 
-Batch name: `Retry / Cancel / Supersede Runtime Integration Green Slice`
+Batch name: `Retry / Cancel / Supersede Runtime Integration Closure Review`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: implement minimal runtime-level retry / cancel / supersede helpers without scheduler, process kill, tool-level cancellation, real concurrency, product HTTP routes, or executor grants semantic changes.
+Goal: close the runtime-level retry / cancel / supersede helper first slice without scheduler, process kill, tool-level cancellation, real concurrency, product HTTP routes, or executor grants semantic changes.
 
 Tasks:
 
-1. Add runtime red tests: complete.
-2. Implement `InProcessServer.request_retry(...)`: complete.
-3. Implement `InProcessServer.request_cancel(...)`: complete.
-4. Implement `InProcessServer.request_supersede(...)`: complete.
+1. Review `InProcessServer.request_retry(...)`: complete.
+2. Review `InProcessServer.request_cancel(...)`: complete.
+3. Review `InProcessServer.request_supersede(...)`: complete.
+4. Confirm deferred boundaries: complete.
 5. Docs / status sync: complete.
-6. Queue update: complete; next suggested batch set to `Retry / Cancel / Supersede Runtime Integration Closure Review`.
+6. Queue update: complete; next suggested batch set to `Event Schema Registry / Compatibility Boundary`.
 
 Evidence:
 
 - Boundary doc: `docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md`.
+- Closure doc: `docs/retry-cancel-supersede-runtime-closure-review.md`.
 - Targeted runtime integration tests: `15 passed`.
 - Full regression after green slice: `974 passed`.
 - Trace checks: `artifact-review` and `external-snapshot-review` pass.
@@ -120,16 +121,17 @@ Evidence:
 
 ## 7. Next Suggested Batch
 
-Batch name: `Retry / Cancel / Supersede Runtime Integration Closure Review`
+Batch name: `Event Schema Registry / Compatibility Boundary`
 
 Status: `ready_docs_only`
 
 Possible tasks:
 
-1. Review `request_retry(...)`, `request_cancel(...)`, `request_supersede(...)`, projector validation, and tests.
-2. Confirm helper slice can be marked first slice complete / closed for now.
-3. Keep docs-only unless a clear correctness bug is found.
-4. Keep scheduler, process kill, timeout engine, tool-level cancellation hooks, real concurrency, product HTTP routes, and executor grants semantic changes out of scope.
+1. Define minimal event schema compatibility contract.
+2. Clarify event payload version / compatibility expectations for existing canonical events.
+3. Identify first red tests recommendation.
+4. Keep docs-only unless a clear correctness bug is found.
+5. Keep migration framework, plugin marketplace, policy DSL, real integrations, product UI, and event-store semantic changes out of scope.
 
 Alternative if user chooses usability instead:
 
@@ -138,6 +140,22 @@ Alternative if user chooses usability instead:
 Alternative if user chooses pause/review:
 
 - `External Review Package Refresh`
+
+### Previous Batch Snapshot: Retry / Cancel / Supersede Runtime Integration Green Slice
+
+Batch name: `Retry / Cancel / Supersede Runtime Integration Green Slice`
+
+Status: `complete`
+
+Evidence:
+
+- Implemented:
+  - `InProcessServer.request_retry(...)`
+  - `InProcessServer.request_cancel(...)`
+  - `InProcessServer.request_supersede(...)`
+- Targeted green result: `15 passed`.
+- Full regression: `974 passed`.
+- No scheduler / process kill / real concurrency / product HTTP route / new dependency / executor grants semantic change.
 
 ### Previous Batch Snapshot: Retry / Cancel / Supersede Runtime Integration Red Tests
 

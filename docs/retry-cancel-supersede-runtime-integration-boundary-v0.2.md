@@ -1,12 +1,12 @@
 # Retry / Cancel / Supersede Runtime Integration Boundary v0.2
 
-状态：`first green slice complete; closure review next`
+状态：`first slice complete / closed for now`
 
 ## 1. Purpose
 
-当前 Retry / Cancel / Supersede 已有 projector-level canonical events、read model、basis linkage hardening、replay 和 checkpoint-assisted rebuild。Runtime integration（运行时集成）first green slice 已实现最小 in-process helpers：`InProcessServer.request_retry(...)`、`request_cancel(...)` 和 `request_supersede(...)`。
+当前 Retry / Cancel / Supersede 已有 projector-level canonical events、read model、basis linkage hardening、replay 和 checkpoint-assisted rebuild。Runtime integration（运行时集成）first slice 已实现并完成 closure review：`InProcessServer.request_retry(...)`、`request_cancel(...)` 和 `request_supersede(...)` 提供最小 in-process helpers。
 
-本文定义最小 runtime contract，并记录 first green slice evidence。目标不是实现 scheduler、process kill、automatic retry engine 或 real concurrency，而是先明确 server / helper / runtime facade 如何把 request 变成 canonical events，同时保持 executor grants、event store append-only 和 projector-only read model contract。
+本文定义最小 runtime contract，并记录 first green slice / closure evidence。目标不是实现 scheduler、process kill、automatic retry engine 或 real concurrency，而是先明确 server / helper / runtime facade 如何把 request 变成 canonical events，同时保持 executor grants、event store append-only 和 projector-only read model contract。
 
 ## 2. Definitions
 
@@ -213,6 +213,12 @@ Still absent by design:
 - tool-level cancellation hooks.
 - product HTTP retry / cancel / supersede routes.
 - real concurrency / distributed locks.
+
+Closure review:
+
+- `docs/retry-cancel-supersede-runtime-closure-review.md`
+- conclusion: `first slice complete / closed for now`
+- next recommended boundary: `Event Schema Registry / Compatibility Boundary`
 
 ## 11. First Red Tests Recommendation
 
