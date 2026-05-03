@@ -93,21 +93,56 @@ git status --short
 
 ## 6. Current Batch
 
-Batch name: `Policy Registry Version Basis Closure Review`
+Batch name: `Retry / Cancel / Supersede Runtime Integration Boundary`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: review and close the first registry/profile basis metadata slice without plugin system, policy DSL, marketplace, or migration framework.
+Goal: define runtime-level retry / cancel / supersede request boundary without scheduler, process kill, tool-level cancellation, real concurrency, or executor grants semantic changes.
 
 Tasks:
 
-1. Review `ActionTypeRegistry`, `ActionCompiler`, `PolicyEngine`, `InProcessServer`, and `RunProjector` basis metadata handling: complete.
-2. Confirm first slice can be marked complete / closed for now: complete.
-3. Confirm no plugin loading, policy DSL, marketplace, product policy UI, migration framework, real HTTP server, real LLM, provider adapter, memory query engine, filesystem substrate, or new dependency was introduced: complete.
+1. Define runtime-level retry / cancel / supersede request boundary: complete.
+2. Clarify accepted / rejected / effective-state semantics: complete.
+3. Document logical cancellation, replacement proposal / execution, basis action / execution, and append-only constraints: complete.
 4. Docs / status sync: complete.
-5. Queue update: complete; next suggested batch set to `Retry / Cancel / Supersede Runtime Integration Boundary`.
+5. Queue update: complete; next suggested batch set to `Retry / Cancel / Supersede Runtime Integration Red Tests`.
+
+Evidence:
+
+- Boundary doc: `docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md`.
+- Full regression after docs sync: `959 passed`.
+- Trace checks: `artifact-review` and `external-snapshot-review` pass.
+- Boundary keeps scheduler, process kill, timeout engine, tool-level cancellation hooks, real concurrency, distributed locks, product HTTP routes, plugin loading, policy DSL, migration framework, and executor grants semantic changes out of scope.
+
+## 7. Next Suggested Batch
+
+Batch name: `Retry / Cancel / Supersede Runtime Integration Red Tests`
+
+Status: `ready_red_only`
+
+Possible tasks:
+
+1. Add `tests/isotope_kernel/test_retry_runtime_integration_boundary.py`.
+2. Add `tests/isotope_kernel/test_cancel_runtime_integration_boundary.py`.
+3. Add `tests/isotope_kernel/test_supersede_runtime_integration_boundary.py`.
+4. Keep red-only unless queue / user explicitly authorizes green implementation.
+5. Stop if red tests unexpectedly pass, require scheduler/process kill/real concurrency, or require executor grants / event store semantic changes.
+
+Alternative if user chooses usability instead:
+
+- `Worker Handoff App Spike Selection`
+
+Alternative if user chooses pause/review:
+
+- `External Review Package Refresh`
+
+### Previous Batch Snapshot: Policy Registry Version Basis Closure Review
+
+Batch name: `Policy Registry Version Basis Closure Review`
+
+Status: `complete`
 
 Evidence:
 
@@ -120,27 +155,6 @@ Evidence:
   - `tests/isotope_kernel/test_policy_profile_version_basis.py`
 - Fixture sync: existing handwritten `action.proposed` / `action.decided` payload fixtures now include default basis metadata; malformed missing-basis tests still fail fast.
 - Deferred: plugin marketplace, dynamic plugin loading, remote registry loading, signed registry bundles, policy DSL, product policy UI, multi-tenant policy profile management, and schema migration framework.
-
-## 7. Next Suggested Batch
-
-Batch name: `Retry / Cancel / Supersede Runtime Integration Boundary`
-
-Status: `ready_docs_only`
-
-Possible tasks:
-
-1. Define runtime-level retry / cancel / supersede request boundary.
-2. Clarify accepted / rejected / effective state semantics without scheduler, process kill, tool-level cancellation, or real concurrency.
-3. Keep docs-only unless a clear correctness bug is found.
-4. Keep plugin loading, product policy UI, dynamic marketplace, policy DSL, migration framework, real LLM, real HTTP server, provider adapter, memory query engine, filesystem substrate, and tag/release work out of scope.
-
-Alternative if user chooses usability instead:
-
-- `Worker Handoff App Spike Selection`
-
-Alternative if user chooses pause/review:
-
-- `External Review Package Refresh`
 
 ### Previous Batch Snapshot: Workspace Resource Lifecycle Closure Review
 
