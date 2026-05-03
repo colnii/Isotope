@@ -46,7 +46,7 @@
 - 加上 Kernel Gap Review Refresh 后 docs Markdown：80 个。该 recommendation 已执行到 `Workspace Resource Lifecycle Boundary`。
 - 加上 Workspace Resource Lifecycle Boundary 后 docs Markdown：81 个。Workspace Resource Lifecycle first green slice 已完成。
 - 加上 Workspace Resource Lifecycle Closure Review 后 docs Markdown：82 个。Workspace Resource Lifecycle first slice 已 complete / closed for now；当前建议下一步做 Policy Profile / Action Registry Versioning Boundary，不实现 real filesystem substrate。
-- 加上 Policy Profile / Action Registry Versioning Boundary 后 docs Markdown：83 个。当前建议下一步做 registry/profile version basis red tests，不实现 plugin marketplace、policy DSL 或 migration framework。
+- Policy Profile / Action Registry Versioning first slice 已完成后 docs Markdown：83 个。当前建议下一步做 closure review，不实现 plugin marketplace、policy DSL 或 migration framework。
 
 ## 2. Current entrypoints
 
@@ -99,17 +99,17 @@
 
 当前没有默认打开的 implementation track。Track F external ingestion 当前已完成 boundary 和 external observation read-model invariant green slices，并已 effectively complete / closed for now；`external-snapshot-review` second app spike 已 closed for now，不要直接实现 provider adapter / ingestion API。
 
-当前默认下一步是 `Policy Profile / Action Registry Versioning Red Tests`，不是 plugin marketplace、policy DSL、migration framework 或 real filesystem substrate。`docs/kernel-gap-review-refresh-v0.2.md` 已刷新 app spike 后的 kernel gaps；`docs/workspace-resource-lifecycle-boundary-v0.2.md` 已定义并实现 workspace lease / release / artifact-capture first green slice；`docs/workspace-resource-lifecycle-closure-review.md` 已标记该 slice complete / closed for now；`docs/policy-profile-action-registry-versioning-boundary-v0.2.md` 已定义 registry/profile basis boundary；`docs/agent-worker-lifecycle-boundary-v0.2.md`、`docs/workspace-substrate-boundary-v0.2.md` 和 `docs/retry-cancel-supersede-boundary-v0.2.md` 三者 first slice 均已 complete。
+当前默认下一步是 `Policy Registry Version Basis Closure Review`，不是 plugin marketplace、policy DSL、migration framework 或 real filesystem substrate。`docs/kernel-gap-review-refresh-v0.2.md` 已刷新 app spike 后的 kernel gaps；`docs/workspace-resource-lifecycle-boundary-v0.2.md` 已定义并实现 workspace lease / release / artifact-capture first green slice；`docs/workspace-resource-lifecycle-closure-review.md` 已标记该 slice complete / closed for now；`docs/policy-profile-action-registry-versioning-boundary-v0.2.md` 已定义并实现 registry/profile basis first slice；`docs/agent-worker-lifecycle-boundary-v0.2.md`、`docs/workspace-substrate-boundary-v0.2.md` 和 `docs/retry-cancel-supersede-boundary-v0.2.md` 三者 first slice 均已 complete。
 
 当前自动推进入口是 `docs/agent-task-queue.md`。`Approval-Gated Tool Runner Spike` 已完成，API friction review 已落文档，approval lookup/read helper、workspace binding helper 和 submit action helper 已完成；artifact review flow first slice、friction review、source artifact setup helper closure review、artifact provenance helper first slice、artifact review flow closure review、second app spike selection、external snapshot review closure review 和 app spike coverage review 已完成。
 
-- `docs/agent-task-queue.md`：active queue，Current Batch complete；Next Suggested Batch is `Policy Profile / Action Registry Versioning Red Tests` with `ready_red_only` status。
+- `docs/agent-task-queue.md`：active queue，Current Batch complete；Next Suggested Batch is `Policy Registry Version Basis Closure Review` with `ready_docs_only` status。
 - `docs/usability-pressure-test-plan-v0.2.md`：current pressure-test planning doc，`approval-gated tool runner` first slice complete and friction reviewed。
 - `docs/second-app-spike-selection.md`：second app spike selection；recommended `external snapshot review`。
 - `docs/external-snapshot-review-closure-review.md`：current external snapshot review closure review；second app spike complete / closed for now。
 - `docs/app-spike-coverage-review.md`：app spike coverage review；recommendation executed by Kernel Gap Review Refresh。
-- `docs/kernel-gap-review-refresh-v0.2.md`：current kernel gap refresh；after policy/profile boundary, recommends registry/profile basis red tests next。
-- `docs/policy-profile-action-registry-versioning-boundary-v0.2.md`：current policy/profile versioning boundary；recommends first red tests for registry / policy basis metadata。
+- `docs/kernel-gap-review-refresh-v0.2.md`：current kernel gap refresh；after policy/profile first slice, recommends closure review next。
+- `docs/policy-profile-action-registry-versioning-boundary-v0.2.md`：current policy/profile versioning boundary；records first green slice for registry / policy basis metadata。
 - `docs/workspace-resource-lifecycle-boundary-v0.2.md`：current workspace lifecycle boundary；first slice complete / closed for now。
 - `docs/workspace-resource-lifecycle-closure-review.md`：current workspace lifecycle closure review；records first slice complete / closed for now。
 - `docs/artifact-review-flow-friction-review.md`：artifact review flow friction review；source artifact setup and provenance helpers closed。

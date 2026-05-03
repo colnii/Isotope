@@ -89,48 +89,51 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 baseline：`942 passed`。
+当前 baseline：`959 passed`。
 
 ## 6. Current Batch
 
-Batch name: `Policy Profile / Action Registry Versioning Boundary`
+Batch name: `Policy Registry Version Basis Green Slice`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: define a docs-only kernel contract for registry/version basis, policy profile/version basis, and stable reason codes before adding more action/tool/policy surfaces.
+Goal: implement the first registry/profile basis metadata slice without plugin system, policy DSL, marketplace, or migration framework.
 
 Tasks:
 
-1. Define `ActionTypeRegistry`, `registry_version`, `ActionTypeEntry`, `PolicyProfile`, `policy_profile_id`, `policy_version`, and `reason_code`: complete.
-2. Define hard contracts for proposal registry basis, decision policy basis, grants snapshot execution, and replay independence from mutable defaults: complete.
-3. Define minimal event / read-model / checkpoint implications: complete.
-4. Record deferred product / migration surfaces: complete.
-5. Docs / status sync: complete.
-6. Queue update: complete; next suggested batch set to `Policy Profile / Action Registry Versioning Red Tests`.
+1. Add red tests for registry version basis and policy profile version basis: complete.
+2. Add `ActionTypeRegistry.registry_id` / `registry_version` metadata: complete.
+3. Add `ActionProposal` / `action.proposed` registry basis: complete.
+4. Add `PolicyEngine.policy_profile_id` / `policy_version` and `PolicyDecision` / `action.decided` policy basis: complete.
+5. Project registry / policy basis into `RunState.actions` and checkpoints through action summaries: complete.
+6. Docs / status sync: complete.
+7. Queue update: complete; next suggested batch set to `Policy Registry Version Basis Closure Review`.
 
 Evidence:
 
 - Boundary doc: `docs/policy-profile-action-registry-versioning-boundary-v0.2.md`.
-- Full regression baseline remains `942 passed`.
-- First red tests recommendation:
+- Targeted tests: `17 passed`.
+- Full regression: `959 passed`.
+- Test files:
   - `tests/isotope_kernel/test_action_registry_version_basis.py`
   - `tests/isotope_kernel/test_policy_profile_version_basis.py`
+- Fixture sync: existing handwritten `action.proposed` / `action.decided` payload fixtures now include default basis metadata; malformed missing-basis tests still fail fast.
 - Deferred: plugin marketplace, dynamic plugin loading, remote registry loading, signed registry bundles, policy DSL, product policy UI, multi-tenant policy profile management, and schema migration framework.
 
 ## 7. Next Suggested Batch
 
-Batch name: `Policy Profile / Action Registry Versioning Red Tests`
+Batch name: `Policy Registry Version Basis Closure Review`
 
-Status: `ready_red_only`
+Status: `ready_docs_only`
 
 Possible tasks:
 
-1. Add `tests/isotope_kernel/test_action_registry_version_basis.py`.
-2. Add `tests/isotope_kernel/test_policy_profile_version_basis.py`.
-3. Red phase only unless the user explicitly requests green.
-4. Keep real plugin loading, product policy UI, dynamic marketplace, real LLM, real HTTP server, provider adapter, memory query engine, filesystem substrate, and tag/release work out of scope.
+1. Review `ActionTypeRegistry`, `ActionCompiler`, `PolicyEngine`, `InProcessServer`, and `RunProjector` basis metadata handling.
+2. Confirm first slice can be marked complete / closed for now.
+3. Docs-only unless a clear correctness bug is found.
+4. Keep real plugin loading, product policy UI, dynamic marketplace, policy DSL, migration framework, real LLM, real HTTP server, provider adapter, memory query engine, filesystem substrate, and tag/release work out of scope.
 
 Alternative if user chooses usability instead:
 

@@ -1,6 +1,6 @@
 # Kernel Gap Review Refresh v0.2
 
-状态：`current refresh; policy/profile versioning boundary defined`
+状态：`current refresh; policy/profile versioning first slice complete`
 
 ## 1. Purpose
 
@@ -15,7 +15,7 @@
 - 当前 `src/isotope_kernel/` 实现
 - 当前 demo scenarios: v0.1, v0.2, `approval-tool-runner`, `artifact-review`, `external-snapshot-review`
 
-当前 baseline：`942 passed`。
+当前 baseline：`959 passed`。
 
 ## 2. Gaps Now First-Slice Enough
 
@@ -30,6 +30,7 @@
 | Approval pause / resume | `approval.requested` / `approval.resolved`、approved resume、denied no-execute、duplicate conflict、read helpers、HTTP in-process resolve/read routes 已有 | Track E tests、approval-tool-runner spike | product UI、identity/auth、notification、timeout scheduler、full approval state machine |
 | External ingestion boundary | `ingestion.py` fail-closed boundary、`ImportedSnapshot` slice model、`snapshot.imported` -> `RunState.external_observations`、conflict diagnostics、native state priority、checkpoint support 已有 | Track F tests、external-snapshot-review spike | provider adapter、webhook、external ingestion product API、reconciliation engine |
 | Artifact content read policy | summary default、structured `ResourceRef`、explicit grants + caller context + purpose for content retrieval、HTTP full-content route disabled 已有 | Track C tests、artifact-review spike | hosted content API、semantic retrieval / ranking、broad retrieval policy engine |
+| Policy profile / action registry versioning | `registry_id` / `registry_version` and `policy_profile_id` / `policy_version` basis metadata now flows through proposal / decision / events / `RunState.actions` | `tests/isotope_kernel/test_action_registry_version_basis.py`、`tests/isotope_kernel/test_policy_profile_version_basis.py` | plugin marketplace、remote registry loading、policy DSL、migration framework |
 
 ## 3. Still-Open Kernel-Level Gaps
 
@@ -40,7 +41,7 @@
 | Workspace resource lifecycle | first slice 已 closed for now，覆盖 `workspace.lease_created`、`workspace.released`、`workspace.artifact_captured` read model；仍缺 path-safety intent、write/read mode contract 和 cleanup / release failure diagnostics | worker handoff、tool protocol 和 retry/cancel runtime 后续仍会依赖 workspace lifecycle；如果现在打开真实 substrate 会过早产品化 | closed for now; defer real substrate |
 | Worker handoff app composition | worker lifecycle read model 已有，但 app-level composition 还没证明 worker result handoff、workspace grants、delegation policy 和 artifact refs 在一个 scenario 中自然协作 | 继续做 worker demo 可能暴露 workspace / policy / RCS contract gaps；若现在直接做 product multi-agent，会过早膨胀 | after workspace lifecycle boundary, consider `Worker Handoff App Spike` |
 | Retry / cancel / supersede runtime integration | projector-level lifecycle 已稳，但 runtime 何时接受 retry/cancel/supersede request、如何表达 accepted/rejected/effective state 仍薄 | 长任务、worker handoff、approval denial 后的 recovery 都会需要这个 contract；若直接做 scheduler/process kill 会破坏边界 | boundary review after workspace lifecycle; no scheduler/process kill |
-| Policy profile / action registry versioning | docs-only boundary 已定义；仍缺 red/green slice 来把 registry/version basis、policy profile/version basis 和 stable reason codes 写入 event/read model | helper / demo 越多，requested capabilities、grants、workspace modes 和 action schemas 越容易漂移 | red tests only next |
+| Policy profile / action registry versioning | first green slice 已完成；后续仍缺 reason-code taxonomy、event schema registry 和 compatibility / migration story | helper / demo 越多，requested capabilities、grants、workspace modes 和 action schemas 越容易漂移 | closure review; defer plugin / DSL / migration |
 | Session / run lifecycle | session/run 能创建和 replay，但 multi-run continuity、run pause/finalization/cancel/supersede、session history visibility 仍未成 contract | app spikes 目前多是 single-run；一旦做 app-like workflow，run boundaries 会变成 hidden glue | docs-only lifecycle review; do not mix with memory promotion |
 | Error taxonomy | server/helper/HTTP/projector 都有 controlled errors，但 error code taxonomy 还不是统一 kernel contract | facade/helper 增长后，客户端难以稳定处理 unknown / malformed / conflict / not_enabled / policy denied | small docs/red-test slice after next boundary |
 | Event schema registry / migration | event envelope/versioning docs 已有，但 actual event payload schema registry、compatibility policy、projector version migration 仍薄 | read model fields 越多，future breaking change 成本越高 | docs-only refresh before any incompatible schema change |
@@ -67,12 +68,12 @@
 | A. Worker Handoff App Spike | useful but not first | It would pressure a valuable untested surface, but it depends on workspace lifecycle and policy/profile clarity. Doing it now risks making a demo-specific worker composition API. |
 | B. Workspace Resource Lifecycle Boundary | complete / closed for now | It clarified lease, release, artifact-capture linkage and checkpoint/replay without opening real filesystem substrate. |
 | C. Retry/Cancel/Supersede Runtime Integration Boundary | third | Needed for longer-running workflows, but runtime integration should follow policy/profile versioning because cancel/supersede effects depend on action schema and grants semantics. |
-| D. Policy/Profile Versioning Boundary | boundary defined | It prevents grants/action schema drift and will constrain workspace modes, helper APIs, worker delegation and future app spikes. |
+| D. Policy/Profile Versioning Boundary | first slice complete | It now prevents missing basis metadata in proposals / decisions / events; future work is taxonomy / compatibility, not plugin or DSL. |
 | E. Pause implementation and prepare external review package | safe alternative | If the goal is external communication rather than kernel progress, current docs + demos are enough for a review package. It should not block B if continuing kernel work. |
 
 Recommended order:
 
-1. `Policy/Profile Versioning Red Tests`
+1. `Policy Registry Version Basis Closure Review`
 2. `Retry/Cancel/Supersede Runtime Integration Boundary`
 3. `Worker Handoff App Spike`
 4. optional external review package, if the near-term goal is reviewer handoff instead of more kernel design
@@ -92,14 +93,19 @@ Completed follow-up:
 - Type: docs-only boundary
 - Result: boundary defined in `docs/policy-profile-action-registry-versioning-boundary-v0.2.md`
 
+Completed follow-up:
+
+- Batch name: `Policy Registry Version Basis Green Slice`
+- Type: red -> green implementation
+- Result: `ActionTypeRegistry` / `ActionProposal` / `PolicyEngine` / `PolicyDecision` / canonical action events / `RunState.actions` now carry registry and policy basis metadata.
+
 Recommended next batch:
 
-- Batch name: `Policy Profile / Action Registry Versioning Red Tests`
-- Type: red tests only
+- Batch name: `Policy Registry Version Basis Closure Review`
+- Type: docs-only closure review
 - Goals:
-  - add `tests/isotope_kernel/test_action_registry_version_basis.py`
-  - add `tests/isotope_kernel/test_policy_profile_version_basis.py`
-  - lock registry/profile basis metadata expectations without implementing plugin loading, policy DSL, or migration framework
+  - confirm basis metadata first slice can close for now
+  - confirm no plugin loading, policy DSL, marketplace, product policy UI, or migration framework was introduced
 
 Follow-up: `docs/workspace-resource-lifecycle-boundary-v0.2.md` and `docs/workspace-resource-lifecycle-closure-review.md` now record the closed first slice. The next implementation-facing step should not be real filesystem substrate unless a new boundary explicitly asks for it.
 
@@ -113,4 +119,4 @@ Stop conditions:
 
 ## 7. Decision
 
-Kernel is not complete, but the current boundary package is no longer blocked by artifact/external-observation proof gaps. Workspace Resource Lifecycle now has a closed first slice, and Policy Profile / Action Registry Versioning now has a docs-only boundary. The next useful kernel step is red tests for registry/profile basis metadata, not plugin marketplace, policy DSL, migration framework, or real workspace substrate.
+Kernel is not complete, but the current boundary package is no longer blocked by artifact/external-observation proof gaps. Workspace Resource Lifecycle now has a closed first slice, and Policy Profile / Action Registry Versioning now has a first green slice. The next useful step is closure review, not plugin marketplace, policy DSL, migration framework, or real workspace substrate.

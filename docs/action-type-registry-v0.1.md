@@ -1,10 +1,10 @@
 # ActionTypeRegistry v0.1
 
-状态：draft; versioning boundary defined separately
+状态：draft; versioning first slice implemented separately
 
 本文定义 `ActionTypeRegistry` 的最小边界。当前已实现 minimal registry module，并已接入 `ActionCompiler`、`PolicyEngine` requirement lookup、`Executor` handler lookup 和 `InProcessServer` wiring；不引入 plugin system，不改变现有 action chain。
 
-Versioning follow-up 已单独定义在 `docs/policy-profile-action-registry-versioning-boundary-v0.2.md`。该 follow-up 要求后续 `ActionProposal` / `action.proposed` 记录 registry/version basis，`PolicyDecision` / `action.decided` 记录 policy profile/version basis，并保持 executor 只执行 grants snapshot；它不代表 plugin marketplace、dynamic loading、policy DSL 或 migration framework 已实现。
+Versioning follow-up 已单独定义在 `docs/policy-profile-action-registry-versioning-boundary-v0.2.md`。该 follow-up first slice 已实现 `ActionProposal` / `action.proposed` registry/version basis、`PolicyDecision` / `action.decided` policy profile/version basis，并保持 executor 只执行 grants snapshot；它不代表 plugin marketplace、dynamic loading、policy DSL 或 migration framework 已实现。
 
 ## Purpose
 
@@ -34,7 +34,8 @@ Versioning follow-up 已单独定义在 `docs/policy-profile-action-registry-ver
 - `ActionProposal -> PolicyDecision -> ActionExecution -> canonical events` 已有最小链路。
 - action/tool metadata 已有最小集中 registry module：`src/isotope_kernel/action_registry.py`。
 - `ActionTypeEntry` 是当前 v0 slice 的最小 metadata model。
-- `ActionTypeRegistry.default()` 当前只包含 `call_tool` + `write_artifact_tool`。
+- `ActionTypeRegistry.default()` 当前只包含 `call_tool` + `write_artifact_tool`，并 exposes `registry_id="default"` / `registry_version="v0.2"`。
+- custom `ActionTypeRegistry(...)` 可显式传入 `registry_id` / `registry_version`；malformed metadata fail fast。
 - `registry.tool_names()` 返回 `["write_artifact_tool"]`。
 - `registry.get_tool("write_artifact_tool")` 返回 metadata entry。
 - unknown tool lookup fail closed，抛 `KeyError`。
@@ -45,6 +46,7 @@ Versioning follow-up 已单独定义在 `docs/policy-profile-action-registry-ver
 - 不传 registry 时，`ActionCompiler` 使用 `ActionTypeRegistry.default()`。
 - `ActionCompiler` 支持 registry-backed non-`call_tool` action type，只要 `intent.action` 与 registry entry `action_type` 匹配。
 - `ActionCompiler` 会检查 registry `payload_requirements.required`。
+- `ActionCompiler` 生成的 `ActionProposal` 携带 registry/version basis。
 - valid `write_memory` intent 会保留 structured payload：`content`、`summary`、`source_refs`、`provenance`。
 - unknown compact tool 当前先在 compiler boundary 受控 `ValueError` fail closed。
 - disabled registry entry 会被 compiler 拒绝。
@@ -53,6 +55,8 @@ Versioning follow-up 已单独定义在 `docs/policy-profile-action-registry-ver
 - registry 已接入 `PolicyEngine` requirement lookup。
 - `PolicyEngine(registry=...)` 可显式传入 registry。
 - 不传 registry 时，`PolicyEngine` 使用 `ActionTypeRegistry.default()`。
+- `PolicyEngine` exposes `policy_profile_id` / `policy_version`，默认 `default` / `v0.2`。
+- `PolicyDecision` 携带 policy profile/version basis。
 - `PolicyEngine` 不再硬编码只接受 `call_tool`；registry-backed `write_memory` proposal 可以进入 policy decision。
 - registry-known tool 只有在 proposal requested capabilities 请求该 tool 时才可能被 policy approve。
 - registry 不能自动批准 action，也不能扩大 `PolicyDecision.grants`。

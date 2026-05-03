@@ -1,6 +1,6 @@
 # Policy Profile / Action Registry Versioning Boundary v0.2
 
-状态：`boundary defined; implementation deferred`
+状态：`first green slice complete; plugin / policy DSL / migration deferred`
 
 ## 1. Purpose
 
@@ -14,7 +14,7 @@
 - modified / denied decision 的 `reason_codes` 是否足够稳定？
 - demo / tests 如何避免隐式依赖当前 global default registry？
 
-本文只定义最小 kernel contract（内核契约）。本轮不实现 code / tests，不引入 plugin system、marketplace、policy DSL 或 migration framework。
+本文定义最小 kernel contract（内核契约）。当前 first green slice 已实现 registry/profile basis metadata，但仍不引入 plugin system、marketplace、policy DSL 或 migration framework。
 
 ## 2. Definitions
 
@@ -95,33 +95,39 @@ Free-form explanation 可以另存为 `message` / `detail`，但不能替代 `re
 
 当前事实：
 
-- `ActionTypeRegistry.default()` 当前只包含 deterministic `write_artifact_tool` slice。
+- `ActionTypeRegistry.default()` 当前只包含 deterministic `write_artifact_tool` slice，并 exposes `registry_id="default"` / `registry_version="v0.2"`。
+- custom `ActionTypeRegistry(...)` 可显式传入 `registry_id` / `registry_version`；malformed metadata fail fast。
 - `ActionCompiler(registry=...)` 可显式传入 registry；不传时使用 default registry。
-- `PolicyEngine(registry=...)` 可显式传入 registry；不传时使用 default registry。
+- `ActionCompiler` 生成的 `ActionProposal` 携带 `registry_id` / `registry_version` / `registry_basis`。
+- canonical `action.proposed` payload 包含 registry basis metadata。
+- `PolicyEngine(registry=..., policy_profile_id=..., policy_version=...)` 可显式传入 registry 和 policy metadata；不传时使用 default registry / profile。
+- `PolicyEngine` 默认 exposes `policy_profile_id="default"` / `policy_version="v0.2"`；malformed metadata fail fast。
+- `PolicyDecision` 携带 `policy_profile_id` / `policy_version` / `policy_basis`。
+- canonical `action.decided` payload 包含 policy basis metadata。
 - `Executor(..., registry=...)` 可显式传入 registry；不传时使用 default registry。
 - `InProcessServer(root, registry=...)` 创建 shared registry，并注入 compiler / policy / executor。
 - compiler 只生成 requested capabilities，不生成 grants。
 - policy 负责生成 `PolicyDecision.grants`，并可 approved / modified / denied。
 - executor 只使用 effective grants snapshot，不使用 proposal requested capabilities 扩权。
 - registry-known-but-unsupported handler fail closed。
+- projector validation 要求 `action.proposed` / `action.decided` payload 携带 basis metadata。
+- `RunState.actions` summaries 可从 canonical events 展示 registry / policy basis，replay / checkpoint-assisted rebuild 不依赖 current default registry / policy profile。
+- existing handwritten test fixtures 已最小同步默认 basis metadata；malformed missing-basis tests 仍验证 fail-fast。
 
 当前缺口：
 
-- `ActionProposal` 没有 registry/version basis 字段。
-- canonical `action.proposed` payload 没有 registry metadata。
-- `PolicyDecision` 没有 policy profile/version basis 字段。
-- canonical `action.decided` payload 没有 policy profile metadata。
-- `reason_codes` 已存在，但还没有稳定 taxonomy / compatibility contract。
-- event replay 主要依赖 event payload 本身；如果未来 registry/profile 默认值变化，旧 event log 缺少显式 basis metadata。
+- `reason_codes` 已是 stable identifiers，但还没有完整 taxonomy / compatibility contract。
+- 仍没有 registry/profile migration framework、bundle store、remote loading、policy DSL 或 product policy UI。
+- event schema registry / compatibility engine 仍属于后续单独 boundary。
 
 ## 4. Hard Contracts
 
-后续实现必须遵守：
+后续实现必须继续遵守：
 
-- `ActionProposal` should record registry/version basis.
-- `PolicyDecision` should record policy profile/version basis.
-- canonical `action.proposed` event should carry enough registry basis to explain old proposals after registry defaults change.
-- canonical `action.decided` event should carry enough policy basis to explain old decisions after policy defaults change.
+- `ActionProposal` records registry/version basis.
+- `PolicyDecision` records policy profile/version basis.
+- canonical `action.proposed` event carries enough registry basis to explain old proposals after registry defaults change.
+- canonical `action.decided` event carries enough policy basis to explain old decisions after policy defaults change.
 - executor must execute effective grants snapshot, not re-query mutable policy.
 - event replay must not depend on current default registry / policy profile.
 - registry/profile changes must be append/new-version, not silent mutation for old runs.
@@ -233,14 +239,14 @@ Explicitly deferred:
 - real LLM tool calling integration
 - domain pack / tool pack marketplace
 
-## 9. First Red Tests Recommendation
+## 9. First Green Slice Evidence
 
-Recommended first red test files:
+Implemented test files:
 
 - `tests/isotope_kernel/test_action_registry_version_basis.py`
 - `tests/isotope_kernel/test_policy_profile_version_basis.py`
 
-Suggested coverage for `test_action_registry_version_basis.py`:
+Coverage in `test_action_registry_version_basis.py`:
 
 - `ActionProposal` or equivalent proposed action summary records registry basis.
 - `action.proposed` canonical event includes registry version metadata.
@@ -251,7 +257,7 @@ Suggested coverage for `test_action_registry_version_basis.py`:
 - changing current default registry does not alter old event replay.
 - registry entry version is metadata-only and cannot carry executable callback.
 
-Suggested coverage for `test_policy_profile_version_basis.py`:
+Coverage in `test_policy_profile_version_basis.py`:
 
 - `PolicyDecision` records `policy_profile_id` and `policy_version` or equivalent basis metadata.
 - `action.decided` canonical event includes policy profile/version metadata.
@@ -277,4 +283,4 @@ Stop before implementation if a future slice requires:
 
 ## 11. Decision
 
-Policy Profile / Action Registry Versioning is the right next kernel boundary after Workspace Resource Lifecycle closure. The safe next step is red tests for explicit registry/profile basis metadata, not plugin loading, policy DSL, or migration framework.
+Policy Profile / Action Registry Versioning first slice is now implemented at metadata / event payload / read-model validation scope. The safe next step is closure review, not plugin loading, policy DSL, marketplace, remote registry loading, or migration framework.
