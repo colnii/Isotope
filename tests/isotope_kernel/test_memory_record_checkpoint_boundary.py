@@ -47,6 +47,8 @@ def _action_proposed(event_id: str, proposal_id: str, action_type: str = "write_
             "proposal_id": proposal_id,
             "agent_id": "agent_supervisor",
             "action_type": action_type,
+            "registry_id": "default",
+            "registry_version": "v0.2",
             "payload": {"tool": action_type},
         },
     )
@@ -65,6 +67,8 @@ def _action_decided(
             "decision_id": decision_id,
             "proposal_id": proposal_id,
             "outcome": outcome,
+            "policy_profile_id": "default",
+            "policy_version": "v0.2",
         },
     )
 

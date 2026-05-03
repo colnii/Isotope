@@ -97,6 +97,8 @@ def _worker_action_proposed(event_id: str = "evt_006"):
             "proposal_id": "prop_worker_001",
             "agent_id": "agent_worker_001",
             "action_type": "call_tool",
+            "registry_id": "default",
+            "registry_version": "v0.2",
         },
     )
 
@@ -109,6 +111,8 @@ def _worker_action_decided(event_id: str = "evt_007"):
             "proposal_id": "prop_worker_001",
             "decision_id": "dec_worker_001",
             "outcome": "approved",
+            "policy_profile_id": "default",
+            "policy_version": "v0.2",
             "grants": {
                 "tools": ["write_artifact_tool"],
                 "workspace": {"mode": "shared_ro"},
@@ -126,6 +130,8 @@ def _worker_action_decided_without_grants(event_id: str = "evt_007"):
             "proposal_id": "prop_worker_001",
             "decision_id": "dec_worker_001",
             "outcome": "approved",
+            "policy_profile_id": "default",
+            "policy_version": "v0.2",
         },
     )
 

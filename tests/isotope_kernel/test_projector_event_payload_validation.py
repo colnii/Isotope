@@ -33,6 +33,8 @@ def _proposed(proposal_id="prop_001"):
             "proposal_id": proposal_id,
             "agent_id": "agent_supervisor",
             "action_type": "call_tool",
+            "registry_id": "default",
+            "registry_version": "v0.2",
         },
     )
 
@@ -42,6 +44,8 @@ def _decided(outcome="approved", **overrides):
         "decision_id": "dec_001",
         "proposal_id": "prop_001",
         "outcome": outcome,
+        "policy_profile_id": "default",
+        "policy_version": "v0.2",
     }
     payload.update(overrides)
     return _event("evt_003", "action.decided", payload)

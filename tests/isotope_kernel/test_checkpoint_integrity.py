@@ -43,6 +43,8 @@ def _proposed():
             "proposal_id": "prop_001",
             "agent_id": "agent_supervisor",
             "action_type": "call_tool",
+            "registry_id": "default",
+            "registry_version": "v0.2",
         },
     )
 
@@ -55,6 +57,8 @@ def _decided():
             "decision_id": "dec_001",
             "proposal_id": "prop_001",
             "outcome": "approved",
+            "policy_profile_id": "default",
+            "policy_version": "v0.2",
         },
     )
 

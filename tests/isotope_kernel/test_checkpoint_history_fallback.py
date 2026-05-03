@@ -37,6 +37,8 @@ def _happy_path_events():
                 "proposal_id": "prop_001",
                 "decision_id": "dec_001",
                 "outcome": "approved",
+                "policy_profile_id": "default",
+                "policy_version": "v0.2",
             },
         ),
         _event(
@@ -83,6 +85,8 @@ def _lifecycle_invalid_events():
                 "proposal_id": "prop_001",
                 "decision_id": "dec_001",
                 "outcome": "denied",
+                "policy_profile_id": "default",
+                "policy_version": "v0.2",
             },
         ),
         _event(

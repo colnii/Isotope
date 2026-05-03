@@ -141,6 +141,9 @@ class InProcessServer:
                 "agent_id": proposal.agent_id,
                 "thread_id": proposal.thread_id,
                 "action_type": proposal.action_type,
+                "registry_id": proposal.registry_id,
+                "registry_version": proposal.registry_version,
+                "registry_basis": proposal.registry_basis,
             },
         )
 
@@ -152,6 +155,8 @@ class InProcessServer:
                 outcome="pending_user_approval",
                 grants=decision.grants,
                 reason_codes=["approval_required"],
+                policy_profile_id=decision.policy_profile_id,
+                policy_version=decision.policy_version,
             )
         self._append(
             run_id,
@@ -161,6 +166,9 @@ class InProcessServer:
                 "proposal_id": decision.proposal_id,
                 "outcome": decision.outcome,
                 "reason_codes": list(decision.reason_codes),
+                "policy_profile_id": decision.policy_profile_id,
+                "policy_version": decision.policy_version,
+                "policy_basis": decision.policy_basis,
             },
         )
         result_base = {
@@ -280,6 +288,8 @@ class InProcessServer:
             outcome="approved",
             grants=original_decision.grants,
             reason_codes=list(original_decision.reason_codes),
+            policy_profile_id=original_decision.policy_profile_id,
+            policy_version=original_decision.policy_version,
         )
 
         try:
@@ -420,6 +430,9 @@ class InProcessServer:
                 "agent_id": proposal.agent_id,
                 "thread_id": proposal.thread_id,
                 "action_type": proposal.action_type,
+                "registry_id": proposal.registry_id,
+                "registry_version": proposal.registry_version,
+                "registry_basis": proposal.registry_basis,
             },
         )
 
@@ -432,6 +445,9 @@ class InProcessServer:
                 "proposal_id": decision.proposal_id,
                 "outcome": decision.outcome,
                 "reason_codes": list(decision.reason_codes),
+                "policy_profile_id": decision.policy_profile_id,
+                "policy_version": decision.policy_version,
+                "policy_basis": decision.policy_basis,
             },
         )
         if decision.outcome == "denied":

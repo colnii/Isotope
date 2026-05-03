@@ -33,6 +33,8 @@ def _proposal(event_id="evt_002", proposal_id="prop_001"):
             "proposal_id": proposal_id,
             "agent_id": "agent_supervisor",
             "action_type": "call_tool",
+            "registry_id": "default",
+            "registry_version": "v0.2",
         },
     )
 
@@ -45,6 +47,8 @@ def _decision(event_id="evt_003", proposal_id="prop_001", decision_id="dec_001")
             "decision_id": decision_id,
             "proposal_id": proposal_id,
             "outcome": "approved",
+            "policy_profile_id": "default",
+            "policy_version": "v0.2",
         },
     )
 

@@ -51,6 +51,8 @@ def _completed_run_events() -> list[CanonicalEvent]:
                 "proposal_id": "proposal_001",
                 "agent_id": "agent_supervisor",
                 "action_type": "write_artifact_tool",
+                "registry_id": "default",
+                "registry_version": "v0.2",
                 "payload": {"tool": "write_artifact_tool"},
             },
         ),
@@ -61,6 +63,8 @@ def _completed_run_events() -> list[CanonicalEvent]:
                 "proposal_id": "proposal_001",
                 "decision_id": "decision_001",
                 "outcome": "approved",
+                "policy_profile_id": "default",
+                "policy_version": "v0.2",
             },
         ),
         _event(

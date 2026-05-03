@@ -119,6 +119,8 @@ class RunProjector:
         self._proposal_summaries: dict[str, dict[str, Any]] = {}
         self._proposal_agents: dict[str, str] = {}
         self._proposal_grants: dict[str, dict[str, Any]] = {}
+        self._proposal_registry_basis: dict[str, dict[str, str]] = {}
+        self._proposal_policy_basis: dict[str, dict[str, str]] = {}
         self._execution_statuses: dict[str, str] = {}
         self._execution_action_types: dict[str, str] = {}
         self._execution_proposals: dict[str, str] = {}
@@ -166,6 +168,8 @@ class RunProjector:
             action_type = payload.get("action_type")
             if isinstance(proposal_id, str) and isinstance(action_type, str):
                 self._proposal_action_types[proposal_id] = action_type
+                registry_basis = self._registry_basis_from_payload(payload)
+                self._proposal_registry_basis[proposal_id] = registry_basis
                 self._proposal_summaries[proposal_id] = {"action_type": action_type}
                 agent_id = payload.get("agent_id")
                 if isinstance(agent_id, str) and agent_id:
@@ -178,6 +182,7 @@ class RunProjector:
             grants = payload.get("grants")
             if isinstance(grants, dict):
                 self._proposal_grants[proposal_id] = dict(grants)
+            self._proposal_policy_basis[proposal_id] = self._policy_basis_from_payload(payload)
         elif event.event_type == "action.started":
             proposal_id = str(payload["proposal_id"])
             outcome = self._proposal_outcomes.get(proposal_id)
@@ -359,13 +364,49 @@ class RunProjector:
         payload = event.payload
         if event.event_type == "agent.created":
             self._require_fields(event.event_type, payload, ("agent_id",))
+        elif event.event_type == "action.proposed":
+            self._require_fields(
+                event.event_type,
+                payload,
+                ("proposal_id", "agent_id", "action_type", "registry_id", "registry_version"),
+            )
+            self._metadata_string(payload, "registry_id", event.event_type)
+            self._metadata_string(payload, "registry_version", event.event_type)
+            registry_basis = payload.get("registry_basis")
+            if registry_basis is not None:
+                if not isinstance(registry_basis, dict):
+                    raise ValueError("action.proposed registry_basis must be a dict")
+                if registry_basis.get("registry_id") != payload["registry_id"]:
+                    raise ValueError("action.proposed registry_basis.registry_id must match registry_id")
+                if registry_basis.get("registry_version") != payload["registry_version"]:
+                    raise ValueError("action.proposed registry_basis.registry_version must match registry_version")
         elif event.event_type == "action.decided":
-            self._require_fields(event.event_type, payload, ("proposal_id", "decision_id", "outcome"))
+            self._require_fields(
+                event.event_type,
+                payload,
+                ("proposal_id", "decision_id", "outcome", "policy_profile_id", "policy_version"),
+            )
             if payload["outcome"] not in self.KNOWN_DECISION_OUTCOMES:
                 raise ValueError("action.decided has unknown outcome")
             grants = payload.get("grants")
             if grants is not None and not isinstance(grants, dict):
                 raise ValueError("action.decided grants must be a dict")
+            self._metadata_string(payload, "policy_profile_id", event.event_type)
+            self._metadata_string(payload, "policy_version", event.event_type)
+            policy_basis = payload.get("policy_basis")
+            if policy_basis is not None:
+                if not isinstance(policy_basis, dict):
+                    raise ValueError("action.decided policy_basis must be a dict")
+                if policy_basis.get("policy_profile_id") != payload["policy_profile_id"]:
+                    raise ValueError("action.decided policy_basis.policy_profile_id must match policy_profile_id")
+                if policy_basis.get("policy_version") != payload["policy_version"]:
+                    raise ValueError("action.decided policy_basis.policy_version must match policy_version")
+            reason_codes = payload.get("reason_codes", [])
+            if not isinstance(reason_codes, list):
+                raise ValueError("action.decided reason_codes must be a list")
+            for reason_code in reason_codes:
+                if not isinstance(reason_code, str) or not reason_code or not reason_code.replace("_", "").isalnum() or reason_code != reason_code.lower():
+                    raise ValueError("action.decided reason_codes must be stable identifiers")
         elif event.event_type == "action.started":
             self._require_fields(event.event_type, payload, ("execution_id", "proposal_id", "decision_id"))
         elif event.event_type == "action.completed":
@@ -467,6 +508,24 @@ class RunProjector:
         for field in fields:
             if field not in payload:
                 raise ValueError(f"{label} missing required field: {field}")
+
+    def _metadata_string(self, payload: dict[str, Any], field_name: str, label: str) -> str:
+        value = payload.get(field_name)
+        if not isinstance(value, str) or not value:
+            raise ValueError(f"{label} {field_name} must be a non-empty string")
+        return value
+
+    def _registry_basis_from_payload(self, payload: dict[str, Any]) -> dict[str, str]:
+        return {
+            "registry_id": str(payload["registry_id"]),
+            "registry_version": str(payload["registry_version"]),
+        }
+
+    def _policy_basis_from_payload(self, payload: dict[str, Any]) -> dict[str, str]:
+        return {
+            "policy_profile_id": str(payload["policy_profile_id"]),
+            "policy_version": str(payload["policy_version"]),
+        }
 
     def _validate_delegation_proposed_payload(self, payload: dict[str, Any]) -> None:
         self._require_fields(
@@ -857,6 +916,21 @@ class RunProjector:
         if ref["ref_type"] != "artifact":
             raise ValueError(f"{label} must be an artifact ResourceRef")
 
+    def _projected_action_basis(self, proposal_id: str) -> dict[str, Any]:
+        projected: dict[str, Any] = {}
+        registry_basis = self._proposal_registry_basis.get(proposal_id)
+        if registry_basis is not None:
+            projected.update(registry_basis)
+            projected["registry_basis"] = dict(registry_basis)
+        policy_basis = self._proposal_policy_basis.get(proposal_id)
+        if policy_basis is not None:
+            projected.update(policy_basis)
+            projected["policy_basis"] = dict(policy_basis)
+        reason_codes = self._proposal_reason_codes.get(proposal_id)
+        if reason_codes is not None:
+            projected["reason_codes"] = list(reason_codes)
+        return projected
+
     def apply(self, state: RunState, event: CanonicalEvent) -> None:
         state.last_event_id = event.event_id
         if not state.run_id:
@@ -886,6 +960,7 @@ class RunProjector:
                 "decision_id": payload.get("decision_id"),
                 "agent_id": self._proposal_agents.get(proposal_id),
                 "status": "running",
+                **self._projected_action_basis(proposal_id),
             }
         elif event.event_type == "delegation.proposed":
             pass
@@ -913,12 +988,14 @@ class RunProjector:
                     "proposal_id": proposal_id,
                     "decision_id": payload.get("decision_id"),
                     "status": outcome,
+                    **self._projected_action_basis(proposal_id),
                 }
                 if outcome == "pending_user_approval":
                     state.status = "pending_user_approval"
         elif event.event_type == "approval.requested":
             proposal_id = str(payload["proposal_id"])
             action = state.actions.setdefault(proposal_id, {"proposal_id": proposal_id})
+            action.update(self._projected_action_basis(proposal_id))
             action["decision_id"] = payload.get("decision_id")
             action["approval_id"] = payload.get("approval_id")
             action["status"] = "pending_user_approval"
@@ -941,6 +1018,7 @@ class RunProjector:
         elif event.event_type == "approval.resolved":
             proposal_id = str(payload["proposal_id"])
             action = state.actions.setdefault(proposal_id, {"proposal_id": proposal_id})
+            action.update(self._projected_action_basis(proposal_id))
             action["decision_id"] = payload.get("decision_id")
             approval_id = str(payload["approval_id"])
             action["approval_id"] = approval_id
@@ -991,6 +1069,7 @@ class RunProjector:
             action = state.actions.setdefault(execution_id, {"execution_id": execution_id})
             action["proposal_id"] = payload.get("proposal_id")
             action["decision_id"] = payload.get("decision_id")
+            action.update(self._projected_action_basis(str(payload.get("proposal_id", ""))))
             action["status"] = payload.get("status", "failed")
             state.status = "failed"
         elif event.event_type == "action.retry_requested":
@@ -1326,6 +1405,8 @@ class RunProjector:
         self._proposal_summaries = {}
         self._proposal_agents = {}
         self._proposal_grants = {}
+        self._proposal_registry_basis = {}
+        self._proposal_policy_basis = {}
         self._execution_statuses = {}
         self._execution_action_types = {}
         self._execution_proposals = {}

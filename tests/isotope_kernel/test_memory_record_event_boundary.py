@@ -45,6 +45,8 @@ def _action_proposed(action_type: str = "write_memory") -> events.CanonicalEvent
             "proposal_id": "prop_memory_001",
             "agent_id": "agent_supervisor",
             "action_type": action_type,
+            "registry_id": "default",
+            "registry_version": "v0.2",
             "payload": {"tool": action_type},
         },
     )
@@ -58,6 +60,8 @@ def _action_decided(outcome: str = "approved") -> events.CanonicalEvent:
             "decision_id": "dec_memory_001",
             "proposal_id": "prop_memory_001",
             "outcome": outcome,
+            "policy_profile_id": "default",
+            "policy_version": "v0.2",
         },
     )
 

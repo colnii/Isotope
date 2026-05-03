@@ -76,6 +76,8 @@ class ActionCompiler:
                 "workspace": {"mode": workspace_mode},
                 "budget": budget,
             },
+            registry_id=self.registry.registry_id,
+            registry_version=self.registry.registry_version,
         )
 
     def _payload_from_intent(

@@ -246,8 +246,28 @@ def test_artifact_capture_from_workspace_still_uses_artifact_provenance_path():
     state = projector.RunProjector().project(
         [
             _run_created(),
-            _event("evt_002", "action.proposed", {"proposal_id": "prop_001", "agent_id": "agent_supervisor", "action_type": "call_tool"}),
-            _event("evt_003", "action.decided", {"proposal_id": "prop_001", "decision_id": "dec_001", "outcome": "approved"}),
+            _event(
+                "evt_002",
+                "action.proposed",
+                {
+                    "proposal_id": "prop_001",
+                    "agent_id": "agent_supervisor",
+                    "action_type": "call_tool",
+                    "registry_id": "default",
+                    "registry_version": "v0.2",
+                },
+            ),
+            _event(
+                "evt_003",
+                "action.decided",
+                {
+                    "proposal_id": "prop_001",
+                    "decision_id": "dec_001",
+                    "outcome": "approved",
+                    "policy_profile_id": "default",
+                    "policy_version": "v0.2",
+                },
+            ),
             _event("evt_004", "action.started", {"execution_id": "exec_001", "proposal_id": "prop_001", "decision_id": "dec_001"}),
             _event(
                 "evt_005",

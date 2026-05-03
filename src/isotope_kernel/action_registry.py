@@ -50,7 +50,15 @@ class ActionTypeEntry:
 class ActionTypeRegistry:
     """Small fixed registry for current v0 action/tool metadata."""
 
-    def __init__(self, entries: list[dict[str, Any]] | None = None) -> None:
+    def __init__(
+        self,
+        entries: list[dict[str, Any]] | None = None,
+        *,
+        registry_id: str = "default",
+        registry_version: str = "v0.2",
+    ) -> None:
+        self.registry_id = _metadata_string("registry_id", registry_id)
+        self.registry_version = _metadata_string("registry_version", registry_version)
         self._entries_by_tool: dict[str, ActionTypeEntry] = {}
         for raw_entry in entries or []:
             entry = ActionTypeEntry.from_dict(raw_entry)
@@ -58,7 +66,11 @@ class ActionTypeRegistry:
 
     @classmethod
     def default(cls) -> "ActionTypeRegistry":
-        return cls(entries=[_write_artifact_tool_entry()])
+        return cls(
+            entries=[_write_artifact_tool_entry()],
+            registry_id="default",
+            registry_version="v0.2",
+        )
 
     def tool_names(self) -> list[str]:
         return list(self._entries_by_tool.keys())
@@ -72,6 +84,12 @@ class ActionTypeRegistry:
 
 def _required_string(entry: dict[str, Any], field_name: str) -> str:
     value = entry.get(field_name)
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{field_name} must be a non-empty string")
+    return value
+
+
+def _metadata_string(field_name: str, value: str) -> str:
     if not isinstance(value, str) or not value:
         raise ValueError(f"{field_name} must be a non-empty string")
     return value

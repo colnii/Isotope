@@ -10,8 +10,16 @@ from .models import ActionProposal, PolicyDecision
 class PolicyEngine:
     """Minimal policy boundary backed by action/tool metadata."""
 
-    def __init__(self, registry: ActionTypeRegistry | None = None) -> None:
+    def __init__(
+        self,
+        registry: ActionTypeRegistry | None = None,
+        *,
+        policy_profile_id: str = "default",
+        policy_version: str = "v0.2",
+    ) -> None:
         self.registry = registry if registry is not None else ActionTypeRegistry.default()
+        self.policy_profile_id = self._metadata_string("policy_profile_id", policy_profile_id)
+        self.policy_version = self._metadata_string("policy_version", policy_version)
 
     def decide(self, proposal: ActionProposal) -> PolicyDecision:
         budget_seconds = self._validate_proposal(proposal)
@@ -67,6 +75,8 @@ class PolicyEngine:
             outcome="approved" if requested_matches else "modified",
             grants=grants,
             reason_codes=[] if requested_matches else ["capabilities_reduced"],
+            policy_profile_id=self.policy_profile_id,
+            policy_version=self.policy_version,
         ))
 
     def _denied(self, proposal: ActionProposal, reason_code: str) -> PolicyDecision:
@@ -76,6 +86,8 @@ class PolicyEngine:
             outcome="denied",
             grants={"tools": [], "workspace": {"mode": "none"}, "budget": {"seconds": 0}},
             reason_codes=[reason_code],
+            policy_profile_id=self.policy_profile_id,
+            policy_version=self.policy_version,
         ))
 
     def _validate_proposal(self, proposal: ActionProposal) -> int:
@@ -121,3 +133,8 @@ class PolicyEngine:
         if "seconds" not in decision.grants.get("budget", {}):
             raise ValueError("approved or modified decision requires budget.seconds grant")
         return decision
+
+    def _metadata_string(self, field_name: str, value: str) -> str:
+        if not isinstance(value, str) or not value:
+            raise ValueError(f"{field_name} must be a non-empty string")
+        return value

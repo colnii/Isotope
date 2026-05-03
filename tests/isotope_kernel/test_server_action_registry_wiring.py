@@ -17,6 +17,8 @@ ACTION_LIFECYCLE_EVENTS = {
 def _registry_entry(tool_name: str = "write_artifact_tool", **overrides) -> dict:
     entry = {
         "action_type": "call_tool",
+        "registry_id": "default",
+        "registry_version": "v0.2",
         "tool_name": tool_name,
         "payload_requirements": {"required": ["text"]},
         "required_capabilities": {

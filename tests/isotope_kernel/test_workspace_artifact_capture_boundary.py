@@ -59,6 +59,8 @@ def _action_proposed():
             "proposal_id": "prop_capture_001",
             "agent_id": "agent_supervisor",
             "action_type": "capture_workspace_artifact",
+            "registry_id": "default",
+            "registry_version": "v0.2",
         },
     )
 
@@ -71,6 +73,8 @@ def _action_decided():
             "proposal_id": "prop_capture_001",
             "decision_id": "dec_capture_001",
             "outcome": "approved",
+            "policy_profile_id": "default",
+            "policy_version": "v0.2",
             "grants": {
                 "tools": ["write_artifact_tool"],
                 "workspace": {"mode": "shared_ro"},
