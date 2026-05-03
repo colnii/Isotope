@@ -148,11 +148,8 @@ class RunProjector:
             "action.started",
             "action.failed",
             "action.completed",
-            "action.retry_requested",
-            "action.retry_created",
             "action.cancel_requested",
             "action.cancelled",
-            "action.superseded",
             "artifact.created",
             "memory.record_created",
             "memory.record_superseded",
@@ -259,7 +256,11 @@ class RunProjector:
             self._execution_statuses[execution_id] = "failed"
         elif event.event_type == "action.retry_requested":
             original_execution_id = str(payload["original_execution_id"])
-            if self._execution_statuses.get(original_execution_id) != "failed":
+            original_status = self._execution_statuses.get(original_execution_id)
+            if original_status == "completed":
+                if payload.get("explicit_rerun") is not True:
+                    raise ValueError("action.retry_requested completed execution requires explicit rerun")
+            elif original_status != "failed":
                 raise ValueError("action.retry_requested requires failed execution")
             if self._execution_proposals.get(original_execution_id) != payload["original_proposal_id"]:
                 raise ValueError("action.retry_requested original_proposal_id must match original execution")
@@ -278,14 +279,19 @@ class RunProjector:
             if payload["new_proposal_id"] == payload["original_proposal_id"]:
                 raise ValueError("action.retry_created new_proposal_id must differ from original_proposal_id")
         elif event.event_type == "action.cancel_requested":
-            execution_id = str(payload["execution_id"])
-            status = self._execution_statuses.get(execution_id)
-            if status in {"completed", "failed", "cancelled", "superseded"}:
-                raise ValueError("action.cancel_requested after terminal action state")
-            if status != "running":
-                raise ValueError("action.cancel_requested requires running action")
-            if self._execution_proposals.get(execution_id) != payload["proposal_id"]:
-                raise ValueError("action.cancel_requested proposal_id must match execution proposal")
+            execution_id = payload.get("execution_id")
+            if isinstance(execution_id, str) and execution_id:
+                status = self._execution_statuses.get(execution_id)
+                if status in {"completed", "failed", "cancelled", "superseded"}:
+                    raise ValueError("action.cancel_requested after terminal action state")
+                if status != "running":
+                    raise ValueError("action.cancel_requested requires running action")
+                if self._execution_proposals.get(execution_id) != payload["proposal_id"]:
+                    raise ValueError("action.cancel_requested proposal_id must match execution proposal")
+            else:
+                proposal_id = str(payload["proposal_id"])
+                if self._proposal_outcomes.get(proposal_id) != "pending_user_approval":
+                    raise ValueError("action.cancel_requested requires running action or pending approval")
             cancel_request = dict(payload)
             cancel_request["_request_event_id"] = event.event_id
             self._cancel_requests[str(payload["cancel_id"])] = cancel_request
@@ -312,9 +318,11 @@ class RunProjector:
             execution_id = self._proposal_execution_ids.get(old_proposal_id)
             if execution_id is None:
                 raise ValueError("action.superseded requires started action")
-            if self._execution_statuses.get(execution_id) != "running":
+            execution_status = self._execution_statuses.get(execution_id)
+            if execution_status not in {"running", "completed"}:
                 raise ValueError("action.superseded requires running action")
-            self._execution_statuses[execution_id] = "superseded"
+            if execution_status == "running":
+                self._execution_statuses[execution_id] = "superseded"
         elif event.event_type == "approval.requested":
             self._approval_proposals[str(payload["approval_id"])] = str(payload["proposal_id"])
         elif event.event_type == "approval.resolved":
@@ -437,7 +445,7 @@ class RunProjector:
             self._require_fields(
                 event.event_type,
                 payload,
-                ("cancel_id", "run_id", "proposal_id", "execution_id", "reason", "requested_by"),
+                ("cancel_id", "run_id", "proposal_id", "reason", "requested_by"),
             )
         elif event.event_type == "action.cancelled":
             self._require_fields(
@@ -1093,12 +1101,14 @@ class RunProjector:
                     "basis_event_id": payload["basis_event_id"],
                 }
             )
+            if payload.get("new_execution_id") is not None:
+                retry["new_execution_id"] = payload.get("new_execution_id")
         elif event.event_type == "action.cancel_requested":
             cancel_id = str(payload["cancel_id"])
             state.action_cancellations[cancel_id] = {
                 "cancel_id": cancel_id,
                 "proposal_id": payload["proposal_id"],
-                "execution_id": payload["execution_id"],
+                "execution_id": payload.get("execution_id"),
                 "status": "requested",
                 "basis_event_id": event.event_id,
             }
@@ -1125,10 +1135,15 @@ class RunProjector:
                 "status": "created",
                 "basis_event_id": payload["basis_event_id"],
             }
+            if payload.get("old_execution_id") is not None:
+                state.action_supersessions[supersession_id]["old_execution_id"] = payload.get("old_execution_id")
+            if payload.get("new_execution_id") is not None:
+                state.action_supersessions[supersession_id]["new_execution_id"] = payload.get("new_execution_id")
             execution_id = self._proposal_execution_ids.get(str(payload["old_proposal_id"]))
             if execution_id is not None:
                 action = state.actions.setdefault(execution_id, {"execution_id": execution_id})
-                action["status"] = "superseded"
+                if action.get("status") != "completed":
+                    action["status"] = "superseded"
         elif event.event_type == "memory.record_created":
             state.memory_records.append(
                 {

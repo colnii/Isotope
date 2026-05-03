@@ -114,6 +114,201 @@ class InProcessServer:
             requires_approval=requires_approval,
         )
 
+    def request_retry(
+        self,
+        run_id: str,
+        *,
+        basis_execution_id: str,
+        reason: str,
+        requested_by: str,
+        replacement_intent: dict[str, Any],
+        explicit_rerun: bool = False,
+    ) -> dict[str, Any]:
+        self._validate_existing_run_id(run_id)
+        self._validate_non_empty_string("basis_execution_id", basis_execution_id)
+        self._validate_non_empty_string("reason", reason)
+        self._validate_non_empty_string("requested_by", requested_by)
+        self._validate_action_intent(replacement_intent)
+        if not isinstance(explicit_rerun, bool):
+            raise ValueError("explicit_rerun must be a bool")
+
+        state = self.get_run_state(run_id)
+        action = self._require_execution_action(state, basis_execution_id)
+        basis_status = action.get("status")
+        if basis_status == "completed" and not explicit_rerun:
+            raise ValueError("completed action retry requires explicit rerun")
+        if basis_status not in {"failed", "completed"}:
+            raise ValueError(f"retry requires failed execution or explicit rerun; basis status was {basis_status}")
+
+        original_proposal_id = self._require_action_proposal_id(action)
+        retry_id = new_id("retry")
+        replacement_proposal_id = new_id("prop")
+        replacement_execution_id = new_id("exec")
+        request_payload: dict[str, Any] = {
+            "retry_id": retry_id,
+            "run_id": run_id,
+            "original_proposal_id": original_proposal_id,
+            "original_execution_id": basis_execution_id,
+            "reason": reason,
+            "requested_by": requested_by,
+        }
+        if explicit_rerun:
+            request_payload["explicit_rerun"] = True
+        request_event = self._append(run_id, "action.retry_requested", request_payload)
+        self._append(
+            run_id,
+            "action.retry_created",
+            {
+                "retry_id": retry_id,
+                "new_proposal_id": replacement_proposal_id,
+                "new_execution_id": replacement_execution_id,
+                "original_proposal_id": original_proposal_id,
+                "basis_event_id": request_event.event_id,
+                "policy_basis": {
+                    "decision_id": action.get("decision_id"),
+                    "mode": "replacement_reference",
+                },
+            },
+        )
+        return {
+            "status": "created",
+            "retry_id": retry_id,
+            "basis_execution_id": basis_execution_id,
+            "basis_proposal_id": original_proposal_id,
+            "replacement_proposal_id": replacement_proposal_id,
+            "replacement_execution_id": replacement_execution_id,
+            "basis_event_id": request_event.event_id,
+        }
+
+    def request_cancel(
+        self,
+        run_id: str,
+        *,
+        reason: str,
+        requested_by: str,
+        basis_proposal_id: str | None = None,
+        basis_execution_id: str | None = None,
+    ) -> dict[str, Any]:
+        self._validate_existing_run_id(run_id)
+        self._validate_non_empty_string("reason", reason)
+        self._validate_non_empty_string("requested_by", requested_by)
+        if basis_execution_id is None and basis_proposal_id is None:
+            raise ValueError("cancel requires basis_execution_id or basis_proposal_id")
+
+        state = self.get_run_state(run_id)
+        execution_id = ""
+        if basis_execution_id is not None:
+            self._validate_non_empty_string("basis_execution_id", basis_execution_id)
+            action = self._require_execution_action(state, basis_execution_id)
+            basis_status = str(action.get("status", ""))
+            if basis_status in {"completed", "failed", "denied", "cancelled", "superseded"}:
+                raise ValueError(f"cannot cancel terminal action with status {basis_status}")
+            if basis_status != "running":
+                raise ValueError(f"cancel requires running or pending action; basis status was {basis_status}")
+            proposal_id = self._require_action_proposal_id(action)
+            execution_id = basis_execution_id
+        else:
+            self._validate_non_empty_string("basis_proposal_id", basis_proposal_id)
+            proposal_id = str(basis_proposal_id)
+            action = state.actions.get(proposal_id)
+            if action is None:
+                raise ValueError("unknown proposal basis")
+            basis_status = str(action.get("status", ""))
+            if basis_status != "pending_user_approval":
+                raise ValueError(f"cancel requires running or pending action; basis status was {basis_status}")
+
+        cancel_id = new_id("cancel")
+        payload: dict[str, Any] = {
+            "cancel_id": cancel_id,
+            "run_id": run_id,
+            "proposal_id": proposal_id,
+            "reason": reason,
+            "requested_by": requested_by,
+            "logical_only": True,
+            "process_kill": False,
+        }
+        if execution_id:
+            payload["execution_id"] = execution_id
+        event = self._append(run_id, "action.cancel_requested", payload)
+        return {
+            "status": "cancel_requested",
+            "cancel_id": cancel_id,
+            "basis_proposal_id": proposal_id,
+            "basis_execution_id": execution_id or None,
+            "basis_event_id": event.event_id,
+            "logical_only": True,
+            "process_kill": False,
+        }
+
+    def request_supersede(
+        self,
+        run_id: str,
+        *,
+        old_proposal_id: str,
+        reason: str,
+        requested_by: str,
+        old_execution_id: str | None = None,
+        replacement_intent: dict[str, Any] | None = None,
+        replacement_proposal_id: str | None = None,
+    ) -> dict[str, Any]:
+        self._validate_existing_run_id(run_id)
+        self._validate_non_empty_string("old_proposal_id", old_proposal_id)
+        self._validate_non_empty_string("reason", reason)
+        self._validate_non_empty_string("requested_by", requested_by)
+        if replacement_intent is None and replacement_proposal_id is None:
+            raise ValueError("supersede requires replacement intent or replacement proposal identity")
+        if replacement_intent is not None:
+            self._validate_action_intent(replacement_intent)
+        if replacement_proposal_id is not None:
+            self._validate_non_empty_string("replacement_proposal_id", replacement_proposal_id)
+
+        state = self.get_run_state(run_id)
+        action = state.actions.get(old_proposal_id)
+        if old_execution_id is not None:
+            self._validate_non_empty_string("old_execution_id", old_execution_id)
+            action = self._require_execution_action(state, old_execution_id)
+            if action.get("proposal_id") != old_proposal_id:
+                raise ValueError("supersede basis proposal does not match execution")
+        if action is None:
+            raise ValueError("unknown proposal basis")
+
+        basis_event = self._find_action_started_event(run_id, old_proposal_id)
+        if basis_event is None:
+            raise ValueError("supersede basis requires started action")
+
+        supersession_id = new_id("supersede")
+        new_proposal_id = replacement_proposal_id or new_id("prop")
+        new_execution_id = new_id("exec")
+        self._append(
+            run_id,
+            "action.superseded",
+            {
+                "supersession_id": supersession_id,
+                "old_proposal_id": old_proposal_id,
+                "old_execution_id": old_execution_id,
+                "new_proposal_id": new_proposal_id,
+                "new_execution_id": new_execution_id,
+                "reason": reason,
+                "reason_code": "superseded_by_replacement",
+                "requested_by": requested_by,
+                "basis_event_id": basis_event.event_id,
+                "provenance": {
+                    "requested_by": requested_by,
+                    "basis_event_id": basis_event.event_id,
+                },
+            },
+        )
+        return {
+            "status": "created",
+            "supersession_id": supersession_id,
+            "old_proposal_id": old_proposal_id,
+            "old_execution_id": old_execution_id,
+            "replacement_proposal_id": new_proposal_id,
+            "replacement_execution_id": new_execution_id,
+            "reason_code": "superseded_by_replacement",
+            "basis_event_id": basis_event.event_id,
+        }
+
     def _submit_action_internal(
         self,
         run_id: str,
@@ -605,6 +800,14 @@ class InProcessServer:
                 return event
         return None
 
+    def _find_action_started_event(self, run_id: str, proposal_id: str) -> CanonicalEvent | None:
+        for event in self.event_store.list_events(run_id):
+            if event.event_type != "action.started":
+                continue
+            if event.payload.get("proposal_id") == proposal_id:
+                return event
+        return None
+
     def _latest_failed_execution_id(self, run_id: str, proposal_id: str, decision_id: str) -> str:
         for event in reversed(self.event_store.list_events(run_id)):
             if event.event_type != "action.failed":
@@ -613,3 +816,15 @@ class InProcessServer:
             if payload.get("proposal_id") == proposal_id and payload.get("decision_id") == decision_id:
                 return str(payload["execution_id"])
         return ""
+
+    def _require_execution_action(self, state, execution_id: str) -> dict[str, Any]:
+        action = state.actions.get(execution_id)
+        if action is None:
+            raise ValueError("unknown execution basis")
+        return action
+
+    def _require_action_proposal_id(self, action: dict[str, Any]) -> str:
+        proposal_id = action.get("proposal_id")
+        if not isinstance(proposal_id, str) or not proposal_id:
+            raise ValueError("action basis is missing proposal_id")
+        return proposal_id
