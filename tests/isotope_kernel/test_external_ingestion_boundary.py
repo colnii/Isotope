@@ -122,11 +122,12 @@ def test_raw_provider_callback_body_is_not_a_projector_input():
         ),
     ]
 
-    state = projector.RunProjector().project(events)
+    with pytest.raises(ValueError) as exc_info:
+        projector.RunProjector().project(events)
 
-    assert state.status == "running"
-    assert state.artifacts == []
-    assert not hasattr(state, "provider_callback_body")
+    message = str(exc_info.value)
+    assert "unknown event_type" in message
+    assert "provider.callback.received" in message
 
 
 def test_external_ingestion_server_api_still_not_enabled_and_side_effect_free(tmp_path):

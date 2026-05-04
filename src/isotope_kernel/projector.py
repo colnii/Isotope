@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Iterable
 
+from .event_schema import DEFAULT_EVENT_SCHEMA_REGISTRY
 from .events import EVENT_ENVELOPE_VERSION, CanonicalEvent
 
 
@@ -369,6 +370,7 @@ class RunProjector:
             raise ValueError("run.completed requires a completed execution")
 
     def _validate_event_payload(self, event: CanonicalEvent) -> None:
+        DEFAULT_EVENT_SCHEMA_REGISTRY.validate_event(event)
         payload = event.payload
         if event.event_type == "agent.created":
             self._require_fields(event.event_type, payload, ("agent_id",))
