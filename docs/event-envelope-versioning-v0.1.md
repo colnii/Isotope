@@ -4,7 +4,7 @@
 
 本文定义 event envelope versioning（事件信封版本化）的 v0.1 边界：当前 slice-only `CanonicalEvent` envelope 未来如何版本化，以及 event prefix digest（事件前缀摘要）如何绑定到明确的 event representation（事件表示）。
 
-当前已实现最小 event envelope version boundary：`CanonicalEvent` 带有当前 slice representation 的 `event_envelope_version`，checkpoint event prefix digest 也记录它绑定的 event representation version。本文件仍不是最终 protocol spec；event envelope schema registry 只有设计说明，未实现 registry lookup，migration 仍 deferred。
+当前已实现最小 event envelope version boundary：`CanonicalEvent` 带有当前 slice representation 的 `event_envelope_version`，checkpoint event prefix digest 也记录它绑定的 event representation version。本文件仍不是最终 protocol spec；event envelope schema registry 只有设计说明，未实现 registry lookup，migration 仍 deferred。event payload schema registry / compatibility first green slice 已单独实现，见 `docs/event-schema-registry-compatibility-boundary-v0.2.md`。
 
 ## Purpose
 
@@ -27,9 +27,9 @@ event envelope versioning 的目的，是在不改变 canonical event log source
 - checkpoint event envelope version mismatch 会让 checkpoint invalid，并 fallback full rebuild，且不会读取 checkpoint state。
 - legacy checkpoint 缺少 event envelope version metadata 时，仍按兼容路径处理。
 - event envelope schema registry design note 已落文档，边界见 `docs/event-envelope-schema-registry-v0.1.md`。
-- event payload schema registry / compatibility boundary 已落文档，见 `docs/event-schema-registry-compatibility-boundary-v0.2.md`；它与本文件的 envelope versioning 分开处理。
+- event payload schema registry / compatibility first green slice 已实现，见 `docs/event-schema-registry-compatibility-boundary-v0.2.md`；它与本文件的 envelope versioning 分开处理。
 - 当前没有 event envelope schema registry，也没有 registry lookup。
-- 当前 full regression：`352 passed`。
+- 当前 full regression：`986 passed`。
 
 ## Decision
 
@@ -43,7 +43,7 @@ v0.1 design decision：
 - envelope version 不能只藏在 checkpoint 里；它必须出现在 event representation boundary 中，并影响 event serialization、digest、replay 和 projector validation。
 - 当前 `event_envelope_version` 是 v0 slice implementation shape，不是最终协议。
 - event envelope schema registry 如果未来实现，也不能改变 canonical event log source-of-truth 边界。
-- 本轮不实现 event schema registry 或 payload schema registry。
+- event payload schema registry / compatibility 已作为独立 first slice 实现；本文件仍不实现 event envelope schema registry lookup 或 event migration。
 
 ## Hard Boundaries
 
@@ -157,8 +157,8 @@ digest input 必须明确包含 event representation version。
 
 - event envelope schema registry。
 - event envelope registry lookup。
-- event schema registry。
-- payload schema registry。
+- event schema migration framework。
+- payload schema migration framework。
 - event migration。
 - event log compaction。
 - content-addressed event ids。

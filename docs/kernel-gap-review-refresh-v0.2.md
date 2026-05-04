@@ -1,6 +1,6 @@
 # Kernel Gap Review Refresh v0.2
 
-状态：`current refresh; RCS runtime integration first slice closed`
+状态：`current refresh; event schema registry green slice complete`
 
 ## 1. Purpose
 
@@ -15,7 +15,7 @@
 - 当前 `src/isotope_kernel/` 实现
 - 当前 demo scenarios: v0.1, v0.2, `approval-tool-runner`, `artifact-review`, `external-snapshot-review`
 
-当前 baseline：`974 passed`。
+当前 baseline：`986 passed`。
 
 ## 2. Gaps Now First-Slice Enough
 
@@ -31,6 +31,7 @@
 | External ingestion boundary | `ingestion.py` fail-closed boundary、`ImportedSnapshot` slice model、`snapshot.imported` -> `RunState.external_observations`、conflict diagnostics、native state priority、checkpoint support 已有 | Track F tests、external-snapshot-review spike | provider adapter、webhook、external ingestion product API、reconciliation engine |
 | Artifact content read policy | summary default、structured `ResourceRef`、explicit grants + caller context + purpose for content retrieval、HTTP full-content route disabled 已有 | Track C tests、artifact-review spike | hosted content API、semantic retrieval / ranking、broad retrieval policy engine |
 | Policy profile / action registry versioning | `registry_id` / `registry_version` and `policy_profile_id` / `policy_version` basis metadata now flows through proposal / decision / events / `RunState.actions`; first slice closed for now | `tests/isotope_kernel/test_action_registry_version_basis.py`、`tests/isotope_kernel/test_policy_profile_version_basis.py`、`docs/policy-registry-version-basis-closure-review.md` | plugin marketplace、remote registry loading、policy DSL、migration framework |
+| Event schema registry / compatibility | static `EventSchemaRegistry` lists known canonical event types, separates envelope/schema versions, and makes unknown event types / unsupported payload schema versions fail closed; legacy/current known events missing `event_schema_version` use explicit compatibility mapping | `tests/isotope_kernel/test_event_schema_registry_boundary.py`、`tests/isotope_kernel/test_event_schema_version_compatibility.py` | JSON Schema / protobuf / Avro、remote/plugin registry、schema migration framework、multi-version projector matrix |
 
 ## 3. Still-Open Kernel-Level Gaps
 
@@ -41,10 +42,10 @@
 | Workspace resource lifecycle | first slice 已 closed for now，覆盖 `workspace.lease_created`、`workspace.released`、`workspace.artifact_captured` read model；仍缺 path-safety intent、write/read mode contract 和 cleanup / release failure diagnostics | worker handoff、tool protocol 和 retry/cancel runtime 后续仍会依赖 workspace lifecycle；如果现在打开真实 substrate 会过早产品化 | closed for now; defer real substrate |
 | Worker handoff app composition | worker lifecycle read model 已有，但 app-level composition 还没证明 worker result handoff、workspace grants、delegation policy 和 artifact refs 在一个 scenario 中自然协作 | 继续做 worker demo 可能暴露 workspace / policy / RCS contract gaps；若现在直接做 product multi-agent，会过早膨胀 | after workspace lifecycle boundary, consider `Worker Handoff App Spike` |
 | Retry / cancel / supersede runtime integration | helper first slice 已完成并 closed for now：request helpers append canonical events, preserve old action state, reject terminal cancel, and expose replacement identity；仍缺 scheduler / process integration by design | 长任务、worker handoff、approval denial 后的 recovery 都会继续依赖这个 contract；若直接做 scheduler/process kill 会破坏边界 | closed for now; no scheduler/process kill |
-| Policy profile / action registry versioning | first slice 已完成并 closed for now；后续仍缺 reason-code taxonomy、event schema registry 和 compatibility / migration story | helper / demo 越多，requested capabilities、grants、workspace modes 和 action schemas 越容易漂移 | closed for now; defer plugin / DSL / migration |
+| Policy profile / action registry versioning | first slice 已完成并 closed for now；后续仍缺 reason-code taxonomy 和 broader compatibility / migration story | helper / demo 越多，requested capabilities、grants、workspace modes 和 action schemas 越容易漂移 | closed for now; defer plugin / DSL / migration |
 | Session / run lifecycle | session/run 能创建和 replay，但 multi-run continuity、run pause/finalization/cancel/supersede、session history visibility 仍未成 contract | app spikes 目前多是 single-run；一旦做 app-like workflow，run boundaries 会变成 hidden glue | docs-only lifecycle review; do not mix with memory promotion |
 | Error taxonomy | server/helper/HTTP/projector 都有 controlled errors，但 error code taxonomy 还不是统一 kernel contract | facade/helper 增长后，客户端难以稳定处理 unknown / malformed / conflict / not_enabled / policy denied | small docs/red-test slice after next boundary |
-| Event schema registry / migration | Event Schema Registry / Compatibility Boundary 已定义，见 `docs/event-schema-registry-compatibility-boundary-v0.2.md`；actual registry implementation、unknown-event fail-closed tests、schema version compatibility tests 和 projector version migration 仍未实现 | read model fields 越多，future breaking change 成本越高 | red tests next; no migration framework |
+| Event schema registry / migration | Event Schema Registry / Compatibility green slice 已完成，见 `docs/event-schema-registry-compatibility-boundary-v0.2.md`；仍缺 schema migration policy、multi-version projector matrix 和 closure review | read model fields 越多，future breaking change 成本越高 | closure review next; no migration framework |
 | Tool protocol | action chain 可执行 deterministic tools，但 tool result/error/resource contract、streaming absence、artifact capture ownership 仍是 sketch | future tool examples may accidentally couple executor, artifact store, workspace and policy | defer until workspace lifecycle is clearer |
 
 ## 4. Not-Now Product / Integration Gaps
@@ -73,7 +74,7 @@
 
 Recommended order:
 
-1. `Event Schema Registry / Compatibility Red Tests`
+1. `Event Schema Registry / Compatibility Closure Review`
 2. `Worker Handoff App Spike`
 3. `External Review Package Refresh`, if the near-term goal is reviewer handoff instead of more kernel design
 
@@ -120,12 +121,13 @@ Completed follow-up:
 
 Recommended next batch:
 
-- Batch name: `Event Schema Registry / Compatibility Red Tests`
-- Type: red tests only
+- Batch name: `Event Schema Registry / Compatibility Closure Review`
+- Type: docs-only closure review
 - Goals:
-  - pin registered schema boundary before adding more event shapes
-  - prove unknown event type and unsupported event schema version fail closed
-  - keep legacy/current missing-schema compatibility explicit
+  - confirm `EventSchemaRegistry` covers known canonical event types
+  - confirm projector fails closed on unknown event type and unsupported event schema version
+  - confirm legacy/current missing-schema compatibility remains explicit
+  - confirm raw provider callback events are not registered canonical events
   - keep migration framework, plugin marketplace, policy DSL, real integrations, and product UI out of scope
 
 Follow-up: `docs/workspace-resource-lifecycle-boundary-v0.2.md` / `docs/workspace-resource-lifecycle-closure-review.md` and `docs/policy-registry-version-basis-closure-review.md` now record the closed first slices. The next implementation-facing step should not be real filesystem substrate or plugin/policy infrastructure unless a new boundary explicitly asks for it.
@@ -140,4 +142,4 @@ Stop conditions:
 
 ## 7. Decision
 
-Kernel is not complete, but the current boundary package is no longer blocked by artifact/external-observation proof gaps. Workspace Resource Lifecycle, Policy Profile / Action Registry Versioning, Retry / Cancel / Supersede Runtime Integration, and Event Schema Registry / Compatibility Boundary now have closed docs/first-slice boundaries. The next useful step is Event Schema Registry / Compatibility Red Tests, not plugin marketplace, policy DSL, migration framework, real workspace substrate, scheduler/process kill, real HTTP server, or real LLM.
+Kernel is not complete, but the current boundary package is no longer blocked by artifact/external-observation proof gaps. Workspace Resource Lifecycle, Policy Profile / Action Registry Versioning, Retry / Cancel / Supersede Runtime Integration, and Event Schema Registry / Compatibility now have first-slice boundaries. The next useful step is Event Schema Registry / Compatibility Closure Review, not plugin marketplace, policy DSL, migration framework, real workspace substrate, scheduler/process kill, real HTTP server, or real LLM.

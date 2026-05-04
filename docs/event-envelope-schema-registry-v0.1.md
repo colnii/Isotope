@@ -4,7 +4,7 @@
 
 本文定义 event envelope schema registry（事件信封 schema 注册表）的 v0.1 边界：未来如何把 `event_envelope_version` 映射到明确的 event envelope shape、serialization rules（序列化规则）和 digest representation rules（摘要表示规则），同时不把 registry 误用成 event migration、payload schema registry 或第二事实源。
 
-本轮只做设计说明，不实现 registry、registry lookup、event migration、payload schema registry 或 public inspection API。
+本文件仍只描述 envelope registry 设计说明，不实现 envelope registry、registry lookup、event migration 或 public inspection API。event payload schema registry 的 first green slice 已在 `docs/event-schema-registry-compatibility-boundary-v0.2.md` / `src/isotope_kernel/event_schema.py` 中单独实现。
 
 ## Purpose
 
@@ -24,7 +24,8 @@ Event envelope schema registry 的目的，是在出现多个 event envelope ver
 - 当前 unknown event envelope version 会 fail fast。
 - 当前 event prefix digest 已绑定 event envelope version。
 - 当前 `FileCheckpointStore` 仍保持 opaque，不解释 event envelope schema。
-- 当前 full regression：`352 passed`。
+- Event payload schema registry / compatibility first green slice 已独立实现：known canonical event type metadata、unknown event fail-closed、unsupported payload schema version fail-closed；它不改变本 envelope registry 边界。
+- 当前 full regression：`986 passed`。
 
 ## Decision
 
@@ -135,8 +136,8 @@ Registry 不能让 digest match 替代 canonical event replay。
 
 - event envelope schema registry。
 - event envelope registry lookup。
-- event schema registry。
-- payload schema registry。
+- event schema migration framework。
+- payload schema migration framework。
 - migrator registry。
 - event migration。
 - content-addressed event ids。
