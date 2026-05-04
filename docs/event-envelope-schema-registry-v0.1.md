@@ -24,7 +24,7 @@ Event envelope schema registry 的目的，是在出现多个 event envelope ver
 - 当前 unknown event envelope version 会 fail fast。
 - 当前 event prefix digest 已绑定 event envelope version。
 - 当前 `FileCheckpointStore` 仍保持 opaque，不解释 event envelope schema。
-- Event payload schema registry / compatibility first green slice 已独立实现：known canonical event type metadata、unknown event fail-closed、unsupported payload schema version fail-closed；它不改变本 envelope registry 边界。
+- Event payload schema registry / compatibility first slice 已独立实现并 closed for now：known canonical event type metadata、unknown event fail-closed、unsupported payload schema version fail-closed；它不改变本 envelope registry 边界。Closure review 见 `docs/event-schema-registry-closure-review.md`。
 - 当前 full regression：`986 passed`。
 
 ## Decision

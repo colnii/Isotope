@@ -52,6 +52,7 @@
 - 加上 Retry / Cancel / Supersede Runtime Closure Review 后 docs Markdown：86 个。R/C/S runtime integration first slice 已 complete / closed for now；当时建议下一步做 Event Schema Registry / Compatibility Boundary，不实现 scheduler、process kill、real concurrency、plugin marketplace、policy DSL 或 migration framework。
 - 加上 Event Schema Registry / Compatibility Boundary 及旧路径 compatibility stub 后 docs Markdown：88 个。当时建议下一步做 Event Schema Registry / Compatibility Red Tests，不实现 JSON Schema / protobuf / schema migration framework / plugin event system。
 - Event Schema Registry / Compatibility green slice 后 docs Markdown 仍为 88 个。新增 code/test 不增加 docs count；当前建议下一步做 Event Schema Registry / Compatibility Closure Review，不实现 JSON Schema / protobuf / schema migration framework / plugin event system。
+- 加上 Event Schema Registry / Compatibility Closure Review 后 docs Markdown：89 个。Event Schema Registry / Compatibility first slice 已 complete / closed for now；当前建议下一步做 External Review Package Refresh，不实现 JSON Schema / protobuf / schema migration framework / plugin event system。
 
 ## 2. Current entrypoints
 
@@ -68,8 +69,9 @@
 - `docs/post-v0.2-tag-delta.md`：记录 `v0.2-demo` tag 之后 `main` 的 Track F / Agent Worker / Workspace 增量，以及暂不创建 `v0.2.1-demo` 的判断。
 - `docs/v0.2-cycle-closure-review.md`：记录当前 v0.2 implementation cycle closure，建议进入 cleanup / docs organization / external review mode。
 - `docs/kernel-gap-review-v0.2.md`：v0.2 kernel gap review，记录稳定子系统、kernel gaps、优先级和下一步设计建议。
-- `docs/kernel-gap-review-refresh-v0.2.md`：app spike 后的 kernel gap refresh，记录 first-slice enough surfaces、still-open kernel gaps 和 Event Schema Registry / Compatibility Closure Review next-step recommendation。
+- `docs/kernel-gap-review-refresh-v0.2.md`：app spike 后的 kernel gap refresh，记录 first-slice enough surfaces、still-open kernel gaps 和 External Review Package Refresh next-step recommendation。
 - `docs/event-schema-registry-compatibility-boundary-v0.2.md`：Event schema registry / compatibility boundary，记录 payload schema version、unknown event fail-closed behavior、compatibility rules 和 first green slice evidence。
+- `docs/event-schema-registry-closure-review.md`：Event schema registry / compatibility closure review，记录 first slice complete / closed for now 判断、registry behavior、remaining deferred schema work 和 next path。
 - `docs/agent-worker-lifecycle-boundary-v0.2.md`：Agent / Worker lifecycle boundary，记录 supervisor / worker / delegation / worker read model / workspace binding / result handoff 的 first-slice design。
 - `docs/workspace-substrate-boundary-v0.2.md`：Workspace substrate boundary，记录 workspace as policy-bound execution resource、binding / lease / path safety / artifact capture / deferred substrate 的 first-slice complete 状态。
 - `docs/workspace-resource-lifecycle-boundary-v0.2.md`：Workspace resource lifecycle boundary，记录 binding vs lease、candidate events、read-model shape、artifact capture boundary 和 first-slice evidence。
@@ -108,16 +110,16 @@
 
 当前没有默认打开的 implementation track。Track F external ingestion 当前已完成 boundary 和 external observation read-model invariant green slices，并已 effectively complete / closed for now；`external-snapshot-review` second app spike 已 closed for now，不要直接实现 provider adapter / ingestion API。
 
-当前默认下一步是 `Event Schema Registry / Compatibility Closure Review`，不是 plugin marketplace、policy DSL、migration framework、scheduler、process kill 或 real filesystem substrate。`docs/kernel-gap-review-refresh-v0.2.md` 已刷新 app spike 后的 kernel gaps；`docs/workspace-resource-lifecycle-boundary-v0.2.md` 已定义并实现 workspace lease / release / artifact-capture first green slice；`docs/workspace-resource-lifecycle-closure-review.md` 已标记该 slice complete / closed for now；`docs/policy-profile-action-registry-versioning-boundary-v0.2.md` 已定义并实现 registry/profile basis first slice；`docs/policy-registry-version-basis-closure-review.md` 已标记该 slice complete / closed for now；`docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md` 已定义并实现 runtime integration helper first green slice；`docs/retry-cancel-supersede-runtime-closure-review.md` 已标记该 slice complete / closed for now；`docs/event-schema-registry-compatibility-boundary-v0.2.md` 已定义并实现 event payload schema compatibility green slice；`docs/agent-worker-lifecycle-boundary-v0.2.md`、`docs/workspace-substrate-boundary-v0.2.md` 和 `docs/retry-cancel-supersede-boundary-v0.2.md` 三者 first slice 均已 complete。
+当前默认下一步是 `External Review Package Refresh`，不是 plugin marketplace、policy DSL、migration framework、scheduler、process kill 或 real filesystem substrate。`docs/kernel-gap-review-refresh-v0.2.md` 已刷新 app spike 后的 kernel gaps；`docs/workspace-resource-lifecycle-boundary-v0.2.md` 已定义并实现 workspace lease / release / artifact-capture first green slice；`docs/workspace-resource-lifecycle-closure-review.md` 已标记该 slice complete / closed for now；`docs/policy-profile-action-registry-versioning-boundary-v0.2.md` 已定义并实现 registry/profile basis first slice；`docs/policy-registry-version-basis-closure-review.md` 已标记该 slice complete / closed for now；`docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md` 已定义并实现 runtime integration helper first green slice；`docs/retry-cancel-supersede-runtime-closure-review.md` 已标记该 slice complete / closed for now；`docs/event-schema-registry-compatibility-boundary-v0.2.md` 已定义并实现 event payload schema compatibility green slice；`docs/event-schema-registry-closure-review.md` 已标记该 slice complete / closed for now；`docs/agent-worker-lifecycle-boundary-v0.2.md`、`docs/workspace-substrate-boundary-v0.2.md` 和 `docs/retry-cancel-supersede-boundary-v0.2.md` 三者 first slice 均已 complete。
 
 当前自动推进入口是 `docs/agent-task-queue.md`。`Approval-Gated Tool Runner Spike` 已完成，API friction review 已落文档，approval lookup/read helper、workspace binding helper 和 submit action helper 已完成；artifact review flow first slice、friction review、source artifact setup helper closure review、artifact provenance helper first slice、artifact review flow closure review、second app spike selection、external snapshot review closure review 和 app spike coverage review 已完成。
 
-- `docs/agent-task-queue.md`：active queue，Current Batch complete；Next Suggested Batch is `Event Schema Registry / Compatibility Closure Review` with `ready_docs_only` status。
+- `docs/agent-task-queue.md`：active queue，Current Batch complete；Next Suggested Batch is `External Review Package Refresh` with `ready_docs_only` status。
 - `docs/usability-pressure-test-plan-v0.2.md`：current pressure-test planning doc，`approval-gated tool runner` first slice complete and friction reviewed。
 - `docs/second-app-spike-selection.md`：second app spike selection；recommended `external snapshot review`。
 - `docs/external-snapshot-review-closure-review.md`：current external snapshot review closure review；second app spike complete / closed for now。
 - `docs/app-spike-coverage-review.md`：app spike coverage review；recommendation executed by Kernel Gap Review Refresh。
-- `docs/kernel-gap-review-refresh-v0.2.md`：current kernel gap refresh；after policy/profile first slice closure, RCS runtime closure review, and event schema compatibility green slice, recommends Event Schema Registry / Compatibility Closure Review next。
+- `docs/kernel-gap-review-refresh-v0.2.md`：current kernel gap refresh；after policy/profile first slice closure, RCS runtime closure review, and event schema compatibility closure review, recommends External Review Package Refresh next。
 - `docs/policy-profile-action-registry-versioning-boundary-v0.2.md`：current policy/profile versioning boundary；records first green slice for registry / policy basis metadata。
 - `docs/policy-registry-version-basis-closure-review.md`：current policy/profile versioning closure review；records first slice complete / closed for now。
 - `docs/workspace-resource-lifecycle-boundary-v0.2.md`：current workspace lifecycle boundary；first slice complete / closed for now。
@@ -269,7 +271,8 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | `docs/event-envelope-versioning-v0.1.md` | Event envelope versioning boundary | closed / reference |
 | `docs/event-prefix-digest-v0.1.md` | Event prefix digest boundary | closed / reference |
 | `docs/event-schema-compatibility-boundary-v0.2.md` | Event schema compatibility old-path stub | stub / keep for one cycle |
-| `docs/event-schema-registry-compatibility-boundary-v0.2.md` | Event schema registry / compatibility boundary | green slice complete / closure review next |
+| `docs/event-schema-registry-closure-review.md` | Event schema registry / compatibility closure review | first slice closed for now |
+| `docs/event-schema-registry-compatibility-boundary-v0.2.md` | Event schema registry / compatibility boundary | first slice closed for now |
 | `docs/external-ingestion-boundary-v0.2.md` | Track F external ingestion boundary | closed for now |
 | `docs/http-api-minimal-surface-v0.2.md` | Track A HTTP API boundary | closed for now |
 | `docs/implementation-plan-v0.1.md` | Initial implementation plan | historical / reference |

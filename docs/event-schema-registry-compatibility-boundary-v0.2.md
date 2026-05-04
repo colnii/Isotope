@@ -1,6 +1,6 @@
 # Event Schema Registry / Compatibility Boundary v0.2
 
-状态：green slice complete; closure review next
+状态：first slice complete / closed for now
 
 本文定义 canonical event schema registry（规范事件模式注册表）和 compatibility（兼容性）的最小 kernel contract。该 boundary 的 first green slice 已实现：static in-process `EventSchemaRegistry`、known canonical event metadata、unknown event fail-closed 和 unsupported payload schema version fail-closed。它仍不实现 migration framework、JSON Schema dependency、protobuf、code generation、remote registry 或 plugin event system。
 
@@ -16,7 +16,7 @@
 - schema change 是 additive 还是 breaking。
 - checkpoint schema version 和 event schema version 如何区分。
 
-本文件先定义边界；当前 red / green slice 已固定最小行为，下一步应做 closure review。
+本文件先定义边界；当前 red / green slice 和 closure review 已固定最小行为。Closure review 见 `docs/event-schema-registry-closure-review.md`。
 
 ## 2. Definitions
 
@@ -151,7 +151,19 @@ Coverage:
 - Validation errors are controlled.
 - No JSON Schema / protobuf / migration framework / plugin marketplace / remote registry / new dependency.
 
-## 10. Relationship to Existing Docs
+## 10. Closure Review
+
+Closure review: `docs/event-schema-registry-closure-review.md`。
+
+Current closure decision:
+
+- first slice complete / closed for now
+- unknown event fail-closed
+- unsupported `event_schema_version` fail-closed
+- legacy/current missing schema compatibility only for known events
+- no JSON Schema / protobuf / Avro / migration framework / plugin registry / remote registry
+
+## 11. Relationship to Existing Docs
 
 This document complements:
 
@@ -161,4 +173,4 @@ This document complements:
 - `docs/checkpoint-schema-version-fields-v0.1.md`
 - `docs/policy-profile-action-registry-versioning-boundary-v0.2.md`
 
-Those docs cover envelope/checkpoint/registry-basis boundaries. This doc covers event payload schema compatibility and the next red-test target.
+Those docs cover envelope/checkpoint/registry-basis boundaries. This doc covers event payload schema compatibility and links to the closed first-slice review.

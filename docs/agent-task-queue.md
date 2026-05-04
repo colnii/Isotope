@@ -93,47 +93,48 @@ git status --short
 
 ## 6. Current Batch
 
-Batch name: `Event Schema Registry / Compatibility Green Slice`
+Batch name: `Event Schema Registry / Compatibility Closure Review`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: implement the minimal event schema compatibility registry and projector fail-closed behavior.
+Goal: close the Event Schema Registry / Compatibility first slice after implementation.
 
 Tasks:
 
-1. Add red tests for event schema registry / compatibility: complete.
-2. Add static in-process `EventSchemaRegistry`: complete.
-3. Wire projector to fail closed on unknown event type / unsupported payload schema version: complete.
-4. Sync stale Track F raw provider callback test from silently ignored to fail-closed: complete.
+1. Review `EventSchemaRegistry` shape and canonical event coverage: complete.
+2. Confirm projector registry check precedes payload / lifecycle validation: complete.
+3. Confirm unknown event type and unsupported `event_schema_version` fail closed: complete.
+4. Confirm event envelope version, payload schema version, checkpoint schema/version, and digest metadata remain separate: complete.
 5. Keep JSON Schema / protobuf / Avro / migration framework / plugin / remote registry out of scope: complete.
-6. Queue update: complete; next suggested batch set to closure review.
+6. Queue update: complete; next suggested batch set to external review package refresh.
 
 Evidence:
 
-- New registry module: `src/isotope_kernel/event_schema.py`.
-- New tests:
+- Closure doc: `docs/event-schema-registry-closure-review.md`.
+- Registry module: `src/isotope_kernel/event_schema.py`.
+- Tests:
   - `tests/isotope_kernel/test_event_schema_registry_boundary.py`
   - `tests/isotope_kernel/test_event_schema_version_compatibility.py`
-- Targeted green result: `13 passed` including stale Track F test sync.
+- Targeted closure verification: `13 passed` including stale Track F test sync.
 - Full regression: `986 passed`.
 - Registry boundary: known canonical event metadata, distinct envelope/schema versions, unknown event fail-closed, unsupported `event_schema_version` fail-closed, legacy/current missing-schema compatibility mapping for known events.
 - Stale test sync: raw `provider.callback.received` now proves fail-closed; it is not registered as canonical event and does not advance native state.
 
 ## 7. Next Suggested Batch
 
-Batch name: `Event Schema Registry / Compatibility Closure Review`
+Batch name: `External Review Package Refresh`
 
 Status: `ready_docs_only`
 
 Possible tasks:
 
-1. Review `EventSchemaRegistry` shape and registered known canonical event coverage.
-2. Confirm unknown event type and unsupported `event_schema_version` fail closed without advancing projector state.
-3. Confirm raw provider callback / future plugin events remain unregistered and fail-closed.
-4. Confirm event envelope version, payload schema version, checkpoint schema/version, and event prefix digest remain separate.
-5. Docs-only unless a correctness bug is found.
+1. Refresh a compact external review package for current v0.2 mainline.
+2. Summarize proven kernel surfaces and app spikes.
+3. Separate closed first slices from deferred product integrations.
+4. Keep tag / release work out of scope unless explicitly requested.
+5. Do not start Tool Protocol Boundary or Worker Handoff App Spike unless the queue is updated explicitly.
 
 Alternative if user chooses pause/review:
 

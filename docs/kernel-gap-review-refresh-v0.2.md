@@ -31,7 +31,7 @@
 | External ingestion boundary | `ingestion.py` fail-closed boundary、`ImportedSnapshot` slice model、`snapshot.imported` -> `RunState.external_observations`、conflict diagnostics、native state priority、checkpoint support 已有 | Track F tests、external-snapshot-review spike | provider adapter、webhook、external ingestion product API、reconciliation engine |
 | Artifact content read policy | summary default、structured `ResourceRef`、explicit grants + caller context + purpose for content retrieval、HTTP full-content route disabled 已有 | Track C tests、artifact-review spike | hosted content API、semantic retrieval / ranking、broad retrieval policy engine |
 | Policy profile / action registry versioning | `registry_id` / `registry_version` and `policy_profile_id` / `policy_version` basis metadata now flows through proposal / decision / events / `RunState.actions`; first slice closed for now | `tests/isotope_kernel/test_action_registry_version_basis.py`、`tests/isotope_kernel/test_policy_profile_version_basis.py`、`docs/policy-registry-version-basis-closure-review.md` | plugin marketplace、remote registry loading、policy DSL、migration framework |
-| Event schema registry / compatibility | static `EventSchemaRegistry` lists known canonical event types, separates envelope/schema versions, and makes unknown event types / unsupported payload schema versions fail closed; legacy/current known events missing `event_schema_version` use explicit compatibility mapping | `tests/isotope_kernel/test_event_schema_registry_boundary.py`、`tests/isotope_kernel/test_event_schema_version_compatibility.py` | JSON Schema / protobuf / Avro、remote/plugin registry、schema migration framework、multi-version projector matrix |
+| Event schema registry / compatibility | static `EventSchemaRegistry` lists known canonical event types, separates envelope/schema versions, and makes unknown event types / unsupported payload schema versions fail closed; legacy/current known events missing `event_schema_version` use explicit compatibility mapping; first slice closed for now | `tests/isotope_kernel/test_event_schema_registry_boundary.py`、`tests/isotope_kernel/test_event_schema_version_compatibility.py`、`docs/event-schema-registry-closure-review.md` | JSON Schema / protobuf / Avro、remote/plugin registry、schema migration framework、multi-version projector matrix |
 
 ## 3. Still-Open Kernel-Level Gaps
 
@@ -45,7 +45,7 @@
 | Policy profile / action registry versioning | first slice 已完成并 closed for now；后续仍缺 reason-code taxonomy 和 broader compatibility / migration story | helper / demo 越多，requested capabilities、grants、workspace modes 和 action schemas 越容易漂移 | closed for now; defer plugin / DSL / migration |
 | Session / run lifecycle | session/run 能创建和 replay，但 multi-run continuity、run pause/finalization/cancel/supersede、session history visibility 仍未成 contract | app spikes 目前多是 single-run；一旦做 app-like workflow，run boundaries 会变成 hidden glue | docs-only lifecycle review; do not mix with memory promotion |
 | Error taxonomy | server/helper/HTTP/projector 都有 controlled errors，但 error code taxonomy 还不是统一 kernel contract | facade/helper 增长后，客户端难以稳定处理 unknown / malformed / conflict / not_enabled / policy denied | small docs/red-test slice after next boundary |
-| Event schema registry / migration | Event Schema Registry / Compatibility green slice 已完成，见 `docs/event-schema-registry-compatibility-boundary-v0.2.md`；仍缺 schema migration policy、multi-version projector matrix 和 closure review | read model fields 越多，future breaking change 成本越高 | closure review next; no migration framework |
+| Event schema registry / migration | Event Schema Registry / Compatibility first slice 已完成并 closed for now，见 `docs/event-schema-registry-compatibility-boundary-v0.2.md` 和 `docs/event-schema-registry-closure-review.md`；仍缺 schema migration policy 和 multi-version projector matrix | read model fields 越多，future breaking change 成本越高 | closed for now; no migration framework |
 | Tool protocol | action chain 可执行 deterministic tools，但 tool result/error/resource contract、streaming absence、artifact capture ownership 仍是 sketch | future tool examples may accidentally couple executor, artifact store, workspace and policy | defer until workspace lifecycle is clearer |
 
 ## 4. Not-Now Product / Integration Gaps
@@ -74,9 +74,9 @@
 
 Recommended order:
 
-1. `Event Schema Registry / Compatibility Closure Review`
-2. `Worker Handoff App Spike`
-3. `External Review Package Refresh`, if the near-term goal is reviewer handoff instead of more kernel design
+1. `External Review Package Refresh`
+2. `Tool Protocol Boundary`
+3. `Worker Handoff App Spike Selection`
 
 ## 6. Next Batch Shape
 
@@ -119,16 +119,22 @@ Completed follow-up:
 - Result: `first slice complete / closed for now`
 - Closure doc: `docs/retry-cancel-supersede-runtime-closure-review.md`
 
-Recommended next batch:
+Completed follow-up:
 
 - Batch name: `Event Schema Registry / Compatibility Closure Review`
 - Type: docs-only closure review
+- Result: `first slice complete / closed for now`
+- Closure doc: `docs/event-schema-registry-closure-review.md`
+
+Recommended next batch:
+
+- Batch name: `External Review Package Refresh`
+- Type: docs-only review package refresh
 - Goals:
-  - confirm `EventSchemaRegistry` covers known canonical event types
-  - confirm projector fails closed on unknown event type and unsupported event schema version
-  - confirm legacy/current missing-schema compatibility remains explicit
-  - confirm raw provider callback events are not registered canonical events
-  - keep migration framework, plugin marketplace, policy DSL, real integrations, and product UI out of scope
+  - summarize current proven kernel surfaces
+  - summarize two app spikes and demo commands
+  - separate first-slice boundaries from deferred product integrations
+  - keep tag / release, real server, real LLM, provider adapters, migration framework, and product APIs out of scope unless explicitly requested
 
 Follow-up: `docs/workspace-resource-lifecycle-boundary-v0.2.md` / `docs/workspace-resource-lifecycle-closure-review.md` and `docs/policy-registry-version-basis-closure-review.md` now record the closed first slices. The next implementation-facing step should not be real filesystem substrate or plugin/policy infrastructure unless a new boundary explicitly asks for it.
 
@@ -142,4 +148,4 @@ Stop conditions:
 
 ## 7. Decision
 
-Kernel is not complete, but the current boundary package is no longer blocked by artifact/external-observation proof gaps. Workspace Resource Lifecycle, Policy Profile / Action Registry Versioning, Retry / Cancel / Supersede Runtime Integration, and Event Schema Registry / Compatibility now have first-slice boundaries. The next useful step is Event Schema Registry / Compatibility Closure Review, not plugin marketplace, policy DSL, migration framework, real workspace substrate, scheduler/process kill, real HTTP server, or real LLM.
+Kernel is not complete, but the current boundary package is no longer blocked by artifact/external-observation proof gaps. Workspace Resource Lifecycle, Policy Profile / Action Registry Versioning, Retry / Cancel / Supersede Runtime Integration, and Event Schema Registry / Compatibility now have closed first-slice boundaries. The next useful step is External Review Package Refresh, not plugin marketplace, policy DSL, migration framework, real workspace substrate, scheduler/process kill, real HTTP server, or real LLM.
