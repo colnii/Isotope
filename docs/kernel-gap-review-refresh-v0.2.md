@@ -44,7 +44,7 @@
 | Policy profile / action registry versioning | first slice 已完成并 closed for now；后续仍缺 reason-code taxonomy、event schema registry 和 compatibility / migration story | helper / demo 越多，requested capabilities、grants、workspace modes 和 action schemas 越容易漂移 | closed for now; defer plugin / DSL / migration |
 | Session / run lifecycle | session/run 能创建和 replay，但 multi-run continuity、run pause/finalization/cancel/supersede、session history visibility 仍未成 contract | app spikes 目前多是 single-run；一旦做 app-like workflow，run boundaries 会变成 hidden glue | docs-only lifecycle review; do not mix with memory promotion |
 | Error taxonomy | server/helper/HTTP/projector 都有 controlled errors，但 error code taxonomy 还不是统一 kernel contract | facade/helper 增长后，客户端难以稳定处理 unknown / malformed / conflict / not_enabled / policy denied | small docs/red-test slice after next boundary |
-| Event schema registry / migration | event envelope/versioning docs 已有，但 actual event payload schema registry、compatibility policy、projector version migration 仍薄 | read model fields 越多，future breaking change 成本越高 | docs-only refresh before any incompatible schema change |
+| Event schema registry / migration | Event Schema Registry / Compatibility Boundary 已定义，见 `docs/event-schema-registry-compatibility-boundary-v0.2.md`；actual registry implementation、unknown-event fail-closed tests、schema version compatibility tests 和 projector version migration 仍未实现 | read model fields 越多，future breaking change 成本越高 | red tests next; no migration framework |
 | Tool protocol | action chain 可执行 deterministic tools，但 tool result/error/resource contract、streaming absence、artifact capture ownership 仍是 sketch | future tool examples may accidentally couple executor, artifact store, workspace and policy | defer until workspace lifecycle is clearer |
 
 ## 4. Not-Now Product / Integration Gaps
@@ -73,7 +73,7 @@
 
 Recommended order:
 
-1. `Event Schema Registry / Compatibility Boundary`
+1. `Event Schema Registry / Compatibility Red Tests`
 2. `Worker Handoff App Spike`
 3. `External Review Package Refresh`, if the near-term goal is reviewer handoff instead of more kernel design
 
@@ -120,10 +120,12 @@ Completed follow-up:
 
 Recommended next batch:
 
-- Batch name: `Event Schema Registry / Compatibility Boundary`
-- Type: docs-only boundary
+- Batch name: `Event Schema Registry / Compatibility Red Tests`
+- Type: red tests only
 - Goals:
-  - define minimal event schema compatibility contract before adding more event shapes
+  - pin registered schema boundary before adding more event shapes
+  - prove unknown event type and unsupported event schema version fail closed
+  - keep legacy/current missing-schema compatibility explicit
   - keep migration framework, plugin marketplace, policy DSL, real integrations, and product UI out of scope
 
 Follow-up: `docs/workspace-resource-lifecycle-boundary-v0.2.md` / `docs/workspace-resource-lifecycle-closure-review.md` and `docs/policy-registry-version-basis-closure-review.md` now record the closed first slices. The next implementation-facing step should not be real filesystem substrate or plugin/policy infrastructure unless a new boundary explicitly asks for it.
@@ -138,4 +140,4 @@ Stop conditions:
 
 ## 7. Decision
 
-Kernel is not complete, but the current boundary package is no longer blocked by artifact/external-observation proof gaps. Workspace Resource Lifecycle, Policy Profile / Action Registry Versioning, and Retry / Cancel / Supersede Runtime Integration now have closed first slices. The next useful step is an Event Schema Registry / Compatibility Boundary, not plugin marketplace, policy DSL, migration framework, real workspace substrate, scheduler/process kill, real HTTP server, or real LLM.
+Kernel is not complete, but the current boundary package is no longer blocked by artifact/external-observation proof gaps. Workspace Resource Lifecycle, Policy Profile / Action Registry Versioning, Retry / Cancel / Supersede Runtime Integration, and Event Schema Registry / Compatibility Boundary now have closed docs/first-slice boundaries. The next useful step is Event Schema Registry / Compatibility Red Tests, not plugin marketplace, policy DSL, migration framework, real workspace substrate, scheduler/process kill, real HTTP server, or real LLM.

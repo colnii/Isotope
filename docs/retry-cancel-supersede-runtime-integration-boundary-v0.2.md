@@ -218,7 +218,8 @@ Closure review:
 
 - `docs/retry-cancel-supersede-runtime-closure-review.md`
 - conclusion: `first slice complete / closed for now`
-- next recommended boundary: `Event Schema Registry / Compatibility Boundary`
+- next recommended boundary at the time: `Event Schema Registry / Compatibility Boundary`
+- follow-up status: boundary is now defined in `docs/event-schema-registry-compatibility-boundary-v0.2.md`; next suggested step is `Event Schema Registry / Compatibility Red Tests`
 
 ## 11. First Red Tests Recommendation
 

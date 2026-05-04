@@ -75,7 +75,9 @@ Remaining friction is not blocker-level:
 
 ## 7. Recommended Next Path
 
-Recommended kernel path: `Event Schema Registry / Compatibility Boundary`.
+Recommended kernel path at closure time: `Event Schema Registry / Compatibility Boundary`.
+
+Follow-up status: boundary is now defined in `docs/event-schema-registry-compatibility-boundary-v0.2.md`; next suggested step is `Event Schema Registry / Compatibility Red Tests`.
 
 Reason:
 

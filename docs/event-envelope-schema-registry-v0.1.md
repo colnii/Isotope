@@ -10,7 +10,7 @@
 
 Event envelope schema registry 的目的，是在出现多个 event envelope version 时，为 projector 和 digest validation 提供明确、受控的 interpretation boundary（解释边界）。
 
-它不是 event payload schema registry，不解释每个 `event_type` 的业务 payload，也不生成 `RunState`。
+它不是 event payload schema registry，不解释每个 `event_type` 的业务 payload，也不生成 `RunState`。Event payload schema / compatibility 的后续 v0.2 边界见 `docs/event-schema-registry-compatibility-boundary-v0.2.md`。
 
 ## Current State
 

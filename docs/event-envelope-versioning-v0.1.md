@@ -27,6 +27,7 @@ event envelope versioning 的目的，是在不改变 canonical event log source
 - checkpoint event envelope version mismatch 会让 checkpoint invalid，并 fallback full rebuild，且不会读取 checkpoint state。
 - legacy checkpoint 缺少 event envelope version metadata 时，仍按兼容路径处理。
 - event envelope schema registry design note 已落文档，边界见 `docs/event-envelope-schema-registry-v0.1.md`。
+- event payload schema registry / compatibility boundary 已落文档，见 `docs/event-schema-registry-compatibility-boundary-v0.2.md`；它与本文件的 envelope versioning 分开处理。
 - 当前没有 event envelope schema registry，也没有 registry lookup。
 - 当前 full regression：`352 passed`。
 

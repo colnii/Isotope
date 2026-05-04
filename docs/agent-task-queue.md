@@ -103,32 +103,33 @@ Goal: define the minimal event schema compatibility contract as a docs-only arti
 
 Tasks:
 
-1. Create `docs/event-schema-compatibility-boundary-v0.2.md`: complete.
-2. Clarify current implicit contract (single envelope version, version rejection, event type surface, digest binding): complete.
+1. Create `docs/event-schema-registry-compatibility-boundary-v0.2.md`: complete.
+2. Clarify current implicit contract (single envelope version, version rejection, known-event validation, digest binding): complete.
 3. Recommend first red tests for future evolution: complete.
 4. Keep docs-only; no src/test/pyproject changes.
-5. Queue update: complete; next suggested batch set to ...
+5. Queue update: complete; next suggested batch set to red tests only.
 
 Evidence:
 
-- Boundary doc: `docs/event-schema-compatibility-boundary-v0.2.md`.
-- Documents hard contract: append-only, version gateway, no silent fallback, event type surface, projector ownership, checkpoint binding, etc.
+- Boundary doc: `docs/event-schema-registry-compatibility-boundary-v0.2.md`.
+- Documents hard contract: registered event schemas, distinct envelope/schema versions, unknown event fail-closed target, unsupported schema version fail-closed target, append-only compatibility, checkpoint separation, and no migration framework.
+- Records current implementation truth: known-event validation exists, but unknown event type fail-closed is a next red-test target, not an already complete guarantee.
 - References existing design notes without implementing anything.
 - No code changes; `974 passed` baseline unaffected.
 
 ## 7. Next Suggested Batch
 
-Batch name: `Worker Handoff App Spike Selection`
+Batch name: `Event Schema Registry / Compatibility Red Tests`
 
-Status: `ready_docs_only` (requires user product judgement)
+Status: `ready_red_only`
 
 Possible tasks:
 
-1. Define minimal event schema compatibility contract.
-2. Clarify event payload version / compatibility expectations for existing canonical events.
-3. Identify first red tests recommendation.
-4. Keep docs-only unless a clear correctness bug is found.
-5. Keep migration framework, plugin marketplace, policy DSL, real integrations, product UI, and event-store semantic changes out of scope.
+1. Add `tests/isotope_kernel/test_event_schema_registry_boundary.py`.
+2. Add `tests/isotope_kernel/test_event_schema_version_compatibility.py`.
+3. Cover registered known event schemas, unknown event fail-closed, unsupported `event_schema_version` fail-closed, legacy/current missing-schema compatibility mapping, envelope/schema version separation, checkpoint separation, and controlled validation errors.
+4. Keep red phase only; do not implement registry unless a later batch explicitly says green.
+5. Keep JSON Schema, protobuf, migration framework, plugin marketplace, remote registry, real integrations, product UI, and event-store semantic changes out of scope.
 
 Alternative if user chooses pause/review:
 
