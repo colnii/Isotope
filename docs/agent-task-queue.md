@@ -93,6 +93,49 @@ git status --short
 
 ## 6. Current Batch
 
+Batch name: `Worker Handoff Helper Boundary`
+
+Timebox: `docs-only selection slice`
+
+Status: `complete`
+
+Goal: convert aggressive branch `private_append_worker_handoff` evidence into a bounded mainline helper boundary, without implementing runtime worker behavior.
+
+Tasks:
+
+1. Read incoming review / aggressive evidence for `private_append_worker_handoff`: complete.
+2. Classify friction as kernel helper gap rather than app-local glue: complete.
+3. Define docs-only boundary and first red tests recommendation: complete.
+
+Evidence:
+
+- Boundary doc: `docs/worker-handoff-helper-boundary-v0.2.md`.
+- Aggressive evidence: commit `1950e32`, scenario `worker-handoff-gap`, targeted `tests/isotope_kernel/test_worker_handoff_gap_spike.py` -> `5 passed`.
+- No `src/`, `tests/`, `.github`, or `pyproject.toml` changes in this docs-only slice.
+
+## 7. Next Suggested Batch
+
+Batch name: `Worker Handoff Helper Red Tests`
+
+Status: `ready`
+
+Tasks:
+
+1. Add `tests/isotope_kernel/test_worker_handoff_helper.py`.
+2. Red tests should prove an `InProcessServer` helper accepts structured delegation intent plus artifact `ResourceRef`.
+3. Red tests should require canonical delegation / worker / result-handoff events and projected worker summary.
+4. Red tests should prove malformed intent/ref fail closed without partial worker state.
+5. Red tests should prove replay and checkpoint-assisted rebuild preserve worker handoff summary.
+6. Do not implement helper in red-only batch unless queue is explicitly promoted to green.
+
+Stop conditions:
+
+- red tests need real concurrency / process spawn / remote worker / container / git worktree / real HTTP / real LLM / provider adapter / public SDK
+- red tests require product UX decisions
+- red tests require changing event-store append-only semantics or executor grants semantics
+
+## 8. Previous Current Batch
+
 Batch name: `Workspace Binding Demo Glue Cleanup`
 
 Timebox: `small external-review cleanup slice`
@@ -116,7 +159,7 @@ Evidence:
 - `git diff -- src tests .github pyproject.toml`: limited to intended demo/test cleanup before commit.
 - No kernel feature, provider/webhook/API/real workspace/runtime behavior changed.
 
-## 7. Next Suggested Batch
+## 9. Previous Next Suggested Batch
 
 Batch name: `Application-Layer Friction Intake`
 
