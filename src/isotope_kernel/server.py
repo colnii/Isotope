@@ -74,8 +74,19 @@ class InProcessServer:
         self._append(run_id, "thread.created", {"thread_id": thread_id, "agent_id": agent_id})
         return {"run_id": run_id}
 
-    def submit_input(self, run_id: str, text: str) -> dict[str, Any]:
-        return self.submit_tool_request(run_id, tool="write_artifact_tool", text=text)
+    def submit_input(
+        self,
+        run_id: str,
+        text: str,
+        *,
+        requires_approval: bool = False,
+    ) -> dict[str, Any]:
+        return self.submit_tool_request(
+            run_id,
+            tool="write_artifact_tool",
+            text=text,
+            requires_approval=requires_approval,
+        )
 
     def submit_action(
         self,

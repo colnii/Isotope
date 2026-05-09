@@ -156,7 +156,14 @@ class HttpApiApp:
                 body = self._require_body(json_body, required_fields=("text",))
                 if not self._run_exists(parts[1]):
                     return self._error(404, "not_found", "run not found")
-                result = self.server.submit_input(parts[1], text=body["text"])
+                requires_approval = False
+                if isinstance(json_body, dict):
+                    requires_approval = json_body.get("requires_approval", False)
+                result = self.server.submit_input(
+                    parts[1],
+                    text=body["text"],
+                    requires_approval=requires_approval,
+                )
                 return self._json(200, self._submit_result_to_dict(result))
             if method == "GET" and len(parts) == 3 and parts[0] == "runs" and parts[2] == "approvals":
                 if not self._run_exists(parts[1]):

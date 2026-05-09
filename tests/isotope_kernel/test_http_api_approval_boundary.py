@@ -172,6 +172,47 @@ def test_denied_http_approval_resolve_does_not_create_execution_or_artifact(tmp_
     assert app.server.artifact_store.list_artifacts(run_id) == []
 
 
+def test_submit_input_with_requires_approval_true_emits_approval_requested(tmp_path):
+    app = create_http_app(tmp_path)
+    session = app.server.create_session()
+    run = app.server.create_run(session["session_id"], goal="approval-gated input")
+
+    response = _request(
+        app,
+        "POST",
+        f"/runs/{run['run_id']}/input",
+        {"text": "hello", "requires_approval": True},
+    )
+
+    assert _status_code(response) == 200
+    body = _body(response)
+    assert body["status"] == "pending_user_approval"
+    event_types = _event_types(app, run["run_id"])
+    assert "approval.requested" in event_types
+    assert not ACTION_EXECUTION_EVENTS.intersection(event_types)
+    run_state = _body(_request(app, "GET", f"/runs/{run['run_id']}"))
+    assert run_state["status"] == "pending_user_approval"
+    assert run_state["approvals"]
+    assert run_state["artifacts"] == []
+
+
+def test_submit_input_with_invalid_requires_approval_is_rejected(tmp_path):
+    app = create_http_app(tmp_path)
+    session = app.server.create_session()
+    run = app.server.create_run(session["session_id"], goal="reject invalid approval flag")
+
+    response = _request(
+        app,
+        "POST",
+        f"/runs/{run['run_id']}/input",
+        {"text": "hello", "requires_approval": "true"},
+    )
+
+    assert _status_code(response) == 400
+    assert _body(response)["error"]["code"] == "bad_request"
+    assert "approval.requested" not in _event_types(app, run["run_id"])
+
+
 def test_approved_http_approval_resolve_uses_action_chain(tmp_path):
     app = create_http_app(tmp_path)
     run_id, _result, approval = _submit_pending_approval(app)
