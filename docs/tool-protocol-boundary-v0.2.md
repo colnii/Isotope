@@ -1,6 +1,6 @@
 # Tool Protocol Boundary v0.2
 
-状态：`docs-only boundary defined; implementation deferred`
+状态：`first green slice complete; closure review pending`
 
 ## 1. Purpose
 
@@ -181,7 +181,7 @@ Tool protocol does not implement scheduler, process kill, timeout engine, or can
 
 ### Event Schema
 
-Tool result / error events should be canonical event types with registered schema metadata once implemented. Unknown future tool event types must fail closed unless the event schema registry explicitly supports them.
+Tool result / error currently uses existing canonical `artifact.created` and `action.failed` event paths. Unknown future tool event types must fail closed unless the event schema registry explicitly supports them.
 
 ## 7. Deferred
 
@@ -248,11 +248,24 @@ Stop before implementation if a future slice requires:
 
 ## 10. Current Decision
 
-Tool Protocol Boundary is now defined as docs-only. It is not implemented as a new protocol module, public SDK or plugin system.
+Tool Protocol first green slice is now implemented at the minimal in-process boundary:
 
-Recommended next step, only if user explicitly reopens this line:
+- `src/isotope_kernel/tool_protocol.py` defines `ToolInvocation`, `ToolResult` and `ToolError` validation models.
+- `artifact.created` event provenance now includes `execution_id`, `proposal_id` and `decision_id`.
+- `action.failed` now carries `error_reason_code` and `structured_error`.
+- executor still uses only `PolicyDecision.grants`, and ungranted / unsupported tools fail closed before successful side effects.
 
-1. Add red tests for the two recommended files.
-2. Green only the minimal deterministic in-process shape.
-3. Keep `write_artifact_tool` as the only success handler unless app-layer friction proves another tool is necessary.
-4. Preserve mainline idle / friction-intake mode if no app-layer evidence demands implementation.
+Still not implemented:
+
+- plugin marketplace
+- dynamic plugin loading
+- remote tools
+- sandboxed tool process
+- streaming output
+- public tool SDK
+- new dependency
+
+Recommended next step:
+
+1. Do a docs-only Tool Protocol Closure Review.
+2. Return to application-layer friction intake unless closure review finds a concrete correctness bug.

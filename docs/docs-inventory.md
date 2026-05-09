@@ -59,7 +59,7 @@
 - 加上 `docs/concepts/` 下早期 Isotope 概念文档中文化迁移和 Hermes Agent 对照文档后 docs Markdown 增加 13 个，tracked docs Markdown 当前为 105 个；这些是 concept / application pressure docs，不是当前实现队列。
 - 加上 Public / Internal Docs Boundary 后 tracked docs Markdown：106 个。该文档只定义 public / internal / concept / archive 分类边界，不移动、不删除、不隐藏任何文档。
 - 加上 Mainline Idle Checkpoint 后 tracked docs Markdown：107 个。当前主线停在 idle / maintenance / friction-intake 状态；默认等待 app-layer friction report 或只做 periodic verification。
-- 加上 Tool Protocol Boundary 后 tracked docs Markdown：108 个。该文档只定义 tool invocation / result / error / grants / provenance / registry relationship 的 docs-only boundary，不实现 plugin marketplace、remote tool、sandboxed process、streaming output 或 public SDK。
+- 加上 Tool Protocol Boundary 后 tracked docs Markdown：108 个。该文档定义 tool invocation / result / error / grants / provenance / registry relationship；first green slice 已补上最小 `ToolInvocation` / `ToolResult` / `ToolError` models、artifact event provenance 和 structured `action.failed` error，仍不实现 plugin marketplace、remote tool、sandboxed process、streaming output 或 public SDK。
 
 ## 2. Current entrypoints
 
@@ -124,11 +124,11 @@
 
 当前没有默认打开的 implementation track。Track F external ingestion 当前已完成 boundary 和 external observation read-model invariant green slices，并已 effectively complete / closed for now；`external-snapshot-review` second app spike 已 closed for now，不要直接实现 provider adapter / ingestion API。
 
-当前默认下一步是 `Application-Layer Friction / External Feedback Intake`，不是 plugin marketplace、policy DSL、migration framework、scheduler、process kill 或 real filesystem substrate。`docs/external-review-package-v0.2.md` 已提供外部 reviewer 入口，`docs/post-external-review-checkpoint.md` 已记录 external review ready checkpoint；`docs/kernel-gap-review-refresh-v0.2.md` 已刷新 app spike 后的 kernel gaps；`docs/workspace-resource-lifecycle-boundary-v0.2.md` 已定义并实现 workspace lease / release / artifact-capture first green slice；`docs/workspace-resource-lifecycle-closure-review.md` 已标记该 slice complete / closed for now；`docs/policy-profile-action-registry-versioning-boundary-v0.2.md` 已定义并实现 registry/profile basis first slice；`docs/policy-registry-version-basis-closure-review.md` 已标记该 slice complete / closed for now；`docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md` 已定义并实现 runtime integration helper first green slice；`docs/retry-cancel-supersede-runtime-closure-review.md` 已标记该 slice complete / closed for now；`docs/event-schema-registry-compatibility-boundary-v0.2.md` 已定义并实现 event payload schema compatibility green slice；`docs/event-schema-registry-closure-review.md` 已标记该 slice complete / closed for now；`docs/tool-protocol-boundary-v0.2.md` 已定义 docs-only boundary 但未进入 red/green implementation；`docs/agent-worker-lifecycle-boundary-v0.2.md`、`docs/workspace-substrate-boundary-v0.2.md` 和 `docs/retry-cancel-supersede-boundary-v0.2.md` 三者 first slice 均已 complete。
+当前默认下一步是 `Tool Protocol Closure Review`，之后回到 `Application-Layer Friction / External Feedback Intake`，不是 plugin marketplace、policy DSL、migration framework、scheduler、process kill 或 real filesystem substrate。`docs/external-review-package-v0.2.md` 已提供外部 reviewer 入口，`docs/post-external-review-checkpoint.md` 已记录 external review ready checkpoint；`docs/kernel-gap-review-refresh-v0.2.md` 已刷新 app spike 后的 kernel gaps；`docs/workspace-resource-lifecycle-boundary-v0.2.md` 已定义并实现 workspace lease / release / artifact-capture first green slice；`docs/workspace-resource-lifecycle-closure-review.md` 已标记该 slice complete / closed for now；`docs/policy-profile-action-registry-versioning-boundary-v0.2.md` 已定义并实现 registry/profile basis first slice；`docs/policy-registry-version-basis-closure-review.md` 已标记该 slice complete / closed for now；`docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md` 已定义并实现 runtime integration helper first green slice；`docs/retry-cancel-supersede-runtime-closure-review.md` 已标记该 slice complete / closed for now；`docs/event-schema-registry-compatibility-boundary-v0.2.md` 已定义并实现 event payload schema compatibility green slice；`docs/event-schema-registry-closure-review.md` 已标记该 slice complete / closed for now；`docs/tool-protocol-boundary-v0.2.md` 已定义并实现 first green slice；`docs/agent-worker-lifecycle-boundary-v0.2.md`、`docs/workspace-substrate-boundary-v0.2.md` 和 `docs/retry-cancel-supersede-boundary-v0.2.md` 三者 first slice 均已 complete。
 
 当前自动推进入口是 `docs/agent-task-queue.md`。`Approval-Gated Tool Runner Spike` 已完成，API friction review 已落文档，approval lookup/read helper、workspace binding helper 和 submit action helper 已完成；artifact review flow first slice、friction review、source artifact setup helper closure review、artifact provenance helper first slice、artifact review flow closure review、second app spike selection、external snapshot review closure review 和 app spike coverage review 已完成。
 
-- `docs/agent-task-queue.md`：active queue，Current Batch complete；Next Suggested Batch is `Application-Layer Friction / External Feedback Intake` with `pending_application_or_reviewer_feedback` status。
+- `docs/agent-task-queue.md`：active queue，Current Batch complete；Next Suggested Batch is `Tool Protocol Closure Review`。
 - `docs/usability-pressure-test-plan-v0.2.md`：current pressure-test planning doc，`approval-gated tool runner` first slice complete and friction reviewed。
 - `docs/second-app-spike-selection.md`：second app spike selection；recommended `external snapshot review`。
 - `docs/external-snapshot-review-closure-review.md`：current external snapshot review closure review；second app spike complete / closed for now。
@@ -155,7 +155,7 @@
 - `docs/retry-cancel-supersede-boundary-v0.2.md`：Retry / Cancel / Supersede boundary，first slice complete。
 - `docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md`：Retry / Cancel / Supersede runtime integration boundary，first green slice complete。
 - `docs/retry-cancel-supersede-runtime-closure-review.md`：Retry / Cancel / Supersede runtime integration closure review，first slice closed for now。
-- `docs/tool-protocol-boundary-v0.2.md`：Tool protocol boundary，docs-only boundary defined。
+- `docs/tool-protocol-boundary-v0.2.md`：Tool protocol boundary，first green slice complete。
 - `docs/agent-worker-lifecycle-boundary-v0.2.md`：Agent / Worker lifecycle boundary，first slice complete。
 - `docs/workspace-substrate-boundary-v0.2.md`：Workspace substrate boundary，first slice complete。
 - `docs/external-ingestion-boundary-v0.2.md`：Track F external ingestion / `ImportedSnapshot` boundary，closed for now。
@@ -318,7 +318,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | `docs/server-checkpoint-boundary-v0.1.md` | Server checkpoint boundary | closed / frozen |
 | `docs/source-artifact-helper-closure-review.md` | Source artifact helper closure review | closed |
 | `docs/source-artifact-setup-helper-boundary-v0.2.md` | Source artifact setup helper boundary | closed |
-| `docs/tool-protocol-boundary-v0.2.md` | Tool protocol boundary | docs-only boundary defined |
+| `docs/tool-protocol-boundary-v0.2.md` | Tool protocol boundary | first green slice complete |
 | `docs/usability-pressure-test-plan-v0.2.md` | Kernel usability pressure test / spike status | two app spikes closed for now |
 | `docs/workspace-binding-helper-boundary-v0.2.md` | Workspace binding helper boundary | first slice complete |
 | `docs/workspace-binding-helper-friction-review.md` | Workspace binding helper friction review | implemented |

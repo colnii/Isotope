@@ -89,49 +89,50 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 baseline：`986 passed`。
+当前 baseline：`1003 passed`。
 
 ## 6. Current Batch
 
-Batch name: `Tool Protocol Boundary`
+Batch name: `Tool Protocol Green Slice`
 
-Timebox: `docs-only boundary`
+Timebox: `implementation slice`
 
 Status: `complete`
 
-Goal: define the minimal v0.2 tool protocol kernel contract without code, tests, plugin system, sandboxed tool process, remote tool, streaming output, public SDK, or dependency.
+Goal: implement the minimal deterministic in-process tool protocol boundary without plugin system, sandboxed tool process, remote tool, streaming output, public SDK, or dependency.
 
 Tasks:
 
-1. Add tool protocol boundary doc: complete.
-2. Define tool invocation / result / error / capability / provenance / budget terminology: complete.
-3. Record hard contracts for grants-only executor behavior and event / artifact / `ResourceRef` handoff: complete.
-4. Record registry relationship and deferred plugin / remote / sandbox surfaces: complete.
-5. Recommend first red tests without starting implementation: complete.
-6. Keep `src/`, `tests`, `.github`, and `pyproject.toml` unchanged: complete.
+1. Add red tests for minimal `ToolInvocation` / `ToolResult` / `ToolError`: complete.
+2. Implement minimal `src/isotope_kernel/tool_protocol.py`: complete.
+3. Complete artifact event provenance with execution / proposal / decision ids: complete.
+4. Add structured `action.failed` error shape: complete.
+5. Sync stale fixtures without weakening validation: complete.
+6. Keep plugin / remote / sandbox / streaming / public SDK / dependency surfaces deferred: complete.
 
 Evidence:
 
 - Boundary doc: `docs/tool-protocol-boundary-v0.2.md`.
-- First red test recommendation:
+- Implemented red/green tests:
   - `tests/isotope_kernel/test_tool_protocol_boundary.py`
   - `tests/isotope_kernel/test_tool_result_event_boundary.py`
-- Mainline default remains conservative: do not continue into red/green implementation unless app-layer friction or a new explicit user batch requires it.
+- Targeted result: `17 passed`.
+- Full regression: `1003 passed`.
+- Mainline default remains conservative: do not continue beyond closure review unless app-layer friction or a new explicit user batch requires it.
 
 ## 7. Next Suggested Batch
 
-Batch name: `Application-Layer Friction Intake`
+Batch name: `Tool Protocol Closure Review`
 
-Status: `pending_application_or_reviewer_feedback_or_periodic_verification`
+Status: `ready`
 
 Possible tasks:
 
-1. Wait for application-layer prototype or external reviewer feedback to produce concrete friction.
-2. Triage feedback into docs clarification, kernel boundary gap, helper/API friction, app-layer glue, or product deferral.
-3. Accept kernel work only when the friction is backed by a deterministic app-layer scenario, external review finding, replay/checkpoint mismatch, or clear source-of-truth conflict.
-4. Do not implement real HTTP server, real LLM, provider adapter, memory query engine, filesystem substrate, plugin system, schema migration framework, scheduler, process kill, real concurrency, tag movement, or GitHub Release without a new explicit batch.
-5. If user wants deeper kernel work without app-layer friction, update queue explicitly before starting `Tool Protocol Red Tests` or `Worker Handoff App Spike Selection`.
-6. If no friction exists, only run periodic verification and stay idle.
+1. Review `ToolInvocation` / `ToolResult` / `ToolError` models.
+2. Confirm artifact provenance and structured failure events are event-sourced and replayable.
+3. Confirm no plugin / remote / sandbox / streaming / public SDK / dependency was introduced.
+4. Docs-only unless a correctness bug is found.
+5. After closure, return queue to application-layer friction intake / external review feedback intake.
 
 Alternative if user chooses pause/review:
 
@@ -139,7 +140,6 @@ Alternative if user chooses pause/review:
 
 Or if deeper kernel work is explicitly requested:
 
-- `Tool Protocol Red Tests`
 - `Worker Handoff App Spike Selection`
 - `External Review Package Refresh`
 
