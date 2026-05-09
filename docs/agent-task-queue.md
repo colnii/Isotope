@@ -173,6 +173,7 @@ Selection outcome:
 - `docs/worker-handoff-app-spike-selection.md` selects `Worker Handoff App Spike Red Tests` as the next bounded mainline step.
 - Rationale: worker handoff app composition remains an open kernel-level pressure surface, and the previous `private_append_worker_handoff` helper friction is now closed by `submit_worker_handoff(...)`.
 - Scope: red tests only first; no real worker runtime, scheduler, process spawn, remote worker, container, git worktree, real HTTP, real LLM, provider, public SDK, or product multi-agent UX.
+- Follow-up: aggressive-dev `1993521` covered this same pressure point through Capability Hub default capability `worker.handoff.review`; review accepted it with `kernel_friction=[]`, so mainline should not duplicate the red-test batch unless new friction appears.
 
 Allowed next actions:
 
@@ -191,7 +192,7 @@ Stop conditions:
 
 Batch name: `Worker Handoff App Spike Red Tests`
 
-Status: `ready`
+Status: `paused; covered by aggressive-dev 1993521`
 
 Goal: write red tests for a deterministic in-process `worker-handoff-app` scenario that composes worker lifecycle, delegation policy, workspace grants, artifact `ResourceRef` result handoff, replay, and checkpoint without opening real worker runtime.
 
@@ -204,6 +205,27 @@ Stop conditions:
 
 - requires real concurrency, scheduler, process spawn, remote worker, process kill, container, git worktree, real filesystem mutation, real HTTP server, real LLM, provider adapter, memory query/storage, public SDK, or product UX decision
 - requires changing event-store append-only semantics or executor grants semantics
+
+Pause reason:
+
+- Review of aggressive-dev `1993521` confirmed `worker.handoff.review --json` returns `status=ok`, `private_append_required=false`, and `kernel_friction=[]`.
+- Starting this red-test batch now would duplicate app-layer coverage instead of responding to active kernel friction.
+- Reopen only if a later pressure point reports new files / tests / bounded action and non-empty `kernel_friction`.
+
+## 11. Next Suggested Batch
+
+Batch name: `Application-Layer Friction Intake`
+
+Status: `waiting for new concrete pressure point`
+
+Goal: wait for aggressive-dev or external review to report a distinct bounded `kernel_friction`. If no such friction exists, keep mainline clean and avoid speculative kernel expansion.
+
+Candidate if user explicitly requests kernel-forward docs-only selection:
+
+- `Session / Run Lifecycle Boundary`
+- `Error Taxonomy Boundary`
+
+Do not implement either candidate without a separate batch decision.
 
 ### Previous Batch Snapshot: Worker Handoff Helper Red / Green Slice
 

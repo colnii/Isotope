@@ -1,6 +1,6 @@
 # Worker Handoff App Spike Selection
 
-状态：`selection complete; red tests recommended`
+状态：`selection complete; red tests paused after aggressive-dev coverage`
 
 ## 1. Purpose
 
@@ -69,3 +69,14 @@ Stop if the spike requires:
 ## 7. Decision
 
 `Worker Handoff App Spike` is the right next pressure point because worker handoff app composition remains one of the few open kernel-level gaps not yet covered by an app-shaped scenario. The next mainline step should be red tests only. If those tests reveal only app-local glue, keep kernel unchanged; if they reveal bounded helper/read-model/replay/checkpoint friction, open a narrow green slice.
+
+## 8. Follow-Up
+
+Aggressive-dev commit `1993521` covered this pressure point before mainline opened the red-test batch. It exposed `worker.handoff.review` as a Capability Hub default capability and verified the helper-backed flow:
+
+- `status=ok`
+- `private_append_required=false`
+- `kernel_friction=[]`
+- no real worker runtime / scheduler / process spawn / remote worker / container / git worktree / real HTTP / LLM / provider / public SDK expansion
+
+Current decision: do not start `Worker Handoff App Spike Red Tests` on mainline unless a later app-layer report identifies a new concrete `kernel_friction`. The selection remains useful as the boundary record for why the worker handoff app pressure point was valid and why it is now paused.
