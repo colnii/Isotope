@@ -1,6 +1,6 @@
 # Kernel Gap Review Refresh v0.2
 
-状态：`current refresh; event schema registry green slice complete`
+状态：`current refresh; tool protocol boundary defined`
 
 ## 1. Purpose
 
@@ -46,7 +46,7 @@
 | Session / run lifecycle | session/run 能创建和 replay，但 multi-run continuity、run pause/finalization/cancel/supersede、session history visibility 仍未成 contract | app spikes 目前多是 single-run；一旦做 app-like workflow，run boundaries 会变成 hidden glue | docs-only lifecycle review; do not mix with memory promotion |
 | Error taxonomy | server/helper/HTTP/projector 都有 controlled errors，但 error code taxonomy 还不是统一 kernel contract | facade/helper 增长后，客户端难以稳定处理 unknown / malformed / conflict / not_enabled / policy denied | small docs/red-test slice after next boundary |
 | Event schema registry / migration | Event Schema Registry / Compatibility first slice 已完成并 closed for now，见 `docs/event-schema-registry-compatibility-boundary-v0.2.md` 和 `docs/event-schema-registry-closure-review.md`；仍缺 schema migration policy 和 multi-version projector matrix | read model fields 越多，future breaking change 成本越高 | closed for now; no migration framework |
-| Tool protocol | action chain 可执行 deterministic tools，但 tool result/error/resource contract、streaming absence、artifact capture ownership 仍是 sketch | future tool examples may accidentally couple executor, artifact store, workspace and policy | defer until workspace lifecycle is clearer |
+| Tool protocol | docs-only boundary 已定义：executor grants、tool invocation/result/error/provenance、artifact / `ResourceRef` handoff、registry relationship 和 first red tests recommendation 已固定 | implementation 仍未开始；future tool examples may accidentally couple executor, artifact store, workspace and policy if they skip the boundary | boundary defined in `docs/tool-protocol-boundary-v0.2.md`; red/green only if app-layer friction or explicit user batch requires it |
 
 ## 4. Not-Now Product / Integration Gaps
 
@@ -74,8 +74,8 @@
 
 Recommended order:
 
-1. `External Review Package Refresh`
-2. `Tool Protocol Boundary`
+1. `Application-Layer Friction Intake` / external review feedback intake
+2. `Tool Protocol Red Tests` only if app-layer friction or explicit user batch requires implementation
 3. `Worker Handoff App Spike Selection`
 
 ## 6. Next Batch Shape
@@ -126,15 +126,23 @@ Completed follow-up:
 - Result: `first slice complete / closed for now`
 - Closure doc: `docs/event-schema-registry-closure-review.md`
 
+Completed follow-up:
+
+- Batch name: `Tool Protocol Boundary`
+- Type: docs-only boundary
+- Result: boundary defined in `docs/tool-protocol-boundary-v0.2.md`
+- Implementation stance: no tool protocol module, plugin marketplace, remote tool, sandboxed process, streaming output, public SDK, or new dependency.
+- First red tests recommendation: `tests/isotope_kernel/test_tool_protocol_boundary.py` and `tests/isotope_kernel/test_tool_result_event_boundary.py`
+
 Recommended next batch:
 
-- Batch name: `External Review Package Refresh`
-- Type: docs-only review package refresh
+- Batch name: `Application-Layer Friction Intake`
+- Type: review / triage only
 - Goals:
-  - summarize current proven kernel surfaces
-  - summarize two app spikes and demo commands
-  - separate first-slice boundaries from deferred product integrations
-  - keep tag / release, real server, real LLM, provider adapters, migration framework, and product APIs out of scope unless explicitly requested
+  - wait for application-layer prototype or external review feedback
+  - convert concrete friction into docs clarification, helper/API gap, replay/checkpoint gap, or app-layer glue
+  - avoid implementing tool protocol red/green unless friction is concrete or the user explicitly opens that batch
+  - keep tag / release, real server, real LLM, provider adapters, migration framework, plugin marketplace, sandboxed tools, and product APIs out of scope unless explicitly requested
 
 Follow-up: `docs/workspace-resource-lifecycle-boundary-v0.2.md` / `docs/workspace-resource-lifecycle-closure-review.md` and `docs/policy-registry-version-basis-closure-review.md` now record the closed first slices. The next implementation-facing step should not be real filesystem substrate or plugin/policy infrastructure unless a new boundary explicitly asks for it.
 
@@ -148,4 +156,4 @@ Stop conditions:
 
 ## 7. Decision
 
-Kernel is not complete, but the current boundary package is no longer blocked by artifact/external-observation proof gaps. Workspace Resource Lifecycle, Policy Profile / Action Registry Versioning, Retry / Cancel / Supersede Runtime Integration, and Event Schema Registry / Compatibility now have closed first-slice boundaries. The next useful step is External Review Package Refresh, not plugin marketplace, policy DSL, migration framework, real workspace substrate, scheduler/process kill, real HTTP server, or real LLM.
+Kernel is not complete, but the current boundary package is no longer blocked by artifact/external-observation proof gaps. Workspace Resource Lifecycle, Policy Profile / Action Registry Versioning, Retry / Cancel / Supersede Runtime Integration, and Event Schema Registry / Compatibility now have closed first-slice boundaries. Tool Protocol Boundary is now defined docs-only, with implementation deferred until app-layer friction or a new explicit batch. The next useful default step is application-layer friction intake / external review feedback intake, not plugin marketplace, policy DSL, migration framework, real workspace substrate, sandboxed tools, scheduler/process kill, real HTTP server, or real LLM.
