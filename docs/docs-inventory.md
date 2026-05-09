@@ -54,6 +54,7 @@
 - Event Schema Registry / Compatibility green slice 后 docs Markdown 仍为 88 个。新增 code/test 不增加 docs count；当前建议下一步做 Event Schema Registry / Compatibility Closure Review，不实现 JSON Schema / protobuf / schema migration framework / plugin event system。
 - 加上 Event Schema Registry / Compatibility Closure Review 后 docs Markdown：89 个。Event Schema Registry / Compatibility first slice 已 complete / closed for now；当前建议下一步做 External Review Package Refresh，不实现 JSON Schema / protobuf / schema migration framework / plugin event system。
 - 加上 External Review Package v0.2 后 docs Markdown：90 个。当前外部 reviewer 入口已刷新；下一步建议 External Review Feedback Intake 或用户明确选择下一条 docs-first kernel boundary。
+- 加上 Post External Review Checkpoint 后 docs Markdown：91 个。当前已 external review ready；默认建议短暂停止 kernel expansion，让 application-layer prototype 先制造真实 friction。
 
 ## 2. Current entrypoints
 
@@ -68,6 +69,7 @@
 - `docs/demo/v0.2-demo-scenario.md`：v0.2 demo scenario boundary / status，记录 implemented `--scenario v0.2` scope。
 - `docs/demo/v0.2-demo-acceptance.md`：v0.2 developer demo acceptance，记录 `v0.2-demo` tag 状态和 non-goals。
 - `docs/post-v0.2-tag-delta.md`：记录 `v0.2-demo` tag 之后 `main` 的 Track F / Agent Worker / Workspace 增量，以及暂不创建 `v0.2.1-demo` 的判断。
+- `docs/post-external-review-checkpoint.md`：external review ready checkpoint，记录当前 baseline、passing demos、stable review surfaces、不要 overclaim 的 product gaps 和下一阶段选项。
 - `docs/v0.2-cycle-closure-review.md`：记录当前 v0.2 implementation cycle closure，建议进入 cleanup / docs organization / external review mode。
 - `docs/kernel-gap-review-v0.2.md`：v0.2 kernel gap review，记录稳定子系统、kernel gaps、优先级和下一步设计建议。
 - `docs/kernel-gap-review-refresh-v0.2.md`：app spike 后的 kernel gap refresh，记录 first-slice enough surfaces、still-open kernel gaps 和 External Review Package Refresh next-step recommendation。
@@ -112,17 +114,18 @@
 
 当前没有默认打开的 implementation track。Track F external ingestion 当前已完成 boundary 和 external observation read-model invariant green slices，并已 effectively complete / closed for now；`external-snapshot-review` second app spike 已 closed for now，不要直接实现 provider adapter / ingestion API。
 
-当前默认下一步是 `External Review Feedback Intake`，不是 plugin marketplace、policy DSL、migration framework、scheduler、process kill 或 real filesystem substrate。`docs/external-review-package-v0.2.md` 已提供外部 reviewer 入口；`docs/kernel-gap-review-refresh-v0.2.md` 已刷新 app spike 后的 kernel gaps；`docs/workspace-resource-lifecycle-boundary-v0.2.md` 已定义并实现 workspace lease / release / artifact-capture first green slice；`docs/workspace-resource-lifecycle-closure-review.md` 已标记该 slice complete / closed for now；`docs/policy-profile-action-registry-versioning-boundary-v0.2.md` 已定义并实现 registry/profile basis first slice；`docs/policy-registry-version-basis-closure-review.md` 已标记该 slice complete / closed for now；`docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md` 已定义并实现 runtime integration helper first green slice；`docs/retry-cancel-supersede-runtime-closure-review.md` 已标记该 slice complete / closed for now；`docs/event-schema-registry-compatibility-boundary-v0.2.md` 已定义并实现 event payload schema compatibility green slice；`docs/event-schema-registry-closure-review.md` 已标记该 slice complete / closed for now；`docs/agent-worker-lifecycle-boundary-v0.2.md`、`docs/workspace-substrate-boundary-v0.2.md` 和 `docs/retry-cancel-supersede-boundary-v0.2.md` 三者 first slice 均已 complete。
+当前默认下一步是 `Application-Layer Friction / External Feedback Intake`，不是 plugin marketplace、policy DSL、migration framework、scheduler、process kill 或 real filesystem substrate。`docs/external-review-package-v0.2.md` 已提供外部 reviewer 入口，`docs/post-external-review-checkpoint.md` 已记录 external review ready checkpoint；`docs/kernel-gap-review-refresh-v0.2.md` 已刷新 app spike 后的 kernel gaps；`docs/workspace-resource-lifecycle-boundary-v0.2.md` 已定义并实现 workspace lease / release / artifact-capture first green slice；`docs/workspace-resource-lifecycle-closure-review.md` 已标记该 slice complete / closed for now；`docs/policy-profile-action-registry-versioning-boundary-v0.2.md` 已定义并实现 registry/profile basis first slice；`docs/policy-registry-version-basis-closure-review.md` 已标记该 slice complete / closed for now；`docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md` 已定义并实现 runtime integration helper first green slice；`docs/retry-cancel-supersede-runtime-closure-review.md` 已标记该 slice complete / closed for now；`docs/event-schema-registry-compatibility-boundary-v0.2.md` 已定义并实现 event payload schema compatibility green slice；`docs/event-schema-registry-closure-review.md` 已标记该 slice complete / closed for now；`docs/agent-worker-lifecycle-boundary-v0.2.md`、`docs/workspace-substrate-boundary-v0.2.md` 和 `docs/retry-cancel-supersede-boundary-v0.2.md` 三者 first slice 均已 complete。
 
 当前自动推进入口是 `docs/agent-task-queue.md`。`Approval-Gated Tool Runner Spike` 已完成，API friction review 已落文档，approval lookup/read helper、workspace binding helper 和 submit action helper 已完成；artifact review flow first slice、friction review、source artifact setup helper closure review、artifact provenance helper first slice、artifact review flow closure review、second app spike selection、external snapshot review closure review 和 app spike coverage review 已完成。
 
-- `docs/agent-task-queue.md`：active queue，Current Batch complete；Next Suggested Batch is `External Review Feedback Intake` with `pending_external_feedback` status。
+- `docs/agent-task-queue.md`：active queue，Current Batch complete；Next Suggested Batch is `Application-Layer Friction / External Feedback Intake` with `pending_application_or_reviewer_feedback` status。
 - `docs/usability-pressure-test-plan-v0.2.md`：current pressure-test planning doc，`approval-gated tool runner` first slice complete and friction reviewed。
 - `docs/second-app-spike-selection.md`：second app spike selection；recommended `external snapshot review`。
 - `docs/external-snapshot-review-closure-review.md`：current external snapshot review closure review；second app spike complete / closed for now。
 - `docs/app-spike-coverage-review.md`：app spike coverage review；recommendation executed by Kernel Gap Review Refresh。
 - `docs/kernel-gap-review-refresh-v0.2.md`：current kernel gap refresh；after policy/profile first slice closure, RCS runtime closure review, and event schema compatibility closure review, recommends External Review Package Refresh next。
 - `docs/external-review-package-v0.2.md`：current external review package；summarizes runnable demos, proven kernel surfaces, deferred product surfaces, reading path, and reviewer questions。
+- `docs/post-external-review-checkpoint.md`：current external review ready checkpoint；records next-stage options and default recommendation to pause kernel expansion until app-layer friction appears。
 - `docs/policy-profile-action-registry-versioning-boundary-v0.2.md`：current policy/profile versioning boundary；records first green slice for registry / policy basis metadata。
 - `docs/policy-registry-version-basis-closure-review.md`：current policy/profile versioning closure review；records first slice complete / closed for now。
 - `docs/workspace-resource-lifecycle-boundary-v0.2.md`：current workspace lifecycle boundary；first slice complete / closed for now。
@@ -291,6 +294,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | `docs/memory-v0.1-scope-freeze.md` | Memory scope freeze | closed / frozen |
 | `docs/memory-write-query-boundary-v0.1.md` | Memory write/query boundary | closed / frozen |
 | `docs/post-v0.2-tag-delta.md` | Post-tag mainline delta review | current review |
+| `docs/post-external-review-checkpoint.md` | Post external review checkpoint | current checkpoint |
 | `docs/policy-profile-action-registry-versioning-boundary-v0.2.md` | Policy profile / action registry versioning boundary | first slice closed for now |
 | `docs/policy-registry-version-basis-closure-review.md` | Policy registry version basis closure review | first slice closed for now |
 | `docs/release/release-draft-v0.1-demo.md` | Release draft text | draft / not published |

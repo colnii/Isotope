@@ -93,43 +93,44 @@ git status --short
 
 ## 6. Current Batch
 
-Batch name: `External Review Package Refresh`
+Batch name: `Post External Review Checkpoint`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: refresh a compact external review package for current v0.2 mainline.
+Goal: record that the repo is external-review ready and define next-stage options.
 
 Tasks:
 
-1. Add external reviewer entrypoint doc: complete.
-2. Summarize runnable demos and app spikes: complete.
-3. Summarize proven kernel contracts and deferred product surfaces: complete.
-4. Add reviewer reading path and suggested reviewer questions: complete.
-5. Sync README / AGENTS / status / roadmap / inventory: complete.
-6. Queue update: complete; next suggested batch set to feedback intake.
+1. Add post external review checkpoint doc: complete.
+2. Record external review readiness, baseline, passing demos, and no tag/release: complete.
+3. Summarize stable-for-review kernel contracts: complete.
+4. Summarize not-product / not-overclaimed surfaces: complete.
+5. Record next-stage options and default recommendation: complete.
+6. Sync README / AGENTS / status / roadmap / inventory: complete.
 
 Evidence:
 
 - External review package: `docs/external-review-package-v0.2.md`.
-- Package explains Isotope as an event-sourced agent kernel prototype, not a product.
-- Package lists runnable demos: default, v0.2, approval-tool-runner, artifact-review, external-snapshot-review, with `--trace` and `--json`.
-- Package separates proven contracts from deliberately deferred product surfaces.
+- Post external review checkpoint: `docs/post-external-review-checkpoint.md`.
+- Checkpoint records external review ready status, `986 passed`, passing artifact-review / external-snapshot-review / approval-tool-runner traces, no tag/release, and `main` ahead of `v0.2-demo`.
+- Default recommendation: pause kernel expansion briefly and let application-layer work create real friction.
 - Full regression remains: `986 passed`.
 
 ## 7. Next Suggested Batch
 
-Batch name: `External Review Feedback Intake`
+Batch name: `Application-Layer Friction / External Feedback Intake`
 
-Status: `pending_external_feedback`
+Status: `pending_application_or_reviewer_feedback`
 
 Possible tasks:
 
-1. Wait for reviewer / user feedback on `docs/external-review-package-v0.2.md`.
-2. Triage feedback into docs clarification, kernel boundary gap, app-helper friction, or product deferral.
-3. Do not implement real HTTP server, real LLM, provider adapter, memory query engine, filesystem substrate, plugin system, or schema migration framework without a new explicit batch.
-4. If no external feedback is available and user wants deeper kernel work, update queue explicitly before starting Tool Protocol Boundary or Worker Handoff App Spike Selection.
+1. Let application-layer prototype or external reviewer feedback produce concrete friction.
+2. Triage feedback into docs clarification, kernel boundary gap, helper/API friction, app-layer glue, or product deferral.
+3. Keep kernel work limited to friction that application-layer work proves necessary.
+4. Do not implement real HTTP server, real LLM, provider adapter, memory query engine, filesystem substrate, plugin system, or schema migration framework without a new explicit batch.
+5. If user wants deeper kernel work without application-layer feedback, update queue explicitly before starting Tool Protocol Boundary or Worker Handoff App Spike Selection.
 
 Alternative if user chooses pause/review:
 
