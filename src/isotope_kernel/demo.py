@@ -575,10 +575,9 @@ def _run_external_snapshot_review_spike(root: Path) -> dict[str, Any]:
     native_state = app.server.get_run_state(run_id)
     native_actions = {key: dict(value) for key, value in native_state.actions.items()}
 
-    app.server._append(
+    app.server.import_external_snapshot(
         run_id,
-        "snapshot.imported",
-        _external_snapshot_payload(
+        _external_snapshot(
             run_id,
             "snapshot_001",
             claimed_status="completed",
@@ -586,10 +585,9 @@ def _run_external_snapshot_review_spike(root: Path) -> dict[str, Any]:
             confidence=0.76,
         ),
     )
-    app.server._append(
+    app.server.import_external_snapshot(
         run_id,
-        "snapshot.imported",
-        _external_snapshot_payload(
+        _external_snapshot(
             run_id,
             "snapshot_002",
             claimed_status="failed",
@@ -684,16 +682,16 @@ def _run_external_snapshot_review_spike(root: Path) -> dict[str, Any]:
     }
 
 
-def _external_snapshot_payload(
+def _external_snapshot(
     run_id: str,
     snapshot_id: str,
     *,
     claimed_status: str,
     source_artifact_id: str,
     confidence: float,
-) -> dict[str, Any]:
+) -> ImportedSnapshot:
     source_ref = make_artifact_ref(run_id, source_artifact_id)
-    snapshot = ImportedSnapshot(
+    return ImportedSnapshot(
         snapshot_id=snapshot_id,
         source_system="example_provider",
         captured_at="2026-05-01T00:03:00Z",
@@ -716,18 +714,6 @@ def _external_snapshot_payload(
         },
         basis_refs=[source_ref.to_dict()],
     )
-    return {
-        "snapshot_id": snapshot.snapshot_id,
-        "source_system": snapshot.source_system,
-        "captured_at": snapshot.captured_at,
-        "content_type": snapshot.content_type,
-        "source_ref": snapshot.source_ref.to_dict(),
-        "summary": snapshot.summary,
-        "observation": dict(snapshot.observation),
-        "quality": dict(snapshot.quality),
-        "provenance": dict(snapshot.provenance),
-        "basis_refs": [dict(ref) for ref in snapshot.basis_refs],
-    }
 
 
 def _append_workspace_binding_event(

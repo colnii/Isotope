@@ -29,6 +29,7 @@ Current completed surfaces relevant to this track:
 - `src/isotope_kernel/ingestion.py` exists as the first not-enabled / artifact-only boundary.
 - `ImportedSnapshot` exists as a slice-only model.
 - `snapshot.imported` canonical events can project imported observations into `RunState.external_observations`.
+- `InProcessServer.import_external_snapshot(run_id, snapshot)` accepts structured `ImportedSnapshot`, prevalidates the candidate `snapshot.imported` replay path, appends no partial event on failure, and returns the projected external observation.
 - `RunState.external_observations` now has a stable read-model shape for snapshot id, type, source, freshness, quality, provenance, basis refs, and observation status.
 - `external_observations` is included in checkpoint state and restored by checkpoint-assisted rebuild.
 - Imported observations do not overwrite native `RunState.status` or action status.
@@ -53,6 +54,7 @@ Current completed surfaces relevant to this track:
 - Native state from canonical kernel events has priority over imported observation.
 - Conflicting imported snapshots must not be merged into fake certainty.
 - Snapshot refs must be structured `ResourceRef`; URI string shortcuts are rejected.
+- Snapshot refs and optional `observation.subject` must match the target run for the server helper path.
 - v0.2 does not implement real provider adapters, OpenAI / Responses integration, GitHub webhooks, hosted ingestion, or network listeners.
 
 ## 5. Ingestion Result Semantics
@@ -218,6 +220,7 @@ Track F can be treated as effectively complete for the current v0.2 cycle becaus
 - `ingestion.py` remains a fail-closed / not-enabled boundary
 - `ImportedSnapshot` exists only as a slice model, not a final protocol
 - accepted imported snapshots enter through canonical `snapshot.imported`
+- structured imported snapshots can be appended via `InProcessServer.import_external_snapshot(...)` without using private `_append(...)` glue
 - projector only projects into `RunState.external_observations`
 - imported observations do not override native run/action status
 - external observations can be restored by event replay and checkpoint-assisted rebuild

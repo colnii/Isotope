@@ -89,33 +89,34 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 baseline：`1003 passed`。
+当前 baseline：`1008 passed`。
 
 ## 6. Current Batch
 
-Batch name: `Tool Protocol Closure Review`
+Batch name: `External Snapshot Import Helper`
 
-Timebox: `docs-only closure review`
+Timebox: `small friction-intake red/green slice`
 
 Status: `complete`
 
-Goal: close Tool Protocol first slice without overclaiming a fully wired tool runtime.
+Goal: accept review feedback from aggressive-dev handoff without merging aggressive branch wholesale.
 
 Tasks:
 
-1. Review `ToolInvocation` / `ToolResult` / `ToolError` models: complete.
-2. Confirm artifact provenance and structured failure events are event-sourced and replayable: complete.
-3. Confirm no plugin / remote / sandbox / streaming / public SDK / dependency was introduced: complete.
-4. Record scope note that executor does not yet pass `ToolInvocation` as runtime object to handlers: complete.
-5. Return queue to application-layer friction intake / external review feedback intake: complete.
+1. Add red tests for `InProcessServer.import_external_snapshot(...)`: complete.
+2. Implement structured `ImportedSnapshot` helper that prevalidates candidate `snapshot.imported`: complete.
+3. Reject refs / optional `observation.subject` that do not match target run: complete.
+4. Ensure failure appends no partial event and HTTP/raw `ingest_external_input(...)` remains `not_enabled`: complete.
+5. Update `external-snapshot-review` demo to stop using private `server._append(...)` for snapshots: complete.
 
 Evidence:
 
-- Closure doc: `docs/tool-protocol-closure-review.md`.
-- Boundary doc: `docs/tool-protocol-boundary-v0.2.md`.
-- Targeted tool protocol tests: `17 passed`.
-- Full regression: `1003 passed`.
-- Mainline default remains conservative: do not add more tool runtime wiring unless app-layer friction or a new explicit user batch requires it.
+- Implemented red/green tests: `tests/isotope_kernel/test_external_snapshot_import_helper.py`.
+- Updated helper path: `src/isotope_kernel/server.py`.
+- Updated demo path: `src/isotope_kernel/demo.py`.
+- Targeted external snapshot helper / scenario tests: `28 passed`.
+- Full regression: `1008 passed`.
+- Mainline still rejects provider adapters, webhooks, raw callbacks, public ingestion API, real HTTP server and native state mutation from imported observations.
 
 ## 7. Next Suggested Batch
 
