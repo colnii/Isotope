@@ -164,9 +164,15 @@ Stop conditions:
 
 Batch name: `Application-Layer Friction Intake`
 
-Status: `waiting for concrete pressure point`
+Status: `selection complete`
 
 Goal: keep mainline active but bounded by evidence from aggressive-dev or external review. Do not expand kernel runtime unless a specific app spike produces `kernel_friction` with files, tests, and a narrow helper / boundary / replay / checkpoint / API ergonomics gap.
+
+Selection outcome:
+
+- `docs/worker-handoff-app-spike-selection.md` selects `Worker Handoff App Spike Red Tests` as the next bounded mainline step.
+- Rationale: worker handoff app composition remains an open kernel-level pressure surface, and the previous `private_append_worker_handoff` helper friction is now closed by `submit_worker_handoff(...)`.
+- Scope: red tests only first; no real worker runtime, scheduler, process spawn, remote worker, container, git worktree, real HTTP, real LLM, provider, public SDK, or product multi-agent UX.
 
 Allowed next actions:
 
@@ -180,6 +186,24 @@ Stop conditions:
 - needs real HTTP server, real LLM, provider/webhook, memory query/storage, real filesystem/container/git worktree, UI/auth/multi-user, plugin marketplace, scheduler/process kill, or tag/release
 - needs product/user decision before a kernel contract can be defined
 - requires modifying event-store append-only semantics or executor grants semantics
+
+## 10. Next Suggested Batch
+
+Batch name: `Worker Handoff App Spike Red Tests`
+
+Status: `ready`
+
+Goal: write red tests for a deterministic in-process `worker-handoff-app` scenario that composes worker lifecycle, delegation policy, workspace grants, artifact `ResourceRef` result handoff, replay, and checkpoint without opening real worker runtime.
+
+Suggested tests:
+
+1. `tests/isotope_kernel/test_worker_handoff_app_spike.py`
+2. `tests/isotope_kernel/test_worker_handoff_app_read_model.py`
+
+Stop conditions:
+
+- requires real concurrency, scheduler, process spawn, remote worker, process kill, container, git worktree, real filesystem mutation, real HTTP server, real LLM, provider adapter, memory query/storage, public SDK, or product UX decision
+- requires changing event-store append-only semantics or executor grants semantics
 
 ### Previous Batch Snapshot: Worker Handoff Helper Red / Green Slice
 

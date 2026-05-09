@@ -119,6 +119,7 @@ python3 -m venv .venv
 - Event schema registry closure review: [docs/event-schema-registry-closure-review.md](docs/event-schema-registry-closure-review.md)
 - Tool protocol boundary: [docs/tool-protocol-boundary-v0.2.md](docs/tool-protocol-boundary-v0.2.md)
 - Tool protocol closure review: [docs/tool-protocol-closure-review.md](docs/tool-protocol-closure-review.md)
+- Worker handoff app spike selection: [docs/worker-handoff-app-spike-selection.md](docs/worker-handoff-app-spike-selection.md)
 - External review package: [docs/external-review-package-v0.2.md](docs/external-review-package-v0.2.md)
 - Post external review checkpoint: [docs/post-external-review-checkpoint.md](docs/post-external-review-checkpoint.md)
 - Mainline idle checkpoint: [docs/mainline-idle-checkpoint.md](docs/mainline-idle-checkpoint.md)
