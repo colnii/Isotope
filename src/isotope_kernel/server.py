@@ -53,6 +53,7 @@ class InProcessServer:
     def create_session(self) -> dict[str, str]:
         session_id = new_id("session")
         self._sessions[session_id] = {"session_id": session_id}
+        self._append(session_id, "session.created", {"session_id": session_id, "status": "active"})
         return {"session_id": session_id}
 
     def create_run(self, session_id: str, goal: str) -> dict[str, str]:
@@ -73,6 +74,27 @@ class InProcessServer:
         self._append(run_id, "agent.created", {"agent_id": agent_id})
         self._append(run_id, "thread.created", {"thread_id": thread_id, "agent_id": agent_id})
         return {"run_id": run_id}
+
+    def get_session_state(self, session_id: str) -> dict[str, Any]:
+        self._validate_non_empty_string("session_id", session_id)
+        session_state: dict[str, Any] | None = None
+        run_ids: list[str] = []
+        for event_path in sorted((self.root / "runs").glob("*/events.jsonl")):
+            for event in self.event_store.list_events(event_path.parent.name):
+                if event.event_type == "session.created" and event.payload.get("session_id") == session_id:
+                    session_state = {
+                        "session_id": session_id,
+                        "status": event.payload.get("status", "active"),
+                        "run_ids": [],
+                    }
+                elif event.event_type == "run.created" and event.payload.get("session_id") == session_id:
+                    run_id = str(event.payload["run_id"])
+                    if run_id not in run_ids:
+                        run_ids.append(run_id)
+        if session_state is None:
+            raise ValueError("unknown session_id")
+        session_state["run_ids"] = run_ids
+        return session_state
 
     def submit_input(
         self,
@@ -329,6 +351,7 @@ class InProcessServer:
         self._validate_existing_run_id(run_id)
         if not isinstance(requires_approval, bool):
             raise ValueError("requires_approval must be a bool")
+        self._validate_run_accepts_ordinary_input(run_id)
 
         run = self._runs[run_id]
         proposal = self.compiler.compile(
@@ -985,6 +1008,11 @@ class InProcessServer:
         self._validate_non_empty_string("run_id", run_id)
         if run_id not in self._runs:
             raise ValueError("unknown run_id")
+
+    def _validate_run_accepts_ordinary_input(self, run_id: str) -> None:
+        state = self.get_run_state(run_id)
+        if state.status in {"completed", "failed", "denied"}:
+            raise ValueError(f"run is terminal: {state.status}")
 
     def _validate_read_run_id(self, run_id: object) -> None:
         self._validate_non_empty_string("run_id", run_id)

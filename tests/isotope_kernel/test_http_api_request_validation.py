@@ -118,7 +118,7 @@ def test_create_run_rejects_malformed_or_missing_body_without_events(tmp_path, b
 
     assert _status_code(response) == 400
     assert _json_body(response)["status"] == "bad_request"
-    assert _event_types(tmp_path) == []
+    assert _event_types(tmp_path) == ["session.created"]
 
 
 def test_create_run_unknown_session_returns_404_without_creating_run(tmp_path):

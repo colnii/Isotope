@@ -17,7 +17,11 @@ class RunState:
     """In-memory read model for the v0.1 slice, not a source of truth."""
 
     run_id: str = ""
+    session_id: str = ""
+    goal: str = ""
     status: str = "unknown"
+    created_event_id: str = ""
+    completed_event_id: str = ""
     current_agent: str = ""
     agents: dict[str, dict[str, Any]] = field(default_factory=dict)
     workers: dict[str, dict[str, Any]] = field(default_factory=dict)
@@ -41,7 +45,11 @@ class RunProjector:
     KNOWN_RUN_STATUSES = {"unknown", "running", "pending_user_approval", "denied", "failed", "completed"}
     CHECKPOINT_STATE_FIELDS = (
         "run_id",
+        "session_id",
+        "goal",
         "status",
+        "created_event_id",
+        "completed_event_id",
         "current_agent",
         "agents",
         "workers",
@@ -372,7 +380,16 @@ class RunProjector:
     def _validate_event_payload(self, event: CanonicalEvent) -> None:
         DEFAULT_EVENT_SCHEMA_REGISTRY.validate_event(event)
         payload = event.payload
-        if event.event_type == "agent.created":
+        if event.event_type == "run.created":
+            self._require_fields(event.event_type, payload, ("run_id",))
+            if payload["run_id"] != event.run_id:
+                raise ValueError("run.created run_id must match event run_id")
+            if "goal" in payload:
+                self._require_fields(event.event_type, payload, ("session_id",))
+                self._metadata_string(payload, "goal", event.event_type)
+            if "session_id" in payload:
+                self._metadata_string(payload, "session_id", event.event_type)
+        elif event.event_type == "agent.created":
             self._require_fields(event.event_type, payload, ("agent_id",))
         elif event.event_type == "action.proposed":
             self._require_fields(
@@ -972,6 +989,9 @@ class RunProjector:
         payload = event.payload
         if event.event_type == "run.created":
             state.run_id = str(payload.get("run_id", event.run_id))
+            state.session_id = str(payload.get("session_id", ""))
+            state.goal = str(payload.get("goal", ""))
+            state.created_event_id = event.event_id
             state.status = "running"
         elif event.event_type == "agent.created":
             agent_id = str(payload["agent_id"])
@@ -1193,6 +1213,7 @@ class RunProjector:
         elif event.event_type == "snapshot.imported":
             self._apply_snapshot_imported(state, payload)
         elif event.event_type == "run.completed":
+            state.completed_event_id = event.event_id
             state.status = str(payload.get("status", "completed"))
 
     def _apply_worker_created(self, state: RunState, payload: dict[str, Any], event: CanonicalEvent) -> None:
@@ -1744,7 +1765,11 @@ class RunProjector:
             self._validate_checkpoint_external_observation(observation)
         return RunState(
             run_id=str(state.get("run_id", "")),
+            session_id=str(state.get("session_id", "")),
+            goal=str(state.get("goal", "")),
             status=str(state.get("status", "unknown")),
+            created_event_id=str(state.get("created_event_id", "")),
+            completed_event_id=str(state.get("completed_event_id", "")),
             current_agent=str(state.get("current_agent", "")),
             agents=dict(agents),
             workers=dict(workers),

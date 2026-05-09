@@ -120,7 +120,7 @@ def test_post_sessions_with_same_idempotency_key_replays_same_session_without_du
 
     assert second == first
     assert len(app.server._sessions) == 1
-    assert _event_types(tmp_path) == []
+    assert _event_types(tmp_path) == ["session.created"]
 
 
 def test_create_run_with_same_idempotency_key_replays_same_run_without_duplicate_events(
@@ -195,7 +195,7 @@ def test_idempotency_key_cannot_be_reused_across_different_method_or_path(tmp_pa
     assert _status_code(response) == 409
     assert _error_code(response) == "idempotency_conflict"
     assert len(app.server._runs) == 0
-    assert _event_types(tmp_path) == []
+    assert _event_types(tmp_path) == ["session.created"]
 
 
 def test_idempotency_key_with_different_body_returns_conflict_without_second_side_effect(

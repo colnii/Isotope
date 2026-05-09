@@ -247,7 +247,7 @@ Evidence:
 
 Batch name: `Session / Run Lifecycle Red Tests`
 
-Status: `ready for review`
+Status: `complete`
 
 Goal: write red tests for the accepted boundary before any implementation.
 
@@ -261,6 +261,38 @@ Stop conditions:
 - tests require product session UX, auth, real HTTP server, scheduler, process kill, real concurrency, run graph, memory promotion, or dependency changes
 - tests require event-store append-only semantic changes
 - tests require hidden server-local session state to become replay truth without canonical events
+
+Evidence:
+
+- Added `tests/isotope_kernel/test_session_lifecycle_boundary.py`.
+- Added `tests/isotope_kernel/test_run_lifecycle_boundary.py`.
+- Review accepted the narrowed red tests around aggressive-dev `terminal_run_partial_mutation`.
+
+## 14. Current Batch
+
+Batch name: `Session / Run Lifecycle Green Slice`
+
+Status: `complete`
+
+Goal: fix terminal ordinary-input partial mutation and add the minimal event-backed session/run lifecycle read path.
+
+Evidence:
+
+- `session.created` is registered as a canonical event and appended by `InProcessServer.create_session()`.
+- `InProcessServer.get_session_state(...)` reconstructs session status and run ids from canonical events.
+- `RunState` now exposes `session_id`, `goal`, `created_event_id`, and `completed_event_id`; checkpoint-assisted rebuild preserves these fields.
+- `submit_input(...)` now rejects terminal runs before appending proposal / decision / execution / artifact / completion events.
+- Targeted result: `14 passed`.
+- Full non-packaging regression on this Mac mini: `1016 passed, 8 deselected`.
+- Full regression including packaging smoke: `1020 passed, 4 errors`; the 4 errors are existing local `test_packaging_smoke.py` ensurepip/temp venv bootstrap errors.
+
+## 15. Next Suggested Batch
+
+Batch name: `Application-Layer Friction Intake`
+
+Status: `ready`
+
+Goal: let aggressive-dev rerun `run.lifecycle.review` against the updated mainline shape; only reopen mainline if it reports a new concrete `kernel_friction`.
 
 ### Previous Batch Snapshot: Worker Handoff Helper Red / Green Slice
 

@@ -89,6 +89,7 @@ def _schema(event_type: str, *required_fields: str, description: str = "") -> Ev
 
 
 _DEFAULT_EVENT_SCHEMAS = (
+    _schema("session.created", "session_id", "status"),
     _schema("run.created", "run_id"),
     _schema("run.completed", "status"),
     _schema("agent.created", "agent_id"),

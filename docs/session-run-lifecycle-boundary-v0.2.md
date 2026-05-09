@@ -1,39 +1,42 @@
 # Session / Run Lifecycle Boundary v0.2
 
-状态：`boundary defined; red tests recommended`
+状态：`first green slice complete; closed for now`
 
 ## 1. Purpose
 
-本文定义 session / run lifecycle 的最小 kernel contract。当前 Isotope 已经可以创建 session / run，并通过 `run.created`、action / approval / retry / cancel / supersede / checkpoint 等事件投影 `RunState`。但 session 仍主要是 in-process server metadata，run lifecycle 也还缺少统一的 status transition contract。
+本文定义 session / run lifecycle 的最小 kernel contract。当前 Isotope 已经可以创建 session / run，并通过 `session.created`、`run.created`、action / approval / retry / cancel / supersede / checkpoint 等事件投影 lifecycle read model。first slice 已补上 session canonical event、session replay read helper、`RunState` lifecycle fields 和 terminal ordinary-input no-side-effect guard。
 
-本边界只做 docs-only planning，不实现代码、不新增测试、不打开 product workflow。
+本边界不打开 product workflow；当前实现仍保持 deterministic in-process kernel shape。
 
 ## 2. Current Shape
 
 当前已有：
 
-- `InProcessServer.create_session()`
+- `InProcessServer.create_session()` appends canonical `session.created`
 - `InProcessServer.create_run(session_id, goal)`
+- `InProcessServer.get_session_state(session_id)`
 - canonical `run.created`
+- `RunState.session_id`
+- `RunState.goal`
+- `RunState.created_event_id`
+- `RunState.completed_event_id`
 - `RunState.status`
 - `run.completed`
 - pending approval / denied / failed / completed projection rules
 - HTTP in-process session / run routes
 - event replay and checkpoint-assisted rebuild for `RunState`
 
-当前缺口：
+仍保留的缺口：
 
-- `session` 不是 event-sourced read model。
-- session 与 run 的生命周期关系只靠 server-local `_sessions` / `_runs` metadata 和 `run.created.session_id` 表达。
 - run status transition rules 分散在 action / approval / executor / projector validation 中。
 - run terminal states、pause/resume、cancel/supersede 和 multi-run history 没有统一 kernel contract。
-- checkpoint 覆盖 `RunState`，但没有 `SessionState` / session checkpoint contract。
+- checkpoint 覆盖 `RunState` lifecycle fields，但没有完整 `SessionState` checkpoint framework。
 
 ## 3. Definitions
 
 - Session: user / application interaction container that can own one or more runs.
 - Run: event-sourced execution timeline with its own canonical event log.
-- SessionState: future projected read model for session metadata and run index; not implemented in current first slice.
+- SessionState: future projected read model for session metadata and run index; current first slice exposes only `InProcessServer.get_session_state(...)`.
 - RunState: current projected read model for a single run.
 - Run lifecycle event: canonical event that changes run status or links run to session lifecycle.
 - Terminal run state: completed / failed / denied / cancelled-style state where ordinary action append should fail closed.
@@ -131,4 +134,4 @@ Initial red-test coverage:
 
 ## 9. Decision
 
-Session / Run Lifecycle Boundary is the next safe kernel-forward planning target after worker handoff pressure was covered by aggressive-dev. It is kernel-level because session/run identity and terminal-state rules affect every app spike, but the next step should be red tests only. Do not implement product session workflow or run graph behavior until a red-testable contract is accepted.
+Session / Run Lifecycle first slice is complete / closed for now. The slice fixed the aggressive-dev `terminal_run_partial_mutation` pressure point by rejecting ordinary input after terminal run state before appending any new events, and added minimal event-backed session/run lifecycle metadata without product session UX, run graph behavior, scheduler, process kill, real concurrency, real HTTP/auth/UI, or memory promotion.

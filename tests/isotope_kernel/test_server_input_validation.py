@@ -61,7 +61,7 @@ def test_create_run_rejects_invalid_goal_without_events(tmp_path, bad_goal):
     with pytest.raises(ValueError, match="goal"):
         api.create_run(session["session_id"], goal=bad_goal)
 
-    assert _event_log_paths(tmp_path) == []
+    assert [path.parent.name for path in _event_log_paths(tmp_path)] == [session["session_id"]]
 
 
 @pytest.mark.parametrize("bad_run_id", [None, "", 123, "run_missing"])

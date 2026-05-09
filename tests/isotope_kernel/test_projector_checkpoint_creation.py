@@ -163,6 +163,10 @@ def test_checkpoint_state_contains_minimal_projected_state_fields():
         "artifacts",
         "external_observations",
         "memory_records",
+        "session_id",
+        "goal",
+        "created_event_id",
+        "completed_event_id",
         "last_event_id",
     }
     assert checkpoint["state"]["run_id"] == "run_001"
