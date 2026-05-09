@@ -93,6 +93,56 @@ git status --short
 
 ## 6. Current Batch
 
+Batch name: `Kernel Mainline Maintenance Check`
+
+Timebox: `verification / docs-only`
+
+Status: `complete`
+
+Goal: confirm the mainline is in conservative maintenance mode and ready for application-layer friction intake.
+
+Tasks:
+
+1. Check whether queue/status/review package still point at proactive kernel expansion: complete.
+2. Record conservative maintenance mode and friction-intake rule: complete.
+3. Sync status / roadmap / README / AGENTS / inventory as needed: complete.
+4. Keep `src/`, `tests`, `.github`, and `pyproject.toml` unchanged: complete.
+
+Evidence:
+
+- Maintenance mode entry: `docs/kernel-mainline-maintenance-mode.md`.
+- Current stable checkpoint remains `docs/post-external-review-checkpoint.md`.
+- External reviewer entry remains `docs/external-review-package-v0.2.md`.
+- Full regression baseline remains: `986 passed`.
+- Mainline default: do not proactively expand kernel features; application-layer prototype / aggressive branch should produce concrete friction first.
+
+## 7. Next Suggested Batch
+
+Batch name: `Application-Layer Friction Intake`
+
+Status: `pending_application_or_reviewer_feedback`
+
+Possible tasks:
+
+1. Wait for application-layer prototype or external reviewer feedback to produce concrete friction.
+2. Triage feedback into docs clarification, kernel boundary gap, helper/API friction, app-layer glue, or product deferral.
+3. Accept kernel work only when the friction is backed by a deterministic app-layer scenario, external review finding, replay/checkpoint mismatch, or clear source-of-truth conflict.
+4. Do not implement real HTTP server, real LLM, provider adapter, memory query engine, filesystem substrate, plugin system, schema migration framework, scheduler, process kill, real concurrency, tag movement, or GitHub Release without a new explicit batch.
+5. If user wants deeper kernel work without app-layer friction, update queue explicitly before starting `Tool Protocol Boundary` or `Worker Handoff App Spike Selection`.
+
+Alternative if user chooses pause/review:
+
+- stay paused at the current stable external review package
+
+Or if deeper kernel work is explicitly requested:
+
+- `Tool Protocol Boundary`
+- `Worker Handoff App Spike Selection`
+- `External Review Package Refresh`
+
+
+### Previous Batch Snapshot: Post External Review Checkpoint
+
 Batch name: `Post External Review Checkpoint`
 
 Timebox: `45-60 min`
@@ -117,31 +167,6 @@ Evidence:
 - Checkpoint records external review ready status, `986 passed`, passing artifact-review / external-snapshot-review / approval-tool-runner traces, no tag/release, and `main` ahead of `v0.2-demo`.
 - Default recommendation: pause kernel expansion briefly and let application-layer work create real friction.
 - Full regression remains: `986 passed`.
-
-## 7. Next Suggested Batch
-
-Batch name: `Application-Layer Friction / External Feedback Intake`
-
-Status: `pending_application_or_reviewer_feedback`
-
-Possible tasks:
-
-1. Let application-layer prototype or external reviewer feedback produce concrete friction.
-2. Triage feedback into docs clarification, kernel boundary gap, helper/API friction, app-layer glue, or product deferral.
-3. Keep kernel work limited to friction that application-layer work proves necessary.
-4. Do not implement real HTTP server, real LLM, provider adapter, memory query engine, filesystem substrate, plugin system, or schema migration framework without a new explicit batch.
-5. If user wants deeper kernel work without application-layer feedback, update queue explicitly before starting Tool Protocol Boundary or Worker Handoff App Spike Selection.
-
-Alternative if user chooses pause/review:
-
-- stay paused at the current stable external review package
-
-Or if deeper kernel work is desired:
-
-- `Tool Protocol Boundary`
-- `Worker Handoff App Spike Selection`
-- `Session / Run Lifecycle Boundary`
-
 
 ### Previous Batch Snapshot: Retry / Cancel / Supersede Runtime Integration Green Slice
 

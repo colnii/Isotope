@@ -55,6 +55,7 @@
 - 加上 Event Schema Registry / Compatibility Closure Review 后 docs Markdown：89 个。Event Schema Registry / Compatibility first slice 已 complete / closed for now；当前建议下一步做 External Review Package Refresh，不实现 JSON Schema / protobuf / schema migration framework / plugin event system。
 - 加上 External Review Package v0.2 后 docs Markdown：90 个。当前外部 reviewer 入口已刷新；下一步建议 External Review Feedback Intake 或用户明确选择下一条 docs-first kernel boundary。
 - 加上 Post External Review Checkpoint 后 docs Markdown：91 个。当前已 external review ready；默认建议短暂停止 kernel expansion，让 application-layer prototype 先制造真实 friction。
+- 加上 Kernel Mainline Maintenance Mode 后 tracked docs Markdown：92 个。当前主线进入 conservative maintenance mode；默认不主动扩 kernel feature，只接收 application-layer prototype / external review 已证明的 friction。
 
 ## 2. Current entrypoints
 
@@ -70,6 +71,7 @@
 - `docs/demo/v0.2-demo-acceptance.md`：v0.2 developer demo acceptance，记录 `v0.2-demo` tag 状态和 non-goals。
 - `docs/post-v0.2-tag-delta.md`：记录 `v0.2-demo` tag 之后 `main` 的 Track F / Agent Worker / Workspace 增量，以及暂不创建 `v0.2.1-demo` 的判断。
 - `docs/post-external-review-checkpoint.md`：external review ready checkpoint，记录当前 baseline、passing demos、stable review surfaces、不要 overclaim 的 product gaps 和下一阶段选项。
+- `docs/kernel-mainline-maintenance-mode.md`：kernel mainline conservative maintenance mode，记录 stability / review / application-layer friction intake 规则。
 - `docs/v0.2-cycle-closure-review.md`：记录当前 v0.2 implementation cycle closure，建议进入 cleanup / docs organization / external review mode。
 - `docs/kernel-gap-review-v0.2.md`：v0.2 kernel gap review，记录稳定子系统、kernel gaps、优先级和下一步设计建议。
 - `docs/kernel-gap-review-refresh-v0.2.md`：app spike 后的 kernel gap refresh，记录 first-slice enough surfaces、still-open kernel gaps 和 External Review Package Refresh next-step recommendation。
