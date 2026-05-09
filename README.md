@@ -8,7 +8,7 @@ Isotope 是一个独立的 kernel-first agent runtime 项目，用来验证 cano
 
 当前 v0.2 implementation cycle 已建议暂停，进入 cleanup / docs organization / external review mode；Kernel Gap Review 后已新增 Agent / Worker lifecycle、Workspace substrate、Workspace Resource Lifecycle 和 Retry / Cancel / Supersede boundary，且当前 kernel boundary slices 均已 complete / closed for now。
 
-后续 rolling batch mode 由 [docs/agent-task-queue.md](docs/agent-task-queue.md) 管理；默认 session timebox 是 45-60 分钟，agent 每轮应先读 queue，不要自行进入未列出的新 Track 或为了凑时间 invent work。Event Schema Registry / Compatibility first slice 已 closed for now，当前建议下一步是 External Review Package Refresh，而不是直接实现 scheduler、process kill、real concurrency、plugin marketplace、policy DSL、migration framework 或 real integration。
+后续 rolling batch mode 由 [docs/agent-task-queue.md](docs/agent-task-queue.md) 管理；默认 session timebox 是 45-60 分钟，agent 每轮应先读 queue，不要自行进入未列出的新 Track 或为了凑时间 invent work。External Review Package 已刷新，见 [docs/external-review-package-v0.2.md](docs/external-review-package-v0.2.md)；当前建议先进入 external review / feedback intake，而不是直接实现 scheduler、process kill、real concurrency、plugin marketplace、policy DSL、migration framework 或 real integration。
 
 ## Quick Start
 
@@ -115,6 +115,7 @@ python3 -m venv .venv
 - Approval pause / resume boundary: [docs/approval-pause-resume-boundary-v0.2.md](docs/approval-pause-resume-boundary-v0.2.md)
 - Event schema registry / compatibility boundary: [docs/event-schema-registry-compatibility-boundary-v0.2.md](docs/event-schema-registry-compatibility-boundary-v0.2.md)
 - Event schema registry closure review: [docs/event-schema-registry-closure-review.md](docs/event-schema-registry-closure-review.md)
+- External review package: [docs/external-review-package-v0.2.md](docs/external-review-package-v0.2.md)
 - Docs inventory: [docs/docs-inventory.md](docs/docs-inventory.md)
 - Artifact content read policy: [docs/artifact-content-read-policy-v0.2.md](docs/artifact-content-read-policy-v0.2.md)
 - HTTP API minimal surface: [docs/http-api-minimal-surface-v0.2.md](docs/http-api-minimal-surface-v0.2.md)

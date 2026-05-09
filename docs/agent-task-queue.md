@@ -93,55 +93,52 @@ git status --short
 
 ## 6. Current Batch
 
-Batch name: `Event Schema Registry / Compatibility Closure Review`
+Batch name: `External Review Package Refresh`
 
 Timebox: `45-60 min`
 
 Status: `complete`
 
-Goal: close the Event Schema Registry / Compatibility first slice after implementation.
+Goal: refresh a compact external review package for current v0.2 mainline.
 
 Tasks:
 
-1. Review `EventSchemaRegistry` shape and canonical event coverage: complete.
-2. Confirm projector registry check precedes payload / lifecycle validation: complete.
-3. Confirm unknown event type and unsupported `event_schema_version` fail closed: complete.
-4. Confirm event envelope version, payload schema version, checkpoint schema/version, and digest metadata remain separate: complete.
-5. Keep JSON Schema / protobuf / Avro / migration framework / plugin / remote registry out of scope: complete.
-6. Queue update: complete; next suggested batch set to external review package refresh.
+1. Add external reviewer entrypoint doc: complete.
+2. Summarize runnable demos and app spikes: complete.
+3. Summarize proven kernel contracts and deferred product surfaces: complete.
+4. Add reviewer reading path and suggested reviewer questions: complete.
+5. Sync README / AGENTS / status / roadmap / inventory: complete.
+6. Queue update: complete; next suggested batch set to feedback intake.
 
 Evidence:
 
-- Closure doc: `docs/event-schema-registry-closure-review.md`.
-- Registry module: `src/isotope_kernel/event_schema.py`.
-- Tests:
-  - `tests/isotope_kernel/test_event_schema_registry_boundary.py`
-  - `tests/isotope_kernel/test_event_schema_version_compatibility.py`
-- Targeted closure verification: `13 passed` including stale Track F test sync.
-- Full regression: `986 passed`.
-- Registry boundary: known canonical event metadata, distinct envelope/schema versions, unknown event fail-closed, unsupported `event_schema_version` fail-closed, legacy/current missing-schema compatibility mapping for known events.
-- Stale test sync: raw `provider.callback.received` now proves fail-closed; it is not registered as canonical event and does not advance native state.
+- External review package: `docs/external-review-package-v0.2.md`.
+- Package explains Isotope as an event-sourced agent kernel prototype, not a product.
+- Package lists runnable demos: default, v0.2, approval-tool-runner, artifact-review, external-snapshot-review, with `--trace` and `--json`.
+- Package separates proven contracts from deliberately deferred product surfaces.
+- Full regression remains: `986 passed`.
 
 ## 7. Next Suggested Batch
 
-Batch name: `External Review Package Refresh`
+Batch name: `External Review Feedback Intake`
 
-Status: `ready_docs_only`
+Status: `pending_external_feedback`
 
 Possible tasks:
 
-1. Refresh a compact external review package for current v0.2 mainline.
-2. Summarize proven kernel surfaces and app spikes.
-3. Separate closed first slices from deferred product integrations.
-4. Keep tag / release work out of scope unless explicitly requested.
-5. Do not start Tool Protocol Boundary or Worker Handoff App Spike unless the queue is updated explicitly.
+1. Wait for reviewer / user feedback on `docs/external-review-package-v0.2.md`.
+2. Triage feedback into docs clarification, kernel boundary gap, app-helper friction, or product deferral.
+3. Do not implement real HTTP server, real LLM, provider adapter, memory query engine, filesystem substrate, plugin system, or schema migration framework without a new explicit batch.
+4. If no external feedback is available and user wants deeper kernel work, update queue explicitly before starting Tool Protocol Boundary or Worker Handoff App Spike Selection.
 
 Alternative if user chooses pause/review:
 
-- `External Review Package Refresh`
+- stay paused at the current stable external review package
 
 Or if deeper kernel work is desired:
 
+- `Tool Protocol Boundary`
+- `Worker Handoff App Spike Selection`
 - `Session / Run Lifecycle Boundary`
 
 
