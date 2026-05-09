@@ -70,7 +70,7 @@ def _canonical_events():
                     "ref": ARTIFACT_REF,
                     "artifact_type": "text",
                     "summary": "hello artifact",
-                    "provenance": {"execution_id": "exec_001"},
+                    "provenance": {"execution_id": "exec_001", "proposal_id": "prop_001", "decision_id": "dec_001"},
                 }
             },
         ),
@@ -103,7 +103,7 @@ def test_projector_builds_run_state_only_from_events():
             "ref": ARTIFACT_REF,
             "artifact_type": "text",
             "summary": "hello artifact",
-            "provenance": {"execution_id": "exec_001"},
+            "provenance": {"execution_id": "exec_001", "proposal_id": "prop_001", "decision_id": "dec_001"},
         }
     ]
 

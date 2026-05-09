@@ -67,6 +67,11 @@ def _failed():
             "decision_id": "dec_001",
             "status": "failed",
             "error": "tool failed",
+            "error_reason_code": "tool_execution_failed",
+            "structured_error": {
+                "reason_code": "tool_execution_failed",
+                "message": "tool failed",
+            },
         },
     )
 

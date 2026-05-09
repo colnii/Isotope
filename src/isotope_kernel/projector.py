@@ -429,6 +429,8 @@ class RunProjector:
             self._require_fields(event.event_type, payload, ("execution_id", "proposal_id", "decision_id", "status"))
             if payload["status"] != "failed":
                 raise ValueError("action.failed status must be failed")
+            self._require_fields(event.event_type, payload, ("error_reason_code", "structured_error"))
+            self._validate_structured_error(payload["error_reason_code"], payload["structured_error"])
         elif event.event_type == "action.retry_requested":
             self._require_fields(
                 event.event_type,
@@ -473,8 +475,16 @@ class RunProjector:
                 artifact,
                 ("ref", "artifact_type", "summary", "provenance"),
             )
+            self._validate_resource_ref_payload(artifact["ref"], "artifact.created artifact ref")
             if "content" in artifact:
                 raise ValueError("artifact.created artifact cannot contain content")
+            provenance = artifact["provenance"]
+            if not isinstance(provenance, dict):
+                raise ValueError("artifact.created artifact provenance must be a dict")
+            for field_name in ("execution_id", "proposal_id", "decision_id"):
+                value = provenance.get(field_name)
+                if not isinstance(value, str) or not value:
+                    raise ValueError(f"artifact.created artifact provenance.{field_name} must be a non-empty string")
         elif event.event_type == "approval.requested":
             self._require_fields(
                 event.event_type,
@@ -524,6 +534,19 @@ class RunProjector:
         if not isinstance(value, str) or not value:
             raise ValueError(f"{label} {field_name} must be a non-empty string")
         return value
+
+    def _validate_structured_error(self, reason_code: Any, structured_error: Any) -> None:
+        if not isinstance(reason_code, str) or not reason_code:
+            raise ValueError("action.failed error_reason_code must be a non-empty string")
+        if reason_code != reason_code.lower() or not reason_code.replace("_", "").isalnum():
+            raise ValueError("action.failed error_reason_code must be a stable identifier")
+        if not isinstance(structured_error, dict):
+            raise ValueError("action.failed structured_error must be a dict")
+        if structured_error.get("reason_code") != reason_code:
+            raise ValueError("action.failed structured_error.reason_code must match error_reason_code")
+        message = structured_error.get("message")
+        if not isinstance(message, str) or not message:
+            raise ValueError("action.failed structured_error.message must be a non-empty string")
 
     def _registry_basis_from_payload(self, payload: dict[str, Any]) -> dict[str, str]:
         return {

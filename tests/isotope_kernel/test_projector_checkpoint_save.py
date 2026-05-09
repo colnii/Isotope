@@ -75,7 +75,7 @@ def _artifact_created(**overrides):
         "ref": ARTIFACT_REF,
         "artifact_type": "text",
         "summary": "hello artifact",
-        "provenance": {"execution_id": "exec_001"},
+        "provenance": {"execution_id": "exec_001", "proposal_id": "prop_001", "decision_id": "dec_001"},
     }
     artifact.update(overrides)
     return _event("evt_006", "artifact.created", {"artifact": artifact})

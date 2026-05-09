@@ -100,6 +100,11 @@ def _action_failed() -> events.CanonicalEvent:
             "decision_id": "dec_memory_001",
             "status": "failed",
             "error": "memory service unavailable",
+            "error_reason_code": "tool_execution_failed",
+            "structured_error": {
+                "reason_code": "tool_execution_failed",
+                "message": "memory service unavailable",
+            },
         },
     )
 

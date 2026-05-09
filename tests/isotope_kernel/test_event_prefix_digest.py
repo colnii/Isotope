@@ -81,7 +81,7 @@ def _artifact_created():
                 "ref": ARTIFACT_REF,
                 "artifact_type": "text",
                 "summary": "hello artifact",
-                "provenance": {"execution_id": "exec_001"},
+                "provenance": {"execution_id": "exec_001", "proposal_id": "prop_001", "decision_id": "dec_001"},
             }
         },
     )

@@ -54,7 +54,11 @@ def test_get_artifact_record_returns_summary_ref_provenance_and_basis_metadata(t
     assert record["artifact_type"] == "text"
     assert record["summary"] == "source artifact summary"
     assert record["ref"] == source["artifact_ref"].to_dict()
-    assert record["provenance"] == {"execution_id": source["execution_id"]}
+    assert record["provenance"] == {
+        "execution_id": source["execution_id"],
+        "proposal_id": source["proposal_id"],
+        "decision_id": source["decision_id"],
+    }
     assert record["basis_event_id"].startswith("evt_")
     assert record["basis_event_type"] == "artifact.created"
     assert record["basis_created_at"] == "2026-04-27T00:00:00Z"

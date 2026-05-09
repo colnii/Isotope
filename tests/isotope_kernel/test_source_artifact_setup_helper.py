@@ -68,7 +68,11 @@ def test_source_artifact_helper_creates_summary_ref_and_provenance(tmp_path):
     assert artifact_ref.scope == "run"
     assert artifact_ref.run_id == run_id
     assert artifact_ref.artifact_id.startswith("artifact_")
-    assert result["provenance"] == {"execution_id": result["execution_id"]}
+    assert result["provenance"] == {
+        "execution_id": result["execution_id"],
+        "proposal_id": result["proposal_id"],
+        "decision_id": result["decision_id"],
+    }
 
 
 def test_source_artifact_helper_does_not_expose_full_content_in_returned_summary(tmp_path):
@@ -119,7 +123,11 @@ def test_source_artifact_helper_result_replays_into_run_state(tmp_path):
             "ref": result["artifact_ref"].to_dict(),
             "artifact_type": "text",
             "summary": "source artifact summary",
-            "provenance": {"execution_id": result["execution_id"]},
+            "provenance": {
+                "execution_id": result["execution_id"],
+                "proposal_id": result["proposal_id"],
+                "decision_id": result["decision_id"],
+            },
         }
     ]
 

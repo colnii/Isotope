@@ -178,6 +178,8 @@ def test_server_happy_path_does_not_duplicate_executor_owned_success_events(tmp_
         artifact = api.artifact_store.create_artifact(
             run_id=proposal.run_id,
             execution_id=execution.execution_id,
+            proposal_id=proposal.proposal_id,
+            decision_id=decision.decision_id,
             artifact_type="text",
             summary="hello artifact",
             content=str(proposal.payload.get("text", "")),

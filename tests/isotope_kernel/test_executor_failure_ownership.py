@@ -142,6 +142,11 @@ def test_server_failure_path_does_not_duplicate_executor_owned_failure_events(tm
                     "decision_id": decision.decision_id,
                     "status": "failed",
                     "error": "owned failure",
+                    "error_reason_code": "tool_execution_failed",
+                    "structured_error": {
+                        "reason_code": "tool_execution_failed",
+                        "message": "owned failure",
+                    },
                 },
                 created_at="2026-04-27T00:00:01Z",
             )

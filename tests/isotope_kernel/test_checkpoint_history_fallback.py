@@ -58,7 +58,7 @@ def _happy_path_events():
                     "ref": ref,
                     "artifact_type": "text",
                     "summary": "artifact summary",
-                    "provenance": {"execution_id": "exec_001"},
+                    "provenance": {"execution_id": "exec_001", "proposal_id": "prop_001", "decision_id": "dec_001"},
                 }
             },
         ),

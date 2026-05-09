@@ -29,8 +29,15 @@ class ArtifactStore:
         artifact_type: str,
         summary: str,
         content: str,
+        proposal_id: str | None = None,
+        decision_id: str | None = None,
     ) -> Artifact:
         artifact_id = new_id("artifact")
+        provenance = {"execution_id": execution_id}
+        if proposal_id is not None:
+            provenance["proposal_id"] = proposal_id
+        if decision_id is not None:
+            provenance["decision_id"] = decision_id
         artifact = Artifact(
             artifact_id=artifact_id,
             run_id=run_id,
@@ -38,7 +45,7 @@ class ArtifactStore:
             artifact_type=artifact_type,
             summary=summary,
             content=content,
-            provenance={"execution_id": execution_id},
+            provenance=provenance,
         )
         self._artifacts[artifact.artifact_id] = artifact
         self._write_artifact(artifact)

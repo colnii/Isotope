@@ -279,6 +279,8 @@ def test_artifact_capture_from_workspace_still_uses_artifact_provenance_path():
                         "summary": "captured workspace output",
                         "provenance": {
                             "execution_id": "exec_001",
+                            "proposal_id": "prop_001",
+                            "decision_id": "dec_001",
                             "workspace_id": "workspace_shared_ro",
                         },
                     }

@@ -15,7 +15,11 @@ def test_happy_path_produce_hello_artifact(tmp_path):
             "ref": result["artifact_ref"].to_dict(),
             "artifact_type": "text",
             "summary": "hello artifact",
-            "provenance": {"execution_id": result["execution_id"]},
+            "provenance": {
+                "execution_id": result["execution_id"],
+                "proposal_id": result["proposal_id"],
+                "decision_id": result["decision_id"],
+            },
         }
     ]
 

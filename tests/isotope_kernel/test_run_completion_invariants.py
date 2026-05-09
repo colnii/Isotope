@@ -65,7 +65,13 @@ def _started(event_id="evt_004", proposal_id="prop_001", decision_id="dec_001", 
     )
 
 
-def _artifact_created(event_id="evt_005", execution_id="exec_001", artifact_id="artifact_001"):
+def _artifact_created(
+    event_id="evt_005",
+    execution_id="exec_001",
+    artifact_id="artifact_001",
+    proposal_id="prop_001",
+    decision_id="dec_001",
+):
     return _event(
         event_id,
         "artifact.created",
@@ -77,7 +83,11 @@ def _artifact_created(event_id="evt_005", execution_id="exec_001", artifact_id="
                 },
                 "artifact_type": "text",
                 "summary": "hello artifact",
-                "provenance": {"execution_id": execution_id},
+                "provenance": {
+                    "execution_id": execution_id,
+                    "proposal_id": proposal_id,
+                    "decision_id": decision_id,
+                },
             }
         },
     )
@@ -105,6 +115,11 @@ def _failed(event_id="evt_007", proposal_id="prop_001", decision_id="dec_001", e
             "decision_id": decision_id,
             "status": "failed",
             "error": "tool failed",
+            "error_reason_code": "tool_execution_failed",
+            "structured_error": {
+                "reason_code": "tool_execution_failed",
+                "message": "tool failed",
+            },
         },
     )
 

@@ -80,6 +80,8 @@ class Executor:
                 artifact_type="text",
                 summary=summary,
                 content=str(proposal.payload.get("text", "")),
+                proposal_id=proposal.proposal_id,
+                decision_id=decision.decision_id,
             )
         except Exception as exc:
             self._append_failed(proposal, decision, execution_id, exc)
@@ -162,6 +164,11 @@ class Executor:
                 "decision_id": decision.decision_id,
                 "status": "failed",
                 "error": str(exc),
+                "error_reason_code": "tool_execution_failed",
+                "structured_error": {
+                    "reason_code": "tool_execution_failed",
+                    "message": str(exc),
+                },
             },
         )
 

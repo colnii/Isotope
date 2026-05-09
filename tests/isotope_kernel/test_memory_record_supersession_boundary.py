@@ -123,6 +123,11 @@ def _action_failed(
             "decision_id": decision_id,
             "status": "failed",
             "error": "memory service unavailable",
+            "error_reason_code": "tool_execution_failed",
+            "structured_error": {
+                "reason_code": "tool_execution_failed",
+                "message": "memory service unavailable",
+            },
         },
     )
 
