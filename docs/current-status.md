@@ -8,6 +8,7 @@
 - 当前代码已经从 `x-agent` staging snapshot 迁移到 `/home/lumber/Github/isotope`。
 - `x-agent` 不是 Isotope 的 canonical repo；后续 Isotope 实现不应回到 `x-agent` 扩展。
 - 最新 docs/status target：Kernel Mainline Maintenance Mode；当前已经 external review ready，见 `docs/post-external-review-checkpoint.md` 和 `docs/kernel-mainline-maintenance-mode.md`。外部 reviewer 入口是 `docs/external-review-package-v0.2.md`，它用一个短路径说明 Isotope 现在是 event-sourced agent kernel prototype、能跑哪些 demos、这些 demos 证明了哪些 kernel contracts、以及哪些 product / integration surfaces 仍 deliberately not implemented。主线当前进入 conservative maintenance mode：application-layer prototype / aggressive branch 先制造真实 friction，kernel mainline 只接收应用层或外部 review 已证明必要的 helper / boundary / replay / checkpoint / API ergonomics gap。
+- 文档 public / internal / concept / archive 边界见 `docs/public-internal-docs-boundary.md`。当前不删除、不移动 docs，也不决定现在开源；`docs/concepts/` 是长期概念和应用层压力材料，不是 implementation truth，也不应被原样当成 public product docs。
 - memory v0.1 scope 已按 `docs/memory-v0.1-scope-freeze.md` frozen for v0.1 demo planning：当前 memory 线只声明 boundary / read-model / checkpoint 能力，不声明 durable storage 或 query engine 已完成。
 - v0.1 demo entrypoint 已实现，详见 `docs/demo/demo-entrypoint-v0.1.md`；`python -m isotope_kernel.demo` 可输出 plain text summary，`--json` 可输出 JSON summary。
 - v0.1 developer demo 已按 `docs/demo/v0.1-demo-acceptance.md` accepted：acceptance anchor 当时依据是 `568 passed`、demo plain / JSON 本地可运行、editable install smoke 已覆盖、远端 GitHub Actions CI 已由网页确认通过；当前 baseline 已随 Event Schema Registry / Compatibility green slice 更新为 `986 passed`。

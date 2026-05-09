@@ -8,7 +8,7 @@ Isotope 是一个独立的 kernel-first agent runtime 项目，用来验证 cano
 
 当前 v0.2 implementation cycle 已建议暂停，进入 cleanup / docs organization / external review mode；Kernel Gap Review 后已新增 Agent / Worker lifecycle、Workspace substrate、Workspace Resource Lifecycle 和 Retry / Cancel / Supersede boundary，且当前 kernel boundary slices 均已 complete / closed for now。
 
-后续 rolling batch mode 由 [docs/agent-task-queue.md](docs/agent-task-queue.md) 管理；默认 session timebox 是 45-60 分钟，agent 每轮应先读 queue，不要自行进入未列出的新 Track 或为了凑时间 invent work。External Review Package 已刷新，见 [docs/external-review-package-v0.2.md](docs/external-review-package-v0.2.md)；post external review checkpoint 见 [docs/post-external-review-checkpoint.md](docs/post-external-review-checkpoint.md)。当前主线进入 conservative maintenance mode，见 [docs/kernel-mainline-maintenance-mode.md](docs/kernel-mainline-maintenance-mode.md)：默认短暂停止 kernel expansion，让 application-layer prototype / aggressive branch 先制造真实 friction。
+后续 rolling batch mode 由 [docs/agent-task-queue.md](docs/agent-task-queue.md) 管理；默认 session timebox 是 45-60 分钟，agent 每轮应先读 queue，不要自行进入未列出的新 Track 或为了凑时间 invent work。External Review Package 已刷新，见 [docs/external-review-package-v0.2.md](docs/external-review-package-v0.2.md)；post external review checkpoint 见 [docs/post-external-review-checkpoint.md](docs/post-external-review-checkpoint.md)。当前主线进入 conservative maintenance mode，见 [docs/kernel-mainline-maintenance-mode.md](docs/kernel-mainline-maintenance-mode.md)：默认短暂停止 kernel expansion，让 application-layer prototype / aggressive branch 先制造真实 friction。文档公开/内部边界见 [docs/public-internal-docs-boundary.md](docs/public-internal-docs-boundary.md)。
 
 ## Quick Start
 
@@ -118,6 +118,7 @@ python3 -m venv .venv
 - External review package: [docs/external-review-package-v0.2.md](docs/external-review-package-v0.2.md)
 - Post external review checkpoint: [docs/post-external-review-checkpoint.md](docs/post-external-review-checkpoint.md)
 - Kernel mainline maintenance mode: [docs/kernel-mainline-maintenance-mode.md](docs/kernel-mainline-maintenance-mode.md)
+- Public / internal docs boundary: [docs/public-internal-docs-boundary.md](docs/public-internal-docs-boundary.md)
 - Concept docs: [docs/concepts/README.md](docs/concepts/README.md)
 - Docs inventory: [docs/docs-inventory.md](docs/docs-inventory.md)
 - Artifact content read policy: [docs/artifact-content-read-policy-v0.2.md](docs/artifact-content-read-policy-v0.2.md)

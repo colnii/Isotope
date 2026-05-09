@@ -13,6 +13,7 @@
 7. [Kernel Decision Log（决策日志）](./kernel-decision-log.md)
 8. [Kernel Living Spec（动态规格草案）](./kernel-living-spec.md)
 9. [Concept Docs（长线概念与应用方向）](./concepts/README.md)
+10. [Public / Internal Docs Boundary（公开 / 内部文档边界）](./public-internal-docs-boundary.md)
 
 这组文档的目的不是追求完美，而是先把下面三件事固定下来：
 
@@ -42,6 +43,7 @@
 - `Memory Query` 是 on-demand recall primitive，并支持受 policy 约束的 `query + controlled expand`
 - `GenericAgent` / `PetGPT` / `Hermes Agent` / study companion 都作为 pressure test 使用，不作为 kernel 模板照搬
 - `docs/concepts/` 保存从早期 Isotope 讨论迁入的长线概念和应用层设想；它们可以反压 kernel requirement，但不是当前实现队列本身
+- `public-internal-docs-boundary.md` 只定义未来公开文档 profile 的分类边界；当前不删除、不移动、不隐藏任何文档
 
 术语约定：
 

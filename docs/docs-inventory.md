@@ -56,7 +56,8 @@
 - 加上 External Review Package v0.2 后 docs Markdown：90 个。当前外部 reviewer 入口已刷新；下一步建议 External Review Feedback Intake 或用户明确选择下一条 docs-first kernel boundary。
 - 加上 Post External Review Checkpoint 后 docs Markdown：91 个。当前已 external review ready；默认建议短暂停止 kernel expansion，让 application-layer prototype 先制造真实 friction。
 - 加上 Kernel Mainline Maintenance Mode 后 tracked docs Markdown：92 个。当前主线进入 conservative maintenance mode；默认不主动扩 kernel feature，只接收 application-layer prototype / external review 已证明的 friction。
-- 加上 `docs/concepts/` 下早期 Isotope 概念文档中文化迁移和 Hermes Agent 对照文档后 docs Markdown 增加 12 个；这些是 concept / application pressure docs，不是当前实现队列。
+- 加上 `docs/concepts/` 下早期 Isotope 概念文档中文化迁移和 Hermes Agent 对照文档后 docs Markdown 增加 13 个，tracked docs Markdown 当前为 105 个；这些是 concept / application pressure docs，不是当前实现队列。
+- 加上 Public / Internal Docs Boundary 后 tracked docs Markdown：106 个。该文档只定义 public / internal / concept / archive 分类边界，不移动、不删除、不隐藏任何文档。
 
 ## 2. Current entrypoints
 
@@ -73,6 +74,7 @@
 - `docs/post-v0.2-tag-delta.md`：记录 `v0.2-demo` tag 之后 `main` 的 Track F / Agent Worker / Workspace 增量，以及暂不创建 `v0.2.1-demo` 的判断。
 - `docs/post-external-review-checkpoint.md`：external review ready checkpoint，记录当前 baseline、passing demos、stable review surfaces、不要 overclaim 的 product gaps 和下一阶段选项。
 - `docs/kernel-mainline-maintenance-mode.md`：kernel mainline conservative maintenance mode，记录 stability / review / application-layer friction intake 规则。
+- `docs/public-internal-docs-boundary.md`：public / internal docs boundary，记录 public-ready、reviewer-facing、internal/dev-process、concept/application-pressure 和 historical/archive 分类。
 - `docs/concepts/README.md`：早期 Isotope 概念文档和应用层设想索引，当前已改为中文主叙述；这些文档用于 pressure test，不是实现队列。
 - `docs/v0.2-cycle-closure-review.md`：记录当前 v0.2 implementation cycle closure，建议进入 cleanup / docs organization / external review mode。
 - `docs/kernel-gap-review-v0.2.md`：v0.2 kernel gap review，记录稳定子系统、kernel gaps、优先级和下一步设计建议。
@@ -299,6 +301,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | `docs/memory-write-query-boundary-v0.1.md` | Memory write/query boundary | closed / frozen |
 | `docs/post-v0.2-tag-delta.md` | Post-tag mainline delta review | current review |
 | `docs/post-external-review-checkpoint.md` | Post external review checkpoint | current checkpoint |
+| `docs/public-internal-docs-boundary.md` | Public / internal docs classification boundary | current docs boundary |
 | `docs/policy-profile-action-registry-versioning-boundary-v0.2.md` | Policy profile / action registry versioning boundary | first slice closed for now |
 | `docs/policy-registry-version-basis-closure-review.md` | Policy registry version basis closure review | first slice closed for now |
 | `docs/release/release-draft-v0.1-demo.md` | Release draft text | draft / not published |
