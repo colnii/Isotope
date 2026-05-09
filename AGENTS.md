@@ -40,6 +40,7 @@
 - Docs migration planning is documented in [docs/docs-migration-plan.md](docs/docs-migration-plan.md). Phase 1 is closed / paused after `docs/release/` and `docs/demo/` migrations; do not move more docs files unless a task explicitly asks for migration execution.
 - Mainline batch automation is documented in [docs/agent-task-queue.md](docs/agent-task-queue.md). It uses rolling batch mode with a 45-60 min session timebox. Approval lookup, workspace binding, submit action helper, artifact review flow, source artifact setup helper, and artifact provenance helper are complete; artifact-review first app spike, external-snapshot-review second app spike, app spike coverage review, Kernel Gap Review Refresh, Workspace Resource Lifecycle first slice, Policy Profile / Action Registry Versioning first slice, Retry / Cancel / Supersede Runtime Integration first slice, Event Schema Registry / Compatibility first slice, External Review Package Refresh, and Post External Review Checkpoint are complete / closed for now; next suggested mode is application-layer friction intake or external review feedback intake.
 - Kernel mainline maintenance mode is documented in [docs/kernel-mainline-maintenance-mode.md](docs/kernel-mainline-maintenance-mode.md). Mainline is now conservative / stability-first: do not proactively expand kernel features; let application-layer prototype work on the aggressive branch or external review feedback produce concrete friction before reopening kernel batches.
+- Mainline idle checkpoint is documented in [docs/mainline-idle-checkpoint.md](docs/mainline-idle-checkpoint.md). Default next action is to wait for app-layer friction / external review feedback, or run periodic verification only.
 - Public / internal docs boundary is documented in [docs/public-internal-docs-boundary.md](docs/public-internal-docs-boundary.md). `docs/concepts/` may remain in mainline as concept / application-pressure material, but it is not implementation truth and should not be treated as public product docs without a future audit.
 - Real server boundary design only if Track A is explicitly reopened; artifact content HTTP route implementation only if Track C is explicitly reopened.
 - Optional docs polish can continue later, but it should not block v0.2 implementation.
@@ -116,6 +117,7 @@ git status --short
 - Event schema registry closure review: [docs/event-schema-registry-closure-review.md](docs/event-schema-registry-closure-review.md)
 - External review package: [docs/external-review-package-v0.2.md](docs/external-review-package-v0.2.md)
 - Post external review checkpoint: [docs/post-external-review-checkpoint.md](docs/post-external-review-checkpoint.md)
+- Mainline idle checkpoint: [docs/mainline-idle-checkpoint.md](docs/mainline-idle-checkpoint.md)
 - Public / internal docs boundary: [docs/public-internal-docs-boundary.md](docs/public-internal-docs-boundary.md)
 - Usability pressure test plan: [docs/usability-pressure-test-plan-v0.2.md](docs/usability-pressure-test-plan-v0.2.md)
 - Usability friction round 1 review: [docs/usability-friction-round-1-review.md](docs/usability-friction-round-1-review.md)

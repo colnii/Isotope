@@ -93,34 +93,35 @@ git status --short
 
 ## 6. Current Batch
 
-Batch name: `Kernel Mainline Maintenance Check`
+Batch name: `Mainline Idle Checkpoint`
 
 Timebox: `verification / docs-only`
 
 Status: `complete`
 
-Goal: confirm the mainline is in conservative maintenance mode and ready for application-layer friction intake.
+Goal: record that kernel mainline is idle / maintenance / friction-intake only.
 
 Tasks:
 
-1. Check whether queue/status/review package still point at proactive kernel expansion: complete.
-2. Record conservative maintenance mode and friction-intake rule: complete.
-3. Sync status / roadmap / README / AGENTS / inventory as needed: complete.
+1. Add mainline idle checkpoint: complete.
+2. Record reopen conditions and default wait-for-friction rule: complete.
+3. Sync status / README / AGENTS / inventory as needed: complete.
 4. Keep `src/`, `tests`, `.github`, and `pyproject.toml` unchanged: complete.
 
 Evidence:
 
+- Idle checkpoint: `docs/mainline-idle-checkpoint.md`.
 - Maintenance mode entry: `docs/kernel-mainline-maintenance-mode.md`.
 - Current stable checkpoint remains `docs/post-external-review-checkpoint.md`.
 - External reviewer entry remains `docs/external-review-package-v0.2.md`.
 - Full regression baseline remains: `986 passed`.
-- Mainline default: do not proactively expand kernel features; application-layer prototype / aggressive branch should produce concrete friction first.
+- Mainline default: do not proactively expand kernel features; application-layer prototype / aggressive branch or external review should produce concrete friction first.
 
 ## 7. Next Suggested Batch
 
 Batch name: `Application-Layer Friction Intake`
 
-Status: `pending_application_or_reviewer_feedback`
+Status: `pending_application_or_reviewer_feedback_or_periodic_verification`
 
 Possible tasks:
 
@@ -129,6 +130,7 @@ Possible tasks:
 3. Accept kernel work only when the friction is backed by a deterministic app-layer scenario, external review finding, replay/checkpoint mismatch, or clear source-of-truth conflict.
 4. Do not implement real HTTP server, real LLM, provider adapter, memory query engine, filesystem substrate, plugin system, schema migration framework, scheduler, process kill, real concurrency, tag movement, or GitHub Release without a new explicit batch.
 5. If user wants deeper kernel work without app-layer friction, update queue explicitly before starting `Tool Protocol Boundary` or `Worker Handoff App Spike Selection`.
+6. If no friction exists, only run periodic verification and stay idle.
 
 Alternative if user chooses pause/review:
 
@@ -140,6 +142,23 @@ Or if deeper kernel work is explicitly requested:
 - `Worker Handoff App Spike Selection`
 - `External Review Package Refresh`
 
+
+### Previous Batch Snapshot: Kernel Mainline Maintenance Check
+
+Batch name: `Kernel Mainline Maintenance Check`
+
+Timebox: `verification / docs-only`
+
+Status: `complete`
+
+Goal: confirm the mainline is in conservative maintenance mode and ready for application-layer friction intake.
+
+Evidence:
+
+- Maintenance mode entry: `docs/kernel-mainline-maintenance-mode.md`.
+- Public / internal docs boundary: `docs/public-internal-docs-boundary.md`.
+- Full regression baseline remained: `986 passed`.
+- Mainline default: do not proactively expand kernel features.
 
 ### Previous Batch Snapshot: Post External Review Checkpoint
 
