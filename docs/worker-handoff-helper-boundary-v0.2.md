@@ -1,6 +1,6 @@
 # Worker Handoff Helper Boundary v0.2
 
-状态：`first green slice complete`
+状态：`first green slice complete / closed for now`
 
 ## 1. Purpose
 
@@ -41,6 +41,7 @@ Why this slice:
 - Worker result handoff must use structured artifact `ResourceRef`.
 - Helper must not return full artifact content.
 - Helper must not bypass delegation policy semantics or executor grants semantics.
+- Current `_derive_worker_handoff_grants(...)` is first-slice local grant derivation, not a full delegation policy engine.
 - Helper must not create real workers, threads, processes, containers, git worktrees, remote executors, real HTTP routes, provider adapters, real LLM calls, scheduler state, or public SDK surface.
 
 ## 5. Minimal Shape Candidate
@@ -56,7 +57,6 @@ Candidate input:
 - `parent_agent_id`
 - `requested_worker_role`
 - `requested_capabilities`
-- `decision` or policy-like decision summary, if existing policy objects can represent the delegation decision
 - `artifact_ref`
 - `summary`
 - optional `workspace`
@@ -90,6 +90,8 @@ Current coverage:
 - helper does not expose full content and does not append `run.completed`
 
 This is still only an in-process helper. It does not create real workers, threads, processes, containers, git worktrees, remote executors, real HTTP routes, provider adapters, scheduler state, or public SDK surface.
+
+Closure review: `docs/worker-handoff-helper-closure-review.md`.
 
 ## 7. Red Tests
 

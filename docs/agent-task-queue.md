@@ -117,14 +117,34 @@ Evidence:
 
 Batch name: `Worker Handoff Helper Closure Review`
 
-Status: `ready`
+Status: `complete`
 
 Tasks:
 
-1. Review `InProcessServer.submit_worker_handoff(...)` implementation and tests.
-2. Confirm the helper closes `private_append_worker_handoff` without widening worker runtime.
-3. Confirm no real concurrency / process spawn / remote worker / scheduler / product route was added.
-4. Decide whether to mark worker handoff helper first slice closed for now.
+1. Review `InProcessServer.submit_worker_handoff(...)` implementation and tests: complete.
+2. Confirm the helper closes `private_append_worker_handoff` without widening worker runtime: complete.
+3. Confirm no real concurrency / process spawn / remote worker / scheduler / product route was added: complete.
+4. Decide whether to mark worker handoff helper first slice closed for now: complete.
+
+Evidence:
+
+- Closure doc: `docs/worker-handoff-helper-closure-review.md`.
+- Review result: `aca2e3c` accepted with no blocking finding.
+- Full regression with local Mac DYLD workaround: `1019 passed`.
+- Caveat: `_derive_worker_handoff_grants(...)` is first-slice local grant derivation, not full delegation policy engine.
+
+## 8. Next Suggested Batch
+
+Batch name: `Aggressive Worker Handoff Follow-up Review`
+
+Status: `waiting for aggressive-dev follow-up`
+
+Tasks:
+
+1. Wait for aggressive-dev to update `worker-handoff-gap` to use `submit_worker_handoff(...)`.
+2. Confirm `private_append_required` becomes false in the app spike.
+3. If new `kernel_friction` appears, classify it as kernel helper gap, app-local glue, docs mismatch, or product decision.
+4. Do not start deeper worker runtime without concrete friction.
 
 Stop conditions:
 
@@ -146,7 +166,7 @@ Evidence:
 - Full regression on this Mac mini: `1015 passed, 4 errors`; 4 errors are known `test_packaging_smoke.py` ensurepip/temp venv bootstrap environment failures.
 - No real concurrency / process spawn / remote worker / scheduler / container / git worktree / real HTTP / real LLM / provider adapter / public SDK / new dependency.
 
-## 8. Previous Current Batch
+## 9. Previous Current Batch
 
 Batch name: `Workspace Binding Demo Glue Cleanup`
 

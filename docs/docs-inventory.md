@@ -62,6 +62,7 @@
 - 加上 Tool Protocol Boundary 后 tracked docs Markdown：108 个。该文档定义 tool invocation / result / error / grants / provenance / registry relationship；first green slice 已补上最小 `ToolInvocation` / `ToolResult` / `ToolError` models、artifact event provenance 和 structured `action.failed` error，仍不实现 plugin marketplace、remote tool、sandboxed process、streaming output 或 public SDK。
 - 加上 Tool Protocol Closure Review 后 tracked docs Markdown：109 个。Tool Protocol first slice 已 complete / closed for now；closure 明确当前是 model / event-shape slice，不是 fully wired executor invocation runtime。
 - 加上 Worker Handoff Helper Boundary 后 tracked docs Markdown：110 个。该文档把 aggressive branch `private_append_worker_handoff` evidence 收进 mainline boundary；当前 `InProcessServer.submit_worker_handoff(...)` first green slice 已实现，仍不实现 real concurrency、process spawn、remote worker、container、git worktree、real HTTP、LLM、provider 或 public SDK。
+- 加上 Worker Handoff Helper Closure Review 后 tracked docs Markdown：111 个。该文档标记 worker handoff helper first slice complete / closed for now，并明确 `_derive_worker_handoff_grants(...)` 是 first-slice local grant derivation，不是完整 delegation policy engine。
 
 ## 2. Current entrypoints
 
@@ -161,6 +162,7 @@
 - `docs/tool-protocol-boundary-v0.2.md`：Tool protocol boundary，first slice closed for now。
 - `docs/tool-protocol-closure-review.md`：Tool protocol closure review，first slice closed for now。
 - `docs/worker-handoff-helper-boundary-v0.2.md`：Worker handoff helper boundary，记录 `private_append_worker_handoff` friction、helper hard contracts 和下一批 red tests recommendation。
+- `docs/worker-handoff-helper-closure-review.md`：Worker handoff helper closure review，记录 first slice complete / closed for now、remaining friction 和 deferred delegation policy integration。
 - `docs/agent-worker-lifecycle-boundary-v0.2.md`：Agent / Worker lifecycle boundary，first slice complete。
 - `docs/workspace-substrate-boundary-v0.2.md`：Workspace substrate boundary，first slice complete。
 - `docs/external-ingestion-boundary-v0.2.md`：Track F external ingestion / `ImportedSnapshot` boundary，closed for now。
