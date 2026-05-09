@@ -1,6 +1,6 @@
 # Tool Protocol Boundary v0.2
 
-状态：`first green slice complete; closure review pending`
+状态：`first slice complete / closed for now`
 
 ## 1. Purpose
 
@@ -16,6 +16,10 @@
 - `InProcessServer.create_source_artifact(...)`
 - `InProcessServer.submit_action(...)`
 - `approval-tool-runner` / `artifact-review` demos
+
+Closure review: `docs/tool-protocol-closure-review.md`.
+
+Scope note: 当前 closure 只关闭 **tool protocol model + event-shape first slice**。`Executor` 还没有把 `ToolInvocation` 对象作为 runtime invocation object 传给 tool implementation；当前 successful path 仍是 deterministic `write_artifact_tool` handler。不要把本 slice 写成 plugin system、remote tool、sandboxed process、streaming output、public SDK 或 fully wired tool runtime。
 
 当前缺口：
 
@@ -248,12 +252,13 @@ Stop before implementation if a future slice requires:
 
 ## 10. Current Decision
 
-Tool Protocol first green slice is now implemented at the minimal in-process boundary:
+Tool Protocol first slice is now complete / closed for now at the minimal in-process boundary:
 
 - `src/isotope_kernel/tool_protocol.py` defines `ToolInvocation`, `ToolResult` and `ToolError` validation models.
 - `artifact.created` event provenance now includes `execution_id`, `proposal_id` and `decision_id`.
 - `action.failed` now carries `error_reason_code` and `structured_error`.
 - executor still uses only `PolicyDecision.grants`, and ungranted / unsupported tools fail closed before successful side effects.
+- closure review records this as a model / event-shape first slice, not a fully wired executor invocation runtime.
 
 Still not implemented:
 
@@ -267,5 +272,5 @@ Still not implemented:
 
 Recommended next step:
 
-1. Do a docs-only Tool Protocol Closure Review.
-2. Return to application-layer friction intake unless closure review finds a concrete correctness bug.
+1. Return to application-layer friction intake / external review feedback intake.
+2. Reopen tool runtime wiring only if concrete friction proves executor should construct and pass `ToolInvocation` objects to handlers.

@@ -93,46 +93,42 @@ git status --short
 
 ## 6. Current Batch
 
-Batch name: `Tool Protocol Green Slice`
+Batch name: `Tool Protocol Closure Review`
 
-Timebox: `implementation slice`
+Timebox: `docs-only closure review`
 
 Status: `complete`
 
-Goal: implement the minimal deterministic in-process tool protocol boundary without plugin system, sandboxed tool process, remote tool, streaming output, public SDK, or dependency.
+Goal: close Tool Protocol first slice without overclaiming a fully wired tool runtime.
 
 Tasks:
 
-1. Add red tests for minimal `ToolInvocation` / `ToolResult` / `ToolError`: complete.
-2. Implement minimal `src/isotope_kernel/tool_protocol.py`: complete.
-3. Complete artifact event provenance with execution / proposal / decision ids: complete.
-4. Add structured `action.failed` error shape: complete.
-5. Sync stale fixtures without weakening validation: complete.
-6. Keep plugin / remote / sandbox / streaming / public SDK / dependency surfaces deferred: complete.
+1. Review `ToolInvocation` / `ToolResult` / `ToolError` models: complete.
+2. Confirm artifact provenance and structured failure events are event-sourced and replayable: complete.
+3. Confirm no plugin / remote / sandbox / streaming / public SDK / dependency was introduced: complete.
+4. Record scope note that executor does not yet pass `ToolInvocation` as runtime object to handlers: complete.
+5. Return queue to application-layer friction intake / external review feedback intake: complete.
 
 Evidence:
 
+- Closure doc: `docs/tool-protocol-closure-review.md`.
 - Boundary doc: `docs/tool-protocol-boundary-v0.2.md`.
-- Implemented red/green tests:
-  - `tests/isotope_kernel/test_tool_protocol_boundary.py`
-  - `tests/isotope_kernel/test_tool_result_event_boundary.py`
-- Targeted result: `17 passed`.
+- Targeted tool protocol tests: `17 passed`.
 - Full regression: `1003 passed`.
-- Mainline default remains conservative: do not continue beyond closure review unless app-layer friction or a new explicit user batch requires it.
+- Mainline default remains conservative: do not add more tool runtime wiring unless app-layer friction or a new explicit user batch requires it.
 
 ## 7. Next Suggested Batch
 
-Batch name: `Tool Protocol Closure Review`
+Batch name: `Application-Layer Friction Intake`
 
-Status: `ready`
+Status: `waiting for concrete app-layer or external-review feedback`
 
 Possible tasks:
 
-1. Review `ToolInvocation` / `ToolResult` / `ToolError` models.
-2. Confirm artifact provenance and structured failure events are event-sourced and replayable.
-3. Confirm no plugin / remote / sandbox / streaming / public SDK / dependency was introduced.
-4. Docs-only unless a correctness bug is found.
-5. After closure, return queue to application-layer friction intake / external review feedback intake.
+1. Read incoming app-layer friction / external review notes.
+2. Classify each issue as kernel bug, helper/facade gap, docs mismatch, or app-layer glue.
+3. Only open a new kernel red/green batch when friction is concrete and bounded.
+4. Keep plugin / remote / sandbox / streaming / public SDK / real HTTP / real LLM / provider / tag-release work out of scope unless explicitly requested.
 
 Alternative if user chooses pause/review:
 
@@ -142,6 +138,22 @@ Or if deeper kernel work is explicitly requested:
 
 - `Worker Handoff App Spike Selection`
 - `External Review Package Refresh`
+
+### Previous Batch Snapshot: Tool Protocol Green Slice
+
+Batch name: `Tool Protocol Green Slice`
+
+Status: `complete`
+
+Evidence:
+
+- Implemented `src/isotope_kernel/tool_protocol.py`.
+- Added:
+  - `tests/isotope_kernel/test_tool_protocol_boundary.py`
+  - `tests/isotope_kernel/test_tool_result_event_boundary.py`
+- Completed artifact event provenance and structured `action.failed` error shape.
+- Targeted result: `17 passed`.
+- Full regression: `1003 passed`.
 
 
 ### Previous Batch Snapshot: Kernel Mainline Maintenance Check

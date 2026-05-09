@@ -1,6 +1,6 @@
 # Kernel Gap Review Refresh v0.2
 
-状态：`current refresh; tool protocol first green slice complete`
+状态：`current refresh; tool protocol first slice closed for now`
 
 ## 1. Purpose
 
@@ -46,7 +46,7 @@
 | Session / run lifecycle | session/run 能创建和 replay，但 multi-run continuity、run pause/finalization/cancel/supersede、session history visibility 仍未成 contract | app spikes 目前多是 single-run；一旦做 app-like workflow，run boundaries 会变成 hidden glue | docs-only lifecycle review; do not mix with memory promotion |
 | Error taxonomy | server/helper/HTTP/projector 都有 controlled errors，但 error code taxonomy 还不是统一 kernel contract | facade/helper 增长后，客户端难以稳定处理 unknown / malformed / conflict / not_enabled / policy denied | small docs/red-test slice after next boundary |
 | Event schema registry / migration | Event Schema Registry / Compatibility first slice 已完成并 closed for now，见 `docs/event-schema-registry-compatibility-boundary-v0.2.md` 和 `docs/event-schema-registry-closure-review.md`；仍缺 schema migration policy 和 multi-version projector matrix | read model fields 越多，future breaking change 成本越高 | closed for now; no migration framework |
-| Tool protocol | first green slice 已完成：最小 `ToolInvocation` / `ToolResult` / `ToolError` models、artifact event provenance 和 structured `action.failed` error 已固定 | future tool examples still risk coupling executor, artifact store, workspace and policy if they bypass the boundary; closure review still pending | closure review next; no plugin / remote / sandbox / streaming / public SDK |
+| Tool protocol | first slice 已 closed for now：最小 `ToolInvocation` / `ToolResult` / `ToolError` models、artifact event provenance 和 structured `action.failed` error 已固定 | future tool examples still risk coupling executor, artifact store, workspace and policy if they bypass the boundary; executor still does not pass `ToolInvocation` as a runtime object to handlers | application-layer friction intake; no plugin / remote / sandbox / streaming / public SDK |
 
 ## 4. Not-Now Product / Integration Gaps
 
@@ -75,8 +75,8 @@
 Recommended order:
 
 1. `Application-Layer Friction Intake` / external review feedback intake
-2. `Tool Protocol Closure Review` before returning to application-layer friction intake
-3. `Worker Handoff App Spike Selection`
+2. `Worker Handoff App Spike Selection` only if concrete app-layer friction asks for more kernel pressure
+3. `Tool Invocation Runtime Wiring Boundary` only if application-layer friction proves executor should construct `ToolInvocation` as a runtime object
 
 ## 6. Next Batch Shape
 
@@ -129,10 +129,18 @@ Completed follow-up:
 Completed follow-up:
 
 - Batch name: `Tool Protocol Green Slice`
-- Type: docs-only boundary
-- Result: boundary defined in `docs/tool-protocol-boundary-v0.2.md`
+- Type: red -> green implementation
+- Result: implemented `docs/tool-protocol-boundary-v0.2.md` first green slice
 - Implementation stance: minimal in-process `ToolInvocation` / `ToolResult` / `ToolError` models only; no plugin marketplace, remote tool, sandboxed process, streaming output, public SDK, or new dependency.
 - First red tests recommendation: `tests/isotope_kernel/test_tool_protocol_boundary.py` and `tests/isotope_kernel/test_tool_result_event_boundary.py`
+
+Completed follow-up:
+
+- Batch name: `Tool Protocol Closure Review`
+- Type: docs-only closure review
+- Result: first slice complete / closed for now
+- Closure doc: `docs/tool-protocol-closure-review.md`
+- Scope note: model / event-shape first slice only; executor does not yet wire `ToolInvocation` as the handler runtime object.
 
 Recommended next batch:
 
@@ -141,7 +149,7 @@ Recommended next batch:
 - Goals:
   - wait for application-layer prototype or external review feedback
   - convert concrete friction into docs clarification, helper/API gap, replay/checkpoint gap, or app-layer glue
-  - avoid implementing tool protocol red/green unless friction is concrete or the user explicitly opens that batch
+  - avoid implementing further tool runtime wiring unless friction is concrete or the user explicitly opens that batch
   - keep tag / release, real server, real LLM, provider adapters, migration framework, plugin marketplace, sandboxed tools, and product APIs out of scope unless explicitly requested
 
 Follow-up: `docs/workspace-resource-lifecycle-boundary-v0.2.md` / `docs/workspace-resource-lifecycle-closure-review.md` and `docs/policy-registry-version-basis-closure-review.md` now record the closed first slices. The next implementation-facing step should not be real filesystem substrate or plugin/policy infrastructure unless a new boundary explicitly asks for it.
@@ -156,4 +164,4 @@ Stop conditions:
 
 ## 7. Decision
 
-Kernel is not complete, but the current boundary package is no longer blocked by artifact/external-observation proof gaps. Workspace Resource Lifecycle, Policy Profile / Action Registry Versioning, Retry / Cancel / Supersede Runtime Integration, and Event Schema Registry / Compatibility now have closed first-slice boundaries. Tool Protocol first green slice now has minimal in-process models, complete artifact event provenance, and structured `action.failed` errors; closure review is the next narrow step before returning to application-layer friction intake / external review feedback intake. The next useful default step is not plugin marketplace, policy DSL, migration framework, real workspace substrate, sandboxed tools, scheduler/process kill, real HTTP server, or real LLM.
+Kernel is not complete, but the current boundary package is no longer blocked by artifact/external-observation proof gaps. Workspace Resource Lifecycle, Policy Profile / Action Registry Versioning, Retry / Cancel / Supersede Runtime Integration, Event Schema Registry / Compatibility, and Tool Protocol now have closed first-slice boundaries. Tool Protocol first slice has minimal in-process models, complete artifact event provenance, and structured `action.failed` errors; it deliberately does not wire `ToolInvocation` into executor handlers yet. The next useful default step is application-layer friction intake / external review feedback intake, not plugin marketplace, policy DSL, migration framework, real workspace substrate, sandboxed tools, scheduler/process kill, real HTTP server, or real LLM.
