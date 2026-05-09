@@ -61,7 +61,7 @@
 - 加上 Mainline Idle Checkpoint 后 tracked docs Markdown：107 个。当前主线停在 idle / maintenance / friction-intake 状态；默认等待 app-layer friction report 或只做 periodic verification。
 - 加上 Tool Protocol Boundary 后 tracked docs Markdown：108 个。该文档定义 tool invocation / result / error / grants / provenance / registry relationship；first green slice 已补上最小 `ToolInvocation` / `ToolResult` / `ToolError` models、artifact event provenance 和 structured `action.failed` error，仍不实现 plugin marketplace、remote tool、sandboxed process、streaming output 或 public SDK。
 - 加上 Tool Protocol Closure Review 后 tracked docs Markdown：109 个。Tool Protocol first slice 已 complete / closed for now；closure 明确当前是 model / event-shape slice，不是 fully wired executor invocation runtime。
-- 加上 Worker Handoff Helper Boundary 后 tracked docs Markdown：110 个。该文档把 aggressive branch `private_append_worker_handoff` evidence 收进 mainline boundary，并推荐下一批先写 `tests/isotope_kernel/test_worker_handoff_helper.py` red tests；仍不实现 real concurrency、process spawn、remote worker、container、git worktree、real HTTP、LLM、provider 或 public SDK。
+- 加上 Worker Handoff Helper Boundary 后 tracked docs Markdown：110 个。该文档把 aggressive branch `private_append_worker_handoff` evidence 收进 mainline boundary；当前 `InProcessServer.submit_worker_handoff(...)` first green slice 已实现，仍不实现 real concurrency、process spawn、remote worker、container、git worktree、real HTTP、LLM、provider 或 public SDK。
 
 ## 2. Current entrypoints
 

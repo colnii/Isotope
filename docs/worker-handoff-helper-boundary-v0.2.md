@@ -1,6 +1,6 @@
 # Worker Handoff Helper Boundary v0.2
 
-状态：`boundary selected; red tests next`
+状态：`first green slice complete`
 
 ## 1. Purpose
 
@@ -15,7 +15,7 @@
 
 ## 2. Selection
 
-推荐下一批 mainline slice 是 `Worker Handoff Helper Red Tests`。
+推荐的 mainline slice 是 `Worker Handoff Helper Red Tests -> Green Slice`。当前 red tests 已补齐 artifact existence hardening，并已通过最小 green implementation。
 
 Why this slice:
 
@@ -73,7 +73,25 @@ Candidate output:
 
 The exact name and object shape should be locked by red tests, not by this document.
 
-## 6. First Red Tests Recommendation
+## 6. Implemented First Slice
+
+Current helper:
+
+- `InProcessServer.submit_worker_handoff(...)`
+
+Current coverage:
+
+- helper accepts structured delegation intent plus an existing artifact `ResourceRef`
+- helper rejects forged decision / grants in app input
+- helper rejects malformed intent and malformed or unknown artifact refs without partial worker events
+- helper appends canonical `delegation.proposed`, `delegation.decided`, `worker.created`, `worker.started`, `worker.result_handed_off`, and `worker.completed`
+- helper returns copied projected worker summary and result ref
+- replay and checkpoint-assisted rebuild restore worker handoff summary
+- helper does not expose full content and does not append `run.completed`
+
+This is still only an in-process helper. It does not create real workers, threads, processes, containers, git worktrees, remote executors, real HTTP routes, provider adapters, scheduler state, or public SDK surface.
+
+## 7. Red Tests
 
 Suggested file:
 
@@ -94,7 +112,7 @@ Test goals:
 - checkpoint-assisted rebuild restores worker handoff summary.
 - demo / app layer no longer needs private `server._append(...)` for worker handoff setup.
 
-## 7. Deferred
+## 8. Deferred
 
 - real concurrency
 - process spawn / process kill
@@ -107,7 +125,7 @@ Test goals:
 - public worker SDK
 - product UX for worker delegation
 
-## 8. Stop Conditions
+## 9. Stop Conditions
 
 Stop before implementation if red tests require:
 

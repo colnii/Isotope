@@ -115,24 +115,36 @@ Evidence:
 
 ## 7. Next Suggested Batch
 
-Batch name: `Worker Handoff Helper Red Tests`
+Batch name: `Worker Handoff Helper Closure Review`
 
 Status: `ready`
 
 Tasks:
 
-1. Add `tests/isotope_kernel/test_worker_handoff_helper.py`.
-2. Red tests should prove an `InProcessServer` helper accepts structured delegation intent plus artifact `ResourceRef`.
-3. Red tests should require canonical delegation / worker / result-handoff events and projected worker summary.
-4. Red tests should prove malformed intent/ref fail closed without partial worker state.
-5. Red tests should prove replay and checkpoint-assisted rebuild preserve worker handoff summary.
-6. Do not implement helper in red-only batch unless queue is explicitly promoted to green.
+1. Review `InProcessServer.submit_worker_handoff(...)` implementation and tests.
+2. Confirm the helper closes `private_append_worker_handoff` without widening worker runtime.
+3. Confirm no real concurrency / process spawn / remote worker / scheduler / product route was added.
+4. Decide whether to mark worker handoff helper first slice closed for now.
 
 Stop conditions:
 
 - red tests need real concurrency / process spawn / remote worker / container / git worktree / real HTTP / real LLM / provider adapter / public SDK
 - red tests require product UX decisions
 - red tests require changing event-store append-only semantics or executor grants semantics
+
+### Previous Batch Snapshot: Worker Handoff Helper Red / Green Slice
+
+Batch name: `Worker Handoff Helper Red / Green Slice`
+
+Status: `complete`
+
+Evidence:
+
+- Added `tests/isotope_kernel/test_worker_handoff_helper.py`.
+- Implemented `InProcessServer.submit_worker_handoff(...)`.
+- Targeted result: `9 passed`.
+- Full regression on this Mac mini: `1015 passed, 4 errors`; 4 errors are known `test_packaging_smoke.py` ensurepip/temp venv bootstrap environment failures.
+- No real concurrency / process spawn / remote worker / scheduler / container / git worktree / real HTTP / real LLM / provider adapter / public SDK / new dependency.
 
 ## 8. Previous Current Batch
 
