@@ -118,6 +118,7 @@ python3 -m venv .venv
 - External review package: [docs/external-review-package-v0.2.md](docs/external-review-package-v0.2.md)
 - Post external review checkpoint: [docs/post-external-review-checkpoint.md](docs/post-external-review-checkpoint.md)
 - Kernel mainline maintenance mode: [docs/kernel-mainline-maintenance-mode.md](docs/kernel-mainline-maintenance-mode.md)
+- Concept docs: [docs/concepts/README.md](docs/concepts/README.md)
 - Docs inventory: [docs/docs-inventory.md](docs/docs-inventory.md)
 - Artifact content read policy: [docs/artifact-content-read-policy-v0.2.md](docs/artifact-content-read-policy-v0.2.md)
 - HTTP API minimal surface: [docs/http-api-minimal-surface-v0.2.md](docs/http-api-minimal-surface-v0.2.md)

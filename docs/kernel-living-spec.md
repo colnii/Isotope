@@ -474,7 +474,25 @@ UI、CLI 和 API client 应消费同一套 event stream，不应各自维护一�
 
 这些模式可以变成 kernel 或 platform service 的压力测试，但 workspace files 不替代 canonical event log、typed artifacts、typed refs、policy decisions 和 state projection。
 
-### 9.3 Study Companion
+### 9.3 Hermes Agent
+
+`Hermes Agent` 对 `Isotope` 的主要价值是提醒 kernel 不要只验证一次性工具调用，而要能承受长期 agent product 的压力：
+
+- persistent memory（持久记忆）
+- skills / procedural memory（技能与过程记忆）
+- gateway / messaging surfaces（网关和消息入口）
+- scheduled tasks（调度任务）
+- subagent delegation（子 agent 委派）
+- provider routing / fallback（模型路由与回退）
+- real execution backends（真实执行后端）
+
+这些都是重要压力点，但不应直接变成 kernel product scope。
+
+`Isotope` 应该从中吸收 learning-loop pressure（学习闭环压力），但仍保持 action proposal、policy decision、execution、artifact provenance、event replay 和 checkpoint 是 runtime truth。
+
+详细比较见 [Isotope vs Hermes Agent](concepts/isotope-vs-hermes-agent.md)。
+
+### 9.4 Study Companion
 
 study companion 是重要的 first application pressure test（第一应用压力测试），但不是 kernel 本身。
 
