@@ -716,32 +716,6 @@ def _external_snapshot(
     )
 
 
-def _append_workspace_binding_event(
-    server: Any,
-    *,
-    run_id: str,
-    decision: Any,
-) -> None:
-    workspace_grant = decision.grants.get("workspace", {})
-    server._append(
-        run_id,
-        "workspace.bound",
-        {
-            "workspace_id": "workspace_shared_ro",
-            "run_id": run_id,
-            "mode": workspace_grant.get("mode", "shared_ro"),
-            "bound_to": {"agent_id": "agent_supervisor"},
-            "lease_status": "active",
-            "provenance": {
-                "decision_id": decision.decision_id,
-                "grant_basis": {
-                    "workspace": dict(workspace_grant),
-                },
-            },
-        },
-    )
-
-
 def _latest_approval_id(events: list[Any]) -> str:
     for event in reversed(events):
         if event.event_type == "approval.requested":

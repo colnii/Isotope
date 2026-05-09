@@ -93,30 +93,28 @@ git status --short
 
 ## 6. Current Batch
 
-Batch name: `External Snapshot Import Helper`
+Batch name: `Workspace Binding Demo Glue Cleanup`
 
-Timebox: `small friction-intake red/green slice`
+Timebox: `small external-review cleanup slice`
 
 Status: `complete`
 
-Goal: accept review feedback from aggressive-dev handoff without merging aggressive branch wholesale.
+Goal: accept review feedback that `approval-tool-runner` had an unused stale demo-local workspace append helper.
 
 Tasks:
 
-1. Add red tests for `InProcessServer.import_external_snapshot(...)`: complete.
-2. Implement structured `ImportedSnapshot` helper that prevalidates candidate `snapshot.imported`: complete.
-3. Reject refs / optional `observation.subject` that do not match target run: complete.
-4. Ensure failure appends no partial event and HTTP/raw `ingest_external_input(...)` remains `not_enabled`: complete.
-5. Update `external-snapshot-review` demo to stop using private `server._append(...)` for snapshots: complete.
+1. Replace monkeypatch guard with a source-level test that `demo.py` contains no `_append_workspace_binding_event(...)` or private `server._append(...)` workspace glue: complete.
+2. Remove the unused `_append_workspace_binding_event(...)` helper from `src/isotope_kernel/demo.py`: complete.
+3. Sync workspace helper friction docs / status: complete.
 
 Evidence:
 
-- Implemented red/green tests: `tests/isotope_kernel/test_external_snapshot_import_helper.py`.
-- Updated helper path: `src/isotope_kernel/server.py`.
+- Updated test path: `tests/isotope_kernel/test_workspace_binding_helper.py`.
 - Updated demo path: `src/isotope_kernel/demo.py`.
-- Targeted external snapshot helper / scenario tests: `28 passed`.
-- Full regression: `1008 passed`.
-- Mainline still rejects provider adapters, webhooks, raw callbacks, public ingestion API, real HTTP server and native state mutation from imported observations.
+- Targeted workspace binding helper tests: `6 passed`.
+- Approval tool runner trace: passed.
+- `git diff -- src tests .github pyproject.toml`: limited to intended demo/test cleanup before commit.
+- No kernel feature, provider/webhook/API/real workspace/runtime behavior changed.
 
 ## 7. Next Suggested Batch
 

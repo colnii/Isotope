@@ -15,12 +15,13 @@ Pre-helper evidence and current outcome：
 - projector 已支持 canonical `workspace.bound` -> `RunState.workspaces`。
 - `approval-tool-runner` demo previously called `_append_workspace_binding_event(...)` directly。
 - current demo calls `InProcessServer.bind_workspace(...)` instead。
+- the stale demo-local `_append_workspace_binding_event(...)` helper has been removed from `demo.py`; tests now guard against reintroducing private `server._append(...)` workspace glue.
 
 ## 2. Friction Summary
 
 | Friction | Evidence | Classification | Impact | Suggested action |
 | --- | --- | --- | --- | --- |
-| demo manually appends `workspace.bound` | demo previously called `_append_workspace_binding_event(...)`; current tests assert it is not called | helper/facade gap | medium-high | fixed by minimal server helper |
+| demo manually appends `workspace.bound` | demo previously called `_append_workspace_binding_event(...)`; current tests assert the stale helper and private `server._append(...)` glue are absent from `demo.py` | helper/facade gap | medium-high | fixed by minimal server helper |
 | helper ownership unclear | `WorkspaceManager` validates grants, but does not append canonical events | kernel/server boundary gap | medium | keep helper in `InProcessServer` first |
 | HTTP workspace route absent | no workspace binding HTTP route exists | acceptable v0 shape | low | keep out of scope |
 | real workspace substrate absent | no filesystem mutation, container, git worktree, or path engine | intentional deferred area | none for this slice | do not implement |
@@ -40,9 +41,10 @@ Helper/facade issue:
 - Demo code should not need to know the exact `workspace.bound` payload shape.
 - A server helper can translate policy grants into the canonical event and return the projected workspace binding summary.
 
-Demo-only glue:
+Historical demo-only glue:
 
-- `_append_workspace_binding_event(...)` is acceptable as evidence from the first pressure test, but should not be copied into future demos.
+- `_append_workspace_binding_event(...)` existed as evidence from the first pressure test.
+- It has been removed because unused private append glue is a copy / paste risk for future spikes.
 
 Acceptable v0 shape:
 

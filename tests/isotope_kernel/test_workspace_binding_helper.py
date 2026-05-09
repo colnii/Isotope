@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -126,11 +127,10 @@ def test_bind_workspace_helper_unknown_run_is_controlled_and_has_no_event(tmp_pa
         target.bind_workspace("run_missing", result["decision"])
 
 
-def test_approval_tool_runner_demo_uses_workspace_binding_helper_not_manual_event(tmp_path, monkeypatch):
-    def fail_manual_workspace_event(*args, **kwargs):
-        raise AssertionError("approval-tool-runner demo should use workspace binding helper")
-
-    monkeypatch.setattr(demo, "_append_workspace_binding_event", fail_manual_workspace_event)
+def test_approval_tool_runner_demo_has_no_private_workspace_append_glue(tmp_path):
+    source = Path(demo.__file__).read_text(encoding="utf-8")
+    assert "_append_workspace_binding_event" not in source
+    assert "server._append(" not in source
 
     result = demo._run_approval_tool_runner_spike(tmp_path)
 
