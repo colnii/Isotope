@@ -137,20 +137,49 @@ Evidence:
 
 Batch name: `Aggressive Worker Handoff Follow-up Review`
 
-Status: `waiting for aggressive-dev follow-up`
+Status: `complete`
 
 Tasks:
 
-1. Wait for aggressive-dev to update `worker-handoff-gap` to use `submit_worker_handoff(...)`.
-2. Confirm `private_append_required` becomes false in the app spike.
-3. If new `kernel_friction` appears, classify it as kernel helper gap, app-local glue, docs mismatch, or product decision.
-4. Do not start deeper worker runtime without concrete friction.
+1. Wait for aggressive-dev to update `worker-handoff-gap` to use `submit_worker_handoff(...)`: complete.
+2. Confirm `private_append_required` becomes false in the app spike: complete.
+3. If new `kernel_friction` appears, classify it as kernel helper gap, app-local glue, docs mismatch, or product decision: complete; no active new `kernel_friction`.
+4. Do not start deeper worker runtime without concrete friction: complete.
+
+Evidence:
+
+- Aggressive-dev commit: `c7e0b32`.
+- Review result: accepted with no mainline implementation request.
+- `worker-handoff-gap --json`: `private_append_required=false`, `kernel_friction=[]`, `resolved_kernel_friction[0].kind=private_append_worker_handoff`.
+- `approval-input-gap --json`: `approval_gap_detected=false`, `approval_input_supported=true`, `pending_approvals_after_input=1`.
+- Targeted aggressive verification: `19 passed`.
 
 Stop conditions:
 
 - red tests need real concurrency / process spawn / remote worker / container / git worktree / real HTTP / real LLM / provider adapter / public SDK
 - red tests require product UX decisions
 - red tests require changing event-store append-only semantics or executor grants semantics
+
+## 9. Next Suggested Batch
+
+Batch name: `Application-Layer Friction Intake`
+
+Status: `waiting for concrete pressure point`
+
+Goal: keep mainline active but bounded by evidence from aggressive-dev or external review. Do not expand kernel runtime unless a specific app spike produces `kernel_friction` with files, tests, and a narrow helper / boundary / replay / checkpoint / API ergonomics gap.
+
+Allowed next actions:
+
+1. Read aggressive-dev / review evidence for the next concrete pressure point.
+2. Classify the reported friction as kernel-level, app-local, docs mismatch, or product decision.
+3. If kernel-level and bounded, open a red-test-first mainline slice.
+4. If app-local or under-specified, record the reason and wait for sharper evidence.
+
+Stop conditions:
+
+- needs real HTTP server, real LLM, provider/webhook, memory query/storage, real filesystem/container/git worktree, UI/auth/multi-user, plugin marketplace, scheduler/process kill, or tag/release
+- needs product/user decision before a kernel contract can be defined
+- requires modifying event-store append-only semantics or executor grants semantics
 
 ### Previous Batch Snapshot: Worker Handoff Helper Red / Green Slice
 
