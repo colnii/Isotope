@@ -64,6 +64,7 @@
 - 加上 Worker Handoff Helper Boundary 后 tracked docs Markdown：110 个。该文档把 aggressive branch `private_append_worker_handoff` evidence 收进 mainline boundary；当前 `InProcessServer.submit_worker_handoff(...)` first green slice 已实现，仍不实现 real concurrency、process spawn、remote worker、container、git worktree、real HTTP、LLM、provider 或 public SDK。
 - 加上 Worker Handoff Helper Closure Review 后 tracked docs Markdown：111 个。该文档标记 worker handoff helper first slice complete / closed for now，并明确 `_derive_worker_handoff_grants(...)` 是 first-slice local grant derivation，不是完整 delegation policy engine。
 - 加上 Worker Handoff App Spike Selection 后 tracked docs Markdown：112 个。该文档选择 red-tests-only `Worker Handoff App Spike` 作为下一步 bounded pressure test，不打开 real worker runtime / scheduler / process spawn / remote worker / container / git worktree / real HTTP / LLM / provider / public SDK。
+- 加上 Session / Run Lifecycle Boundary 后 tracked docs Markdown：113 个。该文档定义 session identity、run lifecycle status transition、terminal-state behavior、replay 和 checkpoint 的最小 kernel contract，不实现 product session UX、auth、real HTTP server、scheduler、process kill、real concurrency 或 run graph。
 
 ## 2. Current entrypoints
 
@@ -92,6 +93,7 @@
 - `docs/tool-protocol-boundary-v0.2.md`：Tool protocol boundary，记录 tool invocation / result / error / capability / provenance / budget、executor grants hard contract、artifact / `ResourceRef` handoff 和 first red tests recommendation。
 - `docs/tool-protocol-closure-review.md`：Tool protocol closure review，记录 first slice complete / closed for now、scope note、verification evidence、remaining friction 和 next path。
 - `docs/worker-handoff-app-spike-selection.md`：Worker handoff app spike selection，记录下一步 red-tests-only pressure test 选择、scope、first red tests recommendation 和 stop conditions。
+- `docs/session-run-lifecycle-boundary-v0.2.md`：Session / Run lifecycle boundary，记录 session/run identity、status transitions、terminal-state behavior、candidate event/read-model shape 和 first red tests recommendation。
 - `docs/agent-worker-lifecycle-boundary-v0.2.md`：Agent / Worker lifecycle boundary，记录 supervisor / worker / delegation / worker read model / workspace binding / result handoff 的 first-slice design。
 - `docs/workspace-substrate-boundary-v0.2.md`：Workspace substrate boundary，记录 workspace as policy-bound execution resource、binding / lease / path safety / artifact capture / deferred substrate 的 first-slice complete 状态。
 - `docs/workspace-resource-lifecycle-boundary-v0.2.md`：Workspace resource lifecycle boundary，记录 binding vs lease、candidate events、read-model shape、artifact capture boundary 和 first-slice evidence。

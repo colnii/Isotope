@@ -120,6 +120,7 @@ python3 -m venv .venv
 - Tool protocol boundary: [docs/tool-protocol-boundary-v0.2.md](docs/tool-protocol-boundary-v0.2.md)
 - Tool protocol closure review: [docs/tool-protocol-closure-review.md](docs/tool-protocol-closure-review.md)
 - Worker handoff app spike selection: [docs/worker-handoff-app-spike-selection.md](docs/worker-handoff-app-spike-selection.md)
+- Session / run lifecycle boundary: [docs/session-run-lifecycle-boundary-v0.2.md](docs/session-run-lifecycle-boundary-v0.2.md)
 - External review package: [docs/external-review-package-v0.2.md](docs/external-review-package-v0.2.md)
 - Post external review checkpoint: [docs/post-external-review-checkpoint.md](docs/post-external-review-checkpoint.md)
 - Mainline idle checkpoint: [docs/mainline-idle-checkpoint.md](docs/mainline-idle-checkpoint.md)

@@ -227,6 +227,41 @@ Candidate if user explicitly requests kernel-forward docs-only selection:
 
 Do not implement either candidate without a separate batch decision.
 
+## 12. Current Batch
+
+Batch name: `Session / Run Lifecycle Boundary`
+
+Status: `complete`
+
+Type: docs-only boundary
+
+Goal: define the minimum kernel contract for session identity, run lifecycle status transitions, terminal-state behavior, replay, and checkpoint without implementing product session workflow.
+
+Evidence:
+
+- Boundary doc: `docs/session-run-lifecycle-boundary-v0.2.md`.
+- Scope: docs-only; no `src/`, `tests`, `.github`, or `pyproject.toml` changes.
+- Deferred: product session UX, auth, real HTTP server, scheduler, process kill, real concurrency, run graph, and cross-run memory promotion.
+
+## 13. Next Suggested Batch
+
+Batch name: `Session / Run Lifecycle Red Tests`
+
+Status: `ready for review`
+
+Goal: write red tests for the accepted boundary before any implementation.
+
+Suggested tests:
+
+1. `tests/isotope_kernel/test_session_lifecycle_boundary.py`
+2. `tests/isotope_kernel/test_run_lifecycle_boundary.py`
+
+Stop conditions:
+
+- tests require product session UX, auth, real HTTP server, scheduler, process kill, real concurrency, run graph, memory promotion, or dependency changes
+- tests require event-store append-only semantic changes
+- tests require hidden server-local session state to become replay truth without canonical events
+
 ### Previous Batch Snapshot: Worker Handoff Helper Red / Green Slice
 
 Batch name: `Worker Handoff Helper Red / Green Slice`
