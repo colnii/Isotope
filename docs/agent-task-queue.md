@@ -512,9 +512,10 @@ Evidence:
 - `Executor` now constructs `ToolInvocation` from proposal / decision / execution / effective grants / budget / workspace binding and passes it to the handler.
 - Requested capabilities are capped to effective grants before entering `ToolInvocation`; forged requested tools are not passed through.
 - Ungranted tool still fails before handler invocation and leaves only `action.started` / `action.failed`.
+- Non-artifact `ToolResult.artifact_refs=[]` no longer returns a stale prior `artifact_ref` from the same run.
 - Existing `write_artifact_tool` deterministic artifact path remains unchanged.
-- Targeted result: `tests/isotope_kernel/test_tool_invocation_runtime_wiring.py` -> `5 passed`.
-- Focused regression: tool invocation runtime / tool protocol / tool result event / executor registry / server action registry wiring -> `34 passed`.
+- Targeted result: `tests/isotope_kernel/test_tool_invocation_runtime_wiring.py` -> `6 passed`.
+- Focused regression: tool invocation runtime / tool protocol / tool result event / executor registry / server action registry wiring / submit action helper -> `41 passed`.
 
 ### Previous Batch Snapshot: Worker Handoff Helper Red / Green Slice
 

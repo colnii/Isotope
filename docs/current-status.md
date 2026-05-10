@@ -526,6 +526,7 @@
 - executor constructs and passes grants-capped `ToolInvocation` to tool handlers
 - forged requested tools are stripped before handler invocation
 - ungranted tools fail before handler invocation and leave only `action.started` / `action.failed`
+- non-artifact `ToolResult.artifact_refs=[]` does not return stale prior run artifacts as `artifact_ref`
 - executor can call tools only from `PolicyDecision.grants`
 - tools cannot directly mutate `RunState` / `SessionState`
 - tool output must enter read model through canonical events / artifact store / `ResourceRef`

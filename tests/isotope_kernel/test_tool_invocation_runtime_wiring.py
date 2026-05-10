@@ -14,6 +14,19 @@ def _registry() -> action_registry.ActionTypeRegistry:
         entries=[
             {
                 "action_type": "call_tool",
+                "tool_name": "write_artifact_tool",
+                "payload_requirements": {"required": ["text"]},
+                "required_capabilities": {
+                    "tools": ["write_artifact_tool"],
+                    "workspace": {"mode": "shared_ro"},
+                    "budget": {"seconds": 30},
+                },
+                "default_workspace_mode": "shared_ro",
+                "result_kind": "artifact",
+                "enabled": True,
+            },
+            {
+                "action_type": "call_tool",
                 "tool_name": "app_probe_tool",
                 "payload_requirements": {"required": ["text"]},
                 "required_capabilities": {
@@ -169,6 +182,47 @@ def test_in_process_server_forwards_tool_handlers_to_executor(tmp_path):
         "workspace": {"mode": "shared_ro"},
         "budget": {"seconds": 30},
     }
+
+
+def test_in_process_server_non_artifact_tool_does_not_return_stale_artifact_ref(tmp_path):
+    calls: list[ToolInvocation] = []
+
+    def handler(invocation: ToolInvocation) -> ToolResult:
+        calls.append(invocation)
+        return ToolResult(
+            result_summary="diagnostic only",
+            artifact_refs=[],
+            provenance=invocation.provenance,
+        )
+
+    api = server.InProcessServer(
+        tmp_path,
+        registry=_registry(),
+        tool_handlers={"app_probe_tool": handler},
+    )
+    session = api.create_session()
+    run = api.create_run(session["session_id"], goal="no stale artifact ref")
+    source = api.create_source_artifact(run["run_id"], content="source", summary="source")
+
+    result = api.submit_action(
+        run["run_id"],
+        {
+            "action": "call_tool",
+            "tool": "app_probe_tool",
+            "text": "hello",
+        },
+    )
+    completed_events = [
+        event
+        for event in api.get_events(run["run_id"])
+        if event.event_type == "action.completed"
+    ]
+
+    assert result["status"] == "completed"
+    assert source["artifact_ref"].artifact_id.startswith("artifact_")
+    assert "artifact_ref" not in result
+    assert calls
+    assert completed_events[-1].payload["artifact_refs"] == []
 
 
 def test_in_process_server_denied_tool_does_not_call_handler(tmp_path):

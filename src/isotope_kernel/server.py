@@ -476,9 +476,9 @@ class InProcessServer:
             "run_state": state,
             "execution_id": execution.execution_id,
         }
-        artifacts = self.artifact_store.list_artifacts(run_id)
-        if artifacts:
-            result["artifact_ref"] = artifacts[-1].ref
+        artifact_ref = self._completed_artifact_ref(run_id, execution.execution_id)
+        if artifact_ref is not None:
+            result["artifact_ref"] = artifact_ref
         return result
 
     def resolve_approval(self, approval_id: str, resolution: dict[str, Any]) -> dict[str, Any]:
@@ -559,9 +559,9 @@ class InProcessServer:
             "run_state": state,
             "execution_id": execution.execution_id,
         }
-        artifacts = self.artifact_store.list_artifacts(run_id)
-        if artifacts:
-            result["artifact_ref"] = artifacts[-1].ref
+        artifact_ref = self._completed_artifact_ref(run_id, execution.execution_id)
+        if artifact_ref is not None:
+            result["artifact_ref"] = artifact_ref
         self._resolved_approvals[approval_id] = result
         return result
 
@@ -1395,6 +1395,27 @@ class InProcessServer:
             if payload.get("proposal_id") == proposal_id and payload.get("decision_id") == decision_id:
                 return str(payload["execution_id"])
         return ""
+
+    def _completed_artifact_ref(self, run_id: str, execution_id: str) -> ResourceRef | None:
+        for event in reversed(self.event_store.list_events(run_id)):
+            if event.event_type != "action.completed":
+                continue
+            payload = event.payload
+            if payload.get("execution_id") != execution_id:
+                continue
+            artifact_refs = payload.get("artifact_refs", [])
+            if not artifact_refs:
+                return None
+            ref = artifact_refs[-1]
+            if not isinstance(ref, dict):
+                return None
+            return ResourceRef(
+                ref_type=str(ref.get("ref_type", "")),
+                scope=str(ref.get("scope", "")),
+                run_id=str(ref.get("run_id", "")),
+                artifact_id=str(ref.get("artifact_id", "")),
+            )
+        return None
 
     def _require_execution_action(self, state, execution_id: str) -> dict[str, Any]:
         action = state.actions.get(execution_id)

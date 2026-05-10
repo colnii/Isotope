@@ -15,6 +15,7 @@
 - executor 从 `ActionProposal`、`PolicyDecision`、execution id、effective grants、budget 和 workspace binding 构造 `ToolInvocation`。
 - handler 只收到 capped effective capabilities，不能从 `requested_capabilities` 扩权。
 - ungranted / disabled / unknown tool 仍在 handler 运行前 fail closed。
+- empty `ToolResult.artifact_refs` 不能让 facade response 泄漏同一 run 里较早 artifact 的 stale `artifact_ref`。
 
 ## Verification
 
@@ -65,3 +66,4 @@ Implemented:
 - for non-`write_artifact_tool` registered tools, require an explicit handler.
 - construct and pass `ToolInvocation` with decision grants snapshot, capped requested capabilities, budget, provenance, and projected workspace binding.
 - convert `ToolResult` to controlled `ActionExecution` completion without native read-model mutation outside canonical events.
+- derive facade `artifact_ref` response from the current `action.completed.artifact_refs`, not from latest artifact in the whole run.
