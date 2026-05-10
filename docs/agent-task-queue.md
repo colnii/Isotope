@@ -735,7 +735,7 @@ Evidence:
 
 Batch name: `Policy Constructor Surface Green Slice`
 
-Status: `complete; pending review`
+Status: `complete; pushed`
 
 Evidence:
 
@@ -745,6 +745,7 @@ Evidence:
 - Targeted verification: `tests/isotope_kernel/test_server_action_registry_wiring.py tests/isotope_kernel/test_policy_profile_version_basis.py tests/isotope_kernel/test_action_registry_version_basis.py -q` -> `23 passed`.
 - Full regression with local `DYLD_LIBRARY_PATH` workaround: `1062 passed in 7.14s`.
 - `git diff --check` clean; strict `x_agent.*` scan no matches.
+- Review passed and commit `139a6c4 feat: expose policy profile constructor metadata` was pushed to `origin/main`.
 - Boundary: no arbitrary `PolicyEngine` injection, no registry mismatch, no policy DSL, no remote registry loading, no product policy UI, no public SDK, no real HTTP, no provider adapter, no new dependency, no tag/release.
 
 ### Previous Batch Snapshot: Workspace Resource Lifecycle Closure Review
