@@ -366,6 +366,21 @@ Evidence:
 
 ## 19. Next Suggested Batch
 
+Batch name: `Error Taxonomy Closure Review`
+
+Status: `complete`
+
+Goal: close the structured kernel error first slice after review accepted `4aa094f`.
+
+Evidence:
+
+- Added `docs/error-taxonomy-closure-review.md`.
+- Boundary status updated to `first slice complete / closed for now`.
+- Confirmed current slice is `KernelError(ValueError)` compatibility + helper / HTTP mapping first paths, not product error UX or public SDK.
+- Deferred provider / process / container / git-worktree error surfaces remain closed until concrete `kernel_friction` appears.
+
+## 20. Next Suggested Batch
+
 Batch name: `Application-Layer Friction Intake`
 
 Status: `ready`

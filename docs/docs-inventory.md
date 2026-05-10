@@ -68,6 +68,7 @@
 - Session / Run Lifecycle first slice 已 green；tracked docs Markdown 数量不变。当前实现补上 `session.created` canonical event、`get_session_state(...)` event-backed read helper、`RunState` lifecycle fields、checkpoint field sync，以及 terminal ordinary-input no-side-effect guard。
 - 加上 Error Taxonomy Boundary 后 tracked docs Markdown：114 个。该文档定义 direct helper / HTTP facade structured kernel error contract，建议后续 `KernelError(ValueError)` 保持 legacy message compatibility 同时暴露 stable `code` / `category` / `retryable` / `http_status` / `details`；不实现 product error UX、public SDK、real HTTP server、provider/process/container/git-worktree errors 或 release/tag。
 - Error Taxonomy first slice 已 green；tracked docs Markdown 数量不变。当前实现补上 `src/isotope_kernel/errors.py`、`KernelError(ValueError)`、helper / HTTP mapping first paths 和 structured `not_enabled` result shape。
+- 加上 Error Taxonomy Closure Review 后 tracked docs Markdown：115 个。Error Taxonomy first slice 已 complete / closed for now；当前建议回到 application-layer friction intake，让 aggressive-dev 消费 stable `KernelError` 行为后再决定是否重开 mainline。
 
 ## 2. Current entrypoints
 
@@ -97,7 +98,8 @@
 - `docs/tool-protocol-closure-review.md`：Tool protocol closure review，记录 first slice complete / closed for now、scope note、verification evidence、remaining friction 和 next path。
 - `docs/worker-handoff-app-spike-selection.md`：Worker handoff app spike selection，记录下一步 red-tests-only pressure test 选择、scope、first red tests recommendation 和 stop conditions。
 - `docs/session-run-lifecycle-boundary-v0.2.md`：Session / Run lifecycle boundary，记录 session/run identity、status transitions、terminal-state behavior、event/read-model shape 和 first green slice status。
-- `docs/error-taxonomy-boundary-v0.2.md`：Error taxonomy boundary，记录 structured kernel error shape、HTTP facade mapping、first red tests recommendation 和 deferred product / integration error surfaces。
+- `docs/error-taxonomy-boundary-v0.2.md`：Error taxonomy boundary，记录 structured kernel error shape、HTTP facade mapping、first green slice 和 deferred product / integration error surfaces。
+- `docs/error-taxonomy-closure-review.md`：Error taxonomy closure review，记录 first slice complete / closed for now。
 - `docs/agent-worker-lifecycle-boundary-v0.2.md`：Agent / Worker lifecycle boundary，记录 supervisor / worker / delegation / worker read model / workspace binding / result handoff 的 first-slice design。
 - `docs/workspace-substrate-boundary-v0.2.md`：Workspace substrate boundary，记录 workspace as policy-bound execution resource、binding / lease / path safety / artifact capture / deferred substrate 的 first-slice complete 状态。
 - `docs/workspace-resource-lifecycle-boundary-v0.2.md`：Workspace resource lifecycle boundary，记录 binding vs lease、candidate events、read-model shape、artifact capture boundary 和 first-slice evidence。
@@ -305,6 +307,8 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | `docs/event-schema-compatibility-boundary-v0.2.md` | Event schema compatibility old-path stub | stub / keep for one cycle |
 | `docs/event-schema-registry-closure-review.md` | Event schema registry / compatibility closure review | first slice closed for now |
 | `docs/event-schema-registry-compatibility-boundary-v0.2.md` | Event schema registry / compatibility boundary | first slice closed for now |
+| `docs/error-taxonomy-boundary-v0.2.md` | Error taxonomy boundary | first slice closed for now |
+| `docs/error-taxonomy-closure-review.md` | Error taxonomy closure review | first slice closed for now |
 | `docs/external-ingestion-boundary-v0.2.md` | Track F external ingestion boundary | closed for now |
 | `docs/external-review-package-v0.2.md` | External reviewer package / reading path | current review package |
 | `docs/http-api-minimal-surface-v0.2.md` | Track A HTTP API boundary | closed for now |

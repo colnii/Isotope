@@ -124,6 +124,7 @@ python3 -m venv .venv
 - Worker handoff app spike selection: [docs/worker-handoff-app-spike-selection.md](docs/worker-handoff-app-spike-selection.md)
 - Session / run lifecycle boundary: [docs/session-run-lifecycle-boundary-v0.2.md](docs/session-run-lifecycle-boundary-v0.2.md)
 - Error taxonomy boundary: [docs/error-taxonomy-boundary-v0.2.md](docs/error-taxonomy-boundary-v0.2.md)
+- Error taxonomy closure review: [docs/error-taxonomy-closure-review.md](docs/error-taxonomy-closure-review.md)
 - External review package: [docs/external-review-package-v0.2.md](docs/external-review-package-v0.2.md)
 - Post external review checkpoint: [docs/post-external-review-checkpoint.md](docs/post-external-review-checkpoint.md)
 - Mainline idle checkpoint: [docs/mainline-idle-checkpoint.md](docs/mainline-idle-checkpoint.md)

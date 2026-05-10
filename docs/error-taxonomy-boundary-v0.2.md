@@ -1,6 +1,6 @@
 # Error Taxonomy Boundary v0.2
 
-状态：`boundary defined; red tests recommended`
+状态：`first slice complete / closed for now`
 
 ## 1. Purpose
 
@@ -127,6 +127,20 @@ Initial coverage:
 8. details reject or avoid raw content / secrets.
 9. no real HTTP server, product SDK, provider, process, container, git worktree, tag, or release.
 
-## 10. Decision
+## 10. Implementation Status
 
-Error Taxonomy Boundary is accepted as the next kernel-forward slice after remote consistency was restored for `664d14b`. The next step should be red tests only. The first implementation should be a minimal structured-error compatibility layer, not a broad product error framework.
+First slice 已实现并完成 closure review，见 `docs/error-taxonomy-closure-review.md`。
+
+当前实现包括：
+
+- `KernelError(ValueError)` compatibility layer。
+- Legacy `str(exc)` / `args[0]` message compatibility。
+- Stable `code` / `category` / `retryable` / `http_status` / `details` attrs。
+- terminal run、unknown run/session、invalid request 和 `not_enabled` helper / HTTP mapping first paths。
+- low-sensitive `details` validation。
+
+仍 deferred：product error UX、public SDK、real HTTP server、provider / process / container / git-worktree error model、plugin error registry、tag 和 release。
+
+## 11. Decision
+
+Error Taxonomy Boundary is accepted as a completed first slice. Future expansion should be driven by concrete application-layer `kernel_friction`, not by broad conversion of all exceptions.
