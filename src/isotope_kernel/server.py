@@ -793,7 +793,7 @@ class InProcessServer:
         basis_refs: list[ResourceRef] | None = None,
         source_refs: list[ResourceRef] | None = None,
     ) -> dict[str, Any]:
-        self._validate_existing_run_id(run_id)
+        run = self._runtime_context_for_write_helper(run_id)
         self._validate_non_empty_string("summary", summary)
         self._validate_non_empty_string("content", content)
         if artifact_type != "text":
@@ -801,7 +801,6 @@ class InProcessServer:
         basis_ref_payloads = self._validate_artifact_ref_list("basis_refs", basis_refs, run_id)
         source_ref_payloads = self._validate_artifact_ref_list("source_refs", source_refs, run_id)
 
-        run = self._runs[run_id]
         proposal = self.compiler.compile(
             {
                 "action": "call_tool",
@@ -902,7 +901,7 @@ class InProcessServer:
         artifact_ref: ResourceRef,
         summary: str,
     ) -> dict[str, Any]:
-        self._validate_existing_run_id(run_id)
+        self._runtime_context_for_write_helper(run_id)
         intent = self._validate_worker_handoff_intent(delegation_intent)
         self._validate_non_empty_string("summary", summary)
         try:
@@ -1254,6 +1253,71 @@ class InProcessServer:
                 http_status=409,
                 details={"run_id": run_id, "status": state.status},
             )
+
+    def _runtime_context_for_write_helper(self, run_id: object) -> dict[str, str]:
+        self._validate_non_empty_string("run_id", run_id)
+        if not isinstance(run_id, str):
+            raise KernelError(
+                "run_id must be a non-empty string",
+                code="invalid_request",
+                category="validation",
+                retryable=False,
+                http_status=400,
+                details={"field": "run_id"},
+            )
+        if run_id in self._runs:
+            self._validate_run_accepts_ordinary_input(run_id)
+            return dict(self._runs[run_id])
+
+        state = self.get_run_state(run_id)
+        if state.status in {"completed", "failed", "denied"}:
+            raise KernelError(
+                f"run is terminal: {state.status}",
+                code="run_terminal",
+                category="conflict",
+                retryable=False,
+                http_status=409,
+                details={"run_id": run_id, "status": state.status},
+            )
+
+        run_payload: dict[str, Any] | None = None
+        agent_id = ""
+        thread_id = ""
+        for event in self.event_store.list_events(run_id):
+            if event.event_type == "run.created" and run_payload is None:
+                run_payload = dict(event.payload)
+            elif event.event_type == "agent.created" and not agent_id:
+                raw_agent_id = event.payload.get("agent_id")
+                if isinstance(raw_agent_id, str):
+                    agent_id = raw_agent_id
+            elif event.event_type == "thread.created" and not thread_id:
+                raw_thread_id = event.payload.get("thread_id")
+                if isinstance(raw_thread_id, str):
+                    thread_id = raw_thread_id
+
+        if run_payload is None or not agent_id or not thread_id:
+            raise KernelError(
+                "run context cannot be recovered from events",
+                code="run_context_unavailable",
+                category="internal",
+                retryable=False,
+                http_status=500,
+                details={"run_id": run_id},
+            )
+
+        session_id = run_payload.get("session_id", "")
+        goal = run_payload.get("goal", "")
+        if not isinstance(session_id, str):
+            session_id = ""
+        if not isinstance(goal, str):
+            goal = ""
+        return {
+            "run_id": run_id,
+            "session_id": session_id,
+            "goal": goal,
+            "agent_id": agent_id,
+            "thread_id": thread_id,
+        }
 
     def _validate_read_run_id(self, run_id: object) -> None:
         self._validate_non_empty_string("run_id", run_id)

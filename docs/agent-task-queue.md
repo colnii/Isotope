@@ -499,7 +499,7 @@ Evidence:
 
 Batch name: `Tool Invocation Runtime Wiring Green Slice`
 
-Status: `complete; awaiting review`
+Status: `complete; pushed`
 
 Goal: pin the narrow executor runtime wiring gap without opening plugin marketplace, remote execution, sandbox/process, public SDK, provider adapter, real HTTP route, or new dependency.
 
@@ -516,6 +516,27 @@ Evidence:
 - Existing `write_artifact_tool` deterministic artifact path remains unchanged.
 - Targeted result: `tests/isotope_kernel/test_tool_invocation_runtime_wiring.py` -> `6 passed`.
 - Focused regression: tool invocation runtime / tool protocol / tool result event / executor registry / server action registry wiring / submit action helper -> `41 passed`.
+- Review passed and mainline pushed `d2a6ae9..d697d5d` to `origin/main`.
+
+## 28. Current Batch
+
+Batch name: `Restart Write Helper Run Context Green Slice`
+
+Status: `complete; awaiting review`
+
+Goal: pin the restart write-helper run-context gap without opening real worker runtime, scheduler/process supervisor, process spawn, container/git worktree, real HTTP, provider adapter, public SDK, new dependency, tag, or release.
+
+Evidence:
+
+- Review accepted aggressive-dev `spike/aggressive-dev@a27477b1a79606bd1a5323e1f838206b80dae75f` `restart_write_helper_run_context_missing` as bounded `kernel_friction`.
+- Added `docs/restart-write-helper-run-context-boundary-v0.2.md`.
+- Added red tests in `tests/isotope_kernel/test_restart_write_helper_run_context.py`; initial red result was `3 failed` including `KernelError: unknown run_id` after restart even though `get_run_state(run_id)` can rebuild the same run.
+- Implemented event-backed runtime context recovery for selected helpers from `run.created` / `agent.created` / `thread.created` plus projected non-terminal `RunState`.
+- `create_source_artifact(...)` and `submit_worker_handoff(...)` can continue writing to an existing non-terminal run after `InProcessServer` restart.
+- Terminal run post-restart writes still fail closed without appended events.
+- Targeted result: `tests/isotope_kernel/test_restart_write_helper_run_context.py` -> `3 passed`.
+- Focused regression: restart write helper / source artifact setup / worker handoff / run lifecycle -> `24 passed`.
+- Full regression with local Mac env workaround: `1058 passed`.
 
 ### Previous Batch Snapshot: Worker Handoff Helper Red / Green Slice
 

@@ -94,6 +94,7 @@
 - [Policy Profile / Action Registry Versioning Boundary](./policy-profile-action-registry-versioning-boundary-v0.2.md)
 - [Tool Protocol Boundary](./tool-protocol-boundary-v0.2.md)
 - [Tool Invocation Runtime Wiring Boundary](./tool-invocation-runtime-wiring-boundary-v0.2.md)
+- [Restart Write Helper Run Context Boundary](./restart-write-helper-run-context-boundary-v0.2.md)
 - [Session / Run Lifecycle Boundary](./session-run-lifecycle-boundary-v0.2.md)
 - [Error Taxonomy Boundary](./error-taxonomy-boundary-v0.2.md)
 - [Worker Handoff Helper Boundary](./worker-handoff-helper-boundary-v0.2.md)
