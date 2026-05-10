@@ -72,6 +72,7 @@
 - Worker Handoff Error Taxonomy slice 已 green；tracked docs Markdown 数量不变。当前实现把 worker handoff malformed intent、forged grants、unknown artifact ref 和 policy denied rejection 纳入 structured error taxonomy，同时保留 policy denial `PermissionError` compatibility 和 no partial delegation / worker events。
 - 加上 Current Docs Map 后 tracked docs Markdown：116 个。该文档是当前 `docs/` 的短索引和读者路径归纳，不移动、不删除、不合并文档。
 - Delegation Decision Read Model slice 已 green；tracked docs Markdown 数量不变。当前实现新增 `RunState.delegations`，把 delegation proposal / decision / worker linkage 投影到 read model，支持 replay 和 checkpoint-assisted rebuild，使 app shell 不再需要 raw event scan 审计 worker handoff decision；不改变 event append semantics。
+- Workspace Lifecycle Helper slice 已 green；tracked docs Markdown 数量不变。当前实现新增 `InProcessServer.create_workspace_lease(...)`、`capture_workspace_artifact(...)`、`release_workspace(...)`，把 app-local private `_append(...)` workspace lifecycle glue 收口为既有 canonical events helper；不打开 real filesystem / container / git worktree / remote executor。
 
 ## 2. Current entrypoints
 

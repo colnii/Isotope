@@ -436,9 +436,41 @@ Evidence:
 
 Batch name: `Application-Layer Friction Intake`
 
-Status: `ready`
+Status: `complete; reopened by accepted workspace lifecycle helper friction`
 
 Goal: let aggressive-dev consume `RunState.delegations` and rerun `worker.handoff.audit.review`; only reopen mainline if it reports a new concrete `kernel_friction`.
+
+Evidence:
+
+- Aggressive-dev consumed `RunState.delegations` in `d562fb7aa383c7b231c512313b1b88193f986d3a`; review confirmed `worker.handoff.audit.review` uses the read model with `event_scan_used=false`, `kernel_friction=[]`, and `mainline_action_requested=none`.
+- Aggressive-dev later reported accepted `workspace_lifecycle_helper_missing` from `d9780413e91600af7a46622fe6c759b4b0deadb2`.
+
+## 24. Current Batch
+
+Batch name: `Workspace Lifecycle Helper Slice`
+
+Status: `complete`
+
+Goal: remove app-layer private `_append(...)` glue for existing workspace lifecycle canonical events without opening real workspace substrate.
+
+Evidence:
+
+- Added `tests/isotope_kernel/test_workspace_lifecycle_helper.py`.
+- Implemented `InProcessServer.create_workspace_lease(...)`, `capture_workspace_artifact(...)`, and `release_workspace(...)`.
+- Helpers append existing canonical `workspace.lease_created`, `workspace.artifact_captured`, and `workspace.released` events after candidate replay validation.
+- Helpers return projected workspace summaries and keep replay / checkpoint-assisted rebuild consistent.
+- Targeted result: `3 passed`.
+- Focused regression: `38 passed`.
+- Full regression with local Mac env workaround: `1046 passed`.
+- No real filesystem / container / git worktree / remote executor / cleanup scheduler / path-safety engine / product workspace API / tag / release.
+
+## 25. Next Suggested Batch
+
+Batch name: `Application-Layer Friction Intake`
+
+Status: `ready`
+
+Goal: let aggressive-dev consume the workspace lifecycle helper slice and rerun `workspace.lifecycle.review`; only reopen mainline if it reports a new concrete `kernel_friction`.
 
 ### Previous Batch Snapshot: Worker Handoff Helper Red / Green Slice
 
