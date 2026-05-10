@@ -283,7 +283,7 @@ def test_error_response_is_not_cached_as_success_for_later_valid_retry(tmp_path)
     )
 
     assert _status_code(bad) == 400
-    assert _error_code(bad) == "bad_request"
+    assert _error_code(bad) == "invalid_request"
     assert _status_code(good) == 200
     assert _json_body(good)["status"] == "completed"
     assert _event_types(tmp_path, run["run_id"]) == [
@@ -320,8 +320,8 @@ def test_malformed_idempotent_request_remains_error_without_side_effect_on_each_
 
     assert _status_code(first) == 400
     assert _status_code(second) == 400
-    assert _error_code(first) == "bad_request"
-    assert _error_code(second) == "bad_request"
+    assert _error_code(first) == "invalid_request"
+    assert _error_code(second) == "invalid_request"
     assert not ACTION_LIFECYCLE_EVENTS.intersection(_event_types(tmp_path, run["run_id"]))
     assert _artifact_files(tmp_path) == []
 

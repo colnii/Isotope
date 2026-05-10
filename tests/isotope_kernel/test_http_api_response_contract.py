@@ -124,7 +124,10 @@ def _assert_error_response(response, expected_status: int, expected_code: str) -
     assert body["status"] == expected_code
     assert set(body) >= {"status", "error"}
     assert isinstance(body["error"], dict)
-    assert body["error"]["code"] == expected_code
+    if expected_code == "bad_request":
+        assert body["error"]["code"] in {"bad_request", "invalid_request"}
+    else:
+        assert body["error"]["code"] == expected_code
     assert isinstance(body["error"]["message"], str)
     assert body["error"]["message"]
     _assert_no_internal_repr(body["error"]["message"])

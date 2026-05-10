@@ -138,7 +138,9 @@ def test_external_ingestion_server_api_still_not_enabled_and_side_effect_free(tm
 
     result = api.ingest_external_input(_raw_provider_response())
 
-    assert result == {"status": "not_enabled", "capability": "external_ingestion"}
+    assert result["status"] == "not_enabled"
+    assert result["capability"] == "external_ingestion"
+    assert result["error"]["code"] == "not_enabled"
     assert api.event_store.list_events(run_id) == before_events
 
 

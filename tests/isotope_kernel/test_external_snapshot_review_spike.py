@@ -188,4 +188,6 @@ def test_server_external_ingestion_public_api_remains_not_enabled(tmp_path):
 
     result = server.ingest_external_input({"source_system": "example_provider"})
 
-    assert result == {"status": "not_enabled", "capability": "external_ingestion"}
+    assert result["status"] == "not_enabled"
+    assert result["capability"] == "external_ingestion"
+    assert result["error"]["code"] == "not_enabled"

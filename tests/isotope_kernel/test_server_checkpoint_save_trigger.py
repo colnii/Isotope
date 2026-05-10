@@ -27,7 +27,9 @@ def test_save_checkpoint_for_run_requires_checkpoint_store(tmp_path):
 
     result = api.save_checkpoint_for_run(run_id)
 
-    assert result == {"status": "not_enabled", "capability": "checkpoint"}
+    assert result["status"] == "not_enabled"
+    assert result["capability"] == "checkpoint"
+    assert result["error"]["code"] == "not_enabled"
     assert not checkpoints.checkpoint_path(run_id).exists()
 
 
@@ -112,4 +114,8 @@ def test_create_checkpoint_remains_not_enabled(tmp_path):
     checkpoints = checkpoint_store.FileCheckpointStore(tmp_path)
     api, run_id = _completed_run(tmp_path, checkpoints)
 
-    assert api.create_checkpoint(run_id) == {"status": "not_enabled", "capability": "checkpoint"}
+    result = api.create_checkpoint(run_id)
+
+    assert result["status"] == "not_enabled"
+    assert result["capability"] == "checkpoint"
+    assert result["error"]["code"] == "not_enabled"

@@ -194,5 +194,8 @@ def test_deferred_artifact_content_error_shape_is_stable(tmp_path):
             "code": "not_enabled",
             "message": "artifact_content is not enabled",
             "capability": "artifact_content",
+            "category": "not_enabled",
+            "retryable": False,
+            "details": {"capability": "artifact_content"},
         },
     }

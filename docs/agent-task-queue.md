@@ -321,7 +321,7 @@ Evidence:
 
 Batch name: `Error Taxonomy Red Tests`
 
-Status: `ready for review`
+Status: `complete`
 
 Goal: write red tests for `KernelError` compatibility and first helper / HTTP mapping paths before implementation.
 
@@ -335,6 +335,42 @@ Stop conditions:
 - tests require product error UX, public SDK, real HTTP server, provider adapter, process supervisor, container, git worktree, dependency changes, tag, or release
 - tests require changing event-store append-only semantics or executor grants semantics
 - tests require leaking raw content, provider payloads, or secrets into `details`
+
+Evidence:
+
+- Added `tests/isotope_kernel/test_kernel_error_taxonomy_boundary.py`.
+- Added `tests/isotope_kernel/test_http_error_mapping_boundary.py`.
+- Targeted red result before implementation: `12 failed`.
+- Review accepted the red tests and fixed `run_terminal` category as `conflict`.
+
+## 18. Current Batch
+
+Batch name: `Error Taxonomy Green Slice`
+
+Status: `complete`
+
+Goal: implement the smallest structured kernel error compatibility layer for helper and HTTP mapping paths.
+
+Evidence:
+
+- Added `src/isotope_kernel/errors.py`.
+- Implemented `KernelError(ValueError)` preserving `str(exc)` / `args[0]`.
+- Added stable attrs: `code`, `category`, `retryable`, `http_status`, `details`.
+- Covered terminal run, unknown run/session, invalid request, and `not_enabled` first-slice paths.
+- HTTP facade maps structured attrs while preserving top-level `status` envelope compatibility.
+- `details` rejects secret/raw-content style keys.
+- Targeted result: `12 passed`.
+- Full regression with local Mac env workaround: `1036 passed`.
+- Demos `artifact-review --trace`, `external-snapshot-review --trace`, and `approval-tool-runner --trace` pass.
+- No product error UX / public SDK / real HTTP server / provider / process supervisor / container / git worktree / tag / release.
+
+## 19. Next Suggested Batch
+
+Batch name: `Application-Layer Friction Intake`
+
+Status: `ready`
+
+Goal: let aggressive-dev consume the structured error contract and rerun `error.taxonomy.review`; only reopen mainline if it reports a new concrete `kernel_friction`.
 
 ### Previous Batch Snapshot: Worker Handoff Helper Red / Green Slice
 

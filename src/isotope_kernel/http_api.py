@@ -12,6 +12,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from .errors import KernelError
 from .server import InProcessServer
 
 
@@ -147,7 +148,16 @@ class HttpApiApp:
             if method == "POST" and len(parts) == 3 and parts[0] == "sessions" and parts[2] == "runs":
                 body = self._require_body(json_body, required_fields=("goal",))
                 if parts[1] not in self.server._sessions:
-                    return self._error(404, "not_found", "session not found")
+                    return self._kernel_error_response(
+                        KernelError(
+                            "session not found",
+                            code="unknown_session",
+                            category="not_found",
+                            retryable=False,
+                            http_status=404,
+                            details={"session_id": parts[1]},
+                        )
+                    )
                 return self._json(
                     201,
                     self.server.create_run(parts[1], goal=body["goal"]),
@@ -155,7 +165,16 @@ class HttpApiApp:
             if method == "POST" and len(parts) == 3 and parts[0] == "runs" and parts[2] == "input":
                 body = self._require_body(json_body, required_fields=("text",))
                 if not self._run_exists(parts[1]):
-                    return self._error(404, "not_found", "run not found")
+                    return self._kernel_error_response(
+                        KernelError(
+                            "run not found",
+                            code="unknown_run",
+                            category="not_found",
+                            retryable=False,
+                            http_status=404,
+                            details={"run_id": parts[1]},
+                        )
+                    )
                 requires_approval = False
                 if isinstance(json_body, dict):
                     requires_approval = json_body.get("requires_approval", False)
@@ -218,6 +237,8 @@ class HttpApiApp:
                 return self._json(200, summary)
         except PermissionError as exc:
             return self._error(403, "forbidden", str(exc))
+        except KernelError as exc:
+            return self._kernel_error_response(exc)
         except (FileNotFoundError, ValueError) as exc:
             message = str(exc)
             if "unknown approval" in message:
@@ -305,11 +326,18 @@ class HttpApiApp:
         message: str,
         **details: Any,
     ) -> HttpResponse:
+        nested_details = dict(details.pop("details", {}))
+        if code == "not_enabled":
+            details.setdefault("category", "not_enabled")
+            details.setdefault("retryable", False)
+            nested_details.update({key: value for key, value in details.items() if key == "capability"})
         error: dict[str, Any] = {
             "code": code,
             "message": message,
         }
         error.update(details)
+        if nested_details:
+            error["details"] = nested_details
         return self._json(
             status_code,
             {
@@ -317,6 +345,32 @@ class HttpApiApp:
                 "error": error,
             },
         )
+
+    def _kernel_error_response(self, error: KernelError) -> HttpResponse:
+        status_code = error.http_status or 400
+        status = self._status_for_kernel_error(error, status_code)
+        return self._json(
+            status_code,
+            {
+                "status": status,
+                "error": {
+                    "code": error.code,
+                    "message": str(error),
+                    "category": error.category,
+                    "retryable": error.retryable,
+                    "details": dict(error.details),
+                },
+            },
+        )
+
+    def _status_for_kernel_error(self, error: KernelError, status_code: int) -> str:
+        if error.category in {"conflict", "not_enabled"}:
+            return error.category
+        if status_code == 404:
+            return "not_found"
+        if status_code == 400:
+            return "bad_request"
+        return error.category
 
     def _extract_idempotency_key(self, body: Any) -> str | None:
         if not isinstance(body, dict) or "idempotency_key" not in body:
@@ -379,12 +433,26 @@ class HttpApiApp:
 
     def _require_body(self, body: Any, required_fields: tuple[str, ...]) -> dict[str, str]:
         if not isinstance(body, dict):
-            raise ValueError("request body must be a JSON object")
+            raise KernelError(
+                "request body must be a JSON object",
+                code="invalid_request",
+                category="validation",
+                retryable=False,
+                http_status=400,
+                details={"field": "body"},
+            )
         validated: dict[str, str] = {}
         for field in required_fields:
             value = body.get(field)
             if not isinstance(value, str) or not value:
-                raise ValueError(f"{field} must be a non-empty string")
+                raise KernelError(
+                    f"missing required request field: {field}",
+                    code="invalid_request",
+                    category="validation",
+                    retryable=False,
+                    http_status=400,
+                    details={"field": field},
+                )
             validated[field] = value
         return validated
 

@@ -109,4 +109,8 @@ def test_lifecycle_invalid_event_log_still_fails_with_checkpoint_store(tmp_path)
 def test_server_create_checkpoint_remains_not_enabled(tmp_path):
     api, run_id = _completed_run(tmp_path)
 
-    assert api.create_checkpoint(run_id) == {"status": "not_enabled", "capability": "checkpoint"}
+    result = api.create_checkpoint(run_id)
+
+    assert result["status"] == "not_enabled"
+    assert result["capability"] == "checkpoint"
+    assert result["error"]["code"] == "not_enabled"

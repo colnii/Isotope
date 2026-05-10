@@ -12,6 +12,7 @@ from .artifact_store import ArtifactStore
 from .event_store import FileEventStore
 from .events import CanonicalEvent
 from .executor import Executor
+from .errors import KernelError, not_enabled_result
 from .ids import new_id
 from .models import ImportedSnapshot, PolicyDecision
 from .policy import PolicyEngine
@@ -92,7 +93,14 @@ class InProcessServer:
                     if run_id not in run_ids:
                         run_ids.append(run_id)
         if session_state is None:
-            raise ValueError("unknown session_id")
+            raise KernelError(
+                "unknown session_id",
+                code="unknown_session",
+                category="not_found",
+                retryable=False,
+                http_status=404,
+                details={"session_id": session_id},
+            )
         session_state["run_ids"] = run_ids
         return session_state
 
@@ -553,7 +561,7 @@ class InProcessServer:
         return result
 
     def get_run_state(self, run_id: str):
-        self._validate_read_run_id(run_id)
+        self._validate_known_run_id(run_id)
         project = RunProjector()
         if self.checkpoint_store is None:
             return project.rebuild(run_id, self.event_store)
@@ -880,12 +888,12 @@ class InProcessServer:
         return self.retrieval.get_artifact_summary(ref, grants)
 
     def ingest_external_input(self, raw_input: dict) -> dict[str, str]:
-        return {"status": "not_enabled", "capability": "external_ingestion"}
+        return not_enabled_result("external_ingestion")
 
     def save_checkpoint_for_run(self, run_id: str) -> dict[str, str]:
         self._validate_read_run_id(run_id)
         if self.checkpoint_store is None:
-            return {"status": "not_enabled", "capability": "checkpoint"}
+            return not_enabled_result("checkpoint")
         checkpoint = RunProjector().save_checkpoint(run_id, self.event_store, self.checkpoint_store)
         return {
             "status": "saved",
@@ -896,7 +904,7 @@ class InProcessServer:
     def save_checkpoint_history_for_run(self, run_id: str) -> dict[str, str]:
         self._validate_read_run_id(run_id)
         if self.checkpoint_store is None:
-            return {"status": "not_enabled", "capability": "checkpoint_history"}
+            return not_enabled_result("checkpoint_history")
         checkpoint = RunProjector().save_checkpoint_history(run_id, self.event_store, self.checkpoint_store)
         return {
             "status": "saved",
@@ -906,7 +914,7 @@ class InProcessServer:
         }
 
     def create_checkpoint(self, run_id: str) -> dict[str, str]:
-        return {"status": "not_enabled", "capability": "checkpoint"}
+        return not_enabled_result("checkpoint")
 
     def _validate_approval_resolution_body(self, body: object) -> dict[str, str]:
         if not isinstance(body, dict):
@@ -997,22 +1005,50 @@ class InProcessServer:
 
     def _validate_non_empty_string(self, field_name: str, value: object) -> None:
         if not isinstance(value, str) or not value:
-            raise ValueError(f"{field_name} must be a non-empty string")
+            raise KernelError(
+                f"{field_name} must be a non-empty string",
+                code="invalid_request",
+                category="validation",
+                retryable=False,
+                http_status=400,
+                details={"field": field_name},
+            )
 
     def _validate_existing_session_id(self, session_id: object) -> None:
         self._validate_non_empty_string("session_id", session_id)
         if session_id not in self._sessions:
-            raise ValueError("unknown session_id")
+            raise KernelError(
+                "unknown session_id",
+                code="unknown_session",
+                category="not_found",
+                retryable=False,
+                http_status=404,
+                details={"session_id": session_id},
+            )
 
     def _validate_existing_run_id(self, run_id: object) -> None:
         self._validate_non_empty_string("run_id", run_id)
         if run_id not in self._runs:
-            raise ValueError("unknown run_id")
+            raise KernelError(
+                "unknown run_id",
+                code="unknown_run",
+                category="not_found",
+                retryable=False,
+                http_status=404,
+                details={"run_id": run_id},
+            )
 
     def _validate_run_accepts_ordinary_input(self, run_id: str) -> None:
         state = self.get_run_state(run_id)
         if state.status in {"completed", "failed", "denied"}:
-            raise ValueError(f"run is terminal: {state.status}")
+            raise KernelError(
+                f"run is terminal: {state.status}",
+                code="run_terminal",
+                category="conflict",
+                retryable=False,
+                http_status=409,
+                details={"run_id": run_id, "status": state.status},
+            )
 
     def _validate_read_run_id(self, run_id: object) -> None:
         self._validate_non_empty_string("run_id", run_id)
@@ -1024,9 +1060,23 @@ class InProcessServer:
     def _validate_known_run_id(self, run_id: object) -> None:
         self._validate_non_empty_string("run_id", run_id)
         if not isinstance(run_id, str):
-            raise ValueError("run_id must be a non-empty string")
+            raise KernelError(
+                "run_id must be a non-empty string",
+                code="invalid_request",
+                category="validation",
+                retryable=False,
+                http_status=400,
+                details={"field": "run_id"},
+            )
         if run_id not in self._runs and not self.event_store.event_path(run_id).exists():
-            raise ValueError("unknown run_id")
+            raise KernelError(
+                "unknown run_id",
+                code="unknown_run",
+                category="not_found",
+                retryable=False,
+                http_status=404,
+                details={"run_id": run_id},
+            )
 
     def _append(self, run_id: str, event_type: str, payload: dict[str, Any]) -> CanonicalEvent:
         event = self._build_event(run_id, event_type, payload)

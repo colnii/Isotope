@@ -154,7 +154,9 @@ def test_save_checkpoint_history_for_run_requires_checkpoint_store(tmp_path):
 
     result = api.save_checkpoint_history_for_run("run_001")
 
-    assert result == {"status": "not_enabled", "capability": "checkpoint_history"}
+    assert result["status"] == "not_enabled"
+    assert result["capability"] == "checkpoint_history"
+    assert result["error"]["code"] == "not_enabled"
     assert _history_candidate_files(tmp_path) == []
     assert not _latest_checkpoint_path(tmp_path).exists()
 
@@ -327,4 +329,8 @@ def test_save_checkpoint_for_run_remains_latest_only_and_does_not_write_history_
 def test_create_checkpoint_remains_not_enabled(tmp_path):
     api = _server_with_events(tmp_path)
 
-    assert api.create_checkpoint("run_001") == {"status": "not_enabled", "capability": "checkpoint"}
+    result = api.create_checkpoint("run_001")
+
+    assert result["status"] == "not_enabled"
+    assert result["capability"] == "checkpoint"
+    assert result["error"]["code"] == "not_enabled"

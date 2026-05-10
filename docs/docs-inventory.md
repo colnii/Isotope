@@ -67,6 +67,7 @@
 - 加上 Session / Run Lifecycle Boundary 后 tracked docs Markdown：113 个。该文档定义 session identity、run lifecycle status transition、terminal-state behavior、replay 和 checkpoint 的最小 kernel contract，不实现 product session UX、auth、real HTTP server、scheduler、process kill、real concurrency 或 run graph。
 - Session / Run Lifecycle first slice 已 green；tracked docs Markdown 数量不变。当前实现补上 `session.created` canonical event、`get_session_state(...)` event-backed read helper、`RunState` lifecycle fields、checkpoint field sync，以及 terminal ordinary-input no-side-effect guard。
 - 加上 Error Taxonomy Boundary 后 tracked docs Markdown：114 个。该文档定义 direct helper / HTTP facade structured kernel error contract，建议后续 `KernelError(ValueError)` 保持 legacy message compatibility 同时暴露 stable `code` / `category` / `retryable` / `http_status` / `details`；不实现 product error UX、public SDK、real HTTP server、provider/process/container/git-worktree errors 或 release/tag。
+- Error Taxonomy first slice 已 green；tracked docs Markdown 数量不变。当前实现补上 `src/isotope_kernel/errors.py`、`KernelError(ValueError)`、helper / HTTP mapping first paths 和 structured `not_enabled` result shape。
 
 ## 2. Current entrypoints
 
