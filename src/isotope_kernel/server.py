@@ -785,12 +785,16 @@ class InProcessServer:
         summary: str,
         content: str,
         artifact_type: str = "text",
+        basis_refs: list[ResourceRef] | None = None,
+        source_refs: list[ResourceRef] | None = None,
     ) -> dict[str, Any]:
         self._validate_existing_run_id(run_id)
         self._validate_non_empty_string("summary", summary)
         self._validate_non_empty_string("content", content)
         if artifact_type != "text":
             raise ValueError("artifact_type must be text")
+        basis_ref_payloads = self._validate_artifact_ref_list("basis_refs", basis_refs, run_id)
+        source_ref_payloads = self._validate_artifact_ref_list("source_refs", source_refs, run_id)
 
         run = self._runs[run_id]
         proposal = self.compiler.compile(
@@ -806,6 +810,10 @@ class InProcessServer:
                 "thread_id": run["thread_id"],
             },
         )
+        if basis_ref_payloads:
+            proposal.payload["basis_refs"] = basis_ref_payloads
+        if source_ref_payloads:
+            proposal.payload["source_refs"] = source_ref_payloads
         self._append(
             run_id,
             "action.proposed",
@@ -849,6 +857,8 @@ class InProcessServer:
             "artifact_summary": artifact.summary,
             "artifact_type": artifact.artifact_type,
             "provenance": dict(artifact.provenance),
+            "basis_refs": [dict(ref) for ref in artifact.basis_refs],
+            "source_refs": [dict(ref) for ref in artifact.source_refs],
             "run_state": state,
         }
 
@@ -862,7 +872,7 @@ class InProcessServer:
         basis_event = self._find_artifact_created_event(ref)
         if basis_event is None:
             raise ValueError("artifact.created event not found")
-        return {
+        record = {
             "artifact_id": ref.artifact_id,
             "artifact_type": metadata["artifact_type"],
             "summary": metadata["summary"],
@@ -872,6 +882,12 @@ class InProcessServer:
             "basis_event_type": basis_event.event_type,
             "basis_created_at": basis_event.created_at,
         }
+        artifact_payload = basis_event.payload["artifact"]
+        for field_name in ("basis_refs", "source_refs"):
+            refs = artifact_payload.get(field_name, metadata.get(field_name, []))
+            if refs:
+                record[field_name] = [dict(item) for item in refs]
+        return record
 
     def submit_worker_handoff(
         self,
@@ -1296,6 +1312,30 @@ class InProcessServer:
             if artifact.get("ref") == expected_ref:
                 return event
         return None
+
+    def _validate_artifact_ref_list(
+        self,
+        field_name: str,
+        refs: list[ResourceRef] | None,
+        run_id: str,
+    ) -> list[dict[str, str]]:
+        if refs is None:
+            return []
+        if not isinstance(refs, list):
+            raise TypeError(f"{field_name} must be a list of structured ResourceRef")
+        if not refs:
+            raise ValueError(f"{field_name} must be a non-empty list when provided")
+        payloads: list[dict[str, str]] = []
+        for index, ref in enumerate(refs):
+            if not isinstance(ref, ResourceRef):
+                raise TypeError(f"{field_name}[{index}] must be a structured ResourceRef")
+            if ref.ref_type != "artifact":
+                raise ValueError(f"{field_name}[{index}] must be an artifact ResourceRef")
+            if ref.run_id != run_id:
+                raise ValueError(f"{field_name}[{index}] run_id must match run_id")
+            self.get_artifact_record(ref)
+            payloads.append(ref.to_dict())
+        return payloads
 
     def _payload_from_imported_snapshot(self, run_id: str, snapshot: ImportedSnapshot) -> dict[str, Any]:
         self._validate_snapshot_ref_run_id(snapshot.source_ref.to_dict(), run_id, "source_ref")

@@ -89,7 +89,7 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 baseline：`1008 passed`。
+当前 baseline：`1049 passed`。
 
 ## 6. Current Batch
 
@@ -468,9 +468,27 @@ Evidence:
 
 Batch name: `Application-Layer Friction Intake`
 
-Status: `ready`
+Status: `complete; reopened by accepted derived artifact provenance friction`
 
 Goal: let aggressive-dev consume the workspace lifecycle helper slice and rerun `workspace.lifecycle.review`; only reopen mainline if it reports a new concrete `kernel_friction`.
+
+Evidence:
+
+- Review accepted aggressive-dev `spike/aggressive-dev@0a04542d05cb432dae462ca7d3406da553c58eda` `derived_artifact_basis_refs_missing` as bounded artifact provenance / read-model `kernel_friction`.
+- Mainline implemented optional `basis_refs` / `source_refs` support on `InProcessServer.create_source_artifact(...)`.
+- Refs are validated as same-run structured artifact `ResourceRef` values, persisted in `artifact.created` summary provenance, and projected through replay / checkpoint / `get_artifact_record(...)`.
+- Targeted result: `tests/isotope_kernel/test_artifact_provenance_helper.py` -> `8 passed`.
+- Focused regression: artifact provenance / source artifact setup / worker handoff / workspace lifecycle helpers -> `29 passed`.
+- Full regression with local Mac env workaround: `1049 passed`.
+- No artifact full content exposure, real worker runtime, pipeline/fan-in helper, scheduler/process spawn, container/git worktree, real HTTP server, provider adapter, public SDK, tag, or release.
+
+## 26. Next Suggested Batch
+
+Batch name: `Application-Layer Friction Intake`
+
+Status: `ready`
+
+Goal: let aggressive-dev consume the derived artifact basis refs slice and rerun `worker.handoff.provenance.review`; only reopen mainline if it reports a new concrete `kernel_friction`.
 
 ### Previous Batch Snapshot: Worker Handoff Helper Red / Green Slice
 

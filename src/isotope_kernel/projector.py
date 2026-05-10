@@ -504,6 +504,12 @@ class RunProjector:
                 value = provenance.get(field_name)
                 if not isinstance(value, str) or not value:
                     raise ValueError(f"artifact.created artifact provenance.{field_name} must be a non-empty string")
+            for field_name in ("basis_refs", "source_refs"):
+                refs = artifact.get(field_name, [])
+                if not isinstance(refs, list):
+                    raise ValueError(f"artifact.created artifact {field_name} must be a list")
+                for index, ref in enumerate(refs):
+                    self._validate_resource_ref_payload(ref, f"artifact.created artifact {field_name}[{index}]")
         elif event.event_type == "approval.requested":
             self._require_fields(
                 event.event_type,
@@ -1107,14 +1113,17 @@ class RunProjector:
                 state.status = "denied"
         elif event.event_type == "artifact.created":
             artifact = dict(payload["artifact"])
-            state.artifacts.append(
-                {
-                    "ref": dict(artifact["ref"]),
-                    "artifact_type": artifact["artifact_type"],
-                    "summary": artifact["summary"],
-                    "provenance": dict(artifact["provenance"]),
-                }
-            )
+            projected_artifact = {
+                "ref": dict(artifact["ref"]),
+                "artifact_type": artifact["artifact_type"],
+                "summary": artifact["summary"],
+                "provenance": dict(artifact["provenance"]),
+            }
+            if artifact.get("basis_refs"):
+                projected_artifact["basis_refs"] = [dict(ref) for ref in artifact["basis_refs"]]
+            if artifact.get("source_refs"):
+                projected_artifact["source_refs"] = [dict(ref) for ref in artifact["source_refs"]]
+            state.artifacts.append(projected_artifact)
         elif event.event_type == "action.completed":
             execution_id = str(payload["execution_id"])
             action = state.actions.setdefault(execution_id, {"execution_id": execution_id})
@@ -1972,6 +1981,12 @@ class RunProjector:
         for field in self.CHECKPOINT_ARTIFACT_FIELDS:
             if field not in artifact:
                 raise ValueError(f"checkpoint artifact entry missing required field: {field}")
+        for field_name in ("basis_refs", "source_refs"):
+            refs = artifact.get(field_name, [])
+            if not isinstance(refs, list):
+                raise ValueError(f"checkpoint artifact {field_name} must be a list")
+            for index, ref in enumerate(refs):
+                self._validate_resource_ref_payload(ref, f"checkpoint artifact {field_name}[{index}]")
 
     def _validate_checkpoint_approval(self, approval_id: Any, approval: Any) -> None:
         if not isinstance(approval_id, str) or not approval_id:

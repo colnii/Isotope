@@ -82,6 +82,8 @@ class Executor:
                 content=str(proposal.payload.get("text", "")),
                 proposal_id=proposal.proposal_id,
                 decision_id=decision.decision_id,
+                basis_refs=proposal.payload.get("basis_refs"),
+                source_refs=proposal.payload.get("source_refs"),
             )
         except Exception as exc:
             self._append_failed(proposal, decision, execution_id, exc)
@@ -173,18 +175,17 @@ class Executor:
         )
 
     def _append_artifact_created(self, run_id: str, artifact) -> CanonicalEvent:
-        return self._append(
-            run_id,
-            "artifact.created",
-            {
-                "artifact": {
-                    "ref": artifact.ref.to_dict(),
-                    "artifact_type": artifact.artifact_type,
-                    "summary": artifact.summary,
-                    "provenance": dict(artifact.provenance),
-                }
-            },
-        )
+        artifact_payload = {
+            "ref": artifact.ref.to_dict(),
+            "artifact_type": artifact.artifact_type,
+            "summary": artifact.summary,
+            "provenance": dict(artifact.provenance),
+        }
+        if artifact.basis_refs:
+            artifact_payload["basis_refs"] = [dict(ref) for ref in artifact.basis_refs]
+        if artifact.source_refs:
+            artifact_payload["source_refs"] = [dict(ref) for ref in artifact.source_refs]
+        return self._append(run_id, "artifact.created", {"artifact": artifact_payload})
 
     def _append_action_completed(self, run_id: str, execution: ActionExecution, artifact) -> CanonicalEvent:
         return self._append(

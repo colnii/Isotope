@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from .refs import ResourceRef
@@ -73,6 +73,8 @@ class Artifact:
     summary: str
     content: str
     provenance: dict[str, Any]
+    basis_refs: list[dict[str, Any]] = field(default_factory=list)
+    source_refs: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

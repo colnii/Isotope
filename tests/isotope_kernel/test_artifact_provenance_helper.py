@@ -5,6 +5,8 @@ from typing import Any
 import pytest
 
 from isotope_kernel.http_api import create_http_app
+from isotope_kernel.checkpoint_store import FileCheckpointStore
+from isotope_kernel.projector import RunProjector
 from isotope_kernel.refs import make_artifact_ref
 from isotope_kernel.server import InProcessServer
 
@@ -113,3 +115,72 @@ def test_get_artifact_record_does_not_open_http_full_content_route(tmp_path):
 
     assert response.status_code == 501
     assert response.body["error"]["code"] == "not_enabled"
+
+
+def test_source_artifact_helper_preserves_basis_refs_in_summary_provenance(tmp_path):
+    api, run_id = _new_run(tmp_path)
+    upstream = _source_artifact(api, run_id)
+
+    derived = api.create_source_artifact(
+        run_id,
+        summary="derived manifest summary",
+        content="derived manifest durable content",
+        basis_refs=[upstream["artifact_ref"]],
+        source_refs=[upstream["artifact_ref"]],
+    )
+    record = api.get_artifact_record(derived["artifact_ref"])
+
+    expected_refs = [upstream["artifact_ref"].to_dict()]
+    assert derived["basis_refs"] == expected_refs
+    assert derived["source_refs"] == expected_refs
+    assert record["basis_refs"] == expected_refs
+    assert record["source_refs"] == expected_refs
+    _assert_no_forbidden_content_keys(record)
+    assert "derived manifest durable content" not in repr(record)
+
+
+def test_source_artifact_basis_refs_replay_and_checkpoint_without_content(tmp_path):
+    checkpoint_store = FileCheckpointStore(tmp_path / "checkpoints")
+    api = InProcessServer(tmp_path, checkpoint_store=checkpoint_store)
+    session = api.create_session()
+    run = api.create_run(session["session_id"], goal="artifact basis replay")
+    run_id = run["run_id"]
+    upstream = _source_artifact(api, run_id)
+
+    derived = api.create_source_artifact(
+        run_id,
+        summary="derived manifest summary",
+        content="derived manifest durable content",
+        basis_refs=[upstream["artifact_ref"]],
+        source_refs=[upstream["artifact_ref"]],
+    )
+    replay_state = RunProjector().rebuild(run_id, api.event_store)
+    RunProjector().save_checkpoint(run_id, api.event_store, checkpoint_store)
+    checkpoint_state = RunProjector().rebuild_with_checkpoint(run_id, api.event_store, checkpoint_store)
+
+    expected_refs = [upstream["artifact_ref"].to_dict()]
+    for state in (replay_state, checkpoint_state):
+        artifact = next(
+            artifact
+            for artifact in state.artifacts
+            if artifact["ref"] == derived["artifact_ref"].to_dict()
+        )
+        assert artifact["basis_refs"] == expected_refs
+        assert artifact["source_refs"] == expected_refs
+        _assert_no_forbidden_content_keys(artifact)
+
+
+def test_source_artifact_basis_refs_require_structured_resource_refs(tmp_path):
+    api, run_id = _new_run(tmp_path)
+    upstream = _source_artifact(api, run_id)
+    before_events = list(api.get_events(run_id))
+
+    with pytest.raises(TypeError, match="basis_refs\\[0\\].*structured ResourceRef"):
+        api.create_source_artifact(
+            run_id,
+            summary="derived manifest summary",
+            content="derived manifest durable content",
+            basis_refs=[upstream["artifact_ref"].to_dict()],
+        )
+
+    assert api.get_events(run_id) == before_events

@@ -31,6 +31,8 @@ class ArtifactStore:
         content: str,
         proposal_id: str | None = None,
         decision_id: str | None = None,
+        basis_refs: list[dict[str, Any]] | None = None,
+        source_refs: list[dict[str, Any]] | None = None,
     ) -> Artifact:
         artifact_id = new_id("artifact")
         provenance = {"execution_id": execution_id}
@@ -46,6 +48,8 @@ class ArtifactStore:
             summary=summary,
             content=content,
             provenance=provenance,
+            basis_refs=[dict(ref) for ref in basis_refs or []],
+            source_refs=[dict(ref) for ref in source_refs or []],
         )
         self._artifacts[artifact.artifact_id] = artifact
         self._write_artifact(artifact)
@@ -81,6 +85,10 @@ class ArtifactStore:
         }
         if include_provenance:
             metadata["provenance"] = dict(artifact.provenance)
+        if artifact.basis_refs:
+            metadata["basis_refs"] = [dict(ref) for ref in artifact.basis_refs]
+        if artifact.source_refs:
+            metadata["source_refs"] = [dict(ref) for ref in artifact.source_refs]
         return metadata
 
     def get_content(self, artifact_ref: ResourceRef | str) -> str:
@@ -90,20 +98,25 @@ class ArtifactStore:
         path = self.artifact_path(artifact.run_id, artifact.artifact_id)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
-            json.dumps(
-                {
-                    "artifact_id": artifact.artifact_id,
-                    "run_id": artifact.run_id,
-                    "ref": artifact.ref.to_dict(),
-                    "artifact_type": artifact.artifact_type,
-                    "summary": artifact.summary,
-                    "content": artifact.content,
-                    "provenance": artifact.provenance,
-                },
-                sort_keys=True,
-            ),
+            json.dumps(self._artifact_to_dict(artifact), sort_keys=True),
             encoding="utf-8",
         )
+
+    def _artifact_to_dict(self, artifact: Artifact) -> dict[str, Any]:
+        data: dict[str, Any] = {
+            "artifact_id": artifact.artifact_id,
+            "run_id": artifact.run_id,
+            "ref": artifact.ref.to_dict(),
+            "artifact_type": artifact.artifact_type,
+            "summary": artifact.summary,
+            "content": artifact.content,
+            "provenance": artifact.provenance,
+        }
+        if artifact.basis_refs:
+            data["basis_refs"] = [dict(ref) for ref in artifact.basis_refs]
+        if artifact.source_refs:
+            data["source_refs"] = [dict(ref) for ref in artifact.source_refs]
+        return data
 
     def _get_artifact(self, artifact_ref: ResourceRef | str) -> Artifact:
         if isinstance(artifact_ref, ResourceRef):
@@ -151,4 +164,6 @@ class ArtifactStore:
             summary=data["summary"],
             content=data["content"],
             provenance=dict(data["provenance"]),
+            basis_refs=[dict(ref) for ref in data.get("basis_refs", [])],
+            source_refs=[dict(ref) for ref in data.get("source_refs", [])],
         )
