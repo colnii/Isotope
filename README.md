@@ -43,6 +43,7 @@ python3 -m venv .venv
 - Demo trace mode: `--trace` is available for `v0.2`, `approval-tool-runner`, `artifact-review`, and `external-snapshot-review` to print human-readable runtime steps; default plain output and `--json` remain compatible, and trace does not expose artifact full content.
 - Session / run creation through the in-process kernel path.
 - Minimal event-backed Session / Run Lifecycle slice: `session.created`, `get_session_state(...)`, run lifecycle checkpoint fields, and terminal ordinary-input no-side-effect rejection.
+- Error Taxonomy boundary: accepted `unstructured_kernel_helper_errors` pressure is now documented; next implementation slice should introduce a minimal structured `KernelError(ValueError)` compatibility layer for helper / HTTP mapping without product error UX or public SDK.
 - `ActionCompiler -> PolicyEngine -> Executor` action chain with `PolicyDecision.grants` enforcement.
 - Artifact creation with execution provenance and structured refs.
 - Controlled artifact content retrieval boundary through structured `ResourceRef`, explicit grants, caller context, and purpose; HTTP full-content route remains deferred / not enabled.
@@ -122,6 +123,7 @@ python3 -m venv .venv
 - Tool protocol closure review: [docs/tool-protocol-closure-review.md](docs/tool-protocol-closure-review.md)
 - Worker handoff app spike selection: [docs/worker-handoff-app-spike-selection.md](docs/worker-handoff-app-spike-selection.md)
 - Session / run lifecycle boundary: [docs/session-run-lifecycle-boundary-v0.2.md](docs/session-run-lifecycle-boundary-v0.2.md)
+- Error taxonomy boundary: [docs/error-taxonomy-boundary-v0.2.md](docs/error-taxonomy-boundary-v0.2.md)
 - External review package: [docs/external-review-package-v0.2.md](docs/external-review-package-v0.2.md)
 - Post external review checkpoint: [docs/post-external-review-checkpoint.md](docs/post-external-review-checkpoint.md)
 - Mainline idle checkpoint: [docs/mainline-idle-checkpoint.md](docs/mainline-idle-checkpoint.md)

@@ -290,9 +290,51 @@ Evidence:
 
 Batch name: `Application-Layer Friction Intake`
 
-Status: `ready`
+Status: `complete`
 
 Goal: let aggressive-dev rerun `run.lifecycle.review` against the updated mainline shape; only reopen mainline if it reports a new concrete `kernel_friction`.
+
+Evidence:
+
+- Aggressive-dev `run.lifecycle.review` consumed mainline `664d14b` and returned `kernel_friction=[]`.
+- Aggressive-dev `error.taxonomy.review` exposed new accepted `kernel_friction`: `unstructured_kernel_helper_errors`.
+- Review accepted the friction and requested an `Error Taxonomy Boundary` before red tests / implementation.
+
+## 16. Current Batch
+
+Batch name: `Error Taxonomy Boundary`
+
+Status: `complete`
+
+Type: docs-only boundary
+
+Goal: define the minimum structured kernel error contract for direct helpers and HTTP facade mapping without product error UX or public SDK.
+
+Evidence:
+
+- Boundary doc: `docs/error-taxonomy-boundary-v0.2.md`.
+- Scope: docs-only; no `src/`, `tests`, `.github`, or `pyproject.toml` changes.
+- Contract: future `KernelError(ValueError)` should preserve legacy message compatibility while exposing stable `code`, `category`, `retryable`, optional `http_status`, and low-sensitive `details`.
+- Deferred: product error UX, public SDK, real HTTP server, provider / webhook, process supervisor, container, git worktree, plugin error registry, tag, and release.
+
+## 17. Next Suggested Batch
+
+Batch name: `Error Taxonomy Red Tests`
+
+Status: `ready for review`
+
+Goal: write red tests for `KernelError` compatibility and first helper / HTTP mapping paths before implementation.
+
+Suggested tests:
+
+1. `tests/isotope_kernel/test_kernel_error_taxonomy_boundary.py`
+2. `tests/isotope_kernel/test_http_error_mapping_boundary.py`
+
+Stop conditions:
+
+- tests require product error UX, public SDK, real HTTP server, provider adapter, process supervisor, container, git worktree, dependency changes, tag, or release
+- tests require changing event-store append-only semantics or executor grants semantics
+- tests require leaking raw content, provider payloads, or secrets into `details`
 
 ### Previous Batch Snapshot: Worker Handoff Helper Red / Green Slice
 
