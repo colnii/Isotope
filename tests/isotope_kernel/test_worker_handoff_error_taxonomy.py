@@ -44,6 +44,16 @@ def _assert_no_partial_worker_events(api: InProcessServer, run_id: str, before_e
     assert _worker_events(api, run_id) == []
 
 
+def _assert_denied_delegation_audit_without_worker_events(api: InProcessServer, run_id: str, before_events):
+    appended = api.get_events(run_id)[len(before_events):]
+    assert [event.event_type for event in appended] == [
+        "delegation.proposed",
+        "delegation.decided",
+    ]
+    assert appended[1].payload["outcome"] == "denied"
+    assert [event for event in api.get_events(run_id) if event.event_type.startswith("worker.")] == []
+
+
 def _assert_kernel_error(
     error: BaseException,
     *,
@@ -158,4 +168,4 @@ def test_worker_handoff_policy_denial_preserves_permission_error_compatibility_a
     assert getattr(error, "retryable", None) is False
     assert getattr(error, "http_status", None) == 403
     assert getattr(error, "details", {}).get("reason_codes") == ["tool_not_requested"]
-    _assert_no_partial_worker_events(api, run_id, before_events)
+    _assert_denied_delegation_audit_without_worker_events(api, run_id, before_events)

@@ -577,6 +577,23 @@ Evidence:
 - Focused regression: restart write helper / artifact provenance / source artifact setup / worker handoff -> `29 passed`.
 - Full regression currently has the known local packaging smoke `ensurepip` errors: `1058 passed, 4 errors`; non-packaging kernel tests were otherwise green.
 
+## 31. Current Batch
+
+Batch name: `Denied Worker Handoff Audit Green Slice`
+
+Status: `complete; pending review`
+
+Goal: close accepted aggressive-dev `denied_worker_handoff_audit_missing` without opening real worker runtime, scheduler/process supervisor, process spawn, container/git worktree, real HTTP, provider adapter, public SDK, new dependency, tag, or release.
+
+Evidence:
+
+- Review accepted aggressive-dev `spike/aggressive-dev@56a8d533d9f96b48f9dad848c6c6dd90ef505615` `worker.handoff.denial.audit.review` as bounded `kernel_friction`.
+- Added red coverage to `tests/isotope_kernel/test_worker_handoff_helper.py`: denied `submit_worker_handoff(...)` must still raise structured `KernelPermissionError`, but append canonical `delegation.proposed` + `delegation.decided(outcome=denied)` so `RunState.delegations` can audit the denied decision.
+- Updated worker handoff error taxonomy coverage to treat the two delegation audit events as intentional canonical audit, while still requiring no `worker.*` events.
+- Implemented denied-path candidate replay and append for delegation audit events before raising `KernelPermissionError`; no worker ids/events are created for denied decisions.
+- Targeted denied audit / taxonomy tests -> `2 passed`.
+- Focused worker handoff / error taxonomy / delegation read-model tests -> `17 passed`.
+
 ### Previous Batch Snapshot: Worker Handoff Helper Red / Green Slice
 
 Batch name: `Worker Handoff Helper Red / Green Slice`

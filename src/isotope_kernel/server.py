@@ -1073,20 +1073,8 @@ class InProcessServer:
 
         delegation_id = new_id("deleg")
         decision_id = new_id("dec")
-        worker_id = new_id("worker")
-        agent_id = new_id("agent_worker")
         grants, outcome, reason_codes = self._derive_worker_handoff_grants(intent["requested_capabilities"])
-        if outcome == "denied":
-            raise KernelPermissionError(
-                "worker handoff denied by policy",
-                code="worker_handoff_denied",
-                category="policy",
-                retryable=False,
-                http_status=403,
-                details={"reason_codes": list(reason_codes)},
-            )
-
-        candidate_events = [
+        decision_events = [
             self._build_event(
                 run_id,
                 "delegation.proposed",
@@ -1115,6 +1103,25 @@ class InProcessServer:
                     },
                 },
             ),
+        ]
+        if outcome == "denied":
+            existing_events = self.event_store.list_events(run_id)
+            RunProjector().project([*existing_events, *decision_events])
+            for event in decision_events:
+                self.event_store.append(event)
+            raise KernelPermissionError(
+                "worker handoff denied by policy",
+                code="worker_handoff_denied",
+                category="policy",
+                retryable=False,
+                http_status=403,
+                details={"reason_codes": list(reason_codes)},
+            )
+
+        worker_id = new_id("worker")
+        agent_id = new_id("agent_worker")
+        candidate_events = [
+            *decision_events,
             self._build_event(
                 run_id,
                 "worker.created",

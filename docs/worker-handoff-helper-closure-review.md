@@ -16,6 +16,8 @@ This is sufficient to mark Worker Handoff Helper first slice complete / closed f
 - rejects forged `decision`, forged `grants`, or app-supplied effective grants
 - rejects malformed delegation intent before appending worker events
 - rejects malformed or unknown artifact refs before appending worker events
+- records denied policy decisions as canonical `delegation.proposed` + `delegation.decided(outcome=denied)` audit entries while preserving structured `KernelPermissionError`
+- denied policy decisions do not append `worker.*` events and do not create worker read-model entries
 - validates the candidate event sequence with `RunProjector` before append
 - appends canonical `delegation.proposed`, `delegation.decided`, `worker.created`, `worker.started`, `worker.result_handed_off`, and `worker.completed`
 - returns copied projected worker summary and result ref

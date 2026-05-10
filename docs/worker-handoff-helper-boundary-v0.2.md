@@ -84,6 +84,7 @@ Current coverage:
 - helper accepts structured delegation intent plus an existing artifact `ResourceRef`
 - helper rejects forged decision / grants in app input
 - helper rejects malformed intent and malformed or unknown artifact refs without partial worker events
+- denied policy path appends canonical `delegation.proposed` + `delegation.decided(outcome=denied)` for audit while preserving structured error compatibility
 - helper appends canonical `delegation.proposed`, `delegation.decided`, `worker.created`, `worker.started`, `worker.result_handed_off`, and `worker.completed`
 - helper returns copied projected worker summary and result ref
 - replay and checkpoint-assisted rebuild restore worker handoff summary
@@ -110,6 +111,7 @@ Test goals:
 - helper rejects malformed artifact ref.
 - helper does not expose full artifact content.
 - helper fails closed without partial worker state on invalid input.
+- denied policy path is auditable through `RunState.delegations` without `worker.*` events.
 - replay restores worker handoff summary.
 - checkpoint-assisted rebuild restores worker handoff summary.
 - demo / app layer no longer needs private `server._append(...)` for worker handoff setup.

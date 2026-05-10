@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from isotope_kernel import checkpoint_store, event_store, projector
+from isotope_kernel.errors import KernelPermissionError
 from isotope_kernel.refs import ResourceRef, make_artifact_ref
 from isotope_kernel.server import InProcessServer
 
@@ -139,6 +140,43 @@ def test_worker_handoff_helper_rejects_unknown_artifact_ref_without_partial_even
 
     assert api.get_events(run_id) == before_events
     assert _worker_events(api, run_id) == []
+
+
+def test_worker_handoff_helper_projects_denied_delegation_audit_without_worker_events(tmp_path):
+    api, run_id = _server_with_run(tmp_path)
+    artifact_ref = _source_artifact_ref(api, run_id)
+    intent = _delegation_intent()
+    intent["requested_capabilities"]["tools"] = []
+    before_events = list(api.get_events(run_id))
+
+    with pytest.raises(KernelPermissionError) as raised:
+        _submit_worker_handoff(api, run_id, artifact_ref=artifact_ref, delegation_intent=intent)
+
+    assert raised.value.code == "worker_handoff_denied"
+    assert raised.value.category == "policy"
+    assert raised.value.retryable is False
+
+    after_events = list(api.get_events(run_id))
+    appended = after_events[len(before_events):]
+    assert [event.event_type for event in appended] == [
+        "delegation.proposed",
+        "delegation.decided",
+    ]
+    assert appended[1].payload["outcome"] == "denied"
+    assert appended[1].payload["reason_codes"] == ["tool_not_requested"]
+    assert [event for event in after_events if event.event_type.startswith("worker.")] == []
+
+    state = api.get_run_state(run_id)
+    delegation_id = appended[0].payload["delegation_id"]
+    assert state.delegations[delegation_id]["status"] == "denied"
+    assert state.delegations[delegation_id]["outcome"] == "denied"
+    assert state.delegations[delegation_id]["reason_codes"] == ["tool_not_requested"]
+    assert state.delegations[delegation_id]["grants"] == {
+        "tools": [],
+        "workspace": {"mode": "none"},
+        "budget": {"seconds": 0},
+    }
+    assert state.workers == {}
 
 
 def test_worker_handoff_helper_replay_restores_worker_summary(tmp_path):
