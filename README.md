@@ -43,7 +43,7 @@ python3 -m venv .venv
 - Demo trace mode: `--trace` is available for `v0.2`, `approval-tool-runner`, `artifact-review`, and `external-snapshot-review` to print human-readable runtime steps; default plain output and `--json` remain compatible, and trace does not expose artifact full content.
 - Session / run creation through the in-process kernel path.
 - Minimal event-backed Session / Run Lifecycle slice: `session.created`, `get_session_state(...)`, run lifecycle checkpoint fields, and terminal ordinary-input no-side-effect rejection.
-- Error Taxonomy first slice: minimal `KernelError(ValueError)` compatibility layer for helper / HTTP mapping, covering terminal run, unknown run/session, invalid request, and `not_enabled` without product error UX or public SDK.
+- Error Taxonomy first slice: minimal `KernelError(ValueError)` compatibility layer for helper / HTTP mapping, covering terminal run, unknown run/session, invalid request, `not_enabled`, and worker handoff helper rejection paths without product error UX or public SDK.
 - `ActionCompiler -> PolicyEngine -> Executor` action chain with `PolicyDecision.grants` enforcement.
 - Artifact creation with execution provenance and structured refs.
 - Controlled artifact content retrieval boundary through structured `ResourceRef`, explicit grants, caller context, and purpose; HTTP full-content route remains deferred / not enabled.

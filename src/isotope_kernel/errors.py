@@ -58,6 +58,39 @@ class KernelError(ValueError):
         self.details = safe_details
 
 
+class KernelPermissionError(PermissionError):
+    """Permission-compatible structured kernel error for policy denials."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str,
+        category: str,
+        retryable: bool,
+        http_status: int | None = None,
+        details: dict[str, Any] | None = None,
+    ):
+        _validate_string("message", message)
+        _validate_string("code", code)
+        if not code.replace("_", "").isalnum() or code != code.lower():
+            raise ValueError("code must be stable snake_case")
+        if category not in _CATEGORIES:
+            raise ValueError("category must be a known kernel error category")
+        if not isinstance(retryable, bool):
+            raise ValueError("retryable must be a bool")
+        if http_status is not None and (not isinstance(http_status, int) or http_status < 100):
+            raise ValueError("http_status must be an integer status code")
+        safe_details = dict(details or {})
+        _validate_details(safe_details)
+        super().__init__(message)
+        self.code = code
+        self.category = category
+        self.retryable = retryable
+        self.http_status = http_status
+        self.details = safe_details
+
+
 def not_enabled_result(capability: str) -> dict[str, Any]:
     _validate_string("capability", capability)
     return {
@@ -83,5 +116,13 @@ def _validate_details(details: dict[str, Any]) -> None:
     for key, value in details.items():
         if key in _FORBIDDEN_DETAIL_KEYS:
             raise ValueError("details cannot include raw content, provider payloads, or secrets")
-        if isinstance(value, (dict, list, tuple, set)):
+        if isinstance(value, (list, tuple)):
+            if not all(_is_safe_scalar(item) for item in value):
+                raise ValueError("details values must be low-sensitive scalar metadata")
+            continue
+        if isinstance(value, (dict, set)) or not _is_safe_scalar(value):
             raise ValueError("details values must be low-sensitive scalar metadata")
+
+
+def _is_safe_scalar(value: object) -> bool:
+    return value is None or isinstance(value, (str, int, float, bool))

@@ -12,7 +12,7 @@ from .artifact_store import ArtifactStore
 from .event_store import FileEventStore
 from .events import CanonicalEvent
 from .executor import Executor
-from .errors import KernelError, not_enabled_result
+from .errors import KernelError, KernelPermissionError, not_enabled_result
 from .ids import new_id
 from .models import ImportedSnapshot, PolicyDecision
 from .policy import PolicyEngine
@@ -740,9 +740,25 @@ class InProcessServer:
         try:
             artifact_record = self.get_artifact_record(artifact_ref)
         except FileNotFoundError as exc:
-            raise ValueError("unknown artifact ResourceRef") from exc
+            artifact_id = getattr(artifact_ref, "artifact_id", None)
+            artifact_run_id = getattr(artifact_ref, "run_id", None)
+            raise KernelError(
+                "unknown artifact ResourceRef",
+                code="worker_handoff_unknown_artifact",
+                category="not_found",
+                retryable=False,
+                http_status=404,
+                details={"run_id": artifact_run_id, "artifact_id": artifact_id},
+            ) from exc
         if artifact_ref.run_id != run_id:
-            raise ValueError("artifact_ref run_id must match run_id")
+            raise KernelError(
+                "artifact_ref run_id must match run_id",
+                code="worker_handoff_invalid_artifact_ref",
+                category="validation",
+                retryable=False,
+                http_status=400,
+                details={"run_id": run_id, "artifact_run_id": artifact_ref.run_id},
+            )
 
         delegation_id = new_id("deleg")
         decision_id = new_id("dec")
@@ -750,7 +766,14 @@ class InProcessServer:
         agent_id = new_id("agent_worker")
         grants, outcome, reason_codes = self._derive_worker_handoff_grants(intent["requested_capabilities"])
         if outcome == "denied":
-            raise PermissionError("worker handoff denied by policy")
+            raise KernelPermissionError(
+                "worker handoff denied by policy",
+                code="worker_handoff_denied",
+                category="policy",
+                retryable=False,
+                http_status=403,
+                details={"reason_codes": list(reason_codes)},
+            )
 
         candidate_events = [
             self._build_event(
@@ -942,9 +965,23 @@ class InProcessServer:
 
     def _validate_worker_handoff_intent(self, intent: object) -> dict[str, Any]:
         if not isinstance(intent, dict) or not intent:
-            raise ValueError("delegation intent must be a non-empty dict")
+            raise KernelError(
+                "delegation intent must be a non-empty dict",
+                code="worker_handoff_invalid_intent",
+                category="validation",
+                retryable=False,
+                http_status=400,
+                details={"field": "delegation_intent"},
+            )
         if "decision" in intent or "grants" in intent or "effective_grants" in intent:
-            raise ValueError("delegation intent cannot include forged decision or grants")
+            raise KernelError(
+                "delegation intent cannot include forged decision or grants",
+                code="worker_handoff_forged_grants",
+                category="policy",
+                retryable=False,
+                http_status=403,
+                details={"field": "delegation_intent"},
+            )
         parent_agent_id = intent.get("parent_agent_id")
         requested_worker_role = intent.get("requested_worker_role")
         requested_capabilities = intent.get("requested_capabilities")

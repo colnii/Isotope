@@ -69,6 +69,7 @@
 - 加上 Error Taxonomy Boundary 后 tracked docs Markdown：114 个。该文档定义 direct helper / HTTP facade structured kernel error contract，建议后续 `KernelError(ValueError)` 保持 legacy message compatibility 同时暴露 stable `code` / `category` / `retryable` / `http_status` / `details`；不实现 product error UX、public SDK、real HTTP server、provider/process/container/git-worktree errors 或 release/tag。
 - Error Taxonomy first slice 已 green；tracked docs Markdown 数量不变。当前实现补上 `src/isotope_kernel/errors.py`、`KernelError(ValueError)`、helper / HTTP mapping first paths 和 structured `not_enabled` result shape。
 - 加上 Error Taxonomy Closure Review 后 tracked docs Markdown：115 个。Error Taxonomy first slice 已 complete / closed for now；当前建议回到 application-layer friction intake，让 aggressive-dev 消费 stable `KernelError` 行为后再决定是否重开 mainline。
+- Worker Handoff Error Taxonomy slice 已 green；tracked docs Markdown 数量不变。当前实现把 worker handoff malformed intent、forged grants、unknown artifact ref 和 policy denied rejection 纳入 structured error taxonomy，同时保留 policy denial `PermissionError` compatibility 和 no partial delegation / worker events。
 
 ## 2. Current entrypoints
 

@@ -381,6 +381,26 @@ Evidence:
 
 ## 20. Next Suggested Batch
 
+Batch name: `Worker Handoff Error Taxonomy Slice`
+
+Status: `complete`
+
+Goal: consume accepted aggressive-dev `unstructured_worker_handoff_errors` pressure and add structured taxonomy attrs to worker handoff helper rejection paths without changing append semantics.
+
+Evidence:
+
+- Added `tests/isotope_kernel/test_worker_handoff_error_taxonomy.py`.
+- Targeted red before implementation: `4 failed`.
+- Implemented structured worker handoff rejection errors for malformed intent, forged grants, unknown artifact ref, and policy denied.
+- Policy denial preserves `PermissionError` compatibility while exposing `code=worker_handoff_denied`, `category=policy`, `retryable=False`, `http_status=403`, and `details.reason_codes`.
+- Validation / forged grants / unknown artifact use `KernelError(ValueError)` compatibility.
+- No partial delegation / worker events on all tested rejection paths.
+- Targeted worker handoff result: `13 passed`.
+- Error taxonomy regression result: `12 passed`.
+- No real worker runtime / scheduler / process spawn / HTTP route / provider / product UX / SDK / tag / release.
+
+## 21. Next Suggested Batch
+
 Batch name: `Application-Layer Friction Intake`
 
 Status: `ready`
