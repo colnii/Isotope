@@ -508,12 +508,13 @@ Evidence:
 - Added `docs/tool-invocation-runtime-wiring-boundary-v0.2.md`.
 - Added red tests in `tests/isotope_kernel/test_tool_invocation_runtime_wiring.py`; initial red result was `2 failed, 1 passed` at `Executor.__init__() got an unexpected keyword argument 'tool_handlers'`.
 - Implemented optional `Executor(..., tool_handlers={...})` for explicit deterministic in-process handlers.
+- Implemented optional `InProcessServer(..., tool_handlers={...})` and facade forwarding to `Executor`.
 - `Executor` now constructs `ToolInvocation` from proposal / decision / execution / effective grants / budget / workspace binding and passes it to the handler.
 - Requested capabilities are capped to effective grants before entering `ToolInvocation`; forged requested tools are not passed through.
 - Ungranted tool still fails before handler invocation and leaves only `action.started` / `action.failed`.
 - Existing `write_artifact_tool` deterministic artifact path remains unchanged.
-- Targeted result: `tests/isotope_kernel/test_tool_invocation_runtime_wiring.py` -> `3 passed`.
-- Focused regression: tool invocation runtime / tool protocol / tool result event / executor registry -> `27 passed`.
+- Targeted result: `tests/isotope_kernel/test_tool_invocation_runtime_wiring.py` -> `5 passed`.
+- Focused regression: tool invocation runtime / tool protocol / tool result event / executor registry / server action registry wiring -> `34 passed`.
 
 ### Previous Batch Snapshot: Worker Handoff Helper Red / Green Slice
 

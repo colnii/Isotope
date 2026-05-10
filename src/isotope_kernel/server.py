@@ -11,7 +11,7 @@ from .action_registry import ActionTypeRegistry
 from .artifact_store import ArtifactStore
 from .event_store import FileEventStore
 from .events import CanonicalEvent
-from .executor import Executor
+from .executor import Executor, ToolHandler
 from .errors import KernelError, KernelPermissionError, not_enabled_result
 from .ids import new_id
 from .models import ImportedSnapshot, PolicyDecision
@@ -30,6 +30,7 @@ class InProcessServer:
         root: Path,
         checkpoint_store=None,
         registry: ActionTypeRegistry | None = None,
+        tool_handlers: dict[str, ToolHandler] | None = None,
     ):
         self.root = Path(root)
         self.event_store = FileEventStore(self.root)
@@ -44,6 +45,7 @@ class InProcessServer:
             artifact_store=self.artifact_store,
             workspace_manager=self.workspace_manager,
             registry=self.registry,
+            tool_handlers=tool_handlers,
         )
         self.retrieval = RetrievalService(self.artifact_store)
         self._sessions: dict[str, dict[str, Any]] = {}
@@ -465,17 +467,19 @@ class InProcessServer:
                 "run_state": self.get_run_state(run_id),
             }
 
-        artifact = self.artifact_store.list_artifacts(run_id)[-1]
         self._append(run_id, "run.completed", {"status": "completed"})
 
         state = self.get_run_state(run_id)
-        return {
+        result = {
             **result_base,
             "status": state.status,
             "run_state": state,
-            "artifact_ref": artifact.ref,
             "execution_id": execution.execution_id,
         }
+        artifacts = self.artifact_store.list_artifacts(run_id)
+        if artifacts:
+            result["artifact_ref"] = artifacts[-1].ref
+        return result
 
     def resolve_approval(self, approval_id: str, resolution: dict[str, Any]) -> dict[str, Any]:
         self._validate_non_empty_string("approval_id", approval_id)
@@ -548,15 +552,16 @@ class InProcessServer:
             self._resolved_approvals[approval_id] = result
             return result
 
-        artifact = self.artifact_store.list_artifacts(run_id)[-1]
         self._append(run_id, "run.completed", {"status": "completed"})
         state = self.get_run_state(run_id)
         result = {
             "status": state.status,
             "run_state": state,
-            "artifact_ref": artifact.ref,
             "execution_id": execution.execution_id,
         }
+        artifacts = self.artifact_store.list_artifacts(run_id)
+        if artifacts:
+            result["artifact_ref"] = artifacts[-1].ref
         self._resolved_approvals[approval_id] = result
         return result
 

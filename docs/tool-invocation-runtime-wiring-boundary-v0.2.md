@@ -11,6 +11,7 @@
 这说明缺口不是 plugin marketplace、remote executor 或 public SDK，而是一个更窄的 runtime wiring gap：
 
 - executor 能接收 optional explicit deterministic in-process handler map：`tool_handlers={...}`。
+- `InProcessServer` facade 能接收同一 `tool_handlers` map 并转发给 `Executor`。
 - executor 从 `ActionProposal`、`PolicyDecision`、execution id、effective grants、budget 和 workspace binding 构造 `ToolInvocation`。
 - handler 只收到 capped effective capabilities，不能从 `requested_capabilities` 扩权。
 - ungranted / disabled / unknown tool 仍在 handler 运行前 fail closed。
@@ -59,6 +60,7 @@ This slice must not introduce:
 Implemented:
 
 - add optional `tool_handlers` to `Executor`.
+- add optional `tool_handlers` to `InProcessServer` and forward it to `Executor`.
 - preserve existing deterministic `write_artifact_tool` behavior.
 - for non-`write_artifact_tool` registered tools, require an explicit handler.
 - construct and pass `ToolInvocation` with decision grants snapshot, capped requested capabilities, budget, provenance, and projected workspace binding.

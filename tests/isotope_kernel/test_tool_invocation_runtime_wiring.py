@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from isotope_kernel import action_registry, artifact_store, event_store, executor, models, workspace
+from isotope_kernel import action_registry, artifact_store, event_store, executor, models, server, workspace
 from isotope_kernel.tool_protocol import ToolInvocation, ToolResult
 
 
@@ -129,3 +129,72 @@ def test_tool_invocation_runtime_does_not_add_overreach_surfaces():
     assert not hasattr(executor.Executor, "load_plugin")
     assert not hasattr(executor.Executor, "spawn_sandboxed_process")
     assert not hasattr(executor.Executor, "call_remote_tool")
+
+
+def test_in_process_server_forwards_tool_handlers_to_executor(tmp_path):
+    calls: list[ToolInvocation] = []
+
+    def handler(invocation: ToolInvocation) -> ToolResult:
+        calls.append(invocation)
+        return ToolResult(
+            result_summary="probe handled through facade",
+            diagnostics=[{"kind": "probe", "text": invocation.input_payload["text"]}],
+            provenance=invocation.provenance,
+        )
+
+    api = server.InProcessServer(
+        tmp_path,
+        registry=_registry(),
+        tool_handlers={"app_probe_tool": handler},
+    )
+    session = api.create_session()
+    run = api.create_run(session["session_id"], goal="facade tool handler")
+
+    result = api.submit_action(
+        run["run_id"],
+        {
+            "action": "call_tool",
+            "tool": "app_probe_tool",
+            "text": "hello",
+            "requested_tools": ["app_probe_tool", "forged_tool"],
+        },
+    )
+
+    assert result["status"] == "completed"
+    assert "artifact_ref" not in result
+    assert len(calls) == 1
+    assert calls[0].tool_name == "app_probe_tool"
+    assert calls[0].requested_capabilities == {
+        "tools": ["app_probe_tool"],
+        "workspace": {"mode": "shared_ro"},
+        "budget": {"seconds": 30},
+    }
+
+
+def test_in_process_server_denied_tool_does_not_call_handler(tmp_path):
+    calls: list[ToolInvocation] = []
+
+    def handler(invocation: ToolInvocation) -> ToolResult:
+        calls.append(invocation)
+        return ToolResult(result_summary="must not run", provenance=invocation.provenance)
+
+    api = server.InProcessServer(
+        tmp_path,
+        registry=_registry(),
+        tool_handlers={"app_probe_tool": handler},
+    )
+    session = api.create_session()
+    run = api.create_run(session["session_id"], goal="facade denied tool")
+
+    result = api.submit_action(
+        run["run_id"],
+        {
+            "action": "call_tool",
+            "tool": "app_probe_tool",
+            "text": "hello",
+            "requested_tools": [],
+        },
+    )
+
+    assert result["status"] == "denied"
+    assert calls == []
