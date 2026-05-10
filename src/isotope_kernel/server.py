@@ -33,6 +33,9 @@ class InProcessServer:
         checkpoint_store=None,
         registry: ActionTypeRegistry | None = None,
         tool_handlers: dict[str, ToolHandler] | None = None,
+        *,
+        policy_profile_id: str = "default",
+        policy_version: str = "v0.2",
     ):
         self.root = Path(root)
         self.event_store = FileEventStore(self.root)
@@ -40,7 +43,11 @@ class InProcessServer:
         self.artifact_store = ArtifactStore(self.root)
         self.registry = registry if registry is not None else ActionTypeRegistry.default()
         self.compiler = ActionCompiler(registry=self.registry)
-        self.policy = PolicyEngine(registry=self.registry)
+        self.policy = PolicyEngine(
+            registry=self.registry,
+            policy_profile_id=policy_profile_id,
+            policy_version=policy_version,
+        )
         self.workspace_manager = WorkspaceManager()
         self.executor = Executor(
             event_store=self.event_store,

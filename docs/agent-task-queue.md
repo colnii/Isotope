@@ -731,6 +731,22 @@ Evidence:
 - Fixture sync: existing handwritten `action.proposed` / `action.decided` payload fixtures now include default basis metadata; malformed missing-basis tests still fail fast.
 - Deferred: plugin marketplace, dynamic plugin loading, remote registry loading, signed registry bundles, policy DSL, product policy UI, multi-tenant policy profile management, and schema migration framework.
 
+### Current Batch Snapshot: Policy Constructor Surface Green Slice
+
+Batch name: `Policy Constructor Surface Green Slice`
+
+Status: `complete; pending review`
+
+Evidence:
+
+- Source friction: review accepted `server_policy_profile_injection_missing` as a bounded kernel ergonomics gap.
+- TDD red: `tests/isotope_kernel/test_server_action_registry_wiring.py::test_server_constructor_policy_metadata_flows_to_decision_read_model_replay_and_checkpoint` first failed because `InProcessServer.__init__()` did not accept `policy_profile_id`.
+- Green: `InProcessServer(..., registry=..., policy_profile_id=..., policy_version=...)` constructs `PolicyEngine(registry=self.registry, policy_profile_id=..., policy_version=...)`.
+- Targeted verification: `tests/isotope_kernel/test_server_action_registry_wiring.py tests/isotope_kernel/test_policy_profile_version_basis.py tests/isotope_kernel/test_action_registry_version_basis.py -q` -> `23 passed`.
+- Full regression with local `DYLD_LIBRARY_PATH` workaround: `1062 passed in 7.14s`.
+- `git diff --check` clean; strict `x_agent.*` scan no matches.
+- Boundary: no arbitrary `PolicyEngine` injection, no registry mismatch, no policy DSL, no remote registry loading, no product policy UI, no public SDK, no real HTTP, no provider adapter, no new dependency, no tag/release.
+
 ### Previous Batch Snapshot: Workspace Resource Lifecycle Closure Review
 
 Batch name: `Workspace Resource Lifecycle Closure Review`

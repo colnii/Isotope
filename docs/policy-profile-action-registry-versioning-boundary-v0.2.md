@@ -105,13 +105,14 @@ Free-form explanation 可以另存为 `message` / `detail`，但不能替代 `re
 - `PolicyDecision` 携带 `policy_profile_id` / `policy_version` / `policy_basis`。
 - canonical `action.decided` payload 包含 policy basis metadata。
 - `Executor(..., registry=...)` 可显式传入 registry；不传时使用 default registry。
-- `InProcessServer(root, registry=...)` 创建 shared registry，并注入 compiler / policy / executor。
+- `InProcessServer(root, registry=..., policy_profile_id=..., policy_version=...)` 创建 shared registry，并注入 compiler / policy / executor；显式 policy metadata 进入 `PolicyEngine`，不要求 app shell 替换 `api.policy`。
 - compiler 只生成 requested capabilities，不生成 grants。
 - policy 负责生成 `PolicyDecision.grants`，并可 approved / modified / denied。
 - executor 只使用 effective grants snapshot，不使用 proposal requested capabilities 扩权。
 - registry-known-but-unsupported handler fail closed。
 - projector validation 要求 `action.proposed` / `action.decided` payload 携带 basis metadata。
 - `RunState.actions` summaries 可从 canonical events 展示 registry / policy basis，replay / checkpoint-assisted rebuild 不依赖 current default registry / policy profile。
+- server constructor policy metadata 已覆盖 replay / checkpoint-assisted rebuild：custom `policy_profile_id` / `policy_version` 通过 `action.decided` 和 projected action summary 保留。
 - existing handwritten test fixtures 已最小同步默认 basis metadata；malformed missing-basis tests 仍验证 fail-fast。
 
 当前缺口：

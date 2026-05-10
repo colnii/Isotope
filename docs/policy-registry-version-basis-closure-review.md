@@ -2,6 +2,8 @@
 
 状态：`first slice complete / closed for now`
 
+Update 2026-05-11: post-closure ergonomic patch closed `server_policy_profile_injection_missing` by adding `InProcessServer(..., policy_profile_id=..., policy_version=...)`. This remains the same bounded policy basis surface: it wires constructor metadata into `PolicyEngine(registry=self.registry, ...)` and does not allow arbitrary `PolicyEngine` injection.
+
 ## 1. Purpose
 
 本文审查 Policy Profile / Action Registry Versioning first slice 是否可以关闭。审查范围只包括 registry / policy basis metadata、canonical event payload、projector read model、replay / checkpoint-assisted rebuild 和 deferred boundary。
@@ -19,6 +21,7 @@
 - `ActionCompiler(registry=...)` 会把 registry id / version 写入 `ActionProposal`。
 - `ActionProposal.registry_basis` 提供 structured basis dict，并进入 canonical `action.proposed` event payload。
 - `PolicyEngine(...)` exposes `policy_profile_id="default"` / `policy_version="v0.2"`，也支持 explicit profile/version metadata，malformed metadata fail fast。
+- `InProcessServer(..., registry=..., policy_profile_id=..., policy_version=...)` can now pass explicit policy metadata into the server-owned `PolicyEngine` while reusing the same shared registry as compiler / executor.
 - `PolicyDecision.policy_basis` 提供 structured basis dict，并进入 canonical `action.decided` event payload。
 - `RunProjector` 对 `action.proposed` / `action.decided` basis metadata 做 strict validation。
 - `RunState.actions` summaries 可展示 registry / policy basis metadata 和 `reason_codes`。

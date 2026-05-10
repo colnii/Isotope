@@ -1,6 +1,6 @@
 import pytest
 
-from isotope_kernel import action_registry, server
+from isotope_kernel import action_registry, checkpoint_store, projector, server
 
 
 ACTION_LIFECYCLE_EVENTS = {
@@ -121,3 +121,56 @@ def test_registry_entry_does_not_create_server_dynamic_plugin(tmp_path):
     ][0]
     assert "unsupported handler" in failed.payload["error"]
     assert api.artifact_store.list_artifacts(run_id) == []
+
+
+def test_server_constructor_policy_metadata_flows_to_decision_read_model_replay_and_checkpoint(tmp_path):
+    registry = action_registry.ActionTypeRegistry(
+        entries=[_registry_entry("write_artifact_tool")],
+        registry_id="tenant_registry",
+        registry_version="2026-05",
+    )
+    checkpoints = checkpoint_store.FileCheckpointStore(tmp_path / "checkpoints")
+    api = server.InProcessServer(
+        tmp_path,
+        checkpoint_store=checkpoints,
+        registry=registry,
+        policy_profile_id="tenant_policy",
+        policy_version="2026-05-policy",
+    )
+    run_id = _new_run(api)
+
+    result = api.submit_action(
+        run_id,
+        {
+            "action": "call_tool",
+            "tool": "write_artifact_tool",
+            "text": "tenant output",
+            "requested_tools": ["write_artifact_tool"],
+        },
+    )
+
+    decided = [
+        event for event in api.get_events(run_id)
+        if event.event_type == "action.decided"
+    ][0]
+    assert decided.payload["policy_profile_id"] == "tenant_policy"
+    assert decided.payload["policy_version"] == "2026-05-policy"
+    assert decided.payload["policy_basis"] == {
+        "policy_profile_id": "tenant_policy",
+        "policy_version": "2026-05-policy",
+    }
+    assert result["run_state"].actions[result["execution_id"]]["policy_basis"] == {
+        "policy_profile_id": "tenant_policy",
+        "policy_version": "2026-05-policy",
+    }
+
+    replayed = projector.RunProjector().rebuild(run_id, api.event_store)
+    projector.RunProjector().save_checkpoint(run_id, api.event_store, checkpoints)
+    restored = projector.RunProjector().rebuild_with_checkpoint(run_id, api.event_store, checkpoints)
+
+    assert replayed.actions[result["execution_id"]]["policy_profile_id"] == "tenant_policy"
+    assert replayed.actions[result["execution_id"]]["policy_version"] == "2026-05-policy"
+    assert restored.actions[result["execution_id"]]["policy_basis"] == {
+        "policy_profile_id": "tenant_policy",
+        "policy_version": "2026-05-policy",
+    }
