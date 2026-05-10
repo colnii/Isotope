@@ -559,6 +559,24 @@ Evidence:
 - Focused regression: approval resolution / approval run-state invariants / approval lookup -> `35 passed`.
 - Full regression with local Mac env workaround: `1061 passed`.
 
+## 30. Current Batch
+
+Batch name: `Restart Source Artifact Return Ref Green Slice`
+
+Status: `complete; pending review`
+
+Goal: close accepted aggressive-dev `restart_source_artifact_return_ref_mismatch` without opening real worker runtime, scheduler/process supervisor, process spawn, container/git worktree, real HTTP, provider adapter, public SDK, new dependency, tag, or release.
+
+Evidence:
+
+- Review accepted aggressive-dev `spike/aggressive-dev@8a38df6c3debf5a33b9f40342d4e24e3f9f63abd` `worker.handoff.restart.pipeline.review` as bounded `kernel_friction`.
+- Added red coverage to `tests/isotope_kernel/test_restart_write_helper_run_context.py`: after restart, `create_source_artifact(...)` must return the current executor-created artifact ref, not the pre-restart artifact, and must preserve `basis_refs` / `source_refs`.
+- Red result: targeted test failed because returned `ResourceRef` was the pre-restart artifact.
+- Implemented current-execution lookup via `_completed_artifact_ref(run_id, execution.execution_id)` and `ArtifactStore.get_metadata(...)`, replacing `ArtifactStore.list_artifacts(run_id)[-1]` in `create_source_artifact(...)`.
+- Targeted result: `tests/isotope_kernel/test_restart_write_helper_run_context.py::test_source_artifact_helper_can_write_after_server_restart` -> `1 passed`.
+- Focused regression: restart write helper / artifact provenance / source artifact setup / worker handoff -> `29 passed`.
+- Full regression currently has the known local packaging smoke `ensurepip` errors: `1058 passed, 4 errors`; non-packaging kernel tests were otherwise green.
+
 ### Previous Batch Snapshot: Worker Handoff Helper Red / Green Slice
 
 Batch name: `Worker Handoff Helper Red / Green Slice`

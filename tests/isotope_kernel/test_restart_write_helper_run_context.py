@@ -35,7 +35,7 @@ def _worker_handoff_intent() -> dict:
 def test_source_artifact_helper_can_write_after_server_restart(tmp_path):
     root = tmp_path / "server"
     checkpoint_root = tmp_path / "checkpoints"
-    _, run_id, _ = _new_server_with_run(root, checkpoint_root)
+    _, run_id, pre_restart_ref = _new_server_with_run(root, checkpoint_root)
     restarted = _restart(root, checkpoint_root)
 
     assert restarted.get_run_state(run_id).run_id == run_id
@@ -44,11 +44,19 @@ def test_source_artifact_helper_can_write_after_server_restart(tmp_path):
         run_id,
         summary="post-restart source",
         content="post-restart content",
+        basis_refs=[pre_restart_ref],
+        source_refs=[pre_restart_ref],
     )
 
+    expected_refs = [pre_restart_ref.to_dict()]
     assert result["status"] == "completed"
     assert result["artifact_ref"].run_id == run_id
-    assert result["run_state"].artifacts[-1]["summary"] == "post-restart source"
+    assert result["artifact_ref"] != pre_restart_ref
+    assert result["artifact_summary"] == "post-restart source"
+    assert result["basis_refs"] == expected_refs
+    assert result["source_refs"] == expected_refs
+    assert restarted.get_artifact_record(result["artifact_ref"])["summary"] == "post-restart source"
+    assert restarted.get_artifact_record(result["artifact_ref"])["basis_refs"] == expected_refs
 
 
 def test_worker_handoff_helper_can_write_after_server_restart(tmp_path):

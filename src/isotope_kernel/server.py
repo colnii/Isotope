@@ -991,19 +991,22 @@ class InProcessServer:
             raise PermissionError("source artifact setup denied by policy")
 
         execution = self.executor.execute(decision, proposal)
-        artifact = self.artifact_store.list_artifacts(run_id)[-1]
+        artifact_ref = self._completed_artifact_ref(run_id, execution.execution_id)
+        if artifact_ref is None:
+            raise RuntimeError("source artifact setup completed without artifact ref")
+        artifact_metadata = self.artifact_store.get_metadata(artifact_ref, include_provenance=True)
         state = self.get_run_state(run_id)
         return {
             "status": execution.status,
             "proposal_id": proposal.proposal_id,
             "decision_id": decision.decision_id,
             "execution_id": execution.execution_id,
-            "artifact_ref": artifact.ref,
-            "artifact_summary": artifact.summary,
-            "artifact_type": artifact.artifact_type,
-            "provenance": dict(artifact.provenance),
-            "basis_refs": [dict(ref) for ref in artifact.basis_refs],
-            "source_refs": [dict(ref) for ref in artifact.source_refs],
+            "artifact_ref": artifact_ref,
+            "artifact_summary": artifact_metadata["summary"],
+            "artifact_type": artifact_metadata["artifact_type"],
+            "provenance": dict(artifact_metadata["provenance"]),
+            "basis_refs": [dict(ref) for ref in artifact_metadata.get("basis_refs", [])],
+            "source_refs": [dict(ref) for ref in artifact_metadata.get("source_refs", [])],
             "run_state": state,
         }
 

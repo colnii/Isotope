@@ -1,6 +1,6 @@
 # Restart Write Helper Run Context Boundary v0.2
 
-状态：`green slice complete / pushed`
+状态：`green slice complete / pending review`
 
 本文记录从 aggressive-dev `worker.handoff.recovery.review` 回流的 bounded `kernel_friction`：`restart_write_helper_run_context_missing`。
 
@@ -45,6 +45,26 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
 
 The tests first prove `restarted.get_run_state(run_id).run_id == run_id`, then expect the selected write helper to recover minimal runtime context from canonical events. A terminal-run regression also verifies post-restart writes fail closed without side effects.
 
+Follow-up restart artifact-ref regression:
+
+```bash
+PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel/test_restart_write_helper_run_context.py::test_source_artifact_helper_can_write_after_server_restart -q
+# before implementation: 1 failed, returned pre-restart artifact ref
+# after implementation: 1 passed
+```
+
+Focused follow-up regression:
+
+```bash
+PYTHONPATH=src .venv/bin/python -m pytest \
+  tests/isotope_kernel/test_restart_write_helper_run_context.py \
+  tests/isotope_kernel/test_artifact_provenance_helper.py \
+  tests/isotope_kernel/test_source_artifact_setup_helper.py \
+  tests/isotope_kernel/test_worker_handoff_helper.py \
+  -q
+# 29 passed
+```
+
 ## Implemented Boundary
 
 The green slice lets selected write helpers recover:
@@ -55,6 +75,8 @@ The green slice lets selected write helpers recover:
 - default `thread_id` from `thread.created`
 
 The recovered context is only for deterministic in-process helper continuity after restart. It does not become a product session workflow, scheduler, process supervisor, or mutable hidden state source.
+
+Follow-up from aggressive-dev `8a38df6`: `create_source_artifact(...)` no longer uses `ArtifactStore.list_artifacts(run_id)[-1]` as the return contract after executor write. It looks up the artifact ref from the current `action.completed` event by `execution_id`, then returns metadata for that exact ref. This keeps post-restart multi-stage handoff pipelines linked to the newly created artifact and preserves structured `basis_refs` / `source_refs`.
 
 ## Non-Goals
 
