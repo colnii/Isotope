@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import json
+from json import JSONDecodeError
 from pathlib import Path
 from typing import Any
 
@@ -14,7 +16,7 @@ from .events import CanonicalEvent
 from .executor import Executor, ToolHandler
 from .errors import KernelError, KernelPermissionError, not_enabled_result
 from .ids import new_id
-from .models import ImportedSnapshot, PolicyDecision
+from .models import ActionProposal, ImportedSnapshot, PolicyDecision
 from .policy import PolicyEngine
 from .projector import RunProjector
 from .refs import ResourceRef
@@ -425,6 +427,11 @@ class InProcessServer:
             }
         if decision.outcome == "pending_user_approval":
             approval_id = new_id("approval")
+            payload_ref = self._store_pending_approval_payload(
+                run_id,
+                approval_id,
+                proposal.payload,
+            )
             self._append(
                 run_id,
                 "approval.requested",
@@ -434,6 +441,28 @@ class InProcessServer:
                     "proposal_id": proposal.proposal_id,
                     "decision_id": decision.decision_id,
                     "action_type": proposal.action_type,
+                    "resolution_context": {
+                        "proposal": {
+                            "proposal_id": proposal.proposal_id,
+                            "run_id": proposal.run_id,
+                            "agent_id": proposal.agent_id,
+                            "thread_id": proposal.thread_id,
+                            "action_type": proposal.action_type,
+                            "payload_ref": payload_ref,
+                            "requested_capabilities": deepcopy(proposal.requested_capabilities),
+                            "registry_id": proposal.registry_id,
+                            "registry_version": proposal.registry_version,
+                        },
+                        "decision": {
+                            "decision_id": decision.decision_id,
+                            "proposal_id": decision.proposal_id,
+                            "outcome": decision.outcome,
+                            "grants": deepcopy(decision.grants),
+                            "reason_codes": list(decision.reason_codes),
+                            "policy_profile_id": decision.policy_profile_id,
+                            "policy_version": decision.policy_version,
+                        },
+                    },
                 },
             )
             self._pending_approvals[approval_id] = {
@@ -490,7 +519,7 @@ class InProcessServer:
 
         pending = self._pending_approvals.get(approval_id)
         if pending is None:
-            raise ValueError("unknown approval")
+            pending = self._recover_pending_approval_context(approval_id)
 
         run_id = pending["run_id"]
         approval_event = self._find_approval_requested_event(run_id, approval_id)
@@ -564,6 +593,111 @@ class InProcessServer:
             result["artifact_ref"] = artifact_ref
         self._resolved_approvals[approval_id] = result
         return result
+
+    def _recover_pending_approval_context(self, approval_id: str) -> dict[str, Any]:
+        approval_event = self._find_approval_requested_event_by_id(approval_id)
+        if approval_event is None:
+            raise ValueError("unknown approval")
+        run_id = approval_event.payload.get("run_id")
+        if not isinstance(run_id, str) or not run_id:
+            raise ValueError("unknown approval")
+
+        state = self.get_run_state(run_id)
+        approval_summary = state.approvals.get(approval_id)
+        if approval_summary is None:
+            raise ValueError("unknown approval")
+        if approval_summary.get("status") != "pending":
+            raise ValueError("approval already resolved")
+
+        context = approval_event.payload.get("resolution_context")
+        if not isinstance(context, dict):
+            raise ValueError("approval resolution context unavailable")
+        proposal = self._proposal_from_approval_context(context.get("proposal"), run_id)
+        decision = self._decision_from_approval_context(context.get("decision"), proposal.proposal_id)
+        return {"run_id": run_id, "proposal": proposal, "decision": decision}
+
+    def _proposal_from_approval_context(self, raw: object, run_id: str) -> ActionProposal:
+        if not isinstance(raw, dict):
+            raise ValueError("approval proposal context unavailable")
+        proposal = ActionProposal(
+            proposal_id=self._context_string(raw, "proposal_id"),
+            run_id=self._context_string(raw, "run_id"),
+            agent_id=self._context_string(raw, "agent_id"),
+            thread_id=self._context_string(raw, "thread_id"),
+            action_type=self._context_string(raw, "action_type"),
+            payload=self._load_pending_approval_payload(run_id, self._context_string(raw, "payload_ref")),
+            requested_capabilities=deepcopy(self._context_dict(raw, "requested_capabilities")),
+            registry_id=self._context_string(raw, "registry_id"),
+            registry_version=self._context_string(raw, "registry_version"),
+        )
+        if proposal.run_id != run_id:
+            raise ValueError("approval proposal context run_id mismatch")
+        return proposal
+
+    def _decision_from_approval_context(self, raw: object, proposal_id: str) -> PolicyDecision:
+        if not isinstance(raw, dict):
+            raise ValueError("approval decision context unavailable")
+        decision = PolicyDecision(
+            decision_id=self._context_string(raw, "decision_id"),
+            proposal_id=self._context_string(raw, "proposal_id"),
+            outcome=self._context_string(raw, "outcome"),
+            grants=deepcopy(self._context_dict(raw, "grants")),
+            reason_codes=list(self._context_list(raw, "reason_codes")),
+            policy_profile_id=self._context_string(raw, "policy_profile_id"),
+            policy_version=self._context_string(raw, "policy_version"),
+        )
+        if decision.proposal_id != proposal_id:
+            raise ValueError("approval decision context proposal_id mismatch")
+        return decision
+
+    def _context_string(self, raw: dict[str, Any], field_name: str) -> str:
+        value = raw.get(field_name)
+        if not isinstance(value, str) or not value:
+            raise ValueError(f"approval context {field_name} unavailable")
+        return value
+
+    def _context_dict(self, raw: dict[str, Any], field_name: str) -> dict[str, Any]:
+        value = raw.get(field_name)
+        if not isinstance(value, dict):
+            raise ValueError(f"approval context {field_name} unavailable")
+        return value
+
+    def _context_list(self, raw: dict[str, Any], field_name: str) -> list[Any]:
+        value = raw.get(field_name)
+        if not isinstance(value, list):
+            raise ValueError(f"approval context {field_name} unavailable")
+        return value
+
+    def _pending_approval_payload_path(self, run_id: str, payload_ref: str) -> Path:
+        self._validate_non_empty_string("run_id", run_id)
+        self._validate_non_empty_string("payload_ref", payload_ref)
+        return self.root / "runs" / run_id / "approval_payloads" / f"{payload_ref}.json"
+
+    def _store_pending_approval_payload(
+        self,
+        run_id: str,
+        approval_id: str,
+        payload: dict[str, Any],
+    ) -> str:
+        if not isinstance(payload, dict):
+            raise ValueError("approval payload must be a dict")
+        payload_ref = f"{approval_id}_payload"
+        path = self._pending_approval_payload_path(run_id, payload_ref)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"payload": payload}, sort_keys=True), encoding="utf-8")
+        return payload_ref
+
+    def _load_pending_approval_payload(self, run_id: str, payload_ref: str) -> dict[str, Any]:
+        path = self._pending_approval_payload_path(run_id, payload_ref)
+        if not path.exists():
+            raise ValueError("approval payload context unavailable")
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except JSONDecodeError as exc:
+            raise ValueError("malformed approval payload context") from exc
+        if not isinstance(data, dict) or not isinstance(data.get("payload"), dict):
+            raise ValueError("malformed approval payload context")
+        return deepcopy(data["payload"])
 
     def get_run_state(self, run_id: str):
         self._validate_known_run_id(run_id)
@@ -1368,6 +1502,17 @@ class InProcessServer:
         for event in self.event_store.list_events(run_id):
             if event.event_type == "approval.requested" and event.payload.get("approval_id") == approval_id:
                 return event
+        return None
+
+    def _find_approval_requested_event_by_id(self, approval_id: str) -> CanonicalEvent | None:
+        runs_root = self.root / "runs"
+        if not runs_root.exists():
+            return None
+        for event_path in sorted(runs_root.glob("*/events.jsonl")):
+            run_id = event_path.parent.name
+            for event in self.event_store.list_events(run_id):
+                if event.event_type == "approval.requested" and event.payload.get("approval_id") == approval_id:
+                    return event
         return None
 
     def _find_artifact_created_event(self, ref: ResourceRef) -> CanonicalEvent | None:

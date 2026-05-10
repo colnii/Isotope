@@ -1,3 +1,6 @@
+import json
+from dataclasses import asdict
+
 import pytest
 
 from isotope_kernel import checkpoint_store, server
@@ -20,6 +23,20 @@ def _submit_pending_approval(tmp_path, *, checkpoints=None):
         run["run_id"],
         tool="write_artifact_tool",
         text="hello",
+        requires_approval=True,
+    )
+    approval = _single_event_payload(api, run["run_id"], "approval.requested")
+    return api, run["run_id"], result, approval
+
+
+def _submit_pending_approval_with_text(tmp_path, text: str, *, checkpoints=None):
+    api = server.InProcessServer(tmp_path, checkpoint_store=checkpoints)
+    session = api.create_session()
+    run = api.create_run(session["session_id"], goal="request approval before writing")
+    result = api.submit_tool_request(
+        run["run_id"],
+        tool="write_artifact_tool",
+        text=text,
         requires_approval=True,
     )
     approval = _single_event_payload(api, run["run_id"], "approval.requested")
@@ -164,3 +181,56 @@ def test_approval_read_model_does_not_require_server_memory(tmp_path):
     rebuilt = server.InProcessServer(tmp_path).get_run_state(run_id)
 
     assert rebuilt.approvals[approval["approval_id"]]["status"] == "pending"
+
+
+def test_restarted_server_can_resolve_pending_approval_without_process_memory(tmp_path):
+    checkpoints = checkpoint_store.FileCheckpointStore(tmp_path / "checkpoints")
+    api, run_id, _result, approval = _submit_pending_approval(tmp_path, checkpoints=checkpoints)
+    api.save_checkpoint_for_run(run_id)
+    restarted = server.InProcessServer(tmp_path, checkpoint_store=checkpoints)
+
+    response = restarted.resolve_approval(approval["approval_id"], _approved_body())
+
+    assert response["status"] == "completed"
+    event_types = [event.event_type for event in restarted.get_events(run_id)]
+    assert event_types.index("approval.resolved") < event_types.index("action.started")
+    assert restarted.get_approval(run_id, approval["approval_id"])["status"] == "approved"
+
+
+def test_pending_approval_recovery_context_does_not_leak_raw_tool_text(tmp_path):
+    checkpoints = checkpoint_store.FileCheckpointStore(tmp_path / "checkpoints")
+    secret = "sensitive approval payload text"
+    api, run_id, _result, approval = _submit_pending_approval_with_text(
+        tmp_path,
+        secret,
+        checkpoints=checkpoints,
+    )
+    saved = api.save_checkpoint_for_run(run_id)
+
+    approval_payload_text = json.dumps(approval, sort_keys=True)
+    run_state_text = json.dumps(asdict(api.get_run_state(run_id)), sort_keys=True)
+    checkpoint_text = json.dumps(saved, sort_keys=True)
+
+    assert secret not in approval_payload_text
+    assert secret not in run_state_text
+    assert secret not in checkpoint_text
+
+    restarted = server.InProcessServer(tmp_path, checkpoint_store=checkpoints)
+    response = restarted.resolve_approval(approval["approval_id"], _approved_body())
+
+    assert response["status"] == "completed"
+    artifact_ref = response["artifact_ref"]
+    assert restarted.artifact_store.get_content(artifact_ref) == secret
+
+
+def test_restarted_approval_resolution_failure_does_not_append_partial_events(tmp_path):
+    checkpoints = checkpoint_store.FileCheckpointStore(tmp_path / "checkpoints")
+    api, run_id, _result, approval = _submit_pending_approval(tmp_path, checkpoints=checkpoints)
+    api.save_checkpoint_for_run(run_id)
+    restarted = server.InProcessServer(tmp_path, checkpoint_store=checkpoints)
+    before = list(restarted.get_events(run_id))
+
+    with pytest.raises(ValueError, match="resolver"):
+        restarted.resolve_approval(approval["approval_id"], {"resolution": "approved", "reason": "ok"})
+
+    assert restarted.get_events(run_id) == before

@@ -539,6 +539,26 @@ Evidence:
 - Full regression with local Mac env workaround: `1058 passed`.
 - Review passed and mainline pushed `22566db` to `origin/main`.
 
+## 29. Current Batch
+
+Batch name: `Restart Approval Resolution Context Green Slice`
+
+Status: `complete; pushed`
+
+Goal: close accepted `restart_approval_resolution_context_missing` without opening real HTTP, scheduler/process kill, real concurrency, UI/auth/notification/product approval workflow, provider adapter, public SDK, tag, or release.
+
+Evidence:
+
+- Review accepted aggressive-dev `spike/aggressive-dev@db76ac10c4899f7444576a62d27ae348f4bd4d64` `restart_approval_resolution_context_missing` as bounded `kernel_friction`.
+- Added red tests in `tests/isotope_kernel/test_approval_run_state_invariants.py`; initial red result was `1 failed, 1 passed`, with restarted `resolve_approval(...)` failing `ValueError: unknown approval` while no partial events were appended.
+- Implemented persisted approval `resolution_context` on `approval.requested`, carrying minimal proposal / decision metadata plus a private payload handle for restarted `resolve_approval(...)`.
+- Added full-content leak regression: pending approval event payload / run-state / checkpoint must not contain raw tool text.
+- Restarted `InProcessServer(root, checkpoint_store=...)` can resolve a pending approval and continue the existing executor path with original grants.
+- Malformed restarted resolution still fails closed without appended events.
+- Targeted red/green result: restarted approval and leak-regression tests -> `3 passed`.
+- Focused regression: approval resolution / approval run-state invariants / approval lookup -> `35 passed`.
+- Full regression with local Mac env workaround: `1061 passed`.
+
 ### Previous Batch Snapshot: Worker Handoff Helper Red / Green Slice
 
 Batch name: `Worker Handoff Helper Red / Green Slice`
