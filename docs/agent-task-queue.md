@@ -522,7 +522,7 @@ Evidence:
 
 Batch name: `Restart Write Helper Run Context Green Slice`
 
-Status: `complete; awaiting review`
+Status: `complete; pushed`
 
 Goal: pin the restart write-helper run-context gap without opening real worker runtime, scheduler/process supervisor, process spawn, container/git worktree, real HTTP, provider adapter, public SDK, new dependency, tag, or release.
 
@@ -537,6 +537,7 @@ Evidence:
 - Targeted result: `tests/isotope_kernel/test_restart_write_helper_run_context.py` -> `3 passed`.
 - Focused regression: restart write helper / source artifact setup / worker handoff / run lifecycle -> `24 passed`.
 - Full regression with local Mac env workaround: `1058 passed`.
+- Review passed and mainline pushed `22566db` to `origin/main`.
 
 ### Previous Batch Snapshot: Worker Handoff Helper Red / Green Slice
 

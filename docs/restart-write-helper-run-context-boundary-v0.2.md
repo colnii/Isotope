@@ -1,6 +1,6 @@
 # Restart Write Helper Run Context Boundary v0.2
 
-状态：`green slice complete / awaiting review`
+状态：`green slice complete / pushed`
 
 本文记录从 aggressive-dev `worker.handoff.recovery.review` 回流的 bounded `kernel_friction`：`restart_write_helper_run_context_missing`。
 

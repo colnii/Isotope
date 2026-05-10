@@ -1,6 +1,6 @@
 # Tool Invocation Runtime Wiring Boundary v0.2
 
-状态：`green slice complete / awaiting review`
+状态：`green slice complete / pushed`
 
 本文记录从 aggressive-dev `tool.protocol.runtime.review` 回流的 bounded `kernel_friction`：`tool_invocation_runtime_missing`。
 
