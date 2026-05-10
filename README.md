@@ -77,6 +77,7 @@ python3 -m venv .venv
 ## Docs
 
 - Current status: [docs/current-status.md](docs/current-status.md)
+- Current docs map: [docs/current-docs-map.md](docs/current-docs-map.md)
 - Agent task queue: [docs/agent-task-queue.md](docs/agent-task-queue.md)
 - Demo walkthrough: [docs/demo/demo-walkthrough-v0.1.md](docs/demo/demo-walkthrough-v0.1.md)
 - Demo architecture: [docs/demo/demo-architecture-v0.1.md](docs/demo/demo-architecture-v0.1.md)

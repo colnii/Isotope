@@ -2,7 +2,9 @@
 
 这个目录用来临时冻结当前 `Isotope v0` 内核（kernel）方向，避免设计继续推进后，口头版本和书面版本再一次漂移。
 
-建议按这个顺序阅读：
+如果目标是快速找到文档、判断哪些是 current truth、哪些只是 concept / archive / stub，先读 [Current Docs Map（当前文档地图）](./current-docs-map.md)。
+
+如果目标是理解 kernel current truth，建议按这个顺序阅读：
 
 1. [Kernel One-Pager（一页说明）](./kernel-one-pager.md)
 2. [Commitment Levels（承诺强度分层）](./commitment-levels.md)

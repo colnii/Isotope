@@ -70,12 +70,14 @@
 - Error Taxonomy first slice 已 green；tracked docs Markdown 数量不变。当前实现补上 `src/isotope_kernel/errors.py`、`KernelError(ValueError)`、helper / HTTP mapping first paths 和 structured `not_enabled` result shape。
 - 加上 Error Taxonomy Closure Review 后 tracked docs Markdown：115 个。Error Taxonomy first slice 已 complete / closed for now；当前建议回到 application-layer friction intake，让 aggressive-dev 消费 stable `KernelError` 行为后再决定是否重开 mainline。
 - Worker Handoff Error Taxonomy slice 已 green；tracked docs Markdown 数量不变。当前实现把 worker handoff malformed intent、forged grants、unknown artifact ref 和 policy denied rejection 纳入 structured error taxonomy，同时保留 policy denial `PermissionError` compatibility 和 no partial delegation / worker events。
+- 加上 Current Docs Map 后 tracked docs Markdown：116 个。该文档是当前 `docs/` 的短索引和读者路径归纳，不移动、不删除、不合并文档。
 
 ## 2. Current entrypoints
 
 这些文件是当前读者或 agent 应优先进入的文档，不建议近期移动：
 
 - `docs/current-status.md`：当前状态入口，开始新任务前先读。
+- `docs/current-docs-map.md`：当前文档地图，归纳读者路径、文档层级、current truth / concept / archive / stub 边界。
 - `docs/v0.2-roadmap.md`：v0.2 track 状态和推荐顺序。
 - `docs/agent-task-queue.md`：主线 agent task queue，记录 Current Batch、Stop Conditions 和后续 batch 建议。
 - `docs/docs-migration-plan.md`：docs directory migration execution plan；Phase 1a release draft migration、Phase 1b demo explainer migration 和 Phase 1c demo acceptance/readiness/scenario migration 已执行；Phase 1 closed / paused。
@@ -292,6 +294,7 @@ Memory 当前只展示 boundary / read-model / checkpoint，不代表 durable me
 | `docs/checkpoint-v0.1-scope-freeze.md` | Checkpoint scope freeze | closed / frozen |
 | `docs/coding-plan-v0.1.md` | Initial coding plan | historical / reference |
 | `docs/commitment-levels.md` | Contract commitment levels | current reference |
+| `docs/current-docs-map.md` | Docs map / reader paths / current truth boundaries | current entrypoint |
 | `docs/current-status.md` | Current repo status | current entrypoint |
 | `docs/deferred-boundary-review-v0.1.md` | Deferred surface review | current reference |
 | `docs/demo/demo-architecture-v0.1.md` | Demo architecture diagram | current demo doc |
