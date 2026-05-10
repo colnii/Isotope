@@ -486,9 +486,34 @@ Evidence:
 
 Batch name: `Application-Layer Friction Intake`
 
-Status: `ready`
+Status: `complete; reopened by accepted tool invocation runtime friction`
 
 Goal: let aggressive-dev consume the derived artifact basis refs slice and rerun `worker.handoff.provenance.review`; only reopen mainline if it reports a new concrete `kernel_friction`.
+
+Evidence:
+
+- Aggressive-dev consumed `origin/main@105f7fb214d32767861b5dfe5fa8d23722d386c7` and reported `tool.protocol.runtime.review` friction from `spike/aggressive-dev@134b9d9019910ca7cffbe41d419e5c22e135b523`.
+- Review accepted `tool_invocation_runtime_missing` as bounded kernel friction: metadata-registered `app_probe_tool` still fails closed as `unsupported handler for tool app_probe_tool` because `Executor.execute(...)` does not construct/pass `ToolInvocation` to an explicit in-process handler boundary.
+
+## 27. Current Batch
+
+Batch name: `Tool Invocation Runtime Wiring Green Slice`
+
+Status: `complete; awaiting review`
+
+Goal: pin the narrow executor runtime wiring gap without opening plugin marketplace, remote execution, sandbox/process, public SDK, provider adapter, real HTTP route, or new dependency.
+
+Evidence:
+
+- Added `docs/tool-invocation-runtime-wiring-boundary-v0.2.md`.
+- Added red tests in `tests/isotope_kernel/test_tool_invocation_runtime_wiring.py`; initial red result was `2 failed, 1 passed` at `Executor.__init__() got an unexpected keyword argument 'tool_handlers'`.
+- Implemented optional `Executor(..., tool_handlers={...})` for explicit deterministic in-process handlers.
+- `Executor` now constructs `ToolInvocation` from proposal / decision / execution / effective grants / budget / workspace binding and passes it to the handler.
+- Requested capabilities are capped to effective grants before entering `ToolInvocation`; forged requested tools are not passed through.
+- Ungranted tool still fails before handler invocation and leaves only `action.started` / `action.failed`.
+- Existing `write_artifact_tool` deterministic artifact path remains unchanged.
+- Targeted result: `tests/isotope_kernel/test_tool_invocation_runtime_wiring.py` -> `3 passed`.
+- Focused regression: tool invocation runtime / tool protocol / tool result event / executor registry -> `27 passed`.
 
 ### Previous Batch Snapshot: Worker Handoff Helper Red / Green Slice
 

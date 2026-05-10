@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from .action_registry import ActionTypeRegistry
 from .events import CanonicalEvent
 from .ids import new_id
 from .models import ActionExecution, ActionProposal, MemoryRecord, PolicyDecision
+from .tool_protocol import ToolInvocation, ToolResult
+
+
+ToolHandler = Callable[[ToolInvocation], ToolResult]
 
 
 class Executor:
@@ -20,12 +25,14 @@ class Executor:
         workspace_manager,
         registry: ActionTypeRegistry | None = None,
         memory_service=None,
+        tool_handlers: dict[str, ToolHandler] | None = None,
     ):
         self.event_store = event_store
         self.artifact_store = artifact_store
         self.workspace_manager = workspace_manager
         self.registry = registry if registry is not None else ActionTypeRegistry.default()
         self.memory_service = memory_service
+        self.tool_handlers = dict(tool_handlers or {})
 
     def execute(self, decision: PolicyDecision, proposal: ActionProposal) -> ActionExecution:
         if decision.outcome == "denied":
@@ -64,11 +71,32 @@ class Executor:
                     grants=decision.grants,
                 )
                 raise PermissionError("memory_write success not enabled")
-            if tool_name != "write_artifact_tool":
-                raise PermissionError(f"unsupported handler for tool {tool_name}")
-
             # This validates the granted workspace mode without consulting requested capabilities.
-            self.workspace_manager.get_binding(decision.grants)
+            workspace_binding = self.workspace_manager.get_binding(decision.grants)
+
+            if tool_name != "write_artifact_tool":
+                handler = self.tool_handlers.get(tool_name)
+                if handler is None:
+                    raise PermissionError(f"unsupported handler for tool {tool_name}")
+
+                execution = self._new_execution(execution_id, proposal, decision, status="completed")
+                invocation = self._new_tool_invocation(
+                    execution_id,
+                    proposal,
+                    decision,
+                    workspace_binding,
+                )
+                tool_result = handler(invocation)
+                if not isinstance(tool_result, ToolResult):
+                    raise TypeError("tool handler must return ToolResult")
+                self._append_action_completed(
+                    proposal.run_id,
+                    execution,
+                    artifact_refs=tool_result.artifact_refs,
+                    result_summary=tool_result.result_summary,
+                    diagnostics=tool_result.diagnostics,
+                )
+                return execution
 
             execution = self._new_execution(execution_id, proposal, decision, status="completed")
             summary = proposal.payload.get("summary", "hello artifact")
@@ -90,7 +118,7 @@ class Executor:
             raise
 
         self._append_artifact_created(proposal.run_id, artifact)
-        self._append_action_completed(proposal.run_id, execution, artifact)
+        self._append_action_completed(proposal.run_id, execution, artifact_refs=[artifact.ref.to_dict()])
         return execution
 
     def _new_execution(
@@ -113,6 +141,79 @@ class Executor:
                 "budget": dict(decision.grants.get("budget", {})),
             },
         )
+
+    def _new_tool_invocation(
+        self,
+        execution_id: str,
+        proposal: ActionProposal,
+        decision: PolicyDecision,
+        workspace_binding,
+    ) -> ToolInvocation:
+        provenance = {
+            "execution_id": execution_id,
+            "proposal_id": proposal.proposal_id,
+            "decision_id": decision.decision_id,
+        }
+        effective_grants = {
+            "tools": list(decision.grants.get("tools", [])),
+            "workspace": dict(decision.grants.get("workspace", {})),
+            "budget": dict(decision.grants.get("budget", {})),
+        }
+        return ToolInvocation(
+            tool_name=str(proposal.payload.get("tool")),
+            input_payload=dict(proposal.payload),
+            execution_id=execution_id,
+            proposal_id=proposal.proposal_id,
+            decision_id=decision.decision_id,
+            grants_snapshot=effective_grants,
+            budget=dict(effective_grants.get("budget", {})),
+            workspace_binding={
+                "workspace_id": workspace_binding.workspace_id,
+                "mode": workspace_binding.mode,
+            },
+            requested_capabilities=self._cap_requested_capabilities(
+                proposal.requested_capabilities,
+                effective_grants,
+            ),
+            provenance=provenance,
+        )
+
+    def _cap_requested_capabilities(
+        self,
+        requested: dict[str, Any],
+        grants: dict[str, Any],
+    ) -> dict[str, Any]:
+        requested_tools = requested.get("tools", [])
+        granted_tools = grants.get("tools", [])
+        if isinstance(requested_tools, list) and isinstance(granted_tools, list):
+            tools = [tool for tool in requested_tools if tool in granted_tools]
+        else:
+            tools = []
+
+        capped = {"tools": tools}
+        requested_workspace = requested.get("workspace")
+        granted_workspace = grants.get("workspace", {})
+        if (
+            isinstance(requested_workspace, dict)
+            and isinstance(granted_workspace, dict)
+            and requested_workspace.get("mode") == granted_workspace.get("mode")
+        ):
+            capped["workspace"] = dict(granted_workspace)
+
+        requested_budget = requested.get("budget")
+        granted_budget = grants.get("budget", {})
+        if isinstance(requested_budget, dict) and isinstance(granted_budget, dict):
+            budget = {}
+            for key, granted_value in granted_budget.items():
+                requested_value = requested_budget.get(key)
+                if isinstance(requested_value, (int, float)) and isinstance(granted_value, (int, float)):
+                    budget[key] = min(requested_value, granted_value)
+                elif requested_value == granted_value:
+                    budget[key] = granted_value
+            if budget:
+                capped["budget"] = budget
+
+        return capped
 
     def _memory_record_from_proposal(
         self,
@@ -187,13 +288,26 @@ class Executor:
             artifact_payload["source_refs"] = [dict(ref) for ref in artifact.source_refs]
         return self._append(run_id, "artifact.created", {"artifact": artifact_payload})
 
-    def _append_action_completed(self, run_id: str, execution: ActionExecution, artifact) -> CanonicalEvent:
+    def _append_action_completed(
+        self,
+        run_id: str,
+        execution: ActionExecution,
+        *,
+        artifact_refs: list[dict[str, Any]],
+        result_summary: str | None = None,
+        diagnostics: list[dict[str, Any]] | None = None,
+    ) -> CanonicalEvent:
+        payload = {
+            "execution_id": execution.execution_id,
+            "status": execution.status,
+            "artifact_refs": [dict(ref) for ref in artifact_refs],
+        }
+        if result_summary is not None:
+            payload["result_summary"] = result_summary
+        if diagnostics is not None:
+            payload["diagnostics"] = [dict(diagnostic) for diagnostic in diagnostics]
         return self._append(
             run_id,
             "action.completed",
-            {
-                "execution_id": execution.execution_id,
-                "status": execution.status,
-                "artifact_refs": [artifact.ref.to_dict()],
-            },
+            payload,
         )
