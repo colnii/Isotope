@@ -24,6 +24,7 @@ class RunState:
     completed_event_id: str = ""
     current_agent: str = ""
     agents: dict[str, dict[str, Any]] = field(default_factory=dict)
+    delegations: dict[str, dict[str, Any]] = field(default_factory=dict)
     workers: dict[str, dict[str, Any]] = field(default_factory=dict)
     workspaces: dict[str, dict[str, Any]] = field(default_factory=dict)
     actions: dict[str, dict[str, Any]] = field(default_factory=dict)
@@ -52,6 +53,7 @@ class RunProjector:
         "completed_event_id",
         "current_agent",
         "agents",
+        "delegations",
         "workers",
         "workspaces",
         "actions",
@@ -1016,9 +1018,9 @@ class RunProjector:
                 **self._projected_action_basis(proposal_id),
             }
         elif event.event_type == "delegation.proposed":
-            pass
+            self._apply_delegation_proposed(state, payload, event)
         elif event.event_type == "delegation.decided":
-            pass
+            self._apply_delegation_decided(state, payload, event)
         elif event.event_type == "worker.created":
             self._apply_worker_created(state, payload, event)
         elif event.event_type in {"worker.started", "worker.completed", "worker.failed", "worker.cancelled"}:
@@ -1216,6 +1218,52 @@ class RunProjector:
             state.completed_event_id = event.event_id
             state.status = str(payload.get("status", "completed"))
 
+    def _apply_delegation_proposed(self, state: RunState, payload: dict[str, Any], event: CanonicalEvent) -> None:
+        delegation_id = str(payload["delegation_id"])
+        state.delegations[delegation_id] = {
+            "delegation_id": delegation_id,
+            "run_id": payload.get("run_id", event.run_id),
+            "parent_agent_id": payload["parent_agent_id"],
+            "requested_worker_role": payload["requested_worker_role"],
+            "requested_capabilities": dict(payload["requested_capabilities"]),
+            "status": "proposed",
+            "proposed_event_id": event.event_id,
+            "last_event_id": event.event_id,
+        }
+
+    def _apply_delegation_decided(self, state: RunState, payload: dict[str, Any], event: CanonicalEvent) -> None:
+        delegation_id = str(payload["delegation_id"])
+        proposal = self._delegation_proposals[delegation_id]
+        policy_basis = payload.get("policy_basis")
+        if policy_basis is None:
+            policy_basis = {
+                key: payload[key]
+                for key in ("policy_profile_id", "policy_version")
+                if key in payload
+            }
+        delegation = state.delegations.setdefault(
+            delegation_id,
+            {
+                "delegation_id": delegation_id,
+                "run_id": proposal.get("run_id", event.run_id),
+                "parent_agent_id": proposal["parent_agent_id"],
+                "requested_worker_role": proposal["requested_worker_role"],
+                "requested_capabilities": dict(proposal["requested_capabilities"]),
+            },
+        )
+        delegation.update(
+            {
+                "decision_id": payload["decision_id"],
+                "outcome": payload["outcome"],
+                "status": payload["outcome"],
+                "reason_codes": list(payload.get("reason_codes", [])),
+                "grants": dict(payload["grants"]),
+                "policy_basis": dict(policy_basis),
+                "decided_event_id": event.event_id,
+                "last_event_id": event.event_id,
+            }
+        )
+
     def _apply_worker_created(self, state: RunState, payload: dict[str, Any], event: CanonicalEvent) -> None:
         worker_id = str(payload["worker_id"])
         delegation_id = str(payload["delegation_id"])
@@ -1240,6 +1288,11 @@ class RunProjector:
             "last_event_id": event.event_id,
         }
         state.workers[worker_id] = worker
+        delegation = state.delegations.setdefault(delegation_id, {"delegation_id": delegation_id})
+        delegation["worker_id"] = worker_id
+        delegation["worker_agent_id"] = payload["agent_id"]
+        delegation["worker_created_event_id"] = event.event_id
+        delegation["last_event_id"] = event.event_id
         agent_id = str(payload["agent_id"])
         state.agents[agent_id] = {
             "agent_id": agent_id,
@@ -1721,6 +1774,9 @@ class RunProjector:
         agents = state.get("agents", {})
         if not isinstance(agents, dict):
             raise ValueError("checkpoint state agents must be a dict")
+        delegations = state.get("delegations", {})
+        if not isinstance(delegations, dict):
+            raise ValueError("checkpoint state delegations must be a dict")
         workers = state.get("workers", {})
         if not isinstance(workers, dict):
             raise ValueError("checkpoint state workers must be a dict")
@@ -1753,6 +1809,8 @@ class RunProjector:
             self._validate_checkpoint_artifact(artifact)
         for agent_id, agent in agents.items():
             self._validate_checkpoint_agent(agent_id, agent)
+        for delegation_id, delegation in delegations.items():
+            self._validate_checkpoint_delegation(delegation_id, delegation)
         for worker_id, worker in workers.items():
             self._validate_checkpoint_worker(worker_id, worker)
         for workspace_id, workspace in workspaces.items():
@@ -1772,6 +1830,7 @@ class RunProjector:
             completed_event_id=str(state.get("completed_event_id", "")),
             current_agent=str(state.get("current_agent", "")),
             agents=dict(agents),
+            delegations=dict(delegations),
             workers=dict(workers),
             workspaces=dict(workspaces),
             actions=dict(state.get("actions", {})),
@@ -1796,6 +1855,35 @@ class RunProjector:
             raise ValueError("checkpoint agent role must be a non-empty string")
         if agent.get("status") not in {"created", "running", "completed", "failed", "cancelled"}:
             raise ValueError("checkpoint agent status must be known")
+
+    def _validate_checkpoint_delegation(self, delegation_id: Any, delegation: Any) -> None:
+        if not isinstance(delegation_id, str) or not delegation_id:
+            raise ValueError("checkpoint delegation id must be a non-empty string")
+        if not isinstance(delegation, dict):
+            raise ValueError("checkpoint delegation entry must be a dict")
+        for field_name in (
+            "delegation_id",
+            "parent_agent_id",
+            "requested_worker_role",
+            "requested_capabilities",
+            "status",
+        ):
+            if field_name not in delegation:
+                raise ValueError(f"checkpoint delegation entry missing required field: {field_name}")
+        if delegation["delegation_id"] != delegation_id:
+            raise ValueError("checkpoint delegation id must match entry delegation_id")
+        if not isinstance(delegation["requested_capabilities"], dict):
+            raise ValueError("checkpoint delegation requested_capabilities must be a dict")
+        if delegation["status"] not in {"proposed", "approved", "modified", "denied"}:
+            raise ValueError("checkpoint delegation status must be known")
+        if "decision_id" in delegation:
+            if not isinstance(delegation.get("grants"), dict):
+                raise ValueError("checkpoint delegation grants must be a dict")
+            reason_codes = delegation.get("reason_codes", [])
+            if not isinstance(reason_codes, list) or not all(isinstance(code, str) for code in reason_codes):
+                raise ValueError("checkpoint delegation reason_codes must be a list of strings")
+            if not isinstance(delegation.get("policy_basis", {}), dict):
+                raise ValueError("checkpoint delegation policy_basis must be a dict")
 
     def _validate_checkpoint_worker(self, worker_id: Any, worker: Any) -> None:
         if not isinstance(worker_id, str) or not worker_id:

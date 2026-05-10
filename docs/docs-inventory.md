@@ -71,6 +71,7 @@
 - 加上 Error Taxonomy Closure Review 后 tracked docs Markdown：115 个。Error Taxonomy first slice 已 complete / closed for now；当前建议回到 application-layer friction intake，让 aggressive-dev 消费 stable `KernelError` 行为后再决定是否重开 mainline。
 - Worker Handoff Error Taxonomy slice 已 green；tracked docs Markdown 数量不变。当前实现把 worker handoff malformed intent、forged grants、unknown artifact ref 和 policy denied rejection 纳入 structured error taxonomy，同时保留 policy denial `PermissionError` compatibility 和 no partial delegation / worker events。
 - 加上 Current Docs Map 后 tracked docs Markdown：116 个。该文档是当前 `docs/` 的短索引和读者路径归纳，不移动、不删除、不合并文档。
+- Delegation Decision Read Model slice 已 green；tracked docs Markdown 数量不变。当前实现新增 `RunState.delegations`，把 delegation proposal / decision / worker linkage 投影到 read model，支持 replay 和 checkpoint-assisted rebuild，使 app shell 不再需要 raw event scan 审计 worker handoff decision；不改变 event append semantics。
 
 ## 2. Current entrypoints
 

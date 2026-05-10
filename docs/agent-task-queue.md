@@ -403,9 +403,42 @@ Evidence:
 
 Batch name: `Application-Layer Friction Intake`
 
-Status: `ready`
+Status: `complete; reopened by accepted delegation decision read-model friction`
 
 Goal: let aggressive-dev consume the structured error contract and rerun `error.taxonomy.review`; only reopen mainline if it reports a new concrete `kernel_friction`.
+
+Evidence:
+
+- Aggressive-dev consumed the structured error contract and later reported `delegation_decision_read_model_missing`.
+- Review accepted it as real bounded kernel read-model friction.
+
+## 22. Current Batch
+
+Batch name: `Delegation Decision Read Model Slice`
+
+Status: `complete`
+
+Goal: remove app-layer raw event scans for worker handoff audit by projecting canonical delegation decisions into `RunState`.
+
+Evidence:
+
+- Added `tests/isotope_kernel/test_delegation_decision_read_model.py`.
+- Implemented `RunState.delegations` keyed by `delegation_id`.
+- Projected `delegation.proposed`, `delegation.decided`, and `worker.created` linkage.
+- Read model includes `decision_id`, `outcome`, `reason_codes`, `grants`, `policy_basis`, and `worker_id`.
+- Replay and checkpoint-assisted rebuild are covered.
+- Targeted result: `3 passed`.
+- Focused regression: `35 passed`.
+- Full regression with local Mac env workaround: `1043 passed`.
+- No event append semantic changes; no denied-delegation append, real worker runtime, scheduler/process spawn, HTTP route, provider, product audit UX, SDK, tag, or release.
+
+## 23. Next Suggested Batch
+
+Batch name: `Application-Layer Friction Intake`
+
+Status: `ready`
+
+Goal: let aggressive-dev consume `RunState.delegations` and rerun `worker.handoff.audit.review`; only reopen mainline if it reports a new concrete `kernel_friction`.
 
 ### Previous Batch Snapshot: Worker Handoff Helper Red / Green Slice
 
