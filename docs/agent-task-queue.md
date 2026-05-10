@@ -563,7 +563,7 @@ Evidence:
 
 Batch name: `Restart Source Artifact Return Ref Green Slice`
 
-Status: `complete; pending review`
+Status: `complete; pushed`
 
 Goal: close accepted aggressive-dev `restart_source_artifact_return_ref_mismatch` without opening real worker runtime, scheduler/process supervisor, process spawn, container/git worktree, real HTTP, provider adapter, public SDK, new dependency, tag, or release.
 
