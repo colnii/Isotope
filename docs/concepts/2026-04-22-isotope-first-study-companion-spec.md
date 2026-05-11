@@ -26,6 +26,8 @@
 - 把技术、专业、理论学习和长期政治目的、集体斗争、社会主义建设联系起来
 - 逐步提高检索、阅读、笔记、规划能力
 - 发现 economics、political economy、philosophy、industrial understanding 等短板
+- 把短暂兴趣冲动转成可积累的研究路径
+- 防止抽象判断过早闭合成结论
 
 ## 2. 产品定位
 
@@ -81,6 +83,8 @@
 - 帮用户把短期学习目标连接到历史和政治目的
 - 帮用户获得更强的学习方法，而不是依赖不透明帮助
 - 帮用户发现 economics、philosophy、industrial questions 什么时候需要显式学习
+- 帮用户把概念判断压回具体对象、材料、阶段和反例
+- 帮用户把兴趣驱动的阅读变成连续学习，而不是一次性聊天
 
 产品不承诺：
 
@@ -134,6 +138,26 @@
 
 ## 6. 核心体验循环
 
+### 6.0 Interest Capture And Concept Grounding
+
+用户不总是从完整计划开始，很多学习会从一个临时兴趣、强烈问题或抽象判断开始。
+
+系统应先把这种输入固定成可积累结构：
+
+- 这个兴趣属于哪条主线或桥梁主线
+- 它能缩成哪个最小研究问题
+- 它需要哪些时间、机构、人物、文本或材料条件
+- 哪些地方只是推断
+- 哪些反例必须先找
+- 下一步只补哪一块历史砖、材料砖或工程砖
+
+输出可以是：
+
+- `interest_capture`
+- `concept_grounding_table`
+- `missing_evidence_list`
+- `minimal_next_step`
+
 ### 6.1 Reading Kickoff
 
 用户开始一个阅读主题。
@@ -184,18 +208,40 @@
 - `refined_question`
 - `open_issue`
 
-### 6.4 Note And Concept Consolidation
+### 6.4 Anti-Premature-Closure Review
+
+当用户或模型已经快形成结论时，系统应能做一次过早闭合检查。
+
+它应该问：
+
+- 这个判断有没有反例
+- 是否把后来结果倒推成历史必然
+- 是否把一个国家、时期、技术栈或组织经验套到另一个对象
+- 是否混淆了相邻但不同的概念
+- 是否用了理论术语但没有给出具体对象
+- 是否缺少 source refs、时间、机构、人物或文本
+
+输出可以是：
+
+- `claim_card`
+- `counterexample_request`
+- `historical_density_review`
+
+### 6.5 Note And Concept Consolidation
 
 系统帮助把分散讨论变成耐久笔记。
 
 输出可以是：
 
 - `concept_card`
+- `event_card`
+- `actor_card`
+- `claim_card`
 - `disagreement_note`
 - `study_map`
 - `reading_summary`
 
-### 6.5 Method Exposure
+### 6.6 Method Exposure
 
 系统不只是给结果，也要展示方法。
 
@@ -212,7 +258,7 @@
 - `search_strategy`
 - `capability_gap_note`
 
-### 6.6 Weekly Review
+### 6.7 Weekly Review
 
 周期性 review 应该帮助用户：
 
@@ -228,7 +274,7 @@
 - `next_reading_plan`
 - `unresolved_question_list`
 
-### 6.7 Long-Arc Study Mapping
+### 6.8 Long-Arc Study Mapping
 
 系统应帮助用户维护长期学习图谱。
 
@@ -244,7 +290,7 @@
 
 目标不是把所有主题平均推进，而是保持主线之间的关系。
 
-### 6.8 用途与目的复盘
+### 6.9 用途与目的复盘
 
 系统应能帮助用户追问：
 
@@ -271,6 +317,15 @@
 - `source_excerpt`
 - `reading_note`
 - `concept_card`
+- `event_card`
+- `actor_card`
+- `claim_card`
+- `interest_capture`
+- `concept_grounding_table`
+- `missing_evidence_list`
+- `counterexample_request`
+- `minimal_next_step`
+- `historical_density_review`
 - `question_thread`
 - `disagreement_note`
 - `study_map`
@@ -320,6 +375,15 @@
 6. 检查所有输出都能追 source refs。
 7. replay / checkpoint 后仍能恢复这些 artifact。
 
+可选但很适合作为第二个 spike 的流程：
+
+1. 输入一个抽象 claim 或临时兴趣。
+2. 生成 `concept_grounding_table`。
+3. 生成 `claim_card`。
+4. 生成 `missing_evidence_list` 或 `counterexample_request`。
+5. 输出一个 `minimal_next_step`。
+6. 检查这些产物不需要 real web search 也能作为 artifact 持久化。
+
 暂不做：
 
 - real web search
@@ -343,6 +407,8 @@
 - 学习路线是否更连贯
 - 用户是否更能自己检索和比较
 - 技术学习和理论学习是否更能发生联系
+- 抽象 claim 是否被压回具体时间、机构、人物、文本、反例和阶段
+- 学习产物的 historical density 是否提高
 
 ## 11. 失败模式
 
@@ -352,6 +418,8 @@
 - 引用不可靠
 - 聊天替代读书
 - 用口号压平问题
+- 用概念替代具体历史对象
+- 过早把兴趣或判断闭合成结论
 - 用户越来越依赖
 - 学习和长期目的脱节
 - 每个主题都被强行说成战略重点

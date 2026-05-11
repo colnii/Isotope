@@ -45,6 +45,14 @@ study companion 不能只靠聊天记录。
 - source excerpt
 - purpose review
 - study priority decision
+- interest capture
+- concept grounding table
+- event card
+- actor card
+- claim card
+- counterexample request
+- minimal next step
+- historical density review
 
 这些 artifact 应该有：
 
@@ -68,6 +76,8 @@ study companion 不能只靠聊天记录。
 - links 应该有 provenance
 - links 可以从 event log 投影
 - review 和 retrieval 可以沿 graph 找上下文
+- concept / event / actor / claim 之间可以表达 grounding、supports、contradicts、needs_evidence 等关系
+- 一个抽象 claim 可以链接到多个事件、行动者、source excerpt 和反例请求
 
 ### 3.3 Provenance-Aware Retrieval
 
@@ -153,6 +163,9 @@ kernel 不需要理解 pack 的意识形态内容，但需要知道：
 - question refinement note
 - capability gap note
 - review recommendation
+- concept grounding table
+- historical density review
+- minimal next step
 
 这些不一定是 kernel 内置类型，但 artifact system 要能表达。
 
@@ -196,6 +209,8 @@ study companion 的效果不能只看用户聊得久不久。
 - unresolved questions 是否被追踪
 - 用户是否更能自己检索和比较
 - 关键 claim 是否有 refs
+- 抽象 claim 是否被 grounding 到时间、机构、人物、文本、阶段和反例
+- summary 是否带有足够的 historical density，而不是只给概括性判断
 
 这些 evaluation 需要 artifact、memory、trace 的共同支持。
 
@@ -213,6 +228,7 @@ study companion 的效果不能只看用户聊得久不久。
 - `promote_memory(...)`
 - `schedule_review(...)`
 - `resume_context(...)`
+- `score_artifact_density(...)`
 
 这些只是 requirement pressure，不代表现在都要实现。
 
@@ -225,7 +241,8 @@ study companion 的效果不能只看用户聊得久不久。
 3. 生成 reading note artifact。
 4. 生成 purpose review 或 study priority decision artifact。
 5. 记录 source refs 和 provenance。
-6. replay / checkpoint 后仍能看到这些 artifact。
+6. 可选生成 concept grounding table / claim card / historical density review。
+7. replay / checkpoint 后仍能看到这些 artifact。
 
 暂不打开：
 

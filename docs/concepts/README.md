@@ -31,6 +31,7 @@
 ## 额外概念文档
 
 - [Isotope vs Hermes Agent](isotope-vs-hermes-agent.md)
+- [ChatGPT Share Feedback Notes](2026-05-11-isotope-chatgpt-share-feedback-notes.md)
 
 ## 阅读规则
 

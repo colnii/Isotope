@@ -39,6 +39,8 @@
 - 追问当前技术、专业、理论学习是否对集体斗争和社会主义建设有用
 - 提高检索、比较、整理、规划能力
 - 发现 economics、political economy、philosophy、industrial understanding 等短板
+- 把抽象概念和政治判断压回具体历史对象、材料条件、机构、人物和反例
+- 防止用户或模型过早把问题闭合成自洽但材料不足的结论
 
 它不是 general-purpose assistant。
 
@@ -286,6 +288,8 @@ memory 不能只是聊天记录。
 - 在相关时分析阶级、国家、政治经济、意识形态、历史阶段、工业基础、生产能力
 - 承认争议和不确定
 - 关注学习如何连接长期实践和建设问题
+- 要求概念获得具体对象、时间、机构、行动者和材料支撑
+- 主动检查反例、阶段混淆、类比误用和结果倒推
 
 系统不应该：
 
@@ -294,6 +298,7 @@ memory 不能只是聊天记录。
 - 因为问题涉及革命、组织、斗争，就禁止理论、战略、历史分析
 - 把战略讨论变成现实行动指挥
 - 把模型意见伪装成唯一正确路线
+- 让 Marxist-Leninist terminology 替代证据和具体分析
 
 ## 8. 行动边界
 
@@ -321,6 +326,7 @@ v0 可以是：
 - 一个 note / artifact store
 - 一个 planning / review service
 - 一个 near-term private orientation layer
+- 一个 concept grounding / historical density checker
 
 它不需要一开始就有：
 
@@ -339,10 +345,11 @@ v0 可以是：
 2. orchestrator 判断是阅读、澄清、比较还是 review。
 3. retrieval engine 查找材料并返回 refs。
 4. interpretation mapper 区分原文、解释和推断。
-5. note layer 生成 reading note / concept card。
-6. planning loop 更新 study path。
-7. capability layer 输出方法说明。
-8. 所有耐久产物进入 artifact / memory boundary。
+5. grounding checker 检查概念是否落到时间、机构、人物、文本、反例和历史阶段。
+6. note layer 生成 reading note / concept card / claim card。
+7. planning loop 更新 study path。
+8. capability layer 输出方法说明。
+9. 所有耐久产物进入 artifact / memory boundary。
 
 ## 11. Artifact 类型
 
@@ -352,6 +359,15 @@ v0 可以是：
 - `source_excerpt`
 - `reading_note`
 - `concept_card`
+- `event_card`
+- `actor_card`
+- `claim_card`
+- `interest_capture`
+- `concept_grounding_table`
+- `missing_evidence_list`
+- `counterexample_request`
+- `minimal_next_step`
+- `historical_density_review`
 - `question_thread`
 - `disagreement_note`
 - `study_map`
@@ -377,15 +393,19 @@ v0 可以是：
 
 用严肃语气、历史词汇和 persona 表演替代真实分析。
 
-### 12.4 Detached Scholasticism
+### 12.4 Premature Closure
+
+把一个有启发的问题太早压成结论，尤其是用后来的历史结果倒推必然性，或把一个历史对象的经验未经检验套到另一个对象上。
+
+### 12.5 Detached Scholasticism
 
 把学习做成脱离现实目的的材料堆积。
 
-### 12.5 Dependency Drift
+### 12.6 Dependency Drift
 
 用户越来越依赖 agent 代替自己判断。
 
-### 12.6 Publication Leakage
+### 12.7 Publication Leakage
 
 私有 orientation、corpus、评价标签意外进入 public tool layer。
 
@@ -398,7 +418,8 @@ v0 可以是：
 3. 生成 purpose review。
 4. 生成 study priority decision。
 5. 输出一个 capability gap note 或 study method note。
-6. replay / checkpoint 后仍能恢复这些 artifact。
+6. 对一个抽象 claim 生成 concept grounding table 或 historical density review。
+7. replay / checkpoint 后仍能恢复这些 artifact。
 
 暂不打开：
 
@@ -417,6 +438,8 @@ v0 至少要证明：
 - 学习产物是 artifact，不只是聊天记录
 - 用户能看到方法说明
 - bridge-domain gaps 能被指出
+- 抽象 claim 不会在缺少具体对象、来源和反例时被包装成结论
+- historical density review 能显示材料厚度和缺口
 - 系统没有输出现实操作性指挥
 
 ## 15. 设计判断
