@@ -89,7 +89,7 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 baseline：`1049 passed`。
+当前 baseline：`1064 passed`。
 
 ## 6. Current Batch
 
@@ -593,6 +593,24 @@ Evidence:
 - Implemented denied-path candidate replay and append for delegation audit events before raising `KernelPermissionError`; no worker ids/events are created for denied decisions.
 - Targeted denied audit / taxonomy tests -> `2 passed`.
 - Focused worker handoff / error taxonomy / delegation read-model tests -> `17 passed`.
+
+## 32. Current Batch
+
+Batch name: `Restart Create Run Session Context Green Slice`
+
+Status: `complete; pending review`
+
+Goal: close accepted aggressive-dev `restart_create_run_session_context_missing` without opening product session workflow, run graph, real worker runtime, scheduler/process supervisor, process spawn, real HTTP, provider adapter, filesystem/container/git worktree, public SDK, new dependency, tag, or release.
+
+Evidence:
+
+- Review accepted aggressive-dev `spike/aggressive-dev@6485feef27ff719fde17c95867dc03b4bb48057e` `worker.handoff.approval.recovery.review` as bounded `kernel_friction`.
+- Added red coverage to `tests/isotope_kernel/test_session_lifecycle_boundary.py`: restarted `InProcessServer(root)` must allow `create_run(session_id, ...)` for a session recoverable via `get_session_state(...)`, and the new run must appear in the event-backed session read model.
+- Red result: targeted test failed with `KernelError(code=unknown_session)` because session validation only checked process-local `_sessions`.
+- Implemented event-backed session validation fallback: `_validate_existing_session_id(...)` now recovers minimal session context through `get_session_state(...)` when `_sessions` is empty after restart.
+- Targeted red/green result: restarted create-run session test -> `1 passed`.
+- Focused regression: session lifecycle / restart write helper / unknown session taxonomy -> `7 passed`.
+- Full regression with local `DYLD_LIBRARY_PATH` workaround: `1064 passed in 7.44s`.
 
 ### Previous Batch Snapshot: Worker Handoff Helper Red / Green Slice
 

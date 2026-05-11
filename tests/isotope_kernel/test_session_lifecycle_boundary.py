@@ -46,3 +46,22 @@ def test_session_state_is_replay_truth_not_hidden_server_metadata(tmp_path):
         "status": "active",
         "run_ids": [run["run_id"]],
     }
+
+
+def test_restarted_server_can_create_run_for_event_backed_session(tmp_path):
+    api = server.InProcessServer(tmp_path)
+    session = api.create_session()
+    first_run = api.create_run(session["session_id"], goal="first run")
+
+    restarted_api = server.InProcessServer(tmp_path)
+
+    assert restarted_api.get_session_state(session["session_id"])["run_ids"] == [
+        first_run["run_id"]
+    ]
+    second_run = restarted_api.create_run(
+        session["session_id"],
+        goal="follow-up after restart",
+    )
+
+    session_state = restarted_api.get_session_state(session["session_id"])
+    assert session_state["run_ids"] == [first_run["run_id"], second_run["run_id"]]

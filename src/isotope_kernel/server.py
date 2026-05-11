@@ -1372,14 +1372,8 @@ class InProcessServer:
     def _validate_existing_session_id(self, session_id: object) -> None:
         self._validate_non_empty_string("session_id", session_id)
         if session_id not in self._sessions:
-            raise KernelError(
-                "unknown session_id",
-                code="unknown_session",
-                category="not_found",
-                retryable=False,
-                http_status=404,
-                details={"session_id": session_id},
-            )
+            session_state = self.get_session_state(session_id)
+            self._sessions[session_id] = {"session_id": session_state["session_id"]}
 
     def _validate_existing_run_id(self, run_id: object) -> None:
         self._validate_non_empty_string("run_id", run_id)
