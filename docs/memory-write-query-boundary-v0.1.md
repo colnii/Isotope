@@ -109,6 +109,17 @@ memory 默认不内联大块 artifact content。完整内容读取必须通过�
 
 server / agent runtime 不能直接写 durable memory，也不能用 memory query 结果绕过 policy 或 event log。
 
+### 3.1 Capability Invocation Boundary
+
+memory query / retrieval 是 capability，但 capability 的调用方不一定是模型本身。这里要区分两个入口：
+
+- **runtime-invoked capability**：由 app shell / agent runtime 在构造上下文、控制 token budget、处理上下文不足或准备代码修改前自动触发。RAG / retrieval 更常见地属于这个入口：runtime 先检索相关 refs / summaries / previews，再把被授权的结果放入模型可见上下文。
+- **model-invoked tool capability**：由模型在推理过程中显式选择调用，例如未来的 `search_code`、`read_file`、`run_tests` 或其他 tool。
+
+两种入口都必须遵守同一组 kernel 边界：不能绕过 `ResourceRef`、grants、retrieval policy、canonical event log 或 artifact full-content 读取规则。区别只在“谁决定触发”：前者是 runtime / app shell 的上下文编排决策，后者是模型可见的 tool-use 决策。
+
+因此，RAG / retrieval 不应被理解为“必须暴露给模型主动调用的 tool”。在代码修改类 app 中，它可以是自动备课式的 runtime capability：先找相关文件、定义、调用点和测试，再把受控上下文交给模型；模型随后再决定是否使用显式 tool 执行读取、修改或验证。
+
 ## 4. Memory Write Boundary
 
 第一阶段只实现 action-chain、canonical event read-model、checkpoint read-model 和 not-enabled handler boundary，不实现 storage、successful durable write path 或 query engine。

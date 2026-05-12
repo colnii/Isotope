@@ -174,6 +174,8 @@
   - `MemoryRecord` 必须有结构化 `content`，同时保留 preview/summary、refs 和 provenance
   - durable memory 写入必须走可审计的 action chain
   - `Memory Query` 是 on-demand recall primitive，不是每个 run 的固定循环阶段
+  - `Memory Query` / retrieval 可以是 runtime-invoked capability，由 app shell / agent runtime 自动用于上下文准备；不等于必须暴露成 model-invoked tool
+  - runtime-invoked capability 和 model-invoked tool capability 必须遵守同一组 `ResourceRef` / grants / retrieval policy / event log 边界
 - v0 candidate:
   - `write_memory` / `promote_memory` 是推荐 action type 名
   - 常见路径应支持 `query + controlled expand`，但展开仍然受 policy 和 ref-first access 约束

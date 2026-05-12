@@ -16,6 +16,8 @@
 - Follow TDD for implementation work: write red tests first, keep them uncommitted, then implement the smallest green slice and commit after verification.
 - For docs-only tasks, do not modify `src/`, `tests/`, `.github/`, or `pyproject.toml`.
 - After behavior changes, sync `README.md`, `AGENTS.md`, and affected docs/status files in the same task.
+- After any scoped Isotope task that leaves intended file changes, verify, commit, and push to the current upstream branch unless the user explicitly asks to pause or keep changes uncommitted.
+- Keep project history linear: prefer fast-forward / rebase workflows, avoid merge commits on `main`, and do not force-push shared branches unless the user explicitly requests it.
 - Keep detailed status, deferred capability lists, and design boundaries in `docs/`; keep README and AGENTS short.
 - Verify `/home/lumber/Github/x-agent` stays untouched on every scoped Isotope task.
 - Do not change tags or publish GitHub Releases unless explicitly requested.
