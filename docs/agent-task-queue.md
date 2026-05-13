@@ -247,6 +247,20 @@ Next suggested branch-local mode:
 
 Pause Agent loop expansion and wait for real app-layer friction or external review feedback.
 
+Next closure batch:
+
+`Agent Loop Branch Closure Review`
+
+Status: `complete`
+
+Goal: record the branch-level conclusion in plain language so the branch can be kept, reviewed, PR'd, or merged without adding more artificial Agent loop scenarios.
+
+Evidence:
+
+- Closure doc: `docs/agent-loop-branch-closure-review.md`.
+- Decision: stop branch-local Agent loop expansion for now.
+- Current integration choice remains a user decision: merge, PR, or keep the branch.
+
 Stop conditions:
 
 - requires real LLM, scheduler, provider adapter, real HTTP server, real worker process, filesystem mutation, public SDK, or product UX decision
