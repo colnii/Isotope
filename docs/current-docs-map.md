@@ -89,6 +89,7 @@
 - [Agent / Worker Lifecycle Boundary](./agent-worker-lifecycle-boundary-v0.2.md)
 - [Workspace Substrate Boundary](./workspace-substrate-boundary-v0.2.md)
 - [Workspace Resource Lifecycle Boundary](./workspace-resource-lifecycle-boundary-v0.2.md)
+- [VCS / Git Optional Boundary](./vcs-git-optional-boundary-v0.2.md)
 - [Retry / Cancel / Supersede Boundary](./retry-cancel-supersede-boundary-v0.2.md)
 - [Retry / Cancel / Supersede Runtime Integration Boundary](./retry-cancel-supersede-runtime-integration-boundary-v0.2.md)
 - [Policy Profile / Action Registry Versioning Boundary](./policy-profile-action-registry-versioning-boundary-v0.2.md)

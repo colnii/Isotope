@@ -73,6 +73,7 @@
 - 加上 Current Docs Map 后 tracked docs Markdown：116 个。该文档是当前 `docs/` 的短索引和读者路径归纳，不移动、不删除、不合并文档。
 - Delegation Decision Read Model slice 已 green；tracked docs Markdown 数量不变。当前实现新增 `RunState.delegations`，把 delegation proposal / decision / worker linkage 投影到 read model，支持 replay 和 checkpoint-assisted rebuild，使 app shell 不再需要 raw event scan 审计 worker handoff decision；不改变 event append semantics。
 - Workspace Lifecycle Helper slice 已 green；tracked docs Markdown 数量不变。当前实现新增 `InProcessServer.create_workspace_lease(...)`、`capture_workspace_artifact(...)`、`release_workspace(...)`，把 app-local private `_append(...)` workspace lifecycle glue 收口为既有 canonical events helper；不打开 real filesystem / container / git worktree / remote executor。
+- 加上 VCS / Git Optional Boundary 后 tracked docs Markdown：120 个。该文档记录 Git / VCS 是 optional capability，不是 kernel 基础依赖；没有 Git 的电脑应走 `no_vcs` / `snapshot_only` fallback，不打开 branch / commit / git worktree / filesystem mutation 实现。
 
 ## 2. Current entrypoints
 
@@ -180,6 +181,7 @@
 - `docs/worker-handoff-helper-closure-review.md`：Worker handoff helper closure review，记录 first slice complete / closed for now、remaining friction 和 deferred delegation policy integration。
 - `docs/agent-worker-lifecycle-boundary-v0.2.md`：Agent / Worker lifecycle boundary，first slice complete。
 - `docs/workspace-substrate-boundary-v0.2.md`：Workspace substrate boundary，first slice complete。
+- `docs/vcs-git-optional-boundary-v0.2.md`：VCS / Git optional boundary，记录 Git 只作为 future optional adapter / capability diagnosis，不是 kernel baseline dependency。
 - `docs/external-ingestion-boundary-v0.2.md`：Track F external ingestion / `ImportedSnapshot` boundary，closed for now。
 - `docs/approval-pause-resume-boundary-v0.2.md`：Track E approval pause / resume boundary，closed for now。
 - Supporting current docs:
