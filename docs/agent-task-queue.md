@@ -200,7 +200,28 @@ Next suggested branch-local batch:
 
 `Planner Matrix Fixture Expansion Review`
 
+Status: `complete`
+
 Goal: docs-only selection for whether the next fixture should pressure one narrow surface: approval denial path, worker handoff denial path, restart after planner pause, or memory query deferred path. Default recommendation is to pause branch-local agent-loop expansion unless the user wants another runnable spike.
+
+Tasks:
+
+1. Review candidate fixtures: complete.
+2. Select whether to continue matrix expansion: complete.
+3. Record next suggested branch-local step: complete, see `docs/planner-matrix-fixture-expansion-review.md`.
+
+Evidence:
+
+- Review doc: `docs/planner-matrix-fixture-expansion-review.md`.
+- Scope: docs-only; no `src/`, `tests`, `.github`, or `pyproject.toml` changes.
+- Decision: do not expand by default; if continuing, choose `restart after planner pause`.
+- Rationale: it best pressure-tests app-layer lifecycle after restart without requiring real LLM, scheduler, provider adapter, real HTTP server, real worker process, memory query engine, filesystem mutation, public SDK, or product UX.
+
+Next suggested branch-local batch:
+
+`Planner Restart Pause Fixture Spike`
+
+Goal: add one deterministic runnable fixture showing a planner pauses at approval, the process restarts, and the loop resumes through public helpers / event-backed state.
 
 Stop conditions:
 
