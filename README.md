@@ -69,6 +69,7 @@ python3 -m venv .venv
 - Planner Input / Output Contract: [docs/planner-input-output-contract-v0.2.md](docs/planner-input-output-contract-v0.2.md) defines what a future LLM planner can see, what symbolic decisions it can return, and how invalid output must be rejected before execution.
 - Planner I/O Validator spike: `python -m isotope_kernel.demo --scenario agent-loop-planner-io-validator`, covering a demo-local gatekeeper that accepts valid symbolic planner output and rejects malformed / unknown / overpowered / unauthorized full-text output before execution; see [docs/planner-io-validator-spike-review.md](docs/planner-io-validator-spike-review.md).
 - Planner Validated Runner spike: `python -m isotope_kernel.demo --scenario agent-loop-planner-validated-runner`, covering validator-before-runner execution for valid fake planner output and no-side-effect rejection for invalid output; see [docs/planner-validated-runner-spike-review.md](docs/planner-validated-runner-spike-review.md).
+- Agent Loop Branch Handoff Checkpoint: [docs/agent-loop-branch-handoff-checkpoint.md](docs/agent-loop-branch-handoff-checkpoint.md) says this branch is ready for keep / PR / merge decision, and should not keep adding artificial Agent loop scenarios without real app-layer friction or reviewer feedback.
 - Demo trace mode: `--trace` is available for `v0.2`, `approval-tool-runner`, `artifact-review`, `external-snapshot-review`, `agent-loop-friction`, `agent-loop-planner-friction`, `agent-loop-planner-matrix`, `agent-loop-planner-restart-pause`, `agent-loop-planner-io-validator`, and `agent-loop-planner-validated-runner` to print human-readable runtime steps; default plain output and `--json` remain compatible, and trace does not expose artifact full content.
 - Session / run creation through the in-process kernel path.
 - Minimal event-backed Session / Run Lifecycle slice: `session.created`, `get_session_state(...)`, restarted `create_run(...)` for event-backed sessions, run lifecycle checkpoint fields, and terminal ordinary-input no-side-effect rejection.
@@ -147,6 +148,7 @@ python3 -m venv .venv
 - Planner input / output contract: [docs/planner-input-output-contract-v0.2.md](docs/planner-input-output-contract-v0.2.md)
 - Planner I/O validator spike review: [docs/planner-io-validator-spike-review.md](docs/planner-io-validator-spike-review.md)
 - Planner validated runner spike review: [docs/planner-validated-runner-spike-review.md](docs/planner-validated-runner-spike-review.md)
+- Agent loop branch handoff checkpoint: [docs/agent-loop-branch-handoff-checkpoint.md](docs/agent-loop-branch-handoff-checkpoint.md)
 - App spike coverage review: [docs/app-spike-coverage-review.md](docs/app-spike-coverage-review.md)
 - Source artifact setup helper boundary: [docs/source-artifact-setup-helper-boundary-v0.2.md](docs/source-artifact-setup-helper-boundary-v0.2.md)
 - Source artifact helper closure review: [docs/source-artifact-helper-closure-review.md](docs/source-artifact-helper-closure-review.md)

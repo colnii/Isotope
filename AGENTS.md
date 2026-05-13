@@ -29,6 +29,7 @@
 - Planner Input / Output Contract is documented in [docs/planner-input-output-contract-v0.2.md](docs/planner-input-output-contract-v0.2.md). The validator and validated-runner demo spikes have now exercised the contract without connecting a real LLM.
 - Planner I/O Validator Spike is complete and documented in [docs/planner-io-validator-spike-review.md](docs/planner-io-validator-spike-review.md). It proves fake planner output is checked before execution.
 - Planner Validated Runner Spike is complete and documented in [docs/planner-validated-runner-spike-review.md](docs/planner-validated-runner-spike-review.md). Next safe mode is pausing artificial branch-local Agent loop expansion until real app-layer friction or external review feedback arrives.
+- Agent Loop Branch Handoff Checkpoint is documented in [docs/agent-loop-branch-handoff-checkpoint.md](docs/agent-loop-branch-handoff-checkpoint.md). The branch is ready for keep / PR / merge decision; do not keep adding artificial Agent loop scenarios.
 - Track D: Demo / Docs Polish is effectively complete / closed for now.
 - Current Track A design doc: [docs/http-api-minimal-surface-v0.2.md](docs/http-api-minimal-surface-v0.2.md).
 - Track A has in-process `HttpApiApp` / `create_http_app(...)`, request validation / no-side-effect error boundary, response contract, demo smoke, duplicate-submit idempotency boundary, route inventory, and deferred route contract; it is effectively complete / closed for now and is not a real listening HTTP server.
@@ -192,6 +193,7 @@ git status --short
 - Planner input / output contract: [docs/planner-input-output-contract-v0.2.md](docs/planner-input-output-contract-v0.2.md)
 - Planner I/O validator spike review: [docs/planner-io-validator-spike-review.md](docs/planner-io-validator-spike-review.md)
 - Planner validated runner spike review: [docs/planner-validated-runner-spike-review.md](docs/planner-validated-runner-spike-review.md)
+- Agent loop branch handoff checkpoint: [docs/agent-loop-branch-handoff-checkpoint.md](docs/agent-loop-branch-handoff-checkpoint.md)
 - App spike coverage review: [docs/app-spike-coverage-review.md](docs/app-spike-coverage-review.md)
 - Source artifact setup helper boundary: [docs/source-artifact-setup-helper-boundary-v0.2.md](docs/source-artifact-setup-helper-boundary-v0.2.md)
 - Source artifact helper closure review: [docs/source-artifact-helper-closure-review.md](docs/source-artifact-helper-closure-review.md)

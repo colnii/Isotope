@@ -31,6 +31,9 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario artifact-revie
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario external-snapshot-review
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario external-snapshot-review --trace
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario external-snapshot-review --json
+
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-validated-runner --trace
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-validated-runner --json
 ```
 
 `--trace` 是 human-readable trace，用来给 reviewer 看 runtime steps；`--json` 是 machine-readable summary。两者都不应输出 artifact full content 或 raw external content。
@@ -42,6 +45,7 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario external-snaps
 - `--scenario approval-tool-runner` proves a small approval-gated workflow: `submit_action(...)`, pending approval lookup/read helper, workspace binding helper, artifact / `ResourceRef` handoff, replay, and checkpoint.
 - `--scenario artifact-review` proves the first app spike: source artifact setup helper, artifact summary / structured `ResourceRef`, controlled full-content retrieval policy, reviewer action chain, review artifact provenance, replay, and checkpoint.
 - `--scenario external-snapshot-review` proves the second app spike: deterministic `ImportedSnapshot`, canonical `snapshot.imported`, `RunState.external_observations`, conflict diagnostics, native state priority, replay, and checkpoint.
+- `--scenario agent-loop-planner-validated-runner` proves the branch-local Agent loop pressure path: fake planner output is validated before runner execution, valid symbolic decisions run through public helpers, and invalid output is blocked without partial events or artifacts.
 - The kernel now has first-slice coverage for append-only event log, projector read models, checkpoint-assisted rebuild, approval pause/resume, workspace lifecycle read model, retry/cancel/supersede logical runtime helpers, policy/profile basis metadata, action registry version basis, and event schema compatibility fail-closed behavior.
 
 ## 4. What Is Deliberately Not Implemented
@@ -68,6 +72,7 @@ Recommended short path:
 7. `docs/workspace-resource-lifecycle-closure-review.md` for workspace lifecycle read-model closure.
 8. `docs/policy-registry-version-basis-closure-review.md` for registry/profile basis metadata closure.
 9. `docs/event-schema-registry-closure-review.md` for event schema compatibility closure.
+10. `docs/agent-loop-branch-handoff-checkpoint.md` for the branch-local Agent loop proof and stop point.
 
 Optional deep dives:
 

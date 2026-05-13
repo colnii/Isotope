@@ -314,6 +314,16 @@ Next suggested branch-local mode:
 
 Pause artificial Agent loop expansion and wait for real app-layer friction or external review feedback.
 
+Handoff checkpoint:
+
+Status: `complete`
+
+Evidence:
+
+- Handoff doc: `docs/agent-loop-branch-handoff-checkpoint.md`.
+- Decision: branch is ready for keep / PR / merge decision.
+- Next useful input should come from real app-layer friction or external review feedback.
+
 Stop conditions:
 
 - requires real LLM, scheduler, provider adapter, real HTTP server, real worker process, filesystem mutation, public SDK, or product UX decision
