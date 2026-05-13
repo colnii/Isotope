@@ -38,6 +38,7 @@ def main(argv: list[str] | None = None) -> int:
             "external-snapshot-review",
             "agent-loop-friction",
             "agent-loop-planner-friction",
+            "agent-loop-planner-matrix",
         ),
         default="v0.1",
         help="demo scenario to run",
@@ -113,6 +114,8 @@ def _run_scenario(root: Path, *, scenario: str) -> dict[str, Any]:
         return _run_agent_loop_friction_spike(root)
     if scenario == "agent-loop-planner-friction":
         return _run_agent_loop_planner_adapter_spike(root)
+    if scenario == "agent-loop-planner-matrix":
+        return _run_agent_loop_planner_matrix_spike(root)
     raise ValueError(f"unsupported scenario: {scenario}")
 
 
@@ -1022,6 +1025,132 @@ def _deterministic_planner_decisions(planner_input_summary: dict[str, Any]) -> l
     ]
 
 
+def _run_agent_loop_planner_matrix_spike(root: Path) -> dict[str, Any]:
+    root.mkdir(parents=True, exist_ok=True)
+    happy = _run_agent_loop_planner_adapter_spike(root / "happy-path")
+    blocked = _run_planner_blocked_deferred_fixture()
+    malformed = _run_planner_malformed_action_fixture(root / "malformed-action")
+    fixtures = [happy, blocked, malformed]
+    app_deferred_friction = list(blocked["app_deferred_friction"])
+    kernel_friction: list[dict[str, Any]] = []
+    planner_matrix_ok = (
+        happy["planner_adapter_friction_ok"] is True
+        and blocked["status"] == "blocked_deferred"
+        and malformed["status"] == "failed_closed"
+        and malformed["partial_events_appended"] is False
+        and kernel_friction == []
+    )
+
+    return {
+        "scenario": "agent-loop-planner-matrix",
+        "transport": "in_process",
+        "planner_matrix_ok": planner_matrix_ok,
+        "fixture_count": len(fixtures),
+        "fixtures": [
+            _planner_happy_fixture_summary(happy),
+            blocked,
+            malformed,
+        ],
+        "happy_path_ok": happy["planner_adapter_friction_ok"],
+        "blocked_deferred_ok": blocked["status"] == "blocked_deferred",
+        "malformed_fail_closed_ok": malformed["partial_events_appended"] is False,
+        "kernel_friction": kernel_friction,
+        "kernel_friction_count": len(kernel_friction),
+        "app_deferred_friction": app_deferred_friction,
+        "model_status": "not_used",
+        "scheduler_status": "not_used",
+        "provider_status": "not_used",
+        "network_listener_status": "not_used",
+        "filesystem_mutation_status": "not_used",
+        "memory_status": "boundary_only",
+        "memory_query_status": "not_enabled",
+        "next_development_step": (
+            "Add a branch-local fixture-backed planner runner API boundary only if the next app spike "
+            "needs to reuse this matrix outside the demo entrypoint."
+        ),
+    }
+
+
+def _planner_happy_fixture_summary(result: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "fixture_id": "happy_path",
+        "status": "ok",
+        "session_id": result["session_id"],
+        "run_id": result["run_id"],
+        "planner_adapter_status": result["planner_adapter_status"],
+        "planner_decision_count": result["planner_decision_count"],
+        "private_append_required": result["private_append_required"],
+        "kernel_friction": list(result["kernel_friction"]),
+        "replay_ok": result["replay_ok"],
+        "checkpoint_ok": result["checkpoint_ok"],
+        "event_count": result["event_count"],
+    }
+
+
+def _run_planner_blocked_deferred_fixture() -> dict[str, Any]:
+    return {
+        "fixture_id": "blocked_deferred_capability",
+        "status": "blocked_deferred",
+        "blocked_capability": "real_llm_plan",
+        "reason": "real LLM planning is product/app-layer deferred and is not a kernel implementation request",
+        "app_deferred_friction": [
+            {
+                "kind": "deferred_capability",
+                "capability": "real_llm_plan",
+                "classification": "app_or_product_deferred",
+            }
+        ],
+        "kernel_friction": [],
+        "partial_events_appended": False,
+    }
+
+
+def _run_planner_malformed_action_fixture(root: Path) -> dict[str, Any]:
+    root.mkdir(parents=True, exist_ok=True)
+    api = InProcessServer(root)
+    session = api.create_session()
+    run = api.create_run(session["session_id"], goal="malformed planner action fixture")
+    run_id = run["run_id"]
+    before_count = len(api.get_events(run_id))
+    unknown_action = "unknown_symbolic_action"
+    status = "failed_closed"
+    error_code = ""
+    try:
+        _validate_planner_symbolic_action(unknown_action)
+    except ValueError as exc:
+        error_code = "unknown_symbolic_action"
+        error_message = str(exc)
+    else:
+        status = "unexpected_success"
+        error_message = ""
+    after_count = len(api.get_events(run_id))
+
+    return {
+        "fixture_id": "malformed_symbolic_action",
+        "status": status,
+        "unknown_action": unknown_action,
+        "error_code": error_code,
+        "error_summary": error_message,
+        "events_before": before_count,
+        "events_after": after_count,
+        "partial_events_appended": after_count != before_count,
+        "kernel_friction": [],
+    }
+
+
+def _validate_planner_symbolic_action(action: str) -> None:
+    allowed = {
+        "create_source_artifact",
+        "submit_worker_handoff",
+        "submit_approval_gated_action",
+        "bind_workspace",
+        "resolve_approval",
+        "verify_replay_checkpoint",
+    }
+    if action not in allowed:
+        raise ValueError(f"unknown planner symbolic action: {action}")
+
+
 def _external_snapshot(
     run_id: str,
     snapshot_id: str,
@@ -1080,6 +1209,8 @@ def _latest_action_status(actions: dict[str, dict[str, Any]]) -> str:
 
 
 def _format_plain_text(result: dict[str, Any]) -> str:
+    if result.get("scenario") == "agent-loop-planner-matrix":
+        return _format_agent_loop_planner_matrix_plain_text(result)
     if result.get("scenario") == "agent-loop-planner-friction":
         return _format_agent_loop_planner_friction_plain_text(result)
     if result.get("scenario") == "agent-loop-friction":
@@ -1109,6 +1240,8 @@ def _format_plain_text(result: dict[str, Any]) -> str:
 
 def _format_trace(result: dict[str, Any]) -> str:
     scenario = result.get("scenario", "v0.1")
+    if scenario == "agent-loop-planner-matrix":
+        return _format_agent_loop_planner_matrix_trace(result)
     if scenario == "agent-loop-planner-friction":
         return _format_agent_loop_planner_friction_trace(result)
     if scenario == "agent-loop-friction":
@@ -1243,6 +1376,26 @@ def _format_agent_loop_planner_friction_trace(result: dict[str, Any]) -> str:
             f"next development step: {result['next_development_step']}",
         ]
     )
+    return _format_trace_steps(result["scenario"], steps)
+
+
+def _format_agent_loop_planner_matrix_trace(result: dict[str, Any]) -> str:
+    fixtures = {fixture["fixture_id"]: fixture for fixture in result["fixtures"]}
+    happy = fixtures["happy_path"]
+    blocked = fixtures["blocked_deferred_capability"]
+    malformed = fixtures["malformed_symbolic_action"]
+    steps = [
+        f"happy_path session/run: {happy['session_id']} / {happy['run_id']}",
+        f"fixture happy_path action/policy/artifact path: {happy['status']}",
+        f"happy_path replay verified: {_bool_text(happy['replay_ok'])}",
+        f"happy_path checkpoint verified: {_bool_text(happy['checkpoint_ok'])}",
+        f"fixture blocked_deferred_capability: {blocked['blocked_capability']}",
+        "blocked_deferred_capability classified as app_or_product_deferred",
+        f"fixture malformed_symbolic_action: {malformed['status']}",
+        f"malformed_symbolic_action partial events appended: {_bool_text(malformed['partial_events_appended'])}",
+        f"kernel friction count: {result['kernel_friction_count']}",
+        f"next development step: {result['next_development_step']}",
+    ]
     return _format_trace_steps(result["scenario"], steps)
 
 
@@ -1384,6 +1537,24 @@ def _format_agent_loop_planner_friction_plain_text(result: dict[str, Any]) -> st
         f"workspace_binding_ok: {str(result['workspace_binding_ok']).lower()}",
         f"replay_ok: {str(result['replay_ok']).lower()}",
         f"checkpoint_ok: {str(result['checkpoint_ok']).lower()}",
+        f"model_status: {result['model_status']}",
+        f"scheduler_status: {result['scheduler_status']}",
+        f"memory_status: {result['memory_status']}",
+        f"next_development_step: {result['next_development_step']}",
+    ]
+    return "\n".join(lines)
+
+
+def _format_agent_loop_planner_matrix_plain_text(result: dict[str, Any]) -> str:
+    lines = [
+        f"scenario: {result['scenario']}",
+        f"transport: {result['transport']}",
+        f"planner_matrix_ok: {str(result['planner_matrix_ok']).lower()}",
+        f"fixture_count: {result['fixture_count']}",
+        f"happy_path_ok: {str(result['happy_path_ok']).lower()}",
+        f"blocked_deferred_ok: {str(result['blocked_deferred_ok']).lower()}",
+        f"malformed_fail_closed_ok: {str(result['malformed_fail_closed_ok']).lower()}",
+        f"kernel_friction_count: {result['kernel_friction_count']}",
         f"model_status: {result['model_status']}",
         f"scheduler_status: {result['scheduler_status']}",
         f"memory_status: {result['memory_status']}",

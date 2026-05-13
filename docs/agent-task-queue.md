@@ -85,6 +85,9 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-fri
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-friction
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-friction --trace
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-friction --json
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-matrix
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-matrix --trace
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-matrix --json
 
 rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel || true
 
@@ -95,7 +98,7 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 branch-local baseline：`1074 passed`。Pre-branch mainline baseline：`1064 passed`。
+当前 branch-local baseline：`1079 passed`。Pre-branch mainline baseline：`1064 passed`。
 
 ## Branch-Local Batch: Agent Loop Friction Spike
 
@@ -108,7 +111,7 @@ Goal: start the AI Agent Orchestration / Agent loop work as an isolated applicat
 Tasks:
 
 1. Create isolated worktree: complete, at `.worktrees/app-agent-loop-friction`.
-2. Confirm clean baseline: complete, pre-branch `1064 passed`; after adding the spike tests, branch-local full regression is `1074 passed` using the main checkout venv.
+2. Confirm clean baseline: complete, pre-branch `1064 passed`; after adding the spike tests, branch-local full regression is `1079 passed` using the main checkout venv.
 3. Write red tests for `agent-loop-friction` scenario: complete, expected failure was unsupported scenario.
 4. Implement smallest deterministic in-process scenario in `src/isotope_kernel/demo.py`: complete.
 5. Record friction review and next development step: complete, see `docs/agent-loop-friction-review.md`.
@@ -148,13 +151,39 @@ Next suggested branch-local batch:
 
 `Planner Fixture Matrix Friction Spike`
 
+Status: `complete`
+
 Goal: keep the same deterministic planner adapter, but add a tiny fixture matrix with happy path, blocked deferred path, and malformed symbolic action fail-closed path. The blocked path should report app/product-deferred friction for capabilities such as `real_llm_plan` or `memory_query`, not a kernel implementation request.
+
+Tasks:
+
+1. Write red tests for `agent-loop-planner-matrix` scenario: complete, expected failure was unsupported scenario.
+2. Implement happy path fixture by reusing the deterministic planner adapter path: complete.
+3. Implement blocked deferred capability fixture that classifies `real_llm_plan` as app / product deferred rather than kernel friction: complete.
+4. Implement malformed symbolic action fixture that validates before execution and appends no partial events: complete.
+5. Record matrix friction review and next development step: complete, see `docs/agent-loop-planner-matrix-friction-review.md`.
+
+Evidence:
+
+- New scenario: `python -m isotope_kernel.demo --scenario agent-loop-planner-matrix`.
+- Trace / JSON variants are supported.
+- Targeted tests: `tests/isotope_kernel/test_agent_loop_planner_matrix_spike.py`.
+- Current result: `planner_matrix_ok=true`, `fixture_count=3`, `kernel_friction=[]`.
+- Blocked `real_llm_plan` is app / product deferred friction, not a kernel implementation request.
+- Malformed `unknown_symbolic_action` fails closed with `partial_events_appended=false`.
+- No real LLM loop / prompt / response / scheduler / provider adapter / real HTTP server / real worker runtime / process spawn / memory query engine / filesystem mutation.
+
+Next suggested branch-local batch:
+
+`Planner Runner API Boundary Review`
+
+Goal: review whether the branch-local matrix runner should remain demo-local or become a small reusable app-layer runner module for future spikes. Start docs-only. Do not extract code unless a later spike actually needs to reuse the runner outside `demo.py`.
 
 Stop conditions:
 
 - requires real LLM, scheduler, provider adapter, real HTTP server, real worker process, filesystem mutation, public SDK, or product UX decision
 - requires changing event-store append-only semantics or executor grants semantics
-- produces no new `kernel_friction`, in which case keep mainline closed and record the result only
+- produces no reuse pressure outside `demo.py`, in which case keep the runner demo-local and record the result only
 
 ## 6. Current Batch
 
