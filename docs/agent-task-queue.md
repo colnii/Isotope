@@ -2,7 +2,7 @@
 
 状态：`active`
 
-Current note: Capability Hub Core Boundary is documented in `docs/capability-hub-core-boundary-v0.2.md`. If continuing, the next batch is red tests only for `tests/isotope_kernel/test_capability_catalog_core.py` and `tests/isotope_kernel/test_capability_catalog_shelves.py`.
+Current note: Capability Hub Core first slice is complete and ready to merge. Review doc: `docs/capability-hub-core-merge-readiness-review.md`. If continuing, choose merge / PR / keep branch; do not expand toward capability execution, LLM routing, `ask`, `interactive`, diagnostics, or product shell without a new boundary.
 
 ## 1. Purpose
 
@@ -103,7 +103,7 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 branch-local baseline：pending rebase verification。Pre-branch mainline baseline：`1064 passed`。
+当前 branch-local baseline：`1115 passed`。Pre-branch mainline baseline：`1064 passed`。
 
 ## Branch-Local Batch: Agent Loop Friction Spike
 
@@ -356,11 +356,20 @@ Evidence:
 
 Batch name: `Capability Hub Core Merge Readiness Review`
 
-Status: `in_progress`
+Status: `complete`
 
 Goal: rebase the capability catalog branch onto current `origin/main`, verify it remains a small catalog-only extraction, and decide whether it is safe to merge.
 
-Do not expand into capability execution, provider routing, product shell, diagnostics, self-evolution, `ask`, or `interactive` without a new boundary and red tests.
+Evidence:
+
+- Review doc: `docs/capability-hub-core-merge-readiness-review.md`.
+- Rebased onto current `origin/main`.
+- Targeted capability catalog tests: `19 passed`.
+- Full regression: `1115 passed`.
+- `v0.2 --trace` and `agent-loop-planner-validated-runner --trace` demos passed.
+- No capability execution, provider routing, product shell, diagnostics, self-evolution, `ask`, or `interactive`.
+
+Next action: user decision to merge / PR / keep branch.
 
 ## 8. Previous Current Batch
 
