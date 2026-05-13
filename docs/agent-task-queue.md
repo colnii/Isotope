@@ -2,7 +2,7 @@
 
 状态：`active`
 
-Current note: Capability Hub Core first slice is complete and ready to merge. Review doc: `docs/capability-hub-core-merge-readiness-review.md`. If continuing, choose merge / PR / keep branch; do not expand toward capability execution, LLM routing, `ask`, `interactive`, diagnostics, or product shell without a new boundary.
+Current note: Agent Loop Run Control / Step Driver integration slice is complete on the integration branch and ready for fast-forward merge. This only adds summary-only control read model plus one-step public-helper driver; do not expand into automatic loop, scheduler, real LLM planner, provider adapter, real worker runtime, or product shell without a new boundary.
 
 ## 1. Purpose
 
@@ -103,7 +103,34 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 branch-local baseline：`1115 passed`。Pre-branch mainline baseline：`1064 passed`。
+当前 branch-local baseline：`1134 passed`。Pre-branch mainline baseline：`1064 passed`。
+
+## 34. Current Batch
+
+Batch name: `Agent Loop Run Control / Step Driver Integration`
+
+Status: `complete / ready_to_merge`
+
+Goal: merge existing unfinished-but-worthwhile Agent loop support from the branch-local work into mainline without adding new feature scope.
+
+Tasks:
+
+1. Rebase the existing run-control / step-driver branch onto current `main`: complete.
+2. Resolve docs conflicts without dropping Capability Hub mainline status: complete.
+3. Verify targeted run-control / step-driver tests: complete.
+4. Verify full regression: complete.
+5. Sync README / AGENTS / current status / queue: complete.
+
+Evidence:
+
+- Targeted tests: `19 passed`.
+- Full regression: `1134 passed`.
+- New public surfaces: `InProcessServer.get_agent_loop_control(...)`, `InProcessServer.run_agent_loop_step(...)`, `GET /runs/{run_id}/agent-loop-control`, `POST /runs/{run_id}/agent-loop-step`.
+- Scope remains bounded: no automatic loop, scheduler, real LLM planner, provider adapter, real worker runtime, real HTTP server, or product shell.
+
+Next suggested mode:
+
+`Merge integration/agent-loop-step-driver into main`, then return to existing-code integration intake instead of opening new feature work.
 
 ## Branch-Local Batch: Agent Loop Friction Spike
 

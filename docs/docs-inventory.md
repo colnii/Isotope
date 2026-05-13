@@ -76,6 +76,7 @@
 - 加上 VCS / Git Optional Boundary 后 tracked docs Markdown：120 个。该文档记录 Git / VCS 是 optional capability，不是 kernel 基础依赖；没有 Git 的电脑应走 `no_vcs` / `snapshot_only` fallback，不打开 branch / commit / git worktree / filesystem mutation 实现。
 - Capability Hub Core first slice 已 green；tracked docs Markdown 数量不变。当前实现新增 `isotope_kernel.capability_catalog`，只接收 metadata / shelf / manifest / status 小核心和三个 product-candidate built-ins，不整体合并 aggressive capability hub、diagnostics、self-evolution、provider 或 product shell。
 - 加上 Capability Hub Core Merge Readiness Review 后 tracked docs Markdown：122 个。该文档记录 capability catalog branch 已 rebase 到当前 `origin/main`，且只包含 catalog-only extraction，推荐 fast-forward / rebase 后合并。
+- 加上 Agent Loop Run Control / Step Driver boundary docs 后 tracked docs Markdown：124 个。当前 integration branch 新增 summary-only control read model 和 one-step public-helper driver，不实现 automatic loop、scheduler、real LLM planner、provider adapter、real worker runtime 或 product shell。
 
 ## 2. Current entrypoints
 
@@ -152,7 +153,7 @@
 
 当前自动推进入口是 `docs/agent-task-queue.md`。`Approval-Gated Tool Runner Spike` 已完成，API friction review 已落文档，approval lookup/read helper、workspace binding helper 和 submit action helper 已完成；artifact review flow first slice、friction review、source artifact setup helper closure review、artifact provenance helper first slice、artifact review flow closure review、second app spike selection、external snapshot review closure review 和 app spike coverage review 已完成。
 
-- `docs/agent-task-queue.md`：active queue，Current Batch complete；Next Suggested Batch is `Application-Layer Friction Intake`。
+- `docs/agent-task-queue.md`：active queue，Current Batch complete；Next Suggested Batch is merge integration branch, then return to existing-code integration intake。
 - `docs/usability-pressure-test-plan-v0.2.md`：current pressure-test planning doc，`approval-gated tool runner` first slice complete and friction reviewed。
 - `docs/second-app-spike-selection.md`：second app spike selection；recommended `external snapshot review`。
 - `docs/external-snapshot-review-closure-review.md`：current external snapshot review closure review；second app spike complete / closed for now。
