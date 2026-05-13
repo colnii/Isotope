@@ -35,6 +35,7 @@ class HttpApiApp:
         ("POST", "/sessions"),
         ("POST", "/sessions/{session_id}/runs"),
         ("POST", "/runs/{run_id}/input"),
+        ("POST", "/runs/{run_id}/agent-loop-step"),
         ("GET", "/runs/{run_id}"),
         ("GET", "/runs/{run_id}/agent-loop-control"),
         ("GET", "/runs/{run_id}/events"),
@@ -185,6 +186,15 @@ class HttpApiApp:
                     requires_approval=requires_approval,
                 )
                 return self._json(200, self._submit_result_to_dict(result))
+            if (
+                method == "POST"
+                and len(parts) == 3
+                and parts[0] == "runs"
+                and parts[2] == "agent-loop-step"
+            ):
+                if not self._run_exists(parts[1]):
+                    return self._error(404, "not_found", "run not found")
+                return self._json(200, self.server.run_agent_loop_step(parts[1], json_body))
             if method == "GET" and len(parts) == 3 and parts[0] == "runs" and parts[2] == "approvals":
                 if not self._run_exists(parts[1]):
                     return self._error(404, "not_found", "run not found")

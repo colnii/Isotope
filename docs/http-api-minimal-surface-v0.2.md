@@ -34,6 +34,7 @@ v0.2 只定义这些 endpoint：
 POST /sessions
 POST /sessions/{session_id}/runs
 POST /runs/{run_id}/input
+POST /runs/{run_id}/agent-loop-step
 GET  /runs/{run_id}
 GET  /runs/{run_id}/agent-loop-control
 GET  /runs/{run_id}/events
@@ -78,6 +79,12 @@ run 创建只能产生当前 runtime/service boundary 允许的 canonical events
 该 endpoint 不能直接写 `ActionExecution`、不能直接创建 artifact、不能直接把 run 标记为 completed。success / failure 仍由 canonical events 和 projector read model 表达。
 
 当前实现委托现有 `InProcessServer.submit_input(...)`，因此状态变更仍走 `ActionCompiler -> PolicyEngine -> Executor` action chain，不绕过 kernel contract。
+
+### POST /runs/{run_id}/agent-loop-step
+
+执行一个当前 control `next_actions` 允许的 Agent loop step，然后返回 action result 和更新后的 control。
+
+该 endpoint 每次只执行一步，不自动循环，不调 scheduler，不接 real LLM provider，也不是 hosted product API。执行前会先读取 `get_agent_loop_control(run_id)`；如果 step 不在当前 `next_actions` 内，必须在写入 event 前 fail closed。
 
 ### GET /runs/{run_id}
 

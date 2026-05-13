@@ -10,6 +10,7 @@ from typing import Any
 
 from .action_compiler import ActionCompiler
 from .agent_loop_control import build_agent_loop_control
+from .agent_loop_step import run_agent_loop_step
 from .action_registry import ActionTypeRegistry
 from .artifact_store import ArtifactStore
 from .event_store import FileEventStore
@@ -716,6 +717,9 @@ class InProcessServer:
 
     def get_agent_loop_control(self, run_id: str) -> dict[str, Any]:
         return build_agent_loop_control(self.get_run_state(run_id))
+
+    def run_agent_loop_step(self, run_id: str, request: dict[str, Any]) -> dict[str, Any]:
+        return run_agent_loop_step(self, run_id, request)
 
     def get_pending_approvals(self, run_id: str) -> list[dict[str, Any]]:
         state = self._get_approval_read_state(run_id)

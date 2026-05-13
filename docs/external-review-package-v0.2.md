@@ -4,7 +4,7 @@
 
 ## 1. One-Paragraph Summary
 
-Isotope 是一个 event-sourced agent kernel prototype（事件溯源的 agent 内核原型），目标是验证 agent runtime 的硬边界：action chain、policy grants、append-only event log、artifact provenance、projector replay、checkpoint-assisted rebuild、approval pause/resume、workspace read model、Agent loop control read model、external observation boundary 和 schema/version basis。它现在能跑多个 deterministic / in-process developer demos，但它还不是完整产品：没有 real LLM loop、真实 HTTP server、provider adapter、UI、auth、多用户、真实 workspace filesystem 或 scheduler。
+Isotope 是一个 event-sourced agent kernel prototype（事件溯源的 agent 内核原型），目标是验证 agent runtime 的硬边界：action chain、policy grants、append-only event log、artifact provenance、projector replay、checkpoint-assisted rebuild、approval pause/resume、workspace read model、Agent loop control / step-driver surfaces、external observation boundary 和 schema/version basis。它现在能跑多个 deterministic / in-process developer demos，但它还不是完整产品：没有 real LLM loop、真实 HTTP server、provider adapter、UI、auth、多用户、真实 workspace filesystem 或 scheduler。
 
 ## 2. What Can Be Run
 
@@ -47,7 +47,8 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-pla
 - `--scenario external-snapshot-review` proves the second app spike: deterministic `ImportedSnapshot`, canonical `snapshot.imported`, `RunState.external_observations`, conflict diagnostics, native state priority, replay, and checkpoint.
 - `--scenario agent-loop-planner-validated-runner` proves the branch-local Agent loop pressure path: fake planner output is validated before runner execution, valid symbolic decisions run through public helpers, and invalid output is blocked without partial events or artifacts.
 - Agent Loop Run Control proves app-layer code can read a small control summary for a run: phase, blockers, pending approvals, next actions, progress, and deferred capabilities, without scanning raw events or exposing artifact full content.
-- The kernel now has first-slice coverage for append-only event log, projector read models, checkpoint-assisted rebuild, approval pause/resume, workspace lifecycle read model, Agent loop control read model, retry/cancel/supersede logical runtime helpers, policy/profile basis metadata, action registry version basis, and event schema compatibility fail-closed behavior.
+- Agent Loop Step Driver proves app-layer code can execute one currently available control step and receive updated control, without automatic scheduling or real LLM planning.
+- The kernel now has first-slice coverage for append-only event log, projector read models, checkpoint-assisted rebuild, approval pause/resume, workspace lifecycle read model, Agent loop control / step-driver surfaces, retry/cancel/supersede logical runtime helpers, policy/profile basis metadata, action registry version basis, and event schema compatibility fail-closed behavior.
 
 ## 4. What Is Deliberately Not Implemented
 
@@ -75,6 +76,7 @@ Recommended short path:
 9. `docs/event-schema-registry-closure-review.md` for event schema compatibility closure.
 10. `docs/agent-loop-branch-handoff-checkpoint.md` for the branch-local Agent loop proof and stop point.
 11. `docs/agent-loop-run-control-boundary-v0.2.md` for the product-facing Agent loop control read model.
+12. `docs/agent-loop-step-driver-boundary-v0.2.md` for the one-step Agent loop driver.
 
 Optional deep dives:
 
