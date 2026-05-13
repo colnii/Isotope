@@ -41,6 +41,7 @@ def main(argv: list[str] | None = None) -> int:
             "agent-loop-planner-matrix",
             "agent-loop-planner-restart-pause",
             "agent-loop-planner-io-validator",
+            "agent-loop-planner-validated-runner",
         ),
         default="v0.1",
         help="demo scenario to run",
@@ -122,6 +123,8 @@ def _run_scenario(root: Path, *, scenario: str) -> dict[str, Any]:
         return _run_agent_loop_planner_restart_pause_spike(root)
     if scenario == "agent-loop-planner-io-validator":
         return _run_agent_loop_planner_io_validator_spike(root)
+    if scenario == "agent-loop-planner-validated-runner":
+        return _run_agent_loop_planner_validated_runner_spike(root)
     raise ValueError(f"unsupported scenario: {scenario}")
 
 
@@ -1349,6 +1352,265 @@ def _run_agent_loop_planner_io_validator_spike(root: Path) -> dict[str, Any]:
     }
 
 
+def _run_agent_loop_planner_validated_runner_spike(root: Path) -> dict[str, Any]:
+    root.mkdir(parents=True, exist_ok=True)
+    api = InProcessServer(root)
+    session = api.create_session()
+    run = api.create_run(session["session_id"], goal="planner validated runner fixture")
+    run_id = run["run_id"]
+    planner_input = _planner_io_validator_input(run_id)
+    valid_output = _planner_validated_runner_output(run_id)
+    validation = _validate_planner_io_output(valid_output, planner_input)
+    if validation["status"] != "accepted":
+        raise RuntimeError(f"valid planner fixture rejected: {validation['error_code']}")
+    runner = _execute_validated_planner_decisions(api, run_id, valid_output["decisions"], root)
+
+    invalid_api = InProcessServer(root / "invalid-plan")
+    invalid_session = invalid_api.create_session()
+    invalid_run = invalid_api.create_run(
+        invalid_session["session_id"],
+        goal="invalid planner validated runner fixture",
+    )
+    invalid_run_id = invalid_run["run_id"]
+    invalid_input = _planner_io_validator_input(invalid_run_id)
+    invalid_output = _planner_invalid_validated_runner_output(invalid_run_id)
+    invalid_events_before = len(invalid_api.get_events(invalid_run_id))
+    invalid_artifacts_before = len(invalid_api.artifact_store.list_artifacts(invalid_run_id))
+    invalid_validation = _validate_planner_io_output(invalid_output, invalid_input)
+    invalid_events_after = len(invalid_api.get_events(invalid_run_id))
+    invalid_artifacts_after = len(invalid_api.artifact_store.list_artifacts(invalid_run_id))
+
+    invalid_plan_blocked = invalid_validation["status"] == "rejected"
+    invalid_plan_partial_events_appended = invalid_events_after != invalid_events_before
+    invalid_plan_artifact_created = invalid_artifacts_after != invalid_artifacts_before
+    planner_validated_runner_ok = (
+        validation["status"] == "accepted"
+        and runner["agent_loop_friction_ok"] is True
+        and invalid_plan_blocked
+        and invalid_plan_partial_events_appended is False
+        and invalid_plan_artifact_created is False
+    )
+
+    return {
+        "scenario": "agent-loop-planner-validated-runner",
+        "session_id": session["session_id"],
+        "run_id": run_id,
+        "run_status": runner["run_status"],
+        "transport": "in_process",
+        "planner_validated_runner_ok": planner_validated_runner_ok,
+        "validator_gate_passed": validation["status"] == "accepted",
+        "valid_plan_executed": runner["agent_loop_friction_ok"],
+        "valid_decision_count": validation["decision_count"],
+        "planner_decisions": _planner_decision_summaries(valid_output["decisions"]),
+        "invalid_plan_blocked": invalid_plan_blocked,
+        "invalid_plan_error_code": invalid_validation["error_code"],
+        "invalid_plan_events_before": invalid_events_before,
+        "invalid_plan_events_after": invalid_events_after,
+        "invalid_plan_artifacts_before": invalid_artifacts_before,
+        "invalid_plan_artifacts_after": invalid_artifacts_after,
+        "invalid_plan_partial_events_appended": invalid_plan_partial_events_appended,
+        "invalid_plan_artifact_created": invalid_plan_artifact_created,
+        "agent_loop_friction_ok": runner["agent_loop_friction_ok"],
+        "kernel_friction": [],
+        "kernel_friction_count": 0,
+        "private_append_required": runner["private_append_required"],
+        "worker_handoff_ok": runner["worker_handoff_ok"],
+        "approval_pending_before_resume": runner["approval_pending_before_resume"],
+        "approval_resume_ok": runner["approval_resume_ok"],
+        "workspace_binding_ok": runner["workspace_binding_ok"],
+        "replay_ok": runner["replay_ok"],
+        "checkpoint_ok": runner["checkpoint_ok"],
+        "checkpoint_basis_event_id": runner["checkpoint_basis_event_id"],
+        "event_count": runner["event_count"],
+        "event_types": runner["event_types"],
+        "source_artifact_ref": runner["source_artifact_ref"],
+        "worker_result_ref": runner["worker_result_ref"],
+        "final_artifact_ref": runner["final_artifact_ref"],
+        "model_status": "not_used",
+        "scheduler_status": "not_used",
+        "provider_status": "not_used",
+        "network_listener_status": "not_used",
+        "filesystem_mutation_status": "not_used",
+        "memory_status": "boundary_only",
+        "memory_query_status": "not_enabled",
+        "next_development_step": (
+            "Pause this artificial branch-local expansion and wait for real app-layer friction "
+            "before connecting any model provider."
+        ),
+    }
+
+
+def _planner_validated_runner_output(run_id: str) -> dict[str, Any]:
+    decisions = _deterministic_planner_decisions(
+        {
+            "run_id": run_id,
+            "run_status": "running",
+            "available_public_helpers": [
+                "create_source_artifact",
+                "submit_worker_handoff",
+                "submit_approval_gated_action",
+                "bind_workspace",
+                "resolve_approval",
+                "verify_replay_checkpoint",
+            ],
+        }
+    )
+    return {
+        "planner_run_id": "planner_run_validated_001",
+        "basis": {"run_id": run_id, "input_digest": "input_summary_hash"},
+        "decisions": [
+            {
+                **decision,
+                "requested_capability": decision["action"],
+            }
+            for decision in decisions
+        ],
+    }
+
+
+def _planner_invalid_validated_runner_output(run_id: str) -> dict[str, Any]:
+    return {
+        "planner_run_id": "planner_run_validated_bad_001",
+        "basis": {"run_id": run_id, "input_digest": "input_summary_hash"},
+        "decisions": [
+            {
+                "step": 1,
+                "action": "submit_approval_gated_action",
+                "requested_capability": "real_llm_plan",
+                "reason": "try to bypass the validator before runner execution",
+            }
+        ],
+    }
+
+
+def _execute_validated_planner_decisions(
+    api: InProcessServer,
+    run_id: str,
+    decisions: list[dict[str, Any]],
+    root: Path,
+) -> dict[str, Any]:
+    source_setup: dict[str, Any] | None = None
+    handoff: dict[str, Any] | None = None
+    pending: dict[str, Any] | None = None
+    workspace_binding: dict[str, Any] = {}
+    resolution: dict[str, Any] | None = None
+
+    for decision in decisions:
+        action = decision["action"]
+        if action == "create_source_artifact":
+            source_setup = api.create_source_artifact(
+                run_id,
+                summary="validated planner runner source summary",
+                content="deterministic validated planner runner input",
+            )
+        elif action == "submit_worker_handoff":
+            if source_setup is None:
+                raise RuntimeError("validated runner selected handoff before source artifact")
+            handoff = api.submit_worker_handoff(
+                run_id,
+                delegation_intent={
+                    "parent_agent_id": "agent_supervisor",
+                    "requested_worker_role": "worker",
+                    "requested_capabilities": {
+                        "tools": ["write_artifact_tool"],
+                        "workspace": {"mode": "shared_ro"},
+                        "budget": {"seconds": 30},
+                    },
+                },
+                artifact_ref=source_setup["artifact_ref"],
+                summary="deterministic validated planner runner worker result handoff",
+            )
+        elif action == "submit_approval_gated_action":
+            pending = api.submit_action(
+                run_id,
+                {
+                    "action": "call_tool",
+                    "tool": "write_artifact_tool",
+                    "text": "deterministic validated planner runner final artifact",
+                },
+                requires_approval=True,
+            )
+        elif action == "bind_workspace":
+            if pending is None:
+                raise RuntimeError("validated runner selected workspace binding before approval")
+            workspace_binding = api.bind_workspace(run_id=run_id, decision=pending["decision"])
+        elif action == "resolve_approval":
+            pending_approvals = api.get_pending_approvals(run_id)
+            approval_id = pending_approvals[0]["approval_id"] if pending_approvals else ""
+            if not approval_id:
+                raise RuntimeError("validated runner did not request approval")
+            resolution = api.resolve_approval(
+                approval_id,
+                {
+                    "resolution": "approved",
+                    "reason": "planner validated runner fixture",
+                    "resolver": "developer_demo",
+                },
+            )
+        elif action == "verify_replay_checkpoint":
+            continue
+        else:
+            raise ValueError(f"unsupported validated planner action: {action}")
+
+    if source_setup is None or handoff is None or pending is None or resolution is None:
+        raise RuntimeError("validated planner runner did not complete the deterministic loop")
+
+    events = api.get_events(run_id)
+    replay_state = RunProjector().rebuild(run_id, api.event_store)
+    checkpoint_store = FileCheckpointStore(root / "agent-loop-planner-validated-runner-checkpoints")
+    checkpoint = RunProjector().save_checkpoint(run_id, api.event_store, checkpoint_store)
+    checkpoint_state = RunProjector().rebuild_with_checkpoint(
+        run_id,
+        api.event_store,
+        checkpoint_store,
+    )
+    final_state = api.get_run_state(run_id)
+    event_types = [event.event_type for event in events]
+    replay_ok = asdict(replay_state) == asdict(final_state)
+    checkpoint_ok = asdict(checkpoint_state) == asdict(replay_state)
+    private_append_required = handoff["private_append_required"] is not False
+    agent_loop_friction_ok = (
+        source_setup["status"] == "completed"
+        and handoff["status"] == "completed"
+        and pending["status"] == "pending_user_approval"
+        and resolution["status"] == "completed"
+        and replay_state.status == "completed"
+        and replay_ok
+        and checkpoint_ok
+        and workspace_binding.get("mode") == "shared_ro"
+        and private_append_required is False
+    )
+    return {
+        "run_status": replay_state.status,
+        "agent_loop_friction_ok": agent_loop_friction_ok,
+        "private_append_required": private_append_required,
+        "worker_handoff_ok": handoff["status"] == "completed",
+        "approval_pending_before_resume": pending["status"] == "pending_user_approval",
+        "approval_resume_ok": resolution["status"] == "completed",
+        "workspace_binding_ok": workspace_binding.get("mode") == "shared_ro",
+        "replay_ok": replay_ok,
+        "checkpoint_ok": checkpoint_ok,
+        "checkpoint_basis_event_id": checkpoint["basis_event_id"],
+        "event_count": len(event_types),
+        "event_types": event_types,
+        "source_artifact_ref": source_setup["artifact_ref"].to_dict(),
+        "worker_result_ref": handoff["result_ref"],
+        "final_artifact_ref": resolution["artifact_ref"].to_dict(),
+    }
+
+
+def _planner_decision_summaries(decisions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "step": decision["step"],
+            "action": decision["action"],
+            "requested_capability": decision.get("requested_capability", decision["action"]),
+            "reason": decision["reason"],
+        }
+        for decision in decisions
+    ]
+
+
 def _planner_io_validator_input(run_id: str) -> dict[str, Any]:
     return {
         "run_id": run_id,
@@ -1602,6 +1864,8 @@ def _latest_action_status(actions: dict[str, dict[str, Any]]) -> str:
 
 
 def _format_plain_text(result: dict[str, Any]) -> str:
+    if result.get("scenario") == "agent-loop-planner-validated-runner":
+        return _format_agent_loop_planner_validated_runner_plain_text(result)
     if result.get("scenario") == "agent-loop-planner-io-validator":
         return _format_agent_loop_planner_io_validator_plain_text(result)
     if result.get("scenario") == "agent-loop-planner-restart-pause":
@@ -1637,6 +1901,8 @@ def _format_plain_text(result: dict[str, Any]) -> str:
 
 def _format_trace(result: dict[str, Any]) -> str:
     scenario = result.get("scenario", "v0.1")
+    if scenario == "agent-loop-planner-validated-runner":
+        return _format_agent_loop_planner_validated_runner_trace(result)
     if scenario == "agent-loop-planner-io-validator":
         return _format_agent_loop_planner_io_validator_trace(result)
     if scenario == "agent-loop-planner-restart-pause":
@@ -1845,6 +2111,36 @@ def _format_agent_loop_planner_io_validator_trace(result: dict[str, Any]) -> str
     return _format_trace_steps(result["scenario"], steps)
 
 
+def _format_agent_loop_planner_validated_runner_trace(result: dict[str, Any]) -> str:
+    steps = [
+        f"create session: {result['session_id']}",
+        f"create run: {result['run_id']}",
+        "policy capability list loaded before runner execution",
+        f"validate planner output: {_bool_text(result['validator_gate_passed'])}",
+    ]
+    steps.extend(
+        f"execute validated step {decision['step']}: {decision['action']}"
+        for decision in result["planner_decisions"]
+    )
+    steps.extend(
+        [
+            f"valid plan executed: {_bool_text(result['valid_plan_executed'])}",
+            f"block invalid planner output: {result['invalid_plan_error_code']}",
+            (
+                "invalid plan partial events appended: "
+                f"{_bool_text(result['invalid_plan_partial_events_appended'])}"
+            ),
+            f"kernel friction count: {result['kernel_friction_count']}",
+            f"private append required: {_bool_text(result['private_append_required'])}",
+            f"replay verified: {_bool_text(result['replay_ok'])}",
+            f"checkpoint verified: {_bool_text(result['checkpoint_ok'])}",
+            f"model status: {result['model_status']}",
+            f"next development step: {result['next_development_step']}",
+        ]
+    )
+    return _format_trace_steps(result["scenario"], steps)
+
+
 def _format_trace_steps(scenario: str, steps: list[str]) -> str:
     lines = [f"scenario: {scenario}"]
     lines.extend(f"[{index}] {step}" for index, step in enumerate(steps, start=1))
@@ -2045,6 +2341,34 @@ def _format_agent_loop_planner_io_validator_plain_text(result: dict[str, Any]) -
         f"full_content_rejected: {str(result['full_content_rejected']).lower()}",
         f"partial_events_appended: {str(result['partial_events_appended']).lower()}",
         f"kernel_friction_count: {result['kernel_friction_count']}",
+        f"model_status: {result['model_status']}",
+        f"scheduler_status: {result['scheduler_status']}",
+        f"memory_status: {result['memory_status']}",
+        f"next_development_step: {result['next_development_step']}",
+    ]
+    return "\n".join(lines)
+
+
+def _format_agent_loop_planner_validated_runner_plain_text(result: dict[str, Any]) -> str:
+    lines = [
+        f"scenario: {result['scenario']}",
+        f"session_id: {result['session_id']}",
+        f"run_id: {result['run_id']}",
+        f"run_status: {result['run_status']}",
+        f"transport: {result['transport']}",
+        f"planner_validated_runner_ok: {str(result['planner_validated_runner_ok']).lower()}",
+        f"validator_gate_passed: {str(result['validator_gate_passed']).lower()}",
+        f"valid_plan_executed: {str(result['valid_plan_executed']).lower()}",
+        f"invalid_plan_blocked: {str(result['invalid_plan_blocked']).lower()}",
+        (
+            "invalid_plan_partial_events_appended: "
+            f"{str(result['invalid_plan_partial_events_appended']).lower()}"
+        ),
+        f"agent_loop_friction_ok: {str(result['agent_loop_friction_ok']).lower()}",
+        f"private_append_required: {str(result['private_append_required']).lower()}",
+        f"kernel_friction_count: {result['kernel_friction_count']}",
+        f"replay_ok: {str(result['replay_ok']).lower()}",
+        f"checkpoint_ok: {str(result['checkpoint_ok']).lower()}",
         f"model_status: {result['model_status']}",
         f"scheduler_status: {result['scheduler_status']}",
         f"memory_status: {result['memory_status']}",

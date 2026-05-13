@@ -52,7 +52,8 @@
 10. [Agent Loop Branch Closure Review](./agent-loop-branch-closure-review.md)
 11. [Planner Input / Output Contract](./planner-input-output-contract-v0.2.md)
 12. [Planner I/O Validator Spike Review](./planner-io-validator-spike-review.md)
-13. [v0.2 Demo Acceptance](./demo/v0.2-demo-acceptance.md)
+13. [Planner Validated Runner Spike Review](./planner-validated-runner-spike-review.md)
+14. [v0.2 Demo Acceptance](./demo/v0.2-demo-acceptance.md)
 
 `--trace` 是 human-readable runtime trace；`--json` 是 machine-readable summary。两者都不应暴露 artifact full content。
 
@@ -134,6 +135,7 @@
 - [Agent Loop Branch Closure Review](./agent-loop-branch-closure-review.md)
 - [Planner Input / Output Contract](./planner-input-output-contract-v0.2.md)
 - [Planner I/O Validator Spike Review](./planner-io-validator-spike-review.md)
+- [Planner Validated Runner Spike Review](./planner-validated-runner-spike-review.md)
 - [App Spike Coverage Review](./app-spike-coverage-review.md)
 
 ### 3.5 Frozen v0.1 Surfaces

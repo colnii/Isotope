@@ -101,7 +101,7 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 branch-local baseline：`1090 passed`。Pre-branch mainline baseline：`1064 passed`。
+当前 branch-local baseline：`1096 passed`。Pre-branch mainline baseline：`1064 passed`。
 
 ## Branch-Local Batch: Agent Loop Friction Spike
 
@@ -297,6 +297,22 @@ Next suggested branch-local batch:
 `Planner Validated Runner Spike`
 
 Plain meaning: connect the gatekeeper to the tiny demo runner, so valid fake planner output can run and bad output remains blocked.
+
+Status: `complete`
+
+Goal: connect the demo-local validator to the tiny runner so valid symbolic planner output executes one deterministic loop, while invalid output is blocked before side effects.
+
+Evidence:
+
+- New scenario: `python -m isotope_kernel.demo --scenario agent-loop-planner-validated-runner`.
+- Trace / JSON variants are supported.
+- Targeted tests: `tests/isotope_kernel/test_agent_loop_planner_validated_runner_spike.py`.
+- Current result: `planner_validated_runner_ok=true`, `valid_plan_executed=true`, `invalid_plan_partial_events_appended=false`, `kernel_friction=[]`.
+- No real LLM provider / scheduler / real HTTP server / real worker process / memory query engine / filesystem mutation / public SDK / product UX.
+
+Next suggested branch-local mode:
+
+Pause artificial Agent loop expansion and wait for real app-layer friction or external review feedback.
 
 Stop conditions:
 

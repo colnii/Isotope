@@ -17,6 +17,7 @@ TRACE_SCENARIOS = (
     "agent-loop-planner-matrix",
     "agent-loop-planner-restart-pause",
     "agent-loop-planner-io-validator",
+    "agent-loop-planner-validated-runner",
 )
 
 COMMON_TRACE_TERMS = (
