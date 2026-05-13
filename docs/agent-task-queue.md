@@ -103,7 +103,7 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 branch-local baseline：`1096 passed`。Pre-branch mainline baseline：`1064 passed`。
+当前 branch-local baseline：pending rebase verification。Pre-branch mainline baseline：`1064 passed`。
 
 ## Branch-Local Batch: Agent Loop Friction Spike
 
@@ -333,32 +333,34 @@ Stop conditions:
 - requires extracting reusable runner code before a second non-demo caller exists
 - produces no new branch-local pressure, in which case pause expansion and wait for real application-layer friction
 
-## 6. Current Batch
+## Capability Hub Core Batch
 
-Batch name: `Capability Hub Core Boundary`
+Batch name: `Capability Hub Core`
 
-Timebox: `docs-only boundary slice`
+Timebox: `red -> green -> docs/status sync`
 
-Status: `complete`
+Status: `complete / closed for now`
 
-Goal: define the smallest mainline-ready extraction from aggressive Capability Hub without merging the aggressive branch wholesale.
+Goal: define and implement the smallest mainline-ready extraction from aggressive Capability Hub without merging the aggressive branch wholesale.
 
 Evidence:
 
 - Boundary doc: `docs/capability-hub-core-boundary-v0.2.md`.
 - Source review: `docs/aggressive/mainline-merge-candidate-review-v0.md` on `codex/spike-aggressive-dev`.
 - Explicitly excludes 49 aggressive capabilities, diagnostics, self-evolution harness, DeepSeek provider, LLM route, `ask`, `interactive`, workflow engine, and product shell.
-- Next implementation should start with red tests only: `tests/isotope_kernel/test_capability_catalog_core.py` and `tests/isotope_kernel/test_capability_catalog_shelves.py`.
+- Implementation: `src/isotope_kernel/capability_catalog.py`.
+- Tests: `tests/isotope_kernel/test_capability_catalog_core.py` and `tests/isotope_kernel/test_capability_catalog_shelves.py`.
+- Verification before rebase: red `19 failed`, green targeted `19 passed`, full regression `1083 passed`.
 
-## 7. Next Suggested Batch
+## Capability Hub Core Next Suggested Batch
 
-Batch name: `Capability Hub Core Red Tests`
+Batch name: `Capability Hub Core Merge Readiness Review`
 
-Status: `ready_red_only`
+Status: `in_progress`
 
-Goal: write failing tests for the minimal `isotope_kernel.capability_catalog` core without copying aggressive `capability_hub.py`.
+Goal: rebase the capability catalog branch onto current `origin/main`, verify it remains a small catalog-only extraction, and decide whether it is safe to merge.
 
-Stop after red tests unless the user explicitly asks to continue green in the same session.
+Do not expand into capability execution, provider routing, product shell, diagnostics, self-evolution, `ask`, or `interactive` without a new boundary and red tests.
 
 ## 8. Previous Current Batch
 

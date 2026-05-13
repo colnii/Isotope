@@ -1,6 +1,6 @@
 # Capability Hub Core Boundary v0.2
 
-状态：`docs-only boundary`
+状态：`first slice complete / closed for now`
 
 ## 1. 背景
 
@@ -200,3 +200,34 @@ manifest 不得包含：
 Do not copy `src/isotope_kernel/capability_hub.py` wholesale from aggressive branch.
 
 Mainline implementation must be a small extraction from the idea, not a direct transplant of the aggressive module.
+
+## 12. First green slice evidence
+
+已实现：
+
+- `src/isotope_kernel/capability_catalog.py`
+- `tests/isotope_kernel/test_capability_catalog_core.py`
+- `tests/isotope_kernel/test_capability_catalog_shelves.py`
+
+当前 first slice 只提供：
+
+- `Capability` metadata model。
+- `CapabilityCatalog`。
+- `list_capabilities(...)`。
+- `get_manifest(...)`。
+- `get_capability_status(...)`。
+- module-level default catalog helpers。
+- 三个 product-candidate built-ins：`artifact.review`、`external.snapshot.review`、`approval.tool.runner`。
+
+验证：
+
+- red：`19 failed`，失败集中在缺少 `isotope_kernel.capability_catalog`。
+- green：targeted `19 passed`。
+- full regression：`1083 passed`。
+
+边界保持：
+
+- 没有复制 aggressive `capability_hub.py`。
+- 没有接收 aggressive 的 49 个 capabilities。
+- 没有实现 capability execution。
+- 没有实现 LLM route、provider construction、`ask`、`interactive`、diagnostics、self-evolution harness、workflow engine 或 product shell。

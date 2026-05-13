@@ -74,7 +74,7 @@
 - Delegation Decision Read Model slice 已 green；tracked docs Markdown 数量不变。当前实现新增 `RunState.delegations`，把 delegation proposal / decision / worker linkage 投影到 read model，支持 replay 和 checkpoint-assisted rebuild，使 app shell 不再需要 raw event scan 审计 worker handoff decision；不改变 event append semantics。
 - Workspace Lifecycle Helper slice 已 green；tracked docs Markdown 数量不变。当前实现新增 `InProcessServer.create_workspace_lease(...)`、`capture_workspace_artifact(...)`、`release_workspace(...)`，把 app-local private `_append(...)` workspace lifecycle glue 收口为既有 canonical events helper；不打开 real filesystem / container / git worktree / remote executor。
 - 加上 VCS / Git Optional Boundary 后 tracked docs Markdown：120 个。该文档记录 Git / VCS 是 optional capability，不是 kernel 基础依赖；没有 Git 的电脑应走 `no_vcs` / `snapshot_only` fallback，不打开 branch / commit / git worktree / filesystem mutation 实现。
-- 加上 Capability Hub Core Boundary 后 tracked docs Markdown：121 个。该文档记录从 aggressive branch 抽取可维护 capability catalog core 的 mainline 边界：只接收 metadata / shelf / manifest / status 小核心，不整体合并 aggressive capability hub、diagnostics、self-evolution、provider 或 product shell。
+- Capability Hub Core first slice 已 green；tracked docs Markdown 数量不变。当前实现新增 `isotope_kernel.capability_catalog`，只接收 metadata / shelf / manifest / status 小核心和三个 product-candidate built-ins，不整体合并 aggressive capability hub、diagnostics、self-evolution、provider 或 product shell。
 
 ## 2. Current entrypoints
 
@@ -101,7 +101,7 @@
 - `docs/external-review-package-v0.2.md`：外部 reviewer 入口，说明 Isotope 是什么、能跑什么、已证明什么、哪些仍不是产品能力，以及推荐阅读路径。
 - `docs/event-schema-registry-compatibility-boundary-v0.2.md`：Event schema registry / compatibility boundary，记录 payload schema version、unknown event fail-closed behavior、compatibility rules 和 first green slice evidence。
 - `docs/event-schema-registry-closure-review.md`：Event schema registry / compatibility closure review，记录 first slice complete / closed for now 判断、registry behavior、remaining deferred schema work 和 next path。
-- `docs/capability-hub-core-boundary-v0.2.md`：Capability Hub Core boundary，记录 aggressive branch 不能整体 merge、mainline 只抽取 capability metadata / shelf / manifest / status core 的范围和 first red tests。
+- `docs/capability-hub-core-boundary-v0.2.md`：Capability Hub Core boundary，记录 aggressive branch 不能整体 merge、mainline 只抽取 capability metadata / shelf / manifest / status core 的范围和 first green slice evidence。
 - `docs/tool-protocol-boundary-v0.2.md`：Tool protocol boundary，记录 tool invocation / result / error / capability / provenance / budget、executor grants hard contract、artifact / `ResourceRef` handoff 和 first red tests recommendation。
 - `docs/tool-protocol-closure-review.md`：Tool protocol closure review，记录 first slice complete / closed for now、scope note、verification evidence、remaining friction 和 next path。
 - `docs/worker-handoff-app-spike-selection.md`：Worker handoff app spike selection，记录下一步 red-tests-only pressure test 选择、scope、first red tests recommendation 和 stop conditions。
