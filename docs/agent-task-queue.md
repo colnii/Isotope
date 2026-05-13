@@ -259,6 +259,7 @@ Evidence:
 
 - Closure doc: `docs/agent-loop-branch-closure-review.md`.
 - Decision: stop branch-local Agent loop expansion for now.
+- Scope clarification: stop expansion does not mean Agent loop product is done; it means this foundation check found no new kernel gap.
 - Current integration choice remains a user decision: merge, PR, or keep the branch.
 
 Stop conditions:

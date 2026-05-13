@@ -25,6 +25,7 @@
 ## Current Phase
 
 - `v0.1-demo` and `v0.2-demo` developer demo tags exist; current branch-local baseline on this worktree is `1084 passed` using the main checkout venv; pre-branch mainline baseline was `1064 passed` when using the local `DYLD_LIBRARY_PATH` workaround documented in `/Users/infoxmde/openclaw-ops/state/isotope/local_env_note.md`.
+- Isotope is kernel-first right now, not kernel-only. Future Isotope still includes LLM planning, Agent loop, worker, scheduling, and product-layer experience; current branch-local Agent loop spikes only prove selected foundation paths, not a finished Agent loop product.
 - Track D: Demo / Docs Polish is effectively complete / closed for now.
 - Current Track A design doc: [docs/http-api-minimal-surface-v0.2.md](docs/http-api-minimal-surface-v0.2.md).
 - Track A has in-process `HttpApiApp` / `create_http_app(...)`, request validation / no-side-effect error boundary, response contract, demo smoke, duplicate-submit idempotency boundary, route inventory, and deferred route contract; it is effectively complete / closed for now and is not a real listening HTTP server.

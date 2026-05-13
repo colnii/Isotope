@@ -13,7 +13,20 @@
 
 结论：**目前没有发现必须改 kernel 主线的缺口。**
 
-## 2. What Was Added
+这句话只表示“底座暂时够用”，不表示 Agent loop 产品已经做完。
+
+## 2. Scope Clarification
+
+Isotope 不是只做 kernel。
+
+更准确的说法是：
+
+- Isotope 的长期方向包括 LLM 自动规划、Agent loop、worker、调度和产品层体验。
+- 当前采用 kernel-first 开发顺序，是先把事件记录、权限、artifact、审批、重启恢复这些底座做稳。
+- 本分支验证的是：未来接 LLM 自动规划时，底层暂停 / 恢复 / 审批 / 重启恢复这些基础能力目前没有明显缺口。
+- 本分支没有证明完整 Agent loop 已经完成。
+
+## 3. What Was Added
 
 新增四个 demo 场景：
 
@@ -24,7 +37,7 @@
 
 这些场景都支持 plain output、`--trace` 和 `--json`。
 
-## 3. What This Does Not Mean
+## 4. What This Does Not Mean
 
 这还不是产品级 Agent 系统。
 
@@ -40,7 +53,7 @@
 - public SDK
 - product multi-agent UX
 
-## 4. Closure Decision
+## 5. Closure Decision
 
 Branch-local Agent loop expansion should stop here.
 
@@ -51,7 +64,7 @@ Plain meaning: **不要继续凭空造更多测试场景。**
 - 开 PR 给别人 review。
 - 先保留这条分支，等真实 app 或 reviewer 反馈新问题。
 
-## 5. Suggested Next Step
+## 6. Suggested Next Step
 
 Recommended default: keep this branch as an app-layer proof branch until the user decides whether to merge or open a PR.
 
