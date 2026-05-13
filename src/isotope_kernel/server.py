@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .action_compiler import ActionCompiler
+from .agent_loop_control import build_agent_loop_control
 from .action_registry import ActionTypeRegistry
 from .artifact_store import ArtifactStore
 from .event_store import FileEventStore
@@ -712,6 +713,9 @@ class InProcessServer:
         if self.checkpoint_store is None:
             return project.rebuild(run_id, self.event_store)
         return project.rebuild_with_checkpoint(run_id, self.event_store, self.checkpoint_store)
+
+    def get_agent_loop_control(self, run_id: str) -> dict[str, Any]:
+        return build_agent_loop_control(self.get_run_state(run_id))
 
     def get_pending_approvals(self, run_id: str) -> list[dict[str, Any]]:
         state = self._get_approval_read_state(run_id)

@@ -36,6 +36,7 @@ class HttpApiApp:
         ("POST", "/sessions/{session_id}/runs"),
         ("POST", "/runs/{run_id}/input"),
         ("GET", "/runs/{run_id}"),
+        ("GET", "/runs/{run_id}/agent-loop-control"),
         ("GET", "/runs/{run_id}/events"),
         ("GET", "/artifacts/{artifact_id}/summary"),
     )
@@ -226,6 +227,15 @@ class HttpApiApp:
                 if not self._run_exists(parts[1]):
                     return self._error(404, "not_found", "run not found")
                 return self._json(200, self._run_state_to_dict(self.server.get_run_state(parts[1])))
+            if (
+                method == "GET"
+                and len(parts) == 3
+                and parts[0] == "runs"
+                and parts[2] == "agent-loop-control"
+            ):
+                if not self._run_exists(parts[1]):
+                    return self._error(404, "not_found", "run not found")
+                return self._json(200, self.server.get_agent_loop_control(parts[1]))
             if method == "GET" and len(parts) == 3 and parts[0] == "runs" and parts[2] == "events":
                 if not self._run_exists(parts[1]):
                     return self._error(404, "not_found", "run not found")

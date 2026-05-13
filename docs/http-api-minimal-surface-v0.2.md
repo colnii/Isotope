@@ -6,7 +6,7 @@
 
 v0.2 HTTP API 的目标，是把当前 in-process demo 能力暴露成最小 server-facing surface，而不是做完整 hosted platform。
 
-这个 surface 应先证明现有 kernel loop 可以被外部进程以 HTTP 方式驱动和读取：create session、create run、submit input、read projected run state、read canonical events、read artifact summary。它不是 auth / streaming / hosted service / production API 设计。
+这个 surface 应先证明现有 kernel loop 可以被外部进程以 HTTP 方式驱动和读取：create session、create run、submit input、read projected run state、read Agent loop control summary、read canonical events、read artifact summary。它不是 auth / streaming / hosted service / production API 设计。
 
 当前 green slices 已实现为 in-process `HttpApiApp` / `create_http_app(...)`，并补齐 request validation / no-side-effect error boundary、response contract、HTTP facade demo smoke、duplicate-submit idempotency boundary、route inventory 和 deferred route contract。它是 test-client style boundary，不监听端口，不引入 FastAPI / Flask / 新依赖，也不是 production HTTP server。
 
@@ -35,6 +35,7 @@ POST /sessions
 POST /sessions/{session_id}/runs
 POST /runs/{run_id}/input
 GET  /runs/{run_id}
+GET  /runs/{run_id}/agent-loop-control
 GET  /runs/{run_id}/events
 GET  /artifacts/{artifact_id}/summary
 GET  /health
@@ -83,6 +84,12 @@ run 创建只能产生当前 runtime/service boundary 允许的 canonical events
 返回 `RunProjector` 生成的 read model，不读 executor 内存状态。
 
 实现可以使用 full replay 或 checkpoint-assisted rebuild，但 HTTP 层不能直接解释 checkpoint state。
+
+### GET /runs/{run_id}/agent-loop-control
+
+返回 product-facing Agent loop control read model，用来告诉 app 当前 run 在哪里、是否等待审批、下一步可做什么、以及哪些能力仍 deferred。
+
+该 endpoint 是 summary-only read surface，不追加 canonical events，不返回 artifact full content / raw tool text / prompt / model response，也不是 real LLM loop、scheduler 或 product UI。
 
 ### GET /runs/{run_id}/events
 

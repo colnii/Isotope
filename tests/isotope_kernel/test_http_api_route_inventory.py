@@ -10,6 +10,7 @@ SUPPORTED_ROUTES = [
     ("POST", "/sessions/{session_id}/runs"),
     ("POST", "/runs/{run_id}/input"),
     ("GET", "/runs/{run_id}"),
+    ("GET", "/runs/{run_id}/agent-loop-control"),
     ("GET", "/runs/{run_id}/events"),
     ("GET", "/artifacts/{artifact_id}/summary"),
 ]

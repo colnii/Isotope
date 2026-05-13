@@ -54,7 +54,8 @@
 12. [Planner I/O Validator Spike Review](./planner-io-validator-spike-review.md)
 13. [Planner Validated Runner Spike Review](./planner-validated-runner-spike-review.md)
 14. [Agent Loop Branch Handoff Checkpoint](./agent-loop-branch-handoff-checkpoint.md)
-15. [v0.2 Demo Acceptance](./demo/v0.2-demo-acceptance.md)
+15. [Agent Loop Run Control Boundary](./agent-loop-run-control-boundary-v0.2.md)
+16. [v0.2 Demo Acceptance](./demo/v0.2-demo-acceptance.md)
 
 `--trace` 是 human-readable runtime trace；`--json` 是 machine-readable summary。两者都不应暴露 artifact full content。
 
@@ -138,6 +139,7 @@
 - [Planner I/O Validator Spike Review](./planner-io-validator-spike-review.md)
 - [Planner Validated Runner Spike Review](./planner-validated-runner-spike-review.md)
 - [Agent Loop Branch Handoff Checkpoint](./agent-loop-branch-handoff-checkpoint.md)
+- [Agent Loop Run Control Boundary](./agent-loop-run-control-boundary-v0.2.md)
 - [App Spike Coverage Review](./app-spike-coverage-review.md)
 
 ### 3.5 Frozen v0.1 Surfaces
