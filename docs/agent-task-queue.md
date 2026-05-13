@@ -79,6 +79,9 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario artifact-revie
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario external-snapshot-review
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario external-snapshot-review --trace
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario external-snapshot-review --json
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-friction
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-friction --trace
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-friction --json
 
 rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel || true
 
@@ -89,7 +92,43 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 baseline：`1064 passed`。
+当前 branch-local baseline：`1069 passed`。Pre-branch mainline baseline：`1064 passed`。
+
+## Branch-Local Batch: Agent Loop Friction Spike
+
+Branch: `spike/app-agent-loop-friction`
+
+Status: `complete`
+
+Goal: start the AI Agent Orchestration / Agent loop work as an isolated application-layer friction spike, without expanding kernel mainline or implementing real LLM loop / scheduler / provider adapter / real worker runtime.
+
+Tasks:
+
+1. Create isolated worktree: complete, at `.worktrees/app-agent-loop-friction`.
+2. Confirm clean baseline: complete, pre-branch `1064 passed`; after adding the spike tests, branch-local full regression is `1069 passed` using the main checkout venv.
+3. Write red tests for `agent-loop-friction` scenario: complete, expected failure was unsupported scenario.
+4. Implement smallest deterministic in-process scenario in `src/isotope_kernel/demo.py`: complete.
+5. Record friction review and next development step: complete, see `docs/agent-loop-friction-review.md`.
+
+Evidence:
+
+- New scenario: `python -m isotope_kernel.demo --scenario agent-loop-friction`.
+- Trace / JSON variants are supported.
+- Targeted tests: `tests/isotope_kernel/test_agent_loop_friction_spike.py`.
+- Current result: `private_append_required=false`, `kernel_friction=[]`.
+- No real LLM loop / scheduler / provider adapter / real HTTP server / real worker runtime / process spawn / memory query engine / filesystem mutation.
+
+Next suggested branch-local batch:
+
+`Real App-Layer Planner Adapter Friction Spike`
+
+Goal: put a tiny deterministic or fixture-backed planner adapter in front of `agent-loop-friction`, require it to produce the same structured `kernel_friction` report, and stop unless it exposes a concrete non-empty kernel gap.
+
+Stop conditions:
+
+- requires real LLM, scheduler, provider adapter, real HTTP server, real worker process, filesystem mutation, public SDK, or product UX decision
+- requires changing event-store append-only semantics or executor grants semantics
+- produces no new `kernel_friction`, in which case keep mainline closed and record the result only
 
 ## 6. Current Batch
 

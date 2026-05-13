@@ -30,7 +30,14 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run an Isotope developer demo.")
     parser.add_argument(
         "--scenario",
-        choices=("v0.1", "v0.2", "approval-tool-runner", "artifact-review", "external-snapshot-review"),
+        choices=(
+            "v0.1",
+            "v0.2",
+            "approval-tool-runner",
+            "artifact-review",
+            "external-snapshot-review",
+            "agent-loop-friction",
+        ),
         default="v0.1",
         help="demo scenario to run",
     )
@@ -101,6 +108,8 @@ def _run_scenario(root: Path, *, scenario: str) -> dict[str, Any]:
         return _run_artifact_review_spike(root)
     if scenario == "external-snapshot-review":
         return _run_external_snapshot_review_spike(root)
+    if scenario == "agent-loop-friction":
+        return _run_agent_loop_friction_spike(root)
     raise ValueError(f"unsupported scenario: {scenario}")
 
 
@@ -682,6 +691,139 @@ def _run_external_snapshot_review_spike(root: Path) -> dict[str, Any]:
     }
 
 
+def _run_agent_loop_friction_spike(root: Path) -> dict[str, Any]:
+    root.mkdir(parents=True, exist_ok=True)
+    api = InProcessServer(root)
+
+    session = api.create_session()
+    run = api.create_run(session["session_id"], goal="deterministic agent loop friction review")
+    run_id = run["run_id"]
+
+    source_setup = api.create_source_artifact(
+        run_id,
+        summary="agent loop planning summary",
+        content="deterministic app-layer planning input",
+    )
+    handoff = api.submit_worker_handoff(
+        run_id,
+        delegation_intent={
+            "parent_agent_id": "agent_supervisor",
+            "requested_worker_role": "worker",
+            "requested_capabilities": {
+                "tools": ["write_artifact_tool"],
+                "workspace": {"mode": "shared_ro"},
+                "budget": {"seconds": 30},
+            },
+        },
+        artifact_ref=source_setup["artifact_ref"],
+        summary="deterministic worker result handoff for agent loop review",
+    )
+    pending = api.submit_action(
+        run_id,
+        {
+            "action": "call_tool",
+            "tool": "write_artifact_tool",
+            "text": "deterministic agent loop final artifact",
+        },
+        requires_approval=True,
+    )
+    pending_approvals = api.get_pending_approvals(run_id)
+    approval_id = pending_approvals[0]["approval_id"] if pending_approvals else ""
+    if not approval_id:
+        raise RuntimeError("agent loop friction spike did not request approval")
+    workspace_binding = api.bind_workspace(run_id=run_id, decision=pending["decision"])
+    resolution = api.resolve_approval(
+        approval_id,
+        {
+            "resolution": "approved",
+            "reason": "agent loop friction review",
+            "resolver": "developer_demo",
+        },
+    )
+
+    events = api.get_events(run_id)
+    replay_state = RunProjector().rebuild(run_id, api.event_store)
+    checkpoint_store = FileCheckpointStore(root / "agent-loop-friction-checkpoints")
+    checkpoint = RunProjector().save_checkpoint(run_id, api.event_store, checkpoint_store)
+    checkpoint_state = RunProjector().rebuild_with_checkpoint(
+        run_id,
+        api.event_store,
+        checkpoint_store,
+    )
+    final_state = api.get_run_state(run_id)
+    event_types = [event.event_type for event in events]
+    replay_ok = asdict(replay_state) == asdict(final_state)
+    checkpoint_ok = asdict(checkpoint_state) == asdict(replay_state)
+    loop_steps = [
+        "observe run context",
+        "plan deterministic next action",
+        "create source artifact through public helper",
+        "handoff worker result through public helper",
+        "pause on approval-gated action",
+        "resume approved action",
+        "review kernel friction report",
+    ]
+    resolved_kernel_surfaces = [
+        "create_source_artifact",
+        "submit_worker_handoff",
+        "submit_action",
+        "get_pending_approvals",
+        "bind_workspace",
+        "resolve_approval",
+        "replay",
+        "checkpoint",
+    ]
+    private_append_required = handoff["private_append_required"] is not False
+    agent_loop_friction_ok = (
+        source_setup["status"] == "completed"
+        and handoff["status"] == "completed"
+        and pending["status"] == "pending_user_approval"
+        and resolution["status"] == "completed"
+        and replay_state.status == "completed"
+        and replay_ok
+        and checkpoint_ok
+        and workspace_binding.get("mode") == "shared_ro"
+        and private_append_required is False
+    )
+
+    return {
+        "scenario": "agent-loop-friction",
+        "session_id": session["session_id"],
+        "run_id": run_id,
+        "run_status": replay_state.status,
+        "transport": "in_process",
+        "agent_loop_friction_ok": agent_loop_friction_ok,
+        "loop_steps": loop_steps,
+        "resolved_kernel_surfaces": resolved_kernel_surfaces,
+        "kernel_friction": [],
+        "kernel_friction_count": 0,
+        "private_append_required": private_append_required,
+        "worker_handoff_ok": handoff["status"] == "completed",
+        "approval_pending_before_resume": pending["status"] == "pending_user_approval",
+        "approval_resume_ok": resolution["status"] == "completed",
+        "workspace_binding_ok": workspace_binding.get("mode") == "shared_ro",
+        "replay_ok": replay_ok,
+        "checkpoint_ok": checkpoint_ok,
+        "checkpoint_basis_event_id": checkpoint["basis_event_id"],
+        "event_count": len(event_types),
+        "event_types": event_types,
+        "source_artifact_ref": source_setup["artifact_ref"].to_dict(),
+        "worker_result_ref": handoff["result_ref"],
+        "final_artifact_ref": resolution["artifact_ref"].to_dict(),
+        "model_status": "not_used",
+        "scheduler_status": "not_used",
+        "provider_status": "not_used",
+        "network_listener_status": "not_used",
+        "filesystem_mutation_status": "not_used",
+        "memory_status": "boundary_only",
+        "memory_query_status": "not_enabled",
+        "next_development_step": (
+            "Run the same friction review behind a real app-layer planner adapter; "
+            "only reopen kernel mainline if that produces non-empty kernel_friction."
+        ),
+    }
+
+
 def _external_snapshot(
     run_id: str,
     snapshot_id: str,
@@ -740,6 +882,8 @@ def _latest_action_status(actions: dict[str, dict[str, Any]]) -> str:
 
 
 def _format_plain_text(result: dict[str, Any]) -> str:
+    if result.get("scenario") == "agent-loop-friction":
+        return _format_agent_loop_friction_plain_text(result)
     if result.get("scenario") == "external-snapshot-review":
         return _format_external_snapshot_review_plain_text(result)
     if result.get("scenario") == "artifact-review":
@@ -765,6 +909,8 @@ def _format_plain_text(result: dict[str, Any]) -> str:
 
 def _format_trace(result: dict[str, Any]) -> str:
     scenario = result.get("scenario", "v0.1")
+    if scenario == "agent-loop-friction":
+        return _format_agent_loop_friction_trace(result)
     if scenario == "external-snapshot-review":
         return _format_external_snapshot_review_trace(result)
     if scenario == "artifact-review":
@@ -853,6 +999,24 @@ def _format_external_snapshot_review_trace(result: dict[str, Any]) -> str:
         f"checkpoint verified: {_bool_text(result['checkpoint_ok'])}",
         f"external ingestion HTTP route remains: {result['http_external_ingestion_route_status']}",
         f"provider status: {result['provider_status']}",
+    ]
+    return _format_trace_steps(result["scenario"], steps)
+
+
+def _format_agent_loop_friction_trace(result: dict[str, Any]) -> str:
+    steps = [
+        f"create session: {result['session_id']}",
+        f"create run: {result['run_id']}",
+        "observe run context",
+        "plan deterministic next action",
+        f"source artifact summary/ref created: {_artifact_id(result['source_artifact_ref'])}",
+        f"handoff worker result: {_bool_text(result['worker_handoff_ok'])}",
+        f"policy-gated approval pause/resume verified: {_bool_text(result['approval_resume_ok'])}",
+        f"kernel friction count: {result['kernel_friction_count']}",
+        f"private append required: {_bool_text(result['private_append_required'])}",
+        f"replay verified: {_bool_text(result['replay_ok'])}",
+        f"checkpoint verified: {_bool_text(result['checkpoint_ok'])}",
+        f"next development step: {result['next_development_step']}",
     ]
     return _format_trace_steps(result["scenario"], steps)
 
@@ -950,6 +1114,29 @@ def _format_external_snapshot_review_plain_text(result: dict[str, Any]) -> str:
         f"provider_status: {result['provider_status']}",
         f"model_status: {result['model_status']}",
         f"memory_status: {result['memory_status']}",
+    ]
+    return "\n".join(lines)
+
+
+def _format_agent_loop_friction_plain_text(result: dict[str, Any]) -> str:
+    lines = [
+        f"scenario: {result['scenario']}",
+        f"session_id: {result['session_id']}",
+        f"run_id: {result['run_id']}",
+        f"run_status: {result['run_status']}",
+        f"transport: {result['transport']}",
+        f"agent_loop_friction_ok: {str(result['agent_loop_friction_ok']).lower()}",
+        f"private_append_required: {str(result['private_append_required']).lower()}",
+        f"kernel_friction_count: {result['kernel_friction_count']}",
+        f"worker_handoff_ok: {str(result['worker_handoff_ok']).lower()}",
+        f"approval_resume_ok: {str(result['approval_resume_ok']).lower()}",
+        f"workspace_binding_ok: {str(result['workspace_binding_ok']).lower()}",
+        f"replay_ok: {str(result['replay_ok']).lower()}",
+        f"checkpoint_ok: {str(result['checkpoint_ok']).lower()}",
+        f"model_status: {result['model_status']}",
+        f"scheduler_status: {result['scheduler_status']}",
+        f"memory_status: {result['memory_status']}",
+        f"next_development_step: {result['next_development_step']}",
     ]
     return "\n".join(lines)
 
