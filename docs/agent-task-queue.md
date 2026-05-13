@@ -262,6 +262,20 @@ Evidence:
 - Scope clarification: stop expansion does not mean Agent loop product is done; it means this foundation check found no new kernel gap.
 - Current integration choice remains a user decision: merge, PR, or keep the branch.
 
+Next design batch:
+
+`Planner Input / Output Contract`
+
+Status: `complete`
+
+Goal: define what a future LLM planner can see, what symbolic decisions it can return, and how invalid / unsafe output fails closed before execution.
+
+Evidence:
+
+- Design doc: `docs/planner-input-output-contract-v0.2.md`.
+- Decision: next implementation should be a small planner I/O validator spike, not a real LLM integration.
+- Plain meaning: first build the gatekeeper, then connect the AI later.
+
 Stop conditions:
 
 - requires real LLM, scheduler, provider adapter, real HTTP server, real worker process, filesystem mutation, public SDK, or product UX decision

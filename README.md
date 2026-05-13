@@ -60,6 +60,7 @@ python3 -m venv .venv
 - Agent loop planner restart-pause spike: `python -m isotope_kernel.demo --scenario agent-loop-planner-restart-pause`, covering the realistic path where the loop pauses for approval, the server restarts, and the approval can still be resumed from event-backed state. Current result is `kernel_friction=[]` and `private_append_required=false`; see [docs/planner-restart-pause-fixture-review.md](docs/planner-restart-pause-fixture-review.md).
 - Agent loop branch closure review: [docs/agent-loop-branch-closure-review.md](docs/agent-loop-branch-closure-review.md) says to stop adding artificial Agent loop cases and decide whether to merge, PR, or keep the branch for later app/reviewer feedback.
 - Scope clarification: Isotope is not limited to kernel work; current Agent loop spikes only prove that the foundation is ready for later real LLM planning / product-layer pressure, not that the full Agent loop product is complete.
+- Planner Input / Output Contract: [docs/planner-input-output-contract-v0.2.md](docs/planner-input-output-contract-v0.2.md) defines what a future LLM planner can see, what symbolic decisions it can return, and how invalid output must be rejected before execution.
 - Demo trace mode: `--trace` is available for `v0.2`, `approval-tool-runner`, `artifact-review`, `external-snapshot-review`, `agent-loop-friction`, `agent-loop-planner-friction`, `agent-loop-planner-matrix`, and `agent-loop-planner-restart-pause` to print human-readable runtime steps; default plain output and `--json` remain compatible, and trace does not expose artifact full content.
 - Session / run creation through the in-process kernel path.
 - Minimal event-backed Session / Run Lifecycle slice: `session.created`, `get_session_state(...)`, restarted `create_run(...)` for event-backed sessions, run lifecycle checkpoint fields, and terminal ordinary-input no-side-effect rejection.
@@ -135,6 +136,7 @@ python3 -m venv .venv
 - Planner matrix fixture expansion review: [docs/planner-matrix-fixture-expansion-review.md](docs/planner-matrix-fixture-expansion-review.md)
 - Planner restart pause fixture review: [docs/planner-restart-pause-fixture-review.md](docs/planner-restart-pause-fixture-review.md)
 - Agent loop branch closure review: [docs/agent-loop-branch-closure-review.md](docs/agent-loop-branch-closure-review.md)
+- Planner input / output contract: [docs/planner-input-output-contract-v0.2.md](docs/planner-input-output-contract-v0.2.md)
 - App spike coverage review: [docs/app-spike-coverage-review.md](docs/app-spike-coverage-review.md)
 - Source artifact setup helper boundary: [docs/source-artifact-setup-helper-boundary-v0.2.md](docs/source-artifact-setup-helper-boundary-v0.2.md)
 - Source artifact helper closure review: [docs/source-artifact-helper-closure-review.md](docs/source-artifact-helper-closure-review.md)
