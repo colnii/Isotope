@@ -8,6 +8,7 @@ from typing import Any
 from .action_registry import ActionTypeRegistry
 from .ids import new_id
 from .models import ActionProposal
+from .terminal import validate_argv
 
 
 class ActionCompiler:
@@ -37,6 +38,8 @@ class ActionCompiler:
         try:
             registry_entry = self.registry.get_tool(tool)
         except KeyError as exc:
+            if self.registry.is_deferred_tool(tool):
+                raise ValueError(f"deferred tool {tool} is not callable") from exc
             raise ValueError(f"unknown tool {tool}") from exc
         if not registry_entry.enabled:
             raise ValueError(f"disabled tool {tool}")
@@ -64,6 +67,14 @@ class ActionCompiler:
             raise ValueError("budget.seconds must be a non-negative integer")
 
         payload = self._payload_from_intent(intent, tool, registry_entry.payload_requirements)
+        if tool == "terminal_exec":
+            payload["argv"] = validate_argv(payload.get("argv"))
+            payload["approval_requested"] = runtime_context.get("requires_approval") is True
+        if tool == "codex_task":
+            prompt = payload.get("prompt")
+            if not isinstance(prompt, str) or not prompt:
+                raise ValueError("codex_task prompt must be a non-empty string")
+            payload["approval_requested"] = runtime_context.get("requires_approval") is True
         return ActionProposal(
             proposal_id=new_id("prop"),
             run_id=runtime_context["run_id"],

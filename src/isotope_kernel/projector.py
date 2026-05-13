@@ -70,6 +70,19 @@ class RunProjector:
     CHECKPOINT_ARTIFACT_FIELDS = ("ref", "artifact_type", "summary", "provenance")
     CHECKPOINT_MEMORY_RECORD_FIELDS = ("record_id", "summary", "source_refs", "provenance")
     CHECKPOINT_MEMORY_RECORD_FORBIDDEN_FIELDS = ("content", "full_content", "artifact_content", "raw_content")
+    ACTION_SUMMARY_FORBIDDEN_FIELDS = (
+        "content",
+        "full_content",
+        "artifact_content",
+        "raw_content",
+        "stdout",
+        "stderr",
+        "text",
+        "argv",
+        "args",
+        "shell_command",
+        "command_line",
+    )
     CHECKPOINT_EXTERNAL_OBSERVATION_FORBIDDEN_FIELDS = (
         "content",
         "full_content",
@@ -178,7 +191,9 @@ class RunProjector:
                 self._proposal_action_types[proposal_id] = action_type
                 registry_basis = self._registry_basis_from_payload(payload)
                 self._proposal_registry_basis[proposal_id] = registry_basis
-                self._proposal_summaries[proposal_id] = {"action_type": action_type}
+                requested_summary = payload.get("requested_action_summary")
+                if isinstance(requested_summary, dict):
+                    self._proposal_summaries[proposal_id] = dict(requested_summary)
                 agent_id = payload.get("agent_id")
                 if isinstance(agent_id, str) and agent_id:
                     self._proposal_agents[proposal_id] = agent_id
@@ -409,6 +424,11 @@ class RunProjector:
                     raise ValueError("action.proposed registry_basis.registry_id must match registry_id")
                 if registry_basis.get("registry_version") != payload["registry_version"]:
                     raise ValueError("action.proposed registry_basis.registry_version must match registry_version")
+            requested_summary = payload.get("requested_action_summary")
+            if requested_summary is not None:
+                if not isinstance(requested_summary, dict):
+                    raise ValueError("action.proposed requested_action_summary must be a dict")
+                self._validate_action_summary(requested_summary, "action.proposed requested_action_summary")
         elif event.event_type == "action.decided":
             self._require_fields(
                 event.event_type,
@@ -974,6 +994,17 @@ class RunProjector:
         if ref["ref_type"] != "artifact":
             raise ValueError(f"{label} must be an artifact ResourceRef")
 
+    def _validate_action_summary(self, value: Any, label: str) -> None:
+        if isinstance(value, dict):
+            for key, nested in value.items():
+                if key in self.ACTION_SUMMARY_FORBIDDEN_FIELDS:
+                    raise ValueError(f"{label} cannot contain {key}")
+                self._validate_action_summary(nested, f"{label}.{key}")
+            return
+        if isinstance(value, list):
+            for index, nested in enumerate(value):
+                self._validate_action_summary(nested, f"{label}[{index}]")
+
     def _projected_action_basis(self, proposal_id: str) -> dict[str, Any]:
         projected: dict[str, Any] = {}
         registry_basis = self._proposal_registry_basis.get(proposal_id)
@@ -987,6 +1018,9 @@ class RunProjector:
         reason_codes = self._proposal_reason_codes.get(proposal_id)
         if reason_codes is not None:
             projected["reason_codes"] = list(reason_codes)
+        requested_summary = self._proposal_summaries.get(proposal_id)
+        if requested_summary is not None:
+            projected["requested_action_summary"] = dict(requested_summary)
         return projected
 
     def apply(self, state: RunState, event: CanonicalEvent) -> None:
@@ -1128,6 +1162,13 @@ class RunProjector:
             execution_id = str(payload["execution_id"])
             action = state.actions.setdefault(execution_id, {"execution_id": execution_id})
             action["status"] = payload.get("status", "completed")
+            action["artifact_refs"] = [dict(ref) for ref in payload.get("artifact_refs", [])]
+            terminal_backend = payload.get("terminal_backend")
+            if isinstance(terminal_backend, dict):
+                action["terminal_backend"] = dict(terminal_backend)
+            codex_task = payload.get("codex_task")
+            if isinstance(codex_task, dict):
+                action["codex_task"] = dict(codex_task)
         elif event.event_type == "action.failed":
             execution_id = str(payload["execution_id"])
             action = state.actions.setdefault(execution_id, {"execution_id": execution_id})

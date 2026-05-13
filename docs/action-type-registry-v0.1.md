@@ -4,6 +4,8 @@
 
 本文定义 `ActionTypeRegistry` 的最小边界。当前已实现 minimal registry module，并已接入 `ActionCompiler`、`PolicyEngine` requirement lookup、`Executor` handler lookup 和 `InProcessServer` wiring；不引入 plugin system，不改变现有 action chain。
 
+Controlled Terminal Execution first slice 后，default registry 除 `write_artifact_tool` 外也包含 `terminal_exec`。terminal 执行边界见 `docs/controlled-terminal-execution-boundary-v0.2.md`。
+
 Versioning follow-up 已单独定义在 `docs/policy-profile-action-registry-versioning-boundary-v0.2.md`，closure review 见 `docs/policy-registry-version-basis-closure-review.md`。该 follow-up first slice 已实现并 closed for now：`ActionProposal` / `action.proposed` registry/version basis、`PolicyDecision` / `action.decided` policy profile/version basis，并保持 executor 只执行 grants snapshot；它不代表 plugin marketplace、dynamic loading、policy DSL 或 migration framework 已实现。
 
 ## Purpose
@@ -30,14 +32,15 @@ Versioning follow-up 已单独定义在 `docs/policy-profile-action-registry-ver
 
 - `ActionCompiler` 可以把 compact intent 编译为 canonical `ActionProposal`，并已使用 registry lookup 校验 compact tool / action type / payload requirements。
 - `PolicyEngine` 已使用 registry requirement lookup，但仍自己决定 grants。
-- `Executor` 已使用 registry handler lookup，但当前仍只执行 deterministic `write_artifact_tool` handler。
+- `Executor` 已使用 registry handler lookup，当前可执行 deterministic `write_artifact_tool` 和 controlled `terminal_exec` handlers。
 - `ActionProposal -> PolicyDecision -> ActionExecution -> canonical events` 已有最小链路。
 - action/tool metadata 已有最小集中 registry module：`src/isotope_kernel/action_registry.py`。
 - `ActionTypeEntry` 是当前 v0 slice 的最小 metadata model。
-- `ActionTypeRegistry.default()` 当前只包含 `call_tool` + `write_artifact_tool`，并 exposes `registry_id="default"` / `registry_version="v0.2"`。
+- `ActionTypeRegistry.default()` 当前包含 `call_tool` + `write_artifact_tool` / `terminal_exec`，并 exposes `registry_id="default"` / `registry_version="v0.2"`。
 - custom `ActionTypeRegistry(...)` 可显式传入 `registry_id` / `registry_version`；malformed metadata fail fast。
-- `registry.tool_names()` 返回 `["write_artifact_tool"]`。
+- `registry.tool_names()` 返回 `["write_artifact_tool", "terminal_exec"]`。
 - `registry.get_tool("write_artifact_tool")` 返回 metadata entry。
+- `registry.get_tool("terminal_exec")` 返回 metadata entry：required payload 是 `argv`，required capabilities 包含 terminal allowlist / approval-required command profile / `shell: false` / output cap。
 - unknown tool lookup fail closed，抛 `KeyError`。
 - malformed registry entry fail fast。
 - registry entry 只包含 metadata，不携带 executable side-effect callback 字段。
@@ -66,7 +69,7 @@ Versioning follow-up 已单独定义在 `docs/policy-profile-action-registry-ver
 - 不传 registry 时，`Executor` 使用 `ActionTypeRegistry.default()`。
 - executor 仍只能使用 `PolicyDecision.grants`。
 - registry 不能替代 grants，也不能提供 executable callback。
-- 当前 executor 仍只有 deterministic `write_artifact_tool` handler。
+- 当前 executor 有 deterministic `write_artifact_tool` handler 和 controlled `terminal_exec` handler。
 - registry-known tools without a current slice handler fail closed as unsupported handler.
 - registry 已接入 `InProcessServer` wiring。
 - `InProcessServer(root, registry=...)` 可显式传入 registry。
@@ -107,6 +110,7 @@ Versioning follow-up 已单独定义在 `docs/policy-profile-action-registry-ver
 当前第一轮 implementation 已覆盖：
 
 - `call_tool` + `write_artifact_tool`
+- `call_tool` + `terminal_exec`
 - unknown tool fail-closed lookup
 - malformed registry entry fail-fast
 - metadata-only registry entry without executable side-effect callbacks
@@ -116,6 +120,7 @@ Versioning follow-up 已单独定义在 `docs/policy-profile-action-registry-ver
 - `ActionCompiler` 用 registry 校验 action/tool 是否存在。
 - `ActionCompiler` 允许 registry-backed non-`call_tool` action type，只要 compact intent action 匹配 registry entry `action_type`。
 - `ActionCompiler` 执行 registry `payload_requirements.required` 校验。
+- `ActionCompiler` 对 `terminal_exec` 额外校验 structured `argv`：必须是非空 `list[str]`，`argv[0]` 必须是 command name，不能是 path 或 shell string。
 - `ActionCompiler` 对 valid `write_memory` intent 保留 structured `content`、`summary`、`source_refs`、`provenance` payload。
 - unknown compact tool 在 compiler boundary fail closed。
 - compiler 仍只能产出 canonical `ActionProposal`，不能让 raw intent 绕过 action chain。
@@ -130,6 +135,7 @@ Versioning follow-up 已单独定义在 `docs/policy-profile-action-registry-ver
 - unknown registry tool 在 policy boundary denied，不抛未受控异常。
 - disabled registry entry 不会被 policy approve。
 - registry 不能凭空把未 requested 的 tool 加入 grants。
+- `PolicyEngine` 对 `terminal_exec` 使用 registry terminal command profile：command 必须在 `allowed_commands` 或 `approval_required_commands` 之一，否则 denied 且不会进入 execution lifecycle；`approval_required_commands` 只有在 server-provided `requires_approval=True` 时才会进入 existing approval pause / resume boundary，并且 overlap 时优先于普通 allowlist。
 
 当前 executor lookup integration 已覆盖：
 
@@ -140,6 +146,7 @@ Versioning follow-up 已单独定义在 `docs/policy-profile-action-registry-ver
 - disabled registry entry 不会被 executor 执行。
 - registry-known tool 如果没有当前 slice handler，会受控 fail closed。
 - successful `write_artifact_tool` execution event order remains `action.started`, `artifact.created`, `action.completed`.
+- successful `terminal_exec` execution event order also remains `action.started`, `artifact.created`, `action.completed`; stdout / stderr / exit code enter `terminal_output` artifact content, not event payload.
 
 当前 server wiring integration 已覆盖：
 
@@ -213,7 +220,7 @@ registry 可能被三个模块读取，但职责不同：
 已完成的第一批 tests 覆盖：
 
 - `ActionTypeRegistry` exists with a default v0 registry.
-- default registry contains only `call_tool` + `write_artifact_tool` for the current slice.
+- default registry contains `call_tool` + `write_artifact_tool` / `terminal_exec` for the current slice.
 - malformed registry entries fail fast.
 - unknown tool lookup fails closed.
 - registry entry does not expose executable side-effect callback fields.
@@ -225,7 +232,7 @@ registry 可能被三个模块读取，但职责不同：
 - compiler rejects unsupported compact `action` without bypassing canonical `ActionProposal`.
 - compiler keeps runtime identity sourced from runtime context, not intent.
 - compiler does not grant capabilities; it only forms requested capabilities.
-- registry remains limited to `call_tool` + `write_artifact_tool` for this slice.
+- registry remains limited to metadata-only entries for `write_artifact_tool` and `terminal_exec` in this slice.
 
 已完成的 policy integration tests 覆盖：
 

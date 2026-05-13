@@ -197,6 +197,29 @@ def test_restarted_server_can_resolve_pending_approval_without_process_memory(tm
     assert restarted.get_approval(run_id, approval["approval_id"])["status"] == "approved"
 
 
+def test_restarted_approval_resolution_preserves_open_run_completion_choice(tmp_path):
+    api = server.InProcessServer(tmp_path)
+    session = api.create_session()
+    run = api.create_run(session["session_id"], goal="request approval and keep run open")
+    result = api.submit_action(
+        run["run_id"],
+        {
+            "action": "call_tool",
+            "tool": "write_artifact_tool",
+            "text": "hello",
+            "requested_tools": ["write_artifact_tool"],
+        },
+        requires_approval=True,
+        complete_run=False,
+    )
+    restarted = server.InProcessServer(tmp_path)
+
+    response = restarted.resolve_approval(result["approval_id"], _approved_body())
+
+    assert response["status"] == "running"
+    assert "run.completed" not in _event_types(restarted, run["run_id"])
+
+
 def test_pending_approval_recovery_context_does_not_leak_raw_tool_text(tmp_path):
     checkpoints = checkpoint_store.FileCheckpointStore(tmp_path / "checkpoints")
     secret = "sensitive approval payload text"

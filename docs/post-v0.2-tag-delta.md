@@ -13,7 +13,7 @@
 - `v0.2-demo` tag: `09319e7407116d9f99f4a18853d4df23a8714720`
 - current `main` after original delta review: `68ea007bff9a1c7f44dff6b6806939eeec1b4eb9`
 - current mainline has advanced after that review; verify exact HEAD with `git rev-parse HEAD`
-- current baseline: `831 passed`
+- current baseline: `1255 passed, 4 skipped`
 - GitHub Release: not published
 - release meaning: developer demo only, not product release
 
@@ -32,7 +32,7 @@ Commits included in `v0.2-demo..main` at this review:
 - `8474d78` docs: close external ingestion boundary track
 - `68ea007` docs: review post v0.2 tag delta
 
-The main technical delta is Track F: External Ingestion / `ImportedSnapshot` Boundary, followed by Agent / Worker lifecycle first slice, Workspace substrate first slice, Retry / Cancel / Supersede stabilization slice, approval lookup helper, workspace binding helper, and submit action helper.
+The main technical delta is Track F: External Ingestion / `ImportedSnapshot` Boundary, followed by Agent / Worker lifecycle first slice, Workspace substrate first slice, Retry / Cancel / Supersede stabilization slice, approval lookup helper, workspace binding helper, submit action helper, controlled terminal execution, terminal backend fake-adapter boundary, model tool catalog, model tool call bridge, model-tool-bridge demo, LLM provider / product-chat app-entry helpers including reusable two-step local resume state diagnostics and CLI error hints, Codex-as-tool adapter / CLI backend / server helper / HTTP facade route, session/run lifecycle, error taxonomy, worker handoff helper, delegation decision read model, and workspace lifecycle helper.
 
 ## 4. What Track F Adds
 
@@ -80,12 +80,15 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --json
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2 --json
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario model-tool-bridge
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario model-tool-bridge --trace
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario model-tool-bridge --json
 ```
 
-Current expected full regression baseline after later mainline slices is `831 passed`.
+Current expected full regression baseline after later mainline slices is `1255 passed, 4 skipped`.
 
 ## 8. Cycle Closure
 
 `docs/v0.2-cycle-closure-review.md` records the current v0.2 cycle closure decision.
 
-Default next mode is cleanup / docs organization / external review, not additional runtime implementation. `v0.2.1-demo` remains optional and should only be prepared if an external reviewer needs a fixed tag that includes Track F, Agent / Worker lifecycle, Workspace substrate, Retry / Cancel / Supersede stabilization, approval lookup, workspace binding, and submit action helper slices.
+Default next mode is cleanup / docs organization / external review, not additional runtime implementation. `v0.2.1-demo` remains optional and should only be prepared if an external reviewer needs a fixed tag that includes the post-tag slices now tracked in `docs/current-status.md`.

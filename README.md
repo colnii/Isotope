@@ -2,7 +2,7 @@
 
 Isotope 是一个独立的 agent runtime 项目；当前采用 kernel-first 开发顺序，先验证 canonical event log、policy-gated execution、artifact provenance、projector replay 和 checkpoint-assisted rebuild 等底座能力。Kernel-first 不等于 kernel-only：后续 Isotope 仍面向 LLM 自动规划、Agent loop、worker、调度和产品层体验。
 
-当前状态：`v0.1-demo` 和 `v0.2-demo` developer demo tags 已存在；当前 branch-local baseline 是 `1134 passed`，pre-branch mainline baseline 是 `1064 passed`。Track A: HTTP API Minimal Surface、Track C: Artifact Content Read Policy、Track E: Approval Pause / Resume Boundary 和 Track F: External Ingestion 都已 effectively complete / closed for now；Agent / Worker lifecycle、Delegation Decision Read Model、Workspace substrate、Workspace Resource Lifecycle helper、Retry / Cancel / Supersede、approval-gated tool runner usability spike、approval lookup helper、workspace binding helper、submit action helper、artifact review flow、demo trace mode、source artifact setup helper、artifact provenance helper、Derived Artifact Basis Refs、Restart Write Helper Run Context、Restart Approval Resolution Context、Restart Create Run Session Context、external snapshot review second app spike、Policy Profile / Action Registry Versioning first slice、Policy Constructor Surface、Event Schema Registry / Compatibility first slice、Tool Protocol first slice、Tool Invocation Runtime Wiring、Session / Run Lifecycle first slice、Error Taxonomy first slice、Capability Hub Core first slice、Agent Loop Run Control first slice 和 Agent Loop Step Driver first slice 已 complete / closed for now；artifact-review first app spike、external-snapshot-review second app spike、agent-loop-friction branch-local spike、agent-loop-planner-friction branch-local spike、agent-loop-planner-matrix branch-local spike、planner runner API boundary review、planner matrix fixture expansion review、agent-loop-planner-restart-pause branch-local spike、planner I/O validator spike、planner validated runner spike 和 agent-loop branch closure review 均已 closed for now。GitHub Release 未发布，详细状态见 [docs/current-status.md](docs/current-status.md)。
+当前状态：`v0.1-demo` 和 `v0.2-demo` developer demo tags 已存在；当前 integration baseline 是 `1359 passed, 5 skipped`。Track A: HTTP API Minimal Surface、Track C: Artifact Content Read Policy、Track E: Approval Pause / Resume Boundary 和 Track F: External Ingestion 都已 effectively complete / closed for now；Agent / Worker lifecycle、Delegation Decision Read Model、Workspace substrate、Workspace Resource Lifecycle helper、Retry / Cancel / Supersede、approval-gated tool runner usability spike、approval lookup helper、workspace binding helper、submit action helper、artifact review flow、demo trace mode、source artifact setup helper、artifact provenance helper、Derived Artifact Basis Refs、Restart Write Helper Run Context、Restart Approval Resolution Context、Restart Create Run Session Context、external snapshot review second app spike、Policy Profile / Action Registry Versioning first slice、Policy Constructor Surface、Event Schema Registry / Compatibility first slice、Tool Protocol first slice、Tool Invocation Runtime Wiring、Session / Run Lifecycle first slice、Error Taxonomy first slice、Capability Hub Core first slice、Agent Loop Run Control / Step Driver first slices，以及 controlled terminal / model-tool bridge / LLM provider route / LLM terminal-tool loop slices 已 complete / closed for now。GitHub Release 未发布，详细状态见 [docs/current-status.md](docs/current-status.md)。
 
 `main` 当前 ahead of `v0.2-demo`，主要增量是 Track F external ingestion boundary、Agent / Worker lifecycle first slice、Workspace substrate first slice 和 Retry / Cancel / Supersede stabilization slice；delta 记录见 [docs/post-v0.2-tag-delta.md](docs/post-v0.2-tag-delta.md)。暂不移动 `v0.2-demo` tag，也不发布 GitHub Release。
 
@@ -13,6 +13,8 @@ Isotope 是一个独立的 agent runtime 项目；当前采用 kernel-first 开�
 Capability Hub Core 的 mainline first slice 已实现，边界见 [docs/capability-hub-core-boundary-v0.2.md](docs/capability-hub-core-boundary-v0.2.md)，merge readiness review 见 [docs/capability-hub-core-merge-readiness-review.md](docs/capability-hub-core-merge-readiness-review.md)：当前只抽取能力目录小核心，不整体合并 aggressive capability hub。
 
 Agent Loop Run Control / Step Driver 的 first slice 已实现，边界见 [docs/agent-loop-run-control-boundary-v0.2.md](docs/agent-loop-run-control-boundary-v0.2.md) 和 [docs/agent-loop-step-driver-boundary-v0.2.md](docs/agent-loop-step-driver-boundary-v0.2.md)：当前只提供 summary-only 控制面和“一次只跑一个允许 step”的 in-process helper / HTTP facade，不是自动 Agent loop、scheduler、real LLM planner 或 product shell。
+
+Controlled terminal / provider slices 已从 `feature/controlled-terminal-exec` 合入：`terminal_exec` 是受控 argv-only terminal tool，不是 interactive shell；model-tool bridge 和 LLM provider routes 只验证 tool-call / approval / artifact handoff / terminal-tool loop 的 in-process contract，不启动真实 HTTP server，也不引入新依赖。
 
 ## Quick Start
 
@@ -53,6 +55,12 @@ python3 -m venv .venv
 .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-validated-runner
 .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-validated-runner --trace
 .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-validated-runner --json
+.venv/bin/python -m isotope_kernel.demo --scenario terminal-exec --trace
+.venv/bin/python -m isotope_kernel.demo --scenario model-tool-bridge --trace
+.venv/bin/python -m isotope_kernel.demo --scenario llm-provider-route --trace
+.venv/bin/python -m isotope_kernel.demo --scenario llm-tool-result-loop --trace
+.venv/bin/python -m isotope_kernel.demo --scenario llm-product-chat-app-entry --trace
+.venv/bin/python -m isotope_kernel.demo --scenario llm-terminal-tool-loop --trace
 ```
 
 ## What Works
@@ -76,6 +84,8 @@ python3 -m venv .venv
 - Agent Loop Branch Handoff Checkpoint: [docs/agent-loop-branch-handoff-checkpoint.md](docs/agent-loop-branch-handoff-checkpoint.md) says this branch is ready for keep / PR / merge decision, and should not keep adding artificial Agent loop scenarios without real app-layer friction or reviewer feedback.
 - Capability Hub Core first slice: `isotope_kernel.capability_catalog` exposes low-sensitive capability metadata, shelf visibility, manifest/readiness status, and three product-candidate built-ins without executing capabilities or constructing providers.
 - Agent Loop Run Control / Step Driver first slice: `InProcessServer.get_agent_loop_control(...)` exposes phase / blockers / next actions / progress, and `run_agent_loop_step(...)` executes one currently allowed public-helper step without auto-looping, scheduling, or calling a real LLM.
+- Controlled terminal execution first slice: `terminal_exec` runs allowlisted argv-only commands through the existing action / policy / executor / artifact path and captures output as artifact refs; no interactive shell, process supervisor, filesystem substrate, container, or git worktree is opened.
+- Model-tool bridge / LLM provider route slices: in-process helpers and HTTP facade routes can translate model tool calls into existing approval-gated `codex_task` / `terminal_exec` actions and return safe artifact refs; they do not start a real listening HTTP server or turn Isotope into a product chat shell.
 - Demo trace mode: `--trace` is available for `v0.2`, `approval-tool-runner`, `artifact-review`, `external-snapshot-review`, `agent-loop-friction`, `agent-loop-planner-friction`, `agent-loop-planner-matrix`, `agent-loop-planner-restart-pause`, `agent-loop-planner-io-validator`, and `agent-loop-planner-validated-runner` to print human-readable runtime steps; default plain output and `--json` remain compatible, and trace does not expose artifact full content.
 - Session / run creation through the in-process kernel path.
 - Minimal event-backed Session / Run Lifecycle slice: `session.created`, `get_session_state(...)`, restarted `create_run(...)` for event-backed sessions, run lifecycle checkpoint fields, and terminal ordinary-input no-side-effect rejection.

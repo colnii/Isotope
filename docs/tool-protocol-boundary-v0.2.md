@@ -13,13 +13,14 @@
 - `PolicyEngine`
 - `Executor`
 - deterministic `write_artifact_tool`
+- controlled `terminal_exec` first slice, documented separately in `docs/controlled-terminal-execution-boundary-v0.2.md`
 - `InProcessServer.create_source_artifact(...)`
 - `InProcessServer.submit_action(...)`
 - `approval-tool-runner` / `artifact-review` demos
 
 Closure review: `docs/tool-protocol-closure-review.md`.
 
-Scope note: 当前 closure 只关闭 **tool protocol model + event-shape first slice**。`Executor` 还没有把 `ToolInvocation` 对象作为 runtime invocation object 传给 tool implementation；当前 successful path 仍是 deterministic `write_artifact_tool` handler。不要把本 slice 写成 plugin system、remote tool、sandboxed process、streaming output、public SDK 或 fully wired tool runtime。
+Scope note: 当前 closure 只关闭 **tool protocol model + event-shape first slice**。`Executor` 还没有把 `ToolInvocation` 对象作为 runtime invocation object 传给 tool implementation；当前 successful paths 是 deterministic `write_artifact_tool` handler 和 separately bounded controlled `terminal_exec` handler。不要把本 slice 写成 plugin system、remote tool、sandboxed process、streaming output、public SDK 或 fully wired tool runtime。
 
 当前缺口：
 
@@ -123,9 +124,9 @@ Tool protocol 必须遵守：
 
 First-slice recommendation:
 
-- keep current deterministic `write_artifact_tool` as the only successful tool implementation.
+- keep successful tool implementations explicitly bounded: deterministic `write_artifact_tool` and controlled `terminal_exec`.
 - do not introduce streaming output.
-- do not introduce filesystem / process / remote side effects.
+- do not introduce arbitrary filesystem / general process / remote side effects beyond the controlled `terminal_exec` first slice.
 - do not expose public tool SDK.
 
 ## 5. Registry Relationship

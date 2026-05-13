@@ -29,9 +29,10 @@ Tool Protocol first slice 可以标为 `first slice complete / closed for now`�
 Specifically:
 
 - `Executor` 尚未构造 `ToolInvocation` 对象并把它传入 tool implementation。
-- current successful execution 仍是 deterministic `write_artifact_tool` handler path。
+- current successful execution paths are deterministic `write_artifact_tool` and separately bounded controlled `terminal_exec` handlers。
 - `ToolResult` / `ToolError` 当前是 bounded model shape，用于固定未来 helper / runtime boundary，不是 public SDK。
 - tool implementation registry 仍未实现，也不应被 `ActionTypeRegistry` 替代。
+- `terminal_exec` 是 allowlisted argv-only local subprocess first slice，不是 interactive shell、general process tool、sandbox/container、remote executor 或 product terminal route；边界见 `docs/controlled-terminal-execution-boundary-v0.2.md`。
 
 这不是 correctness bug；这是本 slice 的有意边界。未来只有当 application-layer friction 证明需要时，才应该把 `ToolInvocation` wiring 作为新 batch。
 

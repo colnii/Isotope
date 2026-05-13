@@ -7,7 +7,7 @@
 本文是当前 `docs/` 的归纳入口。它不替代 `docs/current-status.md`，也不改变任何 kernel contract；它只回答三个问题：
 
 - 现在先读哪几份文档。
-- 115+ 份 Markdown 大致分成哪些层。
+- 122+ 份 Markdown 大致分成哪些层。
 - 哪些文档是 current truth，哪些只是 concept / archive / compatibility stub。
 
 本轮整理不移动、不删除、不合并文档，不修改 `src/`、`tests/`、`.github/` 或 `pyproject.toml`。如果以后要继续目录迁移，仍以 [Docs Migration Plan](./docs-migration-plan.md) 为准。
@@ -36,7 +36,7 @@
 2. [Post External Review Checkpoint](./post-external-review-checkpoint.md)
 3. [App Spike Coverage Review](./app-spike-coverage-review.md)
 4. [Kernel Gap Review Refresh](./kernel-gap-review-refresh-v0.2.md)
-5. Closure reviews for the slices being reviewed, such as [Tool Protocol Closure Review](./tool-protocol-closure-review.md), [Error Taxonomy Closure Review](./error-taxonomy-closure-review.md), and [Workspace Resource Lifecycle Closure Review](./workspace-resource-lifecycle-closure-review.md).
+5. Closure reviews for the slices being reviewed, such as [Tool Protocol Closure Review](./tool-protocol-closure-review.md), [Terminal Capacity / System Runner Boundary](./terminal-capacity-system-runner-boundary-v0.2.md), historical [Terminal Backend Closure Review](./terminal-backend-closure-review.md), [Error Taxonomy Closure Review](./error-taxonomy-closure-review.md), and [Workspace Resource Lifecycle Closure Review](./workspace-resource-lifecycle-closure-review.md).
 
 ### 2.4 想跑 demo / trace
 
@@ -107,8 +107,15 @@
 - [Retry / Cancel / Supersede Runtime Integration Boundary](./retry-cancel-supersede-runtime-integration-boundary-v0.2.md)
 - [Policy Profile / Action Registry Versioning Boundary](./policy-profile-action-registry-versioning-boundary-v0.2.md)
 - [Tool Protocol Boundary](./tool-protocol-boundary-v0.2.md)
-- [Tool Invocation Runtime Wiring Boundary](./tool-invocation-runtime-wiring-boundary-v0.2.md)
-- [Restart Write Helper Run Context Boundary](./restart-write-helper-run-context-boundary-v0.2.md)
+- [Controlled Terminal Execution Boundary](./controlled-terminal-execution-boundary-v0.2.md)
+- [Terminal Capacity / System Runner Boundary](./terminal-capacity-system-runner-boundary-v0.2.md)
+- Historical [Real Terminal Backend Boundary](./real-terminal-backend-boundary-v0.2.md)
+- Historical [Terminal Backend Adapter Contract](./terminal-backend-adapter-contract-v0.2.md)
+- Historical [Terminal Backend Selection Boundary](./terminal-backend-selection-boundary-v0.2.md)
+- Historical [Terminal Backend Closure Review](./terminal-backend-closure-review.md)
+- [Model Tool Call Bridge Boundary](./model-tool-call-bridge-boundary-v0.2.md)
+- [LLM Provider Tool Call Boundary](./llm-provider-tool-call-boundary-v0.2.md)
+- [Codex-as-tool Boundary](./codex-as-tool-boundary-v0.2.md)
 - [Session / Run Lifecycle Boundary](./session-run-lifecycle-boundary-v0.2.md)
 - [Error Taxonomy Boundary](./error-taxonomy-boundary-v0.2.md)
 - [Worker Handoff Helper Boundary](./worker-handoff-helper-boundary-v0.2.md)

@@ -10,6 +10,8 @@ v0.2 HTTP API 的目标，是把当前 in-process demo 能力暴露成最小 ser
 
 当前 green slices 已实现为 in-process `HttpApiApp` / `create_http_app(...)`，并补齐 request validation / no-side-effect error boundary、response contract、HTTP facade demo smoke、duplicate-submit idempotency boundary、route inventory 和 deferred route contract。它是 test-client style boundary，不监听端口，不引入 FastAPI / Flask / 新依赖，也不是 production HTTP server。
 
+后续 `create_codex_cli_http_app(...)` 额外提供显式 Codex task in-process facade route，但不改变 Track A 默认 surface：`create_http_app(...)` 仍让 `POST /runs/{run_id}/codex-tasks` 返回 `501 not_enabled`，真实 hosted/product HTTP server 仍未实现。
+
 Track A 当前可标记为 effectively complete / closed for now。后续可以单独 reopen real listening HTTP server / ASGI / auth / streaming design，但这些不属于当前 minimal surface closure。
 
 ## 2. Hard Boundaries
@@ -133,6 +135,7 @@ POST /runs/{run_id}/memory/query
 POST /external-ingestion
 GET  /runs/{run_id}/events/stream
 POST /runs/{run_id}/approvals
+POST /runs/{run_id}/codex-tasks
 GET  /artifacts/{artifact_id}/content
 ```
 

@@ -35,6 +35,10 @@ class InProcessServer:
         checkpoint_store=None,
         registry: ActionTypeRegistry | None = None,
         tool_handlers: dict[str, ToolHandler] | None = None,
+        terminal_backend=None,
+        terminal_backend_config=None,
+        codex_task_adapter=None,
+        codex_task_adapter_config=None,
         *,
         policy_profile_id: str = "default",
         policy_version: str = "v0.2",
@@ -57,6 +61,10 @@ class InProcessServer:
             workspace_manager=self.workspace_manager,
             registry=self.registry,
             tool_handlers=tool_handlers,
+            terminal_backend=terminal_backend,
+            terminal_backend_config=terminal_backend_config,
+            codex_task_adapter=codex_task_adapter,
+            codex_task_adapter_config=codex_task_adapter_config,
         )
         self.retrieval = RetrievalService(self.artifact_store)
         self._sessions: dict[str, dict[str, Any]] = {}
@@ -136,13 +144,18 @@ class InProcessServer:
         run_id: str,
         intent: dict[str, Any],
         requires_approval: bool = False,
+        complete_run: bool = True,
     ) -> dict[str, Any]:
         self._validate_action_intent(intent)
         return self._submit_action_internal(
             run_id,
             deepcopy(intent),
             requires_approval=requires_approval,
+            complete_run=complete_run,
         )
+
+    def get_model_tool_catalog(self) -> dict[str, Any]:
+        return self.registry.model_tool_catalog()
 
     def submit_tool_request(
         self,
@@ -368,19 +381,21 @@ class InProcessServer:
         run_id: str,
         intent: dict[str, Any],
         requires_approval: bool,
+        complete_run: bool = True,
     ) -> dict[str, Any]:
-        self._validate_existing_run_id(run_id)
         if not isinstance(requires_approval, bool):
             raise ValueError("requires_approval must be a bool")
-        self._validate_run_accepts_ordinary_input(run_id)
+        if not isinstance(complete_run, bool):
+            raise ValueError("complete_run must be a bool")
 
-        run = self._runs[run_id]
+        run = self._runtime_context_for_write_helper(run_id)
         proposal = self.compiler.compile(
             intent,
             {
                 "run_id": run_id,
                 "agent_id": run["agent_id"],
                 "thread_id": run["thread_id"],
+                "requires_approval": requires_approval,
             },
         )
         self._append(
@@ -394,6 +409,7 @@ class InProcessServer:
                 "registry_id": proposal.registry_id,
                 "registry_version": proposal.registry_version,
                 "registry_basis": proposal.registry_basis,
+                "requested_action_summary": self._requested_action_summary(proposal),
             },
         )
 
@@ -451,6 +467,7 @@ class InProcessServer:
                     "decision_id": decision.decision_id,
                     "action_type": proposal.action_type,
                     "resolution_context": {
+                        "complete_run": complete_run,
                         "proposal": {
                             "proposal_id": proposal.proposal_id,
                             "run_id": proposal.run_id,
@@ -478,6 +495,7 @@ class InProcessServer:
                 "run_id": run_id,
                 "proposal": proposal,
                 "decision": decision,
+                "complete_run": complete_run,
             }
             return {
                 **result_base,
@@ -505,12 +523,14 @@ class InProcessServer:
                 "run_state": self.get_run_state(run_id),
             }
 
-        self._append(run_id, "run.completed", {"status": "completed"})
+        if complete_run:
+            self._append(run_id, "run.completed", {"status": "completed"})
 
         state = self.get_run_state(run_id)
         result = {
             **result_base,
             "status": state.status,
+            "tool_execution_status": "completed",
             "run_state": state,
             "execution_id": execution.execution_id,
         }
@@ -518,6 +538,17 @@ class InProcessServer:
         if artifact_ref is not None:
             result["artifact_ref"] = artifact_ref
         return result
+
+    def _requested_action_summary(self, proposal) -> dict[str, Any]:
+        summary: dict[str, Any] = {"action_type": proposal.action_type}
+        tool_name = proposal.payload.get("tool")
+        if tool_name == "terminal_exec":
+            summary["tool"] = tool_name
+            argv = proposal.payload.get("argv")
+            if isinstance(argv, list) and argv and isinstance(argv[0], str):
+                summary["terminal_command"] = argv[0]
+                summary["argv_count"] = len(argv)
+        return summary
 
     def resolve_approval(self, approval_id: str, resolution: dict[str, Any]) -> dict[str, Any]:
         self._validate_non_empty_string("approval_id", approval_id)
@@ -561,6 +592,9 @@ class InProcessServer:
 
         original_decision: PolicyDecision = pending["decision"]
         proposal = pending["proposal"]
+        complete_run = pending.get("complete_run", True)
+        if not isinstance(complete_run, bool):
+            raise ValueError("complete_run must be a bool")
         executable_decision = PolicyDecision(
             decision_id=original_decision.decision_id,
             proposal_id=original_decision.proposal_id,
@@ -590,10 +624,12 @@ class InProcessServer:
             self._resolved_approvals[approval_id] = result
             return result
 
-        self._append(run_id, "run.completed", {"status": "completed"})
+        if complete_run:
+            self._append(run_id, "run.completed", {"status": "completed"})
         state = self.get_run_state(run_id)
         result = {
             "status": state.status,
+            "tool_execution_status": "completed",
             "run_state": state,
             "execution_id": execution.execution_id,
         }
@@ -623,7 +659,15 @@ class InProcessServer:
             raise ValueError("approval resolution context unavailable")
         proposal = self._proposal_from_approval_context(context.get("proposal"), run_id)
         decision = self._decision_from_approval_context(context.get("decision"), proposal.proposal_id)
-        return {"run_id": run_id, "proposal": proposal, "decision": decision}
+        complete_run = context.get("complete_run", True)
+        if not isinstance(complete_run, bool):
+            raise ValueError("approval completion context unavailable")
+        return {
+            "run_id": run_id,
+            "proposal": proposal,
+            "decision": decision,
+            "complete_run": complete_run,
+        }
 
     def _proposal_from_approval_context(self, raw: object, run_id: str) -> ActionProposal:
         if not isinstance(raw, dict):

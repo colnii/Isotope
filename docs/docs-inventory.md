@@ -77,6 +77,7 @@
 - Capability Hub Core first slice 已 green；tracked docs Markdown 数量不变。当前实现新增 `isotope_kernel.capability_catalog`，只接收 metadata / shelf / manifest / status 小核心和三个 product-candidate built-ins，不整体合并 aggressive capability hub、diagnostics、self-evolution、provider 或 product shell。
 - 加上 Capability Hub Core Merge Readiness Review 后 tracked docs Markdown：122 个。该文档记录 capability catalog branch 已 rebase 到当前 `origin/main`，且只包含 catalog-only extraction，推荐 fast-forward / rebase 后合并。
 - 加上 Agent Loop Run Control / Step Driver boundary docs 后 tracked docs Markdown：124 个。当前 integration branch 新增 summary-only control read model 和 one-step public-helper driver，不实现 automatic loop、scheduler、real LLM planner、provider adapter、real worker runtime 或 product shell。
+- 合入 `feature/controlled-terminal-exec` 后 tracked docs Markdown 当前为 `144` 个。新增 controlled terminal / Codex-as-tool / model-tool bridge / LLM provider / terminal backend 等 boundary docs；这些文档描述 existing-code integration scope，不代表已打开 interactive shell、process supervisor、real listening HTTP server、provider product、container、git worktree 或 product shell。
 
 ## 2. Current entrypoints
 
@@ -107,6 +108,11 @@
 - `docs/capability-hub-core-merge-readiness-review.md`：Capability Hub Core merge readiness review，记录 rebase 结果、verification、merge 注意事项和仍然 deferred 的 capability execution / LLM route / product shell。
 - `docs/tool-protocol-boundary-v0.2.md`：Tool protocol boundary，记录 tool invocation / result / error / capability / provenance / budget、executor grants hard contract、artifact / `ResourceRef` handoff 和 first red tests recommendation。
 - `docs/tool-protocol-closure-review.md`：Tool protocol closure review，记录 first slice complete / closed for now、scope note、verification evidence、remaining friction 和 next path。
+- `docs/controlled-terminal-execution-boundary-v0.2.md`：Controlled terminal execution boundary，记录 argv-only terminal tool path、policy / artifact / provenance boundary 和 deferred interactive shell / process supervisor / filesystem substrate。
+- `docs/codex-as-tool-boundary-v0.2.md`：Codex-as-tool boundary，记录 Codex task route / approval-gated action handoff 的 in-process scope。
+- `docs/model-tool-call-bridge-boundary-v0.2.md`：Model tool-call bridge boundary，记录 model-facing tool catalog / selected tool call / existing action-chain handoff。
+- `docs/llm-provider-tool-call-boundary-v0.2.md`：LLM provider tool-call boundary，记录 provider route / tool-result loop / artifact-ref-only handoff scope。
+- `docs/terminal-backend-adapter-contract-v0.2.md`、`docs/terminal-backend-selection-boundary-v0.2.md`、`docs/real-terminal-backend-boundary-v0.2.md`、`docs/terminal-capacity-system-runner-boundary-v0.2.md`、`docs/terminal-backend-closure-review.md`：terminal backend 相关 boundary / closure docs，记录 backend contract 和仍 deferred 的 real substrate / shell surfaces。
 - `docs/worker-handoff-app-spike-selection.md`：Worker handoff app spike selection，记录下一步 red-tests-only pressure test 选择、scope、first red tests recommendation 和 stop conditions。
 - `docs/session-run-lifecycle-boundary-v0.2.md`：Session / Run lifecycle boundary，记录 session/run identity、status transitions、terminal-state behavior、event/read-model shape 和 first green slice status。
 - `docs/error-taxonomy-boundary-v0.2.md`：Error taxonomy boundary，记录 structured kernel error shape、HTTP facade mapping、first green slice 和 deferred product / integration error surfaces。

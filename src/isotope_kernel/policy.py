@@ -5,6 +5,7 @@ from __future__ import annotations
 from .action_registry import ActionTypeRegistry
 from .ids import new_id
 from .models import ActionProposal, PolicyDecision
+from .terminal import validate_argv
 
 
 class PolicyEngine:
@@ -64,6 +65,59 @@ class PolicyEngine:
             "workspace": {"mode": "shared_ro"},
             "budget": {"seconds": min(budget_seconds, budget_cap)},
         }
+        if tool_name == "terminal_exec":
+            terminal_capabilities = required_capabilities.get("terminal")
+            if not isinstance(terminal_capabilities, dict):
+                raise ValueError("registry required_capabilities.terminal must be a dict")
+            allowed_commands = terminal_capabilities.get("allowed_commands", [])
+            if not isinstance(allowed_commands, list) or not all(
+                isinstance(item, str) for item in allowed_commands
+            ):
+                raise ValueError("registry terminal.allowed_commands must be a list of strings")
+            approval_required_commands = terminal_capabilities.get("approval_required_commands", [])
+            if not isinstance(approval_required_commands, list) or not all(
+                isinstance(item, str) for item in approval_required_commands
+            ):
+                raise ValueError("registry terminal.approval_required_commands must be a list of strings")
+            argv = validate_argv(proposal.payload.get("argv"))
+            command = argv[0]
+            allowed_command_set = set(allowed_commands)
+            approval_required_command_set = set(approval_required_commands)
+            if command in approval_required_command_set and proposal.payload.get("approval_requested") is not True:
+                return self._denied(proposal, "terminal_approval_required")
+            if command not in allowed_command_set and command not in approval_required_command_set:
+                return self._denied(proposal, "terminal_command_not_allowed")
+            granted_commands = list(allowed_commands)
+            if command in approval_required_command_set and command not in granted_commands:
+                granted_commands.append(command)
+            try:
+                max_output_bytes = int(terminal_capabilities.get("max_output_bytes", 4096))
+            except (TypeError, ValueError) as exc:
+                raise ValueError("registry terminal.max_output_bytes must be int-like") from exc
+            if max_output_bytes <= 0:
+                raise ValueError("registry terminal.max_output_bytes must be positive")
+            if terminal_capabilities.get("shell", False) is not False:
+                raise ValueError("registry terminal.shell must be false")
+            if terminal_capabilities.get("argv_policy", "allowlist") != "allowlist":
+                raise ValueError("registry terminal.argv_policy must be allowlist")
+            grants["terminal"] = {
+                "shell": False,
+                "argv_policy": "allowlist",
+                "allowed_commands": granted_commands,
+                "max_output_bytes": max_output_bytes,
+            }
+        if tool_name == "codex_task":
+            codex_capabilities = required_capabilities.get("codex_task")
+            if not isinstance(codex_capabilities, dict):
+                raise ValueError("registry required_capabilities.codex_task must be a dict")
+            prompt = proposal.payload.get("prompt")
+            if not isinstance(prompt, str) or not prompt:
+                return self._denied(proposal, "codex_task_prompt_required")
+            if proposal.payload.get("approval_requested") is not True:
+                return self._denied(proposal, "codex_task_approval_required")
+            grants["codex_task"] = {
+                "adapter_required": codex_capabilities.get("adapter_required", True) is True,
+            }
         requested_matches = (
             requested_tools == grants["tools"]
             and requested_workspace.get("mode", "shared_ro") == "shared_ro"

@@ -2,7 +2,7 @@
 
 状态：`active`
 
-Current note: Agent Loop Run Control / Step Driver integration slice is complete on the integration branch and ready for fast-forward merge. This only adds summary-only control read model plus one-step public-helper driver; do not expand into automatic loop, scheduler, real LLM planner, provider adapter, real worker runtime, or product shell without a new boundary.
+Current note: Controlled terminal / provider integration is being merged from `feature/controlled-terminal-exec` on a temporary integration branch. Scope is existing-code integration only: controlled argv-only terminal execution, Codex task route, model-tool bridge, LLM provider route, tool-result loop, product-chat route, and LLM terminal-tool loop. Do not expand into interactive shell, process supervisor, real listening HTTP server, container, git worktree, product shell, or new dependency.
 
 ## 1. Purpose
 
@@ -103,34 +103,33 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 branch-local baseline：`1134 passed`。Pre-branch mainline baseline：`1064 passed`。
+当前 integration baseline：`1359 passed, 5 skipped`。Pre-controlled-terminal mainline baseline：`1134 passed`。
 
 ## 34. Current Batch
 
-Batch name: `Agent Loop Run Control / Step Driver Integration`
+Batch name: `Controlled Terminal / Provider Existing-Code Integration`
 
-Status: `complete / ready_to_merge`
+Status: `in_progress / verification_passed_on_integration_branch`
 
-Goal: merge existing unfinished-but-worthwhile Agent loop support from the branch-local work into mainline without adding new feature scope.
+Goal: merge existing worthwhile code from `feature/controlled-terminal-exec` into mainline without opening new feature scope.
 
 Tasks:
 
-1. Rebase the existing run-control / step-driver branch onto current `main`: complete.
-2. Resolve docs conflicts without dropping Capability Hub mainline status: complete.
-3. Verify targeted run-control / step-driver tests: complete.
-4. Verify full regression: complete.
-5. Sync README / AGENTS / current status / queue: complete.
+1. Create temporary integration branch from current `main`: complete.
+2. Squash-merge `feature/controlled-terminal-exec` and resolve conflicts with current Agent Loop Run Control / Step Driver status preserved: complete.
+3. Verify targeted terminal / provider / agent-loop tests: complete.
+4. Verify full regression: complete, `1359 passed, 5 skipped`.
+5. Sync README / AGENTS / current status / queue: in progress.
 
 Evidence:
 
-- Targeted tests: `19 passed`.
-- Full regression: `1134 passed`.
-- New public surfaces: `InProcessServer.get_agent_loop_control(...)`, `InProcessServer.run_agent_loop_step(...)`, `GET /runs/{run_id}/agent-loop-control`, `POST /runs/{run_id}/agent-loop-step`.
-- Scope remains bounded: no automatic loop, scheduler, real LLM planner, provider adapter, real worker runtime, real HTTP server, or product shell.
+- Added/merged surfaces: controlled `terminal_exec`, Codex task route, model-tool bridge, LLM provider route, LLM tool-result loop, product-chat route, and LLM terminal-tool loop.
+- Preserved existing surfaces: Capability Hub Core and Agent Loop Run Control / Step Driver.
+- Scope remains bounded: no interactive shell, process supervisor, real listening HTTP server, provider product, workflow engine, container, git worktree, new dependency, tag, or release.
 
 Next suggested mode:
 
-`Merge integration/agent-loop-step-driver into main`, then return to existing-code integration intake instead of opening new feature work.
+Fast-forward this integration branch to `main` after final boundary checks, then inspect `codex/spike-aggressive-dev` for remaining mergeable existing-code slices.
 
 ## Branch-Local Batch: Agent Loop Friction Spike
 

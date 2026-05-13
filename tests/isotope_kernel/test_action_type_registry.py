@@ -43,13 +43,16 @@ def test_action_type_registry_class_exists():
     assert hasattr(_registry_module(), "ActionTypeRegistry")
 
 
-def test_default_registry_contains_only_current_write_artifact_tool_slice():
+def test_default_registry_contains_current_controlled_tool_slices():
     registry = _default_registry()
 
-    assert registry.tool_names() == ["write_artifact_tool"]
+    assert registry.tool_names() == ["write_artifact_tool", "terminal_exec"]
     entry = registry.get_tool("write_artifact_tool")
     assert entry.action_type == "call_tool"
     assert entry.tool_name == "write_artifact_tool"
+    terminal_entry = registry.get_tool("terminal_exec")
+    assert terminal_entry.action_type == "call_tool"
+    assert terminal_entry.tool_name == "terminal_exec"
 
 
 def test_default_registry_gets_write_artifact_tool_entry():

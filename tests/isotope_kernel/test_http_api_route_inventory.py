@@ -20,6 +20,7 @@ DEFERRED_PATTERNS = {
     "/runs/{run_id}/memory/query",
     "/external-ingestion",
     "/runs/{run_id}/events/stream",
+    "/runs/{run_id}/llm/chat-turns",
     "/runs/{run_id}/approvals",
     "/artifacts/{artifact_id}/content",
 }
