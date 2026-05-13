@@ -24,9 +24,10 @@
 
 ## Current Phase
 
-- `v0.1-demo` and `v0.2-demo` developer demo tags exist; current branch-local baseline on this worktree is `1084 passed` using the main checkout venv; pre-branch mainline baseline was `1064 passed` when using the local `DYLD_LIBRARY_PATH` workaround documented in `/Users/infoxmde/openclaw-ops/state/isotope/local_env_note.md`.
+- `v0.1-demo` and `v0.2-demo` developer demo tags exist; current branch-local baseline on this worktree is `1090 passed` using the main checkout venv; pre-branch mainline baseline was `1064 passed` when using the local `DYLD_LIBRARY_PATH` workaround documented in `/Users/infoxmde/openclaw-ops/state/isotope/local_env_note.md`.
 - Isotope is kernel-first right now, not kernel-only. Future Isotope still includes LLM planning, Agent loop, worker, scheduling, and product-layer experience; current branch-local Agent loop spikes only prove selected foundation paths, not a finished Agent loop product.
 - Planner Input / Output Contract is documented in [docs/planner-input-output-contract-v0.2.md](docs/planner-input-output-contract-v0.2.md). Next safe Agent loop implementation step is a small planner I/O validator spike before connecting a real LLM.
+- Planner I/O Validator Spike is complete and documented in [docs/planner-io-validator-spike-review.md](docs/planner-io-validator-spike-review.md). Next safe step is connecting the validator to a tiny demo runner, not connecting a real model provider.
 - Track D: Demo / Docs Polish is effectively complete / closed for now.
 - Current Track A design doc: [docs/http-api-minimal-surface-v0.2.md](docs/http-api-minimal-surface-v0.2.md).
 - Track A has in-process `HttpApiApp` / `create_http_app(...)`, request validation / no-side-effect error boundary, response contract, demo smoke, duplicate-submit idempotency boundary, route inventory, and deferred route contract; it is effectively complete / closed for now and is not a real listening HTTP server.
@@ -113,6 +114,12 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-pla
 
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-restart-pause --json
 
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-io-validator
+
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-io-validator --trace
+
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-io-validator --json
+
 rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel || true
 
 git -C /home/lumber/Github/x-agent status --short \
@@ -176,6 +183,7 @@ git status --short
 - Planner restart pause fixture review: [docs/planner-restart-pause-fixture-review.md](docs/planner-restart-pause-fixture-review.md)
 - Agent loop branch closure review: [docs/agent-loop-branch-closure-review.md](docs/agent-loop-branch-closure-review.md)
 - Planner input / output contract: [docs/planner-input-output-contract-v0.2.md](docs/planner-input-output-contract-v0.2.md)
+- Planner I/O validator spike review: [docs/planner-io-validator-spike-review.md](docs/planner-io-validator-spike-review.md)
 - App spike coverage review: [docs/app-spike-coverage-review.md](docs/app-spike-coverage-review.md)
 - Source artifact setup helper boundary: [docs/source-artifact-setup-helper-boundary-v0.2.md](docs/source-artifact-setup-helper-boundary-v0.2.md)
 - Source artifact helper closure review: [docs/source-artifact-helper-closure-review.md](docs/source-artifact-helper-closure-review.md)

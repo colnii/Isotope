@@ -101,7 +101,7 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 branch-local baseline：`1084 passed`。Pre-branch mainline baseline：`1064 passed`。
+当前 branch-local baseline：`1090 passed`。Pre-branch mainline baseline：`1064 passed`。
 
 ## Branch-Local Batch: Agent Loop Friction Spike
 
@@ -275,6 +275,28 @@ Evidence:
 - Design doc: `docs/planner-input-output-contract-v0.2.md`.
 - Decision: next implementation should be a small planner I/O validator spike, not a real LLM integration.
 - Plain meaning: first build the gatekeeper, then connect the AI later.
+
+Next implementation batch:
+
+`Planner I/O Validator Spike`
+
+Status: `complete`
+
+Goal: add a small demo-local gatekeeper that accepts one valid symbolic planner output and rejects malformed / unknown / overpowered / unauthorized full-text output before execution.
+
+Evidence:
+
+- New scenario: `python -m isotope_kernel.demo --scenario agent-loop-planner-io-validator`.
+- Trace / JSON variants are supported.
+- Targeted tests: `tests/isotope_kernel/test_agent_loop_planner_io_validator_spike.py`.
+- Current result: `planner_io_validator_ok=true`, `partial_events_appended=false`, `kernel_friction=[]`.
+- No real LLM provider / scheduler / real HTTP server / real worker process / memory query engine / filesystem mutation / public SDK / product UX.
+
+Next suggested branch-local batch:
+
+`Planner Validated Runner Spike`
+
+Plain meaning: connect the gatekeeper to the tiny demo runner, so valid fake planner output can run and bad output remains blocked.
 
 Stop conditions:
 
