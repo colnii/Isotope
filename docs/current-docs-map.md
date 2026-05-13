@@ -44,7 +44,8 @@
 2. [Demo Architecture](./demo/demo-architecture-v0.1.md)
 3. [v0.2 Demo Scenario](./demo/v0.2-demo-scenario.md)
 4. [Agent Loop Friction Review](./agent-loop-friction-review.md)
-5. [v0.2 Demo Acceptance](./demo/v0.2-demo-acceptance.md)
+5. [Agent Loop Planner Adapter Friction Review](./agent-loop-planner-adapter-friction-review.md)
+6. [v0.2 Demo Acceptance](./demo/v0.2-demo-acceptance.md)
 
 `--trace` 是 human-readable runtime trace；`--json` 是 machine-readable summary。两者都不应暴露 artifact full content。
 
@@ -118,6 +119,7 @@
 - [Artifact Review Provenance Helper Boundary](./artifact-review-provenance-helper-boundary-v0.2.md)
 - [External Snapshot Review Closure Review](./external-snapshot-review-closure-review.md)
 - [Agent Loop Friction Review](./agent-loop-friction-review.md)
+- [Agent Loop Planner Adapter Friction Review](./agent-loop-planner-adapter-friction-review.md)
 - [App Spike Coverage Review](./app-spike-coverage-review.md)
 
 ### 3.5 Frozen v0.1 Surfaces

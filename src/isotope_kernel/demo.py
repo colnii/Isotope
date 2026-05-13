@@ -37,6 +37,7 @@ def main(argv: list[str] | None = None) -> int:
             "artifact-review",
             "external-snapshot-review",
             "agent-loop-friction",
+            "agent-loop-planner-friction",
         ),
         default="v0.1",
         help="demo scenario to run",
@@ -110,6 +111,8 @@ def _run_scenario(root: Path, *, scenario: str) -> dict[str, Any]:
         return _run_external_snapshot_review_spike(root)
     if scenario == "agent-loop-friction":
         return _run_agent_loop_friction_spike(root)
+    if scenario == "agent-loop-planner-friction":
+        return _run_agent_loop_planner_adapter_spike(root)
     raise ValueError(f"unsupported scenario: {scenario}")
 
 
@@ -824,6 +827,201 @@ def _run_agent_loop_friction_spike(root: Path) -> dict[str, Any]:
     }
 
 
+def _run_agent_loop_planner_adapter_spike(root: Path) -> dict[str, Any]:
+    root.mkdir(parents=True, exist_ok=True)
+    api = InProcessServer(root)
+
+    session = api.create_session()
+    run = api.create_run(session["session_id"], goal="deterministic planner adapter friction review")
+    run_id = run["run_id"]
+    planner_input_summary = {
+        "run_id": run_id,
+        "run_status": api.get_run_state(run_id).status,
+        "available_public_helpers": [
+            "create_source_artifact",
+            "submit_worker_handoff",
+            "submit_action",
+            "bind_workspace",
+            "resolve_approval",
+        ],
+    }
+    planner_decisions = _deterministic_planner_decisions(planner_input_summary)
+
+    source_setup: dict[str, Any] | None = None
+    handoff: dict[str, Any] | None = None
+    pending: dict[str, Any] | None = None
+    workspace_binding: dict[str, Any] = {}
+    resolution: dict[str, Any] | None = None
+
+    for decision in planner_decisions:
+        action = decision["action"]
+        if action == "create_source_artifact":
+            source_setup = api.create_source_artifact(
+                run_id,
+                summary="planner adapter source summary",
+                content="deterministic planner adapter input",
+            )
+        elif action == "submit_worker_handoff":
+            if source_setup is None:
+                raise RuntimeError("planner selected worker handoff before source artifact")
+            handoff = api.submit_worker_handoff(
+                run_id,
+                delegation_intent={
+                    "parent_agent_id": "agent_supervisor",
+                    "requested_worker_role": "worker",
+                    "requested_capabilities": {
+                        "tools": ["write_artifact_tool"],
+                        "workspace": {"mode": "shared_ro"},
+                        "budget": {"seconds": 30},
+                    },
+                },
+                artifact_ref=source_setup["artifact_ref"],
+                summary="deterministic planner adapter worker result handoff",
+            )
+        elif action == "submit_approval_gated_action":
+            pending = api.submit_action(
+                run_id,
+                {
+                    "action": "call_tool",
+                    "tool": "write_artifact_tool",
+                    "text": "deterministic planner adapter final artifact",
+                },
+                requires_approval=True,
+            )
+        elif action == "bind_workspace":
+            if pending is None:
+                raise RuntimeError("planner selected workspace binding before approval action")
+            workspace_binding = api.bind_workspace(run_id=run_id, decision=pending["decision"])
+        elif action == "resolve_approval":
+            pending_approvals = api.get_pending_approvals(run_id)
+            approval_id = pending_approvals[0]["approval_id"] if pending_approvals else ""
+            if not approval_id:
+                raise RuntimeError("planner adapter spike did not request approval")
+            resolution = api.resolve_approval(
+                approval_id,
+                {
+                    "resolution": "approved",
+                    "reason": "planner adapter friction review",
+                    "resolver": "developer_demo",
+                },
+            )
+        elif action == "verify_replay_checkpoint":
+            continue
+        else:
+            raise ValueError(f"unsupported planner action: {action}")
+
+    if source_setup is None or handoff is None or pending is None or resolution is None:
+        raise RuntimeError("planner adapter did not complete the deterministic loop")
+
+    events = api.get_events(run_id)
+    replay_state = RunProjector().rebuild(run_id, api.event_store)
+    checkpoint_store = FileCheckpointStore(root / "agent-loop-planner-friction-checkpoints")
+    checkpoint = RunProjector().save_checkpoint(run_id, api.event_store, checkpoint_store)
+    checkpoint_state = RunProjector().rebuild_with_checkpoint(
+        run_id,
+        api.event_store,
+        checkpoint_store,
+    )
+    final_state = api.get_run_state(run_id)
+    event_types = [event.event_type for event in events]
+    replay_ok = asdict(replay_state) == asdict(final_state)
+    checkpoint_ok = asdict(checkpoint_state) == asdict(replay_state)
+    private_append_required = handoff["private_append_required"] is not False
+    agent_loop_friction_ok = (
+        source_setup["status"] == "completed"
+        and handoff["status"] == "completed"
+        and pending["status"] == "pending_user_approval"
+        and resolution["status"] == "completed"
+        and replay_state.status == "completed"
+        and replay_ok
+        and checkpoint_ok
+        and workspace_binding.get("mode") == "shared_ro"
+        and private_append_required is False
+    )
+
+    return {
+        "scenario": "agent-loop-planner-friction",
+        "session_id": session["session_id"],
+        "run_id": run_id,
+        "run_status": replay_state.status,
+        "transport": "in_process",
+        "planner_adapter_friction_ok": agent_loop_friction_ok,
+        "planner_adapter_status": "deterministic_fixture",
+        "planner_input_summary": planner_input_summary,
+        "planner_decisions": planner_decisions,
+        "planner_decision_count": len(planner_decisions),
+        "agent_loop_friction_ok": agent_loop_friction_ok,
+        "kernel_friction": [],
+        "kernel_friction_count": 0,
+        "private_append_required": private_append_required,
+        "worker_handoff_ok": handoff["status"] == "completed",
+        "approval_pending_before_resume": pending["status"] == "pending_user_approval",
+        "approval_resume_ok": resolution["status"] == "completed",
+        "workspace_binding_ok": workspace_binding.get("mode") == "shared_ro",
+        "replay_ok": replay_ok,
+        "checkpoint_ok": checkpoint_ok,
+        "checkpoint_basis_event_id": checkpoint["basis_event_id"],
+        "event_count": len(event_types),
+        "event_types": event_types,
+        "source_artifact_ref": source_setup["artifact_ref"].to_dict(),
+        "worker_result_ref": handoff["result_ref"],
+        "final_artifact_ref": resolution["artifact_ref"].to_dict(),
+        "model_status": "not_used",
+        "scheduler_status": "not_used",
+        "provider_status": "not_used",
+        "network_listener_status": "not_used",
+        "filesystem_mutation_status": "not_used",
+        "memory_status": "boundary_only",
+        "memory_query_status": "not_enabled",
+        "next_development_step": (
+            "Introduce a fixture-backed planner fixture matrix with one intentionally blocked path; "
+            "only reopen kernel mainline if that matrix produces non-empty kernel_friction."
+        ),
+    }
+
+
+def _deterministic_planner_decisions(planner_input_summary: dict[str, Any]) -> list[dict[str, Any]]:
+    run_id = str(planner_input_summary["run_id"])
+    return [
+        {
+            "step": 1,
+            "action": "create_source_artifact",
+            "target_run_id": run_id,
+            "reason": "materialize deterministic planning input as a structured artifact ref",
+        },
+        {
+            "step": 2,
+            "action": "submit_worker_handoff",
+            "target_run_id": run_id,
+            "reason": "exercise delegated worker result handoff through a public helper",
+        },
+        {
+            "step": 3,
+            "action": "submit_approval_gated_action",
+            "target_run_id": run_id,
+            "reason": "force the loop through the approval pause boundary",
+        },
+        {
+            "step": 4,
+            "action": "bind_workspace",
+            "target_run_id": run_id,
+            "reason": "bind shared_ro workspace from existing policy grants before resume",
+        },
+        {
+            "step": 5,
+            "action": "resolve_approval",
+            "target_run_id": run_id,
+            "reason": "resume the pending action through the approval boundary",
+        },
+        {
+            "step": 6,
+            "action": "verify_replay_checkpoint",
+            "target_run_id": run_id,
+            "reason": "confirm the planner-driven loop remains canonical-event replayable",
+        },
+    ]
+
+
 def _external_snapshot(
     run_id: str,
     snapshot_id: str,
@@ -882,6 +1080,8 @@ def _latest_action_status(actions: dict[str, dict[str, Any]]) -> str:
 
 
 def _format_plain_text(result: dict[str, Any]) -> str:
+    if result.get("scenario") == "agent-loop-planner-friction":
+        return _format_agent_loop_planner_friction_plain_text(result)
     if result.get("scenario") == "agent-loop-friction":
         return _format_agent_loop_friction_plain_text(result)
     if result.get("scenario") == "external-snapshot-review":
@@ -909,6 +1109,8 @@ def _format_plain_text(result: dict[str, Any]) -> str:
 
 def _format_trace(result: dict[str, Any]) -> str:
     scenario = result.get("scenario", "v0.1")
+    if scenario == "agent-loop-planner-friction":
+        return _format_agent_loop_planner_friction_trace(result)
     if scenario == "agent-loop-friction":
         return _format_agent_loop_friction_trace(result)
     if scenario == "external-snapshot-review":
@@ -1021,6 +1223,29 @@ def _format_agent_loop_friction_trace(result: dict[str, Any]) -> str:
     return _format_trace_steps(result["scenario"], steps)
 
 
+def _format_agent_loop_planner_friction_trace(result: dict[str, Any]) -> str:
+    steps = [
+        f"create session: {result['session_id']}",
+        f"create run: {result['run_id']}",
+        f"planner adapter status: {result['planner_adapter_status']}",
+    ]
+    steps.extend(
+        f"planner selected symbolic step {decision['step']}: {decision['action']}"
+        for decision in result["planner_decisions"]
+    )
+    steps.extend(
+        [
+            f"policy-gated approval pause/resume verified: {_bool_text(result['approval_resume_ok'])}",
+            f"kernel friction count: {result['kernel_friction_count']}",
+            f"private append required: {_bool_text(result['private_append_required'])}",
+            f"replay verified: {_bool_text(result['replay_ok'])}",
+            f"checkpoint verified: {_bool_text(result['checkpoint_ok'])}",
+            f"next development step: {result['next_development_step']}",
+        ]
+    )
+    return _format_trace_steps(result["scenario"], steps)
+
+
 def _format_trace_steps(scenario: str, steps: list[str]) -> str:
     lines = [f"scenario: {scenario}"]
     lines.extend(f"[{index}] {step}" for index, step in enumerate(steps, start=1))
@@ -1125,6 +1350,32 @@ def _format_agent_loop_friction_plain_text(result: dict[str, Any]) -> str:
         f"run_id: {result['run_id']}",
         f"run_status: {result['run_status']}",
         f"transport: {result['transport']}",
+        f"agent_loop_friction_ok: {str(result['agent_loop_friction_ok']).lower()}",
+        f"private_append_required: {str(result['private_append_required']).lower()}",
+        f"kernel_friction_count: {result['kernel_friction_count']}",
+        f"worker_handoff_ok: {str(result['worker_handoff_ok']).lower()}",
+        f"approval_resume_ok: {str(result['approval_resume_ok']).lower()}",
+        f"workspace_binding_ok: {str(result['workspace_binding_ok']).lower()}",
+        f"replay_ok: {str(result['replay_ok']).lower()}",
+        f"checkpoint_ok: {str(result['checkpoint_ok']).lower()}",
+        f"model_status: {result['model_status']}",
+        f"scheduler_status: {result['scheduler_status']}",
+        f"memory_status: {result['memory_status']}",
+        f"next_development_step: {result['next_development_step']}",
+    ]
+    return "\n".join(lines)
+
+
+def _format_agent_loop_planner_friction_plain_text(result: dict[str, Any]) -> str:
+    lines = [
+        f"scenario: {result['scenario']}",
+        f"session_id: {result['session_id']}",
+        f"run_id: {result['run_id']}",
+        f"run_status: {result['run_status']}",
+        f"transport: {result['transport']}",
+        f"planner_adapter_friction_ok: {str(result['planner_adapter_friction_ok']).lower()}",
+        f"planner_adapter_status: {result['planner_adapter_status']}",
+        f"planner_decision_count: {result['planner_decision_count']}",
         f"agent_loop_friction_ok: {str(result['agent_loop_friction_ok']).lower()}",
         f"private_append_required: {str(result['private_append_required']).lower()}",
         f"kernel_friction_count: {result['kernel_friction_count']}",

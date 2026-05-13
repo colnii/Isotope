@@ -8,7 +8,13 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = REPO_ROOT / "src"
 
-TRACE_SCENARIOS = ("artifact-review", "approval-tool-runner", "v0.2", "agent-loop-friction")
+TRACE_SCENARIOS = (
+    "artifact-review",
+    "approval-tool-runner",
+    "v0.2",
+    "agent-loop-friction",
+    "agent-loop-planner-friction",
+)
 
 COMMON_TRACE_TERMS = (
     "session",
