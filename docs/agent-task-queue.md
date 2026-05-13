@@ -177,13 +177,37 @@ Next suggested branch-local batch:
 
 `Planner Runner API Boundary Review`
 
+Status: `complete`
+
 Goal: review whether the branch-local matrix runner should remain demo-local or become a small reusable app-layer runner module for future spikes. Start docs-only. Do not extract code unless a later spike actually needs to reuse the runner outside `demo.py`.
+
+Tasks:
+
+1. Review current runner callers and reuse pressure: complete.
+2. Decide whether to extract a reusable app-layer runner module: complete; do not extract yet.
+3. Record kernel boundary risk of names like `agent_loop`, `orchestration`, or `planner_runner`: complete.
+4. Define reopen criteria for future extraction: complete.
+5. Record next development step: complete, see `docs/planner-runner-api-boundary-review.md`.
+
+Evidence:
+
+- Review doc: `docs/planner-runner-api-boundary-review.md`.
+- Scope: docs-only; no `src/`, `tests`, `.github`, or `pyproject.toml` changes.
+- Decision: keep runner demo-local until a second non-demo caller or concrete app-layer friction justifies extraction.
+- No new kernel API / app-layer runner module was introduced.
+
+Next suggested branch-local batch:
+
+`Planner Matrix Fixture Expansion Review`
+
+Goal: docs-only selection for whether the next fixture should pressure one narrow surface: approval denial path, worker handoff denial path, restart after planner pause, or memory query deferred path. Default recommendation is to pause branch-local agent-loop expansion unless the user wants another runnable spike.
 
 Stop conditions:
 
 - requires real LLM, scheduler, provider adapter, real HTTP server, real worker process, filesystem mutation, public SDK, or product UX decision
 - requires changing event-store append-only semantics or executor grants semantics
-- produces no reuse pressure outside `demo.py`, in which case keep the runner demo-local and record the result only
+- requires extracting reusable runner code before a second non-demo caller exists
+- produces no new branch-local pressure, in which case pause expansion and wait for real application-layer friction
 
 ## 6. Current Batch
 
