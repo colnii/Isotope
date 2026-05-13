@@ -39,7 +39,9 @@
 - `src/isotope_kernel/http_api.py`
 - `src/isotope_kernel/demo.py`
 - `DeepSeekToolCallProvider`
+- `DeepSeekChatProvider`
 - `LLMToolCall` / `LLMToolCallResponse`
+- `LLMResponse`
 - `LLMFinalAnswerResponse`
 - `LLMProviderResolution`
 - `resolve_llm_tool_call_provider(...)`
@@ -101,6 +103,15 @@
 - request: `select_tool(...)` 使用 `tool_choice="required"`；`select_chat_turn(...)` 使用 `tool_choice="auto"`，允许一个 tool call 或一个 final answer；两者都使用 `tools`、`thinking={"type": "disabled"}`、`temperature=0`、`stream=False`
 - dependency: Python stdlib `urllib`，无新增依赖
 
+`DeepSeekChatProvider` 是同一 provider boundary 的更窄 direct-chat wrapper：
+
+- default model: `deepseek-v4-flash`
+- endpoint: OpenAI-compatible `/chat/completions`
+- request: `thinking={"type": "disabled"}`、`temperature=0`、`stream=False`
+- output: `LLMResponse(provider, model, content, finish_reason, usage, raw)`
+- dependency: Python stdlib `urllib`，无新增依赖
+- scope: 只提供应用层 direct chat call boundary，不执行 tool，不写 event log，不修改 RunState，不替代 approval / policy / artifact handoff
+
 当前测试覆盖：
 
 - unified provider resolver 可在没有 `DEEPSEEK_API_KEY` 的情况下用 `ISOTOPE_LLM_PROVIDER=deepseek` + `ISOTOPE_LLM_API_KEY` 构造 provider。
@@ -108,6 +119,7 @@
 - provider 会收到当前 model-facing tool catalog。
 - provider-selected `codex_task` 只提交 pending approval；approval 前不启动 Codex。
 - DeepSeek request 使用 OpenAI-compatible function tool-call shape。
+- DeepSeek direct chat request 使用 OpenAI-compatible chat completions shape，测试通过 fake transport 离线验证，不需要真实网络或 API key。
 - bad tool-call arguments fail closed，错误信息不带 raw arguments。
 - provider 返回普通文本 / 无 tool call 时不产生 action / artifact side effect。
 - API key、prompt、provider raw text 不进入 safe result / error details。

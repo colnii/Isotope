@@ -2,7 +2,7 @@
 
 状态：`active`
 
-Current note: Controlled terminal / provider integration is being merged from `feature/controlled-terminal-exec` on a temporary integration branch. Scope is existing-code integration only: controlled argv-only terminal execution, Codex task route, model-tool bridge, LLM provider route, tool-result loop, product-chat route, and LLM terminal-tool loop. Do not expand into interactive shell, process supervisor, real listening HTTP server, container, git worktree, product shell, or new dependency.
+Current note: Controlled terminal / provider integration has been merged into `main`; the follow-up DeepSeek direct-chat provider wrapper extraction is complete. Scope remains existing-code integration only: controlled argv-only terminal execution, Codex task route, model-tool bridge, LLM provider route, tool-result loop, product-chat route, LLM terminal-tool loop, and a stdlib-only `DeepSeekChatProvider` direct-chat boundary. Do not expand into interactive shell, process supervisor, real listening HTTP server, container, git worktree, product shell, or new dependency.
 
 ## 1. Purpose
 
@@ -103,13 +103,13 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 integration baseline：`1359 passed, 5 skipped`。Pre-controlled-terminal mainline baseline：`1134 passed`。
+当前 integration baseline：`1362 passed, 5 skipped`。Pre-controlled-terminal mainline baseline：`1134 passed`。
 
 ## 34. Current Batch
 
 Batch name: `Controlled Terminal / Provider Existing-Code Integration`
 
-Status: `in_progress / verification_passed_on_integration_branch`
+Status: `complete / mainline merged`
 
 Goal: merge existing worthwhile code from `feature/controlled-terminal-exec` into mainline without opening new feature scope.
 
@@ -118,18 +118,22 @@ Tasks:
 1. Create temporary integration branch from current `main`: complete.
 2. Squash-merge `feature/controlled-terminal-exec` and resolve conflicts with current Agent Loop Run Control / Step Driver status preserved: complete.
 3. Verify targeted terminal / provider / agent-loop tests: complete.
-4. Verify full regression: complete, `1359 passed, 5 skipped`.
-5. Sync README / AGENTS / current status / queue: in progress.
+4. Verify full regression after controlled terminal integration: complete, `1359 passed, 5 skipped`.
+5. Sync README / AGENTS / current status / queue: complete.
+6. Fast-forward integration branch to `main` and push: complete.
+7. Verify remote CI for merge commit: complete, GitHub Actions run succeeded.
+8. Extract smallest remaining DeepSeek direct-chat provider wrapper from aggressive branch without merging product shell: complete, final regression `1362 passed, 5 skipped`.
 
 Evidence:
 
 - Added/merged surfaces: controlled `terminal_exec`, Codex task route, model-tool bridge, LLM provider route, LLM tool-result loop, product-chat route, and LLM terminal-tool loop.
+- Follow-up provider extraction: `DeepSeekChatProvider` direct chat wrapper, tested with fake transport, no real network requirement, no tool execution, no event writes.
 - Preserved existing surfaces: Capability Hub Core and Agent Loop Run Control / Step Driver.
 - Scope remains bounded: no interactive shell, process supervisor, real listening HTTP server, provider product, workflow engine, container, git worktree, new dependency, tag, or release.
 
 Next suggested mode:
 
-Fast-forward this integration branch to `main` after final boundary checks, then inspect `codex/spike-aggressive-dev` for remaining mergeable existing-code slices.
+Next mode: inspect `codex/spike-aggressive-dev` only for additional small bounded mergeable slices if the user asks to continue branch integration; do not merge aggressive Capability Hub / self-evolution / product shell wholesale.
 
 ## Branch-Local Batch: Agent Loop Friction Spike
 

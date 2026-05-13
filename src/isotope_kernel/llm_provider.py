@@ -43,6 +43,16 @@ class LLMFinalAnswerResponse:
     content: str
 
 
+@dataclass(frozen=True)
+class LLMResponse:
+    provider: str
+    model: str
+    content: str
+    finish_reason: str
+    usage: dict[str, Any]
+    raw: dict[str, Any]
+
+
 LLMChatTurnResponse = LLMToolCallResponse | LLMFinalAnswerResponse
 
 
@@ -66,6 +76,60 @@ class LLMProviderResolution:
     reason_code: str
     provider_name: str
     provider: ToolCallProvider | None = field(default=None, repr=False)
+
+
+class DeepSeekChatProvider:
+    """OpenAI-compatible DeepSeek chat provider using only stdlib HTTP."""
+
+    def __init__(
+        self,
+        *,
+        api_key: str | None = None,
+        model: str = "deepseek-v4-flash",
+        base_url: str = "https://api.deepseek.com",
+        timeout: int = 60,
+        transport: Transport | None = None,
+    ) -> None:
+        key = api_key if api_key is not None else os.environ.get("DEEPSEEK_API_KEY", "")
+        if not isinstance(key, str) or not key.strip():
+            raise ValueError("DEEPSEEK_API_KEY is required for DeepSeekChatProvider")
+        self.api_key = key
+        self.provider = "deepseek"
+        self.model = _require_non_empty_string("model", model)
+        self.base_url = _require_non_empty_string("base_url", base_url).rstrip("/")
+        if not isinstance(timeout, int) or timeout <= 0:
+            raise ValueError("timeout must be a positive integer")
+        self.timeout = timeout
+        self._transport = transport if transport is not None else _urllib_transport
+
+    def generate(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int = 512,
+    ) -> LLMResponse:
+        _validate_messages(messages)
+        if not isinstance(max_tokens, int) or max_tokens <= 0:
+            raise ValueError("max_tokens must be a positive integer")
+
+        payload = {
+            "model": self.model,
+            "messages": copy.deepcopy(messages),
+            "thinking": {"type": "disabled"},
+            "temperature": 0,
+            "max_tokens": max_tokens,
+            "stream": False,
+        }
+        raw = self._transport(
+            f"{self.base_url}/chat/completions",
+            payload,
+            {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            self.timeout,
+        )
+        return _parse_chat_completion(raw, provider=self.provider, fallback_model=self.model)
 
 
 class DeepSeekToolCallProvider:
@@ -954,6 +1018,39 @@ def _parse_chat_turn_completion(
     )
 
 
+def _parse_chat_completion(
+    raw: dict[str, Any],
+    *,
+    provider: str,
+    fallback_model: str,
+) -> LLMResponse:
+    if not isinstance(raw, dict):
+        raise ValueError("malformed model response")
+    choices = raw.get("choices")
+    if not isinstance(choices, list) or not choices:
+        raise ValueError("malformed model response: missing choices")
+    first_choice = choices[0]
+    if not isinstance(first_choice, dict):
+        raise ValueError("malformed model response: invalid choice")
+    message = first_choice.get("message")
+    if not isinstance(message, dict):
+        raise ValueError("malformed model response: missing message")
+    content = message.get("content")
+    if not isinstance(content, str) or not content.strip():
+        raise ValueError("empty model response")
+    usage = raw.get("usage", {})
+    if not isinstance(usage, dict):
+        usage = {}
+    return LLMResponse(
+        provider=provider,
+        model=str(raw.get("model") or fallback_model),
+        content=content.strip(),
+        finish_reason=str(first_choice.get("finish_reason") or ""),
+        usage=_safe_usage(usage),
+        raw=copy.deepcopy(raw),
+    )
+
+
 def _parse_tool_call(raw_call: Any) -> LLMToolCall:
     if not isinstance(raw_call, dict):
         raise ValueError("malformed tool call")
@@ -1191,10 +1288,12 @@ def _require_final_answer_content(value: Any, *, provider: str) -> str:
 
 
 __all__ = [
+    "DeepSeekChatProvider",
     "DeepSeekToolCallProvider",
     "LLMChatTurnResponse",
     "LLMFinalAnswerResponse",
     "LLMProviderResolution",
+    "LLMResponse",
     "LLMToolCall",
     "LLMToolCallResponse",
     "ToolCallProvider",
