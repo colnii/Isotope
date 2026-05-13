@@ -2,6 +2,8 @@
 
 状态：`active`
 
+Current note: Capability Hub Core Boundary is documented in `docs/capability-hub-core-boundary-v0.2.md`. If continuing, the next batch is red tests only for `tests/isotope_kernel/test_capability_catalog_core.py` and `tests/isotope_kernel/test_capability_catalog_shelves.py`.
+
 ## 1. Purpose
 
 本文是后续主线 AI 的 task queue（任务队列）。目标是把接下来 45-60 分钟的工作拆成有 stop conditions（停止条件）的 bounded batch（有界批次），减少用户每 3-10 分钟手动传下一步指令的需要。
@@ -333,6 +335,33 @@ Stop conditions:
 
 ## 6. Current Batch
 
+Batch name: `Capability Hub Core Boundary`
+
+Timebox: `docs-only boundary slice`
+
+Status: `complete`
+
+Goal: define the smallest mainline-ready extraction from aggressive Capability Hub without merging the aggressive branch wholesale.
+
+Evidence:
+
+- Boundary doc: `docs/capability-hub-core-boundary-v0.2.md`.
+- Source review: `docs/aggressive/mainline-merge-candidate-review-v0.md` on `codex/spike-aggressive-dev`.
+- Explicitly excludes 49 aggressive capabilities, diagnostics, self-evolution harness, DeepSeek provider, LLM route, `ask`, `interactive`, workflow engine, and product shell.
+- Next implementation should start with red tests only: `tests/isotope_kernel/test_capability_catalog_core.py` and `tests/isotope_kernel/test_capability_catalog_shelves.py`.
+
+## 7. Next Suggested Batch
+
+Batch name: `Capability Hub Core Red Tests`
+
+Status: `ready_red_only`
+
+Goal: write failing tests for the minimal `isotope_kernel.capability_catalog` core without copying aggressive `capability_hub.py`.
+
+Stop after red tests unless the user explicitly asks to continue green in the same session.
+
+## 8. Previous Current Batch
+
 Batch name: `Worker Handoff Helper Boundary`
 
 Timebox: `docs-only selection slice`
@@ -353,7 +382,7 @@ Evidence:
 - Aggressive evidence: commit `1950e32`, scenario `worker-handoff-gap`, targeted `tests/isotope_kernel/test_worker_handoff_gap_spike.py` -> `5 passed`.
 - No `src/`, `tests/`, `.github`, or `pyproject.toml` changes in this docs-only slice.
 
-## 7. Next Suggested Batch
+## 9. Previous Next Suggested Batch
 
 Batch name: `Worker Handoff Helper Closure Review`
 
@@ -1493,7 +1522,7 @@ Scope:
 - report verification, commit, push, and current status
 - do not continue to the next batch
 
-## 8. Completed Batch Log
+## 10. Completed Batch Log
 
 ### Usability Friction Reduction Package 1
 
@@ -1601,7 +1630,7 @@ Evidence:
 - Verified retry / cancel / supersede checkpoint-assisted rebuild.
 - No scheduler / process kill / tool-level cancellation / real concurrency / new dependency.
 
-## 9. Maintenance
+## 11. Maintenance
 
 When a task completes:
 

@@ -10,6 +10,8 @@ Isotope 是一个独立的 agent runtime 项目；当前采用 kernel-first 开�
 
 后续 rolling batch mode 由 [docs/agent-task-queue.md](docs/agent-task-queue.md) 管理；默认 session timebox 是 45-60 分钟，agent 每轮应先读 queue，不要自行进入未列出的新 Track 或为了凑时间 invent work。External Review Package 已刷新，见 [docs/external-review-package-v0.2.md](docs/external-review-package-v0.2.md)；post external review checkpoint 见 [docs/post-external-review-checkpoint.md](docs/post-external-review-checkpoint.md)。当前主线进入 idle / conservative maintenance mode，见 [docs/mainline-idle-checkpoint.md](docs/mainline-idle-checkpoint.md) 和 [docs/kernel-mainline-maintenance-mode.md](docs/kernel-mainline-maintenance-mode.md)：默认短暂停止 kernel expansion，让 application-layer prototype / aggressive branch 先制造真实 friction。文档公开/内部边界见 [docs/public-internal-docs-boundary.md](docs/public-internal-docs-boundary.md)。
 
+Capability Hub Core 的 mainline 边界见 [docs/capability-hub-core-boundary-v0.2.md](docs/capability-hub-core-boundary-v0.2.md)：后续只抽取能力目录小核心，不整体合并 aggressive capability hub。
+
 ## Quick Start
 
 ```bash
@@ -163,6 +165,7 @@ python3 -m venv .venv
 - Approval pause / resume boundary: [docs/approval-pause-resume-boundary-v0.2.md](docs/approval-pause-resume-boundary-v0.2.md)
 - Event schema registry / compatibility boundary: [docs/event-schema-registry-compatibility-boundary-v0.2.md](docs/event-schema-registry-compatibility-boundary-v0.2.md)
 - Event schema registry closure review: [docs/event-schema-registry-closure-review.md](docs/event-schema-registry-closure-review.md)
+- Capability Hub Core boundary: [docs/capability-hub-core-boundary-v0.2.md](docs/capability-hub-core-boundary-v0.2.md)
 - Tool protocol boundary: [docs/tool-protocol-boundary-v0.2.md](docs/tool-protocol-boundary-v0.2.md)
 - Tool protocol closure review: [docs/tool-protocol-closure-review.md](docs/tool-protocol-closure-review.md)
 - Tool invocation runtime wiring boundary: [docs/tool-invocation-runtime-wiring-boundary-v0.2.md](docs/tool-invocation-runtime-wiring-boundary-v0.2.md)
