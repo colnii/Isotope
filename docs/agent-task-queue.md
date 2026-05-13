@@ -88,6 +88,9 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-pla
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-matrix
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-matrix --trace
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-matrix --json
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-restart-pause
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-restart-pause --trace
+PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-restart-pause --json
 
 rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel || true
 
@@ -98,7 +101,7 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 branch-local baseline：`1079 passed`。Pre-branch mainline baseline：`1064 passed`。
+当前 branch-local baseline：`1084 passed`。Pre-branch mainline baseline：`1064 passed`。
 
 ## Branch-Local Batch: Agent Loop Friction Spike
 
@@ -221,7 +224,28 @@ Next suggested branch-local batch:
 
 `Planner Restart Pause Fixture Spike`
 
+Status: `complete`
+
 Goal: add one deterministic runnable fixture showing a planner pauses at approval, the process restarts, and the loop resumes through public helpers / event-backed state.
+
+Tasks:
+
+1. Write red tests for `agent-loop-planner-restart-pause`: complete, expected failure was unsupported scenario.
+2. Implement the smallest deterministic restart-pause demo path: complete.
+3. Keep restart recovery public-helper / event-backed; no private append or process-local approval memory required after restart: complete.
+4. Record closure and next development step: complete, see `docs/planner-restart-pause-fixture-review.md`.
+
+Evidence:
+
+- New scenario: `python -m isotope_kernel.demo --scenario agent-loop-planner-restart-pause`.
+- Trace / JSON variants are supported.
+- Targeted tests: `tests/isotope_kernel/test_agent_loop_planner_restart_pause_spike.py`.
+- Current result: `planner_restart_pause_ok=true`, `private_append_required=false`, `kernel_friction=[]`.
+- No real LLM / scheduler / provider adapter / real HTTP server / real worker process / memory query engine / filesystem mutation / public SDK / product multi-agent UX.
+
+Next suggested branch-local mode:
+
+Pause Agent loop expansion and wait for real app-layer friction or external review feedback.
 
 Stop conditions:
 

@@ -39,6 +39,7 @@ def main(argv: list[str] | None = None) -> int:
             "agent-loop-friction",
             "agent-loop-planner-friction",
             "agent-loop-planner-matrix",
+            "agent-loop-planner-restart-pause",
         ),
         default="v0.1",
         help="demo scenario to run",
@@ -116,6 +117,8 @@ def _run_scenario(root: Path, *, scenario: str) -> dict[str, Any]:
         return _run_agent_loop_planner_adapter_spike(root)
     if scenario == "agent-loop-planner-matrix":
         return _run_agent_loop_planner_matrix_spike(root)
+    if scenario == "agent-loop-planner-restart-pause":
+        return _run_agent_loop_planner_restart_pause_spike(root)
     raise ValueError(f"unsupported scenario: {scenario}")
 
 
@@ -1071,6 +1074,140 @@ def _run_agent_loop_planner_matrix_spike(root: Path) -> dict[str, Any]:
     }
 
 
+def _run_agent_loop_planner_restart_pause_spike(root: Path) -> dict[str, Any]:
+    root.mkdir(parents=True, exist_ok=True)
+    checkpoint_store = FileCheckpointStore(root / "agent-loop-planner-restart-pause-checkpoints")
+    api = InProcessServer(root, checkpoint_store=checkpoint_store)
+
+    session = api.create_session()
+    run = api.create_run(session["session_id"], goal="planner restart pause fixture")
+    run_id = run["run_id"]
+    planner_decisions_before_restart = [
+        "create_source_artifact",
+        "submit_worker_handoff",
+        "submit_approval_gated_action",
+    ]
+
+    source_setup = api.create_source_artifact(
+        run_id,
+        summary="planner restart pause source summary",
+        content="deterministic planner restart pause input",
+    )
+    handoff = api.submit_worker_handoff(
+        run_id,
+        delegation_intent={
+            "parent_agent_id": "agent_supervisor",
+            "requested_worker_role": "worker",
+            "requested_capabilities": {
+                "tools": ["write_artifact_tool"],
+                "workspace": {"mode": "shared_ro"},
+                "budget": {"seconds": 30},
+            },
+        },
+        artifact_ref=source_setup["artifact_ref"],
+        summary="deterministic planner restart pause worker result handoff",
+    )
+    pending = api.submit_action(
+        run_id,
+        {
+            "action": "call_tool",
+            "tool": "write_artifact_tool",
+            "text": "deterministic planner restart pause final artifact",
+        },
+        requires_approval=True,
+    )
+    pending_approvals = api.get_pending_approvals(run_id)
+    approval_id = pending_approvals[0]["approval_id"] if pending_approvals else ""
+    if not approval_id:
+        raise RuntimeError("planner restart pause spike did not request approval")
+
+    saved_before_restart = api.save_checkpoint_for_run(run_id)
+    restarted = InProcessServer(root, checkpoint_store=checkpoint_store)
+    state_after_restart = restarted.get_run_state(run_id)
+    pending_after_restart = restarted.get_pending_approvals(run_id)
+    planner_decisions_after_restart = [
+        "get_pending_approvals",
+        "resolve_approval",
+        "verify_replay_checkpoint",
+    ]
+    resolution = restarted.resolve_approval(
+        approval_id,
+        {
+            "resolution": "approved",
+            "reason": "planner restart pause fixture",
+            "resolver": "developer_demo",
+        },
+    )
+
+    events = restarted.get_events(run_id)
+    replay_state = RunProjector().rebuild(run_id, restarted.event_store)
+    checkpoint = RunProjector().save_checkpoint(run_id, restarted.event_store, checkpoint_store)
+    checkpoint_state = RunProjector().rebuild_with_checkpoint(
+        run_id,
+        restarted.event_store,
+        checkpoint_store,
+    )
+    final_state = restarted.get_run_state(run_id)
+    event_types = [event.event_type for event in events]
+    replay_ok = asdict(replay_state) == asdict(final_state)
+    checkpoint_ok = asdict(checkpoint_state) == asdict(replay_state)
+    private_append_required = handoff["private_append_required"] is not False
+    approval_pending_before_restart = (
+        pending["status"] == "pending_user_approval"
+        and state_after_restart.status == "pending_user_approval"
+        and bool(pending_after_restart)
+    )
+    restart_resume_ok = resolution["status"] == "completed" and replay_state.status == "completed"
+    planner_restart_pause_ok = (
+        source_setup["status"] == "completed"
+        and handoff["status"] == "completed"
+        and approval_pending_before_restart
+        and restart_resume_ok
+        and replay_ok
+        and checkpoint_ok
+        and private_append_required is False
+    )
+
+    return {
+        "scenario": "agent-loop-planner-restart-pause",
+        "session_id": session["session_id"],
+        "run_id": run_id,
+        "run_status": replay_state.status,
+        "transport": "in_process",
+        "planner_restart_pause_ok": planner_restart_pause_ok,
+        "planner_adapter_status": "deterministic_fixture",
+        "planner_decisions_before_restart": planner_decisions_before_restart,
+        "planner_decisions_after_restart": planner_decisions_after_restart,
+        "approval_id": approval_id,
+        "approval_pending_before_restart": approval_pending_before_restart,
+        "restart_resume_ok": restart_resume_ok,
+        "kernel_friction": [],
+        "kernel_friction_count": 0,
+        "private_append_required": private_append_required,
+        "worker_handoff_ok": handoff["status"] == "completed",
+        "approval_resume_ok": resolution["status"] == "completed",
+        "replay_ok": replay_ok,
+        "checkpoint_ok": checkpoint_ok,
+        "checkpoint_before_restart_basis_event_id": saved_before_restart["basis_event_id"],
+        "checkpoint_basis_event_id": checkpoint["basis_event_id"],
+        "event_count": len(event_types),
+        "event_types": event_types,
+        "source_artifact_ref": source_setup["artifact_ref"].to_dict(),
+        "worker_result_ref": handoff["result_ref"],
+        "final_artifact_ref": resolution["artifact_ref"].to_dict(),
+        "model_status": "not_used",
+        "scheduler_status": "not_used",
+        "provider_status": "not_used",
+        "network_listener_status": "not_used",
+        "filesystem_mutation_status": "not_used",
+        "memory_status": "boundary_only",
+        "memory_query_status": "not_enabled",
+        "next_development_step": (
+            "Pause branch-local agent-loop expansion unless a real app spike exposes a new gap."
+        ),
+    }
+
+
 def _planner_happy_fixture_summary(result: dict[str, Any]) -> dict[str, Any]:
     return {
         "fixture_id": "happy_path",
@@ -1209,6 +1346,8 @@ def _latest_action_status(actions: dict[str, dict[str, Any]]) -> str:
 
 
 def _format_plain_text(result: dict[str, Any]) -> str:
+    if result.get("scenario") == "agent-loop-planner-restart-pause":
+        return _format_agent_loop_planner_restart_pause_plain_text(result)
     if result.get("scenario") == "agent-loop-planner-matrix":
         return _format_agent_loop_planner_matrix_plain_text(result)
     if result.get("scenario") == "agent-loop-planner-friction":
@@ -1240,6 +1379,8 @@ def _format_plain_text(result: dict[str, Any]) -> str:
 
 def _format_trace(result: dict[str, Any]) -> str:
     scenario = result.get("scenario", "v0.1")
+    if scenario == "agent-loop-planner-restart-pause":
+        return _format_agent_loop_planner_restart_pause_trace(result)
     if scenario == "agent-loop-planner-matrix":
         return _format_agent_loop_planner_matrix_trace(result)
     if scenario == "agent-loop-planner-friction":
@@ -1394,6 +1535,26 @@ def _format_agent_loop_planner_matrix_trace(result: dict[str, Any]) -> str:
         f"fixture malformed_symbolic_action: {malformed['status']}",
         f"malformed_symbolic_action partial events appended: {_bool_text(malformed['partial_events_appended'])}",
         f"kernel friction count: {result['kernel_friction_count']}",
+        f"next development step: {result['next_development_step']}",
+    ]
+    return _format_trace_steps(result["scenario"], steps)
+
+
+def _format_agent_loop_planner_restart_pause_trace(result: dict[str, Any]) -> str:
+    steps = [
+        f"create session: {result['session_id']}",
+        f"create run: {result['run_id']}",
+        "planner creates source artifact and worker handoff",
+        "planner submits policy-gated action and pause at approval",
+        f"approval pending before restart: {_bool_text(result['approval_pending_before_restart'])}",
+        "restart server with the same event log and checkpoint store",
+        "planner reads pending approval after restart",
+        f"resume approval action after restart: {_bool_text(result['restart_resume_ok'])}",
+        f"final artifact ref created: {_artifact_id(result['final_artifact_ref'])}",
+        f"kernel friction count: {result['kernel_friction_count']}",
+        f"private append required: {_bool_text(result['private_append_required'])}",
+        f"replay verified: {_bool_text(result['replay_ok'])}",
+        f"checkpoint verified: {_bool_text(result['checkpoint_ok'])}",
         f"next development step: {result['next_development_step']}",
     ]
     return _format_trace_steps(result["scenario"], steps)
@@ -1555,6 +1716,28 @@ def _format_agent_loop_planner_matrix_plain_text(result: dict[str, Any]) -> str:
         f"blocked_deferred_ok: {str(result['blocked_deferred_ok']).lower()}",
         f"malformed_fail_closed_ok: {str(result['malformed_fail_closed_ok']).lower()}",
         f"kernel_friction_count: {result['kernel_friction_count']}",
+        f"model_status: {result['model_status']}",
+        f"scheduler_status: {result['scheduler_status']}",
+        f"memory_status: {result['memory_status']}",
+        f"next_development_step: {result['next_development_step']}",
+    ]
+    return "\n".join(lines)
+
+
+def _format_agent_loop_planner_restart_pause_plain_text(result: dict[str, Any]) -> str:
+    lines = [
+        f"scenario: {result['scenario']}",
+        f"session_id: {result['session_id']}",
+        f"run_id: {result['run_id']}",
+        f"run_status: {result['run_status']}",
+        f"transport: {result['transport']}",
+        f"planner_restart_pause_ok: {str(result['planner_restart_pause_ok']).lower()}",
+        f"approval_pending_before_restart: {str(result['approval_pending_before_restart']).lower()}",
+        f"restart_resume_ok: {str(result['restart_resume_ok']).lower()}",
+        f"private_append_required: {str(result['private_append_required']).lower()}",
+        f"kernel_friction_count: {result['kernel_friction_count']}",
+        f"replay_ok: {str(result['replay_ok']).lower()}",
+        f"checkpoint_ok: {str(result['checkpoint_ok']).lower()}",
         f"model_status: {result['model_status']}",
         f"scheduler_status: {result['scheduler_status']}",
         f"memory_status: {result['memory_status']}",

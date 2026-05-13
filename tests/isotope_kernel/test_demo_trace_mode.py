@@ -15,6 +15,7 @@ TRACE_SCENARIOS = (
     "agent-loop-friction",
     "agent-loop-planner-friction",
     "agent-loop-planner-matrix",
+    "agent-loop-planner-restart-pause",
 )
 
 COMMON_TRACE_TERMS = (
