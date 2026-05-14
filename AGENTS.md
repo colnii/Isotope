@@ -62,7 +62,7 @@ Python 代码使用 4 空格缩进，模块和函数用 `snake_case`。
 保持线性历史，优先 rebase 或 fast-forward。
 不要在共享分支制造无说明的 merge commit。
 不要主动合并、删除或重写分支；分支处理先做状态审计。
-分支的临时暂停状态记录在 `docs/current/status.md`，不写进本文件。
+分支和清理状态以 `docs/current/status.md` 为准，不写进本文件。
 
 ## AI 协作规则
 

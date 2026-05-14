@@ -1,153 +1,70 @@
 # Agent 任务队列
 
-状态：`项目整备`
+状态：`当前入口 / 下一步目录结构设计`
 
-## 当前原则
+## 当前事实
 
-- 所有功能分支已暂停。
-- 先做文档和协作规则整备。
-- 不继续功能开发。
-- 不合并、不删除、不重写分支。
-- 不把当前分支定义成项目方向。
+- Isotope 是 AI 应用软件，不是单纯内核项目。
+- 本地只保留 `main`，远端只保留 `origin/main`。
+- 旧功能分支已完成审计、代码抽取和清理。
+- 可迁移代码已进入主线，剩余分支内容只保留历史参考价值。
+- `docs/` 已分成 `current/`、`architecture/`、`features/`、`reviews/`、`archive/`。
+- 应用目录结构还没有最终定稿，不在本批次移动代码。
 
-## 当前批次：协作入口清理
+## 已完成批次
 
-目标：让 AI 先读到正确的项目目标和工作方式。
+1. 协作入口清理：`AGENTS.md` 已改成中文主叙述，并控制在 100 行以内。
+2. 文档分层整理：`docs/` 根目录没有 Markdown 残留，入口集中到 `docs/current/`。
+3. 术语索引：保留英文定位词，补中文解释和主要位置。
+4. 应用目录方案：已写 [application-structure-plan](./application-structure-plan.md)。
+5. 分支审计清理：结果见 [branch-cleanup](../reviews/branch-cleanup-2026-05-15.md)。
+6. 文档二次清理：当前入口已刷新，不再传播旧分支暂停口径。
 
-范围：
+## 最近完成：文档二次清理
 
-- `AGENTS.md`
-- `README.md`
-- `docs/current/status.md`
-- `docs/current/docs-map.md`
-- `docs/current/agent-task-queue.md`
-- 旧暂停规则文档的废止说明
+完成内容：
 
-完成标准：
+- 刷新当前入口文档里的阶段状态。
+- 删除或改写已完成批次留下的“下一步迁移”“分支暂停”口径。
+- 保留历史评审和归档，不批量改写审计证据。
+- 不做代码目录迁移。
 
-- `AGENTS.md` 少于 100 行。
-- 中文为主。
-- 不再把 Isotope 描述成单纯内核项目。
-- 不再要求所有工作围绕底座保守扩展。
-- 不再把真实产品能力默认降级成诊断或预检查。
-- 不再出现旧项目迁移来源叙述。
+验收：
 
-## 当前批次：文档与目录结构整理
+- `docs/current/` 能说明当前真实状态。
+- `README.md` 不再要求继续暂停旧功能分支。
+- `AGENTS.md` 不写临时分支规则。
+- Markdown 相对链接无断链。
 
-状态：`已完成`
+## 下一批次：目录结构设计
 
-目标：把 `docs/` 分出清楚层级，建立真实术语索引，
-并设计去 `kernel` 化的应用目录结构。
+目标：
 
-已采用层级：
+- 先讨论并确定长期目录结构。
+- 再决定是否把 `src/isotope_kernel/` 迁到新目录。
+- 迁移时保留短期兼容层，避免一次性破坏已有命令和测试。
 
-- `docs/current/`
-- `docs/architecture/`
-- `docs/features/`
-- `docs/reviews/`
-- `docs/archive/`
+初始参考：
 
-已完成：
+- `apps/api/`：后端入口。
+- `apps/web/`：前端入口。
+- `apps/worker/`：异步任务入口。
+- `src/core/`：配置、数据库、日志、缓存、工具。
+- `src/models/`：LLM、embedding、reranker。
+- `src/agents/`：规划器、执行器、记忆、工具。
+- `src/rag/`：导入、切分、检索、索引。
+- `src/features/`：聊天、搜索、工作区、权限。
+- `src/workflows/`：LangGraph、DAG、pipeline。
+- `src/prompts/`：system、template、eval。
+- `src/schemas/`：pydantic、types。
 
-- 修复入口链接。
-- 补充术语索引。
-- 写应用目录迁移方案。
-- 检查 `docs/` 根目录没有 Markdown 残留。
-- 检查仓库内 Markdown 相对链接没有断链。
+## 验证命令
 
-术语整理要求：
-
-- 从代码、文档和用户常用表达中抽取术语。
-- 英文术语保留，方便搜索对应代码。
-- 每个术语补中文解释、所在层级和主要文件。
-- 重点解释用户未必熟悉、但会影响判断的术语。
-- 不只整理 `AGENTS.md` 里列出的临时术语。
-
-目录结构整理要求：
-
-- 不把 `isotope_kernel` 当成长期包名。
-- 参考 AI 应用常见结构设计新目录。
-- 候选层级包括 `apps/`、`src/core/`、`src/models/`。
-- 候选层级包括 `src/agents/`、`src/rag/`、`src/features/`。
-- 先出迁移方案，再移动代码。
-
-## 下一批次：分支审计与清理
-
-状态：`已完成`
-
-目标：先看清每个暂停分支的真实状态，不急着合并。
-
-初审文档：[branch-audit-initial-2026-05-15](../reviews/branch-audit-initial-2026-05-15.md)
-
-刷新文档：[branch-audit-refresh-2026-05-15](../reviews/branch-audit-refresh-2026-05-15.md)
-
-已完成：
-
-- 分支目标审计。
-- 可迁移代码抽取。
-- agent-loop 链闭环。
-- aggressive 剩余代码取舍。
-- 本地和远端暂停分支清理。
-
-清理记录：[branch-cleanup-2026-05-15](../reviews/branch-cleanup-2026-05-15.md)
-
-下一步深审：
-
-- 优先看 `feature/controlled-terminal-exec`。
-- 只抽取可复用应用能力，不整体合并旧包名结构。
-- 深审前先固定当前文档整备结果，避免后续 rebase/迁移时混杂。
-
-深审已完成：[controlled-terminal-exec-deep-review-2026-05-15](../reviews/controlled-terminal-exec-deep-review-2026-05-15.md)
-
-下一步迁移：
-
-- 从 `feature/controlled-terminal-exec` 抽取终端执行层。
-- 新代码放入应用化目录，不沿用 `isotope_kernel` 长期命名。
-- 先做最小可测切片，再考虑 LLM provider 和产品聊天入口。
-
-当前分支顺序：
-
-1. 收敛 `feature/app-terminal-exec-migration`。`已合入 main`
-2. 深审 `codex/spike-aggressive-dev`。
-3. 再看 agent-loop 链尾分支。
-
-迁移进展：
-
-- 已开分支 `feature/app-terminal-exec-migration`。
-- 已新增 `src/agents/tools/terminal.py`。
-- 已新增 `src/agents/executor/terminal_backend.py`。
-- 已新增 `tests/agents/` 下的终端执行层测试。
-- 已把旧 `src/isotope_kernel/terminal*.py` 入口改成短期兼容层。
-- 已通过 fast-forward 合入 `main`，未制造 merge commit。
-- 已从 aggressive 分支剩余思路中补齐 `capability_runner` CLI `search / plan`。
-- 已从 agent-loop 链尾抽取 `tick policy` 读模型和 HTTP facade route。
-- 已从 agent-loop 链尾抽取 `planner adapter` 和 `real planner contract`。
-- 已写闭环审阅：[agent-loop-chain-closure-2026-05-15](../reviews/agent-loop-chain-closure-2026-05-15.md)
-
-agent-loop 后续：
-
-- `feature/agent-loop-tick-budget-read-model-spike` 不能整体合并，旧 docs 路径会覆盖当前文档结构。
-- 主线已吸收 run control、step driver、tick policy、planner adapter、real planner contract。
-- 这组分支不再有待合并代码；后续只作为历史参考。
-
-分支清理结果：
-
-- 本地只保留 `main`。
-- 远端只保留 `origin/main`。
-- 后续功能应从 `main` 新开分支或新 worktree。
-
-## 验证
-
-文档批次至少检查：
+文档批次至少运行：
 
 ```bash
 git diff --check
 wc -l AGENTS.md
-```
-
-文档搬迁后额外检查：
-
-```bash
 find docs -maxdepth 1 -type f -name '*.md' -print
 ```
 
