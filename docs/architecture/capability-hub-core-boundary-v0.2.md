@@ -37,12 +37,12 @@ Capability Hub Core 的目标是提供一个小而稳定的 ability catalog（�
 
 建议模块名：
 
-- `src/isotope_kernel/capability_catalog.py`
+- `src/isotope/capability_catalog.py`
 
 建议测试：
 
-- `tests/isotope_kernel/test_capability_catalog_core.py`
-- `tests/isotope_kernel/test_capability_catalog_shelves.py`
+- `tests/isotope/test_capability_catalog_core.py`
+- `tests/isotope/test_capability_catalog_shelves.py`
 
 ## 4. Capability metadata
 
@@ -169,16 +169,16 @@ manifest 不得包含：
 
 下一批 implementation 应先写 red tests：
 
-`tests/isotope_kernel/test_capability_catalog_core.py`
+`tests/isotope/test_capability_catalog_core.py`
 
-- module `isotope_kernel.capability_catalog` exists。
+- module `isotope.capability_catalog` exists。
 - `Capability` can serialize to low-sensitive dict。
 - duplicate `capability_id` fails fast。
 - malformed capability id / unknown shelf fails fast。
 - manifest returns JSON-compatible metadata and readiness only。
 - manifest does not include raw content / trace / prompt fields。
 
-`tests/isotope_kernel/test_capability_catalog_shelves.py`
+`tests/isotope/test_capability_catalog_shelves.py`
 
 - default catalog only includes `product_candidate` and `prototype`。
 - `diagnostic` hidden by default。
@@ -189,7 +189,7 @@ manifest 不得包含：
 
 可选后续：
 
-`tests/isotope_kernel/test_capability_catalog_search.py`
+`tests/isotope/test_capability_catalog_search.py`
 
 - simple query / tag search works without LLM。
 - search does not execute capability。
@@ -197,7 +197,7 @@ manifest 不得包含：
 
 ## 11. Merge rule
 
-Do not copy `src/isotope_kernel/capability_hub.py` wholesale from aggressive branch.
+Do not copy `src/isotope/capability_hub.py` wholesale from aggressive branch.
 
 Mainline implementation must be a small extraction from the idea, not a direct transplant of the aggressive module.
 
@@ -205,9 +205,9 @@ Mainline implementation must be a small extraction from the idea, not a direct t
 
 已实现：
 
-- `src/isotope_kernel/capability_catalog.py`
-- `tests/isotope_kernel/test_capability_catalog_core.py`
-- `tests/isotope_kernel/test_capability_catalog_shelves.py`
+- `src/isotope/capability_catalog.py`
+- `tests/isotope/test_capability_catalog_core.py`
+- `tests/isotope/test_capability_catalog_shelves.py`
 
 当前 first slice 只提供：
 
@@ -221,7 +221,7 @@ Mainline implementation must be a small extraction from the idea, not a direct t
 
 验证：
 
-- red：`19 failed`，失败集中在缺少 `isotope_kernel.capability_catalog`。
+- red：`19 failed`，失败集中在缺少 `isotope.capability_catalog`。
 - green：targeted `19 passed`。
 - full regression：`1083 passed`。
 

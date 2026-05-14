@@ -22,7 +22,7 @@
 Red-to-green path:
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel/test_tool_invocation_runtime_wiring.py -q
+PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_tool_invocation_runtime_wiring.py -q
 # before implementation: 2 failed, 1 passed
 # after implementation: 3 passed
 ```
@@ -31,10 +31,10 @@ Focused regression:
 
 ```bash
 PYTHONPATH=src .venv/bin/python -m pytest \
-  tests/isotope_kernel/test_tool_invocation_runtime_wiring.py \
-  tests/isotope_kernel/test_tool_protocol_boundary.py \
-  tests/isotope_kernel/test_tool_result_event_boundary.py \
-  tests/isotope_kernel/test_executor_registry_integration.py \
+  tests/isotope/test_tool_invocation_runtime_wiring.py \
+  tests/isotope/test_tool_protocol_boundary.py \
+  tests/isotope/test_tool_result_event_boundary.py \
+  tests/isotope/test_executor_registry_integration.py \
   -q
 # 27 passed
 ```

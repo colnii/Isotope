@@ -13,16 +13,16 @@
 新增命令：
 
 ```bash
-python -m isotope_kernel.demo --scenario approval-tool-runner
-python -m isotope_kernel.demo --scenario approval-tool-runner --trace
-python -m isotope_kernel.demo --scenario approval-tool-runner --json
-python -m isotope_kernel.demo --scenario artifact-review
-python -m isotope_kernel.demo --scenario artifact-review --trace
-python -m isotope_kernel.demo --scenario artifact-review --json
-python -m isotope_kernel.demo --scenario external-snapshot-review
-python -m isotope_kernel.demo --scenario external-snapshot-review --trace
-python -m isotope_kernel.demo --scenario external-snapshot-review --json
-python -m isotope_kernel.demo --scenario v0.2 --trace
+python -m isotope.demo --scenario approval-tool-runner
+python -m isotope.demo --scenario approval-tool-runner --trace
+python -m isotope.demo --scenario approval-tool-runner --json
+python -m isotope.demo --scenario artifact-review
+python -m isotope.demo --scenario artifact-review --trace
+python -m isotope.demo --scenario artifact-review --json
+python -m isotope.demo --scenario external-snapshot-review
+python -m isotope.demo --scenario external-snapshot-review --trace
+python -m isotope.demo --scenario external-snapshot-review --json
+python -m isotope.demo --scenario v0.2 --trace
 ```
 
 ## 2. Current Kernel Readiness
@@ -88,8 +88,8 @@ python -m isotope_kernel.demo --scenario v0.2 --trace
 
 已新增测试文件：
 
-- `tests/isotope_kernel/test_usability_spike_approval_tool_runner.py`
-- `tests/isotope_kernel/test_usability_spike_approval_tool_runner_read_model.py`
+- `tests/isotope/test_usability_spike_approval_tool_runner.py`
+- `tests/isotope/test_usability_spike_approval_tool_runner_read_model.py`
 
 当前 green scope：
 
@@ -178,8 +178,8 @@ Original red-test goals:
 Commands:
 
 ```bash
-python -m isotope_kernel.demo --scenario artifact-review
-python -m isotope_kernel.demo --scenario artifact-review --json
+python -m isotope.demo --scenario artifact-review
+python -m isotope.demo --scenario artifact-review --json
 ```
 
 当前展示：
@@ -314,9 +314,9 @@ Selection doc: `../reviews/second-app-spike-selection.md`
 Current recommendation:
 
 - next app spike candidate: `external snapshot review`
-- current implemented scenario: `python -m isotope_kernel.demo --scenario external-snapshot-review`
-- current implemented trace: `python -m isotope_kernel.demo --scenario external-snapshot-review --trace`
-- current implemented JSON: `python -m isotope_kernel.demo --scenario external-snapshot-review --json`
+- current implemented scenario: `python -m isotope.demo --scenario external-snapshot-review`
+- current implemented trace: `python -m isotope.demo --scenario external-snapshot-review --trace`
+- current implemented JSON: `python -m isotope.demo --scenario external-snapshot-review --json`
 
 Reasoning:
 
@@ -336,9 +336,9 @@ Closure review: `external-snapshot-review-closure-review.md`
 Commands:
 
 ```bash
-python -m isotope_kernel.demo --scenario external-snapshot-review
-python -m isotope_kernel.demo --scenario external-snapshot-review --trace
-python -m isotope_kernel.demo --scenario external-snapshot-review --json
+python -m isotope.demo --scenario external-snapshot-review
+python -m isotope.demo --scenario external-snapshot-review --trace
+python -m isotope.demo --scenario external-snapshot-review --json
 ```
 
 当前展示：
@@ -403,10 +403,10 @@ Current conclusion:
 Commands:
 
 ```bash
-python -m isotope_kernel.demo --scenario artifact-review --trace
-python -m isotope_kernel.demo --scenario approval-tool-runner --trace
-python -m isotope_kernel.demo --scenario v0.2 --trace
-python -m isotope_kernel.demo --scenario external-snapshot-review --trace
+python -m isotope.demo --scenario artifact-review --trace
+python -m isotope.demo --scenario approval-tool-runner --trace
+python -m isotope.demo --scenario v0.2 --trace
+python -m isotope.demo --scenario external-snapshot-review --trace
 ```
 
 当前展示：

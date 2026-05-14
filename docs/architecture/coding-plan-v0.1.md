@@ -15,7 +15,7 @@
 如果第一轮实现仍放在当前 `x-agent` staging repo，必须和现有 assessment pipeline 隔离，使用独立 package namespace：
 
 ```text
-src/isotope_kernel/
+src/isotope/
   __init__.py
   ids.py
   models.py
@@ -38,7 +38,7 @@ src/isotope_kernel/
     __init__.py
     write_artifact.py
 
-tests/isotope_kernel/
+tests/isotope/
   test_event_store.py
   test_action_chain.py
   test_policy_grants.py
@@ -49,7 +49,7 @@ tests/isotope_kernel/
   test_package_isolation.py
 ```
 
-`src/x_agent/` 不应被第一轮 Isotope slice 修改。`isotope_kernel` 不能 import 任何 `x_agent.*` 模块。
+`src/x_agent/` 不应被第一轮 Isotope slice 修改。`isotope` 不能 import 任何 `x_agent.*` 模块。
 
 ## 2. Module Interfaces
 
@@ -304,11 +304,11 @@ HTTP JSON 可以在 contract tests 通过后再加。第一轮用 in-process fac
 
 ### `test_package_isolation.py`
 
-- `test_isotope_kernel_does_not_import_x_agent`
+- `test_isotope_does_not_import_x_agent`
 
 ## 4. Implementation Tasks
 
-1. Create isolated `src/isotope_kernel/` package and `tests/isotope_kernel/` test directory.
+1. Create isolated `src/isotope/` package and `tests/isotope/` test directory.
 2. Add minimal dataclasses / models and ID helpers.
 3. Implement `FileEventStore` with JSONL append and replay.
 4. Write projector contract tests, then implement minimal `RunProjector`.
@@ -324,7 +324,7 @@ HTTP JSON 可以在 contract tests 通过后再加。第一轮用 in-process fac
 14. Implement in-process `Server API` facade.
 15. Add end-to-end happy path, modified case, denied / unsupported case.
 16. Add deferred capability tests returning `not_enabled`.
-17. Add package isolation test proving `isotope_kernel` does not import `x_agent.*`.
+17. Add package isolation test proving `isotope` does not import `x_agent.*`.
 
 ## 5. File Event Log And Replay
 
@@ -374,12 +374,12 @@ Projector 只能使用 event payloads。测试中可以对 artifact content read
 - `write_artifact_tool` 可能被误读成 tool protocol。它必须保留为 deterministic test tool，不做泛化。
 - Retrieval Service 容易过早扩大。第一轮只做 artifact `ResourceRef` 的 metadata / summary。
 - Memory Service 必须保持 `not_enabled`。一旦加入 memory write path，会拉入 deferred contract surface。
-- `isotope_kernel` 如果 import 任何 `x_agent.*` 模块，就会把 staging slice 和 assessment pipeline 重新耦合，必须用测试挡住。
+- `isotope` 如果 import 任何 `x_agent.*` 模块，就会把 staging slice 和 assessment pipeline 重新耦合，必须用测试挡住。
 
 ## 8. Coding Entry Condition
 
 进入编码前需要确认：
 
 - 实现是否继续放在当前 `x-agent` staging repo。
-- 如果继续放在本 repo，是否接受新增独立 package `src/isotope_kernel/`。
-- 第一轮是否只跑 `tests/isotope_kernel/`，不触碰现有 `x_agent` assessment pipeline。
+- 如果继续放在本 repo，是否接受新增独立 package `src/isotope/`。
+- 第一轮是否只跑 `tests/isotope/`，不触碰现有 `x_agent` assessment pipeline。

@@ -10,7 +10,7 @@ Tool Protocol first slice 可以标为 `first slice complete / closed for now`�
 
 当前 slice 已覆盖：
 
-- `src/isotope_kernel/tool_protocol.py` 提供最小 `ToolInvocation` / `ToolResult` / `ToolError` validation models。
+- `src/isotope/tool_protocol.py` 提供最小 `ToolInvocation` / `ToolResult` / `ToolError` validation models。
 - `ToolInvocation` 固定 tool name、input payload、execution / proposal / decision provenance、effective grants snapshot、optional budget 和 optional workspace binding shape。
 - `ToolResult` 固定 summary / structured artifact `ResourceRef` / diagnostics / provenance shape。
 - `ToolError` 固定 stable `error_reason_code`、message、partial artifact refs 和 provenance shape。
@@ -40,12 +40,12 @@ Specifically:
 
 Implementation evidence:
 
-- `src/isotope_kernel/tool_protocol.py`
-- `src/isotope_kernel/executor.py`
-- `src/isotope_kernel/artifact_store.py`
-- `src/isotope_kernel/projector.py`
-- `tests/isotope_kernel/test_tool_protocol_boundary.py`
-- `tests/isotope_kernel/test_tool_result_event_boundary.py`
+- `src/isotope/tool_protocol.py`
+- `src/isotope/executor.py`
+- `src/isotope/artifact_store.py`
+- `src/isotope/projector.py`
+- `tests/isotope/test_tool_protocol_boundary.py`
+- `tests/isotope/test_tool_result_event_boundary.py`
 
 Verification evidence on the Mac mini checkout:
 
@@ -53,16 +53,16 @@ Verification evidence on the Mac mini checkout:
 export DYLD_LIBRARY_PATH=/opt/homebrew/opt/expat/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}
 
 .venv/bin/python -m pytest \
-  tests/isotope_kernel/test_tool_protocol_boundary.py \
-  tests/isotope_kernel/test_tool_result_event_boundary.py \
+  tests/isotope/test_tool_protocol_boundary.py \
+  tests/isotope/test_tool_result_event_boundary.py \
   -q
 # 17 passed
 
-.venv/bin/python -m pytest tests/isotope_kernel -q
+.venv/bin/python -m pytest tests/isotope -q
 # 1003 passed
 
-.venv/bin/python -m isotope_kernel.demo --scenario artifact-review --trace
-.venv/bin/python -m isotope_kernel.demo --scenario approval-tool-runner --trace
+.venv/bin/python -m isotope.demo --scenario artifact-review --trace
+.venv/bin/python -m isotope.demo --scenario approval-tool-runner --trace
 ```
 
 Both trace demos passed and kept deferred routes / full-content boundaries closed.

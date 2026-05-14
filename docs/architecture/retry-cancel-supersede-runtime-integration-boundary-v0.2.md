@@ -225,9 +225,9 @@ Closure review:
 
 Suggested files:
 
-- `tests/isotope_kernel/test_retry_runtime_integration_boundary.py`
-- `tests/isotope_kernel/test_cancel_runtime_integration_boundary.py`
-- `tests/isotope_kernel/test_supersede_runtime_integration_boundary.py`
+- `tests/isotope/test_retry_runtime_integration_boundary.py`
+- `tests/isotope/test_cancel_runtime_integration_boundary.py`
+- `tests/isotope/test_supersede_runtime_integration_boundary.py`
 
 Recommended coverage:
 
@@ -248,9 +248,9 @@ Recommended coverage:
 
 These tests now exist and pass:
 
-- `tests/isotope_kernel/test_retry_runtime_integration_boundary.py`
-- `tests/isotope_kernel/test_cancel_runtime_integration_boundary.py`
-- `tests/isotope_kernel/test_supersede_runtime_integration_boundary.py`
+- `tests/isotope/test_retry_runtime_integration_boundary.py`
+- `tests/isotope/test_cancel_runtime_integration_boundary.py`
+- `tests/isotope/test_supersede_runtime_integration_boundary.py`
 
 ## 12. Stop Conditions For Future Implementation
 

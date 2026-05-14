@@ -97,9 +97,9 @@ Do not start scheduler, process kill, real concurrency, product HTTP routes, plu
 Closure verification:
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario artifact-review --trace
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario external-snapshot-review --trace
-rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel
+PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario artifact-review --trace
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario external-snapshot-review --trace
+rg -n '(^|\s)(from|import) x_agent\b' src/isotope tests/isotope
 git diff -- src tests .github pyproject.toml
 ```

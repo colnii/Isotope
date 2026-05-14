@@ -4,7 +4,7 @@
 
 本文定义 event envelope schema registry（事件信封 schema 注册表）的 v0.1 边界：未来如何把 `event_envelope_version` 映射到明确的 event envelope shape、serialization rules（序列化规则）和 digest representation rules（摘要表示规则），同时不把 registry 误用成 event migration、payload schema registry 或第二事实源。
 
-本文件仍只描述 envelope registry 设计说明，不实现 envelope registry、registry lookup、event migration 或 public inspection API。event payload schema registry 的 first green slice 已在 `event-schema-registry-compatibility-boundary-v0.2.md` / `src/isotope_kernel/event_schema.py` 中单独实现。
+本文件仍只描述 envelope registry 设计说明，不实现 envelope registry、registry lookup、event migration 或 public inspection API。event payload schema registry 的 first green slice 已在 `event-schema-registry-compatibility-boundary-v0.2.md` / `src/isotope/event_schema.py` 中单独实现。
 
 ## Purpose
 

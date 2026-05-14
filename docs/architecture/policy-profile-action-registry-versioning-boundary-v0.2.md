@@ -20,7 +20,7 @@
 
 ### `ActionTypeRegistry`
 
-`ActionTypeRegistry` 是 action / tool metadata registry（元数据注册表）。当前实现位于 `src/isotope_kernel/action_registry.py`，用于让 compiler、policy 和 executor 查询 tool 是否存在、payload requirements、required capabilities、default workspace mode、result kind 和 enabled 状态。
+`ActionTypeRegistry` 是 action / tool metadata registry（元数据注册表）。当前实现位于 `src/isotope/action_registry.py`，用于让 compiler、policy 和 executor 查询 tool 是否存在、payload requirements、required capabilities、default workspace mode、result kind 和 enabled 状态。
 
 它不是：
 
@@ -244,8 +244,8 @@ Explicitly deferred:
 
 Implemented test files:
 
-- `tests/isotope_kernel/test_action_registry_version_basis.py`
-- `tests/isotope_kernel/test_policy_profile_version_basis.py`
+- `tests/isotope/test_action_registry_version_basis.py`
+- `tests/isotope/test_policy_profile_version_basis.py`
 
 Coverage in `test_action_registry_version_basis.py`:
 

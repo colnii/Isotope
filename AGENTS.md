@@ -4,10 +4,10 @@
 
 Isotope 是面向真实使用的 AI 应用软件，不是单纯内核项目。
 目标是在秋招前搭出可展示、可继续扩展的产品。
-现有代码暂在 `src/isotope_kernel/`，测试暂在 `tests/isotope_kernel/`。
-这只是历史遗留位置，不是长期架构命名。
-后续目录应按 AI 应用拆成 `apps/`、`src/core/`、`src/models/`、
-`src/agents/`、`src/rag/`、`src/features/` 等层级。
+现有代码迁移到 `src/isotope/`，测试迁移到 `tests/isotope/`。
+`src/isotope/` 是长期 Python 包命名空间。
+后续目录应按 AI 应用拆成 `apps/`、`assistant/`、`features/`、
+`capabilities/`、`execution/`、`workspace/`、`memory/` 等层级。
 文档放在 `docs/`；当前状态先看 `docs/current/status.md`。
 文档地图和清理计划看 `docs/current/docs-map.md` 与
 `docs/current/agent-task-queue.md`。
@@ -20,8 +20,8 @@ Isotope 是面向真实使用的 AI 应用软件，不是单纯内核项目。
 python3 -m venv .venv
 .venv/bin/python -m pip install -U pip
 .venv/bin/python -m pip install -e ".[test]"
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2 --trace
+PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2 --trace
 ```
 
 按任务风险选择验证范围；不要为了形式运行无关长流程。

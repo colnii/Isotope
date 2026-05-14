@@ -152,8 +152,8 @@ Future HTTP work may add an in-process approval endpoint, but it must:
 
 第一批 tests 已落地并通过：
 
-- `tests/isotope_kernel/test_approval_resolution_boundary.py`
-- `tests/isotope_kernel/test_http_api_approval_boundary.py`
+- `tests/isotope/test_approval_resolution_boundary.py`
+- `tests/isotope/test_http_api_approval_boundary.py`
 
 第一批测试应覆盖：
 
@@ -173,8 +173,8 @@ Future HTTP work may add an in-process approval endpoint, but it must:
 
 第二批 run-state invariants tests 已落地并通过：
 
-- `tests/isotope_kernel/test_approval_run_state_invariants.py`
-- `tests/isotope_kernel/test_http_api_approval_state_read_model.py`
+- `tests/isotope/test_approval_run_state_invariants.py`
+- `tests/isotope/test_http_api_approval_state_read_model.py`
 
 第二批测试覆盖：
 

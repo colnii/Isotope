@@ -4,7 +4,7 @@
 
 ## 1. What You Are Running
 
-`python -m isotope_kernel.demo` 会跑一个 deterministic kernel loop（确定性内核闭环）。
+`python -m isotope.demo` 会跑一个 deterministic kernel loop（确定性内核闭环）。
 
 它不是聊天机器人，不调用 LLM，不启动 HTTP server，也不连接外部服务。它只用本地临时目录跑通当前 Isotope kernel 的最小闭环：创建 session / run，生成一个确定性的 artifact-producing intent，通过 action chain 执行，写 canonical events，用 projector 得到 `RunState`，再验证 event replay 和 checkpoint-assisted rebuild。
 
@@ -20,22 +20,22 @@
 python3 -m venv .venv
 .venv/bin/python -m pip install -U pip
 .venv/bin/python -m pip install -e ".[test]"
-.venv/bin/python -m isotope_kernel.demo
-.venv/bin/python -m isotope_kernel.demo --json
+.venv/bin/python -m isotope.demo
+.venv/bin/python -m isotope.demo --json
 ```
 
 开发环境中也可以使用 `PYTHONPATH=src`：
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --json
+PYTHONPATH=src .venv/bin/python -m isotope.demo
+PYTHONPATH=src .venv/bin/python -m isotope.demo --json
 ```
 
 v0.2 另有 explicit scenario，用来展示 Track A / C / E 的 in-process boundary，默认 v0.1 demo 仍保持兼容：
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2 --json
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2 --json
 ```
 
 v0.2 scenario 仍不启动 real HTTP server / network listener，不调用 real LLM，不实现 memory storage/query，也不打开 HTTP full-content route。
@@ -124,7 +124,7 @@ JSON 输出适合脚本或 CI smoke 检查，字段名与 plain text 一致。
 
 不要只运行 `pip install -e .` 后直接执行 tests。
 
-### `No module named isotope_kernel`
+### `No module named isotope`
 
 说明当前 Python 环境还没有安装 repo，或没有设置 `PYTHONPATH=src`。
 
@@ -137,7 +137,7 @@ JSON 输出适合脚本或 CI smoke 检查，字段名与 plain text 一致。
 或在本地开发时：
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo
+PYTHONPATH=src .venv/bin/python -m isotope.demo
 ```
 
 ### CI 与本地差异
@@ -147,9 +147,9 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo
 ```bash
 python -m pip install -U pip
 python -m pip install -e ".[test]"
-python -m pytest tests/isotope_kernel -q
-python -m isotope_kernel.demo
-python -m isotope_kernel.demo --json
+python -m pytest tests/isotope -q
+python -m isotope.demo
+python -m isotope.demo --json
 ```
 
 如果本地和 CI 结果不同，先确认本地是否使用同一个 install path、同一个 repo commit，以及是否误用了其他虚拟环境。

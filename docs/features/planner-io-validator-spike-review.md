@@ -20,14 +20,14 @@
 新增 demo scenario：
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-io-validator
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-io-validator --trace
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-io-validator --json
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-io-validator
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-io-validator --trace
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-io-validator --json
 ```
 
 新增测试：
 
-- `tests/isotope_kernel/test_agent_loop_planner_io_validator_spike.py`
+- `tests/isotope/test_agent_loop_planner_io_validator_spike.py`
 
 ## 3. What It Checks
 

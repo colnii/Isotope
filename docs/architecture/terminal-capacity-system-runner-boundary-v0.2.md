@@ -27,5 +27,5 @@
 ## Compatibility Notes
 
 - `real-terminal-backend-boundary-v0.2.md`、`terminal-backend-adapter-contract-v0.2.md`、`terminal-backend-selection-boundary-v0.2.md` 和 `../features/terminal-backend-closure-review.md` 是历史锚点，文件名暂不迁移。
-- `src/isotope_kernel/terminal_backend.py` 和 `TerminalBackend*` 类型名目前也是兼容名。未来如果重命名，需要单独做迁移计划和测试，不在本 docs-only 修正里完成。
+- `src/isotope/terminal_backend.py` 和 `TerminalBackend*` 类型名目前也是兼容名。未来如果重命名，需要单独做迁移计划和测试，不在本 docs-only 修正里完成。
 - 任何未来实现都应把“系统终端”当作 terminal capacity 的 runner，而不是提高成 Isotope 的产品后端。

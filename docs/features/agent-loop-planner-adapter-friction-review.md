@@ -13,16 +13,16 @@
 命令：
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-friction
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-friction --trace
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-friction --json
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-friction
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-friction --trace
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-friction --json
 ```
 
 在 worktree 没有本地 `.venv` 时，可使用主 checkout 的 venv：
 
 ```bash
 PYTHONPATH=/home/lumber/Github/isotope/.worktrees/app-agent-loop-friction/src \
-  /home/lumber/Github/isotope/.venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-friction --trace
+  /home/lumber/Github/isotope/.venv/bin/python -m isotope.demo --scenario agent-loop-planner-friction --trace
 ```
 
 Planner adapter 当前是 deterministic fixture：

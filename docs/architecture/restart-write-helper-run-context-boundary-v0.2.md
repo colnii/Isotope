@@ -18,7 +18,7 @@
 Red-to-green path:
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel/test_restart_write_helper_run_context.py -q
+PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_restart_write_helper_run_context.py -q
 # before implementation: 3 failed
 # after implementation: 3 passed
 ```
@@ -27,10 +27,10 @@ Focused regression:
 
 ```bash
 PYTHONPATH=src .venv/bin/python -m pytest \
-  tests/isotope_kernel/test_restart_write_helper_run_context.py \
-  tests/isotope_kernel/test_source_artifact_setup_helper.py \
-  tests/isotope_kernel/test_worker_handoff_helper.py \
-  tests/isotope_kernel/test_run_lifecycle_boundary.py \
+  tests/isotope/test_restart_write_helper_run_context.py \
+  tests/isotope/test_source_artifact_setup_helper.py \
+  tests/isotope/test_worker_handoff_helper.py \
+  tests/isotope/test_run_lifecycle_boundary.py \
   -q
 # 24 passed
 ```
@@ -39,7 +39,7 @@ Full local regression:
 
 ```bash
 DYLD_LIBRARY_PATH=/opt/homebrew/opt/expat/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH} \
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
+PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q
 # 1058 passed
 ```
 
@@ -48,7 +48,7 @@ The tests first prove `restarted.get_run_state(run_id).run_id == run_id`, then e
 Follow-up restart artifact-ref regression:
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel/test_restart_write_helper_run_context.py::test_source_artifact_helper_can_write_after_server_restart -q
+PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_restart_write_helper_run_context.py::test_source_artifact_helper_can_write_after_server_restart -q
 # before implementation: 1 failed, returned pre-restart artifact ref
 # after implementation: 1 passed
 ```
@@ -57,10 +57,10 @@ Focused follow-up regression:
 
 ```bash
 PYTHONPATH=src .venv/bin/python -m pytest \
-  tests/isotope_kernel/test_restart_write_helper_run_context.py \
-  tests/isotope_kernel/test_artifact_provenance_helper.py \
-  tests/isotope_kernel/test_source_artifact_setup_helper.py \
-  tests/isotope_kernel/test_worker_handoff_helper.py \
+  tests/isotope/test_restart_write_helper_run_context.py \
+  tests/isotope/test_artifact_provenance_helper.py \
+  tests/isotope/test_source_artifact_setup_helper.py \
+  tests/isotope/test_worker_handoff_helper.py \
   -q
 # 29 passed
 ```

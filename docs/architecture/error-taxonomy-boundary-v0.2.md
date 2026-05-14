@@ -112,8 +112,8 @@ Keep existing messages compatible. Do not redesign all exception paths at once.
 
 Suggested tests:
 
-- `tests/isotope_kernel/test_kernel_error_taxonomy_boundary.py`
-- `tests/isotope_kernel/test_http_error_mapping_boundary.py`
+- `tests/isotope/test_kernel_error_taxonomy_boundary.py`
+- `tests/isotope/test_http_error_mapping_boundary.py`
 
 Initial coverage:
 

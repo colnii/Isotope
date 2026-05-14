@@ -59,8 +59,8 @@ Next suggested batch: `External Snapshot Review Red Tests`, red phase only.
 
 Suggested files:
 
-- `tests/isotope_kernel/test_external_snapshot_review_spike.py`
-- `tests/isotope_kernel/test_external_snapshot_review_read_model.py`
+- `tests/isotope/test_external_snapshot_review_spike.py`
+- `tests/isotope/test_external_snapshot_review_read_model.py`
 
 Suggested test goals:
 

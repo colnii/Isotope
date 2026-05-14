@@ -13,27 +13,27 @@ Isotope 是一个 event-sourced agent kernel prototype（事件溯源的 agent �
 ```bash
 cd /home/lumber/Github/isotope
 
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --json
+PYTHONPATH=src .venv/bin/python -m isotope.demo
+PYTHONPATH=src .venv/bin/python -m isotope.demo --json
 
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2 --trace
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2 --json
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2 --trace
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2 --json
 
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario approval-tool-runner
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario approval-tool-runner --trace
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario approval-tool-runner --json
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario approval-tool-runner
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario approval-tool-runner --trace
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario approval-tool-runner --json
 
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario artifact-review
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario artifact-review --trace
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario artifact-review --json
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario artifact-review
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario artifact-review --trace
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario artifact-review --json
 
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario external-snapshot-review
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario external-snapshot-review --trace
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario external-snapshot-review --json
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario external-snapshot-review
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario external-snapshot-review --trace
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario external-snapshot-review --json
 
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-validated-runner --trace
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-validated-runner --json
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-validated-runner --trace
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-validated-runner --json
 ```
 
 `--trace` 是 human-readable trace，用来给 reviewer 看 runtime steps；`--json` 是 machine-readable summary。两者都不应输出 artifact full content 或 raw external content。

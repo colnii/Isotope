@@ -85,15 +85,15 @@ git mv ../features/release-draft-v0.1-demo.md ../archive/release/release-draft-v
 rg -n '\[[^]]+\]\([^)]+\.md[^)]*\)' README.md AGENTS.md docs
 rg -n 'release-draft-v0.1-demo|demo-walkthrough|demo-architecture|v0.2-demo-scenario|http-api-minimal|artifact-content|approval-pause' README.md AGENTS.md docs
 
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --json
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2 --json
+PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q
+PYTHONPATH=src .venv/bin/python -m isotope.demo
+PYTHONPATH=src .venv/bin/python -m isotope.demo --json
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2 --json
 
-rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel || true
+rg -n '(^|\s)(from|import) x_agent\b' src/isotope tests/isotope || true
 git -C /home/lumber/Github/x-agent status --short \
-  src/x_agent src/isotope_kernel tests/isotope_kernel docs/isotope
+  src/x_agent src/isotope tests/isotope docs/isotope
 git diff -- src tests .github pyproject.toml
 git status --short
 ```

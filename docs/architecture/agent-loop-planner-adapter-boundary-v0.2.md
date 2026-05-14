@@ -45,11 +45,11 @@ planner output 必须包含：
 
 ## 5. 验证
 
-- `tests/isotope_kernel/test_agent_loop_planner_step_adapter.py`
-- `tests/isotope_kernel/test_real_planner_adapter_contract.py`
-- `tests/isotope_kernel/test_http_api_agent_loop_planner_step_adapter.py`
-- `tests/isotope_kernel/test_http_api_boundary.py`
-- `tests/isotope_kernel/test_http_api_route_inventory.py`
+- `tests/isotope/test_agent_loop_planner_step_adapter.py`
+- `tests/isotope/test_real_planner_adapter_contract.py`
+- `tests/isotope/test_http_api_agent_loop_planner_step_adapter.py`
+- `tests/isotope/test_http_api_boundary.py`
+- `tests/isotope/test_http_api_route_inventory.py`
 
 ## 6. 后续方向
 

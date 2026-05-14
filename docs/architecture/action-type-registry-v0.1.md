@@ -34,7 +34,7 @@ Versioning follow-up 已单独定义在 `policy-profile-action-registry-versioni
 - `PolicyEngine` 已使用 registry requirement lookup，但仍自己决定 grants。
 - `Executor` 已使用 registry handler lookup，当前可执行 deterministic `write_artifact_tool` 和 controlled `terminal_exec` handlers。
 - `ActionProposal -> PolicyDecision -> ActionExecution -> canonical events` 已有最小链路。
-- action/tool metadata 已有最小集中 registry module：`src/isotope_kernel/action_registry.py`。
+- action/tool metadata 已有最小集中 registry module：`src/isotope/action_registry.py`。
 - `ActionTypeEntry` 是当前 v0 slice 的最小 metadata model。
 - `ActionTypeRegistry.default()` 当前包含 `call_tool` + `write_artifact_tool` / `terminal_exec`，并 exposes `registry_id="default"` / `registry_version="v0.2"`。
 - custom `ActionTypeRegistry(...)` 可显式传入 `registry_id` / `registry_version`；malformed metadata fail fast。
@@ -260,8 +260,8 @@ registry 可能被三个模块读取，但职责不同：
 
 下一轮 red tests 建议优先覆盖：
 
-- `tests/isotope_kernel/test_action_registry_version_basis.py`
-- `tests/isotope_kernel/test_policy_profile_version_basis.py`
+- `tests/isotope/test_action_registry_version_basis.py`
+- `tests/isotope/test_policy_profile_version_basis.py`
 - no dynamic loading, no plugin discovery, no public extension API.
 
 不要在没有 red tests 前直接实现 full plugin system、remote registry、schema registry、real LLM tool calling 或 third-party tool loading。

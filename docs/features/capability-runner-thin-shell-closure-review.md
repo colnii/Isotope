@@ -93,7 +93,7 @@ CLI 是有价值的，但在没有明确调用压力时不是最优下一步。
 
 最近一次 green slice 验证：
 
-- `tests/isotope_kernel/test_capability_runner_thin_shell.py` -> `12 passed`
+- `tests/isotope/test_capability_runner_thin_shell.py` -> `12 passed`
 - latest post-CLI full regression -> `1379 passed, 5 skipped`
 - `artifact-review --trace` passed
 - `external-snapshot-review --trace` passed

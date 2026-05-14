@@ -175,12 +175,12 @@ HTTP 是当前 implementation choice，不是永久 transport contract。后续�
 第一批 minimal surface boundary tests 已新增并通过：
 
 ```text
-tests/isotope_kernel/test_http_api_boundary.py
+tests/isotope/test_http_api_boundary.py
 ```
 
 覆盖点：
 
-- `isotope_kernel.http_api` module / `create_http_app(...)` exists。
+- `isotope.http_api` module / `create_http_app(...)` exists。
 - `HttpApiApp` exposes only the minimal v0.2 route surface。
 - API 不能直接改 projected state。
 - `POST /runs/{run_id}/input` 后 event log / run state / artifact summary 与 in-process demo 等价。
@@ -195,7 +195,7 @@ tests/isotope_kernel/test_http_api_boundary.py
 第二批 request validation boundary tests 已新增并通过：
 
 ```text
-tests/isotope_kernel/test_http_api_request_validation.py
+tests/isotope/test_http_api_request_validation.py
 ```
 
 覆盖点：
@@ -211,8 +211,8 @@ tests/isotope_kernel/test_http_api_request_validation.py
 第三批 response contract / demo smoke tests 已新增并通过：
 
 ```text
-tests/isotope_kernel/test_http_api_response_contract.py
-tests/isotope_kernel/test_http_api_demo_smoke.py
+tests/isotope/test_http_api_response_contract.py
+tests/isotope/test_http_api_demo_smoke.py
 ```
 
 覆盖点：
@@ -229,7 +229,7 @@ tests/isotope_kernel/test_http_api_demo_smoke.py
 第四批 idempotency / duplicate-submit boundary tests 已新增并通过：
 
 ```text
-tests/isotope_kernel/test_http_api_idempotency_boundary.py
+tests/isotope/test_http_api_idempotency_boundary.py
 ```
 
 覆盖点：
@@ -247,8 +247,8 @@ tests/isotope_kernel/test_http_api_idempotency_boundary.py
 第五批 route inventory / deferred route contract tests 已新增并通过：
 
 ```text
-tests/isotope_kernel/test_http_api_route_inventory.py
-tests/isotope_kernel/test_http_api_deferred_routes.py
+tests/isotope/test_http_api_route_inventory.py
+tests/isotope/test_http_api_deferred_routes.py
 ```
 
 覆盖点：

@@ -26,8 +26,8 @@ aggressive branch 里有很多 search / route / ask / interactive / workflow 想
 - `search_capabilities(...)`: 在 `CapabilityCatalog` 里做低敏搜索。
 - `plan_capability_run(...)`: 对一个 capability 生成低敏 launch plan。
 - optional CLI:
-  - `python -m isotope_kernel.capability_runner search ...`
-  - `python -m isotope_kernel.capability_runner plan ...`
+  - `python -m isotope.capability_runner search ...`
+  - `python -m isotope.capability_runner plan ...`
 
 第一批不执行 capability。
 
@@ -137,7 +137,7 @@ Search / plan 必须是 no-side-effect。
 
 建议下一批 red tests：
 
-`tests/isotope_kernel/test_capability_search_launch_plan.py`
+`tests/isotope/test_capability_search_launch_plan.py`
 
 覆盖：
 
@@ -154,7 +154,7 @@ Search / plan 必须是 no-side-effect。
 
 Optional CLI tests：
 
-`tests/isotope_kernel/test_capability_runner_cli_search_plan.py`
+`tests/isotope/test_capability_runner_cli_search_plan.py`
 
 - `search --json` returns machine-readable search results。
 - `plan artifact.review --json` returns launch plan。
@@ -202,8 +202,8 @@ Optional CLI tests：
 - module-level `plan_capability_run(...)`
 - CLI `search`
 - CLI `plan`
-- tests: `tests/isotope_kernel/test_capability_search_launch_plan.py`
-- tests: `tests/isotope_kernel/test_capability_runner_cli.py`
+- tests: `tests/isotope/test_capability_search_launch_plan.py`
+- tests: `tests/isotope/test_capability_runner_cli.py`
 
 当前 first slice 支持：
 

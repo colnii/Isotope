@@ -33,11 +33,11 @@
 
 当前已实现：
 
-- `src/isotope_kernel/llm_provider.py`
-- `src/isotope_kernel/llm_live_smoke.py`
-- `src/isotope_kernel/llm_product_chat_app.py`
-- `src/isotope_kernel/http_api.py`
-- `src/isotope_kernel/demo.py`
+- `src/isotope/llm_provider.py`
+- `src/isotope/llm_live_smoke.py`
+- `src/isotope/llm_product_chat_app.py`
+- `src/isotope/http_api.py`
+- `src/isotope/demo.py`
 - `DeepSeekToolCallProvider`
 - `DeepSeekChatProvider`
 - `LLMToolCall` / `LLMToolCallResponse`
@@ -55,39 +55,39 @@
 - `diagnose_llm_tool_call_live_smoke(...)`
 - `run_llm_terminal_tool_live_smoke(...)`
 - `diagnose_llm_terminal_tool_live_smoke(...)`
-- `python -m isotope_kernel.llm_live_smoke terminal-tool --json`
-- `python -m isotope_kernel.llm_live_smoke terminal-tool --fake-provider --json`
-- `python -m isotope_kernel.llm_live_smoke terminal-tool --diagnose --json`
+- `python -m isotope.llm_live_smoke terminal-tool --json`
+- `python -m isotope.llm_live_smoke terminal-tool --fake-provider --json`
+- `python -m isotope.llm_live_smoke terminal-tool --diagnose --json`
 - `LLMProductChatLiveSmokeConfig`
 - `run_llm_product_chat_live_smoke(...)`
 - `diagnose_llm_product_chat_live_smoke(...)`
-- `python -m isotope_kernel.llm_live_smoke product-chat --json`
-- `python -m isotope_kernel.llm_live_smoke product-chat --diagnose --json`
+- `python -m isotope.llm_live_smoke product-chat --json`
+- `python -m isotope.llm_live_smoke product-chat --diagnose --json`
 - product-chat readiness `preflight.ready`
 - `submit_llm_product_chat_turn_with_preflight(app, run_id, preflight=..., messages=..., ...)`
 - `submit_llm_product_chat_user_message_with_preflight(app, run_id, preflight=..., user_message=..., ...)`
 - `build_llm_product_chat_entry_resume_state(response, root=..., run_id=..., preflight=...)`
 - `submit_llm_product_chat_entry_resume(app, state, messages=..., max_tokens=...)`
 - `summarize_llm_product_chat_entry_response(response)`
-- `python -m isotope_kernel.llm_live_smoke product-chat-entry --message "..." --json`
-- `python -m isotope_kernel.llm_live_smoke product-chat-entry --state-file <state.json> --message "..." --json`
-- `python -m isotope_kernel.llm_live_smoke product-chat-entry --resume-state <state.json> --json`
-- `python -m isotope_kernel.demo --scenario llm-product-chat-app-entry`
-- `python -m isotope_kernel.demo --scenario llm-terminal-tool-loop`
+- `python -m isotope.llm_live_smoke product-chat-entry --message "..." --json`
+- `python -m isotope.llm_live_smoke product-chat-entry --state-file <state.json> --message "..." --json`
+- `python -m isotope.llm_live_smoke product-chat-entry --resume-state <state.json> --json`
+- `python -m isotope.demo --scenario llm-product-chat-app-entry`
+- `python -m isotope.demo --scenario llm-terminal-tool-loop`
 - `run_deepseek_tool_call_live_smoke(...)`
 - `diagnose_deepseek_tool_call_live_smoke(...)`
 - `create_llm_provider_http_app(...)`
 - `create_llm_product_chat_http_app(...)`
-- `tests/isotope_kernel/test_llm_provider_tool_loop.py`
-- `tests/isotope_kernel/test_llm_live_smoke.py`
-- `tests/isotope_kernel/test_http_api_llm_provider_route.py`
-- `tests/isotope_kernel/test_http_api_llm_product_chat_route_boundary.py`
-- `tests/isotope_kernel/test_http_api_llm_product_chat_route_contract.py`
-- `tests/isotope_kernel/test_llm_product_chat_app_entry.py`
-- `tests/isotope_kernel/test_llm_product_chat_app_entry_demo_scenario.py`
-- `tests/isotope_kernel/test_llm_terminal_tool_loop_demo_scenario.py`
-- `tests/isotope_kernel/test_llm_provider_route_demo_scenario.py`
-- `tests/isotope_kernel/test_llm_tool_result_loop_demo_scenario.py`
+- `tests/isotope/test_llm_provider_tool_loop.py`
+- `tests/isotope/test_llm_live_smoke.py`
+- `tests/isotope/test_http_api_llm_provider_route.py`
+- `tests/isotope/test_http_api_llm_product_chat_route_boundary.py`
+- `tests/isotope/test_http_api_llm_product_chat_route_contract.py`
+- `tests/isotope/test_llm_product_chat_app_entry.py`
+- `tests/isotope/test_llm_product_chat_app_entry_demo_scenario.py`
+- `tests/isotope/test_llm_terminal_tool_loop_demo_scenario.py`
+- `tests/isotope/test_llm_provider_route_demo_scenario.py`
+- `tests/isotope/test_llm_tool_result_loop_demo_scenario.py`
 
 `resolve_llm_tool_call_provider(...)` 是当前统一 provider 发现入口：
 
@@ -134,9 +134,9 @@
 - provider route 覆盖 malformed request no-side-effect、provider failure no-action-side-effect、idempotency replay 和 route inventory contract。
 - tool-result follow-up route 接受 `messages`、前一次 safe `llm_result` 和 approval resolve 返回的 `tool_execution_result`，调用同一 `submit_llm_tool_result_followup(...)` helper；follow-up provider messages 会先追加一条不含原始 prompt 的 `assistant.tool_calls` 占位消息，再追加 low-sensitive `tool` result message，以满足 OpenAI-compatible provider 的消息顺序要求；malformed body no-side-effect、completed run no-provider-contact、route inventory 和 prompt / transcript 不泄露均有测试覆盖。
 - product chat route guard 覆盖 `POST /runs/{run_id}/llm/chat-turns`：默认 app 和 provider-enabled app 都返回 `501 not_enabled` / `llm_product_chat_route`，不列入 supported route inventory，不联系 provider，不调用 runner，不追加 events，也不回显 request messages。
-- terminal-only live smoke 覆盖 `run_llm_terminal_tool_live_smoke(...)`、`diagnose_llm_terminal_tool_live_smoke(...)` 和 `python -m isotope_kernel.llm_live_smoke terminal-tool`：provider tool menu 只包含 `terminal_exec`，fake provider / real provider 都不能看到 `codex_task`；成功时 terminal action 直接走 `submit_action(...)`，safe result 只暴露 status / execution ids / artifact-ref presence，stdout / stderr 仍只进 artifact；缺 provider 配置时不创建 run。
+- terminal-only live smoke 覆盖 `run_llm_terminal_tool_live_smoke(...)`、`diagnose_llm_terminal_tool_live_smoke(...)` 和 `python -m isotope.llm_live_smoke terminal-tool`：provider tool menu 只包含 `terminal_exec`，fake provider / real provider 都不能看到 `codex_task`；成功时 terminal action 直接走 `submit_action(...)`，safe result 只暴露 status / execution ids / artifact-ref presence，stdout / stderr 仍只进 artifact；缺 provider 配置时不创建 run。
 - terminal-tool diagnosis 覆盖 `missing_configuration`、`unsupported_provider`、`provider_request_failed`、`provider_response_invalid`、`provider_selected_unoffered_tool`、`provider_tool_arguments_invalid`、`terminal_policy_denied`、`terminal_execution_failed` 和 `ready`；`preflight.ready` 只在 provider 选择 `terminal_exec` 且 terminal action completed 时为 true。失败诊断只返回低敏 reason code / flags，不暴露 argv full content、stdout / stderr、prompt、API key 或 provider raw response。
-- 当前本机实测 `python -m isotope_kernel.llm_live_smoke terminal-tool --json` 已通过统一 provider 配置完成：provider 返回 `tool_calls`，选择 `terminal_exec`，Isotope 完成 terminal action，`codex_call_count=0`，safe JSON 不含 stdout / stderr。
+- 当前本机实测 `python -m isotope.llm_live_smoke terminal-tool --json` 已通过统一 provider 配置完成：provider 返回 `tool_calls`，选择 `terminal_exec`，Isotope 完成 terminal action，`codex_call_count=0`，safe JSON 不含 stdout / stderr。
 - product chat route contract 覆盖显式 `create_llm_product_chat_http_app(...)`：该 route 列为 supported，但 provider helper routes 不列为 supported；默认只把 `codex_task` 暴露给 provider，initial turn 可提交一个 pending approval 或 artifact-backed final answer，不启动 Codex、不泄露 request messages / provider prompt；explicit `tool_names=("terminal_exec",)` 可把 product-chat route 收窄为 terminal capacity，initial turn 会通过 existing `submit_action(...)` 执行 structured argv，resume turn 只把 status / execution id / artifact ref 组成 low-sensitive tool-result message 回给 provider；provider 选择未提供工具时在 action side effect 前 fail closed；`max_tool_steps > 1` 在 provider contact 前 fail closed。
 - product-chat app-entry preflight / user-message helpers 覆盖 ready / blocked / malformed preflight 和空用户消息：ready 时才转发到显式 in-process product-chat route；blocked 或 malformed 时返回 `412` 和低敏 explanation，空消息返回 `400`，且 provider / runner call count 不增加、event log 不变、request message / secret 不进入 safe response。
 - product-chat app-entry resume helpers 已从 CLI 下沉到 `llm_product_chat_app.py`：`build_llm_product_chat_entry_resume_state(...)` 从 pending response 生成低敏本地 resume state；`submit_llm_product_chat_entry_resume(...)` 用该 state 批准 pending task、运行 fake Codex、再提交 safe tool-result context；`summarize_llm_product_chat_entry_response(...)` 给 CLI / app shell 使用，不携带 raw approval id、用户消息、provider prompt、transcript 或 answer content。
@@ -144,9 +144,9 @@
 - `product-chat-entry --resume-state` CLI 现在会把这些 `KernelError` 映射成 JSON / plain failed payload：只输出 error code、category、reason、summary、next-step 和 runner call count，不抛 Python traceback，不输出 raw approval id、state file content、用户消息、provider prompt 或 answer content。
 - `product-chat-entry` developer command 会先跑 product-chat preflight，再提交一条用户消息；如果 provider 选择 `codex_task` 并停在 pending approval，JSON / plain output 只暴露 `requires_approval`、`approval_id_present` 和低敏 next-step hint，不暴露 raw approval id、用户消息、provider prompt 或 assistant answer content。未传 `--state-file` 时，pending output 会提示用 `--state-file` 重跑以保存可恢复状态；传入 `--state-file <state.json>` 时会把 pending approval 所需的本地恢复上下文保存成 JSON，并提示下一步用 `--resume-state` 恢复；之后 `--resume-state <state.json>` 会读取该文件、批准 pending task、走 fake Codex 执行，再把安全 tool-result context 交回 provider 获取 final answer。为了 no-network 手工演练，`--fake-entry-pending` 只允许配合 `--fake-provider` 使用；`--resume-state` 混入 `--message`、`--state-file` 或 `--fake-entry-pending` 这类新建入口参数时，会在读取 state / 解析 provider 前 fail closed；显式 `--root` 与 state 中保存的 root 不一致时，也会在 provider resolution 前 fail closed；`--root` 或 state 中保存的 root 指向普通文件时会返回低敏 `product_chat_entry_root_invalid` 而不是 traceback；`--fake-provider --fake-entry-pending --state-file <state.json>` 会稳定生成 pending state，便于测试错文件、重复恢复、换 root 恢复错误、command root 不是目录、missing state file、already resolved approval with stale state、not-file state path、unreadable state file、not-file state-file save target、unwritable state-file parent、state-file parent not directory、unwritable post-resume state mark 和 malformed JSON state 文件。CLI 输出仍只给低敏状态；state file 是本地开发者文件，不是 event / read model / public HTTP response。
 - restarted approval resolution now preserves the original `complete_run=False` choice, and restarted `submit_action(...)` can recover event-backed run context for selected non-terminal write paths. This keeps the two-step app-entry resume path open after approval without changing event append semantics.
-- `python -m isotope_kernel.demo --scenario llm-product-chat-app-entry` 使用 fake provider 展示应用层入口门禁：先用 blocked preflight 验证 `412` 且无 provider / runner / event side effects，再用一条用户消息 + ready preflight 转发到显式 product-chat route 并得到 artifact-backed final answer；plain / trace / JSON 都只输出低敏状态，不输出 request messages 或 assistant answer content。
+- `python -m isotope.demo --scenario llm-product-chat-app-entry` 使用 fake provider 展示应用层入口门禁：先用 blocked preflight 验证 `412` 且无 provider / runner / event side effects，再用一条用户消息 + ready preflight 转发到显式 product-chat route 并得到 artifact-backed final answer；plain / trace / JSON 都只输出低敏状态，不输出 request messages 或 assistant answer content。
 - product chat final-answer tests 覆盖 initial final answer 无 Codex / approval 直接完成、resume final answer 只使用低敏 assistant tool-call placeholder + 安全 tool-result message、HTTP safe response 不泄露 messages / prompt / stdout / stderr、terminal_exec product-chat route 只回传 safe tool-result message，以及 DeepSeek `select_chat_turn(...)` 使用 `tool_choice="auto"`。
-- `python -m isotope_kernel.demo --scenario llm-provider-route` 使用 fake provider 模拟 application-layer 调用：用户消息进入 provider route，fake provider 选择 `codex_task`，Isotope 停在 pending approval；demo 同时验证 idempotency replay、event replay 和 checkpoint。
+- `python -m isotope.demo --scenario llm-provider-route` 使用 fake provider 模拟 application-layer 调用：用户消息进入 provider route，fake provider 选择 `codex_task`，Isotope 停在 pending approval；demo 同时验证 idempotency replay、event replay 和 checkpoint。
 - `llm-provider-route` demo 不调用真实 LLM 网络、不启动 Codex、不批准 pending approval、不打开 real HTTP listener / product chat route，也不把 request messages / provider-selected prompt / Codex output 泄露到 plain / trace / JSON 输出。
 - follow-up provider messages 会先追加 low-sensitive `assistant.tool_calls` placeholder，`function.arguments` 固定为 `{}`，避免把原始 provider prompt / tool arguments 发回 provider；随后 `build_llm_tool_result_message(...)` 将已批准执行结果转换成 OpenAI-compatible `role=tool` message，`content` 中只放 status、tool name、execution id 和 structured `artifact_ref`。
 - completed tool result 缺少 structured `artifact_ref` 时 fail closed；source 缺少 provider tool call id 时 fail closed。
@@ -155,9 +155,9 @@
 - `submit_llm_tool_result_followup(...)` 复用同一 safe tool-result message 和 provider choice，然后调用 `submit_model_tool_call(...)` 提交第二个工具请求；它不会绕过 catalog、approval、policy、artifact 或 event log。
 - `submit_llm_tool_call(..., complete_run=False)` / provider route body `complete_run=false` 只表示“这次工具执行成功后 run 继续保持 running”，不是自动循环许可；默认仍是 `complete_run=True`，保持既有一次执行后完成 run 的行为。
 - `submit_llm_tool_result_followup(...)` 要求目标 run 仍是 `running`；如果第一次工具执行已经让 run `completed`，它会在联系 provider 前 fail closed。
-- `python -m isotope_kernel.demo --scenario llm-tool-result-loop` 使用 fake provider 模拟 application-layer 调用：provider 选择 `codex_task`，Isotope 先停在 pending approval，第一次 approval 后 fake Codex backend 执行但 run 保持 running，再准备低敏 tool-result message，把它交给 fake provider 做一次 follow-up choice，提交第二个 pending approval，第二次 approval 后才执行第二个 fake Codex task 并完成 run。
+- `python -m isotope.demo --scenario llm-tool-result-loop` 使用 fake provider 模拟 application-layer 调用：provider 选择 `codex_task`，Isotope 先停在 pending approval，第一次 approval 后 fake Codex backend 执行但 run 保持 running，再准备低敏 tool-result message，把它交给 fake provider 做一次 follow-up choice，提交第二个 pending approval，第二次 approval 后才执行第二个 fake Codex task 并完成 run。
 - `llm-tool-result-loop` demo 不调用真实 LLM 网络、不打开 real HTTP listener / product chat route，也不把 request messages / provider-selected prompt / transcript / stdout / stderr 泄露到 plain / trace / JSON 输出。
-- `python -m isotope_kernel.demo --scenario llm-terminal-tool-loop` 使用 fake provider 模拟 terminal-only tool path：provider 只看见 `terminal_exec`，选择 structured argv 后由 Isotope 通过 `submit_action(...)` 执行，安全 tool-result message 只带 status / execution id / artifact ref，再由 provider 返回 artifact-backed final answer。
+- `python -m isotope.demo --scenario llm-terminal-tool-loop` 使用 fake provider 模拟 terminal-only tool path：provider 只看见 `terminal_exec`，选择 structured argv 后由 Isotope 通过 `submit_action(...)` 执行，安全 tool-result message 只带 status / execution id / artifact ref，再由 provider 返回 artifact-backed final answer。
 - `llm-terminal-tool-loop` demo 不调用真实 LLM 网络、不打开 real HTTP listener、不使用 Codex / `codex_task`，也不把 request messages / provider prompt / stdout / stderr 泄露到 plain / trace / JSON 输出。
 
 真实 LLM provider smoke 是 opt-in；当前 resolver 支持 DeepSeek：
@@ -167,7 +167,7 @@ ISOTOPE_RUN_LIVE_LLM_SMOKE=1 \
 ISOTOPE_LLM_PROVIDER=deepseek \
 ISOTOPE_LLM_API_KEY=... \
 PYTHONPATH=src .venv/bin/python -m pytest \
-  tests/isotope_kernel/test_llm_live_smoke.py::test_live_llm_tool_call_smoke_reaches_provider_without_starting_codex -q
+  tests/isotope/test_llm_live_smoke.py::test_live_llm_tool_call_smoke_reaches_provider_without_starting_codex -q
 ```
 
 当前本机实测结果（通过统一 resolver 解析到 DeepSeek）：
@@ -185,18 +185,18 @@ Terminal-tool smoke 也有对应的开发命令；`--diagnose` 会把常见卡�
 
 ```bash
 # 不联网，验证真实 provider 只能看到 terminal_exec 这一条工具
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.llm_live_smoke \
+PYTHONPATH=src .venv/bin/python -m isotope.llm_live_smoke \
   terminal-tool --fake-provider --diagnose --json
 
 # 走真实 provider 配置，仍不暴露 codex_task
 ISOTOPE_LLM_PROVIDER=deepseek \
 ISOTOPE_LLM_API_KEY=... \
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.llm_live_smoke \
+PYTHONPATH=src .venv/bin/python -m isotope.llm_live_smoke \
   terminal-tool --diagnose --json
 ```
 
 ```python
-from isotope_kernel.llm_live_smoke import (
+from isotope.llm_live_smoke import (
     LLMProductChatLiveSmokeConfig,
     run_llm_product_chat_live_smoke,
 )
@@ -219,13 +219,13 @@ result = run_llm_product_chat_live_smoke(
 
 ```bash
 # 不联网，验证命令和 product-chat route 链路
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.llm_live_smoke \
+PYTHONPATH=src .venv/bin/python -m isotope.llm_live_smoke \
   product-chat --fake-provider --json
 
 # 走真实 provider 配置，但 Codex 仍使用 fake runner
 ISOTOPE_LLM_PROVIDER=deepseek \
 ISOTOPE_LLM_API_KEY=... \
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.llm_live_smoke \
+PYTHONPATH=src .venv/bin/python -m isotope.llm_live_smoke \
   product-chat --json
 ```
 

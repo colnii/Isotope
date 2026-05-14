@@ -41,7 +41,7 @@ The demo still uses controlled full-content retrieval only at the retrieval laye
 
 ## 4. Test Coverage Review
 
-Covered by `tests/isotope_kernel/test_source_artifact_setup_helper.py`:
+Covered by `tests/isotope/test_source_artifact_setup_helper.py`:
 
 - helper creates source artifact with summary / structured ref / provenance。
 - helper public return does not contain full content fields or durable content string。

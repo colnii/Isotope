@@ -11,8 +11,8 @@
 当前 evidence：
 
 - baseline: `865 passed`
-- `python -m isotope_kernel.demo --scenario approval-tool-runner`
-- `python -m isotope_kernel.demo --scenario approval-tool-runner --json`
+- `python -m isotope.demo --scenario approval-tool-runner`
+- `python -m isotope.demo --scenario approval-tool-runner --json`
 - `approval-tool-runner` remains deterministic / in-process
 - no real HTTP server / real LLM / provider adapter / filesystem mutation
 

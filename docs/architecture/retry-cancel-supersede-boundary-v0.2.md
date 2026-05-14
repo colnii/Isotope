@@ -165,9 +165,9 @@ First slice 已新增：
 
 第一批 tests 已落地并通过：
 
-- `tests/isotope_kernel/test_action_retry_boundary.py`
-- `tests/isotope_kernel/test_action_cancel_boundary.py`
-- `tests/isotope_kernel/test_action_supersede_boundary.py`
+- `tests/isotope/test_action_retry_boundary.py`
+- `tests/isotope/test_action_cancel_boundary.py`
+- `tests/isotope/test_action_supersede_boundary.py`
 
 测试重点：
 

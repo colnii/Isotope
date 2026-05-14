@@ -6,7 +6,7 @@
 
 这份图只解释 v0.1 demo 的 runtime path，不是完整 Isotope 架构图。
 
-它的目标是帮助外部读者快速理解 `python -m isotope_kernel.demo` 跑通了什么：一个本地 deterministic kernel loop（确定性内核闭环），从 input 到 action chain，再到 artifact、canonical events、projector、checkpoint 和 replay verification。
+它的目标是帮助外部读者快速理解 `python -m isotope.demo` 跑通了什么：一个本地 deterministic kernel loop（确定性内核闭环），从 input 到 action chain，再到 artifact、canonical events、projector、checkpoint 和 replay verification。
 
 这张图不声明 real LLM、HTTP server、external ingestion、real memory storage/query 或 plugin system 已实现。
 

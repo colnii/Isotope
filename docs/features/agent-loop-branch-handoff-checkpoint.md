@@ -17,12 +17,12 @@
 ## 2. Runnable Entry Points
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-friction --trace
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-friction --trace
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-matrix --trace
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-restart-pause --trace
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-io-validator --trace
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-validated-runner --trace
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-friction --trace
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-friction --trace
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-matrix --trace
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-restart-pause --trace
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-io-validator --trace
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-validated-runner --trace
 ```
 
 ## 3. What Reviewers Should Check

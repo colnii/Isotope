@@ -118,8 +118,8 @@ Initial candidate rules:
 
 Suggested tests:
 
-- `tests/isotope_kernel/test_session_lifecycle_boundary.py`
-- `tests/isotope_kernel/test_run_lifecycle_boundary.py`
+- `tests/isotope/test_session_lifecycle_boundary.py`
+- `tests/isotope/test_run_lifecycle_boundary.py`
 
 Initial red-test coverage:
 

@@ -19,10 +19,10 @@ jobs:
           python -m pip install -U pip
           python -m pip install -e ".[test]"
 
-      - name: Run kernel tests
-        run: python -m pytest tests/isotope_kernel -q
+      - name: Run Isotope tests
+        run: python -m pytest tests/isotope -q
 
       - name: Run demo smoke
         run: |
-          python -m isotope_kernel.demo
-          python -m isotope_kernel.demo --json
+          python -m isotope.demo
+          python -m isotope.demo --json

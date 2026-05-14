@@ -15,26 +15,26 @@
 
 ```bash
 PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest \
-  tests/isotope_kernel/test_controlled_terminal_execution.py \
-  tests/isotope_kernel/test_terminal_backend_adapter_contract.py \
-  tests/isotope_kernel/test_linux_system_terminal_runner.py \
-  tests/isotope_kernel/test_codex_task_adapter_contract.py \
-  tests/isotope_kernel/test_codex_cli_backend.py \
-  tests/isotope_kernel/test_model_tool_bridge.py \
-  tests/isotope_kernel/test_llm_provider_tool_loop.py \
-  tests/isotope_kernel/test_llm_product_chat_app_entry.py -q
+  tests/isotope/test_controlled_terminal_execution.py \
+  tests/isotope/test_terminal_backend_adapter_contract.py \
+  tests/isotope/test_linux_system_terminal_runner.py \
+  tests/isotope/test_codex_task_adapter_contract.py \
+  tests/isotope/test_codex_cli_backend.py \
+  tests/isotope/test_model_tool_bridge.py \
+  tests/isotope/test_llm_provider_tool_loop.py \
+  tests/isotope/test_llm_product_chat_app_entry.py -q
 ```
 
 结果：`81 passed`
 
 ```bash
 PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest \
-  tests/isotope_kernel/test_terminal_backend_executor_integration.py \
-  tests/isotope_kernel/test_http_api_codex_task_route.py \
-  tests/isotope_kernel/test_http_api_llm_provider_route.py \
-  tests/isotope_kernel/test_http_api_llm_product_chat_route_contract.py \
-  tests/isotope_kernel/test_http_api_llm_product_chat_route_boundary.py \
-  tests/isotope_kernel/test_http_api_route_inventory.py -q
+  tests/isotope/test_terminal_backend_executor_integration.py \
+  tests/isotope/test_http_api_codex_task_route.py \
+  tests/isotope/test_http_api_llm_provider_route.py \
+  tests/isotope/test_http_api_llm_product_chat_route_contract.py \
+  tests/isotope/test_http_api_llm_product_chat_route_boundary.py \
+  tests/isotope/test_http_api_route_inventory.py -q
 ```
 
 结果：`52 passed, 1 skipped`
@@ -55,7 +55,7 @@ PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest \
 
 但它也不能整分支合并：
 
-- 所有代码仍在旧 `src/isotope_kernel/` 里。
+- 所有代码仍在旧 `src/isotope/` 里。
 - 文档路径已经和当前 `main` 的新结构冲突。
 - 分支里有大量诊断、preflight、resume 防御提交。
 - 产品入口还是薄封装，不是完整前端或正式后端应用。
@@ -68,12 +68,12 @@ PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest \
 
 候选文件：
 
-- `src/isotope_kernel/terminal.py`
-- `src/isotope_kernel/terminal_backend.py`
-- `src/isotope_kernel/terminal_system_runner.py`
-- `tests/isotope_kernel/test_controlled_terminal_execution.py`
-- `tests/isotope_kernel/test_terminal_backend_adapter_contract.py`
-- `tests/isotope_kernel/test_linux_system_terminal_runner.py`
+- `src/isotope/terminal.py`
+- `src/isotope/terminal_backend.py`
+- `src/isotope/terminal_system_runner.py`
+- `tests/isotope/test_controlled_terminal_execution.py`
+- `tests/isotope/test_terminal_backend_adapter_contract.py`
+- `tests/isotope/test_linux_system_terminal_runner.py`
 
 建议迁移到：
 
@@ -93,10 +93,10 @@ PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest \
 
 候选文件：
 
-- `src/isotope_kernel/model_tool_bridge.py`
-- `src/isotope_kernel/llm_provider.py`
-- `tests/isotope_kernel/test_model_tool_bridge.py`
-- `tests/isotope_kernel/test_llm_provider_tool_loop.py`
+- `src/isotope/model_tool_bridge.py`
+- `src/isotope/llm_provider.py`
+- `tests/isotope/test_model_tool_bridge.py`
+- `tests/isotope/test_llm_provider_tool_loop.py`
 
 建议迁移到：
 
@@ -115,9 +115,9 @@ PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest \
 
 候选文件：
 
-- `src/isotope_kernel/llm_product_chat_app.py`
-- `tests/isotope_kernel/test_llm_product_chat_app_entry.py`
-- `tests/isotope_kernel/test_http_api_llm_product_chat_route_contract.py`
+- `src/isotope/llm_product_chat_app.py`
+- `tests/isotope/test_llm_product_chat_app_entry.py`
+- `tests/isotope/test_http_api_llm_product_chat_route_contract.py`
 
 建议迁移到：
 
@@ -136,11 +136,11 @@ PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest \
 
 候选文件：
 
-- `src/isotope_kernel/codex_task.py`
-- `src/isotope_kernel/codex_cli.py`
-- `src/isotope_kernel/codex_server.py`
-- `tests/isotope_kernel/test_codex_task_adapter_contract.py`
-- `tests/isotope_kernel/test_codex_cli_backend.py`
+- `src/isotope/codex_task.py`
+- `src/isotope/codex_cli.py`
+- `src/isotope/codex_server.py`
+- `tests/isotope/test_codex_task_adapter_contract.py`
+- `tests/isotope/test_codex_cli_backend.py`
 
 建议迁移到：
 
@@ -159,7 +159,7 @@ PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest \
 - 旧 `docs/` 路径下的分支文档。
 - 大量 product-chat resume 错误文案微调提交。
 - 旧 `AGENTS.md` / `README.md` 改动。
-- 绑定 `src/isotope_kernel/` 命名的整体结构。
+- 绑定 `src/isotope/` 命名的整体结构。
 
 这些内容可以作为参考，但不应覆盖当前文档整备结果。
 

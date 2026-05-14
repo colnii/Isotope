@@ -12,7 +12,7 @@ Terminology correction: this file name and the `TerminalBackend*` code names are
 
 当前 green slices 包含：
 
-- `src/isotope_kernel/terminal_backend.py`
+- `src/isotope/terminal_backend.py`
 - `TerminalBackendRequest`
 - `TerminalBackendResult`
 - `TerminalBackendOutputArtifact`
@@ -32,10 +32,10 @@ Terminology correction: this file name and the `TerminalBackend*` code names are
 
 当前测试入口：
 
-- `tests/isotope_kernel/test_terminal_backend_adapter_contract.py`
-- `tests/isotope_kernel/test_terminal_backend_executor_integration.py`
-- `tests/isotope_kernel/test_terminal_backend_selector_config.py`
-- `tests/isotope_kernel/test_terminal_backend_artifact_policy.py`
+- `tests/isotope/test_terminal_backend_adapter_contract.py`
+- `tests/isotope/test_terminal_backend_executor_integration.py`
+- `tests/isotope/test_terminal_backend_selector_config.py`
+- `tests/isotope/test_terminal_backend_artifact_policy.py`
 
 已验证的范围：
 

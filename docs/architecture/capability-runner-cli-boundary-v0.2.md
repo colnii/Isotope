@@ -6,17 +6,17 @@
 
 这是从 aggressive branch 剩余 `capability_hub.py` 里抽出的一个小片：不是把大 hub 合进 main，而是给 mainline 已有的 `CapabilityRunner` 加一个最小命令行入口。
 
-外行说法：之前 mainline 已经有“能力试跑按钮”的 Python API，但普通人还不能直接在终端敲命令用它。现在可以用 `python -m isotope_kernel.capability_runner` 做最小的 `list / describe / status / run`。
+外行说法：之前 mainline 已经有“能力试跑按钮”的 Python API，但普通人还不能直接在终端敲命令用它。现在可以用 `python -m isotope.capability_runner` 做最小的 `list / describe / status / run`。
 
 ## 2. 当前支持
 
 支持：
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.capability_runner list --json
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.capability_runner describe artifact.review --json
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.capability_runner status artifact.review --json
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.capability_runner run artifact.review --json
+PYTHONPATH=src .venv/bin/python -m isotope.capability_runner list --json
+PYTHONPATH=src .venv/bin/python -m isotope.capability_runner describe artifact.review --json
+PYTHONPATH=src .venv/bin/python -m isotope.capability_runner status artifact.review --json
+PYTHONPATH=src .venv/bin/python -m isotope.capability_runner run artifact.review --json
 ```
 
 当前 CLI 仍只复用 `CapabilityRunner` 的小 allowlist：
@@ -57,8 +57,8 @@ CLI 只做一层薄包装：
 
 实现文件：
 
-- `src/isotope_kernel/capability_runner.py`
-- `tests/isotope_kernel/test_capability_runner_cli.py`
+- `src/isotope/capability_runner.py`
+- `tests/isotope/test_capability_runner_cli.py`
 
 验证目标：
 

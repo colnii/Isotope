@@ -86,7 +86,7 @@ The helper can internally own the canonical source setup sequence. The important
 Implemented:
 
 - `InProcessServer.create_source_artifact(...)`
-- tests in `tests/isotope_kernel/test_source_artifact_setup_helper.py`
+- tests in `tests/isotope/test_source_artifact_setup_helper.py`
 - closure review in `../features/source-artifact-helper-closure-review.md`
 
 Current behavior:
@@ -115,7 +115,7 @@ Still deferred:
 
 Suggested file:
 
-- `tests/isotope_kernel/test_source_artifact_setup_helper.py`
+- `tests/isotope/test_source_artifact_setup_helper.py`
 
 Test coverage:
 

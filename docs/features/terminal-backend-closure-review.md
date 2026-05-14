@@ -76,19 +76,19 @@ Kernel 语义也未被扩大：
 
 Implementation evidence:
 
-- `src/isotope_kernel/terminal.py`
-- `src/isotope_kernel/terminal_backend.py`
-- `src/isotope_kernel/executor.py`
-- `src/isotope_kernel/server.py`
-- `src/isotope_kernel/projector.py`
+- `src/isotope/terminal.py`
+- `src/isotope/terminal_backend.py`
+- `src/isotope/executor.py`
+- `src/isotope/server.py`
+- `src/isotope/projector.py`
 
 Test evidence:
 
-- `tests/isotope_kernel/test_terminal_tool_boundary.py`
-- `tests/isotope_kernel/test_terminal_backend_adapter_contract.py`
-- `tests/isotope_kernel/test_terminal_backend_executor_integration.py`
-- `tests/isotope_kernel/test_terminal_backend_selector_config.py`
-- `tests/isotope_kernel/test_terminal_backend_artifact_policy.py`
+- `tests/isotope/test_terminal_tool_boundary.py`
+- `tests/isotope/test_terminal_backend_adapter_contract.py`
+- `tests/isotope/test_terminal_backend_executor_integration.py`
+- `tests/isotope/test_terminal_backend_selector_config.py`
+- `tests/isotope/test_terminal_backend_artifact_policy.py`
 
 Docs evidence:
 

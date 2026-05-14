@@ -81,7 +81,7 @@ First tests should cover:
 
 Implemented test file:
 
-- `tests/isotope_kernel/test_workspace_binding_helper.py`
+- `tests/isotope/test_workspace_binding_helper.py`
 
 Red result:
 

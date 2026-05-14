@@ -13,16 +13,16 @@
 命令：
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-friction
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-friction --trace
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-friction --json
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-friction
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-friction --trace
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-friction --json
 ```
 
 在 worktree 没有本地 `.venv` 时，可使用主 checkout 的 venv：
 
 ```bash
 PYTHONPATH=/home/lumber/Github/isotope/.worktrees/app-agent-loop-friction/src \
-  /home/lumber/Github/isotope/.venv/bin/python -m isotope_kernel.demo --scenario agent-loop-friction --trace
+  /home/lumber/Github/isotope/.venv/bin/python -m isotope.demo --scenario agent-loop-friction --trace
 ```
 
 该 scenario 串起以下 deterministic loop steps：

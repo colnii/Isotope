@@ -9,13 +9,13 @@ Current checkpoint: Isotope is ready for external review as a developer-facing k
 - External review package is readable: `external-review-package-v0.2.md`.
 - Full regression baseline: `1193 passed, 4 skipped`.
 - Demo traces pass:
-  - `python -m isotope_kernel.demo --scenario artifact-review --trace`
-  - `python -m isotope_kernel.demo --scenario external-snapshot-review --trace`
-  - `python -m isotope_kernel.demo --scenario approval-tool-runner --trace`
-  - `python -m isotope_kernel.demo --scenario terminal-exec --trace`
-  - `python -m isotope_kernel.demo --scenario model-tool-bridge --trace`
-  - `python -m isotope_kernel.demo --scenario llm-provider-route --trace`
-  - `python -m isotope_kernel.demo --scenario llm-tool-result-loop --trace`
+  - `python -m isotope.demo --scenario artifact-review --trace`
+  - `python -m isotope.demo --scenario external-snapshot-review --trace`
+  - `python -m isotope.demo --scenario approval-tool-runner --trace`
+  - `python -m isotope.demo --scenario terminal-exec --trace`
+  - `python -m isotope.demo --scenario model-tool-bridge --trace`
+  - `python -m isotope.demo --scenario llm-provider-route --trace`
+  - `python -m isotope.demo --scenario llm-tool-result-loop --trace`
 - No tag or GitHub Release was created for this checkpoint.
 - `main` is ahead of the existing `v0.2-demo` tag. The tag remains the original developer demo anchor; do not move it unless explicitly requested.
 

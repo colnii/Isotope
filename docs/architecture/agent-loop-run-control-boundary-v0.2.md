@@ -41,10 +41,10 @@
 
 ## 5. Current Tests
 
-- `tests/isotope_kernel/test_agent_loop_run_control.py`
-- `tests/isotope_kernel/test_http_api_agent_loop_control.py`
-- HTTP route inventory coverage in `tests/isotope_kernel/test_http_api_route_inventory.py`
-- Minimal HTTP surface coverage in `tests/isotope_kernel/test_http_api_boundary.py`
+- `tests/isotope/test_agent_loop_run_control.py`
+- `tests/isotope/test_http_api_agent_loop_control.py`
+- HTTP route inventory coverage in `tests/isotope/test_http_api_route_inventory.py`
+- Minimal HTTP surface coverage in `tests/isotope/test_http_api_boundary.py`
 
 ## 6. Next Development Direction
 

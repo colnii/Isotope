@@ -41,12 +41,12 @@ The spike should stay deterministic and in-process. It should compose existing f
 
 Suggested tests:
 
-- `tests/isotope_kernel/test_worker_handoff_app_spike.py`
-- `tests/isotope_kernel/test_worker_handoff_app_read_model.py`
+- `tests/isotope/test_worker_handoff_app_spike.py`
+- `tests/isotope/test_worker_handoff_app_read_model.py`
 
 Initial red-test coverage:
 
-1. CLI/demo scenario exists: `python -m isotope_kernel.demo --scenario worker-handoff-app`.
+1. CLI/demo scenario exists: `python -m isotope.demo --scenario worker-handoff-app`.
 2. JSON output includes scenario, run status, worker id, delegated action id, result artifact ref, workspace id, replay/checkpoint flags, and `worker_runtime_status="in_process_boundary_only"`.
 3. Demo/app path uses `submit_worker_handoff(...)`, not private `_append(...)`.
 4. Worker result handoff uses artifact / `ResourceRef` / provenance and does not expose full content by default.

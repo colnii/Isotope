@@ -10,8 +10,8 @@
 
 当前 evidence：
 
-- `python -m isotope_kernel.demo --scenario approval-tool-runner`
-- `python -m isotope_kernel.demo --scenario approval-tool-runner --json`
+- `python -m isotope.demo --scenario approval-tool-runner`
+- `python -m isotope.demo --scenario approval-tool-runner --json`
 - full regression after submit action helper slice: `865 passed`
 - approval lookup/read helper 已移除 event-scan approval id glue
 - workspace binding helper 已移除 manual `workspace.bound` glue
@@ -124,7 +124,7 @@ Do not implement in this slice:
 
 Recommended test file:
 
-- `tests/isotope_kernel/test_submit_action_helper.py`
+- `tests/isotope/test_submit_action_helper.py`
 
 Test goals:
 

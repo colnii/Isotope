@@ -14,13 +14,13 @@ demo entrypoint 的目标是给开发者和 reviewer 一个稳定的 smoke path�
 
 当前实现：
 
-- `src/isotope_kernel/demo.py`
-- `tests/isotope_kernel/test_demo_entrypoint.py`
-- `tests/isotope_kernel/test_packaging_smoke.py`
-- `tests/isotope_kernel/test_ci_workflow.py`
+- `src/isotope/demo.py`
+- `tests/isotope/test_demo_entrypoint.py`
+- `tests/isotope/test_packaging_smoke.py`
+- `tests/isotope/test_ci_workflow.py`
 - `.github/workflows/ci.yml`
-- `python -m isotope_kernel.demo`
-- `python -m isotope_kernel.demo --json`
+- `python -m isotope.demo`
+- `python -m isotope.demo --json`
 
 当前验收证据：
 
@@ -71,13 +71,13 @@ demo 不应证明：
 先做 module entrypoint，不引入 CLI framework：
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo
+PYTHONPATH=src .venv/bin/python -m isotope.demo
 ```
 
 可选 JSON 输出：
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --json
+PYTHONPATH=src .venv/bin/python -m isotope.demo --json
 ```
 
 标准 editable install 路径也已通过 smoke：
@@ -86,19 +86,19 @@ PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --json
 python3 -m venv .venv
 .venv/bin/python -m pip install -U pip
 .venv/bin/python -m pip install -e ".[test]"
-.venv/bin/python -m isotope_kernel.demo
-.venv/bin/python -m isotope_kernel.demo --json
+.venv/bin/python -m isotope.demo
+.venv/bin/python -m isotope.demo --json
 ```
 
-后续如果需要稳定 CLI，再单独设计 `python -m isotope_kernel.cli demo` 或 console script。本轮不引入。
+后续如果需要稳定 CLI，再单独设计 `python -m isotope.cli demo` 或 console script。本轮不引入。
 
 ## 5. Implemented Files
 
 当前实现涉及：
 
-- `src/isotope_kernel/demo.py`
-- `tests/isotope_kernel/test_demo_entrypoint.py`
-- `tests/isotope_kernel/test_packaging_smoke.py`
+- `src/isotope/demo.py`
+- `tests/isotope/test_demo_entrypoint.py`
+- `tests/isotope/test_packaging_smoke.py`
 
 不应修改：
 
@@ -162,9 +162,9 @@ JSON 输出不得包含 full artifact content、memory full content、raw provid
 
 ## 9. Implemented Tests
 
-`tests/isotope_kernel/test_demo_entrypoint.py` 已落地并通过，覆盖：
+`tests/isotope/test_demo_entrypoint.py` 已落地并通过，覆盖：
 
-- `python -m isotope_kernel.demo` 能运行成功。
+- `python -m isotope.demo` 能运行成功。
 - plain text 输出包含 run status / artifact ref / replay ok / checkpoint ok。
 - `--json` 输出可解析。
 - JSON 输出不包含 full artifact content。
@@ -174,25 +174,25 @@ JSON 输出不得包含 full artifact content、memory full content、raw provid
 - demo memory status 明确是 `boundary_only`。
 - replay / checkpoint 验证来自真实 event log / checkpoint-assisted rebuild，不是 hardcoded true。
 
-`tests/isotope_kernel/test_packaging_smoke.py` 已落地并通过，覆盖：
+`tests/isotope/test_packaging_smoke.py` 已落地并通过，覆盖：
 
 - `pyproject.toml` exists and carries minimum project metadata。
 - pytest test dependency / optional dependency group exists。
-- src-layout package discovery covers `src/isotope_kernel`。
-- editable install 后可以 import `isotope_kernel`。
-- editable install 后可以运行 installed `python -m isotope_kernel.demo`。
-- editable install 后可以运行 installed `python -m isotope_kernel.demo --json`。
+- src-layout package discovery covers `src/isotope`。
+- editable install 后可以 import `isotope`。
+- editable install 后可以运行 installed `python -m isotope.demo`。
+- editable install 后可以运行 installed `python -m isotope.demo --json`。
 - installed demo JSON 包含 run / artifact / replay / checkpoint / memory summary。
 - installed demo 不在 repo 根目录写 `runs/` / `artifacts/` / `checkpoints/`。
 - installed package source 不 import `x_agent.*`。
 
-`tests/isotope_kernel/test_ci_workflow.py` 已落地并通过，覆盖：
+`tests/isotope/test_ci_workflow.py` 已落地并通过，覆盖：
 
 - `.github/workflows/ci.yml` exists。
 - workflow 在 `push` / `pull_request` 时触发。
 - workflow 使用 `ubuntu-latest` 和 Python `3.12`。
 - workflow 执行 editable install with test extra：`python -m pip install -e ".[test]"`。
-- workflow 运行 `python -m pytest tests/isotope_kernel -q`。
+- workflow 运行 `python -m pytest tests/isotope -q`。
 - workflow 运行 demo plain / JSON smoke。
 - workflow 不需要 secrets，不引用本地绝对路径，不引用 `x-agent` / `x_agent`。
 - workflow 不引入 release、coverage、lint matrix 或 real integration services。

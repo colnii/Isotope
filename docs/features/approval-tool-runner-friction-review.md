@@ -10,8 +10,8 @@
 
 当前 evidence：
 
-- `python -m isotope_kernel.demo --scenario approval-tool-runner`
-- `python -m isotope_kernel.demo --scenario approval-tool-runner --json`
+- `python -m isotope.demo --scenario approval-tool-runner`
+- `python -m isotope.demo --scenario approval-tool-runner --json`
 - full regression after submit action helper slice: `865 passed`
 - spike 仍 deterministic / in-process / no real HTTP server / no real LLM / no provider adapter / no filesystem mutation
 

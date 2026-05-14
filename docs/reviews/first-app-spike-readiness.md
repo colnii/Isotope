@@ -70,11 +70,11 @@ Original suggested batch name:
 
 Suggested test file:
 
-- `tests/isotope_kernel/test_app_spike_artifact_review_flow.py`
+- `tests/isotope/test_app_spike_artifact_review_flow.py`
 
 Red-test goals:
 
-- new scenario shape is defined, likely `python -m isotope_kernel.demo --scenario artifact-review`
+- new scenario shape is defined, likely `python -m isotope.demo --scenario artifact-review`
 - JSON scenario includes `scenario: "artifact-review"`
 - default artifact summary path is readable
 - default response does not include full artifact content
@@ -115,8 +115,8 @@ Green implementation was explicitly allowed by the follow-up package and is now 
 Implemented scenario:
 
 ```bash
-python -m isotope_kernel.demo --scenario artifact-review
-python -m isotope_kernel.demo --scenario artifact-review --json
+python -m isotope.demo --scenario artifact-review
+python -m isotope.demo --scenario artifact-review --json
 ```
 
 The first slice proves:

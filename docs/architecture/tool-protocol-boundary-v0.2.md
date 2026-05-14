@@ -212,8 +212,8 @@ Explicitly deferred:
 
 Recommended new test files:
 
-- `tests/isotope_kernel/test_tool_protocol_boundary.py`
-- `tests/isotope_kernel/test_tool_result_event_boundary.py`
+- `tests/isotope/test_tool_protocol_boundary.py`
+- `tests/isotope/test_tool_result_event_boundary.py`
 
 Recommended coverage for `test_tool_protocol_boundary.py`:
 
@@ -255,7 +255,7 @@ Stop before implementation if a future slice requires:
 
 Tool Protocol first slice is now complete / closed for now at the minimal in-process boundary:
 
-- `src/isotope_kernel/tool_protocol.py` defines `ToolInvocation`, `ToolResult` and `ToolError` validation models.
+- `src/isotope/tool_protocol.py` defines `ToolInvocation`, `ToolResult` and `ToolError` validation models.
 - `artifact.created` event provenance now includes `execution_id`, `proposal_id` and `decision_id`.
 - `action.failed` now carries `error_reason_code` and `structured_error`.
 - executor still uses only `PolicyDecision.grants`, and ungranted / unsupported tools fail closed before successful side effects.

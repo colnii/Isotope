@@ -17,16 +17,16 @@
 命令：
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-matrix
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-matrix --trace
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-matrix --json
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-matrix
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-matrix --trace
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-matrix --json
 ```
 
 在 worktree 没有本地 `.venv` 时，可使用主 checkout 的 venv：
 
 ```bash
 PYTHONPATH=/home/lumber/Github/isotope/.worktrees/app-agent-loop-friction/src \
-  /home/lumber/Github/isotope/.venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-matrix --trace
+  /home/lumber/Github/isotope/.venv/bin/python -m isotope.demo --scenario agent-loop-planner-matrix --trace
 ```
 
 ## 3. Fixture Matrix

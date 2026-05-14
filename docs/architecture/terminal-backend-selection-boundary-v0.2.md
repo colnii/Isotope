@@ -25,8 +25,8 @@ Terminology correction: this file name is historical. The current source of trut
 - `Executor(..., terminal_backend_config=...)`
 - `InProcessServer(..., terminal_backend_config=...)`
 - `TerminalBackendRunResult.backend_summary`
-- `tests/isotope_kernel/test_terminal_backend_selector_config.py`
-- `tests/isotope_kernel/test_terminal_backend_artifact_policy.py`
+- `tests/isotope/test_terminal_backend_selector_config.py`
+- `tests/isotope/test_terminal_backend_artifact_policy.py`
 
 已验证：
 

@@ -69,7 +69,7 @@ The demo may still read event types for compact status / trace output, but it sh
 
 ## 5. First Red Tests
 
-Add `tests/isotope_kernel/test_artifact_provenance_helper.py` covering:
+Add `tests/isotope/test_artifact_provenance_helper.py` covering:
 
 - helper exists.
 - helper accepts structured `ResourceRef` only.
@@ -80,7 +80,7 @@ Add `tests/isotope_kernel/test_artifact_provenance_helper.py` covering:
 - helper does not append events.
 - HTTP full-content route remains `not_enabled`.
 
-Extend `tests/isotope_kernel/test_artifact_review_flow_spike.py` to cover:
+Extend `tests/isotope/test_artifact_review_flow_spike.py` to cover:
 
 - `artifact-review` uses the helper.
 - `artifact-review` no longer scans raw events for source `artifact.created` basis event.

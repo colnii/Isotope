@@ -19,12 +19,12 @@
 
 当前已实现：
 
-- `src/isotope_kernel/model_tool_bridge.py`
+- `src/isotope/model_tool_bridge.py`
 - `submit_model_tool_call(app, run_id, call)`
-- `tests/isotope_kernel/test_model_tool_bridge.py`
-- `python -m isotope_kernel.demo --scenario model-tool-bridge`
-- `python -m isotope_kernel.demo --scenario model-tool-bridge --trace`
-- `python -m isotope_kernel.demo --scenario model-tool-bridge --json`
+- `tests/isotope/test_model_tool_bridge.py`
+- `python -m isotope.demo --scenario model-tool-bridge`
+- `python -m isotope.demo --scenario model-tool-bridge --trace`
+- `python -m isotope.demo --scenario model-tool-bridge --json`
 
 当前行为：
 

@@ -10,7 +10,7 @@ Error Taxonomy first slice 可以标为 `first slice complete / closed for now`�
 
 当前 slice 已覆盖：
 
-- `src/isotope_kernel/errors.py` 提供最小 `KernelError(ValueError)` compatibility layer。
+- `src/isotope/errors.py` 提供最小 `KernelError(ValueError)` compatibility layer。
 - `KernelError` 保留 legacy `str(exc)` / `args[0]` message contract。
 - Structured attrs 已固定为 `code`、`category`、`retryable`、optional `http_status` 和 low-sensitive `details`。
 - First-slice helper paths 覆盖 terminal run、unknown run、unknown session、invalid request 和 `not_enabled`。
@@ -22,36 +22,36 @@ Error Taxonomy first slice 可以标为 `first slice complete / closed for now`�
 
 Implementation evidence:
 
-- `src/isotope_kernel/errors.py`
-- `src/isotope_kernel/server.py`
-- `src/isotope_kernel/http_api.py`
-- `tests/isotope_kernel/test_kernel_error_taxonomy_boundary.py`
-- `tests/isotope_kernel/test_http_error_mapping_boundary.py`
+- `src/isotope/errors.py`
+- `src/isotope/server.py`
+- `src/isotope/http_api.py`
+- `tests/isotope/test_kernel_error_taxonomy_boundary.py`
+- `tests/isotope/test_http_error_mapping_boundary.py`
 
 Verification evidence on the Mac mini checkout:
 
 ```bash
 PYTHONPATH=src .venv/bin/python -m pytest \
-  tests/isotope_kernel/test_kernel_error_taxonomy_boundary.py \
-  tests/isotope_kernel/test_http_error_mapping_boundary.py \
+  tests/isotope/test_kernel_error_taxonomy_boundary.py \
+  tests/isotope/test_http_error_mapping_boundary.py \
   -q
 # 12 passed
 
 PYTHONPATH=src .venv/bin/python -m pytest \
-  tests/isotope_kernel -q \
-  --ignore=tests/isotope_kernel/test_packaging_smoke.py
+  tests/isotope -q \
+  --ignore=tests/isotope/test_packaging_smoke.py
 # 1028 passed
 
 export DYLD_LIBRARY_PATH=/opt/homebrew/opt/expat/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
+PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q
 # 1036 passed
 ```
 
 Trace demos passed:
 
-- `PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario artifact-review --trace`
-- `PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario external-snapshot-review --trace`
-- `PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario approval-tool-runner --trace`
+- `PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario artifact-review --trace`
+- `PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario external-snapshot-review --trace`
+- `PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario approval-tool-runner --trace`
 
 ## Boundary Confirmations
 

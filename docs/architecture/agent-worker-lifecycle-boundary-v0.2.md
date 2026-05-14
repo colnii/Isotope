@@ -168,8 +168,8 @@ Worker result 不能直接写 native run state。允许的 handoff 形态：
 
 第一批 red tests 已落地并 green，当前可标为 first slice complete：
 
-- `tests/isotope_kernel/test_agent_worker_lifecycle_boundary.py`
-- `tests/isotope_kernel/test_delegation_policy_boundary.py`
+- `tests/isotope/test_agent_worker_lifecycle_boundary.py`
+- `tests/isotope/test_delegation_policy_boundary.py`
 
 当前覆盖：
 

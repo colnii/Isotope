@@ -26,7 +26,7 @@ Current completed surfaces relevant to this track:
 - HTTP external ingestion routes are still deferred / `not_enabled`.
 - Projector rebuilds `RunState` from canonical events and validated checkpoints, not from external raw input.
 - Memory remains `boundary_only`; there is no durable memory storage or query engine.
-- `src/isotope_kernel/ingestion.py` exists as the first not-enabled / artifact-only boundary.
+- `src/isotope/ingestion.py` exists as the first not-enabled / artifact-only boundary.
 - `ImportedSnapshot` exists as a slice-only model.
 - `snapshot.imported` canonical events can project imported observations into `RunState.external_observations`.
 - `InProcessServer.import_external_snapshot(run_id, snapshot)` accepts structured `ImportedSnapshot`, prevalidates the candidate `snapshot.imported` replay path, appends no partial event on failure, and returns the projected external observation.
@@ -175,8 +175,8 @@ Current HTTP external ingestion routes remain deferred / `not_enabled`. If a fut
 
 Completed first test files:
 
-- `tests/isotope_kernel/test_external_ingestion_boundary.py`
-- `tests/isotope_kernel/test_imported_snapshot_projection_boundary.py`
+- `tests/isotope/test_external_ingestion_boundary.py`
+- `tests/isotope/test_imported_snapshot_projection_boundary.py`
 
 Covered goals:
 
@@ -195,8 +195,8 @@ These first tests define only the initial boundary slice. They do not implement 
 
 Completed read-model invariant test files:
 
-- `tests/isotope_kernel/test_external_observation_read_model.py`
-- `tests/isotope_kernel/test_external_observation_conflicts.py`
+- `tests/isotope/test_external_observation_read_model.py`
+- `tests/isotope/test_external_observation_conflicts.py`
 
 Covered goals:
 

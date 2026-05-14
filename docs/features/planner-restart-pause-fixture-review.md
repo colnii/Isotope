@@ -23,14 +23,14 @@ Agent 先做到“需要人审批”，然后程序重启。重启后，它还�
 新增 demo scenario：
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-restart-pause
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-restart-pause --trace
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-restart-pause --json
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-restart-pause
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-restart-pause --trace
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-restart-pause --json
 ```
 
 新增测试：
 
-- `tests/isotope_kernel/test_agent_loop_planner_restart_pause_spike.py`
+- `tests/isotope/test_agent_loop_planner_restart_pause_spike.py`
 
 ## 3. Boundary
 

@@ -19,14 +19,14 @@
 新增 demo scenario：
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-validated-runner
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-validated-runner --trace
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-validated-runner --json
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-validated-runner
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-validated-runner --trace
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario agent-loop-planner-validated-runner --json
 ```
 
 新增测试：
 
-- `tests/isotope_kernel/test_agent_loop_planner_validated_runner_spike.py`
+- `tests/isotope/test_agent_loop_planner_validated_runner_spike.py`
 
 ## 3. What It Proves
 

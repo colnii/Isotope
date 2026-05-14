@@ -48,8 +48,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
 常用检查：
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2 --trace
+PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2 --trace
 git status --short
 ```
 

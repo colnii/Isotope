@@ -24,11 +24,11 @@ Event Schema Registry / Compatibility first slice 可以标为 `first slice comp
 
 Implementation evidence:
 
-- `src/isotope_kernel/event_schema.py` defines `EventSchemaMetadata`, `EventSchemaRegistry`, `DEFAULT_EVENT_SCHEMA_VERSION`, and `DEFAULT_EVENT_SCHEMA_REGISTRY`.
-- `src/isotope_kernel/projector.py` calls `DEFAULT_EVENT_SCHEMA_REGISTRY.validate_event(event)` before branch-specific payload validation and before `apply(...)`.
-- `tests/isotope_kernel/test_event_schema_registry_boundary.py` covers registry existence, registered metadata, unknown event fail-closed, controlled diagnostics, and no JSON Schema / protobuf / Avro dependency.
-- `tests/isotope_kernel/test_event_schema_version_compatibility.py` covers envelope/schema version separation, unsupported envelope version, unsupported payload schema version, missing schema metadata for new events, required field fail-fast, checkpoint separation, and no overreach modules.
-- `tests/isotope_kernel/test_external_ingestion_boundary.py::test_raw_provider_callback_body_is_not_a_projector_input` now expects raw `provider.callback.received` to fail closed instead of being silently ignored.
+- `src/isotope/event_schema.py` defines `EventSchemaMetadata`, `EventSchemaRegistry`, `DEFAULT_EVENT_SCHEMA_VERSION`, and `DEFAULT_EVENT_SCHEMA_REGISTRY`.
+- `src/isotope/projector.py` calls `DEFAULT_EVENT_SCHEMA_REGISTRY.validate_event(event)` before branch-specific payload validation and before `apply(...)`.
+- `tests/isotope/test_event_schema_registry_boundary.py` covers registry existence, registered metadata, unknown event fail-closed, controlled diagnostics, and no JSON Schema / protobuf / Avro dependency.
+- `tests/isotope/test_event_schema_version_compatibility.py` covers envelope/schema version separation, unsupported envelope version, unsupported payload schema version, missing schema metadata for new events, required field fail-fast, checkpoint separation, and no overreach modules.
+- `tests/isotope/test_external_ingestion_boundary.py::test_raw_provider_callback_body_is_not_a_projector_input` now expects raw `provider.callback.received` to fail closed instead of being silently ignored.
 
 Verification evidence from this closure path:
 

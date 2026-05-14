@@ -1,6 +1,6 @@
 # Agent 任务队列
 
-状态：`当前入口 / 下一步目录结构设计`
+状态：`当前入口 / 下一步应用内分层`
 
 ## 当前事实
 
@@ -9,7 +9,7 @@
 - 旧功能分支已完成审计、代码抽取和清理。
 - 可迁移代码已进入主线，剩余分支内容只保留历史参考价值。
 - `docs/` 已分成 `current/`、`architecture/`、`features/`、`reviews/`、`archive/`。
-- 应用目录结构还没有最终定稿，不在本批次移动代码。
+- 主包已迁移到 `src/isotope/`，后续继续做应用内分层。
 
 ## 已完成批次
 
@@ -19,6 +19,7 @@
 4. 应用目录方案：已写 [application-structure-plan](./application-structure-plan.md)。
 5. 分支审计清理：结果见 [branch-cleanup](../reviews/branch-cleanup-2026-05-15.md)。
 6. 文档二次清理：当前入口已刷新，不再传播旧分支暂停口径。
+7. 包名迁移：`src/isotope_kernel/` 已迁到 `src/isotope/`。
 
 ## 最近完成：文档二次清理
 
@@ -36,14 +37,13 @@
 - `AGENTS.md` 不写临时分支规则。
 - Markdown 相对链接无断链。
 
-## 下一批次：目录结构与包名迁移
+## 下一批次：应用内分层迁移
 
 目标：
 
-- 确定 `src/isotope/` 作为长期 Python 包命名空间。
-- 建立服务近期迁移的目录骨架。
-- 尽快把 `src/isotope_kernel/` 迁到新目录。
-- 迁移时保留短期兼容层，避免一次性破坏已有命令和测试。
+- 保持 `src/isotope/` 作为长期 Python 包命名空间。
+- 把当前平铺模块逐步迁入 `assistant/`、`features/`、`platform/` 等层级。
+- 先迁移边界清楚的模块，再迁移入口和大型运行流程。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

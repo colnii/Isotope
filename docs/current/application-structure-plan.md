@@ -1,9 +1,9 @@
 # 应用目录迁移方案
 
-状态：`方案收敛中 / 尽快迁移 isotope_kernel`
+状态：`包名迁移完成 / 待应用内分层`
 
-当前 `src/isotope_kernel/` 是历史遗留包名。
-后续 Isotope 应按 AI 应用软件组织目录，而不是继续围绕 `kernel` 命名。
+主包已从 `src/isotope_kernel/` 迁移到 `src/isotope/`。
+后续 Isotope 应继续按 AI 应用软件组织目录，而不是围绕 `kernel` 命名。
 新目录应优先服务可应用、可落地和多分支并行开发。
 
 ## 目标结构
@@ -63,32 +63,32 @@ scripts/
 
 ## 迁移原则
 
-- 先固化目标骨架，再尽快迁移 `src/isotope_kernel/`。
+- 先固化目标骨架，再迁移旧包名。
 - 骨架目录可以先建，但要对应近期迁移目标或明确负责人。
 - 骨架不要求一开始都有完整实现，但不能长期无人使用、无人解释。
 - 先迁移低风险模块，再迁移入口、包名和测试路径。
 - 保持测试可运行，不做一次性大爆炸重命名。
 - 每次迁移都更新导入路径、测试路径和文档入口。
-- 历史包名可保留短期兼容层，但不作为长期方向。
+- 历史包名不再作为活跃导入路径。
 - `src/isotope/` 是 Python 包命名空间，不是重复叙事。
 - 不采用 `src/core/`、`src/features/` 这类无项目命名空间的顶层包。
 
 ## 已落地试点
 
 此前迁移分支 `feature/app-terminal-exec-migration` 已 fast-forward 合入 `main`。
-这只代表终端执行能力完成一片试点，不代表长期目录结构已经定稿。
+本轮已把该试点并入 `src/isotope/` 命名空间。
 
 第一片：
 
-- `src/agents/tools/terminal.py`
-- `src/agents/executor/terminal_backend.py`
-- `tests/agents/test_terminal_tool.py`
-- `tests/agents/test_terminal_backend.py`
+- `src/isotope/capabilities/tools/terminal.py`
+- `src/isotope/execution/terminal_backend.py`
+- `tests/isotope/test_terminal_tool.py`
+- `tests/isotope/test_terminal_backend_app.py`
 
 目标：先把终端执行能力放入应用化目录。
-旧 `src/isotope_kernel/` 路径暂不删除，避免一次性破坏现有入口。
+旧顶层 `src/agents/` 已清理，不再作为活跃包。
 
-下一步应把 `src/isotope/` 骨架定下来，然后开始迁移 `isotope_kernel`。
+下一步是在 `src/isotope/` 内继续做应用分层，而不是恢复旧包名。
 
 ## 第一批建议
 

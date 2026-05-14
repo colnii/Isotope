@@ -75,14 +75,14 @@ Create a future `v0.2.1-demo` only if a reviewer or external reader needs a fixe
 The post-tag mainline is expected to keep passing:
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --json
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2 --json
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario model-tool-bridge
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario model-tool-bridge --trace
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario model-tool-bridge --json
+PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q
+PYTHONPATH=src .venv/bin/python -m isotope.demo
+PYTHONPATH=src .venv/bin/python -m isotope.demo --json
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2 --json
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario model-tool-bridge
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario model-tool-bridge --trace
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario model-tool-bridge --json
 ```
 
 Current expected full regression baseline after later mainline slices is `1255 passed, 4 skipped`.

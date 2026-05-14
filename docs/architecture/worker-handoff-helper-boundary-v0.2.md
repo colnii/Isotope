@@ -10,7 +10,7 @@
 
 - aggressive commit: `1950e32` (`feat: add worker handoff gap spike`)
 - scenario: `worker-handoff-gap`
-- targeted test: `tests/isotope_kernel/test_worker_handoff_gap_spike.py` -> `5 passed`
+- targeted test: `tests/isotope/test_worker_handoff_gap_spike.py` -> `5 passed`
 - observed friction: app-shaped worker handoff can replay / checkpoint, but currently requires private append glue.
 
 ## 2. Selection
@@ -98,7 +98,7 @@ Closure review: `../features/worker-handoff-helper-closure-review.md`.
 
 Suggested file:
 
-- `tests/isotope_kernel/test_worker_handoff_helper.py`
+- `tests/isotope/test_worker_handoff_helper.py`
 
 Test goals:
 

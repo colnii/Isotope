@@ -4,7 +4,7 @@
 
 ## 1. 背景
 
-`isotope_kernel.capability_catalog` 已经给 mainline 提供了一个小而稳定的 capability catalog（能力目录 / 货架）：它能列出能力、描述 shelf、输出低敏 manifest，并做本地 readiness summary。
+`isotope.capability_catalog` 已经给 mainline 提供了一个小而稳定的 capability catalog（能力目录 / 货架）：它能列出能力、描述 shelf、输出低敏 manifest，并做本地 readiness summary。
 
 但它刻意不执行能力。这个选择是对的，因为 aggressive branch 里的 `capability_hub.py` 已经证明：如果把 catalog、runner、CLI、diagnostics、LLM route、study companion、自我进化 harness 和 product shell 全塞进一个模块，短期看起来“功能很多”，长期会变成不可维护的大杂烩。
 
@@ -25,11 +25,11 @@ Capability Runner Thin Shell 的目标是让未来 app shell / UI / bot / deskto
 
 建议未来实现模块：
 
-- `src/isotope_kernel/capability_runner.py`
+- `src/isotope/capability_runner.py`
 
 第一批只允许复用当前 main 已有的 source of truth：
 
-- `isotope_kernel.capability_catalog.default_catalog()`
+- `isotope.capability_catalog.default_catalog()`
 - existing public `InProcessServer` helpers
 - existing deterministic demo scenarios
 
@@ -145,9 +145,9 @@ aggressive branch 可以继续作为 application-layer 试验田；mainline 只�
 
 建议下一批先写 red tests：
 
-`tests/isotope_kernel/test_capability_runner_thin_shell.py`
+`tests/isotope/test_capability_runner_thin_shell.py`
 
-- module `isotope_kernel.capability_runner` exists。
+- module `isotope.capability_runner` exists。
 - runner uses `CapabilityCatalog` as source of truth。
 - `list_capabilities(...)` mirrors catalog default list。
 - `describe_capability(...)` returns low-sensitive metadata。
@@ -162,14 +162,14 @@ aggressive branch 可以继续作为 application-layer 试验田；mainline 只�
 
 Optional later:
 
-`tests/isotope_kernel/test_capability_runner_cli_boundary.py`
+`tests/isotope/test_capability_runner_cli_boundary.py`
 
 - CLI `list` / `describe` / `status` / `run` works if a CLI is introduced。
 - CLI remains in-process and no-network。
 - JSON output remains machine-readable。
 - plain output remains human-readable。
 
-CLI first slice 已在后续单独实现，见 `capability-runner-cli-boundary-v0.2.md` 和 `tests/isotope_kernel/test_capability_runner_cli.py`。
+CLI first slice 已在后续单独实现，见 `capability-runner-cli-boundary-v0.2.md` 和 `tests/isotope/test_capability_runner_cli.py`。
 
 ## 9. Deferred
 
@@ -214,8 +214,8 @@ CLI first slice 已在后续单独实现，见 `capability-runner-cli-boundary-v
 
 已实现：
 
-- `src/isotope_kernel/capability_runner.py`
-- `tests/isotope_kernel/test_capability_runner_thin_shell.py`
+- `src/isotope/capability_runner.py`
+- `tests/isotope/test_capability_runner_thin_shell.py`
 
 当前 first slice 提供：
 

@@ -166,8 +166,8 @@ HTTP Track A 当前 closed。Track C 默认不重新打开 real HTTP server。
 第一批 retrieval tests 已落地：
 
 ```text
-tests/isotope_kernel/test_artifact_content_read_policy.py
-tests/isotope_kernel/test_http_api_artifact_content_boundary.py
+tests/isotope/test_artifact_content_read_policy.py
+tests/isotope/test_http_api_artifact_content_boundary.py
 ```
 
 第一批 tests 覆盖：
@@ -191,7 +191,7 @@ tests/isotope_kernel/test_http_api_artifact_content_boundary.py
 第二批 HTTP enablement guard tests 已落地：
 
 ```text
-tests/isotope_kernel/test_http_api_artifact_content_enablement_guard.py
+tests/isotope/test_http_api_artifact_content_enablement_guard.py
 ```
 
 第二批 tests 覆盖：

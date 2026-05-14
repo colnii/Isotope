@@ -26,7 +26,7 @@
 
 - Controlled terminal / provider integration：来自 `feature/controlled-terminal-exec`，已合入 main。
 - `DeepSeekChatProvider`：从 aggressive provider idea 中抽成最小 direct-chat wrapper，已合入 main。
-- Capability Hub Core：已提前抽成 `isotope_kernel.capability_catalog`，只保留 metadata / shelf / manifest / readiness，不执行能力。
+- Capability Hub Core：已提前抽成 `isotope.capability_catalog`，只保留 metadata / shelf / manifest / readiness，不执行能力。
 
 这些抽取都刻意避免了 aggressive 里的 product shell / self-evolution / workflow 大包。
 
@@ -34,7 +34,7 @@
 
 ### 3.1 `capability_hub.py`
 
-Aggressive branch 的 `src/isotope_kernel/capability_hub.py` 当前约一万行，里面同时包含：
+Aggressive branch 的 `src/isotope/capability_hub.py` 当前约一万行，里面同时包含：
 
 - capability metadata
 - capability execution runner

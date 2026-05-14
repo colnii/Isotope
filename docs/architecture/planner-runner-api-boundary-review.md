@@ -4,7 +4,7 @@
 
 ## 1. Purpose
 
-本文评审 `agent-loop-planner-matrix` 中的 branch-local planner runner 是否应该从 `src/isotope_kernel/demo.py` 抽成可复用 app-layer runner module。
+本文评审 `agent-loop-planner-matrix` 中的 branch-local planner runner 是否应该从 `src/isotope/demo.py` 抽成可复用 app-layer runner module。
 
 结论：**暂不抽取。保持 demo-local。**
 
@@ -46,10 +46,10 @@ Keep the runner demo-local for now.
 
 Do not create a new public or semi-public module such as:
 
-- `src/isotope_kernel/planner_runner.py`
-- `src/isotope_kernel/agent_loop.py`
-- `src/isotope_kernel/orchestration.py`
-- `src/isotope_kernel/planning.py`
+- `src/isotope/planner_runner.py`
+- `src/isotope/agent_loop.py`
+- `src/isotope/orchestration.py`
+- `src/isotope/planning.py`
 
 Do not add a public SDK, product runner abstraction, real LLM adapter, scheduler, provider adapter, or real worker runtime.
 

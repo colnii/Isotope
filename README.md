@@ -10,7 +10,7 @@ Isotope 是一个面向真实使用的 AI 应用软件。
 - 旧功能分支已完成审计、代码抽取和清理。
 - AI 协作规则和当前状态文档已更新。
 - `docs/` 已按当前、架构、功能、评审、归档分层。
-- 下一步单独讨论应用目录结构，不在本轮强行迁移代码。
+- 已迁移到 `src/isotope/` 应用包结构。
 
 ## 快速开始
 
@@ -18,8 +18,8 @@ Isotope 是一个面向真实使用的 AI 应用软件。
 python3 -m venv .venv
 .venv/bin/python -m pip install -U pip
 .venv/bin/python -m pip install -e ".[test]"
-.venv/bin/python -m pytest tests/isotope_kernel -q
-.venv/bin/python -m isotope_kernel.demo --scenario v0.2 --trace
+.venv/bin/python -m pytest tests/isotope -q
+.venv/bin/python -m isotope.demo --scenario v0.2 --trace
 ```
 
 ## 当前可用能力

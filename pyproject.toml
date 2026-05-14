@@ -3,9 +3,9 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "isotope-kernel"
+name = "isotope"
 version = "0.1.0"
-description = "Kernel-first agent runtime staging slice."
+description = "Application-first personal AI assistant."
 requires-python = ">=3.12"
 dependencies = []
 

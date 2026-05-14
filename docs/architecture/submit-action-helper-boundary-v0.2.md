@@ -160,4 +160,4 @@ Still deferred:
 
 Current test file:
 
-- `tests/isotope_kernel/test_submit_action_helper.py`
+- `tests/isotope/test_submit_action_helper.py`

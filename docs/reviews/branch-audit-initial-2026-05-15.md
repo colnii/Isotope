@@ -49,25 +49,25 @@
 初步看，正经代码集中在三处：
 
 1. `feature/controlled-terminal-exec`
-   - `src/isotope_kernel/terminal*.py`
-   - `src/isotope_kernel/codex_*.py`
-   - `src/isotope_kernel/llm_*.py`
-   - `src/isotope_kernel/model_tool_bridge.py`
-   - 对应 `tests/isotope_kernel/test_*terminal*`、`test_*codex*`、`test_*llm*`
+   - `src/isotope/terminal*.py`
+   - `src/isotope/codex_*.py`
+   - `src/isotope/llm_*.py`
+   - `src/isotope/model_tool_bridge.py`
+   - 对应 `tests/isotope/test_*terminal*`、`test_*codex*`、`test_*llm*`
 
 2. `feature/agent-loop-tick-budget-read-model-spike`
-   - `src/isotope_kernel/agent_loop_control.py`
-   - `src/isotope_kernel/agent_loop_step.py`
-   - `src/isotope_kernel/agent_loop_planner_adapter.py`
-   - `src/isotope_kernel/real_planner_adapter_contract.py`
+   - `src/isotope/agent_loop_control.py`
+   - `src/isotope/agent_loop_step.py`
+   - `src/isotope/agent_loop_planner_adapter.py`
+   - `src/isotope/real_planner_adapter_contract.py`
 
 3. `codex/spike-aggressive-dev`
-   - `src/isotope_kernel/capability_hub.py`
-   - `src/isotope_kernel/llm_provider.py`
-   - `src/isotope_kernel/self_evolution.py`
+   - `src/isotope/capability_hub.py`
+   - `src/isotope/llm_provider.py`
+   - `src/isotope/self_evolution.py`
    - 对应 capability / provider / self-evolution 测试
 
-这些代码仍在旧 `src/isotope_kernel/` 命名下。
+这些代码仍在旧 `src/isotope/` 命名下。
 如果后续主线走 AI 应用结构，应优先移植到新目录设计，而不是照搬旧包名。
 
 ## 下一步建议

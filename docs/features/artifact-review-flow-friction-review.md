@@ -12,9 +12,9 @@
 
 审查对象：
 
-- `src/isotope_kernel/demo.py`
-- `tests/isotope_kernel/test_artifact_review_flow_spike.py`
-- `tests/isotope_kernel/test_artifact_review_flow_read_model.py`
+- `src/isotope/demo.py`
+- `tests/isotope/test_artifact_review_flow_spike.py`
+- `tests/isotope/test_artifact_review_flow_read_model.py`
 - `../current/status.md`
 - `../architecture/v0.2-roadmap.md`
 - `usability-pressure-test-plan-v0.2.md`

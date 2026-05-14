@@ -155,8 +155,8 @@ Explicitly deferred:
 
 Implemented tests:
 
-- `tests/isotope_kernel/test_workspace_lease_lifecycle_boundary.py`
-- `tests/isotope_kernel/test_workspace_artifact_capture_boundary.py`
+- `tests/isotope/test_workspace_lease_lifecycle_boundary.py`
+- `tests/isotope/test_workspace_artifact_capture_boundary.py`
 
 Current behavior:
 
@@ -188,8 +188,8 @@ Closure review:
 
 Implemented files:
 
-- `tests/isotope_kernel/test_workspace_lease_lifecycle_boundary.py`
-- `tests/isotope_kernel/test_workspace_artifact_capture_boundary.py`
+- `tests/isotope/test_workspace_lease_lifecycle_boundary.py`
+- `tests/isotope/test_workspace_artifact_capture_boundary.py`
 
 Recommended coverage for `test_workspace_lease_lifecycle_boundary.py`:
 

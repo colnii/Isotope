@@ -134,8 +134,8 @@ Do not implement these in the first slice:
 
 Implemented files:
 
-- `tests/isotope_kernel/test_event_schema_registry_boundary.py`
-- `tests/isotope_kernel/test_event_schema_version_compatibility.py`
+- `tests/isotope/test_event_schema_registry_boundary.py`
+- `tests/isotope/test_event_schema_version_compatibility.py`
 
 Coverage:
 

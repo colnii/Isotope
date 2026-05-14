@@ -112,8 +112,8 @@ These should not be pulled into the completed first slice.
 
 Implemented first test files:
 
-- `tests/isotope_kernel/test_workspace_binding_read_model.py`
-- `tests/isotope_kernel/test_workspace_policy_boundary.py`
+- `tests/isotope/test_workspace_binding_read_model.py`
+- `tests/isotope/test_workspace_policy_boundary.py`
 
 Suggested coverage:
 

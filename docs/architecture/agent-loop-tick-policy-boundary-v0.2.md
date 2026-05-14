@@ -51,10 +51,10 @@
 
 ## 5. 验证
 
-- `tests/isotope_kernel/test_agent_loop_tick_policy.py`
-- `tests/isotope_kernel/test_http_api_agent_loop_tick_policy.py`
-- `tests/isotope_kernel/test_http_api_boundary.py`
-- `tests/isotope_kernel/test_http_api_route_inventory.py`
+- `tests/isotope/test_agent_loop_tick_policy.py`
+- `tests/isotope/test_http_api_agent_loop_tick_policy.py`
+- `tests/isotope/test_http_api_boundary.py`
+- `tests/isotope/test_http_api_route_inventory.py`
 
 ## 6. 后续方向
 

@@ -101,19 +101,19 @@ This is a controlled terminal tool handler, not an open terminal product.
 
 Implemented tests:
 
-- `tests/isotope_kernel/test_controlled_terminal_execution.py`
-- `tests/isotope_kernel/test_terminal_exec_demo_scenario.py`
-- updated default-registry expectations in `tests/isotope_kernel/test_action_type_registry.py`
+- `tests/isotope/test_controlled_terminal_execution.py`
+- `tests/isotope/test_terminal_exec_demo_scenario.py`
+- updated default-registry expectations in `tests/isotope/test_action_type_registry.py`
 
 Focused verification:
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel/test_controlled_terminal_execution.py -q
+PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_controlled_terminal_execution.py -q
 # 15 passed
 
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel/test_terminal_exec_demo_scenario.py tests/isotope_kernel/test_demo_trace_mode.py -q
+PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_terminal_exec_demo_scenario.py tests/isotope/test_demo_trace_mode.py -q
 # 12 passed
 
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
+PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q
 # 1066 passed
 ```

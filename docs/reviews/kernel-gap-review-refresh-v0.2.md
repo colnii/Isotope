@@ -12,7 +12,7 @@
 - `app-spike-coverage-review.md`
 - `../features/usability-pressure-test-plan-v0.2.md`
 - `../current/status.md`
-- 当前 `src/isotope_kernel/` 实现
+- 当前 `src/isotope/` 实现
 - 当前 demo scenarios: v0.1, v0.2, `approval-tool-runner`, `artifact-review`, `external-snapshot-review`
 
 当前 baseline：`1003 passed`。
@@ -30,8 +30,8 @@
 | Approval pause / resume | `approval.requested` / `approval.resolved`、approved resume、denied no-execute、duplicate conflict、read helpers、HTTP in-process resolve/read routes 已有 | Track E tests、approval-tool-runner spike | product UI、identity/auth、notification、timeout scheduler、full approval state machine |
 | External ingestion boundary | `ingestion.py` fail-closed boundary、`ImportedSnapshot` slice model、`snapshot.imported` -> `RunState.external_observations`、conflict diagnostics、native state priority、checkpoint support 已有 | Track F tests、external-snapshot-review spike | provider adapter、webhook、external ingestion product API、reconciliation engine |
 | Artifact content read policy | summary default、structured `ResourceRef`、explicit grants + caller context + purpose for content retrieval、HTTP full-content route disabled 已有 | Track C tests、artifact-review spike | hosted content API、semantic retrieval / ranking、broad retrieval policy engine |
-| Policy profile / action registry versioning | `registry_id` / `registry_version` and `policy_profile_id` / `policy_version` basis metadata now flows through proposal / decision / events / `RunState.actions`; first slice closed for now | `tests/isotope_kernel/test_action_registry_version_basis.py`、`tests/isotope_kernel/test_policy_profile_version_basis.py`、`../architecture/policy-registry-version-basis-closure-review.md` | plugin marketplace、remote registry loading、policy DSL、migration framework |
-| Event schema registry / compatibility | static `EventSchemaRegistry` lists known canonical event types, separates envelope/schema versions, and makes unknown event types / unsupported payload schema versions fail closed; legacy/current known events missing `event_schema_version` use explicit compatibility mapping; first slice closed for now | `tests/isotope_kernel/test_event_schema_registry_boundary.py`、`tests/isotope_kernel/test_event_schema_version_compatibility.py`、`../architecture/event-schema-registry-closure-review.md` | JSON Schema / protobuf / Avro、remote/plugin registry、schema migration framework、multi-version projector matrix |
+| Policy profile / action registry versioning | `registry_id` / `registry_version` and `policy_profile_id` / `policy_version` basis metadata now flows through proposal / decision / events / `RunState.actions`; first slice closed for now | `tests/isotope/test_action_registry_version_basis.py`、`tests/isotope/test_policy_profile_version_basis.py`、`../architecture/policy-registry-version-basis-closure-review.md` | plugin marketplace、remote registry loading、policy DSL、migration framework |
+| Event schema registry / compatibility | static `EventSchemaRegistry` lists known canonical event types, separates envelope/schema versions, and makes unknown event types / unsupported payload schema versions fail closed; legacy/current known events missing `event_schema_version` use explicit compatibility mapping; first slice closed for now | `tests/isotope/test_event_schema_registry_boundary.py`、`tests/isotope/test_event_schema_version_compatibility.py`、`../architecture/event-schema-registry-closure-review.md` | JSON Schema / protobuf / Avro、remote/plugin registry、schema migration framework、multi-version projector matrix |
 
 ## 3. Still-Open Kernel-Level Gaps
 
@@ -132,7 +132,7 @@ Completed follow-up:
 - Type: red -> green implementation
 - Result: implemented `../architecture/tool-protocol-boundary-v0.2.md` first green slice
 - Implementation stance: minimal in-process `ToolInvocation` / `ToolResult` / `ToolError` models only; no plugin marketplace, remote tool, sandboxed process, streaming output, public SDK, or new dependency.
-- First red tests recommendation: `tests/isotope_kernel/test_tool_protocol_boundary.py` and `tests/isotope_kernel/test_tool_result_event_boundary.py`
+- First red tests recommendation: `tests/isotope/test_tool_protocol_boundary.py` and `tests/isotope/test_tool_result_event_boundary.py`
 
 Completed follow-up:
 
