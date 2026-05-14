@@ -93,6 +93,14 @@
 - 只抽取可复用应用能力，不整体合并旧包名结构。
 - 深审前先固定当前文档整备结果，避免后续 rebase/迁移时混杂。
 
+深审已完成：[controlled-terminal-exec-deep-review-2026-05-15](../reviews/controlled-terminal-exec-deep-review-2026-05-15.md)
+
+下一步迁移：
+
+- 从 `feature/controlled-terminal-exec` 抽取终端执行层。
+- 新代码放入应用化目录，不沿用 `isotope_kernel` 长期命名。
+- 先做最小可测切片，再考虑 LLM provider 和产品聊天入口。
+
 ## 验证
 
 文档批次至少检查：

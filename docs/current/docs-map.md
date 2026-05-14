@@ -46,6 +46,7 @@
 - 历史归档：[archive/](../archive/)
 - 应用目录迁移：[application-structure-plan](./application-structure-plan.md)
 - 分支初审：[branch-audit-initial-2026-05-15](../reviews/branch-audit-initial-2026-05-15.md)
+- 终端分支深审：[controlled-terminal-exec-deep-review-2026-05-15](../reviews/controlled-terminal-exec-deep-review-2026-05-15.md)
 
 ## 暂时废止的入口
 
