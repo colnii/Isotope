@@ -2,7 +2,7 @@
 
 状态：`active`
 
-Current note: Controlled terminal / provider integration and DeepSeek direct-chat provider wrapper extraction are complete. Aggressive remaining code review is complete, and `Capability Runner Thin Shell` first slice is complete: a tiny catalog-backed runner over three deterministic product-candidate capabilities, not a wholesale merge of aggressive `capability_hub.py` / `self_evolution.py` / product shell.
+Current note: Controlled terminal / provider integration and DeepSeek direct-chat provider wrapper extraction are complete. Aggressive remaining code review is complete, and `Capability Runner Thin Shell` first slice is complete / closed for now: a tiny catalog-backed runner over three deterministic product-candidate capabilities, not a wholesale merge of aggressive `capability_hub.py` / `self_evolution.py` / product shell.
 
 ## 1. Purpose
 
@@ -133,7 +133,7 @@ Evidence:
 
 Next suggested mode:
 
-Next mode: `Capability Runner Thin Shell Closure Review`, if the user asks to continue. Start docs-only: confirm first slice is enough or identify a concrete follow-up such as a CLI boundary. Do not copy aggressive `capability_hub.py`, `self_evolution.py`, study companion slices, diagnostics, workflow engine, or product shell wholesale.
+Next mode: application-layer friction intake, external review feedback intake, or user-selected branch integration. Do not expand the capability runner into CLI / product hub / workflow engine unless a real caller exposes concrete friction. Do not copy aggressive `capability_hub.py`, `self_evolution.py`, study companion slices, diagnostics, workflow engine, or product shell wholesale.
 
 ## 35. Current Batch
 
@@ -195,9 +195,37 @@ Evidence:
 
 Next suggested batch:
 
-`Capability Runner Thin Shell Closure Review`
+`Application-Layer Friction Intake`
 
-Status: `ready_docs_only`
+Status: `waiting_for_concrete_friction`
+
+## 37. Current Batch
+
+Batch name: `Capability Runner Thin Shell Closure Review`
+
+Status: `complete / docs-only`
+
+Goal: decide whether the just-added thin shell should keep expanding now.
+
+Tasks:
+
+1. Re-read runner implementation and tests: complete.
+2. Confirm first slice remains thin and catalog-backed: complete.
+3. Record closure review: complete.
+4. Sync README / AGENTS / current status / roadmap / inventory / queue: complete.
+5. Verify docs-only scope and commit / push: complete.
+
+Evidence:
+
+- First slice is enough for now: catalog source of truth, three allowlisted deterministic capabilities, fail-closed behavior, low-sensitive summary.
+- CLI / product hub / workflow engine are useful only if a real application-layer caller proves friction.
+- No `src/` / `tests` changes in this closure batch.
+
+Next suggested batch:
+
+`Application-Layer Friction Intake`
+
+Status: `waiting_for_concrete_friction`
 
 ## Branch-Local Batch: Agent Loop Friction Spike
 

@@ -20,6 +20,8 @@ Aggressive branch 剩余代码已做思路级 review，见 [docs/aggressive-rema
 
 Capability Runner Thin Shell first slice 已实现，见 [docs/capability-runner-thin-shell-boundary-v0.2.md](docs/capability-runner-thin-shell-boundary-v0.2.md)：它基于现有 `capability_catalog` 做薄 `list / describe / status / run` 壳，第一批只跑 `artifact.review`、`external.snapshot.review`、`approval.tool.runner` deterministic scenarios；不复制 aggressive `capability_hub.py`，不打开 workflow engine、product shell 或 real provider runner。
 
+Capability Runner Thin Shell closure review 见 [docs/capability-runner-thin-shell-closure-review.md](docs/capability-runner-thin-shell-closure-review.md)：当前 first slice closed for now；除非应用层真实调用暴露 friction，否则不默认继续扩 CLI、product hub 或 workflow engine。
+
 ## Quick Start
 
 ```bash
