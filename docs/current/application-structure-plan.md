@@ -1,6 +1,6 @@
 # 应用目录迁移方案
 
-状态：`方案初稿 / 尚未移动代码`
+状态：`迁移进行中`
 
 当前 `src/isotope_kernel/` 是历史遗留包名。
 后续 Isotope 应按 AI 应用软件组织目录，而不是继续围绕 `kernel` 命名。
@@ -48,3 +48,17 @@ scripts/
 - 保持测试可运行，不做一次性大爆炸重命名。
 - 每次迁移都更新导入路径、测试路径和文档入口。
 - 历史包名可保留短期兼容层，但不作为长期方向。
+
+## 已开始迁移
+
+当前迁移分支：`feature/app-terminal-exec-migration`
+
+第一片：
+
+- `src/agents/tools/terminal.py`
+- `src/agents/executor/terminal_backend.py`
+- `tests/agents/test_terminal_tool.py`
+- `tests/agents/test_terminal_backend.py`
+
+目标：先把终端执行能力放入应用化目录。
+旧 `src/isotope_kernel/` 路径暂不删除，避免一次性破坏现有入口。

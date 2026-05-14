@@ -109,6 +109,13 @@
 2. 深审 `codex/spike-aggressive-dev`。
 3. 再看 agent-loop 链尾分支。
 
+迁移进展：
+
+- 已开分支 `feature/app-terminal-exec-migration`。
+- 已新增 `src/agents/tools/terminal.py`。
+- 已新增 `src/agents/executor/terminal_backend.py`。
+- 已新增 `tests/agents/` 下的终端执行层测试。
+
 ## 验证
 
 文档批次至少检查：
