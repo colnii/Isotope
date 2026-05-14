@@ -47,7 +47,7 @@ core/
 ## 推荐命名原则
 
 1. 目录名表达职责，不表达宣传词。
-2. `core/` 只放产品主流程，不放所有“重要代码”。
+2. `core/` 预留给产品主流程；当前不承载 agent loop。
 3. `agents/` 放智能体角色和智能体循环。
 4. `features/` 放用户可感知功能。
 5. `capabilities/` 放可注册、可调用能力。
@@ -56,6 +56,7 @@ core/
 8. `platform/` 放事件、状态、schema、错误等共享底座。
 9. 兼容代理必须薄，且文档里标明不是活跃实现。
 10. 不为了好看做大爆炸重命名，每批必须可验证。
+11. 同一概念只能有一个主目录，其他位置只能是 adapter 或 compatibility proxy。
 
 ## 建议目标结构
 
@@ -63,21 +64,20 @@ core/
 
 ```text
 src/isotope/
-  core/                 # 产品主流程：session / conversation / dispatch / response
+  core/                 # 预留给产品主流程；当前不承载 agent loop
   features/             # 用户功能：chat / tasks / projects / files / research
   agents/               # 智能体角色与 agent loop
     loop/
   capabilities/         # 能力注册、能力运行、工具与技能
     tools/
     skills/
-  models/               # LLM / embedding / rerank 适配
-    llm/
-  rag/                  # 接入、切分、检索、索引
+  llm/                  # LLM / embedding / rerank provider
+  rag/                  # 已有资料接入和检索能力；暂不扩张空目录
   memory/               # 长期记忆、总结、上下文
   workspace/            # 项目、文件、artifact、git 工作区
   execution/            # terminal / process / sandbox / browser
   integrations/         # Codex / MCP / GitHub / VS Code 等外部系统
-  interfaces/           # HTTP / CLI / SDK facade
+  interfaces/           # 当前库内 HTTP facade；暂不扩张 SDK / CLI 层
   runtime/              # 进程内运行容器和启动边界
   platform/             # events / schemas / state / registry / errors / ids
   common/               # 少量无业务含义的通用工具
@@ -94,8 +94,8 @@ src/isotope/
 | `core/runtime.py` | 和 `runtime/` 撞名 | 删除空壳或并入 `agents/loop/` |
 | `runtime/server.py` | `server` 太泛 | `runtime/in_process.py` 或 `runtime/app_runtime.py` |
 | `features/chat/product_chat.py` | product 前缀多余 | `features/chat/flow.py` 或 `features/chat/service.py` |
-| `integrations/llm/provider.py` | 可接受，但更像模型层 | `models/llm/provider.py` |
-| `integrations/llm/tool_bridge.py` | 可接受，但语义偏模型工具桥 | `models/llm/tool_bridge.py` |
+| `integrations/llm/provider.py` | LLM 不是普通外部系统集成 | `llm/provider.py` |
+| `integrations/llm/tool_bridge.py` | LLM 工具桥属于模型交互层 | `llm/tool_bridge.py` |
 | `execution/terminal_backend.py` | backend 泛，像临时实现 | `execution/terminal_runner.py` |
 | `platform/schemas/models.py` | `models` 太泛 | `platform/schemas/domain.py` 或拆成 `actions.py` |
 | `platform/errors.py` | `KernelError` 残留 | 后续评估 `CoreError` 兼容迁移 |
@@ -110,6 +110,7 @@ src/isotope/
 - `workspace/artifacts.py`：可接受。
 - `rag/ingestion.py`、`rag/retrieval.py`：可接受。
 - `capabilities/catalog.py`：可接受。
+- `interfaces/http.py`：当前测试和 demo 大量使用，先保留为库内 facade。
 - `integrations/codex/`：外部接入语义明确。
 - `assistant/` 兼容代理：暂时保留，后续统一删。
 
@@ -121,8 +122,9 @@ src/isotope/
 
 - 新建 `src/isotope/agents/loop/`。
 - 将当前 `core/loop_*` 迁入该目录。
-- `core/` 暂时只留空包或兼容代理。
+- `core/` 暂时只留空包或兼容代理，不新增空的产品主流程文件。
 - 旧路径 `isotope.core.*`、`isotope.assistant.*`、`isotope.agent_loop_*` 保持可导入。
+- 同步 [import-map](./import-map.md)，记录旧路径、新路径和计划删除节点。
 
 这是最该先做的一批，因为它直接修正 `core` 误用。
 
@@ -136,15 +138,23 @@ src/isotope/
 
 推荐用 `runtime/in_process.py`，因为当前 `InProcessServer` 本来就不是真 HTTP server。
 
-### 批次三：模型层拆出
+### 批次三：LLM 层拆出
 
 目标：
 
-- 建立 `src/isotope/models/llm/`。
+- 建立 `src/isotope/llm/`。
 - 把 `integrations/llm/provider.py` 和 `tool_bridge.py` 迁过去。
 - `integrations/` 继续放 Codex、MCP、GitHub 等外部系统接入。
 
-这样更符合 AI 应用常见结构。
+不采用 `models/llm/` 是为了避免和 Pydantic schema、数据库模型或 `platform/schemas/models.py` 混淆。
+
+### 批次三点五：interfaces 边界收紧
+
+目标：
+
+- 当前 `interfaces/http.py` 先保留，因为 demo 和测试大量使用。
+- `interfaces/` 只表示库内 facade，不表示真正 `apps/api/` 或 SDK。
+- 不新增 `interfaces/cli.py`、`interfaces/sdk.py`，除非已有明确调用方。
 
 ### 批次四：功能层扩展
 
@@ -160,6 +170,7 @@ src/isotope/
 
 - 给顶层兼容代理建立清单。
 - 明确哪些只是旧路径，哪些仍被外部或测试使用。
+- 每个兼容代理写明新路径和计划删除节点。
 - 等主线稳定后再删除一批旧代理。
 
 ## 当前推荐决策

@@ -37,6 +37,7 @@
 22. `assistant` 命名收束：活跃循环实现已迁入 `core/`，`assistant/` 只保留兼容代理。
 23. demo 旧叙事清理：活跃 agent-loop demo 统一改用 `app_friction`。
 24. 命名与目录审计：已写 [naming-and-structure-review](./naming-and-structure-review.md)。
+25. 外部审查吸收：已加入 [chatgpt审查](./chatgpt审查.md) 和 [import-map](./import-map.md)。
 
 ## 最近完成：命名与目录审计
 
@@ -45,7 +46,9 @@
 - 对比 ChatGPT 设想的 `core/` 和真实 `src/isotope/core/`。
 - 确认当前 `core/loop_*` 更像 agent loop，不像产品主流程。
 - 提出先迁到 `src/isotope/agents/loop/` 的候选方案。
-- 列出 runtime、models、features、兼容代理的后续命名批次。
+- 采纳审查意见：`core/` 暂不扩张空壳，`llm/` 优先于 `models/llm/`，
+  `interfaces/` 只保留当前库内 facade。
+- 新增 `import-map.md`，作为兼容代理和后续删除计划的清单。
 
 验收：
 
@@ -75,10 +78,11 @@
 - `src/isotope/runtime/`：进程内运行入口。
 - `src/isotope/workspace/`：文件、项目、git 工作区。
 - `src/isotope/rag/`：接入、检索、索引。
+- `src/isotope/llm/`：建议中的模型服务层，优先于 `models/llm/`。
 - `src/isotope/memory/`：记忆、总结、上下文。
 - `src/isotope/policy/`：权限、审批、风险。
 - `src/isotope/platform/`：事件、schema、registry、state、lifecycle。
-- `src/isotope/interfaces/`：HTTP 风格 facade、CLI facade。
+- `src/isotope/interfaces/`：当前只作为库内 HTTP facade，不扩张成 CLI / SDK。
 
 ## 验证命令
 
