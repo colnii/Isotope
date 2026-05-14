@@ -245,7 +245,7 @@ Next suggested batch:
 
 `Capability Search / Launch Plan Boundary`
 
-Status: `ready_docs_only`
+Status: `complete / docs-only`
 
 Goal: define the smallest preflight / launch-plan surface over `CapabilityCatalog` and `CapabilityRunner` so applications can search capabilities and understand whether a capability can be launched before execution.
 
@@ -256,6 +256,29 @@ Suggested scope:
 - define deterministic search / low-sensitive launch plan shape
 - no LLM router, provider-backed execution, `ask`, `interactive`, workflow engine, product shell, or self-evolution
 - if implemented later, likely red tests around `CapabilityRunner.search(...)`, `CapabilityRunner.plan(...)`, and optional CLI `search` / `plan`
+
+Evidence:
+
+- Added `docs/capability-search-launch-plan-boundary-v0.2.md`.
+- Boundary defines deterministic catalog search and low-sensitive launch plan as no-side-effect preflight.
+- Future LLM router must reuse the launch plan shape; current slice does not implement LLM routing or provider execution.
+
+Next suggested batch:
+
+`Capability Search / Launch Plan Red Tests`
+
+Status: `ready_red_only`
+
+Suggested red tests:
+
+- `tests/isotope_kernel/test_capability_search_launch_plan.py`
+- optional later `tests/isotope_kernel/test_capability_runner_cli_search_plan.py`
+
+Expected first failures:
+
+- `CapabilityRunner.search_capabilities(...)` missing.
+- `CapabilityRunner.plan_capability_run(...)` missing.
+- CLI `search` / `plan` missing if optional CLI tests are included.
 
 ## 37. Current Batch
 
