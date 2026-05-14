@@ -104,6 +104,8 @@ scripts/
 - 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`。
 - RAG 边界：`ingestion.py` 与 `retrieval.py` 已迁入 `src/isotope/rag/`。
 - 记忆边界：`memory.py` 已迁成 `src/isotope/memory/` 包。
+- 权限策略：`policy.py` 已迁成 `src/isotope/policy/` 包。
+- 平台注册表与错误：`action_registry.py`、`errors.py` 已迁入 `src/isotope/platform/`。
 - 旧根路径保留轻量兼容导出，方便后续逐步改调用点。
 
 ## 第一批建议
@@ -123,6 +125,7 @@ scripts/
 - `src/isotope/policy/`
 - `src/isotope/platform/schemas/`
 - `src/isotope/platform/events/`
+- `src/isotope/platform/registry/`
 - `src/isotope/common/`
 
 暂缓完整展开：

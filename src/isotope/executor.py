@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from .action_registry import ActionTypeRegistry
+from .platform.registry.actions import ActionTypeRegistry
 from .codex_task import (
     CodexTaskAdapter,
     CodexTaskExecutionError,

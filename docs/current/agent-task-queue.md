@@ -24,22 +24,22 @@
 9. 聊天功能入口：产品聊天入口已迁入 `src/isotope/features/chat/`。
 10. 助手循环入口：`agent_loop_*` 已迁入 `src/isotope/assistant/`。
 11. 资源层入口：workspace、artifact、RAG、memory 边界已迁入对应目录。
+12. 权限与注册表入口：policy、action registry、errors 已迁入新目录。
 
-## 最近完成：资源层入口迁移
+## 最近完成：权限与注册表入口迁移
 
 完成内容：
 
-- 将 `workspace.py` 迁成 `src/isotope/workspace/` 包。
-- 将 `artifact_store.py` 迁入 `src/isotope/workspace/artifacts.py`。
-- 将 `ingestion.py`、`retrieval.py` 迁入 `src/isotope/rag/`。
-- 将 `memory.py` 迁成 `src/isotope/memory/` 包。
-- 保留旧根路径兼容导出，方便历史测试和调用点逐步更新。
+- 将 `policy.py` 迁成 `src/isotope/policy/` 包。
+- 将 `action_registry.py` 迁入 `src/isotope/platform/registry/actions.py`。
+- 将 `errors.py` 迁入 `src/isotope/platform/errors.py`。
+- 更新核心运行路径导入，并保留旧根路径兼容导出。
 
 验收：
 
-- 旧路径 `isotope.artifact_store`、`isotope.retrieval`、`isotope.ingestion` 仍可导入。
-- 新路径 `isotope.workspace.artifacts`、`isotope.rag.retrieval` 等可直接导入。
-- workspace、artifact、memory、ingestion、retrieval 相关测试和全量测试通过。
+- 旧路径 `isotope.policy`、`isotope.action_registry`、`isotope.errors` 仍可导入。
+- 新路径 `isotope.platform.registry.actions`、`isotope.platform.errors` 可直接导入。
+- policy、registry、error 相关测试和全量测试通过。
 
 ## 下一批次：应用内分层迁移
 
@@ -47,7 +47,7 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 把当前平铺模块逐步迁入 `assistant/`、`features/`、`platform/` 等层级。
-- 下一步迁移执行、策略或 HTTP/API 入口，不恢复旧包名。
+- 下一步迁移执行或 HTTP/API 入口，不恢复旧包名。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
-from .action_registry import ActionTypeRegistry
+from .platform.registry.actions import ActionTypeRegistry
 from .codex_cli import (
     DEFAULT_CODEX_CLI_MAX_OUTPUT_BYTES,
     CodexCliBackend,

@@ -11,7 +11,7 @@ from collections.abc import Mapping
 from copy import deepcopy
 from typing import Any
 
-from ...errors import KernelError
+from ...platform.errors import KernelError
 from ...http_api import HttpResponse
 
 

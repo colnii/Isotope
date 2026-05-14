@@ -5,7 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-from .action_registry import ActionTypeRegistry
+from .platform.registry.actions import ActionTypeRegistry
 from .ids import new_id
 from .models import ActionProposal
 from .terminal import validate_argv

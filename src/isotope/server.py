@@ -12,12 +12,12 @@ from .action_compiler import ActionCompiler
 from .assistant.loop_control import build_agent_loop_control, build_agent_loop_tick_policy
 from .assistant.loop_planner_adapter import run_agent_loop_planner_step
 from .assistant.loop_step import run_agent_loop_step
-from .action_registry import ActionTypeRegistry
+from .platform.registry.actions import ActionTypeRegistry
 from .workspace.artifacts import ArtifactStore
 from .event_store import FileEventStore
 from .events import CanonicalEvent
 from .executor import Executor, ToolHandler
-from .errors import KernelError, KernelPermissionError, not_enabled_result
+from .platform.errors import KernelError, KernelPermissionError, not_enabled_result
 from .ids import new_id
 from .models import ActionProposal, ImportedSnapshot, PolicyDecision
 from .policy import PolicyEngine

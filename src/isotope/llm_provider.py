@@ -11,7 +11,7 @@ from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Protocol
 
-from .errors import KernelError
+from .platform.errors import KernelError
 from .model_tool_bridge import submit_model_tool_call
 
 

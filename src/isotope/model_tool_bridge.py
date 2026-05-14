@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .errors import KernelError
+from .platform.errors import KernelError
 from .terminal import validate_argv
 
 _KERNEL_ERROR_CATEGORIES = {

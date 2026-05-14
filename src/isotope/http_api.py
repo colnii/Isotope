@@ -12,7 +12,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from .errors import KernelError
+from .platform.errors import KernelError
 from .server import InProcessServer
 
 
