@@ -6,7 +6,7 @@
 
 本文 review `approval-tool-runner` spike 曾暴露的 API friction：approval-gated input 需要直接调用 `InProcessServer.submit_tool_request(...)`。该 friction 当前已由 `InProcessServer.submit_action(...)` first slice 降低。
 
-本轮目标不是产品化 tool runner，也不是打开 HTTP product API。目标是判断这个 friction 属于 kernel design issue、server facade/helper gap、demo glue，还是可接受的 v0 shape。
+本轮目标不是产品化 tool runner，也不是打开 HTTP product API。目标是判断这个 friction 属于 core design issue、server facade/helper gap、demo glue，还是可接受的 v0 shape。
 
 当前 evidence：
 
@@ -37,7 +37,7 @@
 
 ## 3. Classification
 
-| Friction | Classification | Kernel impact | Suggested action |
+| Friction | Classification | Core impact | Suggested action |
 | --- | --- | --- | --- |
 | `submit_tool_request(...)` naming exposes tool-specific surface | server facade/helper gap | low | fixed by narrow `submit_action(...)` helper |
 | approval-gated submission needs explicit `requires_approval=True` | server facade/helper gap | low-medium | keep explicit flag for now; do not infer approval |
@@ -46,9 +46,9 @@
 
 ## 4. Layer Decision
 
-Kernel layer:
+Core layer:
 
-- No kernel contract rewrite is required.
+- No core contract rewrite is required.
 - The existing action chain, policy decision, approval boundary, executor ownership, event log, and projector remain the source of truth.
 - The helper must not create an action, approval, execution, or artifact outside canonical events.
 

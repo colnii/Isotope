@@ -4,9 +4,9 @@
 
 ## 1. Purpose
 
-本文记录 `agent-loop-friction` deterministic app-layer spike。它回答一个窄问题：在不实现 real LLM planning loop、scheduler、provider adapter、real HTTP server 或 product multi-agent UX 的前提下，现有 public kernel helpers 能否支撑一轮最小代理循环式编排。
+本文记录 `agent-loop-friction` deterministic app-layer spike。它回答一个窄问题：在不实现 real LLM planning loop、scheduler、provider adapter、real HTTP server 或 product multi-agent UX 的前提下，现有 public core helpers 能否支撑一轮最小代理循环式编排。
 
-这个 spike 不是 Isotope kernel 的完整 Agent loop。它只是应用层压力测试，用来判断下一步是否有 concrete `kernel_friction` 值得带回 mainline。
+这个 spike 不是 Isotope core 的完整 Agent loop。它只是应用层压力测试，用来判断下一步是否有 concrete `app_friction` 值得带回 mainline。
 
 ## 2. Scenario
 
@@ -36,7 +36,7 @@ PYTHONPATH=/home/lumber/Github/isotope/.worktrees/app-agent-loop-friction/src \
 7. bind workspace through `InProcessServer.bind_workspace(...)`。
 8. resolve approval and resume execution。
 9. verify replay / checkpoint。
-10. emit `kernel_friction` report and next development step。
+10. emit `app_friction` report and next development step。
 
 ## 3. Result
 
@@ -44,7 +44,7 @@ PYTHONPATH=/home/lumber/Github/isotope/.worktrees/app-agent-loop-friction/src \
 
 - `agent_loop_friction_ok=true`
 - `private_append_required=false`
-- `kernel_friction=[]`
+- `app_friction=[]`
 - replay / checkpoint pass
 - no artifact full content in plain / trace / JSON output
 - `model_status=not_used`
@@ -53,7 +53,7 @@ PYTHONPATH=/home/lumber/Github/isotope/.worktrees/app-agent-loop-friction/src \
 - `network_listener_status=not_used`
 - `memory_status=boundary_only`
 
-Interpretation: current public helpers are enough for this deterministic in-process composition. This branch did not expose a new kernel helper gap.
+Interpretation: current public helpers are enough for this deterministic in-process composition. This branch did not expose a new core helper gap.
 
 ## 4. Boundaries
 
@@ -77,8 +77,8 @@ Next suggested branch-local step:
 
 `Real App-Layer Planner Adapter Friction Spike`
 
-Goal: put a tiny planner adapter in front of the same `agent-loop-friction` flow, still deterministic or fixture-backed, and require it to output a structured `kernel_friction` report. The adapter may decide the next symbolic step, but it must not call a real LLM yet.
+Goal: put a tiny planner adapter in front of the same `agent-loop-friction` flow, still deterministic or fixture-backed, and require it to output a structured `app_friction` report. The adapter may decide the next symbolic step, but it must not call a real LLM yet.
 
 Stop if the next step requires real LLM, scheduler, provider adapter, real HTTP server, real worker process, filesystem mutation, public SDK, or product UX decisions.
 
-Only reopen kernel mainline if the next spike produces non-empty `kernel_friction` with exact files, failing tests, and a narrow helper / boundary / replay / checkpoint / API ergonomics gap.
+Only reopen mainline if the next spike produces non-empty `app_friction` with exact files, failing tests, and a narrow helper / boundary / replay / checkpoint / API ergonomics gap.

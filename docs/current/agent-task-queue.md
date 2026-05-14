@@ -1,6 +1,6 @@
 # Agent 任务队列
 
-状态：`当前入口 / core 命名收束`
+状态：`当前入口 / 旧叙事清理`
 
 ## 当前事实
 
@@ -35,21 +35,21 @@
 20. 平台 schema/event：活跃代码已切到 `platform/schemas/` 与 `platform/events/`，旧根路径保留兼容代理。
 21. 资源/RAG 兼容入口：`artifact_store.py`、`retrieval.py`、`ingestion.py` 已改为模块代理。
 22. `assistant` 命名收束：活跃循环实现已迁入 `core/`，`assistant/` 只保留兼容代理。
+23. demo 旧叙事清理：活跃 agent-loop demo 统一改用 `app_friction`。
 
-## 最近完成：`assistant` 命名收束
+## 最近完成：demo 旧叙事清理
 
 完成内容：
 
-- 根据最新目录说明，将产品主流程命名从泛化 `assistant` 收束为 `core`。
-- 将 loop control、planner adapter、loop step 和 real planner contract 迁入 `src/isotope/core/`。
-- 保留 `isotope.assistant.*` 与旧根路径兼容入口，避免破坏历史调用。
+- 将活跃 agent-loop demo 的输出字段和人类可读 trace 改为 `app_friction`。
+- 同步相关测试和 `docs/features/` 下的当前 app spike / friction review 文档。
+- 旧文件名、历史 review 路径和 `KernelError` 兼容类名暂不在本批迁移。
 
 验收：
 
-- 旧路径 `isotope.agent_loop_*`、`isotope.real_planner_adapter_contract` 仍可导入。
-- 兼容路径 `isotope.assistant.*` 仍可导入。
-- 新路径 `isotope.core.*` 可直接导入。
-- agent loop 相关测试和全量测试需通过。
+- `agent-loop-*` demo plain、trace、JSON 输出使用 `app_friction`。
+- agent loop demo 测试和全量测试需通过。
+- `src/isotope/demo.py`、相关 agent-loop 测试和 `docs/features/` 当前文档不再传播旧的底座摩擦字段。
 
 ## 下一批次：应用内分层迁移
 

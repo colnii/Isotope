@@ -15,7 +15,7 @@ REQUIRED_TEXT_FIELDS = (
     "planner_adapter_friction_ok: true",
     "planner_adapter_status: deterministic_fixture",
     "planner_decision_count:",
-    "kernel_friction_count: 0",
+    "app_friction_count: 0",
     "private_append_required: false",
     "model_status: not_used",
     "scheduler_status: not_used",
@@ -31,7 +31,7 @@ REQUIRED_JSON_FIELDS = {
     "planner_decisions",
     "planner_decision_count",
     "agent_loop_friction_ok",
-    "kernel_friction",
+    "app_friction",
     "private_append_required",
     "replay_ok",
     "checkpoint_ok",
@@ -93,7 +93,7 @@ def test_planner_adapter_plain_cli_prints_boundary_summary():
     assert "real llm" not in result.stdout.lower()
 
 
-def test_planner_adapter_json_reports_symbolic_decisions_and_no_kernel_gap():
+def test_planner_adapter_json_reports_symbolic_decisions_and_no_core_gap():
     data = _run_demo_json("--scenario", SCENARIO)
 
     assert REQUIRED_JSON_FIELDS.issubset(data)
@@ -102,7 +102,7 @@ def test_planner_adapter_json_reports_symbolic_decisions_and_no_kernel_gap():
     assert data["planner_adapter_status"] == "deterministic_fixture"
     assert data["agent_loop_friction_ok"] is True
     assert data["private_append_required"] is False
-    assert data["kernel_friction"] == []
+    assert data["app_friction"] == []
     assert data["planner_decision_count"] >= 4
     actions = [decision["action"] for decision in data["planner_decisions"]]
     assert actions[:5] == [

@@ -74,7 +74,7 @@ CLI 是有价值的，但在没有明确调用压力时不是最优下一步。
 - 没有真实 provider-backed capability。
 - 没有用户级 capability permission / profile / favorites。
 
-这些是 application-layer / product-shell pressure，不是当前 kernel blocker。
+这些是 application-layer / product-shell pressure，不是当前 core blocker。
 
 ## 6. Recommended Next Path
 
@@ -85,7 +85,7 @@ CLI 是有价值的，但在没有明确调用压力时不是最优下一步。
 1. 如果应用层马上要用 capability runner：先在应用层调用 Python API，记录真实 friction。
 2. 如果需要命令行：再开 `Capability Runner CLI Boundary`，先 docs-only，再 TDD。
 3. 如果要接 real LLM capability：单独开 `Provider-backed Capability Runner Boundary`，不要塞进当前 thin shell。
-4. 如果要做中台 UI / bot / desktop shell：在应用层分支设计 product shell，不在 kernel mainline 里直接扩 hub。
+4. 如果要做中台 UI / bot / desktop shell：在应用层分支设计 product shell，不在 mainline 里直接扩 hub。
 
 默认不要继续添加 capability ids，也不要复制 aggressive branch 的 `capability_hub.py`。
 

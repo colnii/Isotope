@@ -13,11 +13,11 @@
 - `../architecture/worker-handoff-helper-boundary-v0.2.md`
 - `worker-handoff-helper-closure-review.md`
 - aggressive-dev `c7e0b32`
-- review mailbox result: `worker-handoff-gap --json` now reports `private_append_required=false` and `kernel_friction=[]`
+- review mailbox result: `worker-handoff-gap --json` now reports `private_append_required=false` and `app_friction=[]`
 
 ## 3. Candidate Slices
 
-| Candidate | Kernel surface | Fit | Risk | Judgment |
+| Candidate | Core surface | Fit | Risk | Judgment |
 | --- | --- | --- | --- | --- |
 | Worker handoff app spike | worker lifecycle, delegation policy, workspace grants, artifact `ResourceRef` handoff, replay/checkpoint | high | can accidentally imply real concurrency | recommended as red-test-only next batch |
 | Session / run lifecycle review | multi-run continuity, run finalization, pause/cancel boundaries | medium | may become product workflow design | defer until worker spike exposes run-boundary friction |
@@ -68,7 +68,7 @@ Stop if the spike requires:
 
 ## 7. Decision
 
-`Worker Handoff App Spike` is the right next pressure point because worker handoff app composition remains one of the few open kernel-level gaps not yet covered by an app-shaped scenario. The next mainline step should be red tests only. If those tests reveal only app-local glue, keep kernel unchanged; if they reveal bounded helper/read-model/replay/checkpoint friction, open a narrow green slice.
+`Worker Handoff App Spike` is the right next pressure point because worker handoff app composition remains one of the few open core-level gaps not yet covered by an app-shaped scenario. The next mainline step should be red tests only. If those tests reveal only app-local glue, keep core unchanged; if they reveal bounded helper/read-model/replay/checkpoint friction, open a narrow green slice.
 
 ## 8. Follow-Up
 
@@ -76,7 +76,7 @@ Aggressive-dev commit `1993521` covered this pressure point before mainline open
 
 - `status=ok`
 - `private_append_required=false`
-- `kernel_friction=[]`
+- `app_friction=[]`
 - no real worker runtime / scheduler / process spawn / remote worker / container / git worktree / real HTTP / LLM / provider / public SDK expansion
 
-Current decision: do not start `Worker Handoff App Spike Red Tests` on mainline unless a later app-layer report identifies a new concrete `kernel_friction`. The selection remains useful as the boundary record for why the worker handoff app pressure point was valid and why it is now paused.
+Current decision: do not start `Worker Handoff App Spike Red Tests` on mainline unless a later app-layer report identifies a new concrete `app_friction`. The selection remains useful as the boundary record for why the worker handoff app pressure point was valid and why it is now paused.

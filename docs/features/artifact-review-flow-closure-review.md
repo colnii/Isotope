@@ -6,7 +6,7 @@
 
 `artifact-review` 可以标为 first app spike complete / closed for now。
 
-它已经证明一个 deterministic / in-process app-shaped flow 可以组合当前 kernel boundaries，而不需要 real LLM、real HTTP server、provider adapter、real filesystem mutation、semantic retrieval / ranking 或 product artifact review facade。
+它已经证明一个 deterministic / in-process app-shaped flow 可以组合当前 core boundaries，而不需要 real LLM、real HTTP server、provider adapter、real filesystem mutation、semantic retrieval / ranking 或 product artifact review facade。
 
 本轮未发现需要修改 `src/` 或 `tests/` 的 correctness bug。
 

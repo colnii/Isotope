@@ -21,17 +21,17 @@
 | --- | --- | --- | --- | --- |
 | approval-gated input used `server.submit_tool_request(...)` | demo could not express approval-gated action through a compact action helper | facade / helper gap | medium | fixed by `InProcessServer.submit_action(...)` |
 | approval id lookup scans canonical events | demo used to find `approval_id` by scanning events after pending approval | read-model helper gap | medium-high | fixed by approval lookup helper |
-| workspace binding uses explicit `workspace.bound` | demo previously appended a canonical workspace binding event for the spike | kernel / server integration gap | high, but bounded | fixed by workspace binding helper |
+| workspace binding uses explicit `workspace.bound` | demo previously appended a canonical workspace binding event for the spike | core / server integration gap | high, but bounded | fixed by workspace binding helper |
 
-No correctness bug was found in the current spike. The awkwardness is useful evidence that the kernel surface is still too raw for developer ergonomics, not evidence that the event-sourced contracts are broken.
+No correctness bug was found in the current spike. The awkwardness is useful evidence that the core surface is still too raw for developer ergonomics, not evidence that the event-sourced contracts are broken.
 
 ## 3. Answers
 
 ### Does `server.submit_tool_request(...)` show a missing approval-gated helper?
 
-Yes, and this has now been reduced by a server-level facade helper. It was primarily a facade/helper gap, not a kernel contract bug.
+Yes, and this has now been reduced by a server-level facade helper. It was primarily a facade/helper gap, not a core contract bug.
 
-The kernel already supports pending approval, canonical `approval.requested`, `approval.resolved`, resume through the executor path, and original `PolicyDecision.grants` preservation. The awkward part is that the demo needs to call the server helper directly because the current HTTP facade input route only models plain text input.
+The core path already supports pending approval, canonical `approval.requested`, `approval.resolved`, resume through the executor path, and original `PolicyDecision.grants` preservation. The awkward part is that the demo needs to call the server helper directly because the current HTTP facade input route only models plain text input.
 
 The first helper slice adds `InProcessServer.submit_action(...)`. It accepts compact `call_tool` intent, still compiles to canonical `ActionProposal`, still runs policy, still uses `PolicyDecision.grants`, still preserves approval pause / resume, and still executes through the existing executor path.
 
@@ -53,7 +53,7 @@ The helper reads projected approval summaries, does not append events, and does 
 
 ### Does manual `workspace.bound` show missing workspace binding integration?
 
-Yes, but this is a larger kernel / server integration gap.
+Yes, but this is a larger core / server integration gap.
 
 `workspace.bound` is already the correct canonical event shape for the first workspace substrate slice. The friction was ownership: the spike used to create the binding explicitly, while a real developer path expects a policy-granted workspace binding helper or server boundary to create it.
 
@@ -68,7 +68,7 @@ This does not silently become filesystem mutation, container setup, git worktree
 
 ## 4. Layering
 
-Kernel-layer issues:
+Core-layer issues:
 
 - Workspace binding ownership is integrated into a minimal server helper for `shared_ro`.
 - Approval-gated action submission now has a narrow server helper and still cannot bypass action chain, policy, or canonical events.
@@ -77,7 +77,7 @@ Kernel-layer issues:
 Facade/helper issues:
 
 - Approval lookup should use projected `RunState.approvals` instead of event scans.
-- A narrow helper can hide common read-model plumbing without changing kernel semantics.
+- A narrow helper can hide common read-model plumbing without changing core semantics.
 - `InProcessServer.submit_action(...)` is the current in-process helper; it is not a product API.
 
 Demo glue issues:

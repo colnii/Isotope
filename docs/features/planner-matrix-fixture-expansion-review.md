@@ -8,7 +8,7 @@
 
 结论：**默认先暂停扩展。** 如果用户还想要一个 runnable spike，下一条最值得做的是 **restart after planner pause**。
 
-这一步不实现代码，不扩大 kernel mainline，也不把 planner runner 抽成新 module。
+这一步不实现代码，不扩大 mainline，也不把 planner runner 抽成新 module。
 
 ## 2. Candidate Fixtures
 
@@ -16,7 +16,7 @@
 
 价值：能证明 planner 触发 approval 后，如果审批被拒绝，runner 不会继续执行后续 action。
 
-判断：有用，但不是最优先。approval deny 在现有 approval boundary 中已经有较多覆盖；继续加它更像补 demo completeness，不太可能暴露新的 kernel friction。
+判断：有用，但不是最优先。approval deny 在现有 approval boundary 中已经有较多覆盖；继续加它更像补 demo completeness，不太可能暴露新的 app friction。
 
 ### Worker Handoff Denial Path
 
@@ -32,7 +32,7 @@
 
 ### Memory Query Deferred Path
 
-价值：能再次确认 memory query 仍是 deferred capability，不应被偷偷实现成 kernel feature。
+价值：能再次确认 memory query 仍是 deferred capability，不应被偷偷实现成 core feature。
 
 判断：暂不优先。当前 matrix 已有 `real_llm_plan` blocked deferred capability；再加 memory query 主要是边界说明价值，runnable 价值有限。
 
@@ -60,7 +60,7 @@ That fixture should remain demo-local and should only report whether public help
 
 Stop instead of implementing if the next slice requires:
 
-- changing kernel append-only event semantics
+- changing core append-only event semantics
 - changing executor grants semantics
 - extracting `agent_loop` / `orchestration` / `planner_runner` before a second non-demo caller exists
 - treating memory query as mandatory loop stage

@@ -4,9 +4,9 @@
 
 ## 1. Purpose
 
-本文记录 `agent-loop-planner-friction` deterministic planner-adapter spike。它是 `agent-loop-friction` 的下一步：在同一套 public kernel helpers 前面放一个 tiny planner adapter，让 planner 产出 symbolic decisions（符号化决策），再由 app-layer runner 执行这些决策。
+本文记录 `agent-loop-planner-friction` deterministic planner-adapter spike。它是 `agent-loop-friction` 的下一步：在同一套 public core helpers 前面放一个 tiny planner adapter，让 planner 产出 symbolic decisions（符号化决策），再由 app-layer runner 执行这些决策。
 
-这个 spike 仍不是 real Agent loop。它不调用真实 LLM，不实现 scheduler，不启动 provider adapter，也不进入 product multi-agent UX。它只验证：如果未来应用层 planner 决定下一步动作，当前 kernel public surface 是否会马上卡住。
+这个 spike 仍不是 real Agent loop。它不调用真实 LLM，不实现 scheduler，不启动 provider adapter，也不进入 product multi-agent UX。它只验证：如果未来应用层 planner 决定下一步动作，当前 core public surface 是否会马上卡住。
 
 ## 2. Scenario
 
@@ -46,7 +46,7 @@ Runner 只执行这些 symbolic decisions，不让 planner 直接写 canonical e
 - `planner_decision_count=6`
 - `agent_loop_friction_ok=true`
 - `private_append_required=false`
-- `kernel_friction=[]`
+- `app_friction=[]`
 - replay / checkpoint pass
 - no model prompt / model response in JSON
 - no artifact full content in plain / trace / JSON output
@@ -56,7 +56,7 @@ Runner 只执行这些 symbolic decisions，不让 planner 直接写 canonical e
 - `network_listener_status=not_used`
 - `memory_status=boundary_only`
 
-Interpretation: a tiny app-layer planner adapter can drive the current deterministic loop through public helpers without exposing a new kernel helper gap.
+Interpretation: a tiny app-layer planner adapter can drive the current deterministic loop through public helpers without exposing a new core helper gap.
 
 ## 4. Boundaries
 
@@ -83,10 +83,10 @@ Next suggested branch-local step:
 
 Goal: keep the same deterministic planner adapter, but add a tiny fixture matrix with at least:
 
-1. happy path: current planner decisions produce `kernel_friction=[]`。
-2. blocked path: planner requests a deferred capability such as `real_llm_plan` or `memory_query` and the app-layer runner reports it as app/product-deferred friction, not a kernel implementation request。
+1. happy path: current planner decisions produce `app_friction=[]`。
+2. blocked path: planner requests a deferred capability such as `real_llm_plan` or `memory_query` and the app-layer runner reports it as app/product-deferred friction, not a core implementation request。
 3. malformed path: planner emits an unknown symbolic action and the runner fails closed without appending partial events。
 
 Stop if this requires real LLM, scheduler, provider adapter, real HTTP server, real worker process, filesystem mutation, public SDK, or product UX decisions.
 
-Only reopen kernel mainline if the matrix produces non-empty concrete `kernel_friction` with exact files, failing tests, and a narrow helper / boundary / replay / checkpoint / API ergonomics gap.
+Only reopen mainline if the matrix produces non-empty concrete `app_friction` with exact files, failing tests, and a narrow helper / boundary / replay / checkpoint / API ergonomics gap.

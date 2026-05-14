@@ -13,10 +13,10 @@ Agent 先做到“需要人审批”，然后程序重启。重启后，它还�
 - scenario: `agent-loop-planner-restart-pause`
 - approval pause before restart: yes
 - resume after restart: yes
-- `kernel_friction=[]`
+- `app_friction=[]`
 - `private_append_required=false`
 
-注意：这只证明“审批暂停后重启还能继续”这条底层路通了。它不表示完整 Agent loop 产品已经完成，也不表示 Isotope 只做 kernel。
+注意：这只证明“审批暂停后重启还能继续”这条底层路通了。它不表示完整 Agent loop 产品已经完成，也不表示 Isotope 只做底座。
 
 ## 2. What Changed
 

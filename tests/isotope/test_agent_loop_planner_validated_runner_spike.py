@@ -17,7 +17,7 @@ REQUIRED_TEXT_FIELDS = (
     "valid_plan_executed: true",
     "invalid_plan_blocked: true",
     "invalid_plan_partial_events_appended: false",
-    "kernel_friction_count: 0",
+    "app_friction_count: 0",
     "model_status: not_used",
 )
 
@@ -32,8 +32,8 @@ REQUIRED_JSON_FIELDS = {
     "invalid_plan_error_code",
     "invalid_plan_partial_events_appended",
     "agent_loop_friction_ok",
-    "kernel_friction",
-    "kernel_friction_count",
+    "app_friction",
+    "app_friction_count",
     "private_append_required",
     "replay_ok",
     "checkpoint_ok",
@@ -105,8 +105,8 @@ def test_planner_validated_runner_json_runs_only_after_validator_accepts():
     assert data["valid_plan_executed"] is True
     assert data["agent_loop_friction_ok"] is True
     assert data["private_append_required"] is False
-    assert data["kernel_friction"] == []
-    assert data["kernel_friction_count"] == 0
+    assert data["app_friction"] == []
+    assert data["app_friction_count"] == 0
     assert data["replay_ok"] is True
     assert data["checkpoint_ok"] is True
 

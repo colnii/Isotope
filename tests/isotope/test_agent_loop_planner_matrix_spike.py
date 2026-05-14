@@ -17,7 +17,7 @@ REQUIRED_TEXT_FIELDS = (
     "happy_path_ok: true",
     "blocked_deferred_ok: true",
     "malformed_fail_closed_ok: true",
-    "kernel_friction_count: 0",
+    "app_friction_count: 0",
     "model_status: not_used",
 )
 
@@ -27,8 +27,8 @@ REQUIRED_JSON_FIELDS = {
     "planner_matrix_ok",
     "fixture_count",
     "fixtures",
-    "kernel_friction",
-    "kernel_friction_count",
+    "app_friction",
+    "app_friction_count",
     "app_deferred_friction",
     "model_status",
     "scheduler_status",
@@ -102,12 +102,12 @@ def test_planner_matrix_json_reports_happy_blocked_and_malformed_paths():
     assert data["scenario"] == SCENARIO
     assert data["planner_matrix_ok"] is True
     assert data["fixture_count"] == 3
-    assert data["kernel_friction"] == []
-    assert data["kernel_friction_count"] == 0
+    assert data["app_friction"] == []
+    assert data["app_friction_count"] == 0
 
     happy = _fixture(data, "happy_path")
     assert happy["status"] == "ok"
-    assert happy["kernel_friction"] == []
+    assert happy["app_friction"] == []
     assert happy["private_append_required"] is False
     assert happy["replay_ok"] is True
     assert happy["checkpoint_ok"] is True
@@ -115,14 +115,14 @@ def test_planner_matrix_json_reports_happy_blocked_and_malformed_paths():
     blocked = _fixture(data, "blocked_deferred_capability")
     assert blocked["status"] == "blocked_deferred"
     assert blocked["blocked_capability"] in {"real_llm_plan", "memory_query"}
-    assert blocked["kernel_friction"] == []
+    assert blocked["app_friction"] == []
     assert blocked["app_deferred_friction"]
 
     malformed = _fixture(data, "malformed_symbolic_action")
     assert malformed["status"] == "failed_closed"
     assert malformed["unknown_action"] == "unknown_symbolic_action"
     assert malformed["partial_events_appended"] is False
-    assert malformed["kernel_friction"] == []
+    assert malformed["app_friction"] == []
 
 
 def test_planner_matrix_keeps_deferred_integrations_disabled():

@@ -14,7 +14,7 @@ REQUIRED_TEXT_FIELDS = (
     "scenario: agent-loop-friction",
     "agent_loop_friction_ok: true",
     "private_append_required: false",
-    "kernel_friction_count: 0",
+    "app_friction_count: 0",
     "replay_ok: true",
     "checkpoint_ok: true",
     "model_status: not_used",
@@ -28,8 +28,8 @@ REQUIRED_JSON_FIELDS = {
     "transport",
     "agent_loop_friction_ok",
     "loop_steps",
-    "resolved_kernel_surfaces",
-    "kernel_friction",
+    "resolved_app_surfaces",
+    "app_friction",
     "private_append_required",
     "replay_ok",
     "checkpoint_ok",
@@ -90,17 +90,17 @@ def test_agent_loop_friction_plain_cli_prints_boundary_summary():
     assert "real llm" not in result.stdout.lower()
 
 
-def test_agent_loop_friction_json_reports_no_kernel_gap_for_current_public_helpers():
+def test_agent_loop_friction_json_reports_no_core_gap_for_current_public_helpers():
     data = _run_demo_json("--scenario", SCENARIO)
 
     assert REQUIRED_JSON_FIELDS.issubset(data)
     assert data["scenario"] == SCENARIO
     assert data["agent_loop_friction_ok"] is True
     assert data["private_append_required"] is False
-    assert data["kernel_friction"] == []
+    assert data["app_friction"] == []
     assert len(data["loop_steps"]) >= 5
-    assert "submit_action" in data["resolved_kernel_surfaces"]
-    assert "submit_worker_handoff" in data["resolved_kernel_surfaces"]
+    assert "submit_action" in data["resolved_app_surfaces"]
+    assert "submit_worker_handoff" in data["resolved_app_surfaces"]
     assert data["replay_ok"] is True
     assert data["checkpoint_ok"] is True
 

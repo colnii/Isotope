@@ -6,7 +6,7 @@
 
 本文复盘 `artifact-review` usability pressure test（可用性压力测试）暴露的 developer ergonomics（开发者易用性）问题。
 
-目标不是继续实现新 helper，而是把 friction 分层：哪些是 kernel design issue（内核设计问题）、哪些是 facade / helper gap（门面 / 辅助接口缺口）、哪些只是 demo glue（演示胶水代码），以及下一步是否需要用户 / 产品判断。
+目标不是继续实现新 helper，而是把 friction 分层：哪些是 core design issue（核心设计问题）、哪些是 facade / helper gap（门面 / 辅助接口缺口）、哪些只是 demo glue（演示胶水代码），以及下一步是否需要用户 / 产品判断。
 
 ## 2. Reviewed Evidence
 
@@ -44,11 +44,11 @@
 | Review action handoff uses `submit_action(...)` and returns artifact ref / ids. | acceptable current helper | This is the desired pattern after submit-action helper work. | Keep as-is. |
 | Review summary is deterministic and fixed text. | demo-only | It proves flow shape without real LLM. | Keep as-is until a later spike explicitly needs richer deterministic review logic. |
 
-## 4. Kernel-Level Findings
+## 4. Core-Level Findings
 
-No kernel correctness bug was found.
+No core correctness bug was found.
 
-The current kernel boundaries are working as intended:
+The current core boundaries are working as intended:
 
 - projector consumes canonical events, not artifact full content.
 - review result is represented through artifact / `ResourceRef` / event handoff.
@@ -71,7 +71,7 @@ A minimal helper should:
 - avoid real LLM, real HTTP server, provider adapter, semantic retrieval, ranking, memory query, container, git worktree, or process spawn.
 - preserve event store append-only semantics and executor grants semantics.
 
-The implemented helper reduces demo glue without changing the kernel truth model.
+The implemented helper reduces demo glue without changing the core truth model.
 
 ## 6. Demo-Only Findings
 
@@ -109,7 +109,7 @@ Why not B. review artifact helper:
 
 Why not C. artifact review facade:
 
-- A full facade would hide useful kernel boundaries too early.
+- A full facade would hide useful core boundaries too early.
 - The only clear repeated pain is source artifact preparation.
 
 Why not D. leave as-is:

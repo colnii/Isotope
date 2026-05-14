@@ -38,11 +38,11 @@ def run_agent_loop_real_planner_contract_step(
     provider_result_id = _required_string(provider_result, "provider_result_id")
     provider_status = _required_string(provider_result, "provider_status")
     if provider_status != "completed":
-        raise ValueError("planner provider result must be completed before kernel execution")
+        raise ValueError("planner provider result must be completed before core execution")
     if provider_result.get("raw_prompt_quarantined") is not True:
-        raise ValueError("raw planner provider payload must be quarantined before kernel execution")
+        raise ValueError("raw planner provider payload must be quarantined before core execution")
     if provider_result.get("raw_response_quarantined") is not True:
-        raise ValueError("raw planner provider payload must be quarantined before kernel execution")
+        raise ValueError("raw planner provider payload must be quarantined before core execution")
 
     parsed_output = provider_result.get("parsed_planner_output")
     if not isinstance(parsed_output, dict):

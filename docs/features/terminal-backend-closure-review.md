@@ -33,7 +33,7 @@ Historical Terminal Backend first slice 可以标为 `first slice complete / clo
 - Artifact-policy 已固定：transcript / diff / changed files 等完整内容只能进 artifact，不进 event / read model；full-content-in-event/read-model policy 会在 backend 调用前被拒绝。
 - Low-sensitive backend summary 已投影到 `action.completed.terminal_backend` 和 `RunState.actions[*].terminal_backend`，只包含 backend id/version/protocol/mode/status/reason code，不暴露本机路径、env、backend session id 或完整输出。
 
-这足够关闭当前 mainline kernel slice。下一步是否接系统终端 runner 是新的 implementation spike，不应由当前闭环 review 自动开始。
+这足够关闭当前 mainline core slice。下一步是否接系统终端 runner 是新的 implementation spike，不应由当前闭环 review 自动开始。
 
 ## 3. Verified Contracts
 
@@ -64,7 +64,7 @@ Historical Terminal Backend first slice 可以标为 `first slice complete / clo
 - Public SDK。
 - 新 dependency。
 
-Kernel 语义也未被扩大：
+Core 语义也未被扩大：
 
 - Event store append-only 语义不变。
 - Executor grants 语义不变。
@@ -126,10 +126,10 @@ Post-closure addendum:
 - 用户明确要求接系统终端 runner 或要求做 adapter spike。
 - Application-layer prototype 或 external review 证明当前 request / artifact / summary contract 不够用。
 - 安全 review 需要新增明确的 capture policy、workspace policy 或 runner health contract。
-- 真实 runner 的 streaming / cancel / workspace behavior 需要进入 kernel boundary，而不是只停留在 app shell。
+- 真实 runner 的 streaming / cancel / workspace behavior 需要进入 core boundary，而不是只停留在 app shell。
 
 ## 8. Next Suggested Path
 
-默认下一步：停止 kernel expansion，等待系统终端 runner 需求、application-layer friction 或 external review feedback。
+默认下一步：停止 core expansion，等待系统终端 runner 需求、application-layer friction 或 external review feedback。
 
 如果用户明确要继续接真实终端，下一批应先写 system terminal runner design / red tests，再实现最小 runner contract。不要在没有 runner 边界的情况下继续扩大 allowlist、打开 arbitrary shell、实现 PTY、接 container / git worktree、加 product terminal route 或新增依赖。

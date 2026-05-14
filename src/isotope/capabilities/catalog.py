@@ -130,7 +130,7 @@ class CapabilityCatalog:
                 _builtin_capability(
                     "approval.tool.runner",
                     title="Approval Tool Runner",
-                    description="Exercise approval-gated tool execution through kernel boundaries.",
+                    description="Exercise approval-gated tool execution through core boundaries.",
                     tags=("approval", "tool", "runner"),
                 ),
                 _builtin_capability(

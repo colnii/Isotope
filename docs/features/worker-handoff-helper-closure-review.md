@@ -61,7 +61,7 @@ Future delegation policy integration should decide whether worker handoff should
 Next recommended mainline action is not a deeper worker runtime. Prefer one of:
 
 - `Aggressive Worker Handoff Follow-up Review`: wait for aggressive-dev to consume `submit_worker_handoff(...)` and report whether friction is closed in the app spike
-- `Session / Run Lifecycle Boundary`: if continuing kernel gap work
+- `Session / Run Lifecycle Boundary`: if continuing core gap work
 - `Error Taxonomy Boundary`: if helper/client error handling becomes the next friction
 
 Do not proceed to real worker runtime, process management, remote workers, real HTTP, real LLM, provider adapters, or public SDK without a new bounded batch.

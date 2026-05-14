@@ -11,18 +11,18 @@
 - Agent 能停下来等人审批。
 - 程序重启后，Agent 还能找回待审批事项并继续完成。
 
-结论：**目前没有发现必须改 kernel 主线的缺口。**
+结论：**目前没有发现必须改主线核心的缺口。**
 
 这句话只表示“底座暂时够用”，不表示 Agent loop 产品已经做完。
 
 ## 2. Scope Clarification
 
-Isotope 不是只做 kernel。
+Isotope 不是只做底座。
 
 更准确的说法是：
 
 - Isotope 的长期方向包括 LLM 自动规划、Agent loop、worker、调度和产品层体验。
-- 当前采用 kernel-first 开发顺序，是先把事件记录、权限、artifact、审批、重启恢复这些底座做稳。
+- 当前采用 底座优先 开发顺序，是先把事件记录、权限、artifact、审批、重启恢复这些底座做稳。
 - 本分支验证的是：未来接 LLM 自动规划时，底层暂停 / 恢复 / 审批 / 重启恢复这些基础能力目前没有明显缺口。
 - 本分支没有证明完整 Agent loop 已经完成。
 
@@ -71,5 +71,5 @@ Recommended default: keep this branch as an app-layer proof branch until the use
 If continuing development later, only reopen when someone can point to a real problem, such as:
 
 - “真实 app 调这个接口很别扭。”
-- “reviewer 认为这里必须变成 kernel helper。”
+- “reviewer 认为这里必须变成 core helper。”
 - “某个公开 helper 不够用，导致 app 必须扫 raw events 或 private append。”

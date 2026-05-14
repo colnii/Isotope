@@ -1,4 +1,4 @@
-"""Developer demo entrypoint for the Isotope kernel slices."""
+"""Developer demo entrypoint for the Isotope application slices."""
 
 from __future__ import annotations
 
@@ -637,7 +637,7 @@ def _run_external_snapshot_review_spike(root: Path) -> dict[str, Any]:
     input_response = app.request(
         "POST",
         f"/runs/{run_id}/input",
-        {"text": "native kernel state remains canonical"},
+        {"text": "native application state remains canonical"},
     )
     native_state = app.server.get_run_state(run_id)
     native_actions = {key: dict(value) for key, value in native_state.actions.items()}
@@ -819,9 +819,9 @@ def _run_agent_loop_friction_spike(root: Path) -> dict[str, Any]:
         "handoff worker result through public helper",
         "pause on approval-gated action",
         "resume approved action",
-        "review kernel friction report",
+        "review app friction report",
     ]
-    resolved_kernel_surfaces = [
+    resolved_app_surfaces = [
         "create_source_artifact",
         "submit_worker_handoff",
         "submit_action",
@@ -852,9 +852,9 @@ def _run_agent_loop_friction_spike(root: Path) -> dict[str, Any]:
         "transport": "in_process",
         "agent_loop_friction_ok": agent_loop_friction_ok,
         "loop_steps": loop_steps,
-        "resolved_kernel_surfaces": resolved_kernel_surfaces,
-        "kernel_friction": [],
-        "kernel_friction_count": 0,
+        "resolved_app_surfaces": resolved_app_surfaces,
+        "app_friction": [],
+        "app_friction_count": 0,
         "private_append_required": private_append_required,
         "worker_handoff_ok": handoff["status"] == "completed",
         "approval_pending_before_resume": pending["status"] == "pending_user_approval",
@@ -877,7 +877,7 @@ def _run_agent_loop_friction_spike(root: Path) -> dict[str, Any]:
         "memory_query_status": "not_enabled",
         "next_development_step": (
             "Run the same friction review behind a real app-layer planner adapter; "
-            "only reopen kernel mainline if that produces non-empty kernel_friction."
+            "only reopen mainline if that produces non-empty app_friction."
         ),
     }
 
@@ -1006,8 +1006,8 @@ def _run_agent_loop_planner_adapter_spike(root: Path) -> dict[str, Any]:
         "planner_decisions": planner_decisions,
         "planner_decision_count": len(planner_decisions),
         "agent_loop_friction_ok": agent_loop_friction_ok,
-        "kernel_friction": [],
-        "kernel_friction_count": 0,
+        "app_friction": [],
+        "app_friction_count": 0,
         "private_append_required": private_append_required,
         "worker_handoff_ok": handoff["status"] == "completed",
         "approval_pending_before_resume": pending["status"] == "pending_user_approval",
@@ -1030,7 +1030,7 @@ def _run_agent_loop_planner_adapter_spike(root: Path) -> dict[str, Any]:
         "memory_query_status": "not_enabled",
         "next_development_step": (
             "Introduce a fixture-backed planner fixture matrix with one intentionally blocked path; "
-            "only reopen kernel mainline if that matrix produces non-empty kernel_friction."
+            "only reopen mainline if that matrix produces non-empty app_friction."
         ),
     }
 
@@ -1084,13 +1084,13 @@ def _run_agent_loop_planner_matrix_spike(root: Path) -> dict[str, Any]:
     malformed = _run_planner_malformed_action_fixture(root / "malformed-action")
     fixtures = [happy, blocked, malformed]
     app_deferred_friction = list(blocked["app_deferred_friction"])
-    kernel_friction: list[dict[str, Any]] = []
+    app_friction: list[dict[str, Any]] = []
     planner_matrix_ok = (
         happy["planner_adapter_friction_ok"] is True
         and blocked["status"] == "blocked_deferred"
         and malformed["status"] == "failed_closed"
         and malformed["partial_events_appended"] is False
-        and kernel_friction == []
+        and app_friction == []
     )
 
     return {
@@ -1106,8 +1106,8 @@ def _run_agent_loop_planner_matrix_spike(root: Path) -> dict[str, Any]:
         "happy_path_ok": happy["planner_adapter_friction_ok"],
         "blocked_deferred_ok": blocked["status"] == "blocked_deferred",
         "malformed_fail_closed_ok": malformed["partial_events_appended"] is False,
-        "kernel_friction": kernel_friction,
-        "kernel_friction_count": len(kernel_friction),
+        "app_friction": app_friction,
+        "app_friction_count": len(app_friction),
         "app_deferred_friction": app_deferred_friction,
         "model_status": "not_used",
         "scheduler_status": "not_used",
@@ -1230,8 +1230,8 @@ def _run_agent_loop_planner_restart_pause_spike(root: Path) -> dict[str, Any]:
         "approval_id": approval_id,
         "approval_pending_before_restart": approval_pending_before_restart,
         "restart_resume_ok": restart_resume_ok,
-        "kernel_friction": [],
-        "kernel_friction_count": 0,
+        "app_friction": [],
+        "app_friction_count": 0,
         "private_append_required": private_append_required,
         "worker_handoff_ok": handoff["status"] == "completed",
         "approval_resume_ok": resolution["status"] == "completed",
@@ -1380,8 +1380,8 @@ def _run_agent_loop_planner_io_validator_spike(root: Path) -> dict[str, Any]:
         "artifact_count_after_validation": artifacts_after,
         "partial_events_appended": events_after != events_before,
         "artifact_created_during_validation": artifacts_after != artifacts_before,
-        "kernel_friction": [],
-        "kernel_friction_count": 0,
+        "app_friction": [],
+        "app_friction_count": 0,
         "model_status": "not_used",
         "scheduler_status": "not_used",
         "provider_status": "not_used",
@@ -1454,8 +1454,8 @@ def _run_agent_loop_planner_validated_runner_spike(root: Path) -> dict[str, Any]
         "invalid_plan_partial_events_appended": invalid_plan_partial_events_appended,
         "invalid_plan_artifact_created": invalid_plan_artifact_created,
         "agent_loop_friction_ok": runner["agent_loop_friction_ok"],
-        "kernel_friction": [],
-        "kernel_friction_count": 0,
+        "app_friction": [],
+        "app_friction_count": 0,
         "private_append_required": runner["private_append_required"],
         "worker_handoff_ok": runner["worker_handoff_ok"],
         "approval_pending_before_resume": runner["approval_pending_before_resume"],
@@ -2798,7 +2798,7 @@ def _planner_happy_fixture_summary(result: dict[str, Any]) -> dict[str, Any]:
         "planner_adapter_status": result["planner_adapter_status"],
         "planner_decision_count": result["planner_decision_count"],
         "private_append_required": result["private_append_required"],
-        "kernel_friction": list(result["kernel_friction"]),
+        "app_friction": list(result["app_friction"]),
         "replay_ok": result["replay_ok"],
         "checkpoint_ok": result["checkpoint_ok"],
         "event_count": result["event_count"],
@@ -2810,7 +2810,7 @@ def _run_planner_blocked_deferred_fixture() -> dict[str, Any]:
         "fixture_id": "blocked_deferred_capability",
         "status": "blocked_deferred",
         "blocked_capability": "real_llm_plan",
-        "reason": "real LLM planning is product/app-layer deferred and is not a kernel implementation request",
+        "reason": "real LLM planning is product/app-layer deferred and is not a core implementation request",
         "app_deferred_friction": [
             {
                 "kind": "deferred_capability",
@@ -2818,7 +2818,7 @@ def _run_planner_blocked_deferred_fixture() -> dict[str, Any]:
                 "classification": "app_or_product_deferred",
             }
         ],
-        "kernel_friction": [],
+        "app_friction": [],
         "partial_events_appended": False,
     }
 
@@ -2852,7 +2852,7 @@ def _run_planner_malformed_action_fixture(root: Path) -> dict[str, Any]:
         "events_before": before_count,
         "events_after": after_count,
         "partial_events_appended": after_count != before_count,
-        "kernel_friction": [],
+        "app_friction": [],
     }
 
 
@@ -3158,7 +3158,7 @@ def _format_agent_loop_friction_trace(result: dict[str, Any]) -> str:
         f"source artifact summary/ref created: {_artifact_id(result['source_artifact_ref'])}",
         f"handoff worker result: {_bool_text(result['worker_handoff_ok'])}",
         f"policy-gated approval pause/resume verified: {_bool_text(result['approval_resume_ok'])}",
-        f"kernel friction count: {result['kernel_friction_count']}",
+        f"app friction count: {result['app_friction_count']}",
         f"private append required: {_bool_text(result['private_append_required'])}",
         f"replay verified: {_bool_text(result['replay_ok'])}",
         f"checkpoint verified: {_bool_text(result['checkpoint_ok'])}",
@@ -3180,7 +3180,7 @@ def _format_agent_loop_planner_friction_trace(result: dict[str, Any]) -> str:
     steps.extend(
         [
             f"policy-gated approval pause/resume verified: {_bool_text(result['approval_resume_ok'])}",
-            f"kernel friction count: {result['kernel_friction_count']}",
+            f"app friction count: {result['app_friction_count']}",
             f"private append required: {_bool_text(result['private_append_required'])}",
             f"replay verified: {_bool_text(result['replay_ok'])}",
             f"checkpoint verified: {_bool_text(result['checkpoint_ok'])}",
@@ -3204,7 +3204,7 @@ def _format_agent_loop_planner_matrix_trace(result: dict[str, Any]) -> str:
         "blocked_deferred_capability classified as app_or_product_deferred",
         f"fixture malformed_symbolic_action: {malformed['status']}",
         f"malformed_symbolic_action partial events appended: {_bool_text(malformed['partial_events_appended'])}",
-        f"kernel friction count: {result['kernel_friction_count']}",
+        f"app friction count: {result['app_friction_count']}",
         f"next development step: {result['next_development_step']}",
     ]
     return _format_trace_steps(result["scenario"], steps)
@@ -3221,7 +3221,7 @@ def _format_agent_loop_planner_restart_pause_trace(result: dict[str, Any]) -> st
         "planner reads pending approval after restart",
         f"resume approval action after restart: {_bool_text(result['restart_resume_ok'])}",
         f"final artifact ref created: {_artifact_id(result['final_artifact_ref'])}",
-        f"kernel friction count: {result['kernel_friction_count']}",
+        f"app friction count: {result['app_friction_count']}",
         f"private append required: {_bool_text(result['private_append_required'])}",
         f"replay verified: {_bool_text(result['replay_ok'])}",
         f"checkpoint verified: {_bool_text(result['checkpoint_ok'])}",
@@ -3247,7 +3247,7 @@ def _format_agent_loop_planner_io_validator_trace(result: dict[str, Any]) -> str
             "artifact full text request denied without grant",
             "replay state unchanged because validator does not execute actions",
             "checkpoint state unchanged because validator does not write checkpoints",
-            f"kernel friction count: {result['kernel_friction_count']}",
+            f"app friction count: {result['app_friction_count']}",
             f"model status: {result['model_status']}",
             f"next development step: {result['next_development_step']}",
         ]
@@ -3274,7 +3274,7 @@ def _format_agent_loop_planner_validated_runner_trace(result: dict[str, Any]) ->
                 "invalid plan partial events appended: "
                 f"{_bool_text(result['invalid_plan_partial_events_appended'])}"
             ),
-            f"kernel friction count: {result['kernel_friction_count']}",
+            f"app friction count: {result['app_friction_count']}",
             f"private append required: {_bool_text(result['private_append_required'])}",
             f"replay verified: {_bool_text(result['replay_ok'])}",
             f"checkpoint verified: {_bool_text(result['checkpoint_ok'])}",
@@ -3504,7 +3504,7 @@ def _format_agent_loop_friction_plain_text(result: dict[str, Any]) -> str:
         f"transport: {result['transport']}",
         f"agent_loop_friction_ok: {str(result['agent_loop_friction_ok']).lower()}",
         f"private_append_required: {str(result['private_append_required']).lower()}",
-        f"kernel_friction_count: {result['kernel_friction_count']}",
+        f"app_friction_count: {result['app_friction_count']}",
         f"worker_handoff_ok: {str(result['worker_handoff_ok']).lower()}",
         f"approval_resume_ok: {str(result['approval_resume_ok']).lower()}",
         f"workspace_binding_ok: {str(result['workspace_binding_ok']).lower()}",
@@ -3530,7 +3530,7 @@ def _format_agent_loop_planner_friction_plain_text(result: dict[str, Any]) -> st
         f"planner_decision_count: {result['planner_decision_count']}",
         f"agent_loop_friction_ok: {str(result['agent_loop_friction_ok']).lower()}",
         f"private_append_required: {str(result['private_append_required']).lower()}",
-        f"kernel_friction_count: {result['kernel_friction_count']}",
+        f"app_friction_count: {result['app_friction_count']}",
         f"worker_handoff_ok: {str(result['worker_handoff_ok']).lower()}",
         f"approval_resume_ok: {str(result['approval_resume_ok']).lower()}",
         f"workspace_binding_ok: {str(result['workspace_binding_ok']).lower()}",
@@ -3553,7 +3553,7 @@ def _format_agent_loop_planner_matrix_plain_text(result: dict[str, Any]) -> str:
         f"happy_path_ok: {str(result['happy_path_ok']).lower()}",
         f"blocked_deferred_ok: {str(result['blocked_deferred_ok']).lower()}",
         f"malformed_fail_closed_ok: {str(result['malformed_fail_closed_ok']).lower()}",
-        f"kernel_friction_count: {result['kernel_friction_count']}",
+        f"app_friction_count: {result['app_friction_count']}",
         f"model_status: {result['model_status']}",
         f"scheduler_status: {result['scheduler_status']}",
         f"memory_status: {result['memory_status']}",
@@ -3573,7 +3573,7 @@ def _format_agent_loop_planner_restart_pause_plain_text(result: dict[str, Any]) 
         f"approval_pending_before_restart: {str(result['approval_pending_before_restart']).lower()}",
         f"restart_resume_ok: {str(result['restart_resume_ok']).lower()}",
         f"private_append_required: {str(result['private_append_required']).lower()}",
-        f"kernel_friction_count: {result['kernel_friction_count']}",
+        f"app_friction_count: {result['app_friction_count']}",
         f"replay_ok: {str(result['replay_ok']).lower()}",
         f"checkpoint_ok: {str(result['checkpoint_ok']).lower()}",
         f"model_status: {result['model_status']}",
@@ -3597,7 +3597,7 @@ def _format_agent_loop_planner_io_validator_plain_text(result: dict[str, Any]) -
         f"overpowered_rejected: {str(result['overpowered_rejected']).lower()}",
         f"full_content_rejected: {str(result['full_content_rejected']).lower()}",
         f"partial_events_appended: {str(result['partial_events_appended']).lower()}",
-        f"kernel_friction_count: {result['kernel_friction_count']}",
+        f"app_friction_count: {result['app_friction_count']}",
         f"model_status: {result['model_status']}",
         f"scheduler_status: {result['scheduler_status']}",
         f"memory_status: {result['memory_status']}",
@@ -3623,7 +3623,7 @@ def _format_agent_loop_planner_validated_runner_plain_text(result: dict[str, Any
         ),
         f"agent_loop_friction_ok: {str(result['agent_loop_friction_ok']).lower()}",
         f"private_append_required: {str(result['private_append_required']).lower()}",
-        f"kernel_friction_count: {result['kernel_friction_count']}",
+        f"app_friction_count: {result['app_friction_count']}",
         f"replay_ok: {str(result['replay_ok']).lower()}",
         f"checkpoint_ok: {str(result['checkpoint_ok']).lower()}",
         f"model_status: {result['model_status']}",

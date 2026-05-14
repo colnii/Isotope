@@ -6,9 +6,9 @@ Acceptance：`accepted as developer demo`，详见 `v0.1-demo-acceptance.md`。
 
 ## 1. Purpose
 
-本文定义 v0.1 demo 的最小展示路径：用一个本地可运行命令展示 Isotope kernel 的核心闭环，而不是展示完整产品。
+本文定义 v0.1 demo 的最小展示路径：用一个本地可运行命令展示 Isotope core 的核心闭环，而不是展示完整产品。
 
-demo entrypoint 的目标是给开发者和 reviewer 一个稳定的 smoke path：不需要 real LLM、不需要 HTTP server、不需要外部 provider，也不需要真实 durable memory storage。它只展示当前 kernel slice 已经具备的 deterministic contract。
+demo entrypoint 的目标是给开发者和 reviewer 一个稳定的 smoke path：不需要 real LLM、不需要 HTTP server、不需要外部 provider，也不需要真实 durable memory storage。它只展示当前 core slice 已经具备的 deterministic contract。
 
 当前测试基线：`568 passed`。
 

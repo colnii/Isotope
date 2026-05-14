@@ -30,7 +30,7 @@ Removed friction:
 Layer:
 
 - read-model helper / facade issue
-- not a kernel correctness issue
+- not a core correctness issue
 
 ### Workspace binding glue
 
@@ -69,7 +69,7 @@ Remaining friction is now narrower:
 
 - `POST /runs/{run_id}/input` still has no approval-gated option.
 - HTTP approval-gated submission shape remains undefined.
-- `approval-tool-runner` still demonstrates a kernel helper path, not a product-level tool runner.
+- `approval-tool-runner` still demonstrates a core helper path, not a product-level tool runner.
 - The demo still depends on deterministic `write_artifact_tool`; it is not a real tool protocol.
 
 This remaining friction is mostly app / facade-level:
@@ -77,7 +77,7 @@ This remaining friction is mostly app / facade-level:
 - HTTP facade shape question: whether approval-gated submission belongs on `/input`, a new action route, or not in HTTP yet.
 - App helper question: future tiny app scenarios may want a small scenario runner helper, but not a product API.
 
-It is not currently a kernel-level blocker:
+It is not currently a core-level blocker:
 
 - canonical action proposal path exists.
 - policy / grants boundary exists.

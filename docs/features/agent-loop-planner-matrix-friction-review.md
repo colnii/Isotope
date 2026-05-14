@@ -7,7 +7,7 @@
 本文记录 `agent-loop-planner-matrix` fixture matrix spike。它在上一轮 deterministic planner adapter 基础上加入三个 planner fixture，用来区分：
 
 - happy path：当前 public helpers 能执行的 planner decisions。
-- blocked deferred path：planner 请求 deferred capability，但这不是 kernel implementation request。
+- blocked deferred path：planner 请求 deferred capability，但这不是 core implementation request。
 - malformed path：planner 输出未知 symbolic action，runner fail closed 且不追加 partial events。
 
 这个 spike 仍不是 real Agent loop。它不调用真实 LLM，不实现 scheduler，不启动 provider adapter，也不进入 product multi-agent UX。
@@ -48,21 +48,21 @@ Current result:
 
 - `status=ok`
 - `private_append_required=false`
-- `kernel_friction=[]`
+- `app_friction=[]`
 - replay / checkpoint pass
 
 ### Blocked Deferred Capability
 
 Fixture id: `blocked_deferred_capability`
 
-Planner requests `real_llm_plan`. The matrix classifies this as `app_or_product_deferred`, not as a kernel gap.
+Planner requests `real_llm_plan`. The matrix classifies this as `app_or_product_deferred`, not as a core gap.
 
 Current result:
 
 - `status=blocked_deferred`
 - `blocked_capability=real_llm_plan`
 - `app_deferred_friction` is non-empty
-- `kernel_friction=[]`
+- `app_friction=[]`
 - no real model prompt / response
 
 ### Malformed Symbolic Action
@@ -75,7 +75,7 @@ Current result:
 
 - `status=failed_closed`
 - `partial_events_appended=false`
-- `kernel_friction=[]`
+- `app_friction=[]`
 
 ## 4. Result
 
@@ -83,14 +83,14 @@ Current matrix result:
 
 - `planner_matrix_ok=true`
 - `fixture_count=3`
-- `kernel_friction_count=0`
+- `app_friction_count=0`
 - `model_status=not_used`
 - `scheduler_status=not_used`
 - `provider_status=not_used`
 - `network_listener_status=not_used`
 - `memory_status=boundary_only`
 
-Interpretation: the current fixture matrix still does not expose a mainline kernel helper gap. The next pressure point is not kernel code; it is whether this branch-local demo logic should become a reusable app-layer runner boundary.
+Interpretation: the current fixture matrix still does not expose a mainline core helper gap. The next pressure point is not core code; it is whether this branch-local demo logic should become a reusable app-layer runner boundary.
 
 ## 5. Next Development Step
 
@@ -102,4 +102,4 @@ Goal: decide whether the branch-local planner matrix should stay inside `demo.py
 
 Stop if this requires real LLM, scheduler, provider adapter, real HTTP server, real worker process, filesystem mutation, public SDK, or product UX decisions.
 
-Only reopen kernel mainline if a future reusable runner review produces non-empty concrete `kernel_friction` with exact files, failing tests, and a narrow helper / boundary / replay / checkpoint / API ergonomics gap.
+Only reopen mainline if a future reusable runner review produces non-empty concrete `app_friction` with exact files, failing tests, and a narrow helper / boundary / replay / checkpoint / API ergonomics gap.

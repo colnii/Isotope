@@ -22,7 +22,7 @@ Pre-helper evidence and current outcome：
 | Friction | Evidence | Classification | Impact | Suggested action |
 | --- | --- | --- | --- | --- |
 | demo manually appends `workspace.bound` | demo previously called `_append_workspace_binding_event(...)`; current tests assert the stale helper and private `server._append(...)` glue are absent from `demo.py` | helper/facade gap | medium-high | fixed by minimal server helper |
-| helper ownership unclear | `WorkspaceManager` validates grants, but does not append canonical events | kernel/server boundary gap | medium | keep helper in `InProcessServer` first |
+| helper ownership unclear | `WorkspaceManager` validates grants, but does not append canonical events | core/server boundary gap | medium | keep helper in `InProcessServer` first |
 | HTTP workspace route absent | no workspace binding HTTP route exists | acceptable v0 shape | low | keep out of scope |
 | real workspace substrate absent | no filesystem mutation, container, git worktree, or path engine | intentional deferred area | none for this slice | do not implement |
 
@@ -30,7 +30,7 @@ No correctness bug was found. The manual event append was explicit and still can
 
 ## 3. Layering
 
-Kernel / server issue:
+Core / server issue:
 
 - Something should own canonical `workspace.bound` event creation after a policy decision grants workspace access.
 - That owner must use `PolicyDecision.grants`, not requested workspace capabilities.

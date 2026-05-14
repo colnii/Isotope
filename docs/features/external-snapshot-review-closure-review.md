@@ -36,7 +36,7 @@
 - artifact provenance / review artifact handoff。
 - replay and checkpoint。
 
-`external-snapshot-review` covers a different kernel surface:
+`external-snapshot-review` covers a different core surface:
 
 - `ImportedSnapshot` slice model。
 - canonical `snapshot.imported` event projection。
@@ -80,6 +80,6 @@ These are future app / integration concerns, not blockers for closing the second
 Recommended next batch depends on the next review goal:
 
 - `App Spike Coverage Review` if the goal is to compare the two completed app spikes and identify remaining usability surfaces。
-- `Kernel Gap Review Refresh` if the goal is to return from app pressure tests to kernel design backlog。
+- `Core Gap Review Refresh` if the goal is to return from app pressure tests to core design backlog。
 
 Do not directly enter real provider adapter, webhook, real HTTP server, real LLM, filesystem mutation, or memory query engine work without a new design boundary and red tests.

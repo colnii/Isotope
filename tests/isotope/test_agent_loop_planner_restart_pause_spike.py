@@ -15,7 +15,7 @@ REQUIRED_TEXT_FIELDS = (
     "planner_restart_pause_ok: true",
     "approval_pending_before_restart: true",
     "restart_resume_ok: true",
-    "kernel_friction_count: 0",
+    "app_friction_count: 0",
     "private_append_required: false",
     "model_status: not_used",
     "scheduler_status: not_used",
@@ -31,8 +31,8 @@ REQUIRED_JSON_FIELDS = {
     "planner_decisions_after_restart",
     "approval_pending_before_restart",
     "restart_resume_ok",
-    "kernel_friction",
-    "kernel_friction_count",
+    "app_friction",
+    "app_friction_count",
     "private_append_required",
     "replay_ok",
     "checkpoint_ok",
@@ -104,8 +104,8 @@ def test_planner_restart_pause_json_reports_resume_after_restart():
     assert data["approval_pending_before_restart"] is True
     assert data["restart_resume_ok"] is True
     assert data["private_append_required"] is False
-    assert data["kernel_friction"] == []
-    assert data["kernel_friction_count"] == 0
+    assert data["app_friction"] == []
+    assert data["app_friction_count"] == 0
     assert data["replay_ok"] is True
     assert data["checkpoint_ok"] is True
     assert data["run_status"] == "completed"

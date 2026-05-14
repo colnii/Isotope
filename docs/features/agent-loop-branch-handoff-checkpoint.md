@@ -33,7 +33,7 @@ Review should focus on whether the boundary feels right:
 - Are symbolic planner decisions narrow enough?
 - Are bad outputs rejected early enough?
 - Does the demo accidentally imply real LLM / product Agent loop is done?
-- Is there any concrete app-layer friction that should become a kernel helper?
+- Is there any concrete app-layer friction that should become a core helper?
 
 ## 4. What Should Not Happen Next
 

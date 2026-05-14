@@ -4,11 +4,11 @@
 
 ## 1. What You Are Running
 
-`python -m isotope.demo` 会跑一个 deterministic kernel loop（确定性内核闭环）。
+`python -m isotope.demo` 会跑一个 deterministic core loop（确定性核心闭环）。
 
-它不是聊天机器人，不调用 LLM，不启动 HTTP server，也不连接外部服务。它只用本地临时目录跑通当前 Isotope kernel 的最小闭环：创建 session / run，生成一个确定性的 artifact-producing intent，通过 action chain 执行，写 canonical events，用 projector 得到 `RunState`，再验证 event replay 和 checkpoint-assisted rebuild。
+它不是聊天机器人，不调用 LLM，不启动 HTTP server，也不连接外部服务。它只用本地临时目录跑通当前 Isotope core 的最小闭环：创建 session / run，生成一个确定性的 artifact-producing intent，通过 action chain 执行，写 canonical events，用 projector 得到 `RunState`，再验证 event replay 和 checkpoint-assisted rebuild。
 
-这个 demo 的目的不是展示完整产品，而是让外部读者看到 kernel contract 已经能闭合。
+这个 demo 的目的不是展示完整产品，而是让外部读者看到 core contract 已经能闭合。
 
 如果想先看流程图，见 `demo-architecture-v0.1.md`。那份图只解释 v0.1 demo runtime path，不是完整 Isotope 架构图。
 

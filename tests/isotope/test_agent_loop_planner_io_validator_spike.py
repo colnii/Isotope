@@ -19,7 +19,7 @@ REQUIRED_TEXT_FIELDS = (
     "overpowered_rejected: true",
     "full_content_rejected: true",
     "partial_events_appended: false",
-    "kernel_friction_count: 0",
+    "app_friction_count: 0",
     "model_status: not_used",
 )
 
@@ -31,8 +31,8 @@ REQUIRED_JSON_FIELDS = {
     "rejected_fixture_count",
     "fixtures",
     "partial_events_appended",
-    "kernel_friction",
-    "kernel_friction_count",
+    "app_friction",
+    "app_friction_count",
     "model_status",
     "scheduler_status",
     "provider_status",
@@ -106,8 +106,8 @@ def test_planner_io_validator_json_accepts_valid_and_rejects_bad_outputs():
     assert data["planner_io_validator_ok"] is True
     assert data["valid_output_accepted"] is True
     assert data["rejected_fixture_count"] == 4
-    assert data["kernel_friction"] == []
-    assert data["kernel_friction_count"] == 0
+    assert data["app_friction"] == []
+    assert data["app_friction_count"] == 0
 
     malformed = _fixture(data, "malformed_output")
     assert malformed["status"] == "rejected"
