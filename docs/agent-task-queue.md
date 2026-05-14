@@ -133,7 +133,7 @@ Evidence:
 
 Next suggested mode:
 
-Next mode: inspect `codex/spike-aggressive-dev` only for additional small bounded mergeable slices if the user asks to continue branch integration; do not merge aggressive Capability Hub / self-evolution / product shell wholesale.
+Next mode: `Capability Runner Thin Shell Boundary` docs-only, if the user asks to continue. It should use the current `capability_catalog` and support only a tiny `list / describe / status / run` shell for existing product-candidate capabilities. Do not copy aggressive `capability_hub.py`, `self_evolution.py`, study companion slices, diagnostics, workflow engine, or product shell wholesale.
 
 ## Branch-Local Batch: Agent Loop Friction Spike
 

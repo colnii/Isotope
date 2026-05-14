@@ -16,6 +16,8 @@ Agent Loop Run Control / Step Driver 的 first slice 已实现，边界见 [docs
 
 Controlled terminal / provider slices 已从 `feature/controlled-terminal-exec` 合入：`terminal_exec` 是受控 argv-only terminal tool，不是 interactive shell；model-tool bridge 和 LLM provider routes 只验证 tool-call / approval / artifact handoff / terminal-tool loop 的 in-process contract，不启动真实 HTTP server，也不引入新依赖。
 
+Aggressive branch 剩余代码已做思路级 review，见 [docs/aggressive-remaining-code-review-v0.md](docs/aggressive-remaining-code-review-v0.md)。结论是 extract-only：不要整体合并 `capability_hub.py` / `self_evolution.py` / product shell；如果继续，下一步应先做 `Capability Runner Thin Shell` boundary。
+
 ## Quick Start
 
 ```bash
