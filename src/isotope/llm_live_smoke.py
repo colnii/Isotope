@@ -792,7 +792,7 @@ def _run_terminal_tool_smoke_command_at_root(
     *,
     environ: Mapping[str, str] | None,
 ) -> int:
-    from .http_api import create_http_app
+    from .interfaces.http import create_http_app
 
     provider = _fake_terminal_tool_provider() if args.fake_provider else None
     if provider is None:
@@ -872,7 +872,7 @@ def _run_product_chat_smoke_command_at_root(
     environ: Mapping[str, str] | None,
 ) -> int:
     from .codex_server import CodexCliServerConfig
-    from .http_api import create_llm_product_chat_http_app
+    from .interfaces.http import create_llm_product_chat_http_app
 
     provider = _fake_product_chat_provider() if args.fake_provider else None
     runner = _RecordingFakeCodexRunner()
@@ -985,7 +985,7 @@ def _run_product_chat_entry_command_at_root(
     environ: Mapping[str, str] | None,
 ) -> int:
     from .codex_server import CodexCliServerConfig
-    from .http_api import create_llm_product_chat_http_app
+    from .interfaces.http import create_llm_product_chat_http_app
 
     if args.fake_provider:
         provider = (
@@ -1077,7 +1077,7 @@ def _run_product_chat_entry_resume_command(
     environ: Mapping[str, str] | None,
 ) -> int:
     from .codex_server import CodexCliServerConfig
-    from .http_api import create_llm_product_chat_http_app
+    from .interfaces.http import create_llm_product_chat_http_app
 
     state_file = Path(args.resume_state)
     try:

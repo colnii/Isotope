@@ -34,6 +34,7 @@ src/
     execution/
     integrations/
       mcp/
+    interfaces/
     policy/
     platform/
       schemas/
@@ -61,6 +62,7 @@ scripts/
 - `memory/`：长期记忆存储、总结和共享上下文，不把所有检索都塞进这里。
 - `agents/`：子 agent 定义、角色和任务委派。
 - `integrations/`：MCP、GitHub、浏览器、VS Code 等外部接入。
+- `interfaces/`：HTTP 风格 facade、CLI facade 等对外入口适配层。
 - `policy/`：权限、风险、审批和审计。
 - `platform/`：事件、schema、registry、lifecycle 等底座雏形。
 - `common/`：通用工具，但不能变成无边界杂物目录。
@@ -107,6 +109,7 @@ scripts/
 - 权限策略：`policy.py` 已迁成 `src/isotope/policy/` 包。
 - 平台注册表与错误：`action_registry.py`、`errors.py` 已迁入 `src/isotope/platform/`。
 - 执行器：`executor.py` 已迁入 `src/isotope/execution/executor.py`。
+- 接口层：`http_api.py` 已迁入 `src/isotope/interfaces/http.py`。
 - 旧根路径保留轻量兼容导出，方便后续逐步改调用点。
 
 ## 第一批建议
@@ -127,6 +130,7 @@ scripts/
 - `src/isotope/platform/schemas/`
 - `src/isotope/platform/events/`
 - `src/isotope/platform/registry/`
+- `src/isotope/interfaces/`
 - `src/isotope/common/`
 
 暂缓完整展开：

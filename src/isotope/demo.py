@@ -11,7 +11,7 @@ from typing import Any
 
 from . import codex_server
 from .checkpoint_store import FileCheckpointStore
-from .http_api import (
+from .interfaces.http import (
     HttpApiApp,
     create_codex_cli_http_app,
     create_http_app,

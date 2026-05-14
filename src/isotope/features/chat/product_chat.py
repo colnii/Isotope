@@ -12,7 +12,7 @@ from copy import deepcopy
 from typing import Any
 
 from ...platform.errors import KernelError
-from ...http_api import HttpResponse
+from ...interfaces.http import HttpResponse
 
 
 DEFAULT_PRODUCT_CHAT_SYSTEM_MESSAGE = "Use the product chat route."

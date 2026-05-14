@@ -17,6 +17,7 @@
 | `terminal backend` | 终端后端，把终端命令封装成可测试执行层 | 工具 | `src/isotope/execution/terminal_backend.py`, `src/isotope/terminal_backend.py` |
 | `provider` | 模型服务适配器，连接外部模型服务 | 模型 | `src/isotope/llm_provider.py` |
 | `product chat` | 产品聊天入口，让模型调用工具并返回面向用户的回答 | 产品能力 | `src/isotope/features/chat/product_chat.py` |
+| `HttpApiApp` | 进程内 HTTP 风格接口，用于测试和应用边界，不监听端口 | 接口 | `src/isotope/interfaces/http.py` |
 | `artifact` | 产物记录，保存执行结果摘要和引用 | 平台数据 | `src/isotope/platform/schemas/models.py` |
 | `ArtifactStore` | 产物存储，负责保存和读取 artifact 元数据与内容 | 工作区资源 | `src/isotope/workspace/artifacts.py` |
 | `ResourceRef` | 资源引用，指向产物等对象而不是直接暴露全文 | 平台数据 | `src/isotope/platform/schemas/refs.py` |
