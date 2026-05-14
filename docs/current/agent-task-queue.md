@@ -25,21 +25,21 @@
 10. 助手循环入口：`agent_loop_*` 已迁入 `src/isotope/assistant/`。
 11. 资源层入口：workspace、artifact、RAG、memory 边界已迁入对应目录。
 12. 权限与注册表入口：policy、action registry、errors 已迁入新目录。
+13. 执行器入口：executor 已迁入 `src/isotope/execution/`。
 
-## 最近完成：权限与注册表入口迁移
+## 最近完成：执行器入口迁移
 
 完成内容：
 
-- 将 `policy.py` 迁成 `src/isotope/policy/` 包。
-- 将 `action_registry.py` 迁入 `src/isotope/platform/registry/actions.py`。
-- 将 `errors.py` 迁入 `src/isotope/platform/errors.py`。
-- 更新核心运行路径导入，并保留旧根路径兼容导出。
+- 将 `executor.py` 迁入 `src/isotope/execution/executor.py`。
+- 更新 `server.py` 的活跃导入路径。
+- 保留 `isotope.executor` 兼容导出，方便历史测试和调用点逐步更新。
 
 验收：
 
-- 旧路径 `isotope.policy`、`isotope.action_registry`、`isotope.errors` 仍可导入。
-- 新路径 `isotope.platform.registry.actions`、`isotope.platform.errors` 可直接导入。
-- policy、registry、error 相关测试和全量测试通过。
+- 旧路径 `isotope.executor` 仍可导入。
+- 新路径 `isotope.execution.executor` 可直接导入。
+- executor、terminal backend、tool invocation 相关测试和全量测试通过。
 
 ## 下一批次：应用内分层迁移
 
@@ -47,7 +47,7 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 把当前平铺模块逐步迁入 `assistant/`、`features/`、`platform/` 等层级。
-- 下一步迁移执行或 HTTP/API 入口，不恢复旧包名。
+- 下一步迁移 HTTP/API 入口或剩余工具适配器，不恢复旧包名。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

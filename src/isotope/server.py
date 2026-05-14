@@ -16,7 +16,7 @@ from .platform.registry.actions import ActionTypeRegistry
 from .workspace.artifacts import ArtifactStore
 from .event_store import FileEventStore
 from .events import CanonicalEvent
-from .executor import Executor, ToolHandler
+from .execution.executor import Executor, ToolHandler
 from .platform.errors import KernelError, KernelPermissionError, not_enabled_result
 from .ids import new_id
 from .models import ActionProposal, ImportedSnapshot, PolicyDecision

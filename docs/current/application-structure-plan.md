@@ -106,6 +106,7 @@ scripts/
 - 记忆边界：`memory.py` 已迁成 `src/isotope/memory/` 包。
 - 权限策略：`policy.py` 已迁成 `src/isotope/policy/` 包。
 - 平台注册表与错误：`action_registry.py`、`errors.py` 已迁入 `src/isotope/platform/`。
+- 执行器：`executor.py` 已迁入 `src/isotope/execution/executor.py`。
 - 旧根路径保留轻量兼容导出，方便后续逐步改调用点。
 
 ## 第一批建议
