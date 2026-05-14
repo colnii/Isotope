@@ -1,6 +1,6 @@
 # Capability Runner Thin Shell Boundary v0.2
 
-状态：`boundary / docs-only`
+状态：`first slice complete / closed for now`
 
 ## 1. 背景
 
@@ -207,3 +207,30 @@ Optional later:
 - shell / bot / desktop app。
 - workflow engine。
 - aggressive capability list 全量迁移。
+
+## 11. First Green Slice Evidence
+
+已实现：
+
+- `src/isotope_kernel/capability_runner.py`
+- `tests/isotope_kernel/test_capability_runner_thin_shell.py`
+
+当前 first slice 提供：
+
+- `CapabilityRunner`。
+- module-level `list_capabilities(...)` / `describe_capability(...)` / `get_capability_status(...)` / `run_capability(...)`。
+- catalog 仍是 capability metadata / shelf / readiness source of truth。
+- `run_capability(...)` 只执行 allowlisted product-candidate capability：
+  - `artifact.review` -> `artifact-review` deterministic scenario
+  - `external.snapshot.review` -> `external-snapshot-review` deterministic scenario
+  - `approval.tool.runner` -> `approval-tool-runner` deterministic scenario
+- unknown / diagnostic / experimental / provider-required / unallowlisted capability 在产生 side effect 前 fail closed。
+- result 只返回 low-sensitive summary，不返回 artifact full content / prompt / raw input。
+
+仍未实现：
+
+- CLI。
+- product capability hub。
+- real provider runner。
+- workflow engine。
+- study companion / self-evolution / product shell。

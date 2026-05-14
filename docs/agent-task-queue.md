@@ -2,7 +2,7 @@
 
 状态：`active`
 
-Current note: Controlled terminal / provider integration and DeepSeek direct-chat provider wrapper extraction are complete. Aggressive remaining code review is complete, and the next extract-only path is `Capability Runner Thin Shell`: a tiny catalog-backed runner boundary, not a wholesale merge of aggressive `capability_hub.py` / `self_evolution.py` / product shell.
+Current note: Controlled terminal / provider integration and DeepSeek direct-chat provider wrapper extraction are complete. Aggressive remaining code review is complete, and `Capability Runner Thin Shell` first slice is complete: a tiny catalog-backed runner over three deterministic product-candidate capabilities, not a wholesale merge of aggressive `capability_hub.py` / `self_evolution.py` / product shell.
 
 ## 1. Purpose
 
@@ -133,7 +133,7 @@ Evidence:
 
 Next suggested mode:
 
-Next mode: `Capability Runner Thin Shell Red Tests`, if the user asks to continue. Start red-only: create tests for a catalog-backed `list / describe / status / run` thin shell over existing product-candidate capabilities. Do not implement before red tests; do not copy aggressive `capability_hub.py`, `self_evolution.py`, study companion slices, diagnostics, workflow engine, or product shell wholesale.
+Next mode: `Capability Runner Thin Shell Closure Review`, if the user asks to continue. Start docs-only: confirm first slice is enough or identify a concrete follow-up such as a CLI boundary. Do not copy aggressive `capability_hub.py`, `self_evolution.py`, study companion slices, diagnostics, workflow engine, or product shell wholesale.
 
 ## 35. Current Batch
 
@@ -166,6 +166,38 @@ Suggested red tests:
 
 - `tests/isotope_kernel/test_capability_runner_thin_shell.py`
 - optional later `tests/isotope_kernel/test_capability_runner_cli_boundary.py`
+
+## 36. Current Batch
+
+Batch name: `Capability Runner Thin Shell Green Slice`
+
+Status: `complete`
+
+Goal: implement the smallest catalog-backed runner thin shell after red tests.
+
+Tasks:
+
+1. Write red tests for `isotope_kernel.capability_runner`: complete.
+2. Verify red failure is expected missing module: complete.
+3. Implement `CapabilityRunner` minimal green slice: complete.
+4. Verify targeted and full regression: complete.
+5. Sync README / AGENTS / current status / roadmap / inventory / queue: complete.
+6. Commit / push: complete.
+
+Evidence:
+
+- New module: `src/isotope_kernel/capability_runner.py`.
+- New tests: `tests/isotope_kernel/test_capability_runner_thin_shell.py`.
+- Runner uses `CapabilityCatalog` as source of truth.
+- Runner only allowlists `artifact.review`, `external.snapshot.review`, and `approval.tool.runner`.
+- Unknown / diagnostic / experimental / provider-required / unallowlisted capability fail closed before side effects.
+- No aggressive hub copy, workflow engine, product shell, study companion, self-evolution harness, real provider runner, new dependency, tag, or release.
+
+Next suggested batch:
+
+`Capability Runner Thin Shell Closure Review`
+
+Status: `ready_docs_only`
 
 ## Branch-Local Batch: Agent Loop Friction Spike
 
