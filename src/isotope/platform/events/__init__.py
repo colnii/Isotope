@@ -1,0 +1,1 @@
+"""Event boundaries for Isotope."""

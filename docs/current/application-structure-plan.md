@@ -1,6 +1,6 @@
 # 应用目录迁移方案
 
-状态：`包名迁移完成 / 待应用内分层`
+状态：`应用内分层进行中`
 
 主包已从 `src/isotope_kernel/` 迁移到 `src/isotope/`。
 后续 Isotope 应继续按 AI 应用软件组织目录，而不是围绕 `kernel` 命名。
@@ -89,6 +89,13 @@ scripts/
 旧顶层 `src/agents/` 已清理，不再作为活跃包。
 
 下一步是在 `src/isotope/` 内继续做应用分层，而不是恢复旧包名。
+
+## 已完成分层
+
+- 平台 schema：`models.py`、`refs.py`、`tool_protocol.py` 已迁入 `src/isotope/platform/schemas/`。
+- 平台事件：`events.py`、`event_schema.py` 已迁入 `src/isotope/platform/events/`。
+- 能力目录：`capability_catalog.py`、`capability_runner.py` 已迁入 `src/isotope/capabilities/`。
+- 旧根路径保留轻量兼容导出，方便后续逐步改调用点。
 
 ## 第一批建议
 
