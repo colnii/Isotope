@@ -105,7 +105,7 @@
 
 当前分支顺序：
 
-1. 收敛 `feature/app-terminal-exec-migration`。
+1. 收敛 `feature/app-terminal-exec-migration`。`已合入 main`
 2. 深审 `codex/spike-aggressive-dev`。
 3. 再看 agent-loop 链尾分支。
 
@@ -116,6 +116,7 @@
 - 已新增 `src/agents/executor/terminal_backend.py`。
 - 已新增 `tests/agents/` 下的终端执行层测试。
 - 已把旧 `src/isotope_kernel/terminal*.py` 入口改成短期兼容层。
+- 已通过 fast-forward 合入 `main`，未制造 merge commit。
 
 ## 验证
 

@@ -51,7 +51,7 @@ scripts/
 
 ## 已开始迁移
 
-当前迁移分支：`feature/app-terminal-exec-migration`
+当前迁移分支：`feature/app-terminal-exec-migration`，已 fast-forward 合入 `main`。
 
 第一片：
 
