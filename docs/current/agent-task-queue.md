@@ -36,27 +36,28 @@
 - `AGENTS.md` 不写临时分支规则。
 - Markdown 相对链接无断链。
 
-## 下一批次：目录结构设计
+## 下一批次：目录结构与包名迁移
 
 目标：
 
-- 先讨论并确定长期目录结构。
-- 再决定是否把 `src/isotope_kernel/` 迁到新目录。
+- 确定 `src/isotope/` 作为长期 Python 包命名空间。
+- 建立服务近期迁移的目录骨架。
+- 尽快把 `src/isotope_kernel/` 迁到新目录。
 - 迁移时保留短期兼容层，避免一次性破坏已有命令和测试。
+- 迁移完成后再恢复多分支并行开发。
 
 初始参考：
 
+- `apps/cli/`：命令行入口。
 - `apps/api/`：后端入口。
-- `apps/web/`：前端入口。
-- `apps/worker/`：异步任务入口。
-- `src/core/`：配置、数据库、日志、缓存、工具。
-- `src/models/`：LLM、embedding、reranker。
-- `src/agents/`：规划器、执行器、记忆、工具。
-- `src/rag/`：导入、切分、检索、索引。
-- `src/features/`：聊天、搜索、工作区、权限。
-- `src/workflows/`：LangGraph、DAG、pipeline。
-- `src/prompts/`：system、template、eval。
-- `src/schemas/`：pydantic、types。
+- `src/isotope/assistant/`：产品助手入口。
+- `src/isotope/features/`：聊天、项目助手、文件助手等可用功能。
+- `src/isotope/capabilities/`：工具、技能、能力注册。
+- `src/isotope/execution/`：shell、python、浏览器、沙箱执行。
+- `src/isotope/workspace/`：文件、项目、git 工作区。
+- `src/isotope/memory/`：记忆、检索、上下文。
+- `src/isotope/policy/`：权限、审批、风险。
+- `src/isotope/platform/`：事件、schema、registry、lifecycle。
 
 ## 验证命令
 
