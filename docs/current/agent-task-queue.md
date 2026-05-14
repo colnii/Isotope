@@ -79,6 +79,8 @@
 
 初审文档：[branch-audit-initial-2026-05-15](../reviews/branch-audit-initial-2026-05-15.md)
 
+刷新文档：[branch-audit-refresh-2026-05-15](../reviews/branch-audit-refresh-2026-05-15.md)
+
 每个分支需要输出：
 
 - 分支目标。
@@ -100,6 +102,12 @@
 - 从 `feature/controlled-terminal-exec` 抽取终端执行层。
 - 新代码放入应用化目录，不沿用 `isotope_kernel` 长期命名。
 - 先做最小可测切片，再考虑 LLM provider 和产品聊天入口。
+
+当前分支顺序：
+
+1. 收敛 `feature/app-terminal-exec-migration`。
+2. 深审 `codex/spike-aggressive-dev`。
+3. 再看 agent-loop 链尾分支。
 
 ## 验证
 
