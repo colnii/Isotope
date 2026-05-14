@@ -32,6 +32,7 @@ src/
     memory/
     workspace/
     execution/
+    runtime/
     integrations/
       mcp/
       llm/
@@ -61,6 +62,7 @@ scripts/
 - `capabilities/`：工具、技能和能力注册，不把所有东西都塞进 `tools/`。
 - `rag/`：外部资料接入、检索、切分和索引等资料问答能力。
 - `execution/`：shell、python、浏览器、桌面、沙箱等执行环境。
+- `runtime/`：进程内运行入口，串起会话、策略、执行、事件和状态读取。
 - `workspace/`：项目、文件、artifact 产物和 git 工作树边界。
 - `memory/`：长期记忆存储、总结和共享上下文，不把所有检索都塞进这里。
 - `agents/`：子 agent 定义、角色和任务委派。
@@ -115,6 +117,7 @@ scripts/
 - 接口层：`http_api.py` 已迁入 `src/isotope/interfaces/http.py`。
 - LLM 与 Codex 集成：`llm_provider.py`、`model_tool_bridge.py`、`codex_task.py`、`codex_cli.py`、`codex_server.py`、`codex_live_smoke.py` 已迁入 `src/isotope/integrations/`。
 - 状态恢复：`checkpoint_store.py`、`event_store.py`、`projector.py` 已迁入 `src/isotope/platform/state/`。
+- 运行入口：`server.py` 已迁入 `src/isotope/runtime/server.py`。
 - 旧根路径保留轻量兼容导出，方便后续逐步改调用点。
 
 ## 第一批建议
@@ -129,6 +132,7 @@ scripts/
 - `src/isotope/capabilities/tools/`
 - `src/isotope/rag/`
 - `src/isotope/execution/`
+- `src/isotope/runtime/`
 - `src/isotope/workspace/`
 - `src/isotope/memory/`
 - `src/isotope/policy/`

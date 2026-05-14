@@ -29,20 +29,21 @@
 14. HTTP facade 入口：`http_api.py` 已迁入 `src/isotope/interfaces/`。
 15. LLM 与 Codex 集成：模型 provider、tool bridge、Codex task/CLI/server/live smoke 已迁入 `src/isotope/integrations/`。
 16. 状态恢复入口：checkpoint store、event store、projector 已迁入 `src/isotope/platform/state/`。
+17. 运行入口：`server.py` 已迁入 `src/isotope/runtime/server.py`。
 
-## 最近完成：状态恢复入口迁移
+## 最近完成：运行入口迁移
 
 完成内容：
 
-- 将 checkpoint store、event store、projector 迁入 `src/isotope/platform/state/`。
-- 更新 server、demo 和 assistant loop control 的活跃导入路径。
+- 将 `InProcessServer` 迁入 `src/isotope/runtime/server.py`。
+- 更新 demo、HTTP facade 和 Codex server wiring 的活跃导入路径。
 - 保留旧根路径兼容导出，方便历史测试和调用点逐步更新。
 
 验收：
 
-- 旧路径 `isotope.checkpoint_store`、`isotope.event_store`、`isotope.projector` 仍可导入。
-- 新路径 `isotope.platform.state.*` 可直接导入。
-- 状态恢复、checkpoint、server 和全量测试需通过。
+- 旧路径 `isotope.server` 仍可导入并支持 monkeypatch。
+- 新路径 `isotope.runtime.server` 可直接导入。
+- server、HTTP facade、Codex wiring 和全量测试需通过。
 
 ## 下一批次：应用内分层迁移
 
@@ -50,7 +51,7 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 把当前平铺模块逐步迁入 `assistant/`、`features/`、`platform/` 等层级。
-- 下一步评估 `server.py` 是否单独进入 `runtime/`，或先整理 CLI/app 入口，不恢复旧包名。
+- 下一步整理 CLI/app 入口，或继续收敛剩余顶层兼容模块，不恢复旧包名。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：
@@ -61,6 +62,7 @@
 - `src/isotope/features/`：聊天、项目助手、文件助手等可用功能。
 - `src/isotope/capabilities/`：工具、技能、能力注册。
 - `src/isotope/execution/`：shell、python、浏览器、沙箱执行。
+- `src/isotope/runtime/`：进程内运行入口。
 - `src/isotope/workspace/`：文件、项目、git 工作区。
 - `src/isotope/rag/`：接入、检索、索引。
 - `src/isotope/memory/`：记忆、总结、上下文。

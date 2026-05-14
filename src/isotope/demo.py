@@ -30,7 +30,7 @@ from .integrations.llm.tool_bridge import submit_model_tool_call
 from .models import ImportedSnapshot
 from .platform.state.projector import RunProjector
 from .refs import make_artifact_ref
-from .server import InProcessServer
+from .runtime.server import InProcessServer
 
 
 _ACTION_EXECUTION_EVENTS = {
