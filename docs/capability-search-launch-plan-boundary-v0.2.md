@@ -1,6 +1,6 @@
 # Capability Search / Launch Plan Boundary v0.2
 
-状态：`docs-only boundary`
+状态：`first slice implemented`
 
 ## 1. 结论
 
@@ -191,3 +191,32 @@ Optional CLI tests：
 - launch plan 对 provider-required / diagnostic / experimental / unallowlisted capability fail closed / deferred。
 - full regression 通过。
 - README / AGENTS / current status / queue 同步。
+
+## 12. First Green Slice Evidence
+
+已实现：
+
+- `CapabilityRunner.search_capabilities(...)`
+- module-level `search_capabilities(...)`
+- `CapabilityRunner.plan_capability_run(...)`
+- module-level `plan_capability_run(...)`
+- tests: `tests/isotope_kernel/test_capability_search_launch_plan.py`
+
+当前 first slice 支持：
+
+- deterministic catalog metadata search。
+- low-sensitive search result。
+- no-side-effect launch plan。
+- allowlisted deterministic capability 返回 `launchable`。
+- unknown capability 返回 controlled `unknown` plan。
+- provider-required capability 只返回 `not_ready` / missing env，不构造 provider。
+- diagnostic / experimental capability 默认不可 launch。
+
+当前未实现：
+
+- CLI `search` / `plan`。
+- LLM router。
+- provider-backed capability runner。
+- `ask` / `interactive`。
+- workflow engine。
+- product shell。

@@ -43,6 +43,53 @@ class CapabilityRunner:
     def list_capabilities(self, **kwargs: Any) -> list[dict[str, Any]]:
         return self._catalog.list_capabilities(**kwargs)
 
+    def search_capabilities(
+        self,
+        *,
+        query: str = "",
+        shelf: str | None = None,
+        include_diagnostics: bool = False,
+        include_experimental: bool = False,
+        env: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
+        if not isinstance(query, str):
+            raise ValueError("query must be a string")
+        normalized_query = query.strip().lower()
+        capabilities = []
+        for capability in self._catalog.list_capabilities(
+            shelf=shelf,
+            include_diagnostics=include_diagnostics,
+            include_experimental=include_experimental,
+        ):
+            haystack = " ".join(
+                [
+                    capability["capability_id"],
+                    capability["title"],
+                    capability["description"],
+                    capability["shelf"],
+                    *capability["domain_tags"],
+                ]
+            ).lower()
+            if normalized_query and normalized_query not in haystack:
+                continue
+            capabilities.append(
+                {
+                    "capability_id": capability["capability_id"],
+                    "title": capability["title"],
+                    "description": capability["description"],
+                    "shelf": capability["shelf"],
+                    "domain_tags": list(capability["domain_tags"]),
+                    "readiness": self._catalog.get_capability_status(
+                        capability["capability_id"], env=env
+                    ),
+                }
+            )
+        return {
+            "kind": "capability_search_result",
+            "query": query,
+            "capabilities": capabilities,
+        }
+
     def describe_capability(self, capability_id: str) -> dict[str, Any]:
         return dict(self._lookup_capability(capability_id))
 
@@ -50,6 +97,61 @@ class CapabilityRunner:
         self, capability_id: str, *, env: Mapping[str, str] | None = None
     ) -> dict[str, Any]:
         return self._catalog.get_capability_status(capability_id, env=env)
+
+    def plan_capability_run(
+        self, capability_id: str, *, env: Mapping[str, str] | None = None
+    ) -> dict[str, Any]:
+        try:
+            capability = self._lookup_capability(capability_id)
+        except ValueError:
+            return _unknown_launch_plan(capability_id)
+
+        status = self._catalog.get_capability_status(capability_id, env=env)
+        scenario = _CAPABILITY_SCENARIOS.get(capability_id)
+        required_inputs = _required_inputs(capability)
+        runner_kind = _runner_kind(capability, scenario=scenario)
+        blocking_reasons: list[str] = []
+        can_launch = False
+        launch_status = "launchable"
+
+        if not status["ready"]:
+            launch_status = "not_ready"
+            if status["status"] == "missing_configuration":
+                blocking_reasons.append("missing_configuration")
+            else:
+                blocking_reasons.append(status["status"])
+        elif capability["shelf"] in {"diagnostic", "experimental"}:
+            launch_status = "not_allowlisted"
+            blocking_reasons.append("not_allowlisted")
+        elif scenario is None:
+            launch_status = "not_allowlisted"
+            blocking_reasons.append("not_allowlisted")
+        else:
+            can_launch = True
+
+        if not can_launch and runner_kind == "deterministic_demo" and scenario is None:
+            runner_kind = "deferred"
+
+        return {
+            "kind": "capability_launch_plan",
+            "capability_id": capability_id,
+            "capability_title": capability["title"],
+            "can_launch": can_launch,
+            "status": launch_status,
+            "runner_kind": runner_kind,
+            "scenario": scenario if can_launch else None,
+            "blocking_reasons": blocking_reasons,
+            "required_inputs": required_inputs,
+            "missing_inputs": [],
+            "required_env": list(capability.get("required_env", [])),
+            "missing_env": list(status.get("missing_env", [])),
+            "network_required": bool(capability.get("network_required")),
+            "provider": capability.get("provider"),
+            "model": capability.get("model"),
+            "shelf": capability["shelf"],
+            "safety_boundaries": list(capability.get("safety_boundaries", [])),
+            "output_policy": _output_policy(),
+        }
 
     def run_capability(
         self,
@@ -113,8 +215,63 @@ def get_capability_status(capability_id: str, **kwargs: Any) -> dict[str, Any]:
     return default_runner().get_capability_status(capability_id, **kwargs)
 
 
+def search_capabilities(**kwargs: Any) -> dict[str, Any]:
+    return default_runner().search_capabilities(**kwargs)
+
+
+def plan_capability_run(capability_id: str, **kwargs: Any) -> dict[str, Any]:
+    return default_runner().plan_capability_run(capability_id, **kwargs)
+
+
 def run_capability(capability_id: str, **kwargs: Any) -> dict[str, Any]:
     return default_runner().run_capability(capability_id, **kwargs)
+
+
+def _required_inputs(capability: Mapping[str, Any]) -> list[str]:
+    input_contract = capability.get("input_contract", {})
+    required = input_contract.get("required", []) if isinstance(input_contract, Mapping) else []
+    if not isinstance(required, list):
+        return []
+    return [item for item in required if isinstance(item, str)]
+
+
+def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
+    if capability.get("network_required") or capability.get("provider"):
+        return "provider_required"
+    if scenario is not None:
+        return "deterministic_demo"
+    return "deferred"
+
+
+def _output_policy() -> dict[str, bool]:
+    return {
+        "returns_full_content": False,
+        "returns_artifact_refs": True,
+        "low_sensitive_summary_only": True,
+    }
+
+
+def _unknown_launch_plan(capability_id: str) -> dict[str, Any]:
+    return {
+        "kind": "capability_launch_plan",
+        "capability_id": capability_id,
+        "capability_title": None,
+        "can_launch": False,
+        "status": "unknown",
+        "runner_kind": "unknown",
+        "scenario": None,
+        "blocking_reasons": ["unknown_capability"],
+        "required_inputs": [],
+        "missing_inputs": [],
+        "required_env": [],
+        "missing_env": [],
+        "network_required": False,
+        "provider": None,
+        "model": None,
+        "shelf": None,
+        "safety_boundaries": [],
+        "output_policy": _output_policy(),
+    }
 
 
 def _print_json(payload: Mapping[str, Any]) -> None:

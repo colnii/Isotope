@@ -103,7 +103,7 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 integration baseline：`1379 passed, 5 skipped`。Pre-controlled-terminal mainline baseline：`1134 passed`。
+当前 integration baseline：`1389 passed, 5 skipped`。Pre-controlled-terminal mainline baseline：`1134 passed`。
 
 ## 34. Current Batch
 
@@ -267,7 +267,7 @@ Next suggested batch:
 
 `Capability Search / Launch Plan Red Tests`
 
-Status: `ready_red_only`
+Status: `complete`
 
 Suggested red tests:
 
@@ -279,6 +279,46 @@ Expected first failures:
 - `CapabilityRunner.search_capabilities(...)` missing.
 - `CapabilityRunner.plan_capability_run(...)` missing.
 - CLI `search` / `plan` missing if optional CLI tests are included.
+
+Evidence:
+
+- Added `tests/isotope_kernel/test_capability_search_launch_plan.py`.
+- Red targeted result: `9 failed, 1 passed`.
+- Full with red tests: `9 failed, 1380 passed, 5 skipped`.
+- Failures were expected missing `search_capabilities(...)` / `plan_capability_run(...)`.
+
+Next suggested batch:
+
+`Capability Search / Launch Plan Green Slice`
+
+Status: `complete`
+
+Evidence:
+
+- Implemented `CapabilityRunner.search_capabilities(...)` and module-level wrapper.
+- Implemented `CapabilityRunner.plan_capability_run(...)` and module-level wrapper.
+- Targeted search / launch plan tests: `10 passed`.
+- Runner targeted tests: `27 passed`.
+- Full regression: `1389 passed, 5 skipped`.
+- No CLI `search` / `plan`, LLM router, provider runner, workflow engine, product shell, or self-evolution.
+
+Next suggested batch:
+
+`Capability Runner CLI Search / Plan First Slice`
+
+Status: `ready_red_only`
+
+Goal: expose the already implemented Python search / launch-plan helpers through low-sensitive CLI commands.
+
+Suggested red tests:
+
+- `tests/isotope_kernel/test_capability_runner_cli_search_plan.py`
+
+Scope:
+
+- CLI `search --json`
+- CLI `plan <capability_id> --json`
+- no execution, no provider construction, no LLM router, no workflow engine
 
 ## 37. Current Batch
 
