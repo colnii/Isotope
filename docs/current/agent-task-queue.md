@@ -44,15 +44,16 @@
     `runtime/server.py` 和 `isotope.server` 保留兼容代理。
 28. LLM 层拆出：活跃实现已迁入 `src/isotope/llm/`，
     `integrations/llm` 和顶层旧路径保留兼容代理。
+29. chat flow 正名：活跃实现已迁入 `src/isotope/features/chat/flow.py`，
+    `product_chat.py` 和顶层旧路径保留兼容代理。
 
-## 最近完成：LLM 层拆出
+## 最近完成：chat flow 正名
 
 完成内容：
 
-- 新建 `src/isotope/llm/`。
-- 将 `provider.py` 和 `tool_bridge.py` 活跃实现迁出 `integrations/llm/`。
-- 内部活跃导入改用 `llm.provider` 和 `llm.tool_bridge`。
-- 旧 `integrations/llm` 和顶层旧路径保留兼容代理。
+- 将 `features/chat/product_chat.py` 活跃实现迁到 `features/chat/flow.py`。
+- 内部活跃导入改用 `features.chat.flow`。
+- 旧 `product_chat.py` 和顶层旧路径保留兼容代理。
 - 同步 [import-map](./import-map.md)，记录旧路径、新路径和计划删除节点。
 
 验收：
@@ -67,7 +68,7 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把当前平铺模块逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步优先评估 `features/chat/product_chat.py` 命名，或继续评估旧兼容代理清单。
+- 下一步优先评估 `execution/terminal_backend.py` 命名，或继续评估旧兼容代理清单。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

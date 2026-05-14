@@ -18,7 +18,7 @@ from .interfaces.http import (
     create_llm_product_chat_http_app,
     create_llm_provider_http_app,
 )
-from .features.chat.product_chat import submit_llm_product_chat_user_message_with_preflight
+from .features.chat.flow import submit_llm_product_chat_user_message_with_preflight
 from .llm.provider import (
     LLMFinalAnswerResponse,
     LLMToolCall,

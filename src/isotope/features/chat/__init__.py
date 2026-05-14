@@ -1,1 +1,1 @@
-"""Chat feature helpers."""
+"""Chat feature flow helpers."""

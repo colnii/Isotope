@@ -93,7 +93,7 @@ src/isotope/
 | `core/real_planner_contract.py` | `real` 不像长期命名 | 已迁到 `agents/loop/planner_contract.py` |
 | `core/runtime.py` | 和 `runtime/` 撞名 | 删除空壳或并入 `agents/loop/` |
 | `runtime/server.py` | `server` 太泛 | 已迁到 `runtime/in_process.py` |
-| `features/chat/product_chat.py` | product 前缀多余 | `features/chat/flow.py` 或 `features/chat/service.py` |
+| `features/chat/product_chat.py` | product 前缀多余 | 已迁到 `features/chat/flow.py` |
 | `integrations/llm/provider.py` | LLM 不是普通外部系统集成 | 已迁到 `llm/provider.py` |
 | `integrations/llm/tool_bridge.py` | LLM 工具桥属于模型交互层 | 已迁到 `llm/tool_bridge.py` |
 | `execution/terminal_backend.py` | backend 泛，像临时实现 | `execution/terminal_runner.py` |
@@ -164,9 +164,11 @@ src/isotope/
 
 ### 批次四：功能层扩展
 
+状态：chat flow 正名已执行。
+
 目标：
 
-- 将 `features/chat/product_chat.py` 改成更自然的 `flow.py` 或 `service.py`。
+- 将 `features/chat/product_chat.py` 改成更自然的 `flow.py`。
 - 需要有真实 tasks / projects / files 功能时，再建对应目录。
 - 不为了目录漂亮提前建一堆空功能。
 

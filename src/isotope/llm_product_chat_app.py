@@ -1,3 +1,10 @@
-"""Compatibility exports for the product chat feature."""
+"""Compatibility proxy.
 
-from isotope.features.chat.product_chat import *  # noqa: F401,F403
+New path:
+    isotope.features.chat.flow
+
+Planned removal:
+    after import-map confirms no active internal imports.
+"""
+
+from isotope.features.chat.flow import *  # noqa: F401,F403

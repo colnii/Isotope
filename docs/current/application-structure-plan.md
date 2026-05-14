@@ -119,7 +119,8 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 - 平台 schema：`models.py`、`refs.py`、`tool_protocol.py` 已迁入 `src/isotope/platform/schemas/`，活跃导入已切到新路径。
 - 平台事件：`events.py`、`event_schema.py` 已迁入 `src/isotope/platform/events/`，活跃导入已切到新路径。
 - 能力目录：`capability_catalog.py`、`capability_runner.py` 已迁入 `src/isotope/capabilities/`。
-- 产品聊天入口：`llm_product_chat_app.py` 已迁入 `src/isotope/features/chat/product_chat.py`。
+- 产品聊天流程：活跃实现已迁入 `src/isotope/features/chat/flow.py`；
+  `src/isotope/features/chat/product_chat.py` 和顶层旧路径仅保留兼容代理。
 - 智能体循环：`agent_loop_*` 与 planner contract 已迁入 `src/isotope/agents/loop/`；
   `src/isotope/core/` 和 `src/isotope/assistant/` 仅保留兼容代理。
 - 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`，旧根路径仅作兼容代理。
