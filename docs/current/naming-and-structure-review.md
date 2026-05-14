@@ -1,6 +1,6 @@
 # 命名与目录审计
 
-状态：`草案 / 待用户确认`
+状态：`当前审计 / 批次一已执行`
 
 本文只审计命名和目录，不直接要求改代码。
 目标是避免 Isotope 再被旧底座叙事、临时兼容入口和不好看的模块名牵着走。
@@ -9,7 +9,7 @@
 
 目前最大问题不是 `src/isotope/` 这个包名，而是包内职责命名还带着迁移痕迹：
 
-- `core/` 现在放的是 agent loop 控制文件，不是产品主流程。
+- `core/` 现在只保留 agent loop 兼容代理，不承载活跃实现。
 - `runtime/` 有 `server.py`，`core/` 又有 `runtime.py`，语义容易撞。
 - 根目录还有大量旧兼容代理，看起来像真实模块。
 - 一些文件名是历史工作流命名，不像长期产品代码。
@@ -30,7 +30,7 @@ core/
   response.py
 ```
 
-真实代码里的 `core/` 是 agent loop 边界：
+批次一执行前，真实代码里的 `core/` 是 agent loop 边界：
 
 ```text
 core/
@@ -87,10 +87,10 @@ src/isotope/
 
 | 当前路径 | 问题 | 建议归位 |
 | --- | --- | --- |
-| `core/loop_control.py` | 不是产品 core | `agents/loop/control.py` |
-| `core/loop_step.py` | 不是产品 core | `agents/loop/step.py` |
-| `core/loop_planner_adapter.py` | 名字过长 | `agents/loop/planner_adapter.py` |
-| `core/real_planner_contract.py` | `real` 不像长期命名 | `agents/loop/planner_contract.py` |
+| `core/loop_control.py` | 不是产品 core | 已迁到 `agents/loop/control.py` |
+| `core/loop_step.py` | 不是产品 core | 已迁到 `agents/loop/step.py` |
+| `core/loop_planner_adapter.py` | 名字过长 | 已迁到 `agents/loop/planner_adapter.py` |
+| `core/real_planner_contract.py` | `real` 不像长期命名 | 已迁到 `agents/loop/planner_contract.py` |
 | `core/runtime.py` | 和 `runtime/` 撞名 | 删除空壳或并入 `agents/loop/` |
 | `runtime/server.py` | `server` 太泛 | `runtime/in_process.py` 或 `runtime/app_runtime.py` |
 | `features/chat/product_chat.py` | product 前缀多余 | `features/chat/flow.py` 或 `features/chat/service.py` |
@@ -118,10 +118,12 @@ src/isotope/
 
 ### 批次一：agent loop 正名
 
+状态：已执行。
+
 目标：
 
 - 新建 `src/isotope/agents/loop/`。
-- 将当前 `core/loop_*` 迁入该目录。
+- 将原 `core/loop_*` 活跃实现迁入该目录。
 - `core/` 暂时只留空包或兼容代理，不新增空的产品主流程文件。
 - 旧路径 `isotope.core.*`、`isotope.assistant.*`、`isotope.agent_loop_*` 保持可导入。
 - 同步 [import-map](./import-map.md)，记录旧路径、新路径和计划删除节点。
@@ -177,10 +179,9 @@ src/isotope/
 
 我建议先确认这一条：
 
-> 当前 `core/loop_*` 不应长期留在 `core/`，应迁到 `agents/loop/`。
+> 原 `core/loop_*` 不应长期留在 `core/`，已迁到 `agents/loop/`。
 
-如果这条确认，下一批代码迁移就从 agent loop 正名开始。
-这一步改动范围可控，也最能改善“目录不好看”的核心问题。
+这一步改动范围可控，也改善了“目录不好看”的核心问题。
 
 ## 验收口径
 

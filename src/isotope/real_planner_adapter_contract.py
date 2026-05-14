@@ -1,3 +1,10 @@
-"""Compatibility exports for core real planner contract."""
+"""Compatibility proxy.
 
-from isotope.core.real_planner_contract import *  # noqa: F401,F403
+New path:
+    isotope.agents.loop.planner_contract
+
+Planned removal:
+    after import-map confirms no active internal imports.
+"""
+
+from isotope.agents.loop.planner_contract import *  # noqa: F401,F403

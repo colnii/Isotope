@@ -9,11 +9,11 @@
 | --- | --- | --- | --- |
 | `core` | 产品主流程，串起会话、对话循环、调度和响应 | 应用核心 | `src/isotope/core/` |
 | `assistant` | 助手，只作为产品描述或旧路径兼容词，不作为新目录叙事 | 兼容/产品描述 | `src/isotope/assistant/` |
-| `agent loop` | 智能体循环，AI 多步规划、调用工具、读取结果并继续执行 | 应用/智能体 | `src/isotope/core/loop_step.py`, `docs/features/` |
+| `agent loop` | 智能体循环，AI 多步规划、调用工具、读取结果并继续执行 | 应用/智能体 | `src/isotope/agents/loop/step.py`, `docs/features/` |
 | `app_friction` | 应用摩擦，应用层试跑暴露的卡点或待收束问题 | 应用验证 | `src/isotope/demo.py`, `docs/features/` |
-| `planner` | 规划器，把用户目标转成可执行步骤或工具选择 | 智能体 | `docs/architecture/planner-input-output-contract-v0.2.md`, `src/isotope/core/loop_planner_adapter.py` |
-| `planner adapter` | 规划器适配层，把规划输出接到现有执行循环 | 智能体 | `src/isotope/core/loop_planner_adapter.py` |
-| `tick policy` | 步进策略，决定智能体循环每轮是否继续、暂停或停止 | 智能体 | `src/isotope/core/loop_control.py`, `docs/architecture/agent-loop-tick-policy-boundary-v0.2.md` |
+| `planner` | 规划器，把用户目标转成可执行步骤或工具选择 | 智能体 | `docs/architecture/planner-input-output-contract-v0.2.md`, `src/isotope/agents/loop/planner_adapter.py` |
+| `planner adapter` | 规划器适配层，把规划输出接到现有执行循环 | 智能体 | `src/isotope/agents/loop/planner_adapter.py` |
+| `tick policy` | 步进策略，决定智能体循环每轮是否继续、暂停或停止 | 智能体 | `src/isotope/agents/loop/control.py`, `docs/architecture/agent-loop-tick-policy-boundary-v0.2.md` |
 | `executor` | 执行器，执行已批准的动作或工具调用 | 执行 | `src/isotope/execution/executor.py` |
 | `ActionCompiler` | 动作编译器，把紧凑意图转换成可审批的动作提案 | 运行时 | `src/isotope/runtime/action_compiler.py` |
 | `tool call` | 工具调用，模型请求系统执行某个能力 | 模型/工具 | `src/isotope/integrations/llm/provider.py`, `src/isotope/integrations/llm/tool_bridge.py` |

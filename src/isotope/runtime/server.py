@@ -8,10 +8,10 @@ from json import JSONDecodeError
 from pathlib import Path
 from typing import Any
 
-from ..core.loop_control import build_agent_loop_control, build_agent_loop_tick_policy
-from ..core.loop_planner_adapter import run_agent_loop_planner_step
-from ..core.loop_step import run_agent_loop_step
-from ..core.real_planner_contract import run_agent_loop_real_planner_contract_step
+from ..agents.loop.control import build_agent_loop_control, build_agent_loop_tick_policy
+from ..agents.loop.planner_adapter import run_agent_loop_planner_step
+from ..agents.loop.planner_contract import run_agent_loop_real_planner_contract_step
+from ..agents.loop.step import run_agent_loop_step
 from ..execution.executor import Executor, ToolHandler
 from ..platform.events.events import CanonicalEvent
 from ..platform.errors import KernelError, KernelPermissionError, not_enabled_result

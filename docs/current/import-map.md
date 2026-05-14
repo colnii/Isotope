@@ -1,6 +1,6 @@
 # 导入路径迁移表
 
-状态：`草案 / 第一批待执行`
+状态：`当前清单 / 第一批已执行`
 
 本文记录旧导入路径到新导入路径的迁移关系。
 目标是让目录迁移有清单可查，而不是靠记忆维护兼容代理。
@@ -27,19 +27,19 @@ planned removal: after import-map confirms no active internal imports
 
 | 旧路径 | 新路径 | 状态 |
 | --- | --- | --- |
-| `isotope.core.loop_control` | `isotope.agents.loop.control` | 待迁移 |
-| `isotope.core.loop_step` | `isotope.agents.loop.step` | 待迁移 |
-| `isotope.core.loop_planner_adapter` | `isotope.agents.loop.planner_adapter` | 待迁移 |
-| `isotope.core.real_planner_contract` | `isotope.agents.loop.planner_contract` | 待迁移 |
-| `isotope.core.runtime` | 删除空壳，或迁到 `isotope.agents.loop.runtime` | 待判断 |
-| `isotope.assistant.loop_control` | `isotope.agents.loop.control` | 待迁移 |
-| `isotope.assistant.loop_step` | `isotope.agents.loop.step` | 待迁移 |
-| `isotope.assistant.loop_planner_adapter` | `isotope.agents.loop.planner_adapter` | 待迁移 |
-| `isotope.assistant.real_planner_contract` | `isotope.agents.loop.planner_contract` | 待迁移 |
-| `isotope.agent_loop_control` | `isotope.agents.loop.control` | 待迁移 |
-| `isotope.agent_loop_step` | `isotope.agents.loop.step` | 待迁移 |
-| `isotope.agent_loop_planner_adapter` | `isotope.agents.loop.planner_adapter` | 待迁移 |
-| `isotope.real_planner_adapter_contract` | `isotope.agents.loop.planner_contract` | 待迁移 |
+| `isotope.core.loop_control` | `isotope.agents.loop.control` | 已迁移，旧路径保留兼容代理 |
+| `isotope.core.loop_step` | `isotope.agents.loop.step` | 已迁移，旧路径保留兼容代理 |
+| `isotope.core.loop_planner_adapter` | `isotope.agents.loop.planner_adapter` | 已迁移，旧路径保留兼容代理 |
+| `isotope.core.real_planner_contract` | `isotope.agents.loop.planner_contract` | 已迁移，旧路径保留兼容代理 |
+| `isotope.core.runtime` | 暂不迁移，当前为空壳兼容占位 | 待判断 |
+| `isotope.assistant.loop_control` | `isotope.agents.loop.control` | 已迁移，旧路径保留兼容代理 |
+| `isotope.assistant.loop_step` | `isotope.agents.loop.step` | 已迁移，旧路径保留兼容代理 |
+| `isotope.assistant.loop_planner_adapter` | `isotope.agents.loop.planner_adapter` | 已迁移，旧路径保留兼容代理 |
+| `isotope.assistant.real_planner_contract` | `isotope.agents.loop.planner_contract` | 已迁移，旧路径保留兼容代理 |
+| `isotope.agent_loop_control` | `isotope.agents.loop.control` | 已迁移，旧路径保留兼容代理 |
+| `isotope.agent_loop_step` | `isotope.agents.loop.step` | 已迁移，旧路径保留兼容代理 |
+| `isotope.agent_loop_planner_adapter` | `isotope.agents.loop.planner_adapter` | 已迁移，旧路径保留兼容代理 |
+| `isotope.real_planner_adapter_contract` | `isotope.agents.loop.planner_contract` | 已迁移，旧路径保留兼容代理 |
 
 ## 后续候选
 

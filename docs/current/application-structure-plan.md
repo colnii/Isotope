@@ -78,7 +78,8 @@ scripts/
 
 `assistant` 可以描述 Isotope 的产品体验，但不再作为新目录名扩张。
 旧 `src/isotope/assistant/` 只保留兼容导出。
-当前 `core/loop_*` 也不是长期位置，下一步建议迁到 `agents/loop/`。
+agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
+旧 `core/loop_*` 只保留兼容导出。
 
 ## 迁移原则
 
@@ -119,8 +120,8 @@ scripts/
 - 平台事件：`events.py`、`event_schema.py` 已迁入 `src/isotope/platform/events/`，活跃导入已切到新路径。
 - 能力目录：`capability_catalog.py`、`capability_runner.py` 已迁入 `src/isotope/capabilities/`。
 - 产品聊天入口：`llm_product_chat_app.py` 已迁入 `src/isotope/features/chat/product_chat.py`。
-- 核心循环：`agent_loop_*` 与 planner contract 当前位于 `src/isotope/core/`，
-  但它们更适合迁入 `src/isotope/agents/loop/`；`src/isotope/assistant/` 仅保留兼容代理。
+- 智能体循环：`agent_loop_*` 与 planner contract 已迁入 `src/isotope/agents/loop/`；
+  `src/isotope/core/` 和 `src/isotope/assistant/` 仅保留兼容代理。
 - 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`，旧根路径仅作兼容代理。
 - RAG 边界：`ingestion.py` 与 `retrieval.py` 已迁入 `src/isotope/rag/`，旧根路径仅作兼容代理。
 - 记忆边界：`memory.py` 已迁成 `src/isotope/memory/` 包。
