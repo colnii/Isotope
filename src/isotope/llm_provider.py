@@ -1,4 +1,10 @@
-"""Compatibility exports for the LLM provider integration."""
+"""Compatibility proxy.
 
-from .integrations.llm.provider import *  # noqa: F401,F403
+New path:
+    isotope.llm.provider
 
+Planned removal:
+    after import-map confirms no active internal imports.
+"""
+
+from isotope.llm.provider import *  # noqa: F401,F403

@@ -1,6 +1,6 @@
 # 导入路径迁移表
 
-状态：`当前清单 / runtime 批次已执行`
+状态：`当前清单 / LLM 批次已执行`
 
 本文记录旧导入路径到新导入路径的迁移关系。
 目标是让目录迁移有清单可查，而不是靠记忆维护兼容代理。
@@ -47,8 +47,10 @@ planned removal: after import-map confirms no active internal imports
 | --- | --- | --- |
 | `isotope.runtime.server` | `isotope.runtime.in_process` | 已迁移，旧路径保留兼容代理 |
 | `isotope.server` | `isotope.runtime.in_process` | 已迁移，旧路径保留兼容代理 |
-| `isotope.integrations.llm.provider` | `isotope.llm.provider` | 待设计 |
-| `isotope.integrations.llm.tool_bridge` | `isotope.llm.tool_bridge` | 待设计 |
+| `isotope.integrations.llm.provider` | `isotope.llm.provider` | 已迁移，旧路径保留兼容代理 |
+| `isotope.integrations.llm.tool_bridge` | `isotope.llm.tool_bridge` | 已迁移，旧路径保留兼容代理 |
+| `isotope.llm_provider` | `isotope.llm.provider` | 已迁移，旧路径保留兼容代理 |
+| `isotope.model_tool_bridge` | `isotope.llm.tool_bridge` | 已迁移，旧路径保留兼容代理 |
 | `isotope.features.chat.product_chat` | `isotope.features.chat.flow` | 待设计 |
 | `isotope.execution.terminal_backend` | `isotope.execution.terminal_runner` | 待设计 |
 | `isotope.platform.schemas.models` | 拆成更具体 schema 文件 | 待设计 |

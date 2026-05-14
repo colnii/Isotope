@@ -19,14 +19,14 @@ from .interfaces.http import (
     create_llm_provider_http_app,
 )
 from .features.chat.product_chat import submit_llm_product_chat_user_message_with_preflight
-from .integrations.llm.provider import (
+from .llm.provider import (
     LLMFinalAnswerResponse,
     LLMToolCall,
     LLMToolCallResponse,
     build_llm_tool_result_message,
     submit_llm_tool_result_followup,
 )
-from .integrations.llm.tool_bridge import submit_model_tool_call
+from .llm.tool_bridge import submit_model_tool_call
 from .platform.schemas.models import ImportedSnapshot
 from .platform.schemas.refs import make_artifact_ref
 from .platform.state.projector import RunProjector

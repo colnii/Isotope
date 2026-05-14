@@ -294,7 +294,7 @@ class HttpApiApp:
                         capability="llm_provider_tool_call",
                     )
                 body = self._require_llm_provider_body(json_body)
-                from ..integrations.llm.provider import submit_llm_tool_call
+                from ..llm.provider import submit_llm_tool_call
 
                 result = submit_llm_tool_call(
                     self,
@@ -333,7 +333,7 @@ class HttpApiApp:
                         capability="llm_provider_tool_result_followup",
                     )
                 body = self._require_llm_tool_result_followup_body(json_body)
-                from ..integrations.llm.provider import submit_llm_tool_result_followup
+                from ..llm.provider import submit_llm_tool_result_followup
 
                 result = submit_llm_tool_result_followup(
                     self,
@@ -374,7 +374,7 @@ class HttpApiApp:
                         capability="llm_product_chat_route",
                     )
                 body = self._require_llm_product_chat_body(json_body)
-                from ..integrations.llm.provider import submit_llm_chat_turn
+                from ..llm.provider import submit_llm_chat_turn
 
                 result = submit_llm_chat_turn(
                     self,

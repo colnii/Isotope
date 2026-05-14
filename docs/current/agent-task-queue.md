@@ -27,14 +27,14 @@
 12. 权限与注册表入口：policy、action registry、errors 已迁入新目录。
 13. 执行器入口：executor 已迁入 `src/isotope/execution/`。
 14. HTTP facade 入口：`http_api.py` 已迁入 `src/isotope/interfaces/`。
-15. LLM 与 Codex 集成：模型 provider、tool bridge、Codex task/CLI/server/live smoke 已迁入 `src/isotope/integrations/`。
+15. Codex 集成：Codex task/CLI/server/live smoke 已迁入 `src/isotope/integrations/`。
 16. 状态恢复入口：checkpoint store、event store、projector 已迁入 `src/isotope/platform/state/`。
 17. 运行入口：活跃实现已迁入 `src/isotope/runtime/in_process.py`。
 18. CLI 入口：`apps/cli/` 已建立薄入口，`pyproject.toml` 已声明正式命令。
 19. 运行时工具：`action_compiler.py` 迁入 `runtime/`，`ids.py` 迁入 `platform/`，活跃终端引用改到真实实现路径。
 20. 平台 schema/event：活跃代码已切到 `platform/schemas/` 与 `platform/events/`，旧根路径保留兼容代理。
 21. 资源/RAG 兼容入口：`artifact_store.py`、`retrieval.py`、`ingestion.py` 已改为模块代理。
-22. `assistant` 命名收束：活跃循环实现已迁入 `core/`，`assistant/` 只保留兼容代理。
+22. `assistant` 命名收束：活跃循环实现已迁入 `agents/loop/`，`assistant/` 只保留兼容代理。
 23. demo 旧叙事清理：活跃 agent-loop demo 统一改用 `app_friction`。
 24. 命名与目录审计：已写 [naming-and-structure-review](./naming-and-structure-review.md)。
 25. 外部审查吸收：已加入 [chatgpt审查](./chatgpt审查.md) 和 [import-map](./import-map.md)。
@@ -42,14 +42,17 @@
     `core`、`assistant` 和顶层旧路径保留兼容代理。
 27. runtime 命名澄清：活跃实现已迁入 `src/isotope/runtime/in_process.py`，
     `runtime/server.py` 和 `isotope.server` 保留兼容代理。
+28. LLM 层拆出：活跃实现已迁入 `src/isotope/llm/`，
+    `integrations/llm` 和顶层旧路径保留兼容代理。
 
-## 最近完成：runtime 命名澄清
+## 最近完成：LLM 层拆出
 
 完成内容：
 
-- 将 `runtime/server.py` 活跃实现迁到 `runtime/in_process.py`。
-- 内部活跃导入改用 `runtime.in_process`。
-- 旧 `runtime.server` 和 `isotope.server` 保留兼容代理。
+- 新建 `src/isotope/llm/`。
+- 将 `provider.py` 和 `tool_bridge.py` 活跃实现迁出 `integrations/llm/`。
+- 内部活跃导入改用 `llm.provider` 和 `llm.tool_bridge`。
+- 旧 `integrations/llm` 和顶层旧路径保留兼容代理。
 - 同步 [import-map](./import-map.md)，记录旧路径、新路径和计划删除节点。
 
 验收：
@@ -64,7 +67,7 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把当前平铺模块逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步优先拆出 `llm/` 层，或继续评估旧兼容代理清单。
+- 下一步优先评估 `features/chat/product_chat.py` 命名，或继续评估旧兼容代理清单。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：
@@ -80,7 +83,7 @@
 - `src/isotope/runtime/`：进程内运行入口。
 - `src/isotope/workspace/`：文件、项目、git 工作区。
 - `src/isotope/rag/`：接入、检索、索引。
-- `src/isotope/llm/`：建议中的模型服务层，优先于 `models/llm/`。
+- `src/isotope/llm/`：模型服务层，优先于 `models/llm/`。
 - `src/isotope/memory/`：记忆、总结、上下文。
 - `src/isotope/policy/`：权限、审批、风险。
 - `src/isotope/platform/`：事件、schema、registry、state、lifecycle。

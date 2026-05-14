@@ -130,7 +130,9 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 - 平台工具：`ids.py` 已迁入 `src/isotope/platform/ids.py`。
 - 执行器：`executor.py` 已迁入 `src/isotope/execution/executor.py`。
 - 接口层：`http_api.py` 已迁入 `src/isotope/interfaces/http.py`。
-- LLM 与 Codex 集成：`llm_provider.py`、`model_tool_bridge.py`、`codex_task.py`、`codex_cli.py`、`codex_server.py`、`codex_live_smoke.py` 已迁入 `src/isotope/integrations/`。
+- LLM 层：模型 provider 和 tool bridge 已迁入 `src/isotope/llm/`；
+  `src/isotope/integrations/llm/` 和顶层旧路径仅保留兼容代理。
+- Codex 集成：`codex_task.py`、`codex_cli.py`、`codex_server.py`、`codex_live_smoke.py` 已迁入 `src/isotope/integrations/`。
 - 状态恢复：`checkpoint_store.py`、`event_store.py`、`projector.py` 已迁入 `src/isotope/platform/state/`。
 - 运行入口：活跃实现已迁入 `src/isotope/runtime/in_process.py`；
   `src/isotope/runtime/server.py` 仅保留兼容代理。

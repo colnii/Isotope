@@ -20,7 +20,7 @@ from .features.chat.product_chat import (
     summarize_llm_product_chat_entry_response,
     validate_llm_product_chat_entry_resume_state,
 )
-from .integrations.llm.provider import (
+from .llm.provider import (
     LLMFinalAnswerResponse,
     LLMToolCall,
     LLMToolCallResponse,

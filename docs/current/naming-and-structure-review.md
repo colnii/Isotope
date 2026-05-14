@@ -94,8 +94,8 @@ src/isotope/
 | `core/runtime.py` | 和 `runtime/` 撞名 | 删除空壳或并入 `agents/loop/` |
 | `runtime/server.py` | `server` 太泛 | 已迁到 `runtime/in_process.py` |
 | `features/chat/product_chat.py` | product 前缀多余 | `features/chat/flow.py` 或 `features/chat/service.py` |
-| `integrations/llm/provider.py` | LLM 不是普通外部系统集成 | `llm/provider.py` |
-| `integrations/llm/tool_bridge.py` | LLM 工具桥属于模型交互层 | `llm/tool_bridge.py` |
+| `integrations/llm/provider.py` | LLM 不是普通外部系统集成 | 已迁到 `llm/provider.py` |
+| `integrations/llm/tool_bridge.py` | LLM 工具桥属于模型交互层 | 已迁到 `llm/tool_bridge.py` |
 | `execution/terminal_backend.py` | backend 泛，像临时实现 | `execution/terminal_runner.py` |
 | `platform/schemas/models.py` | `models` 太泛 | `platform/schemas/domain.py` 或拆成 `actions.py` |
 | `platform/errors.py` | `KernelError` 残留 | 后续评估 `CoreError` 兼容迁移 |
@@ -143,6 +143,8 @@ src/isotope/
 采用 `runtime/in_process.py`，因为当前 `InProcessServer` 本来就不是真 HTTP server。
 
 ### 批次三：LLM 层拆出
+
+状态：已执行。
 
 目标：
 
