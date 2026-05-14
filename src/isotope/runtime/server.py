@@ -12,17 +12,17 @@ from ..assistant.loop_control import build_agent_loop_control, build_agent_loop_
 from ..assistant.loop_planner_adapter import run_agent_loop_planner_step
 from ..assistant.loop_step import run_agent_loop_step
 from ..assistant.real_planner_contract import run_agent_loop_real_planner_contract_step
-from ..events import CanonicalEvent
 from ..execution.executor import Executor, ToolHandler
-from ..models import ActionProposal, ImportedSnapshot, PolicyDecision
+from ..platform.events.events import CanonicalEvent
 from ..platform.errors import KernelError, KernelPermissionError, not_enabled_result
 from ..platform.ids import new_id
 from ..platform.registry.actions import ActionTypeRegistry
+from ..platform.schemas.models import ActionProposal, ImportedSnapshot, PolicyDecision
+from ..platform.schemas.refs import ResourceRef
 from ..platform.state.event_store import FileEventStore
 from ..platform.state.projector import RunProjector
 from ..policy import PolicyEngine
 from ..rag.retrieval import RetrievalService
-from ..refs import ResourceRef
 from ..workspace import WorkspaceManager
 from ..workspace.artifacts import ArtifactStore
 from .action_compiler import ActionCompiler

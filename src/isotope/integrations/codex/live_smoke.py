@@ -8,8 +8,8 @@ from json import JSONDecodeError
 from pathlib import Path
 from typing import Any
 
-from ...models import ActionProposal, PolicyDecision
-from ...refs import ResourceRef
+from ...platform.schemas.models import ActionProposal, PolicyDecision
+from ...platform.schemas.refs import ResourceRef
 from ...workspace.artifacts import ArtifactStore
 from .cli import CodexCliBackend, CodexCliBackendConfig
 from .task import (

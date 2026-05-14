@@ -12,10 +12,11 @@ from ..integrations.codex.task import (
     CodexTaskNotConfiguredError,
     CodexTaskProtocolError,
 )
-from ..events import CanonicalEvent
-from ..models import ActionExecution, ActionProposal, MemoryRecord, PolicyDecision
 from ..platform.ids import new_id
-from ..refs import ResourceRef
+from ..platform.events.events import CanonicalEvent
+from ..platform.schemas.models import ActionExecution, ActionProposal, MemoryRecord, PolicyDecision
+from ..platform.schemas.refs import ResourceRef
+from ..platform.schemas.tool_protocol import ToolInvocation, ToolResult
 from ..capabilities.tools.terminal import ControlledTerminalRunner
 from .terminal_backend import (
     TerminalBackendAdapter,
@@ -23,7 +24,6 @@ from .terminal_backend import (
     TerminalBackendNotConfiguredError,
     TerminalBackendProtocolError,
 )
-from ..tool_protocol import ToolInvocation, ToolResult
 
 
 ToolHandler = Callable[[ToolInvocation], ToolResult]

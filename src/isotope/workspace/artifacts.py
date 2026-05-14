@@ -7,9 +7,9 @@ from json import JSONDecodeError
 from pathlib import Path
 from typing import Any
 
-from ..models import Artifact
 from ..platform.ids import new_id
-from ..refs import ResourceRef, make_artifact_ref
+from ..platform.schemas.models import Artifact
+from ..platform.schemas.refs import ResourceRef, make_artifact_ref
 
 
 class ArtifactStore:

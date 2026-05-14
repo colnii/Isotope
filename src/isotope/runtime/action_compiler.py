@@ -6,9 +6,9 @@ from copy import deepcopy
 from typing import Any
 
 from ..capabilities.tools.terminal import validate_argv
-from ..models import ActionProposal
 from ..platform.ids import new_id
 from ..platform.registry.actions import ActionTypeRegistry
+from ..platform.schemas.models import ActionProposal
 
 
 class ActionCompiler:

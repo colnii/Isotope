@@ -1,3 +1,6 @@
-"""Compatibility exports for platform schema models."""
+"""Compatibility module for platform schema models."""
 
-from isotope.platform.schemas.models import *  # noqa: F401,F403
+import sys
+from importlib import import_module
+
+sys.modules[__name__] = import_module("isotope.platform.schemas.models")

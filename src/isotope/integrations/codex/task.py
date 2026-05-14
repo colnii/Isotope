@@ -6,8 +6,8 @@ import copy
 from dataclasses import dataclass, field
 from typing import Any
 
-from ...models import ActionProposal, PolicyDecision
-from ...refs import ResourceRef
+from ...platform.schemas.models import ActionProposal, PolicyDecision
+from ...platform.schemas.refs import ResourceRef
 
 
 ALLOWED_CODEX_TASK_STATUSES = {"completed", "failed", "cancelled", "timeout"}

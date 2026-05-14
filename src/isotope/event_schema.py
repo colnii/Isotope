@@ -1,3 +1,6 @@
-"""Compatibility exports for platform event schema registry."""
+"""Compatibility module for platform event schema registry."""
 
-from isotope.platform.events.event_schema import *  # noqa: F401,F403
+import sys
+from importlib import import_module
+
+sys.modules[__name__] = import_module("isotope.platform.events.event_schema")

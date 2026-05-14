@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..refs import ResourceRef
+from ..platform.schemas.refs import ResourceRef
 
 
 class RetrievalService:

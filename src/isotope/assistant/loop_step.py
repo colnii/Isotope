@@ -6,7 +6,7 @@ from copy import deepcopy
 from dataclasses import asdict, is_dataclass
 from typing import Any
 
-from ..refs import ResourceRef
+from ..platform.schemas.refs import ResourceRef
 
 
 def run_agent_loop_step(api: Any, run_id: str, request: dict[str, Any]) -> dict[str, Any]:

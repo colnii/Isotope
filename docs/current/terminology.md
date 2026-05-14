@@ -21,6 +21,7 @@
 | `CLI` | 命令行入口，给人类和部署脚本直接调用 | 应用入口 | `apps/cli/`, `pyproject.toml` |
 | `HttpApiApp` | 进程内 HTTP 风格接口，用于测试和应用边界，不监听端口 | 接口 | `src/isotope/interfaces/http.py` |
 | `InProcessServer` | 进程内运行入口，串起会话、run、策略、执行和状态读取 | 运行时 | `src/isotope/runtime/server.py` |
+| `CanonicalEvent` | 标准事件，所有状态回放的事实来源 | 平台事件 | `src/isotope/platform/events/events.py` |
 | `artifact` | 产物记录，保存执行结果摘要和引用 | 平台数据 | `src/isotope/platform/schemas/models.py` |
 | `ArtifactStore` | 产物存储，负责保存和读取 artifact 元数据与内容 | 工作区资源 | `src/isotope/workspace/artifacts.py` |
 | `ResourceRef` | 资源引用，指向产物等对象而不是直接暴露全文 | 平台数据 | `src/isotope/platform/schemas/refs.py` |
@@ -30,6 +31,7 @@
 | `event log` | 事件日志，记录系统发生过的事实 | 状态恢复 | `src/isotope/platform/state/event_store.py` |
 | `projector` | 投影器，把事件日志重建成可读状态 | 状态恢复 | `src/isotope/platform/state/projector.py` |
 | `RunState` | 运行状态，投影后的当前视图 | 状态恢复 | `src/isotope/platform/state/projector.py` |
+| `ToolInvocation` | 工具调用协议对象，给内部工具处理器传递参数 | 平台 schema | `src/isotope/platform/schemas/tool_protocol.py` |
 | `ActionTypeRegistry` | 动作类型注册表，记录工具元数据、能力要求和版本信息 | 平台注册表 | `src/isotope/platform/registry/actions.py` |
 | `new_id` | 简单 ID 生成器，给测试和进程内运行生成稳定前缀 ID | 平台工具 | `src/isotope/platform/ids.py` |
 | `KernelError` | 结构化错误，给 HTTP 和 helper 返回稳定错误码 | 平台错误 | `src/isotope/platform/errors.py` |

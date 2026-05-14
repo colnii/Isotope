@@ -12,8 +12,8 @@ from pathlib import Path
 from typing import Any
 
 from isotope.capabilities.tools.terminal import cap_terminal_output, terminal_grant_from, validate_argv
-from isotope.models import ActionProposal, PolicyDecision
-from isotope.refs import ResourceRef
+from isotope.platform.schemas.models import ActionProposal, PolicyDecision
+from isotope.platform.schemas.refs import ResourceRef
 
 
 ALLOWED_BACKEND_STATUSES = {"completed", "failed", "cancelled", "timeout"}
