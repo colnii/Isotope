@@ -1,232 +1,83 @@
-# AGENTS
+# 仓库指南
 
-## Repo Boundary
+## 项目结构与模块组织
 
-- `/home/lumber/Github/isotope` is the dedicated Isotope repo.
-- Treat `/home/lumber/Github/isotope` as the default working directory for Isotope mainline tasks.
-- `x-agent` is not the canonical repo for Isotope.
-- Do not import `x_agent.*`.
-- Do not modify `/home/lumber/Github/x-agent` unless the user explicitly asks.
-- Keep source under `src/isotope_kernel/` and tests under `tests/isotope_kernel/`.
+Isotope 是面向真实使用的 AI 应用软件，不是单纯内核项目。
+目标是在秋招前搭出可展示、可继续扩展的产品。
+现有代码暂在 `src/isotope_kernel/`，测试暂在 `tests/isotope_kernel/`。
+这只是历史遗留位置，不是长期架构命名。
+后续目录应按 AI 应用拆成 `apps/`、`src/core/`、`src/models/`、
+`src/agents/`、`src/rag/`、`src/features/` 等层级。
+文档放在 `docs/`；当前状态先看 `docs/current/status.md`。
+文档地图和清理计划看 `docs/current/docs-map.md` 与
+`docs/current/agent-task-queue.md`。
 
-## Workflow
+## 构建、测试与开发命令
 
-- Read [docs/current-status.md](docs/current-status.md) before starting a new Isotope task.
-- For queued mainline work, also read [docs/v0.2-roadmap.md](docs/v0.2-roadmap.md) and [docs/agent-task-queue.md](docs/agent-task-queue.md), then follow Rolling Batch Mode, the Current Batch, and Stop Conditions.
-- Follow TDD for implementation work: write red tests first, keep them uncommitted, then implement the smallest green slice and commit after verification.
-- For docs-only tasks, do not modify `src/`, `tests/`, `.github/`, or `pyproject.toml`.
-- After behavior changes, sync `README.md`, `AGENTS.md`, and affected docs/status files in the same task.
-- After any scoped Isotope task that leaves intended file changes, verify, commit, and push to the current upstream branch unless the user explicitly asks to pause or keep changes uncommitted.
-- Keep project history linear: prefer fast-forward / rebase workflows, avoid merge commits on `main`, and do not force-push shared branches unless the user explicitly requests it.
-- Keep detailed status, deferred capability lists, and design boundaries in `docs/`; keep README and AGENTS short.
-- Verify `/home/lumber/Github/x-agent` stays untouched on every scoped Isotope task.
-- Do not change tags or publish GitHub Releases unless explicitly requested.
-
-## Current Phase
-
-- `v0.1-demo` and `v0.2-demo` developer demo tags exist; current integration baseline is `1389 passed, 5 skipped`; pre-controlled-terminal mainline baseline was `1134 passed`.
-- Isotope is kernel-first right now, not kernel-only. Future Isotope still includes LLM planning, Agent loop, worker, scheduling, and product-layer experience; current branch-local Agent loop spikes only prove selected foundation paths, not a finished Agent loop product.
-- Planner Input / Output Contract is documented in [docs/planner-input-output-contract-v0.2.md](docs/planner-input-output-contract-v0.2.md). The validator and validated-runner demo spikes have now exercised the contract without connecting a real LLM.
-- Planner I/O Validator Spike is complete and documented in [docs/planner-io-validator-spike-review.md](docs/planner-io-validator-spike-review.md). It proves fake planner output is checked before execution.
-- Planner Validated Runner Spike is complete and documented in [docs/planner-validated-runner-spike-review.md](docs/planner-validated-runner-spike-review.md). Next safe mode is pausing artificial branch-local Agent loop expansion until real app-layer friction or external review feedback arrives.
-- Agent Loop Branch Handoff Checkpoint is documented in [docs/agent-loop-branch-handoff-checkpoint.md](docs/agent-loop-branch-handoff-checkpoint.md). The branch is ready for keep / PR / merge decision; do not keep adding artificial Agent loop scenarios.
-- Track D: Demo / Docs Polish is effectively complete / closed for now.
-- Current Track A design doc: [docs/http-api-minimal-surface-v0.2.md](docs/http-api-minimal-surface-v0.2.md).
-- Track A has in-process `HttpApiApp` / `create_http_app(...)`, request validation / no-side-effect error boundary, response contract, demo smoke, duplicate-submit idempotency boundary, route inventory, and deferred route contract; it is effectively complete / closed for now and is not a real listening HTTP server.
-- Current Track C design doc: [docs/artifact-content-read-policy-v0.2.md](docs/artifact-content-read-policy-v0.2.md).
-- Track C: Artifact Content Read Policy is effectively complete / closed for now: retrieval requires structured `ResourceRef`, grants, caller context, and purpose; HTTP full-content route has an explicit enablement guard but still returns `501 not_enabled`.
-- Track E: Approval Pause / Resume Boundary is effectively complete / closed for now. Approval resolution plus run-state / HTTP read-model green slices are complete; UI / auth / notification / scheduler / complex DSL remain deferred.
-- v0.2 demo readiness is documented in [docs/demo/v0.2-demo-readiness.md](docs/demo/v0.2-demo-readiness.md).
-- v0.2 demo scenario is implemented and documented in [docs/demo/v0.2-demo-scenario.md](docs/demo/v0.2-demo-scenario.md): `--scenario v0.2` visibly exercises Track A / C / E without real HTTP server, network listener, memory storage/query, or HTTP full-content route.
-- Demo trace mode is implemented for `--scenario v0.2 --trace`, `--scenario approval-tool-runner --trace`, `--scenario artifact-review --trace`, `--scenario external-snapshot-review --trace`, `--scenario agent-loop-friction --trace`, `--scenario agent-loop-planner-friction --trace`, `--scenario agent-loop-planner-matrix --trace`, and `--scenario agent-loop-planner-restart-pause --trace`; it is human-readable only, keeps `--json` compatible, and does not expose artifact full content.
-- v0.2 developer demo acceptance is documented in [docs/demo/v0.2-demo-acceptance.md](docs/demo/v0.2-demo-acceptance.md); `v0.2-demo` is already tagged, but no GitHub Release has been published.
-- Post-tag delta is documented in [docs/post-v0.2-tag-delta.md](docs/post-v0.2-tag-delta.md): current `main` is ahead of `v0.2-demo` with Track F external ingestion boundary work, Agent / Worker lifecycle first slice, Workspace substrate first slice, and Retry / Cancel / Supersede stabilization slice; do not move the tag or create `v0.2.1-demo` unless explicitly requested.
-- Track F: External Ingestion is effectively complete / closed for now at boundary / read-model / checkpoint scope: `ingestion.py`, `ImportedSnapshot`, `InProcessServer.import_external_snapshot(...)`, and `snapshot.imported` projection into checkpointable `RunState.external_observations`; provider adapters, webhooks, and public ingestion API remain deferred.
-- v0.2 cycle closure is documented in [docs/v0.2-cycle-closure-review.md](docs/v0.2-cycle-closure-review.md). Default next mode is cleanup / docs organization / external review, not more runtime implementation.
-- Kernel Gap Review is documented in [docs/kernel-gap-review-v0.2.md](docs/kernel-gap-review-v0.2.md). Agent / Worker lifecycle boundary is now documented in [docs/agent-worker-lifecycle-boundary-v0.2.md](docs/agent-worker-lifecycle-boundary-v0.2.md), and the first slice is complete: `RunState.agents` / `RunState.workers`, delegation policy gate, checkpoint support, no real concurrency. Delegation Decision Read Model slice is also complete: `RunState.delegations` projects delegation proposal / decision / worker linkage, including denied worker handoff audit, for app-layer audit without raw event scans. Workspace substrate first slice is complete and documented in [docs/workspace-substrate-boundary-v0.2.md](docs/workspace-substrate-boundary-v0.2.md): `RunState.workspaces`, canonical `workspace.bound`, grants-bound `shared_ro` binding, replay, and checkpoint support; no container / git worktree / remote executor. Workspace resource lifecycle helper slice is complete / closed for now and documented in [docs/workspace-resource-lifecycle-boundary-v0.2.md](docs/workspace-resource-lifecycle-boundary-v0.2.md) plus [docs/workspace-resource-lifecycle-closure-review.md](docs/workspace-resource-lifecycle-closure-review.md): `InProcessServer.create_workspace_lease(...)`, `capture_workspace_artifact(...)`, and `release_workspace(...)` append existing canonical `workspace.lease_created`, `workspace.artifact_captured`, and `workspace.released` events so app shells do not use private `_append(...)`; still no real filesystem / container / git worktree / remote executor. Retry / Cancel / Supersede stabilization slice is complete and documented in [docs/retry-cancel-supersede-boundary-v0.2.md](docs/retry-cancel-supersede-boundary-v0.2.md): action lifecycle read models, basis linkage hardening, replay, and checkpoint support; no scheduler / process kill / real concurrency. Do not jump straight to real HTTP server, real LLM, memory query/promotion, provider adapter, or domain packs.
-- Derived Artifact Basis Refs slice is complete / closed for now: `InProcessServer.create_source_artifact(...)` accepts optional structured `basis_refs` / `source_refs`, validates them as same-run artifact `ResourceRef` values, stores them in `artifact.created` summary provenance, and projects them through replay / checkpoint / `get_artifact_record(...)` without exposing artifact full content; no real worker runtime, fan-in helper, scheduler, filesystem, container, git worktree, real HTTP, provider, public SDK, tag, or release.
-- Restart Write Helper Run Context slice is complete / closed for now: restarted `InProcessServer(root, checkpoint_store=...)` can continue selected public write helpers on existing non-terminal runs by recovering minimal `run.created` / `agent.created` / `thread.created` context from canonical events; post-restart `create_source_artifact(...)` returns the current execution's new artifact ref and preserves structured `basis_refs` / `source_refs`; terminal runs still fail closed with no side effects, and no real worker runtime / scheduler / process supervisor is implemented.
-- Restart Approval Resolution Context slice is complete / closed for now: restarted `InProcessServer(root, checkpoint_store=...)` can resolve pending approvals when `approval.requested` carries persisted proposal / decision metadata plus a private payload handle; raw tool text does not enter canonical events / read model / checkpoint, malformed resolution still appends no partial events, and no real HTTP / scheduler / UI / auth / notification / product approval workflow is implemented.
-- Restart Create Run Session Context slice is complete / closed for now: restarted `InProcessServer(root, checkpoint_store=...)` can create follow-up runs for event-backed sessions recovered from canonical `session.created` / `run.created` state, so app shells do not need private `_sessions` rebuilds after restart; still no product session workflow, run graph, scheduler, real worker runtime, HTTP, provider, filesystem, container, or git worktree.
-- Policy Constructor Surface slice is complete / closed for now: `InProcessServer(..., registry=..., policy_profile_id=..., policy_version=...)` wires explicit policy metadata into the same shared registry path used by `ActionCompiler` / `PolicyEngine` / `Executor`, so `action.decided` and `RunState.actions[*].policy_basis` preserve custom policy basis through replay and checkpoint without replacing `api.policy`; arbitrary `PolicyEngine` injection, policy DSL, remote registry loading, product policy UI, public SDK, real HTTP, and provider adapter remain deferred.
-- Capability Hub Core first slice is implemented and documented in [docs/capability-hub-core-boundary-v0.2.md](docs/capability-hub-core-boundary-v0.2.md); merge readiness is documented in [docs/capability-hub-core-merge-readiness-review.md](docs/capability-hub-core-merge-readiness-review.md). `isotope_kernel.capability_catalog` provides low-sensitive capability metadata, shelf visibility, minimal list / manifest / status, and three product-candidate registrations. Mainline should not merge aggressive Capability Hub wholesale; do not copy aggressive `capability_hub.py`, diagnostics, self-evolution harness, DeepSeek provider, LLM route, `ask`, `interactive`, workflow engine, or product shell into mainline.
-- Aggressive remaining code review is documented in [docs/aggressive-remaining-code-review-v0.md](docs/aggressive-remaining-code-review-v0.md). Treat `origin/spike/aggressive-dev` as application-layer experiment material, not a mergeable feature branch. If continuing, prefer `Capability Runner Thin Shell` docs-only boundary before code; do not copy aggressive `capability_hub.py` / `self_evolution.py` wholesale.
-- Capability Runner Thin Shell first slice is complete and documented in [docs/capability-runner-thin-shell-boundary-v0.2.md](docs/capability-runner-thin-shell-boundary-v0.2.md). `isotope_kernel.capability_runner` reuses `capability_catalog` as source of truth, supports only a tiny allowlist of existing product-candidate capabilities, and fails closed before side effects for unknown / diagnostic / experimental / provider-required / unallowlisted capabilities. Do not copy aggressive `capability_hub.py`, do not add workflow engine / product shell / study companion / self-evolution harness / real provider runner in this slice.
-- Capability Runner CLI first slice is implemented and documented in [docs/capability-runner-cli-boundary-v0.2.md](docs/capability-runner-cli-boundary-v0.2.md). `python -m isotope_kernel.capability_runner` now exposes low-sensitive `list / describe / status / run` over the existing thin runner. It is not aggressive `ask` / `interactive`, product hub, workflow engine, provider runner, or wholesale `capability_hub.py`.
-- Aggressive remaining code intake refresh is documented in [docs/aggressive-remaining-code-intake-refresh-v0.md](docs/aggressive-remaining-code-intake-refresh-v0.md). After catalog / runner / CLI extraction, the next safe extract-only slice is `Capability Search / Launch Plan Boundary`: a deterministic preflight / launch-plan surface over existing catalog and runner, not provider-backed execution, self-evolution, study companion productization, workflow engine, or product shell.
-- Capability Search / Launch Plan first slice is implemented and documented in [docs/capability-search-launch-plan-boundary-v0.2.md](docs/capability-search-launch-plan-boundary-v0.2.md). `CapabilityRunner.search_capabilities(...)` and `plan_capability_run(...)` provide deterministic catalog search and low-sensitive launch plans before execution; they do not call an LLM router, construct providers, execute capabilities, append events, open `ask` / `interactive`, or copy aggressive hub code. CLI `search` / `plan` remains unimplemented.
-- Agent Loop Run Control and Step Driver first slices are implemented and documented in [docs/agent-loop-run-control-boundary-v0.2.md](docs/agent-loop-run-control-boundary-v0.2.md) and [docs/agent-loop-step-driver-boundary-v0.2.md](docs/agent-loop-step-driver-boundary-v0.2.md). `InProcessServer.get_agent_loop_control(...)` exposes a summary-only phase / blocker / next-action read model, and `run_agent_loop_step(...)` runs exactly one currently allowed public-helper step; in-process HTTP facade routes mirror those two surfaces. This is not an automatic loop, scheduler, real LLM planner, provider adapter, real worker runtime, or product shell.
-- Controlled terminal / provider slices from `feature/controlled-terminal-exec` are integrated: `terminal_exec` is an argv-only controlled tool path; model-tool bridge and LLM provider routes exercise model tool-call -> approval-gated action -> artifact ref handoff and terminal-tool loop. This is not an interactive shell, process supervisor, real listening HTTP server, provider product, workflow engine, or product chat shell.
-- DeepSeek direct chat provider wrapper is implemented as `DeepSeekChatProvider`: stdlib-only OpenAI-compatible `/chat/completions` boundary for `deepseek-v4-flash`, fake-transport tested, no tool execution, no kernel event writes, and no product shell.
-- Docs migration planning is documented in [docs/docs-migration-plan.md](docs/docs-migration-plan.md). Phase 1 is closed / paused after `docs/release/` and `docs/demo/` migrations; do not move more docs files unless a task explicitly asks for migration execution.
-- Mainline batch automation is documented in [docs/agent-task-queue.md](docs/agent-task-queue.md). It uses rolling batch mode with a 45-60 min session timebox. Approval lookup, workspace binding, submit action helper, artifact review flow, source artifact setup helper, artifact provenance helper, Derived Artifact Basis Refs, Tool Invocation Runtime Wiring, Restart Write Helper Run Context, Restart Approval Resolution Context, Restart Create Run Session Context, and Policy Constructor Surface are complete; artifact-review first app spike, external-snapshot-review second app spike, agent-loop-friction branch-local spike, agent-loop-planner-friction branch-local spike, agent-loop-planner-matrix branch-local spike, planner runner API boundary review, planner matrix fixture expansion review, planner restart-pause fixture spike, agent-loop branch closure review, app spike coverage review, Kernel Gap Review Refresh, Workspace Resource Lifecycle helper slice, Policy Profile / Action Registry Versioning first slice, Retry / Cancel / Supersede Runtime Integration first slice, Event Schema Registry / Compatibility first slice, External Review Package Refresh, Post External Review Checkpoint, Tool Protocol Boundary docs-only review, Tool Protocol first slice closure, Session / Run Lifecycle first slice, Error Taxonomy Boundary, Error Taxonomy first slice closure, Worker Handoff Error Taxonomy slice, Delegation Decision Read Model slice, and Denied Worker Handoff Audit slice are complete / closed for now; next suggested mode is application-layer friction intake, external review feedback intake, or user-selected branch integration.
-- Kernel mainline maintenance mode is documented in [docs/kernel-mainline-maintenance-mode.md](docs/kernel-mainline-maintenance-mode.md). Mainline is now conservative / stability-first: do not proactively expand kernel features; let application-layer prototype work on the aggressive branch or external review feedback produce concrete friction before reopening kernel batches.
-- Mainline idle checkpoint is documented in [docs/mainline-idle-checkpoint.md](docs/mainline-idle-checkpoint.md). Default next action is to wait for app-layer friction / external review feedback, or run periodic verification only.
-- Public / internal docs boundary is documented in [docs/public-internal-docs-boundary.md](docs/public-internal-docs-boundary.md). `docs/concepts/` may remain in mainline as concept / application-pressure material, but it is not implementation truth and should not be treated as public product docs without a future audit.
-- Real server boundary design only if Track A is explicitly reopened; artifact content HTTP route implementation only if Track C is explicitly reopened.
-- Optional docs polish can continue later, but it should not block v0.2 implementation.
-
-## Common Verification
+常用命令：
 
 ```bash
-cd /home/lumber/Github/isotope
-
+python3 -m venv .venv
+.venv/bin/python -m pip install -U pip
+.venv/bin/python -m pip install -e ".[test]"
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope_kernel -q
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --json
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2
-
 PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2 --trace
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario v0.2 --json
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario approval-tool-runner
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario approval-tool-runner --trace
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario approval-tool-runner --json
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario artifact-review
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario artifact-review --trace
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario artifact-review --json
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario external-snapshot-review
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario external-snapshot-review --trace
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario external-snapshot-review --json
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-friction
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-friction --trace
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-friction --json
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-friction
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-friction --trace
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-friction --json
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-matrix
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-matrix --trace
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-matrix --json
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-restart-pause
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-restart-pause --trace
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-restart-pause --json
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-io-validator
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-io-validator --trace
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-io-validator --json
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-validated-runner
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-validated-runner --trace
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario agent-loop-planner-validated-runner --json
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario terminal-exec --trace
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario model-tool-bridge --trace
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario llm-provider-route --trace
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario llm-tool-result-loop --trace
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario llm-product-chat-app-entry --trace
-
-PYTHONPATH=src .venv/bin/python -m isotope_kernel.demo --scenario llm-terminal-tool-loop --trace
-
-rg -n '(^|\s)(from|import) x_agent\b' src/isotope_kernel tests/isotope_kernel || true
-
-git -C /home/lumber/Github/x-agent status --short \
-  src/x_agent src/isotope_kernel tests/isotope_kernel docs/isotope
-
-git diff -- src tests .github pyproject.toml
-
-git status --short
 ```
 
-## Docs Entrypoints
+按任务风险选择验证范围；不要为了形式运行无关长流程。
 
-- Current status: [docs/current-status.md](docs/current-status.md)
-- Current docs map: [docs/current-docs-map.md](docs/current-docs-map.md)
-- Agent task queue: [docs/agent-task-queue.md](docs/agent-task-queue.md)
-- Demo walkthrough: [docs/demo/demo-walkthrough-v0.1.md](docs/demo/demo-walkthrough-v0.1.md)
-- Demo architecture: [docs/demo/demo-architecture-v0.1.md](docs/demo/demo-architecture-v0.1.md)
-- v0.1 demo acceptance: [docs/demo/v0.1-demo-acceptance.md](docs/demo/v0.1-demo-acceptance.md)
-- v0.2 demo acceptance: [docs/demo/v0.2-demo-acceptance.md](docs/demo/v0.2-demo-acceptance.md)
-- v0.2 roadmap: [docs/v0.2-roadmap.md](docs/v0.2-roadmap.md)
-- External ingestion boundary: [docs/external-ingestion-boundary-v0.2.md](docs/external-ingestion-boundary-v0.2.md)
-- Post v0.2 tag delta: [docs/post-v0.2-tag-delta.md](docs/post-v0.2-tag-delta.md)
-- v0.2 cycle closure review: [docs/v0.2-cycle-closure-review.md](docs/v0.2-cycle-closure-review.md)
-- Kernel gap review: [docs/kernel-gap-review-v0.2.md](docs/kernel-gap-review-v0.2.md)
-- Kernel gap refresh: [docs/kernel-gap-review-refresh-v0.2.md](docs/kernel-gap-review-refresh-v0.2.md)
-- Agent / Worker lifecycle boundary: [docs/agent-worker-lifecycle-boundary-v0.2.md](docs/agent-worker-lifecycle-boundary-v0.2.md)
-- Workspace substrate boundary: [docs/workspace-substrate-boundary-v0.2.md](docs/workspace-substrate-boundary-v0.2.md)
-- Workspace resource lifecycle boundary: [docs/workspace-resource-lifecycle-boundary-v0.2.md](docs/workspace-resource-lifecycle-boundary-v0.2.md)
-- Workspace resource lifecycle closure review: [docs/workspace-resource-lifecycle-closure-review.md](docs/workspace-resource-lifecycle-closure-review.md)
-- Policy profile / action registry versioning boundary: [docs/policy-profile-action-registry-versioning-boundary-v0.2.md](docs/policy-profile-action-registry-versioning-boundary-v0.2.md)
-- Policy registry version basis closure review: [docs/policy-registry-version-basis-closure-review.md](docs/policy-registry-version-basis-closure-review.md)
-- Retry / Cancel / Supersede boundary: [docs/retry-cancel-supersede-boundary-v0.2.md](docs/retry-cancel-supersede-boundary-v0.2.md)
-- Retry / Cancel / Supersede runtime integration boundary: [docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md](docs/retry-cancel-supersede-runtime-integration-boundary-v0.2.md)
-- Retry / Cancel / Supersede runtime closure review: [docs/retry-cancel-supersede-runtime-closure-review.md](docs/retry-cancel-supersede-runtime-closure-review.md)
-- Event schema registry / compatibility boundary: [docs/event-schema-registry-compatibility-boundary-v0.2.md](docs/event-schema-registry-compatibility-boundary-v0.2.md)
-- Event schema registry closure review: [docs/event-schema-registry-closure-review.md](docs/event-schema-registry-closure-review.md)
-- Tool protocol boundary: [docs/tool-protocol-boundary-v0.2.md](docs/tool-protocol-boundary-v0.2.md)
-- Tool protocol closure review: [docs/tool-protocol-closure-review.md](docs/tool-protocol-closure-review.md)
-- Tool invocation runtime wiring boundary: [docs/tool-invocation-runtime-wiring-boundary-v0.2.md](docs/tool-invocation-runtime-wiring-boundary-v0.2.md)
-- Restart write helper run context boundary: [docs/restart-write-helper-run-context-boundary-v0.2.md](docs/restart-write-helper-run-context-boundary-v0.2.md)
-- Worker handoff app spike selection: [docs/worker-handoff-app-spike-selection.md](docs/worker-handoff-app-spike-selection.md)
-- Session / run lifecycle boundary: [docs/session-run-lifecycle-boundary-v0.2.md](docs/session-run-lifecycle-boundary-v0.2.md)
-- Error taxonomy boundary: [docs/error-taxonomy-boundary-v0.2.md](docs/error-taxonomy-boundary-v0.2.md)
-- Error taxonomy closure review: [docs/error-taxonomy-closure-review.md](docs/error-taxonomy-closure-review.md)
-- External review package: [docs/external-review-package-v0.2.md](docs/external-review-package-v0.2.md)
-- Post external review checkpoint: [docs/post-external-review-checkpoint.md](docs/post-external-review-checkpoint.md)
-- Mainline idle checkpoint: [docs/mainline-idle-checkpoint.md](docs/mainline-idle-checkpoint.md)
-- Public / internal docs boundary: [docs/public-internal-docs-boundary.md](docs/public-internal-docs-boundary.md)
-- Usability pressure test plan: [docs/usability-pressure-test-plan-v0.2.md](docs/usability-pressure-test-plan-v0.2.md)
-- Usability friction round 1 review: [docs/usability-friction-round-1-review.md](docs/usability-friction-round-1-review.md)
-- First app spike readiness: [docs/first-app-spike-readiness.md](docs/first-app-spike-readiness.md)
-- Artifact review flow friction review: [docs/artifact-review-flow-friction-review.md](docs/artifact-review-flow-friction-review.md)
-- Artifact review flow closure review: [docs/artifact-review-flow-closure-review.md](docs/artifact-review-flow-closure-review.md)
-- Second app spike selection: [docs/second-app-spike-selection.md](docs/second-app-spike-selection.md)
-- External snapshot review closure review: [docs/external-snapshot-review-closure-review.md](docs/external-snapshot-review-closure-review.md)
-- Agent loop friction review: [docs/agent-loop-friction-review.md](docs/agent-loop-friction-review.md)
-- Agent loop planner adapter friction review: [docs/agent-loop-planner-adapter-friction-review.md](docs/agent-loop-planner-adapter-friction-review.md)
-- Agent loop planner matrix friction review: [docs/agent-loop-planner-matrix-friction-review.md](docs/agent-loop-planner-matrix-friction-review.md)
-- Planner runner API boundary review: [docs/planner-runner-api-boundary-review.md](docs/planner-runner-api-boundary-review.md)
-- Planner matrix fixture expansion review: [docs/planner-matrix-fixture-expansion-review.md](docs/planner-matrix-fixture-expansion-review.md)
-- Planner restart pause fixture review: [docs/planner-restart-pause-fixture-review.md](docs/planner-restart-pause-fixture-review.md)
-- Agent loop branch closure review: [docs/agent-loop-branch-closure-review.md](docs/agent-loop-branch-closure-review.md)
-- Planner input / output contract: [docs/planner-input-output-contract-v0.2.md](docs/planner-input-output-contract-v0.2.md)
-- Planner I/O validator spike review: [docs/planner-io-validator-spike-review.md](docs/planner-io-validator-spike-review.md)
-- Planner validated runner spike review: [docs/planner-validated-runner-spike-review.md](docs/planner-validated-runner-spike-review.md)
-- Agent loop branch handoff checkpoint: [docs/agent-loop-branch-handoff-checkpoint.md](docs/agent-loop-branch-handoff-checkpoint.md)
-- App spike coverage review: [docs/app-spike-coverage-review.md](docs/app-spike-coverage-review.md)
-- Source artifact setup helper boundary: [docs/source-artifact-setup-helper-boundary-v0.2.md](docs/source-artifact-setup-helper-boundary-v0.2.md)
-- Source artifact helper closure review: [docs/source-artifact-helper-closure-review.md](docs/source-artifact-helper-closure-review.md)
-- Artifact review provenance helper boundary: [docs/artifact-review-provenance-helper-boundary-v0.2.md](docs/artifact-review-provenance-helper-boundary-v0.2.md)
-- Approval tool runner friction review: [docs/approval-tool-runner-friction-review.md](docs/approval-tool-runner-friction-review.md)
-- Submit action helper boundary: [docs/submit-action-helper-boundary-v0.2.md](docs/submit-action-helper-boundary-v0.2.md)
-- Docs migration plan: [docs/docs-migration-plan.md](docs/docs-migration-plan.md)
-- v0.2 demo readiness: [docs/demo/v0.2-demo-readiness.md](docs/demo/v0.2-demo-readiness.md)
-- v0.2 demo scenario: [docs/demo/v0.2-demo-scenario.md](docs/demo/v0.2-demo-scenario.md)
-- v0.2 next-track selection: [docs/v0.2-next-track-selection.md](docs/v0.2-next-track-selection.md)
-- v0.2 mid-cycle review: [docs/v0.2-mid-cycle-review.md](docs/v0.2-mid-cycle-review.md)
-- Approval pause / resume boundary: [docs/approval-pause-resume-boundary-v0.2.md](docs/approval-pause-resume-boundary-v0.2.md)
-- Docs inventory: [docs/docs-inventory.md](docs/docs-inventory.md)
-- Artifact content read policy: [docs/artifact-content-read-policy-v0.2.md](docs/artifact-content-read-policy-v0.2.md)
-- HTTP API minimal surface: [docs/http-api-minimal-surface-v0.2.md](docs/http-api-minimal-surface-v0.2.md)
+## 代码风格与命名
+
+Python 代码使用 4 空格缩进，模块和函数用 `snake_case`。
+测试文件用 `test_*.py`，测试函数用 `test_*`。
+保持文件职责清楚，不把货架、执行器、界面和诊断混成大文件。
+新增依赖可以接受，但要说明用途、维护成本和替代方案。
+不要为了“自主实现”重复造轮子。
+
+## 产品导向开发
+
+先确认用户要的最终可用效果，再动手。
+不得擅自把产品功能降级成诊断、预检查或半成品。
+若需求过大，拆成可运行、可演示的阶段成果。
+速度和质量都重要；不要用“稳定”掩盖低效推进。
+不为“安全感”堆无意义检查，不重复做已证明的底层铺垫。
+
+用户给出参考产品、仓库或实现时，必须先提炼：
+可复用设计、可复制代码、差异点、落地方案。
+可以积极参考 GitHub 优秀项目。
+满足需求、许可证允许、少量适配即可使用的代码，可以直接复制再改。
+参考材料是需求输入，不是背景噪音；忽略前必须说明原因。
+
+## 测试要求
+
+测试使用 `pytest`。
+功能开发要有测试，但测试服务于交付，不是拖慢交付的理由。
+小改动可做最小验证；共享行为、执行路径或状态恢复改动要跑相关回归。
+行为变化后，同步入口文档和相关状态说明。
+
+## 提交与合并请求
+
+提交信息遵守 Conventional Commits。
+提交前运行 `git diff --check` 和必要测试。
+保持线性历史，优先 rebase 或 fast-forward。
+不要在共享分支制造无说明的 merge commit。
+不要主动合并、删除或重写分支；分支处理先做状态审计。
+分支的临时暂停状态记录在 `docs/current/status.md`，不写进本文件。
+
+## AI 协作规则
+
+当前分支只表示代码位置，不代表项目方向。
+多 AI 并行开发时必须使用独立 worktree（工作树）。
+遇到不确定点，优先向用户对齐，不要自作主张绕远路。
+判断要收窄范围时，先说明原因并等待用户同意。
+术语可保留英文以便搜代码，但首次出现要配中文说明。
+每次结束回复时，用一句话说明建议的下一步。
+
+临时术语锚点：
+`agent loop` 智能体循环；`tool call` 工具调用；
+`artifact` 产物记录；`checkpoint` 检查点；
+`provider` 模型服务适配器；`planner` 规划器；
+`executor` 执行器；`policy` 权限策略；
+`capability` 能力；`workspace` 工作区；
+`terminal_exec` 终端执行能力。
+完整术语索引应在文档整理阶段从真实代码和文档抽取。
