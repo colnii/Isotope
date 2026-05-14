@@ -198,6 +198,30 @@ class TerminalBackendRunResult:
     backend_summary: dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class TerminalBackendFailure:
+    reason_code: str
+    message: str
+    retryable: bool
+    details: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        _reason_code(self.reason_code)
+        _non_empty_string("message", self.message)
+        if not isinstance(self.retryable, bool):
+            raise ValueError("retryable must be a bool")
+        _dict_field("details", self.details)
+
+
+@dataclass(frozen=True)
+class TerminalBackendCancelResult:
+    status: str
+    summary: str
+    reason_code: str
+    retryable: bool
+    basis_event_ids: list[str]
+
+
 class TerminalBackendAdapter:
     """Adapter that enforces Isotope's boundary around a terminal backend."""
 
@@ -237,6 +261,37 @@ class TerminalBackendAdapter:
         )
         result = self._normalize_result(self.backend.run(request))
         return self._accept_result(request, result)
+
+    def cancel(
+        self,
+        request: TerminalBackendRequest,
+        *,
+        basis_event_ids: list[str],
+    ) -> TerminalBackendCancelResult:
+        if not isinstance(request, TerminalBackendRequest):
+            raise TypeError("cancel requires a TerminalBackendRequest")
+        _string_list("basis_event_ids", basis_event_ids)
+        raw_result = self.backend.cancel(request, basis_event_ids=list(basis_event_ids))
+        if not isinstance(raw_result, dict):
+            raise TerminalBackendProtocolError("terminal backend cancel result must be a dict")
+        status = raw_result.get("status")
+        if status not in {"cancelled", "failed"}:
+            raise TerminalBackendProtocolError(
+                "terminal backend cancel returned unknown status",
+                details={"status": status},
+            )
+        summary = _non_empty_string("summary", raw_result.get("summary"))
+        reason_code = _non_empty_string("reason_code", raw_result.get("reason_code"))
+        retryable = raw_result.get("retryable")
+        if not isinstance(retryable, bool):
+            raise TerminalBackendProtocolError("terminal backend cancel retryable must be a bool")
+        return TerminalBackendCancelResult(
+            status=status,
+            summary=summary,
+            reason_code=reason_code,
+            retryable=retryable,
+            basis_event_ids=list(basis_event_ids),
+        )
 
     def _accept_result(
         self,
@@ -782,11 +837,19 @@ def _string_list(field_name: str, value: Any) -> None:
             raise ValueError(f"{field_name}[{index}] must be a non-empty string")
 
 
+def _reason_code(value: str) -> None:
+    _non_empty_string("reason_code", value)
+    if value != value.lower() or not value.replace("_", "").isalnum():
+        raise ValueError("reason_code must be a stable identifier")
+
+
 __all__ = [
     "LinuxSystemTerminalRunner",
     "TerminalBackendAdapter",
+    "TerminalBackendCancelResult",
     "TerminalBackendConfig",
     "TerminalBackendExecutionError",
+    "TerminalBackendFailure",
     "TerminalBackendNotConfiguredError",
     "TerminalBackendOutputArtifact",
     "TerminalBackendProtocolError",

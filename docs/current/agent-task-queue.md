@@ -115,6 +115,7 @@
 - 已新增 `src/agents/tools/terminal.py`。
 - 已新增 `src/agents/executor/terminal_backend.py`。
 - 已新增 `tests/agents/` 下的终端执行层测试。
+- 已把旧 `src/isotope_kernel/terminal*.py` 入口改成短期兼容层。
 
 ## 验证
 
