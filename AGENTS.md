@@ -22,6 +22,7 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -e ".[test]"
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q
 PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2 --trace
+.venv/bin/isotope-demo --scenario v0.2 --trace
 ```
 
 按任务风险选择验证范围；不要为了形式运行无关长流程。

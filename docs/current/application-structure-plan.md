@@ -103,6 +103,7 @@ scripts/
 
 ## 已完成分层
 
+- CLI 入口：`apps/cli/` 已建立薄入口，正式脚本在 `pyproject.toml` 的 `[project.scripts]` 中声明。
 - 平台 schema：`models.py`、`refs.py`、`tool_protocol.py` 已迁入 `src/isotope/platform/schemas/`。
 - 平台事件：`events.py`、`event_schema.py` 已迁入 `src/isotope/platform/events/`。
 - 能力目录：`capability_catalog.py`、`capability_runner.py` 已迁入 `src/isotope/capabilities/`。

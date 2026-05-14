@@ -1,6 +1,6 @@
 # Isotope 当前状态
 
-状态：`主线已收束 / 待目录设计`
+状态：`主线已收束 / 应用目录收束中`
 
 ## 当前判断
 
@@ -24,7 +24,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
 
 1. 保持当前 `main` 干净。
 2. 后续功能从明确产品目标出发新开分支。
-3. 目录结构设计另行讨论，不在本轮强行迁移。
+3. 目录结构设计另行讨论；当前只做已明确的低风险收束。
 4. 继续避免把产品功能降级成诊断或半成品。
 
 ## 文档策略
@@ -50,6 +50,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
 ```bash
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q
 PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2 --trace
+.venv/bin/isotope-demo --scenario v0.2 --trace
 git status --short
 ```
 

@@ -49,6 +49,11 @@ def _venv_python(venv_path: Path) -> Path:
     return venv_path / "bin" / "python"
 
 
+def _script_path(python: Path, name: str) -> Path:
+    suffix = ".exe" if os.name == "nt" else ""
+    return python.parent / f"{name}{suffix}"
+
+
 def _run(
     cmd: list[str | Path],
     *,
@@ -145,6 +150,14 @@ def test_pyproject_metadata_contains_minimum_package_contract():
     assert _contains_pytest_dependency(pyproject)
 
 
+def test_pyproject_declares_cli_scripts():
+    scripts = _load_pyproject()["project"]["scripts"]
+
+    assert scripts["isotope-demo"] == "isotope.demo:main"
+    assert scripts["isotope-capability"] == "isotope.capabilities.runner:main"
+    assert scripts["isotope-llm-smoke"] == "isotope.llm_live_smoke:main"
+
+
 def test_package_discovery_covers_src_isotope():
     pyproject = _load_pyproject()
     package_find = pyproject["tool"]["setuptools"]["packages"]["find"]
@@ -199,6 +212,20 @@ def test_installed_demo_does_not_write_repo_root_storage_dirs(installed_python):
 
     assert result.returncode == 0, result.stderr
     assert _repo_dir_snapshot() == before
+
+
+def test_editable_install_runs_demo_console_script(installed_python):
+    python, outside_cwd = installed_python
+
+    result = _run(
+        [_script_path(python, "isotope-demo"), "--json"],
+        cwd=outside_cwd,
+    )
+
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout)
+    assert REQUIRED_DEMO_JSON_FIELDS.issubset(data)
+    _assert_no_forbidden_content_keys(data)
 
 
 def test_installed_package_source_does_not_import_x_agent():

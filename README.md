@@ -20,6 +20,7 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -e ".[test]"
 .venv/bin/python -m pytest tests/isotope -q
 .venv/bin/python -m isotope.demo --scenario v0.2 --trace
+.venv/bin/isotope-demo --scenario v0.2 --trace
 ```
 
 ## 当前可用能力
