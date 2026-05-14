@@ -2,7 +2,7 @@
 
 状态：`active`
 
-Current note: Controlled terminal / provider integration and DeepSeek direct-chat provider wrapper extraction are complete. Aggressive remaining code review is complete. `Capability Runner Thin Shell` and its minimal CLI first slice are complete: a tiny catalog-backed runner over three deterministic product-candidate capabilities, not a wholesale merge of aggressive `capability_hub.py` / `self_evolution.py` / product shell.
+Current note: Controlled terminal / provider integration and DeepSeek direct-chat provider wrapper extraction are complete. Aggressive remaining code review is complete. `Capability Runner Thin Shell` and its minimal CLI first slice are complete: a tiny catalog-backed runner over three deterministic product-candidate capabilities, not a wholesale merge of aggressive `capability_hub.py` / `self_evolution.py` / product shell. CLI后的 intake refresh 已把下一步收窄为 `Capability Search / Launch Plan Boundary`。
 
 ## 1. Purpose
 
@@ -229,9 +229,33 @@ Next suggested batch:
 
 `Aggressive Remaining Code Intake Review Refresh`
 
-Status: `ready_docs_only`
+Status: `complete / docs-only`
 
 Goal: re-open the remaining aggressive diff after CLI extraction and decide the next extract-only slice. Likely candidates are provider-backed capability runner boundary or self-evolution review-package boundary; do not implement either until the refreshed review says the missing mainline bottom component is clear.
+
+Evidence:
+
+- Re-checked `origin/main@506efcd`, `origin/codex/spike-aggressive-dev@432f941`, and `origin/spike/aggressive-dev@18cd7df`.
+- Confirmed aggressive diff remains large and mixed; `capability_hub.py` / `self_evolution.py` / product shell still cannot be wholesale merged.
+- Confirmed main `llm_provider.py` already supersedes aggressive old direct-chat wrapper.
+- Added `docs/aggressive-remaining-code-intake-refresh-v0.md`.
+- Next slice narrowed to `Capability Search / Launch Plan Boundary`, not provider-backed runner or self-evolution.
+
+Next suggested batch:
+
+`Capability Search / Launch Plan Boundary`
+
+Status: `ready_docs_only`
+
+Goal: define the smallest preflight / launch-plan surface over `CapabilityCatalog` and `CapabilityRunner` so applications can search capabilities and understand whether a capability can be launched before execution.
+
+Suggested scope:
+
+- docs-only boundary first
+- keep `CapabilityCatalog` as source of truth
+- define deterministic search / low-sensitive launch plan shape
+- no LLM router, provider-backed execution, `ask`, `interactive`, workflow engine, product shell, or self-evolution
+- if implemented later, likely red tests around `CapabilityRunner.search(...)`, `CapabilityRunner.plan(...)`, and optional CLI `search` / `plan`
 
 ## 37. Current Batch
 

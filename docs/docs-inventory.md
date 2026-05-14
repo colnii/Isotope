@@ -83,6 +83,7 @@
 - Capability Runner Thin Shell first slice 已 green；tracked docs Markdown 数量不变。当前实现新增 `isotope_kernel.capability_runner`，复用 catalog source of truth，并只允许三类 product-candidate deterministic capability run。
 - 加上 Capability Runner Thin Shell Closure Review 后 tracked docs Markdown：147 个。该文档标记 thin shell first slice closed for now，并建议回到 application-layer friction intake，不默认扩 CLI / product hub。
 - 加上 Capability Runner CLI Boundary 后 tracked docs Markdown：148 个。该文档记录 aggressive `capability_hub` CLI 思路已被抽成最小 `python -m isotope_kernel.capability_runner`，只做低敏 `list / describe / status / run`，不复制 `ask` / `interactive` / workflow engine / product shell。
+- 加上 Aggressive Remaining Code Intake Refresh 后 tracked docs Markdown：149 个。该文档在 CLI first slice 后重新盘点 aggressive 剩余代码，确认仍不能 wholesale merge，并把下一步收窄为 `Capability Search / Launch Plan Boundary`，不是 provider-backed runner / self-evolution / product shell。
 
 ## 2. Current entrypoints
 
@@ -112,6 +113,7 @@
 - `docs/capability-hub-core-boundary-v0.2.md`：Capability Hub Core boundary，记录 aggressive branch 不能整体 merge、mainline 只抽取 capability metadata / shelf / manifest / status core 的范围和 first green slice evidence。
 - `docs/capability-hub-core-merge-readiness-review.md`：Capability Hub Core merge readiness review，记录 rebase 结果、verification、merge 注意事项和仍然 deferred 的 capability execution / LLM route / product shell。
 - `docs/aggressive-remaining-code-review-v0.md`：aggressive 剩余代码思路级 review，记录不能 wholesale merge 的原因、可保留思路和下一步 `Capability Runner Thin Shell` 建议。
+- `docs/aggressive-remaining-code-intake-refresh-v0.md`：CLI first slice 后的 aggressive 剩余代码 intake refresh，记录已吸收内容、剩余代码分类、缺失底层组件和下一步 `Capability Search / Launch Plan Boundary` 建议。
 - `docs/capability-runner-thin-shell-boundary-v0.2.md`：Capability Runner Thin Shell boundary 和 first green slice evidence，定义从 catalog 到少数 product-candidate capability deterministic run 的薄壳边界，防止把 aggressive `capability_hub.py` 的 god module 形态合入 main。
 - `docs/capability-runner-thin-shell-closure-review.md`：Capability Runner Thin Shell closure review，记录 first slice enough、remaining friction、为什么暂不继续扩 CLI / product hub，以及下一步回到 app-layer friction intake。
 - `docs/capability-runner-cli-boundary-v0.2.md`：Capability Runner CLI boundary，记录 `python -m isotope_kernel.capability_runner` 的最小 `list / describe / status / run` 入口和不复制 aggressive hub 的边界。
