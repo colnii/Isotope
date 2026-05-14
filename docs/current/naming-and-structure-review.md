@@ -1,6 +1,6 @@
 # 命名与目录审计
 
-状态：`当前审计 / 批次一已执行`
+状态：`当前审计 / 批次二已执行`
 
 本文只审计命名和目录，不直接要求改代码。
 目标是避免 Isotope 再被旧底座叙事、临时兼容入口和不好看的模块名牵着走。
@@ -10,7 +10,7 @@
 目前最大问题不是 `src/isotope/` 这个包名，而是包内职责命名还带着迁移痕迹：
 
 - `core/` 现在只保留 agent loop 兼容代理，不承载活跃实现。
-- `runtime/` 有 `server.py`，`core/` 又有 `runtime.py`，语义容易撞。
+- `runtime/server.py` 已变成兼容代理，活跃实现位于 `runtime/in_process.py`。
 - 根目录还有大量旧兼容代理，看起来像真实模块。
 - 一些文件名是历史工作流命名，不像长期产品代码。
 - `features/` 还没形成任务、项目、文件、研究等用户功能层。
@@ -92,7 +92,7 @@ src/isotope/
 | `core/loop_planner_adapter.py` | 名字过长 | 已迁到 `agents/loop/planner_adapter.py` |
 | `core/real_planner_contract.py` | `real` 不像长期命名 | 已迁到 `agents/loop/planner_contract.py` |
 | `core/runtime.py` | 和 `runtime/` 撞名 | 删除空壳或并入 `agents/loop/` |
-| `runtime/server.py` | `server` 太泛 | `runtime/in_process.py` 或 `runtime/app_runtime.py` |
+| `runtime/server.py` | `server` 太泛 | 已迁到 `runtime/in_process.py` |
 | `features/chat/product_chat.py` | product 前缀多余 | `features/chat/flow.py` 或 `features/chat/service.py` |
 | `integrations/llm/provider.py` | LLM 不是普通外部系统集成 | `llm/provider.py` |
 | `integrations/llm/tool_bridge.py` | LLM 工具桥属于模型交互层 | `llm/tool_bridge.py` |
@@ -132,13 +132,15 @@ src/isotope/
 
 ### 批次二：runtime 命名澄清
 
+状态：已执行。
+
 目标：
 
 - 将 `runtime/server.py` 改成更准确的名字。
-- 候选：`runtime/in_process.py` 或 `runtime/app_runtime.py`。
+- 采用 `runtime/in_process.py`。
 - 旧 `isotope.server` 和 `isotope.runtime.server` 继续保留代理。
 
-推荐用 `runtime/in_process.py`，因为当前 `InProcessServer` 本来就不是真 HTTP server。
+采用 `runtime/in_process.py`，因为当前 `InProcessServer` 本来就不是真 HTTP server。
 
 ### 批次三：LLM 层拆出
 

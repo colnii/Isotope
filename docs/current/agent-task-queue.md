@@ -29,7 +29,7 @@
 14. HTTP facade 入口：`http_api.py` 已迁入 `src/isotope/interfaces/`。
 15. LLM 与 Codex 集成：模型 provider、tool bridge、Codex task/CLI/server/live smoke 已迁入 `src/isotope/integrations/`。
 16. 状态恢复入口：checkpoint store、event store、projector 已迁入 `src/isotope/platform/state/`。
-17. 运行入口：`server.py` 已迁入 `src/isotope/runtime/server.py`。
+17. 运行入口：活跃实现已迁入 `src/isotope/runtime/in_process.py`。
 18. CLI 入口：`apps/cli/` 已建立薄入口，`pyproject.toml` 已声明正式命令。
 19. 运行时工具：`action_compiler.py` 迁入 `runtime/`，`ids.py` 迁入 `platform/`，活跃终端引用改到真实实现路径。
 20. 平台 schema/event：活跃代码已切到 `platform/schemas/` 与 `platform/events/`，旧根路径保留兼容代理。
@@ -40,14 +40,16 @@
 25. 外部审查吸收：已加入 [chatgpt审查](./chatgpt审查.md) 和 [import-map](./import-map.md)。
 26. agent loop 正名：活跃实现已迁入 `src/isotope/agents/loop/`，
     `core`、`assistant` 和顶层旧路径保留兼容代理。
+27. runtime 命名澄清：活跃实现已迁入 `src/isotope/runtime/in_process.py`，
+    `runtime/server.py` 和 `isotope.server` 保留兼容代理。
 
-## 最近完成：agent loop 正名
+## 最近完成：runtime 命名澄清
 
 完成内容：
 
-- 新建 `src/isotope/agents/loop/`。
-- 将 agent loop 活跃实现迁出 `core/`。
-- `core`、`assistant` 和顶层旧路径只保留薄兼容代理。
+- 将 `runtime/server.py` 活跃实现迁到 `runtime/in_process.py`。
+- 内部活跃导入改用 `runtime.in_process`。
+- 旧 `runtime.server` 和 `isotope.server` 保留兼容代理。
 - 同步 [import-map](./import-map.md)，记录旧路径、新路径和计划删除节点。
 
 验收：
@@ -62,7 +64,7 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把当前平铺模块逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步优先评估 `runtime/server.py` 命名，或拆出 `llm/` 层。
+- 下一步优先拆出 `llm/` 层，或继续评估旧兼容代理清单。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

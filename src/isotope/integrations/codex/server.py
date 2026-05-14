@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from ...platform.registry.actions import ActionTypeRegistry
-from ...runtime.server import InProcessServer
+from ...runtime.in_process import InProcessServer
 from .cli import (
     DEFAULT_CODEX_CLI_MAX_OUTPUT_BYTES,
     CodexCliBackend,

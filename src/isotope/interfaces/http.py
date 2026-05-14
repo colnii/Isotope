@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from ..platform.errors import KernelError
-from ..runtime.server import InProcessServer
+from ..runtime.in_process import InProcessServer
 
 
 @dataclass(frozen=True)
