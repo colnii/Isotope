@@ -39,6 +39,7 @@ POST /runs/{run_id}/input
 POST /runs/{run_id}/agent-loop-step
 GET  /runs/{run_id}
 GET  /runs/{run_id}/agent-loop-control
+GET  /runs/{run_id}/agent-loop-tick-policy
 GET  /runs/{run_id}/events
 GET  /artifacts/{artifact_id}/summary
 GET  /health
@@ -99,6 +100,13 @@ run 创建只能产生当前 runtime/service boundary 允许的 canonical events
 返回 product-facing Agent loop control read model，用来告诉 app 当前 run 在哪里、是否等待审批、下一步可做什么、以及哪些能力仍 deferred。
 
 该 endpoint 是 summary-only read surface，不追加 canonical events，不返回 artifact full content / raw tool text / prompt / model response，也不是 real LLM loop、scheduler 或 product UI。
+
+### GET /runs/{run_id}/agent-loop-tick-policy
+
+返回下一 tick 是否继续的只读 policy summary。
+
+它只基于 `get_agent_loop_control(run_id)`、可选 `tick_budget` 和可选 `user_pause`
+生成决策，不执行 step、不自动循环、不调用 provider，也不创建 event 或 artifact。
 
 ### GET /runs/{run_id}/events
 

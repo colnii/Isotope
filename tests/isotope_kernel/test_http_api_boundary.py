@@ -13,6 +13,7 @@ MINIMAL_ROUTES = {
     ("POST", "/runs/{run_id}/agent-loop-step"),
     ("GET", "/runs/{run_id}"),
     ("GET", "/runs/{run_id}/agent-loop-control"),
+    ("GET", "/runs/{run_id}/agent-loop-tick-policy"),
     ("GET", "/runs/{run_id}/events"),
     ("GET", "/artifacts/{artifact_id}/summary"),
     ("GET", "/health"),

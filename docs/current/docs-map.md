@@ -48,6 +48,7 @@
 - 分支初审：[branch-audit-initial-2026-05-15](../reviews/branch-audit-initial-2026-05-15.md)
 - 分支审计刷新：[branch-audit-refresh-2026-05-15](../reviews/branch-audit-refresh-2026-05-15.md)
 - 终端分支深审：[controlled-terminal-exec-deep-review-2026-05-15](../reviews/controlled-terminal-exec-deep-review-2026-05-15.md)
+- Agent loop tick policy：[agent-loop-tick-policy-boundary-v0.2](../architecture/agent-loop-tick-policy-boundary-v0.2.md)
 
 ## 暂时废止的入口
 

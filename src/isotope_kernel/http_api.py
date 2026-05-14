@@ -38,6 +38,7 @@ class HttpApiApp:
         ("POST", "/runs/{run_id}/agent-loop-step"),
         ("GET", "/runs/{run_id}"),
         ("GET", "/runs/{run_id}/agent-loop-control"),
+        ("GET", "/runs/{run_id}/agent-loop-tick-policy"),
         ("GET", "/runs/{run_id}/events"),
         ("GET", "/artifacts/{artifact_id}/summary"),
     )
@@ -430,6 +431,16 @@ class HttpApiApp:
                 if not self._run_exists(parts[1]):
                     return self._error(404, "not_found", "run not found")
                 return self._json(200, self.server.get_agent_loop_control(parts[1]))
+            if (
+                method == "GET"
+                and len(parts) == 3
+                and parts[0] == "runs"
+                and parts[2] == "agent-loop-tick-policy"
+            ):
+                if not self._run_exists(parts[1]):
+                    return self._error(404, "not_found", "run not found")
+                controls = self._agent_loop_tick_policy_controls(json_body)
+                return self._json(200, self.server.get_agent_loop_tick_policy(parts[1], **controls))
             if method == "GET" and len(parts) == 3 and parts[0] == "runs" and parts[2] == "events":
                 if not self._run_exists(parts[1]):
                     return self._error(404, "not_found", "run not found")
@@ -471,6 +482,21 @@ class HttpApiApp:
             "artifact_content is not enabled",
             capability="artifact_content",
         )
+
+    def _agent_loop_tick_policy_controls(self, json_body: dict[str, Any] | None) -> dict[str, Any]:
+        if json_body is None:
+            return {}
+        if not isinstance(json_body, dict):
+            raise ValueError("request body must be an object")
+        allowed = {"tick_budget", "user_pause"}
+        unknown = sorted(set(json_body) - allowed)
+        if unknown:
+            raise ValueError(f"unsupported agent loop tick policy fields: {', '.join(unknown)}")
+        return {
+            key: deepcopy(value)
+            for key, value in json_body.items()
+            if key in allowed
+        }
 
     def _deferred_capability(self, method: str, parts: list[str]) -> str | None:
         for deferred_method, route, capability in self._deferred_routes():

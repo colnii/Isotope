@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .action_compiler import ActionCompiler
-from .agent_loop_control import build_agent_loop_control
+from .agent_loop_control import build_agent_loop_control, build_agent_loop_tick_policy
 from .agent_loop_step import run_agent_loop_step
 from .action_registry import ActionTypeRegistry
 from .artifact_store import ArtifactStore
@@ -761,6 +761,19 @@ class InProcessServer:
 
     def get_agent_loop_control(self, run_id: str) -> dict[str, Any]:
         return build_agent_loop_control(self.get_run_state(run_id))
+
+    def get_agent_loop_tick_policy(
+        self,
+        run_id: str,
+        *,
+        tick_budget: dict[str, Any] | None = None,
+        user_pause: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return build_agent_loop_tick_policy(
+            self.get_agent_loop_control(run_id),
+            tick_budget=tick_budget,
+            user_pause=user_pause,
+        )
 
     def run_agent_loop_step(self, run_id: str, request: dict[str, Any]) -> dict[str, Any]:
         return run_agent_loop_step(self, run_id, request)

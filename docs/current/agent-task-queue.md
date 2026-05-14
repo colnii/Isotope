@@ -118,6 +118,13 @@
 - 已把旧 `src/isotope_kernel/terminal*.py` 入口改成短期兼容层。
 - 已通过 fast-forward 合入 `main`，未制造 merge commit。
 - 已从 aggressive 分支剩余思路中补齐 `capability_runner` CLI `search / plan`。
+- 已从 agent-loop 链尾抽取 `tick policy` 读模型和 HTTP facade route。
+
+agent-loop 后续：
+
+- `feature/agent-loop-tick-budget-read-model-spike` 不能整体合并，旧 docs 路径会覆盖当前文档结构。
+- 主线已吸收 run control、step driver、tick policy。
+- 下一步只审 planner adapter / real planner contract 是否值得小切片抽取。
 
 ## 验证
 

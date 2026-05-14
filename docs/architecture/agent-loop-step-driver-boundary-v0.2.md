@@ -55,6 +55,10 @@ Step driver 会先读取 `get_agent_loop_control(run_id)`，只允许执行当�
 
 ## 6. Next Development Direction
 
-下一步可以做 `Agent Loop Step Driver Restart Coverage`。
+`Agent Loop Tick Policy` first slice 已完成，见
+[agent-loop-tick-policy-boundary-v0.2](./agent-loop-tick-policy-boundary-v0.2.md)。
 
-白话说：现在同一进程里能点下一步；下一步验证“进程重启后还能不能继续点下一步”，特别是重启后 resolve approval 和继续写 artifact。
+下一步继续审 agent-loop 链尾的 planner adapter / real planner contract。
+
+白话说：现在同一进程里能看控制状态、点下一步、判断下一 tick 是否继续；
+后面再决定要不要接规划器输出，而不是直接上 real LLM 自动循环。
