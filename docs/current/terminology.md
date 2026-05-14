@@ -18,7 +18,10 @@
 | `provider` | 模型服务适配器，连接外部模型服务 | 模型 | `src/isotope/llm_provider.py` |
 | `product chat` | 产品聊天入口，让模型调用工具并返回面向用户的回答 | 产品能力 | `src/isotope/features/chat/product_chat.py` |
 | `artifact` | 产物记录，保存执行结果摘要和引用 | 平台数据 | `src/isotope/platform/schemas/models.py` |
+| `ArtifactStore` | 产物存储，负责保存和读取 artifact 元数据与内容 | 工作区资源 | `src/isotope/workspace/artifacts.py` |
 | `ResourceRef` | 资源引用，指向产物等对象而不是直接暴露全文 | 平台数据 | `src/isotope/platform/schemas/refs.py` |
+| `RetrievalService` | 检索服务，按权限读取产物摘要或内容 | RAG/检索 | `src/isotope/rag/retrieval.py` |
+| `ExternalIngestionService` | 外部输入接入，把结构化原始输入保存为 artifact-only 产物 | RAG/接入 | `src/isotope/rag/ingestion.py` |
 | `checkpoint` | 检查点，用于恢复运行状态 | 状态恢复 | `src/isotope/checkpoint_store.py` |
 | `event log` | 事件日志，记录系统发生过的事实 | 状态恢复 | `src/isotope/event_store.py` |
 | `projector` | 投影器，把事件日志重建成可读状态 | 状态恢复 | `src/isotope/projector.py` |
@@ -28,9 +31,9 @@
 | `capability` | 能力，产品可发现、可运行的功能单元 | 产品能力 | `src/isotope/capabilities/catalog.py` |
 | `capability runner` | 能力运行器，用命令行方式搜索能力、生成计划或启动能力 | 产品能力 | `src/isotope/capabilities/runner.py` |
 | `Codex task` | Codex 任务，把外部 Codex 执行封装成可路由能力 | 工具/任务 | `src/isotope/codex_task.py`, `src/isotope/codex_cli.py` |
-| `workspace` | 工作区，任务运行时读写资源的边界 | 产品/资源 | `src/isotope/workspace.py` |
-| `memory` | 记忆，后续用于保存和查询长期上下文 | 智能体 | `src/isotope/memory.py` |
-| `RAG` | 检索增强生成，先检索资料再让模型回答 | 应用能力 | 待新目录设计 |
+| `workspace` | 工作区，任务运行时读写资源的边界 | 产品/资源 | `src/isotope/workspace/` |
+| `memory` | 记忆，后续用于保存和查询长期上下文 | 智能体 | `src/isotope/memory/` |
+| `RAG` | 检索增强生成，先检索资料再让模型回答 | 应用能力 | `src/isotope/rag/` |
 | `workflow` | 工作流，多个步骤组成的任务流程 | 应用能力 | 待新目录设计 |
 | `feature` | 业务功能，如聊天、搜索、工作区、权限 | 产品能力 | 待新目录设计 |
 

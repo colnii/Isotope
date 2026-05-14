@@ -13,7 +13,7 @@ from .assistant.loop_control import build_agent_loop_control, build_agent_loop_t
 from .assistant.loop_planner_adapter import run_agent_loop_planner_step
 from .assistant.loop_step import run_agent_loop_step
 from .action_registry import ActionTypeRegistry
-from .artifact_store import ArtifactStore
+from .workspace.artifacts import ArtifactStore
 from .event_store import FileEventStore
 from .events import CanonicalEvent
 from .executor import Executor, ToolHandler
@@ -24,7 +24,7 @@ from .policy import PolicyEngine
 from .projector import RunProjector
 from .assistant.real_planner_contract import run_agent_loop_real_planner_contract_step
 from .refs import ResourceRef
-from .retrieval import RetrievalService
+from .rag.retrieval import RetrievalService
 from .workspace import WorkspaceManager
 
 

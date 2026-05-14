@@ -8,7 +8,7 @@ from json import JSONDecodeError
 from pathlib import Path
 from typing import Any
 
-from .artifact_store import ArtifactStore
+from .workspace.artifacts import ArtifactStore
 from .codex_cli import CodexCliBackend, CodexCliBackendConfig
 from .codex_task import (
     SUPPORTED_CODEX_TASK_PROTOCOL_VERSION,

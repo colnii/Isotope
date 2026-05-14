@@ -26,6 +26,9 @@ src/
     capabilities/
       tools/
       skills/
+    rag/
+      ingestion/
+      retrieval/
     memory/
     workspace/
     execution/
@@ -52,9 +55,10 @@ scripts/
 - `assistant/`：产品级助手入口，负责会话、消息循环、任务循环和响应。
 - `features/`：真实可用功能，如聊天、项目助手、文件助手、研究助手。
 - `capabilities/`：工具、技能和能力注册，不把所有东西都塞进 `tools/`。
+- `rag/`：外部资料接入、检索、切分和索引等资料问答能力。
 - `execution/`：shell、python、浏览器、桌面、沙箱等执行环境。
-- `workspace/`：项目、文件、工作区快照和 git 工作树边界。
-- `memory/`：记忆存储、检索、总结和共享上下文。
+- `workspace/`：项目、文件、artifact 产物和 git 工作树边界。
+- `memory/`：长期记忆存储、总结和共享上下文，不把所有检索都塞进这里。
 - `agents/`：子 agent 定义、角色和任务委派。
 - `integrations/`：MCP、GitHub、浏览器、VS Code 等外部接入。
 - `policy/`：权限、风险、审批和审计。
@@ -97,6 +101,9 @@ scripts/
 - 能力目录：`capability_catalog.py`、`capability_runner.py` 已迁入 `src/isotope/capabilities/`。
 - 产品聊天入口：`llm_product_chat_app.py` 已迁入 `src/isotope/features/chat/product_chat.py`。
 - 助手循环：`agent_loop_*` 与 real planner contract 已迁入 `src/isotope/assistant/`。
+- 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`。
+- RAG 边界：`ingestion.py` 与 `retrieval.py` 已迁入 `src/isotope/rag/`。
+- 记忆边界：`memory.py` 已迁成 `src/isotope/memory/` 包。
 - 旧根路径保留轻量兼容导出，方便后续逐步改调用点。
 
 ## 第一批建议
@@ -109,8 +116,10 @@ scripts/
 - `src/isotope/features/chat/`
 - `src/isotope/features/project_assistant/`
 - `src/isotope/capabilities/tools/`
+- `src/isotope/rag/`
 - `src/isotope/execution/`
 - `src/isotope/workspace/`
+- `src/isotope/memory/`
 - `src/isotope/policy/`
 - `src/isotope/platform/schemas/`
 - `src/isotope/platform/events/`

@@ -23,21 +23,23 @@
 8. 应用内分层第一批：平台 schema、平台事件、能力目录已迁入子目录。
 9. 聊天功能入口：产品聊天入口已迁入 `src/isotope/features/chat/`。
 10. 助手循环入口：`agent_loop_*` 已迁入 `src/isotope/assistant/`。
+11. 资源层入口：workspace、artifact、RAG、memory 边界已迁入对应目录。
 
-## 最近完成：助手循环入口迁移
+## 最近完成：资源层入口迁移
 
 完成内容：
 
-- 将助手循环控制、单步执行、规划适配迁入 `src/isotope/assistant/`。
-- 将 real planner contract 迁入 `src/isotope/assistant/real_planner_contract.py`。
-- 将空的 runtime 占位迁入 `src/isotope/assistant/runtime.py`。
-- 保留旧根路径兼容导出，方便历史测试和文档逐步更新。
+- 将 `workspace.py` 迁成 `src/isotope/workspace/` 包。
+- 将 `artifact_store.py` 迁入 `src/isotope/workspace/artifacts.py`。
+- 将 `ingestion.py`、`retrieval.py` 迁入 `src/isotope/rag/`。
+- 将 `memory.py` 迁成 `src/isotope/memory/` 包。
+- 保留旧根路径兼容导出，方便历史测试和调用点逐步更新。
 
 验收：
 
-- 旧路径 `isotope.agent_loop_step` 等仍可导入。
-- 新路径 `isotope.assistant.loop_step` 等可直接导入。
-- agent loop 相关测试、demo 场景和全量测试通过。
+- 旧路径 `isotope.artifact_store`、`isotope.retrieval`、`isotope.ingestion` 仍可导入。
+- 新路径 `isotope.workspace.artifacts`、`isotope.rag.retrieval` 等可直接导入。
+- workspace、artifact、memory、ingestion、retrieval 相关测试和全量测试通过。
 
 ## 下一批次：应用内分层迁移
 
@@ -45,7 +47,7 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 把当前平铺模块逐步迁入 `assistant/`、`features/`、`platform/` 等层级。
-- 下一步迁移助手入口和运行流程，不恢复旧包名。
+- 下一步迁移执行、策略或 HTTP/API 入口，不恢复旧包名。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：
@@ -57,7 +59,8 @@
 - `src/isotope/capabilities/`：工具、技能、能力注册。
 - `src/isotope/execution/`：shell、python、浏览器、沙箱执行。
 - `src/isotope/workspace/`：文件、项目、git 工作区。
-- `src/isotope/memory/`：记忆、检索、上下文。
+- `src/isotope/rag/`：接入、检索、索引。
+- `src/isotope/memory/`：记忆、总结、上下文。
 - `src/isotope/policy/`：权限、审批、风险。
 - `src/isotope/platform/`：事件、schema、registry、lifecycle。
 
