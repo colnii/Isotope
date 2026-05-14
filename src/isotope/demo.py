@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .integrations.codex import server as codex_server
-from .checkpoint_store import FileCheckpointStore
+from .platform.state.checkpoint_store import FileCheckpointStore
 from .interfaces.http import (
     HttpApiApp,
     create_codex_cli_http_app,
@@ -28,7 +28,7 @@ from .integrations.llm.provider import (
 )
 from .integrations.llm.tool_bridge import submit_model_tool_call
 from .models import ImportedSnapshot
-from .projector import RunProjector
+from .platform.state.projector import RunProjector
 from .refs import make_artifact_ref
 from .server import InProcessServer
 

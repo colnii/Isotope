@@ -6,7 +6,7 @@ from copy import deepcopy
 from dataclasses import asdict
 from typing import Any
 
-from ..projector import RunState
+from ..platform.state.projector import RunState
 
 
 READY_NEXT_ACTIONS = [

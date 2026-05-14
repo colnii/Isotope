@@ -14,14 +14,14 @@ from .assistant.loop_planner_adapter import run_agent_loop_planner_step
 from .assistant.loop_step import run_agent_loop_step
 from .platform.registry.actions import ActionTypeRegistry
 from .workspace.artifacts import ArtifactStore
-from .event_store import FileEventStore
 from .events import CanonicalEvent
 from .execution.executor import Executor, ToolHandler
 from .platform.errors import KernelError, KernelPermissionError, not_enabled_result
 from .ids import new_id
 from .models import ActionProposal, ImportedSnapshot, PolicyDecision
 from .policy import PolicyEngine
-from .projector import RunProjector
+from .platform.state.event_store import FileEventStore
+from .platform.state.projector import RunProjector
 from .assistant.real_planner_contract import run_agent_loop_real_planner_contract_step
 from .refs import ResourceRef
 from .rag.retrieval import RetrievalService

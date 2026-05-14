@@ -23,10 +23,10 @@
 | `ResourceRef` | 资源引用，指向产物等对象而不是直接暴露全文 | 平台数据 | `src/isotope/platform/schemas/refs.py` |
 | `RetrievalService` | 检索服务，按权限读取产物摘要或内容 | RAG/检索 | `src/isotope/rag/retrieval.py` |
 | `ExternalIngestionService` | 外部输入接入，把结构化原始输入保存为 artifact-only 产物 | RAG/接入 | `src/isotope/rag/ingestion.py` |
-| `checkpoint` | 检查点，用于恢复运行状态 | 状态恢复 | `src/isotope/checkpoint_store.py` |
-| `event log` | 事件日志，记录系统发生过的事实 | 状态恢复 | `src/isotope/event_store.py` |
-| `projector` | 投影器，把事件日志重建成可读状态 | 状态恢复 | `src/isotope/projector.py` |
-| `RunState` | 运行状态，投影后的当前视图 | 状态恢复 | `src/isotope/platform/schemas/models.py` |
+| `checkpoint` | 检查点，用于恢复运行状态 | 状态恢复 | `src/isotope/platform/state/checkpoint_store.py` |
+| `event log` | 事件日志，记录系统发生过的事实 | 状态恢复 | `src/isotope/platform/state/event_store.py` |
+| `projector` | 投影器，把事件日志重建成可读状态 | 状态恢复 | `src/isotope/platform/state/projector.py` |
+| `RunState` | 运行状态，投影后的当前视图 | 状态恢复 | `src/isotope/platform/state/projector.py` |
 | `ActionTypeRegistry` | 动作类型注册表，记录工具元数据、能力要求和版本信息 | 平台注册表 | `src/isotope/platform/registry/actions.py` |
 | `KernelError` | 结构化错误，给 HTTP 和 helper 返回稳定错误码 | 平台错误 | `src/isotope/platform/errors.py` |
 | `policy` | 权限策略，决定动作是否允许、暂停或拒绝 | 安全/权限 | `src/isotope/policy/` |

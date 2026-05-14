@@ -42,6 +42,7 @@ src/
       schemas/
       events/
       registry/
+      state/
       lifecycle/
     common/
 tests/
@@ -66,7 +67,7 @@ scripts/
 - `integrations/`：LLM、Codex、MCP、GitHub、浏览器、VS Code 等外部接入。
 - `interfaces/`：HTTP 风格 facade、CLI facade 等对外入口适配层。
 - `policy/`：权限、风险、审批和审计。
-- `platform/`：事件、schema、registry、lifecycle 等底座雏形。
+- `platform/`：事件、schema、registry、state、lifecycle 等底座雏形。
 - `common/`：通用工具，但不能变成无边界杂物目录。
 
 ## 迁移原则
@@ -113,6 +114,7 @@ scripts/
 - 执行器：`executor.py` 已迁入 `src/isotope/execution/executor.py`。
 - 接口层：`http_api.py` 已迁入 `src/isotope/interfaces/http.py`。
 - LLM 与 Codex 集成：`llm_provider.py`、`model_tool_bridge.py`、`codex_task.py`、`codex_cli.py`、`codex_server.py`、`codex_live_smoke.py` 已迁入 `src/isotope/integrations/`。
+- 状态恢复：`checkpoint_store.py`、`event_store.py`、`projector.py` 已迁入 `src/isotope/platform/state/`。
 - 旧根路径保留轻量兼容导出，方便后续逐步改调用点。
 
 ## 第一批建议
@@ -133,6 +135,7 @@ scripts/
 - `src/isotope/platform/schemas/`
 - `src/isotope/platform/events/`
 - `src/isotope/platform/registry/`
+- `src/isotope/platform/state/`
 - `src/isotope/interfaces/`
 - `src/isotope/common/`
 
