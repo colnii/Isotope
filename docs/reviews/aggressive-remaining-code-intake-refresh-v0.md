@@ -38,6 +38,7 @@ aggressive 剩余代码仍然不能 wholesale merge。
 - Capability metadata / shelf / manifest：已抽成 `isotope_kernel.capability_catalog`。
 - Deterministic capability runner：已抽成 `isotope_kernel.capability_runner`。
 - CLI `list / describe / status / run`：已实现为 `python -m isotope_kernel.capability_runner`。
+- CLI `search / plan`：已抽成低敏查询和运行前计划，不执行 capability。
 - DeepSeek direct chat wrapper：mainline 已有更完整的 `llm_provider.py`，aggressive 旧 wrapper 已被 superseded。
 - Controlled terminal / model-tool bridge / LLM provider routes：已从 terminal/provider integration 分支合入 mainline。
 
@@ -118,7 +119,7 @@ mainline 已有 `DeepSeekChatProvider` 和 LLM tool-call/provider routes。真�
 
 - 继续复用 `CapabilityCatalog` 作为 source of truth。
 - 给 `CapabilityRunner` 增加 search / preflight 或 launch plan helper。
-- CLI 可增加低敏 `search` / `plan`，但不执行能力。
+- CLI 已增加低敏 `search` / `plan`，但不执行能力。
 - Launch plan 只回答：
   - 找到哪些候选 capability。
   - 该 capability 当前能不能 run。

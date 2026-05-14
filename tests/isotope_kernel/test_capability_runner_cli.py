@@ -90,6 +90,35 @@ def test_capability_runner_cli_reports_status_as_json():
     _assert_low_sensitive(payload)
 
 
+def test_capability_runner_cli_searches_capabilities_as_json():
+    result = _run_cli("search", "artifact", "--json")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert payload["search"]["kind"] == "capability_search_result"
+    assert payload["search"]["query"] == "artifact"
+    assert [item["capability_id"] for item in payload["search"]["capabilities"]] == [
+        "artifact.review"
+    ]
+    _assert_low_sensitive(payload)
+
+
+def test_capability_runner_cli_plans_capability_run_as_json():
+    result = _run_cli("plan", "artifact.review", "--json")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    plan = payload["plan"]
+    assert plan["kind"] == "capability_launch_plan"
+    assert plan["capability_id"] == "artifact.review"
+    assert plan["can_launch"] is True
+    assert plan["runner_kind"] == "deterministic_demo"
+    assert plan["scenario"] == "artifact-review"
+    _assert_low_sensitive(payload)
+
+
 def test_capability_runner_cli_runs_allowlisted_capability_as_json(tmp_path):
     result = _run_cli("run", "artifact.review", "--root", str(tmp_path), "--json")
 

@@ -312,6 +312,17 @@ def _build_parser() -> argparse.ArgumentParser:
     status_parser.add_argument("capability_id")
     status_parser.add_argument("--json", action="store_true", dest="as_json")
 
+    search_parser = subparsers.add_parser("search", help="Search visible capabilities.")
+    search_parser.add_argument("query", nargs="?", default="")
+    search_parser.add_argument("--json", action="store_true", dest="as_json")
+    search_parser.add_argument("--include-diagnostics", action="store_true")
+    search_parser.add_argument("--include-experimental", action="store_true")
+    search_parser.add_argument("--shelf")
+
+    plan_parser = subparsers.add_parser("plan", help="Plan one capability run.")
+    plan_parser.add_argument("capability_id")
+    plan_parser.add_argument("--json", action="store_true", dest="as_json")
+
     run_parser = subparsers.add_parser("run", help="Run an allowlisted capability.")
     run_parser.add_argument("capability_id")
     run_parser.add_argument("--root", type=Path)
@@ -353,6 +364,27 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"{args.capability_id}: {status['status']}")
                 if status.get("missing_env"):
                     print("missing_env: " + ", ".join(status["missing_env"]))
+            return 0
+
+        if args.command == "search":
+            result = runner.search_capabilities(
+                query=args.query,
+                shelf=args.shelf,
+                include_diagnostics=args.include_diagnostics,
+                include_experimental=args.include_experimental,
+            )
+            if args.as_json:
+                _print_json({"status": "ok", "search": result})
+            else:
+                _print_capability_list(result["capabilities"])
+            return 0
+
+        if args.command == "plan":
+            plan = runner.plan_capability_run(args.capability_id)
+            if args.as_json:
+                _print_json({"status": "ok", "plan": plan})
+            else:
+                _print_mapping(args.capability_id, plan)
             return 0
 
         if args.command == "run":

@@ -117,6 +117,7 @@
 - 已新增 `tests/agents/` 下的终端执行层测试。
 - 已把旧 `src/isotope_kernel/terminal*.py` 入口改成短期兼容层。
 - 已通过 fast-forward 合入 `main`，未制造 merge commit。
+- 已从 aggressive 分支剩余思路中补齐 `capability_runner` CLI `search / plan`。
 
 ## 验证
 

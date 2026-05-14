@@ -200,7 +200,10 @@ Optional CLI tests：
 - module-level `search_capabilities(...)`
 - `CapabilityRunner.plan_capability_run(...)`
 - module-level `plan_capability_run(...)`
+- CLI `search`
+- CLI `plan`
 - tests: `tests/isotope_kernel/test_capability_search_launch_plan.py`
+- tests: `tests/isotope_kernel/test_capability_runner_cli.py`
 
 当前 first slice 支持：
 
@@ -214,7 +217,6 @@ Optional CLI tests：
 
 当前未实现：
 
-- CLI `search` / `plan`。
 - LLM router。
 - provider-backed capability runner。
 - `ask` / `interactive`。
