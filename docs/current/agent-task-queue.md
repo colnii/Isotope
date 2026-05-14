@@ -71,9 +71,9 @@
 - 候选层级包括 `src/agents/`、`src/rag/`、`src/features/`。
 - 先出迁移方案，再移动代码。
 
-## 下一批次：分支审计
+## 下一批次：分支审计与清理
 
-状态：`初审完成`
+状态：`已完成`
 
 目标：先看清每个暂停分支的真实状态，不急着合并。
 
@@ -81,13 +81,15 @@
 
 刷新文档：[branch-audit-refresh-2026-05-15](../reviews/branch-audit-refresh-2026-05-15.md)
 
-每个分支需要输出：
+已完成：
 
-- 分支目标。
-- 和当前分支的差异。
-- 可直接合并的正经代码。
-- 半成品或实验代码。
-- 建议：继续、合并、归档、废弃。
+- 分支目标审计。
+- 可迁移代码抽取。
+- agent-loop 链闭环。
+- aggressive 剩余代码取舍。
+- 本地和远端暂停分支清理。
+
+清理记录：[branch-cleanup-2026-05-15](../reviews/branch-cleanup-2026-05-15.md)
 
 下一步深审：
 
@@ -127,6 +129,12 @@ agent-loop 后续：
 - `feature/agent-loop-tick-budget-read-model-spike` 不能整体合并，旧 docs 路径会覆盖当前文档结构。
 - 主线已吸收 run control、step driver、tick policy、planner adapter、real planner contract。
 - 这组分支不再有待合并代码；后续只作为历史参考。
+
+分支清理结果：
+
+- 本地只保留 `main`。
+- 远端只保留 `origin/main`。
+- 后续功能应从 `main` 新开分支或新 worktree。
 
 ## 验证
 
