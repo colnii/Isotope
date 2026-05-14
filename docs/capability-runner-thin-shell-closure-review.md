@@ -8,7 +8,9 @@
 
 外行说法：现在 mainline 里已经有一个很薄的“能力试跑按钮”。它不是完整中台，也不是产品壳；它只是让应用层可以从现有 capability catalog（能力货架）里挑少数已允许的能力，安全地跑一个 deterministic in-process scenario。
 
-当前不建议继续马上做 CLI / product hub / workflow engine。原因是这一步的目标已经达成：证明“货架”和“执行按钮”可以分开，而且不会把 aggressive branch 里的大杂烩 `capability_hub.py` 搬进 main。
+当时不建议默认继续做 CLI / product hub / workflow engine。原因是这一步的目标已经达成：证明“货架”和“执行按钮”可以分开，而且不会把 aggressive branch 里的大杂烩 `capability_hub.py` 搬进 main。
+
+后续用户明确要求继续消化 aggressive 分支里尚未利用的代码后，CLI 已作为单独 first slice 抽取，见 `docs/capability-runner-cli-boundary-v0.2.md`。这不改变本 closure 的主结论：仍不整体合并 aggressive hub，也不打开 product hub / workflow engine。
 
 ## 2. 已证明什么
 
@@ -48,9 +50,9 @@
 
 这些都不是本 slice 的 blocker。
 
-## 4. 为什么不继续扩 CLI
+## 4. 为什么当时不默认扩 CLI
 
-CLI 是有价值的，但现在不是最优下一步。
+CLI 是有价值的，但在没有明确调用压力时不是最优下一步。
 
 原因：
 
@@ -59,7 +61,7 @@ CLI 是有价值的，但现在不是最优下一步。
 - 目前还没有第二个真实调用者证明 CLI 是 blocker。
 - 继续做 CLI 容易把薄壳重新推向 aggressive `capability_hub.py` 的方向。
 
-因此 CLI 应保留为 later / app-pressure driven，而不是默认继续。
+因此 CLI 当时被保留为 later / app-pressure driven，而不是默认继续。当前 CLI first slice 是在用户明确要求继续做 aggressive 剩余代码 intake 后，以独立边界实现的。
 
 ## 5. Remaining Friction
 
@@ -92,7 +94,7 @@ CLI 是有价值的，但现在不是最优下一步。
 最近一次 green slice 验证：
 
 - `tests/isotope_kernel/test_capability_runner_thin_shell.py` -> `12 passed`
-- full regression -> `1374 passed, 5 skipped`
+- latest post-CLI full regression -> `1379 passed, 5 skipped`
 - `artifact-review --trace` passed
 - `external-snapshot-review --trace` passed
 - `approval-tool-runner --trace` passed

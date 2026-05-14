@@ -2,7 +2,7 @@
 
 状态：`active`
 
-Current note: Controlled terminal / provider integration and DeepSeek direct-chat provider wrapper extraction are complete. Aggressive remaining code review is complete, and `Capability Runner Thin Shell` first slice is complete / closed for now: a tiny catalog-backed runner over three deterministic product-candidate capabilities, not a wholesale merge of aggressive `capability_hub.py` / `self_evolution.py` / product shell.
+Current note: Controlled terminal / provider integration and DeepSeek direct-chat provider wrapper extraction are complete. Aggressive remaining code review is complete. `Capability Runner Thin Shell` and its minimal CLI first slice are complete: a tiny catalog-backed runner over three deterministic product-candidate capabilities, not a wholesale merge of aggressive `capability_hub.py` / `self_evolution.py` / product shell.
 
 ## 1. Purpose
 
@@ -103,7 +103,7 @@ git diff -- src tests .github pyproject.toml
 git status --short
 ```
 
-当前 integration baseline：`1362 passed, 5 skipped`。Pre-controlled-terminal mainline baseline：`1134 passed`。
+当前 integration baseline：`1379 passed, 5 skipped`。Pre-controlled-terminal mainline baseline：`1134 passed`。
 
 ## 34. Current Batch
 
@@ -195,9 +195,43 @@ Evidence:
 
 Next suggested batch:
 
-`Application-Layer Friction Intake`
+`Capability Runner CLI First Slice`
 
-Status: `waiting_for_concrete_friction`
+Status: `complete`
+
+## 38. Current Batch
+
+Batch name: `Capability Runner CLI First Slice`
+
+Status: `complete`
+
+Goal: consume the smallest remaining useful aggressive `capability_hub` CLI idea without copying the aggressive hub.
+
+Tasks:
+
+1. Re-check `origin/main`, `origin/spike/aggressive-dev`, and `origin/codex/spike-aggressive-dev`: complete.
+2. Confirm aggressive cannot be wholesale merged: complete.
+3. Write red CLI tests for `python -m isotope_kernel.capability_runner`: complete.
+4. Implement minimal `list / describe / status / run` CLI over existing `CapabilityRunner`: complete.
+5. Sync docs / status / queue: complete.
+6. Verify and commit / push: complete.
+
+Evidence:
+
+- CLI is a thin wrapper around existing `CapabilityRunner`.
+- It only runs the existing allowlist: `artifact.review`, `external.snapshot.review`, `approval.tool.runner`.
+- Unknown capability returns controlled error before side effects.
+- No aggressive `capability_hub.py` copy, no `ask` / `interactive`, no workflow engine, no product shell, no real provider runner.
+- Targeted runner tests: `17 passed`.
+- Full regression: `1379 passed, 5 skipped`.
+
+Next suggested batch:
+
+`Aggressive Remaining Code Intake Review Refresh`
+
+Status: `ready_docs_only`
+
+Goal: re-open the remaining aggressive diff after CLI extraction and decide the next extract-only slice. Likely candidates are provider-backed capability runner boundary or self-evolution review-package boundary; do not implement either until the refreshed review says the missing mainline bottom component is clear.
 
 ## 37. Current Batch
 

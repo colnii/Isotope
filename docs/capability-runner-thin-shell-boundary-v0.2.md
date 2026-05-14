@@ -169,6 +169,8 @@ Optional later:
 - JSON output remains machine-readable。
 - plain output remains human-readable。
 
+CLI first slice 已在后续单独实现，见 `docs/capability-runner-cli-boundary-v0.2.md` 和 `tests/isotope_kernel/test_capability_runner_cli.py`。
+
 ## 9. Deferred
 
 继续 deferred：
