@@ -20,7 +20,7 @@ from .features.chat.product_chat import (
     summarize_llm_product_chat_entry_response,
     validate_llm_product_chat_entry_resume_state,
 )
-from .llm_provider import (
+from .integrations.llm.provider import (
     LLMFinalAnswerResponse,
     LLMToolCall,
     LLMToolCallResponse,
@@ -871,7 +871,7 @@ def _run_product_chat_smoke_command_at_root(
     *,
     environ: Mapping[str, str] | None,
 ) -> int:
-    from .codex_server import CodexCliServerConfig
+    from .integrations.codex.server import CodexCliServerConfig
     from .interfaces.http import create_llm_product_chat_http_app
 
     provider = _fake_product_chat_provider() if args.fake_provider else None
@@ -984,7 +984,7 @@ def _run_product_chat_entry_command_at_root(
     *,
     environ: Mapping[str, str] | None,
 ) -> int:
-    from .codex_server import CodexCliServerConfig
+    from .integrations.codex.server import CodexCliServerConfig
     from .interfaces.http import create_llm_product_chat_http_app
 
     if args.fake_provider:
@@ -1076,7 +1076,7 @@ def _run_product_chat_entry_resume_command(
     *,
     environ: Mapping[str, str] | None,
 ) -> int:
-    from .codex_server import CodexCliServerConfig
+    from .integrations.codex.server import CodexCliServerConfig
     from .interfaces.http import create_llm_product_chat_http_app
 
     state_file = Path(args.resume_state)

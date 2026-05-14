@@ -294,7 +294,7 @@ class HttpApiApp:
                         capability="llm_provider_tool_call",
                     )
                 body = self._require_llm_provider_body(json_body)
-                from ..llm_provider import submit_llm_tool_call
+                from ..integrations.llm.provider import submit_llm_tool_call
 
                 result = submit_llm_tool_call(
                     self,
@@ -333,7 +333,7 @@ class HttpApiApp:
                         capability="llm_provider_tool_result_followup",
                     )
                 body = self._require_llm_tool_result_followup_body(json_body)
-                from ..llm_provider import submit_llm_tool_result_followup
+                from ..integrations.llm.provider import submit_llm_tool_result_followup
 
                 result = submit_llm_tool_result_followup(
                     self,
@@ -374,7 +374,7 @@ class HttpApiApp:
                         capability="llm_product_chat_route",
                     )
                 body = self._require_llm_product_chat_body(json_body)
-                from ..llm_provider import submit_llm_chat_turn
+                from ..integrations.llm.provider import submit_llm_chat_turn
 
                 result = submit_llm_chat_turn(
                     self,
@@ -1017,7 +1017,7 @@ def create_codex_cli_http_app(
     process_runner: Any | None = None,
     executable_resolver: Any | None = None,
 ) -> HttpApiApp:
-    from ..codex_server import create_codex_cli_server
+    from ..integrations.codex.server import create_codex_cli_server
 
     kwargs: dict[str, Any] = {}
     if process_runner is not None:
@@ -1047,7 +1047,7 @@ def create_llm_provider_http_app(
     executable_resolver: Any | None = None,
     tool_names: tuple[str, ...] = ("codex_task",),
 ) -> HttpApiApp:
-    from ..codex_server import create_codex_cli_server
+    from ..integrations.codex.server import create_codex_cli_server
 
     kwargs: dict[str, Any] = {}
     if process_runner is not None:
@@ -1080,7 +1080,7 @@ def create_llm_product_chat_http_app(
     executable_resolver: Any | None = None,
     tool_names: tuple[str, ...] = ("codex_task",),
 ) -> HttpApiApp:
-    from ..codex_server import create_codex_cli_server
+    from ..integrations.codex.server import create_codex_cli_server
 
     kwargs: dict[str, Any] = {}
     if process_runner is not None:

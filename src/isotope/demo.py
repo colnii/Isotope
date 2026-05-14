@@ -9,7 +9,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from . import codex_server
+from .integrations.codex import server as codex_server
 from .checkpoint_store import FileCheckpointStore
 from .interfaces.http import (
     HttpApiApp,
@@ -19,14 +19,14 @@ from .interfaces.http import (
     create_llm_provider_http_app,
 )
 from .features.chat.product_chat import submit_llm_product_chat_user_message_with_preflight
-from .llm_provider import (
+from .integrations.llm.provider import (
     LLMFinalAnswerResponse,
     LLMToolCall,
     LLMToolCallResponse,
     build_llm_tool_result_message,
     submit_llm_tool_result_followup,
 )
-from .model_tool_bridge import submit_model_tool_call
+from .integrations.llm.tool_bridge import submit_model_tool_call
 from .models import ImportedSnapshot
 from .projector import RunProjector
 from .refs import make_artifact_ref

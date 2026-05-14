@@ -27,20 +27,22 @@
 12. 权限与注册表入口：policy、action registry、errors 已迁入新目录。
 13. 执行器入口：executor 已迁入 `src/isotope/execution/`。
 14. HTTP facade 入口：`http_api.py` 已迁入 `src/isotope/interfaces/`。
+15. LLM 与 Codex 集成：模型 provider、tool bridge、Codex task/CLI/server/live smoke 已迁入 `src/isotope/integrations/`。
 
-## 最近完成：HTTP facade 入口迁移
+## 最近完成：LLM 与 Codex 集成迁移
 
 完成内容：
 
-- 将 `http_api.py` 迁入 `src/isotope/interfaces/http.py`。
-- 更新 demo、产品聊天入口和 live smoke 的活跃导入路径。
-- 保留 `isotope.http_api` 兼容导出，方便历史测试和调用点逐步更新。
+- 将 LLM provider 与 model tool bridge 迁入 `src/isotope/integrations/llm/`。
+- 将 Codex task、CLI backend、server wiring 和 live smoke 迁入 `src/isotope/integrations/codex/`。
+- 更新 demo、HTTP facade、executor 和 LLM live smoke 的活跃导入路径。
+- 保留旧根路径兼容导出，方便历史测试和调用点逐步更新。
 
 验收：
 
-- 旧路径 `isotope.http_api` 仍可导入。
-- 新路径 `isotope.interfaces.http` 可直接导入。
-- HTTP facade、LLM route、demo 场景和全量测试通过。
+- 旧路径 `isotope.llm_provider`、`isotope.model_tool_bridge`、`isotope.codex_task` 等仍可导入。
+- 新路径 `isotope.integrations.llm.*` 与 `isotope.integrations.codex.*` 可直接导入。
+- 相关路由、demo 场景和全量测试需通过。
 
 ## 下一批次：应用内分层迁移
 
@@ -48,7 +50,7 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 把当前平铺模块逐步迁入 `assistant/`、`features/`、`platform/` 等层级。
-- 下一步迁移剩余工具适配器或整理顶层模块，不恢复旧包名。
+- 下一步迁移剩余顶层状态与事件模块，或整理 CLI/app 入口，不恢复旧包名。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

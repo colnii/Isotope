@@ -34,6 +34,8 @@ src/
     execution/
     integrations/
       mcp/
+      llm/
+      codex/
     interfaces/
     policy/
     platform/
@@ -61,7 +63,7 @@ scripts/
 - `workspace/`：项目、文件、artifact 产物和 git 工作树边界。
 - `memory/`：长期记忆存储、总结和共享上下文，不把所有检索都塞进这里。
 - `agents/`：子 agent 定义、角色和任务委派。
-- `integrations/`：MCP、GitHub、浏览器、VS Code 等外部接入。
+- `integrations/`：LLM、Codex、MCP、GitHub、浏览器、VS Code 等外部接入。
 - `interfaces/`：HTTP 风格 facade、CLI facade 等对外入口适配层。
 - `policy/`：权限、风险、审批和审计。
 - `platform/`：事件、schema、registry、lifecycle 等底座雏形。
@@ -110,6 +112,7 @@ scripts/
 - 平台注册表与错误：`action_registry.py`、`errors.py` 已迁入 `src/isotope/platform/`。
 - 执行器：`executor.py` 已迁入 `src/isotope/execution/executor.py`。
 - 接口层：`http_api.py` 已迁入 `src/isotope/interfaces/http.py`。
+- LLM 与 Codex 集成：`llm_provider.py`、`model_tool_bridge.py`、`codex_task.py`、`codex_cli.py`、`codex_server.py`、`codex_live_smoke.py` 已迁入 `src/isotope/integrations/`。
 - 旧根路径保留轻量兼容导出，方便后续逐步改调用点。
 
 ## 第一批建议

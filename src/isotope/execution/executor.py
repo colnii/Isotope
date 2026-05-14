@@ -6,7 +6,7 @@ from collections.abc import Callable
 from typing import Any
 
 from ..platform.registry.actions import ActionTypeRegistry
-from ..codex_task import (
+from ..integrations.codex.task import (
     CodexTaskAdapter,
     CodexTaskExecutionError,
     CodexTaskNotConfiguredError,
