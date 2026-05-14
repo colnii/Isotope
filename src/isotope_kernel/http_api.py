@@ -36,6 +36,7 @@ class HttpApiApp:
         ("POST", "/sessions/{session_id}/runs"),
         ("POST", "/runs/{run_id}/input"),
         ("POST", "/runs/{run_id}/agent-loop-step"),
+        ("POST", "/runs/{run_id}/agent-loop-planner-step"),
         ("GET", "/runs/{run_id}"),
         ("GET", "/runs/{run_id}/agent-loop-control"),
         ("GET", "/runs/{run_id}/agent-loop-tick-policy"),
@@ -231,6 +232,15 @@ class HttpApiApp:
                 if not self._run_exists(parts[1]):
                     return self._error(404, "not_found", "run not found")
                 return self._json(200, self.server.run_agent_loop_step(parts[1], json_body))
+            if (
+                method == "POST"
+                and len(parts) == 3
+                and parts[0] == "runs"
+                and parts[2] == "agent-loop-planner-step"
+            ):
+                if not self._run_exists(parts[1]):
+                    return self._error(404, "not_found", "run not found")
+                return self._json(200, self.server.run_agent_loop_planner_step(parts[1], json_body))
             if method == "POST" and len(parts) == 3 and parts[0] == "runs" and parts[2] == "codex-tasks":
                 if not self._run_exists(parts[1]):
                     return self._kernel_error_response(

@@ -11,6 +11,7 @@ MINIMAL_ROUTES = {
     ("POST", "/sessions/{session_id}/runs"),
     ("POST", "/runs/{run_id}/input"),
     ("POST", "/runs/{run_id}/agent-loop-step"),
+    ("POST", "/runs/{run_id}/agent-loop-planner-step"),
     ("GET", "/runs/{run_id}"),
     ("GET", "/runs/{run_id}/agent-loop-control"),
     ("GET", "/runs/{run_id}/agent-loop-tick-policy"),

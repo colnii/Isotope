@@ -10,6 +10,7 @@ from typing import Any
 
 from .action_compiler import ActionCompiler
 from .agent_loop_control import build_agent_loop_control, build_agent_loop_tick_policy
+from .agent_loop_planner_adapter import run_agent_loop_planner_step
 from .agent_loop_step import run_agent_loop_step
 from .action_registry import ActionTypeRegistry
 from .artifact_store import ArtifactStore
@@ -21,6 +22,7 @@ from .ids import new_id
 from .models import ActionProposal, ImportedSnapshot, PolicyDecision
 from .policy import PolicyEngine
 from .projector import RunProjector
+from .real_planner_adapter_contract import run_agent_loop_real_planner_contract_step
 from .refs import ResourceRef
 from .retrieval import RetrievalService
 from .workspace import WorkspaceManager
@@ -777,6 +779,16 @@ class InProcessServer:
 
     def run_agent_loop_step(self, run_id: str, request: dict[str, Any]) -> dict[str, Any]:
         return run_agent_loop_step(self, run_id, request)
+
+    def run_agent_loop_planner_step(self, run_id: str, planner_output: dict[str, Any]) -> dict[str, Any]:
+        return run_agent_loop_planner_step(self, run_id, planner_output)
+
+    def run_agent_loop_real_planner_contract_step(
+        self,
+        run_id: str,
+        provider_result: dict[str, Any],
+    ) -> dict[str, Any]:
+        return run_agent_loop_real_planner_contract_step(self, run_id, provider_result)
 
     def get_pending_approvals(self, run_id: str) -> list[dict[str, Any]]:
         state = self._get_approval_read_state(run_id)

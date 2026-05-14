@@ -37,6 +37,7 @@ POST /sessions
 POST /sessions/{session_id}/runs
 POST /runs/{run_id}/input
 POST /runs/{run_id}/agent-loop-step
+POST /runs/{run_id}/agent-loop-planner-step
 GET  /runs/{run_id}
 GET  /runs/{run_id}/agent-loop-control
 GET  /runs/{run_id}/agent-loop-tick-policy
@@ -88,6 +89,14 @@ run 创建只能产生当前 runtime/service boundary 允许的 canonical events
 执行一个当前 control `next_actions` 允许的 Agent loop step，然后返回 action result 和更新后的 control。
 
 该 endpoint 每次只执行一步，不自动循环，不调 scheduler，不接 real LLM provider，也不是 hosted product API。执行前会先读取 `get_agent_loop_control(run_id)`；如果 step 不在当前 `next_actions` 内，必须在写入 event 前 fail closed。
+
+### POST /runs/{run_id}/agent-loop-planner-step
+
+执行一个已解析的 symbolic planner decision。
+
+该 endpoint 会验证 planner basis 没有过期，并拒绝 raw prompt / raw model response /
+artifact full content 等 payload。它不调用真实 LLM，只把合法的 step 交给
+`run_agent_loop_step(...)`。
 
 ### GET /runs/{run_id}
 

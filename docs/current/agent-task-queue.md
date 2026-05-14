@@ -119,12 +119,14 @@
 - 已通过 fast-forward 合入 `main`，未制造 merge commit。
 - 已从 aggressive 分支剩余思路中补齐 `capability_runner` CLI `search / plan`。
 - 已从 agent-loop 链尾抽取 `tick policy` 读模型和 HTTP facade route。
+- 已从 agent-loop 链尾抽取 `planner adapter` 和 `real planner contract`。
+- 已写闭环审阅：[agent-loop-chain-closure-2026-05-15](../reviews/agent-loop-chain-closure-2026-05-15.md)
 
 agent-loop 后续：
 
 - `feature/agent-loop-tick-budget-read-model-spike` 不能整体合并，旧 docs 路径会覆盖当前文档结构。
-- 主线已吸收 run control、step driver、tick policy。
-- 下一步只审 planner adapter / real planner contract 是否值得小切片抽取。
+- 主线已吸收 run control、step driver、tick policy、planner adapter、real planner contract。
+- 这组分支不再有待合并代码；后续只作为历史参考。
 
 ## 验证
 
