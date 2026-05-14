@@ -1,3 +1,3 @@
-"""Compatibility exports for assistant real planner contract."""
+"""Compatibility exports for core real planner contract."""
 
-from isotope.assistant.real_planner_contract import *  # noqa: F401,F403
+from isotope.core.real_planner_contract import *  # noqa: F401,F403

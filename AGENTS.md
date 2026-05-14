@@ -6,8 +6,9 @@ Isotope 是面向真实使用的 AI 应用软件，不是单纯内核项目。
 目标是在秋招前搭出可展示、可继续扩展的产品。
 现有代码迁移到 `src/isotope/`，测试迁移到 `tests/isotope/`。
 `src/isotope/` 是长期 Python 包命名空间。
-后续目录应按 AI 应用拆成 `apps/`、`assistant/`、`features/`、
+后续目录应按 AI 应用拆成 `apps/`、`core/`、`features/`、
 `capabilities/`、`execution/`、`workspace/`、`memory/` 等层级。
+`assistant` 只作为产品描述或旧路径兼容词，不再扩展成目录叙事。
 文档放在 `docs/`；当前状态先看 `docs/current/status.md`。
 文档地图和清理计划看 `docs/current/docs-map.md` 与
 `docs/current/agent-task-queue.md`。
@@ -81,5 +82,5 @@ Python 代码使用 4 空格缩进，模块和函数用 `snake_case`。
 `provider` 模型服务适配器；`planner` 规划器；
 `executor` 执行器；`policy` 权限策略；
 `capability` 能力；`workspace` 工作区；
-`terminal_exec` 终端执行能力。
+`core` 产品主流程；`terminal_exec` 终端执行能力。
 完整术语索引应在文档整理阶段从真实代码和文档抽取。

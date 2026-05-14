@@ -1,6 +1,6 @@
 # Agent 任务队列
 
-状态：`当前入口 / 下一步应用内分层`
+状态：`当前入口 / core 命名收束`
 
 ## 当前事实
 
@@ -22,7 +22,7 @@
 7. 包名迁移：`src/isotope_kernel/` 已迁到 `src/isotope/`。
 8. 应用内分层第一批：平台 schema、平台事件、能力目录已迁入子目录。
 9. 聊天功能入口：产品聊天入口已迁入 `src/isotope/features/chat/`。
-10. 助手循环入口：`agent_loop_*` 已迁入 `src/isotope/assistant/`。
+10. 核心循环入口：`agent_loop_*` 已从 `assistant/` 收束到 `src/isotope/core/`。
 11. 资源层入口：workspace、artifact、RAG、memory 边界已迁入对应目录。
 12. 权限与注册表入口：policy、action registry、errors 已迁入新目录。
 13. 执行器入口：executor 已迁入 `src/isotope/execution/`。
@@ -34,27 +34,29 @@
 19. 运行时工具：`action_compiler.py` 迁入 `runtime/`，`ids.py` 迁入 `platform/`，活跃终端引用改到真实实现路径。
 20. 平台 schema/event：活跃代码已切到 `platform/schemas/` 与 `platform/events/`，旧根路径保留兼容代理。
 21. 资源/RAG 兼容入口：`artifact_store.py`、`retrieval.py`、`ingestion.py` 已改为模块代理。
+22. `assistant` 命名收束：活跃循环实现已迁入 `core/`，`assistant/` 只保留兼容代理。
 
-## 最近完成：资源/RAG 兼容入口收束
+## 最近完成：`assistant` 命名收束
 
 完成内容：
 
-- 确认活跃代码已直接使用 `src/isotope/workspace/` 与 `src/isotope/rag/`。
-- 将 `isotope.artifact_store`、`isotope.retrieval`、`isotope.ingestion` 改成模块代理。
-- 保留旧根路径兼容入口，避免破坏历史测试和外部调用。
+- 根据最新目录说明，将产品主流程命名从泛化 `assistant` 收束为 `core`。
+- 将 loop control、planner adapter、loop step 和 real planner contract 迁入 `src/isotope/core/`。
+- 保留 `isotope.assistant.*` 与旧根路径兼容入口，避免破坏历史调用。
 
 验收：
 
-- 旧路径 `isotope.artifact_store`、`isotope.retrieval`、`isotope.ingestion` 仍可导入。
-- 新路径 `isotope.workspace.artifacts`、`isotope.rag.retrieval`、`isotope.rag.ingestion` 可直接导入。
-- artifact、retrieval、ingestion、RAG 和全量测试需通过。
+- 旧路径 `isotope.agent_loop_*`、`isotope.real_planner_adapter_contract` 仍可导入。
+- 兼容路径 `isotope.assistant.*` 仍可导入。
+- 新路径 `isotope.core.*` 可直接导入。
+- agent loop 相关测试和全量测试需通过。
 
 ## 下一批次：应用内分层迁移
 
 目标：
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
-- 把当前平铺模块逐步迁入 `assistant/`、`features/`、`platform/` 等层级。
+- 把当前平铺模块逐步迁入 `core/`、`features/`、`platform/` 等层级。
 - 下一步继续收敛剩余顶层兼容模块，或开始讨论未定的新目录设计。
 - 迁移完成后再恢复多分支并行开发。
 
@@ -62,8 +64,9 @@
 
 - `apps/cli/`：命令行入口。
 - `apps/api/`：后端入口。
-- `src/isotope/assistant/`：产品助手入口。
-- `src/isotope/features/`：聊天、项目助手、文件助手等可用功能。
+- `src/isotope/core/`：产品主流程。
+- `src/isotope/assistant/`：旧路径兼容代理，不再扩张新实现。
+- `src/isotope/features/`：聊天、任务、项目、文件、研究等可用功能。
 - `src/isotope/capabilities/`：工具、技能、能力注册。
 - `src/isotope/execution/`：shell、python、浏览器、沙箱执行。
 - `src/isotope/runtime/`：进程内运行入口。

@@ -1,3 +1,3 @@
-"""Compatibility exports for assistant runtime."""
+"""Compatibility exports for core runtime."""
 
-from isotope.assistant.runtime import *  # noqa: F401,F403
+from isotope.core.runtime import *  # noqa: F401,F403

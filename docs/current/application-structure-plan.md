@@ -15,13 +15,15 @@ apps/
   web/
 src/
   isotope/
-    assistant/
+    core/
     features/
       chat/
-      project_assistant/
-      file_assistant/
-      research_assistant/
-      capability_builder/
+      tasks/
+      projects/
+      files/
+      research/
+      automation/
+      capability_building/
     agents/
     capabilities/
       tools/
@@ -57,8 +59,8 @@ scripts/
 
 ## 初步映射
 
-- `assistant/`：产品级助手入口，负责会话、消息循环、任务循环和响应。
-- `features/`：真实可用功能，如聊天、项目助手、文件助手、研究助手。
+- `core/`：产品主流程，负责 session、conversation、dispatch 和 response。
+- `features/`：真实可用功能，如聊天、任务、项目、文件、研究和自动化。
 - `capabilities/`：工具、技能和能力注册，不把所有东西都塞进 `tools/`。
 - `rag/`：外部资料接入、检索、切分和索引等资料问答能力。
 - `execution/`：shell、python、浏览器、桌面、沙箱等执行环境。
@@ -72,6 +74,9 @@ scripts/
 - `platform/`：事件、schema、registry、state、lifecycle 等底座雏形。
 - `common/`：通用工具，但不能变成无边界杂物目录。
 
+`assistant` 可以描述 Isotope 的产品体验，但不再作为新目录名扩张。
+旧 `src/isotope/assistant/` 只保留兼容导出，活跃实现迁到 `core/`。
+
 ## 迁移原则
 
 - 先固化目标骨架，再迁移旧包名。
@@ -83,6 +88,7 @@ scripts/
 - 历史包名不再作为活跃导入路径。
 - `src/isotope/` 是 Python 包命名空间，不是重复叙事。
 - 不采用 `src/core/`、`src/features/` 这类无项目命名空间的顶层包。
+- 不新增 `*_assistant` 功能目录，功能目录用职责名：`projects/`、`files/`、`research/`。
 
 ## 已落地试点
 
@@ -108,7 +114,8 @@ scripts/
 - 平台事件：`events.py`、`event_schema.py` 已迁入 `src/isotope/platform/events/`，活跃导入已切到新路径。
 - 能力目录：`capability_catalog.py`、`capability_runner.py` 已迁入 `src/isotope/capabilities/`。
 - 产品聊天入口：`llm_product_chat_app.py` 已迁入 `src/isotope/features/chat/product_chat.py`。
-- 助手循环：`agent_loop_*` 与 real planner contract 已迁入 `src/isotope/assistant/`。
+- 核心循环：`agent_loop_*` 与 real planner contract 已迁入 `src/isotope/core/`，
+  `src/isotope/assistant/` 仅保留兼容代理。
 - 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`，旧根路径仅作兼容代理。
 - RAG 边界：`ingestion.py` 与 `retrieval.py` 已迁入 `src/isotope/rag/`，旧根路径仅作兼容代理。
 - 记忆边界：`memory.py` 已迁成 `src/isotope/memory/` 包。
@@ -129,9 +136,10 @@ scripts/
 
 - `apps/cli/`
 - `apps/api/`
-- `src/isotope/assistant/`
+- `src/isotope/core/`
 - `src/isotope/features/chat/`
-- `src/isotope/features/project_assistant/`
+- `src/isotope/features/projects/`
+- `src/isotope/features/files/`
 - `src/isotope/capabilities/tools/`
 - `src/isotope/rag/`
 - `src/isotope/execution/`
@@ -149,8 +157,8 @@ scripts/
 暂缓完整展开：
 
 - `apps/web/`
-- `features/research_assistant/`
-- `features/capability_builder/`
+- `features/research/`
+- `features/capability_building/`
 - `integrations/github/`
 - `integrations/browser/`
 - `integrations/vscode/`

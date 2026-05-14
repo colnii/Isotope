@@ -20,6 +20,8 @@
 - `archive/` 和部分评审文档会保留旧说法，只用于追溯。
 - `architecture/` 和 `features/` 里仍可能有早期命名，需要按需更新。
 - 目录结构迁移还没有执行，新结构先看迁移方案。
+- 最新目录命名讨论见 [目录结构最新说明](./目录结构最新说明.md)，其中
+  `assistant` 泛化命名已被降级为兼容历史词。
 
 ## 当前层级
 
@@ -41,6 +43,7 @@
 - 评审记录：[reviews/](../reviews/)
 - 历史归档：[archive/](../archive/)
 - 应用目录迁移：[application-structure-plan](./application-structure-plan.md)
+- 目录结构最新说明：[目录结构最新说明](./目录结构最新说明.md)
 - 分支初审：[branch-audit-initial-2026-05-15](../reviews/branch-audit-initial-2026-05-15.md)
 - 分支审计刷新：[branch-audit-refresh-2026-05-15](../reviews/branch-audit-refresh-2026-05-15.md)
 - 终端分支深审：[controlled-terminal-exec-deep-review-2026-05-15](../reviews/controlled-terminal-exec-deep-review-2026-05-15.md)
