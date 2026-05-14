@@ -79,6 +79,7 @@
 - 加上 Agent Loop Run Control / Step Driver boundary docs 后 tracked docs Markdown：124 个。当前 integration branch 新增 summary-only control read model 和 one-step public-helper driver，不实现 automatic loop、scheduler、real LLM planner、provider adapter、real worker runtime 或 product shell。
 - 合入 `feature/controlled-terminal-exec` 后 tracked docs Markdown 当前为 `144` 个。新增 controlled terminal / Codex-as-tool / model-tool bridge / LLM provider / terminal backend 等 boundary docs；这些文档描述 existing-code integration scope，不代表已打开 interactive shell、process supervisor、real listening HTTP server、provider product、container、git worktree 或 product shell。
 - 加上 Aggressive Remaining Code Review 后 tracked docs Markdown：145 个。该文档记录 aggressive 剩余代码只能 extract-only，不能 wholesale merge；推荐下一步是 `Capability Runner Thin Shell`，不是复制 `capability_hub.py` / `self_evolution.py` / product shell。
+- 加上 Capability Runner Thin Shell Boundary 后 tracked docs Markdown：146 个。该文档定义下一步只能基于现有 `capability_catalog` 做薄执行壳，不复制 aggressive `capability_hub.py`，不打开 workflow engine / product shell / real provider。
 
 ## 2. Current entrypoints
 
@@ -108,6 +109,7 @@
 - `docs/capability-hub-core-boundary-v0.2.md`：Capability Hub Core boundary，记录 aggressive branch 不能整体 merge、mainline 只抽取 capability metadata / shelf / manifest / status core 的范围和 first green slice evidence。
 - `docs/capability-hub-core-merge-readiness-review.md`：Capability Hub Core merge readiness review，记录 rebase 结果、verification、merge 注意事项和仍然 deferred 的 capability execution / LLM route / product shell。
 - `docs/aggressive-remaining-code-review-v0.md`：aggressive 剩余代码思路级 review，记录不能 wholesale merge 的原因、可保留思路和下一步 `Capability Runner Thin Shell` 建议。
+- `docs/capability-runner-thin-shell-boundary-v0.2.md`：Capability Runner Thin Shell boundary，定义从 catalog 到少数 product-candidate capability deterministic run 的薄壳边界，防止把 aggressive `capability_hub.py` 的 god module 形态合入 main。
 - `docs/tool-protocol-boundary-v0.2.md`：Tool protocol boundary，记录 tool invocation / result / error / capability / provenance / budget、executor grants hard contract、artifact / `ResourceRef` handoff 和 first red tests recommendation。
 - `docs/tool-protocol-closure-review.md`：Tool protocol closure review，记录 first slice complete / closed for now、scope note、verification evidence、remaining friction 和 next path。
 - `docs/controlled-terminal-execution-boundary-v0.2.md`：Controlled terminal execution boundary，记录 argv-only terminal tool path、policy / artifact / provenance boundary 和 deferred interactive shell / process supervisor / filesystem substrate。

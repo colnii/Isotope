@@ -18,6 +18,8 @@ Controlled terminal / provider slices 已从 `feature/controlled-terminal-exec` 
 
 Aggressive branch 剩余代码已做思路级 review，见 [docs/aggressive-remaining-code-review-v0.md](docs/aggressive-remaining-code-review-v0.md)。结论是 extract-only：不要整体合并 `capability_hub.py` / `self_evolution.py` / product shell；如果继续，下一步应先做 `Capability Runner Thin Shell` boundary。
 
+Capability Runner Thin Shell boundary 已补充，见 [docs/capability-runner-thin-shell-boundary-v0.2.md](docs/capability-runner-thin-shell-boundary-v0.2.md)：下一步只允许基于现有 `capability_catalog` 做薄 `list / describe / status / run` 壳，不复制 aggressive `capability_hub.py`，不打开 workflow engine、product shell 或 real provider runner。
+
 ## Quick Start
 
 ```bash

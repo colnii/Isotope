@@ -2,7 +2,7 @@
 
 状态：`active`
 
-Current note: Controlled terminal / provider integration has been merged into `main`; the follow-up DeepSeek direct-chat provider wrapper extraction is complete. Scope remains existing-code integration only: controlled argv-only terminal execution, Codex task route, model-tool bridge, LLM provider route, tool-result loop, product-chat route, LLM terminal-tool loop, and a stdlib-only `DeepSeekChatProvider` direct-chat boundary. Do not expand into interactive shell, process supervisor, real listening HTTP server, container, git worktree, product shell, or new dependency.
+Current note: Controlled terminal / provider integration and DeepSeek direct-chat provider wrapper extraction are complete. Aggressive remaining code review is complete, and the next extract-only path is `Capability Runner Thin Shell`: a tiny catalog-backed runner boundary, not a wholesale merge of aggressive `capability_hub.py` / `self_evolution.py` / product shell.
 
 ## 1. Purpose
 
@@ -133,7 +133,39 @@ Evidence:
 
 Next suggested mode:
 
-Next mode: `Capability Runner Thin Shell Boundary` docs-only, if the user asks to continue. It should use the current `capability_catalog` and support only a tiny `list / describe / status / run` shell for existing product-candidate capabilities. Do not copy aggressive `capability_hub.py`, `self_evolution.py`, study companion slices, diagnostics, workflow engine, or product shell wholesale.
+Next mode: `Capability Runner Thin Shell Red Tests`, if the user asks to continue. Start red-only: create tests for a catalog-backed `list / describe / status / run` thin shell over existing product-candidate capabilities. Do not implement before red tests; do not copy aggressive `capability_hub.py`, `self_evolution.py`, study companion slices, diagnostics, workflow engine, or product shell wholesale.
+
+## 35. Current Batch
+
+Batch name: `Capability Runner Thin Shell Boundary`
+
+Status: `complete / docs-only`
+
+Goal: define the next extract-only slice from aggressive ideas without copying aggressive implementation.
+
+Tasks:
+
+1. Review current main `capability_catalog` shape and aggressive remaining-code findings: complete.
+2. Write `docs/capability-runner-thin-shell-boundary-v0.2.md`: complete.
+3. Sync README / AGENTS / current status / roadmap / inventory / queue: complete.
+4. Verify docs-only scope and commit / push: complete.
+
+Evidence:
+
+- Boundary keeps catalog as metadata source of truth.
+- First implementation target is a thin `list / describe / status / run` runner over `artifact.review`, `external.snapshot.review`, and `approval.tool.runner`.
+- Scope remains bounded: no workflow engine, product shell, study companion, self-evolution harness, real provider runner, interactive shell, process supervisor, real listening HTTP server, container, git worktree, new dependency, tag, or release.
+
+Next suggested batch:
+
+`Capability Runner Thin Shell Red Tests`
+
+Status: `ready_red_only`
+
+Suggested red tests:
+
+- `tests/isotope_kernel/test_capability_runner_thin_shell.py`
+- optional later `tests/isotope_kernel/test_capability_runner_cli_boundary.py`
 
 ## Branch-Local Batch: Agent Loop Friction Spike
 
