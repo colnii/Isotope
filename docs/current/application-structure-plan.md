@@ -95,6 +95,7 @@ scripts/
 - 平台 schema：`models.py`、`refs.py`、`tool_protocol.py` 已迁入 `src/isotope/platform/schemas/`。
 - 平台事件：`events.py`、`event_schema.py` 已迁入 `src/isotope/platform/events/`。
 - 能力目录：`capability_catalog.py`、`capability_runner.py` 已迁入 `src/isotope/capabilities/`。
+- 产品聊天入口：`llm_product_chat_app.py` 已迁入 `src/isotope/features/chat/product_chat.py`。
 - 旧根路径保留轻量兼容导出，方便后续逐步改调用点。
 
 ## 第一批建议

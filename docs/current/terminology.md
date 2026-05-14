@@ -16,7 +16,7 @@
 | `terminal_exec` | 终端执行能力，受控运行命令并返回产物 | 工具 | `src/isotope/action_registry.py` |
 | `terminal backend` | 终端后端，把终端命令封装成可测试执行层 | 工具 | `src/isotope/execution/terminal_backend.py`, `src/isotope/terminal_backend.py` |
 | `provider` | 模型服务适配器，连接外部模型服务 | 模型 | `src/isotope/llm_provider.py` |
-| `product chat` | 产品聊天入口，让模型调用工具并返回面向用户的回答 | 产品能力 | `src/isotope/llm_product_chat_app.py` |
+| `product chat` | 产品聊天入口，让模型调用工具并返回面向用户的回答 | 产品能力 | `src/isotope/features/chat/product_chat.py` |
 | `artifact` | 产物记录，保存执行结果摘要和引用 | 平台数据 | `src/isotope/platform/schemas/models.py` |
 | `ResourceRef` | 资源引用，指向产物等对象而不是直接暴露全文 | 平台数据 | `src/isotope/platform/schemas/refs.py` |
 | `checkpoint` | 检查点，用于恢复运行状态 | 状态恢复 | `src/isotope/checkpoint_store.py` |

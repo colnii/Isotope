@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from .errors import KernelError
-from .llm_product_chat_app import (
+from .features.chat.product_chat import (
     build_llm_product_chat_entry_resume_state,
     mark_llm_product_chat_entry_state_resumed,
     submit_llm_product_chat_entry_resume,

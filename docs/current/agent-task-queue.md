@@ -21,22 +21,22 @@
 6. 文档二次清理：当前入口已刷新，不再传播旧分支暂停口径。
 7. 包名迁移：`src/isotope_kernel/` 已迁到 `src/isotope/`。
 8. 应用内分层第一批：平台 schema、平台事件、能力目录已迁入子目录。
+9. 聊天功能入口：产品聊天入口已迁入 `src/isotope/features/chat/`。
 
-## 最近完成：文档二次清理
+## 最近完成：聊天功能入口迁移
 
 完成内容：
 
-- 刷新当前入口文档里的阶段状态。
-- 删除或改写已完成批次留下的“下一步迁移”“分支暂停”口径。
-- 保留历史评审和归档，不批量改写审计证据。
-- 不做代码目录迁移。
+- 将产品聊天入口迁入 `src/isotope/features/chat/product_chat.py`。
+- 保留 `src/isotope/llm_product_chat_app.py` 兼容导出。
+- 更新 `demo.py` 和 `llm_live_smoke.py` 的活跃导入路径。
+- 同步术语索引和应用目录迁移方案。
 
 验收：
 
-- `docs/current/` 能说明当前真实状态。
-- `README.md` 不再要求继续暂停旧功能分支。
-- `AGENTS.md` 不写临时分支规则。
-- Markdown 相对链接无断链。
+- 旧路径 `isotope.llm_product_chat_app` 仍可导入。
+- 新路径 `isotope.features.chat.product_chat` 可直接导入。
+- 产品聊天入口测试、demo 场景和全量测试通过。
 
 ## 下一批次：应用内分层迁移
 
@@ -44,7 +44,7 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 把当前平铺模块逐步迁入 `assistant/`、`features/`、`platform/` 等层级。
-- 下一步迁移入口和运行流程，不恢复旧包名。
+- 下一步迁移助手入口和运行流程，不恢复旧包名。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：
@@ -71,3 +71,4 @@ find docs -maxdepth 1 -type f -name '*.md' -print
 ```
 
 代码未改时，不必运行完整测试。
+代码迁移批次需运行相关测试；共享路径迁移后跑全量测试。
