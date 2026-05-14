@@ -22,21 +22,22 @@
 7. 包名迁移：`src/isotope_kernel/` 已迁到 `src/isotope/`。
 8. 应用内分层第一批：平台 schema、平台事件、能力目录已迁入子目录。
 9. 聊天功能入口：产品聊天入口已迁入 `src/isotope/features/chat/`。
+10. 助手循环入口：`agent_loop_*` 已迁入 `src/isotope/assistant/`。
 
-## 最近完成：聊天功能入口迁移
+## 最近完成：助手循环入口迁移
 
 完成内容：
 
-- 将产品聊天入口迁入 `src/isotope/features/chat/product_chat.py`。
-- 保留 `src/isotope/llm_product_chat_app.py` 兼容导出。
-- 更新 `demo.py` 和 `llm_live_smoke.py` 的活跃导入路径。
-- 同步术语索引和应用目录迁移方案。
+- 将助手循环控制、单步执行、规划适配迁入 `src/isotope/assistant/`。
+- 将 real planner contract 迁入 `src/isotope/assistant/real_planner_contract.py`。
+- 将空的 runtime 占位迁入 `src/isotope/assistant/runtime.py`。
+- 保留旧根路径兼容导出，方便历史测试和文档逐步更新。
 
 验收：
 
-- 旧路径 `isotope.llm_product_chat_app` 仍可导入。
-- 新路径 `isotope.features.chat.product_chat` 可直接导入。
-- 产品聊天入口测试、demo 场景和全量测试通过。
+- 旧路径 `isotope.agent_loop_step` 等仍可导入。
+- 新路径 `isotope.assistant.loop_step` 等可直接导入。
+- agent loop 相关测试、demo 场景和全量测试通过。
 
 ## 下一批次：应用内分层迁移
 

@@ -9,9 +9,9 @@ from pathlib import Path
 from typing import Any
 
 from .action_compiler import ActionCompiler
-from .agent_loop_control import build_agent_loop_control, build_agent_loop_tick_policy
-from .agent_loop_planner_adapter import run_agent_loop_planner_step
-from .agent_loop_step import run_agent_loop_step
+from .assistant.loop_control import build_agent_loop_control, build_agent_loop_tick_policy
+from .assistant.loop_planner_adapter import run_agent_loop_planner_step
+from .assistant.loop_step import run_agent_loop_step
 from .action_registry import ActionTypeRegistry
 from .artifact_store import ArtifactStore
 from .event_store import FileEventStore
@@ -22,7 +22,7 @@ from .ids import new_id
 from .models import ActionProposal, ImportedSnapshot, PolicyDecision
 from .policy import PolicyEngine
 from .projector import RunProjector
-from .real_planner_adapter_contract import run_agent_loop_real_planner_contract_step
+from .assistant.real_planner_contract import run_agent_loop_real_planner_contract_step
 from .refs import ResourceRef
 from .retrieval import RetrievalService
 from .workspace import WorkspaceManager

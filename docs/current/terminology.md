@@ -7,10 +7,10 @@
 
 | 英文定位词 | 中文解释 | 主要层级 | 主要位置 |
 | --- | --- | --- | --- |
-| `agent loop` | 智能体循环，AI 多步规划、调用工具、读取结果并继续执行 | 应用/智能体 | `src/isotope/demo.py`, `docs/features/` |
-| `planner` | 规划器，把用户目标转成可执行步骤或工具选择 | 智能体 | `docs/architecture/planner-input-output-contract-v0.2.md`, `src/isotope/agent_loop_planner_adapter.py` |
-| `planner adapter` | 规划器适配层，把规划输出接到现有执行循环 | 智能体 | `src/isotope/agent_loop_planner_adapter.py` |
-| `tick policy` | 步进策略，决定智能体循环每轮是否继续、暂停或停止 | 智能体 | `src/isotope/agent_loop_step.py`, `docs/architecture/agent-loop-tick-policy-boundary-v0.2.md` |
+| `agent loop` | 智能体循环，AI 多步规划、调用工具、读取结果并继续执行 | 应用/智能体 | `src/isotope/assistant/loop_step.py`, `docs/features/` |
+| `planner` | 规划器，把用户目标转成可执行步骤或工具选择 | 智能体 | `docs/architecture/planner-input-output-contract-v0.2.md`, `src/isotope/assistant/loop_planner_adapter.py` |
+| `planner adapter` | 规划器适配层，把规划输出接到现有执行循环 | 智能体 | `src/isotope/assistant/loop_planner_adapter.py` |
+| `tick policy` | 步进策略，决定智能体循环每轮是否继续、暂停或停止 | 智能体 | `src/isotope/assistant/loop_control.py`, `docs/architecture/agent-loop-tick-policy-boundary-v0.2.md` |
 | `executor` | 执行器，执行已批准的动作或工具调用 | 核心执行 | `src/isotope/executor.py` |
 | `tool call` | 工具调用，模型请求系统执行某个能力 | 模型/工具 | `src/isotope/llm_provider.py`, `src/isotope/model_tool_bridge.py` |
 | `terminal_exec` | 终端执行能力，受控运行命令并返回产物 | 工具 | `src/isotope/action_registry.py` |
