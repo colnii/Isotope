@@ -1,6 +1,6 @@
 # Agent 任务队列
 
-状态：`当前入口 / 旧叙事清理`
+状态：`当前入口 / 命名审计`
 
 ## 当前事实
 
@@ -36,35 +36,38 @@
 21. 资源/RAG 兼容入口：`artifact_store.py`、`retrieval.py`、`ingestion.py` 已改为模块代理。
 22. `assistant` 命名收束：活跃循环实现已迁入 `core/`，`assistant/` 只保留兼容代理。
 23. demo 旧叙事清理：活跃 agent-loop demo 统一改用 `app_friction`。
+24. 命名与目录审计：已写 [naming-and-structure-review](./naming-and-structure-review.md)。
 
-## 最近完成：demo 旧叙事清理
+## 最近完成：命名与目录审计
 
 完成内容：
 
-- 将活跃 agent-loop demo 的输出字段和人类可读 trace 改为 `app_friction`。
-- 同步相关测试和 `docs/features/` 下的当前 app spike / friction review 文档。
-- 旧文件名、历史 review 路径和 `KernelError` 兼容类名暂不在本批迁移。
+- 对比 ChatGPT 设想的 `core/` 和真实 `src/isotope/core/`。
+- 确认当前 `core/loop_*` 更像 agent loop，不像产品主流程。
+- 提出先迁到 `src/isotope/agents/loop/` 的候选方案。
+- 列出 runtime、models、features、兼容代理的后续命名批次。
 
 验收：
 
-- `agent-loop-*` demo plain、trace、JSON 输出使用 `app_friction`。
-- agent loop demo 测试和全量测试需通过。
-- `src/isotope/demo.py`、相关 agent-loop 测试和 `docs/features/` 当前文档不再传播旧的底座摩擦字段。
+- 文档只给审计和推荐，不直接要求改代码。
+- 下一步代码迁移需等用户确认 `agents/loop/` 方向。
+- 文档地图需要能找到审计入口。
 
 ## 下一批次：应用内分层迁移
 
 目标：
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
-- 把当前平铺模块逐步迁入 `core/`、`features/`、`platform/` 等层级。
-- 下一步继续收敛剩余顶层兼容模块，或开始讨论未定的新目录设计。
+- 把当前平铺模块逐步迁入 `agents/loop/`、`features/`、`platform/` 等层级。
+- 下一步优先确认并执行 agent loop 正名，或继续调整命名审计文档。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：
 
 - `apps/cli/`：命令行入口。
 - `apps/api/`：后端入口。
-- `src/isotope/core/`：产品主流程。
+- `src/isotope/core/`：目标上应是产品主流程；当前实际还需继续整理。
+- `src/isotope/agents/loop/`：建议中的 agent loop 目标目录。
 - `src/isotope/assistant/`：旧路径兼容代理，不再扩张新实现。
 - `src/isotope/features/`：聊天、任务、项目、文件、研究等可用功能。
 - `src/isotope/capabilities/`：工具、技能、能力注册。

@@ -44,6 +44,7 @@
 - 历史归档：[archive/](../archive/)
 - 应用目录迁移：[application-structure-plan](./application-structure-plan.md)
 - 目录结构最新说明：[目录结构最新说明](./目录结构最新说明.md)
+- 命名与目录审计：[naming-and-structure-review](./naming-and-structure-review.md)
 - 分支初审：[branch-audit-initial-2026-05-15](../reviews/branch-audit-initial-2026-05-15.md)
 - 分支审计刷新：[branch-audit-refresh-2026-05-15](../reviews/branch-audit-refresh-2026-05-15.md)
 - 终端分支深审：[controlled-terminal-exec-deep-review-2026-05-15](../reviews/controlled-terminal-exec-deep-review-2026-05-15.md)
