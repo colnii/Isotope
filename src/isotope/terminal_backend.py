@@ -1,6 +1,13 @@
-"""Compatibility import for the application terminal backend implementation."""
+"""Compatibility proxy.
 
-from isotope.execution.terminal_backend import (
+New path:
+    isotope.execution.terminal_runner
+
+Planned removal:
+    after import-map confirms no active internal imports.
+"""
+
+from isotope.execution.terminal_runner import (
     TerminalBackendAdapter,
     TerminalBackendCancelResult,
     TerminalBackendConfig,

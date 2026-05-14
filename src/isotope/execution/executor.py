@@ -18,7 +18,7 @@ from ..platform.schemas.models import ActionExecution, ActionProposal, MemoryRec
 from ..platform.schemas.refs import ResourceRef
 from ..platform.schemas.tool_protocol import ToolInvocation, ToolResult
 from ..capabilities.tools.terminal import ControlledTerminalRunner
-from .terminal_backend import (
+from .terminal_runner import (
     TerminalBackendAdapter,
     TerminalBackendExecutionError,
     TerminalBackendNotConfiguredError,

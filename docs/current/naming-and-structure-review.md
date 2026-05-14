@@ -96,7 +96,7 @@ src/isotope/
 | `features/chat/product_chat.py` | product 前缀多余 | 已迁到 `features/chat/flow.py` |
 | `integrations/llm/provider.py` | LLM 不是普通外部系统集成 | 已迁到 `llm/provider.py` |
 | `integrations/llm/tool_bridge.py` | LLM 工具桥属于模型交互层 | 已迁到 `llm/tool_bridge.py` |
-| `execution/terminal_backend.py` | backend 泛，像临时实现 | `execution/terminal_runner.py` |
+| `execution/terminal_backend.py` | backend 泛，像临时实现 | 已迁到 `execution/terminal_runner.py` |
 | `platform/schemas/models.py` | `models` 太泛 | `platform/schemas/domain.py` 或拆成 `actions.py` |
 | `platform/errors.py` | `KernelError` 残留 | 后续评估 `CoreError` 兼容迁移 |
 | 顶层 `codex_*`、`llm_*`、`capability_*` | 兼容代理太多 | 保留薄代理，活跃导入只用子目录 |
@@ -164,11 +164,12 @@ src/isotope/
 
 ### 批次四：功能层扩展
 
-状态：chat flow 正名已执行。
+状态：chat flow 正名已执行，terminal runner 正名已执行。
 
 目标：
 
 - 将 `features/chat/product_chat.py` 改成更自然的 `flow.py`。
+- 将 `execution/terminal_backend.py` 改成更自然的 `terminal_runner.py`。
 - 需要有真实 tasks / projects / files 功能时，再建对应目录。
 - 不为了目录漂亮提前建一堆空功能。
 

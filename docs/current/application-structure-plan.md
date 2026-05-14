@@ -104,7 +104,7 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 第一片：
 
 - `src/isotope/capabilities/tools/terminal.py`
-- `src/isotope/execution/terminal_backend.py`
+- `src/isotope/execution/terminal_runner.py`
 - `tests/isotope/test_terminal_tool.py`
 - `tests/isotope/test_terminal_backend_app.py`
 
@@ -130,6 +130,8 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 - 平台注册表与错误：`action_registry.py`、`errors.py` 已迁入 `src/isotope/platform/`。
 - 平台工具：`ids.py` 已迁入 `src/isotope/platform/ids.py`。
 - 执行器：`executor.py` 已迁入 `src/isotope/execution/executor.py`。
+- 终端执行器：活跃实现已迁入 `src/isotope/execution/terminal_runner.py`；
+  `src/isotope/execution/terminal_backend.py` 和顶层旧路径仅保留兼容代理。
 - 接口层：`http_api.py` 已迁入 `src/isotope/interfaces/http.py`。
 - LLM 层：模型 provider 和 tool bridge 已迁入 `src/isotope/llm/`；
   `src/isotope/integrations/llm/` 和顶层旧路径仅保留兼容代理。
