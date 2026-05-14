@@ -13,10 +13,10 @@ from ..integrations.codex.task import (
     CodexTaskProtocolError,
 )
 from ..events import CanonicalEvent
-from ..ids import new_id
 from ..models import ActionExecution, ActionProposal, MemoryRecord, PolicyDecision
+from ..platform.ids import new_id
 from ..refs import ResourceRef
-from ..terminal import ControlledTerminalRunner
+from ..capabilities.tools.terminal import ControlledTerminalRunner
 from .terminal_backend import (
     TerminalBackendAdapter,
     TerminalBackendExecutionError,

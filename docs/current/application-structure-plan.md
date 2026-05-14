@@ -114,11 +114,13 @@ scripts/
 - 记忆边界：`memory.py` 已迁成 `src/isotope/memory/` 包。
 - 权限策略：`policy.py` 已迁成 `src/isotope/policy/` 包。
 - 平台注册表与错误：`action_registry.py`、`errors.py` 已迁入 `src/isotope/platform/`。
+- 平台工具：`ids.py` 已迁入 `src/isotope/platform/ids.py`。
 - 执行器：`executor.py` 已迁入 `src/isotope/execution/executor.py`。
 - 接口层：`http_api.py` 已迁入 `src/isotope/interfaces/http.py`。
 - LLM 与 Codex 集成：`llm_provider.py`、`model_tool_bridge.py`、`codex_task.py`、`codex_cli.py`、`codex_server.py`、`codex_live_smoke.py` 已迁入 `src/isotope/integrations/`。
 - 状态恢复：`checkpoint_store.py`、`event_store.py`、`projector.py` 已迁入 `src/isotope/platform/state/`。
 - 运行入口：`server.py` 已迁入 `src/isotope/runtime/server.py`。
+- 动作编译：`action_compiler.py` 已迁入 `src/isotope/runtime/action_compiler.py`。
 - 旧根路径保留轻量兼容导出，方便后续逐步改调用点。
 
 ## 第一批建议

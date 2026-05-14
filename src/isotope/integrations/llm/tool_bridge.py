@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from ...platform.errors import KernelError
-from ...terminal import validate_argv
+from ...capabilities.tools.terminal import validate_argv
 
 _KERNEL_ERROR_CATEGORIES = {
     "validation",

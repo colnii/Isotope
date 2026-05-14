@@ -31,20 +31,22 @@
 16. 状态恢复入口：checkpoint store、event store、projector 已迁入 `src/isotope/platform/state/`。
 17. 运行入口：`server.py` 已迁入 `src/isotope/runtime/server.py`。
 18. CLI 入口：`apps/cli/` 已建立薄入口，`pyproject.toml` 已声明正式命令。
+19. 运行时工具：`action_compiler.py` 迁入 `runtime/`，`ids.py` 迁入 `platform/`，活跃终端引用改到真实实现路径。
 
-## 最近完成：CLI 入口整理
+## 最近完成：运行时工具收束
 
 完成内容：
 
-- 新增 `apps/cli/`，放置 demo、capability、LLM smoke 的薄入口。
-- 在 `pyproject.toml` 声明 `isotope-demo`、`isotope-capability`、`isotope-llm-smoke`。
-- 保留 `python -m isotope.demo` 等历史入口，避免破坏现有测试和文档。
+- 将 `ActionCompiler` 迁入 `src/isotope/runtime/action_compiler.py`。
+- 将 `new_id` 迁入 `src/isotope/platform/ids.py`。
+- 将活跃终端工具引用改到 `src/isotope/capabilities/tools/terminal.py`。
+- 保留旧根路径兼容代理，避免破坏历史测试和外部调用。
 
 验收：
 
-- editable install 后可直接运行 `isotope-demo`。
-- `python -m isotope.demo` 仍可运行。
-- packaging smoke 和全量测试需通过。
+- 旧路径 `isotope.action_compiler`、`isotope.ids` 仍可导入。
+- 新路径 `isotope.runtime.action_compiler`、`isotope.platform.ids` 可直接导入。
+- action compiler、policy、executor、terminal 和全量测试需通过。
 
 ## 下一批次：应用内分层迁移
 

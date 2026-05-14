@@ -7,8 +7,8 @@ from json import JSONDecodeError
 from pathlib import Path
 from typing import Any
 
-from ..ids import new_id
 from ..models import Artifact
+from ..platform.ids import new_id
 from ..refs import ResourceRef, make_artifact_ref
 
 

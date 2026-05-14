@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from ..ids import new_id
+from ..capabilities.tools.terminal import validate_argv
 from ..models import ActionProposal, PolicyDecision
+from ..platform.ids import new_id
 from ..platform.registry.actions import ActionTypeRegistry
-from ..terminal import validate_argv
 
 
 class PolicyEngine:

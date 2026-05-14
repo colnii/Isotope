@@ -1,12 +1,7 @@
-"""ID helpers for the Isotope v0.1 slice."""
+"""Compatibility module for platform ID helpers."""
 
-from __future__ import annotations
+import sys
+from importlib import import_module
 
-from itertools import count
+sys.modules[__name__] = import_module("isotope.platform.ids")
 
-_counters: dict[str, count] = {}
-
-
-def new_id(prefix: str) -> str:
-    counter = _counters.setdefault(prefix, count(1))
-    return f"{prefix}_{next(counter):03d}"

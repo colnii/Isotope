@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from ...terminal import cap_terminal_output
+from ...capabilities.tools.terminal import cap_terminal_output
 from .task import (
     CodexTaskNotConfiguredError,
     CodexTaskOutputArtifact,

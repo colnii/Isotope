@@ -12,9 +12,10 @@
 | `planner adapter` | 规划器适配层，把规划输出接到现有执行循环 | 智能体 | `src/isotope/assistant/loop_planner_adapter.py` |
 | `tick policy` | 步进策略，决定智能体循环每轮是否继续、暂停或停止 | 智能体 | `src/isotope/assistant/loop_control.py`, `docs/architecture/agent-loop-tick-policy-boundary-v0.2.md` |
 | `executor` | 执行器，执行已批准的动作或工具调用 | 执行 | `src/isotope/execution/executor.py` |
+| `ActionCompiler` | 动作编译器，把紧凑意图转换成可审批的动作提案 | 运行时 | `src/isotope/runtime/action_compiler.py` |
 | `tool call` | 工具调用，模型请求系统执行某个能力 | 模型/工具 | `src/isotope/integrations/llm/provider.py`, `src/isotope/integrations/llm/tool_bridge.py` |
 | `terminal_exec` | 终端执行能力，受控运行命令并返回产物 | 工具 | `src/isotope/platform/registry/actions.py` |
-| `terminal backend` | 终端后端，把终端命令封装成可测试执行层 | 工具 | `src/isotope/execution/terminal_backend.py`, `src/isotope/terminal_backend.py` |
+| `terminal backend` | 终端后端，把终端命令封装成可测试执行层 | 工具 | `src/isotope/execution/terminal_backend.py` |
 | `provider` | 模型服务适配器，连接外部模型服务 | 模型 | `src/isotope/integrations/llm/provider.py` |
 | `product chat` | 产品聊天入口，让模型调用工具并返回面向用户的回答 | 产品能力 | `src/isotope/features/chat/product_chat.py` |
 | `CLI` | 命令行入口，给人类和部署脚本直接调用 | 应用入口 | `apps/cli/`, `pyproject.toml` |
@@ -30,6 +31,7 @@
 | `projector` | 投影器，把事件日志重建成可读状态 | 状态恢复 | `src/isotope/platform/state/projector.py` |
 | `RunState` | 运行状态，投影后的当前视图 | 状态恢复 | `src/isotope/platform/state/projector.py` |
 | `ActionTypeRegistry` | 动作类型注册表，记录工具元数据、能力要求和版本信息 | 平台注册表 | `src/isotope/platform/registry/actions.py` |
+| `new_id` | 简单 ID 生成器，给测试和进程内运行生成稳定前缀 ID | 平台工具 | `src/isotope/platform/ids.py` |
 | `KernelError` | 结构化错误，给 HTTP 和 helper 返回稳定错误码 | 平台错误 | `src/isotope/platform/errors.py` |
 | `policy` | 权限策略，决定动作是否允许、暂停或拒绝 | 安全/权限 | `src/isotope/policy/` |
 | `approval` | 人工确认，敏感动作执行前的暂停和恢复机制 | 权限/产品 | `src/isotope/runtime/server.py` |

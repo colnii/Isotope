@@ -6,7 +6,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
-from ...terminal import default_terminal_capabilities
+from ...capabilities.tools.terminal import default_terminal_capabilities
 
 
 @dataclass(frozen=True)
