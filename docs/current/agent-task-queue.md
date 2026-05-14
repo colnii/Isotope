@@ -33,20 +33,21 @@
 18. CLI 入口：`apps/cli/` 已建立薄入口，`pyproject.toml` 已声明正式命令。
 19. 运行时工具：`action_compiler.py` 迁入 `runtime/`，`ids.py` 迁入 `platform/`，活跃终端引用改到真实实现路径。
 20. 平台 schema/event：活跃代码已切到 `platform/schemas/` 与 `platform/events/`，旧根路径保留兼容代理。
+21. 资源/RAG 兼容入口：`artifact_store.py`、`retrieval.py`、`ingestion.py` 已改为模块代理。
 
-## 最近完成：平台 schema/event 收束
+## 最近完成：资源/RAG 兼容入口收束
 
 完成内容：
 
-- 将活跃代码里的 `models`、`refs`、`events`、`tool_protocol` 导入切到平台真实路径。
-- 将 `isotope.models`、`isotope.refs`、`isotope.events`、`isotope.tool_protocol`、`isotope.event_schema` 改成模块代理。
+- 确认活跃代码已直接使用 `src/isotope/workspace/` 与 `src/isotope/rag/`。
+- 将 `isotope.artifact_store`、`isotope.retrieval`、`isotope.ingestion` 改成模块代理。
 - 保留旧根路径兼容入口，避免破坏历史测试和外部调用。
 
 验收：
 
-- 旧路径 `isotope.models`、`isotope.refs`、`isotope.events` 等仍可导入。
-- 新路径 `isotope.platform.schemas.*` 与 `isotope.platform.events.*` 可直接导入。
-- schema、event、executor、runtime 和全量测试需通过。
+- 旧路径 `isotope.artifact_store`、`isotope.retrieval`、`isotope.ingestion` 仍可导入。
+- 新路径 `isotope.workspace.artifacts`、`isotope.rag.retrieval`、`isotope.rag.ingestion` 可直接导入。
+- artifact、retrieval、ingestion、RAG 和全量测试需通过。
 
 ## 下一批次：应用内分层迁移
 

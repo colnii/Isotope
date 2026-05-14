@@ -1,3 +1,6 @@
-"""Compatibility exports for RAG retrieval."""
+"""Compatibility module for RAG retrieval."""
 
-from isotope.rag.retrieval import *  # noqa: F401,F403
+import sys
+from importlib import import_module
+
+sys.modules[__name__] = import_module("isotope.rag.retrieval")

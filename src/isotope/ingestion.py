@@ -1,3 +1,6 @@
-"""Compatibility exports for RAG ingestion."""
+"""Compatibility module for RAG ingestion."""
 
-from isotope.rag.ingestion import *  # noqa: F401,F403
+import sys
+from importlib import import_module
+
+sys.modules[__name__] = import_module("isotope.rag.ingestion")

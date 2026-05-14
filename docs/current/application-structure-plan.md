@@ -109,8 +109,8 @@ scripts/
 - 能力目录：`capability_catalog.py`、`capability_runner.py` 已迁入 `src/isotope/capabilities/`。
 - 产品聊天入口：`llm_product_chat_app.py` 已迁入 `src/isotope/features/chat/product_chat.py`。
 - 助手循环：`agent_loop_*` 与 real planner contract 已迁入 `src/isotope/assistant/`。
-- 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`。
-- RAG 边界：`ingestion.py` 与 `retrieval.py` 已迁入 `src/isotope/rag/`。
+- 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`，旧根路径仅作兼容代理。
+- RAG 边界：`ingestion.py` 与 `retrieval.py` 已迁入 `src/isotope/rag/`，旧根路径仅作兼容代理。
 - 记忆边界：`memory.py` 已迁成 `src/isotope/memory/` 包。
 - 权限策略：`policy.py` 已迁成 `src/isotope/policy/` 包。
 - 平台注册表与错误：`action_registry.py`、`errors.py` 已迁入 `src/isotope/platform/`。
