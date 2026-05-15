@@ -11,7 +11,7 @@
 - 普通测试里的 `from isotope import xxx` 包级导入已改用新路径。
 - 终端旧入口已删除，测试改用 `execution.terminal_runner`。
 - `src/isotope/` 根目录已不再保留顶层兼容代理。
-- `core/` 仅保留空包作为未来产品主流程位置。
+- `core/` 已开始承接产品主流程，当前不是兼容代理目录。
 - `assistant` 旧包已删除。
 - `demo.py`、`llm_live_smoke.py` 是正式命令入口。
 - `capability_runner.py` 旧根入口已删除，正式命令指向

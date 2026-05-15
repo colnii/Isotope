@@ -74,33 +74,37 @@
 42. 第六批低风险代理删除：Codex 顶层旧入口已删除，
     活跃测试继续使用 `integrations.codex`。
 43. 第七批低风险代理删除：agent-loop、core 和 assistant
-    旧入口已删除，`core` 仅保留空包作为未来产品主流程位置。
+    旧入口已删除，`core` 已清出给后续产品主流程。
 44. 第八批低风险代理删除：`platform.schemas.models` 汇总入口已删除，
     测试直接使用 `actions`、`memory`、`snapshots` 等具体 schema 模块。
 45. 根层入口复核：`src/isotope/` 根层只剩 `__init__.py`、`demo.py`
     和 `llm_live_smoke.py`，没有已确认应继续删除的旧代理。
 46. 真实功能分层审计：`apps/cli/` 已确认是薄入口；`core/`
-    暂不补空文件；`tools/` 旧空包已删除，工具能力归入
+    等真实主流程出现再建文件；`tools` 旧空包已删除，工具能力归入
     `capabilities/tools/`。
 47. 目标态目录蓝图吸收：第一版大结构作为长期蓝图；当前仍以
     `src/isotope/` 承担平台代码包，不新增 `packages/`、`aios`
     或 `kernel` 主叙事。
+48. core 薄产品主流程：`ProductCore` 已包住现有
+    `InProcessServer`，提供 session、run 和用户消息提交入口。
 
-## 最近完成：目标态目录蓝图吸收
+## 最近完成：core 薄产品主流程
 
 完成内容：
 
-- 吸收 [重新梳理目录结构逻辑](./重新梳理目录结构逻辑.md)。
-- 明确“第一版大结构”是目标态蓝图，不是立即建满的目录。
-- 明确 Python 落地继续使用 `src/isotope/`，不新增 `packages/`。
-- 明确不把 `kernel`、AI OS 作为 Isotope 当前主叙事。
+- 新增 `src/isotope/core/` 下的产品主流程薄层。
+- `ProductCore.in_process()` 先复用现有单进程运行时。
+- `start_session`、`start_run` 和 `submit_user_message`
+  成为第一组产品级调用。
+- `CoreTurnResponse` 只暴露状态、产物引用、摘要和事件数量。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
-  [naming-and-structure-review](./naming-and-structure-review.md) 与
-  [docs-map](./docs-map.md)。
+  [naming-and-structure-review](./naming-and-structure-review.md)、
+  [terminology](./terminology.md) 和 [compat-proxy-audit](./compat-proxy-audit.md)。
 
 验收：
 
-- 文档检查需要通过。
+- `tests/isotope/test_core_product_flow.py` 需要通过。
+- 共享路径改动后需要跑全量测试。
 - `AGENTS.md` 仍需保持 100 行以内。
 
 ## 下一批次：应用内分层迁移
@@ -109,15 +113,15 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把真实功能逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步若继续目录工作，应优先设计真实 `core/` 主流程或
-  第一个明确的 `features/tasks` / `features/files` 功能切片。
+- 下一步若继续目录工作，应在 `core` 第二片和第一个明确的
+  `features/tasks` / `features/files` 功能切片之间选择。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：
 
 - `apps/cli/`：命令行入口。
 - `apps/api/`：后端入口。
-- `src/isotope/core/`：目标上应是产品主流程；当前只保留空包预留。
+- `src/isotope/core/`：产品主流程；当前薄包 `InProcessServer`。
 - `src/isotope/agents/loop/`：agent loop 活跃实现目录。
 - `src/isotope/assistant/`：旧路径包已删除，不再扩张新实现。
 - `src/isotope/features/`：聊天、任务、项目、文件、研究等可用功能。

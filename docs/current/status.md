@@ -24,12 +24,13 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
 
 1. 保持当前 `main` 干净。
 2. 后续功能从明确产品目标出发新开分支。
-3. 目录结构设计另行讨论；当前只做已明确的低风险收束。
+3. 目录结构设计另行讨论；当前先把已确认的 `core` 薄主流程落地。
 4. 继续避免把产品功能降级成诊断或半成品。
 5. `assistant` 不再作为新目录叙事，旧路径入口已删除。
 6. 活跃 demo 输出使用 `app_friction` 描述应用摩擦，不再传播旧的底座摩擦字段。
 7. agent loop 活跃实现已迁入 `src/isotope/agents/loop/`。
 8. 兼容代理迁移需同步维护 `docs/current/import-map.md`，并写明计划删除节点。
+9. `core` 当前薄包 `InProcessServer`，不承载 agent loop 内部实现。
 
 ## 文档策略
 

@@ -8,6 +8,9 @@
 | 英文定位词 | 中文解释 | 主要层级 | 主要位置 |
 | --- | --- | --- | --- |
 | `core` | 产品主流程，串起会话、对话循环、调度和响应 | 应用核心 | `src/isotope/core/` |
+| `ProductCore` | 产品主流程门面，先包住单进程运行时供上层调用 | 应用核心 | `src/isotope/core/conversation.py` |
+| `RuntimeDispatch` | 运行时调度薄层，把产品级调用转发到当前运行入口 | 应用核心 | `src/isotope/core/dispatch.py` |
+| `CoreTurnResponse` | 产品级回合响应，只暴露低敏状态、产物引用和摘要 | 应用核心 | `src/isotope/core/response.py` |
 | `assistant` | 助手，只作为产品描述或历史术语，不作为新目录叙事 | 产品描述/历史术语 | 已删除旧目录 |
 | `agent loop` | 智能体循环，AI 多步规划、调用工具、读取结果并继续执行 | 应用/智能体 | `src/isotope/agents/loop/step.py`, `docs/features/` |
 | `app_friction` | 应用摩擦，应用层试跑暴露的卡点或待收束问题 | 应用验证 | `src/isotope/demo.py`, `docs/features/` |

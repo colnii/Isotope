@@ -9,7 +9,7 @@
 
 目前最大问题不是 `src/isotope/` 这个包名，而是包内职责命名还带着迁移痕迹：
 
-- `core/` 当前只保留空包，预留给未来产品主流程。
+- `core/` 已进入产品主流程第一片，先薄包现有单进程运行时。
 - `runtime/server.py` 已删除，活跃实现位于 `runtime/in_process.py`。
 - 根目录只剩正式入口：`__init__.py`、`demo.py`、`llm_live_smoke.py`。
 - 一些文件名是历史工作流命名，不像长期产品代码。
@@ -50,7 +50,7 @@ core/
 ## 推荐命名原则
 
 1. 目录名表达职责，不表达宣传词。
-2. `core/` 预留给产品主流程；当前不承载 agent loop。
+2. `core/` 承载产品主流程；当前不承载 agent loop。
 3. `agents/` 放智能体角色和智能体循环。
 4. `features/` 放用户可感知功能。
 5. `capabilities/` 放可注册、可调用能力。
@@ -67,7 +67,7 @@ core/
 
 ```text
 src/isotope/
-  core/                 # 预留给产品主流程；当前不承载 agent loop
+  core/                 # 产品主流程；当前薄包单进程运行时
   features/             # 用户功能：chat / tasks / projects / files / research
   agents/               # 智能体角色与 agent loop
     loop/
@@ -136,7 +136,7 @@ src/isotope/
 
 - 新建 `src/isotope/agents/loop/`。
 - 将原 `core/loop_*` 活跃实现迁入该目录。
-- `core/` 暂时只留空包，不新增空的产品主流程文件。
+- `core/` 先清空旧 agent loop 入口，不新增空的产品主流程文件。
 - 旧路径 `isotope.core.*`、`isotope.assistant.*`、`isotope.agent_loop_*` 已删除。
 - 同步 [import-map](./import-map.md)，记录旧路径、新路径和计划删除节点。
 
@@ -206,7 +206,7 @@ src/isotope/
 目标：
 
 - `apps/cli/` 继续保持薄入口，只转发到 `src/isotope/` 稳定模块。
-- `core/` 暂不补空文件；等会话、对话、调度、响应形成真实主流程再建。
+- `core/` 已建立第一片真实主流程：会话、run、调度和低敏响应。
 - `features/` 只在出现用户可感知功能时建子目录。
 - `capabilities/tools/` 放可被注册、授权、执行的工具能力。
 - 不再新增顶层 `tools/`、`utils/` 这类容易失控的目录。
@@ -224,11 +224,26 @@ src/isotope/
 - `observability/`、`evolution/`、`context/` 等保留为远期边界，
   当前不建空目录。
 
+### 批次八：core 薄产品主流程
+
+状态：已执行第一片。
+
+目标：
+
+- 新增 `ProductCore` 作为产品主流程门面。
+- 新增 `CoreSession`、`CoreRun`、`CoreTurnResponse` 和
+  `RuntimeDispatch`，先包住现有 `InProcessServer`。
+- 对外暴露 `start_session`、`start_run`、`submit_user_message`
+  这三个最小可用动作。
+- 响应只返回状态、产物引用、摘要和事件数量，不把全文内容默认抛到外层。
+- 暂不迁移 `runtime/in_process.py` 内部实现，后续再按真实需求拆分。
+
 ## 当前推荐决策
 
 我建议先确认这一条：
 
 > 原 `core/loop_*` 不应长期留在 `core/`，已迁到 `agents/loop/`。
+> 当前 `core/` 已开始承接产品主流程，但仍只是薄层，不替代 runtime。
 
 这一步改动范围可控，也改善了“目录不好看”的核心问题。
 

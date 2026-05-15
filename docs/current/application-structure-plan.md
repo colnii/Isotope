@@ -70,8 +70,8 @@ scripts/
 
 - `apps/` 是入口层；入口只调用 `src/isotope/` 的稳定模块。
 - `src/isotope/` 承担完整版本里 `packages/` 的角色。
-- `core/` 只在产品主流程成形后承载 session、conversation、
-  dispatch 和 response。
+- `core/` 已开始承载产品主流程，当前只提供 session、run、
+  dispatch 和 response 的薄层。
 - `features/` 只放用户能感知的功能，不提前建空功能目录。
 - `capabilities/` 描述 AI 能做什么；`runtime/` 描述在哪里、
   以什么权限和隔离方式运行。
@@ -89,7 +89,7 @@ scripts/
 
 ## 初步映射
 
-- `core/`：预留给产品主流程，负责 session、conversation、dispatch 和 response；当前不承载 agent loop。
+- `core/`：产品主流程，负责 session、conversation、dispatch 和 response；当前薄包单进程运行时，不承载 agent loop。
 - `features/`：真实可用功能，如聊天、任务、项目、文件、研究和自动化。
 - `agents/`：子 agent 定义、角色、任务委派和 agent loop。
 - `capabilities/`：工具、技能和能力注册，不再使用顶层 `tools/` 空包。
@@ -176,6 +176,9 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   `src/isotope/runtime/server.py` 旧代理已删除。
 - 动作编译：`action_compiler.py` 已迁入 `src/isotope/runtime/action_compiler.py`。
 - 旧根路径和旧空包已完成当前已知清理；后续新增兼容代理需先登记。
+- 产品 core：`ProductCore`、`RuntimeDispatch`、`CoreSession`、
+  `CoreRun` 和 `CoreTurnResponse` 已加入 `src/isotope/core/`，
+  先包住 `InProcessServer`，提供单进程会话、run 和用户消息提交入口。
 
 ## 第一批建议
 
