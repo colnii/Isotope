@@ -72,7 +72,8 @@ scripts/
 - `src/isotope/` 承担完整版本里 `packages/` 的角色。
 - `core/` 已开始承载产品主流程，当前提供 session、conversation、
   task、run、turn、dispatch 和 response 的薄层。
-- `features/` 只放用户能感知的功能，不提前建空功能目录。
+- `features/` 只放用户能感知的功能；允许为近期迁移目标建薄目录，
+  但要尽快接到可运行功能。
 - `capabilities/` 描述 AI 能做什么；`runtime/` 描述在哪里、
   以什么权限和隔离方式运行。
 - `memory/` 是长期状态；未来如需一次模型调用的上下文打包，
@@ -90,7 +91,7 @@ scripts/
 ## 初步映射
 
 - `core/`：产品主流程，负责 session、conversation、task、turn、dispatch 和 response；当前薄包单进程运行时，不承载 agent loop。
-- `features/`：真实可用功能，如聊天、任务、项目、文件、研究和自动化；当前已有聊天和任务薄入口。
+- `features/`：真实可用功能，如聊天、任务、项目、文件、研究和自动化；当前已有聊天、任务和文件薄入口。
 - `agents/`：子 agent 定义、角色、任务委派和 agent loop。
 - `capabilities/`：工具、技能和能力注册，不再使用顶层 `tools/` 空包。
 - `llm/`：LLM、embedding、rerank 等模型服务 provider，不放 Pydantic schema 或数据库模型。
@@ -160,6 +161,9 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   可运行一条任务并输出低敏 JSON 摘要。
 - 任务 API：`POST /tasks` 和 `GET /tasks/{task_id}` 已接到
   `TaskFlow`，当前仍属于进程内 HTTP facade，不是独立 FastAPI 服务。
+- 文件功能入口：`src/isotope/features/files/flow.py` 已提供
+  `FileFlow` 和 `FileSummary`，可把文本保存为 artifact-backed file
+  summary；当前不是完整文件管理系统。
 - 智能体循环：`agent_loop_*` 与 planner contract 已迁入 `src/isotope/agents/loop/`；
   旧顶层、`core/loop_*` 和 `assistant/` 入口已删除。
 - 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`，相关旧根路径已删除。

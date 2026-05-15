@@ -97,24 +97,25 @@
     task 并输出低敏 JSON 摘要。
 53. tasks API 入口：`POST /tasks` 和 `GET /tasks/{task_id}` 已接到
     `TaskFlow`，CLI 与 API 共用 core task 状态。
+54. files 功能薄入口：`features/files/flow.py` 已提供 `FileFlow`
+    和 `FileSummary`，可保存文本为 artifact-backed file summary。
 
-## 最近完成：tasks API 入口
+## 最近完成：files 功能薄入口
 
 完成内容：
 
-- `HttpApiApp` 初始化时用同一个 `InProcessServer` 构造 `TaskFlow`。
-- `POST /tasks` 可创建并运行一条任务。
-- `GET /tasks/{task_id}` 可读取任务摘要。
-- API 输出只包含任务摘要，不返回用户输入正文或 artifact 全文。
-- 路由清单已把 tasks API 标为 supported。
+- `FileFlow.in_process(...)` 可创建进程内文件功能入口。
+- `create_text_file(...)` 可把文本保存成 artifact，并返回文件摘要。
+- `get_file(...)` 可读取当前流程内的文件摘要。
+- `FileSummary` 只包含文件名、摘要、artifact 引用和 run id。
+- 输出不返回原始文件全文。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
   [naming-and-structure-review](./naming-and-structure-review.md)、
   [terminology](./terminology.md) 和 [status](./status.md)。
 
 验收：
 
-- `tests/isotope/test_http_api_boundary.py` 和
-  `tests/isotope/test_http_api_route_inventory.py` 需要通过。
+- `tests/isotope/test_files_feature_flow.py` 需要通过。
 - 共享路径改动后需要跑全量测试。
 - `AGENTS.md` 仍需保持 100 行以内。
 
@@ -124,7 +125,7 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把真实功能逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步若继续目录工作，应开始第一个 `features/files` 功能切片，
+- 下一步若继续目录工作，应给 `features/files` 增加列表/持久化索引，
   或给 tasks 增加更像产品的列表/历史能力。
 - 迁移完成后再恢复多分支并行开发。
 
@@ -138,7 +139,7 @@
 - `src/isotope/agents/loop/`：agent loop 活跃实现目录。
 - `src/isotope/assistant/`：旧路径包已删除，不再扩张新实现。
 - `src/isotope/features/`：聊天、任务、项目、文件、研究等可用功能；
-  当前已有 `chat/` 和 `tasks/`。
+  当前已有 `chat/`、`tasks/` 和 `files/`。
 - `src/isotope/capabilities/`：工具、技能、能力注册。
 - `src/isotope/execution/`：shell、python、浏览器、沙箱执行。
 - `src/isotope/runtime/`：进程内运行入口。

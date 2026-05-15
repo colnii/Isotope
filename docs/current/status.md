@@ -34,6 +34,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
    task（任务）和 turn（回合）状态，不承载 agent loop 内部实现。
 10. `features/tasks` 已有薄入口、`isotope-task` CLI 和 tasks API，
     当前只提供任务摘要流程。
+11. `features/files` 已有薄入口，当前可把文本保存成
+    artifact-backed file summary，不是完整文件管理系统。
 
 ## 文档策略
 
