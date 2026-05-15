@@ -207,7 +207,8 @@ src/isotope/
 
 - `apps/cli/` 继续保持薄入口，只转发到 `src/isotope/` 稳定模块。
 - `core/` 已建立真实主流程薄层：会话、对话、任务、run、turn、调度和低敏响应。
-- `features/` 只在出现用户可感知功能时建子目录。
+- `features/tasks/` 已建立第一片用户可感知任务入口。
+- 后续 `features/` 子目录仍只在出现用户可感知功能时建立。
 - `capabilities/tools/` 放可被注册、授权、执行的工具能力。
 - 不再新增顶层 `tools/`、`utils/` 这类容易失控的目录。
 
@@ -226,7 +227,7 @@ src/isotope/
 
 ### 批次八：core 薄产品主流程
 
-状态：已执行前两片。
+状态：已执行前三片。
 
 目标：
 
@@ -242,8 +243,20 @@ src/isotope/
   `start_task`、`submit_task_message`、`get_task`。
 - 响应只返回状态、产物引用、摘要和事件数量，不把全文内容默认抛到外层。
 - 现有普通输入会结束 run，所以 conversation 当前允许跨多个 completed run（已结束运行）。
-- 当前 task 仍属于 `core` 产品边界，不代表 `features/tasks/` 已经展开。
+- `features/tasks/flow.py` 已将 core task 包成用户功能摘要。
 - 暂不迁移 `runtime/in_process.py` 内部实现，后续再按真实需求拆分。
+
+### 批次九：tasks 功能薄入口
+
+状态：已执行第一片。
+
+目标：
+
+- 新增 `TaskFlow` 作为任务功能入口。
+- 新增 `TaskSummary` 作为用户可读任务摘要。
+- 复用 `ProductCore`，不绕过 core 直接碰 runtime。
+- 默认只返回任务状态、回合数量、run 列表、结果摘要和资源引用。
+- 暂不做完整任务管理、列表页、持久化索引或 API 路由。
 
 ## 当前推荐决策
 

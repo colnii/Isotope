@@ -16,6 +16,8 @@
 | `CoreTask` | 产品级任务，记录目标并关联一个 conversation | 应用核心 | `src/isotope/core/task.py` |
 | `CoreTaskState` | 任务状态，包含目标、状态、对话和结果摘要 | 应用核心 | `src/isotope/core/task.py` |
 | `CoreTurnResponse` | 产品级回合响应，只暴露低敏状态、产物引用和摘要 | 应用核心 | `src/isotope/core/response.py` |
+| `TaskFlow` | 任务功能入口，把 core task 包成用户可用的任务摘要流程 | 产品功能 | `src/isotope/features/tasks/flow.py` |
+| `TaskSummary` | 任务摘要，面向用户展示状态、回合数量和结果引用 | 产品功能 | `src/isotope/features/tasks/flow.py` |
 | `assistant` | 助手，只作为产品描述或历史术语，不作为新目录叙事 | 产品描述/历史术语 | 已删除旧目录 |
 | `agent loop` | 智能体循环，AI 多步规划、调用工具、读取结果并继续执行 | 应用/智能体 | `src/isotope/agents/loop/step.py`, `docs/features/` |
 | `app_friction` | 应用摩擦，应用层试跑暴露的卡点或待收束问题 | 应用验证 | `src/isotope/demo.py`, `docs/features/` |

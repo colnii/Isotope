@@ -90,7 +90,7 @@ scripts/
 ## 初步映射
 
 - `core/`：产品主流程，负责 session、conversation、task、turn、dispatch 和 response；当前薄包单进程运行时，不承载 agent loop。
-- `features/`：真实可用功能，如聊天、任务、项目、文件、研究和自动化。
+- `features/`：真实可用功能，如聊天、任务、项目、文件、研究和自动化；当前已有聊天和任务薄入口。
 - `agents/`：子 agent 定义、角色、任务委派和 agent loop。
 - `capabilities/`：工具、技能和能力注册，不再使用顶层 `tools/` 空包。
 - `llm/`：LLM、embedding、rerank 等模型服务 provider，不放 Pydantic schema 或数据库模型。
@@ -154,6 +154,8 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 - 能力目录：`capability_catalog.py`、`capability_runner.py` 已迁入 `src/isotope/capabilities/`，旧根路径已删除。
 - 产品聊天流程：活跃实现已迁入 `src/isotope/features/chat/flow.py`；
   `src/isotope/features/chat/product_chat.py` 和顶层旧路径已删除。
+- 任务功能入口：`src/isotope/features/tasks/flow.py` 已提供
+  `TaskFlow` 和 `TaskSummary`，先把 core task 包成用户可读摘要。
 - 智能体循环：`agent_loop_*` 与 planner contract 已迁入 `src/isotope/agents/loop/`；
   旧顶层、`core/loop_*` 和 `assistant/` 入口已删除。
 - 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`，相关旧根路径已删除。
@@ -183,8 +185,7 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   `CoreConversationState` 已加入 `src/isotope/core/`；当前
   conversation 可跨多个 completed run（已结束运行），以适配现有运行时语义。
 - 任务状态：`CoreTask` 和 `CoreTaskState` 已加入 `src/isotope/core/`；
-  当前只表达产品级任务目标、状态、对话和结果摘要，不代表
-  `features/tasks/` 已经展开。
+  `features/tasks/` 已有第一片薄入口，但还不是完整任务管理系统。
 
 ## 第一批建议
 
@@ -195,6 +196,7 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 - `src/isotope/core/`
 - `src/isotope/agents/loop/`
 - `src/isotope/features/chat/`
+- `src/isotope/features/tasks/`
 - `src/isotope/features/projects/`
 - `src/isotope/features/files/`
 - `src/isotope/capabilities/tools/`
