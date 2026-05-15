@@ -1,6 +1,6 @@
 # 兼容代理审计
 
-状态：`当前清单 / 第二批低风险代理已删除`
+状态：`当前清单 / 第三批低风险代理已删除`
 
 本文记录旧导入路径和兼容代理，不直接要求马上删除。
 目标是先知道哪些文件只是旧入口，哪些还承担命令或兼容测试职责。
@@ -22,6 +22,8 @@
   和 `tool protocol` 的顶层纯代理已删除，活跃代码直接使用新路径。
 - `runtime`、`interface`、`registry`、`execution`、`ids`
   的第二批顶层纯代理也已删除。
+- `models/errors` 根入口、LLM 旧入口、chat 旧入口已删除。
+- `platform.schemas.models` 仍暂留，因为测试还把它当 schema 汇总入口。
 
 ## 可优先进入删除计划
 
@@ -29,8 +31,7 @@
 
 | 旧路径 | 新路径 |
 | --- | --- |
-| `isotope.models` | `isotope.platform.schemas.*` |
-| `isotope.errors` | `isotope.platform.errors` |
+| `isotope.platform.schemas.models` | `isotope.platform.schemas.*` |
 
 ## 已删除代理
 
@@ -38,6 +39,15 @@
 
 | 旧路径 | 新路径 |
 | --- | --- |
+| `isotope.models` | `isotope.platform.schemas.*` |
+| `isotope.errors` | `isotope.platform.errors` |
+| `isotope.integrations.llm` | `isotope.llm` |
+| `isotope.integrations.llm.provider` | `isotope.llm.provider` |
+| `isotope.integrations.llm.tool_bridge` | `isotope.llm.tool_bridge` |
+| `isotope.llm_provider` | `isotope.llm.provider` |
+| `isotope.model_tool_bridge` | `isotope.llm.tool_bridge` |
+| `isotope.features.chat.product_chat` | `isotope.features.chat.flow` |
+| `isotope.llm_product_chat_app` | `isotope.features.chat.flow` |
 | `isotope.runtime.server` | `isotope.runtime.in_process` |
 | `isotope.server` | `isotope.runtime.in_process` |
 | `isotope.http_api` | `isotope.interfaces.http` |
@@ -90,5 +100,5 @@
 
 ## 下一步删除顺序建议
 
-1. 继续按 `schema / errors / LLM / chat / terminal / capability` 分组评估旧代理。
+1. 继续按 `terminal / capability / codex / agent-loop` 分组评估旧代理。
 2. 每删一批，都更新本文和 [import-map](./import-map.md)。

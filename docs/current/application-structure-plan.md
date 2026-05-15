@@ -117,15 +117,15 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 
 - CLI 入口：`apps/cli/` 已建立薄入口，正式脚本在 `pyproject.toml` 的 `[project.scripts]` 中声明。
 - 平台 schema：动作、产物、记忆、外部快照、资源引用和工具协议已放入
-  `src/isotope/platform/schemas/` 的具体文件；`models.py` 仅保留兼容代理。
+  `src/isotope/platform/schemas/` 的具体文件；根 `isotope.models` 已删除。
 - 平台事件：`events.py`、`event_schema.py` 已迁入 `src/isotope/platform/events/`，活跃导入已切到新路径。
 - 能力目录：`capability_catalog.py`、`capability_runner.py` 已迁入 `src/isotope/capabilities/`。
 - 产品聊天流程：活跃实现已迁入 `src/isotope/features/chat/flow.py`；
-  `src/isotope/features/chat/product_chat.py` 和顶层旧路径仅保留兼容代理。
+  `src/isotope/features/chat/product_chat.py` 和顶层旧路径已删除。
 - 智能体循环：`agent_loop_*` 与 planner contract 已迁入 `src/isotope/agents/loop/`；
   `src/isotope/core/` 和 `src/isotope/assistant/` 仅保留兼容代理。
-- 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`，旧根路径仅作兼容代理。
-- RAG 边界：`ingestion.py` 与 `retrieval.py` 已迁入 `src/isotope/rag/`，旧根路径仅作兼容代理。
+- 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`，相关旧根路径已删除。
+- RAG 边界：`ingestion.py` 与 `retrieval.py` 已迁入 `src/isotope/rag/`，旧根路径已删除。
 - 记忆边界：`memory.py` 已迁成 `src/isotope/memory/` 包。
 - 权限策略：`policy.py` 已迁成 `src/isotope/policy/` 包。
 - 平台注册表与错误：`action_registry.py`、`errors.py` 已迁入 `src/isotope/platform/`。
@@ -135,7 +135,7 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   `src/isotope/execution/terminal_backend.py` 和顶层旧路径仅保留兼容代理。
 - 接口层：`http_api.py` 已迁入 `src/isotope/interfaces/http.py`。
 - LLM 层：模型 provider 和 tool bridge 已迁入 `src/isotope/llm/`；
-  `src/isotope/integrations/llm/` 和顶层旧路径仅保留兼容代理。
+  `src/isotope/integrations/llm/` 和顶层旧路径已删除。
 - Codex 集成：`codex_task.py`、`codex_cli.py`、`codex_server.py`、`codex_live_smoke.py` 已迁入 `src/isotope/integrations/`。
 - 状态恢复：`checkpoint_store.py`、`event_store.py`、`projector.py` 已迁入 `src/isotope/platform/state/`。
 - 运行入口：活跃实现已迁入 `src/isotope/runtime/in_process.py`；

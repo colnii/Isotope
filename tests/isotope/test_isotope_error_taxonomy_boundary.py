@@ -6,11 +6,11 @@ import isotope.runtime.in_process as server
 
 
 def _isotope_error_type():
-    return importlib.import_module("isotope.errors").IsotopeError
+    return importlib.import_module("isotope.platform.errors").IsotopeError
 
 
 def test_legacy_kernel_error_alias_points_to_isotope_error():
-    errors = importlib.import_module("isotope.errors")
+    errors = importlib.import_module("isotope.platform.errors")
 
     assert errors.KernelError is errors.IsotopeError
     assert errors.KernelPermissionError is errors.IsotopePermissionError

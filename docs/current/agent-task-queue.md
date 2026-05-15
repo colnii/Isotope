@@ -32,7 +32,8 @@
 17. 运行入口：活跃实现已迁入 `src/isotope/runtime/in_process.py`。
 18. CLI 入口：`apps/cli/` 已建立薄入口，`pyproject.toml` 已声明正式命令。
 19. 运行时工具：`action_compiler.py` 迁入 `runtime/`，`ids.py` 迁入 `platform/`，活跃终端引用改到真实实现路径。
-20. 平台 schema/event：活跃代码已切到 `platform/schemas/` 与 `platform/events/`，旧根路径保留兼容代理。
+20. 平台 schema/event：活跃代码已切到 `platform/schemas/` 与 `platform/events/`，
+    事件旧根路径已删除，`platform.schemas.models` 暂留汇总兼容入口。
 21. 资源/RAG 兼容入口：`artifact_store.py`、`retrieval.py`、`ingestion.py` 已改为模块代理。
 22. `assistant` 命名收束：活跃循环实现已迁入 `agents/loop/`，`assistant/` 只保留兼容代理。
 23. demo 旧叙事清理：活跃 agent-loop demo 统一改用 `app_friction`。
@@ -43,13 +44,13 @@
 27. runtime 命名澄清：活跃实现已迁入 `src/isotope/runtime/in_process.py`，
     `runtime/server.py` 和 `isotope.server` 旧代理已删除。
 28. LLM 层拆出：活跃实现已迁入 `src/isotope/llm/`，
-    `integrations/llm` 和顶层旧路径保留兼容代理。
+    `integrations/llm` 和顶层旧路径已删除。
 29. chat flow 正名：活跃实现已迁入 `src/isotope/features/chat/flow.py`，
-    `product_chat.py` 和顶层旧路径保留兼容代理。
+    `product_chat.py` 和顶层旧路径已删除。
 30. terminal runner 正名：活跃实现已迁入 `src/isotope/execution/terminal_runner.py`，
     `terminal_backend.py` 和顶层旧路径保留兼容代理。
 31. platform schema 拆分：`models.py` 已拆成 `actions.py`、`artifacts.py`、
-    `memory.py`、`snapshots.py`，旧路径保留兼容代理。
+    `memory.py`、`snapshots.py`，根 `isotope.models` 已删除。
 32. 结构化错误正名：活跃代码改用 `IsotopeError` / `IsotopePermissionError`，
     `KernelError` / `KernelPermissionError` 仅作为兼容别名。
 33. 兼容代理审计：显式测试导入已切到新路径，旧代理清单见
@@ -64,13 +65,15 @@
     `workspace artifact`、`rag` 和 `tool protocol` 顶层旧路径已删除。
 38. 第二批低风险代理删除：`runtime`、`interface`、`registry`、
     `execution` 和 `ids` 顶层旧路径已删除。
+39. 第三批低风险代理删除：`models/errors` 根入口、LLM 旧入口、
+    chat 旧入口已删除；`platform.schemas.models` 暂留。
 
-## 最近完成：第二批低风险代理删除
+## 最近完成：第三批低风险代理删除
 
 完成内容：
 
-- 删除 7 个顶层或 runtime 纯兼容代理文件。
-- 将 HTTP facade 和 action registry 边界测试改成真实新路径。
+- 删除 9 个 schema、错误、LLM 和 chat 相关旧代理文件。
+- 将错误分类边界测试改成真实 `platform.errors` 路径。
 - 将兼容代理测试改成同时覆盖保留代理和已删除代理。
 - 同步 [compat-proxy-audit](./compat-proxy-audit.md) 与
   [import-map](./import-map.md)。
@@ -86,7 +89,7 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把当前平铺模块逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步优先评估 `schema / errors / LLM / chat / terminal / capability`
+- 下一步优先评估 `terminal / capability / codex / agent-loop`
   剩余旧代理。
 - 迁移完成后再恢复多分支并行开发。
 
