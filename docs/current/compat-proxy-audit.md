@@ -1,6 +1,6 @@
 # 兼容代理审计
 
-状态：`当前清单 / 包级测试导入已迁移`
+状态：`当前清单 / 兼容代理测试已建立`
 
 本文记录旧导入路径和兼容代理，不直接要求马上删除。
 目标是先知道哪些文件只是旧入口，哪些还承担命令或兼容测试职责。
@@ -14,7 +14,8 @@
 - `src/isotope/` 根目录仍保留很多兼容代理，方便旧代码导入。
 - `core/` 和 `assistant/` 当前没有活跃实现，只保留 agent loop 旧入口。
 - `capability_runner.py`、`demo.py`、`llm_live_smoke.py` 仍有命令入口价值。
-- 删除代理前，需要先建立专门的兼容入口测试，再逐批移除。
+- 兼容入口已有最小测试：
+  `tests/isotope/test_compat_proxy_imports.py`。
 - `core/runtime.py`、`agent_runtime.py`、`assistant/runtime.py`
   空壳链已删除。
 
@@ -70,11 +71,12 @@
 
 - `tests/isotope/test_terminal_compatibility_imports.py` 里保留 3 行
   `from isotope import ...`，用于验证旧终端入口仍兼容。
+- `tests/isotope/test_compat_proxy_imports.py` 覆盖根目录、
+  `core/assistant` 旧入口、LLM、Codex、terminal 和已删除空壳入口。
 - `docs/architecture/` 和 `docs/reviews/` 仍有历史入口名，
   删除代理前不应按全文搜索结果机械改历史文档。
 
 ## 下一步删除顺序建议
 
-1. 给根目录兼容代理建立最小兼容测试。
-2. 然后按 `state / schema / rag / workspace / llm / terminal` 分组删除。
-3. 每删一批，都更新本文和 [import-map](./import-map.md)。
+1. 按 `state / schema / rag / workspace / llm / terminal` 分组删除旧代理。
+2. 每删一批，都更新本文和 [import-map](./import-map.md)。

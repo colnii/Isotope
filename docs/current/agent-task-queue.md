@@ -58,20 +58,22 @@
     `assistant/runtime.py` 已删除。
 35. 包级测试导入迁移：普通测试已从 `from isotope import xxx`
     改成新路径导入；终端兼容测试保留旧入口覆盖。
+36. 兼容代理测试：新增 `tests/isotope/test_compat_proxy_imports.py`，
+    覆盖根目录、旧 agent loop、LLM、Codex、terminal 和已删除空壳入口。
 
-## 最近完成：包级测试导入迁移
+## 最近完成：兼容代理测试
 
 完成内容：
 
-- 将普通测试里的 `from isotope import xxx` 改成新路径导入。
-- 保留 `test_terminal_compatibility_imports.py` 的 3 行旧入口导入。
+- 新增 `tests/isotope/test_compat_proxy_imports.py`。
+- 验证保留的兼容代理仍指向新路径。
+- 验证已删除的空壳 runtime 入口不可再导入。
 - 同步 [compat-proxy-audit](./compat-proxy-audit.md)。
 
 验收：
 
-- 普通测试不再依赖顶层兼容代理导入。
-- 旧终端入口仍有专门兼容测试覆盖。
-- 相关测试和全量测试需要通过。
+- 兼容代理测试单独通过。
+- 全量测试需要通过。
 
 ## 下一批次：应用内分层迁移
 
@@ -79,7 +81,7 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把当前平铺模块逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步优先给根目录兼容代理建立最小兼容测试，然后分组删除旧代理。
+- 下一步优先按 `state / schema / rag / workspace / llm / terminal` 分组删除旧代理。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：
