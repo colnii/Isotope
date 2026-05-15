@@ -17,6 +17,7 @@ from ..features.files.flow import FileFlow, FileSummary
 from ..features.projects.flow import ProjectDetail, ProjectFlow, ProjectSummary
 from ..features.search.flow import SearchFlow, SearchResult
 from ..features.tasks.flow import TaskFlow, TaskSummary
+from ..features.workbench.flow import WorkbenchFlow, WorkbenchView
 from ..platform.errors import IsotopeError
 from ..runtime.in_process import InProcessServer
 
@@ -50,6 +51,8 @@ class HttpApiApp:
         ("POST", "/projects/{project_id}/tasks"),
         ("POST", "/projects/{project_id}/files"),
         ("POST", "/search"),
+        ("GET", "/workbench"),
+        ("POST", "/workbench"),
         ("POST", "/sessions"),
         ("POST", "/sessions/{session_id}/runs"),
         ("POST", "/runs/{run_id}/input"),
@@ -120,6 +123,7 @@ class HttpApiApp:
         self.file_flow = FileFlow(product_core)
         self.project_flow = ProjectFlow(product_core)
         self.search_flow = SearchFlow(product_core)
+        self.workbench_flow = WorkbenchFlow(product_core)
         self._idempotency_cache: dict[str, dict[str, Any]] = {}
 
     def routes(self) -> list[tuple[str, str]]:
@@ -303,6 +307,17 @@ class HttpApiApp:
                     )
                 ]
                 return self._json(200, {"status": "ok", "results": results})
+            if method == "GET" and parts == ["workbench"]:
+                view = self.workbench_flow.summary()
+                return self._json(200, {"status": "ok", "workbench": self._workbench_view_to_dict(view)})
+            if method == "POST" and parts == ["workbench"]:
+                workbench_options = self._workbench_options(json_body)
+                view = self.workbench_flow.summary(
+                    query=workbench_options["query"],
+                    search_types=workbench_options["search_types"],
+                    search_limit=workbench_options["search_limit"],
+                )
+                return self._json(200, {"status": "ok", "workbench": self._workbench_view_to_dict(view)})
             if method == "POST" and parts == ["sessions"]:
                 return self._json(201, self.server.create_session())
             if method == "POST" and len(parts) == 3 and parts[0] == "sessions" and parts[2] == "runs":
@@ -756,6 +771,9 @@ class HttpApiApp:
     def _search_result_to_dict(self, result: SearchResult) -> dict[str, Any]:
         return result.to_dict()
 
+    def _workbench_view_to_dict(self, view: WorkbenchView) -> dict[str, Any]:
+        return view.to_dict()
+
     def _search_options(self, body: dict[str, Any]) -> dict[str, Any]:
         result_types = body.get("types")
         if result_types is not None:
@@ -766,6 +784,21 @@ class HttpApiApp:
             result_types = tuple(result_types)
         limit = body.get("limit")
         return {"result_types": result_types, "limit": limit}
+
+    def _workbench_options(self, body: dict[str, Any] | None) -> dict[str, Any]:
+        if body is None:
+            body = {}
+        if not isinstance(body, dict):
+            raise ValueError("request body must be an object")
+        query = body.get("query")
+        if query is not None and not isinstance(query, str):
+            raise ValueError("query must be a string")
+        search_options = self._search_options(body)
+        return {
+            "query": query,
+            "search_types": search_options["result_types"],
+            "search_limit": search_options["limit"],
+        }
 
     def _run_state_to_dict(self, state: Any) -> dict[str, Any]:
         return asdict(state)

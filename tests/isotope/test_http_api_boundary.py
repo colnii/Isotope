@@ -20,6 +20,8 @@ MINIMAL_ROUTES = {
     ("POST", "/projects/{project_id}/tasks"),
     ("POST", "/projects/{project_id}/files"),
     ("POST", "/search"),
+    ("GET", "/workbench"),
+    ("POST", "/workbench"),
     ("POST", "/sessions"),
     ("POST", "/sessions/{session_id}/runs"),
     ("POST", "/runs/{run_id}/input"),
@@ -537,6 +539,78 @@ def test_http_api_search_route_filters_types_and_limit(tmp_path):
     assert [item["result_type"] for item in searched["results"]] == ["task"]
     assert [item["result_id"] for item in searched["results"]] == [task["task_id"]]
     _assert_no_task_content_keys(searched)
+
+
+def test_http_api_workbench_route_returns_home_view(tmp_path):
+    app = _create_app(tmp_path)
+    project = _successful_json(
+        _request(
+            app,
+            "POST",
+            "/projects",
+            {
+                "name": "portfolio demo",
+                "summary": "autumn recruiting workspace",
+            },
+        )
+    )["project"]
+    task = _successful_json(
+        _request(
+            app,
+            "POST",
+            "/tasks",
+            {
+                "goal": "build portfolio story",
+                "message": "private task note",
+            },
+        )
+    )["task"]
+    file_summary = _successful_json(
+        _request(
+            app,
+            "POST",
+            "/files",
+            {
+                "name": "portfolio-notes.md",
+                "summary": "portfolio notes",
+                "content": "private file content",
+            },
+        )
+    )["file"]
+
+    response = _successful_json(
+        _request(
+            app,
+            "POST",
+            "/workbench",
+            {"query": "portfolio", "types": ["task", "file"], "limit": 1},
+        )
+    )
+
+    assert response == {
+        "status": "ok",
+        "workbench": {
+            "projects": [project],
+            "tasks": [task],
+            "files": [file_summary],
+            "search_results": [
+                {
+                    "result_type": "task",
+                    "result_id": task["task_id"],
+                    "title": "build portfolio story",
+                    "summary": task["result_summary"],
+                    "item": task,
+                }
+            ],
+            "counts": {
+                "projects": 1,
+                "tasks": 1,
+                "files": 1,
+                "search_results": 1,
+            },
+        },
+    }
+    _assert_no_task_content_keys(response)
 
 
 def test_get_run_returns_projector_read_model_from_event_log_not_executor_memory(tmp_path):

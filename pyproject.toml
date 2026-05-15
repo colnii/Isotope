@@ -17,6 +17,7 @@ isotope-task = "isotope.features.tasks.runner:main"
 isotope-file = "isotope.features.files.runner:main"
 isotope-project = "isotope.features.projects.runner:main"
 isotope-search = "isotope.features.search.runner:main"
+isotope-workbench = "isotope.features.workbench.runner:main"
 
 [project.optional-dependencies]
 test = ["pytest>=8.0"]

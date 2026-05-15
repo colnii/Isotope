@@ -19,6 +19,8 @@ SUPPORTED_ROUTES = [
     ("POST", "/projects/{project_id}/tasks"),
     ("POST", "/projects/{project_id}/files"),
     ("POST", "/search"),
+    ("GET", "/workbench"),
+    ("POST", "/workbench"),
     ("POST", "/sessions"),
     ("POST", "/sessions/{session_id}/runs"),
     ("POST", "/runs/{run_id}/input"),

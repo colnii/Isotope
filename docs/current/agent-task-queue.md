@@ -118,27 +118,27 @@
     `POST /search` 可统一搜索 project/task/file 低敏摘要。
 62. search 可控查询：`SearchFlow.search(...)`、`isotope-search`
     和 `POST /search` 已支持类型过滤和结果数量限制。
+63. workbench 功能第一片：`WorkbenchFlow`、`isotope-workbench show`、
+    `GET /workbench` 和 `POST /workbench` 可返回产品首页低敏汇总。
 
-## 最近完成：search 类型过滤与 limit
+## 最近完成：workbench 工作台汇总入口
 
 完成内容：
 
-- `SearchFlow.in_process(...)` 可创建进程内搜索功能入口。
-- `search(query, result_types=..., limit=...)` 会统一搜索 project、
-  task 和 file 的低敏摘要。
-- `SearchResult` 返回类型、id、标题、摘要和原始低敏 item。
-- `isotope-search search --query ... --type task --limit 20`
-  可从命令行过滤类型和控制数量。
-- `POST /search` 已支持 `types` 和 `limit`。
-- 搜索只看 id、标题、摘要等低敏字段，不搜索任务消息、文件正文或 artifact 全文。
+- `WorkbenchFlow.in_process(...)` 可创建进程内工作台功能入口。
+- `summary(...)` 返回 projects、tasks、files、search_results 和 counts。
+- `isotope-workbench show` 可从命令行读取当前工作台视图。
+- `GET /workbench` 返回无搜索条件的低敏汇总。
+- `POST /workbench` 可带 `query`、`types` 和 `limit`，并复用 search 结果。
+- 工作台只聚合低敏摘要，不读取任务消息、文件正文或 artifact 全文。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
   [naming-and-structure-review](./naming-and-structure-review.md)、
   [terminology](./terminology.md) 和 [status](./status.md)。
 
 验收：
 
-- `tests/isotope/test_search_feature_flow.py`、
-  `tests/isotope/test_search_feature_cli.py` 和 HTTP route 测试需要通过。
+- `tests/isotope/test_workbench_feature_flow.py`、
+  `tests/isotope/test_workbench_feature_cli.py` 和 HTTP route 测试需要通过。
 - 共享路径改动后需要跑全量测试。
 - `AGENTS.md` 仍需保持 100 行以内。
 
@@ -148,8 +148,8 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把真实功能逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步若继续功能层工作，可把 search 用到 demo 展示，
-  或给 projects/tasks/files 增加一个更像产品首页的汇总入口。
+- 下一步若继续功能层工作，可把 workbench 接进 demo 展示，
+  或给工作台增加最近更新时间 / 空状态文案。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：
@@ -162,7 +162,8 @@
 - `src/isotope/agents/loop/`：agent loop 活跃实现目录。
 - `src/isotope/assistant/`：旧路径包已删除，不再扩张新实现。
 - `src/isotope/features/`：聊天、任务、项目、文件、研究等可用功能；
-  当前已有 `chat/`、`tasks/`、`files/`、`projects/` 和 `search/`。
+  当前已有 `chat/`、`tasks/`、`files/`、`projects/`、`search/`
+  和 `workbench/`。
 - `src/isotope/capabilities/`：工具、技能、能力注册。
 - `src/isotope/execution/`：shell、python、浏览器、沙箱执行。
 - `src/isotope/runtime/`：进程内运行入口。

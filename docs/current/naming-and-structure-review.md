@@ -68,7 +68,7 @@ core/
 ```text
 src/isotope/
   core/                 # 产品主流程；当前薄包单进程运行时
-  features/             # 用户功能：chat / tasks / projects / files / research
+  features/             # 用户功能：chat / tasks / projects / files / search / workbench / research
   agents/               # 智能体角色与 agent loop
     loop/
   capabilities/         # 能力注册、能力运行、工具与技能
@@ -311,6 +311,20 @@ src/isotope/
 - 新增 `isotope-search search` CLI。
 - 新增 `POST /search` HTTP facade。
 - 暂不做全文检索、RAG、复杂排序、分页游标或独立 FastAPI 服务。
+
+### 批次十三：workbench 工作台薄入口
+
+状态：已执行第一片。
+
+目标：
+
+- 新增 `WorkbenchFlow` 作为产品首页/工作台汇总入口。
+- 新增 `WorkbenchView` 作为用户可读工作台视图。
+- 聚合 `ProjectFlow`、`TaskFlow`、`FileFlow` 的低敏摘要。
+- 可选复用 `SearchFlow`，返回 `search_results`。
+- 新增 `isotope-workbench show` CLI。
+- 新增 `GET /workbench` 和 `POST /workbench` HTTP facade。
+- 暂不做完整 Web UI、权限分组、排序策略或独立 FastAPI 服务。
 
 ## 当前推荐决策
 
