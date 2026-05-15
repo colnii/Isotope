@@ -48,14 +48,17 @@
     `product_chat.py` 和顶层旧路径保留兼容代理。
 30. terminal runner 正名：活跃实现已迁入 `src/isotope/execution/terminal_runner.py`，
     `terminal_backend.py` 和顶层旧路径保留兼容代理。
+31. platform schema 拆分：`models.py` 已拆成 `actions.py`、`artifacts.py`、
+    `memory.py`、`snapshots.py`，旧路径保留兼容代理。
 
-## 最近完成：terminal runner 正名
+## 最近完成：platform schema 拆分
 
 完成内容：
 
-- 将 `execution/terminal_backend.py` 活跃实现迁到 `execution/terminal_runner.py`。
-- 内部活跃导入改用 `execution.terminal_runner`。
-- 旧 `terminal_backend.py` 和顶层旧路径保留兼容代理。
+- 将 `platform/schemas/models.py` 拆成更具体的 schema 文件。
+- 动作相关类型迁入 `platform/schemas/actions.py`。
+- 产物、记忆、外部快照分别迁入对应 schema 文件。
+- 旧 `platform/schemas/models.py` 和顶层旧路径保留兼容代理。
 - 同步 [import-map](./import-map.md)，记录旧路径、新路径和计划删除节点。
 
 验收：
@@ -70,7 +73,7 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把当前平铺模块逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步优先评估 `platform/schemas/models.py` 拆分，或继续评估旧兼容代理清单。
+- 下一步优先评估 `platform/errors.py` 里的 `KernelError` 命名，或继续评估旧兼容代理清单。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

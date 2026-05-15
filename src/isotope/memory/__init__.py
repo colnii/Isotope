@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from ..platform.schemas.models import MemoryRecord
+from ..platform.schemas.memory import MemoryRecord
 
 
 def _has_write_memory_grant(grants: dict[str, Any] | None) -> bool:

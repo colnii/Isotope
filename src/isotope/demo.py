@@ -27,7 +27,7 @@ from .llm.provider import (
     submit_llm_tool_result_followup,
 )
 from .llm.tool_bridge import submit_model_tool_call
-from .platform.schemas.models import ImportedSnapshot
+from .platform.schemas.snapshots import ImportedSnapshot
 from .platform.schemas.refs import make_artifact_ref
 from .platform.state.projector import RunProjector
 from .runtime.in_process import InProcessServer

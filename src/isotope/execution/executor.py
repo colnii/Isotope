@@ -14,7 +14,8 @@ from ..integrations.codex.task import (
 )
 from ..platform.ids import new_id
 from ..platform.events.events import CanonicalEvent
-from ..platform.schemas.models import ActionExecution, ActionProposal, MemoryRecord, PolicyDecision
+from ..platform.schemas.actions import ActionExecution, ActionProposal, PolicyDecision
+from ..platform.schemas.memory import MemoryRecord
 from ..platform.schemas.refs import ResourceRef
 from ..platform.schemas.tool_protocol import ToolInvocation, ToolResult
 from ..capabilities.tools.terminal import ControlledTerminalRunner

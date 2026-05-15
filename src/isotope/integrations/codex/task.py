@@ -6,7 +6,7 @@ import copy
 from dataclasses import dataclass, field
 from typing import Any
 
-from ...platform.schemas.models import ActionProposal, PolicyDecision
+from ...platform.schemas.actions import ActionProposal, PolicyDecision
 from ...platform.schemas.refs import ResourceRef
 
 

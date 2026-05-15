@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from ..platform.ids import new_id
-from ..platform.schemas.models import Artifact
+from ..platform.schemas.artifacts import Artifact
 from ..platform.schemas.refs import ResourceRef, make_artifact_ref
 
 

@@ -1,4 +1,4 @@
-"""Compatibility module for platform schema models."""
+"""Compatibility proxy for legacy schema imports."""
 
 import sys
 from importlib import import_module

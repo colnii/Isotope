@@ -17,7 +17,8 @@ from ..platform.events.events import CanonicalEvent
 from ..platform.errors import KernelError, KernelPermissionError, not_enabled_result
 from ..platform.ids import new_id
 from ..platform.registry.actions import ActionTypeRegistry
-from ..platform.schemas.models import ActionProposal, ImportedSnapshot, PolicyDecision
+from ..platform.schemas.actions import ActionProposal, PolicyDecision
+from ..platform.schemas.snapshots import ImportedSnapshot
 from ..platform.schemas.refs import ResourceRef
 from ..platform.state.event_store import FileEventStore
 from ..platform.state.projector import RunProjector

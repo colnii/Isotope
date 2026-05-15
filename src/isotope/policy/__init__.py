@@ -5,7 +5,7 @@ from __future__ import annotations
 from ..capabilities.tools.terminal import validate_argv
 from ..platform.ids import new_id
 from ..platform.registry.actions import ActionTypeRegistry
-from ..platform.schemas.models import ActionProposal, PolicyDecision
+from ..platform.schemas.actions import ActionProposal, PolicyDecision
 
 
 class PolicyEngine:

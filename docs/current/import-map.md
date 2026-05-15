@@ -1,6 +1,6 @@
 # 导入路径迁移表
 
-状态：`当前清单 / terminal runner 批次已执行`
+状态：`当前清单 / schema 拆分批次已执行`
 
 本文记录旧导入路径到新导入路径的迁移关系。
 目标是让目录迁移有清单可查，而不是靠记忆维护兼容代理。
@@ -56,7 +56,8 @@ planned removal: after import-map confirms no active internal imports
 | `isotope.execution.terminal_backend` | `isotope.execution.terminal_runner` | 已迁移，旧路径保留兼容代理 |
 | `isotope.terminal_backend` | `isotope.execution.terminal_runner` | 已迁移，旧路径保留兼容代理 |
 | `isotope.terminal_system_runner` | `isotope.execution.terminal_runner` | 已迁移，旧路径保留兼容代理 |
-| `isotope.platform.schemas.models` | 拆成更具体 schema 文件 | 待设计 |
+| `isotope.platform.schemas.models` | `isotope.platform.schemas.actions` / `artifacts` / `memory` / `snapshots` | 已拆分，旧路径保留兼容代理 |
+| `isotope.models` | `isotope.platform.schemas.actions` / `artifacts` / `memory` / `snapshots` | 已拆分，旧路径保留兼容代理 |
 
 ## 兼容代理模板
 
