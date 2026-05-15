@@ -71,14 +71,15 @@
     `execution.terminal_backend` 已删除。
 41. 第五批低风险代理删除：capability 顶层旧入口已删除，
     CLI 测试改用 `python -m isotope.capabilities.runner`。
+42. 第六批低风险代理删除：Codex 顶层旧入口已删除，
+    活跃测试继续使用 `integrations.codex`。
 
-## 最近完成：第五批低风险代理删除
+## 最近完成：第六批低风险代理删除
 
 完成内容：
 
-- 删除 2 个 capability 相关旧代理文件。
-- 将 capability catalog 和 runner 测试改成真实路径。
-- 将 capability CLI 测试改成 `python -m isotope.capabilities.runner`。
+- 删除 4 个 Codex 顶层旧代理文件。
+- 保留 `src/isotope/integrations/codex/` 真实实现。
 - 将兼容代理测试改成同时覆盖保留代理和已删除代理。
 - 同步 [compat-proxy-audit](./compat-proxy-audit.md) 与
   [import-map](./import-map.md)。
@@ -94,7 +95,7 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把当前平铺模块逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步优先评估 `codex / agent-loop`
+- 下一步优先评估 `agent-loop`
   剩余旧代理。
 - 迁移完成后再恢复多分支并行开发。
 

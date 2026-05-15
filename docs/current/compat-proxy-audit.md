@@ -1,6 +1,6 @@
 # 兼容代理审计
 
-状态：`当前清单 / 第五批低风险代理已删除`
+状态：`当前清单 / 第六批低风险代理已删除`
 
 本文记录旧导入路径和兼容代理，不直接要求马上删除。
 目标是先知道哪些文件只是旧入口，哪些还承担命令或兼容测试职责。
@@ -10,7 +10,7 @@
 - `from isotope.xxx import ...` 形式的显式测试导入已改用新路径。
 - 普通测试里的 `from isotope import xxx` 包级导入已改用新路径。
 - 终端旧入口已删除，测试改用 `execution.terminal_runner`。
-- `src/isotope/` 根目录仍保留少量兼容代理，主要是 Codex 和 agent loop 旧入口。
+- `src/isotope/` 根目录仍保留少量兼容代理，主要是 agent loop 旧入口。
 - `core/` 和 `assistant/` 当前没有活跃实现，只保留 agent loop 旧入口。
 - `capability_runner.py`、`demo.py`、`llm_live_smoke.py` 仍有命令入口价值。
 - 兼容入口已有最小测试：
@@ -25,6 +25,7 @@
 - terminal 顶层旧入口和 `execution.terminal_backend` 已删除。
 - capability 顶层旧入口已删除，命令行改用 `isotope-capability`
   或 `python -m isotope.capabilities.runner`。
+- Codex 顶层旧入口已删除，活跃代码直接使用 `integrations.codex`。
 - `platform.schemas.models` 仍暂留，因为测试还把它当 schema 汇总入口。
 
 ## 可优先进入删除计划
@@ -56,6 +57,10 @@
 | `isotope.terminal_system_runner` | `isotope.execution.terminal_runner` |
 | `isotope.capability_catalog` | `isotope.capabilities.catalog` |
 | `isotope.capability_runner` | `isotope.capabilities.runner` |
+| `isotope.codex_cli` | `isotope.integrations.codex.cli` |
+| `isotope.codex_live_smoke` | `isotope.integrations.codex.live_smoke` |
+| `isotope.codex_server` | `isotope.integrations.codex.server` |
+| `isotope.codex_task` | `isotope.integrations.codex.task` |
 | `isotope.runtime.server` | `isotope.runtime.in_process` |
 | `isotope.server` | `isotope.runtime.in_process` |
 | `isotope.http_api` | `isotope.interfaces.http` |
@@ -82,7 +87,6 @@
 | --- | --- |
 | `isotope.demo` | 正式 demo 入口，`isotope-demo` 指向它 |
 | `isotope.llm_live_smoke` | 正式 smoke 命令，`isotope-llm-smoke` 指向它 |
-| `isotope.codex_*` | 外部 Codex 集成历史入口，需单独评估 |
 
 ## 空壳和旧叙事
 
@@ -103,5 +107,5 @@
 
 ## 下一步删除顺序建议
 
-1. 继续按 `codex / agent-loop` 分组评估旧代理。
+1. 继续按 `agent-loop` 分组评估旧代理。
 2. 每删一批，都更新本文和 [import-map](./import-map.md)。

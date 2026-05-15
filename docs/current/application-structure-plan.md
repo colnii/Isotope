@@ -136,7 +136,7 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 - 接口层：`http_api.py` 已迁入 `src/isotope/interfaces/http.py`。
 - LLM 层：模型 provider 和 tool bridge 已迁入 `src/isotope/llm/`；
   `src/isotope/integrations/llm/` 和顶层旧路径已删除。
-- Codex 集成：`codex_task.py`、`codex_cli.py`、`codex_server.py`、`codex_live_smoke.py` 已迁入 `src/isotope/integrations/`。
+- Codex 集成：`codex_task.py`、`codex_cli.py`、`codex_server.py`、`codex_live_smoke.py` 已迁入 `src/isotope/integrations/`，旧根路径已删除。
 - 状态恢复：`checkpoint_store.py`、`event_store.py`、`projector.py` 已迁入 `src/isotope/platform/state/`。
 - 运行入口：活跃实现已迁入 `src/isotope/runtime/in_process.py`；
   `src/isotope/runtime/server.py` 旧代理已删除。
