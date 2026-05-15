@@ -135,15 +135,17 @@
 68. apps/api 薄后端边界：`ApiApp`、`create_api_app(...)`、
     `isotope-api routes` 和 `apps/api/` 已建立，当前以 ASGI 转发到
     `interfaces/http.py`，不监听端口，也不引入完整 FastAPI 服务。
+69. apps/api 请求体验：ASGI 入口已支持 query string（查询参数）转 body、
+    JSON 响应头、`x-isotope-api` 识别头和稳定 invalid JSON 错误。
 
-## 最近完成：apps/api 薄后端边界
+## 最近完成：apps/api 请求体验
 
 完成内容：
 
-- `src/isotope/apps/api.py` 提供 `ApiApp` 和 `create_api_app(...)`。
-- `ApiApp` 兼容 ASGI（Python Web 服务通用接口），可被后续服务层托管。
-- `apps/api/` 已建立薄入口和说明，不承载产品逻辑。
-- `isotope-api routes --root <dir> --json` 可列出当前 API 路由。
+- ASGI 入口可把 query string（查询参数）转为现有内部 JSON body。
+- 单值 `types=task` 会转为 `["task"]`，适配当前 `workbench` 路由。
+- JSON 响应统一带 `content-type` 和 `x-isotope-api: asgi`。
+- invalid JSON 会返回稳定的 400 错误响应。
 - 当前仍复用 `interfaces/http.py`，不监听端口，也不引入 FastAPI 依赖。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
   [naming-and-structure-review](./naming-and-structure-review.md)、
@@ -151,7 +153,7 @@
 
 验收：
 
-- `tests/isotope/test_apps_api_boundary.py` 和 packaging smoke 测试需要通过。
+- `tests/isotope/test_apps_api_boundary.py` 需要通过。
 - 共享路径改动后需要跑全量测试。
 - `AGENTS.md` 仍需保持 100 行以内。
 
@@ -161,8 +163,8 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把真实功能逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步若继续功能层工作，可给 `ApiApp` 增加更贴近真实服务的请求/响应测试，
-  或补一个更适合初学者阅读的中文运行讲解。
+- 下一步若继续功能层工作，可补一个更适合初学者阅读的中文运行讲解，
+  或开始做真实服务启动边界。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

@@ -152,7 +152,8 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 
 - CLI 入口：`apps/cli/` 已建立薄入口，正式脚本在 `pyproject.toml` 的 `[project.scripts]` 中声明。
 - API 入口：`apps/api/` 已建立薄入口，`src/isotope/apps/api.py`
-  提供 ASGI 兼容 `ApiApp` 和 `isotope-api routes`；当前只转发到
+  提供 ASGI 兼容 `ApiApp` 和 `isotope-api routes`；已支持 query string
+  转 body、JSON 响应头和稳定 invalid JSON 错误；当前只转发到
   `interfaces/http.py`，不是完整 FastAPI 服务。
 - 平台 schema：动作、产物、记忆、外部快照、资源引用和工具协议已放入
   `src/isotope/platform/schemas/` 的具体文件；根 `isotope.models` 已删除。

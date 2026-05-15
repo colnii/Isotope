@@ -7,6 +7,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Awaitable, Callable
+from urllib.parse import parse_qs
 
 from ..interfaces.http import create_http_app
 
@@ -56,7 +57,10 @@ class ApiApp:
             return
         body = await _read_body(receive)
         try:
-            json_body = _decode_json_body(body)
+            json_body = _merge_query_params(
+                _decode_json_body(body),
+                _decode_query_params(scope.get("query_string", b"")),
+            )
         except ValueError as exc:
             await self._send_json(
                 send,
@@ -90,6 +94,7 @@ class ApiApp:
                 "status": status_code,
                 "headers": (
                     (b"content-type", b"application/json; charset=utf-8"),
+                    (b"x-isotope-api", b"asgi"),
                 ),
             }
         )
@@ -161,6 +166,49 @@ def _decode_json_body(body: bytes) -> dict[str, Any] | None:
     if not isinstance(decoded, dict):
         raise ValueError("request body must be a JSON object")
     return decoded
+
+
+def _decode_query_params(raw_query_string: Any) -> dict[str, Any]:
+    if isinstance(raw_query_string, str):
+        query_string = raw_query_string
+    elif isinstance(raw_query_string, bytes):
+        query_string = raw_query_string.decode("utf-8")
+    else:
+        query_string = ""
+    if not query_string:
+        return {}
+    parsed = parse_qs(query_string, keep_blank_values=False)
+    return {
+        key: _coerce_query_value(key, values)
+        for key, values in parsed.items()
+    }
+
+
+def _coerce_query_value(key: str, values: list[str]) -> str | int | list[str | int]:
+    coerced = [_coerce_query_scalar(value) for value in values]
+    if key in {"types"}:
+        return coerced
+    if len(coerced) == 1:
+        return coerced[0]
+    return coerced
+
+
+def _coerce_query_scalar(value: str) -> str | int:
+    if value.isdecimal():
+        return int(value)
+    return value
+
+
+def _merge_query_params(
+    json_body: dict[str, Any] | None,
+    query_params: dict[str, Any],
+) -> dict[str, Any] | None:
+    if not query_params:
+        return json_body
+    merged = dict(query_params)
+    if json_body is not None:
+        merged.update(json_body)
+    return merged
 
 
 if __name__ == "__main__":

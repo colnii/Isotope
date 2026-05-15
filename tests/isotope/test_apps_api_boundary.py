@@ -34,9 +34,16 @@ async def _asgi_request(
     *,
     method: str,
     path: str,
+    query_string: str = "",
+    headers: tuple[tuple[bytes, bytes], ...] = (),
     json_body: dict[str, Any] | None = None,
+    raw_body: bytes | None = None,
 ) -> dict[str, Any]:
-    body = b"" if json_body is None else json.dumps(json_body).encode("utf-8")
+    body = (
+        raw_body
+        if raw_body is not None
+        else b"" if json_body is None else json.dumps(json_body).encode("utf-8")
+    )
     messages = [
         {
             "type": "http.request",
@@ -57,7 +64,8 @@ async def _asgi_request(
             "type": "http",
             "method": method,
             "path": path,
-            "headers": (),
+            "query_string": query_string.encode("utf-8"),
+            "headers": headers,
         },
         receive,
         send,
@@ -97,6 +105,8 @@ def test_apps_api_asgi_health_route(tmp_path):
     response = asyncio.run(_asgi_request(app, method="GET", path="/health"))
 
     assert response["status_code"] == 200
+    assert response["headers"][b"content-type"] == b"application/json; charset=utf-8"
+    assert response["headers"][b"x-isotope-api"] == b"asgi"
     assert response["json"] == {"status": "ok"}
 
 
@@ -128,4 +138,67 @@ def test_apps_api_asgi_project_workspace_route(tmp_path):
         "tasks": 1,
         "files": 1,
         "search_results": 3,
+    }
+
+
+def test_apps_api_asgi_query_string_feeds_existing_workbench_route(tmp_path):
+    app = create_api_app(tmp_path)
+    app.request(
+        "POST",
+        "/projects/workspace",
+        {
+            "project_name": "portfolio demo",
+            "project_summary": "autumn recruiting workspace",
+            "task_goal": "build portfolio story",
+            "task_message": "private task note",
+            "file_name": "portfolio-notes.md",
+            "file_summary": "portfolio notes",
+            "file_content": "private file content",
+            "search_query": "portfolio",
+        },
+    )
+
+    response = asyncio.run(
+        _asgi_request(
+            app,
+            method="POST",
+            path="/workbench",
+            query_string="query=portfolio&types=task&limit=1",
+        )
+    )
+
+    assert response["status_code"] == 200
+    assert response["json"]["workbench"]["counts"] == {
+        "projects": 1,
+        "tasks": 1,
+        "files": 1,
+        "search_results": 1,
+    }
+    assert [
+        item["result_type"]
+        for item in response["json"]["workbench"]["search_results"]
+    ] == ["task"]
+
+
+def test_apps_api_asgi_invalid_json_returns_stable_error(tmp_path):
+    app = create_api_app(tmp_path)
+
+    response = asyncio.run(
+        _asgi_request(
+            app,
+            method="POST",
+            path="/projects/workspace",
+            headers=((b"content-type", b"application/json"),),
+            raw_body=b"{not json",
+        )
+    )
+
+    assert response["status_code"] == 400
+    assert response["headers"][b"x-isotope-api"] == b"asgi"
+    assert response["json"] == {
+        "status": "error",
+        "error": {
+            "code": "invalid_json",
+            "message": "request body must be valid JSON",
+        },
     }

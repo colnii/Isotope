@@ -354,6 +354,7 @@ src/isotope/
 - 新增 `apps/api/` 薄入口目录和说明。
 - 新增 ASGI 兼容 `ApiApp`，把真实请求转发到 `interfaces/http.py`。
 - 新增 `isotope-api routes`，用于检查当前后端路由。
+- ASGI 入口已支持 query string、JSON 响应头和稳定 invalid JSON 错误。
 - 暂不引入 FastAPI / Uvicorn，不监听端口，不把业务逻辑放进 `apps/`。
 
 ## 当前推荐决策

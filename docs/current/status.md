@@ -51,7 +51,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `isotope-demo --scenario workbench --trace` 调用。
 15. `apps/api` 已有薄后端入口，当前提供 ASGI 兼容 `ApiApp`、
     `create_api_app(...)` 和 `isotope-api routes`，真实路由仍复用
-    `interfaces/http.py`。
+    `interfaces/http.py`；ASGI 请求已支持 query string（查询参数）转 body、
+    JSON 响应头和稳定 invalid JSON 错误。
 
 ## 文档策略
 

@@ -8,6 +8,8 @@
 - `ApiApp`：ASGI（Python Web 服务通用接口）兼容应用边界。
 - `create_api_app(...)`：创建后端应用，内部复用 `interfaces/http.py`。
 - `isotope-api routes --root <dir>`：列出当前支持的 API 路由。
+- ASGI 请求会把 query string（查询参数）转成现有内部 JSON body。
+- 响应包含 JSON `content-type` 和 `x-isotope-api: asgi` 识别头。
 
 当前不是完整 FastAPI 服务，也不监听端口。
 后续若接入 FastAPI / Uvicorn，应继续让业务逻辑留在 `src/isotope/`
