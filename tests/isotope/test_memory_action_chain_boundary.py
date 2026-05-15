@@ -1,16 +1,14 @@
 import pytest
 
-from isotope import (
-    action_compiler,
-    action_registry,
-    artifact_store,
-    event_store,
-    executor,
-    models,
-    policy,
-    server,
-    workspace,
-)
+import isotope.runtime.action_compiler as action_compiler
+import isotope.platform.registry.actions as action_registry
+import isotope.workspace.artifacts as artifact_store
+import isotope.platform.state.event_store as event_store
+import isotope.execution.executor as executor
+import isotope.platform.schemas.models as models
+import isotope.policy as policy
+import isotope.runtime.in_process as server
+import isotope.workspace as workspace
 
 
 def _memory_registry() -> action_registry.ActionTypeRegistry:

@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from isotope import codex_server
+import isotope.integrations.codex.server as codex_server
 from isotope.interfaces.http import create_codex_cli_http_app, create_http_app
 
 

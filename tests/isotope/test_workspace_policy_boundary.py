@@ -1,6 +1,13 @@
 import pytest
 
-from isotope import action_compiler, artifact_store, event_store, events, executor, models, projector, workspace
+import isotope.runtime.action_compiler as action_compiler
+import isotope.workspace.artifacts as artifact_store
+import isotope.platform.state.event_store as event_store
+import isotope.platform.events.events as events
+import isotope.execution.executor as executor
+import isotope.platform.schemas.models as models
+import isotope.platform.state.projector as projector
+import isotope.workspace as workspace
 
 
 ARTIFACT_REF = {

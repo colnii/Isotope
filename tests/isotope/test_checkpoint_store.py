@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from isotope import checkpoint_store
+import isotope.platform.state.checkpoint_store as checkpoint_store
 
 
 def _checkpoint(run_id="run_001", state=None):

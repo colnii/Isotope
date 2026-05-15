@@ -1,6 +1,7 @@
 import pytest
 
-from isotope import action_compiler, models
+import isotope.runtime.action_compiler as action_compiler
+import isotope.platform.schemas.models as models
 
 
 def _compiler():

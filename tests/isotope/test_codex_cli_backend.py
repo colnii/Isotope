@@ -5,7 +5,9 @@ import subprocess
 
 import pytest
 
-from isotope import codex_cli, codex_task, models
+import isotope.integrations.codex.cli as codex_cli
+import isotope.integrations.codex.task as codex_task
+import isotope.platform.schemas.models as models
 
 
 class FakeCompletedProcess:

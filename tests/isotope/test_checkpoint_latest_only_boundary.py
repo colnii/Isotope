@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from isotope import checkpoint_store
+import isotope.platform.state.checkpoint_store as checkpoint_store
 
 
 INVALID_RUN_IDS = ["", ".", "..", "run/001", "run\\001", "../run_001"]

@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from isotope import codex_server
+import isotope.integrations.codex.server as codex_server
 from isotope.interfaces.http import HttpApiApp, create_http_app, create_llm_provider_http_app
 from isotope.llm.provider import LLMToolCall, LLMToolCallResponse
 

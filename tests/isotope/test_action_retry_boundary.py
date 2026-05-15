@@ -1,6 +1,9 @@
 import pytest
 
-from isotope import checkpoint_store, event_store, events, projector
+import isotope.platform.state.checkpoint_store as checkpoint_store
+import isotope.platform.state.event_store as event_store
+import isotope.platform.events.events as events
+import isotope.platform.state.projector as projector
 
 
 def _event(event_id: str, event_type: str, payload: dict):

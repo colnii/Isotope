@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from isotope import artifact_store, event_store, executor, models, server, terminal_backend, workspace
+import isotope.workspace.artifacts as artifact_store
+import isotope.platform.state.event_store as event_store
+import isotope.execution.executor as executor
+import isotope.platform.schemas.models as models
+import isotope.runtime.in_process as server
+import isotope.execution.terminal_runner as terminal_backend
+import isotope.workspace as workspace
 from isotope.platform.schemas.refs import ResourceRef
 
 

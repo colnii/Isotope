@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from isotope import demo
+import isotope.demo as demo
 from isotope.interfaces.http import create_http_app
 
 

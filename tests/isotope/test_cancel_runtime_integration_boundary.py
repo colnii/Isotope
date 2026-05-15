@@ -4,7 +4,8 @@ from typing import Any
 
 import pytest
 
-from isotope import http_api, server
+import isotope.interfaces.http as http_api
+import isotope.runtime.in_process as server
 
 
 def _new_run(tmp_path):

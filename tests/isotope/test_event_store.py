@@ -1,6 +1,7 @@
 import json
 
-from isotope import event_store, events
+import isotope.platform.state.event_store as event_store
+import isotope.platform.events.events as events
 
 
 def test_event_store_appends_jsonl_events(tmp_path):

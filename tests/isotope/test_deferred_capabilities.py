@@ -1,4 +1,5 @@
-from isotope import memory, server
+import isotope.memory as memory
+import isotope.runtime.in_process as server
 
 
 def test_memory_query_returns_not_enabled():

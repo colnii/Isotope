@@ -1,6 +1,11 @@
 import pytest
 
-from isotope import artifact_store, event_store, events, projector, refs, retrieval
+import isotope.workspace.artifacts as artifact_store
+import isotope.platform.state.event_store as event_store
+import isotope.platform.events.events as events
+import isotope.platform.state.projector as projector
+import isotope.platform.schemas.refs as refs
+import isotope.rag.retrieval as retrieval
 
 
 ARTIFACT_REF = {

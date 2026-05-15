@@ -1,6 +1,9 @@
 import pytest
 
-from isotope import checkpoint_store, events, projector, server
+import isotope.platform.state.checkpoint_store as checkpoint_store
+import isotope.platform.events.events as events
+import isotope.platform.state.projector as projector
+import isotope.runtime.in_process as server
 
 
 def _completed_run(root):

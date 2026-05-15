@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from isotope import demo, server
+import isotope.demo as demo
+import isotope.runtime.in_process as server
 
 
 def _new_run(tmp_path):

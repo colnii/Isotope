@@ -6,7 +6,11 @@ from typing import Any
 
 import pytest
 
-from isotope import action_registry, events, models, projector, server
+import isotope.platform.registry.actions as action_registry
+import isotope.platform.events.events as events
+import isotope.platform.schemas.models as models
+import isotope.platform.state.projector as projector
+import isotope.runtime.in_process as server
 from isotope.platform.state.checkpoint_store import FileCheckpointStore
 from isotope.platform.schemas.refs import ResourceRef
 

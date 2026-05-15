@@ -1,6 +1,7 @@
 import pytest
 
-from isotope import artifact_store, refs
+import isotope.workspace.artifacts as artifact_store
+import isotope.platform.schemas.refs as refs
 
 
 def _create_artifact(tmp_path):

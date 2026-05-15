@@ -5,7 +5,8 @@ import os
 
 import pytest
 
-from isotope import codex_server, server
+import isotope.integrations.codex.server as codex_server
+import isotope.runtime.in_process as server
 
 
 class FakeCompletedProcess:

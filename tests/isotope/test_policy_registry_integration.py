@@ -1,6 +1,8 @@
 import pytest
 
-from isotope import action_registry, models, policy
+import isotope.platform.registry.actions as action_registry
+import isotope.platform.schemas.models as models
+import isotope.policy as policy
 
 
 def _proposal(

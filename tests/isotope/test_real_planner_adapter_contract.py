@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 
 from isotope.platform.state.checkpoint_store import FileCheckpointStore
-from isotope import server
+import isotope.runtime.in_process as server
 
 
 FORBIDDEN_PROVIDER_KEYS = {

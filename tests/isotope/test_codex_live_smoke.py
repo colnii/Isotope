@@ -5,7 +5,9 @@ import os
 
 import pytest
 
-from isotope import artifact_store, codex_live_smoke, codex_task
+import isotope.workspace.artifacts as artifact_store
+import isotope.integrations.codex.live_smoke as codex_live_smoke
+import isotope.integrations.codex.task as codex_task
 from isotope.platform.schemas.refs import ResourceRef
 
 

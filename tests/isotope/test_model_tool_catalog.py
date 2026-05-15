@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from isotope import server
+import isotope.runtime.in_process as server
 
 
 def _tool_by_name(catalog: dict, name: str) -> dict:

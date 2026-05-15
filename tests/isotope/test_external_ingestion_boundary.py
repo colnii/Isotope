@@ -5,7 +5,11 @@ import socket
 
 import pytest
 
-from isotope import artifact_store, event_store, http_api, projector, server
+import isotope.workspace.artifacts as artifact_store
+import isotope.platform.state.event_store as event_store
+import isotope.interfaces.http as http_api
+import isotope.platform.state.projector as projector
+import isotope.runtime.in_process as server
 from isotope.platform.events.events import CanonicalEvent
 
 

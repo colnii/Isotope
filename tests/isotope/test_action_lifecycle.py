@@ -1,6 +1,7 @@
 import pytest
 
-from isotope import events, projector
+import isotope.platform.events.events as events
+import isotope.platform.state.projector as projector
 
 
 ARTIFACT_REF = {

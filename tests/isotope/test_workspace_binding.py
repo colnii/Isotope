@@ -1,6 +1,11 @@
 import pytest
 
-from isotope import action_compiler, artifact_store, event_store, executor, models, workspace
+import isotope.runtime.action_compiler as action_compiler
+import isotope.workspace.artifacts as artifact_store
+import isotope.platform.state.event_store as event_store
+import isotope.execution.executor as executor
+import isotope.platform.schemas.models as models
+import isotope.workspace as workspace
 
 
 def _proposal(workspace_mode="isolated_rw"):

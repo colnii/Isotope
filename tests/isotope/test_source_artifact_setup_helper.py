@@ -6,7 +6,8 @@ from typing import Any
 
 import pytest
 
-from isotope import demo, server
+import isotope.demo as demo
+import isotope.runtime.in_process as server
 from isotope.platform.state.checkpoint_store import FileCheckpointStore
 from isotope.interfaces.http import create_http_app
 from isotope.platform.state.projector import RunProjector

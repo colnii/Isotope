@@ -1,4 +1,8 @@
-from isotope import action_compiler, event_store, events, executor, policy
+import isotope.runtime.action_compiler as action_compiler
+import isotope.platform.state.event_store as event_store
+import isotope.platform.events.events as events
+import isotope.execution.executor as executor
+import isotope.policy as policy
 
 
 def test_compact_intent_must_compile_to_action_proposal_before_policy():

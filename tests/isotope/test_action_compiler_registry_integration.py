@@ -1,6 +1,8 @@
 import pytest
 
-from isotope import action_compiler, action_registry, models
+import isotope.runtime.action_compiler as action_compiler
+import isotope.platform.registry.actions as action_registry
+import isotope.platform.schemas.models as models
 
 
 def _runtime_context(**overrides):

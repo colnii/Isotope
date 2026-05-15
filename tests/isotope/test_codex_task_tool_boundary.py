@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from isotope import server
+import isotope.runtime.in_process as server
 
 
 def _deferred_tool_by_name(catalog: dict, name: str) -> dict:

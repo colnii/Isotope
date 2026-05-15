@@ -1,6 +1,9 @@
 import pytest
 
-from isotope import artifact_store, events, refs, retrieval
+import isotope.workspace.artifacts as artifact_store
+import isotope.platform.events.events as events
+import isotope.platform.schemas.refs as refs
+import isotope.rag.retrieval as retrieval
 
 
 def _valid_event(**overrides):

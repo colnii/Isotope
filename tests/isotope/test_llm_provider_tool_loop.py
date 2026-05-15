@@ -5,8 +5,8 @@ from typing import Any
 
 import pytest
 
-from isotope import llm_provider
-from isotope import codex_server
+import isotope.llm.provider as llm_provider
+import isotope.integrations.codex.server as codex_server
 from isotope.platform.errors import IsotopeError
 from isotope.interfaces.http import create_codex_cli_http_app
 from isotope.llm.provider import (

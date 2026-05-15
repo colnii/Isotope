@@ -2,7 +2,12 @@ import json
 
 import pytest
 
-from isotope import checkpoint_store, event_store, events, http_api, projector, workspace
+import isotope.platform.state.checkpoint_store as checkpoint_store
+import isotope.platform.state.event_store as event_store
+import isotope.platform.events.events as events
+import isotope.interfaces.http as http_api
+import isotope.platform.state.projector as projector
+import isotope.workspace as workspace
 
 
 RUN_ID = "run_001"

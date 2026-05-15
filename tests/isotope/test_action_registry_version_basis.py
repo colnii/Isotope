@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from isotope import action_compiler, action_registry, events, projector, server
+import isotope.runtime.action_compiler as action_compiler
+import isotope.platform.registry.actions as action_registry
+import isotope.platform.events.events as events
+import isotope.platform.state.projector as projector
+import isotope.runtime.in_process as server
 
 
 RUN_ID = "run_001"

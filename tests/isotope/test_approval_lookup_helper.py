@@ -4,7 +4,8 @@ from typing import Any
 
 import pytest
 
-from isotope import demo, server
+import isotope.demo as demo
+import isotope.runtime.in_process as server
 
 
 def _submit_pending_approval(tmp_path):

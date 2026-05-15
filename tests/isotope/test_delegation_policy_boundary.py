@@ -1,6 +1,10 @@
 import pytest
 
-from isotope import events, models, policy, projector, workspace
+import isotope.platform.events.events as events
+import isotope.platform.schemas.models as models
+import isotope.policy as policy
+import isotope.platform.state.projector as projector
+import isotope.workspace as workspace
 
 
 def _event(event_id: str, event_type: str, payload: dict):
@@ -233,7 +237,7 @@ def test_worker_created_action_still_uses_action_chain():
 
 
 def test_delegation_events_replay_to_same_read_model(tmp_path):
-    from isotope import event_store
+    import isotope.platform.state.event_store as event_store
 
     canonical_events = _approved_delegation_events()
     store = event_store.FileEventStore(tmp_path)

@@ -1,6 +1,6 @@
 import pytest
 
-from isotope import models
+import isotope.platform.schemas.models as models
 
 
 def _valid_memory_record_kwargs(**overrides):

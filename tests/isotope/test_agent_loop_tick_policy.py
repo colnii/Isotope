@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from isotope import server
+import isotope.runtime.in_process as server
 
 
 FORBIDDEN_CONTENT_KEYS = {

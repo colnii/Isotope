@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from isotope import checkpoint_store, event_store, projector
+import isotope.platform.state.checkpoint_store as checkpoint_store
+import isotope.platform.state.event_store as event_store
+import isotope.platform.state.projector as projector
 from isotope.platform.errors import IsotopePermissionError
 from isotope.platform.schemas.refs import ResourceRef, make_artifact_ref
 from isotope.runtime.in_process import InProcessServer

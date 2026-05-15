@@ -5,7 +5,9 @@ from typing import Any
 
 import pytest
 
-from isotope import demo, models, server
+import isotope.demo as demo
+import isotope.platform.schemas.models as models
+import isotope.runtime.in_process as server
 
 
 def _submit_pending_tool_request(tmp_path):

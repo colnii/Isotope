@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from isotope import action_registry, codex_task, server
+import isotope.platform.registry.actions as action_registry
+import isotope.integrations.codex.task as codex_task
+import isotope.runtime.in_process as server
 
 
 class FakeCodexBackend:

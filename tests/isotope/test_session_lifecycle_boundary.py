@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from isotope import server
+import isotope.runtime.in_process as server
 
 
 def _event_records(root):

@@ -1,6 +1,6 @@
 import pytest
 
-from isotope import server
+import isotope.runtime.in_process as server
 
 
 ACTION_EVENT_TYPES = {

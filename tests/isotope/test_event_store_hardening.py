@@ -2,7 +2,9 @@ import json
 
 import pytest
 
-from isotope import event_store, events, projector
+import isotope.platform.state.event_store as event_store
+import isotope.platform.events.events as events
+import isotope.platform.state.projector as projector
 
 
 def _event(

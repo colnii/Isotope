@@ -1,4 +1,4 @@
-from isotope import server
+import isotope.runtime.in_process as server
 
 
 def _submit_pending_approval(tmp_path):

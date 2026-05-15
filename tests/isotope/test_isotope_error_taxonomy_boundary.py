@@ -2,7 +2,7 @@ import importlib
 
 import pytest
 
-from isotope import server
+import isotope.runtime.in_process as server
 
 
 def _isotope_error_type():

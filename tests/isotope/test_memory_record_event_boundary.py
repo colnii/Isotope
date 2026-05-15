@@ -1,17 +1,15 @@
 import pytest
 
-from isotope import (
-    action_registry,
-    artifact_store,
-    event_store,
-    events,
-    executor,
-    memory,
-    models,
-    projector,
-    server,
-    workspace,
-)
+import isotope.platform.registry.actions as action_registry
+import isotope.workspace.artifacts as artifact_store
+import isotope.platform.state.event_store as event_store
+import isotope.platform.events.events as events
+import isotope.execution.executor as executor
+import isotope.memory as memory
+import isotope.platform.schemas.models as models
+import isotope.platform.state.projector as projector
+import isotope.runtime.in_process as server
+import isotope.workspace as workspace
 
 
 MEMORY_SOURCE_REF = {

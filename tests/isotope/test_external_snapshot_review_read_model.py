@@ -4,7 +4,11 @@ import json
 from dataclasses import asdict
 from typing import Any
 
-from isotope import artifact_store, checkpoint_store, event_store, projector, refs
+import isotope.workspace.artifacts as artifact_store
+import isotope.platform.state.checkpoint_store as checkpoint_store
+import isotope.platform.state.event_store as event_store
+import isotope.platform.state.projector as projector
+import isotope.platform.schemas.refs as refs
 from isotope.demo import run_demo
 from isotope.platform.events.events import CanonicalEvent
 

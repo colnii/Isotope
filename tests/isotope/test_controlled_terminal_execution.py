@@ -4,7 +4,8 @@ import json
 
 import pytest
 
-from isotope import action_registry, server
+import isotope.platform.registry.actions as action_registry
+import isotope.runtime.in_process as server
 
 
 ACTION_EVENT_TYPES = {

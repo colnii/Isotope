@@ -4,9 +4,9 @@ from typing import Any
 
 import pytest
 
-from isotope import codex_server
-from isotope import http_api
-from isotope import llm_provider
+import isotope.integrations.codex.server as codex_server
+import isotope.interfaces.http as http_api
+import isotope.llm.provider as llm_provider
 from isotope.platform.errors import IsotopeError
 from isotope.features.chat.flow import (
     build_llm_product_chat_entry_resume_state,

@@ -1,6 +1,10 @@
 import pytest
 
-from isotope import event_store, events, memory, projector, server
+import isotope.platform.state.event_store as event_store
+import isotope.platform.events.events as events
+import isotope.memory as memory
+import isotope.platform.state.projector as projector
+import isotope.runtime.in_process as server
 
 
 class ExplodingMemoryStore:

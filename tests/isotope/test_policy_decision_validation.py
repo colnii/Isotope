@@ -1,6 +1,7 @@
 import pytest
 
-from isotope import models, policy
+import isotope.platform.schemas.models as models
+import isotope.policy as policy
 
 
 def _proposal(**overrides):

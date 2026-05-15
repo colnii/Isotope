@@ -4,10 +4,10 @@ import json
 from collections.abc import Mapping
 from typing import Any
 
-from isotope import codex_server
-from isotope import http_api
+import isotope.integrations.codex.server as codex_server
+import isotope.interfaces.http as http_api
 from isotope.interfaces.http import create_http_app
-from isotope import llm_provider
+import isotope.llm.provider as llm_provider
 from isotope.llm.provider import LLMToolCall, LLMToolCallResponse
 
 

@@ -1,6 +1,8 @@
 import pytest
 
-from isotope import artifact_store, refs, retrieval
+import isotope.workspace.artifacts as artifact_store
+import isotope.platform.schemas.refs as refs
+import isotope.rag.retrieval as retrieval
 
 
 def _artifact_and_service(tmp_path):

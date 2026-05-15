@@ -4,7 +4,7 @@ import inspect
 
 import pytest
 
-from isotope import demo
+import isotope.demo as demo
 from isotope.platform.schemas.snapshots import ImportedSnapshot
 from isotope.platform.schemas.refs import make_artifact_ref
 from isotope.runtime.in_process import InProcessServer

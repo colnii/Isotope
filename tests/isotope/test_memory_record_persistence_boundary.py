@@ -1,6 +1,10 @@
 import pytest
 
-from isotope import event_store, events, memory, models, projector
+import isotope.platform.state.event_store as event_store
+import isotope.platform.events.events as events
+import isotope.memory as memory
+import isotope.platform.schemas.models as models
+import isotope.platform.state.projector as projector
 
 
 def _valid_memory_record() -> models.MemoryRecord:

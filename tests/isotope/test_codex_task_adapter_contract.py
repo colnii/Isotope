@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from isotope import artifact_store, codex_task, models
+import isotope.workspace.artifacts as artifact_store
+import isotope.integrations.codex.task as codex_task
+import isotope.platform.schemas.models as models
 from isotope.platform.schemas.refs import ResourceRef
 
 

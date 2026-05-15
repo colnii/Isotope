@@ -3,7 +3,8 @@ from dataclasses import asdict
 
 import pytest
 
-from isotope import checkpoint_store, server
+import isotope.platform.state.checkpoint_store as checkpoint_store
+import isotope.runtime.in_process as server
 
 
 EXECUTION_EVENTS = {

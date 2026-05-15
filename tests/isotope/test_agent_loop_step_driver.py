@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from isotope import server
+import isotope.runtime.in_process as server
 
 
 FORBIDDEN_CONTENT_KEYS = {

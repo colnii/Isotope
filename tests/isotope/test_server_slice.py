@@ -1,4 +1,5 @@
-from isotope import projector, server
+import isotope.platform.state.projector as projector
+import isotope.runtime.in_process as server
 
 
 def test_happy_path_produce_hello_artifact(tmp_path):

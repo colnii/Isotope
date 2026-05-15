@@ -168,7 +168,7 @@ def test_demo_memory_status_is_boundary_only():
 
 
 def test_demo_replay_and_checkpoint_verification_are_backed_by_metadata(tmp_path):
-    from isotope import demo
+    import isotope.demo as demo
 
     result = demo.run_demo(root_path=tmp_path)
 

@@ -1,6 +1,9 @@
 import pytest
 
-from isotope import action_registry, checkpoint_store, projector, server
+import isotope.platform.registry.actions as action_registry
+import isotope.platform.state.checkpoint_store as checkpoint_store
+import isotope.platform.state.projector as projector
+import isotope.runtime.in_process as server
 
 
 ACTION_LIFECYCLE_EVENTS = {

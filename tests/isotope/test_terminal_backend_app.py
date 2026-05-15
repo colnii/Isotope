@@ -12,7 +12,8 @@ from isotope.execution.terminal_backend import (
     TerminalBackendResult,
     build_terminal_backend_request,
 )
-from isotope import artifact_store, models
+import isotope.workspace.artifacts as artifact_store
+import isotope.platform.schemas.models as models
 from isotope.platform.schemas.refs import ResourceRef
 
 
