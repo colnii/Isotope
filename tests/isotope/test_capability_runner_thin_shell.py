@@ -19,7 +19,7 @@ FORBIDDEN_RESULT_KEYS = {
 
 
 def _runner_module():
-    return importlib.import_module("isotope.capability_runner")
+    return importlib.import_module("isotope.capabilities.runner")
 
 
 def _runner(*, catalog=None):
@@ -66,7 +66,7 @@ def _capability(capability_id, shelf, **overrides):
 def test_capability_runner_module_exists():
     module = _runner_module()
 
-    assert module.__name__ == "isotope.capability_runner"
+    assert module.__name__ == "isotope.capabilities.runner"
 
 
 def test_runner_list_uses_capability_catalog_as_source_of_truth():

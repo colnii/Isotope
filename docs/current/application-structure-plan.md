@@ -119,7 +119,7 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 - 平台 schema：动作、产物、记忆、外部快照、资源引用和工具协议已放入
   `src/isotope/platform/schemas/` 的具体文件；根 `isotope.models` 已删除。
 - 平台事件：`events.py`、`event_schema.py` 已迁入 `src/isotope/platform/events/`，活跃导入已切到新路径。
-- 能力目录：`capability_catalog.py`、`capability_runner.py` 已迁入 `src/isotope/capabilities/`。
+- 能力目录：`capability_catalog.py`、`capability_runner.py` 已迁入 `src/isotope/capabilities/`，旧根路径已删除。
 - 产品聊天流程：活跃实现已迁入 `src/isotope/features/chat/flow.py`；
   `src/isotope/features/chat/product_chat.py` 和顶层旧路径已删除。
 - 智能体循环：`agent_loop_*` 与 planner contract 已迁入 `src/isotope/agents/loop/`；

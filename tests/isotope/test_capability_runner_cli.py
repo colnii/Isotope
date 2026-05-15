@@ -27,7 +27,7 @@ def _run_cli(*args: str) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(SRC_ROOT)
     return subprocess.run(
-        [sys.executable, "-m", "isotope.capability_runner", *args],
+        [sys.executable, "-m", "isotope.capabilities.runner", *args],
         cwd=REPO_ROOT,
         env=env,
         text=True,

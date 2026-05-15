@@ -17,7 +17,7 @@ FORBIDDEN_MANIFEST_KEYS = {
 
 
 def _catalog_module():
-    return importlib.import_module("isotope.capability_catalog")
+    return importlib.import_module("isotope.capabilities.catalog")
 
 
 def _capability_class():
@@ -62,7 +62,7 @@ def _walk_mapping(value):
 def test_capability_catalog_module_exists():
     module = _catalog_module()
 
-    assert module.__name__ == "isotope.capability_catalog"
+    assert module.__name__ == "isotope.capabilities.catalog"
 
 
 def test_capability_serializes_to_low_sensitive_manifest_dict():

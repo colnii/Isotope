@@ -293,7 +293,7 @@ def _print_mapping(prefix: str, payload: Mapping[str, Any]) -> None:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="python -m isotope.capability_runner",
+        prog="python -m isotope.capabilities.runner",
         description="Run the small, allowlisted Isotope capability runner.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)

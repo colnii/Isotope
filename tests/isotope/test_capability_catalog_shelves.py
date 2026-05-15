@@ -2,7 +2,7 @@ import importlib
 
 
 def _catalog_module():
-    return importlib.import_module("isotope.capability_catalog")
+    return importlib.import_module("isotope.capabilities.catalog")
 
 
 def _capability_class():
