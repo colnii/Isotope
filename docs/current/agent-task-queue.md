@@ -77,30 +77,32 @@
     旧入口已删除，`core` 仅保留空包作为未来产品主流程位置。
 44. 第八批低风险代理删除：`platform.schemas.models` 汇总入口已删除，
     测试直接使用 `actions`、`memory`、`snapshots` 等具体 schema 模块。
+45. 根层入口复核：`src/isotope/` 根层只剩 `__init__.py`、`demo.py`
+    和 `llm_live_smoke.py`，没有已确认应继续删除的旧代理。
 
-## 最近完成：第八批低风险代理删除
+## 最近完成：根层入口复核
 
 完成内容：
 
-- 删除 `src/isotope/platform/schemas/models.py` 汇总兼容入口。
-- 测试改为直接导入 `actions`、`memory`、`snapshots` 等具体模块。
-- 将 `platform.schemas.models` 纳入已删除代理测试。
-- 同步 [compat-proxy-audit](./compat-proxy-audit.md) 与
-  [import-map](./import-map.md)。
+- 复核 `src/isotope/` 根层剩余文件。
+- 确认 `demo.py` 与 `llm_live_smoke.py` 是正式命令入口。
+- 确认当前没有已确认应继续删除的兼容代理。
+- 同步 [compat-proxy-audit](./compat-proxy-audit.md)、
+  [import-map](./import-map.md) 和
+  [naming-and-structure-review](./naming-and-structure-review.md)。
 
 验收：
 
-- 相关边界测试需要通过。
-- 全量测试需要通过。
+- 文档检查需要通过。
+- `AGENTS.md` 仍需保持 100 行以内。
 
 ## 下一批次：应用内分层迁移
 
 目标：
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
-- 继续把当前平铺模块逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步重新审计剩余顶层文件，确认哪些是正式命令入口，
-  哪些仍是旧代理。
+- 继续把真实功能逐步迁入 `features/`、`platform/`、`llm/` 等层级。
+- 下一步转向功能层和目录设计，不再围绕已删除旧根路径打转。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

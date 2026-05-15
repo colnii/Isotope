@@ -8,7 +8,7 @@ Isotope 是面向真实使用的 AI 应用软件，不是单纯内核项目。
 `src/isotope/` 是长期 Python 包命名空间。
 后续目录应按 AI 应用拆成 `apps/`、`core/`、`features/`、
 `capabilities/`、`execution/`、`workspace/`、`memory/` 等层级。
-`assistant` 只作为产品描述或旧路径兼容词，不再扩展成目录叙事。
+`assistant` 只作为产品描述或历史术语，不再扩展成目录叙事。
 文档放在 `docs/`；当前状态先看 `docs/current/status.md`。
 文档地图和清理计划看 `docs/current/docs-map.md` 与
 `docs/current/agent-task-queue.md`。

@@ -1,6 +1,6 @@
 # 兼容代理审计
 
-状态：`当前清单 / 第八批低风险代理已删除`
+状态：`当前清单 / 根层入口已复核`
 
 本文记录旧导入路径和兼容代理，不直接要求马上删除。
 目标是先知道哪些文件只是旧入口，哪些还承担命令或兼容测试职责。
@@ -13,7 +13,9 @@
 - `src/isotope/` 根目录已不再保留顶层兼容代理。
 - `core/` 仅保留空包作为未来产品主流程位置。
 - `assistant` 旧包已删除。
-- `capability_runner.py`、`demo.py`、`llm_live_smoke.py` 仍有命令入口价值。
+- `demo.py`、`llm_live_smoke.py` 是正式命令入口。
+- `capability_runner.py` 旧根入口已删除，正式命令指向
+  `isotope.capabilities.runner`。
 - 兼容入口已有最小测试：
   `tests/isotope/test_compat_proxy_imports.py`。
 - `core/runtime.py`、`agent_runtime.py`、`assistant/runtime.py`
@@ -34,8 +36,8 @@
 
 ## 可优先进入删除计划
 
-当前没有已确认应继续删除的兼容代理。下一轮应先重新审计，
-确认是否还有命令入口被误标成旧代理。
+当前没有已确认应继续删除的兼容代理。
+根层只剩 `__init__.py`、`demo.py`、`llm_live_smoke.py`。
 
 ## 已删除代理
 
@@ -122,5 +124,5 @@
 
 ## 下一步建议
 
-1. 重新审计 `src/isotope/` 下剩余顶层文件，区分正式入口和旧代理。
-2. 每删一批，都更新本文和 [import-map](./import-map.md)。
+1. 后续若新增兼容代理，先登记到本文和 [import-map](./import-map.md)。
+2. 下一轮目录工作应转向真实功能分层，不再围绕旧根路径清理。
