@@ -12,6 +12,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from ..core import ProductCore
+from ..features.tasks.flow import TaskFlow, TaskSummary
 from ..platform.errors import IsotopeError
 from ..runtime.in_process import InProcessServer
 
@@ -32,6 +34,8 @@ class HttpApiApp:
 
     _ROUTES: tuple[tuple[str, str], ...] = (
         ("GET", "/health"),
+        ("POST", "/tasks"),
+        ("GET", "/tasks/{task_id}"),
         ("POST", "/sessions"),
         ("POST", "/sessions/{session_id}/runs"),
         ("POST", "/runs/{run_id}/input"),
@@ -97,6 +101,7 @@ class HttpApiApp:
         self.enable_llm_product_chat_route = enable_llm_product_chat_route
         self.llm_tool_call_provider = llm_tool_call_provider
         self.llm_tool_names = self._validate_llm_tool_names(llm_tool_names)
+        self.task_flow = TaskFlow(ProductCore(self.server))
         self._idempotency_cache: dict[str, dict[str, Any]] = {}
 
     def routes(self) -> list[tuple[str, str]]:
@@ -182,6 +187,21 @@ class HttpApiApp:
                 return self._json(200, self.list_routes())
             if method == "GET" and parts == ["health"]:
                 return self._json(200, {"status": "ok"})
+            if method == "POST" and parts == ["tasks"]:
+                body = self._require_body(json_body, required_fields=("goal", "message"))
+                summary = self.task_flow.create_task(
+                    goal=body["goal"],
+                    first_message=body["message"],
+                )
+                return self._json(201, {"status": "ok", "task": self._task_summary_to_dict(summary)})
+            if method == "GET" and len(parts) == 2 and parts[0] == "tasks":
+                try:
+                    summary = self.task_flow.get_task(parts[1])
+                except ValueError as exc:
+                    if "unknown task_id" in str(exc):
+                        return self._error(404, "not_found", "task not found")
+                    raise
+                return self._json(200, {"status": "ok", "task": self._task_summary_to_dict(summary)})
             if method == "POST" and parts == ["sessions"]:
                 return self._json(201, self.server.create_session())
             if method == "POST" and len(parts) == 3 and parts[0] == "sessions" and parts[2] == "runs":
@@ -619,6 +639,9 @@ class HttpApiApp:
         body = self._llm_provider_result_to_dict(result)
         body["turn_kind"] = result.get("turn_kind")
         return body
+
+    def _task_summary_to_dict(self, summary: TaskSummary) -> dict[str, Any]:
+        return summary.to_dict()
 
     def _run_state_to_dict(self, state: Any) -> dict[str, Any]:
         return asdict(state)

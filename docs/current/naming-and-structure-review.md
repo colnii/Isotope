@@ -248,7 +248,7 @@ src/isotope/
 
 ### 批次九：tasks 功能薄入口
 
-状态：已执行前两片。
+状态：已执行前三片。
 
 目标：
 
@@ -257,7 +257,9 @@ src/isotope/
 - 复用 `ProductCore`，不绕过 core 直接碰 runtime。
 - 默认只返回任务状态、回合数量、run 列表、结果摘要和资源引用。
 - 新增 `isotope-task` CLI，可从终端运行一条任务。
-- 暂不做完整任务管理、列表页、持久化索引或 API 路由。
+- 新增 `POST /tasks` 和 `GET /tasks/{task_id}`，可通过 HTTP facade
+  创建和读取任务摘要。
+- 暂不做完整任务管理、列表页、持久化索引或独立 API 服务。
 
 ## 当前推荐决策
 

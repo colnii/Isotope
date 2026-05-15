@@ -32,7 +32,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
 8. 兼容代理迁移需同步维护 `docs/current/import-map.md`，并写明计划删除节点。
 9. `core` 当前薄包 `InProcessServer`，已有 conversation（对话）、
    task（任务）和 turn（回合）状态，不承载 agent loop 内部实现。
-10. `features/tasks` 已有薄入口和 `isotope-task` CLI，当前只提供任务摘要流程。
+10. `features/tasks` 已有薄入口、`isotope-task` CLI 和 tasks API，
+    当前只提供任务摘要流程。
 
 ## 文档策略
 

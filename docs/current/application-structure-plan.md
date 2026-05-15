@@ -158,6 +158,8 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   `TaskFlow` 和 `TaskSummary`，先把 core task 包成用户可读摘要。
 - 任务 CLI：`isotope-task` 已接到 `src/isotope/features/tasks/runner.py`，
   可运行一条任务并输出低敏 JSON 摘要。
+- 任务 API：`POST /tasks` 和 `GET /tasks/{task_id}` 已接到
+  `TaskFlow`，当前仍属于进程内 HTTP facade，不是独立 FastAPI 服务。
 - 智能体循环：`agent_loop_*` 与 planner contract 已迁入 `src/isotope/agents/loop/`；
   旧顶层、`core/loop_*` 和 `assistant/` 入口已删除。
 - 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`，相关旧根路径已删除。

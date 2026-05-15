@@ -6,6 +6,8 @@ from isotope.interfaces.http import create_http_app
 
 SUPPORTED_ROUTES = [
     ("GET", "/health"),
+    ("POST", "/tasks"),
+    ("GET", "/tasks/{task_id}"),
     ("POST", "/sessions"),
     ("POST", "/sessions/{session_id}/runs"),
     ("POST", "/runs/{run_id}/input"),

@@ -95,23 +95,26 @@
     和 `TaskSummary`，把 core task 包成用户功能摘要。
 52. tasks CLI 入口：`isotope-task` 已接到 `TaskFlow`，可运行一条
     task 并输出低敏 JSON 摘要。
+53. tasks API 入口：`POST /tasks` 和 `GET /tasks/{task_id}` 已接到
+    `TaskFlow`，CLI 与 API 共用 core task 状态。
 
-## 最近完成：tasks CLI 入口
+## 最近完成：tasks API 入口
 
 完成内容：
 
-- 新增 `src/isotope/features/tasks/runner.py`。
-- 新增 `apps/cli/isotope_task.py` 和 `isotope-task` 安装脚本。
-- `isotope-task run --root ... --goal ... --message ... --json`
-  可创建并运行一条任务。
-- JSON 输出只包含任务摘要，不返回用户输入正文或 artifact 全文。
+- `HttpApiApp` 初始化时用同一个 `InProcessServer` 构造 `TaskFlow`。
+- `POST /tasks` 可创建并运行一条任务。
+- `GET /tasks/{task_id}` 可读取任务摘要。
+- API 输出只包含任务摘要，不返回用户输入正文或 artifact 全文。
+- 路由清单已把 tasks API 标为 supported。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
   [naming-and-structure-review](./naming-and-structure-review.md)、
   [terminology](./terminology.md) 和 [status](./status.md)。
 
 验收：
 
-- `tests/isotope/test_tasks_feature_cli.py` 需要通过。
+- `tests/isotope/test_http_api_boundary.py` 和
+  `tests/isotope/test_http_api_route_inventory.py` 需要通过。
 - 共享路径改动后需要跑全量测试。
 - `AGENTS.md` 仍需保持 100 行以内。
 
@@ -121,14 +124,15 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把真实功能逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步若继续目录工作，应把 tasks 入口接到 API，或开始第一个
-  `features/files` 功能切片。
+- 下一步若继续目录工作，应开始第一个 `features/files` 功能切片，
+  或给 tasks 增加更像产品的列表/历史能力。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：
 
 - `apps/cli/`：命令行入口，当前包含 demo、capability、LLM smoke 和 task。
-- `apps/api/`：后端入口。
+- `apps/api/`：后端入口；当前真实 API 仍在 `interfaces/http.py`
+  这个进程内 facade 中。
 - `src/isotope/core/`：产品主流程；当前薄包 `InProcessServer`，
   已有 conversation、turn、task 和 response 状态。
 - `src/isotope/agents/loop/`：agent loop 活跃实现目录。

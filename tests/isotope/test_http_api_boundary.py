@@ -7,6 +7,8 @@ import pytest
 
 
 MINIMAL_ROUTES = {
+    ("POST", "/tasks"),
+    ("GET", "/tasks/{task_id}"),
     ("POST", "/sessions"),
     ("POST", "/sessions/{session_id}/runs"),
     ("POST", "/runs/{run_id}/input"),
@@ -38,6 +40,11 @@ FORBIDDEN_CONTENT_KEYS = {
     "full_text",
     "raw_content",
     "raw_artifact_content",
+}
+
+TASK_FORBIDDEN_CONTENT_KEYS = {
+    *FORBIDDEN_CONTENT_KEYS,
+    "text",
 }
 
 
@@ -108,6 +115,17 @@ def _assert_no_forbidden_content_keys(value: Any) -> None:
     elif isinstance(value, list):
         for nested in value:
             _assert_no_forbidden_content_keys(nested)
+
+
+def _assert_no_task_content_keys(value: Any) -> None:
+    if isinstance(value, dict):
+        forbidden = TASK_FORBIDDEN_CONTENT_KEYS.intersection(value)
+        assert forbidden == set()
+        for nested in value.values():
+            _assert_no_task_content_keys(nested)
+    elif isinstance(value, list):
+        for nested in value:
+            _assert_no_task_content_keys(nested)
 
 
 def _create_run_via_http(app) -> tuple[str, str]:
@@ -198,6 +216,33 @@ def test_submit_input_uses_action_chain_and_writes_canonical_events(tmp_path):
         "action.completed",
         "run.completed",
     ]
+
+
+def test_http_api_tasks_route_creates_and_reads_task_summary(tmp_path):
+    app = _create_app(tmp_path)
+
+    created = _successful_json(
+        _request(
+            app,
+            "POST",
+            "/tasks",
+            {
+                "goal": "collect useful notes",
+                "message": "first note",
+            },
+        )
+    )
+    task = created["task"]
+    fetched = _successful_json(_request(app, "GET", f"/tasks/{task['task_id']}"))
+
+    assert created["status"] == "ok"
+    assert task["task_id"].startswith("task_")
+    assert task["goal"] == "collect useful notes"
+    assert task["status"] == "completed"
+    assert task["turn_count"] == 1
+    assert task["result_ref"]["ref_type"] == "artifact"
+    assert fetched == {"status": "ok", "task": task}
+    _assert_no_task_content_keys(created)
 
 
 def test_get_run_returns_projector_read_model_from_event_log_not_executor_memory(tmp_path):
