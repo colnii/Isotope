@@ -167,7 +167,7 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   HTTP facade 已可调用；当前不是完整文件管理系统。
 - 项目功能入口：`src/isotope/features/projects/flow.py` 已提供
   `ProjectFlow` 和 `ProjectSummary`，可创建项目摘要并关联 task/file id；
-  当前不是完整项目管理系统。
+  `isotope-project` 和 `/projects` HTTP facade 已可调用；当前不是完整项目管理系统。
 - 智能体循环：`agent_loop_*` 与 planner contract 已迁入 `src/isotope/agents/loop/`；
   旧顶层、`core/loop_*` 和 `assistant/` 入口已删除。
 - 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`，相关旧根路径已删除。

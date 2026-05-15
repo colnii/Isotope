@@ -108,8 +108,12 @@
     和 `GET /files/{file_id}` 已接到 `FileFlow`。
 58. projects 功能薄入口：`features/projects/flow.py` 已提供
     `ProjectFlow` 和 `ProjectSummary`，可创建项目摘要并关联 task/file id。
+59. projects CLI/API 入口：`isotope-project`、`POST /projects`、
+    `GET /projects`、`GET /projects/{project_id}`、
+    `POST /projects/{project_id}/tasks` 和
+    `POST /projects/{project_id}/files` 已接到 `ProjectFlow`。
 
-## 最近完成：projects 功能薄入口
+## 最近完成：projects CLI/API 入口
 
 完成内容：
 
@@ -118,14 +122,17 @@
 - `get_project(...)` 和 `list_projects()` 可读取项目摘要。
 - 项目摘要可关联已有 `task_id` 和 `file_id`。
 - 项目摘要会写入本地低敏索引，重启后仍可读取。
-- 当前只关联 ID，不直接展开任务消息、文件正文或 artifact 全文。
+- `isotope-project create/get/list/add-task/add-file` 可从命令行操作项目摘要。
+- `/projects` HTTP facade 已支持创建、读取、列表和关联 task/file id。
+- CLI/API 只返回低敏项目摘要，不展开任务消息、文件正文或 artifact 全文。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
   [naming-and-structure-review](./naming-and-structure-review.md)、
   [terminology](./terminology.md) 和 [status](./status.md)。
 
 验收：
 
-- `tests/isotope/test_projects_feature_flow.py` 需要通过。
+- `tests/isotope/test_projects_feature_flow.py`、
+  `tests/isotope/test_projects_feature_cli.py` 和 HTTP route 测试需要通过。
 - 共享路径改动后需要跑全量测试。
 - `AGENTS.md` 仍需保持 100 行以内。
 
@@ -135,8 +142,8 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把真实功能逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步若继续目录工作，应给 `features/projects` 增加 CLI/API 入口，
-  或给 projects/tasks/files 增加组合查询入口。
+- 下一步若继续目录工作，应给 projects/tasks/files 增加组合查询入口，
+  或开始 `features/search` 的第一片。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

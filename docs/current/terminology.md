@@ -33,6 +33,12 @@
 | `artifact-backed file summary` | 由 artifact 存储承载正文、外层只暴露摘要和引用的文件摘要 | 产品功能/工作区资源 | `src/isotope/features/files/flow.py`, `src/isotope/workspace/artifacts.py` |
 | `ProjectFlow` | 项目功能入口，把任务和文件关联成用户可感知项目摘要 | 产品功能 | `src/isotope/features/projects/flow.py` |
 | `ProjectSummary` | 项目摘要，面向用户展示项目名、摘要、task id 和 file id | 产品功能 | `src/isotope/features/projects/flow.py` |
+| `isotope-project` | 项目命令行入口，可创建、读取、列出和关联项目摘要 | 应用入口 | `src/isotope/features/projects/runner.py`, `apps/cli/isotope_project.py` |
+| `POST /projects` | 项目 API 入口，创建一个项目摘要 | 接口 | `src/isotope/interfaces/http.py` |
+| `GET /projects` | 项目 API 入口，列出项目摘要 | 接口 | `src/isotope/interfaces/http.py` |
+| `GET /projects/{project_id}` | 项目 API 入口，读取单个项目摘要 | 接口 | `src/isotope/interfaces/http.py` |
+| `POST /projects/{project_id}/tasks` | 项目 API 入口，把 task id 关联到项目摘要 | 接口 | `src/isotope/interfaces/http.py` |
+| `POST /projects/{project_id}/files` | 项目 API 入口，把 file id 关联到项目摘要 | 接口 | `src/isotope/interfaces/http.py` |
 | `project index` | 项目摘要索引，持久化低敏项目摘要，供重启后查询 | 产品功能/项目 | `src/isotope/features/projects/flow.py` |
 | `assistant` | 助手，只作为产品描述或历史术语，不作为新目录叙事 | 产品描述/历史术语 | 已删除旧目录 |
 | `agent loop` | 智能体循环，AI 多步规划、调用工具、读取结果并继续执行 | 应用/智能体 | `src/isotope/agents/loop/step.py`, `docs/features/` |

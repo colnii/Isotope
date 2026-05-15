@@ -37,8 +37,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
 11. `features/files` 已有薄入口，当前可把文本保存成
     artifact-backed file summary，已接入 `isotope-file` 和 `/files`
     HTTP facade。
-12. `features/projects` 已有薄入口，当前可创建项目摘要并关联
-    task/file id。
+12. `features/projects` 已有薄入口，当前可创建项目摘要、关联
+    task/file id，并通过 `isotope-project` 和 `/projects` 调用。
 
 ## 文档策略
 

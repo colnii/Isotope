@@ -14,6 +14,7 @@ from typing import Any
 
 from ..core import ProductCore
 from ..features.files.flow import FileFlow, FileSummary
+from ..features.projects.flow import ProjectFlow, ProjectSummary
 from ..features.tasks.flow import TaskFlow, TaskSummary
 from ..platform.errors import IsotopeError
 from ..runtime.in_process import InProcessServer
@@ -41,6 +42,11 @@ class HttpApiApp:
         ("POST", "/files"),
         ("GET", "/files"),
         ("GET", "/files/{file_id}"),
+        ("POST", "/projects"),
+        ("GET", "/projects"),
+        ("GET", "/projects/{project_id}"),
+        ("POST", "/projects/{project_id}/tasks"),
+        ("POST", "/projects/{project_id}/files"),
         ("POST", "/sessions"),
         ("POST", "/sessions/{session_id}/runs"),
         ("POST", "/runs/{run_id}/input"),
@@ -109,6 +115,7 @@ class HttpApiApp:
         product_core = ProductCore(self.server)
         self.task_flow = TaskFlow(product_core)
         self.file_flow = FileFlow(product_core)
+        self.project_flow = ProjectFlow(product_core)
         self._idempotency_cache: dict[str, dict[str, Any]] = {}
 
     def routes(self) -> list[tuple[str, str]]:
@@ -237,6 +244,35 @@ class HttpApiApp:
                         return self._error(404, "not_found", "file not found")
                     raise
                 return self._json(200, {"status": "ok", "file": self._file_summary_to_dict(summary)})
+            if method == "POST" and parts == ["projects"]:
+                body = self._require_body(json_body, required_fields=("name", "summary"))
+                summary = self.project_flow.create_project(
+                    name=body["name"],
+                    summary=body["summary"],
+                )
+                return self._json(201, {"status": "ok", "project": self._project_summary_to_dict(summary)})
+            if method == "GET" and parts == ["projects"]:
+                summaries = [
+                    self._project_summary_to_dict(summary)
+                    for summary in self.project_flow.list_projects()
+                ]
+                return self._json(200, {"status": "ok", "projects": summaries})
+            if method == "GET" and len(parts) == 2 and parts[0] == "projects":
+                try:
+                    summary = self.project_flow.get_project(parts[1])
+                except ValueError as exc:
+                    if "unknown project_id" in str(exc):
+                        return self._error(404, "not_found", "project not found")
+                    raise
+                return self._json(200, {"status": "ok", "project": self._project_summary_to_dict(summary)})
+            if method == "POST" and len(parts) == 3 and parts[0] == "projects" and parts[2] == "tasks":
+                body = self._require_body(json_body, required_fields=("task_id",))
+                summary = self.project_flow.add_task(parts[1], body["task_id"])
+                return self._json(200, {"status": "ok", "project": self._project_summary_to_dict(summary)})
+            if method == "POST" and len(parts) == 3 and parts[0] == "projects" and parts[2] == "files":
+                body = self._require_body(json_body, required_fields=("file_id",))
+                summary = self.project_flow.add_file(parts[1], body["file_id"])
+                return self._json(200, {"status": "ok", "project": self._project_summary_to_dict(summary)})
             if method == "POST" and parts == ["sessions"]:
                 return self._json(201, self.server.create_session())
             if method == "POST" and len(parts) == 3 and parts[0] == "sessions" and parts[2] == "runs":
@@ -679,6 +715,9 @@ class HttpApiApp:
         return summary.to_dict()
 
     def _file_summary_to_dict(self, summary: FileSummary) -> dict[str, Any]:
+        return summary.to_dict()
+
+    def _project_summary_to_dict(self, summary: ProjectSummary) -> dict[str, Any]:
         return summary.to_dict()
 
     def _run_state_to_dict(self, state: Any) -> dict[str, Any]:

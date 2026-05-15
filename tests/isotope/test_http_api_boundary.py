@@ -13,6 +13,11 @@ MINIMAL_ROUTES = {
     ("POST", "/files"),
     ("GET", "/files"),
     ("GET", "/files/{file_id}"),
+    ("POST", "/projects"),
+    ("GET", "/projects"),
+    ("GET", "/projects/{project_id}"),
+    ("POST", "/projects/{project_id}/tasks"),
+    ("POST", "/projects/{project_id}/files"),
     ("POST", "/sessions"),
     ("POST", "/sessions/{session_id}/runs"),
     ("POST", "/runs/{run_id}/input"),
@@ -295,6 +300,50 @@ def test_http_api_files_routes_create_get_and_list_file_summaries(tmp_path):
     assert file_summary["artifact_ref"]["ref_type"] == "artifact"
     assert fetched == {"status": "ok", "file": file_summary}
     assert listed == {"status": "ok", "files": [file_summary]}
+    _assert_no_task_content_keys(created)
+    _assert_no_task_content_keys(fetched)
+    _assert_no_task_content_keys(listed)
+
+
+def test_http_api_projects_routes_create_get_list_and_link_summaries(tmp_path):
+    app = _create_app(tmp_path)
+
+    created = _successful_json(
+        _request(
+            app,
+            "POST",
+            "/projects",
+            {
+                "name": "portfolio demo",
+                "summary": "autumn recruiting project",
+            },
+        )
+    )
+    project = created["project"]
+    with_task = _successful_json(
+        _request(app, "POST", f"/projects/{project['project_id']}/tasks", {"task_id": "task_example"})
+    )
+    with_file = _successful_json(
+        _request(
+            app,
+            "POST",
+            f"/projects/{project['project_id']}/files",
+            {"file_id": "artifact_example"},
+        )
+    )
+    fetched = _successful_json(_request(app, "GET", f"/projects/{project['project_id']}"))
+    listed = _successful_json(_request(app, "GET", "/projects"))
+
+    linked = with_file["project"]
+    assert created["status"] == "ok"
+    assert project["project_id"].startswith("project_")
+    assert project["name"] == "portfolio demo"
+    assert project["summary"] == "autumn recruiting project"
+    assert with_task["project"]["task_ids"] == ["task_example"]
+    assert linked["task_ids"] == ["task_example"]
+    assert linked["file_ids"] == ["artifact_example"]
+    assert fetched == {"status": "ok", "project": linked}
+    assert listed == {"status": "ok", "projects": [linked]}
     _assert_no_task_content_keys(created)
     _assert_no_task_content_keys(fetched)
     _assert_no_task_content_keys(listed)
