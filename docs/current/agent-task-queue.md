@@ -54,20 +54,22 @@
     `KernelError` / `KernelPermissionError` 仅作为兼容别名。
 33. 兼容代理审计：显式测试导入已切到新路径，旧代理清单见
     [compat-proxy-audit](./compat-proxy-audit.md)。
+34. 空壳 runtime 链删除：`core/runtime.py`、`agent_runtime.py`、
+    `assistant/runtime.py` 已删除。
 
-## 最近完成：兼容代理审计
+## 最近完成：空壳 runtime 链删除
 
 完成内容：
 
-- 将 `from isotope.xxx import ...` 形式的显式测试导入切到新路径。
-- 建立 [compat-proxy-audit](./compat-proxy-audit.md)。
-- 标出可优先进入删除计划的代理。
-- 单独列出 `core/runtime.py` 空壳链和包级测试导入 blocker。
+- 删除 `src/isotope/core/runtime.py` 空壳。
+- 删除 `src/isotope/agent_runtime.py` 旧代理。
+- 删除 `src/isotope/assistant/runtime.py` 旧代理。
+- 同步 [compat-proxy-audit](./compat-proxy-audit.md) 和 [import-map](./import-map.md)。
 
 验收：
 
-- 显式测试导入不再依赖常见顶层旧路径。
-- 兼容代理有清单和下一步删除顺序。
+- 源码和测试不再引用这三条旧路径。
+- 历史文档只保留追溯引用。
 - 相关测试和全量测试需要通过。
 
 ## 下一批次：应用内分层迁移
@@ -76,8 +78,7 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把当前平铺模块逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步优先处理 `core/runtime.py`、`agent_runtime.py`、`assistant/runtime.py` 空壳链。
-  之后再迁 `from isotope import xxx` 包级测试导入。
+- 下一步优先迁 `from isotope import xxx` 包级测试导入。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

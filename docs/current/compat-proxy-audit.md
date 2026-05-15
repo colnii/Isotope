@@ -1,6 +1,6 @@
 # 兼容代理审计
 
-状态：`当前清单 / 第一轮显式测试导入已切换`
+状态：`当前清单 / 空壳 runtime 链已删除`
 
 本文记录旧导入路径和兼容代理，不直接要求马上删除。
 目标是先知道哪些文件只是旧入口，哪些还承担命令或兼容测试职责。
@@ -9,11 +9,13 @@
 
 - `from isotope.xxx import ...` 形式的显式测试导入已改用新路径。
 - `from isotope import xxx` 形式的包级测试导入仍是下一批 blocker；
-  当前测试中还有 126 处。
+  当前测试中还有 128 行匹配。
 - `src/isotope/` 根目录仍保留很多兼容代理，方便旧代码导入。
 - `core/` 和 `assistant/` 当前没有活跃实现，只保留 agent loop 旧入口。
 - `capability_runner.py`、`demo.py`、`llm_live_smoke.py` 仍有命令入口价值。
 - 删除代理前，需要先建立专门的兼容入口测试，再逐批移除。
+- `core/runtime.py`、`agent_runtime.py`、`assistant/runtime.py`
+  空壳链已删除。
 
 ## 可优先进入删除计划
 
@@ -57,24 +59,21 @@
 
 | 路径 | 状态 |
 | --- | --- |
-| `src/isotope/core/runtime.py` | 空壳，建议下一批删除或改成明确兼容占位 |
-| `src/isotope/agent_runtime.py` | 指向 `core.runtime` 的旧代理 |
-| `src/isotope/assistant/runtime.py` | 指向 `core.runtime` 的旧代理 |
+| `src/isotope/core/runtime.py` | 已删除，原本只是空壳 |
+| `src/isotope/agent_runtime.py` | 已删除，原本只指向空壳 |
+| `src/isotope/assistant/runtime.py` | 已删除，原本只指向空壳 |
 | `src/isotope/core/loop_*` | agent loop 旧入口 |
 | `src/isotope/assistant/loop_*` | assistant 旧入口 |
 
 ## 当前 blocker
 
-- `tests/isotope/` 里还有 126 处 `from isotope import ...` 包级导入。
-- `src/isotope/agent_runtime.py` 和 `src/isotope/assistant/runtime.py`
-  仍指向空壳 `src/isotope/core/runtime.py`。
+- `tests/isotope/` 里还有 128 行 `from isotope import ...` 包级导入。
 - `docs/architecture/` 和 `docs/reviews/` 仍有历史入口名，
   删除代理前不应按全文搜索结果机械改历史文档。
 
 ## 下一步删除顺序建议
 
-1. 先处理 `core/runtime.py`、`agent_runtime.py`、`assistant/runtime.py` 空壳链。
-2. 再把 `from isotope import xxx` 包级测试导入切到新路径。
-3. 给根目录兼容代理建立最小兼容测试。
-4. 然后按 `state / schema / rag / workspace / llm / terminal` 分组删除。
-5. 每删一批，都更新本文和 [import-map](./import-map.md)。
+1. 先把 `from isotope import xxx` 包级测试导入切到新路径。
+2. 给根目录兼容代理建立最小兼容测试。
+3. 然后按 `state / schema / rag / workspace / llm / terminal` 分组删除。
+4. 每删一批，都更新本文和 [import-map](./import-map.md)。
