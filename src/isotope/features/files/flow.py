@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from json import JSONDecodeError
 from pathlib import Path
 from typing import Any
 
@@ -28,13 +30,25 @@ class FileSummary:
             "run_id": self.run_id,
         }
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "FileSummary":
+        return cls(
+            file_id=_required_string(data, "file_id"),
+            name=_required_string(data, "name"),
+            summary=_required_string(data, "summary"),
+            artifact_type=_required_string(data, "artifact_type"),
+            artifact_ref=dict(_required_dict(data, "artifact_ref")),
+            run_id=_required_string(data, "run_id"),
+        )
+
 
 class FileFlow:
     """Thin user-facing file flow over ProductCore."""
 
     def __init__(self, core: ProductCore):
         self.core = core
-        self._files: dict[str, FileSummary] = {}
+        self._index_path = Path(self.core.runtime.root) / "files" / "index.json"
+        self._files: dict[str, FileSummary] = self._load_index()
 
     @classmethod
     def in_process(cls, root: Path | str) -> "FileFlow":
@@ -61,6 +75,7 @@ class FileFlow:
             run_id=run.run_id,
         )
         self._files[file_summary.file_id] = file_summary
+        self._save_index()
         return file_summary
 
     def get_file(self, file_id: str) -> FileSummary:
@@ -69,6 +84,9 @@ class FileFlow:
         except KeyError as exc:
             raise ValueError(f"unknown file_id: {file_id}") from exc
 
+    def list_files(self) -> list[FileSummary]:
+        return list(self._files.values())
+
     def _require_non_empty_text(self, field_name: str, value: str) -> str:
         if not isinstance(value, str):
             raise TypeError(f"{field_name} must be a string")
@@ -76,3 +94,44 @@ class FileFlow:
         if not stripped:
             raise ValueError(f"{field_name} must not be empty")
         return stripped
+
+    def _load_index(self) -> dict[str, FileSummary]:
+        if not self._index_path.exists():
+            return {}
+        try:
+            data = json.loads(self._index_path.read_text(encoding="utf-8"))
+        except JSONDecodeError as exc:
+            raise ValueError(f"malformed file index: {self._index_path}") from exc
+        if not isinstance(data, dict) or not isinstance(data.get("files"), list):
+            raise ValueError(f"malformed file index: {self._index_path}")
+        files: dict[str, FileSummary] = {}
+        for item in data["files"]:
+            if not isinstance(item, dict):
+                raise ValueError(f"malformed file index: {self._index_path}")
+            file_summary = FileSummary.from_dict(item)
+            files[file_summary.file_id] = file_summary
+        return files
+
+    def _save_index(self) -> None:
+        self._index_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "files": [file_summary.to_dict() for file_summary in self._files.values()]
+        }
+        self._index_path.write_text(
+            json.dumps(payload, sort_keys=True),
+            encoding="utf-8",
+        )
+
+
+def _required_string(data: dict[str, Any], field_name: str) -> str:
+    value = data.get(field_name)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"file summary requires {field_name}")
+    return value
+
+
+def _required_dict(data: dict[str, Any], field_name: str) -> dict[str, Any]:
+    value = data.get(field_name)
+    if not isinstance(value, dict):
+        raise ValueError(f"file summary requires {field_name}")
+    return value

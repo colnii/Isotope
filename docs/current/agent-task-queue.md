@@ -99,16 +99,19 @@
     `TaskFlow`，CLI 与 API 共用 core task 状态。
 54. files 功能薄入口：`features/files/flow.py` 已提供 `FileFlow`
     和 `FileSummary`，可保存文本为 artifact-backed file summary。
+55. files 摘要索引：`FileFlow` 已提供 `list_files()`，并把
+    `FileSummary` 低敏摘要持久化到本地索引。
 
-## 最近完成：files 功能薄入口
+## 最近完成：files 摘要索引
 
 完成内容：
 
 - `FileFlow.in_process(...)` 可创建进程内文件功能入口。
 - `create_text_file(...)` 可把文本保存成 artifact，并返回文件摘要。
-- `get_file(...)` 可读取当前流程内的文件摘要。
+- `get_file(...)` 可读取文件摘要；重新创建 `FileFlow` 后仍可读取。
+- `list_files()` 可列出当前本地索引里的文件摘要。
 - `FileSummary` 只包含文件名、摘要、artifact 引用和 run id。
-- 输出不返回原始文件全文。
+- 本地索引只保存低敏摘要，不保存原始文件全文。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
   [naming-and-structure-review](./naming-and-structure-review.md)、
   [terminology](./terminology.md) 和 [status](./status.md)。
@@ -125,7 +128,7 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把真实功能逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步若继续目录工作，应给 `features/files` 增加列表/持久化索引，
+- 下一步若继续目录工作，应给 `features/files` 增加 CLI/API 入口，
   或给 tasks 增加更像产品的列表/历史能力。
 - 迁移完成后再恢复多分支并行开发。
 

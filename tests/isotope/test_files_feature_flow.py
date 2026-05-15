@@ -46,3 +46,29 @@ def test_file_flow_creates_user_facing_file_summary(tmp_path):
     assert fetched == created
     assert "private durable file content" not in repr(created)
     _assert_no_forbidden_content_keys(created.to_dict())
+
+
+def test_file_flow_lists_and_reloads_file_summaries(tmp_path):
+    flow = FileFlow.in_process(tmp_path)
+
+    first = flow.create_text_file(
+        name="first.md",
+        summary="first summary",
+        content="first private content",
+    )
+    second = flow.create_text_file(
+        name="second.md",
+        summary="second summary",
+        content="second private content",
+    )
+
+    assert flow.list_files() == [first, second]
+
+    reloaded = FileFlow.in_process(tmp_path)
+
+    assert reloaded.get_file(first.file_id) == first
+    assert reloaded.get_file(second.file_id) == second
+    assert reloaded.list_files() == [first, second]
+    _assert_no_forbidden_content_keys(
+        {"files": [file_summary.to_dict() for file_summary in reloaded.list_files()]}
+    )
