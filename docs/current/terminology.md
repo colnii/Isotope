@@ -72,6 +72,9 @@
 | `provider` | 模型服务适配器，连接外部模型服务 | 模型 | `src/isotope/llm/provider.py` |
 | `product chat` | 产品聊天流程，让模型调用工具并返回面向用户的回答 | 产品能力 | `src/isotope/features/chat/flow.py` |
 | `CLI` | 命令行入口，给人类和部署脚本直接调用 | 应用入口 | `apps/cli/`, `pyproject.toml` |
+| `ASGI` | Python Web 服务通用接口，后续可由 Uvicorn 等服务托管 | 后端入口 | `src/isotope/apps/api.py` |
+| `ApiApp` | ASGI 兼容后端应用边界，当前转发到进程内 HTTP facade | 后端入口 | `src/isotope/apps/api.py` |
+| `isotope-api` | API 命令行入口，当前用于检查后端路由 | 应用入口 | `src/isotope/apps/api.py`, `apps/api/isotope_api.py` |
 | `HttpApiApp` | 进程内 HTTP 风格接口，用于测试和应用边界，不监听端口 | 接口 | `src/isotope/interfaces/http.py` |
 | `InProcessServer` | 进程内运行入口，串起会话、run、策略、执行和状态读取 | 运行时 | `src/isotope/runtime/in_process.py` |
 | `CanonicalEvent` | 标准事件，所有状态回放的事实来源 | 平台事件 | `src/isotope/platform/events/events.py` |

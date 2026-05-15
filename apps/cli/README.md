@@ -11,6 +11,7 @@
 - `isotope-project`：运行 projects 功能入口，支持项目摘要、组合摘要、workspace 创建和追加。
 - `isotope-search`：运行 search 功能入口，搜索低敏摘要并支持类型和数量过滤。
 - `isotope-workbench`：运行 workbench 功能入口，读取产品首页低敏汇总、空状态和更新时间。
+- `isotope-api`：检查 API 后端入口，当前可列出 ASGI 路由。
 - `isotope-llm-smoke`：运行 LLM smoke 检查，对应 `isotope.llm_live_smoke:main`。
 
 本目录用于说明和本地直接调用；正式安装入口在 `pyproject.toml` 的

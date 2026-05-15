@@ -156,6 +156,7 @@ def test_pyproject_declares_cli_scripts():
     assert scripts["isotope-demo"] == "isotope.demo:main"
     assert scripts["isotope-capability"] == "isotope.capabilities.runner:main"
     assert scripts["isotope-llm-smoke"] == "isotope.llm_live_smoke:main"
+    assert scripts["isotope-api"] == "isotope.apps.api:main"
 
 
 def test_package_discovery_covers_src_isotope():

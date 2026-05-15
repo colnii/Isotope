@@ -132,28 +132,26 @@
     `isotope-project workspace-add`、`POST /projects/{project_id}/workspace`
     和 `isotope-demo --scenario project-workspace-append` 可给已有项目追加
     新 task/file，并刷新 project detail 与 workbench。
+68. apps/api 薄后端边界：`ApiApp`、`create_api_app(...)`、
+    `isotope-api routes` 和 `apps/api/` 已建立，当前以 ASGI 转发到
+    `interfaces/http.py`，不监听端口，也不引入完整 FastAPI 服务。
 
-## 最近完成：project workspace 复用已有项目
+## 最近完成：apps/api 薄后端边界
 
 完成内容：
 
-- `ProjectWorkspaceFlow.append_to_project(...)` 可给已有 project 追加
-  一个新 task 和一个新 file。
-- `isotope-project workspace-add` 已支持跨进程复用已有项目。
-- `POST /projects/{project_id}/workspace` 已接入 HTTP facade。
-- `isotope-demo --scenario project-workspace-append` 可展示追加后的组合结果。
-- 运行时启动时会从已有索引和事件日志推进 ID 计数器，避免 CLI 重启后
-  `session/run/evt/task/project/artifact` 等 ID 撞号。
-- 仍只返回低敏摘要，不展示任务消息、文件正文或 artifact 全文。
+- `src/isotope/apps/api.py` 提供 `ApiApp` 和 `create_api_app(...)`。
+- `ApiApp` 兼容 ASGI（Python Web 服务通用接口），可被后续服务层托管。
+- `apps/api/` 已建立薄入口和说明，不承载产品逻辑。
+- `isotope-api routes --root <dir> --json` 可列出当前 API 路由。
+- 当前仍复用 `interfaces/http.py`，不监听端口，也不引入 FastAPI 依赖。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
   [naming-and-structure-review](./naming-and-structure-review.md)、
   [terminology](./terminology.md) 和 [status](./status.md)。
 
 验收：
 
-- `tests/isotope/test_project_workspace_flow.py`、
-  `tests/isotope/test_projects_feature_cli.py`、
-  `tests/isotope/test_project_workspace_demo_scenario.py` 和 HTTP route 测试需要通过。
+- `tests/isotope/test_apps_api_boundary.py` 和 packaging smoke 测试需要通过。
 - 共享路径改动后需要跑全量测试。
 - `AGENTS.md` 仍需保持 100 行以内。
 
@@ -163,15 +161,15 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把真实功能逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步若继续功能层工作，可开始把这些产品流程接到 `apps/api/`
-  的真实后端边界，或补一个更适合初学者阅读的中文运行讲解。
+- 下一步若继续功能层工作，可给 `ApiApp` 增加更贴近真实服务的请求/响应测试，
+  或补一个更适合初学者阅读的中文运行讲解。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：
 
 - `apps/cli/`：命令行入口，当前包含 demo、capability、LLM smoke 和 task。
-- `apps/api/`：后端入口；当前真实 API 仍在 `interfaces/http.py`
-  这个进程内 facade 中。
+- `apps/api/`：后端入口；当前薄 ASGI 入口在 `src/isotope/apps/api.py`，
+  真实路由仍复用 `interfaces/http.py`。
 - `src/isotope/core/`：产品主流程；当前薄包 `InProcessServer`，
   已有 conversation、turn、task 和 response 状态。
 - `src/isotope/agents/loop/`：agent loop 活跃实现目录。

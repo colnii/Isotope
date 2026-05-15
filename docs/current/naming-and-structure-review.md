@@ -344,6 +344,18 @@ src/isotope/
 - 运行时启动时会推进已有 ID 计数器，避免 CLI 跨进程追加时撞号。
 - 暂不做完整项目模板、成员权限、UI 或长期 workspace 资产协议。
 
+### 批次十五：apps/api 薄后端边界
+
+状态：已执行第一片。
+
+目标：
+
+- 新增 `src/isotope/apps/api.py` 作为可安装 API 应用入口。
+- 新增 `apps/api/` 薄入口目录和说明。
+- 新增 ASGI 兼容 `ApiApp`，把真实请求转发到 `interfaces/http.py`。
+- 新增 `isotope-api routes`，用于检查当前后端路由。
+- 暂不引入 FastAPI / Uvicorn，不监听端口，不把业务逻辑放进 `apps/`。
+
 ## 当前推荐决策
 
 我建议先确认这一条：

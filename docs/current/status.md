@@ -49,6 +49,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     低敏摘要、可选 search 结果、空状态和最近更新时间，并通过
     `isotope-workbench`、`GET /workbench`、`POST /workbench` 和
     `isotope-demo --scenario workbench --trace` 调用。
+15. `apps/api` 已有薄后端入口，当前提供 ASGI 兼容 `ApiApp`、
+    `create_api_app(...)` 和 `isotope-api routes`，真实路由仍复用
+    `interfaces/http.py`。
 
 ## 文档策略
 
@@ -74,6 +77,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q
 PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2 --trace
 PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario workbench --trace
+PYTHONPATH=src .venv/bin/python -m isotope.apps.api routes --root /tmp/isotope-api --json
 .venv/bin/isotope-demo --scenario v0.2 --trace
 git status --short
 ```
