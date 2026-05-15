@@ -39,6 +39,15 @@ class WorkbenchView:
             },
         }
 
+    @property
+    def counts(self) -> dict[str, int]:
+        return {
+            "projects": len(self.projects),
+            "tasks": len(self.tasks),
+            "files": len(self.files),
+            "search_results": len(self.search_results),
+        }
+
 
 class WorkbenchFlow:
     """Thin home-view flow over low-sensitive feature summaries."""

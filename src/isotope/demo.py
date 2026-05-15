@@ -74,6 +74,7 @@ def main(argv: list[str] | None = None) -> int:
             "llm-product-chat-app-entry",
             "llm-terminal-tool-loop",
             "workbench",
+            "project-workspace",
         ),
         default="v0.1",
         help="demo scenario to run",
@@ -171,7 +172,66 @@ def _run_scenario(root: Path, *, scenario: str) -> dict[str, Any]:
         return _run_llm_terminal_tool_loop_demo(root)
     if scenario == "workbench":
         return _run_workbench_demo(root)
+    if scenario == "project-workspace":
+        return _run_project_workspace_demo(root)
     raise ValueError(f"unsupported scenario: {scenario}")
+
+
+def _run_project_workspace_demo(root: Path) -> dict[str, Any]:
+    root.mkdir(parents=True, exist_ok=True)
+    app = create_http_app(root)
+    response = app.request(
+        "POST",
+        "/projects/workspace",
+        {
+            "project_name": "portfolio demo",
+            "project_summary": "autumn recruiting workspace",
+            "task_goal": "build portfolio story",
+            "task_message": "private task note",
+            "file_name": "portfolio-notes.md",
+            "file_summary": "portfolio notes",
+            "file_content": "private file content",
+            "search_query": "portfolio",
+        },
+    )
+    workspace = response.body["workspace"]  # type: ignore[index]
+    detail = workspace["project_detail"]
+    workbench = workspace["workbench"]
+    project = detail["project"]
+    tasks = detail["tasks"]
+    files = detail["files"]
+    search_result_types = [
+        result["result_type"]
+        for result in workbench["search_results"]
+    ]
+    workspace_ok = (
+        response.status_code == 201
+        and len(tasks) == 1
+        and len(files) == 1
+        and project["task_ids"] == [tasks[0]["task_id"]]
+        and project["file_ids"] == [files[0]["file_id"]]
+        and workbench["counts"]
+        == {
+            "projects": 1,
+            "tasks": 1,
+            "files": 1,
+            "search_results": 3,
+        }
+        and search_result_types == ["project", "task", "file"]
+    )
+
+    return {
+        "scenario": "project-workspace",
+        "transport": "in_process_http_facade",
+        "workspace_ok": workspace_ok,
+        "project_task_count": len(project["task_ids"]),
+        "project_file_count": len(project["file_ids"]),
+        "workbench_counts": dict(workbench["counts"]),
+        "search_result_types": search_result_types,
+        "post_workspace_status_code": response.status_code,
+        "content_policy": "summary_only",
+        "memory_status": "boundary_only",
+    }
 
 
 def _run_workbench_demo(root: Path) -> dict[str, Any]:
@@ -3101,6 +3161,8 @@ def _format_plain_text(result: dict[str, Any]) -> str:
         return _format_llm_terminal_tool_loop_plain_text(result)
     if result.get("scenario") == "workbench":
         return _format_workbench_plain_text(result)
+    if result.get("scenario") == "project-workspace":
+        return _format_project_workspace_plain_text(result)
     if result.get("scenario") == "v0.2":
         return _format_v0_2_plain_text(result)
     lines = [
@@ -3152,6 +3214,8 @@ def _format_trace(result: dict[str, Any]) -> str:
         return _format_llm_terminal_tool_loop_trace(result)
     if scenario == "workbench":
         return _format_workbench_trace(result)
+    if scenario == "project-workspace":
+        return _format_project_workspace_trace(result)
     if scenario == "v0.2":
         return _format_v0_2_trace(result)
     return _format_v0_1_trace(result)
@@ -3501,6 +3565,28 @@ def _format_workbench_trace(result: dict[str, Any]) -> str:
         ),
         f"search result types: {', '.join(result['search_result_types'])}",
         f"updated_at present: {str(result['updated_at_present']).lower()}",
+        f"content policy: {result['content_policy']}",
+    ]
+    return _format_trace_steps(result["scenario"], steps)
+
+
+def _format_project_workspace_trace(result: dict[str, Any]) -> str:
+    counts = result["workbench_counts"]
+    steps = [
+        "POST /projects/workspace 创建并关联 project/task/file",
+        (
+            "project detail: "
+            f"tasks={result['project_task_count']} "
+            f"files={result['project_file_count']}"
+        ),
+        (
+            "workbench: "
+            f"projects={counts['projects']} "
+            f"tasks={counts['tasks']} "
+            f"files={counts['files']} "
+            f"search_results={counts['search_results']}"
+        ),
+        f"search result types: {', '.join(result['search_result_types'])}",
         f"content policy: {result['content_policy']}",
     ]
     return _format_trace_steps(result["scenario"], steps)
@@ -3935,6 +4021,29 @@ def _format_workbench_plain_text(result: dict[str, Any]) -> str:
         f"updated_at_present: {str(result['updated_at_present']).lower()}",
         f"get_workbench_status_code: {result['get_workbench_status_code']}",
         f"post_workbench_status_code: {result['post_workbench_status_code']}",
+        f"content_policy: {result['content_policy']}",
+        f"memory_status: {result['memory_status']}",
+    ]
+    return "\n".join(lines)
+
+
+def _format_project_workspace_plain_text(result: dict[str, Any]) -> str:
+    counts = result["workbench_counts"]
+    lines = [
+        f"scenario: {result['scenario']}",
+        f"transport: {result['transport']}",
+        f"workspace_ok: {str(result['workspace_ok']).lower()}",
+        f"project_task_count: {result['project_task_count']}",
+        f"project_file_count: {result['project_file_count']}",
+        (
+            "workbench_counts: "
+            f"projects={counts['projects']} "
+            f"tasks={counts['tasks']} "
+            f"files={counts['files']} "
+            f"search_results={counts['search_results']}"
+        ),
+        f"search_result_types: {', '.join(result['search_result_types'])}",
+        f"post_workspace_status_code: {result['post_workspace_status_code']}",
         f"content_policy: {result['content_policy']}",
         f"memory_status: {result['memory_status']}",
     ]

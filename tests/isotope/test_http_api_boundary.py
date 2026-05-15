@@ -17,6 +17,7 @@ MINIMAL_ROUTES = {
     ("GET", "/projects"),
     ("GET", "/projects/{project_id}"),
     ("GET", "/projects/{project_id}/detail"),
+    ("POST", "/projects/workspace"),
     ("POST", "/projects/{project_id}/tasks"),
     ("POST", "/projects/{project_id}/files"),
     ("POST", "/search"),
@@ -614,6 +615,48 @@ def test_http_api_workbench_route_returns_home_view(tmp_path):
         },
     }
     assert isinstance(updated_at, str)
+    _assert_no_task_content_keys(response)
+
+
+def test_http_api_project_workspace_route_returns_detail_and_workbench(tmp_path):
+    app = _create_app(tmp_path)
+
+    response = _successful_json(
+        _request(
+            app,
+            "POST",
+            "/projects/workspace",
+            {
+                "project_name": "portfolio demo",
+                "project_summary": "autumn recruiting workspace",
+                "task_goal": "build portfolio story",
+                "task_message": "private task note",
+                "file_name": "portfolio-notes.md",
+                "file_summary": "portfolio notes",
+                "file_content": "private file content",
+                "search_query": "portfolio",
+            },
+        )
+    )
+    workspace = response["workspace"]
+    project = workspace["project_detail"]["project"]
+    task = workspace["project_detail"]["tasks"][0]
+    file_summary = workspace["project_detail"]["files"][0]
+
+    assert response["status"] == "ok"
+    assert project["task_ids"] == [task["task_id"]]
+    assert project["file_ids"] == [file_summary["file_id"]]
+    assert workspace["workbench"]["counts"] == {
+        "projects": 1,
+        "tasks": 1,
+        "files": 1,
+        "search_results": 3,
+    }
+    assert [item["result_type"] for item in workspace["workbench"]["search_results"]] == [
+        "project",
+        "task",
+        "file",
+    ]
     _assert_no_task_content_keys(response)
 
 

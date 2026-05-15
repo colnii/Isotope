@@ -34,8 +34,11 @@
 | `ProjectFlow` | 项目功能入口，把任务和文件关联成用户可感知项目摘要 | 产品功能 | `src/isotope/features/projects/flow.py` |
 | `ProjectSummary` | 项目摘要，面向用户展示项目名、摘要、task id 和 file id | 产品功能 | `src/isotope/features/projects/flow.py` |
 | `ProjectDetail` | 项目组合摘要，展开关联 task/file 的低敏摘要信息 | 产品功能 | `src/isotope/features/projects/flow.py` |
-| `isotope-project` | 项目命令行入口，可创建、读取、列出、关联和查看组合摘要 | 应用入口 | `src/isotope/features/projects/runner.py`, `apps/cli/isotope_project.py` |
+| `ProjectWorkspaceFlow` | 项目工作区组合流，一次创建 project、task、file 并返回项目详情和工作台视图 | 产品功能 | `src/isotope/features/projects/workspace.py` |
+| `ProjectWorkspace` | 项目工作区组合结果，包含 `project_detail` 和 `workbench` 两个视图 | 产品功能 | `src/isotope/features/projects/workspace.py` |
+| `isotope-project` | 项目命令行入口，可创建、读取、列出、关联、查看组合摘要和创建 workspace | 应用入口 | `src/isotope/features/projects/runner.py`, `apps/cli/isotope_project.py` |
 | `POST /projects` | 项目 API 入口，创建一个项目摘要 | 接口 | `src/isotope/interfaces/http.py` |
+| `POST /projects/workspace` | 项目工作区 API 入口，一次创建项目、任务、文件并返回两个视图 | 接口 | `src/isotope/interfaces/http.py` |
 | `GET /projects` | 项目 API 入口，列出项目摘要 | 接口 | `src/isotope/interfaces/http.py` |
 | `GET /projects/{project_id}` | 项目 API 入口，读取单个项目摘要 | 接口 | `src/isotope/interfaces/http.py` |
 | `GET /projects/{project_id}/detail` | 项目 API 入口，读取项目及关联 task/file 低敏摘要 | 接口 | `src/isotope/interfaces/http.py` |

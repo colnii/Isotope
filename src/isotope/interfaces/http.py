@@ -15,6 +15,7 @@ from typing import Any
 from ..core import ProductCore
 from ..features.files.flow import FileFlow, FileSummary
 from ..features.projects.flow import ProjectDetail, ProjectFlow, ProjectSummary
+from ..features.projects.workspace import ProjectWorkspace, ProjectWorkspaceFlow
 from ..features.search.flow import SearchFlow, SearchResult
 from ..features.tasks.flow import TaskFlow, TaskSummary
 from ..features.workbench.flow import WorkbenchFlow, WorkbenchView
@@ -48,6 +49,7 @@ class HttpApiApp:
         ("GET", "/projects"),
         ("GET", "/projects/{project_id}"),
         ("GET", "/projects/{project_id}/detail"),
+        ("POST", "/projects/workspace"),
         ("POST", "/projects/{project_id}/tasks"),
         ("POST", "/projects/{project_id}/files"),
         ("POST", "/search"),
@@ -122,6 +124,7 @@ class HttpApiApp:
         self.task_flow = TaskFlow(product_core)
         self.file_flow = FileFlow(product_core)
         self.project_flow = ProjectFlow(product_core)
+        self.project_workspace_flow = ProjectWorkspaceFlow(product_core)
         self.search_flow = SearchFlow(product_core)
         self.workbench_flow = WorkbenchFlow(product_core)
         self._idempotency_cache: dict[str, dict[str, Any]] = {}
@@ -259,6 +262,36 @@ class HttpApiApp:
                     summary=body["summary"],
                 )
                 return self._json(201, {"status": "ok", "project": self._project_summary_to_dict(summary)})
+            if method == "POST" and parts == ["projects", "workspace"]:
+                body = self._require_body(
+                    json_body,
+                    required_fields=(
+                        "project_name",
+                        "project_summary",
+                        "task_goal",
+                        "task_message",
+                        "file_name",
+                        "file_summary",
+                        "file_content",
+                    ),
+                )
+                workspace = self.project_workspace_flow.create_workspace(
+                    project_name=body["project_name"],
+                    project_summary=body["project_summary"],
+                    task_goal=body["task_goal"],
+                    task_message=body["task_message"],
+                    file_name=body["file_name"],
+                    file_summary=body["file_summary"],
+                    file_content=body["file_content"],
+                    search_query=json_body.get("search_query"),
+                )
+                return self._json(
+                    201,
+                    {
+                        "status": "ok",
+                        "workspace": self._project_workspace_to_dict(workspace),
+                    },
+                )
             if method == "GET" and parts == ["projects"]:
                 summaries = [
                     self._project_summary_to_dict(summary)
@@ -767,6 +800,9 @@ class HttpApiApp:
 
     def _project_detail_to_dict(self, detail: ProjectDetail) -> dict[str, Any]:
         return detail.to_dict()
+
+    def _project_workspace_to_dict(self, workspace: ProjectWorkspace) -> dict[str, Any]:
+        return workspace.to_dict()
 
     def _search_result_to_dict(self, result: SearchResult) -> dict[str, Any]:
         return result.to_dict()

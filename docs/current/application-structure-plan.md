@@ -170,7 +170,9 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 - 项目功能入口：`src/isotope/features/projects/flow.py` 已提供
   `ProjectFlow` 和 `ProjectSummary`，可创建项目摘要并关联 task/file id；
   `ProjectDetail` 可展开关联 task/file 的低敏摘要；
-  `isotope-project` 和 `/projects` HTTP facade 已可调用；当前不是完整项目管理系统。
+  `ProjectWorkspaceFlow` 可一次创建 project、task、file 并返回
+  project detail 与 workbench 两个视图；`isotope-project`、`/projects`
+  和 `POST /projects/workspace` HTTP facade 已可调用；当前不是完整项目管理系统。
 - 搜索功能入口：`src/isotope/features/search/flow.py` 已提供
   `SearchFlow` 和 `SearchResult`，可统一搜索 project/task/file
   低敏摘要，并支持类型过滤和结果数量限制；`isotope-search` 和

@@ -187,3 +187,50 @@ def test_project_cli_reads_project_detail_with_linked_summaries(tmp_path):
         },
     }
     _assert_low_sensitive(json.loads(detail_result.stdout))
+
+
+def test_project_cli_creates_workspace_with_detail_and_workbench(tmp_path):
+    result = _run_cli(
+        "workspace",
+        "--root",
+        str(tmp_path),
+        "--project-name",
+        "portfolio demo",
+        "--project-summary",
+        "autumn recruiting workspace",
+        "--task-goal",
+        "build portfolio story",
+        "--task-message",
+        "private task note",
+        "--file-name",
+        "portfolio-notes.md",
+        "--file-summary",
+        "portfolio notes",
+        "--file-content",
+        "private file content",
+        "--search-query",
+        "portfolio",
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    project = payload["workspace"]["project_detail"]["project"]
+    task = payload["workspace"]["project_detail"]["tasks"][0]
+    file_summary = payload["workspace"]["project_detail"]["files"][0]
+
+    assert payload["status"] == "ok"
+    assert project["task_ids"] == [task["task_id"]]
+    assert project["file_ids"] == [file_summary["file_id"]]
+    assert payload["workspace"]["workbench"]["counts"] == {
+        "projects": 1,
+        "tasks": 1,
+        "files": 1,
+        "search_results": 3,
+    }
+    assert [item["result_type"] for item in payload["workspace"]["workbench"]["search_results"]] == [
+        "project",
+        "task",
+        "file",
+    ]
+    _assert_low_sensitive(payload)

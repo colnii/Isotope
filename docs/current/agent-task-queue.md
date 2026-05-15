@@ -124,26 +124,32 @@
     可展示创建项目/任务/文件、搜索和工作台汇总的人类可读过程。
 65. workbench 产品化小片：`WorkbenchView` 已包含 `empty_state`
     和 `updated_at`，CLI/API/demo 都可看到空状态和最近更新时间。
+66. project workspace 组合工作流：`ProjectWorkspaceFlow`、
+    `isotope-project workspace`、`POST /projects/workspace` 和
+    `isotope-demo --scenario project-workspace --trace` 可一次创建项目、
+    任务、文件并返回 project detail 与 workbench 两个视图。
 
-## 最近完成：workbench 空状态和更新时间
+## 最近完成：project workspace 组合工作流
 
 完成内容：
 
-- `WorkbenchView.to_dict()` 返回 `empty_state` 和 `updated_at`。
-- 空工作台会给出中文空状态和建议的第一步动作。
-- 有项目、任务或文件摘要时，`updated_at` 来自底层摘要索引的最近修改时间。
-- `isotope-workbench show` 的普通输出会显示是否为空和最近更新时间。
-- `isotope-demo --scenario workbench` 会显示 `empty_state` 和
-  `updated_at_present`，仍不展示任务消息、文件正文或 artifact 全文。
+- `ProjectWorkspaceFlow.create_workspace(...)` 可创建 project、task 和 file，
+  并自动把 task/file id 关联回项目。
+- 返回值同时包含 `project_detail` 和 `workbench`，便于从项目详情和首页汇总
+  两个入口查看同一组内容。
+- `isotope-project workspace` 已支持一条命令创建组合工作区。
+- `POST /projects/workspace` 已接入 HTTP facade。
+- `isotope-demo --scenario project-workspace --trace` 可展示人类可读组合流程。
+- 仍只返回低敏摘要，不展示任务消息、文件正文或 artifact 全文。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
   [naming-and-structure-review](./naming-and-structure-review.md)、
   [terminology](./terminology.md) 和 [status](./status.md)。
 
 验收：
 
-- `tests/isotope/test_workbench_feature_flow.py`、
-  `tests/isotope/test_workbench_feature_cli.py`、
-  `tests/isotope/test_workbench_demo_scenario.py` 和 HTTP route 测试需要通过。
+- `tests/isotope/test_project_workspace_flow.py`、
+  `tests/isotope/test_projects_feature_cli.py`、
+  `tests/isotope/test_project_workspace_demo_scenario.py` 和 HTTP route 测试需要通过。
 - 共享路径改动后需要跑全量测试。
 - `AGENTS.md` 仍需保持 100 行以内。
 
@@ -153,8 +159,8 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把真实功能逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步若继续功能层工作，可给工作台增加更适合初学者阅读的中文讲解输出，
-  或把 projects/tasks/files 串成一个更像产品的组合工作流。
+- 下一步若继续功能层工作，可给组合工作流增加读取/复用已有 project 的入口，
+  或开始把这些产品流程接到 `apps/api/` 的真实后端边界。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

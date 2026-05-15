@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .flow import ProjectFlow
+from .workspace import ProjectWorkspaceFlow
 
 
 def _print_json(payload: dict[str, Any]) -> None:
@@ -53,6 +54,21 @@ def _build_parser() -> argparse.ArgumentParser:
     file_parser.add_argument("--project-id", help="Project id.")
     file_parser.add_argument("--file-id", help="File id.")
     file_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+
+    workspace_parser = subparsers.add_parser(
+        "workspace",
+        help="Create a project with one linked task and file.",
+    )
+    workspace_parser.add_argument("--root", required=True, help="Runtime root directory.")
+    workspace_parser.add_argument("--project-name", required=True, help="Project name.")
+    workspace_parser.add_argument("--project-summary", required=True, help="Project summary.")
+    workspace_parser.add_argument("--task-goal", required=True, help="Task goal.")
+    workspace_parser.add_argument("--task-message", required=True, help="Initial task message.")
+    workspace_parser.add_argument("--file-name", required=True, help="File name.")
+    workspace_parser.add_argument("--file-summary", required=True, help="File summary.")
+    workspace_parser.add_argument("--file-content", required=True, help="File content.")
+    workspace_parser.add_argument("--search-query", help="Workbench search query.")
+    workspace_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     return parser
 
 
@@ -96,6 +112,18 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError("add-file requires --file-id")
             summary = flow.add_file(args.project_id, args.file_id)
             return _emit_project(args, summary.to_dict())
+        if args.command == "workspace":
+            workspace = ProjectWorkspaceFlow(flow.core).create_workspace(
+                project_name=args.project_name,
+                project_summary=args.project_summary,
+                task_goal=args.task_goal,
+                task_message=args.task_message,
+                file_name=args.file_name,
+                file_summary=args.file_summary,
+                file_content=args.file_content,
+                search_query=args.search_query,
+            )
+            return _emit_project_workspace(args, workspace.to_dict())
     except ValueError as exc:
         if getattr(args, "json", False):
             _print_json(
@@ -130,6 +158,20 @@ def _emit_project_detail(args: argparse.Namespace, detail: dict[str, Any]) -> in
         print(
             f"{project['project_id']}: {project['name']} "
             f"({len(detail['tasks'])} tasks, {len(detail['files'])} files)"
+        )
+    return 0
+
+
+def _emit_project_workspace(args: argparse.Namespace, workspace: dict[str, Any]) -> int:
+    if args.json:
+        _print_json({"status": "ok", "workspace": workspace})
+    else:
+        project = workspace["project_detail"]["project"]
+        counts = workspace["workbench"]["counts"]
+        print(
+            f"{project['project_id']}: {project['name']} "
+            f"({counts['tasks']} tasks, {counts['files']} files, "
+            f"{counts['search_results']} search results)"
         )
     return 0
 

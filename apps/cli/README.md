@@ -4,11 +4,11 @@
 
 当前入口保持很薄，只转发到 `src/isotope/` 内的稳定模块：
 
-- `isotope-demo`：运行 demo 场景，包含 `v0.2` 和 `workbench` 等流程。
+- `isotope-demo`：运行 demo 场景，包含 `v0.2`、`workbench` 和 `project-workspace` 等流程。
 - `isotope-capability`：运行 capability 能力目录，对应 `isotope.capabilities.runner:main`。
 - `isotope-task`：运行、读取和列出 tasks 摘要，对应 `isotope.features.tasks.runner:main`。
 - `isotope-file`：运行 files 功能入口，对应 `isotope.features.files.runner:main`。
-- `isotope-project`：运行 projects 功能入口，支持项目摘要和组合摘要。
+- `isotope-project`：运行 projects 功能入口，支持项目摘要、组合摘要和 workspace 组合创建。
 - `isotope-search`：运行 search 功能入口，搜索低敏摘要并支持类型和数量过滤。
 - `isotope-workbench`：运行 workbench 功能入口，读取产品首页低敏汇总、空状态和更新时间。
 - `isotope-llm-smoke`：运行 LLM smoke 检查，对应 `isotope.llm_live_smoke:main`。

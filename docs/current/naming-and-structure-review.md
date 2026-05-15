@@ -314,7 +314,7 @@ src/isotope/
 
 ### 批次十三：workbench 工作台薄入口
 
-状态：已执行前两片。
+状态：已执行前三片。
 
 目标：
 
@@ -327,6 +327,19 @@ src/isotope/
 - 新增 `isotope-demo --scenario workbench`，展示创建摘要、搜索和工作台汇总。
 - 新增 `empty_state` 和 `updated_at`，让工作台空数据和最近更新时间可展示。
 - 暂不做完整 Web UI、权限分组、排序策略或独立 FastAPI 服务。
+
+### 批次十四：project workspace 组合工作流
+
+状态：已执行第一片。
+
+目标：
+
+- 新增 `ProjectWorkspaceFlow` 作为 project/task/file 的薄组合入口。
+- 新增 `ProjectWorkspace`，同时返回 `project_detail` 和 `workbench`。
+- 新增 `isotope-project workspace` CLI。
+- 新增 `POST /projects/workspace` HTTP facade。
+- 新增 `isotope-demo --scenario project-workspace`，展示组合流程。
+- 暂不做完整项目模板、成员权限、UI 或长期 workspace 资产协议。
 
 ## 当前推荐决策
 
