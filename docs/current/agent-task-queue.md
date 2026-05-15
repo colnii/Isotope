@@ -101,8 +101,10 @@
     和 `FileSummary`，可保存文本为 artifact-backed file summary。
 55. files 摘要索引：`FileFlow` 已提供 `list_files()`，并把
     `FileSummary` 低敏摘要持久化到本地索引。
+56. files CLI/API 入口：`isotope-file`、`POST /files`、`GET /files`
+    和 `GET /files/{file_id}` 已接到 `FileFlow`。
 
-## 最近完成：files 摘要索引
+## 最近完成：files CLI/API 入口
 
 完成内容：
 
@@ -110,15 +112,18 @@
 - `create_text_file(...)` 可把文本保存成 artifact，并返回文件摘要。
 - `get_file(...)` 可读取文件摘要；重新创建 `FileFlow` 后仍可读取。
 - `list_files()` 可列出当前本地索引里的文件摘要。
+- `isotope-file create/get/list` 可从命令行创建、读取和列出文件摘要。
+- `POST /files`、`GET /files` 和 `GET /files/{file_id}` 已接到 HTTP facade。
 - `FileSummary` 只包含文件名、摘要、artifact 引用和 run id。
-- 本地索引只保存低敏摘要，不保存原始文件全文。
+- CLI/API 输出只返回低敏摘要，不返回原始文件全文。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
   [naming-and-structure-review](./naming-and-structure-review.md)、
   [terminology](./terminology.md) 和 [status](./status.md)。
 
 验收：
 
-- `tests/isotope/test_files_feature_flow.py` 需要通过。
+- `tests/isotope/test_files_feature_flow.py`、
+  `tests/isotope/test_files_feature_cli.py` 和 HTTP route 测试需要通过。
 - 共享路径改动后需要跑全量测试。
 - `AGENTS.md` 仍需保持 100 行以内。
 
@@ -128,8 +133,8 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把真实功能逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步若继续目录工作，应给 `features/files` 增加 CLI/API 入口，
-  或给 tasks 增加更像产品的列表/历史能力。
+- 下一步若继续目录工作，应给 tasks 增加更像产品的列表/历史能力，
+  或开始 `features/projects` 的第一片。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

@@ -14,6 +14,7 @@ isotope-demo = "isotope.demo:main"
 isotope-capability = "isotope.capabilities.runner:main"
 isotope-llm-smoke = "isotope.llm_live_smoke:main"
 isotope-task = "isotope.features.tasks.runner:main"
+isotope-file = "isotope.features.files.runner:main"
 
 [project.optional-dependencies]
 test = ["pytest>=8.0"]

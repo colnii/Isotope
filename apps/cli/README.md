@@ -7,6 +7,7 @@
 - `isotope-demo`：运行 demo 场景，对应 `isotope.demo:main`。
 - `isotope-capability`：运行 capability 能力目录，对应 `isotope.capabilities.runner:main`。
 - `isotope-task`：运行 tasks 功能入口，对应 `isotope.features.tasks.runner:main`。
+- `isotope-file`：运行 files 功能入口，对应 `isotope.features.files.runner:main`。
 - `isotope-llm-smoke`：运行 LLM smoke 检查，对应 `isotope.llm_live_smoke:main`。
 
 本目录用于说明和本地直接调用；正式安装入口在 `pyproject.toml` 的

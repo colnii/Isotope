@@ -35,7 +35,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
 10. `features/tasks` 已有薄入口、`isotope-task` CLI 和 tasks API，
     当前只提供任务摘要流程。
 11. `features/files` 已有薄入口，当前可把文本保存成
-    artifact-backed file summary，并持久化低敏摘要索引。
+    artifact-backed file summary，已接入 `isotope-file` 和 `/files`
+    HTTP facade。
 
 ## 文档策略
 

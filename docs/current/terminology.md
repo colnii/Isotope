@@ -23,6 +23,10 @@
 | `GET /tasks/{task_id}` | 任务 API 入口，读取任务摘要 | 接口 | `src/isotope/interfaces/http.py` |
 | `FileFlow` | 文件功能入口，把文本保存成有摘要和引用的文件记录 | 产品功能 | `src/isotope/features/files/flow.py` |
 | `FileSummary` | 文件摘要，面向用户展示文件名、摘要、产物引用和 run id | 产品功能 | `src/isotope/features/files/flow.py` |
+| `isotope-file` | 文件命令行入口，可创建、读取和列出文件摘要 | 应用入口 | `src/isotope/features/files/runner.py`, `apps/cli/isotope_file.py` |
+| `POST /files` | 文件 API 入口，创建一个文件摘要 | 接口 | `src/isotope/interfaces/http.py` |
+| `GET /files` | 文件 API 入口，列出文件摘要 | 接口 | `src/isotope/interfaces/http.py` |
+| `GET /files/{file_id}` | 文件 API 入口，读取单个文件摘要 | 接口 | `src/isotope/interfaces/http.py` |
 | `file index` | 文件摘要索引，持久化低敏文件摘要，供重启后查询 | 产品功能/工作区资源 | `src/isotope/features/files/flow.py` |
 | `artifact-backed file summary` | 由 artifact 存储承载正文、外层只暴露摘要和引用的文件摘要 | 产品功能/工作区资源 | `src/isotope/features/files/flow.py`, `src/isotope/workspace/artifacts.py` |
 | `assistant` | 助手，只作为产品描述或历史术语，不作为新目录叙事 | 产品描述/历史术语 | 已删除旧目录 |

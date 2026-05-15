@@ -163,7 +163,8 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   `TaskFlow`，当前仍属于进程内 HTTP facade，不是独立 FastAPI 服务。
 - 文件功能入口：`src/isotope/features/files/flow.py` 已提供
   `FileFlow` 和 `FileSummary`，可把文本保存为 artifact-backed file
-  summary，并持久化低敏摘要索引；当前不是完整文件管理系统。
+  summary，并持久化低敏摘要索引；`isotope-file` 和 `/files`
+  HTTP facade 已可调用；当前不是完整文件管理系统。
 - 智能体循环：`agent_loop_*` 与 planner contract 已迁入 `src/isotope/agents/loop/`；
   旧顶层、`core/loop_*` 和 `assistant/` 入口已删除。
 - 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`，相关旧根路径已删除。

@@ -263,7 +263,7 @@ src/isotope/
 
 ### 批次十：files 功能薄入口
 
-状态：已执行前两片。
+状态：已执行前三片。
 
 目标：
 
@@ -272,7 +272,9 @@ src/isotope/
 - 复用 `ProductCore` 和现有 artifact 写入能力。
 - 默认只返回文件名、摘要、artifact 引用和 run id。
 - 新增 `list_files()` 和本地低敏摘要索引。
-- 暂不做完整文件管理、目录树、用户界面或独立 API 服务。
+- 新增 `isotope-file create/get/list` CLI。
+- 新增 `POST /files`、`GET /files` 和 `GET /files/{file_id}` HTTP facade。
+- 暂不做完整文件管理、目录树、用户界面或独立 FastAPI 服务。
 
 ## 当前推荐决策
 

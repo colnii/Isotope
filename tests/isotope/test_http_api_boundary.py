@@ -9,6 +9,9 @@ import pytest
 MINIMAL_ROUTES = {
     ("POST", "/tasks"),
     ("GET", "/tasks/{task_id}"),
+    ("POST", "/files"),
+    ("GET", "/files"),
+    ("GET", "/files/{file_id}"),
     ("POST", "/sessions"),
     ("POST", "/sessions/{session_id}/runs"),
     ("POST", "/runs/{run_id}/input"),
@@ -243,6 +246,37 @@ def test_http_api_tasks_route_creates_and_reads_task_summary(tmp_path):
     assert task["result_ref"]["ref_type"] == "artifact"
     assert fetched == {"status": "ok", "task": task}
     _assert_no_task_content_keys(created)
+
+
+def test_http_api_files_routes_create_get_and_list_file_summaries(tmp_path):
+    app = _create_app(tmp_path)
+
+    created = _successful_json(
+        _request(
+            app,
+            "POST",
+            "/files",
+            {
+                "name": "notes.md",
+                "summary": "useful notes",
+                "content": "private durable file content",
+            },
+        )
+    )
+    file_summary = created["file"]
+    fetched = _successful_json(_request(app, "GET", f"/files/{file_summary['file_id']}"))
+    listed = _successful_json(_request(app, "GET", "/files"))
+
+    assert created["status"] == "ok"
+    assert file_summary["file_id"].startswith("artifact_")
+    assert file_summary["name"] == "notes.md"
+    assert file_summary["summary"] == "useful notes"
+    assert file_summary["artifact_ref"]["ref_type"] == "artifact"
+    assert fetched == {"status": "ok", "file": file_summary}
+    assert listed == {"status": "ok", "files": [file_summary]}
+    _assert_no_task_content_keys(created)
+    _assert_no_task_content_keys(fetched)
+    _assert_no_task_content_keys(listed)
 
 
 def test_get_run_returns_projector_read_model_from_event_log_not_executor_memory(tmp_path):
