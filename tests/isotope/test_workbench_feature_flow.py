@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from isotope.features.files.flow import FileFlow
@@ -54,11 +55,16 @@ def test_workbench_flow_returns_low_sensitive_home_view(tmp_path):
     assert view.tasks == (task,)
     assert view.files == (file_summary,)
     assert [result.result_type for result in view.search_results] == ["task"]
+    assert view.empty_state is None
+    assert view.updated_at is not None
+    datetime.fromisoformat(view.updated_at)
     assert view.to_dict() == {
         "projects": [project.to_dict()],
         "tasks": [task.to_dict()],
         "files": [file_summary.to_dict()],
         "search_results": [view.search_results[0].to_dict()],
+        "empty_state": None,
+        "updated_at": view.updated_at,
         "counts": {
             "projects": 1,
             "tasks": 1,
@@ -67,3 +73,26 @@ def test_workbench_flow_returns_low_sensitive_home_view(tmp_path):
         },
     }
     _assert_low_sensitive(view.to_dict())
+
+
+def test_workbench_flow_returns_empty_state_without_summaries(tmp_path):
+    view = WorkbenchFlow.in_process(tmp_path).summary()
+
+    assert view.projects == ()
+    assert view.tasks == ()
+    assert view.files == ()
+    assert view.search_results == ()
+    assert view.updated_at is None
+    assert view.empty_state == {
+        "is_empty": True,
+        "title": "还没有工作台内容",
+        "message": "先创建一个项目、任务或文件摘要，工作台会在这里汇总。",
+        "primary_action": "create_project",
+    }
+    assert view.to_dict()["counts"] == {
+        "projects": 0,
+        "tasks": 0,
+        "files": 0,
+        "search_results": 0,
+    }
+    assert view.to_dict()["empty_state"] == view.empty_state

@@ -298,7 +298,7 @@ src/isotope/
 
 ### 批次十二：search 功能薄入口
 
-状态：已执行前两片。
+状态：已执行前三片。
 
 目标：
 
@@ -325,6 +325,7 @@ src/isotope/
 - 新增 `isotope-workbench show` CLI。
 - 新增 `GET /workbench` 和 `POST /workbench` HTTP facade。
 - 新增 `isotope-demo --scenario workbench`，展示创建摘要、搜索和工作台汇总。
+- 新增 `empty_state` 和 `updated_at`，让工作台空数据和最近更新时间可展示。
 - 暂不做完整 Web UI、权限分组、排序策略或独立 FastAPI 服务。
 
 ## 当前推荐决策

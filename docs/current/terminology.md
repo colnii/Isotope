@@ -47,7 +47,9 @@
 | `isotope-search` | 搜索命令行入口，可搜索低敏摘要并使用 `--type` / `--limit` 控制结果 | 应用入口 | `src/isotope/features/search/runner.py`, `apps/cli/isotope_search.py` |
 | `POST /search` | 搜索 API 入口，按 query 返回低敏摘要结果，支持 `types` 和 `limit` | 接口 | `src/isotope/interfaces/http.py` |
 | `WorkbenchFlow` | 工作台功能入口，聚合 project/task/file 摘要和可选搜索结果 | 产品功能 | `src/isotope/features/workbench/flow.py` |
-| `WorkbenchView` | 工作台视图，包含摘要列表、搜索结果和 counts 数量 | 产品功能 | `src/isotope/features/workbench/flow.py` |
+| `WorkbenchView` | 工作台视图，包含摘要列表、搜索结果、空状态、最近更新时间和 counts 数量 | 产品功能 | `src/isotope/features/workbench/flow.py` |
+| `empty_state` | 空状态，工作台没有内容时给用户的下一步提示 | 产品功能 | `src/isotope/features/workbench/flow.py` |
+| `updated_at` | 最近更新时间，当前来自项目、任务和文件摘要索引的最新修改时间 | 产品功能 | `src/isotope/features/workbench/flow.py` |
 | `isotope-workbench` | 工作台命令行入口，可读取产品首页低敏汇总 | 应用入口 | `src/isotope/features/workbench/runner.py`, `apps/cli/isotope_workbench.py` |
 | `GET /workbench` | 工作台 API 入口，读取无搜索条件的低敏汇总 | 接口 | `src/isotope/interfaces/http.py` |
 | `POST /workbench` | 工作台 API 入口，可带 query/types/limit 读取汇总和搜索结果 | 接口 | `src/isotope/interfaces/http.py` |

@@ -217,6 +217,8 @@ def _run_workbench_demo(root: Path) -> dict[str, Any]:
     counts = workbench["counts"]
     search_results = workbench["search_results"]
     search_result_types = [result["result_type"] for result in search_results]
+    updated_at = workbench["updated_at"]
+    empty_state = workbench["empty_state"]
     workbench_ok = (
         project_response.status_code == 201
         and task_response.status_code == 201
@@ -230,6 +232,8 @@ def _run_workbench_demo(root: Path) -> dict[str, Any]:
             "search_results": 1,
         }
         and search_result_types == ["task"]
+        and empty_state is None
+        and isinstance(updated_at, str)
     )
 
     return {
@@ -242,6 +246,8 @@ def _run_workbench_demo(root: Path) -> dict[str, Any]:
         "search_result_count": counts["search_results"],
         "search_result_types": search_result_types,
         "workbench_counts": dict(counts),
+        "empty_state": empty_state,
+        "updated_at_present": isinstance(updated_at, str),
         "get_workbench_status_code": get_workbench_response.status_code,
         "post_workbench_status_code": post_workbench_response.status_code,
         "search_query": "portfolio",
@@ -3494,6 +3500,7 @@ def _format_workbench_trace(result: dict[str, Any]) -> str:
             f"search_results={result['search_result_count']}"
         ),
         f"search result types: {', '.join(result['search_result_types'])}",
+        f"updated_at present: {str(result['updated_at_present']).lower()}",
         f"content policy: {result['content_policy']}",
     ]
     return _format_trace_steps(result["scenario"], steps)
@@ -3924,6 +3931,8 @@ def _format_workbench_plain_text(result: dict[str, Any]) -> str:
         f"file_count: {result['file_count']}",
         f"search_result_count: {result['search_result_count']}",
         f"search_result_types: {', '.join(result['search_result_types'])}",
+        "empty_state: none" if result["empty_state"] is None else "empty_state: present",
+        f"updated_at_present: {str(result['updated_at_present']).lower()}",
         f"get_workbench_status_code: {result['get_workbench_status_code']}",
         f"post_workbench_status_code: {result['post_workbench_status_code']}",
         f"content_policy: {result['content_policy']}",

@@ -53,10 +53,17 @@ def main(argv: list[str] | None = None) -> int:
             if args.json:
                 _print_json(payload)
             else:
-                counts = view.to_dict()["counts"]
+                view_dict = view.to_dict()
+                counts = view_dict["counts"]
                 print(
                     "projects={projects} tasks={tasks} files={files} search_results={search_results}".format(
                         **counts
+                    )
+                )
+                print(
+                    "empty={empty} updated_at={updated_at}".format(
+                        empty=str(view_dict["empty_state"] is not None).lower(),
+                        updated_at=view_dict["updated_at"] or "none",
                     )
                 )
             return 0

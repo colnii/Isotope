@@ -586,6 +586,7 @@ def test_http_api_workbench_route_returns_home_view(tmp_path):
             {"query": "portfolio", "types": ["task", "file"], "limit": 1},
         )
     )
+    updated_at = response["workbench"]["updated_at"]
 
     assert response == {
         "status": "ok",
@@ -602,6 +603,8 @@ def test_http_api_workbench_route_returns_home_view(tmp_path):
                     "item": task,
                 }
             ],
+            "empty_state": None,
+            "updated_at": updated_at,
             "counts": {
                 "projects": 1,
                 "tasks": 1,
@@ -610,6 +613,7 @@ def test_http_api_workbench_route_returns_home_view(tmp_path):
             },
         },
     }
+    assert isinstance(updated_at, str)
     _assert_no_task_content_keys(response)
 
 

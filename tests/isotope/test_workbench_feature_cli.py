@@ -89,8 +89,19 @@ def test_workbench_cli_returns_home_view_as_json(tmp_path):
         "files": 1,
         "search_results": 1,
     }
+    assert payload["workbench"]["empty_state"] is None
+    assert isinstance(payload["workbench"]["updated_at"], str)
     assert [item["result_type"] for item in payload["workbench"]["search_results"]] == ["task"]
     assert [item["result_id"] for item in payload["workbench"]["search_results"]] == [
         task.task_id
     ]
     _assert_low_sensitive(payload)
+
+
+def test_workbench_cli_plain_output_shows_empty_state(tmp_path):
+    result = _run_cli("show", "--root", str(tmp_path))
+
+    assert result.returncode == 0, result.stderr
+    assert "projects=0 tasks=0 files=0 search_results=0" in result.stdout
+    assert "empty=true" in result.stdout
+    assert "updated_at=none" in result.stdout

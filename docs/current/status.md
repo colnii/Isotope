@@ -44,8 +44,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     低敏摘要，支持类型过滤和结果数量限制，并通过 `isotope-search`
     和 `POST /search` 调用。
 14. `features/workbench` 已有薄入口，当前可聚合 projects/tasks/files
-    低敏摘要和可选 search 结果，并通过 `isotope-workbench`、
-    `GET /workbench`、`POST /workbench` 和
+    低敏摘要、可选 search 结果、空状态和最近更新时间，并通过
+    `isotope-workbench`、`GET /workbench`、`POST /workbench` 和
     `isotope-demo --scenario workbench --trace` 调用。
 
 ## 文档策略

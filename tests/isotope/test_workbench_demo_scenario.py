@@ -63,6 +63,8 @@ def test_workbench_demo_plain_cli_prints_home_summary():
     assert "task_count: 1" in result.stdout
     assert "file_count: 1" in result.stdout
     assert "search_result_count: 1" in result.stdout
+    assert "empty_state: none" in result.stdout
+    assert "updated_at_present: true" in result.stdout
 
 
 def test_workbench_demo_json_exposes_low_sensitive_home_view_only():
@@ -75,6 +77,8 @@ def test_workbench_demo_json_exposes_low_sensitive_home_view_only():
     assert data["file_count"] == 1
     assert data["search_result_count"] == 1
     assert data["search_result_types"] == ["task"]
+    assert data["empty_state"] is None
+    assert data["updated_at_present"] is True
     assert data["workbench_counts"] == {
         "projects": 1,
         "tasks": 1,
@@ -93,6 +97,7 @@ def test_workbench_demo_trace_shows_product_flow_without_raw_content():
     assert "创建 project/task/file 摘要" in result.stdout
     assert "POST /workbench" in result.stdout
     assert "search_results=1" in result.stdout
+    assert "updated_at present: true" in result.stdout
     assert "private task note" not in result.stdout
     assert "private file content" not in result.stdout
 

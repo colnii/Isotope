@@ -122,25 +122,28 @@
     `GET /workbench` 和 `POST /workbench` 可返回产品首页低敏汇总。
 64. workbench demo：`isotope-demo --scenario workbench --trace`
     可展示创建项目/任务/文件、搜索和工作台汇总的人类可读过程。
+65. workbench 产品化小片：`WorkbenchView` 已包含 `empty_state`
+    和 `updated_at`，CLI/API/demo 都可看到空状态和最近更新时间。
 
-## 最近完成：workbench demo 场景
+## 最近完成：workbench 空状态和更新时间
 
 完成内容：
 
-- `isotope-demo --scenario workbench` 可打印工作台汇总摘要。
-- `isotope-demo --scenario workbench --json` 保持机器可读 JSON。
-- `isotope-demo --scenario workbench --trace` 展示人类可读运行过程。
-- demo 会创建 project、task 和 file 摘要，再通过 `POST /workbench`
-  读取带搜索结果的工作台视图。
-- demo 只展示低敏摘要和 counts，不展示任务消息、文件正文或 artifact 全文。
+- `WorkbenchView.to_dict()` 返回 `empty_state` 和 `updated_at`。
+- 空工作台会给出中文空状态和建议的第一步动作。
+- 有项目、任务或文件摘要时，`updated_at` 来自底层摘要索引的最近修改时间。
+- `isotope-workbench show` 的普通输出会显示是否为空和最近更新时间。
+- `isotope-demo --scenario workbench` 会显示 `empty_state` 和
+  `updated_at_present`，仍不展示任务消息、文件正文或 artifact 全文。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
   [naming-and-structure-review](./naming-and-structure-review.md)、
   [terminology](./terminology.md) 和 [status](./status.md)。
 
 验收：
 
-- `tests/isotope/test_workbench_demo_scenario.py`、
-  `tests/isotope/test_workbench_feature_flow.py` 和 HTTP route 测试需要通过。
+- `tests/isotope/test_workbench_feature_flow.py`、
+  `tests/isotope/test_workbench_feature_cli.py`、
+  `tests/isotope/test_workbench_demo_scenario.py` 和 HTTP route 测试需要通过。
 - 共享路径改动后需要跑全量测试。
 - `AGENTS.md` 仍需保持 100 行以内。
 
@@ -150,8 +153,8 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把真实功能逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步若继续功能层工作，可给工作台增加最近更新时间 / 空状态文案，
-  或给 demo 增加更适合初学者阅读的中文讲解输出。
+- 下一步若继续功能层工作，可给工作台增加更适合初学者阅读的中文讲解输出，
+  或把 projects/tasks/files 串成一个更像产品的组合工作流。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：
