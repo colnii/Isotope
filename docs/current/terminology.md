@@ -10,6 +10,9 @@
 | `core` | 产品主流程，串起会话、对话循环、调度和响应 | 应用核心 | `src/isotope/core/` |
 | `ProductCore` | 产品主流程门面，先包住单进程运行时供上层调用 | 应用核心 | `src/isotope/core/conversation.py` |
 | `RuntimeDispatch` | 运行时调度薄层，把产品级调用转发到当前运行入口 | 应用核心 | `src/isotope/core/dispatch.py` |
+| `CoreConversation` | 产品级对话，当前用一个 session 串起多个 run | 应用核心 | `src/isotope/core/session.py` |
+| `CoreTurn` | 对话回合，一条用户消息和一次产品级响应 | 应用核心 | `src/isotope/core/response.py` |
+| `CoreConversationState` | 对话状态，包含 run 列表、回合列表和最新响应 | 应用核心 | `src/isotope/core/response.py` |
 | `CoreTurnResponse` | 产品级回合响应，只暴露低敏状态、产物引用和摘要 | 应用核心 | `src/isotope/core/response.py` |
 | `assistant` | 助手，只作为产品描述或历史术语，不作为新目录叙事 | 产品描述/历史术语 | 已删除旧目录 |
 | `agent loop` | 智能体循环，AI 多步规划、调用工具、读取结果并继续执行 | 应用/智能体 | `src/isotope/agents/loop/step.py`, `docs/features/` |

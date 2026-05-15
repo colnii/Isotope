@@ -9,7 +9,7 @@
 
 目前最大问题不是 `src/isotope/` 这个包名，而是包内职责命名还带着迁移痕迹：
 
-- `core/` 已进入产品主流程第一片，先薄包现有单进程运行时。
+- `core/` 已进入产品主流程，先薄包现有单进程运行时。
 - `runtime/server.py` 已删除，活跃实现位于 `runtime/in_process.py`。
 - 根目录只剩正式入口：`__init__.py`、`demo.py`、`llm_live_smoke.py`。
 - 一些文件名是历史工作流命名，不像长期产品代码。
@@ -206,7 +206,7 @@ src/isotope/
 目标：
 
 - `apps/cli/` 继续保持薄入口，只转发到 `src/isotope/` 稳定模块。
-- `core/` 已建立第一片真实主流程：会话、run、调度和低敏响应。
+- `core/` 已建立真实主流程薄层：会话、对话、run、turn、调度和低敏响应。
 - `features/` 只在出现用户可感知功能时建子目录。
 - `capabilities/tools/` 放可被注册、授权、执行的工具能力。
 - 不再新增顶层 `tools/`、`utils/` 这类容易失控的目录。
@@ -226,16 +226,19 @@ src/isotope/
 
 ### 批次八：core 薄产品主流程
 
-状态：已执行第一片。
+状态：已执行前两片。
 
 目标：
 
 - 新增 `ProductCore` 作为产品主流程门面。
 - 新增 `CoreSession`、`CoreRun`、`CoreTurnResponse` 和
   `RuntimeDispatch`，先包住现有 `InProcessServer`。
+- 新增 `CoreConversation`、`CoreTurn` 和 `CoreConversationState`，
+  让产品层可以表达连续消息和回合状态。
 - 对外暴露 `start_session`、`start_run`、`submit_user_message`
-  这三个最小可用动作。
+  以及 `start_conversation`、`submit_message`、`get_conversation`。
 - 响应只返回状态、产物引用、摘要和事件数量，不把全文内容默认抛到外层。
+- 现有普通输入会结束 run，所以 conversation 当前允许跨多个 completed run（已结束运行）。
 - 暂不迁移 `runtime/in_process.py` 内部实现，后续再按真实需求拆分。
 
 ## 当前推荐决策

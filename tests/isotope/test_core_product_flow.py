@@ -48,3 +48,22 @@ def test_product_core_keeps_runtime_available_for_existing_callers(tmp_path):
     core = ProductCore.in_process(tmp_path)
 
     assert core.runtime.root == tmp_path
+
+
+def test_product_core_tracks_conversation_turns_across_completed_runs(tmp_path):
+    core = ProductCore.in_process(tmp_path)
+
+    conversation = core.start_conversation(goal="collect two notes")
+    first = core.submit_message(conversation.conversation_id, "first note")
+    second = core.submit_message(conversation.conversation_id, "second note")
+    state = core.get_conversation(conversation.conversation_id)
+
+    assert conversation.conversation_id == conversation.session_id
+    assert conversation.run_id == first.run_id
+    assert [turn.text for turn in state.turns] == ["first note", "second note"]
+    assert all(turn.response.artifact_summary for turn in state.turns)
+    assert state.turns[0].response.artifact_ref != state.turns[1].response.artifact_ref
+    assert state.latest_response == second
+    assert first.run_id != second.run_id
+    assert state.run_ids == (first.run_id, second.run_id)
+    _assert_no_forbidden_content_keys(state.to_dict())

@@ -87,16 +87,18 @@
     或 `kernel` 主叙事。
 48. core 薄产品主流程：`ProductCore` 已包住现有
     `InProcessServer`，提供 session、run 和用户消息提交入口。
+49. core 对话状态：`ProductCore` 已提供 conversation（对话）、
+    message（消息）和 turn（回合）状态；当前 conversation 可跨多个已完成 run。
 
-## 最近完成：core 薄产品主流程
+## 最近完成：core 对话状态
 
 完成内容：
 
-- 新增 `src/isotope/core/` 下的产品主流程薄层。
-- `ProductCore.in_process()` 先复用现有单进程运行时。
-- `start_session`、`start_run` 和 `submit_user_message`
-  成为第一组产品级调用。
-- `CoreTurnResponse` 只暴露状态、产物引用、摘要和事件数量。
+- `ProductCore.start_conversation()` 一次建立产品级 conversation。
+- `ProductCore.submit_message()` 支持连续提交用户消息。
+- 当前普通输入会让 run 结束，所以 conversation 可跨多个 run。
+- `CoreConversationState` 返回 run 列表、turn（回合）列表和最新 response。
+- 响应仍只暴露状态、产物引用、摘要和事件数量。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
   [naming-and-structure-review](./naming-and-structure-review.md)、
   [terminology](./terminology.md) 和 [compat-proxy-audit](./compat-proxy-audit.md)。
@@ -113,7 +115,7 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把真实功能逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步若继续目录工作，应在 `core` 第二片和第一个明确的
+- 下一步若继续目录工作，应在 `core` 任务边界和第一个明确的
   `features/tasks` / `features/files` 功能切片之间选择。
 - 迁移完成后再恢复多分支并行开发。
 
@@ -121,7 +123,8 @@
 
 - `apps/cli/`：命令行入口。
 - `apps/api/`：后端入口。
-- `src/isotope/core/`：产品主流程；当前薄包 `InProcessServer`。
+- `src/isotope/core/`：产品主流程；当前薄包 `InProcessServer`，
+  已有 conversation、turn 和 response 状态。
 - `src/isotope/agents/loop/`：agent loop 活跃实现目录。
 - `src/isotope/assistant/`：旧路径包已删除，不再扩张新实现。
 - `src/isotope/features/`：聊天、任务、项目、文件、研究等可用功能。

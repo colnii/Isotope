@@ -30,7 +30,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
 6. 活跃 demo 输出使用 `app_friction` 描述应用摩擦，不再传播旧的底座摩擦字段。
 7. agent loop 活跃实现已迁入 `src/isotope/agents/loop/`。
 8. 兼容代理迁移需同步维护 `docs/current/import-map.md`，并写明计划删除节点。
-9. `core` 当前薄包 `InProcessServer`，不承载 agent loop 内部实现。
+9. `core` 当前薄包 `InProcessServer`，已有 conversation（对话）和 turn（回合）状态，
+   不承载 agent loop 内部实现。
 
 ## 文档策略
 

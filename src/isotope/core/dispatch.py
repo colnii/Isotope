@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from .response import CoreTurnResponse
-from .session import CoreRun, CoreSession
+from .session import CoreConversation, CoreRun, CoreSession
 
 
 class RuntimeDispatch:
@@ -21,6 +21,16 @@ class RuntimeDispatch:
     def start_run(self, session_id: str, *, goal: str) -> CoreRun:
         run = self.runtime.create_run(session_id, goal=goal)
         return CoreRun(run_id=run["run_id"], session_id=session_id, goal=goal)
+
+    def start_conversation(self, *, goal: str) -> CoreConversation:
+        session = self.start_session()
+        run = self.start_run(session.session_id, goal=goal)
+        return CoreConversation(
+            conversation_id=session.session_id,
+            session_id=session.session_id,
+            run_id=run.run_id,
+            goal=goal,
+        )
 
     def submit_user_message(self, run_id: str, text: str) -> CoreTurnResponse:
         result = self.runtime.submit_input(run_id, text)

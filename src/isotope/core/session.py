@@ -15,3 +15,11 @@ class CoreRun:
     run_id: str
     session_id: str
     goal: str
+
+
+@dataclass(frozen=True)
+class CoreConversation:
+    conversation_id: str
+    session_id: str
+    run_id: str
+    goal: str
