@@ -16,6 +16,8 @@
 - `demo.py`、`llm_live_smoke.py` 是正式命令入口。
 - `capability_runner.py` 旧根入口已删除，正式命令指向
   `isotope.capabilities.runner`。
+- `tools/` 旧空包已删除；工具能力以 `capabilities/tools/`
+  和能力注册表为准。
 - 兼容入口已有最小测试：
   `tests/isotope/test_compat_proxy_imports.py`。
 - `core/runtime.py`、`agent_runtime.py`、`assistant/runtime.py`
@@ -59,6 +61,8 @@
 | `isotope.terminal` | `isotope.capabilities.tools.terminal` |
 | `isotope.terminal_backend` | `isotope.execution.terminal_runner` |
 | `isotope.terminal_system_runner` | `isotope.execution.terminal_runner` |
+| `isotope.tools` | 无活跃新路径 |
+| `isotope.tools.write_artifact` | 无活跃新路径 |
 | `isotope.capability_catalog` | `isotope.capabilities.catalog` |
 | `isotope.capability_runner` | `isotope.capabilities.runner` |
 | `isotope.codex_cli` | `isotope.integrations.codex.cli` |

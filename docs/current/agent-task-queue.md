@@ -79,21 +79,27 @@
     测试直接使用 `actions`、`memory`、`snapshots` 等具体 schema 模块。
 45. 根层入口复核：`src/isotope/` 根层只剩 `__init__.py`、`demo.py`
     和 `llm_live_smoke.py`，没有已确认应继续删除的旧代理。
+46. 真实功能分层审计：`apps/cli/` 已确认是薄入口；`core/`
+    暂不补空文件；`tools/` 旧空包已删除，工具能力归入
+    `capabilities/tools/`。
 
-## 最近完成：根层入口复核
+## 最近完成：真实功能分层审计
 
 完成内容：
 
 - 复核 `src/isotope/` 根层剩余文件。
 - 确认 `demo.py` 与 `llm_live_smoke.py` 是正式命令入口。
 - 确认当前没有已确认应继续删除的兼容代理。
+- 复核 `apps/cli/`、`core/`、`features/` 的当前形态。
+- 删除 `src/isotope/tools/` 旧空包。
+- 明确工具能力以 `capabilities/tools/` 和平台注册表为准。
 - 同步 [compat-proxy-audit](./compat-proxy-audit.md)、
   [import-map](./import-map.md) 和
   [naming-and-structure-review](./naming-and-structure-review.md)。
 
 验收：
 
-- 文档检查需要通过。
+- 文档检查和兼容入口测试需要通过。
 - `AGENTS.md` 仍需保持 100 行以内。
 
 ## 下一批次：应用内分层迁移
@@ -102,7 +108,8 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把真实功能逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步转向功能层和目录设计，不再围绕已删除旧根路径打转。
+- 下一步若继续目录工作，应优先设计真实 `core/` 主流程或
+  第一个明确的 `features/tasks` / `features/files` 功能切片。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

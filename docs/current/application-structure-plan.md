@@ -63,7 +63,7 @@ scripts/
 - `core/`：预留给产品主流程，负责 session、conversation、dispatch 和 response；当前不承载 agent loop。
 - `features/`：真实可用功能，如聊天、任务、项目、文件、研究和自动化。
 - `agents/`：子 agent 定义、角色、任务委派和 agent loop。
-- `capabilities/`：工具、技能和能力注册，不把所有东西都塞进 `tools/`。
+- `capabilities/`：工具、技能和能力注册，不再使用顶层 `tools/` 空包。
 - `llm/`：LLM、embedding、rerank 等模型服务 provider，不放 Pydantic schema 或数据库模型。
 - `rag/`：外部资料接入、检索、切分和索引等资料问答能力。
 - `execution/`：shell、python、浏览器、桌面、沙箱等执行环境。
@@ -133,6 +133,8 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 - 执行器：`executor.py` 已迁入 `src/isotope/execution/executor.py`。
 - 终端执行器：活跃实现已迁入 `src/isotope/execution/terminal_runner.py`；
   `src/isotope/execution/terminal_backend.py` 和顶层旧路径已删除。
+- 工具能力：`src/isotope/tools/` 旧空包已删除；真实工具能力放入
+  `src/isotope/capabilities/tools/`，动作声明放入平台注册表。
 - 接口层：`http_api.py` 已迁入 `src/isotope/interfaces/http.py`。
 - LLM 层：模型 provider 和 tool bridge 已迁入 `src/isotope/llm/`；
   `src/isotope/integrations/llm/` 和顶层旧路径已删除。
@@ -141,7 +143,7 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 - 运行入口：活跃实现已迁入 `src/isotope/runtime/in_process.py`；
   `src/isotope/runtime/server.py` 旧代理已删除。
 - 动作编译：`action_compiler.py` 已迁入 `src/isotope/runtime/action_compiler.py`。
-- 部分旧根路径已删除，剩余兼容代理按风险分组继续清理。
+- 旧根路径和旧空包已完成当前已知清理；后续新增兼容代理需先登记。
 
 ## 第一批建议
 
@@ -167,7 +169,7 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 - `src/isotope/platform/registry/`
 - `src/isotope/platform/state/`
 - `src/isotope/interfaces/`，仅保留当前库内 HTTP facade
-- `src/isotope/common/`
+- `src/isotope/common/`，仅在出现真实跨层通用代码时再建
 
 暂缓完整展开：
 

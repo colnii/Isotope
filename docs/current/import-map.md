@@ -75,6 +75,8 @@ planned removal: after import-map confirms no active internal imports
 | `isotope.terminal` | `isotope.capabilities.tools.terminal` | 已删除，直接使用新路径 |
 | `isotope.terminal_backend` | `isotope.execution.terminal_runner` | 已删除，直接使用新路径 |
 | `isotope.terminal_system_runner` | `isotope.execution.terminal_runner` | 已删除，直接使用新路径 |
+| `isotope.tools` | `isotope.capabilities.tools` | 已删除，直接使用能力工具目录 |
+| `isotope.tools.write_artifact` | 无活跃新路径 | 已删除，原本只是 v0.1 空占位 |
 | `isotope.capability_catalog` | `isotope.capabilities.catalog` | 已删除，直接使用新路径 |
 | `isotope.capability_runner` | `isotope.capabilities.runner` | 已删除，直接使用新路径 |
 | `isotope.codex_cli` | `isotope.integrations.codex.cli` | 已删除，直接使用新路径 |

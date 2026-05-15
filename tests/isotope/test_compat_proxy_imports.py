@@ -57,6 +57,8 @@ REMOVED_PROXIES = (
     "isotope.terminal_backend",
     "isotope.terminal_system_runner",
     "isotope.tool_protocol",
+    "isotope.tools",
+    "isotope.tools.write_artifact",
 )
 
 

@@ -14,6 +14,7 @@
 - 根目录只剩正式入口：`__init__.py`、`demo.py`、`llm_live_smoke.py`。
 - 一些文件名是历史工作流命名，不像长期产品代码。
 - `features/` 还没形成任务、项目、文件、研究等用户功能层。
+- `tools/` 旧空包已删除，真实工具能力归入 `capabilities/tools/`。
 
 所以，下一步不应继续机械搬文件，而应先定一版更稳的命名规则。
 
@@ -107,6 +108,7 @@ src/isotope/
 | 顶层 `codex_*` | 纯兼容代理，已有真实新路径 | 已删除第六批低风险代理 |
 | agent-loop、core、assistant 旧入口 | 纯兼容代理，已有真实新路径 | 已删除第七批低风险代理 |
 | `platform/schemas/models.py` 汇总入口 | `models` 太泛，已拆成具体 schema 模块 | 已删除第八批低风险代理 |
+| 顶层 `tools/` 空包 | 只有 docstring，无活跃调用 | 已删除，工具能力归入 `capabilities/tools/` |
 
 ## 第一批不要动的东西
 
@@ -120,6 +122,7 @@ src/isotope/
 - `interfaces/http.py`：当前测试和 demo 大量使用，先保留为库内 facade。
 - `integrations/codex/`：外部接入语义明确。
 - `assistant/` 兼容代理：已删除。
+- `tools/` 旧空包：已删除。
 
 ## 推荐迁移批次
 
@@ -193,6 +196,18 @@ src/isotope/
 - 明确哪些只是旧路径，哪些仍被外部或测试使用。
 - 每个兼容代理写明新路径和计划删除节点。
 - 后续若发现剩余旧代理，再按风险分组删除。
+
+### 批次六：真实功能分层
+
+状态：当前进入审计阶段。
+
+目标：
+
+- `apps/cli/` 继续保持薄入口，只转发到 `src/isotope/` 稳定模块。
+- `core/` 暂不补空文件；等会话、对话、调度、响应形成真实主流程再建。
+- `features/` 只在出现用户可感知功能时建子目录。
+- `capabilities/tools/` 放可被注册、授权、执行的工具能力。
+- 不再新增顶层 `tools/`、`utils/` 这类容易失控的目录。
 
 ## 当前推荐决策
 
