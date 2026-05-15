@@ -1,6 +1,6 @@
 # 导入路径迁移表
 
-状态：`当前清单 / 第三批低风险代理已删除`
+状态：`当前清单 / 第四批低风险代理已删除`
 
 本文记录旧导入路径到新导入路径的迁移关系。
 目标是让目录迁移有清单可查，而不是靠记忆维护兼容代理。
@@ -70,9 +70,10 @@ planned removal: after import-map confirms no active internal imports
 | `isotope.model_tool_bridge` | `isotope.llm.tool_bridge` | 已删除，直接使用新路径 |
 | `isotope.features.chat.product_chat` | `isotope.features.chat.flow` | 已删除，直接使用新路径 |
 | `isotope.llm_product_chat_app` | `isotope.features.chat.flow` | 已删除，直接使用新路径 |
-| `isotope.execution.terminal_backend` | `isotope.execution.terminal_runner` | 已迁移，旧路径保留兼容代理 |
-| `isotope.terminal_backend` | `isotope.execution.terminal_runner` | 已迁移，旧路径保留兼容代理 |
-| `isotope.terminal_system_runner` | `isotope.execution.terminal_runner` | 已迁移，旧路径保留兼容代理 |
+| `isotope.execution.terminal_backend` | `isotope.execution.terminal_runner` | 已删除，直接使用新路径 |
+| `isotope.terminal` | `isotope.capabilities.tools.terminal` | 已删除，直接使用新路径 |
+| `isotope.terminal_backend` | `isotope.execution.terminal_runner` | 已删除，直接使用新路径 |
+| `isotope.terminal_system_runner` | `isotope.execution.terminal_runner` | 已删除，直接使用新路径 |
 | `isotope.platform.schemas.models` | `isotope.platform.schemas.actions` / `artifacts` / `memory` / `snapshots` | 已拆分，旧路径保留兼容代理 |
 | `isotope.models` | `isotope.platform.schemas.actions` / `artifacts` / `memory` / `snapshots` | 已删除，直接使用具体 schema 路径 |
 | `isotope.errors` | `isotope.platform.errors` | 已删除；`KernelError` 仍在新路径中作为兼容别名 |

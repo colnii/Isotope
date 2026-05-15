@@ -1,6 +1,6 @@
 # 兼容代理审计
 
-状态：`当前清单 / 第三批低风险代理已删除`
+状态：`当前清单 / 第四批低风险代理已删除`
 
 本文记录旧导入路径和兼容代理，不直接要求马上删除。
 目标是先知道哪些文件只是旧入口，哪些还承担命令或兼容测试职责。
@@ -9,8 +9,7 @@
 
 - `from isotope.xxx import ...` 形式的显式测试导入已改用新路径。
 - 普通测试里的 `from isotope import xxx` 包级导入已改用新路径。
-- 仅 `test_terminal_compatibility_imports.py` 保留 3 行旧导入，
-  专门覆盖终端兼容入口。
+- 终端旧入口已删除，测试改用 `execution.terminal_runner`。
 - `src/isotope/` 根目录仍保留很多兼容代理，方便旧代码导入。
 - `core/` 和 `assistant/` 当前没有活跃实现，只保留 agent loop 旧入口。
 - `capability_runner.py`、`demo.py`、`llm_live_smoke.py` 仍有命令入口价值。
@@ -23,6 +22,7 @@
 - `runtime`、`interface`、`registry`、`execution`、`ids`
   的第二批顶层纯代理也已删除。
 - `models/errors` 根入口、LLM 旧入口、chat 旧入口已删除。
+- terminal 顶层旧入口和 `execution.terminal_backend` 已删除。
 - `platform.schemas.models` 仍暂留，因为测试还把它当 schema 汇总入口。
 
 ## 可优先进入删除计划
@@ -48,6 +48,10 @@
 | `isotope.model_tool_bridge` | `isotope.llm.tool_bridge` |
 | `isotope.features.chat.product_chat` | `isotope.features.chat.flow` |
 | `isotope.llm_product_chat_app` | `isotope.features.chat.flow` |
+| `isotope.execution.terminal_backend` | `isotope.execution.terminal_runner` |
+| `isotope.terminal` | `isotope.capabilities.tools.terminal` |
+| `isotope.terminal_backend` | `isotope.execution.terminal_runner` |
+| `isotope.terminal_system_runner` | `isotope.execution.terminal_runner` |
 | `isotope.runtime.server` | `isotope.runtime.in_process` |
 | `isotope.server` | `isotope.runtime.in_process` |
 | `isotope.http_api` | `isotope.interfaces.http` |
@@ -77,7 +81,6 @@
 | `isotope.capability_runner` | 可用 `python -m isotope.capability_runner`，但正式命令已指向新路径 |
 | `isotope.capability_catalog` | 早期架构文档仍大量引用 |
 | `isotope.codex_*` | 外部 Codex 集成历史入口，需单独评估 |
-| `isotope.terminal*` | 终端兼容测试仍覆盖旧入口 |
 
 ## 空壳和旧叙事
 
@@ -91,8 +94,6 @@
 
 ## 当前保留项
 
-- `tests/isotope/test_terminal_compatibility_imports.py` 里保留 3 行
-  `from isotope import ...`，用于验证旧终端入口仍兼容。
 - `tests/isotope/test_compat_proxy_imports.py` 覆盖仍保留的兼容代理，
   也验证已删除旧入口不可再导入。
 - `docs/architecture/` 和 `docs/reviews/` 仍有历史入口名，
@@ -100,5 +101,5 @@
 
 ## 下一步删除顺序建议
 
-1. 继续按 `terminal / capability / codex / agent-loop` 分组评估旧代理。
+1. 继续按 `capability / codex / agent-loop` 分组评估旧代理。
 2. 每删一批，都更新本文和 [import-map](./import-map.md)。

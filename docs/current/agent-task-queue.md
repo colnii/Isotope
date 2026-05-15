@@ -48,7 +48,7 @@
 29. chat flow 正名：活跃实现已迁入 `src/isotope/features/chat/flow.py`，
     `product_chat.py` 和顶层旧路径已删除。
 30. terminal runner 正名：活跃实现已迁入 `src/isotope/execution/terminal_runner.py`，
-    `terminal_backend.py` 和顶层旧路径保留兼容代理。
+    `terminal_backend.py` 和顶层旧路径已删除。
 31. platform schema 拆分：`models.py` 已拆成 `actions.py`、`artifacts.py`、
     `memory.py`、`snapshots.py`，根 `isotope.models` 已删除。
 32. 结构化错误正名：活跃代码改用 `IsotopeError` / `IsotopePermissionError`，
@@ -58,7 +58,7 @@
 34. 空壳 runtime 链删除：`core/runtime.py`、`agent_runtime.py`、
     `assistant/runtime.py` 已删除。
 35. 包级测试导入迁移：普通测试已从 `from isotope import xxx`
-    改成新路径导入；终端兼容测试保留旧入口覆盖。
+    改成新路径导入；终端旧入口测试已删除。
 36. 兼容代理测试：新增 `tests/isotope/test_compat_proxy_imports.py`，
     覆盖根目录、旧 agent loop、LLM、Codex、terminal 和已删除空壳入口。
 37. 第一批低风险代理删除：`state`、`events`、`schema refs`、
@@ -67,13 +67,16 @@
     `execution` 和 `ids` 顶层旧路径已删除。
 39. 第三批低风险代理删除：`models/errors` 根入口、LLM 旧入口、
     chat 旧入口已删除；`platform.schemas.models` 暂留。
+40. 第四批低风险代理删除：terminal 顶层旧入口和
+    `execution.terminal_backend` 已删除。
 
-## 最近完成：第三批低风险代理删除
+## 最近完成：第四批低风险代理删除
 
 完成内容：
 
-- 删除 9 个 schema、错误、LLM 和 chat 相关旧代理文件。
-- 将错误分类边界测试改成真实 `platform.errors` 路径。
+- 删除 4 个 terminal 相关旧代理文件。
+- 删除专门覆盖旧 terminal 入口的兼容测试。
+- 将 terminal backend 测试改成真实 `execution.terminal_runner` 路径。
 - 将兼容代理测试改成同时覆盖保留代理和已删除代理。
 - 同步 [compat-proxy-audit](./compat-proxy-audit.md) 与
   [import-map](./import-map.md)。
@@ -89,7 +92,7 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把当前平铺模块逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步优先评估 `terminal / capability / codex / agent-loop`
+- 下一步优先评估 `capability / codex / agent-loop`
   剩余旧代理。
 - 迁移完成后再恢复多分支并行开发。
 

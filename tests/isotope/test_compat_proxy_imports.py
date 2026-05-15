@@ -21,11 +21,7 @@ ATTRIBUTE_PROXIES = (
     ("isotope.core.loop_planner_adapter", "isotope.agents.loop.planner_adapter", "run_agent_loop_planner_step"),
     ("isotope.core.loop_step", "isotope.agents.loop.step", "run_agent_loop_step"),
     ("isotope.core.real_planner_contract", "isotope.agents.loop.planner_contract", "run_agent_loop_real_planner_contract_step"),
-    ("isotope.execution.terminal_backend", "isotope.execution.terminal_runner", "TerminalBackendAdapter"),
     ("isotope.real_planner_adapter_contract", "isotope.agents.loop.planner_contract", "run_agent_loop_real_planner_contract_step"),
-    ("isotope.terminal", "isotope.capabilities.tools.terminal", "ControlledTerminalRunner"),
-    ("isotope.terminal_backend", "isotope.execution.terminal_runner", "TerminalBackendAdapter"),
-    ("isotope.terminal_system_runner", "isotope.execution.terminal_runner", "LinuxSystemTerminalRunner"),
 )
 
 
@@ -42,6 +38,7 @@ REMOVED_PROXIES = (
     "isotope.event_store",
     "isotope.events",
     "isotope.errors",
+    "isotope.execution.terminal_backend",
     "isotope.features.chat.product_chat",
     "isotope.http_api",
     "isotope.ids",
@@ -58,6 +55,9 @@ REMOVED_PROXIES = (
     "isotope.retrieval",
     "isotope.runtime.server",
     "isotope.server",
+    "isotope.terminal",
+    "isotope.terminal_backend",
+    "isotope.terminal_system_runner",
     "isotope.tool_protocol",
 )
 
