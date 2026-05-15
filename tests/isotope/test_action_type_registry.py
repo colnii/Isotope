@@ -4,7 +4,7 @@ import pytest
 
 
 def _registry_module():
-    return importlib.import_module("isotope.action_registry")
+    return importlib.import_module("isotope.platform.registry.actions")
 
 
 def _registry_class():
@@ -36,7 +36,7 @@ def _valid_entry(**overrides):
 def test_action_registry_module_exists():
     module = _registry_module()
 
-    assert module.__name__ == "isotope.action_registry"
+    assert module.__name__ == "isotope.platform.registry.actions"
 
 
 def test_action_type_registry_class_exists():

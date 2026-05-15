@@ -1,6 +1,6 @@
 # 导入路径迁移表
 
-状态：`当前清单 / 第一批低风险代理已删除`
+状态：`当前清单 / 第二批低风险代理已删除`
 
 本文记录旧导入路径到新导入路径的迁移关系。
 目标是让目录迁移有清单可查，而不是靠记忆维护兼容代理。
@@ -46,8 +46,13 @@ planned removal: after import-map confirms no active internal imports
 
 | 旧路径 | 新路径候选 | 状态 |
 | --- | --- | --- |
-| `isotope.runtime.server` | `isotope.runtime.in_process` | 已迁移，旧路径保留兼容代理 |
-| `isotope.server` | `isotope.runtime.in_process` | 已迁移，旧路径保留兼容代理 |
+| `isotope.runtime.server` | `isotope.runtime.in_process` | 已删除，直接使用新路径 |
+| `isotope.server` | `isotope.runtime.in_process` | 已删除，直接使用新路径 |
+| `isotope.http_api` | `isotope.interfaces.http` | 已删除，直接使用新路径 |
+| `isotope.action_compiler` | `isotope.runtime.action_compiler` | 已删除，直接使用新路径 |
+| `isotope.action_registry` | `isotope.platform.registry.actions` | 已删除，直接使用新路径 |
+| `isotope.executor` | `isotope.execution.executor` | 已删除，直接使用新路径 |
+| `isotope.ids` | `isotope.platform.ids` | 已删除，直接使用新路径 |
 | `isotope.checkpoint_store` | `isotope.platform.state.checkpoint_store` | 已删除，直接使用新路径 |
 | `isotope.event_store` | `isotope.platform.state.event_store` | 已删除，直接使用新路径 |
 | `isotope.projector` | `isotope.platform.state.projector` | 已删除，直接使用新路径 |

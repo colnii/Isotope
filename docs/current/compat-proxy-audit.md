@@ -1,6 +1,6 @@
 # 兼容代理审计
 
-状态：`当前清单 / 第一批低风险代理已删除`
+状态：`当前清单 / 第二批低风险代理已删除`
 
 本文记录旧导入路径和兼容代理，不直接要求马上删除。
 目标是先知道哪些文件只是旧入口，哪些还承担命令或兼容测试职责。
@@ -20,6 +20,8 @@
   空壳链已删除。
 - `state`、`events`、`schema refs`、`workspace artifact`、`rag`
   和 `tool protocol` 的顶层纯代理已删除，活跃代码直接使用新路径。
+- `runtime`、`interface`、`registry`、`execution`、`ids`
+  的第二批顶层纯代理也已删除。
 
 ## 可优先进入删除计划
 
@@ -27,14 +29,8 @@
 
 | 旧路径 | 新路径 |
 | --- | --- |
-| `isotope.server` | `isotope.runtime.in_process` |
-| `isotope.http_api` | `isotope.interfaces.http` |
 | `isotope.models` | `isotope.platform.schemas.*` |
 | `isotope.errors` | `isotope.platform.errors` |
-| `isotope.action_compiler` | `isotope.runtime.action_compiler` |
-| `isotope.action_registry` | `isotope.platform.registry.actions` |
-| `isotope.executor` | `isotope.execution.executor` |
-| `isotope.ids` | `isotope.platform.ids` |
 
 ## 已删除代理
 
@@ -42,6 +38,13 @@
 
 | 旧路径 | 新路径 |
 | --- | --- |
+| `isotope.runtime.server` | `isotope.runtime.in_process` |
+| `isotope.server` | `isotope.runtime.in_process` |
+| `isotope.http_api` | `isotope.interfaces.http` |
+| `isotope.action_compiler` | `isotope.runtime.action_compiler` |
+| `isotope.action_registry` | `isotope.platform.registry.actions` |
+| `isotope.executor` | `isotope.execution.executor` |
+| `isotope.ids` | `isotope.platform.ids` |
 | `isotope.checkpoint_store` | `isotope.platform.state.checkpoint_store` |
 | `isotope.event_store` | `isotope.platform.state.event_store` |
 | `isotope.projector` | `isotope.platform.state.projector` |
@@ -87,5 +90,5 @@
 
 ## 下一步删除顺序建议
 
-1. 继续按 `runtime / interface / registry / execution` 分组删除旧代理。
+1. 继续按 `schema / errors / LLM / chat / terminal / capability` 分组评估旧代理。
 2. 每删一批，都更新本文和 [import-map](./import-map.md)。

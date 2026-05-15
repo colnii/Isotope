@@ -4,15 +4,11 @@ import pytest
 
 
 MODULE_ALIASES = (
-    ("isotope.action_compiler", "isotope.runtime.action_compiler"),
-    ("isotope.ids", "isotope.platform.ids"),
     ("isotope.models", "isotope.platform.schemas.models"),
-    ("isotope.server", "isotope.runtime.in_process"),
 )
 
 
 ATTRIBUTE_PROXIES = (
-    ("isotope.action_registry", "isotope.platform.registry.actions", "ActionTypeRegistry"),
     ("isotope.agent_loop_control", "isotope.agents.loop.control", "build_agent_loop_control"),
     ("isotope.agent_loop_planner_adapter", "isotope.agents.loop.planner_adapter", "run_agent_loop_planner_step"),
     ("isotope.agent_loop_step", "isotope.agents.loop.step", "run_agent_loop_step"),
@@ -32,9 +28,7 @@ ATTRIBUTE_PROXIES = (
     ("isotope.core.real_planner_contract", "isotope.agents.loop.planner_contract", "run_agent_loop_real_planner_contract_step"),
     ("isotope.errors", "isotope.platform.errors", "IsotopeError"),
     ("isotope.execution.terminal_backend", "isotope.execution.terminal_runner", "TerminalBackendAdapter"),
-    ("isotope.executor", "isotope.execution.executor", "Executor"),
     ("isotope.features.chat.product_chat", "isotope.features.chat.flow", "submit_llm_product_chat_user_message_with_preflight"),
-    ("isotope.http_api", "isotope.interfaces.http", "create_http_app"),
     ("isotope.integrations.llm.provider", "isotope.llm.provider", "LLMToolCall"),
     ("isotope.integrations.llm.tool_bridge", "isotope.llm.tool_bridge", "submit_model_tool_call"),
     ("isotope.llm_product_chat_app", "isotope.features.chat.flow", "submit_llm_product_chat_user_message_with_preflight"),
@@ -48,18 +42,25 @@ ATTRIBUTE_PROXIES = (
 
 
 REMOVED_PROXIES = (
+    "isotope.action_compiler",
+    "isotope.action_registry",
     "isotope.agent_runtime",
     "isotope.artifact_store",
     "isotope.assistant.runtime",
     "isotope.checkpoint_store",
     "isotope.core.runtime",
+    "isotope.executor",
     "isotope.event_schema",
     "isotope.event_store",
     "isotope.events",
+    "isotope.http_api",
+    "isotope.ids",
     "isotope.ingestion",
     "isotope.projector",
     "isotope.refs",
     "isotope.retrieval",
+    "isotope.runtime.server",
+    "isotope.server",
     "isotope.tool_protocol",
 )
 

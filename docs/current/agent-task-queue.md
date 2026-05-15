@@ -41,7 +41,7 @@
 26. agent loop 正名：活跃实现已迁入 `src/isotope/agents/loop/`，
     `core`、`assistant` 和顶层旧路径保留兼容代理。
 27. runtime 命名澄清：活跃实现已迁入 `src/isotope/runtime/in_process.py`，
-    `runtime/server.py` 和 `isotope.server` 保留兼容代理。
+    `runtime/server.py` 和 `isotope.server` 旧代理已删除。
 28. LLM 层拆出：活跃实现已迁入 `src/isotope/llm/`，
     `integrations/llm` 和顶层旧路径保留兼容代理。
 29. chat flow 正名：活跃实现已迁入 `src/isotope/features/chat/flow.py`，
@@ -62,13 +62,15 @@
     覆盖根目录、旧 agent loop、LLM、Codex、terminal 和已删除空壳入口。
 37. 第一批低风险代理删除：`state`、`events`、`schema refs`、
     `workspace artifact`、`rag` 和 `tool protocol` 顶层旧路径已删除。
+38. 第二批低风险代理删除：`runtime`、`interface`、`registry`、
+    `execution` 和 `ids` 顶层旧路径已删除。
 
-## 最近完成：第一批低风险代理删除
+## 最近完成：第二批低风险代理删除
 
 完成内容：
 
-- 删除 10 个顶层纯兼容代理文件。
-- 将相关边界测试里的动态导入改成真实新路径。
+- 删除 7 个顶层或 runtime 纯兼容代理文件。
+- 将 HTTP facade 和 action registry 边界测试改成真实新路径。
 - 将兼容代理测试改成同时覆盖保留代理和已删除代理。
 - 同步 [compat-proxy-audit](./compat-proxy-audit.md) 与
   [import-map](./import-map.md)。
@@ -84,7 +86,8 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把当前平铺模块逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步优先评估 `runtime / interface / registry / execution` 剩余旧代理。
+- 下一步优先评估 `schema / errors / LLM / chat / terminal / capability`
+  剩余旧代理。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

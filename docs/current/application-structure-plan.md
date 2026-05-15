@@ -139,9 +139,9 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 - Codex 集成：`codex_task.py`、`codex_cli.py`、`codex_server.py`、`codex_live_smoke.py` 已迁入 `src/isotope/integrations/`。
 - 状态恢复：`checkpoint_store.py`、`event_store.py`、`projector.py` 已迁入 `src/isotope/platform/state/`。
 - 运行入口：活跃实现已迁入 `src/isotope/runtime/in_process.py`；
-  `src/isotope/runtime/server.py` 仅保留兼容代理。
+  `src/isotope/runtime/server.py` 旧代理已删除。
 - 动作编译：`action_compiler.py` 已迁入 `src/isotope/runtime/action_compiler.py`。
-- 旧根路径保留轻量兼容导出，方便后续逐步改调用点。
+- 部分旧根路径已删除，剩余兼容代理按风险分组继续清理。
 
 ## 第一批建议
 

@@ -42,7 +42,7 @@ FORBIDDEN_CONTENT_KEYS = {
 
 
 def _http_api_module():
-    return importlib.import_module("isotope.http_api")
+    return importlib.import_module("isotope.interfaces.http")
 
 
 def _create_app(tmp_path: Path):

@@ -1,6 +1,6 @@
 # 命名与目录审计
 
-状态：`当前审计 / 第一批低风险代理已删除`
+状态：`当前审计 / 第二批低风险代理已删除`
 
 本文只审计命名和目录，不直接要求改代码。
 目标是避免 Isotope 再被旧底座叙事、临时兼容入口和不好看的模块名牵着走。
@@ -10,7 +10,7 @@
 目前最大问题不是 `src/isotope/` 这个包名，而是包内职责命名还带着迁移痕迹：
 
 - `core/` 现在只保留 agent loop 兼容代理，不承载活跃实现。
-- `runtime/server.py` 已变成兼容代理，活跃实现位于 `runtime/in_process.py`。
+- `runtime/server.py` 已删除，活跃实现位于 `runtime/in_process.py`。
 - 根目录仍有一些旧兼容代理，看起来像真实模块。
 - 一些文件名是历史工作流命名，不像长期产品代码。
 - `features/` 还没形成任务、项目、文件、研究等用户功能层。
@@ -100,6 +100,7 @@ src/isotope/
 | `platform/schemas/models.py` | `models` 太泛 | 已拆成 `actions.py`、`artifacts.py`、`memory.py`、`snapshots.py` |
 | `platform/errors.py` | 旧 `KernelError` 名称容易带回内核叙事 | 已改用 `IsotopeError`，旧名仅作兼容别名 |
 | 顶层 `state`、`events`、`rag`、`workspace` 旧入口 | 纯兼容代理，容易误导活跃路径 | 已删除第一批低风险代理 |
+| 顶层 `runtime`、`interface`、`registry`、`execution` 旧入口 | 纯兼容代理，已有真实新路径 | 已删除第二批低风险代理 |
 | 顶层 `codex_*`、`llm_*`、`capability_*` | 兼容代理太多 | 保留薄代理，活跃导入只用子目录 |
 
 ## 第一批不要动的东西
@@ -139,7 +140,7 @@ src/isotope/
 
 - 将 `runtime/server.py` 改成更准确的名字。
 - 采用 `runtime/in_process.py`。
-- 旧 `isotope.server` 和 `isotope.runtime.server` 继续保留代理。
+- 旧 `isotope.server` 和 `isotope.runtime.server` 已删除。
 
 采用 `runtime/in_process.py`，因为当前 `InProcessServer` 本来就不是真 HTTP server。
 
@@ -176,7 +177,7 @@ src/isotope/
 
 ### 批次五：兼容代理清单
 
-状态：第一轮已执行，兼容代理测试已建立，且第一批低风险代理已删除，见
+状态：第一轮已执行，兼容代理测试已建立，且前两批低风险代理已删除，见
 [compat-proxy-audit](./compat-proxy-audit.md)。
 
 目标：
