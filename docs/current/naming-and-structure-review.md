@@ -277,6 +277,19 @@ src/isotope/
 - 新增 `POST /files`、`GET /files` 和 `GET /files/{file_id}` HTTP facade。
 - 暂不做完整文件管理、目录树、用户界面或独立 FastAPI 服务。
 
+### 批次十一：projects 功能薄入口
+
+状态：已执行第一片。
+
+目标：
+
+- 新增 `ProjectFlow` 作为项目功能入口。
+- 新增 `ProjectSummary` 作为用户可读项目摘要。
+- 复用 `ProductCore`，保持项目索引和现有运行根目录一致。
+- 默认只返回项目名、摘要、task id 列表和 file id 列表。
+- 新增本地低敏项目摘要索引。
+- 暂不做完整项目管理、成员权限、UI 或独立 FastAPI 服务。
+
 ## 当前推荐决策
 
 我建议先确认这一条：

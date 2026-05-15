@@ -31,6 +31,9 @@
 | `GET /files/{file_id}` | 文件 API 入口，读取单个文件摘要 | 接口 | `src/isotope/interfaces/http.py` |
 | `file index` | 文件摘要索引，持久化低敏文件摘要，供重启后查询 | 产品功能/工作区资源 | `src/isotope/features/files/flow.py` |
 | `artifact-backed file summary` | 由 artifact 存储承载正文、外层只暴露摘要和引用的文件摘要 | 产品功能/工作区资源 | `src/isotope/features/files/flow.py`, `src/isotope/workspace/artifacts.py` |
+| `ProjectFlow` | 项目功能入口，把任务和文件关联成用户可感知项目摘要 | 产品功能 | `src/isotope/features/projects/flow.py` |
+| `ProjectSummary` | 项目摘要，面向用户展示项目名、摘要、task id 和 file id | 产品功能 | `src/isotope/features/projects/flow.py` |
+| `project index` | 项目摘要索引，持久化低敏项目摘要，供重启后查询 | 产品功能/项目 | `src/isotope/features/projects/flow.py` |
 | `assistant` | 助手，只作为产品描述或历史术语，不作为新目录叙事 | 产品描述/历史术语 | 已删除旧目录 |
 | `agent loop` | 智能体循环，AI 多步规划、调用工具、读取结果并继续执行 | 应用/智能体 | `src/isotope/agents/loop/step.py`, `docs/features/` |
 | `app_friction` | 应用摩擦，应用层试跑暴露的卡点或待收束问题 | 应用验证 | `src/isotope/demo.py`, `docs/features/` |
