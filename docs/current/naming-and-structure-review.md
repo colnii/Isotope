@@ -1,6 +1,6 @@
 # 命名与目录审计
 
-状态：`当前审计 / 第六批低风险代理已删除`
+状态：`当前审计 / 第七批低风险代理已删除`
 
 本文只审计命名和目录，不直接要求改代码。
 目标是避免 Isotope 再被旧底座叙事、临时兼容入口和不好看的模块名牵着走。
@@ -9,7 +9,7 @@
 
 目前最大问题不是 `src/isotope/` 这个包名，而是包内职责命名还带着迁移痕迹：
 
-- `core/` 现在只保留 agent loop 兼容代理，不承载活跃实现。
+- `core/` 当前只保留空包，预留给未来产品主流程。
 - `runtime/server.py` 已删除，活跃实现位于 `runtime/in_process.py`。
 - 根目录仍有一些旧兼容代理，看起来像真实模块。
 - 一些文件名是历史工作流命名，不像长期产品代码。
@@ -105,6 +105,7 @@ src/isotope/
 | 顶层 terminal 与 `execution.terminal_backend` 旧入口 | 纯兼容代理，已有真实新路径 | 已删除第四批低风险代理 |
 | 顶层 capability 旧入口 | 纯兼容代理，正式脚本已指向新路径 | 已删除第五批低风险代理 |
 | 顶层 `codex_*` | 纯兼容代理，已有真实新路径 | 已删除第六批低风险代理 |
+| agent-loop、core、assistant 旧入口 | 纯兼容代理，已有真实新路径 | 已删除第七批低风险代理 |
 
 ## 第一批不要动的东西
 
@@ -117,7 +118,7 @@ src/isotope/
 - `capabilities/catalog.py`：可接受。
 - `interfaces/http.py`：当前测试和 demo 大量使用，先保留为库内 facade。
 - `integrations/codex/`：外部接入语义明确。
-- `assistant/` 兼容代理：暂时保留，后续统一删。
+- `assistant/` 兼容代理：已删除。
 
 ## 推荐迁移批次
 
@@ -130,7 +131,7 @@ src/isotope/
 - 新建 `src/isotope/agents/loop/`。
 - 将原 `core/loop_*` 活跃实现迁入该目录。
 - `core/` 暂时只留空包或兼容代理，不新增空的产品主流程文件。
-- 旧路径 `isotope.core.*`、`isotope.assistant.*`、`isotope.agent_loop_*` 保持可导入。
+- 旧路径 `isotope.core.*`、`isotope.assistant.*`、`isotope.agent_loop_*` 已删除。
 - 同步 [import-map](./import-map.md)，记录旧路径、新路径和计划删除节点。
 
 这是最该先做的一批，因为它直接修正 `core` 误用。
@@ -180,7 +181,7 @@ src/isotope/
 
 ### 批次五：兼容代理清单
 
-状态：第一轮已执行，兼容代理测试已建立，且前六批低风险代理已删除，见
+状态：第一轮已执行，兼容代理测试已建立，且前七批低风险代理已删除，见
 [compat-proxy-audit](./compat-proxy-audit.md)。
 
 目标：

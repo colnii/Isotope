@@ -3,27 +3,19 @@ import importlib
 import pytest
 
 
-ATTRIBUTE_PROXIES = (
-    ("isotope.agent_loop_control", "isotope.agents.loop.control", "build_agent_loop_control"),
-    ("isotope.agent_loop_planner_adapter", "isotope.agents.loop.planner_adapter", "run_agent_loop_planner_step"),
-    ("isotope.agent_loop_step", "isotope.agents.loop.step", "run_agent_loop_step"),
-    ("isotope.assistant.loop_control", "isotope.agents.loop.control", "build_agent_loop_control"),
-    ("isotope.assistant.loop_planner_adapter", "isotope.agents.loop.planner_adapter", "run_agent_loop_planner_step"),
-    ("isotope.assistant.loop_step", "isotope.agents.loop.step", "run_agent_loop_step"),
-    ("isotope.assistant.real_planner_contract", "isotope.agents.loop.planner_contract", "run_agent_loop_real_planner_contract_step"),
-    ("isotope.core.loop_control", "isotope.agents.loop.control", "build_agent_loop_control"),
-    ("isotope.core.loop_planner_adapter", "isotope.agents.loop.planner_adapter", "run_agent_loop_planner_step"),
-    ("isotope.core.loop_step", "isotope.agents.loop.step", "run_agent_loop_step"),
-    ("isotope.core.real_planner_contract", "isotope.agents.loop.planner_contract", "run_agent_loop_real_planner_contract_step"),
-    ("isotope.real_planner_adapter_contract", "isotope.agents.loop.planner_contract", "run_agent_loop_real_planner_contract_step"),
-)
-
-
 REMOVED_PROXIES = (
     "isotope.action_compiler",
     "isotope.action_registry",
     "isotope.agent_runtime",
+    "isotope.agent_loop_control",
+    "isotope.agent_loop_planner_adapter",
+    "isotope.agent_loop_step",
     "isotope.artifact_store",
+    "isotope.assistant",
+    "isotope.assistant.loop_control",
+    "isotope.assistant.loop_planner_adapter",
+    "isotope.assistant.loop_step",
+    "isotope.assistant.real_planner_contract",
     "isotope.assistant.runtime",
     "isotope.capability_catalog",
     "isotope.capability_runner",
@@ -32,6 +24,10 @@ REMOVED_PROXIES = (
     "isotope.codex_live_smoke",
     "isotope.codex_server",
     "isotope.codex_task",
+    "isotope.core.loop_control",
+    "isotope.core.loop_planner_adapter",
+    "isotope.core.loop_step",
+    "isotope.core.real_planner_contract",
     "isotope.core.runtime",
     "isotope.executor",
     "isotope.event_schema",
@@ -51,6 +47,7 @@ REMOVED_PROXIES = (
     "isotope.model_tool_bridge",
     "isotope.models",
     "isotope.projector",
+    "isotope.real_planner_adapter_contract",
     "isotope.refs",
     "isotope.retrieval",
     "isotope.runtime.server",
@@ -60,14 +57,6 @@ REMOVED_PROXIES = (
     "isotope.terminal_system_runner",
     "isotope.tool_protocol",
 )
-
-
-@pytest.mark.parametrize(("legacy_path", "target_path", "attribute"), ATTRIBUTE_PROXIES)
-def test_compat_proxy_reexports_key_attribute(legacy_path, target_path, attribute):
-    legacy = importlib.import_module(legacy_path)
-    target = importlib.import_module(target_path)
-
-    assert getattr(legacy, attribute) is getattr(target, attribute)
 
 
 @pytest.mark.parametrize("module_path", REMOVED_PROXIES)

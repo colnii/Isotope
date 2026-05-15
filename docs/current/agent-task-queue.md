@@ -22,7 +22,7 @@
 7. 包名迁移：`src/isotope_kernel/` 已迁到 `src/isotope/`。
 8. 应用内分层第一批：平台 schema、平台事件、能力目录已迁入子目录。
 9. 聊天功能入口：产品聊天入口已迁入 `src/isotope/features/chat/`。
-10. 核心循环入口：`agent_loop_*` 已从 `assistant/` 收束到 `src/isotope/core/`。
+10. 核心循环入口：`agent_loop_*` 已迁到 `src/isotope/agents/loop/`。
 11. 资源层入口：workspace、artifact、RAG、memory 边界已迁入对应目录。
 12. 权限与注册表入口：policy、action registry、errors 已迁入新目录。
 13. 执行器入口：executor 已迁入 `src/isotope/execution/`。
@@ -35,12 +35,12 @@
 20. 平台 schema/event：活跃代码已切到 `platform/schemas/` 与 `platform/events/`，
     事件旧根路径已删除，`platform.schemas.models` 暂留汇总兼容入口。
 21. 资源/RAG 兼容入口：`artifact_store.py`、`retrieval.py`、`ingestion.py` 已改为模块代理。
-22. `assistant` 命名收束：活跃循环实现已迁入 `agents/loop/`，`assistant/` 只保留兼容代理。
+22. `assistant` 命名收束：活跃循环实现已迁入 `agents/loop/`，`assistant/` 旧包已删除。
 23. demo 旧叙事清理：活跃 agent-loop demo 统一改用 `app_friction`。
 24. 命名与目录审计：已写 [naming-and-structure-review](./naming-and-structure-review.md)。
 25. 外部审查吸收：已加入 [chatgpt审查](./chatgpt审查.md) 和 [import-map](./import-map.md)。
 26. agent loop 正名：活跃实现已迁入 `src/isotope/agents/loop/`，
-    `core`、`assistant` 和顶层旧路径保留兼容代理。
+    `core`、`assistant` 和顶层旧路径已删除。
 27. runtime 命名澄清：活跃实现已迁入 `src/isotope/runtime/in_process.py`，
     `runtime/server.py` 和 `isotope.server` 旧代理已删除。
 28. LLM 层拆出：活跃实现已迁入 `src/isotope/llm/`，
@@ -73,13 +73,16 @@
     CLI 测试改用 `python -m isotope.capabilities.runner`。
 42. 第六批低风险代理删除：Codex 顶层旧入口已删除，
     活跃测试继续使用 `integrations.codex`。
+43. 第七批低风险代理删除：agent-loop、core 和 assistant
+    旧入口已删除，`core` 仅保留空包作为未来产品主流程位置。
 
-## 最近完成：第六批低风险代理删除
+## 最近完成：第七批低风险代理删除
 
 完成内容：
 
-- 删除 4 个 Codex 顶层旧代理文件。
-- 保留 `src/isotope/integrations/codex/` 真实实现。
+- 删除 12 个 agent-loop/core/assistant 兼容代理文件。
+- 删除 `src/isotope/assistant/` 旧包。
+- 保留 `src/isotope/core/__init__.py` 作为未来产品主流程空位。
 - 将兼容代理测试改成同时覆盖保留代理和已删除代理。
 - 同步 [compat-proxy-audit](./compat-proxy-audit.md) 与
   [import-map](./import-map.md)。
@@ -95,17 +98,17 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把当前平铺模块逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步优先评估 `agent-loop`
-  剩余旧代理。
+- 下一步优先评估 `platform.schemas.models`
+  汇总兼容入口。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：
 
 - `apps/cli/`：命令行入口。
 - `apps/api/`：后端入口。
-- `src/isotope/core/`：目标上应是产品主流程；当前只保留兼容占位。
+- `src/isotope/core/`：目标上应是产品主流程；当前只保留空包预留。
 - `src/isotope/agents/loop/`：agent loop 活跃实现目录。
-- `src/isotope/assistant/`：旧路径兼容代理，不再扩张新实现。
+- `src/isotope/assistant/`：旧路径包已删除，不再扩张新实现。
 - `src/isotope/features/`：聊天、任务、项目、文件、研究等可用功能。
 - `src/isotope/capabilities/`：工具、技能、能力注册。
 - `src/isotope/execution/`：shell、python、浏览器、沙箱执行。

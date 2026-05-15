@@ -77,9 +77,9 @@ scripts/
 - `common/`：通用工具，但不能变成无边界杂物目录。
 
 `assistant` 可以描述 Isotope 的产品体验，但不再作为新目录名扩张。
-旧 `src/isotope/assistant/` 只保留兼容导出。
+旧 `src/isotope/assistant/` 已删除。
 agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
-旧 `core/loop_*` 只保留兼容导出。
+旧 `core/loop_*` 已删除。
 
 ## 迁移原则
 
@@ -123,7 +123,7 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 - 产品聊天流程：活跃实现已迁入 `src/isotope/features/chat/flow.py`；
   `src/isotope/features/chat/product_chat.py` 和顶层旧路径已删除。
 - 智能体循环：`agent_loop_*` 与 planner contract 已迁入 `src/isotope/agents/loop/`；
-  `src/isotope/core/` 和 `src/isotope/assistant/` 仅保留兼容代理。
+  旧顶层、`core/loop_*` 和 `assistant/` 入口已删除。
 - 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`，相关旧根路径已删除。
 - RAG 边界：`ingestion.py` 与 `retrieval.py` 已迁入 `src/isotope/rag/`，旧根路径已删除。
 - 记忆边界：`memory.py` 已迁成 `src/isotope/memory/` 包。

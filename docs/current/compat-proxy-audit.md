@@ -1,6 +1,6 @@
 # 兼容代理审计
 
-状态：`当前清单 / 第六批低风险代理已删除`
+状态：`当前清单 / 第七批低风险代理已删除`
 
 本文记录旧导入路径和兼容代理，不直接要求马上删除。
 目标是先知道哪些文件只是旧入口，哪些还承担命令或兼容测试职责。
@@ -10,8 +10,9 @@
 - `from isotope.xxx import ...` 形式的显式测试导入已改用新路径。
 - 普通测试里的 `from isotope import xxx` 包级导入已改用新路径。
 - 终端旧入口已删除，测试改用 `execution.terminal_runner`。
-- `src/isotope/` 根目录仍保留少量兼容代理，主要是 agent loop 旧入口。
-- `core/` 和 `assistant/` 当前没有活跃实现，只保留 agent loop 旧入口。
+- `src/isotope/` 根目录已不再保留顶层兼容代理。
+- `core/` 仅保留空包作为未来产品主流程位置。
+- `assistant` 旧包已删除。
 - `capability_runner.py`、`demo.py`、`llm_live_smoke.py` 仍有命令入口价值。
 - 兼容入口已有最小测试：
   `tests/isotope/test_compat_proxy_imports.py`。
@@ -26,6 +27,8 @@
 - capability 顶层旧入口已删除，命令行改用 `isotope-capability`
   或 `python -m isotope.capabilities.runner`。
 - Codex 顶层旧入口已删除，活跃代码直接使用 `integrations.codex`。
+- agent-loop、core 和 assistant 旧入口已删除，活跃代码直接使用
+  `agents.loop`。
 - `platform.schemas.models` 仍暂留，因为测试还把它当 schema 汇总入口。
 
 ## 可优先进入删除计划
@@ -61,6 +64,19 @@
 | `isotope.codex_live_smoke` | `isotope.integrations.codex.live_smoke` |
 | `isotope.codex_server` | `isotope.integrations.codex.server` |
 | `isotope.codex_task` | `isotope.integrations.codex.task` |
+| `isotope.agent_loop_control` | `isotope.agents.loop.control` |
+| `isotope.agent_loop_step` | `isotope.agents.loop.step` |
+| `isotope.agent_loop_planner_adapter` | `isotope.agents.loop.planner_adapter` |
+| `isotope.real_planner_adapter_contract` | `isotope.agents.loop.planner_contract` |
+| `isotope.core.loop_control` | `isotope.agents.loop.control` |
+| `isotope.core.loop_step` | `isotope.agents.loop.step` |
+| `isotope.core.loop_planner_adapter` | `isotope.agents.loop.planner_adapter` |
+| `isotope.core.real_planner_contract` | `isotope.agents.loop.planner_contract` |
+| `isotope.assistant` | 无活跃新路径 |
+| `isotope.assistant.loop_control` | `isotope.agents.loop.control` |
+| `isotope.assistant.loop_step` | `isotope.agents.loop.step` |
+| `isotope.assistant.loop_planner_adapter` | `isotope.agents.loop.planner_adapter` |
+| `isotope.assistant.real_planner_contract` | `isotope.agents.loop.planner_contract` |
 | `isotope.runtime.server` | `isotope.runtime.in_process` |
 | `isotope.server` | `isotope.runtime.in_process` |
 | `isotope.http_api` | `isotope.interfaces.http` |
@@ -95,8 +111,8 @@
 | `src/isotope/core/runtime.py` | 已删除，原本只是空壳 |
 | `src/isotope/agent_runtime.py` | 已删除，原本只指向空壳 |
 | `src/isotope/assistant/runtime.py` | 已删除，原本只指向空壳 |
-| `src/isotope/core/loop_*` | agent loop 旧入口 |
-| `src/isotope/assistant/loop_*` | assistant 旧入口 |
+| `src/isotope/core/loop_*` | 已删除，原本只是 agent loop 旧入口 |
+| `src/isotope/assistant/loop_*` | 已删除，原本只是 assistant 旧入口 |
 
 ## 当前保留项
 
@@ -107,5 +123,5 @@
 
 ## 下一步删除顺序建议
 
-1. 继续按 `agent-loop` 分组评估旧代理。
+1. 评估 `platform.schemas.models` 汇总兼容入口能否删除。
 2. 每删一批，都更新本文和 [import-map](./import-map.md)。
