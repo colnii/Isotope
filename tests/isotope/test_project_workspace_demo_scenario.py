@@ -76,3 +76,28 @@ def test_project_workspace_demo_trace_is_human_readable():
     assert "workbench: projects=1 tasks=1 files=1 search_results=3" in result.stdout
     assert "private task note" not in result.stdout
     assert "private file content" not in result.stdout
+
+
+def test_project_workspace_append_demo_reuses_existing_project():
+    result = _run_demo("--scenario", "project-workspace-append", "--json")
+
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout)
+    assert data["scenario"] == "project-workspace-append"
+    assert data["workspace_ok"] is True
+    assert data["project_task_count"] == 2
+    assert data["project_file_count"] == 2
+    assert data["workbench_counts"] == {
+        "projects": 1,
+        "tasks": 2,
+        "files": 2,
+        "search_results": 5,
+    }
+    assert data["search_result_types"] == [
+        "project",
+        "task",
+        "task",
+        "file",
+        "file",
+    ]
+    _assert_no_forbidden_content_keys(data)

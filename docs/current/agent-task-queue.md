@@ -128,18 +128,22 @@
     `isotope-project workspace`、`POST /projects/workspace` 和
     `isotope-demo --scenario project-workspace --trace` 可一次创建项目、
     任务、文件并返回 project detail 与 workbench 两个视图。
+67. project workspace 复用已有项目：`append_to_project(...)`、
+    `isotope-project workspace-add`、`POST /projects/{project_id}/workspace`
+    和 `isotope-demo --scenario project-workspace-append` 可给已有项目追加
+    新 task/file，并刷新 project detail 与 workbench。
 
-## 最近完成：project workspace 组合工作流
+## 最近完成：project workspace 复用已有项目
 
 完成内容：
 
-- `ProjectWorkspaceFlow.create_workspace(...)` 可创建 project、task 和 file，
-  并自动把 task/file id 关联回项目。
-- 返回值同时包含 `project_detail` 和 `workbench`，便于从项目详情和首页汇总
-  两个入口查看同一组内容。
-- `isotope-project workspace` 已支持一条命令创建组合工作区。
-- `POST /projects/workspace` 已接入 HTTP facade。
-- `isotope-demo --scenario project-workspace --trace` 可展示人类可读组合流程。
+- `ProjectWorkspaceFlow.append_to_project(...)` 可给已有 project 追加
+  一个新 task 和一个新 file。
+- `isotope-project workspace-add` 已支持跨进程复用已有项目。
+- `POST /projects/{project_id}/workspace` 已接入 HTTP facade。
+- `isotope-demo --scenario project-workspace-append` 可展示追加后的组合结果。
+- 运行时启动时会从已有索引和事件日志推进 ID 计数器，避免 CLI 重启后
+  `session/run/evt/task/project/artifact` 等 ID 撞号。
 - 仍只返回低敏摘要，不展示任务消息、文件正文或 artifact 全文。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
   [naming-and-structure-review](./naming-and-structure-review.md)、
@@ -159,8 +163,8 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把真实功能逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步若继续功能层工作，可给组合工作流增加读取/复用已有 project 的入口，
-  或开始把这些产品流程接到 `apps/api/` 的真实后端边界。
+- 下一步若继续功能层工作，可开始把这些产品流程接到 `apps/api/`
+  的真实后端边界，或补一个更适合初学者阅读的中文运行讲解。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

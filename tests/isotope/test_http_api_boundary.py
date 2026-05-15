@@ -18,6 +18,7 @@ MINIMAL_ROUTES = {
     ("GET", "/projects/{project_id}"),
     ("GET", "/projects/{project_id}/detail"),
     ("POST", "/projects/workspace"),
+    ("POST", "/projects/{project_id}/workspace"),
     ("POST", "/projects/{project_id}/tasks"),
     ("POST", "/projects/{project_id}/files"),
     ("POST", "/search"),
@@ -657,6 +658,57 @@ def test_http_api_project_workspace_route_returns_detail_and_workbench(tmp_path)
         "task",
         "file",
     ]
+    _assert_no_task_content_keys(response)
+
+
+def test_http_api_project_workspace_append_route_reuses_existing_project(tmp_path):
+    app = _create_app(tmp_path)
+    created = _successful_json(
+        _request(
+            app,
+            "POST",
+            "/projects/workspace",
+            {
+                "project_name": "portfolio demo",
+                "project_summary": "autumn recruiting workspace",
+                "task_goal": "build portfolio story",
+                "task_message": "private task note",
+                "file_name": "portfolio-notes.md",
+                "file_summary": "portfolio notes",
+                "file_content": "private file content",
+                "search_query": "portfolio",
+            },
+        )
+    )
+    project_id = created["workspace"]["project_detail"]["project"]["project_id"]
+
+    response = _successful_json(
+        _request(
+            app,
+            "POST",
+            f"/projects/{project_id}/workspace",
+            {
+                "task_goal": "polish portfolio case study",
+                "task_message": "private second task note",
+                "file_name": "portfolio-case-study.md",
+                "file_summary": "portfolio case study notes",
+                "file_content": "private second file content",
+                "search_query": "portfolio",
+            },
+        )
+    )
+    project = response["workspace"]["project_detail"]["project"]
+
+    assert response["status"] == "ok"
+    assert project["project_id"] == project_id
+    assert len(project["task_ids"]) == 2
+    assert len(project["file_ids"]) == 2
+    assert response["workspace"]["workbench"]["counts"] == {
+        "projects": 1,
+        "tasks": 2,
+        "files": 2,
+        "search_results": 5,
+    }
     _assert_no_task_content_keys(response)
 
 

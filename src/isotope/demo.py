@@ -75,6 +75,7 @@ def main(argv: list[str] | None = None) -> int:
             "llm-terminal-tool-loop",
             "workbench",
             "project-workspace",
+            "project-workspace-append",
         ),
         default="v0.1",
         help="demo scenario to run",
@@ -174,6 +175,8 @@ def _run_scenario(root: Path, *, scenario: str) -> dict[str, Any]:
         return _run_workbench_demo(root)
     if scenario == "project-workspace":
         return _run_project_workspace_demo(root)
+    if scenario == "project-workspace-append":
+        return _run_project_workspace_append_demo(root)
     raise ValueError(f"unsupported scenario: {scenario}")
 
 
@@ -229,6 +232,75 @@ def _run_project_workspace_demo(root: Path) -> dict[str, Any]:
         "workbench_counts": dict(workbench["counts"]),
         "search_result_types": search_result_types,
         "post_workspace_status_code": response.status_code,
+        "content_policy": "summary_only",
+        "memory_status": "boundary_only",
+    }
+
+
+def _run_project_workspace_append_demo(root: Path) -> dict[str, Any]:
+    root.mkdir(parents=True, exist_ok=True)
+    app = create_http_app(root)
+    created = app.request(
+        "POST",
+        "/projects/workspace",
+        {
+            "project_name": "portfolio demo",
+            "project_summary": "autumn recruiting workspace",
+            "task_goal": "build portfolio story",
+            "task_message": "private task note",
+            "file_name": "portfolio-notes.md",
+            "file_summary": "portfolio notes",
+            "file_content": "private file content",
+            "search_query": "portfolio",
+        },
+    )
+    project_id = created.body["workspace"]["project_detail"]["project"]["project_id"]  # type: ignore[index]
+    appended = app.request(
+        "POST",
+        f"/projects/{project_id}/workspace",
+        {
+            "task_goal": "polish portfolio case study",
+            "task_message": "private second task note",
+            "file_name": "portfolio-case-study.md",
+            "file_summary": "portfolio case study notes",
+            "file_content": "private second file content",
+            "search_query": "portfolio",
+        },
+    )
+    workspace = appended.body["workspace"]  # type: ignore[index]
+    detail = workspace["project_detail"]
+    workbench = workspace["workbench"]
+    project = detail["project"]
+    search_result_types = [
+        result["result_type"]
+        for result in workbench["search_results"]
+    ]
+    workspace_ok = (
+        created.status_code == 201
+        and appended.status_code == 200
+        and project["project_id"] == project_id
+        and len(project["task_ids"]) == 2
+        and len(project["file_ids"]) == 2
+        and workbench["counts"]
+        == {
+            "projects": 1,
+            "tasks": 2,
+            "files": 2,
+            "search_results": 5,
+        }
+        and search_result_types == ["project", "task", "task", "file", "file"]
+    )
+
+    return {
+        "scenario": "project-workspace-append",
+        "transport": "in_process_http_facade",
+        "workspace_ok": workspace_ok,
+        "project_task_count": len(project["task_ids"]),
+        "project_file_count": len(project["file_ids"]),
+        "workbench_counts": dict(workbench["counts"]),
+        "search_result_types": search_result_types,
+        "post_workspace_status_code": created.status_code,
+        "append_workspace_status_code": appended.status_code,
         "content_policy": "summary_only",
         "memory_status": "boundary_only",
     }

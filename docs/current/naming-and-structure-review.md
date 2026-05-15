@@ -330,7 +330,7 @@ src/isotope/
 
 ### 批次十四：project workspace 组合工作流
 
-状态：已执行第一片。
+状态：已执行前两片。
 
 目标：
 
@@ -339,6 +339,9 @@ src/isotope/
 - 新增 `isotope-project workspace` CLI。
 - 新增 `POST /projects/workspace` HTTP facade。
 - 新增 `isotope-demo --scenario project-workspace`，展示组合流程。
+- 新增 `isotope-project workspace-add` 和
+  `POST /projects/{project_id}/workspace`，支持复用已有 project。
+- 运行时启动时会推进已有 ID 计数器，避免 CLI 跨进程追加时撞号。
 - 暂不做完整项目模板、成员权限、UI 或长期 workspace 资产协议。
 
 ## 当前推荐决策

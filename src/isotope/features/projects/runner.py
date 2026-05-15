@@ -69,6 +69,20 @@ def _build_parser() -> argparse.ArgumentParser:
     workspace_parser.add_argument("--file-content", required=True, help="File content.")
     workspace_parser.add_argument("--search-query", help="Workbench search query.")
     workspace_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+
+    workspace_add_parser = subparsers.add_parser(
+        "workspace-add",
+        help="Add one linked task and file to an existing project.",
+    )
+    workspace_add_parser.add_argument("--root", required=True, help="Runtime root directory.")
+    workspace_add_parser.add_argument("--project-id", required=True, help="Project id.")
+    workspace_add_parser.add_argument("--task-goal", required=True, help="Task goal.")
+    workspace_add_parser.add_argument("--task-message", required=True, help="Initial task message.")
+    workspace_add_parser.add_argument("--file-name", required=True, help="File name.")
+    workspace_add_parser.add_argument("--file-summary", required=True, help="File summary.")
+    workspace_add_parser.add_argument("--file-content", required=True, help="File content.")
+    workspace_add_parser.add_argument("--search-query", help="Workbench search query.")
+    workspace_add_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     return parser
 
 
@@ -116,6 +130,17 @@ def main(argv: list[str] | None = None) -> int:
             workspace = ProjectWorkspaceFlow(flow.core).create_workspace(
                 project_name=args.project_name,
                 project_summary=args.project_summary,
+                task_goal=args.task_goal,
+                task_message=args.task_message,
+                file_name=args.file_name,
+                file_summary=args.file_summary,
+                file_content=args.file_content,
+                search_query=args.search_query,
+            )
+            return _emit_project_workspace(args, workspace.to_dict())
+        if args.command == "workspace-add":
+            workspace = ProjectWorkspaceFlow(flow.core).append_to_project(
+                args.project_id,
                 task_goal=args.task_goal,
                 task_message=args.task_message,
                 file_name=args.file_name,

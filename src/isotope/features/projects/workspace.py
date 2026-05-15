@@ -71,3 +71,36 @@ class ProjectWorkspaceFlow:
             query=search_query or project_name,
         )
         return ProjectWorkspace(project_detail=detail, workbench=workbench)
+
+    def append_to_project(
+        self,
+        project_id: str,
+        *,
+        task_goal: str,
+        task_message: str,
+        file_name: str,
+        file_summary: str,
+        file_content: str,
+        search_query: str | None = None,
+    ) -> ProjectWorkspace:
+        project_flow = ProjectFlow(self.core)
+        task_flow = TaskFlow(self.core)
+        file_flow = FileFlow(self.core)
+
+        project = project_flow.get_project(project_id)
+        task = task_flow.create_task(
+            goal=task_goal,
+            first_message=task_message,
+        )
+        file_record = file_flow.create_text_file(
+            name=file_name,
+            summary=file_summary,
+            content=file_content,
+        )
+        project_flow.add_task(project.project_id, task.task_id)
+        linked_project = project_flow.add_file(project.project_id, file_record.file_id)
+        detail = project_flow.get_project_detail(linked_project.project_id)
+        workbench = WorkbenchFlow(self.core).summary(
+            query=search_query or project.name,
+        )
+        return ProjectWorkspace(project_detail=detail, workbench=workbench)

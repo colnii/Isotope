@@ -50,6 +50,7 @@ class HttpApiApp:
         ("GET", "/projects/{project_id}"),
         ("GET", "/projects/{project_id}/detail"),
         ("POST", "/projects/workspace"),
+        ("POST", "/projects/{project_id}/workspace"),
         ("POST", "/projects/{project_id}/tasks"),
         ("POST", "/projects/{project_id}/files"),
         ("POST", "/search"),
@@ -318,6 +319,33 @@ class HttpApiApp:
                     {
                         "status": "ok",
                         "project_detail": self._project_detail_to_dict(detail),
+                    },
+                )
+            if method == "POST" and len(parts) == 3 and parts[0] == "projects" and parts[2] == "workspace":
+                body = self._require_body(
+                    json_body,
+                    required_fields=(
+                        "task_goal",
+                        "task_message",
+                        "file_name",
+                        "file_summary",
+                        "file_content",
+                    ),
+                )
+                workspace = self.project_workspace_flow.append_to_project(
+                    parts[1],
+                    task_goal=body["task_goal"],
+                    task_message=body["task_message"],
+                    file_name=body["file_name"],
+                    file_summary=body["file_summary"],
+                    file_content=body["file_content"],
+                    search_query=json_body.get("search_query") if json_body is not None else None,
+                )
+                return self._json(
+                    200,
+                    {
+                        "status": "ok",
+                        "workspace": self._project_workspace_to_dict(workspace),
                     },
                 )
             if method == "POST" and len(parts) == 3 and parts[0] == "projects" and parts[2] == "tasks":

@@ -15,7 +15,7 @@ from ..agents.loop.step import run_agent_loop_step
 from ..execution.executor import Executor, ToolHandler
 from ..platform.events.events import CanonicalEvent
 from ..platform.errors import IsotopeError, IsotopePermissionError, not_enabled_result
-from ..platform.ids import new_id
+from ..platform.ids import new_id, reserve_ids
 from ..platform.registry.actions import ActionTypeRegistry
 from ..platform.schemas.actions import ActionProposal, PolicyDecision
 from ..platform.schemas.snapshots import ImportedSnapshot
@@ -27,6 +27,47 @@ from ..rag.retrieval import RetrievalService
 from ..workspace import WorkspaceManager
 from ..workspace.artifacts import ArtifactStore
 from .action_compiler import ActionCompiler
+
+
+def _existing_id_strings(root: Path) -> list[str]:
+    values: list[str] = []
+    for relative_path in (
+        Path("projects/index.json"),
+        Path("tasks/index.json"),
+        Path("files/index.json"),
+    ):
+        values.extend(_json_id_strings(root / relative_path))
+    for event_path in sorted((root / "runs").glob("*/events.jsonl")):
+        if not event_path.exists():
+            continue
+        for line in event_path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                values.extend(_walk_id_strings(json.loads(line)))
+            except JSONDecodeError:
+                continue
+    return values
+
+
+def _json_id_strings(path: Path) -> list[str]:
+    if not path.exists():
+        return []
+    try:
+        return list(_walk_id_strings(json.loads(path.read_text(encoding="utf-8"))))
+    except JSONDecodeError:
+        return []
+
+
+def _walk_id_strings(value: Any):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for nested in value.values():
+            yield from _walk_id_strings(nested)
+    elif isinstance(value, list):
+        for nested in value:
+            yield from _walk_id_strings(nested)
 
 
 class InProcessServer:
@@ -47,6 +88,7 @@ class InProcessServer:
         policy_version: str = "v0.2",
     ):
         self.root = Path(root)
+        reserve_ids(_existing_id_strings(self.root))
         self.event_store = FileEventStore(self.root)
         self.checkpoint_store = checkpoint_store
         self.artifact_store = ArtifactStore(self.root)

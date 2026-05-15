@@ -234,3 +234,64 @@ def test_project_cli_creates_workspace_with_detail_and_workbench(tmp_path):
         "file",
     ]
     _assert_low_sensitive(payload)
+
+
+def test_project_cli_appends_workspace_items_to_existing_project(tmp_path):
+    created = _run_cli(
+        "workspace",
+        "--root",
+        str(tmp_path),
+        "--project-name",
+        "portfolio demo",
+        "--project-summary",
+        "autumn recruiting workspace",
+        "--task-goal",
+        "build portfolio story",
+        "--task-message",
+        "private task note",
+        "--file-name",
+        "portfolio-notes.md",
+        "--file-summary",
+        "portfolio notes",
+        "--file-content",
+        "private file content",
+        "--search-query",
+        "portfolio",
+        "--json",
+    )
+    project_id = json.loads(created.stdout)["workspace"]["project_detail"]["project"]["project_id"]
+
+    result = _run_cli(
+        "workspace-add",
+        "--root",
+        str(tmp_path),
+        "--project-id",
+        project_id,
+        "--task-goal",
+        "polish portfolio case study",
+        "--task-message",
+        "private second task note",
+        "--file-name",
+        "portfolio-case-study.md",
+        "--file-summary",
+        "portfolio case study notes",
+        "--file-content",
+        "private second file content",
+        "--search-query",
+        "portfolio",
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    project = payload["workspace"]["project_detail"]["project"]
+    assert project["project_id"] == project_id
+    assert len(project["task_ids"]) == 2
+    assert len(project["file_ids"]) == 2
+    assert payload["workspace"]["workbench"]["counts"] == {
+        "projects": 1,
+        "tasks": 2,
+        "files": 2,
+        "search_results": 5,
+    }
+    _assert_low_sensitive(payload)
