@@ -45,7 +45,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     和 `POST /search` 调用。
 14. `features/workbench` 已有薄入口，当前可聚合 projects/tasks/files
     低敏摘要和可选 search 结果，并通过 `isotope-workbench`、
-    `GET /workbench` 和 `POST /workbench` 调用。
+    `GET /workbench`、`POST /workbench` 和
+    `isotope-demo --scenario workbench --trace` 调用。
 
 ## 文档策略
 
@@ -70,6 +71,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
 ```bash
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q
 PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2 --trace
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario workbench --trace
 .venv/bin/isotope-demo --scenario v0.2 --trace
 git status --short
 ```

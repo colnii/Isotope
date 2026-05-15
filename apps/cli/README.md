@@ -4,7 +4,7 @@
 
 当前入口保持很薄，只转发到 `src/isotope/` 内的稳定模块：
 
-- `isotope-demo`：运行 demo 场景，对应 `isotope.demo:main`。
+- `isotope-demo`：运行 demo 场景，包含 `v0.2` 和 `workbench` 等流程。
 - `isotope-capability`：运行 capability 能力目录，对应 `isotope.capabilities.runner:main`。
 - `isotope-task`：运行、读取和列出 tasks 摘要，对应 `isotope.features.tasks.runner:main`。
 - `isotope-file`：运行 files 功能入口，对应 `isotope.features.files.runner:main`。

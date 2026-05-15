@@ -178,7 +178,8 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 - 工作台功能入口：`src/isotope/features/workbench/flow.py` 已提供
   `WorkbenchFlow` 和 `WorkbenchView`，可聚合 projects/tasks/files
   低敏摘要与可选 search 结果；`isotope-workbench`、`GET /workbench`
-  和 `POST /workbench` 已可调用；当前不是完整 UI。
+  和 `POST /workbench` 已可调用；`isotope-demo --scenario workbench --trace`
+  可展示一条人类可读工作台流程；当前不是完整 UI。
 - 智能体循环：`agent_loop_*` 与 planner contract 已迁入 `src/isotope/agents/loop/`；
   旧顶层、`core/loop_*` 和 `assistant/` 入口已删除。
 - 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`，相关旧根路径已删除。

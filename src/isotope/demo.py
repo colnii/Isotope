@@ -73,6 +73,7 @@ def main(argv: list[str] | None = None) -> int:
             "llm-tool-result-loop",
             "llm-product-chat-app-entry",
             "llm-terminal-tool-loop",
+            "workbench",
         ),
         default="v0.1",
         help="demo scenario to run",
@@ -168,7 +169,85 @@ def _run_scenario(root: Path, *, scenario: str) -> dict[str, Any]:
         return _run_llm_product_chat_app_entry_demo(root)
     if scenario == "llm-terminal-tool-loop":
         return _run_llm_terminal_tool_loop_demo(root)
+    if scenario == "workbench":
+        return _run_workbench_demo(root)
     raise ValueError(f"unsupported scenario: {scenario}")
+
+
+def _run_workbench_demo(root: Path) -> dict[str, Any]:
+    root.mkdir(parents=True, exist_ok=True)
+    app = create_http_app(root)
+
+    project_response = app.request(
+        "POST",
+        "/projects",
+        {
+            "name": "portfolio demo",
+            "summary": "autumn recruiting workspace",
+        },
+    )
+    task_response = app.request(
+        "POST",
+        "/tasks",
+        {
+            "goal": "build portfolio story",
+            "message": "private task note",
+        },
+    )
+    file_response = app.request(
+        "POST",
+        "/files",
+        {
+            "name": "portfolio-notes.md",
+            "summary": "portfolio notes",
+            "content": "private file content",
+        },
+    )
+    get_workbench_response = app.request("GET", "/workbench")
+    post_workbench_response = app.request(
+        "POST",
+        "/workbench",
+        {
+            "query": "portfolio",
+            "types": ["task", "file"],
+            "limit": 1,
+        },
+    )
+    workbench = post_workbench_response.body["workbench"]  # type: ignore[index]
+    counts = workbench["counts"]
+    search_results = workbench["search_results"]
+    search_result_types = [result["result_type"] for result in search_results]
+    workbench_ok = (
+        project_response.status_code == 201
+        and task_response.status_code == 201
+        and file_response.status_code == 201
+        and get_workbench_response.status_code == 200
+        and post_workbench_response.status_code == 200
+        and counts == {
+            "projects": 1,
+            "tasks": 1,
+            "files": 1,
+            "search_results": 1,
+        }
+        and search_result_types == ["task"]
+    )
+
+    return {
+        "scenario": "workbench",
+        "transport": "in_process_http_facade",
+        "workbench_ok": workbench_ok,
+        "project_count": counts["projects"],
+        "task_count": counts["tasks"],
+        "file_count": counts["files"],
+        "search_result_count": counts["search_results"],
+        "search_result_types": search_result_types,
+        "workbench_counts": dict(counts),
+        "get_workbench_status_code": get_workbench_response.status_code,
+        "post_workbench_status_code": post_workbench_response.status_code,
+        "search_query": "portfolio",
+        "memory_status": "boundary_only",
+        "content_policy": "summary_only",
+    }
 
 
 def _run_v0_2_demo(root: Path) -> dict[str, Any]:
@@ -3014,6 +3093,8 @@ def _format_plain_text(result: dict[str, Any]) -> str:
         return _format_llm_product_chat_app_entry_plain_text(result)
     if result.get("scenario") == "llm-terminal-tool-loop":
         return _format_llm_terminal_tool_loop_plain_text(result)
+    if result.get("scenario") == "workbench":
+        return _format_workbench_plain_text(result)
     if result.get("scenario") == "v0.2":
         return _format_v0_2_plain_text(result)
     lines = [
@@ -3063,6 +3144,8 @@ def _format_trace(result: dict[str, Any]) -> str:
         return _format_llm_product_chat_app_entry_trace(result)
     if scenario == "llm-terminal-tool-loop":
         return _format_llm_terminal_tool_loop_trace(result)
+    if scenario == "workbench":
+        return _format_workbench_trace(result)
     if scenario == "v0.2":
         return _format_v0_2_trace(result)
     return _format_v0_1_trace(result)
@@ -3394,6 +3477,24 @@ def _format_llm_terminal_tool_loop_trace(result: dict[str, Any]) -> str:
         f"codex_call_count remains 0: {result['codex_call_count']}",
         f"replay verified: {_bool_text(result['replay_ok'])}",
         f"checkpoint verified: {_bool_text(result['checkpoint_ok'])}",
+    ]
+    return _format_trace_steps(result["scenario"], steps)
+
+
+def _format_workbench_trace(result: dict[str, Any]) -> str:
+    steps = [
+        "创建 project/task/file 摘要",
+        "GET /workbench 读取无搜索条件的首页汇总",
+        "POST /workbench 使用 query/types/limit 读取带搜索结果的首页汇总",
+        (
+            "counts: "
+            f"projects={result['project_count']} "
+            f"tasks={result['task_count']} "
+            f"files={result['file_count']} "
+            f"search_results={result['search_result_count']}"
+        ),
+        f"search result types: {', '.join(result['search_result_types'])}",
+        f"content policy: {result['content_policy']}",
     ]
     return _format_trace_steps(result["scenario"], steps)
 
@@ -3808,6 +3909,24 @@ def _format_llm_terminal_tool_loop_plain_text(result: dict[str, Any]) -> str:
         f"real_llm_status: {result['real_llm_status']}",
         f"provider_status: {result['provider_status']}",
         f"network_listener_status: {result['network_listener_status']}",
+        f"memory_status: {result['memory_status']}",
+    ]
+    return "\n".join(lines)
+
+
+def _format_workbench_plain_text(result: dict[str, Any]) -> str:
+    lines = [
+        f"scenario: {result['scenario']}",
+        f"transport: {result['transport']}",
+        f"workbench_ok: {str(result['workbench_ok']).lower()}",
+        f"project_count: {result['project_count']}",
+        f"task_count: {result['task_count']}",
+        f"file_count: {result['file_count']}",
+        f"search_result_count: {result['search_result_count']}",
+        f"search_result_types: {', '.join(result['search_result_types'])}",
+        f"get_workbench_status_code: {result['get_workbench_status_code']}",
+        f"post_workbench_status_code: {result['post_workbench_status_code']}",
+        f"content_policy: {result['content_policy']}",
         f"memory_status: {result['memory_status']}",
     ]
     return "\n".join(lines)
