@@ -97,33 +97,34 @@
     task 并输出低敏 JSON 摘要。
 53. tasks API 入口：`POST /tasks` 和 `GET /tasks/{task_id}` 已接到
     `TaskFlow`，CLI 与 API 共用 core task 状态。
-54. files 功能薄入口：`features/files/flow.py` 已提供 `FileFlow`
+54. tasks 摘要索引与历史：`TaskFlow` 已提供 `list_tasks()`，并把
+    `TaskSummary` 低敏摘要持久化到本地索引；`isotope-task get/list`
+    和 `GET /tasks` 已接入。
+55. files 功能薄入口：`features/files/flow.py` 已提供 `FileFlow`
     和 `FileSummary`，可保存文本为 artifact-backed file summary。
-55. files 摘要索引：`FileFlow` 已提供 `list_files()`，并把
+56. files 摘要索引：`FileFlow` 已提供 `list_files()`，并把
     `FileSummary` 低敏摘要持久化到本地索引。
-56. files CLI/API 入口：`isotope-file`、`POST /files`、`GET /files`
+57. files CLI/API 入口：`isotope-file`、`POST /files`、`GET /files`
     和 `GET /files/{file_id}` 已接到 `FileFlow`。
 
-## 最近完成：files CLI/API 入口
+## 最近完成：tasks 列表/历史入口
 
 完成内容：
 
-- `FileFlow.in_process(...)` 可创建进程内文件功能入口。
-- `create_text_file(...)` 可把文本保存成 artifact，并返回文件摘要。
-- `get_file(...)` 可读取文件摘要；重新创建 `FileFlow` 后仍可读取。
-- `list_files()` 可列出当前本地索引里的文件摘要。
-- `isotope-file create/get/list` 可从命令行创建、读取和列出文件摘要。
-- `POST /files`、`GET /files` 和 `GET /files/{file_id}` 已接到 HTTP facade。
-- `FileSummary` 只包含文件名、摘要、artifact 引用和 run id。
-- CLI/API 输出只返回低敏摘要，不返回原始文件全文。
+- `TaskFlow` 可把 `TaskSummary` 写入本地低敏摘要索引。
+- `get_task(...)` 可读取当前内存任务，也可在重启后读取索引摘要。
+- `list_tasks()` 可列出本地任务摘要历史。
+- `isotope-task get/list` 可从命令行读取和列出任务摘要。
+- `GET /tasks` 已接到 HTTP facade。
+- CLI/API 输出只返回低敏摘要，不返回用户消息正文或 artifact 全文。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
   [naming-and-structure-review](./naming-and-structure-review.md)、
   [terminology](./terminology.md) 和 [status](./status.md)。
 
 验收：
 
-- `tests/isotope/test_files_feature_flow.py`、
-  `tests/isotope/test_files_feature_cli.py` 和 HTTP route 测试需要通过。
+- `tests/isotope/test_tasks_feature_flow.py`、
+  `tests/isotope/test_tasks_feature_cli.py` 和 HTTP route 测试需要通过。
 - 共享路径改动后需要跑全量测试。
 - `AGENTS.md` 仍需保持 100 行以内。
 
@@ -133,8 +134,8 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把真实功能逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步若继续目录工作，应给 tasks 增加更像产品的列表/历史能力，
-  或开始 `features/projects` 的第一片。
+- 下一步若继续目录工作，应开始 `features/projects` 的第一片，
+  或给 files/tasks 增加更接近产品 UI 的组合查询入口。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

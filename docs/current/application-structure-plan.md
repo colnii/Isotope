@@ -158,9 +158,9 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 - 任务功能入口：`src/isotope/features/tasks/flow.py` 已提供
   `TaskFlow` 和 `TaskSummary`，先把 core task 包成用户可读摘要。
 - 任务 CLI：`isotope-task` 已接到 `src/isotope/features/tasks/runner.py`，
-  可运行一条任务并输出低敏 JSON 摘要。
-- 任务 API：`POST /tasks` 和 `GET /tasks/{task_id}` 已接到
-  `TaskFlow`，当前仍属于进程内 HTTP facade，不是独立 FastAPI 服务。
+  可运行、读取和列出任务摘要。
+- 任务 API：`POST /tasks`、`GET /tasks` 和 `GET /tasks/{task_id}`
+  已接到 `TaskFlow`，当前仍属于进程内 HTTP facade，不是独立 FastAPI 服务。
 - 文件功能入口：`src/isotope/features/files/flow.py` 已提供
   `FileFlow` 和 `FileSummary`，可把文本保存为 artifact-backed file
   summary，并持久化低敏摘要索引；`isotope-file` 和 `/files`

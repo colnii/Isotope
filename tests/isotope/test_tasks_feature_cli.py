@@ -70,6 +70,33 @@ def test_task_cli_runs_one_task_as_json(tmp_path):
     _assert_low_sensitive(payload)
 
 
+def test_task_cli_gets_and_lists_task_summaries_as_json(tmp_path):
+    run_result = _run_cli(
+        "run",
+        "--root",
+        str(tmp_path),
+        "--goal",
+        "collect useful notes",
+        "--message",
+        "first note",
+        "--json",
+    )
+
+    assert run_result.returncode == 0, run_result.stderr
+    task = json.loads(run_result.stdout)["task"]
+    task_id = task["task_id"]
+
+    get_result = _run_cli("get", "--root", str(tmp_path), "--task-id", task_id, "--json")
+    list_result = _run_cli("list", "--root", str(tmp_path), "--json")
+
+    assert get_result.returncode == 0, get_result.stderr
+    assert json.loads(get_result.stdout) == {"status": "ok", "task": task}
+    assert list_result.returncode == 0, list_result.stderr
+    assert json.loads(list_result.stdout) == {"status": "ok", "tasks": [task]}
+    _assert_low_sensitive(json.loads(get_result.stdout))
+    _assert_low_sensitive(json.loads(list_result.stdout))
+
+
 def test_task_cli_requires_message_for_run(tmp_path):
     result = _run_cli(
         "run",
@@ -87,5 +114,19 @@ def test_task_cli_requires_message_for_run(tmp_path):
         "error": {
             "code": "task_runner_error",
             "message": "run requires --message",
+        },
+    }
+
+
+def test_task_cli_requires_task_id_for_get(tmp_path):
+    result = _run_cli("get", "--root", str(tmp_path), "--json")
+
+    assert result.returncode == 2
+    payload = json.loads(result.stdout)
+    assert payload == {
+        "status": "error",
+        "error": {
+            "code": "task_runner_error",
+            "message": "get requires --task-id",
         },
     }

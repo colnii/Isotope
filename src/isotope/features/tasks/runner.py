@@ -24,6 +24,15 @@ def _build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--goal", required=True, help="Task goal.")
     run_parser.add_argument("--message", help="First user message for the task.")
     run_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+
+    get_parser = subparsers.add_parser("get", help="Read one task summary.")
+    get_parser.add_argument("--root", required=True, help="Runtime root directory.")
+    get_parser.add_argument("--task-id", help="Task id.")
+    get_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+
+    list_parser = subparsers.add_parser("list", help="List task summaries.")
+    list_parser.add_argument("--root", required=True, help="Runtime root directory.")
+    list_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     return parser
 
 
@@ -31,10 +40,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
     try:
+        flow = TaskFlow.in_process(Path(args.root))
         if args.command == "run":
             if not args.message:
                 raise ValueError("run requires --message")
-            summary = TaskFlow.in_process(Path(args.root)).create_task(
+            summary = flow.create_task(
                 goal=args.goal,
                 first_message=args.message,
             )
@@ -43,6 +53,25 @@ def main(argv: list[str] | None = None) -> int:
                 _print_json(payload)
             else:
                 print(f"{summary.task_id}: {summary.status}")
+            return 0
+        if args.command == "get":
+            if not args.task_id:
+                raise ValueError("get requires --task-id")
+            summary = flow.get_task(args.task_id)
+            payload = {"status": "ok", "task": summary.to_dict()}
+            if args.json:
+                _print_json(payload)
+            else:
+                print(f"{summary.task_id}: {summary.status}")
+            return 0
+        if args.command == "list":
+            summaries = [summary.to_dict() for summary in flow.list_tasks()]
+            payload = {"status": "ok", "tasks": summaries}
+            if args.json:
+                _print_json(payload)
+            else:
+                for summary in flow.list_tasks():
+                    print(f"{summary.task_id}: {summary.status}")
             return 0
     except ValueError as exc:
         if getattr(args, "json", False):

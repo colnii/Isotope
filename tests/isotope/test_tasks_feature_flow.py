@@ -44,3 +44,21 @@ def test_task_flow_creates_user_facing_task_summary(tmp_path):
     assert updated.result_ref["ref_type"] == "artifact"
     assert fetched == updated
     _assert_no_forbidden_content_keys(updated.to_dict())
+
+
+def test_task_flow_lists_and_reloads_task_summaries(tmp_path):
+    flow = TaskFlow.in_process(tmp_path)
+
+    first = flow.create_task(goal="collect useful notes", first_message="first note")
+    second = flow.create_task(goal="write short plan", first_message="plan note")
+
+    assert flow.list_tasks() == [first, second]
+
+    reloaded = TaskFlow.in_process(tmp_path)
+
+    assert reloaded.get_task(first.task_id) == first
+    assert reloaded.get_task(second.task_id) == second
+    assert reloaded.list_tasks() == [first, second]
+    _assert_no_forbidden_content_keys(
+        {"tasks": [task_summary.to_dict() for task_summary in reloaded.list_tasks()]}
+    )

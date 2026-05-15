@@ -36,6 +36,7 @@ class HttpApiApp:
     _ROUTES: tuple[tuple[str, str], ...] = (
         ("GET", "/health"),
         ("POST", "/tasks"),
+        ("GET", "/tasks"),
         ("GET", "/tasks/{task_id}"),
         ("POST", "/files"),
         ("GET", "/files"),
@@ -200,6 +201,12 @@ class HttpApiApp:
                     first_message=body["message"],
                 )
                 return self._json(201, {"status": "ok", "task": self._task_summary_to_dict(summary)})
+            if method == "GET" and parts == ["tasks"]:
+                summaries = [
+                    self._task_summary_to_dict(summary)
+                    for summary in self.task_flow.list_tasks()
+                ]
+                return self._json(200, {"status": "ok", "tasks": summaries})
             if method == "GET" and len(parts) == 2 and parts[0] == "tasks":
                 try:
                     summary = self.task_flow.get_task(parts[1])

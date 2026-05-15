@@ -8,6 +8,7 @@ import pytest
 
 MINIMAL_ROUTES = {
     ("POST", "/tasks"),
+    ("GET", "/tasks"),
     ("GET", "/tasks/{task_id}"),
     ("POST", "/files"),
     ("GET", "/files"),
@@ -246,6 +247,26 @@ def test_http_api_tasks_route_creates_and_reads_task_summary(tmp_path):
     assert task["result_ref"]["ref_type"] == "artifact"
     assert fetched == {"status": "ok", "task": task}
     _assert_no_task_content_keys(created)
+
+
+def test_http_api_tasks_route_lists_task_summaries(tmp_path):
+    app = _create_app(tmp_path)
+
+    created = _successful_json(
+        _request(
+            app,
+            "POST",
+            "/tasks",
+            {
+                "goal": "collect useful notes",
+                "message": "first note",
+            },
+        )
+    )
+    listed = _successful_json(_request(app, "GET", "/tasks"))
+
+    assert listed == {"status": "ok", "tasks": [created["task"]]}
+    _assert_no_task_content_keys(listed)
 
 
 def test_http_api_files_routes_create_get_and_list_file_summaries(tmp_path):
