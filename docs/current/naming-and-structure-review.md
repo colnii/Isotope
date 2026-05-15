@@ -1,6 +1,6 @@
 # 命名与目录审计
 
-状态：`当前审计 / 批次二已执行`
+状态：`当前审计 / 第一批低风险代理已删除`
 
 本文只审计命名和目录，不直接要求改代码。
 目标是避免 Isotope 再被旧底座叙事、临时兼容入口和不好看的模块名牵着走。
@@ -11,7 +11,7 @@
 
 - `core/` 现在只保留 agent loop 兼容代理，不承载活跃实现。
 - `runtime/server.py` 已变成兼容代理，活跃实现位于 `runtime/in_process.py`。
-- 根目录还有大量旧兼容代理，看起来像真实模块。
+- 根目录仍有一些旧兼容代理，看起来像真实模块。
 - 一些文件名是历史工作流命名，不像长期产品代码。
 - `features/` 还没形成任务、项目、文件、研究等用户功能层。
 
@@ -99,6 +99,7 @@ src/isotope/
 | `execution/terminal_backend.py` | backend 泛，像临时实现 | 已迁到 `execution/terminal_runner.py` |
 | `platform/schemas/models.py` | `models` 太泛 | 已拆成 `actions.py`、`artifacts.py`、`memory.py`、`snapshots.py` |
 | `platform/errors.py` | 旧 `KernelError` 名称容易带回内核叙事 | 已改用 `IsotopeError`，旧名仅作兼容别名 |
+| 顶层 `state`、`events`、`rag`、`workspace` 旧入口 | 纯兼容代理，容易误导活跃路径 | 已删除第一批低风险代理 |
 | 顶层 `codex_*`、`llm_*`、`capability_*` | 兼容代理太多 | 保留薄代理，活跃导入只用子目录 |
 
 ## 第一批不要动的东西
@@ -175,7 +176,7 @@ src/isotope/
 
 ### 批次五：兼容代理清单
 
-状态：第一轮已执行，兼容代理测试已建立，见
+状态：第一轮已执行，兼容代理测试已建立，且第一批低风险代理已删除，见
 [compat-proxy-audit](./compat-proxy-audit.md)。
 
 目标：
@@ -185,7 +186,7 @@ src/isotope/
 - 下一步分组删除旧代理。
 - 明确哪些只是旧路径，哪些仍被外部或测试使用。
 - 每个兼容代理写明新路径和计划删除节点。
-- 等主线稳定后再删除一批旧代理。
+- 继续按风险分组删除剩余旧代理。
 
 ## 当前推荐决策
 

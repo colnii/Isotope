@@ -57,7 +57,7 @@ def _event(event_id: str, event_type: str, payload: dict) -> events.CanonicalEve
 
 
 def test_event_schema_registry_module_exists_and_exposes_default_registry():
-    event_schema = importlib.import_module("isotope.event_schema")
+    event_schema = importlib.import_module("isotope.platform.events.event_schema")
 
     registry = event_schema.EventSchemaRegistry.default()
 
@@ -68,7 +68,7 @@ def test_event_schema_registry_module_exists_and_exposes_default_registry():
 
 
 def test_every_known_canonical_event_type_has_registered_schema_metadata():
-    event_schema = importlib.import_module("isotope.event_schema")
+    event_schema = importlib.import_module("isotope.platform.events.event_schema")
     registry = event_schema.EventSchemaRegistry.default()
 
     missing = [event_type for event_type in sorted(KNOWN_CANONICAL_EVENT_TYPES) if registry.get(event_type) is None]

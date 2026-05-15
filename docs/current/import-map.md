@@ -1,6 +1,6 @@
 # 导入路径迁移表
 
-状态：`当前清单 / 兼容代理测试已建立`
+状态：`当前清单 / 第一批低风险代理已删除`
 
 本文记录旧导入路径到新导入路径的迁移关系。
 目标是让目录迁移有清单可查，而不是靠记忆维护兼容代理。
@@ -48,6 +48,16 @@ planned removal: after import-map confirms no active internal imports
 | --- | --- | --- |
 | `isotope.runtime.server` | `isotope.runtime.in_process` | 已迁移，旧路径保留兼容代理 |
 | `isotope.server` | `isotope.runtime.in_process` | 已迁移，旧路径保留兼容代理 |
+| `isotope.checkpoint_store` | `isotope.platform.state.checkpoint_store` | 已删除，直接使用新路径 |
+| `isotope.event_store` | `isotope.platform.state.event_store` | 已删除，直接使用新路径 |
+| `isotope.projector` | `isotope.platform.state.projector` | 已删除，直接使用新路径 |
+| `isotope.events` | `isotope.platform.events.events` | 已删除，直接使用新路径 |
+| `isotope.event_schema` | `isotope.platform.events.event_schema` | 已删除，直接使用新路径 |
+| `isotope.refs` | `isotope.platform.schemas.refs` | 已删除，直接使用新路径 |
+| `isotope.artifact_store` | `isotope.workspace.artifacts` | 已删除，直接使用新路径 |
+| `isotope.retrieval` | `isotope.rag.retrieval` | 已删除，直接使用新路径 |
+| `isotope.ingestion` | `isotope.rag.ingestion` | 已删除，直接使用新路径 |
+| `isotope.tool_protocol` | `isotope.platform.schemas.tool_protocol` | 已删除，直接使用新路径 |
 | `isotope.integrations.llm.provider` | `isotope.llm.provider` | 已迁移，旧路径保留兼容代理 |
 | `isotope.integrations.llm.tool_bridge` | `isotope.llm.tool_bridge` | 已迁移，旧路径保留兼容代理 |
 | `isotope.llm_provider` | `isotope.llm.provider` | 已迁移，旧路径保留兼容代理 |

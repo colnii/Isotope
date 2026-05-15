@@ -1,6 +1,6 @@
 # 兼容代理审计
 
-状态：`当前清单 / 兼容代理测试已建立`
+状态：`当前清单 / 第一批低风险代理已删除`
 
 本文记录旧导入路径和兼容代理，不直接要求马上删除。
 目标是先知道哪些文件只是旧入口，哪些还承担命令或兼容测试职责。
@@ -18,6 +18,8 @@
   `tests/isotope/test_compat_proxy_imports.py`。
 - `core/runtime.py`、`agent_runtime.py`、`assistant/runtime.py`
   空壳链已删除。
+- `state`、`events`、`schema refs`、`workspace artifact`、`rag`
+  和 `tool protocol` 的顶层纯代理已删除，活跃代码直接使用新路径。
 
 ## 可优先进入删除计划
 
@@ -27,21 +29,28 @@
 | --- | --- |
 | `isotope.server` | `isotope.runtime.in_process` |
 | `isotope.http_api` | `isotope.interfaces.http` |
+| `isotope.models` | `isotope.platform.schemas.*` |
+| `isotope.errors` | `isotope.platform.errors` |
+| `isotope.action_compiler` | `isotope.runtime.action_compiler` |
+| `isotope.action_registry` | `isotope.platform.registry.actions` |
+| `isotope.executor` | `isotope.execution.executor` |
+| `isotope.ids` | `isotope.platform.ids` |
+
+## 已删除代理
+
+这些旧路径已不再可导入，主线代码和测试应直接使用新路径：
+
+| 旧路径 | 新路径 |
+| --- | --- |
 | `isotope.checkpoint_store` | `isotope.platform.state.checkpoint_store` |
 | `isotope.event_store` | `isotope.platform.state.event_store` |
 | `isotope.projector` | `isotope.platform.state.projector` |
 | `isotope.events` | `isotope.platform.events.events` |
 | `isotope.event_schema` | `isotope.platform.events.event_schema` |
 | `isotope.refs` | `isotope.platform.schemas.refs` |
-| `isotope.models` | `isotope.platform.schemas.*` |
-| `isotope.errors` | `isotope.platform.errors` |
 | `isotope.artifact_store` | `isotope.workspace.artifacts` |
 | `isotope.retrieval` | `isotope.rag.retrieval` |
 | `isotope.ingestion` | `isotope.rag.ingestion` |
-| `isotope.action_compiler` | `isotope.runtime.action_compiler` |
-| `isotope.action_registry` | `isotope.platform.registry.actions` |
-| `isotope.executor` | `isotope.execution.executor` |
-| `isotope.ids` | `isotope.platform.ids` |
 | `isotope.tool_protocol` | `isotope.platform.schemas.tool_protocol` |
 
 ## 继续保留到下一轮判断
@@ -71,12 +80,12 @@
 
 - `tests/isotope/test_terminal_compatibility_imports.py` 里保留 3 行
   `from isotope import ...`，用于验证旧终端入口仍兼容。
-- `tests/isotope/test_compat_proxy_imports.py` 覆盖根目录、
-  `core/assistant` 旧入口、LLM、Codex、terminal 和已删除空壳入口。
+- `tests/isotope/test_compat_proxy_imports.py` 覆盖仍保留的兼容代理，
+  也验证已删除旧入口不可再导入。
 - `docs/architecture/` 和 `docs/reviews/` 仍有历史入口名，
   删除代理前不应按全文搜索结果机械改历史文档。
 
 ## 下一步删除顺序建议
 
-1. 按 `state / schema / rag / workspace / llm / terminal` 分组删除旧代理。
+1. 继续按 `runtime / interface / registry / execution` 分组删除旧代理。
 2. 每删一批，都更新本文和 [import-map](./import-map.md)。

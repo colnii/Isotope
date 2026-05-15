@@ -5,19 +5,9 @@ import pytest
 
 MODULE_ALIASES = (
     ("isotope.action_compiler", "isotope.runtime.action_compiler"),
-    ("isotope.artifact_store", "isotope.workspace.artifacts"),
-    ("isotope.checkpoint_store", "isotope.platform.state.checkpoint_store"),
-    ("isotope.event_schema", "isotope.platform.events.event_schema"),
-    ("isotope.event_store", "isotope.platform.state.event_store"),
-    ("isotope.events", "isotope.platform.events.events"),
     ("isotope.ids", "isotope.platform.ids"),
-    ("isotope.ingestion", "isotope.rag.ingestion"),
     ("isotope.models", "isotope.platform.schemas.models"),
-    ("isotope.projector", "isotope.platform.state.projector"),
-    ("isotope.refs", "isotope.platform.schemas.refs"),
-    ("isotope.retrieval", "isotope.rag.retrieval"),
     ("isotope.server", "isotope.runtime.in_process"),
-    ("isotope.tool_protocol", "isotope.platform.schemas.tool_protocol"),
 )
 
 
@@ -57,10 +47,20 @@ ATTRIBUTE_PROXIES = (
 )
 
 
-REMOVED_EMPTY_PROXIES = (
+REMOVED_PROXIES = (
     "isotope.agent_runtime",
+    "isotope.artifact_store",
     "isotope.assistant.runtime",
+    "isotope.checkpoint_store",
     "isotope.core.runtime",
+    "isotope.event_schema",
+    "isotope.event_store",
+    "isotope.events",
+    "isotope.ingestion",
+    "isotope.projector",
+    "isotope.refs",
+    "isotope.retrieval",
+    "isotope.tool_protocol",
 )
 
 
@@ -80,7 +80,7 @@ def test_compat_proxy_reexports_key_attribute(legacy_path, target_path, attribut
     assert getattr(legacy, attribute) is getattr(target, attribute)
 
 
-@pytest.mark.parametrize("module_path", REMOVED_EMPTY_PROXIES)
-def test_empty_runtime_compat_proxies_are_removed(module_path):
+@pytest.mark.parametrize("module_path", REMOVED_PROXIES)
+def test_removed_compat_proxies_are_not_importable(module_path):
     with pytest.raises(ModuleNotFoundError):
         importlib.import_module(module_path)

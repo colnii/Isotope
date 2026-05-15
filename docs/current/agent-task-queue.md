@@ -60,19 +60,22 @@
     改成新路径导入；终端兼容测试保留旧入口覆盖。
 36. 兼容代理测试：新增 `tests/isotope/test_compat_proxy_imports.py`，
     覆盖根目录、旧 agent loop、LLM、Codex、terminal 和已删除空壳入口。
+37. 第一批低风险代理删除：`state`、`events`、`schema refs`、
+    `workspace artifact`、`rag` 和 `tool protocol` 顶层旧路径已删除。
 
-## 最近完成：兼容代理测试
+## 最近完成：第一批低风险代理删除
 
 完成内容：
 
-- 新增 `tests/isotope/test_compat_proxy_imports.py`。
-- 验证保留的兼容代理仍指向新路径。
-- 验证已删除的空壳 runtime 入口不可再导入。
-- 同步 [compat-proxy-audit](./compat-proxy-audit.md)。
+- 删除 10 个顶层纯兼容代理文件。
+- 将相关边界测试里的动态导入改成真实新路径。
+- 将兼容代理测试改成同时覆盖保留代理和已删除代理。
+- 同步 [compat-proxy-audit](./compat-proxy-audit.md) 与
+  [import-map](./import-map.md)。
 
 验收：
 
-- 兼容代理测试单独通过。
+- 相关边界测试需要通过。
 - 全量测试需要通过。
 
 ## 下一批次：应用内分层迁移
@@ -81,7 +84,7 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把当前平铺模块逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步优先按 `state / schema / rag / workspace / llm / terminal` 分组删除旧代理。
+- 下一步优先评估 `runtime / interface / registry / execution` 剩余旧代理。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

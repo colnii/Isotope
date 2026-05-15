@@ -32,7 +32,7 @@ def _run_created() -> CanonicalEvent:
 
 
 def _ingestion_module():
-    return importlib.import_module("isotope.ingestion")
+    return importlib.import_module("isotope.rag.ingestion")
 
 
 def _service(tmp_path):

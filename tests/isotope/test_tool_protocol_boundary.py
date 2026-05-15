@@ -20,7 +20,7 @@ RUN_ID = "run_001"
 
 def _load_tool_protocol_module():
     try:
-        return importlib.import_module("isotope.tool_protocol")
+        return importlib.import_module("isotope.platform.schemas.tool_protocol")
     except ModuleNotFoundError as exc:
         pytest.fail(f"tool protocol module is missing: {exc}")
 
