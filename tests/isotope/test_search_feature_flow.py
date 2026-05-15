@@ -73,3 +73,44 @@ def test_search_flow_requires_non_empty_query(tmp_path):
 
     with pytest.raises(ValueError, match="query must not be empty"):
         flow.search("   ")
+
+
+def test_search_flow_filters_types_and_limits_results(tmp_path):
+    ProjectFlow.in_process(tmp_path).create_project(
+        name="portfolio demo",
+        summary="autumn recruiting workspace",
+    )
+    task = TaskFlow.in_process(tmp_path).create_task(
+        goal="build portfolio story",
+        first_message="private task note",
+    )
+    FileFlow.in_process(tmp_path).create_text_file(
+        name="portfolio-notes.md",
+        summary="portfolio notes",
+        content="private file content",
+    )
+
+    results = SearchFlow.in_process(tmp_path).search(
+        "portfolio",
+        result_types=("task", "file"),
+        limit=1,
+    )
+
+    assert [result.result_type for result in results] == ["task"]
+    assert [result.result_id for result in results] == [task.task_id]
+
+
+@pytest.mark.parametrize("bad_type", ["", "unknown"])
+def test_search_flow_rejects_unknown_result_types(tmp_path, bad_type):
+    flow = SearchFlow.in_process(tmp_path)
+
+    with pytest.raises(ValueError, match="unsupported search result_type"):
+        flow.search("portfolio", result_types=(bad_type,))
+
+
+@pytest.mark.parametrize("bad_limit", [0, -1])
+def test_search_flow_rejects_non_positive_limit(tmp_path, bad_limit):
+    flow = SearchFlow.in_process(tmp_path)
+
+    with pytest.raises(ValueError, match="limit must be a positive integer"):
+        flow.search("portfolio", limit=bad_limit)

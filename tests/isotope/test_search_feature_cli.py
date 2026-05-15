@@ -109,3 +109,58 @@ def test_search_cli_requires_query(tmp_path):
             "message": "search requires --query",
         },
     }
+
+
+def test_search_cli_filters_type_and_limit(tmp_path):
+    ProjectFlow.in_process(tmp_path).create_project(
+        name="portfolio demo",
+        summary="autumn recruiting workspace",
+    )
+    task = TaskFlow.in_process(tmp_path).create_task(
+        goal="build portfolio story",
+        first_message="private task note",
+    )
+    FileFlow.in_process(tmp_path).create_text_file(
+        name="portfolio-notes.md",
+        summary="portfolio notes",
+        content="private file content",
+    )
+
+    result = _run_cli(
+        "search",
+        "--root",
+        str(tmp_path),
+        "--query",
+        "portfolio",
+        "--type",
+        "task",
+        "--type",
+        "file",
+        "--limit",
+        "1",
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert [item["result_type"] for item in payload["results"]] == ["task"]
+    assert [item["result_id"] for item in payload["results"]] == [task.task_id]
+
+
+def test_search_cli_rejects_bad_type(tmp_path):
+    result = _run_cli(
+        "search",
+        "--root",
+        str(tmp_path),
+        "--query",
+        "portfolio",
+        "--type",
+        "unknown",
+        "--json",
+    )
+
+    assert result.returncode == 2
+    assert json.loads(result.stdout)["error"]["message"] == (
+        "unsupported search result_type: unknown"
+    )

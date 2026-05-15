@@ -293,9 +293,14 @@ class HttpApiApp:
                 return self._json(200, {"status": "ok", "project": self._project_summary_to_dict(summary)})
             if method == "POST" and parts == ["search"]:
                 body = self._require_body(json_body, required_fields=("query",))
+                search_options = self._search_options(json_body)
                 results = [
                     self._search_result_to_dict(result)
-                    for result in self.search_flow.search(body["query"])
+                    for result in self.search_flow.search(
+                        body["query"],
+                        result_types=search_options["result_types"],
+                        limit=search_options["limit"],
+                    )
                 ]
                 return self._json(200, {"status": "ok", "results": results})
             if method == "POST" and parts == ["sessions"]:
@@ -750,6 +755,17 @@ class HttpApiApp:
 
     def _search_result_to_dict(self, result: SearchResult) -> dict[str, Any]:
         return result.to_dict()
+
+    def _search_options(self, body: dict[str, Any]) -> dict[str, Any]:
+        result_types = body.get("types")
+        if result_types is not None:
+            if not isinstance(result_types, list) or not all(
+                isinstance(item, str) for item in result_types
+            ):
+                raise ValueError("types must be a list of strings")
+            result_types = tuple(result_types)
+        limit = body.get("limit")
+        return {"result_types": result_types, "limit": limit}
 
     def _run_state_to_dict(self, state: Any) -> dict[str, Any]:
         return asdict(state)

@@ -116,16 +116,20 @@
     和 `GET /projects/{project_id}/detail` 可返回关联 task/file 低敏摘要。
 61. search 功能第一片：`SearchFlow`、`isotope-search search` 和
     `POST /search` 可统一搜索 project/task/file 低敏摘要。
+62. search 可控查询：`SearchFlow.search(...)`、`isotope-search`
+    和 `POST /search` 已支持类型过滤和结果数量限制。
 
-## 最近完成：search 低敏摘要搜索入口
+## 最近完成：search 类型过滤与 limit
 
 完成内容：
 
 - `SearchFlow.in_process(...)` 可创建进程内搜索功能入口。
-- `search(query)` 会统一搜索 project、task 和 file 的低敏摘要。
+- `search(query, result_types=..., limit=...)` 会统一搜索 project、
+  task 和 file 的低敏摘要。
 - `SearchResult` 返回类型、id、标题、摘要和原始低敏 item。
-- `isotope-search search --query ...` 可从命令行搜索摘要。
-- `POST /search` 已接入进程内 HTTP facade。
+- `isotope-search search --query ... --type task --limit 20`
+  可从命令行过滤类型和控制数量。
+- `POST /search` 已支持 `types` 和 `limit`。
 - 搜索只看 id、标题、摘要等低敏字段，不搜索任务消息、文件正文或 artifact 全文。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
   [naming-and-structure-review](./naming-and-structure-review.md)、
@@ -145,7 +149,7 @@
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把真实功能逐步迁入 `features/`、`platform/`、`llm/` 等层级。
 - 下一步若继续功能层工作，可把 search 用到 demo 展示，
-  或给 search 增加类型过滤与结果数量限制。
+  或给 projects/tasks/files 增加一个更像产品首页的汇总入口。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

@@ -172,7 +172,8 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   `isotope-project` 和 `/projects` HTTP facade 已可调用；当前不是完整项目管理系统。
 - 搜索功能入口：`src/isotope/features/search/flow.py` 已提供
   `SearchFlow` 和 `SearchResult`，可统一搜索 project/task/file
-  低敏摘要；`isotope-search` 和 `POST /search` 已可调用；当前不是全文检索或 RAG。
+  低敏摘要，并支持类型过滤和结果数量限制；`isotope-search` 和
+  `POST /search` 已可调用；当前不是全文检索或 RAG。
 - 智能体循环：`agent_loop_*` 与 planner contract 已迁入 `src/isotope/agents/loop/`；
   旧顶层、`core/loop_*` 和 `assistant/` 入口已删除。
 - 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`，相关旧根路径已删除。

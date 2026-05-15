@@ -41,7 +41,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     task/file id、读取关联 task/file 低敏组合摘要，并通过
     `isotope-project` 和 `/projects` 调用。
 13. `features/search` 已有薄入口，当前可统一搜索 project/task/file
-    低敏摘要，并通过 `isotope-search` 和 `POST /search` 调用。
+    低敏摘要，支持类型过滤和结果数量限制，并通过 `isotope-search`
+    和 `POST /search` 调用。
 
 ## 文档策略
 

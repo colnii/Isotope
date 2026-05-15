@@ -22,6 +22,13 @@ def _build_parser() -> argparse.ArgumentParser:
     search_parser = subparsers.add_parser("search", help="Search low-sensitive summaries.")
     search_parser.add_argument("--root", required=True, help="Runtime root directory.")
     search_parser.add_argument("--query", help="Search query.")
+    search_parser.add_argument(
+        "--type",
+        action="append",
+        dest="result_types",
+        help="Filter result type: project, task, or file.",
+    )
+    search_parser.add_argument("--limit", type=int, help="Maximum result count.")
     search_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     return parser
 
@@ -34,7 +41,19 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "search":
             if not args.query:
                 raise ValueError("search requires --query")
-            results = [result.to_dict() for result in flow.search(args.query)]
+            result_types = (
+                tuple(args.result_types)
+                if args.result_types is not None
+                else None
+            )
+            results = [
+                result.to_dict()
+                for result in flow.search(
+                    args.query,
+                    result_types=result_types,
+                    limit=args.limit,
+                )
+            ]
             payload = {"status": "ok", "results": results}
             if args.json:
                 _print_json(payload)

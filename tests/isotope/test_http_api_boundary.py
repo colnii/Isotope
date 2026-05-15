@@ -487,6 +487,58 @@ def test_http_api_search_route_reads_low_sensitive_summaries(tmp_path):
     _assert_no_task_content_keys(searched)
 
 
+def test_http_api_search_route_filters_types_and_limit(tmp_path):
+    app = _create_app(tmp_path)
+    _successful_json(
+        _request(
+            app,
+            "POST",
+            "/projects",
+            {
+                "name": "portfolio demo",
+                "summary": "autumn recruiting workspace",
+            },
+        )
+    )
+    task = _successful_json(
+        _request(
+            app,
+            "POST",
+            "/tasks",
+            {
+                "goal": "build portfolio story",
+                "message": "private task note",
+            },
+        )
+    )["task"]
+    _successful_json(
+        _request(
+            app,
+            "POST",
+            "/files",
+            {
+                "name": "portfolio-notes.md",
+                "summary": "portfolio notes",
+                "content": "private file content",
+            },
+        )
+    )
+
+    searched = _successful_json(
+        _request(
+            app,
+            "POST",
+            "/search",
+            {"query": "portfolio", "types": ["task", "file"], "limit": 1},
+        )
+    )
+
+    assert searched["status"] == "ok"
+    assert [item["result_type"] for item in searched["results"]] == ["task"]
+    assert [item["result_id"] for item in searched["results"]] == [task["task_id"]]
+    _assert_no_task_content_keys(searched)
+
+
 def test_get_run_returns_projector_read_model_from_event_log_not_executor_memory(tmp_path):
     writer = _create_app(tmp_path)
     _, run_id = _create_run_via_http(writer)

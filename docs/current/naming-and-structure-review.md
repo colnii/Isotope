@@ -298,7 +298,7 @@ src/isotope/
 
 ### 批次十二：search 功能薄入口
 
-状态：已执行第一片。
+状态：已执行前两片。
 
 目标：
 
@@ -306,9 +306,11 @@ src/isotope/
 - 新增 `SearchResult` 作为用户可读搜索结果。
 - 复用 `ProjectFlow`、`TaskFlow` 和 `FileFlow` 的低敏摘要索引。
 - 默认只匹配 id、标题和摘要，不读取任务消息、文件正文或 artifact 全文。
+- 支持按 `project`、`task`、`file` 做类型过滤。
+- 支持 `limit` 控制最多返回数量。
 - 新增 `isotope-search search` CLI。
 - 新增 `POST /search` HTTP facade。
-- 暂不做全文检索、RAG、复杂排序、分页或独立 FastAPI 服务。
+- 暂不做全文检索、RAG、复杂排序、分页游标或独立 FastAPI 服务。
 
 ## 当前推荐决策
 
