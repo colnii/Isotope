@@ -2,7 +2,7 @@ import isotope.runtime.action_compiler as action_compiler
 import isotope.workspace.artifacts as artifact_store
 import isotope.platform.state.event_store as event_store
 import isotope.execution.executor as executor
-import isotope.platform.schemas.models as models
+from isotope.platform.schemas.actions import ActionExecution, PolicyDecision
 import isotope.runtime.in_process as server
 import isotope.workspace as workspace
 from isotope.platform.events.events import CanonicalEvent
@@ -27,7 +27,7 @@ def _proposal(text="hello"):
 
 
 def _decision(proposal):
-    return models.PolicyDecision(
+    return PolicyDecision(
         decision_id="dec_001",
         proposal_id=proposal.proposal_id,
         outcome="approved",
@@ -160,7 +160,7 @@ def test_server_happy_path_does_not_duplicate_executor_owned_success_events(tmp_
     run = api.create_run(session["session_id"], "test run")
 
     def executor_owned_success(decision, proposal):
-        execution = models.ActionExecution(
+        execution = ActionExecution(
             execution_id="exec_owned",
             proposal_id=proposal.proposal_id,
             decision_id=decision.decision_id,

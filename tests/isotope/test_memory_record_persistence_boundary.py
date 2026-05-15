@@ -3,12 +3,13 @@ import pytest
 import isotope.platform.state.event_store as event_store
 import isotope.platform.events.events as events
 import isotope.memory as memory
-import isotope.platform.schemas.models as models
+from isotope.platform.schemas.actions import ActionExecution
+from isotope.platform.schemas.memory import MemoryRecord
 import isotope.platform.state.projector as projector
 
 
-def _valid_memory_record() -> models.MemoryRecord:
-    return models.MemoryRecord(
+def _valid_memory_record() -> MemoryRecord:
+    return MemoryRecord(
         memory_id="mem_001",
         scope="thread",
         content={
@@ -34,8 +35,8 @@ def _valid_memory_record() -> models.MemoryRecord:
     )
 
 
-def _execution() -> models.ActionExecution:
-    return models.ActionExecution(
+def _execution() -> ActionExecution:
+    return ActionExecution(
         execution_id="exec_001",
         proposal_id="prop_001",
         decision_id="dec_001",

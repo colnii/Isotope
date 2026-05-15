@@ -4,7 +4,7 @@ import pytest
 
 import isotope.workspace.artifacts as artifact_store
 import isotope.platform.state.event_store as event_store
-import isotope.platform.schemas.models as models
+from isotope.platform.schemas.snapshots import ImportedSnapshot
 import isotope.platform.state.projector as projector
 import isotope.platform.schemas.refs as refs
 from isotope.platform.events.events import CanonicalEvent
@@ -94,9 +94,9 @@ def _external_observations(state) -> list[dict]:
 
 
 def test_imported_snapshot_slice_model_exists_and_requires_boundary_fields():
-    assert hasattr(models, "ImportedSnapshot")
+    assert ImportedSnapshot is not None
 
-    snapshot = models.ImportedSnapshot(
+    snapshot = ImportedSnapshot(
         snapshot_id="snapshot_001",
         source_system="example_provider",
         captured_at="2026-01-01T00:00:01Z",
@@ -116,10 +116,10 @@ def test_imported_snapshot_slice_model_exists_and_requires_boundary_fields():
 
 
 def test_imported_snapshot_rejects_uri_string_ref():
-    assert hasattr(models, "ImportedSnapshot")
+    assert ImportedSnapshot is not None
 
     with pytest.raises((TypeError, ValueError), match="ResourceRef|structured|source_ref|URI"):
-        models.ImportedSnapshot(
+        ImportedSnapshot(
             snapshot_id="snapshot_001",
             source_system="example_provider",
             captured_at="2026-01-01T00:00:01Z",

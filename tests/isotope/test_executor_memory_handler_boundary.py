@@ -5,7 +5,7 @@ import isotope.workspace.artifacts as artifact_store
 import isotope.platform.state.event_store as event_store
 import isotope.execution.executor as executor
 import isotope.memory as memory
-import isotope.platform.schemas.models as models
+from isotope.platform.schemas.actions import ActionProposal, PolicyDecision
 import isotope.workspace as workspace
 
 
@@ -49,8 +49,8 @@ def _memory_registry() -> action_registry.ActionTypeRegistry:
     )
 
 
-def _memory_proposal() -> models.ActionProposal:
-    return models.ActionProposal(
+def _memory_proposal() -> ActionProposal:
+    return ActionProposal(
         proposal_id="prop_memory_001",
         run_id="run_001",
         agent_id="agent_supervisor",
@@ -85,13 +85,13 @@ def _memory_proposal() -> models.ActionProposal:
 
 
 def _decision(
-    proposal: models.ActionProposal,
+    proposal: ActionProposal,
     *,
     granted_tools: list[str] | None = None,
-) -> models.PolicyDecision:
+) -> PolicyDecision:
     if granted_tools is None:
         granted_tools = ["write_memory"]
-    return models.PolicyDecision(
+    return PolicyDecision(
         decision_id="dec_memory_001",
         proposal_id=proposal.proposal_id,
         outcome="approved",

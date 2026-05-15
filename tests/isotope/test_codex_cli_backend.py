@@ -7,7 +7,7 @@ import pytest
 
 import isotope.integrations.codex.cli as codex_cli
 import isotope.integrations.codex.task as codex_task
-import isotope.platform.schemas.models as models
+from isotope.platform.schemas.actions import ActionProposal, PolicyDecision
 
 
 class FakeCompletedProcess:
@@ -27,8 +27,8 @@ class RecordingProcessRunner:
         return self.result
 
 
-def _proposal() -> models.ActionProposal:
-    return models.ActionProposal(
+def _proposal() -> ActionProposal:
+    return ActionProposal(
         proposal_id="prop_codex_cli",
         run_id="run_codex_cli",
         agent_id="agent_supervisor",
@@ -49,8 +49,8 @@ def _proposal() -> models.ActionProposal:
     )
 
 
-def _decision(proposal: models.ActionProposal) -> models.PolicyDecision:
-    return models.PolicyDecision(
+def _decision(proposal: ActionProposal) -> PolicyDecision:
+    return PolicyDecision(
         decision_id="dec_codex_cli",
         proposal_id=proposal.proposal_id,
         outcome="approved",

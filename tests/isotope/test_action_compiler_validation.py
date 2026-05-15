@@ -1,7 +1,7 @@
 import pytest
 
 import isotope.runtime.action_compiler as action_compiler
-import isotope.platform.schemas.models as models
+from isotope.platform.schemas.actions import ActionProposal
 
 
 def _compiler():
@@ -77,7 +77,7 @@ def test_compile_rejects_invalid_budget_seconds(seconds):
 def test_valid_minimal_intent_compiles_to_action_proposal():
     proposal = _compiler().compile(_intent(), _runtime_context())
 
-    assert isinstance(proposal, models.ActionProposal)
+    assert isinstance(proposal, ActionProposal)
     assert proposal.action_type == "call_tool"
     assert proposal.payload == {"tool": "write_artifact_tool", "text": ""}
     assert proposal.requested_capabilities == {

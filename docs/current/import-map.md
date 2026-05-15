@@ -81,7 +81,7 @@ planned removal: after import-map confirms no active internal imports
 | `isotope.codex_live_smoke` | `isotope.integrations.codex.live_smoke` | 已删除，直接使用新路径 |
 | `isotope.codex_server` | `isotope.integrations.codex.server` | 已删除，直接使用新路径 |
 | `isotope.codex_task` | `isotope.integrations.codex.task` | 已删除，直接使用新路径 |
-| `isotope.platform.schemas.models` | `isotope.platform.schemas.actions` / `artifacts` / `memory` / `snapshots` | 已拆分，旧路径保留兼容代理 |
+| `isotope.platform.schemas.models` | `isotope.platform.schemas.actions` / `artifacts` / `memory` / `snapshots` | 已删除，直接使用具体 schema 路径 |
 | `isotope.models` | `isotope.platform.schemas.actions` / `artifacts` / `memory` / `snapshots` | 已删除，直接使用具体 schema 路径 |
 | `isotope.errors` | `isotope.platform.errors` | 已删除；`KernelError` 仍在新路径中作为兼容别名 |
 

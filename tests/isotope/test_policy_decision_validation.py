@@ -1,6 +1,6 @@
 import pytest
 
-import isotope.platform.schemas.models as models
+from isotope.platform.schemas.actions import ActionProposal
 import isotope.policy as policy
 
 
@@ -19,7 +19,7 @@ def _proposal(**overrides):
         },
     }
     values.update(overrides)
-    return models.ActionProposal(**values)
+    return ActionProposal(**values)
 
 
 def test_policy_rejects_non_action_proposal():

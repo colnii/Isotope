@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 
 import isotope.demo as demo
-import isotope.platform.schemas.models as models
+from isotope.platform.schemas.actions import PolicyDecision
 import isotope.runtime.in_process as server
 
 
@@ -24,9 +24,9 @@ def _submit_pending_tool_request(tmp_path):
     return api, run["run_id"], result
 
 
-def _decision_from(result: dict[str, Any], *, grants: dict[str, Any]) -> models.PolicyDecision:
+def _decision_from(result: dict[str, Any], *, grants: dict[str, Any]) -> PolicyDecision:
     decision = result["decision"]
-    return models.PolicyDecision(
+    return PolicyDecision(
         decision_id=decision.decision_id,
         proposal_id=decision.proposal_id,
         outcome=decision.outcome,

@@ -1,6 +1,6 @@
 # 兼容代理审计
 
-状态：`当前清单 / 第七批低风险代理已删除`
+状态：`当前清单 / 第八批低风险代理已删除`
 
 本文记录旧导入路径和兼容代理，不直接要求马上删除。
 目标是先知道哪些文件只是旧入口，哪些还承担命令或兼容测试职责。
@@ -29,15 +29,13 @@
 - Codex 顶层旧入口已删除，活跃代码直接使用 `integrations.codex`。
 - agent-loop、core 和 assistant 旧入口已删除，活跃代码直接使用
   `agents.loop`。
-- `platform.schemas.models` 仍暂留，因为测试还把它当 schema 汇总入口。
+- `platform.schemas.models` 汇总兼容入口已删除，测试直接使用具体
+  schema 模块。
 
 ## 可优先进入删除计划
 
-这些路径已有新实现路径，且显式测试导入已迁走：
-
-| 旧路径 | 新路径 |
-| --- | --- |
-| `isotope.platform.schemas.models` | `isotope.platform.schemas.*` |
+当前没有已确认应继续删除的兼容代理。下一轮应先重新审计，
+确认是否还有命令入口被误标成旧代理。
 
 ## 已删除代理
 
@@ -45,6 +43,7 @@
 
 | 旧路径 | 新路径 |
 | --- | --- |
+| `isotope.platform.schemas.models` | `isotope.platform.schemas.*` |
 | `isotope.models` | `isotope.platform.schemas.*` |
 | `isotope.errors` | `isotope.platform.errors` |
 | `isotope.integrations.llm` | `isotope.llm` |
@@ -121,7 +120,7 @@
 - `docs/architecture/` 和 `docs/reviews/` 仍有历史入口名，
   删除代理前不应按全文搜索结果机械改历史文档。
 
-## 下一步删除顺序建议
+## 下一步建议
 
-1. 评估 `platform.schemas.models` 汇总兼容入口能否删除。
+1. 重新审计 `src/isotope/` 下剩余顶层文件，区分正式入口和旧代理。
 2. 每删一批，都更新本文和 [import-map](./import-map.md)。

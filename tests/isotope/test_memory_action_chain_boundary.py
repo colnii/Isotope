@@ -5,7 +5,7 @@ import isotope.platform.registry.actions as action_registry
 import isotope.workspace.artifacts as artifact_store
 import isotope.platform.state.event_store as event_store
 import isotope.execution.executor as executor
-import isotope.platform.schemas.models as models
+from isotope.platform.schemas.actions import ActionProposal, PolicyDecision
 import isotope.policy as policy
 import isotope.runtime.in_process as server
 import isotope.workspace as workspace
@@ -64,8 +64,8 @@ def _memory_intent(**overrides) -> dict:
     return intent
 
 
-def _memory_proposal() -> models.ActionProposal:
-    return models.ActionProposal(
+def _memory_proposal() -> ActionProposal:
+    return ActionProposal(
         proposal_id="prop_memory_001",
         run_id="run_001",
         agent_id="agent_supervisor",
@@ -95,8 +95,8 @@ def _memory_proposal() -> models.ActionProposal:
     )
 
 
-def _approved_memory_decision(proposal: models.ActionProposal) -> models.PolicyDecision:
-    return models.PolicyDecision(
+def _approved_memory_decision(proposal: ActionProposal) -> PolicyDecision:
+    return PolicyDecision(
         decision_id="dec_memory_001",
         proposal_id=proposal.proposal_id,
         outcome="approved",

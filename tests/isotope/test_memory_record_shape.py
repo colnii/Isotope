@@ -1,6 +1,6 @@
 import pytest
 
-import isotope.platform.schemas.models as models
+from isotope.platform.schemas.memory import MemoryRecord
 
 
 def _valid_memory_record_kwargs(**overrides):
@@ -33,11 +33,11 @@ def _valid_memory_record_kwargs(**overrides):
 
 
 def test_memory_record_implementation_shape_exists():
-    assert hasattr(models, "MemoryRecord")
+    assert MemoryRecord is not None
 
 
 def test_valid_memory_record_requires_structured_content_and_provenance():
-    record = models.MemoryRecord(**_valid_memory_record_kwargs())
+    record = MemoryRecord(**_valid_memory_record_kwargs())
 
     assert record.memory_id == "mem_001"
     assert record.scope == "thread"
@@ -65,7 +65,7 @@ def test_valid_memory_record_requires_structured_content_and_provenance():
 
 def test_memory_record_content_cannot_be_raw_string_transcript():
     with pytest.raises((TypeError, ValueError), match="content|dict|structured"):
-        models.MemoryRecord(
+        MemoryRecord(
             **_valid_memory_record_kwargs(content="raw transcript dump")
         )
 
@@ -76,24 +76,24 @@ def test_memory_record_provenance_requires_execution_action_and_run(missing_fiel
     provenance.pop(missing_field)
 
     with pytest.raises((TypeError, ValueError), match=missing_field):
-        models.MemoryRecord(**_valid_memory_record_kwargs(provenance=provenance))
+        MemoryRecord(**_valid_memory_record_kwargs(provenance=provenance))
 
 
 def test_memory_record_source_refs_must_be_list():
     with pytest.raises((TypeError, ValueError), match="source_refs|list"):
-        models.MemoryRecord(
+        MemoryRecord(
             **_valid_memory_record_kwargs(source_refs="artifact://run_001/artifact_001")
         )
 
 
 def test_memory_record_scope_is_limited_to_thread_run_or_session():
     with pytest.raises((TypeError, ValueError), match="scope|thread|run|session"):
-        models.MemoryRecord(**_valid_memory_record_kwargs(scope="global"))
+        MemoryRecord(**_valid_memory_record_kwargs(scope="global"))
 
 
 def test_memory_record_rejects_top_level_artifact_content():
     with pytest.raises((TypeError, ValueError), match="artifact_content|content"):
-        models.MemoryRecord(
+        MemoryRecord(
             **_valid_memory_record_kwargs(
                 artifact_content="large raw artifact content should stay behind refs"
             )

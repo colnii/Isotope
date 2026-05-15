@@ -1,7 +1,7 @@
 import pytest
 
 import isotope.platform.events.events as events
-import isotope.platform.schemas.models as models
+import isotope.platform.schemas as schemas
 import isotope.policy as policy
 import isotope.platform.state.projector as projector
 import isotope.workspace as workspace
@@ -251,6 +251,6 @@ def test_delegation_events_replay_to_same_read_model(tmp_path):
 
 
 def test_no_model_driven_planning_loop_or_real_concurrency_is_exposed_in_first_slice():
-    assert not hasattr(models, "ModelPlanningLoop")
-    assert not hasattr(models, "WorkerProcess")
+    assert not hasattr(schemas, "ModelPlanningLoop")
+    assert not hasattr(schemas, "WorkerProcess")
     assert not hasattr(policy.PolicyEngine(), "spawn_worker")

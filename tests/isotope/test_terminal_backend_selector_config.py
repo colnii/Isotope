@@ -5,7 +5,7 @@ import pytest
 import isotope.workspace.artifacts as artifact_store
 import isotope.platform.state.event_store as event_store
 import isotope.execution.executor as executor
-import isotope.platform.schemas.models as models
+from isotope.platform.schemas.actions import ActionProposal, PolicyDecision
 import isotope.execution.terminal_runner as terminal_backend
 import isotope.workspace as workspace
 
@@ -20,8 +20,8 @@ class RecordingBackend:
         return self.result
 
 
-def _proposal() -> models.ActionProposal:
-    return models.ActionProposal(
+def _proposal() -> ActionProposal:
+    return ActionProposal(
         proposal_id="prop_terminal_backend_selector",
         run_id="run_terminal_backend_selector",
         agent_id="agent_supervisor",
@@ -42,8 +42,8 @@ def _proposal() -> models.ActionProposal:
     )
 
 
-def _decision(proposal: models.ActionProposal) -> models.PolicyDecision:
-    return models.PolicyDecision(
+def _decision(proposal: ActionProposal) -> PolicyDecision:
+    return PolicyDecision(
         decision_id="dec_terminal_backend_selector",
         proposal_id=proposal.proposal_id,
         outcome="approved",

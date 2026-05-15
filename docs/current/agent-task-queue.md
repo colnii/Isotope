@@ -33,7 +33,7 @@
 18. CLI 入口：`apps/cli/` 已建立薄入口，`pyproject.toml` 已声明正式命令。
 19. 运行时工具：`action_compiler.py` 迁入 `runtime/`，`ids.py` 迁入 `platform/`，活跃终端引用改到真实实现路径。
 20. 平台 schema/event：活跃代码已切到 `platform/schemas/` 与 `platform/events/`，
-    事件旧根路径已删除，`platform.schemas.models` 暂留汇总兼容入口。
+    事件旧根路径和 `platform.schemas.models` 汇总旧入口已删除。
 21. 资源/RAG 兼容入口：`artifact_store.py`、`retrieval.py`、`ingestion.py` 已改为模块代理。
 22. `assistant` 命名收束：活跃循环实现已迁入 `agents/loop/`，`assistant/` 旧包已删除。
 23. demo 旧叙事清理：活跃 agent-loop demo 统一改用 `app_friction`。
@@ -66,7 +66,7 @@
 38. 第二批低风险代理删除：`runtime`、`interface`、`registry`、
     `execution` 和 `ids` 顶层旧路径已删除。
 39. 第三批低风险代理删除：`models/errors` 根入口、LLM 旧入口、
-    chat 旧入口已删除；`platform.schemas.models` 暂留。
+    chat 旧入口已删除。
 40. 第四批低风险代理删除：terminal 顶层旧入口和
     `execution.terminal_backend` 已删除。
 41. 第五批低风险代理删除：capability 顶层旧入口已删除，
@@ -75,15 +75,16 @@
     活跃测试继续使用 `integrations.codex`。
 43. 第七批低风险代理删除：agent-loop、core 和 assistant
     旧入口已删除，`core` 仅保留空包作为未来产品主流程位置。
+44. 第八批低风险代理删除：`platform.schemas.models` 汇总入口已删除，
+    测试直接使用 `actions`、`memory`、`snapshots` 等具体 schema 模块。
 
-## 最近完成：第七批低风险代理删除
+## 最近完成：第八批低风险代理删除
 
 完成内容：
 
-- 删除 12 个 agent-loop/core/assistant 兼容代理文件。
-- 删除 `src/isotope/assistant/` 旧包。
-- 保留 `src/isotope/core/__init__.py` 作为未来产品主流程空位。
-- 将兼容代理测试改成同时覆盖保留代理和已删除代理。
+- 删除 `src/isotope/platform/schemas/models.py` 汇总兼容入口。
+- 测试改为直接导入 `actions`、`memory`、`snapshots` 等具体模块。
+- 将 `platform.schemas.models` 纳入已删除代理测试。
 - 同步 [compat-proxy-audit](./compat-proxy-audit.md) 与
   [import-map](./import-map.md)。
 
@@ -98,8 +99,8 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把当前平铺模块逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步优先评估 `platform.schemas.models`
-  汇总兼容入口。
+- 下一步重新审计剩余顶层文件，确认哪些是正式命令入口，
+  哪些仍是旧代理。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

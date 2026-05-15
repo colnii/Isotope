@@ -2,7 +2,7 @@ import pytest
 
 import isotope.runtime.action_compiler as action_compiler
 import isotope.platform.registry.actions as action_registry
-import isotope.platform.schemas.models as models
+from isotope.platform.schemas.actions import ActionProposal
 
 
 def _runtime_context(**overrides):
@@ -54,7 +54,7 @@ def test_explicit_registry_allows_write_artifact_tool_to_compile():
 
     proposal = compiler.compile(_intent(), _runtime_context())
 
-    assert isinstance(proposal, models.ActionProposal)
+    assert isinstance(proposal, ActionProposal)
     assert proposal.action_type == "call_tool"
     assert proposal.payload == {"tool": "write_artifact_tool", "text": "hello"}
 
@@ -62,7 +62,7 @@ def test_explicit_registry_allows_write_artifact_tool_to_compile():
 def test_default_registry_allows_write_artifact_tool_to_compile():
     proposal = action_compiler.ActionCompiler().compile(_intent(), _runtime_context())
 
-    assert isinstance(proposal, models.ActionProposal)
+    assert isinstance(proposal, ActionProposal)
     assert proposal.action_type == "call_tool"
     assert proposal.payload["tool"] == "write_artifact_tool"
 

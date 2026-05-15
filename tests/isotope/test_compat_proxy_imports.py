@@ -46,6 +46,7 @@ REMOVED_PROXIES = (
     "isotope.llm_provider",
     "isotope.model_tool_bridge",
     "isotope.models",
+    "isotope.platform.schemas.models",
     "isotope.projector",
     "isotope.real_planner_adapter_contract",
     "isotope.refs",

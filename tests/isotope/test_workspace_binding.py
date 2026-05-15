@@ -4,7 +4,7 @@ import isotope.runtime.action_compiler as action_compiler
 import isotope.workspace.artifacts as artifact_store
 import isotope.platform.state.event_store as event_store
 import isotope.execution.executor as executor
-import isotope.platform.schemas.models as models
+from isotope.platform.schemas.actions import PolicyDecision
 import isotope.workspace as workspace
 
 
@@ -27,7 +27,7 @@ def _proposal(workspace_mode="isolated_rw"):
 
 
 def _decision(proposal, grants):
-    return models.PolicyDecision(
+    return PolicyDecision(
         decision_id="dec_001",
         proposal_id=proposal.proposal_id,
         outcome="approved",

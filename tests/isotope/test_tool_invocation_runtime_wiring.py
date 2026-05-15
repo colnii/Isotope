@@ -6,7 +6,7 @@ import isotope.platform.registry.actions as action_registry
 import isotope.workspace.artifacts as artifact_store
 import isotope.platform.state.event_store as event_store
 import isotope.execution.executor as executor
-import isotope.platform.schemas.models as models
+from isotope.platform.schemas.actions import ActionProposal, PolicyDecision
 import isotope.runtime.in_process as server
 import isotope.workspace as workspace
 from isotope.platform.schemas.tool_protocol import ToolInvocation, ToolResult
@@ -48,8 +48,8 @@ def _registry() -> action_registry.ActionTypeRegistry:
     )
 
 
-def _proposal(*, requested_tools: list[str] | None = None) -> models.ActionProposal:
-    return models.ActionProposal(
+def _proposal(*, requested_tools: list[str] | None = None) -> ActionProposal:
+    return ActionProposal(
         proposal_id="prop_tool_runtime_001",
         run_id=RUN_ID,
         agent_id="agent_supervisor",
@@ -65,11 +65,11 @@ def _proposal(*, requested_tools: list[str] | None = None) -> models.ActionPropo
 
 
 def _decision(
-    proposal: models.ActionProposal,
+    proposal: ActionProposal,
     *,
     granted_tools: list[str] | None = None,
-) -> models.PolicyDecision:
-    return models.PolicyDecision(
+) -> PolicyDecision:
+    return PolicyDecision(
         decision_id="dec_tool_runtime_001",
         proposal_id=proposal.proposal_id,
         outcome="approved",

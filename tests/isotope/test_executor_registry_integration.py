@@ -4,7 +4,7 @@ import isotope.platform.registry.actions as action_registry
 import isotope.workspace.artifacts as artifact_store
 import isotope.platform.state.event_store as event_store
 import isotope.execution.executor as executor
-import isotope.platform.schemas.models as models
+from isotope.platform.schemas.actions import ActionProposal, PolicyDecision
 import isotope.workspace as workspace
 
 
@@ -33,8 +33,8 @@ def _registry_for_entries(*entries: dict) -> action_registry.ActionTypeRegistry:
     return action_registry.ActionTypeRegistry(entries=list(entries))
 
 
-def _proposal(tool: str = "write_artifact_tool") -> models.ActionProposal:
-    return models.ActionProposal(
+def _proposal(tool: str = "write_artifact_tool") -> ActionProposal:
+    return ActionProposal(
         proposal_id="prop_001",
         run_id="run_001",
         agent_id="agent_supervisor",
@@ -50,13 +50,13 @@ def _proposal(tool: str = "write_artifact_tool") -> models.ActionProposal:
 
 
 def _decision(
-    proposal: models.ActionProposal,
+    proposal: ActionProposal,
     *,
     granted_tools: list[str] | None = None,
-) -> models.PolicyDecision:
+) -> PolicyDecision:
     if granted_tools is None:
         granted_tools = [proposal.payload["tool"]]
-    return models.PolicyDecision(
+    return PolicyDecision(
         decision_id="dec_001",
         proposal_id=proposal.proposal_id,
         outcome="approved",

@@ -3,13 +3,13 @@ from __future__ import annotations
 import pytest
 
 import isotope.workspace.artifacts as artifact_store
-import isotope.platform.schemas.models as models
+from isotope.platform.schemas.actions import ActionProposal, PolicyDecision
 import isotope.execution.terminal_runner as terminal_backend
 from isotope.platform.schemas.refs import ResourceRef
 
 
-def _proposal() -> models.ActionProposal:
-    return models.ActionProposal(
+def _proposal() -> ActionProposal:
+    return ActionProposal(
         proposal_id="prop_terminal_backend",
         run_id="run_terminal_backend",
         agent_id="agent_supervisor",
@@ -31,12 +31,12 @@ def _proposal() -> models.ActionProposal:
 
 
 def _decision(
-    proposal: models.ActionProposal,
+    proposal: ActionProposal,
     *,
     outcome: str = "approved",
     grants: dict | None = None,
-) -> models.PolicyDecision:
-    return models.PolicyDecision(
+) -> PolicyDecision:
+    return PolicyDecision(
         decision_id="dec_terminal_backend",
         proposal_id=proposal.proposal_id,
         outcome=outcome,

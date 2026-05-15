@@ -10,7 +10,7 @@ import isotope.workspace.artifacts as artifact_store
 import isotope.platform.state.event_store as event_store
 import isotope.platform.events.events as events
 import isotope.execution.executor as executor
-import isotope.platform.schemas.models as models
+from isotope.platform.schemas.actions import ActionProposal
 import isotope.policy as policy
 import isotope.platform.state.projector as projector
 import isotope.runtime.in_process as server
@@ -26,10 +26,10 @@ def _proposal(
     requested_tools: list[str] | None = None,
     workspace_mode: str = "shared_ro",
     budget_seconds: int = 30,
-) -> models.ActionProposal:
+) -> ActionProposal:
     if requested_tools is None:
         requested_tools = [tool]
-    return models.ActionProposal(
+    return ActionProposal(
         proposal_id="prop_001",
         run_id=RUN_ID,
         agent_id="agent_supervisor",

@@ -6,7 +6,7 @@ import isotope.platform.state.event_store as event_store
 import isotope.platform.events.events as events
 import isotope.execution.executor as executor
 import isotope.memory as memory
-import isotope.platform.schemas.models as models
+from isotope.platform.schemas.actions import ActionProposal, PolicyDecision
 import isotope.platform.state.projector as projector
 import isotope.runtime.in_process as server
 import isotope.workspace as workspace
@@ -271,7 +271,7 @@ def test_executor_not_enabled_memory_service_still_cannot_create_memory_record_e
             }
         ]
     )
-    proposal = models.ActionProposal(
+    proposal = ActionProposal(
         proposal_id="prop_memory_001",
         run_id="run_001",
         agent_id="agent_supervisor",
@@ -294,7 +294,7 @@ def test_executor_not_enabled_memory_service_still_cannot_create_memory_record_e
             "budget": {"seconds": 30},
         },
     )
-    decision = models.PolicyDecision(
+    decision = PolicyDecision(
         decision_id="dec_memory_001",
         proposal_id=proposal.proposal_id,
         outcome="approved",
