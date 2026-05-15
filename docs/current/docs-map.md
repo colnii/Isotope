@@ -44,6 +44,7 @@
 - 历史归档：[archive/](../archive/)
 - 应用目录迁移：[application-structure-plan](./application-structure-plan.md)
 - 目录结构最新说明：[目录结构最新说明](./目录结构最新说明.md)
+- 目录结构逻辑补充：[重新梳理目录结构逻辑](./重新梳理目录结构逻辑.md)
 - 命名与目录审计：[naming-and-structure-review](./naming-and-structure-review.md)
 - ChatGPT 审查：[chatgpt审查](./chatgpt审查.md)
 - 导入路径迁移表：[import-map](./import-map.md)

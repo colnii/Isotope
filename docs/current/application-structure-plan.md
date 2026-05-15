@@ -1,12 +1,18 @@
 # 应用目录迁移方案
 
-状态：`应用内分层进行中`
+状态：`目标蓝图已吸收 / 应用内分层进行中`
 
 主包已从 `src/isotope_kernel/` 迁移到 `src/isotope/`。
 后续 Isotope 应继续按 AI 应用软件组织目录，而不是围绕 `kernel` 命名。
 新目录应优先服务可应用、可落地和多分支并行开发。
 
 ## 目标结构
+
+这个结构是目标态蓝图，不要求第一天写满。
+当前落地方式仍是 Python `src` layout：核心代码放在
+`src/isotope/`，而不是新增 `packages/` 或改名成 `aios`。
+完整平台化结构里的大边界可以作为方向，但要翻译成 Isotope
+自己的应用软件语义，避免重新回到 `kernel` 或 AI OS 叙事。
 
 ```text
 apps/
@@ -58,6 +64,29 @@ notebooks/
 scripts/
 ```
 
+## 目标态和当前子集
+
+目标态可以很大，当前子集必须很薄。
+
+- `apps/` 是入口层；入口只调用 `src/isotope/` 的稳定模块。
+- `src/isotope/` 承担完整版本里 `packages/` 的角色。
+- `core/` 只在产品主流程成形后承载 session、conversation、
+  dispatch 和 response。
+- `features/` 只放用户能感知的功能，不提前建空功能目录。
+- `capabilities/` 描述 AI 能做什么；`runtime/` 描述在哪里、
+  以什么权限和隔离方式运行。
+- `memory/` 是长期状态；未来如需一次模型调用的上下文打包，
+  再考虑 `context/` 或放入更明确的模块。
+- `policy/` 从现在保留，因为审批、权限和审计会穿过多个层级。
+
+暂不落地但保留为远期蓝图的方向：
+
+- 顶层 `skills/`、`agents/`、`workflows/`、`connectors/`
+  可作为用户资产或项目资产目录，但要等加载协议出现后再建。
+- `observability/`、`evolution/`、`context/`、`sandboxes/`
+  先作为概念保留，不为目录好看提前展开。
+- `apps/web`、`apps/desktop`、`apps/daemon` 等入口等真实端侧需求出现后再建。
+
 ## 初步映射
 
 - `core/`：预留给产品主流程，负责 session、conversation、dispatch 和 response；当前不承载 agent loop。
@@ -86,12 +115,15 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 - 先固化目标骨架，再迁移旧包名。
 - 骨架目录可以先建，但要对应近期迁移目标或明确负责人。
 - 骨架不要求一开始都有完整实现，但不能长期无人使用、无人解释。
+- 允许先按目标态设计边界，但代码只落当前 MVP 子集。
 - 先迁移低风险模块，再迁移入口、包名和测试路径。
 - 保持测试可运行，不做一次性大爆炸重命名。
 - 每次迁移都更新导入路径、测试路径和文档入口。
 - 历史包名不再作为活跃导入路径。
 - `src/isotope/` 是 Python 包命名空间，不是重复叙事。
 - 不采用 `src/core/`、`src/features/` 这类无项目命名空间的顶层包。
+- 不新增 `packages/`；Python 项目里由 `src/isotope/` 承担平台代码包。
+- 不使用 `aios`、`kernel` 作为当前包名或主叙事。
 - 不新增 `*_assistant` 功能目录，功能目录用职责名：`projects/`、`files/`、`research/`。
 - 同一概念只能有一个主目录，其他位置只能是 adapter 或 compatibility proxy。
 - 兼容代理需要登记到 [import-map](./import-map.md)，并写明计划删除节点。

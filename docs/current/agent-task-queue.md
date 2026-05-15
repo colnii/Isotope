@@ -82,24 +82,25 @@
 46. 真实功能分层审计：`apps/cli/` 已确认是薄入口；`core/`
     暂不补空文件；`tools/` 旧空包已删除，工具能力归入
     `capabilities/tools/`。
+47. 目标态目录蓝图吸收：第一版大结构作为长期蓝图；当前仍以
+    `src/isotope/` 承担平台代码包，不新增 `packages/`、`aios`
+    或 `kernel` 主叙事。
 
-## 最近完成：真实功能分层审计
+## 最近完成：目标态目录蓝图吸收
 
 完成内容：
 
-- 复核 `src/isotope/` 根层剩余文件。
-- 确认 `demo.py` 与 `llm_live_smoke.py` 是正式命令入口。
-- 确认当前没有已确认应继续删除的兼容代理。
-- 复核 `apps/cli/`、`core/`、`features/` 的当前形态。
-- 删除 `src/isotope/tools/` 旧空包。
-- 明确工具能力以 `capabilities/tools/` 和平台注册表为准。
-- 同步 [compat-proxy-audit](./compat-proxy-audit.md)、
-  [import-map](./import-map.md) 和
-  [naming-and-structure-review](./naming-and-structure-review.md)。
+- 吸收 [重新梳理目录结构逻辑](./重新梳理目录结构逻辑.md)。
+- 明确“第一版大结构”是目标态蓝图，不是立即建满的目录。
+- 明确 Python 落地继续使用 `src/isotope/`，不新增 `packages/`。
+- 明确不把 `kernel`、AI OS 作为 Isotope 当前主叙事。
+- 同步 [application-structure-plan](./application-structure-plan.md)、
+  [naming-and-structure-review](./naming-and-structure-review.md) 与
+  [docs-map](./docs-map.md)。
 
 验收：
 
-- 文档检查和兼容入口测试需要通过。
+- 文档检查需要通过。
 - `AGENTS.md` 仍需保持 100 行以内。
 
 ## 下一批次：应用内分层迁移
