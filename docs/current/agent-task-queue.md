@@ -93,23 +93,25 @@
     关联 conversation 和结果摘要。
 51. tasks 功能薄入口：`features/tasks/flow.py` 已提供 `TaskFlow`
     和 `TaskSummary`，把 core task 包成用户功能摘要。
+52. tasks CLI 入口：`isotope-task` 已接到 `TaskFlow`，可运行一条
+    task 并输出低敏 JSON 摘要。
 
-## 最近完成：tasks 功能薄入口
+## 最近完成：tasks CLI 入口
 
 完成内容：
 
-- 新增 `src/isotope/features/tasks/flow.py`。
-- `TaskFlow.create_task()` 支持创建任务并可提交第一条消息。
-- `TaskFlow.submit_message()` 和 `TaskFlow.get_task()` 返回用户功能摘要。
-- `TaskSummary` 暴露任务目标、状态、回合数量、run 列表和结果引用。
-- 功能层默认不返回用户输入正文或 artifact 全文。
+- 新增 `src/isotope/features/tasks/runner.py`。
+- 新增 `apps/cli/isotope_task.py` 和 `isotope-task` 安装脚本。
+- `isotope-task run --root ... --goal ... --message ... --json`
+  可创建并运行一条任务。
+- JSON 输出只包含任务摘要，不返回用户输入正文或 artifact 全文。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
   [naming-and-structure-review](./naming-and-structure-review.md)、
   [terminology](./terminology.md) 和 [status](./status.md)。
 
 验收：
 
-- `tests/isotope/test_tasks_feature_flow.py` 需要通过。
+- `tests/isotope/test_tasks_feature_cli.py` 需要通过。
 - 共享路径改动后需要跑全量测试。
 - `AGENTS.md` 仍需保持 100 行以内。
 
@@ -119,13 +121,13 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把真实功能逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步若继续目录工作，应继续把 tasks 入口接到 CLI/API，或
-  开始第一个 `features/files` 功能切片。
+- 下一步若继续目录工作，应把 tasks 入口接到 API，或开始第一个
+  `features/files` 功能切片。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：
 
-- `apps/cli/`：命令行入口。
+- `apps/cli/`：命令行入口，当前包含 demo、capability、LLM smoke 和 task。
 - `apps/api/`：后端入口。
 - `src/isotope/core/`：产品主流程；当前薄包 `InProcessServer`，
   已有 conversation、turn、task 和 response 状态。
