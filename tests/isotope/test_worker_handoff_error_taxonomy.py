@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from isotope.errors import IsotopeError
-from isotope.refs import make_artifact_ref
-from isotope.server import InProcessServer
+from isotope.platform.errors import IsotopeError
+from isotope.platform.schemas.refs import make_artifact_ref
+from isotope.runtime.in_process import InProcessServer
 
 
 def _server_with_run(tmp_path):

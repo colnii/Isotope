@@ -4,11 +4,11 @@ from typing import Any
 
 import pytest
 
-from isotope.http_api import create_http_app
-from isotope.checkpoint_store import FileCheckpointStore
-from isotope.projector import RunProjector
-from isotope.refs import make_artifact_ref
-from isotope.server import InProcessServer
+from isotope.interfaces.http import create_http_app
+from isotope.platform.state.checkpoint_store import FileCheckpointStore
+from isotope.platform.state.projector import RunProjector
+from isotope.platform.schemas.refs import make_artifact_ref
+from isotope.runtime.in_process import InProcessServer
 
 
 FORBIDDEN_CONTENT_KEYS = {

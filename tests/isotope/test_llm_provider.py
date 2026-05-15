@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from isotope.llm_provider import DeepSeekChatProvider
+from isotope.llm.provider import DeepSeekChatProvider
 
 
 def test_deepseek_provider_uses_v4_flash_chat_completions_contract():

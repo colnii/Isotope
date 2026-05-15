@@ -7,8 +7,8 @@ import pytest
 from isotope import codex_server
 from isotope import http_api
 from isotope import llm_provider
-from isotope.errors import IsotopeError
-from isotope.llm_product_chat_app import (
+from isotope.platform.errors import IsotopeError
+from isotope.features.chat.flow import (
     build_llm_product_chat_entry_resume_state,
     mark_llm_product_chat_entry_state_resumed,
     submit_llm_product_chat_entry_resume,

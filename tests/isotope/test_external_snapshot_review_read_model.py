@@ -6,7 +6,7 @@ from typing import Any
 
 from isotope import artifact_store, checkpoint_store, event_store, projector, refs
 from isotope.demo import run_demo
-from isotope.events import CanonicalEvent
+from isotope.platform.events.events import CanonicalEvent
 
 
 SCENARIO = "external-snapshot-review"

@@ -4,8 +4,8 @@ from collections.abc import Mapping
 from typing import Any
 
 from isotope import codex_server
-from isotope.http_api import create_http_app, create_llm_provider_http_app
-from isotope.llm_provider import LLMToolCall, LLMToolCallResponse
+from isotope.interfaces.http import create_http_app, create_llm_provider_http_app
+from isotope.llm.provider import LLMToolCall, LLMToolCallResponse
 
 
 class FakeCompletedProcess:

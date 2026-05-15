@@ -3,7 +3,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from isotope.http_api import create_http_app
+from isotope.interfaces.http import create_http_app
 
 
 FORBIDDEN_CONTENT_KEYS = {

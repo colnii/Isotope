@@ -7,9 +7,9 @@ from typing import Any
 import pytest
 
 from isotope import demo, server
-from isotope.checkpoint_store import FileCheckpointStore
-from isotope.http_api import create_http_app
-from isotope.projector import RunProjector
+from isotope.platform.state.checkpoint_store import FileCheckpointStore
+from isotope.interfaces.http import create_http_app
+from isotope.platform.state.projector import RunProjector
 
 
 FORBIDDEN_CONTENT_KEYS = {

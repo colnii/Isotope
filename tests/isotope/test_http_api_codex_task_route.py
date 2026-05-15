@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 
 from isotope import codex_server
-from isotope.http_api import create_codex_cli_http_app, create_http_app
+from isotope.interfaces.http import create_codex_cli_http_app, create_http_app
 
 
 ACTION_EXECUTION_EVENTS = {

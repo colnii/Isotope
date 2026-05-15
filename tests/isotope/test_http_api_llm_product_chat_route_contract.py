@@ -6,9 +6,9 @@ from typing import Any
 
 from isotope import codex_server
 from isotope import http_api
-from isotope.http_api import create_http_app
+from isotope.interfaces.http import create_http_app
 from isotope import llm_provider
-from isotope.llm_provider import LLMToolCall, LLMToolCallResponse
+from isotope.llm.provider import LLMToolCall, LLMToolCallResponse
 
 
 ACTION_EXECUTION_EVENTS = {

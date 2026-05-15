@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict
 
 from isotope import artifact_store, event_store, projector, refs
-from isotope.events import CanonicalEvent
+from isotope.platform.events.events import CanonicalEvent
 
 
 def _artifact_ref(artifact_id: str) -> dict:

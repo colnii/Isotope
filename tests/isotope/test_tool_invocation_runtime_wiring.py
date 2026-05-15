@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from isotope import action_registry, artifact_store, event_store, executor, models, server, workspace
-from isotope.tool_protocol import ToolInvocation, ToolResult
+from isotope.platform.schemas.tool_protocol import ToolInvocation, ToolResult
 
 
 RUN_ID = "run_tool_runtime_001"

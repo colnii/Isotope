@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from isotope import artifact_store, models, terminal_backend
-from isotope.refs import ResourceRef
+from isotope.platform.schemas.refs import ResourceRef
 
 
 def _proposal() -> models.ActionProposal:

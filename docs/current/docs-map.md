@@ -47,6 +47,7 @@
 - 命名与目录审计：[naming-and-structure-review](./naming-and-structure-review.md)
 - ChatGPT 审查：[chatgpt审查](./chatgpt审查.md)
 - 导入路径迁移表：[import-map](./import-map.md)
+- 兼容代理审计：[compat-proxy-audit](./compat-proxy-audit.md)
 - 分支初审：[branch-audit-initial-2026-05-15](../reviews/branch-audit-initial-2026-05-15.md)
 - 分支审计刷新：[branch-audit-refresh-2026-05-15](../reviews/branch-audit-refresh-2026-05-15.md)
 - 终端分支深审：[controlled-terminal-exec-deep-review-2026-05-15](../reviews/controlled-terminal-exec-deep-review-2026-05-15.md)

@@ -1,7 +1,7 @@
 import pytest
 
 from isotope import action_compiler, artifact_store, event_store, executor, models, server, workspace
-from isotope.events import CanonicalEvent
+from isotope.platform.events.events import CanonicalEvent
 
 
 def _proposal(text="hello"):

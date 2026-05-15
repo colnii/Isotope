@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from isotope.checkpoint_store import FileCheckpointStore
-from isotope.server import InProcessServer
+from isotope.platform.state.checkpoint_store import FileCheckpointStore
+from isotope.runtime.in_process import InProcessServer
 
 
 def _new_server_with_run(root, checkpoint_root):

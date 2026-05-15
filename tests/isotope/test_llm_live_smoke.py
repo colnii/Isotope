@@ -8,13 +8,13 @@ from typing import Any
 import pytest
 
 from isotope import codex_server, llm_live_smoke
-from isotope.http_api import (
+from isotope.interfaces.http import (
     create_codex_cli_http_app,
     create_http_app,
     create_llm_product_chat_http_app,
 )
 from isotope import llm_provider
-from isotope.llm_provider import LLMToolCall, LLMToolCallResponse
+from isotope.llm.provider import LLMToolCall, LLMToolCallResponse
 
 
 class FakeCompletedProcess:

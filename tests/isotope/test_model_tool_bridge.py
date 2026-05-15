@@ -7,9 +7,9 @@ from typing import Any
 import pytest
 
 from isotope import codex_server
-from isotope.errors import IsotopeError
-from isotope.http_api import create_codex_cli_http_app, create_http_app
-from isotope.model_tool_bridge import submit_model_tool_call
+from isotope.platform.errors import IsotopeError
+from isotope.interfaces.http import create_codex_cli_http_app, create_http_app
+from isotope.llm.tool_bridge import submit_model_tool_call
 
 
 ACTION_EXECUTION_EVENTS = {

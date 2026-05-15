@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from typing import Any
 
-from isotope.http_api import create_http_app
+from isotope.interfaces.http import create_http_app
 
 
 SUPPORTED_ROUTES = [

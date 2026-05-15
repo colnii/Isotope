@@ -52,20 +52,22 @@
     `memory.py`、`snapshots.py`，旧路径保留兼容代理。
 32. 结构化错误正名：活跃代码改用 `IsotopeError` / `IsotopePermissionError`，
     `KernelError` / `KernelPermissionError` 仅作为兼容别名。
+33. 兼容代理审计：显式测试导入已切到新路径，旧代理清单见
+    [compat-proxy-audit](./compat-proxy-audit.md)。
 
-## 最近完成：结构化错误正名
+## 最近完成：兼容代理审计
 
 完成内容：
 
-- 将结构化错误主名改为 `IsotopeError`。
-- 将权限错误主名改为 `IsotopePermissionError`。
-- 旧 `KernelError` / `KernelPermissionError` 保留为兼容别名。
-- HTTP facade、LLM、chat flow、runtime 活跃代码改用新主名。
+- 将 `from isotope.xxx import ...` 形式的显式测试导入切到新路径。
+- 建立 [compat-proxy-audit](./compat-proxy-audit.md)。
+- 标出可优先进入删除计划的代理。
+- 单独列出 `core/runtime.py` 空壳链和包级测试导入 blocker。
 
 验收：
 
-- 新主名是活跃导入路径。
-- 旧错误名仍可导入，并指向新类型。
+- 显式测试导入不再依赖常见顶层旧路径。
+- 兼容代理有清单和下一步删除顺序。
 - 相关测试和全量测试需要通过。
 
 ## 下一批次：应用内分层迁移
@@ -74,7 +76,8 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把当前平铺模块逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步优先继续评估旧兼容代理清单，或处理 `core/` 空壳和顶层代理清理计划。
+- 下一步优先处理 `core/runtime.py`、`agent_runtime.py`、`assistant/runtime.py` 空壳链。
+  之后再迁 `from isotope import xxx` 包级测试导入。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

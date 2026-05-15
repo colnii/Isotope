@@ -6,8 +6,8 @@ from typing import Any
 import pytest
 
 from isotope import codex_server
-from isotope.http_api import HttpApiApp, create_http_app, create_llm_provider_http_app
-from isotope.llm_provider import LLMToolCall, LLMToolCallResponse
+from isotope.interfaces.http import HttpApiApp, create_http_app, create_llm_provider_http_app
+from isotope.llm.provider import LLMToolCall, LLMToolCallResponse
 
 
 ACTION_EXECUTION_EVENTS = {

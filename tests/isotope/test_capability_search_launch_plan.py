@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from isotope.capability_catalog import Capability, CapabilityCatalog
-from isotope.capability_runner import CapabilityRunner
+from isotope.capabilities.catalog import Capability, CapabilityCatalog
+from isotope.capabilities.runner import CapabilityRunner
 
 
 FORBIDDEN_KEYS = {

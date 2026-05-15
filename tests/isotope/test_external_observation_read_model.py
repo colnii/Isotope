@@ -5,7 +5,7 @@ from dataclasses import asdict
 import pytest
 
 from isotope import artifact_store, checkpoint_store, event_store, projector, refs
-from isotope.events import CanonicalEvent
+from isotope.platform.events.events import CanonicalEvent
 
 
 def _artifact_ref(artifact_id: str = "artifact_raw_001") -> dict:

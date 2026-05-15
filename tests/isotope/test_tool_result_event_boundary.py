@@ -7,8 +7,8 @@ from typing import Any
 import pytest
 
 from isotope import action_registry, events, models, projector, server
-from isotope.checkpoint_store import FileCheckpointStore
-from isotope.refs import ResourceRef
+from isotope.platform.state.checkpoint_store import FileCheckpointStore
+from isotope.platform.schemas.refs import ResourceRef
 
 
 RUN_ID = "run_001"

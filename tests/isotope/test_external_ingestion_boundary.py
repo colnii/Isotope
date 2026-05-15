@@ -6,7 +6,7 @@ import socket
 import pytest
 
 from isotope import artifact_store, event_store, http_api, projector, server
-from isotope.events import CanonicalEvent
+from isotope.platform.events.events import CanonicalEvent
 
 
 def _event(event_id: str, event_type: str, payload: dict) -> CanonicalEvent:

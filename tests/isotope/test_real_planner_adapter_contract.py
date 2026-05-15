@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from isotope.checkpoint_store import FileCheckpointStore
+from isotope.platform.state.checkpoint_store import FileCheckpointStore
 from isotope import server
 
 

@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from isotope.checkpoint_store import FileCheckpointStore
-from isotope.projector import RunProjector
-from isotope.server import InProcessServer
+from isotope.platform.state.checkpoint_store import FileCheckpointStore
+from isotope.platform.state.projector import RunProjector
+from isotope.runtime.in_process import InProcessServer
 
 
 def _new_run(tmp_path):

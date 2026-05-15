@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from isotope.capability_catalog import Capability, CapabilityCatalog
+from isotope.capabilities.catalog import Capability, CapabilityCatalog
 
 
 FORBIDDEN_RESULT_KEYS = {

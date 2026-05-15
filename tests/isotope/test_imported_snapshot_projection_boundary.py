@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from isotope import artifact_store, event_store, models, projector, refs
-from isotope.events import CanonicalEvent
+from isotope.platform.events.events import CanonicalEvent
 
 
 def _artifact_ref() -> refs.ResourceRef:

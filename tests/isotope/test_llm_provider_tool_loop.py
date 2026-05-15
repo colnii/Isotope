@@ -7,9 +7,9 @@ import pytest
 
 from isotope import llm_provider
 from isotope import codex_server
-from isotope.errors import IsotopeError
-from isotope.http_api import create_codex_cli_http_app
-from isotope.llm_provider import (
+from isotope.platform.errors import IsotopeError
+from isotope.interfaces.http import create_codex_cli_http_app
+from isotope.llm.provider import (
     DeepSeekToolCallProvider,
     LLMToolCall,
     LLMToolCallResponse,

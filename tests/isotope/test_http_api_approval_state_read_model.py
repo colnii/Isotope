@@ -2,7 +2,7 @@ import json
 from collections.abc import Mapping
 from typing import Any
 
-from isotope.http_api import create_http_app
+from isotope.interfaces.http import create_http_app
 
 
 def _request(app, method: str, path: str, json_body: Any = None):

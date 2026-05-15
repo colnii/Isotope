@@ -5,9 +5,9 @@ import inspect
 import pytest
 
 from isotope import demo
-from isotope.models import ImportedSnapshot
-from isotope.refs import make_artifact_ref
-from isotope.server import InProcessServer
+from isotope.platform.schemas.snapshots import ImportedSnapshot
+from isotope.platform.schemas.refs import make_artifact_ref
+from isotope.runtime.in_process import InProcessServer
 
 
 def _snapshot(run_id: str, snapshot_id: str = "snapshot_001") -> ImportedSnapshot:

@@ -6,8 +6,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from isotope.http_api import create_http_app
-from isotope.server import InProcessServer
+from isotope.interfaces.http import create_http_app
+from isotope.runtime.in_process import InProcessServer
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]

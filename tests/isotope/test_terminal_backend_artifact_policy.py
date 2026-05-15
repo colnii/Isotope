@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from isotope import artifact_store, event_store, executor, models, terminal_backend, workspace
-from isotope.refs import ResourceRef
+from isotope.platform.schemas.refs import ResourceRef
 
 
 class FakeTerminalBackend:

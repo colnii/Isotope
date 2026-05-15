@@ -6,7 +6,7 @@ import os
 import pytest
 
 from isotope import artifact_store, codex_live_smoke, codex_task
-from isotope.refs import ResourceRef
+from isotope.platform.schemas.refs import ResourceRef
 
 
 class FakeCodexBackend:

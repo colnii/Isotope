@@ -3,9 +3,9 @@ from __future__ import annotations
 import pytest
 
 from isotope import checkpoint_store, event_store, projector
-from isotope.errors import IsotopePermissionError
-from isotope.refs import ResourceRef, make_artifact_ref
-from isotope.server import InProcessServer
+from isotope.platform.errors import IsotopePermissionError
+from isotope.platform.schemas.refs import ResourceRef, make_artifact_ref
+from isotope.runtime.in_process import InProcessServer
 
 
 def _server_with_run(tmp_path):

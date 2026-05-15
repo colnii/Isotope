@@ -13,7 +13,7 @@ from isotope.execution.terminal_backend import (
     build_terminal_backend_request,
 )
 from isotope import artifact_store, models
-from isotope.refs import ResourceRef
+from isotope.platform.schemas.refs import ResourceRef
 
 
 def _proposal() -> models.ActionProposal:

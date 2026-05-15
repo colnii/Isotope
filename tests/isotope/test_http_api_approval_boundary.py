@@ -3,7 +3,7 @@ from typing import Any
 
 import pytest
 
-from isotope.http_api import create_http_app
+from isotope.interfaces.http import create_http_app
 
 
 ACTION_EXECUTION_EVENTS = {
