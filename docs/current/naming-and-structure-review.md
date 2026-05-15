@@ -206,7 +206,7 @@ src/isotope/
 目标：
 
 - `apps/cli/` 继续保持薄入口，只转发到 `src/isotope/` 稳定模块。
-- `core/` 已建立真实主流程薄层：会话、对话、run、turn、调度和低敏响应。
+- `core/` 已建立真实主流程薄层：会话、对话、任务、run、turn、调度和低敏响应。
 - `features/` 只在出现用户可感知功能时建子目录。
 - `capabilities/tools/` 放可被注册、授权、执行的工具能力。
 - 不再新增顶层 `tools/`、`utils/` 这类容易失控的目录。
@@ -235,10 +235,14 @@ src/isotope/
   `RuntimeDispatch`，先包住现有 `InProcessServer`。
 - 新增 `CoreConversation`、`CoreTurn` 和 `CoreConversationState`，
   让产品层可以表达连续消息和回合状态。
+- 新增 `CoreTask` 和 `CoreTaskState`，让产品层可以表达任务目标、
+  状态、关联 conversation 和结果摘要。
 - 对外暴露 `start_session`、`start_run`、`submit_user_message`
-  以及 `start_conversation`、`submit_message`、`get_conversation`。
+  以及 `start_conversation`、`submit_message`、`get_conversation`、
+  `start_task`、`submit_task_message`、`get_task`。
 - 响应只返回状态、产物引用、摘要和事件数量，不把全文内容默认抛到外层。
 - 现有普通输入会结束 run，所以 conversation 当前允许跨多个 completed run（已结束运行）。
+- 当前 task 仍属于 `core` 产品边界，不代表 `features/tasks/` 已经展开。
 - 暂不迁移 `runtime/in_process.py` 内部实现，后续再按真实需求拆分。
 
 ## 当前推荐决策
