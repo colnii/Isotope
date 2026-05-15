@@ -16,6 +16,7 @@ MINIMAL_ROUTES = {
     ("POST", "/projects"),
     ("GET", "/projects"),
     ("GET", "/projects/{project_id}"),
+    ("GET", "/projects/{project_id}/detail"),
     ("POST", "/projects/{project_id}/tasks"),
     ("POST", "/projects/{project_id}/files"),
     ("POST", "/sessions"),
@@ -347,6 +348,74 @@ def test_http_api_projects_routes_create_get_list_and_link_summaries(tmp_path):
     _assert_no_task_content_keys(created)
     _assert_no_task_content_keys(fetched)
     _assert_no_task_content_keys(listed)
+
+
+def test_http_api_projects_route_reads_linked_detail_summaries(tmp_path):
+    app = _create_app(tmp_path)
+    created_task = _successful_json(
+        _request(
+            app,
+            "POST",
+            "/tasks",
+            {
+                "goal": "collect notes",
+                "message": "private note",
+            },
+        )
+    )["task"]
+    created_file = _successful_json(
+        _request(
+            app,
+            "POST",
+            "/files",
+            {
+                "name": "notes.md",
+                "summary": "useful notes",
+                "content": "private file content",
+            },
+        )
+    )["file"]
+    project = _successful_json(
+        _request(
+            app,
+            "POST",
+            "/projects",
+            {
+                "name": "portfolio demo",
+                "summary": "usable demo workspace",
+            },
+        )
+    )["project"]
+    _successful_json(
+        _request(
+            app,
+            "POST",
+            f"/projects/{project['project_id']}/tasks",
+            {"task_id": created_task["task_id"]},
+        )
+    )
+    linked = _successful_json(
+        _request(
+            app,
+            "POST",
+            f"/projects/{project['project_id']}/files",
+            {"file_id": created_file["file_id"]},
+        )
+    )["project"]
+
+    detail = _successful_json(
+        _request(app, "GET", f"/projects/{project['project_id']}/detail")
+    )
+
+    assert detail == {
+        "status": "ok",
+        "project_detail": {
+            "project": linked,
+            "tasks": [created_task],
+            "files": [created_file],
+        },
+    }
+    _assert_no_task_content_keys(detail)
 
 
 def test_get_run_returns_projector_read_model_from_event_log_not_executor_memory(tmp_path):

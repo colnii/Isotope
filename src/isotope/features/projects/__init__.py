@@ -1,5 +1,5 @@
 """User-facing project feature helpers."""
 
-from .flow import ProjectFlow, ProjectSummary
+from .flow import ProjectDetail, ProjectFlow, ProjectSummary
 
-__all__ = ["ProjectFlow", "ProjectSummary"]
+__all__ = ["ProjectDetail", "ProjectFlow", "ProjectSummary"]

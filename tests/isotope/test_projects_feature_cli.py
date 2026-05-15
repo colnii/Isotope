@@ -7,6 +7,9 @@ import subprocess
 import sys
 from typing import Any
 
+from isotope.features.files.flow import FileFlow
+from isotope.features.tasks.flow import TaskFlow
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = REPO_ROOT / "src"
@@ -117,3 +120,70 @@ def test_project_cli_requires_project_id_for_get(tmp_path):
             "message": "get requires --project-id",
         },
     }
+
+
+def test_project_cli_reads_project_detail_with_linked_summaries(tmp_path):
+    task = TaskFlow.in_process(tmp_path).create_task(
+        goal="collect notes",
+        first_message="private note",
+    )
+    file_summary = FileFlow.in_process(tmp_path).create_text_file(
+        name="notes.md",
+        summary="useful notes",
+        content="private file content",
+    )
+    created_result = _run_cli(
+        "create",
+        "--root",
+        str(tmp_path),
+        "--name",
+        "portfolio demo",
+        "--summary",
+        "usable demo workspace",
+        "--json",
+    )
+    project = json.loads(created_result.stdout)["project"]
+    project_id = project["project_id"]
+    with_task = _run_cli(
+        "add-task",
+        "--root",
+        str(tmp_path),
+        "--project-id",
+        project_id,
+        "--task-id",
+        task.task_id,
+        "--json",
+    )
+    with_file = _run_cli(
+        "add-file",
+        "--root",
+        str(tmp_path),
+        "--project-id",
+        project_id,
+        "--file-id",
+        file_summary.file_id,
+        "--json",
+    )
+
+    detail_result = _run_cli(
+        "detail",
+        "--root",
+        str(tmp_path),
+        "--project-id",
+        project_id,
+        "--json",
+    )
+
+    assert with_task.returncode == 0, with_task.stderr
+    assert with_file.returncode == 0, with_file.stderr
+    assert detail_result.returncode == 0, detail_result.stderr
+    linked = json.loads(with_file.stdout)["project"]
+    assert json.loads(detail_result.stdout) == {
+        "status": "ok",
+        "project_detail": {
+            "project": linked,
+            "tasks": [task.to_dict()],
+            "files": [file_summary.to_dict()],
+        },
+    }
+    _assert_low_sensitive(json.loads(detail_result.stdout))

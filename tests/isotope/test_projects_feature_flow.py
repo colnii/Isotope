@@ -76,3 +76,34 @@ def test_project_flow_links_tasks_files_and_reloads_summaries(tmp_path):
     _assert_no_forbidden_content_keys(
         {"projects": [summary.to_dict() for summary in reloaded.list_projects()]}
     )
+
+
+def test_project_flow_reads_linked_task_and_file_summaries(tmp_path):
+    project_flow = ProjectFlow.in_process(tmp_path)
+    task_flow = TaskFlow.in_process(tmp_path)
+    file_flow = FileFlow.in_process(tmp_path)
+
+    project = project_flow.create_project(
+        name="portfolio demo",
+        summary="usable demo workspace",
+    )
+    task = task_flow.create_task(goal="collect notes", first_message="private note")
+    file_summary = file_flow.create_text_file(
+        name="notes.md",
+        summary="useful notes",
+        content="private file content",
+    )
+    project_flow.add_task(project.project_id, task.task_id)
+    linked = project_flow.add_file(project.project_id, file_summary.file_id)
+
+    detail = project_flow.get_project_detail(project.project_id)
+
+    assert detail.project == linked
+    assert detail.tasks == (task,)
+    assert detail.files == (file_summary,)
+    assert detail.to_dict() == {
+        "project": linked.to_dict(),
+        "tasks": [task.to_dict()],
+        "files": [file_summary.to_dict()],
+    }
+    _assert_no_forbidden_content_keys(detail.to_dict())

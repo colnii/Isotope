@@ -14,7 +14,7 @@ from typing import Any
 
 from ..core import ProductCore
 from ..features.files.flow import FileFlow, FileSummary
-from ..features.projects.flow import ProjectFlow, ProjectSummary
+from ..features.projects.flow import ProjectDetail, ProjectFlow, ProjectSummary
 from ..features.tasks.flow import TaskFlow, TaskSummary
 from ..platform.errors import IsotopeError
 from ..runtime.in_process import InProcessServer
@@ -45,6 +45,7 @@ class HttpApiApp:
         ("POST", "/projects"),
         ("GET", "/projects"),
         ("GET", "/projects/{project_id}"),
+        ("GET", "/projects/{project_id}/detail"),
         ("POST", "/projects/{project_id}/tasks"),
         ("POST", "/projects/{project_id}/files"),
         ("POST", "/sessions"),
@@ -265,6 +266,20 @@ class HttpApiApp:
                         return self._error(404, "not_found", "project not found")
                     raise
                 return self._json(200, {"status": "ok", "project": self._project_summary_to_dict(summary)})
+            if method == "GET" and len(parts) == 3 and parts[0] == "projects" and parts[2] == "detail":
+                try:
+                    detail = self.project_flow.get_project_detail(parts[1])
+                except ValueError as exc:
+                    if "unknown project_id" in str(exc):
+                        return self._error(404, "not_found", "project not found")
+                    raise
+                return self._json(
+                    200,
+                    {
+                        "status": "ok",
+                        "project_detail": self._project_detail_to_dict(detail),
+                    },
+                )
             if method == "POST" and len(parts) == 3 and parts[0] == "projects" and parts[2] == "tasks":
                 body = self._require_body(json_body, required_fields=("task_id",))
                 summary = self.project_flow.add_task(parts[1], body["task_id"])
@@ -719,6 +734,9 @@ class HttpApiApp:
 
     def _project_summary_to_dict(self, summary: ProjectSummary) -> dict[str, Any]:
         return summary.to_dict()
+
+    def _project_detail_to_dict(self, detail: ProjectDetail) -> dict[str, Any]:
+        return detail.to_dict()
 
     def _run_state_to_dict(self, state: Any) -> dict[str, Any]:
         return asdict(state)

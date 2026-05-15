@@ -10,6 +10,8 @@ from typing import Any
 
 from ...core import ProductCore
 from ...platform.ids import new_id
+from ..files.flow import FileFlow, FileSummary
+from ..tasks.flow import TaskFlow, TaskSummary
 
 
 @dataclass(frozen=True)
@@ -40,6 +42,20 @@ class ProjectSummary:
         )
 
 
+@dataclass(frozen=True)
+class ProjectDetail:
+    project: ProjectSummary
+    tasks: tuple[TaskSummary, ...]
+    files: tuple[FileSummary, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "project": self.project.to_dict(),
+            "tasks": [summary.to_dict() for summary in self.tasks],
+            "files": [summary.to_dict() for summary in self.files],
+        }
+
+
 class ProjectFlow:
     """Thin user-facing project flow over ProductCore."""
 
@@ -68,6 +84,16 @@ class ProjectFlow:
 
     def list_projects(self) -> list[ProjectSummary]:
         return list(self._projects.values())
+
+    def get_project_detail(self, project_id: str) -> ProjectDetail:
+        project = self.get_project(project_id)
+        task_flow = TaskFlow(self.core)
+        file_flow = FileFlow(self.core)
+        return ProjectDetail(
+            project=project,
+            tasks=tuple(task_flow.get_task(task_id) for task_id in project.task_ids),
+            files=tuple(file_flow.get_file(file_id) for file_id in project.file_ids),
+        )
 
     def add_task(self, project_id: str, task_id: str) -> ProjectSummary:
         project = self.get_project(project_id)

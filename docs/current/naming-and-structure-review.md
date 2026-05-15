@@ -279,17 +279,19 @@ src/isotope/
 
 ### 批次十一：projects 功能薄入口
 
-状态：已执行前两片。
+状态：已执行前三片。
 
 目标：
 
 - 新增 `ProjectFlow` 作为项目功能入口。
 - 新增 `ProjectSummary` 作为用户可读项目摘要。
+- 新增 `ProjectDetail` 作为项目组合摘要，展开关联 task/file 的低敏信息。
 - 复用 `ProductCore`，保持项目索引和现有运行根目录一致。
 - 默认只返回项目名、摘要、task id 列表和 file id 列表。
 - 新增本地低敏项目摘要索引。
-- 新增 `isotope-project create/get/list/add-task/add-file` CLI。
+- 新增 `isotope-project create/get/list/add-task/add-file/detail` CLI。
 - 新增 `POST /projects`、`GET /projects`、`GET /projects/{project_id}`、
+  `GET /projects/{project_id}/detail`、
   `POST /projects/{project_id}/tasks` 和
   `POST /projects/{project_id}/files` HTTP facade。
 - 暂不做完整项目管理、成员权限、UI 或独立 FastAPI 服务。

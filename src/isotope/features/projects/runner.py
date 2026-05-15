@@ -30,6 +30,14 @@ def _build_parser() -> argparse.ArgumentParser:
     get_parser.add_argument("--project-id", help="Project id.")
     get_parser.add_argument("--json", action="store_true", help="Print JSON output.")
 
+    detail_parser = subparsers.add_parser(
+        "detail",
+        help="Read one project with linked task and file summaries.",
+    )
+    detail_parser.add_argument("--root", required=True, help="Runtime root directory.")
+    detail_parser.add_argument("--project-id", help="Project id.")
+    detail_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+
     list_parser = subparsers.add_parser("list", help="List project summaries.")
     list_parser.add_argument("--root", required=True, help="Runtime root directory.")
     list_parser.add_argument("--json", action="store_true", help="Print JSON output.")
@@ -61,6 +69,11 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError("get requires --project-id")
             summary = flow.get_project(args.project_id)
             return _emit_project(args, summary.to_dict())
+        if args.command == "detail":
+            if not args.project_id:
+                raise ValueError("detail requires --project-id")
+            detail = flow.get_project_detail(args.project_id)
+            return _emit_project_detail(args, detail.to_dict())
         if args.command == "list":
             summaries = [summary.to_dict() for summary in flow.list_projects()]
             if args.json:
@@ -106,6 +119,18 @@ def _emit_project(args: argparse.Namespace, project: dict[str, Any]) -> int:
         _print_json({"status": "ok", "project": project})
     else:
         print(f"{project['project_id']}: {project['name']}")
+    return 0
+
+
+def _emit_project_detail(args: argparse.Namespace, detail: dict[str, Any]) -> int:
+    if args.json:
+        _print_json({"status": "ok", "project_detail": detail})
+    else:
+        project = detail["project"]
+        print(
+            f"{project['project_id']}: {project['name']} "
+            f"({len(detail['tasks'])} tasks, {len(detail['files'])} files)"
+        )
     return 0
 
 

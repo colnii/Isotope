@@ -112,8 +112,10 @@
     `GET /projects`、`GET /projects/{project_id}`、
     `POST /projects/{project_id}/tasks` 和
     `POST /projects/{project_id}/files` 已接到 `ProjectFlow`。
+60. projects 组合查询入口：`ProjectDetail`、`isotope-project detail`
+    和 `GET /projects/{project_id}/detail` 可返回关联 task/file 低敏摘要。
 
-## 最近完成：projects CLI/API 入口
+## 最近完成：projects 组合查询入口
 
 完成内容：
 
@@ -123,7 +125,9 @@
 - 项目摘要可关联已有 `task_id` 和 `file_id`。
 - 项目摘要会写入本地低敏索引，重启后仍可读取。
 - `isotope-project create/get/list/add-task/add-file` 可从命令行操作项目摘要。
+- `isotope-project detail` 可读取一个项目及其关联 task/file 摘要。
 - `/projects` HTTP facade 已支持创建、读取、列表和关联 task/file id。
+- `GET /projects/{project_id}/detail` 可返回项目组合摘要。
 - CLI/API 只返回低敏项目摘要，不展开任务消息、文件正文或 artifact 全文。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
   [naming-and-structure-review](./naming-and-structure-review.md)、
@@ -142,8 +146,8 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把真实功能逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步若继续目录工作，应给 projects/tasks/files 增加组合查询入口，
-  或开始 `features/search` 的第一片。
+- 下一步若继续功能层工作，可开始 `features/search` 的第一片，
+  或把 project detail 进一步用于 demo 展示。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：
