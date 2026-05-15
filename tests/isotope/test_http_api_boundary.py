@@ -19,6 +19,7 @@ MINIMAL_ROUTES = {
     ("GET", "/projects/{project_id}/detail"),
     ("POST", "/projects/{project_id}/tasks"),
     ("POST", "/projects/{project_id}/files"),
+    ("POST", "/search"),
     ("POST", "/sessions"),
     ("POST", "/sessions/{session_id}/runs"),
     ("POST", "/runs/{run_id}/input"),
@@ -416,6 +417,74 @@ def test_http_api_projects_route_reads_linked_detail_summaries(tmp_path):
         },
     }
     _assert_no_task_content_keys(detail)
+
+
+def test_http_api_search_route_reads_low_sensitive_summaries(tmp_path):
+    app = _create_app(tmp_path)
+    project = _successful_json(
+        _request(
+            app,
+            "POST",
+            "/projects",
+            {
+                "name": "portfolio demo",
+                "summary": "autumn recruiting workspace",
+            },
+        )
+    )["project"]
+    task = _successful_json(
+        _request(
+            app,
+            "POST",
+            "/tasks",
+            {
+                "goal": "build portfolio story",
+                "message": "private task note",
+            },
+        )
+    )["task"]
+    file_summary = _successful_json(
+        _request(
+            app,
+            "POST",
+            "/files",
+            {
+                "name": "portfolio-notes.md",
+                "summary": "portfolio notes",
+                "content": "private file content",
+            },
+        )
+    )["file"]
+
+    searched = _successful_json(_request(app, "POST", "/search", {"query": "portfolio"}))
+
+    assert searched == {
+        "status": "ok",
+        "results": [
+            {
+                "result_type": "project",
+                "result_id": project["project_id"],
+                "title": "portfolio demo",
+                "summary": "autumn recruiting workspace",
+                "item": project,
+            },
+            {
+                "result_type": "task",
+                "result_id": task["task_id"],
+                "title": "build portfolio story",
+                "summary": task["result_summary"],
+                "item": task,
+            },
+            {
+                "result_type": "file",
+                "result_id": file_summary["file_id"],
+                "title": "portfolio-notes.md",
+                "summary": "portfolio notes",
+                "item": file_summary,
+            },
+        ],
+    }
+    _assert_no_task_content_keys(searched)
 
 
 def test_get_run_returns_projector_read_model_from_event_log_not_executor_memory(tmp_path):

@@ -15,6 +15,7 @@ from typing import Any
 from ..core import ProductCore
 from ..features.files.flow import FileFlow, FileSummary
 from ..features.projects.flow import ProjectDetail, ProjectFlow, ProjectSummary
+from ..features.search.flow import SearchFlow, SearchResult
 from ..features.tasks.flow import TaskFlow, TaskSummary
 from ..platform.errors import IsotopeError
 from ..runtime.in_process import InProcessServer
@@ -48,6 +49,7 @@ class HttpApiApp:
         ("GET", "/projects/{project_id}/detail"),
         ("POST", "/projects/{project_id}/tasks"),
         ("POST", "/projects/{project_id}/files"),
+        ("POST", "/search"),
         ("POST", "/sessions"),
         ("POST", "/sessions/{session_id}/runs"),
         ("POST", "/runs/{run_id}/input"),
@@ -117,6 +119,7 @@ class HttpApiApp:
         self.task_flow = TaskFlow(product_core)
         self.file_flow = FileFlow(product_core)
         self.project_flow = ProjectFlow(product_core)
+        self.search_flow = SearchFlow(product_core)
         self._idempotency_cache: dict[str, dict[str, Any]] = {}
 
     def routes(self) -> list[tuple[str, str]]:
@@ -288,6 +291,13 @@ class HttpApiApp:
                 body = self._require_body(json_body, required_fields=("file_id",))
                 summary = self.project_flow.add_file(parts[1], body["file_id"])
                 return self._json(200, {"status": "ok", "project": self._project_summary_to_dict(summary)})
+            if method == "POST" and parts == ["search"]:
+                body = self._require_body(json_body, required_fields=("query",))
+                results = [
+                    self._search_result_to_dict(result)
+                    for result in self.search_flow.search(body["query"])
+                ]
+                return self._json(200, {"status": "ok", "results": results})
             if method == "POST" and parts == ["sessions"]:
                 return self._json(201, self.server.create_session())
             if method == "POST" and len(parts) == 3 and parts[0] == "sessions" and parts[2] == "runs":
@@ -737,6 +747,9 @@ class HttpApiApp:
 
     def _project_detail_to_dict(self, detail: ProjectDetail) -> dict[str, Any]:
         return detail.to_dict()
+
+    def _search_result_to_dict(self, result: SearchResult) -> dict[str, Any]:
+        return result.to_dict()
 
     def _run_state_to_dict(self, state: Any) -> dict[str, Any]:
         return asdict(state)

@@ -42,6 +42,10 @@
 | `POST /projects/{project_id}/tasks` | 项目 API 入口，把 task id 关联到项目摘要 | 接口 | `src/isotope/interfaces/http.py` |
 | `POST /projects/{project_id}/files` | 项目 API 入口，把 file id 关联到项目摘要 | 接口 | `src/isotope/interfaces/http.py` |
 | `project index` | 项目摘要索引，持久化低敏项目摘要，供重启后查询 | 产品功能/项目 | `src/isotope/features/projects/flow.py` |
+| `SearchFlow` | 搜索功能入口，统一搜索 project/task/file 的低敏摘要 | 产品功能 | `src/isotope/features/search/flow.py` |
+| `SearchResult` | 搜索结果，包含类型、id、标题、摘要和低敏 item | 产品功能 | `src/isotope/features/search/flow.py` |
+| `isotope-search` | 搜索命令行入口，可搜索低敏摘要 | 应用入口 | `src/isotope/features/search/runner.py`, `apps/cli/isotope_search.py` |
+| `POST /search` | 搜索 API 入口，按 query 返回低敏摘要结果 | 接口 | `src/isotope/interfaces/http.py` |
 | `assistant` | 助手，只作为产品描述或历史术语，不作为新目录叙事 | 产品描述/历史术语 | 已删除旧目录 |
 | `agent loop` | 智能体循环，AI 多步规划、调用工具、读取结果并继续执行 | 应用/智能体 | `src/isotope/agents/loop/step.py`, `docs/features/` |
 | `app_friction` | 应用摩擦，应用层试跑暴露的卡点或待收束问题 | 应用验证 | `src/isotope/demo.py`, `docs/features/` |

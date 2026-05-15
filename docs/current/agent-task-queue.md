@@ -114,29 +114,27 @@
     `POST /projects/{project_id}/files` 已接到 `ProjectFlow`。
 60. projects 组合查询入口：`ProjectDetail`、`isotope-project detail`
     和 `GET /projects/{project_id}/detail` 可返回关联 task/file 低敏摘要。
+61. search 功能第一片：`SearchFlow`、`isotope-search search` 和
+    `POST /search` 可统一搜索 project/task/file 低敏摘要。
 
-## 最近完成：projects 组合查询入口
+## 最近完成：search 低敏摘要搜索入口
 
 完成内容：
 
-- `ProjectFlow.in_process(...)` 可创建进程内项目功能入口。
-- `create_project(...)` 可创建项目摘要。
-- `get_project(...)` 和 `list_projects()` 可读取项目摘要。
-- 项目摘要可关联已有 `task_id` 和 `file_id`。
-- 项目摘要会写入本地低敏索引，重启后仍可读取。
-- `isotope-project create/get/list/add-task/add-file` 可从命令行操作项目摘要。
-- `isotope-project detail` 可读取一个项目及其关联 task/file 摘要。
-- `/projects` HTTP facade 已支持创建、读取、列表和关联 task/file id。
-- `GET /projects/{project_id}/detail` 可返回项目组合摘要。
-- CLI/API 只返回低敏项目摘要，不展开任务消息、文件正文或 artifact 全文。
+- `SearchFlow.in_process(...)` 可创建进程内搜索功能入口。
+- `search(query)` 会统一搜索 project、task 和 file 的低敏摘要。
+- `SearchResult` 返回类型、id、标题、摘要和原始低敏 item。
+- `isotope-search search --query ...` 可从命令行搜索摘要。
+- `POST /search` 已接入进程内 HTTP facade。
+- 搜索只看 id、标题、摘要等低敏字段，不搜索任务消息、文件正文或 artifact 全文。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
   [naming-and-structure-review](./naming-and-structure-review.md)、
   [terminology](./terminology.md) 和 [status](./status.md)。
 
 验收：
 
-- `tests/isotope/test_projects_feature_flow.py`、
-  `tests/isotope/test_projects_feature_cli.py` 和 HTTP route 测试需要通过。
+- `tests/isotope/test_search_feature_flow.py`、
+  `tests/isotope/test_search_feature_cli.py` 和 HTTP route 测试需要通过。
 - 共享路径改动后需要跑全量测试。
 - `AGENTS.md` 仍需保持 100 行以内。
 
@@ -146,8 +144,8 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把真实功能逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步若继续功能层工作，可开始 `features/search` 的第一片，
-  或把 project detail 进一步用于 demo 展示。
+- 下一步若继续功能层工作，可把 search 用到 demo 展示，
+  或给 search 增加类型过滤与结果数量限制。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：
@@ -160,7 +158,7 @@
 - `src/isotope/agents/loop/`：agent loop 活跃实现目录。
 - `src/isotope/assistant/`：旧路径包已删除，不再扩张新实现。
 - `src/isotope/features/`：聊天、任务、项目、文件、研究等可用功能；
-  当前已有 `chat/`、`tasks/`、`files/` 和 `projects/`。
+  当前已有 `chat/`、`tasks/`、`files/`、`projects/` 和 `search/`。
 - `src/isotope/capabilities/`：工具、技能、能力注册。
 - `src/isotope/execution/`：shell、python、浏览器、沙箱执行。
 - `src/isotope/runtime/`：进程内运行入口。

@@ -9,6 +9,7 @@
 - `isotope-task`：运行、读取和列出 tasks 摘要，对应 `isotope.features.tasks.runner:main`。
 - `isotope-file`：运行 files 功能入口，对应 `isotope.features.files.runner:main`。
 - `isotope-project`：运行 projects 功能入口，支持项目摘要和组合摘要。
+- `isotope-search`：运行 search 功能入口，搜索低敏摘要。
 - `isotope-llm-smoke`：运行 LLM smoke 检查，对应 `isotope.llm_live_smoke:main`。
 
 本目录用于说明和本地直接调用；正式安装入口在 `pyproject.toml` 的

@@ -27,6 +27,7 @@ src/
       tasks/
       projects/
       files/
+      search/
       research/
       automation/
       capability_building/
@@ -91,7 +92,7 @@ scripts/
 ## 初步映射
 
 - `core/`：产品主流程，负责 session、conversation、task、turn、dispatch 和 response；当前薄包单进程运行时，不承载 agent loop。
-- `features/`：真实可用功能，如聊天、任务、项目、文件、研究和自动化；当前已有聊天、任务、文件和项目薄入口。
+- `features/`：真实可用功能，如聊天、任务、项目、文件、搜索、研究和自动化；当前已有聊天、任务、文件、项目和搜索薄入口。
 - `agents/`：子 agent 定义、角色、任务委派和 agent loop。
 - `capabilities/`：工具、技能和能力注册，不再使用顶层 `tools/` 空包。
 - `llm/`：LLM、embedding、rerank 等模型服务 provider，不放 Pydantic schema 或数据库模型。
@@ -169,6 +170,9 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   `ProjectFlow` 和 `ProjectSummary`，可创建项目摘要并关联 task/file id；
   `ProjectDetail` 可展开关联 task/file 的低敏摘要；
   `isotope-project` 和 `/projects` HTTP facade 已可调用；当前不是完整项目管理系统。
+- 搜索功能入口：`src/isotope/features/search/flow.py` 已提供
+  `SearchFlow` 和 `SearchResult`，可统一搜索 project/task/file
+  低敏摘要；`isotope-search` 和 `POST /search` 已可调用；当前不是全文检索或 RAG。
 - 智能体循环：`agent_loop_*` 与 planner contract 已迁入 `src/isotope/agents/loop/`；
   旧顶层、`core/loop_*` 和 `assistant/` 入口已删除。
 - 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`，相关旧根路径已删除。
@@ -212,6 +216,7 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 - `src/isotope/features/tasks/`
 - `src/isotope/features/projects/`
 - `src/isotope/features/files/`
+- `src/isotope/features/search/`
 - `src/isotope/capabilities/tools/`
 - `src/isotope/llm/`
 - `src/isotope/rag/`

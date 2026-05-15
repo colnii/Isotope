@@ -296,6 +296,20 @@ src/isotope/
   `POST /projects/{project_id}/files` HTTP facade。
 - 暂不做完整项目管理、成员权限、UI 或独立 FastAPI 服务。
 
+### 批次十二：search 功能薄入口
+
+状态：已执行第一片。
+
+目标：
+
+- 新增 `SearchFlow` 作为跨功能低敏摘要搜索入口。
+- 新增 `SearchResult` 作为用户可读搜索结果。
+- 复用 `ProjectFlow`、`TaskFlow` 和 `FileFlow` 的低敏摘要索引。
+- 默认只匹配 id、标题和摘要，不读取任务消息、文件正文或 artifact 全文。
+- 新增 `isotope-search search` CLI。
+- 新增 `POST /search` HTTP facade。
+- 暂不做全文检索、RAG、复杂排序、分页或独立 FastAPI 服务。
+
 ## 当前推荐决策
 
 我建议先确认这一条：
