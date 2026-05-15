@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..platform.errors import KernelError
+from ..platform.errors import IsotopeError
 from ..capabilities.tools.terminal import validate_argv
 
 _KERNEL_ERROR_CATEGORIES = {
@@ -54,7 +54,7 @@ def submit_model_tool_call(
             isinstance(tool, dict) and tool.get("name") == tool_name
             for tool in catalog.get("deferred_tools", [])
         ):
-            raise KernelError(
+            raise IsotopeError(
                 f"model tool {tool_name} is not enabled",
                 code="model_tool_not_enabled",
                 category="not_enabled",
@@ -62,7 +62,7 @@ def submit_model_tool_call(
                 http_status=501,
                 details={"tool_name": tool_name},
             )
-        raise KernelError(
+        raise IsotopeError(
             f"unknown model tool {tool_name}",
             code="unknown_model_tool",
             category="validation",
@@ -80,7 +80,7 @@ def submit_model_tool_call(
         )
 
     if tool_name != "codex_task":
-        raise KernelError(
+        raise IsotopeError(
             f"model tool {tool_name} does not have an enabled bridge route",
             code="model_tool_route_not_enabled",
             category="not_enabled",
@@ -124,12 +124,12 @@ def _submit_terminal_exec_tool_call(
             requires_approval=requires_approval,
             complete_run=complete_run,
         )
-    except KernelError:
+    except IsotopeError:
         raise
     except ValueError as exc:
         raise _invalid_call("arguments", str(exc)) from exc
     except PermissionError as exc:
-        raise KernelError(
+        raise IsotopeError(
             str(exc),
             code="model_tool_policy_denied",
             category="policy",
@@ -261,7 +261,7 @@ def _raise_http_error(body: Any, status_code: int) -> None:
             message = error.get("message")
             category = error.get("category")
             retryable = error.get("retryable")
-            raise KernelError(
+            raise IsotopeError(
                 message if isinstance(message, str) and message else "model tool route failed",
                 code=code if isinstance(code, str) and code else "model_tool_route_failed",
                 category=(
@@ -273,7 +273,7 @@ def _raise_http_error(body: Any, status_code: int) -> None:
                 http_status=status_code,
                 details=_safe_error_details(error),
             )
-    raise KernelError(
+    raise IsotopeError(
         "model tool route failed",
         code="model_tool_route_failed",
         category=_category_from_status(status_code),
@@ -336,8 +336,8 @@ def _require_non_empty_string(field_name: str, value: Any) -> str:
     return value
 
 
-def _invalid_call(field_name: str, message: str) -> KernelError:
-    return KernelError(
+def _invalid_call(field_name: str, message: str) -> IsotopeError:
+    return IsotopeError(
         message,
         code="invalid_model_tool_call",
         category="validation",

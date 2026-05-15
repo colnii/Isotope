@@ -37,7 +37,8 @@
 | `ToolInvocation` | 工具调用协议对象，给内部工具处理器传递参数 | 平台 schema | `src/isotope/platform/schemas/tool_protocol.py` |
 | `ActionTypeRegistry` | 动作类型注册表，记录工具元数据、能力要求和版本信息 | 平台注册表 | `src/isotope/platform/registry/actions.py` |
 | `new_id` | 简单 ID 生成器，给测试和进程内运行生成稳定前缀 ID | 平台工具 | `src/isotope/platform/ids.py` |
-| `KernelError` | 结构化错误，给 HTTP 和 helper 返回稳定错误码 | 平台错误 | `src/isotope/platform/errors.py` |
+| `IsotopeError` | 结构化错误，给 HTTP 和 helper 返回稳定错误码 | 平台错误 | `src/isotope/platform/errors.py` |
+| `KernelError` | 旧结构化错误名，仅作为兼容别名保留 | 兼容入口 | `src/isotope/platform/errors.py` |
 | `policy` | 权限策略，决定动作是否允许、暂停或拒绝 | 安全/权限 | `src/isotope/policy/` |
 | `approval` | 人工确认，敏感动作执行前的暂停和恢复机制 | 权限/产品 | `src/isotope/runtime/in_process.py` |
 | `capability` | 能力，产品可发现、可运行的功能单元 | 产品能力 | `src/isotope/capabilities/catalog.py` |

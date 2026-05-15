@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from isotope.errors import KernelError
+from isotope.errors import IsotopeError
 from isotope.refs import make_artifact_ref
 from isotope.server import InProcessServer
 
@@ -54,7 +54,7 @@ def _assert_denied_delegation_audit_without_worker_events(api: InProcessServer, 
     assert [event for event in api.get_events(run_id) if event.event_type.startswith("worker.")] == []
 
 
-def _assert_kernel_error(
+def _assert_isotope_error(
     error: BaseException,
     *,
     code: str,
@@ -63,7 +63,7 @@ def _assert_kernel_error(
     http_status: int,
     detail_keys: set[str],
 ):
-    assert isinstance(error, KernelError)
+    assert isinstance(error, IsotopeError)
     assert error.code == code
     assert error.category == category
     assert error.retryable is retryable
@@ -79,7 +79,7 @@ def test_worker_handoff_non_dict_intent_raises_structured_validation_without_par
     artifact_ref = _source_artifact_ref(api, run_id)
     before_events = list(api.get_events(run_id))
 
-    with pytest.raises(KernelError) as exc_info:
+    with pytest.raises(IsotopeError) as exc_info:
         api.submit_worker_handoff(
             run_id,
             delegation_intent="not-a-dict",  # type: ignore[arg-type]
@@ -87,7 +87,7 @@ def test_worker_handoff_non_dict_intent_raises_structured_validation_without_par
             summary="worker handoff should fail before append",
         )
 
-    _assert_kernel_error(
+    _assert_isotope_error(
         exc_info.value,
         code="worker_handoff_invalid_intent",
         category="validation",
@@ -104,7 +104,7 @@ def test_worker_handoff_forged_grants_raise_structured_policy_error_without_part
     intent["grants"] = {"tools": ["admin_tool"]}
     before_events = list(api.get_events(run_id))
 
-    with pytest.raises(KernelError) as exc_info:
+    with pytest.raises(IsotopeError) as exc_info:
         api.submit_worker_handoff(
             run_id,
             delegation_intent=intent,
@@ -112,7 +112,7 @@ def test_worker_handoff_forged_grants_raise_structured_policy_error_without_part
             summary="worker handoff should reject forged grants",
         )
 
-    _assert_kernel_error(
+    _assert_isotope_error(
         exc_info.value,
         code="worker_handoff_forged_grants",
         category="policy",
@@ -126,7 +126,7 @@ def test_worker_handoff_unknown_artifact_ref_raises_structured_not_found_without
     api, run_id = _server_with_run(tmp_path)
     before_events = list(api.get_events(run_id))
 
-    with pytest.raises(KernelError) as exc_info:
+    with pytest.raises(IsotopeError) as exc_info:
         api.submit_worker_handoff(
             run_id,
             delegation_intent=_delegation_intent(),
@@ -134,7 +134,7 @@ def test_worker_handoff_unknown_artifact_ref_raises_structured_not_found_without
             summary="worker handoff should reject unknown artifact",
         )
 
-    _assert_kernel_error(
+    _assert_isotope_error(
         exc_info.value,
         code="worker_handoff_unknown_artifact",
         category="not_found",

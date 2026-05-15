@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .platform.errors import KernelError
+from .platform.errors import IsotopeError
 from .features.chat.flow import (
     build_llm_product_chat_entry_resume_state,
     mark_llm_product_chat_entry_state_resumed,
@@ -145,7 +145,7 @@ def run_llm_tool_call_live_smoke(
             max_tokens=resolved_config.max_tokens,
             tool_names=(resolved_config.tool_name,),
         )
-    except KernelError as exc:
+    except IsotopeError as exc:
         return {
             "status": "failed",
             "reason_code": exc.code,
@@ -266,7 +266,7 @@ def run_llm_terminal_tool_live_smoke(
             max_tokens=resolved_config.max_tokens,
             tool_names=("terminal_exec",),
         )
-    except KernelError as exc:
+    except IsotopeError as exc:
         return {
             "status": "failed",
             "reason_code": exc.code,
@@ -954,7 +954,7 @@ def _run_product_chat_entry_command(
         root = Path(root_arg)
         try:
             _prepare_product_chat_entry_root(root)
-        except KernelError as exc:
+        except IsotopeError as exc:
             payload = _product_chat_entry_error_payload(exc, command="llm_product_chat_app_entry")
             if args.json:
                 print(json.dumps(payload, sort_keys=True))
@@ -966,7 +966,7 @@ def _run_product_chat_entry_command(
         root = state_file.parent / f"{state_file.stem}.root"
         try:
             _prepare_product_chat_entry_root(root)
-        except KernelError as exc:
+        except IsotopeError as exc:
             payload = _product_chat_entry_error_payload(exc, command="llm_product_chat_app_entry")
             if args.json:
                 print(json.dumps(payload, sort_keys=True))
@@ -1044,7 +1044,7 @@ def _run_product_chat_entry_command_at_root(
                 preflight=preflight,
                 state_file=_optional_path(getattr(args, "state_file", None)),
             )
-        except KernelError as exc:
+        except IsotopeError as exc:
             payload = _product_chat_entry_error_payload(exc, command="llm_product_chat_app_entry")
             if args.json:
                 print(json.dumps(payload, sort_keys=True))
@@ -1082,7 +1082,7 @@ def _run_product_chat_entry_resume_command(
     state_file = Path(args.resume_state)
     try:
         state = _load_product_chat_entry_state(state_file)
-    except KernelError as exc:
+    except IsotopeError as exc:
         payload = _product_chat_entry_error_payload(exc, command="llm_product_chat_app_entry_resume")
         if args.json:
             print(json.dumps(payload, sort_keys=True))
@@ -1091,7 +1091,7 @@ def _run_product_chat_entry_resume_command(
         return _product_chat_entry_exit_code(payload)
     try:
         _validate_product_chat_entry_resume_root(args, state)
-    except KernelError as exc:
+    except IsotopeError as exc:
         payload = _product_chat_entry_error_payload(exc, command="llm_product_chat_app_entry_resume")
         if args.json:
             print(json.dumps(payload, sort_keys=True))
@@ -1101,7 +1101,7 @@ def _run_product_chat_entry_resume_command(
     root = Path(getattr(args, "root", None) or state["root"])
     try:
         _prepare_product_chat_entry_root(root)
-    except KernelError as exc:
+    except IsotopeError as exc:
         payload = _product_chat_entry_error_payload(
             exc,
             command="llm_product_chat_app_entry_resume",
@@ -1138,7 +1138,7 @@ def _run_product_chat_entry_resume_command(
             max_tokens=args.max_tokens,
             resolver="llm_live_smoke_cli",
         )
-    except KernelError as exc:
+    except IsotopeError as exc:
         payload = _product_chat_entry_error_payload(
             exc,
             command="llm_product_chat_app_entry_resume",
@@ -1157,7 +1157,7 @@ def _run_product_chat_entry_resume_command(
             approval=approval,
             entry=entry,
         )
-    except KernelError as exc:
+    except IsotopeError as exc:
         payload = _product_chat_entry_error_payload(
             exc,
             command="llm_product_chat_app_entry_resume",
@@ -1529,7 +1529,7 @@ def _product_chat_entry_exit_code(payload: dict[str, Any]) -> int:
 
 
 def _product_chat_entry_error_payload(
-    exc: KernelError,
+    exc: IsotopeError,
     *,
     command: str,
     runner_call_count: int = 0,
@@ -1551,7 +1551,7 @@ def _product_chat_entry_error_payload(
     }
 
 
-def _product_chat_entry_error_reason(exc: KernelError) -> str:
+def _product_chat_entry_error_reason(exc: IsotopeError) -> str:
     details = exc.details if isinstance(exc.details, dict) else {}
     if isinstance(details.get("reason"), str):
         return details["reason"]
@@ -1564,7 +1564,7 @@ def _product_chat_entry_error_reason(exc: KernelError) -> str:
     return exc.code
 
 
-def _product_chat_entry_error_summary(exc: KernelError) -> str:
+def _product_chat_entry_error_summary(exc: IsotopeError) -> str:
     if exc.code == "product_chat_entry_root_mismatch":
         return "The provided root does not match the local resume state."
     if exc.code == "product_chat_entry_state_already_resumed":
@@ -1586,7 +1586,7 @@ def _product_chat_entry_error_summary(exc: KernelError) -> str:
     return "The product-chat entry resume command could not continue."
 
 
-def _product_chat_entry_error_next_step(exc: KernelError) -> str:
+def _product_chat_entry_error_next_step(exc: IsotopeError) -> str:
     if exc.code == "product_chat_entry_root_mismatch":
         return "omit --root or use the root recorded in the resume state"
     if exc.code == "product_chat_entry_state_already_resumed":
@@ -1709,8 +1709,8 @@ def _prepare_product_chat_entry_root(root: Path) -> None:
         raise _product_chat_entry_root_error("not_directory")
 
 
-def _product_chat_entry_root_error(reason: str) -> KernelError:
-    return KernelError(
+def _product_chat_entry_root_error(reason: str) -> IsotopeError:
+    return IsotopeError(
         "product-chat entry command root is invalid",
         code="product_chat_entry_root_invalid",
         category="validation",
@@ -1771,8 +1771,8 @@ def _maybe_write_product_chat_entry_state(
     }
 
 
-def _product_chat_entry_state_save_error(reason: str) -> KernelError:
-    return KernelError(
+def _product_chat_entry_state_save_error(reason: str) -> IsotopeError:
+    return IsotopeError(
         "product-chat entry state file could not be saved",
         code="product_chat_entry_state_save_failed",
         category="validation",
@@ -1782,8 +1782,8 @@ def _product_chat_entry_state_save_error(reason: str) -> KernelError:
     )
 
 
-def _product_chat_entry_state_mark_error(reason: str) -> KernelError:
-    return KernelError(
+def _product_chat_entry_state_mark_error(reason: str) -> IsotopeError:
+    return IsotopeError(
         "product-chat entry state file could not be marked as resumed",
         code="product_chat_entry_state_mark_failed",
         category="validation",
@@ -1797,7 +1797,7 @@ def _load_product_chat_entry_state(state_file: Path) -> dict[str, Any]:
     try:
         state = json.loads(state_file.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
-        raise KernelError(
+        raise IsotopeError(
             "product-chat entry state file not found",
             code="product_chat_entry_state_missing",
             category="not_found",
@@ -1806,7 +1806,7 @@ def _load_product_chat_entry_state(state_file: Path) -> dict[str, Any]:
             details={"state": "missing"},
         ) from exc
     except json.JSONDecodeError as exc:
-        raise KernelError(
+        raise IsotopeError(
             "product-chat entry state file is invalid",
             code="product_chat_entry_state_invalid",
             category="validation",
@@ -1815,7 +1815,7 @@ def _load_product_chat_entry_state(state_file: Path) -> dict[str, Any]:
             details={"state": "invalid"},
         ) from exc
     except IsADirectoryError as exc:
-        raise KernelError(
+        raise IsotopeError(
             "product-chat entry state file is invalid",
             code="product_chat_entry_state_invalid",
             category="validation",
@@ -1824,7 +1824,7 @@ def _load_product_chat_entry_state(state_file: Path) -> dict[str, Any]:
             details={"state": "not_file"},
         ) from exc
     except PermissionError as exc:
-        raise KernelError(
+        raise IsotopeError(
             "product-chat entry state file is invalid",
             code="product_chat_entry_state_invalid",
             category="validation",
@@ -1833,7 +1833,7 @@ def _load_product_chat_entry_state(state_file: Path) -> dict[str, Any]:
             details={"state": "unreadable"},
         ) from exc
     if not isinstance(state, dict):
-        raise KernelError(
+        raise IsotopeError(
             "product-chat entry state file is invalid",
             code="product_chat_entry_state_invalid",
             category="validation",
@@ -1855,7 +1855,7 @@ def _validate_product_chat_entry_resume_root(args: argparse.Namespace, state: Ma
     saved_root = Path(state_root).expanduser().resolve(strict=False)
     if requested_root == saved_root:
         return
-    raise KernelError(
+    raise IsotopeError(
         "product-chat entry resume root mismatch",
         code="product_chat_entry_root_mismatch",
         category="validation",

@@ -4,9 +4,9 @@
 
 ## 1. Purpose
 
-本文定义 Isotope kernel error taxonomy（错误分类）的最小 contract。目标是解决 application-layer pressure 暴露的 `unstructured_kernel_helper_errors`：HTTP facade 已返回 stable `status` / `error.code` / `error.message` envelope，但 direct in-process helpers 仍主要抛 plain `ValueError(...)`，app shell 要区分 terminal conflict、validation、unknown id、not-enabled 等错误时只能 parse message string。
+本文定义 Isotope error taxonomy（错误分类）的最小 contract。目标是解决 application-layer pressure 暴露的 `unstructured_kernel_helper_errors`：HTTP facade 已返回 stable `status` / `error.code` / `error.message` envelope，但 direct in-process helpers 仍主要抛 plain `ValueError(...)`，app shell 要区分 terminal conflict、validation、unknown id、not-enabled 等错误时只能 parse message string。
 
-本边界只定义 kernel-level error shape，不实现 product error UX、public SDK、real HTTP server、provider adapter、process supervisor、container、git worktree、tag 或 release。
+本边界只定义 Isotope runtime error shape，不实现 product error UX、public SDK、real HTTP server、provider adapter、process supervisor、container、git worktree、tag 或 release。
 
 ## 2. Current Friction
 
@@ -17,11 +17,12 @@ Aggressive-dev `error.taxonomy.review` 证明：
 - App shell cannot reliably classify helper errors without string matching.
 - The same issue can appear for unknown session / run, invalid request, disabled capability / `not_enabled`, and policy / lifecycle conflicts.
 
-This is kernel-level because helper errors are part of the in-process kernel surface consumed by demos, app spikes, capability hub, and future application shells.
+This is an application runtime boundary because helper errors are consumed by demos, app spikes, capability hub, and future application shells.
 
 ## 3. Definitions
 
-- `KernelError`: kernel-owned structured exception for controlled helper / facade failures.
+- `IsotopeError`: Isotope-owned structured exception for controlled helper / facade failures.
+- `KernelError`: legacy alias kept only for import compatibility.
 - `code`: stable snake_case identifier such as `run_terminal` or `unknown_run`; never include dynamic ids.
 - `category`: small stable class used for routing and policy, not prose.
 - `retryable`: boolean hint for callers; it is not a retry scheduler.
@@ -31,7 +32,7 @@ This is kernel-level because helper errors are part of the in-process kernel sur
 
 ## 4. Hard Contracts
 
-- `KernelError` should subclass `ValueError` so existing `pytest.raises(ValueError)` and caller compatibility remain intact.
+- `IsotopeError` should subclass `ValueError` so existing `pytest.raises(ValueError)` and caller compatibility remain intact.
 - `str(exc)` and `exc.args[0]` must preserve the old readable message contract.
 - `code` must be stable snake_case and must not contain dynamic ids.
 - `category` must come from a small allowlist.
@@ -39,12 +40,12 @@ This is kernel-level because helper errors are part of the in-process kernel sur
 - `http_status` is optional metadata for facade mapping, not a network server contract.
 - `details` must not contain artifact full content, raw provider payload, secrets, binary content, or user-private raw content.
 - HTTP facade should map from structured attrs first and keep existing response envelope compatibility.
-- Direct helpers should not require callers to parse message strings for ordinary controlled kernel failures.
+- Direct helpers should not require callers to parse message strings for ordinary controlled failures.
 - Error taxonomy must not mutate event log, projector state, checkpoint state, executor grants, policy decisions, or artifact content behavior.
 
 ## 5. Minimal v0.2 Shape
 
-Candidate `KernelError` fields:
+Candidate `IsotopeError` fields:
 
 | Field | Type | Contract |
 | --- | --- | --- |
@@ -77,12 +78,12 @@ Initial `category` allowlist:
 
 HTTP facade should prefer structured error attrs when present:
 
-- `error.code` should come from `KernelError.code`.
+- `error.code` should come from `IsotopeError.code`.
 - `error.message` should remain the readable message.
 - `status_code` should use `http_status` when set.
 - existing top-level `status` and nested `error.code` / `error.message` shape should remain backward-compatible.
 
-If a non-`KernelError` escapes a controlled boundary, the facade may still wrap it conservatively, but new kernel helper paths should use structured errors for expected failures.
+If a non-`IsotopeError` escapes a controlled boundary, the facade may still wrap it conservatively, but new application helper paths should use structured errors for expected failures.
 
 ## 7. First Slice Scope
 
@@ -112,15 +113,15 @@ Keep existing messages compatible. Do not redesign all exception paths at once.
 
 Suggested tests:
 
-- `tests/isotope/test_kernel_error_taxonomy_boundary.py`
+- `tests/isotope/test_isotope_error_taxonomy_boundary.py`
 - `tests/isotope/test_http_error_mapping_boundary.py`
 
 Initial coverage:
 
-1. `KernelError` exists and subclasses `ValueError`.
-2. `KernelError` preserves `str(exc)` / `args[0]`.
+1. `IsotopeError` exists and subclasses `ValueError`.
+2. `IsotopeError` preserves `str(exc)` / `args[0]`.
 3. errors expose `code`, `category`, `retryable`, `http_status`, and `details`.
-4. terminal run `submit_input(...)` raises `KernelError` with stable `run_terminal` metadata.
+4. terminal run `submit_input(...)` raises `IsotopeError` with stable `run_terminal` metadata.
 5. unknown run / session and invalid input paths expose stable metadata.
 6. `not_enabled` helper / HTTP paths expose stable metadata.
 7. HTTP envelope remains backward-compatible.
@@ -133,7 +134,7 @@ First slice 已实现并完成 closure review，见 `error-taxonomy-closure-revi
 
 当前实现包括：
 
-- `KernelError(ValueError)` compatibility layer。
+- `IsotopeError(ValueError)` compatibility layer。
 - Legacy `str(exc)` / `args[0]` message compatibility。
 - Stable `code` / `category` / `retryable` / `http_status` / `details` attrs。
 - terminal run、unknown run/session、invalid request 和 `not_enabled` helper / HTTP mapping first paths。
@@ -143,4 +144,4 @@ First slice 已实现并完成 closure review，见 `error-taxonomy-closure-revi
 
 ## 11. Decision
 
-Error Taxonomy Boundary is accepted as a completed first slice. Future expansion should be driven by concrete application-layer `kernel_friction`, not by broad conversion of all exceptions.
+Error Taxonomy Boundary is accepted as a completed first slice. Future expansion should be driven by concrete application-layer `app_friction`, not by broad conversion of all exceptions.

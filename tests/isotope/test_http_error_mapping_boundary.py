@@ -23,7 +23,7 @@ def _create_completed_run(app):
     return run["run_id"]
 
 
-def test_terminal_run_http_error_maps_kernel_error_without_breaking_envelope(tmp_path):
+def test_terminal_run_http_error_maps_isotope_error_without_breaking_envelope(tmp_path):
     app = create_http_app(tmp_path)
     run_id = _create_completed_run(app)
 

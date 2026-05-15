@@ -14,7 +14,7 @@ from ..agents.loop.planner_contract import run_agent_loop_real_planner_contract_
 from ..agents.loop.step import run_agent_loop_step
 from ..execution.executor import Executor, ToolHandler
 from ..platform.events.events import CanonicalEvent
-from ..platform.errors import KernelError, KernelPermissionError, not_enabled_result
+from ..platform.errors import IsotopeError, IsotopePermissionError, not_enabled_result
 from ..platform.ids import new_id
 from ..platform.registry.actions import ActionTypeRegistry
 from ..platform.schemas.actions import ActionProposal, PolicyDecision
@@ -117,7 +117,7 @@ class InProcessServer:
                     if run_id not in run_ids:
                         run_ids.append(run_id)
         if session_state is None:
-            raise KernelError(
+            raise IsotopeError(
                 "unknown session_id",
                 code="unknown_session",
                 category="not_found",
@@ -1131,7 +1131,7 @@ class InProcessServer:
         except FileNotFoundError as exc:
             artifact_id = getattr(artifact_ref, "artifact_id", None)
             artifact_run_id = getattr(artifact_ref, "run_id", None)
-            raise KernelError(
+            raise IsotopeError(
                 "unknown artifact ResourceRef",
                 code="worker_handoff_unknown_artifact",
                 category="not_found",
@@ -1140,7 +1140,7 @@ class InProcessServer:
                 details={"run_id": artifact_run_id, "artifact_id": artifact_id},
             ) from exc
         if artifact_ref.run_id != run_id:
-            raise KernelError(
+            raise IsotopeError(
                 "artifact_ref run_id must match run_id",
                 code="worker_handoff_invalid_artifact_ref",
                 category="validation",
@@ -1187,7 +1187,7 @@ class InProcessServer:
             RunProjector().project([*existing_events, *decision_events])
             for event in decision_events:
                 self.event_store.append(event)
-            raise KernelPermissionError(
+            raise IsotopePermissionError(
                 "worker handoff denied by policy",
                 code="worker_handoff_denied",
                 category="policy",
@@ -1361,7 +1361,7 @@ class InProcessServer:
 
     def _validate_worker_handoff_intent(self, intent: object) -> dict[str, Any]:
         if not isinstance(intent, dict) or not intent:
-            raise KernelError(
+            raise IsotopeError(
                 "delegation intent must be a non-empty dict",
                 code="worker_handoff_invalid_intent",
                 category="validation",
@@ -1370,7 +1370,7 @@ class InProcessServer:
                 details={"field": "delegation_intent"},
             )
         if "decision" in intent or "grants" in intent or "effective_grants" in intent:
-            raise KernelError(
+            raise IsotopeError(
                 "delegation intent cannot include forged decision or grants",
                 code="worker_handoff_forged_grants",
                 category="policy",
@@ -1438,7 +1438,7 @@ class InProcessServer:
 
     def _validate_non_empty_string(self, field_name: str, value: object) -> None:
         if not isinstance(value, str) or not value:
-            raise KernelError(
+            raise IsotopeError(
                 f"{field_name} must be a non-empty string",
                 code="invalid_request",
                 category="validation",
@@ -1456,7 +1456,7 @@ class InProcessServer:
     def _validate_existing_run_id(self, run_id: object) -> None:
         self._validate_non_empty_string("run_id", run_id)
         if run_id not in self._runs:
-            raise KernelError(
+            raise IsotopeError(
                 "unknown run_id",
                 code="unknown_run",
                 category="not_found",
@@ -1468,7 +1468,7 @@ class InProcessServer:
     def _validate_run_accepts_ordinary_input(self, run_id: str) -> None:
         state = self.get_run_state(run_id)
         if state.status in {"completed", "failed", "denied"}:
-            raise KernelError(
+            raise IsotopeError(
                 f"run is terminal: {state.status}",
                 code="run_terminal",
                 category="conflict",
@@ -1480,7 +1480,7 @@ class InProcessServer:
     def _runtime_context_for_write_helper(self, run_id: object) -> dict[str, str]:
         self._validate_non_empty_string("run_id", run_id)
         if not isinstance(run_id, str):
-            raise KernelError(
+            raise IsotopeError(
                 "run_id must be a non-empty string",
                 code="invalid_request",
                 category="validation",
@@ -1494,7 +1494,7 @@ class InProcessServer:
 
         state = self.get_run_state(run_id)
         if state.status in {"completed", "failed", "denied"}:
-            raise KernelError(
+            raise IsotopeError(
                 f"run is terminal: {state.status}",
                 code="run_terminal",
                 category="conflict",
@@ -1519,7 +1519,7 @@ class InProcessServer:
                     thread_id = raw_thread_id
 
         if run_payload is None or not agent_id or not thread_id:
-            raise KernelError(
+            raise IsotopeError(
                 "run context cannot be recovered from events",
                 code="run_context_unavailable",
                 category="internal",
@@ -1552,7 +1552,7 @@ class InProcessServer:
     def _validate_known_run_id(self, run_id: object) -> None:
         self._validate_non_empty_string("run_id", run_id)
         if not isinstance(run_id, str):
-            raise KernelError(
+            raise IsotopeError(
                 "run_id must be a non-empty string",
                 code="invalid_request",
                 category="validation",
@@ -1561,7 +1561,7 @@ class InProcessServer:
                 details={"field": "run_id"},
             )
         if run_id not in self._runs and not self.event_store.event_path(run_id).exists():
-            raise KernelError(
+            raise IsotopeError(
                 "unknown run_id",
                 code="unknown_run",
                 category="not_found",

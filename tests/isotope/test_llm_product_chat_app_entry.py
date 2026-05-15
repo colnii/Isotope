@@ -7,7 +7,7 @@ import pytest
 from isotope import codex_server
 from isotope import http_api
 from isotope import llm_provider
-from isotope.errors import KernelError
+from isotope.errors import IsotopeError
 from isotope.llm_product_chat_app import (
     build_llm_product_chat_entry_resume_state,
     mark_llm_product_chat_entry_state_resumed,
@@ -344,7 +344,7 @@ def test_product_chat_app_entry_resume_rejects_mismatched_approval_state_before_
     bad_state = dict(state)
     bad_state["approval_id"] = "approval_mismatched"
 
-    with pytest.raises(KernelError) as exc_info:
+    with pytest.raises(IsotopeError) as exc_info:
         submit_llm_product_chat_entry_resume(
             app,
             bad_state,
@@ -401,7 +401,7 @@ def test_product_chat_app_entry_resume_rejects_already_resumed_state_before_side
     )
     before_events = _event_types(app, run_id)
 
-    with pytest.raises(KernelError) as exc_info:
+    with pytest.raises(IsotopeError) as exc_info:
         submit_llm_product_chat_entry_resume(
             app,
             resumed_state,
@@ -456,7 +456,7 @@ def test_product_chat_app_entry_resume_maps_missing_approval_context_without_lea
         RecordingProcessRunner(),
     )
 
-    with pytest.raises(KernelError) as exc_info:
+    with pytest.raises(IsotopeError) as exc_info:
         submit_llm_product_chat_entry_resume(
             empty_app,
             state,

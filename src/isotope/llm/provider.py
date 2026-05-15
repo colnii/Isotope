@@ -11,7 +11,7 @@ from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Protocol
 
-from ..platform.errors import KernelError
+from ..platform.errors import IsotopeError
 from .tool_bridge import submit_model_tool_call
 
 
@@ -305,7 +305,7 @@ def submit_llm_tool_call(
 
     _require_non_empty_string("run_id", run_id)
     if not isinstance(complete_run, bool):
-        raise KernelError(
+        raise IsotopeError(
             "complete_run must be a bool",
             code="invalid_llm_tool_call",
             category="validation",
@@ -321,10 +321,10 @@ def submit_llm_tool_call(
             tools=tools,
             max_tokens=max_tokens,
         )
-    except KernelError:
+    except IsotopeError:
         raise
     except ValueError as exc:
-        raise KernelError(
+        raise IsotopeError(
             "model provider did not return a valid tool call",
             code="llm_tool_call_invalid_response",
             category="validation",
@@ -333,7 +333,7 @@ def submit_llm_tool_call(
             details={"provider": _safe_provider_name(provider)},
         ) from exc
     except RuntimeError as exc:
-        raise KernelError(
+        raise IsotopeError(
             "model provider request failed",
             code="llm_provider_request_failed",
             category="internal",
@@ -383,7 +383,7 @@ def submit_llm_chat_turn(
 
     _require_non_empty_string("run_id", run_id)
     if not isinstance(complete_run, bool):
-        raise KernelError(
+        raise IsotopeError(
             "complete_run must be a bool",
             code="invalid_llm_tool_call",
             category="validation",
@@ -394,7 +394,7 @@ def submit_llm_chat_turn(
     has_llm_result = llm_result is not None
     has_tool_execution_result = tool_execution_result is not None
     if has_llm_result != has_tool_execution_result:
-        raise KernelError(
+        raise IsotopeError(
             "llm_result and tool_execution_result must be provided together",
             code="llm_tool_result_invalid_execution",
             category="validation",
@@ -471,7 +471,7 @@ def submit_llm_chat_turn(
             tool_result_content=tool_result_content,
             complete_run=complete_run,
         )
-    raise KernelError(
+    raise IsotopeError(
         "model provider did not return a valid chat turn",
         code="llm_chat_turn_invalid_response",
         category="validation",
@@ -491,7 +491,7 @@ def _require_provider_selected_offered_tool(
         provider_response.tool_call.tool_name,
     )
     if provider_tool_name not in offered_names:
-        raise KernelError(
+        raise IsotopeError(
             "provider selected a tool that was not offered",
             code="llm_provider_selected_unoffered_tool",
             category="not_enabled",
@@ -509,7 +509,7 @@ def build_llm_tool_result_message(
     """Build a low-sensitive tool-result message for the originating model call."""
 
     if not isinstance(llm_result, dict):
-        raise KernelError(
+        raise IsotopeError(
             "llm tool result source must be a dict",
             code="llm_tool_result_invalid_source",
             category="validation",
@@ -518,7 +518,7 @@ def build_llm_tool_result_message(
             details={"field": "llm_result"},
         )
     if not isinstance(tool_execution_result, dict):
-        raise KernelError(
+        raise IsotopeError(
             "llm tool execution result must be a dict",
             code="llm_tool_result_invalid_execution",
             category="validation",
@@ -617,7 +617,7 @@ def submit_llm_tool_result_followup(
     """Send a tool result to the provider and submit the selected follow-up tool."""
 
     if not isinstance(complete_run, bool):
-        raise KernelError(
+        raise IsotopeError(
             "complete_run must be a bool",
             code="invalid_llm_tool_call",
             category="validation",
@@ -666,7 +666,7 @@ def _require_open_run_for_followup_submission(app: Any, run_id: str) -> None:
     state = app.server.get_run_state(run_id)
     status = getattr(state, "status", None)
     if status != "running":
-        raise KernelError(
+        raise IsotopeError(
             "run is not open for tool-result follow-up submission",
             code="run_not_open_for_followup_submission",
             category="conflict",
@@ -726,10 +726,10 @@ def _request_tool_result_followup(
             tools=tools,
             max_tokens=max_tokens,
         )
-    except KernelError:
+    except IsotopeError:
         raise
     except ValueError as exc:
-        raise KernelError(
+        raise IsotopeError(
             "model provider did not return a valid follow-up tool call",
             code="llm_tool_call_invalid_response",
             category="validation",
@@ -738,7 +738,7 @@ def _request_tool_result_followup(
             details={"provider": _safe_provider_name(provider)},
         ) from exc
     except RuntimeError as exc:
-        raise KernelError(
+        raise IsotopeError(
             "model provider follow-up request failed",
             code="llm_provider_request_failed",
             category="internal",
@@ -750,7 +750,7 @@ def _request_tool_result_followup(
     offered_names = {tool["name"] for tool in tools}
     tool_name = _require_non_empty_string("tool_name", provider_response.tool_call.tool_name)
     if tool_name not in offered_names:
-        raise KernelError(
+        raise IsotopeError(
             "provider selected a tool that is not enabled",
             code="llm_tool_not_enabled",
             category="not_enabled",
@@ -782,10 +782,10 @@ def _request_chat_turn(
                 tools=tools,
                 max_tokens=max_tokens,
             )
-    except KernelError:
+    except IsotopeError:
         raise
     except ValueError as exc:
-        raise KernelError(
+        raise IsotopeError(
             "model provider did not return a valid chat turn",
             code="llm_chat_turn_invalid_response",
             category="validation",
@@ -794,7 +794,7 @@ def _request_chat_turn(
             details={"provider": _safe_provider_name(provider)},
         ) from exc
     except RuntimeError as exc:
-        raise KernelError(
+        raise IsotopeError(
             "model provider chat-turn request failed",
             code="llm_provider_request_failed",
             category="internal",
@@ -805,7 +805,7 @@ def _request_chat_turn(
 
     if isinstance(response, (LLMToolCallResponse, LLMFinalAnswerResponse)):
         return response
-    raise KernelError(
+    raise IsotopeError(
         "model provider did not return a valid chat turn",
         code="llm_chat_turn_invalid_response",
         category="validation",
@@ -1148,7 +1148,7 @@ def _select_model_tools(
     if len(selected) != len(selected_names):
         available = {tool["name"] for tool in model_tools}
         missing = sorted(selected_names.difference(available))
-        raise KernelError(
+        raise IsotopeError(
             "requested model tools are not enabled",
             code="llm_tool_not_enabled",
             category="not_enabled",
@@ -1178,7 +1178,7 @@ def _require_tool_result_string(source: dict[str, Any], field_name: str, *, code
     value = source.get(field_name)
     if isinstance(value, str) and value:
         return value
-    raise KernelError(
+    raise IsotopeError(
         "llm tool result is missing required metadata",
         code=code,
         category="validation",
@@ -1190,7 +1190,7 @@ def _require_tool_result_string(source: dict[str, Any], field_name: str, *, code
 
 def _safe_tool_result_artifact_ref(value: Any) -> dict[str, str]:
     if not isinstance(value, dict):
-        raise KernelError(
+        raise IsotopeError(
             "completed llm tool result requires an artifact ref",
             code="llm_tool_result_missing_artifact_ref",
             category="validation",
@@ -1202,7 +1202,7 @@ def _safe_tool_result_artifact_ref(value: Any) -> dict[str, str]:
     for field_name in ("ref_type", "run_id", "artifact_id"):
         field_value = value.get(field_name)
         if not isinstance(field_value, str) or not field_value:
-            raise KernelError(
+            raise IsotopeError(
                 "completed llm tool result requires a structured artifact ref",
                 code="llm_tool_result_missing_artifact_ref",
                 category="validation",
@@ -1221,7 +1221,7 @@ def _parse_tool_result_message_content(message: dict[str, str]) -> dict[str, Any
     try:
         content = json.loads(message["content"])
     except (KeyError, json.JSONDecodeError, TypeError) as exc:
-        raise KernelError(
+        raise IsotopeError(
             "llm tool result message has invalid content",
             code="llm_tool_result_invalid_execution",
             category="validation",
@@ -1230,7 +1230,7 @@ def _parse_tool_result_message_content(message: dict[str, str]) -> dict[str, Any
             details={"field": "content"},
         ) from exc
     if not isinstance(content, dict):
-        raise KernelError(
+        raise IsotopeError(
             "llm tool result message content must be an object",
             code="llm_tool_result_invalid_execution",
             category="validation",
@@ -1276,7 +1276,7 @@ def _resolve_provider_timeout(env: Mapping[str, str]) -> int | None:
 
 def _require_final_answer_content(value: Any, *, provider: str) -> str:
     if not isinstance(value, str) or not value.strip():
-        raise KernelError(
+        raise IsotopeError(
             "model provider did not return a valid final answer",
             code="llm_final_answer_invalid_response",
             category="validation",

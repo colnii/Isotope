@@ -365,6 +365,8 @@ from isotope.agents.loop.control import *  # noqa: F401,F403
 | `platform/errors.py` 的 `KernelError`                              | 应该迁，但不要第一批动                                        |
 | 顶层 `codex_*`、`llm_*`、`capability_*`                               | 保留薄代理，但要列清单和删除计划                                   |
 
+当前执行状态：`KernelError` 已迁为 `IsotopeError` 主名，旧名只保留兼容别名。
+
 ---
 
 ## 我会额外加一条原则

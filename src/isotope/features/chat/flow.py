@@ -11,7 +11,7 @@ from collections.abc import Mapping
 from copy import deepcopy
 from typing import Any
 
-from ...platform.errors import KernelError
+from ...platform.errors import IsotopeError
 from ...interfaces.http import HttpResponse
 
 
@@ -179,7 +179,7 @@ def validate_llm_product_chat_entry_resume_state(state: Mapping[str, Any]) -> di
     """Validate and copy a product-chat entry resume state object."""
 
     if not isinstance(state, Mapping) or state.get("schema_version") != PRODUCT_CHAT_ENTRY_STATE_SCHEMA:
-        raise KernelError(
+        raise IsotopeError(
             "product-chat entry state file is invalid",
             code="product_chat_entry_state_invalid",
             category="validation",
@@ -190,7 +190,7 @@ def validate_llm_product_chat_entry_resume_state(state: Mapping[str, Any]) -> di
     copied = _safe_json_object(dict(state))
     for key in ("root", "run_id", "approval_id"):
         if not isinstance(copied.get(key), str) or not copied[key]:
-            raise KernelError(
+            raise IsotopeError(
                 "product-chat entry state file is incomplete",
                 code="product_chat_entry_state_invalid",
                 category="validation",
@@ -199,7 +199,7 @@ def validate_llm_product_chat_entry_resume_state(state: Mapping[str, Any]) -> di
                 details={"field": key},
             )
     if not isinstance(copied.get("preflight"), dict) or not isinstance(copied.get("llm_result"), dict):
-        raise KernelError(
+        raise IsotopeError(
             "product-chat entry state file is incomplete",
             code="product_chat_entry_state_invalid",
             category="validation",
@@ -211,7 +211,7 @@ def validate_llm_product_chat_entry_resume_state(state: Mapping[str, Any]) -> di
     if isinstance(resume, dict):
         resume_status = resume.get("status")
         if resume_status != "pending":
-            raise KernelError(
+            raise IsotopeError(
                 "product-chat entry state has already been resumed",
                 code="product_chat_entry_state_already_resumed",
                 category="conflict",
@@ -221,7 +221,7 @@ def validate_llm_product_chat_entry_resume_state(state: Mapping[str, Any]) -> di
             )
     llm_result = copied["llm_result"]
     if llm_result.get("status") != "pending_user_approval":
-        raise KernelError(
+        raise IsotopeError(
             "product-chat entry state file is not pending approval",
             code="product_chat_entry_state_invalid",
             category="validation",
@@ -230,7 +230,7 @@ def validate_llm_product_chat_entry_resume_state(state: Mapping[str, Any]) -> di
             details={"field": "llm_result", "reason": "not_pending_user_approval"},
         )
     if llm_result.get("approval_id") != copied["approval_id"]:
-        raise KernelError(
+        raise IsotopeError(
             "product-chat entry state approval id does not match llm result",
             code="product_chat_entry_state_invalid",
             category="validation",
@@ -244,7 +244,7 @@ def validate_llm_product_chat_entry_resume_state(state: Mapping[str, Any]) -> di
 def _raise_product_chat_entry_approval_error(exc: ValueError) -> None:
     message = str(exc)
     if "unknown approval" in message:
-        raise KernelError(
+        raise IsotopeError(
             "product-chat entry approval is unavailable",
             code="product_chat_entry_approval_unavailable",
             category="not_found",
@@ -253,7 +253,7 @@ def _raise_product_chat_entry_approval_error(exc: ValueError) -> None:
             details={"reason": "unknown_approval"},
         ) from exc
     if "approval already resolved" in message:
-        raise KernelError(
+        raise IsotopeError(
             "product-chat entry approval has already been resolved",
             code="product_chat_entry_approval_already_resolved",
             category="conflict",
@@ -261,7 +261,7 @@ def _raise_product_chat_entry_approval_error(exc: ValueError) -> None:
             http_status=409,
             details={"reason": "approval_already_resolved"},
         ) from exc
-    raise KernelError(
+    raise IsotopeError(
         "product-chat entry approval could not be resumed",
         code="product_chat_entry_approval_unavailable",
         category="runtime",

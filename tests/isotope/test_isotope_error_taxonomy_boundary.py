@@ -5,8 +5,15 @@ import pytest
 from isotope import server
 
 
-def _kernel_error_type():
-    return importlib.import_module("isotope.errors").KernelError
+def _isotope_error_type():
+    return importlib.import_module("isotope.errors").IsotopeError
+
+
+def test_legacy_kernel_error_alias_points_to_isotope_error():
+    errors = importlib.import_module("isotope.errors")
+
+    assert errors.KernelError is errors.IsotopeError
+    assert errors.KernelPermissionError is errors.IsotopePermissionError
 
 
 def _new_completed_run(tmp_path):
@@ -17,10 +24,10 @@ def _new_completed_run(tmp_path):
     return api, run["run_id"]
 
 
-def test_kernel_error_preserves_value_error_message_and_stable_attrs():
-    KernelError = _kernel_error_type()
+def test_isotope_error_preserves_value_error_message_and_stable_attrs():
+    IsotopeError = _isotope_error_type()
 
-    error = KernelError(
+    error = IsotopeError(
         "run is terminal: completed",
         code="run_terminal",
         category="conflict",
@@ -39,11 +46,11 @@ def test_kernel_error_preserves_value_error_message_and_stable_attrs():
     assert error.details == {"run_id": "run_001", "status": "completed"}
 
 
-def test_kernel_error_rejects_secret_or_raw_content_details():
-    KernelError = _kernel_error_type()
+def test_isotope_error_rejects_secret_or_raw_content_details():
+    IsotopeError = _isotope_error_type()
 
     with pytest.raises(ValueError, match="details"):
-        KernelError(
+        IsotopeError(
             "raw payload rejected",
             code="invalid_request",
             category="validation",
@@ -54,13 +61,13 @@ def test_kernel_error_rejects_secret_or_raw_content_details():
 
 
 def test_terminal_run_helper_error_is_structured_without_message_parsing(tmp_path):
-    KernelError = _kernel_error_type()
+    IsotopeError = _isotope_error_type()
     api, run_id = _new_completed_run(tmp_path)
 
     with pytest.raises(ValueError) as exc_info:
         api.submit_input(run_id, text="second input")
 
-    assert isinstance(exc_info.value, KernelError)
+    assert isinstance(exc_info.value, IsotopeError)
     assert str(exc_info.value) == "run is terminal: completed"
     assert exc_info.value.code == "run_terminal"
     assert exc_info.value.category == "conflict"
@@ -70,13 +77,13 @@ def test_terminal_run_helper_error_is_structured_without_message_parsing(tmp_pat
 
 
 def test_unknown_run_helper_error_is_structured(tmp_path):
-    KernelError = _kernel_error_type()
+    IsotopeError = _isotope_error_type()
     api = server.InProcessServer(tmp_path)
 
     with pytest.raises(ValueError) as exc_info:
         api.get_run_state("run_missing")
 
-    assert isinstance(exc_info.value, KernelError)
+    assert isinstance(exc_info.value, IsotopeError)
     assert exc_info.value.code == "unknown_run"
     assert exc_info.value.category == "not_found"
     assert exc_info.value.retryable is False
@@ -85,13 +92,13 @@ def test_unknown_run_helper_error_is_structured(tmp_path):
 
 
 def test_unknown_session_helper_error_is_structured(tmp_path):
-    KernelError = _kernel_error_type()
+    IsotopeError = _isotope_error_type()
     api = server.InProcessServer(tmp_path)
 
     with pytest.raises(ValueError) as exc_info:
         api.create_run("session_missing", goal="hello")
 
-    assert isinstance(exc_info.value, KernelError)
+    assert isinstance(exc_info.value, IsotopeError)
     assert exc_info.value.code == "unknown_session"
     assert exc_info.value.category == "not_found"
     assert exc_info.value.retryable is False
@@ -100,7 +107,7 @@ def test_unknown_session_helper_error_is_structured(tmp_path):
 
 
 def test_invalid_request_helper_error_is_structured(tmp_path):
-    KernelError = _kernel_error_type()
+    IsotopeError = _isotope_error_type()
     api = server.InProcessServer(tmp_path)
     session = api.create_session()
     run = api.create_run(session["session_id"], goal="hello")
@@ -108,7 +115,7 @@ def test_invalid_request_helper_error_is_structured(tmp_path):
     with pytest.raises(ValueError) as exc_info:
         api.submit_input(run["run_id"], text="")
 
-    assert isinstance(exc_info.value, KernelError)
+    assert isinstance(exc_info.value, IsotopeError)
     assert exc_info.value.code == "invalid_request"
     assert exc_info.value.category == "validation"
     assert exc_info.value.retryable is False

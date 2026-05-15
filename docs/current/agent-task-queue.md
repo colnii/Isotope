@@ -50,21 +50,22 @@
     `terminal_backend.py` 和顶层旧路径保留兼容代理。
 31. platform schema 拆分：`models.py` 已拆成 `actions.py`、`artifacts.py`、
     `memory.py`、`snapshots.py`，旧路径保留兼容代理。
+32. 结构化错误正名：活跃代码改用 `IsotopeError` / `IsotopePermissionError`，
+    `KernelError` / `KernelPermissionError` 仅作为兼容别名。
 
-## 最近完成：platform schema 拆分
+## 最近完成：结构化错误正名
 
 完成内容：
 
-- 将 `platform/schemas/models.py` 拆成更具体的 schema 文件。
-- 动作相关类型迁入 `platform/schemas/actions.py`。
-- 产物、记忆、外部快照分别迁入对应 schema 文件。
-- 旧 `platform/schemas/models.py` 和顶层旧路径保留兼容代理。
-- 同步 [import-map](./import-map.md)，记录旧路径、新路径和计划删除节点。
+- 将结构化错误主名改为 `IsotopeError`。
+- 将权限错误主名改为 `IsotopePermissionError`。
+- 旧 `KernelError` / `KernelPermissionError` 保留为兼容别名。
+- HTTP facade、LLM、chat flow、runtime 活跃代码改用新主名。
 
 验收：
 
-- 新路径是活跃导入路径。
-- 旧路径仍可导入。
+- 新主名是活跃导入路径。
+- 旧错误名仍可导入，并指向新类型。
 - 相关测试和全量测试需要通过。
 
 ## 下一批次：应用内分层迁移
@@ -73,7 +74,7 @@
 
 - 保持 `src/isotope/` 作为长期 Python 包命名空间。
 - 继续把当前平铺模块逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步优先评估 `platform/errors.py` 里的 `KernelError` 命名，或继续评估旧兼容代理清单。
+- 下一步优先继续评估旧兼容代理清单，或处理 `core/` 空壳和顶层代理清理计划。
 - 迁移完成后再恢复多分支并行开发。
 
 初始参考：

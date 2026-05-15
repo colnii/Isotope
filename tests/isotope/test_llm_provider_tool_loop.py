@@ -7,7 +7,7 @@ import pytest
 
 from isotope import llm_provider
 from isotope import codex_server
-from isotope.errors import KernelError
+from isotope.errors import IsotopeError
 from isotope.http_api import create_codex_cli_http_app
 from isotope.llm_provider import (
     DeepSeekToolCallProvider,
@@ -445,7 +445,7 @@ def test_llm_tool_result_followup_submission_rejects_completed_run_before_provid
 
     assert approved["status"] == "completed"
     assert len(provider.calls) == 1
-    with pytest.raises(KernelError) as exc_info:
+    with pytest.raises(IsotopeError) as exc_info:
         submit_llm_tool_result_followup(
             app,
             run_id,
@@ -483,7 +483,7 @@ def test_llm_tool_result_followup_rejects_unknown_run_before_provider_call(tmp_p
         ]
     )
 
-    with pytest.raises(KernelError) as exc_info:
+    with pytest.raises(IsotopeError) as exc_info:
         select_llm_tool_result_followup(
             app,
             "missing_run",
@@ -507,7 +507,7 @@ def test_llm_tool_result_followup_rejects_unknown_run_before_provider_call(tmp_p
 
 
 def test_llm_tool_result_message_requires_provider_call_id():
-    with pytest.raises(KernelError) as exc_info:
+    with pytest.raises(IsotopeError) as exc_info:
         build_llm_tool_result_message(
             {"status": "completed", "tool_name": "codex_task"},
             {
@@ -525,7 +525,7 @@ def test_llm_tool_result_message_requires_provider_call_id():
 
 
 def test_llm_tool_result_message_requires_artifact_ref_for_completed_tool():
-    with pytest.raises(KernelError) as exc_info:
+    with pytest.raises(IsotopeError) as exc_info:
         build_llm_tool_result_message(
             {
                 "status": "pending_user_approval",
@@ -665,7 +665,7 @@ def test_llm_tool_loop_rejects_text_response_without_side_effects(tmp_path):
         ValueError("model response did not include a tool call: SECRET_RAW_MODEL_TEXT")
     )
 
-    with pytest.raises(KernelError) as exc_info:
+    with pytest.raises(IsotopeError) as exc_info:
         submit_llm_tool_call(app, run_id, provider, _messages())
 
     assert exc_info.value.code == "llm_tool_call_invalid_response"

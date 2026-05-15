@@ -98,7 +98,7 @@ src/isotope/
 | `integrations/llm/tool_bridge.py` | LLM 工具桥属于模型交互层 | 已迁到 `llm/tool_bridge.py` |
 | `execution/terminal_backend.py` | backend 泛，像临时实现 | 已迁到 `execution/terminal_runner.py` |
 | `platform/schemas/models.py` | `models` 太泛 | 已拆成 `actions.py`、`artifacts.py`、`memory.py`、`snapshots.py` |
-| `platform/errors.py` | `KernelError` 残留 | 后续评估 `CoreError` 兼容迁移 |
+| `platform/errors.py` | 旧 `KernelError` 名称容易带回内核叙事 | 已改用 `IsotopeError`，旧名仅作兼容别名 |
 | 顶层 `codex_*`、`llm_*`、`capability_*` | 兼容代理太多 | 保留薄代理，活跃导入只用子目录 |
 
 ## 第一批不要动的东西

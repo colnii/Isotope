@@ -1,4 +1,4 @@
-"""Structured kernel errors for controlled helper and facade failures."""
+"""Structured Isotope errors for controlled helper and facade failures."""
 
 from __future__ import annotations
 
@@ -25,8 +25,8 @@ _FORBIDDEN_DETAIL_KEYS = {
 }
 
 
-class KernelError(ValueError):
-    """Controlled kernel error with stable metadata and ValueError compatibility."""
+class IsotopeError(ValueError):
+    """Controlled Isotope error with stable metadata and ValueError compatibility."""
 
     def __init__(
         self,
@@ -43,7 +43,7 @@ class KernelError(ValueError):
         if not code.replace("_", "").isalnum() or code != code.lower():
             raise ValueError("code must be stable snake_case")
         if category not in _CATEGORIES:
-            raise ValueError("category must be a known kernel error category")
+            raise ValueError("category must be a known Isotope error category")
         if not isinstance(retryable, bool):
             raise ValueError("retryable must be a bool")
         if http_status is not None and (not isinstance(http_status, int) or http_status < 100):
@@ -58,8 +58,8 @@ class KernelError(ValueError):
         self.details = safe_details
 
 
-class KernelPermissionError(PermissionError):
-    """Permission-compatible structured kernel error for policy denials."""
+class IsotopePermissionError(PermissionError):
+    """Permission-compatible structured Isotope error for policy denials."""
 
     def __init__(
         self,
@@ -76,7 +76,7 @@ class KernelPermissionError(PermissionError):
         if not code.replace("_", "").isalnum() or code != code.lower():
             raise ValueError("code must be stable snake_case")
         if category not in _CATEGORIES:
-            raise ValueError("category must be a known kernel error category")
+            raise ValueError("category must be a known Isotope error category")
         if not isinstance(retryable, bool):
             raise ValueError("retryable must be a bool")
         if http_status is not None and (not isinstance(http_status, int) or http_status < 100):
@@ -126,3 +126,16 @@ def _validate_details(details: dict[str, Any]) -> None:
 
 def _is_safe_scalar(value: object) -> bool:
     return value is None or isinstance(value, (str, int, float, bool))
+
+
+# Compatibility aliases for older imports and documented contracts.
+KernelError = IsotopeError
+KernelPermissionError = IsotopePermissionError
+
+__all__ = [
+    "IsotopeError",
+    "IsotopePermissionError",
+    "KernelError",
+    "KernelPermissionError",
+    "not_enabled_result",
+]

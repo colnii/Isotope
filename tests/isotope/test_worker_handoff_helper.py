@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from isotope import checkpoint_store, event_store, projector
-from isotope.errors import KernelPermissionError
+from isotope.errors import IsotopePermissionError
 from isotope.refs import ResourceRef, make_artifact_ref
 from isotope.server import InProcessServer
 
@@ -149,7 +149,7 @@ def test_worker_handoff_helper_projects_denied_delegation_audit_without_worker_e
     intent["requested_capabilities"]["tools"] = []
     before_events = list(api.get_events(run_id))
 
-    with pytest.raises(KernelPermissionError) as raised:
+    with pytest.raises(IsotopePermissionError) as raised:
         _submit_worker_handoff(api, run_id, artifact_ref=artifact_ref, delegation_intent=intent)
 
     assert raised.value.code == "worker_handoff_denied"

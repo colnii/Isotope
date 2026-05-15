@@ -12,7 +12,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from ..platform.errors import KernelError
+from ..platform.errors import IsotopeError
 from ..runtime.in_process import InProcessServer
 
 
@@ -187,8 +187,8 @@ class HttpApiApp:
             if method == "POST" and len(parts) == 3 and parts[0] == "sessions" and parts[2] == "runs":
                 body = self._require_body(json_body, required_fields=("goal",))
                 if parts[1] not in self.server._sessions:
-                    return self._kernel_error_response(
-                        KernelError(
+                    return self._isotope_error_response(
+                        IsotopeError(
                             "session not found",
                             code="unknown_session",
                             category="not_found",
@@ -204,8 +204,8 @@ class HttpApiApp:
             if method == "POST" and len(parts) == 3 and parts[0] == "runs" and parts[2] == "input":
                 body = self._require_body(json_body, required_fields=("text",))
                 if not self._run_exists(parts[1]):
-                    return self._kernel_error_response(
-                        KernelError(
+                    return self._isotope_error_response(
+                        IsotopeError(
                             "run not found",
                             code="unknown_run",
                             category="not_found",
@@ -243,8 +243,8 @@ class HttpApiApp:
                 return self._json(200, self.server.run_agent_loop_planner_step(parts[1], json_body))
             if method == "POST" and len(parts) == 3 and parts[0] == "runs" and parts[2] == "codex-tasks":
                 if not self._run_exists(parts[1]):
-                    return self._kernel_error_response(
-                        KernelError(
+                    return self._isotope_error_response(
+                        IsotopeError(
                             "run not found",
                             code="unknown_run",
                             category="not_found",
@@ -276,8 +276,8 @@ class HttpApiApp:
                 and parts[3] == "tool-calls"
             ):
                 if not self._run_exists(parts[1]):
-                    return self._kernel_error_response(
-                        KernelError(
+                    return self._isotope_error_response(
+                        IsotopeError(
                             "run not found",
                             code="unknown_run",
                             category="not_found",
@@ -315,8 +315,8 @@ class HttpApiApp:
                 and parts[3] == "tool-result-followups"
             ):
                 if not self._run_exists(parts[1]):
-                    return self._kernel_error_response(
-                        KernelError(
+                    return self._isotope_error_response(
+                        IsotopeError(
                             "run not found",
                             code="unknown_run",
                             category="not_found",
@@ -356,8 +356,8 @@ class HttpApiApp:
                 and parts[3] == "chat-turns"
             ):
                 if not self._run_exists(parts[1]):
-                    return self._kernel_error_response(
-                        KernelError(
+                    return self._isotope_error_response(
+                        IsotopeError(
                             "run not found",
                             code="unknown_run",
                             category="not_found",
@@ -462,8 +462,8 @@ class HttpApiApp:
                 return self._json(200, summary)
         except PermissionError as exc:
             return self._error(403, "forbidden", str(exc))
-        except KernelError as exc:
-            return self._kernel_error_response(exc)
+        except IsotopeError as exc:
+            return self._isotope_error_response(exc)
         except (FileNotFoundError, ValueError) as exc:
             message = str(exc)
             if "unknown approval" in message:
@@ -657,9 +657,9 @@ class HttpApiApp:
             },
         )
 
-    def _kernel_error_response(self, error: KernelError) -> HttpResponse:
+    def _isotope_error_response(self, error: IsotopeError) -> HttpResponse:
         status_code = error.http_status or 400
-        status = self._status_for_kernel_error(error, status_code)
+        status = self._status_for_isotope_error(error, status_code)
         return self._json(
             status_code,
             {
@@ -674,7 +674,7 @@ class HttpApiApp:
             },
         )
 
-    def _status_for_kernel_error(self, error: KernelError, status_code: int) -> str:
+    def _status_for_isotope_error(self, error: IsotopeError, status_code: int) -> str:
         if error.category in {"conflict", "not_enabled"}:
             return error.category
         if status_code == 404:
@@ -754,7 +754,7 @@ class HttpApiApp:
 
     def _require_body(self, body: Any, required_fields: tuple[str, ...]) -> dict[str, str]:
         if not isinstance(body, dict):
-            raise KernelError(
+            raise IsotopeError(
                 "request body must be a JSON object",
                 code="invalid_request",
                 category="validation",
@@ -766,7 +766,7 @@ class HttpApiApp:
         for field in required_fields:
             value = body.get(field)
             if not isinstance(value, str) or not value:
-                raise KernelError(
+                raise IsotopeError(
                     f"missing required request field: {field}",
                     code="invalid_request",
                     category="validation",
@@ -779,7 +779,7 @@ class HttpApiApp:
 
     def _require_llm_provider_body(self, body: Any) -> dict[str, Any]:
         if not isinstance(body, dict):
-            raise KernelError(
+            raise IsotopeError(
                 "request body must be a JSON object",
                 code="invalid_request",
                 category="validation",
@@ -790,7 +790,7 @@ class HttpApiApp:
         messages = self._require_llm_messages(body.get("messages"))
         max_tokens = body.get("max_tokens", 512)
         if not isinstance(max_tokens, int) or max_tokens <= 0:
-            raise KernelError(
+            raise IsotopeError(
                 "max_tokens must be a positive integer",
                 code="invalid_request",
                 category="validation",
@@ -804,7 +804,7 @@ class HttpApiApp:
     def _require_llm_tool_result_followup_body(self, body: Any) -> dict[str, Any]:
         provider_body = self._require_llm_provider_body(body)
         if not isinstance(body, dict):
-            raise KernelError(
+            raise IsotopeError(
                 "request body must be a JSON object",
                 code="invalid_request",
                 category="validation",
@@ -823,7 +823,7 @@ class HttpApiApp:
     def _require_llm_product_chat_body(self, body: Any) -> dict[str, Any]:
         provider_body = self._require_llm_provider_body(body)
         if not isinstance(body, dict):
-            raise KernelError(
+            raise IsotopeError(
                 "request body must be a JSON object",
                 code="invalid_request",
                 category="validation",
@@ -833,7 +833,7 @@ class HttpApiApp:
             )
         max_tool_steps = body.get("max_tool_steps", 1)
         if not isinstance(max_tool_steps, int) or max_tool_steps != 1:
-            raise KernelError(
+            raise IsotopeError(
                 "max_tool_steps must be exactly 1 for product chat route first slice",
                 code="invalid_request",
                 category="validation",
@@ -844,7 +844,7 @@ class HttpApiApp:
         has_llm_result = "llm_result" in body
         has_tool_execution_result = "tool_execution_result" in body
         if has_llm_result != has_tool_execution_result:
-            raise KernelError(
+            raise IsotopeError(
                 "llm_result and tool_execution_result must be provided together",
                 code="invalid_request",
                 category="validation",
@@ -864,7 +864,7 @@ class HttpApiApp:
     def _require_object_field(self, body: dict[str, Any], field: str) -> dict[str, Any]:
         value = body.get(field)
         if not isinstance(value, dict) or not value:
-            raise KernelError(
+            raise IsotopeError(
                 f"{field} must be a non-empty JSON object",
                 code="invalid_request",
                 category="validation",
@@ -876,7 +876,7 @@ class HttpApiApp:
 
     def _require_llm_messages(self, messages: Any) -> list[dict[str, str]]:
         if not isinstance(messages, list) or not messages:
-            raise KernelError(
+            raise IsotopeError(
                 "messages must be a non-empty list",
                 code="invalid_request",
                 category="validation",
@@ -887,7 +887,7 @@ class HttpApiApp:
         validated: list[dict[str, str]] = []
         for index, message in enumerate(messages):
             if not isinstance(message, dict):
-                raise KernelError(
+                raise IsotopeError(
                     "message must be a JSON object",
                     code="invalid_request",
                     category="validation",
@@ -898,7 +898,7 @@ class HttpApiApp:
             role = message.get("role")
             content = message.get("content")
             if role not in {"system", "user", "assistant", "tool"}:
-                raise KernelError(
+                raise IsotopeError(
                     "message role must be system, user, assistant, or tool",
                     code="invalid_request",
                     category="validation",
@@ -907,7 +907,7 @@ class HttpApiApp:
                     details={"field": f"messages[{index}].role"},
                 )
             if not isinstance(content, str) or not content.strip():
-                raise KernelError(
+                raise IsotopeError(
                     "message content must be a non-empty string",
                     code="invalid_request",
                     category="validation",
@@ -920,7 +920,7 @@ class HttpApiApp:
 
     def _optional_summary(self, body: Any) -> str:
         if not isinstance(body, dict):
-            raise KernelError(
+            raise IsotopeError(
                 "request body must be a JSON object",
                 code="invalid_request",
                 category="validation",
@@ -930,7 +930,7 @@ class HttpApiApp:
             )
         requires_approval = body.get("requires_approval", True)
         if requires_approval is not True:
-            raise KernelError(
+            raise IsotopeError(
                 "codex_task route always requires approval",
                 code="invalid_request",
                 category="validation",
@@ -940,7 +940,7 @@ class HttpApiApp:
             )
         summary = body.get("summary", "HTTP Codex task")
         if not isinstance(summary, str) or not summary:
-            raise KernelError(
+            raise IsotopeError(
                 "summary must be a non-empty string",
                 code="invalid_request",
                 category="validation",
@@ -952,7 +952,7 @@ class HttpApiApp:
 
     def _optional_complete_run(self, body: Any) -> bool:
         if not isinstance(body, dict):
-            raise KernelError(
+            raise IsotopeError(
                 "request body must be a JSON object",
                 code="invalid_request",
                 category="validation",
@@ -962,7 +962,7 @@ class HttpApiApp:
             )
         complete_run = body.get("complete_run", True)
         if not isinstance(complete_run, bool):
-            raise KernelError(
+            raise IsotopeError(
                 "complete_run must be a boolean",
                 code="invalid_request",
                 category="validation",

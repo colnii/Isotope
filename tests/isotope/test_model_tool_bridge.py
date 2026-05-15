@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from isotope import codex_server
-from isotope.errors import KernelError
+from isotope.errors import IsotopeError
 from isotope.http_api import create_codex_cli_http_app, create_http_app
 from isotope.model_tool_bridge import submit_model_tool_call
 
@@ -121,7 +121,7 @@ def test_model_tool_bridge_rejects_default_deferred_codex_task_without_side_effe
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
 
-    with pytest.raises(KernelError) as exc_info:
+    with pytest.raises(IsotopeError) as exc_info:
         submit_model_tool_call(
             app,
             run_id,
@@ -176,7 +176,7 @@ def test_model_tool_bridge_rejects_model_attempt_to_disable_approval(tmp_path):
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
 
-    with pytest.raises(KernelError) as exc_info:
+    with pytest.raises(IsotopeError) as exc_info:
         submit_model_tool_call(
             app,
             run_id,
@@ -242,7 +242,7 @@ def test_model_tool_bridge_terminal_exec_rejects_shell_string_without_side_effec
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
 
-    with pytest.raises(KernelError) as exc_info:
+    with pytest.raises(IsotopeError) as exc_info:
         submit_model_tool_call(
             app,
             run_id,
@@ -287,7 +287,7 @@ def test_model_tool_bridge_rejects_enabled_tool_without_bridge_route(tmp_path):
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
 
-    with pytest.raises(KernelError) as exc_info:
+    with pytest.raises(IsotopeError) as exc_info:
         submit_model_tool_call(
             app,
             run_id,
@@ -307,7 +307,7 @@ def test_model_tool_bridge_preserves_route_error_shape_for_unknown_run(tmp_path)
     runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _codex_http_app(tmp_path, runner)
 
-    with pytest.raises(KernelError) as exc_info:
+    with pytest.raises(IsotopeError) as exc_info:
         submit_model_tool_call(
             app,
             "run_missing",
