@@ -191,7 +191,8 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   当前不是完整 UI。
 - Codex Supervisor：`src/isotope/features/supervisor/flow.py` 已提供
   只读本机会话扫描和中文汇报，`isotope-supervisor scan/watch`
-  可观察多个 Codex 窗口状态；当前不自动发指令。
+  可观察多个 Codex 窗口状态，`--llm-summary` 可调用 MiniMax
+  生成智能摘要；当前不自动发指令。
 - 智能体循环：`agent_loop_*` 与 planner contract 已迁入 `src/isotope/agents/loop/`；
   旧顶层、`core/loop_*` 和 `assistant/` 入口已删除。
 - 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`，相关旧根路径已删除。

@@ -140,7 +140,8 @@
 70. Codex Supervisor 只读第一版：`CodexSupervisorFlow`、
     `isotope-supervisor scan/watch` 和 `apps/cli/isotope_supervisor.py`
     已建立，可读取本机 `~/.codex/sessions`，输出多个 Codex 会话的
-    中文状态汇报；当前不自动给 Codex 发指令。
+    中文状态汇报；`--llm-summary` 可调用 MiniMax 做智能摘要；
+    当前不自动给 Codex 发指令。
 
 ## 最近完成：Codex Supervisor 只读第一版
 
@@ -151,6 +152,8 @@
 - 可识别 `工作中`、`等待用户`、`疑似停住`、`疑似报错` 和 `空闲`。
 - 可输出中文报告，也支持 `--json`。
 - `watch --interval` 可定时汇报，第一版不自动输入指令。
+- 新增 `--llm-summary`，通过 OpenAI-compatible 接口调用 MiniMax，
+  只发送压缩后的会话摘要，不发送完整日志。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
   [terminology](./terminology.md)、[status](./status.md) 和
   [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
@@ -166,7 +169,8 @@
 目标：
 
 - 先实际运行只读版，观察报告是否能帮用户减少反复询问。
-- 根据真实输出调整状态判断规则，尤其是等待用户和长时间无输出。
+- 根据真实输出调整状态判断规则和 LLM 提示词，
+  尤其是等待用户、长时间无输出和误判报错。
 - 设计控制通道：第二版再考虑让 Supervisor 启动 Codex 或接 tmux，
   从而可控地发送“继续 / 总结 / 暂停”等指令。
 

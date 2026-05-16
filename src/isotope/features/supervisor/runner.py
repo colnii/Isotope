@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .flow import CodexSupervisorFlow, render_plain_report
+from .llm_summary import OpenAICompatibleSummaryProvider, generate_llm_summary
 
 
 def _print_json(payload: dict[str, Any]) -> None:
@@ -42,6 +43,11 @@ def _build_parser() -> argparse.ArgumentParser:
             help="Seconds with recent events before marking a session working.",
         )
         subparser.add_argument("--json", action="store_true", help="Print JSON output.")
+        subparser.add_argument(
+            "--llm-summary",
+            action="store_true",
+            help="Use MiniMax to add a compact Chinese summary.",
+        )
     watch_parser = subparsers.choices["watch"]
     watch_parser.add_argument(
         "--interval",
@@ -107,9 +113,21 @@ def _print_report(args: argparse.Namespace) -> None:
         active_within_seconds=args.active_within,
     )
     if args.json:
-        _print_json(report.to_dict())
+        payload = report.to_dict()
+        if args.llm_summary:
+            payload["llm_summary"] = _summarize_with_llm(report)
+        _print_json(payload)
     else:
         print(render_plain_report(report))
+        if args.llm_summary:
+            print()
+            print("[LLM 摘要]")
+            print(_summarize_with_llm(report))
+
+
+def _summarize_with_llm(report: Any) -> str:
+    provider = OpenAICompatibleSummaryProvider.from_minimax_env()
+    return generate_llm_summary(report, provider)
 
 
 if __name__ == "__main__":

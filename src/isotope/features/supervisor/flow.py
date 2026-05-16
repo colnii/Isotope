@@ -29,7 +29,17 @@ ATTENTION_MARKERS = (
     "would you like",
     "please confirm",
 )
-ERROR_MARKERS = ("traceback", "error:", "failed", "报错", "失败")
+ERROR_MARKERS = (
+    "traceback",
+    "error:",
+    "failed",
+    "process exited with code 1",
+    "process exited with code 2",
+    "exit code 1",
+    "exit code 2",
+    "测试失败",
+    "命令失败",
+)
 
 
 @dataclass(frozen=True)
@@ -273,7 +283,7 @@ def _classify_session(
     active_within_seconds: int,
 ) -> tuple[str, str]:
     text = (last_text or "").lower()
-    if any(marker in text for marker in ERROR_MARKERS):
+    if _looks_like_error_signal(text):
         return "error", "最近事件包含错误信号"
     assistant_text = (last_assistant_message or "").lower()
     if _looks_like_user_prompt(assistant_text):
@@ -299,6 +309,10 @@ def _looks_like_user_prompt(text: str) -> bool:
     if any(marker in text for marker in ATTENTION_MARKERS):
         return True
     return "下一步" in text and ("继续" in text or "怎么做" in text or "做什么" in text)
+
+
+def _looks_like_error_signal(text: str) -> bool:
+    return any(marker in text for marker in ERROR_MARKERS)
 
 
 def _git_branch_for(cwd: str) -> str | None:

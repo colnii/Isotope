@@ -23,6 +23,7 @@ python3 -m venv .venv
 .venv/bin/python -m isotope.features.supervisor.runner scan --limit 3
 .venv/bin/isotope-demo --scenario v0.2 --trace
 .venv/bin/isotope-supervisor scan --limit 3
+.venv/bin/isotope-supervisor scan --limit 3 --llm-summary
 ```
 
 ## 当前可用能力
@@ -31,7 +32,8 @@ python3 -m venv .venv
 - 受控工具调用和终端命令执行的基础路径。
 - 模型服务适配器的基础封装。
 - 若干演示场景，用来验证底座能力是否仍可运行。
-- Codex Supervisor 只读版，可观察本机多个 Codex 会话并输出中文汇报。
+- Codex Supervisor 只读版，可观察本机多个 Codex 会话，
+  并可选调用 MiniMax 输出中文智能汇报。
 
 这些能力是产品的基础，不是产品的全部。
 

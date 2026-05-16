@@ -20,6 +20,7 @@ Codex Supervisor 用来观察本机多个 Codex 终端窗口。
 - 按最近事件时间排序，默认展示最近 10 个会话。
 - 用规则判断 `工作中`、`等待用户`、`疑似停住`、`疑似报错`、`空闲`。
 - 输出中文报告，也支持 JSON。
+- 可选 `--llm-summary` 调用 MiniMax 做中文智能摘要。
 
 ## 运行方式
 
@@ -43,12 +44,30 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --in
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --json
 ```
 
+MiniMax 摘要：
+
+```bash
+export MINIMAX_API_KEY=你的_key
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --limit 3 --llm-summary
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --interval 180 --llm-summary
+```
+
+默认配置：
+
+- `MINIMAX_BASE_URL`：默认 `https://api.minimax.io/v1`
+- `MINIMAX_MODEL`：默认 `MiniMax-M2.7-highspeed`
+- `MINIMAX_TIMEOUT`：默认 `60`
+- `MINIMAX_MAX_TOKENS`：默认 `512`
+
+这些默认值来自 MiniMax 官方 OpenAI-compatible 文档。
+`--llm-summary` 只发送压缩后的会话摘要，不发送完整 session 文件。
+
 ## 当前边界
 
 - 不接管普通终端窗口。
 - 不自动给 Codex 发指令。
 - 不直接检查 SSH 服务器内部进程。
-- 不把完整日志发给 LLM，只先做本地规则判断。
+- 不把完整日志发给 LLM，只发送短摘要和状态字段。
 
 后续第二版再补控制通道，例如由 Supervisor 启动 Codex，
 或要求被管理窗口运行在 tmux 等可控环境里。

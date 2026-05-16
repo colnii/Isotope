@@ -5,6 +5,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from isotope.features.supervisor.flow import CodexSupervisorFlow, render_plain_report
+from isotope.features.supervisor.llm_summary import (
+    OpenAICompatibleSummaryProvider,
+    build_llm_summary_messages,
+    generate_llm_summary,
+)
 from isotope.features.supervisor.runner import main as supervisor_main
 
 
@@ -137,6 +142,21 @@ def test_codex_supervisor_avoids_broad_attention_words_and_caps_json_text(tmp_pa
     assert len(payload["sessions"][0]["last_assistant_message"]) <= 120
 
 
+def test_codex_supervisor_avoids_broad_error_words(tmp_path):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-idle.jsonl",
+        session_id="idle-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[_assistant_message("2026-05-16T11:56:00Z", "缺 key 时会明确报错。")],
+    )
+
+    report = CodexSupervisorFlow(codex_home=codex_home, now=lambda: NOW).scan()
+
+    assert report.sessions[0].status == "idle"
+
+
 def test_codex_supervisor_runner_scan_prints_json(tmp_path, capsys):
     codex_home = tmp_path / ".codex"
     _write_session(
@@ -161,6 +181,187 @@ def test_codex_supervisor_runner_scan_prints_json(tmp_path, capsys):
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "ok"
     assert payload["sessions"][0]["session_id"] == "active-session"
+
+
+def test_codex_supervisor_runner_scan_can_add_llm_summary(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-active.jsonl",
+        session_id="active-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "reading files"},
+            )
+        ],
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            assert "active-session" in messages[1]["content"]
+            return "窗口 A 正在读文件，暂时不用介入。"
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.OpenAICompatibleSummaryProvider.from_minimax_env",
+        lambda: FakeProvider(),
+    )
+
+    exit_code = supervisor_main(
+        [
+            "scan",
+            "--codex-home",
+            str(codex_home),
+            "--limit",
+            "1",
+            "--llm-summary",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_summary"] == "窗口 A 正在读文件，暂时不用介入。"
+
+
+def test_codex_supervisor_runner_llm_summary_reports_missing_key(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    for name in ("MINIMAX_API_KEY", "MINIMAX_TOKEN", "MINIMAX_API_TOKEN"):
+        monkeypatch.delenv(name, raising=False)
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-active.jsonl",
+        session_id="active-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "reading files"},
+            )
+        ],
+    )
+
+    exit_code = supervisor_main(
+        [
+            "scan",
+            "--codex-home",
+            str(codex_home),
+            "--llm-summary",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error"]["code"] == "codex_supervisor_runner_error"
+    assert "MINIMAX_API_KEY" in payload["error"]["message"]
+
+
+def test_codex_supervisor_llm_messages_use_compact_session_context(tmp_path):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-active.jsonl",
+        session_id="active-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _user_message("2026-05-16T11:58:00Z", "帮我继续做 supervisor"),
+            _assistant_message("2026-05-16T11:59:00Z", "正在运行测试。"),
+        ],
+    )
+    report = CodexSupervisorFlow(codex_home=codex_home, now=lambda: NOW).scan()
+
+    messages = build_llm_summary_messages(report)
+
+    assert messages[0]["role"] == "system"
+    assert "中文" in messages[0]["content"]
+    assert "active-session" in messages[1]["content"]
+    assert "source_path" not in messages[1]["content"]
+    assert len(messages[1]["content"]) < 1500
+
+
+def test_codex_supervisor_openai_compatible_provider_calls_minimax_shape():
+    captured: dict[str, object] = {}
+
+    def transport(
+        url: str,
+        payload: dict[str, object],
+        headers: dict[str, str],
+        timeout: int,
+    ) -> dict[str, object]:
+        captured["url"] = url
+        captured["payload"] = payload
+        captured["headers"] = headers
+        captured["timeout"] = timeout
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "content": "<think>hidden</think>\n窗口 A 正在测试，建议继续观察。"
+                    }
+                }
+            ],
+            "usage": {"total_tokens": 42},
+        }
+
+    provider = OpenAICompatibleSummaryProvider(
+        api_key="sk-test",
+        base_url="https://api.minimax.io/v1",
+        model="MiniMax-M2.7-highspeed",
+        transport=transport,
+    )
+
+    summary = provider.summarize([{"role": "user", "content": "hello"}])
+
+    assert summary == "窗口 A 正在测试，建议继续观察。"
+    assert captured["url"] == "https://api.minimax.io/v1/chat/completions"
+    assert captured["headers"] == {
+        "Authorization": "Bearer sk-test",
+        "Content-Type": "application/json",
+    }
+    assert captured["payload"] == {
+        "model": "MiniMax-M2.7-highspeed",
+        "messages": [{"role": "user", "content": "hello"}],
+        "temperature": 0,
+        "max_tokens": 512,
+        "stream": False,
+    }
+
+
+def test_codex_supervisor_generate_llm_summary_returns_provider_text(tmp_path):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-active.jsonl",
+        session_id="active-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "reading files"},
+            )
+        ],
+    )
+    report = CodexSupervisorFlow(codex_home=codex_home, now=lambda: NOW).scan()
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            assert "active-session" in messages[1]["content"]
+            return "窗口 A 正在读文件，暂时不用介入。"
+
+    assert generate_llm_summary(report, FakeProvider()) == "窗口 A 正在读文件，暂时不用介入。"
 
 
 def _write_session(
