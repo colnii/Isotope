@@ -3,6 +3,7 @@ from __future__ import annotations
 import http.client
 import json
 import os
+import sqlite3
 import subprocess
 import threading
 from datetime import datetime, timezone
@@ -297,6 +298,73 @@ def test_codex_supervisor_scan_uses_session_index_title_when_jsonl_has_no_rename
     assert session.thread_name == "项目重新整理"
     assert session.display_title == "项目重新整理"
     assert session.to_dict()["display_title"] == "项目重新整理"
+
+
+def test_codex_supervisor_scan_uses_state_thread_title_before_first_user_message(
+    tmp_path,
+):
+    codex_home = tmp_path / ".codex"
+    session_id = "019de9a7-3b74-7a33-a237-788ee37aff27"
+    _write_state_threads(codex_home, session_id=session_id, title="Isotope Review")
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-state-title.jsonl",
+        session_id=session_id,
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _event(
+                "2026-05-16T11:45:00Z",
+                "event_msg",
+                {
+                    "type": "thread_name_updated",
+                    "thread_id": "019dcdd1-4845-77e0-ac0c-f6d36a9196e9",
+                    "thread_name": "别的窗口标题",
+                },
+            ),
+            _user_message("2026-05-16T11:50:00Z", "好，下一步"),
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "reading files"},
+            ),
+        ],
+    )
+
+    session = CodexSupervisorFlow(codex_home=codex_home, now=lambda: NOW).scan().sessions[0]
+
+    assert session.thread_name == "Isotope Review"
+    assert session.display_title == "Isotope Review"
+
+
+def test_codex_supervisor_display_title_shortens_long_state_title(tmp_path):
+    codex_home = tmp_path / ".codex"
+    session_id = "019e2dec-c400-70e1-ac70-abfa76dbd204"
+    long_title = (
+        "我的笔记本电脑在关机拔掉电源去公司或者回家再打开，有概率启动时电脑风扇不转动，"
+        "导致电脑快速积热，CPU降频，能否帮我解决这个问题"
+    )
+    _write_state_threads(codex_home, session_id=session_id, title=long_title)
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-long-title.jsonl",
+        session_id=session_id,
+        cwd="/home/lumber",
+        events=[
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "reading files"},
+            ),
+        ],
+    )
+
+    payload = CodexSupervisorFlow(codex_home=codex_home, now=lambda: NOW).scan().sessions[
+        0
+    ].to_dict()
+
+    assert payload["thread_name"] == long_title
+    assert payload["display_title"].endswith("…")
+    assert len(payload["display_title"]) <= 48
 
 
 def test_codex_supervisor_scan_uses_first_user_message_title_before_hash(tmp_path):
@@ -2878,6 +2946,23 @@ def _write_session_index(
     }
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(line, ensure_ascii=False) + "\n")
+
+
+def _write_state_threads(codex_home: Path, *, session_id: str, title: str) -> None:
+    path = codex_home / "state_5.sqlite"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(path)
+    try:
+        connection.execute(
+            "create table threads (id text primary key, title text, updated_at integer)"
+        )
+        connection.execute(
+            "insert into threads (id, title, updated_at) values (?, ?, ?)",
+            (session_id, title, 1778324108),
+        )
+        connection.commit()
+    finally:
+        connection.close()
 
 
 def _event(timestamp: str, type_: str, payload: dict[str, object]) -> dict[str, object]:

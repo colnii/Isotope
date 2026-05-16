@@ -178,9 +178,9 @@
 84. Codex Supervisor 本地前端薄入口：`web` 可启动本机页面，
     复用 `/dashboard.json` 展示需要看、已完成和工作中三组窗口。
 85. Codex Supervisor 可读标题：`scan` 已解析 Codex 的
-    `thread_name_updated` 标题事件、`session_index.jsonl` 标题和
-    agent 元数据；`dashboard` 与 `web` 会优先显示托管名、Codex 标题、
-    agent 名和短 session id。
+    SQLite `threads.title`、`session_index.jsonl` 标题、匹配当前 session
+    的 `thread_name_updated` 事件和 agent 元数据；`dashboard` 与 `web`
+    会优先显示托管名、Codex 标题、agent 名和短 session id。
 86. Codex Supervisor resume 复制：`dashboard` 已输出完整
     `resume_command`；`web` 可复制 `codex resume <session_id>`。
 87. Codex Supervisor 刷新优化：`scan` 已改为最近候选读取，
@@ -191,12 +191,14 @@
 完成内容：
 
 - `CodexSupervisorFlow` 解析 `thread_name_updated` 事件。
-- 没有标题事件时，回退读取 `session_index.jsonl` 的 `thread_name`。
+- 标题源包括 SQLite `threads.title` 和 `session_index.jsonl` 的 `thread_name`。
+- 只接受匹配当前 session id 的 `thread_name_updated`，避免被迁移历史污染。
 - 再没有标题时，使用首条真实用户消息的短标题，跳过 AGENTS 和环境上下文。
   最后才回退短 hash。
 - 会话摘要新增 `thread_name`、`thread_id`、`agent_nickname` 和 `agent_role`。
 - 会话摘要新增 `short_session_id`、`initial_user_title` 和 `display_title`。
 - `display_title` 优先级：托管名、Codex 标题、首条用户消息、agent 名、短 session id。
+- `display_title` 是截断后的展示标题，原始标题仍保留在 `thread_name`。
 - `dashboard --json` 和 `/dashboard.json` 都保留这些字段。
 - 本地页面标题改用 `display_title`，元信息里保留短 hash。
 - `dashboard --json` 增加 `resume_command`，本地页面可复制完整 resume 命令。

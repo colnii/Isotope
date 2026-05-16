@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import sqlite3
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -95,13 +96,14 @@ class CodexSessionSummary:
 
     @property
     def display_title(self) -> str:
-        return (
+        title = (
             self.managed_name
             or self.thread_name
             or self.initial_user_title
             or self.agent_nickname
             or self.short_session_id
         )
+        return _shorten(title, limit=48)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -226,9 +228,12 @@ class CodexSupervisorFlow:
         if active_within_seconds <= 0:
             raise ValueError("active_within_seconds must be positive")
         now = _ensure_aware_utc(self.now())
-        session_index_titles, recent_session_ids = _read_session_index(
+        session_index_titles, session_index_recent_ids = _read_session_index(
             self.codex_home / "session_index.jsonl"
         )
+        state_titles, state_recent_ids = _read_state_threads(self.codex_home / "state_5.sqlite")
+        session_titles = {**session_index_titles, **state_titles}
+        recent_session_ids = _merge_recent_session_ids(state_recent_ids, session_index_recent_ids)
         sessions = [
             summary
             for path in self._session_paths(limit=limit, recent_session_ids=recent_session_ids)
@@ -239,7 +244,7 @@ class CodexSupervisorFlow:
                     stale_after_seconds=stale_after_seconds,
                     active_within_seconds=active_within_seconds,
                     branch_resolver=self.branch_resolver,
-                    session_index_titles=session_index_titles,
+                    session_index_titles=session_titles,
                 )
             )
             is not None
@@ -365,6 +370,8 @@ def _read_session_summary(
     supervisor_next: str | None = None
     thread_name: str | None = None
     thread_id: str | None = None
+    pending_thread_name: str | None = None
+    pending_thread_id: str | None = None
     try:
         lines = _read_session_lines(path)
     except OSError:
@@ -385,8 +392,8 @@ def _read_session_summary(
         if event.get("type") == "event_msg":
             payload = event.get("payload")
             if isinstance(payload, dict) and payload.get("type") == "thread_name_updated":
-                thread_name = _optional_string(payload.get("thread_name")) or thread_name
-                thread_id = _optional_string(payload.get("thread_id")) or thread_id
+                pending_thread_name = _optional_string(payload.get("thread_name")) or pending_thread_name
+                pending_thread_id = _optional_string(payload.get("thread_id")) or pending_thread_id
         role, text = _message_from_event(event)
         if text:
             last_text = text
@@ -405,6 +412,9 @@ def _read_session_summary(
     if last_event_at is None:
         last_event_at = _parse_timestamp(meta.get("timestamp")) or now
     session_id = str(meta.get("id") or path.stem)
+    if pending_thread_name and (pending_thread_id is None or pending_thread_id == session_id):
+        thread_name = pending_thread_name
+        thread_id = pending_thread_id
     if thread_name is None and session_index_titles:
         thread_name = session_index_titles.get(session_id)
     cwd = str(meta.get("cwd") or "")
@@ -466,6 +476,48 @@ def _read_session_index(path: Path) -> tuple[dict[str, str], tuple[str, ...]]:
         sorted(updated_at, key=lambda session_id: updated_at[session_id], reverse=True)
     )
     return titles, recent_session_ids
+
+
+def _read_state_threads(path: Path) -> tuple[dict[str, str], tuple[str, ...]]:
+    if not path.exists():
+        return {}, ()
+    try:
+        connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+    except sqlite3.Error:
+        return {}, ()
+    try:
+        rows = connection.execute("select id, title, updated_at from threads").fetchall()
+    except sqlite3.Error:
+        return {}, ()
+    finally:
+        connection.close()
+    titles: dict[str, str] = {}
+    updated_at: dict[str, int] = {}
+    for session_id_value, title_value, updated_at_value in rows:
+        session_id = _optional_string(session_id_value)
+        title = _optional_string(title_value)
+        if session_id and title:
+            titles[session_id] = title
+        if session_id and isinstance(updated_at_value, int):
+            updated_at[session_id] = updated_at_value
+    recent_session_ids = tuple(
+        sorted(updated_at, key=lambda session_id: updated_at[session_id], reverse=True)
+    )
+    return titles, recent_session_ids
+
+
+def _merge_recent_session_ids(
+    *groups: tuple[str, ...],
+) -> tuple[str, ...]:
+    merged: list[str] = []
+    seen: set[str] = set()
+    for group in groups:
+        for session_id in group:
+            if session_id in seen:
+                continue
+            merged.append(session_id)
+            seen.add(session_id)
+    return tuple(merged)
 
 
 def _session_id_from_path(path: Path) -> str | None:

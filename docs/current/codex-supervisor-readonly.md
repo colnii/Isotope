@@ -24,10 +24,11 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
 
 - 从 `~/.codex/sessions` 读取本机 Codex 会话记录。
 - 识别 session id、短 hash、Codex 标题、agent 名、工作目录、git 分支和最近消息。
-- 标题优先读 JSONL 里的 `thread_name_updated`，没有时回退到
-  `session_index.jsonl` 里的 `thread_name`。
+- 标题优先读 SQLite `threads.title` 和 `session_index.jsonl` 的
+  `thread_name`，并读取匹配当前 session 的 `thread_name_updated`。
 - 如果仍没有标题，使用首条真实用户消息的短标题，跳过 AGENTS 和环境上下文。
   最后才显示短 hash。
+- 页面展示标题会截断，原始标题仍保留在 `thread_name` 字段。
 - 扫描会优先处理最近候选会话；大 JSONL 只读开头和尾部，避免页面刷新卡顿。
 - 按最近事件时间排序，默认展示最近 10 个会话。
 - 用规则判断 `工作中`、`等待用户`、`疑似停住`、`疑似报错`、`空闲`。

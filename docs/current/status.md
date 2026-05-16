@@ -64,7 +64,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `advise` 可单独输出建议和命令草案，并可显式执行 send 类草案；
     `dashboard` 可按需要看、已完成和工作中分组输出；
     `web` 可启动本机页面并复用 `/dashboard.json` 展示三组窗口；
-    dashboard 和 web 已显示 Codex 标题、索引标题、首条用户消息标题、
+    dashboard 和 web 已显示 SQLite 标题、索引标题、首条用户消息标题、
     agent 元数据和短 hash，并可复制完整 `codex resume <session_id>`；
     scan 已改为最近候选和大文件首尾读取，降低页面刷新延迟；
     `supervise` 可循环执行扫描、建议、可选 LLM 摘要和显式 send；

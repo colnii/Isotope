@@ -65,9 +65,10 @@
 | `recommendation` | 结构化建议，表达下一步建议动作、优先级和目标窗口，不等于自动执行 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
 | `dashboard` | Supervisor 汇总视图，按需要看、已完成和工作中分组，供人类和后续前端使用 | 产品功能/视图 | `src/isotope/features/supervisor/runner.py` |
 | `dashboard web` | Supervisor 本机页面，读取 `/dashboard.json` 并渲染三组窗口 | 产品功能/视图 | `src/isotope/features/supervisor/web.py` |
-| `display_title` | Supervisor 展示标题，优先托管名、Codex 标题、首条用户消息、agent 名和短 session id | 产品功能/视图 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/runner.py` |
+| `display_title` | Supervisor 截断后的展示标题，优先托管名、Codex 标题、首条用户消息、agent 名和短 session id | 产品功能/视图 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/runner.py` |
 | `thread_name_updated` | Codex 会话标题更新事件，可解析出窗口 rename 或自带标题 | 外部集成/视图 | `src/isotope/features/supervisor/flow.py` |
 | `session_index.jsonl` | Codex 会话索引文件，可在 JSONL 没有标题事件时提供 `thread_name` | 外部集成/视图 | `src/isotope/features/supervisor/flow.py` |
+| `state_5.sqlite` | Codex 本地 SQLite 状态库，`threads.title` 是当前标题的重要来源 | 外部集成/视图 | `src/isotope/features/supervisor/flow.py` |
 | `initial_user_title` | 首条真实用户消息截断标题，跳过 AGENTS 和环境上下文，在没有 Codex 标题时替代短 hash | 产品功能/视图 | `src/isotope/features/supervisor/flow.py` |
 | `short_session_id` | session id 的短 hash，页面辅助辨认窗口 | 产品功能/视图 | `src/isotope/features/supervisor/flow.py` |
 | `resume_command` | 完整恢复命令，形如 `codex resume <session_id>`，用于复制后恢复窗口 | 产品功能/视图 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
