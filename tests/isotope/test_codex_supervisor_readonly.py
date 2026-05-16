@@ -224,6 +224,51 @@ def test_codex_supervisor_scan_parses_supervisor_status_protocol(tmp_path):
     assert "等待用户确认后继续状态协议下一片" in messages[1]["content"]
 
 
+def test_codex_supervisor_scan_parses_thread_title_and_agent_name(tmp_path):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-titled.jsonl",
+        session_id="019e2e4f-d541-72f1-9269-471aa50bc2f2",
+        cwd="/home/lumber/Github/isotope",
+        meta={
+            "agent_nickname": "Curie",
+            "agent_role": "worker",
+        },
+        events=[
+            _event(
+                "2026-05-16T11:58:20Z",
+                "event_msg",
+                {
+                    "type": "thread_name_updated",
+                    "thread_id": "019e2e4f-d541-72f1-9269-471aa50bc2f2",
+                    "thread_name": "Supervisor页面",
+                },
+            ),
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "running tests"},
+            ),
+        ],
+    )
+
+    report = CodexSupervisorFlow(codex_home=codex_home, now=lambda: NOW).scan()
+    session = report.sessions[0]
+    payload = session.to_dict()
+
+    assert session.thread_name == "Supervisor页面"
+    assert session.agent_nickname == "Curie"
+    assert session.agent_role == "worker"
+    assert session.short_session_id == "019e2e4f"
+    assert session.display_title == "Supervisor页面"
+    assert payload["thread_name"] == "Supervisor页面"
+    assert payload["agent_nickname"] == "Curie"
+    assert payload["agent_role"] == "worker"
+    assert payload["display_title"] == "Supervisor页面"
+    assert payload["short_session_id"] == "019e2e4f"
+
+
 def test_codex_supervisor_recommendation_prioritizes_blocked_status(tmp_path):
     codex_home = tmp_path / ".codex"
     _write_session(
@@ -435,6 +480,54 @@ def test_codex_supervisor_runner_dashboard_json_groups_lanes(tmp_path, capsys):
     )
 
 
+def test_codex_supervisor_dashboard_json_includes_display_title_and_short_hash(
+    tmp_path,
+    capsys,
+):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-titled.jsonl",
+        session_id="019e2e4f-d541-72f1-9269-471aa50bc2f2",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _event(
+                "2026-05-16T11:58:20Z",
+                "event_msg",
+                {
+                    "type": "thread_name_updated",
+                    "thread_name": "Supervisor页面",
+                },
+            ),
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "running tests"},
+            ),
+        ],
+    )
+
+    exit_code = supervisor_main(
+        [
+            "dashboard",
+            "--codex-home",
+            str(codex_home),
+            "--limit",
+            "1",
+            "--stale-after",
+            "999999",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    item = payload["groups"]["working"][0]
+    assert item["display_title"] == "Supervisor页面"
+    assert item["thread_name"] == "Supervisor页面"
+    assert item["short_session_id"] == "019e2e4f"
+
+
 def test_codex_supervisor_runner_dashboard_plain_is_grouped(tmp_path, capsys):
     codex_home = tmp_path / ".codex"
     _write_session(
@@ -534,6 +627,8 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert html_response.status == 200
     assert "text/html" in html_response.getheader("content-type", "")
     assert 'data-group="needs_attention"' in html
+    assert "short_session_id" in html
+    assert "display_title" in html
     assert "Codex Supervisor" in html
     assert "dashboard.json" in html
     assert json_response.status == 200
@@ -2602,6 +2697,7 @@ def _write_session(
     session_id: str,
     cwd: str,
     events: list[dict[str, object]],
+    meta: dict[str, object] | None = None,
 ) -> None:
     path = codex_home / "sessions" / relative_path
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -2614,6 +2710,7 @@ def _write_session(
                 "cwd": cwd,
                 "cli_version": "0.130.0",
                 "model_provider": "openai",
+                **(meta or {}),
             },
         },
         *events,

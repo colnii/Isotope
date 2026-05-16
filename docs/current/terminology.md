@@ -65,6 +65,10 @@
 | `recommendation` | 结构化建议，表达下一步建议动作、优先级和目标窗口，不等于自动执行 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
 | `dashboard` | Supervisor 汇总视图，按需要看、已完成和工作中分组，供人类和后续前端使用 | 产品功能/视图 | `src/isotope/features/supervisor/runner.py` |
 | `dashboard web` | Supervisor 本机页面，读取 `/dashboard.json` 并渲染三组窗口 | 产品功能/视图 | `src/isotope/features/supervisor/web.py` |
+| `display_title` | Supervisor 展示标题，优先托管名、Codex 标题、agent 名和短 session id | 产品功能/视图 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/runner.py` |
+| `thread_name_updated` | Codex 会话标题更新事件，可解析出窗口 rename 或自带标题 | 外部集成/视图 | `src/isotope/features/supervisor/flow.py` |
+| `short_session_id` | session id 的短 hash，页面辅助辨认窗口 | 产品功能/视图 | `src/isotope/features/supervisor/flow.py` |
+| `agent_nickname` | Codex session 元数据里的 agent 名称，可作为标题兜底 | 外部集成/视图 | `src/isotope/features/supervisor/flow.py` |
 | `needs_attention` | dashboard 分组字段，表示需要人类或管理层优先查看的窗口 | 产品功能/视图 | `src/isotope/features/supervisor/runner.py` |
 | `inspect_blocked` | 建议动作，优先查看主动汇报阻塞的窗口 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
 | `inspect_bell` | 建议动作，优先查看刚响铃的托管 tmux 窗口 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |

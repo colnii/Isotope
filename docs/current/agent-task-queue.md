@@ -177,10 +177,25 @@
     `已完成` 和 `工作中` 分组输出，并保留前端可复用 JSON 字段。
 84. Codex Supervisor 本地前端薄入口：`web` 可启动本机页面，
     复用 `/dashboard.json` 展示需要看、已完成和工作中三组窗口。
+85. Codex Supervisor 可读标题：`scan` 已解析 Codex 的
+    `thread_name_updated` 标题事件和 agent 元数据；`dashboard` 与
+    `web` 会优先显示托管名、Codex 标题、agent 名和短 session id。
 
-## 最近完成：Codex Supervisor 本地前端薄入口
+## 最近完成：Codex Supervisor 可读标题
 
 完成内容：
+
+- `CodexSupervisorFlow` 解析 `thread_name_updated` 事件。
+- 会话摘要新增 `thread_name`、`thread_id`、`agent_nickname` 和 `agent_role`。
+- 会话摘要新增 `short_session_id` 和 `display_title`。
+- `display_title` 优先级：托管名、Codex 标题、agent 名、短 session id。
+- `dashboard --json` 和 `/dashboard.json` 都保留这些字段。
+- 本地页面标题改用 `display_title`，元信息里保留短 hash。
+- 同步 [status](./status.md)、[terminology](./terminology.md)、
+  [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
+  [supervisor-capability-map](./supervisor-capability-map.md)。
+
+上一批已完成：
 
 - 新增 `src/isotope/features/supervisor/web.py`。
 - 新增 `isotope-supervisor web`。
@@ -194,7 +209,7 @@
   [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
   [supervisor-capability-map](./supervisor-capability-map.md)。
 
-上一批已完成：
+更早一批已完成：
 
 - 新增 `isotope-supervisor dashboard`。
 - plain 输出按 `需要看`、`已完成` 和 `工作中` 分组。
@@ -207,7 +222,7 @@
   [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
   [supervisor-capability-map](./supervisor-capability-map.md)。
 
-更早一批已完成：
+再早一批已完成：
 
 - `blocked` 状态优先建议 `inspect_blocked`。
 - `needs_user` 状态优先建议 `review_user_prompt`。

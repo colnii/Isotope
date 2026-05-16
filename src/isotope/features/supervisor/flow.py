@@ -56,6 +56,10 @@ class CodexSessionSummary:
     age_seconds: int
     status: str
     reason: str
+    thread_name: str | None = None
+    thread_id: str | None = None
+    agent_nickname: str | None = None
+    agent_role: str | None = None
     git_branch: str | None = None
     last_user_message: str | None = None
     last_assistant_message: str | None = None
@@ -77,9 +81,22 @@ class CodexSessionSummary:
     def status_label(self) -> str:
         return STATUS_LABELS.get(self.status, self.status)
 
+    @property
+    def short_session_id(self) -> str:
+        parts = self.session_id.split("-")
+        if len(parts) >= 5 and len(parts[0]) == 8:
+            return parts[0]
+        return self.session_id
+
+    @property
+    def display_title(self) -> str:
+        return self.managed_name or self.thread_name or self.agent_nickname or self.short_session_id
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "session_id": self.session_id,
+            "short_session_id": self.short_session_id,
+            "display_title": self.display_title,
             "cwd": self.cwd,
             "git_branch": self.git_branch,
             "source_path": self.source_path,
@@ -88,6 +105,10 @@ class CodexSessionSummary:
             "status": self.status,
             "status_label": self.status_label,
             "reason": self.reason,
+            "thread_name": self.thread_name,
+            "thread_id": self.thread_id,
+            "agent_nickname": self.agent_nickname,
+            "agent_role": self.agent_role,
             "last_user_message": _shorten_optional(self.last_user_message),
             "last_assistant_message": _shorten_optional(self.last_assistant_message),
             "cli_version": self.cli_version,
@@ -297,6 +318,8 @@ def _read_session_summary(
     supervisor_status: str | None = None
     supervisor_summary: str | None = None
     supervisor_next: str | None = None
+    thread_name: str | None = None
+    thread_id: str | None = None
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except OSError:
@@ -314,6 +337,11 @@ def _read_session_summary(
             if isinstance(payload, dict):
                 meta.update(payload)
             continue
+        if event.get("type") == "event_msg":
+            payload = event.get("payload")
+            if isinstance(payload, dict) and payload.get("type") == "thread_name_updated":
+                thread_name = _optional_string(payload.get("thread_name")) or thread_name
+                thread_id = _optional_string(payload.get("thread_id")) or thread_id
         role, text = _message_from_event(event)
         if text:
             last_text = text
@@ -348,6 +376,10 @@ def _read_session_summary(
         age_seconds=age_seconds,
         status=status,
         reason=reason,
+        thread_name=thread_name,
+        thread_id=thread_id,
+        agent_nickname=_optional_string(meta.get("agent_nickname")),
+        agent_role=_optional_string(meta.get("agent_role")),
         last_user_message=last_user_message,
         last_assistant_message=last_assistant_message,
         cli_version=_optional_string(meta.get("cli_version")),

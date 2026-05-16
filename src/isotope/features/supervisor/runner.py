@@ -448,7 +448,13 @@ def _dashboard_group_for(session: Any) -> str:
 def _dashboard_item(session: Any) -> dict[str, Any]:
     return {
         "session_id": session.session_id,
+        "short_session_id": session.short_session_id,
+        "display_title": session.display_title,
         "name": session.managed_name,
+        "thread_name": session.thread_name,
+        "thread_id": session.thread_id,
+        "agent_nickname": session.agent_nickname,
+        "agent_role": session.agent_role,
         "cwd": session.cwd,
         "git_branch": session.git_branch,
         "status": session.status,
@@ -474,7 +480,7 @@ def _print_dashboard_plain(payload: dict[str, Any]) -> None:
         items = payload["groups"][group_key]
         print(f"{label}：{len(items)}")
         for item in items:
-            title = item["name"] or item["session_id"]
+            title = item["display_title"]
             status = item["supervisor_status"] or item["status_label"]
             detail = item["supervisor_summary"] or item["reason"]
             suffix = _dashboard_item_suffix(item)

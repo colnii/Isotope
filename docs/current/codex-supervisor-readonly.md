@@ -23,14 +23,15 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
 ## 当前能力
 
 - 从 `~/.codex/sessions` 读取本机 Codex 会话记录。
-- 识别 session id、工作目录、git 分支和最近消息。
+- 识别 session id、短 hash、Codex 标题、agent 名、工作目录、git 分支和最近消息。
 - 按最近事件时间排序，默认展示最近 10 个会话。
 - 用规则判断 `工作中`、`等待用户`、`疑似停住`、`疑似报错`、`空闲`。
 - 输出中文报告，也支持 JSON。
 - JSON 输出包含 `recommendation` 结构化建议，供后续半自动管理复用。
 - `advise` 可只输出当前建议和可复制命令草案。
-- `dashboard` 可按 `需要看`、`已完成`、`工作中` 分组显示。
-- `web` 可启动本机页面，展示 `dashboard` 的三组窗口。
+- `dashboard` 可按 `需要看`、`已完成`、`工作中` 分组显示，
+  并保留可读标题和短 hash。
+- `web` 可启动本机页面，展示 `dashboard` 的三组窗口和可读标题。
 - `supervise` 可按间隔循环执行扫描、建议、可选 LLM 摘要和显式 send。
 - `--prompt-cooldown` 可避免短时间重复催促同一个托管 lane。
 - `watch --changes-only` 可持续运行，只在会话状态变化时重新输出。
@@ -91,7 +92,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 - `needs_attention`：需要看的窗口，包含阻塞、等待用户、报错、停住和 bell。
 - `done`：主动汇报完成的窗口。
 - `working`：仍在推进或暂无明显异常的窗口。
-- JSON 保留 session id、状态、tmux session、bell、摘要和下一步字段。
+- JSON 保留 session id、短 hash、Codex 标题、agent 名、状态、
+  tmux session、bell、摘要和下一步字段。
 
 `web` 是当前本地前端薄入口：
 
@@ -102,6 +104,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 页面默认地址是 `http://127.0.0.1:8765/`。
 页面会读取 `/dashboard.json`，并按 `需要看`、`已完成`、`工作中`
 三组展示窗口；有 tmux session 的条目会显示 attach 命令。
+页面标题优先使用托管名，其次使用 Codex 自带标题、agent 名和短 hash。
 当前页面使用 Python 标准库 HTTP server 和内联 HTML/CSS/JS，
 不引入额外前端依赖。
 

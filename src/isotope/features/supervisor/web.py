@@ -261,7 +261,7 @@ def dashboard_page_html() -> str:
       title.className = "lane-title";
       const name = document.createElement("span");
       name.className = "lane-name";
-      name.textContent = item.name || item.session_id;
+      name.textContent = item.display_title || item.name || item.short_session_id || item.session_id;
       const badge = document.createElement("span");
       badge.className = "badge";
       badge.textContent = item.supervisor_status || item.status_label || item.status;
@@ -273,7 +273,13 @@ def dashboard_page_html() -> str:
 
       const path = document.createElement("div");
       path.className = "path";
-      path.textContent = [item.cwd, item.git_branch ? "分支 " + item.git_branch : ""]
+      path.textContent = [
+        item.short_session_id ? "#" + item.short_session_id : "",
+        item.agent_nickname ? item.agent_nickname : "",
+        item.agent_role ? item.agent_role : "",
+        item.cwd,
+        item.git_branch ? "分支 " + item.git_branch : ""
+      ]
         .filter(Boolean)
         .join(" · ");
 

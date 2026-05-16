@@ -17,7 +17,7 @@ Codex Supervisor 已经不只是一个小命令。
 | --- | --- | --- | --- |
 | 用户功能层 | `scan`、`dashboard`、`web`、`watch`、`advise`、`supervise` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
 | 托管控制层 | `launch`、`adopt`、`send`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
-| Codex 集成层 | 读取 Codex session（会话记录） | `features/supervisor/flow.py` | 当前直接读取本机 `.jsonl` |
+| Codex 集成层 | 读取 Codex session（会话记录）、标题和 agent 元数据 | `features/supervisor/flow.py` | 当前直接读取本机 `.jsonl` |
 | tmux 集成层 | tmux 启动、`send-keys` 和 bell hook | `bell_events.py`、`flow.py`、`registry.py` | 只控制登记过的 tmux 会话 |
 | 状态判断层 | 工作中、等待用户、疑似停住、疑似报错 | `features/supervisor/flow.py` | 规则判断，不等于模型判断 |
 | 建议执行层 | `recommendation`、`command_suggestions`、`--execute` | `flow.py`、`runner.py` | 只允许白名单动作 |
@@ -29,10 +29,14 @@ Codex Supervisor 已经不只是一个小命令。
 ## 已有轮子
 
 - 读取本机 Codex `.jsonl` 会话记录。
+- 解析 `thread_name_updated`，拿到 Codex 自带标题。
+- 读取 `agent_nickname` 和 `agent_role`，补充 agent 元数据。
 - 识别工作中、等待用户、疑似停住、疑似报错、空闲和已退出。
 - 输出中文 plain 报告和 JSON 报告。
 - `dashboard` 按需要看、已完成和工作中分组。
+- `dashboard` 保留可读标题、短 hash、Codex 标题和 agent 元数据。
 - `web` 启动本机页面，复用 `dashboard` 分组 JSON。
+- `web` 优先展示可读标题，同时保留短 hash 方便辨认窗口。
 - `watch --changes-only` 只在状态变化时输出。
 - 本机托管登记表 `managed_sessions.jsonl`。
 - `launch` 支持普通进程和 tmux 会话。
