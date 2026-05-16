@@ -2,6 +2,9 @@
 
 状态：`第二版小切片 / 本机监控 + LLM 摘要 + 显式控制通道`
 
+能力登记和后续拆分边界见
+[Codex Supervisor 能力地图](./supervisor-capability-map.md)。
+
 ## 目标
 
 Codex Supervisor 用来观察、启动和轻量管理本机多个 Codex 进程。

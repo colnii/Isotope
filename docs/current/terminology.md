@@ -65,11 +65,13 @@
 | `recommendation` | 结构化建议，表达下一步建议动作、优先级和目标窗口，不等于自动执行 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
 | `advise` | 建议面板命令，输出当前建议和一组命令草案，可显式执行 send 类草案 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `supervise` | 监控小闭环，循环执行扫描、建议、可选 LLM 摘要和显式 send | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
+| `supervisor capability map` | Supervisor 能力地图，登记已实现能力和后续拆分边界 | 文档/产品功能 | `docs/current/supervisor-capability-map.md` |
 | `--execute` | 显式执行参数，当前只允许 `send_status` 和 `send_continue` | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `command_suggestions` | 命令草案列表，给人复制执行，当前可包含 attach、汇报状态和继续推进 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `send` | Supervisor 控制命令，向登记的 tmux Codex 会话发送一行文本并回车 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
 | `tmux` | 本机终端复用工具，可创建可追踪会话，并通过 send-keys 向托管 Codex 发指令 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
 | `send-keys` | tmux 输入命令，当前用于把文本写入托管 Codex 窗口 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
+| `bell` | tmux 提醒信号，可作为窗口可能结束或需要查看的弱证据 | 外部集成/状态判断 | `docs/current/supervisor-capability-map.md` |
 | `LLM summary` | 大模型摘要，把压缩后的窗口状态和结构化建议交给模型生成中文判断 | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
 | `OpenAI-compatible` | 兼容 OpenAI Chat Completions 形状的模型接口 | 模型/外部集成 | `src/isotope/features/supervisor/llm_summary.py` |
 | `LLM pool TOML` | 本机模型号池配置，声明 provider、base URL、model 和 key | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |

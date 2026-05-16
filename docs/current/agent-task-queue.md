@@ -155,10 +155,25 @@
     `advise --execute send_continue` 可执行对应 send 类草案。
 75. Codex Supervisor 监控小闭环：`supervise` 可循环执行扫描、建议、
     可选 LLM 摘要和显式 send。
+76. Codex Supervisor 能力地图：已新增
+    [supervisor-capability-map](./supervisor-capability-map.md)，登记
+    现有轮子、不要重复实现的边界和后续拆分顺序。
 
-## 最近完成：Codex Supervisor 监控小闭环
+## 最近完成：Codex Supervisor 能力地图
 
 完成内容：
+
+- 新增 [supervisor-capability-map](./supervisor-capability-map.md)。
+- 登记 `scan/watch/advise/supervise`、托管登记、tmux 控制、
+  状态判断、显式执行、LLM 摘要和未来协议层。
+- 写清当前不要重复实现的新 CLI、tmux 发送器、LLM 号池和状态分类系统。
+- 明确后续顺序：先做 tmux bell 信号，再做状态协议、lane state
+  和 LLM 白名单决策。
+- 同步 [status](./status.md)、[docs-map](./docs-map.md)、
+  [terminology](./terminology.md) 和
+  [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
+
+上一批已完成：
 
 - `supervise` 复用 `watch` 的 `--interval`、`--iterations`
   和 `--changes-only`。
@@ -171,7 +186,7 @@
 - 同步 [status](./status.md)、[terminology](./terminology.md) 和
   [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
 
-上一批已完成：
+再上一批已完成：
 
 - `advise --execute send_status` 会向托管 tmux lane 发送“请汇报当前状态”。
 - `advise --execute send_continue` 会向托管 tmux lane 发送继续推进指令。
@@ -213,13 +228,14 @@
 - 共享路径改动后需要跑全量测试。
 - `AGENTS.md` 仍需保持 100 行以内。
 
-## 下一批次：Codex Supervisor 半自动管理
+## 下一批次：Codex Supervisor 结束信号识别
 
 目标：
 
-- 把 `watch/scan` 的状态判断和 `send` 的控制通道串起来。
-- 先生成建议动作，例如“可继续 / 需要用户确认 / 建议暂停”。
-- 再决定是否允许 `--auto-send` 这种自动发送模式。
+- 先识别托管 tmux 会话的 bell（提醒）信号。
+- 把 bell 信号作为“可能已停下等待处理”的弱证据写入 scan JSON。
+- plain 输出也显示 bell 状态，方便人类快速看到哪个窗口响过。
+- 先不自动发送新指令，后续再接状态协议和 lane state。
 
 初始参考：
 

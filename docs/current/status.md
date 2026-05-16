@@ -62,7 +62,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     TOML 号池做智能摘要；`scan --json` 包含结构化建议；
     `advise` 可单独输出建议和命令草案，并可显式执行 send 类草案；
     `supervise` 可循环执行扫描、建议、可选 LLM 摘要和显式 send；
-    `send` 可向托管 tmux 会话发送一行指令。
+    `send` 可向托管 tmux 会话发送一行指令。能力登记见
+    `docs/current/supervisor-capability-map.md`。
 
 ## 文档策略
 
@@ -72,6 +73,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
 - 文档结构要兼顾 AI 检索和人类审阅。
 - 术语和目录命名要从 AI 应用角度重新整理。
 - 历史归档里的旧说法不代表当前方向。
+- Supervisor 新能力要同步登记到能力地图，避免重复实现。
 
 ## 开发策略
 

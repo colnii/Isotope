@@ -47,6 +47,7 @@
 - 目录结构逻辑补充：[重新梳理目录结构逻辑](./重新梳理目录结构逻辑.md)
 - 命名与目录审计：[naming-and-structure-review](./naming-and-structure-review.md)
 - Codex Supervisor 只读版：[codex-supervisor-readonly](./codex-supervisor-readonly.md)
+- Codex Supervisor 能力地图：[supervisor-capability-map](./supervisor-capability-map.md)
 - ChatGPT 审查：[chatgpt审查](./chatgpt审查.md)
 - 导入路径迁移表：[import-map](./import-map.md)
 - 兼容代理审计：[compat-proxy-audit](./compat-proxy-audit.md)
