@@ -63,6 +63,9 @@
 | `Codex session` | Codex 会话记录，本机通常保存在 `~/.codex/sessions` | 外部集成 | `src/isotope/features/supervisor/flow.py` |
 | `managed Codex` | Supervisor 启动或接管并登记的 Codex 会话，可通过 pid、tmux session 和日志路径追踪 | 产品功能/外部集成 | `src/isotope/features/supervisor/registry.py` |
 | `recommendation` | 结构化建议，表达下一步建议动作、优先级和目标窗口，不等于自动执行 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
+| `inspect_blocked` | 建议动作，优先查看主动汇报阻塞的窗口 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
+| `inspect_bell` | 建议动作，优先查看刚响铃的托管 tmux 窗口 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
+| `review_done` | 建议动作，优先审阅已完成的窗口 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
 | `advise` | 建议面板命令，输出当前建议和一组命令草案，可显式执行 send 类草案 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `supervise` | 监控小闭环，循环执行扫描、建议、可选 LLM 摘要和显式 send | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `supervisor capability map` | Supervisor 能力地图，登记已实现能力和后续拆分边界 | 文档/产品功能 | `docs/current/supervisor-capability-map.md` |

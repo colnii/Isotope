@@ -222,6 +222,74 @@ def test_codex_supervisor_scan_parses_supervisor_status_protocol(tmp_path):
     assert "等待用户确认后继续状态协议下一片" in messages[1]["content"]
 
 
+def test_codex_supervisor_recommendation_prioritizes_blocked_status(tmp_path):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-blocked.jsonl",
+        session_id="blocked-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "\n".join(
+                    [
+                        "SUPERVISOR_STATUS: blocked",
+                        "SUPERVISOR_SUMMARY: 测试环境缺少 tmux。",
+                        "SUPERVISOR_NEXT: 需要人工查看环境。",
+                    ]
+                ),
+            )
+        ],
+    )
+
+    payload = CodexSupervisorFlow(codex_home=codex_home, now=lambda: NOW).scan().to_dict()
+
+    assert payload["recommendation"] == {
+        "action": "inspect_blocked",
+        "label": "先查看主动汇报阻塞的窗口。",
+        "priority": "high",
+        "reason": "测试环境缺少 tmux。",
+        "target_name": None,
+        "target_session_id": "blocked-session",
+        "send_text": None,
+    }
+
+
+def test_codex_supervisor_recommendation_surfaces_done_status(tmp_path):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-done.jsonl",
+        session_id="done-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "\n".join(
+                    [
+                        "SUPERVISOR_STATUS: done",
+                        "SUPERVISOR_SUMMARY: 文档和测试都已完成。",
+                        "SUPERVISOR_NEXT: 建议用户审阅结果。",
+                    ]
+                ),
+            )
+        ],
+    )
+
+    payload = CodexSupervisorFlow(codex_home=codex_home, now=lambda: NOW).scan().to_dict()
+
+    assert payload["recommendation"] == {
+        "action": "review_done",
+        "label": "先审阅已完成的窗口。",
+        "priority": "medium",
+        "reason": "文档和测试都已完成。",
+        "target_name": None,
+        "target_session_id": "done-session",
+        "send_text": None,
+    }
+
+
 def test_codex_supervisor_avoids_broad_attention_words_and_caps_json_text(tmp_path):
     codex_home = tmp_path / ".codex"
     long_reply = "建议先等待 1 分钟再开机。" * 20
@@ -1525,6 +1593,69 @@ def test_codex_supervisor_scan_highlights_tmux_bell_hook_event(tmp_path):
     assert "bell 事件：2026-05-16T11:59:50+00:00" in plain
     llm_messages = build_llm_summary_messages(report)
     assert '"managed_bell_event_at": "2026-05-16T11:59:50+00:00"' in llm_messages[1]["content"]
+
+
+def test_codex_supervisor_recommendation_surfaces_tmux_bell_event(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "lane-a",
+                "cwd": str(workspace),
+                "prompt": "继续实现 supervisor",
+                "command": ["tmux", "attach", "-t", "isotope-lane-a"],
+                "pid": 0,
+                "started_at": "2026-05-16T11:59:30+00:00",
+                "log_path": str(codex_home / "supervisor" / "logs" / "managed-001.log"),
+                "status": "adopted",
+                "backend": "tmux",
+                "tmux_session": "isotope-lane-a",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    bell_path = codex_home / "supervisor" / "bell_events.jsonl"
+    bell_path.write_text(
+        json.dumps(
+            {
+                "event": "bell",
+                "name": "lane-a",
+                "tmux_session": "isotope-lane-a",
+                "created_at": "2026-05-16T11:59:50+00:00",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    payload = (
+        CodexSupervisorFlow(
+            codex_home=codex_home,
+            now=lambda: NOW,
+            tmux_session_checker=lambda session: session == "isotope-lane-a",
+            tmux_bell_checker=lambda session: False,
+        )
+        .scan()
+        .to_dict()
+    )
+
+    assert payload["recommendation"] == {
+        "action": "inspect_bell",
+        "label": "查看刚响铃的托管窗口。",
+        "priority": "medium",
+        "reason": "tmux bell event at 2026-05-16T11:59:50+00:00",
+        "target_name": "lane-a",
+        "target_session_id": "managed:managed-001",
+        "send_text": None,
+    }
 
 
 def test_codex_supervisor_runner_send_text_to_tmux_managed_session(

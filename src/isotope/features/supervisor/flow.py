@@ -487,6 +487,22 @@ def _classify_session(
 def _recommendation(
     sessions: tuple[CodexSessionSummary, ...],
 ) -> SupervisorActionRecommendation:
+    if session := _first_session_with_supervisor_status(sessions, "blocked"):
+        return _session_recommendation(
+            session,
+            action="inspect_blocked",
+            label="先查看主动汇报阻塞的窗口。",
+            priority="high",
+            reason=session.supervisor_summary,
+        )
+    if session := _first_session_with_supervisor_status(sessions, "needs_user"):
+        return _session_recommendation(
+            session,
+            action="review_user_prompt",
+            label="先处理主动等待用户确认的窗口。",
+            priority="high",
+            reason=session.supervisor_summary,
+        )
     if session := _first_session_with_status(sessions, "needs_user"):
         return _session_recommendation(
             session,
@@ -500,6 +516,24 @@ def _recommendation(
             action="inspect_error",
             label="先查看疑似报错的窗口。",
             priority="high",
+        )
+    if session := _first_session_with_bell(sessions):
+        return _session_recommendation(
+            session,
+            action="inspect_bell",
+            label="查看刚响铃的托管窗口。",
+            priority="medium",
+            reason=f"tmux bell event at {session.managed_bell_event_at}"
+            if session.managed_bell_event_at
+            else "tmux bell flag is set",
+        )
+    if session := _first_session_with_supervisor_status(sessions, "done"):
+        return _session_recommendation(
+            session,
+            action="review_done",
+            label="先审阅已完成的窗口。",
+            priority="medium",
+            reason=session.supervisor_summary,
         )
     if session := _first_session_with_status(sessions, "stale"):
         return _session_recommendation(
@@ -524,18 +558,37 @@ def _first_session_with_status(
     return None
 
 
+def _first_session_with_supervisor_status(
+    sessions: tuple[CodexSessionSummary, ...], status: str
+) -> CodexSessionSummary | None:
+    for session in sessions:
+        if (session.supervisor_status or "").lower() == status:
+            return session
+    return None
+
+
+def _first_session_with_bell(
+    sessions: tuple[CodexSessionSummary, ...],
+) -> CodexSessionSummary | None:
+    for session in sessions:
+        if session.managed_bell:
+            return session
+    return None
+
+
 def _session_recommendation(
     session: CodexSessionSummary,
     *,
     action: str,
     label: str,
     priority: str,
+    reason: str | None = None,
 ) -> SupervisorActionRecommendation:
     return SupervisorActionRecommendation(
         action=action,
         label=label,
         priority=priority,
-        reason=session.reason,
+        reason=reason or session.reason,
         target_session_id=session.session_id,
         target_name=session.managed_name,
     )

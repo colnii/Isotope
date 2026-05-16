@@ -69,7 +69,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `~/.codex/supervisor/bell_events.jsonl`。
     `launch` 会给托管 Codex 注入 `SUPERVISOR_STATUS` 状态协议要求，
     `scan` 会从 `.jsonl` 解析状态、摘要和下一步字段；lane state
-    会记录最近状态、最近催促时间和催促次数，避免短时间重复发送。
+    会记录最近状态、最近催促时间和催促次数，避免短时间重复发送；
+    `blocked`、`done`、`needs_user` 和 bell 事件已接入结构化建议。
     能力登记见 `docs/current/supervisor-capability-map.md`。
 
 ## 文档策略

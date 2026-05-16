@@ -40,6 +40,8 @@ Codex Supervisor 已经不只是一个小命令。
 - `launch` 会注入 `SUPERVISOR_STATUS/SUMMARY/NEXT` 汇报要求。
 - `scan` 会从 Codex `.jsonl` 解析状态协议字段。
 - `scan --json` 输出结构化建议。
+- `SUPERVISOR_STATUS=blocked/done/needs_user` 会影响结构化建议。
+- bell 事件会让建议优先提示查看对应托管窗口。
 - `advise` 输出建议和命令草案。
 - `--execute` 只执行 `send_status` 和 `send_continue`。
 - `supervise` 循环执行扫描、建议、摘要和显式发送。
@@ -65,8 +67,8 @@ Codex Supervisor 已经不只是一个小命令。
 
 ## 下一步顺序
 
-1. 用状态协议结果优化建议动作。
-2. 再讨论 LLM 是否可在白名单内选择动作。
+1. 再讨论 LLM 是否可在白名单内选择动作。
+2. 把 Supervisor 监控结果整理成更稳定的人类汇总视图。
 
 ## 登记规则
 

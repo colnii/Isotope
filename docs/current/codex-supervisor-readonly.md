@@ -35,6 +35,7 @@ Codex Supervisor 用来观察、启动和轻量管理本机多个 Codex 进程�
 - `scan/watch` 可显示托管 tmux 会话是否有 bell（提醒）信号。
 - `scan/watch` 可显示 tmux bell hook 记录的最近提醒事件。
 - `scan/watch` 可显示托管 Codex 主动汇报的 Supervisor 状态协议。
+- `recommendation` 会优先处理 `blocked`、`needs_user`、bell 和 `done`。
 - `send` 可向 `launch --backend tmux` 登记的会话发送一行文本并回车。
 - 可选 `--llm-summary` 调用已配置 LLM 做中文智能摘要。
 
@@ -77,7 +78,10 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --jso
 `scan --json` 里的 `recommendation` 当前只表达建议动作：
 
 - `review_user_prompt`：先看等待用户确认的窗口。
+- `inspect_blocked`：先看主动汇报阻塞的窗口。
 - `inspect_error`：先看疑似报错的窗口。
+- `inspect_bell`：先看刚响铃的托管窗口。
+- `review_done`：先审阅已完成的窗口。
 - `inspect_stale`：检查长时间没新事件的窗口。
 - `monitor`：当前无需明显介入。
 
