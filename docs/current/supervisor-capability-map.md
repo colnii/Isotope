@@ -18,6 +18,7 @@ Codex Supervisor 已经不只是一个小命令。
 | 用户功能层 | `scan`、`dashboard`、`web`、`watch`、`advise`、`supervise` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
 | 托管控制层 | `launch`、`adopt`、`send`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
 | Codex 集成层 | 读取 Codex session（会话记录）、索引标题和 agent 元数据 | `features/supervisor/flow.py` | 当前读取本机 `.jsonl` 和 `session_index.jsonl` |
+| 扫描优化层 | 最近候选、首尾读取和标题兜底 | `features/supervisor/flow.py` | 避免每次页面刷新全量读历史 |
 | tmux 集成层 | tmux 启动、`send-keys` 和 bell hook | `bell_events.py`、`flow.py`、`registry.py` | 只控制登记过的 tmux 会话 |
 | 状态判断层 | 工作中、等待用户、疑似停住、疑似报错 | `features/supervisor/flow.py` | 规则判断，不等于模型判断 |
 | 建议执行层 | `recommendation`、`command_suggestions`、`--execute` | `flow.py`、`runner.py` | 只允许白名单动作 |
@@ -31,6 +32,9 @@ Codex Supervisor 已经不只是一个小命令。
 - 读取本机 Codex `.jsonl` 会话记录。
 - 解析 `thread_name_updated`，拿到 Codex 自带标题。
 - 在 JSONL 没有标题时，读取 `session_index.jsonl` 的 `thread_name`。
+- 标题缺失时，使用首条用户消息截断标题，最后才退回短 hash。
+- 扫描优先读取最近候选 session，不再默认全量解析历史 JSONL。
+- 超过阈值的大 session 文件只读取开头和尾部。
 - 读取 `agent_nickname` 和 `agent_role`，补充 agent 元数据。
 - 识别工作中、等待用户、疑似停住、疑似报错、空闲和已退出。
 - 输出中文 plain 报告和 JSON 报告。

@@ -454,6 +454,7 @@ def _dashboard_item(session: Any) -> dict[str, Any]:
         "name": session.managed_name,
         "thread_name": session.thread_name,
         "thread_id": session.thread_id,
+        "initial_user_title": session.initial_user_title,
         "agent_nickname": session.agent_nickname,
         "agent_role": session.agent_role,
         "cwd": session.cwd,

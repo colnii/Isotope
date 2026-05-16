@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -45,6 +46,9 @@ ERROR_MARKERS = (
     "测试失败",
     "命令失败",
 )
+MAX_FULL_SESSION_READ_BYTES = 2 * 1024 * 1024
+SESSION_HEAD_READ_BYTES = 64 * 1024
+SESSION_TAIL_READ_BYTES = 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -58,6 +62,7 @@ class CodexSessionSummary:
     reason: str
     thread_name: str | None = None
     thread_id: str | None = None
+    initial_user_title: str | None = None
     agent_nickname: str | None = None
     agent_role: str | None = None
     git_branch: str | None = None
@@ -90,7 +95,13 @@ class CodexSessionSummary:
 
     @property
     def display_title(self) -> str:
-        return self.managed_name or self.thread_name or self.agent_nickname or self.short_session_id
+        return (
+            self.managed_name
+            or self.thread_name
+            or self.initial_user_title
+            or self.agent_nickname
+            or self.short_session_id
+        )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -107,6 +118,7 @@ class CodexSessionSummary:
             "reason": self.reason,
             "thread_name": self.thread_name,
             "thread_id": self.thread_id,
+            "initial_user_title": self.initial_user_title,
             "agent_nickname": self.agent_nickname,
             "agent_role": self.agent_role,
             "last_user_message": _shorten_optional(self.last_user_message),
@@ -214,10 +226,12 @@ class CodexSupervisorFlow:
         if active_within_seconds <= 0:
             raise ValueError("active_within_seconds must be positive")
         now = _ensure_aware_utc(self.now())
-        session_index_titles = _read_session_index_titles(self.codex_home / "session_index.jsonl")
+        session_index_titles, recent_session_ids = _read_session_index(
+            self.codex_home / "session_index.jsonl"
+        )
         sessions = [
             summary
-            for path in self._session_paths()
+            for path in self._session_paths(limit=limit, recent_session_ids=recent_session_ids)
             if (
                 summary := _read_session_summary(
                     path,
@@ -250,11 +264,38 @@ class CodexSupervisorFlow:
             sessions=tuple(sessions[:limit]),
         )
 
-    def _session_paths(self) -> list[Path]:
+    def _session_paths(
+        self,
+        *,
+        limit: int,
+        recent_session_ids: tuple[str, ...] = (),
+    ) -> list[Path]:
         sessions_root = self.codex_home / "sessions"
         if not sessions_root.exists():
             return []
-        return sorted(sessions_root.rglob("*.jsonl"))
+        paths = sorted(sessions_root.rglob("*.jsonl"))
+        candidate_limit = max(4, limit + 3)
+        if len(paths) <= candidate_limit:
+            return paths
+        selected: list[Path] = []
+        seen: set[Path] = set()
+        paths_by_id = {
+            session_id: path
+            for path in paths
+            if (session_id := _session_id_from_path(path)) is not None
+        }
+        for session_id in recent_session_ids[:candidate_limit]:
+            if path := paths_by_id.get(session_id):
+                selected.append(path)
+                seen.add(path)
+        for path in sorted(paths, key=_path_mtime_ns, reverse=True):
+            if len(selected) >= candidate_limit:
+                break
+            if path in seen:
+                continue
+            selected.append(path)
+            seen.add(path)
+        return selected
 
 
 def render_plain_report(report: CodexSupervisorReport) -> str:
@@ -316,6 +357,7 @@ def _read_session_summary(
     meta: dict[str, Any] = {}
     last_event_at: datetime | None = None
     last_user_message: str | None = None
+    first_user_message: str | None = None
     last_assistant_message: str | None = None
     last_text: str | None = None
     supervisor_status: str | None = None
@@ -324,7 +366,7 @@ def _read_session_summary(
     thread_name: str | None = None
     thread_id: str | None = None
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
+        lines = _read_session_lines(path)
     except OSError:
         return None
     for line in lines:
@@ -353,6 +395,8 @@ def _read_session_summary(
             supervisor_summary = protocol.get("summary") or supervisor_summary
             supervisor_next = protocol.get("next") or supervisor_next
             if role == "user":
+                if first_user_message is None and not _is_title_noise(text):
+                    first_user_message = text
                 last_user_message = text
             if role == "assistant":
                 last_assistant_message = text
@@ -383,6 +427,7 @@ def _read_session_summary(
         reason=reason,
         thread_name=thread_name,
         thread_id=thread_id,
+        initial_user_title=_title_from_user_message(first_user_message),
         agent_nickname=_optional_string(meta.get("agent_nickname")),
         agent_role=_optional_string(meta.get("agent_role")),
         last_user_message=last_user_message,
@@ -395,12 +440,13 @@ def _read_session_summary(
     )
 
 
-def _read_session_index_titles(path: Path) -> dict[str, str]:
+def _read_session_index(path: Path) -> tuple[dict[str, str], tuple[str, ...]]:
     titles: dict[str, str] = {}
+    updated_at: dict[str, datetime] = {}
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except OSError:
-        return titles
+        return titles, ()
     for line in lines:
         try:
             item = json.loads(line)
@@ -412,7 +458,42 @@ def _read_session_index_titles(path: Path) -> dict[str, str]:
         thread_name = _optional_string(item.get("thread_name"))
         if session_id and thread_name:
             titles[session_id] = thread_name
-    return titles
+        if session_id:
+            updated_at[session_id] = _parse_timestamp(item.get("updated_at")) or datetime.min.replace(
+                tzinfo=timezone.utc
+            )
+    recent_session_ids = tuple(
+        sorted(updated_at, key=lambda session_id: updated_at[session_id], reverse=True)
+    )
+    return titles, recent_session_ids
+
+
+def _session_id_from_path(path: Path) -> str | None:
+    match = re.search(
+        r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})",
+        path.name,
+    )
+    return match.group(1) if match else None
+
+
+def _path_mtime_ns(path: Path) -> int:
+    try:
+        return path.stat().st_mtime_ns
+    except OSError:
+        return 0
+
+
+def _read_session_lines(path: Path) -> list[str]:
+    size = path.stat().st_size
+    if size <= MAX_FULL_SESSION_READ_BYTES:
+        return path.read_text(encoding="utf-8").splitlines()
+    with path.open("rb") as handle:
+        head = handle.read(SESSION_HEAD_READ_BYTES)
+        tail_offset = max(0, size - SESSION_TAIL_READ_BYTES)
+        handle.seek(tail_offset)
+        tail = handle.read(SESSION_TAIL_READ_BYTES)
+    data = head + b"\n" + tail
+    return data.decode("utf-8", errors="ignore").splitlines()
 
 
 def _managed_summary(
@@ -748,3 +829,20 @@ def _shorten_optional(text: str | None, *, limit: int = 120) -> str | None:
     if text is None:
         return None
     return _shorten(text, limit=limit)
+
+
+def _title_from_user_message(text: str | None) -> str | None:
+    if text is None:
+        return None
+    return _shorten(text, limit=48)
+
+
+def _is_title_noise(text: str) -> bool:
+    compact = text.lstrip()
+    noise_prefixes = (
+        "# AGENTS.md instructions",
+        "<environment_context>",
+        "<permissions instructions>",
+        "<INSTRUCTIONS>",
+    )
+    return compact.startswith(noise_prefixes)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import http.client
 import json
+import os
 import subprocess
 import threading
 from datetime import datetime, timezone
@@ -9,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from isotope.features.supervisor import flow as supervisor_flow
 from isotope.features.supervisor.flow import (
     CodexSessionSummary,
     CodexSupervisorFlow,
@@ -295,6 +297,113 @@ def test_codex_supervisor_scan_uses_session_index_title_when_jsonl_has_no_rename
     assert session.thread_name == "项目重新整理"
     assert session.display_title == "项目重新整理"
     assert session.to_dict()["display_title"] == "项目重新整理"
+
+
+def test_codex_supervisor_scan_uses_first_user_message_title_before_hash(tmp_path):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-first-message.jsonl",
+        session_id="019e2dec-c400-70e1-ac70-abfa76dbd204",
+        cwd="/home/lumber",
+        events=[
+            _user_message(
+                "2026-05-16T11:50:00Z",
+                "请继续整理项目结构，并先检查当前分支状态。",
+            ),
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "reading files"},
+            ),
+        ],
+    )
+
+    session = CodexSupervisorFlow(codex_home=codex_home, now=lambda: NOW).scan().sessions[0]
+
+    assert session.display_title == "请继续整理项目结构，并先检查当前分支状态。"
+    assert session.to_dict()["initial_user_title"] == "请继续整理项目结构，并先检查当前分支状态。"
+
+
+def test_codex_supervisor_first_user_title_skips_context_noise(tmp_path):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-context-noise.jsonl",
+        session_id="019e2ded-c400-70e1-ac70-abfa76dbd204",
+        cwd="/home/lumber",
+        events=[
+            _user_message(
+                "2026-05-16T11:45:00Z",
+                "# AGENTS.md instructions for /home/lumber/Github/isotope\n<INSTRUCTIONS>...",
+            ),
+            _user_message("2026-05-16T11:50:00Z", "继续检查多个 Codex 窗口。"),
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "reading files"},
+            ),
+        ],
+    )
+
+    session = CodexSupervisorFlow(codex_home=codex_home, now=lambda: NOW).scan().sessions[0]
+
+    assert session.display_title == "继续检查多个 Codex 窗口。"
+
+
+def test_codex_supervisor_scan_limits_recent_candidate_reads(tmp_path, monkeypatch):
+    codex_home = tmp_path / ".codex"
+    recent_session_id = "019e2fff-0000-7000-8000-000000000000"
+    for index in range(80):
+        session_id = f"019e2f{index:02x}-0000-7000-8000-000000000000"
+        _write_session_index(
+            codex_home,
+            session_id=session_id,
+            thread_name=f"旧窗口 {index}",
+            updated_at=f"2026-05-16T10:{index % 60:02d}:00Z",
+        )
+        path = _write_session(
+            codex_home,
+            f"2026/05/16/rollout-{index:02d}-{session_id}.jsonl",
+            session_id=session_id,
+            cwd="/home/lumber/Github/isotope",
+            events=[_assistant_message("2026-05-16T10:00:00Z", "旧消息。")],
+        )
+        os.utime(path, (1_768_900_000 + index, 1_768_900_000 + index))
+    _write_session_index(
+        codex_home,
+        session_id=recent_session_id,
+        thread_name="最近窗口",
+        updated_at="2026-05-16T11:59:20Z",
+    )
+    recent_path = _write_session(
+        codex_home,
+        f"2026/05/16/rollout-recent-{recent_session_id}.jsonl",
+        session_id=recent_session_id,
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "running tests"},
+            )
+        ],
+    )
+    os.utime(recent_path, (1_768_999_999, 1_768_999_999))
+    calls: list[Path] = []
+    original = supervisor_flow._read_session_summary
+
+    def spy_read_session_summary(path: Path, **kwargs: object):
+        calls.append(path)
+        return original(path, **kwargs)
+
+    monkeypatch.setattr(supervisor_flow, "_read_session_summary", spy_read_session_summary)
+
+    report = CodexSupervisorFlow(codex_home=codex_home, now=lambda: NOW).scan(limit=1)
+
+    assert report.sessions[0].session_id == recent_session_id
+    assert report.sessions[0].display_title == "最近窗口"
+    assert len(calls) < 81
 
 
 def test_codex_supervisor_recommendation_prioritizes_blocked_status(tmp_path):
@@ -2729,7 +2838,7 @@ def _write_session(
     cwd: str,
     events: list[dict[str, object]],
     meta: dict[str, object] | None = None,
-) -> None:
+) -> Path:
     path = codex_home / "sessions" / relative_path
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
@@ -2750,17 +2859,25 @@ def _write_session(
         "\n".join(json.dumps(line, ensure_ascii=False) for line in lines) + "\n",
         encoding="utf-8",
     )
+    return path
 
 
-def _write_session_index(codex_home: Path, *, session_id: str, thread_name: str) -> None:
+def _write_session_index(
+    codex_home: Path,
+    *,
+    session_id: str,
+    thread_name: str,
+    updated_at: str = "2026-05-16T11:59:20Z",
+) -> None:
     path = codex_home / "session_index.jsonl"
     path.parent.mkdir(parents=True, exist_ok=True)
     line = {
         "id": session_id,
         "thread_name": thread_name,
-        "updated_at": "2026-05-16T11:59:20Z",
+        "updated_at": updated_at,
     }
-    path.write_text(json.dumps(line, ensure_ascii=False) + "\n", encoding="utf-8")
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(line, ensure_ascii=False) + "\n")
 
 
 def _event(timestamp: str, type_: str, payload: dict[str, object]) -> dict[str, object]:

@@ -183,6 +183,8 @@
     agent 名和短 session id。
 86. Codex Supervisor resume 复制：`dashboard` 已输出完整
     `resume_command`；`web` 可复制 `codex resume <session_id>`。
+87. Codex Supervisor 刷新优化：`scan` 已改为最近候选读取，
+    大 JSONL 只读开头和尾部；标题缺失时用首条用户消息截断兜底。
 
 ## 最近完成：Codex Supervisor 可读标题
 
@@ -190,12 +192,15 @@
 
 - `CodexSupervisorFlow` 解析 `thread_name_updated` 事件。
 - 没有标题事件时，回退读取 `session_index.jsonl` 的 `thread_name`。
+- 再没有标题时，使用首条真实用户消息的短标题，跳过 AGENTS 和环境上下文。
+  最后才回退短 hash。
 - 会话摘要新增 `thread_name`、`thread_id`、`agent_nickname` 和 `agent_role`。
-- 会话摘要新增 `short_session_id` 和 `display_title`。
-- `display_title` 优先级：托管名、Codex 标题、agent 名、短 session id。
+- 会话摘要新增 `short_session_id`、`initial_user_title` 和 `display_title`。
+- `display_title` 优先级：托管名、Codex 标题、首条用户消息、agent 名、短 session id。
 - `dashboard --json` 和 `/dashboard.json` 都保留这些字段。
 - 本地页面标题改用 `display_title`，元信息里保留短 hash。
 - `dashboard --json` 增加 `resume_command`，本地页面可复制完整 resume 命令。
+- 扫描不再默认全量解析历史 JSONL；当前本机实测从约 8.5 秒降到约 0.08 秒。
 - 同步 [status](./status.md)、[terminology](./terminology.md)、
   [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
   [supervisor-capability-map](./supervisor-capability-map.md)。

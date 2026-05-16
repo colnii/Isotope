@@ -26,6 +26,9 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
 - 识别 session id、短 hash、Codex 标题、agent 名、工作目录、git 分支和最近消息。
 - 标题优先读 JSONL 里的 `thread_name_updated`，没有时回退到
   `session_index.jsonl` 里的 `thread_name`。
+- 如果仍没有标题，使用首条真实用户消息的短标题，跳过 AGENTS 和环境上下文。
+  最后才显示短 hash。
+- 扫描会优先处理最近候选会话；大 JSONL 只读开头和尾部，避免页面刷新卡顿。
 - 按最近事件时间排序，默认展示最近 10 个会话。
 - 用规则判断 `工作中`、`等待用户`、`疑似停住`、`疑似报错`、`空闲`。
 - 输出中文报告，也支持 JSON。
@@ -106,7 +109,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 页面默认地址是 `http://127.0.0.1:8765/`。
 页面会读取 `/dashboard.json`，并按 `需要看`、`已完成`、`工作中`
 三组展示窗口；有 tmux session 的条目会显示 attach 命令。
-页面标题优先使用托管名，其次使用 Codex 自带标题、agent 名和短 hash。
+页面标题优先使用托管名，其次使用 Codex 自带标题、首条用户消息、agent 名和短 hash。
 每个窗口提供 `复制 resume`，会复制完整 `codex resume <session_id>`。
 当前页面使用 Python 标准库 HTTP server 和内联 HTML/CSS/JS，
 不引入额外前端依赖。
