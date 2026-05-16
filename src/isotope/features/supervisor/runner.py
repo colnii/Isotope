@@ -24,6 +24,11 @@ EXECUTABLE_ADVICE_TEXT = {
     "send_status": "请汇报当前状态",
     "send_continue": "继续推进，并在完成后汇报当前状态",
 }
+DASHBOARD_GROUP_LABELS = {
+    "needs_attention": "需要看",
+    "done": "已完成",
+    "working": "工作中",
+}
 
 
 def _print_json(payload: dict[str, Any]) -> None:
@@ -35,6 +40,7 @@ def _build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
     for command, help_text in (
         ("scan", "Print one Codex supervisor report."),
+        ("dashboard", "Print one grouped supervisor dashboard."),
         ("watch", "Print reports repeatedly."),
         ("advise", "Print one compact next-action suggestion."),
         ("supervise", "Run repeated reports with advice, optional LLM summary, and send execution."),
@@ -155,6 +161,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "scan":
             _print_report(args)
+            return 0
+        if args.command == "dashboard":
+            _print_dashboard(args)
             return 0
         if args.command == "advise":
             _print_advice(args)
@@ -335,6 +344,92 @@ def _supervise_payload(
     if args.execute:
         payload["executed"] = _execute_advice(args, report, payload)
     return payload
+
+
+def _print_dashboard(args: argparse.Namespace) -> None:
+    report = _scan_report(args)
+    payload = _dashboard_payload(report)
+    if args.json:
+        _print_json(payload)
+        return
+    _print_dashboard_plain(payload)
+
+
+def _dashboard_payload(report: Any) -> dict[str, Any]:
+    groups: dict[str, list[dict[str, Any]]] = {
+        "needs_attention": [],
+        "done": [],
+        "working": [],
+    }
+    for session in report.sessions:
+        groups[_dashboard_group_for(session)].append(_dashboard_item(session))
+    return {
+        "status": "ok",
+        "generated_at": report.generated_at,
+        "recommendation": report.recommendation.to_dict(),
+        "counts": {key: len(value) for key, value in groups.items()},
+        "groups": groups,
+    }
+
+
+def _dashboard_group_for(session: Any) -> str:
+    supervisor_status = (session.supervisor_status or "").lower()
+    if supervisor_status in {"blocked", "needs_user"}:
+        return "needs_attention"
+    if supervisor_status == "done":
+        return "done"
+    if session.status in {"needs_user", "error", "stale"}:
+        return "needs_attention"
+    if session.managed_bell:
+        return "needs_attention"
+    return "working"
+
+
+def _dashboard_item(session: Any) -> dict[str, Any]:
+    return {
+        "session_id": session.session_id,
+        "name": session.managed_name,
+        "cwd": session.cwd,
+        "git_branch": session.git_branch,
+        "status": session.status,
+        "status_label": session.status_label,
+        "supervisor_status": session.supervisor_status,
+        "supervisor_summary": session.supervisor_summary,
+        "supervisor_next": session.supervisor_next,
+        "managed": session.managed,
+        "managed_backend": session.managed_backend,
+        "managed_tmux_session": session.managed_tmux_session,
+        "managed_bell": session.managed_bell,
+        "managed_bell_event_at": session.managed_bell_event_at,
+        "reason": session.reason,
+        "age_seconds": session.age_seconds,
+    }
+
+
+def _print_dashboard_plain(payload: dict[str, Any]) -> None:
+    print("[Codex Supervisor dashboard]")
+    print(f"生成时间：{payload['generated_at']}")
+    print(f"建议：{payload['recommendation']['label']}")
+    for group_key, label in DASHBOARD_GROUP_LABELS.items():
+        items = payload["groups"][group_key]
+        print(f"{label}：{len(items)}")
+        for item in items:
+            title = item["name"] or item["session_id"]
+            status = item["supervisor_status"] or item["status_label"]
+            detail = item["supervisor_summary"] or item["reason"]
+            suffix = _dashboard_item_suffix(item)
+            print(f"- {title} {status} / {detail}{suffix}")
+
+
+def _dashboard_item_suffix(item: dict[str, Any]) -> str:
+    parts: list[str] = []
+    if item["git_branch"]:
+        parts.append(f"分支={item['git_branch']}")
+    if item["managed_tmux_session"]:
+        parts.append(f"tmux={item['managed_tmux_session']}")
+    if item["managed_bell_event_at"]:
+        parts.append(f"bell={item['managed_bell_event_at']}")
+    return f" ({', '.join(parts)})" if parts else ""
 
 
 def _print_supervise_plain(payload: dict[str, Any], report: Any) -> None:

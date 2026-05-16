@@ -5,7 +5,8 @@
 ## 为什么要有这张图
 
 Codex Supervisor 已经不只是一个小命令。
-它同时包含窗口观察、托管启动、tmux 控制、LLM 摘要和执行边界。
+它是 Isotope 后续的核心管理层：LLM 参与判断和调度，
+规则、事件、冷却、tmux 和白名单执行提供工程护栏。
 
 本文件用于登记当前能力和后续拆分方向。
 新增 Supervisor 能力时，应先看这里，避免重复造一套相似实现。
@@ -14,13 +15,13 @@ Codex Supervisor 已经不只是一个小命令。
 
 | 层级 | 当前能力 | 主要位置 | 说明 |
 | --- | --- | --- | --- |
-| 用户功能层 | `scan`、`watch`、`advise`、`supervise` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
+| 用户功能层 | `scan`、`dashboard`、`watch`、`advise`、`supervise` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
 | 托管控制层 | `launch`、`adopt`、`send`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
 | Codex 集成层 | 读取 Codex session（会话记录） | `features/supervisor/flow.py` | 当前直接读取本机 `.jsonl` |
 | tmux 集成层 | tmux 启动、`send-keys` 和 bell hook | `bell_events.py`、`flow.py`、`registry.py` | 只控制登记过的 tmux 会话 |
 | 状态判断层 | 工作中、等待用户、疑似停住、疑似报错 | `features/supervisor/flow.py` | 规则判断，不等于模型判断 |
 | 建议执行层 | `recommendation`、`command_suggestions`、`--execute` | `flow.py`、`runner.py` | 只允许白名单动作 |
-| 模型摘要层 | `LLM summary` 和 TOML 号池 | `llm_summary.py` | 只做摘要，不自由执行命令 |
+| 模型管理层 | `LLM summary` 和 TOML 号池 | `llm_summary.py` | 当前先做摘要，后续承担白名单内动作选择 |
 | 状态协议层 | `SUPERVISOR_STATUS` 等状态协议 | `flow.py`、`registry.py` | 给被托管 Codex 主动汇报状态 |
 | 状态账本层 | lane state（窗口状态）和限频 | `lane_state.py` | 避免重复催促和刷屏 |
 
@@ -29,6 +30,7 @@ Codex Supervisor 已经不只是一个小命令。
 - 读取本机 Codex `.jsonl` 会话记录。
 - 识别工作中、等待用户、疑似停住、疑似报错、空闲和已退出。
 - 输出中文 plain 报告和 JSON 报告。
+- `dashboard` 按需要看、已完成和工作中分组。
 - `watch --changes-only` 只在状态变化时输出。
 - 本机托管登记表 `managed_sessions.jsonl`。
 - `launch` 支持普通进程和 tmux 会话。
@@ -55,7 +57,7 @@ Codex Supervisor 已经不只是一个小命令。
 - 不要绕过托管登记表直接写新的 tmux 发送器。
 - 不要给 Supervisor 再造一套独立 LLM 号池。
 - 不要另写状态分类系统，除非同步更新本文件。
-- 不要让 LLM 自由拼 shell 命令执行。
+- LLM 动作选择必须落到可审计的白名单能力上。
 
 ## 后续拆分方向
 
@@ -67,8 +69,8 @@ Codex Supervisor 已经不只是一个小命令。
 
 ## 下一步顺序
 
-1. 再讨论 LLM 是否可在白名单内选择动作。
-2. 把 Supervisor 监控结果整理成更稳定的人类汇总视图。
+1. 做本地前端薄入口，先复用 `dashboard --json`。
+2. 讨论 LLM 在白名单内选择动作的策略和提示词。
 
 ## 登记规则
 

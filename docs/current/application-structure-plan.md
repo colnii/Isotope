@@ -197,7 +197,7 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   且可显式执行 send 类草案；`supervise` 可把扫描、建议、LLM 摘要
   和显式 send 串成监控小闭环；`launch --backend tmux` 可创建本机
   tmux 会话，`send` 可向托管 tmux 会话发送一行文本，`--llm-summary`
-  可通过本机 TOML 号池生成智能摘要；当前不让 LLM 自由执行任意命令。
+  可通过本机 TOML 号池生成智能摘要；LLM 决策需要落到白名单动作上。
 - 智能体循环：`agent_loop_*` 与 planner contract 已迁入 `src/isotope/agents/loop/`；
   旧顶层、`core/loop_*` 和 `assistant/` 入口已删除。
 - 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`，相关旧根路径已删除。

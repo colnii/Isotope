@@ -7,134 +7,136 @@
 
 | 英文定位词 | 中文解释 | 主要层级 | 主要位置 |
 | --- | --- | --- | --- |
+| `--execute` | 显式执行参数，当前只允许 `send_status` 和 `send_continue` | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
+| `--prompt-cooldown` | 催促冷却期，避免短时间重复向同一个 lane 发送状态请求或继续指令 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
+| `ActionCompiler` | 动作编译器，把紧凑意图转换成可审批的动作提案 | 运行时 | `src/isotope/runtime/action_compiler.py` |
+| `ActionTypeRegistry` | 动作类型注册表，记录工具元数据、能力要求和版本信息 | 平台注册表 | `src/isotope/platform/registry/actions.py` |
+| `adopt` | 接管已有 tmux 会话，把它登记成 Supervisor 可监控和发送指令的 lane | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
+| `advise` | 建议面板命令，输出当前建议和一组命令草案，可显式执行 send 类草案 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
+| `agent loop` | 智能体循环，AI 多步规划、调用工具、读取结果并继续执行 | 应用/智能体 | `src/isotope/agents/loop/step.py`, `docs/features/` |
+| `alert-bell` | tmux bell hook，在窗口响铃时触发并写入 Supervisor 事件文件 | 外部集成/状态判断 | `src/isotope/features/supervisor/bell_events.py`, `src/isotope/features/supervisor/registry.py` |
+| `ApiApp` | ASGI 兼容后端应用边界，当前转发到进程内 HTTP facade | 后端入口 | `src/isotope/apps/api.py` |
+| `app_friction` | 应用摩擦，应用层试跑暴露的卡点或待收束问题 | 应用验证 | `src/isotope/demo.py`, `docs/features/` |
+| `approval` | 人工确认，敏感动作执行前的暂停和恢复机制 | 权限/产品 | `src/isotope/runtime/in_process.py` |
+| `artifact` | 产物记录，保存执行结果摘要和引用 | 平台数据 | `src/isotope/platform/schemas/artifacts.py` |
+| `artifact-backed file summary` | 由 artifact 存储承载正文、外层只暴露摘要和引用的文件摘要 | 产品功能/工作区资源 | `src/isotope/features/files/flow.py`, `src/isotope/workspace/artifacts.py` |
+| `ArtifactStore` | 产物存储，负责保存和读取 artifact 元数据与内容 | 工作区资源 | `src/isotope/workspace/artifacts.py` |
+| `ASGI` | Python Web 服务通用接口，后续可由 Uvicorn 等服务托管 | 后端入口 | `src/isotope/apps/api.py` |
+| `assistant` | 助手，只作为产品描述或历史术语，不作为新目录叙事 | 产品描述/历史术语 | 已删除旧目录 |
+| `attach` | 连接到 tmux 会话查看同一个终端窗口 | 外部集成/人类观察 | `docs/current/codex-supervisor-readonly.md` |
+| `bell` | tmux 提醒信号，可作为窗口可能结束或需要查看的弱证据 | 外部集成/状态判断 | `src/isotope/features/supervisor/flow.py`, `docs/current/supervisor-capability-map.md` |
+| `bell_events.jsonl` | Supervisor bell 事件日志，记录哪个托管 tmux session 响铃 | 产品功能/状态判断 | `src/isotope/features/supervisor/bell_events.py` |
+| `CanonicalEvent` | 标准事件，所有状态回放的事实来源 | 平台事件 | `src/isotope/platform/events/events.py` |
+| `capability` | 能力，产品可发现、可运行的功能单元 | 产品能力 | `src/isotope/capabilities/catalog.py` |
+| `capability runner` | 能力运行器，用命令行方式搜索能力、生成计划或启动能力 | 产品能力 | `src/isotope/capabilities/runner.py`, `isotope-capability` |
+| `checkpoint` | 检查点，用于恢复运行状态 | 状态恢复 | `src/isotope/platform/state/checkpoint_store.py` |
+| `CLI` | 命令行入口，给人类和部署脚本直接调用 | 应用入口 | `apps/cli/`, `pyproject.toml` |
+| `Codex session` | Codex 会话记录，本机通常保存在 `~/.codex/sessions` | 外部集成 | `src/isotope/features/supervisor/flow.py` |
+| `Codex Supervisor` | Codex 监督器，Isotope 后续核心管理层，让 LLM 参与判断和调度，工程规则提供护栏 | 产品功能 | `src/isotope/features/supervisor/flow.py` |
+| `Codex task` | Codex 任务，把外部 Codex 执行封装成可路由能力 | 工具/任务 | `src/isotope/integrations/codex/task.py`, `src/isotope/integrations/codex/cli.py` |
+| `command_suggestions` | 命令草案列表，给人复制执行，当前可包含 attach、汇报状态和继续推进 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `core` | 产品主流程，串起会话、对话循环、调度和响应 | 应用核心 | `src/isotope/core/` |
-| `ProductCore` | 产品主流程门面，先包住单进程运行时供上层调用 | 应用核心 | `src/isotope/core/conversation.py` |
-| `RuntimeDispatch` | 运行时调度薄层，把产品级调用转发到当前运行入口 | 应用核心 | `src/isotope/core/dispatch.py` |
 | `CoreConversation` | 产品级对话，当前用一个 session 串起多个 run | 应用核心 | `src/isotope/core/session.py` |
-| `CoreTurn` | 对话回合，一条用户消息和一次产品级响应 | 应用核心 | `src/isotope/core/response.py` |
 | `CoreConversationState` | 对话状态，包含 run 列表、回合列表和最新响应 | 应用核心 | `src/isotope/core/response.py` |
 | `CoreTask` | 产品级任务，记录目标并关联一个 conversation | 应用核心 | `src/isotope/core/task.py` |
 | `CoreTaskState` | 任务状态，包含目标、状态、对话和结果摘要 | 应用核心 | `src/isotope/core/task.py` |
+| `CoreTurn` | 对话回合，一条用户消息和一次产品级响应 | 应用核心 | `src/isotope/core/response.py` |
 | `CoreTurnResponse` | 产品级回合响应，只暴露低敏状态、产物引用和摘要 | 应用核心 | `src/isotope/core/response.py` |
-| `TaskFlow` | 任务功能入口，把 core task 包成用户可用的任务摘要流程 | 产品功能 | `src/isotope/features/tasks/flow.py` |
-| `TaskSummary` | 任务摘要，面向用户展示状态、回合数量和结果引用 | 产品功能 | `src/isotope/features/tasks/flow.py` |
-| `isotope-task` | 任务命令行入口，可运行、读取和列出任务摘要 | 应用入口 | `src/isotope/features/tasks/runner.py`, `apps/cli/isotope_task.py` |
-| `POST /tasks` | 任务 API 入口，创建并运行一条任务 | 接口 | `src/isotope/interfaces/http.py` |
-| `GET /tasks` | 任务 API 入口，列出任务摘要 | 接口 | `src/isotope/interfaces/http.py` |
-| `GET /tasks/{task_id}` | 任务 API 入口，读取任务摘要 | 接口 | `src/isotope/interfaces/http.py` |
-| `task index` | 任务摘要索引，持久化低敏任务摘要，供重启后查询 | 产品功能/任务 | `src/isotope/features/tasks/flow.py` |
+| `dashboard` | Supervisor 汇总视图，按需要看、已完成和工作中分组，供人类和后续前端使用 | 产品功能/视图 | `src/isotope/features/supervisor/runner.py` |
+| `empty_state` | 空状态，工作台没有内容时给用户的下一步提示 | 产品功能 | `src/isotope/features/workbench/flow.py` |
+| `event log` | 事件日志，记录系统发生过的事实 | 状态恢复 | `src/isotope/platform/state/event_store.py` |
+| `executor` | 执行器，执行已批准的动作或工具调用 | 执行 | `src/isotope/execution/executor.py` |
+| `ExternalIngestionService` | 外部输入接入，把结构化原始输入保存为 artifact-only 产物 | RAG/接入 | `src/isotope/rag/ingestion.py` |
+| `feature` | 业务功能，如聊天、搜索、工作区、权限 | 产品能力 | 待新目录设计 |
+| `file index` | 文件摘要索引，持久化低敏文件摘要，供重启后查询 | 产品功能/工作区资源 | `src/isotope/features/files/flow.py` |
 | `FileFlow` | 文件功能入口，把文本保存成有摘要和引用的文件记录 | 产品功能 | `src/isotope/features/files/flow.py` |
 | `FileSummary` | 文件摘要，面向用户展示文件名、摘要、产物引用和 run id | 产品功能 | `src/isotope/features/files/flow.py` |
-| `isotope-file` | 文件命令行入口，可创建、读取和列出文件摘要 | 应用入口 | `src/isotope/features/files/runner.py`, `apps/cli/isotope_file.py` |
-| `POST /files` | 文件 API 入口，创建一个文件摘要 | 接口 | `src/isotope/interfaces/http.py` |
 | `GET /files` | 文件 API 入口，列出文件摘要 | 接口 | `src/isotope/interfaces/http.py` |
 | `GET /files/{file_id}` | 文件 API 入口，读取单个文件摘要 | 接口 | `src/isotope/interfaces/http.py` |
-| `file index` | 文件摘要索引，持久化低敏文件摘要，供重启后查询 | 产品功能/工作区资源 | `src/isotope/features/files/flow.py` |
-| `artifact-backed file summary` | 由 artifact 存储承载正文、外层只暴露摘要和引用的文件摘要 | 产品功能/工作区资源 | `src/isotope/features/files/flow.py`, `src/isotope/workspace/artifacts.py` |
-| `ProjectFlow` | 项目功能入口，把任务和文件关联成用户可感知项目摘要 | 产品功能 | `src/isotope/features/projects/flow.py` |
-| `ProjectSummary` | 项目摘要，面向用户展示项目名、摘要、task id 和 file id | 产品功能 | `src/isotope/features/projects/flow.py` |
-| `ProjectDetail` | 项目组合摘要，展开关联 task/file 的低敏摘要信息 | 产品功能 | `src/isotope/features/projects/flow.py` |
-| `ProjectWorkspaceFlow` | 项目工作区组合流，可创建或复用 project，追加 task/file 并返回项目详情和工作台视图 | 产品功能 | `src/isotope/features/projects/workspace.py` |
-| `ProjectWorkspace` | 项目工作区组合结果，包含 `project_detail` 和 `workbench` 两个视图 | 产品功能 | `src/isotope/features/projects/workspace.py` |
-| `isotope-project` | 项目命令行入口，可创建、读取、列出、关联、查看组合摘要、创建 workspace 和追加 workspace 内容 | 应用入口 | `src/isotope/features/projects/runner.py`, `apps/cli/isotope_project.py` |
-| `POST /projects` | 项目 API 入口，创建一个项目摘要 | 接口 | `src/isotope/interfaces/http.py` |
-| `POST /projects/workspace` | 项目工作区 API 入口，一次创建项目、任务、文件并返回两个视图 | 接口 | `src/isotope/interfaces/http.py` |
-| `POST /projects/{project_id}/workspace` | 项目工作区 API 入口，给已有项目追加任务和文件并返回两个视图 | 接口 | `src/isotope/interfaces/http.py` |
 | `GET /projects` | 项目 API 入口，列出项目摘要 | 接口 | `src/isotope/interfaces/http.py` |
 | `GET /projects/{project_id}` | 项目 API 入口，读取单个项目摘要 | 接口 | `src/isotope/interfaces/http.py` |
 | `GET /projects/{project_id}/detail` | 项目 API 入口，读取项目及关联 task/file 低敏摘要 | 接口 | `src/isotope/interfaces/http.py` |
-| `POST /projects/{project_id}/tasks` | 项目 API 入口，把 task id 关联到项目摘要 | 接口 | `src/isotope/interfaces/http.py` |
-| `POST /projects/{project_id}/files` | 项目 API 入口，把 file id 关联到项目摘要 | 接口 | `src/isotope/interfaces/http.py` |
-| `project index` | 项目摘要索引，持久化低敏项目摘要，供重启后查询 | 产品功能/项目 | `src/isotope/features/projects/flow.py` |
-| `SearchFlow` | 搜索功能入口，统一搜索 project/task/file 的低敏摘要，可过滤类型和数量 | 产品功能 | `src/isotope/features/search/flow.py` |
-| `SearchResult` | 搜索结果，包含类型、id、标题、摘要和低敏 item | 产品功能 | `src/isotope/features/search/flow.py` |
-| `isotope-search` | 搜索命令行入口，可搜索低敏摘要并使用 `--type` / `--limit` 控制结果 | 应用入口 | `src/isotope/features/search/runner.py`, `apps/cli/isotope_search.py` |
-| `POST /search` | 搜索 API 入口，按 query 返回低敏摘要结果，支持 `types` 和 `limit` | 接口 | `src/isotope/interfaces/http.py` |
-| `WorkbenchFlow` | 工作台功能入口，聚合 project/task/file 摘要和可选搜索结果 | 产品功能 | `src/isotope/features/workbench/flow.py` |
-| `WorkbenchView` | 工作台视图，包含摘要列表、搜索结果、空状态、最近更新时间和 counts 数量 | 产品功能 | `src/isotope/features/workbench/flow.py` |
-| `empty_state` | 空状态，工作台没有内容时给用户的下一步提示 | 产品功能 | `src/isotope/features/workbench/flow.py` |
-| `updated_at` | 最近更新时间，当前来自项目、任务和文件摘要索引的最新修改时间 | 产品功能 | `src/isotope/features/workbench/flow.py` |
-| `isotope-workbench` | 工作台命令行入口，可读取产品首页低敏汇总 | 应用入口 | `src/isotope/features/workbench/runner.py`, `apps/cli/isotope_workbench.py` |
+| `GET /tasks` | 任务 API 入口，列出任务摘要 | 接口 | `src/isotope/interfaces/http.py` |
+| `GET /tasks/{task_id}` | 任务 API 入口，读取任务摘要 | 接口 | `src/isotope/interfaces/http.py` |
 | `GET /workbench` | 工作台 API 入口，读取无搜索条件的低敏汇总 | 接口 | `src/isotope/interfaces/http.py` |
-| `POST /workbench` | 工作台 API 入口，可带 query/types/limit 读取汇总和搜索结果 | 接口 | `src/isotope/interfaces/http.py` |
-| `workbench demo` | 工作台 demo 场景，展示创建摘要、搜索和工作台汇总流程 | 应用验证 | `src/isotope/demo.py`, `tests/isotope/test_workbench_demo_scenario.py` |
-| `Codex Supervisor` | Codex 监督器，观察和启动本机多个 Codex 进程，输出中文状态和结构化建议 | 产品功能 | `src/isotope/features/supervisor/flow.py` |
-| `isotope-supervisor` | Codex Supervisor 命令行入口，支持扫描、建议面板、supervise 小闭环、定时汇报、变化触发、托管启动、接管 tmux 和发送指令 | 应用入口 | `src/isotope/features/supervisor/runner.py`, `apps/cli/isotope_supervisor.py` |
-| `Codex session` | Codex 会话记录，本机通常保存在 `~/.codex/sessions` | 外部集成 | `src/isotope/features/supervisor/flow.py` |
-| `managed Codex` | Supervisor 启动或接管并登记的 Codex 会话，可通过 pid、tmux session 和日志路径追踪 | 产品功能/外部集成 | `src/isotope/features/supervisor/registry.py` |
-| `recommendation` | 结构化建议，表达下一步建议动作、优先级和目标窗口，不等于自动执行 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
-| `inspect_blocked` | 建议动作，优先查看主动汇报阻塞的窗口 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
-| `inspect_bell` | 建议动作，优先查看刚响铃的托管 tmux 窗口 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
-| `review_done` | 建议动作，优先审阅已完成的窗口 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
-| `advise` | 建议面板命令，输出当前建议和一组命令草案，可显式执行 send 类草案 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
-| `supervise` | 监控小闭环，循环执行扫描、建议、可选 LLM 摘要和显式 send | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
-| `supervisor capability map` | Supervisor 能力地图，登记已实现能力和后续拆分边界 | 文档/产品功能 | `docs/current/supervisor-capability-map.md` |
-| `--execute` | 显式执行参数，当前只允许 `send_status` 和 `send_continue` | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
-| `command_suggestions` | 命令草案列表，给人复制执行，当前可包含 attach、汇报状态和继续推进 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
-| `send` | Supervisor 控制命令，向登记的 tmux Codex 会话发送一行文本并回车 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
-| `adopt` | 接管已有 tmux 会话，把它登记成 Supervisor 可监控和发送指令的 lane | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
-| `tmux` | 本机终端复用工具，可创建可追踪会话，并通过 send-keys 向托管 Codex 发指令 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
-| `attach` | 连接到 tmux 会话查看同一个终端窗口 | 外部集成/人类观察 | `docs/current/codex-supervisor-readonly.md` |
-| `send-keys` | tmux 输入命令，当前用于把文本写入托管 Codex 窗口 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
-| `bell` | tmux 提醒信号，可作为窗口可能结束或需要查看的弱证据 | 外部集成/状态判断 | `src/isotope/features/supervisor/flow.py`, `docs/current/supervisor-capability-map.md` |
-| `managed_bell` | 托管 tmux 会话是否出现过 bell 提醒的结构化字段 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
-| `alert-bell` | tmux bell hook，在窗口响铃时触发并写入 Supervisor 事件文件 | 外部集成/状态判断 | `src/isotope/features/supervisor/bell_events.py`, `src/isotope/features/supervisor/registry.py` |
-| `bell_events.jsonl` | Supervisor bell 事件日志，记录哪个托管 tmux session 响铃 | 产品功能/状态判断 | `src/isotope/features/supervisor/bell_events.py` |
-| `managed_bell_event_at` | 最近一次 tmux bell hook 事件时间 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
-| `SUPERVISOR_STATUS` | 托管 Codex 主动汇报状态的协议锚点，如 working、done、blocked、needs_user | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |
-| `SUPERVISOR_SUMMARY` | 托管 Codex 主动汇报的一句中文状态摘要 | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |
-| `SUPERVISOR_NEXT` | 托管 Codex 主动建议的下一步 | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |
-| `lane state` | 托管窗口状态账本，记录最近状态、最近催促时间和催促次数 | 产品功能/状态判断 | `src/isotope/features/supervisor/lane_state.py` |
-| `--prompt-cooldown` | 催促冷却期，避免短时间重复向同一个 lane 发送状态请求或继续指令 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
-| `LLM summary` | 大模型摘要，把压缩后的窗口状态和结构化建议交给模型生成中文判断 | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
-| `OpenAI-compatible` | 兼容 OpenAI Chat Completions 形状的模型接口 | 模型/外部集成 | `src/isotope/features/supervisor/llm_summary.py` |
-| `LLM pool TOML` | 本机模型号池配置，声明 provider、base URL、model 和 key | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
 | `git worktree` | Git 工作树，同一仓库的独立开发目录，用于多分支并行 | 工作区/开发协作 | `docs/current/status.md`, `AGENTS.md` |
-| `assistant` | 助手，只作为产品描述或历史术语，不作为新目录叙事 | 产品描述/历史术语 | 已删除旧目录 |
-| `agent loop` | 智能体循环，AI 多步规划、调用工具、读取结果并继续执行 | 应用/智能体 | `src/isotope/agents/loop/step.py`, `docs/features/` |
-| `app_friction` | 应用摩擦，应用层试跑暴露的卡点或待收束问题 | 应用验证 | `src/isotope/demo.py`, `docs/features/` |
-| `planner` | 规划器，把用户目标转成可执行步骤或工具选择 | 智能体 | `docs/architecture/planner-input-output-contract-v0.2.md`, `src/isotope/agents/loop/planner_adapter.py` |
-| `planner adapter` | 规划器适配层，把规划输出接到现有执行循环 | 智能体 | `src/isotope/agents/loop/planner_adapter.py` |
-| `tick policy` | 步进策略，决定智能体循环每轮是否继续、暂停或停止 | 智能体 | `src/isotope/agents/loop/control.py`, `docs/architecture/agent-loop-tick-policy-boundary-v0.2.md` |
-| `executor` | 执行器，执行已批准的动作或工具调用 | 执行 | `src/isotope/execution/executor.py` |
-| `ActionCompiler` | 动作编译器，把紧凑意图转换成可审批的动作提案 | 运行时 | `src/isotope/runtime/action_compiler.py` |
-| `tool call` | 工具调用，模型请求系统执行某个能力 | 模型/工具 | `src/isotope/llm/provider.py`, `src/isotope/llm/tool_bridge.py` |
-| `terminal_exec` | 终端执行能力，受控运行命令并返回产物 | 工具 | `src/isotope/platform/registry/actions.py` |
-| `terminal backend` | 终端后端，历史定位词；活跃实现已作为终端执行器维护 | 工具 | `src/isotope/execution/terminal_runner.py` |
-| `provider` | 模型服务适配器，连接外部模型服务 | 模型 | `src/isotope/llm/provider.py` |
-| `product chat` | 产品聊天流程，让模型调用工具并返回面向用户的回答 | 产品能力 | `src/isotope/features/chat/flow.py` |
-| `CLI` | 命令行入口，给人类和部署脚本直接调用 | 应用入口 | `apps/cli/`, `pyproject.toml` |
-| `ASGI` | Python Web 服务通用接口，后续可由 Uvicorn 等服务托管 | 后端入口 | `src/isotope/apps/api.py` |
-| `ApiApp` | ASGI 兼容后端应用边界，当前转发到进程内 HTTP facade | 后端入口 | `src/isotope/apps/api.py` |
-| `query string` | URL 中 `?` 后的查询参数，当前由 ASGI 入口转成内部 JSON body | 后端入口 | `src/isotope/apps/api.py` |
-| `isotope-api` | API 命令行入口，当前用于检查后端路由 | 应用入口 | `src/isotope/apps/api.py`, `apps/api/isotope_api.py` |
 | `HttpApiApp` | 进程内 HTTP 风格接口，用于测试和应用边界，不监听端口 | 接口 | `src/isotope/interfaces/http.py` |
 | `InProcessServer` | 进程内运行入口，串起会话、run、策略、执行和状态读取 | 运行时 | `src/isotope/runtime/in_process.py` |
-| `CanonicalEvent` | 标准事件，所有状态回放的事实来源 | 平台事件 | `src/isotope/platform/events/events.py` |
-| `artifact` | 产物记录，保存执行结果摘要和引用 | 平台数据 | `src/isotope/platform/schemas/artifacts.py` |
-| `ArtifactStore` | 产物存储，负责保存和读取 artifact 元数据与内容 | 工作区资源 | `src/isotope/workspace/artifacts.py` |
-| `ResourceRef` | 资源引用，指向产物等对象而不是直接暴露全文 | 平台数据 | `src/isotope/platform/schemas/refs.py` |
-| `RetrievalService` | 检索服务，按权限读取产物摘要或内容 | RAG/检索 | `src/isotope/rag/retrieval.py` |
-| `ExternalIngestionService` | 外部输入接入，把结构化原始输入保存为 artifact-only 产物 | RAG/接入 | `src/isotope/rag/ingestion.py` |
-| `checkpoint` | 检查点，用于恢复运行状态 | 状态恢复 | `src/isotope/platform/state/checkpoint_store.py` |
-| `event log` | 事件日志，记录系统发生过的事实 | 状态恢复 | `src/isotope/platform/state/event_store.py` |
-| `projector` | 投影器，把事件日志重建成可读状态 | 状态恢复 | `src/isotope/platform/state/projector.py` |
-| `RunState` | 运行状态，投影后的当前视图 | 状态恢复 | `src/isotope/platform/state/projector.py` |
-| `ToolInvocation` | 工具调用协议对象，给内部工具处理器传递参数 | 平台 schema | `src/isotope/platform/schemas/tool_protocol.py` |
-| `ActionTypeRegistry` | 动作类型注册表，记录工具元数据、能力要求和版本信息 | 平台注册表 | `src/isotope/platform/registry/actions.py` |
-| `new_id` | 简单 ID 生成器，给测试和进程内运行生成稳定前缀 ID | 平台工具 | `src/isotope/platform/ids.py` |
+| `inspect_bell` | 建议动作，优先查看刚响铃的托管 tmux 窗口 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
+| `inspect_blocked` | 建议动作，优先查看主动汇报阻塞的窗口 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
+| `isotope-api` | API 命令行入口，当前用于检查后端路由 | 应用入口 | `src/isotope/apps/api.py`, `apps/api/isotope_api.py` |
+| `isotope-file` | 文件命令行入口，可创建、读取和列出文件摘要 | 应用入口 | `src/isotope/features/files/runner.py`, `apps/cli/isotope_file.py` |
+| `isotope-project` | 项目命令行入口，可创建、读取、列出、关联、查看组合摘要、创建 workspace 和追加 workspace 内容 | 应用入口 | `src/isotope/features/projects/runner.py`, `apps/cli/isotope_project.py` |
+| `isotope-search` | 搜索命令行入口，可搜索低敏摘要并使用 `--type` / `--limit` 控制结果 | 应用入口 | `src/isotope/features/search/runner.py`, `apps/cli/isotope_search.py` |
+| `isotope-supervisor` | Codex Supervisor 命令行入口，支持扫描、dashboard 汇总、建议面板、supervise 小闭环、定时汇报、变化触发、托管启动、接管 tmux 和发送指令 | 应用入口 | `src/isotope/features/supervisor/runner.py`, `apps/cli/isotope_supervisor.py` |
+| `isotope-task` | 任务命令行入口，可运行、读取和列出任务摘要 | 应用入口 | `src/isotope/features/tasks/runner.py`, `apps/cli/isotope_task.py` |
+| `isotope-workbench` | 工作台命令行入口，可读取产品首页低敏汇总 | 应用入口 | `src/isotope/features/workbench/runner.py`, `apps/cli/isotope_workbench.py` |
 | `IsotopeError` | 结构化错误，给 HTTP 和 helper 返回稳定错误码 | 平台错误 | `src/isotope/platform/errors.py` |
 | `KernelError` | 旧结构化错误名，仅作为兼容别名保留 | 兼容入口 | `src/isotope/platform/errors.py` |
-| `policy` | 权限策略，决定动作是否允许、暂停或拒绝 | 安全/权限 | `src/isotope/policy/` |
-| `approval` | 人工确认，敏感动作执行前的暂停和恢复机制 | 权限/产品 | `src/isotope/runtime/in_process.py` |
-| `capability` | 能力，产品可发现、可运行的功能单元 | 产品能力 | `src/isotope/capabilities/catalog.py` |
-| `capability runner` | 能力运行器，用命令行方式搜索能力、生成计划或启动能力 | 产品能力 | `src/isotope/capabilities/runner.py`, `isotope-capability` |
-| `Codex task` | Codex 任务，把外部 Codex 执行封装成可路由能力 | 工具/任务 | `src/isotope/integrations/codex/task.py`, `src/isotope/integrations/codex/cli.py` |
-| `workspace` | 工作区，任务运行时读写资源的边界 | 产品/资源 | `src/isotope/workspace/` |
+| `lane state` | 托管窗口状态账本，记录最近状态、最近催促时间和催促次数 | 产品功能/状态判断 | `src/isotope/features/supervisor/lane_state.py` |
+| `LLM pool TOML` | 本机模型号池配置，声明 provider、base URL、model 和 key | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
+| `LLM summary` | 大模型摘要，把压缩后的窗口状态和结构化建议交给模型生成中文判断 | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
+| `managed Codex` | Supervisor 启动或接管并登记的 Codex 会话，可通过 pid、tmux session 和日志路径追踪 | 产品功能/外部集成 | `src/isotope/features/supervisor/registry.py` |
+| `managed_bell` | 托管 tmux 会话是否出现过 bell 提醒的结构化字段 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
+| `managed_bell_event_at` | 最近一次 tmux bell hook 事件时间 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
 | `memory` | 记忆，后续用于保存和查询长期上下文 | 智能体 | `src/isotope/memory/` |
+| `needs_attention` | dashboard 分组字段，表示需要人类或管理层优先查看的窗口 | 产品功能/视图 | `src/isotope/features/supervisor/runner.py` |
+| `new_id` | 简单 ID 生成器，给测试和进程内运行生成稳定前缀 ID | 平台工具 | `src/isotope/platform/ids.py` |
+| `OpenAI-compatible` | 兼容 OpenAI Chat Completions 形状的模型接口 | 模型/外部集成 | `src/isotope/features/supervisor/llm_summary.py` |
+| `planner` | 规划器，把用户目标转成可执行步骤或工具选择 | 智能体 | `docs/architecture/planner-input-output-contract-v0.2.md`, `src/isotope/agents/loop/planner_adapter.py` |
+| `planner adapter` | 规划器适配层，把规划输出接到现有执行循环 | 智能体 | `src/isotope/agents/loop/planner_adapter.py` |
+| `policy` | 权限策略，决定动作是否允许、暂停或拒绝 | 安全/权限 | `src/isotope/policy/` |
+| `POST /files` | 文件 API 入口，创建一个文件摘要 | 接口 | `src/isotope/interfaces/http.py` |
+| `POST /projects` | 项目 API 入口，创建一个项目摘要 | 接口 | `src/isotope/interfaces/http.py` |
+| `POST /projects/workspace` | 项目工作区 API 入口，一次创建项目、任务、文件并返回两个视图 | 接口 | `src/isotope/interfaces/http.py` |
+| `POST /projects/{project_id}/files` | 项目 API 入口，把 file id 关联到项目摘要 | 接口 | `src/isotope/interfaces/http.py` |
+| `POST /projects/{project_id}/tasks` | 项目 API 入口，把 task id 关联到项目摘要 | 接口 | `src/isotope/interfaces/http.py` |
+| `POST /projects/{project_id}/workspace` | 项目工作区 API 入口，给已有项目追加任务和文件并返回两个视图 | 接口 | `src/isotope/interfaces/http.py` |
+| `POST /search` | 搜索 API 入口，按 query 返回低敏摘要结果，支持 `types` 和 `limit` | 接口 | `src/isotope/interfaces/http.py` |
+| `POST /tasks` | 任务 API 入口，创建并运行一条任务 | 接口 | `src/isotope/interfaces/http.py` |
+| `POST /workbench` | 工作台 API 入口，可带 query/types/limit 读取汇总和搜索结果 | 接口 | `src/isotope/interfaces/http.py` |
+| `product chat` | 产品聊天流程，让模型调用工具并返回面向用户的回答 | 产品能力 | `src/isotope/features/chat/flow.py` |
+| `ProductCore` | 产品主流程门面，先包住单进程运行时供上层调用 | 应用核心 | `src/isotope/core/conversation.py` |
+| `project index` | 项目摘要索引，持久化低敏项目摘要，供重启后查询 | 产品功能/项目 | `src/isotope/features/projects/flow.py` |
+| `ProjectDetail` | 项目组合摘要，展开关联 task/file 的低敏摘要信息 | 产品功能 | `src/isotope/features/projects/flow.py` |
+| `ProjectFlow` | 项目功能入口，把任务和文件关联成用户可感知项目摘要 | 产品功能 | `src/isotope/features/projects/flow.py` |
+| `projector` | 投影器，把事件日志重建成可读状态 | 状态恢复 | `src/isotope/platform/state/projector.py` |
+| `ProjectSummary` | 项目摘要，面向用户展示项目名、摘要、task id 和 file id | 产品功能 | `src/isotope/features/projects/flow.py` |
+| `ProjectWorkspace` | 项目工作区组合结果，包含 `project_detail` 和 `workbench` 两个视图 | 产品功能 | `src/isotope/features/projects/workspace.py` |
+| `ProjectWorkspaceFlow` | 项目工作区组合流，可创建或复用 project，追加 task/file 并返回项目详情和工作台视图 | 产品功能 | `src/isotope/features/projects/workspace.py` |
+| `provider` | 模型服务适配器，连接外部模型服务 | 模型 | `src/isotope/llm/provider.py` |
+| `query string` | URL 中 `?` 后的查询参数，当前由 ASGI 入口转成内部 JSON body | 后端入口 | `src/isotope/apps/api.py` |
 | `RAG` | 检索增强生成，先检索资料再让模型回答 | 应用能力 | `src/isotope/rag/` |
+| `recommendation` | 结构化建议，表达下一步建议动作、优先级和目标窗口，不等于自动执行 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
+| `ResourceRef` | 资源引用，指向产物等对象而不是直接暴露全文 | 平台数据 | `src/isotope/platform/schemas/refs.py` |
+| `RetrievalService` | 检索服务，按权限读取产物摘要或内容 | RAG/检索 | `src/isotope/rag/retrieval.py` |
+| `review_done` | 建议动作，优先审阅已完成的窗口 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
+| `RunState` | 运行状态，投影后的当前视图 | 状态恢复 | `src/isotope/platform/state/projector.py` |
+| `RuntimeDispatch` | 运行时调度薄层，把产品级调用转发到当前运行入口 | 应用核心 | `src/isotope/core/dispatch.py` |
+| `SearchFlow` | 搜索功能入口，统一搜索 project/task/file 的低敏摘要，可过滤类型和数量 | 产品功能 | `src/isotope/features/search/flow.py` |
+| `SearchResult` | 搜索结果，包含类型、id、标题、摘要和低敏 item | 产品功能 | `src/isotope/features/search/flow.py` |
+| `send` | Supervisor 控制命令，向登记的 tmux Codex 会话发送一行文本并回车 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
+| `send-keys` | tmux 输入命令，当前用于把文本写入托管 Codex 窗口 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
+| `supervise` | 监控小闭环，循环执行扫描、建议、可选 LLM 摘要和显式 send | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
+| `supervisor capability map` | Supervisor 能力地图，登记已实现能力和后续拆分边界 | 文档/产品功能 | `docs/current/supervisor-capability-map.md` |
+| `SUPERVISOR_NEXT` | 托管 Codex 主动建议的下一步 | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |
+| `SUPERVISOR_STATUS` | 托管 Codex 主动汇报状态的协议锚点，如 working、done、blocked、needs_user | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |
+| `SUPERVISOR_SUMMARY` | 托管 Codex 主动汇报的一句中文状态摘要 | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |
+| `task index` | 任务摘要索引，持久化低敏任务摘要，供重启后查询 | 产品功能/任务 | `src/isotope/features/tasks/flow.py` |
+| `TaskFlow` | 任务功能入口，把 core task 包成用户可用的任务摘要流程 | 产品功能 | `src/isotope/features/tasks/flow.py` |
+| `TaskSummary` | 任务摘要，面向用户展示状态、回合数量和结果引用 | 产品功能 | `src/isotope/features/tasks/flow.py` |
+| `terminal backend` | 终端后端，历史定位词；活跃实现已作为终端执行器维护 | 工具 | `src/isotope/execution/terminal_runner.py` |
+| `terminal_exec` | 终端执行能力，受控运行命令并返回产物 | 工具 | `src/isotope/platform/registry/actions.py` |
+| `tick policy` | 步进策略，决定智能体循环每轮是否继续、暂停或停止 | 智能体 | `src/isotope/agents/loop/control.py`, `docs/architecture/agent-loop-tick-policy-boundary-v0.2.md` |
+| `tmux` | 本机终端复用工具，可创建可追踪会话，并通过 send-keys 向托管 Codex 发指令 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
+| `tool call` | 工具调用，模型请求系统执行某个能力 | 模型/工具 | `src/isotope/llm/provider.py`, `src/isotope/llm/tool_bridge.py` |
+| `ToolInvocation` | 工具调用协议对象，给内部工具处理器传递参数 | 平台 schema | `src/isotope/platform/schemas/tool_protocol.py` |
+| `updated_at` | 最近更新时间，当前来自项目、任务和文件摘要索引的最新修改时间 | 产品功能 | `src/isotope/features/workbench/flow.py` |
+| `workbench demo` | 工作台 demo 场景，展示创建摘要、搜索和工作台汇总流程 | 应用验证 | `src/isotope/demo.py`, `tests/isotope/test_workbench_demo_scenario.py` |
+| `WorkbenchFlow` | 工作台功能入口，聚合 project/task/file 摘要和可选搜索结果 | 产品功能 | `src/isotope/features/workbench/flow.py` |
+| `WorkbenchView` | 工作台视图，包含摘要列表、搜索结果、空状态、最近更新时间和 counts 数量 | 产品功能 | `src/isotope/features/workbench/flow.py` |
 | `workflow` | 工作流，多个步骤组成的任务流程 | 应用能力 | 待新目录设计 |
-| `feature` | 业务功能，如聊天、搜索、工作区、权限 | 产品能力 | 待新目录设计 |
+| `workspace` | 工作区，任务运行时读写资源的边界 | 产品/资源 | `src/isotope/workspace/` |
 
 后续整理文档时，应继续补充：
 

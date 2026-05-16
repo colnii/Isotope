@@ -62,6 +62,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     登记成托管 lane；`--llm-summary` 可通过本机
     TOML 号池做智能摘要；`scan --json` 包含结构化建议；
     `advise` 可单独输出建议和命令草案，并可显式执行 send 类草案；
+    `dashboard` 可按需要看、已完成和工作中分组输出；
     `supervise` 可循环执行扫描、建议、可选 LLM 摘要和显式 send；
     `send` 可向托管 tmux 会话发送一行指令；`scan` 已能把托管
     tmux 会话的 bell（提醒）信号写入 plain、JSON 和 LLM 摘要输入；
@@ -100,6 +101,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2 --trace
 PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario workbench --trace
 PYTHONPATH=src .venv/bin/python -m isotope.apps.api routes --root /tmp/isotope-api --json
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --limit 3
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard --limit 3
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --limit 3 --json
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner advise
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise --iterations 1 --llm-summary --json

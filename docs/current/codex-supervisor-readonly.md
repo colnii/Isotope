@@ -1,14 +1,18 @@
 # Codex Supervisor 监控与托管
 
-状态：`第二版小切片 / 本机监控 + LLM 摘要 + 显式控制通道`
+状态：`第二版小切片 / LLM 管理层 + 本机监控 + 显式控制通道`
 
 能力登记和后续拆分边界见
 [Codex Supervisor 能力地图](./supervisor-capability-map.md)。
 
 ## 目标
 
-Codex Supervisor 用来观察、启动和轻量管理本机多个 Codex 进程。
-当前仍以读取和汇报为主，但已能向自己托管的 tmux 会话发送一行指令。
+Codex Supervisor 是后续 Isotope 的核心管理层。
+目标不是把它做成纯规则脚本，而是让 LLM 参与判断和调度，
+再用规则、事件、冷却和白名单执行做工程护栏。
+
+当前它能观察、启动和轻量管理本机多个 Codex 进程。
+现阶段仍以读取、汇报和受控发送为主。
 
 它解决的问题是：
 
@@ -25,6 +29,7 @@ Codex Supervisor 用来观察、启动和轻量管理本机多个 Codex 进程�
 - 输出中文报告，也支持 JSON。
 - JSON 输出包含 `recommendation` 结构化建议，供后续半自动管理复用。
 - `advise` 可只输出当前建议和可复制命令草案。
+- `dashboard` 可按 `需要看`、`已完成`、`工作中` 分组显示。
 - `supervise` 可按间隔循环执行扫描、建议、可选 LLM 摘要和显式 send。
 - `--prompt-cooldown` 可避免短时间重复催促同一个托管 lane。
 - `watch --changes-only` 可持续运行，只在会话状态变化时重新输出。
@@ -45,6 +50,7 @@ Codex Supervisor 用来观察、启动和轻量管理本机多个 Codex 进程�
 
 ```bash
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner advise
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise --interval 180 --llm-summary
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --interval 180
@@ -59,6 +65,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --nam
 
 ```bash
 .venv/bin/isotope-supervisor scan
+.venv/bin/isotope-supervisor dashboard
 .venv/bin/isotope-supervisor advise
 .venv/bin/isotope-supervisor supervise --interval 180 --llm-summary
 .venv/bin/isotope-supervisor watch --interval 180
@@ -73,7 +80,15 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --nam
 
 ```bash
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --json
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard --json
 ```
+
+`dashboard` 是面向人类和后续前端的汇总视图：
+
+- `needs_attention`：需要看的窗口，包含阻塞、等待用户、报错、停住和 bell。
+- `done`：主动汇报完成的窗口。
+- `working`：仍在推进或暂无明显异常的窗口。
+- JSON 保留 session id、状态、tmux session、bell、摘要和下一步字段。
 
 `scan --json` 里的 `recommendation` 当前只表达建议动作：
 
@@ -196,8 +211,9 @@ tmux attach -t isotope-lane-a
 - `recommendation` 只表示建议动作，不会自动调用 `send`。
 - `advise` 默认只生成命令草案；`--execute` 只允许执行
   `send_status` 和 `send_continue`。
-- `supervise` 可循环监控，但不会让 LLM 自由决定执行任意命令。
-- 当前不会自己无限自动续跑；发指令仍受 `--execute` 白名单限制。
+- `supervise` 可循环监控；LLM 决策必须落到白名单动作上。
+- 当前的自动执行仍受 `--execute` 白名单限制。
+- 后续 LLM 可以参与选择动作，但动作必须落到可审计的白名单能力上。
 - bell 只作为弱信号，不直接改变状态，也不自动触发发送。
 - bell hook 只写事件文件，不直接发指令。
 - 状态协议只增强可观察性，当前不直接触发自动发送。
@@ -205,4 +221,4 @@ tmux attach -t isotope-lane-a
 - 不直接检查 SSH 服务器内部进程。
 - 不把完整日志发给 LLM，只发送短摘要和状态字段。
 
-后续再细化 LLM 决策策略和自动执行边界。
+后续继续细化 LLM 决策策略、自动执行边界和前端视图。

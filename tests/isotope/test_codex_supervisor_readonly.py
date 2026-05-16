@@ -348,6 +348,141 @@ def test_codex_supervisor_runner_scan_prints_json(tmp_path, capsys):
     assert payload["sessions"][0]["session_id"] == "active-session"
 
 
+def test_codex_supervisor_runner_dashboard_json_groups_lanes(tmp_path, capsys):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-blocked.jsonl",
+        session_id="blocked-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "\n".join(
+                    [
+                        "SUPERVISOR_STATUS: blocked",
+                        "SUPERVISOR_SUMMARY: 测试环境缺少 tmux。",
+                        "SUPERVISOR_NEXT: 需要人工查看环境。",
+                    ]
+                ),
+            )
+        ],
+    )
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-done.jsonl",
+        session_id="done-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _assistant_message(
+                "2026-05-16T11:58:20Z",
+                "\n".join(
+                    [
+                        "SUPERVISOR_STATUS: done",
+                        "SUPERVISOR_SUMMARY: 文档已完成。",
+                    ]
+                ),
+            )
+        ],
+    )
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-active.jsonl",
+        session_id="active-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _event(
+                "2026-05-16T11:57:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "running tests"},
+            )
+        ],
+    )
+
+    exit_code = supervisor_main(
+        [
+            "dashboard",
+            "--codex-home",
+            str(codex_home),
+            "--limit",
+            "10",
+            "--stale-after",
+            "999999",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["recommendation"]["action"] == "inspect_blocked"
+    assert payload["counts"] == {
+        "needs_attention": 1,
+        "done": 1,
+        "working": 1,
+    }
+    assert [item["session_id"] for item in payload["groups"]["needs_attention"]] == [
+        "blocked-session"
+    ]
+    assert [item["session_id"] for item in payload["groups"]["done"]] == ["done-session"]
+    assert [item["session_id"] for item in payload["groups"]["working"]] == [
+        "active-session"
+    ]
+    assert payload["groups"]["needs_attention"][0]["supervisor_summary"] == (
+        "测试环境缺少 tmux。"
+    )
+
+
+def test_codex_supervisor_runner_dashboard_plain_is_grouped(tmp_path, capsys):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-blocked.jsonl",
+        session_id="blocked-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "\n".join(
+                    [
+                        "SUPERVISOR_STATUS: blocked",
+                        "SUPERVISOR_SUMMARY: 测试环境缺少 tmux。",
+                    ]
+                ),
+            )
+        ],
+    )
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-done.jsonl",
+        session_id="done-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _assistant_message(
+                "2026-05-16T11:58:20Z",
+                "\n".join(
+                    [
+                        "SUPERVISOR_STATUS: done",
+                        "SUPERVISOR_SUMMARY: 文档已完成。",
+                    ]
+                ),
+            )
+        ],
+    )
+
+    exit_code = supervisor_main(["dashboard", "--codex-home", str(codex_home)])
+
+    assert exit_code == 0
+    text = capsys.readouterr().out
+    assert "[Codex Supervisor dashboard]" in text
+    assert "建议：先查看主动汇报阻塞的窗口。" in text
+    assert "需要看：1" in text
+    assert "已完成：1" in text
+    assert "工作中：0" in text
+    assert "blocked-session blocked / 测试环境缺少 tmux。" in text
+    assert "done-session done / 文档已完成。" in text
+
+
 def test_codex_supervisor_runner_advise_prints_json_command_suggestion(tmp_path, capsys):
     codex_home = tmp_path / ".codex"
     _write_session(
