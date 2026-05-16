@@ -151,10 +151,22 @@
     `recommendation` 建议对象，LLM 摘要输入也会携带该对象。
 73. Codex Supervisor 建议面板：`isotope-supervisor advise` 可只输出
     当前建议和多条命令草案，不自动执行。
+74. Codex Supervisor 显式执行：`advise --execute send_status` 和
+    `advise --execute send_continue` 可执行对应 send 类草案。
 
-## 最近完成：Codex Supervisor 建议面板
+## 最近完成：Codex Supervisor 显式执行
 
 完成内容：
+
+- `advise --execute send_status` 会向托管 tmux lane 发送“请汇报当前状态”。
+- `advise --execute send_continue` 会向托管 tmux lane 发送继续推进指令。
+- `--execute` 只支持 `send_status` 和 `send_continue`。
+- `tmux_attach` 和 `watch_changes` 仍只作为命令草案，不会被执行。
+- 执行仍复用 `send_to_managed_codex`，不解析 shell 字符串。
+- 同步 [terminology](./terminology.md) 和
+  [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
+
+上一批已完成：
 
 - `advise` 复用 `scan` 的状态判断，只输出当前建议。
 - `advise --json` 输出 `recommendation`、兼容字段
@@ -163,12 +175,6 @@
 - 能定位到托管 tmux 目标时，会给出 `tmux attach`、
   汇报状态和继续推进三类草案。
 - `advise` 不执行命令，也不自动调用 `send`。
-- 同步 [application-structure-plan](./application-structure-plan.md)、
-  [terminology](./terminology.md)、[status](./status.md) 和
-  [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
-
-上一批已完成：
-
 - `scan --json` 新增 `recommendation` 对象，包含 action、priority、
   target_session_id、target_name、reason 和 send_text。
 - 当前建议动作包括 `review_user_prompt`、`inspect_error`、

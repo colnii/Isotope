@@ -14,6 +14,12 @@ from .flow import CodexSupervisorFlow, render_plain_report
 from .llm_summary import generate_llm_summary, resolve_summary_provider_from_env
 from .registry import launch_managed_codex, send_to_managed_codex
 
+EXECUTABLE_ADVICE_KINDS = {"send_status", "send_continue"}
+EXECUTABLE_ADVICE_TEXT = {
+    "send_status": "请汇报当前状态",
+    "send_continue": "继续推进，并在完成后汇报当前状态",
+}
+
 
 def _print_json(payload: dict[str, Any]) -> None:
     print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
@@ -52,6 +58,11 @@ def _build_parser() -> argparse.ArgumentParser:
             action="store_true",
             help="Use configured LLM to add a compact Chinese summary.",
         )
+    advise_parser = subparsers.choices["advise"]
+    advise_parser.add_argument(
+        "--execute",
+        help="Execute one generated send suggestion. Supports send_status or send_continue.",
+    )
     watch_parser = subparsers.choices["watch"]
     watch_parser.add_argument(
         "--interval",
@@ -235,6 +246,8 @@ def _print_advice(args: argparse.Namespace) -> None:
         active_within_seconds=args.active_within,
     )
     payload = _advice_payload(report)
+    if args.execute:
+        payload["executed"] = _execute_advice(args, report, payload)
     if args.json:
         _print_json(payload)
         return
@@ -250,6 +263,8 @@ def _print_advice(args: argparse.Namespace) -> None:
         print("命令：暂无可安全生成的命令草案。")
     else:
         print(f"命令：{command_suggestion['command']}")
+    if executed := payload.get("executed"):
+        print(f"已执行：{executed['command']}")
 
 
 def _advice_payload(report: Any) -> dict[str, Any]:
@@ -329,6 +344,50 @@ def _first_managed_tmux_session(report: Any) -> Any | None:
     for session in report.sessions:
         if session.managed_tmux_session:
             return session
+    return None
+
+
+def _execute_advice(
+    args: argparse.Namespace,
+    report: Any,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    kind = str(args.execute)
+    if kind not in EXECUTABLE_ADVICE_KINDS:
+        supported = ", ".join(sorted(EXECUTABLE_ADVICE_KINDS))
+        raise ValueError(f"execute supports only: {supported}")
+    suggestion = _suggestion_by_kind(payload["command_suggestions"], kind)
+    if suggestion is None:
+        raise ValueError(f"no generated command suggestion for: {kind}")
+    target = _target_session(report, report.recommendation.target_session_id)
+    if target is None or not target.managed_name:
+        target = _first_managed_tmux_session(report)
+    if target is None or not target.managed_name:
+        raise ValueError(f"no managed tmux target for: {kind}")
+    result = send_to_managed_codex(
+        codex_home=Path(args.codex_home),
+        name=target.managed_name,
+        text=EXECUTABLE_ADVICE_TEXT[kind],
+        run=subprocess.run,
+    )
+    return {
+        "kind": kind,
+        "command": suggestion["command"],
+        "text": result.text,
+        "managed": {
+            "name": result.record.name,
+            "record_id": result.record.record_id,
+            "tmux_session": result.record.tmux_session,
+        },
+    }
+
+
+def _suggestion_by_kind(
+    suggestions: list[dict[str, str]], kind: str
+) -> dict[str, str] | None:
+    for suggestion in suggestions:
+        if suggestion["kind"] == kind:
+            return suggestion
     return None
 
 

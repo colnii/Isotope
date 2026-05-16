@@ -63,7 +63,8 @@
 | `Codex session` | Codex 会话记录，本机通常保存在 `~/.codex/sessions` | 外部集成 | `src/isotope/features/supervisor/flow.py` |
 | `managed Codex` | Supervisor 启动并登记的 Codex 进程，可通过 pid、tmux session 和日志路径追踪 | 产品功能/外部集成 | `src/isotope/features/supervisor/registry.py` |
 | `recommendation` | 结构化建议，表达下一步建议动作、优先级和目标窗口，不等于自动执行 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
-| `advise` | 建议面板命令，只输出当前建议和一组命令草案，不执行命令 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
+| `advise` | 建议面板命令，输出当前建议和一组命令草案，可显式执行 send 类草案 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
+| `--execute` | 显式执行参数，当前只允许 `send_status` 和 `send_continue` | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `command_suggestions` | 命令草案列表，给人复制执行，当前可包含 attach、汇报状态和继续推进 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `send` | Supervisor 控制命令，向登记的 tmux Codex 会话发送一行文本并回车 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
 | `tmux` | 本机终端复用工具，可创建可追踪会话，并通过 send-keys 向托管 Codex 发指令 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |

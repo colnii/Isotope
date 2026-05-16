@@ -73,13 +73,18 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --jso
 ```bash
 .venv/bin/isotope-supervisor advise
 .venv/bin/isotope-supervisor advise --json
+.venv/bin/isotope-supervisor advise --execute send_status
+.venv/bin/isotope-supervisor advise --execute send_continue
 ```
 
 它只输出建议、动作、优先级和命令草案。
 `advise --json` 会保留兼容字段 `command_suggestion`，
 并用 `command_suggestions` 返回多条候选命令。
 托管 tmux lane 会生成 attach、汇报状态和继续推进三类草案。
-命令草案需要人复制执行，不会被自动运行。
+默认只生成草案，不会自动运行。
+显式传入 `--execute send_status` 或 `--execute send_continue` 时，
+只会执行对应的 `send` 类草案；`tmux_attach` 和 `watch_changes`
+不会被 `--execute` 执行。
 
 LLM 摘要：
 
@@ -131,7 +136,8 @@ api_keys = [
 - 不接管普通终端窗口；`launch` 启动的是托管 Codex 进程或 tmux 会话。
 - `send` 只支持 Supervisor 自己登记的 tmux 会话，不接管手动打开的窗口。
 - `recommendation` 只表示建议动作，不会自动调用 `send`。
-- `advise` 只生成命令草案，不会执行命令。
+- `advise` 默认只生成命令草案；`--execute` 只允许执行
+  `send_status` 和 `send_continue`。
 - 当前不会自己连续追问或自动续跑；发指令仍由用户或后续策略触发。
 - 不直接检查 SSH 服务器内部进程。
 - 不把完整日志发给 LLM，只发送短摘要和状态字段。
