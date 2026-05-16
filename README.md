@@ -20,7 +20,9 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -e ".[test]"
 .venv/bin/python -m pytest tests/isotope -q
 .venv/bin/python -m isotope.demo --scenario v0.2 --trace
+.venv/bin/python -m isotope.features.supervisor.runner scan --limit 3
 .venv/bin/isotope-demo --scenario v0.2 --trace
+.venv/bin/isotope-supervisor scan --limit 3
 ```
 
 ## 当前可用能力
@@ -29,6 +31,7 @@ python3 -m venv .venv
 - 受控工具调用和终端命令执行的基础路径。
 - 模型服务适配器的基础封装。
 - 若干演示场景，用来验证底座能力是否仍可运行。
+- Codex Supervisor 只读版，可观察本机多个 Codex 会话并输出中文汇报。
 
 这些能力是产品的基础，不是产品的全部。
 
@@ -44,6 +47,7 @@ python3 -m venv .venv
 - 当前状态：[docs/current/status.md](docs/current/status.md)
 - 文档地图：[docs/current/docs-map.md](docs/current/docs-map.md)
 - 整备队列：[docs/current/agent-task-queue.md](docs/current/agent-task-queue.md)
+- Codex Supervisor：[docs/current/codex-supervisor-readonly.md](docs/current/codex-supervisor-readonly.md)
 
 ## 术语
 

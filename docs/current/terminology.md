@@ -58,6 +58,10 @@
 | `GET /workbench` | 工作台 API 入口，读取无搜索条件的低敏汇总 | 接口 | `src/isotope/interfaces/http.py` |
 | `POST /workbench` | 工作台 API 入口，可带 query/types/limit 读取汇总和搜索结果 | 接口 | `src/isotope/interfaces/http.py` |
 | `workbench demo` | 工作台 demo 场景，展示创建摘要、搜索和工作台汇总流程 | 应用验证 | `src/isotope/demo.py`, `tests/isotope/test_workbench_demo_scenario.py` |
+| `Codex Supervisor` | Codex 监督器，观察本机多个 Codex 会话并输出中文状态汇报 | 产品功能 | `src/isotope/features/supervisor/flow.py` |
+| `isotope-supervisor` | Codex Supervisor 命令行入口，支持一次扫描和定时汇报 | 应用入口 | `src/isotope/features/supervisor/runner.py`, `apps/cli/isotope_supervisor.py` |
+| `Codex session` | Codex 会话记录，本机通常保存在 `~/.codex/sessions` | 外部集成 | `src/isotope/features/supervisor/flow.py` |
+| `git worktree` | Git 工作树，同一仓库的独立开发目录，用于多分支并行 | 工作区/开发协作 | `docs/current/status.md`, `AGENTS.md` |
 | `assistant` | 助手，只作为产品描述或历史术语，不作为新目录叙事 | 产品描述/历史术语 | 已删除旧目录 |
 | `agent loop` | 智能体循环，AI 多步规划、调用工具、读取结果并继续执行 | 应用/智能体 | `src/isotope/agents/loop/step.py`, `docs/features/` |
 | `app_friction` | 应用摩擦，应用层试跑暴露的卡点或待收束问题 | 应用验证 | `src/isotope/demo.py`, `docs/features/` |

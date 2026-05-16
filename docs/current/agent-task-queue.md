@@ -137,35 +137,38 @@
     `interfaces/http.py`，不监听端口，也不引入完整 FastAPI 服务。
 69. apps/api 请求体验：ASGI 入口已支持 query string（查询参数）转 body、
     JSON 响应头、`x-isotope-api` 识别头和稳定 invalid JSON 错误。
+70. Codex Supervisor 只读第一版：`CodexSupervisorFlow`、
+    `isotope-supervisor scan/watch` 和 `apps/cli/isotope_supervisor.py`
+    已建立，可读取本机 `~/.codex/sessions`，输出多个 Codex 会话的
+    中文状态汇报；当前不自动给 Codex 发指令。
 
-## 最近完成：apps/api 请求体验
+## 最近完成：Codex Supervisor 只读第一版
 
 完成内容：
 
-- ASGI 入口可把 query string（查询参数）转为现有内部 JSON body。
-- 单值 `types=task` 会转为 `["task"]`，适配当前 `workbench` 路由。
-- JSON 响应统一带 `content-type` 和 `x-isotope-api: asgi`。
-- invalid JSON 会返回稳定的 400 错误响应。
-- 当前仍复用 `interfaces/http.py`，不监听端口，也不引入 FastAPI 依赖。
+- 新增 `features/supervisor`，按产品功能而不是底座模块组织。
+- 可读取本机 Codex session（会话记录）并按最近事件排序。
+- 可识别 `工作中`、`等待用户`、`疑似停住`、`疑似报错` 和 `空闲`。
+- 可输出中文报告，也支持 `--json`。
+- `watch --interval` 可定时汇报，第一版不自动输入指令。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
-  [naming-and-structure-review](./naming-and-structure-review.md)、
-  [terminology](./terminology.md) 和 [status](./status.md)。
+  [terminology](./terminology.md)、[status](./status.md) 和
+  [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
 
 验收：
 
-- `tests/isotope/test_apps_api_boundary.py` 需要通过。
+- `tests/isotope/test_codex_supervisor_readonly.py` 需要通过。
 - 共享路径改动后需要跑全量测试。
 - `AGENTS.md` 仍需保持 100 行以内。
 
-## 下一批次：应用内分层迁移
+## 下一批次：Codex Supervisor 第二版准备
 
 目标：
 
-- 保持 `src/isotope/` 作为长期 Python 包命名空间。
-- 继续把真实功能逐步迁入 `features/`、`platform/`、`llm/` 等层级。
-- 下一步若继续功能层工作，可补一个更适合初学者阅读的中文运行讲解，
-  或开始做真实服务启动边界。
-- 迁移完成后再恢复多分支并行开发。
+- 先实际运行只读版，观察报告是否能帮用户减少反复询问。
+- 根据真实输出调整状态判断规则，尤其是等待用户和长时间无输出。
+- 设计控制通道：第二版再考虑让 Supervisor 启动 Codex 或接 tmux，
+  从而可控地发送“继续 / 总结 / 暂停”等指令。
 
 初始参考：
 

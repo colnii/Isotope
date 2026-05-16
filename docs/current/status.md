@@ -53,6 +53,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `create_api_app(...)` 和 `isotope-api routes`，真实路由仍复用
     `interfaces/http.py`；ASGI 请求已支持 query string（查询参数）转 body、
     JSON 响应头和稳定 invalid JSON 错误。
+16. `features/supervisor` 已有 Codex Supervisor 只读第一版，
+    可从本机 `~/.codex/sessions` 读取多个 Codex 会话，判断工作中、
+    等待用户、疑似停住、疑似报错和空闲，并通过 `isotope-supervisor`
+    输出中文汇报；当前不自动发指令。
 
 ## 文档策略
 
@@ -79,6 +83,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q
 PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2 --trace
 PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario workbench --trace
 PYTHONPATH=src .venv/bin/python -m isotope.apps.api routes --root /tmp/isotope-api --json
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --limit 3
 .venv/bin/isotope-demo --scenario v0.2 --trace
 git status --short
 ```

@@ -29,6 +29,7 @@ src/
       files/
       search/
       workbench/
+      supervisor/
       research/
       automation/
       capability_building/
@@ -93,7 +94,7 @@ scripts/
 ## 初步映射
 
 - `core/`：产品主流程，负责 session、conversation、task、turn、dispatch 和 response；当前薄包单进程运行时，不承载 agent loop。
-- `features/`：真实可用功能，如聊天、任务、项目、文件、搜索、工作台、研究和自动化；当前已有聊天、任务、文件、项目、搜索和工作台薄入口。
+- `features/`：真实可用功能，如聊天、任务、项目、文件、搜索、工作台、监督器、研究和自动化；当前已有聊天、任务、文件、项目、搜索、工作台和 Codex Supervisor 薄入口。
 - `agents/`：子 agent 定义、角色、任务委派和 agent loop。
 - `capabilities/`：工具、技能和能力注册，不再使用顶层 `tools/` 空包。
 - `llm/`：LLM、embedding、rerank 等模型服务 provider，不放 Pydantic schema 或数据库模型。
@@ -188,6 +189,9 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   `isotope-workbench`、`GET /workbench` 和 `POST /workbench` 已可调用；
   `isotope-demo --scenario workbench --trace` 可展示一条人类可读工作台流程；
   当前不是完整 UI。
+- Codex Supervisor：`src/isotope/features/supervisor/flow.py` 已提供
+  只读本机会话扫描和中文汇报，`isotope-supervisor scan/watch`
+  可观察多个 Codex 窗口状态；当前不自动发指令。
 - 智能体循环：`agent_loop_*` 与 planner contract 已迁入 `src/isotope/agents/loop/`；
   旧顶层、`core/loop_*` 和 `assistant/` 入口已删除。
 - 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`，相关旧根路径已删除。
