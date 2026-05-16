@@ -204,8 +204,22 @@
     不同文案，并移除重复的 `tmux attach` 展示行。
 95. Codex Supervisor web 模型建议高亮：模型建议命中托管 lane 时，
     页面高亮对应 send 按钮，但不自动执行。
+96. Codex Supervisor web bell 即时刷新：`/events` 会监听
+    `bell_events.jsonl` 变化，并让前端立刻刷新 dashboard。
 
-## 最近完成：Codex Supervisor web 模型建议高亮
+## 最近完成：Codex Supervisor web bell 即时刷新
+
+完成内容：
+
+- 新增 `/events` SSE（服务器推送事件）入口。
+- 事件流只监听 `bell_events.jsonl` 的时间戳和大小变化。
+- 收到 bell 变化后推送 `bell` 事件，前端立即刷新 `/dashboard.json`。
+- 事件流带轻量心跳，浏览器断开后旧连接会退出。
+- `/events` 不执行控制动作，不向托管 Codex 发送指令。
+
+上一批已完成：
+
+## Codex Supervisor web 模型建议高亮
 
 完成内容：
 

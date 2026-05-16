@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import json
 import subprocess
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import urlparse
 
+from .bell_events import default_bell_events_path, read_latest_bell_events
 from .flow import CodexSupervisorFlow
 from .lane_state import record_lane_prompt
 from .llm_summary import (
@@ -26,6 +28,8 @@ from .runner import (
 
 
 class SupervisorDashboardServer(ThreadingHTTPServer):
+    daemon_threads = True
+
     def __init__(
         self,
         server_address: tuple[str, int],
@@ -44,6 +48,7 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         self.active_within_seconds = active_within_seconds
         self.send_run = send_run
         self.llm_action_provider = llm_action_provider
+        self.bell_events_path = default_bell_events_path(self.codex_home)
 
     def _scan_report(self) -> Any:
         return CodexSupervisorFlow(codex_home=self.codex_home).scan(
@@ -68,6 +73,20 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
             provider,
         )
         return payload
+
+    def bell_event_stamp(self) -> tuple[int, int]:
+        try:
+            stat = self.bell_events_path.stat()
+        except OSError:
+            return (0, 0)
+        return (stat.st_mtime_ns, stat.st_size)
+
+    def latest_bell_event_payload(self) -> dict[str, Any]:
+        events = read_latest_bell_events(self.bell_events_path)
+        if not events:
+            return {"event": "bell"}
+        latest = max(events.values(), key=lambda event: event.created_at)
+        return latest.to_dict()
 
 
 def create_dashboard_server(
@@ -106,6 +125,9 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
                 json.dumps(payload, ensure_ascii=False, sort_keys=True),
                 content_type="application/json; charset=utf-8",
             )
+            return
+        if path == "/events":
+            self._send_events()
             return
         self.send_error(404, "not found")
 
@@ -194,6 +216,42 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             )
             return
         self._send_json(payload)
+
+    def _send_events(self) -> None:
+        self.send_response(200)
+        self.send_header("content-type", "text/event-stream; charset=utf-8")
+        self.send_header("cache-control", "no-store")
+        self.send_header("connection", "keep-alive")
+        self.end_headers()
+        self._write_sse("ready", {"status": "ok"})
+        previous_stamp = self.server.bell_event_stamp()
+        last_heartbeat = time.monotonic()
+        while True:
+            time.sleep(0.25)
+            if time.monotonic() - last_heartbeat >= 15:
+                try:
+                    self._write_sse("heartbeat", {"status": "ok"})
+                except OSError:
+                    return
+                last_heartbeat = time.monotonic()
+            current_stamp = self.server.bell_event_stamp()
+            if current_stamp == previous_stamp:
+                continue
+            previous_stamp = current_stamp
+            try:
+                self._write_sse("bell", self.server.latest_bell_event_payload())
+            except OSError:
+                return
+
+    def _write_sse(self, event: str, payload: dict[str, Any]) -> None:
+        body = (
+            f"event: {event}\n"
+            + "data: "
+            + json.dumps(payload, ensure_ascii=False, sort_keys=True)
+            + "\n\n"
+        ).encode("utf-8")
+        self.wfile.write(body)
+        self.wfile.flush()
 
     def _read_json_body(self) -> dict[str, Any]:
         length = int(self.headers.get("content-length", "0"))
@@ -646,9 +704,23 @@ def dashboard_page_html() -> str:
       requestLlmAction(event.currentTarget);
     });
 
+    function connectSupervisorEvents() {
+      if (!window.EventSource) return;
+      const source = new EventSource("/events");
+      source.addEventListener("bell", () => {
+        loadDashboard().catch((error) => {
+          document.getElementById("refresh-state").textContent = "bell 刷新失败：" + text(error.message);
+        });
+      });
+      source.onerror = () => {
+        document.getElementById("refresh-state").textContent = "事件通道等待重连";
+      };
+    }
+
     loadDashboard().catch((error) => {
       document.getElementById("refresh-state").textContent = "刷新失败：" + text(error.message);
     });
+    connectSupervisorEvents();
     setInterval(loadDashboard, 5000);
   </script>
 </body>

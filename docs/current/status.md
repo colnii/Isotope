@@ -87,6 +87,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `scan` 会从 `.jsonl` 解析状态、摘要和下一步字段；lane state
     会记录最近状态、最近催促时间和催促次数，避免短时间重复发送；
     `blocked`、`done`、`needs_user` 和 bell 事件已接入结构化建议。
+    web 已新增 `/events` 事件流，tmux bell 写入事件文件后会推动前端
+    立即刷新 dashboard，不必等 5 秒轮询。
     能力登记见 `docs/current/supervisor-capability-map.md`。
 
 ## 文档策略

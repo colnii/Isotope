@@ -997,12 +997,15 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "复制继续" in html
     assert "sendManagedCommand" in html
     assert "requestLlmAction" in html
+    assert "connectSupervisorEvents" in html
+    assert "EventSource" in html
     assert "applyLlmActionHighlight" in html
     assert "suggested-action" in html
     assert "data-command-kind" in html
     assert "data-lane-name" in html
     assert "/managed/send" in html
     assert "/llm-action" in html
+    assert "/events" in html
     assert "模型建议" in html
     assert "status_evidence" in html
     assert "依据：" in html
@@ -1017,6 +1020,53 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert payload["groups"]["needs_attention"][0]["status_evidence"]["source"] == (
         "supervisor_protocol"
     )
+
+
+def test_codex_supervisor_web_events_stream_bell_changes(tmp_path):
+    from isotope.features.supervisor.web import create_dashboard_server
+
+    codex_home = tmp_path / ".codex"
+    server = create_dashboard_server(
+        codex_home=codex_home,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        conn.request("GET", "/events")
+        response = conn.getresponse()
+        first_line = response.readline().decode("utf-8").strip()
+        event_path = codex_home / "supervisor" / "bell_events.jsonl"
+        event_path.parent.mkdir(parents=True)
+        event_path.write_text(
+            (
+                '{"event":"bell","name":"lane-a","tmux_session":"isotope-lane-a",'
+                '"created_at":"2026-05-16T12:00:00Z"}\n'
+            ),
+            encoding="utf-8",
+        )
+        lines: list[str] = []
+        while len(lines) < 4:
+            lines.append(response.readline().decode("utf-8").strip())
+            if "tmux_session" in lines[-1]:
+                break
+    finally:
+        conn.close()
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert response.status == 200
+    assert response.getheader("content-type") == "text/event-stream; charset=utf-8"
+    assert first_line == "event: ready"
+    assert "event: bell" in lines
+    assert any('"tmux_session": "isotope-lane-a"' in line for line in lines)
 
 
 def test_codex_supervisor_web_returns_manual_llm_action_without_sending(

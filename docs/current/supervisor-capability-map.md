@@ -26,7 +26,7 @@ Codex Supervisor 已经不只是一个小命令。
 | 模型管理层 | `LLM summary`、`LLM action` 和 TOML 号池 | `llm_summary.py` | 摘要和白名单动作建议 |
 | 状态协议层 | `SUPERVISOR_STATUS` 等状态协议 | `flow.py`、`registry.py` | 给被托管 Codex 主动汇报状态 |
 | 状态账本层 | lane state（窗口状态）和限频 | `lane_state.py` | 避免重复催促和刷屏 |
-| 本地前端层 | `web`、`/dashboard.json`、`/managed/send`、`/llm-action` | `features/supervisor/web.py` | 本机视图、白名单发送和手动模型建议入口 |
+| 本地前端层 | `web`、`/dashboard.json`、`/events`、`/managed/send`、`/llm-action` | `features/supervisor/web.py` | 本机视图、bell 事件、白名单发送和手动模型建议入口 |
 
 ## 已有轮子
 
@@ -52,6 +52,7 @@ Codex Supervisor 已经不只是一个小命令。
   也可对白名单 send 动作发起本机 POST。
 - `web` 可手动请求 `/llm-action`，展示 LLM 白名单动作建议。
 - `web` 会高亮模型建议对应的 send 按钮，但不会自动点击。
+- `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
 - `/managed/send` 成功发送后会更新 lane state。
 - `watch --changes-only` 只在状态变化时输出。
 - 本机托管登记表 `managed_sessions.jsonl`。
@@ -83,6 +84,7 @@ Codex Supervisor 已经不只是一个小命令。
 - 不要另写状态分类系统，除非同步更新本文件。
 - 不要只展示状态标签而不展示判断依据。
 - 不要另写一套 dashboard 数据接口，先复用 `/dashboard.json`。
+- 不要把 `/events` 做成控制通道；它只负责提醒前端刷新。
 - 不要在页面重复展示同一个托管 Codex 的 lane 视角和 session 视角。
 - 不要在 web 里放任意文本发送框；先走白名单动作。
 - 不要让 `/llm-action` 自动调用 `/managed/send`。

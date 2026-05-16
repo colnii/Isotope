@@ -46,6 +46,8 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
   请求状态和继续推进按钮。
 - `web` 可手动请求 `/llm-action`，只展示模型建议的白名单动作，
   不自动发送。
+- `web` 会连接 `/events` 事件流；托管 tmux 响铃后会立刻刷新页面，
+  不必等 5 秒轮询。
 - `supervise` 可按间隔循环执行扫描、建议、可选 LLM 摘要和显式 send。
 - `advise/supervise --llm-action` 可让 LLM 在白名单里选择建议动作，
   但不会自动执行。
@@ -123,6 +125,9 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 页面默认地址是 `http://127.0.0.1:8765/`。
 页面会读取 `/dashboard.json`，并按 `需要看`、`已完成`、`工作中`
 三组展示窗口。
+页面同时连接 `/events`。当 tmux `alert-bell` hook 写入
+`bell_events.jsonl` 后，web 服务会推送 `bell` 事件，前端马上重新读取
+`/dashboard.json`。
 页面标题优先使用关联到的 Codex 自带标题或首条用户消息。
 托管名会显示在路径信息里，方便确认它仍是可控 lane。
 每个窗口会显示“依据”，用来解释当前标签为什么被判成等待用户、停住或工作中。
@@ -283,6 +288,7 @@ tmux attach -t isotope-lane-a
 - `web` 只监听本机默认地址，不提供认证和远程访问能力。
 - `web` 的 `/managed/send` 只接受 `send_status` 和 `send_continue`。
 - `web` 的 `/llm-action` 只在手动点击时调用模型，只展示建议。
+- `web` 的 `/events` 只推送 bell 提醒和心跳，不承载任意控制指令。
 - 模型建议只会高亮按钮，不会自动点击按钮。
 - `/managed/send` 成功发送后会记录 lane state。
 - `recommendation` 只表示建议动作，不会自动调用 `send`。
