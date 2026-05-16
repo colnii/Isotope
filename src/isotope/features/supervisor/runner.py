@@ -11,7 +11,7 @@ from typing import Any
 
 from .flow import CodexSupervisorFlow, render_plain_report
 from .llm_summary import generate_llm_summary, resolve_summary_provider_from_env
-from .registry import launch_managed_codex
+from .registry import launch_managed_codex, send_to_managed_codex
 
 
 def _print_json(payload: dict[str, Any]) -> None:
@@ -92,6 +92,17 @@ def _build_parser() -> argparse.ArgumentParser:
         help="tmux session name when --backend tmux is used. Defaults to --name.",
     )
     launch_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    send_parser = subparsers.add_parser(
+        "send", help="Send one line to a tmux-managed Codex process."
+    )
+    send_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    send_parser.add_argument("--name", required=True, help="Managed lane name.")
+    send_parser.add_argument("--text", required=True, help="Text to send.")
+    send_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     return parser
 
 
@@ -138,6 +149,30 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"已启动托管 Codex：{record.name}")
                 print(f"pid：{record.pid}")
                 print(f"日志：{record.log_path}")
+            return 0
+        if args.command == "send":
+            result = send_to_managed_codex(
+                codex_home=Path(args.codex_home),
+                name=args.name,
+                text=args.text,
+                run=subprocess.run,
+            )
+            if args.json:
+                _print_json(
+                    {
+                        "status": "ok",
+                        "text": result.text,
+                        "managed": {
+                            "name": result.record.name,
+                            "record_id": result.record.record_id,
+                            "tmux_session": result.record.tmux_session,
+                        },
+                    }
+                )
+            else:
+                print(f"已发送到托管 Codex：{result.record.name}")
+                print(f"tmux：{result.record.tmux_session}")
+                print(f"内容：{result.text}")
             return 0
     except KeyboardInterrupt:
         return 130

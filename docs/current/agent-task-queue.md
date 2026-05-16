@@ -143,23 +143,32 @@
     中文状态汇报；`--llm-summary` 可通过本机 TOML 号池做智能摘要；
     `watch --changes-only` 可持续运行且只在变化时输出；`launch`
     可启动 Codex 并写入本机托管登记；`launch --backend tmux`
-    可在本机 tmux 会话中启动 Codex；当前不自动给 Codex 发指令。
+    可在本机 tmux 会话中启动 Codex。
+71. Codex Supervisor 控制通道：`isotope-supervisor send` 可向
+    Supervisor 登记的 tmux 会话发送一行文本并回车，已用真实 tmux
+    会话烟测中文输入。
 
-## 最近完成：Codex Supervisor 监控与托管启动
+## 最近完成：Codex Supervisor 控制通道
 
 完成内容：
+
+- `send --name <lane> --text <text>` 可给托管 tmux Codex 发送一行文本。
+- `send` 只使用 Supervisor 登记表里的最新同名记录，不接管普通终端窗口。
+- 非 tmux 托管记录会返回错误，避免对无 stdin 控制通道的进程误发。
+- tmux 发送使用 `send-keys -l` 写入原文，再发送 `Enter`。
+- 同步 [application-structure-plan](./application-structure-plan.md)、
+  [terminology](./terminology.md)、[status](./status.md) 和
+  [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
+
+上一批已完成：
 
 - 新增 `features/supervisor`，按产品功能而不是底座模块组织。
 - 可读取本机 Codex session（会话记录）并按最近事件排序。
 - 可识别 `工作中`、`等待用户`、`疑似停住`、`疑似报错` 和 `空闲`。
-- 可输出中文报告，也支持 `--json`。
 - `watch --interval` 可定时汇报，`--changes-only` 可只在会话变化时输出。
 - `launch` 可启动 Codex 进程，登记 name、pid、backend、cwd、prompt、日志路径。
 - `launch --backend tmux` 可创建本机 tmux session 并登记 session 名。
-- `scan/watch` 可显示托管进程，并区分 `工作中` 和 `已退出`。
-- 新增 `--llm-summary`，从被 gitignore 忽略的本机 TOML 号池读取
-  provider、base URL、model 和 key。
-- LLM 摘要只发送压缩后的会话摘要，不发送完整日志。
+- `--llm-summary` 从本机 TOML 号池读取 provider、base URL、model 和 key。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
   [terminology](./terminology.md)、[status](./status.md) 和
   [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
@@ -170,13 +179,13 @@
 - 共享路径改动后需要跑全量测试。
 - `AGENTS.md` 仍需保持 100 行以内。
 
-## 下一批次：Codex Supervisor 控制通道
+## 下一批次：Codex Supervisor 半自动管理
 
 目标：
 
-- 实际运行 `launch --backend tmux` 启动的托管 Codex，观察日志和 session 是否能稳定关联。
-- 设计 tmux send-keys 或 Codex remote-control 接入方式。
-- 下一步再做可控地发送“继续 / 总结 / 暂停”等指令。
+- 把 `watch/scan` 的状态判断和 `send` 的控制通道串起来。
+- 先生成建议动作，例如“可继续 / 需要用户确认 / 建议暂停”。
+- 再决定是否允许 `--auto-send` 这种自动发送模式。
 
 初始参考：
 

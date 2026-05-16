@@ -42,6 +42,12 @@ class ManagedCodexRecord:
         }
 
 
+@dataclass(frozen=True)
+class ManagedSendResult:
+    record: ManagedCodexRecord
+    text: str
+
+
 def default_registry_path(codex_home: Path | str) -> Path:
     return Path(codex_home).expanduser() / "supervisor" / "managed_sessions.jsonl"
 
@@ -153,11 +159,62 @@ def launch_managed_codex(
     return record
 
 
+def send_to_managed_codex(
+    *,
+    codex_home: Path | str,
+    name: str,
+    text: str,
+    run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> ManagedSendResult:
+    name_text = name.strip()
+    text_text = text
+    if not name_text:
+        raise ValueError("name must not be empty")
+    if not text_text.strip():
+        raise ValueError("text must not be empty")
+
+    record = _find_managed_record(
+        read_managed_records(default_registry_path(codex_home)),
+        name_text,
+    )
+    if record is None:
+        raise ValueError(f"managed Codex not found: {name_text}")
+    if record.backend != "tmux" or record.tmux_session is None:
+        raise ValueError("send requires a tmux-managed Codex session")
+
+    try:
+        run(
+            ["tmux", "send-keys", "-t", record.tmux_session, "-l", text_text],
+            check=True,
+            text=True,
+            capture_output=True,
+        )
+        run(
+            ["tmux", "send-keys", "-t", record.tmux_session, "Enter"],
+            check=True,
+            text=True,
+            capture_output=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        message = (exc.stderr or exc.stdout or str(exc)).strip()
+        raise ValueError(f"tmux send failed: {message}") from exc
+    return ManagedSendResult(record=record, text=text_text)
+
+
 def append_managed_record(registry_path: Path | str, record: ManagedCodexRecord) -> None:
     path = Path(registry_path).expanduser()
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(record.to_dict(), ensure_ascii=False, sort_keys=True) + "\n")
+
+
+def _find_managed_record(
+    records: tuple[ManagedCodexRecord, ...], name: str
+) -> ManagedCodexRecord | None:
+    for record in reversed(records):
+        if record.name == name:
+            return record
+    return None
 
 
 def _record_from_dict(raw: dict[str, object]) -> ManagedCodexRecord | None:

@@ -111,6 +111,7 @@ src/isotope/
 | agent-loop、core、assistant 旧入口 | 纯兼容代理，已有真实新路径 | 已删除第七批低风险代理 |
 | `platform/schemas/models.py` 汇总入口 | `models` 太泛，已拆成具体 schema 模块 | 已删除第八批低风险代理 |
 | 顶层 `tools/` 空包 | 只有 docstring，无活跃调用 | 已删除，工具能力归入 `capabilities/tools/` |
+| `features/supervisor/registry.py` | 名字表达托管登记和控制通道，当前可接受 | 保留，负责 managed Codex 登记和 tmux send |
 
 ## 第一批不要动的东西
 

@@ -59,7 +59,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     输出中文汇报；`watch --changes-only` 可只在变化时再次输出；
     `launch` 可启动 Codex 并写入本机托管登记；`launch --backend tmux`
     可在本机 tmux 会话中启动 Codex；`--llm-summary` 可通过本机
-    TOML 号池做智能摘要；当前不自动发指令。
+    TOML 号池做智能摘要；`send` 可向托管 tmux 会话发送一行指令。
 
 ## 文档策略
 
@@ -87,6 +87,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2 --trace
 PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario workbench --trace
 PYTHONPATH=src .venv/bin/python -m isotope.apps.api routes --root /tmp/isotope-api --json
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --limit 3
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --name lane-a --text "继续"
 .venv/bin/isotope-demo --scenario v0.2 --trace
 git status --short
 ```

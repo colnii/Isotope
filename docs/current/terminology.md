@@ -59,10 +59,12 @@
 | `POST /workbench` | 工作台 API 入口，可带 query/types/limit 读取汇总和搜索结果 | 接口 | `src/isotope/interfaces/http.py` |
 | `workbench demo` | 工作台 demo 场景，展示创建摘要、搜索和工作台汇总流程 | 应用验证 | `src/isotope/demo.py`, `tests/isotope/test_workbench_demo_scenario.py` |
 | `Codex Supervisor` | Codex 监督器，观察和启动本机多个 Codex 进程并输出中文状态汇报 | 产品功能 | `src/isotope/features/supervisor/flow.py` |
-| `isotope-supervisor` | Codex Supervisor 命令行入口，支持扫描、定时汇报、变化触发和托管启动 | 应用入口 | `src/isotope/features/supervisor/runner.py`, `apps/cli/isotope_supervisor.py` |
+| `isotope-supervisor` | Codex Supervisor 命令行入口，支持扫描、定时汇报、变化触发、托管启动和发送指令 | 应用入口 | `src/isotope/features/supervisor/runner.py`, `apps/cli/isotope_supervisor.py` |
 | `Codex session` | Codex 会话记录，本机通常保存在 `~/.codex/sessions` | 外部集成 | `src/isotope/features/supervisor/flow.py` |
-| `managed Codex` | Supervisor 启动并登记的 Codex 进程，可通过 pid 和日志路径追踪 | 产品功能/外部集成 | `src/isotope/features/supervisor/registry.py` |
-| `tmux` | 本机终端复用工具，可创建可追踪会话，后续用于向托管 Codex 发指令 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
+| `managed Codex` | Supervisor 启动并登记的 Codex 进程，可通过 pid、tmux session 和日志路径追踪 | 产品功能/外部集成 | `src/isotope/features/supervisor/registry.py` |
+| `send` | Supervisor 控制命令，向登记的 tmux Codex 会话发送一行文本并回车 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
+| `tmux` | 本机终端复用工具，可创建可追踪会话，并通过 send-keys 向托管 Codex 发指令 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
+| `send-keys` | tmux 输入命令，当前用于把文本写入托管 Codex 窗口 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
 | `LLM summary` | 大模型摘要，把压缩后的窗口状态交给模型生成中文判断 | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
 | `OpenAI-compatible` | 兼容 OpenAI Chat Completions 形状的模型接口 | 模型/外部集成 | `src/isotope/features/supervisor/llm_summary.py` |
 | `LLM pool TOML` | 本机模型号池配置，声明 provider、base URL、model 和 key | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
