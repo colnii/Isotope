@@ -79,12 +79,3 @@ Python 代码使用 4 空格缩进，模块和函数用 `snake_case`。
 未经用户批准，不随意扩写 `AGENTS.md`、`README.md` 等参考文档。
 使用提问的方式帮助用户确认需求，不要猜测用户意图，不明确的地方必须提问
 每次结束回复时，适当解释与教学代码原理，说明建议的下一步开发方向。
-
-临时术语锚点：
-`agent loop` 智能体循环；`tool call` 工具调用；
-`artifact` 产物记录；`checkpoint` 检查点；
-`provider` 模型服务适配器；`planner` 规划器；
-`executor` 执行器；`policy` 权限策略；
-`capability` 能力；`workspace` 工作区；
-`core` 产品主流程；`terminal_exec` 终端执行能力。
-完整术语索引应在文档整理阶段从真实代码和文档抽取。
