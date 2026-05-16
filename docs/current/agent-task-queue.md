@@ -191,8 +191,25 @@
 89. Codex Supervisor web 受控操作：`dashboard` 已给托管 tmux lane
     输出 `control_commands`，`web` 可复制 attach/send 命令，并通过
     `/managed/send` 执行 `send_status` 和 `send_continue`。
+90. Codex Supervisor LLM 白名单动作：`advise/supervise --llm-action`
+    可让 LLM 在 `monitor`、`send_status`、`send_continue` 中选择建议动作，
+    输出结构化结果但不自动执行。
 
-## 最近完成：Codex Supervisor web 受控操作
+## 最近完成：Codex Supervisor LLM 白名单动作
+
+完成内容：
+
+- 新增 `build_llm_action_messages(...)`，只发送压缩状态、候选命令和候选目标。
+- 新增 `generate_llm_action_decision(...)`，校验模型 JSON 和动作白名单。
+- `advise --llm-action --json` 可输出 `llm_action`。
+- `supervise --llm-action --json` 可在循环 payload 里输出 `llm_action`。
+- LLM 只能选择 `monitor`、`send_status` 或 `send_continue`。
+- 不在白名单内、缺少目标或目标不是托管 tmux lane 时会报错。
+- 当前只建议，不自动执行；执行仍走 `--execute` 或 web 按钮。
+
+上一批已完成：
+
+## Codex Supervisor web 受控操作
 
 完成内容：
 

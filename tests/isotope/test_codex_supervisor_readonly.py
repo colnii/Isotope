@@ -21,7 +21,9 @@ from isotope.features.supervisor.flow import (
 from isotope.features.supervisor.llm_summary import (
     PooledSummaryProvider,
     PoolEntry,
+    build_llm_action_messages,
     build_llm_summary_messages,
+    generate_llm_action_decision,
     generate_llm_summary,
     resolve_summary_provider_from_env,
 )
@@ -1169,6 +1171,160 @@ def test_codex_supervisor_advise_suggests_managed_tmux_commands():
             "label": "继续监控变化",
         },
     ]
+
+
+def test_codex_supervisor_llm_action_messages_include_whitelist_and_commands():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="managed:managed-001",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/supervisor/managed_sessions.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="working",
+                reason="Supervisor 托管 tmux 会话仍在运行",
+                managed=True,
+                managed_name="lane-a",
+                managed_backend="tmux",
+                managed_tmux_session="isotope-lane-a",
+            ),
+        ),
+    )
+    suggestions = _advice_payload(report)["command_suggestions"]
+
+    messages = build_llm_action_messages(report, suggestions)
+
+    assert messages[0]["role"] == "system"
+    assert "只能从白名单里选择" in messages[0]["content"]
+    assert '"allowed_kinds": ["monitor", "send_status", "send_continue"]' in messages[1][
+        "content"
+    ]
+    assert '"kind": "send_continue"' in messages[1]["content"]
+    assert '"target_name": "lane-a"' in messages[1]["content"]
+
+
+def test_codex_supervisor_generate_llm_action_decision_accepts_whitelisted_json():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="managed:managed-001",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/supervisor/managed_sessions.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="working",
+                reason="Supervisor 托管 tmux 会话仍在运行",
+                managed=True,
+                managed_name="lane-a",
+                managed_backend="tmux",
+                managed_tmux_session="isotope-lane-a",
+            ),
+        ),
+    )
+    suggestions = _advice_payload(report)["command_suggestions"]
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            assert "send_continue" in messages[1]["content"]
+            return json.dumps(
+                {
+                    "kind": "send_continue",
+                    "target_name": "lane-a",
+                    "reason": "托管窗口还在运行，可以继续推进。",
+                },
+                ensure_ascii=False,
+            )
+
+    decision = generate_llm_action_decision(report, suggestions, FakeProvider())
+
+    assert decision == {
+        "kind": "send_continue",
+        "target_name": "lane-a",
+        "reason": "托管窗口还在运行，可以继续推进。",
+        "command_suggestion": {
+            "command": (
+                "isotope-supervisor send --name lane-a --text "
+                "'继续推进，并在完成后汇报当前状态'"
+            ),
+            "kind": "send_continue",
+            "label": "让托管 Codex 继续推进",
+        },
+    }
+
+
+def test_codex_supervisor_generate_llm_action_decision_rejects_unsupported_action():
+    report = CodexSupervisorReport(generated_at=NOW.isoformat(), sessions=())
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            return '{"kind":"delete_branch","reason":"危险动作"}'
+
+    with pytest.raises(ValueError, match="unsupported LLM action"):
+        generate_llm_action_decision(report, [], FakeProvider())
+
+
+def test_codex_supervisor_runner_advise_can_add_llm_action(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            assert "command_suggestions" in messages[1]["content"]
+            return '{"kind":"send_status","target_name":"lane-a","reason":"先看进度。"}'
+
+    captured: dict[str, object] = {}
+
+    def fake_resolver(**kwargs: object) -> FakeProvider:
+        captured.update(kwargs)
+        return FakeProvider()
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        fake_resolver,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "advise",
+            "--codex-home",
+            str(codex_home),
+            "--limit",
+            "1",
+            "--llm-action",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"] == {
+        "kind": "send_status",
+        "target_name": "lane-a",
+        "reason": "先看进度。",
+        "command_suggestion": {
+            "command": "isotope-supervisor send --name lane-a --text '请汇报当前状态'",
+            "kind": "send_status",
+            "label": "让托管 Codex 汇报状态",
+        },
+    }
+    assert captured["agent_name"] == "supervisor"
 
 
 def test_codex_supervisor_runner_advise_execute_send_status(

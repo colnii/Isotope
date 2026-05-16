@@ -43,6 +43,8 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
 - `web` 会给托管 tmux 窗口显示复制 attach、复制 send 命令、
   请求状态和继续推进按钮。
 - `supervise` 可按间隔循环执行扫描、建议、可选 LLM 摘要和显式 send。
+- `advise/supervise --llm-action` 可让 LLM 在白名单里选择建议动作，
+  但不会自动执行。
 - `--prompt-cooldown` 可避免短时间重复催促同一个托管 lane。
 - `watch --changes-only` 可持续运行，只在会话状态变化时重新输出。
 - `launch` 可启动一个 Codex 进程，并写入托管登记文件。
@@ -138,6 +140,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 ```bash
 .venv/bin/isotope-supervisor advise
 .venv/bin/isotope-supervisor advise --json
+.venv/bin/isotope-supervisor advise --llm-action --json
 .venv/bin/isotope-supervisor advise --execute send_status
 .venv/bin/isotope-supervisor advise --execute send_continue
 ```
@@ -150,6 +153,9 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 显式传入 `--execute send_status` 或 `--execute send_continue` 时，
 只会执行对应的 `send` 类草案；`tmux_attach` 和 `watch_changes`
 不会被 `--execute` 执行。
+`--llm-action` 会把压缩状态、候选命令和目标 lane 发给 LLM，
+要求它只返回 `monitor`、`send_status` 或 `send_continue`。
+返回结果会被校验；不在白名单内的动作会报错，不会执行。
 
 `supervise` 是当前的监控小闭环：
 
@@ -157,6 +163,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 .venv/bin/isotope-supervisor supervise --interval 180 --llm-summary
 .venv/bin/isotope-supervisor supervise --interval 180 --llm-summary --execute send_status
 .venv/bin/isotope-supervisor supervise --interval 180 --execute send_status --prompt-cooldown 300
+.venv/bin/isotope-supervisor supervise --iterations 1 --llm-action --json
 .venv/bin/isotope-supervisor supervise --iterations 1 --llm-summary --json
 ```
 
@@ -200,6 +207,8 @@ api_keys = [
 
 `--llm-summary` 只发送压缩后的会话摘要、状态依据和结构化建议，
 不发送完整 session 文件。
+`--llm-action` 只发送压缩状态、候选命令和候选目标，
+要求模型输出一个 JSON 白名单动作。
 
 托管登记：
 
@@ -258,6 +267,7 @@ tmux attach -t isotope-lane-a
 - `recommendation` 只表示建议动作，不会自动调用 `send`。
 - `advise` 默认只生成命令草案；`--execute` 只允许执行
   `send_status` 和 `send_continue`。
+- `--llm-action` 只输出模型建议动作，不自动执行。
 - `supervise` 可循环监控；LLM 决策必须落到白名单动作上。
 - 当前的自动执行仍受 `--execute` 白名单限制。
 - 后续 LLM 可以参与选择动作，但动作必须落到可审计的白名单能力上。

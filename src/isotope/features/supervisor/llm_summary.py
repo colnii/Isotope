@@ -29,6 +29,7 @@ from ...llm.provider import OpenAICompatibleChatProvider, Transport
 from .flow import CodexSupervisorReport
 
 DEFAULT_MAX_TOKENS = 512
+LLM_ACTION_ALLOWED_KINDS = ("monitor", "send_status", "send_continue")
 
 
 # ---------------------------------------------------------------------------
@@ -185,6 +186,82 @@ def generate_llm_summary(
     return provider.summarize(build_llm_summary_messages(report))
 
 
+def build_llm_action_messages(
+    report: CodexSupervisorReport,
+    command_suggestions: list[dict[str, str]],
+) -> list[dict[str, str]]:
+    """Build the prompt for whitelist-bound action selection."""
+    candidate_targets = [
+        {
+            "target_name": session.managed_name,
+            "session_id": session.session_id,
+            "status": session.supervisor_status or session.status,
+            "reason": session.supervisor_summary or session.reason,
+            "tmux_session": session.managed_tmux_session,
+        }
+        for session in report.sessions
+        if session.managed_name and session.managed_tmux_session
+    ]
+    return [
+        {
+            "role": "system",
+            "content": (
+                "你是 Codex Supervisor 的白名单动作选择层。"
+                "只能从白名单里选择一个动作，不得编造命令，不得要求任意文本发送。"
+                "只输出 JSON。"
+            ),
+        },
+        {
+            "role": "user",
+            "content": json.dumps(
+                {
+                    "allowed_kinds": list(LLM_ACTION_ALLOWED_KINDS),
+                    "candidate_targets": candidate_targets,
+                    "command_suggestions": command_suggestions,
+                    "generated_at": report.generated_at,
+                    "recommendation": report.recommendation.to_dict(),
+                    "output_schema": {
+                        "kind": "send_continue",
+                        "target_name": "lane-a",
+                        "reason": "一句中文原因",
+                    },
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            ),
+        },
+    ]
+
+
+def generate_llm_action_decision(
+    report: CodexSupervisorReport,
+    command_suggestions: list[dict[str, str]],
+    provider: SummaryProvider,
+) -> dict[str, Any]:
+    raw = provider.summarize(build_llm_action_messages(report, command_suggestions))
+    payload = _extract_json_object(raw)
+    kind = _required_payload_string(payload, "kind")
+    if kind not in LLM_ACTION_ALLOWED_KINDS:
+        supported = ", ".join(LLM_ACTION_ALLOWED_KINDS)
+        raise ValueError(f"unsupported LLM action: {kind}; allowed: {supported}")
+    target_name = _optional_payload_string(payload, "target_name")
+    reason = _optional_payload_string(payload, "reason") or "LLM 建议执行该白名单动作。"
+    command_suggestion = _command_suggestion_for_kind(command_suggestions, kind)
+    if kind != "monitor":
+        if target_name is None:
+            raise ValueError(f"target_name is required for LLM action: {kind}")
+        if not _has_managed_target(report, target_name):
+            raise ValueError(f"unknown managed target for LLM action: {target_name}")
+        if command_suggestion is None:
+            raise ValueError(f"no command suggestion for LLM action: {kind}")
+    return {
+        "kind": kind,
+        "target_name": target_name,
+        "reason": reason,
+        "command_suggestion": command_suggestion,
+    }
+
+
 # ---------------------------------------------------------------------------
 # 内部工具
 # ---------------------------------------------------------------------------
@@ -307,6 +384,52 @@ def _optional_toml_str(item: dict[str, object], key: str) -> str | None:
 def _strip_thinking(text: str) -> str:
     cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL | re.IGNORECASE)
     return cleaned.strip()
+
+
+def _extract_json_object(text: str) -> dict[str, Any]:
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        stripped = re.sub(r"^```(?:json)?\s*", "", stripped, flags=re.IGNORECASE)
+        stripped = re.sub(r"\s*```$", "", stripped)
+    match = re.search(r"\{.*\}", stripped, flags=re.DOTALL)
+    if match:
+        stripped = match.group(0)
+    try:
+        payload = json.loads(stripped)
+    except json.JSONDecodeError as exc:
+        raise ValueError("LLM action must be a JSON object") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("LLM action must be a JSON object")
+    return payload
+
+
+def _required_payload_string(payload: dict[str, Any], field: str) -> str:
+    value = payload.get(field)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"LLM action field is required: {field}")
+    return value.strip()
+
+
+def _optional_payload_string(payload: dict[str, Any], field: str) -> str | None:
+    value = payload.get(field)
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _command_suggestion_for_kind(
+    command_suggestions: list[dict[str, str]],
+    kind: str,
+) -> dict[str, str] | None:
+    for suggestion in command_suggestions:
+        if suggestion.get("kind") == kind:
+            return suggestion
+    return None
+
+
+def _has_managed_target(report: CodexSupervisorReport, target_name: str) -> bool:
+    return any(
+        session.managed_name == target_name and bool(session.managed_tmux_session)
+        for session in report.sessions
+    )
 
 
 def _clip(text: str | None, *, limit: int = 160) -> str | None:

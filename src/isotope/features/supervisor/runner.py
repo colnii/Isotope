@@ -16,7 +16,11 @@ from .lane_state import (
     prompt_cooldown_state,
     record_lane_prompt,
 )
-from .llm_summary import generate_llm_summary, resolve_summary_provider_from_env
+from .llm_summary import (
+    generate_llm_action_decision,
+    generate_llm_summary,
+    resolve_summary_provider_from_env,
+)
 from .registry import adopt_tmux_session, launch_managed_codex, send_to_managed_codex
 
 EXECUTABLE_ADVICE_KINDS = {"send_status", "send_continue"}
@@ -74,6 +78,11 @@ def _build_parser() -> argparse.ArgumentParser:
         subparsers.choices[command].add_argument(
             "--execute",
             help="Execute one generated send suggestion. Supports send_status or send_continue.",
+        )
+        subparsers.choices[command].add_argument(
+            "--llm-action",
+            action="store_true",
+            help="Ask configured LLM to choose one whitelist action without executing it.",
         )
         subparsers.choices[command].add_argument(
             "--prompt-cooldown",
@@ -370,6 +379,8 @@ def _supervise_payload(
     payload["report"] = report.to_dict()
     if args.llm_summary:
         payload["llm_summary"] = _summarize_with_llm(report)
+    if args.llm_action:
+        payload["llm_action"] = _decide_action_with_llm(report, payload)
     if args.execute:
         payload["executed"] = _execute_advice(args, report, payload)
     return payload
@@ -514,6 +525,10 @@ def _print_supervise_plain(payload: dict[str, Any], report: Any) -> None:
         print()
         print("[LLM 摘要]")
         print(llm_summary)
+    if llm_action := payload.get("llm_action"):
+        print()
+        print("[LLM 白名单动作]")
+        print(f"{llm_action['kind']} / {llm_action['reason']}")
     recommendation = payload["recommendation"]
     print()
     print("[建议]")
@@ -525,6 +540,8 @@ def _print_supervise_plain(payload: dict[str, Any], report: Any) -> None:
 def _print_advice(args: argparse.Namespace) -> None:
     report = _scan_report(args)
     payload = _advice_payload(report)
+    if args.llm_action:
+        payload["llm_action"] = _decide_action_with_llm(report, payload)
     if args.execute:
         payload["executed"] = _execute_advice(args, report, payload)
     if args.json:
@@ -538,6 +555,9 @@ def _print_advice(args: argparse.Namespace) -> None:
     print(f"优先级：{recommendation['priority']}")
     if recommendation["target_session_id"]:
         print(f"目标：{recommendation['target_session_id']}")
+    if llm_action := payload.get("llm_action"):
+        print(f"LLM 动作：{llm_action['kind']}")
+        print(f"LLM 原因：{llm_action['reason']}")
     if command_suggestion is None:
         print("命令：暂无可安全生成的命令草案。")
     else:
@@ -731,6 +751,11 @@ def _report_fingerprint(report: Any) -> tuple[object, ...]:
 def _summarize_with_llm(report: Any) -> str:
     provider = resolve_summary_provider_from_env(agent_name="supervisor")
     return generate_llm_summary(report, provider)
+
+
+def _decide_action_with_llm(report: Any, payload: dict[str, Any]) -> dict[str, Any]:
+    provider = resolve_summary_provider_from_env(agent_name="supervisor")
+    return generate_llm_action_decision(report, payload["command_suggestions"], provider)
 
 
 if __name__ == "__main__":

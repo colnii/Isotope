@@ -23,7 +23,7 @@ Codex Supervisor 已经不只是一个小命令。
 | 状态判断层 | 工作中、等待用户、疑似停住、疑似报错 | `features/supervisor/flow.py` | 规则判断，不等于模型判断 |
 | 状态依据层 | `status_evidence` 说明每个状态标签的来源 | `features/supervisor/flow.py` | 避免只给结论、不说明证据 |
 | 建议执行层 | `recommendation`、`command_suggestions`、`--execute` | `flow.py`、`runner.py` | 只允许白名单动作 |
-| 模型管理层 | `LLM summary` 和 TOML 号池 | `llm_summary.py` | 当前先做摘要，后续承担白名单内动作选择 |
+| 模型管理层 | `LLM summary`、`LLM action` 和 TOML 号池 | `llm_summary.py` | 摘要和白名单动作建议 |
 | 状态协议层 | `SUPERVISOR_STATUS` 等状态协议 | `flow.py`、`registry.py` | 给被托管 Codex 主动汇报状态 |
 | 状态账本层 | lane state（窗口状态）和限频 | `lane_state.py` | 避免重复催促和刷屏 |
 | 本地前端层 | `web`、`/dashboard.json`、`/managed/send` | `features/supervisor/web.py` | 本机视图和白名单发送入口 |
@@ -68,6 +68,7 @@ Codex Supervisor 已经不只是一个小命令。
 - lane state 记录最近状态、最近催促时间和催促次数。
 - `--prompt-cooldown` 可避免短时间重复催促同一个 lane。
 - `--llm-summary` 通过本机 TOML 号池生成中文摘要。
+- `--llm-action` 通过本机 TOML 号池选择一个白名单建议动作。
 
 ## 当前不要重复实现
 
@@ -91,7 +92,7 @@ Codex Supervisor 已经不只是一个小命令。
 
 ## 下一步顺序
 
-1. 讨论 LLM 在白名单内选择动作的策略和提示词。
+1. 把 `--llm-action` 接到本地页面，只展示模型建议，不自动执行。
 2. 后续再决定是否增加人工输入框；默认仍保持白名单。
 
 ## 登记规则
