@@ -357,7 +357,7 @@ src/isotope/
 - ASGI 入口已支持 query string、JSON 响应头和稳定 invalid JSON 错误。
 - 暂不引入 FastAPI / Uvicorn，不监听端口，不把业务逻辑放进 `apps/`。
 
-### 批次十六：Codex Supervisor 只读入口
+### 批次十六：Codex Supervisor 监控入口
 
 状态：已执行第一片。
 
@@ -365,12 +365,13 @@ src/isotope/
 
 - 新增 `src/isotope/features/supervisor/` 作为用户可感知监督器功能。
 - 新增 `CodexSupervisorFlow`，读取本机 Codex session 并生成状态摘要。
-- 新增 `isotope-supervisor scan/watch` CLI，输出中文报告或 JSON。
+- 新增 `isotope-supervisor scan/watch/launch` CLI，输出中文报告或 JSON。
 - 新增 `apps/cli/isotope_supervisor.py` 薄入口。
 - 新增 `watch --changes-only`，连续监控时只在会话变化后输出。
+- 新增本机托管登记，记录 Supervisor 启动的 Codex pid、cwd 和日志路径。
 - 新增 `--llm-summary`，读取本机 TOML 号池中的 provider、base URL、
   model 和 key，实际 TOML 不提交。
-- 第一版只读，不自动向普通终端窗口输入指令。
+- 当前不自动向普通终端窗口输入指令。
 - 暂不接 SSH 服务器内部状态，不做远程 agent 调度。
 
 ## 当前推荐决策

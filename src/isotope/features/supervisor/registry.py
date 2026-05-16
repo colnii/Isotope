@@ -1,0 +1,175 @@
+"""本机 Codex 托管进程登记表。"""
+
+from __future__ import annotations
+
+import json
+import subprocess
+import uuid
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Callable
+
+
+@dataclass(frozen=True)
+class ManagedCodexRecord:
+    record_id: str
+    name: str
+    cwd: str
+    prompt: str
+    command: tuple[str, ...]
+    pid: int
+    started_at: str
+    log_path: str
+    status: str = "launched"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "record_id": self.record_id,
+            "name": self.name,
+            "cwd": self.cwd,
+            "prompt": self.prompt,
+            "command": list(self.command),
+            "pid": self.pid,
+            "started_at": self.started_at,
+            "log_path": self.log_path,
+            "status": self.status,
+        }
+
+
+def default_registry_path(codex_home: Path | str) -> Path:
+    return Path(codex_home).expanduser() / "supervisor" / "managed_sessions.jsonl"
+
+
+def default_log_dir(codex_home: Path | str) -> Path:
+    return Path(codex_home).expanduser() / "supervisor" / "logs"
+
+
+def read_managed_records(registry_path: Path | str) -> tuple[ManagedCodexRecord, ...]:
+    path = Path(registry_path).expanduser()
+    if not path.is_file():
+        return ()
+    records: list[ManagedCodexRecord] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        try:
+            raw = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(raw, dict):
+            continue
+        record = _record_from_dict(raw)
+        if record is not None:
+            records.append(record)
+    return tuple(records)
+
+
+def launch_managed_codex(
+    *,
+    codex_home: Path | str,
+    cwd: Path | str,
+    name: str,
+    prompt: str,
+    codex_bin: str = "codex",
+    now: Callable[[], datetime] | None = None,
+    popen: Callable[..., Any] = subprocess.Popen,
+) -> ManagedCodexRecord:
+    workspace = Path(cwd).expanduser()
+    if not workspace.is_dir():
+        raise ValueError(f"cwd must be an existing directory: {workspace}")
+    name_text = name.strip()
+    prompt_text = prompt.strip()
+    codex_bin_text = codex_bin.strip()
+    if not name_text:
+        raise ValueError("name must not be empty")
+    if not prompt_text:
+        raise ValueError("prompt must not be empty")
+    if not codex_bin_text:
+        raise ValueError("codex_bin must not be empty")
+
+    started_at = _ensure_aware_utc((now or _utc_now)()).isoformat()
+    record_id = "managed-" + uuid.uuid4().hex[:12]
+    log_dir = default_log_dir(codex_home)
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / f"{record_id}.log"
+    command = (codex_bin_text, "--cd", str(workspace), "--no-alt-screen", prompt_text)
+
+    with log_path.open("ab") as log_file:
+        process = popen(
+            list(command),
+            cwd=str(workspace),
+            stdin=subprocess.DEVNULL,
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+
+    record = ManagedCodexRecord(
+        record_id=record_id,
+        name=name_text,
+        cwd=str(workspace),
+        prompt=prompt_text,
+        command=command,
+        pid=int(process.pid),
+        started_at=started_at,
+        log_path=str(log_path),
+    )
+    append_managed_record(default_registry_path(codex_home), record)
+    return record
+
+
+def append_managed_record(registry_path: Path | str, record: ManagedCodexRecord) -> None:
+    path = Path(registry_path).expanduser()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record.to_dict(), ensure_ascii=False, sort_keys=True) + "\n")
+
+
+def _record_from_dict(raw: dict[str, object]) -> ManagedCodexRecord | None:
+    record_id = _string(raw.get("record_id"))
+    name = _string(raw.get("name"))
+    cwd = _string(raw.get("cwd"))
+    prompt = _string(raw.get("prompt"))
+    pid = raw.get("pid")
+    started_at = _string(raw.get("started_at"))
+    log_path = _string(raw.get("log_path"))
+    command = raw.get("command")
+    status = _string(raw.get("status")) or "launched"
+    if (
+        record_id is None
+        or name is None
+        or cwd is None
+        or prompt is None
+        or not isinstance(pid, int)
+        or started_at is None
+        or log_path is None
+        or not isinstance(command, list)
+    ):
+        return None
+    command_items = tuple(item for item in command if isinstance(item, str))
+    if len(command_items) != len(command):
+        return None
+    return ManagedCodexRecord(
+        record_id=record_id,
+        name=name,
+        cwd=cwd,
+        prompt=prompt,
+        command=command_items,
+        pid=pid,
+        started_at=started_at,
+        log_path=log_path,
+        status=status,
+    )
+
+
+def _string(value: object) -> str | None:
+    return value if isinstance(value, str) and value else None
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _ensure_aware_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)

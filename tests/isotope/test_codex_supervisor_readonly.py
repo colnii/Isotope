@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -365,6 +366,166 @@ def test_codex_supervisor_runner_watch_changes_only_prints_changed_reports(
     output = capsys.readouterr().out
     assert output.count("[Codex Supervisor]") == 2
     assert "正在运行测试" in output
+
+
+def test_codex_supervisor_runner_launch_records_managed_codex(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 12345
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured["command"] = command
+        captured["cwd"] = cwd
+        captured["stdin"] = stdin
+        captured["stdout"] = stdout
+        captured["stderr"] = stderr
+        captured["start_new_session"] = start_new_session
+        return FakeProcess()
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+
+    exit_code = supervisor_main(
+        [
+            "launch",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(workspace),
+            "--name",
+            "lane-a",
+            "--prompt",
+            "继续实现 supervisor",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["managed"]["name"] == "lane-a"
+    assert payload["managed"]["pid"] == 12345
+    assert payload["managed"]["cwd"] == str(workspace)
+    assert payload["managed"]["prompt"] == "继续实现 supervisor"
+    assert payload["managed"]["log_path"].endswith(".log")
+    assert captured["command"] == [
+        "codex",
+        "--cd",
+        str(workspace),
+        "--no-alt-screen",
+        "继续实现 supervisor",
+    ]
+    assert captured["cwd"] == str(workspace)
+    assert captured["stdin"] is subprocess.DEVNULL
+    assert captured["stderr"] is subprocess.STDOUT
+    assert captured["start_new_session"] is True
+
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    records = [
+        json.loads(line)
+        for line in registry_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert records == [payload["managed"]]
+
+
+def test_codex_supervisor_scan_includes_managed_registry_records(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "lane-a",
+                "cwd": str(workspace),
+                "prompt": "继续实现 supervisor",
+                "command": ["codex", "--cd", str(workspace), "--no-alt-screen", "继续"],
+                "pid": 12345,
+                "started_at": "2026-05-16T11:59:30+00:00",
+                "log_path": str(codex_home / "supervisor" / "logs" / "managed-001.log"),
+                "status": "launched",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = CodexSupervisorFlow(
+        codex_home=codex_home,
+        now=lambda: NOW,
+        process_checker=lambda pid: pid == 12345,
+    ).scan()
+
+    assert len(report.sessions) == 1
+    session = report.sessions[0]
+    assert session.session_id == "managed:managed-001"
+    assert session.status == "working"
+    assert session.reason == "Supervisor 托管进程已启动"
+    assert session.managed is True
+    assert session.managed_name == "lane-a"
+    assert session.managed_pid == 12345
+    assert session.managed_log_path.endswith("managed-001.log")
+    assert session.last_user_message == "继续实现 supervisor"
+    assert session.to_dict()["managed"] is True
+    text = render_plain_report(report)
+    assert "托管：lane-a pid=12345" in text
+    llm_messages = build_llm_summary_messages(report)
+    assert '"managed": true' in llm_messages[1]["content"]
+    assert '"managed_name": "lane-a"' in llm_messages[1]["content"]
+
+
+def test_codex_supervisor_scan_marks_managed_process_exited(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "lane-a",
+                "cwd": str(workspace),
+                "prompt": "继续实现 supervisor",
+                "command": ["codex", "--cd", str(workspace), "--no-alt-screen", "继续"],
+                "pid": 12345,
+                "started_at": "2026-05-16T11:59:30+00:00",
+                "log_path": str(codex_home / "supervisor" / "logs" / "managed-001.log"),
+                "status": "launched",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = CodexSupervisorFlow(
+        codex_home=codex_home,
+        now=lambda: NOW,
+        process_checker=lambda pid: False,
+    ).scan()
+
+    assert report.sessions[0].status == "exited"
+    assert report.sessions[0].status_label == "已退出"
+    assert report.sessions[0].reason == "Supervisor 托管进程已退出"
 
 
 def test_codex_supervisor_llm_messages_use_compact_session_context(tmp_path):

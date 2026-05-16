@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
+
+from .registry import ManagedCodexRecord, default_registry_path, read_managed_records
 
 
 STATUS_LABELS = {
@@ -16,6 +19,7 @@ STATUS_LABELS = {
     "stale": "疑似停住",
     "error": "疑似报错",
     "idle": "空闲",
+    "exited": "已退出",
 }
 ATTENTION_MARKERS = (
     "是否继续",
@@ -56,6 +60,10 @@ class CodexSessionSummary:
     last_assistant_message: str | None = None
     cli_version: str | None = None
     model_provider: str | None = None
+    managed: bool = False
+    managed_name: str | None = None
+    managed_pid: int | None = None
+    managed_log_path: str | None = None
 
     @property
     def status_label(self) -> str:
@@ -76,6 +84,10 @@ class CodexSessionSummary:
             "last_assistant_message": _shorten_optional(self.last_assistant_message),
             "cli_version": self.cli_version,
             "model_provider": self.model_provider,
+            "managed": self.managed,
+            "managed_name": self.managed_name,
+            "managed_pid": self.managed_pid,
+            "managed_log_path": self.managed_log_path,
         }
 
 
@@ -106,12 +118,20 @@ class CodexSupervisorFlow:
         self,
         *,
         codex_home: Path | str | None = None,
+        registry_path: Path | str | None = None,
         now: Callable[[], datetime] | None = None,
         branch_resolver: Callable[[str], str | None] | None = None,
+        process_checker: Callable[[int], bool] | None = None,
     ) -> None:
         self.codex_home = Path(codex_home).expanduser() if codex_home else Path.home() / ".codex"
+        self.registry_path = (
+            Path(registry_path).expanduser()
+            if registry_path
+            else default_registry_path(self.codex_home)
+        )
         self.now = now or _utc_now
         self.branch_resolver = branch_resolver or _git_branch_for
+        self.process_checker = process_checker or _pid_is_running
 
     def scan(
         self,
@@ -141,6 +161,16 @@ class CodexSupervisorFlow:
             )
             is not None
         ]
+        sessions.extend(
+            _managed_summary(
+                record,
+                now=now,
+                registry_path=self.registry_path,
+                branch_resolver=self.branch_resolver,
+                process_checker=self.process_checker,
+            )
+            for record in read_managed_records(self.registry_path)
+        )
         sessions.sort(key=lambda session: session.last_event_at, reverse=True)
         return CodexSupervisorReport(
             generated_at=now.isoformat(),
@@ -169,6 +199,10 @@ def render_plain_report(report: CodexSupervisorReport) -> str:
             f"{index}. {session.session_id} 状态：{session.status_label} "
             f"目录：{session.cwd}{branch}"
         )
+        if session.managed:
+            pid = f" pid={session.managed_pid}" if session.managed_pid else ""
+            name = session.managed_name or "未命名"
+            lines.append(f"   托管：{name}{pid}")
         lines.append(f"   原因：{session.reason}")
         if session.last_user_message:
             lines.append(f"   最近用户：{_shorten(session.last_user_message)}")
@@ -242,6 +276,36 @@ def _read_session_summary(
         last_assistant_message=last_assistant_message,
         cli_version=_optional_string(meta.get("cli_version")),
         model_provider=_optional_string(meta.get("model_provider")),
+    )
+
+
+def _managed_summary(
+    record: ManagedCodexRecord,
+    *,
+    now: datetime,
+    registry_path: Path,
+    branch_resolver: Callable[[str], str | None],
+    process_checker: Callable[[int], bool],
+) -> CodexSessionSummary:
+    started_at = _parse_timestamp(record.started_at) or now
+    age_seconds = max(0, int((now - started_at).total_seconds()))
+    is_running = process_checker(record.pid)
+    status = "working" if is_running else "exited"
+    reason = "Supervisor 托管进程已启动" if is_running else "Supervisor 托管进程已退出"
+    return CodexSessionSummary(
+        session_id=f"managed:{record.record_id}",
+        cwd=record.cwd,
+        git_branch=branch_resolver(record.cwd) if record.cwd else None,
+        source_path=str(registry_path),
+        last_event_at=started_at.isoformat(),
+        age_seconds=age_seconds,
+        status=status,
+        reason=reason,
+        last_user_message=record.prompt,
+        managed=True,
+        managed_name=record.name,
+        managed_pid=record.pid,
+        managed_log_path=record.log_path,
     )
 
 
@@ -329,6 +393,16 @@ def _git_branch_for(cwd: str) -> str | None:
         return None
     branch = completed.stdout.strip()
     return branch or None
+
+
+def _pid_is_running(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
 
 
 def _parse_timestamp(value: Any) -> datetime | None:

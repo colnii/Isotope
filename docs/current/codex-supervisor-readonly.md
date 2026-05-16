@@ -1,11 +1,11 @@
-# Codex Supervisor 只读监控
+# Codex Supervisor 监控与托管
 
-状态：`第二版小切片 / 本机只读监控`
+状态：`第二版小切片 / 本机监控 + 托管启动`
 
 ## 目标
 
-Codex Supervisor 用来观察本机多个 Codex 终端窗口。
-第一版只做读取和汇报，不向窗口自动输入指令。
+Codex Supervisor 用来观察和启动本机多个 Codex 进程。
+当前仍以读取和汇报为主，不自动向窗口输入指令。
 
 它解决的问题是：
 
@@ -21,6 +21,8 @@ Codex Supervisor 用来观察本机多个 Codex 终端窗口。
 - 用规则判断 `工作中`、`等待用户`、`疑似停住`、`疑似报错`、`空闲`。
 - 输出中文报告，也支持 JSON。
 - `watch --changes-only` 可持续运行，只在会话状态变化时重新输出。
+- `launch` 可启动一个 Codex 进程，并写入托管登记文件。
+- `scan/watch` 可显示托管进程的名称、pid 和是否已退出。
 - 可选 `--llm-summary` 调用已配置 LLM 做中文智能摘要。
 
 ## 运行方式
@@ -31,6 +33,7 @@ Codex Supervisor 用来观察本机多个 Codex 终端窗口。
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --interval 180
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --interval 180 --changes-only
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner launch --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
 ```
 
 安装后：
@@ -39,6 +42,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --in
 .venv/bin/isotope-supervisor scan
 .venv/bin/isotope-supervisor watch --interval 180
 .venv/bin/isotope-supervisor watch --interval 180 --changes-only
+.venv/bin/isotope-supervisor launch --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
 ```
 
 调试 JSON：
@@ -82,12 +86,19 @@ api_keys = [
 
 `--llm-summary` 只发送压缩后的会话摘要，不发送完整 session 文件。
 
+托管登记：
+
+- 默认写入 `~/.codex/supervisor/managed_sessions.jsonl`。
+- 日志默认写入 `~/.codex/supervisor/logs/`。
+- 启动命令形状为 `codex --cd <cwd> --no-alt-screen <prompt>`。
+- 当前登记 pid、cwd、prompt、启动时间和日志路径。
+
 ## 当前边界
 
-- 不接管普通终端窗口。
-- 不自动给 Codex 发指令；当前先做到持续监控和变化汇报。
+- 不接管普通终端窗口；`launch` 启动的是托管 Codex 进程。
+- 不自动给 Codex 发指令；当前先做到启动、登记和变化汇报。
 - 不直接检查 SSH 服务器内部进程。
 - 不把完整日志发给 LLM，只发送短摘要和状态字段。
 
-后续再补控制通道，例如由 Supervisor 启动 Codex，
-或要求被管理窗口运行在 tmux 等可控环境里。
+后续再补控制通道，例如接 tmux 或 remote-control，
+让 Supervisor 能安全发送“继续 / 总结 / 暂停”等指令。

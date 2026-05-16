@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import time
 from pathlib import Path
 from typing import Any
 
 from .flow import CodexSupervisorFlow, render_plain_report
 from .llm_summary import generate_llm_summary, resolve_summary_provider_from_env
+from .registry import launch_managed_codex
 
 
 def _print_json(payload: dict[str, Any]) -> None:
@@ -65,6 +67,21 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="In watch mode, print only when session state changes.",
     )
+    launch_parser = subparsers.add_parser("launch", help="Launch and register a Codex process.")
+    launch_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    launch_parser.add_argument("--cwd", required=True, help="Workspace directory for Codex.")
+    launch_parser.add_argument("--name", required=True, help="Managed lane name.")
+    launch_parser.add_argument("--prompt", required=True, help="Initial Codex prompt.")
+    launch_parser.add_argument(
+        "--codex-bin",
+        default="codex",
+        help="Codex executable name or path.",
+    )
+    launch_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     return parser
 
 
@@ -92,6 +109,22 @@ def main(argv: list[str] | None = None) -> int:
                 count += 1
                 if iterations is None or count < iterations:
                     time.sleep(args.interval)
+            return 0
+        if args.command == "launch":
+            record = launch_managed_codex(
+                codex_home=Path(args.codex_home),
+                cwd=Path(args.cwd),
+                name=args.name,
+                prompt=args.prompt,
+                codex_bin=args.codex_bin,
+                popen=subprocess.Popen,
+            )
+            if args.json:
+                _print_json({"status": "ok", "managed": record.to_dict()})
+            else:
+                print(f"已启动托管 Codex：{record.name}")
+                print(f"pid：{record.pid}")
+                print(f"日志：{record.log_path}")
             return 0
     except KeyboardInterrupt:
         return 130

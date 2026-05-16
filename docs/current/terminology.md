@@ -58,9 +58,10 @@
 | `GET /workbench` | 工作台 API 入口，读取无搜索条件的低敏汇总 | 接口 | `src/isotope/interfaces/http.py` |
 | `POST /workbench` | 工作台 API 入口，可带 query/types/limit 读取汇总和搜索结果 | 接口 | `src/isotope/interfaces/http.py` |
 | `workbench demo` | 工作台 demo 场景，展示创建摘要、搜索和工作台汇总流程 | 应用验证 | `src/isotope/demo.py`, `tests/isotope/test_workbench_demo_scenario.py` |
-| `Codex Supervisor` | Codex 监督器，观察本机多个 Codex 会话并输出中文状态汇报 | 产品功能 | `src/isotope/features/supervisor/flow.py` |
-| `isotope-supervisor` | Codex Supervisor 命令行入口，支持一次扫描、定时汇报和变化触发汇报 | 应用入口 | `src/isotope/features/supervisor/runner.py`, `apps/cli/isotope_supervisor.py` |
+| `Codex Supervisor` | Codex 监督器，观察和启动本机多个 Codex 进程并输出中文状态汇报 | 产品功能 | `src/isotope/features/supervisor/flow.py` |
+| `isotope-supervisor` | Codex Supervisor 命令行入口，支持扫描、定时汇报、变化触发和托管启动 | 应用入口 | `src/isotope/features/supervisor/runner.py`, `apps/cli/isotope_supervisor.py` |
 | `Codex session` | Codex 会话记录，本机通常保存在 `~/.codex/sessions` | 外部集成 | `src/isotope/features/supervisor/flow.py` |
+| `managed Codex` | Supervisor 启动并登记的 Codex 进程，可通过 pid 和日志路径追踪 | 产品功能/外部集成 | `src/isotope/features/supervisor/registry.py` |
 | `LLM summary` | 大模型摘要，把压缩后的窗口状态交给模型生成中文判断 | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
 | `OpenAI-compatible` | 兼容 OpenAI Chat Completions 形状的模型接口 | 模型/外部集成 | `src/isotope/features/supervisor/llm_summary.py` |
 | `LLM pool TOML` | 本机模型号池配置，声明 provider、base URL、model 和 key | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |

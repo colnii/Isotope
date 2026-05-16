@@ -137,13 +137,14 @@
     `interfaces/http.py`，不监听端口，也不引入完整 FastAPI 服务。
 69. apps/api 请求体验：ASGI 入口已支持 query string（查询参数）转 body、
     JSON 响应头、`x-isotope-api` 识别头和稳定 invalid JSON 错误。
-70. Codex Supervisor 只读监控：`CodexSupervisorFlow`、
-    `isotope-supervisor scan/watch` 和 `apps/cli/isotope_supervisor.py`
+70. Codex Supervisor 监控与托管启动：`CodexSupervisorFlow`、
+    `isotope-supervisor scan/watch/launch` 和 `apps/cli/isotope_supervisor.py`
     已建立，可读取本机 `~/.codex/sessions`，输出多个 Codex 会话的
     中文状态汇报；`--llm-summary` 可通过本机 TOML 号池做智能摘要；
-    `watch --changes-only` 可持续运行且只在变化时输出；当前不自动给 Codex 发指令。
+    `watch --changes-only` 可持续运行且只在变化时输出；`launch`
+    可启动 Codex 并写入本机托管登记；当前不自动给 Codex 发指令。
 
-## 最近完成：Codex Supervisor 只读监控
+## 最近完成：Codex Supervisor 监控与托管启动
 
 完成内容：
 
@@ -152,6 +153,8 @@
 - 可识别 `工作中`、`等待用户`、`疑似停住`、`疑似报错` 和 `空闲`。
 - 可输出中文报告，也支持 `--json`。
 - `watch --interval` 可定时汇报，`--changes-only` 可只在会话变化时输出。
+- `launch` 可启动 Codex 进程，登记 name、pid、cwd、prompt、日志路径。
+- `scan/watch` 可显示托管进程，并区分 `工作中` 和 `已退出`。
 - 新增 `--llm-summary`，从被 gitignore 忽略的本机 TOML 号池读取
   provider、base URL、model 和 key。
 - LLM 摘要只发送压缩后的会话摘要，不发送完整日志。
@@ -165,15 +168,13 @@
 - 共享路径改动后需要跑全量测试。
 - `AGENTS.md` 仍需保持 100 行以内。
 
-## 下一批次：Codex Supervisor 第二版准备
+## 下一批次：Codex Supervisor 控制通道
 
 目标：
 
-- 先实际运行只读版，观察报告是否能帮用户减少反复询问。
-- 根据真实输出调整状态判断规则和 LLM 提示词，
-  尤其是等待用户、长时间无输出和误判报错。
-- 设计控制通道：第二版再考虑让 Supervisor 启动 Codex 或接 tmux，
-  从而可控地发送“继续 / 总结 / 暂停”等指令。
+- 实际运行 `launch` 启动的托管 Codex，观察日志和 session 是否能稳定关联。
+- 设计 tmux 或 Codex remote-control 接入方式。
+- 下一步再做可控地发送“继续 / 总结 / 暂停”等指令。
 
 初始参考：
 

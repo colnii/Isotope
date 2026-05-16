@@ -1,4 +1,4 @@
-"""Read-only supervisor helpers for local Codex sessions."""
+"""Supervisor helpers for local Codex sessions and managed Codex processes."""
 
 from .flow import CodexSupervisorFlow, CodexSupervisorReport, CodexSessionSummary
 

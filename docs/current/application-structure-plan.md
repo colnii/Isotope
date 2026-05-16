@@ -189,8 +189,8 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   `isotope-workbench`、`GET /workbench` 和 `POST /workbench` 已可调用；
   `isotope-demo --scenario workbench --trace` 可展示一条人类可读工作台流程；
   当前不是完整 UI。
-- Codex Supervisor：`src/isotope/features/supervisor/flow.py` 已提供
-  只读本机会话扫描和中文汇报，`isotope-supervisor scan/watch`
+- Codex Supervisor：`src/isotope/features/supervisor/` 已提供
+  本机会话扫描、中文汇报和托管启动，`isotope-supervisor scan/watch/launch`
   可观察多个 Codex 窗口状态，`watch --changes-only` 可只在变化时输出，
   `--llm-summary` 可通过本机 TOML 号池生成智能摘要；当前不自动发指令。
 - 智能体循环：`agent_loop_*` 与 planner contract 已迁入 `src/isotope/agents/loop/`；
