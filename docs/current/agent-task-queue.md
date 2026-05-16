@@ -210,14 +210,27 @@
     优先按标题和用户消息匹配真实 Codex session。
 98. Codex Supervisor web 托管透明区：托管卡片会展示最近输出、
     bell 时间和关联 session，方便确认 Supervisor 实际看到了什么。
+99. Codex Supervisor 最近输出修正：终端摘要保留尾部行和换行，
+    web 展示时默认滚到底部，避免卡在旧输出中段。
 
-## 最近完成：Codex Supervisor web 托管透明区
+## 最近完成：Codex Supervisor 最近输出修正
+
+完成内容：
+
+- `managed_terminal_excerpt` 不再走通用标题截断。
+- 终端摘要保留尾部若干行，避免丢掉结束位置。
+- `tmux capture-pane` 明确截到当前底部。
+- web 最近输出框渲染后默认滚到底部。
+
+上一批已完成：
+
+## Codex Supervisor web 托管透明区
 
 完成内容：
 
 - web 托管卡片新增“托管窗口”详情区。
 - 详情区展示 bell 时间、关联 session 和最近输出。
-- 最近输出来自只读 `tmux capture-pane` 摘要。
+- 最近输出来自只读 `tmux capture-pane` 尾部摘要。
 - 没有可读输出时显示空态，不影响控制按钮。
 
 上一批已完成：

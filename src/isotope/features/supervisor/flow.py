@@ -136,7 +136,7 @@ class CodexSessionSummary:
             "managed_log_path": self.managed_log_path,
             "managed_backend": self.managed_backend,
             "managed_tmux_session": self.managed_tmux_session,
-            "managed_terminal_excerpt": _shorten_optional(self.managed_terminal_excerpt),
+            "managed_terminal_excerpt": self.managed_terminal_excerpt,
             "managed_bell": self.managed_bell,
             "managed_bell_event_at": self.managed_bell_event_at,
             "supervisor_status": self.supervisor_status,
@@ -581,9 +581,8 @@ def _managed_summary(
     if record.backend == "tmux":
         is_running = bool(record.tmux_session and tmux_session_checker(record.tmux_session))
         if is_running and record.tmux_session:
-            managed_terminal_excerpt = _shorten_optional(
+            managed_terminal_excerpt = _terminal_tail_excerpt(
                 tmux_pane_reader(record.tmux_session),
-                limit=500,
             )
         bell_event = bell_events.get(record.tmux_session or "")
         managed_bell = bool(
@@ -941,7 +940,7 @@ def _tmux_capture_pane(session: str) -> str | None:
         return None
     try:
         completed = subprocess.run(
-            ["tmux", "capture-pane", "-p", "-t", session, "-S", "-80"],
+            ["tmux", "capture-pane", "-p", "-t", session, "-S", "-80", "-E", "-"],
             text=True,
             capture_output=True,
             check=False,
@@ -955,6 +954,31 @@ def _tmux_capture_pane(session: str) -> str | None:
 
 def _empty_tmux_pane(session: str) -> str | None:
     return None
+
+
+def _terminal_tail_excerpt(
+    text: str | None,
+    *,
+    max_lines: int = 24,
+    limit: int = 1200,
+) -> str | None:
+    if text is None:
+        return None
+    lines = [line.rstrip() for line in text.splitlines()]
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+    if not lines:
+        return None
+    omitted_lines = max(0, len(lines) - max_lines)
+    tail_lines = lines[-max_lines:]
+    excerpt = "\n".join(tail_lines)
+    if len(excerpt) > limit:
+        excerpt = excerpt[-limit:].lstrip()
+    if omitted_lines:
+        excerpt = f"... 已省略前面 {omitted_lines} 行\n{excerpt}"
+    return excerpt
 
 
 def _parse_timestamp(value: Any) -> datetime | None:

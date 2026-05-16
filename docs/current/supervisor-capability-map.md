@@ -51,7 +51,8 @@ Codex Supervisor 已经不只是一个小命令。
 - `web` 可复制完整 `codex resume <session_id>`。
 - `web` 可分别复制 attach、状态请求和继续命令，
   也可对白名单 send 动作发起本机 POST。
-- `web` 托管卡片显示 bell 时间、关联 session 和最近输出。
+- `web` 托管卡片显示 bell 时间、关联 session 和最近输出；
+  最近输出保留尾部行并默认滚到底部。
 - `web` 可手动请求 `/llm-action`，展示 LLM 白名单动作建议。
 - `web` 会高亮模型建议对应的 send 按钮，但不会自动点击。
 - `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
@@ -105,7 +106,7 @@ Codex Supervisor 已经不只是一个小命令。
 
 ## 下一步顺序
 
-1. 观察真实多窗口页面，确认最近输出是否足够判断窗口状态。
+1. 观察真实多窗口页面，确认尾部最近输出是否足够判断窗口状态。
 2. 继续收敛托管 lane 和 session 关联误配。
 3. 后续再决定是否增加人工输入框；默认仍保持白名单。
 

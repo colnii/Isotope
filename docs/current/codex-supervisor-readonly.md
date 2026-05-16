@@ -134,7 +134,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 托管名会显示在路径信息里，方便确认它仍是可控 lane。
 每个窗口会显示“依据”，用来解释当前标签为什么被判成等待用户、停住或工作中。
 托管窗口会额外显示“托管窗口”详情区，包含 bell 时间、关联 session
-和最近输出；最近输出来自只读 `tmux capture-pane` 摘要。
+和最近输出；最近输出来自只读 `tmux capture-pane` 尾部摘要，
+会保留换行并默认滚到输出底部。
 每个窗口提供 `复制 resume`，会复制完整 `codex resume <session_id>`。
 托管 tmux 窗口还会显示复制 attach、复制状态、复制继续、
 请求状态和继续按钮。
@@ -249,8 +250,8 @@ api_keys = [
 - 当前登记 backend、pid、tmux session、cwd、prompt、启动时间和日志路径。
 - `send` 会执行 `tmux send-keys -l <text>`，再发送 `Enter`。
 - `scan` 会读取 `#{window_bell_flag}`，并输出 `managed_bell`。
-- `scan` 会只读 `tmux capture-pane` 最近文本，用于辅助页面关联
-  托管 lane 和真实 Codex session。
+- `scan` 会只读 `tmux capture-pane` 尾部文本，用于辅助页面关联
+  托管 lane 和真实 Codex session，并展示托管窗口最近输出。
 - hook 会把 bell 事件写入 `~/.codex/supervisor/bell_events.jsonl`。
 - `scan` 会读取最近事件，并输出 `managed_bell_event_at`。
 - `launch` 会在发送给 Codex 的 prompt 末尾追加状态汇报要求。

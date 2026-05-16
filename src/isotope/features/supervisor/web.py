@@ -636,8 +636,15 @@ def dashboard_page_html() -> str:
       excerpt.className = "terminal-excerpt";
       excerpt.textContent = item.managed_terminal_excerpt || "暂无可读输出";
       details.append(excerpt);
+      scrollTerminalExcerptToBottom(excerpt);
 
       return details;
+    }
+
+    function scrollTerminalExcerptToBottom(excerpt) {
+      window.requestAnimationFrame(() => {
+        excerpt.scrollTop = excerpt.scrollHeight;
+      });
     }
 
     async function copyResumeCommand(item, button) {

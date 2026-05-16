@@ -952,6 +952,37 @@ def test_codex_supervisor_dashboard_uses_tmux_pane_text_to_link_managed_lane(
     )
 
 
+def test_codex_supervisor_managed_terminal_excerpt_keeps_recent_tail(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    pane_text = "\n".join(
+        [f"old terminal line {index}" for index in range(1, 70)]
+        + [
+            "SUPERVISOR_STATUS: done",
+            "SUPERVISOR_SUMMARY: 文档已完成。",
+            "› 好，下一步",
+        ]
+    )
+
+    report = CodexSupervisorFlow(
+        codex_home=codex_home,
+        now=lambda: NOW,
+        tmux_session_checker=lambda session: session == "isotope-lane-a",
+        tmux_bell_checker=lambda session: False,
+        tmux_pane_reader=lambda session: pane_text,
+    ).scan(limit=5, stale_after_seconds=999999)
+
+    excerpt = report.sessions[0].managed_terminal_excerpt
+    assert excerpt is not None
+    assert "SUPERVISOR_STATUS: done" in excerpt
+    assert "› 好，下一步" in excerpt
+    assert "old terminal line 1" not in excerpt
+    assert "\n" in excerpt
+    assert report.sessions[0].to_dict()["managed_terminal_excerpt"] == excerpt
+
+
 def test_codex_supervisor_runner_dashboard_plain_is_grouped(tmp_path, capsys):
     codex_home = tmp_path / ".codex"
     _write_session(
@@ -1071,6 +1102,7 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "managed_terminal_excerpt" in html
     assert "最近输出" in html
     assert "bell 时间" in html
+    assert "scrollTerminalExcerptToBottom" in html
     assert "/managed/send" in html
     assert "/llm-action" in html
     assert "/events" in html
