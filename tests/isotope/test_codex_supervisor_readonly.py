@@ -269,6 +269,34 @@ def test_codex_supervisor_scan_parses_thread_title_and_agent_name(tmp_path):
     assert payload["short_session_id"] == "019e2e4f"
 
 
+def test_codex_supervisor_scan_uses_session_index_title_when_jsonl_has_no_rename(
+    tmp_path,
+):
+    codex_home = tmp_path / ".codex"
+    session_id = "019e274b-d20a-7400-8502-d3923d5167c6"
+    _write_session_index(codex_home, session_id=session_id, thread_name="项目重新整理")
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-index-title.jsonl",
+        session_id=session_id,
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "running tests"},
+            ),
+        ],
+    )
+
+    report = CodexSupervisorFlow(codex_home=codex_home, now=lambda: NOW).scan()
+    session = report.sessions[0]
+
+    assert session.thread_name == "项目重新整理"
+    assert session.display_title == "项目重新整理"
+    assert session.to_dict()["display_title"] == "项目重新整理"
+
+
 def test_codex_supervisor_recommendation_prioritizes_blocked_status(tmp_path):
     codex_home = tmp_path / ".codex"
     _write_session(
@@ -526,6 +554,7 @@ def test_codex_supervisor_dashboard_json_includes_display_title_and_short_hash(
     assert item["display_title"] == "Supervisor页面"
     assert item["thread_name"] == "Supervisor页面"
     assert item["short_session_id"] == "019e2e4f"
+    assert item["resume_command"] == "codex resume 019e2e4f-d541-72f1-9269-471aa50bc2f2"
 
 
 def test_codex_supervisor_runner_dashboard_plain_is_grouped(tmp_path, capsys):
@@ -629,6 +658,8 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert 'data-group="needs_attention"' in html
     assert "short_session_id" in html
     assert "display_title" in html
+    assert "copyResumeCommand" in html
+    assert "codex resume " in html
     assert "Codex Supervisor" in html
     assert "dashboard.json" in html
     assert json_response.status == 200
@@ -2719,6 +2750,17 @@ def _write_session(
         "\n".join(json.dumps(line, ensure_ascii=False) for line in lines) + "\n",
         encoding="utf-8",
     )
+
+
+def _write_session_index(codex_home: Path, *, session_id: str, thread_name: str) -> None:
+    path = codex_home / "session_index.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    line = {
+        "id": session_id,
+        "thread_name": thread_name,
+        "updated_at": "2026-05-16T11:59:20Z",
+    }
+    path.write_text(json.dumps(line, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def _event(timestamp: str, type_: str, payload: dict[str, object]) -> dict[str, object]:

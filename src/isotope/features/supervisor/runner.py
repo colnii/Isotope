@@ -450,6 +450,7 @@ def _dashboard_item(session: Any) -> dict[str, Any]:
         "session_id": session.session_id,
         "short_session_id": session.short_session_id,
         "display_title": session.display_title,
+        "resume_command": f"codex resume {session.session_id}",
         "name": session.managed_name,
         "thread_name": session.thread_name,
         "thread_id": session.thread_id,

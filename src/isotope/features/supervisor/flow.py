@@ -214,6 +214,7 @@ class CodexSupervisorFlow:
         if active_within_seconds <= 0:
             raise ValueError("active_within_seconds must be positive")
         now = _ensure_aware_utc(self.now())
+        session_index_titles = _read_session_index_titles(self.codex_home / "session_index.jsonl")
         sessions = [
             summary
             for path in self._session_paths()
@@ -224,6 +225,7 @@ class CodexSupervisorFlow:
                     stale_after_seconds=stale_after_seconds,
                     active_within_seconds=active_within_seconds,
                     branch_resolver=self.branch_resolver,
+                    session_index_titles=session_index_titles,
                 )
             )
             is not None
@@ -309,6 +311,7 @@ def _read_session_summary(
     stale_after_seconds: int,
     active_within_seconds: int,
     branch_resolver: Callable[[str], str | None],
+    session_index_titles: dict[str, str] | None = None,
 ) -> CodexSessionSummary | None:
     meta: dict[str, Any] = {}
     last_event_at: datetime | None = None
@@ -355,10 +358,12 @@ def _read_session_summary(
                 last_assistant_message = text
     if not meta and last_event_at is None:
         return None
-    session_id = str(meta.get("id") or path.stem)
-    cwd = str(meta.get("cwd") or "")
     if last_event_at is None:
         last_event_at = _parse_timestamp(meta.get("timestamp")) or now
+    session_id = str(meta.get("id") or path.stem)
+    if thread_name is None and session_index_titles:
+        thread_name = session_index_titles.get(session_id)
+    cwd = str(meta.get("cwd") or "")
     age_seconds = max(0, int((now - last_event_at).total_seconds()))
     status, reason = _classify_session(
         age_seconds=age_seconds,
@@ -388,6 +393,26 @@ def _read_session_summary(
         supervisor_summary=supervisor_summary,
         supervisor_next=supervisor_next,
     )
+
+
+def _read_session_index_titles(path: Path) -> dict[str, str]:
+    titles: dict[str, str] = {}
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return titles
+    for line in lines:
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(item, dict):
+            continue
+        session_id = _optional_string(item.get("id"))
+        thread_name = _optional_string(item.get("thread_name"))
+        if session_id and thread_name:
+            titles[session_id] = thread_name
+    return titles
 
 
 def _managed_summary(

@@ -205,6 +205,22 @@ def dashboard_page_html() -> str:
       margin-top: 8px;
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    button {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #ffffff;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 12px;
+      padding: 6px 9px;
+    }
+    button:hover { background: #f2f4f7; }
     [data-group="needs_attention"] .group-head { border-top: 3px solid var(--attention); }
     [data-group="done"] .group-head { border-top: 3px solid var(--done); }
     [data-group="working"] .group-head { border-top: 3px solid var(--working); }
@@ -284,6 +300,14 @@ def dashboard_page_html() -> str:
         .join(" · ");
 
       lane.append(title, summary, path);
+      const actions = document.createElement("div");
+      actions.className = "actions";
+      const copyResume = document.createElement("button");
+      copyResume.type = "button";
+      copyResume.textContent = "复制 resume";
+      copyResume.addEventListener("click", () => copyResumeCommand(item, copyResume));
+      actions.append(copyResume);
+      lane.append(actions);
       if (item.managed_tmux_session) {
         const command = document.createElement("div");
         command.className = "command";
@@ -291,6 +315,19 @@ def dashboard_page_html() -> str:
         lane.append(command);
       }
       return lane;
+    }
+
+    async function copyResumeCommand(item, button) {
+      const command = item.resume_command || ("codex resume " + item.session_id);
+      try {
+        await navigator.clipboard.writeText(command);
+        button.textContent = "已复制";
+      } catch (error) {
+        button.textContent = command;
+      }
+      setTimeout(() => {
+        button.textContent = "复制 resume";
+      }, 1600);
     }
 
     function renderGroup(key, items) {

@@ -67,7 +67,9 @@
 | `dashboard web` | Supervisor 本机页面，读取 `/dashboard.json` 并渲染三组窗口 | 产品功能/视图 | `src/isotope/features/supervisor/web.py` |
 | `display_title` | Supervisor 展示标题，优先托管名、Codex 标题、agent 名和短 session id | 产品功能/视图 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/runner.py` |
 | `thread_name_updated` | Codex 会话标题更新事件，可解析出窗口 rename 或自带标题 | 外部集成/视图 | `src/isotope/features/supervisor/flow.py` |
+| `session_index.jsonl` | Codex 会话索引文件，可在 JSONL 没有标题事件时提供 `thread_name` | 外部集成/视图 | `src/isotope/features/supervisor/flow.py` |
 | `short_session_id` | session id 的短 hash，页面辅助辨认窗口 | 产品功能/视图 | `src/isotope/features/supervisor/flow.py` |
+| `resume_command` | 完整恢复命令，形如 `codex resume <session_id>`，用于复制后恢复窗口 | 产品功能/视图 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `agent_nickname` | Codex session 元数据里的 agent 名称，可作为标题兜底 | 外部集成/视图 | `src/isotope/features/supervisor/flow.py` |
 | `needs_attention` | dashboard 分组字段，表示需要人类或管理层优先查看的窗口 | 产品功能/视图 | `src/isotope/features/supervisor/runner.py` |
 | `inspect_blocked` | 建议动作，优先查看主动汇报阻塞的窗口 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
