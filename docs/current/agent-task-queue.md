@@ -165,10 +165,25 @@
     解析状态协议字段。
 79. Codex Supervisor 接管已有 tmux：`adopt` 可把已有 tmux session
     登记成托管 lane，后续复用 `scan/watch/send/supervise`。
+80. Codex Supervisor lane state：已新增 lane state 小账本，
+    记录最近状态、最近催促时间和催促次数；`--prompt-cooldown`
+    可避免短时间重复发送。
 
-## 最近完成：Codex Supervisor 接管已有 tmux
+## 最近完成：Codex Supervisor lane state
 
 完成内容：
+
+- 新增 `features/supervisor/lane_state.py`。
+- 默认写入 `~/.codex/supervisor/lane_state.json`。
+- `advise/supervise --execute send_status/send_continue` 发送后会记录 lane 状态。
+- 冷却期内再次执行同类发送会返回 `skipped`，不再打断同一窗口。
+- 默认冷却期是 300 秒，可用 `--prompt-cooldown 0` 关闭。
+- plain 输出会显示“已跳过”，避免把跳过误写成已执行。
+- 同步 [status](./status.md)、[terminology](./terminology.md)、
+  [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
+  [supervisor-capability-map](./supervisor-capability-map.md)。
+
+上一批已完成：
 
 - 新增 `isotope-supervisor adopt`。
 - `adopt` 会先确认 tmux session 存在，再写入托管登记表。
@@ -180,7 +195,7 @@
   [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
   [supervisor-capability-map](./supervisor-capability-map.md)。
 
-上一批已完成：
+更早一批已完成：
 
 - 托管 `launch` 会把状态汇报格式追加到 Codex prompt 末尾。
 - 登记表仍保存用户原始 prompt，不把协议提示当成用户需求。
@@ -193,7 +208,7 @@
   [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
   [supervisor-capability-map](./supervisor-capability-map.md)。
 
-更早一批已完成：
+更早二批已完成：
 
 - `CodexSessionSummary` 新增 `managed_bell` 字段。
 - 托管 tmux 会话运行时会读取 `#{window_bell_flag}`。
@@ -205,7 +220,7 @@
   [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
   [supervisor-capability-map](./supervisor-capability-map.md)。
 
-更早二批已完成：
+更早三批已完成：
 
 - 新增 [supervisor-capability-map](./supervisor-capability-map.md)。
 - 登记 `scan/watch/advise/supervise`、托管登记、tmux 控制、
@@ -217,7 +232,7 @@
   [terminology](./terminology.md) 和
   [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
 
-更早三批已完成：
+更早四批已完成：
 
 - `supervise` 复用 `watch` 的 `--interval`、`--iterations`
   和 `--changes-only`。
@@ -230,7 +245,7 @@
 - 同步 [status](./status.md)、[terminology](./terminology.md) 和
   [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
 
-更早四批已完成：
+更早五批已完成：
 
 - `advise --execute send_status` 会向托管 tmux lane 发送“请汇报当前状态”。
 - `advise --execute send_continue` 会向托管 tmux lane 发送继续推进指令。
@@ -272,13 +287,13 @@
 - 共享路径改动后需要跑全量测试。
 - `AGENTS.md` 仍需保持 100 行以内。
 
-## 下一批次：Codex Supervisor lane state
+## 下一批次：Codex Supervisor 建议动作优化
 
 目标：
 
-- 给每个托管 lane 记录最近状态、最近汇报时间和催促次数。
-- 避免 `supervise` 在短时间内重复发送状态请求。
 - 让 bell 和 `SUPERVISOR_STATUS` 成为建议动作的输入。
+- `done` 状态优先建议人工审阅或等待用户决定。
+- `blocked` 状态优先建议人工查看。
 - 先继续保持显式 `--execute`，不做自由自动执行。
 
 初始参考：

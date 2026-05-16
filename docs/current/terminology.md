@@ -78,7 +78,8 @@
 | `SUPERVISOR_STATUS` | 托管 Codex 主动汇报状态的协议锚点，如 working、done、blocked、needs_user | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |
 | `SUPERVISOR_SUMMARY` | 托管 Codex 主动汇报的一句中文状态摘要 | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |
 | `SUPERVISOR_NEXT` | 托管 Codex 主动建议的下一步 | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |
-| `lane state` | 托管窗口状态，后续记录最近状态、催促次数和限频信息 | 产品功能/状态判断 | 待实现 |
+| `lane state` | 托管窗口状态账本，记录最近状态、最近催促时间和催促次数 | 产品功能/状态判断 | `src/isotope/features/supervisor/lane_state.py` |
+| `--prompt-cooldown` | 催促冷却期，避免短时间重复向同一个 lane 发送状态请求或继续指令 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `LLM summary` | 大模型摘要，把压缩后的窗口状态和结构化建议交给模型生成中文判断 | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
 | `OpenAI-compatible` | 兼容 OpenAI Chat Completions 形状的模型接口 | 模型/外部集成 | `src/isotope/features/supervisor/llm_summary.py` |
 | `LLM pool TOML` | 本机模型号池配置，声明 provider、base URL、model 和 key | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |

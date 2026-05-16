@@ -22,7 +22,7 @@ Codex Supervisor 已经不只是一个小命令。
 | 建议执行层 | `recommendation`、`command_suggestions`、`--execute` | `flow.py`、`runner.py` | 只允许白名单动作 |
 | 模型摘要层 | `LLM summary` 和 TOML 号池 | `llm_summary.py` | 只做摘要，不自由执行命令 |
 | 状态协议层 | `SUPERVISOR_STATUS` 等状态协议 | `flow.py`、`registry.py` | 给被托管 Codex 主动汇报状态 |
-| 未来状态层 | lane state（窗口状态）和限频 | 待实现 | 避免重复催促和刷屏 |
+| 状态账本层 | lane state（窗口状态）和限频 | `lane_state.py` | 避免重复催促和刷屏 |
 
 ## 已有轮子
 
@@ -41,6 +41,8 @@ Codex Supervisor 已经不只是一个小命令。
 - `advise` 输出建议和命令草案。
 - `--execute` 只执行 `send_status` 和 `send_continue`。
 - `supervise` 循环执行扫描、建议、摘要和显式发送。
+- lane state 记录最近状态、最近催促时间和催促次数。
+- `--prompt-cooldown` 可避免短时间重复催促同一个 lane。
 - `--llm-summary` 通过本机 TOML 号池生成中文摘要。
 
 ## 当前不要重复实现
@@ -61,9 +63,8 @@ Codex Supervisor 已经不只是一个小命令。
 
 ## 下一步顺序
 
-1. 增加 lane state（窗口状态）和限频。
-2. 用状态协议结果优化建议动作。
-3. 再讨论 LLM 是否可在白名单内选择动作。
+1. 用状态协议结果优化建议动作。
+2. 再讨论 LLM 是否可在白名单内选择动作。
 
 ## 登记规则
 

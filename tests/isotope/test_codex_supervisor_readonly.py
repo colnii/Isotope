@@ -657,6 +657,254 @@ def test_codex_supervisor_runner_supervise_can_execute_send_status(
     ]
 
 
+def test_codex_supervisor_runner_execute_skips_repeated_prompt_in_cooldown(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "lane-a",
+                "cwd": str(workspace),
+                "prompt": "等待输入",
+                "command": ["tmux", "new-session", "-d", "-s", "isotope-lane-a"],
+                "pid": 0,
+                "started_at": NOW.isoformat(),
+                "log_path": str(codex_home / "supervisor" / "logs" / "managed-001.log"),
+                "status": "launched",
+                "backend": "tmux",
+                "tmux_session": "isotope-lane-a",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    first_exit = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--execute",
+            "send_status",
+            "--json",
+        ]
+    )
+    first_payload = json.loads(capsys.readouterr().out)
+    second_exit = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--execute",
+            "send_status",
+            "--json",
+        ]
+    )
+    second_payload = json.loads(capsys.readouterr().out)
+
+    assert first_exit == 0
+    assert first_payload["executed"]["kind"] == "send_status"
+    assert second_exit == 0
+    assert second_payload["executed"]["skipped"] is True
+    assert second_payload["executed"]["reason"] == "lane prompt cooldown active"
+    assert second_payload["executed"]["lane_state"]["name"] == "lane-a"
+    assert second_payload["executed"]["lane_state"]["prompt_count"] == 1
+    assert calls == [
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", "请汇报当前状态"],
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "Enter"],
+    ]
+
+
+def test_codex_supervisor_runner_execute_can_disable_prompt_cooldown(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "lane-a",
+                "cwd": str(workspace),
+                "prompt": "等待输入",
+                "command": ["tmux", "new-session", "-d", "-s", "isotope-lane-a"],
+                "pid": 0,
+                "started_at": NOW.isoformat(),
+                "log_path": str(codex_home / "supervisor" / "logs" / "managed-001.log"),
+                "status": "launched",
+                "backend": "tmux",
+                "tmux_session": "isotope-lane-a",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    for _ in range(2):
+        exit_code = supervisor_main(
+            [
+                "supervise",
+                "--codex-home",
+                str(codex_home),
+                "--iterations",
+                "1",
+                "--interval",
+                "1",
+                "--execute",
+                "send_status",
+                "--prompt-cooldown",
+                "0",
+                "--json",
+            ]
+        )
+        payload = json.loads(capsys.readouterr().out)
+        assert exit_code == 0
+        assert payload["executed"]["kind"] == "send_status"
+        assert "skipped" not in payload["executed"]
+
+    assert calls == [
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", "请汇报当前状态"],
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "Enter"],
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", "请汇报当前状态"],
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "Enter"],
+    ]
+
+
+def test_codex_supervisor_runner_supervise_plain_reports_skipped_prompt(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "lane-a",
+                "cwd": str(workspace),
+                "prompt": "等待输入",
+                "command": ["tmux", "new-session", "-d", "-s", "isotope-lane-a"],
+                "pid": 0,
+                "started_at": NOW.isoformat(),
+                "log_path": str(codex_home / "supervisor" / "logs" / "managed-001.log"),
+                "status": "launched",
+                "backend": "tmux",
+                "tmux_session": "isotope-lane-a",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.subprocess.run",
+        lambda command, *, check, text, capture_output: subprocess.CompletedProcess(
+            command, 0, "", ""
+        ),
+    )
+
+    for _ in range(2):
+        exit_code = supervisor_main(
+            [
+                "supervise",
+                "--codex-home",
+                str(codex_home),
+                "--iterations",
+                "1",
+                "--interval",
+                "1",
+                "--execute",
+                "send_status",
+            ]
+        )
+        assert exit_code == 0
+        output = capsys.readouterr().out
+
+    assert "已跳过：lane prompt cooldown active" in output
+    assert "已执行：" not in output
+
+
 def test_codex_supervisor_runner_scan_can_add_llm_summary(
     tmp_path,
     capsys,

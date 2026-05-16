@@ -26,6 +26,7 @@ Codex Supervisor 用来观察、启动和轻量管理本机多个 Codex 进程�
 - JSON 输出包含 `recommendation` 结构化建议，供后续半自动管理复用。
 - `advise` 可只输出当前建议和可复制命令草案。
 - `supervise` 可按间隔循环执行扫描、建议、可选 LLM 摘要和显式 send。
+- `--prompt-cooldown` 可避免短时间重复催促同一个托管 lane。
 - `watch --changes-only` 可持续运行，只在会话状态变化时重新输出。
 - `launch` 可启动一个 Codex 进程，并写入托管登记文件。
 - `launch --backend tmux` 可在本机 tmux 会话里启动 Codex。
@@ -102,6 +103,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --jso
 ```bash
 .venv/bin/isotope-supervisor supervise --interval 180 --llm-summary
 .venv/bin/isotope-supervisor supervise --interval 180 --llm-summary --execute send_status
+.venv/bin/isotope-supervisor supervise --interval 180 --execute send_status --prompt-cooldown 300
 .venv/bin/isotope-supervisor supervise --iterations 1 --llm-summary --json
 ```
 
@@ -158,6 +160,9 @@ api_keys = [
 - `scan` 会读取 `#{window_bell_flag}`，并输出 `managed_bell`。
 - `launch` 会在发送给 Codex 的 prompt 末尾追加状态汇报要求。
 - 登记表里的 `prompt` 仍保留用户原始文本。
+- lane state 默认写入 `~/.codex/supervisor/lane_state.json`。
+- 发送 `send_status` 或 `send_continue` 后会记录最近状态和催促次数。
+- 冷却期内重复发送会跳过，可用 `--prompt-cooldown 0` 临时关闭。
 
 状态协议：
 
@@ -187,6 +192,7 @@ tmux attach -t isotope-lane-a
 - 当前不会自己无限自动续跑；发指令仍受 `--execute` 白名单限制。
 - bell 只作为弱信号，不直接改变状态，也不自动触发发送。
 - 状态协议只增强可观察性，当前不直接触发自动发送。
+- lane state 只做限频，不替你判断是否应该继续开发。
 - 不直接检查 SSH 服务器内部进程。
 - 不把完整日志发给 LLM，只发送短摘要和状态字段。
 

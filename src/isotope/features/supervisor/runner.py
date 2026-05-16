@@ -11,6 +11,11 @@ from pathlib import Path
 from typing import Any
 
 from .flow import CodexSupervisorFlow, render_plain_report
+from .lane_state import (
+    DEFAULT_PROMPT_COOLDOWN_SECONDS,
+    prompt_cooldown_state,
+    record_lane_prompt,
+)
 from .llm_summary import generate_llm_summary, resolve_summary_provider_from_env
 from .registry import adopt_tmux_session, launch_managed_codex, send_to_managed_codex
 
@@ -63,6 +68,12 @@ def _build_parser() -> argparse.ArgumentParser:
         subparsers.choices[command].add_argument(
             "--execute",
             help="Execute one generated send suggestion. Supports send_status or send_continue.",
+        )
+        subparsers.choices[command].add_argument(
+            "--prompt-cooldown",
+            type=int,
+            default=DEFAULT_PROMPT_COOLDOWN_SECONDS,
+            help="Seconds before repeating send_status/send_continue for the same lane.",
         )
     for command in ("watch", "supervise"):
         command_parser = subparsers.choices[command]
@@ -338,7 +349,7 @@ def _print_supervise_plain(payload: dict[str, Any], report: Any) -> None:
     print("[建议]")
     print(f"{recommendation['label']} action={recommendation['action']}")
     if executed := payload.get("executed"):
-        print(f"已执行：{executed['command']}")
+        _print_executed_plain(executed)
 
 
 def _print_advice(args: argparse.Namespace) -> None:
@@ -362,7 +373,7 @@ def _print_advice(args: argparse.Namespace) -> None:
     else:
         print(f"命令：{command_suggestion['command']}")
     if executed := payload.get("executed"):
-        print(f"已执行：{executed['command']}")
+        _print_executed_plain(executed)
 
 
 def _advice_payload(report: Any) -> dict[str, Any]:
@@ -375,6 +386,13 @@ def _advice_payload(report: Any) -> dict[str, Any]:
         "command_suggestion": suggestions[0] if suggestions else None,
         "command_suggestions": suggestions,
     }
+
+
+def _print_executed_plain(executed: dict[str, Any]) -> None:
+    if executed.get("skipped"):
+        print(f"已跳过：{executed['reason']}")
+        return
+    print(f"已执行：{executed['command']}")
 
 
 def _command_suggestions(report: Any) -> list[dict[str, str]]:
@@ -462,11 +480,29 @@ def _execute_advice(
         target = _first_managed_tmux_session(report)
     if target is None or not target.managed_name:
         raise ValueError(f"no managed tmux target for: {kind}")
+    if cooldown_state := prompt_cooldown_state(
+        codex_home=Path(args.codex_home),
+        name=target.managed_name,
+        cooldown_seconds=args.prompt_cooldown,
+    ):
+        return {
+            "kind": kind,
+            "command": suggestion["command"],
+            "skipped": True,
+            "reason": "lane prompt cooldown active",
+            "lane_state": cooldown_state.to_dict(),
+        }
     result = send_to_managed_codex(
         codex_home=Path(args.codex_home),
         name=target.managed_name,
         text=EXECUTABLE_ADVICE_TEXT[kind],
         run=subprocess.run,
+    )
+    record_lane_prompt(
+        codex_home=Path(args.codex_home),
+        name=result.record.name,
+        tmux_session=result.record.tmux_session,
+        status=target.supervisor_status or target.status,
     )
     return {
         "kind": kind,
