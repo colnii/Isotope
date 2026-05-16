@@ -25,6 +25,7 @@ python3 -m venv .venv
 .venv/bin/isotope-supervisor scan --limit 3
 .venv/bin/isotope-supervisor scan --limit 3 --llm-summary
 .venv/bin/isotope-supervisor advise
+.venv/bin/isotope-supervisor supervise --interval 180 --llm-summary
 .venv/bin/isotope-supervisor watch --interval 180 --changes-only --llm-summary
 .venv/bin/isotope-supervisor launch --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
 .venv/bin/isotope-supervisor launch --backend tmux --tmux-session isotope-lane-a --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"

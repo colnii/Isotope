@@ -467,6 +467,153 @@ def test_codex_supervisor_runner_advise_execute_rejects_non_send_kind(
     assert "send_continue" in payload["error"]["message"]
 
 
+def test_codex_supervisor_runner_supervise_json_includes_llm_summary_and_advice(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-active.jsonl",
+        session_id="active-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "reading files"},
+            )
+        ],
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            assert "active-session" in messages[1]["content"]
+            assert "recommendation" in messages[1]["content"]
+            return "窗口 A 正在读文件，建议继续监控。"
+
+    captured: dict[str, object] = {}
+
+    def fake_resolver(**kwargs: object) -> FakeProvider:
+        captured.update(kwargs)
+        return FakeProvider()
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        fake_resolver,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--limit",
+            "1",
+            "--stale-after",
+            "999999",
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-summary",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["iteration"] == 1
+    assert payload["report"]["sessions"][0]["session_id"] == "active-session"
+    assert payload["recommendation"]["action"] == "monitor"
+    assert payload["command_suggestions"] == [
+        {
+            "command": "isotope-supervisor watch --interval 180 --changes-only",
+            "kind": "watch_changes",
+            "label": "继续监控变化",
+        }
+    ]
+    assert payload["llm_summary"] == "窗口 A 正在读文件，建议继续监控。"
+    assert captured["agent_name"] == "supervisor"
+
+
+def test_codex_supervisor_runner_supervise_can_execute_send_status(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "lane-a",
+                "cwd": str(workspace),
+                "prompt": "等待输入",
+                "command": ["tmux", "new-session", "-d", "-s", "isotope-lane-a"],
+                "pid": 0,
+                "started_at": NOW.isoformat(),
+                "log_path": str(codex_home / "supervisor" / "logs" / "managed-001.log"),
+                "status": "launched",
+                "backend": "tmux",
+                "tmux_session": "isotope-lane-a",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--execute",
+            "send_status",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["executed"]["kind"] == "send_status"
+    assert payload["executed"]["text"] == "请汇报当前状态"
+    assert calls == [
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", "请汇报当前状态"],
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "Enter"],
+    ]
+
+
 def test_codex_supervisor_runner_scan_can_add_llm_summary(
     tmp_path,
     capsys,

@@ -32,6 +32,7 @@ def _build_parser() -> argparse.ArgumentParser:
         ("scan", "Print one Codex supervisor report."),
         ("watch", "Print reports repeatedly."),
         ("advise", "Print one compact next-action suggestion."),
+        ("supervise", "Run repeated reports with advice, optional LLM summary, and send execution."),
     ):
         subparser = subparsers.add_parser(command, help=help_text)
         subparser.add_argument(
@@ -58,28 +59,29 @@ def _build_parser() -> argparse.ArgumentParser:
             action="store_true",
             help="Use configured LLM to add a compact Chinese summary.",
         )
-    advise_parser = subparsers.choices["advise"]
-    advise_parser.add_argument(
-        "--execute",
-        help="Execute one generated send suggestion. Supports send_status or send_continue.",
-    )
-    watch_parser = subparsers.choices["watch"]
-    watch_parser.add_argument(
-        "--interval",
-        type=int,
-        default=180,
-        help="Seconds between reports.",
-    )
-    watch_parser.add_argument(
-        "--iterations",
-        type=int,
-        help="Stop after this many reports. Omit to watch until interrupted.",
-    )
-    watch_parser.add_argument(
-        "--changes-only",
-        action="store_true",
-        help="In watch mode, print only when session state changes.",
-    )
+    for command in ("advise", "supervise"):
+        subparsers.choices[command].add_argument(
+            "--execute",
+            help="Execute one generated send suggestion. Supports send_status or send_continue.",
+        )
+    for command in ("watch", "supervise"):
+        command_parser = subparsers.choices[command]
+        command_parser.add_argument(
+            "--interval",
+            type=int,
+            default=180,
+            help="Seconds between reports.",
+        )
+        command_parser.add_argument(
+            "--iterations",
+            type=int,
+            help="Stop after this many reports. Omit to watch until interrupted.",
+        )
+        command_parser.add_argument(
+            "--changes-only",
+            action="store_true",
+            help="Print only when session state changes.",
+        )
     launch_parser = subparsers.add_parser("launch", help="Launch and register a Codex process.")
     launch_parser.add_argument(
         "--codex-home",
@@ -128,6 +130,9 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "advise":
             _print_advice(args)
+            return 0
+        if args.command == "supervise":
+            _run_supervise(args)
             return 0
         if args.command == "watch":
             if args.interval <= 0:
@@ -238,13 +243,74 @@ def _print_report(
     return True, fingerprint
 
 
-def _print_advice(args: argparse.Namespace) -> None:
+def _run_supervise(args: argparse.Namespace) -> None:
+    if args.interval <= 0:
+        raise ValueError("interval must be positive")
+    if args.iterations is not None and args.iterations <= 0:
+        raise ValueError("iterations must be positive")
+    iterations = args.iterations
+    count = 0
+    previous_fingerprint: tuple[object, ...] | None = None
+    while iterations is None or count < iterations:
+        report = _scan_report(args)
+        fingerprint = _report_fingerprint(report)
+        should_print = not args.changes_only or previous_fingerprint != fingerprint
+        if should_print:
+            payload = _supervise_payload(args, report, iteration=count + 1)
+            if args.json:
+                _print_json(payload)
+            else:
+                _print_supervise_plain(payload, report)
+            if iterations is not None and count + 1 < iterations:
+                print()
+        previous_fingerprint = fingerprint
+        count += 1
+        if iterations is None or count < iterations:
+            time.sleep(args.interval)
+
+
+def _scan_report(args: argparse.Namespace) -> Any:
     flow = CodexSupervisorFlow(codex_home=Path(args.codex_home))
-    report = flow.scan(
+    return flow.scan(
         limit=args.limit,
         stale_after_seconds=args.stale_after,
         active_within_seconds=args.active_within,
     )
+
+
+def _supervise_payload(
+    args: argparse.Namespace,
+    report: Any,
+    *,
+    iteration: int,
+) -> dict[str, Any]:
+    payload = _advice_payload(report)
+    payload["iteration"] = iteration
+    payload["report"] = report.to_dict()
+    if args.llm_summary:
+        payload["llm_summary"] = _summarize_with_llm(report)
+    if args.execute:
+        payload["executed"] = _execute_advice(args, report, payload)
+    return payload
+
+
+def _print_supervise_plain(payload: dict[str, Any], report: Any) -> None:
+    print("[Codex Supervisor supervise]")
+    print(render_plain_report(report))
+    if llm_summary := payload.get("llm_summary"):
+        print()
+        print("[LLM 摘要]")
+        print(llm_summary)
+    recommendation = payload["recommendation"]
+    print()
+    print("[建议]")
+    print(f"{recommendation['label']} action={recommendation['action']}")
+    if executed := payload.get("executed"):
+        print(f"已执行：{executed['command']}")
+
+
+def _print_advice(args: argparse.Namespace) -> None:
+    report = _scan_report(args)
     payload = _advice_payload(report)
     if args.execute:
         payload["executed"] = _execute_advice(args, report, payload)

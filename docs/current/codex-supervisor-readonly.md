@@ -1,6 +1,6 @@
 # Codex Supervisor 监控与托管
 
-状态：`第二版小切片 / 本机监控 + 结构化建议 + tmux 控制通道`
+状态：`第二版小切片 / 本机监控 + LLM 摘要 + 显式控制通道`
 
 ## 目标
 
@@ -22,6 +22,7 @@ Codex Supervisor 用来观察、启动和轻量管理本机多个 Codex 进程�
 - 输出中文报告，也支持 JSON。
 - JSON 输出包含 `recommendation` 结构化建议，供后续半自动管理复用。
 - `advise` 可只输出当前建议和可复制命令草案。
+- `supervise` 可按间隔循环执行扫描、建议、可选 LLM 摘要和显式 send。
 - `watch --changes-only` 可持续运行，只在会话状态变化时重新输出。
 - `launch` 可启动一个 Codex 进程，并写入托管登记文件。
 - `launch --backend tmux` 可在本机 tmux 会话里启动 Codex。
@@ -36,6 +37,7 @@ Codex Supervisor 用来观察、启动和轻量管理本机多个 Codex 进程�
 ```bash
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner advise
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise --interval 180 --llm-summary
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --interval 180
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --interval 180 --changes-only
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner launch --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
@@ -48,6 +50,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --nam
 ```bash
 .venv/bin/isotope-supervisor scan
 .venv/bin/isotope-supervisor advise
+.venv/bin/isotope-supervisor supervise --interval 180 --llm-summary
 .venv/bin/isotope-supervisor watch --interval 180
 .venv/bin/isotope-supervisor watch --interval 180 --changes-only
 .venv/bin/isotope-supervisor launch --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
@@ -85,6 +88,19 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --jso
 显式传入 `--execute send_status` 或 `--execute send_continue` 时，
 只会执行对应的 `send` 类草案；`tmux_attach` 和 `watch_changes`
 不会被 `--execute` 执行。
+
+`supervise` 是当前的监控小闭环：
+
+```bash
+.venv/bin/isotope-supervisor supervise --interval 180 --llm-summary
+.venv/bin/isotope-supervisor supervise --interval 180 --llm-summary --execute send_status
+.venv/bin/isotope-supervisor supervise --iterations 1 --llm-summary --json
+```
+
+每轮会扫描窗口、生成结构化建议、生成命令草案，
+可选调用 LLM 生成中文摘要。
+只有显式传入 `--execute send_status` 或 `--execute send_continue`
+时才会发送指令。
 
 LLM 摘要：
 
@@ -138,9 +154,9 @@ api_keys = [
 - `recommendation` 只表示建议动作，不会自动调用 `send`。
 - `advise` 默认只生成命令草案；`--execute` 只允许执行
   `send_status` 和 `send_continue`。
-- 当前不会自己连续追问或自动续跑；发指令仍由用户或后续策略触发。
+- `supervise` 可循环监控，但不会让 LLM 自由决定执行任意命令。
+- 当前不会自己无限自动续跑；发指令仍受 `--execute` 白名单限制。
 - 不直接检查 SSH 服务器内部进程。
 - 不把完整日志发给 LLM，只发送短摘要和状态字段。
 
-后续再把 `scan/watch`、LLM 摘要和 `send` 串成半自动流程，
-让 Supervisor 能先判断状态，再建议或发送“继续 / 总结 / 暂停”等指令。
+后续再细化 LLM 决策策略和自动执行边界。

@@ -153,21 +153,31 @@
     当前建议和多条命令草案，不自动执行。
 74. Codex Supervisor 显式执行：`advise --execute send_status` 和
     `advise --execute send_continue` 可执行对应 send 类草案。
+75. Codex Supervisor 监控小闭环：`supervise` 可循环执行扫描、建议、
+    可选 LLM 摘要和显式 send。
 
-## 最近完成：Codex Supervisor 显式执行
+## 最近完成：Codex Supervisor 监控小闭环
 
 完成内容：
+
+- `supervise` 复用 `watch` 的 `--interval`、`--iterations`
+  和 `--changes-only`。
+- `supervise --llm-summary` 每轮会调用 LLM 生成中文摘要。
+- `supervise --execute send_status` 和 `send_continue` 会复用现有
+  send 通道执行白名单动作。
+- `supervise --json` 输出 report、recommendation、command_suggestions、
+  llm_summary 和 executed。
+- 当前仍不让 LLM 自由执行任意命令。
+- 同步 [status](./status.md)、[terminology](./terminology.md) 和
+  [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
+
+上一批已完成：
 
 - `advise --execute send_status` 会向托管 tmux lane 发送“请汇报当前状态”。
 - `advise --execute send_continue` 会向托管 tmux lane 发送继续推进指令。
 - `--execute` 只支持 `send_status` 和 `send_continue`。
 - `tmux_attach` 和 `watch_changes` 仍只作为命令草案，不会被执行。
 - 执行仍复用 `send_to_managed_codex`，不解析 shell 字符串。
-- 同步 [terminology](./terminology.md) 和
-  [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
-
-上一批已完成：
-
 - `advise` 复用 `scan` 的状态判断，只输出当前建议。
 - `advise --json` 输出 `recommendation`、兼容字段
   `command_suggestion` 和多命令字段 `command_suggestions`。
