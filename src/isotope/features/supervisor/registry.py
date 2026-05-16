@@ -11,6 +11,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from .bell_events import install_tmux_bell_hook
+
 
 @dataclass(frozen=True)
 class ManagedCodexRecord:
@@ -148,6 +150,16 @@ def launch_managed_codex(
         except subprocess.CalledProcessError as exc:
             message = (exc.stderr or exc.stdout or str(exc)).strip()
             raise ValueError(f"tmux launch failed: {message}") from exc
+        try:
+            install_tmux_bell_hook(
+                codex_home=codex_home,
+                name=name_text,
+                tmux_session=tmux_session_text,
+                run=run,
+            )
+        except subprocess.CalledProcessError as exc:
+            message = (exc.stderr or exc.stdout or str(exc)).strip()
+            raise ValueError(f"tmux bell hook install failed: {message}") from exc
 
     record = ManagedCodexRecord(
         record_id=record_id,
@@ -197,6 +209,16 @@ def adopt_tmux_session(
     if completed.returncode != 0:
         message = (completed.stderr or completed.stdout or tmux_session_text).strip()
         raise ValueError(f"tmux session not found: {message}")
+    try:
+        install_tmux_bell_hook(
+            codex_home=codex_home,
+            name=name_text,
+            tmux_session=tmux_session_text,
+            run=run,
+        )
+    except subprocess.CalledProcessError as exc:
+        message = (exc.stderr or exc.stdout or str(exc)).strip()
+        raise ValueError(f"tmux bell hook install failed: {message}") from exc
 
     started_at = _ensure_aware_utc((now or _utc_now)()).isoformat()
     record_id = "managed-" + uuid.uuid4().hex[:12]

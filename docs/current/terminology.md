@@ -75,6 +75,9 @@
 | `send-keys` | tmux 输入命令，当前用于把文本写入托管 Codex 窗口 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
 | `bell` | tmux 提醒信号，可作为窗口可能结束或需要查看的弱证据 | 外部集成/状态判断 | `src/isotope/features/supervisor/flow.py`, `docs/current/supervisor-capability-map.md` |
 | `managed_bell` | 托管 tmux 会话是否出现过 bell 提醒的结构化字段 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
+| `alert-bell` | tmux bell hook，在窗口响铃时触发并写入 Supervisor 事件文件 | 外部集成/状态判断 | `src/isotope/features/supervisor/bell_events.py`, `src/isotope/features/supervisor/registry.py` |
+| `bell_events.jsonl` | Supervisor bell 事件日志，记录哪个托管 tmux session 响铃 | 产品功能/状态判断 | `src/isotope/features/supervisor/bell_events.py` |
+| `managed_bell_event_at` | 最近一次 tmux bell hook 事件时间 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
 | `SUPERVISOR_STATUS` | 托管 Codex 主动汇报状态的协议锚点，如 working、done、blocked、needs_user | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |
 | `SUPERVISOR_SUMMARY` | 托管 Codex 主动汇报的一句中文状态摘要 | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |
 | `SUPERVISOR_NEXT` | 托管 Codex 主动建议的下一步 | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |

@@ -1176,7 +1176,7 @@ def test_codex_supervisor_runner_launch_can_use_tmux_backend(
     codex_home = tmp_path / ".codex"
     workspace = tmp_path / "workspace"
     workspace.mkdir()
-    captured: dict[str, object] = {}
+    calls: list[list[str]] = []
 
     def fake_run(
         command: list[str],
@@ -1185,10 +1185,10 @@ def test_codex_supervisor_runner_launch_can_use_tmux_backend(
         text: bool,
         capture_output: bool,
     ) -> subprocess.CompletedProcess[str]:
-        captured["command"] = command
-        captured["check"] = check
-        captured["text"] = text
-        captured["capture_output"] = capture_output
+        calls.append(command)
+        assert check is True
+        assert text is True
+        assert capture_output is True
         return subprocess.CompletedProcess(command, 0, "", "")
 
     monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
@@ -1217,7 +1217,7 @@ def test_codex_supervisor_runner_launch_can_use_tmux_backend(
     assert payload["managed"]["backend"] == "tmux"
     assert payload["managed"]["tmux_session"] == "isotope-lane-a"
     assert payload["managed"]["pid"] == 0
-    assert captured["command"][:7] == [
+    assert calls[0][:7] == [
         "tmux",
         "new-session",
         "-d",
@@ -1226,12 +1226,13 @@ def test_codex_supervisor_runner_launch_can_use_tmux_backend(
         "-c",
         str(workspace),
     ]
-    assert "codex --cd " + str(workspace) + " --no-alt-screen" in captured["command"][7]
-    assert "继续实现 supervisor" in captured["command"][7]
-    assert "SUPERVISOR_STATUS" in captured["command"][7]
-    assert captured["check"] is True
-    assert captured["text"] is True
-    assert captured["capture_output"] is True
+    assert "codex --cd " + str(workspace) + " --no-alt-screen" in calls[0][7]
+    assert "继续实现 supervisor" in calls[0][7]
+    assert "SUPERVISOR_STATUS" in calls[0][7]
+    assert calls[1][:4] == ["tmux", "set-hook", "-t", "isotope-lane-a"]
+    assert calls[1][4] == "alert-bell"
+    assert "bell_events.jsonl" in calls[1][5]
+    assert "lane-a" in calls[1][5]
 
 
 def test_codex_supervisor_runner_adopt_registers_existing_tmux_session(
@@ -1254,7 +1255,7 @@ def test_codex_supervisor_runner_adopt_registers_existing_tmux_session(
         calls.append(command)
         assert text is True
         assert capture_output is True
-        assert check is False
+        assert check is (command[:2] == ["tmux", "set-hook"])
         return subprocess.CompletedProcess(command, 0, "", "")
 
     monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
@@ -1282,7 +1283,11 @@ def test_codex_supervisor_runner_adopt_registers_existing_tmux_session(
     assert payload["managed"]["backend"] == "tmux"
     assert payload["managed"]["tmux_session"] == "isotope-lane-a"
     assert payload["managed"]["prompt"] == "接管已有 tmux 会话"
-    assert calls == [["tmux", "has-session", "-t", "isotope-lane-a"]]
+    assert calls[0] == ["tmux", "has-session", "-t", "isotope-lane-a"]
+    assert calls[1][:4] == ["tmux", "set-hook", "-t", "isotope-lane-a"]
+    assert calls[1][4] == "alert-bell"
+    assert "bell_events.jsonl" in calls[1][5]
+    assert "lane-a" in calls[1][5]
 
     registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
     records = [
@@ -1461,6 +1466,65 @@ def test_codex_supervisor_scan_marks_tmux_managed_bell_signal(tmp_path):
     assert "bell=响过" in render_plain_report(report)
     llm_messages = build_llm_summary_messages(report)
     assert '"managed_bell": true' in llm_messages[1]["content"]
+
+
+def test_codex_supervisor_scan_highlights_tmux_bell_hook_event(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "lane-a",
+                "cwd": str(workspace),
+                "prompt": "继续实现 supervisor",
+                "command": ["tmux", "attach", "-t", "isotope-lane-a"],
+                "pid": 0,
+                "started_at": "2026-05-16T11:59:30+00:00",
+                "log_path": str(codex_home / "supervisor" / "logs" / "managed-001.log"),
+                "status": "adopted",
+                "backend": "tmux",
+                "tmux_session": "isotope-lane-a",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    bell_path = codex_home / "supervisor" / "bell_events.jsonl"
+    bell_path.write_text(
+        json.dumps(
+            {
+                "event": "bell",
+                "name": "lane-a",
+                "tmux_session": "isotope-lane-a",
+                "created_at": "2026-05-16T11:59:50+00:00",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = CodexSupervisorFlow(
+        codex_home=codex_home,
+        now=lambda: NOW,
+        tmux_session_checker=lambda session: session == "isotope-lane-a",
+        tmux_bell_checker=lambda session: False,
+    ).scan()
+
+    session = report.sessions[0]
+    assert session.managed_bell is True
+    assert session.managed_bell_event_at == "2026-05-16T11:59:50+00:00"
+    assert session.to_dict()["managed_bell_event_at"] == "2026-05-16T11:59:50+00:00"
+    plain = render_plain_report(report)
+    assert "bell=响过" in plain
+    assert "bell 事件：2026-05-16T11:59:50+00:00" in plain
+    llm_messages = build_llm_summary_messages(report)
+    assert '"managed_bell_event_at": "2026-05-16T11:59:50+00:00"' in llm_messages[1]["content"]
 
 
 def test_codex_supervisor_runner_send_text_to_tmux_managed_session(

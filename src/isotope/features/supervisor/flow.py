@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from .bell_events import default_bell_events_path, read_latest_bell_events
 from .registry import ManagedCodexRecord, default_registry_path, read_managed_records
 
 
@@ -67,6 +68,7 @@ class CodexSessionSummary:
     managed_backend: str | None = None
     managed_tmux_session: str | None = None
     managed_bell: bool = False
+    managed_bell_event_at: str | None = None
     supervisor_status: str | None = None
     supervisor_summary: str | None = None
     supervisor_next: str | None = None
@@ -97,6 +99,7 @@ class CodexSessionSummary:
             "managed_backend": self.managed_backend,
             "managed_tmux_session": self.managed_tmux_session,
             "managed_bell": self.managed_bell,
+            "managed_bell_event_at": self.managed_bell_event_at,
             "supervisor_status": self.supervisor_status,
             "supervisor_summary": _shorten_optional(self.supervisor_summary),
             "supervisor_next": _shorten_optional(self.supervisor_next),
@@ -204,11 +207,13 @@ class CodexSupervisorFlow:
             )
             is not None
         ]
+        bell_events = read_latest_bell_events(default_bell_events_path(self.codex_home))
         sessions.extend(
             _managed_summary(
                 record,
                 now=now,
                 registry_path=self.registry_path,
+                bell_events=bell_events,
                 branch_resolver=self.branch_resolver,
                 process_checker=self.process_checker,
                 tmux_session_checker=self.tmux_session_checker,
@@ -259,6 +264,8 @@ def render_plain_report(report: CodexSupervisorReport) -> str:
             )
             name = session.managed_name or "未命名"
             lines.append(f"   托管：{name}{pid}{backend}{tmux}{bell}")
+            if session.managed_bell_event_at:
+                lines.append(f"   bell 事件：{session.managed_bell_event_at}")
         if session.supervisor_status:
             lines.append(f"   Supervisor 状态：{session.supervisor_status}")
         if session.supervisor_summary:
@@ -356,6 +363,7 @@ def _managed_summary(
     *,
     now: datetime,
     registry_path: Path,
+    bell_events: dict[str, Any],
     branch_resolver: Callable[[str], str | None],
     process_checker: Callable[[int], bool],
     tmux_session_checker: Callable[[str], bool],
@@ -365,9 +373,13 @@ def _managed_summary(
     age_seconds = max(0, int((now - started_at).total_seconds()))
     if record.backend == "tmux":
         is_running = bool(record.tmux_session and tmux_session_checker(record.tmux_session))
+        bell_event = bell_events.get(record.tmux_session or "")
         managed_bell = bool(
-            is_running and record.tmux_session and tmux_bell_checker(record.tmux_session)
+            is_running
+            and record.tmux_session
+            and (tmux_bell_checker(record.tmux_session) or bell_event is not None)
         )
+        managed_bell_event_at = bell_event.created_at if bell_event is not None else None
         status = "working" if is_running else "exited"
         reason = (
             "Supervisor 托管 tmux 会话仍在运行"
@@ -377,6 +389,7 @@ def _managed_summary(
     else:
         is_running = process_checker(record.pid)
         managed_bell = False
+        managed_bell_event_at = None
         status = "working" if is_running else "exited"
         reason = "Supervisor 托管进程已启动" if is_running else "Supervisor 托管进程已退出"
     return CodexSessionSummary(
@@ -396,6 +409,7 @@ def _managed_summary(
         managed_backend=record.backend,
         managed_tmux_session=record.tmux_session,
         managed_bell=managed_bell,
+        managed_bell_event_at=managed_bell_event_at,
     )
 
 

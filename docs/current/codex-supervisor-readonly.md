@@ -33,6 +33,7 @@ Codex Supervisor 用来观察、启动和轻量管理本机多个 Codex 进程�
 - `adopt` 可把已有 tmux 会话登记成托管 lane。
 - `scan/watch` 可显示托管进程的名称、pid 和是否已退出。
 - `scan/watch` 可显示托管 tmux 会话是否有 bell（提醒）信号。
+- `scan/watch` 可显示 tmux bell hook 记录的最近提醒事件。
 - `scan/watch` 可显示托管 Codex 主动汇报的 Supervisor 状态协议。
 - `send` 可向 `launch --backend tmux` 登记的会话发送一行文本并回车。
 - 可选 `--llm-summary` 调用已配置 LLM 做中文智能摘要。
@@ -155,9 +156,12 @@ api_keys = [
 - 默认进程模式的启动命令形状为 `codex --cd <cwd> --no-alt-screen <prompt>`。
 - tmux 模式会执行 `tmux new-session -d -s <session> -c <cwd> ...`。
 - `adopt` 会执行 `tmux has-session -t <session>` 确认会话存在。
+- `launch/adopt` 会安装 tmux `alert-bell` hook。
 - 当前登记 backend、pid、tmux session、cwd、prompt、启动时间和日志路径。
 - `send` 会执行 `tmux send-keys -l <text>`，再发送 `Enter`。
 - `scan` 会读取 `#{window_bell_flag}`，并输出 `managed_bell`。
+- hook 会把 bell 事件写入 `~/.codex/supervisor/bell_events.jsonl`。
+- `scan` 会读取最近事件，并输出 `managed_bell_event_at`。
 - `launch` 会在发送给 Codex 的 prompt 末尾追加状态汇报要求。
 - 登记表里的 `prompt` 仍保留用户原始文本。
 - lane state 默认写入 `~/.codex/supervisor/lane_state.json`。
@@ -191,6 +195,7 @@ tmux attach -t isotope-lane-a
 - `supervise` 可循环监控，但不会让 LLM 自由决定执行任意命令。
 - 当前不会自己无限自动续跑；发指令仍受 `--execute` 白名单限制。
 - bell 只作为弱信号，不直接改变状态，也不自动触发发送。
+- bell hook 只写事件文件，不直接发指令。
 - 状态协议只增强可观察性，当前不直接触发自动发送。
 - lane state 只做限频，不替你判断是否应该继续开发。
 - 不直接检查 SSH 服务器内部进程。

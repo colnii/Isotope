@@ -168,10 +168,25 @@
 80. Codex Supervisor lane state：已新增 lane state 小账本，
     记录最近状态、最近催促时间和催促次数；`--prompt-cooldown`
     可避免短时间重复发送。
+81. Codex Supervisor bell hook：`launch/adopt` 会安装 tmux
+    `alert-bell` hook，把 bell 事件写入 `bell_events.jsonl`；
+    `scan` 会优先读取事件并突出显示。
 
-## 最近完成：Codex Supervisor lane state
+## 最近完成：Codex Supervisor bell hook
 
 完成内容：
+
+- 新增 `features/supervisor/bell_events.py`。
+- `launch --backend tmux` 和 `adopt` 会安装 tmux `alert-bell` hook。
+- hook 触发时写入 `~/.codex/supervisor/bell_events.jsonl`。
+- `scan` 会读取最近 bell 事件，并写入 `managed_bell_event_at`。
+- plain 报告会额外显示 `bell 事件：...`。
+- 真实 tmux 烟测已验证 bell 触发、事件写入和 scan 读取。
+- 同步 [status](./status.md)、[terminology](./terminology.md)、
+  [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
+  [supervisor-capability-map](./supervisor-capability-map.md)。
+
+上一批已完成：
 
 - 新增 `features/supervisor/lane_state.py`。
 - 默认写入 `~/.codex/supervisor/lane_state.json`。
@@ -183,7 +198,7 @@
   [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
   [supervisor-capability-map](./supervisor-capability-map.md)。
 
-上一批已完成：
+更早一批已完成：
 
 - 新增 `isotope-supervisor adopt`。
 - `adopt` 会先确认 tmux session 存在，再写入托管登记表。
@@ -195,7 +210,7 @@
   [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
   [supervisor-capability-map](./supervisor-capability-map.md)。
 
-更早一批已完成：
+更早二批已完成：
 
 - 托管 `launch` 会把状态汇报格式追加到 Codex prompt 末尾。
 - 登记表仍保存用户原始 prompt，不把协议提示当成用户需求。
@@ -208,7 +223,7 @@
   [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
   [supervisor-capability-map](./supervisor-capability-map.md)。
 
-更早二批已完成：
+更早三批已完成：
 
 - `CodexSessionSummary` 新增 `managed_bell` 字段。
 - 托管 tmux 会话运行时会读取 `#{window_bell_flag}`。
@@ -220,7 +235,7 @@
   [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
   [supervisor-capability-map](./supervisor-capability-map.md)。
 
-更早三批已完成：
+更早四批已完成：
 
 - 新增 [supervisor-capability-map](./supervisor-capability-map.md)。
 - 登记 `scan/watch/advise/supervise`、托管登记、tmux 控制、
@@ -232,7 +247,7 @@
   [terminology](./terminology.md) 和
   [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
 
-更早四批已完成：
+更早五批已完成：
 
 - `supervise` 复用 `watch` 的 `--interval`、`--iterations`
   和 `--changes-only`。
@@ -245,7 +260,7 @@
 - 同步 [status](./status.md)、[terminology](./terminology.md) 和
   [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
 
-更早五批已完成：
+更早六批已完成：
 
 - `advise --execute send_status` 会向托管 tmux lane 发送“请汇报当前状态”。
 - `advise --execute send_continue` 会向托管 tmux lane 发送继续推进指令。
