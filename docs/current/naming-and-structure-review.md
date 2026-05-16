@@ -367,8 +367,8 @@ src/isotope/
 - 新增 `CodexSupervisorFlow`，读取本机 Codex session 并生成状态摘要。
 - 新增 `isotope-supervisor scan/watch` CLI，输出中文报告或 JSON。
 - 新增 `apps/cli/isotope_supervisor.py` 薄入口。
-- 新增 `--llm-summary`，优先复用现有 DeepSeek provider，
-  无 DeepSeek key 时接 MiniMax OpenAI-compatible 摘要接口。
+- 新增 `--llm-summary`，读取本机 TOML 号池中的 provider、base URL、
+  model 和 key 环境变量名，实际 TOML 不提交。
 - 第一版只读，不自动向普通终端窗口输入指令。
 - 暂不接 SSH 服务器内部状态，不做远程 agent 调度。
 

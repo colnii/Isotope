@@ -56,7 +56,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
 16. `features/supervisor` 已有 Codex Supervisor 只读第一版，
     可从本机 `~/.codex/sessions` 读取多个 Codex 会话，判断工作中、
     等待用户、疑似停住、疑似报错和空闲，并通过 `isotope-supervisor`
-    输出中文汇报；`--llm-summary` 可复用 DeepSeek 或 MiniMax 做智能摘要；
+    输出中文汇报；`--llm-summary` 可通过本机 TOML 号池做智能摘要；
     当前不自动发指令。
 
 ## 文档策略

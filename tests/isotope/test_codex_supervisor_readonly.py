@@ -6,8 +6,8 @@ from pathlib import Path
 
 from isotope.features.supervisor.flow import CodexSupervisorFlow, render_plain_report
 from isotope.features.supervisor.llm_summary import (
-    DeepSeekSummaryProvider,
-    OpenAICompatibleSummaryProvider,
+    PooledSummaryProvider,
+    PoolEntry,
     build_llm_summary_messages,
     generate_llm_summary,
     resolve_summary_provider_from_env,
@@ -237,16 +237,11 @@ def test_codex_supervisor_runner_llm_summary_reports_missing_key(
     capsys,
     monkeypatch,
 ):
-    for name in (
-        "DEEPSEEK_API_KEY",
-        "YIFU_DEEPSEEK_API_KEY",
-        "YIFU_MINIMAX_CODER_API_KEY",
-        "YIFU_MINIMAX_API_KEY",
-        "MINIMAX_API_KEY",
-        "MINIMAX_TOKEN",
-        "MINIMAX_API_TOKEN",
-    ):
-        monkeypatch.delenv(name, raising=False)
+    # Point the TOML path to a non-existent file so the resolver has zero entries
+    monkeypatch.setenv(
+        "SUPERVISOR_LLM_POOL_TOML_FILES",
+        str(tmp_path / "nonexistent.toml"),
+    )
     codex_home = tmp_path / ".codex"
     _write_session(
         codex_home,
@@ -275,7 +270,7 @@ def test_codex_supervisor_runner_llm_summary_reports_missing_key(
     assert exit_code == 2
     payload = json.loads(capsys.readouterr().out)
     assert payload["error"]["code"] == "codex_supervisor_runner_error"
-    assert "DEEPSEEK_API_KEY" in payload["error"]["message"]
+    assert "LLM pool" in payload["error"]["message"]
 
 
 def test_codex_supervisor_llm_messages_use_compact_session_context(tmp_path):
@@ -301,7 +296,7 @@ def test_codex_supervisor_llm_messages_use_compact_session_context(tmp_path):
     assert len(messages[1]["content"]) < 1500
 
 
-def test_codex_supervisor_openai_compatible_provider_calls_minimax_shape():
+def test_codex_supervisor_pooled_provider_strips_thinking():
     captured: dict[str, object] = {}
 
     def transport(
@@ -325,23 +320,28 @@ def test_codex_supervisor_openai_compatible_provider_calls_minimax_shape():
             "usage": {"total_tokens": 42},
         }
 
-    provider = OpenAICompatibleSummaryProvider(
-        api_key="sk-test",
-        base_url="https://api.minimax.io/v1",
-        model="MiniMax-M2.7-highspeed",
+    provider = PooledSummaryProvider(
+        entries=(
+            PoolEntry(
+                provider="fake",
+                api_key="fake-key",
+                base_url="https://fake-chat.example.com/v1",
+                model="fake-model",
+            ),
+        ),
         transport=transport,
     )
 
     summary = provider.summarize([{"role": "user", "content": "hello"}])
 
     assert summary == "窗口 A 正在测试，建议继续观察。"
-    assert captured["url"] == "https://api.minimax.io/v1/chat/completions"
+    assert captured["url"] == "https://fake-chat.example.com/v1/chat/completions"
     assert captured["headers"] == {
-        "Authorization": "Bearer sk-test",
+        "Authorization": "Bearer fake-key",
         "Content-Type": "application/json",
     }
     assert captured["payload"] == {
-        "model": "MiniMax-M2.7-highspeed",
+        "model": "fake-model",
         "messages": [{"role": "user", "content": "hello"}],
         "temperature": 0,
         "max_tokens": 512,
@@ -349,7 +349,8 @@ def test_codex_supervisor_openai_compatible_provider_calls_minimax_shape():
     }
 
 
-def test_codex_supervisor_deepseek_summary_provider_reuses_llm_provider_contract():
+def test_codex_supervisor_pooled_provider_calls_openai_compatible_shape():
+    """PooledSummaryProvider works for any OpenAI-compatible endpoint."""
     captured: dict[str, object] = {}
 
     def transport(
@@ -364,7 +365,7 @@ def test_codex_supervisor_deepseek_summary_provider_reuses_llm_provider_contract
         captured["timeout"] = timeout
         return {
             "id": "chatcmpl_test",
-            "model": "deepseek-v4-flash",
+            "model": "deepseek-chat",
             "choices": [
                 {
                     "finish_reason": "stop",
@@ -374,20 +375,87 @@ def test_codex_supervisor_deepseek_summary_provider_reuses_llm_provider_contract
             "usage": {"total_tokens": 12},
         }
 
-    provider = DeepSeekSummaryProvider(
-        api_key="sk-test",
-        model="deepseek-v4-flash",
+    provider = PooledSummaryProvider(
+        entries=(
+            PoolEntry(
+                provider="fake",
+                api_key="fake-key",
+                base_url="https://fake-openai.example.com",
+                model="fake-chat-v1",
+            ),
+        ),
         transport=transport,
     )
 
     assert provider.summarize([{"role": "user", "content": "hello"}]) == "窗口 A 正在测试。"
-    assert captured["url"] == "https://api.deepseek.com/chat/completions"
-    assert captured["payload"]["thinking"] == {"type": "disabled"}
+    assert captured["url"] == "https://fake-openai.example.com/chat/completions"
     assert captured["payload"]["temperature"] == 0
-    assert captured["headers"]["Authorization"] == "Bearer sk-test"
+    assert captured["headers"]["Authorization"] == "Bearer fake-key"
 
 
-def test_codex_supervisor_env_resolver_prefers_deepseek_infrastructure():
+def test_codex_supervisor_pooled_provider_falls_back_during_summary():
+    captured: dict[str, object] = {}
+    call_count = [0]
+
+    def transport(
+        url: str,
+        payload: dict[str, object],
+        headers: dict[str, str],
+        timeout: int,
+    ) -> dict[str, object]:
+        call_count[0] += 1
+        if "dead.invalid" in url:
+            raise ValueError("connection refused")
+        captured["url"] = url
+        captured["payload"] = payload
+        return {
+            "choices": [{"message": {"content": "备用 provider 摘要"}}],
+            "usage": {"total_tokens": 12},
+        }
+
+    provider = PooledSummaryProvider(
+        entries=(
+            PoolEntry(
+                provider="dead",
+                api_key="sk-dead",
+                base_url="https://api.dead.invalid",
+                model="dead-model",
+            ),
+            PoolEntry(
+                provider="fallback",
+                api_key="sk-fallback",
+                base_url="https://api.fallback.example.com/v1",
+                model="fallback-model",
+            ),
+        ),
+        transport=transport,
+    )
+
+    assert provider.summarize([{"role": "user", "content": "hello"}]) == "备用 provider 摘要"
+    assert captured["url"] == "https://api.fallback.example.com/v1/chat/completions"
+    assert captured["payload"]["model"] == "fallback-model"
+    assert call_count[0] == 2
+
+
+def test_codex_supervisor_env_resolver_loads_pool_entries_without_health_check(tmp_path):
+    """Resolver reads a TOML pool and provider tests happen during summarize."""
+    toml_path = tmp_path / "pool.toml"
+    toml_path.write_text(
+        """\
+[[keys]]
+provider = "provider-a"
+base_url = "https://api.provider-a.example.com"
+model = "model-a"
+api_keys = ["env:PROVIDER_A_KEY"]
+
+[[keys]]
+provider = "provider-b"
+base_url = "https://api.provider-b.example.com/v1"
+model = "model-b"
+api_keys = ["env:PROVIDER_B_KEY"]
+""",
+        encoding="utf-8",
+    )
     captured: dict[str, object] = {}
 
     def transport(
@@ -399,32 +467,64 @@ def test_codex_supervisor_env_resolver_prefers_deepseek_infrastructure():
         captured["url"] = url
         captured["payload"] = payload
         return {
-            "id": "chatcmpl_test",
-            "model": "deepseek-v4-flash",
-            "choices": [
-                {
-                    "finish_reason": "stop",
-                    "message": {"role": "assistant", "content": "DeepSeek 摘要"},
-                }
-            ],
+            "choices": [{"message": {"content": "第一条 provider 摘要"}}],
             "usage": {"total_tokens": 12},
         }
 
     provider = resolve_summary_provider_from_env(
         {
-            "YIFU_DEEPSEEK_API_KEY": "sk-deepseek",
-            "YIFU_MINIMAX_API_KEY": "sk-minimax",
+            "SUPERVISOR_LLM_POOL_TOML_FILES": str(toml_path),
+            "PROVIDER_A_KEY": "sk-provider-a",
+            "PROVIDER_B_KEY": "sk-provider-b",
         },
         transport=transport,
     )
 
-    assert provider.summarize([{"role": "user", "content": "hello"}]) == "DeepSeek 摘要"
-    assert captured["url"] == "https://api.deepseek.com/chat/completions"
-    assert captured["payload"]["model"] == "deepseek-v4-flash"
+    assert provider.summarize([{"role": "user", "content": "hello"}]) == "第一条 provider 摘要"
+    assert captured["url"] == "https://api.provider-a.example.com/chat/completions"
+    assert captured["payload"]["model"] == "model-a"
 
 
-def test_codex_supervisor_env_resolver_falls_back_to_minimax():
+def test_codex_supervisor_pool_rejects_plaintext_keys(tmp_path):
+    toml_path = tmp_path / "pool.toml"
+    toml_path.write_text(
+        """\
+[[keys]]
+base_url = "https://api.provider-a.example.com"
+model = "model-a"
+api_keys = ["sk-plaintext"]
+""",
+        encoding="utf-8",
+    )
+
+    try:
+        resolve_summary_provider_from_env(
+            {"SUPERVISOR_LLM_POOL_TOML_FILES": str(toml_path)},
+        )
+    except ValueError as exc:
+        assert "env:" in str(exc)
+    else:
+        raise AssertionError("plaintext keys must be rejected")
+
+
+def test_codex_supervisor_env_resolver_falls_back_between_pool_entries(tmp_path):
+    toml_path = tmp_path / "pool.toml"
+    toml_path.write_text(
+        """\
+[[keys]]
+base_url = "https://api.dead.invalid"
+model = "dead-model"
+api_keys = ["env:DEAD_KEY"]
+
+[[keys]]
+base_url = "https://api.fallback.example.com/v1"
+model = "fallback-model"
+api_keys = ["env:FALLBACK_KEY"]
+""",
+        encoding="utf-8",
+    )
     captured: dict[str, object] = {}
+    call_count = [0]
 
     def transport(
         url: str,
@@ -432,22 +532,29 @@ def test_codex_supervisor_env_resolver_falls_back_to_minimax():
         headers: dict[str, str],
         timeout: int,
     ) -> dict[str, object]:
+        call_count[0] += 1
+        if "dead.invalid" in url:
+            raise ValueError("connection refused")
         captured["url"] = url
         captured["payload"] = payload
         return {
-            "choices": [{"message": {"content": "MiniMax 摘要"}}],
+            "choices": [{"message": {"content": "备用 provider 摘要"}}],
             "usage": {"total_tokens": 12},
         }
 
     provider = resolve_summary_provider_from_env(
-        {"YIFU_MINIMAX_API_KEY": "sk-minimax"},
+        {
+            "SUPERVISOR_LLM_POOL_TOML_FILES": str(toml_path),
+            "DEAD_KEY": "sk-dead",
+            "FALLBACK_KEY": "sk-fallback",
+        },
         transport=transport,
     )
 
-    assert provider.summarize([{"role": "user", "content": "hello"}]) == "MiniMax 摘要"
-    assert captured["url"] == "https://api.minimax.io/v1/chat/completions"
-    assert captured["payload"]["model"] == "MiniMax-M2.7"
-
+    assert provider.summarize([{"role": "user", "content": "hello"}]) == "备用 provider 摘要"
+    assert captured["url"] == "https://api.fallback.example.com/v1/chat/completions"
+    assert captured["payload"]["model"] == "fallback-model"
+    assert call_count[0] == 2
 
 def test_codex_supervisor_generate_llm_summary_returns_provider_text(tmp_path):
     codex_home = tmp_path / ".codex"

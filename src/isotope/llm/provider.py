@@ -132,6 +132,57 @@ class DeepSeekChatProvider:
         return _parse_chat_completion(raw, provider=self.provider, fallback_model=self.model)
 
 
+class OpenAICompatibleChatProvider:
+    """Generic OpenAI-compatible chat provider using only stdlib HTTP."""
+
+    def __init__(
+        self,
+        *,
+        provider: str,
+        api_key: str,
+        base_url: str,
+        model: str,
+        timeout: int = 60,
+        transport: Transport | None = None,
+    ) -> None:
+        self.provider = _require_non_empty_string("provider", provider)
+        self.api_key = _require_non_empty_string("api_key", api_key)
+        self.base_url = _require_non_empty_string("base_url", base_url).rstrip("/")
+        self.model = _require_non_empty_string("model", model)
+        if not isinstance(timeout, int) or timeout <= 0:
+            raise ValueError("timeout must be a positive integer")
+        self.timeout = timeout
+        self._transport = transport if transport is not None else _urllib_transport
+
+    def generate(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int = 512,
+    ) -> LLMResponse:
+        _validate_messages(messages)
+        if not isinstance(max_tokens, int) or max_tokens <= 0:
+            raise ValueError("max_tokens must be a positive integer")
+
+        payload = {
+            "model": self.model,
+            "messages": copy.deepcopy(messages),
+            "temperature": 0,
+            "max_tokens": max_tokens,
+            "stream": False,
+        }
+        raw = self._transport(
+            f"{self.base_url}/chat/completions",
+            payload,
+            {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            self.timeout,
+        )
+        return _parse_chat_completion(raw, provider=self.provider, fallback_model=self.model)
+
+
 class DeepSeekToolCallProvider:
     """OpenAI-compatible DeepSeek tool-call provider using only stdlib HTTP."""
 
@@ -1296,6 +1347,7 @@ __all__ = [
     "LLMResponse",
     "LLMToolCall",
     "LLMToolCallResponse",
+    "OpenAICompatibleChatProvider",
     "ToolCallProvider",
     "build_llm_tool_result_message",
     "resolve_llm_tool_call_provider",

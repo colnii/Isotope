@@ -63,7 +63,7 @@
 | `Codex session` | Codex 会话记录，本机通常保存在 `~/.codex/sessions` | 外部集成 | `src/isotope/features/supervisor/flow.py` |
 | `LLM summary` | 大模型摘要，把压缩后的窗口状态交给模型生成中文判断 | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
 | `OpenAI-compatible` | 兼容 OpenAI Chat Completions 形状的模型接口 | 模型/外部集成 | `src/isotope/features/supervisor/llm_summary.py` |
-| `DeepSeekSummaryProvider` | Supervisor 摘要适配器，复用现有 DeepSeekChatProvider | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/llm/provider.py` |
+| `LLM pool TOML` | 本机模型号池配置，声明 provider、base URL、model 和 key 环境变量名 | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
 | `git worktree` | Git 工作树，同一仓库的独立开发目录，用于多分支并行 | 工作区/开发协作 | `docs/current/status.md`, `AGENTS.md` |
 | `assistant` | 助手，只作为产品描述或历史术语，不作为新目录叙事 | 产品描述/历史术语 | 已删除旧目录 |
 | `agent loop` | 智能体循环，AI 多步规划、调用工具、读取结果并继续执行 | 应用/智能体 | `src/isotope/agents/loop/step.py`, `docs/features/` |

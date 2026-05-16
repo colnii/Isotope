@@ -47,27 +47,31 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --jso
 LLM 摘要：
 
 ```bash
-export DEEPSEEK_API_KEY=你的_key
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --limit 3 --llm-summary
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --interval 180 --llm-summary
 ```
 
-优先级：
+配置文件：
 
-- DeepSeek：优先读取 `ISOTOPE_LLM_API_KEY`、`DEEPSEEK_API_KEY`
-  或 `YIFU_DEEPSEEK_API_KEY`，并复用 `src/isotope/llm/provider.py`
-  里的 `DeepSeekChatProvider`。
-- MiniMax：没有 DeepSeek key 时读取 `YIFU_MINIMAX_CODER_API_KEY`、
-  `YIFU_MINIMAX_API_KEY`、`MINIMAX_API_KEY`、`MINIMAX_TOKEN`
-  或 `MINIMAX_API_TOKEN`。
+- 默认读取 `src/isotope/features/supervisor/supervisor_llm_pool.toml`。
+- 该文件已被 `.gitignore` 忽略，不提交到仓库。
+- 也可用 `SUPERVISOR_LLM_POOL_TOML_FILES` 指定一个或多个 TOML 路径，
+  多个路径用英文逗号分隔。
 
-默认配置：
+示例：
 
-- DeepSeek base URL：默认 `https://api.deepseek.com`
-- DeepSeek model：默认 `deepseek-v4-flash`
-- MiniMax base URL：默认 `https://api.minimax.io/v1`
-- MiniMax model：默认 `MiniMax-M2.7`
-- 摘要 max tokens：默认 `512`
+```toml
+[[keys]]
+provider = "company_pool"
+base_url = "https://api.example.com"
+model = "chat-model"
+api_keys = [
+  "env:COMPANY_LLM_API_KEY",
+]
+```
+
+`api_keys` 只允许 `env:VAR_NAME` 形式，真实 key 放在环境变量里。
+`SUPERVISOR_LLM_MAX_TOKENS` 可控制摘要 token 上限，默认 `512`。
 
 `--llm-summary` 只发送压缩后的会话摘要，不发送完整 session 文件。
 

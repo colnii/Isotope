@@ -1,25 +1,31 @@
-"""LLM summary helpers for Codex Supervisor reports."""
+"""Codex Supervisor 的 LLM summary（大模型摘要）工具。
+
+模型号池来自本机 TOML 文件。默认读取同目录下的
+``supervisor_llm_pool.toml``，也可用 ``SUPERVISOR_LLM_POOL_TOML_FILES``
+指定多个路径。TOML 里只写 provider（厂商/通道名）、base_url、model
+和 ``env:VAR_NAME``，真实 key 留在环境变量中。
+"""
 
 from __future__ import annotations
 
 import json
 import os
 import re
-import urllib.error
-import urllib.request
+import tomllib
 from collections.abc import Mapping
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable, Protocol
 
-from ...llm.provider import DeepSeekChatProvider
+from ...llm.provider import OpenAICompatibleChatProvider, Transport
 from .flow import CodexSupervisorReport
 
-
-DEFAULT_MINIMAX_BASE_URL = "https://api.minimax.io/v1"
-DEFAULT_MINIMAX_MODEL = "MiniMax-M2.7"
-DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com"
-DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-flash"
 DEFAULT_MAX_TOKENS = 512
-Transport = Callable[[str, dict[str, object], dict[str, str], int], dict[str, object]]
+
+
+# ---------------------------------------------------------------------------
+# 对外接口
+# ---------------------------------------------------------------------------
 
 
 class SummaryProvider(Protocol):
@@ -27,99 +33,51 @@ class SummaryProvider(Protocol):
         ...
 
 
-class OpenAICompatibleSummaryProvider:
-    """Small OpenAI-compatible chat client for supervisor summaries."""
+@dataclass(frozen=True)
+class PoolEntry:
+    """号池里的一条可尝试模型配置。"""
+
+    provider: str
+    api_key: str
+    base_url: str
+    model: str
+
+
+class PooledSummaryProvider:
+    """按顺序尝试 OpenAI-compatible（兼容 OpenAI 形状）模型配置。"""
 
     def __init__(
         self,
         *,
-        api_key: str,
-        base_url: str = DEFAULT_MINIMAX_BASE_URL,
-        model: str = DEFAULT_MINIMAX_MODEL,
+        entries: tuple[PoolEntry, ...],
         timeout: int = 60,
         max_tokens: int = DEFAULT_MAX_TOKENS,
         transport: Transport | None = None,
     ) -> None:
-        self.api_key = _non_empty("api_key", api_key)
-        self.base_url = _non_empty("base_url", base_url).rstrip("/")
-        self.model = _non_empty("model", model)
-        if timeout <= 0:
-            raise ValueError("timeout must be positive")
-        if max_tokens <= 0:
-            raise ValueError("max_tokens must be positive")
-        self.timeout = timeout
-        self.max_tokens = max_tokens
-        self.transport = transport or _urllib_transport
-
-    @classmethod
-    def from_minimax_env(cls) -> "OpenAICompatibleSummaryProvider":
-        api_key = _first_env(
-            os.environ,
-            "YIFU_MINIMAX_CODER_API_KEY",
-            "YIFU_MINIMAX_API_KEY",
-            "MINIMAX_API_KEY",
-            "MINIMAX_TOKEN",
-            "MINIMAX_API_TOKEN",
-        )
-        if api_key is None:
-            raise ValueError(
-                "MINIMAX_API_KEY is required for MiniMax summary "
-                "(also accepts YIFU_MINIMAX_CODER_API_KEY, YIFU_MINIMAX_API_KEY, "
-                "MINIMAX_TOKEN, or MINIMAX_API_TOKEN)"
-            )
-        return cls(
-            api_key=api_key,
-            base_url=os.environ.get("MINIMAX_BASE_URL", DEFAULT_MINIMAX_BASE_URL),
-            model=os.environ.get("MINIMAX_MODEL", DEFAULT_MINIMAX_MODEL),
-            timeout=int(os.environ.get("MINIMAX_TIMEOUT", "60")),
-            max_tokens=int(os.environ.get("MINIMAX_MAX_TOKENS", str(DEFAULT_MAX_TOKENS))),
-        )
+        if not entries:
+            raise ValueError("entries must not be empty")
+        self._entries = entries
+        self._timeout = timeout
+        self._max_tokens = max_tokens
+        self._transport = transport
 
     def summarize(self, messages: list[dict[str, str]]) -> str:
-        payload: dict[str, object] = {
-            "model": self.model,
-            "messages": messages,
-            "temperature": 0,
-            "max_tokens": self.max_tokens,
-            "stream": False,
-        }
-        raw = self.transport(
-            f"{self.base_url}/chat/completions",
-            payload,
-            {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
-            self.timeout,
-        )
-        return _strip_thinking(_extract_chat_content(raw))
-
-
-class DeepSeekSummaryProvider:
-    """Supervisor summary provider backed by the shared Isotope DeepSeek provider."""
-
-    def __init__(
-        self,
-        *,
-        api_key: str,
-        model: str = DEFAULT_DEEPSEEK_MODEL,
-        base_url: str = DEFAULT_DEEPSEEK_BASE_URL,
-        timeout: int = 60,
-        max_tokens: int = DEFAULT_MAX_TOKENS,
-        transport: Transport | None = None,
-    ) -> None:
-        self.max_tokens = max_tokens
-        self.provider = DeepSeekChatProvider(
-            api_key=api_key,
-            model=model,
-            base_url=base_url,
-            timeout=timeout,
-            transport=transport,
-        )
-
-    def summarize(self, messages: list[dict[str, str]]) -> str:
-        response = self.provider.generate(messages, max_tokens=self.max_tokens)
-        return _strip_thinking(response.content)
+        failures: list[str] = []
+        for entry in self._entries:
+            try:
+                provider = OpenAICompatibleChatProvider(
+                    provider=entry.provider,
+                    api_key=entry.api_key,
+                    base_url=entry.base_url,
+                    model=entry.model,
+                    timeout=self._timeout,
+                    transport=self._transport,
+                )
+                response = provider.generate(messages, max_tokens=self._max_tokens)
+                return _strip_thinking(response.content)
+            except Exception as exc:
+                failures.append(f"{entry.provider}:{type(exc).__name__}")
+        raise ValueError("All LLM pool entries failed: " + ", ".join(failures))
 
 
 def resolve_summary_provider_from_env(
@@ -127,47 +85,25 @@ def resolve_summary_provider_from_env(
     *,
     transport: Transport | None = None,
 ) -> SummaryProvider:
+    """从 TOML 号池创建摘要 provider（模型适配器）。"""
     env = os.environ if environ is None else environ
-    deepseek_key = (
-        _first_env(env, "ISOTOPE_LLM_API_KEY", "DEEPSEEK_API_KEY", "YIFU_DEEPSEEK_API_KEY")
-    )
-    if deepseek_key:
-        return DeepSeekSummaryProvider(
-            api_key=deepseek_key,
-            model=_env_string(env, "ISOTOPE_LLM_MODEL")
-            or _env_string(env, "DEEPSEEK_MODEL")
-            or _env_string(env, "YIFU_DEEPSEEK_MODEL")
-            or DEFAULT_DEEPSEEK_MODEL,
-            base_url=_env_string(env, "ISOTOPE_LLM_BASE_URL")
-            or _env_string(env, "DEEPSEEK_BASE_URL")
-            or DEFAULT_DEEPSEEK_BASE_URL,
-            timeout=_env_int(env, "DEEPSEEK_TIMEOUT_SECONDS", default=60),
-            max_tokens=_env_int(env, "SUPERVISOR_LLM_MAX_TOKENS", default=DEFAULT_MAX_TOKENS),
-            transport=transport,
+    timeout = _env_int(env, "SUPERVISOR_LLM_TIMEOUT_SECONDS", default=60)
+    max_tokens = _env_int(env, "SUPERVISOR_LLM_MAX_TOKENS", default=DEFAULT_MAX_TOKENS)
+
+    files = _pool_toml_paths(env)
+    entries = _load_pool_entries(files, env)
+    if not entries:
+        raise ValueError(
+            "No LLM pool entries found. "
+            "Check SUPERVISOR_LLM_POOL_TOML_FILES or the default "
+            "supervisor_llm_pool.toml configuration."
         )
 
-    minimax_key = _first_env(
-        env,
-        "YIFU_MINIMAX_CODER_API_KEY",
-        "YIFU_MINIMAX_API_KEY",
-        "MINIMAX_API_KEY",
-        "MINIMAX_TOKEN",
-        "MINIMAX_API_TOKEN",
-    )
-    if minimax_key:
-        return OpenAICompatibleSummaryProvider(
-            api_key=minimax_key,
-            base_url=_env_string(env, "MINIMAX_BASE_URL") or DEFAULT_MINIMAX_BASE_URL,
-            model=_env_string(env, "MINIMAX_MODEL") or DEFAULT_MINIMAX_MODEL,
-            timeout=_env_int(env, "MINIMAX_TIMEOUT", default=60),
-            max_tokens=_env_int(env, "MINIMAX_MAX_TOKENS", default=DEFAULT_MAX_TOKENS),
-            transport=transport,
-        )
-
-    raise ValueError(
-        "No summary LLM key found. Set DEEPSEEK_API_KEY, YIFU_DEEPSEEK_API_KEY, "
-        "ISOTOPE_LLM_API_KEY, YIFU_MINIMAX_CODER_API_KEY, YIFU_MINIMAX_API_KEY, "
-        "or MINIMAX_API_KEY."
+    return PooledSummaryProvider(
+        entries=tuple(entries),
+        timeout=timeout,
+        max_tokens=max_tokens,
+        transport=transport,
     )
 
 
@@ -221,42 +157,68 @@ def generate_llm_summary(
     return provider.summarize(build_llm_summary_messages(report))
 
 
-def _urllib_transport(
-    url: str,
-    payload: dict[str, object],
-    headers: dict[str, str],
-    timeout: int,
-) -> dict[str, object]:
-    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-    request = urllib.request.Request(url, data=data, headers=headers, method="POST")
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            body = response.read().decode("utf-8")
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")
-        raise ValueError(f"LLM summary request failed: HTTP {exc.code} {body}") from exc
-    except urllib.error.URLError as exc:
-        raise ValueError(f"LLM summary request failed: {exc.reason}") from exc
-    decoded = json.loads(body)
-    if not isinstance(decoded, dict):
-        raise ValueError("LLM summary response must be a JSON object")
-    return decoded
+# ---------------------------------------------------------------------------
+# 内部工具
+# ---------------------------------------------------------------------------
 
 
-def _extract_chat_content(raw: dict[str, object]) -> str:
-    choices = raw.get("choices")
-    if not isinstance(choices, list) or not choices:
-        raise ValueError("LLM summary response missing choices")
-    first = choices[0]
-    if not isinstance(first, dict):
-        raise ValueError("LLM summary response choice must be an object")
-    message = first.get("message")
-    if not isinstance(message, dict):
-        raise ValueError("LLM summary response missing message")
-    content = message.get("content")
-    if not isinstance(content, str) or not content.strip():
-        raise ValueError("LLM summary response missing content")
-    return content.strip()
+def _pool_toml_paths(env: Mapping[str, str]) -> list[Path]:
+    """解析本机 TOML 号池路径。"""
+    raw = _env_string(env, "SUPERVISOR_LLM_POOL_TOML_FILES")
+    if raw:
+        return [Path(p.strip()) for p in raw.split(",") if p.strip()]
+
+    return [Path(__file__).resolve().parent / "supervisor_llm_pool.toml"]
+
+
+def _load_pool_entries(files: list[Path], env: Mapping[str, str]) -> list[PoolEntry]:
+    """读取 TOML，把每个 env key 展开成一条 PoolEntry。"""
+    entries: list[PoolEntry] = []
+    for path in files:
+        if not path.is_file():
+            continue
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+        for item in data.get("keys", []):
+            if not isinstance(item, dict):
+                continue
+            provider = _optional_toml_str(item, "provider") or "supervisor_pool"
+            base_url = _require_toml_str(item, "base_url")
+            model = _require_toml_str(item, "model")
+            raw_keys = item.get("api_keys")
+            if not isinstance(raw_keys, list):
+                continue
+            for entry in raw_keys:
+                if not isinstance(entry, str) or not entry.strip():
+                    continue
+                entry = entry.strip()
+                if not entry.startswith("env:"):
+                    raise ValueError("TOML pool api_keys entries must use env:VAR_NAME")
+                api_key = env.get(entry[4:])
+                if not api_key:
+                    continue
+                entries.append(
+                    PoolEntry(
+                        provider=provider,
+                        api_key=api_key,
+                        base_url=base_url.rstrip("/"),
+                        model=model,
+                    )
+                )
+    return entries
+
+
+def _require_toml_str(item: dict[str, object], key: str) -> str:
+    value = item.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"TOML pool entry missing required string field: {key}")
+    return value.strip()
+
+
+def _optional_toml_str(item: dict[str, object], key: str) -> str | None:
+    value = item.get(key)
+    if not isinstance(value, str) or not value.strip():
+        return None
+    return value.strip()
 
 
 def _strip_thinking(text: str) -> str:
@@ -270,15 +232,7 @@ def _clip(text: str | None, *, limit: int = 160) -> str | None:
     compact = " ".join(text.split())
     if len(compact) <= limit:
         return compact
-    return compact[: limit - 1] + "…"
-
-
-def _first_env(env: Mapping[str, str], *names: str) -> str | None:
-    for name in names:
-        value = env.get(name)
-        if value:
-            return value
-    return None
+    return compact[: limit - 1] + "\u2026"
 
 
 def _env_string(env: Mapping[str, str], name: str) -> str | None:
@@ -299,9 +253,3 @@ def _env_int(env: Mapping[str, str], name: str, *, default: int) -> int:
     if parsed <= 0:
         raise ValueError(f"{name} must be positive")
     return parsed
-
-
-def _non_empty(name: str, value: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise ValueError(f"{name} must be a non-empty string")
-    return value.strip()
