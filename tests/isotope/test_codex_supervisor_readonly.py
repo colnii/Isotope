@@ -6,9 +6,11 @@ from pathlib import Path
 
 from isotope.features.supervisor.flow import CodexSupervisorFlow, render_plain_report
 from isotope.features.supervisor.llm_summary import (
+    DeepSeekSummaryProvider,
     OpenAICompatibleSummaryProvider,
     build_llm_summary_messages,
     generate_llm_summary,
+    resolve_summary_provider_from_env,
 )
 from isotope.features.supervisor.runner import main as supervisor_main
 
@@ -209,7 +211,7 @@ def test_codex_supervisor_runner_scan_can_add_llm_summary(
             return "窗口 A 正在读文件，暂时不用介入。"
 
     monkeypatch.setattr(
-        "isotope.features.supervisor.runner.OpenAICompatibleSummaryProvider.from_minimax_env",
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
         lambda: FakeProvider(),
     )
 
@@ -235,7 +237,15 @@ def test_codex_supervisor_runner_llm_summary_reports_missing_key(
     capsys,
     monkeypatch,
 ):
-    for name in ("MINIMAX_API_KEY", "MINIMAX_TOKEN", "MINIMAX_API_TOKEN"):
+    for name in (
+        "DEEPSEEK_API_KEY",
+        "YIFU_DEEPSEEK_API_KEY",
+        "YIFU_MINIMAX_CODER_API_KEY",
+        "YIFU_MINIMAX_API_KEY",
+        "MINIMAX_API_KEY",
+        "MINIMAX_TOKEN",
+        "MINIMAX_API_TOKEN",
+    ):
         monkeypatch.delenv(name, raising=False)
     codex_home = tmp_path / ".codex"
     _write_session(
@@ -265,7 +275,7 @@ def test_codex_supervisor_runner_llm_summary_reports_missing_key(
     assert exit_code == 2
     payload = json.loads(capsys.readouterr().out)
     assert payload["error"]["code"] == "codex_supervisor_runner_error"
-    assert "MINIMAX_API_KEY" in payload["error"]["message"]
+    assert "DEEPSEEK_API_KEY" in payload["error"]["message"]
 
 
 def test_codex_supervisor_llm_messages_use_compact_session_context(tmp_path):
@@ -337,6 +347,106 @@ def test_codex_supervisor_openai_compatible_provider_calls_minimax_shape():
         "max_tokens": 512,
         "stream": False,
     }
+
+
+def test_codex_supervisor_deepseek_summary_provider_reuses_llm_provider_contract():
+    captured: dict[str, object] = {}
+
+    def transport(
+        url: str,
+        payload: dict[str, object],
+        headers: dict[str, str],
+        timeout: int,
+    ) -> dict[str, object]:
+        captured["url"] = url
+        captured["payload"] = payload
+        captured["headers"] = headers
+        captured["timeout"] = timeout
+        return {
+            "id": "chatcmpl_test",
+            "model": "deepseek-v4-flash",
+            "choices": [
+                {
+                    "finish_reason": "stop",
+                    "message": {"role": "assistant", "content": "窗口 A 正在测试。"},
+                }
+            ],
+            "usage": {"total_tokens": 12},
+        }
+
+    provider = DeepSeekSummaryProvider(
+        api_key="sk-test",
+        model="deepseek-v4-flash",
+        transport=transport,
+    )
+
+    assert provider.summarize([{"role": "user", "content": "hello"}]) == "窗口 A 正在测试。"
+    assert captured["url"] == "https://api.deepseek.com/chat/completions"
+    assert captured["payload"]["thinking"] == {"type": "disabled"}
+    assert captured["payload"]["temperature"] == 0
+    assert captured["headers"]["Authorization"] == "Bearer sk-test"
+
+
+def test_codex_supervisor_env_resolver_prefers_deepseek_infrastructure():
+    captured: dict[str, object] = {}
+
+    def transport(
+        url: str,
+        payload: dict[str, object],
+        headers: dict[str, str],
+        timeout: int,
+    ) -> dict[str, object]:
+        captured["url"] = url
+        captured["payload"] = payload
+        return {
+            "id": "chatcmpl_test",
+            "model": "deepseek-v4-flash",
+            "choices": [
+                {
+                    "finish_reason": "stop",
+                    "message": {"role": "assistant", "content": "DeepSeek 摘要"},
+                }
+            ],
+            "usage": {"total_tokens": 12},
+        }
+
+    provider = resolve_summary_provider_from_env(
+        {
+            "YIFU_DEEPSEEK_API_KEY": "sk-deepseek",
+            "YIFU_MINIMAX_API_KEY": "sk-minimax",
+        },
+        transport=transport,
+    )
+
+    assert provider.summarize([{"role": "user", "content": "hello"}]) == "DeepSeek 摘要"
+    assert captured["url"] == "https://api.deepseek.com/chat/completions"
+    assert captured["payload"]["model"] == "deepseek-v4-flash"
+
+
+def test_codex_supervisor_env_resolver_falls_back_to_minimax():
+    captured: dict[str, object] = {}
+
+    def transport(
+        url: str,
+        payload: dict[str, object],
+        headers: dict[str, str],
+        timeout: int,
+    ) -> dict[str, object]:
+        captured["url"] = url
+        captured["payload"] = payload
+        return {
+            "choices": [{"message": {"content": "MiniMax 摘要"}}],
+            "usage": {"total_tokens": 12},
+        }
+
+    provider = resolve_summary_provider_from_env(
+        {"YIFU_MINIMAX_API_KEY": "sk-minimax"},
+        transport=transport,
+    )
+
+    assert provider.summarize([{"role": "user", "content": "hello"}]) == "MiniMax 摘要"
+    assert captured["url"] == "https://api.minimax.io/v1/chat/completions"
+    assert captured["payload"]["model"] == "MiniMax-M2.7"
 
 
 def test_codex_supervisor_generate_llm_summary_returns_provider_text(tmp_path):

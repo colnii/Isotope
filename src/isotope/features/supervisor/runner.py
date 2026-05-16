@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .flow import CodexSupervisorFlow, render_plain_report
-from .llm_summary import OpenAICompatibleSummaryProvider, generate_llm_summary
+from .llm_summary import generate_llm_summary, resolve_summary_provider_from_env
 
 
 def _print_json(payload: dict[str, Any]) -> None:
@@ -46,7 +46,7 @@ def _build_parser() -> argparse.ArgumentParser:
         subparser.add_argument(
             "--llm-summary",
             action="store_true",
-            help="Use MiniMax to add a compact Chinese summary.",
+            help="Use configured LLM to add a compact Chinese summary.",
         )
     watch_parser = subparsers.choices["watch"]
     watch_parser.add_argument(
@@ -126,7 +126,7 @@ def _print_report(args: argparse.Namespace) -> None:
 
 
 def _summarize_with_llm(report: Any) -> str:
-    provider = OpenAICompatibleSummaryProvider.from_minimax_env()
+    provider = resolve_summary_provider_from_env()
     return generate_llm_summary(report, provider)
 
 

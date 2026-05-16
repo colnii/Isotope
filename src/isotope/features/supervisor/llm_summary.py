@@ -7,13 +7,17 @@ import os
 import re
 import urllib.error
 import urllib.request
+from collections.abc import Mapping
 from typing import Any, Callable, Protocol
 
+from ...llm.provider import DeepSeekChatProvider
 from .flow import CodexSupervisorReport
 
 
 DEFAULT_MINIMAX_BASE_URL = "https://api.minimax.io/v1"
-DEFAULT_MINIMAX_MODEL = "MiniMax-M2.7-highspeed"
+DEFAULT_MINIMAX_MODEL = "MiniMax-M2.7"
+DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-flash"
 DEFAULT_MAX_TOKENS = 512
 Transport = Callable[[str, dict[str, object], dict[str, str], int], dict[str, object]]
 
@@ -49,11 +53,19 @@ class OpenAICompatibleSummaryProvider:
 
     @classmethod
     def from_minimax_env(cls) -> "OpenAICompatibleSummaryProvider":
-        api_key = _first_env("MINIMAX_API_KEY", "MINIMAX_TOKEN", "MINIMAX_API_TOKEN")
+        api_key = _first_env(
+            os.environ,
+            "YIFU_MINIMAX_CODER_API_KEY",
+            "YIFU_MINIMAX_API_KEY",
+            "MINIMAX_API_KEY",
+            "MINIMAX_TOKEN",
+            "MINIMAX_API_TOKEN",
+        )
         if api_key is None:
             raise ValueError(
-                "MINIMAX_API_KEY is required for --llm-summary "
-                "(also accepts MINIMAX_TOKEN or MINIMAX_API_TOKEN)"
+                "MINIMAX_API_KEY is required for MiniMax summary "
+                "(also accepts YIFU_MINIMAX_CODER_API_KEY, YIFU_MINIMAX_API_KEY, "
+                "MINIMAX_TOKEN, or MINIMAX_API_TOKEN)"
             )
         return cls(
             api_key=api_key,
@@ -81,6 +93,82 @@ class OpenAICompatibleSummaryProvider:
             self.timeout,
         )
         return _strip_thinking(_extract_chat_content(raw))
+
+
+class DeepSeekSummaryProvider:
+    """Supervisor summary provider backed by the shared Isotope DeepSeek provider."""
+
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        model: str = DEFAULT_DEEPSEEK_MODEL,
+        base_url: str = DEFAULT_DEEPSEEK_BASE_URL,
+        timeout: int = 60,
+        max_tokens: int = DEFAULT_MAX_TOKENS,
+        transport: Transport | None = None,
+    ) -> None:
+        self.max_tokens = max_tokens
+        self.provider = DeepSeekChatProvider(
+            api_key=api_key,
+            model=model,
+            base_url=base_url,
+            timeout=timeout,
+            transport=transport,
+        )
+
+    def summarize(self, messages: list[dict[str, str]]) -> str:
+        response = self.provider.generate(messages, max_tokens=self.max_tokens)
+        return _strip_thinking(response.content)
+
+
+def resolve_summary_provider_from_env(
+    environ: Mapping[str, str] | None = None,
+    *,
+    transport: Transport | None = None,
+) -> SummaryProvider:
+    env = os.environ if environ is None else environ
+    deepseek_key = (
+        _first_env(env, "ISOTOPE_LLM_API_KEY", "DEEPSEEK_API_KEY", "YIFU_DEEPSEEK_API_KEY")
+    )
+    if deepseek_key:
+        return DeepSeekSummaryProvider(
+            api_key=deepseek_key,
+            model=_env_string(env, "ISOTOPE_LLM_MODEL")
+            or _env_string(env, "DEEPSEEK_MODEL")
+            or _env_string(env, "YIFU_DEEPSEEK_MODEL")
+            or DEFAULT_DEEPSEEK_MODEL,
+            base_url=_env_string(env, "ISOTOPE_LLM_BASE_URL")
+            or _env_string(env, "DEEPSEEK_BASE_URL")
+            or DEFAULT_DEEPSEEK_BASE_URL,
+            timeout=_env_int(env, "DEEPSEEK_TIMEOUT_SECONDS", default=60),
+            max_tokens=_env_int(env, "SUPERVISOR_LLM_MAX_TOKENS", default=DEFAULT_MAX_TOKENS),
+            transport=transport,
+        )
+
+    minimax_key = _first_env(
+        env,
+        "YIFU_MINIMAX_CODER_API_KEY",
+        "YIFU_MINIMAX_API_KEY",
+        "MINIMAX_API_KEY",
+        "MINIMAX_TOKEN",
+        "MINIMAX_API_TOKEN",
+    )
+    if minimax_key:
+        return OpenAICompatibleSummaryProvider(
+            api_key=minimax_key,
+            base_url=_env_string(env, "MINIMAX_BASE_URL") or DEFAULT_MINIMAX_BASE_URL,
+            model=_env_string(env, "MINIMAX_MODEL") or DEFAULT_MINIMAX_MODEL,
+            timeout=_env_int(env, "MINIMAX_TIMEOUT", default=60),
+            max_tokens=_env_int(env, "MINIMAX_MAX_TOKENS", default=DEFAULT_MAX_TOKENS),
+            transport=transport,
+        )
+
+    raise ValueError(
+        "No summary LLM key found. Set DEEPSEEK_API_KEY, YIFU_DEEPSEEK_API_KEY, "
+        "ISOTOPE_LLM_API_KEY, YIFU_MINIMAX_CODER_API_KEY, YIFU_MINIMAX_API_KEY, "
+        "or MINIMAX_API_KEY."
+    )
 
 
 def build_llm_summary_messages(report: CodexSupervisorReport) -> list[dict[str, str]]:
@@ -185,12 +273,32 @@ def _clip(text: str | None, *, limit: int = 160) -> str | None:
     return compact[: limit - 1] + "…"
 
 
-def _first_env(*names: str) -> str | None:
+def _first_env(env: Mapping[str, str], *names: str) -> str | None:
     for name in names:
-        value = os.environ.get(name)
+        value = env.get(name)
         if value:
             return value
     return None
+
+
+def _env_string(env: Mapping[str, str], name: str) -> str | None:
+    value = env.get(name)
+    if not value:
+        return None
+    return value.strip() or None
+
+
+def _env_int(env: Mapping[str, str], name: str, *, default: int) -> int:
+    value = _env_string(env, name)
+    if value is None:
+        return default
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an integer") from exc
+    if parsed <= 0:
+        raise ValueError(f"{name} must be positive")
+    return parsed
 
 
 def _non_empty(name: str, value: str) -> str:
