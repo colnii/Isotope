@@ -163,10 +163,24 @@
 78. Codex Supervisor 状态协议：`launch` 已注入
     `SUPERVISOR_STATUS/SUMMARY/NEXT` 汇报格式，`scan` 已能从 `.jsonl`
     解析状态协议字段。
+79. Codex Supervisor 接管已有 tmux：`adopt` 可把已有 tmux session
+    登记成托管 lane，后续复用 `scan/watch/send/supervise`。
 
-## 最近完成：Codex Supervisor 状态协议
+## 最近完成：Codex Supervisor 接管已有 tmux
 
 完成内容：
+
+- 新增 `isotope-supervisor adopt`。
+- `adopt` 会先确认 tmux session 存在，再写入托管登记表。
+- 接管不会启动新 Codex，也不会改动已有 tmux 窗口内容。
+- 接管后的 lane 可被 `scan/watch/send/supervise` 继续使用。
+- 这让用户可以一边 attach（连接查看）同一个 tmux 窗口，
+  一边让 Supervisor 监管和发送指令。
+- 同步 [status](./status.md)、[terminology](./terminology.md)、
+  [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
+  [supervisor-capability-map](./supervisor-capability-map.md)。
+
+上一批已完成：
 
 - 托管 `launch` 会把状态汇报格式追加到 Codex prompt 末尾。
 - 登记表仍保存用户原始 prompt，不把协议提示当成用户需求。
@@ -179,7 +193,7 @@
   [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
   [supervisor-capability-map](./supervisor-capability-map.md)。
 
-上一批已完成：
+更早一批已完成：
 
 - `CodexSessionSummary` 新增 `managed_bell` 字段。
 - 托管 tmux 会话运行时会读取 `#{window_bell_flag}`。
@@ -191,7 +205,7 @@
   [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
   [supervisor-capability-map](./supervisor-capability-map.md)。
 
-更早一批已完成：
+更早二批已完成：
 
 - 新增 [supervisor-capability-map](./supervisor-capability-map.md)。
 - 登记 `scan/watch/advise/supervise`、托管登记、tmux 控制、
@@ -203,7 +217,7 @@
   [terminology](./terminology.md) 和
   [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
 
-更早二批已完成：
+更早三批已完成：
 
 - `supervise` 复用 `watch` 的 `--interval`、`--iterations`
   和 `--changes-only`。
@@ -216,7 +230,7 @@
 - 同步 [status](./status.md)、[terminology](./terminology.md) 和
   [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
 
-更早三批已完成：
+更早四批已完成：
 
 - `advise --execute send_status` 会向托管 tmux lane 发送“请汇报当前状态”。
 - `advise --execute send_continue` 会向托管 tmux lane 发送继续推进指令。

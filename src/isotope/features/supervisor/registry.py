@@ -165,6 +165,61 @@ def launch_managed_codex(
     return record
 
 
+def adopt_tmux_session(
+    *,
+    codex_home: Path | str,
+    cwd: Path | str,
+    name: str,
+    tmux_session: str,
+    prompt: str = "接管已有 tmux 会话",
+    now: Callable[[], datetime] | None = None,
+    run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> ManagedCodexRecord:
+    workspace = Path(cwd).expanduser()
+    if not workspace.is_dir():
+        raise ValueError(f"cwd must be an existing directory: {workspace}")
+    name_text = name.strip()
+    tmux_session_text = tmux_session.strip()
+    prompt_text = prompt.strip()
+    if not name_text:
+        raise ValueError("name must not be empty")
+    if not tmux_session_text:
+        raise ValueError("tmux_session must not be empty")
+    if not prompt_text:
+        raise ValueError("prompt must not be empty")
+
+    completed = run(
+        ["tmux", "has-session", "-t", tmux_session_text],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        message = (completed.stderr or completed.stdout or tmux_session_text).strip()
+        raise ValueError(f"tmux session not found: {message}")
+
+    started_at = _ensure_aware_utc((now or _utc_now)()).isoformat()
+    record_id = "managed-" + uuid.uuid4().hex[:12]
+    log_dir = default_log_dir(codex_home)
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / f"{record_id}.log"
+    record = ManagedCodexRecord(
+        record_id=record_id,
+        name=name_text,
+        cwd=str(workspace),
+        prompt=prompt_text,
+        command=("tmux", "attach", "-t", tmux_session_text),
+        pid=0,
+        started_at=started_at,
+        log_path=str(log_path),
+        status="adopted",
+        backend="tmux",
+        tmux_session=tmux_session_text,
+    )
+    append_managed_record(default_registry_path(codex_home), record)
+    return record
+
+
 def send_to_managed_codex(
     *,
     codex_home: Path | str,

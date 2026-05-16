@@ -29,6 +29,7 @@ Codex Supervisor 用来观察、启动和轻量管理本机多个 Codex 进程�
 - `watch --changes-only` 可持续运行，只在会话状态变化时重新输出。
 - `launch` 可启动一个 Codex 进程，并写入托管登记文件。
 - `launch --backend tmux` 可在本机 tmux 会话里启动 Codex。
+- `adopt` 可把已有 tmux 会话登记成托管 lane。
 - `scan/watch` 可显示托管进程的名称、pid 和是否已退出。
 - `scan/watch` 可显示托管 tmux 会话是否有 bell（提醒）信号。
 - `scan/watch` 可显示托管 Codex 主动汇报的 Supervisor 状态协议。
@@ -47,6 +48,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --in
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --interval 180 --changes-only
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner launch --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner launch --backend tmux --tmux-session isotope-lane-a --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner adopt --name lane-a --cwd /path/to/repo --tmux-session isotope-lane-a
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --name lane-a --text "继续"
 ```
 
@@ -60,6 +62,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --nam
 .venv/bin/isotope-supervisor watch --interval 180 --changes-only
 .venv/bin/isotope-supervisor launch --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
 .venv/bin/isotope-supervisor launch --backend tmux --tmux-session isotope-lane-a --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
+.venv/bin/isotope-supervisor adopt --name lane-a --cwd /path/to/repo --tmux-session isotope-lane-a
 .venv/bin/isotope-supervisor send --name lane-a --text "继续"
 ```
 
@@ -149,6 +152,7 @@ api_keys = [
 - 日志默认写入 `~/.codex/supervisor/logs/`。
 - 默认进程模式的启动命令形状为 `codex --cd <cwd> --no-alt-screen <prompt>`。
 - tmux 模式会执行 `tmux new-session -d -s <session> -c <cwd> ...`。
+- `adopt` 会执行 `tmux has-session -t <session>` 确认会话存在。
 - 当前登记 backend、pid、tmux session、cwd、prompt、启动时间和日志路径。
 - `send` 会执行 `tmux send-keys -l <text>`，再发送 `Enter`。
 - `scan` 会读取 `#{window_bell_flag}`，并输出 `managed_bell`。
@@ -163,10 +167,19 @@ SUPERVISOR_SUMMARY: 用一句中文说明当前状态
 SUPERVISOR_NEXT: 用一句中文说明建议下一步
 ```
 
+人类同步观察：
+
+```bash
+tmux attach -t isotope-lane-a
+```
+
+同一个 tmux session 可以被人类 attach 查看，也可以被 Supervisor
+通过 `send` 写入指令。
+
 ## 当前边界
 
-- 不接管普通终端窗口；`launch` 启动的是托管 Codex 进程或 tmux 会话。
-- `send` 只支持 Supervisor 自己登记的 tmux 会话，不接管手动打开的窗口。
+- 不接管普通终端窗口；当前控制通道依赖已登记的 tmux 会话。
+- `send` 只支持 Supervisor 登记过的 tmux 会话。
 - `recommendation` 只表示建议动作，不会自动调用 `send`。
 - `advise` 默认只生成命令草案；`--execute` 只允许执行
   `send_status` 和 `send_continue`。

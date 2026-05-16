@@ -12,7 +12,7 @@ from typing import Any
 
 from .flow import CodexSupervisorFlow, render_plain_report
 from .llm_summary import generate_llm_summary, resolve_summary_provider_from_env
-from .registry import launch_managed_codex, send_to_managed_codex
+from .registry import adopt_tmux_session, launch_managed_codex, send_to_managed_codex
 
 EXECUTABLE_ADVICE_KINDS = {"send_status", "send_continue"}
 EXECUTABLE_ADVICE_TEXT = {
@@ -107,6 +107,23 @@ def _build_parser() -> argparse.ArgumentParser:
         help="tmux session name when --backend tmux is used. Defaults to --name.",
     )
     launch_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    adopt_parser = subparsers.add_parser(
+        "adopt", help="Register an existing tmux session as a managed Codex lane."
+    )
+    adopt_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    adopt_parser.add_argument("--cwd", required=True, help="Workspace directory.")
+    adopt_parser.add_argument("--name", required=True, help="Managed lane name.")
+    adopt_parser.add_argument("--tmux-session", required=True, help="Existing tmux session.")
+    adopt_parser.add_argument(
+        "--prompt",
+        default="接管已有 tmux 会话",
+        help="Short note stored in the managed registry.",
+    )
+    adopt_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     send_parser = subparsers.add_parser(
         "send", help="Send one line to a tmux-managed Codex process."
     )
@@ -170,6 +187,21 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"已启动托管 Codex：{record.name}")
                 print(f"pid：{record.pid}")
                 print(f"日志：{record.log_path}")
+            return 0
+        if args.command == "adopt":
+            record = adopt_tmux_session(
+                codex_home=Path(args.codex_home),
+                cwd=Path(args.cwd),
+                name=args.name,
+                tmux_session=args.tmux_session,
+                prompt=args.prompt,
+                run=subprocess.run,
+            )
+            if args.json:
+                _print_json({"status": "ok", "managed": record.to_dict()})
+            else:
+                print(f"已接管 tmux 会话：{record.name}")
+                print(f"tmux：{record.tmux_session}")
             return 0
         if args.command == "send":
             result = send_to_managed_codex(

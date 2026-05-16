@@ -15,7 +15,7 @@ Codex Supervisor 已经不只是一个小命令。
 | 层级 | 当前能力 | 主要位置 | 说明 |
 | --- | --- | --- | --- |
 | 用户功能层 | `scan`、`watch`、`advise`、`supervise` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
-| 托管控制层 | `launch`、`send`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 自己启动的 Codex |
+| 托管控制层 | `launch`、`adopt`、`send`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
 | Codex 集成层 | 读取 Codex session（会话记录） | `features/supervisor/flow.py` | 当前直接读取本机 `.jsonl` |
 | tmux 集成层 | tmux 启动、`send-keys` 和 bell 检测 | `flow.py`、`registry.py`、`runner.py` | 只控制登记过的 tmux 会话 |
 | 状态判断层 | 工作中、等待用户、疑似停住、疑似报错 | `features/supervisor/flow.py` | 规则判断，不等于模型判断 |
@@ -32,6 +32,7 @@ Codex Supervisor 已经不只是一个小命令。
 - `watch --changes-only` 只在状态变化时输出。
 - 本机托管登记表 `managed_sessions.jsonl`。
 - `launch` 支持普通进程和 tmux 会话。
+- `adopt` 可接管已存在的 tmux 会话。
 - `send` 支持向登记过的 tmux 会话发送文本。
 - `scan` 可识别托管 tmux 会话的 bell（提醒）信号。
 - `launch` 会注入 `SUPERVISOR_STATUS/SUMMARY/NEXT` 汇报要求。

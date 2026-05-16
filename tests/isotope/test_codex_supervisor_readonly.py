@@ -986,6 +986,64 @@ def test_codex_supervisor_runner_launch_can_use_tmux_backend(
     assert captured["capture_output"] is True
 
 
+def test_codex_supervisor_runner_adopt_registers_existing_tmux_session(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        text: bool,
+        capture_output: bool,
+        check: bool = False,
+    ) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        assert text is True
+        assert capture_output is True
+        assert check is False
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "adopt",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(workspace),
+            "--name",
+            "lane-a",
+            "--tmux-session",
+            "isotope-lane-a",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["managed"]["name"] == "lane-a"
+    assert payload["managed"]["status"] == "adopted"
+    assert payload["managed"]["backend"] == "tmux"
+    assert payload["managed"]["tmux_session"] == "isotope-lane-a"
+    assert payload["managed"]["prompt"] == "接管已有 tmux 会话"
+    assert calls == [["tmux", "has-session", "-t", "isotope-lane-a"]]
+
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    records = [
+        json.loads(line)
+        for line in registry_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert records == [payload["managed"]]
+
+
 def test_codex_supervisor_scan_includes_managed_registry_records(tmp_path):
     codex_home = tmp_path / ".codex"
     workspace = tmp_path / "workspace"

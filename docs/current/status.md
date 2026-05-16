@@ -58,7 +58,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     等待用户、疑似停住、疑似报错和空闲，并通过 `isotope-supervisor`
     输出中文汇报；`watch --changes-only` 可只在变化时再次输出；
     `launch` 可启动 Codex 并写入本机托管登记；`launch --backend tmux`
-    可在本机 tmux 会话中启动 Codex；`--llm-summary` 可通过本机
+    可在本机 tmux 会话中启动 Codex；`adopt` 可把已有 tmux 会话
+    登记成托管 lane；`--llm-summary` 可通过本机
     TOML 号池做智能摘要；`scan --json` 包含结构化建议；
     `advise` 可单独输出建议和命令草案，并可显式执行 send 类草案；
     `supervise` 可循环执行扫描、建议、可选 LLM 摘要和显式 send；
@@ -98,6 +99,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --lim
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --limit 3 --json
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner advise
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise --iterations 1 --llm-summary --json
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner adopt --name lane-a --cwd /path/to/repo --tmux-session isotope-lane-a
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --name lane-a --text "继续"
 .venv/bin/isotope-demo --scenario v0.2 --trace
 git status --short
