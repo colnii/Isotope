@@ -64,6 +64,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `supervise` 可循环执行扫描、建议、可选 LLM 摘要和显式 send；
     `send` 可向托管 tmux 会话发送一行指令；`scan` 已能把托管
     tmux 会话的 bell（提醒）信号写入 plain、JSON 和 LLM 摘要输入。
+    `launch` 会给托管 Codex 注入 `SUPERVISOR_STATUS` 状态协议要求，
+    `scan` 会从 `.jsonl` 解析状态、摘要和下一步字段。
     能力登记见 `docs/current/supervisor-capability-map.md`。
 
 ## 文档策略

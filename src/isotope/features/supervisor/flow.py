@@ -67,6 +67,9 @@ class CodexSessionSummary:
     managed_backend: str | None = None
     managed_tmux_session: str | None = None
     managed_bell: bool = False
+    supervisor_status: str | None = None
+    supervisor_summary: str | None = None
+    supervisor_next: str | None = None
 
     @property
     def status_label(self) -> str:
@@ -94,6 +97,9 @@ class CodexSessionSummary:
             "managed_backend": self.managed_backend,
             "managed_tmux_session": self.managed_tmux_session,
             "managed_bell": self.managed_bell,
+            "supervisor_status": self.supervisor_status,
+            "supervisor_summary": _shorten_optional(self.supervisor_summary),
+            "supervisor_next": _shorten_optional(self.supervisor_next),
         }
 
 
@@ -253,6 +259,12 @@ def render_plain_report(report: CodexSupervisorReport) -> str:
             )
             name = session.managed_name or "未命名"
             lines.append(f"   托管：{name}{pid}{backend}{tmux}{bell}")
+        if session.supervisor_status:
+            lines.append(f"   Supervisor 状态：{session.supervisor_status}")
+        if session.supervisor_summary:
+            lines.append(f"   Supervisor 摘要：{_shorten(session.supervisor_summary)}")
+        if session.supervisor_next:
+            lines.append(f"   Supervisor 下一步：{_shorten(session.supervisor_next)}")
         lines.append(f"   原因：{session.reason}")
         if session.last_user_message:
             lines.append(f"   最近用户：{_shorten(session.last_user_message)}")
@@ -275,6 +287,9 @@ def _read_session_summary(
     last_user_message: str | None = None
     last_assistant_message: str | None = None
     last_text: str | None = None
+    supervisor_status: str | None = None
+    supervisor_summary: str | None = None
+    supervisor_next: str | None = None
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except OSError:
@@ -295,6 +310,10 @@ def _read_session_summary(
         role, text = _message_from_event(event)
         if text:
             last_text = text
+            protocol = _supervisor_protocol_from_text(text)
+            supervisor_status = protocol.get("status") or supervisor_status
+            supervisor_summary = protocol.get("summary") or supervisor_summary
+            supervisor_next = protocol.get("next") or supervisor_next
             if role == "user":
                 last_user_message = text
             if role == "assistant":
@@ -326,6 +345,9 @@ def _read_session_summary(
         last_assistant_message=last_assistant_message,
         cli_version=_optional_string(meta.get("cli_version")),
         model_provider=_optional_string(meta.get("model_provider")),
+        supervisor_status=supervisor_status,
+        supervisor_summary=supervisor_summary,
+        supervisor_next=supervisor_next,
     )
 
 
@@ -375,6 +397,27 @@ def _managed_summary(
         managed_tmux_session=record.tmux_session,
         managed_bell=managed_bell,
     )
+
+
+def _supervisor_protocol_from_text(text: str) -> dict[str, str]:
+    values: dict[str, str] = {}
+    keys = {
+        "SUPERVISOR_STATUS": "status",
+        "SUPERVISOR_SUMMARY": "summary",
+        "SUPERVISOR_NEXT": "next",
+    }
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        normalized_key = key.strip().upper()
+        if normalized_key not in keys:
+            continue
+        normalized_value = value.strip()
+        if normalized_value:
+            values[keys[normalized_key]] = normalized_value
+    return values
 
 
 def _message_from_event(event: dict[str, Any]) -> tuple[str | None, str | None]:

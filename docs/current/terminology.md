@@ -73,6 +73,10 @@
 | `send-keys` | tmux 输入命令，当前用于把文本写入托管 Codex 窗口 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
 | `bell` | tmux 提醒信号，可作为窗口可能结束或需要查看的弱证据 | 外部集成/状态判断 | `src/isotope/features/supervisor/flow.py`, `docs/current/supervisor-capability-map.md` |
 | `managed_bell` | 托管 tmux 会话是否出现过 bell 提醒的结构化字段 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
+| `SUPERVISOR_STATUS` | 托管 Codex 主动汇报状态的协议锚点，如 working、done、blocked、needs_user | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |
+| `SUPERVISOR_SUMMARY` | 托管 Codex 主动汇报的一句中文状态摘要 | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |
+| `SUPERVISOR_NEXT` | 托管 Codex 主动建议的下一步 | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |
+| `lane state` | 托管窗口状态，后续记录最近状态、催促次数和限频信息 | 产品功能/状态判断 | 待实现 |
 | `LLM summary` | 大模型摘要，把压缩后的窗口状态和结构化建议交给模型生成中文判断 | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
 | `OpenAI-compatible` | 兼容 OpenAI Chat Completions 形状的模型接口 | 模型/外部集成 | `src/isotope/features/supervisor/llm_summary.py` |
 | `LLM pool TOML` | 本机模型号池配置，声明 provider、base URL、model 和 key | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |

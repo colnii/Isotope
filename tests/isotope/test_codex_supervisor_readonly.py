@@ -187,6 +187,41 @@ def test_codex_supervisor_report_serializes_to_json_shape(tmp_path):
     assert payload["sessions"][0]["status_label"] == "工作中"
 
 
+def test_codex_supervisor_scan_parses_supervisor_status_protocol(tmp_path):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-status.jsonl",
+        session_id="status-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "\n".join(
+                    [
+                        "已完成这一步。",
+                        "SUPERVISOR_STATUS: done",
+                        "SUPERVISOR_SUMMARY: 测试已经通过，等待用户审阅。",
+                        "SUPERVISOR_NEXT: 等待用户确认后继续状态协议下一片。",
+                    ]
+                ),
+            )
+        ],
+    )
+
+    report = CodexSupervisorFlow(codex_home=codex_home, now=lambda: NOW).scan()
+    session = report.sessions[0]
+
+    assert session.supervisor_status == "done"
+    assert session.supervisor_summary == "测试已经通过，等待用户审阅。"
+    assert session.supervisor_next == "等待用户确认后继续状态协议下一片。"
+    assert session.to_dict()["supervisor_status"] == "done"
+    assert "Supervisor 状态：done" in render_plain_report(report)
+    messages = build_llm_summary_messages(report)
+    assert '"supervisor_status": "done"' in messages[1]["content"]
+    assert "等待用户确认后继续状态协议下一片" in messages[1]["content"]
+
+
 def test_codex_supervisor_avoids_broad_attention_words_and_caps_json_text(tmp_path):
     codex_home = tmp_path / ".codex"
     long_reply = "建议先等待 1 分钟再开机。" * 20
@@ -861,13 +896,17 @@ def test_codex_supervisor_runner_launch_records_managed_codex(
     assert payload["managed"]["cwd"] == str(workspace)
     assert payload["managed"]["prompt"] == "继续实现 supervisor"
     assert payload["managed"]["log_path"].endswith(".log")
-    assert captured["command"] == [
+    assert captured["command"][:4] == [
         "codex",
         "--cd",
         str(workspace),
         "--no-alt-screen",
-        "继续实现 supervisor",
     ]
+    assert captured["command"][4].startswith("继续实现 supervisor")
+    assert "SUPERVISOR_STATUS" in captured["command"][4]
+    assert "SUPERVISOR_SUMMARY" in captured["command"][4]
+    assert "SUPERVISOR_NEXT" in captured["command"][4]
+    assert payload["managed"]["prompt"] == "继续实现 supervisor"
     assert captured["cwd"] == str(workspace)
     assert captured["stdin"] is subprocess.DEVNULL
     assert captured["stderr"] is subprocess.STDOUT
@@ -930,7 +969,7 @@ def test_codex_supervisor_runner_launch_can_use_tmux_backend(
     assert payload["managed"]["backend"] == "tmux"
     assert payload["managed"]["tmux_session"] == "isotope-lane-a"
     assert payload["managed"]["pid"] == 0
-    assert captured["command"] == [
+    assert captured["command"][:7] == [
         "tmux",
         "new-session",
         "-d",
@@ -938,11 +977,10 @@ def test_codex_supervisor_runner_launch_can_use_tmux_backend(
         "isotope-lane-a",
         "-c",
         str(workspace),
-        "codex --cd "
-        + str(workspace)
-        + " --no-alt-screen "
-        + "'继续实现 supervisor'",
     ]
+    assert "codex --cd " + str(workspace) + " --no-alt-screen" in captured["command"][7]
+    assert "继续实现 supervisor" in captured["command"][7]
+    assert "SUPERVISOR_STATUS" in captured["command"][7]
     assert captured["check"] is True
     assert captured["text"] is True
     assert captured["capture_output"] is True

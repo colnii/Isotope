@@ -160,10 +160,26 @@
     现有轮子、不要重复实现的边界和后续拆分顺序。
 77. Codex Supervisor 结束信号识别：`scan` 已识别托管 tmux 会话的
     bell（提醒）信号，并写入 plain、JSON、LLM 摘要输入和变化指纹。
+78. Codex Supervisor 状态协议：`launch` 已注入
+    `SUPERVISOR_STATUS/SUMMARY/NEXT` 汇报格式，`scan` 已能从 `.jsonl`
+    解析状态协议字段。
 
-## 最近完成：Codex Supervisor 结束信号识别
+## 最近完成：Codex Supervisor 状态协议
 
 完成内容：
+
+- 托管 `launch` 会把状态汇报格式追加到 Codex prompt 末尾。
+- 登记表仍保存用户原始 prompt，不把协议提示当成用户需求。
+- `scan` 可解析 `SUPERVISOR_STATUS`、`SUPERVISOR_SUMMARY`
+  和 `SUPERVISOR_NEXT`。
+- plain 报告、JSON 输出和 LLM 摘要输入都会携带状态协议字段。
+- `watch --changes-only` 的变化指纹包含状态协议字段。
+- 当前协议只增强可观察性，不直接触发自动发送。
+- 同步 [status](./status.md)、[terminology](./terminology.md)、
+  [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
+  [supervisor-capability-map](./supervisor-capability-map.md)。
+
+上一批已完成：
 
 - `CodexSessionSummary` 新增 `managed_bell` 字段。
 - 托管 tmux 会话运行时会读取 `#{window_bell_flag}`。
@@ -175,7 +191,7 @@
   [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
   [supervisor-capability-map](./supervisor-capability-map.md)。
 
-上一批已完成：
+更早一批已完成：
 
 - 新增 [supervisor-capability-map](./supervisor-capability-map.md)。
 - 登记 `scan/watch/advise/supervise`、托管登记、tmux 控制、
@@ -187,7 +203,7 @@
   [terminology](./terminology.md) 和
   [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
 
-更早一批已完成：
+更早二批已完成：
 
 - `supervise` 复用 `watch` 的 `--interval`、`--iterations`
   和 `--changes-only`。
@@ -200,7 +216,7 @@
 - 同步 [status](./status.md)、[terminology](./terminology.md) 和
   [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
 
-更早二批已完成：
+更早三批已完成：
 
 - `advise --execute send_status` 会向托管 tmux lane 发送“请汇报当前状态”。
 - `advise --execute send_continue` 会向托管 tmux lane 发送继续推进指令。
@@ -242,15 +258,14 @@
 - 共享路径改动后需要跑全量测试。
 - `AGENTS.md` 仍需保持 100 行以内。
 
-## 下一批次：Codex Supervisor 状态协议
+## 下一批次：Codex Supervisor lane state
 
 目标：
 
-- 给托管 Codex 启动时注入简单状态汇报要求。
-- 先约定 `SUPERVISOR_STATUS`、`SUPERVISOR_SUMMARY` 和
-  `SUPERVISOR_NEXT` 三个锚点。
-- 从 Codex `.jsonl` 读取这些锚点，优先补充 scan JSON。
-- 先不让 LLM 自动决策，状态协议稳定后再接 lane state。
+- 给每个托管 lane 记录最近状态、最近汇报时间和催促次数。
+- 避免 `supervise` 在短时间内重复发送状态请求。
+- 让 bell 和 `SUPERVISOR_STATUS` 成为建议动作的输入。
+- 先继续保持显式 `--execute`，不做自由自动执行。
 
 初始参考：
 

@@ -21,7 +21,7 @@ Codex Supervisor 已经不只是一个小命令。
 | 状态判断层 | 工作中、等待用户、疑似停住、疑似报错 | `features/supervisor/flow.py` | 规则判断，不等于模型判断 |
 | 建议执行层 | `recommendation`、`command_suggestions`、`--execute` | `flow.py`、`runner.py` | 只允许白名单动作 |
 | 模型摘要层 | `LLM summary` 和 TOML 号池 | `llm_summary.py` | 只做摘要，不自由执行命令 |
-| 未来协议层 | `SUPERVISOR_STATUS` 等状态协议 | 待实现 | 给被托管 Codex 主动汇报状态 |
+| 状态协议层 | `SUPERVISOR_STATUS` 等状态协议 | `flow.py`、`registry.py` | 给被托管 Codex 主动汇报状态 |
 | 未来状态层 | lane state（窗口状态）和限频 | 待实现 | 避免重复催促和刷屏 |
 
 ## 已有轮子
@@ -34,6 +34,8 @@ Codex Supervisor 已经不只是一个小命令。
 - `launch` 支持普通进程和 tmux 会话。
 - `send` 支持向登记过的 tmux 会话发送文本。
 - `scan` 可识别托管 tmux 会话的 bell（提醒）信号。
+- `launch` 会注入 `SUPERVISOR_STATUS/SUMMARY/NEXT` 汇报要求。
+- `scan` 会从 Codex `.jsonl` 解析状态协议字段。
 - `scan --json` 输出结构化建议。
 - `advise` 输出建议和命令草案。
 - `--execute` 只执行 `send_status` 和 `send_continue`。
@@ -51,17 +53,16 @@ Codex Supervisor 已经不只是一个小命令。
 ## 后续拆分方向
 
 - `features/supervisor/advice.py`：建议、命令草案和执行白名单。
-- `features/supervisor/protocol.py`：状态协议解析和提示语注入。
+- `features/supervisor/protocol.py`：后续可下沉状态协议解析和提示语注入。
 - `features/supervisor/tmux_control.py`：后续可下沉 tmux 会话、发送和 bell 检测。
 - `features/supervisor/lane_state.py`：每个窗口的最近状态、催促次数和限频。
 - `integrations/codex/session_reader.py`：后续可把 Codex `.jsonl` 读取下沉。
 
 ## 下一步顺序
 
-1. 给托管 Codex 启动时注入状态汇报协议。
-2. 从 `.jsonl` 解析 `SUPERVISOR_STATUS` 等状态锚点。
-3. 增加 lane state（窗口状态）和限频。
-4. 再讨论 LLM 是否可在白名单内选择动作。
+1. 增加 lane state（窗口状态）和限频。
+2. 用状态协议结果优化建议动作。
+3. 再讨论 LLM 是否可在白名单内选择动作。
 
 ## 登记规则
 

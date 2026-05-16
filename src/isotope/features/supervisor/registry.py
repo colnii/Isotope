@@ -108,7 +108,13 @@ def launch_managed_codex(
     log_dir = default_log_dir(codex_home)
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"{record_id}.log"
-    codex_command = (codex_bin_text, "--cd", str(workspace), "--no-alt-screen", prompt_text)
+    codex_command = (
+        codex_bin_text,
+        "--cd",
+        str(workspace),
+        "--no-alt-screen",
+        _with_supervisor_protocol(prompt_text),
+    )
     tmux_session_text: str | None = None
     pid = 0
     if backend_text == "process":
@@ -206,6 +212,19 @@ def append_managed_record(registry_path: Path | str, record: ManagedCodexRecord)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(record.to_dict(), ensure_ascii=False, sort_keys=True) + "\n")
+
+
+def _with_supervisor_protocol(prompt: str) -> str:
+    return (
+        prompt
+        + "\n\n"
+        + "Supervisor 状态汇报要求：\n"
+        + "当你暂停、等待用户、完成一批工作或遇到阻塞时，"
+        + "在回复末尾追加三行：\n"
+        + "SUPERVISOR_STATUS: working|done|blocked|needs_user\n"
+        + "SUPERVISOR_SUMMARY: 用一句中文说明当前状态\n"
+        + "SUPERVISOR_NEXT: 用一句中文说明建议下一步\n"
+    )
 
 
 def _find_managed_record(
