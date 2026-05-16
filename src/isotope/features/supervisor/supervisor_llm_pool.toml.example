@@ -1,0 +1,34 @@
+# Codex Supervisor LLM key pool -- EXAMPLE FILE
+#
+# Copy this file to supervisor_llm_pool.toml and fill in your own values.
+# The real supervisor_llm_pool.toml is git-ignored and never committed.
+#
+# Each [[keys]] block = one provider (base_url + model).
+# api_keys: list of keys to try for this provider, in order.
+#   "env:NAME" = read from environment variable $NAME
+#   plain text  = use directly as the api key
+#
+# Health check: each entry is tested with a minimal request,
+# first one that passes wins.
+
+[[keys]]
+base_url = "https://api.deepseek.com"
+model = "deepseek-chat"
+api_keys = [
+  "env:DEEPSEEK_API_KEY",
+]
+
+# [[keys]]
+# base_url = "https://api.openai.com/v1"
+# model = "gpt-4o"
+# api_keys = [
+#   "env:OPENAI_API_KEY",
+# ]
+
+# [[keys]]
+# base_url = "https://api.minimax.io/v1"
+# model = "MiniMax-M2.7"
+# api_keys = [
+#   "env:MINIMAX_API_KEY",
+#   "sk-your-plaintext-fallback-key",
+# ]
