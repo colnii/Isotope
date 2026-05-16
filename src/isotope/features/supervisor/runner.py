@@ -432,8 +432,10 @@ def _dashboard_payload(report: Any) -> dict[str, Any]:
         "done": [],
         "working": [],
     }
-    for session in report.sessions:
-        groups[_dashboard_group_for(session)].append(_dashboard_item(session))
+    for session, linked_session in _dashboard_display_sessions(report.sessions):
+        groups[_dashboard_group_for(session)].append(
+            _dashboard_item(session, linked_session=linked_session)
+        )
     return {
         "status": "ok",
         "generated_at": report.generated_at,
@@ -456,20 +458,61 @@ def _dashboard_group_for(session: Any) -> str:
     return "working"
 
 
-def _dashboard_item(session: Any) -> dict[str, Any]:
+def _dashboard_display_sessions(sessions: Any) -> list[tuple[Any, Any | None]]:
+    linkable_by_cwd: dict[str, list[Any]] = {}
+    for session in sessions:
+        if session.managed:
+            continue
+        if session.status in {"stale", "exited"}:
+            continue
+        linkable_by_cwd.setdefault(session.cwd, []).append(session)
+
+    linked_by_managed_id: dict[str, Any] = {}
+    consumed_linked_ids: set[str] = set()
+    for session in sessions:
+        if not session.managed:
+            continue
+        for candidate in linkable_by_cwd.get(session.cwd, []):
+            if candidate.session_id in consumed_linked_ids:
+                continue
+            linked_by_managed_id[session.session_id] = candidate
+            consumed_linked_ids.add(candidate.session_id)
+            break
+
+    display_sessions: list[tuple[Any, Any | None]] = []
+    for session in sessions:
+        if session.session_id in consumed_linked_ids:
+            continue
+        display_sessions.append(
+            (session, linked_by_managed_id.get(session.session_id))
+        )
+    return display_sessions
+
+
+def _dashboard_item(session: Any, *, linked_session: Any | None = None) -> dict[str, Any]:
+    display_source = linked_session or session
+    resume_session = linked_session or session
     return {
         "session_id": session.session_id,
-        "short_session_id": session.short_session_id,
-        "display_title": session.display_title,
-        "resume_command": f"codex resume {session.session_id}",
+        "short_session_id": display_source.short_session_id,
+        "display_title": display_source.display_title,
+        "resume_command": f"codex resume {resume_session.session_id}",
+        "linked_session_id": linked_session.session_id if linked_session else None,
+        "linked_short_session_id": linked_session.short_session_id
+        if linked_session
+        else None,
+        "linked_resume_command": f"codex resume {linked_session.session_id}"
+        if linked_session
+        else None,
+        "managed_display_title": session.display_title if linked_session else None,
         "name": session.managed_name,
-        "thread_name": session.thread_name,
-        "thread_id": session.thread_id,
-        "initial_user_title": session.initial_user_title,
-        "agent_nickname": session.agent_nickname,
-        "agent_role": session.agent_role,
+        "thread_name": display_source.thread_name,
+        "thread_id": display_source.thread_id,
+        "initial_user_title": display_source.initial_user_title,
+        "agent_nickname": display_source.agent_nickname,
+        "agent_role": display_source.agent_role,
         "cwd": session.cwd,
-        "git_branch": session.git_branch,
+        "git_branch": display_source.git_branch or session.git_branch,
         "status": session.status,
         "status_label": session.status_label,
         "status_evidence": session.status_evidence,

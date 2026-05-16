@@ -44,6 +44,7 @@ Codex Supervisor 已经不只是一个小命令。
 - `dashboard` 按需要看、已完成和工作中分组。
 - `dashboard` 保留可读标题、短 hash、Codex 标题和 agent 元数据。
 - `dashboard` 为每个窗口输出完整 `resume_command`。
+- `dashboard` 会把同 cwd 的托管 lane 和最近真实 Codex session 合并展示。
 - `web` 启动本机页面，复用 `dashboard` 分组 JSON。
 - `web` 优先展示可读标题，同时保留短 hash 方便辨认窗口。
 - `web` 可复制完整 `codex resume <session_id>`。
@@ -80,6 +81,7 @@ Codex Supervisor 已经不只是一个小命令。
 - 不要另写状态分类系统，除非同步更新本文件。
 - 不要只展示状态标签而不展示判断依据。
 - 不要另写一套 dashboard 数据接口，先复用 `/dashboard.json`。
+- 不要在页面重复展示同一个托管 Codex 的 lane 视角和 session 视角。
 - 不要在 web 里放任意文本发送框；先走白名单动作。
 - 不要让 `/llm-action` 自动调用 `/managed/send`。
 - 没有可控托管目标时，不要为了动作建议调用 LLM。
@@ -97,7 +99,8 @@ Codex Supervisor 已经不只是一个小命令。
 ## 下一步顺序
 
 1. 让模型建议在页面上高亮或预选对应按钮，仍由人类确认点击。
-2. 后续再决定是否增加人工输入框；默认仍保持白名单。
+2. 改进托管 lane 和真实 session 的关联依据，减少 cwd 相同导致的误配。
+3. 后续再决定是否增加人工输入框；默认仍保持白名单。
 
 ## 登记规则
 

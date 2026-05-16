@@ -198,8 +198,23 @@
     展示 LLM 白名单动作建议，但不自动发送。
 92. Codex Supervisor LLM action 无目标回退：没有可控托管 tmux lane
     时直接返回 `monitor`，不调用 LLM。
+93. Codex Supervisor dashboard 托管去重：同一工作目录下的托管 lane
+    和最近真实 Codex session 会合并成一个可控卡片。
 
-## 最近完成：Codex Supervisor LLM action 无目标回退
+## 最近完成：Codex Supervisor dashboard 托管去重
+
+完成内容：
+
+- `/dashboard.json` 会在视图层合并托管 lane 和真实 Codex session。
+- 合并后只显示一张卡片，保留托管控制按钮。
+- 卡片标题和 resume 命令优先使用真实 Codex session。
+- 卡片保留 `managed_display_title`、`linked_session_id` 和
+  `linked_resume_command`，方便追踪两种视角。
+- 底层 `scan` 仍保留原始事实，不在扫描层删除 session。
+
+上一批已完成：
+
+## Codex Supervisor LLM action 无目标回退
 
 完成内容：
 

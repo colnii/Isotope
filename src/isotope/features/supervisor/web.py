@@ -472,6 +472,7 @@ def dashboard_page_html() -> str:
       path.className = "path";
       path.textContent = [
         item.short_session_id ? "#" + item.short_session_id : "",
+        item.managed_display_title ? "托管 " + item.managed_display_title : "",
         item.agent_nickname ? item.agent_nickname : "",
         item.agent_role ? item.agent_role : "",
         item.cwd,

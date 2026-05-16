@@ -814,6 +814,80 @@ def test_codex_supervisor_dashboard_json_includes_managed_control_commands(
     ]
 
 
+def test_codex_supervisor_dashboard_merges_managed_lane_with_real_session(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-real-codex.jsonl",
+        session_id="019e3205-b9cc-7012-804c-ca2ac38e0d32",
+        cwd=str(workspace),
+        events=[
+            _event(
+                "2026-05-16T11:58:20Z",
+                "event_msg",
+                {
+                    "type": "thread_name_updated",
+                    "thread_name": "python版本升级评估",
+                },
+            ),
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "running checks"},
+            ),
+        ],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "dashboard",
+            "--codex-home",
+            str(codex_home),
+            "--limit",
+            "5",
+            "--stale-after",
+            "999999",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    working = payload["groups"]["working"]
+    assert len(working) == 1
+    item = working[0]
+    assert item["name"] == "lane-a"
+    assert item["display_title"] == "python版本升级评估"
+    assert item["managed_display_title"] == "lane-a"
+    assert item["session_id"] == "managed:managed-001"
+    assert item["linked_session_id"] == "019e3205-b9cc-7012-804c-ca2ac38e0d32"
+    assert item["linked_resume_command"] == (
+        "codex resume 019e3205-b9cc-7012-804c-ca2ac38e0d32"
+    )
+    assert item["resume_command"] == item["linked_resume_command"]
+    assert item["thread_name"] == "python版本升级评估"
+    assert item["status_evidence"] == {
+        "source": "managed_tmux",
+        "label": "托管 tmux 状态",
+        "detail": "tmux 会话仍在运行",
+    }
+
+
 def test_codex_supervisor_runner_dashboard_plain_is_grouped(tmp_path, capsys):
     codex_home = tmp_path / ".codex"
     _write_session(
@@ -915,6 +989,7 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert 'data-group="needs_attention"' in html
     assert "short_session_id" in html
     assert "display_title" in html
+    assert "managed_display_title" in html
     assert "copyResumeCommand" in html
     assert "copyControlCommand" in html
     assert "sendManagedCommand" in html

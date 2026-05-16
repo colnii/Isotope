@@ -39,6 +39,8 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
 - `advise` 可只输出当前建议和可复制命令草案。
 - `dashboard` 可按 `需要看`、`已完成`、`工作中` 分组显示，
   并保留可读标题和短 hash。
+- `dashboard` 会把同一工作目录下的托管 tmux lane 和最近真实 Codex
+  session 合并成一个可控卡片。
 - `web` 可启动本机页面，展示 `dashboard` 的三组窗口和可读标题。
 - `web` 会给托管 tmux 窗口显示复制 attach、复制 send 命令、
   请求状态和继续推进按钮。
@@ -108,6 +110,9 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 - `working`：仍在推进或暂无明显异常的窗口。
 - JSON 保留 session id、短 hash、Codex 标题、agent 名、状态、
   状态依据、resume 命令、受控命令、tmux session、bell、摘要和下一步字段。
+- 如果托管 lane 能关联到真实 Codex session，`display_title` 和
+  `resume_command` 会优先使用真实 session，同时保留 `managed_display_title`
+  和 `linked_session_id`。
 
 `web` 是当前本地前端薄入口：
 
@@ -118,7 +123,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 页面默认地址是 `http://127.0.0.1:8765/`。
 页面会读取 `/dashboard.json`，并按 `需要看`、`已完成`、`工作中`
 三组展示窗口；有 tmux session 的条目会显示 attach 命令。
-页面标题优先使用托管名，其次使用 Codex 自带标题、首条用户消息、agent 名和短 hash。
+页面标题优先使用关联到的 Codex 自带标题或首条用户消息。
+托管名会显示在路径信息里，方便确认它仍是可控 lane。
 每个窗口会显示“依据”，用来解释当前标签为什么被判成等待用户、停住或工作中。
 每个窗口提供 `复制 resume`，会复制完整 `codex resume <session_id>`。
 托管 tmux 窗口还会显示复制 attach、复制 send 命令、请求状态和继续按钮。
