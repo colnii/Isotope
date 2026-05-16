@@ -135,7 +135,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 每个窗口会显示“依据”，用来解释当前标签为什么被判成等待用户、停住或工作中。
 托管窗口会额外显示“托管窗口”详情区，包含 bell 时间、关联 session
 和最近输出；最近输出来自只读 `tmux capture-pane` 尾部摘要，
-会保留换行并默认滚到输出底部。
+会保留换行并默认滚到输出底部。用户手动上翻最近输出后，
+自动刷新会保留滚动位置，不会强行跳回底部。
 每个窗口提供 `复制 resume`，会复制完整 `codex resume <session_id>`。
 托管 tmux 窗口还会显示复制 attach、复制状态、复制继续、
 请求状态和继续按钮。

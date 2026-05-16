@@ -1103,6 +1103,8 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "最近输出" in html
     assert "bell 时间" in html
     assert "scrollTerminalExcerptToBottom" in html
+    assert "rememberTerminalExcerptScroll" in html
+    assert "restoreTerminalExcerptScroll" in html
     assert "/managed/send" in html
     assert "/llm-action" in html
     assert "/events" in html

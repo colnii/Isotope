@@ -212,8 +212,21 @@
     bell 时间和关联 session，方便确认 Supervisor 实际看到了什么。
 99. Codex Supervisor 最近输出修正：终端摘要保留尾部行和换行，
     web 展示时默认滚到底部，避免卡在旧输出中段。
+100. Codex Supervisor 最近输出滚动保留：用户手动上翻最近输出后，
+    自动刷新会保留滚动位置，不再强行跳回底部。
 
-## 最近完成：Codex Supervisor 最近输出修正
+## 最近完成：Codex Supervisor 最近输出滚动保留
+
+完成内容：
+
+- web 为每个托管输出框记录稳定滚动 key。
+- 用户手动上翻时记录 `scrollTop`。
+- 自动刷新重建卡片时恢复上次滚动位置。
+- 只有首次显示或原本贴近底部时，才自动滚到底部。
+
+上一批已完成：
+
+## Codex Supervisor 最近输出修正
 
 完成内容：
 

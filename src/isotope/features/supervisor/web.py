@@ -530,6 +530,7 @@ def dashboard_page_html() -> str:
   <script>
     const groups = ["needs_attention", "done", "working"];
     let latestLlmAction = null;
+    const terminalScrollState = new Map();
 
     function text(value) {
       return value === null || value === undefined || value === "" ? "无" : String(value);
@@ -634,17 +635,50 @@ def dashboard_page_html() -> str:
 
       const excerpt = document.createElement("pre");
       excerpt.className = "terminal-excerpt";
+      excerpt.dataset.scrollKey = terminalExcerptScrollKey(item);
       excerpt.textContent = item.managed_terminal_excerpt || "暂无可读输出";
+      excerpt.addEventListener("scroll", () => rememberTerminalExcerptScroll(excerpt));
       details.append(excerpt);
-      scrollTerminalExcerptToBottom(excerpt);
+      restoreTerminalExcerptScroll(excerpt);
 
       return details;
+    }
+
+    function terminalExcerptScrollKey(item) {
+      return item.session_id || item.name || item.managed_tmux_session || "";
+    }
+
+    function rememberTerminalExcerptScroll(excerpt) {
+      const key = excerpt.dataset.scrollKey;
+      if (!key) return;
+      terminalScrollState.set(key, {
+        scrollTop: excerpt.scrollTop,
+        nearBottom: isTerminalExcerptNearBottom(excerpt)
+      });
+    }
+
+    function restoreTerminalExcerptScroll(excerpt) {
+      const key = excerpt.dataset.scrollKey;
+      const state = key ? terminalScrollState.get(key) : null;
+      if (!state || state.nearBottom) {
+        scrollTerminalExcerptToBottom(excerpt);
+        return;
+      }
+      window.requestAnimationFrame(() => {
+        excerpt.scrollTop = Math.min(state.scrollTop, excerpt.scrollHeight);
+        rememberTerminalExcerptScroll(excerpt);
+      });
     }
 
     function scrollTerminalExcerptToBottom(excerpt) {
       window.requestAnimationFrame(() => {
         excerpt.scrollTop = excerpt.scrollHeight;
+        rememberTerminalExcerptScroll(excerpt);
       });
+    }
+
+    function isTerminalExcerptNearBottom(excerpt) {
+      return excerpt.scrollHeight - excerpt.scrollTop - excerpt.clientHeight <= 8;
     }
 
     async function copyResumeCommand(item, button) {
