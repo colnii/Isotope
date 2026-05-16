@@ -158,10 +158,24 @@
 76. Codex Supervisor 能力地图：已新增
     [supervisor-capability-map](./supervisor-capability-map.md)，登记
     现有轮子、不要重复实现的边界和后续拆分顺序。
+77. Codex Supervisor 结束信号识别：`scan` 已识别托管 tmux 会话的
+    bell（提醒）信号，并写入 plain、JSON、LLM 摘要输入和变化指纹。
 
-## 最近完成：Codex Supervisor 能力地图
+## 最近完成：Codex Supervisor 结束信号识别
 
 完成内容：
+
+- `CodexSessionSummary` 新增 `managed_bell` 字段。
+- 托管 tmux 会话运行时会读取 `#{window_bell_flag}`。
+- plain 报告会显示 `bell=响过` 或 `bell=无`。
+- JSON 输出和 LLM 摘要输入会携带 `managed_bell`。
+- `watch --changes-only` 的变化指纹包含 bell 状态。
+- 当前 bell 只作为弱信号，不直接改变 status，也不自动发送指令。
+- 同步 [status](./status.md)、[terminology](./terminology.md)、
+  [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
+  [supervisor-capability-map](./supervisor-capability-map.md)。
+
+上一批已完成：
 
 - 新增 [supervisor-capability-map](./supervisor-capability-map.md)。
 - 登记 `scan/watch/advise/supervise`、托管登记、tmux 控制、
@@ -173,7 +187,7 @@
   [terminology](./terminology.md) 和
   [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
 
-上一批已完成：
+更早一批已完成：
 
 - `supervise` 复用 `watch` 的 `--interval`、`--iterations`
   和 `--changes-only`。
@@ -186,7 +200,7 @@
 - 同步 [status](./status.md)、[terminology](./terminology.md) 和
   [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
 
-再上一批已完成：
+更早二批已完成：
 
 - `advise --execute send_status` 会向托管 tmux lane 发送“请汇报当前状态”。
 - `advise --execute send_continue` 会向托管 tmux lane 发送继续推进指令。
@@ -228,14 +242,15 @@
 - 共享路径改动后需要跑全量测试。
 - `AGENTS.md` 仍需保持 100 行以内。
 
-## 下一批次：Codex Supervisor 结束信号识别
+## 下一批次：Codex Supervisor 状态协议
 
 目标：
 
-- 先识别托管 tmux 会话的 bell（提醒）信号。
-- 把 bell 信号作为“可能已停下等待处理”的弱证据写入 scan JSON。
-- plain 输出也显示 bell 状态，方便人类快速看到哪个窗口响过。
-- 先不自动发送新指令，后续再接状态协议和 lane state。
+- 给托管 Codex 启动时注入简单状态汇报要求。
+- 先约定 `SUPERVISOR_STATUS`、`SUPERVISOR_SUMMARY` 和
+  `SUPERVISOR_NEXT` 三个锚点。
+- 从 Codex `.jsonl` 读取这些锚点，优先补充 scan JSON。
+- 先不让 LLM 自动决策，状态协议稳定后再接 lane state。
 
 初始参考：
 

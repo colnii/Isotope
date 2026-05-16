@@ -479,6 +479,7 @@ def _report_fingerprint(report: Any) -> tuple[object, ...]:
             session.reason,
             session.last_user_message,
             session.last_assistant_message,
+            session.managed_bell,
         )
         for session in report.sessions
     )

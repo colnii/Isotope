@@ -17,7 +17,7 @@ Codex Supervisor 已经不只是一个小命令。
 | 用户功能层 | `scan`、`watch`、`advise`、`supervise` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
 | 托管控制层 | `launch`、`send`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 自己启动的 Codex |
 | Codex 集成层 | 读取 Codex session（会话记录） | `features/supervisor/flow.py` | 当前直接读取本机 `.jsonl` |
-| tmux 集成层 | tmux 启动和 `send-keys` | `registry.py`、`runner.py` | 只控制登记过的 tmux 会话 |
+| tmux 集成层 | tmux 启动、`send-keys` 和 bell 检测 | `flow.py`、`registry.py`、`runner.py` | 只控制登记过的 tmux 会话 |
 | 状态判断层 | 工作中、等待用户、疑似停住、疑似报错 | `features/supervisor/flow.py` | 规则判断，不等于模型判断 |
 | 建议执行层 | `recommendation`、`command_suggestions`、`--execute` | `flow.py`、`runner.py` | 只允许白名单动作 |
 | 模型摘要层 | `LLM summary` 和 TOML 号池 | `llm_summary.py` | 只做摘要，不自由执行命令 |
@@ -33,6 +33,7 @@ Codex Supervisor 已经不只是一个小命令。
 - 本机托管登记表 `managed_sessions.jsonl`。
 - `launch` 支持普通进程和 tmux 会话。
 - `send` 支持向登记过的 tmux 会话发送文本。
+- `scan` 可识别托管 tmux 会话的 bell（提醒）信号。
 - `scan --json` 输出结构化建议。
 - `advise` 输出建议和命令草案。
 - `--execute` 只执行 `send_status` 和 `send_continue`。
@@ -51,17 +52,16 @@ Codex Supervisor 已经不只是一个小命令。
 
 - `features/supervisor/advice.py`：建议、命令草案和执行白名单。
 - `features/supervisor/protocol.py`：状态协议解析和提示语注入。
-- `features/supervisor/tmux_control.py`：tmux 会话、发送和 bell（提醒）检测。
+- `features/supervisor/tmux_control.py`：后续可下沉 tmux 会话、发送和 bell 检测。
 - `features/supervisor/lane_state.py`：每个窗口的最近状态、催促次数和限频。
 - `integrations/codex/session_reader.py`：后续可把 Codex `.jsonl` 读取下沉。
 
 ## 下一步顺序
 
-1. 识别托管 tmux 会话的 bell（提醒）信号。
-2. 给托管 Codex 启动时注入状态汇报协议。
-3. 从 `.jsonl` 解析 `SUPERVISOR_STATUS` 等状态锚点。
-4. 增加 lane state（窗口状态）和限频。
-5. 再讨论 LLM 是否可在白名单内选择动作。
+1. 给托管 Codex 启动时注入状态汇报协议。
+2. 从 `.jsonl` 解析 `SUPERVISOR_STATUS` 等状态锚点。
+3. 增加 lane state（窗口状态）和限频。
+4. 再讨论 LLM 是否可在白名单内选择动作。
 
 ## 登记规则
 

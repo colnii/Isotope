@@ -395,6 +395,10 @@ def test_codex_supervisor_runner_advise_execute_send_status(
         "isotope.features.supervisor.flow._tmux_session_exists",
         lambda session: session == "isotope-lane-a",
     )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
     calls: list[list[str]] = []
 
     def fake_run(
@@ -572,6 +576,10 @@ def test_codex_supervisor_runner_supervise_can_execute_send_status(
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._tmux_session_exists",
         lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
     )
     calls: list[list[str]] = []
 
@@ -1067,6 +1075,48 @@ def test_codex_supervisor_scan_marks_tmux_managed_session_running(tmp_path):
     assert "托管：lane-a backend=tmux tmux=isotope-lane-a" in text
     llm_messages = build_llm_summary_messages(report)
     assert '"managed_backend": "tmux"' in llm_messages[1]["content"]
+
+
+def test_codex_supervisor_scan_marks_tmux_managed_bell_signal(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "lane-a",
+                "cwd": str(workspace),
+                "prompt": "继续实现 supervisor",
+                "command": ["tmux", "new-session", "-d", "-s", "isotope-lane-a"],
+                "pid": 0,
+                "started_at": "2026-05-16T11:59:30+00:00",
+                "log_path": str(codex_home / "supervisor" / "logs" / "managed-001.log"),
+                "status": "launched",
+                "backend": "tmux",
+                "tmux_session": "isotope-lane-a",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = CodexSupervisorFlow(
+        codex_home=codex_home,
+        now=lambda: NOW,
+        tmux_session_checker=lambda session: session == "isotope-lane-a",
+        tmux_bell_checker=lambda session: session == "isotope-lane-a",
+    ).scan()
+
+    session = report.sessions[0]
+    assert session.managed_bell is True
+    assert session.to_dict()["managed_bell"] is True
+    assert "bell=响过" in render_plain_report(report)
+    llm_messages = build_llm_summary_messages(report)
+    assert '"managed_bell": true' in llm_messages[1]["content"]
 
 
 def test_codex_supervisor_runner_send_text_to_tmux_managed_session(

@@ -71,7 +71,8 @@
 | `send` | Supervisor 控制命令，向登记的 tmux Codex 会话发送一行文本并回车 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
 | `tmux` | 本机终端复用工具，可创建可追踪会话，并通过 send-keys 向托管 Codex 发指令 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
 | `send-keys` | tmux 输入命令，当前用于把文本写入托管 Codex 窗口 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
-| `bell` | tmux 提醒信号，可作为窗口可能结束或需要查看的弱证据 | 外部集成/状态判断 | `docs/current/supervisor-capability-map.md` |
+| `bell` | tmux 提醒信号，可作为窗口可能结束或需要查看的弱证据 | 外部集成/状态判断 | `src/isotope/features/supervisor/flow.py`, `docs/current/supervisor-capability-map.md` |
+| `managed_bell` | 托管 tmux 会话是否出现过 bell 提醒的结构化字段 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
 | `LLM summary` | 大模型摘要，把压缩后的窗口状态和结构化建议交给模型生成中文判断 | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
 | `OpenAI-compatible` | 兼容 OpenAI Chat Completions 形状的模型接口 | 模型/外部集成 | `src/isotope/features/supervisor/llm_summary.py` |
 | `LLM pool TOML` | 本机模型号池配置，声明 provider、base URL、model 和 key | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |

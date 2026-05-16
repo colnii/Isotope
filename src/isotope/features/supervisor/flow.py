@@ -66,6 +66,7 @@ class CodexSessionSummary:
     managed_log_path: str | None = None
     managed_backend: str | None = None
     managed_tmux_session: str | None = None
+    managed_bell: bool = False
 
     @property
     def status_label(self) -> str:
@@ -92,6 +93,7 @@ class CodexSessionSummary:
             "managed_log_path": self.managed_log_path,
             "managed_backend": self.managed_backend,
             "managed_tmux_session": self.managed_tmux_session,
+            "managed_bell": self.managed_bell,
         }
 
 
@@ -154,6 +156,7 @@ class CodexSupervisorFlow:
         branch_resolver: Callable[[str], str | None] | None = None,
         process_checker: Callable[[int], bool] | None = None,
         tmux_session_checker: Callable[[str], bool] | None = None,
+        tmux_bell_checker: Callable[[str], bool] | None = None,
     ) -> None:
         self.codex_home = Path(codex_home).expanduser() if codex_home else Path.home() / ".codex"
         self.registry_path = (
@@ -165,6 +168,7 @@ class CodexSupervisorFlow:
         self.branch_resolver = branch_resolver or _git_branch_for
         self.process_checker = process_checker or _pid_is_running
         self.tmux_session_checker = tmux_session_checker or _tmux_session_exists
+        self.tmux_bell_checker = tmux_bell_checker or _tmux_window_has_bell
 
     def scan(
         self,
@@ -202,6 +206,7 @@ class CodexSupervisorFlow:
                 branch_resolver=self.branch_resolver,
                 process_checker=self.process_checker,
                 tmux_session_checker=self.tmux_session_checker,
+                tmux_bell_checker=self.tmux_bell_checker,
             )
             for record in read_managed_records(self.registry_path)
         )
@@ -241,8 +246,13 @@ def render_plain_report(report: CodexSupervisorReport) -> str:
                 if session.managed_tmux_session
                 else ""
             )
+            bell = (
+                f" bell={'响过' if session.managed_bell else '无'}"
+                if session.managed_backend == "tmux"
+                else ""
+            )
             name = session.managed_name or "未命名"
-            lines.append(f"   托管：{name}{pid}{backend}{tmux}")
+            lines.append(f"   托管：{name}{pid}{backend}{tmux}{bell}")
         lines.append(f"   原因：{session.reason}")
         if session.last_user_message:
             lines.append(f"   最近用户：{_shorten(session.last_user_message)}")
@@ -327,11 +337,15 @@ def _managed_summary(
     branch_resolver: Callable[[str], str | None],
     process_checker: Callable[[int], bool],
     tmux_session_checker: Callable[[str], bool],
+    tmux_bell_checker: Callable[[str], bool],
 ) -> CodexSessionSummary:
     started_at = _parse_timestamp(record.started_at) or now
     age_seconds = max(0, int((now - started_at).total_seconds()))
     if record.backend == "tmux":
         is_running = bool(record.tmux_session and tmux_session_checker(record.tmux_session))
+        managed_bell = bool(
+            is_running and record.tmux_session and tmux_bell_checker(record.tmux_session)
+        )
         status = "working" if is_running else "exited"
         reason = (
             "Supervisor 托管 tmux 会话仍在运行"
@@ -340,6 +354,7 @@ def _managed_summary(
         )
     else:
         is_running = process_checker(record.pid)
+        managed_bell = False
         status = "working" if is_running else "exited"
         reason = "Supervisor 托管进程已启动" if is_running else "Supervisor 托管进程已退出"
     return CodexSessionSummary(
@@ -358,6 +373,7 @@ def _managed_summary(
         managed_log_path=record.log_path,
         managed_backend=record.backend,
         managed_tmux_session=record.tmux_session,
+        managed_bell=managed_bell,
     )
 
 
@@ -514,6 +530,20 @@ def _tmux_session_exists(session: str) -> bool:
         check=False,
     )
     return completed.returncode == 0
+
+
+def _tmux_window_has_bell(session: str) -> bool:
+    if not session:
+        return False
+    completed = subprocess.run(
+        ["tmux", "display-message", "-p", "-t", session, "#{window_bell_flag}"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        return False
+    return completed.stdout.strip() == "1"
 
 
 def _parse_timestamp(value: Any) -> datetime | None:
