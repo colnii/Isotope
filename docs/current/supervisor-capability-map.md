@@ -51,6 +51,7 @@ Codex Supervisor 已经不只是一个小命令。
 - `web` 可分别复制 attach、状态请求和继续命令，
   也可对白名单 send 动作发起本机 POST。
 - `web` 可手动请求 `/llm-action`，展示 LLM 白名单动作建议。
+- `web` 会高亮模型建议对应的 send 按钮，但不会自动点击。
 - `/managed/send` 成功发送后会更新 lane state。
 - `watch --changes-only` 只在状态变化时输出。
 - 本机托管登记表 `managed_sessions.jsonl`。
@@ -85,6 +86,7 @@ Codex Supervisor 已经不只是一个小命令。
 - 不要在页面重复展示同一个托管 Codex 的 lane 视角和 session 视角。
 - 不要在 web 里放任意文本发送框；先走白名单动作。
 - 不要让 `/llm-action` 自动调用 `/managed/send`。
+- 高亮模型建议不等于执行动作，执行必须由人类点击或显式参数触发。
 - 没有可控托管目标时，不要为了动作建议调用 LLM。
 - LLM 动作选择必须落到可审计的白名单能力上。
 
@@ -99,9 +101,8 @@ Codex Supervisor 已经不只是一个小命令。
 
 ## 下一步顺序
 
-1. 让模型建议在页面上高亮或预选对应按钮，仍由人类确认点击。
-2. 改进托管 lane 和真实 session 的关联依据，减少 cwd 相同导致的误配。
-3. 后续再决定是否增加人工输入框；默认仍保持白名单。
+1. 改进托管 lane 和真实 session 的关联依据，减少 cwd 相同导致的误配。
+2. 后续再决定是否增加人工输入框；默认仍保持白名单。
 
 ## 登记规则
 

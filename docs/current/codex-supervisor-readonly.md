@@ -135,6 +135,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 页面的“模型建议”按钮会调用 `/llm-action`。
 该接口只在点击时请求 LLM，从 `monitor`、`send_status` 和
 `send_continue` 中返回建议动作，不会自动调用 `/managed/send`。
+如果模型建议的是某个托管 lane 的 `send_status` 或 `send_continue`，
+页面会高亮对应的“请求状态”或“继续”按钮，但仍需人类手动点击。
 如果当前没有可控的托管 tmux lane，会直接返回 `monitor`，
 不调用 LLM。
 当前页面使用 Python 标准库 HTTP server 和内联 HTML/CSS/JS，
@@ -281,6 +283,7 @@ tmux attach -t isotope-lane-a
 - `web` 只监听本机默认地址，不提供认证和远程访问能力。
 - `web` 的 `/managed/send` 只接受 `send_status` 和 `send_continue`。
 - `web` 的 `/llm-action` 只在手动点击时调用模型，只展示建议。
+- 模型建议只会高亮按钮，不会自动点击按钮。
 - `/managed/send` 成功发送后会记录 lane state。
 - `recommendation` 只表示建议动作，不会自动调用 `send`。
 - `advise` 默认只生成命令草案；`--execute` 只允许执行

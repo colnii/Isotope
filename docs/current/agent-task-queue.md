@@ -202,8 +202,21 @@
     和最近真实 Codex session 会合并成一个可控卡片。
 94. Codex Supervisor web 控制按钮整理：复制状态和复制继续按钮使用
     不同文案，并移除重复的 `tmux attach` 展示行。
+95. Codex Supervisor web 模型建议高亮：模型建议命中托管 lane 时，
+    页面高亮对应 send 按钮，但不自动执行。
 
-## 最近完成：Codex Supervisor web 控制按钮整理
+## 最近完成：Codex Supervisor web 模型建议高亮
+
+完成内容：
+
+- send 按钮新增动作类型和 lane 名标识。
+- `/llm-action` 返回建议后，会高亮对应的“请求状态”或“继续”按钮。
+- 页面自动刷新后会重新应用最近一次模型建议高亮。
+- 高亮只是提示，不会自动调用 `/managed/send`。
+
+上一批已完成：
+
+## Codex Supervisor web 控制按钮整理
 
 完成内容：
 

@@ -73,7 +73,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `/managed/send` 执行 `send_status` 和 `send_continue` 两个白名单动作；
     web 已可通过手动“模型建议”按钮调用 `/llm-action`，展示 LLM
     在白名单里选择的建议动作，但不自动发送；没有可控托管 tmux lane
-    时会直接回退为 `monitor`，不调用 LLM；
+    时会直接回退为 `monitor`，不调用 LLM；有建议目标时会高亮对应按钮，
+    但仍需人类手动点击；
     scan 已改为最近候选和大文件首尾读取，降低页面刷新延迟；
     scan、dashboard 和 web 已输出 `status_evidence` 状态依据，
     说明当前标签来自状态协议、文本规则、超时、bell 或托管检查；

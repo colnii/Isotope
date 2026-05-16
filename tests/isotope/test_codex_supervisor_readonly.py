@@ -997,6 +997,10 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "复制继续" in html
     assert "sendManagedCommand" in html
     assert "requestLlmAction" in html
+    assert "applyLlmActionHighlight" in html
+    assert "suggested-action" in html
+    assert "data-command-kind" in html
+    assert "data-lane-name" in html
     assert "/managed/send" in html
     assert "/llm-action" in html
     assert "模型建议" in html

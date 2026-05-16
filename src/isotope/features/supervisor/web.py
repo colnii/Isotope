@@ -388,6 +388,12 @@ def dashboard_page_html() -> str:
       border-color: #b2ddff;
       color: var(--working);
     }
+    button.suggested-action {
+      border-color: #175cd3;
+      background: #eff8ff;
+      box-shadow: 0 0 0 2px rgba(23, 92, 211, 0.14);
+      font-weight: 700;
+    }
     [data-group="needs_attention"] .group-head { border-top: 3px solid var(--attention); }
     [data-group="done"] .group-head { border-top: 3px solid var(--done); }
     [data-group="working"] .group-head { border-top: 3px solid var(--working); }
@@ -437,6 +443,7 @@ def dashboard_page_html() -> str:
   </main>
   <script>
     const groups = ["needs_attention", "done", "working"];
+    let latestLlmAction = null;
 
     function text(value) {
       return value === null || value === undefined || value === "" ? "无" : String(value);
@@ -499,6 +506,8 @@ def dashboard_page_html() -> str:
           const sendButton = document.createElement("button");
           sendButton.type = "button";
           sendButton.dataset.action = "send";
+          sendButton.dataset.commandKind = command.kind;
+          sendButton.dataset.laneName = item.name || "";
           sendButton.textContent = command.kind === "send_status" ? "请求状态" : "继续";
           sendButton.addEventListener("click", () => sendManagedCommand(item, command, sendButton));
           actions.append(sendButton);
@@ -565,6 +574,25 @@ def dashboard_page_html() -> str:
       const target = action.target_name ? " / " + action.target_name : "";
       const command = action.command_suggestion ? " / " + action.command_suggestion.label : "";
       result.textContent = "模型建议：" + kind + target + command + "。原因：" + text(action.reason);
+      latestLlmAction = action;
+      applyLlmActionHighlight();
+    }
+
+    function applyLlmActionHighlight() {
+      document.querySelectorAll("button.suggested-action").forEach((button) => {
+        button.classList.remove("suggested-action");
+        button.removeAttribute("title");
+      });
+      if (!latestLlmAction || !latestLlmAction.target_name) return;
+      const selector = [
+        'button[data-action="send"]',
+        '[data-command-kind="' + latestLlmAction.kind + '"]',
+        '[data-lane-name="' + latestLlmAction.target_name + '"]'
+      ].join("");
+      const target = document.querySelector(selector);
+      if (!target) return;
+      target.classList.add("suggested-action");
+      target.title = "模型建议：" + text(latestLlmAction.reason);
     }
 
     async function requestLlmAction(button) {
@@ -602,6 +630,7 @@ def dashboard_page_html() -> str:
         return;
       }
       for (const item of items) target.append(renderLane(item));
+      applyLlmActionHighlight();
     }
 
     async function loadDashboard() {
