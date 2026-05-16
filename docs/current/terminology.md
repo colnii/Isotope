@@ -43,6 +43,7 @@
 | `CoreTurn` | 对话回合，一条用户消息和一次产品级响应 | 应用核心 | `src/isotope/core/response.py` |
 | `CoreTurnResponse` | 产品级回合响应，只暴露低敏状态、产物引用和摘要 | 应用核心 | `src/isotope/core/response.py` |
 | `dashboard` | Supervisor 汇总视图，按需要看、已完成和工作中分组，供人类和后续前端使用 | 产品功能/视图 | `src/isotope/features/supervisor/runner.py` |
+| `dashboard web` | Supervisor 本机页面，读取 `/dashboard.json` 并渲染三组窗口 | 产品功能/视图 | `src/isotope/features/supervisor/web.py` |
 | `empty_state` | 空状态，工作台没有内容时给用户的下一步提示 | 产品功能 | `src/isotope/features/workbench/flow.py` |
 | `event log` | 事件日志，记录系统发生过的事实 | 状态恢复 | `src/isotope/platform/state/event_store.py` |
 | `executor` | 执行器，执行已批准的动作或工具调用 | 执行 | `src/isotope/execution/executor.py` |
@@ -68,7 +69,7 @@
 | `isotope-file` | 文件命令行入口，可创建、读取和列出文件摘要 | 应用入口 | `src/isotope/features/files/runner.py`, `apps/cli/isotope_file.py` |
 | `isotope-project` | 项目命令行入口，可创建、读取、列出、关联、查看组合摘要、创建 workspace 和追加 workspace 内容 | 应用入口 | `src/isotope/features/projects/runner.py`, `apps/cli/isotope_project.py` |
 | `isotope-search` | 搜索命令行入口，可搜索低敏摘要并使用 `--type` / `--limit` 控制结果 | 应用入口 | `src/isotope/features/search/runner.py`, `apps/cli/isotope_search.py` |
-| `isotope-supervisor` | Codex Supervisor 命令行入口，支持扫描、dashboard 汇总、建议面板、supervise 小闭环、定时汇报、变化触发、托管启动、接管 tmux 和发送指令 | 应用入口 | `src/isotope/features/supervisor/runner.py`, `apps/cli/isotope_supervisor.py` |
+| `isotope-supervisor` | Codex Supervisor 命令行入口，支持扫描、dashboard 汇总、本机 web 页面、建议面板、supervise 小闭环、定时汇报、变化触发、托管启动、接管 tmux 和发送指令 | 应用入口 | `src/isotope/features/supervisor/runner.py`, `apps/cli/isotope_supervisor.py` |
 | `isotope-task` | 任务命令行入口，可运行、读取和列出任务摘要 | 应用入口 | `src/isotope/features/tasks/runner.py`, `apps/cli/isotope_task.py` |
 | `isotope-workbench` | 工作台命令行入口，可读取产品首页低敏汇总 | 应用入口 | `src/isotope/features/workbench/runner.py`, `apps/cli/isotope_workbench.py` |
 | `IsotopeError` | 结构化错误，给 HTTP 和 helper 返回稳定错误码 | 平台错误 | `src/isotope/platform/errors.py` |

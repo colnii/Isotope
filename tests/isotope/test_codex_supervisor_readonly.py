@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import http.client
 import json
 import subprocess
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -481,6 +483,83 @@ def test_codex_supervisor_runner_dashboard_plain_is_grouped(tmp_path, capsys):
     assert "工作中：0" in text
     assert "blocked-session blocked / 测试环境缺少 tmux。" in text
     assert "done-session done / 文档已完成。" in text
+
+
+def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
+    from isotope.features.supervisor.web import create_dashboard_server
+
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-blocked.jsonl",
+        session_id="blocked-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "\n".join(
+                    [
+                        "SUPERVISOR_STATUS: blocked",
+                        "SUPERVISOR_SUMMARY: 测试环境缺少 tmux。",
+                    ]
+                ),
+            )
+        ],
+    )
+
+    server = create_dashboard_server(
+        codex_home=codex_home,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        conn.request("GET", "/")
+        html_response = conn.getresponse()
+        html = html_response.read().decode("utf-8")
+        conn.request("GET", "/dashboard.json")
+        json_response = conn.getresponse()
+        payload = json.loads(json_response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert html_response.status == 200
+    assert "text/html" in html_response.getheader("content-type", "")
+    assert 'data-group="needs_attention"' in html
+    assert "Codex Supervisor" in html
+    assert "dashboard.json" in html
+    assert json_response.status == 200
+    assert payload["status"] == "ok"
+    assert payload["counts"]["needs_attention"] == 1
+    assert payload["groups"]["needs_attention"][0]["session_id"] == "blocked-session"
+
+
+def test_codex_supervisor_runner_web_print_url_exits(tmp_path, capsys):
+    codex_home = tmp_path / ".codex"
+
+    exit_code = supervisor_main(
+        [
+            "web",
+            "--codex-home",
+            str(codex_home),
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "8765",
+            "--print-url",
+        ]
+    )
+
+    assert exit_code == 0
+    assert capsys.readouterr().out.strip() == "http://127.0.0.1:8765/"
 
 
 def test_codex_supervisor_runner_advise_prints_json_command_suggestion(tmp_path, capsys):

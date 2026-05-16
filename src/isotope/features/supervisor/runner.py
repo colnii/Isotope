@@ -99,6 +99,32 @@ def _build_parser() -> argparse.ArgumentParser:
             action="store_true",
             help="Print only when session state changes.",
         )
+    web_parser = subparsers.add_parser("web", help="Serve a local Supervisor dashboard page.")
+    web_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    web_parser.add_argument("--limit", type=int, default=10, help="Maximum sessions.")
+    web_parser.add_argument(
+        "--stale-after",
+        type=int,
+        default=600,
+        help="Seconds without events before marking a session stale.",
+    )
+    web_parser.add_argument(
+        "--active-within",
+        type=int,
+        default=180,
+        help="Seconds with recent events before marking a session working.",
+    )
+    web_parser.add_argument("--host", default="127.0.0.1", help="Bind host.")
+    web_parser.add_argument("--port", type=int, default=8765, help="Bind port.")
+    web_parser.add_argument(
+        "--print-url",
+        action="store_true",
+        help="Print the local URL and exit without starting the server.",
+    )
     launch_parser = subparsers.add_parser("launch", help="Launch and register a Codex process.")
     launch_parser.add_argument(
         "--codex-home",
@@ -188,6 +214,9 @@ def main(argv: list[str] | None = None) -> int:
                 count += 1
                 if iterations is None or count < iterations:
                     time.sleep(args.interval)
+            return 0
+        if args.command == "web":
+            _run_web(args)
             return 0
         if args.command == "launch":
             record = launch_managed_codex(
@@ -344,6 +373,37 @@ def _supervise_payload(
     if args.execute:
         payload["executed"] = _execute_advice(args, report, payload)
     return payload
+
+
+def _run_web(args: argparse.Namespace) -> None:
+    if args.limit <= 0:
+        raise ValueError("limit must be positive")
+    if args.stale_after <= 0:
+        raise ValueError("stale_after must be positive")
+    if args.active_within <= 0:
+        raise ValueError("active_within must be positive")
+    if args.port < 0:
+        raise ValueError("port must be zero or positive")
+    url = f"http://{args.host}:{args.port}/"
+    if args.print_url:
+        print(url)
+        return
+    from .web import create_dashboard_server
+
+    server = create_dashboard_server(
+        codex_home=Path(args.codex_home),
+        host=args.host,
+        port=args.port,
+        limit=args.limit,
+        stale_after_seconds=args.stale_after,
+        active_within_seconds=args.active_within,
+    )
+    actual_host, actual_port = server.server_address
+    print(f"Codex Supervisor web: http://{actual_host}:{actual_port}/")
+    try:
+        server.serve_forever()
+    finally:
+        server.server_close()
 
 
 def _print_dashboard(args: argparse.Namespace) -> None:

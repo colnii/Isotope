@@ -30,6 +30,7 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
 - JSON 输出包含 `recommendation` 结构化建议，供后续半自动管理复用。
 - `advise` 可只输出当前建议和可复制命令草案。
 - `dashboard` 可按 `需要看`、`已完成`、`工作中` 分组显示。
+- `web` 可启动本机页面，展示 `dashboard` 的三组窗口。
 - `supervise` 可按间隔循环执行扫描、建议、可选 LLM 摘要和显式 send。
 - `--prompt-cooldown` 可避免短时间重复催促同一个托管 lane。
 - `watch --changes-only` 可持续运行，只在会话状态变化时重新输出。
@@ -51,6 +52,7 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
 ```bash
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner web
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner advise
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise --interval 180 --llm-summary
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --interval 180
@@ -66,6 +68,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --nam
 ```bash
 .venv/bin/isotope-supervisor scan
 .venv/bin/isotope-supervisor dashboard
+.venv/bin/isotope-supervisor web
 .venv/bin/isotope-supervisor advise
 .venv/bin/isotope-supervisor supervise --interval 180 --llm-summary
 .venv/bin/isotope-supervisor watch --interval 180
@@ -89,6 +92,18 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 - `done`：主动汇报完成的窗口。
 - `working`：仍在推进或暂无明显异常的窗口。
 - JSON 保留 session id、状态、tmux session、bell、摘要和下一步字段。
+
+`web` 是当前本地前端薄入口：
+
+```bash
+.venv/bin/isotope-supervisor web --host 127.0.0.1 --port 8765
+```
+
+页面默认地址是 `http://127.0.0.1:8765/`。
+页面会读取 `/dashboard.json`，并按 `需要看`、`已完成`、`工作中`
+三组展示窗口；有 tmux session 的条目会显示 attach 命令。
+当前页面使用 Python 标准库 HTTP server 和内联 HTML/CSS/JS，
+不引入额外前端依赖。
 
 `scan --json` 里的 `recommendation` 当前只表达建议动作：
 
@@ -208,6 +223,7 @@ tmux attach -t isotope-lane-a
 
 - 不接管普通终端窗口；当前控制通道依赖已登记的 tmux 会话。
 - `send` 只支持 Supervisor 登记过的 tmux 会话。
+- `web` 只监听本机默认地址，不提供认证和远程访问能力。
 - `recommendation` 只表示建议动作，不会自动调用 `send`。
 - `advise` 默认只生成命令草案；`--execute` 只允许执行
   `send_status` 和 `send_continue`。

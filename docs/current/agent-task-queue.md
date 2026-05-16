@@ -175,10 +175,26 @@
     和 bell 事件已接入 `recommendation`。
 83. Codex Supervisor 人类汇总视图：`dashboard` 可按 `需要看`、
     `已完成` 和 `工作中` 分组输出，并保留前端可复用 JSON 字段。
+84. Codex Supervisor 本地前端薄入口：`web` 可启动本机页面，
+    复用 `/dashboard.json` 展示需要看、已完成和工作中三组窗口。
 
-## 最近完成：Codex Supervisor 人类汇总视图
+## 最近完成：Codex Supervisor 本地前端薄入口
 
 完成内容：
+
+- 新增 `src/isotope/features/supervisor/web.py`。
+- 新增 `isotope-supervisor web`。
+- 默认监听 `127.0.0.1:8765`。
+- `/` 返回内联 HTML/CSS/JS 页面。
+- `/dashboard.json` 返回和 `dashboard --json` 同源的分组数据。
+- 页面按 `需要看`、`已完成` 和 `工作中` 展示窗口。
+- 有 tmux session 的条目会显示 `tmux attach` 命令。
+- 当前不引入额外前端依赖，不提供远程访问和认证。
+- 同步 [status](./status.md)、
+  [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
+  [supervisor-capability-map](./supervisor-capability-map.md)。
+
+上一批已完成：
 
 - 新增 `isotope-supervisor dashboard`。
 - plain 输出按 `需要看`、`已完成` 和 `工作中` 分组。
@@ -191,7 +207,7 @@
   [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
   [supervisor-capability-map](./supervisor-capability-map.md)。
 
-上一批已完成：
+更早一批已完成：
 
 - `blocked` 状态优先建议 `inspect_blocked`。
 - `needs_user` 状态优先建议 `review_user_prompt`。
@@ -202,7 +218,7 @@
 - 同步 [status](./status.md)、[terminology](./terminology.md) 和
   [supervisor-capability-map](./supervisor-capability-map.md)。
 
-更早一批已完成：
+更早二批已完成：
 
 - 新增 `features/supervisor/bell_events.py`。
 - `launch --backend tmux` 和 `adopt` 会安装 tmux `alert-bell` hook。
@@ -214,7 +230,7 @@
   [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
   [supervisor-capability-map](./supervisor-capability-map.md)。
 
-更早二批已完成：
+更早三批已完成：
 
 - 新增 `features/supervisor/lane_state.py`。
 - 默认写入 `~/.codex/supervisor/lane_state.json`。
@@ -226,7 +242,7 @@
   [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
   [supervisor-capability-map](./supervisor-capability-map.md)。
 
-更早三批已完成：
+更早四批已完成：
 
 - 新增 `isotope-supervisor adopt`。
 - `adopt` 会先确认 tmux session 存在，再写入托管登记表。
@@ -238,7 +254,7 @@
   [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
   [supervisor-capability-map](./supervisor-capability-map.md)。
 
-更早四批已完成：
+更早五批已完成：
 
 - 托管 `launch` 会把状态汇报格式追加到 Codex prompt 末尾。
 - 登记表仍保存用户原始 prompt，不把协议提示当成用户需求。
@@ -251,7 +267,7 @@
   [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
   [supervisor-capability-map](./supervisor-capability-map.md)。
 
-更早五批已完成：
+更早六批已完成：
 
 - `CodexSessionSummary` 新增 `managed_bell` 字段。
 - 托管 tmux 会话运行时会读取 `#{window_bell_flag}`。
@@ -263,7 +279,7 @@
   [codex-supervisor-readonly](./codex-supervisor-readonly.md) 和
   [supervisor-capability-map](./supervisor-capability-map.md)。
 
-更早六批已完成：
+更早七批已完成：
 
 - 新增 [supervisor-capability-map](./supervisor-capability-map.md)。
 - 登记 `scan/watch/advise/supervise`、托管登记、tmux 控制、
@@ -275,7 +291,7 @@
   [terminology](./terminology.md) 和
   [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
 
-更早七批已完成：
+更早八批已完成：
 
 - `supervise` 复用 `watch` 的 `--interval`、`--iterations`
   和 `--changes-only`。
@@ -288,7 +304,7 @@
 - 同步 [status](./status.md)、[terminology](./terminology.md) 和
   [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
 
-更早八批已完成：
+更早九批已完成：
 
 - `advise --execute send_status` 会向托管 tmux lane 发送“请汇报当前状态”。
 - `advise --execute send_continue` 会向托管 tmux lane 发送继续推进指令。
@@ -330,15 +346,14 @@
 - 共享路径改动后需要跑全量测试。
 - `AGENTS.md` 仍需保持 100 行以内。
 
-## 下一批次：Codex Supervisor 本地前端薄入口
+## 下一批次：Codex Supervisor 页面受控操作
 
 目标：
 
-- 先做一个能跑的本地前端或薄 Web 入口。
-- 直接复用 `dashboard --json` 的分组数据。
-- 展示需要看的窗口、已完成窗口和工作中窗口。
-- 保留 attach、汇报状态、继续推进等命令提示。
-- 先不引入复杂前端状态管理。
+- 在本地页面显示可执行或可复制的受控操作。
+- 先支持 attach、汇报状态和继续推进三类动作。
+- 执行仍走已有 `send` 白名单和 cooldown。
+- 保持页面透明展示，不做隐藏式自动催促。
 
 初始参考：
 
