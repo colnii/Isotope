@@ -21,6 +21,7 @@ Codex Supervisor 用来观察、启动和轻量管理本机多个 Codex 进程�
 - 用规则判断 `工作中`、`等待用户`、`疑似停住`、`疑似报错`、`空闲`。
 - 输出中文报告，也支持 JSON。
 - JSON 输出包含 `recommendation` 结构化建议，供后续半自动管理复用。
+- `advise` 可只输出当前建议和一条可复制命令草案。
 - `watch --changes-only` 可持续运行，只在会话状态变化时重新输出。
 - `launch` 可启动一个 Codex 进程，并写入托管登记文件。
 - `launch --backend tmux` 可在本机 tmux 会话里启动 Codex。
@@ -34,6 +35,7 @@ Codex Supervisor 用来观察、启动和轻量管理本机多个 Codex 进程�
 
 ```bash
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner advise
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --interval 180
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --interval 180 --changes-only
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner launch --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
@@ -45,6 +47,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --nam
 
 ```bash
 .venv/bin/isotope-supervisor scan
+.venv/bin/isotope-supervisor advise
 .venv/bin/isotope-supervisor watch --interval 180
 .venv/bin/isotope-supervisor watch --interval 180 --changes-only
 .venv/bin/isotope-supervisor launch --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
@@ -64,6 +67,16 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --jso
 - `inspect_error`：先看疑似报错的窗口。
 - `inspect_stale`：检查长时间没新事件的窗口。
 - `monitor`：当前无需明显介入。
+
+`advise` 是更短的建议面板：
+
+```bash
+.venv/bin/isotope-supervisor advise
+.venv/bin/isotope-supervisor advise --json
+```
+
+它只输出建议、动作、优先级和命令草案。
+命令草案需要人复制执行，不会被自动运行。
 
 LLM 摘要：
 
@@ -115,6 +128,7 @@ api_keys = [
 - 不接管普通终端窗口；`launch` 启动的是托管 Codex 进程或 tmux 会话。
 - `send` 只支持 Supervisor 自己登记的 tmux 会话，不接管手动打开的窗口。
 - `recommendation` 只表示建议动作，不会自动调用 `send`。
+- `advise` 只生成命令草案，不会执行命令。
 - 当前不会自己连续追问或自动续跑；发指令仍由用户或后续策略触发。
 - 不直接检查 SSH 服务器内部进程。
 - 不把完整日志发给 LLM，只发送短摘要和状态字段。

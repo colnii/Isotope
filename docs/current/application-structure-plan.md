@@ -191,11 +191,12 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   当前不是完整 UI。
 - Codex Supervisor：`src/isotope/features/supervisor/` 已提供
   本机会话扫描、中文汇报、托管启动和一行指令发送，
-  `isotope-supervisor scan/watch/launch/send`
+  `isotope-supervisor scan/advise/watch/launch/send`
   可观察多个 Codex 窗口状态，`watch --changes-only` 可只在变化时输出，
-  `scan --json` 可输出结构化建议，`launch --backend tmux` 可创建本机
-  tmux 会话，`send` 可向托管 tmux 会话发送一行文本，`--llm-summary`
-  可通过本机 TOML 号池生成智能摘要；当前不自动连续发指令。
+  `scan --json` 可输出结构化建议，`advise` 可输出建议和命令草案，
+  `launch --backend tmux` 可创建本机 tmux 会话，`send` 可向托管 tmux
+  会话发送一行文本，`--llm-summary` 可通过本机 TOML 号池生成智能摘要；
+  当前不自动连续发指令。
 - 智能体循环：`agent_loop_*` 与 planner contract 已迁入 `src/isotope/agents/loop/`；
   旧顶层、`core/loop_*` 和 `assistant/` 入口已删除。
 - 工作区资源：`workspace.py` 与 `artifact_store.py` 已迁入 `src/isotope/workspace/`，相关旧根路径已删除。

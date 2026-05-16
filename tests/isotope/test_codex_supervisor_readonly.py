@@ -240,6 +240,68 @@ def test_codex_supervisor_runner_scan_prints_json(tmp_path, capsys):
     assert payload["sessions"][0]["session_id"] == "active-session"
 
 
+def test_codex_supervisor_runner_advise_prints_json_command_suggestion(tmp_path, capsys):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-active.jsonl",
+        session_id="active-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "reading files"},
+            )
+        ],
+    )
+
+    exit_code = supervisor_main(
+        [
+            "advise",
+            "--codex-home",
+            str(codex_home),
+            "--limit",
+            "1",
+            "--stale-after",
+            "999999",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["recommendation"]["action"] == "monitor"
+    assert payload["command_suggestion"] == {
+        "command": "isotope-supervisor watch --interval 180 --changes-only",
+        "kind": "watch_changes",
+        "label": "继续监控变化",
+    }
+
+
+def test_codex_supervisor_runner_advise_plain_is_short(tmp_path, capsys):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-attention.jsonl",
+        session_id="attention-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _assistant_message("2026-05-16T11:58:00Z", "需要你确认是否继续。"),
+        ],
+    )
+
+    exit_code = supervisor_main(["advise", "--codex-home", str(codex_home)])
+
+    assert exit_code == 0
+    text = capsys.readouterr().out
+    assert "[Codex Supervisor 建议]" in text
+    assert "建议：先处理等待用户确认的窗口。" in text
+    assert "动作：review_user_prompt" in text
+    assert "命令：暂无可安全生成的命令草案。" in text
+
+
 def test_codex_supervisor_runner_scan_can_add_llm_summary(
     tmp_path,
     capsys,

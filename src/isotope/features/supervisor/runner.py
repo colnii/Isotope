@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import subprocess
 import time
 from pathlib import Path
@@ -24,6 +25,7 @@ def _build_parser() -> argparse.ArgumentParser:
     for command, help_text in (
         ("scan", "Print one Codex supervisor report."),
         ("watch", "Print reports repeatedly."),
+        ("advise", "Print one compact next-action suggestion."),
     ):
         subparser = subparsers.add_parser(command, help=help_text)
         subparser.add_argument(
@@ -112,6 +114,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "scan":
             _print_report(args)
+            return 0
+        if args.command == "advise":
+            _print_advice(args)
             return 0
         if args.command == "watch":
             if args.interval <= 0:
@@ -220,6 +225,69 @@ def _print_report(
             print("[LLM 摘要]")
             print(_summarize_with_llm(report))
     return True, fingerprint
+
+
+def _print_advice(args: argparse.Namespace) -> None:
+    flow = CodexSupervisorFlow(codex_home=Path(args.codex_home))
+    report = flow.scan(
+        limit=args.limit,
+        stale_after_seconds=args.stale_after,
+        active_within_seconds=args.active_within,
+    )
+    payload = _advice_payload(report)
+    if args.json:
+        _print_json(payload)
+        return
+    recommendation = payload["recommendation"]
+    command_suggestion = payload["command_suggestion"]
+    print("[Codex Supervisor 建议]")
+    print(f"建议：{recommendation['label']}")
+    print(f"动作：{recommendation['action']}")
+    print(f"优先级：{recommendation['priority']}")
+    if recommendation["target_session_id"]:
+        print(f"目标：{recommendation['target_session_id']}")
+    if command_suggestion is None:
+        print("命令：暂无可安全生成的命令草案。")
+    else:
+        print(f"命令：{command_suggestion['command']}")
+
+
+def _advice_payload(report: Any) -> dict[str, Any]:
+    recommendation = report.recommendation
+    return {
+        "status": "ok",
+        "generated_at": report.generated_at,
+        "recommendation": recommendation.to_dict(),
+        "command_suggestion": _command_suggestion(report),
+    }
+
+
+def _command_suggestion(report: Any) -> dict[str, str] | None:
+    recommendation = report.recommendation
+    target = _target_session(report, recommendation.target_session_id)
+    if target is not None and target.managed_tmux_session:
+        session = shlex.quote(target.managed_tmux_session)
+        return {
+            "kind": "tmux_attach",
+            "label": "打开目标 tmux 窗口",
+            "command": f"tmux attach -t {session}",
+        }
+    if recommendation.action == "monitor":
+        return {
+            "kind": "watch_changes",
+            "label": "继续监控变化",
+            "command": "isotope-supervisor watch --interval 180 --changes-only",
+        }
+    return None
+
+
+def _target_session(report: Any, session_id: str | None) -> Any | None:
+    if session_id is None:
+        return None
+    for session in report.sessions:
+        if session.session_id == session_id:
+            return session
+    return None
 
 
 def _report_fingerprint(report: Any) -> tuple[object, ...]:
