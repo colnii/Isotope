@@ -78,6 +78,7 @@ class CodexSessionSummary:
     managed_log_path: str | None = None
     managed_backend: str | None = None
     managed_tmux_session: str | None = None
+    managed_terminal_excerpt: str | None = None
     managed_bell: bool = False
     managed_bell_event_at: str | None = None
     supervisor_status: str | None = None
@@ -135,6 +136,7 @@ class CodexSessionSummary:
             "managed_log_path": self.managed_log_path,
             "managed_backend": self.managed_backend,
             "managed_tmux_session": self.managed_tmux_session,
+            "managed_terminal_excerpt": _shorten_optional(self.managed_terminal_excerpt),
             "managed_bell": self.managed_bell,
             "managed_bell_event_at": self.managed_bell_event_at,
             "supervisor_status": self.supervisor_status,
@@ -203,6 +205,7 @@ class CodexSupervisorFlow:
         process_checker: Callable[[int], bool] | None = None,
         tmux_session_checker: Callable[[str], bool] | None = None,
         tmux_bell_checker: Callable[[str], bool] | None = None,
+        tmux_pane_reader: Callable[[str], str | None] | None = None,
     ) -> None:
         self.codex_home = Path(codex_home).expanduser() if codex_home else Path.home() / ".codex"
         self.registry_path = (
@@ -215,6 +218,7 @@ class CodexSupervisorFlow:
         self.process_checker = process_checker or _pid_is_running
         self.tmux_session_checker = tmux_session_checker or _tmux_session_exists
         self.tmux_bell_checker = tmux_bell_checker or _tmux_window_has_bell
+        self.tmux_pane_reader = tmux_pane_reader or _empty_tmux_pane
 
     def scan(
         self,
@@ -262,6 +266,7 @@ class CodexSupervisorFlow:
                 process_checker=self.process_checker,
                 tmux_session_checker=self.tmux_session_checker,
                 tmux_bell_checker=self.tmux_bell_checker,
+                tmux_pane_reader=self.tmux_pane_reader,
             )
             for record in read_managed_records(self.registry_path)
         )
@@ -568,11 +573,18 @@ def _managed_summary(
     process_checker: Callable[[int], bool],
     tmux_session_checker: Callable[[str], bool],
     tmux_bell_checker: Callable[[str], bool],
+    tmux_pane_reader: Callable[[str], str | None],
 ) -> CodexSessionSummary:
     started_at = _parse_timestamp(record.started_at) or now
     age_seconds = max(0, int((now - started_at).total_seconds()))
+    managed_terminal_excerpt = None
     if record.backend == "tmux":
         is_running = bool(record.tmux_session and tmux_session_checker(record.tmux_session))
+        if is_running and record.tmux_session:
+            managed_terminal_excerpt = _shorten_optional(
+                tmux_pane_reader(record.tmux_session),
+                limit=500,
+            )
         bell_event = bell_events.get(record.tmux_session or "")
         managed_bell = bool(
             is_running
@@ -627,6 +639,7 @@ def _managed_summary(
         managed_log_path=record.log_path,
         managed_backend=record.backend,
         managed_tmux_session=record.tmux_session,
+        managed_terminal_excerpt=managed_terminal_excerpt,
         managed_bell=managed_bell,
         managed_bell_event_at=managed_bell_event_at,
     )
@@ -921,6 +934,27 @@ def _tmux_window_has_bell(session: str) -> bool:
     if completed.returncode != 0:
         return False
     return completed.stdout.strip() == "1"
+
+
+def _tmux_capture_pane(session: str) -> str | None:
+    if not session:
+        return None
+    try:
+        completed = subprocess.run(
+            ["tmux", "capture-pane", "-p", "-t", session, "-S", "-80"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except OSError:
+        return None
+    if completed.returncode != 0:
+        return None
+    return completed.stdout.strip() or None
+
+
+def _empty_tmux_pane(session: str) -> str | None:
+    return None
 
 
 def _parse_timestamp(value: Any) -> datetime | None:

@@ -206,8 +206,22 @@
     页面高亮对应 send 按钮，但不自动执行。
 96. Codex Supervisor web bell 即时刷新：`/events` 会监听
     `bell_events.jsonl` 变化，并让前端立刻刷新 dashboard。
+97. Codex Supervisor 托管关联增强：托管 tmux lane 会只读 pane 文本，
+    优先按标题和用户消息匹配真实 Codex session。
 
-## 最近完成：Codex Supervisor web bell 即时刷新
+## 最近完成：Codex Supervisor 托管关联增强
+
+完成内容：
+
+- `scan` 为托管 tmux lane 读取最近 pane 文本摘要。
+- `/dashboard.json` 合并托管 lane 时优先用 pane 文本匹配真实 session。
+- 匹配字段包含 Codex 标题、首条用户消息和最近消息。
+- 同目录多个 Codex 窗口时，命中 pane 文本的 session 优先。
+- 没有命中文本时，仍退回同目录最近窗口。
+
+上一批已完成：
+
+## Codex Supervisor web bell 即时刷新
 
 完成内容：
 

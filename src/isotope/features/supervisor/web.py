@@ -11,7 +11,7 @@ from typing import Any, Callable
 from urllib.parse import urlparse
 
 from .bell_events import default_bell_events_path, read_latest_bell_events
-from .flow import CodexSupervisorFlow
+from .flow import CodexSupervisorFlow, _tmux_capture_pane
 from .lane_state import record_lane_prompt
 from .llm_summary import (
     SummaryProvider,
@@ -51,7 +51,10 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         self.bell_events_path = default_bell_events_path(self.codex_home)
 
     def _scan_report(self) -> Any:
-        return CodexSupervisorFlow(codex_home=self.codex_home).scan(
+        return CodexSupervisorFlow(
+            codex_home=self.codex_home,
+            tmux_pane_reader=_tmux_capture_pane,
+        ).scan(
             limit=self.limit,
             stale_after_seconds=self.stale_after_seconds,
             active_within_seconds=self.active_within_seconds,

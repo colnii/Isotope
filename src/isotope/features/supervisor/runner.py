@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from .flow import CodexSupervisorFlow, render_plain_report
+from .flow import CodexSupervisorFlow, _tmux_capture_pane, render_plain_report
 from .lane_state import (
     DEFAULT_PROMPT_COOLDOWN_SECONDS,
     prompt_cooldown_state,
@@ -360,7 +360,12 @@ def _run_supervise(args: argparse.Namespace) -> None:
 
 
 def _scan_report(args: argparse.Namespace) -> Any:
-    flow = CodexSupervisorFlow(codex_home=Path(args.codex_home))
+    flow = CodexSupervisorFlow(
+        codex_home=Path(args.codex_home),
+        tmux_pane_reader=_tmux_capture_pane
+        if getattr(args, "command", None) == "dashboard"
+        else None,
+    )
     return flow.scan(
         limit=args.limit,
         stale_after_seconds=args.stale_after,
@@ -472,12 +477,14 @@ def _dashboard_display_sessions(sessions: Any) -> list[tuple[Any, Any | None]]:
     for session in sessions:
         if not session.managed:
             continue
-        for candidate in linkable_by_cwd.get(session.cwd, []):
-            if candidate.session_id in consumed_linked_ids:
-                continue
+        candidate = _best_linked_session_for_managed(
+            session,
+            linkable_by_cwd.get(session.cwd, []),
+            consumed_linked_ids,
+        )
+        if candidate is not None:
             linked_by_managed_id[session.session_id] = candidate
             consumed_linked_ids.add(candidate.session_id)
-            break
 
     display_sessions: list[tuple[Any, Any | None]] = []
     for session in sessions:
@@ -487,6 +494,68 @@ def _dashboard_display_sessions(sessions: Any) -> list[tuple[Any, Any | None]]:
             (session, linked_by_managed_id.get(session.session_id))
         )
     return display_sessions
+
+
+def _best_linked_session_for_managed(
+    managed_session: Any,
+    candidates: list[Any],
+    consumed_linked_ids: set[str],
+) -> Any | None:
+    available = [
+        candidate
+        for candidate in candidates
+        if candidate.session_id not in consumed_linked_ids
+    ]
+    if not available:
+        return None
+    scored = [
+        (
+            _managed_link_score(managed_session, candidate),
+            index,
+            candidate,
+        )
+        for index, candidate in enumerate(available)
+    ]
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    return scored[0][2]
+
+
+def _managed_link_score(managed_session: Any, candidate: Any) -> int:
+    score = 0
+    pane_text = _normalize_match_text(
+        getattr(managed_session, "managed_terminal_excerpt", None)
+    )
+    if pane_text:
+        if _candidate_text_matches(pane_text, candidate):
+            score += 100
+        if _text_contains(pane_text, getattr(candidate, "session_id", None)):
+            score += 50
+    if getattr(managed_session, "managed_name", None):
+        name_text = _normalize_match_text(managed_session.managed_name)
+        if _candidate_text_matches(name_text, candidate):
+            score += 20
+    return score
+
+
+def _candidate_text_matches(haystack: str, candidate: Any) -> bool:
+    fields = (
+        getattr(candidate, "thread_name", None),
+        getattr(candidate, "initial_user_title", None),
+        getattr(candidate, "last_user_message", None),
+        getattr(candidate, "last_assistant_message", None),
+    )
+    return any(_text_contains(haystack, field) for field in fields)
+
+
+def _text_contains(haystack: str, value: Any) -> bool:
+    needle = _normalize_match_text(value)
+    return len(needle) >= 4 and needle in haystack
+
+
+def _normalize_match_text(value: Any) -> str:
+    if not isinstance(value, str):
+        return ""
+    return " ".join(value.casefold().split())
 
 
 def _dashboard_item(session: Any, *, linked_session: Any | None = None) -> dict[str, Any]:
@@ -522,6 +591,7 @@ def _dashboard_item(session: Any, *, linked_session: Any | None = None) -> dict[
         "managed": session.managed,
         "managed_backend": session.managed_backend,
         "managed_tmux_session": session.managed_tmux_session,
+        "managed_terminal_excerpt": session.managed_terminal_excerpt,
         "managed_bell": session.managed_bell,
         "managed_bell_event_at": session.managed_bell_event_at,
         "control_commands": _managed_tmux_command_suggestions(session)

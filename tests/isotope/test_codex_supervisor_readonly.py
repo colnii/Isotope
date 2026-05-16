@@ -27,7 +27,11 @@ from isotope.features.supervisor.llm_summary import (
     generate_llm_summary,
     resolve_summary_provider_from_env,
 )
-from isotope.features.supervisor.runner import _advice_payload, main as supervisor_main
+from isotope.features.supervisor.runner import (
+    _advice_payload,
+    _dashboard_payload,
+    main as supervisor_main,
+)
 
 
 NOW = datetime(2026, 5, 16, 12, 0, tzinfo=timezone.utc)
@@ -886,6 +890,66 @@ def test_codex_supervisor_dashboard_merges_managed_lane_with_real_session(
         "label": "托管 tmux 状态",
         "detail": "tmux 会话仍在运行",
     }
+
+
+def test_codex_supervisor_dashboard_uses_tmux_pane_text_to_link_managed_lane(
+    tmp_path,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-unrelated.jsonl",
+        session_id="019e3205-b9cc-7012-804c-ca2ac38e0d33",
+        cwd=str(workspace),
+        events=[
+            _event(
+                "2026-05-16T11:59:50Z",
+                "event_msg",
+                {"type": "thread_name_updated", "thread_name": "另一个同目录窗口"},
+            ),
+            _event(
+                "2026-05-16T11:59:50Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "running unrelated checks"},
+            ),
+        ],
+    )
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-target.jsonl",
+        session_id="019e3205-b9cc-7012-804c-ca2ac38e0d32",
+        cwd=str(workspace),
+        events=[
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "thread_name_updated", "thread_name": "python版本升级评估"},
+            ),
+            _user_message("2026-05-16T11:59:20Z", "评估一下，项目能否升级到 Python 3.14"),
+        ],
+    )
+
+    report = CodexSupervisorFlow(
+        codex_home=codex_home,
+        now=lambda: NOW,
+        tmux_session_checker=lambda session: session == "isotope-lane-a",
+        tmux_bell_checker=lambda session: False,
+        tmux_pane_reader=lambda session: "当前窗口：python版本升级评估\n评估一下，项目能否升级到 Python 3.14",
+    ).scan(limit=5, stale_after_seconds=999999)
+    payload = _dashboard_payload(report)
+
+    managed_item = next(
+        item for item in payload["groups"]["working"] if item["name"] == "lane-a"
+    )
+    assert managed_item["display_title"] == "python版本升级评估"
+    assert managed_item["linked_session_id"] == "019e3205-b9cc-7012-804c-ca2ac38e0d32"
+    assert any(
+        item["display_title"] == "另一个同目录窗口"
+        for item in payload["groups"]["working"]
+    )
 
 
 def test_codex_supervisor_runner_dashboard_plain_is_grouped(tmp_path, capsys):

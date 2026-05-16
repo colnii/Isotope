@@ -45,6 +45,7 @@ Codex Supervisor 已经不只是一个小命令。
 - `dashboard` 保留可读标题、短 hash、Codex 标题和 agent 元数据。
 - `dashboard` 为每个窗口输出完整 `resume_command`。
 - `dashboard` 会把同 cwd 的托管 lane 和最近真实 Codex session 合并展示。
+- 关联托管 lane 时优先用只读 tmux pane 文本匹配真实 session。
 - `web` 启动本机页面，复用 `dashboard` 分组 JSON。
 - `web` 优先展示可读标题，同时保留短 hash 方便辨认窗口。
 - `web` 可复制完整 `codex resume <session_id>`。
@@ -103,7 +104,7 @@ Codex Supervisor 已经不只是一个小命令。
 
 ## 下一步顺序
 
-1. 改进托管 lane 和真实 session 的关联依据，减少 cwd 相同导致的误配。
+1. 观察真实多窗口使用效果，继续收敛托管 lane 和 session 关联误配。
 2. 后续再决定是否增加人工输入框；默认仍保持白名单。
 
 ## 登记规则

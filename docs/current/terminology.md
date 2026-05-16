@@ -72,6 +72,7 @@
 | `dashboard web` | Supervisor 本机页面，读取 `/dashboard.json` 并渲染三组窗口 | 产品功能/视图 | `src/isotope/features/supervisor/web.py` |
 | `display_title` | Supervisor 截断后的展示标题，优先托管名、Codex 标题、首条用户消息、agent 名和短 session id | 产品功能/视图 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/runner.py` |
 | `managed_display_title` | dashboard 合并托管 lane 和真实 session 后保留的托管名 | 产品功能/视图 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
+| `managed_terminal_excerpt` | 托管 tmux pane 的只读文本摘要，用于辅助关联真实 Codex session | 产品功能/视图/外部集成 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/runner.py` |
 | `linked_session_id` | dashboard 合并托管 lane 时关联到的真实 Codex session id | 产品功能/视图 | `src/isotope/features/supervisor/runner.py` |
 | `thread_name_updated` | Codex 会话标题更新事件，可解析出窗口 rename 或自带标题 | 外部集成/视图 | `src/isotope/features/supervisor/flow.py` |
 | `session_index.jsonl` | Codex 会话索引文件，可在 JSONL 没有标题事件时提供 `thread_name` | 外部集成/视图 | `src/isotope/features/supervisor/flow.py` |

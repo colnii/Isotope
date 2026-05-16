@@ -115,6 +115,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 - 如果托管 lane 能关联到真实 Codex session，`display_title` 和
   `resume_command` 会优先使用真实 session，同时保留 `managed_display_title`
   和 `linked_session_id`。
+- 关联时会优先使用只读 `tmux capture-pane` 摘要匹配 Codex 标题、
+  首条用户消息或最近消息；没有命中时才退回同目录最近窗口。
 
 `web` 是当前本地前端薄入口：
 
@@ -245,6 +247,8 @@ api_keys = [
 - 当前登记 backend、pid、tmux session、cwd、prompt、启动时间和日志路径。
 - `send` 会执行 `tmux send-keys -l <text>`，再发送 `Enter`。
 - `scan` 会读取 `#{window_bell_flag}`，并输出 `managed_bell`。
+- `scan` 会只读 `tmux capture-pane` 最近文本，用于辅助页面关联
+  托管 lane 和真实 Codex session。
 - hook 会把 bell 事件写入 `~/.codex/supervisor/bell_events.jsonl`。
 - `scan` 会读取最近事件，并输出 `managed_bell_event_at`。
 - `launch` 会在发送给 Codex 的 prompt 末尾追加状态汇报要求。
