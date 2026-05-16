@@ -2,8 +2,16 @@
 
 模型号池来自本机 TOML 文件。默认读取同目录下的
 ``supervisor_llm_pool.toml``，也可用 ``SUPERVISOR_LLM_POOL_TOML_FILES``
-指定多个路径。TOML 里只写 provider（厂商/通道名）、base_url、model
-和 ``env:VAR_NAME``，真实 key 留在环境变量中。
+指定多个路径。
+
+支持两种 TOML 格式：
+
+1. 新格式（推荐）—— 按 agent 分组：
+   ``[[agents]]`` → ``[[agents.providers]]``，可按 agent_name 筛选。
+
+2. 旧格式（兼容）—— 扁平 ``[[keys]]`` 列表。
+
+api_keys 支持 ``env:VAR_NAME`` 或明文 key；默认 TOML 已被 gitignore 屏蔽。
 """
 
 from __future__ import annotations
@@ -41,6 +49,7 @@ class PoolEntry:
     api_key: str
     base_url: str
     model: str
+    max_tokens: int | None = None
 
 
 class PooledSummaryProvider:
@@ -73,7 +82,9 @@ class PooledSummaryProvider:
                     timeout=self._timeout,
                     transport=self._transport,
                 )
-                response = provider.generate(messages, max_tokens=self._max_tokens)
+                response = provider.generate(
+                    messages, max_tokens=entry.max_tokens or self._max_tokens
+                )
                 return _strip_thinking(response.content)
             except Exception as exc:
                 failures.append(f"{entry.provider}:{type(exc).__name__}")
@@ -83,18 +94,24 @@ class PooledSummaryProvider:
 def resolve_summary_provider_from_env(
     environ: Mapping[str, str] | None = None,
     *,
+    agent_name: str | None = None,
     transport: Transport | None = None,
 ) -> SummaryProvider:
-    """从 TOML 号池创建摘要 provider（模型适配器）。"""
+    """从 TOML 号池创建摘要 provider（模型适配器）。
+
+    ``agent_name`` 为 None 时使用全部 agent 的号池；
+    指定 agent_name 时只加载对应 ``[[agents]]`` 下的 providers。
+    """
     env = os.environ if environ is None else environ
     timeout = _env_int(env, "SUPERVISOR_LLM_TIMEOUT_SECONDS", default=60)
     max_tokens = _env_int(env, "SUPERVISOR_LLM_MAX_TOKENS", default=DEFAULT_MAX_TOKENS)
 
     files = _pool_toml_paths(env)
-    entries = _load_pool_entries(files, env)
+    entries = _load_pool_entries(files, env, agent_name=agent_name)
     if not entries:
+        agent_hint = f" for agent '{agent_name}'" if agent_name else ""
         raise ValueError(
-            "No LLM pool entries found. "
+            f"No LLM pool entries found{agent_hint}. "
             "Check SUPERVISOR_LLM_POOL_TOML_FILES or the default "
             "supervisor_llm_pool.toml configuration."
         )
@@ -171,40 +188,95 @@ def _pool_toml_paths(env: Mapping[str, str]) -> list[Path]:
     return [Path(__file__).resolve().parent / "supervisor_llm_pool.toml"]
 
 
-def _load_pool_entries(files: list[Path], env: Mapping[str, str]) -> list[PoolEntry]:
-    """读取 TOML，把每个 env key 展开成一条 PoolEntry。"""
+def _load_pool_entries(
+    files: list[Path],
+    env: Mapping[str, str],
+    *,
+    agent_name: str | None = None,
+) -> list[PoolEntry]:
+    """读取 TOML 号池，展开 key 为 PoolEntry 列表。
+
+    支持两种 TOML 格式：
+
+    1. 新格式（推荐）—— 按 agent 分组：
+       ``[[agents]]`` → ``[[agents.providers]]``
+
+    2. 旧格式（兼容）—— 扁平列表：
+       ``[[keys]]``
+
+    ``agent_name`` 为 None 时加载全部 agent；指定时只加载对应的 ``[[agents]]``。
+    """
     entries: list[PoolEntry] = []
     for path in files:
         if not path.is_file():
             continue
         data = tomllib.loads(path.read_text(encoding="utf-8"))
-        for item in data.get("keys", []):
-            if not isinstance(item, dict):
-                continue
-            provider = _optional_toml_str(item, "provider") or "supervisor_pool"
-            base_url = _require_toml_str(item, "base_url")
-            model = _require_toml_str(item, "model")
-            raw_keys = item.get("api_keys")
-            if not isinstance(raw_keys, list):
-                continue
-            for entry in raw_keys:
-                if not isinstance(entry, str) or not entry.strip():
+
+        # 新格式：[[agents]]
+        if isinstance(data.get("agents"), list):
+            for agent in data["agents"]:
+                if not isinstance(agent, dict):
                     continue
-                entry = entry.strip()
-                if not entry.startswith("env:"):
-                    raise ValueError("TOML pool api_keys entries must use env:VAR_NAME")
-                api_key = env.get(entry[4:])
-                if not api_key:
+                name = _optional_toml_str(agent, "name")
+                if name is None:
                     continue
-                entries.append(
-                    PoolEntry(
-                        provider=provider,
-                        api_key=api_key,
-                        base_url=base_url.rstrip("/"),
-                        model=model,
-                    )
-                )
+                if agent_name is not None and name != agent_name:
+                    continue
+                provider_list = agent.get("providers")
+                if not isinstance(provider_list, list):
+                    continue
+                for item in provider_list:
+                    if not isinstance(item, dict):
+                        continue
+                    _append_entries_from_toml_item(entries, item, env)
+
+        # 旧格式（兼容）：[[keys]]
+        if isinstance(data.get("keys"), list):
+            for item in data["keys"]:
+                if not isinstance(item, dict):
+                    continue
+                _append_entries_from_toml_item(entries, item, env)
+
     return entries
+
+
+def _append_entries_from_toml_item(
+    entries: list[PoolEntry],
+    item: dict[str, object],
+    env: Mapping[str, str],
+) -> None:
+    """从一个 TOML item（provider 块）展开 api_keys 为 PoolEntry。"""
+    provider = _optional_toml_str(item, "provider") or "pool"
+    base_url = _require_toml_str(item, "base_url")
+    model = _require_toml_str(item, "model")
+    max_tokens_val = item.get("max_tokens")
+    if max_tokens_val is not None:
+        if not isinstance(max_tokens_val, int) or max_tokens_val <= 0:
+            raise ValueError(
+                f"TOML pool entry max_tokens must be a positive integer, got: {max_tokens_val!r}"
+            )
+    raw_keys = item.get("api_keys")
+    if not isinstance(raw_keys, list):
+        return
+    for entry in raw_keys:
+        if not isinstance(entry, str) or not entry.strip():
+            continue
+        entry = entry.strip()
+        if entry.startswith("env:"):
+            api_key = env.get(entry[4:])
+            if not api_key:
+                continue
+        else:
+            api_key = entry
+        entries.append(
+            PoolEntry(
+                provider=provider,
+                api_key=api_key,
+                base_url=base_url.rstrip("/"),
+                model=model,
+                max_tokens=max_tokens_val,
+            )
+        )
 
 
 def _require_toml_str(item: dict[str, object], key: str) -> str:

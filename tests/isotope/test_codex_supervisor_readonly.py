@@ -4,6 +4,8 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 from isotope.features.supervisor.flow import CodexSupervisorFlow, render_plain_report
 from isotope.features.supervisor.llm_summary import (
     PooledSummaryProvider,
@@ -111,11 +113,7 @@ def test_codex_supervisor_report_serializes_to_json_shape(tmp_path):
         session_id="active-session",
         cwd="/home/lumber/Github/isotope",
         events=[
-            _event(
-                "2026-05-16T11:59:20Z",
-                "event_msg",
-                {"type": "agent_reasoning", "message": "reading files"},
-            )
+            _assistant_message("2026-05-16T11:59:20Z", "正在读文件。")
         ],
     )
 
@@ -210,9 +208,15 @@ def test_codex_supervisor_runner_scan_can_add_llm_summary(
             assert "active-session" in messages[1]["content"]
             return "窗口 A 正在读文件，暂时不用介入。"
 
+    captured: dict[str, object] = {}
+
+    def fake_resolver(**kwargs: object) -> FakeProvider:
+        captured.update(kwargs)
+        return FakeProvider()
+
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda: FakeProvider(),
+        fake_resolver,
     )
 
     exit_code = supervisor_main(
@@ -230,6 +234,7 @@ def test_codex_supervisor_runner_scan_can_add_llm_summary(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["llm_summary"] == "窗口 A 正在读文件，暂时不用介入。"
+    assert captured["agent_name"] == "supervisor"
 
 
 def test_codex_supervisor_runner_llm_summary_reports_missing_key(
@@ -271,6 +276,95 @@ def test_codex_supervisor_runner_llm_summary_reports_missing_key(
     payload = json.loads(capsys.readouterr().out)
     assert payload["error"]["code"] == "codex_supervisor_runner_error"
     assert "LLM pool" in payload["error"]["message"]
+
+
+def test_codex_supervisor_runner_watch_changes_only_suppresses_unchanged_reports(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-active.jsonl",
+        session_id="active-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "reading files"},
+            )
+        ],
+    )
+    monkeypatch.setattr("isotope.features.supervisor.runner.time.sleep", lambda _: None)
+
+    exit_code = supervisor_main(
+        [
+            "watch",
+            "--codex-home",
+            str(codex_home),
+            "--interval",
+            "1",
+            "--iterations",
+            "2",
+            "--changes-only",
+        ]
+    )
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert output.count("[Codex Supervisor]") == 1
+
+
+def test_codex_supervisor_runner_watch_changes_only_prints_changed_reports(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-active.jsonl",
+        session_id="active-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "reading files"},
+            )
+        ],
+    )
+
+    def change_session(_: int) -> None:
+        _write_session(
+            codex_home,
+            "2026/05/16/rollout-active.jsonl",
+            session_id="active-session",
+            cwd="/home/lumber/Github/isotope",
+            events=[_assistant_message("2026-05-16T11:59:40Z", "正在运行测试。")],
+        )
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.time.sleep", change_session)
+
+    exit_code = supervisor_main(
+        [
+            "watch",
+            "--codex-home",
+            str(codex_home),
+            "--interval",
+            "1",
+            "--iterations",
+            "2",
+            "--changes-only",
+        ]
+    )
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert output.count("[Codex Supervisor]") == 2
+    assert "正在运行测试" in output
 
 
 def test_codex_supervisor_llm_messages_use_compact_session_context(tmp_path):
@@ -437,18 +531,21 @@ def test_codex_supervisor_pooled_provider_falls_back_during_summary():
     assert call_count[0] == 2
 
 
-def test_codex_supervisor_env_resolver_loads_pool_entries_without_health_check(tmp_path):
-    """Resolver reads a TOML pool and provider tests happen during summarize."""
+def test_codex_supervisor_env_resolver_loads_pool_entries_from_agents_format(tmp_path):
+    """Resolver reads [[agents]]/[[agents.providers]] format."""
     toml_path = tmp_path / "pool.toml"
     toml_path.write_text(
         """\
-[[keys]]
+[[agents]]
+name = "supervisor"
+
+[[agents.providers]]
 provider = "provider-a"
 base_url = "https://api.provider-a.example.com"
 model = "model-a"
 api_keys = ["env:PROVIDER_A_KEY"]
 
-[[keys]]
+[[agents.providers]]
 provider = "provider-b"
 base_url = "https://api.provider-b.example.com/v1"
 model = "model-b"
@@ -485,26 +582,40 @@ api_keys = ["env:PROVIDER_B_KEY"]
     assert captured["payload"]["model"] == "model-a"
 
 
-def test_codex_supervisor_pool_rejects_plaintext_keys(tmp_path):
+def test_codex_supervisor_pool_accepts_plaintext_keys(tmp_path):
+    """Plaintext api_keys entries are used directly without env lookup."""
     toml_path = tmp_path / "pool.toml"
     toml_path.write_text(
         """\
 [[keys]]
 base_url = "https://api.provider-a.example.com"
 model = "model-a"
-api_keys = ["sk-plaintext"]
+api_keys = ["sk-plaintext-direct"]
 """,
         encoding="utf-8",
     )
+    captured: dict[str, object] = {}
 
-    try:
-        resolve_summary_provider_from_env(
-            {"SUPERVISOR_LLM_POOL_TOML_FILES": str(toml_path)},
-        )
-    except ValueError as exc:
-        assert "env:" in str(exc)
-    else:
-        raise AssertionError("plaintext keys must be rejected")
+    def transport(
+        url: str,
+        payload: dict[str, object],
+        headers: dict[str, str],
+        timeout: int,
+    ) -> dict[str, object]:
+        captured["url"] = url
+        captured["headers"] = headers
+        return {
+            "choices": [{"message": {"content": "plaintext ok"}}],
+            "usage": {"total_tokens": 12},
+        }
+
+    provider = resolve_summary_provider_from_env(
+        {"SUPERVISOR_LLM_POOL_TOML_FILES": str(toml_path)},
+        transport=transport,
+    )
+
+    assert provider.summarize([{"role": "user", "content": "hello"}]) == "plaintext ok"
+    assert captured["headers"]["Authorization"] == "Bearer sk-plaintext-direct"
 
 
 def test_codex_supervisor_env_resolver_falls_back_between_pool_entries(tmp_path):
@@ -555,6 +666,277 @@ api_keys = ["env:FALLBACK_KEY"]
     assert captured["url"] == "https://api.fallback.example.com/v1/chat/completions"
     assert captured["payload"]["model"] == "fallback-model"
     assert call_count[0] == 2
+
+
+def test_codex_supervisor_env_resolver_combines_multiple_pool_files(tmp_path):
+    first_path = tmp_path / "first.toml"
+    second_path = tmp_path / "second.toml"
+    first_path.write_text(
+        """\
+[[agents]]
+name = "supervisor"
+
+[[agents.providers]]
+base_url = "https://api.dead.invalid"
+model = "dead-model"
+api_keys = ["env:DEAD_KEY"]
+""",
+        encoding="utf-8",
+    )
+    second_path.write_text(
+        """\
+[[agents]]
+name = "supervisor"
+
+[[agents.providers]]
+base_url = "https://api.fallback.example.com/v1"
+model = "fallback-model"
+api_keys = ["env:FALLBACK_KEY"]
+""",
+        encoding="utf-8",
+    )
+    captured: dict[str, object] = {}
+    call_count = [0]
+
+    def transport(
+        url: str,
+        payload: dict[str, object],
+        headers: dict[str, str],
+        timeout: int,
+    ) -> dict[str, object]:
+        call_count[0] += 1
+        if "dead.invalid" in url:
+            raise ValueError("connection refused")
+        captured["url"] = url
+        captured["payload"] = payload
+        return {
+            "choices": [{"message": {"content": "跨文件兜底摘要"}}],
+            "usage": {"total_tokens": 12},
+        }
+
+    provider = resolve_summary_provider_from_env(
+        {
+            "SUPERVISOR_LLM_POOL_TOML_FILES": f"{first_path},{second_path}",
+            "DEAD_KEY": "sk-dead",
+            "FALLBACK_KEY": "sk-fallback",
+        },
+        agent_name="supervisor",
+        transport=transport,
+    )
+
+    assert provider.summarize([{"role": "user", "content": "hello"}]) == "跨文件兜底摘要"
+    assert captured["url"] == "https://api.fallback.example.com/v1/chat/completions"
+    assert captured["payload"]["model"] == "fallback-model"
+    assert call_count[0] == 2
+
+
+def test_codex_supervisor_env_resolver_filters_by_agent_name(tmp_path):
+    """When agent_name is given, only matching [[agents]] providers are loaded."""
+    toml_path = tmp_path / "pool.toml"
+    toml_path.write_text(
+        """\
+[[agents]]
+name = "supervisor"
+
+[[agents.providers]]
+base_url = "https://api.supervisor.example.com"
+model = "supervisor-model"
+api_keys = ["env:SUPERVISOR_KEY"]
+
+[[agents]]
+name = "codex_runner"
+
+[[agents.providers]]
+base_url = "https://api.runner.example.com"
+model = "runner-model"
+api_keys = ["env:RUNNER_KEY"]
+""",
+        encoding="utf-8",
+    )
+    captured: dict[str, object] = {}
+
+    def transport(
+        url: str,
+        payload: dict[str, object],
+        headers: dict[str, str],
+        timeout: int,
+    ) -> dict[str, object]:
+        captured["url"] = url
+        captured["payload"] = payload
+        return {
+            "choices": [{"message": {"content": "supervisor 摘要"}}],
+            "usage": {"total_tokens": 12},
+        }
+
+    provider = resolve_summary_provider_from_env(
+        {
+            "SUPERVISOR_LLM_POOL_TOML_FILES": str(toml_path),
+            "SUPERVISOR_KEY": "sk-supervisor",
+            "RUNNER_KEY": "sk-runner",
+        },
+        agent_name="supervisor",
+        transport=transport,
+    )
+
+    assert provider.summarize([{"role": "user", "content": "hello"}]) == "supervisor 摘要"
+    assert captured["url"] == "https://api.supervisor.example.com/chat/completions"
+    assert captured["payload"]["model"] == "supervisor-model"
+
+
+def test_codex_supervisor_env_resolver_agent_not_found_raises(tmp_path):
+    """When agent_name doesn't match any [[agents]], resolver raises."""
+    toml_path = tmp_path / "pool.toml"
+    toml_path.write_text(
+        """\
+[[agents]]
+name = "supervisor"
+
+[[agents.providers]]
+base_url = "https://api.supervisor.example.com"
+model = "supervisor-model"
+api_keys = ["env:SUPERVISOR_KEY"]
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="for agent 'unknown'"):
+        resolve_summary_provider_from_env(
+            {
+                "SUPERVISOR_LLM_POOL_TOML_FILES": str(toml_path),
+                "SUPERVISOR_KEY": "sk-supervisor",
+            },
+            agent_name="unknown",
+        )
+
+
+def test_codex_supervisor_pooled_provider_uses_per_entry_max_tokens():
+    """When PoolEntry has max_tokens, it overrides the global default."""
+    captured: dict[str, object] = {}
+
+    def transport(
+        url: str,
+        payload: dict[str, object],
+        headers: dict[str, str],
+        timeout: int,
+    ) -> dict[str, object]:
+        captured["payload"] = payload
+        return {
+            "choices": [{"message": {"content": "ok"}}],
+            "usage": {"total_tokens": 12},
+        }
+
+    provider = PooledSummaryProvider(
+        entries=(
+            PoolEntry(
+                provider="fake",
+                api_key="fake-key",
+                base_url="https://fake-reasoning.example.com",
+                model="reasoning-model",
+                max_tokens=2048,
+            ),
+        ),
+        max_tokens=512,  # global default
+        transport=transport,
+    )
+
+    provider.summarize([{"role": "user", "content": "hello"}])
+    assert captured["payload"]["max_tokens"] == 2048
+
+
+def test_codex_supervisor_pooled_provider_falls_back_max_tokens_to_global():
+    """When PoolEntry has no max_tokens, global default is used."""
+    captured: dict[str, object] = {}
+
+    def transport(
+        url: str,
+        payload: dict[str, object],
+        headers: dict[str, str],
+        timeout: int,
+    ) -> dict[str, object]:
+        captured["payload"] = payload
+        return {
+            "choices": [{"message": {"content": "ok"}}],
+            "usage": {"total_tokens": 12},
+        }
+
+    provider = PooledSummaryProvider(
+        entries=(
+            PoolEntry(
+                provider="fake",
+                api_key="fake-key",
+                base_url="https://fake.example.com",
+                model="fake-model",
+            ),
+        ),
+        max_tokens=256,
+        transport=transport,
+    )
+
+    provider.summarize([{"role": "user", "content": "hello"}])
+    assert captured["payload"]["max_tokens"] == 256
+
+
+def test_codex_supervisor_env_resolver_reads_per_provider_max_tokens_from_toml(tmp_path):
+    """Resolver reads optional max_tokens from TOML and passes it through."""
+    toml_path = tmp_path / "pool.toml"
+    toml_path.write_text(
+        """\
+[[keys]]
+base_url = "https://api.reasoning.example.com"
+model = "reasoning-model"
+max_tokens = 4096
+api_keys = ["env:REASONING_KEY"]
+""",
+        encoding="utf-8",
+    )
+    captured: dict[str, object] = {}
+
+    def transport(
+        url: str,
+        payload: dict[str, object],
+        headers: dict[str, str],
+        timeout: int,
+    ) -> dict[str, object]:
+        captured["payload"] = payload
+        return {
+            "choices": [{"message": {"content": "ok"}}],
+            "usage": {"total_tokens": 12},
+        }
+
+    provider = resolve_summary_provider_from_env(
+        {
+            "SUPERVISOR_LLM_POOL_TOML_FILES": str(toml_path),
+            "REASONING_KEY": "sk-reasoning",
+        },
+        transport=transport,
+    )
+
+    provider.summarize([{"role": "user", "content": "hello"}])
+    assert captured["payload"]["max_tokens"] == 4096
+
+
+def test_codex_supervisor_env_resolver_rejects_invalid_max_tokens_in_toml(tmp_path):
+    """Non-positive or non-integer max_tokens in TOML raises ValueError."""
+    toml_path = tmp_path / "pool.toml"
+    toml_path.write_text(
+        """\
+[[keys]]
+base_url = "https://api.example.com"
+model = "bad-model"
+max_tokens = 0
+api_keys = ["env:KEY"]
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="max_tokens must be a positive integer"):
+        resolve_summary_provider_from_env(
+            {
+                "SUPERVISOR_LLM_POOL_TOML_FILES": str(toml_path),
+                "KEY": "sk-test",
+            },
+        )
+
 
 def test_codex_supervisor_generate_llm_summary_returns_provider_text(tmp_path):
     codex_home = tmp_path / ".codex"

@@ -60,6 +60,11 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         help="Stop after this many reports. Omit to watch until interrupted.",
     )
+    watch_parser.add_argument(
+        "--changes-only",
+        action="store_true",
+        help="In watch mode, print only when session state changes.",
+    )
     return parser
 
 
@@ -77,10 +82,13 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError("iterations must be positive")
             iterations = args.iterations
             count = 0
+            previous_fingerprint: tuple[object, ...] | None = None
             while iterations is None or count < iterations:
-                if count:
+                printed, previous_fingerprint = _print_report(
+                    args, previous_fingerprint=previous_fingerprint
+                )
+                if printed and iterations is not None and count + 1 < iterations:
                     print()
-                _print_report(args)
                 count += 1
                 if iterations is None or count < iterations:
                     time.sleep(args.interval)
@@ -105,13 +113,20 @@ def main(argv: list[str] | None = None) -> int:
     return 2
 
 
-def _print_report(args: argparse.Namespace) -> None:
+def _print_report(
+    args: argparse.Namespace,
+    *,
+    previous_fingerprint: tuple[object, ...] | None = None,
+) -> tuple[bool, tuple[object, ...]]:
     flow = CodexSupervisorFlow(codex_home=Path(args.codex_home))
     report = flow.scan(
         limit=args.limit,
         stale_after_seconds=args.stale_after,
         active_within_seconds=args.active_within,
     )
+    fingerprint = _report_fingerprint(report)
+    if getattr(args, "changes_only", False) and previous_fingerprint == fingerprint:
+        return False, fingerprint
     if args.json:
         payload = report.to_dict()
         if args.llm_summary:
@@ -123,10 +138,29 @@ def _print_report(args: argparse.Namespace) -> None:
             print()
             print("[LLM 摘要]")
             print(_summarize_with_llm(report))
+    return True, fingerprint
+
+
+def _report_fingerprint(report: Any) -> tuple[object, ...]:
+    """生成变化指纹；忽略 generated_at，避免空转也被当作变化。"""
+    return tuple(
+        (
+            session.session_id,
+            session.cwd,
+            session.git_branch,
+            session.source_path,
+            session.last_event_at,
+            session.status,
+            session.reason,
+            session.last_user_message,
+            session.last_assistant_message,
+        )
+        for session in report.sessions
+    )
 
 
 def _summarize_with_llm(report: Any) -> str:
-    provider = resolve_summary_provider_from_env()
+    provider = resolve_summary_provider_from_env(agent_name="supervisor")
     return generate_llm_summary(report, provider)
 
 

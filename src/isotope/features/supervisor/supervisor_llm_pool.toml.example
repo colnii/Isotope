@@ -3,32 +3,42 @@
 # Copy this file to supervisor_llm_pool.toml and fill in your own values.
 # The real supervisor_llm_pool.toml is git-ignored and never committed.
 #
-# Each [[keys]] block = one provider (base_url + model).
-# api_keys: list of keys to try for this provider, in order.
+# Format: [[agents]] groups providers by agent role.
+# Each [[agents]] can have multiple [[agents.providers]] entries.
+#
+# api_keys entries:
 #   "env:NAME" = read from environment variable $NAME
 #   plain text  = use directly as the api key
 #
-# Health check: each entry is tested with a minimal request,
-# first one that passes wins.
+# Optional per-provider fields:
+#   max_tokens = override the global SUPERVISOR_LLM_MAX_TOKENS default (512)
+#                Use this for reasoning models that need more token budget.
 
-[[keys]]
+[[agents]]
+name = "supervisor"
+
+[[agents.providers]]
 base_url = "https://api.deepseek.com"
 model = "deepseek-chat"
 api_keys = [
   "env:DEEPSEEK_API_KEY",
 ]
 
-# [[keys]]
-# base_url = "https://api.openai.com/v1"
-# model = "gpt-4o"
+# [[agents.providers]]
+# provider = "mimo"
+# base_url = "https://token-plan-cn.xiaomimimo.com/v1"
+# model = "mimo-v2.5-pro"
+# max_tokens = 2048  # reasoning model needs extra token budget
 # api_keys = [
-#   "env:OPENAI_API_KEY",
+#   "tp-your-plaintext-key",
 # ]
 
-# [[keys]]
-# base_url = "https://api.minimax.io/v1"
-# model = "MiniMax-M2.7"
+# [[agents]]
+# name = "codex_runner"
+#
+# [[agents.providers]]
+# base_url = "https://api.deepseek.com"
+# model = "deepseek-chat"
 # api_keys = [
-#   "env:MINIMAX_API_KEY",
-#   "sk-your-plaintext-fallback-key",
+#   "env:CODER_DEEPSEEK_KEY",
 # ]

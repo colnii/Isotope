@@ -1,6 +1,6 @@
-# Codex Supervisor 只读第一版
+# Codex Supervisor 只读监控
 
-状态：`第一版 / 本机只读监控`
+状态：`第二版小切片 / 本机只读监控`
 
 ## 目标
 
@@ -20,6 +20,7 @@ Codex Supervisor 用来观察本机多个 Codex 终端窗口。
 - 按最近事件时间排序，默认展示最近 10 个会话。
 - 用规则判断 `工作中`、`等待用户`、`疑似停住`、`疑似报错`、`空闲`。
 - 输出中文报告，也支持 JSON。
+- `watch --changes-only` 可持续运行，只在会话状态变化时重新输出。
 - 可选 `--llm-summary` 调用已配置 LLM 做中文智能摘要。
 
 ## 运行方式
@@ -29,6 +30,7 @@ Codex Supervisor 用来观察本机多个 Codex 终端窗口。
 ```bash
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --interval 180
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --interval 180 --changes-only
 ```
 
 安装后：
@@ -36,6 +38,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --in
 ```bash
 .venv/bin/isotope-supervisor scan
 .venv/bin/isotope-supervisor watch --interval 180
+.venv/bin/isotope-supervisor watch --interval 180 --changes-only
 ```
 
 调试 JSON：
@@ -50,6 +53,8 @@ LLM 摘要：
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --limit 3 --llm-summary
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --interval 180 --llm-summary
 ```
+
+如果同时使用 `watch --changes-only --llm-summary`，无变化的轮次不会调用 LLM。
 
 配置文件：
 
@@ -67,10 +72,12 @@ base_url = "https://api.example.com"
 model = "chat-model"
 api_keys = [
   "env:COMPANY_LLM_API_KEY",
+  "sk-local-plaintext-key",
 ]
 ```
 
-`api_keys` 只允许 `env:VAR_NAME` 形式，真实 key 放在环境变量里。
+`api_keys` 支持 `env:VAR_NAME` 或明文 key。
+默认 TOML 已被 `.gitignore` 屏蔽，明文 key 只适合放在本机配置里。
 `SUPERVISOR_LLM_MAX_TOKENS` 可控制摘要 token 上限，默认 `512`。
 
 `--llm-summary` 只发送压缩后的会话摘要，不发送完整 session 文件。
@@ -78,9 +85,9 @@ api_keys = [
 ## 当前边界
 
 - 不接管普通终端窗口。
-- 不自动给 Codex 发指令。
+- 不自动给 Codex 发指令；当前先做到持续监控和变化汇报。
 - 不直接检查 SSH 服务器内部进程。
 - 不把完整日志发给 LLM，只发送短摘要和状态字段。
 
-后续第二版再补控制通道，例如由 Supervisor 启动 Codex，
+后续再补控制通道，例如由 Supervisor 启动 Codex，
 或要求被管理窗口运行在 tmux 等可控环境里。
