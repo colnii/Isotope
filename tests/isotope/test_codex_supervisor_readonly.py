@@ -7,7 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from isotope.features.supervisor.flow import CodexSupervisorFlow, render_plain_report
+from isotope.features.supervisor.flow import (
+    CodexSessionSummary,
+    CodexSupervisorFlow,
+    CodexSupervisorReport,
+    render_plain_report,
+)
 from isotope.features.supervisor.llm_summary import (
     PooledSummaryProvider,
     PoolEntry,
@@ -15,7 +20,7 @@ from isotope.features.supervisor.llm_summary import (
     generate_llm_summary,
     resolve_summary_provider_from_env,
 )
-from isotope.features.supervisor.runner import main as supervisor_main
+from isotope.features.supervisor.runner import _advice_payload, main as supervisor_main
 
 
 NOW = datetime(2026, 5, 16, 12, 0, tzinfo=timezone.utc)
@@ -300,6 +305,60 @@ def test_codex_supervisor_runner_advise_plain_is_short(tmp_path, capsys):
     assert "建议：先处理等待用户确认的窗口。" in text
     assert "动作：review_user_prompt" in text
     assert "命令：暂无可安全生成的命令草案。" in text
+
+
+def test_codex_supervisor_advise_suggests_managed_tmux_commands():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="managed:managed-001",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/supervisor/managed_sessions.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="working",
+                reason="Supervisor 托管 tmux 会话仍在运行",
+                managed=True,
+                managed_name="lane-a",
+                managed_backend="tmux",
+                managed_tmux_session="isotope-lane-a",
+            ),
+        ),
+    )
+
+    payload = _advice_payload(report)
+
+    assert payload["command_suggestion"] == {
+        "command": "tmux attach -t isotope-lane-a",
+        "kind": "tmux_attach",
+        "label": "打开托管 tmux 窗口",
+    }
+    assert payload["command_suggestions"] == [
+        {
+            "command": "tmux attach -t isotope-lane-a",
+            "kind": "tmux_attach",
+            "label": "打开托管 tmux 窗口",
+        },
+        {
+            "command": "isotope-supervisor send --name lane-a --text '请汇报当前状态'",
+            "kind": "send_status",
+            "label": "让托管 Codex 汇报状态",
+        },
+        {
+            "command": (
+                "isotope-supervisor send --name lane-a --text "
+                "'继续推进，并在完成后汇报当前状态'"
+            ),
+            "kind": "send_continue",
+            "label": "让托管 Codex 继续推进",
+        },
+        {
+            "command": "isotope-supervisor watch --interval 180 --changes-only",
+            "kind": "watch_changes",
+            "label": "继续监控变化",
+        },
+    ]
 
 
 def test_codex_supervisor_runner_scan_can_add_llm_summary(

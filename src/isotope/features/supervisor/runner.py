@@ -254,30 +254,81 @@ def _print_advice(args: argparse.Namespace) -> None:
 
 def _advice_payload(report: Any) -> dict[str, Any]:
     recommendation = report.recommendation
+    suggestions = _command_suggestions(report)
     return {
         "status": "ok",
         "generated_at": report.generated_at,
         "recommendation": recommendation.to_dict(),
-        "command_suggestion": _command_suggestion(report),
+        "command_suggestion": suggestions[0] if suggestions else None,
+        "command_suggestions": suggestions,
     }
 
 
-def _command_suggestion(report: Any) -> dict[str, str] | None:
+def _command_suggestions(report: Any) -> list[dict[str, str]]:
     recommendation = report.recommendation
     target = _target_session(report, recommendation.target_session_id)
     if target is not None and target.managed_tmux_session:
-        session = shlex.quote(target.managed_tmux_session)
-        return {
-            "kind": "tmux_attach",
-            "label": "打开目标 tmux 窗口",
-            "command": f"tmux attach -t {session}",
-        }
+        return _managed_tmux_command_suggestions(target)
+    managed_tmux = _first_managed_tmux_session(report)
+    if managed_tmux is not None:
+        return _managed_tmux_command_suggestions(managed_tmux) + [_watch_command_suggestion()]
     if recommendation.action == "monitor":
-        return {
-            "kind": "watch_changes",
-            "label": "继续监控变化",
-            "command": "isotope-supervisor watch --interval 180 --changes-only",
-        }
+        return [_watch_command_suggestion()]
+    return []
+
+
+def _managed_tmux_command_suggestions(session: Any) -> list[dict[str, str]]:
+    if not session.managed_name or not session.managed_tmux_session:
+        return []
+    return [
+        {
+            "kind": "tmux_attach",
+            "label": "打开托管 tmux 窗口",
+            "command": shlex.join(["tmux", "attach", "-t", session.managed_tmux_session]),
+        },
+        {
+            "kind": "send_status",
+            "label": "让托管 Codex 汇报状态",
+            "command": shlex.join(
+                [
+                    "isotope-supervisor",
+                    "send",
+                    "--name",
+                    session.managed_name,
+                    "--text",
+                    "请汇报当前状态",
+                ]
+            ),
+        },
+        {
+            "kind": "send_continue",
+            "label": "让托管 Codex 继续推进",
+            "command": shlex.join(
+                [
+                    "isotope-supervisor",
+                    "send",
+                    "--name",
+                    session.managed_name,
+                    "--text",
+                    "继续推进，并在完成后汇报当前状态",
+                ]
+            ),
+        },
+    ]
+
+
+def _watch_command_suggestion() -> dict[str, str]:
+    return {
+        "kind": "watch_changes",
+        "label": "继续监控变化",
+        "command": "isotope-supervisor watch --interval 180 --changes-only",
+    }
+
+
+def _first_managed_tmux_session(report: Any) -> Any | None:
+    for session in report.sessions:
+        if session.managed_tmux_session:
+            return session
     return None
 
 

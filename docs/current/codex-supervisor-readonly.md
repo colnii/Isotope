@@ -21,7 +21,7 @@ Codex Supervisor 用来观察、启动和轻量管理本机多个 Codex 进程�
 - 用规则判断 `工作中`、`等待用户`、`疑似停住`、`疑似报错`、`空闲`。
 - 输出中文报告，也支持 JSON。
 - JSON 输出包含 `recommendation` 结构化建议，供后续半自动管理复用。
-- `advise` 可只输出当前建议和一条可复制命令草案。
+- `advise` 可只输出当前建议和可复制命令草案。
 - `watch --changes-only` 可持续运行，只在会话状态变化时重新输出。
 - `launch` 可启动一个 Codex 进程，并写入托管登记文件。
 - `launch --backend tmux` 可在本机 tmux 会话里启动 Codex。
@@ -76,6 +76,9 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --jso
 ```
 
 它只输出建议、动作、优先级和命令草案。
+`advise --json` 会保留兼容字段 `command_suggestion`，
+并用 `command_suggestions` 返回多条候选命令。
+托管 tmux lane 会生成 attach、汇报状态和继续推进三类草案。
 命令草案需要人复制执行，不会被自动运行。
 
 LLM 摘要：

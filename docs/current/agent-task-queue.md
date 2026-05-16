@@ -150,16 +150,18 @@
 72. Codex Supervisor 结构化建议：`scan --json` 已输出
     `recommendation` 建议对象，LLM 摘要输入也会携带该对象。
 73. Codex Supervisor 建议面板：`isotope-supervisor advise` 可只输出
-    当前建议和命令草案，不自动执行。
+    当前建议和多条命令草案，不自动执行。
 
 ## 最近完成：Codex Supervisor 建议面板
 
 完成内容：
 
 - `advise` 复用 `scan` 的状态判断，只输出当前建议。
-- `advise --json` 输出 `recommendation` 和 `command_suggestion`。
+- `advise --json` 输出 `recommendation`、兼容字段
+  `command_suggestion` 和多命令字段 `command_suggestions`。
 - 当前 `monitor` 会给出继续监控变化的命令草案。
-- 能定位到托管 tmux 目标时，命令草案会优先给 `tmux attach`。
+- 能定位到托管 tmux 目标时，会给出 `tmux attach`、
+  汇报状态和继续推进三类草案。
 - `advise` 不执行命令，也不自动调用 `send`。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
   [terminology](./terminology.md)、[status](./status.md) 和
