@@ -3,6 +3,7 @@ from __future__ import annotations
 import http.client
 import json
 import os
+import shlex
 import sqlite3
 import subprocess
 import threading
@@ -28,6 +29,7 @@ from isotope.features.supervisor.llm_summary import (
     resolve_summary_provider_from_env,
 )
 from isotope.features.supervisor.runner import (
+    EXECUTABLE_ADVICE_TEXT,
     _advice_payload,
     _dashboard_payload,
     main as supervisor_main,
@@ -35,6 +37,12 @@ from isotope.features.supervisor.runner import (
 
 
 NOW = datetime(2026, 5, 16, 12, 0, tzinfo=timezone.utc)
+STATUS_REQUEST_TEXT = EXECUTABLE_ADVICE_TEXT["send_status"]
+CONTINUE_REQUEST_TEXT = EXECUTABLE_ADVICE_TEXT["send_continue"]
+
+
+def _supervisor_send_command(name: str, text: str) -> str:
+    return shlex.join(["isotope-supervisor", "send", "--name", name, "--text", text])
 
 
 def test_codex_supervisor_discovers_sessions_and_classifies_attention(tmp_path):
@@ -803,15 +811,12 @@ def test_codex_supervisor_dashboard_json_includes_managed_control_commands(
             "label": "打开托管 tmux 窗口",
         },
         {
-            "command": "isotope-supervisor send --name lane-a --text '请汇报当前状态'",
+            "command": _supervisor_send_command("lane-a", STATUS_REQUEST_TEXT),
             "kind": "send_status",
             "label": "让托管 Codex 汇报状态",
         },
         {
-            "command": (
-                "isotope-supervisor send --name lane-a --text "
-                "'继续推进，并在完成后汇报当前状态'"
-            ),
+            "command": _supervisor_send_command("lane-a", CONTINUE_REQUEST_TEXT),
             "kind": "send_continue",
             "label": "让托管 Codex 继续推进",
         },
@@ -1297,12 +1302,12 @@ def test_codex_supervisor_web_returns_manual_llm_action_without_sending(
     assert payload["llm_action"] == {
         "kind": "send_status",
         "target_name": "lane-a",
-        "reason": "先看进度。",
-        "command_suggestion": {
-            "command": "isotope-supervisor send --name lane-a --text '请汇报当前状态'",
-            "kind": "send_status",
-            "label": "让托管 Codex 汇报状态",
-        },
+            "reason": "先看进度。",
+            "command_suggestion": {
+                "command": _supervisor_send_command("lane-a", STATUS_REQUEST_TEXT),
+                "kind": "send_status",
+                "label": "让托管 Codex 汇报状态",
+            },
     }
     assert send_calls == []
 
@@ -1405,10 +1410,10 @@ def test_codex_supervisor_web_can_send_allowed_managed_command(tmp_path):
     assert response.status == 200
     assert payload["status"] == "ok"
     assert payload["kind"] == "send_status"
-    assert payload["text"] == "请汇报当前状态"
+    assert payload["text"] == STATUS_REQUEST_TEXT
     assert payload["managed"]["tmux_session"] == "isotope-lane-a"
     assert calls == [
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", "请汇报当前状态"],
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", STATUS_REQUEST_TEXT],
         ["tmux", "send-keys", "-t", "isotope-lane-a", "Enter"],
     ]
     lane_state = json.loads(
@@ -1572,15 +1577,12 @@ def test_codex_supervisor_advise_suggests_managed_tmux_commands():
             "label": "打开托管 tmux 窗口",
         },
         {
-            "command": "isotope-supervisor send --name lane-a --text '请汇报当前状态'",
+            "command": _supervisor_send_command("lane-a", STATUS_REQUEST_TEXT),
             "kind": "send_status",
             "label": "让托管 Codex 汇报状态",
         },
         {
-            "command": (
-                "isotope-supervisor send --name lane-a --text "
-                "'继续推进，并在完成后汇报当前状态'"
-            ),
+            "command": _supervisor_send_command("lane-a", CONTINUE_REQUEST_TEXT),
             "kind": "send_continue",
             "label": "让托管 Codex 继续推进",
         },
@@ -1664,14 +1666,57 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_whitelisted_json(
         "target_name": "lane-a",
         "reason": "托管窗口还在运行，可以继续推进。",
         "command_suggestion": {
-            "command": (
-                "isotope-supervisor send --name lane-a --text "
-                "'继续推进，并在完成后汇报当前状态'"
-            ),
+            "command": _supervisor_send_command("lane-a", CONTINUE_REQUEST_TEXT),
             "kind": "send_continue",
             "label": "让托管 Codex 继续推进",
         },
     }
+
+
+def test_codex_supervisor_generate_llm_action_decision_extracts_noisy_json():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="managed:managed-001",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/supervisor/managed_sessions.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="working",
+                reason="Supervisor 托管 tmux 会话仍在运行",
+                managed=True,
+                managed_name="lane-a",
+                managed_backend="tmux",
+                managed_tmux_session="isotope-lane-a",
+            ),
+        ),
+    )
+    suggestions = _advice_payload(report)["command_suggestions"]
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            return (
+                "我会按这个格式返回：{\"kind\":\"monitor\"}\n"
+                "```json\n"
+                "{\"kind\":\"send_status\",\"target_name\":\"lane-a\",\"reason\":\"先让它按协议汇报。\"}\n"
+                "```"
+            )
+
+    decision = generate_llm_action_decision(report, suggestions, FakeProvider())
+
+    assert decision["kind"] == "send_status"
+    assert decision["target_name"] == "lane-a"
+    assert decision["reason"] == "先让它按协议汇报。"
+
+
+def test_codex_supervisor_send_status_text_requires_protocol_report():
+    text = EXECUTABLE_ADVICE_TEXT["send_status"]
+
+    assert "SUPERVISOR_STATUS:" in text
+    assert "SUPERVISOR_SUMMARY:" in text
+    assert "SUPERVISOR_NEXT:" in text
+    assert "working|done|blocked|needs_user" in text
 
 
 def test_codex_supervisor_generate_llm_action_decision_rejects_unsupported_action():
@@ -1770,13 +1815,13 @@ def test_codex_supervisor_runner_advise_can_add_llm_action(
     payload = json.loads(capsys.readouterr().out)
     assert payload["llm_action"] == {
         "kind": "send_status",
-        "target_name": "lane-a",
-        "reason": "先看进度。",
-        "command_suggestion": {
-            "command": "isotope-supervisor send --name lane-a --text '请汇报当前状态'",
-            "kind": "send_status",
-            "label": "让托管 Codex 汇报状态",
-        },
+            "target_name": "lane-a",
+            "reason": "先看进度。",
+            "command_suggestion": {
+                "command": _supervisor_send_command("lane-a", STATUS_REQUEST_TEXT),
+                "kind": "send_status",
+                "label": "让托管 Codex 汇报状态",
+            },
     }
     assert captured["agent_name"] == "supervisor"
 
@@ -1852,17 +1897,17 @@ def test_codex_supervisor_runner_advise_execute_send_status(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["executed"] == {
-        "command": "isotope-supervisor send --name lane-a --text '请汇报当前状态'",
+        "command": _supervisor_send_command("lane-a", STATUS_REQUEST_TEXT),
         "kind": "send_status",
         "managed": {
             "name": "lane-a",
             "record_id": "managed-001",
             "tmux_session": "isotope-lane-a",
         },
-        "text": "请汇报当前状态",
+        "text": STATUS_REQUEST_TEXT,
     }
     assert calls == [
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", "请汇报当前状态"],
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", STATUS_REQUEST_TEXT],
         ["tmux", "send-keys", "-t", "isotope-lane-a", "Enter"],
     ]
 
@@ -2035,9 +2080,9 @@ def test_codex_supervisor_runner_supervise_can_execute_send_status(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["executed"]["kind"] == "send_status"
-    assert payload["executed"]["text"] == "请汇报当前状态"
+    assert payload["executed"]["text"] == STATUS_REQUEST_TEXT
     assert calls == [
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", "请汇报当前状态"],
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", STATUS_REQUEST_TEXT],
         ["tmux", "send-keys", "-t", "isotope-lane-a", "Enter"],
     ]
 
@@ -2135,7 +2180,7 @@ def test_codex_supervisor_runner_execute_skips_repeated_prompt_in_cooldown(
     assert second_payload["executed"]["lane_state"]["name"] == "lane-a"
     assert second_payload["executed"]["lane_state"]["prompt_count"] == 1
     assert calls == [
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", "请汇报当前状态"],
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", STATUS_REQUEST_TEXT],
         ["tmux", "send-keys", "-t", "isotope-lane-a", "Enter"],
     ]
 
@@ -2217,9 +2262,9 @@ def test_codex_supervisor_runner_execute_can_disable_prompt_cooldown(
         assert "skipped" not in payload["executed"]
 
     assert calls == [
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", "请汇报当前状态"],
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", STATUS_REQUEST_TEXT],
         ["tmux", "send-keys", "-t", "isotope-lane-a", "Enter"],
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", "请汇报当前状态"],
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", STATUS_REQUEST_TEXT],
         ["tmux", "send-keys", "-t", "isotope-lane-a", "Enter"],
     ]
 

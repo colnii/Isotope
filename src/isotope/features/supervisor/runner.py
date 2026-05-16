@@ -24,9 +24,25 @@ from .llm_summary import (
 from .registry import adopt_tmux_session, launch_managed_codex, send_to_managed_codex
 
 EXECUTABLE_ADVICE_KINDS = {"send_status", "send_continue"}
+STATUS_REPORT_REQUEST = "\n".join(
+    [
+        "请汇报当前状态，并严格使用下面三行格式：",
+        "SUPERVISOR_STATUS: working|done|blocked|needs_user",
+        "SUPERVISOR_SUMMARY: 用一句中文说明当前进展",
+        "SUPERVISOR_NEXT: 用一句中文说明建议下一步",
+    ]
+)
 EXECUTABLE_ADVICE_TEXT = {
-    "send_status": "请汇报当前状态",
-    "send_continue": "继续推进，并在完成后汇报当前状态",
+    "send_status": STATUS_REPORT_REQUEST,
+    "send_continue": "\n".join(
+        [
+            "继续推进当前任务。",
+            "完成或遇到阻塞后，严格使用下面三行格式汇报：",
+            "SUPERVISOR_STATUS: working|done|blocked|needs_user",
+            "SUPERVISOR_SUMMARY: 用一句中文说明当前进展",
+            "SUPERVISOR_NEXT: 用一句中文说明建议下一步",
+        ]
+    ),
 }
 DASHBOARD_GROUP_LABELS = {
     "needs_attention": "需要看",
@@ -738,7 +754,7 @@ def _managed_tmux_command_suggestions(session: Any) -> list[dict[str, str]]:
                     "--name",
                     session.managed_name,
                     "--text",
-                    "请汇报当前状态",
+                    EXECUTABLE_ADVICE_TEXT["send_status"],
                 ]
             ),
         },
@@ -752,7 +768,7 @@ def _managed_tmux_command_suggestions(session: Any) -> list[dict[str, str]]:
                     "--name",
                     session.managed_name,
                     "--text",
-                    "继续推进，并在完成后汇报当前状态",
+                    EXECUTABLE_ADVICE_TEXT["send_continue"],
                 ]
             ),
         },

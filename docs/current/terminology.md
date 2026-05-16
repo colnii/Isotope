@@ -95,8 +95,8 @@
 | `/events` | web 事件流入口，用 SSE 推送 bell 提醒，让页面立刻刷新 dashboard | 产品功能/视图/状态判断 | `src/isotope/features/supervisor/web.py` |
 | `/managed/send` | web 本机发送入口，只允许 `send_status` 和 `send_continue` 两个白名单动作 | 产品功能/控制通道 | `src/isotope/features/supervisor/web.py` |
 | `/llm-action` | web 手动模型建议入口，只展示 LLM 白名单动作建议，不自动发送 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/web.py` |
-| `send_status` | 白名单动作，让托管 Codex 汇报当前状态 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
-| `send_continue` | 白名单动作，让托管 Codex 继续推进并完成后汇报状态 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
+| `send_status` | 白名单动作，让托管 Codex 按 `SUPERVISOR_STATUS/SUMMARY/NEXT` 汇报当前状态 | 产品功能/控制通道/状态协议 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
+| `send_continue` | 白名单动作，让托管 Codex 继续推进，并在完成或阻塞后按状态协议汇报 | 产品功能/控制通道/状态协议 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `send` | Supervisor 控制命令，向登记的 tmux Codex 会话发送一行文本并回车 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
 | `adopt` | 接管已有 tmux 会话，把它登记成 Supervisor 可监控和发送指令的 lane | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
 | `tmux` | 本机终端复用工具，可创建可追踪会话，并通过 send-keys 向托管 Codex 发指令 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
@@ -113,7 +113,7 @@
 | `lane state` | 托管窗口状态账本，记录最近状态、最近催促时间和催促次数 | 产品功能/状态判断 | `src/isotope/features/supervisor/lane_state.py` |
 | `--prompt-cooldown` | 催促冷却期，避免短时间重复向同一个 lane 发送状态请求或继续指令 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `LLM summary` | 大模型摘要，把压缩后的窗口状态和结构化建议交给模型生成中文判断 | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
-| `LLM action` | 大模型白名单动作建议，只能从 `monitor`、`send_status`、`send_continue` 中选择 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
+| `LLM action` | 大模型白名单动作建议，只能从 `monitor`、`send_status`、`send_continue` 中选择，并会容忍 JSON 前后的说明文本 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
 | `--llm-action` | 命令行参数，让 LLM 选择一个白名单建议动作，但不自动执行 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `monitor` | 白名单动作，表示当前没有需要发送的托管指令，只继续观察 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
 | `OpenAI-compatible` | 兼容 OpenAI Chat Completions 形状的模型接口 | 模型/外部集成 | `src/isotope/features/supervisor/llm_summary.py` |

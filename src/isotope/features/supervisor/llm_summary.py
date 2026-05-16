@@ -398,16 +398,28 @@ def _extract_json_object(text: str) -> dict[str, Any]:
     if stripped.startswith("```"):
         stripped = re.sub(r"^```(?:json)?\s*", "", stripped, flags=re.IGNORECASE)
         stripped = re.sub(r"\s*```$", "", stripped)
-    match = re.search(r"\{.*\}", stripped, flags=re.DOTALL)
-    if match:
-        stripped = match.group(0)
-    try:
-        payload = json.loads(stripped)
-    except json.JSONDecodeError as exc:
-        raise ValueError("LLM action must be a JSON object") from exc
-    if not isinstance(payload, dict):
+    candidates = _json_object_candidates(stripped)
+    if not candidates:
         raise ValueError("LLM action must be a JSON object")
-    return payload
+    for payload in reversed(candidates):
+        if isinstance(payload.get("kind"), str):
+            return payload
+    return candidates[-1]
+
+
+def _json_object_candidates(text: str) -> list[dict[str, Any]]:
+    decoder = json.JSONDecoder()
+    candidates: list[dict[str, Any]] = []
+    for index, char in enumerate(text):
+        if char != "{":
+            continue
+        try:
+            payload, _ = decoder.raw_decode(text[index:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            candidates.append(payload)
+    return candidates
 
 
 def _required_payload_string(payload: dict[str, Any], field: str) -> str:

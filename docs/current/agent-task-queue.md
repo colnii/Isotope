@@ -216,8 +216,25 @@
     自动刷新会保留滚动位置，不再强行跳回底部。
 101. Codex Supervisor 状态汇报高亮：托管卡片关联真实 session 后，
     会使用真实 session 的状态协议分组，并在 web 单独显示状态汇报。
+102. Codex Supervisor 协议化状态请求：`send_status` 和
+    `send_continue` 会要求托管 Codex 按 `SUPERVISOR_STATUS/SUMMARY/NEXT`
+    三行格式汇报。
+103. Codex Supervisor LLM action JSON 容错：模型建议可从带解释、
+    示例或 fenced code 的输出中提取最后一个动作 JSON。
 
-## 最近完成：Codex Supervisor 状态汇报高亮
+## 最近完成：Codex Supervisor 协议化状态请求与 JSON 容错
+
+完成内容：
+
+- `send_status` 不再只发送“请汇报当前状态”，而是要求三行状态协议。
+- `send_continue` 也要求完成或阻塞后按三行状态协议汇报。
+- LLM action 解析不再用贪婪正则截整段文本。
+- 模型输出里有多个 JSON 片段时，优先使用最后一个带 `kind` 的对象。
+- 解决模型在 JSON 前后添加说明导致的格式错误。
+
+上一批已完成：
+
+## Codex Supervisor 状态汇报高亮
 
 完成内容：
 

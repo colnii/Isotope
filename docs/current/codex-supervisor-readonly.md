@@ -147,9 +147,14 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 页面不再额外显示一行 `tmux attach` 命令，避免和复制 attach 按钮重复。
 页面发送按钮调用 `/managed/send`，只允许 `send_status` 和 `send_continue`。
 成功发送后会更新 lane state（窗口状态账本）的最近催促时间和次数。
+`send_status` 会要求托管 Codex 严格按 `SUPERVISOR_STATUS`、
+`SUPERVISOR_SUMMARY`、`SUPERVISOR_NEXT` 三行汇报。
+`send_continue` 会要求继续推进，并在完成或阻塞后按同样三行格式汇报。
 页面的“模型建议”按钮会调用 `/llm-action`。
 该接口只在点击时请求 LLM，从 `monitor`、`send_status` 和
 `send_continue` 中返回建议动作，不会自动调用 `/managed/send`。
+模型建议解析会从模型输出中提取带 `kind` 的 JSON 对象；
+如果模型在 JSON 前后加说明或 fenced code，也会尽量提取动作对象。
 如果模型建议的是某个托管 lane 的 `send_status` 或 `send_continue`，
 页面会高亮对应的“请求状态”或“继续”按钮，但仍需人类手动点击。
 如果当前没有可控的托管 tmux lane，会直接返回 `monitor`，
@@ -299,7 +304,8 @@ tmux attach -t isotope-lane-a
 - `send` 只支持 Supervisor 登记过的 tmux 会话。
 - `web` 只监听本机默认地址，不提供认证和远程访问能力。
 - `web` 的 `/managed/send` 只接受 `send_status` 和 `send_continue`。
-- `web` 的 `/llm-action` 只在手动点击时调用模型，只展示建议。
+- `web` 的 `/llm-action` 只在手动点击时调用模型，只展示建议；
+  解析时会容忍 JSON 前后的说明文字。
 - `web` 的 `/events` 只推送 bell 提醒和心跳，不承载任意控制指令。
 - 模型建议只会高亮按钮，不会自动点击按钮。
 - `/managed/send` 成功发送后会记录 lane state。

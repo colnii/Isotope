@@ -74,12 +74,14 @@ Codex Supervisor 已经不只是一个小命令。
 - bell 事件会让建议优先提示查看对应托管窗口。
 - `advise` 输出建议和命令草案。
 - `--execute` 只执行 `send_status` 和 `send_continue`。
+- `send_status/send_continue` 会要求托管 Codex 按三行状态协议汇报。
 - `supervise` 循环执行扫描、建议、摘要和显式发送。
 - lane state 记录最近状态、最近催促时间和催促次数。
 - `--prompt-cooldown` 可避免短时间重复催促同一个 lane。
 - `--llm-summary` 通过本机 TOML 号池生成中文摘要。
 - `--llm-action` 通过本机 TOML 号池选择一个白名单建议动作。
 - 没有可控托管 tmux lane 时，`LLM action` 直接回退为 `monitor`。
+- `LLM action` 会从带说明的模型输出中提取最后一个动作 JSON。
 
 ## 当前不要重复实现
 
