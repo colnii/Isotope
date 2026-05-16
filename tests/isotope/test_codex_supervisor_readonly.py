@@ -1018,6 +1018,9 @@ def test_codex_supervisor_web_rejects_invalid_manual_llm_action(tmp_path):
     from isotope.features.supervisor.web import create_dashboard_server
 
     codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
 
     class FakeProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
@@ -1379,14 +1382,49 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_whitelisted_json(
 
 
 def test_codex_supervisor_generate_llm_action_decision_rejects_unsupported_action():
-    report = CodexSupervisorReport(generated_at=NOW.isoformat(), sessions=())
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="managed:managed-001",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/supervisor/managed_sessions.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="working",
+                reason="Supervisor 托管 tmux 会话仍在运行",
+                managed=True,
+                managed_name="lane-a",
+                managed_backend="tmux",
+                managed_tmux_session="isotope-lane-a",
+            ),
+        ),
+    )
+    suggestions = _advice_payload(report)["command_suggestions"]
 
     class FakeProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return '{"kind":"delete_branch","reason":"危险动作"}'
 
     with pytest.raises(ValueError, match="unsupported LLM action"):
-        generate_llm_action_decision(report, [], FakeProvider())
+        generate_llm_action_decision(report, suggestions, FakeProvider())
+
+
+def test_codex_supervisor_generate_llm_action_decision_falls_back_without_targets():
+    report = CodexSupervisorReport(generated_at=NOW.isoformat(), sessions=())
+
+    class FailingProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            raise AssertionError("LLM should not be called without managed targets")
+
+    decision = generate_llm_action_decision(report, [], FailingProvider())
+
+    assert decision == {
+        "kind": "monitor",
+        "target_name": None,
+        "reason": "当前没有可控的托管 tmux lane，先继续监控。",
+        "command_suggestion": None,
+    }
 
 
 def test_codex_supervisor_runner_advise_can_add_llm_action(

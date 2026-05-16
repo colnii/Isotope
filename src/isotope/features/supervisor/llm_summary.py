@@ -238,6 +238,13 @@ def generate_llm_action_decision(
     command_suggestions: list[dict[str, str]],
     provider: SummaryProvider,
 ) -> dict[str, Any]:
+    if not _has_any_managed_target(report):
+        return {
+            "kind": "monitor",
+            "target_name": None,
+            "reason": "当前没有可控的托管 tmux lane，先继续监控。",
+            "command_suggestion": None,
+        }
     raw = provider.summarize(build_llm_action_messages(report, command_suggestions))
     payload = _extract_json_object(raw)
     kind = _required_payload_string(payload, "kind")
@@ -428,6 +435,13 @@ def _command_suggestion_for_kind(
 def _has_managed_target(report: CodexSupervisorReport, target_name: str) -> bool:
     return any(
         session.managed_name == target_name and bool(session.managed_tmux_session)
+        for session in report.sessions
+    )
+
+
+def _has_any_managed_target(report: CodexSupervisorReport) -> bool:
+    return any(
+        session.managed_name is not None and bool(session.managed_tmux_session)
         for session in report.sessions
     )
 

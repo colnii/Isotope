@@ -70,6 +70,7 @@ Codex Supervisor 已经不只是一个小命令。
 - `--prompt-cooldown` 可避免短时间重复催促同一个 lane。
 - `--llm-summary` 通过本机 TOML 号池生成中文摘要。
 - `--llm-action` 通过本机 TOML 号池选择一个白名单建议动作。
+- 没有可控托管 tmux lane 时，`LLM action` 直接回退为 `monitor`。
 
 ## 当前不要重复实现
 
@@ -81,6 +82,7 @@ Codex Supervisor 已经不只是一个小命令。
 - 不要另写一套 dashboard 数据接口，先复用 `/dashboard.json`。
 - 不要在 web 里放任意文本发送框；先走白名单动作。
 - 不要让 `/llm-action` 自动调用 `/managed/send`。
+- 没有可控托管目标时，不要为了动作建议调用 LLM。
 - LLM 动作选择必须落到可审计的白名单能力上。
 
 ## 后续拆分方向

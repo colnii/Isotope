@@ -110,6 +110,7 @@
 | `LLM summary` | 大模型摘要，把压缩后的窗口状态和结构化建议交给模型生成中文判断 | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
 | `LLM action` | 大模型白名单动作建议，只能从 `monitor`、`send_status`、`send_continue` 中选择 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
 | `--llm-action` | 命令行参数，让 LLM 选择一个白名单建议动作，但不自动执行 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/runner.py` |
+| `monitor` | 白名单动作，表示当前没有需要发送的托管指令，只继续观察 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
 | `OpenAI-compatible` | 兼容 OpenAI Chat Completions 形状的模型接口 | 模型/外部集成 | `src/isotope/features/supervisor/llm_summary.py` |
 | `LLM pool TOML` | 本机模型号池配置，声明 provider、base URL、model 和 key | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
 | `git worktree` | Git 工作树，同一仓库的独立开发目录，用于多分支并行 | 工作区/开发协作 | `docs/current/status.md`, `AGENTS.md` |

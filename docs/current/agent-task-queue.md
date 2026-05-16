@@ -196,8 +196,22 @@
     输出结构化结果但不自动执行。
 91. Codex Supervisor web 模型建议：`web` 页面可手动调用 `/llm-action`，
     展示 LLM 白名单动作建议，但不自动发送。
+92. Codex Supervisor LLM action 无目标回退：没有可控托管 tmux lane
+    时直接返回 `monitor`，不调用 LLM。
 
-## 最近完成：Codex Supervisor web 模型建议
+## 最近完成：Codex Supervisor LLM action 无目标回退
+
+完成内容：
+
+- 修复无托管 tmux lane 时模型建议报 `target_name` 的体验问题。
+- `generate_llm_action_decision(...)` 会先检查是否存在可控目标。
+- 没有目标时直接返回 `monitor`。
+- 该路径不调用 LLM，避免无意义消耗 token。
+- 非法动作校验仍保留在存在托管目标的路径上。
+
+上一批已完成：
+
+## Codex Supervisor web 模型建议
 
 完成内容：
 
