@@ -214,8 +214,23 @@
     web 展示时默认滚到底部，避免卡在旧输出中段。
 100. Codex Supervisor 最近输出滚动保留：用户手动上翻最近输出后，
     自动刷新会保留滚动位置，不再强行跳回底部。
+101. Codex Supervisor 状态汇报高亮：托管卡片关联真实 session 后，
+    会使用真实 session 的状态协议分组，并在 web 单独显示状态汇报。
 
-## 最近完成：Codex Supervisor 最近输出滚动保留
+## 最近完成：Codex Supervisor 状态汇报高亮
+
+完成内容：
+
+- 合并托管 lane 和真实 session 时，若真实 session 有
+  `SUPERVISOR_STATUS`，dashboard 分组使用真实状态协议。
+- `/dashboard.json` 的 `supervisor_status`、`supervisor_summary`、
+  `supervisor_next` 和 `status_evidence` 也使用真实 session。
+- web 卡片新增“状态汇报”区，单独显示状态、摘要和下一步。
+- 控制按钮仍来自托管 lane，不会因为状态汇报而自动发送指令。
+
+上一批已完成：
+
+## Codex Supervisor 最近输出滚动保留
 
 完成内容：
 

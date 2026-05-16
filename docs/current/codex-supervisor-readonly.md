@@ -115,6 +115,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 - 如果托管 lane 能关联到真实 Codex session，`display_title` 和
   `resume_command` 会优先使用真实 session，同时保留 `managed_display_title`
   和 `linked_session_id`。
+- 如果关联到的真实 session 有 `SUPERVISOR_STATUS`，dashboard 分组和
+  状态字段会优先使用真实 session 的状态协议。
 - 关联时会优先使用只读 `tmux capture-pane` 摘要匹配 Codex 标题、
   首条用户消息或最近消息；没有命中时才退回同目录最近窗口。
 
@@ -133,6 +135,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 页面标题优先使用关联到的 Codex 自带标题或首条用户消息。
 托管名会显示在路径信息里，方便确认它仍是可控 lane。
 每个窗口会显示“依据”，用来解释当前标签为什么被判成等待用户、停住或工作中。
+如果窗口主动写了 `SUPERVISOR_STATUS/SUMMARY/NEXT`，
+页面会单独显示“状态汇报”区，避免只在终端原文里找状态。
 托管窗口会额外显示“托管窗口”详情区，包含 bell 时间、关联 session
 和最近输出；最近输出来自只读 `tmux capture-pane` 尾部摘要，
 会保留换行并默认滚到输出底部。用户手动上翻最近输出后，

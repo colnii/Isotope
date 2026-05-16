@@ -65,6 +65,7 @@
 | `recommendation` | 结构化建议，表达下一步建议动作、优先级和目标窗口，不等于自动执行 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
 | `status_evidence` | 状态依据，解释 Supervisor 为什么把窗口判为工作中、等待用户、停住或报错 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/web.py` |
 | `supervisor_protocol` | 状态依据来源，表示被托管 Codex 主动写了 `SUPERVISOR_STATUS` | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
+| `状态汇报` | web 卡片里的结构化状态区，单独展示 `SUPERVISOR_STATUS/SUMMARY/NEXT` | 产品功能/视图/状态判断 | `src/isotope/features/supervisor/web.py` |
 | `attention_marker` | 状态依据来源，表示最近助手回复命中确认类文本 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
 | `stale_timeout` | 状态依据来源，表示超过静默阈值没有新事件 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
 | `recent_event` | 状态依据来源，表示最近仍有 Codex 事件 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |

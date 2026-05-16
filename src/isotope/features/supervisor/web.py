@@ -416,6 +416,7 @@ def dashboard_page_html() -> str:
     .summary,
     .evidence,
     .path,
+    .protocol-card,
     .managed-details,
     .command {
       color: var(--muted);
@@ -429,6 +430,22 @@ def dashboard_page_html() -> str:
     .command {
       margin-top: 8px;
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    .protocol-card {
+      margin-top: 8px;
+      border: 1px solid #fedf89;
+      border-left: 4px solid #dc6803;
+      border-radius: 6px;
+      background: #fffbeb;
+      padding: 8px;
+    }
+    .protocol-title {
+      color: var(--text);
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .protocol-line {
+      margin-top: 2px;
     }
     .managed-details {
       margin-top: 8px;
@@ -576,6 +593,8 @@ def dashboard_page_html() -> str:
         .join(" · ");
 
       lane.append(title, summary, evidence, path);
+      const protocol = renderSupervisorProtocol(item);
+      if (protocol) lane.append(protocol);
       const managedDetails = renderManagedDetails(item);
       if (managedDetails) lane.append(managedDetails);
       const actions = document.createElement("div");
@@ -604,6 +623,38 @@ def dashboard_page_html() -> str:
       }
       lane.append(actions);
       return lane;
+    }
+
+    function renderSupervisorProtocol(item) {
+      if (!item.supervisor_status && !item.supervisor_summary && !item.supervisor_next) return null;
+      const protocol = document.createElement("div");
+      protocol.className = "protocol-card";
+
+      const title = document.createElement("div");
+      title.className = "protocol-title";
+      title.textContent = "状态汇报";
+      protocol.append(title);
+
+      const status = document.createElement("div");
+      status.className = "protocol-line";
+      status.textContent = "状态：" + text(item.supervisor_status);
+      protocol.append(status);
+
+      if (item.supervisor_summary) {
+        const summary = document.createElement("div");
+        summary.className = "protocol-line";
+        summary.textContent = "摘要：" + item.supervisor_summary;
+        protocol.append(summary);
+      }
+
+      if (item.supervisor_next) {
+        const next = document.createElement("div");
+        next.className = "protocol-line";
+        next.textContent = "下一步：" + item.supervisor_next;
+        protocol.append(next);
+      }
+
+      return protocol;
     }
 
     function renderManagedDetails(item) {

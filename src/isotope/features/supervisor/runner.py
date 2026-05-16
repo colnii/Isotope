@@ -438,7 +438,7 @@ def _dashboard_payload(report: Any) -> dict[str, Any]:
         "working": [],
     }
     for session, linked_session in _dashboard_display_sessions(report.sessions):
-        groups[_dashboard_group_for(session)].append(
+        groups[_dashboard_group_for(session, linked_session=linked_session)].append(
             _dashboard_item(session, linked_session=linked_session)
         )
     return {
@@ -450,13 +450,14 @@ def _dashboard_payload(report: Any) -> dict[str, Any]:
     }
 
 
-def _dashboard_group_for(session: Any) -> str:
-    supervisor_status = (session.supervisor_status or "").lower()
+def _dashboard_group_for(session: Any, *, linked_session: Any | None = None) -> str:
+    status_source = _dashboard_status_source(session, linked_session)
+    supervisor_status = (status_source.supervisor_status or "").lower()
     if supervisor_status in {"blocked", "needs_user"}:
         return "needs_attention"
     if supervisor_status == "done":
         return "done"
-    if session.status in {"needs_user", "error", "stale"}:
+    if status_source.status in {"needs_user", "error", "stale"}:
         return "needs_attention"
     if session.managed_bell:
         return "needs_attention"
@@ -561,6 +562,7 @@ def _normalize_match_text(value: Any) -> str:
 def _dashboard_item(session: Any, *, linked_session: Any | None = None) -> dict[str, Any]:
     display_source = linked_session or session
     resume_session = linked_session or session
+    status_source = _dashboard_status_source(session, linked_session)
     return {
         "session_id": session.session_id,
         "short_session_id": display_source.short_session_id,
@@ -582,12 +584,12 @@ def _dashboard_item(session: Any, *, linked_session: Any | None = None) -> dict[
         "agent_role": display_source.agent_role,
         "cwd": session.cwd,
         "git_branch": display_source.git_branch or session.git_branch,
-        "status": session.status,
-        "status_label": session.status_label,
-        "status_evidence": session.status_evidence,
-        "supervisor_status": session.supervisor_status,
-        "supervisor_summary": session.supervisor_summary,
-        "supervisor_next": session.supervisor_next,
+        "status": status_source.status,
+        "status_label": status_source.status_label,
+        "status_evidence": status_source.status_evidence,
+        "supervisor_status": status_source.supervisor_status,
+        "supervisor_summary": status_source.supervisor_summary,
+        "supervisor_next": status_source.supervisor_next,
         "managed": session.managed,
         "managed_backend": session.managed_backend,
         "managed_tmux_session": session.managed_tmux_session,
@@ -597,9 +599,15 @@ def _dashboard_item(session: Any, *, linked_session: Any | None = None) -> dict[
         "control_commands": _managed_tmux_command_suggestions(session)
         if session.managed_tmux_session
         else [],
-        "reason": session.reason,
-        "age_seconds": session.age_seconds,
+        "reason": status_source.reason,
+        "age_seconds": status_source.age_seconds,
     }
+
+
+def _dashboard_status_source(session: Any, linked_session: Any | None) -> Any:
+    if linked_session is not None and linked_session.supervisor_status:
+        return linked_session
+    return session
 
 
 def _print_dashboard_plain(payload: dict[str, Any]) -> None:

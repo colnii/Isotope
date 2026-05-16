@@ -952,6 +952,61 @@ def test_codex_supervisor_dashboard_uses_tmux_pane_text_to_link_managed_lane(
     )
 
 
+def test_codex_supervisor_dashboard_uses_linked_protocol_for_managed_lane(
+    tmp_path,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-target.jsonl",
+        session_id="019e3205-b9cc-7012-804c-ca2ac38e0d32",
+        cwd=str(workspace),
+        events=[
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "thread_name_updated", "thread_name": "依赖升级卡住"},
+            ),
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "\n".join(
+                    [
+                        "SUPERVISOR_STATUS: blocked",
+                        "SUPERVISOR_SUMMARY: 依赖解析失败。",
+                        "SUPERVISOR_NEXT: 需要确认是否降级依赖。",
+                    ]
+                ),
+            ),
+        ],
+    )
+
+    report = CodexSupervisorFlow(
+        codex_home=codex_home,
+        now=lambda: NOW,
+        tmux_session_checker=lambda session: session == "isotope-lane-a",
+        tmux_bell_checker=lambda session: False,
+        tmux_pane_reader=lambda session: "依赖升级卡住\nSUPERVISOR_STATUS: blocked",
+    ).scan(limit=5, stale_after_seconds=999999)
+    payload = _dashboard_payload(report)
+
+    assert payload["counts"]["needs_attention"] == 1
+    item = payload["groups"]["needs_attention"][0]
+    assert item["name"] == "lane-a"
+    assert item["display_title"] == "依赖升级卡住"
+    assert item["linked_session_id"] == "019e3205-b9cc-7012-804c-ca2ac38e0d32"
+    assert item["supervisor_status"] == "blocked"
+    assert item["supervisor_summary"] == "依赖解析失败。"
+    assert item["supervisor_next"] == "需要确认是否降级依赖。"
+    assert item["status_evidence"] == {
+        "source": "supervisor_protocol",
+        "label": "主动状态协议",
+        "detail": "SUPERVISOR_STATUS: blocked",
+    }
+
+
 def test_codex_supervisor_managed_terminal_excerpt_keeps_recent_tail(tmp_path):
     codex_home = tmp_path / ".codex"
     workspace = tmp_path / "workspace"
@@ -1092,6 +1147,9 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "复制继续" in html
     assert "sendManagedCommand" in html
     assert "requestLlmAction" in html
+    assert "renderSupervisorProtocol" in html
+    assert "状态汇报" in html
+    assert "下一步" in html
     assert "connectSupervisorEvents" in html
     assert "EventSource" in html
     assert "applyLlmActionHighlight" in html
