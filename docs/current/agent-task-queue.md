@@ -208,8 +208,21 @@
     `bell_events.jsonl` 变化，并让前端立刻刷新 dashboard。
 97. Codex Supervisor 托管关联增强：托管 tmux lane 会只读 pane 文本，
     优先按标题和用户消息匹配真实 Codex session。
+98. Codex Supervisor web 托管透明区：托管卡片会展示最近输出、
+    bell 时间和关联 session，方便确认 Supervisor 实际看到了什么。
 
-## 最近完成：Codex Supervisor 托管关联增强
+## 最近完成：Codex Supervisor web 托管透明区
+
+完成内容：
+
+- web 托管卡片新增“托管窗口”详情区。
+- 详情区展示 bell 时间、关联 session 和最近输出。
+- 最近输出来自只读 `tmux capture-pane` 摘要。
+- 没有可读输出时显示空态，不影响控制按钮。
+
+上一批已完成：
+
+## Codex Supervisor 托管关联增强
 
 完成内容：
 

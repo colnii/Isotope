@@ -416,6 +416,7 @@ def dashboard_page_html() -> str:
     .summary,
     .evidence,
     .path,
+    .managed-details,
     .command {
       color: var(--muted);
       font-size: 13px;
@@ -428,6 +429,30 @@ def dashboard_page_html() -> str:
     .command {
       margin-top: 8px;
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    .managed-details {
+      margin-top: 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #f8fafc;
+      padding: 8px;
+    }
+    .managed-details-title {
+      color: var(--text);
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .managed-line {
+      margin-top: 2px;
+    }
+    .terminal-excerpt {
+      margin: 6px 0 0;
+      max-height: 120px;
+      overflow: auto;
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      color: #344054;
     }
     .actions {
       display: flex;
@@ -550,6 +575,8 @@ def dashboard_page_html() -> str:
         .join(" · ");
 
       lane.append(title, summary, evidence, path);
+      const managedDetails = renderManagedDetails(item);
+      if (managedDetails) lane.append(managedDetails);
       const actions = document.createElement("div");
       actions.className = "actions";
       const copyResume = document.createElement("button");
@@ -576,6 +603,41 @@ def dashboard_page_html() -> str:
       }
       lane.append(actions);
       return lane;
+    }
+
+    function renderManagedDetails(item) {
+      if (!item.managed) return null;
+      const details = document.createElement("div");
+      details.className = "managed-details";
+
+      const title = document.createElement("div");
+      title.className = "managed-details-title";
+      title.textContent = "托管窗口";
+      details.append(title);
+
+      const bell = document.createElement("div");
+      bell.className = "managed-line";
+      bell.textContent = "bell 时间：" + text(item.managed_bell_event_at);
+      details.append(bell);
+
+      if (item.linked_session_id) {
+        const linked = document.createElement("div");
+        linked.className = "managed-line";
+        linked.textContent = "关联 session：" + item.linked_session_id;
+        details.append(linked);
+      }
+
+      const outputTitle = document.createElement("div");
+      outputTitle.className = "managed-line";
+      outputTitle.textContent = "最近输出";
+      details.append(outputTitle);
+
+      const excerpt = document.createElement("pre");
+      excerpt.className = "terminal-excerpt";
+      excerpt.textContent = item.managed_terminal_excerpt || "暂无可读输出";
+      details.append(excerpt);
+
+      return details;
     }
 
     async function copyResumeCommand(item, button) {

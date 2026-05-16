@@ -1067,6 +1067,10 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "suggested-action" in html
     assert "data-command-kind" in html
     assert "data-lane-name" in html
+    assert "renderManagedDetails" in html
+    assert "managed_terminal_excerpt" in html
+    assert "最近输出" in html
+    assert "bell 时间" in html
     assert "/managed/send" in html
     assert "/llm-action" in html
     assert "/events" in html

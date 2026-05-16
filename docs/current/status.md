@@ -70,6 +70,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     dashboard 会把同一工作目录下的托管 tmux lane 和最近真实 Codex
     session 合并成一个可控卡片；关联时会优先用只读 tmux pane 文本
     匹配 Codex 标题和用户消息；
+    web 托管卡片会展示 bell 时间、关联 session 和最近输出，
+    让人类直接看到 Supervisor 看到的托管窗口文本；
     web 已可分别复制 attach、状态请求和继续命令，并可通过
     `/managed/send` 执行 `send_status` 和 `send_continue` 两个白名单动作；
     web 已可通过手动“模型建议”按钮调用 `/llm-action`，展示 LLM
