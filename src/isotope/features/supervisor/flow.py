@@ -96,9 +96,35 @@ class CodexSessionSummary:
 
 
 @dataclass(frozen=True)
+class SupervisorActionRecommendation:
+    action: str
+    label: str
+    priority: str
+    reason: str | None = None
+    target_session_id: str | None = None
+    target_name: str | None = None
+    send_text: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "action": self.action,
+            "label": self.label,
+            "priority": self.priority,
+            "reason": self.reason,
+            "target_name": self.target_name,
+            "target_session_id": self.target_session_id,
+            "send_text": self.send_text,
+        }
+
+
+@dataclass(frozen=True)
 class CodexSupervisorReport:
     generated_at: str
     sessions: tuple[CodexSessionSummary, ...]
+
+    @property
+    def recommendation(self) -> SupervisorActionRecommendation:
+        return _recommendation(self.sessions)
 
     def to_dict(self) -> dict[str, Any]:
         counts = {status: 0 for status in STATUS_LABELS}
@@ -111,6 +137,7 @@ class CodexSupervisorReport:
                 "total": len(self.sessions),
                 "counts": counts,
             },
+            "recommendation": self.recommendation.to_dict(),
             "sessions": [session.to_dict() for session in self.sessions],
         }
 
@@ -221,7 +248,7 @@ def render_plain_report(report: CodexSupervisorReport) -> str:
             lines.append(f"   最近用户：{_shorten(session.last_user_message)}")
         if session.last_assistant_message:
             lines.append(f"   最近回复：{_shorten(session.last_assistant_message)}")
-    lines.append(f"建议：{_recommendation(report.sessions)}")
+    lines.append(f"建议：{report.recommendation.label}")
     return "\n".join(lines)
 
 
@@ -384,14 +411,61 @@ def _classify_session(
     return "idle", "暂时没有明显异常"
 
 
-def _recommendation(sessions: tuple[CodexSessionSummary, ...]) -> str:
-    if any(session.status == "needs_user" for session in sessions):
-        return "先处理等待用户确认的窗口。"
-    if any(session.status == "error" for session in sessions):
-        return "先查看疑似报错的窗口。"
-    if any(session.status == "stale" for session in sessions):
-        return "检查长时间没有新事件的窗口。"
-    return "当前没有明显需要介入的窗口。"
+def _recommendation(
+    sessions: tuple[CodexSessionSummary, ...],
+) -> SupervisorActionRecommendation:
+    if session := _first_session_with_status(sessions, "needs_user"):
+        return _session_recommendation(
+            session,
+            action="review_user_prompt",
+            label="先处理等待用户确认的窗口。",
+            priority="high",
+        )
+    if session := _first_session_with_status(sessions, "error"):
+        return _session_recommendation(
+            session,
+            action="inspect_error",
+            label="先查看疑似报错的窗口。",
+            priority="high",
+        )
+    if session := _first_session_with_status(sessions, "stale"):
+        return _session_recommendation(
+            session,
+            action="inspect_stale",
+            label="检查长时间没有新事件的窗口。",
+            priority="medium",
+        )
+    return SupervisorActionRecommendation(
+        action="monitor",
+        label="当前没有明显需要介入的窗口。",
+        priority="low",
+    )
+
+
+def _first_session_with_status(
+    sessions: tuple[CodexSessionSummary, ...], status: str
+) -> CodexSessionSummary | None:
+    for session in sessions:
+        if session.status == status:
+            return session
+    return None
+
+
+def _session_recommendation(
+    session: CodexSessionSummary,
+    *,
+    action: str,
+    label: str,
+    priority: str,
+) -> SupervisorActionRecommendation:
+    return SupervisorActionRecommendation(
+        action=action,
+        label=label,
+        priority=priority,
+        reason=session.reason,
+        target_session_id=session.session_id,
+        target_name=session.managed_name,
+    )
 
 
 def _looks_like_user_prompt(text: str) -> bool:

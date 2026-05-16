@@ -1,6 +1,6 @@
 # Codex Supervisor 监控与托管
 
-状态：`第二版小切片 / 本机监控 + tmux 控制通道`
+状态：`第二版小切片 / 本机监控 + 结构化建议 + tmux 控制通道`
 
 ## 目标
 
@@ -20,6 +20,7 @@ Codex Supervisor 用来观察、启动和轻量管理本机多个 Codex 进程�
 - 按最近事件时间排序，默认展示最近 10 个会话。
 - 用规则判断 `工作中`、`等待用户`、`疑似停住`、`疑似报错`、`空闲`。
 - 输出中文报告，也支持 JSON。
+- JSON 输出包含 `recommendation` 结构化建议，供后续半自动管理复用。
 - `watch --changes-only` 可持续运行，只在会话状态变化时重新输出。
 - `launch` 可启动一个 Codex 进程，并写入托管登记文件。
 - `launch --backend tmux` 可在本机 tmux 会话里启动 Codex。
@@ -57,6 +58,13 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --nam
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --json
 ```
 
+`scan --json` 里的 `recommendation` 当前只表达建议动作：
+
+- `review_user_prompt`：先看等待用户确认的窗口。
+- `inspect_error`：先看疑似报错的窗口。
+- `inspect_stale`：检查长时间没新事件的窗口。
+- `monitor`：当前无需明显介入。
+
 LLM 摘要：
 
 ```bash
@@ -90,7 +98,8 @@ api_keys = [
 默认 TOML 已被 `.gitignore` 屏蔽，明文 key 只适合放在本机配置里。
 `SUPERVISOR_LLM_MAX_TOKENS` 可控制摘要 token 上限，默认 `512`。
 
-`--llm-summary` 只发送压缩后的会话摘要，不发送完整 session 文件。
+`--llm-summary` 只发送压缩后的会话摘要和结构化建议，
+不发送完整 session 文件。
 
 托管登记：
 
@@ -105,6 +114,7 @@ api_keys = [
 
 - 不接管普通终端窗口；`launch` 启动的是托管 Codex 进程或 tmux 会话。
 - `send` 只支持 Supervisor 自己登记的 tmux 会话，不接管手动打开的窗口。
+- `recommendation` 只表示建议动作，不会自动调用 `send`。
 - 当前不会自己连续追问或自动续跑；发指令仍由用户或后续策略触发。
 - 不直接检查 SSH 服务器内部进程。
 - 不把完整日志发给 LLM，只发送短摘要和状态字段。

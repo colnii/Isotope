@@ -147,21 +147,30 @@
 71. Codex Supervisor 控制通道：`isotope-supervisor send` 可向
     Supervisor 登记的 tmux 会话发送一行文本并回车，已用真实 tmux
     会话烟测中文输入。
+72. Codex Supervisor 结构化建议：`scan --json` 已输出
+    `recommendation` 建议对象，LLM 摘要输入也会携带该对象。
 
-## 最近完成：Codex Supervisor 控制通道
+## 最近完成：Codex Supervisor 结构化建议
 
 完成内容：
 
-- `send --name <lane> --text <text>` 可给托管 tmux Codex 发送一行文本。
-- `send` 只使用 Supervisor 登记表里的最新同名记录，不接管普通终端窗口。
-- 非 tmux 托管记录会返回错误，避免对无 stdin 控制通道的进程误发。
-- tmux 发送使用 `send-keys -l` 写入原文，再发送 `Enter`。
+- `scan --json` 新增 `recommendation` 对象，包含 action、priority、
+  target_session_id、target_name、reason 和 send_text。
+- 当前建议动作包括 `review_user_prompt`、`inspect_error`、
+  `inspect_stale` 和 `monitor`。
+- plain 文本继续显示原中文建议，保持人类阅读体验。
+- `--llm-summary` 的压缩上下文会带上结构化建议，不发送完整 session 文件。
+- 当前不会自动调用 `send`，只是为后续半自动管理提供稳定字段。
 - 同步 [application-structure-plan](./application-structure-plan.md)、
   [terminology](./terminology.md)、[status](./status.md) 和
   [codex-supervisor-readonly](./codex-supervisor-readonly.md)。
 
 上一批已完成：
 
+- `send --name <lane> --text <text>` 可给托管 tmux Codex 发送一行文本。
+- `send` 只使用 Supervisor 登记表里的最新同名记录，不接管普通终端窗口。
+- 非 tmux 托管记录会返回错误，避免对无 stdin 控制通道的进程误发。
+- tmux 发送使用 `send-keys -l` 写入原文，再发送 `Enter`。
 - 新增 `features/supervisor`，按产品功能而不是底座模块组织。
 - 可读取本机 Codex session（会话记录）并按最近事件排序。
 - 可识别 `工作中`、`等待用户`、`疑似停住`、`疑似报错` 和 `空闲`。

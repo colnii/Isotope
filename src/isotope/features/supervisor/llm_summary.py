@@ -156,6 +156,7 @@ def build_llm_summary_messages(report: CodexSupervisorReport) -> list[dict[str, 
             "content": json.dumps(
                 {
                     "generated_at": report.generated_at,
+                    "recommendation": report.recommendation.to_dict(),
                     "sessions": compact_sessions,
                     "output_requirements": [
                         "用中文输出 3-6 行",

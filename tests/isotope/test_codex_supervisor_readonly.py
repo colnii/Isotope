@@ -106,6 +106,62 @@ def test_codex_supervisor_plain_report_is_human_readable(tmp_path):
     assert "建议：先处理等待用户确认的窗口。" in text
 
 
+def test_codex_supervisor_report_includes_structured_action_recommendation(tmp_path):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-attention.jsonl",
+        session_id="attention-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _assistant_message("2026-05-16T11:58:00Z", "需要你确认是否继续。"),
+        ],
+    )
+
+    report = CodexSupervisorFlow(codex_home=codex_home, now=lambda: NOW).scan(limit=5)
+    payload = report.to_dict()
+
+    assert payload["recommendation"] == {
+        "action": "review_user_prompt",
+        "label": "先处理等待用户确认的窗口。",
+        "priority": "high",
+        "reason": "最近回复像是在等待用户确认",
+        "target_name": None,
+        "target_session_id": "attention-session",
+        "send_text": None,
+    }
+    assert render_plain_report(report).endswith("建议：先处理等待用户确认的窗口。")
+
+
+def test_codex_supervisor_report_recommends_monitor_when_no_attention(tmp_path):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-active.jsonl",
+        session_id="active-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "reading files"},
+            )
+        ],
+    )
+
+    payload = CodexSupervisorFlow(codex_home=codex_home, now=lambda: NOW).scan().to_dict()
+
+    assert payload["recommendation"] == {
+        "action": "monitor",
+        "label": "当前没有明显需要介入的窗口。",
+        "priority": "low",
+        "reason": None,
+        "target_name": None,
+        "target_session_id": None,
+        "send_text": None,
+    }
+
+
 def test_codex_supervisor_report_serializes_to_json_shape(tmp_path):
     codex_home = tmp_path / ".codex"
     _write_session(
@@ -783,6 +839,8 @@ def test_codex_supervisor_llm_messages_use_compact_session_context(tmp_path):
     assert messages[0]["role"] == "system"
     assert "中文" in messages[0]["content"]
     assert "active-session" in messages[1]["content"]
+    assert '"recommendation"' in messages[1]["content"]
+    assert '"action": "monitor"' in messages[1]["content"]
     assert "source_path" not in messages[1]["content"]
     assert len(messages[1]["content"]) < 1500
 
