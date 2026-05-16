@@ -195,11 +195,16 @@ def dashboard_page_html() -> str:
       color: var(--muted);
     }
     .summary,
+    .evidence,
     .path,
     .command {
       color: var(--muted);
       font-size: 13px;
       overflow-wrap: anywhere;
+    }
+    .evidence {
+      margin-top: 2px;
+      color: #475467;
     }
     .command {
       margin-top: 8px;
@@ -287,6 +292,14 @@ def dashboard_page_html() -> str:
       summary.className = "summary";
       summary.textContent = item.supervisor_summary || item.reason;
 
+      const evidence = document.createElement("div");
+      evidence.className = "evidence";
+      if (item.status_evidence) {
+        evidence.textContent = "依据：" + item.status_evidence.label + " - " + item.status_evidence.detail;
+      } else {
+        evidence.textContent = "依据：无";
+      }
+
       const path = document.createElement("div");
       path.className = "path";
       path.textContent = [
@@ -299,7 +312,7 @@ def dashboard_page_html() -> str:
         .filter(Boolean)
         .join(" · ");
 
-      lane.append(title, summary, path);
+      lane.append(title, summary, evidence, path);
       const actions = document.createElement("div");
       actions.className = "actions";
       const copyResume = document.createElement("button");

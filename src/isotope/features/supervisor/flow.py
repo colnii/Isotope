@@ -61,6 +61,7 @@ class CodexSessionSummary:
     age_seconds: int
     status: str
     reason: str
+    status_evidence: dict[str, str] | None = None
     thread_name: str | None = None
     thread_id: str | None = None
     initial_user_title: str | None = None
@@ -118,6 +119,7 @@ class CodexSessionSummary:
             "status": self.status,
             "status_label": self.status_label,
             "reason": self.reason,
+            "status_evidence": self.status_evidence,
             "thread_name": self.thread_name,
             "thread_id": self.thread_id,
             "initial_user_title": self.initial_user_title,
@@ -342,6 +344,11 @@ def render_plain_report(report: CodexSupervisorReport) -> str:
         if session.supervisor_next:
             lines.append(f"   Supervisor 下一步：{_shorten(session.supervisor_next)}")
         lines.append(f"   原因：{session.reason}")
+        if session.status_evidence:
+            lines.append(
+                "   依据："
+                f"{session.status_evidence['label']} - {session.status_evidence['detail']}"
+            )
         if session.last_user_message:
             lines.append(f"   最近用户：{_shorten(session.last_user_message)}")
         if session.last_assistant_message:
@@ -419,13 +426,15 @@ def _read_session_summary(
         thread_name = session_index_titles.get(session_id)
     cwd = str(meta.get("cwd") or "")
     age_seconds = max(0, int((now - last_event_at).total_seconds()))
-    status, reason = _classify_session(
+    status, reason, status_evidence = _classify_session(
         age_seconds=age_seconds,
         last_assistant_message=last_assistant_message,
         last_text=last_text,
         stale_after_seconds=stale_after_seconds,
         active_within_seconds=active_within_seconds,
     )
+    if supervisor_status:
+        status_evidence = _supervisor_status_evidence(supervisor_status)
     return CodexSessionSummary(
         session_id=session_id,
         cwd=cwd,
@@ -435,6 +444,7 @@ def _read_session_summary(
         age_seconds=age_seconds,
         status=status,
         reason=reason,
+        status_evidence=status_evidence,
         thread_name=thread_name,
         thread_id=thread_id,
         initial_user_title=_title_from_user_message(first_user_message),
@@ -576,12 +586,30 @@ def _managed_summary(
             if is_running
             else "Supervisor 托管 tmux 会话已退出"
         )
+        status_evidence = (
+            {
+                "source": "tmux_bell",
+                "label": "tmux 响铃",
+                "detail": f"检测到 bell 信号：{managed_bell_event_at or record.tmux_session}",
+            }
+            if managed_bell
+            else {
+                "source": "managed_tmux",
+                "label": "托管 tmux 状态",
+                "detail": "tmux 会话仍在运行" if is_running else "tmux 会话已退出",
+            }
+        )
     else:
         is_running = process_checker(record.pid)
         managed_bell = False
         managed_bell_event_at = None
         status = "working" if is_running else "exited"
         reason = "Supervisor 托管进程已启动" if is_running else "Supervisor 托管进程已退出"
+        status_evidence = {
+            "source": "managed_process",
+            "label": "托管进程状态",
+            "detail": f"pid {record.pid} 仍在运行" if is_running else f"pid {record.pid} 已退出",
+        }
     return CodexSessionSummary(
         session_id=f"managed:{record.record_id}",
         cwd=record.cwd,
@@ -591,6 +619,7 @@ def _managed_summary(
         age_seconds=age_seconds,
         status=status,
         reason=reason,
+        status_evidence=status_evidence,
         last_user_message=record.prompt,
         managed=True,
         managed_name=record.name,
@@ -660,18 +689,66 @@ def _classify_session(
     last_text: str | None,
     stale_after_seconds: int,
     active_within_seconds: int,
-) -> tuple[str, str]:
+) -> tuple[str, str, dict[str, str]]:
     text = (last_text or "").lower()
     if _looks_like_error_signal(text):
-        return "error", "最近事件包含错误信号"
+        return (
+            "error",
+            "最近事件包含错误信号",
+            {
+                "source": "error_marker",
+                "label": "文本命中错误",
+                "detail": "最近事件包含错误类表达",
+            },
+        )
     assistant_text = (last_assistant_message or "").lower()
     if _looks_like_user_prompt(assistant_text):
-        return "needs_user", "最近回复像是在等待用户确认"
+        return (
+            "needs_user",
+            "最近回复像是在等待用户确认",
+            {
+                "source": "attention_marker",
+                "label": "文本命中等待用户",
+                "detail": "最近回复包含确认类表达",
+            },
+        )
     if age_seconds >= stale_after_seconds:
-        return "stale", f"超过 {stale_after_seconds // 60} 分钟没有新事件"
+        return (
+            "stale",
+            f"超过 {stale_after_seconds // 60} 分钟没有新事件",
+            {
+                "source": "stale_timeout",
+                "label": "超过静默阈值",
+                "detail": f"{age_seconds} 秒没有新事件，阈值 {stale_after_seconds} 秒",
+            },
+        )
     if age_seconds <= active_within_seconds:
-        return "working", "最近仍有 Codex 事件"
-    return "idle", "暂时没有明显异常"
+        return (
+            "working",
+            "最近仍有 Codex 事件",
+            {
+                "source": "recent_event",
+                "label": "最近仍有事件",
+                "detail": f"{age_seconds} 秒前有新事件",
+            },
+        )
+    return (
+        "idle",
+        "暂时没有明显异常",
+        {
+            "source": "idle_window",
+            "label": "未命中异常规则",
+            "detail": f"{age_seconds} 秒没有新事件，未超过阈值 {stale_after_seconds} 秒",
+        },
+    )
+
+
+def _supervisor_status_evidence(status: str) -> dict[str, str]:
+    return {
+        "source": "supervisor_protocol",
+        "label": "主动状态协议",
+        "detail": f"SUPERVISOR_STATUS: {status}",
+    }
 
 
 def _recommendation(

@@ -67,6 +67,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     dashboard 和 web 已显示 SQLite 标题、索引标题、首条用户消息标题、
     agent 元数据和短 hash，并可复制完整 `codex resume <session_id>`；
     scan 已改为最近候选和大文件首尾读取，降低页面刷新延迟；
+    scan、dashboard 和 web 已输出 `status_evidence` 状态依据，
+    说明当前标签来自状态协议、文本规则、超时、bell 或托管检查；
     `supervise` 可循环执行扫描、建议、可选 LLM 摘要和显式 send；
     `send` 可向托管 tmux 会话发送一行指令；`scan` 已能把托管
     tmux 会话的 bell（提醒）信号写入 plain、JSON 和 LLM 摘要输入；

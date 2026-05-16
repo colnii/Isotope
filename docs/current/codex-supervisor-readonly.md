@@ -32,6 +32,8 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
 - 扫描会优先处理最近候选会话；大 JSONL 只读开头和尾部，避免页面刷新卡顿。
 - 按最近事件时间排序，默认展示最近 10 个会话。
 - 用规则判断 `工作中`、`等待用户`、`疑似停住`、`疑似报错`、`空闲`。
+- 每个状态会带 `status_evidence`（状态依据），说明来自规则、
+  状态协议、tmux bell 还是托管进程检查。
 - 输出中文报告，也支持 JSON。
 - JSON 输出包含 `recommendation` 结构化建议，供后续半自动管理复用。
 - `advise` 可只输出当前建议和可复制命令草案。
@@ -99,7 +101,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 - `done`：主动汇报完成的窗口。
 - `working`：仍在推进或暂无明显异常的窗口。
 - JSON 保留 session id、短 hash、Codex 标题、agent 名、状态、
-  resume 命令、tmux session、bell、摘要和下一步字段。
+  状态依据、resume 命令、tmux session、bell、摘要和下一步字段。
 
 `web` 是当前本地前端薄入口：
 
@@ -111,6 +113,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 页面会读取 `/dashboard.json`，并按 `需要看`、`已完成`、`工作中`
 三组展示窗口；有 tmux session 的条目会显示 attach 命令。
 页面标题优先使用托管名，其次使用 Codex 自带标题、首条用户消息、agent 名和短 hash。
+每个窗口会显示“依据”，用来解释当前标签为什么被判成等待用户、停住或工作中。
 每个窗口提供 `复制 resume`，会复制完整 `codex resume <session_id>`。
 当前页面使用 Python 标准库 HTTP server 和内联 HTML/CSS/JS，
 不引入额外前端依赖。
@@ -190,7 +193,7 @@ api_keys = [
 默认 TOML 已被 `.gitignore` 屏蔽，明文 key 只适合放在本机配置里。
 `SUPERVISOR_LLM_MAX_TOKENS` 可控制摘要 token 上限，默认 `512`。
 
-`--llm-summary` 只发送压缩后的会话摘要和结构化建议，
+`--llm-summary` 只发送压缩后的会话摘要、状态依据和结构化建议，
 不发送完整 session 文件。
 
 托管登记：
@@ -219,6 +222,17 @@ SUPERVISOR_STATUS: working|done|blocked|needs_user
 SUPERVISOR_SUMMARY: 用一句中文说明当前状态
 SUPERVISOR_NEXT: 用一句中文说明建议下一步
 ```
+
+状态依据：
+
+- `supervisor_protocol`：被托管 Codex 主动写了 `SUPERVISOR_STATUS`。
+- `attention_marker`：最近助手回复命中了确认类文本。
+- `stale_timeout`：超过静默阈值没有新事件。
+- `recent_event`：最近仍有 Codex 事件。
+- `idle_window`：未命中异常规则，也还没超过静默阈值。
+- `error_marker`：最近事件命中错误类文本。
+- `tmux_bell`：托管 tmux 窗口触发 bell。
+- `managed_tmux` / `managed_process`：来自托管会话或进程状态检查。
 
 人类同步观察：
 

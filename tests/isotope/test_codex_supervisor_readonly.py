@@ -87,10 +87,25 @@ def test_codex_supervisor_discovers_sessions_and_classifies_attention(tmp_path):
     ]
     assert report.sessions[0].status == "working"
     assert report.sessions[0].git_branch == "main"
+    assert report.sessions[0].to_dict()["status_evidence"] == {
+        "source": "recent_event",
+        "label": "最近仍有事件",
+        "detail": "60 秒前有新事件",
+    }
     assert report.sessions[1].status == "needs_user"
     assert report.sessions[1].reason == "最近回复像是在等待用户确认"
+    assert report.sessions[1].to_dict()["status_evidence"] == {
+        "source": "attention_marker",
+        "label": "文本命中等待用户",
+        "detail": "最近回复包含确认类表达",
+    }
     assert report.sessions[2].status == "stale"
     assert report.sessions[2].reason == "超过 10 分钟没有新事件"
+    assert report.sessions[2].to_dict()["status_evidence"] == {
+        "source": "stale_timeout",
+        "label": "超过静默阈值",
+        "detail": "1200 秒没有新事件，阈值 600 秒",
+    }
 
 
 def test_codex_supervisor_plain_report_is_human_readable(tmp_path):
@@ -113,6 +128,7 @@ def test_codex_supervisor_plain_report_is_human_readable(tmp_path):
     assert "attention-session" in text
     assert "状态：等待用户" in text
     assert "最近用户：好，下一步" in text
+    assert "依据：文本命中等待用户 - 最近回复包含确认类表达" in text
     assert "建议：先处理等待用户确认的窗口。" in text
 
 
@@ -190,6 +206,7 @@ def test_codex_supervisor_report_serializes_to_json_shape(tmp_path):
     assert payload["summary"]["total"] == 1
     assert payload["sessions"][0]["session_id"] == "active-session"
     assert payload["sessions"][0]["status_label"] == "工作中"
+    assert payload["sessions"][0]["status_evidence"]["source"] == "recent_event"
 
 
 def test_codex_supervisor_scan_parses_supervisor_status_protocol(tmp_path):
@@ -224,6 +241,7 @@ def test_codex_supervisor_scan_parses_supervisor_status_protocol(tmp_path):
     assert "Supervisor 状态：done" in render_plain_report(report)
     messages = build_llm_summary_messages(report)
     assert '"supervisor_status": "done"' in messages[1]["content"]
+    assert '"source": "supervisor_protocol"' in messages[1]["content"]
     assert "等待用户确认后继续状态协议下一片" in messages[1]["content"]
 
 
@@ -683,6 +701,11 @@ def test_codex_supervisor_runner_dashboard_json_groups_lanes(tmp_path, capsys):
     assert payload["groups"]["needs_attention"][0]["supervisor_summary"] == (
         "测试环境缺少 tmux。"
     )
+    assert payload["groups"]["needs_attention"][0]["status_evidence"] == {
+        "source": "supervisor_protocol",
+        "label": "主动状态协议",
+        "detail": "SUPERVISOR_STATUS: blocked",
+    }
 
 
 def test_codex_supervisor_dashboard_json_includes_display_title_and_short_hash(
@@ -836,6 +859,8 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "short_session_id" in html
     assert "display_title" in html
     assert "copyResumeCommand" in html
+    assert "status_evidence" in html
+    assert "依据：" in html
     assert "codex resume " in html
     assert "Codex Supervisor" in html
     assert "dashboard.json" in html
@@ -843,6 +868,9 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert payload["status"] == "ok"
     assert payload["counts"]["needs_attention"] == 1
     assert payload["groups"]["needs_attention"][0]["session_id"] == "blocked-session"
+    assert payload["groups"]["needs_attention"][0]["status_evidence"]["source"] == (
+        "supervisor_protocol"
+    )
 
 
 def test_codex_supervisor_runner_web_print_url_exits(tmp_path, capsys):

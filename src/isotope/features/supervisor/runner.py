@@ -461,6 +461,7 @@ def _dashboard_item(session: Any) -> dict[str, Any]:
         "git_branch": session.git_branch,
         "status": session.status,
         "status_label": session.status_label,
+        "status_evidence": session.status_evidence,
         "supervisor_status": session.supervisor_status,
         "supervisor_summary": session.supervisor_summary,
         "supervisor_next": session.supervisor_next,
@@ -487,6 +488,9 @@ def _print_dashboard_plain(payload: dict[str, Any]) -> None:
             detail = item["supervisor_summary"] or item["reason"]
             suffix = _dashboard_item_suffix(item)
             print(f"- {title} {status} / {detail}{suffix}")
+            if item["status_evidence"]:
+                evidence = item["status_evidence"]
+                print(f"  依据：{evidence['label']} - {evidence['detail']}")
 
 
 def _dashboard_item_suffix(item: dict[str, Any]) -> str:
@@ -708,6 +712,7 @@ def _report_fingerprint(report: Any) -> tuple[object, ...]:
             session.last_event_at,
             session.status,
             session.reason,
+            session.status_evidence,
             session.last_user_message,
             session.last_assistant_message,
             session.managed_bell,

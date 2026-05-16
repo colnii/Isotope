@@ -63,6 +63,11 @@
 | `Codex session` | Codex 会话记录，本机通常保存在 `~/.codex/sessions` | 外部集成 | `src/isotope/features/supervisor/flow.py` |
 | `managed Codex` | Supervisor 启动或接管并登记的 Codex 会话，可通过 pid、tmux session 和日志路径追踪 | 产品功能/外部集成 | `src/isotope/features/supervisor/registry.py` |
 | `recommendation` | 结构化建议，表达下一步建议动作、优先级和目标窗口，不等于自动执行 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
+| `status_evidence` | 状态依据，解释 Supervisor 为什么把窗口判为工作中、等待用户、停住或报错 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/web.py` |
+| `supervisor_protocol` | 状态依据来源，表示被托管 Codex 主动写了 `SUPERVISOR_STATUS` | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
+| `attention_marker` | 状态依据来源，表示最近助手回复命中确认类文本 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
+| `stale_timeout` | 状态依据来源，表示超过静默阈值没有新事件 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
+| `recent_event` | 状态依据来源，表示最近仍有 Codex 事件 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
 | `dashboard` | Supervisor 汇总视图，按需要看、已完成和工作中分组，供人类和后续前端使用 | 产品功能/视图 | `src/isotope/features/supervisor/runner.py` |
 | `dashboard web` | Supervisor 本机页面，读取 `/dashboard.json` 并渲染三组窗口 | 产品功能/视图 | `src/isotope/features/supervisor/web.py` |
 | `display_title` | Supervisor 截断后的展示标题，优先托管名、Codex 标题、首条用户消息、agent 名和短 session id | 产品功能/视图 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/runner.py` |

@@ -21,6 +21,7 @@ Codex Supervisor 已经不只是一个小命令。
 | 扫描优化层 | 最近候选、首尾读取和标题兜底 | `features/supervisor/flow.py` | 避免每次页面刷新全量读历史 |
 | tmux 集成层 | tmux 启动、`send-keys` 和 bell hook | `bell_events.py`、`flow.py`、`registry.py` | 只控制登记过的 tmux 会话 |
 | 状态判断层 | 工作中、等待用户、疑似停住、疑似报错 | `features/supervisor/flow.py` | 规则判断，不等于模型判断 |
+| 状态依据层 | `status_evidence` 说明每个状态标签的来源 | `features/supervisor/flow.py` | 避免只给结论、不说明证据 |
 | 建议执行层 | `recommendation`、`command_suggestions`、`--execute` | `flow.py`、`runner.py` | 只允许白名单动作 |
 | 模型管理层 | `LLM summary` 和 TOML 号池 | `llm_summary.py` | 当前先做摘要，后续承担白名单内动作选择 |
 | 状态协议层 | `SUPERVISOR_STATUS` 等状态协议 | `flow.py`、`registry.py` | 给被托管 Codex 主动汇报状态 |
@@ -38,6 +39,7 @@ Codex Supervisor 已经不只是一个小命令。
 - 超过阈值的大 session 文件只读取开头和尾部。
 - 读取 `agent_nickname` 和 `agent_role`，补充 agent 元数据。
 - 识别工作中、等待用户、疑似停住、疑似报错、空闲和已退出。
+- 每个状态带 `status_evidence`，说明来自状态协议、文本规则、超时、bell 或托管检查。
 - 输出中文 plain 报告和 JSON 报告。
 - `dashboard` 按需要看、已完成和工作中分组。
 - `dashboard` 保留可读标题、短 hash、Codex 标题和 agent 元数据。
@@ -71,11 +73,13 @@ Codex Supervisor 已经不只是一个小命令。
 - 不要绕过托管登记表直接写新的 tmux 发送器。
 - 不要给 Supervisor 再造一套独立 LLM 号池。
 - 不要另写状态分类系统，除非同步更新本文件。
+- 不要只展示状态标签而不展示判断依据。
 - 不要另写一套 dashboard 数据接口，先复用 `/dashboard.json`。
 - LLM 动作选择必须落到可审计的白名单能力上。
 
 ## 后续拆分方向
 
+- `features/supervisor/status.py`：后续可下沉状态分类和状态依据生成。
 - `features/supervisor/advice.py`：建议、命令草案和执行白名单。
 - `features/supervisor/protocol.py`：后续可下沉状态协议解析和提示语注入。
 - `features/supervisor/tmux_control.py`：后续可下沉 tmux 会话、发送和 bell hook。

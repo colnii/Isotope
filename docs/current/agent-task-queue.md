@@ -185,8 +185,25 @@
     `resume_command`；`web` 可复制 `codex resume <session_id>`。
 87. Codex Supervisor 刷新优化：`scan` 已改为最近候选读取，
     大 JSONL 只读开头和尾部；标题缺失时用首条用户消息截断兜底。
+88. Codex Supervisor 状态依据：`scan`、`dashboard` 和 `web`
+    已输出 `status_evidence`，说明状态标签来自状态协议、文本规则、
+    超时、bell 或托管检查。
 
-## 最近完成：Codex Supervisor 可读标题
+## 最近完成：Codex Supervisor 状态依据
+
+完成内容：
+
+- 会话摘要新增 `status_evidence` 状态依据字段。
+- `scan --json`、`dashboard --json` 和 `/dashboard.json` 都保留该字段。
+- plain 输出会在原因后显示“依据”。
+- 本地页面会在每个窗口卡片里显示判断依据。
+- 主动 `SUPERVISOR_STATUS` 的依据显示为状态协议。
+- 普通规则会区分确认类文本、静默超时、最近事件、空闲窗口和错误文本。
+- 托管会话会区分 tmux bell、tmux 会话状态和普通进程状态。
+
+上一批已完成：
+
+## Codex Supervisor 可读标题
 
 完成内容：
 
