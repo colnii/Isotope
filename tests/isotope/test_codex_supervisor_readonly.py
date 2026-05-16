@@ -757,6 +757,61 @@ def test_codex_supervisor_dashboard_json_includes_display_title_and_short_hash(
     assert item["resume_command"] == "codex resume 019e2e4f-d541-72f1-9269-471aa50bc2f2"
 
 
+def test_codex_supervisor_dashboard_json_includes_managed_control_commands(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "dashboard",
+            "--codex-home",
+            str(codex_home),
+            "--limit",
+            "1",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    item = payload["groups"]["working"][0]
+    assert item["name"] == "lane-a"
+    assert item["control_commands"] == [
+        {
+            "command": "tmux attach -t isotope-lane-a",
+            "kind": "tmux_attach",
+            "label": "打开托管 tmux 窗口",
+        },
+        {
+            "command": "isotope-supervisor send --name lane-a --text '请汇报当前状态'",
+            "kind": "send_status",
+            "label": "让托管 Codex 汇报状态",
+        },
+        {
+            "command": (
+                "isotope-supervisor send --name lane-a --text "
+                "'继续推进，并在完成后汇报当前状态'"
+            ),
+            "kind": "send_continue",
+            "label": "让托管 Codex 继续推进",
+        },
+    ]
+
+
 def test_codex_supervisor_runner_dashboard_plain_is_grouped(tmp_path, capsys):
     codex_home = tmp_path / ".codex"
     _write_session(
@@ -859,6 +914,9 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "short_session_id" in html
     assert "display_title" in html
     assert "copyResumeCommand" in html
+    assert "copyControlCommand" in html
+    assert "sendManagedCommand" in html
+    assert "/managed/send" in html
     assert "status_evidence" in html
     assert "依据：" in html
     assert "codex resume " in html
@@ -871,6 +929,110 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert payload["groups"]["needs_attention"][0]["status_evidence"]["source"] == (
         "supervisor_protocol"
     )
+
+
+def test_codex_supervisor_web_can_send_allowed_managed_command(tmp_path):
+    from isotope.features.supervisor.web import create_dashboard_server
+
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        assert check is True
+        assert text is True
+        assert capture_output is True
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    server = create_dashboard_server(
+        codex_home=codex_home,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+        send_run=fake_run,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        body = json.dumps({"name": "lane-a", "kind": "send_status"}).encode("utf-8")
+        conn.request(
+            "POST",
+            "/managed/send",
+            body,
+            {"content-type": "application/json"},
+        )
+        response = conn.getresponse()
+        payload = json.loads(response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert response.status == 200
+    assert payload["status"] == "ok"
+    assert payload["kind"] == "send_status"
+    assert payload["text"] == "请汇报当前状态"
+    assert payload["managed"]["tmux_session"] == "isotope-lane-a"
+    assert calls == [
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", "请汇报当前状态"],
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "Enter"],
+    ]
+    lane_state = json.loads(
+        (codex_home / "supervisor" / "lane_state.json").read_text(encoding="utf-8")
+    )
+    assert lane_state["lane-a"]["last_status"] == "send_status"
+    assert lane_state["lane-a"]["prompt_count"] == 1
+
+
+def test_codex_supervisor_web_rejects_unsupported_managed_command(tmp_path):
+    from isotope.features.supervisor.web import create_dashboard_server
+
+    codex_home = tmp_path / ".codex"
+
+    server = create_dashboard_server(
+        codex_home=codex_home,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        body = json.dumps({"name": "lane-a", "kind": "tmux_attach"}).encode("utf-8")
+        conn.request(
+            "POST",
+            "/managed/send",
+            body,
+            {"content-type": "application/json"},
+        )
+        response = conn.getresponse()
+        payload = json.loads(response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert response.status == 400
+    assert payload["status"] == "error"
+    assert payload["error"]["code"] == "codex_supervisor_web_error"
+    assert "send_status" in payload["error"]["message"]
 
 
 def test_codex_supervisor_runner_web_print_url_exits(tmp_path, capsys):
@@ -2991,6 +3153,31 @@ def _write_state_threads(codex_home: Path, *, session_id: str, title: str) -> No
         connection.commit()
     finally:
         connection.close()
+
+
+def _write_managed_tmux_record(codex_home: Path, *, workspace: Path) -> None:
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "lane-a",
+                "cwd": str(workspace),
+                "prompt": "等待输入",
+                "command": ["tmux", "new-session", "-d", "-s", "isotope-lane-a"],
+                "pid": 0,
+                "started_at": NOW.isoformat(),
+                "log_path": str(codex_home / "supervisor" / "logs" / "managed-001.log"),
+                "status": "launched",
+                "backend": "tmux",
+                "tmux_session": "isotope-lane-a",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
 
 
 def _event(timestamp: str, type_: str, payload: dict[str, object]) -> dict[str, object]:

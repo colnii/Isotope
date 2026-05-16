@@ -188,8 +188,25 @@
 88. Codex Supervisor 状态依据：`scan`、`dashboard` 和 `web`
     已输出 `status_evidence`，说明状态标签来自状态协议、文本规则、
     超时、bell 或托管检查。
+89. Codex Supervisor web 受控操作：`dashboard` 已给托管 tmux lane
+    输出 `control_commands`，`web` 可复制 attach/send 命令，并通过
+    `/managed/send` 执行 `send_status` 和 `send_continue`。
 
-## 最近完成：Codex Supervisor 状态依据
+## 最近完成：Codex Supervisor web 受控操作
+
+完成内容：
+
+- `dashboard --json` 和 `/dashboard.json` 给托管 tmux 窗口输出
+  `control_commands`。
+- 本地页面新增复制 attach、复制 send 命令、请求状态和继续按钮。
+- `/managed/send` 只接受 `send_status` 和 `send_continue`。
+- 发送仍复用 `send_to_managed_codex` 和 tmux `send-keys`。
+- 成功发送后会记录 lane state 的最近催促时间和次数。
+- 页面不提供任意文本发送框。
+
+上一批已完成：
+
+## Codex Supervisor 状态依据
 
 完成内容：
 

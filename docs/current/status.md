@@ -66,6 +66,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `web` 可启动本机页面并复用 `/dashboard.json` 展示三组窗口；
     dashboard 和 web 已显示 SQLite 标题、索引标题、首条用户消息标题、
     agent 元数据和短 hash，并可复制完整 `codex resume <session_id>`；
+    web 已可复制 attach/send 命令，并可通过 `/managed/send` 执行
+    `send_status` 和 `send_continue` 两个白名单动作；
     scan 已改为最近候选和大文件首尾读取，降低页面刷新延迟；
     scan、dashboard 和 web 已输出 `status_evidence` 状态依据，
     说明当前标签来自状态协议、文本规则、超时、bell 或托管检查；

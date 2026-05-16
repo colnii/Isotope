@@ -40,6 +40,8 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
 - `dashboard` 可按 `需要看`、`已完成`、`工作中` 分组显示，
   并保留可读标题和短 hash。
 - `web` 可启动本机页面，展示 `dashboard` 的三组窗口和可读标题。
+- `web` 会给托管 tmux 窗口显示复制 attach、复制 send 命令、
+  请求状态和继续推进按钮。
 - `supervise` 可按间隔循环执行扫描、建议、可选 LLM 摘要和显式 send。
 - `--prompt-cooldown` 可避免短时间重复催促同一个托管 lane。
 - `watch --changes-only` 可持续运行，只在会话状态变化时重新输出。
@@ -101,7 +103,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 - `done`：主动汇报完成的窗口。
 - `working`：仍在推进或暂无明显异常的窗口。
 - JSON 保留 session id、短 hash、Codex 标题、agent 名、状态、
-  状态依据、resume 命令、tmux session、bell、摘要和下一步字段。
+  状态依据、resume 命令、受控命令、tmux session、bell、摘要和下一步字段。
 
 `web` 是当前本地前端薄入口：
 
@@ -115,6 +117,9 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 页面标题优先使用托管名，其次使用 Codex 自带标题、首条用户消息、agent 名和短 hash。
 每个窗口会显示“依据”，用来解释当前标签为什么被判成等待用户、停住或工作中。
 每个窗口提供 `复制 resume`，会复制完整 `codex resume <session_id>`。
+托管 tmux 窗口还会显示复制 attach、复制 send 命令、请求状态和继续按钮。
+页面发送按钮调用 `/managed/send`，只允许 `send_status` 和 `send_continue`。
+成功发送后会更新 lane state（窗口状态账本）的最近催促时间和次数。
 当前页面使用 Python 标准库 HTTP server 和内联 HTML/CSS/JS，
 不引入额外前端依赖。
 
@@ -248,6 +253,8 @@ tmux attach -t isotope-lane-a
 - 不接管普通终端窗口；当前控制通道依赖已登记的 tmux 会话。
 - `send` 只支持 Supervisor 登记过的 tmux 会话。
 - `web` 只监听本机默认地址，不提供认证和远程访问能力。
+- `web` 的 `/managed/send` 只接受 `send_status` 和 `send_continue`。
+- `/managed/send` 成功发送后会记录 lane state。
 - `recommendation` 只表示建议动作，不会自动调用 `send`。
 - `advise` 默认只生成命令草案；`--execute` 只允许执行
   `send_status` 和 `send_continue`。

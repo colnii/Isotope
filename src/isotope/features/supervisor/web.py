@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urlparse
 
 from .flow import CodexSupervisorFlow
-from .runner import _dashboard_payload
+from .lane_state import record_lane_prompt
+from .registry import send_to_managed_codex
+from .runner import EXECUTABLE_ADVICE_KINDS, EXECUTABLE_ADVICE_TEXT, _dashboard_payload
 
 
 class SupervisorDashboardServer(ThreadingHTTPServer):
@@ -21,12 +24,14 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         limit: int,
         stale_after_seconds: int,
         active_within_seconds: int,
+        send_run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
     ) -> None:
         super().__init__(server_address, _DashboardRequestHandler)
         self.codex_home = codex_home
         self.limit = limit
         self.stale_after_seconds = stale_after_seconds
         self.active_within_seconds = active_within_seconds
+        self.send_run = send_run
 
     def dashboard_payload(self) -> dict[str, Any]:
         report = CodexSupervisorFlow(codex_home=self.codex_home).scan(
@@ -45,6 +50,7 @@ def create_dashboard_server(
     limit: int,
     stale_after_seconds: int,
     active_within_seconds: int,
+    send_run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> SupervisorDashboardServer:
     return SupervisorDashboardServer(
         (host, port),
@@ -52,6 +58,7 @@ def create_dashboard_server(
         limit=limit,
         stale_after_seconds=stale_after_seconds,
         active_within_seconds=active_within_seconds,
+        send_run=send_run,
     )
 
 
@@ -72,8 +79,81 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         self.send_error(404, "not found")
 
+    def do_POST(self) -> None:
+        path = urlparse(self.path).path
+        if path == "/managed/send":
+            self._send_managed_command()
+            return
+        self._send_json(
+            {
+                "status": "error",
+                "error": {
+                    "code": "codex_supervisor_web_error",
+                    "message": "unknown endpoint",
+                },
+            },
+            status_code=404,
+        )
+
     def log_message(self, format: str, *args: object) -> None:
         return
+
+    def _send_managed_command(self) -> None:
+        try:
+            payload = self._read_json_body()
+            kind = _required_string(payload.get("kind"), "kind")
+            name = _required_string(payload.get("name"), "name")
+            if kind not in EXECUTABLE_ADVICE_KINDS:
+                supported = ", ".join(sorted(EXECUTABLE_ADVICE_KINDS))
+                raise ValueError(f"kind supports only: {supported}")
+            result = send_to_managed_codex(
+                codex_home=self.server.codex_home,
+                name=name,
+                text=EXECUTABLE_ADVICE_TEXT[kind],
+                run=self.server.send_run,
+            )
+            lane_state = record_lane_prompt(
+                codex_home=self.server.codex_home,
+                name=result.record.name,
+                tmux_session=result.record.tmux_session,
+                status=kind,
+            )
+        except ValueError as exc:
+            self._send_json(
+                {
+                    "status": "error",
+                    "error": {
+                        "code": "codex_supervisor_web_error",
+                        "message": str(exc),
+                    },
+                },
+                status_code=400,
+            )
+            return
+        self._send_json(
+            {
+                "status": "ok",
+                "kind": kind,
+                "text": result.text,
+                "managed": {
+                    "name": result.record.name,
+                    "record_id": result.record.record_id,
+                    "tmux_session": result.record.tmux_session,
+                },
+                "lane_state": lane_state.to_dict(),
+            }
+        )
+
+    def _read_json_body(self) -> dict[str, Any]:
+        length = int(self.headers.get("content-length", "0"))
+        raw_body = self.rfile.read(length).decode("utf-8")
+        try:
+            payload = json.loads(raw_body or "{}")
+        except json.JSONDecodeError as exc:
+            raise ValueError("invalid JSON body") from exc
+        if not isinstance(payload, dict):
+            raise ValueError("JSON body must be an object")
+        return payload
 
     def _send_text(self, text: str, *, content_type: str) -> None:
         body = text.encode("utf-8")
@@ -83,6 +163,21 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         self.send_header("cache-control", "no-store")
         self.end_headers()
         self.wfile.write(body)
+
+    def _send_json(self, payload: dict[str, Any], *, status_code: int = 200) -> None:
+        body = json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        self.send_response(status_code)
+        self.send_header("content-type", "application/json; charset=utf-8")
+        self.send_header("content-length", str(len(body)))
+        self.send_header("cache-control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+
+def _required_string(value: object, field: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{field} must not be empty")
+    return value.strip()
 
 
 def dashboard_page_html() -> str:
@@ -226,6 +321,10 @@ def dashboard_page_html() -> str:
       padding: 6px 9px;
     }
     button:hover { background: #f2f4f7; }
+    button[data-action="send"] {
+      border-color: #b2ddff;
+      color: var(--working);
+    }
     [data-group="needs_attention"] .group-head { border-top: 3px solid var(--attention); }
     [data-group="done"] .group-head { border-top: 3px solid var(--done); }
     [data-group="working"] .group-head { border-top: 3px solid var(--working); }
@@ -320,6 +419,21 @@ def dashboard_page_html() -> str:
       copyResume.textContent = "复制 resume";
       copyResume.addEventListener("click", () => copyResumeCommand(item, copyResume));
       actions.append(copyResume);
+      for (const command of item.control_commands || []) {
+        const copyCommand = document.createElement("button");
+        copyCommand.type = "button";
+        copyCommand.textContent = command.kind === "tmux_attach" ? "复制 attach" : "复制命令";
+        copyCommand.addEventListener("click", () => copyControlCommand(command, copyCommand));
+        actions.append(copyCommand);
+        if (command.kind === "send_status" || command.kind === "send_continue") {
+          const sendButton = document.createElement("button");
+          sendButton.type = "button";
+          sendButton.dataset.action = "send";
+          sendButton.textContent = command.kind === "send_status" ? "请求状态" : "继续";
+          sendButton.addEventListener("click", () => sendManagedCommand(item, command, sendButton));
+          actions.append(sendButton);
+        }
+      }
       lane.append(actions);
       if (item.managed_tmux_session) {
         const command = document.createElement("div");
@@ -332,15 +446,46 @@ def dashboard_page_html() -> str:
 
     async function copyResumeCommand(item, button) {
       const command = item.resume_command || ("codex resume " + item.session_id);
+      await copyText(command, button, "复制 resume");
+    }
+
+    async function copyControlCommand(command, button) {
+      const label = command.kind === "tmux_attach" ? "复制 attach" : "复制命令";
+      await copyText(command.command, button, label);
+    }
+
+    async function copyText(textValue, button, label) {
       try {
-        await navigator.clipboard.writeText(command);
+        await navigator.clipboard.writeText(textValue);
         button.textContent = "已复制";
       } catch (error) {
-        button.textContent = command;
+        button.textContent = textValue;
       }
       setTimeout(() => {
-        button.textContent = "复制 resume";
+        button.textContent = label;
       }, 1600);
+    }
+
+    async function sendManagedCommand(item, command, button) {
+      button.disabled = true;
+      const label = button.textContent;
+      button.textContent = "发送中";
+      try {
+        const response = await fetch("/managed/send", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ name: item.name, kind: command.kind })
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error ? payload.error.message : "发送失败");
+        button.textContent = "已发送";
+      } catch (error) {
+        button.textContent = text(error.message);
+      }
+      setTimeout(() => {
+        button.disabled = false;
+        button.textContent = label;
+      }, 1800);
     }
 
     function renderGroup(key, items) {

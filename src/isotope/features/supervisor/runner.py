@@ -470,6 +470,9 @@ def _dashboard_item(session: Any) -> dict[str, Any]:
         "managed_tmux_session": session.managed_tmux_session,
         "managed_bell": session.managed_bell,
         "managed_bell_event_at": session.managed_bell_event_at,
+        "control_commands": _managed_tmux_command_suggestions(session)
+        if session.managed_tmux_session
+        else [],
         "reason": session.reason,
         "age_seconds": session.age_seconds,
     }

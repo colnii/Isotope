@@ -26,7 +26,7 @@ Codex Supervisor 已经不只是一个小命令。
 | 模型管理层 | `LLM summary` 和 TOML 号池 | `llm_summary.py` | 当前先做摘要，后续承担白名单内动作选择 |
 | 状态协议层 | `SUPERVISOR_STATUS` 等状态协议 | `flow.py`、`registry.py` | 给被托管 Codex 主动汇报状态 |
 | 状态账本层 | lane state（窗口状态）和限频 | `lane_state.py` | 避免重复催促和刷屏 |
-| 本地前端层 | `web` 和 `/dashboard.json` | `features/supervisor/web.py` | 先做本机可视化薄入口 |
+| 本地前端层 | `web`、`/dashboard.json`、`/managed/send` | `features/supervisor/web.py` | 本机视图和白名单发送入口 |
 
 ## 已有轮子
 
@@ -47,6 +47,8 @@ Codex Supervisor 已经不只是一个小命令。
 - `web` 启动本机页面，复用 `dashboard` 分组 JSON。
 - `web` 优先展示可读标题，同时保留短 hash 方便辨认窗口。
 - `web` 可复制完整 `codex resume <session_id>`。
+- `web` 可复制 attach/send 命令，也可对白名单 send 动作发起本机 POST。
+- `/managed/send` 成功发送后会更新 lane state。
 - `watch --changes-only` 只在状态变化时输出。
 - 本机托管登记表 `managed_sessions.jsonl`。
 - `launch` 支持普通进程和 tmux 会话。
@@ -75,6 +77,7 @@ Codex Supervisor 已经不只是一个小命令。
 - 不要另写状态分类系统，除非同步更新本文件。
 - 不要只展示状态标签而不展示判断依据。
 - 不要另写一套 dashboard 数据接口，先复用 `/dashboard.json`。
+- 不要在 web 里放任意文本发送框；先走白名单动作。
 - LLM 动作选择必须落到可审计的白名单能力上。
 
 ## 后续拆分方向
@@ -88,8 +91,8 @@ Codex Supervisor 已经不只是一个小命令。
 
 ## 下一步顺序
 
-1. 给本地页面补受控操作按钮，先只生成命令或调用 send 白名单。
-2. 讨论 LLM 在白名单内选择动作的策略和提示词。
+1. 讨论 LLM 在白名单内选择动作的策略和提示词。
+2. 后续再决定是否增加人工输入框；默认仍保持白名单。
 
 ## 登记规则
 
