@@ -918,7 +918,10 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "copyResumeCommand" in html
     assert "copyControlCommand" in html
     assert "sendManagedCommand" in html
+    assert "requestLlmAction" in html
     assert "/managed/send" in html
+    assert "/llm-action" in html
+    assert "模型建议" in html
     assert "status_evidence" in html
     assert "依据：" in html
     assert "codex resume " in html
@@ -931,6 +934,126 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert payload["groups"]["needs_attention"][0]["status_evidence"]["source"] == (
         "supervisor_protocol"
     )
+
+
+def test_codex_supervisor_web_returns_manual_llm_action_without_sending(
+    tmp_path,
+    monkeypatch,
+):
+    from isotope.features.supervisor.web import create_dashboard_server
+
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    send_calls: list[list[str]] = []
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            assert "command_suggestions" in messages[1]["content"]
+            return '{"kind":"send_status","target_name":"lane-a","reason":"先看进度。"}'
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        send_calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    server = create_dashboard_server(
+        codex_home=codex_home,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+        send_run=fake_run,
+        llm_action_provider=FakeProvider(),
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        conn.request(
+            "POST",
+            "/llm-action",
+            b"{}",
+            {"content-type": "application/json"},
+        )
+        response = conn.getresponse()
+        payload = json.loads(response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert response.status == 200
+    assert payload["status"] == "ok"
+    assert payload["llm_action"] == {
+        "kind": "send_status",
+        "target_name": "lane-a",
+        "reason": "先看进度。",
+        "command_suggestion": {
+            "command": "isotope-supervisor send --name lane-a --text '请汇报当前状态'",
+            "kind": "send_status",
+            "label": "让托管 Codex 汇报状态",
+        },
+    }
+    assert send_calls == []
+
+
+def test_codex_supervisor_web_rejects_invalid_manual_llm_action(tmp_path):
+    from isotope.features.supervisor.web import create_dashboard_server
+
+    codex_home = tmp_path / ".codex"
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            return '{"kind":"delete_branch","reason":"危险动作"}'
+
+    server = create_dashboard_server(
+        codex_home=codex_home,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+        llm_action_provider=FakeProvider(),
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        conn.request(
+            "POST",
+            "/llm-action",
+            b"{}",
+            {"content-type": "application/json"},
+        )
+        response = conn.getresponse()
+        payload = json.loads(response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert response.status == 400
+    assert payload["status"] == "error"
+    assert payload["error"]["code"] == "codex_supervisor_web_error"
+    assert "unsupported LLM action" in payload["error"]["message"]
 
 
 def test_codex_supervisor_web_can_send_allowed_managed_command(tmp_path):

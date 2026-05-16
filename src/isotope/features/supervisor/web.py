@@ -11,8 +11,18 @@ from urllib.parse import urlparse
 
 from .flow import CodexSupervisorFlow
 from .lane_state import record_lane_prompt
+from .llm_summary import (
+    SummaryProvider,
+    generate_llm_action_decision,
+    resolve_summary_provider_from_env,
+)
 from .registry import send_to_managed_codex
-from .runner import EXECUTABLE_ADVICE_KINDS, EXECUTABLE_ADVICE_TEXT, _dashboard_payload
+from .runner import (
+    EXECUTABLE_ADVICE_KINDS,
+    EXECUTABLE_ADVICE_TEXT,
+    _advice_payload,
+    _dashboard_payload,
+)
 
 
 class SupervisorDashboardServer(ThreadingHTTPServer):
@@ -25,6 +35,7 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         stale_after_seconds: int,
         active_within_seconds: int,
         send_run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+        llm_action_provider: SummaryProvider | None = None,
     ) -> None:
         super().__init__(server_address, _DashboardRequestHandler)
         self.codex_home = codex_home
@@ -32,14 +43,31 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         self.stale_after_seconds = stale_after_seconds
         self.active_within_seconds = active_within_seconds
         self.send_run = send_run
+        self.llm_action_provider = llm_action_provider
 
-    def dashboard_payload(self) -> dict[str, Any]:
-        report = CodexSupervisorFlow(codex_home=self.codex_home).scan(
+    def _scan_report(self) -> Any:
+        return CodexSupervisorFlow(codex_home=self.codex_home).scan(
             limit=self.limit,
             stale_after_seconds=self.stale_after_seconds,
             active_within_seconds=self.active_within_seconds,
         )
+
+    def dashboard_payload(self) -> dict[str, Any]:
+        report = self._scan_report()
         return _dashboard_payload(report)
+
+    def llm_action_payload(self) -> dict[str, Any]:
+        report = self._scan_report()
+        payload = _advice_payload(report)
+        provider = self.llm_action_provider or resolve_summary_provider_from_env(
+            agent_name="supervisor"
+        )
+        payload["llm_action"] = generate_llm_action_decision(
+            report,
+            payload["command_suggestions"],
+            provider,
+        )
+        return payload
 
 
 def create_dashboard_server(
@@ -51,6 +79,7 @@ def create_dashboard_server(
     stale_after_seconds: int,
     active_within_seconds: int,
     send_run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+    llm_action_provider: SummaryProvider | None = None,
 ) -> SupervisorDashboardServer:
     return SupervisorDashboardServer(
         (host, port),
@@ -59,6 +88,7 @@ def create_dashboard_server(
         stale_after_seconds=stale_after_seconds,
         active_within_seconds=active_within_seconds,
         send_run=send_run,
+        llm_action_provider=llm_action_provider,
     )
 
 
@@ -83,6 +113,9 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         if path == "/managed/send":
             self._send_managed_command()
+            return
+        if path == "/llm-action":
+            self._send_llm_action()
             return
         self._send_json(
             {
@@ -143,6 +176,24 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
                 "lane_state": lane_state.to_dict(),
             }
         )
+
+    def _send_llm_action(self) -> None:
+        try:
+            self._read_json_body()
+            payload = self.server.llm_action_payload()
+        except ValueError as exc:
+            self._send_json(
+                {
+                    "status": "error",
+                    "error": {
+                        "code": "codex_supervisor_web_error",
+                        "message": str(exc),
+                    },
+                },
+                status_code=400,
+            )
+            return
+        self._send_json(payload)
 
     def _read_json_body(self) -> dict[str, Any]:
         length = int(self.headers.get("content-length", "0"))
@@ -227,6 +278,18 @@ def dashboard_page_html() -> str:
       border-radius: 6px;
       background: var(--panel);
       font-size: 14px;
+    }
+    .recommendation-main {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+    .llm-action {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      overflow-wrap: anywhere;
     }
     .grid {
       display: grid;
@@ -350,7 +413,13 @@ def dashboard_page_html() -> str:
     </div>
   </header>
   <main>
-    <div class="recommendation" id="recommendation">读取中</div>
+    <div class="recommendation">
+      <div class="recommendation-main">
+        <div id="recommendation">读取中</div>
+        <button id="llm-action-button" type="button">模型建议</button>
+      </div>
+      <div class="llm-action" id="llm-action-result">未请求模型建议</div>
+    </div>
     <div class="grid">
       <section data-group="needs_attention">
         <div class="group-head"><h2>需要看</h2><span class="count" id="count-needs_attention">0</span></div>
@@ -488,6 +557,37 @@ def dashboard_page_html() -> str:
       }, 1800);
     }
 
+    function renderLlmAction(action) {
+      const result = document.getElementById("llm-action-result");
+      const kind = action.kind || "monitor";
+      const target = action.target_name ? " / " + action.target_name : "";
+      const command = action.command_suggestion ? " / " + action.command_suggestion.label : "";
+      result.textContent = "模型建议：" + kind + target + command + "。原因：" + text(action.reason);
+    }
+
+    async function requestLlmAction(button) {
+      const label = button.textContent;
+      const result = document.getElementById("llm-action-result");
+      button.disabled = true;
+      button.textContent = "分析中";
+      result.textContent = "正在请求模型建议";
+      try {
+        const response = await fetch("/llm-action", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: "{}"
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error ? payload.error.message : "模型建议失败");
+        renderLlmAction(payload.llm_action);
+      } catch (error) {
+        result.textContent = "模型建议失败：" + text(error.message);
+      } finally {
+        button.disabled = false;
+        button.textContent = label;
+      }
+    }
+
     function renderGroup(key, items) {
       document.getElementById("count-" + key).textContent = items.length;
       const target = document.getElementById("group-" + key);
@@ -510,6 +610,10 @@ def dashboard_page_html() -> str:
       for (const key of groups) renderGroup(key, payload.groups[key] || []);
       document.getElementById("refresh-state").textContent = "最近刷新 " + new Date().toLocaleTimeString();
     }
+
+    document.getElementById("llm-action-button").addEventListener("click", (event) => {
+      requestLlmAction(event.currentTarget);
+    });
 
     loadDashboard().catch((error) => {
       document.getElementById("refresh-state").textContent = "刷新失败：" + text(error.message);

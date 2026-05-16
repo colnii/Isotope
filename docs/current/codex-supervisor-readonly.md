@@ -42,6 +42,8 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
 - `web` 可启动本机页面，展示 `dashboard` 的三组窗口和可读标题。
 - `web` 会给托管 tmux 窗口显示复制 attach、复制 send 命令、
   请求状态和继续推进按钮。
+- `web` 可手动请求 `/llm-action`，只展示模型建议的白名单动作，
+  不自动发送。
 - `supervise` 可按间隔循环执行扫描、建议、可选 LLM 摘要和显式 send。
 - `advise/supervise --llm-action` 可让 LLM 在白名单里选择建议动作，
   但不会自动执行。
@@ -122,6 +124,9 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 托管 tmux 窗口还会显示复制 attach、复制 send 命令、请求状态和继续按钮。
 页面发送按钮调用 `/managed/send`，只允许 `send_status` 和 `send_continue`。
 成功发送后会更新 lane state（窗口状态账本）的最近催促时间和次数。
+页面的“模型建议”按钮会调用 `/llm-action`。
+该接口只在点击时请求 LLM，从 `monitor`、`send_status` 和
+`send_continue` 中返回建议动作，不会自动调用 `/managed/send`。
 当前页面使用 Python 标准库 HTTP server 和内联 HTML/CSS/JS，
 不引入额外前端依赖。
 
@@ -263,6 +268,7 @@ tmux attach -t isotope-lane-a
 - `send` 只支持 Supervisor 登记过的 tmux 会话。
 - `web` 只监听本机默认地址，不提供认证和远程访问能力。
 - `web` 的 `/managed/send` 只接受 `send_status` 和 `send_continue`。
+- `web` 的 `/llm-action` 只在手动点击时调用模型，只展示建议。
 - `/managed/send` 成功发送后会记录 lane state。
 - `recommendation` 只表示建议动作，不会自动调用 `send`。
 - `advise` 默认只生成命令草案；`--execute` 只允许执行

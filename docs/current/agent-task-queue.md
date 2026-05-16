@@ -194,8 +194,23 @@
 90. Codex Supervisor LLM 白名单动作：`advise/supervise --llm-action`
     可让 LLM 在 `monitor`、`send_status`、`send_continue` 中选择建议动作，
     输出结构化结果但不自动执行。
+91. Codex Supervisor web 模型建议：`web` 页面可手动调用 `/llm-action`，
+    展示 LLM 白名单动作建议，但不自动发送。
 
-## 最近完成：Codex Supervisor LLM 白名单动作
+## 最近完成：Codex Supervisor web 模型建议
+
+完成内容：
+
+- 本地页面新增“模型建议”按钮。
+- 点击后才调用 `/llm-action`，页面 5 秒刷新不会调用模型。
+- `/llm-action` 复用 `LLM action` 白名单校验。
+- 接口只返回 `monitor`、`send_status` 或 `send_continue` 的建议。
+- 接口不调用 `/managed/send`，不会自动向托管 Codex 发指令。
+- 无效模型动作会返回稳定 JSON 错误。
+
+上一批已完成：
+
+## Codex Supervisor LLM 白名单动作
 
 完成内容：
 
