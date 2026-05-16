@@ -190,7 +190,8 @@ JSON 输出不得包含 full artifact content、memory full content、raw provid
 
 - `.github/workflows/ci.yml` exists。
 - workflow 在 `push` / `pull_request` 时触发。
-- workflow 使用 `ubuntu-latest` 和 Python `3.12`。
+- workflow 使用 `ubuntu-latest` 和 Python `3.12` / `3.13` / `3.14`
+  matrix。
 - workflow 执行 editable install with test extra：`python -m pip install -e ".[test]"`。
 - workflow 运行 `python -m pytest tests/isotope -q`。
 - workflow 运行 demo plain / JSON smoke。

@@ -52,11 +52,13 @@ def test_ci_workflow_uses_ubuntu_runner():
     assert re.search(r"(?m)^\s*runs-on\s*:\s*ubuntu", text)
 
 
-def test_ci_workflow_sets_python_version():
+def test_ci_workflow_runs_supported_python_matrix():
     text = _workflow_text()
 
     assert "actions/setup-python" in text
-    assert re.search(r"(?m)^\s*python-version\s*:\s*['\"]?3\.(11|12)['\"]?\s*$", text)
+    assert "matrix.python-version" in text
+    for version in ("3.12", "3.13", "3.14"):
+        assert re.search(rf"(?m)^\s*-\s*['\"]?{re.escape(version)}['\"]?\s*$", text)
 
 
 def test_ci_workflow_installs_editable_project_with_test_extra():
