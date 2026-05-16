@@ -52,6 +52,13 @@ def test_ci_workflow_uses_ubuntu_runner():
     assert re.search(r"(?m)^\s*runs-on\s*:\s*ubuntu", text)
 
 
+def test_ci_workflow_uses_node24_compatible_actions():
+    text = _workflow_text()
+
+    assert "actions/checkout@v6" in text
+    assert "actions/setup-python@v6" in text
+
+
 def test_ci_workflow_runs_supported_python_matrix():
     text = _workflow_text()
 
