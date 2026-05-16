@@ -135,6 +135,8 @@ def build_llm_summary_messages(report: CodexSupervisorReport) -> list[dict[str, 
             "age_seconds": session.age_seconds,
             "managed": session.managed,
             "managed_name": session.managed_name,
+            "managed_backend": session.managed_backend,
+            "managed_tmux_session": session.managed_tmux_session,
             "last_user": _clip(session.last_user_message),
             "last_reply": _clip(session.last_assistant_message),
         }

@@ -26,6 +26,7 @@ python3 -m venv .venv
 .venv/bin/isotope-supervisor scan --limit 3 --llm-summary
 .venv/bin/isotope-supervisor watch --interval 180 --changes-only --llm-summary
 .venv/bin/isotope-supervisor launch --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
+.venv/bin/isotope-supervisor launch --backend tmux --tmux-session isotope-lane-a --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
 ```
 
 ## 当前可用能力
@@ -35,7 +36,8 @@ python3 -m venv .venv
 - 模型服务适配器的基础封装。
 - 若干演示场景，用来验证底座能力是否仍可运行。
 - Codex Supervisor 监控与托管，可观察本机多个 Codex 会话，
-  支持变化触发汇报、托管启动，并可选调用已配置 LLM 输出中文智能汇报。
+  支持变化触发汇报、托管启动、tmux 会话启动，
+  并可选调用已配置 LLM 输出中文智能汇报。
 
 这些能力是产品的基础，不是产品的全部。
 

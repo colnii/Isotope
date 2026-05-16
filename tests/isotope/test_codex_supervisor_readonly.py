@@ -443,6 +443,73 @@ def test_codex_supervisor_runner_launch_records_managed_codex(
     assert records == [payload["managed"]]
 
 
+def test_codex_supervisor_runner_launch_can_use_tmux_backend(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    captured: dict[str, object] = {}
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        captured["command"] = command
+        captured["check"] = check
+        captured["text"] = text
+        captured["capture_output"] = capture_output
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "launch",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(workspace),
+            "--name",
+            "lane-a",
+            "--prompt",
+            "继续实现 supervisor",
+            "--backend",
+            "tmux",
+            "--tmux-session",
+            "isotope-lane-a",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["managed"]["backend"] == "tmux"
+    assert payload["managed"]["tmux_session"] == "isotope-lane-a"
+    assert payload["managed"]["pid"] == 0
+    assert captured["command"] == [
+        "tmux",
+        "new-session",
+        "-d",
+        "-s",
+        "isotope-lane-a",
+        "-c",
+        str(workspace),
+        "codex --cd "
+        + str(workspace)
+        + " --no-alt-screen "
+        + "'继续实现 supervisor'",
+    ]
+    assert captured["check"] is True
+    assert captured["text"] is True
+    assert captured["capture_output"] is True
+
+
 def test_codex_supervisor_scan_includes_managed_registry_records(tmp_path):
     codex_home = tmp_path / ".codex"
     workspace = tmp_path / "workspace"
@@ -526,6 +593,50 @@ def test_codex_supervisor_scan_marks_managed_process_exited(tmp_path):
     assert report.sessions[0].status == "exited"
     assert report.sessions[0].status_label == "已退出"
     assert report.sessions[0].reason == "Supervisor 托管进程已退出"
+
+
+def test_codex_supervisor_scan_marks_tmux_managed_session_running(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "lane-a",
+                "cwd": str(workspace),
+                "prompt": "继续实现 supervisor",
+                "command": ["tmux", "new-session", "-d", "-s", "isotope-lane-a"],
+                "pid": 0,
+                "started_at": "2026-05-16T11:59:30+00:00",
+                "log_path": str(codex_home / "supervisor" / "logs" / "managed-001.log"),
+                "status": "launched",
+                "backend": "tmux",
+                "tmux_session": "isotope-lane-a",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = CodexSupervisorFlow(
+        codex_home=codex_home,
+        now=lambda: NOW,
+        tmux_session_checker=lambda session: session == "isotope-lane-a",
+    ).scan()
+
+    assert report.sessions[0].status == "working"
+    assert report.sessions[0].reason == "Supervisor 托管 tmux 会话仍在运行"
+    assert report.sessions[0].managed_backend == "tmux"
+    assert report.sessions[0].managed_tmux_session == "isotope-lane-a"
+    assert report.sessions[0].to_dict()["managed_tmux_session"] == "isotope-lane-a"
+    text = render_plain_report(report)
+    assert "托管：lane-a backend=tmux tmux=isotope-lane-a" in text
+    llm_messages = build_llm_summary_messages(report)
+    assert '"managed_backend": "tmux"' in llm_messages[1]["content"]
 
 
 def test_codex_supervisor_llm_messages_use_compact_session_context(tmp_path):

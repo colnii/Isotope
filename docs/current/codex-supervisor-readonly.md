@@ -22,6 +22,7 @@ Codex Supervisor 用来观察和启动本机多个 Codex 进程。
 - 输出中文报告，也支持 JSON。
 - `watch --changes-only` 可持续运行，只在会话状态变化时重新输出。
 - `launch` 可启动一个 Codex 进程，并写入托管登记文件。
+- `launch --backend tmux` 可在本机 tmux 会话里启动 Codex。
 - `scan/watch` 可显示托管进程的名称、pid 和是否已退出。
 - 可选 `--llm-summary` 调用已配置 LLM 做中文智能摘要。
 
@@ -34,6 +35,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --interval 180
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --interval 180 --changes-only
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner launch --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner launch --backend tmux --tmux-session isotope-lane-a --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
 ```
 
 安装后：
@@ -43,6 +45,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner launch --n
 .venv/bin/isotope-supervisor watch --interval 180
 .venv/bin/isotope-supervisor watch --interval 180 --changes-only
 .venv/bin/isotope-supervisor launch --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
+.venv/bin/isotope-supervisor launch --backend tmux --tmux-session isotope-lane-a --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
 ```
 
 调试 JSON：
@@ -90,15 +93,16 @@ api_keys = [
 
 - 默认写入 `~/.codex/supervisor/managed_sessions.jsonl`。
 - 日志默认写入 `~/.codex/supervisor/logs/`。
-- 启动命令形状为 `codex --cd <cwd> --no-alt-screen <prompt>`。
-- 当前登记 pid、cwd、prompt、启动时间和日志路径。
+- 默认进程模式的启动命令形状为 `codex --cd <cwd> --no-alt-screen <prompt>`。
+- tmux 模式会执行 `tmux new-session -d -s <session> -c <cwd> ...`。
+- 当前登记 backend、pid、tmux session、cwd、prompt、启动时间和日志路径。
 
 ## 当前边界
 
-- 不接管普通终端窗口；`launch` 启动的是托管 Codex 进程。
-- 不自动给 Codex 发指令；当前先做到启动、登记和变化汇报。
+- 不接管普通终端窗口；`launch` 启动的是托管 Codex 进程或 tmux 会话。
+- 不自动给 Codex 发指令；当前先做到启动、登记、tmux 存活判断和变化汇报。
 - 不直接检查 SSH 服务器内部进程。
 - 不把完整日志发给 LLM，只发送短摘要和状态字段。
 
-后续再补控制通道，例如接 tmux 或 remote-control，
+后续再补控制通道，例如通过 tmux send-keys 或 remote-control，
 让 Supervisor 能安全发送“继续 / 总结 / 暂停”等指令。

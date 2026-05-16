@@ -142,7 +142,8 @@
     已建立，可读取本机 `~/.codex/sessions`，输出多个 Codex 会话的
     中文状态汇报；`--llm-summary` 可通过本机 TOML 号池做智能摘要；
     `watch --changes-only` 可持续运行且只在变化时输出；`launch`
-    可启动 Codex 并写入本机托管登记；当前不自动给 Codex 发指令。
+    可启动 Codex 并写入本机托管登记；`launch --backend tmux`
+    可在本机 tmux 会话中启动 Codex；当前不自动给 Codex 发指令。
 
 ## 最近完成：Codex Supervisor 监控与托管启动
 
@@ -153,7 +154,8 @@
 - 可识别 `工作中`、`等待用户`、`疑似停住`、`疑似报错` 和 `空闲`。
 - 可输出中文报告，也支持 `--json`。
 - `watch --interval` 可定时汇报，`--changes-only` 可只在会话变化时输出。
-- `launch` 可启动 Codex 进程，登记 name、pid、cwd、prompt、日志路径。
+- `launch` 可启动 Codex 进程，登记 name、pid、backend、cwd、prompt、日志路径。
+- `launch --backend tmux` 可创建本机 tmux session 并登记 session 名。
 - `scan/watch` 可显示托管进程，并区分 `工作中` 和 `已退出`。
 - 新增 `--llm-summary`，从被 gitignore 忽略的本机 TOML 号池读取
   provider、base URL、model 和 key。
@@ -172,8 +174,8 @@
 
 目标：
 
-- 实际运行 `launch` 启动的托管 Codex，观察日志和 session 是否能稳定关联。
-- 设计 tmux 或 Codex remote-control 接入方式。
+- 实际运行 `launch --backend tmux` 启动的托管 Codex，观察日志和 session 是否能稳定关联。
+- 设计 tmux send-keys 或 Codex remote-control 接入方式。
 - 下一步再做可控地发送“继续 / 总结 / 暂停”等指令。
 
 初始参考：

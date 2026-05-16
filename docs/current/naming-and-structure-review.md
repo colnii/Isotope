@@ -369,6 +369,7 @@ src/isotope/
 - 新增 `apps/cli/isotope_supervisor.py` 薄入口。
 - 新增 `watch --changes-only`，连续监控时只在会话变化后输出。
 - 新增本机托管登记，记录 Supervisor 启动的 Codex pid、cwd 和日志路径。
+- 新增 `launch --backend tmux`，可创建本机 tmux session 并登记。
 - 新增 `--llm-summary`，读取本机 TOML 号池中的 provider、base URL、
   model 和 key，实际 TOML 不提交。
 - 当前不自动向普通终端窗口输入指令。

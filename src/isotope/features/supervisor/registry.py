@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shlex
 import subprocess
 import uuid
 from dataclasses import dataclass
@@ -22,6 +23,8 @@ class ManagedCodexRecord:
     started_at: str
     log_path: str
     status: str = "launched"
+    backend: str = "process"
+    tmux_session: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -34,6 +37,8 @@ class ManagedCodexRecord:
             "started_at": self.started_at,
             "log_path": self.log_path,
             "status": self.status,
+            "backend": self.backend,
+            "tmux_session": self.tmux_session,
         }
 
 
@@ -70,8 +75,11 @@ def launch_managed_codex(
     name: str,
     prompt: str,
     codex_bin: str = "codex",
+    backend: str = "process",
+    tmux_session: str | None = None,
     now: Callable[[], datetime] | None = None,
     popen: Callable[..., Any] = subprocess.Popen,
+    run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> ManagedCodexRecord:
     workspace = Path(cwd).expanduser()
     if not workspace.is_dir():
@@ -85,23 +93,49 @@ def launch_managed_codex(
         raise ValueError("prompt must not be empty")
     if not codex_bin_text:
         raise ValueError("codex_bin must not be empty")
+    backend_text = backend.strip()
+    if backend_text not in {"process", "tmux"}:
+        raise ValueError("backend must be process or tmux")
 
     started_at = _ensure_aware_utc((now or _utc_now)()).isoformat()
     record_id = "managed-" + uuid.uuid4().hex[:12]
     log_dir = default_log_dir(codex_home)
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"{record_id}.log"
-    command = (codex_bin_text, "--cd", str(workspace), "--no-alt-screen", prompt_text)
-
-    with log_path.open("ab") as log_file:
-        process = popen(
-            list(command),
-            cwd=str(workspace),
-            stdin=subprocess.DEVNULL,
-            stdout=log_file,
-            stderr=subprocess.STDOUT,
-            start_new_session=True,
+    codex_command = (codex_bin_text, "--cd", str(workspace), "--no-alt-screen", prompt_text)
+    tmux_session_text: str | None = None
+    pid = 0
+    if backend_text == "process":
+        command = codex_command
+        with log_path.open("ab") as log_file:
+            process = popen(
+                list(command),
+                cwd=str(workspace),
+                stdin=subprocess.DEVNULL,
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+        pid = int(process.pid)
+    else:
+        tmux_session_text = (tmux_session or name_text).strip()
+        if not tmux_session_text:
+            raise ValueError("tmux_session must not be empty")
+        command = (
+            "tmux",
+            "new-session",
+            "-d",
+            "-s",
+            tmux_session_text,
+            "-c",
+            str(workspace),
+            shlex.join(codex_command),
         )
+        try:
+            run(list(command), check=True, text=True, capture_output=True)
+        except subprocess.CalledProcessError as exc:
+            message = (exc.stderr or exc.stdout or str(exc)).strip()
+            raise ValueError(f"tmux launch failed: {message}") from exc
 
     record = ManagedCodexRecord(
         record_id=record_id,
@@ -109,9 +143,11 @@ def launch_managed_codex(
         cwd=str(workspace),
         prompt=prompt_text,
         command=command,
-        pid=int(process.pid),
+        pid=pid,
         started_at=started_at,
         log_path=str(log_path),
+        backend=backend_text,
+        tmux_session=tmux_session_text,
     )
     append_managed_record(default_registry_path(codex_home), record)
     return record
@@ -134,6 +170,8 @@ def _record_from_dict(raw: dict[str, object]) -> ManagedCodexRecord | None:
     log_path = _string(raw.get("log_path"))
     command = raw.get("command")
     status = _string(raw.get("status")) or "launched"
+    backend = _string(raw.get("backend")) or "process"
+    tmux_session = _string(raw.get("tmux_session"))
     if (
         record_id is None
         or name is None
@@ -158,6 +196,8 @@ def _record_from_dict(raw: dict[str, object]) -> ManagedCodexRecord | None:
         started_at=started_at,
         log_path=log_path,
         status=status,
+        backend=backend,
+        tmux_session=tmux_session,
     )
 
 

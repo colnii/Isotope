@@ -81,6 +81,16 @@ def _build_parser() -> argparse.ArgumentParser:
         default="codex",
         help="Codex executable name or path.",
     )
+    launch_parser.add_argument(
+        "--backend",
+        choices=("process", "tmux"),
+        default="process",
+        help="Launch backend.",
+    )
+    launch_parser.add_argument(
+        "--tmux-session",
+        help="tmux session name when --backend tmux is used. Defaults to --name.",
+    )
     launch_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     return parser
 
@@ -117,7 +127,10 @@ def main(argv: list[str] | None = None) -> int:
                 name=args.name,
                 prompt=args.prompt,
                 codex_bin=args.codex_bin,
+                backend=args.backend,
+                tmux_session=args.tmux_session,
                 popen=subprocess.Popen,
+                run=subprocess.run,
             )
             if args.json:
                 _print_json({"status": "ok", "managed": record.to_dict()})

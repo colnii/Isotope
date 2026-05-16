@@ -64,6 +64,8 @@ class CodexSessionSummary:
     managed_name: str | None = None
     managed_pid: int | None = None
     managed_log_path: str | None = None
+    managed_backend: str | None = None
+    managed_tmux_session: str | None = None
 
     @property
     def status_label(self) -> str:
@@ -88,6 +90,8 @@ class CodexSessionSummary:
             "managed_name": self.managed_name,
             "managed_pid": self.managed_pid,
             "managed_log_path": self.managed_log_path,
+            "managed_backend": self.managed_backend,
+            "managed_tmux_session": self.managed_tmux_session,
         }
 
 
@@ -122,6 +126,7 @@ class CodexSupervisorFlow:
         now: Callable[[], datetime] | None = None,
         branch_resolver: Callable[[str], str | None] | None = None,
         process_checker: Callable[[int], bool] | None = None,
+        tmux_session_checker: Callable[[str], bool] | None = None,
     ) -> None:
         self.codex_home = Path(codex_home).expanduser() if codex_home else Path.home() / ".codex"
         self.registry_path = (
@@ -132,6 +137,7 @@ class CodexSupervisorFlow:
         self.now = now or _utc_now
         self.branch_resolver = branch_resolver or _git_branch_for
         self.process_checker = process_checker or _pid_is_running
+        self.tmux_session_checker = tmux_session_checker or _tmux_session_exists
 
     def scan(
         self,
@@ -168,6 +174,7 @@ class CodexSupervisorFlow:
                 registry_path=self.registry_path,
                 branch_resolver=self.branch_resolver,
                 process_checker=self.process_checker,
+                tmux_session_checker=self.tmux_session_checker,
             )
             for record in read_managed_records(self.registry_path)
         )
@@ -201,8 +208,14 @@ def render_plain_report(report: CodexSupervisorReport) -> str:
         )
         if session.managed:
             pid = f" pid={session.managed_pid}" if session.managed_pid else ""
+            backend = f" backend={session.managed_backend}" if session.managed_backend else ""
+            tmux = (
+                f" tmux={session.managed_tmux_session}"
+                if session.managed_tmux_session
+                else ""
+            )
             name = session.managed_name or "未命名"
-            lines.append(f"   托管：{name}{pid}")
+            lines.append(f"   托管：{name}{pid}{backend}{tmux}")
         lines.append(f"   原因：{session.reason}")
         if session.last_user_message:
             lines.append(f"   最近用户：{_shorten(session.last_user_message)}")
@@ -286,12 +299,22 @@ def _managed_summary(
     registry_path: Path,
     branch_resolver: Callable[[str], str | None],
     process_checker: Callable[[int], bool],
+    tmux_session_checker: Callable[[str], bool],
 ) -> CodexSessionSummary:
     started_at = _parse_timestamp(record.started_at) or now
     age_seconds = max(0, int((now - started_at).total_seconds()))
-    is_running = process_checker(record.pid)
-    status = "working" if is_running else "exited"
-    reason = "Supervisor 托管进程已启动" if is_running else "Supervisor 托管进程已退出"
+    if record.backend == "tmux":
+        is_running = bool(record.tmux_session and tmux_session_checker(record.tmux_session))
+        status = "working" if is_running else "exited"
+        reason = (
+            "Supervisor 托管 tmux 会话仍在运行"
+            if is_running
+            else "Supervisor 托管 tmux 会话已退出"
+        )
+    else:
+        is_running = process_checker(record.pid)
+        status = "working" if is_running else "exited"
+        reason = "Supervisor 托管进程已启动" if is_running else "Supervisor 托管进程已退出"
     return CodexSessionSummary(
         session_id=f"managed:{record.record_id}",
         cwd=record.cwd,
@@ -306,6 +329,8 @@ def _managed_summary(
         managed_name=record.name,
         managed_pid=record.pid,
         managed_log_path=record.log_path,
+        managed_backend=record.backend,
+        managed_tmux_session=record.tmux_session,
     )
 
 
@@ -403,6 +428,18 @@ def _pid_is_running(pid: int) -> bool:
     except OSError:
         return False
     return True
+
+
+def _tmux_session_exists(session: str) -> bool:
+    if not session:
+        return False
+    completed = subprocess.run(
+        ["tmux", "has-session", "-t", session],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    return completed.returncode == 0
 
 
 def _parse_timestamp(value: Any) -> datetime | None:
