@@ -492,7 +492,7 @@ def dashboard_page_html() -> str:
       for (const command of item.control_commands || []) {
         const copyCommand = document.createElement("button");
         copyCommand.type = "button";
-        copyCommand.textContent = command.kind === "tmux_attach" ? "复制 attach" : "复制命令";
+        copyCommand.textContent = copyControlLabel(command);
         copyCommand.addEventListener("click", () => copyControlCommand(command, copyCommand));
         actions.append(copyCommand);
         if (command.kind === "send_status" || command.kind === "send_continue") {
@@ -505,12 +505,6 @@ def dashboard_page_html() -> str:
         }
       }
       lane.append(actions);
-      if (item.managed_tmux_session) {
-        const command = document.createElement("div");
-        command.className = "command";
-        command.textContent = "tmux attach -t " + item.managed_tmux_session;
-        lane.append(command);
-      }
       return lane;
     }
 
@@ -519,8 +513,15 @@ def dashboard_page_html() -> str:
       await copyText(command, button, "复制 resume");
     }
 
+    function copyControlLabel(command) {
+      if (command.kind === "tmux_attach") return "复制 attach";
+      if (command.kind === "send_status") return "复制状态";
+      if (command.kind === "send_continue") return "复制继续";
+      return "复制命令";
+    }
+
     async function copyControlCommand(command, button) {
-      const label = command.kind === "tmux_attach" ? "复制 attach" : "复制命令";
+      const label = copyControlLabel(command);
       await copyText(command.command, button, label);
     }
 

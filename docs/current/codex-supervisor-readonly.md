@@ -42,7 +42,7 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
 - `dashboard` 会把同一工作目录下的托管 tmux lane 和最近真实 Codex
   session 合并成一个可控卡片。
 - `web` 可启动本机页面，展示 `dashboard` 的三组窗口和可读标题。
-- `web` 会给托管 tmux 窗口显示复制 attach、复制 send 命令、
+- `web` 会给托管 tmux 窗口显示复制 attach、复制状态、复制继续、
   请求状态和继续推进按钮。
 - `web` 可手动请求 `/llm-action`，只展示模型建议的白名单动作，
   不自动发送。
@@ -122,12 +122,14 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 
 页面默认地址是 `http://127.0.0.1:8765/`。
 页面会读取 `/dashboard.json`，并按 `需要看`、`已完成`、`工作中`
-三组展示窗口；有 tmux session 的条目会显示 attach 命令。
+三组展示窗口。
 页面标题优先使用关联到的 Codex 自带标题或首条用户消息。
 托管名会显示在路径信息里，方便确认它仍是可控 lane。
 每个窗口会显示“依据”，用来解释当前标签为什么被判成等待用户、停住或工作中。
 每个窗口提供 `复制 resume`，会复制完整 `codex resume <session_id>`。
-托管 tmux 窗口还会显示复制 attach、复制 send 命令、请求状态和继续按钮。
+托管 tmux 窗口还会显示复制 attach、复制状态、复制继续、
+请求状态和继续按钮。
+页面不再额外显示一行 `tmux attach` 命令，避免和复制 attach 按钮重复。
 页面发送按钮调用 `/managed/send`，只允许 `send_status` 和 `send_continue`。
 成功发送后会更新 lane state（窗口状态账本）的最近催促时间和次数。
 页面的“模型建议”按钮会调用 `/llm-action`。

@@ -200,8 +200,22 @@
     时直接返回 `monitor`，不调用 LLM。
 93. Codex Supervisor dashboard 托管去重：同一工作目录下的托管 lane
     和最近真实 Codex session 会合并成一个可控卡片。
+94. Codex Supervisor web 控制按钮整理：复制状态和复制继续按钮使用
+    不同文案，并移除重复的 `tmux attach` 展示行。
 
-## 最近完成：Codex Supervisor dashboard 托管去重
+## 最近完成：Codex Supervisor web 控制按钮整理
+
+完成内容：
+
+- `send_status` 的复制按钮改为“复制状态”。
+- `send_continue` 的复制按钮改为“复制继续”。
+- `tmux_attach` 仍显示“复制 attach”。
+- 删除卡片底部重复显示的 `tmux attach` 命令文本。
+- 保留“请求状态”和“继续”两个直接发送按钮。
+
+上一批已完成：
+
+## Codex Supervisor dashboard 托管去重
 
 完成内容：
 
@@ -259,7 +273,7 @@
 
 - `dashboard --json` 和 `/dashboard.json` 给托管 tmux 窗口输出
   `control_commands`。
-- 本地页面新增复制 attach、复制 send 命令、请求状态和继续按钮。
+- 本地页面新增复制 attach、复制状态、复制继续、请求状态和继续按钮。
 - `/managed/send` 只接受 `send_status` 和 `send_continue`。
 - 发送仍复用 `send_to_managed_codex` 和 tmux `send-keys`。
 - 成功发送后会记录 lane state 的最近催促时间和次数。

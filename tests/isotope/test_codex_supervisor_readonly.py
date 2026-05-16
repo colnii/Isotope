@@ -992,6 +992,9 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "managed_display_title" in html
     assert "copyResumeCommand" in html
     assert "copyControlCommand" in html
+    assert "copyControlLabel" in html
+    assert "复制状态" in html
+    assert "复制继续" in html
     assert "sendManagedCommand" in html
     assert "requestLlmAction" in html
     assert "/managed/send" in html
@@ -1000,6 +1003,7 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "status_evidence" in html
     assert "依据：" in html
     assert "codex resume " in html
+    assert '"tmux attach -t " + item.managed_tmux_session' not in html
     assert "Codex Supervisor" in html
     assert "dashboard.json" in html
     assert json_response.status == 200

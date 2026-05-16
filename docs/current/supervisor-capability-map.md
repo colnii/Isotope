@@ -48,7 +48,8 @@ Codex Supervisor 已经不只是一个小命令。
 - `web` 启动本机页面，复用 `dashboard` 分组 JSON。
 - `web` 优先展示可读标题，同时保留短 hash 方便辨认窗口。
 - `web` 可复制完整 `codex resume <session_id>`。
-- `web` 可复制 attach/send 命令，也可对白名单 send 动作发起本机 POST。
+- `web` 可分别复制 attach、状态请求和继续命令，
+  也可对白名单 send 动作发起本机 POST。
 - `web` 可手动请求 `/llm-action`，展示 LLM 白名单动作建议。
 - `/managed/send` 成功发送后会更新 lane state。
 - `watch --changes-only` 只在状态变化时输出。

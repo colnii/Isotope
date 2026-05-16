@@ -69,8 +69,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     agent 元数据和短 hash，并可复制完整 `codex resume <session_id>`；
     dashboard 会把同一工作目录下的托管 tmux lane 和最近真实 Codex
     session 合并成一个可控卡片；
-    web 已可复制 attach/send 命令，并可通过 `/managed/send` 执行
-    `send_status` 和 `send_continue` 两个白名单动作；
+    web 已可分别复制 attach、状态请求和继续命令，并可通过
+    `/managed/send` 执行 `send_status` 和 `send_continue` 两个白名单动作；
     web 已可通过手动“模型建议”按钮调用 `/llm-action`，展示 LLM
     在白名单里选择的建议动作，但不自动发送；没有可控托管 tmux lane
     时会直接回退为 `monitor`，不调用 LLM；
