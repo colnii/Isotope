@@ -4803,6 +4803,72 @@ def test_codex_supervisor_runner_watch_bell_rings_for_attention(
     assert "先查看主动汇报阻塞的窗口" in captured.out
 
 
+def test_codex_supervisor_runner_guide_prints_usable_workflow(tmp_path, capsys):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+
+    exit_code = supervisor_main(
+        [
+            "guide",
+            "--cwd",
+            str(workspace),
+            "--name",
+            "doc-lane",
+            "--tmux-session",
+            "doc-tmux",
+            "--prompt",
+            "继续推进文档任务",
+            "--interval",
+            "30",
+        ]
+    )
+
+    assert exit_code == 0
+    text = capsys.readouterr().out
+    assert "[Codex Supervisor 使用入口]" in text
+    assert (
+        "isotope-supervisor launch --backend tmux --name doc-lane "
+        "--tmux-session doc-tmux"
+    ) in text
+    assert f"--cwd {workspace}" in text
+    assert "--prompt '继续推进文档任务'" in text
+    assert (
+        "isotope-supervisor adopt --name doc-lane "
+        f"--cwd {workspace} --tmux-session doc-tmux"
+    ) in text
+    assert (
+        "isotope-supervisor supervise --auto-execute --changes-only "
+        "--bell --interval 30"
+    ) in text
+    assert "isotope-supervisor web" in text
+
+
+def test_codex_supervisor_runner_guide_can_print_json(tmp_path, capsys):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+
+    exit_code = supervisor_main(
+        [
+            "guide",
+            "--cwd",
+            str(workspace),
+            "--name",
+            "doc-lane",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["workflow"]["lane_name"] == "doc-lane"
+    assert payload["workflow"]["tmux_session"] == "doc-lane"
+    assert payload["workflow"]["cwd"] == str(workspace)
+    assert payload["commands"]["supervise"] == (
+        "isotope-supervisor supervise --auto-execute --changes-only --bell --interval 30"
+    )
+
+
 def test_codex_supervisor_runner_launch_records_managed_codex(
     tmp_path,
     capsys,

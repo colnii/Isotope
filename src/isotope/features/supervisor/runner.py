@@ -249,6 +249,35 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Codex home directory. Defaults to ~/.codex.",
     )
     repair_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    guide_parser = subparsers.add_parser(
+        "guide", help="Print a ready-to-run Supervisor workflow."
+    )
+    guide_parser.add_argument(
+        "--cwd",
+        default=str(Path.cwd()),
+        help="Workspace directory. Defaults to the current directory.",
+    )
+    guide_parser.add_argument(
+        "--name",
+        default="lane-a",
+        help="Managed lane name used in generated commands.",
+    )
+    guide_parser.add_argument(
+        "--tmux-session",
+        help="tmux session name. Defaults to --name.",
+    )
+    guide_parser.add_argument(
+        "--prompt",
+        default="继续推进当前任务，并在完成或阻塞时按 SUPERVISOR_STATUS/SUMMARY/NEXT 汇报。",
+        help="Prompt used by the launch command.",
+    )
+    guide_parser.add_argument(
+        "--interval",
+        type=int,
+        default=30,
+        help="Supervise loop interval seconds.",
+    )
+    guide_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     return parser
 
 
@@ -373,6 +402,13 @@ def main(argv: list[str] | None = None) -> int:
                         + (f" / {repair.message}" if repair.message else "")
                     )
             return 0
+        if args.command == "guide":
+            payload = _guide_payload(args)
+            if args.json:
+                _print_json(payload)
+            else:
+                _print_guide_plain(payload)
+            return 0
     except KeyboardInterrupt:
         return 130
     except ValueError as exc:
@@ -493,6 +529,89 @@ def _scan_report(args: argparse.Namespace) -> Any:
 
 def _unknown_tmux_bell_hook(_session: str) -> None:
     return None
+
+
+def _guide_payload(args: argparse.Namespace) -> dict[str, Any]:
+    if args.interval <= 0:
+        raise ValueError("interval must be positive")
+    cwd = str(Path(args.cwd).expanduser())
+    tmux_session = args.tmux_session or args.name
+    commands = {
+        "launch": shlex.join(
+            [
+                "isotope-supervisor",
+                "launch",
+                "--backend",
+                "tmux",
+                "--name",
+                args.name,
+                "--tmux-session",
+                tmux_session,
+                "--cwd",
+                cwd,
+                "--prompt",
+                args.prompt,
+            ]
+        ),
+        "adopt": shlex.join(
+            [
+                "isotope-supervisor",
+                "adopt",
+                "--name",
+                args.name,
+                "--cwd",
+                cwd,
+                "--tmux-session",
+                tmux_session,
+            ]
+        ),
+        "supervise": shlex.join(
+            [
+                "isotope-supervisor",
+                "supervise",
+                "--auto-execute",
+                "--changes-only",
+                "--bell",
+                "--interval",
+                str(args.interval),
+            ]
+        ),
+        "web": shlex.join(["isotope-supervisor", "web"]),
+        "attach": shlex.join(["tmux", "attach", "-t", tmux_session]),
+    }
+    return {
+        "status": "ok",
+        "workflow": {
+            "cwd": cwd,
+            "lane_name": args.name,
+            "tmux_session": tmux_session,
+            "prompt": args.prompt,
+            "interval": args.interval,
+        },
+        "commands": commands,
+    }
+
+
+def _print_guide_plain(payload: dict[str, Any]) -> None:
+    workflow = payload["workflow"]
+    commands = payload["commands"]
+    print("[Codex Supervisor 使用入口]")
+    print(f"工作目录：{workflow['cwd']}")
+    print(f"托管名：{workflow['lane_name']}")
+    print(f"tmux：{workflow['tmux_session']}")
+    print()
+    print("1. 新开一个托管 Codex 窗口：")
+    print(commands["launch"])
+    print()
+    print("2. 如果窗口已经存在，改用接管命令：")
+    print(commands["adopt"])
+    print()
+    print("3. 启动自动监督循环：")
+    print(commands["supervise"])
+    print()
+    print("4. 需要观察细节时：")
+    print(commands["web"])
+    print(commands["attach"])
 
 
 def _validate_execution_modes(args: argparse.Namespace) -> None:

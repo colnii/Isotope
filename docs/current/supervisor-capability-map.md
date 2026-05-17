@@ -15,7 +15,7 @@ Codex Supervisor 已经不只是一个小命令。
 
 | 层级 | 当前能力 | 主要位置 | 说明 |
 | --- | --- | --- | --- |
-| 用户功能层 | `scan`、`dashboard`、`web`、`watch`、`advise`、`supervise` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
+| 用户功能层 | `scan`、`dashboard`、`guide`、`web`、`watch`、`advise`、`supervise` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
 | 托管控制层 | `launch`、`adopt`、`send`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
 | Codex 集成层 | 读取 Codex session（会话记录）、索引标题和 agent 元数据 | `features/supervisor/flow.py` | 当前读取本机 `.jsonl`、`session_index.jsonl` 和 SQLite |
 | 扫描优化层 | 最近候选、首尾读取和标题兜底 | `features/supervisor/flow.py` | 避免每次页面刷新全量读历史 |
@@ -71,6 +71,7 @@ Codex Supervisor 已经不只是一个小命令。
 - `web` 会高亮模型建议对应的 send 按钮，但不会自动点击。
 - `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
 - `/managed/send` 成功发送后会更新 lane state。
+- `guide` 会按 cwd、lane name 和 tmux session 打印可复制工作流命令。
 - `watch --changes-only` 只在状态变化时输出。
 - `watch --bell` 可在建议目标变化时输出终端 bell，不按固定 interval 重复响。
 - `supervise --bell` 可配合 `--auto-execute` 使用，只在本轮仍需要人看时响；

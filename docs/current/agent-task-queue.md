@@ -284,6 +284,23 @@
 129. Codex Supervisor 连续循环冷却修正：自动轮转会避开仍在
     `--prompt-cooldown` 冷却期内的 lane，继续寻找下一个可自动处理窗口；
     显式 `--name` 仍保留冷却跳过提示。
+130. Codex Supervisor 可用入口收口：新增 `guide` 命令，按 cwd、
+    lane name 和 tmux session 打印启动、接管、自动监督和观察命令。
+
+## 最近完成：Codex Supervisor 可用入口收口
+
+完成内容：
+
+- 新增 `isotope-supervisor guide`，只打印命令，不启动 tmux、
+  不调用模型、不发送指令。
+- `guide --cwd <repo> --name <lane>` 会生成推荐工作流：
+  新开托管窗口、接管已有 tmux、启动自动监督循环、打开 web 或 attach。
+- 支持 `--json`，便于后续前端或脚本复用同一套入口命令。
+
+下一步：
+
+- 用真实工作任务按 `guide` 输出的命令跑一次端到端，
+  从“能监督测试窗口”推进到“能监督你的真实 Codex 工作窗口”。
 
 ## 最近完成：Codex Supervisor 连续循环冷却修正
 
@@ -299,8 +316,7 @@
 
 下一步：
 
-- 把当前可用路径整理成一条推荐运行命令和简单操作说明，
-  让你能直接用它托管真实 Codex 工作窗口。
+- 已完成；下一阶段用真实工作窗口验证 guide 工作流。
 
 ## 最近完成：Codex Supervisor 多窗口自动轮转
 

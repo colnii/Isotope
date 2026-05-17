@@ -72,6 +72,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `--llm-execute` 可执行 LLM 选择的 `send_status/send_continue`，
     `monitor` 只记录跳过；
     `advise` 可单独输出建议和命令草案，并可显式执行 send 类草案；
+    `guide` 可生成一组可复制的启动、接管、自动监督和观察命令，
+    作为真实使用入口；
     `advise/supervise --name <lane>` 可把建议、显式执行和自动执行
     收窄到指定托管 lane，名字不存在时不会退回到其他窗口；
     `dashboard` 可按需要看、已完成和工作中分组输出；
@@ -178,6 +180,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.ask.runner ask --root /tmp/i
 PYTHONPATH=src .venv/bin/python -m isotope.apps.api routes --root /tmp/isotope-api --json
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --limit 3
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard --limit 3
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner guide --cwd /path/to/repo --name lane-a
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner web --print-url
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --limit 3 --json
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner advise

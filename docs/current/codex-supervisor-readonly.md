@@ -48,6 +48,7 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
   不自动发送。
 - `web` 会连接 `/events` 事件流；托管 tmux 响铃后会立刻刷新页面，
   不必等 5 秒轮询。
+- `guide` 会按当前参数打印可复制的启动、接管、自动监督和观察命令。
 - `supervise` 可按间隔循环执行扫描、建议、可选 LLM 摘要和显式 send。
 - `advise/supervise --name <lane>` 可只针对一个托管 lane 生成建议或执行动作。
 - `advise/supervise --llm-action` 可让 LLM 在白名单里选择建议动作，
@@ -76,6 +77,7 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
 ```bash
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner guide --cwd /path/to/repo --name lane-a
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner web
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner advise
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise --interval 180 --llm-summary
@@ -92,6 +94,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --nam
 ```bash
 .venv/bin/isotope-supervisor scan
 .venv/bin/isotope-supervisor dashboard
+.venv/bin/isotope-supervisor guide --cwd /path/to/repo --name lane-a
 .venv/bin/isotope-supervisor web
 .venv/bin/isotope-supervisor advise
 .venv/bin/isotope-supervisor supervise --interval 180 --llm-summary
@@ -220,6 +223,20 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 返回结果会被校验；不在白名单内的动作会报错，不会执行。
 如果没有可控的托管 tmux lane，会直接回退成 `monitor`，
 避免无目标时请求模型或报 `target_name` 错误。
+
+`guide` 是推荐入口，会生成一组可复制命令：
+
+```bash
+.venv/bin/isotope-supervisor guide --cwd /path/to/repo --name lane-a
+.venv/bin/isotope-supervisor guide --cwd /path/to/repo --name lane-a --tmux-session lane-a
+```
+
+生成后通常按这个顺序用：
+
+1. `launch --backend tmux` 新开托管 Codex 窗口。
+2. 如果已有 tmux 窗口，则用 `adopt` 接管。
+3. `supervise --auto-execute --changes-only --bell --interval 30` 常驻监控。
+4. 需要细看时打开 `web` 或 `tmux attach`。
 
 `supervise` 是当前的监控小闭环：
 
@@ -364,6 +381,7 @@ tmux attach -t isotope-lane-a
 - `advise` 默认只生成命令草案；`--execute` 只允许执行
   `send_status` 和 `send_continue`。
 - `--llm-action` 只输出模型建议动作，不自动执行。
+- `guide` 只打印命令，不启动 tmux、不调用模型、不发送指令。
 - `supervise --auto-execute` 可按规则自动执行一个白名单动作。
 - 未指定 `--name` 的自动轮转会避开冷却中的 lane，
   继续寻找下一个可自动处理窗口。
