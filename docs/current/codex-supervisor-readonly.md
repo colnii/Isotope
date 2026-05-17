@@ -291,6 +291,8 @@ JSON 仍保留完整 scan 报告。
 优先选择可自动处理且不在 `--prompt-cooldown` 冷却期内的窗口。
 如果 lane 仍在运行、终端未回到可输入态且没有 bell/stale 证据，
 即使缺少状态协议也只监控，不会提前催促。
+如果终端明确显示 `Working ... esc to interrupt`，
+自动策略会优先相信当前窗口仍在工作，不使用同目录旧 `done` session 续跑或归档。
 配合 `--name <lane>` 时，自动策略只读取并操作这个托管 lane。
 `--llm-execute` 会先请求 LLM 白名单动作，再执行
 `send_status` 或 `send_continue`；如果 LLM 返回 `monitor`，本轮只记录跳过。

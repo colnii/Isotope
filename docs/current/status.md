@@ -131,6 +131,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     继续寻找下一个可自动处理窗口；显式 `--name` 仍保留冷却跳过提示；
     即使报告指纹不变，日常 `loop` 也会继续执行规则自动策略，
     冷却结束后仍可再次请求状态；
+    终端明确显示 `Working ... esc to interrupt` 时，
+    自动策略会优先相信当前窗口仍在工作，不被同目录旧 `done` session 误导；
     `supervise --bell` 可和自动执行合用，只按本轮托管 lane 的自动处理
     结果判断是否需要人看，不被无关历史窗口误触发；
     自动发送 `send_status/send_continue` 已处理的状态不会响；
@@ -158,6 +160,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     连续循环烟测已验证：一个 lane 进入冷却期后，其他可推进 lane
     不会被它挡住；
     无变化连续循环已验证：`changes-only` 不再让自动策略停摆；
+    真实 guide/loop 验收发现并修正旧 `done` session 误导新工作窗口的问题；
     web 已新增 `/events` 事件流，tmux bell 写入事件文件后会推动前端
     立即刷新 dashboard，不必等 5 秒轮询。
     能力登记见 `docs/current/supervisor-capability-map.md`。

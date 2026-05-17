@@ -288,6 +288,23 @@
     lane name 和 tmux session 打印启动、接管、自动监督和观察命令。
 131. Codex Supervisor 日常 loop 自动化修正：`changes-only` 只限制输出，
     报告不变时仍会执行规则自动策略，冷却结束后可继续请求状态。
+132. Codex Supervisor 真实 guide/loop 验收修正：托管 tmux pane
+    明确显示 `Working ... esc to interrupt` 时，自动策略不会被同目录旧
+    `done` session 误导成终态完成。
+
+## 最近完成：Codex Supervisor 真实 guide/loop 验收修正
+
+完成内容：
+
+- 按 `guide` 生成命令，启动真实 `real-use-check` 托管 Codex lane。
+- `loop` 能在窗口工作时保持监控，窗口可输入时发送状态请求。
+- 验收发现首轮可能被同目录旧 `done` session 误导，已修正为优先相信
+  当前 tmux pane 的 `Working ... esc to interrupt` 信号。
+
+下一步：
+
+- 把真实验收扩展到“接管用户已手动开的 tmux Codex 窗口”，
+  验证 `adopt -> loop -> archive` 是否足够顺手。
 
 ## 最近完成：Codex Supervisor 日常 loop 自动化修正
 

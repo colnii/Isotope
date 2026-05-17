@@ -11,7 +11,12 @@ import time
 from pathlib import Path
 from typing import Any
 
-from .flow import CodexSupervisorFlow, _tmux_capture_pane, render_plain_report
+from .flow import (
+    CodexSupervisorFlow,
+    _terminal_has_active_work_marker,
+    _tmux_capture_pane,
+    render_plain_report,
+)
 from .lane_state import (
     DEFAULT_PROMPT_COOLDOWN_SECONDS,
     prompt_cooldown_state,
@@ -1708,6 +1713,11 @@ def _auto_action_in_prompt_cooldown(
 
 
 def _auto_execute_action_for_managed(report: Any, managed: Any) -> dict[str, str]:
+    if _managed_terminal_looks_busy(managed):
+        return {
+            "kind": "monitor",
+            "reason": "managed lane is running without ready signal",
+        }
     status_source = _auto_status_source(report, managed)
     supervisor_status = (status_source.supervisor_status or "").lower()
     if supervisor_status in {"blocked", "needs_user"}:
@@ -1778,6 +1788,14 @@ def _auto_execute_action_for_managed(report: Any, managed: Any) -> dict[str, str
 def _supervisor_next_marks_terminal_done(session: Any) -> bool:
     next_text = _normalize_match_text(getattr(session, "supervisor_next", None))
     return any(marker in next_text for marker in TERMINAL_DONE_NEXT_MARKERS)
+
+
+def _managed_terminal_looks_busy(session: Any) -> bool:
+    text = getattr(session, "managed_terminal_excerpt", None)
+    if not isinstance(text, str):
+        return False
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    return _terminal_has_active_work_marker(lines[-8:])
 
 
 def _auto_status_source(report: Any, managed: Any) -> Any:

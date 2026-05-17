@@ -123,6 +123,8 @@ Codex Supervisor 已经不只是一个小命令。
   继续寻找下一个可自动处理的窗口；显式 `--name` 仍会保留冷却跳过提示。
 - 如果 lane 仍在运行、终端未回到可输入态且没有 bell/stale 证据，
   自动策略只监控，不会仅因缺少状态协议就催促。
+- 如果托管 tmux pane 明确显示 `Working ... esc to interrupt`，
+  自动策略优先相信当前终端仍在工作，不会被同目录旧 `done` session 误导。
 - 已退出或已归档的旧托管 tmux lane 不参与建议、命令草案和自动发送。
 - lane state 记录最近状态、最近催促时间和催促次数。
 - `--prompt-cooldown` 可避免短时间重复催促同一个 lane。

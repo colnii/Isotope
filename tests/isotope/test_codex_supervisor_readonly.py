@@ -3761,6 +3761,113 @@ def test_codex_supervisor_runner_supervise_auto_waits_without_protocol_while_run
     assert calls == []
 
 
+def test_codex_supervisor_runner_supervise_auto_prefers_busy_terminal_over_old_done_link(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    prompt = "Supervisor 真实使用验收：检查 loop 行为，不要修改文件。"
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "lane-a",
+                "cwd": str(workspace),
+                "prompt": prompt,
+                "command": ["tmux", "new-session", "-d", "-s", "isotope-lane-a"],
+                "pid": 0,
+                "started_at": NOW.isoformat(),
+                "log_path": str(codex_home / "supervisor" / "logs" / "managed-001.log"),
+                "status": "launched",
+                "backend": "tmux",
+                "tmux_session": "isotope-lane-a",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-old-done.jsonl",
+        session_id="old-done-session",
+        cwd=str(workspace),
+        events=[
+            _user_message("2026-05-16T11:40:00Z", prompt),
+            _assistant_message(
+                "2026-05-16T11:45:00Z",
+                "SUPERVISOR_STATUS: done\n"
+                "SUPERVISOR_SUMMARY: 旧窗口已完成。\n"
+                "SUPERVISOR_NEXT: 等待 Supervisor 归档。",
+            ),
+        ],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: (
+            "› Supervisor 真实使用验收：检查 loop 行为，不要修改文件。\n\n"
+            "◦ Working (12s • esc to interrupt)\n\n"
+            "› Implement {feature}\n"
+            "  gpt-5.5 xhigh · main"
+        ),
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--auto-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["auto_action"] == {
+        "kind": "monitor",
+        "reason": "managed lane is running without ready signal",
+    }
+    assert payload["executed"] == {
+        "kind": "monitor",
+        "skipped": True,
+        "reason": "managed lane is running without ready signal",
+    }
+    assert calls == []
+
+
 def test_codex_supervisor_runner_supervise_auto_requests_status_when_terminal_ready(
     tmp_path,
     capsys,
