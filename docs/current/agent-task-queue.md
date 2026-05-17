@@ -247,6 +247,18 @@
 115. Codex Supervisor 终端可输入信号：`scan/dashboard/web` 会输出
     `managed_terminal_ready`；真实 Codex 不触发 tmux bell 时，
     Supervisor 仍可识别窗口已回到 `›` 输入态并发状态请求。
+116. Codex Supervisor `/new` 绑定修正：通用状态请求和
+    “不要继续旧任务”里的旧标题不再算强匹配，避免旧 session 抢走新窗口。
+
+## 最近完成：Codex Supervisor `/new` 绑定修正
+
+完成内容：
+
+- 真实 `test` lane 经 `supervise --auto-execute` 自动发送状态请求后，
+  能回到 `SUPERVISOR_STATUS: needs_user`。
+- dashboard 重新绑定到 `测试` session，而不是旧的 `python版本升级评估`。
+- 通用状态请求不参与最近消息片段匹配。
+- 否定语境里的旧标题不参与正向标题匹配。
 
 ## 最近完成：Codex Supervisor 终端可输入信号
 

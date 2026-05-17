@@ -75,6 +75,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     和 `Thread renamed to ...` 之后的活跃终端片段，避免继续黏住旧 session；
     终端输出很长时，最近输出会保留新 Codex 窗口锚点和最新尾部，
     防止旧 resume 行再次抢占绑定；
+    通用状态请求和否定语境里的旧标题不再作为强匹配，
+    防止 `test` 这类新窗口被旧 session 重新抢走；
     超时且没有状态协议的 session 只要仍被当前 tmux pane 明确命中，
     也可作为关联候选；若没有正分匹配，不再硬连旧 session；
     web 会显示 `linked_match` 绑定依据、分数和命中来源；

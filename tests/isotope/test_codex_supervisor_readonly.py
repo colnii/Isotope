@@ -1357,6 +1357,105 @@ def test_codex_supervisor_dashboard_keeps_new_thread_marker_in_long_terminal_tai
     assert "Thread renamed to 测试" in managed_item["managed_terminal_excerpt"]
 
 
+def test_codex_supervisor_dashboard_ignores_old_resume_id_after_new_context(
+    tmp_path,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "isotope"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    old_session_id = "019e3205-b9cc-7012-804c-ca2ac38e0d32"
+    new_session_id = "019e35a2-e442-75e2-84ab-3761a685a736"
+    status_prompt = (
+        "请汇报当前状态，回复时严格输出三行： 第一行 "
+        "`SUPERVISOR_STATUS: working|done|blocked|needs_user`； 第二行 "
+        "`SUPERVISOR_SUMMARY: 用一句中文说明当前进展`； 第三行 "
+        "`SUPERVISOR_NEXT: 用一句中文说明建议下一步`。"
+    )
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-python.jsonl",
+        session_id=old_session_id,
+        cwd=str(workspace),
+        events=[
+            _event(
+                "2026-05-16T11:40:00Z",
+                "event_msg",
+                {"type": "thread_name_updated", "thread_name": "python版本升级评估"},
+            ),
+            _user_message("2026-05-16T11:41:00Z", status_prompt),
+            _assistant_message(
+                "2026-05-16T11:42:00Z",
+                "SUPERVISOR_STATUS: done\n"
+                "SUPERVISOR_SUMMARY: Python 版本升级评估已完成。\n"
+                "SUPERVISOR_NEXT: 等待下一项任务。",
+            ),
+        ],
+    )
+    _write_session(
+        codex_home,
+        "2026/05/17/rollout-new-test.jsonl",
+        session_id=new_session_id,
+        cwd=str(workspace),
+        events=[
+            _event(
+                "2026-05-16T11:43:00Z",
+                "event_msg",
+                {"type": "thread_name_updated", "thread_name": "测试"},
+            ),
+            _user_message(
+                "2026-05-16T11:43:00Z",
+                "这是 Supervisor 前端功能测试窗口。后续会反复请求测试 "
+                "Isotope 的 feature/supervisor 前端、dashboard 刷新、"
+                "resume/attach 绑定、状态按钮和托管输出展示。"
+                "请不要继续 python版本升级评估。",
+            ),
+            _assistant_message(
+                "2026-05-16T11:44:00Z",
+                "SUPERVISOR_STATUS: needs_user\n"
+                "SUPERVISOR_SUMMARY: 当前没有正在执行的 Supervisor 前端测试任务。\n"
+                "SUPERVISOR_NEXT: 请给出具体测试目标。",
+            ),
+        ],
+    )
+    pane_text = "\n".join(
+        [
+            "╭────────────────────────╮",
+            "│ >_ OpenAI Codex        │",
+            "╰────────────────────────╯",
+            "› 这是 Supervisor 前端功能测试窗口。后续会反复请求测试 Isotope 的",
+            "  feature/supervisor 前端、dashboard 刷新、resume/attach 绑定、状态按钮和托管输出展示。",
+            "  请不要继续 python版本升级评估。",
+            "• SUPERVISOR_STATUS: 已切换到 Supervisor 前端功能测试语境。",
+            f"To continue this session, run codex resume {old_session_id}",
+            f"› {status_prompt}",
+            "• SUPERVISOR_STATUS: needs_user",
+            "  SUPERVISOR_SUMMARY: 当前没有正在执行的 Supervisor 前端测试任务。",
+            "  SUPERVISOR_NEXT: 请给出具体测试目标。",
+            "› Improve documentation in @filename",
+        ]
+    )
+
+    report = CodexSupervisorFlow(
+        codex_home=codex_home,
+        now=lambda: NOW,
+        tmux_session_checker=lambda session: session == "isotope-lane-a",
+        tmux_bell_checker=lambda session: False,
+        tmux_pane_reader=lambda session: pane_text,
+    ).scan(limit=10, stale_after_seconds=600)
+    payload = _dashboard_payload(report)
+
+    test_item = next(
+        item
+        for group in payload["groups"].values()
+        for item in group
+        if item["name"] == "lane-a"
+    )
+    assert test_item["display_title"] == "测试", test_item["linked_match"]
+    assert test_item["linked_session_id"] == new_session_id
+    assert test_item["supervisor_status"] == "needs_user"
+
+
 def test_codex_supervisor_dashboard_does_not_let_manager_lane_steal_by_session_id_only(
     tmp_path,
 ):

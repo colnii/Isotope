@@ -750,12 +750,22 @@ def _candidate_snippet_matches(haystack: str, candidate: Any) -> bool:
         getattr(candidate, "last_assistant_message", None),
     ):
         text = _normalize_match_text(field)
+        if _is_generic_supervisor_status_prompt(text):
+            continue
         if len(text) < 16:
             continue
         for snippet in (text[:32], text[-32:]):
             if _text_contains(haystack, snippet):
                 return True
     return False
+
+
+def _is_generic_supervisor_status_prompt(text: str) -> bool:
+    return (
+        "请汇报当前状态" in text
+        and "supervisor_status" in text
+        and "supervisor_summary" in text
+    )
 
 
 def _candidate_text_matches(haystack: str, candidate: Any) -> bool:
@@ -765,12 +775,31 @@ def _candidate_text_matches(haystack: str, candidate: Any) -> bool:
         getattr(candidate, "last_user_message", None),
         getattr(candidate, "last_assistant_message", None),
     )
-    return any(_text_contains(haystack, field) for field in fields)
+    for field in fields:
+        text = _normalize_match_text(field)
+        if _is_generic_supervisor_status_prompt(text):
+            continue
+        if _text_contains_positive(haystack, text):
+            return True
+    return False
 
 
 def _text_contains(haystack: str, value: Any) -> bool:
     needle = _normalize_match_text(value)
     return len(needle) >= 4 and needle in haystack
+
+
+def _text_contains_positive(haystack: str, value: Any) -> bool:
+    needle = _normalize_match_text(value)
+    if len(needle) < 4 or needle not in haystack:
+        return False
+    negative_phrases = (
+        f"不要继续 {needle}",
+        f"不要再继续 {needle}",
+        f"不继续 {needle}",
+        f"别继续 {needle}",
+    )
+    return not any(phrase in haystack for phrase in negative_phrases)
 
 
 def _normalize_match_text(value: Any) -> str:

@@ -146,6 +146,9 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 页面标题优先使用关联到的 Codex 自带标题或首条用户消息。
 托管名会显示在路径信息里，方便确认它仍是可控 lane。
+绑定托管 lane 时，旧 `codex resume <session_id>`、通用状态请求、
+以及“不要继续某旧任务”里的旧标题只作为弱信息处理，
+避免 `/new` 后的新窗口被旧 session 抢走。
 每个窗口会显示“依据”，用来解释当前标签为什么被判成等待用户、停住或工作中。
 如果窗口主动写了 `SUPERVISOR_STATUS/SUMMARY/NEXT`，
 页面会单独显示“状态汇报”区，避免只在终端原文里找状态。
