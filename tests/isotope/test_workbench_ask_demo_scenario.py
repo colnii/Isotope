@@ -32,8 +32,10 @@ def test_workbench_ask_demo_json_exposes_answer_without_raw_content():
     assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout)
     assert payload["scenario"] == SCENARIO
+    assert payload["transport"] == "in_process_http_facade"
     assert payload["answer"] == "建议先把作品集项目拆成一个可展示任务。"
     assert payload["provider"] == "fake"
+    assert payload["post_workbench_ask_status_code"] == 200
     assert payload["context_counts"] == {
         "projects": 1,
         "tasks": 1,

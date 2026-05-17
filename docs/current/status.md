@@ -52,7 +52,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
 15. `features/ask` 已有第一片 Workbench Ask（工作台问答），
     可把工作台低敏摘要交给注入的 LLM provider 回答一个自然语言问题；
     通用问题没有命中搜索时，会退回使用当前 project/task/file 摘要作为
-    上下文候选；可通过 `isotope-ask` 和
+    上下文候选；已接入 `POST /workbench/ask`，也可通过 `isotope-ask` 和
     `isotope-demo --scenario workbench-ask --trace` 调用。
 16. `apps/api` 已有薄后端入口，当前提供 ASGI 兼容 `ApiApp`、
     `create_api_app(...)` 和 `isotope-api routes`，真实路由仍复用

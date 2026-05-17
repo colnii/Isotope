@@ -261,19 +261,21 @@
 121. Workbench Ask 第一片：`WorkbenchAskFlow`、`isotope-ask` 和
     `isotope-demo --scenario workbench-ask` 可用工作台低敏摘要回答一个
     自然语言问题；泛问题搜索为空时会退回使用当前 project/task/file 摘要。
+122. Workbench Ask API：`POST /workbench/ask` 可通过注入的 LLM provider
+    回答工作台问题；未注入 provider 时返回 `workbench_ask` 未启用。
 
-## 最近完成：Workbench Ask 第一片
+## 最近完成：Workbench Ask API
 
 完成内容：
 
-- 新增 `features/ask`，用注入的 LLM provider 回答工作台问题。
-- prompt 只携带 project/task/file/search 的低敏摘要，不带文件正文或任务私信。
-- `isotope-ask ask` 支持 mock provider 和 OpenAI-compatible provider 配置。
-- 新增 `workbench-ask` demo 场景，展示“问工作台”的可演示流程。
+- `create_http_app(..., workbench_ask_provider=...)` 可注入问答 provider。
+- `POST /workbench/ask` 返回 answer、provider、model 和低敏 context。
+- 未注入 provider 时，路由稳定返回 `501 not_enabled`。
+- `workbench-ask` demo 已改为走 HTTP facade，证明 API 路径可用。
 
 下一步：
 
-- 把 Workbench Ask 接到 API 或页面，让用户不用只靠 CLI 使用。
+- 把 Workbench Ask 接到页面或真实 TOML 号池配置。
 
 ## 最近完成：Codex Supervisor LLM 执行闭环
 

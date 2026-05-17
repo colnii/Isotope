@@ -19,7 +19,6 @@ from .interfaces.http import (
     create_llm_provider_http_app,
 )
 from .features.chat.flow import submit_llm_product_chat_user_message_with_preflight
-from .features.ask.flow import WorkbenchAskFlow
 from .llm.provider import (
     LLMFinalAnswerResponse,
     LLMResponse,
@@ -395,7 +394,10 @@ def _run_workbench_demo(root: Path) -> dict[str, Any]:
 
 def _run_workbench_ask_demo(root: Path) -> dict[str, Any]:
     root.mkdir(parents=True, exist_ok=True)
-    app = create_http_app(root)
+    provider = _FakeWorkbenchAskProvider(
+        "建议先把作品集项目拆成一个可展示任务。"
+    )
+    app = create_http_app(root, workbench_ask_provider=provider)
 
     app.request(
         "POST",
@@ -422,23 +424,26 @@ def _run_workbench_ask_demo(root: Path) -> dict[str, Any]:
             "content": "PRIVATE_WORKBENCH_ASK_CONTENT_SHOULD_NOT_LEAK",
         },
     )
-    provider = _FakeWorkbenchAskProvider(
-        "建议先把作品集项目拆成一个可展示任务。"
+    answer_response = app.request(
+        "POST",
+        "/workbench/ask",
+        {
+            "question": "秋招作品集下一步做什么？",
+            "limit": 3,
+        },
     )
-    answer = WorkbenchAskFlow.in_process(root, provider=provider).answer(
-        "秋招作品集下一步做什么？",
-        search_limit=3,
-    )
+    answer = answer_response.body["answer"]  # type: ignore[index]
 
     return {
         "scenario": "workbench-ask",
-        "transport": "in_process_flow",
-        "question": answer.question,
-        "answer": answer.answer,
-        "provider": answer.provider,
-        "model": answer.model,
+        "transport": "in_process_http_facade",
+        "question": answer["question"],
+        "answer": answer["answer"],
+        "provider": answer["provider"],
+        "model": answer["model"],
         "provider_call_count": provider.call_count,
-        "context_counts": answer.workbench.counts,
+        "context_counts": answer["context"]["counts"],
+        "post_workbench_ask_status_code": answer_response.status_code,
         "content_policy": "summary_only",
         "memory_status": "boundary_only",
     }

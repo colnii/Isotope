@@ -24,6 +24,7 @@ MINIMAL_ROUTES = {
     ("POST", "/search"),
     ("GET", "/workbench"),
     ("POST", "/workbench"),
+    ("POST", "/workbench/ask"),
     ("POST", "/sessions"),
     ("POST", "/sessions/{session_id}/runs"),
     ("POST", "/runs/{run_id}/input"),

@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from ..core import ProductCore
+from ..features.ask.flow import AskProvider, WorkbenchAskAnswer, WorkbenchAskFlow
 from ..features.files.flow import FileFlow, FileSummary
 from ..features.projects.flow import ProjectDetail, ProjectFlow, ProjectSummary
 from ..features.projects.workspace import ProjectWorkspace, ProjectWorkspaceFlow
@@ -56,6 +57,7 @@ class HttpApiApp:
         ("POST", "/search"),
         ("GET", "/workbench"),
         ("POST", "/workbench"),
+        ("POST", "/workbench/ask"),
         ("POST", "/sessions"),
         ("POST", "/sessions/{session_id}/runs"),
         ("POST", "/runs/{run_id}/input"),
@@ -111,6 +113,7 @@ class HttpApiApp:
         enable_llm_product_chat_route: bool = False,
         llm_tool_call_provider: Any | None = None,
         llm_tool_names: tuple[str, ...] = ("codex_task",),
+        workbench_ask_provider: AskProvider | None = None,
     ):
         self.root_path = Path(root_path)
         self.server = server if server is not None else InProcessServer(self.root_path)
@@ -121,6 +124,7 @@ class HttpApiApp:
         self.enable_llm_product_chat_route = enable_llm_product_chat_route
         self.llm_tool_call_provider = llm_tool_call_provider
         self.llm_tool_names = self._validate_llm_tool_names(llm_tool_names)
+        self.workbench_ask_provider = workbench_ask_provider
         product_core = ProductCore(self.server)
         self.task_flow = TaskFlow(product_core)
         self.file_flow = FileFlow(product_core)
@@ -128,6 +132,11 @@ class HttpApiApp:
         self.project_workspace_flow = ProjectWorkspaceFlow(product_core)
         self.search_flow = SearchFlow(product_core)
         self.workbench_flow = WorkbenchFlow(product_core)
+        self.workbench_ask_flow = (
+            WorkbenchAskFlow(product_core, provider=workbench_ask_provider)
+            if workbench_ask_provider is not None
+            else None
+        )
         self._idempotency_cache: dict[str, dict[str, Any]] = {}
 
     def routes(self) -> list[tuple[str, str]]:
@@ -379,6 +388,24 @@ class HttpApiApp:
                     search_limit=workbench_options["search_limit"],
                 )
                 return self._json(200, {"status": "ok", "workbench": self._workbench_view_to_dict(view)})
+            if method == "POST" and parts == ["workbench", "ask"]:
+                if self.workbench_ask_flow is None:
+                    return self._error(
+                        501,
+                        "not_enabled",
+                        "workbench_ask is not enabled",
+                        capability="workbench_ask",
+                    )
+                ask_options = self._workbench_ask_options(json_body)
+                answer = self.workbench_ask_flow.answer(
+                    ask_options["question"],
+                    search_limit=ask_options["search_limit"],
+                    max_tokens=ask_options["max_tokens"],
+                )
+                return self._json(
+                    200,
+                    {"status": "ok", "answer": self._workbench_ask_answer_to_dict(answer)},
+                )
             if method == "POST" and parts == ["sessions"]:
                 return self._json(201, self.server.create_session())
             if method == "POST" and len(parts) == 3 and parts[0] == "sessions" and parts[2] == "runs":
@@ -838,6 +865,9 @@ class HttpApiApp:
     def _workbench_view_to_dict(self, view: WorkbenchView) -> dict[str, Any]:
         return view.to_dict()
 
+    def _workbench_ask_answer_to_dict(self, answer: WorkbenchAskAnswer) -> dict[str, Any]:
+        return answer.to_dict()
+
     def _search_options(self, body: dict[str, Any]) -> dict[str, Any]:
         result_types = body.get("types")
         if result_types is not None:
@@ -863,6 +893,38 @@ class HttpApiApp:
             "search_types": search_options["result_types"],
             "search_limit": search_options["limit"],
         }
+
+    def _workbench_ask_options(self, body: dict[str, Any] | None) -> dict[str, Any]:
+        validated = self._require_body(body, required_fields=("question",))
+        assert body is not None
+        search_limit = body.get("limit", 5)
+        if search_limit is not None and (
+            not isinstance(search_limit, int) or search_limit < 1
+        ):
+            raise IsotopeError(
+                "limit must be a positive integer",
+                code="invalid_request",
+                category="validation",
+                retryable=False,
+                http_status=400,
+                details={"field": "limit"},
+            )
+        max_tokens = body.get("max_tokens", 512)
+        if not isinstance(max_tokens, int) or max_tokens <= 0:
+            raise IsotopeError(
+                "max_tokens must be a positive integer",
+                code="invalid_request",
+                category="validation",
+                retryable=False,
+                http_status=400,
+                details={"field": "max_tokens"},
+            )
+        return {
+            "question": validated["question"],
+            "search_limit": search_limit,
+            "max_tokens": max_tokens,
+        }
+
 
     def _run_state_to_dict(self, state: Any) -> dict[str, Any]:
         return asdict(state)
@@ -1245,11 +1307,13 @@ def create_http_app(
     *,
     allow_artifact_content: bool = False,
     artifact_content_retrieval_service: Any | None = None,
+    workbench_ask_provider: AskProvider | None = None,
 ) -> HttpApiApp:
     return HttpApiApp(
         root_path=root_path,
         allow_artifact_content=allow_artifact_content,
         artifact_content_retrieval_service=artifact_content_retrieval_service,
+        workbench_ask_provider=workbench_ask_provider,
     )
 
 
