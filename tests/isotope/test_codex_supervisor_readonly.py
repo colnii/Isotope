@@ -3755,6 +3755,112 @@ def test_codex_supervisor_runner_supervise_auto_name_targets_ready_lane(
     )
 
 
+def test_codex_supervisor_runner_supervise_auto_finds_ready_lane_after_running_lane(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True)
+    registry_path.write_text(
+        "\n".join(
+            json.dumps(record, ensure_ascii=False)
+            for record in [
+                {
+                    "record_id": "managed-a",
+                    "name": "lane-a",
+                    "cwd": str(workspace),
+                    "prompt": "仍在运行",
+                    "command": ["tmux", "attach", "-t", "session-a"],
+                    "pid": 0,
+                    "started_at": NOW.isoformat(),
+                    "log_path": str(codex_home / "supervisor" / "logs" / "a.log"),
+                    "status": "adopted",
+                    "backend": "tmux",
+                    "tmux_session": "session-a",
+                },
+                {
+                    "record_id": "managed-b",
+                    "name": "lane-b",
+                    "cwd": str(workspace),
+                    "prompt": "等待输入",
+                    "command": ["tmux", "attach", "-t", "session-b"],
+                    "pid": 0,
+                    "started_at": NOW.isoformat(),
+                    "log_path": str(codex_home / "supervisor" / "logs" / "b.log"),
+                    "status": "adopted",
+                    "backend": "tmux",
+                    "tmux_session": "session-b",
+                },
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session in {"session-a", "session-b"},
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: (
+            "◦ Working (7m 52s • esc to interrupt)"
+            if session == "session-a"
+            else "› Improve documentation in @filename\n  gpt-5.5 xhigh · main"
+        ),
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--auto-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["auto_action"] == {
+        "kind": "send_status",
+        "reason": "managed terminal is ready for input",
+        "target_name": "lane-b",
+    }
+    assert payload["executed"]["managed"]["name"] == "lane-b"
+    assert calls == _tmux_send_calls(
+        STATUS_REQUEST_TEXT,
+        buffer_name="isotope-supervisor-managed-b",
+        target="session-b",
+    )
+
+
 def test_codex_supervisor_runner_supervise_auto_continues_done_lane(
     tmp_path,
     capsys,

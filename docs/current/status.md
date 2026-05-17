@@ -116,6 +116,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `supervise --auto-execute` 已有第一版规则自动策略：
     `done` 续跑，终端可输入、`stale` 或 bell 时询问状态，
     `blocked/needs_user/error` 只提醒；
+    未指定 `--name` 时会扫描所有活跃托管 lane，优先推进可自动处理的
+    窗口，不会被第一个仍在运行的窗口挡住；
     `supervise --bell` 可和自动执行合用，只在本轮仍需人看时响；
     自动发送 `send_status/send_continue` 已处理的状态不会响；
     `send` 可向托管 tmux 会话发送一行指令；`scan` 已能把托管
@@ -136,6 +138,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     已退出的旧托管 tmux lane 不再参与建议和自动发送；
     运行中且终端未回到可输入态的 lane 不会仅因缺少状态协议就被催促。
     真实 `done -> send_continue -> 第二阶段状态协议` 闭环已通过烟测；
+    多窗口烟测已验证：一个 lane 仍在工作时，另一个已完成 lane
+    可被自动选择并继续推进；
     web 已新增 `/events` 事件流，tmux bell 写入事件文件后会推动前端
     立即刷新 dashboard，不必等 5 秒轮询。
     能力登记见 `docs/current/supervisor-capability-map.md`。

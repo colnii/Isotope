@@ -278,6 +278,26 @@
 127. Codex Supervisor CLI 提醒：`supervise --bell` 可和
     `--auto-execute` 一起使用，只在本轮仍需人看时响；
     自动发送 `send_status/send_continue` 已处理的状态不响。
+128. Codex Supervisor 多窗口自动轮转：未指定 `--name` 时，
+    `supervise --auto-execute` 会扫描所有活跃托管 lane，
+    优先推进可自动处理的窗口，不会被第一个仍在运行的窗口挡住。
+
+## 最近完成：Codex Supervisor 多窗口自动轮转
+
+完成内容：
+
+- 修正 `supervise --auto-execute` 只看第一个托管 lane 的问题。
+- 未指定 `--name` 时，自动策略会在所有活跃 lane 里优先选择
+  `send_status/send_continue` 这类可自动处理动作。
+- 真实烟测：`supervisor-multi-a` 仍在 `sleep` 工作中时，
+  Supervisor 成功选择已完成的 `supervisor-multi-b`，
+  发送 `send_continue` 并拿到第二阶段 `SUPERVISOR_STATUS: done`。
+
+下一步：
+
+- 把连续运行体验收口成推荐命令和可观察输出：
+  用 2 个 lane 跑 `supervise --auto-execute --changes-only --bell`
+  多轮，确认铃声、冷却和轮转在连续循环里也稳定。
 
 ## 最近完成：Codex Supervisor CLI 自动监控提醒
 
@@ -292,8 +312,7 @@
 
 下一步：
 
-- 用 2 个以上真实托管 lane 跑一段 `supervise --auto-execute --bell`
-  连续监控，检查多窗口轮转、冷却和误提醒。
+- 已完成单轮真实多窗口轮转；下一阶段验证连续循环体验。
 
 ## 最近完成：Codex Supervisor 真实闭环烟测
 

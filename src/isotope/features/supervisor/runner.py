@@ -533,7 +533,13 @@ def _supervise_payload(
         auto_action = _auto_execute_action(report, target_name=args.name)
         payload["auto_action"] = auto_action
         if auto_action["kind"] in EXECUTABLE_ADVICE_KINDS:
-            payload["executed"] = _execute_advice(args, report, payload, kind=auto_action["kind"])
+            payload["executed"] = _execute_advice(
+                args,
+                report,
+                payload,
+                kind=auto_action["kind"],
+                target_name=auto_action.get("target_name"),
+            )
         else:
             payload["executed"] = {
                 "kind": auto_action["kind"],
@@ -1305,18 +1311,39 @@ def _execute_llm_action(
 def _auto_execute_action(
     report: Any, *, target_name: str | None = None
 ) -> dict[str, str]:
-    managed = (
-        _managed_tmux_session_by_name(report, target_name)
-        if target_name
-        else _first_managed_tmux_session(report)
-    )
-    if managed is None:
+    if target_name:
+        managed = _managed_tmux_session_by_name(report, target_name)
+        if managed is None:
+            return {
+                "kind": "monitor",
+                "reason": f"managed lane not found: {target_name}",
+            }
+        return _auto_execute_action_for_managed(report, managed)
+    managed_lanes = [
+        session for session in report.sessions if _is_active_managed_tmux_session(session)
+    ]
+    if not managed_lanes:
         return {
             "kind": "monitor",
-            "reason": f"managed lane not found: {target_name}"
-            if target_name
-            else "no managed tmux lane",
+            "reason": "no managed tmux lane",
         }
+    include_target_name = len(managed_lanes) > 1
+    actions = []
+    for managed in managed_lanes:
+        action = _auto_execute_action_for_managed(report, managed)
+        if include_target_name and managed.managed_name:
+            action = {**action, "target_name": managed.managed_name}
+        actions.append(action)
+    for action in actions:
+        if action["kind"] in EXECUTABLE_ADVICE_KINDS:
+            return action
+    for action in actions:
+        if action["reason"] == "lane needs human attention":
+            return action
+    return actions[0]
+
+
+def _auto_execute_action_for_managed(report: Any, managed: Any) -> dict[str, str]:
     status_source = _auto_status_source(report, managed)
     supervisor_status = (status_source.supervisor_status or "").lower()
     if supervisor_status in {"blocked", "needs_user"}:
