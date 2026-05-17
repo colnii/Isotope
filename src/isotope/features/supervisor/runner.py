@@ -806,9 +806,22 @@ def _supervise_bell_fingerprint(
     report: Any, payload: dict[str, Any]
 ) -> tuple[object, ...] | None:
     executed = payload.get("executed")
-    if executed and executed.get("kind") in EXECUTABLE_ADVICE_KINDS:
+    if not executed:
+        return _attention_bell_fingerprint(report)
+    if executed.get("kind") in EXECUTABLE_ADVICE_KINDS:
         return None
-    return _attention_bell_fingerprint(report)
+    if (
+        executed.get("kind") == "monitor"
+        and executed.get("reason") == "lane needs human attention"
+    ):
+        auto_action = payload.get("auto_action") or {}
+        return (
+            "supervise",
+            executed.get("kind"),
+            executed.get("reason"),
+            auto_action.get("target_name"),
+        )
+    return None
 
 
 def _emit_terminal_bell() -> None:

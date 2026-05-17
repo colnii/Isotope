@@ -4080,6 +4080,67 @@ def test_codex_supervisor_runner_supervise_bell_rings_for_human_attention(
     assert captured.err == "\a"
 
 
+def test_codex_supervisor_runner_supervise_bell_ignores_unmanaged_attention_when_lane_runs(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    other_workspace = tmp_path / "other"
+    workspace.mkdir()
+    other_workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-unmanaged-attention.jsonl",
+        session_id="unmanaged-attention-session",
+        cwd=str(other_workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:30Z",
+                "需要你确认是否继续。",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: "",
+    )
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--auto-execute",
+            "--bell",
+            "--json",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert exit_code == 0
+    assert captured.err == ""
+    assert payload["auto_action"] == {
+        "kind": "monitor",
+        "reason": "managed lane is running without ready signal",
+    }
+
+
 def test_codex_supervisor_runner_supervise_bell_skips_auto_handled_continue(
     tmp_path,
     capsys,

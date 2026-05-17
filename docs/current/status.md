@@ -122,7 +122,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     窗口，不会被第一个仍在运行的窗口挡住；
     自动轮转会避开仍在 `--prompt-cooldown` 冷却期内的 lane，
     继续寻找下一个可自动处理窗口；显式 `--name` 仍保留冷却跳过提示；
-    `supervise --bell` 可和自动执行合用，只在本轮仍需人看时响；
+    `supervise --bell` 可和自动执行合用，只按本轮托管 lane 的自动处理
+    结果判断是否需要人看，不被无关历史窗口误触发；
     自动发送 `send_status/send_continue` 已处理的状态不会响；
     `send` 可向托管 tmux 会话发送一行指令；`scan` 已能把托管
     tmux 会话的 bell（提醒）信号写入 plain、JSON 和 LLM 摘要输入；
