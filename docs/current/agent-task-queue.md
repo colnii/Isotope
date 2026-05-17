@@ -236,6 +236,16 @@
 110. Codex Supervisor 绑定依据展示：dashboard/web 输出 `linked_match`，
     显示绑定分数、命中来源和中文解释；当前 pane 明确命中的超时 session
     也可关联。
+111. Codex Supervisor 绑定抢占修正：session id 只作弱证据；
+    管理窗口提到别人的 id 时，不会抢走对应托管 lane 的真实 session。
+
+## 最近完成：Codex Supervisor 绑定抢占修正
+
+完成内容：
+
+- 修正管理窗口讨论 `test` 的真实 session id 时，可能抢走 `test` 绑定的问题。
+- `Thread renamed` 和最近消息片段仍是强证据，session id 降为弱证据。
+- 命中 `Thread renamed` 后不再重复叠加普通标题分，绑定分数更可解释。
 
 ## 最近完成：Codex Supervisor 绑定依据展示
 

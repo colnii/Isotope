@@ -614,10 +614,13 @@ def _managed_link_analysis(managed_session: Any, candidate: Any) -> dict[str, An
 
     if pane_text:
         if _text_contains(active_pane_text, getattr(candidate, "session_id", None)):
-            add_reason("session_id", "活跃终端片段命中真实 session id", 500)
-        if _candidate_thread_marker_matches(active_pane_text, candidate):
+            add_reason("session_id", "活跃终端片段命中真实 session id", 120)
+        thread_marker_matched = _candidate_thread_marker_matches(
+            active_pane_text, candidate
+        )
+        if thread_marker_matched:
             add_reason("thread_marker", "活跃终端片段命中 Thread renamed 标题", 250)
-        if _candidate_text_matches(active_pane_text, candidate):
+        elif _candidate_text_matches(active_pane_text, candidate):
             add_reason("title_or_message", "活跃终端片段命中标题或最近消息", 100)
         if _candidate_snippet_matches(active_pane_text, candidate):
             add_reason("message_snippet", "活跃终端片段命中最近消息片段", 80)

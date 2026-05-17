@@ -1278,6 +1278,126 @@ def test_codex_supervisor_dashboard_follows_new_session_in_same_tmux_lane(
     )
 
 
+def test_codex_supervisor_dashboard_does_not_let_manager_lane_steal_by_session_id_only(
+    tmp_path,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "isotope"
+    repo_workspace = tmp_path / "repo"
+    workspace.mkdir()
+    repo_workspace.mkdir()
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True)
+    new_session_id = "019e35a2-e442-75e2-84ab-3761a685a736"
+    registry_path.write_text(
+        "\n".join(
+            json.dumps(record, ensure_ascii=False)
+            for record in [
+                {
+                    "record_id": "managed-project",
+                    "name": "项目重新整理",
+                    "cwd": str(workspace),
+                    "prompt": "接管已有 tmux 会话",
+                    "command": ["tmux", "attach", "-t", "iso_dev"],
+                    "pid": 0,
+                    "started_at": "2026-05-16T12:00:02+00:00",
+                    "log_path": str(codex_home / "supervisor" / "logs" / "project.log"),
+                    "status": "adopted",
+                    "backend": "tmux",
+                    "tmux_session": "iso_dev",
+                },
+                {
+                    "record_id": "managed-test",
+                    "name": "test",
+                    "cwd": str(workspace),
+                    "prompt": "接管已有 tmux 会话",
+                    "command": ["tmux", "attach", "-t", "test"],
+                    "pid": 0,
+                    "started_at": "2026-05-16T12:00:01+00:00",
+                    "log_path": str(codex_home / "supervisor" / "logs" / "test.log"),
+                    "status": "adopted",
+                    "backend": "tmux",
+                    "tmux_session": "test",
+                },
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-project.jsonl",
+        session_id="019e274b-d20a-7400-8502-d3923d5167c6",
+        cwd=str(repo_workspace),
+        events=[
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "thread_name_updated", "thread_name": "项目重新整理"},
+            ),
+            _assistant_message("2026-05-16T11:59:20Z", "正在整理项目。"),
+        ],
+    )
+    _write_session(
+        codex_home,
+        "2026/05/17/rollout-new-test.jsonl",
+        session_id=new_session_id,
+        cwd=str(workspace),
+        events=[
+            _event(
+                "2026-05-16T11:40:20Z",
+                "event_msg",
+                {"type": "thread_name_updated", "thread_name": "测试"},
+            ),
+            _user_message(
+                "2026-05-16T11:40:20Z",
+                "这是 Supervisor 前端功能测试窗口。后续会反复请求测试 "
+                "dashboard 刷新和 resume/attach 绑定。",
+            ),
+        ],
+    )
+
+    def pane_text(session: str) -> str:
+        if session == "iso_dev":
+            return (
+                "正在排查 test 绑定问题。\n"
+                f"页面里出现了 {new_session_id}，但这只是管理窗口在讨论别人的 id。"
+            )
+        if session == "test":
+            return "\n".join(
+                [
+                    "╭────────────────────────╮",
+                    "│ >_ OpenAI Codex        │",
+                    "╰────────────────────────╯",
+                    "• Thread renamed to 测试, to resume this thread run codex resume '测试'",
+                    "› 这是 Supervisor 前端功能测试窗口。后续会反复请求测试 dashboard 刷新和 resume/attach 绑定。",
+                ]
+            )
+        return ""
+
+    report = CodexSupervisorFlow(
+        codex_home=codex_home,
+        now=lambda: NOW,
+        tmux_session_checker=lambda session: session in {"iso_dev", "test"},
+        tmux_bell_checker=lambda session: False,
+        tmux_pane_reader=pane_text,
+    ).scan(limit=10, stale_after_seconds=600)
+    payload = _dashboard_payload(report)
+
+    test_item = next(
+        item for item in payload["groups"]["working"] if item["name"] == "test"
+    )
+    assert test_item["display_title"] == "测试"
+    assert test_item["linked_session_id"] == new_session_id
+    assert test_item["linked_match"]["score"] == 330
+
+    project_item = next(
+        item for item in payload["groups"]["working"] if item["name"] == "项目重新整理"
+    )
+    assert project_item["display_title"] == "项目重新整理"
+    assert project_item["linked_session_id"] == "019e274b-d20a-7400-8502-d3923d5167c6"
+
+
 def test_codex_supervisor_dashboard_does_not_link_zero_score_same_cwd_session(
     tmp_path,
 ):
