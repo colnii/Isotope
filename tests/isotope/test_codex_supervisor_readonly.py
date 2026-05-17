@@ -871,6 +871,54 @@ def test_codex_supervisor_dashboard_json_includes_managed_control_commands(
     ]
 
 
+def test_codex_supervisor_dashboard_omits_exited_managed_tmux_lanes():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="managed:closed",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/supervisor/managed_sessions.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=120,
+                status="exited",
+                reason="Supervisor 托管 tmux 会话已退出",
+                managed=True,
+                managed_name="closed-lane",
+                managed_backend="tmux",
+                managed_tmux_session="closed-session",
+            ),
+            CodexSessionSummary(
+                session_id="managed:live",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/supervisor/managed_sessions.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="working",
+                reason="Supervisor 托管 tmux 会话仍在运行",
+                managed=True,
+                managed_name="live-lane",
+                managed_backend="tmux",
+                managed_tmux_session="live-session",
+            ),
+        ),
+    )
+
+    payload = _dashboard_payload(report)
+
+    all_items = [
+        item
+        for items in payload["groups"].values()
+        for item in items
+    ]
+    assert [item["name"] for item in all_items] == ["live-lane"]
+    assert payload["counts"] == {
+        "needs_attention": 0,
+        "done": 0,
+        "working": 1,
+    }
+
+
 def test_codex_supervisor_dashboard_merges_managed_lane_with_real_session(
     tmp_path,
     capsys,
@@ -3865,6 +3913,46 @@ def test_codex_supervisor_runner_watch_changes_only_prints_changed_reports(
     output = capsys.readouterr().out
     assert output.count("[Codex Supervisor]") == 2
     assert "正在运行测试" in output
+
+
+def test_codex_supervisor_runner_watch_bell_rings_for_attention(tmp_path, capsys):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-blocked.jsonl",
+        session_id="blocked-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "\n".join(
+                    [
+                        "SUPERVISOR_STATUS: blocked",
+                        "SUPERVISOR_SUMMARY: 测试环境缺少 tmux。",
+                        "SUPERVISOR_NEXT: 需要人工查看环境。",
+                    ]
+                ),
+            )
+        ],
+    )
+
+    exit_code = supervisor_main(
+        [
+            "watch",
+            "--codex-home",
+            str(codex_home),
+            "--interval",
+            "1",
+            "--iterations",
+            "1",
+            "--bell",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert captured.err == "\a"
+    assert "先查看主动汇报阻塞的窗口" in captured.out
 
 
 def test_codex_supervisor_runner_launch_records_managed_codex(

@@ -57,6 +57,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     可从本机 `~/.codex/sessions` 读取多个 Codex 会话，判断工作中、
     等待用户、疑似停住、疑似报错和空闲，并通过 `isotope-supervisor`
     输出中文汇报；`watch --changes-only` 可只在变化时再次输出；
+    `watch --bell` 可在本轮建议需要人看时输出终端 bell；
     `launch` 可启动 Codex 并写入本机托管登记；`launch --backend tmux`
     可在本机 tmux 会话中启动 Codex；`adopt` 可把已有 tmux 会话
     登记成托管 lane；`--llm-summary` 可通过本机
@@ -66,6 +67,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `advise/supervise --name <lane>` 可把建议、显式执行和自动执行
     收窄到指定托管 lane，名字不存在时不会退回到其他窗口；
     `dashboard` 可按需要看、已完成和工作中分组输出；
+    dashboard/web 默认隐藏已退出的托管 tmux lane，`scan --json`
+    仍保留完整审计信息；
     `web` 可启动本机页面并复用 `/dashboard.json` 展示三组窗口；
     dashboard 和 web 已显示 SQLite 标题、索引标题、首条用户消息标题、
     agent 元数据和短 hash，并可复制完整 `codex resume <session_id>`；

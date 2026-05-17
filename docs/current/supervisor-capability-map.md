@@ -42,6 +42,7 @@ Codex Supervisor 已经不只是一个小命令。
 - 每个状态带 `status_evidence`，说明来自状态协议、文本规则、超时、bell 或托管检查。
 - 输出中文 plain 报告和 JSON 报告。
 - `dashboard` 按需要看、已完成和工作中分组。
+- `dashboard/web` 默认隐藏已退出的托管 tmux lane；`scan` 保留审计信息。
 - `dashboard` 保留可读标题、短 hash、Codex 标题和 agent 元数据。
 - `dashboard` 为每个窗口输出完整 `resume_command`。
 - `dashboard` 会把托管 lane 和最近真实 Codex session 合并展示。
@@ -71,6 +72,7 @@ Codex Supervisor 已经不只是一个小命令。
 - `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
 - `/managed/send` 成功发送后会更新 lane state。
 - `watch --changes-only` 只在状态变化时输出。
+- `watch --bell` 可在本轮建议需要人看时输出终端 bell。
 - 本机托管登记表 `managed_sessions.jsonl`。
 - `launch` 支持普通进程和 tmux 会话。
 - `adopt` 可接管已存在的 tmux 会话。

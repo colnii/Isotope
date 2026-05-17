@@ -54,6 +54,7 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
   但不会自动执行。
 - `--prompt-cooldown` 可避免短时间重复催促同一个托管 lane。
 - `watch --changes-only` 可持续运行，只在会话状态变化时重新输出。
+- `watch --bell` 可在本轮建议需要人看时输出终端 bell（提醒音）。
 - `launch` 可启动一个 Codex 进程，并写入托管登记文件。
 - `launch --backend tmux` 可在本机 tmux 会话里启动 Codex。
 - `adopt` 可把已有 tmux 会话登记成托管 lane。
@@ -112,6 +113,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 - `needs_attention`：需要看的窗口，包含阻塞、等待用户、报错、停住和 bell。
 - `done`：主动汇报完成的窗口。
 - `working`：仍在推进或暂无明显异常的窗口。
+- 已退出的托管 tmux lane 默认不进入 dashboard/web，避免旧登记污染日常视图；
+  `scan --json` 仍保留完整审计信息。
 - JSON 保留 session id、短 hash、Codex 标题、agent 名、状态、
   状态依据、resume 命令、受控命令、tmux session、bell、摘要和下一步字段。
 - 如果托管 lane 能关联到真实 Codex session，`display_title` 和
@@ -245,6 +248,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --in
 ```
 
 如果同时使用 `watch --changes-only --llm-summary`，无变化的轮次不会调用 LLM。
+如果使用 `watch --changes-only --bell`，只有打印出来且建议动作不是 `monitor`
+的轮次会响铃；bell 写到 stderr，不污染 JSON/stdout。
 
 配置文件：
 

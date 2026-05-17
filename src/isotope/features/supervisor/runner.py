@@ -6,6 +6,7 @@ import argparse
 import json
 import shlex
 import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -133,6 +134,11 @@ def _build_parser() -> argparse.ArgumentParser:
             action="store_true",
             help="Print only when session state changes.",
         )
+    subparsers.choices["watch"].add_argument(
+        "--bell",
+        action="store_true",
+        help="Write a terminal bell when a printed report needs attention.",
+    )
     subparsers.choices["supervise"].add_argument(
         "--auto-execute",
         action="store_true",
@@ -380,6 +386,8 @@ def _print_report(
     fingerprint = _report_fingerprint(report)
     if getattr(args, "changes_only", False) and previous_fingerprint == fingerprint:
         return False, fingerprint
+    if getattr(args, "bell", False) and _report_needs_attention_bell(report):
+        _emit_terminal_bell()
     if args.json:
         payload = report.to_dict()
         if args.llm_summary:
@@ -561,7 +569,11 @@ def _dashboard_display_sessions(sessions: Any) -> list[tuple[Any, Any | None, di
             continue
         linkable_sessions.append(session)
 
-    managed_sessions = [session for session in sessions if session.managed]
+    managed_sessions = [
+        session
+        for session in sessions
+        if session.managed and session.status != "exited"
+    ]
     linked_by_managed_id = _best_linked_sessions_for_managed_lanes(
         managed_sessions,
         linkable_sessions,
@@ -573,6 +585,8 @@ def _dashboard_display_sessions(sessions: Any) -> list[tuple[Any, Any | None, di
 
     display_sessions: list[tuple[Any, Any | None, dict[str, Any] | None]] = []
     for session in sessions:
+        if session.managed and session.status == "exited":
+            continue
         if session.session_id in consumed_linked_ids:
             continue
         linked = linked_by_managed_id.get(session.session_id)
@@ -582,6 +596,15 @@ def _dashboard_display_sessions(sessions: Any) -> list[tuple[Any, Any | None, di
             (session, linked_session, linked_match)
         )
     return display_sessions
+
+
+def _report_needs_attention_bell(report: Any) -> bool:
+    return report.recommendation.action != "monitor"
+
+
+def _emit_terminal_bell() -> None:
+    sys.stderr.write("\a")
+    sys.stderr.flush()
 
 
 def _best_linked_sessions_for_managed_lanes(

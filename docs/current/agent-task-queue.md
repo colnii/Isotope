@@ -253,6 +253,21 @@
     明确普通历史会话与托管 tmux 窗口；bell 文案改成“未收到/收到于”。
 118. Codex Supervisor 指定托管 lane 执行：`advise/supervise --name <lane>`
     可把建议、显式执行和自动执行限定到指定托管窗口；名字不存在时不回退。
+119. Codex Supervisor CLI 监控提醒：`dashboard/web` 默认隐藏已退出托管
+    tmux lane；`watch --bell` 可在建议需要人看时输出终端 bell。
+
+## 最近完成：Codex Supervisor CLI 监控提醒
+
+完成内容：
+
+- `dashboard` 和 `/dashboard.json` 不再展示已退出的托管 tmux lane。
+- `scan --json` 仍保留已退出托管记录，方便审计登记状态。
+- `watch --bell` 在建议动作不是 `monitor` 时向 stderr 写终端 bell。
+- bell 不写入 stdout，避免破坏 plain 或 JSON 输出主体。
+
+下一步：
+
+- 用真实 `watch --changes-only --bell` 跑一段时间，确认提醒频率是否合适。
 
 ## 最近完成：Codex Supervisor 指定托管 lane 执行
 
