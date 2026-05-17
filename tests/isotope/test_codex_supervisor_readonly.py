@@ -4156,7 +4156,7 @@ def test_codex_supervisor_runner_supervise_auto_stops_terminal_done_lane(
                 "2026-05-16T11:59:30Z",
                 "SUPERVISOR_STATUS: done\n"
                 "SUPERVISOR_SUMMARY: 本次任务已经完成。\n"
-                "SUPERVISOR_NEXT: 本次任务可结束，等待归档。",
+                "SUPERVISOR_NEXT: 等待 Supervisor 归档或下发新任务。",
             )
         ],
     )
@@ -4173,7 +4173,7 @@ def test_codex_supervisor_runner_supervise_auto_stops_terminal_done_lane(
         lambda session: (
             "SUPERVISOR_STATUS: done\n"
             "SUPERVISOR_SUMMARY: 本次任务已经完成。\n"
-            "SUPERVISOR_NEXT: 本次任务可结束，等待归档。"
+            "SUPERVISOR_NEXT: 等待 Supervisor 归档或下发新任务。"
         ),
     )
     calls: list[list[str]] = []

@@ -113,7 +113,7 @@ Codex Supervisor 已经不只是一个小命令。
 - `loop` 复用 `supervise` 引擎，默认开启规则自动策略。
 - 自动策略：`done` 默认发 `send_continue`；终端可输入、`stale` 或
   bell 发 `send_status`；`blocked/needs_user/error` 只提醒。
-- 如果 `SUPERVISOR_NEXT` 明确写出可结束、可归档或无需继续，
+- 如果 `SUPERVISOR_NEXT` 明确写出可结束、可归档、等待归档或无需继续，
   `done` 只监控，不再自动续跑。
 - 未指定 `--name` 时，自动策略会扫描所有活跃托管 lane，
   优先推进可自动处理的窗口，不会被第一个仍在运行的窗口挡住。

@@ -123,7 +123,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `supervise --auto-execute` 已有第一版规则自动策略：
     `done` 默认续跑，终端可输入、`stale` 或 bell 时询问状态，
     `blocked/needs_user/error` 只提醒；如果 `SUPERVISOR_NEXT`
-    明确写出可结束、可归档或无需继续，自动策略只监控不续跑；
+    明确写出可结束、可归档、等待归档或无需继续，自动策略只监控不续跑；
     未指定 `--name` 时会扫描所有活跃托管 lane，优先推进可自动处理的
     窗口，不会被第一个仍在运行的窗口挡住；
     自动轮转会避开仍在 `--prompt-cooldown` 冷却期内的 lane，

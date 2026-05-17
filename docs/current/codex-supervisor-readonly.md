@@ -283,7 +283,7 @@ JSON 仍保留完整 scan 报告。
 `--auto-execute` 会启用规则自动策略，每轮最多执行一个白名单动作：
 `done` 默认发 `send_continue`，终端可输入、`stale` 或 bell 时发
 `send_status`，`blocked`、`needs_user` 和疑似报错只提醒不硬推。
-如果 `SUPERVISOR_NEXT` 明确写出可结束、可归档或无需继续，
+如果 `SUPERVISOR_NEXT` 明确写出可结束、可归档、等待归档或无需继续，
 `done` 只监控，不再自动续跑。
 未指定 `--name` 时，自动策略会扫描所有活跃托管 lane，
 优先选择可自动处理且不在 `--prompt-cooldown` 冷却期内的窗口。
