@@ -77,8 +77,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `advise/supervise --name <lane>` 可把建议、显式执行和自动执行
     收窄到指定托管 lane，名字不存在时不会退回到其他窗口；
     `dashboard` 可按需要看、已完成和工作中分组输出；
-    dashboard/web 默认隐藏已退出的托管 tmux lane，`scan --json`
-    仍保留完整审计信息；
+    dashboard/web 和 `supervise` plain 视图默认隐藏已退出的托管
+    tmux lane，`scan --json` 仍保留完整审计信息；
     `web` 可启动本机页面并复用 `/dashboard.json` 展示三组窗口；
     dashboard 和 web 已显示 SQLite 标题、索引标题、首条用户消息标题、
     agent 元数据和短 hash，并可复制完整 `codex resume <session_id>`；
@@ -138,7 +138,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     合法状态协议，避免已完成窗口继续显示成疑似停住；lane state
     会记录最近状态、最近催促时间和催促次数，避免短时间重复发送；
     `blocked`、`done`、`needs_user` 和 bell 事件已接入结构化建议。
-    `supervise` 会输出托管自动化是否可用；没有可控 tmux lane 时，
+    `supervise` plain 视图复用 dashboard 当前分组，再输出托管自动化
+    是否可用；没有可控 tmux lane 时，
     会明确提示自动发送不会生效并给出 launch/adopt 命令形状；
     已退出的旧托管 tmux lane 不再参与建议和自动发送；
     运行中且终端未回到可输入态的 lane 不会仅因缺少状态协议就被催促。

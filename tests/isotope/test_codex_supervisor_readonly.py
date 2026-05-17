@@ -3475,6 +3475,43 @@ def test_codex_supervisor_runner_supervise_ignores_exited_managed_lane(
     assert calls == []
 
 
+def test_codex_supervisor_runner_supervise_plain_omits_exited_managed_lanes(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--auto-execute",
+        ]
+    )
+
+    text = capsys.readouterr().out
+    assert exit_code == 0
+    assert "managed:managed-001" not in text
+    assert "托管：lane-a" not in text
+    assert "已退出" not in text
+    assert "工作中：0" in text
+
+
 def test_codex_supervisor_runner_supervise_llm_execute_rejects_other_execute_modes(
     tmp_path,
     capsys,

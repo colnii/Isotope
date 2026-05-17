@@ -42,7 +42,8 @@ Codex Supervisor 已经不只是一个小命令。
 - 每个状态带 `status_evidence`，说明来自状态协议、文本规则、超时、bell 或托管检查。
 - 输出中文 plain 报告和 JSON 报告。
 - `dashboard` 按需要看、已完成和工作中分组。
-- `dashboard/web` 默认隐藏已退出的托管 tmux lane；`scan` 保留审计信息。
+- `dashboard/web` 和 `supervise` plain 视图默认隐藏已退出的托管
+  tmux lane；`scan` 保留审计信息。
 - `dashboard` 保留可读标题、短 hash、Codex 标题和 agent 元数据。
 - `dashboard` 为每个窗口输出完整 `resume_command`。
 - `dashboard` 会把托管 lane 和最近真实 Codex session 合并展示。
@@ -101,8 +102,8 @@ Codex Supervisor 已经不只是一个小命令。
 - `advise/supervise --name <lane>` 可把建议、显式执行和自动执行收窄到指定托管 lane。
 - `send_status/send_continue` 会要求托管 Codex 按三行状态协议汇报。
 - `supervise` 循环执行扫描、建议、摘要和显式发送。
-- `supervise` 会输出托管自动化是否 ready，没有可控 tmux lane 时给出
-  launch/adopt 命令形状。
+- `supervise` plain 视图复用 dashboard 当前分组，再输出托管自动化
+  是否 ready；没有可控 tmux lane 时给出 launch/adopt 命令形状。
 - `supervise --auto-execute` 每轮最多自动执行一个白名单动作。
 - 自动策略：`done` 发 `send_continue`；终端可输入、`stale` 或
   bell 发 `send_status`；`blocked/needs_user/error` 只提醒。

@@ -118,8 +118,9 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 - `needs_attention`：需要看的窗口，包含阻塞、等待用户、报错、停住和 bell。
 - `done`：主动汇报完成的窗口。
 - `working`：仍在推进或暂无明显异常的窗口。
-- 已退出的托管 tmux lane 默认不进入 dashboard/web，避免旧登记污染日常视图；
-  `scan --json` 仍保留完整审计信息。
+- 已退出的托管 tmux lane 默认不进入 dashboard/web 和 `supervise`
+  plain 视图，避免旧登记污染日常视图；`scan --json` 仍保留完整
+  审计信息。
 - JSON 保留 session id、短 hash、Codex 标题、agent 名、状态、
   状态依据、resume 命令、受控命令、tmux session、bell、摘要和下一步字段。
 - 如果托管 lane 能关联到真实 Codex session，`display_title` 和
@@ -254,6 +255,8 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 
 每轮会扫描窗口、生成结构化建议、生成命令草案，
 可选调用 LLM 生成中文摘要。
+plain 视图会先显示 dashboard 当前分组，再显示托管自动化状态；
+JSON 仍保留完整 scan 报告。
 只有显式传入 `--execute send_status` 或 `--execute send_continue`
 时才会发送指令。
 `--auto-execute` 会启用规则自动策略，每轮最多执行一个白名单动作：

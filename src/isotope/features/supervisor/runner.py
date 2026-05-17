@@ -1147,7 +1147,7 @@ def _dashboard_item_suffix(item: dict[str, Any]) -> str:
 
 def _print_supervise_plain(payload: dict[str, Any], report: Any) -> None:
     print("[Codex Supervisor supervise]")
-    print(render_plain_report(report))
+    _print_dashboard_plain(_dashboard_payload(report))
     automation = payload["automation"]
     print()
     print("[托管自动化]")
