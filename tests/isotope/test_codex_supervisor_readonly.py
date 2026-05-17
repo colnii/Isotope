@@ -32,6 +32,7 @@ from isotope.features.supervisor.runner import (
     EXECUTABLE_ADVICE_TEXT,
     _advice_payload,
     _dashboard_payload,
+    _report_fingerprint,
     main as supervisor_main,
 )
 
@@ -3865,6 +3866,42 @@ def test_codex_supervisor_runner_watch_changes_only_suppresses_unchanged_reports
     assert output.count("[Codex Supervisor]") == 1
 
 
+def test_codex_supervisor_report_fingerprint_ignores_elapsed_evidence_detail():
+    base = {
+        "session_id": "stale-session",
+        "cwd": "/home/lumber/Github/isotope",
+        "source_path": "/home/lumber/.codex/sessions/stale.jsonl",
+        "last_event_at": "2026-05-16T11:40:00Z",
+        "age_seconds": 1200,
+        "status": "stale",
+        "reason": "超过 10 分钟没有新事件",
+        "status_evidence": {
+            "source": "stale_timeout",
+            "label": "超过静默阈值",
+            "detail": "1200 秒没有新事件，阈值 600 秒",
+        },
+    }
+    later = {
+        **base,
+        "age_seconds": 1260,
+        "status_evidence": {
+            "source": "stale_timeout",
+            "label": "超过静默阈值",
+            "detail": "1260 秒没有新事件，阈值 600 秒",
+        },
+    }
+    first = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(CodexSessionSummary(**base),),
+    )
+    second = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(CodexSessionSummary(**later),),
+    )
+
+    assert _report_fingerprint(first) == _report_fingerprint(second)
+
+
 def test_codex_supervisor_runner_watch_changes_only_prints_changed_reports(
     tmp_path,
     capsys,
@@ -3915,7 +3952,11 @@ def test_codex_supervisor_runner_watch_changes_only_prints_changed_reports(
     assert "正在运行测试" in output
 
 
-def test_codex_supervisor_runner_watch_bell_rings_for_attention(tmp_path, capsys):
+def test_codex_supervisor_runner_watch_bell_rings_for_attention(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
     codex_home = tmp_path / ".codex"
     _write_session(
         codex_home,
@@ -3935,6 +3976,7 @@ def test_codex_supervisor_runner_watch_bell_rings_for_attention(tmp_path, capsys
             )
         ],
     )
+    monkeypatch.setattr("isotope.features.supervisor.runner.time.sleep", lambda _: None)
 
     exit_code = supervisor_main(
         [
@@ -3944,7 +3986,7 @@ def test_codex_supervisor_runner_watch_bell_rings_for_attention(tmp_path, capsys
             "--interval",
             "1",
             "--iterations",
-            "1",
+            "2",
             "--bell",
         ]
     )
@@ -3952,6 +3994,7 @@ def test_codex_supervisor_runner_watch_bell_rings_for_attention(tmp_path, capsys
     captured = capsys.readouterr()
     assert exit_code == 0
     assert captured.err == "\a"
+    assert captured.out.count("[Codex Supervisor]") == 2
     assert "先查看主动汇报阻塞的窗口" in captured.out
 
 

@@ -72,7 +72,7 @@ Codex Supervisor 已经不只是一个小命令。
 - `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
 - `/managed/send` 成功发送后会更新 lane state。
 - `watch --changes-only` 只在状态变化时输出。
-- `watch --bell` 可在本轮建议需要人看时输出终端 bell。
+- `watch --bell` 可在建议目标变化时输出终端 bell，不按固定 interval 重复响。
 - 本机托管登记表 `managed_sessions.jsonl`。
 - `launch` 支持普通进程和 tmux 会话。
 - `adopt` 可接管已存在的 tmux 会话。

@@ -248,8 +248,9 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --in
 ```
 
 如果同时使用 `watch --changes-only --llm-summary`，无变化的轮次不会调用 LLM。
-如果使用 `watch --changes-only --bell`，只有打印出来且建议动作不是 `monitor`
-的轮次会响铃；bell 写到 stderr，不污染 JSON/stdout。
+如果使用 `watch --changes-only --bell`，只有打印出来且建议目标发生变化的
+轮次会响铃；同一个阻塞或停住目标不会按固定 interval 重复响。
+bell 写到 stderr，不污染 JSON/stdout。
 
 配置文件：
 

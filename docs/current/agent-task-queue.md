@@ -262,7 +262,8 @@
 
 - `dashboard` 和 `/dashboard.json` 不再展示已退出的托管 tmux lane。
 - `scan --json` 仍保留已退出托管记录，方便审计登记状态。
-- `watch --bell` 在建议动作不是 `monitor` 时向 stderr 写终端 bell。
+- `watch --bell` 在建议目标变化时向 stderr 写终端 bell。
+- 变化指纹忽略“多少秒没有新事件”这类纯计时文案，避免按固定 interval 重复响。
 - bell 不写入 stdout，避免破坏 plain 或 JSON 输出主体。
 
 下一步：

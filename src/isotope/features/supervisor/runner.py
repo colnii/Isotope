@@ -260,9 +260,12 @@ def main(argv: list[str] | None = None) -> int:
             iterations = args.iterations
             count = 0
             previous_fingerprint: tuple[object, ...] | None = None
+            previous_bell_fingerprint: tuple[object, ...] | None = None
             while iterations is None or count < iterations:
-                printed, previous_fingerprint = _print_report(
-                    args, previous_fingerprint=previous_fingerprint
+                printed, previous_fingerprint, previous_bell_fingerprint = _print_report(
+                    args,
+                    previous_fingerprint=previous_fingerprint,
+                    previous_bell_fingerprint=previous_bell_fingerprint,
                 )
                 if printed and iterations is not None and count + 1 < iterations:
                     print()
@@ -376,7 +379,8 @@ def _print_report(
     args: argparse.Namespace,
     *,
     previous_fingerprint: tuple[object, ...] | None = None,
-) -> tuple[bool, tuple[object, ...]]:
+    previous_bell_fingerprint: tuple[object, ...] | None = None,
+) -> tuple[bool, tuple[object, ...], tuple[object, ...] | None]:
     flow = CodexSupervisorFlow(codex_home=Path(args.codex_home))
     report = flow.scan(
         limit=args.limit,
@@ -385,8 +389,13 @@ def _print_report(
     )
     fingerprint = _report_fingerprint(report)
     if getattr(args, "changes_only", False) and previous_fingerprint == fingerprint:
-        return False, fingerprint
-    if getattr(args, "bell", False) and _report_needs_attention_bell(report):
+        return False, fingerprint, previous_bell_fingerprint
+    bell_fingerprint = _attention_bell_fingerprint(report)
+    if (
+        getattr(args, "bell", False)
+        and bell_fingerprint is not None
+        and bell_fingerprint != previous_bell_fingerprint
+    ):
         _emit_terminal_bell()
     if args.json:
         payload = report.to_dict()
@@ -399,7 +408,7 @@ def _print_report(
             print()
             print("[LLM 摘要]")
             print(_summarize_with_llm(report))
-    return True, fingerprint
+    return True, fingerprint, bell_fingerprint
 
 
 def _run_supervise(args: argparse.Namespace) -> None:
@@ -598,8 +607,16 @@ def _dashboard_display_sessions(sessions: Any) -> list[tuple[Any, Any | None, di
     return display_sessions
 
 
-def _report_needs_attention_bell(report: Any) -> bool:
-    return report.recommendation.action != "monitor"
+def _attention_bell_fingerprint(report: Any) -> tuple[object, ...] | None:
+    recommendation = report.recommendation
+    if recommendation.action == "monitor":
+        return None
+    return (
+        recommendation.action,
+        recommendation.priority,
+        recommendation.target_session_id,
+        recommendation.target_name,
+    )
 
 
 def _emit_terminal_bell() -> None:
@@ -1241,7 +1258,7 @@ def _target_session(report: Any, session_id: str | None) -> Any | None:
 
 
 def _report_fingerprint(report: Any) -> tuple[object, ...]:
-    """生成变化指纹；忽略 generated_at，避免空转也被当作变化。"""
+    """生成变化指纹；忽略生成时间和纯计时文案，避免空转被当作变化。"""
     return tuple(
         (
             session.session_id,
@@ -1251,7 +1268,7 @@ def _report_fingerprint(report: Any) -> tuple[object, ...]:
             session.last_event_at,
             session.status,
             session.reason,
-            session.status_evidence,
+            _status_evidence_fingerprint(session.status_evidence),
             session.last_user_message,
             session.last_assistant_message,
             session.managed_bell,
@@ -1264,6 +1281,14 @@ def _report_fingerprint(report: Any) -> tuple[object, ...]:
         )
         for session in report.sessions
     )
+
+
+def _status_evidence_fingerprint(
+    evidence: dict[str, str] | None,
+) -> tuple[str | None, str | None] | None:
+    if evidence is None:
+        return None
+    return (evidence.get("source"), evidence.get("label"))
 
 
 def _summarize_with_llm(report: Any) -> str:
