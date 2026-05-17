@@ -952,7 +952,7 @@ def _print_dashboard_plain(payload: dict[str, Any]) -> None:
         print(f"{label}：{len(items)}")
         for item in items:
             title = item["display_title"]
-            status = item["supervisor_status"] or item["status_label"]
+            status = item["status_label"]
             detail = item["supervisor_summary"] or item["reason"]
             suffix = _dashboard_item_suffix(item)
             print(f"- {title} {status} / {detail}{suffix}")

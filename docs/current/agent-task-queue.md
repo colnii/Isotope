@@ -263,6 +263,25 @@
     自然语言问题；泛问题搜索为空时会退回使用当前 project/task/file 摘要。
 122. Workbench Ask API：`POST /workbench/ask` 可通过注入的 LLM provider
     回答工作台问题；未注入 provider 时返回 `workbench_ask` 未启用。
+123. Codex Supervisor 状态协议优先级：`scan --json`、summary counts
+    和 dashboard plain 都优先采用合法 `SUPERVISOR_STATUS`，
+    已完成窗口不再被 stale/needs_user 文本规则误标。
+
+## 最近完成：Codex Supervisor 状态协议优先级
+
+完成内容：
+
+- `SUPERVISOR_STATUS=done/blocked/needs_user/working` 现在会覆盖
+  stale timeout 和确认类文本规则。
+- `scan --json` 的 `status`、`status_label`、`reason` 和 summary counts
+  与主动状态协议保持一致。
+- `dashboard` plain 输出使用中文状态标签，原始协议值仍保留在“依据”里。
+- 已用本机真实 Codex 历史验证：`python版本升级评估` 现在显示为已完成，
+  `测试` 显示为等待用户，不再混成疑似停住。
+
+下一步：
+
+- 做 Supervisor 可用性入口：没有可控 tmux lane 时明确提示，存在 lane 时进入自动监督。
 
 ## 最近完成：Workbench Ask API
 

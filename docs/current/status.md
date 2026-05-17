@@ -125,7 +125,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     tmux 记录补装 hook，web 启动时也会自动做一次补装。
     `launch` 会给托管 Codex 注入 `SUPERVISOR_STATUS` 状态协议要求，
     `scan` 会从 assistant 回复解析状态、摘要和下一步字段，并校验
-    状态合法值；lane state
+    状态合法值；scan 顶层状态、统计计数和 dashboard 展示都会优先采用
+    合法状态协议，避免已完成窗口继续显示成疑似停住；lane state
     会记录最近状态、最近催促时间和催促次数，避免短时间重复发送；
     `blocked`、`done`、`needs_user` 和 bell 事件已接入结构化建议。
     web 已新增 `/events` 事件流，tmux bell 写入事件文件后会推动前端

@@ -273,6 +273,43 @@ def test_codex_supervisor_scan_parses_supervisor_status_protocol(tmp_path):
     assert "等待用户确认后继续状态协议下一片" in messages[1]["content"]
 
 
+def test_codex_supervisor_protocol_status_overrides_stale_scan_status(tmp_path):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-done-status.jsonl",
+        session_id="done-status-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _assistant_message(
+                "2026-05-16T11:00:00Z",
+                "\n".join(
+                    [
+                        "SUPERVISOR_STATUS: done",
+                        "SUPERVISOR_SUMMARY: 测试已经通过，等待用户审阅。",
+                        "SUPERVISOR_NEXT: 等待用户确认下一步。",
+                    ]
+                ),
+            )
+        ],
+    )
+
+    report = CodexSupervisorFlow(codex_home=codex_home, now=lambda: NOW).scan()
+    payload = report.to_dict()
+    session = payload["sessions"][0]
+
+    assert session["status"] == "done"
+    assert session["status_label"] == "已完成"
+    assert session["reason"] == "测试已经通过，等待用户审阅。"
+    assert session["status_evidence"] == {
+        "source": "supervisor_protocol",
+        "label": "主动状态协议",
+        "detail": "SUPERVISOR_STATUS: done",
+    }
+    assert payload["summary"]["counts"]["done"] == 1
+    assert payload["summary"]["counts"]["stale"] == 0
+
+
 def test_codex_supervisor_scan_ignores_status_protocol_template_in_event_output(tmp_path):
     codex_home = tmp_path / ".codex"
     _write_session(
@@ -1865,8 +1902,8 @@ def test_codex_supervisor_runner_dashboard_plain_is_grouped(tmp_path, capsys):
     assert "需要看：1" in text
     assert "已完成：1" in text
     assert "工作中：0" in text
-    assert "blocked-session blocked / 测试环境缺少 tmux。" in text
-    assert "done-session done / 文档已完成。" in text
+    assert "blocked-session 阻塞 / 测试环境缺少 tmux。" in text
+    assert "done-session 已完成 / 文档已完成。" in text
 
 
 def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):

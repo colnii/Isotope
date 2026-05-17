@@ -19,6 +19,8 @@ from .registry import ManagedCodexRecord, default_registry_path, read_managed_re
 STATUS_LABELS = {
     "working": "工作中",
     "needs_user": "等待用户",
+    "done": "已完成",
+    "blocked": "阻塞",
     "stale": "疑似停住",
     "error": "疑似报错",
     "idle": "空闲",
@@ -467,6 +469,8 @@ def _read_session_summary(
         active_within_seconds=active_within_seconds,
     )
     if supervisor_status:
+        status = supervisor_status
+        reason = supervisor_summary or _supervisor_status_reason(supervisor_status)
         status_evidence = _supervisor_status_evidence(supervisor_status)
     return CodexSessionSummary(
         session_id=session_id,
@@ -804,6 +808,15 @@ def _supervisor_status_evidence(status: str) -> dict[str, str]:
         "label": "主动状态协议",
         "detail": f"SUPERVISOR_STATUS: {status}",
     }
+
+
+def _supervisor_status_reason(status: str) -> str:
+    return {
+        "working": "托管窗口主动汇报仍在工作",
+        "done": "托管窗口主动汇报已完成",
+        "blocked": "托管窗口主动汇报已阻塞",
+        "needs_user": "托管窗口主动汇报需要用户处理",
+    }.get(status, f"托管窗口主动汇报状态：{status}")
 
 
 def _recommendation(

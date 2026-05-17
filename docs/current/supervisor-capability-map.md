@@ -88,6 +88,8 @@ Codex Supervisor 已经不只是一个小命令。
 - `launch` 会注入 `SUPERVISOR_STATUS/SUMMARY/NEXT` 汇报要求。
 - `scan` 会从 Codex `.jsonl` 解析状态协议字段。
 - 状态协议只从 assistant 回复中解析，并校验 status 合法值。
+- 合法状态协议会覆盖 stale timeout 和确认类文本规则，
+  `scan --json`、统计计数和 dashboard plain 展示使用同一状态口径。
 - `scan --json` 输出结构化建议。
 - `SUPERVISOR_STATUS=blocked/done/needs_user` 会影响结构化建议。
 - bell 事件会让建议优先提示查看对应托管窗口。
