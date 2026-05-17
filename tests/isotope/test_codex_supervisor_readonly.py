@@ -1263,6 +1263,100 @@ def test_codex_supervisor_dashboard_matches_managed_lanes_without_stealing_links
     )
 
 
+def test_codex_supervisor_dashboard_uses_launch_prompt_to_disambiguate_similar_lanes():
+    long_prompt = (
+        "Supervisor 双窗口真实托管验证，长任务 lane。请只读，不要修改文件。"
+        "第一阶段：运行 sleep 55，然后运行 git rev-parse --abbrev-ref HEAD。"
+    )
+    short_prompt = (
+        "Supervisor 双窗口真实托管验证，短任务 lane。请只读，不要修改文件。"
+        "第一阶段：运行 sleep 8，然后运行 git rev-parse --abbrev-ref HEAD。"
+    )
+    common_terminal = "\n".join(
+        [
+            "SUPERVISOR_STATUS: done",
+            "SUPERVISOR_SUMMARY: 第一阶段完成。",
+            "SUPERVISOR_NEXT: 等待 Supervisor 继续指令。",
+        ]
+    )
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="managed:short",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/supervisor/managed_sessions.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=20,
+                status="working",
+                reason="Supervisor 托管 tmux 会话仍在运行",
+                last_user_message=short_prompt,
+                managed=True,
+                managed_name="e2e-short",
+                managed_backend="tmux",
+                managed_tmux_session="supervisor-e2e-short",
+                managed_terminal_excerpt=common_terminal,
+            ),
+            CodexSessionSummary(
+                session_id="managed:long",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/supervisor/managed_sessions.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=20,
+                status="working",
+                reason="Supervisor 托管 tmux 会话仍在运行",
+                last_user_message=long_prompt,
+                managed=True,
+                managed_name="e2e-long",
+                managed_backend="tmux",
+                managed_tmux_session="supervisor-e2e-long",
+                managed_terminal_excerpt=common_terminal,
+            ),
+            CodexSessionSummary(
+                session_id="real-long",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/sessions/long.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=10,
+                status="done",
+                reason="long 第一阶段完成。",
+                initial_user_title=long_prompt,
+                last_user_message=long_prompt,
+                last_assistant_message=common_terminal,
+                supervisor_status="done",
+                supervisor_summary="long 第一阶段完成。",
+            ),
+            CodexSessionSummary(
+                session_id="real-short",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/sessions/short.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=10,
+                status="done",
+                reason="short 第一阶段完成。",
+                initial_user_title=short_prompt,
+                last_user_message=short_prompt,
+                last_assistant_message=common_terminal,
+                supervisor_status="done",
+                supervisor_summary="short 第一阶段完成。",
+            ),
+        ),
+    )
+
+    payload = _dashboard_payload(report)
+
+    short_item = next(
+        item for item in payload["groups"]["done"] if item["name"] == "e2e-short"
+    )
+    long_item = next(
+        item for item in payload["groups"]["done"] if item["name"] == "e2e-long"
+    )
+    assert short_item["linked_session_id"] == "real-short"
+    assert short_item["display_title"] == short_prompt[:47] + "…"
+    assert long_item["linked_session_id"] == "real-long"
+    assert long_item["display_title"] == long_prompt[:47] + "…"
+
+
 def test_codex_supervisor_dashboard_follows_new_session_in_same_tmux_lane(
     tmp_path,
 ):

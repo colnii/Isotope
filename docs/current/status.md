@@ -83,8 +83,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     dashboard 和 web 已显示 SQLite 标题、索引标题、首条用户消息标题、
     agent 元数据和短 hash，并可复制完整 `codex resume <session_id>`；
     dashboard 会把托管 tmux lane 和最近真实 Codex session 合并成一个
-    可控卡片；关联不再只依赖 cwd，而是全局候选打分，优先用只读
-    tmux pane 文本、session id、Codex 标题和用户消息匹配，并一对一分配；
+    可控卡片；关联不再只依赖 cwd，而是全局候选打分，优先用
+    launch 登记的原始 prompt、只读 tmux pane 文本、session id、
+    Codex 标题和用户消息匹配，并一对一分配；
     session id 只是弱证据，管理窗口讨论别人 id 时不会抢走对应 session；
     同一 tmux lane 内执行 `/new` 后，会优先使用新 Codex banner
     和 `Thread renamed to ...` 之后的活跃终端片段，避免继续黏住旧 session；

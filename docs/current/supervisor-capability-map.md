@@ -48,7 +48,8 @@ Codex Supervisor 已经不只是一个小命令。
 - `dashboard` 为每个窗口输出完整 `resume_command`。
 - `dashboard` 会把托管 lane 和最近真实 Codex session 合并展示。
 - 关联托管 lane 时不只依赖 cwd，而是全局候选打分后做一对一分配。
-- 关联优先使用只读 tmux pane 文本、标题和用户消息；session id 只作弱证据。
+- 关联优先使用 launch 登记的原始 prompt、只读 tmux pane 文本、
+  标题和用户消息；session id 只作弱证据。
 - 管理窗口只是在讨论别人的 session id 时，不应抢走别的托管 lane 绑定。
 - 同一 tmux lane 执行 `/new` 后，关联优先使用新 Codex banner
   之后的活跃终端片段，避免被旧 session 的 resume 行误导。

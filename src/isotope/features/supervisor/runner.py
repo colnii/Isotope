@@ -906,6 +906,8 @@ def _managed_link_analysis(managed_session: Any, candidate: Any) -> dict[str, An
         score += weight
         reasons.append({"kind": kind, "label": label, "weight": weight})
 
+    if _managed_prompt_matches_candidate(managed_session, candidate):
+        add_reason("managed_prompt", "托管登记 prompt 命中真实 session", 320)
     if pane_text:
         if _text_contains(active_pane_text, getattr(candidate, "session_id", None)):
             add_reason("session_id", "活跃终端片段命中真实 session id", 40)
@@ -922,10 +924,25 @@ def _managed_link_analysis(managed_session: Any, candidate: Any) -> dict[str, An
         name_text = _normalize_match_text(managed_session.managed_name)
         if _candidate_text_matches(name_text, candidate):
             add_reason("managed_name", "托管名命中真实 session 标题或消息", 20)
-    scope = active_scope if any(
-        reason["kind"] in {"session_id", "thread_marker", "title_or_message", "message_snippet"}
+    has_active_reason = any(
+        reason["kind"]
+        in {
+            "session_id",
+            "thread_marker",
+            "title_or_message",
+            "message_snippet",
+        }
         for reason in reasons
-    ) else "managed_name"
+    )
+    has_managed_prompt_reason = any(
+        reason["kind"] == "managed_prompt" for reason in reasons
+    )
+    if has_active_reason:
+        scope = active_scope
+    elif has_managed_prompt_reason:
+        scope = "managed_prompt"
+    else:
+        scope = "managed_name"
     return {
         "score": score,
         "scope": scope,
@@ -955,7 +972,34 @@ def _linked_match_label(scope: str, reasons: list[dict[str, Any]]) -> str:
     if active_parts:
         prefix = "活跃终端片段" if scope == "active_terminal" else "终端片段"
         return f"{prefix}命中 " + "、".join(active_parts)
+    if any(reason["kind"] == "managed_prompt" for reason in reasons):
+        return "托管登记 prompt 命中真实 session"
     return "托管名命中真实 session 标题或消息"
+
+
+def _managed_prompt_matches_candidate(managed_session: Any, candidate: Any) -> bool:
+    prompt = _normalize_match_text(getattr(managed_session, "last_user_message", None))
+    if _is_generic_managed_prompt(prompt):
+        return False
+    for field in (
+        getattr(candidate, "initial_user_title", None),
+        getattr(candidate, "last_user_message", None),
+        getattr(candidate, "thread_name", None),
+    ):
+        text = _normalize_match_text(field)
+        if len(text) < 16:
+            continue
+        if prompt in text or text in prompt:
+            return True
+    return False
+
+
+def _is_generic_managed_prompt(text: str) -> bool:
+    return (
+        len(text) < 16
+        or text in {"接管已有 tmux 会话", "等待输入"}
+        or _is_generic_supervisor_status_prompt(text)
+    )
 
 
 def _active_terminal_match_text(value: Any) -> str:

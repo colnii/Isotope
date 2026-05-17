@@ -128,8 +128,9 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
   和 `linked_session_id`。
 - 如果关联到的真实 session 有 `SUPERVISOR_STATUS`，dashboard 分组和
   状态字段会优先使用真实 session 的状态协议。
-- 关联时会全局候选打分并一对一分配，优先使用只读
-  `tmux capture-pane` 摘要、Codex 标题、首条用户消息或最近消息；
+- 关联时会全局候选打分并一对一分配，优先使用 launch 登记的
+  原始 prompt、只读 `tmux capture-pane` 摘要、Codex 标题、
+  首条用户消息或最近消息；
   session id 只作弱证据，避免管理窗口讨论别人 id 时抢走绑定；
   没有正分命中时不硬连旧窗口。
 - 同一 tmux lane 内执行 `/new` 后，会优先使用新 Codex banner
