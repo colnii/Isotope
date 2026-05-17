@@ -58,11 +58,12 @@ Codex Supervisor 已经不只是一个小命令。
 - 合并卡片若关联到真实 `SUPERVISOR_STATUS`，分组和状态字段使用真实 session。
 - `web` 启动本机页面，复用 `dashboard` 分组 JSON。
 - `web` 优先展示可读标题，同时保留短 hash 方便辨认窗口。
+- `web` 显示“卡片来源”，区分普通历史会话和托管 tmux 窗口。
 - `web` 会把 `SUPERVISOR_STATUS/SUMMARY/NEXT` 单独显示成“状态汇报”。
 - `web` 可复制完整 `codex resume <session_id>`。
 - `web` 可分别复制 attach、状态请求和继续命令，
   也可对白名单 send 动作发起本机 POST。
-- `web` 托管卡片显示 bell 时间、bell hook 安装状态、
+- `web` 托管卡片显示 bell 是否收到、bell hook 安装状态、
   终端可输入状态、关联 session 和最近输出；
   最近输出保留尾部行并默认滚到底部，手动上翻后会保留滚动位置。
 - `web` 可手动请求 `/llm-action`，展示 LLM 白名单动作建议。

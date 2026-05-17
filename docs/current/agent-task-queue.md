@@ -249,6 +249,17 @@
     Supervisor 仍可识别窗口已回到 `›` 输入态并发状态请求。
 116. Codex Supervisor `/new` 绑定修正：通用状态请求和
     “不要继续旧任务”里的旧标题不再算强匹配，避免旧 session 抢走新窗口。
+117. Codex Supervisor 卡片来源显示：web 卡片新增“卡片来源”，
+    明确普通历史会话与托管 tmux 窗口；bell 文案改成“未收到/收到于”。
+
+## 最近完成：Codex Supervisor 卡片来源显示
+
+完成内容：
+
+- 每张 web 卡片新增“卡片来源”行。
+- 普通 Codex 历史显示为“普通历史会话”。
+- 托管窗口显示为“托管窗口 <tmux session>”，并标出身份来源短 hash。
+- bell 展示从“bell 时间：无”改为“bell：未收到”，减少误解。
 
 ## 最近完成：Codex Supervisor `/new` 绑定修正
 

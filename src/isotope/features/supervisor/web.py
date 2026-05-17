@@ -434,6 +434,10 @@ def dashboard_page_html() -> str:
       margin-top: 2px;
       color: #475467;
     }
+    .source-line {
+      margin-top: 2px;
+      color: #344054;
+    }
     .command {
       margin-top: 8px;
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -600,6 +604,7 @@ def dashboard_page_html() -> str:
         .join(" · ");
 
       lane.append(title, summary, evidence, path);
+      lane.append(renderCardSource(item));
       const protocol = renderSupervisorProtocol(item);
       if (protocol) lane.append(protocol);
       const managedDetails = renderManagedDetails(item);
@@ -630,6 +635,19 @@ def dashboard_page_html() -> str:
       }
       lane.append(actions);
       return lane;
+    }
+
+    function renderCardSource(item) {
+      const source = document.createElement("div");
+      source.className = "source-line";
+      if (item.managed) {
+        const lane = item.managed_tmux_session || item.name || item.managed_backend || "未知";
+        const linked = item.linked_short_session_id ? "，身份来自 #" + item.linked_short_session_id : "";
+        source.textContent = "卡片来源：托管窗口 " + lane + linked;
+      } else {
+        source.textContent = "卡片来源：普通历史会话";
+      }
+      return source;
     }
 
     function renderSupervisorProtocol(item) {
@@ -676,7 +694,7 @@ def dashboard_page_html() -> str:
 
       const bell = document.createElement("div");
       bell.className = "managed-line";
-      bell.textContent = "bell 时间：" + text(item.managed_bell_event_at);
+      bell.textContent = "bell：" + bellEventText(item.managed_bell_event_at);
       details.append(bell);
 
       const bellHook = document.createElement("div");
@@ -719,6 +737,10 @@ def dashboard_page_html() -> str:
       if (value === true) return "已安装";
       if (value === false) return "未安装";
       return "未确认";
+    }
+
+    function bellEventText(value) {
+      return value ? "收到于 " + value : "未收到";
     }
 
     function terminalReadyText(value) {

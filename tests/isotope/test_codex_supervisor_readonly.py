@@ -1884,13 +1884,17 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "suggested-action" in html
     assert "data-command-kind" in html
     assert "data-lane-name" in html
+    assert "renderCardSource" in html
+    assert "卡片来源" in html
+    assert "普通历史会话" in html
     assert "renderManagedDetails" in html
     assert "renderLinkedMatch" in html
     assert "linked_match" in html
     assert "绑定依据" in html
     assert "managed_terminal_excerpt" in html
     assert "最近输出" in html
-    assert "bell 时间" in html
+    assert "bell：" in html
+    assert "未收到" in html
     assert "bell hook" in html
     assert "终端状态" in html
     assert "scrollTerminalExcerptToBottom" in html
