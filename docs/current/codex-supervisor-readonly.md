@@ -43,7 +43,7 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
   可控卡片，关联不再只依赖 cwd。
 - `web` 可启动本机页面，展示 `dashboard` 的三组窗口和可读标题。
 - `web` 会给托管 tmux 窗口显示复制 attach、复制状态、复制继续、
-  请求状态和继续推进按钮。
+  复制归档、请求状态和继续推进按钮。
 - `web` 可手动请求 `/llm-action`，只展示模型建议的白名单动作，
   不自动发送。
 - `web` 会连接 `/events` 事件流；托管 tmux 响铃后会立刻刷新页面，
@@ -67,6 +67,7 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
 - `scan/watch` 可显示托管 Codex 主动汇报的 Supervisor 状态协议。
 - `recommendation` 会优先处理 `blocked`、`needs_user`、bell 和 `done`。
 - `send` 可向 `launch --backend tmux` 登记的会话发送一行文本并回车。
+- `archive` 可把旧托管记录归档，让它不再进入活跃 dashboard。
 - `repair-hooks` 可给旧托管 tmux 记录补装 bell hook。
 - 可选 `--llm-summary` 调用已配置 LLM 做中文智能摘要。
 
@@ -87,6 +88,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner launch --n
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner launch --backend tmux --tmux-session isotope-lane-a --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner adopt --name lane-a --cwd /path/to/repo --tmux-session isotope-lane-a
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --name lane-a --text "继续"
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner archive --name lane-a
 ```
 
 安装后：
@@ -104,6 +106,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --nam
 .venv/bin/isotope-supervisor launch --backend tmux --tmux-session isotope-lane-a --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
 .venv/bin/isotope-supervisor adopt --name lane-a --cwd /path/to/repo --tmux-session isotope-lane-a
 .venv/bin/isotope-supervisor send --name lane-a --text "继续"
+.venv/bin/isotope-supervisor archive --name lane-a
 ```
 
 调试 JSON：
@@ -170,13 +173,15 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 用户手动上翻最近输出后，自动刷新会保留滚动位置，不会强行跳回底部。
 每个窗口提供 `复制 resume`，会复制完整 `codex resume <session_id>`。
 托管 tmux 窗口还会显示复制 attach、复制状态、复制继续、
-请求状态和继续按钮。
+复制归档、请求状态和继续按钮。
 页面不再额外显示一行 `tmux attach` 命令，避免和复制 attach 按钮重复。
 页面发送按钮调用 `/managed/send`，只允许 `send_status` 和 `send_continue`。
 成功发送后会更新 lane state（窗口状态账本）的最近催促时间和次数。
 `send_status` 会要求托管 Codex 严格按 `SUPERVISOR_STATUS`、
 `SUPERVISOR_SUMMARY`、`SUPERVISOR_NEXT` 三行汇报。
 `send_continue` 会要求继续推进，并在完成或阻塞后按同样三行格式汇报。
+`archive` 不会关闭 tmux，只会追加一条归档记录，让旧 lane 不再参与
+活跃扫描、dashboard、建议和自动发送。
 页面的“模型建议”按钮会调用 `/llm-action`。
 该接口只在点击时请求 LLM，从 `monitor`、`send_status` 和
 `send_continue` 中返回建议动作，不会自动调用 `/managed/send`。
@@ -239,6 +244,7 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 2. 如果已有 tmux 窗口，则用 `adopt` 接管。
 3. `supervise --auto-execute --changes-only --bell --interval 30` 常驻监控。
 4. 需要细看时打开 `web` 或 `tmux attach`。
+5. 窗口不用再跟进时，用 `archive --name <lane>` 归档。
 
 `supervise` 是当前的监控小闭环：
 
@@ -327,6 +333,8 @@ api_keys = [
 - `repair-hooks` 会读取托管登记表，为仍存在的 tmux session 补装 hook。
 - 当前登记 backend、pid、tmux session、cwd、prompt、启动时间和日志路径。
 - `send` 会执行 `tmux set-buffer`、`paste-buffer`，短暂等待后用 `C-m` 提交。
+- `archive` 会向 `managed_sessions.jsonl` 追加 `status=archived`，
+  读取活跃 lane 时按 `record_id` 折叠到最后状态。
 - `scan` 会读取 `#{window_bell_flag}`，并输出 `managed_bell`。
 - `scan` 会检查 `alert-bell` hook，并输出 `managed_bell_hook_installed`。
 - `scan` 会只读 `tmux capture-pane` 尾部文本，用于辅助页面关联

@@ -14,6 +14,8 @@ from typing import Any, Callable
 
 from .bell_events import install_tmux_bell_hook
 
+ARCHIVED_MANAGED_STATUS = "archived"
+
 
 @dataclass(frozen=True)
 class ManagedCodexRecord:
@@ -76,6 +78,17 @@ def default_log_dir(codex_home: Path | str) -> Path:
 
 
 def read_managed_records(registry_path: Path | str) -> tuple[ManagedCodexRecord, ...]:
+    latest_by_record_id: dict[str, ManagedCodexRecord] = {}
+    for record in read_managed_record_events(registry_path):
+        latest_by_record_id[record.record_id] = record
+    return tuple(
+        record
+        for record in latest_by_record_id.values()
+        if record.status != ARCHIVED_MANAGED_STATUS
+    )
+
+
+def read_managed_record_events(registry_path: Path | str) -> tuple[ManagedCodexRecord, ...]:
     path = Path(registry_path).expanduser()
     if not path.is_file():
         return ()
@@ -307,6 +320,35 @@ def send_to_managed_codex(
         message = (exc.stderr or exc.stdout or str(exc)).strip()
         raise ValueError(f"tmux send failed: {message}") from exc
     return ManagedSendResult(record=record, text=text_text)
+
+
+def archive_managed_codex(
+    *,
+    codex_home: Path | str,
+    name: str,
+) -> ManagedCodexRecord:
+    name_text = name.strip()
+    if not name_text:
+        raise ValueError("name must not be empty")
+    registry_path = default_registry_path(codex_home)
+    record = _find_managed_record(read_managed_records(registry_path), name_text)
+    if record is None:
+        raise ValueError(f"managed Codex not found: {name_text}")
+    archived = ManagedCodexRecord(
+        record_id=record.record_id,
+        name=record.name,
+        cwd=record.cwd,
+        prompt=record.prompt,
+        command=record.command,
+        pid=record.pid,
+        started_at=record.started_at,
+        log_path=record.log_path,
+        status=ARCHIVED_MANAGED_STATUS,
+        backend=record.backend,
+        tmux_session=record.tmux_session,
+    )
+    append_managed_record(registry_path, archived)
+    return archived
 
 
 def repair_tmux_bell_hooks(

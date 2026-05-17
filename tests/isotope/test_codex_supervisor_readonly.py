@@ -906,6 +906,11 @@ def test_codex_supervisor_dashboard_json_includes_managed_control_commands(
             "kind": "send_continue",
             "label": "让托管 Codex 继续推进",
         },
+        {
+            "command": "isotope-supervisor archive --name lane-a",
+            "kind": "archive",
+            "label": "归档托管记录",
+        },
     ]
 
 
@@ -2556,6 +2561,11 @@ def test_codex_supervisor_advise_suggests_managed_tmux_commands():
             "label": "让托管 Codex 继续推进",
         },
         {
+            "command": "isotope-supervisor archive --name lane-a",
+            "kind": "archive",
+            "label": "归档托管记录",
+        },
+        {
             "command": "isotope-supervisor watch --interval 180 --changes-only",
             "kind": "watch_changes",
             "label": "继续监控变化",
@@ -2894,6 +2904,61 @@ def test_codex_supervisor_runner_advise_execute_send_status(
         "text": STATUS_REQUEST_TEXT,
     }
     assert calls == _tmux_send_calls(STATUS_REQUEST_TEXT)
+
+
+def test_codex_supervisor_runner_archive_hides_managed_lane(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+
+    archive_exit_code = supervisor_main(
+        [
+            "archive",
+            "--codex-home",
+            str(codex_home),
+            "--name",
+            "lane-a",
+            "--json",
+        ]
+    )
+
+    assert archive_exit_code == 0
+    archive_payload = json.loads(capsys.readouterr().out)
+    assert archive_payload["status"] == "ok"
+    assert archive_payload["managed"]["name"] == "lane-a"
+    assert archive_payload["managed"]["status"] == "archived"
+
+    dashboard_exit_code = supervisor_main(
+        [
+            "dashboard",
+            "--codex-home",
+            str(codex_home),
+            "--limit",
+            "5",
+            "--json",
+        ]
+    )
+
+    assert dashboard_exit_code == 0
+    dashboard_payload = json.loads(capsys.readouterr().out)
+    assert dashboard_payload["counts"] == {
+        "needs_attention": 0,
+        "done": 0,
+        "working": 0,
+    }
 
 
 def test_codex_supervisor_runner_advise_name_targets_managed_lane(
@@ -5116,6 +5181,7 @@ def test_codex_supervisor_runner_guide_prints_usable_workflow(tmp_path, capsys):
         "--bell --interval 30"
     ) in text
     assert "isotope-supervisor web" in text
+    assert "isotope-supervisor archive --name doc-lane" in text
 
 
 def test_codex_supervisor_runner_guide_can_print_json(tmp_path, capsys):
@@ -5142,6 +5208,7 @@ def test_codex_supervisor_runner_guide_can_print_json(tmp_path, capsys):
     assert payload["commands"]["supervise"] == (
         "isotope-supervisor supervise --auto-execute --changes-only --bell --interval 30"
     )
+    assert payload["commands"]["archive"] == "isotope-supervisor archive --name doc-lane"
 
 
 def test_codex_supervisor_runner_launch_records_managed_codex(

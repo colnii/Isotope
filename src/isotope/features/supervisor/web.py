@@ -803,6 +803,7 @@ def dashboard_page_html() -> str:
       if (command.kind === "tmux_attach") return "复制 attach";
       if (command.kind === "send_status") return "复制状态";
       if (command.kind === "send_continue") return "复制继续";
+      if (command.kind === "archive") return "复制归档";
       return "复制命令";
     }
 

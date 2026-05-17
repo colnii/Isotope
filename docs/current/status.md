@@ -66,7 +66,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     不会因静默秒数增长而按固定 interval 重复响；
     `launch` 可启动 Codex 并写入本机托管登记；`launch --backend tmux`
     可在本机 tmux 会话中启动 Codex；`adopt` 可把已有 tmux 会话
-    登记成托管 lane；`--llm-summary` 可通过本机
+    登记成托管 lane；`archive` 可归档旧托管记录，让它不再进入
+    活跃 dashboard、建议和自动发送；`--llm-summary` 可通过本机
     TOML 号池做智能摘要；`--llm-action` 可让 LLM 只在白名单里
     选择 `monitor`、`send_status` 或 `send_continue`；`scan --json` 包含结构化建议；
     `--llm-execute` 可执行 LLM 选择的 `send_status/send_continue`，
@@ -78,7 +79,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     收窄到指定托管 lane，名字不存在时不会退回到其他窗口；
     `dashboard` 可按需要看、已完成和工作中分组输出；
     dashboard/web 和 `supervise` plain 视图默认隐藏已退出的托管
-    tmux lane，`scan --json` 仍保留完整审计信息；
+    tmux lane，`scan --json` 仍保留已退出记录；已归档记录会从
+    活跃扫描中折叠掉；
     `web` 可启动本机页面并复用 `/dashboard.json` 展示三组窗口；
     dashboard 和 web 已显示 SQLite 标题、索引标题、首条用户消息标题、
     agent 元数据和短 hash，并可复制完整 `codex resume <session_id>`；
@@ -143,7 +145,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `supervise` plain 视图复用 dashboard 当前分组，再输出托管自动化
     是否可用；没有可控 tmux lane 时，
     会明确提示自动发送不会生效并给出 launch/adopt 命令形状；
-    已退出的旧托管 tmux lane 不再参与建议和自动发送；
+    已退出或已归档的旧托管 tmux lane 不再参与建议和自动发送；
     运行中且终端未回到可输入态的 lane 不会仅因缺少状态协议就被催促。
     真实 `done -> send_continue -> 第二阶段状态协议` 闭环已通过烟测；
     多窗口烟测已验证：一个 lane 仍在工作时，另一个已完成 lane
@@ -192,6 +194,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise 
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise --auto-execute --changes-only --bell --interval 30
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner adopt --name lane-a --cwd /path/to/repo --tmux-session isotope-lane-a
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --name lane-a --text "继续"
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner archive --name lane-a
 .venv/bin/isotope-demo --scenario v0.2 --trace
 git status --short
 ```

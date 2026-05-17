@@ -16,7 +16,7 @@ Codex Supervisor 已经不只是一个小命令。
 | 层级 | 当前能力 | 主要位置 | 说明 |
 | --- | --- | --- | --- |
 | 用户功能层 | `scan`、`dashboard`、`guide`、`web`、`watch`、`advise`、`supervise` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
-| 托管控制层 | `launch`、`adopt`、`send`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
+| 托管控制层 | `launch`、`adopt`、`send`、`archive`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
 | Codex 集成层 | 读取 Codex session（会话记录）、索引标题和 agent 元数据 | `features/supervisor/flow.py` | 当前读取本机 `.jsonl`、`session_index.jsonl` 和 SQLite |
 | 扫描优化层 | 最近候选、首尾读取和标题兜底 | `features/supervisor/flow.py` | 避免每次页面刷新全量读历史 |
 | tmux 集成层 | tmux 启动、buffer/paste 发送和 bell hook | `bell_events.py`、`flow.py`、`registry.py` | 只控制登记过的 tmux 会话 |
@@ -82,6 +82,9 @@ Codex Supervisor 已经不只是一个小命令。
 - `launch` 支持普通进程和 tmux 会话。
 - `adopt` 可接管已存在的 tmux 会话。
 - `send` 支持向登记过的 tmux 会话发送文本。
+- `archive` 可把旧托管记录归档，不关闭 tmux，但会让它退出活跃视图。
+- 托管登记按 `record_id` 折叠到最后状态，`status=archived`
+  的记录不参与活跃扫描。
 - tmux 发送使用 buffer/paste 写入文本，短暂等待后用 `C-m` 提交，
   避免请求停留在输入区。
 - `scan` 可识别托管 tmux 会话的 bell（提醒）信号。
@@ -116,7 +119,7 @@ Codex Supervisor 已经不只是一个小命令。
   继续寻找下一个可自动处理的窗口；显式 `--name` 仍会保留冷却跳过提示。
 - 如果 lane 仍在运行、终端未回到可输入态且没有 bell/stale 证据，
   自动策略只监控，不会仅因缺少状态协议就催促。
-- 已退出的旧托管 tmux lane 不参与建议、命令草案和自动发送。
+- 已退出或已归档的旧托管 tmux lane 不参与建议、命令草案和自动发送。
 - lane state 记录最近状态、最近催促时间和催促次数。
 - `--prompt-cooldown` 可避免短时间重复催促同一个 lane。
 - `--llm-summary` 通过本机 TOML 号池生成中文摘要。

@@ -24,6 +24,7 @@ from .llm_summary import (
 )
 from .registry import (
     adopt_tmux_session,
+    archive_managed_codex,
     launch_managed_codex,
     repair_tmux_bell_hooks,
     send_to_managed_codex,
@@ -239,6 +240,16 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Short note stored in the managed registry.",
     )
     adopt_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    archive_parser = subparsers.add_parser(
+        "archive", help="Archive a managed Codex lane so it stops appearing as active."
+    )
+    archive_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    archive_parser.add_argument("--name", required=True, help="Managed lane name.")
+    archive_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     send_parser = subparsers.add_parser(
         "send", help="Send one line to a tmux-managed Codex process."
     )
@@ -367,6 +378,18 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(f"已接管 tmux 会话：{record.name}")
                 print(f"tmux：{record.tmux_session}")
+            return 0
+        if args.command == "archive":
+            record = archive_managed_codex(
+                codex_home=Path(args.codex_home),
+                name=args.name,
+            )
+            if args.json:
+                _print_json({"status": "ok", "managed": record.to_dict()})
+            else:
+                print(f"已归档托管 Codex：{record.name}")
+                if record.tmux_session:
+                    print(f"tmux：{record.tmux_session}")
             return 0
         if args.command == "send":
             result = send_to_managed_codex(
@@ -589,6 +612,7 @@ def _guide_payload(args: argparse.Namespace) -> dict[str, Any]:
         ),
         "web": shlex.join(["isotope-supervisor", "web"]),
         "attach": shlex.join(["tmux", "attach", "-t", tmux_session]),
+        "archive": shlex.join(["isotope-supervisor", "archive", "--name", args.name]),
     }
     return {
         "status": "ok",
@@ -623,6 +647,9 @@ def _print_guide_plain(payload: dict[str, Any]) -> None:
     print("4. 需要观察细节时：")
     print(commands["web"])
     print(commands["attach"])
+    print()
+    print("5. 窗口不用再跟进时归档：")
+    print(commands["archive"])
 
 
 def _validate_execution_modes(args: argparse.Namespace) -> None:
@@ -1382,6 +1409,18 @@ def _managed_tmux_command_suggestions(session: Any) -> list[dict[str, str]]:
                     session.managed_name,
                     "--text",
                     EXECUTABLE_ADVICE_TEXT["send_continue"],
+                ]
+            ),
+        },
+        {
+            "kind": "archive",
+            "label": "归档托管记录",
+            "command": shlex.join(
+                [
+                    "isotope-supervisor",
+                    "archive",
+                    "--name",
+                    session.managed_name,
                 ]
             ),
         },
