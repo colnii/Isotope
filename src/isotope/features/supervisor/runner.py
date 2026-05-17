@@ -21,7 +21,12 @@ from .llm_summary import (
     generate_llm_summary,
     resolve_summary_provider_from_env,
 )
-from .registry import adopt_tmux_session, launch_managed_codex, send_to_managed_codex
+from .registry import (
+    adopt_tmux_session,
+    launch_managed_codex,
+    repair_tmux_bell_hooks,
+    send_to_managed_codex,
+)
 
 EXECUTABLE_ADVICE_KINDS = {"send_status", "send_continue"}
 STATUS_REPORT_REQUEST = "\n".join(
@@ -208,6 +213,16 @@ def _build_parser() -> argparse.ArgumentParser:
     send_parser.add_argument("--name", required=True, help="Managed lane name.")
     send_parser.add_argument("--text", required=True, help="Text to send.")
     send_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    repair_parser = subparsers.add_parser(
+        "repair-hooks",
+        help="Repair tmux bell hooks for registered managed Codex lanes.",
+    )
+    repair_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    repair_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     return parser
 
 
@@ -305,6 +320,27 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"已发送到托管 Codex：{result.record.name}")
                 print(f"tmux：{result.record.tmux_session}")
                 print(f"内容：{result.text}")
+            return 0
+        if args.command == "repair-hooks":
+            repairs = repair_tmux_bell_hooks(
+                codex_home=Path(args.codex_home),
+                run=subprocess.run,
+            )
+            if args.json:
+                _print_json(
+                    {
+                        "status": "ok",
+                        "repairs": [repair.to_dict() for repair in repairs],
+                    }
+                )
+            else:
+                if not repairs:
+                    print("没有需要修复的托管 tmux 会话。")
+                for repair in repairs:
+                    print(
+                        f"{repair.tmux_session} / {repair.name}: {repair.status}"
+                        + (f" / {repair.message}" if repair.message else "")
+                    )
             return 0
     except KeyboardInterrupt:
         return 130
@@ -614,16 +650,16 @@ def _managed_link_analysis(managed_session: Any, candidate: Any) -> dict[str, An
 
     if pane_text:
         if _text_contains(active_pane_text, getattr(candidate, "session_id", None)):
-            add_reason("session_id", "活跃终端片段命中真实 session id", 120)
+            add_reason("session_id", "活跃终端片段命中真实 session id", 40)
         thread_marker_matched = _candidate_thread_marker_matches(
             active_pane_text, candidate
         )
         if thread_marker_matched:
             add_reason("thread_marker", "活跃终端片段命中 Thread renamed 标题", 250)
         elif _candidate_text_matches(active_pane_text, candidate):
-            add_reason("title_or_message", "活跃终端片段命中标题或最近消息", 100)
+            add_reason("title_or_message", "活跃终端片段命中标题或最近消息", 40)
         if _candidate_snippet_matches(active_pane_text, candidate):
-            add_reason("message_snippet", "活跃终端片段命中最近消息片段", 80)
+            add_reason("message_snippet", "活跃终端片段命中最近消息片段", 160)
     if getattr(managed_session, "managed_name", None):
         name_text = _normalize_match_text(managed_session.managed_name)
         if _candidate_text_matches(name_text, candidate):

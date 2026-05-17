@@ -50,6 +50,7 @@ Codex Supervisor 已经不只是一个小命令。
 - 管理窗口只是在讨论别人的 session id 时，不应抢走别的托管 lane 绑定。
 - 同一 tmux lane 执行 `/new` 后，关联优先使用新 Codex banner
   之后的活跃终端片段，避免被旧 session 的 resume 行误导。
+- 最近输出很长时，会保留新 Codex 窗口锚点和最新尾部，避免截掉绑定依据。
 - `linked_match` 会展示绑定依据、分数和命中来源，方便排查错配。
 - 当前 tmux pane 明确命中的超时 session 也可关联，即使没有状态协议。
 - 关联分数为 0 时不会硬连，避免把托管 lane 误配到旧窗口。
@@ -76,6 +77,8 @@ Codex Supervisor 已经不只是一个小命令。
   避免请求停留在输入区。
 - `scan` 可识别托管 tmux 会话的 bell（提醒）信号。
 - `launch/adopt` 会安装 tmux `alert-bell` hook。
+- `repair-hooks` 可为旧托管 tmux 记录补装 `alert-bell` hook。
+- `web` 启动时会自动补装一次已登记托管 tmux lane 的 bell hook。
 - bell hook 会写入 `bell_events.jsonl`，让提醒不只依赖轮询。
 - `launch` 会注入 `SUPERVISOR_STATUS/SUMMARY/NEXT` 汇报要求。
 - `scan` 会从 Codex `.jsonl` 解析状态协议字段。
@@ -124,7 +127,7 @@ Codex Supervisor 已经不只是一个小命令。
 
 ## 下一步顺序
 
-1. 继续观察 `linked_match` 是否能解释真实页面绑定结果。
+1. 继续观察真实 bell 事件能否稳定触发前端刷新。
 2. 后续再决定是否增加人工输入框；默认仍保持白名单。
 3. 再拆分 `runner.py` 中的匹配、建议和 tmux 控制代码。
 

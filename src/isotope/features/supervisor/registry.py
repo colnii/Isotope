@@ -51,6 +51,22 @@ class ManagedSendResult:
     text: str
 
 
+@dataclass(frozen=True)
+class TmuxBellHookRepair:
+    name: str
+    tmux_session: str
+    status: str
+    message: str | None = None
+
+    def to_dict(self) -> dict[str, str | None]:
+        return {
+            "name": self.name,
+            "tmux_session": self.tmux_session,
+            "status": self.status,
+            "message": self.message,
+        }
+
+
 def default_registry_path(codex_home: Path | str) -> Path:
     return Path(codex_home).expanduser() / "supervisor" / "managed_sessions.jsonl"
 
@@ -291,6 +307,76 @@ def send_to_managed_codex(
         message = (exc.stderr or exc.stdout or str(exc)).strip()
         raise ValueError(f"tmux send failed: {message}") from exc
     return ManagedSendResult(record=record, text=text_text)
+
+
+def repair_tmux_bell_hooks(
+    *,
+    codex_home: Path | str,
+    run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> tuple[TmuxBellHookRepair, ...]:
+    records = read_managed_records(default_registry_path(codex_home))
+    latest_by_tmux: dict[str, ManagedCodexRecord] = {}
+    for record in records:
+        if record.backend == "tmux" and record.tmux_session:
+            latest_by_tmux[record.tmux_session] = record
+
+    repairs: list[TmuxBellHookRepair] = []
+    for record in latest_by_tmux.values():
+        tmux_session = record.tmux_session or ""
+        try:
+            exists = run(
+                ["tmux", "has-session", "-t", tmux_session],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+        except OSError as exc:
+            repairs.append(
+                TmuxBellHookRepair(
+                    name=record.name,
+                    tmux_session=tmux_session,
+                    status="failed",
+                    message=str(exc),
+                )
+            )
+            continue
+        if exists.returncode != 0:
+            message = (exists.stderr or exists.stdout or "tmux session not found").strip()
+            repairs.append(
+                TmuxBellHookRepair(
+                    name=record.name,
+                    tmux_session=tmux_session,
+                    status="missing",
+                    message=message,
+                )
+            )
+            continue
+        try:
+            install_tmux_bell_hook(
+                codex_home=codex_home,
+                name=record.name,
+                tmux_session=tmux_session,
+                run=run,
+            )
+        except (OSError, subprocess.CalledProcessError) as exc:
+            message = getattr(exc, "stderr", None) or getattr(exc, "stdout", None) or str(exc)
+            repairs.append(
+                TmuxBellHookRepair(
+                    name=record.name,
+                    tmux_session=tmux_session,
+                    status="failed",
+                    message=str(message).strip(),
+                )
+            )
+            continue
+        repairs.append(
+            TmuxBellHookRepair(
+                name=record.name,
+                tmux_session=tmux_session,
+                status="installed",
+            )
+        )
+    return tuple(repairs)
 
 
 def append_managed_record(registry_path: Path | str, record: ManagedCodexRecord) -> None:

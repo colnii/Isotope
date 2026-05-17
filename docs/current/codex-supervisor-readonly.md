@@ -62,6 +62,7 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
 - `scan/watch` 可显示托管 Codex 主动汇报的 Supervisor 状态协议。
 - `recommendation` 会优先处理 `blocked`、`needs_user`、bell 和 `done`。
 - `send` 可向 `launch --backend tmux` 登记的会话发送一行文本并回车。
+- `repair-hooks` 可给旧托管 tmux 记录补装 bell hook。
 - 可选 `--llm-summary` 调用已配置 LLM 做中文智能摘要。
 
 ## 运行方式
@@ -124,6 +125,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 - 同一 tmux lane 内执行 `/new` 后，会优先使用新 Codex banner
   和 `Thread renamed to ...` 之后的终端片段，不让旧 session 的
   resume 行继续抢占绑定。
+- 如果最近输出很长，摘要会保留新 Codex 窗口锚点和最新尾部，
+  防止把 `/new` 后的绑定依据截掉。
 - 如果当前 tmux pane 明确命中某个超时 session，即使它没有
   `SUPERVISOR_STATUS`，也可以被关联；web 会显示 `linked_match`
   绑定依据、分数和命中来源。
@@ -140,6 +143,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 页面同时连接 `/events`。当 tmux `alert-bell` hook 写入
 `bell_events.jsonl` 后，web 服务会推送 `bell` 事件，前端马上重新读取
 `/dashboard.json`。
+web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 页面标题优先使用关联到的 Codex 自带标题或首条用户消息。
 托管名会显示在路径信息里，方便确认它仍是可控 lane。
 每个窗口会显示“依据”，用来解释当前标签为什么被判成等待用户、停住或工作中。
@@ -269,6 +273,7 @@ api_keys = [
 - tmux 模式会执行 `tmux new-session -d -s <session> -c <cwd> ...`。
 - `adopt` 会执行 `tmux has-session -t <session>` 确认会话存在。
 - `launch/adopt` 会安装 tmux `alert-bell` hook。
+- `repair-hooks` 会读取托管登记表，为仍存在的 tmux session 补装 hook。
 - 当前登记 backend、pid、tmux session、cwd、prompt、启动时间和日志路径。
 - `send` 会执行 `tmux set-buffer`、`paste-buffer`，短暂等待后用 `C-m` 提交。
 - `scan` 会读取 `#{window_bell_flag}`，并输出 `managed_bell`。

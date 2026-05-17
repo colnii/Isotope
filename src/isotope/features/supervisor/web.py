@@ -18,7 +18,7 @@ from .llm_summary import (
     generate_llm_action_decision,
     resolve_summary_provider_from_env,
 )
-from .registry import send_to_managed_codex
+from .registry import TmuxBellHookRepair, repair_tmux_bell_hooks, send_to_managed_codex
 from .runner import (
     EXECUTABLE_ADVICE_KINDS,
     EXECUTABLE_ADVICE_TEXT,
@@ -39,6 +39,7 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         stale_after_seconds: int,
         active_within_seconds: int,
         send_run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+        repair_run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
         llm_action_provider: SummaryProvider | None = None,
     ) -> None:
         super().__init__(server_address, _DashboardRequestHandler)
@@ -49,6 +50,10 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         self.send_run = send_run
         self.llm_action_provider = llm_action_provider
         self.bell_events_path = default_bell_events_path(self.codex_home)
+        self.bell_hook_repairs: tuple[TmuxBellHookRepair, ...] = repair_tmux_bell_hooks(
+            codex_home=self.codex_home,
+            run=repair_run,
+        )
 
     def _scan_report(self) -> Any:
         return CodexSupervisorFlow(
@@ -101,6 +106,7 @@ def create_dashboard_server(
     stale_after_seconds: int,
     active_within_seconds: int,
     send_run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+    repair_run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
     llm_action_provider: SummaryProvider | None = None,
 ) -> SupervisorDashboardServer:
     return SupervisorDashboardServer(
@@ -110,6 +116,7 @@ def create_dashboard_server(
         stale_after_seconds=stale_after_seconds,
         active_within_seconds=active_within_seconds,
         send_run=send_run,
+        repair_run=repair_run,
         llm_action_provider=llm_action_provider,
     )
 

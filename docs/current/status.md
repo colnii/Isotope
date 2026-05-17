@@ -73,6 +73,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     session id 只是弱证据，管理窗口讨论别人 id 时不会抢走对应 session；
     同一 tmux lane 内执行 `/new` 后，会优先使用新 Codex banner
     和 `Thread renamed to ...` 之后的活跃终端片段，避免继续黏住旧 session；
+    终端输出很长时，最近输出会保留新 Codex 窗口锚点和最新尾部，
+    防止旧 resume 行再次抢占绑定；
     超时且没有状态协议的 session 只要仍被当前 tmux pane 明确命中，
     也可作为关联候选；若没有正分匹配，不再硬连旧 session；
     web 会显示 `linked_match` 绑定依据、分数和命中来源；
@@ -102,7 +104,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     tmux 发送会用 `set-buffer + paste-buffer + 短暂等待 + C-m`，
     避免状态请求停在 Codex 输入区；
     `launch/adopt` 会安装 tmux `alert-bell` hook，把 bell 事件写入
-    `~/.codex/supervisor/bell_events.jsonl`。
+    `~/.codex/supervisor/bell_events.jsonl`；`repair-hooks` 可给旧托管
+    tmux 记录补装 hook，web 启动时也会自动做一次补装。
     `launch` 会给托管 Codex 注入 `SUPERVISOR_STATUS` 状态协议要求，
     `scan` 会从 assistant 回复解析状态、摘要和下一步字段，并校验
     状态合法值；lane state

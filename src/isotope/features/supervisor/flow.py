@@ -964,8 +964,8 @@ def _empty_tmux_pane(session: str) -> str | None:
 def _terminal_tail_excerpt(
     text: str | None,
     *,
-    max_lines: int = 24,
-    limit: int = 1200,
+    max_lines: int = 40,
+    limit: int = 2400,
 ) -> str | None:
     if text is None:
         return None
@@ -976,14 +976,47 @@ def _terminal_tail_excerpt(
         lines.pop()
     if not lines:
         return None
-    omitted_lines = max(0, len(lines) - max_lines)
-    tail_lines = lines[-max_lines:]
+    anchor_index = _terminal_anchor_line_index(lines)
+    anchored = anchor_index is not None and anchor_index < max(0, len(lines) - max_lines)
+    if anchored and anchor_index is not None:
+        anchor_count = min(10, max(4, max_lines // 3))
+        tail_count = max_lines - anchor_count - 1
+        anchor_end = min(len(lines), anchor_index + anchor_count)
+        tail_start = max(anchor_end, len(lines) - tail_count)
+        tail_lines = lines[anchor_index:anchor_end]
+        if tail_start > anchor_end:
+            tail_lines.append(f"... 已省略中间 {tail_start - anchor_end} 行")
+        tail_lines.extend(lines[tail_start:])
+        omitted_lines = anchor_index
+    else:
+        omitted_lines = max(0, len(lines) - max_lines)
+        tail_lines = lines[-max_lines:]
     excerpt = "\n".join(tail_lines)
     if len(excerpt) > limit:
-        excerpt = excerpt[-limit:].lstrip()
+        if anchored:
+            head_limit = min(800, limit // 3)
+            marker = "\n... 已省略中间若干字符\n"
+            tail_limit = max(0, limit - head_limit - len(marker))
+            excerpt = excerpt[:head_limit].rstrip() + marker + excerpt[-tail_limit:].lstrip()
+        else:
+            excerpt = excerpt[-limit:].lstrip()
     if omitted_lines:
         excerpt = f"... 已省略前面 {omitted_lines} 行\n{excerpt}"
     return excerpt
+
+
+def _terminal_anchor_line_index(lines: list[str]) -> int | None:
+    markers = (
+        "thread renamed to",
+        ">_ openai codex",
+        "openai codex",
+        "tip: use /copy",
+    )
+    for index in range(len(lines) - 1, -1, -1):
+        line = lines[index].casefold()
+        if any(marker in line for marker in markers):
+            return index
+    return None
 
 
 def _parse_timestamp(value: Any) -> datetime | None:

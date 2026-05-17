@@ -238,6 +238,20 @@
     也可关联。
 111. Codex Supervisor 绑定抢占修正：session id 只作弱证据；
     管理窗口提到别人的 id 时，不会抢走对应托管 lane 的真实 session。
+112. Codex Supervisor bell hook 修复：新增 `repair-hooks`，
+    web 启动时会自动为旧托管 tmux lane 补装 `alert-bell` hook。
+113. Codex Supervisor 长输出绑定修正：最近输出会保留新 Codex 窗口锚点
+    和最新尾部，消息片段权重高于旧 resume id 和普通标题命中。
+
+## 最近完成：Codex Supervisor bell hook 修复
+
+完成内容：
+
+- 新增 `isotope-supervisor repair-hooks`，按托管登记表补装 tmux bell hook。
+- web 启动时会自动给已登记且仍存在的 tmux lane 补装一次 hook。
+- 旧托管窗口无需重新 `adopt`，也能接入后续 bell 事件刷新。
+- 顺手修正长输出截掉新窗口锚点的问题，`test` 现在会继续绑定
+  `测试` session，而不是被旧 `python版本升级评估` 的 resume 行抢回去。
 
 ## 最近完成：Codex Supervisor 绑定抢占修正
 

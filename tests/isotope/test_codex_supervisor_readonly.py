@@ -1266,16 +1266,95 @@ def test_codex_supervisor_dashboard_follows_new_session_in_same_tmux_lane(
             {
                 "kind": "message_snippet",
                 "label": "活跃终端片段命中最近消息片段",
-                "weight": 80,
+                "weight": 160,
             },
         ],
         "scope": "active_terminal",
-        "score": 330,
+        "score": 410,
     }
     assert any(
         item["display_title"] == "python版本升级评估"
         for item in payload["groups"]["done"]
     )
+
+
+def test_codex_supervisor_dashboard_keeps_new_thread_marker_in_long_terminal_tail(
+    tmp_path,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "isotope"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    old_session_id = "019e3205-b9cc-7012-804c-ca2ac38e0d32"
+    new_session_id = "019e35a2-e442-75e2-84ab-3761a685a736"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-python.jsonl",
+        session_id=old_session_id,
+        cwd=str(workspace),
+        events=[
+            _event(
+                "2026-05-16T11:40:00Z",
+                "event_msg",
+                {"type": "thread_name_updated", "thread_name": "python版本升级评估"},
+            ),
+            _assistant_message(
+                "2026-05-16T11:40:00Z",
+                "\n".join(
+                    [
+                        "SUPERVISOR_STATUS: done",
+                        "SUPERVISOR_SUMMARY: Python 版本升级评估已完成。",
+                    ]
+                ),
+            ),
+        ],
+    )
+    _write_session(
+        codex_home,
+        "2026/05/17/rollout-new-test.jsonl",
+        session_id=new_session_id,
+        cwd=str(workspace),
+        events=[
+            _event(
+                "2026-05-16T11:40:20Z",
+                "event_msg",
+                {"type": "thread_name_updated", "thread_name": "测试"},
+            ),
+            _user_message(
+                "2026-05-16T11:40:20Z",
+                "这是 Supervisor 前端功能测试窗口。后续会反复请求测试 dashboard 刷新。",
+            ),
+        ],
+    )
+    pane_text = "\n".join(
+        [
+            "SUPERVISOR_STATUS: done",
+            f"To continue this session, run codex resume {old_session_id}",
+            "╭────────────────────────╮",
+            "│ >_ OpenAI Codex        │",
+            "╰────────────────────────╯",
+            "• Thread renamed to 测试, to resume this thread run codex resume '测试'",
+            "› 这是 Supervisor 前端功能测试窗口。后续会反复请求测试 dashboard 刷新。",
+        ]
+        + [f"后续输出 {index}" for index in range(1, 60)]
+        + [f"To continue this session, run codex resume {old_session_id}"]
+    )
+
+    report = CodexSupervisorFlow(
+        codex_home=codex_home,
+        now=lambda: NOW,
+        tmux_session_checker=lambda session: session == "isotope-lane-a",
+        tmux_bell_checker=lambda session: False,
+        tmux_pane_reader=lambda session: pane_text,
+    ).scan(limit=10, stale_after_seconds=600)
+    payload = _dashboard_payload(report)
+
+    managed_item = next(
+        item for item in payload["groups"]["working"] if item["name"] == "lane-a"
+    )
+    assert managed_item["display_title"] == "测试"
+    assert managed_item["linked_session_id"] == new_session_id
+    assert "Thread renamed to 测试" in managed_item["managed_terminal_excerpt"]
 
 
 def test_codex_supervisor_dashboard_does_not_let_manager_lane_steal_by_session_id_only(
@@ -1389,7 +1468,7 @@ def test_codex_supervisor_dashboard_does_not_let_manager_lane_steal_by_session_i
     )
     assert test_item["display_title"] == "测试"
     assert test_item["linked_session_id"] == new_session_id
-    assert test_item["linked_match"]["score"] == 330
+    assert test_item["linked_match"]["score"] == 410
 
     project_item = next(
         item for item in payload["groups"]["working"] if item["name"] == "项目重新整理"
@@ -1718,6 +1797,54 @@ def test_codex_supervisor_web_events_stream_bell_changes(tmp_path):
     assert first_line == "event: ready"
     assert "event: bell" in lines
     assert any('"tmux_session": "isotope-lane-a"' in line for line in lines)
+
+
+def test_codex_supervisor_web_repairs_bell_hooks_on_startup(tmp_path):
+    from isotope.features.supervisor.web import create_dashboard_server
+
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        text: bool,
+        capture_output: bool,
+        check: bool = False,
+    ) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        assert text is True
+        assert capture_output is True
+        assert check is (command[:2] == ["tmux", "set-hook"])
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    server = create_dashboard_server(
+        codex_home=codex_home,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+        repair_run=fake_run,
+    )
+    server.server_close()
+
+    assert calls[0] == ["tmux", "has-session", "-t", "isotope-lane-a"]
+    assert calls[1][:4] == ["tmux", "set-hook", "-t", "isotope-lane-a"]
+    assert calls[1][4] == "alert-bell"
+    assert "bell_events.jsonl" in calls[1][5]
+    assert "lane-a" in calls[1][5]
+    assert [result.to_dict() for result in server.bell_hook_repairs] == [
+        {
+            "name": "lane-a",
+            "tmux_session": "isotope-lane-a",
+            "status": "installed",
+            "message": None,
+        }
+    ]
 
 
 def test_codex_supervisor_web_returns_manual_llm_action_without_sending(
@@ -3434,6 +3561,56 @@ def test_codex_supervisor_runner_adopt_registers_existing_tmux_session(
         for line in registry_path.read_text(encoding="utf-8").splitlines()
     ]
     assert records == [payload["managed"]]
+
+
+def test_codex_supervisor_runner_repair_hooks_installs_for_existing_tmux_records(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        text: bool,
+        capture_output: bool,
+        check: bool = False,
+    ) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        assert text is True
+        assert capture_output is True
+        assert check is (command[:2] == ["tmux", "set-hook"])
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        ["repair-hooks", "--codex-home", str(codex_home), "--json"]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload == {
+        "status": "ok",
+        "repairs": [
+            {
+                "name": "lane-a",
+                "tmux_session": "isotope-lane-a",
+                "status": "installed",
+                "message": None,
+            }
+        ],
+    }
+    assert calls[0] == ["tmux", "has-session", "-t", "isotope-lane-a"]
+    assert calls[1][:4] == ["tmux", "set-hook", "-t", "isotope-lane-a"]
+    assert calls[1][4] == "alert-bell"
+    assert "bell_events.jsonl" in calls[1][5]
+    assert "lane-a" in calls[1][5]
 
 
 def test_codex_supervisor_scan_includes_managed_registry_records(tmp_path):
