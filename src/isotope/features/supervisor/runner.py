@@ -1375,8 +1375,26 @@ def _summarize_with_llm(report: Any) -> str:
 
 
 def _decide_action_with_llm(report: Any, payload: dict[str, Any]) -> dict[str, Any]:
+    if not _has_llm_action_target(report):
+        return generate_llm_action_decision(
+            report,
+            payload["command_suggestions"],
+            _UnavailableSummaryProvider(),
+        )
     provider = resolve_summary_provider_from_env(agent_name="supervisor")
     return generate_llm_action_decision(report, payload["command_suggestions"], provider)
+
+
+class _UnavailableSummaryProvider:
+    def summarize(self, messages: list[dict[str, str]]) -> str:
+        raise AssertionError("LLM provider should not be called without managed targets")
+
+
+def _has_llm_action_target(report: Any) -> bool:
+    return any(
+        session.managed_name and session.managed_tmux_session
+        for session in report.sessions
+    )
 
 
 if __name__ == "__main__":

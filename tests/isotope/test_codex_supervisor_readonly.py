@@ -3280,6 +3280,12 @@ def test_codex_supervisor_runner_supervise_llm_execute_skips_monitor(
         return subprocess.CompletedProcess(command, 0, "", "")
 
     monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: (_ for _ in ()).throw(
+            AssertionError("LLM resolver should not run without managed targets")
+        ),
+    )
 
     exit_code = supervisor_main(
         [
