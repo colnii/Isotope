@@ -2448,6 +2448,11 @@ def test_codex_supervisor_llm_action_messages_include_whitelist_and_commands():
                 managed_name="lane-a",
                 managed_backend="tmux",
                 managed_tmux_session="isotope-lane-a",
+                managed_terminal_ready=True,
+                managed_bell=True,
+                supervisor_status="done",
+                supervisor_summary="上一轮任务已完成。",
+                supervisor_next="可以继续下一步。",
             ),
         ),
     )
@@ -2462,6 +2467,9 @@ def test_codex_supervisor_llm_action_messages_include_whitelist_and_commands():
     ]
     assert '"kind": "send_continue"' in messages[1]["content"]
     assert '"target_name": "lane-a"' in messages[1]["content"]
+    assert '"managed_terminal_ready": true' in messages[1]["content"]
+    assert '"managed_bell": true' in messages[1]["content"]
+    assert '"supervisor_status": "done"' in messages[1]["content"]
 
 
 def test_codex_supervisor_generate_llm_action_decision_accepts_whitelisted_json():
@@ -3078,6 +3086,254 @@ def test_codex_supervisor_runner_supervise_can_execute_send_status(
     assert payload["executed"]["kind"] == "send_status"
     assert payload["executed"]["text"] == STATUS_REQUEST_TEXT
     assert calls == _tmux_send_calls(STATUS_REQUEST_TEXT)
+
+
+def test_codex_supervisor_runner_supervise_llm_execute_sends_whitelisted_action(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: "› 这是可输入的托管窗口\n  gpt-5.5 xhigh · main",
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert '"allowed_kinds": ["monitor", "send_status", "send_continue"]' in content
+            assert '"managed_terminal_ready": true' in content
+            return '{"kind":"send_status","target_name":"lane-a","reason":"先看进度。"}'
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"]["kind"] == "send_status"
+    assert payload["executed"]["kind"] == "send_status"
+    assert payload["executed"]["managed"]["name"] == "lane-a"
+    assert payload["executed"]["text"] == STATUS_REQUEST_TEXT
+    assert calls == _tmux_send_calls(STATUS_REQUEST_TEXT)
+
+
+def test_codex_supervisor_runner_supervise_llm_execute_uses_selected_target_command(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    _write_managed_tmux_record(
+        codex_home,
+        workspace=workspace,
+        append=True,
+        name="lane-b",
+        record_id="managed-002",
+        tmux_session="isotope-lane-b",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session in {"isotope-lane-a", "isotope-lane-b"},
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: "› 等待输入\n  gpt-5.5 xhigh · main",
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert '"target_name": "lane-a"' in content
+            assert '"target_name": "lane-b"' in content
+            return (
+                '{"kind":"send_continue","target_name":"lane-b",'
+                '"reason":"lane-b 已完成上一轮，可以继续。"}'
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["executed"]["managed"]["name"] == "lane-b"
+    assert "--name lane-b" in payload["llm_action"]["command_suggestion"]["command"]
+    assert "--name lane-b" in payload["executed"]["command"]
+    assert calls == _tmux_send_calls(
+        CONTINUE_REQUEST_TEXT,
+        buffer_name="isotope-supervisor-managed-002",
+        target="isotope-lane-b",
+    )
+
+
+def test_codex_supervisor_runner_supervise_llm_execute_skips_monitor(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-active.jsonl",
+        session_id="active-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "reading files"},
+            )
+        ],
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"] == {
+        "kind": "monitor",
+        "target_name": None,
+        "reason": "当前没有可控的托管 tmux lane，先继续监控。",
+        "command_suggestion": None,
+    }
+    assert payload["executed"] == {
+        "kind": "monitor",
+        "skipped": True,
+        "reason": "当前没有可控的托管 tmux lane，先继续监控。",
+    }
+    assert calls == []
+
+
+def test_codex_supervisor_runner_supervise_llm_execute_rejects_other_execute_modes(
+    tmp_path,
+    capsys,
+):
+    codex_home = tmp_path / ".codex"
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--llm-execute",
+            "--auto-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error"]["code"] == "codex_supervisor_runner_error"
+    assert "cannot be used together" in payload["error"]["message"]
 
 
 def test_codex_supervisor_runner_supervise_auto_requests_status_without_protocol(
@@ -5358,29 +5614,40 @@ def _write_state_threads(codex_home: Path, *, session_id: str, title: str) -> No
         connection.close()
 
 
-def _write_managed_tmux_record(codex_home: Path, *, workspace: Path) -> None:
+def _write_managed_tmux_record(
+    codex_home: Path,
+    *,
+    workspace: Path,
+    append: bool = False,
+    name: str = "lane-a",
+    record_id: str = "managed-001",
+    tmux_session: str = "isotope-lane-a",
+) -> None:
     registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
-    registry_path.parent.mkdir(parents=True)
-    registry_path.write_text(
-        json.dumps(
-            {
-                "record_id": "managed-001",
-                "name": "lane-a",
-                "cwd": str(workspace),
-                "prompt": "等待输入",
-                "command": ["tmux", "new-session", "-d", "-s", "isotope-lane-a"],
-                "pid": 0,
-                "started_at": NOW.isoformat(),
-                "log_path": str(codex_home / "supervisor" / "logs" / "managed-001.log"),
-                "status": "launched",
-                "backend": "tmux",
-                "tmux_session": "isotope-lane-a",
-            },
-            ensure_ascii=False,
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    mode = "a" if append else "w"
+    with registry_path.open(mode, encoding="utf-8") as handle:
+        handle.write(
+            json.dumps(
+                {
+                    "record_id": record_id,
+                    "name": name,
+                    "cwd": str(workspace),
+                    "prompt": "等待输入",
+                    "command": ["tmux", "new-session", "-d", "-s", tmux_session],
+                    "pid": 0,
+                    "started_at": NOW.isoformat(),
+                    "log_path": str(
+                        codex_home / "supervisor" / "logs" / f"{record_id}.log"
+                    ),
+                    "status": "launched",
+                    "backend": "tmux",
+                    "tmux_session": tmux_session,
+                },
+                ensure_ascii=False,
+            )
+            + "\n"
         )
-        + "\n",
-        encoding="utf-8",
-    )
 
 
 def _event(timestamp: str, type_: str, payload: dict[str, object]) -> dict[str, object]:

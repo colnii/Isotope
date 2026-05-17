@@ -64,6 +64,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     登记成托管 lane；`--llm-summary` 可通过本机
     TOML 号池做智能摘要；`--llm-action` 可让 LLM 只在白名单里
     选择 `monitor`、`send_status` 或 `send_continue`；`scan --json` 包含结构化建议；
+    `--llm-execute` 可执行 LLM 选择的 `send_status/send_continue`，
+    `monitor` 只记录跳过；
     `advise` 可单独输出建议和命令草案，并可显式执行 send 类草案；
     `advise/supervise --name <lane>` 可把建议、显式执行和自动执行
     收窄到指定托管 lane，名字不存在时不会退回到其他窗口；

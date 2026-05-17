@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -200,6 +201,12 @@ def build_llm_action_messages(
             "status": session.supervisor_status or session.status,
             "reason": session.supervisor_summary or session.reason,
             "tmux_session": session.managed_tmux_session,
+            "managed_terminal_ready": session.managed_terminal_ready,
+            "managed_bell": session.managed_bell,
+            "managed_bell_event_at": session.managed_bell_event_at,
+            "supervisor_status": session.supervisor_status,
+            "supervisor_summary": _clip(session.supervisor_summary),
+            "supervisor_next": _clip(session.supervisor_next),
         }
         for session in report.sessions
         if session.managed_name and session.managed_tmux_session
@@ -255,14 +262,20 @@ def generate_llm_action_decision(
         raise ValueError(f"unsupported LLM action: {kind}; allowed: {supported}")
     target_name = _optional_payload_string(payload, "target_name")
     reason = _optional_payload_string(payload, "reason") or "LLM 建议执行该白名单动作。"
-    command_suggestion = _command_suggestion_for_kind(command_suggestions, kind)
     if kind != "monitor":
         if target_name is None:
             raise ValueError(f"target_name is required for LLM action: {kind}")
         if not _has_managed_target(report, target_name):
             raise ValueError(f"unknown managed target for LLM action: {target_name}")
+        command_suggestion = _command_suggestion_for_kind(
+            command_suggestions,
+            kind,
+            target_name=target_name,
+        )
         if command_suggestion is None:
             raise ValueError(f"no command suggestion for LLM action: {kind}")
+    else:
+        command_suggestion = _command_suggestion_for_kind(command_suggestions, kind)
     return {
         "kind": kind,
         "target_name": target_name,
@@ -439,11 +452,30 @@ def _optional_payload_string(payload: dict[str, Any], field: str) -> str | None:
 def _command_suggestion_for_kind(
     command_suggestions: list[dict[str, str]],
     kind: str,
+    *,
+    target_name: str | None = None,
 ) -> dict[str, str] | None:
     for suggestion in command_suggestions:
-        if suggestion.get("kind") == kind:
-            return suggestion
+        if suggestion.get("kind") != kind:
+            continue
+        if target_name is not None and not _command_targets_name(
+            suggestion.get("command", ""),
+            target_name,
+        ):
+            continue
+        return suggestion
     return None
+
+
+def _command_targets_name(command: str, target_name: str) -> bool:
+    try:
+        parts = shlex.split(command)
+    except ValueError:
+        return False
+    for index, part in enumerate(parts[:-1]):
+        if part == "--name" and parts[index + 1] == target_name:
+            return True
+    return False
 
 
 def _has_managed_target(report: CodexSupervisorReport, target_name: str) -> bool:

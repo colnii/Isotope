@@ -111,6 +111,11 @@ def _build_parser() -> argparse.ArgumentParser:
             help="Ask configured LLM to choose one whitelist action without executing it.",
         )
         subparsers.choices[command].add_argument(
+            "--llm-execute",
+            action="store_true",
+            help="Execute one LLM-chosen whitelist send action, or skip monitor.",
+        )
+        subparsers.choices[command].add_argument(
             "--prompt-cooldown",
             type=int,
             default=DEFAULT_PROMPT_COOLDOWN_SECONDS,
@@ -247,9 +252,11 @@ def main(argv: list[str] | None = None) -> int:
             _print_dashboard(args)
             return 0
         if args.command == "advise":
+            _validate_execution_modes(args)
             _print_advice(args)
             return 0
         if args.command == "supervise":
+            _validate_execution_modes(args)
             _run_supervise(args)
             return 0
         if args.command == "watch":
@@ -416,8 +423,6 @@ def _run_supervise(args: argparse.Namespace) -> None:
         raise ValueError("interval must be positive")
     if args.iterations is not None and args.iterations <= 0:
         raise ValueError("iterations must be positive")
-    if args.execute and args.auto_execute:
-        raise ValueError("execute and auto_execute cannot be used together")
     iterations = args.iterations
     count = 0
     previous_fingerprint: tuple[object, ...] | None = None
@@ -440,8 +445,11 @@ def _run_supervise(args: argparse.Namespace) -> None:
 
 
 def _scan_report(args: argparse.Namespace) -> Any:
-    needs_tmux_pane = getattr(args, "command", None) == "dashboard" or bool(
-        getattr(args, "auto_execute", False)
+    needs_tmux_pane = (
+        getattr(args, "command", None) == "dashboard"
+        or bool(getattr(args, "auto_execute", False))
+        or bool(getattr(args, "llm_action", False))
+        or bool(getattr(args, "llm_execute", False))
     )
     command = getattr(args, "command", None)
     needs_bell_hook_health = command in {"scan", "dashboard", "watch"}
@@ -463,20 +471,40 @@ def _unknown_tmux_bell_hook(_session: str) -> None:
     return None
 
 
+def _validate_execution_modes(args: argparse.Namespace) -> None:
+    modes = [
+        name
+        for name, enabled in (
+            ("execute", bool(args.execute)),
+            ("auto_execute", bool(getattr(args, "auto_execute", False))),
+            ("llm_execute", bool(args.llm_execute)),
+        )
+        if enabled
+    ]
+    if len(modes) > 1:
+        raise ValueError("execute, auto_execute, and llm_execute cannot be used together")
+
+
 def _supervise_payload(
     args: argparse.Namespace,
     report: Any,
     *,
     iteration: int,
 ) -> dict[str, Any]:
-    payload = _advice_payload(report, target_name=args.name)
+    payload = _advice_payload(
+        report,
+        target_name=args.name,
+        include_all_managed=args.llm_action or args.llm_execute,
+    )
     payload["iteration"] = iteration
     payload["report"] = report.to_dict()
     if args.llm_summary:
         payload["llm_summary"] = _summarize_with_llm(report)
-    if args.llm_action:
+    if args.llm_action or args.llm_execute:
         payload["llm_action"] = _decide_action_with_llm(report, payload)
-    if args.auto_execute:
+    if args.llm_execute:
+        payload["executed"] = _execute_llm_action(args, report, payload)
+    elif args.auto_execute:
         auto_action = _auto_execute_action(report, target_name=args.name)
         payload["auto_action"] = auto_action
         if auto_action["kind"] in EXECUTABLE_ADVICE_KINDS:
@@ -965,10 +993,16 @@ def _print_supervise_plain(payload: dict[str, Any], report: Any) -> None:
 
 def _print_advice(args: argparse.Namespace) -> None:
     report = _scan_report(args)
-    payload = _advice_payload(report, target_name=args.name)
-    if args.llm_action:
+    payload = _advice_payload(
+        report,
+        target_name=args.name,
+        include_all_managed=args.llm_action or args.llm_execute,
+    )
+    if args.llm_action or args.llm_execute:
         payload["llm_action"] = _decide_action_with_llm(report, payload)
-    if args.execute:
+    if args.llm_execute:
+        payload["executed"] = _execute_llm_action(args, report, payload)
+    elif args.execute:
         payload["executed"] = _execute_advice(args, report, payload)
     if args.json:
         _print_json(payload)
@@ -992,9 +1026,18 @@ def _print_advice(args: argparse.Namespace) -> None:
         _print_executed_plain(executed)
 
 
-def _advice_payload(report: Any, *, target_name: str | None = None) -> dict[str, Any]:
+def _advice_payload(
+    report: Any,
+    *,
+    target_name: str | None = None,
+    include_all_managed: bool = False,
+) -> dict[str, Any]:
     recommendation = report.recommendation
-    suggestions = _command_suggestions(report, target_name=target_name)
+    suggestions = _command_suggestions(
+        report,
+        target_name=target_name,
+        include_all_managed=include_all_managed,
+    )
     return {
         "status": "ok",
         "generated_at": report.generated_at,
@@ -1012,7 +1055,10 @@ def _print_executed_plain(executed: dict[str, Any]) -> None:
 
 
 def _command_suggestions(
-    report: Any, *, target_name: str | None = None
+    report: Any,
+    *,
+    target_name: str | None = None,
+    include_all_managed: bool = False,
 ) -> list[dict[str, str]]:
     if target_name:
         managed_tmux = _managed_tmux_session_by_name(report, target_name)
@@ -1021,6 +1067,14 @@ def _command_suggestions(
                 _watch_command_suggestion()
             ]
         return [_watch_command_suggestion()]
+    if include_all_managed:
+        suggestions: list[dict[str, str]] = []
+        for session in report.sessions:
+            if session.managed_tmux_session:
+                suggestions.extend(_managed_tmux_command_suggestions(session))
+        if suggestions:
+            suggestions.append(_watch_command_suggestion())
+            return suggestions
     recommendation = report.recommendation
     target = _target_session(report, recommendation.target_session_id)
     if target is not None and target.managed_tmux_session:
@@ -1101,15 +1155,17 @@ def _execute_advice(
     payload: dict[str, Any],
     *,
     kind: str | None = None,
+    target_name: str | None = None,
 ) -> dict[str, Any]:
     kind = str(kind or args.execute)
     if kind not in EXECUTABLE_ADVICE_KINDS:
         supported = ", ".join(sorted(EXECUTABLE_ADVICE_KINDS))
         raise ValueError(f"execute supports only: {supported}")
-    if args.name:
-        target = _managed_tmux_session_by_name(report, args.name)
+    explicit_target_name = target_name or args.name
+    if explicit_target_name:
+        target = _managed_tmux_session_by_name(report, explicit_target_name)
         if target is None:
-            raise ValueError(f"managed lane not found: {args.name}")
+            raise ValueError(f"managed lane not found: {explicit_target_name}")
     else:
         target = _target_session(report, report.recommendation.target_session_id)
         if target is None or not target.managed_name:
@@ -1118,7 +1174,7 @@ def _execute_advice(
         target = _first_managed_tmux_session(report)
     if target is None or not target.managed_name:
         raise ValueError(f"no managed tmux target for: {kind}")
-    suggestion = _suggestion_by_kind(payload["command_suggestions"], kind)
+    suggestion = _suggestion_by_kind(_managed_tmux_command_suggestions(target), kind)
     if suggestion is None:
         raise ValueError(f"no generated command suggestion for: {kind}")
     if cooldown_state := prompt_cooldown_state(
@@ -1155,6 +1211,28 @@ def _execute_advice(
             "tmux_session": result.record.tmux_session,
         },
     }
+
+
+def _execute_llm_action(
+    args: argparse.Namespace,
+    report: Any,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    action = payload["llm_action"]
+    kind = action["kind"]
+    if kind == "monitor":
+        return {
+            "kind": kind,
+            "skipped": True,
+            "reason": action["reason"],
+        }
+    return _execute_advice(
+        args,
+        report,
+        payload,
+        kind=kind,
+        target_name=action.get("target_name"),
+    )
 
 
 def _auto_execute_action(

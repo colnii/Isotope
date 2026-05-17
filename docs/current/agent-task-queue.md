@@ -255,6 +255,23 @@
     可把建议、显式执行和自动执行限定到指定托管窗口；名字不存在时不回退。
 119. Codex Supervisor CLI 监控提醒：`dashboard/web` 默认隐藏已退出托管
     tmux lane；`watch --bell` 可在建议需要人看时输出终端 bell。
+120. Codex Supervisor LLM 执行闭环：`advise/supervise --llm-execute`
+    会执行 LLM 选择的 `send_status/send_continue`；`monitor` 只记录跳过，
+    且与 `--execute/--auto-execute` 互斥。
+
+## 最近完成：Codex Supervisor LLM 执行闭环
+
+完成内容：
+
+- `--llm-execute` 会先请求 LLM 白名单动作，再执行 `send_status/send_continue`。
+- LLM 返回 `monitor` 时只记录跳过，不发送指令。
+- 执行目标使用 LLM 返回的 `target_name`，复用现有 tmux send 和冷却账本。
+- LLM 动作提示会携带托管窗口的终端可输入、bell 和状态协议短字段。
+- `--execute`、`--auto-execute` 和 `--llm-execute` 互斥，避免一轮叠加多套执行策略。
+
+下一步：
+
+- 用真实托管 `test` lane 做一轮只针对测试窗口的 `--llm-execute` 烟测。
 
 ## 最近完成：Codex Supervisor CLI 监控提醒
 
