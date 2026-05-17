@@ -146,7 +146,7 @@ def test_pyproject_metadata_contains_minimum_package_contract():
 
     assert project["name"]
     assert project["version"]
-    assert project["requires-python"]
+    assert project["requires-python"] == ">=3.13"
     assert _contains_pytest_dependency(pyproject)
 
 

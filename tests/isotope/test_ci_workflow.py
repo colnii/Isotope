@@ -64,7 +64,8 @@ def test_ci_workflow_runs_supported_python_matrix():
 
     assert "actions/setup-python" in text
     assert "matrix.python-version" in text
-    for version in ("3.12", "3.13", "3.14"):
+    assert not re.search(r"(?m)^\s*-\s*['\"]?3\.12['\"]?\s*$", text)
+    for version in ("3.13", "3.14"):
         assert re.search(rf"(?m)^\s*-\s*['\"]?{re.escape(version)}['\"]?\s*$", text)
 
 

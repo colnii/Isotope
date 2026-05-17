@@ -172,6 +172,6 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --nam
 git status --short
 ```
 
-CI smoke 当前使用 Python `3.12` / `3.13` / `3.14` matrix。
+CI smoke 当前使用 Python `3.13` / `3.14` matrix。
 
 是否运行完整测试，由具体任务风险决定。

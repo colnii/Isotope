@@ -142,7 +142,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.demo
 
 ### CI 与本地差异
 
-当前 GitHub Actions smoke 使用 Python `3.12`、`3.13` 和 `3.14`
+当前 GitHub Actions smoke 使用 Python `3.13` 和 `3.14`
 matrix，并通过 test extra 安装依赖：
 
 ```bash

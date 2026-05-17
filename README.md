@@ -14,6 +14,8 @@ Isotope 是一个面向真实使用的 AI 应用软件。
 
 ## 快速开始
 
+需要 Python `3.13` 或更新版本。
+
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -U pip
