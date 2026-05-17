@@ -530,7 +530,12 @@ def _supervise_payload(
     if args.llm_execute:
         payload["executed"] = _execute_llm_action(args, report, payload)
     elif args.auto_execute:
-        auto_action = _auto_execute_action(report, target_name=args.name)
+        auto_action = _auto_execute_action(
+            report,
+            target_name=args.name,
+            codex_home=Path(args.codex_home),
+            prompt_cooldown_seconds=args.prompt_cooldown,
+        )
         payload["auto_action"] = auto_action
         if auto_action["kind"] in EXECUTABLE_ADVICE_KINDS:
             payload["executed"] = _execute_advice(
@@ -1309,7 +1314,11 @@ def _execute_llm_action(
 
 
 def _auto_execute_action(
-    report: Any, *, target_name: str | None = None
+    report: Any,
+    *,
+    target_name: str | None = None,
+    codex_home: Path | None = None,
+    prompt_cooldown_seconds: int = DEFAULT_PROMPT_COOLDOWN_SECONDS,
 ) -> dict[str, str]:
     if target_name:
         managed = _managed_tmux_session_by_name(report, target_name)
@@ -1328,19 +1337,48 @@ def _auto_execute_action(
             "reason": "no managed tmux lane",
         }
     include_target_name = len(managed_lanes) > 1
-    actions = []
+    candidates: list[tuple[dict[str, str], Any]] = []
     for managed in managed_lanes:
         action = _auto_execute_action_for_managed(report, managed)
         if include_target_name and managed.managed_name:
             action = {**action, "target_name": managed.managed_name}
-        actions.append(action)
-    for action in actions:
-        if action["kind"] in EXECUTABLE_ADVICE_KINDS:
-            return action
-    for action in actions:
+        candidates.append((action, managed))
+    cooldown_candidates: list[dict[str, str]] = []
+    for action, managed in candidates:
+        if action["kind"] not in EXECUTABLE_ADVICE_KINDS:
+            continue
+        if _auto_action_in_prompt_cooldown(
+            codex_home=codex_home,
+            managed=managed,
+            prompt_cooldown_seconds=prompt_cooldown_seconds,
+        ):
+            cooldown_candidates.append(action)
+            continue
+        return action
+    for action, _managed in candidates:
         if action["reason"] == "lane needs human attention":
             return action
-    return actions[0]
+    if cooldown_candidates:
+        return cooldown_candidates[0]
+    return candidates[0][0]
+
+
+def _auto_action_in_prompt_cooldown(
+    *,
+    codex_home: Path | None,
+    managed: Any,
+    prompt_cooldown_seconds: int,
+) -> bool:
+    if codex_home is None or not managed.managed_name:
+        return False
+    return (
+        prompt_cooldown_state(
+            codex_home=codex_home,
+            name=managed.managed_name,
+            cooldown_seconds=prompt_cooldown_seconds,
+        )
+        is not None
+    )
 
 
 def _auto_execute_action_for_managed(report: Any, managed: Any) -> dict[str, str]:

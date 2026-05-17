@@ -228,6 +228,7 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 .venv/bin/isotope-supervisor supervise --interval 180 --llm-summary --execute send_status
 .venv/bin/isotope-supervisor supervise --interval 180 --execute send_status --prompt-cooldown 300
 .venv/bin/isotope-supervisor supervise --interval 180 --auto-execute --prompt-cooldown 300
+.venv/bin/isotope-supervisor supervise --interval 30 --auto-execute --changes-only --bell
 .venv/bin/isotope-supervisor supervise --interval 180 --llm-execute --prompt-cooldown 300
 .venv/bin/isotope-supervisor supervise --name lane-a --iterations 1 --auto-execute --json
 .venv/bin/isotope-supervisor supervise --iterations 1 --llm-action --json
@@ -239,8 +240,12 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 只有显式传入 `--execute send_status` 或 `--execute send_continue`
 时才会发送指令。
 `--auto-execute` 会启用规则自动策略，每轮最多执行一个白名单动作：
-`done` 发 `send_continue`，终端可输入、`stale`、bell 或没有状态协议时
-发 `send_status`，`blocked`、`needs_user` 和疑似报错只提醒不硬推。
+`done` 发 `send_continue`，终端可输入、`stale` 或 bell 时发
+`send_status`，`blocked`、`needs_user` 和疑似报错只提醒不硬推。
+未指定 `--name` 时，自动策略会扫描所有活跃托管 lane，
+优先选择可自动处理且不在 `--prompt-cooldown` 冷却期内的窗口。
+如果 lane 仍在运行、终端未回到可输入态且没有 bell/stale 证据，
+即使缺少状态协议也只监控，不会提前催促。
 配合 `--name <lane>` 时，自动策略只读取并操作这个托管 lane。
 `--llm-execute` 会先请求 LLM 白名单动作，再执行
 `send_status` 或 `send_continue`；如果 LLM 返回 `monitor`，本轮只记录跳过。
@@ -360,6 +365,8 @@ tmux attach -t isotope-lane-a
   `send_status` 和 `send_continue`。
 - `--llm-action` 只输出模型建议动作，不自动执行。
 - `supervise --auto-execute` 可按规则自动执行一个白名单动作。
+- 未指定 `--name` 的自动轮转会避开冷却中的 lane，
+  继续寻找下一个可自动处理窗口。
 - `--llm-execute` 可执行 LLM 建议，但动作必须落到可审计白名单上。
 - `--execute`、`--auto-execute` 和 `--llm-execute` 不能同时使用。
 - bell 只作为弱信号，不直接改变状态，也不自动触发发送。

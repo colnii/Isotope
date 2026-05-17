@@ -107,6 +107,8 @@ Codex Supervisor 已经不只是一个小命令。
   bell 发 `send_status`；`blocked/needs_user/error` 只提醒。
 - 未指定 `--name` 时，自动策略会扫描所有活跃托管 lane，
   优先推进可自动处理的窗口，不会被第一个仍在运行的窗口挡住。
+- 自动轮转会避开仍在 `--prompt-cooldown` 冷却期内的 lane，
+  继续寻找下一个可自动处理的窗口；显式 `--name` 仍会保留冷却跳过提示。
 - 如果 lane 仍在运行、终端未回到可输入态且没有 bell/stale 证据，
   自动策略只监控，不会仅因缺少状态协议就催促。
 - 已退出的旧托管 tmux lane 不参与建议、命令草案和自动发送。

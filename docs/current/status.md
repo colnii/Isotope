@@ -118,6 +118,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `blocked/needs_user/error` 只提醒；
     未指定 `--name` 时会扫描所有活跃托管 lane，优先推进可自动处理的
     窗口，不会被第一个仍在运行的窗口挡住；
+    自动轮转会避开仍在 `--prompt-cooldown` 冷却期内的 lane，
+    继续寻找下一个可自动处理窗口；显式 `--name` 仍保留冷却跳过提示；
     `supervise --bell` 可和自动执行合用，只在本轮仍需人看时响；
     自动发送 `send_status/send_continue` 已处理的状态不会响；
     `send` 可向托管 tmux 会话发送一行指令；`scan` 已能把托管
@@ -140,6 +142,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     真实 `done -> send_continue -> 第二阶段状态协议` 闭环已通过烟测；
     多窗口烟测已验证：一个 lane 仍在工作时，另一个已完成 lane
     可被自动选择并继续推进；
+    连续循环烟测已验证：一个 lane 进入冷却期后，其他可推进 lane
+    不会被它挡住；
     web 已新增 `/events` 事件流，tmux bell 写入事件文件后会推动前端
     立即刷新 dashboard，不必等 5 秒轮询。
     能力登记见 `docs/current/supervisor-capability-map.md`。

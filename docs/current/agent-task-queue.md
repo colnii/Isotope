@@ -281,6 +281,26 @@
 128. Codex Supervisor 多窗口自动轮转：未指定 `--name` 时，
     `supervise --auto-execute` 会扫描所有活跃托管 lane，
     优先推进可自动处理的窗口，不会被第一个仍在运行的窗口挡住。
+129. Codex Supervisor 连续循环冷却修正：自动轮转会避开仍在
+    `--prompt-cooldown` 冷却期内的 lane，继续寻找下一个可自动处理窗口；
+    显式 `--name` 仍保留冷却跳过提示。
+
+## 最近完成：Codex Supervisor 连续循环冷却修正
+
+完成内容：
+
+- 真实连续循环发现：lane A 被自动催促后进入冷却期，
+  后续轮次仍反复选择 A 并跳过，导致 lane B 没被推进。
+- 修正后，未指定 `--name` 的自动轮转会跳过冷却中的候选，
+  继续寻找其他可自动处理的 lane。
+- 真实复测：`supervisor-loop-a` 处于 cooldown 后，
+  Supervisor 成功选择 `supervisor-loop-b` 发送 `send_continue`，
+  并拿到第二阶段 `SUPERVISOR_STATUS: done`。
+
+下一步：
+
+- 把当前可用路径整理成一条推荐运行命令和简单操作说明，
+  让你能直接用它托管真实 Codex 工作窗口。
 
 ## 最近完成：Codex Supervisor 多窗口自动轮转
 
@@ -295,9 +315,7 @@
 
 下一步：
 
-- 把连续运行体验收口成推荐命令和可观察输出：
-  用 2 个 lane 跑 `supervise --auto-execute --changes-only --bell`
-  多轮，确认铃声、冷却和轮转在连续循环里也稳定。
+- 已完成连续循环冷却修正；下一阶段整理可直接使用的命令入口。
 
 ## 最近完成：Codex Supervisor CLI 自动监控提醒
 
