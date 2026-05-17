@@ -39,8 +39,8 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
 - `advise` 可只输出当前建议和可复制命令草案。
 - `dashboard` 可按 `需要看`、`已完成`、`工作中` 分组显示，
   并保留可读标题和短 hash。
-- `dashboard` 会把同一工作目录下的托管 tmux lane 和最近真实 Codex
-  session 合并成一个可控卡片。
+- `dashboard` 会把托管 tmux lane 和最近真实 Codex session 合并成一个
+  可控卡片，关联不再只依赖 cwd。
 - `web` 可启动本机页面，展示 `dashboard` 的三组窗口和可读标题。
 - `web` 会给托管 tmux 窗口显示复制 attach、复制状态、复制继续、
   请求状态和继续推进按钮。
@@ -117,8 +117,9 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
   和 `linked_session_id`。
 - 如果关联到的真实 session 有 `SUPERVISOR_STATUS`，dashboard 分组和
   状态字段会优先使用真实 session 的状态协议。
-- 关联时会优先使用只读 `tmux capture-pane` 摘要匹配 Codex 标题、
-  首条用户消息或最近消息；没有命中时才退回同目录最近窗口。
+- 关联时会全局候选打分并一对一分配，优先使用只读
+  `tmux capture-pane` 摘要、session id、Codex 标题、首条用户消息
+  或最近消息；没有正分命中时不硬连旧窗口。
 
 `web` 是当前本地前端薄入口：
 

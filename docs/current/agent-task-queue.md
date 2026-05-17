@@ -229,6 +229,18 @@
     且 `SUPERVISOR_STATUS` 必须是合法值，避免把提示模板当真实状态。
 107. Codex Supervisor 托管关联修正：dashboard 关联分数为 0 时不硬连；
     带状态协议的超时 session 仍可匹配托管 tmux lane。
+108. Codex Supervisor 多托管关联修正：dashboard 不再只按 cwd 过滤；
+    多个托管 lane 会全局打分并一对一关联真实 Codex session，避免互相抢链。
+
+## 最近完成：Codex Supervisor 多托管关联修正
+
+完成内容：
+
+- 修正 `iso_dev` 抢走 `python版本升级评估`、`test` 退回 managed resume 的问题。
+- 关联候选不再只按 cwd 过滤，adopt 记录 cwd 不准时仍可匹配真实 session。
+- 多个托管 lane 会全局打分后一对一分配，防止一个真实 session 被抢走。
+- 真实页面数据已验证：`test` 关联 `python版本升级评估`，
+  `iso_dev` 关联 `项目重新整理`。
 
 ## 最近完成：Codex Supervisor 托管关联修正
 

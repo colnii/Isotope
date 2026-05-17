@@ -44,8 +44,9 @@ Codex Supervisor 已经不只是一个小命令。
 - `dashboard` 按需要看、已完成和工作中分组。
 - `dashboard` 保留可读标题、短 hash、Codex 标题和 agent 元数据。
 - `dashboard` 为每个窗口输出完整 `resume_command`。
-- `dashboard` 会把同 cwd 的托管 lane 和最近真实 Codex session 合并展示。
-- 关联托管 lane 时优先用只读 tmux pane 文本匹配真实 session。
+- `dashboard` 会把托管 lane 和最近真实 Codex session 合并展示。
+- 关联托管 lane 时不只依赖 cwd，而是全局候选打分后做一对一分配。
+- 关联优先使用只读 tmux pane 文本、session id、标题和用户消息。
 - 关联分数为 0 时不会硬连，避免把托管 lane 误配到旧窗口。
 - 带状态协议的超时 session 仍可作为关联候选。
 - 合并卡片若关联到真实 `SUPERVISOR_STATUS`，分组和状态字段使用真实 session。
@@ -118,9 +119,9 @@ Codex Supervisor 已经不只是一个小命令。
 
 ## 下一步顺序
 
-1. 观察真实多窗口页面，确认尾部最近输出是否足够判断窗口状态。
-2. 继续收敛托管 lane 和 session 关联误配。
-3. 后续再决定是否增加人工输入框；默认仍保持白名单。
+1. 观察真实多窗口页面，确认全局关联是否稳定。
+2. 后续再决定是否增加人工输入框；默认仍保持白名单。
+3. 再拆分 `runner.py` 中的匹配、建议和 tmux 控制代码。
 
 ## 登记规则
 

@@ -1057,6 +1057,122 @@ def test_codex_supervisor_dashboard_links_stale_protocol_session_from_tmux_pane(
     assert item["supervisor_status"] == "done"
 
 
+def test_codex_supervisor_dashboard_matches_managed_lanes_without_stealing_links(
+    tmp_path,
+):
+    codex_home = tmp_path / ".codex"
+    isotope_workspace = tmp_path / "isotope"
+    repo_workspace = tmp_path / "repo"
+    isotope_workspace.mkdir()
+    repo_workspace.mkdir()
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True)
+    records = [
+        {
+            "record_id": "managed-project",
+            "name": "项目重新整理",
+            "cwd": str(isotope_workspace),
+            "prompt": "接管已有 tmux 会话",
+            "command": ["tmux", "attach", "-t", "iso_dev"],
+            "pid": 0,
+            "started_at": "2026-05-16T12:00:02+00:00",
+            "log_path": str(codex_home / "supervisor" / "logs" / "managed-project.log"),
+            "status": "adopted",
+            "backend": "tmux",
+            "tmux_session": "iso_dev",
+        },
+        {
+            "record_id": "managed-python",
+            "name": "test",
+            "cwd": str(isotope_workspace),
+            "prompt": "接管已有 tmux 会话",
+            "command": ["tmux", "attach", "-t", "test"],
+            "pid": 0,
+            "started_at": "2026-05-16T12:00:01+00:00",
+            "log_path": str(codex_home / "supervisor" / "logs" / "managed-python.log"),
+            "status": "adopted",
+            "backend": "tmux",
+            "tmux_session": "test",
+        },
+    ]
+    registry_path.write_text(
+        "\n".join(json.dumps(record, ensure_ascii=False) for record in records) + "\n",
+        encoding="utf-8",
+    )
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-python.jsonl",
+        session_id="019e3205-b9cc-7012-804c-ca2ac38e0d32",
+        cwd=str(isotope_workspace),
+        events=[
+            _event(
+                "2026-05-16T11:40:00Z",
+                "event_msg",
+                {"type": "thread_name_updated", "thread_name": "python版本升级评估"},
+            ),
+            _assistant_message(
+                "2026-05-16T11:40:00Z",
+                "\n".join(
+                    [
+                        "SUPERVISOR_STATUS: done",
+                        "SUPERVISOR_SUMMARY: Python 版本升级评估已完成。",
+                        "SUPERVISOR_NEXT: 等待下一项任务。",
+                    ]
+                ),
+            ),
+        ],
+    )
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-project.jsonl",
+        session_id="019e3210-b9cc-7012-804c-ca2ac38e0d99",
+        cwd=str(repo_workspace),
+        events=[
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "thread_name_updated", "thread_name": "项目重新整理"},
+            ),
+            _assistant_message("2026-05-16T11:59:20Z", "正在整理项目目录。"),
+        ],
+    )
+
+    def pane_text(session: str) -> str:
+        if session == "iso_dev":
+            return "test -> python版本升级评估\n项目重新整理\n正在整理项目目录"
+        if session == "test":
+            return "python版本升级评估\nSUPERVISOR_STATUS: done"
+        return ""
+
+    report = CodexSupervisorFlow(
+        codex_home=codex_home,
+        now=lambda: NOW,
+        tmux_session_checker=lambda session: session in {"iso_dev", "test"},
+        tmux_bell_checker=lambda session: False,
+        tmux_pane_reader=pane_text,
+    ).scan(limit=10, stale_after_seconds=600)
+    payload = _dashboard_payload(report)
+
+    done_item = payload["groups"]["done"][0]
+    assert done_item["display_title"] == "python版本升级评估"
+    assert done_item["name"] == "test"
+    assert done_item["managed_tmux_session"] == "test"
+    assert done_item["linked_session_id"] == "019e3205-b9cc-7012-804c-ca2ac38e0d32"
+    assert done_item["resume_command"] == (
+        "codex resume 019e3205-b9cc-7012-804c-ca2ac38e0d32"
+    )
+
+    working_item = next(
+        item for item in payload["groups"]["working"] if item["name"] == "项目重新整理"
+    )
+    assert working_item["display_title"] == "项目重新整理"
+    assert working_item["managed_tmux_session"] == "iso_dev"
+    assert working_item["linked_session_id"] == "019e3210-b9cc-7012-804c-ca2ac38e0d99"
+    assert working_item["resume_command"] == (
+        "codex resume 019e3210-b9cc-7012-804c-ca2ac38e0d99"
+    )
+
+
 def test_codex_supervisor_dashboard_does_not_link_zero_score_same_cwd_session(
     tmp_path,
 ):

@@ -500,7 +500,7 @@ def _dashboard_group_for(session: Any, *, linked_session: Any | None = None) -> 
 
 
 def _dashboard_display_sessions(sessions: Any) -> list[tuple[Any, Any | None]]:
-    linkable_by_cwd: dict[str, list[Any]] = {}
+    linkable_sessions: list[Any] = []
     for session in sessions:
         if session.managed:
             continue
@@ -508,21 +508,16 @@ def _dashboard_display_sessions(sessions: Any) -> list[tuple[Any, Any | None]]:
             continue
         if session.status == "stale" and not session.supervisor_status:
             continue
-        linkable_by_cwd.setdefault(session.cwd, []).append(session)
+        linkable_sessions.append(session)
 
-    linked_by_managed_id: dict[str, Any] = {}
-    consumed_linked_ids: set[str] = set()
-    for session in sessions:
-        if not session.managed:
-            continue
-        candidate = _best_linked_session_for_managed(
-            session,
-            linkable_by_cwd.get(session.cwd, []),
-            consumed_linked_ids,
-        )
-        if candidate is not None:
-            linked_by_managed_id[session.session_id] = candidate
-            consumed_linked_ids.add(candidate.session_id)
+    managed_sessions = [session for session in sessions if session.managed]
+    linked_by_managed_id = _best_linked_sessions_for_managed_lanes(
+        managed_sessions,
+        linkable_sessions,
+    )
+    consumed_linked_ids = {
+        candidate.session_id for candidate in linked_by_managed_id.values()
+    }
 
     display_sessions: list[tuple[Any, Any | None]] = []
     for session in sessions:
@@ -532,6 +527,33 @@ def _dashboard_display_sessions(sessions: Any) -> list[tuple[Any, Any | None]]:
             (session, linked_by_managed_id.get(session.session_id))
         )
     return display_sessions
+
+
+def _best_linked_sessions_for_managed_lanes(
+    managed_sessions: list[Any],
+    candidates: list[Any],
+) -> dict[str, Any]:
+    scored_pairs: list[tuple[int, int, int, Any, Any]] = []
+    for managed_index, managed_session in enumerate(managed_sessions):
+        for candidate_index, candidate in enumerate(candidates):
+            score = _managed_link_score(managed_session, candidate)
+            if score <= 0:
+                continue
+            scored_pairs.append(
+                (score, managed_index, candidate_index, managed_session, candidate)
+            )
+    scored_pairs.sort(key=lambda item: (-item[0], item[1], item[2]))
+
+    linked_by_managed_id: dict[str, Any] = {}
+    consumed_linked_ids: set[str] = set()
+    for _score, _managed_index, _candidate_index, managed_session, candidate in scored_pairs:
+        if managed_session.session_id in linked_by_managed_id:
+            continue
+        if candidate.session_id in consumed_linked_ids:
+            continue
+        linked_by_managed_id[managed_session.session_id] = candidate
+        consumed_linked_ids.add(candidate.session_id)
+    return linked_by_managed_id
 
 
 def _best_linked_session_for_managed(
@@ -565,10 +587,10 @@ def _managed_link_score(managed_session: Any, candidate: Any) -> int:
         getattr(managed_session, "managed_terminal_excerpt", None)
     )
     if pane_text:
+        if _text_contains(pane_text, getattr(candidate, "session_id", None)):
+            score += 300
         if _candidate_text_matches(pane_text, candidate):
             score += 100
-        if _text_contains(pane_text, getattr(candidate, "session_id", None)):
-            score += 50
     if getattr(managed_session, "managed_name", None):
         name_text = _normalize_match_text(managed_session.managed_name)
         if _candidate_text_matches(name_text, candidate):
@@ -935,7 +957,6 @@ def _auto_status_source(report: Any, managed: Any) -> Any:
         session
         for session in report.sessions
         if not session.managed
-        and session.cwd == managed.cwd
         and (session.status not in {"stale", "exited"} or session.supervisor_status)
     ]
     return _best_linked_session_for_managed(managed, candidates, set()) or managed
