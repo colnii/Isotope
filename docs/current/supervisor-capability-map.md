@@ -73,6 +73,8 @@ Codex Supervisor 已经不只是一个小命令。
 - `/managed/send` 成功发送后会更新 lane state。
 - `watch --changes-only` 只在状态变化时输出。
 - `watch --bell` 可在建议目标变化时输出终端 bell，不按固定 interval 重复响。
+- `supervise --bell` 可配合 `--auto-execute` 使用，只在本轮仍需要人看时响；
+  已自动处理的 `send_status/send_continue` 不触发提醒。
 - 本机托管登记表 `managed_sessions.jsonl`。
 - `launch` 支持普通进程和 tmux 会话。
 - `adopt` 可接管已存在的 tmux 会话。
@@ -101,9 +103,8 @@ Codex Supervisor 已经不只是一个小命令。
 - `supervise` 会输出托管自动化是否 ready，没有可控 tmux lane 时给出
   launch/adopt 命令形状。
 - `supervise --auto-execute` 每轮最多自动执行一个白名单动作。
-- 自动策略：`done` 发 `send_continue`；终端可输入、`stale`、
-  bell 或缺少协议发
-  `send_status`；`blocked/needs_user/error` 只提醒。
+- 自动策略：`done` 发 `send_continue`；终端可输入、`stale` 或
+  bell 发 `send_status`；`blocked/needs_user/error` 只提醒。
 - 如果 lane 仍在运行、终端未回到可输入态且没有 bell/stale 证据，
   自动策略只监控，不会仅因缺少状态协议就催促。
 - 已退出的旧托管 tmux lane 不参与建议、命令草案和自动发送。

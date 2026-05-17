@@ -273,6 +273,27 @@
     真实托管 lane，`supervise --auto-execute` 可识别并解析其
     `SUPERVISOR_STATUS`；自动策略不会在 lane 仍运行且终端未 ready 时
     仅因缺少协议而提前催促。
+126. Codex Supervisor 自动续跑验证：真实 lane 已完成
+    `done -> send_continue -> 第二阶段状态协议` 闭环。
+127. Codex Supervisor CLI 提醒：`supervise --bell` 可和
+    `--auto-execute` 一起使用，只在本轮仍需人看时响；
+    自动发送 `send_status/send_continue` 已处理的状态不响。
+
+## 最近完成：Codex Supervisor CLI 自动监控提醒
+
+完成内容：
+
+- 真实验证 `supervise --auto-execute` 在 `SUPERVISOR_STATUS: done`
+  后会发送 `send_continue`。
+- 被托管 Codex 收到继续指令后执行第二阶段只读检查，并重新输出
+  `SUPERVISOR_STATUS: done`。
+- `supervise --bell` 支持和 `--auto-execute` 合用：
+  需要人看时响一次，自动处理的 `send_status/send_continue` 不响。
+
+下一步：
+
+- 用 2 个以上真实托管 lane 跑一段 `supervise --auto-execute --bell`
+  连续监控，检查多窗口轮转、冷却和误提醒。
 
 ## 最近完成：Codex Supervisor 真实闭环烟测
 
@@ -289,7 +310,7 @@
 
 下一步：
 
-- 验证 `done -> send_continue` 的真实续跑策略是否符合使用习惯，必要时改成可配置。
+- 已完成；下一阶段转向多 lane 连续监控验收。
 
 ## 最近完成：Codex Supervisor 托管自动化入口
 
@@ -473,7 +494,8 @@
 
 - 新增 `supervise --auto-execute`，和显式 `--execute` 互斥。
 - `done` 状态自动发 `send_continue`，推动托管 Codex 继续推进。
-- 终端可输入、`stale`、bell 或缺少状态协议时自动发 `send_status`。
+- 终端可输入、`stale` 或 bell 时自动发 `send_status`。
+- 缺少状态协议但 lane 仍在运行时只监控，不提前催促。
 - `blocked`、`needs_user` 和疑似报错只输出跳过原因，不硬推。
 - 自动执行仍受 lane state 冷却时间限制，避免短时间重复催促。
 - 修正状态协议解析边界，避免工具输出或提示模板污染自动策略。

@@ -114,8 +114,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     说明当前标签来自状态协议、文本规则、超时、bell 或托管检查；
     `supervise` 可循环执行扫描、建议、可选 LLM 摘要和显式 send；
     `supervise --auto-execute` 已有第一版规则自动策略：
-    `done` 续跑，终端可输入、`stale`、bell 或缺少状态协议时询问状态，
+    `done` 续跑，终端可输入、`stale` 或 bell 时询问状态，
     `blocked/needs_user/error` 只提醒；
+    `supervise --bell` 可和自动执行合用，只在本轮仍需人看时响；
+    自动发送 `send_status/send_continue` 已处理的状态不会响；
     `send` 可向托管 tmux 会话发送一行指令；`scan` 已能把托管
     tmux 会话的 bell（提醒）信号写入 plain、JSON 和 LLM 摘要输入；
     tmux 发送会用 `set-buffer + paste-buffer + 短暂等待 + C-m`，
@@ -133,6 +135,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     会明确提示自动发送不会生效并给出 launch/adopt 命令形状；
     已退出的旧托管 tmux lane 不再参与建议和自动发送；
     运行中且终端未回到可输入态的 lane 不会仅因缺少状态协议就被催促。
+    真实 `done -> send_continue -> 第二阶段状态协议` 闭环已通过烟测；
     web 已新增 `/events` 事件流，tmux bell 写入事件文件后会推动前端
     立即刷新 dashboard，不必等 5 秒轮询。
     能力登记见 `docs/current/supervisor-capability-map.md`。
@@ -171,6 +174,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner web --prin
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --limit 3 --json
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner advise
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise --iterations 1 --llm-summary --json
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise --auto-execute --changes-only --bell --interval 30
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner adopt --name lane-a --cwd /path/to/repo --tmux-session isotope-lane-a
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --name lane-a --text "继续"
 .venv/bin/isotope-demo --scenario v0.2 --trace

@@ -3913,6 +3913,143 @@ def test_codex_supervisor_runner_supervise_auto_waits_on_blocked_lane(
     assert calls == []
 
 
+def test_codex_supervisor_runner_supervise_bell_rings_for_human_attention(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-blocked.jsonl",
+        session_id="blocked-session",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:30Z",
+                "SUPERVISOR_STATUS: blocked\n"
+                "SUPERVISOR_SUMMARY: 需要用户提供 API key。\n"
+                "SUPERVISOR_NEXT: 等待用户处理。",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: (
+            "SUPERVISOR_STATUS: blocked\n"
+            "SUPERVISOR_SUMMARY: 需要用户提供 API key。\n"
+            "SUPERVISOR_NEXT: 等待用户处理。"
+        ),
+    )
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda _: None)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "2",
+            "--interval",
+            "1",
+            "--auto-execute",
+            "--bell",
+            "--json",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert captured.err == "\a"
+
+
+def test_codex_supervisor_runner_supervise_bell_skips_auto_handled_continue(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-done.jsonl",
+        session_id="done-session",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:30Z",
+                "SUPERVISOR_STATUS: done\n"
+                "SUPERVISOR_SUMMARY: 当前任务已完成。\n"
+                "SUPERVISOR_NEXT: 可以继续下一步。",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: (
+            "SUPERVISOR_STATUS: done\n"
+            "SUPERVISOR_SUMMARY: 当前任务已完成。\n"
+            "SUPERVISOR_NEXT: 可以继续下一步。"
+        ),
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--auto-execute",
+            "--bell",
+            "--json",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert captured.err == ""
+    assert calls == _tmux_send_calls(CONTINUE_REQUEST_TEXT)
+
+
 def test_codex_supervisor_runner_execute_skips_repeated_prompt_in_cooldown(
     tmp_path,
     capsys,

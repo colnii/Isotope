@@ -155,6 +155,11 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Use the rule-based auto policy to execute one whitelist action per loop.",
     )
+    subparsers.choices["supervise"].add_argument(
+        "--bell",
+        action="store_true",
+        help="Write a terminal bell when a supervise iteration still needs human attention.",
+    )
     web_parser = subparsers.add_parser("web", help="Serve a local Supervisor dashboard page.")
     web_parser.add_argument(
         "--codex-home",
@@ -432,18 +437,27 @@ def _run_supervise(args: argparse.Namespace) -> None:
     iterations = args.iterations
     count = 0
     previous_fingerprint: tuple[object, ...] | None = None
+    previous_bell_fingerprint: tuple[object, ...] | None = None
     while iterations is None or count < iterations:
         report = _scan_report(args)
         fingerprint = _report_fingerprint(report)
         should_print = not args.changes_only or previous_fingerprint != fingerprint
         if should_print:
             payload = _supervise_payload(args, report, iteration=count + 1)
+            bell_fingerprint = _supervise_bell_fingerprint(report, payload)
+            if (
+                args.bell
+                and bell_fingerprint is not None
+                and bell_fingerprint != previous_bell_fingerprint
+            ):
+                _emit_terminal_bell()
             if args.json:
                 _print_json(payload)
             else:
                 _print_supervise_plain(payload, report)
             if iterations is not None and count + 1 < iterations:
                 print()
+            previous_bell_fingerprint = bell_fingerprint
         previous_fingerprint = fingerprint
         count += 1
         if iterations is None or count < iterations:
@@ -656,6 +670,15 @@ def _attention_bell_fingerprint(report: Any) -> tuple[object, ...] | None:
         recommendation.target_session_id,
         recommendation.target_name,
     )
+
+
+def _supervise_bell_fingerprint(
+    report: Any, payload: dict[str, Any]
+) -> tuple[object, ...] | None:
+    executed = payload.get("executed")
+    if executed and executed.get("kind") in EXECUTABLE_ADVICE_KINDS:
+        return None
+    return _attention_bell_fingerprint(report)
 
 
 def _emit_terminal_bell() -> None:
