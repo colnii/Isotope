@@ -47,6 +47,8 @@ Codex Supervisor 已经不只是一个小命令。
 - `dashboard` 会把托管 lane 和最近真实 Codex session 合并展示。
 - 关联托管 lane 时不只依赖 cwd，而是全局候选打分后做一对一分配。
 - 关联优先使用只读 tmux pane 文本、session id、标题和用户消息。
+- 同一 tmux lane 执行 `/new` 后，关联优先使用新 Codex banner
+  之后的活跃终端片段，避免被旧 session 的 resume 行误导。
 - 关联分数为 0 时不会硬连，避免把托管 lane 误配到旧窗口。
 - 带状态协议的超时 session 仍可作为关联候选。
 - 合并卡片若关联到真实 `SUPERVISOR_STATUS`，分组和状态字段使用真实 session。
@@ -119,7 +121,7 @@ Codex Supervisor 已经不只是一个小命令。
 
 ## 下一步顺序
 
-1. 观察真实多窗口页面，确认全局关联是否稳定。
+1. 继续观察 `/new`、`/rename` 和人工发送后的真实多窗口页面。
 2. 后续再决定是否增加人工输入框；默认仍保持白名单。
 3. 再拆分 `runner.py` 中的匹配、建议和 tmux 控制代码。
 

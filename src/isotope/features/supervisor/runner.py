@@ -583,19 +583,72 @@ def _best_linked_session_for_managed(
 
 def _managed_link_score(managed_session: Any, candidate: Any) -> int:
     score = 0
-    pane_text = _normalize_match_text(
-        getattr(managed_session, "managed_terminal_excerpt", None)
-    )
+    raw_pane_text = getattr(managed_session, "managed_terminal_excerpt", None)
+    pane_text = _normalize_match_text(raw_pane_text)
+    active_pane_text = _active_terminal_match_text(raw_pane_text)
     if pane_text:
-        if _text_contains(pane_text, getattr(candidate, "session_id", None)):
-            score += 300
-        if _candidate_text_matches(pane_text, candidate):
+        if _text_contains(active_pane_text, getattr(candidate, "session_id", None)):
+            score += 500
+        if _candidate_thread_marker_matches(active_pane_text, candidate):
+            score += 250
+        if _candidate_text_matches(active_pane_text, candidate):
             score += 100
+        if _candidate_snippet_matches(active_pane_text, candidate):
+            score += 80
     if getattr(managed_session, "managed_name", None):
         name_text = _normalize_match_text(managed_session.managed_name)
         if _candidate_text_matches(name_text, candidate):
             score += 20
     return score
+
+
+def _active_terminal_match_text(value: Any) -> str:
+    text = _normalize_match_text(value)
+    if not text:
+        return ""
+    marker_positions = [
+        text.rfind(marker)
+        for marker in (
+            "thread renamed to",
+            ">_ openai codex",
+            "openai codex",
+            "tip: use /copy",
+        )
+    ]
+    start = max(marker_positions)
+    return text[start:] if start >= 0 else text
+
+
+def _candidate_thread_marker_matches(haystack: str, candidate: Any) -> bool:
+    for field in (
+        getattr(candidate, "thread_name", None),
+        getattr(candidate, "initial_user_title", None),
+    ):
+        title = _normalize_match_text(field)
+        if len(title) < 2:
+            continue
+        if f"thread renamed to {title}" in haystack:
+            return True
+        if f"codex resume '{title}'" in haystack:
+            return True
+        if f'codex resume "{title}"' in haystack:
+            return True
+    return False
+
+
+def _candidate_snippet_matches(haystack: str, candidate: Any) -> bool:
+    for field in (
+        getattr(candidate, "initial_user_title", None),
+        getattr(candidate, "last_user_message", None),
+        getattr(candidate, "last_assistant_message", None),
+    ):
+        text = _normalize_match_text(field)
+        if len(text) < 16:
+            continue
+        for snippet in (text[:32], text[-32:]):
+            if _text_contains(haystack, snippet):
+                return True
+    return False
 
 
 def _candidate_text_matches(haystack: str, candidate: Any) -> bool:

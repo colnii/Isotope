@@ -120,6 +120,9 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 - 关联时会全局候选打分并一对一分配，优先使用只读
   `tmux capture-pane` 摘要、session id、Codex 标题、首条用户消息
   或最近消息；没有正分命中时不硬连旧窗口。
+- 同一 tmux lane 内执行 `/new` 后，会优先使用新 Codex banner
+  和 `Thread renamed to ...` 之后的终端片段，不让旧 session 的
+  resume 行继续抢占绑定。
 
 `web` 是当前本地前端薄入口：
 

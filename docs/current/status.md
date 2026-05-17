@@ -70,6 +70,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     dashboard 会把托管 tmux lane 和最近真实 Codex session 合并成一个
     可控卡片；关联不再只依赖 cwd，而是全局候选打分，优先用只读
     tmux pane 文本、session id、Codex 标题和用户消息匹配，并一对一分配；
+    同一 tmux lane 内执行 `/new` 后，会优先使用新 Codex banner
+    和 `Thread renamed to ...` 之后的活跃终端片段，避免继续黏住旧 session；
     若没有正分匹配，不再硬连旧 session；
     有状态协议的超时 session 仍可作为关联候选；若真实 session 有状态协议，
     dashboard 分组和 web 状态汇报会优先使用真实 session；

@@ -231,6 +231,19 @@
     带状态协议的超时 session 仍可匹配托管 tmux lane。
 108. Codex Supervisor 多托管关联修正：dashboard 不再只按 cwd 过滤；
     多个托管 lane 会全局打分并一对一关联真实 Codex session，避免互相抢链。
+109. Codex Supervisor `/new` 跟随修正：同一 tmux lane 开新 Codex 窗口后，
+    dashboard 优先用新 banner 后的活跃终端片段匹配，不再黏住旧 session。
+
+## 最近完成：Codex Supervisor `/new` 跟随修正
+
+完成内容：
+
+- 已向 `test` lane 发送 Supervisor 前端测试说明，后续不再沿用
+  `python版本升级评估` 的大上下文做测试。
+- 修正 `test` lane 执行 `/new` 后仍显示旧 `python版本升级评估` 的问题。
+- 匹配逻辑会识别新 Codex banner 和 `Thread renamed to ...` 后的活跃片段。
+- 真实页面数据已验证：`test` 当前关联 `测试` session，
+  resume 为 `codex resume 019e35a2-e442-75e2-84ab-3761a685a736`。
 
 ## 最近完成：Codex Supervisor 多托管关联修正
 
