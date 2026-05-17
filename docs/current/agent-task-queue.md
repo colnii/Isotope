@@ -258,6 +258,22 @@
 120. Codex Supervisor LLM 执行闭环：`advise/supervise --llm-execute`
     会执行 LLM 选择的 `send_status/send_continue`；`monitor` 只记录跳过，
     且与 `--execute/--auto-execute` 互斥。
+121. Workbench Ask 第一片：`WorkbenchAskFlow`、`isotope-ask` 和
+    `isotope-demo --scenario workbench-ask` 可用工作台低敏摘要回答一个
+    自然语言问题；泛问题搜索为空时会退回使用当前 project/task/file 摘要。
+
+## 最近完成：Workbench Ask 第一片
+
+完成内容：
+
+- 新增 `features/ask`，用注入的 LLM provider 回答工作台问题。
+- prompt 只携带 project/task/file/search 的低敏摘要，不带文件正文或任务私信。
+- `isotope-ask ask` 支持 mock provider 和 OpenAI-compatible provider 配置。
+- 新增 `workbench-ask` demo 场景，展示“问工作台”的可演示流程。
+
+下一步：
+
+- 把 Workbench Ask 接到 API 或页面，让用户不用只靠 CLI 使用。
 
 ## 最近完成：Codex Supervisor LLM 执行闭环
 

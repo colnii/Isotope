@@ -19,8 +19,10 @@ from .interfaces.http import (
     create_llm_provider_http_app,
 )
 from .features.chat.flow import submit_llm_product_chat_user_message_with_preflight
+from .features.ask.flow import WorkbenchAskFlow
 from .llm.provider import (
     LLMFinalAnswerResponse,
+    LLMResponse,
     LLMToolCall,
     LLMToolCallResponse,
     build_llm_tool_result_message,
@@ -74,6 +76,7 @@ def main(argv: list[str] | None = None) -> int:
             "llm-product-chat-app-entry",
             "llm-terminal-tool-loop",
             "workbench",
+            "workbench-ask",
             "project-workspace",
             "project-workspace-append",
         ),
@@ -173,6 +176,8 @@ def _run_scenario(root: Path, *, scenario: str) -> dict[str, Any]:
         return _run_llm_terminal_tool_loop_demo(root)
     if scenario == "workbench":
         return _run_workbench_demo(root)
+    if scenario == "workbench-ask":
+        return _run_workbench_ask_demo(root)
     if scenario == "project-workspace":
         return _run_project_workspace_demo(root)
     if scenario == "project-workspace-append":
@@ -386,6 +391,82 @@ def _run_workbench_demo(root: Path) -> dict[str, Any]:
         "memory_status": "boundary_only",
         "content_policy": "summary_only",
     }
+
+
+def _run_workbench_ask_demo(root: Path) -> dict[str, Any]:
+    root.mkdir(parents=True, exist_ok=True)
+    app = create_http_app(root)
+
+    app.request(
+        "POST",
+        "/projects",
+        {
+            "name": "秋招作品集",
+            "summary": "秋招作品集项目工作台",
+        },
+    )
+    app.request(
+        "POST",
+        "/tasks",
+        {
+            "goal": "秋招作品集任务拆解",
+            "message": "private task note",
+        },
+    )
+    app.request(
+        "POST",
+        "/files",
+        {
+            "name": "portfolio-notes.md",
+            "summary": "秋招作品集素材摘要",
+            "content": "PRIVATE_WORKBENCH_ASK_CONTENT_SHOULD_NOT_LEAK",
+        },
+    )
+    provider = _FakeWorkbenchAskProvider(
+        "建议先把作品集项目拆成一个可展示任务。"
+    )
+    answer = WorkbenchAskFlow.in_process(root, provider=provider).answer(
+        "秋招作品集下一步做什么？",
+        search_limit=3,
+    )
+
+    return {
+        "scenario": "workbench-ask",
+        "transport": "in_process_flow",
+        "question": answer.question,
+        "answer": answer.answer,
+        "provider": answer.provider,
+        "model": answer.model,
+        "provider_call_count": provider.call_count,
+        "context_counts": answer.workbench.counts,
+        "content_policy": "summary_only",
+        "memory_status": "boundary_only",
+    }
+
+
+class _FakeWorkbenchAskProvider:
+    provider = "fake"
+    model = "fake-workbench-ask"
+
+    def __init__(self, answer: str) -> None:
+        self.answer = answer
+        self.call_count = 0
+
+    def generate(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int = 512,
+    ) -> LLMResponse:
+        self.call_count += 1
+        return LLMResponse(
+            provider=self.provider,
+            model=self.model,
+            content=self.answer,
+            finish_reason="stop",
+            usage={"prompt_tokens": 0, "completion_tokens": 0},
+            raw={"fake": True, "message_count": len(messages), "max_tokens": max_tokens},
+        )
 
 
 def _run_v0_2_demo(root: Path) -> dict[str, Any]:
@@ -3233,6 +3314,8 @@ def _format_plain_text(result: dict[str, Any]) -> str:
         return _format_llm_terminal_tool_loop_plain_text(result)
     if result.get("scenario") == "workbench":
         return _format_workbench_plain_text(result)
+    if result.get("scenario") == "workbench-ask":
+        return _format_workbench_ask_plain_text(result)
     if result.get("scenario") == "project-workspace":
         return _format_project_workspace_plain_text(result)
     if result.get("scenario") == "v0.2":
@@ -3286,6 +3369,8 @@ def _format_trace(result: dict[str, Any]) -> str:
         return _format_llm_terminal_tool_loop_trace(result)
     if scenario == "workbench":
         return _format_workbench_trace(result)
+    if scenario == "workbench-ask":
+        return _format_workbench_ask_trace(result)
     if scenario == "project-workspace":
         return _format_project_workspace_trace(result)
     if scenario == "v0.2":
@@ -3637,6 +3722,25 @@ def _format_workbench_trace(result: dict[str, Any]) -> str:
         ),
         f"search result types: {', '.join(result['search_result_types'])}",
         f"updated_at present: {str(result['updated_at_present']).lower()}",
+        f"content policy: {result['content_policy']}",
+    ]
+    return _format_trace_steps(result["scenario"], steps)
+
+
+def _format_workbench_ask_trace(result: dict[str, Any]) -> str:
+    counts = result["context_counts"]
+    steps = [
+        "创建 project/task/file 低敏摘要",
+        f"question: {result['question']}",
+        f"answer: {result['answer']}",
+        f"provider: {result['provider']}/{result['model']}",
+        (
+            "context: "
+            f"projects={counts['projects']} "
+            f"tasks={counts['tasks']} "
+            f"files={counts['files']} "
+            f"search_results={counts['search_results']}"
+        ),
         f"content policy: {result['content_policy']}",
     ]
     return _format_trace_steps(result["scenario"], steps)
@@ -4093,6 +4197,28 @@ def _format_workbench_plain_text(result: dict[str, Any]) -> str:
         f"updated_at_present: {str(result['updated_at_present']).lower()}",
         f"get_workbench_status_code: {result['get_workbench_status_code']}",
         f"post_workbench_status_code: {result['post_workbench_status_code']}",
+        f"content_policy: {result['content_policy']}",
+        f"memory_status: {result['memory_status']}",
+    ]
+    return "\n".join(lines)
+
+
+def _format_workbench_ask_plain_text(result: dict[str, Any]) -> str:
+    counts = result["context_counts"]
+    lines = [
+        f"scenario: {result['scenario']}",
+        f"transport: {result['transport']}",
+        f"question: {result['question']}",
+        f"answer: {result['answer']}",
+        f"provider: {result['provider']}/{result['model']}",
+        (
+            "context: "
+            f"projects={counts['projects']} "
+            f"tasks={counts['tasks']} "
+            f"files={counts['files']} "
+            f"search_results={counts['search_results']}"
+        ),
+        f"provider_call_count: {result['provider_call_count']}",
         f"content_policy: {result['content_policy']}",
         f"memory_status: {result['memory_status']}",
     ]

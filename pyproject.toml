@@ -18,6 +18,7 @@ isotope-file = "isotope.features.files.runner:main"
 isotope-project = "isotope.features.projects.runner:main"
 isotope-search = "isotope.features.search.runner:main"
 isotope-workbench = "isotope.features.workbench.runner:main"
+isotope-ask = "isotope.features.ask.runner:main"
 isotope-api = "isotope.apps.api:main"
 isotope-supervisor = "isotope.features.supervisor.runner:main"
 

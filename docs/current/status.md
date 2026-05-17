@@ -49,11 +49,16 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     低敏摘要、可选 search 结果、空状态和最近更新时间，并通过
     `isotope-workbench`、`GET /workbench`、`POST /workbench` 和
     `isotope-demo --scenario workbench --trace` 调用。
-15. `apps/api` 已有薄后端入口，当前提供 ASGI 兼容 `ApiApp`、
+15. `features/ask` 已有第一片 Workbench Ask（工作台问答），
+    可把工作台低敏摘要交给注入的 LLM provider 回答一个自然语言问题；
+    通用问题没有命中搜索时，会退回使用当前 project/task/file 摘要作为
+    上下文候选；可通过 `isotope-ask` 和
+    `isotope-demo --scenario workbench-ask --trace` 调用。
+16. `apps/api` 已有薄后端入口，当前提供 ASGI 兼容 `ApiApp`、
     `create_api_app(...)` 和 `isotope-api routes`，真实路由仍复用
     `interfaces/http.py`；ASGI 请求已支持 query string（查询参数）转 body、
     JSON 响应头和稳定 invalid JSON 错误。
-16. `features/supervisor` 已有 Codex Supervisor 监控与托管启动，
+17. `features/supervisor` 已有 Codex Supervisor 监控与托管启动，
     可从本机 `~/.codex/sessions` 读取多个 Codex 会话，判断工作中、
     等待用户、疑似停住、疑似报错和空闲，并通过 `isotope-supervisor`
     输出中文汇报；`watch --changes-only` 可只在变化时再次输出；
@@ -152,6 +157,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q
 PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2 --trace
 PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario workbench --trace
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario workbench-ask --trace
+PYTHONPATH=src .venv/bin/python -m isotope.features.ask.runner ask --root /tmp/isotope-ask --question "下一步做什么？" --mock-answer "先整理一个可展示任务。"
 PYTHONPATH=src .venv/bin/python -m isotope.apps.api routes --root /tmp/isotope-api --json
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --limit 3
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard --limit 3
