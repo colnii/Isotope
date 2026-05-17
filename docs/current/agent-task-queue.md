@@ -242,6 +242,8 @@
     web 启动时会自动为旧托管 tmux lane 补装 `alert-bell` hook。
 113. Codex Supervisor 长输出绑定修正：最近输出会保留新 Codex 窗口锚点
     和最新尾部，消息片段权重高于旧 resume id 和普通标题命中。
+114. Codex Supervisor bell hook 健康显示：`scan/dashboard/web` 会输出
+    `managed_bell_hook_installed`，web 托管卡片显示 `bell hook` 状态。
 
 ## 最近完成：Codex Supervisor bell hook 修复
 
@@ -249,6 +251,7 @@
 
 - 新增 `isotope-supervisor repair-hooks`，按托管登记表补装 tmux bell hook。
 - web 启动时会自动给已登记且仍存在的 tmux lane 补装一次 hook。
+- web 托管卡片显示 `bell hook` 安装状态，区分“没响过”和“没接上”。
 - 旧托管窗口无需重新 `adopt`，也能接入后续 bell 事件刷新。
 - 顺手修正长输出截掉新窗口锚点的问题，`test` 现在会继续绑定
   `测试` session，而不是被旧 `python版本升级评估` 的 resume 行抢回去。

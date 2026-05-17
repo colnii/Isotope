@@ -1730,6 +1730,7 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "managed_terminal_excerpt" in html
     assert "最近输出" in html
     assert "bell 时间" in html
+    assert "bell hook" in html
     assert "scrollTerminalExcerptToBottom" in html
     assert "rememberTerminalExcerptScroll" in html
     assert "restoreTerminalExcerptScroll" in html
@@ -3782,6 +3783,28 @@ def test_codex_supervisor_scan_marks_tmux_managed_bell_signal(tmp_path):
     assert "bell=响过" in render_plain_report(report)
     llm_messages = build_llm_summary_messages(report)
     assert '"managed_bell": true' in llm_messages[1]["content"]
+
+
+def test_codex_supervisor_scan_reports_tmux_bell_hook_health(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+
+    report = CodexSupervisorFlow(
+        codex_home=codex_home,
+        now=lambda: NOW,
+        tmux_session_checker=lambda session: session == "isotope-lane-a",
+        tmux_bell_checker=lambda session: False,
+        tmux_bell_hook_checker=lambda session: session == "isotope-lane-a",
+    ).scan()
+
+    session = report.sessions[0]
+    assert session.managed_bell_hook_installed is True
+    assert session.to_dict()["managed_bell_hook_installed"] is True
+    assert "bell hook=已安装" in render_plain_report(report)
+    llm_messages = build_llm_summary_messages(report)
+    assert '"managed_bell_hook_installed": true' in llm_messages[1]["content"]
 
 
 def test_codex_supervisor_scan_highlights_tmux_bell_hook_event(tmp_path):

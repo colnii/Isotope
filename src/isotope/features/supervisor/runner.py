@@ -422,8 +422,13 @@ def _scan_report(args: argparse.Namespace) -> Any:
     needs_tmux_pane = getattr(args, "command", None) == "dashboard" or bool(
         getattr(args, "auto_execute", False)
     )
+    command = getattr(args, "command", None)
+    needs_bell_hook_health = command in {"scan", "dashboard", "watch"}
     flow = CodexSupervisorFlow(
         codex_home=Path(args.codex_home),
+        tmux_bell_hook_checker=None
+        if needs_bell_hook_health
+        else _unknown_tmux_bell_hook,
         tmux_pane_reader=_tmux_capture_pane if needs_tmux_pane else None,
     )
     return flow.scan(
@@ -431,6 +436,10 @@ def _scan_report(args: argparse.Namespace) -> Any:
         stale_after_seconds=args.stale_after,
         active_within_seconds=args.active_within,
     )
+
+
+def _unknown_tmux_bell_hook(_session: str) -> None:
+    return None
 
 
 def _supervise_payload(
@@ -813,6 +822,7 @@ def _dashboard_item(
         "managed_terminal_excerpt": session.managed_terminal_excerpt,
         "managed_bell": session.managed_bell,
         "managed_bell_event_at": session.managed_bell_event_at,
+        "managed_bell_hook_installed": session.managed_bell_hook_installed,
         "control_commands": _managed_tmux_command_suggestions(session)
         if session.managed_tmux_session
         else [],
@@ -1153,6 +1163,7 @@ def _report_fingerprint(report: Any) -> tuple[object, ...]:
             session.last_assistant_message,
             session.managed_bell,
             session.managed_bell_event_at,
+            session.managed_bell_hook_installed,
             session.supervisor_status,
             session.supervisor_summary,
             session.supervisor_next,

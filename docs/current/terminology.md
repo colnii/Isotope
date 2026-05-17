@@ -109,6 +109,7 @@
 | `alert-bell` | tmux bell hook，在窗口响铃时触发并写入 Supervisor 事件文件 | 外部集成/状态判断 | `src/isotope/features/supervisor/bell_events.py`, `src/isotope/features/supervisor/registry.py` |
 | `bell_events.jsonl` | Supervisor bell 事件日志，记录哪个托管 tmux session 响铃 | 产品功能/状态判断 | `src/isotope/features/supervisor/bell_events.py` |
 | `managed_bell_event_at` | 最近一次 tmux bell hook 事件时间 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
+| `managed_bell_hook_installed` | 托管 tmux 会话是否已安装 Supervisor bell hook | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/web.py` |
 | `repair-hooks` | Supervisor 命令，给旧托管 tmux 会话补装 bell hook | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
 | `SUPERVISOR_STATUS` | 托管 Codex 主动汇报状态的协议锚点，只从 assistant 回复解析，如 working、done、blocked、needs_user | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |
 | `SUPERVISOR_SUMMARY` | 托管 Codex 主动汇报的一句中文状态摘要 | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |

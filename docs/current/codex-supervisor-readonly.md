@@ -149,8 +149,8 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 每个窗口会显示“依据”，用来解释当前标签为什么被判成等待用户、停住或工作中。
 如果窗口主动写了 `SUPERVISOR_STATUS/SUMMARY/NEXT`，
 页面会单独显示“状态汇报”区，避免只在终端原文里找状态。
-托管窗口会额外显示“托管窗口”详情区，包含 bell 时间、关联 session
-和最近输出；最近输出来自只读 `tmux capture-pane` 尾部摘要，
+托管窗口会额外显示“托管窗口”详情区，包含 bell 时间、bell hook
+安装状态、关联 session 和最近输出；最近输出来自只读 `tmux capture-pane` 尾部摘要，
 会保留换行并默认滚到输出底部。用户手动上翻最近输出后，
 自动刷新会保留滚动位置，不会强行跳回底部。
 每个窗口提供 `复制 resume`，会复制完整 `codex resume <session_id>`。
@@ -277,6 +277,7 @@ api_keys = [
 - 当前登记 backend、pid、tmux session、cwd、prompt、启动时间和日志路径。
 - `send` 会执行 `tmux set-buffer`、`paste-buffer`，短暂等待后用 `C-m` 提交。
 - `scan` 会读取 `#{window_bell_flag}`，并输出 `managed_bell`。
+- `scan` 会检查 `alert-bell` hook，并输出 `managed_bell_hook_installed`。
 - `scan` 会只读 `tmux capture-pane` 尾部文本，用于辅助页面关联
   托管 lane 和真实 Codex session，并展示托管窗口最近输出。
 - hook 会把 bell 事件写入 `~/.codex/supervisor/bell_events.jsonl`。

@@ -80,7 +80,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     web 会显示 `linked_match` 绑定依据、分数和命中来源；
     有状态协议的超时 session 仍可作为关联候选；若真实 session 有状态协议，
     dashboard 分组和 web 状态汇报会优先使用真实 session；
-    web 托管卡片会展示 bell 时间、关联 session 和最近输出，
+    web 托管卡片会展示 bell 时间、bell hook 安装状态、关联 session 和最近输出，
     最近输出保留尾部行并默认滚到底部，让人类直接看到
     Supervisor 看到的托管窗口收尾文本；用户手动上翻后，
     自动刷新会保留最近输出滚动位置；

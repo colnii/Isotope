@@ -679,6 +679,11 @@ def dashboard_page_html() -> str:
       bell.textContent = "bell 时间：" + text(item.managed_bell_event_at);
       details.append(bell);
 
+      const bellHook = document.createElement("div");
+      bellHook.className = "managed-line";
+      bellHook.textContent = "bell hook：" + bellHookText(item.managed_bell_hook_installed);
+      details.append(bellHook);
+
       if (item.linked_session_id) {
         const linked = document.createElement("div");
         linked.className = "managed-line";
@@ -703,6 +708,12 @@ def dashboard_page_html() -> str:
       restoreTerminalExcerptScroll(excerpt);
 
       return details;
+    }
+
+    function bellHookText(value) {
+      if (value === true) return "已安装";
+      if (value === false) return "未安装";
+      return "未确认";
     }
 
     function renderLinkedMatch(item) {

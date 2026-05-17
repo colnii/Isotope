@@ -82,6 +82,7 @@ class CodexSessionSummary:
     managed_terminal_excerpt: str | None = None
     managed_bell: bool = False
     managed_bell_event_at: str | None = None
+    managed_bell_hook_installed: bool | None = None
     supervisor_status: str | None = None
     supervisor_summary: str | None = None
     supervisor_next: str | None = None
@@ -140,6 +141,7 @@ class CodexSessionSummary:
             "managed_terminal_excerpt": self.managed_terminal_excerpt,
             "managed_bell": self.managed_bell,
             "managed_bell_event_at": self.managed_bell_event_at,
+            "managed_bell_hook_installed": self.managed_bell_hook_installed,
             "supervisor_status": self.supervisor_status,
             "supervisor_summary": _shorten_optional(self.supervisor_summary),
             "supervisor_next": _shorten_optional(self.supervisor_next),
@@ -206,6 +208,7 @@ class CodexSupervisorFlow:
         process_checker: Callable[[int], bool] | None = None,
         tmux_session_checker: Callable[[str], bool] | None = None,
         tmux_bell_checker: Callable[[str], bool] | None = None,
+        tmux_bell_hook_checker: Callable[[str], bool | None] | None = None,
         tmux_pane_reader: Callable[[str], str | None] | None = None,
     ) -> None:
         self.codex_home = Path(codex_home).expanduser() if codex_home else Path.home() / ".codex"
@@ -219,6 +222,7 @@ class CodexSupervisorFlow:
         self.process_checker = process_checker or _pid_is_running
         self.tmux_session_checker = tmux_session_checker or _tmux_session_exists
         self.tmux_bell_checker = tmux_bell_checker or _tmux_window_has_bell
+        self.tmux_bell_hook_checker = tmux_bell_hook_checker or _tmux_bell_hook_installed
         self.tmux_pane_reader = tmux_pane_reader or _empty_tmux_pane
 
     def scan(
@@ -267,6 +271,7 @@ class CodexSupervisorFlow:
                 process_checker=self.process_checker,
                 tmux_session_checker=self.tmux_session_checker,
                 tmux_bell_checker=self.tmux_bell_checker,
+                tmux_bell_hook_checker=self.tmux_bell_hook_checker,
                 tmux_pane_reader=self.tmux_pane_reader,
             )
             for record in read_managed_records(self.registry_path)
@@ -339,8 +344,13 @@ def render_plain_report(report: CodexSupervisorReport) -> str:
                 if session.managed_backend == "tmux"
                 else ""
             )
+            bell_hook = (
+                f" bell hook={_bell_hook_label(session.managed_bell_hook_installed)}"
+                if session.managed_backend == "tmux"
+                else ""
+            )
             name = session.managed_name or "未命名"
-            lines.append(f"   托管：{name}{pid}{backend}{tmux}{bell}")
+            lines.append(f"   托管：{name}{pid}{backend}{tmux}{bell}{bell_hook}")
             if session.managed_bell_event_at:
                 lines.append(f"   bell 事件：{session.managed_bell_event_at}")
         if session.supervisor_status:
@@ -361,6 +371,14 @@ def render_plain_report(report: CodexSupervisorReport) -> str:
             lines.append(f"   最近回复：{_shorten(session.last_assistant_message)}")
     lines.append(f"建议：{report.recommendation.label}")
     return "\n".join(lines)
+
+
+def _bell_hook_label(value: bool | None) -> str:
+    if value is True:
+        return "已安装"
+    if value is False:
+        return "未安装"
+    return "未确认"
 
 
 def _read_session_summary(
@@ -574,6 +592,7 @@ def _managed_summary(
     process_checker: Callable[[int], bool],
     tmux_session_checker: Callable[[str], bool],
     tmux_bell_checker: Callable[[str], bool],
+    tmux_bell_hook_checker: Callable[[str], bool | None],
     tmux_pane_reader: Callable[[str], str | None],
 ) -> CodexSessionSummary:
     started_at = _parse_timestamp(record.started_at) or now
@@ -592,6 +611,11 @@ def _managed_summary(
             and (tmux_bell_checker(record.tmux_session) or bell_event is not None)
         )
         managed_bell_event_at = bell_event.created_at if bell_event is not None else None
+        managed_bell_hook_installed = (
+            tmux_bell_hook_checker(record.tmux_session)
+            if is_running and record.tmux_session
+            else False
+        )
         status = "working" if is_running else "exited"
         reason = (
             "Supervisor 托管 tmux 会话仍在运行"
@@ -615,6 +639,7 @@ def _managed_summary(
         is_running = process_checker(record.pid)
         managed_bell = False
         managed_bell_event_at = None
+        managed_bell_hook_installed = None
         status = "working" if is_running else "exited"
         reason = "Supervisor 托管进程已启动" if is_running else "Supervisor 托管进程已退出"
         status_evidence = {
@@ -642,6 +667,7 @@ def _managed_summary(
         managed_terminal_excerpt=managed_terminal_excerpt,
         managed_bell=managed_bell,
         managed_bell_event_at=managed_bell_event_at,
+        managed_bell_hook_installed=managed_bell_hook_installed,
     )
 
 
@@ -938,6 +964,20 @@ def _tmux_window_has_bell(session: str) -> bool:
     if completed.returncode != 0:
         return False
     return completed.stdout.strip() == "1"
+
+
+def _tmux_bell_hook_installed(session: str) -> bool:
+    if not session:
+        return False
+    completed = subprocess.run(
+        ["tmux", "show-hooks", "-t", session],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        return False
+    return "alert-bell" in completed.stdout and "bell_events.jsonl" in completed.stdout
 
 
 def _tmux_capture_pane(session: str) -> str | None:
