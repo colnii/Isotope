@@ -104,6 +104,8 @@ Codex Supervisor 已经不只是一个小命令。
 - 自动策略：`done` 发 `send_continue`；终端可输入、`stale`、
   bell 或缺少协议发
   `send_status`；`blocked/needs_user/error` 只提醒。
+- 如果 lane 仍在运行、终端未回到可输入态且没有 bell/stale 证据，
+  自动策略只监控，不会仅因缺少状态协议就催促。
 - 已退出的旧托管 tmux lane 不参与建议、命令草案和自动发送。
 - lane state 记录最近状态、最近催促时间和催促次数。
 - `--prompt-cooldown` 可避免短时间重复催促同一个 lane。

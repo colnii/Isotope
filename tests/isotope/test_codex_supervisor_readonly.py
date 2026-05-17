@@ -3500,7 +3500,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_rejects_other_execute_mod
     assert "cannot be used together" in payload["error"]["message"]
 
 
-def test_codex_supervisor_runner_supervise_auto_requests_status_without_protocol(
+def test_codex_supervisor_runner_supervise_auto_waits_without_protocol_while_running(
     tmp_path,
     capsys,
     monkeypatch,
@@ -3554,12 +3554,15 @@ def test_codex_supervisor_runner_supervise_auto_requests_status_without_protocol
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["auto_action"] == {
-        "kind": "send_status",
-        "reason": "managed lane has no supervisor status protocol yet",
+        "kind": "monitor",
+        "reason": "managed lane is running without ready signal",
     }
-    assert payload["executed"]["kind"] == "send_status"
-    assert payload["executed"]["text"] == STATUS_REQUEST_TEXT
-    assert calls == _tmux_send_calls(STATUS_REQUEST_TEXT)
+    assert payload["executed"] == {
+        "kind": "monitor",
+        "skipped": True,
+        "reason": "managed lane is running without ready signal",
+    }
+    assert calls == []
 
 
 def test_codex_supervisor_runner_supervise_auto_requests_status_when_terminal_ready(

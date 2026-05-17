@@ -1342,8 +1342,8 @@ def _auto_execute_action(
         }
     if not status_source.supervisor_status:
         return {
-            "kind": "send_status",
-            "reason": "managed lane has no supervisor status protocol yet",
+            "kind": "monitor",
+            "reason": "managed lane is running without ready signal",
         }
     return {
         "kind": "monitor",

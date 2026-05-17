@@ -269,6 +269,27 @@
 124. Codex Supervisor 托管自动化入口：`supervise` 会输出 automation
     状态；没有可控 tmux lane 时提示自动发送不会生效，已退出 lane
     不再参与建议和自动执行。
+125. Codex Supervisor 真实闭环烟测：`launch --backend tmux` 已能启动
+    真实托管 lane，`supervise --auto-execute` 可识别并解析其
+    `SUPERVISOR_STATUS`；自动策略不会在 lane 仍运行且终端未 ready 时
+    仅因缺少协议而提前催促。
+
+## 最近完成：Codex Supervisor 真实闭环烟测
+
+完成内容：
+
+- 用 `launch --backend tmux` 启动 `supervisor-smoke` 真实 Codex lane。
+- lane 完成只读 `git status --short --branch` 检查，并输出
+  `SUPERVISOR_STATUS: done`。
+- `dashboard/supervise` 能识别真实 lane、读取 tmux 尾部、关联真实
+  Codex session，并解析状态协议。
+- 发现并修复自动策略问题：lane 仍在运行且终端未回到可输入态时，
+  不再因为缺少状态协议就发送 `send_status`。
+- 测试 lane 已清理，当前没有遗留 tmux session。
+
+下一步：
+
+- 验证 `done -> send_continue` 的真实续跑策略是否符合使用习惯，必要时改成可配置。
 
 ## 最近完成：Codex Supervisor 托管自动化入口
 
