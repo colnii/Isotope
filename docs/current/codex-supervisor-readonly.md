@@ -48,7 +48,8 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
   不自动发送。
 - `web` 会连接 `/events` 事件流；托管 tmux 响铃后会立刻刷新页面，
   不必等 5 秒轮询。
-- `guide` 会按当前参数打印可复制的启动、接管、自动监督和观察命令。
+- `guide` 会按当前参数打印可复制的启动、接管、日常 loop 和观察命令。
+- `loop` 是日常常驻入口，等价于安全默认的自动监督循环。
 - `supervise` 可按间隔循环执行扫描、建议、可选 LLM 摘要和显式 send。
 - `advise/supervise --name <lane>` 可只针对一个托管 lane 生成建议或执行动作。
 - `advise/supervise --llm-action` 可让 LLM 在白名单里选择建议动作，
@@ -242,9 +243,22 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 
 1. `launch --backend tmux` 新开托管 Codex 窗口。
 2. 如果已有 tmux 窗口，则用 `adopt` 接管。
-3. `supervise --auto-execute --changes-only --bell --interval 30` 常驻监控。
+3. `loop --interval 30` 常驻监控。
 4. 需要细看时打开 `web` 或 `tmux attach`。
 5. 窗口不用再跟进时，用 `archive --name <lane>` 归档。
+
+`loop` 是日常入口：
+
+```bash
+.venv/bin/isotope-supervisor loop
+.venv/bin/isotope-supervisor loop --interval 30
+.venv/bin/isotope-supervisor loop --name lane-a
+.venv/bin/isotope-supervisor loop --iterations 1 --json
+```
+
+它默认启用 `auto-execute`、`changes-only` 和 `bell`：
+会自动按规则推进可控托管 lane，只在状态变化时输出，
+需要人看时才响铃。`--name <lane>` 可临时只盯一个窗口。
 
 `supervise` 是当前的监控小闭环：
 
@@ -396,6 +410,8 @@ tmux attach -t isotope-lane-a
   `send_status` 和 `send_continue`。
 - `--llm-action` 只输出模型建议动作，不自动执行。
 - `guide` 只打印命令，不启动 tmux、不调用模型、不发送指令。
+- `loop` 是 `supervise --auto-execute --changes-only --bell --interval 30`
+  的日常入口。
 - `supervise --auto-execute` 可按规则自动执行一个白名单动作。
 - 未指定 `--name` 的自动轮转会避开冷却中的 lane，
   继续寻找下一个可自动处理窗口。

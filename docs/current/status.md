@@ -73,8 +73,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `--llm-execute` 可执行 LLM 选择的 `send_status/send_continue`，
     `monitor` 只记录跳过；
     `advise` 可单独输出建议和命令草案，并可显式执行 send 类草案；
-    `guide` 可生成一组可复制的启动、接管、自动监督和观察命令，
-    作为真实使用入口；
+    `guide` 可生成一组可复制的启动、接管、日常 loop 和观察命令，
+    作为真实使用入口；`loop` 是日常常驻入口，默认启用自动执行、
+    只在变化时输出和需要人看时响铃；
     `advise/supervise --name <lane>` 可把建议、显式执行和自动执行
     收窄到指定托管 lane，名字不存在时不会退回到其他窗口；
     `dashboard` 可按需要看、已完成和工作中分组输出；
@@ -118,6 +119,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     scan、dashboard 和 web 已输出 `status_evidence` 状态依据，
     说明当前标签来自状态协议、文本规则、超时、bell 或托管检查；
     `supervise` 可循环执行扫描、建议、可选 LLM 摘要和显式 send；
+    `loop` 复用 `supervise` 引擎，并固定为日常自动监督默认值；
     `supervise --auto-execute` 已有第一版规则自动策略：
     `done` 默认续跑，终端可输入、`stale` 或 bell 时询问状态，
     `blocked/needs_user/error` 只提醒；如果 `SUPERVISOR_NEXT`
@@ -191,7 +193,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner web --prin
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --limit 3 --json
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner advise
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise --iterations 1 --llm-summary --json
-PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise --auto-execute --changes-only --bell --interval 30
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner loop --interval 30
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner adopt --name lane-a --cwd /path/to/repo --tmux-session isotope-lane-a
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --name lane-a --text "继续"
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner archive --name lane-a

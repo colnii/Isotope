@@ -172,6 +172,63 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Write a terminal bell when a supervise iteration still needs human attention.",
     )
+    loop_parser = subparsers.add_parser(
+        "loop",
+        help="Run the daily managed Supervisor loop with safe defaults.",
+    )
+    loop_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    loop_parser.add_argument("--limit", type=int, default=10, help="Maximum sessions.")
+    loop_parser.add_argument(
+        "--stale-after",
+        type=int,
+        default=600,
+        help="Seconds without events before marking a session stale.",
+    )
+    loop_parser.add_argument(
+        "--active-within",
+        type=int,
+        default=180,
+        help="Seconds with recent events before marking a session working.",
+    )
+    loop_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    loop_parser.add_argument(
+        "--llm-summary",
+        action="store_true",
+        help="Use configured LLM to add a compact Chinese summary.",
+    )
+    loop_parser.add_argument(
+        "--name",
+        help="Target one managed lane by name. Omit to rotate across active lanes.",
+    )
+    loop_parser.add_argument(
+        "--prompt-cooldown",
+        type=int,
+        default=DEFAULT_PROMPT_COOLDOWN_SECONDS,
+        help="Seconds before repeating send_status/send_continue for the same lane.",
+    )
+    loop_parser.add_argument(
+        "--interval",
+        type=int,
+        default=30,
+        help="Seconds between reports.",
+    )
+    loop_parser.add_argument(
+        "--iterations",
+        type=int,
+        help="Stop after this many reports. Omit to loop until interrupted.",
+    )
+    loop_parser.set_defaults(
+        auto_execute=True,
+        changes_only=True,
+        bell=True,
+        execute=None,
+        llm_action=False,
+        llm_execute=False,
+    )
     web_parser = subparsers.add_parser("web", help="Serve a local Supervisor dashboard page.")
     web_parser.add_argument(
         "--codex-home",
@@ -318,6 +375,10 @@ def main(argv: list[str] | None = None) -> int:
             _print_advice(args)
             return 0
         if args.command == "supervise":
+            _validate_execution_modes(args)
+            _run_supervise(args)
+            return 0
+        if args.command == "loop":
             _validate_execution_modes(args)
             _run_supervise(args)
             return 0
@@ -602,10 +663,7 @@ def _guide_payload(args: argparse.Namespace) -> dict[str, Any]:
         "supervise": shlex.join(
             [
                 "isotope-supervisor",
-                "supervise",
-                "--auto-execute",
-                "--changes-only",
-                "--bell",
+                "loop",
                 "--interval",
                 str(args.interval),
             ]

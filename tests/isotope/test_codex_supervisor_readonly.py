@@ -5176,10 +5176,7 @@ def test_codex_supervisor_runner_guide_prints_usable_workflow(tmp_path, capsys):
         "isotope-supervisor adopt --name doc-lane "
         f"--cwd {workspace} --tmux-session doc-tmux"
     ) in text
-    assert (
-        "isotope-supervisor supervise --auto-execute --changes-only "
-        "--bell --interval 30"
-    ) in text
+    assert "isotope-supervisor loop --interval 30" in text
     assert "isotope-supervisor web" in text
     assert "isotope-supervisor archive --name doc-lane" in text
 
@@ -5206,9 +5203,46 @@ def test_codex_supervisor_runner_guide_can_print_json(tmp_path, capsys):
     assert payload["workflow"]["tmux_session"] == "doc-lane"
     assert payload["workflow"]["cwd"] == str(workspace)
     assert payload["commands"]["supervise"] == (
-        "isotope-supervisor supervise --auto-execute --changes-only --bell --interval 30"
+        "isotope-supervisor loop --interval 30"
     )
     assert payload["commands"]["archive"] == "isotope-supervisor archive --name doc-lane"
+
+
+def test_codex_supervisor_runner_loop_uses_daily_defaults(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "2",
+            "--interval",
+            "1",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    lines = capsys.readouterr().out.strip().splitlines()
+    assert len(lines) == 1
+    payload = json.loads(lines[0])
+    assert payload["automation"]["ready"] is False
+    assert payload["auto_action"] == {
+        "kind": "monitor",
+        "reason": "no managed tmux lane",
+    }
+    assert payload["executed"] == {
+        "kind": "monitor",
+        "reason": "no managed tmux lane",
+        "skipped": True,
+    }
 
 
 def test_codex_supervisor_runner_launch_records_managed_codex(
