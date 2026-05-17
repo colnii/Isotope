@@ -4108,7 +4108,7 @@ def test_codex_supervisor_runner_watch_changes_only_suppresses_unchanged_reports
             )
         ],
     )
-    monkeypatch.setattr("isotope.features.supervisor.runner.time.sleep", lambda _: None)
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda _: None)
 
     exit_code = supervisor_main(
         [
@@ -4193,7 +4193,7 @@ def test_codex_supervisor_runner_watch_changes_only_prints_changed_reports(
             events=[_assistant_message("2026-05-16T11:59:40Z", "正在运行测试。")],
         )
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.time.sleep", change_session)
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", change_session)
 
     exit_code = supervisor_main(
         [
@@ -4238,7 +4238,7 @@ def test_codex_supervisor_runner_watch_bell_rings_for_attention(
             )
         ],
     )
-    monkeypatch.setattr("isotope.features.supervisor.runner.time.sleep", lambda _: None)
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda _: None)
 
     exit_code = supervisor_main(
         [

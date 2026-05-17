@@ -278,7 +278,7 @@ def main(argv: list[str] | None = None) -> int:
                     print()
                 count += 1
                 if iterations is None or count < iterations:
-                    time.sleep(args.interval)
+                    _sleep(args.interval)
             return 0
         if args.command == "web":
             _run_web(args)
@@ -441,7 +441,11 @@ def _run_supervise(args: argparse.Namespace) -> None:
         previous_fingerprint = fingerprint
         count += 1
         if iterations is None or count < iterations:
-            time.sleep(args.interval)
+            _sleep(args.interval)
+
+
+def _sleep(seconds: float) -> None:
+    time.sleep(seconds)
 
 
 def _scan_report(args: argparse.Namespace) -> Any:
