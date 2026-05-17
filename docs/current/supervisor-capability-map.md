@@ -91,6 +91,7 @@ Codex Supervisor 已经不只是一个小命令。
 - bell 事件会让建议优先提示查看对应托管窗口。
 - `advise` 输出建议和命令草案。
 - `--execute` 只执行 `send_status` 和 `send_continue`。
+- `advise/supervise --name <lane>` 可把建议、显式执行和自动执行收窄到指定托管 lane。
 - `send_status/send_continue` 会要求托管 Codex 按三行状态协议汇报。
 - `supervise` 循环执行扫描、建议、摘要和显式发送。
 - `supervise --auto-execute` 每轮最多自动执行一个白名单动作。

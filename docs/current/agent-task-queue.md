@@ -251,6 +251,21 @@
     “不要继续旧任务”里的旧标题不再算强匹配，避免旧 session 抢走新窗口。
 117. Codex Supervisor 卡片来源显示：web 卡片新增“卡片来源”，
     明确普通历史会话与托管 tmux 窗口；bell 文案改成“未收到/收到于”。
+118. Codex Supervisor 指定托管 lane 执行：`advise/supervise --name <lane>`
+    可把建议、显式执行和自动执行限定到指定托管窗口；名字不存在时不回退。
+
+## 最近完成：Codex Supervisor 指定托管 lane 执行
+
+完成内容：
+
+- `advise --name <lane>` 会只生成指定托管 lane 的 attach、状态和继续草案。
+- `advise --name <lane> --execute send_status` 只会向该 lane 发送状态请求。
+- `supervise --name <lane> --auto-execute` 只读取并操作该 lane。
+- 指定名字不存在时会报错，不会退回到第一个托管窗口。
+
+下一步：
+
+- 再看 web 控制动作是否也需要显式透传 `--name` 的同类保护。
 
 ## 最近完成：Codex Supervisor 卡片来源显示
 

@@ -63,6 +63,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     TOML 号池做智能摘要；`--llm-action` 可让 LLM 只在白名单里
     选择 `monitor`、`send_status` 或 `send_continue`；`scan --json` 包含结构化建议；
     `advise` 可单独输出建议和命令草案，并可显式执行 send 类草案；
+    `advise/supervise --name <lane>` 可把建议、显式执行和自动执行
+    收窄到指定托管 lane，名字不存在时不会退回到其他窗口；
     `dashboard` 可按需要看、已完成和工作中分组输出；
     `web` 可启动本机页面并复用 `/dashboard.json` 展示三组窗口；
     dashboard 和 web 已显示 SQLite 标题、索引标题、首条用户消息标题、

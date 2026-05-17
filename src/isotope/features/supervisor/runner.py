@@ -97,6 +97,10 @@ def _build_parser() -> argparse.ArgumentParser:
         )
     for command in ("advise", "supervise"):
         subparsers.choices[command].add_argument(
+            "--name",
+            help="Target one managed lane by name for suggestions or execution.",
+        )
+        subparsers.choices[command].add_argument(
             "--execute",
             help="Execute one generated send suggestion. Supports send_status or send_continue.",
         )
@@ -448,7 +452,7 @@ def _supervise_payload(
     *,
     iteration: int,
 ) -> dict[str, Any]:
-    payload = _advice_payload(report)
+    payload = _advice_payload(report, target_name=args.name)
     payload["iteration"] = iteration
     payload["report"] = report.to_dict()
     if args.llm_summary:
@@ -456,7 +460,7 @@ def _supervise_payload(
     if args.llm_action:
         payload["llm_action"] = _decide_action_with_llm(report, payload)
     if args.auto_execute:
-        auto_action = _auto_execute_action(report)
+        auto_action = _auto_execute_action(report, target_name=args.name)
         payload["auto_action"] = auto_action
         if auto_action["kind"] in EXECUTABLE_ADVICE_KINDS:
             payload["executed"] = _execute_advice(args, report, payload, kind=auto_action["kind"])
@@ -921,7 +925,7 @@ def _print_supervise_plain(payload: dict[str, Any], report: Any) -> None:
 
 def _print_advice(args: argparse.Namespace) -> None:
     report = _scan_report(args)
-    payload = _advice_payload(report)
+    payload = _advice_payload(report, target_name=args.name)
     if args.llm_action:
         payload["llm_action"] = _decide_action_with_llm(report, payload)
     if args.execute:
@@ -948,9 +952,9 @@ def _print_advice(args: argparse.Namespace) -> None:
         _print_executed_plain(executed)
 
 
-def _advice_payload(report: Any) -> dict[str, Any]:
+def _advice_payload(report: Any, *, target_name: str | None = None) -> dict[str, Any]:
     recommendation = report.recommendation
-    suggestions = _command_suggestions(report)
+    suggestions = _command_suggestions(report, target_name=target_name)
     return {
         "status": "ok",
         "generated_at": report.generated_at,
@@ -967,7 +971,16 @@ def _print_executed_plain(executed: dict[str, Any]) -> None:
     print(f"已执行：{executed['command']}")
 
 
-def _command_suggestions(report: Any) -> list[dict[str, str]]:
+def _command_suggestions(
+    report: Any, *, target_name: str | None = None
+) -> list[dict[str, str]]:
+    if target_name:
+        managed_tmux = _managed_tmux_session_by_name(report, target_name)
+        if managed_tmux is not None:
+            return _managed_tmux_command_suggestions(managed_tmux) + [
+                _watch_command_suggestion()
+            ]
+        return [_watch_command_suggestion()]
     recommendation = report.recommendation
     target = _target_session(report, recommendation.target_session_id)
     if target is not None and target.managed_tmux_session:
@@ -1028,6 +1041,13 @@ def _watch_command_suggestion() -> dict[str, str]:
     }
 
 
+def _managed_tmux_session_by_name(report: Any, name: str) -> Any | None:
+    for session in report.sessions:
+        if session.managed_tmux_session and session.managed_name == name:
+            return session
+    return None
+
+
 def _first_managed_tmux_session(report: Any) -> Any | None:
     for session in report.sessions:
         if session.managed_tmux_session:
@@ -1046,14 +1066,21 @@ def _execute_advice(
     if kind not in EXECUTABLE_ADVICE_KINDS:
         supported = ", ".join(sorted(EXECUTABLE_ADVICE_KINDS))
         raise ValueError(f"execute supports only: {supported}")
-    suggestion = _suggestion_by_kind(payload["command_suggestions"], kind)
-    if suggestion is None:
-        raise ValueError(f"no generated command suggestion for: {kind}")
-    target = _target_session(report, report.recommendation.target_session_id)
+    if args.name:
+        target = _managed_tmux_session_by_name(report, args.name)
+        if target is None:
+            raise ValueError(f"managed lane not found: {args.name}")
+    else:
+        target = _target_session(report, report.recommendation.target_session_id)
+        if target is None or not target.managed_name:
+            target = _first_managed_tmux_session(report)
     if target is None or not target.managed_name:
         target = _first_managed_tmux_session(report)
     if target is None or not target.managed_name:
         raise ValueError(f"no managed tmux target for: {kind}")
+    suggestion = _suggestion_by_kind(payload["command_suggestions"], kind)
+    if suggestion is None:
+        raise ValueError(f"no generated command suggestion for: {kind}")
     if cooldown_state := prompt_cooldown_state(
         codex_home=Path(args.codex_home),
         name=target.managed_name,
@@ -1090,12 +1117,20 @@ def _execute_advice(
     }
 
 
-def _auto_execute_action(report: Any) -> dict[str, str]:
-    managed = _first_managed_tmux_session(report)
+def _auto_execute_action(
+    report: Any, *, target_name: str | None = None
+) -> dict[str, str]:
+    managed = (
+        _managed_tmux_session_by_name(report, target_name)
+        if target_name
+        else _first_managed_tmux_session(report)
+    )
     if managed is None:
         return {
             "kind": "monitor",
-            "reason": "no managed tmux lane",
+            "reason": f"managed lane not found: {target_name}"
+            if target_name
+            else "no managed tmux lane",
         }
     status_source = _auto_status_source(report, managed)
     supervisor_status = (status_source.supervisor_status or "").lower()

@@ -49,6 +49,7 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
 - `web` 会连接 `/events` 事件流；托管 tmux 响铃后会立刻刷新页面，
   不必等 5 秒轮询。
 - `supervise` 可按间隔循环执行扫描、建议、可选 LLM 摘要和显式 send。
+- `advise/supervise --name <lane>` 可只针对一个托管 lane 生成建议或执行动作。
 - `advise/supervise --llm-action` 可让 LLM 在白名单里选择建议动作，
   但不会自动执行。
 - `--prompt-cooldown` 可避免短时间重复催促同一个托管 lane。
@@ -194,6 +195,7 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 .venv/bin/isotope-supervisor advise
 .venv/bin/isotope-supervisor advise --json
 .venv/bin/isotope-supervisor advise --llm-action --json
+.venv/bin/isotope-supervisor advise --name lane-a --execute send_status
 .venv/bin/isotope-supervisor advise --execute send_status
 .venv/bin/isotope-supervisor advise --execute send_continue
 ```
@@ -206,6 +208,8 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 显式传入 `--execute send_status` 或 `--execute send_continue` 时，
 只会执行对应的 `send` 类草案；`tmux_attach` 和 `watch_changes`
 不会被 `--execute` 执行。
+传入 `--name <lane>` 时，建议和执行都只面向这个托管 lane；
+如果名字不存在，会报错，不会退回到第一个托管窗口。
 `--llm-action` 会把压缩状态、候选命令和目标 lane 发给 LLM，
 要求它只返回 `monitor`、`send_status` 或 `send_continue`。
 返回结果会被校验；不在白名单内的动作会报错，不会执行。
@@ -219,6 +223,7 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 .venv/bin/isotope-supervisor supervise --interval 180 --llm-summary --execute send_status
 .venv/bin/isotope-supervisor supervise --interval 180 --execute send_status --prompt-cooldown 300
 .venv/bin/isotope-supervisor supervise --interval 180 --auto-execute --prompt-cooldown 300
+.venv/bin/isotope-supervisor supervise --name lane-a --iterations 1 --auto-execute --json
 .venv/bin/isotope-supervisor supervise --iterations 1 --llm-action --json
 .venv/bin/isotope-supervisor supervise --iterations 1 --llm-summary --json
 ```
@@ -230,6 +235,7 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 `--auto-execute` 会启用规则自动策略，每轮最多执行一个白名单动作：
 `done` 发 `send_continue`，终端可输入、`stale`、bell 或没有状态协议时
 发 `send_status`，`blocked`、`needs_user` 和疑似报错只提醒不硬推。
+配合 `--name <lane>` 时，自动策略只读取并操作这个托管 lane。
 
 LLM 摘要：
 
