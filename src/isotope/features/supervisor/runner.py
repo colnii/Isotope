@@ -383,11 +383,12 @@ def _run_supervise(args: argparse.Namespace) -> None:
 
 
 def _scan_report(args: argparse.Namespace) -> Any:
+    needs_tmux_pane = getattr(args, "command", None) == "dashboard" or bool(
+        getattr(args, "auto_execute", False)
+    )
     flow = CodexSupervisorFlow(
         codex_home=Path(args.codex_home),
-        tmux_pane_reader=_tmux_capture_pane
-        if getattr(args, "command", None) == "dashboard"
-        else None,
+        tmux_pane_reader=_tmux_capture_pane if needs_tmux_pane else None,
     )
     return flow.scan(
         limit=args.limit,
@@ -503,7 +504,9 @@ def _dashboard_display_sessions(sessions: Any) -> list[tuple[Any, Any | None]]:
     for session in sessions:
         if session.managed:
             continue
-        if session.status in {"stale", "exited"}:
+        if session.status == "exited":
+            continue
+        if session.status == "stale" and not session.supervisor_status:
             continue
         linkable_by_cwd.setdefault(session.cwd, []).append(session)
 
@@ -552,7 +555,8 @@ def _best_linked_session_for_managed(
         for index, candidate in enumerate(available)
     ]
     scored.sort(key=lambda item: (-item[0], item[1]))
-    return scored[0][2]
+    best_score, _index, candidate = scored[0]
+    return candidate if best_score > 0 else None
 
 
 def _managed_link_score(managed_session: Any, candidate: Any) -> int:

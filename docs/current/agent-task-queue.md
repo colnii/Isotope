@@ -227,6 +227,18 @@
     每轮最多执行一个白名单动作，按状态协议决定询问、续跑或等待。
 106. Codex Supervisor 状态协议解析边界：只从 assistant 回复中解析，
     且 `SUPERVISOR_STATUS` 必须是合法值，避免把提示模板当真实状态。
+107. Codex Supervisor 托管关联修正：dashboard 关联分数为 0 时不硬连；
+    带状态协议的超时 session 仍可匹配托管 tmux lane。
+
+## 最近完成：Codex Supervisor 托管关联修正
+
+完成内容：
+
+- 修正 `test` 托管 lane 误连旧 `Isotope loop` 的问题。
+- dashboard 不再在匹配分数为 0 时强行选择同目录旧 session。
+- 有 `SUPERVISOR_STATUS` 的超时 session 仍可作为托管 lane 的关联候选。
+- 本地已接管 `iso_dev` 为 `项目重新整理`，`test` 当前关联为
+  `python版本升级评估`。
 
 ## 最近完成：Codex Supervisor 自动执行第一版
 

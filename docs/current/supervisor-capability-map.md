@@ -46,6 +46,8 @@ Codex Supervisor 已经不只是一个小命令。
 - `dashboard` 为每个窗口输出完整 `resume_command`。
 - `dashboard` 会把同 cwd 的托管 lane 和最近真实 Codex session 合并展示。
 - 关联托管 lane 时优先用只读 tmux pane 文本匹配真实 session。
+- 关联分数为 0 时不会硬连，避免把托管 lane 误配到旧窗口。
+- 带状态协议的超时 session 仍可作为关联候选。
 - 合并卡片若关联到真实 `SUPERVISOR_STATUS`，分组和状态字段使用真实 session。
 - `web` 启动本机页面，复用 `dashboard` 分组 JSON。
 - `web` 优先展示可读标题，同时保留短 hash 方便辨认窗口。

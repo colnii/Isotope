@@ -828,6 +828,10 @@ def test_codex_supervisor_dashboard_json_includes_managed_control_commands(
         "isotope.features.supervisor.flow._tmux_window_has_bell",
         lambda session: False,
     )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: "python版本升级评估\nrunning checks",
+    )
 
     exit_code = supervisor_main(
         [
@@ -900,6 +904,10 @@ def test_codex_supervisor_dashboard_merges_managed_lane_with_real_session(
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._tmux_window_has_bell",
         lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: "python版本升级评估\nrunning checks",
     )
 
     exit_code = supervisor_main(
@@ -993,6 +1001,100 @@ def test_codex_supervisor_dashboard_uses_tmux_pane_text_to_link_managed_lane(
     assert managed_item["linked_session_id"] == "019e3205-b9cc-7012-804c-ca2ac38e0d32"
     assert any(
         item["display_title"] == "另一个同目录窗口"
+        for item in payload["groups"]["working"]
+    )
+
+
+def test_codex_supervisor_dashboard_links_stale_protocol_session_from_tmux_pane(
+    tmp_path,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-done.jsonl",
+        session_id="019e3205-b9cc-7012-804c-ca2ac38e0d32",
+        cwd=str(workspace),
+        events=[
+            _event(
+                "2026-05-16T11:40:00Z",
+                "event_msg",
+                {"type": "thread_name_updated", "thread_name": "python版本升级评估"},
+            ),
+            _assistant_message(
+                "2026-05-16T11:40:00Z",
+                "\n".join(
+                    [
+                        "SUPERVISOR_STATUS: done",
+                        "SUPERVISOR_SUMMARY: 当前 main 与 origin/main 同步。",
+                        "SUPERVISOR_NEXT: 建议进入下一项明确任务。",
+                    ]
+                ),
+            ),
+        ],
+    )
+
+    report = CodexSupervisorFlow(
+        codex_home=codex_home,
+        now=lambda: NOW,
+        tmux_session_checker=lambda session: session == "isotope-lane-a",
+        tmux_bell_checker=lambda session: False,
+        tmux_pane_reader=lambda session: (
+            "python版本升级评估\n"
+            "SUPERVISOR_STATUS: done\n"
+            "SUPERVISOR_SUMMARY: 当前 main 与 origin/main 同步。"
+        ),
+    ).scan(limit=5, stale_after_seconds=600)
+    payload = _dashboard_payload(report)
+
+    assert payload["counts"]["done"] == 1
+    item = payload["groups"]["done"][0]
+    assert item["name"] == "lane-a"
+    assert item["display_title"] == "python版本升级评估"
+    assert item["linked_session_id"] == "019e3205-b9cc-7012-804c-ca2ac38e0d32"
+    assert item["supervisor_status"] == "done"
+
+
+def test_codex_supervisor_dashboard_does_not_link_zero_score_same_cwd_session(
+    tmp_path,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-unrelated.jsonl",
+        session_id="019e3205-b9cc-7012-804c-ca2ac38e0d32",
+        cwd=str(workspace),
+        events=[
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "thread_name_updated", "thread_name": "Isotope loop"},
+            ),
+            _assistant_message("2026-05-16T11:59:20Z", "已完成下一步。"),
+        ],
+    )
+
+    report = CodexSupervisorFlow(
+        codex_home=codex_home,
+        now=lambda: NOW,
+        tmux_session_checker=lambda session: session == "isotope-lane-a",
+        tmux_bell_checker=lambda session: False,
+        tmux_pane_reader=lambda session: "python版本升级评估\nSUPERVISOR_STATUS: done",
+    ).scan(limit=5, stale_after_seconds=999999)
+    payload = _dashboard_payload(report)
+
+    managed_item = next(
+        item for item in payload["groups"]["working"] if item["name"] == "lane-a"
+    )
+    assert managed_item["display_title"] == "lane-a"
+    assert managed_item["linked_session_id"] is None
+    assert any(
+        item["display_title"] == "Isotope loop"
         for item in payload["groups"]["working"]
     )
 
@@ -1291,6 +1393,14 @@ def test_codex_supervisor_web_returns_manual_llm_action_without_sending(
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._tmux_window_has_bell",
         lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: (
+            "SUPERVISOR_STATUS: blocked\n"
+            "SUPERVISOR_SUMMARY: 需要用户提供 API key。\n"
+            "SUPERVISOR_NEXT: 等待用户处理。"
+        ),
     )
     send_calls: list[list[str]] = []
 
@@ -2145,6 +2255,10 @@ def test_codex_supervisor_runner_supervise_auto_requests_status_without_protocol
         "isotope.features.supervisor.flow._tmux_window_has_bell",
         lambda session: False,
     )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: "",
+    )
     calls: list[list[str]] = []
 
     def fake_run(
@@ -2217,6 +2331,14 @@ def test_codex_supervisor_runner_supervise_auto_continues_done_lane(
         "isotope.features.supervisor.flow._tmux_window_has_bell",
         lambda session: False,
     )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: (
+            "SUPERVISOR_STATUS: done\n"
+            "SUPERVISOR_SUMMARY: 当前任务已完成。\n"
+            "SUPERVISOR_NEXT: 可以继续下一步。"
+        ),
+    )
     calls: list[list[str]] = []
 
     def fake_run(
@@ -2288,6 +2410,14 @@ def test_codex_supervisor_runner_supervise_auto_waits_on_blocked_lane(
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._tmux_window_has_bell",
         lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: (
+            "SUPERVISOR_STATUS: blocked\n"
+            "SUPERVISOR_SUMMARY: 需要用户提供 API key。\n"
+            "SUPERVISOR_NEXT: 等待用户处理。"
+        ),
     )
     calls: list[list[str]] = []
 

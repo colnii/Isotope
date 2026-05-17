@@ -69,7 +69,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     agent 元数据和短 hash，并可复制完整 `codex resume <session_id>`；
     dashboard 会把同一工作目录下的托管 tmux lane 和最近真实 Codex
     session 合并成一个可控卡片；关联时会优先用只读 tmux pane 文本
-    匹配 Codex 标题和用户消息；若真实 session 有状态协议，
+    匹配 Codex 标题和用户消息；若没有正分匹配，不再硬连旧 session；
+    有状态协议的超时 session 仍可作为关联候选；若真实 session 有状态协议，
     dashboard 分组和 web 状态汇报会优先使用真实 session；
     web 托管卡片会展示 bell 时间、关联 session 和最近输出，
     最近输出保留尾部行并默认滚到底部，让人类直接看到
