@@ -80,6 +80,7 @@ class CodexSessionSummary:
     managed_backend: str | None = None
     managed_tmux_session: str | None = None
     managed_terminal_excerpt: str | None = None
+    managed_terminal_ready: bool = False
     managed_bell: bool = False
     managed_bell_event_at: str | None = None
     managed_bell_hook_installed: bool | None = None
@@ -139,6 +140,7 @@ class CodexSessionSummary:
             "managed_backend": self.managed_backend,
             "managed_tmux_session": self.managed_tmux_session,
             "managed_terminal_excerpt": self.managed_terminal_excerpt,
+            "managed_terminal_ready": self.managed_terminal_ready,
             "managed_bell": self.managed_bell,
             "managed_bell_event_at": self.managed_bell_event_at,
             "managed_bell_hook_installed": self.managed_bell_hook_installed,
@@ -349,8 +351,15 @@ def render_plain_report(report: CodexSupervisorReport) -> str:
                 if session.managed_backend == "tmux"
                 else ""
             )
+            terminal = (
+                f" 终端={'可输入' if session.managed_terminal_ready else '运行中'}"
+                if session.managed_backend == "tmux"
+                else ""
+            )
             name = session.managed_name or "未命名"
-            lines.append(f"   托管：{name}{pid}{backend}{tmux}{bell}{bell_hook}")
+            lines.append(
+                f"   托管：{name}{pid}{backend}{tmux}{bell}{bell_hook}{terminal}"
+            )
             if session.managed_bell_event_at:
                 lines.append(f"   bell 事件：{session.managed_bell_event_at}")
         if session.supervisor_status:
@@ -598,12 +607,14 @@ def _managed_summary(
     started_at = _parse_timestamp(record.started_at) or now
     age_seconds = max(0, int((now - started_at).total_seconds()))
     managed_terminal_excerpt = None
+    managed_terminal_ready = False
     if record.backend == "tmux":
         is_running = bool(record.tmux_session and tmux_session_checker(record.tmux_session))
         if is_running and record.tmux_session:
             managed_terminal_excerpt = _terminal_tail_excerpt(
                 tmux_pane_reader(record.tmux_session),
             )
+            managed_terminal_ready = _terminal_ready_for_input(managed_terminal_excerpt)
         bell_event = bell_events.get(record.tmux_session or "")
         managed_bell = bool(
             is_running
@@ -665,6 +676,7 @@ def _managed_summary(
         managed_backend=record.backend,
         managed_tmux_session=record.tmux_session,
         managed_terminal_excerpt=managed_terminal_excerpt,
+        managed_terminal_ready=managed_terminal_ready,
         managed_bell=managed_bell,
         managed_bell_event_at=managed_bell_event_at,
         managed_bell_hook_installed=managed_bell_hook_installed,
@@ -1043,6 +1055,34 @@ def _terminal_tail_excerpt(
     if omitted_lines:
         excerpt = f"... 已省略前面 {omitted_lines} 行\n{excerpt}"
     return excerpt
+
+
+def _terminal_ready_for_input(text: str | None) -> bool:
+    if not text:
+        return False
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if _terminal_has_active_work_marker(lines[-8:]):
+        return False
+    last_prompt = -1
+    last_assistant_marker = -1
+    for index, line in enumerate(lines):
+        if line.startswith("›"):
+            last_prompt = index
+        if line.startswith("•"):
+            last_assistant_marker = index
+    if last_prompt < 0 or last_prompt <= last_assistant_marker:
+        return False
+    return last_prompt >= max(0, len(lines) - 4)
+
+
+def _terminal_has_active_work_marker(lines: list[str]) -> bool:
+    for line in lines:
+        compact = line.casefold()
+        if compact.startswith("◦ working") or (
+            "working" in compact and "esc to interrupt" in compact
+        ):
+            return True
+    return False
 
 
 def _terminal_anchor_line_index(lines: list[str]) -> int | None:

@@ -150,9 +150,9 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 如果窗口主动写了 `SUPERVISOR_STATUS/SUMMARY/NEXT`，
 页面会单独显示“状态汇报”区，避免只在终端原文里找状态。
 托管窗口会额外显示“托管窗口”详情区，包含 bell 时间、bell hook
-安装状态、关联 session 和最近输出；最近输出来自只读 `tmux capture-pane` 尾部摘要，
-会保留换行并默认滚到输出底部。用户手动上翻最近输出后，
-自动刷新会保留滚动位置，不会强行跳回底部。
+安装状态、终端可输入状态、关联 session 和最近输出；
+最近输出来自只读 `tmux capture-pane` 尾部摘要，会保留换行并默认滚到输出底部。
+用户手动上翻最近输出后，自动刷新会保留滚动位置，不会强行跳回底部。
 每个窗口提供 `复制 resume`，会复制完整 `codex resume <session_id>`。
 托管 tmux 窗口还会显示复制 attach、复制状态、复制继续、
 请求状态和继续按钮。
@@ -224,8 +224,8 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 只有显式传入 `--execute send_status` 或 `--execute send_continue`
 时才会发送指令。
 `--auto-execute` 会启用规则自动策略，每轮最多执行一个白名单动作：
-`done` 发 `send_continue`，`stale`、bell 或没有状态协议时发
-`send_status`，`blocked`、`needs_user` 和疑似报错只提醒不硬推。
+`done` 发 `send_continue`，终端可输入、`stale`、bell 或没有状态协议时
+发 `send_status`，`blocked`、`needs_user` 和疑似报错只提醒不硬推。
 
 LLM 摘要：
 
@@ -280,6 +280,8 @@ api_keys = [
 - `scan` 会检查 `alert-bell` hook，并输出 `managed_bell_hook_installed`。
 - `scan` 会只读 `tmux capture-pane` 尾部文本，用于辅助页面关联
   托管 lane 和真实 Codex session，并展示托管窗口最近输出。
+- `scan` 会从托管 pane 尾部识别 Codex 是否回到 `›` 输入提示符，
+  并输出 `managed_terminal_ready`。
 - hook 会把 bell 事件写入 `~/.codex/supervisor/bell_events.jsonl`。
 - `scan` 会读取最近事件，并输出 `managed_bell_event_at`。
 - `launch` 会在发送给 Codex 的 prompt 末尾追加状态汇报要求。
@@ -339,6 +341,7 @@ tmux attach -t isotope-lane-a
 - `--execute` 和 `--auto-execute` 不能同时使用。
 - 后续 LLM 可以参与选择动作，但动作必须落到可审计的白名单能力上。
 - bell 只作为弱信号，不直接改变状态，也不自动触发发送。
+- `managed_terminal_ready` 表示 Codex 已回到输入态，自动策略会发状态请求。
 - bell hook 只写事件文件，不直接发指令。
 - 状态协议会影响 `--auto-execute` 的动作选择。
 - lane state 只做限频，不替你判断是否应该继续开发。

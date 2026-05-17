@@ -244,6 +244,20 @@
     和最新尾部，消息片段权重高于旧 resume id 和普通标题命中。
 114. Codex Supervisor bell hook 健康显示：`scan/dashboard/web` 会输出
     `managed_bell_hook_installed`，web 托管卡片显示 `bell hook` 状态。
+115. Codex Supervisor 终端可输入信号：`scan/dashboard/web` 会输出
+    `managed_terminal_ready`；真实 Codex 不触发 tmux bell 时，
+    Supervisor 仍可识别窗口已回到 `›` 输入态并发状态请求。
+
+## 最近完成：Codex Supervisor 终端可输入信号
+
+完成内容：
+
+- 托管 tmux pane 尾部出现 Codex `›` 输入提示符时，
+  `scan` 会标记 `managed_terminal_ready=true`。
+- plain、JSON、dashboard、web 和 LLM 摘要输入都会携带该字段。
+- web 托管卡片新增“终端状态”，区分“运行中”和“可输入”。
+- `supervise --auto-execute` 遇到终端可输入时会发 `send_status`，
+  弥补真实 Codex 不触发 tmux bell 的情况。
 
 ## 最近完成：Codex Supervisor bell hook 修复
 
@@ -311,7 +325,7 @@
 
 - 新增 `supervise --auto-execute`，和显式 `--execute` 互斥。
 - `done` 状态自动发 `send_continue`，推动托管 Codex 继续推进。
-- `stale`、bell 或缺少状态协议时自动发 `send_status`。
+- 终端可输入、`stale`、bell 或缺少状态协议时自动发 `send_status`。
 - `blocked`、`needs_user` 和疑似报错只输出跳过原因，不硬推。
 - 自动执行仍受 lane state 冷却时间限制，避免短时间重复催促。
 - 修正状态协议解析边界，避免工具输出或提示模板污染自动策略。

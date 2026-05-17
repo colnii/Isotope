@@ -820,6 +820,7 @@ def _dashboard_item(
         "managed_backend": session.managed_backend,
         "managed_tmux_session": session.managed_tmux_session,
         "managed_terminal_excerpt": session.managed_terminal_excerpt,
+        "managed_terminal_ready": session.managed_terminal_ready,
         "managed_bell": session.managed_bell,
         "managed_bell_event_at": session.managed_bell_event_at,
         "managed_bell_hook_installed": session.managed_bell_hook_installed,
@@ -1095,6 +1096,11 @@ def _auto_execute_action(report: Any) -> dict[str, str]:
             "kind": "send_continue",
             "reason": "managed lane reported done",
         }
+    if status_source.managed_terminal_ready or managed.managed_terminal_ready:
+        return {
+            "kind": "send_status",
+            "reason": "managed terminal is ready for input",
+        }
     if (
         status_source.managed_bell
         or managed.managed_bell
@@ -1164,6 +1170,7 @@ def _report_fingerprint(report: Any) -> tuple[object, ...]:
             session.managed_bell,
             session.managed_bell_event_at,
             session.managed_bell_hook_installed,
+            session.managed_terminal_ready,
             session.supervisor_status,
             session.supervisor_summary,
             session.supervisor_next,

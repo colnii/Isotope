@@ -1605,6 +1605,68 @@ def test_codex_supervisor_managed_terminal_excerpt_keeps_recent_tail(tmp_path):
     assert report.sessions[0].to_dict()["managed_terminal_excerpt"] == excerpt
 
 
+def test_codex_supervisor_scan_marks_terminal_ready_for_input(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    pane_text = "\n".join(
+        [
+            "• SUPERVISOR_STATUS: done",
+            "  SUPERVISOR_SUMMARY: 上一批工作已完成。",
+            "  SUPERVISOR_NEXT: 等待下一步。",
+            "Token usage: total=123",
+            "› Improve documentation in @filename",
+            "  gpt-5.5 xhigh · Context 96% left · ~/Github/isotope · main",
+        ]
+    )
+
+    report = CodexSupervisorFlow(
+        codex_home=codex_home,
+        now=lambda: NOW,
+        tmux_session_checker=lambda session: session == "isotope-lane-a",
+        tmux_bell_checker=lambda session: False,
+        tmux_pane_reader=lambda session: pane_text,
+    ).scan(limit=5, stale_after_seconds=999999)
+
+    session = report.sessions[0]
+    assert session.managed_terminal_ready is True
+    assert session.to_dict()["managed_terminal_ready"] is True
+    assert "终端=可输入" in render_plain_report(report)
+    llm_messages = build_llm_summary_messages(report)
+    assert '"managed_terminal_ready": true' in llm_messages[1]["content"]
+
+
+def test_codex_supervisor_scan_keeps_working_terminal_not_ready(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    pane_text = "\n".join(
+        [
+            "• Ran PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q",
+            "  └ ...................................",
+            "",
+            "◦ Working (7m 52s • esc to interrupt)",
+            "",
+            "› *",
+            "  tab to queue message · 74% context left",
+        ]
+    )
+
+    report = CodexSupervisorFlow(
+        codex_home=codex_home,
+        now=lambda: NOW,
+        tmux_session_checker=lambda session: session == "isotope-lane-a",
+        tmux_bell_checker=lambda session: False,
+        tmux_pane_reader=lambda session: pane_text,
+    ).scan(limit=5, stale_after_seconds=999999)
+
+    session = report.sessions[0]
+    assert session.managed_terminal_ready is False
+    assert "终端=运行中" in render_plain_report(report)
+
+
 def test_codex_supervisor_runner_dashboard_plain_is_grouped(tmp_path, capsys):
     codex_home = tmp_path / ".codex"
     _write_session(
@@ -1731,6 +1793,7 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "最近输出" in html
     assert "bell 时间" in html
     assert "bell hook" in html
+    assert "终端状态" in html
     assert "scrollTerminalExcerptToBottom" in html
     assert "rememberTerminalExcerptScroll" in html
     assert "restoreTerminalExcerptScroll" in html
@@ -2766,6 +2829,89 @@ def test_codex_supervisor_runner_supervise_auto_requests_status_without_protocol
     assert payload["auto_action"] == {
         "kind": "send_status",
         "reason": "managed lane has no supervisor status protocol yet",
+    }
+    assert payload["executed"]["kind"] == "send_status"
+    assert payload["executed"]["text"] == STATUS_REQUEST_TEXT
+    assert calls == _tmux_send_calls(STATUS_REQUEST_TEXT)
+
+
+def test_codex_supervisor_runner_supervise_auto_requests_status_when_terminal_ready(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-working.jsonl",
+        session_id="working-session",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:30Z",
+                "SUPERVISOR_STATUS: working\n"
+                "SUPERVISOR_SUMMARY: 正在执行上一条任务。\n"
+                "SUPERVISOR_NEXT: 等待完成。",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: (
+            "To continue this session, run codex resume working-session\n"
+            "• SUPERVISOR_STATUS: working\n"
+            "  SUPERVISOR_SUMMARY: 正在执行上一条任务。\n"
+            "  SUPERVISOR_NEXT: 等待完成。\n"
+            "› Improve documentation in @filename\n"
+            "  gpt-5.5 xhigh · Context 96% left · ~/Github/isotope · main"
+        ),
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--auto-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["auto_action"] == {
+        "kind": "send_status",
+        "reason": "managed terminal is ready for input",
     }
     assert payload["executed"]["kind"] == "send_status"
     assert payload["executed"]["text"] == STATUS_REQUEST_TEXT

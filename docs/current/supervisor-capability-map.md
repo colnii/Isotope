@@ -62,7 +62,8 @@ Codex Supervisor 已经不只是一个小命令。
 - `web` 可复制完整 `codex resume <session_id>`。
 - `web` 可分别复制 attach、状态请求和继续命令，
   也可对白名单 send 动作发起本机 POST。
-- `web` 托管卡片显示 bell 时间、bell hook 安装状态、关联 session 和最近输出；
+- `web` 托管卡片显示 bell 时间、bell hook 安装状态、
+  终端可输入状态、关联 session 和最近输出；
   最近输出保留尾部行并默认滚到底部，手动上翻后会保留滚动位置。
 - `web` 可手动请求 `/llm-action`，展示 LLM 白名单动作建议。
 - `web` 会高亮模型建议对应的 send 按钮，但不会自动点击。
@@ -76,6 +77,7 @@ Codex Supervisor 已经不只是一个小命令。
 - tmux 发送使用 buffer/paste 写入文本，短暂等待后用 `C-m` 提交，
   避免请求停留在输入区。
 - `scan` 可识别托管 tmux 会话的 bell（提醒）信号。
+- `scan` 可从托管 tmux pane 尾部识别 Codex 是否回到输入提示符。
 - `launch/adopt` 会安装 tmux `alert-bell` hook。
 - `repair-hooks` 可为旧托管 tmux 记录补装 `alert-bell` hook。
 - `web` 启动时会自动补装一次已登记托管 tmux lane 的 bell hook。
@@ -91,7 +93,8 @@ Codex Supervisor 已经不只是一个小命令。
 - `send_status/send_continue` 会要求托管 Codex 按三行状态协议汇报。
 - `supervise` 循环执行扫描、建议、摘要和显式发送。
 - `supervise --auto-execute` 每轮最多自动执行一个白名单动作。
-- 自动策略：`done` 发 `send_continue`；`stale`、bell 或缺少协议发
+- 自动策略：`done` 发 `send_continue`；终端可输入、`stale`、
+  bell 或缺少协议发
   `send_status`；`blocked/needs_user/error` 只提醒。
 - lane state 记录最近状态、最近催促时间和催促次数。
 - `--prompt-cooldown` 可避免短时间重复催促同一个 lane。

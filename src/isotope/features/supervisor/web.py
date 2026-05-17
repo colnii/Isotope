@@ -684,6 +684,11 @@ def dashboard_page_html() -> str:
       bellHook.textContent = "bell hook：" + bellHookText(item.managed_bell_hook_installed);
       details.append(bellHook);
 
+      const terminalReady = document.createElement("div");
+      terminalReady.className = "managed-line";
+      terminalReady.textContent = "终端状态：" + terminalReadyText(item.managed_terminal_ready);
+      details.append(terminalReady);
+
       if (item.linked_session_id) {
         const linked = document.createElement("div");
         linked.className = "managed-line";
@@ -714,6 +719,10 @@ def dashboard_page_html() -> str:
       if (value === true) return "已安装";
       if (value === false) return "未安装";
       return "未确认";
+    }
+
+    function terminalReadyText(value) {
+      return value ? "可输入" : "运行中";
     }
 
     function renderLinkedMatch(item) {

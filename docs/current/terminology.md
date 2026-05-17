@@ -74,6 +74,7 @@
 | `display_title` | Supervisor 截断后的展示标题，优先托管名、Codex 标题、首条用户消息、agent 名和短 session id | 产品功能/视图 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/runner.py` |
 | `managed_display_title` | dashboard 合并托管 lane 和真实 session 后保留的托管名 | 产品功能/视图 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `managed_terminal_excerpt` | 托管 tmux pane 的只读尾部文本摘要，用于辅助关联真实 Codex session，并在 web 托管卡片中展示最近输出 | 产品功能/视图/外部集成 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
+| `managed_terminal_ready` | 托管 tmux pane 尾部已出现 Codex 输入提示符，表示窗口可接收下一条指令 | 产品功能/视图/状态判断 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `linked_session_id` | dashboard 合并托管 lane 时关联到的真实 Codex session id | 产品功能/视图 | `src/isotope/features/supervisor/runner.py` |
 | `linked_match` | dashboard 合并托管 lane 时的绑定依据，包含匹配分数、命中来源和中文解释 | 产品功能/视图/状态判断 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `thread_name_updated` | Codex 会话标题更新事件，可解析出窗口 rename 或自带标题 | 外部集成/视图 | `src/isotope/features/supervisor/flow.py` |

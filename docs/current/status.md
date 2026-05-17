@@ -80,7 +80,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     web 会显示 `linked_match` 绑定依据、分数和命中来源；
     有状态协议的超时 session 仍可作为关联候选；若真实 session 有状态协议，
     dashboard 分组和 web 状态汇报会优先使用真实 session；
-    web 托管卡片会展示 bell 时间、bell hook 安装状态、关联 session 和最近输出，
+    web 托管卡片会展示 bell 时间、bell hook 安装状态、
+    终端是否已回到可输入状态、关联 session 和最近输出，
     最近输出保留尾部行并默认滚到底部，让人类直接看到
     Supervisor 看到的托管窗口收尾文本；用户手动上翻后，
     自动刷新会保留最近输出滚动位置；
@@ -97,7 +98,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     说明当前标签来自状态协议、文本规则、超时、bell 或托管检查；
     `supervise` 可循环执行扫描、建议、可选 LLM 摘要和显式 send；
     `supervise --auto-execute` 已有第一版规则自动策略：
-    `done` 续跑，`stale`、bell 或缺少状态协议时询问状态，
+    `done` 续跑，终端可输入、`stale`、bell 或缺少状态协议时询问状态，
     `blocked/needs_user/error` 只提醒；
     `send` 可向托管 tmux 会话发送一行指令；`scan` 已能把托管
     tmux 会话的 bell（提醒）信号写入 plain、JSON 和 LLM 摘要输入；
