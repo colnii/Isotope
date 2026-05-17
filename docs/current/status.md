@@ -129,6 +129,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     合法状态协议，避免已完成窗口继续显示成疑似停住；lane state
     会记录最近状态、最近催促时间和催促次数，避免短时间重复发送；
     `blocked`、`done`、`needs_user` 和 bell 事件已接入结构化建议。
+    `supervise` 会输出托管自动化是否可用；没有可控 tmux lane 时，
+    会明确提示自动发送不会生效并给出 launch/adopt 命令形状；
+    已退出的旧托管 tmux lane 不再参与建议和自动发送。
     web 已新增 `/events` 事件流，tmux bell 写入事件文件后会推动前端
     立即刷新 dashboard，不必等 5 秒轮询。
     能力登记见 `docs/current/supervisor-capability-map.md`。

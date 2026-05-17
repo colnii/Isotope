@@ -266,6 +266,25 @@
 123. Codex Supervisor 状态协议优先级：`scan --json`、summary counts
     和 dashboard plain 都优先采用合法 `SUPERVISOR_STATUS`，
     已完成窗口不再被 stale/needs_user 文本规则误标。
+124. Codex Supervisor 托管自动化入口：`supervise` 会输出 automation
+    状态；没有可控 tmux lane 时提示自动发送不会生效，已退出 lane
+    不再参与建议和自动执行。
+
+## 最近完成：Codex Supervisor 托管自动化入口
+
+完成内容：
+
+- `supervise --json` 新增 `automation` 字段，说明是否存在可控托管
+  tmux lane。
+- `supervise` plain 输出新增“托管自动化”区块，没有 lane 时给出
+  `launch --backend tmux` 和 `adopt` 命令形状。
+- 自动策略、建议和命令草案都会忽略已退出的旧托管 tmux lane。
+- 本机真实烟测确认：tmux server 不存在时，不再尝试发送指令，
+  而是跳过并提示 `no managed tmux lane`。
+
+下一步：
+
+- 用 `launch --backend tmux` 启动一个真实测试 lane，验证自动状态请求和继续推进闭环。
 
 ## 最近完成：Codex Supervisor 状态协议优先级
 

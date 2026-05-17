@@ -3354,6 +3354,127 @@ def test_codex_supervisor_runner_supervise_llm_execute_skips_monitor(
     assert calls == []
 
 
+def test_codex_supervisor_runner_supervise_reports_no_managed_lane(
+    tmp_path,
+    capsys,
+):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-active.jsonl",
+        session_id="active-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "reading files"},
+            )
+        ],
+    )
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--auto-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["automation"] == {
+        "ready": False,
+        "managed_tmux_count": 0,
+        "managed_names": [],
+        "reason": "当前没有可控的托管 tmux lane，自动发送不会生效。",
+        "launch_hint": "isotope-supervisor launch --backend tmux --name <name> --cwd <repo> --prompt '<task>'",
+        "adopt_hint": "isotope-supervisor adopt --name <name> --cwd <repo> --tmux-session <session>",
+    }
+    assert payload["executed"]["reason"] == "no managed tmux lane"
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--auto-execute",
+        ]
+    )
+
+    assert exit_code == 0
+    text = capsys.readouterr().out
+    assert "当前没有可控的托管 tmux lane，自动发送不会生效。" in text
+    assert "isotope-supervisor launch --backend tmux" in text
+    assert "isotope-supervisor adopt --name" in text
+
+
+def test_codex_supervisor_runner_supervise_ignores_exited_managed_lane(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--auto-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["automation"]["ready"] is False
+    assert payload["auto_action"] == {
+        "kind": "monitor",
+        "reason": "no managed tmux lane",
+    }
+    assert payload["executed"] == {
+        "kind": "monitor",
+        "skipped": True,
+        "reason": "no managed tmux lane",
+    }
+    assert calls == []
+
+
 def test_codex_supervisor_runner_supervise_llm_execute_rejects_other_execute_modes(
     tmp_path,
     capsys,

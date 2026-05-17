@@ -50,6 +50,12 @@ EXECUTABLE_ADVICE_TEXT = {
         ]
     ),
 }
+LAUNCH_TMUX_HINT = (
+    "isotope-supervisor launch --backend tmux --name <name> --cwd <repo> --prompt '<task>'"
+)
+ADOPT_TMUX_HINT = (
+    "isotope-supervisor adopt --name <name> --cwd <repo> --tmux-session <session>"
+)
 DASHBOARD_GROUP_LABELS = {
     "needs_attention": "需要看",
     "done": "已完成",
@@ -502,6 +508,7 @@ def _supervise_payload(
     )
     payload["iteration"] = iteration
     payload["report"] = report.to_dict()
+    payload["automation"] = _automation_status(report)
     if args.llm_summary:
         payload["llm_summary"] = _summarize_with_llm(report)
     if args.llm_action or args.llm_execute:
@@ -975,6 +982,13 @@ def _dashboard_item_suffix(item: dict[str, Any]) -> str:
 def _print_supervise_plain(payload: dict[str, Any], report: Any) -> None:
     print("[Codex Supervisor supervise]")
     print(render_plain_report(report))
+    automation = payload["automation"]
+    print()
+    print("[托管自动化]")
+    print(automation["reason"])
+    if not automation["ready"]:
+        print(f"启动：{automation['launch_hint']}")
+        print(f"接管：{automation['adopt_hint']}")
     if llm_summary := payload.get("llm_summary"):
         print()
         print("[LLM 摘要]")
@@ -1030,6 +1044,28 @@ def _print_advice(args: argparse.Namespace) -> None:
         _print_executed_plain(executed)
 
 
+def _automation_status(report: Any) -> dict[str, Any]:
+    lanes = [session for session in report.sessions if _is_active_managed_tmux_session(session)]
+    names = [session.managed_name for session in lanes if session.managed_name]
+    if lanes:
+        return {
+            "ready": True,
+            "managed_tmux_count": len(lanes),
+            "managed_names": names,
+            "reason": f"当前有 {len(lanes)} 个可控托管 tmux lane。",
+            "launch_hint": LAUNCH_TMUX_HINT,
+            "adopt_hint": ADOPT_TMUX_HINT,
+        }
+    return {
+        "ready": False,
+        "managed_tmux_count": 0,
+        "managed_names": [],
+        "reason": "当前没有可控的托管 tmux lane，自动发送不会生效。",
+        "launch_hint": LAUNCH_TMUX_HINT,
+        "adopt_hint": ADOPT_TMUX_HINT,
+    }
+
+
 def _advice_payload(
     report: Any,
     *,
@@ -1074,7 +1110,7 @@ def _command_suggestions(
     if include_all_managed:
         suggestions: list[dict[str, str]] = []
         for session in report.sessions:
-            if session.managed_tmux_session:
+            if _is_active_managed_tmux_session(session):
                 suggestions.extend(_managed_tmux_command_suggestions(session))
         if suggestions:
             suggestions.append(_watch_command_suggestion())
@@ -1141,16 +1177,20 @@ def _watch_command_suggestion() -> dict[str, str]:
 
 def _managed_tmux_session_by_name(report: Any, name: str) -> Any | None:
     for session in report.sessions:
-        if session.managed_tmux_session and session.managed_name == name:
+        if _is_active_managed_tmux_session(session) and session.managed_name == name:
             return session
     return None
 
 
 def _first_managed_tmux_session(report: Any) -> Any | None:
     for session in report.sessions:
-        if session.managed_tmux_session:
+        if _is_active_managed_tmux_session(session):
             return session
     return None
+
+
+def _is_active_managed_tmux_session(session: Any) -> bool:
+    return bool(session.managed_tmux_session) and session.status != "exited"
 
 
 def _execute_advice(

@@ -98,10 +98,13 @@ Codex Supervisor 已经不只是一个小命令。
 - `advise/supervise --name <lane>` 可把建议、显式执行和自动执行收窄到指定托管 lane。
 - `send_status/send_continue` 会要求托管 Codex 按三行状态协议汇报。
 - `supervise` 循环执行扫描、建议、摘要和显式发送。
+- `supervise` 会输出托管自动化是否 ready，没有可控 tmux lane 时给出
+  launch/adopt 命令形状。
 - `supervise --auto-execute` 每轮最多自动执行一个白名单动作。
 - 自动策略：`done` 发 `send_continue`；终端可输入、`stale`、
   bell 或缺少协议发
   `send_status`；`blocked/needs_user/error` 只提醒。
+- 已退出的旧托管 tmux lane 不参与建议、命令草案和自动发送。
 - lane state 记录最近状态、最近催促时间和催促次数。
 - `--prompt-cooldown` 可避免短时间重复催促同一个 lane。
 - `--llm-summary` 通过本机 TOML 号池生成中文摘要。
