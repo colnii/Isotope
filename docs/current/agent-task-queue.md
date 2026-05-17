@@ -233,6 +233,19 @@
     多个托管 lane 会全局打分并一对一关联真实 Codex session，避免互相抢链。
 109. Codex Supervisor `/new` 跟随修正：同一 tmux lane 开新 Codex 窗口后，
     dashboard 优先用新 banner 后的活跃终端片段匹配，不再黏住旧 session。
+110. Codex Supervisor 绑定依据展示：dashboard/web 输出 `linked_match`，
+    显示绑定分数、命中来源和中文解释；当前 pane 明确命中的超时 session
+    也可关联。
+
+## 最近完成：Codex Supervisor 绑定依据展示
+
+完成内容：
+
+- `/dashboard.json` 新增 `linked_match`，包含绑定分数、命中来源和中文解释。
+- web 托管卡片新增“绑定依据”，方便判断为什么绑定到这个 session。
+- 当前 tmux pane 明确命中的超时 session 也可关联，即使没有状态协议。
+- 真实页面数据已验证：`test` 通过 `Thread renamed` 和最近消息片段
+  关联到 `测试` session。
 
 ## 最近完成：Codex Supervisor `/new` 跟随修正
 

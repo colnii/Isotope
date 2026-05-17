@@ -679,6 +679,9 @@ def dashboard_page_html() -> str:
         details.append(linked);
       }
 
+      const linkedMatch = renderLinkedMatch(item);
+      if (linkedMatch) details.append(linkedMatch);
+
       const outputTitle = document.createElement("div");
       outputTitle.className = "managed-line";
       outputTitle.textContent = "最近输出";
@@ -693,6 +696,16 @@ def dashboard_page_html() -> str:
       restoreTerminalExcerptScroll(excerpt);
 
       return details;
+    }
+
+    function renderLinkedMatch(item) {
+      if (!item.linked_match) return null;
+      const match = item.linked_match;
+      const line = document.createElement("div");
+      line.className = "managed-line";
+      const score = match.score === null || match.score === undefined ? "?" : String(match.score);
+      line.textContent = "绑定依据：" + text(match.label) + "（分数 " + score + "）";
+      return line;
     }
 
     function terminalExcerptScrollKey(item) {

@@ -472,9 +472,13 @@ def _dashboard_payload(report: Any) -> dict[str, Any]:
         "done": [],
         "working": [],
     }
-    for session, linked_session in _dashboard_display_sessions(report.sessions):
+    for session, linked_session, linked_match in _dashboard_display_sessions(report.sessions):
         groups[_dashboard_group_for(session, linked_session=linked_session)].append(
-            _dashboard_item(session, linked_session=linked_session)
+            _dashboard_item(
+                session,
+                linked_session=linked_session,
+                linked_match=linked_match,
+            )
         )
     return {
         "status": "ok",
@@ -499,14 +503,12 @@ def _dashboard_group_for(session: Any, *, linked_session: Any | None = None) -> 
     return "working"
 
 
-def _dashboard_display_sessions(sessions: Any) -> list[tuple[Any, Any | None]]:
+def _dashboard_display_sessions(sessions: Any) -> list[tuple[Any, Any | None, dict[str, Any] | None]]:
     linkable_sessions: list[Any] = []
     for session in sessions:
         if session.managed:
             continue
         if session.status == "exited":
-            continue
-        if session.status == "stale" and not session.supervisor_status:
             continue
         linkable_sessions.append(session)
 
@@ -516,15 +518,19 @@ def _dashboard_display_sessions(sessions: Any) -> list[tuple[Any, Any | None]]:
         linkable_sessions,
     )
     consumed_linked_ids = {
-        candidate.session_id for candidate in linked_by_managed_id.values()
+        candidate.session_id
+        for candidate, _match in linked_by_managed_id.values()
     }
 
-    display_sessions: list[tuple[Any, Any | None]] = []
+    display_sessions: list[tuple[Any, Any | None, dict[str, Any] | None]] = []
     for session in sessions:
         if session.session_id in consumed_linked_ids:
             continue
+        linked = linked_by_managed_id.get(session.session_id)
+        linked_session = linked[0] if linked else None
+        linked_match = linked[1] if linked else None
         display_sessions.append(
-            (session, linked_by_managed_id.get(session.session_id))
+            (session, linked_session, linked_match)
         )
     return display_sessions
 
@@ -532,26 +538,34 @@ def _dashboard_display_sessions(sessions: Any) -> list[tuple[Any, Any | None]]:
 def _best_linked_sessions_for_managed_lanes(
     managed_sessions: list[Any],
     candidates: list[Any],
-) -> dict[str, Any]:
-    scored_pairs: list[tuple[int, int, int, Any, Any]] = []
+) -> dict[str, tuple[Any, dict[str, Any]]]:
+    scored_pairs: list[tuple[int, int, int, Any, Any, dict[str, Any]]] = []
     for managed_index, managed_session in enumerate(managed_sessions):
         for candidate_index, candidate in enumerate(candidates):
-            score = _managed_link_score(managed_session, candidate)
+            match = _managed_link_analysis(managed_session, candidate)
+            score = match["score"]
             if score <= 0:
                 continue
             scored_pairs.append(
-                (score, managed_index, candidate_index, managed_session, candidate)
+                (score, managed_index, candidate_index, managed_session, candidate, match)
             )
     scored_pairs.sort(key=lambda item: (-item[0], item[1], item[2]))
 
-    linked_by_managed_id: dict[str, Any] = {}
+    linked_by_managed_id: dict[str, tuple[Any, dict[str, Any]]] = {}
     consumed_linked_ids: set[str] = set()
-    for _score, _managed_index, _candidate_index, managed_session, candidate in scored_pairs:
+    for (
+        _score,
+        _managed_index,
+        _candidate_index,
+        managed_session,
+        candidate,
+        match,
+    ) in scored_pairs:
         if managed_session.session_id in linked_by_managed_id:
             continue
         if candidate.session_id in consumed_linked_ids:
             continue
-        linked_by_managed_id[managed_session.session_id] = candidate
+        linked_by_managed_id[managed_session.session_id] = (candidate, match)
         consumed_linked_ids.add(candidate.session_id)
     return linked_by_managed_id
 
@@ -582,24 +596,69 @@ def _best_linked_session_for_managed(
 
 
 def _managed_link_score(managed_session: Any, candidate: Any) -> int:
+    return _managed_link_analysis(managed_session, candidate)["score"]
+
+
+def _managed_link_analysis(managed_session: Any, candidate: Any) -> dict[str, Any]:
     score = 0
+    reasons: list[dict[str, Any]] = []
     raw_pane_text = getattr(managed_session, "managed_terminal_excerpt", None)
     pane_text = _normalize_match_text(raw_pane_text)
     active_pane_text = _active_terminal_match_text(raw_pane_text)
+    active_scope = "active_terminal" if active_pane_text != pane_text else "terminal"
+
+    def add_reason(kind: str, label: str, weight: int) -> None:
+        nonlocal score
+        score += weight
+        reasons.append({"kind": kind, "label": label, "weight": weight})
+
     if pane_text:
         if _text_contains(active_pane_text, getattr(candidate, "session_id", None)):
-            score += 500
+            add_reason("session_id", "活跃终端片段命中真实 session id", 500)
         if _candidate_thread_marker_matches(active_pane_text, candidate):
-            score += 250
+            add_reason("thread_marker", "活跃终端片段命中 Thread renamed 标题", 250)
         if _candidate_text_matches(active_pane_text, candidate):
-            score += 100
+            add_reason("title_or_message", "活跃终端片段命中标题或最近消息", 100)
         if _candidate_snippet_matches(active_pane_text, candidate):
-            score += 80
+            add_reason("message_snippet", "活跃终端片段命中最近消息片段", 80)
     if getattr(managed_session, "managed_name", None):
         name_text = _normalize_match_text(managed_session.managed_name)
         if _candidate_text_matches(name_text, candidate):
-            score += 20
-    return score
+            add_reason("managed_name", "托管名命中真实 session 标题或消息", 20)
+    scope = active_scope if any(
+        reason["kind"] in {"session_id", "thread_marker", "title_or_message", "message_snippet"}
+        for reason in reasons
+    ) else "managed_name"
+    return {
+        "score": score,
+        "scope": scope,
+        "reasons": reasons,
+        "label": _linked_match_label(scope, reasons),
+    }
+
+
+def _linked_match_label(scope: str, reasons: list[dict[str, Any]]) -> str:
+    if not reasons:
+        return "无正分匹配"
+    active_parts = [
+        {
+            "session_id": "真实 session id",
+            "thread_marker": "Thread renamed 标题",
+            "title_or_message": "标题或最近消息",
+            "message_snippet": "最近消息片段",
+        }[reason["kind"]]
+        for reason in reasons
+        if reason["kind"] in {
+            "session_id",
+            "thread_marker",
+            "title_or_message",
+            "message_snippet",
+        }
+    ]
+    if active_parts:
+        prefix = "活跃终端片段" if scope == "active_terminal" else "终端片段"
+        return f"{prefix}命中 " + "、".join(active_parts)
+    return "托管名命中真实 session 标题或消息"
 
 
 def _active_terminal_match_text(value: Any) -> str:
@@ -672,7 +731,12 @@ def _normalize_match_text(value: Any) -> str:
     return " ".join(value.casefold().split())
 
 
-def _dashboard_item(session: Any, *, linked_session: Any | None = None) -> dict[str, Any]:
+def _dashboard_item(
+    session: Any,
+    *,
+    linked_session: Any | None = None,
+    linked_match: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     display_source = linked_session or session
     resume_session = linked_session or session
     status_source = _dashboard_status_source(session, linked_session)
@@ -688,6 +752,7 @@ def _dashboard_item(session: Any, *, linked_session: Any | None = None) -> dict[
         "linked_resume_command": f"codex resume {linked_session.session_id}"
         if linked_session
         else None,
+        "linked_match": linked_match if linked_session else None,
         "managed_display_title": session.display_title if linked_session else None,
         "name": session.managed_name,
         "thread_name": display_source.thread_name,

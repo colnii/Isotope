@@ -1212,12 +1212,12 @@ def test_codex_supervisor_dashboard_follows_new_session_in_same_tmux_lane(
         cwd=str(workspace),
         events=[
             _event(
-                "2026-05-16T11:59:20Z",
+                "2026-05-16T11:40:20Z",
                 "event_msg",
                 {"type": "thread_name_updated", "thread_name": "测试"},
             ),
             _user_message(
-                "2026-05-16T11:59:20Z",
+                "2026-05-16T11:40:20Z",
                 "这是 Supervisor 前端功能测试窗口。后续会反复请求测试 "
                 "Isotope 的 feature/supervisor 前端、dashboard 刷新、"
                 "resume/attach 绑定、状态按钮和托管输出展示。"
@@ -1255,6 +1255,23 @@ def test_codex_supervisor_dashboard_follows_new_session_in_same_tmux_lane(
     assert managed_item["display_title"] == "测试"
     assert managed_item["linked_session_id"] == new_session_id
     assert managed_item["resume_command"] == f"codex resume {new_session_id}"
+    assert managed_item["linked_match"] == {
+        "label": "活跃终端片段命中 Thread renamed 标题、最近消息片段",
+        "reasons": [
+            {
+                "kind": "thread_marker",
+                "label": "活跃终端片段命中 Thread renamed 标题",
+                "weight": 250,
+            },
+            {
+                "kind": "message_snippet",
+                "label": "活跃终端片段命中最近消息片段",
+                "weight": 80,
+            },
+        ],
+        "scope": "active_terminal",
+        "score": 330,
+    }
     assert any(
         item["display_title"] == "python版本升级评估"
         for item in payload["groups"]["done"]
@@ -1508,6 +1525,9 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "data-command-kind" in html
     assert "data-lane-name" in html
     assert "renderManagedDetails" in html
+    assert "renderLinkedMatch" in html
+    assert "linked_match" in html
+    assert "绑定依据" in html
     assert "managed_terminal_excerpt" in html
     assert "最近输出" in html
     assert "bell 时间" in html

@@ -123,6 +123,9 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 - 同一 tmux lane 内执行 `/new` 后，会优先使用新 Codex banner
   和 `Thread renamed to ...` 之后的终端片段，不让旧 session 的
   resume 行继续抢占绑定。
+- 如果当前 tmux pane 明确命中某个超时 session，即使它没有
+  `SUPERVISOR_STATUS`，也可以被关联；web 会显示 `linked_match`
+  绑定依据、分数和命中来源。
 
 `web` 是当前本地前端薄入口：
 

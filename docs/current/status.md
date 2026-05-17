@@ -72,7 +72,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     tmux pane 文本、session id、Codex 标题和用户消息匹配，并一对一分配；
     同一 tmux lane 内执行 `/new` 后，会优先使用新 Codex banner
     和 `Thread renamed to ...` 之后的活跃终端片段，避免继续黏住旧 session；
-    若没有正分匹配，不再硬连旧 session；
+    超时且没有状态协议的 session 只要仍被当前 tmux pane 明确命中，
+    也可作为关联候选；若没有正分匹配，不再硬连旧 session；
+    web 会显示 `linked_match` 绑定依据、分数和命中来源；
     有状态协议的超时 session 仍可作为关联候选；若真实 session 有状态协议，
     dashboard 分组和 web 状态汇报会优先使用真实 session；
     web 托管卡片会展示 bell 时间、关联 session 和最近输出，

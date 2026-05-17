@@ -75,6 +75,7 @@
 | `managed_display_title` | dashboard 合并托管 lane 和真实 session 后保留的托管名 | 产品功能/视图 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `managed_terminal_excerpt` | 托管 tmux pane 的只读尾部文本摘要，用于辅助关联真实 Codex session，并在 web 托管卡片中展示最近输出 | 产品功能/视图/外部集成 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `linked_session_id` | dashboard 合并托管 lane 时关联到的真实 Codex session id | 产品功能/视图 | `src/isotope/features/supervisor/runner.py` |
+| `linked_match` | dashboard 合并托管 lane 时的绑定依据，包含匹配分数、命中来源和中文解释 | 产品功能/视图/状态判断 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `thread_name_updated` | Codex 会话标题更新事件，可解析出窗口 rename 或自带标题 | 外部集成/视图 | `src/isotope/features/supervisor/flow.py` |
 | `session_index.jsonl` | Codex 会话索引文件，可在 JSONL 没有标题事件时提供 `thread_name` | 外部集成/视图 | `src/isotope/features/supervisor/flow.py` |
 | `state_5.sqlite` | Codex 本地 SQLite 状态库，`threads.title` 是当前标题的重要来源 | 外部集成/视图 | `src/isotope/features/supervisor/flow.py` |
