@@ -106,8 +106,10 @@ Codex Supervisor 已经不只是一个小命令。
 - `supervise` plain 视图复用 dashboard 当前分组，再输出托管自动化
   是否 ready；没有可控 tmux lane 时给出 launch/adopt 命令形状。
 - `supervise --auto-execute` 每轮最多自动执行一个白名单动作。
-- 自动策略：`done` 发 `send_continue`；终端可输入、`stale` 或
+- 自动策略：`done` 默认发 `send_continue`；终端可输入、`stale` 或
   bell 发 `send_status`；`blocked/needs_user/error` 只提醒。
+- 如果 `SUPERVISOR_NEXT` 明确写出可结束、可归档或无需继续，
+  `done` 只监控，不再自动续跑。
 - 未指定 `--name` 时，自动策略会扫描所有活跃托管 lane，
   优先推进可自动处理的窗口，不会被第一个仍在运行的窗口挡住。
 - 自动轮转会避开仍在 `--prompt-cooldown` 冷却期内的 lane，

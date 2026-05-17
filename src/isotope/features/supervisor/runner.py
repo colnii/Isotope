@@ -30,6 +30,17 @@ from .registry import (
 )
 
 EXECUTABLE_ADVICE_KINDS = {"send_status", "send_continue"}
+TERMINAL_DONE_NEXT_MARKERS = (
+    "可结束",
+    "可以结束",
+    "任务结束",
+    "可归档",
+    "可以归档",
+    "等待归档",
+    "无需继续",
+    "不需要继续",
+    "不用继续",
+)
 STATUS_REPORT_REQUEST = "\n".join(
     [
         "请汇报当前状态，回复时严格输出三行：",
@@ -1566,6 +1577,11 @@ def _auto_execute_action_for_managed(report: Any, managed: Any) -> dict[str, str
             "reason": "lane needs human attention",
         }
     if supervisor_status == "done":
+        if _supervisor_next_marks_terminal_done(status_source):
+            return {
+                "kind": "monitor",
+                "reason": "managed lane reported terminal done",
+            }
         return {
             "kind": "send_continue",
             "reason": "managed lane reported done",
@@ -1582,6 +1598,11 @@ def _auto_execute_action_for_managed(report: Any, managed: Any) -> dict[str, str
             "reason": "lane needs human attention",
         }
     if recommendation_targets_lane and recommendation.action == "review_done":
+        if _supervisor_next_marks_terminal_done(status_source):
+            return {
+                "kind": "monitor",
+                "reason": "managed lane reported terminal done",
+            }
         return {
             "kind": "send_continue",
             "reason": "managed lane reported done",
@@ -1613,6 +1634,11 @@ def _auto_execute_action_for_managed(report: Any, managed: Any) -> dict[str, str
         "kind": "monitor",
         "reason": "lane is still working",
     }
+
+
+def _supervisor_next_marks_terminal_done(session: Any) -> bool:
+    next_text = _normalize_match_text(getattr(session, "supervisor_next", None))
+    return any(marker in next_text for marker in TERMINAL_DONE_NEXT_MARKERS)
 
 
 def _auto_status_source(report: Any, managed: Any) -> Any:

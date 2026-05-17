@@ -261,8 +261,10 @@ JSON 仍保留完整 scan 报告。
 只有显式传入 `--execute send_status` 或 `--execute send_continue`
 时才会发送指令。
 `--auto-execute` 会启用规则自动策略，每轮最多执行一个白名单动作：
-`done` 发 `send_continue`，终端可输入、`stale` 或 bell 时发
+`done` 默认发 `send_continue`，终端可输入、`stale` 或 bell 时发
 `send_status`，`blocked`、`needs_user` 和疑似报错只提醒不硬推。
+如果 `SUPERVISOR_NEXT` 明确写出可结束、可归档或无需继续，
+`done` 只监控，不再自动续跑。
 未指定 `--name` 时，自动策略会扫描所有活跃托管 lane，
 优先选择可自动处理且不在 `--prompt-cooldown` 冷却期内的窗口。
 如果 lane 仍在运行、终端未回到可输入态且没有 bell/stale 证据，
