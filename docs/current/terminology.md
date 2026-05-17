@@ -97,11 +97,11 @@
 | `/llm-action` | web 手动模型建议入口，只展示 LLM 白名单动作建议，不自动发送 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/web.py` |
 | `send_status` | 白名单动作，让托管 Codex 按 `SUPERVISOR_STATUS/SUMMARY/NEXT` 汇报当前状态 | 产品功能/控制通道/状态协议 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `send_continue` | 白名单动作，让托管 Codex 继续推进，并在完成或阻塞后按状态协议汇报 | 产品功能/控制通道/状态协议 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
-| `send` | Supervisor 控制命令，向登记的 tmux Codex 会话发送一行文本并回车 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
+| `send` | Supervisor 控制命令，向登记的 tmux Codex 会话发送一行文本，并用 `C-m` 提交 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
 | `adopt` | 接管已有 tmux 会话，把它登记成 Supervisor 可监控和发送指令的 lane | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
 | `tmux` | 本机终端复用工具，可创建可追踪会话，并通过 send-keys 向托管 Codex 发指令 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
 | `attach` | 连接到 tmux 会话查看同一个终端窗口 | 外部集成/人类观察 | `docs/current/codex-supervisor-readonly.md` |
-| `send-keys` | tmux 输入命令，当前用于把文本写入托管 Codex 窗口 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
+| `send-keys` | tmux 输入命令，当前用于把文本写入托管 Codex 窗口，并用 `C-m` 触发提交 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
 | `bell` | tmux 提醒信号，可作为窗口可能结束或需要查看的弱证据 | 外部集成/状态判断 | `src/isotope/features/supervisor/flow.py`, `docs/current/supervisor-capability-map.md` |
 | `managed_bell` | 托管 tmux 会话是否出现过 bell 提醒的结构化字段 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
 | `alert-bell` | tmux bell hook，在窗口响铃时触发并写入 Supervisor 事件文件 | 外部集成/状态判断 | `src/isotope/features/supervisor/bell_events.py`, `src/isotope/features/supervisor/registry.py` |

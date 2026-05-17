@@ -273,7 +273,7 @@ def send_to_managed_codex(
             capture_output=True,
         )
         run(
-            ["tmux", "send-keys", "-t", record.tmux_session, "Enter"],
+            ["tmux", "send-keys", "-t", record.tmux_session, "C-m"],
             check=True,
             text=True,
             capture_output=True,

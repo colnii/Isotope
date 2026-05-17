@@ -64,6 +64,7 @@ Codex Supervisor 已经不只是一个小命令。
 - `launch` 支持普通进程和 tmux 会话。
 - `adopt` 可接管已存在的 tmux 会话。
 - `send` 支持向登记过的 tmux 会话发送文本。
+- tmux 发送写入文本后用 `C-m` 提交，避免请求停留在输入区。
 - `scan` 可识别托管 tmux 会话的 bell（提醒）信号。
 - `launch/adopt` 会安装 tmux `alert-bell` hook。
 - bell hook 会写入 `bell_events.jsonl`，让提醒不只依赖轮询。

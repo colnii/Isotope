@@ -221,13 +221,27 @@
     三行格式汇报。
 103. Codex Supervisor LLM action JSON 容错：模型建议可从带解释、
     示例或 fenced code 的输出中提取最后一个动作 JSON。
+104. Codex Supervisor tmux 提交修正：`send` 写入文本后用 `C-m`
+    提交，避免 Codex TUI 把请求停留在输入区。
 
-## 最近完成：Codex Supervisor 协议化状态请求与 JSON 容错
+## 最近完成：Codex Supervisor tmux 提交修正
+
+完成内容：
+
+- 真实 `test` lane 验证发现普通 `Enter` 可能只让输入停在草稿区。
+- `send_to_managed_codex` 改为 `send-keys -l <text>` 后发送 `C-m`。
+- 协议化状态请求保持单行，避免 tmux/Codex TUI 多行输入卡住。
+- 真实闭环中 `C-m` 触发后，Codex 写出了三行 `SUPERVISOR_*` 状态协议。
+
+上一批已完成：
+
+## Codex Supervisor 协议化状态请求与 JSON 容错
 
 完成内容：
 
 - `send_status` 不再只发送“请汇报当前状态”，而是要求三行状态协议。
 - `send_continue` 也要求完成或阻塞后按三行状态协议汇报。
+- 两类请求保持单行发送，让 tmux 提交更稳定。
 - LLM action 解析不再用贪婪正则截整段文本。
 - 模型输出里有多个 JSON 片段时，优先使用最后一个带 `kind` 的对象。
 - 解决模型在 JSON 前后添加说明导致的格式错误。

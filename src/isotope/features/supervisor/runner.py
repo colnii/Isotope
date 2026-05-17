@@ -26,21 +26,21 @@ from .registry import adopt_tmux_session, launch_managed_codex, send_to_managed_
 EXECUTABLE_ADVICE_KINDS = {"send_status", "send_continue"}
 STATUS_REPORT_REQUEST = "\n".join(
     [
-        "请汇报当前状态，并严格使用下面三行格式：",
-        "SUPERVISOR_STATUS: working|done|blocked|needs_user",
-        "SUPERVISOR_SUMMARY: 用一句中文说明当前进展",
-        "SUPERVISOR_NEXT: 用一句中文说明建议下一步",
+        "请汇报当前状态，回复时严格输出三行：",
+        "第一行 `SUPERVISOR_STATUS: working|done|blocked|needs_user`；",
+        "第二行 `SUPERVISOR_SUMMARY: 用一句中文说明当前进展`；",
+        "第三行 `SUPERVISOR_NEXT: 用一句中文说明建议下一步`。",
     ]
 )
 EXECUTABLE_ADVICE_TEXT = {
-    "send_status": STATUS_REPORT_REQUEST,
-    "send_continue": "\n".join(
+    "send_status": " ".join(STATUS_REPORT_REQUEST.splitlines()),
+    "send_continue": " ".join(
         [
             "继续推进当前任务。",
-            "完成或遇到阻塞后，严格使用下面三行格式汇报：",
-            "SUPERVISOR_STATUS: working|done|blocked|needs_user",
-            "SUPERVISOR_SUMMARY: 用一句中文说明当前进展",
-            "SUPERVISOR_NEXT: 用一句中文说明建议下一步",
+            "完成或遇到阻塞后，严格输出三行：",
+            "第一行 `SUPERVISOR_STATUS: working|done|blocked|needs_user`；",
+            "第二行 `SUPERVISOR_SUMMARY: 用一句中文说明当前进展`；",
+            "第三行 `SUPERVISOR_NEXT: 用一句中文说明建议下一步`。",
         ]
     ),
 }

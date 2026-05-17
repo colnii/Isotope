@@ -1414,7 +1414,7 @@ def test_codex_supervisor_web_can_send_allowed_managed_command(tmp_path):
     assert payload["managed"]["tmux_session"] == "isotope-lane-a"
     assert calls == [
         ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", STATUS_REQUEST_TEXT],
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "Enter"],
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "C-m"],
     ]
     lane_state = json.loads(
         (codex_home / "supervisor" / "lane_state.json").read_text(encoding="utf-8")
@@ -1713,10 +1713,20 @@ def test_codex_supervisor_generate_llm_action_decision_extracts_noisy_json():
 def test_codex_supervisor_send_status_text_requires_protocol_report():
     text = EXECUTABLE_ADVICE_TEXT["send_status"]
 
+    assert "\n" not in text
     assert "SUPERVISOR_STATUS:" in text
     assert "SUPERVISOR_SUMMARY:" in text
     assert "SUPERVISOR_NEXT:" in text
     assert "working|done|blocked|needs_user" in text
+
+
+def test_codex_supervisor_send_continue_text_requires_protocol_report():
+    text = EXECUTABLE_ADVICE_TEXT["send_continue"]
+
+    assert "\n" not in text
+    assert "SUPERVISOR_STATUS:" in text
+    assert "SUPERVISOR_SUMMARY:" in text
+    assert "SUPERVISOR_NEXT:" in text
 
 
 def test_codex_supervisor_generate_llm_action_decision_rejects_unsupported_action():
@@ -1908,7 +1918,7 @@ def test_codex_supervisor_runner_advise_execute_send_status(
     }
     assert calls == [
         ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", STATUS_REQUEST_TEXT],
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "Enter"],
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "C-m"],
     ]
 
 
@@ -2083,7 +2093,7 @@ def test_codex_supervisor_runner_supervise_can_execute_send_status(
     assert payload["executed"]["text"] == STATUS_REQUEST_TEXT
     assert calls == [
         ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", STATUS_REQUEST_TEXT],
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "Enter"],
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "C-m"],
     ]
 
 
@@ -2181,7 +2191,7 @@ def test_codex_supervisor_runner_execute_skips_repeated_prompt_in_cooldown(
     assert second_payload["executed"]["lane_state"]["prompt_count"] == 1
     assert calls == [
         ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", STATUS_REQUEST_TEXT],
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "Enter"],
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "C-m"],
     ]
 
 
@@ -2263,9 +2273,9 @@ def test_codex_supervisor_runner_execute_can_disable_prompt_cooldown(
 
     assert calls == [
         ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", STATUS_REQUEST_TEXT],
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "Enter"],
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "C-m"],
         ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", STATUS_REQUEST_TEXT],
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "Enter"],
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "C-m"],
     ]
 
 
@@ -3093,7 +3103,7 @@ def test_codex_supervisor_runner_send_text_to_tmux_managed_session(
     }
     assert calls == [
         ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", "继续"],
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "Enter"],
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "C-m"],
     ]
 
 
