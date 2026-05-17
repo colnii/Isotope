@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import shlex
 import subprocess
+import time
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -265,13 +266,21 @@ def send_to_managed_codex(
     if record.backend != "tmux" or record.tmux_session is None:
         raise ValueError("send requires a tmux-managed Codex session")
 
+    buffer_name = f"isotope-supervisor-{record.record_id}"
     try:
         run(
-            ["tmux", "send-keys", "-t", record.tmux_session, "-l", text_text],
+            ["tmux", "set-buffer", "-b", buffer_name, "--", text_text],
             check=True,
             text=True,
             capture_output=True,
         )
+        run(
+            ["tmux", "paste-buffer", "-d", "-b", buffer_name, "-t", record.tmux_session],
+            check=True,
+            text=True,
+            capture_output=True,
+        )
+        time.sleep(0.2)
         run(
             ["tmux", "send-keys", "-t", record.tmux_session, "C-m"],
             check=True,

@@ -258,7 +258,7 @@ api_keys = [
 - `adopt` 会执行 `tmux has-session -t <session>` 确认会话存在。
 - `launch/adopt` 会安装 tmux `alert-bell` hook。
 - 当前登记 backend、pid、tmux session、cwd、prompt、启动时间和日志路径。
-- `send` 会执行 `tmux send-keys -l <text>`，再用 `C-m` 提交。
+- `send` 会执行 `tmux set-buffer`、`paste-buffer`，短暂等待后用 `C-m` 提交。
 - `scan` 会读取 `#{window_bell_flag}`，并输出 `managed_bell`。
 - `scan` 会只读 `tmux capture-pane` 尾部文本，用于辅助页面关联
   托管 lane 和真实 Codex session，并展示托管窗口最近输出。

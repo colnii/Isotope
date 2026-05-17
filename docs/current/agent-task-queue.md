@@ -229,7 +229,7 @@
 完成内容：
 
 - 真实 `test` lane 验证发现普通 `Enter` 可能只让输入停在草稿区。
-- `send_to_managed_codex` 改为 `send-keys -l <text>` 后发送 `C-m`。
+- `send_to_managed_codex` 改为 `set-buffer + paste-buffer + 短暂等待 + C-m`。
 - 协议化状态请求保持单行，避免 tmux/Codex TUI 多行输入卡住。
 - 真实闭环中 `C-m` 触发后，Codex 写出了三行 `SUPERVISOR_*` 状态协议。
 
@@ -401,7 +401,7 @@
   `control_commands`。
 - 本地页面新增复制 attach、复制状态、复制继续、请求状态和继续按钮。
 - `/managed/send` 只接受 `send_status` 和 `send_continue`。
-- 发送仍复用 `send_to_managed_codex` 和 tmux `send-keys`。
+- 发送仍复用 `send_to_managed_codex` 和 tmux buffer/paste 控制通道。
 - 成功发送后会记录 lane state 的最近催促时间和次数。
 - 页面不提供任意文本发送框。
 
@@ -590,7 +590,7 @@
 - `send --name <lane> --text <text>` 可给托管 tmux Codex 发送一行文本。
 - `send` 只使用 Supervisor 登记表里的最新同名记录，不接管普通终端窗口。
 - 非 tmux 托管记录会返回错误，避免对无 stdin 控制通道的进程误发。
-- tmux 发送使用 `send-keys -l` 写入原文，再发送 `Enter`。
+- tmux 发送使用 `set-buffer + paste-buffer` 写入原文，短暂等待后发送 `C-m`。
 - 新增 `features/supervisor`，按产品功能而不是底座模块组织。
 - 可读取本机 Codex session（会话记录）并按最近事件排序。
 - 可识别 `工作中`、`等待用户`、`疑似停住`、`疑似报错` 和 `空闲`。

@@ -19,7 +19,7 @@ Codex Supervisor 已经不只是一个小命令。
 | 托管控制层 | `launch`、`adopt`、`send`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
 | Codex 集成层 | 读取 Codex session（会话记录）、索引标题和 agent 元数据 | `features/supervisor/flow.py` | 当前读取本机 `.jsonl`、`session_index.jsonl` 和 SQLite |
 | 扫描优化层 | 最近候选、首尾读取和标题兜底 | `features/supervisor/flow.py` | 避免每次页面刷新全量读历史 |
-| tmux 集成层 | tmux 启动、`send-keys` 和 bell hook | `bell_events.py`、`flow.py`、`registry.py` | 只控制登记过的 tmux 会话 |
+| tmux 集成层 | tmux 启动、buffer/paste 发送和 bell hook | `bell_events.py`、`flow.py`、`registry.py` | 只控制登记过的 tmux 会话 |
 | 状态判断层 | 工作中、等待用户、疑似停住、疑似报错 | `features/supervisor/flow.py` | 规则判断，不等于模型判断 |
 | 状态依据层 | `status_evidence` 说明每个状态标签的来源 | `features/supervisor/flow.py` | 避免只给结论、不说明证据 |
 | 建议执行层 | `recommendation`、`command_suggestions`、`--execute` | `flow.py`、`runner.py` | 只允许白名单动作 |
@@ -64,7 +64,8 @@ Codex Supervisor 已经不只是一个小命令。
 - `launch` 支持普通进程和 tmux 会话。
 - `adopt` 可接管已存在的 tmux 会话。
 - `send` 支持向登记过的 tmux 会话发送文本。
-- tmux 发送写入文本后用 `C-m` 提交，避免请求停留在输入区。
+- tmux 发送使用 buffer/paste 写入文本，短暂等待后用 `C-m` 提交，
+  避免请求停留在输入区。
 - `scan` 可识别托管 tmux 会话的 bell（提醒）信号。
 - `launch/adopt` 会安装 tmux `alert-bell` hook。
 - bell hook 会写入 `bell_events.jsonl`，让提醒不只依赖轮询。

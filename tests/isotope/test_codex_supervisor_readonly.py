@@ -45,6 +45,15 @@ def _supervisor_send_command(name: str, text: str) -> str:
     return shlex.join(["isotope-supervisor", "send", "--name", name, "--text", text])
 
 
+def _tmux_send_calls(text: str) -> list[list[str]]:
+    buffer_name = "isotope-supervisor-managed-001"
+    return [
+        ["tmux", "set-buffer", "-b", buffer_name, "--", text],
+        ["tmux", "paste-buffer", "-d", "-b", buffer_name, "-t", "isotope-lane-a"],
+        ["tmux", "send-keys", "-t", "isotope-lane-a", "C-m"],
+    ]
+
+
 def test_codex_supervisor_discovers_sessions_and_classifies_attention(tmp_path):
     codex_home = tmp_path / ".codex"
     _write_session(
@@ -1412,10 +1421,7 @@ def test_codex_supervisor_web_can_send_allowed_managed_command(tmp_path):
     assert payload["kind"] == "send_status"
     assert payload["text"] == STATUS_REQUEST_TEXT
     assert payload["managed"]["tmux_session"] == "isotope-lane-a"
-    assert calls == [
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", STATUS_REQUEST_TEXT],
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "C-m"],
-    ]
+    assert calls == _tmux_send_calls(STATUS_REQUEST_TEXT)
     lane_state = json.loads(
         (codex_home / "supervisor" / "lane_state.json").read_text(encoding="utf-8")
     )
@@ -1916,10 +1922,7 @@ def test_codex_supervisor_runner_advise_execute_send_status(
         },
         "text": STATUS_REQUEST_TEXT,
     }
-    assert calls == [
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", STATUS_REQUEST_TEXT],
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "C-m"],
-    ]
+    assert calls == _tmux_send_calls(STATUS_REQUEST_TEXT)
 
 
 def test_codex_supervisor_runner_advise_execute_rejects_non_send_kind(
@@ -2091,10 +2094,7 @@ def test_codex_supervisor_runner_supervise_can_execute_send_status(
     payload = json.loads(capsys.readouterr().out)
     assert payload["executed"]["kind"] == "send_status"
     assert payload["executed"]["text"] == STATUS_REQUEST_TEXT
-    assert calls == [
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", STATUS_REQUEST_TEXT],
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "C-m"],
-    ]
+    assert calls == _tmux_send_calls(STATUS_REQUEST_TEXT)
 
 
 def test_codex_supervisor_runner_execute_skips_repeated_prompt_in_cooldown(
@@ -2189,10 +2189,7 @@ def test_codex_supervisor_runner_execute_skips_repeated_prompt_in_cooldown(
     assert second_payload["executed"]["reason"] == "lane prompt cooldown active"
     assert second_payload["executed"]["lane_state"]["name"] == "lane-a"
     assert second_payload["executed"]["lane_state"]["prompt_count"] == 1
-    assert calls == [
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", STATUS_REQUEST_TEXT],
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "C-m"],
-    ]
+    assert calls == _tmux_send_calls(STATUS_REQUEST_TEXT)
 
 
 def test_codex_supervisor_runner_execute_can_disable_prompt_cooldown(
@@ -2271,12 +2268,9 @@ def test_codex_supervisor_runner_execute_can_disable_prompt_cooldown(
         assert payload["executed"]["kind"] == "send_status"
         assert "skipped" not in payload["executed"]
 
-    assert calls == [
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", STATUS_REQUEST_TEXT],
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "C-m"],
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", STATUS_REQUEST_TEXT],
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "C-m"],
-    ]
+    assert calls == _tmux_send_calls(STATUS_REQUEST_TEXT) + _tmux_send_calls(
+        STATUS_REQUEST_TEXT
+    )
 
 
 def test_codex_supervisor_runner_supervise_plain_reports_skipped_prompt(
@@ -3101,10 +3095,7 @@ def test_codex_supervisor_runner_send_text_to_tmux_managed_session(
         "status": "ok",
         "text": "继续",
     }
-    assert calls == [
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "-l", "继续"],
-        ["tmux", "send-keys", "-t", "isotope-lane-a", "C-m"],
-    ]
+    assert calls == _tmux_send_calls("继续")
 
 
 def test_codex_supervisor_runner_send_rejects_non_tmux_managed_session(
