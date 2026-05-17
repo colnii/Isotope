@@ -268,6 +268,37 @@ def test_codex_supervisor_scan_parses_supervisor_status_protocol(tmp_path):
     assert "等待用户确认后继续状态协议下一片" in messages[1]["content"]
 
 
+def test_codex_supervisor_scan_ignores_status_protocol_template_in_event_output(tmp_path):
+    codex_home = tmp_path / ".codex"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-template.jsonl",
+        session_id="template-session",
+        cwd="/home/lumber/Github/isotope",
+        events=[
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {
+                    "type": "agent_reasoning",
+                    "message": "\n".join(
+                        [
+                            "提示模板：",
+                            "SUPERVISOR_STATUS: working|done|blocked|needs_user",
+                        ]
+                    ),
+                },
+            )
+        ],
+    )
+
+    report = CodexSupervisorFlow(codex_home=codex_home, now=lambda: NOW).scan()
+    session = report.sessions[0]
+
+    assert session.supervisor_status is None
+    assert session.status_evidence["source"] == "recent_event"
+
+
 def test_codex_supervisor_scan_parses_thread_title_and_agent_name(tmp_path):
     codex_home = tmp_path / ".codex"
     _write_session(
@@ -2095,6 +2126,206 @@ def test_codex_supervisor_runner_supervise_can_execute_send_status(
     assert payload["executed"]["kind"] == "send_status"
     assert payload["executed"]["text"] == STATUS_REQUEST_TEXT
     assert calls == _tmux_send_calls(STATUS_REQUEST_TEXT)
+
+
+def test_codex_supervisor_runner_supervise_auto_requests_status_without_protocol(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--auto-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["auto_action"] == {
+        "kind": "send_status",
+        "reason": "managed lane has no supervisor status protocol yet",
+    }
+    assert payload["executed"]["kind"] == "send_status"
+    assert payload["executed"]["text"] == STATUS_REQUEST_TEXT
+    assert calls == _tmux_send_calls(STATUS_REQUEST_TEXT)
+
+
+def test_codex_supervisor_runner_supervise_auto_continues_done_lane(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-done.jsonl",
+        session_id="done-session",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:30Z",
+                "SUPERVISOR_STATUS: done\n"
+                "SUPERVISOR_SUMMARY: 当前任务已完成。\n"
+                "SUPERVISOR_NEXT: 可以继续下一步。",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--auto-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["auto_action"] == {
+        "kind": "send_continue",
+        "reason": "managed lane reported done",
+    }
+    assert payload["executed"]["kind"] == "send_continue"
+    assert payload["executed"]["text"] == CONTINUE_REQUEST_TEXT
+    assert calls == _tmux_send_calls(CONTINUE_REQUEST_TEXT)
+
+
+def test_codex_supervisor_runner_supervise_auto_waits_on_blocked_lane(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-blocked.jsonl",
+        session_id="blocked-session",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:30Z",
+                "SUPERVISOR_STATUS: blocked\n"
+                "SUPERVISOR_SUMMARY: 需要用户提供 API key。\n"
+                "SUPERVISOR_NEXT: 等待用户处理。",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    calls: list[list[str]] = []
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.subprocess.run",
+        lambda command, *, check, text, capture_output: subprocess.CompletedProcess(
+            command, 0, "", ""
+        )
+        if command[:2] == ["git", "-C"]
+        else calls.append(command) or subprocess.CompletedProcess(command, 0, "", ""),
+    )
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--auto-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["auto_action"] == {
+        "kind": "monitor",
+        "reason": "lane needs human attention",
+    }
+    assert payload["executed"] == {
+        "kind": "monitor",
+        "skipped": True,
+        "reason": "lane needs human attention",
+    }
+    assert calls == []
 
 
 def test_codex_supervisor_runner_execute_skips_repeated_prompt_in_cooldown(

@@ -124,6 +124,11 @@ def _build_parser() -> argparse.ArgumentParser:
             action="store_true",
             help="Print only when session state changes.",
         )
+    subparsers.choices["supervise"].add_argument(
+        "--auto-execute",
+        action="store_true",
+        help="Use the rule-based auto policy to execute one whitelist action per loop.",
+    )
     web_parser = subparsers.add_parser("web", help="Serve a local Supervisor dashboard page.")
     web_parser.add_argument(
         "--codex-home",
@@ -354,6 +359,8 @@ def _run_supervise(args: argparse.Namespace) -> None:
         raise ValueError("interval must be positive")
     if args.iterations is not None and args.iterations <= 0:
         raise ValueError("iterations must be positive")
+    if args.execute and args.auto_execute:
+        raise ValueError("execute and auto_execute cannot be used together")
     iterations = args.iterations
     count = 0
     previous_fingerprint: tuple[object, ...] | None = None
@@ -402,7 +409,18 @@ def _supervise_payload(
         payload["llm_summary"] = _summarize_with_llm(report)
     if args.llm_action:
         payload["llm_action"] = _decide_action_with_llm(report, payload)
-    if args.execute:
+    if args.auto_execute:
+        auto_action = _auto_execute_action(report)
+        payload["auto_action"] = auto_action
+        if auto_action["kind"] in EXECUTABLE_ADVICE_KINDS:
+            payload["executed"] = _execute_advice(args, report, payload, kind=auto_action["kind"])
+        else:
+            payload["executed"] = {
+                "kind": auto_action["kind"],
+                "skipped": True,
+                "reason": auto_action["reason"],
+            }
+    elif args.execute:
         payload["executed"] = _execute_advice(args, report, payload)
     return payload
 
@@ -666,6 +684,10 @@ def _print_supervise_plain(payload: dict[str, Any], report: Any) -> None:
         print()
         print("[LLM 白名单动作]")
         print(f"{llm_action['kind']} / {llm_action['reason']}")
+    if auto_action := payload.get("auto_action"):
+        print()
+        print("[自动策略]")
+        print(f"{auto_action['kind']} / {auto_action['reason']}")
     recommendation = payload["recommendation"]
     print()
     print("[建议]")
@@ -794,8 +816,10 @@ def _execute_advice(
     args: argparse.Namespace,
     report: Any,
     payload: dict[str, Any],
+    *,
+    kind: str | None = None,
 ) -> dict[str, Any]:
-    kind = str(args.execute)
+    kind = str(kind or args.execute)
     if kind not in EXECUTABLE_ADVICE_KINDS:
         supported = ", ".join(sorted(EXECUTABLE_ADVICE_KINDS))
         raise ValueError(f"execute supports only: {supported}")
@@ -841,6 +865,76 @@ def _execute_advice(
             "tmux_session": result.record.tmux_session,
         },
     }
+
+
+def _auto_execute_action(report: Any) -> dict[str, str]:
+    managed = _first_managed_tmux_session(report)
+    if managed is None:
+        return {
+            "kind": "monitor",
+            "reason": "no managed tmux lane",
+        }
+    status_source = _auto_status_source(report, managed)
+    supervisor_status = (status_source.supervisor_status or "").lower()
+    if supervisor_status in {"blocked", "needs_user"}:
+        return {
+            "kind": "monitor",
+            "reason": "lane needs human attention",
+        }
+    if supervisor_status == "done":
+        return {
+            "kind": "send_continue",
+            "reason": "managed lane reported done",
+        }
+    recommendation = report.recommendation
+    target_ids = {managed.session_id, status_source.session_id}
+    recommendation_targets_lane = recommendation.target_session_id in target_ids
+    if (
+        recommendation_targets_lane
+        and recommendation.action in {"inspect_blocked", "review_user_prompt", "inspect_error"}
+    ):
+        return {
+            "kind": "monitor",
+            "reason": "lane needs human attention",
+        }
+    if recommendation_targets_lane and recommendation.action == "review_done":
+        return {
+            "kind": "send_continue",
+            "reason": "managed lane reported done",
+        }
+    if (
+        status_source.managed_bell
+        or managed.managed_bell
+        or status_source.status == "stale"
+        or (
+            recommendation_targets_lane
+            and recommendation.action in {"inspect_bell", "inspect_stale"}
+        )
+    ):
+        return {
+            "kind": "send_status",
+            "reason": f"recommendation is {recommendation.action}",
+        }
+    if not status_source.supervisor_status:
+        return {
+            "kind": "send_status",
+            "reason": "managed lane has no supervisor status protocol yet",
+        }
+    return {
+        "kind": "monitor",
+        "reason": "lane is still working",
+    }
+
+
+def _auto_status_source(report: Any, managed: Any) -> Any:
+    candidates = [
+        session
+        for session in report.sessions
+        if not session.managed
+        and session.cwd == managed.cwd
+        and (session.status not in {"stale", "exited"} or session.supervisor_status)
+    ]
+    return _best_linked_session_for_managed(managed, candidates, set()) or managed
 
 
 def _suggestion_by_kind(

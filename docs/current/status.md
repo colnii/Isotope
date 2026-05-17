@@ -87,6 +87,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     scan、dashboard 和 web 已输出 `status_evidence` 状态依据，
     说明当前标签来自状态协议、文本规则、超时、bell 或托管检查；
     `supervise` 可循环执行扫描、建议、可选 LLM 摘要和显式 send；
+    `supervise --auto-execute` 已有第一版规则自动策略：
+    `done` 续跑，`stale`、bell 或缺少状态协议时询问状态，
+    `blocked/needs_user/error` 只提醒；
     `send` 可向托管 tmux 会话发送一行指令；`scan` 已能把托管
     tmux 会话的 bell（提醒）信号写入 plain、JSON 和 LLM 摘要输入；
     tmux 发送会用 `set-buffer + paste-buffer + 短暂等待 + C-m`，
@@ -94,7 +97,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `launch/adopt` 会安装 tmux `alert-bell` hook，把 bell 事件写入
     `~/.codex/supervisor/bell_events.jsonl`。
     `launch` 会给托管 Codex 注入 `SUPERVISOR_STATUS` 状态协议要求，
-    `scan` 会从 `.jsonl` 解析状态、摘要和下一步字段；lane state
+    `scan` 会从 assistant 回复解析状态、摘要和下一步字段，并校验
+    状态合法值；lane state
     会记录最近状态、最近催促时间和催促次数，避免短时间重复发送；
     `blocked`、`done`、`needs_user` 和 bell 事件已接入结构化建议。
     web 已新增 `/events` 事件流，tmux bell 写入事件文件后会推动前端

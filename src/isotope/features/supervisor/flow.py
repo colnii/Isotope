@@ -47,6 +47,7 @@ ERROR_MARKERS = (
     "测试失败",
     "命令失败",
 )
+SUPERVISOR_STATUS_VALUES = {"working", "done", "blocked", "needs_user"}
 MAX_FULL_SESSION_READ_BYTES = 2 * 1024 * 1024
 SESSION_HEAD_READ_BYTES = 64 * 1024
 SESSION_TAIL_READ_BYTES = 1024 * 1024
@@ -409,15 +410,15 @@ def _read_session_summary(
         role, text = _message_from_event(event)
         if text:
             last_text = text
-            protocol = _supervisor_protocol_from_text(text)
-            supervisor_status = protocol.get("status") or supervisor_status
-            supervisor_summary = protocol.get("summary") or supervisor_summary
-            supervisor_next = protocol.get("next") or supervisor_next
             if role == "user":
                 if first_user_message is None and not _is_title_noise(text):
                     first_user_message = text
                 last_user_message = text
             if role == "assistant":
+                protocol = _supervisor_protocol_from_text(text)
+                supervisor_status = protocol.get("status") or supervisor_status
+                supervisor_summary = protocol.get("summary") or supervisor_summary
+                supervisor_next = protocol.get("next") or supervisor_next
                 last_assistant_message = text
     if not meta and last_event_at is None:
         return None
@@ -660,6 +661,10 @@ def _supervisor_protocol_from_text(text: str) -> dict[str, str]:
         if normalized_key not in keys:
             continue
         normalized_value = value.strip()
+        if normalized_key == "SUPERVISOR_STATUS":
+            normalized_value = normalized_value.lower()
+            if normalized_value not in SUPERVISOR_STATUS_VALUES:
+                continue
         if normalized_value:
             values[keys[normalized_key]] = normalized_value
     return values

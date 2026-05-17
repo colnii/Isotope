@@ -87,9 +87,10 @@
 | `inspect_bell` | 建议动作，优先查看刚响铃的托管 tmux 窗口 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
 | `review_done` | 建议动作，优先审阅已完成的窗口 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
 | `advise` | 建议面板命令，输出当前建议和一组命令草案，可显式执行 send 类草案 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
-| `supervise` | 监控小闭环，循环执行扫描、建议、可选 LLM 摘要和显式 send | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
+| `supervise` | 监控小闭环，循环执行扫描、建议、可选 LLM 摘要、显式 send 或规则自动执行 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `supervisor capability map` | Supervisor 能力地图，登记已实现能力和后续拆分边界 | 文档/产品功能 | `docs/current/supervisor-capability-map.md` |
 | `--execute` | 显式执行参数，当前只允许 `send_status` 和 `send_continue` | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
+| `--auto-execute` | 规则自动执行参数，每轮最多执行一个白名单动作 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `command_suggestions` | 命令草案列表，给人复制执行，当前可包含 attach、汇报状态和继续推进 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `control_commands` | dashboard/web 使用的受控命令列表，当前来自托管 tmux lane 的 attach 和 send 草案 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `/events` | web 事件流入口，用 SSE 推送 bell 提醒，让页面立刻刷新 dashboard | 产品功能/视图/状态判断 | `src/isotope/features/supervisor/web.py` |
@@ -107,7 +108,7 @@
 | `alert-bell` | tmux bell hook，在窗口响铃时触发并写入 Supervisor 事件文件 | 外部集成/状态判断 | `src/isotope/features/supervisor/bell_events.py`, `src/isotope/features/supervisor/registry.py` |
 | `bell_events.jsonl` | Supervisor bell 事件日志，记录哪个托管 tmux session 响铃 | 产品功能/状态判断 | `src/isotope/features/supervisor/bell_events.py` |
 | `managed_bell_event_at` | 最近一次 tmux bell hook 事件时间 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
-| `SUPERVISOR_STATUS` | 托管 Codex 主动汇报状态的协议锚点，如 working、done、blocked、needs_user | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |
+| `SUPERVISOR_STATUS` | 托管 Codex 主动汇报状态的协议锚点，只从 assistant 回复解析，如 working、done、blocked、needs_user | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |
 | `SUPERVISOR_SUMMARY` | 托管 Codex 主动汇报的一句中文状态摘要 | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |
 | `SUPERVISOR_NEXT` | 托管 Codex 主动建议的下一步 | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |
 | `lane state` | 托管窗口状态账本，记录最近状态、最近催促时间和催促次数 | 产品功能/状态判断 | `src/isotope/features/supervisor/lane_state.py` |

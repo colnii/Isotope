@@ -202,6 +202,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 .venv/bin/isotope-supervisor supervise --interval 180 --llm-summary
 .venv/bin/isotope-supervisor supervise --interval 180 --llm-summary --execute send_status
 .venv/bin/isotope-supervisor supervise --interval 180 --execute send_status --prompt-cooldown 300
+.venv/bin/isotope-supervisor supervise --interval 180 --auto-execute --prompt-cooldown 300
 .venv/bin/isotope-supervisor supervise --iterations 1 --llm-action --json
 .venv/bin/isotope-supervisor supervise --iterations 1 --llm-summary --json
 ```
@@ -210,6 +211,9 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard 
 可选调用 LLM 生成中文摘要。
 只有显式传入 `--execute send_status` 或 `--execute send_continue`
 时才会发送指令。
+`--auto-execute` 会启用规则自动策略，每轮最多执行一个白名单动作：
+`done` 发 `send_continue`，`stale`、bell 或没有状态协议时发
+`send_status`，`blocked`、`needs_user` 和疑似报错只提醒不硬推。
 
 LLM 摘要：
 
@@ -279,6 +283,8 @@ SUPERVISOR_SUMMARY: 用一句中文说明当前状态
 SUPERVISOR_NEXT: 用一句中文说明建议下一步
 ```
 
+协议只从 assistant 回复中解析，`SUPERVISOR_STATUS` 必须是四个合法值之一。
+
 状态依据：
 
 - `supervisor_protocol`：被托管 Codex 主动写了 `SUPERVISOR_STATUS`。
@@ -314,12 +320,13 @@ tmux attach -t isotope-lane-a
 - `advise` 默认只生成命令草案；`--execute` 只允许执行
   `send_status` 和 `send_continue`。
 - `--llm-action` 只输出模型建议动作，不自动执行。
-- `supervise` 可循环监控；LLM 决策必须落到白名单动作上。
-- 当前的自动执行仍受 `--execute` 白名单限制。
+- `supervise --auto-execute` 可按规则自动执行一个白名单动作。
+- 自动策略不直接执行 LLM 建议；LLM 决策必须落到白名单动作上。
+- `--execute` 和 `--auto-execute` 不能同时使用。
 - 后续 LLM 可以参与选择动作，但动作必须落到可审计的白名单能力上。
 - bell 只作为弱信号，不直接改变状态，也不自动触发发送。
 - bell hook 只写事件文件，不直接发指令。
-- 状态协议只增强可观察性，当前不直接触发自动发送。
+- 状态协议会影响 `--auto-execute` 的动作选择。
 - lane state 只做限频，不替你判断是否应该继续开发。
 - 不直接检查 SSH 服务器内部进程。
 - 不把完整日志发给 LLM，只发送短摘要和状态字段。

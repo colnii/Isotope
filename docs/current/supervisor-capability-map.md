@@ -71,6 +71,7 @@ Codex Supervisor 已经不只是一个小命令。
 - bell hook 会写入 `bell_events.jsonl`，让提醒不只依赖轮询。
 - `launch` 会注入 `SUPERVISOR_STATUS/SUMMARY/NEXT` 汇报要求。
 - `scan` 会从 Codex `.jsonl` 解析状态协议字段。
+- 状态协议只从 assistant 回复中解析，并校验 status 合法值。
 - `scan --json` 输出结构化建议。
 - `SUPERVISOR_STATUS=blocked/done/needs_user` 会影响结构化建议。
 - bell 事件会让建议优先提示查看对应托管窗口。
@@ -78,6 +79,9 @@ Codex Supervisor 已经不只是一个小命令。
 - `--execute` 只执行 `send_status` 和 `send_continue`。
 - `send_status/send_continue` 会要求托管 Codex 按三行状态协议汇报。
 - `supervise` 循环执行扫描、建议、摘要和显式发送。
+- `supervise --auto-execute` 每轮最多自动执行一个白名单动作。
+- 自动策略：`done` 发 `send_continue`；`stale`、bell 或缺少协议发
+  `send_status`；`blocked/needs_user/error` 只提醒。
 - lane state 记录最近状态、最近催促时间和催促次数。
 - `--prompt-cooldown` 可避免短时间重复催促同一个 lane。
 - `--llm-summary` 通过本机 TOML 号池生成中文摘要。
@@ -104,7 +108,7 @@ Codex Supervisor 已经不只是一个小命令。
 ## 后续拆分方向
 
 - `features/supervisor/status.py`：后续可下沉状态分类和状态依据生成。
-- `features/supervisor/advice.py`：建议、命令草案和执行白名单。
+- `features/supervisor/advice.py`：建议、命令草案、自动策略和执行白名单。
 - `features/supervisor/protocol.py`：后续可下沉状态协议解析和提示语注入。
 - `features/supervisor/tmux_control.py`：后续可下沉 tmux 会话、发送和 bell hook。
 - `features/supervisor/lane_state.py`：每个窗口的最近状态、催促次数和限频。

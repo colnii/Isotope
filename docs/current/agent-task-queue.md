@@ -223,6 +223,21 @@
     示例或 fenced code 的输出中提取最后一个动作 JSON。
 104. Codex Supervisor tmux 提交修正：`send` 写入文本后用 `C-m`
     提交，避免 Codex TUI 把请求停留在输入区。
+105. Codex Supervisor 自动执行第一版：`supervise --auto-execute`
+    每轮最多执行一个白名单动作，按状态协议决定询问、续跑或等待。
+106. Codex Supervisor 状态协议解析边界：只从 assistant 回复中解析，
+    且 `SUPERVISOR_STATUS` 必须是合法值，避免把提示模板当真实状态。
+
+## 最近完成：Codex Supervisor 自动执行第一版
+
+完成内容：
+
+- 新增 `supervise --auto-execute`，和显式 `--execute` 互斥。
+- `done` 状态自动发 `send_continue`，推动托管 Codex 继续推进。
+- `stale`、bell 或缺少状态协议时自动发 `send_status`。
+- `blocked`、`needs_user` 和疑似报错只输出跳过原因，不硬推。
+- 自动执行仍受 lane state 冷却时间限制，避免短时间重复催促。
+- 修正状态协议解析边界，避免工具输出或提示模板污染自动策略。
 
 ## 最近完成：Codex Supervisor tmux 提交修正
 
