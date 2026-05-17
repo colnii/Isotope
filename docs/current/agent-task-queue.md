@@ -286,6 +286,21 @@
     显式 `--name` 仍保留冷却跳过提示。
 130. Codex Supervisor 可用入口收口：新增 `guide` 命令，按 cwd、
     lane name 和 tmux session 打印启动、接管、自动监督和观察命令。
+131. Codex Supervisor 日常 loop 自动化修正：`changes-only` 只限制输出，
+    报告不变时仍会执行规则自动策略，冷却结束后可继续请求状态。
+
+## 最近完成：Codex Supervisor 日常 loop 自动化修正
+
+完成内容：
+
+- 发现 `loop` 默认 `--changes-only` 时，报告无变化会跳过整轮自动策略。
+- 修正后，`changes-only` 只减少输出，不再阻断规则自动推进。
+- 如果托管窗口仍可输入但没回应，冷却期结束后仍会再次发送状态请求。
+
+下一步：
+
+- 用真实工作任务按 `guide` 启动或接管窗口，验证常驻 `loop`
+  能否稳定跟进你的真实 Codex 工作窗口。
 
 ## 最近完成：Codex Supervisor 可用入口收口
 

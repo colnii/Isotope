@@ -5230,7 +5230,7 @@ def test_codex_supervisor_runner_loop_uses_daily_defaults(
     )
 
     assert exit_code == 0
-    lines = capsys.readouterr().out.strip().splitlines()
+    lines = [line for line in capsys.readouterr().out.splitlines() if line.strip()]
     assert len(lines) == 1
     payload = json.loads(lines[0])
     assert payload["automation"]["ready"] is False
@@ -5243,6 +5243,71 @@ def test_codex_supervisor_runner_loop_uses_daily_defaults(
         "reason": "no managed tmux lane",
         "skipped": True,
     }
+
+
+def test_codex_supervisor_runner_loop_auto_executes_even_when_report_unchanged(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: "› Improve documentation in @filename\n  gpt-5.5 xhigh · main",
+    )
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "2",
+            "--interval",
+            "1",
+            "--prompt-cooldown",
+            "0",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    lines = [line for line in capsys.readouterr().out.splitlines() if line.strip()]
+    assert len(lines) == 2
+    assert [json.loads(line)["executed"]["kind"] for line in lines] == [
+        "send_status",
+        "send_status",
+    ]
+    assert calls == _tmux_send_calls(STATUS_REQUEST_TEXT) + _tmux_send_calls(
+        STATUS_REQUEST_TEXT
+    )
 
 
 def test_codex_supervisor_runner_launch_records_managed_codex(

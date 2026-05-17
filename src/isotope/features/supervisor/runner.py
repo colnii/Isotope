@@ -574,9 +574,32 @@ def _run_supervise(args: argparse.Namespace) -> None:
     while iterations is None or count < iterations:
         report = _scan_report(args)
         fingerprint = _report_fingerprint(report)
-        should_print = not args.changes_only or previous_fingerprint != fingerprint
+        report_changed = previous_fingerprint != fingerprint
+        precomputed_auto_action: dict[str, Any] | None = None
+        precomputed_executed: dict[str, Any] | None = None
+        force_print = False
+        if args.changes_only and not report_changed and args.auto_execute:
+            precomputed_auto_action = _auto_execute_action(
+                report,
+                target_name=args.name,
+                codex_home=Path(args.codex_home),
+                prompt_cooldown_seconds=args.prompt_cooldown,
+            )
+            precomputed_executed = _execute_auto_action(
+                args,
+                report,
+                precomputed_auto_action,
+            )
+            force_print = _executed_action_forces_print(precomputed_executed)
+        should_print = not args.changes_only or report_changed or force_print
         if should_print:
-            payload = _supervise_payload(args, report, iteration=count + 1)
+            payload = _supervise_payload(
+                args,
+                report,
+                iteration=count + 1,
+                precomputed_auto_action=precomputed_auto_action,
+                precomputed_executed=precomputed_executed,
+            )
             bell_fingerprint = _supervise_bell_fingerprint(report, payload)
             if (
                 args.bell
@@ -731,6 +754,8 @@ def _supervise_payload(
     report: Any,
     *,
     iteration: int,
+    precomputed_auto_action: dict[str, Any] | None = None,
+    precomputed_executed: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload = _advice_payload(
         report,
@@ -747,27 +772,18 @@ def _supervise_payload(
     if args.llm_execute:
         payload["executed"] = _execute_llm_action(args, report, payload)
     elif args.auto_execute:
-        auto_action = _auto_execute_action(
+        auto_action = precomputed_auto_action or _auto_execute_action(
             report,
             target_name=args.name,
             codex_home=Path(args.codex_home),
             prompt_cooldown_seconds=args.prompt_cooldown,
         )
         payload["auto_action"] = auto_action
-        if auto_action["kind"] in EXECUTABLE_ADVICE_KINDS:
-            payload["executed"] = _execute_advice(
-                args,
-                report,
-                payload,
-                kind=auto_action["kind"],
-                target_name=auto_action.get("target_name"),
-            )
-        else:
-            payload["executed"] = {
-                "kind": auto_action["kind"],
-                "skipped": True,
-                "reason": auto_action["reason"],
-            }
+        payload["executed"] = precomputed_executed or _execute_auto_action(
+            args,
+            report,
+            auto_action,
+        )
     elif args.execute:
         payload["executed"] = _execute_advice(args, report, payload)
     return payload
@@ -1597,6 +1613,30 @@ def _execute_llm_action(
         kind=kind,
         target_name=action.get("target_name"),
     )
+
+
+def _execute_auto_action(
+    args: argparse.Namespace,
+    report: Any,
+    auto_action: dict[str, Any],
+) -> dict[str, Any]:
+    if auto_action["kind"] in EXECUTABLE_ADVICE_KINDS:
+        return _execute_advice(
+            args,
+            report,
+            {},
+            kind=auto_action["kind"],
+            target_name=auto_action.get("target_name"),
+        )
+    return {
+        "kind": auto_action["kind"],
+        "skipped": True,
+        "reason": auto_action["reason"],
+    }
+
+
+def _executed_action_forces_print(executed: dict[str, Any]) -> bool:
+    return executed.get("kind") in EXECUTABLE_ADVICE_KINDS and not executed.get("skipped")
 
 
 def _auto_execute_action(

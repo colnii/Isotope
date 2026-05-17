@@ -259,6 +259,8 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 它默认启用 `auto-execute`、`changes-only` 和 `bell`：
 会自动按规则推进可控托管 lane，只在状态变化时输出，
 需要人看时才响铃。`--name <lane>` 可临时只盯一个窗口。
+`changes-only` 只压缩输出，不会阻断自动发送；如果窗口一直可输入但没回应，
+冷却期结束后仍会再次请求状态。
 
 `supervise` 是当前的监控小闭环：
 
@@ -413,6 +415,7 @@ tmux attach -t isotope-lane-a
 - `loop` 是 `supervise --auto-execute --changes-only --bell --interval 30`
   的日常入口。
 - `supervise --auto-execute` 可按规则自动执行一个白名单动作。
+- `changes-only` 不会阻断自动策略；无变化轮次仍会检查冷却并继续必要发送。
 - 未指定 `--name` 的自动轮转会避开冷却中的 lane，
   继续寻找下一个可自动处理窗口。
 - `--llm-execute` 可执行 LLM 建议，但动作必须落到可审计白名单上。
