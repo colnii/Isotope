@@ -10,7 +10,7 @@ from typing import Any
 
 
 DEFAULT_PROMPT_COOLDOWN_SECONDS = 300
-DEFAULT_MAX_CONTINUE_COUNT = 3
+DEFAULT_MAX_CONTINUE_COUNT = 0
 
 
 @dataclass(frozen=True)

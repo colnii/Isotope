@@ -339,9 +339,9 @@ def _build_loop_command(
         command.extend(["--active-within", str(active_within)])
     if prompt_cooldown != 300:
         command.extend(["--prompt-cooldown", str(prompt_cooldown)])
-    if max_continue_count != 3:
+    if max_continue_count != 0:
         command.extend(["--max-continue-count", str(max_continue_count)])
-    if max_context_requests != 1:
+    if max_context_requests != 0:
         command.extend(["--max-context-requests", str(max_context_requests)])
     if name:
         command.extend(["--name", name])

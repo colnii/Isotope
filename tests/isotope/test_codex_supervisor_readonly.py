@@ -4981,6 +4981,83 @@ def test_codex_supervisor_runner_supervise_respects_max_context_requests(
     assert provider.calls == 2
 
 
+def test_codex_supervisor_runner_supervise_default_allows_context_followup(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    docs_dir = workspace / "docs" / "current"
+    docs_dir.mkdir(parents=True)
+    (docs_dir / "status.md").write_text(
+        "Supervisor 默认预算要宽松，避免阻碍长任务。\n",
+        encoding="utf-8",
+    )
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-source.jsonl",
+        session_id="source-session",
+        cwd=str(workspace),
+        events=[_assistant_message("2026-05-16T11:59:20Z", "上一轮已完成。")],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+
+    class FakeProvider:
+        calls = 0
+
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            self.calls += 1
+            return json.dumps(
+                {
+                    "kind": "request_context",
+                    "cwd": str(workspace),
+                    "query": f"默认宽松预算 {self.calls}",
+                    "reason": "继续查上下文。",
+                },
+                ensure_ascii=False,
+            )
+
+    provider = FakeProvider()
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: provider,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["executed"]["kind"] == "request_context"
+    assert payload["followup_executed"]["kind"] == "request_context"
+    assert "skipped" not in payload["followup_executed"]
+    context_log = codex_home / "supervisor" / "context_results.jsonl"
+    records = [
+        json.loads(line)
+        for line in context_log.read_text(encoding="utf-8").splitlines()
+    ]
+    assert [record["query"] for record in records] == [
+        "默认宽松预算 1",
+        "默认宽松预算 2",
+    ]
+    assert provider.calls == 2
+
+
 def test_codex_supervisor_runner_supervise_context_followup_can_ask_user_after_gate(
     tmp_path,
     capsys,
@@ -6101,6 +6178,107 @@ def test_codex_supervisor_runner_supervise_auto_respects_max_continue_count(
         "reason": "lane continue budget exhausted",
     }
     assert calls == []
+
+
+def test_codex_supervisor_runner_supervise_default_allows_long_continue_lane(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    lane_state_path = codex_home / "supervisor" / "lane_state.json"
+    lane_state_path.write_text(
+        json.dumps(
+            {
+                "lane-a": {
+                    "name": "lane-a",
+                    "tmux_session": "isotope-lane-a",
+                    "last_status": "done",
+                    "last_prompted_at": "2026-05-16T11:59:00+00:00",
+                    "prompt_count": 8,
+                    "last_prompt_kind": "send_continue",
+                    "continue_count": 8,
+                }
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-done.jsonl",
+        session_id="done-session",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:30Z",
+                "SUPERVISOR_STATUS: done\n"
+                "SUPERVISOR_SUMMARY: 长任务阶段完成。\n"
+                "SUPERVISOR_NEXT: 可以继续下一段。",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: (
+            "SUPERVISOR_STATUS: done\n"
+            "SUPERVISOR_SUMMARY: 长任务阶段完成。\n"
+            "SUPERVISOR_NEXT: 可以继续下一段。"
+        ),
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--prompt-cooldown",
+            "0",
+            "--auto-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["auto_action"] == {
+        "kind": "send_continue",
+        "reason": "managed lane reported done",
+    }
+    assert payload["executed"]["kind"] == "send_continue"
+    assert payload["executed"]["text"] == CONTINUE_REQUEST_TEXT
+    assert calls == _tmux_send_calls(CONTINUE_REQUEST_TEXT)
 
 
 def test_codex_supervisor_runner_supervise_auto_stops_terminal_done_lane(

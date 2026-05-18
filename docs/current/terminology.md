@@ -125,8 +125,8 @@
 | `SUPERVISOR_NEXT` | 托管 Codex 主动建议的下一步 | 产品功能/状态协议 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/registry.py` |
 | `lane state` | 托管窗口状态账本，记录最近状态、最近催促时间和催促次数 | 产品功能/状态判断 | `src/isotope/features/supervisor/lane_state.py` |
 | `--prompt-cooldown` | 催促冷却期，避免短时间重复向同一个 lane 发送状态请求或继续指令 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
-| `--max-continue-count` | 继续次数预算，同一 lane 同一状态下的 `send_continue` 达到阈值后会被 Supervisor 拦截 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/lane_state.py` |
-| `--max-context-requests` | 上下文请求预算，同一 supervise/loop 轮次里 `request_context` 达到阈值后会被 Supervisor 拦截 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
+| `--max-continue-count` | 继续次数预算，同一 lane 同一状态下的 `send_continue` 达到显式阈值后会被 Supervisor 拦截；默认 0 不限制 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/lane_state.py` |
+| `--max-context-requests` | 上下文请求预算，同一 supervise/loop 轮次里 `request_context` 达到显式阈值后会被 Supervisor 拦截；默认 0 不限制 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `continue_count` | lane state 中的继续推进计数，只统计 `send_continue`，用于限制无限续跑 | 产品功能/状态判断 | `src/isotope/features/supervisor/lane_state.py` |
 | `LLM summary` | 大模型摘要，把压缩后的窗口状态和结构化建议交给模型生成中文判断 | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
 | `LLM planner` | 大模型规划器，从候选状态里选择 `monitor`、send、`resume_session`、`launch_session`、`request_context` 或 `ask_user`，规则只做护栏 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |

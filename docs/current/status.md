@@ -106,8 +106,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `resume_session` 也受 `--prompt-cooldown` 约束，避免短时间重复恢复
     同一历史会话；B 层预算控制已落地 `--max-continue-count` 和
     `--max-context-requests`；前者用 lane state 记录
-    `continue_count`，达到阈值后拦截继续推进请求；后者限制
-    每轮可执行的上下文检索次数，默认每轮 1 次；
+    `continue_count`，达到显式阈值后拦截继续推进请求；后者限制
+    每轮可执行的上下文检索次数；二者默认值都是 0，
+    表示不启用限制，避免阻碍长期托管任务；
     时间预算尚未强制实现；
     模型动作返回非 JSON、非法目标或模型池空响应时会降级为
     可见 `monitor`，不让 loop 直接退出；OpenAI-compatible provider

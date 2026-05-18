@@ -370,12 +370,15 @@
     或 `max_context_requests` 强制控制。
 162. Codex Supervisor 继续次数预算 B 层：新增 `--max-continue-count`，
     lane state 记录 `continue_count` 和 `last_prompt_kind`；当同一 lane
-    同一状态下的 `send_continue` 达到阈值后，Supervisor 会拦截后续
-    继续推进请求，避免无限续跑。当前不覆盖 `max_minutes`。
+    同一状态下的 `send_continue` 达到显式阈值后，Supervisor 会拦截
+    后续继续推进请求，避免无限续跑；默认值 0 表示不限制，
+    避免阻碍长任务。当前不覆盖 `max_minutes`。
 163. Codex Supervisor 上下文请求预算 B 层：新增
-    `--max-context-requests`，默认每个 supervise/loop 轮次只允许执行
-    1 次 `request_context`；LLM 在同轮重规划后继续请求上下文时，
-    Supervisor 会拦截并输出预算耗尽原因，避免陷入反复查资料。
+    `--max-context-requests`；显式传入正数时，每个 supervise/loop
+    轮次达到阈值后会拦截 `request_context`，避免陷入反复查资料。
+164. Codex Supervisor 预算默认宽松：`--max-continue-count` 和
+    `--max-context-requests` 默认都为 0，即不启用硬限制；
+    预算只做可选护栏，不作为长期托管任务的默认阻碍。
 
 ## 最近完成：Codex Supervisor 真实 resume 执行验收修复
 

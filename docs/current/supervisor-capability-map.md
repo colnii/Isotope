@@ -208,8 +208,9 @@ B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
 `--max-continue-count` 和 `--max-context-requests`：
 前者用 lane state 记录 `continue_count`，限制同一 lane
 同一状态下的继续推进；后者限制同一 supervise/loop 轮次里
-`request_context` 的执行次数，默认每轮 1 次。`max_minutes`
-尚未强制实现。
+`request_context` 的执行次数。二者默认值都是 0，表示不启用限制；
+只有显式传入正数阈值时才会拦截，避免阻碍需要长时间运行的任务。
+`max_minutes` 尚未强制实现，后续即使加入也应默认关闭。
 
 当前 A 层字段：
 
@@ -258,7 +259,7 @@ B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
 
 ## 下一步顺序
 
-1. 再补 `max_minutes`，限制托管任务运行时长。
+1. 再评估是否补可选 `max_minutes`，若实现也必须默认关闭。
 2. 后续再决定是否增加人工输入框；默认仍保持白名单。
 3. 再拆分 `runner.py` 中的匹配、建议和 tmux 控制代码。
 

@@ -62,7 +62,7 @@ from .registry import (
 from .tmux_discovery import discover_tmux_adopt_candidates
 
 EXECUTABLE_ADVICE_KINDS = {"send_status", "send_continue"}
-DEFAULT_MAX_CONTEXT_REQUESTS = 1
+DEFAULT_MAX_CONTEXT_REQUESTS = 0
 TERMINAL_DONE_NEXT_MARKERS = (
     "可结束",
     "可以结束",
@@ -198,13 +198,13 @@ def _build_parser() -> argparse.ArgumentParser:
             "--max-continue-count",
             type=int,
             default=DEFAULT_MAX_CONTINUE_COUNT,
-            help="Maximum consecutive send_continue prompts for the same lane status. 0 disables.",
+            help="Maximum consecutive send_continue prompts for the same lane status. Default 0 disables.",
         )
         subparsers.choices[command].add_argument(
             "--max-context-requests",
             type=int,
             default=DEFAULT_MAX_CONTEXT_REQUESTS,
-            help="Maximum request_context executions per supervise iteration. 0 disables.",
+            help="Maximum request_context executions per supervise iteration. Default 0 disables.",
         )
     for command in ("watch", "supervise"):
         command_parser = subparsers.choices[command]
@@ -295,13 +295,13 @@ def _build_parser() -> argparse.ArgumentParser:
         "--max-continue-count",
         type=int,
         default=DEFAULT_MAX_CONTINUE_COUNT,
-        help="Maximum consecutive send_continue prompts for the same lane status. 0 disables.",
+        help="Maximum consecutive send_continue prompts for the same lane status. Default 0 disables.",
     )
     loop_parser.add_argument(
         "--max-context-requests",
         type=int,
         default=DEFAULT_MAX_CONTEXT_REQUESTS,
-        help="Maximum request_context executions per loop iteration. 0 disables.",
+        help="Maximum request_context executions per loop iteration. Default 0 disables.",
     )
     loop_parser.add_argument(
         "--interval",
@@ -385,13 +385,13 @@ def _build_parser() -> argparse.ArgumentParser:
         "--max-continue-count",
         type=int,
         default=DEFAULT_MAX_CONTINUE_COUNT,
-        help="Maximum consecutive send_continue prompts for the same lane status. 0 disables.",
+        help="Maximum consecutive send_continue prompts for the same lane status. Default 0 disables.",
     )
     daemon_start_parser.add_argument(
         "--max-context-requests",
         type=int,
         default=DEFAULT_MAX_CONTEXT_REQUESTS,
-        help="Maximum request_context executions per loop iteration. 0 disables.",
+        help="Maximum request_context executions per loop iteration. Default 0 disables.",
     )
     daemon_start_parser.add_argument(
         "--name",
@@ -2763,6 +2763,8 @@ def _context_request_budget_result(
     payload: dict[str, Any],
 ) -> dict[str, Any] | None:
     max_requests = getattr(args, "max_context_requests", DEFAULT_MAX_CONTEXT_REQUESTS)
+    if max_requests <= 0:
+        return None
     count = _context_request_count(payload)
     if count < max_requests:
         return None
