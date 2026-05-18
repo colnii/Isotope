@@ -5943,6 +5943,142 @@ def test_codex_supervisor_runner_daemon_stop_terminates_and_marks_stopped(
     assert state["stopped_at"] is not None
 
 
+def test_codex_supervisor_runner_daemon_watchdog_restarts_stale_loop(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    state_path = codex_home / "supervisor" / "daemon.json"
+    log_path = codex_home / "supervisor" / "logs" / "daemon.log"
+    command = [
+        sys.executable,
+        "-m",
+        "isotope.features.supervisor.runner",
+        "loop",
+        "--codex-home",
+        str(codex_home),
+        "--interval",
+        "7",
+    ]
+    state_path.parent.mkdir(parents=True)
+    state_path.write_text(
+        json.dumps(
+            {
+                "pid": 11111,
+                "status": "running",
+                "started_at": "2026-05-18T10:00:00+00:00",
+                "stopped_at": None,
+                "command": command,
+                "codex_home": str(codex_home),
+                "log_path": str(log_path),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 22222
+
+    def fake_popen(
+        command_: list[str],
+        *,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured["command"] = command_
+        captured["stdin"] = stdin
+        captured["stdout"] = stdout
+        captured["stderr"] = stderr
+        captured["start_new_session"] = start_new_session
+        return FakeProcess()
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon._process_is_alive",
+        lambda pid: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon.subprocess.Popen",
+        fake_popen,
+    )
+
+    exit_code = supervisor_main(
+        ["daemon", "watchdog", "--codex-home", str(codex_home), "--json"]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["daemon"]["action"] == "restarted"
+    assert payload["daemon"]["previous_pid"] == 11111
+    assert payload["daemon"]["pid"] == 22222
+    assert payload["daemon"]["status"] == "running"
+    assert payload["daemon"]["command"] == command
+    assert captured["command"] == command
+    assert captured["stdin"] is subprocess.DEVNULL
+    assert captured["stderr"] is subprocess.STDOUT
+    assert captured["start_new_session"] is True
+    persisted = json.loads(state_path.read_text(encoding="utf-8"))
+    assert persisted["pid"] == 22222
+    assert persisted["command"] == command
+    assert "action" not in persisted
+    assert "previous_pid" not in persisted
+
+
+def test_codex_supervisor_runner_daemon_watchdog_leaves_live_loop_alone(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    state_path = codex_home / "supervisor" / "daemon.json"
+    state_path.parent.mkdir(parents=True)
+    state_path.write_text(
+        json.dumps(
+            {
+                "pid": 45678,
+                "status": "running",
+                "started_at": "2026-05-18T10:00:00+00:00",
+                "stopped_at": None,
+                "command": ["python", "-m", "isotope.features.supervisor.runner", "loop"],
+                "codex_home": str(codex_home),
+                "log_path": str(codex_home / "supervisor" / "logs" / "daemon.log"),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    def fail_popen(*_args: object, **_kwargs: object) -> object:
+        raise AssertionError("watchdog must not restart a live daemon")
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon._process_is_alive",
+        lambda pid: pid == 45678,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon.subprocess.Popen",
+        fail_popen,
+    )
+
+    exit_code = supervisor_main(
+        ["daemon", "watchdog", "--codex-home", str(codex_home), "--json"]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["daemon"]["action"] == "alive"
+    assert payload["daemon"]["pid"] == 45678
+    assert payload["daemon"]["status"] == "running"
+
+
 def test_codex_supervisor_runner_launch_records_managed_codex(
     tmp_path,
     capsys,

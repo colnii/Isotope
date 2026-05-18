@@ -15,7 +15,7 @@ Codex Supervisor 已经不只是一个小命令。
 
 | 层级 | 当前能力 | 主要位置 | 说明 |
 | --- | --- | --- | --- |
-| 用户功能层 | `scan`、`dashboard`、`guide`、`discover`、`web`、`watch`、`advise`、`supervise`、`loop` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
+| 用户功能层 | `scan`、`dashboard`、`guide`、`discover`、`web`、`watch`、`advise`、`supervise`、`loop`、`daemon` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
 | 托管控制层 | `launch`、`adopt`、`send`、`archive`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
 | Codex 集成层 | 读取 Codex session（会话记录）、索引标题和 agent 元数据 | `features/supervisor/flow.py` | 当前读取本机 `.jsonl`、`session_index.jsonl` 和 SQLite |
 | 扫描优化层 | 最近候选、首尾读取和标题兜底 | `features/supervisor/flow.py` | 避免每次页面刷新全量读历史 |
@@ -79,6 +79,8 @@ Codex Supervisor 已经不只是一个小命令。
   可用 `--no-auto-adopt` 关闭。
 - `daemon start/status/stop` 可把 `loop` 放到后台常驻，记录
   pid（进程号）、命令、状态文件和日志路径。
+- `daemon watchdog` 可按状态文件检查后台 `loop` 是否还活着；
+  若异常退出，会用原命令重新拉起。
 - `supervise --auto-adopt` 可显式开启同样的自动发现接管能力。
 - `loop` 的 `changes-only` 只限制输出；报告不变时自动策略仍会检查冷却并推进。
 - `watch --changes-only` 只在状态变化时输出。

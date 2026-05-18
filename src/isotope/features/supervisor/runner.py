@@ -15,6 +15,7 @@ from .daemon import (
     start_supervisor_daemon,
     stop_supervisor_daemon,
     supervisor_daemon_status,
+    watchdog_supervisor_daemon,
 )
 from .flow import (
     CodexSupervisorFlow,
@@ -324,7 +325,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Print JSON output.",
     )
     daemon_start_parser.set_defaults(auto_adopt=True)
-    for daemon_command in ("status", "stop"):
+    for daemon_command in ("status", "stop", "watchdog"):
         daemon_command_parser = daemon_subparsers.add_parser(
             daemon_command,
             help=f"{daemon_command.title()} the background Supervisor loop.",
@@ -707,6 +708,8 @@ def _daemon_payload(args: argparse.Namespace) -> dict[str, Any]:
         daemon = supervisor_daemon_status(codex_home=Path(args.codex_home))
     elif args.daemon_command == "stop":
         daemon = stop_supervisor_daemon(codex_home=Path(args.codex_home))
+    elif args.daemon_command == "watchdog":
+        daemon = watchdog_supervisor_daemon(codex_home=Path(args.codex_home))
     else:
         raise ValueError(f"unknown daemon command: {args.daemon_command}")
     return {
@@ -721,9 +724,16 @@ def _print_daemon_plain(payload: dict[str, Any]) -> None:
     print("[Codex Supervisor daemon]")
     if status == "running":
         action = daemon.get("action")
-        label = "已在后台运行" if action == "already_running" else "已启动后台 loop"
+        if action in {"already_running", "alive"}:
+            label = "后台 loop 仍在运行"
+        elif action == "restarted":
+            label = "后台 loop 已由 watchdog 重启"
+        else:
+            label = "已启动后台 loop"
         print(label)
         print(f"pid：{daemon['pid']}")
+        if "previous_pid" in daemon:
+            print(f"旧 pid：{daemon['previous_pid']}")
         print(f"日志：{daemon['log_path']}")
         print("命令：" + shlex.join(daemon["command"]))
         return

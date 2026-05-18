@@ -96,16 +96,9 @@ def start_supervisor_daemon(
         llm_summary=llm_summary,
         auto_adopt=auto_adopt,
     )
-    with log_path.open("ab") as log_file:
-        process = subprocess.Popen(
-            list(command),
-            stdin=subprocess.DEVNULL,
-            stdout=log_file,
-            stderr=subprocess.STDOUT,
-            start_new_session=True,
-        )
+    pid = _spawn_daemon_process(command, log_path)
     state = SupervisorDaemonState(
-        pid=int(process.pid),
+        pid=pid,
         status="running",
         started_at=_utc_now().isoformat(),
         stopped_at=None,
@@ -116,6 +109,38 @@ def start_supervisor_daemon(
     )
     write_supervisor_daemon_state(state)
     return {"action": "started", **state.to_dict()}
+
+
+def watchdog_supervisor_daemon(*, codex_home: Path | str) -> dict[str, Any]:
+    home = Path(codex_home).expanduser()
+    state = read_supervisor_daemon_state(home)
+    if state is None:
+        return {"action": "not_running", **_not_running_payload(home)}
+    if state.status == "stopped":
+        return {"action": "stopped", **state.to_dict()}
+    if _process_is_alive(state.pid):
+        return {"action": "alive", **state.to_dict()}
+    if not state.command:
+        return {"action": "cannot_restart", **state.to_dict()}
+
+    log_path = Path(state.log_path).expanduser()
+    pid = _spawn_daemon_process(state.command, log_path)
+    restarted = SupervisorDaemonState(
+        pid=pid,
+        status="running",
+        started_at=_utc_now().isoformat(),
+        stopped_at=None,
+        command=state.command,
+        codex_home=state.codex_home,
+        log_path=state.log_path,
+        state_path=state.state_path,
+    )
+    write_supervisor_daemon_state(restarted)
+    return {
+        "action": "restarted",
+        "previous_pid": state.pid,
+        **restarted.to_dict(),
+    }
 
 
 def supervisor_daemon_status(*, codex_home: Path | str) -> dict[str, Any]:
@@ -160,6 +185,19 @@ def write_supervisor_daemon_state(state: SupervisorDaemonState) -> None:
         json.dumps(state.to_dict(), ensure_ascii=False, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+
+
+def _spawn_daemon_process(command: tuple[str, ...], log_path: Path) -> int:
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("ab") as log_file:
+        process = subprocess.Popen(
+            list(command),
+            stdin=subprocess.DEVNULL,
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+    return int(process.pid)
 
 
 def _build_loop_command(

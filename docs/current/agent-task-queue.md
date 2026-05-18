@@ -301,6 +301,22 @@
     未登记 Codex tmux 窗口，再进入自动监督。
 137. Codex Supervisor 后台守护入口：`daemon start/status/stop` 可把日常
     `loop` 放到后台运行，记录 pid（进程号）、状态文件和日志路径。
+138. Codex Supervisor watchdog 检查：`daemon watchdog` 可检查后台
+    `loop` 是否还活着，异常退出时按原命令重新拉起。
+
+## 最近完成：Codex Supervisor watchdog 检查
+
+完成内容：
+
+- 新增 `daemon watchdog`。
+- 进程仍在运行时只汇报 `alive`，不重复启动。
+- 进程异常退出时复用 `daemon.json` 里的原始命令重新拉起。
+- 状态文件会更新到新的 pid（进程号）。
+
+下一步：
+
+- 把 `watchdog` 接成周期触发：先做本机后台 watcher，再考虑
+  systemd/cron（系统服务/定时任务）或开机自启动。
 
 ## 最近完成：Codex Supervisor 后台守护入口
 
@@ -311,11 +327,6 @@
 - 状态写到 `~/.codex/supervisor/daemon.json`。
 - 日志写到 `~/.codex/supervisor/logs/daemon.log`。
 - `guide` 现在优先给出后台启动命令，同时保留前台 `loop` 作为调试入口。
-
-下一步：
-
-- 增加 watchdog（看门狗）能力：后台进程异常退出后能被检测并重新拉起，
-  再考虑系统级自启动。
 
 ## 最近完成：Codex Supervisor loop 自动接管
 
