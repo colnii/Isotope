@@ -267,8 +267,8 @@
     和 dashboard plain 都优先采用合法 `SUPERVISOR_STATUS`，
     已完成窗口不再被 stale/needs_user 文本规则误标。
 124. Codex Supervisor 托管自动化入口：`supervise` 会输出 automation
-    状态；没有可控 tmux lane 时提示自动发送不会生效，已退出 lane
-    不再参与建议和自动执行。
+    状态；当前主线优先识别 process 后台托管，tmux lane 只作为旁观
+    或兼容旧窗口；已退出 lane 不再参与建议和自动执行。
 125. Codex Supervisor 真实闭环烟测：`launch --backend tmux` 已能启动
     真实托管 lane，`supervise --auto-execute` 可识别并解析其
     `SUPERVISOR_STATUS`；自动策略不会在 lane 仍运行且终端未 ready 时
@@ -383,6 +383,10 @@
     预置两个已有较高 `continue_count` 的托管窗口，LLM 连续选择
     `send_continue` 推进 lane-a 和 lane-b；默认预算不拦截，
     显式预算测试仍保留。
+166. Codex Supervisor process 主线状态修正：loop 的 automation 状态
+    会识别后台 process 托管记录，LLM prompt 也会把 process lane
+    列入候选目标；tmux 只作为旁观 TUI 或兼容旧窗口，不再作为
+    Supervisor 主线默认叙事。
 
 ## 最近完成：Codex Supervisor 真实 resume 执行验收修复
 
@@ -691,7 +695,7 @@
 
 下一步：
 
-- 用 `launch --backend tmux` 启动一个真实测试 lane，验证自动状态请求和继续推进闭环。
+- 用默认 process `launch` 启动真实测试 lane，验证 LLM loop 能继续管理后台 Codex。
 
 ## 最近完成：Codex Supervisor 状态协议优先级
 
@@ -707,7 +711,7 @@
 
 下一步：
 
-- 做 Supervisor 可用性入口：没有可控 tmux lane 时明确提示，存在 lane 时进入自动监督。
+- 做 Supervisor 可用性入口：没有托管目标时优先提示 process `launch`，tmux 只作为旁观旧窗口入口。
 
 ## 最近完成：Workbench Ask API
 

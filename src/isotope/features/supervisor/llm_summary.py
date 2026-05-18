@@ -836,11 +836,23 @@ def _has_any_llm_target(report: CodexSupervisorReport) -> bool:
 
 
 def _is_llm_candidate_target(session: Any) -> bool:
-    return _has_managed_send_target(session) or _can_resume_session(session)
+    return (
+        _has_managed_send_target(session)
+        or _has_managed_process_target(session)
+        or _can_resume_session(session)
+    )
 
 
 def _has_managed_send_target(session: Any) -> bool:
     return bool(session.managed_name and session.managed_tmux_session)
+
+
+def _has_managed_process_target(session: Any) -> bool:
+    return bool(
+        getattr(session, "managed", False)
+        and getattr(session, "managed_name", None)
+        and getattr(session, "managed_backend", None) != "tmux"
+    )
 
 
 def _can_resume_session(session: Any) -> bool:

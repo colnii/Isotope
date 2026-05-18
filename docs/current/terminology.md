@@ -102,7 +102,7 @@
 | `--execute` | 显式执行参数，当前只允许 `send_status` 和 `send_continue` | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `--auto-execute` | 规则自动执行参数，每轮最多执行一个白名单动作 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `command_suggestions` | 命令草案列表，给人复制执行，当前可包含 attach、汇报状态和继续推进 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
-| `control_commands` | dashboard/web 使用的受控命令列表，当前来自托管 tmux lane 的 attach 和 send 草案 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
+| `control_commands` | dashboard/web 使用的受控命令列表；tmux lane 可提供 attach/send 草案，process 托管通过 launch/resume 管理 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `/events` | web 事件流入口，用 SSE 推送 bell 提醒，让页面立刻刷新 dashboard | 产品功能/视图/状态判断 | `src/isotope/features/supervisor/web.py` |
 | `/managed/send` | web 本机发送入口，只允许 `send_status` 和 `send_continue` 两个白名单动作 | 产品功能/控制通道 | `src/isotope/features/supervisor/web.py` |
 | `/llm-action` | web 手动模型建议入口，只展示 LLM planner 的受控动作建议，不自动发送 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/web.py` |

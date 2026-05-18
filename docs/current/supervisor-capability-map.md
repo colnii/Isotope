@@ -81,7 +81,10 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `loop` 是日常常驻入口，默认由 LLM planner 判断并执行受控动作。
 - `loop --rule-execute` 可切回旧规则自动策略。
 - `launch` 默认 process 后端使用 `codex exec` 非交互启动，tmux 后端继续
-  使用交互式 Codex。
+  使用交互式 Codex；process 后端是后台托管主线，tmux 仅用于旁观
+  同一个 TUI 或兼容旧窗口。
+- LLM planner 会看到 process 托管记录作为候选目标，避免状态面板
+  误报“只有 tmux 才可控”。
 - LLM planner 会看到可恢复会话、已完成会话和最近 context 查询历史，
   避免恢复已完成会话或重复检索同一个 cwd/query。
 - OpenAI-compatible provider 遇到 reasoning-only 空正文时会重试关闭
@@ -162,7 +165,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `send_status/send_continue` 会要求托管 Codex 按三行状态协议汇报。
 - `supervise` 循环执行扫描、建议、摘要和显式发送。
 - `supervise` plain 视图复用 dashboard 当前分组，再输出托管自动化
-  是否 ready；没有可控 tmux lane 时给出 launch/adopt 命令形状。
+  是否 ready；没有托管目标时优先给出 process `launch` 命令形状，
+  tmux adopt 只是旁观旧窗口的兼容入口。
 - `supervise --auto-execute` 每轮最多自动执行一个白名单动作。
 - `loop` 复用 `supervise` 引擎，默认开启 LLM planner 执行。
 - `loop --rule-execute` 才使用旧规则自动策略。

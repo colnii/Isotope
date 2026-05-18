@@ -210,8 +210,8 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 如果模型在 JSON 前后加说明或 fenced code，也会尽量提取动作对象。
 如果模型建议的是某个托管 lane 的 `send_status` 或 `send_continue`，
 页面会高亮对应的“请求状态”或“继续”按钮，但仍需人类手动点击。
-如果当前没有可控的托管 tmux lane，会直接返回 `monitor`，
-不调用 LLM。
+如果当前没有托管进程、可旁观 tmux lane 或可恢复会话，会直接返回
+`monitor`，不调用 LLM。
 当前页面使用 Python 标准库 HTTP server 和内联 HTML/CSS/JS，
 不引入额外前端依赖。
 
@@ -249,8 +249,8 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 `--llm-action` 会把压缩状态、候选命令和目标 lane 发给 LLM，
 要求它只返回 `monitor`、`send_status` 或 `send_continue`。
 返回结果会被校验；不在白名单内的动作会报错，不会执行。
-如果没有可控的托管 tmux lane，会直接回退成 `monitor`，
-避免无目标时请求模型或报 `target_name` 错误。
+如果没有托管进程、可旁观 tmux lane 或可恢复会话，会直接回退成
+`monitor`，避免无目标时请求模型或报 `target_name` 错误。
 
 `guide` 是推荐入口，会生成一组可复制命令：
 

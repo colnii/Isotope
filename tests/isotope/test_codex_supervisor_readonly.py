@@ -5378,9 +5378,10 @@ def test_codex_supervisor_runner_supervise_reports_no_managed_lane(
     assert payload["automation"] == {
         "ready": False,
         "managed_tmux_count": 0,
+        "managed_process_count": 0,
         "managed_names": [],
-        "reason": "当前没有可控的托管 tmux lane，自动发送不会生效。",
-        "launch_hint": "isotope-supervisor launch --backend tmux --name <name> --cwd <repo> --prompt '<task>'",
+        "reason": "当前没有托管的 Codex 进程或可旁观 tmux lane。",
+        "launch_hint": "isotope-supervisor launch --name <name> --cwd <repo> --prompt '<task>'",
         "adopt_hint": "isotope-supervisor adopt --name <name> --cwd <repo> --tmux-session <session>",
     }
     assert payload["executed"]["reason"] == "no managed tmux lane"
@@ -5398,8 +5399,8 @@ def test_codex_supervisor_runner_supervise_reports_no_managed_lane(
 
     assert exit_code == 0
     text = capsys.readouterr().out
-    assert "当前没有可控的托管 tmux lane，自动发送不会生效。" in text
-    assert "isotope-supervisor launch --backend tmux" in text
+    assert "当前没有托管的 Codex 进程或可旁观 tmux lane。" in text
+    assert "isotope-supervisor launch --name <name>" in text
     assert "isotope-supervisor adopt --name" in text
 
 
@@ -7993,6 +7994,97 @@ def test_codex_supervisor_runner_loop_defaults_to_llm_driver(
     assert calls == _tmux_send_calls(STATUS_REQUEST_TEXT) + _tmux_send_calls(
         STATUS_REQUEST_TEXT
     )
+
+
+def test_codex_supervisor_runner_loop_reports_process_backend_as_managed(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-process-001",
+                "name": "process-lane",
+                "cwd": str(workspace),
+                "prompt": "后台继续推进 Supervisor。",
+                "command": [
+                    "codex",
+                    "exec",
+                    "-C",
+                    str(workspace),
+                    "--skip-git-repo-check",
+                    "后台继续推进 Supervisor。",
+                ],
+                "pid": 4242,
+                "started_at": NOW.isoformat(),
+                "log_path": str(
+                    codex_home / "supervisor" / "logs" / "managed-process-001.log"
+                ),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._pid_is_running",
+        lambda pid: pid == 4242,
+    )
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert f'"available_workspaces": ["{workspace}"]' in content
+            assert "process-lane" in content
+            return '{"kind":"monitor","reason":"后台 process lane 正在运行，继续观察。"}'
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["automation"]["ready"] is True
+    assert payload["automation"]["managed_process_count"] == 1
+    assert payload["automation"]["managed_tmux_count"] == 0
+    assert payload["automation"]["managed_names"] == ["process-lane"]
+    assert "tmux lane" not in payload["automation"]["reason"]
+    assert "后台托管 Codex 进程" in payload["automation"]["reason"]
+    assert payload["llm_action"] == {
+        "kind": "monitor",
+        "target_name": None,
+        "reason": "后台 process lane 正在运行，继续观察。",
+        "command_suggestion": None,
+    }
+    assert payload["executed"] == {
+        "kind": "monitor",
+        "reason": "后台 process lane 正在运行，继续观察。",
+        "skipped": True,
+    }
 
 
 def test_codex_supervisor_runner_loop_can_continue_multiple_lanes_with_default_budgets(

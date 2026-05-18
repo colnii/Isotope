@@ -99,6 +99,9 @@ EXECUTABLE_ADVICE_TEXT = {
 LAUNCH_TMUX_HINT = (
     "isotope-supervisor launch --backend tmux --name <name> --cwd <repo> --prompt '<task>'"
 )
+LAUNCH_PROCESS_HINT = (
+    "isotope-supervisor launch --name <name> --cwd <repo> --prompt '<task>'"
+)
 ADOPT_TMUX_HINT = (
     "isotope-supervisor adopt --name <name> --cwd <repo> --tmux-session <session>"
 )
@@ -2345,23 +2348,40 @@ def _print_advice(args: argparse.Namespace) -> None:
 
 
 def _automation_status(report: Any) -> dict[str, Any]:
-    lanes = [session for session in report.sessions if _is_active_managed_tmux_session(session)]
-    names = [session.managed_name for session in lanes if session.managed_name]
-    if lanes:
+    tmux_lanes = [
+        session for session in report.sessions if _is_active_managed_tmux_session(session)
+    ]
+    process_lanes = [
+        session
+        for session in report.sessions
+        if _is_active_managed_process_session(session)
+    ]
+    managed_lanes = tmux_lanes + process_lanes
+    names = [session.managed_name for session in managed_lanes if session.managed_name]
+    if managed_lanes:
+        process_note = (
+            f"{len(process_lanes)} 个后台托管 Codex 进程"
+            if process_lanes
+            else ""
+        )
+        tmux_note = f"{len(tmux_lanes)} 个可旁观 tmux lane" if tmux_lanes else ""
+        joined = "，".join(item for item in (process_note, tmux_note) if item)
         return {
             "ready": True,
-            "managed_tmux_count": len(lanes),
+            "managed_tmux_count": len(tmux_lanes),
+            "managed_process_count": len(process_lanes),
             "managed_names": names,
-            "reason": f"当前有 {len(lanes)} 个可控托管 tmux lane。",
-            "launch_hint": LAUNCH_TMUX_HINT,
+            "reason": f"当前有 {joined}。",
+            "launch_hint": LAUNCH_PROCESS_HINT,
             "adopt_hint": ADOPT_TMUX_HINT,
         }
     return {
         "ready": False,
         "managed_tmux_count": 0,
+        "managed_process_count": 0,
         "managed_names": [],
-        "reason": "当前没有可控的托管 tmux lane，自动发送不会生效。",
-        "launch_hint": LAUNCH_TMUX_HINT,
+        "reason": "当前没有托管的 Codex 进程或可旁观 tmux lane。",
+        "launch_hint": LAUNCH_PROCESS_HINT,
         "adopt_hint": ADOPT_TMUX_HINT,
     }
 
@@ -2643,6 +2663,15 @@ def _first_managed_tmux_session(report: Any) -> Any | None:
 
 def _is_active_managed_tmux_session(session: Any) -> bool:
     return bool(session.managed_tmux_session) and session.status != "exited"
+
+
+def _is_active_managed_process_session(session: Any) -> bool:
+    return bool(
+        getattr(session, "managed", False)
+        and getattr(session, "managed_name", None)
+        and getattr(session, "managed_backend", None) != "tmux"
+        and getattr(session, "status", None) != "exited"
+    )
 
 
 def _is_resume_capable_session(session: Any) -> bool:

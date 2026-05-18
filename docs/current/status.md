@@ -119,8 +119,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `monitor` 只记录跳过；
     `advise` 可单独输出建议和命令草案，并可显式执行 send 类草案；
     `guide` 可生成一组可复制的启动、接管、日常 loop 和观察命令，
-    作为真实使用入口；`loop` 是日常常驻入口，默认会自动发现并接管
-    未登记的 Codex tmux 窗口，再由 LLM planner 选择并执行受控动作；
+    作为真实使用入口；`loop` 是日常常驻入口，默认由 LLM planner
+    选择并执行受控动作，process 后台托管是主线；
+    自动发现并接管未登记的 Codex tmux 窗口只作为可旁观兼容通道；
     `--rule-execute` 可切回旧规则自动策略；
     `changes-only` 只减少输出，不会阻断 LLM planner 在无变化轮次继续判断；
     `daemon start/status/stop/watchdog` 可把日常 `loop` 放到后台运行，
@@ -207,8 +208,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     会记录最近状态、最近催促时间和催促次数，避免短时间重复发送；
     `blocked`、`done`、`needs_user` 和 bell 事件已接入结构化建议。
     `supervise` plain 视图复用 dashboard 当前分组，再输出托管自动化
-    是否可用；没有可控 tmux lane 时，
-    会明确提示自动发送不会生效并给出 launch/adopt 命令形状；
+    是否可用；没有托管 process 或可旁观 tmux lane 时，
+    会明确提示并优先给出 process `launch` 命令形状；
     已退出或已归档的旧托管 tmux lane 不再参与建议和自动发送；
     运行中且终端未回到可输入态的 lane 不会仅因缺少状态协议就被催促。
     真实 `done -> send_continue -> 第二阶段状态协议` 闭环已通过烟测；
