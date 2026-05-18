@@ -295,6 +295,23 @@
     `adopt -> loop -> archive` 已完成真实闭环。
 134. Codex Supervisor tmux 窗口发现：`discover` 可只读列出现有 tmux
     会话，筛出疑似 Codex 窗口，并生成可复制的 `adopt` 和 `attach` 命令。
+135. Codex Supervisor discover 直接接管：`discover --adopt-first` 和
+    `discover --adopt-index <编号>` 可直接接管候选，自动使用建议托管名。
+
+## 最近完成：Codex Supervisor discover 直接接管
+
+完成内容：
+
+- `discover` 默认仍是只读，不接管、不发送、不修改窗口。
+- `--adopt-first` 会直接接管第一个疑似 Codex tmux 候选。
+- `--adopt-index <编号>` 会按列表编号接管候选。
+- 接管时自动使用建议托管名，不需要手填 name 或 tmux session。
+- 接管成功后输出 attach、loop 和 archive 后续命令。
+
+下一步：
+
+- 用真实 tmux Codex 窗口跑 `discover --adopt-first -> loop`，
+  验证是否已经足够日常使用；若还有摩擦，再做一键启动 loop。
 
 ## 最近完成：Codex Supervisor tmux 窗口发现
 

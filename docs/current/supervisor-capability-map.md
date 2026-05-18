@@ -84,6 +84,8 @@ Codex Supervisor 已经不只是一个小命令。
 - `launch` 支持普通进程和 tmux 会话。
 - `discover` 可只读扫描现有 tmux 会话，筛出疑似 Codex 窗口，
   并生成可复制的 `adopt` 和 `attach` 命令。
+- `discover --adopt-first` 和 `discover --adopt-index <编号>` 可直接接管候选，
+  自动使用建议托管名，减少手填 name 和 tmux session。
 - `adopt` 可接管已存在的 tmux 会话。
 - 手动 tmux 内启动 Codex 后，`adopt -> loop -> archive`
   已通过真实闭环验收。

@@ -5389,6 +5389,134 @@ def test_codex_supervisor_runner_discover_lists_adoptable_tmux_codex_sessions(
     ]
 
 
+def test_codex_supervisor_runner_discover_can_adopt_candidate_by_index(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool = False,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        assert text is True
+        assert capture_output is True
+        if command[:3] == ["tmux", "list-sessions", "-F"]:
+            return subprocess.CompletedProcess(command, 0, "iso_dev\t0\t1\n", "")
+        if command[:3] == ["tmux", "capture-pane", "-p"]:
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                "› 继续开发 supervisor\n  gpt-5.5 xhigh · Context 80% left\n",
+                "",
+            )
+        if command[:3] == ["tmux", "has-session", "-t"]:
+            assert command[3] == "iso_dev"
+            assert check is False
+            return subprocess.CompletedProcess(command, 0, "", "")
+        if command[:4] == ["tmux", "set-hook", "-t", "iso_dev"]:
+            assert check is True
+            return subprocess.CompletedProcess(command, 0, "", "")
+        raise AssertionError(f"unexpected command: {command}")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "discover",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(workspace),
+            "--adopt-index",
+            "1",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["adopted_candidate"]["tmux_session"] == "iso_dev"
+    assert payload["managed"]["name"] == "iso-dev"
+    assert payload["managed"]["status"] == "adopted"
+    assert payload["managed"]["backend"] == "tmux"
+    assert payload["managed"]["tmux_session"] == "iso_dev"
+    assert payload["next_commands"] == {
+        "attach": "tmux attach -t iso_dev",
+        "loop": "isotope-supervisor loop --interval 30",
+        "archive": "isotope-supervisor archive --name iso-dev",
+    }
+    records = [
+        json.loads(line)
+        for line in (codex_home / "supervisor" / "managed_sessions.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    assert records == [payload["managed"]]
+
+
+def test_codex_supervisor_runner_discover_can_adopt_first_candidate(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool = False,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        assert text is True
+        assert capture_output is True
+        if command[:3] == ["tmux", "list-sessions", "-F"]:
+            return subprocess.CompletedProcess(command, 0, "iso_dev\t0\t1\n", "")
+        if command[:3] == ["tmux", "capture-pane", "-p"]:
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                "› 继续开发 supervisor\n  gpt-5.5 xhigh · Context 80% left\n",
+                "",
+            )
+        if command[:3] == ["tmux", "has-session", "-t"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        if command[:4] == ["tmux", "set-hook", "-t", "iso_dev"]:
+            assert check is True
+            return subprocess.CompletedProcess(command, 0, "", "")
+        raise AssertionError(f"unexpected command: {command}")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "discover",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(workspace),
+            "--adopt-first",
+        ]
+    )
+
+    assert exit_code == 0
+    text = capsys.readouterr().out
+    assert "已接管：iso-dev / tmux=iso_dev" in text
+    assert "监督：isotope-supervisor loop --interval 30" in text
+
+
 def test_codex_supervisor_runner_loop_uses_daily_defaults(
     tmp_path,
     capsys,

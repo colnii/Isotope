@@ -309,9 +309,33 @@ def _build_parser() -> argparse.ArgumentParser:
         "discover", help="List existing tmux sessions that can be adopted."
     )
     discover_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    discover_parser.add_argument(
         "--cwd",
         default=str(Path.cwd()),
         help="Workspace directory used in generated adopt commands.",
+    )
+    discover_parser.add_argument(
+        "--adopt-index",
+        type=int,
+        help="Adopt the 1-based candidate index from the discovery result.",
+    )
+    discover_parser.add_argument(
+        "--adopt-first",
+        action="store_true",
+        help="Adopt the first discovered Codex-like tmux session.",
+    )
+    discover_parser.add_argument(
+        "--name",
+        help="Managed lane name when adopting. Defaults to the suggested candidate name.",
+    )
+    discover_parser.add_argument(
+        "--prompt",
+        default="接管已有 tmux 会话",
+        help="Short note stored in the managed registry when adopting.",
     )
     discover_parser.add_argument(
         "--include-all",
@@ -769,23 +793,75 @@ def _discover_payload(args: argparse.Namespace) -> dict[str, Any]:
         include_all=args.include_all,
         run=subprocess.run,
     )
-    return {
+    payload = {
         "status": "ok",
         "cwd": cwd,
         "candidates": [candidate.to_dict() for candidate in candidates],
     }
+    selected = _selected_discover_candidate(args, candidates)
+    if selected is None:
+        return payload
+    lane_name = args.name or selected.suggested_name
+    record = adopt_tmux_session(
+        codex_home=Path(args.codex_home),
+        cwd=Path(cwd),
+        name=lane_name,
+        tmux_session=selected.tmux_session,
+        prompt=args.prompt,
+        run=subprocess.run,
+    )
+    payload["adopted_candidate"] = selected.to_dict()
+    payload["managed"] = record.to_dict()
+    payload["next_commands"] = {
+        "attach": selected.attach_command,
+        "loop": "isotope-supervisor loop --interval 30",
+        "archive": shlex.join(["isotope-supervisor", "archive", "--name", record.name]),
+    }
+    return payload
+
+
+def _selected_discover_candidate(
+    args: argparse.Namespace,
+    candidates: tuple[Any, ...],
+) -> Any | None:
+    if args.adopt_index is not None and args.adopt_first:
+        raise ValueError("adopt-index and adopt-first cannot be used together")
+    if args.adopt_first:
+        if not candidates:
+            raise ValueError("no discover candidate to adopt")
+        return candidates[0]
+    if args.adopt_index is None:
+        return None
+    if args.adopt_index <= 0:
+        raise ValueError("adopt-index must be positive")
+    index = args.adopt_index - 1
+    if index >= len(candidates):
+        raise ValueError(
+            f"adopt-index out of range: {args.adopt_index} > {len(candidates)}"
+        )
+    return candidates[index]
 
 
 def _print_discover_plain(payload: dict[str, Any]) -> None:
     print("[Codex Supervisor tmux 发现]")
     print(f"工作目录：{payload['cwd']}")
+    if managed := payload.get("managed"):
+        candidate = payload["adopted_candidate"]
+        print(f"已接管：{managed['name']} / tmux={candidate['tmux_session']}")
+        next_commands = payload["next_commands"]
+        print(f"打开：{next_commands['attach']}")
+        print(f"监督：{next_commands['loop']}")
+        print(f"归档：{next_commands['archive']}")
+        return
     candidates = payload["candidates"]
     if not candidates:
         print("没有发现可接管的 Codex tmux 窗口。")
         return
-    for item in candidates:
+    for index, item in enumerate(candidates, start=1):
         marker = "Codex" if item["looks_like_codex"] else "普通 tmux"
-        print(f"- {item['tmux_session']} / {marker} / 建议名：{item['suggested_name']}")
+        print(
+            f"{index}. {item['tmux_session']} / {marker} / 建议名：{item['suggested_name']}"
+        )
         print(f"  接管：{item['adopt_command']}")
         print(f"  打开：{item['attach_command']}")
 

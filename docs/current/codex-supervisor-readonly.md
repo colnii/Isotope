@@ -238,6 +238,8 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 .venv/bin/isotope-supervisor guide --cwd /path/to/repo --name lane-a
 .venv/bin/isotope-supervisor guide --cwd /path/to/repo --name lane-a --tmux-session lane-a
 .venv/bin/isotope-supervisor discover --cwd /path/to/repo
+.venv/bin/isotope-supervisor discover --cwd /path/to/repo --adopt-first
+.venv/bin/isotope-supervisor discover --cwd /path/to/repo --adopt-index 1
 ```
 
 生成后通常按这个顺序用：
@@ -253,6 +255,9 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 已完成真实闭环验收。
 `discover` 是只读入口：它不会接管、发送或修改窗口，只会列出看起来像
 Codex 的 tmux 会话，并生成可复制的 `adopt` 和 `attach` 命令。
+如果候选明确，可以加 `--adopt-first` 直接接管第一个候选；
+多候选时用 `--adopt-index <编号>` 按列表编号接管。
+这两种方式都会自动使用建议托管名，不需要手填 name 或 tmux session。
 
 `loop` 是日常入口：
 
