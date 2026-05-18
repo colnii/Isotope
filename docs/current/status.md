@@ -65,8 +65,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     输出中文汇报；`watch --changes-only` 可只在变化时再次输出；
     `watch --bell` 可在建议目标变化时输出终端 bell，
     不会因静默秒数增长而按固定 interval 重复响；
-    `launch` 可启动 Codex 并写入本机托管登记；`launch --backend tmux`
-    可在本机 tmux 会话中启动 Codex；`resume` 可通过
+    `launch` 可启动 Codex 并写入本机托管登记，默认 process 后端使用
+    `codex exec -C <cwd> --skip-git-repo-check <prompt>`，避免无 TTY
+    后台进程报 `stdin is not a terminal`；`launch --backend tmux`
+    可在本机 tmux 会话中启动交互式 Codex；`resume` 可通过
     `codex exec resume <session> <prompt>` 或 `--last` 恢复历史会话，
     会带 `--skip-git-repo-check` 以兼容历史会话落在非仓库父目录的情况，
     并登记成后台托管进程；`discover` 可只读列出现有
@@ -97,10 +99,14 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     context 动作；当 LLM 选择 `request_context` 时，Supervisor 会在同轮
     检索后再让 LLM 选择一个后续动作；已完成会话不再作为
     `resume_session` 候选，但其 cwd 仍可供 `launch_session` 和
-    `request_context` 使用；`resume_session` 也受 `--prompt-cooldown`
-    约束，避免短时间重复恢复同一历史会话；
+    `request_context` 使用；LLM 重规划时会看到已检索过的
+    context history，避免重复请求同一个 cwd/query；
+    `resume_session` 也受 `--prompt-cooldown` 约束，避免短时间重复恢复
+    同一历史会话；
     模型动作返回非 JSON、非法目标或模型池空响应时会降级为
-    可见 `monitor`，不让 loop 直接退出；
+    可见 `monitor`，不让 loop 直接退出；OpenAI-compatible provider
+    遇到 `finish_reason=length` 且只有 `reasoning_content`、无正文时，
+    会重试一次并关闭 thinking，避免 reasoning token 吃完整个输出预算；
     `monitor` 只记录跳过；
     `advise` 可单独输出建议和命令草案，并可显式执行 send 类草案；
     `guide` 可生成一组可复制的启动、接管、日常 loop 和观察命令，

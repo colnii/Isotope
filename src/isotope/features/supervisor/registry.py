@@ -144,17 +144,26 @@ def launch_managed_codex(
     log_dir = default_log_dir(codex_home)
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"{record_id}.log"
-    codex_command = (
+    supervisor_prompt = _with_supervisor_protocol(prompt_text)
+    interactive_codex_command = (
         codex_bin_text,
         "--cd",
         str(workspace),
         "--no-alt-screen",
-        _with_supervisor_protocol(prompt_text),
+        supervisor_prompt,
+    )
+    process_codex_command = (
+        codex_bin_text,
+        "exec",
+        "-C",
+        str(workspace),
+        "--skip-git-repo-check",
+        supervisor_prompt,
     )
     tmux_session_text: str | None = None
     pid = 0
     if backend_text == "process":
-        command = codex_command
+        command = process_codex_command
         with log_path.open("ab") as log_file:
             process = popen(
                 list(command),
@@ -177,7 +186,7 @@ def launch_managed_codex(
             tmux_session_text,
             "-c",
             str(workspace),
-            shlex.join(codex_command),
+            shlex.join(interactive_codex_command),
         )
         try:
             run(list(command), check=True, text=True, capture_output=True)

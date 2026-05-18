@@ -109,6 +109,55 @@ def test_openai_compatible_provider_uses_configured_chat_completions_contract():
     assert response.content == "summary result"
 
 
+def test_openai_compatible_provider_retries_length_limited_reasoning_without_thinking():
+    captured_payloads: list[dict] = []
+
+    def fake_transport(url, payload, headers, timeout):
+        captured_payloads.append(payload)
+        if len(captured_payloads) == 1:
+            return {
+                "id": "chatcmpl_reasoning_only",
+                "model": "reasoning-chat",
+                "choices": [
+                    {
+                        "finish_reason": "length",
+                        "message": {
+                            "role": "assistant",
+                            "content": "",
+                            "reasoning_content": "模型把输出额度用在思考过程。",
+                        },
+                    }
+                ],
+                "usage": {"completion_tokens": 512, "total_tokens": 900},
+            }
+        return {
+            "id": "chatcmpl_retry",
+            "model": "reasoning-chat",
+            "choices": [
+                {
+                    "finish_reason": "stop",
+                    "message": {"role": "assistant", "content": '{"kind":"monitor"}'},
+                }
+            ],
+            "usage": {"completion_tokens": 12, "total_tokens": 300},
+        }
+
+    provider = OpenAICompatibleChatProvider(
+        provider="custom",
+        api_key="test_secret",
+        base_url="https://api.custom.example.com/v1",
+        model="reasoning-chat",
+        transport=fake_transport,
+    )
+
+    response = provider.generate([{"role": "user", "content": "hello"}], max_tokens=512)
+
+    assert response.content == '{"kind":"monitor"}'
+    assert len(captured_payloads) == 2
+    assert "thinking" not in captured_payloads[0]
+    assert captured_payloads[1]["thinking"] == {"type": "disabled"}
+
+
 def test_openai_compatible_provider_rejects_empty_configuration():
     with pytest.raises(ValueError, match="api_key"):
         OpenAICompatibleChatProvider(

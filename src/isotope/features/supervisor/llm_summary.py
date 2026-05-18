@@ -234,6 +234,7 @@ def build_llm_action_messages(
     completed_session_ids = [
         session.session_id for session in report.sessions if _is_completed_session(session)
     ]
+    context_request_history = _context_request_history(recent_context_results)
     return [
         {
             "role": "system",
@@ -256,6 +257,7 @@ def build_llm_action_messages(
                     "completed_session_ids": completed_session_ids,
                     "command_suggestions": command_suggestions,
                     "recent_context_results": recent_context_results or [],
+                    "context_request_history": context_request_history,
                     "action_rules": [
                         (
                             "recommendation.target_session_id 只是状态线索，"
@@ -268,6 +270,14 @@ def build_llm_action_messages(
                         (
                             "completed_session_ids 里的会话已经完成或归档，"
                             "不得恢复；需要继续下一批时使用 request_context 或 launch_session。"
+                        ),
+                        (
+                            "不要重复同一个 cwd/query 的 request_context；"
+                            "已查过的组合记录在 context_request_history。"
+                        ),
+                        (
+                            "已有上下文足够时优先选择 launch_session、send_continue、"
+                            "send_status、ask_user 或 monitor。"
                         ),
                     ],
                     "context_capability": {
@@ -795,6 +805,28 @@ def _has_context_check_for_target(
                 continue
         return True
     return False
+
+
+def _context_request_history(
+    recent_context_results: list[dict[str, Any]] | None,
+) -> list[dict[str, str]]:
+    history: list[dict[str, str]] = []
+    for result in recent_context_results or []:
+        if not isinstance(result, dict):
+            continue
+        cwd = result.get("cwd")
+        query = result.get("query")
+        if not isinstance(cwd, str) or not isinstance(query, str):
+            continue
+        item_count = result.get("items")
+        history.append(
+            {
+                "cwd": cwd,
+                "query": query,
+                "items": str(len(item_count) if isinstance(item_count, list) else 0),
+            }
+        )
+    return history
 
 
 def _has_any_llm_target(report: CodexSupervisorReport) -> bool:

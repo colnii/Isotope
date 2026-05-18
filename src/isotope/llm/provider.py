@@ -129,6 +129,18 @@ class DeepSeekChatProvider:
             },
             self.timeout,
         )
+        if _is_length_limited_reasoning_only_response(raw):
+            retry_payload = copy.deepcopy(payload)
+            retry_payload["thinking"] = {"type": "disabled"}
+            raw = self._transport(
+                f"{self.base_url}/chat/completions",
+                retry_payload,
+                {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                self.timeout,
+            )
         return _parse_chat_completion(raw, provider=self.provider, fallback_model=self.model)
 
 
@@ -180,6 +192,18 @@ class OpenAICompatibleChatProvider:
             },
             self.timeout,
         )
+        if _is_length_limited_reasoning_only_response(raw):
+            retry_payload = copy.deepcopy(payload)
+            retry_payload["thinking"] = {"type": "disabled"}
+            raw = self._transport(
+                f"{self.base_url}/chat/completions",
+                retry_payload,
+                {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                self.timeout,
+            )
         return _parse_chat_completion(raw, provider=self.provider, fallback_model=self.model)
 
 
@@ -1100,6 +1124,27 @@ def _parse_chat_completion(
         usage=_safe_usage(usage),
         raw=copy.deepcopy(raw),
     )
+
+
+def _is_length_limited_reasoning_only_response(raw: dict[str, Any]) -> bool:
+    if not isinstance(raw, dict):
+        return False
+    choices = raw.get("choices")
+    if not isinstance(choices, list) or not choices:
+        return False
+    first_choice = choices[0]
+    if not isinstance(first_choice, dict):
+        return False
+    if first_choice.get("finish_reason") != "length":
+        return False
+    message = first_choice.get("message")
+    if not isinstance(message, dict):
+        return False
+    content = message.get("content")
+    if isinstance(content, str) and content.strip():
+        return False
+    reasoning_content = message.get("reasoning_content")
+    return isinstance(reasoning_content, str) and bool(reasoning_content.strip())
 
 
 def _parse_tool_call(raw_call: Any) -> LLMToolCall:

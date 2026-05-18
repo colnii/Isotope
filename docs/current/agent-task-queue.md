@@ -354,6 +354,15 @@
     后续短时间重复恢复同一历史会话会被 `--prompt-cooldown` 跳过。
 157. Codex Supervisor loop 容错：LLM 模型池空响应、非 JSON 或误选非法目标时，
     记录为可见 `monitor`，不再让常驻 loop 直接退出。
+158. Codex Supervisor process 启动修复：`launch` 默认 process 后端改用
+    `codex exec -C <cwd> --skip-git-repo-check <prompt>`，避免后台无 TTY
+    时交互式 Codex 直接报 `stdin is not a terminal`。
+159. Codex Supervisor 上下文后重规划修复：LLM prompt 会显式列出
+    `resumable_session_ids`、`completed_session_ids` 和 context history，
+    避免把已完成会话当成可恢复目标，或重复检索同一个 cwd/query。
+160. LLM provider reasoning-only 容错：OpenAI-compatible provider 遇到
+    `finish_reason=length` 且只有 `reasoning_content`、无正文时，会重试
+    一次并关闭 thinking，避免 reasoning token 吃完整个输出预算。
 
 ## 最近完成：Codex Supervisor 真实 resume 执行验收修复
 

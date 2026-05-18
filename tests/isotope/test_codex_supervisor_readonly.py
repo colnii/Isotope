@@ -3028,6 +3028,43 @@ def test_codex_supervisor_llm_action_messages_explain_done_sessions_are_not_resu
     assert "resumable_session_ids 为空时不得输出 resume_session" in content
 
 
+def test_codex_supervisor_llm_action_messages_explain_recent_context_should_not_repeat():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="done-session",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/sessions/done.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="done",
+                reason="上一批工作已完成",
+                supervisor_status="done",
+            ),
+        ),
+    )
+    suggestions = _advice_payload(report, include_all_managed=True)["command_suggestions"]
+
+    messages = build_llm_action_messages(
+        report,
+        suggestions,
+        recent_context_results=[
+            {
+                "cwd": "/home/lumber/Github/isotope",
+                "query": "Supervisor 当前状态",
+                "items": [{"path": "docs/current/status.md", "text": "已有状态"}],
+            }
+        ],
+    )
+
+    content = messages[1]["content"]
+    assert '"context_request_history"' in content
+    assert '"Supervisor 当前状态"' in content
+    assert "不要重复同一个 cwd/query 的 request_context" in content
+    assert "已有上下文足够时优先选择 launch_session、send_continue、send_status、ask_user 或 monitor" in content
+
+
 def test_codex_supervisor_generate_llm_action_decision_accepts_whitelisted_json():
     report = CodexSupervisorReport(
         generated_at=NOW.isoformat(),
@@ -4649,14 +4686,15 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_launch_session(
     assert payload["executed"]["managed"]["name"] == "new-planner"
     assert payload["executed"]["managed"]["pid"] == 45678
     assert payload["executed"]["text"] == launch_prompt
-    assert captured["command"][:4] == [
+    assert captured["command"][:5] == [
         "codex",
-        "--cd",
+        "exec",
+        "-C",
         str(workspace),
-        "--no-alt-screen",
+        "--skip-git-repo-check",
     ]
-    assert captured["command"][4].startswith(launch_prompt)
-    assert "SUPERVISOR_STATUS" in captured["command"][4]
+    assert captured["command"][5].startswith(launch_prompt)
+    assert "SUPERVISOR_STATUS" in captured["command"][5]
     assert captured["cwd"] == str(workspace)
     assert captured["stdin"] is subprocess.DEVNULL
     assert captured["stderr"] is subprocess.STDOUT
@@ -8266,16 +8304,17 @@ def test_codex_supervisor_runner_launch_records_managed_codex(
     assert payload["managed"]["cwd"] == str(workspace)
     assert payload["managed"]["prompt"] == "继续实现 supervisor"
     assert payload["managed"]["log_path"].endswith(".log")
-    assert captured["command"][:4] == [
+    assert captured["command"][:5] == [
         "codex",
-        "--cd",
+        "exec",
+        "-C",
         str(workspace),
-        "--no-alt-screen",
+        "--skip-git-repo-check",
     ]
-    assert captured["command"][4].startswith("继续实现 supervisor")
-    assert "SUPERVISOR_STATUS" in captured["command"][4]
-    assert "SUPERVISOR_SUMMARY" in captured["command"][4]
-    assert "SUPERVISOR_NEXT" in captured["command"][4]
+    assert captured["command"][5].startswith("继续实现 supervisor")
+    assert "SUPERVISOR_STATUS" in captured["command"][5]
+    assert "SUPERVISOR_SUMMARY" in captured["command"][5]
+    assert "SUPERVISOR_NEXT" in captured["command"][5]
     assert payload["managed"]["prompt"] == "继续实现 supervisor"
     assert captured["cwd"] == str(workspace)
     assert captured["stdin"] is subprocess.DEVNULL

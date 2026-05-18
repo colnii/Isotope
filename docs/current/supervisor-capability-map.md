@@ -80,6 +80,12 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `guide` 会按 cwd、lane name 和 tmux session 打印可复制工作流命令。
 - `loop` 是日常常驻入口，默认由 LLM planner 判断并执行受控动作。
 - `loop --rule-execute` 可切回旧规则自动策略。
+- `launch` 默认 process 后端使用 `codex exec` 非交互启动，tmux 后端继续
+  使用交互式 Codex。
+- LLM planner 会看到可恢复会话、已完成会话和最近 context 查询历史，
+  避免恢复已完成会话或重复检索同一个 cwd/query。
+- OpenAI-compatible provider 遇到 reasoning-only 空正文时会重试关闭
+  thinking，减少模型池空响应。
 - `loop` 默认会自动发现并接管未登记的 Codex tmux 窗口；
   可用 `--no-auto-adopt` 关闭。
 - `daemon start/status/stop` 可把 `loop` 放到后台常驻，记录
@@ -222,9 +228,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 
 ## 下一步顺序
 
-1. 继续观察真实 bell 事件能否稳定触发前端刷新。
-2. 后续再决定是否增加人工输入框；默认仍保持白名单。
-3. 再拆分 `runner.py` 中的匹配、建议和 tmux 控制代码。
+1. 后续再决定是否增加人工输入框；默认仍保持白名单。
+2. 再拆分 `runner.py` 中的匹配、建议和 tmux 控制代码。
 
 ## 登记规则
 
