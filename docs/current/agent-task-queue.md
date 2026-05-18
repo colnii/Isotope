@@ -291,6 +291,23 @@
 132. Codex Supervisor 真实 guide/loop 验收修正：托管 tmux pane
     明确显示 `Working ... esc to interrupt` 时，自动策略不会被同目录旧
     `done` session 误导成终态完成。
+133. Codex Supervisor 手动窗口接管验收：手动 tmux 内启动 Codex 后，
+    `adopt -> loop -> archive` 已完成真实闭环。
+
+## 最近完成：Codex Supervisor 手动窗口接管验收
+
+完成内容：
+
+- 不通过 `launch`，直接手动创建 `manual-adopt-check` tmux Codex 窗口。
+- 用 `adopt` 接管已有窗口，确认已安装 bell hook 并进入托管登记表。
+- `loop` 在窗口运行时只监控，完成后识别 `SUPERVISOR_STATUS: done`
+  和 `SUPERVISOR_NEXT: 等待 Supervisor 归档`。
+- 用 `archive` 归档托管记录，并关闭测试 tmux session。
+
+下一步：
+
+- 把这条路径变成更省心的日常入口，例如围绕用户已有 tmux session
+  自动生成接管名、归档建议和下一批真实工作任务模板。
 
 ## 最近完成：Codex Supervisor 真实 guide/loop 验收修正
 

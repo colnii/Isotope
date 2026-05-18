@@ -247,6 +247,9 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 4. 需要细看时打开 `web` 或 `tmux attach`。
 5. 窗口不用再跟进时，用 `archive --name <lane>` 归档。
 
+手动 tmux 内启动 Codex 后，`adopt -> loop -> archive`
+已完成真实闭环验收。
+
 `loop` 是日常入口：
 
 ```bash

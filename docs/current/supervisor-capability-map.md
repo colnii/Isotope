@@ -83,6 +83,8 @@ Codex Supervisor 已经不只是一个小命令。
 - 本机托管登记表 `managed_sessions.jsonl`。
 - `launch` 支持普通进程和 tmux 会话。
 - `adopt` 可接管已存在的 tmux 会话。
+- 手动 tmux 内启动 Codex 后，`adopt -> loop -> archive`
+  已通过真实闭环验收。
 - `send` 支持向登记过的 tmux 会话发送文本。
 - `archive` 可把旧托管记录归档，不关闭 tmux，但会让它退出活跃视图。
 - 托管登记按 `record_id` 折叠到最后状态，`status=archived`

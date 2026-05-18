@@ -143,6 +143,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `launch/adopt` 会安装 tmux `alert-bell` hook，把 bell 事件写入
     `~/.codex/supervisor/bell_events.jsonl`；`repair-hooks` 可给旧托管
     tmux 记录补装 hook，web 启动时也会自动做一次补装。
+    手动 tmux 内启动 Codex 后，`adopt -> loop -> archive`
+    已通过真实闭环验收；
     `launch` 会给托管 Codex 注入 `SUPERVISOR_STATUS` 状态协议要求，
     `scan` 会从 assistant 回复解析状态、摘要和下一步字段，并校验
     状态合法值；scan 顶层状态、统计计数和 dashboard 展示都会优先采用
@@ -161,6 +163,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     不会被它挡住；
     无变化连续循环已验证：`changes-only` 不再让自动策略停摆；
     真实 guide/loop 验收发现并修正旧 `done` session 误导新工作窗口的问题；
+    手动窗口接管验收已验证：已有 tmux Codex 窗口可被接管、
+    监督、识别完成状态并归档；
     web 已新增 `/events` 事件流，tmux bell 写入事件文件后会推动前端
     立即刷新 dashboard，不必等 5 秒轮询。
     能力登记见 `docs/current/supervisor-capability-map.md`。
