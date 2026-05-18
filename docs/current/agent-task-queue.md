@@ -350,6 +350,10 @@
     默认只把当前工作区内的会话作为 LLM/action 候选，避免误恢复其他项目
     或 `/home/lumber/Github` 这类父目录会话；`--workspace-root` 可指定范围，
     `--all-workspaces` 可显式放开。
+156. Codex Supervisor resume 冷却：`resume_session` 执行后写入 lane state，
+    后续短时间重复恢复同一历史会话会被 `--prompt-cooldown` 跳过。
+157. Codex Supervisor loop 容错：LLM 模型池空响应、非 JSON 或误选非法目标时，
+    记录为可见 `monitor`，不再让常驻 loop 直接退出。
 
 ## 最近完成：Codex Supervisor 真实 resume 执行验收修复
 
@@ -362,6 +366,10 @@
 - 增加模型池失败和非 JSON 返回的可读错误摘要。
 - LLM/action 候选默认按当前工作区收窄；真实只读验证中，总报告仍有 10 个窗口，
   但 LLM 候选只剩当前 Isotope 工作区 3 个会话。
+- 真实 2 轮 loop 验收发现同一 session 会被连续恢复；已给
+  `resume_session` 接入 `--prompt-cooldown`。
+- 真实 2 轮 loop 验收还发现模型池空响应和非法目标会导致退出；
+  现已降级为可见 `monitor`，loop 不再崩掉。
 
 下一步：
 

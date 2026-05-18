@@ -111,6 +111,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   LLM planner，再执行一次后续受控动作；同轮只允许一次上下文检索，避免循环。
 - 已完成会话不再作为 `resume_session` 候选，避免 LLM 把旧验收窗口反复唤醒；
   但其工作目录仍可用于 `launch_session` 和 `request_context`。
+- `resume_session` 会写入 lane state，并受 `--prompt-cooldown` 约束；
+  LLM 临时空响应或误选非法目标时会记录为 `monitor`，不让常驻 loop 退出。
 - `ask_user` 是拍板请求动作，必须同时满足：Codex 明确请求拍板、
   LLM 无法从用户既有指示判断、上下文检索缺失/过时/冲突。
 - `advise --llm-action` 和 web `/llm-action` 会读取最近 context

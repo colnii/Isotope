@@ -7512,6 +7512,237 @@ def test_codex_supervisor_runner_loop_defaults_to_llm_driver(
     )
 
 
+def test_codex_supervisor_runner_supervise_resume_respects_prompt_cooldown(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-resume-cooldown.jsonl",
+        session_id="019e35a2-e442-75e2-84ab-3761a685a736",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:50:00Z",
+                "正在整理 Supervisor 验收结果。",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            return json.dumps(
+                {
+                    "kind": "resume_session",
+                    "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
+                    "prompt_kind": "send_status",
+                    "reason": "先恢复会话汇报状态。",
+                },
+                ensure_ascii=False,
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+    popen_calls: list[list[str]] = []
+
+    class FakeProcess:
+        pid = 34567
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        popen_calls.append(command)
+        return FakeProcess()
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "2",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--prompt-cooldown",
+            "300",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payloads = [
+        json.loads(line)
+        for line in capsys.readouterr().out.splitlines()
+        if line.strip()
+    ]
+    assert [payload["executed"]["kind"] for payload in payloads] == [
+        "resume_session",
+        "resume_session",
+    ]
+    assert payloads[0]["executed"]["managed"]["name"] == "resume-019e35a2"
+    assert payloads[1]["executed"]["skipped"] is True
+    assert payloads[1]["executed"]["reason"] == "resume prompt cooldown active"
+    assert len(popen_calls) == 1
+
+
+def test_codex_supervisor_runner_supervise_invalid_llm_action_falls_back_to_monitor(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-done.jsonl",
+        session_id="done-session",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "SUPERVISOR_STATUS: done\nSUPERVISOR_SUMMARY: 已完成。\nSUPERVISOR_NEXT: 等待归档。",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            return json.dumps(
+                {
+                    "kind": "resume_session",
+                    "session_id": "done-session",
+                    "prompt_kind": "send_status",
+                    "reason": "模型误选了已完成会话。",
+                },
+                ensure_ascii=False,
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"] == {
+        "kind": "monitor",
+        "target_name": None,
+        "reason": "LLM 动作无效，已跳过执行：unknown resumable session for LLM action: done-session",
+        "command_suggestion": None,
+        "error": "unknown resumable session for LLM action: done-session",
+    }
+    assert payload["executed"] == {
+        "kind": "monitor",
+        "skipped": True,
+        "reason": "LLM 动作无效，已跳过执行：unknown resumable session for LLM action: done-session",
+    }
+
+
+def test_codex_supervisor_runner_supervise_llm_provider_failure_falls_back_to_monitor(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-working.jsonl",
+        session_id="working-session",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "正在整理 Supervisor 验收结果。",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+
+    class FailingProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            raise ValueError(
+                "All LLM pool entries failed: pool:ValueError(empty model response)"
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FailingProvider(),
+    )
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"] == {
+        "kind": "monitor",
+        "target_name": None,
+        "reason": (
+            "LLM 动作无效，已跳过执行：All LLM pool entries failed: "
+            "pool:ValueError(empty model response)"
+        ),
+        "command_suggestion": None,
+        "error": "All LLM pool entries failed: pool:ValueError(empty model response)",
+    }
+    assert payload["executed"]["kind"] == "monitor"
+    assert payload["executed"]["skipped"] is True
+
+
 def test_codex_supervisor_runner_daemon_status_marks_existing_loop_running(
     tmp_path,
     capsys,

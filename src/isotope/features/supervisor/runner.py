@@ -2648,6 +2648,18 @@ def _execute_resume_action(
     target_name = action.get("target_name") or suggestion.get("target_name")
     if not isinstance(target_name, str) or not target_name:
         target_name = _resume_managed_name_for_session(target)
+    if cooldown_state := prompt_cooldown_state(
+        codex_home=Path(args.codex_home),
+        name=target_name,
+        cooldown_seconds=args.prompt_cooldown,
+    ):
+        return {
+            "kind": "resume_session",
+            "command": suggestion["command"],
+            "skipped": True,
+            "reason": "resume prompt cooldown active",
+            "lane_state": cooldown_state.to_dict(),
+        }
     record = resume_managed_codex(
         codex_home=Path(args.codex_home),
         cwd=Path(target.cwd),
@@ -2655,6 +2667,12 @@ def _execute_resume_action(
         prompt=prompt_text,
         session_id=session_id,
         popen=subprocess.Popen,
+    )
+    record_lane_prompt(
+        codex_home=Path(args.codex_home),
+        name=record.name,
+        tmux_session=None,
+        status=target.supervisor_status or target.status,
     )
     return {
         "kind": "resume_session",
@@ -3048,12 +3066,23 @@ def _decide_action_with_llm(report: Any, payload: dict[str, Any]) -> dict[str, A
             payload.get("recent_context_results"),
         )
     provider = resolve_summary_provider_from_env(agent_name="supervisor")
-    return generate_llm_action_decision(
-        report,
-        payload["command_suggestions"],
-        provider,
-        payload.get("recent_context_results"),
-    )
+    try:
+        return generate_llm_action_decision(
+            report,
+            payload["command_suggestions"],
+            provider,
+            payload.get("recent_context_results"),
+        )
+    except ValueError as exc:
+        error = str(exc)
+        reason = f"LLM 动作无效，已跳过执行：{error}"
+        return {
+            "kind": "monitor",
+            "target_name": None,
+            "reason": reason,
+            "command_suggestion": None,
+            "error": error,
+        }
 
 
 def _recent_context_results(args: argparse.Namespace, report: Any) -> list[dict[str, Any]]:

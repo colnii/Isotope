@@ -97,7 +97,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     context 动作；当 LLM 选择 `request_context` 时，Supervisor 会在同轮
     检索后再让 LLM 选择一个后续动作；已完成会话不再作为
     `resume_session` 候选，但其 cwd 仍可供 `launch_session` 和
-    `request_context` 使用；模型动作返回非 JSON 时会输出原始返回摘要；
+    `request_context` 使用；`resume_session` 也受 `--prompt-cooldown`
+    约束，避免短时间重复恢复同一历史会话；
+    模型动作返回非 JSON、非法目标或模型池空响应时会降级为
+    可见 `monitor`，不让 loop 直接退出；
     `monitor` 只记录跳过；
     `advise` 可单独输出建议和命令草案，并可显式执行 send 类草案；
     `guide` 可生成一组可复制的启动、接管、日常 loop 和观察命令，
