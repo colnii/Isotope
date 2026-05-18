@@ -2999,6 +2999,35 @@ def test_codex_supervisor_llm_action_offers_workspace_actions_after_done_session
     assert '"kind": "launch_session"' in messages[1]["content"]
 
 
+def test_codex_supervisor_llm_action_messages_explain_done_sessions_are_not_resumable():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="done-session",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/sessions/done.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="done",
+                reason="上一批工作已完成",
+                supervisor_status="done",
+                supervisor_summary="测试已通过。",
+                supervisor_next="可以继续下一步。",
+            ),
+        ),
+    )
+    suggestions = _advice_payload(report, include_all_managed=True)["command_suggestions"]
+
+    messages = build_llm_action_messages(report, suggestions)
+
+    content = messages[1]["content"]
+    assert '"resumable_session_ids": []' in content
+    assert '"completed_session_ids": ["done-session"]' in content
+    assert "recommendation.target_session_id 只是状态线索" in content
+    assert "resumable_session_ids 为空时不得输出 resume_session" in content
+
+
 def test_codex_supervisor_generate_llm_action_decision_accepts_whitelisted_json():
     report = CodexSupervisorReport(
         generated_at=NOW.isoformat(),

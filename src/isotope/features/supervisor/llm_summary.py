@@ -228,6 +228,12 @@ def build_llm_action_messages(
         for session in report.sessions
         if _is_llm_candidate_target(session)
     ]
+    resumable_session_ids = [
+        session.session_id for session in report.sessions if _can_resume_session(session)
+    ]
+    completed_session_ids = [
+        session.session_id for session in report.sessions if _is_completed_session(session)
+    ]
     return [
         {
             "role": "system",
@@ -246,8 +252,24 @@ def build_llm_action_messages(
                     "allowed_kinds": list(LLM_ACTION_ALLOWED_KINDS),
                     "available_workspaces": _available_workspaces(report),
                     "candidate_targets": candidate_targets,
+                    "resumable_session_ids": resumable_session_ids,
+                    "completed_session_ids": completed_session_ids,
                     "command_suggestions": command_suggestions,
                     "recent_context_results": recent_context_results or [],
+                    "action_rules": [
+                        (
+                            "recommendation.target_session_id 只是状态线索，"
+                            "不代表可执行目标。"
+                        ),
+                        (
+                            "resume_session.session_id 必须来自 resumable_session_ids；"
+                            "resumable_session_ids 为空时不得输出 resume_session。"
+                        ),
+                        (
+                            "completed_session_ids 里的会话已经完成或归档，"
+                            "不得恢复；需要继续下一批时使用 request_context 或 launch_session。"
+                        ),
+                    ],
                     "context_capability": {
                         "kind": "request_context",
                         "description": (
