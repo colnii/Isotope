@@ -299,6 +299,23 @@
     `discover --adopt-index <编号>` 可直接接管候选，自动使用建议托管名。
 136. Codex Supervisor loop 自动接管：日常 `loop` 默认先发现并接管
     未登记 Codex tmux 窗口，再进入自动监督。
+137. Codex Supervisor 后台守护入口：`daemon start/status/stop` 可把日常
+    `loop` 放到后台运行，记录 pid（进程号）、状态文件和日志路径。
+
+## 最近完成：Codex Supervisor 后台守护入口
+
+完成内容：
+
+- 新增 `daemon start/status/stop`。
+- `daemon start` 会在后台启动日常 `loop`。
+- 状态写到 `~/.codex/supervisor/daemon.json`。
+- 日志写到 `~/.codex/supervisor/logs/daemon.log`。
+- `guide` 现在优先给出后台启动命令，同时保留前台 `loop` 作为调试入口。
+
+下一步：
+
+- 增加 watchdog（看门狗）能力：后台进程异常退出后能被检测并重新拉起，
+  再考虑系统级自启动。
 
 ## 最近完成：Codex Supervisor loop 自动接管
 
@@ -309,11 +326,6 @@
 - 接管时读取 tmux pane 当前目录作为 cwd，减少错绑工作目录。
 - `supervise --auto-adopt` 可显式开启同样能力。
 - `loop --no-auto-adopt` 可只监督已登记窗口。
-
-下一步：
-
-- 做真实“常驻 loop 托管一个测试 Codex 窗口”的端到端验收，
-  重点看它是否能从发现、接管、监控到自动请求状态都不需要人工发命令。
 
 ## 最近完成：Codex Supervisor discover 直接接管
 

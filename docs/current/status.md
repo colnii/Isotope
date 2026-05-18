@@ -80,6 +80,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     未登记的 Codex tmux 窗口，再启用自动执行、
     只在变化时输出和需要人看时响铃；`changes-only` 只减少输出，
     不会阻断自动策略继续检查冷却和发送；
+    `daemon start/status/stop` 可把日常 `loop` 放到后台运行，
+    状态写入 `~/.codex/supervisor/daemon.json`，日志写入
+    `~/.codex/supervisor/logs/daemon.log`；
     `advise/supervise --name <lane>` 可把建议、显式执行和自动执行
     收窄到指定托管 lane，名字不存在时不会退回到其他窗口；
     `dashboard` 可按需要看、已完成和工作中分组输出；
@@ -213,6 +216,9 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner advise
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise --iterations 1 --llm-summary --json
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner loop --interval 30
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner loop --interval 30 --no-auto-adopt
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon start --interval 30
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon status
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon stop
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner adopt --name lane-a --cwd /path/to/repo --tmux-session isotope-lane-a
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --name lane-a --text "继续"
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner archive --name lane-a

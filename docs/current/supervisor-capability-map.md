@@ -77,6 +77,8 @@ Codex Supervisor 已经不只是一个小命令。
 - `loop` 是日常常驻入口，默认等价于自动执行、只在变化时输出和响铃提醒。
 - `loop` 默认会自动发现并接管未登记的 Codex tmux 窗口；
   可用 `--no-auto-adopt` 关闭。
+- `daemon start/status/stop` 可把 `loop` 放到后台常驻，记录
+  pid（进程号）、命令、状态文件和日志路径。
 - `supervise --auto-adopt` 可显式开启同样的自动发现接管能力。
 - `loop` 的 `changes-only` 只限制输出；报告不变时自动策略仍会检查冷却并推进。
 - `watch --changes-only` 只在状态变化时输出。
@@ -84,6 +86,8 @@ Codex Supervisor 已经不只是一个小命令。
 - `supervise --bell` 可配合 `--auto-execute` 使用，只在本轮仍需要人看时响；
   已自动处理的 `send_status/send_continue` 不触发提醒。
 - 本机托管登记表 `managed_sessions.jsonl`。
+- 本机后台守护状态文件 `daemon.json`，日志默认写到
+  `supervisor/logs/daemon.log`。
 - `launch` 支持普通进程和 tmux 会话。
 - `discover` 可只读扫描现有 tmux 会话，筛出疑似 Codex 窗口，
   并生成可复制的 `adopt` 和 `attach` 命令。

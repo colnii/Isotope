@@ -11,6 +11,11 @@ import time
 from pathlib import Path
 from typing import Any
 
+from .daemon import (
+    start_supervisor_daemon,
+    stop_supervisor_daemon,
+    supervisor_daemon_status,
+)
 from .flow import (
     CodexSupervisorFlow,
     _terminal_has_active_work_marker,
@@ -251,6 +256,89 @@ def _build_parser() -> argparse.ArgumentParser:
         llm_action=False,
         llm_execute=False,
     )
+    daemon_parser = subparsers.add_parser(
+        "daemon",
+        help="Start, inspect, or stop the background Supervisor loop.",
+    )
+    daemon_subparsers = daemon_parser.add_subparsers(
+        dest="daemon_command",
+        required=True,
+    )
+    daemon_start_parser = daemon_subparsers.add_parser(
+        "start",
+        help="Start the Supervisor loop in the background.",
+    )
+    daemon_start_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    daemon_start_parser.add_argument(
+        "--limit",
+        type=int,
+        default=10,
+        help="Maximum sessions.",
+    )
+    daemon_start_parser.add_argument(
+        "--stale-after",
+        type=int,
+        default=600,
+        help="Seconds without events before marking a session stale.",
+    )
+    daemon_start_parser.add_argument(
+        "--active-within",
+        type=int,
+        default=180,
+        help="Seconds with recent events before marking a session working.",
+    )
+    daemon_start_parser.add_argument(
+        "--interval",
+        type=int,
+        default=30,
+        help="Seconds between loop reports.",
+    )
+    daemon_start_parser.add_argument(
+        "--prompt-cooldown",
+        type=int,
+        default=DEFAULT_PROMPT_COOLDOWN_SECONDS,
+        help="Seconds before repeating send_status/send_continue for the same lane.",
+    )
+    daemon_start_parser.add_argument(
+        "--name",
+        help="Target one managed lane. Omit to rotate across active lanes.",
+    )
+    daemon_start_parser.add_argument(
+        "--llm-summary",
+        action="store_true",
+        help="Use configured LLM to add a compact Chinese summary.",
+    )
+    daemon_start_parser.add_argument(
+        "--no-auto-adopt",
+        action="store_false",
+        dest="auto_adopt",
+        help="Disable automatic adoption of discovered Codex-like tmux sessions.",
+    )
+    daemon_start_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print JSON output.",
+    )
+    daemon_start_parser.set_defaults(auto_adopt=True)
+    for daemon_command in ("status", "stop"):
+        daemon_command_parser = daemon_subparsers.add_parser(
+            daemon_command,
+            help=f"{daemon_command.title()} the background Supervisor loop.",
+        )
+        daemon_command_parser.add_argument(
+            "--codex-home",
+            default=str(Path.home() / ".codex"),
+            help="Codex home directory. Defaults to ~/.codex.",
+        )
+        daemon_command_parser.add_argument(
+            "--json",
+            action="store_true",
+            help="Print JSON output.",
+        )
     web_parser = subparsers.add_parser("web", help="Serve a local Supervisor dashboard page.")
     web_parser.add_argument(
         "--codex-home",
@@ -442,6 +530,13 @@ def main(argv: list[str] | None = None) -> int:
             _validate_execution_modes(args)
             _run_supervise(args)
             return 0
+        if args.command == "daemon":
+            payload = _daemon_payload(args)
+            if args.json:
+                _print_json(payload)
+            else:
+                _print_daemon_plain(payload)
+            return 0
         if args.command == "watch":
             if args.interval <= 0:
                 raise ValueError("interval must be positive")
@@ -589,6 +684,61 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     parser.error(f"unknown command: {args.command}")
     return 2
+
+
+def _daemon_payload(args: argparse.Namespace) -> dict[str, Any]:
+    if args.daemon_command == "start":
+        if args.interval <= 0:
+            raise ValueError("interval must be positive")
+        if args.limit <= 0:
+            raise ValueError("limit must be positive")
+        daemon = start_supervisor_daemon(
+            codex_home=Path(args.codex_home),
+            interval=args.interval,
+            limit=args.limit,
+            stale_after=args.stale_after,
+            active_within=args.active_within,
+            prompt_cooldown=args.prompt_cooldown,
+            name=args.name,
+            llm_summary=args.llm_summary,
+            auto_adopt=args.auto_adopt,
+        )
+    elif args.daemon_command == "status":
+        daemon = supervisor_daemon_status(codex_home=Path(args.codex_home))
+    elif args.daemon_command == "stop":
+        daemon = stop_supervisor_daemon(codex_home=Path(args.codex_home))
+    else:
+        raise ValueError(f"unknown daemon command: {args.daemon_command}")
+    return {
+        "status": "ok",
+        "daemon": daemon,
+    }
+
+
+def _print_daemon_plain(payload: dict[str, Any]) -> None:
+    daemon = payload["daemon"]
+    status = daemon["status"]
+    print("[Codex Supervisor daemon]")
+    if status == "running":
+        action = daemon.get("action")
+        label = "已在后台运行" if action == "already_running" else "已启动后台 loop"
+        print(label)
+        print(f"pid：{daemon['pid']}")
+        print(f"日志：{daemon['log_path']}")
+        print("命令：" + shlex.join(daemon["command"]))
+        return
+    if status == "stopped":
+        print("已停止后台 loop")
+        print(f"pid：{daemon['pid']}")
+        print(f"状态文件：{daemon['state_path']}")
+        return
+    if status == "stale":
+        print("后台 loop 状态已过期，进程可能已经退出。")
+        print(f"pid：{daemon['pid']}")
+        print(f"日志：{daemon['log_path']}")
+        return
+    print("后台 loop 未运行。")
+    print(f"状态文件：{daemon['state_path']}")
 
 
 def _print_report(
@@ -805,6 +955,15 @@ def _guide_payload(args: argparse.Namespace) -> dict[str, Any]:
                 str(args.interval),
             ]
         ),
+        "daemon": shlex.join(
+            [
+                "isotope-supervisor",
+                "daemon",
+                "start",
+                "--interval",
+                str(args.interval),
+            ]
+        ),
         "web": shlex.join(["isotope-supervisor", "web"]),
         "attach": shlex.join(["tmux", "attach", "-t", tmux_session]),
         "archive": shlex.join(["isotope-supervisor", "archive", "--name", args.name]),
@@ -836,7 +995,9 @@ def _print_guide_plain(payload: dict[str, Any]) -> None:
     print("2. 如果窗口已经存在，改用接管命令：")
     print(commands["adopt"])
     print()
-    print("3. 启动自动监督循环：")
+    print("3. 启动后台自动监督：")
+    print(commands["daemon"])
+    print("前台调试可用：")
     print(commands["supervise"])
     print()
     print("4. 需要观察细节时：")
