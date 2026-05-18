@@ -15,6 +15,16 @@
 `docs/` 已完成第一轮分层，根目录没有 Markdown 残留。
 当前入口集中在 `docs/current/`，历史材料不再和当前规则并列。
 
+行为优先级：
+
+1. `AGENTS.md` 和 `README.md` 定义项目目标和 AI 协作规则。
+2. `docs/current/status.md` 记录当前事实。
+3. `architecture/`、`features/`、`reviews/` 是参考材料。
+
+当产品需求和边界文档冲突时，先按产品目标和 `AGENTS.md` 执行。
+边界文档只能提供 guardrail（护栏），不能把 AI 功能降级成规则脚本、
+preflight（预检查）、diagnostic（诊断）或 not_enabled（未启用）路径。
+
 仍要注意：
 
 - `archive/` 和部分评审文档会保留旧说法，只用于追溯。
@@ -28,9 +38,9 @@
 当前文档层级：
 
 - `current/`：当前事实和近期计划。
-- `architecture/`：仍有效的架构设计。
-- `features/`：功能设计和验收材料。
-- `reviews/`：评审、复盘、分支审计。
+- `architecture/`：架构边界参考，不替代产品需求。
+- `features/`：功能设计和验收材料，不自动代表当前方向。
+- `reviews/`：评审、复盘、分支审计，只作为决策背景。
 - `archive/`：过期但仍需追溯的材料。
 
 术语索引保留英文定位词，并补中文解释、所在层级和主要文件。
@@ -42,6 +52,7 @@
 - 产品能力：[features/](../features/)
 - 评审记录：[reviews/](../reviews/)
 - 历史归档：[archive/](../archive/)
+- 边界文档阅读规则：先看 `AGENTS.md` 的 AI-first 产品约束。
 - 应用目录迁移：[application-structure-plan](./application-structure-plan.md)
 - 目录结构最新说明：[目录结构最新说明](./目录结构最新说明.md)
 - 目录结构逻辑补充：[重新梳理目录结构逻辑](./重新梳理目录结构逻辑.md)

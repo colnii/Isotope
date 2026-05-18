@@ -10,6 +10,8 @@ Codex Supervisor 已经不只是一个小命令。
 
 本文件用于登记当前能力和后续拆分方向。
 新增 Supervisor 能力时，应先看这里，避免重复造一套相似实现。
+同时必须先遵守 `AGENTS.md` 的 AI-first 产品约束：
+LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品智能。
 
 ## 当前分层
 
@@ -20,10 +22,10 @@ Codex Supervisor 已经不只是一个小命令。
 | Codex 集成层 | 读取 Codex session（会话记录）、索引标题和 agent 元数据 | `features/supervisor/flow.py` | 当前读取本机 `.jsonl`、`session_index.jsonl` 和 SQLite |
 | 扫描优化层 | 最近候选、首尾读取和标题兜底 | `features/supervisor/flow.py` | 避免每次页面刷新全量读历史 |
 | tmux 集成层 | tmux 启动、buffer/paste 发送和 bell hook | `bell_events.py`、`flow.py`、`registry.py` | 只控制登记过的 tmux 会话 |
-| 状态判断层 | 工作中、等待用户、疑似停住、疑似报错 | `features/supervisor/flow.py` | 规则判断，不等于模型判断 |
+| 状态判断层 | 工作中、等待用户、疑似停住、疑似报错 | `features/supervisor/flow.py` | 规则提供候选和证据，不替代 LLM 判断 |
 | 状态依据层 | `status_evidence` 说明每个状态标签的来源 | `features/supervisor/flow.py` | 避免只给结论、不说明证据 |
 | 建议执行层 | `recommendation`、`command_suggestions`、`--execute` | `flow.py`、`runner.py` | 只允许白名单动作 |
-| 模型管理层 | `LLM summary`、`LLM action` 和 TOML 号池 | `llm_summary.py` | 摘要和白名单动作建议 |
+| 模型管理层 | `LLM summary`、`LLM action` 和 TOML 号池 | `llm_summary.py` | 承担判断、调度和动作选择的 AI 路径 |
 | 状态协议层 | `SUPERVISOR_STATUS` 等状态协议 | `flow.py`、`registry.py` | 给被托管 Codex 主动汇报状态 |
 | 状态账本层 | lane state（窗口状态）和限频 | `lane_state.py` | 避免重复催促和刷屏 |
 | 本地前端层 | `web`、`/dashboard.json`、`/events`、`/managed/send`、`/llm-action` | `features/supervisor/web.py` | 本机视图、bell 事件、白名单发送和手动模型建议入口 |
@@ -157,6 +159,8 @@ Codex Supervisor 已经不只是一个小命令。
 
 ## 当前不要重复实现
 
+- 不要把规则、白名单或状态协议写成替代 LLM 的最终智能。
+- 用户要求 AI 管理、AI 判断或 AI 执行时，必须打磨真实 AI 路径。
 - 不要在其他目录再建一套 Supervisor CLI。
 - 不要绕过托管登记表直接写新的 tmux 发送器。
 - 不要给 Supervisor 再造一套独立 LLM 号池。

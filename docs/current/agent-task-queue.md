@@ -305,6 +305,21 @@
     `loop` 是否还活着，异常退出时按原命令重新拉起。
 139. Codex Supervisor 周期 watcher：`daemon watcher start/status/stop`
     可启动 watcher（周期看门进程），定期触发 `daemon watchdog`。
+140. AI-first 文档护栏：`AGENTS.md`、`docs-map`、Supervisor 当前文档和
+    当前状态已明确 AI agent 功能默认 AI-first，规则和白名单只做护栏。
+
+## 最近完成：AI-first 文档护栏
+
+完成内容：
+
+- `AGENTS.md` 已写明 AI agent 功能默认 AI 是主流程，不是可选装饰。
+- `docs/current/docs-map.md` 已把 boundary（边界）文档降级为参考材料。
+- Supervisor 当前文档已明确 LLM 承担判断、调度和动作选择路径，
+  规则、白名单和状态协议只提供工程护栏。
+
+下一步：
+
+- 后续新增 AI 功能时，先验收真实 AI 路径，再补规则护栏。
 
 ## 最近完成：Codex Supervisor 周期 watcher
 

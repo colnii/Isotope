@@ -26,39 +26,40 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
 2. 后续功能从明确产品目标出发新开分支。
 3. 目录结构设计另行讨论；当前继续把 `core` 薄主流程接到真实功能层。
 4. 继续避免把产品功能降级成诊断或半成品。
-5. `assistant` 不再作为新目录叙事，旧路径入口已删除。
-6. 活跃 demo 输出使用 `app_friction` 描述应用摩擦，不再传播旧的底座摩擦字段。
-7. agent loop 活跃实现已迁入 `src/isotope/agents/loop/`。
-8. 兼容代理迁移需同步维护 `docs/current/import-map.md`，并写明计划删除节点。
-9. `core` 当前薄包 `InProcessServer`，已有 conversation（对话）、
+5. AI agent 功能默认 AI-first，规则、白名单和边界文档只做护栏。
+6. `assistant` 不再作为新目录叙事，旧路径入口已删除。
+7. 活跃 demo 输出使用 `app_friction` 描述应用摩擦，不再传播旧的底座摩擦字段。
+8. agent loop 活跃实现已迁入 `src/isotope/agents/loop/`。
+9. 兼容代理迁移需同步维护 `docs/current/import-map.md`，并写明计划删除节点。
+10. `core` 当前薄包 `InProcessServer`，已有 conversation（对话）、
    task（任务）和 turn（回合）状态，不承载 agent loop 内部实现。
-10. `features/tasks` 已有薄入口、低敏摘要索引、`isotope-task`
+11. `features/tasks` 已有薄入口、低敏摘要索引、`isotope-task`
     CLI 和 tasks API，当前提供任务创建、读取和列表。
-11. `features/files` 已有薄入口，当前可把文本保存成
+12. `features/files` 已有薄入口，当前可把文本保存成
     artifact-backed file summary，已接入 `isotope-file` 和 `/files`
     HTTP facade。
-12. `features/projects` 已有薄入口，当前可创建项目摘要、关联
+13. `features/projects` 已有薄入口，当前可创建项目摘要、关联
     task/file id、读取关联 task/file 低敏组合摘要，也可一条命令创建
     或复用 project workspace 组合视图，并通过 `isotope-project`、
     `/projects`、`POST /projects/workspace` 和
     `POST /projects/{project_id}/workspace` 调用。
-13. `features/search` 已有薄入口，当前可统一搜索 project/task/file
+14. `features/search` 已有薄入口，当前可统一搜索 project/task/file
     低敏摘要，支持类型过滤和结果数量限制，并通过 `isotope-search`
     和 `POST /search` 调用。
-14. `features/workbench` 已有薄入口，当前可聚合 projects/tasks/files
+15. `features/workbench` 已有薄入口，当前可聚合 projects/tasks/files
     低敏摘要、可选 search 结果、空状态和最近更新时间，并通过
     `isotope-workbench`、`GET /workbench`、`POST /workbench` 和
     `isotope-demo --scenario workbench --trace` 调用。
-15. `features/ask` 已有第一片 Workbench Ask（工作台问答），
+16. `features/ask` 已有第一片 Workbench Ask（工作台问答），
     可把工作台低敏摘要交给注入的 LLM provider 回答一个自然语言问题；
     通用问题没有命中搜索时，会退回使用当前 project/task/file 摘要作为
     上下文候选；已接入 `POST /workbench/ask`，也可通过 `isotope-ask` 和
     `isotope-demo --scenario workbench-ask --trace` 调用。
-16. `apps/api` 已有薄后端入口，当前提供 ASGI 兼容 `ApiApp`、
+17. `apps/api` 已有薄后端入口，当前提供 ASGI 兼容 `ApiApp`、
     `create_api_app(...)` 和 `isotope-api routes`，真实路由仍复用
     `interfaces/http.py`；ASGI 请求已支持 query string（查询参数）转 body、
     JSON 响应头和稳定 invalid JSON 错误。
-17. `features/supervisor` 已有 Codex Supervisor 监控与托管启动，
+18. `features/supervisor` 已有 Codex Supervisor 监控与托管启动，
     可从本机 `~/.codex/sessions` 读取多个 Codex 会话，判断工作中、
     等待用户、疑似停住、疑似报错和空闲，并通过 `isotope-supervisor`
     输出中文汇报；`watch --changes-only` 可只在变化时再次输出；
@@ -195,6 +196,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
 - 速度和质量都重要。
 - 测试用于保护交付，不用于拖慢交付。
 - 真实产品功能不能被自动降级成诊断或预检查。
+- AI 相关产品功能必须交付真实 AI 主流程，规则只能作为工程护栏。
 - 需要收窄范围时，先向用户说明并对齐。
 
 ## 当前验证
