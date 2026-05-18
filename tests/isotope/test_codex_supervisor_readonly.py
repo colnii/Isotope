@@ -4888,6 +4888,99 @@ def test_codex_supervisor_runner_supervise_request_context_replans_same_iteratio
     assert provider.calls == 2
 
 
+def test_codex_supervisor_runner_supervise_respects_max_context_requests(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    docs_dir = workspace / "docs" / "current"
+    docs_dir.mkdir(parents=True)
+    (docs_dir / "status.md").write_text(
+        "Supervisor 上下文预算：同一轮只能查一次。\n",
+        encoding="utf-8",
+    )
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-source.jsonl",
+        session_id="source-session",
+        cwd=str(workspace),
+        events=[_assistant_message("2026-05-16T11:59:20Z", "上一轮已完成。")],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+
+    class FakeProvider:
+        calls = 0
+
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            self.calls += 1
+            if self.calls == 1:
+                return json.dumps(
+                    {
+                        "kind": "request_context",
+                        "cwd": str(workspace),
+                        "query": "Supervisor 上下文预算",
+                        "reason": "先查当前文档。",
+                    },
+                    ensure_ascii=False,
+                )
+            return json.dumps(
+                {
+                    "kind": "request_context",
+                    "cwd": str(workspace),
+                    "query": "Supervisor 上下文预算 第二次",
+                    "reason": "还想继续查。",
+                },
+                ensure_ascii=False,
+            )
+
+    provider = FakeProvider()
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: provider,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--max-context-requests",
+            "1",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"]["kind"] == "request_context"
+    assert payload["executed"]["kind"] == "request_context"
+    assert payload["llm_followup_action"]["kind"] == "request_context"
+    assert payload["followup_executed"] == {
+        "kind": "request_context",
+        "skipped": True,
+        "reason": "context request budget exhausted",
+        "context_request_count": 1,
+        "max_context_requests": 1,
+    }
+    context_log = codex_home / "supervisor" / "context_results.jsonl"
+    records = [
+        json.loads(line)
+        for line in context_log.read_text(encoding="utf-8").splitlines()
+    ]
+    assert [record["query"] for record in records] == ["Supervisor 上下文预算"]
+    assert provider.calls == 2
+
+
 def test_codex_supervisor_runner_supervise_context_followup_can_ask_user_after_gate(
     tmp_path,
     capsys,

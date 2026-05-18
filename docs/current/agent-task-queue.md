@@ -366,13 +366,16 @@
 161. Codex Supervisor work order A 层：`launch_session` 执行时会把
     LLM 生成的目标包成 `WORK ORDER` prompt，写明 goal、cwd、
     scope、budget hint、完成条件和停等用户条件；这只是提示边界，
-    不代表已有真正 `max_minutes`、`max_continue_count` 或
-    `max_context_requests` 强制控制。
+    不代表 A 层本身提供真正 `max_minutes`、`max_continue_count`
+    或 `max_context_requests` 强制控制。
 162. Codex Supervisor 继续次数预算 B 层：新增 `--max-continue-count`，
     lane state 记录 `continue_count` 和 `last_prompt_kind`；当同一 lane
     同一状态下的 `send_continue` 达到阈值后，Supervisor 会拦截后续
-    继续推进请求，避免无限续跑。当前只覆盖继续次数，不覆盖
-    `max_minutes` 或 `max_context_requests`。
+    继续推进请求，避免无限续跑。当前不覆盖 `max_minutes`。
+163. Codex Supervisor 上下文请求预算 B 层：新增
+    `--max-context-requests`，默认每个 supervise/loop 轮次只允许执行
+    1 次 `request_context`；LLM 在同轮重规划后继续请求上下文时，
+    Supervisor 会拦截并输出预算耗尽原因，避免陷入反复查资料。
 
 ## 最近完成：Codex Supervisor 真实 resume 执行验收修复
 

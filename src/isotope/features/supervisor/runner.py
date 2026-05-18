@@ -62,6 +62,7 @@ from .registry import (
 from .tmux_discovery import discover_tmux_adopt_candidates
 
 EXECUTABLE_ADVICE_KINDS = {"send_status", "send_continue"}
+DEFAULT_MAX_CONTEXT_REQUESTS = 1
 TERMINAL_DONE_NEXT_MARKERS = (
     "可结束",
     "可以结束",
@@ -199,6 +200,12 @@ def _build_parser() -> argparse.ArgumentParser:
             default=DEFAULT_MAX_CONTINUE_COUNT,
             help="Maximum consecutive send_continue prompts for the same lane status. 0 disables.",
         )
+        subparsers.choices[command].add_argument(
+            "--max-context-requests",
+            type=int,
+            default=DEFAULT_MAX_CONTEXT_REQUESTS,
+            help="Maximum request_context executions per supervise iteration. 0 disables.",
+        )
     for command in ("watch", "supervise"):
         command_parser = subparsers.choices[command]
         command_parser.add_argument(
@@ -291,6 +298,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Maximum consecutive send_continue prompts for the same lane status. 0 disables.",
     )
     loop_parser.add_argument(
+        "--max-context-requests",
+        type=int,
+        default=DEFAULT_MAX_CONTEXT_REQUESTS,
+        help="Maximum request_context executions per loop iteration. 0 disables.",
+    )
+    loop_parser.add_argument(
         "--interval",
         type=int,
         default=30,
@@ -373,6 +386,12 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=DEFAULT_MAX_CONTINUE_COUNT,
         help="Maximum consecutive send_continue prompts for the same lane status. 0 disables.",
+    )
+    daemon_start_parser.add_argument(
+        "--max-context-requests",
+        type=int,
+        default=DEFAULT_MAX_CONTEXT_REQUESTS,
+        help="Maximum request_context executions per loop iteration. 0 disables.",
     )
     daemon_start_parser.add_argument(
         "--name",
@@ -959,6 +978,8 @@ def _daemon_payload(args: argparse.Namespace) -> dict[str, Any]:
             raise ValueError("limit must be positive")
         if args.max_continue_count < 0:
             raise ValueError("max_continue_count must be zero or positive")
+        if args.max_context_requests < 0:
+            raise ValueError("max_context_requests must be zero or positive")
         daemon = start_supervisor_daemon(
             codex_home=Path(args.codex_home),
             interval=args.interval,
@@ -967,6 +988,7 @@ def _daemon_payload(args: argparse.Namespace) -> dict[str, Any]:
             active_within=args.active_within,
             prompt_cooldown=args.prompt_cooldown,
             max_continue_count=args.max_continue_count,
+            max_context_requests=args.max_context_requests,
             name=args.name,
             llm_summary=args.llm_summary,
             auto_adopt=args.auto_adopt,
@@ -1513,6 +1535,8 @@ def _print_discover_plain(payload: dict[str, Any]) -> None:
 def _validate_execution_modes(args: argparse.Namespace) -> None:
     if getattr(args, "max_continue_count", 0) < 0:
         raise ValueError("max_continue_count must be zero or positive")
+    if getattr(args, "max_context_requests", 0) < 0:
+        raise ValueError("max_context_requests must be zero or positive")
     modes = [
         name
         for name, enabled in (
@@ -1636,19 +1660,14 @@ def _maybe_replan_after_context_request(
     executed = payload.get("executed")
     if not isinstance(executed, dict) or executed.get("kind") != "request_context":
         return
+    if executed.get("skipped"):
+        return
     context_result = executed.get("context")
     if isinstance(context_result, dict):
         recent = list(payload.get("recent_context_results") or [])
         recent.append(context_result)
         payload["recent_context_results"] = recent[-3:]
     payload["llm_followup_action"] = _decide_action_with_llm(report, payload)
-    if payload["llm_followup_action"]["kind"] == "request_context":
-        payload["followup_executed"] = {
-            "kind": "request_context",
-            "skipped": True,
-            "reason": "context request already executed in this iteration",
-        }
-        return
     followup_payload = {
         **payload,
         "llm_action": payload["llm_followup_action"],
@@ -2726,6 +2745,36 @@ def _execute_advice(
     }
 
 
+def _context_request_count(payload: dict[str, Any]) -> int:
+    count = 0
+    for key in ("executed", "followup_executed"):
+        item = payload.get(key)
+        if (
+            isinstance(item, dict)
+            and item.get("kind") == "request_context"
+            and not item.get("skipped")
+        ):
+            count += 1
+    return count
+
+
+def _context_request_budget_result(
+    args: argparse.Namespace,
+    payload: dict[str, Any],
+) -> dict[str, Any] | None:
+    max_requests = getattr(args, "max_context_requests", DEFAULT_MAX_CONTEXT_REQUESTS)
+    count = _context_request_count(payload)
+    if count < max_requests:
+        return None
+    return {
+        "kind": "request_context",
+        "skipped": True,
+        "reason": "context request budget exhausted",
+        "context_request_count": count,
+        "max_context_requests": max_requests,
+    }
+
+
 def _execute_llm_action(
     args: argparse.Namespace,
     report: Any,
@@ -2744,6 +2793,8 @@ def _execute_llm_action(
     if kind == "launch_session":
         return _execute_launch_action(args, action)
     if kind == "request_context":
+        if budget_result := _context_request_budget_result(args, payload):
+            return budget_result
         return _execute_context_action(args, action)
     if kind == "ask_user":
         return _execute_ask_user_action(args, action)
