@@ -10,6 +10,7 @@ from typing import Any
 
 
 DEFAULT_PROMPT_COOLDOWN_SECONDS = 300
+DEFAULT_MAX_CONTINUE_COUNT = 3
 
 
 @dataclass(frozen=True)
@@ -19,6 +20,8 @@ class LaneState:
     last_status: str
     last_prompted_at: str | None = None
     prompt_count: int = 0
+    last_prompt_kind: str | None = None
+    continue_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -27,6 +30,8 @@ class LaneState:
             "last_status": self.last_status,
             "last_prompted_at": self.last_prompted_at,
             "prompt_count": self.prompt_count,
+            "last_prompt_kind": self.last_prompt_kind,
+            "continue_count": self.continue_count,
         }
 
 
@@ -88,12 +93,27 @@ def prompt_cooldown_state(
     return state if age_seconds < cooldown_seconds else None
 
 
+def continue_budget_state(
+    *,
+    codex_home: Path | str,
+    name: str,
+    max_continue_count: int = DEFAULT_MAX_CONTINUE_COUNT,
+) -> LaneState | None:
+    if max_continue_count <= 0:
+        return None
+    state = read_lane_states(default_lane_state_path(codex_home)).get(name)
+    if state is None:
+        return None
+    return state if state.continue_count >= max_continue_count else None
+
+
 def record_lane_prompt(
     *,
     codex_home: Path | str,
     name: str,
     tmux_session: str | None,
     status: str,
+    prompt_kind: str | None = None,
     now: datetime | None = None,
 ) -> LaneState:
     path = default_lane_state_path(codex_home)
@@ -105,12 +125,22 @@ def record_lane_prompt(
         if previous is not None and previous.last_status == status
         else 1
     )
+    if previous is not None and previous.last_status == status:
+        continue_count = (
+            previous.continue_count + 1
+            if prompt_kind == "send_continue"
+            else previous.continue_count
+        )
+    else:
+        continue_count = 1 if prompt_kind == "send_continue" else 0
     state = LaneState(
         name=name,
         tmux_session=tmux_session,
         last_status=status,
         last_prompted_at=current.isoformat(),
         prompt_count=prompt_count,
+        last_prompt_kind=prompt_kind,
+        continue_count=continue_count,
     )
     states[name] = state
     write_lane_states(path, states)
@@ -123,6 +153,8 @@ def _state_from_dict(raw: dict[str, Any]) -> LaneState | None:
     last_status = raw.get("last_status")
     last_prompted_at = raw.get("last_prompted_at")
     prompt_count = raw.get("prompt_count")
+    last_prompt_kind = raw.get("last_prompt_kind")
+    continue_count = raw.get("continue_count", 0)
     if not isinstance(name, str) or not isinstance(last_status, str):
         return None
     if tmux_session is not None and not isinstance(tmux_session, str):
@@ -131,12 +163,18 @@ def _state_from_dict(raw: dict[str, Any]) -> LaneState | None:
         return None
     if not isinstance(prompt_count, int) or prompt_count < 0:
         return None
+    if last_prompt_kind is not None and not isinstance(last_prompt_kind, str):
+        return None
+    if not isinstance(continue_count, int) or continue_count < 0:
+        return None
     return LaneState(
         name=name,
         tmux_session=tmux_session,
         last_status=last_status,
         last_prompted_at=last_prompted_at,
         prompt_count=prompt_count,
+        last_prompt_kind=last_prompt_kind,
+        continue_count=continue_count,
     )
 
 

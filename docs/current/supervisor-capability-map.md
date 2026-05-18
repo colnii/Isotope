@@ -117,7 +117,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   LLM planner，再执行一次后续受控动作；同轮只允许一次上下文检索，避免循环。
 - 已完成会话不再作为 `resume_session` 候选，避免 LLM 把旧验收窗口反复唤醒；
   但其工作目录仍可用于 `launch_session` 和 `request_context`。
-- `resume_session` 会写入 lane state，并受 `--prompt-cooldown` 约束；
+- `resume_session` 会写入 lane state，并受 `--prompt-cooldown` 和
+  `--max-continue-count` 约束；
   LLM 临时空响应或误选非法目标时会记录为 `monitor`，不让常驻 loop 退出。
 - `ask_user` 是拍板请求动作，必须同时满足：Codex 明确请求拍板、
   LLM 无法从用户既有指示判断、上下文检索缺失/过时/冲突。
@@ -203,9 +204,10 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 不得把 A 层描述成真正的 `max_minutes`、`max_continue_count` 或
 `max_context_requests` 控制。
 
-真正预算控制属于 B 层：Supervisor 自己记录开始时间、继续次数和
-上下文请求次数，并在超限时拦截后续动作。B 层后续应接到
-`payload`、lane state 和执行白名单上。
+B 层预算控制由 Supervisor 自己记录并拦截。当前已先落地
+`--max-continue-count`：lane state 记录 `continue_count`，
+同一 lane 同一状态下的 `send_continue` 达到阈值后，后续继续推进
+会被拦截。`max_minutes` 和 `max_context_requests` 尚未强制实现。
 
 当前 A 层字段：
 
@@ -254,9 +256,10 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 
 ## 下一步顺序
 
-1. 再补 B 层 Supervisor 计数和拦截，做真正预算控制。
-2. 后续再决定是否增加人工输入框；默认仍保持白名单。
-3. 再拆分 `runner.py` 中的匹配、建议和 tmux 控制代码。
+1. 再补 `max_context_requests`，限制单轮或单任务上下文检索次数。
+2. 再补 `max_minutes`，限制托管任务运行时长。
+3. 后续再决定是否增加人工输入框；默认仍保持白名单。
+4. 再拆分 `runner.py` 中的匹配、建议和 tmux 控制代码。
 
 ## 登记规则
 

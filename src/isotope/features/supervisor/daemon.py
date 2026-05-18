@@ -79,6 +79,7 @@ def start_supervisor_daemon(
     stale_after: int,
     active_within: int,
     prompt_cooldown: int,
+    max_continue_count: int,
     name: str | None = None,
     llm_summary: bool = False,
     auto_adopt: bool = True,
@@ -101,6 +102,7 @@ def start_supervisor_daemon(
         stale_after=stale_after,
         active_within=active_within,
         prompt_cooldown=prompt_cooldown,
+        max_continue_count=max_continue_count,
         name=name,
         llm_summary=llm_summary,
         auto_adopt=auto_adopt,
@@ -311,6 +313,7 @@ def _build_loop_command(
     stale_after: int,
     active_within: int,
     prompt_cooldown: int,
+    max_continue_count: int,
     name: str | None,
     llm_summary: bool,
     auto_adopt: bool,
@@ -333,6 +336,8 @@ def _build_loop_command(
         command.extend(["--active-within", str(active_within)])
     if prompt_cooldown != 300:
         command.extend(["--prompt-cooldown", str(prompt_cooldown)])
+    if max_continue_count != 3:
+        command.extend(["--max-continue-count", str(max_continue_count)])
     if name:
         command.extend(["--name", name])
     if llm_summary:

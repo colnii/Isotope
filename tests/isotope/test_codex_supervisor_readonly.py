@@ -5903,6 +5903,113 @@ def test_codex_supervisor_runner_supervise_auto_continues_done_lane(
     assert calls == _tmux_send_calls(CONTINUE_REQUEST_TEXT)
 
 
+def test_codex_supervisor_runner_supervise_auto_respects_max_continue_count(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    lane_state_path = codex_home / "supervisor" / "lane_state.json"
+    lane_state_path.write_text(
+        json.dumps(
+            {
+                "lane-a": {
+                    "name": "lane-a",
+                    "tmux_session": "isotope-lane-a",
+                    "last_status": "done",
+                    "last_prompted_at": "2026-05-16T11:59:00+00:00",
+                    "prompt_count": 3,
+                    "last_prompt_kind": "send_continue",
+                    "continue_count": 3,
+                }
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-done.jsonl",
+        session_id="done-session",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:30Z",
+                "SUPERVISOR_STATUS: done\n"
+                "SUPERVISOR_SUMMARY: 当前任务已完成。\n"
+                "SUPERVISOR_NEXT: 可以继续下一步。",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: (
+            "SUPERVISOR_STATUS: done\n"
+            "SUPERVISOR_SUMMARY: 当前任务已完成。\n"
+            "SUPERVISOR_NEXT: 可以继续下一步。"
+        ),
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--prompt-cooldown",
+            "0",
+            "--max-continue-count",
+            "3",
+            "--auto-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["auto_action"] == {
+        "kind": "monitor",
+        "reason": "lane continue budget exhausted",
+        "target_name": "lane-a",
+    }
+    assert payload["executed"] == {
+        "kind": "monitor",
+        "skipped": True,
+        "reason": "lane continue budget exhausted",
+    }
+    assert calls == []
+
+
 def test_codex_supervisor_runner_supervise_auto_stops_terminal_done_lane(
     tmp_path,
     capsys,

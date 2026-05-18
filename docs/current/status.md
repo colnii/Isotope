@@ -104,7 +104,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `request_context` 使用；LLM 重规划时会看到已检索过的
     context history，避免重复请求同一个 cwd/query；
     `resume_session` 也受 `--prompt-cooldown` 约束，避免短时间重复恢复
-    同一历史会话；
+    同一历史会话；B 层预算控制已先落地 `--max-continue-count`，
+    Supervisor 会用 lane state 记录 `continue_count`，超过阈值后拦截
+    继续推进请求；时间预算和上下文请求次数预算尚未强制实现；
     模型动作返回非 JSON、非法目标或模型池空响应时会降级为
     可见 `monitor`，不让 loop 直接退出；OpenAI-compatible provider
     遇到 `finish_reason=length` 且只有 `reasoning_content`、无正文时，

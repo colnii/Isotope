@@ -38,7 +38,9 @@ from .flow import (
     render_plain_report,
 )
 from .lane_state import (
+    DEFAULT_MAX_CONTINUE_COUNT,
     DEFAULT_PROMPT_COOLDOWN_SECONDS,
+    continue_budget_state,
     prompt_cooldown_state,
     record_lane_prompt,
 )
@@ -191,6 +193,12 @@ def _build_parser() -> argparse.ArgumentParser:
             default=DEFAULT_PROMPT_COOLDOWN_SECONDS,
             help="Seconds before repeating send_status/send_continue for the same lane.",
         )
+        subparsers.choices[command].add_argument(
+            "--max-continue-count",
+            type=int,
+            default=DEFAULT_MAX_CONTINUE_COUNT,
+            help="Maximum consecutive send_continue prompts for the same lane status. 0 disables.",
+        )
     for command in ("watch", "supervise"):
         command_parser = subparsers.choices[command]
         command_parser.add_argument(
@@ -277,6 +285,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Seconds before repeating send_status/send_continue for the same lane.",
     )
     loop_parser.add_argument(
+        "--max-continue-count",
+        type=int,
+        default=DEFAULT_MAX_CONTINUE_COUNT,
+        help="Maximum consecutive send_continue prompts for the same lane status. 0 disables.",
+    )
+    loop_parser.add_argument(
         "--interval",
         type=int,
         default=30,
@@ -353,6 +367,12 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=DEFAULT_PROMPT_COOLDOWN_SECONDS,
         help="Seconds before repeating send_status/send_continue for the same lane.",
+    )
+    daemon_start_parser.add_argument(
+        "--max-continue-count",
+        type=int,
+        default=DEFAULT_MAX_CONTINUE_COUNT,
+        help="Maximum consecutive send_continue prompts for the same lane status. 0 disables.",
     )
     daemon_start_parser.add_argument(
         "--name",
@@ -937,6 +957,8 @@ def _daemon_payload(args: argparse.Namespace) -> dict[str, Any]:
             raise ValueError("interval must be positive")
         if args.limit <= 0:
             raise ValueError("limit must be positive")
+        if args.max_continue_count < 0:
+            raise ValueError("max_continue_count must be zero or positive")
         daemon = start_supervisor_daemon(
             codex_home=Path(args.codex_home),
             interval=args.interval,
@@ -944,6 +966,7 @@ def _daemon_payload(args: argparse.Namespace) -> dict[str, Any]:
             stale_after=args.stale_after,
             active_within=args.active_within,
             prompt_cooldown=args.prompt_cooldown,
+            max_continue_count=args.max_continue_count,
             name=args.name,
             llm_summary=args.llm_summary,
             auto_adopt=args.auto_adopt,
@@ -1137,6 +1160,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
                     target_name=args.name,
                     codex_home=Path(args.codex_home),
                     prompt_cooldown_seconds=args.prompt_cooldown,
+                    max_continue_count=args.max_continue_count,
                 )
                 precomputed_executed = _execute_auto_action(
                     args,
@@ -1487,6 +1511,8 @@ def _print_discover_plain(payload: dict[str, Any]) -> None:
 
 
 def _validate_execution_modes(args: argparse.Namespace) -> None:
+    if getattr(args, "max_continue_count", 0) < 0:
+        raise ValueError("max_continue_count must be zero or positive")
     modes = [
         name
         for name, enabled in (
@@ -1588,6 +1614,7 @@ def _supervise_payload(
             target_name=args.name,
             codex_home=Path(args.codex_home),
             prompt_cooldown_seconds=args.prompt_cooldown,
+            max_continue_count=args.max_continue_count,
         )
         payload["auto_action"] = auto_action
         payload["executed"] = precomputed_executed or _execute_auto_action(
@@ -2649,6 +2676,19 @@ def _execute_advice(
     suggestion = _suggestion_by_kind(_managed_tmux_command_suggestions(target), kind)
     if suggestion is None:
         raise ValueError(f"no generated command suggestion for: {kind}")
+    if kind == "send_continue":
+        if budget_state := continue_budget_state(
+            codex_home=Path(args.codex_home),
+            name=target.managed_name,
+            max_continue_count=args.max_continue_count,
+        ):
+            return {
+                "kind": kind,
+                "command": suggestion["command"],
+                "skipped": True,
+                "reason": "lane continue budget exhausted",
+                "lane_state": budget_state.to_dict(),
+            }
     if cooldown_state := prompt_cooldown_state(
         codex_home=Path(args.codex_home),
         name=target.managed_name,
@@ -2672,6 +2712,7 @@ def _execute_advice(
         name=result.record.name,
         tmux_session=result.record.tmux_session,
         status=target.supervisor_status or target.status,
+        prompt_kind=kind,
     )
     return {
         "kind": kind,
@@ -2738,6 +2779,19 @@ def _execute_resume_action(
     target_name = action.get("target_name") or suggestion.get("target_name")
     if not isinstance(target_name, str) or not target_name:
         target_name = _resume_managed_name_for_session(target)
+    if prompt_kind == "send_continue":
+        if budget_state := continue_budget_state(
+            codex_home=Path(args.codex_home),
+            name=target_name,
+            max_continue_count=args.max_continue_count,
+        ):
+            return {
+                "kind": "resume_session",
+                "command": suggestion["command"],
+                "skipped": True,
+                "reason": "lane continue budget exhausted",
+                "lane_state": budget_state.to_dict(),
+            }
     if cooldown_state := prompt_cooldown_state(
         codex_home=Path(args.codex_home),
         name=target_name,
@@ -2763,6 +2817,7 @@ def _execute_resume_action(
         name=record.name,
         tmux_session=None,
         status=target.supervisor_status or target.status,
+        prompt_kind=str(prompt_kind),
     )
     return {
         "kind": "resume_session",
@@ -2964,6 +3019,7 @@ def _auto_execute_action(
     target_name: str | None = None,
     codex_home: Path | None = None,
     prompt_cooldown_seconds: int = DEFAULT_PROMPT_COOLDOWN_SECONDS,
+    max_continue_count: int = DEFAULT_MAX_CONTINUE_COUNT,
 ) -> dict[str, str]:
     if target_name:
         managed = _managed_tmux_session_by_name(report, target_name)
@@ -2972,7 +3028,19 @@ def _auto_execute_action(
                 "kind": "monitor",
                 "reason": f"managed lane not found: {target_name}",
             }
-        return _auto_execute_action_for_managed(report, managed)
+        action = _auto_execute_action_for_managed(report, managed)
+        if _auto_action_exhausts_continue_budget(
+            action,
+            codex_home=codex_home,
+            managed=managed,
+            max_continue_count=max_continue_count,
+        ):
+            return {
+                "kind": "monitor",
+                "reason": "lane continue budget exhausted",
+                "target_name": managed.managed_name or target_name,
+            }
+        return action
     managed_lanes = [
         session for session in report.sessions if _is_active_managed_tmux_session(session)
     ]
@@ -2989,8 +3057,23 @@ def _auto_execute_action(
             action = {**action, "target_name": managed.managed_name}
         candidates.append((action, managed))
     cooldown_candidates: list[dict[str, str]] = []
+    continue_budget_candidates: list[dict[str, str]] = []
     for action, managed in candidates:
         if action["kind"] not in EXECUTABLE_ADVICE_KINDS:
+            continue
+        if _auto_action_exhausts_continue_budget(
+            action,
+            codex_home=codex_home,
+            managed=managed,
+            max_continue_count=max_continue_count,
+        ):
+            continue_budget_candidates.append(
+                {
+                    "kind": "monitor",
+                    "reason": "lane continue budget exhausted",
+                    **({"target_name": managed.managed_name} if managed.managed_name else {}),
+                }
+            )
             continue
         if _auto_action_in_prompt_cooldown(
             codex_home=codex_home,
@@ -3005,7 +3088,32 @@ def _auto_execute_action(
             return action
     if cooldown_candidates:
         return cooldown_candidates[0]
+    if continue_budget_candidates:
+        return continue_budget_candidates[0]
     return candidates[0][0]
+
+
+def _auto_action_exhausts_continue_budget(
+    action: dict[str, str],
+    *,
+    codex_home: Path | None,
+    managed: Any,
+    max_continue_count: int,
+) -> bool:
+    if (
+        action["kind"] != "send_continue"
+        or codex_home is None
+        or not managed.managed_name
+    ):
+        return False
+    return (
+        continue_budget_state(
+            codex_home=codex_home,
+            name=managed.managed_name,
+            max_continue_count=max_continue_count,
+        )
+        is not None
+    )
 
 
 def _auto_action_in_prompt_cooldown(
