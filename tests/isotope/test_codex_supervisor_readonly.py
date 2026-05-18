@@ -5392,6 +5392,49 @@ def test_codex_supervisor_runner_discover_lists_adoptable_tmux_codex_sessions(
     ]
 
 
+def test_codex_supervisor_runner_discover_treats_missing_tmux_socket_as_empty(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        assert command[:3] == ["tmux", "list-sessions", "-F"]
+        assert check is False
+        assert text is True
+        assert capture_output is True
+        return subprocess.CompletedProcess(
+            command,
+            1,
+            "",
+            "error connecting to /tmp/tmux-1001/default (No such file or directory)",
+        )
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "discover",
+            "--cwd",
+            str(workspace),
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["candidates"] == []
+
+
 def test_codex_supervisor_runner_discover_can_adopt_candidate_by_index(
     tmp_path,
     capsys,

@@ -62,7 +62,10 @@ def discover_tmux_adopt_candidates(
     )
     if completed.returncode != 0:
         message = (completed.stderr or completed.stdout or "").strip()
-        if "no server running" in message.casefold():
+        lowered = message.casefold()
+        if "no server running" in lowered or (
+            "error connecting to" in lowered and "no such file" in lowered
+        ):
             return ()
         raise ValueError(f"tmux discovery failed: {message or 'list-sessions failed'}")
 
