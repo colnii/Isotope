@@ -293,6 +293,22 @@
     `done` session 误导成终态完成。
 133. Codex Supervisor 手动窗口接管验收：手动 tmux 内启动 Codex 后，
     `adopt -> loop -> archive` 已完成真实闭环。
+134. Codex Supervisor tmux 窗口发现：`discover` 可只读列出现有 tmux
+    会话，筛出疑似 Codex 窗口，并生成可复制的 `adopt` 和 `attach` 命令。
+
+## 最近完成：Codex Supervisor tmux 窗口发现
+
+完成内容：
+
+- 新增 `isotope-supervisor discover --cwd <repo>`。
+- 默认只列出 pane 文本像 Codex 的 tmux session。
+- 输出建议托管名、`adopt` 接管命令、`attach` 打开命令和最近终端片段。
+- 没有 tmux server 时返回空候选，不报错。
+
+下一步：
+
+- 在真实多窗口使用中验证 `discover -> adopt -> loop` 是否足够顺手；
+  若还要手填太多，再做自动命名或一键接管薄封装。
 
 ## 最近完成：Codex Supervisor 手动窗口接管验收
 

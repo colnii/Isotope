@@ -237,18 +237,22 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 ```bash
 .venv/bin/isotope-supervisor guide --cwd /path/to/repo --name lane-a
 .venv/bin/isotope-supervisor guide --cwd /path/to/repo --name lane-a --tmux-session lane-a
+.venv/bin/isotope-supervisor discover --cwd /path/to/repo
 ```
 
 生成后通常按这个顺序用：
 
 1. `launch --backend tmux` 新开托管 Codex 窗口。
-2. 如果已有 tmux 窗口，则用 `adopt` 接管。
-3. `loop --interval 30` 常驻监控。
-4. 需要细看时打开 `web` 或 `tmux attach`。
-5. 窗口不用再跟进时，用 `archive --name <lane>` 归档。
+2. 如果已有 tmux 窗口，先用 `discover` 找候选和接管命令。
+3. 用 `adopt` 接管已有窗口。
+4. `loop --interval 30` 常驻监控。
+5. 需要细看时打开 `web` 或 `tmux attach`。
+6. 窗口不用再跟进时，用 `archive --name <lane>` 归档。
 
 手动 tmux 内启动 Codex 后，`adopt -> loop -> archive`
 已完成真实闭环验收。
+`discover` 是只读入口：它不会接管、发送或修改窗口，只会列出看起来像
+Codex 的 tmux 会话，并生成可复制的 `adopt` 和 `attach` 命令。
 
 `loop` 是日常入口：
 

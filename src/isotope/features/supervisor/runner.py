@@ -34,6 +34,7 @@ from .registry import (
     repair_tmux_bell_hooks,
     send_to_managed_codex,
 )
+from .tmux_discovery import discover_tmux_adopt_candidates
 
 EXECUTABLE_ADVICE_KINDS = {"send_status", "send_continue"}
 TERMINAL_DONE_NEXT_MARKERS = (
@@ -304,6 +305,20 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Short note stored in the managed registry.",
     )
     adopt_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    discover_parser = subparsers.add_parser(
+        "discover", help="List existing tmux sessions that can be adopted."
+    )
+    discover_parser.add_argument(
+        "--cwd",
+        default=str(Path.cwd()),
+        help="Workspace directory used in generated adopt commands.",
+    )
+    discover_parser.add_argument(
+        "--include-all",
+        action="store_true",
+        help="Include tmux sessions whose pane text does not look like Codex.",
+    )
+    discover_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     archive_parser = subparsers.add_parser(
         "archive", help="Archive a managed Codex lane so it stops appearing as active."
     )
@@ -446,6 +461,13 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(f"已接管 tmux 会话：{record.name}")
                 print(f"tmux：{record.tmux_session}")
+            return 0
+        if args.command == "discover":
+            payload = _discover_payload(args)
+            if args.json:
+                _print_json(payload)
+            else:
+                _print_discover_plain(payload)
             return 0
         if args.command == "archive":
             record = archive_managed_codex(
@@ -738,6 +760,34 @@ def _print_guide_plain(payload: dict[str, Any]) -> None:
     print()
     print("5. 窗口不用再跟进时归档：")
     print(commands["archive"])
+
+
+def _discover_payload(args: argparse.Namespace) -> dict[str, Any]:
+    cwd = str(Path(args.cwd).expanduser())
+    candidates = discover_tmux_adopt_candidates(
+        cwd=cwd,
+        include_all=args.include_all,
+        run=subprocess.run,
+    )
+    return {
+        "status": "ok",
+        "cwd": cwd,
+        "candidates": [candidate.to_dict() for candidate in candidates],
+    }
+
+
+def _print_discover_plain(payload: dict[str, Any]) -> None:
+    print("[Codex Supervisor tmux 发现]")
+    print(f"工作目录：{payload['cwd']}")
+    candidates = payload["candidates"]
+    if not candidates:
+        print("没有发现可接管的 Codex tmux 窗口。")
+        return
+    for item in candidates:
+        marker = "Codex" if item["looks_like_codex"] else "普通 tmux"
+        print(f"- {item['tmux_session']} / {marker} / 建议名：{item['suggested_name']}")
+        print(f"  接管：{item['adopt_command']}")
+        print(f"  打开：{item['attach_command']}")
 
 
 def _validate_execution_modes(args: argparse.Namespace) -> None:

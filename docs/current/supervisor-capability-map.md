@@ -15,7 +15,7 @@ Codex Supervisor 已经不只是一个小命令。
 
 | 层级 | 当前能力 | 主要位置 | 说明 |
 | --- | --- | --- | --- |
-| 用户功能层 | `scan`、`dashboard`、`guide`、`web`、`watch`、`advise`、`supervise`、`loop` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
+| 用户功能层 | `scan`、`dashboard`、`guide`、`discover`、`web`、`watch`、`advise`、`supervise`、`loop` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
 | 托管控制层 | `launch`、`adopt`、`send`、`archive`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
 | Codex 集成层 | 读取 Codex session（会话记录）、索引标题和 agent 元数据 | `features/supervisor/flow.py` | 当前读取本机 `.jsonl`、`session_index.jsonl` 和 SQLite |
 | 扫描优化层 | 最近候选、首尾读取和标题兜底 | `features/supervisor/flow.py` | 避免每次页面刷新全量读历史 |
@@ -82,6 +82,8 @@ Codex Supervisor 已经不只是一个小命令。
   已自动处理的 `send_status/send_continue` 不触发提醒。
 - 本机托管登记表 `managed_sessions.jsonl`。
 - `launch` 支持普通进程和 tmux 会话。
+- `discover` 可只读扫描现有 tmux 会话，筛出疑似 Codex 窗口，
+  并生成可复制的 `adopt` 和 `attach` 命令。
 - `adopt` 可接管已存在的 tmux 会话。
 - 手动 tmux 内启动 Codex 后，`adopt -> loop -> archive`
   已通过真实闭环验收。
