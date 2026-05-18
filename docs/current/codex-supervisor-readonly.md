@@ -51,6 +51,7 @@ Codex Supervisor 是后续 Isotope 的核心管理层。
 - `guide` 会按当前参数打印可复制的启动、接管、日常 loop 和观察命令。
 - `loop` 是日常常驻入口，等价于安全默认的自动监督循环。
 - `daemon` 可把日常 `loop` 放到后台运行，并提供 start/status/stop/watchdog。
+- `daemon watcher` 可启动 watcher（周期看门进程），定期触发 watchdog。
 - `supervise` 可按间隔循环执行扫描、建议、可选 LLM 摘要和显式 send。
 - `advise/supervise --name <lane>` 可只针对一个托管 lane 生成建议或执行动作。
 - `advise/supervise --llm-action` 可让 LLM 在白名单里选择建议动作，
@@ -87,6 +88,9 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise 
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon start --interval 30
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon status
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon watchdog
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon watcher start --interval 60
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon watcher status
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon watcher stop
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon stop
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --interval 180
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --interval 180 --changes-only
@@ -109,6 +113,9 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner archive --
 .venv/bin/isotope-supervisor daemon start --interval 30
 .venv/bin/isotope-supervisor daemon status
 .venv/bin/isotope-supervisor daemon watchdog
+.venv/bin/isotope-supervisor daemon watcher start --interval 60
+.venv/bin/isotope-supervisor daemon watcher status
+.venv/bin/isotope-supervisor daemon watcher stop
 .venv/bin/isotope-supervisor daemon stop
 .venv/bin/isotope-supervisor watch --interval 180
 .venv/bin/isotope-supervisor watch --interval 180 --changes-only
@@ -295,6 +302,9 @@ Codex 的 tmux 会话，并生成可复制的 `adopt` 和 `attach` 命令。
 .venv/bin/isotope-supervisor daemon start --interval 30 --no-auto-adopt
 .venv/bin/isotope-supervisor daemon status
 .venv/bin/isotope-supervisor daemon watchdog
+.venv/bin/isotope-supervisor daemon watcher start --interval 60
+.venv/bin/isotope-supervisor daemon watcher status
+.venv/bin/isotope-supervisor daemon watcher stop
 .venv/bin/isotope-supervisor daemon stop
 ```
 
@@ -304,9 +314,11 @@ Codex 的 tmux 会话，并生成可复制的 `adopt` 和 `attach` 命令。
 `daemon status` 只检查本机进程是否还活着；
 `daemon watchdog` 会检查后台 `loop`，如果进程异常退出，
 就按 `daemon.json` 里记录的原始命令重新拉起；
+`daemon watcher start` 会再启动一个后台 watcher（周期看门进程），
+定期执行 `watchdog`，状态写到 `~/.codex/supervisor/watcher.json`，
+日志写到 `~/.codex/supervisor/logs/watcher.log`；
 `daemon stop` 发送 `SIGTERM`（终止信号）并把状态标成 `stopped`。
-这一步还不是系统级自启动；`watchdog` 目前是一次检查，
-后续可接 systemd/cron（系统服务/定时任务）周期触发。
+这一步还不是系统级开机自启动；如果机器重启，仍需要重新启动 watcher。
 
 `supervise` 是当前的监控小闭环：
 
@@ -466,6 +478,7 @@ tmux attach -t isotope-lane-a
 - `daemon start` 只是把 `loop` 放进后台，并记录 pid（进程号）、
   命令和日志路径。
 - `daemon watchdog` 只复用状态文件里的原始命令，不重新猜参数。
+- `daemon watcher` 只负责周期触发 watchdog，不直接判断业务状态。
 - `supervise --auto-execute` 可按规则自动执行一个白名单动作。
 - `changes-only` 不会阻断自动策略；无变化轮次仍会检查冷却并继续必要发送。
 - 未指定 `--name` 的自动轮转会避开冷却中的 lane，

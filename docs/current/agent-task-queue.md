@@ -303,6 +303,22 @@
     `loop` 放到后台运行，记录 pid（进程号）、状态文件和日志路径。
 138. Codex Supervisor watchdog 检查：`daemon watchdog` 可检查后台
     `loop` 是否还活着，异常退出时按原命令重新拉起。
+139. Codex Supervisor 周期 watcher：`daemon watcher start/status/stop`
+    可启动 watcher（周期看门进程），定期触发 `daemon watchdog`。
+
+## 最近完成：Codex Supervisor 周期 watcher
+
+完成内容：
+
+- 新增 `daemon watcher start/status/stop`。
+- 新增 `daemon watcher run` 前台循环入口，供后台 watcher 复用。
+- watcher 定期触发 `daemon watchdog`，不直接判断业务状态。
+- watcher 状态写入 `~/.codex/supervisor/watcher.json`。
+
+下一步：
+
+- 做开机自启动或一键启动组合，让 `daemon start` 和 `watcher start`
+  更接近日常无感使用。
 
 ## 最近完成：Codex Supervisor watchdog 检查
 
@@ -312,11 +328,6 @@
 - 进程仍在运行时只汇报 `alive`，不重复启动。
 - 进程异常退出时复用 `daemon.json` 里的原始命令重新拉起。
 - 状态文件会更新到新的 pid（进程号）。
-
-下一步：
-
-- 把 `watchdog` 接成周期触发：先做本机后台 watcher，再考虑
-  systemd/cron（系统服务/定时任务）或开机自启动。
 
 ## 最近完成：Codex Supervisor 后台守护入口
 

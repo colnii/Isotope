@@ -84,6 +84,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     状态写入 `~/.codex/supervisor/daemon.json`，日志写入
     `~/.codex/supervisor/logs/daemon.log`；`watchdog` 可按状态文件
     检查后台 `loop`，异常退出时用原命令重新拉起；
+    `daemon watcher start/status/stop` 可启动 watcher（周期看门进程），
+    定期触发 `watchdog`，状态写入 `~/.codex/supervisor/watcher.json`；
     `advise/supervise --name <lane>` 可把建议、显式执行和自动执行
     收窄到指定托管 lane，名字不存在时不会退回到其他窗口；
     `dashboard` 可按需要看、已完成和工作中分组输出；
@@ -220,6 +222,9 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner loop --int
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon start --interval 30
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon status
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon watchdog
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon watcher start --interval 60
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon watcher status
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon watcher stop
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon stop
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner adopt --name lane-a --cwd /path/to/repo --tmux-session isotope-lane-a
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --name lane-a --text "继续"

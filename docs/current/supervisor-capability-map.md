@@ -81,6 +81,8 @@ Codex Supervisor 已经不只是一个小命令。
   pid（进程号）、命令、状态文件和日志路径。
 - `daemon watchdog` 可按状态文件检查后台 `loop` 是否还活着；
   若异常退出，会用原命令重新拉起。
+- `daemon watcher start/status/stop` 可启动 watcher（周期看门进程），
+  定期触发 `daemon watchdog`。
 - `supervise --auto-adopt` 可显式开启同样的自动发现接管能力。
 - `loop` 的 `changes-only` 只限制输出；报告不变时自动策略仍会检查冷却并推进。
 - `watch --changes-only` 只在状态变化时输出。
@@ -90,6 +92,8 @@ Codex Supervisor 已经不只是一个小命令。
 - 本机托管登记表 `managed_sessions.jsonl`。
 - 本机后台守护状态文件 `daemon.json`，日志默认写到
   `supervisor/logs/daemon.log`。
+- 本机周期 watcher 状态文件 `watcher.json`，日志默认写到
+  `supervisor/logs/watcher.log`。
 - `launch` 支持普通进程和 tmux 会话。
 - `discover` 可只读扫描现有 tmux 会话，筛出疑似 Codex 窗口，
   并生成可复制的 `adopt` 和 `attach` 命令。

@@ -7,10 +7,11 @@ import os
 import signal
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 
 @dataclass(frozen=True)
@@ -62,6 +63,14 @@ def default_daemon_log_path(codex_home: Path | str) -> Path:
     return Path(codex_home).expanduser() / "supervisor" / "logs" / "daemon.log"
 
 
+def default_watcher_state_path(codex_home: Path | str) -> Path:
+    return Path(codex_home).expanduser() / "supervisor" / "watcher.json"
+
+
+def default_watcher_log_path(codex_home: Path | str) -> Path:
+    return Path(codex_home).expanduser() / "supervisor" / "logs" / "watcher.log"
+
+
 def start_supervisor_daemon(
     *,
     codex_home: Path | str,
@@ -109,6 +118,90 @@ def start_supervisor_daemon(
     )
     write_supervisor_daemon_state(state)
     return {"action": "started", **state.to_dict()}
+
+
+def start_supervisor_watcher(
+    *,
+    codex_home: Path | str,
+    interval: int,
+) -> dict[str, Any]:
+    home = Path(codex_home).expanduser()
+    existing = read_supervisor_watcher_state(home)
+    if (
+        existing is not None
+        and existing.status == "running"
+        and _process_is_alive(existing.pid)
+    ):
+        return {"action": "already_running", **existing.to_dict()}
+
+    log_path = default_watcher_log_path(home)
+    command = (
+        sys.executable,
+        "-m",
+        "isotope.features.supervisor.runner",
+        "daemon",
+        "watcher",
+        "run",
+        "--codex-home",
+        str(home),
+        "--interval",
+        str(interval),
+    )
+    pid = _spawn_daemon_process(command, log_path)
+    state = SupervisorDaemonState(
+        pid=pid,
+        status="running",
+        started_at=_utc_now().isoformat(),
+        stopped_at=None,
+        command=command,
+        codex_home=str(home),
+        log_path=str(log_path),
+        state_path=str(default_watcher_state_path(home)),
+    )
+    write_supervisor_daemon_state(state)
+    return {"action": "started", **state.to_dict()}
+
+
+def supervisor_watcher_status(*, codex_home: Path | str) -> dict[str, Any]:
+    home = Path(codex_home).expanduser()
+    state = read_supervisor_watcher_state(home)
+    if state is None:
+        return _not_running_watcher_payload(home)
+    if state.status == "running" and not _process_is_alive(state.pid):
+        return state.with_status("stale").to_dict()
+    return state.to_dict()
+
+
+def stop_supervisor_watcher(*, codex_home: Path | str) -> dict[str, Any]:
+    home = Path(codex_home).expanduser()
+    state = read_supervisor_watcher_state(home)
+    if state is None:
+        return _not_running_watcher_payload(home)
+    if state.status == "running" and _process_is_alive(state.pid):
+        os.kill(state.pid, signal.SIGTERM)
+    stopped = state.with_status("stopped", stopped_at=_utc_now().isoformat())
+    write_supervisor_daemon_state(stopped)
+    return stopped.to_dict()
+
+
+def run_supervisor_watcher(
+    *,
+    codex_home: Path | str,
+    interval: int,
+    iterations: int | None = None,
+) -> Iterator[dict[str, Any]]:
+    home = Path(codex_home).expanduser()
+    count = 0
+    while iterations is None or count < iterations:
+        count += 1
+        payload = {
+            "status": "ok",
+            "iteration": count,
+            "watchdog": watchdog_supervisor_daemon(codex_home=home),
+        }
+        yield payload
+        if iterations is None or count < iterations:
+            _sleep(interval)
 
 
 def watchdog_supervisor_daemon(*, codex_home: Path | str) -> dict[str, Any]:
@@ -166,7 +259,17 @@ def stop_supervisor_daemon(*, codex_home: Path | str) -> dict[str, Any]:
 
 
 def read_supervisor_daemon_state(codex_home: Path | str) -> SupervisorDaemonState | None:
-    state_path = default_daemon_state_path(codex_home)
+    return _read_supervisor_state(default_daemon_state_path(codex_home))
+
+
+def read_supervisor_watcher_state(
+    codex_home: Path | str,
+) -> SupervisorDaemonState | None:
+    return _read_supervisor_state(default_watcher_state_path(codex_home))
+
+
+def _read_supervisor_state(state_path: Path | str) -> SupervisorDaemonState | None:
+    state_path = Path(state_path).expanduser()
     if not state_path.is_file():
         return None
     try:
@@ -288,6 +391,19 @@ def _not_running_payload(codex_home: Path) -> dict[str, Any]:
     }
 
 
+def _not_running_watcher_payload(codex_home: Path) -> dict[str, Any]:
+    return {
+        "pid": None,
+        "status": "not_running",
+        "started_at": None,
+        "stopped_at": None,
+        "command": [],
+        "codex_home": str(codex_home),
+        "log_path": str(default_watcher_log_path(codex_home)),
+        "state_path": str(default_watcher_state_path(codex_home)),
+    }
+
+
 def _process_is_alive(pid: int) -> bool:
     if pid <= 0:
         return False
@@ -312,3 +428,7 @@ def _optional_string(value: object) -> str | None:
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _sleep(seconds: float) -> None:
+    time.sleep(seconds)

@@ -12,9 +12,13 @@ from pathlib import Path
 from typing import Any
 
 from .daemon import (
+    run_supervisor_watcher,
     start_supervisor_daemon,
+    start_supervisor_watcher,
     stop_supervisor_daemon,
+    stop_supervisor_watcher,
     supervisor_daemon_status,
+    supervisor_watcher_status,
     watchdog_supervisor_daemon,
 )
 from .flow import (
@@ -340,6 +344,74 @@ def _build_parser() -> argparse.ArgumentParser:
             action="store_true",
             help="Print JSON output.",
         )
+    watcher_parser = daemon_subparsers.add_parser(
+        "watcher",
+        help="Manage the background periodic watchdog.",
+    )
+    watcher_subparsers = watcher_parser.add_subparsers(
+        dest="watcher_command",
+        required=True,
+    )
+    watcher_start_parser = watcher_subparsers.add_parser(
+        "start",
+        help="Start the periodic watchdog in the background.",
+    )
+    watcher_start_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    watcher_start_parser.add_argument(
+        "--interval",
+        type=int,
+        default=60,
+        help="Seconds between watchdog checks.",
+    )
+    watcher_start_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print JSON output.",
+    )
+    watcher_run_parser = watcher_subparsers.add_parser(
+        "run",
+        help="Run watchdog checks in the foreground.",
+    )
+    watcher_run_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    watcher_run_parser.add_argument(
+        "--interval",
+        type=int,
+        default=60,
+        help="Seconds between watchdog checks.",
+    )
+    watcher_run_parser.add_argument(
+        "--iterations",
+        type=int,
+        help="Stop after this many checks. Omit to run until interrupted.",
+    )
+    watcher_run_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print JSON output.",
+    )
+    for watcher_command in ("status", "stop"):
+        watcher_command_parser = watcher_subparsers.add_parser(
+            watcher_command,
+            help=f"{watcher_command.title()} the periodic watchdog.",
+        )
+        watcher_command_parser.add_argument(
+            "--codex-home",
+            default=str(Path.home() / ".codex"),
+            help="Codex home directory. Defaults to ~/.codex.",
+        )
+        watcher_command_parser.add_argument(
+            "--json",
+            action="store_true",
+            help="Print JSON output.",
+        )
     web_parser = subparsers.add_parser("web", help="Serve a local Supervisor dashboard page.")
     web_parser.add_argument(
         "--codex-home",
@@ -532,9 +604,17 @@ def main(argv: list[str] | None = None) -> int:
             _run_supervise(args)
             return 0
         if args.command == "daemon":
+            if (
+                args.daemon_command == "watcher"
+                and args.watcher_command == "run"
+            ):
+                _run_daemon_watcher(args)
+                return 0
             payload = _daemon_payload(args)
             if args.json:
                 _print_json(payload)
+            elif args.daemon_command == "watcher":
+                _print_watcher_plain(payload)
             else:
                 _print_daemon_plain(payload)
             return 0
@@ -688,6 +768,8 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _daemon_payload(args: argparse.Namespace) -> dict[str, Any]:
+    if args.daemon_command == "watcher":
+        return _watcher_payload(args)
     if args.daemon_command == "start":
         if args.interval <= 0:
             raise ValueError("interval must be positive")
@@ -716,6 +798,42 @@ def _daemon_payload(args: argparse.Namespace) -> dict[str, Any]:
         "status": "ok",
         "daemon": daemon,
     }
+
+
+def _watcher_payload(args: argparse.Namespace) -> dict[str, Any]:
+    if args.watcher_command == "start":
+        if args.interval <= 0:
+            raise ValueError("interval must be positive")
+        watcher = start_supervisor_watcher(
+            codex_home=Path(args.codex_home),
+            interval=args.interval,
+        )
+    elif args.watcher_command == "status":
+        watcher = supervisor_watcher_status(codex_home=Path(args.codex_home))
+    elif args.watcher_command == "stop":
+        watcher = stop_supervisor_watcher(codex_home=Path(args.codex_home))
+    else:
+        raise ValueError(f"unknown watcher command: {args.watcher_command}")
+    return {
+        "status": "ok",
+        "watcher": watcher,
+    }
+
+
+def _run_daemon_watcher(args: argparse.Namespace) -> None:
+    if args.interval <= 0:
+        raise ValueError("interval must be positive")
+    if args.iterations is not None and args.iterations <= 0:
+        raise ValueError("iterations must be positive")
+    for payload in run_supervisor_watcher(
+        codex_home=Path(args.codex_home),
+        interval=args.interval,
+        iterations=args.iterations,
+    ):
+        if args.json:
+            _print_json(payload)
+        else:
+            _print_watcher_run_plain(payload)
 
 
 def _print_daemon_plain(payload: dict[str, Any]) -> None:
@@ -749,6 +867,41 @@ def _print_daemon_plain(payload: dict[str, Any]) -> None:
         return
     print("后台 loop 未运行。")
     print(f"状态文件：{daemon['state_path']}")
+
+
+def _print_watcher_plain(payload: dict[str, Any]) -> None:
+    watcher = payload["watcher"]
+    status = watcher["status"]
+    print("[Codex Supervisor watcher]")
+    if status == "running":
+        action = watcher.get("action")
+        label = "周期 watcher 仍在运行" if action == "already_running" else "已启动周期 watcher"
+        print(label)
+        print(f"pid：{watcher['pid']}")
+        print(f"日志：{watcher['log_path']}")
+        print("命令：" + shlex.join(watcher["command"]))
+        return
+    if status == "stopped":
+        print("已停止周期 watcher")
+        print(f"pid：{watcher['pid']}")
+        print(f"状态文件：{watcher['state_path']}")
+        return
+    if status == "stale":
+        print("周期 watcher 状态已过期，进程可能已经退出。")
+        print(f"pid：{watcher['pid']}")
+        print(f"日志：{watcher['log_path']}")
+        return
+    print("周期 watcher 未运行。")
+    print(f"状态文件：{watcher['state_path']}")
+
+
+def _print_watcher_run_plain(payload: dict[str, Any]) -> None:
+    watchdog = payload["watchdog"]
+    print(f"[Codex Supervisor watcher] 第 {payload['iteration']} 轮")
+    print(f"动作：{watchdog.get('action')}")
+    print(f"状态：{watchdog.get('status')}")
+    if watchdog.get("pid") is not None:
+        print(f"pid：{watchdog['pid']}")
 
 
 def _print_report(

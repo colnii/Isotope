@@ -6079,6 +6079,188 @@ def test_codex_supervisor_runner_daemon_watchdog_leaves_live_loop_alone(
     assert payload["daemon"]["status"] == "running"
 
 
+def test_codex_supervisor_runner_daemon_watcher_start_spawns_periodic_watchdog(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 33333
+
+    def fake_popen(
+        command: list[str],
+        *,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured["command"] = command
+        captured["stdin"] = stdin
+        captured["stdout"] = stdout
+        captured["stderr"] = stderr
+        captured["start_new_session"] = start_new_session
+        return FakeProcess()
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon._process_is_alive",
+        lambda _pid: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon.subprocess.Popen",
+        fake_popen,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "daemon",
+            "watcher",
+            "start",
+            "--codex-home",
+            str(codex_home),
+            "--interval",
+            "5",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    expected_command = [
+        sys.executable,
+        "-m",
+        "isotope.features.supervisor.runner",
+        "daemon",
+        "watcher",
+        "run",
+        "--codex-home",
+        str(codex_home),
+        "--interval",
+        "5",
+    ]
+    assert payload["status"] == "ok"
+    assert payload["watcher"]["action"] == "started"
+    assert payload["watcher"]["status"] == "running"
+    assert payload["watcher"]["pid"] == 33333
+    assert payload["watcher"]["command"] == expected_command
+    assert payload["watcher"]["log_path"].endswith("watcher.log")
+    assert payload["watcher"]["state_path"].endswith("watcher.json")
+    assert captured["command"] == expected_command
+    assert captured["stdin"] is subprocess.DEVNULL
+    assert captured["stderr"] is subprocess.STDOUT
+    assert captured["start_new_session"] is True
+
+    state = json.loads(
+        (codex_home / "supervisor" / "watcher.json").read_text(encoding="utf-8")
+    )
+    persisted = dict(payload["watcher"])
+    persisted.pop("action")
+    assert state == persisted
+
+
+def test_codex_supervisor_runner_daemon_watcher_run_calls_watchdog_periodically(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    calls: list[str] = []
+
+    def fake_watchdog(*, codex_home: Path) -> dict[str, object]:
+        calls.append(str(codex_home))
+        return {
+            "action": "alive" if len(calls) == 1 else "restarted",
+            "pid": 10000 + len(calls),
+            "status": "running",
+        }
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon.watchdog_supervisor_daemon",
+        fake_watchdog,
+    )
+    monkeypatch.setattr("isotope.features.supervisor.daemon._sleep", lambda _seconds: None)
+
+    exit_code = supervisor_main(
+        [
+            "daemon",
+            "watcher",
+            "run",
+            "--codex-home",
+            str(codex_home),
+            "--interval",
+            "5",
+            "--iterations",
+            "2",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    lines = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+    assert calls == [str(codex_home), str(codex_home)]
+    assert [line["watchdog"]["action"] for line in lines] == ["alive", "restarted"]
+    assert [line["iteration"] for line in lines] == [1, 2]
+
+
+def test_codex_supervisor_runner_daemon_watcher_stop_marks_stopped(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    state_path = codex_home / "supervisor" / "watcher.json"
+    state_path.parent.mkdir(parents=True)
+    state_path.write_text(
+        json.dumps(
+            {
+                "pid": 33333,
+                "status": "running",
+                "started_at": "2026-05-18T10:00:00+00:00",
+                "stopped_at": None,
+                "command": [
+                    sys.executable,
+                    "-m",
+                    "isotope.features.supervisor.runner",
+                    "daemon",
+                    "watcher",
+                    "run",
+                ],
+                "codex_home": str(codex_home),
+                "log_path": str(codex_home / "supervisor" / "logs" / "watcher.log"),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    killed: list[tuple[int, int]] = []
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon._process_is_alive",
+        lambda pid: pid == 33333,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon.os.kill",
+        lambda pid, signal_number: killed.append((pid, signal_number)),
+    )
+
+    exit_code = supervisor_main(
+        ["daemon", "watcher", "stop", "--codex-home", str(codex_home), "--json"]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["watcher"]["status"] == "stopped"
+    assert payload["watcher"]["pid"] == 33333
+    assert killed == [(33333, signal.SIGTERM)]
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    assert state["status"] == "stopped"
+    assert state["stopped_at"] is not None
+
+
 def test_codex_supervisor_runner_launch_records_managed_codex(
     tmp_path,
     capsys,
