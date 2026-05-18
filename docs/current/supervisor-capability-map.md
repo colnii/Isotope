@@ -187,10 +187,36 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   `resume_session` 或 `launch_session`，`monitor` 只记录跳过。
 - LLM 动作提示会携带托管窗口的终端可输入、bell、状态协议短字段，
   普通 Codex session 的 `resume` 候选和可启动新会话的工作目录。
-- `launch_session` 的 prompt 由 LLM 根据上下文生成，工程层只校验
-  受控动作和工作目录。
+- `launch_session` 的 goal 由 LLM 根据上下文生成，执行时会包成
+  A 层 `work order` prompt；工程层仍只校验受控动作和工作目录。
 - 没有任何可控 Supervisor 目标时，`LLM action` 直接回退为 `monitor`。
 - `LLM action` 会从带说明的模型输出中提取最后一个动作 JSON。
+
+## Work Order 分层设计
+
+`work order` 是 Supervisor 发给被托管 Codex 的任务单。
+它用于说明本次执行的目标、工作区、允许范围、禁止范围、预算、
+完成条件和停等用户条件。
+
+当前已做 A 层：把这些边界写进 `launch_session` 的 prompt。
+这只能提高 worker 自觉遵守的概率，不代表 Supervisor 已经能强制预算。
+不得把 A 层描述成真正的 `max_minutes`、`max_continue_count` 或
+`max_context_requests` 控制。
+
+真正预算控制属于 B 层：Supervisor 自己记录开始时间、继续次数和
+上下文请求次数，并在超限时拦截后续动作。B 层后续应接到
+`payload`、lane state 和执行白名单上。
+
+当前 A 层字段：
+
+- `goal`：本次要完成什么。
+- `cwd`：执行所在工作区。
+- `allowed_scope`：允许改哪些目录或模块。
+- `forbidden_scope`：明确不碰什么。
+- `budget_hint`：写给 worker 的时间、轮次和上下文请求提醒。
+- `done_conditions`：什么证据算完成。
+- `ask_user_conditions`：只有哪些情况能停下来问用户。
+- `report_protocol`：最后按 `SUPERVISOR_STATUS/SUMMARY/NEXT` 汇报。
 
 ## 当前不要重复实现
 
@@ -228,8 +254,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 
 ## 下一步顺序
 
-1. 后续再决定是否增加人工输入框；默认仍保持白名单。
-2. 再拆分 `runner.py` 中的匹配、建议和 tmux 控制代码。
+1. 再补 B 层 Supervisor 计数和拦截，做真正预算控制。
+2. 后续再决定是否增加人工输入框；默认仍保持白名单。
+3. 再拆分 `runner.py` 中的匹配、建议和 tmux 控制代码。
 
 ## 登记规则
 

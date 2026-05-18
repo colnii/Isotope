@@ -2791,35 +2791,35 @@ def _execute_launch_action(
         raise ValueError("cwd is required for launch_session")
     if not isinstance(prompt, str) or not prompt.strip():
         raise ValueError("prompt is required for launch_session")
-    suggestion = action.get("command_suggestion")
-    command = (
-        suggestion["command"]
-        if isinstance(suggestion, dict) and isinstance(suggestion.get("command"), str)
-        else shlex.join(
-            [
-                "isotope-supervisor",
-                "launch",
-                "--name",
-                target_name,
-                "--cwd",
-                cwd,
-                "--prompt",
-                prompt,
-            ]
-        )
+    work_order_prompt = _launch_work_order_prompt(
+        target_name=target_name,
+        cwd=cwd,
+        goal=prompt,
+    )
+    command = shlex.join(
+        [
+            "isotope-supervisor",
+            "launch",
+            "--name",
+            target_name,
+            "--cwd",
+            cwd,
+            "--prompt",
+            work_order_prompt,
+        ]
     )
     record = launch_managed_codex(
         codex_home=Path(args.codex_home),
         cwd=Path(cwd),
         name=target_name,
-        prompt=prompt,
+        prompt=work_order_prompt,
         popen=subprocess.Popen,
         run=subprocess.run,
     )
     return {
         "kind": "launch_session",
         "command": command,
-        "text": prompt,
+        "text": work_order_prompt,
         "managed": {
             "name": record.name,
             "record_id": record.record_id,
@@ -2827,6 +2827,38 @@ def _execute_launch_action(
             "backend": record.backend,
         },
     }
+
+
+def _launch_work_order_prompt(
+    *,
+    target_name: str,
+    cwd: str,
+    goal: str,
+) -> str:
+    return "\n".join(
+        [
+            "WORK ORDER",
+            f"goal: {goal.strip()}",
+            f"cwd: {cwd.strip()}",
+            f"target_name: {target_name.strip()}",
+            "allowed_scope: 只处理本次 goal 直接相关的代码、测试和必要文档。",
+            "forbidden_scope: 不主动推送远端；不扩大到无关功能；不改用户未要求的仓库规则。",
+            (
+                "budget_hint: prompt-only，建议 20 分钟内给出状态，"
+                "最多主动继续 3 轮，最多请求上下文 2 次。"
+            ),
+            "budget_note: 这不是 Supervisor 强制预算控制；真正计数和拦截属于后续 B 层。",
+            "done_conditions: 目标完成、必要验证通过，并说明改动、证据和剩余风险。",
+            (
+                "ask_user_conditions: 只有 Codex 明确请求拍板、既有用户指示不足，"
+                "且上下文缺失、过时或冲突时才停下来问用户。"
+            ),
+            (
+                "report_protocol: 完成、暂停或遇到阻塞时，严格输出 "
+                "SUPERVISOR_STATUS、SUPERVISOR_SUMMARY、SUPERVISOR_NEXT 三行。"
+            ),
+        ]
+    )
 
 
 def _execute_context_action(

@@ -4685,7 +4685,12 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_launch_session(
     assert payload["executed"]["kind"] == "launch_session"
     assert payload["executed"]["managed"]["name"] == "new-planner"
     assert payload["executed"]["managed"]["pid"] == 45678
-    assert payload["executed"]["text"] == launch_prompt
+    assert "WORK ORDER" in payload["executed"]["text"]
+    assert f"goal: {launch_prompt}" in payload["executed"]["text"]
+    assert f"cwd: {workspace}" in payload["executed"]["text"]
+    assert "budget_hint: prompt-only" in payload["executed"]["text"]
+    assert "这不是 Supervisor 强制预算控制" in payload["executed"]["text"]
+    assert "SUPERVISOR_STATUS" in payload["executed"]["text"]
     assert captured["command"][:5] == [
         "codex",
         "exec",
@@ -4693,7 +4698,10 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_launch_session(
         str(workspace),
         "--skip-git-repo-check",
     ]
-    assert captured["command"][5].startswith(launch_prompt)
+    assert "WORK ORDER" in captured["command"][5]
+    assert f"goal: {launch_prompt}" in captured["command"][5]
+    assert "budget_hint: prompt-only" in captured["command"][5]
+    assert "这不是 Supervisor 强制预算控制" in captured["command"][5]
     assert "SUPERVISOR_STATUS" in captured["command"][5]
     assert captured["cwd"] == str(workspace)
     assert captured["stdin"] is subprocess.DEVNULL

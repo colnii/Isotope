@@ -363,6 +363,11 @@
 160. LLM provider reasoning-only 容错：OpenAI-compatible provider 遇到
     `finish_reason=length` 且只有 `reasoning_content`、无正文时，会重试
     一次并关闭 thinking，避免 reasoning token 吃完整个输出预算。
+161. Codex Supervisor work order A 层：`launch_session` 执行时会把
+    LLM 生成的目标包成 `WORK ORDER` prompt，写明 goal、cwd、
+    scope、budget hint、完成条件和停等用户条件；这只是提示边界，
+    不代表已有真正 `max_minutes`、`max_continue_count` 或
+    `max_context_requests` 强制控制。
 
 ## 最近完成：Codex Supervisor 真实 resume 执行验收修复
 

@@ -82,8 +82,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `advise`、`supervise` 和 `loop` 默认只把当前工作区内的会话作为
     LLM/action 候选，避免误恢复其他项目或父目录会话；可用
     `--workspace-root <path>` 指定范围，或用 `--all-workspaces` 显式放开；
-    `launch_session` 允许 LLM 自己生成发给新 Codex 的 prompt，
-    工程层只校验工作目录；`request_context` 是按需上下文检索能力，
+    `launch_session` 允许 LLM 自己生成发给新 Codex 的目标，
+    执行时会包成 A 层 `work order` prompt，写明 goal、cwd、
+    scope、budget hint、完成条件和停等用户条件；这只是提示边界，
+    不是 Supervisor 强制预算控制；`request_context` 是按需上下文检索能力，
     当前使用 `rg` 优先、Python 关键词扫描兜底，不是 BM25，
     也不是每轮固定塞文档全文；
     `scan --json` 包含结构化建议；

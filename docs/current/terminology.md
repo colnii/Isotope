@@ -68,6 +68,7 @@
 | `Codex session` | Codex 会话记录，本机通常保存在 `~/.codex/sessions` | 外部集成 | `src/isotope/features/supervisor/flow.py` |
 | `managed Codex` | Supervisor 启动、恢复或接管并登记的 Codex 会话，可通过 pid、tmux session、resume 目标和日志路径追踪 | 产品功能/外部集成 | `src/isotope/features/supervisor/registry.py` |
 | `recommendation` | 结构化建议，表达下一步建议动作、优先级和目标窗口，不等于自动执行 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
+| `payload` | Supervisor 每轮整理出的运行状态包，通常是 Python `dict`，包含扫描结果、候选命令、LLM 动作、执行结果和上下文检索结果 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `status_evidence` | 状态依据，解释 Supervisor 为什么把窗口判为工作中、等待用户、停住或报错 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/web.py` |
 | `supervisor_protocol` | 状态依据来源，表示被托管 Codex 主动写了 `SUPERVISOR_STATUS` | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
 | `状态汇报` | web 卡片里的结构化状态区，单独展示 `SUPERVISOR_STATUS/SUMMARY/NEXT` | 产品功能/视图/状态判断 | `src/isotope/features/supervisor/web.py` |
@@ -134,6 +135,7 @@
 | `monitor` | 白名单动作，表示当前没有需要发送的托管指令，只继续观察 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
 | `resume_session` | LLM planner 可选动作，恢复一个普通 Codex 历史会话并发送受控 prompt | 产品功能/模型/控制通道 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
 | `launch_session` | LLM planner 可选动作，由 LLM 生成 prompt 并启动一个新的 Codex 托管会话 | 产品功能/模型/控制通道 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
+| `work order` | 托管任务单，描述一次 Codex 托管执行的目标、工作区、允许范围、预算、完成条件和停等用户条件 | 产品功能/控制策略 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/registry.py` |
 | `request_context` | LLM planner 可选动作，按 query 请求项目上下文检索，不固定注入文档全文 | 产品功能/模型/上下文能力 | `src/isotope/features/supervisor/context.py`, `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
 | `ask_user` | LLM planner 可选动作，只有 Codex 明确请求拍板、既有用户指示不足且上下文缺失/过时/冲突时才允许停等用户；执行后会写入拍板列表 | 产品功能/模型/拍板 gate | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `decision request` | 拍板请求账本项，记录合法 `ask_user` 的问题、目标、原因和 gate 证据，供 dashboard 和 web 稳定展示；处理后用 `decision archive` 归档 | 产品功能/通知/拍板 | `src/isotope/features/supervisor/decision_requests.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
