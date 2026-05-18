@@ -2969,6 +2969,36 @@ def test_codex_supervisor_llm_action_skips_done_resume_candidates():
     assert '"session_id": "stale-session"' in messages[1]["content"]
 
 
+def test_codex_supervisor_llm_action_offers_workspace_actions_after_done_session():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="done-session",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/sessions/done.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="done",
+                reason="上一批工作已完成",
+                supervisor_status="done",
+                supervisor_summary="测试已通过。",
+                supervisor_next="可以继续下一步。",
+            ),
+        ),
+    )
+
+    suggestions = _advice_payload(report, include_all_managed=True)["command_suggestions"]
+    messages = build_llm_action_messages(report, suggestions)
+
+    kinds = [suggestion["kind"] for suggestion in suggestions]
+    assert "resume_session" not in kinds
+    assert "request_context" in kinds
+    assert "launch_session" in kinds
+    assert '"kind": "request_context"' in messages[1]["content"]
+    assert '"kind": "launch_session"' in messages[1]["content"]
+
+
 def test_codex_supervisor_generate_llm_action_decision_accepts_whitelisted_json():
     report = CodexSupervisorReport(
         generated_at=NOW.isoformat(),

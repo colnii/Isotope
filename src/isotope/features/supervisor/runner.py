@@ -99,6 +99,18 @@ LAUNCH_TMUX_HINT = (
 ADOPT_TMUX_HINT = (
     "isotope-supervisor adopt --name <name> --cwd <repo> --tmux-session <session>"
 )
+DEFAULT_CONTEXT_QUERY = "Supervisor 当前状态 下一步开发方向 AGENTS.md docs/current/status.md"
+DEFAULT_LAUNCH_PROMPT = " ".join(
+    [
+        "请阅读 AGENTS.md 和 docs/current/status.md，",
+        "根据当前项目状态自行判断并继续推进 Supervisor 下一步。",
+        "不要停下来等待用户发号施令；只有满足拍板条件才请求用户确认。",
+        "完成或遇到阻塞后，严格输出三行：",
+        "第一行 `SUPERVISOR_STATUS: working|done|blocked|needs_user`；",
+        "第二行 `SUPERVISOR_SUMMARY: 用一句中文说明当前进展`；",
+        "第三行 `SUPERVISOR_NEXT: 用一句中文说明建议下一步`。",
+    ]
+)
 DASHBOARD_GROUP_LABELS = {
     "needs_attention": "需要看",
     "done": "已完成",
@@ -2370,9 +2382,10 @@ def _command_suggestions(
                 suggestions.extend(_managed_tmux_command_suggestions(session))
             if _is_resume_capable_session(session):
                 suggestions.extend(_resume_session_command_suggestions(session))
+        suggestions.extend(_workspace_action_command_suggestions(report))
         if suggestions:
             suggestions.append(_watch_command_suggestion())
-            return suggestions
+            return _dedupe_command_suggestions(suggestions)
     recommendation = report.recommendation
     target = _target_session(report, recommendation.target_session_id)
     if target is not None and target.managed_tmux_session:
@@ -2385,6 +2398,83 @@ def _command_suggestions(
     if recommendation.action == "monitor":
         return [_watch_command_suggestion()]
     return []
+
+
+def _workspace_action_command_suggestions(report: Any) -> list[dict[str, str]]:
+    suggestions: list[dict[str, str]] = []
+    for cwd in _workspace_cwds(report):
+        suggestions.append(_workspace_context_command_suggestion(cwd))
+        suggestions.append(_workspace_launch_command_suggestion(cwd))
+    return suggestions
+
+
+def _workspace_cwds(report: Any) -> list[str]:
+    seen: set[str] = set()
+    workspaces: list[str] = []
+    for session in report.sessions:
+        cwd = getattr(session, "cwd", None)
+        if not isinstance(cwd, str) or not cwd or cwd in seen:
+            continue
+        seen.add(cwd)
+        workspaces.append(cwd)
+    return workspaces
+
+
+def _workspace_context_command_suggestion(cwd: str) -> dict[str, str]:
+    return {
+        "kind": "request_context",
+        "label": "让 LLM 先检索项目上下文",
+        "cwd": cwd,
+        "query": DEFAULT_CONTEXT_QUERY,
+        "command": shlex.join(
+            [
+                "isotope-supervisor",
+                "context",
+                "--cwd",
+                cwd,
+                "--query",
+                DEFAULT_CONTEXT_QUERY,
+            ]
+        ),
+    }
+
+
+def _workspace_launch_command_suggestion(cwd: str) -> dict[str, str]:
+    return {
+        "kind": "launch_session",
+        "label": "让 LLM 启动新的 Codex 会话",
+        "target_name": "planner-session",
+        "cwd": cwd,
+        "prompt": DEFAULT_LAUNCH_PROMPT,
+        "command": shlex.join(
+            [
+                "isotope-supervisor",
+                "launch",
+                "--name",
+                "planner-session",
+                "--cwd",
+                cwd,
+                "--prompt",
+                DEFAULT_LAUNCH_PROMPT,
+            ]
+        ),
+    }
+
+
+def _dedupe_command_suggestions(suggestions: list[dict[str, str]]) -> list[dict[str, str]]:
+    seen: set[tuple[str | None, str | None, str | None]] = set()
+    deduped: list[dict[str, str]] = []
+    for suggestion in suggestions:
+        key = (
+            suggestion.get("kind"),
+            suggestion.get("command"),
+            suggestion.get("session_id"),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(suggestion)
+    return deduped
 
 
 def _resume_session_command_suggestions(session: Any) -> list[dict[str, str]]:
