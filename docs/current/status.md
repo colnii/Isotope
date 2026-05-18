@@ -76,7 +76,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `monitor` 只记录跳过；
     `advise` 可单独输出建议和命令草案，并可显式执行 send 类草案；
     `guide` 可生成一组可复制的启动、接管、日常 loop 和观察命令，
-    作为真实使用入口；`loop` 是日常常驻入口，默认启用自动执行、
+    作为真实使用入口；`loop` 是日常常驻入口，默认会自动发现并接管
+    未登记的 Codex tmux 窗口，再启用自动执行、
     只在变化时输出和需要人看时响铃；`changes-only` 只减少输出，
     不会阻断自动策略继续检查冷却和发送；
     `advise/supervise --name <lane>` 可把建议、显式执行和自动执行
@@ -148,6 +149,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     手动 tmux 内启动 Codex 后，`adopt -> loop -> archive`
     已通过真实闭环验收；`discover` 已能在没有 tmux server 时返回空列表，
     有候选窗口时给出可复制的接管命令，或按候选直接接管；
+    `loop` 已能在启动后自动发现并接管候选，不需要人先手动 adopt；
     `launch` 会给托管 Codex 注入 `SUPERVISOR_STATUS` 状态协议要求，
     `scan` 会从 assistant 回复解析状态、摘要和下一步字段，并校验
     状态合法值；scan 顶层状态、统计计数和 dashboard 展示都会优先采用
@@ -210,6 +212,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --lim
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner advise
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise --iterations 1 --llm-summary --json
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner loop --interval 30
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner loop --interval 30 --no-auto-adopt
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner adopt --name lane-a --cwd /path/to/repo --tmux-session isotope-lane-a
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --name lane-a --text "继续"
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner archive --name lane-a

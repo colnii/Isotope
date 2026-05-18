@@ -5348,6 +5348,8 @@ def test_codex_supervisor_runner_discover_lists_adoptable_tmux_codex_sessions(
                 "plain-shell": "vim README.md\n",
             }
             return subprocess.CompletedProcess(command, 0, panes[session], "")
+        if command[:3] == ["tmux", "display-message", "-p"]:
+            return subprocess.CompletedProcess(command, 0, str(workspace) + "\n", "")
         raise AssertionError(f"unexpected command: {command}")
 
     monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
@@ -5369,6 +5371,7 @@ def test_codex_supervisor_runner_discover_lists_adoptable_tmux_codex_sessions(
         {
             "tmux_session": "iso_dev",
             "suggested_name": "iso-dev",
+            "cwd": str(workspace),
             "attached": False,
             "windows": 1,
             "looks_like_codex": True,
@@ -5418,6 +5421,8 @@ def test_codex_supervisor_runner_discover_can_adopt_candidate_by_index(
                 "› 继续开发 supervisor\n  gpt-5.5 xhigh · Context 80% left\n",
                 "",
             )
+        if command[:3] == ["tmux", "display-message", "-p"]:
+            return subprocess.CompletedProcess(command, 0, str(workspace) + "\n", "")
         if command[:3] == ["tmux", "has-session", "-t"]:
             assert command[3] == "iso_dev"
             assert check is False
@@ -5425,6 +5430,8 @@ def test_codex_supervisor_runner_discover_can_adopt_candidate_by_index(
         if command[:4] == ["tmux", "set-hook", "-t", "iso_dev"]:
             assert check is True
             return subprocess.CompletedProcess(command, 0, "", "")
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "main\n", "")
         raise AssertionError(f"unexpected command: {command}")
 
     monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
@@ -5491,11 +5498,15 @@ def test_codex_supervisor_runner_discover_can_adopt_first_candidate(
                 "› 继续开发 supervisor\n  gpt-5.5 xhigh · Context 80% left\n",
                 "",
             )
+        if command[:3] == ["tmux", "display-message", "-p"]:
+            return subprocess.CompletedProcess(command, 0, str(workspace) + "\n", "")
         if command[:3] == ["tmux", "has-session", "-t"]:
             return subprocess.CompletedProcess(command, 0, "", "")
         if command[:4] == ["tmux", "set-hook", "-t", "iso_dev"]:
             assert check is True
             return subprocess.CompletedProcess(command, 0, "", "")
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "main\n", "")
         raise AssertionError(f"unexpected command: {command}")
 
     monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
@@ -5554,6 +5565,97 @@ def test_codex_supervisor_runner_loop_uses_daily_defaults(
     }
 
 
+def test_codex_supervisor_runner_loop_auto_adopts_discovered_tmux_candidate(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool = False,
+        text: bool = True,
+        capture_output: bool = True,
+    ) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        assert text is True
+        assert capture_output is True
+        if command[:3] == ["tmux", "list-sessions", "-F"]:
+            return subprocess.CompletedProcess(command, 0, "iso_dev\t0\t1\n", "")
+        if command[:3] == ["tmux", "capture-pane", "-p"]:
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                "Working ... esc to interrupt\n  gpt-5.5 xhigh · Context 80% left\n",
+                "",
+            )
+        if command[:3] == ["tmux", "display-message", "-p"]:
+            return subprocess.CompletedProcess(command, 0, str(workspace) + "\n", "")
+        if command[:3] == ["tmux", "has-session", "-t"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        if command[:4] == ["tmux", "set-hook", "-t", "iso_dev"]:
+            assert check is True
+            return subprocess.CompletedProcess(command, 0, "", "")
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "main\n", "")
+        raise AssertionError(f"unexpected command: {command}")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "iso_dev",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: "Working ... esc to interrupt\n  gpt-5.5 xhigh · main",
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["auto_adopted"] == [
+        {
+            "name": "iso-dev",
+            "tmux_session": "iso_dev",
+            "cwd": str(workspace),
+            "status": "adopted",
+        }
+    ]
+    assert payload["automation"]["ready"] is True
+    assert payload["auto_action"] == {
+        "kind": "monitor",
+        "reason": "managed lane is running without ready signal",
+    }
+    records = [
+        json.loads(line)
+        for line in (codex_home / "supervisor" / "managed_sessions.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    assert records[0]["name"] == "iso-dev"
+    assert records[0]["tmux_session"] == "iso_dev"
+    assert records[0]["cwd"] == str(workspace)
+
+
 def test_codex_supervisor_runner_loop_auto_executes_even_when_report_unchanged(
     tmp_path,
     capsys,
@@ -5601,6 +5703,7 @@ def test_codex_supervisor_runner_loop_auto_executes_even_when_report_unchanged(
             "2",
             "--interval",
             "1",
+            "--no-auto-adopt",
             "--prompt-cooldown",
             "0",
             "--json",

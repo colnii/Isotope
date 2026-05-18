@@ -297,6 +297,23 @@
     会话，筛出疑似 Codex 窗口，并生成可复制的 `adopt` 和 `attach` 命令。
 135. Codex Supervisor discover 直接接管：`discover --adopt-first` 和
     `discover --adopt-index <编号>` 可直接接管候选，自动使用建议托管名。
+136. Codex Supervisor loop 自动接管：日常 `loop` 默认先发现并接管
+    未登记 Codex tmux 窗口，再进入自动监督。
+
+## 最近完成：Codex Supervisor loop 自动接管
+
+完成内容：
+
+- `loop` 默认启用自动发现接管，不再要求人先跑 `discover/adopt`。
+- 自动接管会跳过已经登记过的 tmux session，避免重复接管或捞回归档窗口。
+- 接管时读取 tmux pane 当前目录作为 cwd，减少错绑工作目录。
+- `supervise --auto-adopt` 可显式开启同样能力。
+- `loop --no-auto-adopt` 可只监督已登记窗口。
+
+下一步：
+
+- 做真实“常驻 loop 托管一个测试 Codex 窗口”的端到端验收，
+  重点看它是否能从发现、接管、监控到自动请求状态都不需要人工发命令。
 
 ## 最近完成：Codex Supervisor discover 直接接管
 

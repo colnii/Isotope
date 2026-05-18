@@ -30,7 +30,9 @@ from .llm_summary import (
 from .registry import (
     adopt_tmux_session,
     archive_managed_codex,
+    default_registry_path,
     launch_managed_codex,
+    read_managed_record_events,
     repair_tmux_bell_hooks,
     send_to_managed_codex,
 )
@@ -176,6 +178,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Use the rule-based auto policy to execute one whitelist action per loop.",
     )
     subparsers.choices["supervise"].add_argument(
+        "--auto-adopt",
+        action="store_true",
+        help="Automatically adopt newly discovered Codex-like tmux sessions before each loop.",
+    )
+    subparsers.choices["supervise"].add_argument(
         "--bell",
         action="store_true",
         help="Write a terminal bell when a supervise iteration still needs human attention.",
@@ -229,8 +236,15 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         help="Stop after this many reports. Omit to loop until interrupted.",
     )
+    loop_parser.add_argument(
+        "--no-auto-adopt",
+        action="store_false",
+        dest="auto_adopt",
+        help="Disable automatic adoption of discovered Codex-like tmux sessions.",
+    )
     loop_parser.set_defaults(
         auto_execute=True,
+        auto_adopt=True,
         changes_only=True,
         bell=True,
         execute=None,
@@ -623,6 +637,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
     previous_fingerprint: tuple[object, ...] | None = None
     previous_bell_fingerprint: tuple[object, ...] | None = None
     while iterations is None or count < iterations:
+        auto_adopted = _auto_adopt_discovered_tmux_sessions(args)
         report = _scan_report(args)
         fingerprint = _report_fingerprint(report)
         report_changed = previous_fingerprint != fingerprint
@@ -642,12 +657,18 @@ def _run_supervise(args: argparse.Namespace) -> None:
                 precomputed_auto_action,
             )
             force_print = _executed_action_forces_print(precomputed_executed)
-        should_print = not args.changes_only or report_changed or force_print
+        should_print = (
+            not args.changes_only
+            or report_changed
+            or force_print
+            or bool(auto_adopted)
+        )
         if should_print:
             payload = _supervise_payload(
                 args,
                 report,
                 iteration=count + 1,
+                auto_adopted=auto_adopted,
                 precomputed_auto_action=precomputed_auto_action,
                 precomputed_executed=precomputed_executed,
             )
@@ -673,6 +694,46 @@ def _run_supervise(args: argparse.Namespace) -> None:
 
 def _sleep(seconds: float) -> None:
     time.sleep(seconds)
+
+
+def _auto_adopt_discovered_tmux_sessions(args: argparse.Namespace) -> list[dict[str, str]]:
+    if not getattr(args, "auto_adopt", False):
+        return []
+    known_tmux = _known_managed_tmux_sessions(Path(args.codex_home))
+    candidates = discover_tmux_adopt_candidates(
+        cwd=Path.cwd(),
+        include_all=False,
+        run=subprocess.run,
+    )
+    adopted: list[dict[str, str]] = []
+    for candidate in candidates:
+        if candidate.tmux_session in known_tmux:
+            continue
+        record = adopt_tmux_session(
+            codex_home=Path(args.codex_home),
+            cwd=Path(candidate.cwd),
+            name=candidate.suggested_name,
+            tmux_session=candidate.tmux_session,
+            run=subprocess.run,
+        )
+        known_tmux.add(candidate.tmux_session)
+        adopted.append(
+            {
+                "name": record.name,
+                "tmux_session": record.tmux_session or candidate.tmux_session,
+                "cwd": record.cwd,
+                "status": record.status,
+            }
+        )
+    return adopted
+
+
+def _known_managed_tmux_sessions(codex_home: Path) -> set[str]:
+    return {
+        record.tmux_session
+        for record in read_managed_record_events(default_registry_path(codex_home))
+        if record.tmux_session
+    }
 
 
 def _scan_report(args: argparse.Namespace) -> Any:
@@ -804,7 +865,7 @@ def _discover_payload(args: argparse.Namespace) -> dict[str, Any]:
     lane_name = args.name or selected.suggested_name
     record = adopt_tmux_session(
         codex_home=Path(args.codex_home),
-        cwd=Path(cwd),
+        cwd=Path(selected.cwd),
         name=lane_name,
         tmux_session=selected.tmux_session,
         prompt=args.prompt,
@@ -885,6 +946,7 @@ def _supervise_payload(
     report: Any,
     *,
     iteration: int,
+    auto_adopted: list[dict[str, str]] | None = None,
     precomputed_auto_action: dict[str, Any] | None = None,
     precomputed_executed: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -896,6 +958,7 @@ def _supervise_payload(
     payload["iteration"] = iteration
     payload["report"] = report.to_dict()
     payload["automation"] = _automation_status(report)
+    payload["auto_adopted"] = auto_adopted or []
     if args.llm_summary:
         payload["llm_summary"] = _summarize_with_llm(report)
     if args.llm_action or args.llm_execute:
@@ -1441,6 +1504,11 @@ def _print_supervise_plain(payload: dict[str, Any], report: Any) -> None:
     print()
     print("[托管自动化]")
     print(automation["reason"])
+    if auto_adopted := payload.get("auto_adopted"):
+        for item in auto_adopted:
+            print(
+                f"自动接管：{item['name']} tmux={item['tmux_session']} cwd={item['cwd']}"
+            )
     if not automation["ready"]:
         print(f"启动：{automation['launch_hint']}")
         print(f"接管：{automation['adopt_hint']}")

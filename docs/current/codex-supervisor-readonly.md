@@ -266,6 +266,7 @@ Codex 的 tmux 会话，并生成可复制的 `adopt` 和 `attach` 命令。
 .venv/bin/isotope-supervisor loop --interval 30
 .venv/bin/isotope-supervisor loop --name lane-a
 .venv/bin/isotope-supervisor loop --iterations 1 --json
+.venv/bin/isotope-supervisor loop --no-auto-adopt
 ```
 
 它默认启用 `auto-execute`、`changes-only` 和 `bell`：
@@ -273,6 +274,10 @@ Codex 的 tmux 会话，并生成可复制的 `adopt` 和 `attach` 命令。
 需要人看时才响铃。`--name <lane>` 可临时只盯一个窗口。
 `changes-only` 只压缩输出，不会阻断自动发送；如果窗口一直可输入但没回应，
 冷却期结束后仍会再次请求状态。
+`loop` 还会默认先扫描现有 tmux Codex 窗口，
+自动接管未登记候选，再进入监督和自动推进。
+接管时会读取 tmux pane 的当前目录作为 cwd。
+如果只想监督已登记窗口，可加 `--no-auto-adopt`。
 
 `supervise` 是当前的监控小闭环：
 
@@ -283,6 +288,7 @@ Codex 的 tmux 会话，并生成可复制的 `adopt` 和 `attach` 命令。
 .venv/bin/isotope-supervisor supervise --interval 180 --auto-execute --prompt-cooldown 300
 .venv/bin/isotope-supervisor supervise --interval 30 --auto-execute --changes-only --bell
 .venv/bin/isotope-supervisor supervise --interval 180 --llm-execute --prompt-cooldown 300
+.venv/bin/isotope-supervisor supervise --interval 30 --auto-adopt --auto-execute --changes-only
 .venv/bin/isotope-supervisor supervise --name lane-a --iterations 1 --auto-execute --json
 .venv/bin/isotope-supervisor supervise --iterations 1 --llm-action --json
 .venv/bin/isotope-supervisor supervise --iterations 1 --llm-summary --json

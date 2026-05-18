@@ -75,6 +75,9 @@ Codex Supervisor 已经不只是一个小命令。
 - `/managed/send` 成功发送后会更新 lane state。
 - `guide` 会按 cwd、lane name 和 tmux session 打印可复制工作流命令。
 - `loop` 是日常常驻入口，默认等价于自动执行、只在变化时输出和响铃提醒。
+- `loop` 默认会自动发现并接管未登记的 Codex tmux 窗口；
+  可用 `--no-auto-adopt` 关闭。
+- `supervise --auto-adopt` 可显式开启同样的自动发现接管能力。
 - `loop` 的 `changes-only` 只限制输出；报告不变时自动策略仍会检查冷却并推进。
 - `watch --changes-only` 只在状态变化时输出。
 - `watch --bell` 可在建议目标变化时输出终端 bell，不按固定 interval 重复响。

@@ -23,6 +23,7 @@ CODEX_PANE_MARKERS = (
 class TmuxAdoptCandidate:
     tmux_session: str
     suggested_name: str
+    cwd: str
     attached: bool
     windows: int | None
     looks_like_codex: bool
@@ -35,6 +36,7 @@ class TmuxAdoptCandidate:
         return {
             "tmux_session": self.tmux_session,
             "suggested_name": self.suggested_name,
+            "cwd": self.cwd,
             "attached": self.attached,
             "windows": self.windows,
             "looks_like_codex": self.looks_like_codex,
@@ -70,6 +72,11 @@ def discover_tmux_adopt_candidates(
         if session is None:
             continue
         excerpt = _capture_tmux_pane(run, session["tmux_session"])
+        candidate_cwd = _capture_tmux_cwd(
+            run,
+            session["tmux_session"],
+            fallback=workspace,
+        )
         looks_like_codex = _looks_like_codex_pane(excerpt)
         if not include_all and not looks_like_codex:
             continue
@@ -83,6 +90,7 @@ def discover_tmux_adopt_candidates(
             TmuxAdoptCandidate(
                 tmux_session=session["tmux_session"],
                 suggested_name=suggested_name,
+                cwd=str(candidate_cwd),
                 attached=bool(session["attached"]),
                 windows=session["windows"],
                 looks_like_codex=looks_like_codex,
@@ -94,7 +102,7 @@ def discover_tmux_adopt_candidates(
                         "--name",
                         suggested_name,
                         "--cwd",
-                        str(workspace),
+                        str(candidate_cwd),
                         "--tmux-session",
                         session["tmux_session"],
                     ]
@@ -140,6 +148,22 @@ def _capture_tmux_pane(
     if completed.returncode != 0:
         return ""
     return completed.stdout
+
+
+def _capture_tmux_cwd(
+    run: Callable[..., subprocess.CompletedProcess[str]],
+    tmux_session: str,
+    *,
+    fallback: Path,
+) -> Path:
+    completed = _run_tmux(
+        run,
+        ["tmux", "display-message", "-p", "-t", tmux_session, "#{pane_current_path}"],
+    )
+    if completed.returncode != 0:
+        return fallback
+    path = Path(completed.stdout.strip()).expanduser()
+    return path if path.is_dir() else fallback
 
 
 def _looks_like_codex_pane(text: str) -> bool:
