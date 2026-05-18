@@ -99,7 +99,10 @@ class PooledSummaryProvider:
                 )
                 return _strip_thinking(response.content)
             except Exception as exc:
-                failures.append(f"{entry.provider}:{type(exc).__name__}")
+                failures.append(
+                    f"{entry.provider}:{type(exc).__name__}"
+                    f"({_safe_failure_message(exc, entry.api_key)})"
+                )
         raise ValueError("All LLM pool entries failed: " + ", ".join(failures))
 
 
@@ -440,6 +443,25 @@ def _pool_toml_paths(env: Mapping[str, str]) -> list[Path]:
     return [Path(__file__).resolve().parent / "supervisor_llm_pool.toml"]
 
 
+def _safe_failure_message(exc: Exception, api_key: str) -> str:
+    message = " ".join(str(exc).split())
+    if api_key:
+        message = message.replace(api_key, _redacted_secret(api_key))
+    return _clip_text(message or type(exc).__name__, limit=180)
+
+
+def _redacted_secret(value: str) -> str:
+    if len(value) <= 3:
+        return "..."
+    return value[:3] + "..."
+
+
+def _clip_text(text: str, *, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1] + "\u2026"
+
+
 def _load_pool_entries(
     files: list[Path],
     env: Mapping[str, str],
@@ -557,7 +579,8 @@ def _extract_json_object(text: str) -> dict[str, Any]:
         stripped = re.sub(r"\s*```$", "", stripped)
     candidates = _json_object_candidates(stripped)
     if not candidates:
-        raise ValueError("LLM action must be a JSON object")
+        raw_excerpt = _clip_text(" ".join(stripped.split()), limit=180)
+        raise ValueError(f"LLM action must be a JSON object; raw={raw_excerpt}")
     for payload in reversed(candidates):
         if isinstance(payload.get("kind"), str):
             return payload
@@ -753,7 +776,9 @@ def _has_context_check_for_target(
 
 
 def _has_any_llm_target(report: CodexSupervisorReport) -> bool:
-    return any(_is_llm_candidate_target(session) for session in report.sessions)
+    return any(_is_llm_candidate_target(session) for session in report.sessions) or bool(
+        _available_workspaces(report)
+    )
 
 
 def _is_llm_candidate_target(session: Any) -> bool:
@@ -766,8 +791,11 @@ def _has_managed_send_target(session: Any) -> bool:
 
 def _can_resume_session(session: Any) -> bool:
     session_id = getattr(session, "session_id", None)
-    return isinstance(session_id, str) and bool(session_id) and not session_id.startswith(
-        "managed:"
+    return (
+        isinstance(session_id, str)
+        and bool(session_id)
+        and not session_id.startswith("managed:")
+        and not _is_completed_session(session)
     )
 
 
@@ -792,6 +820,13 @@ def _available_workspaces(report: CodexSupervisorReport) -> list[str]:
 def _default_workspace(report: CodexSupervisorReport) -> str | None:
     workspaces = _available_workspaces(report)
     return workspaces[0] if workspaces else None
+
+
+def _is_completed_session(session: Any) -> bool:
+    return (
+        getattr(session, "status", None) in {"done", "archived"}
+        or getattr(session, "supervisor_status", None) == "done"
+    )
 
 
 def _clip(text: str | None, *, limit: int = 160) -> str | None:

@@ -2931,6 +2931,44 @@ def test_codex_supervisor_llm_action_messages_include_whitelist_and_commands():
     assert '"supervisor_status": "done"' in messages[1]["content"]
 
 
+def test_codex_supervisor_llm_action_skips_done_resume_candidates():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="done-session",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/sessions/done.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="done",
+                reason="上一批工作已完成",
+                supervisor_status="done",
+                supervisor_summary="已完成。",
+                supervisor_next="等待归档。",
+            ),
+            CodexSessionSummary(
+                session_id="stale-session",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/sessions/stale.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=900,
+                status="stale",
+                reason="超过 10 分钟没有新事件",
+            ),
+        ),
+    )
+
+    suggestions = _advice_payload(report, include_all_managed=True)["command_suggestions"]
+    messages = build_llm_action_messages(report, suggestions)
+
+    suggestion_text = json.dumps(suggestions, ensure_ascii=False)
+    assert "done-session" not in suggestion_text
+    assert "stale-session" in suggestion_text
+    assert '"session_id": "done-session"' not in messages[1]["content"]
+    assert '"session_id": "stale-session"' in messages[1]["content"]
+
+
 def test_codex_supervisor_generate_llm_action_decision_accepts_whitelisted_json():
     report = CodexSupervisorReport(
         generated_at=NOW.isoformat(),
@@ -2987,12 +3025,9 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_resume_session():
                 cwd="/home/lumber/Github/isotope",
                 source_path="/home/lumber/.codex/sessions/rollout.jsonl",
                 last_event_at=NOW.isoformat(),
-                age_seconds=30,
-                status="done",
-                reason="已完成上一批工作",
-                supervisor_status="done",
-                supervisor_summary="上一批测试已完成。",
-                supervisor_next="可以继续下一步。",
+                age_seconds=900,
+                status="stale",
+                reason="超过 10 分钟没有新事件",
             ),
         ),
     )
@@ -3005,10 +3040,10 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_resume_session():
             assert '"session_id": "019e35a2-e442-75e2-84ab-3761a685a736"' in content
             return json.dumps(
                 {
-                    "kind": "resume_session",
-                    "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
-                    "prompt_kind": "send_continue",
-                    "reason": "历史会话已完成上一批，直接恢复并继续推进。",
+                        "kind": "resume_session",
+                        "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
+                        "prompt_kind": "send_continue",
+                        "reason": "历史会话长时间没有新事件，恢复后继续推进。",
                 },
                 ensure_ascii=False,
             )
@@ -3020,7 +3055,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_resume_session():
         "target_name": "resume-019e35a2",
         "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
         "prompt_kind": "send_continue",
-        "reason": "历史会话已完成上一批，直接恢复并继续推进。",
+        "reason": "历史会话长时间没有新事件，恢复后继续推进。",
         "command_suggestion": {
             "command": (
                 "isotope-supervisor resume --name resume-019e35a2 "
@@ -3431,6 +3466,35 @@ def test_codex_supervisor_generate_llm_action_decision_extracts_noisy_json():
     assert decision["kind"] == "send_status"
     assert decision["target_name"] == "lane-a"
     assert decision["reason"] == "先让它按协议汇报。"
+
+
+def test_codex_supervisor_generate_llm_action_decision_reports_raw_excerpt_for_non_json():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="managed:managed-001",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/supervisor/managed_sessions.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="working",
+                reason="Supervisor 托管 tmux 会话仍在运行",
+                managed=True,
+                managed_name="lane-a",
+                managed_backend="tmux",
+                managed_tmux_session="isotope-lane-a",
+            ),
+        ),
+    )
+    suggestions = _advice_payload(report)["command_suggestions"]
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            return "我需要更多上下文，暂时不能决定。"
+
+    with pytest.raises(ValueError, match="raw=我需要更多上下文"):
+        generate_llm_action_decision(report, suggestions, FakeProvider())
 
 
 def test_codex_supervisor_send_status_text_requires_protocol_report():
@@ -4272,13 +4336,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_resume_session(
         events=[
             _assistant_message(
                 "2026-05-16T11:59:20Z",
-                "\n".join(
-                    [
-                        "SUPERVISOR_STATUS: done",
-                        "SUPERVISOR_SUMMARY: 上一批测试已经通过。",
-                        "SUPERVISOR_NEXT: 可以继续下一步。",
-                    ]
-                ),
+                "正在整理 Supervisor 验收结果，尚未输出最终状态。",
             )
         ],
     )
@@ -4290,10 +4348,10 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_resume_session(
             assert '"kind": "resume_session"' in content
             return json.dumps(
                 {
-                    "kind": "resume_session",
-                    "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
-                    "prompt_kind": "send_continue",
-                    "reason": "旧会话已完成，可以恢复后继续。",
+                        "kind": "resume_session",
+                        "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
+                        "prompt_kind": "send_continue",
+                        "reason": "旧会话长时间未更新，可以恢复后继续。",
                 },
                 ensure_ascii=False,
             )
@@ -4352,15 +4410,16 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_resume_session(
     assert payload["executed"]["managed"]["name"] == "resume-019e35a2"
     assert payload["executed"]["managed"]["pid"] == 34567
     assert payload["executed"]["text"] == CONTINUE_REQUEST_TEXT
-    assert captured["command"][:5] == [
+    assert captured["command"][:6] == [
         "codex",
         "exec",
         "-C",
         str(workspace),
+        "--skip-git-repo-check",
         "resume",
     ]
-    assert captured["command"][5] == "019e35a2-e442-75e2-84ab-3761a685a736"
-    assert captured["command"][6].startswith("继续推进当前任务。")
+    assert captured["command"][6] == "019e35a2-e442-75e2-84ab-3761a685a736"
+    assert captured["command"][7].startswith("继续推进当前任务。")
     assert captured["cwd"] == str(workspace)
     assert captured["stdin"] is subprocess.DEVNULL
     assert captured["stderr"] is subprocess.STDOUT
@@ -7993,16 +8052,17 @@ def test_codex_supervisor_runner_resume_exec_records_managed_codex(
         "019e35a2-e442-75e2-84ab-3761a685a736"
     )
     assert payload["managed"]["resume_last"] is False
-    assert captured["command"][:5] == [
+    assert captured["command"][:6] == [
         "codex",
         "exec",
         "-C",
         str(workspace),
+        "--skip-git-repo-check",
         "resume",
     ]
-    assert captured["command"][5] == "019e35a2-e442-75e2-84ab-3761a685a736"
-    assert captured["command"][6].startswith("继续推进 supervisor 前端测试")
-    assert "SUPERVISOR_STATUS" in captured["command"][6]
+    assert captured["command"][6] == "019e35a2-e442-75e2-84ab-3761a685a736"
+    assert captured["command"][7].startswith("继续推进 supervisor 前端测试")
+    assert "SUPERVISOR_STATUS" in captured["command"][7]
     assert captured["cwd"] == str(workspace)
     assert captured["stdin"] is subprocess.DEVNULL
     assert captured["stderr"] is subprocess.STDOUT
@@ -8069,15 +8129,16 @@ def test_codex_supervisor_runner_resume_exec_last_uses_last_flag(
     assert payload["managed"]["backend"] == "codex_exec_resume"
     assert payload["managed"]["resume_session_id"] is None
     assert payload["managed"]["resume_last"] is True
-    assert captured["command"][:6] == [
+    assert captured["command"][:7] == [
         "codex",
         "exec",
         "-C",
         str(workspace),
+        "--skip-git-repo-check",
         "resume",
         "--last",
     ]
-    assert captured["command"][6].startswith("请汇报当前状态")
+    assert captured["command"][7].startswith("请汇报当前状态")
 
 
 def test_codex_supervisor_runner_adopt_registers_existing_tmux_session(
@@ -8793,6 +8854,35 @@ def test_codex_supervisor_pooled_provider_falls_back_during_summary():
     assert captured["url"] == "https://api.fallback.example.com/v1/chat/completions"
     assert captured["payload"]["model"] == "fallback-model"
     assert call_count[0] == 2
+
+
+def test_codex_supervisor_pooled_provider_reports_safe_failure_details():
+    def transport(
+        url: str,
+        payload: dict[str, object],
+        headers: dict[str, str],
+        timeout: int,
+    ) -> dict[str, object]:
+        raise ValueError(f"connection refused for {headers['Authorization']}")
+
+    provider = PooledSummaryProvider(
+        entries=(
+            PoolEntry(
+                provider="dead",
+                api_key="sk-secret-dead",
+                base_url="https://api.dead.invalid",
+                model="dead-model",
+            ),
+        ),
+        transport=transport,
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        provider.summarize([{"role": "user", "content": "hello"}])
+
+    message = str(exc_info.value)
+    assert "dead:ValueError(connection refused for Bearer sk-..." in message
+    assert "sk-secret-dead" not in message
 
 
 def test_codex_supervisor_env_resolver_loads_pool_entries_from_agents_format(tmp_path):

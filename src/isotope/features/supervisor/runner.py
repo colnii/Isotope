@@ -2447,11 +2447,19 @@ def _is_resume_capable_session(session: Any) -> bool:
         and bool(session_id)
         and not session_id.startswith("managed:")
         and bool(getattr(session, "cwd", None))
+        and not _is_completed_session(session)
     )
 
 
 def _resume_managed_name_for_session(session: Any) -> str:
     return "resume-" + session.short_session_id
+
+
+def _is_completed_session(session: Any) -> bool:
+    return (
+        getattr(session, "status", None) in {"done", "archived"}
+        or getattr(session, "supervisor_status", None) == "done"
+    )
 
 
 def _execute_advice(
@@ -3005,7 +3013,7 @@ def _context_cwd_for_report(report: Any) -> str | None:
 
 class _UnavailableSummaryProvider:
     def summarize(self, messages: list[dict[str, str]]) -> str:
-        raise AssertionError("LLM provider should not be called without Supervisor targets")
+        raise AssertionError("LLM provider should not be called without Supervisor context")
 
 
 def _has_llm_action_target(report: Any) -> bool:
@@ -3013,7 +3021,7 @@ def _has_llm_action_target(report: Any) -> bool:
         (session.managed_name and session.managed_tmux_session)
         or _is_resume_capable_session(session)
         for session in report.sessions
-    )
+    ) or _context_cwd_for_report(report) is not None
 
 
 if __name__ == "__main__":

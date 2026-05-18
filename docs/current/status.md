@@ -68,6 +68,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `launch` 可启动 Codex 并写入本机托管登记；`launch --backend tmux`
     可在本机 tmux 会话中启动 Codex；`resume` 可通过
     `codex exec resume <session> <prompt>` 或 `--last` 恢复历史会话，
+    会带 `--skip-git-repo-check` 以兼容历史会话落在非仓库父目录的情况，
     并登记成后台托管进程；`discover` 可只读列出现有
     tmux 会话并生成接管命令，也可用 `--adopt-first` 或
     `--adopt-index <编号>` 直接接管候选；`adopt` 可把已有 tmux 会话登记成托管 lane；
@@ -91,7 +92,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `decision archive --request-id <id>` 可把已处理项移出活跃列表；
     `--llm-execute` 可执行 LLM 选择的 send、resume、launch 或
     context 动作；当 LLM 选择 `request_context` 时，Supervisor 会在同轮
-    检索后再让 LLM 选择一个后续动作；`monitor` 只记录跳过；
+    检索后再让 LLM 选择一个后续动作；已完成会话不再作为
+    `resume_session` 候选，但其 cwd 仍可供 `launch_session` 和
+    `request_context` 使用；模型动作返回非 JSON 时会输出原始返回摘要；
+    `monitor` 只记录跳过；
     `advise` 可单独输出建议和命令草案，并可显式执行 send 类草案；
     `guide` 可生成一组可复制的启动、接管、日常 loop 和观察命令，
     作为真实使用入口；`loop` 是日常常驻入口，默认会自动发现并接管

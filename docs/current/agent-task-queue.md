@@ -330,7 +330,7 @@
 148. Codex Supervisor 拍板 gate：新增 `ask_user` 动作；只有 Codex
     明确请求拍板、LLM 无法从用户既有指示判断、并且上下文检索缺失/
     过时/冲突时，才允许停等用户。
-149. Codex Supervisor 拍板可见化：`advice --llm-action` 和 web
+149. Codex Supervisor 拍板可见化：`advise --llm-action` 和 web
     `/llm-action` 读取最近 context 结果；合法 `ask_user` 在 CLI 和
     页面里显式显示“等待拍板”、问题和 `context_status`。
 150. Codex Supervisor 拍板通知账本：`--llm-execute` 执行合法
@@ -338,6 +338,29 @@
     dashboard 和 web 读取成稳定“等待拍板列表”。
 151. Codex Supervisor 拍板归档入口：新增 `decision list` 和
     `decision archive --request-id <id>`；归档通过追加事件实现，不手删账本。
+152. Codex Supervisor 真实 resume 验收修复：LLM 不再把 `done` 会话
+    当成 `resume_session` 候选；已完成会话的工作目录仍可用于
+    `launch_session` 和 `request_context`。
+153. Codex Supervisor Codex CLI 集成修复：`resume` 执行
+    `codex exec -C <cwd> --skip-git-repo-check resume ...`，兼容历史会话
+    cwd 是非仓库父目录的情况。
+154. Codex Supervisor LLM 错误可观测性：模型池失败会显示安全错误摘要，
+    模型动作非 JSON 时会显示原始返回摘要，便于定位真实接口问题。
+
+## 最近完成：Codex Supervisor 真实 resume 执行验收修复
+
+完成内容：
+
+- 真实只读 LLM 测试发现模型会选择已完成会话作为 `resume_session`。
+- 已完成/已归档会话从恢复候选里移除，避免反复唤醒旧验收窗口。
+- 真实执行发现 `codex exec resume` 在非仓库父目录会被 Codex 拒绝。
+- `resume` 现已带 `--skip-git-repo-check`，真实日志确认 Codex 收到状态请求并输出三行状态。
+- 增加模型池失败和非 JSON 返回的可读错误摘要。
+
+下一步：
+
+- 做更长时间的 loop 验收，观察多轮 LLM 是否会合理选择 resume、launch、
+  context 和 ask_user，而不是只验证单次 resume。
 
 ## 最近完成：Codex Supervisor 拍板归档入口
 
@@ -368,7 +391,7 @@
 完成内容：
 
 - web `/llm-action` 会把最近 `request_context` 结果交给 LLM planner。
-- `advice --llm-action` 同样会读取最近 context 结果。
+- `advise --llm-action` 同样会读取最近 context 结果。
 - 合法 `ask_user` 在 CLI 输出“等待拍板”和上下文状态。
 - 页面模型建议区域增加 `ask_user` 专门渲染，不再只显示一段普通 JSON 摘要。
 

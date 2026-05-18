@@ -101,14 +101,17 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   `supervisor/logs/watcher.log`。
 - `launch` 支持普通进程和 tmux 会话。
 - `resume` 支持用 `codex exec resume <session> <prompt>` 或 `--last`
-  恢复历史会话并登记后台托管进程。
+  恢复历史会话并登记后台托管进程；执行时会带 `--skip-git-repo-check`，
+  兼容历史会话工作目录不是 Git 仓库的情况。
 - `context` 支持按 query 检索当前工作区资料，当前是 `rg` 优先、
   Python 关键词扫描兜底，并把结果记录给后续 LLM planner 使用。
 - `--llm-execute` 执行 `request_context` 后会在同一轮把检索结果交回
   LLM planner，再执行一次后续受控动作；同轮只允许一次上下文检索，避免循环。
+- 已完成会话不再作为 `resume_session` 候选，避免 LLM 把旧验收窗口反复唤醒；
+  但其工作目录仍可用于 `launch_session` 和 `request_context`。
 - `ask_user` 是拍板请求动作，必须同时满足：Codex 明确请求拍板、
   LLM 无法从用户既有指示判断、上下文检索缺失/过时/冲突。
-- `advice --llm-action` 和 web `/llm-action` 会读取最近 context
+- `advise --llm-action` 和 web `/llm-action` 会读取最近 context
   结果；合法 `ask_user` 会显示“等待拍板”、问题和 `context_status`。
 - `--llm-execute` 执行合法 `ask_user` 时会写入
   `supervisor/decision_requests.jsonl`；dashboard 和 web 会读取成

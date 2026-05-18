@@ -251,6 +251,7 @@ def resume_managed_codex(
         "exec",
         "-C",
         str(workspace),
+        "--skip-git-repo-check",
         "resume",
     ]
     if last:
