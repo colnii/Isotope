@@ -21,6 +21,15 @@ from .daemon import (
     supervisor_watcher_status,
     watchdog_supervisor_daemon,
 )
+from .context import (
+    read_recent_context_results,
+    request_project_context,
+)
+from .decision_requests import (
+    archive_decision_request,
+    read_active_decision_requests,
+    record_decision_request,
+)
 from .flow import (
     CodexSupervisorFlow,
     _terminal_has_active_work_marker,
@@ -44,6 +53,7 @@ from .registry import (
     launch_managed_codex,
     read_managed_record_events,
     repair_tmux_bell_hooks,
+    resume_managed_codex,
     send_to_managed_codex,
 )
 from .tmux_discovery import discover_tmux_adopt_candidates
@@ -252,14 +262,19 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="auto_adopt",
         help="Disable automatic adoption of discovered Codex-like tmux sessions.",
     )
+    loop_parser.add_argument(
+        "--rule-execute",
+        action="store_true",
+        help="Use the old rule-based executor instead of the LLM planner.",
+    )
     loop_parser.set_defaults(
-        auto_execute=True,
+        auto_execute=False,
         auto_adopt=True,
         changes_only=True,
         bell=True,
         execute=None,
         llm_action=False,
-        llm_execute=False,
+        llm_execute=True,
     )
     daemon_parser = subparsers.add_parser(
         "daemon",
@@ -463,6 +478,80 @@ def _build_parser() -> argparse.ArgumentParser:
         help="tmux session name when --backend tmux is used. Defaults to --name.",
     )
     launch_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    context_parser = subparsers.add_parser(
+        "context",
+        help="Search project context and record the result for the LLM planner.",
+    )
+    context_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    context_parser.add_argument("--cwd", required=True, help="Workspace directory.")
+    context_parser.add_argument("--query", required=True, help="Context search query.")
+    context_parser.add_argument(
+        "--limit",
+        type=int,
+        default=5,
+        help="Maximum context snippets.",
+    )
+    context_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    decision_parser = subparsers.add_parser(
+        "decision",
+        help="List or archive Supervisor decision requests.",
+    )
+    decision_subparsers = decision_parser.add_subparsers(
+        dest="decision_command",
+        required=True,
+    )
+    for decision_command, help_text in (
+        ("list", "List active decision requests."),
+        ("archive", "Archive one handled decision request."),
+    ):
+        command_parser = decision_subparsers.add_parser(
+            decision_command,
+            help=help_text,
+        )
+        command_parser.add_argument(
+            "--codex-home",
+            default=str(Path.home() / ".codex"),
+            help="Codex home directory. Defaults to ~/.codex.",
+        )
+        command_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    decision_subparsers.choices["archive"].add_argument(
+        "--request-id",
+        required=True,
+        help="Decision request id to archive.",
+    )
+    resume_parser = subparsers.add_parser(
+        "resume",
+        help="Resume a Codex session with a prompt and register the managed process.",
+    )
+    resume_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    resume_parser.add_argument(
+        "--cwd",
+        default=str(Path.cwd()),
+        help="Workspace directory for Codex. Defaults to the current directory.",
+    )
+    resume_parser.add_argument("--name", required=True, help="Managed lane name.")
+    resume_parser.add_argument("--prompt", required=True, help="Prompt sent after resume.")
+    resume_target = resume_parser.add_mutually_exclusive_group(required=True)
+    resume_target.add_argument("--session-id", help="Codex session id or thread name.")
+    resume_target.add_argument(
+        "--last",
+        action="store_true",
+        help="Resume the most recent Codex session.",
+    )
+    resume_parser.add_argument(
+        "--codex-bin",
+        default="codex",
+        help="Codex executable name or path.",
+    )
+    resume_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     adopt_parser = subparsers.add_parser(
         "adopt", help="Register an existing tmux session as a managed Codex lane."
     )
@@ -600,6 +689,7 @@ def main(argv: list[str] | None = None) -> int:
             _run_supervise(args)
             return 0
         if args.command == "loop":
+            _normalize_loop_execution_mode(args)
             _validate_execution_modes(args)
             _run_supervise(args)
             return 0
@@ -658,6 +748,47 @@ def main(argv: list[str] | None = None) -> int:
                 _print_json({"status": "ok", "managed": record.to_dict()})
             else:
                 print(f"已启动托管 Codex：{record.name}")
+                print(f"pid：{record.pid}")
+                print(f"日志：{record.log_path}")
+            return 0
+        if args.command == "context":
+            result = request_project_context(
+                codex_home=Path(args.codex_home),
+                cwd=Path(args.cwd),
+                query=args.query,
+                max_results=args.limit,
+            )
+            if args.json:
+                _print_json({"status": "ok", "context": result.to_dict()})
+            else:
+                print(f"上下文：{result.query}")
+                for item in result.items:
+                    print(f"{item.path}:{item.line}: {item.text}")
+            return 0
+        if args.command == "decision":
+            payload = _decision_payload(args)
+            if args.json:
+                _print_json(payload)
+            else:
+                _print_decision_plain(payload)
+            return 0
+        if args.command == "resume":
+            record = resume_managed_codex(
+                codex_home=Path(args.codex_home),
+                cwd=Path(args.cwd),
+                name=args.name,
+                prompt=args.prompt,
+                session_id=args.session_id,
+                last=args.last,
+                codex_bin=args.codex_bin,
+                popen=subprocess.Popen,
+            )
+            if args.json:
+                _print_json({"status": "ok", "managed": record.to_dict()})
+            else:
+                print(f"已恢复托管 Codex：{record.name}")
+                target = "--last" if record.resume_last else record.resume_session_id
+                print(f"session：{target}")
                 print(f"pid：{record.pid}")
                 print(f"日志：{record.log_path}")
             return 0
@@ -956,20 +1087,32 @@ def _run_supervise(args: argparse.Namespace) -> None:
         report_changed = previous_fingerprint != fingerprint
         precomputed_auto_action: dict[str, Any] | None = None
         precomputed_executed: dict[str, Any] | None = None
+        precomputed_payload: dict[str, Any] | None = None
         force_print = False
-        if args.changes_only and not report_changed and args.auto_execute:
-            precomputed_auto_action = _auto_execute_action(
-                report,
-                target_name=args.name,
-                codex_home=Path(args.codex_home),
-                prompt_cooldown_seconds=args.prompt_cooldown,
-            )
-            precomputed_executed = _execute_auto_action(
-                args,
-                report,
-                precomputed_auto_action,
-            )
-            force_print = _executed_action_forces_print(precomputed_executed)
+        if args.changes_only and not report_changed:
+            if args.llm_execute:
+                precomputed_payload = _supervise_payload(
+                    args,
+                    report,
+                    iteration=count + 1,
+                    auto_adopted=auto_adopted,
+                )
+                force_print = _executed_action_forces_print(
+                    precomputed_payload.get("executed", {})
+                )
+            elif args.auto_execute:
+                precomputed_auto_action = _auto_execute_action(
+                    report,
+                    target_name=args.name,
+                    codex_home=Path(args.codex_home),
+                    prompt_cooldown_seconds=args.prompt_cooldown,
+                )
+                precomputed_executed = _execute_auto_action(
+                    args,
+                    report,
+                    precomputed_auto_action,
+                )
+                force_print = _executed_action_forces_print(precomputed_executed)
         should_print = (
             not args.changes_only
             or report_changed
@@ -977,7 +1120,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
             or bool(auto_adopted)
         )
         if should_print:
-            payload = _supervise_payload(
+            payload = precomputed_payload or _supervise_payload(
                 args,
                 report,
                 iteration=count + 1,
@@ -1082,6 +1225,61 @@ def _guide_payload(args: argparse.Namespace) -> dict[str, Any]:
     cwd = str(Path(args.cwd).expanduser())
     tmux_session = args.tmux_session or args.name
     commands = {
+        "resume": shlex.join(
+            [
+                "isotope-supervisor",
+                "resume",
+                "--name",
+                args.name,
+                "--cwd",
+                cwd,
+                "--session-id",
+                "<session-id>",
+                "--prompt",
+                args.prompt,
+            ]
+        ),
+        "resume_last": shlex.join(
+            [
+                "isotope-supervisor",
+                "resume",
+                "--name",
+                args.name,
+                "--cwd",
+                cwd,
+                "--last",
+                "--prompt",
+                args.prompt,
+            ]
+        ),
+        "launch_process": shlex.join(
+            [
+                "isotope-supervisor",
+                "launch",
+                "--name",
+                args.name,
+                "--cwd",
+                cwd,
+                "--prompt",
+                args.prompt,
+            ]
+        ),
+        "launch_tmux": shlex.join(
+            [
+                "isotope-supervisor",
+                "launch",
+                "--backend",
+                "tmux",
+                "--name",
+                args.name,
+                "--tmux-session",
+                tmux_session,
+                "--cwd",
+                cwd,
+                "--prompt",
+                args.prompt,
+            ]
+        ),
         "launch": shlex.join(
             [
                 "isotope-supervisor",
@@ -1152,22 +1350,28 @@ def _print_guide_plain(payload: dict[str, Any]) -> None:
     print(f"托管名：{workflow['lane_name']}")
     print(f"tmux：{workflow['tmux_session']}")
     print()
-    print("1. 新开一个托管 Codex 窗口：")
-    print(commands["launch"])
+    print("1. 恢复历史会话并发送新指令：")
+    print(commands["resume"])
+    print("最近会话可用：")
+    print(commands["resume_last"])
     print()
-    print("2. 如果窗口已经存在，改用接管命令：")
+    print("2. 需要开新会话时：")
+    print(commands["launch_process"])
+    print()
+    print("3. 需要透明旁观同一个 TUI 时，才使用 tmux：")
+    print(commands["launch_tmux"])
     print(commands["adopt"])
     print()
-    print("3. 启动后台自动监督：")
+    print("4. 启动后台自动监督：")
     print(commands["daemon"])
     print("前台调试可用：")
     print(commands["supervise"])
     print()
-    print("4. 需要观察细节时：")
+    print("5. 需要观察细节时：")
     print(commands["web"])
     print(commands["attach"])
     print()
-    print("5. 窗口不用再跟进时归档：")
+    print("6. 窗口不用再跟进时归档：")
     print(commands["archive"])
 
 
@@ -1265,6 +1469,13 @@ def _validate_execution_modes(args: argparse.Namespace) -> None:
         raise ValueError("execute, auto_execute, and llm_execute cannot be used together")
 
 
+def _normalize_loop_execution_mode(args: argparse.Namespace) -> None:
+    if getattr(args, "rule_execute", False):
+        args.auto_execute = True
+        args.llm_execute = False
+        args.llm_action = False
+
+
 def _supervise_payload(
     args: argparse.Namespace,
     report: Any,
@@ -1283,12 +1494,15 @@ def _supervise_payload(
     payload["report"] = report.to_dict()
     payload["automation"] = _automation_status(report)
     payload["auto_adopted"] = auto_adopted or []
+    if args.llm_action or args.llm_execute:
+        payload["recent_context_results"] = _recent_context_results(args, report)
     if args.llm_summary:
         payload["llm_summary"] = _summarize_with_llm(report)
     if args.llm_action or args.llm_execute:
         payload["llm_action"] = _decide_action_with_llm(report, payload)
     if args.llm_execute:
         payload["executed"] = _execute_llm_action(args, report, payload)
+        _maybe_replan_after_context_request(args, report, payload)
     elif args.auto_execute:
         auto_action = precomputed_auto_action or _auto_execute_action(
             report,
@@ -1304,7 +1518,36 @@ def _supervise_payload(
         )
     elif args.execute:
         payload["executed"] = _execute_advice(args, report, payload)
+    payload["decision_requests"] = _decision_request_dicts(args)
     return payload
+
+
+def _maybe_replan_after_context_request(
+    args: argparse.Namespace,
+    report: Any,
+    payload: dict[str, Any],
+) -> None:
+    executed = payload.get("executed")
+    if not isinstance(executed, dict) or executed.get("kind") != "request_context":
+        return
+    context_result = executed.get("context")
+    if isinstance(context_result, dict):
+        recent = list(payload.get("recent_context_results") or [])
+        recent.append(context_result)
+        payload["recent_context_results"] = recent[-3:]
+    payload["llm_followup_action"] = _decide_action_with_llm(report, payload)
+    if payload["llm_followup_action"]["kind"] == "request_context":
+        payload["followup_executed"] = {
+            "kind": "request_context",
+            "skipped": True,
+            "reason": "context request already executed in this iteration",
+        }
+        return
+    followup_payload = {
+        **payload,
+        "llm_action": payload["llm_followup_action"],
+    }
+    payload["followup_executed"] = _execute_llm_action(args, report, followup_payload)
 
 
 def _run_web(args: argparse.Namespace) -> None:
@@ -1340,14 +1583,18 @@ def _run_web(args: argparse.Namespace) -> None:
 
 def _print_dashboard(args: argparse.Namespace) -> None:
     report = _scan_report(args)
-    payload = _dashboard_payload(report)
+    payload = _dashboard_payload(report, decision_requests=_decision_request_dicts(args))
     if args.json:
         _print_json(payload)
         return
     _print_dashboard_plain(payload)
 
 
-def _dashboard_payload(report: Any) -> dict[str, Any]:
+def _dashboard_payload(
+    report: Any,
+    *,
+    decision_requests: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     groups: dict[str, list[dict[str, Any]]] = {
         "needs_attention": [],
         "done": [],
@@ -1367,6 +1614,7 @@ def _dashboard_payload(report: Any) -> dict[str, Any]:
         "recommendation": report.recommendation.to_dict(),
         "counts": {key: len(value) for key, value in groups.items()},
         "groups": groups,
+        "decision_requests": decision_requests or [],
     }
 
 
@@ -1437,9 +1685,24 @@ def _attention_bell_fingerprint(report: Any) -> tuple[object, ...] | None:
 def _supervise_bell_fingerprint(
     report: Any, payload: dict[str, Any]
 ) -> tuple[object, ...] | None:
+    followup_executed = payload.get("followup_executed")
+    if isinstance(followup_executed, dict) and followup_executed.get("kind") == "ask_user":
+        return (
+            "supervise",
+            "ask_user",
+            followup_executed.get("session_id"),
+            followup_executed.get("question"),
+        )
     executed = payload.get("executed")
     if not executed:
         return _attention_bell_fingerprint(report)
+    if executed.get("kind") == "ask_user":
+        return (
+            "supervise",
+            "ask_user",
+            executed.get("session_id"),
+            executed.get("question"),
+        )
     if executed.get("kind") in EXECUTABLE_ADVICE_KINDS:
         return None
     if (
@@ -1796,6 +2059,12 @@ def _print_dashboard_plain(payload: dict[str, Any]) -> None:
     print("[Codex Supervisor dashboard]")
     print(f"生成时间：{payload['generated_at']}")
     print(f"建议：{payload['recommendation']['label']}")
+    decision_requests = payload.get("decision_requests") or []
+    print(f"等待拍板：{len(decision_requests)}")
+    for item in decision_requests:
+        target = item.get("target_name") or item.get("session_id") or "未知"
+        context_status = item.get("context_status") or "unknown"
+        print(f"- {item['question']} context={context_status} target={target}")
     for group_key, label in DASHBOARD_GROUP_LABELS.items():
         items = payload["groups"][group_key]
         print(f"{label}：{len(items)}")
@@ -1808,6 +2077,48 @@ def _print_dashboard_plain(payload: dict[str, Any]) -> None:
             if item["status_evidence"]:
                 evidence = item["status_evidence"]
                 print(f"  依据：{evidence['label']} - {evidence['detail']}")
+
+
+def _decision_payload(args: argparse.Namespace) -> dict[str, Any]:
+    if args.decision_command == "list":
+        return {
+            "status": "ok",
+            "decision_requests": _decision_request_dicts(args),
+        }
+    if args.decision_command == "archive":
+        archived = archive_decision_request(
+            codex_home=Path(args.codex_home),
+            request_id=args.request_id,
+        )
+        return {
+            "status": "ok",
+            "archived": archived,
+            "decision_requests": _decision_request_dicts(args),
+        }
+    raise ValueError(f"unsupported decision command: {args.decision_command}")
+
+
+def _print_decision_plain(payload: dict[str, Any]) -> None:
+    archived = payload.get("archived")
+    if isinstance(archived, dict):
+        print(f"已归档拍板请求：{archived['request_id']}")
+    requests = payload.get("decision_requests") or []
+    print(f"等待拍板：{len(requests)}")
+    for item in requests:
+        archive_command = shlex.join(
+            [
+                "isotope-supervisor",
+                "decision",
+                "archive",
+                "--request-id",
+                item["request_id"],
+            ]
+        )
+        target = item.get("target_name") or item.get("session_id") or "未知"
+        context_status = item.get("context_status") or "unknown"
+        print(f"- {item['request_id']} {item['question']}")
+        print(f"  target={target} context={context_status}")
+        print(f"  归档：{archive_command}")
 
 
 def _dashboard_item_suffix(item: dict[str, Any]) -> str:
@@ -1823,7 +2134,12 @@ def _dashboard_item_suffix(item: dict[str, Any]) -> str:
 
 def _print_supervise_plain(payload: dict[str, Any], report: Any) -> None:
     print("[Codex Supervisor supervise]")
-    _print_dashboard_plain(_dashboard_payload(report))
+    _print_dashboard_plain(
+        _dashboard_payload(
+            report,
+            decision_requests=payload.get("decision_requests") or [],
+        )
+    )
     automation = payload["automation"]
     print()
     print("[托管自动化]")
@@ -1844,6 +2160,12 @@ def _print_supervise_plain(payload: dict[str, Any], report: Any) -> None:
         print()
         print("[LLM 白名单动作]")
         print(f"{llm_action['kind']} / {llm_action['reason']}")
+        _print_ask_user_action_plain(llm_action)
+    if llm_followup_action := payload.get("llm_followup_action"):
+        print()
+        print("[LLM 同轮后续动作]")
+        print(f"{llm_followup_action['kind']} / {llm_followup_action['reason']}")
+        _print_ask_user_action_plain(llm_followup_action)
     if auto_action := payload.get("auto_action"):
         print()
         print("[自动策略]")
@@ -1854,6 +2176,8 @@ def _print_supervise_plain(payload: dict[str, Any], report: Any) -> None:
     print(f"{recommendation['label']} action={recommendation['action']}")
     if executed := payload.get("executed"):
         _print_executed_plain(executed)
+    if followup_executed := payload.get("followup_executed"):
+        _print_executed_plain(followup_executed)
 
 
 def _print_advice(args: argparse.Namespace) -> None:
@@ -1864,6 +2188,7 @@ def _print_advice(args: argparse.Namespace) -> None:
         include_all_managed=args.llm_action or args.llm_execute,
     )
     if args.llm_action or args.llm_execute:
+        payload["recent_context_results"] = _recent_context_results(args, report)
         payload["llm_action"] = _decide_action_with_llm(report, payload)
     if args.llm_execute:
         payload["executed"] = _execute_llm_action(args, report, payload)
@@ -1883,6 +2208,7 @@ def _print_advice(args: argparse.Namespace) -> None:
     if llm_action := payload.get("llm_action"):
         print(f"LLM 动作：{llm_action['kind']}")
         print(f"LLM 原因：{llm_action['reason']}")
+        _print_ask_user_action_plain(llm_action)
     if command_suggestion is None:
         print("命令：暂无可安全生成的命令草案。")
     else:
@@ -1935,10 +2261,24 @@ def _advice_payload(
 
 
 def _print_executed_plain(executed: dict[str, Any]) -> None:
+    if executed.get("kind") == "ask_user":
+        print(f"等待拍板：{executed['question']}")
+        return
     if executed.get("skipped"):
         print(f"已跳过：{executed['reason']}")
         return
     print(f"已执行：{executed['command']}")
+
+
+def _print_ask_user_action_plain(action: dict[str, Any]) -> None:
+    if action.get("kind") != "ask_user":
+        return
+    question = action.get("question")
+    if question:
+        print(f"等待拍板：{question}")
+    context_status = action.get("context_status")
+    if context_status:
+        print(f"上下文状态：{context_status}")
 
 
 def _command_suggestions(
@@ -1959,6 +2299,8 @@ def _command_suggestions(
         for session in report.sessions:
             if _is_active_managed_tmux_session(session):
                 suggestions.extend(_managed_tmux_command_suggestions(session))
+            if _is_resume_capable_session(session):
+                suggestions.extend(_resume_session_command_suggestions(session))
         if suggestions:
             suggestions.append(_watch_command_suggestion())
             return suggestions
@@ -1966,12 +2308,58 @@ def _command_suggestions(
     target = _target_session(report, recommendation.target_session_id)
     if target is not None and target.managed_tmux_session:
         return _managed_tmux_command_suggestions(target)
+    if target is not None and _is_resume_capable_session(target):
+        return _resume_session_command_suggestions(target) + [_watch_command_suggestion()]
     managed_tmux = _first_managed_tmux_session(report)
     if managed_tmux is not None:
         return _managed_tmux_command_suggestions(managed_tmux) + [_watch_command_suggestion()]
     if recommendation.action == "monitor":
         return [_watch_command_suggestion()]
     return []
+
+
+def _resume_session_command_suggestions(session: Any) -> list[dict[str, str]]:
+    if not _is_resume_capable_session(session):
+        return []
+    return [
+        _resume_session_command_suggestion(session, prompt_kind="send_status"),
+        _resume_session_command_suggestion(session, prompt_kind="send_continue"),
+    ]
+
+
+def _resume_session_command_suggestion(
+    session: Any,
+    *,
+    prompt_kind: str,
+) -> dict[str, str]:
+    prompt_text = EXECUTABLE_ADVICE_TEXT[prompt_kind]
+    label = (
+        "恢复 Codex 历史会话并汇报状态"
+        if prompt_kind == "send_status"
+        else "恢复 Codex 历史会话并继续推进"
+    )
+    target_name = _resume_managed_name_for_session(session)
+    return {
+        "kind": "resume_session",
+        "label": label,
+        "target_name": target_name,
+        "session_id": session.session_id,
+        "prompt_kind": prompt_kind,
+        "command": shlex.join(
+            [
+                "isotope-supervisor",
+                "resume",
+                "--name",
+                target_name,
+                "--cwd",
+                session.cwd,
+                "--session-id",
+                session.session_id,
+                "--prompt",
+                prompt_text,
+            ]
+        ),
+    }
 
 
 def _managed_tmux_command_suggestions(session: Any) -> list[dict[str, str]]:
@@ -2052,6 +2440,20 @@ def _is_active_managed_tmux_session(session: Any) -> bool:
     return bool(session.managed_tmux_session) and session.status != "exited"
 
 
+def _is_resume_capable_session(session: Any) -> bool:
+    session_id = getattr(session, "session_id", None)
+    return (
+        isinstance(session_id, str)
+        and bool(session_id)
+        and not session_id.startswith("managed:")
+        and bool(getattr(session, "cwd", None))
+    )
+
+
+def _resume_managed_name_for_session(session: Any) -> str:
+    return "resume-" + session.short_session_id
+
+
 def _execute_advice(
     args: argparse.Namespace,
     report: Any,
@@ -2129,6 +2531,14 @@ def _execute_llm_action(
             "skipped": True,
             "reason": action["reason"],
         }
+    if kind == "resume_session":
+        return _execute_resume_action(args, report, action)
+    if kind == "launch_session":
+        return _execute_launch_action(args, action)
+    if kind == "request_context":
+        return _execute_context_action(args, action)
+    if kind == "ask_user":
+        return _execute_ask_user_action(args, action)
     return _execute_advice(
         args,
         report,
@@ -2136,6 +2546,173 @@ def _execute_llm_action(
         kind=kind,
         target_name=action.get("target_name"),
     )
+
+
+def _execute_resume_action(
+    args: argparse.Namespace,
+    report: Any,
+    action: dict[str, Any],
+) -> dict[str, Any]:
+    session_id = action.get("session_id")
+    if not isinstance(session_id, str) or not session_id:
+        raise ValueError("session_id is required for resume_session")
+    target = _target_session(report, session_id)
+    if target is None or not _is_resume_capable_session(target):
+        raise ValueError(f"no resumable Codex session for: {session_id}")
+    prompt_kind = action.get("prompt_kind") or "send_continue"
+    if prompt_kind not in EXECUTABLE_ADVICE_KINDS:
+        supported = ", ".join(sorted(EXECUTABLE_ADVICE_KINDS))
+        raise ValueError(f"resume prompt_kind supports only: {supported}")
+    prompt_text = EXECUTABLE_ADVICE_TEXT[str(prompt_kind)]
+    suggestion = action.get("command_suggestion") or _resume_session_command_suggestion(
+        target,
+        prompt_kind=str(prompt_kind),
+    )
+    target_name = action.get("target_name") or suggestion.get("target_name")
+    if not isinstance(target_name, str) or not target_name:
+        target_name = _resume_managed_name_for_session(target)
+    record = resume_managed_codex(
+        codex_home=Path(args.codex_home),
+        cwd=Path(target.cwd),
+        name=target_name,
+        prompt=prompt_text,
+        session_id=session_id,
+        popen=subprocess.Popen,
+    )
+    return {
+        "kind": "resume_session",
+        "command": suggestion["command"],
+        "text": prompt_text,
+        "managed": {
+            "name": record.name,
+            "record_id": record.record_id,
+            "pid": record.pid,
+            "backend": record.backend,
+            "resume_session_id": record.resume_session_id,
+        },
+    }
+
+
+def _execute_launch_action(
+    args: argparse.Namespace,
+    action: dict[str, Any],
+) -> dict[str, Any]:
+    target_name = action.get("target_name")
+    cwd = action.get("cwd")
+    prompt = action.get("prompt")
+    if not isinstance(target_name, str) or not target_name.strip():
+        raise ValueError("target_name is required for launch_session")
+    if not isinstance(cwd, str) or not cwd.strip():
+        raise ValueError("cwd is required for launch_session")
+    if not isinstance(prompt, str) or not prompt.strip():
+        raise ValueError("prompt is required for launch_session")
+    suggestion = action.get("command_suggestion")
+    command = (
+        suggestion["command"]
+        if isinstance(suggestion, dict) and isinstance(suggestion.get("command"), str)
+        else shlex.join(
+            [
+                "isotope-supervisor",
+                "launch",
+                "--name",
+                target_name,
+                "--cwd",
+                cwd,
+                "--prompt",
+                prompt,
+            ]
+        )
+    )
+    record = launch_managed_codex(
+        codex_home=Path(args.codex_home),
+        cwd=Path(cwd),
+        name=target_name,
+        prompt=prompt,
+        popen=subprocess.Popen,
+        run=subprocess.run,
+    )
+    return {
+        "kind": "launch_session",
+        "command": command,
+        "text": prompt,
+        "managed": {
+            "name": record.name,
+            "record_id": record.record_id,
+            "pid": record.pid,
+            "backend": record.backend,
+        },
+    }
+
+
+def _execute_context_action(
+    args: argparse.Namespace,
+    action: dict[str, Any],
+) -> dict[str, Any]:
+    cwd = action.get("cwd")
+    query = action.get("query")
+    if not isinstance(cwd, str) or not cwd.strip():
+        raise ValueError("cwd is required for request_context")
+    if not isinstance(query, str) or not query.strip():
+        raise ValueError("query is required for request_context")
+    suggestion = action.get("command_suggestion")
+    command = (
+        suggestion["command"]
+        if isinstance(suggestion, dict) and isinstance(suggestion.get("command"), str)
+        else shlex.join(
+            [
+                "isotope-supervisor",
+                "context",
+                "--cwd",
+                cwd,
+                "--query",
+                query,
+            ]
+        )
+    )
+    result = request_project_context(
+        codex_home=Path(args.codex_home),
+        cwd=Path(cwd),
+        query=query,
+    )
+    return {
+        "kind": "request_context",
+        "command": command,
+        "cwd": cwd,
+        "query": query,
+        "context": result.to_dict(),
+    }
+
+
+def _execute_ask_user_action(
+    args: argparse.Namespace,
+    action: dict[str, Any],
+) -> dict[str, Any]:
+    question = action.get("question")
+    session_id = action.get("session_id")
+    if not isinstance(question, str) or not question.strip():
+        raise ValueError("question is required for ask_user")
+    if not isinstance(session_id, str) or not session_id.strip():
+        raise ValueError("session_id is required for ask_user")
+    gate = {
+        "codex_requested_decision": action.get("codex_requested_decision"),
+        "instructions_exhausted": action.get("instructions_exhausted"),
+        "context_status": action.get("context_status"),
+    }
+    decision_request = record_decision_request(
+        codex_home=Path(args.codex_home),
+        action={**action, "gate": gate},
+    )
+    return {
+        "kind": "ask_user",
+        "requires_user": True,
+        "session_id": session_id,
+        "target_name": action.get("target_name"),
+        "question": question,
+        "reason": action["reason"],
+        "context_status": action.get("context_status"),
+        "gate": gate,
+        "decision_request": decision_request.to_dict(),
+    }
 
 
 def _execute_auto_action(
@@ -2159,7 +2736,9 @@ def _execute_auto_action(
 
 
 def _executed_action_forces_print(executed: dict[str, Any]) -> bool:
-    return executed.get("kind") in EXECUTABLE_ADVICE_KINDS and not executed.get("skipped")
+    if executed.get("kind") == "ask_user":
+        return True
+    return executed.get("kind") != "monitor" and not executed.get("skipped")
 
 
 def _auto_execute_action(
@@ -2389,19 +2968,50 @@ def _decide_action_with_llm(report: Any, payload: dict[str, Any]) -> dict[str, A
             report,
             payload["command_suggestions"],
             _UnavailableSummaryProvider(),
+            payload.get("recent_context_results"),
         )
     provider = resolve_summary_provider_from_env(agent_name="supervisor")
-    return generate_llm_action_decision(report, payload["command_suggestions"], provider)
+    return generate_llm_action_decision(
+        report,
+        payload["command_suggestions"],
+        provider,
+        payload.get("recent_context_results"),
+    )
+
+
+def _recent_context_results(args: argparse.Namespace, report: Any) -> list[dict[str, Any]]:
+    cwd = _context_cwd_for_report(report)
+    results = read_recent_context_results(
+        codex_home=Path(args.codex_home),
+        cwd=Path(cwd) if cwd else None,
+    )
+    return [result.to_dict() for result in results]
+
+
+def _decision_request_dicts(args: argparse.Namespace) -> list[dict[str, Any]]:
+    return [
+        request.to_dict()
+        for request in read_active_decision_requests(codex_home=Path(args.codex_home))
+    ]
+
+
+def _context_cwd_for_report(report: Any) -> str | None:
+    for session in report.sessions:
+        cwd = getattr(session, "cwd", None)
+        if isinstance(cwd, str) and cwd:
+            return cwd
+    return None
 
 
 class _UnavailableSummaryProvider:
     def summarize(self, messages: list[dict[str, str]]) -> str:
-        raise AssertionError("LLM provider should not be called without managed targets")
+        raise AssertionError("LLM provider should not be called without Supervisor targets")
 
 
 def _has_llm_action_target(report: Any) -> bool:
     return any(
-        session.managed_name and session.managed_tmux_session
+        (session.managed_name and session.managed_tmux_session)
+        or _is_resume_capable_session(session)
         for session in report.sessions
     )
 

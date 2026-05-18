@@ -30,7 +30,17 @@ from ...llm.provider import OpenAICompatibleChatProvider, Transport
 from .flow import CodexSupervisorReport
 
 DEFAULT_MAX_TOKENS = 512
-LLM_ACTION_ALLOWED_KINDS = ("monitor", "send_status", "send_continue")
+LLM_ACTION_ALLOWED_KINDS = (
+    "monitor",
+    "send_status",
+    "send_continue",
+    "resume_session",
+    "launch_session",
+    "request_context",
+    "ask_user",
+)
+LLM_RESUME_PROMPT_KINDS = ("send_status", "send_continue")
+LLM_ASK_USER_CONTEXT_STATUSES = ("missing", "outdated", "conflict")
 
 
 # ---------------------------------------------------------------------------
@@ -192,14 +202,18 @@ def generate_llm_summary(
 def build_llm_action_messages(
     report: CodexSupervisorReport,
     command_suggestions: list[dict[str, str]],
+    recent_context_results: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, str]]:
-    """Build the prompt for whitelist-bound action selection."""
+    """Build the prompt for guarded LLM planning."""
     candidate_targets = [
         {
-            "target_name": session.managed_name,
+            "target_name": _suggested_target_name(session),
             "session_id": session.session_id,
+            "cwd": session.cwd,
             "status": session.supervisor_status or session.status,
             "reason": session.supervisor_summary or session.reason,
+            "can_send_to_tmux": _has_managed_send_target(session),
+            "can_resume": _can_resume_session(session),
             "tmux_session": session.managed_tmux_session,
             "managed_terminal_ready": session.managed_terminal_ready,
             "managed_bell": session.managed_bell,
@@ -209,14 +223,16 @@ def build_llm_action_messages(
             "supervisor_next": _clip(session.supervisor_next),
         }
         for session in report.sessions
-        if session.managed_name and session.managed_tmux_session
+        if _is_llm_candidate_target(session)
     ]
     return [
         {
             "role": "system",
             "content": (
-                "你是 Codex Supervisor 的白名单动作选择层。"
-                "只能从白名单里选择一个动作，不得编造命令，不得要求任意文本发送。"
+                "你是 Codex Supervisor 的 LLM planner（规划器）。"
+                "你负责根据窗口状态选择下一步动作；"
+                "规则和白名单只是 guardrail（护栏）。"
+                "只能从允许动作里选择一个动作，不得编造命令，不得要求任意文本发送。"
                 "只输出 JSON。"
             ),
         },
@@ -225,13 +241,55 @@ def build_llm_action_messages(
             "content": json.dumps(
                 {
                     "allowed_kinds": list(LLM_ACTION_ALLOWED_KINDS),
+                    "available_workspaces": _available_workspaces(report),
                     "candidate_targets": candidate_targets,
                     "command_suggestions": command_suggestions,
+                    "recent_context_results": recent_context_results or [],
+                    "context_capability": {
+                        "kind": "request_context",
+                        "description": (
+                            "信息不足时，按 query 主动检索项目上下文；"
+                            "不要要求系统每轮固定塞文档全文。"
+                        ),
+                        "schema": {
+                            "kind": "request_context",
+                            "cwd": "/path/to/repo",
+                            "query": "要查的问题或关键词",
+                            "reason": "一句中文原因",
+                        },
+                    },
+                    "decision_gate": {
+                        "kind": "ask_user",
+                        "description": (
+                            "只有同时满足三项才允许停下来问用户拍板："
+                            "Codex 已明确提出拍板请求；"
+                            "LLM 无法从用户已有指示判断；"
+                            "已检索上下文且结果缺失、过时或冲突。"
+                        ),
+                        "schema": {
+                            "kind": "ask_user",
+                            "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
+                            "question": "需要用户拍板的问题",
+                            "codex_requested_decision": True,
+                            "instructions_exhausted": True,
+                            "context_status": "missing|outdated|conflict",
+                            "reason": "一句中文原因",
+                        },
+                    },
                     "generated_at": report.generated_at,
                     "recommendation": report.recommendation.to_dict(),
                     "output_schema": {
-                        "kind": "send_continue",
+                        "kind": "resume_session",
                         "target_name": "lane-a",
+                        "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
+                        "prompt_kind": "send_continue",
+                        "reason": "一句中文原因",
+                    },
+                    "launch_schema": {
+                        "kind": "launch_session",
+                        "target_name": "new-lane",
+                        "cwd": "/path/to/repo",
+                        "prompt": "由 LLM 根据上下文自由写给新 Codex 会话的中文指令",
                         "reason": "一句中文原因",
                     },
                 },
@@ -246,15 +304,18 @@ def generate_llm_action_decision(
     report: CodexSupervisorReport,
     command_suggestions: list[dict[str, str]],
     provider: SummaryProvider,
+    recent_context_results: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    if not _has_any_managed_target(report):
+    if not _has_any_llm_target(report):
         return {
             "kind": "monitor",
             "target_name": None,
-            "reason": "当前没有可控的托管 tmux lane，先继续监控。",
+            "reason": "当前没有可控的 Supervisor 目标，先继续监控。",
             "command_suggestion": None,
         }
-    raw = provider.summarize(build_llm_action_messages(report, command_suggestions))
+    raw = provider.summarize(
+        build_llm_action_messages(report, command_suggestions, recent_context_results)
+    )
     payload = _extract_json_object(raw)
     kind = _required_payload_string(payload, "kind")
     if kind not in LLM_ACTION_ALLOWED_KINDS:
@@ -262,7 +323,70 @@ def generate_llm_action_decision(
         raise ValueError(f"unsupported LLM action: {kind}; allowed: {supported}")
     target_name = _optional_payload_string(payload, "target_name")
     reason = _optional_payload_string(payload, "reason") or "LLM 建议执行该白名单动作。"
-    if kind != "monitor":
+    session_id: str | None = None
+    prompt_kind: str | None = None
+    question: str | None = None
+    context_status: str | None = None
+    codex_requested_decision: bool | None = None
+    instructions_exhausted: bool | None = None
+    if kind == "resume_session":
+        session_id = _required_payload_string(payload, "session_id")
+        if not _has_resume_target(report, session_id):
+            raise ValueError(f"unknown resumable session for LLM action: {session_id}")
+        prompt_kind = _optional_payload_string(payload, "prompt_kind") or "send_continue"
+        if prompt_kind not in LLM_RESUME_PROMPT_KINDS:
+            supported = ", ".join(LLM_RESUME_PROMPT_KINDS)
+            raise ValueError(f"unsupported resume prompt_kind: {prompt_kind}; allowed: {supported}")
+        command_suggestion = _command_suggestion_for_kind(
+            command_suggestions,
+            kind,
+            session_id=session_id,
+            prompt_kind=prompt_kind,
+        )
+        if command_suggestion is None:
+            raise ValueError(f"no command suggestion for LLM action: {kind}")
+        target_name = target_name or command_suggestion.get("target_name")
+    elif kind == "launch_session":
+        target_name = target_name or "planner-session"
+        cwd = _optional_payload_string(payload, "cwd") or _default_workspace(report)
+        if cwd is None or cwd not in _available_workspaces(report):
+            raise ValueError(f"unknown workspace for LLM action: {cwd}")
+        prompt = _required_payload_string(payload, "prompt")
+        command_suggestion = _launch_session_command_suggestion(
+            target_name=target_name,
+            cwd=cwd,
+            prompt=prompt,
+        )
+    elif kind == "request_context":
+        target_name = None
+        cwd = _optional_payload_string(payload, "cwd") or _default_workspace(report)
+        if cwd is None or cwd not in _available_workspaces(report):
+            raise ValueError(f"unknown workspace for LLM action: {cwd}")
+        query = _required_payload_string(payload, "query")
+        command_suggestion = _request_context_command_suggestion(cwd=cwd, query=query)
+    elif kind == "ask_user":
+        session_id = _required_payload_string(payload, "session_id")
+        target = _ask_user_target(report, session_id)
+        if target is None:
+            raise ValueError("ask_user requires a Codex decision request")
+        if not _required_payload_bool(payload, "codex_requested_decision"):
+            raise ValueError("ask_user requires codex_requested_decision=true")
+        if not _required_payload_bool(payload, "instructions_exhausted"):
+            raise ValueError("ask_user requires instructions_exhausted=true")
+        if not _has_context_check_for_target(recent_context_results, target):
+            raise ValueError("ask_user requires a context check")
+        context_status = _required_payload_string(payload, "context_status")
+        if context_status not in LLM_ASK_USER_CONTEXT_STATUSES:
+            supported = ", ".join(LLM_ASK_USER_CONTEXT_STATUSES)
+            raise ValueError(
+                f"ask_user context_status must be one of: {supported}"
+            )
+        question = _required_payload_string(payload, "question")
+        codex_requested_decision = True
+        instructions_exhausted = True
+        target_name = target_name or _suggested_target_name(target)
+        command_suggestion = None
+    elif kind != "monitor":
         if target_name is None:
             raise ValueError(f"target_name is required for LLM action: {kind}")
         if not _has_managed_target(report, target_name):
@@ -279,6 +403,24 @@ def generate_llm_action_decision(
     return {
         "kind": kind,
         "target_name": target_name,
+        **({"session_id": session_id} if session_id is not None else {}),
+        **({"prompt_kind": prompt_kind} if prompt_kind is not None else {}),
+        **({"cwd": cwd} if kind == "launch_session" else {}),
+        **({"prompt": prompt} if kind == "launch_session" else {}),
+        **({"cwd": cwd} if kind == "request_context" else {}),
+        **({"query": query} if kind == "request_context" else {}),
+        **({"question": question} if question is not None else {}),
+        **({"context_status": context_status} if context_status is not None else {}),
+        **(
+            {"codex_requested_decision": codex_requested_decision}
+            if codex_requested_decision is not None
+            else {}
+        ),
+        **(
+            {"instructions_exhausted": instructions_exhausted}
+            if instructions_exhausted is not None
+            else {}
+        ),
         "reason": reason,
         "command_suggestion": command_suggestion,
     }
@@ -449,14 +591,27 @@ def _optional_payload_string(payload: dict[str, Any], field: str) -> str | None:
     return value.strip() if isinstance(value, str) and value.strip() else None
 
 
+def _required_payload_bool(payload: dict[str, Any], field: str) -> bool:
+    value = payload.get(field)
+    if not isinstance(value, bool):
+        raise ValueError(f"LLM action field must be bool: {field}")
+    return value
+
+
 def _command_suggestion_for_kind(
     command_suggestions: list[dict[str, str]],
     kind: str,
     *,
     target_name: str | None = None,
+    session_id: str | None = None,
+    prompt_kind: str | None = None,
 ) -> dict[str, str] | None:
     for suggestion in command_suggestions:
         if suggestion.get("kind") != kind:
+            continue
+        if session_id is not None and suggestion.get("session_id") != session_id:
+            continue
+        if prompt_kind is not None and suggestion.get("prompt_kind") != prompt_kind:
             continue
         if target_name is not None and not _command_targets_name(
             suggestion.get("command", ""),
@@ -465,6 +620,56 @@ def _command_suggestion_for_kind(
             continue
         return suggestion
     return None
+
+
+def _launch_session_command_suggestion(
+    *,
+    target_name: str,
+    cwd: str,
+    prompt: str,
+) -> dict[str, str]:
+    return {
+        "kind": "launch_session",
+        "label": "启动新的 Codex 托管会话",
+        "target_name": target_name,
+        "cwd": cwd,
+        "prompt": prompt,
+        "command": shlex.join(
+            [
+                "isotope-supervisor",
+                "launch",
+                "--name",
+                target_name,
+                "--cwd",
+                cwd,
+                "--prompt",
+                prompt,
+            ]
+        ),
+    }
+
+
+def _request_context_command_suggestion(
+    *,
+    cwd: str,
+    query: str,
+) -> dict[str, str]:
+    return {
+        "kind": "request_context",
+        "label": "检索项目上下文",
+        "cwd": cwd,
+        "query": query,
+        "command": shlex.join(
+            [
+                "isotope-supervisor",
+                "context",
+                "--cwd",
+                cwd,
+                "--query",
+                query,
+            ]
+        ),
+    }
 
 
 def _command_targets_name(command: str, target_name: str) -> bool:
@@ -480,16 +685,113 @@ def _command_targets_name(command: str, target_name: str) -> bool:
 
 def _has_managed_target(report: CodexSupervisorReport, target_name: str) -> bool:
     return any(
-        session.managed_name == target_name and bool(session.managed_tmux_session)
+        _has_managed_send_target(session) and session.managed_name == target_name
         for session in report.sessions
     )
 
 
-def _has_any_managed_target(report: CodexSupervisorReport) -> bool:
+def _has_resume_target(report: CodexSupervisorReport, session_id: str) -> bool:
     return any(
-        session.managed_name is not None and bool(session.managed_tmux_session)
+        _can_resume_session(session) and session.session_id == session_id
         for session in report.sessions
     )
+
+
+def _ask_user_target(report: CodexSupervisorReport, session_id: str) -> Any | None:
+    for session in report.sessions:
+        if session.session_id == session_id and _session_requests_user_decision(session):
+            return session
+    return None
+
+
+def _session_requests_user_decision(session: Any) -> bool:
+    status = (getattr(session, "supervisor_status", None) or "").lower()
+    if status == "needs_user":
+        return True
+    if status != "blocked" and getattr(session, "status", None) != "needs_user":
+        return False
+    text = " ".join(
+        str(value)
+        for value in (
+            getattr(session, "supervisor_summary", None),
+            getattr(session, "supervisor_next", None),
+            getattr(session, "reason", None),
+            getattr(session, "last_assistant_message", None),
+        )
+        if value
+    )
+    return any(
+        marker in text
+        for marker in (
+            "用户",
+            "确认",
+            "选择",
+            "决定",
+            "拍板",
+            "提供",
+            "是否",
+            "人工",
+        )
+    )
+
+
+def _has_context_check_for_target(
+    recent_context_results: list[dict[str, Any]] | None,
+    target: Any,
+) -> bool:
+    if not recent_context_results:
+        return False
+    target_cwd = getattr(target, "cwd", None)
+    for result in recent_context_results:
+        if not isinstance(result, dict):
+            continue
+        if isinstance(target_cwd, str) and target_cwd:
+            if result.get("cwd") != target_cwd:
+                continue
+        return True
+    return False
+
+
+def _has_any_llm_target(report: CodexSupervisorReport) -> bool:
+    return any(_is_llm_candidate_target(session) for session in report.sessions)
+
+
+def _is_llm_candidate_target(session: Any) -> bool:
+    return _has_managed_send_target(session) or _can_resume_session(session)
+
+
+def _has_managed_send_target(session: Any) -> bool:
+    return bool(session.managed_name and session.managed_tmux_session)
+
+
+def _can_resume_session(session: Any) -> bool:
+    session_id = getattr(session, "session_id", None)
+    return isinstance(session_id, str) and bool(session_id) and not session_id.startswith(
+        "managed:"
+    )
+
+
+def _suggested_target_name(session: Any) -> str:
+    if session.managed_name:
+        return session.managed_name
+    return "resume-" + session.short_session_id
+
+
+def _available_workspaces(report: CodexSupervisorReport) -> list[str]:
+    seen: set[str] = set()
+    workspaces: list[str] = []
+    for session in report.sessions:
+        cwd = getattr(session, "cwd", None)
+        if not isinstance(cwd, str) or not cwd or cwd in seen:
+            continue
+        seen.add(cwd)
+        workspaces.append(cwd)
+    return workspaces
+
+
+def _default_workspace(report: CodexSupervisorReport) -> str | None:
+    workspaces = _available_workspaces(report)
+    return workspaces[0] if workspaces else None
 
 
 def _clip(text: str | None, *, limit: int = 160) -> str | None:

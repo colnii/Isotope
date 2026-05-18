@@ -21,6 +21,7 @@ from isotope.features.supervisor.flow import (
     CodexSupervisorReport,
     render_plain_report,
 )
+from isotope.features.supervisor.context import request_project_context
 from isotope.features.supervisor.llm_summary import (
     PooledSummaryProvider,
     PoolEntry,
@@ -2066,6 +2067,14 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "复制继续" in html
     assert "sendManagedCommand" in html
     assert "requestLlmAction" in html
+    assert "renderDecisionRequest" in html
+    assert "renderDecisionRequests" in html
+    assert "copyDecisionArchiveCommand" in html
+    assert "复制归档拍板" in html
+    assert "等待拍板列表" in html
+    assert "decision_requests" in html
+    assert "等待拍板" in html
+    assert "context_status" in html
     assert "renderSupervisorProtocol" in html
     assert "状态汇报" in html
     assert "下一步" in html
@@ -2104,6 +2113,7 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert json_response.status == 200
     assert payload["status"] == "ok"
     assert payload["counts"]["needs_attention"] == 1
+    assert payload["decision_requests"] == []
     assert payload["groups"]["needs_attention"][0]["session_id"] == "blocked-session"
     assert payload["groups"]["needs_attention"][0]["status_evidence"]["source"] == (
         "supervisor_protocol"
@@ -2289,6 +2299,307 @@ def test_codex_supervisor_web_returns_manual_llm_action_without_sending(
             },
     }
     assert send_calls == []
+
+
+def test_codex_supervisor_web_returns_ask_user_after_context_gate(
+    tmp_path,
+    monkeypatch,
+):
+    from isotope.features.supervisor.web import create_dashboard_server
+
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    docs_dir = workspace / "docs" / "current"
+    docs_dir.mkdir(parents=True)
+    (docs_dir / "status.md").write_text(
+        "目录迁移文档和现状冲突，需要用户拍板兼容策略。\n",
+        encoding="utf-8",
+    )
+    request_project_context(
+        codex_home=codex_home,
+        cwd=workspace,
+        query="目录迁移 兼容策略",
+        rg_bin=None,
+    )
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-needs-user.jsonl",
+        session_id="019e35a2-e442-75e2-84ab-3761a685a736",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "\n".join(
+                    [
+                        "SUPERVISOR_STATUS: needs_user",
+                        "SUPERVISOR_SUMMARY: 目录迁移有两种不可兼容方案。",
+                        "SUPERVISOR_NEXT: 请用户拍板选择保留兼容层还是直接迁移。",
+                    ]
+                ),
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert "目录迁移文档和现状冲突" in content
+            return json.dumps(
+                {
+                    "kind": "ask_user",
+                    "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
+                    "question": "目录迁移是保留兼容层，还是直接迁移并删除旧入口？",
+                    "codex_requested_decision": True,
+                    "instructions_exhausted": True,
+                    "context_status": "conflict",
+                    "reason": "Codex 明确要拍板，既有指示不足，文档和现状冲突。",
+                },
+                ensure_ascii=False,
+            )
+
+    server = create_dashboard_server(
+        codex_home=codex_home,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+        llm_action_provider=FakeProvider(),
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        conn.request(
+            "POST",
+            "/llm-action",
+            b"{}",
+            {"content-type": "application/json"},
+        )
+        response = conn.getresponse()
+        payload = json.loads(response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert response.status == 200
+    assert payload["llm_action"] == {
+        "kind": "ask_user",
+        "target_name": "resume-019e35a2",
+        "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
+        "question": "目录迁移是保留兼容层，还是直接迁移并删除旧入口？",
+        "context_status": "conflict",
+        "codex_requested_decision": True,
+        "instructions_exhausted": True,
+        "reason": "Codex 明确要拍板，既有指示不足，文档和现状冲突。",
+        "command_suggestion": None,
+    }
+    assert payload["recent_context_results"][0]["query"] == "目录迁移 兼容策略"
+
+
+def test_codex_supervisor_dashboard_json_includes_persisted_decision_requests(
+    tmp_path,
+    capsys,
+):
+    codex_home = tmp_path / ".codex"
+    decision_path = codex_home / "supervisor" / "decision_requests.jsonl"
+    decision_path.parent.mkdir(parents=True)
+    decision_path.write_text(
+        json.dumps(
+            {
+                "event": "decision_request",
+                "request_id": "decision-001",
+                "created_at": "2026-05-16T12:00:00+00:00",
+                "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
+                "target_name": "resume-019e35a2",
+                "question": "目录迁移是保留兼容层，还是直接迁移并删除旧入口？",
+                "reason": "Codex 明确要拍板。",
+                "context_status": "conflict",
+                "gate": {
+                    "codex_requested_decision": True,
+                    "instructions_exhausted": True,
+                    "context_status": "conflict",
+                },
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    exit_code = supervisor_main(
+        [
+            "dashboard",
+            "--codex-home",
+            str(codex_home),
+            "--limit",
+            "5",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["decision_requests"] == [
+        {
+            "event": "decision_request",
+            "request_id": "decision-001",
+            "created_at": "2026-05-16T12:00:00+00:00",
+            "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
+            "target_name": "resume-019e35a2",
+            "question": "目录迁移是保留兼容层，还是直接迁移并删除旧入口？",
+            "reason": "Codex 明确要拍板。",
+            "context_status": "conflict",
+            "gate": {
+                "codex_requested_decision": True,
+                "instructions_exhausted": True,
+                "context_status": "conflict",
+            },
+        }
+    ]
+
+
+def test_codex_supervisor_dashboard_plain_prints_decision_requests(
+    tmp_path,
+    capsys,
+):
+    codex_home = tmp_path / ".codex"
+    decision_path = codex_home / "supervisor" / "decision_requests.jsonl"
+    decision_path.parent.mkdir(parents=True)
+    decision_path.write_text(
+        json.dumps(
+            {
+                "event": "decision_request",
+                "request_id": "decision-001",
+                "created_at": "2026-05-16T12:00:00+00:00",
+                "session_id": "session-a",
+                "target_name": "resume-session-a",
+                "question": "选择保留兼容层还是直接迁移？",
+                "reason": "Codex 明确要拍板。",
+                "context_status": "conflict",
+                "gate": {
+                    "codex_requested_decision": True,
+                    "instructions_exhausted": True,
+                    "context_status": "conflict",
+                },
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    exit_code = supervisor_main(["dashboard", "--codex-home", str(codex_home)])
+
+    assert exit_code == 0
+    text = capsys.readouterr().out
+    assert "等待拍板：1" in text
+    assert "- 选择保留兼容层还是直接迁移？ context=conflict target=resume-session-a" in text
+
+
+def test_codex_supervisor_runner_decision_list_prints_active_requests(
+    tmp_path,
+    capsys,
+):
+    codex_home = tmp_path / ".codex"
+    decision_path = codex_home / "supervisor" / "decision_requests.jsonl"
+    decision_path.parent.mkdir(parents=True)
+    decision_path.write_text(
+        json.dumps(
+            {
+                "event": "decision_request",
+                "request_id": "decision-001",
+                "created_at": "2026-05-16T12:00:00+00:00",
+                "session_id": "session-a",
+                "target_name": "resume-session-a",
+                "question": "选择保留兼容层还是直接迁移？",
+                "reason": "Codex 明确要拍板。",
+                "context_status": "conflict",
+                "gate": {
+                    "codex_requested_decision": True,
+                    "instructions_exhausted": True,
+                    "context_status": "conflict",
+                },
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    exit_code = supervisor_main(["decision", "list", "--codex-home", str(codex_home)])
+
+    assert exit_code == 0
+    text = capsys.readouterr().out
+    assert "等待拍板：1" in text
+    assert "decision-001 选择保留兼容层还是直接迁移？" in text
+    assert (
+        "归档：isotope-supervisor decision archive --request-id decision-001"
+        in text
+    )
+
+
+def test_codex_supervisor_runner_decision_archive_removes_active_request(
+    tmp_path,
+    capsys,
+):
+    codex_home = tmp_path / ".codex"
+    decision_path = codex_home / "supervisor" / "decision_requests.jsonl"
+    decision_path.parent.mkdir(parents=True)
+    decision_path.write_text(
+        json.dumps(
+            {
+                "event": "decision_request",
+                "request_id": "decision-001",
+                "created_at": "2026-05-16T12:00:00+00:00",
+                "session_id": "session-a",
+                "target_name": "resume-session-a",
+                "question": "选择保留兼容层还是直接迁移？",
+                "reason": "Codex 明确要拍板。",
+                "context_status": "conflict",
+                "gate": {
+                    "codex_requested_decision": True,
+                    "instructions_exhausted": True,
+                    "context_status": "conflict",
+                },
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    exit_code = supervisor_main(
+        [
+            "decision",
+            "archive",
+            "--codex-home",
+            str(codex_home),
+            "--request-id",
+            "decision-001",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    archive_payload = json.loads(capsys.readouterr().out)
+    assert archive_payload["status"] == "ok"
+    assert archive_payload["archived"]["event"] == "decision_archive"
+    assert archive_payload["archived"]["request_id"] == "decision-001"
+
+    exit_code = supervisor_main(
+        ["dashboard", "--codex-home", str(codex_home), "--json"]
+    )
+
+    assert exit_code == 0
+    dashboard_payload = json.loads(capsys.readouterr().out)
+    assert dashboard_payload["decision_requests"] == []
 
 
 def test_codex_supervisor_web_rejects_invalid_manual_llm_action(tmp_path):
@@ -2516,7 +2827,7 @@ def test_codex_supervisor_runner_advise_plain_is_short(tmp_path, capsys):
     assert "[Codex Supervisor 建议]" in text
     assert "建议：先处理等待用户确认的窗口。" in text
     assert "动作：review_user_prompt" in text
-    assert "命令：暂无可安全生成的命令草案。" in text
+    assert "命令：isotope-supervisor resume --name resume-attention-session" in text
 
 
 def test_codex_supervisor_advise_suggests_managed_tmux_commands():
@@ -2604,10 +2915,15 @@ def test_codex_supervisor_llm_action_messages_include_whitelist_and_commands():
     messages = build_llm_action_messages(report, suggestions)
 
     assert messages[0]["role"] == "system"
-    assert "只能从白名单里选择" in messages[0]["content"]
-    assert '"allowed_kinds": ["monitor", "send_status", "send_continue"]' in messages[1][
-        "content"
-    ]
+    assert "LLM planner" in messages[0]["content"]
+    assert "guardrail" in messages[0]["content"]
+    assert (
+        '"allowed_kinds": ["monitor", "send_status", "send_continue", '
+        '"resume_session", "launch_session", "request_context", "ask_user"]'
+        in messages[1]["content"]
+    )
+    assert '"context_capability"' in messages[1]["content"]
+    assert '"decision_gate"' in messages[1]["content"]
     assert '"kind": "send_continue"' in messages[1]["content"]
     assert '"target_name": "lane-a"' in messages[1]["content"]
     assert '"managed_terminal_ready": true' in messages[1]["content"]
@@ -2660,6 +2976,424 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_whitelisted_json(
             "label": "让托管 Codex 继续推进",
         },
     }
+
+
+def test_codex_supervisor_generate_llm_action_decision_accepts_resume_session():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="019e35a2-e442-75e2-84ab-3761a685a736",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/sessions/rollout.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="done",
+                reason="已完成上一批工作",
+                supervisor_status="done",
+                supervisor_summary="上一批测试已完成。",
+                supervisor_next="可以继续下一步。",
+            ),
+        ),
+    )
+    suggestions = _advice_payload(report)["command_suggestions"]
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert '"can_resume": true' in content
+            assert '"session_id": "019e35a2-e442-75e2-84ab-3761a685a736"' in content
+            return json.dumps(
+                {
+                    "kind": "resume_session",
+                    "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
+                    "prompt_kind": "send_continue",
+                    "reason": "历史会话已完成上一批，直接恢复并继续推进。",
+                },
+                ensure_ascii=False,
+            )
+
+    decision = generate_llm_action_decision(report, suggestions, FakeProvider())
+
+    assert decision == {
+        "kind": "resume_session",
+        "target_name": "resume-019e35a2",
+        "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
+        "prompt_kind": "send_continue",
+        "reason": "历史会话已完成上一批，直接恢复并继续推进。",
+        "command_suggestion": {
+            "command": (
+                "isotope-supervisor resume --name resume-019e35a2 "
+                "--cwd /home/lumber/Github/isotope "
+                "--session-id 019e35a2-e442-75e2-84ab-3761a685a736 "
+                f"--prompt {shlex.quote(CONTINUE_REQUEST_TEXT)}"
+            ),
+            "kind": "resume_session",
+            "label": "恢复 Codex 历史会话并继续推进",
+            "prompt_kind": "send_continue",
+            "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
+            "target_name": "resume-019e35a2",
+        },
+    }
+
+
+def test_codex_supervisor_generate_llm_action_decision_accepts_launch_session():
+    launch_prompt = (
+        "请阅读 docs/current/status.md，继续梳理 Supervisor 下一步，并在完成后"
+        "按 SUPERVISOR_STATUS/SUMMARY/NEXT 汇报。"
+    )
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="019e35a2-e442-75e2-84ab-3761a685a736",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/sessions/rollout.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="done",
+                reason="已有窗口已完成",
+            ),
+        ),
+    )
+    suggestions = _advice_payload(report)["command_suggestions"]
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert '"kind": "launch_session"' in content
+            assert '"available_workspaces": ["/home/lumber/Github/isotope"]' in content
+            return json.dumps(
+                {
+                    "kind": "launch_session",
+                    "target_name": "planner-docs",
+                    "cwd": "/home/lumber/Github/isotope",
+                    "prompt": launch_prompt,
+                    "reason": "需要单独开新会话推进文档整理。",
+                },
+                ensure_ascii=False,
+            )
+
+    decision = generate_llm_action_decision(report, suggestions, FakeProvider())
+
+    assert decision == {
+        "kind": "launch_session",
+        "target_name": "planner-docs",
+        "cwd": "/home/lumber/Github/isotope",
+        "prompt": launch_prompt,
+        "reason": "需要单独开新会话推进文档整理。",
+        "command_suggestion": {
+            "command": (
+                "isotope-supervisor launch --name planner-docs "
+                "--cwd /home/lumber/Github/isotope "
+                f"--prompt {shlex.quote(launch_prompt)}"
+            ),
+            "kind": "launch_session",
+            "label": "启动新的 Codex 托管会话",
+            "target_name": "planner-docs",
+            "cwd": "/home/lumber/Github/isotope",
+            "prompt": launch_prompt,
+        },
+    }
+
+
+def test_codex_supervisor_generate_llm_action_decision_accepts_request_context():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="019e35a2-e442-75e2-84ab-3761a685a736",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/sessions/rollout.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="done",
+                reason="已有窗口已完成",
+            ),
+        ),
+    )
+    suggestions = _advice_payload(report)["command_suggestions"]
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert '"context_capability"' in content
+            assert '"kind": "request_context"' in content
+            return json.dumps(
+                {
+                    "kind": "request_context",
+                    "cwd": "/home/lumber/Github/isotope",
+                    "query": "Supervisor 下一步节奏",
+                    "reason": "需要先查项目当前说明再决定。",
+                },
+                ensure_ascii=False,
+            )
+
+    decision = generate_llm_action_decision(report, suggestions, FakeProvider())
+
+    assert decision == {
+        "kind": "request_context",
+        "target_name": None,
+        "cwd": "/home/lumber/Github/isotope",
+        "query": "Supervisor 下一步节奏",
+        "reason": "需要先查项目当前说明再决定。",
+        "command_suggestion": {
+            "command": (
+                "isotope-supervisor context --cwd /home/lumber/Github/isotope "
+                "--query 'Supervisor 下一步节奏'"
+            ),
+            "kind": "request_context",
+            "label": "检索项目上下文",
+            "cwd": "/home/lumber/Github/isotope",
+            "query": "Supervisor 下一步节奏",
+        },
+    }
+
+
+def test_codex_supervisor_generate_llm_action_decision_rejects_ask_user_without_codex_request():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="019e35a2-e442-75e2-84ab-3761a685a736",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/sessions/rollout.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="done",
+                reason="已有窗口已完成",
+                supervisor_status="done",
+                supervisor_summary="测试已通过。",
+                supervisor_next="可以继续下一步。",
+            ),
+        ),
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            return json.dumps(
+                {
+                    "kind": "ask_user",
+                    "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
+                    "question": "是否继续下一步？",
+                    "codex_requested_decision": True,
+                    "instructions_exhausted": True,
+                    "context_status": "missing",
+                    "reason": "测试 gate。",
+                },
+                ensure_ascii=False,
+            )
+
+    with pytest.raises(ValueError, match="ask_user requires a Codex decision request"):
+        generate_llm_action_decision(
+            report,
+            _advice_payload(report)["command_suggestions"],
+            FakeProvider(),
+            recent_context_results=[
+                {
+                    "cwd": "/home/lumber/Github/isotope",
+                    "query": "是否继续下一步",
+                    "items": [],
+                }
+            ],
+        )
+
+
+def test_codex_supervisor_generate_llm_action_decision_rejects_ask_user_before_context_check():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="019e35a2-e442-75e2-84ab-3761a685a736",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/sessions/rollout.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="needs_user",
+                reason="等待用户确认",
+                supervisor_status="needs_user",
+                supervisor_summary="实现路径有 A/B 两种。",
+                supervisor_next="请用户拍板选择 A 还是 B。",
+            ),
+        ),
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            return json.dumps(
+                {
+                    "kind": "ask_user",
+                    "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
+                    "question": "选择 A 还是 B？",
+                    "codex_requested_decision": True,
+                    "instructions_exhausted": True,
+                    "context_status": "missing",
+                    "reason": "上下文还没查。",
+                },
+                ensure_ascii=False,
+            )
+
+    with pytest.raises(ValueError, match="ask_user requires a context check"):
+        generate_llm_action_decision(
+            report,
+            _advice_payload(report)["command_suggestions"],
+            FakeProvider(),
+            recent_context_results=[],
+        )
+
+
+def test_codex_supervisor_generate_llm_action_decision_accepts_ask_user_after_gate():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="019e35a2-e442-75e2-84ab-3761a685a736",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/sessions/rollout.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="needs_user",
+                reason="等待用户确认",
+                supervisor_status="needs_user",
+                supervisor_summary="目录迁移有两种不可兼容方案。",
+                supervisor_next="请用户拍板选择先兼容还是直接迁移。",
+            ),
+        ),
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert '"decision_gate"' in content
+            assert '"recent_context_results"' in content
+            return json.dumps(
+                {
+                    "kind": "ask_user",
+                    "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
+                    "question": "目录迁移是先保留兼容层，还是直接迁移并删除旧入口？",
+                    "codex_requested_decision": True,
+                    "instructions_exhausted": True,
+                    "context_status": "conflict",
+                    "reason": "Codex 明确要拍板，既有指示无法覆盖，文档与现状冲突。",
+                },
+                ensure_ascii=False,
+            )
+
+    decision = generate_llm_action_decision(
+        report,
+        _advice_payload(report)["command_suggestions"],
+        FakeProvider(),
+        recent_context_results=[
+            {
+                "cwd": "/home/lumber/Github/isotope",
+                "query": "目录迁移 兼容层",
+                "items": [
+                    {
+                        "path": "docs/current/status.md",
+                        "line": 1,
+                        "text": "旧文档要求保留兼容层，但现有代码已删除旧入口。",
+                        "score": 10,
+                    }
+                ],
+            }
+        ],
+    )
+
+    assert decision == {
+        "kind": "ask_user",
+        "target_name": "resume-019e35a2",
+        "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
+        "question": "目录迁移是先保留兼容层，还是直接迁移并删除旧入口？",
+        "context_status": "conflict",
+        "codex_requested_decision": True,
+        "instructions_exhausted": True,
+        "reason": "Codex 明确要拍板，既有指示无法覆盖，文档与现状冲突。",
+        "command_suggestion": None,
+    }
+
+
+def test_codex_supervisor_runner_advice_plain_prints_ask_user_question(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    docs_dir = workspace / "docs" / "current"
+    docs_dir.mkdir(parents=True)
+    (docs_dir / "status.md").write_text(
+        "目录迁移文档和现状冲突，需要用户拍板兼容策略。\n",
+        encoding="utf-8",
+    )
+    request_project_context(
+        codex_home=codex_home,
+        cwd=workspace,
+        query="目录迁移 兼容策略",
+        rg_bin=None,
+    )
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-needs-user.jsonl",
+        session_id="019e35a2-e442-75e2-84ab-3761a685a736",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "\n".join(
+                    [
+                        "SUPERVISOR_STATUS: needs_user",
+                        "SUPERVISOR_SUMMARY: 目录迁移有两种不可兼容方案。",
+                        "SUPERVISOR_NEXT: 请用户拍板选择保留兼容层还是直接迁移。",
+                    ]
+                ),
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert "目录迁移文档和现状冲突" in content
+            return json.dumps(
+                {
+                    "kind": "ask_user",
+                    "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
+                    "question": "目录迁移是保留兼容层，还是直接迁移并删除旧入口？",
+                    "codex_requested_decision": True,
+                    "instructions_exhausted": True,
+                    "context_status": "conflict",
+                    "reason": "Codex 明确要拍板，既有指示不足，文档和现状冲突。",
+                },
+                ensure_ascii=False,
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+
+    exit_code = supervisor_main(
+        [
+            "advise",
+            "--codex-home",
+            str(codex_home),
+            "--limit",
+            "5",
+            "--stale-after",
+            "999999",
+            "--llm-action",
+        ]
+    )
+
+    assert exit_code == 0
+    text = capsys.readouterr().out
+    assert "LLM 动作：ask_user" in text
+    assert "等待拍板：目录迁移是保留兼容层，还是直接迁移并删除旧入口？" in text
+    assert "上下文状态：conflict" in text
 
 
 def test_codex_supervisor_generate_llm_action_decision_extracts_noisy_json():
@@ -2759,7 +3493,7 @@ def test_codex_supervisor_generate_llm_action_decision_falls_back_without_target
     assert decision == {
         "kind": "monitor",
         "target_name": None,
-        "reason": "当前没有可控的托管 tmux lane，先继续监控。",
+        "reason": "当前没有可控的 Supervisor 目标，先继续监控。",
         "command_suggestion": None,
     }
 
@@ -3311,7 +4045,10 @@ def test_codex_supervisor_runner_supervise_llm_execute_sends_whitelisted_action(
     class FakeProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
-            assert '"allowed_kinds": ["monitor", "send_status", "send_continue"]' in content
+            assert (
+                '"allowed_kinds": ["monitor", "send_status", "send_continue", '
+                '"resume_session", "launch_session", "request_context", "ask_user"]'
+            ) in content
             assert '"managed_terminal_ready": true' in content
             return '{"kind":"send_status","target_name":"lane-a","reason":"先看进度。"}'
 
@@ -3478,11 +4215,15 @@ def test_codex_supervisor_runner_supervise_llm_execute_skips_monitor(
         return subprocess.CompletedProcess(command, 0, "", "")
 
     monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert '"can_resume": true' in content
+            return '{"kind":"monitor","reason":"仍在工作，先观察。"}'
+
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: (_ for _ in ()).throw(
-            AssertionError("LLM resolver should not run without managed targets")
-        ),
+        lambda **_: FakeProvider(),
     )
 
     exit_code = supervisor_main(
@@ -3504,15 +4245,693 @@ def test_codex_supervisor_runner_supervise_llm_execute_skips_monitor(
     assert payload["llm_action"] == {
         "kind": "monitor",
         "target_name": None,
-        "reason": "当前没有可控的托管 tmux lane，先继续监控。",
+        "reason": "仍在工作，先观察。",
         "command_suggestion": None,
     }
     assert payload["executed"] == {
         "kind": "monitor",
         "skipped": True,
-        "reason": "当前没有可控的托管 tmux lane，先继续监控。",
+        "reason": "仍在工作，先观察。",
     }
     assert calls == []
+
+
+def test_codex_supervisor_runner_supervise_llm_execute_can_resume_session(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-resume.jsonl",
+        session_id="019e35a2-e442-75e2-84ab-3761a685a736",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "\n".join(
+                    [
+                        "SUPERVISOR_STATUS: done",
+                        "SUPERVISOR_SUMMARY: 上一批测试已经通过。",
+                        "SUPERVISOR_NEXT: 可以继续下一步。",
+                    ]
+                ),
+            )
+        ],
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert '"can_resume": true' in content
+            assert '"kind": "resume_session"' in content
+            return json.dumps(
+                {
+                    "kind": "resume_session",
+                    "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
+                    "prompt_kind": "send_continue",
+                    "reason": "旧会话已完成，可以恢复后继续。",
+                },
+                ensure_ascii=False,
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 34567
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured["command"] = command
+        captured["cwd"] = cwd
+        captured["stdin"] = stdin
+        captured["stdout"] = stdout
+        captured["stderr"] = stderr
+        captured["start_new_session"] = start_new_session
+        return FakeProcess()
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"]["kind"] == "resume_session"
+    assert payload["llm_action"]["target_name"] == "resume-019e35a2"
+    assert payload["executed"]["kind"] == "resume_session"
+    assert payload["executed"]["managed"]["name"] == "resume-019e35a2"
+    assert payload["executed"]["managed"]["pid"] == 34567
+    assert payload["executed"]["text"] == CONTINUE_REQUEST_TEXT
+    assert captured["command"][:5] == [
+        "codex",
+        "exec",
+        "-C",
+        str(workspace),
+        "resume",
+    ]
+    assert captured["command"][5] == "019e35a2-e442-75e2-84ab-3761a685a736"
+    assert captured["command"][6].startswith("继续推进当前任务。")
+    assert captured["cwd"] == str(workspace)
+    assert captured["stdin"] is subprocess.DEVNULL
+    assert captured["stderr"] is subprocess.STDOUT
+
+
+def test_codex_supervisor_runner_supervise_llm_execute_can_launch_session(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    launch_prompt = "请根据当前文档继续推进 Supervisor，并按状态协议汇报。"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-source.jsonl",
+        session_id="source-session",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "SUPERVISOR_STATUS: done\nSUPERVISOR_SUMMARY: 已完成。\nSUPERVISOR_NEXT: 可开新任务。",
+            )
+        ],
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert '"available_workspaces"' in content
+            assert '"kind": "launch_session"' in content
+            return json.dumps(
+                {
+                    "kind": "launch_session",
+                    "target_name": "new-planner",
+                    "cwd": str(workspace),
+                    "prompt": launch_prompt,
+                    "reason": "需要开新会话并行推进下一批。",
+                },
+                ensure_ascii=False,
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 45678
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured["command"] = command
+        captured["cwd"] = cwd
+        captured["stdin"] = stdin
+        captured["stdout"] = stdout
+        captured["stderr"] = stderr
+        captured["start_new_session"] = start_new_session
+        return FakeProcess()
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"]["kind"] == "launch_session"
+    assert payload["executed"]["kind"] == "launch_session"
+    assert payload["executed"]["managed"]["name"] == "new-planner"
+    assert payload["executed"]["managed"]["pid"] == 45678
+    assert payload["executed"]["text"] == launch_prompt
+    assert captured["command"][:4] == [
+        "codex",
+        "--cd",
+        str(workspace),
+        "--no-alt-screen",
+    ]
+    assert captured["command"][4].startswith(launch_prompt)
+    assert "SUPERVISOR_STATUS" in captured["command"][4]
+    assert captured["cwd"] == str(workspace)
+    assert captured["stdin"] is subprocess.DEVNULL
+    assert captured["stderr"] is subprocess.STDOUT
+
+
+def test_codex_supervisor_runner_supervise_llm_execute_can_request_context(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    docs_dir = workspace / "docs" / "current"
+    docs_dir.mkdir(parents=True)
+    (docs_dir / "status.md").write_text(
+        "Supervisor 下一步节奏：由 LLM 主导，规则只做护栏。\n",
+        encoding="utf-8",
+    )
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-source.jsonl",
+        session_id="source-session",
+        cwd=str(workspace),
+        events=[_assistant_message("2026-05-16T11:59:20Z", "上一轮已完成。")],
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert '"context_capability"' in content
+            return json.dumps(
+                {
+                    "kind": "request_context",
+                    "cwd": str(workspace),
+                    "query": "Supervisor 下一步节奏",
+                    "reason": "先查项目上下文再决定。",
+                },
+                ensure_ascii=False,
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"]["kind"] == "request_context"
+    assert payload["executed"]["kind"] == "request_context"
+    assert payload["executed"]["context"]["query"] == "Supervisor 下一步节奏"
+    assert payload["executed"]["context"]["items"][0]["path"] == "docs/current/status.md"
+    assert "LLM 主导" in payload["executed"]["context"]["items"][0]["text"]
+
+    context_log = codex_home / "supervisor" / "context_results.jsonl"
+    records = [
+        json.loads(line)
+        for line in context_log.read_text(encoding="utf-8").splitlines()
+    ]
+    assert records[0]["query"] == "Supervisor 下一步节奏"
+
+
+def test_codex_supervisor_runner_supervise_request_context_replans_same_iteration(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    docs_dir = workspace / "docs" / "current"
+    docs_dir.mkdir(parents=True)
+    (docs_dir / "status.md").write_text(
+        "Supervisor 同轮闭环：查完上下文后可以继续推进。\n",
+        encoding="utf-8",
+    )
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: "› 等待输入\n  gpt-5.5 xhigh · main",
+    )
+
+    class FakeProvider:
+        calls = 0
+
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            self.calls += 1
+            content = messages[1]["content"]
+            if self.calls == 1:
+                assert '"recent_context_results": []' in content
+                return json.dumps(
+                    {
+                        "kind": "request_context",
+                        "cwd": str(workspace),
+                        "query": "Supervisor 同轮闭环",
+                        "reason": "先查上下文再决定动作。",
+                    },
+                    ensure_ascii=False,
+                )
+            assert "Supervisor 同轮闭环" in content
+            assert "docs/current/status.md" in content
+            return json.dumps(
+                {
+                    "kind": "send_status",
+                    "target_name": "lane-a",
+                    "reason": "读到上下文后，立刻请求托管窗口汇报状态。",
+                },
+                ensure_ascii=False,
+            )
+
+    provider = FakeProvider()
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: provider,
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+        timeout: int | None = None,
+        cwd: str | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        if command and command[0].endswith("rg"):
+            return subprocess.CompletedProcess(command, 1, "", "")
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--prompt-cooldown",
+            "0",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"]["kind"] == "request_context"
+    assert payload["executed"]["kind"] == "request_context"
+    assert payload["llm_followup_action"]["kind"] == "send_status"
+    assert payload["followup_executed"]["kind"] == "send_status"
+    assert calls == _tmux_send_calls(STATUS_REQUEST_TEXT)
+    assert provider.calls == 2
+
+
+def test_codex_supervisor_runner_supervise_context_followup_can_ask_user_after_gate(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    docs_dir = workspace / "docs" / "current"
+    docs_dir.mkdir(parents=True)
+    (docs_dir / "status.md").write_text(
+        "目录迁移文档和现有代码冲突，需要人工确认兼容策略。\n",
+        encoding="utf-8",
+    )
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-needs-user.jsonl",
+        session_id="019e35a2-e442-75e2-84ab-3761a685a736",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "\n".join(
+                    [
+                        "SUPERVISOR_STATUS: needs_user",
+                        "SUPERVISOR_SUMMARY: 目录迁移有两种不可兼容方案。",
+                        "SUPERVISOR_NEXT: 请用户拍板选择保留兼容层还是直接迁移。",
+                    ]
+                ),
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+
+    class FakeProvider:
+        calls = 0
+
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            self.calls += 1
+            content = messages[1]["content"]
+            if self.calls == 1:
+                return json.dumps(
+                    {
+                        "kind": "request_context",
+                        "cwd": str(workspace),
+                        "query": "目录迁移 兼容策略",
+                        "reason": "先查文档和现状再决定是否问用户。",
+                    },
+                    ensure_ascii=False,
+                )
+            assert "目录迁移文档和现有代码冲突" in content
+            return json.dumps(
+                {
+                    "kind": "ask_user",
+                    "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
+                    "question": "目录迁移是保留兼容层，还是直接迁移并删除旧入口？",
+                    "codex_requested_decision": True,
+                    "instructions_exhausted": True,
+                    "context_status": "conflict",
+                    "reason": "Codex 明确要拍板，既有指示不足，文档和现状冲突。",
+                },
+                ensure_ascii=False,
+            )
+
+    provider = FakeProvider()
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: provider,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"]["kind"] == "request_context"
+    assert payload["executed"]["kind"] == "request_context"
+    assert payload["llm_followup_action"]["kind"] == "ask_user"
+    followup = payload["followup_executed"]
+    assert followup["kind"] == "ask_user"
+    assert followup["requires_user"] is True
+    assert followup["session_id"] == "019e35a2-e442-75e2-84ab-3761a685a736"
+    assert followup["target_name"] == "resume-019e35a2"
+    assert followup["question"] == "目录迁移是保留兼容层，还是直接迁移并删除旧入口？"
+    assert followup["reason"] == "Codex 明确要拍板，既有指示不足，文档和现状冲突。"
+    assert followup["context_status"] == "conflict"
+    assert followup["gate"] == {
+        "codex_requested_decision": True,
+        "instructions_exhausted": True,
+        "context_status": "conflict",
+    }
+    decision_request = followup["decision_request"]
+    assert decision_request["event"] == "decision_request"
+    assert decision_request["session_id"] == "019e35a2-e442-75e2-84ab-3761a685a736"
+    assert decision_request["target_name"] == "resume-019e35a2"
+    assert decision_request["question"] == "目录迁移是保留兼容层，还是直接迁移并删除旧入口？"
+    assert decision_request["reason"] == "Codex 明确要拍板，既有指示不足，文档和现状冲突。"
+    assert decision_request["context_status"] == "conflict"
+    assert decision_request["gate"] == {
+        "codex_requested_decision": True,
+        "instructions_exhausted": True,
+        "context_status": "conflict",
+    }
+    assert decision_request["request_id"].startswith("decision-")
+    assert decision_request["created_at"]
+    decision_log = codex_home / "supervisor" / "decision_requests.jsonl"
+    records = [
+        json.loads(line)
+        for line in decision_log.read_text(encoding="utf-8").splitlines()
+    ]
+    assert records[0]["event"] == "decision_request"
+    assert records[0]["question"] == "目录迁移是保留兼容层，还是直接迁移并删除旧入口？"
+    assert provider.calls == 2
+
+
+def test_codex_supervisor_context_request_prefers_rg_backend(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    (workspace / "docs" / "current").mkdir(parents=True)
+    (workspace / ".worktrees" / "old").mkdir(parents=True)
+    (workspace / "docs" / "current" / "status.md").write_text(
+        "Supervisor 下一步节奏：由 LLM 主导。\n",
+        encoding="utf-8",
+    )
+    (workspace / ".worktrees" / "old" / "status.md").write_text(
+        "Supervisor 下一步节奏：旧工作树内容不应该参与。\n",
+        encoding="utf-8",
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        cwd: str,
+        text: bool,
+        capture_output: bool,
+        check: bool,
+        timeout: int,
+    ) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        assert cwd == str(workspace)
+        assert text is True
+        assert capture_output is True
+        assert check is False
+        assert timeout == 3
+        assert "--json" in command
+        assert "--glob" in command
+        assert "!.worktrees/**" in command
+        event = {
+            "type": "match",
+            "data": {
+                "path": {"text": "docs/current/status.md"},
+                "line_number": 1,
+                "lines": {"text": "Supervisor 下一步节奏：由 LLM 主导。\n"},
+                "submatches": [{"match": {"text": "Supervisor"}}],
+            },
+        }
+        return subprocess.CompletedProcess(command, 0, json.dumps(event), "")
+
+    result = request_project_context(
+        codex_home=codex_home,
+        cwd=workspace,
+        query="Supervisor 下一步节奏",
+        run=fake_run,
+        rg_bin="rg",
+    )
+
+    assert result.backend == "rg"
+    assert result.items[0].path == "docs/current/status.md"
+    assert "LLM 主导" in result.items[0].text
+    assert calls
+
+
+def test_codex_supervisor_context_request_falls_back_without_rg(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    (workspace / "docs").mkdir(parents=True)
+    (workspace / "docs" / "note.md").write_text(
+        "request_context 可以使用 Python 兜底检索。\n",
+        encoding="utf-8",
+    )
+
+    result = request_project_context(
+        codex_home=codex_home,
+        cwd=workspace,
+        query="request_context Python",
+        rg_bin=None,
+    )
+
+    assert result.backend == "python"
+    assert result.items[0].path == "docs/note.md"
+
+
+def test_codex_supervisor_runner_loop_context_request_feeds_next_planner_call(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    docs_dir = workspace / "docs" / "current"
+    docs_dir.mkdir(parents=True)
+    (docs_dir / "status.md").write_text(
+        "Supervisor 自主节奏：先查上下文，再选择继续、开新会话或询问用户。\n",
+        encoding="utf-8",
+    )
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-source.jsonl",
+        session_id="source-session",
+        cwd=str(workspace),
+        events=[_assistant_message("2026-05-16T11:59:20Z", "上一轮已完成。")],
+    )
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
+    seen_context_on_second_call = False
+
+    class FakeProvider:
+        calls = 0
+
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            nonlocal seen_context_on_second_call
+            self.calls += 1
+            content = messages[1]["content"]
+            if self.calls == 1:
+                assert '"recent_context_results": []' in content
+                return json.dumps(
+                    {
+                        "kind": "request_context",
+                        "cwd": str(workspace),
+                        "query": "Supervisor 自主节奏",
+                        "reason": "缺少项目当前上下文。",
+                    },
+                    ensure_ascii=False,
+                )
+            assert '"recent_context_results"' in content
+            assert "Supervisor 自主节奏" in content
+            assert "docs/current/status.md" in content
+            seen_context_on_second_call = True
+            return '{"kind":"monitor","reason":"已读到上下文，等待下一轮决策。"}'
+
+    provider = FakeProvider()
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: provider,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "2",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    lines = [line for line in capsys.readouterr().out.splitlines() if line.strip()]
+    assert len(lines) == 1
+    assert json.loads(lines[0])["executed"]["kind"] == "request_context"
+    assert seen_context_on_second_call is True
 
 
 def test_codex_supervisor_runner_supervise_reports_no_managed_lane(
@@ -5275,6 +6694,10 @@ def test_codex_supervisor_runner_guide_prints_usable_workflow(tmp_path, capsys):
     assert exit_code == 0
     text = capsys.readouterr().out
     assert "[Codex Supervisor 使用入口]" in text
+    assert "isotope-supervisor resume --name doc-lane" in text
+    assert "--session-id '<session-id>'" in text
+    assert "--last --prompt '继续推进文档任务'" in text
+    assert f"isotope-supervisor launch --name doc-lane --cwd {workspace}" in text
     assert (
         "isotope-supervisor launch --backend tmux --name doc-lane "
         "--tmux-session doc-tmux"
@@ -5312,6 +6735,22 @@ def test_codex_supervisor_runner_guide_can_print_json(tmp_path, capsys):
     assert payload["workflow"]["lane_name"] == "doc-lane"
     assert payload["workflow"]["tmux_session"] == "doc-lane"
     assert payload["workflow"]["cwd"] == str(workspace)
+    assert payload["commands"]["resume"] == (
+        "isotope-supervisor resume --name doc-lane "
+        f"--cwd {workspace} --session-id '<session-id>' "
+        "--prompt '继续推进当前任务，并在完成或阻塞时按 "
+        "SUPERVISOR_STATUS/SUMMARY/NEXT 汇报。'"
+    )
+    assert payload["commands"]["resume_last"] == (
+        "isotope-supervisor resume --name doc-lane "
+        f"--cwd {workspace} --last --prompt '继续推进当前任务，并在完成或阻塞时按 "
+        "SUPERVISOR_STATUS/SUMMARY/NEXT 汇报。'"
+    )
+    assert payload["commands"]["launch_process"] == (
+        "isotope-supervisor launch --name doc-lane "
+        f"--cwd {workspace} --prompt '继续推进当前任务，并在完成或阻塞时按 "
+        "SUPERVISOR_STATUS/SUMMARY/NEXT 汇报。'"
+    )
     assert payload["commands"]["supervise"] == (
         "isotope-supervisor loop --interval 30"
     )
@@ -5604,13 +7043,15 @@ def test_codex_supervisor_runner_loop_uses_daily_defaults(
     assert len(lines) == 1
     payload = json.loads(lines[0])
     assert payload["automation"]["ready"] is False
-    assert payload["auto_action"] == {
+    assert payload["llm_action"] == {
         "kind": "monitor",
-        "reason": "no managed tmux lane",
+        "target_name": None,
+        "reason": "当前没有可控的 Supervisor 目标，先继续监控。",
+        "command_suggestion": None,
     }
     assert payload["executed"] == {
         "kind": "monitor",
-        "reason": "no managed tmux lane",
+        "reason": "当前没有可控的 Supervisor 目标，先继续监控。",
         "skipped": True,
     }
 
@@ -5676,6 +7117,7 @@ def test_codex_supervisor_runner_loop_auto_adopts_discovered_tmux_candidate(
             str(codex_home),
             "--iterations",
             "1",
+            "--rule-execute",
             "--json",
         ]
     )
@@ -5754,6 +7196,7 @@ def test_codex_supervisor_runner_loop_auto_executes_even_when_report_unchanged(
             "--interval",
             "1",
             "--no-auto-adopt",
+            "--rule-execute",
             "--prompt-cooldown",
             "0",
             "--json",
@@ -5850,6 +7293,90 @@ def test_codex_supervisor_runner_daemon_start_spawns_background_loop(
     persisted = dict(payload["daemon"])
     persisted.pop("action")
     assert state == persisted
+
+
+def test_codex_supervisor_runner_loop_defaults_to_llm_driver(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: "› 等待输入\n  gpt-5.5 xhigh · main",
+    )
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert '"allowed_kinds"' in content
+            assert '"managed_terminal_ready": true' in content
+            return '{"kind":"send_status","target_name":"lane-a","reason":"让 LLM 决定本轮节奏。"}'
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "2",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--prompt-cooldown",
+            "0",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    lines = [line for line in capsys.readouterr().out.splitlines() if line.strip()]
+    assert len(lines) == 2
+    payloads = [json.loads(line) for line in lines]
+    assert [payload["llm_action"]["kind"] for payload in payloads] == [
+        "send_status",
+        "send_status",
+    ]
+    assert [payload["executed"]["kind"] for payload in payloads] == [
+        "send_status",
+        "send_status",
+    ]
+    assert "auto_action" not in payloads[0]
+    assert calls == _tmux_send_calls(STATUS_REQUEST_TEXT) + _tmux_send_calls(
+        STATUS_REQUEST_TEXT
+    )
 
 
 def test_codex_supervisor_runner_daemon_status_marks_existing_loop_running(
@@ -6405,6 +7932,152 @@ def test_codex_supervisor_runner_launch_can_use_tmux_backend(
     assert calls[1][4] == "alert-bell"
     assert "bell_events.jsonl" in calls[1][5]
     assert "lane-a" in calls[1][5]
+
+
+def test_codex_supervisor_runner_resume_exec_records_managed_codex(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 23456
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured["command"] = command
+        captured["cwd"] = cwd
+        captured["stdin"] = stdin
+        captured["stdout"] = stdout
+        captured["stderr"] = stderr
+        captured["start_new_session"] = start_new_session
+        return FakeProcess()
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+
+    exit_code = supervisor_main(
+        [
+            "resume",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(workspace),
+            "--name",
+            "lane-a",
+            "--session-id",
+            "019e35a2-e442-75e2-84ab-3761a685a736",
+            "--prompt",
+            "继续推进 supervisor 前端测试",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["managed"]["name"] == "lane-a"
+    assert payload["managed"]["backend"] == "codex_exec_resume"
+    assert payload["managed"]["pid"] == 23456
+    assert payload["managed"]["resume_session_id"] == (
+        "019e35a2-e442-75e2-84ab-3761a685a736"
+    )
+    assert payload["managed"]["resume_last"] is False
+    assert captured["command"][:5] == [
+        "codex",
+        "exec",
+        "-C",
+        str(workspace),
+        "resume",
+    ]
+    assert captured["command"][5] == "019e35a2-e442-75e2-84ab-3761a685a736"
+    assert captured["command"][6].startswith("继续推进 supervisor 前端测试")
+    assert "SUPERVISOR_STATUS" in captured["command"][6]
+    assert captured["cwd"] == str(workspace)
+    assert captured["stdin"] is subprocess.DEVNULL
+    assert captured["stderr"] is subprocess.STDOUT
+    assert captured["start_new_session"] is True
+
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    records = [
+        json.loads(line)
+        for line in registry_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert records == [payload["managed"]]
+
+
+def test_codex_supervisor_runner_resume_exec_last_uses_last_flag(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 23457
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured["command"] = command
+        captured["cwd"] = cwd
+        captured["stdin"] = stdin
+        captured["stdout"] = stdout
+        captured["stderr"] = stderr
+        captured["start_new_session"] = start_new_session
+        return FakeProcess()
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+
+    exit_code = supervisor_main(
+        [
+            "resume",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(workspace),
+            "--name",
+            "latest",
+            "--last",
+            "--prompt",
+            "请汇报当前状态",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["managed"]["backend"] == "codex_exec_resume"
+    assert payload["managed"]["resume_session_id"] is None
+    assert payload["managed"]["resume_last"] is True
+    assert captured["command"][:6] == [
+        "codex",
+        "exec",
+        "-C",
+        str(workspace),
+        "resume",
+        "--last",
+    ]
+    assert captured["command"][6].startswith("请汇报当前状态")
 
 
 def test_codex_supervisor_runner_adopt_registers_existing_tmux_session(

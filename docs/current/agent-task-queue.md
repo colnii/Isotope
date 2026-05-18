@@ -191,12 +191,12 @@
 89. Codex Supervisor web 受控操作：`dashboard` 已给托管 tmux lane
     输出 `control_commands`，`web` 可复制 attach/send 命令，并通过
     `/managed/send` 执行 `send_status` 和 `send_continue`。
-90. Codex Supervisor LLM 白名单动作：`advise/supervise --llm-action`
-    可让 LLM 在 `monitor`、`send_status`、`send_continue` 中选择建议动作，
-    输出结构化结果但不自动执行。
+90. Codex Supervisor LLM planner 动作：`advise/supervise --llm-action`
+    可让 LLM 在 `monitor`、`send_status`、`send_continue` 和
+    `resume_session` 中选择受控动作，输出结构化结果但不自动执行。
 91. Codex Supervisor web 模型建议：`web` 页面可手动调用 `/llm-action`，
-    展示 LLM 白名单动作建议，但不自动发送。
-92. Codex Supervisor LLM action 无目标回退：没有可控托管 tmux lane
+    展示 LLM planner 动作建议，但不自动发送。
+92. Codex Supervisor LLM action 无目标回退：没有可控 Supervisor 目标
     时直接返回 `monitor`，不调用 LLM。
 93. Codex Supervisor dashboard 托管去重：同一工作目录下的托管 lane
     和最近真实 Codex session 会合并成一个可控卡片。
@@ -307,19 +307,117 @@
     可启动 watcher（周期看门进程），定期触发 `daemon watchdog`。
 140. AI-first 文档护栏：`AGENTS.md`、`docs-map`、Supervisor 当前文档和
     当前状态已明确 AI agent 功能默认 AI-first，规则和白名单只做护栏。
+141. Codex Supervisor resume 执行通道：`isotope-supervisor resume`
+    可用 `codex exec resume <session> <prompt>` 或 `--last` 恢复历史会话，
+    并把后台进程写入托管登记表；tmux 不再是唯一可执行控制通道。
+142. Codex Supervisor LLM planner 恢复会话：`--llm-action` 和
+    `--llm-execute` 已允许 LLM 选择 `resume_session`，可恢复普通
+    Codex 历史会话并发送受控 prompt；没有任何可控目标时才跳过 LLM。
+143. Codex Supervisor LLM planner 新开会话：LLM 可选择 `launch_session`，
+    自己生成发给新 Codex 的 prompt；工程层只校验 cwd 来自已知工作目录，
+    然后用普通 process 托管启动。
+144. Codex Supervisor loop 默认 LLM 驱动：`loop` 默认执行 LLM planner
+    选择的受控动作；`--rule-execute` 才切回旧规则自动策略。
+145. Codex Supervisor 上下文能力：新增 `request_context` 和 `context`
+    命令，LLM 可按需检索项目资料，结果记录后供下一轮 planner 使用；
+    不再把“读文档”实现成每轮固定塞全文。
+146. Codex Supervisor context 检索后端：`context` 当前不是 BM25，
+    而是 `rg` 优先、Python 关键词扫描兜底；实测当前仓库检索约
+    0.06 秒，Python 兜底约 0.68 秒。
+147. Codex Supervisor 同轮上下文闭环：`--llm-execute` 遇到
+    `request_context` 时，会同轮检索上下文、再调用一次 LLM planner，
+    并执行后续受控动作。
+148. Codex Supervisor 拍板 gate：新增 `ask_user` 动作；只有 Codex
+    明确请求拍板、LLM 无法从用户既有指示判断、并且上下文检索缺失/
+    过时/冲突时，才允许停等用户。
+149. Codex Supervisor 拍板可见化：`advice --llm-action` 和 web
+    `/llm-action` 读取最近 context 结果；合法 `ask_user` 在 CLI 和
+    页面里显式显示“等待拍板”、问题和 `context_status`。
+150. Codex Supervisor 拍板通知账本：`--llm-execute` 执行合法
+    `ask_user` 时写入 `supervisor/decision_requests.jsonl`；
+    dashboard 和 web 读取成稳定“等待拍板列表”。
+151. Codex Supervisor 拍板归档入口：新增 `decision list` 和
+    `decision archive --request-id <id>`；归档通过追加事件实现，不手删账本。
 
-## 最近完成：AI-first 文档护栏
+## 最近完成：Codex Supervisor 拍板归档入口
 
 完成内容：
 
-- `AGENTS.md` 已写明 AI agent 功能默认 AI 是主流程，不是可选装饰。
-- `docs/current/docs-map.md` 已把 boundary（边界）文档降级为参考材料。
-- Supervisor 当前文档已明确 LLM 承担判断、调度和动作选择路径，
-  规则、白名单和状态协议只提供工程护栏。
+- 新增 `decision list` 查看活跃拍板项。
+- 新增 `decision archive --request-id <id>` 归档已处理拍板项。
+- `decision_requests.jsonl` 同时保存 request 和 archive 事件，读取活跃列表时过滤已归档项。
+- web “等待拍板列表”提供可复制的归档命令。
 
 下一步：
 
-- 后续新增 AI 功能时，先验收真实 AI 路径，再补规则护栏。
+- 做一次真实本机 loop 验收：制造或复用一个 `ask_user` 场景，
+  验证记录、展示、归档完整闭环。
+
+## 最近完成：Codex Supervisor 拍板通知账本
+
+完成内容：
+
+- 新增 `decision_requests.jsonl` 账本。
+- `ask_user` 真正执行时记录 `session_id`、`target_name`、问题、原因、
+  `context_status` 和 gate 证据。
+- `dashboard --json` 输出 `decision_requests`。
+- dashboard plain 和 web 页面显示“等待拍板列表”。
+
+## 最近完成：Codex Supervisor 拍板可见化
+
+完成内容：
+
+- web `/llm-action` 会把最近 `request_context` 结果交给 LLM planner。
+- `advice --llm-action` 同样会读取最近 context 结果。
+- 合法 `ask_user` 在 CLI 输出“等待拍板”和上下文状态。
+- 页面模型建议区域增加 `ask_user` 专门渲染，不再只显示一段普通 JSON 摘要。
+
+## 最近完成：Codex Supervisor 拍板 gate
+
+完成内容：
+
+- 新增 `ask_user` 受控动作。
+- `ask_user` 必须带 `session_id`、`question`、
+  `codex_requested_decision=true`、`instructions_exhausted=true`
+  和 `context_status=missing|outdated|conflict`。
+- 代码会校验目标 session 确实处于 `needs_user` 或带用户拍板语义的
+  `blocked` 状态。
+- 没有先做上下文检索时，`ask_user` 会被拒绝。
+
+## 最近完成：Codex Supervisor 上下文能力
+
+完成内容：
+
+- 新增 `request_context` 动作。
+- 新增 `context` 命令，用 query 检索工作区资料并记录结果。
+- `context` 优先调用 `rg`，不可用时回退到 Python 关键词扫描。
+- `loop` 下一轮会把最近上下文检索结果交给 LLM planner。
+- `--llm-execute` 已支持同轮“请求上下文 -> 再决策 -> 执行后续动作”。
+- 这不是固定读取 `status.md` 或 `agent-task-queue.md`；
+  文档只是可被检索的资料来源。
+
+下一步：
+
+- 让 LLM planner 在读到上下文后能继续执行后续动作，
+  形成“请求上下文 -> 判断 -> 恢复/启动/继续/问用户”的闭环。
+
+## 最近完成：Codex Supervisor LLM planner 新开会话
+
+完成内容：
+
+- 新增 `launch_session` 动作。
+- LLM action prompt 会携带 `available_workspaces`。
+- LLM 可自己生成新 Codex 会话的 prompt，不再只能套固定状态/继续文案。
+- `--llm-execute` 可把 `launch_session` 执行为普通 process 托管启动。
+
+## 最近完成：Codex Supervisor loop LLM 默认驱动
+
+完成内容：
+
+- `loop` 默认改为执行 LLM planner 选择的受控动作。
+- 报告无变化时，`loop` 仍会让 LLM planner 判断是否需要继续推进。
+- `--rule-execute` 可显式切回旧规则自动策略。
+- 规则层继续负责冷却、工作目录和动作白名单护栏。
 
 ## 最近完成：Codex Supervisor 周期 watcher
 
@@ -562,10 +660,11 @@
 
 完成内容：
 
-- `--llm-execute` 会先请求 LLM 白名单动作，再执行 `send_status/send_continue`。
+- `--llm-execute` 会先请求 LLM planner 动作，再执行受控动作。
 - LLM 返回 `monitor` 时只记录跳过，不发送指令。
 - 执行目标使用 LLM 返回的 `target_name`，复用现有 tmux send 和冷却账本。
 - LLM 动作提示会携带托管窗口的终端可输入、bell 和状态协议短字段。
+  后续已扩展到普通 Codex session 的 `resume_session` 候选。
 - `--execute`、`--auto-execute` 和 `--llm-execute` 互斥，避免一轮叠加多套执行策略。
 
 下一步：
@@ -856,16 +955,16 @@
 
 上一批已完成：
 
-## Codex Supervisor LLM 白名单动作
+## Codex Supervisor LLM planner 动作
 
 完成内容：
 
 - 新增 `build_llm_action_messages(...)`，只发送压缩状态、候选命令和候选目标。
-- 新增 `generate_llm_action_decision(...)`，校验模型 JSON 和动作白名单。
+- 新增 `generate_llm_action_decision(...)`，校验模型 JSON 和受控动作。
 - `advise --llm-action --json` 可输出 `llm_action`。
 - `supervise --llm-action --json` 可在循环 payload 里输出 `llm_action`。
-- LLM 只能选择 `monitor`、`send_status` 或 `send_continue`。
-- 不在白名单内、缺少目标或目标不是托管 tmux lane 时会报错。
+- LLM 可选择 `monitor`、`send_status`、`send_continue` 或 `resume_session`。
+- 不在受控动作内、缺少目标或目标不合法时会报错。
 - 当前只建议，不自动执行；执行仍走 `--execute` 或 web 按钮。
 
 上一批已完成：
@@ -1025,7 +1124,7 @@
   状态判断、显式执行、LLM 摘要和未来协议层。
 - 写清当前不要重复实现的新 CLI、tmux 发送器、LLM 号池和状态分类系统。
 - 明确后续顺序：先做 tmux bell 信号，再做状态协议、lane state
-  和 LLM 白名单决策。
+  和 LLM planner 决策。
 - 同步 [status](./status.md)、[docs-map](./docs-map.md)、
   [terminology](./terminology.md) 和
   [codex-supervisor-readonly](./codex-supervisor-readonly.md)。

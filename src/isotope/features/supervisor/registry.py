@@ -30,6 +30,8 @@ class ManagedCodexRecord:
     status: str = "launched"
     backend: str = "process"
     tmux_session: str | None = None
+    resume_session_id: str | None = None
+    resume_last: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -44,6 +46,8 @@ class ManagedCodexRecord:
             "status": self.status,
             "backend": self.backend,
             "tmux_session": self.tmux_session,
+            "resume_session_id": self.resume_session_id,
+            "resume_last": self.resume_last,
         }
 
 
@@ -202,6 +206,81 @@ def launch_managed_codex(
         log_path=str(log_path),
         backend=backend_text,
         tmux_session=tmux_session_text,
+    )
+    append_managed_record(default_registry_path(codex_home), record)
+    return record
+
+
+def resume_managed_codex(
+    *,
+    codex_home: Path | str,
+    cwd: Path | str,
+    name: str,
+    prompt: str,
+    session_id: str | None = None,
+    last: bool = False,
+    codex_bin: str = "codex",
+    now: Callable[[], datetime] | None = None,
+    popen: Callable[..., Any] = subprocess.Popen,
+) -> ManagedCodexRecord:
+    workspace = Path(cwd).expanduser()
+    if not workspace.is_dir():
+        raise ValueError(f"cwd must be an existing directory: {workspace}")
+    name_text = name.strip()
+    prompt_text = prompt.strip()
+    codex_bin_text = codex_bin.strip()
+    session_text = session_id.strip() if session_id else None
+    if not name_text:
+        raise ValueError("name must not be empty")
+    if not prompt_text:
+        raise ValueError("prompt must not be empty")
+    if not codex_bin_text:
+        raise ValueError("codex_bin must not be empty")
+    if last and session_text:
+        raise ValueError("use either session_id or last, not both")
+    if not last and not session_text:
+        raise ValueError("session_id or last is required")
+
+    started_at = _ensure_aware_utc((now or _utc_now)()).isoformat()
+    record_id = "managed-" + uuid.uuid4().hex[:12]
+    log_dir = default_log_dir(codex_home)
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / f"{record_id}.log"
+    command_parts = [
+        codex_bin_text,
+        "exec",
+        "-C",
+        str(workspace),
+        "resume",
+    ]
+    if last:
+        command_parts.append("--last")
+    else:
+        command_parts.append(session_text or "")
+    command_parts.append(_with_supervisor_protocol(prompt_text))
+    command = tuple(command_parts)
+    with log_path.open("ab") as log_file:
+        process = popen(
+            list(command),
+            cwd=str(workspace),
+            stdin=subprocess.DEVNULL,
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+    record = ManagedCodexRecord(
+        record_id=record_id,
+        name=name_text,
+        cwd=str(workspace),
+        prompt=prompt_text,
+        command=command,
+        pid=int(process.pid),
+        started_at=started_at,
+        log_path=str(log_path),
+        status="resumed",
+        backend="codex_exec_resume",
+        resume_session_id=session_text,
+        resume_last=last,
     )
     append_managed_record(default_registry_path(codex_home), record)
     return record
@@ -462,6 +541,8 @@ def _record_from_dict(raw: dict[str, object]) -> ManagedCodexRecord | None:
     status = _string(raw.get("status")) or "launched"
     backend = _string(raw.get("backend")) or "process"
     tmux_session = _string(raw.get("tmux_session"))
+    resume_session_id = _string(raw.get("resume_session_id"))
+    resume_last = raw.get("resume_last")
     if (
         record_id is None
         or name is None
@@ -488,6 +569,8 @@ def _record_from_dict(raw: dict[str, object]) -> ManagedCodexRecord | None:
         status=status,
         backend=backend,
         tmux_session=tmux_session,
+        resume_session_id=resume_session_id,
+        resume_last=resume_last if isinstance(resume_last, bool) else False,
     )
 
 

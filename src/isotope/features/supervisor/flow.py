@@ -86,6 +86,8 @@ class CodexSessionSummary:
     managed_bell: bool = False
     managed_bell_event_at: str | None = None
     managed_bell_hook_installed: bool | None = None
+    managed_resume_session_id: str | None = None
+    managed_resume_last: bool = False
     supervisor_status: str | None = None
     supervisor_summary: str | None = None
     supervisor_next: str | None = None
@@ -146,6 +148,8 @@ class CodexSessionSummary:
             "managed_bell": self.managed_bell,
             "managed_bell_event_at": self.managed_bell_event_at,
             "managed_bell_hook_installed": self.managed_bell_hook_installed,
+            "managed_resume_session_id": self.managed_resume_session_id,
+            "managed_resume_last": self.managed_resume_last,
             "supervisor_status": self.supervisor_status,
             "supervisor_summary": _shorten_optional(self.supervisor_summary),
             "supervisor_next": _shorten_optional(self.supervisor_next),
@@ -684,6 +688,8 @@ def _managed_summary(
         managed_bell=managed_bell,
         managed_bell_event_at=managed_bell_event_at,
         managed_bell_hook_installed=managed_bell_hook_installed,
+        managed_resume_session_id=record.resume_session_id,
+        managed_resume_last=record.resume_last,
     )
 
 

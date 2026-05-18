@@ -66,21 +66,38 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `watch --bell` 可在建议目标变化时输出终端 bell，
     不会因静默秒数增长而按固定 interval 重复响；
     `launch` 可启动 Codex 并写入本机托管登记；`launch --backend tmux`
-    可在本机 tmux 会话中启动 Codex；`discover` 可只读列出现有
+    可在本机 tmux 会话中启动 Codex；`resume` 可通过
+    `codex exec resume <session> <prompt>` 或 `--last` 恢复历史会话，
+    并登记成后台托管进程；`discover` 可只读列出现有
     tmux 会话并生成接管命令，也可用 `--adopt-first` 或
     `--adopt-index <编号>` 直接接管候选；`adopt` 可把已有 tmux 会话登记成托管 lane；
     `archive` 可归档旧托管记录，让它不再进入
     活跃 dashboard、建议和自动发送；`--llm-summary` 可通过本机
-    TOML 号池做智能摘要；`--llm-action` 可让 LLM 只在白名单里
-    选择 `monitor`、`send_status` 或 `send_continue`；`scan --json` 包含结构化建议；
-    `--llm-execute` 可执行 LLM 选择的 `send_status/send_continue`，
-    `monitor` 只记录跳过；
+    TOML 号池做智能摘要；`--llm-action` 会让 LLM planner（规划器）
+    在受控动作里选择 `monitor`、`send_status`、`send_continue`
+    `resume_session`、`launch_session`、`request_context` 或 `ask_user`；
+    `launch_session` 允许 LLM 自己生成发给新 Codex 的 prompt，
+    工程层只校验工作目录；`request_context` 是按需上下文检索能力，
+    当前使用 `rg` 优先、Python 关键词扫描兜底，不是 BM25，
+    也不是每轮固定塞文档全文；
+    `scan --json` 包含结构化建议；
+    `ask_user` 只有在 Codex 明确提出拍板请求、LLM 无法根据用户
+    既有指示判断、并且上下文检索结果缺失/过时/冲突时才允许；
+    CLI 和 web 的模型建议会读取最近 context 结果，合法 `ask_user`
+    会显示“等待拍板”、问题和上下文状态；`--llm-execute` 执行
+    合法 `ask_user` 时会写入
+    `~/.codex/supervisor/decision_requests.jsonl`，dashboard 和 web
+    会读取成稳定拍板列表；`decision list` 可查看活跃拍板项，
+    `decision archive --request-id <id>` 可把已处理项移出活跃列表；
+    `--llm-execute` 可执行 LLM 选择的 send、resume、launch 或
+    context 动作；当 LLM 选择 `request_context` 时，Supervisor 会在同轮
+    检索后再让 LLM 选择一个后续动作；`monitor` 只记录跳过；
     `advise` 可单独输出建议和命令草案，并可显式执行 send 类草案；
     `guide` 可生成一组可复制的启动、接管、日常 loop 和观察命令，
     作为真实使用入口；`loop` 是日常常驻入口，默认会自动发现并接管
-    未登记的 Codex tmux 窗口，再启用自动执行、
-    只在变化时输出和需要人看时响铃；`changes-only` 只减少输出，
-    不会阻断自动策略继续检查冷却和发送；
+    未登记的 Codex tmux 窗口，再由 LLM planner 选择并执行受控动作；
+    `--rule-execute` 可切回旧规则自动策略；
+    `changes-only` 只减少输出，不会阻断 LLM planner 在无变化轮次继续判断；
     `daemon start/status/stop/watchdog` 可把日常 `loop` 放到后台运行，
     状态写入 `~/.codex/supervisor/daemon.json`，日志写入
     `~/.codex/supervisor/logs/daemon.log`；`watchdog` 可按状态文件
@@ -122,15 +139,16 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `/managed/send` 执行 `send_status` 和 `send_continue` 两个白名单动作；
     两个动作都会要求托管 Codex 按状态协议汇报；
     web 已可通过手动“模型建议”按钮调用 `/llm-action`，展示 LLM
-    在白名单里选择的建议动作，模型输出带解释时会尽量提取动作 JSON，
-    但不自动发送；没有可控托管 tmux lane
+    在受控动作里选择的建议，模型输出带解释时会尽量提取动作 JSON，
+    但不自动发送；没有任何可控 Supervisor 目标
     时会直接回退为 `monitor`，不调用 LLM；有建议目标时会高亮对应按钮，
     但仍需人类手动点击；
     scan 已改为最近候选和大文件首尾读取，降低页面刷新延迟；
     scan、dashboard 和 web 已输出 `status_evidence` 状态依据，
     说明当前标签来自状态协议、文本规则、超时、bell 或托管检查；
     `supervise` 可循环执行扫描、建议、可选 LLM 摘要和显式 send；
-    `loop` 复用 `supervise` 引擎，并固定为日常自动监督默认值；
+    `loop` 复用 `supervise` 引擎，并固定为日常 LLM 监督默认值；
+    无变化轮次仍会让 LLM planner 判断本轮是否要执行动作；
     `supervise --auto-execute` 已有第一版规则自动策略：
     `done` 默认续跑，终端可输入、`stale` 或 bell 时询问状态，
     `blocked/needs_user/error` 只提醒；如果 `SUPERVISOR_NEXT`
@@ -139,8 +157,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     窗口，不会被第一个仍在运行的窗口挡住；
     自动轮转会避开仍在 `--prompt-cooldown` 冷却期内的 lane，
     继续寻找下一个可自动处理窗口；显式 `--name` 仍保留冷却跳过提示；
-    即使报告指纹不变，日常 `loop` 也会继续执行规则自动策略，
-    冷却结束后仍可再次请求状态；
+    `loop --rule-execute` 可显式使用规则自动策略；
+    即使报告指纹不变，规则模式也会继续检查冷却和发送；
     终端明确显示 `Working ... esc to interrupt` 时，
     自动策略会优先相信当前窗口仍在工作，不被同目录旧 `done` session 误导；
     `supervise --bell` 可和自动执行合用，只按本轮托管 lane 的自动处理
@@ -173,7 +191,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     可被自动选择并继续推进；
     连续循环烟测已验证：一个 lane 进入冷却期后，其他可推进 lane
     不会被它挡住；
-    无变化连续循环已验证：`changes-only` 不再让自动策略停摆；
+    无变化连续循环已验证：`changes-only` 不再让 LLM planner 停摆；
     真实 guide/loop 验收发现并修正旧 `done` session 误导新工作窗口的问题；
     手动窗口接管验收已验证：已有 tmux Codex 窗口可被接管、
     监督、识别完成状态并归档；接管前可用 `discover` 查找候选；
@@ -213,6 +231,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.apps.api routes --root /tmp/isotope-a
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --limit 3
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard --limit 3
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner guide --cwd /path/to/repo --name lane-a
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner resume --cwd /path/to/repo --name lane-a --session-id <session-id> --prompt "继续推进当前任务"
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner resume --cwd /path/to/repo --name latest --last --prompt "请汇报当前状态"
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner discover --cwd /path/to/repo
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner discover --cwd /path/to/repo --adopt-first
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner web --print-url

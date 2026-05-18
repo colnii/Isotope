@@ -64,9 +64,9 @@
 | `isotope-ask` | 工作台问答命令行入口，可用 mock 或 OpenAI-compatible provider 回答问题 | 应用入口 | `src/isotope/features/ask/runner.py`, `apps/cli/isotope_ask.py` |
 | `workbench-ask demo` | 工作台问答 demo 场景，展示项目摘要进入问答上下文并产出中文答案 | 应用验证 | `src/isotope/demo.py`, `tests/isotope/test_workbench_ask_demo_scenario.py` |
 | `Codex Supervisor` | Codex 监督器，Isotope 后续核心管理层，让 LLM 参与判断和调度，工程规则提供护栏 | 产品功能 | `src/isotope/features/supervisor/flow.py` |
-| `isotope-supervisor` | Codex Supervisor 命令行入口，支持扫描、dashboard 汇总、本机 web 页面、建议面板、supervise 小闭环、定时汇报、变化触发、托管启动、接管 tmux 和发送指令 | 应用入口 | `src/isotope/features/supervisor/runner.py`, `apps/cli/isotope_supervisor.py` |
+| `isotope-supervisor` | Codex Supervisor 命令行入口，支持扫描、dashboard 汇总、本机 web 页面、建议面板、supervise 小闭环、定时汇报、变化触发、托管启动、恢复历史会话、接管 tmux 和发送指令 | 应用入口 | `src/isotope/features/supervisor/runner.py`, `apps/cli/isotope_supervisor.py` |
 | `Codex session` | Codex 会话记录，本机通常保存在 `~/.codex/sessions` | 外部集成 | `src/isotope/features/supervisor/flow.py` |
-| `managed Codex` | Supervisor 启动或接管并登记的 Codex 会话，可通过 pid、tmux session 和日志路径追踪 | 产品功能/外部集成 | `src/isotope/features/supervisor/registry.py` |
+| `managed Codex` | Supervisor 启动、恢复或接管并登记的 Codex 会话，可通过 pid、tmux session、resume 目标和日志路径追踪 | 产品功能/外部集成 | `src/isotope/features/supervisor/registry.py` |
 | `recommendation` | 结构化建议，表达下一步建议动作、优先级和目标窗口，不等于自动执行 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
 | `status_evidence` | 状态依据，解释 Supervisor 为什么把窗口判为工作中、等待用户、停住或报错 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/web.py` |
 | `supervisor_protocol` | 状态依据来源，表示被托管 Codex 主动写了 `SUPERVISOR_STATUS` | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
@@ -88,6 +88,8 @@
 | `initial_user_title` | 首条真实用户消息截断标题，跳过 AGENTS 和环境上下文，在没有 Codex 标题时替代短 hash | 产品功能/视图 | `src/isotope/features/supervisor/flow.py` |
 | `short_session_id` | session id 的短 hash，页面辅助辨认窗口 | 产品功能/视图 | `src/isotope/features/supervisor/flow.py` |
 | `resume_command` | 完整恢复命令，形如 `codex resume <session_id>`，用于复制后恢复窗口 | 产品功能/视图 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
+| `isotope-supervisor resume` | Supervisor 恢复历史会话入口，封装 `codex exec resume <session> <prompt>` 或 `--last` 并登记后台进程 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
+| `codex exec resume` | Codex CLI 原生命令，非交互式恢复历史会话并立刻发送新 prompt | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
 | `agent_nickname` | Codex session 元数据里的 agent 名称，可作为标题兜底 | 外部集成/视图 | `src/isotope/features/supervisor/flow.py` |
 | `needs_attention` | dashboard 分组字段，表示需要人类或管理层优先查看的窗口 | 产品功能/视图 | `src/isotope/features/supervisor/runner.py` |
 | `inspect_blocked` | 建议动作，优先查看主动汇报阻塞的窗口 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
@@ -102,12 +104,12 @@
 | `control_commands` | dashboard/web 使用的受控命令列表，当前来自托管 tmux lane 的 attach 和 send 草案 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `/events` | web 事件流入口，用 SSE 推送 bell 提醒，让页面立刻刷新 dashboard | 产品功能/视图/状态判断 | `src/isotope/features/supervisor/web.py` |
 | `/managed/send` | web 本机发送入口，只允许 `send_status` 和 `send_continue` 两个白名单动作 | 产品功能/控制通道 | `src/isotope/features/supervisor/web.py` |
-| `/llm-action` | web 手动模型建议入口，只展示 LLM 白名单动作建议，不自动发送 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/web.py` |
+| `/llm-action` | web 手动模型建议入口，只展示 LLM planner 的受控动作建议，不自动发送 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/web.py` |
 | `send_status` | 白名单动作，让托管 Codex 按 `SUPERVISOR_STATUS/SUMMARY/NEXT` 汇报当前状态 | 产品功能/控制通道/状态协议 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `send_continue` | 白名单动作，让托管 Codex 继续推进，并在完成或阻塞后按状态协议汇报 | 产品功能/控制通道/状态协议 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `send` | Supervisor 控制命令，向登记的 tmux Codex 会话发送一行文本，短暂等待后用 `C-m` 提交 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
 | `adopt` | 接管已有 tmux 会话，把它登记成 Supervisor 可监控和发送指令的 lane | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
-| `tmux` | 本机终端复用工具，可创建可追踪会话，并通过 buffer/paste 向托管 Codex 发指令 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
+| `tmux` | 本机终端复用工具，适合人类透明旁观同一个 TUI；现在是辅助控制通道，不是唯一主通道 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
 | `attach` | 连接到 tmux 会话查看同一个终端窗口 | 外部集成/人类观察 | `docs/current/codex-supervisor-readonly.md` |
 | `set-buffer` / `paste-buffer` | tmux 缓冲区写入和粘贴命令，用于把文本送入托管 Codex 窗口 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
 | `bell` | tmux 提醒信号，可作为窗口可能结束或需要查看的弱证据 | 外部集成/状态判断 | `src/isotope/features/supervisor/flow.py`, `docs/current/supervisor-capability-map.md` |
@@ -123,10 +125,20 @@
 | `lane state` | 托管窗口状态账本，记录最近状态、最近催促时间和催促次数 | 产品功能/状态判断 | `src/isotope/features/supervisor/lane_state.py` |
 | `--prompt-cooldown` | 催促冷却期，避免短时间重复向同一个 lane 发送状态请求或继续指令 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `LLM summary` | 大模型摘要，把压缩后的窗口状态和结构化建议交给模型生成中文判断 | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
-| `LLM action` | 大模型白名单动作建议，只能从 `monitor`、`send_status`、`send_continue` 中选择，并会容忍 JSON 前后的说明文本 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
-| `--llm-action` | 命令行参数，让 LLM 选择一个白名单建议动作，但不自动执行 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/runner.py` |
-| `--llm-execute` | 命令行参数，执行 LLM 选择的白名单 send 动作；`monitor` 只记录跳过 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/runner.py` |
+| `LLM planner` | 大模型规划器，从候选状态里选择 `monitor`、send、`resume_session`、`launch_session`、`request_context` 或 `ask_user`，规则只做护栏 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
+| `LLM action` | 大模型规划结果，会容忍 JSON 前后的说明文本，再校验成受控动作 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
+| `--llm-action` | 命令行参数，让 LLM planner 读取最近 context 结果并选择一个受控建议动作，但不自动执行 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/runner.py` |
+| `--llm-execute` | 命令行参数，执行 LLM 选择的 send、`resume_session`、`launch_session`、`request_context` 或 `ask_user`；`monitor` 只记录跳过 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/runner.py` |
+| `loop` | Supervisor 日常常驻入口，默认由 LLM planner 驱动受控动作 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py` |
+| `--rule-execute` | `loop` 的备用参数，切回旧规则自动策略 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `monitor` | 白名单动作，表示当前没有需要发送的托管指令，只继续观察 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
+| `resume_session` | LLM planner 可选动作，恢复一个普通 Codex 历史会话并发送受控 prompt | 产品功能/模型/控制通道 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
+| `launch_session` | LLM planner 可选动作，由 LLM 生成 prompt 并启动一个新的 Codex 托管会话 | 产品功能/模型/控制通道 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
+| `request_context` | LLM planner 可选动作，按 query 请求项目上下文检索，不固定注入文档全文 | 产品功能/模型/上下文能力 | `src/isotope/features/supervisor/context.py`, `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
+| `ask_user` | LLM planner 可选动作，只有 Codex 明确请求拍板、既有用户指示不足且上下文缺失/过时/冲突时才允许停等用户；执行后会写入拍板列表 | 产品功能/模型/拍板 gate | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
+| `decision request` | 拍板请求账本项，记录合法 `ask_user` 的问题、目标、原因和 gate 证据，供 dashboard 和 web 稳定展示；处理后用 `decision archive` 归档 | 产品功能/通知/拍板 | `src/isotope/features/supervisor/decision_requests.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
+| `decision archive` | 拍板归档事件，追加写入 JSONL，让已处理拍板项从活跃列表移走，不直接删除历史 | 产品功能/通知/拍板 | `src/isotope/features/supervisor/decision_requests.py`, `src/isotope/features/supervisor/runner.py` |
+| `context` | Supervisor 命令，执行项目上下文检索并记录结果供后续 LLM planner 使用；当前 `rg` 优先、Python 兜底，不是 BM25 | 产品功能/上下文能力 | `src/isotope/features/supervisor/context.py`, `src/isotope/features/supervisor/runner.py` |
 | `OpenAI-compatible` | 兼容 OpenAI Chat Completions 形状的模型接口 | 模型/外部集成 | `src/isotope/features/supervisor/llm_summary.py` |
 | `LLM pool TOML` | 本机模型号池配置，声明 provider、base URL、model 和 key | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
 | `git worktree` | Git 工作树，同一仓库的独立开发目录，用于多分支并行 | 工作区/开发协作 | `docs/current/status.md`, `AGENTS.md` |

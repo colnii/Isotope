@@ -11,6 +11,8 @@ from typing import Any, Callable
 from urllib.parse import urlparse
 
 from .bell_events import default_bell_events_path, read_latest_bell_events
+from .context import read_recent_context_results
+from .decision_requests import read_active_decision_requests
 from .flow import CodexSupervisorFlow, _tmux_capture_pane
 from .lane_state import record_lane_prompt
 from .llm_summary import (
@@ -67,11 +69,19 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
 
     def dashboard_payload(self) -> dict[str, Any]:
         report = self._scan_report()
-        return _dashboard_payload(report)
+        return _dashboard_payload(
+            report,
+            decision_requests=_decision_request_dicts(self.codex_home),
+        )
 
     def llm_action_payload(self) -> dict[str, Any]:
         report = self._scan_report()
         payload = _advice_payload(report)
+        recent_context_results = _recent_context_results_for_report(
+            codex_home=self.codex_home,
+            report=report,
+        )
+        payload["recent_context_results"] = recent_context_results
         provider = self.llm_action_provider or resolve_summary_provider_from_env(
             agent_name="supervisor"
         )
@@ -79,6 +89,7 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
             report,
             payload["command_suggestions"],
             provider,
+            recent_context_results,
         )
         return payload
 
@@ -119,6 +130,34 @@ def create_dashboard_server(
         repair_run=repair_run,
         llm_action_provider=llm_action_provider,
     )
+
+
+def _recent_context_results_for_report(
+    *,
+    codex_home: Path,
+    report: Any,
+) -> list[dict[str, Any]]:
+    cwd = _context_cwd_for_report(report)
+    results = read_recent_context_results(
+        codex_home=codex_home,
+        cwd=Path(cwd) if cwd else None,
+    )
+    return [result.to_dict() for result in results]
+
+
+def _decision_request_dicts(codex_home: Path) -> list[dict[str, Any]]:
+    return [
+        request.to_dict()
+        for request in read_active_decision_requests(codex_home=codex_home)
+    ]
+
+
+def _context_cwd_for_report(report: Any) -> str | None:
+    for session in report.sessions:
+        cwd = getattr(session, "cwd", None)
+        if isinstance(cwd, str) and cwd:
+            return cwd
+    return None
 
 
 class _DashboardRequestHandler(BaseHTTPRequestHandler):
@@ -359,6 +398,47 @@ def dashboard_page_html() -> str:
       font-size: 13px;
       overflow-wrap: anywhere;
     }
+    .llm-action.decision-request {
+      border: 1px solid #fecdca;
+      border-left: 4px solid var(--attention);
+      border-radius: 6px;
+      background: #fffbfa;
+      color: #7a271a;
+      padding: 8px;
+    }
+    .decision-title {
+      color: var(--text);
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .decision-line {
+      margin-top: 2px;
+    }
+    .decision-list {
+      margin-bottom: 18px;
+      border: 1px solid #fecdca;
+      border-left: 4px solid var(--attention);
+      border-radius: 6px;
+      background: #fffbfa;
+      padding: 12px 14px;
+      font-size: 14px;
+    }
+    .decision-list-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      font-weight: 700;
+    }
+    .decision-list-body {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .decision-list-item {
+      color: #7a271a;
+      overflow-wrap: anywhere;
+    }
     .grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -539,6 +619,13 @@ def dashboard_page_html() -> str:
         <button id="llm-action-button" type="button">模型建议</button>
       </div>
       <div class="llm-action" id="llm-action-result">未请求模型建议</div>
+    </div>
+    <div class="decision-list" id="decision-list">
+      <div class="decision-list-head">
+        <span>等待拍板列表</span>
+        <span class="count" id="decision-count">0</span>
+      </div>
+      <div class="decision-list-body" id="decision-requests"></div>
     </div>
     <div class="grid">
       <section data-group="needs_attention">
@@ -849,11 +936,84 @@ def dashboard_page_html() -> str:
     function renderLlmAction(action) {
       const result = document.getElementById("llm-action-result");
       const kind = action.kind || "monitor";
+      result.className = "llm-action";
+      result.replaceChildren();
+      if (kind === "ask_user") {
+        result.append(renderDecisionRequest(action));
+        latestLlmAction = action;
+        applyLlmActionHighlight();
+        return;
+      }
       const target = action.target_name ? " / " + action.target_name : "";
       const command = action.command_suggestion ? " / " + action.command_suggestion.label : "";
       result.textContent = "模型建议：" + kind + target + command + "。原因：" + text(action.reason);
       latestLlmAction = action;
       applyLlmActionHighlight();
+    }
+
+    function renderDecisionRequest(action) {
+      const card = document.createElement("div");
+      const result = document.getElementById("llm-action-result");
+      result.className = "llm-action decision-request";
+
+      const title = document.createElement("div");
+      title.className = "decision-title";
+      title.textContent = "等待拍板";
+      card.append(title);
+
+      const question = document.createElement("div");
+      question.className = "decision-line";
+      question.textContent = "问题：" + text(action.question);
+      card.append(question);
+
+      const target = document.createElement("div");
+      target.className = "decision-line";
+      target.textContent = "目标：" + text(action.target_name || action.session_id);
+      card.append(target);
+
+      const context = document.createElement("div");
+      context.className = "decision-line";
+      context.textContent = "context_status：" + text(action.context_status);
+      card.append(context);
+
+      const reason = document.createElement("div");
+      reason.className = "decision-line";
+      reason.textContent = "原因：" + text(action.reason);
+      card.append(reason);
+
+      return card;
+    }
+
+    function renderDecisionRequests(requests) {
+      const count = document.getElementById("decision-count");
+      const list = document.getElementById("decision-requests");
+      count.textContent = requests.length;
+      list.replaceChildren();
+      if (requests.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "暂无";
+        list.append(empty);
+        return;
+      }
+      for (const request of requests) {
+        const item = document.createElement("div");
+        item.className = "decision-list-item";
+        const target = request.target_name || request.session_id || "未知";
+        const line = document.createElement("div");
+        line.textContent = text(request.question) + " · context_status=" + text(request.context_status) + " · " + target;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = "复制归档拍板";
+        button.addEventListener("click", () => copyDecisionArchiveCommand(request, button));
+        item.append(line, button);
+        list.append(item);
+      }
+    }
+
+    async function copyDecisionArchiveCommand(request, button) {
+      const command = "isotope-supervisor decision archive --request-id " + text(request.request_id);
+      await copyText(command, button, "复制归档拍板");
     }
 
     function applyLlmActionHighlight() {
@@ -916,6 +1076,7 @@ def dashboard_page_html() -> str:
       const payload = await response.json();
       document.getElementById("generated-at").textContent = payload.generated_at;
       document.getElementById("recommendation").textContent = payload.recommendation.label;
+      renderDecisionRequests(payload.decision_requests || []);
       for (const key of groups) renderGroup(key, payload.groups[key] || []);
       document.getElementById("refresh-state").textContent = "最近刷新 " + new Date().toLocaleTimeString();
     }

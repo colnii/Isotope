@@ -19,13 +19,15 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 | --- | --- | --- | --- |
 | 用户功能层 | `scan`、`dashboard`、`guide`、`discover`、`web`、`watch`、`advise`、`supervise`、`loop`、`daemon` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
 | 托管控制层 | `launch`、`adopt`、`send`、`archive`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
+| Codex 执行通道 | `resume`、`codex exec resume`、`--last` | `features/supervisor/runner.py`、`features/supervisor/registry.py` | 不依赖 tmux 恢复历史会话并投喂新 prompt |
+| 上下文能力层 | `context`、`request_context`、上下文结果记录 | `features/supervisor/context.py`、`features/supervisor/runner.py` | LLM 按需请求检索项目资料，`rg` 优先、Python 兜底，不固定注入全文 |
 | Codex 集成层 | 读取 Codex session（会话记录）、索引标题和 agent 元数据 | `features/supervisor/flow.py` | 当前读取本机 `.jsonl`、`session_index.jsonl` 和 SQLite |
 | 扫描优化层 | 最近候选、首尾读取和标题兜底 | `features/supervisor/flow.py` | 避免每次页面刷新全量读历史 |
 | tmux 集成层 | tmux 启动、buffer/paste 发送和 bell hook | `bell_events.py`、`flow.py`、`registry.py` | 只控制登记过的 tmux 会话 |
 | 状态判断层 | 工作中、等待用户、疑似停住、疑似报错 | `features/supervisor/flow.py` | 规则提供候选和证据，不替代 LLM 判断 |
 | 状态依据层 | `status_evidence` 说明每个状态标签的来源 | `features/supervisor/flow.py` | 避免只给结论、不说明证据 |
 | 建议执行层 | `recommendation`、`command_suggestions`、`--execute` | `flow.py`、`runner.py` | 只允许白名单动作 |
-| 模型管理层 | `LLM summary`、`LLM action` 和 TOML 号池 | `llm_summary.py` | 承担判断、调度和动作选择的 AI 路径 |
+| 模型管理层 | `LLM summary`、`LLM planner` 和 TOML 号池 | `llm_summary.py` | 承担判断、调度和动作选择的 AI 路径 |
 | 状态协议层 | `SUPERVISOR_STATUS` 等状态协议 | `flow.py`、`registry.py` | 给被托管 Codex 主动汇报状态 |
 | 状态账本层 | lane state（窗口状态）和限频 | `lane_state.py` | 避免重复催促和刷屏 |
 | 本地前端层 | `web`、`/dashboard.json`、`/events`、`/managed/send`、`/llm-action` | `features/supervisor/web.py` | 本机视图、bell 事件、白名单发送和手动模型建议入口 |
@@ -71,12 +73,13 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `web` 托管卡片显示 bell 是否收到、bell hook 安装状态、
   终端可输入状态、关联 session 和最近输出；
   最近输出保留尾部行并默认滚到底部，手动上翻后会保留滚动位置。
-- `web` 可手动请求 `/llm-action`，展示 LLM 白名单动作建议。
+- `web` 可手动请求 `/llm-action`，展示 LLM planner 的受控动作建议。
 - `web` 会高亮模型建议对应的 send 按钮，但不会自动点击。
 - `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
 - `/managed/send` 成功发送后会更新 lane state。
 - `guide` 会按 cwd、lane name 和 tmux session 打印可复制工作流命令。
-- `loop` 是日常常驻入口，默认等价于自动执行、只在变化时输出和响铃提醒。
+- `loop` 是日常常驻入口，默认由 LLM planner 判断并执行受控动作。
+- `loop --rule-execute` 可切回旧规则自动策略。
 - `loop` 默认会自动发现并接管未登记的 Codex tmux 窗口；
   可用 `--no-auto-adopt` 关闭。
 - `daemon start/status/stop` 可把 `loop` 放到后台常驻，记录
@@ -86,7 +89,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `daemon watcher start/status/stop` 可启动 watcher（周期看门进程），
   定期触发 `daemon watchdog`。
 - `supervise --auto-adopt` 可显式开启同样的自动发现接管能力。
-- `loop` 的 `changes-only` 只限制输出；报告不变时自动策略仍会检查冷却并推进。
+- `loop` 的 `changes-only` 只限制输出；报告不变时 LLM planner 仍会判断是否推进。
 - `watch --changes-only` 只在状态变化时输出。
 - `watch --bell` 可在建议目标变化时输出终端 bell，不按固定 interval 重复响。
 - `supervise --bell` 可配合 `--auto-execute` 使用，只在本轮仍需要人看时响；
@@ -97,6 +100,21 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - 本机周期 watcher 状态文件 `watcher.json`，日志默认写到
   `supervisor/logs/watcher.log`。
 - `launch` 支持普通进程和 tmux 会话。
+- `resume` 支持用 `codex exec resume <session> <prompt>` 或 `--last`
+  恢复历史会话并登记后台托管进程。
+- `context` 支持按 query 检索当前工作区资料，当前是 `rg` 优先、
+  Python 关键词扫描兜底，并把结果记录给后续 LLM planner 使用。
+- `--llm-execute` 执行 `request_context` 后会在同一轮把检索结果交回
+  LLM planner，再执行一次后续受控动作；同轮只允许一次上下文检索，避免循环。
+- `ask_user` 是拍板请求动作，必须同时满足：Codex 明确请求拍板、
+  LLM 无法从用户既有指示判断、上下文检索缺失/过时/冲突。
+- `advice --llm-action` 和 web `/llm-action` 会读取最近 context
+  结果；合法 `ask_user` 会显示“等待拍板”、问题和 `context_status`。
+- `--llm-execute` 执行合法 `ask_user` 时会写入
+  `supervisor/decision_requests.jsonl`；dashboard 和 web 会读取成
+  稳定拍板列表。
+- `decision list` 可查看活跃拍板项；`decision archive --request-id <id>`
+  会写入归档事件，让已处理拍板项从活跃列表移走。
 - `discover` 可只读扫描现有 tmux 会话，筛出疑似 Codex 窗口，
   并生成可复制的 `adopt` 和 `attach` 命令。
 - `discover --adopt-first` 和 `discover --adopt-index <编号>` 可直接接管候选，
@@ -132,10 +150,11 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `supervise` plain 视图复用 dashboard 当前分组，再输出托管自动化
   是否 ready；没有可控 tmux lane 时给出 launch/adopt 命令形状。
 - `supervise --auto-execute` 每轮最多自动执行一个白名单动作。
-- `loop` 复用 `supervise` 引擎，默认开启规则自动策略。
+- `loop` 复用 `supervise` 引擎，默认开启 LLM planner 执行。
+- `loop --rule-execute` 才使用旧规则自动策略。
 - 自动策略：`done` 默认发 `send_continue`；终端可输入、`stale` 或
   bell 发 `send_status`；`blocked/needs_user/error` 只提醒。
-- `changes-only` 不会阻断规则自动策略；无变化轮次仍可在冷却结束后再次发送。
+- `changes-only` 不会阻断 LLM planner；无变化轮次仍可执行 LLM 选择的动作。
 - 如果 `SUPERVISOR_NEXT` 明确写出可结束、可归档、等待归档或无需继续，
   `done` 只监控，不再自动续跑。
 - 未指定 `--name` 时，自动策略会扫描所有活跃托管 lane，
@@ -150,11 +169,14 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - lane state 记录最近状态、最近催促时间和催促次数。
 - `--prompt-cooldown` 可避免短时间重复催促同一个 lane。
 - `--llm-summary` 通过本机 TOML 号池生成中文摘要。
-- `--llm-action` 通过本机 TOML 号池选择一个白名单建议动作。
-- `--llm-execute` 会执行 LLM 选择的 `send_status/send_continue`，
-  `monitor` 只记录跳过。
-- LLM 动作提示会携带托管窗口的终端可输入、bell 和状态协议短字段。
-- 没有可控托管 tmux lane 时，`LLM action` 直接回退为 `monitor`。
+- `--llm-action` 通过本机 TOML 号池让 LLM planner 选择受控动作。
+- `--llm-execute` 会执行 LLM 选择的 `send_status/send_continue`、
+  `resume_session` 或 `launch_session`，`monitor` 只记录跳过。
+- LLM 动作提示会携带托管窗口的终端可输入、bell、状态协议短字段，
+  普通 Codex session 的 `resume` 候选和可启动新会话的工作目录。
+- `launch_session` 的 prompt 由 LLM 根据上下文生成，工程层只校验
+  受控动作和工作目录。
+- 没有任何可控 Supervisor 目标时，`LLM action` 直接回退为 `monitor`。
 - `LLM action` 会从带说明的模型输出中提取最后一个动作 JSON。
 
 ## 当前不要重复实现
@@ -162,9 +184,16 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - 不要把规则、白名单或状态协议写成替代 LLM 的最终智能。
 - 用户要求 AI 管理、AI 判断或 AI 执行时，必须打磨真实 AI 路径。
 - 不要在其他目录再建一套 Supervisor CLI。
+- 不要再把 tmux 当成唯一控制通道；优先复用 `codex exec resume`
+  这类 Codex CLI 原生命令。
 - 不要绕过托管登记表直接写新的 tmux 发送器。
 - 不要给 Supervisor 再造一套独立 LLM 号池。
 - 不要另写状态分类系统，除非同步更新本文件。
+- 不要让 LLM 仅凭“不确定”就停下来问用户；不满足 `ask_user`
+  三项 gate 时应继续查上下文、恢复会话、启动会话或推进托管窗口。
+- 不要把 `ask_user` 藏在原始 JSON 里；CLI 和 web 必须显式展示问题。
+- 不要只依赖一次性终端输出保存拍板请求；需要写入 decision request 账本。
+- 拍板已处理后，不要手删 JSONL；使用 `decision archive` 追加归档事件。
 - 不要只展示状态标签而不展示判断依据。
 - 不要另写一套 dashboard 数据接口，先复用 `/dashboard.json`。
 - 不要把 `/events` 做成控制通道；它只负责提醒前端刷新。
