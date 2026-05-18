@@ -77,6 +77,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     TOML 号池做智能摘要；`--llm-action` 会让 LLM planner（规划器）
     在受控动作里选择 `monitor`、`send_status`、`send_continue`
     `resume_session`、`launch_session`、`request_context` 或 `ask_user`；
+    `advise`、`supervise` 和 `loop` 默认只把当前工作区内的会话作为
+    LLM/action 候选，避免误恢复其他项目或父目录会话；可用
+    `--workspace-root <path>` 指定范围，或用 `--all-workspaces` 显式放开；
     `launch_session` 允许 LLM 自己生成发给新 Codex 的 prompt，
     工程层只校验工作目录；`request_context` 是按需上下文检索能力，
     当前使用 `rg` 优先、Python 关键词扫描兜底，不是 BM25，

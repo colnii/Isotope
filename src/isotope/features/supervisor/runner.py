@@ -31,6 +31,7 @@ from .decision_requests import (
     record_decision_request,
 )
 from .flow import (
+    CodexSupervisorReport,
     CodexSupervisorFlow,
     _terminal_has_active_work_marker,
     _tmux_capture_pane,
@@ -144,6 +145,15 @@ def _build_parser() -> argparse.ArgumentParser:
             action="store_true",
             help="Use configured LLM to add a compact Chinese summary.",
         )
+        subparser.add_argument(
+            "--workspace-root",
+            help="Limit LLM/action candidates to this workspace. Defaults to cwd.",
+        )
+        subparser.add_argument(
+            "--all-workspaces",
+            action="store_true",
+            help="Let LLM/action candidates span every discovered workspace.",
+        )
     for command in ("advise", "supervise"):
         subparsers.choices[command].add_argument(
             "--name",
@@ -234,6 +244,15 @@ def _build_parser() -> argparse.ArgumentParser:
         "--llm-summary",
         action="store_true",
         help="Use configured LLM to add a compact Chinese summary.",
+    )
+    loop_parser.add_argument(
+        "--workspace-root",
+        help="Limit LLM/action candidates to this workspace. Defaults to cwd.",
+    )
+    loop_parser.add_argument(
+        "--all-workspaces",
+        action="store_true",
+        help="Let LLM/action candidates span every discovered workspace.",
     )
     loop_parser.add_argument(
         "--name",
@@ -1476,6 +1495,52 @@ def _normalize_loop_execution_mode(args: argparse.Namespace) -> None:
         args.llm_action = False
 
 
+def _action_report_for_workspace(args: argparse.Namespace, report: Any) -> Any:
+    workspace_root = _workspace_root(args)
+    if workspace_root is None:
+        return report
+    sessions = tuple(
+        session
+        for session in report.sessions
+        if _session_in_workspace(session, workspace_root)
+    )
+    if not sessions and not getattr(args, "workspace_root", None):
+        return report
+    return CodexSupervisorReport(
+        generated_at=report.generated_at,
+        sessions=sessions,
+    )
+
+
+def _workspace_scope_payload(
+    args: argparse.Namespace,
+    report: Any,
+    action_report: Any,
+) -> dict[str, Any]:
+    workspace_root = _workspace_root(args)
+    return {
+        "mode": "all" if workspace_root is None else "workspace",
+        "workspace_root": str(workspace_root) if workspace_root is not None else None,
+        "total_sessions": len(report.sessions),
+        "candidate_sessions": len(action_report.sessions),
+    }
+
+
+def _workspace_root(args: argparse.Namespace) -> Path | None:
+    if getattr(args, "all_workspaces", False):
+        return None
+    raw = getattr(args, "workspace_root", None)
+    return Path(raw).expanduser().resolve() if raw else Path.cwd().resolve()
+
+
+def _session_in_workspace(session: Any, workspace_root: Path) -> bool:
+    cwd = getattr(session, "cwd", None)
+    if not isinstance(cwd, str) or not cwd:
+        return False
+    session_cwd = Path(cwd).expanduser().resolve()
+    return session_cwd == workspace_root or workspace_root in session_cwd.parents
+
+
 def _supervise_payload(
     args: argparse.Namespace,
     report: Any,
@@ -1485,27 +1550,29 @@ def _supervise_payload(
     precomputed_auto_action: dict[str, Any] | None = None,
     precomputed_executed: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    action_report = _action_report_for_workspace(args, report)
     payload = _advice_payload(
-        report,
+        action_report,
         target_name=args.name,
         include_all_managed=args.llm_action or args.llm_execute,
     )
+    payload["workspace_scope"] = _workspace_scope_payload(args, report, action_report)
     payload["iteration"] = iteration
     payload["report"] = report.to_dict()
     payload["automation"] = _automation_status(report)
     payload["auto_adopted"] = auto_adopted or []
     if args.llm_action or args.llm_execute:
-        payload["recent_context_results"] = _recent_context_results(args, report)
+        payload["recent_context_results"] = _recent_context_results(args, action_report)
     if args.llm_summary:
         payload["llm_summary"] = _summarize_with_llm(report)
     if args.llm_action or args.llm_execute:
-        payload["llm_action"] = _decide_action_with_llm(report, payload)
+        payload["llm_action"] = _decide_action_with_llm(action_report, payload)
     if args.llm_execute:
-        payload["executed"] = _execute_llm_action(args, report, payload)
-        _maybe_replan_after_context_request(args, report, payload)
+        payload["executed"] = _execute_llm_action(args, action_report, payload)
+        _maybe_replan_after_context_request(args, action_report, payload)
     elif args.auto_execute:
         auto_action = precomputed_auto_action or _auto_execute_action(
-            report,
+            action_report,
             target_name=args.name,
             codex_home=Path(args.codex_home),
             prompt_cooldown_seconds=args.prompt_cooldown,
@@ -1513,7 +1580,7 @@ def _supervise_payload(
         payload["auto_action"] = auto_action
         payload["executed"] = precomputed_executed or _execute_auto_action(
             args,
-            report,
+            action_report,
             auto_action,
         )
     elif args.execute:
@@ -2182,18 +2249,20 @@ def _print_supervise_plain(payload: dict[str, Any], report: Any) -> None:
 
 def _print_advice(args: argparse.Namespace) -> None:
     report = _scan_report(args)
+    action_report = _action_report_for_workspace(args, report)
     payload = _advice_payload(
-        report,
+        action_report,
         target_name=args.name,
         include_all_managed=args.llm_action or args.llm_execute,
     )
+    payload["workspace_scope"] = _workspace_scope_payload(args, report, action_report)
     if args.llm_action or args.llm_execute:
-        payload["recent_context_results"] = _recent_context_results(args, report)
-        payload["llm_action"] = _decide_action_with_llm(report, payload)
+        payload["recent_context_results"] = _recent_context_results(args, action_report)
+        payload["llm_action"] = _decide_action_with_llm(action_report, payload)
     if args.llm_execute:
-        payload["executed"] = _execute_llm_action(args, report, payload)
+        payload["executed"] = _execute_llm_action(args, action_report, payload)
     elif args.execute:
-        payload["executed"] = _execute_advice(args, report, payload)
+        payload["executed"] = _execute_advice(args, action_report, payload)
     if args.json:
         _print_json(payload)
         return

@@ -103,6 +103,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `resume` 支持用 `codex exec resume <session> <prompt>` 或 `--last`
   恢复历史会话并登记后台托管进程；执行时会带 `--skip-git-repo-check`，
   兼容历史会话工作目录不是 Git 仓库的情况。
+- `advise`、`supervise` 和 `loop` 默认只让 LLM/action 候选使用当前工作区会话；
+  `--workspace-root <path>` 可指定范围，`--all-workspaces` 可显式放开。
 - `context` 支持按 query 检索当前工作区资料，当前是 `rg` 优先、
   Python 关键词扫描兜底，并把结果记录给后续 LLM planner 使用。
 - `--llm-execute` 执行 `request_context` 后会在同一轮把检索结果交回

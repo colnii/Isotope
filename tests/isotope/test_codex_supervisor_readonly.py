@@ -3623,6 +3623,80 @@ def test_codex_supervisor_runner_advise_can_add_llm_action(
     assert captured["agent_name"] == "supervisor"
 
 
+def test_codex_supervisor_runner_llm_action_scopes_to_workspace_root(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "isotope"
+    workspace.mkdir()
+    external_workspace = tmp_path / "other"
+    external_workspace.mkdir()
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-external.jsonl",
+        session_id="external-session",
+        cwd=str(external_workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:50Z",
+                "正在另一个项目里工作。",
+            )
+        ],
+    )
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-isotope.jsonl",
+        session_id="isotope-session",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "正在整理 Isotope Supervisor。",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert "external-session" not in content
+            assert "isotope-session" in content
+            assert f'"available_workspaces": ["{workspace}"]' in content
+            return '{"kind":"monitor","reason":"只监控当前项目工作区。"}'
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+
+    exit_code = supervisor_main(
+        [
+            "advise",
+            "--codex-home",
+            str(codex_home),
+            "--limit",
+            "5",
+            "--workspace-root",
+            str(workspace),
+            "--llm-action",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"]["kind"] == "monitor"
+    suggestion_text = json.dumps(payload["command_suggestions"], ensure_ascii=False)
+    assert "external-session" not in suggestion_text
+    assert "isotope-session" in suggestion_text
+
+
 def test_codex_supervisor_runner_advise_execute_send_status(
     tmp_path,
     capsys,

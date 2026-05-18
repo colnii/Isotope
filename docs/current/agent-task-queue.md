@@ -346,6 +346,10 @@
     cwd 是非仓库父目录的情况。
 154. Codex Supervisor LLM 错误可观测性：模型池失败会显示安全错误摘要，
     模型动作非 JSON 时会显示原始返回摘要，便于定位真实接口问题。
+155. Codex Supervisor LLM 工作区范围：`advise`、`supervise` 和 `loop`
+    默认只把当前工作区内的会话作为 LLM/action 候选，避免误恢复其他项目
+    或 `/home/lumber/Github` 这类父目录会话；`--workspace-root` 可指定范围，
+    `--all-workspaces` 可显式放开。
 
 ## 最近完成：Codex Supervisor 真实 resume 执行验收修复
 
@@ -356,6 +360,8 @@
 - 真实执行发现 `codex exec resume` 在非仓库父目录会被 Codex 拒绝。
 - `resume` 现已带 `--skip-git-repo-check`，真实日志确认 Codex 收到状态请求并输出三行状态。
 - 增加模型池失败和非 JSON 返回的可读错误摘要。
+- LLM/action 候选默认按当前工作区收窄；真实只读验证中，总报告仍有 10 个窗口，
+  但 LLM 候选只剩当前 Isotope 工作区 3 个会话。
 
 下一步：
 
