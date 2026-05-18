@@ -379,6 +379,10 @@
 164. Codex Supervisor 预算默认宽松：`--max-continue-count` 和
     `--max-context-requests` 默认都为 0，即不启用硬限制；
     预算只做可选护栏，不作为长期托管任务的默认阻碍。
+165. Codex Supervisor 多 lane 默认宽松验收：新增 loop 回归测试，
+    预置两个已有较高 `continue_count` 的托管窗口，LLM 连续选择
+    `send_continue` 推进 lane-a 和 lane-b；默认预算不拦截，
+    显式预算测试仍保留。
 
 ## 最近完成：Codex Supervisor 真实 resume 执行验收修复
 

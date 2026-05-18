@@ -7995,6 +7995,145 @@ def test_codex_supervisor_runner_loop_defaults_to_llm_driver(
     )
 
 
+def test_codex_supervisor_runner_loop_can_continue_multiple_lanes_with_default_budgets(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    _write_managed_tmux_record(
+        codex_home,
+        workspace=workspace,
+        append=True,
+        name="lane-b",
+        record_id="managed-002",
+        tmux_session="isotope-lane-b",
+    )
+    lane_state_path = codex_home / "supervisor" / "lane_state.json"
+    lane_state_path.parent.mkdir(parents=True, exist_ok=True)
+    lane_state_path.write_text(
+        json.dumps(
+            {
+                "lane-a": {
+                    "name": "lane-a",
+                    "tmux_session": "isotope-lane-a",
+                    "last_status": "done",
+                    "last_prompted_at": "2026-05-16T11:58:00+00:00",
+                    "prompt_count": 8,
+                    "last_prompt_kind": "send_continue",
+                    "continue_count": 8,
+                },
+                "lane-b": {
+                    "name": "lane-b",
+                    "tmux_session": "isotope-lane-b",
+                    "last_status": "done",
+                    "last_prompted_at": "2026-05-16T11:58:00+00:00",
+                    "prompt_count": 6,
+                    "last_prompt_kind": "send_continue",
+                    "continue_count": 6,
+                },
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session in {"isotope-lane-a", "isotope-lane-b"},
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: "› 等待输入\n  gpt-5.5 xhigh · main",
+    )
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
+
+    class FakeProvider:
+        calls = 0
+
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            self.calls += 1
+            content = messages[1]["content"]
+            assert '"target_name": "lane-a"' in content
+            assert '"target_name": "lane-b"' in content
+            target = "lane-a" if self.calls == 1 else "lane-b"
+            return json.dumps(
+                {
+                    "kind": "send_continue",
+                    "target_name": target,
+                    "reason": f"{target} 已完成上一段，继续推进。",
+                },
+                ensure_ascii=False,
+            )
+
+    provider = FakeProvider()
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: provider,
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "2",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--prompt-cooldown",
+            "0",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    lines = [line for line in capsys.readouterr().out.splitlines() if line.strip()]
+    assert len(lines) == 2
+    payloads = [json.loads(line) for line in lines]
+    assert [payload["llm_action"]["target_name"] for payload in payloads] == [
+        "lane-a",
+        "lane-b",
+    ]
+    assert [payload["executed"]["kind"] for payload in payloads] == [
+        "send_continue",
+        "send_continue",
+    ]
+    assert [payload["executed"]["managed"]["name"] for payload in payloads] == [
+        "lane-a",
+        "lane-b",
+    ]
+    assert calls == _tmux_send_calls(CONTINUE_REQUEST_TEXT) + _tmux_send_calls(
+        CONTINUE_REQUEST_TEXT,
+        buffer_name="isotope-supervisor-managed-002",
+        target="isotope-lane-b",
+    )
+    assert provider.calls == 2
+
+
 def test_codex_supervisor_runner_supervise_resume_respects_prompt_cooldown(
     tmp_path,
     capsys,
