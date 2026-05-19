@@ -409,6 +409,10 @@
     `supervise/loop/daemon start` 增加
     `--worker-codex-model/--worker-codex-config`，让 LLM 自动 worker
     也能显式传模型和推理强度配置。
+172. Codex Supervisor daemon 日志刷新：真实 daemon 目标验收发现
+    LLM 已启动 worker，但 `daemon.log` 为空；根因是后台 Python stdout
+    文件输出缓冲。现已让 `daemon start` 生成 `python -u -m ... loop`
+    命令，确保常驻自动动作能及时写入日志。
 
 ## 最近完成：Codex Supervisor process-first loop 验收
 

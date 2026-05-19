@@ -329,6 +329,7 @@ def _build_loop_command(
 ) -> tuple[str, ...]:
     command = [
         sys.executable,
+        "-u",
         "-m",
         "isotope.features.supervisor.runner",
         "loop",

@@ -139,6 +139,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `guide` 可生成一组可复制的启动、接管、日常 loop 和观察命令，
     作为真实使用入口；`loop` 是日常常驻入口，默认由 LLM planner
     选择并执行受控动作，process 后台托管是主线；
+    `daemon start` 生成的后台 loop 使用 Python `-u` 非缓冲输出，
+    确保自动动作和监控状态能及时写入 `daemon.log`；
     自动发现并接管未登记的 Codex tmux 窗口只作为可旁观兼容通道；
     `--rule-execute` 可切回旧规则自动策略；
     `changes-only` 只减少输出，不会阻断 LLM planner 在无变化轮次继续判断；

@@ -8100,6 +8100,7 @@ def test_codex_supervisor_runner_daemon_start_spawns_background_loop(
     assert payload["daemon"]["log_path"].endswith("daemon.log")
     assert payload["daemon"]["command"] == [
         sys.executable,
+        "-u",
         "-m",
         "isotope.features.supervisor.runner",
         "loop",

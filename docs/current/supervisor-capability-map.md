@@ -111,6 +111,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   可用 `--no-auto-adopt` 关闭。
 - `daemon start/status/stop` 可把 `loop` 放到后台常驻，记录
   pid（进程号）、命令、状态文件和日志路径。
+- `daemon start` 的后台 loop 使用 Python `-u` 非缓冲输出，避免
+  自动动作已经发生但 `daemon.log` 仍为空。
 - `daemon watchdog` 可按状态文件检查后台 `loop` 是否还活着；
   若异常退出，会用原命令重新拉起。
 - `daemon watcher start/status/stop` 可启动 watcher（周期看门进程），
