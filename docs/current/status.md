@@ -145,6 +145,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     选择并执行受控动作，process 后台托管是主线；
     `daemon start` 生成的后台 loop 使用 Python `-u` 非缓冲输出，
     确保自动动作和监控状态能及时写入 `daemon.log`；
+    `daemon status` 会聚合最近 LLM 动作、执行结果、worker
+    模型/配置和 worker 状态，不必手动 tail 日志判断是否在工作；
     自动发现并接管未登记的 Codex tmux 窗口只作为可旁观兼容通道；
     `--rule-execute` 可切回旧规则自动策略；
     `changes-only` 只减少输出，不会阻断 LLM planner 在无变化轮次继续判断；

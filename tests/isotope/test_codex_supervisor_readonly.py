@@ -8842,6 +8842,125 @@ def test_codex_supervisor_runner_daemon_status_marks_existing_loop_running(
     assert payload["daemon"]["state_path"] == str(state_path)
 
 
+def test_codex_supervisor_runner_daemon_status_includes_recent_activity(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    state_path = codex_home / "supervisor" / "daemon.json"
+    log_path = codex_home / "supervisor" / "logs" / "daemon.log"
+    worker_log_path = codex_home / "supervisor" / "logs" / "managed-001.log"
+    state_path.parent.mkdir(parents=True)
+    log_path.parent.mkdir(parents=True)
+    state_path.write_text(
+        json.dumps(
+            {
+                "pid": 45678,
+                "status": "running",
+                "started_at": "2026-05-18T10:00:00+00:00",
+                "stopped_at": None,
+                "command": [
+                    sys.executable,
+                    "-u",
+                    "-m",
+                    "isotope.features.supervisor.runner",
+                    "loop",
+                    "--worker-codex-model",
+                    "gpt-5.5",
+                    "--worker-codex-config",
+                    'model_reasoning_effort="high"',
+                ],
+                "codex_home": str(codex_home),
+                "log_path": str(log_path),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    log_path.write_text(
+        "\n".join(
+            [
+                "[LLM 白名单动作]",
+                "launch_session / 需要启动新会话继续推进。",
+                "已执行：isotope-supervisor launch --name planner-session",
+                "[LLM 白名单动作]",
+                "launch_session / 同名任务仍在冷却。",
+                "已跳过：launch prompt cooldown active",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    worker_log_path.write_text(
+        "FAKE CODEX worker invoked\n"
+        "SUPERVISOR_STATUS: done\n"
+        "SUPERVISOR_SUMMARY: worker 已完成状态汇报。\n"
+        "SUPERVISOR_NEXT: 等待 Supervisor 归档。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "planner-session",
+                "cwd": str(workspace),
+                "prompt": "继续推进",
+                "command": [
+                    "codex",
+                    "exec",
+                    "-m",
+                    "gpt-5.5",
+                    "-c",
+                    'model_reasoning_effort="high"',
+                    "-C",
+                    str(workspace),
+                    "--skip-git-repo-check",
+                    "继续推进",
+                ],
+                "pid": 45679,
+                "started_at": "2026-05-18T10:01:00+00:00",
+                "log_path": str(worker_log_path),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon._process_is_alive",
+        lambda pid: pid == 45678,
+    )
+
+    exit_code = supervisor_main(
+        ["daemon", "status", "--codex-home", str(codex_home), "--json"]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    activity = payload["daemon"]["activity"]
+    assert activity["recent_llm_action"] == {
+        "kind": "launch_session",
+        "reason": "同名任务仍在冷却。",
+    }
+    assert activity["recent_execution"] == {
+        "status": "skipped",
+        "detail": "launch prompt cooldown active",
+    }
+    assert activity["recent_worker"]["name"] == "planner-session"
+    assert activity["recent_worker"]["model"] == "gpt-5.5"
+    assert activity["recent_worker"]["config"] == ['model_reasoning_effort="high"']
+    assert activity["recent_worker"]["status"] == "done"
+    assert activity["recent_worker"]["summary"] == "worker 已完成状态汇报。"
+    assert activity["recent_worker"]["next"] == "等待 Supervisor 归档。"
+
+
 def test_codex_supervisor_runner_daemon_stop_terminates_and_marks_stopped(
     tmp_path,
     capsys,

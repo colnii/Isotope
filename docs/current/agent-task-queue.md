@@ -418,6 +418,10 @@
     `model_reasoning_effort="high"`，`guide` 也会生成同样默认值的
     `loop/daemon` 命令；如需低成本检查，可用 `--worker-codex-model`
     和 `--worker-codex-config` 显式降配。
+174. Codex Supervisor daemon 可观测性：`daemon status` 现在会聚合
+    `daemon.log` 和托管登记表，直接显示最近 LLM 动作、最近执行结果、
+    最近 worker 的模型/配置和状态协议，避免用户手动 tail 日志判断
+    Supervisor 是否真的在推进。
 
 ## 最近完成：Codex Supervisor process-first loop 验收
 

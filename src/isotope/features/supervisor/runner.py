@@ -33,6 +33,8 @@ from .decision_requests import (
 from .flow import (
     CodexSupervisorReport,
     CodexSupervisorFlow,
+    _managed_process_log_excerpt,
+    _supervisor_protocol_from_text,
     _terminal_has_active_work_marker,
     _tmux_capture_pane,
     render_plain_report,
@@ -1071,6 +1073,7 @@ def _daemon_payload(args: argparse.Namespace) -> dict[str, Any]:
         )
     elif args.daemon_command == "status":
         daemon = supervisor_daemon_status(codex_home=Path(args.codex_home))
+        daemon["activity"] = _daemon_activity_payload(Path(args.codex_home), daemon)
     elif args.daemon_command == "stop":
         daemon = stop_supervisor_daemon(codex_home=Path(args.codex_home))
     elif args.daemon_command == "watchdog":
@@ -1081,6 +1084,112 @@ def _daemon_payload(args: argparse.Namespace) -> dict[str, Any]:
         "status": "ok",
         "daemon": daemon,
     }
+
+
+def _daemon_activity_payload(
+    codex_home: Path,
+    daemon: dict[str, Any],
+) -> dict[str, Any]:
+    log_path = daemon.get("log_path")
+    daemon_log = _read_tail_text(log_path if isinstance(log_path, str) else None)
+    return {
+        "recent_llm_action": _recent_llm_action_from_log(daemon_log),
+        "recent_execution": _recent_execution_from_log(daemon_log),
+        "recent_worker": _recent_worker_payload(codex_home),
+    }
+
+
+def _read_tail_text(path_text: str | None, *, max_bytes: int = 64 * 1024) -> str:
+    if not path_text:
+        return ""
+    path = Path(path_text).expanduser()
+    try:
+        size = path.stat().st_size
+    except OSError:
+        return ""
+    try:
+        with path.open("rb") as handle:
+            if size > max_bytes:
+                handle.seek(size - max_bytes)
+            data = handle.read()
+    except OSError:
+        return ""
+    return data.decode("utf-8", errors="ignore")
+
+
+def _recent_llm_action_from_log(text: str) -> dict[str, str] | None:
+    lines = text.splitlines()
+    recent: dict[str, str] | None = None
+    for index, raw_line in enumerate(lines):
+        if raw_line.strip() != "[LLM 白名单动作]":
+            continue
+        for action_line in lines[index + 1 :]:
+            line = action_line.strip()
+            if not line:
+                continue
+            if " / " in line:
+                kind, reason = line.split(" / ", 1)
+            else:
+                kind, reason = line, ""
+            recent = {"kind": kind.strip(), "reason": reason.strip()}
+            break
+    return recent
+
+
+def _recent_execution_from_log(text: str) -> dict[str, str] | None:
+    recent: dict[str, str] | None = None
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if line.startswith("已执行："):
+            recent = {"status": "executed", "detail": line.removeprefix("已执行：").strip()}
+        elif line.startswith("已跳过："):
+            recent = {"status": "skipped", "detail": line.removeprefix("已跳过：").strip()}
+    return recent
+
+
+def _recent_worker_payload(codex_home: Path) -> dict[str, Any] | None:
+    records = [
+        record
+        for record in read_managed_record_events(default_registry_path(codex_home))
+        if record.status != "archived"
+    ]
+    if not records:
+        return None
+    record = records[-1]
+    model, config = _codex_worker_options_from_command(record.command)
+    excerpt = _managed_process_log_excerpt(record.log_path)
+    protocol = _supervisor_protocol_from_text(excerpt or "")
+    status = protocol.get("status") or record.status
+    return {
+        "name": record.name,
+        "record_id": record.record_id,
+        "backend": record.backend,
+        "pid": record.pid,
+        "model": model,
+        "config": config,
+        "status": status,
+        "summary": protocol.get("summary"),
+        "next": protocol.get("next"),
+        "log_path": record.log_path,
+    }
+
+
+def _codex_worker_options_from_command(command: tuple[str, ...]) -> tuple[str | None, list[str]]:
+    model: str | None = None
+    config: list[str] = []
+    index = 0
+    while index < len(command):
+        item = command[index]
+        if item in {"-m", "--model"} and index + 1 < len(command):
+            model = command[index + 1]
+            index += 2
+            continue
+        if item in {"-c", "--config"} and index + 1 < len(command):
+            config.append(command[index + 1])
+            index += 2
+            continue
+        index += 1
+    return model, config
 
 
 def _watcher_payload(args: argparse.Namespace) -> dict[str, Any]:
@@ -1137,19 +1246,51 @@ def _print_daemon_plain(payload: dict[str, Any]) -> None:
             print(f"旧 pid：{daemon['previous_pid']}")
         print(f"日志：{daemon['log_path']}")
         print("命令：" + shlex.join(daemon["command"]))
+        _print_daemon_activity_plain(daemon.get("activity"))
         return
     if status == "stopped":
         print("已停止后台 loop")
         print(f"pid：{daemon['pid']}")
         print(f"状态文件：{daemon['state_path']}")
+        _print_daemon_activity_plain(daemon.get("activity"))
         return
     if status == "stale":
         print("后台 loop 状态已过期，进程可能已经退出。")
         print(f"pid：{daemon['pid']}")
         print(f"日志：{daemon['log_path']}")
+        _print_daemon_activity_plain(daemon.get("activity"))
         return
     print("后台 loop 未运行。")
     print(f"状态文件：{daemon['state_path']}")
+    _print_daemon_activity_plain(daemon.get("activity"))
+
+
+def _print_daemon_activity_plain(activity: Any) -> None:
+    if not isinstance(activity, dict):
+        return
+    action = activity.get("recent_llm_action")
+    execution = activity.get("recent_execution")
+    worker = activity.get("recent_worker")
+    if not action and not execution and not worker:
+        return
+    print("最近活动：")
+    if isinstance(action, dict):
+        print(f"LLM 动作：{action.get('kind') or '未知'} / {action.get('reason') or '无'}")
+    if isinstance(execution, dict):
+        print(
+            f"执行结果：{execution.get('status') or 'unknown'} / "
+            f"{execution.get('detail') or '无'}"
+        )
+    if isinstance(worker, dict):
+        config = worker.get("config")
+        config_text = ", ".join(config) if isinstance(config, list) and config else "无"
+        print(
+            f"最近 worker：{worker.get('name') or '未知'} "
+            f"模型={worker.get('model') or '未指定'} 配置={config_text} "
+            f"状态={worker.get('status') or '未知'}"
+        )
+        if worker.get("summary"):
+            print(f"worker 摘要：{worker['summary']}")
 
 
 def _print_watcher_plain(payload: dict[str, Any]) -> None:

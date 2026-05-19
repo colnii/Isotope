@@ -328,7 +328,8 @@ Codex 的 tmux 会话，并生成可复制的 `adopt` 和 `attach` 命令。
 它会启动一个后台 `loop` 进程，把状态写到
 `~/.codex/supervisor/daemon.json`，日志写到
 `~/.codex/supervisor/logs/daemon.log`。
-`daemon status` 只检查本机进程是否还活着；
+`daemon status` 会检查本机进程是否还活着，并汇总最近 LLM 动作、
+最近执行结果、最近 worker 模型/配置和 worker 状态；
 `daemon watchdog` 会检查后台 `loop`，如果进程异常退出，
 就按 `daemon.json` 里记录的原始命令重新拉起；
 `daemon watcher start` 会再启动一个后台 watcher（周期看门进程），
