@@ -9710,7 +9710,200 @@ def test_codex_supervisor_runner_loop_keeps_blocked_goal_active(
 
     exit_code = supervisor_main(["goal", "list", "--codex-home", str(codex_home), "--json"])
     assert exit_code == 0
-    assert json.loads(capsys.readouterr().out)["active_goals"] == [goal]
+    listed_goal = json.loads(capsys.readouterr().out)["active_goals"][0]
+    assert listed_goal["goal_id"] == goal["goal_id"]
+    assert listed_goal["last_status"] == "blocked"
+
+
+def test_codex_supervisor_runner_goal_list_shows_latest_blocked_status(
+    tmp_path,
+    capsys,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    exit_code = supervisor_main(
+        [
+            "goal",
+            "add",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(workspace),
+            "--goal",
+            "展示阻塞目标状态。",
+            "--target-name",
+            "goal-supervisor",
+            "--json",
+        ]
+    )
+    assert exit_code == 0
+    goal = json.loads(capsys.readouterr().out)["goal"]
+    log_path = codex_home / "supervisor" / "logs" / "managed-001.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text(
+        "SUPERVISOR_STATUS: blocked\n"
+        "SUPERVISOR_SUMMARY: 缺少产品决策。\n"
+        "SUPERVISOR_NEXT: 请求用户拍板。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "goal-supervisor",
+                "cwd": str(workspace),
+                "prompt": "展示阻塞目标状态。",
+                "command": ["codex", "exec", "-C", str(workspace), "继续"],
+                "pid": 0,
+                "started_at": NOW.isoformat(),
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--rule-execute",
+            "--json",
+        ]
+    )
+    assert exit_code == 0
+    capsys.readouterr()
+
+    exit_code = supervisor_main(["goal", "list", "--codex-home", str(codex_home), "--json"])
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    item = payload["active_goals"][0]
+    assert item["goal_id"] == goal["goal_id"]
+    assert item["last_status"] == "blocked"
+    assert item["last_summary"] == "缺少产品决策。"
+    assert item["last_next"] == "请求用户拍板。"
+
+    exit_code = supervisor_main(["goal", "list", "--codex-home", str(codex_home)])
+    assert exit_code == 0
+    text = capsys.readouterr().out
+    assert "状态：blocked" in text
+    assert "摘要：缺少产品决策。" in text
+    assert "下一步：请求用户拍板。" in text
+
+
+def test_codex_supervisor_runner_daemon_status_includes_active_goal_status(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    exit_code = supervisor_main(
+        [
+            "goal",
+            "add",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(workspace),
+            "--goal",
+            "daemon status 展示目标状态。",
+            "--target-name",
+            "goal-supervisor",
+            "--json",
+        ]
+    )
+    assert exit_code == 0
+    capsys.readouterr()
+    log_path = codex_home / "supervisor" / "logs" / "managed-001.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text(
+        "SUPERVISOR_STATUS: needs_user\n"
+        "SUPERVISOR_SUMMARY: 需要确认验收范围。\n"
+        "SUPERVISOR_NEXT: 等待用户确认。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "goal-supervisor",
+                "cwd": str(workspace),
+                "prompt": "daemon status 展示目标状态。",
+                "command": ["codex", "exec", "-C", str(workspace), "继续"],
+                "pid": 0,
+                "started_at": NOW.isoformat(),
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--rule-execute",
+            "--json",
+        ]
+    )
+    assert exit_code == 0
+    capsys.readouterr()
+    state_path = codex_home / "supervisor" / "daemon.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "pid": 45678,
+                "status": "running",
+                "started_at": "2026-05-18T10:00:00+00:00",
+                "stopped_at": None,
+                "command": [sys.executable, "-m", "isotope.features.supervisor.runner"],
+                "codex_home": str(codex_home),
+                "log_path": str(codex_home / "supervisor" / "logs" / "daemon.log"),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon._process_is_alive",
+        lambda pid: pid == 45678,
+    )
+
+    exit_code = supervisor_main(
+        ["daemon", "status", "--codex-home", str(codex_home), "--json"]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    item = payload["daemon"]["activity"]["active_goals"][0]
+    assert item["target_name"] == "goal-supervisor"
+    assert item["last_status"] == "needs_user"
+    assert item["last_summary"] == "需要确认验收范围。"
+    assert item["last_next"] == "等待用户确认。"
 
 
 def test_codex_supervisor_runner_loop_goal_provider_resolution_failure_is_visible(

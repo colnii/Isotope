@@ -45,6 +45,7 @@ from .flow import (
 )
 from .goal_queue import (
     archive_supervisor_goal,
+    read_latest_supervisor_goal_statuses,
     read_active_supervisor_goals,
     record_supervisor_goal,
     record_supervisor_goal_status,
@@ -1297,11 +1298,18 @@ def _daemon_activity_payload(
 ) -> dict[str, Any]:
     log_path = daemon.get("log_path")
     daemon_log = _read_tail_text(log_path if isinstance(log_path, str) else None)
-    return {
+    activity: dict[str, Any] = {
         "recent_llm_action": _recent_llm_action_from_log(daemon_log),
         "recent_execution": _recent_execution_from_log(daemon_log),
         "recent_worker": _recent_worker_payload(codex_home),
     }
+    active_goals = _active_goal_dicts_for_codex_home(
+        codex_home,
+        include_status=True,
+    )
+    if active_goals:
+        activity["active_goals"] = active_goals
+    return activity
 
 
 def _read_tail_text(path_text: str | None, *, max_bytes: int = 64 * 1024) -> str:
@@ -1482,7 +1490,8 @@ def _print_daemon_activity_plain(activity: Any) -> None:
     action = activity.get("recent_llm_action")
     execution = activity.get("recent_execution")
     worker = activity.get("recent_worker")
-    if not action and not execution and not worker:
+    active_goals = activity.get("active_goals")
+    if not action and not execution and not worker and not active_goals:
         return
     print("最近活动：")
     if isinstance(action, dict):
@@ -1502,6 +1511,16 @@ def _print_daemon_activity_plain(activity: Any) -> None:
         )
         if worker.get("summary"):
             print(f"worker 摘要：{worker['summary']}")
+    if isinstance(active_goals, list) and active_goals:
+        print("活跃目标：")
+        for item in active_goals:
+            status = item.get("last_status") or "未汇报"
+            print(
+                f"- {item.get('target_name') or item.get('goal_id')}: "
+                f"{status} / {item.get('goal') or '无目标文本'}"
+            )
+            if item.get("last_summary"):
+                print(f"  摘要：{item['last_summary']}")
 
 
 def _print_watcher_plain(payload: dict[str, Any]) -> None:
@@ -2866,12 +2885,12 @@ def _goal_payload(args: argparse.Namespace) -> dict[str, Any]:
         return {
             "status": "ok",
             "goal": goal.to_dict(),
-            "active_goals": _active_goal_dicts(args),
+            "active_goals": _active_goal_dicts(args, include_status=True),
         }
     if args.goal_command == "list":
         return {
             "status": "ok",
-            "active_goals": _active_goal_dicts(args),
+            "active_goals": _active_goal_dicts(args, include_status=True),
         }
     if args.goal_command == "archive":
         archived = archive_supervisor_goal(
@@ -2881,7 +2900,7 @@ def _goal_payload(args: argparse.Namespace) -> dict[str, Any]:
         return {
             "status": "ok",
             "archived": archived,
-            "active_goals": _active_goal_dicts(args),
+            "active_goals": _active_goal_dicts(args, include_status=True),
         }
     raise ValueError(f"unsupported goal command: {args.goal_command}")
 
@@ -2910,6 +2929,12 @@ def _print_goal_plain(payload: dict[str, Any]) -> None:
         )
         print(f"- {item['goal_id']} {item['goal']}")
         print(f"  cwd={item['cwd']} worker={item['target_name']}")
+        if item.get("last_status"):
+            print(f"  状态：{item['last_status']}")
+        if item.get("last_summary"):
+            print(f"  摘要：{item['last_summary']}")
+        if item.get("last_next"):
+            print(f"  下一步：{item['last_next']}")
         print(f"  归档：{archive_command}")
 
 
@@ -4537,14 +4562,47 @@ def _active_goal_dicts(
     args: argparse.Namespace,
     *,
     limit: int = 20,
+    include_status: bool = False,
 ) -> list[dict[str, Any]]:
+    return _active_goal_dicts_for_codex_home(
+        Path(args.codex_home),
+        limit=limit,
+        include_status=include_status,
+    )
+
+
+def _active_goal_dicts_for_codex_home(
+    codex_home: Path,
+    *,
+    limit: int = 20,
+    include_status: bool = False,
+) -> list[dict[str, Any]]:
+    statuses = (
+        read_latest_supervisor_goal_statuses(codex_home=codex_home)
+        if include_status
+        else {}
+    )
     return [
-        goal.to_dict()
+        _goal_dict_with_status(goal.to_dict(), statuses)
         for goal in read_active_supervisor_goals(
-            codex_home=Path(args.codex_home),
+            codex_home=codex_home,
             limit=limit,
         )
     ]
+
+
+def _goal_dict_with_status(
+    goal: dict[str, Any],
+    statuses: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    status = statuses.get(goal.get("goal_id"))
+    if not status:
+        return goal
+    merged = {**goal}
+    for key, value in status.items():
+        if key != "goal_id":
+            merged[key] = value
+    return merged
 
 
 def _context_cwd_for_report(report: Any) -> str | None:

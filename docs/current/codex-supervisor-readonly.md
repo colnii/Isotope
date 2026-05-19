@@ -62,6 +62,8 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
   `loop` 动态读取活跃目标，不必把目标写死在启动命令里。
 - 同名 worker 汇报 `SUPERVISOR_STATUS: done` 时，`loop` 会自动归档
   对应目标；汇报 `blocked/needs_user` 时只记录状态，不删除目标。
+- `goal list` 和 `daemon status` 会直接展示活跃目标最近状态、
+  摘要和下一步。
 - `daemon watcher` 可启动 watcher（周期看门进程），定期触发 watchdog。
 - `supervise` 可按间隔循环执行扫描、建议、可选 LLM 摘要和显式 send。
 - `advise/supervise --name <lane>` 可只针对一个托管 lane 生成建议或执行动作。

@@ -128,6 +128,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   最早活跃目标，并保持 daemon 启动命令不绑定某一个队列目标。
 - `loop` 会把同名 worker 的 `SUPERVISOR_STATUS` 写回目标队列；
   `done` 自动归档，`blocked/needs_user` 只记录状态并等待后续处理。
+- `goal list` 和 `daemon status` 会合并活跃目标的最近状态、
+  摘要和下一步，便于直接看阻塞原因。
 - `daemon start/status/stop` 可把 `loop` 放到后台常驻，记录
   pid（进程号）、命令、状态文件和日志路径。
 - `daemon start` 的后台 loop 使用 Python `-u` 非缓冲输出，避免

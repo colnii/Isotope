@@ -174,6 +174,20 @@ def read_active_supervisor_goals(
     return tuple(goals[:limit])
 
 
+def read_latest_supervisor_goal_statuses(
+    *,
+    codex_home: Path | str,
+) -> dict[str, dict[str, Any]]:
+    latest: dict[str, dict[str, Any]] = {}
+    for raw in _read_goal_event_dicts(default_goals_path(codex_home)):
+        if raw.get("event") != "supervisor_goal_status":
+            continue
+        status = _goal_status_from_dict(raw)
+        if status is not None:
+            latest[status["goal_id"]] = status
+    return latest
+
+
 def append_goal_event(path: Path | str, event: dict[str, Any]) -> None:
     output_path = Path(path).expanduser()
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -244,6 +258,31 @@ def _goal_from_dict(raw: dict[str, Any]) -> SupervisorGoal | None:
         goal=goal,
         target_name=target_name,
     )
+
+
+def _goal_status_from_dict(raw: dict[str, Any]) -> dict[str, Any] | None:
+    goal_id = raw.get("goal_id")
+    status = raw.get("status")
+    created_at = raw.get("created_at")
+    if not all(isinstance(value, str) and value for value in (goal_id, status, created_at)):
+        return None
+    if status not in GOAL_STATUS_VALUES:
+        return None
+    item: dict[str, Any] = {
+        "goal_id": goal_id,
+        "last_status": status,
+        "last_status_at": created_at,
+    }
+    for source_key, target_key in (
+        ("target_name", "last_target_name"),
+        ("session_id", "last_session_id"),
+        ("summary", "last_summary"),
+        ("next", "last_next"),
+    ):
+        value = raw.get(source_key)
+        if isinstance(value, str) and value:
+            item[target_key] = value
+    return item
 
 
 def _add_optional_event_fields(

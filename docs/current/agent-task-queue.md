@@ -447,6 +447,9 @@
 181. Codex Supervisor 目标生命周期回写：`loop` 会把同名 worker 的
     `SUPERVISOR_STATUS` 写回 `goals.jsonl`；`done` 会自动归档目标，
     `blocked/needs_user` 只记录状态并保留活跃目标等待后续处理。
+182. Codex Supervisor 目标状态可见化：`goal list` 和 `daemon status`
+    会显示活跃目标最近 `last_status`、摘要和下一步，阻塞原因不再需要
+    手动翻 `goals.jsonl`。
 
 ## 最近完成：Codex Supervisor process-first loop 验收
 
