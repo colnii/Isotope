@@ -10036,6 +10036,165 @@ def test_codex_supervisor_runner_loop_replans_blocked_goal_with_llm_context(
     assert payload["llm_followup_action"]["kind"] == "monitor"
 
 
+def test_codex_supervisor_runner_loop_records_goal_level_decision_request(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    docs_dir = workspace / "docs" / "current"
+    docs_dir.mkdir(parents=True)
+    (docs_dir / "status.md").write_text(
+        "阻塞目标的文档和代码现状冲突，需要用户拍板。\n",
+        encoding="utf-8",
+    )
+    exit_code = supervisor_main(
+        [
+            "goal",
+            "add",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(workspace),
+            "--goal",
+            "处理阻塞目标拍板。",
+            "--target-name",
+            "goal-supervisor",
+            "--json",
+        ]
+    )
+    assert exit_code == 0
+    goal = json.loads(capsys.readouterr().out)["goal"]
+    log_path = codex_home / "supervisor" / "logs" / "managed-001.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text(
+        "SUPERVISOR_STATUS: needs_user\n"
+        "SUPERVISOR_SUMMARY: 文档和代码现状冲突。\n"
+        "SUPERVISOR_NEXT: 请用户拍板保留兼容层还是直接迁移。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "goal-supervisor",
+                "cwd": str(workspace),
+                "prompt": "处理阻塞目标拍板。",
+                "command": ["codex", "exec", "-C", str(workspace), "继续"],
+                "pid": 0,
+                "started_at": NOW.isoformat(),
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--rule-execute",
+            "--json",
+        ]
+    )
+    assert exit_code == 0
+    capsys.readouterr()
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
+
+    class FakeProvider:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            self.calls += 1
+            content = messages[1]["content"]
+            assert goal["goal_id"] in content
+            assert '"last_status": "needs_user"' in content
+            if self.calls == 1:
+                return json.dumps(
+                    {
+                        "kind": "request_context",
+                        "cwd": str(workspace),
+                        "query": "阻塞目标 拍板 冲突",
+                        "reason": "先查上下文再决定是否问用户。",
+                    },
+                    ensure_ascii=False,
+                )
+            assert "阻塞目标的文档和代码现状冲突" in content
+            return json.dumps(
+                {
+                    "kind": "ask_user",
+                    "goal_id": goal["goal_id"],
+                    "question": "这个目标保留兼容层，还是直接迁移并删除旧入口？",
+                    "codex_requested_decision": True,
+                    "instructions_exhausted": True,
+                    "context_status": "conflict",
+                    "reason": "目标明确请求拍板，既有指示不足，文档和现状冲突。",
+                },
+                ensure_ascii=False,
+            )
+
+    provider = FakeProvider()
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: provider,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"]["kind"] == "request_context"
+    assert payload["executed"]["kind"] == "request_context"
+    assert payload["llm_followup_action"]["kind"] == "ask_user"
+    followup = payload["followup_executed"]
+    assert followup["kind"] == "ask_user"
+    assert followup["requires_user"] is True
+    assert followup["goal_id"] == goal["goal_id"]
+    assert followup["target_name"] == "goal-supervisor"
+    assert followup["question"] == "这个目标保留兼容层，还是直接迁移并删除旧入口？"
+    decision_request = followup["decision_request"]
+    assert decision_request["goal_id"] == goal["goal_id"]
+    assert decision_request["target_name"] == "goal-supervisor"
+    assert decision_request["context_status"] == "conflict"
+    assert decision_request["gate"] == {
+        "codex_requested_decision": True,
+        "instructions_exhausted": True,
+        "context_status": "conflict",
+    }
+    records = [
+        json.loads(line)
+        for line in (codex_home / "supervisor" / "decision_requests.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    assert records[0]["goal_id"] == goal["goal_id"]
+    assert provider.calls == 2
+
+
 def test_codex_supervisor_runner_loop_goal_provider_resolution_failure_is_visible(
     tmp_path,
     capsys,

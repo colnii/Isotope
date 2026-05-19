@@ -1049,6 +1049,18 @@
 
 上一批已完成：
 
+## Codex Supervisor 目标级拍板请求
+
+完成内容：
+
+- `ask_user` 不再只能绑定普通 Codex session。
+- `blocked/needs_user` 活跃目标可用 `goal_id` 生成 decision request。
+- 目标级拍板仍必须先经过 context 检索，并满足拍板门槛。
+- decision request 会保留 `goal_id`、`target_name`、问题、原因和 gate 证据。
+- 新增回归测试，覆盖目标状态进入 LLM、查询上下文、再写入拍板请求。
+
+上一批已完成：
+
 ## Codex Supervisor 阻塞目标重新规划
 
 完成内容：

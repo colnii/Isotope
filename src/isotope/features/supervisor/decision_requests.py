@@ -20,9 +20,10 @@ class DecisionRequest:
     reason: str
     context_status: str | None
     gate: dict[str, Any]
+    goal_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload = {
             "event": "decision_request",
             "request_id": self.request_id,
             "created_at": self.created_at,
@@ -33,6 +34,9 @@ class DecisionRequest:
             "context_status": self.context_status,
             "gate": dict(self.gate),
         }
+        if self.goal_id:
+            payload["goal_id"] = self.goal_id
+        return payload
 
 
 def default_decision_requests_path(codex_home: Path | str) -> Path:
@@ -45,7 +49,13 @@ def record_decision_request(
     action: dict[str, Any],
     now: Callable[[], datetime] | None = None,
 ) -> DecisionRequest:
-    session_id = _required_string(action.get("session_id"), "session_id")
+    goal_id = _optional_string(action.get("goal_id"))
+    raw_session_id = action.get("session_id")
+    session_id = (
+        f"goal:{goal_id}"
+        if goal_id and (not isinstance(raw_session_id, str) or not raw_session_id.strip())
+        else _required_string(raw_session_id, "session_id")
+    )
     question = _required_string(action.get("question"), "question")
     reason = _required_string(action.get("reason"), "reason")
     target_name = _optional_string(action.get("target_name"))
@@ -66,6 +76,7 @@ def record_decision_request(
         reason=reason,
         context_status=context_status,
         gate=dict(gate),
+        goal_id=goal_id,
     )
     append_decision_request(default_decision_requests_path(codex_home), request)
     return request
@@ -192,6 +203,7 @@ def _request_from_dict(raw: dict[str, Any]) -> DecisionRequest | None:
         reason=reason,
         context_status=_optional_string(raw.get("context_status")),
         gate=dict(gate),
+        goal_id=_optional_string(raw.get("goal_id")),
     )
 
 

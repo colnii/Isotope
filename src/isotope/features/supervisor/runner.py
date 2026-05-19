@@ -4139,8 +4139,15 @@ def _execute_ask_user_action(
 ) -> dict[str, Any]:
     question = action.get("question")
     session_id = action.get("session_id")
+    goal_id = action.get("goal_id")
     if not isinstance(question, str) or not question.strip():
         raise ValueError("question is required for ask_user")
+    if not isinstance(session_id, str) or not session_id.strip():
+        session_id = (
+            f"goal:{goal_id}"
+            if isinstance(goal_id, str) and goal_id.strip()
+            else None
+        )
     if not isinstance(session_id, str) or not session_id.strip():
         raise ValueError("session_id is required for ask_user")
     gate = {
@@ -4150,12 +4157,13 @@ def _execute_ask_user_action(
     }
     decision_request = record_decision_request(
         codex_home=Path(args.codex_home),
-        action={**action, "gate": gate},
+        action={**action, "session_id": session_id, "gate": gate},
     )
     return {
         "kind": "ask_user",
         "requires_user": True,
         "session_id": session_id,
+        **({"goal_id": goal_id} if isinstance(goal_id, str) and goal_id else {}),
         "target_name": action.get("target_name"),
         "question": question,
         "reason": action["reason"],

@@ -131,6 +131,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `blocked/needs_user` 活跃目标会带着 `last_status`、摘要和下一步进入
   LLM planner 的 `active_goals` 输入；模型不能默认停住，应重新选择
   `request_context`、`launch_session`、`ask_user` 或 `monitor`。
+- 目标级 `ask_user` 可用 `goal_id` 写入 decision request；这解决了
+  队列目标已阻塞但没有普通 Codex session 可恢复时的拍板记录问题。
 - `goal list` 和 `daemon status` 会合并活跃目标的最近状态、
   摘要和下一步，便于直接看阻塞原因。
 - `daemon start/status/stop` 可把 `loop` 放到后台常驻，记录
@@ -173,7 +175,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   多个后台 Codex 重复驱动；已删除 worktree 或不存在 cwd 不再作为
   resume/context/launch 的正常候选，LLM 误选时只记录 skipped；
   LLM 临时空响应或误选非法目标时会记录为 `monitor`，不让常驻 loop 退出。
-- `ask_user` 是拍板请求动作，必须同时满足：Codex 明确请求拍板、
+- `ask_user` 是拍板请求动作，可绑定普通 session 或持久 `goal_id`，
+  必须同时满足：Codex 明确请求拍板、
   LLM 无法从用户既有指示判断、上下文检索缺失/过时/冲突。
 - `advise --llm-action` 和 web `/llm-action` 会读取最近 context
   结果；合法 `ask_user` 会显示“等待拍板”、问题和 `context_status`。

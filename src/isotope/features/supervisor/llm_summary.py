@@ -328,6 +328,7 @@ def build_llm_action_messages(
                         "schema": {
                             "kind": "ask_user",
                             "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
+                            "goal_id": "goal-optional-for-goal-level-request",
                             "question": "需要用户拍板的问题",
                             "codex_requested_decision": True,
                             "instructions_exhausted": True,
@@ -390,6 +391,7 @@ def generate_llm_action_decision(
     reason = _optional_payload_string(payload, "reason") or "LLM 建议执行该白名单动作。"
     session_id: str | None = None
     prompt_kind: str | None = None
+    goal_id: str | None = None
     question: str | None = None
     context_status: str | None = None
     codex_requested_decision: bool | None = None
@@ -442,15 +444,26 @@ def generate_llm_action_decision(
         query = _required_payload_string(payload, "query")
         command_suggestion = _request_context_command_suggestion(cwd=cwd, query=query)
     elif kind == "ask_user":
-        session_id = _required_payload_string(payload, "session_id")
-        target = _ask_user_target(report, session_id)
-        if target is None:
-            raise ValueError("ask_user requires a Codex decision request")
+        goal_id = _optional_payload_string(payload, "goal_id")
+        goal_target: dict[str, Any] | None = None
+        if goal_id is not None:
+            goal_target = _ask_user_goal(active_goals, goal_id)
+            if goal_target is None:
+                raise ValueError("ask_user requires an active blocked/needs_user goal")
+            session_id = _optional_payload_string(payload, "session_id") or f"goal:{goal_id}"
+        else:
+            session_id = _required_payload_string(payload, "session_id")
+            target = _ask_user_target(report, session_id)
+            if target is None:
+                raise ValueError("ask_user requires a Codex decision request")
         if not _required_payload_bool(payload, "codex_requested_decision"):
             raise ValueError("ask_user requires codex_requested_decision=true")
         if not _required_payload_bool(payload, "instructions_exhausted"):
             raise ValueError("ask_user requires instructions_exhausted=true")
-        if not _has_context_check_for_target(recent_context_results, target):
+        if goal_target is not None:
+            if not _has_context_check_for_goal(recent_context_results, goal_target):
+                raise ValueError("ask_user requires a context check")
+        elif not _has_context_check_for_target(recent_context_results, target):
             raise ValueError("ask_user requires a context check")
         context_status = _required_payload_string(payload, "context_status")
         if context_status not in LLM_ASK_USER_CONTEXT_STATUSES:
@@ -461,7 +474,11 @@ def generate_llm_action_decision(
         question = _required_payload_string(payload, "question")
         codex_requested_decision = True
         instructions_exhausted = True
-        target_name = target_name or _suggested_target_name(target)
+        target_name = target_name or (
+            _goal_target_name(goal_target)
+            if goal_target is not None
+            else _suggested_target_name(target)
+        )
         command_suggestion = None
     elif kind != "monitor":
         if target_name is None:
@@ -481,6 +498,7 @@ def generate_llm_action_decision(
         "kind": kind,
         "target_name": target_name,
         **({"session_id": session_id} if session_id is not None else {}),
+        **({"goal_id": goal_id} if goal_id is not None else {}),
         **({"prompt_kind": prompt_kind} if prompt_kind is not None else {}),
         **({"cwd": cwd} if kind == "launch_session" else {}),
         **({"prompt": prompt} if kind == "launch_session" else {}),
@@ -801,6 +819,43 @@ def _ask_user_target(report: CodexSupervisorReport, session_id: str) -> Any | No
     return None
 
 
+def _ask_user_goal(
+    active_goals: list[dict[str, Any]] | None,
+    goal_id: str,
+) -> dict[str, Any] | None:
+    for goal in active_goals or []:
+        if not isinstance(goal, dict) or goal.get("goal_id") != goal_id:
+            continue
+        if _goal_requests_user_decision(goal):
+            return goal
+    return None
+
+
+def _goal_requests_user_decision(goal: dict[str, Any]) -> bool:
+    status = str(goal.get("last_status") or "").lower()
+    if status == "needs_user":
+        return True
+    if status != "blocked":
+        return False
+    text = " ".join(
+        str(goal.get(key) or "")
+        for key in ("last_summary", "last_next", "goal")
+    )
+    return any(
+        marker in text
+        for marker in (
+            "用户",
+            "确认",
+            "选择",
+            "决定",
+            "拍板",
+            "提供",
+            "是否",
+            "人工",
+        )
+    )
+
+
 def _session_requests_user_decision(session: Any) -> bool:
     status = (getattr(session, "supervisor_status", None) or "").lower()
     if status == "needs_user":
@@ -839,6 +894,23 @@ def _has_context_check_for_target(
     if not recent_context_results:
         return False
     target_cwd = getattr(target, "cwd", None)
+    for result in recent_context_results:
+        if not isinstance(result, dict):
+            continue
+        if isinstance(target_cwd, str) and target_cwd:
+            if result.get("cwd") != target_cwd:
+                continue
+        return True
+    return False
+
+
+def _has_context_check_for_goal(
+    recent_context_results: list[dict[str, Any]] | None,
+    goal: dict[str, Any],
+) -> bool:
+    if not recent_context_results:
+        return False
+    target_cwd = goal.get("cwd")
     for result in recent_context_results:
         if not isinstance(result, dict):
             continue
@@ -947,6 +1019,16 @@ def _suggested_target_name(session: Any) -> str:
     if session.managed_name:
         return session.managed_name
     return "resume-" + session.short_session_id
+
+
+def _goal_target_name(goal: dict[str, Any] | None) -> str | None:
+    if not isinstance(goal, dict):
+        return None
+    target_name = goal.get("target_name")
+    if isinstance(target_name, str) and target_name:
+        return target_name
+    goal_id = goal.get("goal_id")
+    return goal_id if isinstance(goal_id, str) and goal_id else None
 
 
 def _available_workspaces(
