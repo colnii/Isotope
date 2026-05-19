@@ -2952,6 +2952,71 @@ def test_codex_supervisor_runner_goal_add_list_and_archive(
     assert archive_payload["active_goals"] == []
 
 
+def test_codex_supervisor_runner_loop_suggests_all_active_goals(
+    tmp_path,
+    capsys,
+):
+    codex_home = tmp_path / ".codex"
+    workspace_a = tmp_path / "workspace-a"
+    workspace_b = tmp_path / "workspace-b"
+    workspace_a.mkdir()
+    workspace_b.mkdir()
+
+    for workspace, goal, target_name in (
+        (workspace_a, "推进第一个功能目标。", "goal-a"),
+        (workspace_b, "推进第二个功能目标。", "goal-b"),
+    ):
+        exit_code = supervisor_main(
+            [
+                "goal",
+                "add",
+                "--codex-home",
+                str(codex_home),
+                "--cwd",
+                str(workspace),
+                "--goal",
+                goal,
+                "--target-name",
+                target_name,
+                "--json",
+            ]
+        )
+        assert exit_code == 0
+        capsys.readouterr()
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--workspace-root",
+            str(tmp_path),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--rule-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    launch_suggestions = [
+        suggestion
+        for suggestion in payload["command_suggestions"]
+        if suggestion["kind"] == "launch_session"
+    ]
+    assert [
+        (suggestion["target_name"], suggestion["cwd"], suggestion["prompt"])
+        for suggestion in launch_suggestions
+    ] == [
+        ("goal-a", str(workspace_a), "推进第一个功能目标。"),
+        ("goal-b", str(workspace_b), "推进第二个功能目标。"),
+    ]
+
+
 def test_codex_supervisor_web_rejects_invalid_manual_llm_action(tmp_path):
     from isotope.features.supervisor.web import create_dashboard_server
 

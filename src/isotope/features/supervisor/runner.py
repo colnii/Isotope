@@ -2280,6 +2280,8 @@ def _supervise_payload(
     precomputed_executed: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     action_report = _action_report_for_workspace(args, report)
+    active_goals = _active_goal_dicts(args, include_status=True)
+    explicit_goal = _explicit_goal_text(args)
     payload = _advice_payload(
         action_report,
         target_name=args.name,
@@ -2287,13 +2289,14 @@ def _supervise_payload(
         goal=_goal_text(args),
         goal_workspace=_goal_workspace(args),
         goal_target_name=_goal_target_name(args),
+        active_goals=None if explicit_goal else active_goals,
     )
     payload["workspace_scope"] = _workspace_scope_payload(args, report, action_report)
     payload["iteration"] = iteration
     payload["report"] = report.to_dict()
     payload["automation"] = _automation_status(report)
     payload["auto_adopted"] = auto_adopted or []
-    payload["active_goals"] = _active_goal_dicts(args, include_status=True)
+    payload["active_goals"] = active_goals
     if goal_updates:
         payload["goal_updates"] = goal_updates
     if args.llm_action or args.llm_execute:
@@ -3071,6 +3074,8 @@ def _print_supervise_plain(payload: dict[str, Any], report: Any) -> None:
 def _print_advice(args: argparse.Namespace) -> None:
     report = _scan_report(args)
     action_report = _action_report_for_workspace(args, report)
+    active_goals = _active_goal_dicts(args, include_status=True)
+    explicit_goal = _explicit_goal_text(args)
     payload = _advice_payload(
         action_report,
         target_name=args.name,
@@ -3078,9 +3083,10 @@ def _print_advice(args: argparse.Namespace) -> None:
         goal=_goal_text(args),
         goal_workspace=_goal_workspace(args),
         goal_target_name=_goal_target_name(args),
+        active_goals=None if explicit_goal else active_goals,
     )
     payload["workspace_scope"] = _workspace_scope_payload(args, report, action_report)
-    payload["active_goals"] = _active_goal_dicts(args, include_status=True)
+    payload["active_goals"] = active_goals
     if args.llm_action or args.llm_execute:
         payload["recent_context_results"] = _recent_context_results(args, action_report)
         payload["recent_decision_answers"] = _decision_answer_dicts(args)
@@ -3160,6 +3166,7 @@ def _advice_payload(
     goal: str | None = None,
     goal_workspace: str | None = None,
     goal_target_name: str | None = None,
+    active_goals: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     recommendation = report.recommendation
     suggestions = _command_suggestions(
@@ -3169,6 +3176,7 @@ def _advice_payload(
         goal=goal,
         goal_workspace=goal_workspace,
         goal_target_name=goal_target_name,
+        active_goals=active_goals,
     )
     return {
         "status": "ok",
@@ -3219,6 +3227,7 @@ def _command_suggestions(
     goal: str | None = None,
     goal_workspace: str | None = None,
     goal_target_name: str | None = None,
+    active_goals: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, str]]:
     if target_name:
         managed_tmux = _managed_tmux_session_by_name(report, target_name)
@@ -3236,7 +3245,8 @@ def _command_suggestions(
                 suggestions.extend(_resume_session_command_suggestions(session))
         suggestions.extend(_workspace_action_command_suggestions(report))
         suggestions.extend(
-            _goal_action_command_suggestions(
+            _active_goal_action_command_suggestions(active_goals)
+            or _goal_action_command_suggestions(
                 goal,
                 goal_workspace,
                 goal_target_name=goal_target_name,
@@ -3254,10 +3264,13 @@ def _command_suggestions(
     managed_tmux = _first_managed_tmux_session(report)
     if managed_tmux is not None:
         return _managed_tmux_command_suggestions(managed_tmux) + [_watch_command_suggestion()]
-    goal_suggestions = _goal_action_command_suggestions(
-        goal,
-        goal_workspace,
-        goal_target_name=goal_target_name,
+    goal_suggestions = (
+        _active_goal_action_command_suggestions(active_goals)
+        or _goal_action_command_suggestions(
+            goal,
+            goal_workspace,
+            goal_target_name=goal_target_name,
+        )
     )
     if goal_suggestions:
         return _dedupe_command_suggestions(goal_suggestions + [_watch_command_suggestion()])
@@ -3290,6 +3303,28 @@ def _goal_action_command_suggestions(
             target_name=goal_target_name or "planner-session",
         ),
     ]
+
+
+def _active_goal_action_command_suggestions(
+    active_goals: list[dict[str, Any]] | None,
+) -> list[dict[str, str]]:
+    suggestions: list[dict[str, str]] = []
+    for goal in active_goals or []:
+        goal_text = goal.get("goal")
+        goal_workspace = goal.get("cwd")
+        goal_target_name = goal.get("target_name")
+        if not isinstance(goal_text, str) or not isinstance(goal_workspace, str):
+            continue
+        suggestions.extend(
+            _goal_action_command_suggestions(
+                goal_text,
+                goal_workspace,
+                goal_target_name=goal_target_name
+                if isinstance(goal_target_name, str)
+                else None,
+            )
+        )
+    return suggestions
 
 
 def _workspace_cwds(report: Any) -> list[str]:
