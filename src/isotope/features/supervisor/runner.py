@@ -63,6 +63,8 @@ from .tmux_discovery import discover_tmux_adopt_candidates
 
 EXECUTABLE_ADVICE_KINDS = {"send_status", "send_continue"}
 DEFAULT_MAX_CONTEXT_REQUESTS = 0
+DEFAULT_WORKER_CODEX_MODEL = "gpt-5.5"
+DEFAULT_WORKER_CODEX_CONFIG = ('model_reasoning_effort="high"',)
 TERMINAL_DONE_NEXT_MARKERS = (
     "可结束",
     "可以结束",
@@ -106,8 +108,8 @@ ADOPT_TMUX_HINT = (
     "isotope-supervisor adopt --name <name> --cwd <repo> --tmux-session <session>"
 )
 DEFAULT_CONTEXT_QUERY = "Supervisor 当前状态 下一步开发方向 AGENTS.md docs/current/status.md"
-DEFAULT_GUIDE_WORKER_CODEX_MODEL = "gpt-5.4-mini"
-DEFAULT_GUIDE_WORKER_CODEX_CONFIG = ('model_reasoning_effort="low"',)
+DEFAULT_GUIDE_WORKER_CODEX_MODEL = DEFAULT_WORKER_CODEX_MODEL
+DEFAULT_GUIDE_WORKER_CODEX_CONFIG = DEFAULT_WORKER_CODEX_CONFIG
 DEFAULT_LAUNCH_PROMPT = " ".join(
     [
         "请阅读 AGENTS.md 和 docs/current/status.md，",
@@ -218,7 +220,7 @@ def _build_parser() -> argparse.ArgumentParser:
         subparsers.choices[command].add_argument(
             "--worker-codex-config",
             action="append",
-            default=[],
+            default=None,
             help="Pass one -c key=value override to Codex workers. Repeatable.",
         )
     for command in ("watch", "supervise"):
@@ -325,7 +327,7 @@ def _build_parser() -> argparse.ArgumentParser:
     loop_parser.add_argument(
         "--worker-codex-config",
         action="append",
-        default=[],
+        default=None,
         help="Pass one -c key=value override to Codex workers. Repeatable.",
     )
     loop_parser.add_argument(
@@ -425,7 +427,7 @@ def _build_parser() -> argparse.ArgumentParser:
     daemon_start_parser.add_argument(
         "--worker-codex-config",
         action="append",
-        default=[],
+        default=None,
         help="Pass one -c key=value override to Codex workers. Repeatable.",
     )
     daemon_start_parser.add_argument(
@@ -1064,8 +1066,8 @@ def _daemon_payload(args: argparse.Namespace) -> dict[str, Any]:
             name=args.name,
             llm_summary=args.llm_summary,
             auto_adopt=args.auto_adopt,
-            worker_codex_model=args.worker_codex_model,
-            worker_codex_config=tuple(args.worker_codex_config),
+            worker_codex_model=_worker_codex_model(args),
+            worker_codex_config=_worker_codex_config(args),
         )
     elif args.daemon_command == "status":
         daemon = supervisor_daemon_status(codex_home=Path(args.codex_home))
@@ -2950,12 +2952,20 @@ def _execute_llm_action(
 
 
 def _worker_codex_model(args: argparse.Namespace) -> str | None:
+    if not hasattr(args, "worker_codex_model"):
+        return None
     value = getattr(args, "worker_codex_model", None)
+    if value is None:
+        return DEFAULT_WORKER_CODEX_MODEL
     return value if isinstance(value, str) else None
 
 
 def _worker_codex_config(args: argparse.Namespace) -> tuple[str, ...]:
+    if not hasattr(args, "worker_codex_config"):
+        return ()
     value = getattr(args, "worker_codex_config", None)
+    if value is None:
+        return DEFAULT_WORKER_CODEX_CONFIG
     if not isinstance(value, list):
         return ()
     return tuple(item for item in value if isinstance(item, str))

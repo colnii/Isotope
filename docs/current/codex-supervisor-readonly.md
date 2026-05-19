@@ -71,11 +71,13 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
   后台 Codex worker 的模型和配置。
 - `supervise/loop/daemon start --worker-codex-model <model>
   --worker-codex-config key=value` 可把同类覆盖传给 LLM 自动启动或恢复的
-  worker，避免继承本机高成本默认配置。
-- `guide` 默认会把 `gpt-5.4-mini` 和
-  `model_reasoning_effort="low"` 写进生成的 `loop/daemon` 命令；
+  worker，避免写代码任务继承未知的本机默认配置。
+- `supervise/loop/daemon start` 默认给写代码 worker 使用 `gpt-5.5`
+  和 `model_reasoning_effort="high"`。
+- `guide` 默认会把 `gpt-5.5` 和
+  `model_reasoning_effort="high"` 写进生成的 `loop/daemon` 命令；
   可用 `guide --worker-codex-model` 和 `guide --worker-codex-config`
-  改成别的 worker 配置。
+  改成低成本或其他 worker 配置。
 - `adopt` 可把已有 tmux 会话登记成托管 lane。
 - `scan/watch` 可显示托管进程的名称、pid 和是否已退出。
 - `scan/watch` 可显示托管 tmux 会话是否有 bell（提醒）信号。
@@ -98,7 +100,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner guide --cw
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner web
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner advise
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise --interval 180 --llm-summary
-PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon start --interval 30 --worker-codex-model gpt-5.4-mini --worker-codex-config 'model_reasoning_effort="low"'
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon start --interval 30
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon status
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon watchdog
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon watcher start --interval 60
@@ -123,7 +125,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner archive --
 .venv/bin/isotope-supervisor web
 .venv/bin/isotope-supervisor advise
 .venv/bin/isotope-supervisor supervise --interval 180 --llm-summary
-.venv/bin/isotope-supervisor daemon start --interval 30 --worker-codex-model gpt-5.4-mini --worker-codex-config 'model_reasoning_effort="low"'
+.venv/bin/isotope-supervisor daemon start --interval 30
 .venv/bin/isotope-supervisor daemon status
 .venv/bin/isotope-supervisor daemon watchdog
 .venv/bin/isotope-supervisor daemon watcher start --interval 60
@@ -276,8 +278,8 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 1. `launch --backend tmux` 新开托管 Codex 窗口。
 2. 如果已有 tmux 窗口，先用 `discover` 找候选和接管命令。
 3. 用 `adopt` 接管已有窗口。
-4. `daemon start --interval 30 --worker-codex-model gpt-5.4-mini
-   --worker-codex-config 'model_reasoning_effort="low"'` 后台常驻监控。
+4. `daemon start --interval 30` 后台常驻监控；
+   默认写代码 worker 是 `gpt-5.5` + `model_reasoning_effort="high"`。
 5. 需要细看时打开 `web` 或 `tmux attach`。
 6. 窗口不用再跟进时，用 `archive --name <lane>` 归档。
 
@@ -312,8 +314,9 @@ Codex 的 tmux 会话，并生成可复制的 `adopt` 和 `attach` 命令。
 `daemon` 是后台入口：
 
 ```bash
+.venv/bin/isotope-supervisor daemon start --interval 30
+.venv/bin/isotope-supervisor daemon start --interval 30 --no-auto-adopt
 .venv/bin/isotope-supervisor daemon start --interval 30 --worker-codex-model gpt-5.4-mini --worker-codex-config 'model_reasoning_effort="low"'
-.venv/bin/isotope-supervisor daemon start --interval 30 --worker-codex-model gpt-5.4-mini --worker-codex-config 'model_reasoning_effort="low"' --no-auto-adopt
 .venv/bin/isotope-supervisor daemon status
 .venv/bin/isotope-supervisor daemon watchdog
 .venv/bin/isotope-supervisor daemon watcher start --interval 60

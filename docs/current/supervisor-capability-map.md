@@ -94,9 +94,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   Codex worker 配置；`supervise/loop/daemon start` 可用
   `--worker-codex-model`、`--worker-codex-config` 把同类配置传给
   LLM 自动启动或恢复的后台 worker。
-- `guide` 默认生成带 `gpt-5.4-mini` 和
-  `model_reasoning_effort="low"` 的日常 `loop/daemon` 命令，
-  避免真实托管一上来继承高成本本机默认配置。
+- `supervise/loop/daemon start` 默认给写代码 worker 使用 `gpt-5.5`
+  和 `model_reasoning_effort="high"`；`guide` 会生成同样默认值的
+  日常 `loop/daemon` 命令。
 - Supervisor LLM 默认输出上限是 2048 tokens，给动作 JSON 留足空间；
   单个 TOML provider 仍可用 `max_tokens` 覆盖。
 - LLM planner 会看到可恢复会话、已完成会话和最近 context 查询历史，

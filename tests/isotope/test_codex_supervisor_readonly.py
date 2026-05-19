@@ -4684,16 +4684,20 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_resume_session(
     assert payload["executed"]["managed"]["name"] == "resume-019e35a2"
     assert payload["executed"]["managed"]["pid"] == 34567
     assert payload["executed"]["text"] == CONTINUE_REQUEST_TEXT
-    assert captured["command"][:6] == [
+    assert captured["command"][:9] == [
         "codex",
         "exec",
+        "-m",
+        "gpt-5.5",
+        "-c",
+        'model_reasoning_effort="high"',
         "-C",
         str(workspace),
         "--skip-git-repo-check",
-        "resume",
     ]
-    assert captured["command"][6] == "019e35a2-e442-75e2-84ab-3761a685a736"
-    assert captured["command"][7].startswith("继续推进当前任务。")
+    assert captured["command"][9] == "resume"
+    assert captured["command"][10] == "019e35a2-e442-75e2-84ab-3761a685a736"
+    assert captured["command"][11].startswith("继续推进当前任务。")
     assert captured["cwd"] == str(workspace)
     assert captured["stdin"] is subprocess.DEVNULL
     assert captured["stderr"] is subprocess.STDOUT
@@ -4912,6 +4916,17 @@ def test_codex_supervisor_runner_supervise_launch_respects_prompt_cooldown(
     assert payloads[1]["executed"]["skipped"] is True
     assert payloads[1]["executed"]["reason"] == "launch prompt cooldown active"
     assert len(popen_calls) == 1
+    assert popen_calls[0][:9] == [
+        "codex",
+        "exec",
+        "-m",
+        "gpt-5.5",
+        "-c",
+        'model_reasoning_effort="high"',
+        "-C",
+        str(workspace),
+        "--skip-git-repo-check",
+    ]
 
 
 def test_codex_supervisor_runner_supervise_llm_execute_can_request_context(
@@ -7533,13 +7548,13 @@ def test_codex_supervisor_runner_guide_prints_usable_workflow(tmp_path, capsys):
     ) in text
     assert (
         "isotope-supervisor daemon start --interval 30 "
-        "--worker-codex-model gpt-5.4-mini "
-        "--worker-codex-config 'model_reasoning_effort=\"low\"'"
+        "--worker-codex-model gpt-5.5 "
+        "--worker-codex-config 'model_reasoning_effort=\"high\"'"
     ) in text
     assert (
         "isotope-supervisor loop --interval 30 "
-        "--worker-codex-model gpt-5.4-mini "
-        "--worker-codex-config 'model_reasoning_effort=\"low\"'"
+        "--worker-codex-model gpt-5.5 "
+        "--worker-codex-config 'model_reasoning_effort=\"high\"'"
     ) in text
     assert "isotope-supervisor web" in text
     assert "isotope-supervisor archive --name doc-lane" in text
@@ -7566,9 +7581,9 @@ def test_codex_supervisor_runner_guide_can_print_json(tmp_path, capsys):
     assert payload["workflow"]["lane_name"] == "doc-lane"
     assert payload["workflow"]["tmux_session"] == "doc-lane"
     assert payload["workflow"]["cwd"] == str(workspace)
-    assert payload["workflow"]["worker_codex_model"] == "gpt-5.4-mini"
+    assert payload["workflow"]["worker_codex_model"] == "gpt-5.5"
     assert payload["workflow"]["worker_codex_config"] == [
-        'model_reasoning_effort="low"'
+        'model_reasoning_effort="high"'
     ]
     assert payload["commands"]["resume"] == (
         "isotope-supervisor resume --name doc-lane "
@@ -7588,13 +7603,13 @@ def test_codex_supervisor_runner_guide_can_print_json(tmp_path, capsys):
     )
     assert payload["commands"]["supervise"] == (
         "isotope-supervisor loop --interval 30 "
-        "--worker-codex-model gpt-5.4-mini "
-        "--worker-codex-config 'model_reasoning_effort=\"low\"'"
+        "--worker-codex-model gpt-5.5 "
+        "--worker-codex-config 'model_reasoning_effort=\"high\"'"
     )
     assert payload["commands"]["daemon"] == (
         "isotope-supervisor daemon start --interval 30 "
-        "--worker-codex-model gpt-5.4-mini "
-        "--worker-codex-config 'model_reasoning_effort=\"low\"'"
+        "--worker-codex-model gpt-5.5 "
+        "--worker-codex-config 'model_reasoning_effort=\"high\"'"
     )
     assert payload["commands"]["archive"] == "isotope-supervisor archive --name doc-lane"
 
@@ -7611,23 +7626,23 @@ def test_codex_supervisor_runner_guide_can_override_worker_options(tmp_path, cap
             "--name",
             "doc-lane",
             "--worker-codex-model",
-            "gpt-5.5",
+            "gpt-5.4-mini",
             "--worker-codex-config",
-            'model_reasoning_effort="medium"',
+            'model_reasoning_effort="low"',
             "--json",
         ]
     )
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["workflow"]["worker_codex_model"] == "gpt-5.5"
+    assert payload["workflow"]["worker_codex_model"] == "gpt-5.4-mini"
     assert payload["workflow"]["worker_codex_config"] == [
-        'model_reasoning_effort="medium"'
+        'model_reasoning_effort="low"'
     ]
     assert payload["commands"]["daemon"] == (
         "isotope-supervisor daemon start --interval 30 "
-        "--worker-codex-model gpt-5.5 "
-        "--worker-codex-config 'model_reasoning_effort=\"medium\"'"
+        "--worker-codex-model gpt-5.4-mini "
+        "--worker-codex-config 'model_reasoning_effort=\"low\"'"
     )
 
 
@@ -8172,6 +8187,73 @@ def test_codex_supervisor_runner_daemon_start_spawns_background_loop(
     persisted = dict(payload["daemon"])
     persisted.pop("action")
     assert state == persisted
+
+
+def test_codex_supervisor_runner_daemon_start_defaults_to_strong_worker(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 45678
+
+    def fake_popen(
+        command: list[str],
+        *,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured["command"] = command
+        return FakeProcess()
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon.subprocess.Popen",
+        fake_popen,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon._process_is_alive",
+        lambda _: False,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "daemon",
+            "start",
+            "--codex-home",
+            str(codex_home),
+            "--interval",
+            "7",
+            "--limit",
+            "3",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["daemon"]["command"] == [
+        sys.executable,
+        "-u",
+        "-m",
+        "isotope.features.supervisor.runner",
+        "loop",
+        "--codex-home",
+        str(codex_home),
+        "--interval",
+        "7",
+        "--limit",
+        "3",
+        "--worker-codex-model",
+        "gpt-5.5",
+        "--worker-codex-config",
+        'model_reasoning_effort="high"',
+    ]
+    assert captured["command"] == payload["daemon"]["command"]
 
 
 def test_codex_supervisor_runner_loop_defaults_to_llm_driver(
