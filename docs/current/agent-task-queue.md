@@ -422,6 +422,9 @@
     `daemon.log` 和托管登记表，直接显示最近 LLM 动作、最近执行结果、
     最近 worker 的模型/配置和状态协议，避免用户手动 tail 日志判断
     Supervisor 是否真的在推进。
+175. Codex Supervisor 日常一键入口：新增 `up` 命令。它会在 daemon
+    未运行时启动后台 `loop`，并立即显示 daemon 状态和最近活动；
+    已有 daemon 运行时则复用原进程，不重复启动。
 
 ## 最近完成：Codex Supervisor process-first loop 验收
 

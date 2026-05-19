@@ -140,6 +140,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `rule_command_suggestion` 里，避免前端把旧规则建议误当主动作；
     `monitor` 只记录跳过；
     `advise` 可单独输出建议和命令草案，并可显式执行 send 类草案；
+    `up` 是日常一键入口，会在 daemon 未运行时启动后台 loop，
+    并显示最近 LLM 动作、执行结果和 worker 状态；
     `guide` 可生成一组可复制的启动、接管、日常 loop 和观察命令，
     作为真实使用入口；`loop` 是日常常驻入口，默认由 LLM planner
     选择并执行受控动作，process 后台托管是主线；
@@ -283,6 +285,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.apps.api routes --root /tmp/isotope-a
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --limit 3
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard --limit 3
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner guide --cwd /path/to/repo --name lane-a
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner up
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner resume --cwd /path/to/repo --name lane-a --session-id <session-id> --prompt "继续推进当前任务"
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner resume --cwd /path/to/repo --name latest --last --prompt "请汇报当前状态"
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner discover --cwd /path/to/repo

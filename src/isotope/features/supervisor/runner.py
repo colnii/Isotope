@@ -363,6 +363,84 @@ def _build_parser() -> argparse.ArgumentParser:
         llm_action=False,
         llm_execute=True,
     )
+    up_parser = subparsers.add_parser(
+        "up",
+        help="Start the daily Supervisor daemon if needed, then print status.",
+    )
+    up_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    up_parser.add_argument(
+        "--limit",
+        type=int,
+        default=10,
+        help="Maximum sessions.",
+    )
+    up_parser.add_argument(
+        "--stale-after",
+        type=int,
+        default=600,
+        help="Seconds without events before marking a session stale.",
+    )
+    up_parser.add_argument(
+        "--active-within",
+        type=int,
+        default=180,
+        help="Seconds with recent events before marking a session working.",
+    )
+    up_parser.add_argument(
+        "--interval",
+        type=int,
+        default=30,
+        help="Seconds between loop reports.",
+    )
+    up_parser.add_argument(
+        "--prompt-cooldown",
+        type=int,
+        default=DEFAULT_PROMPT_COOLDOWN_SECONDS,
+        help="Seconds before repeating send_status/send_continue for the same lane.",
+    )
+    up_parser.add_argument(
+        "--max-continue-count",
+        type=int,
+        default=DEFAULT_MAX_CONTINUE_COUNT,
+        help="Maximum consecutive send_continue prompts for the same lane status. Default 0 disables.",
+    )
+    up_parser.add_argument(
+        "--max-context-requests",
+        type=int,
+        default=DEFAULT_MAX_CONTEXT_REQUESTS,
+        help="Maximum request_context executions per loop iteration. Default 0 disables.",
+    )
+    up_parser.add_argument(
+        "--worker-codex-model",
+        help="Pass -m/--model to Codex workers launched by the daemon loop.",
+    )
+    up_parser.add_argument(
+        "--worker-codex-config",
+        action="append",
+        default=None,
+        help="Pass one -c key=value override to Codex workers. Repeatable.",
+    )
+    up_parser.add_argument(
+        "--name",
+        help="Target one managed lane. Omit to rotate across active lanes.",
+    )
+    up_parser.add_argument(
+        "--llm-summary",
+        action="store_true",
+        help="Use configured LLM to add a compact Chinese summary.",
+    )
+    up_parser.add_argument(
+        "--no-auto-adopt",
+        action="store_false",
+        dest="auto_adopt",
+        help="Disable automatic adoption of discovered Codex-like tmux sessions.",
+    )
+    up_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    up_parser.set_defaults(auto_adopt=True)
     daemon_parser = subparsers.add_parser(
         "daemon",
         help="Start, inspect, or stop the background Supervisor loop.",
@@ -835,6 +913,13 @@ def main(argv: list[str] | None = None) -> int:
             _validate_execution_modes(args)
             _run_supervise(args)
             return 0
+        if args.command == "up":
+            payload = _up_payload(args)
+            if args.json:
+                _print_json(payload)
+            else:
+                _print_daemon_plain(payload)
+            return 0
         if args.command == "daemon":
             if (
                 args.daemon_command == "watcher"
@@ -1048,29 +1133,7 @@ def _daemon_payload(args: argparse.Namespace) -> dict[str, Any]:
     if args.daemon_command == "watcher":
         return _watcher_payload(args)
     if args.daemon_command == "start":
-        if args.interval <= 0:
-            raise ValueError("interval must be positive")
-        if args.limit <= 0:
-            raise ValueError("limit must be positive")
-        if args.max_continue_count < 0:
-            raise ValueError("max_continue_count must be zero or positive")
-        if args.max_context_requests < 0:
-            raise ValueError("max_context_requests must be zero or positive")
-        daemon = start_supervisor_daemon(
-            codex_home=Path(args.codex_home),
-            interval=args.interval,
-            limit=args.limit,
-            stale_after=args.stale_after,
-            active_within=args.active_within,
-            prompt_cooldown=args.prompt_cooldown,
-            max_continue_count=args.max_continue_count,
-            max_context_requests=args.max_context_requests,
-            name=args.name,
-            llm_summary=args.llm_summary,
-            auto_adopt=args.auto_adopt,
-            worker_codex_model=_worker_codex_model(args),
-            worker_codex_config=_worker_codex_config(args),
-        )
+        daemon = _start_daemon_from_args(args)
     elif args.daemon_command == "status":
         daemon = supervisor_daemon_status(codex_home=Path(args.codex_home))
         daemon["activity"] = _daemon_activity_payload(Path(args.codex_home), daemon)
@@ -1084,6 +1147,41 @@ def _daemon_payload(args: argparse.Namespace) -> dict[str, Any]:
         "status": "ok",
         "daemon": daemon,
     }
+
+
+def _up_payload(args: argparse.Namespace) -> dict[str, Any]:
+    daemon = _start_daemon_from_args(args)
+    daemon["activity"] = _daemon_activity_payload(Path(args.codex_home), daemon)
+    return {
+        "status": "ok",
+        "daemon": daemon,
+    }
+
+
+def _start_daemon_from_args(args: argparse.Namespace) -> dict[str, Any]:
+    if args.interval <= 0:
+        raise ValueError("interval must be positive")
+    if args.limit <= 0:
+        raise ValueError("limit must be positive")
+    if args.max_continue_count < 0:
+        raise ValueError("max_continue_count must be zero or positive")
+    if args.max_context_requests < 0:
+        raise ValueError("max_context_requests must be zero or positive")
+    return start_supervisor_daemon(
+        codex_home=Path(args.codex_home),
+        interval=args.interval,
+        limit=args.limit,
+        stale_after=args.stale_after,
+        active_within=args.active_within,
+        prompt_cooldown=args.prompt_cooldown,
+        max_continue_count=args.max_continue_count,
+        max_context_requests=args.max_context_requests,
+        name=args.name,
+        llm_summary=args.llm_summary,
+        auto_adopt=args.auto_adopt,
+        worker_codex_model=_worker_codex_model(args),
+        worker_codex_config=_worker_codex_config(args),
+    )
 
 
 def _daemon_activity_payload(

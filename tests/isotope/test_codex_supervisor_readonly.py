@@ -8256,6 +8256,81 @@ def test_codex_supervisor_runner_daemon_start_defaults_to_strong_worker(
     assert captured["command"] == payload["daemon"]["command"]
 
 
+def test_codex_supervisor_runner_up_starts_daemon_with_strong_worker_defaults(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 45678
+
+    def fake_popen(
+        command: list[str],
+        *,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured["command"] = command
+        captured["stdin"] = stdin
+        captured["stderr"] = stderr
+        return FakeProcess()
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon.subprocess.Popen",
+        fake_popen,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon._process_is_alive",
+        lambda _: False,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "up",
+            "--codex-home",
+            str(codex_home),
+            "--interval",
+            "7",
+            "--limit",
+            "3",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["daemon"]["action"] == "started"
+    assert payload["daemon"]["command"] == [
+        sys.executable,
+        "-u",
+        "-m",
+        "isotope.features.supervisor.runner",
+        "loop",
+        "--codex-home",
+        str(codex_home),
+        "--interval",
+        "7",
+        "--limit",
+        "3",
+        "--worker-codex-model",
+        "gpt-5.5",
+        "--worker-codex-config",
+        'model_reasoning_effort="high"',
+    ]
+    assert payload["daemon"]["activity"] == {
+        "recent_llm_action": None,
+        "recent_execution": None,
+        "recent_worker": None,
+    }
+    assert captured["command"] == payload["daemon"]["command"]
+
+
 def test_codex_supervisor_runner_loop_defaults_to_llm_driver(
     tmp_path,
     capsys,
@@ -8959,6 +9034,96 @@ def test_codex_supervisor_runner_daemon_status_includes_recent_activity(
     assert activity["recent_worker"]["status"] == "done"
     assert activity["recent_worker"]["summary"] == "worker 已完成状态汇报。"
     assert activity["recent_worker"]["next"] == "等待 Supervisor 归档。"
+
+
+def test_codex_supervisor_runner_up_reports_existing_daemon_activity(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    state_path = codex_home / "supervisor" / "daemon.json"
+    log_path = codex_home / "supervisor" / "logs" / "daemon.log"
+    worker_log_path = codex_home / "supervisor" / "logs" / "managed-001.log"
+    state_path.parent.mkdir(parents=True)
+    log_path.parent.mkdir(parents=True)
+    state_path.write_text(
+        json.dumps(
+            {
+                "pid": 45678,
+                "status": "running",
+                "started_at": "2026-05-18T10:00:00+00:00",
+                "stopped_at": None,
+                "command": ["python", "-u", "-m", "isotope.features.supervisor.runner", "loop"],
+                "codex_home": str(codex_home),
+                "log_path": str(log_path),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    log_path.write_text(
+        "[LLM 白名单动作]\n"
+        "launch_session / 最近启动了托管 worker。\n"
+        "已执行：isotope-supervisor launch --name planner-session\n",
+        encoding="utf-8",
+    )
+    worker_log_path.write_text(
+        "SUPERVISOR_STATUS: done\n"
+        "SUPERVISOR_SUMMARY: up 入口活动展示完成。\n"
+        "SUPERVISOR_NEXT: 等待归档。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "planner-session",
+                "cwd": str(workspace),
+                "prompt": "继续推进",
+                "command": [
+                    "codex",
+                    "exec",
+                    "-m",
+                    "gpt-5.5",
+                    "-c",
+                    'model_reasoning_effort="high"',
+                    "-C",
+                    str(workspace),
+                    "--skip-git-repo-check",
+                    "继续推进",
+                ],
+                "pid": 45679,
+                "started_at": "2026-05-18T10:01:00+00:00",
+                "log_path": str(worker_log_path),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon._process_is_alive",
+        lambda pid: pid == 45678,
+    )
+
+    exit_code = supervisor_main(["up", "--codex-home", str(codex_home), "--json"])
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["daemon"]["action"] == "already_running"
+    assert payload["daemon"]["activity"]["recent_llm_action"] == {
+        "kind": "launch_session",
+        "reason": "最近启动了托管 worker。",
+    }
+    assert payload["daemon"]["activity"]["recent_worker"]["model"] == "gpt-5.5"
+    assert payload["daemon"]["activity"]["recent_worker"]["status"] == "done"
 
 
 def test_codex_supervisor_runner_daemon_stop_terminates_and_marks_stopped(

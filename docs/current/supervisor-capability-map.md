@@ -17,7 +17,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 
 | 层级 | 当前能力 | 主要位置 | 说明 |
 | --- | --- | --- | --- |
-| 用户功能层 | `scan`、`dashboard`、`guide`、`discover`、`web`、`watch`、`advise`、`supervise`、`loop`、`daemon` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
+| 用户功能层 | `scan`、`dashboard`、`guide`、`up`、`discover`、`web`、`watch`、`advise`、`supervise`、`loop`、`daemon` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
 | 托管控制层 | `launch`、`adopt`、`send`、`archive`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
 | Codex 执行通道 | `resume`、`codex exec resume`、`--last` | `features/supervisor/runner.py`、`features/supervisor/registry.py` | 不依赖 tmux 恢复历史会话并投喂新 prompt |
 | 上下文能力层 | `context`、`request_context`、上下文结果记录 | `features/supervisor/context.py`、`features/supervisor/runner.py` | LLM 按需请求检索项目资料，`rg` 优先、Python 兜底，不固定注入全文 |
@@ -112,6 +112,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   thinking，减少模型池空响应。
 - `loop` 默认会自动发现并接管未登记的 Codex tmux 窗口；
   可用 `--no-auto-adopt` 关闭。
+- `up` 是日常一键入口：daemon 未运行时启动后台 `loop`，随后显示
+  daemon 状态和最近活动。
 - `daemon start/status/stop` 可把 `loop` 放到后台常驻，记录
   pid（进程号）、命令、状态文件和日志路径。
 - `daemon start` 的后台 loop 使用 Python `-u` 非缓冲输出，避免

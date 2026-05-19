@@ -79,6 +79,8 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
   可用 `guide --worker-codex-model` 和 `guide --worker-codex-config`
   改成低成本或其他 worker 配置。
 - `adopt` 可把已有 tmux 会话登记成托管 lane。
+- `up` 是日常一键入口：如果后台 daemon 未运行就启动，随后显示
+  daemon 状态和最近活动。
 - `scan/watch` 可显示托管进程的名称、pid 和是否已退出。
 - `scan/watch` 可显示托管 tmux 会话是否有 bell（提醒）信号。
 - `scan/watch` 可显示 tmux bell hook 记录的最近提醒事件。
@@ -97,6 +99,7 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner guide --cwd /path/to/repo --name lane-a
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner up
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner web
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner advise
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise --interval 180 --llm-summary
@@ -122,6 +125,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner archive --
 .venv/bin/isotope-supervisor scan
 .venv/bin/isotope-supervisor dashboard
 .venv/bin/isotope-supervisor guide --cwd /path/to/repo --name lane-a
+.venv/bin/isotope-supervisor up
 .venv/bin/isotope-supervisor web
 .venv/bin/isotope-supervisor advise
 .venv/bin/isotope-supervisor supervise --interval 180 --llm-summary
@@ -263,7 +267,18 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 如果没有托管进程、可旁观 tmux lane 或可恢复会话，会直接回退成
 `monitor`，避免无目标时请求模型或报 `target_name` 错误。
 
-`guide` 是推荐入口，会生成一组可复制命令：
+`up` 是日常推荐入口：
+
+```bash
+.venv/bin/isotope-supervisor up
+.venv/bin/isotope-supervisor up --json
+.venv/bin/isotope-supervisor up --no-auto-adopt
+```
+
+它会在后台 daemon 未运行时启动日常 `loop`，并立即显示 daemon 状态、
+最近 LLM 动作、最近执行结果和最近 worker 状态。
+
+`guide` 是命令说明入口，会生成一组可复制命令：
 
 ```bash
 .venv/bin/isotope-supervisor guide --cwd /path/to/repo --name lane-a
