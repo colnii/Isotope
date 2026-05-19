@@ -120,6 +120,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   可用 `--no-auto-adopt` 关闭。
 - `up` 是日常一键入口：daemon 未运行时启动后台 `loop`，随后显示
   daemon 状态和最近活动。
+- `supervise/loop/up/daemon start --goal <目标>` 会把用户目标交给
+  LLM planner；没有现成托管窗口时，模型仍可基于该目标选择
+  `request_context` 或 `launch_session`，启动新的后台 Codex worker。
 - `daemon start/status/stop` 可把 `loop` 放到后台常驻，记录
   pid（进程号）、命令、状态文件和日志路径。
 - `daemon start` 的后台 loop 使用 Python `-u` 非缓冲输出，避免
@@ -230,6 +233,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   普通 Codex session 的 `resume` 候选和可启动新会话的工作目录。
 - `launch_session` 的 goal 由 LLM 根据上下文生成，执行时会包成
   A 层 `work order` prompt；工程层仍只校验受控动作和工作目录。
+- 显式 `--goal` 会作为用户目标进入 `launch_session` 和
+  `request_context` 候选，不要求用户先手动创建 tmux 或历史会话。
 - 没有任何可控 Supervisor 目标时，`LLM action` 直接回退为 `monitor`。
 - `LLM action` 会从带说明的模型输出中提取最后一个动作 JSON。
 

@@ -190,6 +190,10 @@ def _build_parser() -> argparse.ArgumentParser:
             help="Target one managed lane by name for suggestions or execution.",
         )
         subparsers.choices[command].add_argument(
+            "--goal",
+            help="User goal for the LLM planner when it may need to launch a new worker.",
+        )
+        subparsers.choices[command].add_argument(
             "--execute",
             help="Execute one generated send suggestion. Supports send_status or send_continue.",
         )
@@ -315,6 +319,10 @@ def _build_parser() -> argparse.ArgumentParser:
     loop_parser.add_argument(
         "--name",
         help="Target one managed lane by name. Omit to rotate across active lanes.",
+    )
+    loop_parser.add_argument(
+        "--goal",
+        help="User goal for the LLM planner when it may need to launch a new worker.",
     )
     loop_parser.add_argument(
         "--prompt-cooldown",
@@ -453,6 +461,10 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Target one managed lane. Omit to rotate across active lanes.",
     )
     up_parser.add_argument(
+        "--goal",
+        help="User goal for the LLM planner when it may need to launch a new worker.",
+    )
+    up_parser.add_argument(
         "--llm-summary",
         action="store_true",
         help="Use configured LLM to add a compact Chinese summary.",
@@ -543,6 +555,10 @@ def _build_parser() -> argparse.ArgumentParser:
     daemon_start_parser.add_argument(
         "--name",
         help="Target one managed lane. Omit to rotate across active lanes.",
+    )
+    daemon_start_parser.add_argument(
+        "--goal",
+        help="User goal for the LLM planner when it may need to launch a new worker.",
     )
     daemon_start_parser.add_argument(
         "--llm-summary",
@@ -1210,6 +1226,7 @@ def _start_daemon_from_args(args: argparse.Namespace) -> dict[str, Any]:
         max_context_requests=args.max_context_requests,
         max_run_minutes=args.max_run_minutes,
         name=args.name,
+        goal=_goal_text(args),
         llm_summary=args.llm_summary,
         auto_adopt=args.auto_adopt,
         worker_codex_model=_worker_codex_model(args),
@@ -1978,6 +1995,21 @@ def _workspace_root(args: argparse.Namespace) -> Path | None:
     return Path(raw).expanduser().resolve() if raw else Path.cwd().resolve()
 
 
+def _goal_text(args: argparse.Namespace) -> str | None:
+    raw = getattr(args, "goal", None)
+    if not isinstance(raw, str):
+        return None
+    return raw.strip() or None
+
+
+def _goal_workspace(args: argparse.Namespace) -> str | None:
+    if _goal_text(args) is None:
+        return None
+    raw = getattr(args, "workspace_root", None)
+    workspace = Path(raw).expanduser() if isinstance(raw, str) and raw else Path.cwd()
+    return str(workspace.resolve())
+
+
 def _session_in_workspace(session: Any, workspace_root: Path) -> bool:
     cwd = getattr(session, "cwd", None)
     if not isinstance(cwd, str) or not cwd:
@@ -2000,6 +2032,8 @@ def _supervise_payload(
         action_report,
         target_name=args.name,
         include_all_managed=args.llm_action or args.llm_execute,
+        goal=_goal_text(args),
+        goal_workspace=_goal_workspace(args),
     )
     payload["workspace_scope"] = _workspace_scope_payload(args, report, action_report)
     payload["iteration"] = iteration
@@ -2697,6 +2731,8 @@ def _print_advice(args: argparse.Namespace) -> None:
         action_report,
         target_name=args.name,
         include_all_managed=args.llm_action or args.llm_execute,
+        goal=_goal_text(args),
+        goal_workspace=_goal_workspace(args),
     )
     payload["workspace_scope"] = _workspace_scope_payload(args, report, action_report)
     if args.llm_action or args.llm_execute:
@@ -2774,12 +2810,16 @@ def _advice_payload(
     *,
     target_name: str | None = None,
     include_all_managed: bool = False,
+    goal: str | None = None,
+    goal_workspace: str | None = None,
 ) -> dict[str, Any]:
     recommendation = report.recommendation
     suggestions = _command_suggestions(
         report,
         target_name=target_name,
         include_all_managed=include_all_managed,
+        goal=goal,
+        goal_workspace=goal_workspace,
     )
     return {
         "status": "ok",
@@ -2827,6 +2867,8 @@ def _command_suggestions(
     *,
     target_name: str | None = None,
     include_all_managed: bool = False,
+    goal: str | None = None,
+    goal_workspace: str | None = None,
 ) -> list[dict[str, str]]:
     if target_name:
         managed_tmux = _managed_tmux_session_by_name(report, target_name)
@@ -2843,6 +2885,7 @@ def _command_suggestions(
             if _is_resume_capable_session(session):
                 suggestions.extend(_resume_session_command_suggestions(session))
         suggestions.extend(_workspace_action_command_suggestions(report))
+        suggestions.extend(_goal_action_command_suggestions(goal, goal_workspace))
         if suggestions:
             suggestions.append(_watch_command_suggestion())
             return _dedupe_command_suggestions(suggestions)
@@ -2855,6 +2898,9 @@ def _command_suggestions(
     managed_tmux = _first_managed_tmux_session(report)
     if managed_tmux is not None:
         return _managed_tmux_command_suggestions(managed_tmux) + [_watch_command_suggestion()]
+    goal_suggestions = _goal_action_command_suggestions(goal, goal_workspace)
+    if goal_suggestions:
+        return _dedupe_command_suggestions(goal_suggestions + [_watch_command_suggestion()])
     if recommendation.action == "monitor":
         return [_watch_command_suggestion()]
     return []
@@ -2866,6 +2912,18 @@ def _workspace_action_command_suggestions(report: Any) -> list[dict[str, str]]:
         suggestions.append(_workspace_context_command_suggestion(cwd))
         suggestions.append(_workspace_launch_command_suggestion(cwd))
     return suggestions
+
+
+def _goal_action_command_suggestions(
+    goal: str | None,
+    goal_workspace: str | None,
+) -> list[dict[str, str]]:
+    if not goal or not goal_workspace:
+        return []
+    return [
+        _workspace_context_command_suggestion(goal_workspace, query=goal),
+        _workspace_launch_command_suggestion(goal_workspace, prompt=goal),
+    ]
 
 
 def _workspace_cwds(report: Any) -> list[str]:
@@ -2882,12 +2940,16 @@ def _workspace_cwds(report: Any) -> list[str]:
     return workspaces
 
 
-def _workspace_context_command_suggestion(cwd: str) -> dict[str, str]:
+def _workspace_context_command_suggestion(
+    cwd: str,
+    *,
+    query: str = DEFAULT_CONTEXT_QUERY,
+) -> dict[str, str]:
     return {
         "kind": "request_context",
         "label": "让 LLM 先检索项目上下文",
         "cwd": cwd,
-        "query": DEFAULT_CONTEXT_QUERY,
+        "query": query,
         "command": shlex.join(
             [
                 "isotope-supervisor",
@@ -2895,19 +2957,23 @@ def _workspace_context_command_suggestion(cwd: str) -> dict[str, str]:
                 "--cwd",
                 cwd,
                 "--query",
-                DEFAULT_CONTEXT_QUERY,
+                query,
             ]
         ),
     }
 
 
-def _workspace_launch_command_suggestion(cwd: str) -> dict[str, str]:
+def _workspace_launch_command_suggestion(
+    cwd: str,
+    *,
+    prompt: str = DEFAULT_LAUNCH_PROMPT,
+) -> dict[str, str]:
     return {
         "kind": "launch_session",
         "label": "让 LLM 启动新的 Codex 会话",
         "target_name": "planner-session",
         "cwd": cwd,
-        "prompt": DEFAULT_LAUNCH_PROMPT,
+        "prompt": prompt,
         "command": shlex.join(
             [
                 "isotope-supervisor",
@@ -2917,7 +2983,7 @@ def _workspace_launch_command_suggestion(cwd: str) -> dict[str, str]:
                 "--cwd",
                 cwd,
                 "--prompt",
-                DEFAULT_LAUNCH_PROMPT,
+                prompt,
             ]
         ),
     }
@@ -4146,15 +4212,15 @@ def _summarize_with_llm(report: Any) -> str:
 
 
 def _decide_action_with_llm(report: Any, payload: dict[str, Any]) -> dict[str, Any]:
-    if not _has_llm_action_target(report):
+    if not _has_llm_action_target(report, payload.get("command_suggestions")):
         return generate_llm_action_decision(
             report,
             payload["command_suggestions"],
             _UnavailableSummaryProvider(),
             payload.get("recent_context_results"),
         )
-    provider = resolve_summary_provider_from_env(agent_name="supervisor")
     try:
+        provider = resolve_summary_provider_from_env(agent_name="supervisor")
         return generate_llm_action_decision(
             report,
             payload["command_suggestions"],
@@ -4174,7 +4240,7 @@ def _decide_action_with_llm(report: Any, payload: dict[str, Any]) -> dict[str, A
 
 
 def _recent_context_results(args: argparse.Namespace, report: Any) -> list[dict[str, Any]]:
-    cwd = _context_cwd_for_report(report)
+    cwd = _context_cwd_for_report(report) or _goal_workspace(args)
     results = read_recent_context_results(
         codex_home=Path(args.codex_home),
         cwd=Path(cwd) if cwd else None,
@@ -4202,12 +4268,24 @@ class _UnavailableSummaryProvider:
         raise AssertionError("LLM provider should not be called without Supervisor context")
 
 
-def _has_llm_action_target(report: Any) -> bool:
-    return any(
+def _has_llm_action_target(
+    report: Any,
+    command_suggestions: Any = None,
+) -> bool:
+    if any(
         (session.managed_name and session.managed_tmux_session)
         or _is_resume_capable_session(session)
         for session in report.sessions
-    ) or _context_cwd_for_report(report) is not None
+    ) or _context_cwd_for_report(report) is not None:
+        return True
+    if not isinstance(command_suggestions, list):
+        return False
+    return any(
+        isinstance(item, dict)
+        and item.get("kind") in {"request_context", "launch_session"}
+        and isinstance(item.get("cwd"), str)
+        for item in command_suggestions
+    )
 
 
 if __name__ == "__main__":

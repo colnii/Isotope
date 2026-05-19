@@ -166,6 +166,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     状态写入 `~/.codex/supervisor/daemon.json`，日志写入
     `~/.codex/supervisor/logs/daemon.log`；`watchdog` 可按状态文件
     检查后台 `loop`，异常退出时用原命令重新拉起；
+    `supervise/loop/up/daemon start --goal <目标>` 会把用户目标放入
+    LLM planner 可见的动作候选；即使当前没有现成托管窗口，
+    LLM 也可以先 `request_context`，或直接 `launch_session`
+    启动新的后台 Codex worker 推进该目标；
     `daemon watcher start/status/stop` 可启动 watcher（周期看门进程），
     定期触发 `watchdog`，状态写入 `~/.codex/supervisor/watcher.json`；
     `advise/supervise --name <lane>` 可把建议、显式执行和自动执行

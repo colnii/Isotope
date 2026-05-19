@@ -428,6 +428,10 @@
 176. Codex Supervisor 日常一键入口：新增 `up` 命令。它会在 daemon
     未运行时启动后台 `loop`，并立即显示 daemon 状态和最近活动；
     已有 daemon 运行时则复用原进程，不重复启动。
+177. Codex Supervisor goal 入口：`supervise/loop/up/daemon start`
+    新增 `--goal <目标>`；目标会进入 LLM planner 的 `request_context`
+    和 `launch_session` 候选，即使当前没有现成托管窗口，也能由 LLM
+    启动新的后台 Codex worker 继续推进。
 177. Codex Supervisor worker 隔离：LLM 自动 `launch_session` 现在会优先
     为 git 仓库创建 `.worktrees/supervisor/...` 独立工作区和
     `supervisor/<name>-<suffix>` 分支，再在隔离 cwd 启动 Codex worker；

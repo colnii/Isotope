@@ -255,7 +255,10 @@ def build_llm_action_messages(
             "content": json.dumps(
                 {
                     "allowed_kinds": list(LLM_ACTION_ALLOWED_KINDS),
-                    "available_workspaces": _available_workspaces(report),
+                    "available_workspaces": _available_workspaces(
+                        report,
+                        command_suggestions,
+                    ),
                     "candidate_targets": candidate_targets,
                     "resumable_session_ids": resumable_session_ids,
                     "completed_session_ids": completed_session_ids,
@@ -350,7 +353,7 @@ def generate_llm_action_decision(
     provider: SummaryProvider,
     recent_context_results: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    if not _has_any_llm_target(report):
+    if not _has_any_llm_target(report, command_suggestions):
         return {
             "kind": "monitor",
             "target_name": None,
@@ -392,8 +395,14 @@ def generate_llm_action_decision(
         target_name = target_name or command_suggestion.get("target_name")
     elif kind == "launch_session":
         target_name = target_name or "planner-session"
-        cwd = _optional_payload_string(payload, "cwd") or _default_workspace(report)
-        if cwd is None or cwd not in _available_workspaces(report):
+        cwd = _optional_payload_string(payload, "cwd") or _default_workspace(
+            report,
+            command_suggestions,
+        )
+        if cwd is None or cwd not in _available_workspaces(
+            report,
+            command_suggestions,
+        ):
             raise ValueError(f"unknown workspace for LLM action: {cwd}")
         prompt = _required_payload_string(payload, "prompt")
         command_suggestion = _launch_session_command_suggestion(
@@ -403,8 +412,14 @@ def generate_llm_action_decision(
         )
     elif kind == "request_context":
         target_name = None
-        cwd = _optional_payload_string(payload, "cwd") or _default_workspace(report)
-        if cwd is None or cwd not in _available_workspaces(report):
+        cwd = _optional_payload_string(payload, "cwd") or _default_workspace(
+            report,
+            command_suggestions,
+        )
+        if cwd is None or cwd not in _available_workspaces(
+            report,
+            command_suggestions,
+        ):
             raise ValueError(f"unknown workspace for LLM action: {cwd}")
         query = _required_payload_string(payload, "query")
         command_suggestion = _request_context_command_suggestion(cwd=cwd, query=query)
@@ -838,9 +853,12 @@ def _context_request_history(
     return history
 
 
-def _has_any_llm_target(report: CodexSupervisorReport) -> bool:
+def _has_any_llm_target(
+    report: CodexSupervisorReport,
+    command_suggestions: list[dict[str, str]] | None = None,
+) -> bool:
     return any(_is_llm_candidate_target(session) for session in report.sessions) or bool(
-        _available_workspaces(report)
+        _available_workspaces(report, command_suggestions)
     )
 
 
@@ -889,7 +907,10 @@ def _suggested_target_name(session: Any) -> str:
     return "resume-" + session.short_session_id
 
 
-def _available_workspaces(report: CodexSupervisorReport) -> list[str]:
+def _available_workspaces(
+    report: CodexSupervisorReport,
+    command_suggestions: list[dict[str, str]] | None = None,
+) -> list[str]:
     seen: set[str] = set()
     workspaces: list[str] = []
     for session in report.sessions:
@@ -898,11 +919,20 @@ def _available_workspaces(report: CodexSupervisorReport) -> list[str]:
             continue
         seen.add(cwd)
         workspaces.append(cwd)
+    for suggestion in command_suggestions or []:
+        cwd = suggestion.get("cwd")
+        if not isinstance(cwd, str) or not cwd or cwd in seen:
+            continue
+        seen.add(cwd)
+        workspaces.append(cwd)
     return workspaces
 
 
-def _default_workspace(report: CodexSupervisorReport) -> str | None:
-    workspaces = _available_workspaces(report)
+def _default_workspace(
+    report: CodexSupervisorReport,
+    command_suggestions: list[dict[str, str]] | None = None,
+) -> str | None:
+    workspaces = _available_workspaces(report, command_suggestions)
     return workspaces[0] if workspaces else None
 
 

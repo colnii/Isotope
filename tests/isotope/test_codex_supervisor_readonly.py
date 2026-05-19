@@ -8903,6 +8903,78 @@ def test_codex_supervisor_runner_daemon_start_defaults_to_strong_worker(
     assert captured["command"] == payload["daemon"]["command"]
 
 
+def test_codex_supervisor_runner_daemon_start_passes_goal_to_loop(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    goal = "持续跟进 isotope 的 Supervisor worker。"
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 45680
+
+    def fake_popen(
+        command: list[str],
+        *,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured["command"] = command
+        return FakeProcess()
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon.subprocess.Popen",
+        fake_popen,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon._process_is_alive",
+        lambda _: False,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "daemon",
+            "start",
+            "--codex-home",
+            str(codex_home),
+            "--interval",
+            "7",
+            "--limit",
+            "3",
+            "--goal",
+            goal,
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["daemon"]["command"] == [
+        sys.executable,
+        "-u",
+        "-m",
+        "isotope.features.supervisor.runner",
+        "loop",
+        "--codex-home",
+        str(codex_home),
+        "--interval",
+        "7",
+        "--limit",
+        "3",
+        "--goal",
+        goal,
+        "--worker-codex-model",
+        "gpt-5.5",
+        "--worker-codex-config",
+        'model_reasoning_effort="high"',
+    ]
+    assert captured["command"] == payload["daemon"]["command"]
+
+
 def test_codex_supervisor_runner_up_starts_daemon_with_strong_worker_defaults(
     tmp_path,
     capsys,
@@ -9150,6 +9222,159 @@ def test_codex_supervisor_runner_loop_reports_process_backend_as_managed(
         "kind": "monitor",
         "reason": "后台 process lane 正在运行，继续观察。",
         "skipped": True,
+    }
+
+
+def test_codex_supervisor_runner_loop_goal_can_launch_first_worker(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    goal = "实现 Supervisor goal 入口，并补最小测试。"
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert f'"available_workspaces": ["{workspace}"]' in content
+            assert goal in content
+            assert '"kind": "launch_session"' in content
+            return json.dumps(
+                {
+                    "kind": "launch_session",
+                    "target_name": "goal-worker",
+                    "cwd": str(workspace),
+                    "prompt": goal,
+                    "reason": "用户给了明确目标，启动新 worker 推进。",
+                },
+                ensure_ascii=False,
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 45679
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured["command"] = command
+        captured["cwd"] = cwd
+        captured["stdin"] = stdin
+        captured["stderr"] = stderr
+        captured["start_new_session"] = start_new_session
+        return FakeProcess()
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--workspace-root",
+            str(workspace),
+            "--goal",
+            goal,
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"]["kind"] == "launch_session"
+    assert payload["llm_action"]["prompt"] == goal
+    assert payload["executed"]["kind"] == "launch_session"
+    assert payload["executed"]["managed"]["name"] == "goal-worker"
+    assert payload["executed"]["managed"]["pid"] == 45679
+    assert payload["executed"]["worktree"] == {
+        "enabled": False,
+        "source_cwd": str(workspace),
+        "cwd": str(workspace),
+        "reason": "not_git_repo",
+    }
+    assert captured["command"][:9] == [
+        "codex",
+        "exec",
+        "-m",
+        "gpt-5.5",
+        "-c",
+        'model_reasoning_effort="high"',
+        "-C",
+        str(workspace),
+        "--skip-git-repo-check",
+    ]
+    assert captured["command"][9].startswith("WORK ORDER")
+    assert f"goal: {goal}" in captured["command"][9]
+    assert captured["cwd"] == str(workspace)
+    assert captured["stdin"] is subprocess.DEVNULL
+    assert captured["stderr"] is subprocess.STDOUT
+    assert captured["start_new_session"] is True
+
+
+def test_codex_supervisor_runner_loop_goal_provider_resolution_failure_is_visible(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: (_ for _ in ()).throw(ValueError("No LLM pool entries found")),
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--workspace-root",
+            str(workspace),
+            "--goal",
+            "继续推进 Supervisor。",
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"] == {
+        "kind": "monitor",
+        "target_name": None,
+        "reason": "LLM 动作无效，已跳过执行：No LLM pool entries found",
+        "command_suggestion": None,
+        "error": "No LLM pool entries found",
+    }
+    assert payload["executed"] == {
+        "kind": "monitor",
+        "skipped": True,
+        "reason": "LLM 动作无效，已跳过执行：No LLM pool entries found",
     }
 
 

@@ -55,6 +55,9 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
 - `guide` 会按当前参数打印可复制的启动、接管、日常 loop 和观察命令。
 - `loop` 是日常常驻入口，等价于安全默认的自动监督循环。
 - `daemon` 可把日常 `loop` 放到后台运行，并提供 start/status/stop/watchdog。
+- `supervise/loop/up/daemon start --goal <目标>` 可把用户目标交给
+  LLM planner；没有现成托管窗口时，模型也能选择先查上下文或启动
+  新的后台 Codex worker。
 - `daemon watcher` 可启动 watcher（周期看门进程），定期触发 watchdog。
 - `supervise` 可按间隔循环执行扫描、建议、可选 LLM 摘要和显式 send。
 - `advise/supervise --name <lane>` 可只针对一个托管 lane 生成建议或执行动作。
@@ -104,10 +107,12 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner guide --cwd /path/to/repo --name lane-a
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner up
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner up --goal "继续推进 Supervisor 可用入口"
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner web
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner advise
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise --interval 180 --llm-summary
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon start --interval 30
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon start --interval 30 --goal "持续跟进当前项目目标"
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon status
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon watchdog
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon watcher start --interval 60
@@ -130,10 +135,12 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner archive --
 .venv/bin/isotope-supervisor dashboard
 .venv/bin/isotope-supervisor guide --cwd /path/to/repo --name lane-a
 .venv/bin/isotope-supervisor up
+.venv/bin/isotope-supervisor up --goal "继续推进 Supervisor 可用入口"
 .venv/bin/isotope-supervisor web
 .venv/bin/isotope-supervisor advise
 .venv/bin/isotope-supervisor supervise --interval 180 --llm-summary
 .venv/bin/isotope-supervisor daemon start --interval 30
+.venv/bin/isotope-supervisor daemon start --interval 30 --goal "持续跟进当前项目目标"
 .venv/bin/isotope-supervisor daemon status
 .venv/bin/isotope-supervisor daemon watchdog
 .venv/bin/isotope-supervisor daemon watcher start --interval 60
