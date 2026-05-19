@@ -9706,7 +9706,8 @@ def test_codex_supervisor_runner_loop_keeps_blocked_goal_active(
     assert payload["goal_updates"][0]["goal_id"] == goal["goal_id"]
     assert payload["goal_updates"][0]["status"] == "blocked"
     assert "archived" not in payload["goal_updates"][0]
-    assert payload["active_goals"] == [goal]
+    assert payload["active_goals"][0]["goal_id"] == goal["goal_id"]
+    assert payload["active_goals"][0]["last_status"] == "blocked"
 
     exit_code = supervisor_main(["goal", "list", "--codex-home", str(codex_home), "--json"])
     assert exit_code == 0
@@ -9904,6 +9905,135 @@ def test_codex_supervisor_runner_daemon_status_includes_active_goal_status(
     assert item["last_status"] == "needs_user"
     assert item["last_summary"] == "需要确认验收范围。"
     assert item["last_next"] == "等待用户确认。"
+
+
+def test_codex_supervisor_runner_loop_replans_blocked_goal_with_llm_context(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "README.md").write_text("Supervisor 目标阻塞后要重新规划。\n", encoding="utf-8")
+    exit_code = supervisor_main(
+        [
+            "goal",
+            "add",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(workspace),
+            "--goal",
+            "重新规划阻塞目标。",
+            "--target-name",
+            "goal-supervisor",
+            "--json",
+        ]
+    )
+    assert exit_code == 0
+    capsys.readouterr()
+    log_path = codex_home / "supervisor" / "logs" / "managed-001.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text(
+        "SUPERVISOR_STATUS: blocked\n"
+        "SUPERVISOR_SUMMARY: 需要重新确认项目上下文。\n"
+        "SUPERVISOR_NEXT: 先查询 docs/current。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "goal-supervisor",
+                "cwd": str(workspace),
+                "prompt": "重新规划阻塞目标。",
+                "command": ["codex", "exec", "-C", str(workspace), "继续"],
+                "pid": 0,
+                "started_at": NOW.isoformat(),
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--rule-execute",
+            "--json",
+        ]
+    )
+    assert exit_code == 0
+    capsys.readouterr()
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
+
+    class FakeProvider:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            self.calls += 1
+            content = messages[1]["content"]
+            assert '"active_goals"' in content
+            assert '"last_status": "blocked"' in content
+            assert "blocked/needs_user" in content
+            if self.calls == 1:
+                return json.dumps(
+                    {
+                        "kind": "request_context",
+                        "cwd": str(workspace),
+                        "query": "Supervisor 目标阻塞后如何继续推进",
+                        "reason": "阻塞目标需要先查项目上下文。",
+                    },
+                    ensure_ascii=False,
+                )
+            return json.dumps(
+                {
+                    "kind": "monitor",
+                    "reason": "上下文已查询，本轮先记录结果。",
+                },
+                ensure_ascii=False,
+            )
+
+    provider = FakeProvider()
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: provider,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["active_goals"][0]["last_status"] == "blocked"
+    assert payload["llm_action"]["kind"] == "request_context"
+    assert payload["executed"]["kind"] == "request_context"
+    assert payload["executed"]["context"]["query"] == "Supervisor 目标阻塞后如何继续推进"
+    assert payload["llm_followup_action"]["kind"] == "monitor"
 
 
 def test_codex_supervisor_runner_loop_goal_provider_resolution_failure_is_visible(

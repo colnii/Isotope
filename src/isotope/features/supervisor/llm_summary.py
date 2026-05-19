@@ -208,6 +208,7 @@ def build_llm_action_messages(
     report: CodexSupervisorReport,
     command_suggestions: list[dict[str, str]],
     recent_context_results: list[dict[str, Any]] | None = None,
+    active_goals: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, str]]:
     """Build the prompt for guarded LLM planning."""
     candidate_targets = [
@@ -260,6 +261,7 @@ def build_llm_action_messages(
                         command_suggestions,
                     ),
                     "candidate_targets": candidate_targets,
+                    "active_goals": _active_goal_payload(active_goals),
                     "resumable_session_ids": resumable_session_ids,
                     "completed_session_ids": completed_session_ids,
                     "command_suggestions": command_suggestions,
@@ -285,6 +287,16 @@ def build_llm_action_messages(
                         (
                             "已有上下文足够时优先选择 launch_session、send_continue、"
                             "send_status、ask_user 或 monitor。"
+                        ),
+                        (
+                            "active_goals 里的目标仍然活跃；"
+                            "last_status 为 blocked/needs_user 时不要默认停住，"
+                            "应根据已有信息选择 request_context、launch_session、"
+                            "ask_user 或 monitor。"
+                        ),
+                        (
+                            "blocked/needs_user 目标只有满足 decision_gate 时才允许 ask_user；"
+                            "否则继续查上下文或启动新 worker 推进。"
                         ),
                         (
                             "candidate_targets.resume_context_hint 为 large_session_file 时，"
@@ -352,6 +364,7 @@ def generate_llm_action_decision(
     command_suggestions: list[dict[str, str]],
     provider: SummaryProvider,
     recent_context_results: list[dict[str, Any]] | None = None,
+    active_goals: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     if not _has_any_llm_target(report, command_suggestions):
         return {
@@ -361,7 +374,12 @@ def generate_llm_action_decision(
             "command_suggestion": None,
         }
     raw = provider.summarize(
-        build_llm_action_messages(report, command_suggestions, recent_context_results)
+        build_llm_action_messages(
+            report,
+            command_suggestions,
+            recent_context_results,
+            active_goals,
+        )
     )
     payload = _extract_json_object(raw)
     kind = _required_payload_string(payload, "kind")
@@ -851,6 +869,30 @@ def _context_request_history(
             }
         )
     return history
+
+
+def _active_goal_payload(active_goals: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for goal in active_goals or []:
+        if not isinstance(goal, dict):
+            continue
+        item: dict[str, Any] = {}
+        for key in (
+            "goal_id",
+            "goal",
+            "cwd",
+            "target_name",
+            "last_status",
+            "last_summary",
+            "last_next",
+            "last_status_at",
+        ):
+            value = goal.get(key)
+            if isinstance(value, str) and value:
+                item[key] = _clip(value)
+        if item:
+            items.append(item)
+    return items
 
 
 def _has_any_llm_target(

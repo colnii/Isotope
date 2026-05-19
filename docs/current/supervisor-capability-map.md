@@ -128,6 +128,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   最早活跃目标，并保持 daemon 启动命令不绑定某一个队列目标。
 - `loop` 会把同名 worker 的 `SUPERVISOR_STATUS` 写回目标队列；
   `done` 自动归档，`blocked/needs_user` 只记录状态并等待后续处理。
+- `blocked/needs_user` 活跃目标会带着 `last_status`、摘要和下一步进入
+  LLM planner 的 `active_goals` 输入；模型不能默认停住，应重新选择
+  `request_context`、`launch_session`、`ask_user` 或 `monitor`。
 - `goal list` 和 `daemon status` 会合并活跃目标的最近状态、
   摘要和下一步，便于直接看阻塞原因。
 - `daemon start/status/stop` 可把 `loop` 放到后台常驻，记录

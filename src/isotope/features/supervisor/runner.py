@@ -2246,7 +2246,7 @@ def _supervise_payload(
     payload["report"] = report.to_dict()
     payload["automation"] = _automation_status(report)
     payload["auto_adopted"] = auto_adopted or []
-    payload["active_goals"] = _active_goal_dicts(args)
+    payload["active_goals"] = _active_goal_dicts(args, include_status=True)
     if goal_updates:
         payload["goal_updates"] = goal_updates
     if args.llm_action or args.llm_execute:
@@ -3017,7 +3017,7 @@ def _print_advice(args: argparse.Namespace) -> None:
         goal_target_name=_goal_target_name(args),
     )
     payload["workspace_scope"] = _workspace_scope_payload(args, report, action_report)
-    payload["active_goals"] = _active_goal_dicts(args)
+    payload["active_goals"] = _active_goal_dicts(args, include_status=True)
     if args.llm_action or args.llm_execute:
         payload["recent_context_results"] = _recent_context_results(args, action_report)
         payload["llm_action"] = _decide_action_with_llm(action_report, payload)
@@ -4521,6 +4521,7 @@ def _decide_action_with_llm(report: Any, payload: dict[str, Any]) -> dict[str, A
             payload["command_suggestions"],
             _UnavailableSummaryProvider(),
             payload.get("recent_context_results"),
+            payload.get("active_goals"),
         )
     try:
         provider = resolve_summary_provider_from_env(agent_name="supervisor")
@@ -4529,6 +4530,7 @@ def _decide_action_with_llm(report: Any, payload: dict[str, Any]) -> dict[str, A
             payload["command_suggestions"],
             provider,
             payload.get("recent_context_results"),
+            payload.get("active_goals"),
         )
     except ValueError as exc:
         error = str(exc)

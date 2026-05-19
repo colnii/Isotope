@@ -1049,6 +1049,19 @@
 
 上一批已完成：
 
+## Codex Supervisor 阻塞目标重新规划
+
+完成内容：
+
+- `blocked/needs_user` 目标不再只是展示字段。
+- `loop` 会把活跃目标最近状态放进 `active_goals`。
+- LLM planner 会看到目标 `last_status`、摘要和下一步。
+- 模型应重新选择 `request_context`、`launch_session`、`ask_user`
+  或 `monitor`；`ask_user` 仍受拍板门槛约束。
+- 新增回归测试，证明阻塞目标会触发 LLM 先查询上下文，再进行后续判断。
+
+上一批已完成：
+
 ## Codex Supervisor web 模型建议高亮
 
 完成内容：

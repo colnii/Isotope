@@ -176,6 +176,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     不需要在启动命令里写死单个目标；匹配同名 worker 汇报
     `SUPERVISOR_STATUS: done` 时，`loop` 会记录目标状态并自动归档；
     汇报 `blocked/needs_user` 时会记录状态但保留活跃目标；
+    活跃目标的最近状态会进入 `active_goals` 并交给 LLM planner，
+    所以 `blocked/needs_user` 不是终点，模型可继续选择
+    `request_context`、`launch_session`、`ask_user` 或 `monitor`；
     `goal list` 和 `daemon status` 会直接显示活跃目标的最近状态、
     摘要和下一步，不必手动读取 `goals.jsonl`；
     `daemon watcher start/status/stop` 可启动 watcher（周期看门进程），

@@ -62,6 +62,8 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
   `loop` 动态读取活跃目标，不必把目标写死在启动命令里。
 - 同名 worker 汇报 `SUPERVISOR_STATUS: done` 时，`loop` 会自动归档
   对应目标；汇报 `blocked/needs_user` 时只记录状态，不删除目标。
+- `blocked/needs_user` 会继续作为活跃目标进入 LLM planner 输入，
+  让模型根据上下文选择继续查询、启动 worker、发起拍板或继续观察。
 - `goal list` 和 `daemon status` 会直接展示活跃目标最近状态、
   摘要和下一步。
 - `daemon watcher` 可启动 watcher（周期看门进程），定期触发 watchdog。
