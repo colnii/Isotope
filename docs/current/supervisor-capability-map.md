@@ -98,6 +98,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   LLM planner 会收到 `resume_context_hint`，当 session 文件较大时，
   应优先考虑 `request_context` 或 `launch_session`，避免不必要的
   高成本 `resume_session`。
+- 开启 LLM 动作时，面向前端/CLI 的主 `command_suggestion` 会提升为
+  `llm_action.command_suggestion`；旧规则建议放在
+  `rule_command_suggestion`，只作为对照。
 - OpenAI-compatible provider 遇到 reasoning-only 空正文时会重试关闭
   thinking，减少模型池空响应。
 - `loop` 默认会自动发现并接管未登记的 Codex tmux 窗口；

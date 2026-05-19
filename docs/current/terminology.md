@@ -131,6 +131,7 @@
 | `LLM summary` | 大模型摘要，把压缩后的窗口状态和结构化建议交给模型生成中文判断 | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
 | `LLM planner` | 大模型规划器，从候选状态里选择 `monitor`、send、`resume_session`、`launch_session`、`request_context` 或 `ask_user`，规则只做护栏 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
 | `LLM action` | 大模型规划结果，会容忍 JSON 前后的说明文本，再校验成受控动作 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
+| `rule_command_suggestion` | 旧规则生成的命令草案；开启 LLM 动作时只保留作对照，主 `command_suggestion` 跟随 LLM 选择 | 产品功能/控制策略/输出字段 | `src/isotope/features/supervisor/runner.py` |
 | `--llm-action` | 命令行参数，让 LLM planner 读取最近 context 结果并选择一个受控建议动作，但不自动执行 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `--llm-execute` | 命令行参数，执行 LLM 选择的 send、`resume_session`、`launch_session`、`request_context` 或 `ask_user`；`monitor` 只记录跳过 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `loop` | Supervisor 日常常驻入口，默认由 LLM planner 驱动受控动作 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py` |

@@ -3746,6 +3746,83 @@ def test_codex_supervisor_runner_advise_can_add_llm_action(
     assert captured["agent_name"] == "supervisor"
 
 
+def test_codex_supervisor_runner_llm_action_becomes_primary_command_suggestion(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    session_path = _write_session(
+        codex_home,
+        "2026/05/16/rollout-large-resume.jsonl",
+        session_id="large-resume-session",
+        cwd=str(workspace),
+        events=[
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "working"},
+            )
+        ],
+    )
+    with session_path.open("a", encoding="utf-8") as handle:
+        handle.write(
+            json.dumps(
+                _event(
+                    "2026-05-16T11:59:30Z",
+                    "event_msg",
+                    {"type": "agent_reasoning", "message": "x" * 70000},
+                ),
+                ensure_ascii=False,
+            )
+            + "\n"
+        )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert '"resume_context_hint": "large_session_file"' in content
+            return json.dumps(
+                {
+                    "kind": "request_context",
+                    "cwd": str(workspace),
+                    "query": "Supervisor 下一步",
+                    "reason": "大会话先查上下文。",
+                },
+                ensure_ascii=False,
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+
+    exit_code = supervisor_main(
+        [
+            "advise",
+            "--codex-home",
+            str(codex_home),
+            "--workspace-root",
+            str(workspace),
+            "--limit",
+            "1",
+            "--stale-after",
+            "999999",
+            "--llm-action",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"]["kind"] == "request_context"
+    assert payload["command_suggestion"] == payload["llm_action"]["command_suggestion"]
+    assert payload["command_suggestion"]["kind"] == "request_context"
+    assert payload["rule_command_suggestion"]["kind"] == "resume_session"
+
+
 def test_codex_supervisor_runner_llm_action_scopes_to_workspace_root(
     tmp_path,
     capsys,

@@ -126,6 +126,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `scan` 会记录真实 Codex session JSONL 的 `source_size_bytes`，
     LLM planner 会看到 `resume_context_hint`，当历史文件较大时优先考虑
     `request_context` 或 `launch_session`，避免无意识恢复高成本长历史；
+    开启 LLM 动作时，JSON 里的主 `command_suggestion` 会跟随
+    `llm_action.command_suggestion`，旧规则建议保留在
+    `rule_command_suggestion` 里，避免前端把旧规则建议误当主动作；
     `monitor` 只记录跳过；
     `advise` 可单独输出建议和命令草案，并可显式执行 send 类草案；
     `guide` 可生成一组可复制的启动、接管、日常 loop 和观察命令，

@@ -1632,6 +1632,7 @@ def _supervise_payload(
         payload["llm_summary"] = _summarize_with_llm(report)
     if args.llm_action or args.llm_execute:
         payload["llm_action"] = _decide_action_with_llm(action_report, payload)
+        _promote_llm_command_suggestion(payload)
     if args.llm_execute:
         payload["executed"] = _execute_llm_action(args, action_report, payload)
         _maybe_replan_after_context_request(args, action_report, payload)
@@ -2320,6 +2321,7 @@ def _print_advice(args: argparse.Namespace) -> None:
     if args.llm_action or args.llm_execute:
         payload["recent_context_results"] = _recent_context_results(args, action_report)
         payload["llm_action"] = _decide_action_with_llm(action_report, payload)
+        _promote_llm_command_suggestion(payload)
     if args.llm_execute:
         payload["executed"] = _execute_llm_action(args, action_report, payload)
     elif args.execute:
@@ -2405,6 +2407,17 @@ def _advice_payload(
         "command_suggestion": suggestions[0] if suggestions else None,
         "command_suggestions": suggestions,
     }
+
+
+def _promote_llm_command_suggestion(payload: dict[str, Any]) -> None:
+    action = payload.get("llm_action")
+    if not isinstance(action, dict):
+        return
+    if "command_suggestion" not in action:
+        return
+    if "rule_command_suggestion" not in payload:
+        payload["rule_command_suggestion"] = payload.get("command_suggestion")
+    payload["command_suggestion"] = action.get("command_suggestion")
 
 
 def _print_executed_plain(executed: dict[str, Any]) -> None:
