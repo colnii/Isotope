@@ -224,6 +224,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     web 已可分别复制 attach、状态请求和继续命令，并可通过
     `/managed/send` 执行 `send_status` 和 `send_continue` 两个白名单动作；
     两个动作都会要求托管 Codex 按状态协议汇报；
+    web 等待拍板列表已可直接填写答案并提交到 `/decision/answer`，
+    该接口只记录 `decision answer`，不会变成任意文本发送通道；
     web 已可通过手动“模型建议”按钮调用 `/llm-action`，展示 LLM
     在受控动作里选择的建议，模型输出带解释时会尽量提取动作 JSON，
     但不自动发送；没有任何可控 Supervisor 目标

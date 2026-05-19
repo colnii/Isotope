@@ -75,6 +75,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   最近输出保留尾部行并默认滚到底部，手动上翻后会保留滚动位置。
 - `web` 可手动请求 `/llm-action`，展示 LLM planner 的受控动作建议。
 - `web` 会高亮模型建议对应的 send 按钮，但不会自动点击。
+- `web` 等待拍板列表可填写答案并提交到 `/decision/answer`，
+  只记录 `decision answer` 事件，不开放任意文本发送。
 - `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
 - `/managed/send` 成功发送后会更新 lane state。
 - `guide` 会按 cwd、lane name 和 tmux session 打印可复制工作流命令。
@@ -185,7 +187,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   稳定拍板列表。
 - `decision list` 可查看活跃拍板项；`decision answer --request-id <id>
   --answer <答案>` 会写入用户答案并移出活跃拍板项，后续 LLM planner
-  会收到 `recent_decision_answers`；`decision archive --request-id <id>`
+  会收到 `recent_decision_answers`；web 可通过 `/decision/answer`
+  执行同一受控记录；`decision archive --request-id <id>`
   只用于无需继续的项。
 - `discover` 可只读扫描现有 tmux 会话，筛出疑似 Codex 窗口，
   并生成可复制的 `adopt` 和 `attach` 命令。
@@ -309,6 +312,7 @@ B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
 - 不要把 `/events` 做成控制通道；它只负责提醒前端刷新。
 - 不要在页面重复展示同一个托管 Codex 的 lane 视角和 session 视角。
 - 不要在 web 里放任意文本发送框；先走白名单动作。
+- web 的拍板答案表单只写 `decision_answer`，不向托管 Codex 直接发任意文本。
 - 不要让 `/llm-action` 自动调用 `/managed/send`。
 - 高亮模型建议不等于执行动作，执行必须由人类点击或显式参数触发。
 - 没有可控托管目标时，不要为了动作建议调用 LLM。

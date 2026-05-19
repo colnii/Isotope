@@ -1049,6 +1049,18 @@
 
 上一批已完成：
 
+## Codex Supervisor web 拍板答案提交
+
+完成内容：
+
+- web 等待拍板列表新增“填写答案”和“提交答案”。
+- 新增 `/decision/answer` 本机接口，复用 `record_decision_answer`。
+- 提交成功后页面刷新，活跃拍板项会从列表消失。
+- 接口只记录拍板答案，不直接向托管 Codex 发送任意文本。
+- 新增 web 回归测试，覆盖页面入口和 POST 提交。
+
+上一批已完成：
+
 ## Codex Supervisor 拍板答案恢复推进
 
 完成内容：

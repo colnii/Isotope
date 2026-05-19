@@ -12,7 +12,11 @@ from urllib.parse import urlparse
 
 from .bell_events import default_bell_events_path, read_latest_bell_events
 from .context import read_recent_context_results
-from .decision_requests import read_active_decision_requests, read_recent_decision_answers
+from .decision_requests import (
+    read_active_decision_requests,
+    read_recent_decision_answers,
+    record_decision_answer,
+)
 from .flow import CodexSupervisorFlow, _tmux_capture_pane
 from .lane_state import record_lane_prompt
 from .llm_summary import (
@@ -197,6 +201,9 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/llm-action":
             self._send_llm_action()
             return
+        if path == "/decision/answer":
+            self._send_decision_answer()
+            return
         self._send_json(
             {
                 "status": "error",
@@ -274,6 +281,37 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             )
             return
         self._send_json(payload)
+
+    def _send_decision_answer(self) -> None:
+        try:
+            payload = self._read_json_body()
+            request_id = _required_string(payload.get("request_id"), "request_id")
+            answer = _required_string(payload.get("answer"), "answer")
+            answered = record_decision_answer(
+                codex_home=self.server.codex_home,
+                request_id=request_id,
+                answer=answer,
+            )
+        except ValueError as exc:
+            self._send_json(
+                {
+                    "status": "error",
+                    "error": {
+                        "code": "codex_supervisor_web_error",
+                        "message": str(exc),
+                    },
+                },
+                status_code=400,
+            )
+            return
+        self._send_json(
+            {
+                "status": "ok",
+                "answered": answered,
+                "decision_requests": _decision_request_dicts(self.server.codex_home),
+                "recent_decision_answers": _decision_answer_dicts(self.server.codex_home),
+            }
+        )
 
     def _send_events(self) -> None:
         self.send_response(200)
@@ -447,6 +485,32 @@ def dashboard_page_html() -> str:
     .decision-list-item {
       color: #7a271a;
       overflow-wrap: anywhere;
+    }
+    .decision-answer-form {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .decision-answer-form textarea {
+      width: 100%;
+      min-height: 72px;
+      resize: vertical;
+      border: 1px solid #fecdca;
+      border-radius: 6px;
+      padding: 8px;
+      color: var(--text);
+      font: inherit;
+      line-height: 1.4;
+    }
+    .decision-answer-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .decision-answer-message {
+      color: var(--muted);
+      font-size: 12px;
     }
     .grid {
       display: grid;
@@ -1015,8 +1079,62 @@ def dashboard_page_html() -> str:
         button.type = "button";
         button.textContent = "复制归档拍板";
         button.addEventListener("click", () => copyDecisionArchiveCommand(request, button));
-        item.append(line, button);
+        const form = renderDecisionAnswerForm(request);
+        item.append(line, form, button);
         list.append(item);
+      }
+    }
+
+    function renderDecisionAnswerForm(request) {
+      const form = document.createElement("div");
+      form.className = "decision-answer-form";
+
+      const textarea = document.createElement("textarea");
+      textarea.placeholder = "填写答案";
+      textarea.setAttribute("aria-label", "填写答案");
+      form.append(textarea);
+
+      const actions = document.createElement("div");
+      actions.className = "decision-answer-actions";
+
+      const submit = document.createElement("button");
+      submit.type = "button";
+      submit.textContent = "提交答案";
+      const message = document.createElement("span");
+      message.className = "decision-answer-message";
+      submit.addEventListener("click", () => submitDecisionAnswer(request, textarea, submit, message));
+      actions.append(submit, message);
+      form.append(actions);
+
+      return form;
+    }
+
+    async function submitDecisionAnswer(request, textarea, button, message) {
+      const answer = textarea.value.trim();
+      if (!answer) {
+        message.textContent = "请先填写答案";
+        return;
+      }
+      button.disabled = true;
+      const label = button.textContent;
+      button.textContent = "提交中";
+      message.textContent = "";
+      try {
+        const response = await fetch("/decision/answer", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ request_id: request.request_id, answer })
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error ? payload.error.message : "提交失败");
+        message.textContent = "已记录答案";
+        textarea.value = "";
+        await loadDashboard();
+      } catch (error) {
+        message.textContent = text(error.message);
+      } finally {
+        button.disabled = false;
+        button.textContent = label;
       }
     }
 

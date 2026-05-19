@@ -2071,6 +2071,10 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "requestLlmAction" in html
     assert "renderDecisionRequest" in html
     assert "renderDecisionRequests" in html
+    assert "submitDecisionAnswer" in html
+    assert "/decision/answer" in html
+    assert "填写答案" in html
+    assert "提交答案" in html
     assert "copyDecisionArchiveCommand" in html
     assert "复制归档拍板" in html
     assert "等待拍板列表" in html
@@ -2403,6 +2407,81 @@ def test_codex_supervisor_web_returns_ask_user_after_context_gate(
         "command_suggestion": None,
     }
     assert payload["recent_context_results"][0]["query"] == "目录迁移 兼容策略"
+
+
+def test_codex_supervisor_web_can_submit_decision_answer(tmp_path):
+    from isotope.features.supervisor.web import create_dashboard_server
+
+    codex_home = tmp_path / ".codex"
+    decision_path = codex_home / "supervisor" / "decision_requests.jsonl"
+    decision_path.parent.mkdir(parents=True)
+    decision_path.write_text(
+        json.dumps(
+            {
+                "event": "decision_request",
+                "request_id": "decision-001",
+                "created_at": "2026-05-20T12:00:00+00:00",
+                "session_id": "goal:goal-001",
+                "goal_id": "goal-001",
+                "target_name": "goal-supervisor",
+                "question": "保留兼容层还是直接迁移？",
+                "reason": "目标明确请求拍板。",
+                "context_status": "conflict",
+                "gate": {
+                    "codex_requested_decision": True,
+                    "instructions_exhausted": True,
+                    "context_status": "conflict",
+                },
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    server = create_dashboard_server(
+        codex_home=codex_home,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        conn.request(
+            "POST",
+            "/decision/answer",
+            json.dumps(
+                {
+                    "request_id": "decision-001",
+                    "answer": "保留兼容层，后续再清理旧入口。",
+                },
+                ensure_ascii=False,
+            ).encode("utf-8"),
+            {"content-type": "application/json"},
+        )
+        response = conn.getresponse()
+        payload = json.loads(response.read().decode("utf-8"))
+        conn.request("GET", "/dashboard.json")
+        dashboard_response = conn.getresponse()
+        dashboard_payload = json.loads(dashboard_response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert response.status == 200
+    assert payload["status"] == "ok"
+    assert payload["answered"]["event"] == "decision_answer"
+    assert payload["answered"]["request_id"] == "decision-001"
+    assert payload["answered"]["goal_id"] == "goal-001"
+    assert payload["answered"]["answer"] == "保留兼容层，后续再清理旧入口。"
+    assert payload["decision_requests"] == []
+    assert dashboard_response.status == 200
+    assert dashboard_payload["decision_requests"] == []
 
 
 def test_codex_supervisor_dashboard_json_includes_persisted_decision_requests(

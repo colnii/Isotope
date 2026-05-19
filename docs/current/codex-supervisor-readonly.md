@@ -50,6 +50,8 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
   复制归档、请求状态和继续推进按钮。
 - `web` 可手动请求 `/llm-action`，只展示模型建议的白名单动作，
   不自动发送。
+- `web` 等待拍板列表可填写答案并提交到 `/decision/answer`；
+  该接口只写入拍板答案账本，不直接向托管 Codex 发送任意文本。
 - `web` 会连接 `/events` 事件流；托管 tmux 响铃后会立刻刷新页面，
   不必等 5 秒轮询。
 - `guide` 会按当前参数打印可复制的启动、接管、日常 loop 和观察命令。
@@ -534,6 +536,8 @@ tmux attach -t isotope-lane-a
 - `send` 只支持 Supervisor 登记过的 tmux 会话。
 - `web` 只监听本机默认地址，不提供认证和远程访问能力。
 - `web` 的 `/managed/send` 只接受 `send_status` 和 `send_continue`。
+- `web` 的 `/decision/answer` 只接受 `request_id` 和 `answer`，
+  用于记录用户拍板答案。
 - `web` 的 `/llm-action` 只在手动点击时调用模型，只展示建议；
   解析时会容忍 JSON 前后的说明文字。
 - `web` 的 `/events` 只推送 bell 提醒和心跳，不承载任意控制指令。

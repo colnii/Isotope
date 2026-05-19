@@ -106,6 +106,7 @@
 | `control_commands` | dashboard/web 使用的受控命令列表；tmux lane 可提供 attach/send 草案，process 托管通过 launch/resume 管理 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `/events` | web 事件流入口，用 SSE 推送 bell 提醒，让页面立刻刷新 dashboard | 产品功能/视图/状态判断 | `src/isotope/features/supervisor/web.py` |
 | `/managed/send` | web 本机发送入口，只允许 `send_status` 和 `send_continue` 两个白名单动作 | 产品功能/控制通道 | `src/isotope/features/supervisor/web.py` |
+| `/decision/answer` | web 本机拍板答案入口，只记录 `decision answer`，不向托管 Codex 直接发送任意文本 | 产品功能/通知/拍板 | `src/isotope/features/supervisor/web.py`, `src/isotope/features/supervisor/decision_requests.py` |
 | `/llm-action` | web 手动模型建议入口，只展示 LLM planner 的受控动作建议，不自动发送 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/web.py` |
 | `send_status` | 白名单动作，让托管 Codex 按 `SUPERVISOR_STATUS/SUMMARY/NEXT` 汇报当前状态 | 产品功能/控制通道/状态协议 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `send_continue` | 白名单动作，让托管 Codex 继续推进，并在完成或阻塞后按状态协议汇报 | 产品功能/控制通道/状态协议 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
@@ -156,7 +157,7 @@
 | `ask_user` | LLM planner 可选动作，只有 Codex 明确请求拍板、既有用户指示不足且上下文缺失/过时/冲突时才允许停等用户；可绑定 session 或 `goal_id`，执行后会写入拍板列表 | 产品功能/模型/拍板 gate | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `decision_gate` | 拍板门槛，要求 Codex 明确请求拍板、LLM 确实无法判断、上下文缺失/过时/冲突，三者同时满足才允许 `ask_user` | 产品功能/模型/拍板 gate | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
 | `decision request` | 拍板请求账本项，记录合法 `ask_user` 的问题、session 或 `goal_id`、原因和 gate 证据，供 dashboard 和 web 稳定展示；有答案用 `decision answer`，无需继续才归档 | 产品功能/通知/拍板 | `src/isotope/features/supervisor/decision_requests.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
-| `decision answer` | 用户拍板答案事件，追加写入 JSONL，把请求移出活跃列表，并作为 `recent_decision_answers` 交给 LLM planner 继续推进 | 产品功能/通知/拍板/模型输入 | `src/isotope/features/supervisor/decision_requests.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/llm_summary.py` |
+| `decision answer` | 用户拍板答案事件，追加写入 JSONL，把请求移出活跃列表，并作为 `recent_decision_answers` 交给 LLM planner 继续推进 | 产品功能/通知/拍板/模型输入 | `src/isotope/features/supervisor/decision_requests.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/web.py` |
 | `decision archive` | 拍板归档事件，追加写入 JSONL，让无需继续的拍板项从活跃列表移走，不直接删除历史 | 产品功能/通知/拍板 | `src/isotope/features/supervisor/decision_requests.py`, `src/isotope/features/supervisor/runner.py` |
 | `context` | Supervisor 命令，执行项目上下文检索并记录结果供后续 LLM planner 使用；当前 `rg` 优先、Python 兜底，不是 BM25 | 产品功能/上下文能力 | `src/isotope/features/supervisor/context.py`, `src/isotope/features/supervisor/runner.py` |
 | `OpenAI-compatible` | 兼容 OpenAI Chat Completions 形状的模型接口 | 模型/外部集成 | `src/isotope/features/supervisor/llm_summary.py` |
