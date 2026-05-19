@@ -136,6 +136,9 @@
 | `--llm-action` | 命令行参数，让 LLM planner 读取最近 context 结果并选择一个受控建议动作，但不自动执行 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `--llm-execute` | 命令行参数，执行 LLM 选择的 send、`resume_session`、`launch_session`、`request_context` 或 `ask_user`；`monitor` 只记录跳过 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `--goal` | Supervisor 用户目标参数，让 `supervise/loop/up/daemon start` 把目标交给 LLM planner，由模型决定查上下文或启动新 worker | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/daemon.py` |
+| `goal queue` | 目标队列，保存用户交给 Supervisor 的长期目标，供 daemon/loop 动态消费 | 产品功能/控制策略 | `src/isotope/features/supervisor/goal_queue.py`, `src/isotope/features/supervisor/runner.py` |
+| `goals.jsonl` | Supervisor 目标队列事件文件，保存目标添加和归档事件 | 产品功能/状态账本 | `src/isotope/features/supervisor/goal_queue.py` |
+| `goal add/list/archive` | Supervisor 目标队列命令，用于添加、查看和归档活跃目标 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py` |
 | `loop` | Supervisor 日常常驻入口，默认由 LLM planner 驱动受控动作 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py` |
 | `--codex-model` | `launch/resume` 参数，传给后台 Codex worker 的 `-m/--model`，用于控制 worker 模型 | 产品功能/控制通道/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
 | `--codex-config` | `launch/resume` 参数，传给后台 Codex worker 的 `-c key=value`，可重复使用 | 产品功能/控制通道/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |

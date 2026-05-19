@@ -43,6 +43,11 @@ from .flow import (
     _tmux_capture_pane,
     render_plain_report,
 )
+from .goal_queue import (
+    archive_supervisor_goal,
+    read_active_supervisor_goals,
+    record_supervisor_goal,
+)
 from .lane_state import (
     DEFAULT_MAX_CONTINUE_COUNT,
     DEFAULT_PROMPT_COOLDOWN_SECONDS,
@@ -766,6 +771,50 @@ def _build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Decision request id to archive.",
     )
+    goal_parser = subparsers.add_parser(
+        "goal",
+        help="Add, list, or archive persistent Supervisor goals.",
+    )
+    goal_subparsers = goal_parser.add_subparsers(
+        dest="goal_command",
+        required=True,
+    )
+    goal_add_parser = goal_subparsers.add_parser(
+        "add",
+        help="Add one persistent goal for the Supervisor loop.",
+    )
+    goal_add_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    goal_add_parser.add_argument(
+        "--cwd",
+        default=str(Path.cwd()),
+        help="Workspace directory for this goal. Defaults to the current directory.",
+    )
+    goal_add_parser.add_argument("--goal", required=True, help="Goal text.")
+    goal_add_parser.add_argument(
+        "--target-name",
+        help="Preferred managed worker name. Defaults to the generated goal id.",
+    )
+    goal_add_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    for goal_command, help_text in (
+        ("list", "List active Supervisor goals."),
+        ("archive", "Archive one handled Supervisor goal."),
+    ):
+        goal_command_parser = goal_subparsers.add_parser(goal_command, help=help_text)
+        goal_command_parser.add_argument(
+            "--codex-home",
+            default=str(Path.home() / ".codex"),
+            help="Codex home directory. Defaults to ~/.codex.",
+        )
+        goal_command_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    goal_subparsers.choices["archive"].add_argument(
+        "--goal-id",
+        required=True,
+        help="Supervisor goal id to archive.",
+    )
     resume_parser = subparsers.add_parser(
         "resume",
         help="Resume a Codex session with a prompt and register the managed process.",
@@ -1047,6 +1096,13 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 _print_decision_plain(payload)
             return 0
+        if args.command == "goal":
+            payload = _goal_payload(args)
+            if args.json:
+                _print_json(payload)
+            else:
+                _print_goal_plain(payload)
+            return 0
         if args.command == "resume":
             record = resume_managed_codex(
                 codex_home=Path(args.codex_home),
@@ -1226,7 +1282,7 @@ def _start_daemon_from_args(args: argparse.Namespace) -> dict[str, Any]:
         max_context_requests=args.max_context_requests,
         max_run_minutes=args.max_run_minutes,
         name=args.name,
-        goal=_goal_text(args),
+        goal=_explicit_goal_text(args),
         llm_summary=args.llm_summary,
         auto_adopt=args.auto_adopt,
         worker_codex_model=_worker_codex_model(args),
@@ -1996,6 +2052,14 @@ def _workspace_root(args: argparse.Namespace) -> Path | None:
 
 
 def _goal_text(args: argparse.Namespace) -> str | None:
+    explicit = _explicit_goal_text(args)
+    if explicit is not None:
+        return explicit
+    active_goal = _selected_active_goal(args)
+    return active_goal.get("goal") if active_goal else None
+
+
+def _explicit_goal_text(args: argparse.Namespace) -> str | None:
     raw = getattr(args, "goal", None)
     if not isinstance(raw, str):
         return None
@@ -2003,11 +2067,34 @@ def _goal_text(args: argparse.Namespace) -> str | None:
 
 
 def _goal_workspace(args: argparse.Namespace) -> str | None:
-    if _goal_text(args) is None:
+    raw = getattr(args, "goal", None)
+    if isinstance(raw, str) and raw.strip():
+        workspace = _explicit_goal_workspace(args)
+        return str(workspace.resolve())
+    active_goal = _selected_active_goal(args)
+    if active_goal and isinstance(active_goal.get("cwd"), str):
+        return active_goal["cwd"]
+    return None
+
+
+def _goal_target_name(args: argparse.Namespace) -> str | None:
+    raw = getattr(args, "goal", None)
+    if isinstance(raw, str) and raw.strip():
         return None
+    active_goal = _selected_active_goal(args)
+    if active_goal and isinstance(active_goal.get("target_name"), str):
+        return active_goal["target_name"]
+    return None
+
+
+def _explicit_goal_workspace(args: argparse.Namespace) -> Path:
     raw = getattr(args, "workspace_root", None)
-    workspace = Path(raw).expanduser() if isinstance(raw, str) and raw else Path.cwd()
-    return str(workspace.resolve())
+    return Path(raw).expanduser() if isinstance(raw, str) and raw else Path.cwd()
+
+
+def _selected_active_goal(args: argparse.Namespace) -> dict[str, Any] | None:
+    goals = _active_goal_dicts(args, limit=1)
+    return goals[0] if goals else None
 
 
 def _session_in_workspace(session: Any, workspace_root: Path) -> bool:
@@ -2034,12 +2121,14 @@ def _supervise_payload(
         include_all_managed=args.llm_action or args.llm_execute,
         goal=_goal_text(args),
         goal_workspace=_goal_workspace(args),
+        goal_target_name=_goal_target_name(args),
     )
     payload["workspace_scope"] = _workspace_scope_payload(args, report, action_report)
     payload["iteration"] = iteration
     payload["report"] = report.to_dict()
     payload["automation"] = _automation_status(report)
     payload["auto_adopted"] = auto_adopted or []
+    payload["active_goals"] = _active_goal_dicts(args)
     if args.llm_action or args.llm_execute:
         payload["recent_context_results"] = _recent_context_results(args, action_report)
     if args.llm_summary:
@@ -2665,6 +2754,64 @@ def _print_decision_plain(payload: dict[str, Any]) -> None:
         print(f"  归档：{archive_command}")
 
 
+def _goal_payload(args: argparse.Namespace) -> dict[str, Any]:
+    if args.goal_command == "add":
+        goal = record_supervisor_goal(
+            codex_home=Path(args.codex_home),
+            cwd=Path(args.cwd),
+            goal=args.goal,
+            target_name=args.target_name,
+        )
+        return {
+            "status": "ok",
+            "goal": goal.to_dict(),
+            "active_goals": _active_goal_dicts(args),
+        }
+    if args.goal_command == "list":
+        return {
+            "status": "ok",
+            "active_goals": _active_goal_dicts(args),
+        }
+    if args.goal_command == "archive":
+        archived = archive_supervisor_goal(
+            codex_home=Path(args.codex_home),
+            goal_id=args.goal_id,
+        )
+        return {
+            "status": "ok",
+            "archived": archived,
+            "active_goals": _active_goal_dicts(args),
+        }
+    raise ValueError(f"unsupported goal command: {args.goal_command}")
+
+
+def _print_goal_plain(payload: dict[str, Any]) -> None:
+    goal = payload.get("goal")
+    if isinstance(goal, dict):
+        print(f"已添加目标：{goal['goal_id']}")
+        print(f"目标：{goal['goal']}")
+        print(f"工作区：{goal['cwd']}")
+        print(f"worker：{goal['target_name']}")
+    archived = payload.get("archived")
+    if isinstance(archived, dict):
+        print(f"已归档目标：{archived['goal_id']}")
+    goals = payload.get("active_goals") or []
+    print(f"活跃目标：{len(goals)}")
+    for item in goals:
+        archive_command = shlex.join(
+            [
+                "isotope-supervisor",
+                "goal",
+                "archive",
+                "--goal-id",
+                item["goal_id"],
+            ]
+        )
+        print(f"- {item['goal_id']} {item['goal']}")
+        print(f"  cwd={item['cwd']} worker={item['target_name']}")
+        print(f"  归档：{archive_command}")
+
+
 def _dashboard_item_suffix(item: dict[str, Any]) -> str:
     parts: list[str] = []
     if item["git_branch"]:
@@ -2733,8 +2880,10 @@ def _print_advice(args: argparse.Namespace) -> None:
         include_all_managed=args.llm_action or args.llm_execute,
         goal=_goal_text(args),
         goal_workspace=_goal_workspace(args),
+        goal_target_name=_goal_target_name(args),
     )
     payload["workspace_scope"] = _workspace_scope_payload(args, report, action_report)
+    payload["active_goals"] = _active_goal_dicts(args)
     if args.llm_action or args.llm_execute:
         payload["recent_context_results"] = _recent_context_results(args, action_report)
         payload["llm_action"] = _decide_action_with_llm(action_report, payload)
@@ -2812,6 +2961,7 @@ def _advice_payload(
     include_all_managed: bool = False,
     goal: str | None = None,
     goal_workspace: str | None = None,
+    goal_target_name: str | None = None,
 ) -> dict[str, Any]:
     recommendation = report.recommendation
     suggestions = _command_suggestions(
@@ -2820,6 +2970,7 @@ def _advice_payload(
         include_all_managed=include_all_managed,
         goal=goal,
         goal_workspace=goal_workspace,
+        goal_target_name=goal_target_name,
     )
     return {
         "status": "ok",
@@ -2869,6 +3020,7 @@ def _command_suggestions(
     include_all_managed: bool = False,
     goal: str | None = None,
     goal_workspace: str | None = None,
+    goal_target_name: str | None = None,
 ) -> list[dict[str, str]]:
     if target_name:
         managed_tmux = _managed_tmux_session_by_name(report, target_name)
@@ -2885,7 +3037,13 @@ def _command_suggestions(
             if _is_resume_capable_session(session):
                 suggestions.extend(_resume_session_command_suggestions(session))
         suggestions.extend(_workspace_action_command_suggestions(report))
-        suggestions.extend(_goal_action_command_suggestions(goal, goal_workspace))
+        suggestions.extend(
+            _goal_action_command_suggestions(
+                goal,
+                goal_workspace,
+                goal_target_name=goal_target_name,
+            )
+        )
         if suggestions:
             suggestions.append(_watch_command_suggestion())
             return _dedupe_command_suggestions(suggestions)
@@ -2898,7 +3056,11 @@ def _command_suggestions(
     managed_tmux = _first_managed_tmux_session(report)
     if managed_tmux is not None:
         return _managed_tmux_command_suggestions(managed_tmux) + [_watch_command_suggestion()]
-    goal_suggestions = _goal_action_command_suggestions(goal, goal_workspace)
+    goal_suggestions = _goal_action_command_suggestions(
+        goal,
+        goal_workspace,
+        goal_target_name=goal_target_name,
+    )
     if goal_suggestions:
         return _dedupe_command_suggestions(goal_suggestions + [_watch_command_suggestion()])
     if recommendation.action == "monitor":
@@ -2917,12 +3079,18 @@ def _workspace_action_command_suggestions(report: Any) -> list[dict[str, str]]:
 def _goal_action_command_suggestions(
     goal: str | None,
     goal_workspace: str | None,
+    *,
+    goal_target_name: str | None = None,
 ) -> list[dict[str, str]]:
     if not goal or not goal_workspace:
         return []
     return [
         _workspace_context_command_suggestion(goal_workspace, query=goal),
-        _workspace_launch_command_suggestion(goal_workspace, prompt=goal),
+        _workspace_launch_command_suggestion(
+            goal_workspace,
+            prompt=goal,
+            target_name=goal_target_name or "planner-session",
+        ),
     ]
 
 
@@ -2967,11 +3135,12 @@ def _workspace_launch_command_suggestion(
     cwd: str,
     *,
     prompt: str = DEFAULT_LAUNCH_PROMPT,
+    target_name: str = "planner-session",
 ) -> dict[str, str]:
     return {
         "kind": "launch_session",
         "label": "让 LLM 启动新的 Codex 会话",
-        "target_name": "planner-session",
+        "target_name": target_name,
         "cwd": cwd,
         "prompt": prompt,
         "command": shlex.join(
@@ -2979,7 +3148,7 @@ def _workspace_launch_command_suggestion(
                 "isotope-supervisor",
                 "launch",
                 "--name",
-                "planner-session",
+                target_name,
                 "--cwd",
                 cwd,
                 "--prompt",
@@ -4252,6 +4421,20 @@ def _decision_request_dicts(args: argparse.Namespace) -> list[dict[str, Any]]:
     return [
         request.to_dict()
         for request in read_active_decision_requests(codex_home=Path(args.codex_home))
+    ]
+
+
+def _active_goal_dicts(
+    args: argparse.Namespace,
+    *,
+    limit: int = 20,
+) -> list[dict[str, Any]]:
+    return [
+        goal.to_dict()
+        for goal in read_active_supervisor_goals(
+            codex_home=Path(args.codex_home),
+            limit=limit,
+        )
     ]
 
 

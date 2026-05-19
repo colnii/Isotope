@@ -58,6 +58,8 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
 - `supervise/loop/up/daemon start --goal <目标>` 可把用户目标交给
   LLM planner；没有现成托管窗口时，模型也能选择先查上下文或启动
   新的后台 Codex worker。
+- `goal add/list/archive` 可维护持久目标队列；daemon 启动后会由
+  `loop` 动态读取活跃目标，不必把目标写死在启动命令里。
 - `daemon watcher` 可启动 watcher（周期看门进程），定期触发 watchdog。
 - `supervise` 可按间隔循环执行扫描、建议、可选 LLM 摘要和显式 send。
 - `advise/supervise --name <lane>` 可只针对一个托管 lane 生成建议或执行动作。
@@ -108,6 +110,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner guide --cwd /path/to/repo --name lane-a
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner up
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner up --goal "继续推进 Supervisor 可用入口"
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner goal add --cwd /path/to/repo --goal "继续推进 Supervisor 可用入口"
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner goal list
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner web
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner advise
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise --interval 180 --llm-summary
@@ -136,6 +140,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner archive --
 .venv/bin/isotope-supervisor guide --cwd /path/to/repo --name lane-a
 .venv/bin/isotope-supervisor up
 .venv/bin/isotope-supervisor up --goal "继续推进 Supervisor 可用入口"
+.venv/bin/isotope-supervisor goal add --cwd /path/to/repo --goal "继续推进 Supervisor 可用入口"
+.venv/bin/isotope-supervisor goal list
 .venv/bin/isotope-supervisor web
 .venv/bin/isotope-supervisor advise
 .venv/bin/isotope-supervisor supervise --interval 180 --llm-summary
