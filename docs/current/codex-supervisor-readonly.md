@@ -66,6 +66,8 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
   让模型根据上下文选择继续查询、启动 worker、发起拍板或继续观察。
 - 若阻塞目标满足拍板门槛，LLM 可用 `goal_id` 生成目标级
   decision request，dashboard 和 web 会把它当作稳定“等待拍板”项展示。
+- 用户通过 `decision answer` 记录答案后，下一轮 LLM planner 会读取
+  `recent_decision_answers`，并可据此继续启动或恢复 worker。
 - `goal list` 和 `daemon status` 会直接展示活跃目标最近状态、
   摘要和下一步。
 - `daemon watcher` 可启动 watcher（周期看门进程），定期触发 watchdog。

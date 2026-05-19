@@ -104,6 +104,31 @@ def archive_decision_request(
     return event
 
 
+def record_decision_answer(
+    *,
+    codex_home: Path | str,
+    request_id: str,
+    answer: str,
+    now: Callable[[], datetime] | None = None,
+) -> dict[str, Any]:
+    request_id_text = _required_string(request_id, "request_id")
+    answer_text = _required_string(answer, "answer")
+    request = _active_request_by_id(codex_home=codex_home, request_id=request_id_text)
+    event = {
+        "event": "decision_answer",
+        "request_id": request.request_id,
+        "created_at": _ensure_aware_utc((now or _utc_now)()).isoformat(),
+        "session_id": request.session_id,
+        "target_name": request.target_name,
+        "question": request.question,
+        "answer": answer_text,
+    }
+    if request.goal_id:
+        event["goal_id"] = request.goal_id
+    append_decision_answer(default_decision_requests_path(codex_home), event)
+    return event
+
+
 def append_decision_request(path: Path | str, request: DecisionRequest) -> None:
     output_path = Path(path).expanduser()
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -113,6 +138,14 @@ def append_decision_request(path: Path | str, request: DecisionRequest) -> None:
 
 
 def append_decision_archive(path: Path | str, event: dict[str, Any]) -> None:
+    output_path = Path(path).expanduser()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(event, ensure_ascii=False, sort_keys=True))
+        handle.write("\n")
+
+
+def append_decision_answer(path: Path | str, event: dict[str, Any]) -> None:
     output_path = Path(path).expanduser()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("a", encoding="utf-8") as handle:
@@ -132,7 +165,7 @@ def read_active_decision_requests(
         return ()
     latest: dict[tuple[str, str], DecisionRequest] = {}
     request_keys: dict[str, tuple[str, str]] = {}
-    archived: set[str] = set()
+    closed: set[str] = set()
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except OSError:
@@ -146,14 +179,20 @@ def read_active_decision_requests(
             continue
         archived_id = _archive_request_id(raw)
         if archived_id is not None:
-            archived.add(archived_id)
+            closed.add(archived_id)
             if key := request_keys.get(archived_id):
+                latest.pop(key, None)
+            continue
+        answered_id = _answer_request_id(raw)
+        if answered_id is not None:
+            closed.add(answered_id)
+            if key := request_keys.get(answered_id):
                 latest.pop(key, None)
             continue
         request = _request_from_dict(raw)
         if request is None:
             continue
-        if request.request_id in archived:
+        if request.request_id in closed:
             continue
         key = (request.session_id, request.question)
         latest[key] = request
@@ -166,6 +205,44 @@ def read_active_decision_requests(
     return tuple(requests[:limit])
 
 
+def read_recent_decision_answers(
+    *,
+    codex_home: Path | str,
+    limit: int = 20,
+) -> tuple[dict[str, Any], ...]:
+    if limit <= 0:
+        raise ValueError("limit must be positive")
+    path = default_decision_requests_path(codex_home)
+    if not path.is_file():
+        return ()
+    answers: list[dict[str, Any]] = []
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return ()
+    for line in lines:
+        try:
+            raw = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        answer = _answer_from_dict(raw) if isinstance(raw, dict) else None
+        if answer is not None:
+            answers.append(answer)
+    answers.sort(key=lambda item: str(item.get("created_at") or ""), reverse=True)
+    return tuple(answers[:limit])
+
+
+def _active_request_by_id(
+    *,
+    codex_home: Path | str,
+    request_id: str,
+) -> DecisionRequest:
+    for request in read_active_decision_requests(codex_home=codex_home, limit=1000):
+        if request.request_id == request_id:
+            return request
+    raise ValueError(f"active decision request not found: {request_id}")
+
+
 def _archive_request_id(raw: dict[str, Any]) -> str | None:
     if raw.get("event") != "decision_archive":
         return None
@@ -173,6 +250,43 @@ def _archive_request_id(raw: dict[str, Any]) -> str | None:
     if not isinstance(request_id, str) or not request_id:
         return None
     return request_id
+
+
+def _answer_request_id(raw: dict[str, Any]) -> str | None:
+    if raw.get("event") != "decision_answer":
+        return None
+    request_id = raw.get("request_id")
+    if not isinstance(request_id, str) or not request_id:
+        return None
+    return request_id
+
+
+def _answer_from_dict(raw: dict[str, Any]) -> dict[str, Any] | None:
+    if raw.get("event") != "decision_answer":
+        return None
+    request_id = raw.get("request_id")
+    created_at = raw.get("created_at")
+    question = raw.get("question")
+    answer = raw.get("answer")
+    if not all(isinstance(value, str) and value for value in (
+        request_id,
+        created_at,
+        question,
+        answer,
+    )):
+        return None
+    payload: dict[str, Any] = {
+        "event": "decision_answer",
+        "request_id": request_id,
+        "created_at": created_at,
+        "session_id": _optional_string(raw.get("session_id")),
+        "target_name": _optional_string(raw.get("target_name")),
+        "question": question,
+        "answer": answer,
+    }
+    if goal_id := _optional_string(raw.get("goal_id")):
+        payload["goal_id"] = goal_id
+    return payload
 
 
 def _request_from_dict(raw: dict[str, Any]) -> DecisionRequest | None:

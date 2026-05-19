@@ -101,7 +101,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `~/.codex/supervisor/decision_requests.jsonl`，dashboard 和 web
     会读取成稳定拍板列表；拍板请求既可绑定 Codex session，
     也可绑定持久目标队列里的 `goal_id`；`decision list` 可查看活跃拍板项，
-    `decision archive --request-id <id>` 可把已处理项移出活跃列表；
+    `decision answer --request-id <id> --answer <答案>` 会记录用户答案、
+    移出活跃拍板项，并让后续 LLM planner 看到最近答案；
+    `decision archive --request-id <id>` 可把无需继续的项移出活跃列表；
     `--llm-execute` 可执行 LLM 选择的 send、resume、launch 或
     context 动作；当 LLM 选择 `request_context` 时，Supervisor 会在同轮
     检索后再让 LLM 选择一个后续动作；已完成会话不再作为
@@ -182,6 +184,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `request_context`、`launch_session`、`ask_user` 或 `monitor`；
     若上下文检查后确实满足拍板门槛，`ask_user` 可直接用 `goal_id`
     生成目标级 decision request，不必依赖可恢复 session；
+    用户通过 `decision answer` 拍板后，最近答案会进入
+    `recent_decision_answers` 并交给 LLM planner 继续推进；
     `goal list` 和 `daemon status` 会直接显示活跃目标的最近状态、
     摘要和下一步，不必手动读取 `goals.jsonl`；
     `daemon watcher start/status/stop` 可启动 watcher（周期看门进程），

@@ -31,6 +31,8 @@ from .context import (
 from .decision_requests import (
     archive_decision_request,
     read_active_decision_requests,
+    read_recent_decision_answers,
+    record_decision_answer,
     record_decision_request,
 )
 from .flow import (
@@ -757,6 +759,7 @@ def _build_parser() -> argparse.ArgumentParser:
     for decision_command, help_text in (
         ("list", "List active decision requests."),
         ("archive", "Archive one handled decision request."),
+        ("answer", "Record a user answer for one decision request."),
     ):
         command_parser = decision_subparsers.add_parser(
             decision_command,
@@ -772,6 +775,16 @@ def _build_parser() -> argparse.ArgumentParser:
         "--request-id",
         required=True,
         help="Decision request id to archive.",
+    )
+    decision_subparsers.choices["answer"].add_argument(
+        "--request-id",
+        required=True,
+        help="Decision request id to answer.",
+    )
+    decision_subparsers.choices["answer"].add_argument(
+        "--answer",
+        required=True,
+        help="User decision answer.",
     )
     goal_parser = subparsers.add_parser(
         "goal",
@@ -2251,6 +2264,7 @@ def _supervise_payload(
         payload["goal_updates"] = goal_updates
     if args.llm_action or args.llm_execute:
         payload["recent_context_results"] = _recent_context_results(args, action_report)
+        payload["recent_decision_answers"] = _decision_answer_dicts(args)
     if args.llm_summary:
         payload["llm_summary"] = _summarize_with_llm(report)
     if args.llm_action or args.llm_execute:
@@ -2848,6 +2862,18 @@ def _decision_payload(args: argparse.Namespace) -> dict[str, Any]:
             "archived": archived,
             "decision_requests": _decision_request_dicts(args),
         }
+    if args.decision_command == "answer":
+        answered = record_decision_answer(
+            codex_home=Path(args.codex_home),
+            request_id=args.request_id,
+            answer=args.answer,
+        )
+        return {
+            "status": "ok",
+            "answered": answered,
+            "decision_requests": _decision_request_dicts(args),
+            "recent_decision_answers": _decision_answer_dicts(args),
+        }
     raise ValueError(f"unsupported decision command: {args.decision_command}")
 
 
@@ -2855,6 +2881,9 @@ def _print_decision_plain(payload: dict[str, Any]) -> None:
     archived = payload.get("archived")
     if isinstance(archived, dict):
         print(f"已归档拍板请求：{archived['request_id']}")
+    answered = payload.get("answered")
+    if isinstance(answered, dict):
+        print(f"已记录拍板答案：{answered['request_id']}")
     requests = payload.get("decision_requests") or []
     print(f"等待拍板：{len(requests)}")
     for item in requests:
@@ -3020,6 +3049,7 @@ def _print_advice(args: argparse.Namespace) -> None:
     payload["active_goals"] = _active_goal_dicts(args, include_status=True)
     if args.llm_action or args.llm_execute:
         payload["recent_context_results"] = _recent_context_results(args, action_report)
+        payload["recent_decision_answers"] = _decision_answer_dicts(args)
         payload["llm_action"] = _decide_action_with_llm(action_report, payload)
         _promote_llm_command_suggestion(payload)
     if args.llm_execute:
@@ -4530,6 +4560,7 @@ def _decide_action_with_llm(report: Any, payload: dict[str, Any]) -> dict[str, A
             _UnavailableSummaryProvider(),
             payload.get("recent_context_results"),
             payload.get("active_goals"),
+            payload.get("recent_decision_answers"),
         )
     try:
         provider = resolve_summary_provider_from_env(agent_name="supervisor")
@@ -4539,6 +4570,7 @@ def _decide_action_with_llm(report: Any, payload: dict[str, Any]) -> dict[str, A
             provider,
             payload.get("recent_context_results"),
             payload.get("active_goals"),
+            payload.get("recent_decision_answers"),
         )
     except ValueError as exc:
         error = str(exc)
@@ -4565,6 +4597,13 @@ def _decision_request_dicts(args: argparse.Namespace) -> list[dict[str, Any]]:
     return [
         request.to_dict()
         for request in read_active_decision_requests(codex_home=Path(args.codex_home))
+    ]
+
+
+def _decision_answer_dicts(args: argparse.Namespace) -> list[dict[str, Any]]:
+    return [
+        dict(answer)
+        for answer in read_recent_decision_answers(codex_home=Path(args.codex_home))
     ]
 
 

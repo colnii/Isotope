@@ -155,8 +155,9 @@
 | `request_context` | LLM planner 可选动作，按 query 请求项目上下文检索，不固定注入文档全文 | 产品功能/模型/上下文能力 | `src/isotope/features/supervisor/context.py`, `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
 | `ask_user` | LLM planner 可选动作，只有 Codex 明确请求拍板、既有用户指示不足且上下文缺失/过时/冲突时才允许停等用户；可绑定 session 或 `goal_id`，执行后会写入拍板列表 | 产品功能/模型/拍板 gate | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `decision_gate` | 拍板门槛，要求 Codex 明确请求拍板、LLM 确实无法判断、上下文缺失/过时/冲突，三者同时满足才允许 `ask_user` | 产品功能/模型/拍板 gate | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
-| `decision request` | 拍板请求账本项，记录合法 `ask_user` 的问题、session 或 `goal_id`、原因和 gate 证据，供 dashboard 和 web 稳定展示；处理后用 `decision archive` 归档 | 产品功能/通知/拍板 | `src/isotope/features/supervisor/decision_requests.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
-| `decision archive` | 拍板归档事件，追加写入 JSONL，让已处理拍板项从活跃列表移走，不直接删除历史 | 产品功能/通知/拍板 | `src/isotope/features/supervisor/decision_requests.py`, `src/isotope/features/supervisor/runner.py` |
+| `decision request` | 拍板请求账本项，记录合法 `ask_user` 的问题、session 或 `goal_id`、原因和 gate 证据，供 dashboard 和 web 稳定展示；有答案用 `decision answer`，无需继续才归档 | 产品功能/通知/拍板 | `src/isotope/features/supervisor/decision_requests.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
+| `decision answer` | 用户拍板答案事件，追加写入 JSONL，把请求移出活跃列表，并作为 `recent_decision_answers` 交给 LLM planner 继续推进 | 产品功能/通知/拍板/模型输入 | `src/isotope/features/supervisor/decision_requests.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/llm_summary.py` |
+| `decision archive` | 拍板归档事件，追加写入 JSONL，让无需继续的拍板项从活跃列表移走，不直接删除历史 | 产品功能/通知/拍板 | `src/isotope/features/supervisor/decision_requests.py`, `src/isotope/features/supervisor/runner.py` |
 | `context` | Supervisor 命令，执行项目上下文检索并记录结果供后续 LLM planner 使用；当前 `rg` 优先、Python 兜底，不是 BM25 | 产品功能/上下文能力 | `src/isotope/features/supervisor/context.py`, `src/isotope/features/supervisor/runner.py` |
 | `OpenAI-compatible` | 兼容 OpenAI Chat Completions 形状的模型接口 | 模型/外部集成 | `src/isotope/features/supervisor/llm_summary.py` |
 | `LLM pool TOML` | 本机模型号池配置，声明 provider、base URL、model 和 key | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |

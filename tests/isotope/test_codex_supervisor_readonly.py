@@ -2604,6 +2604,214 @@ def test_codex_supervisor_runner_decision_archive_removes_active_request(
     assert dashboard_payload["decision_requests"] == []
 
 
+def test_codex_supervisor_runner_decision_answer_records_user_decision(
+    tmp_path,
+    capsys,
+):
+    codex_home = tmp_path / ".codex"
+    decision_path = codex_home / "supervisor" / "decision_requests.jsonl"
+    decision_path.parent.mkdir(parents=True)
+    decision_path.write_text(
+        json.dumps(
+            {
+                "event": "decision_request",
+                "request_id": "decision-001",
+                "created_at": "2026-05-20T12:00:00+00:00",
+                "session_id": "goal:goal-001",
+                "goal_id": "goal-001",
+                "target_name": "goal-supervisor",
+                "question": "保留兼容层还是直接迁移？",
+                "reason": "目标明确请求拍板。",
+                "context_status": "conflict",
+                "gate": {
+                    "codex_requested_decision": True,
+                    "instructions_exhausted": True,
+                    "context_status": "conflict",
+                },
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    exit_code = supervisor_main(
+        [
+            "decision",
+            "answer",
+            "--codex-home",
+            str(codex_home),
+            "--request-id",
+            "decision-001",
+            "--answer",
+            "保留兼容层，后续再清理旧入口。",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["answered"] == {
+        "event": "decision_answer",
+        "request_id": "decision-001",
+        "created_at": payload["answered"]["created_at"],
+        "session_id": "goal:goal-001",
+        "goal_id": "goal-001",
+        "target_name": "goal-supervisor",
+        "question": "保留兼容层还是直接迁移？",
+        "answer": "保留兼容层，后续再清理旧入口。",
+    }
+    assert payload["decision_requests"] == []
+
+    records = [
+        json.loads(line)
+        for line in decision_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert [record["event"] for record in records] == [
+        "decision_request",
+        "decision_answer",
+    ]
+
+    exit_code = supervisor_main(
+        ["decision", "list", "--codex-home", str(codex_home), "--json"]
+    )
+    assert exit_code == 0
+    assert json.loads(capsys.readouterr().out)["decision_requests"] == []
+
+
+def test_codex_supervisor_runner_loop_uses_decision_answer_to_continue_goal(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    exit_code = supervisor_main(
+        [
+            "goal",
+            "add",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(workspace),
+            "--goal",
+            "按用户拍板继续推进目录迁移。",
+            "--target-name",
+            "goal-supervisor",
+            "--json",
+        ]
+    )
+    assert exit_code == 0
+    goal = json.loads(capsys.readouterr().out)["goal"]
+    decision_path = codex_home / "supervisor" / "decision_requests.jsonl"
+    decision_path.parent.mkdir(parents=True, exist_ok=True)
+    decision_path.write_text(
+        json.dumps(
+            {
+                "event": "decision_request",
+                "request_id": "decision-001",
+                "created_at": "2026-05-20T12:00:00+00:00",
+                "session_id": f"goal:{goal['goal_id']}",
+                "goal_id": goal["goal_id"],
+                "target_name": "goal-supervisor",
+                "question": "保留兼容层还是直接迁移？",
+                "reason": "目标明确请求拍板。",
+                "context_status": "conflict",
+                "gate": {
+                    "codex_requested_decision": True,
+                    "instructions_exhausted": True,
+                    "context_status": "conflict",
+                },
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    exit_code = supervisor_main(
+        [
+            "decision",
+            "answer",
+            "--codex-home",
+            str(codex_home),
+            "--request-id",
+            "decision-001",
+            "--answer",
+            "保留兼容层，先保证旧入口可用。",
+            "--json",
+        ]
+    )
+    assert exit_code == 0
+    capsys.readouterr()
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert '"recent_decision_answers"' in content
+            assert "保留兼容层，先保证旧入口可用。" in content
+            assert goal["goal_id"] in content
+            return json.dumps(
+                {
+                    "kind": "launch_session",
+                    "target_name": "goal-supervisor",
+                    "cwd": str(workspace),
+                    "prompt": "用户已拍板保留兼容层，请按该方向继续推进目录迁移。",
+                    "reason": "已有用户拍板答案，可以继续启动 worker。",
+                },
+                ensure_ascii=False,
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 45683
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured["command"] = command
+        captured["cwd"] = cwd
+        return FakeProcess()
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["decision_requests"] == []
+    assert payload["recent_decision_answers"][0]["answer"] == "保留兼容层，先保证旧入口可用。"
+    assert payload["llm_action"]["kind"] == "launch_session"
+    assert payload["executed"]["kind"] == "launch_session"
+    assert captured["command"][9].startswith("WORK ORDER")
+    assert "用户已拍板保留兼容层" in captured["command"][9]
+
+
 def test_codex_supervisor_runner_goal_add_list_and_archive(
     tmp_path,
     capsys,

@@ -1049,6 +1049,19 @@
 
 上一批已完成：
 
+## Codex Supervisor 拍板答案恢复推进
+
+完成内容：
+
+- 新增 `decision answer --request-id <id> --answer <答案>`。
+- 用户答案会写入 `decision_requests.jsonl` 的 `decision_answer` 事件。
+- 已回答请求会从活跃拍板列表移走，不需要手动 archive。
+- `loop/advise/web llm-action` 会把最近答案放进 `recent_decision_answers`。
+- LLM planner 可按用户答案继续 `launch_session`、`resume_session` 或观察。
+- 新增回归测试，覆盖记录答案和答案驱动目标继续推进。
+
+上一批已完成：
+
 ## Codex Supervisor 目标级拍板请求
 
 完成内容：

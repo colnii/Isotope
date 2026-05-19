@@ -183,8 +183,10 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `--llm-execute` 执行合法 `ask_user` 时会写入
   `supervisor/decision_requests.jsonl`；dashboard 和 web 会读取成
   稳定拍板列表。
-- `decision list` 可查看活跃拍板项；`decision archive --request-id <id>`
-  会写入归档事件，让已处理拍板项从活跃列表移走。
+- `decision list` 可查看活跃拍板项；`decision answer --request-id <id>
+  --answer <答案>` 会写入用户答案并移出活跃拍板项，后续 LLM planner
+  会收到 `recent_decision_answers`；`decision archive --request-id <id>`
+  只用于无需继续的项。
 - `discover` 可只读扫描现有 tmux 会话，筛出疑似 Codex 窗口，
   并生成可复制的 `adopt` 和 `attach` 命令。
 - `discover --adopt-first` 和 `discover --adopt-index <编号>` 可直接接管候选，
@@ -300,7 +302,8 @@ B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
   三项 gate 时应继续查上下文、恢复会话、启动会话或推进托管窗口。
 - 不要把 `ask_user` 藏在原始 JSON 里；CLI 和 web 必须显式展示问题。
 - 不要只依赖一次性终端输出保存拍板请求；需要写入 decision request 账本。
-- 拍板已处理后，不要手删 JSONL；使用 `decision archive` 追加归档事件。
+- 拍板已处理后，不要手删 JSONL；有答案用 `decision answer`，
+  无需继续才用 `decision archive`。
 - 不要只展示状态标签而不展示判断依据。
 - 不要另写一套 dashboard 数据接口，先复用 `/dashboard.json`。
 - 不要把 `/events` 做成控制通道；它只负责提醒前端刷新。

@@ -209,6 +209,7 @@ def build_llm_action_messages(
     command_suggestions: list[dict[str, str]],
     recent_context_results: list[dict[str, Any]] | None = None,
     active_goals: list[dict[str, Any]] | None = None,
+    recent_decision_answers: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, str]]:
     """Build the prompt for guarded LLM planning."""
     candidate_targets = [
@@ -266,6 +267,7 @@ def build_llm_action_messages(
                     "completed_session_ids": completed_session_ids,
                     "command_suggestions": command_suggestions,
                     "recent_context_results": recent_context_results or [],
+                    "recent_decision_answers": recent_decision_answers or [],
                     "context_request_history": context_request_history,
                     "action_rules": [
                         (
@@ -297,6 +299,10 @@ def build_llm_action_messages(
                         (
                             "blocked/needs_user 目标只有满足 decision_gate 时才允许 ask_user；"
                             "否则继续查上下文或启动新 worker 推进。"
+                        ),
+                        (
+                            "recent_decision_answers 是用户已经拍板的答案；"
+                            "相关 goal 或 session 后续应按答案继续推进，不要再次 ask_user。"
                         ),
                         (
                             "candidate_targets.resume_context_hint 为 large_session_file 时，"
@@ -366,6 +372,7 @@ def generate_llm_action_decision(
     provider: SummaryProvider,
     recent_context_results: list[dict[str, Any]] | None = None,
     active_goals: list[dict[str, Any]] | None = None,
+    recent_decision_answers: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     if not _has_any_llm_target(report, command_suggestions):
         return {
@@ -380,6 +387,7 @@ def generate_llm_action_decision(
             command_suggestions,
             recent_context_results,
             active_goals,
+            recent_decision_answers,
         )
     )
     payload = _extract_json_object(raw)

@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 from .bell_events import default_bell_events_path, read_latest_bell_events
 from .context import read_recent_context_results
-from .decision_requests import read_active_decision_requests
+from .decision_requests import read_active_decision_requests, read_recent_decision_answers
 from .flow import CodexSupervisorFlow, _tmux_capture_pane
 from .lane_state import record_lane_prompt
 from .llm_summary import (
@@ -90,6 +90,8 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
             payload["command_suggestions"],
             provider,
             recent_context_results,
+            None,
+            _decision_answer_dicts(self.codex_home),
         )
         return payload
 
@@ -149,6 +151,13 @@ def _decision_request_dicts(codex_home: Path) -> list[dict[str, Any]]:
     return [
         request.to_dict()
         for request in read_active_decision_requests(codex_home=codex_home)
+    ]
+
+
+def _decision_answer_dicts(codex_home: Path) -> list[dict[str, Any]]:
+    return [
+        dict(answer)
+        for answer in read_recent_decision_answers(codex_home=codex_home)
     ]
 
 
