@@ -444,6 +444,9 @@
     活跃目标写入 `supervisor/goals.jsonl`；`loop` 没有显式 `--goal`
     时会读取最早活跃目标，把它交给 LLM planner 作为 `request_context`
     和 `launch_session` 候选，daemon 不需要把目标写死在启动命令里。
+181. Codex Supervisor 目标生命周期回写：`loop` 会把同名 worker 的
+    `SUPERVISOR_STATUS` 写回 `goals.jsonl`；`done` 会自动归档目标，
+    `blocked/needs_user` 只记录状态并保留活跃目标等待后续处理。
 
 ## 最近完成：Codex Supervisor process-first loop 验收
 

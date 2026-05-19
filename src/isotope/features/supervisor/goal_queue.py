@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+GOAL_STATUS_VALUES = {"done", "blocked", "needs_user"}
+
 
 @dataclass(frozen=True)
 class SupervisorGoal:
@@ -62,6 +64,11 @@ def archive_supervisor_goal(
     *,
     codex_home: Path | str,
     goal_id: str,
+    status: str | None = None,
+    target_name: str | None = None,
+    session_id: str | None = None,
+    summary: str | None = None,
+    next_step: str | None = None,
     now: Callable[[], datetime] | None = None,
 ) -> dict[str, Any]:
     goal_id_text = _required_string(goal_id, "goal_id")
@@ -76,7 +83,58 @@ def archive_supervisor_goal(
         "goal_id": goal_id_text,
         "created_at": _ensure_aware_utc((now or _utc_now)()).isoformat(),
     }
+    _add_optional_event_fields(
+        event,
+        status=status,
+        target_name=target_name,
+        session_id=session_id,
+        summary=summary,
+        next_step=next_step,
+    )
     append_goal_event(default_goals_path(codex_home), event)
+    return event
+
+
+def record_supervisor_goal_status(
+    *,
+    codex_home: Path | str,
+    goal_id: str,
+    status: str,
+    target_name: str | None = None,
+    session_id: str | None = None,
+    summary: str | None = None,
+    next_step: str | None = None,
+    now: Callable[[], datetime] | None = None,
+) -> dict[str, Any] | None:
+    goal_id_text = _required_string(goal_id, "goal_id")
+    status_text = _required_string(status, "status").lower()
+    if status_text not in GOAL_STATUS_VALUES:
+        supported = ", ".join(sorted(GOAL_STATUS_VALUES))
+        raise ValueError(f"status must be one of: {supported}")
+    active = {
+        goal.goal_id
+        for goal in read_active_supervisor_goals(codex_home=codex_home, limit=1000)
+    }
+    if goal_id_text not in active:
+        raise ValueError(f"active supervisor goal not found: {goal_id_text}")
+    event = {
+        "event": "supervisor_goal_status",
+        "goal_id": goal_id_text,
+        "status": status_text,
+        "created_at": _ensure_aware_utc((now or _utc_now)()).isoformat(),
+    }
+    _add_optional_event_fields(
+        event,
+        target_name=target_name,
+        session_id=session_id,
+        summary=summary,
+        next_step=next_step,
+    )
+    path = default_goals_path(codex_home)
+    latest = _latest_goal_status_event(path, goal_id_text)
+    if latest is not None and _status_event_matches(latest, event):
+        return None
+    append_goal_event(path, event)
     return event
 
 
@@ -124,6 +182,39 @@ def append_goal_event(path: Path | str, event: dict[str, Any]) -> None:
         handle.write("\n")
 
 
+def _latest_goal_status_event(path: Path | str, goal_id: str) -> dict[str, Any] | None:
+    latest: dict[str, Any] | None = None
+    for raw in _read_goal_event_dicts(Path(path).expanduser()):
+        if raw.get("event") != "supervisor_goal_status":
+            continue
+        if raw.get("goal_id") == goal_id:
+            latest = raw
+    return latest
+
+
+def _status_event_matches(left: dict[str, Any], right: dict[str, Any]) -> bool:
+    keys = ("goal_id", "status", "target_name", "session_id", "summary", "next")
+    return all(left.get(key) == right.get(key) for key in keys)
+
+
+def _read_goal_event_dicts(path: Path) -> tuple[dict[str, Any], ...]:
+    if not path.is_file():
+        return ()
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return ()
+    events: list[dict[str, Any]] = []
+    for line in lines:
+        try:
+            raw = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(raw, dict):
+            events.append(raw)
+    return tuple(events)
+
+
 def _archive_goal_id(raw: dict[str, Any]) -> str | None:
     if raw.get("event") != "supervisor_goal_archive":
         return None
@@ -153,6 +244,27 @@ def _goal_from_dict(raw: dict[str, Any]) -> SupervisorGoal | None:
         goal=goal,
         target_name=target_name,
     )
+
+
+def _add_optional_event_fields(
+    event: dict[str, Any],
+    *,
+    status: str | None = None,
+    target_name: str | None = None,
+    session_id: str | None = None,
+    summary: str | None = None,
+    next_step: str | None = None,
+) -> None:
+    for key, value in (
+        ("status", status),
+        ("target_name", target_name),
+        ("session_id", session_id),
+        ("summary", summary),
+        ("next", next_step),
+    ):
+        text = _optional_string(value)
+        if text is not None:
+            event[key] = text
 
 
 def _required_string(value: object, field: str) -> str:

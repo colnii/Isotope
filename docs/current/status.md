@@ -173,7 +173,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `goal add/list/archive` 可维护持久目标队列，目标写入
     `~/.codex/supervisor/goals.jsonl`；日常 `loop` 没有显式
     `--goal` 时会读取最早活跃目标，daemon 因此可动态消费新目标，
-    不需要在启动命令里写死单个目标；
+    不需要在启动命令里写死单个目标；匹配同名 worker 汇报
+    `SUPERVISOR_STATUS: done` 时，`loop` 会记录目标状态并自动归档；
+    汇报 `blocked/needs_user` 时会记录状态但保留活跃目标；
     `daemon watcher start/status/stop` 可启动 watcher（周期看门进程），
     定期触发 `watchdog`，状态写入 `~/.codex/supervisor/watcher.json`；
     `advise/supervise --name <lane>` 可把建议、显式执行和自动执行

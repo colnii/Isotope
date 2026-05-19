@@ -126,6 +126,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `goal add/list/archive` 是持久目标队列入口；活跃目标写入
   `supervisor/goals.jsonl`，日常 `loop` 没有显式 `--goal` 时会读取
   最早活跃目标，并保持 daemon 启动命令不绑定某一个队列目标。
+- `loop` 会把同名 worker 的 `SUPERVISOR_STATUS` 写回目标队列；
+  `done` 自动归档，`blocked/needs_user` 只记录状态并等待后续处理。
 - `daemon start/status/stop` 可把 `loop` 放到后台常驻，记录
   pid（进程号）、命令、状态文件和日志路径。
 - `daemon start` 的后台 loop 使用 Python `-u` 非缓冲输出，避免
@@ -143,7 +145,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `supervise --bell` 可配合 `--auto-execute` 使用，只在本轮仍需要人看时响；
   已自动处理的 `send_status/send_continue` 不触发提醒。
 - 本机托管登记表 `managed_sessions.jsonl`。
-- 本机目标队列事件文件 `goals.jsonl`。
+- 本机目标队列事件文件 `goals.jsonl`，保存目标添加、状态和归档事件。
 - 本机后台守护状态文件 `daemon.json`，日志默认写到
   `supervisor/logs/daemon.log`。
 - 本机周期 watcher 状态文件 `watcher.json`，日志默认写到

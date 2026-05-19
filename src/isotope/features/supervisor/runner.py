@@ -47,6 +47,7 @@ from .goal_queue import (
     archive_supervisor_goal,
     read_active_supervisor_goals,
     record_supervisor_goal,
+    record_supervisor_goal_status,
 )
 from .lane_state import (
     DEFAULT_MAX_CONTINUE_COUNT,
@@ -1586,6 +1587,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
     while iterations is None or count < iterations:
         auto_adopted = _auto_adopt_discovered_tmux_sessions(args)
         report = _scan_report(args)
+        goal_updates = _sync_goal_lifecycle(args, report)
         fingerprint = _report_fingerprint(report)
         report_changed = previous_fingerprint != fingerprint
         precomputed_auto_action: dict[str, Any] | None = None
@@ -1599,6 +1601,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
                     report,
                     iteration=count + 1,
                     auto_adopted=auto_adopted,
+                    goal_updates=goal_updates,
                 )
                 force_print = _executed_action_forces_print(
                     precomputed_payload.get("executed", {})
@@ -1622,6 +1625,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
             or report_changed
             or force_print
             or bool(auto_adopted)
+            or bool(goal_updates)
         )
         if should_print:
             payload = precomputed_payload or _supervise_payload(
@@ -1631,6 +1635,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
                 auto_adopted=auto_adopted,
                 precomputed_auto_action=precomputed_auto_action,
                 precomputed_executed=precomputed_executed,
+                goal_updates=goal_updates,
             )
             bell_fingerprint = _supervise_bell_fingerprint(report, payload)
             if (
@@ -1717,6 +1722,99 @@ def _scan_report(args: argparse.Namespace) -> Any:
         stale_after_seconds=args.stale_after,
         active_within_seconds=args.active_within,
     )
+
+
+def _sync_goal_lifecycle(
+    args: argparse.Namespace,
+    report: Any,
+) -> list[dict[str, Any]]:
+    active_goals = {
+        goal.target_name: goal
+        for goal in read_active_supervisor_goals(
+            codex_home=Path(args.codex_home),
+            limit=1000,
+        )
+    }
+    if not active_goals:
+        return []
+    updates: list[dict[str, Any]] = []
+    for session in report.sessions:
+        target_name = getattr(session, "managed_name", None)
+        if not isinstance(target_name, str) or not target_name:
+            continue
+        status = _goal_status_from_session(session)
+        if status is None:
+            continue
+        goal = active_goals.pop(target_name, None)
+        if goal is None:
+            continue
+        update = _record_goal_status_from_session(
+            args,
+            goal_id=goal.goal_id,
+            target_name=target_name,
+            session=session,
+            status=status,
+        )
+        updates.append(update)
+    return updates
+
+
+def _goal_status_from_session(session: Any) -> str | None:
+    status = getattr(session, "supervisor_status", None)
+    if not isinstance(status, str):
+        return None
+    normalized = status.lower()
+    if normalized not in {"done", "blocked", "needs_user"}:
+        return None
+    return normalized
+
+
+def _record_goal_status_from_session(
+    args: argparse.Namespace,
+    *,
+    goal_id: str,
+    target_name: str,
+    session: Any,
+    status: str,
+) -> dict[str, Any]:
+    summary = getattr(session, "supervisor_summary", None)
+    next_step = getattr(session, "supervisor_next", None)
+    session_id = getattr(session, "session_id", None)
+    event = record_supervisor_goal_status(
+        codex_home=Path(args.codex_home),
+        goal_id=goal_id,
+        status=status,
+        target_name=target_name,
+        session_id=session_id if isinstance(session_id, str) else None,
+        summary=summary if isinstance(summary, str) else None,
+        next_step=next_step if isinstance(next_step, str) else None,
+    )
+    update: dict[str, Any] = {
+        "goal_id": goal_id,
+        "target_name": target_name,
+        "session_id": session_id,
+        "status": status,
+    }
+    if isinstance(summary, str) and summary:
+        update["summary"] = summary
+    if isinstance(next_step, str) and next_step:
+        update["next"] = next_step
+    if event is None:
+        update["skipped"] = True
+        update["reason"] = "duplicate goal status"
+    else:
+        update["event"] = event
+    if status == "done":
+        update["archived"] = archive_supervisor_goal(
+            codex_home=Path(args.codex_home),
+            goal_id=goal_id,
+            status=status,
+            target_name=target_name,
+            session_id=session_id if isinstance(session_id, str) else None,
+            summary=summary if isinstance(summary, str) else None,
+            next_step=next_step if isinstance(next_step, str) else None,
+        )
+    return update
 
 
 def _unknown_tmux_bell_hook(_session: str) -> None:
@@ -2111,6 +2209,7 @@ def _supervise_payload(
     *,
     iteration: int,
     auto_adopted: list[dict[str, str]] | None = None,
+    goal_updates: list[dict[str, Any]] | None = None,
     precomputed_auto_action: dict[str, Any] | None = None,
     precomputed_executed: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -2129,6 +2228,8 @@ def _supervise_payload(
     payload["automation"] = _automation_status(report)
     payload["auto_adopted"] = auto_adopted or []
     payload["active_goals"] = _active_goal_dicts(args)
+    if goal_updates:
+        payload["goal_updates"] = goal_updates
     if args.llm_action or args.llm_execute:
         payload["recent_context_results"] = _recent_context_results(args, action_report)
     if args.llm_summary:
@@ -2840,6 +2941,14 @@ def _print_supervise_plain(payload: dict[str, Any], report: Any) -> None:
             print(
                 f"自动接管：{item['name']} tmux={item['tmux_session']} cwd={item['cwd']}"
             )
+    if goal_updates := payload.get("goal_updates"):
+        print()
+        print("[目标队列更新]")
+        for item in goal_updates:
+            archived = "，已归档" if item.get("archived") else ""
+            print(f"{item['target_name']} / {item['status']}{archived}")
+            if item.get("summary"):
+                print(f"摘要：{item['summary']}")
     if not automation["ready"]:
         print(f"启动：{automation['launch_hint']}")
         print(f"接管：{automation['adopt_hint']}")
