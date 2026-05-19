@@ -402,6 +402,13 @@
     约 47K tokens；现已在 `scan` 和 LLM planner 输入里加入
     `source_size_bytes` 与 `resume_context_hint`，提示模型不要无意识恢复
     大历史。
+171. Codex Supervisor worker 成本参数：真实 `launch` 小流量验收确认
+    process backend 可托管真实 `codex exec` 并解析 `done`，但短任务仍因
+    继承本机 `gpt-5.5 xhigh` 消耗约 31K tokens；现已给
+    `launch/resume` 增加 `--codex-model/--codex-config`，并给
+    `supervise/loop/daemon start` 增加
+    `--worker-codex-model/--worker-codex-config`，让 LLM 自动 worker
+    也能显式传模型和推理强度配置。
 
 ## 最近完成：Codex Supervisor process-first loop 验收
 

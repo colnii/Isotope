@@ -117,6 +117,8 @@ def launch_managed_codex(
     name: str,
     prompt: str,
     codex_bin: str = "codex",
+    codex_model: str | None = None,
+    codex_config: tuple[str, ...] = (),
     backend: str = "process",
     tmux_session: str | None = None,
     now: Callable[[], datetime] | None = None,
@@ -135,6 +137,10 @@ def launch_managed_codex(
         raise ValueError("prompt must not be empty")
     if not codex_bin_text:
         raise ValueError("codex_bin must not be empty")
+    codex_options = _codex_option_args(
+        codex_model=codex_model,
+        codex_config=codex_config,
+    )
     backend_text = backend.strip()
     if backend_text not in {"process", "tmux"}:
         raise ValueError("backend must be process or tmux")
@@ -147,6 +153,7 @@ def launch_managed_codex(
     supervisor_prompt = _with_supervisor_protocol(prompt_text)
     interactive_codex_command = (
         codex_bin_text,
+        *codex_options,
         "--cd",
         str(workspace),
         "--no-alt-screen",
@@ -155,6 +162,7 @@ def launch_managed_codex(
     process_codex_command = (
         codex_bin_text,
         "exec",
+        *codex_options,
         "-C",
         str(workspace),
         "--skip-git-repo-check",
@@ -229,6 +237,8 @@ def resume_managed_codex(
     session_id: str | None = None,
     last: bool = False,
     codex_bin: str = "codex",
+    codex_model: str | None = None,
+    codex_config: tuple[str, ...] = (),
     now: Callable[[], datetime] | None = None,
     popen: Callable[..., Any] = subprocess.Popen,
 ) -> ManagedCodexRecord:
@@ -245,6 +255,10 @@ def resume_managed_codex(
         raise ValueError("prompt must not be empty")
     if not codex_bin_text:
         raise ValueError("codex_bin must not be empty")
+    codex_options = _codex_option_args(
+        codex_model=codex_model,
+        codex_config=codex_config,
+    )
     if last and session_text:
         raise ValueError("use either session_id or last, not both")
     if not last and not session_text:
@@ -258,6 +272,7 @@ def resume_managed_codex(
     command_parts = [
         codex_bin_text,
         "exec",
+        *codex_options,
         "-C",
         str(workspace),
         "--skip-git-repo-check",
@@ -294,6 +309,25 @@ def resume_managed_codex(
     )
     append_managed_record(default_registry_path(codex_home), record)
     return record
+
+
+def _codex_option_args(
+    *,
+    codex_model: str | None,
+    codex_config: tuple[str, ...],
+) -> tuple[str, ...]:
+    args: list[str] = []
+    if codex_model is not None:
+        model = codex_model.strip()
+        if not model:
+            raise ValueError("codex_model must not be empty")
+        args.extend(["-m", model])
+    for item in codex_config:
+        config = item.strip()
+        if not config:
+            raise ValueError("codex_config entries must not be empty")
+        args.extend(["-c", config])
+    return tuple(args)
 
 
 def adopt_tmux_session(

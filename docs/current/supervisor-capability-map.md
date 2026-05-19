@@ -90,6 +90,10 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   误报“只有 tmux 才可控”。
 - `launch_session` 会写入 lane state 并遵守 `--prompt-cooldown`，
   避免长跑时对同一个 `target_name` 反复启动后台 Codex。
+- `launch/resume` 可用 `--codex-model`、`--codex-config` 覆盖
+  Codex worker 配置；`supervise/loop/daemon start` 可用
+  `--worker-codex-model`、`--worker-codex-config` 把同类配置传给
+  LLM 自动启动或恢复的后台 worker。
 - Supervisor LLM 默认输出上限是 2048 tokens，给动作 JSON 留足空间；
   单个 TOML provider 仍可用 `max_tokens` 覆盖。
 - LLM planner 会看到可恢复会话、已完成会话和最近 context 查询历史，

@@ -4779,6 +4779,10 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_launch_session(
             "--interval",
             "1",
             "--llm-execute",
+            "--worker-codex-model",
+            "gpt-5.4-mini",
+            "--worker-codex-config",
+            'model_reasoning_effort="low"',
             "--json",
         ]
     )
@@ -4795,18 +4799,22 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_launch_session(
     assert "budget_hint: prompt-only" in payload["executed"]["text"]
     assert "这不是 Supervisor 强制预算控制" in payload["executed"]["text"]
     assert "SUPERVISOR_STATUS" in payload["executed"]["text"]
-    assert captured["command"][:5] == [
+    assert captured["command"][:9] == [
         "codex",
         "exec",
+        "-m",
+        "gpt-5.4-mini",
+        "-c",
+        'model_reasoning_effort="low"',
         "-C",
         str(workspace),
         "--skip-git-repo-check",
     ]
-    assert "WORK ORDER" in captured["command"][5]
-    assert f"goal: {launch_prompt}" in captured["command"][5]
-    assert "budget_hint: prompt-only" in captured["command"][5]
-    assert "这不是 Supervisor 强制预算控制" in captured["command"][5]
-    assert "SUPERVISOR_STATUS" in captured["command"][5]
+    assert "WORK ORDER" in captured["command"][9]
+    assert f"goal: {launch_prompt}" in captured["command"][9]
+    assert "budget_hint: prompt-only" in captured["command"][9]
+    assert "这不是 Supervisor 强制预算控制" in captured["command"][9]
+    assert "SUPERVISOR_STATUS" in captured["command"][9]
     assert captured["cwd"] == str(workspace)
     assert captured["stdin"] is subprocess.DEVNULL
     assert captured["stderr"] is subprocess.STDOUT
@@ -8075,6 +8083,10 @@ def test_codex_supervisor_runner_daemon_start_spawns_background_loop(
             "7",
             "--limit",
             "3",
+            "--worker-codex-model",
+            "gpt-5.4-mini",
+            "--worker-codex-config",
+            'model_reasoning_effort="low"',
             "--json",
         ]
     )
@@ -8097,6 +8109,10 @@ def test_codex_supervisor_runner_daemon_start_spawns_background_loop(
         "7",
         "--limit",
         "3",
+        "--worker-codex-model",
+        "gpt-5.4-mini",
+        "--worker-codex-config",
+        'model_reasoning_effort="low"',
     ]
     assert captured["command"] == payload["daemon"]["command"]
     assert captured["stdin"] is subprocess.DEVNULL
@@ -9144,6 +9160,67 @@ def test_codex_supervisor_runner_launch_records_managed_codex(
     assert records == [payload["managed"]]
 
 
+def test_codex_supervisor_runner_launch_can_override_codex_worker_options(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 12346
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured["command"] = command
+        return FakeProcess()
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+
+    exit_code = supervisor_main(
+        [
+            "launch",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(workspace),
+            "--name",
+            "lane-a",
+            "--prompt",
+            "低成本检查",
+            "--codex-model",
+            "gpt-5.4-mini",
+            "--codex-config",
+            'model_reasoning_effort="low"',
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    json.loads(capsys.readouterr().out)
+    assert captured["command"][:9] == [
+        "codex",
+        "exec",
+        "-m",
+        "gpt-5.4-mini",
+        "-c",
+        'model_reasoning_effort="low"',
+        "-C",
+        str(workspace),
+        "--skip-git-repo-check",
+    ]
+
+
 def test_codex_supervisor_runner_launch_can_use_tmux_backend(
     tmp_path,
     capsys,
@@ -9292,6 +9369,70 @@ def test_codex_supervisor_runner_resume_exec_records_managed_codex(
         for line in registry_path.read_text(encoding="utf-8").splitlines()
     ]
     assert records == [payload["managed"]]
+
+
+def test_codex_supervisor_runner_resume_can_override_codex_worker_options(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 23458
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured["command"] = command
+        return FakeProcess()
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+
+    exit_code = supervisor_main(
+        [
+            "resume",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(workspace),
+            "--name",
+            "lane-a",
+            "--session-id",
+            "019e35a2-e442-75e2-84ab-3761a685a736",
+            "--prompt",
+            "低成本恢复",
+            "--codex-model",
+            "gpt-5.4-mini",
+            "--codex-config",
+            'model_reasoning_effort="low"',
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    json.loads(capsys.readouterr().out)
+    assert captured["command"][:10] == [
+        "codex",
+        "exec",
+        "-m",
+        "gpt-5.4-mini",
+        "-c",
+        'model_reasoning_effort="low"',
+        "-C",
+        str(workspace),
+        "--skip-git-repo-check",
+        "resume",
+    ]
 
 
 def test_codex_supervisor_runner_resume_exec_last_uses_last_flag(

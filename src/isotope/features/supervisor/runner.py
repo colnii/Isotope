@@ -209,6 +209,16 @@ def _build_parser() -> argparse.ArgumentParser:
             default=DEFAULT_MAX_CONTEXT_REQUESTS,
             help="Maximum request_context executions per supervise iteration. Default 0 disables.",
         )
+        subparsers.choices[command].add_argument(
+            "--worker-codex-model",
+            help="Pass -m/--model to Codex workers launched by LLM execution.",
+        )
+        subparsers.choices[command].add_argument(
+            "--worker-codex-config",
+            action="append",
+            default=[],
+            help="Pass one -c key=value override to Codex workers. Repeatable.",
+        )
     for command in ("watch", "supervise"):
         command_parser = subparsers.choices[command]
         command_parser.add_argument(
@@ -307,6 +317,16 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Maximum request_context executions per loop iteration. Default 0 disables.",
     )
     loop_parser.add_argument(
+        "--worker-codex-model",
+        help="Pass -m/--model to Codex workers launched by the loop.",
+    )
+    loop_parser.add_argument(
+        "--worker-codex-config",
+        action="append",
+        default=[],
+        help="Pass one -c key=value override to Codex workers. Repeatable.",
+    )
+    loop_parser.add_argument(
         "--interval",
         type=int,
         default=30,
@@ -395,6 +415,16 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=DEFAULT_MAX_CONTEXT_REQUESTS,
         help="Maximum request_context executions per loop iteration. Default 0 disables.",
+    )
+    daemon_start_parser.add_argument(
+        "--worker-codex-model",
+        help="Pass -m/--model to Codex workers launched by the daemon loop.",
+    )
+    daemon_start_parser.add_argument(
+        "--worker-codex-config",
+        action="append",
+        default=[],
+        help="Pass one -c key=value override to Codex workers. Repeatable.",
     )
     daemon_start_parser.add_argument(
         "--name",
@@ -541,6 +571,16 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Codex executable name or path.",
     )
     launch_parser.add_argument(
+        "--codex-model",
+        help="Pass -m/--model to the launched Codex worker.",
+    )
+    launch_parser.add_argument(
+        "--codex-config",
+        action="append",
+        default=[],
+        help="Pass one -c key=value override to the launched Codex worker. Repeatable.",
+    )
+    launch_parser.add_argument(
         "--backend",
         choices=("process", "tmux"),
         default="process",
@@ -623,6 +663,16 @@ def _build_parser() -> argparse.ArgumentParser:
         "--codex-bin",
         default="codex",
         help="Codex executable name or path.",
+    )
+    resume_parser.add_argument(
+        "--codex-model",
+        help="Pass -m/--model to the resumed Codex worker.",
+    )
+    resume_parser.add_argument(
+        "--codex-config",
+        action="append",
+        default=[],
+        help="Pass one -c key=value override to the resumed Codex worker. Repeatable.",
     )
     resume_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     adopt_parser = subparsers.add_parser(
@@ -812,6 +862,8 @@ def main(argv: list[str] | None = None) -> int:
                 name=args.name,
                 prompt=args.prompt,
                 codex_bin=args.codex_bin,
+                codex_model=args.codex_model,
+                codex_config=tuple(args.codex_config),
                 backend=args.backend,
                 tmux_session=args.tmux_session,
                 popen=subprocess.Popen,
@@ -854,6 +906,8 @@ def main(argv: list[str] | None = None) -> int:
                 session_id=args.session_id,
                 last=args.last,
                 codex_bin=args.codex_bin,
+                codex_model=args.codex_model,
+                codex_config=tuple(args.codex_config),
                 popen=subprocess.Popen,
             )
             if args.json:
@@ -995,6 +1049,8 @@ def _daemon_payload(args: argparse.Namespace) -> dict[str, Any]:
             name=args.name,
             llm_summary=args.llm_summary,
             auto_adopt=args.auto_adopt,
+            worker_codex_model=args.worker_codex_model,
+            worker_codex_config=tuple(args.worker_codex_config),
         )
     elif args.daemon_command == "status":
         daemon = supervisor_daemon_status(codex_home=Path(args.codex_home))
@@ -2851,6 +2907,18 @@ def _execute_llm_action(
     )
 
 
+def _worker_codex_model(args: argparse.Namespace) -> str | None:
+    value = getattr(args, "worker_codex_model", None)
+    return value if isinstance(value, str) else None
+
+
+def _worker_codex_config(args: argparse.Namespace) -> tuple[str, ...]:
+    value = getattr(args, "worker_codex_config", None)
+    if not isinstance(value, list):
+        return ()
+    return tuple(item for item in value if isinstance(item, str))
+
+
 def _execute_resume_action(
     args: argparse.Namespace,
     report: Any,
@@ -2905,6 +2973,8 @@ def _execute_resume_action(
         name=target_name,
         prompt=prompt_text,
         session_id=session_id,
+        codex_model=_worker_codex_model(args),
+        codex_config=_worker_codex_config(args),
         popen=subprocess.Popen,
     )
     record_lane_prompt(
@@ -2974,6 +3044,8 @@ def _execute_launch_action(
         cwd=Path(cwd),
         name=target_name,
         prompt=work_order_prompt,
+        codex_model=_worker_codex_model(args),
+        codex_config=_worker_codex_config(args),
         popen=subprocess.Popen,
         run=subprocess.run,
     )

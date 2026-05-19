@@ -84,6 +84,8 @@ def start_supervisor_daemon(
     name: str | None = None,
     llm_summary: bool = False,
     auto_adopt: bool = True,
+    worker_codex_model: str | None = None,
+    worker_codex_config: tuple[str, ...] = (),
 ) -> dict[str, Any]:
     home = Path(codex_home).expanduser()
     existing = read_supervisor_daemon_state(home)
@@ -108,6 +110,8 @@ def start_supervisor_daemon(
         name=name,
         llm_summary=llm_summary,
         auto_adopt=auto_adopt,
+        worker_codex_model=worker_codex_model,
+        worker_codex_config=worker_codex_config,
     )
     pid = _spawn_daemon_process(command, log_path)
     state = SupervisorDaemonState(
@@ -320,6 +324,8 @@ def _build_loop_command(
     name: str | None,
     llm_summary: bool,
     auto_adopt: bool,
+    worker_codex_model: str | None,
+    worker_codex_config: tuple[str, ...],
 ) -> tuple[str, ...]:
     command = [
         sys.executable,
@@ -345,6 +351,10 @@ def _build_loop_command(
         command.extend(["--max-context-requests", str(max_context_requests)])
     if name:
         command.extend(["--name", name])
+    if worker_codex_model:
+        command.extend(["--worker-codex-model", worker_codex_model])
+    for item in worker_codex_config:
+        command.extend(["--worker-codex-config", item])
     if llm_summary:
         command.append("--llm-summary")
     if not auto_adopt:

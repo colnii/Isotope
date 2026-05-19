@@ -135,6 +135,10 @@
 | `--llm-action` | 命令行参数，让 LLM planner 读取最近 context 结果并选择一个受控建议动作，但不自动执行 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `--llm-execute` | 命令行参数，执行 LLM 选择的 send、`resume_session`、`launch_session`、`request_context` 或 `ask_user`；`monitor` 只记录跳过 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `loop` | Supervisor 日常常驻入口，默认由 LLM planner 驱动受控动作 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py` |
+| `--codex-model` | `launch/resume` 参数，传给后台 Codex worker 的 `-m/--model`，用于控制 worker 模型 | 产品功能/控制通道/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
+| `--codex-config` | `launch/resume` 参数，传给后台 Codex worker 的 `-c key=value`，可重复使用 | 产品功能/控制通道/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
+| `--worker-codex-model` | `supervise/loop/daemon start` 参数，控制 LLM 自动启动或恢复的 Codex worker 模型 | 产品功能/控制策略/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/daemon.py` |
+| `--worker-codex-config` | `supervise/loop/daemon start` 参数，给 LLM 自动启动或恢复的 Codex worker 传 `-c key=value` 配置 | 产品功能/控制策略/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/daemon.py` |
 | `--rule-execute` | `loop` 的备用参数，切回旧规则自动策略 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `monitor` | 白名单动作，表示当前没有需要发送的托管指令，只继续观察 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
 | `resume_session` | LLM planner 可选动作，恢复一个普通 Codex 历史会话并发送受控 prompt | 产品功能/模型/控制通道 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |

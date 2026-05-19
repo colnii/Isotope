@@ -114,6 +114,11 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `continue_count`，达到显式阈值后拦截继续推进请求；后者限制
     每轮可执行的上下文检索次数；二者默认值都是 0，
     表示不启用限制，避免阻碍长期托管任务；
+    `launch/resume` 支持 `--codex-model` 和可重复的
+    `--codex-config key=value`，`supervise/loop/daemon start`
+    支持 `--worker-codex-model` 和可重复的 `--worker-codex-config`，
+    用于把模型、`model_reasoning_effort` 等 Codex 配置传给后台 worker，
+    避免自动托管无意识继承本机高成本默认配置；
     已有多 lane loop 回归测试覆盖默认宽松预算下连续推进不同
     托管窗口；
     时间预算尚未强制实现；

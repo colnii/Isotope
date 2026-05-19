@@ -67,6 +67,11 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
 - `watch --bell` 可在本轮建议需要人看时输出终端 bell（提醒音）。
 - `launch` 可启动一个 Codex 进程，并写入托管登记文件。
 - `launch --backend tmux` 可在本机 tmux 会话里启动 Codex。
+- `launch/resume --codex-model <model> --codex-config key=value` 可覆盖
+  后台 Codex worker 的模型和配置。
+- `supervise/loop/daemon start --worker-codex-model <model>
+  --worker-codex-config key=value` 可把同类覆盖传给 LLM 自动启动或恢复的
+  worker，避免继承本机高成本默认配置。
 - `adopt` 可把已有 tmux 会话登记成托管 lane。
 - `scan/watch` 可显示托管进程的名称、pid 和是否已退出。
 - `scan/watch` 可显示托管 tmux 会话是否有 bell（提醒）信号。
