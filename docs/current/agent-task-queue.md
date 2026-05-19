@@ -366,63 +366,66 @@
 161. Codex Supervisor work order A 层：`launch_session` 执行时会把
     LLM 生成的目标包成 `WORK ORDER` prompt，写明 goal、cwd、
     scope、budget hint、完成条件和停等用户条件；这只是提示边界，
-    不代表 A 层本身提供真正 `max_minutes`、`max_continue_count`
+    不代表 A 层本身提供真正 `max_run_minutes`、`max_continue_count`
     或 `max_context_requests` 强制控制。
 162. Codex Supervisor 继续次数预算 B 层：新增 `--max-continue-count`，
     lane state 记录 `continue_count` 和 `last_prompt_kind`；当同一 lane
     同一状态下的 `send_continue` 达到显式阈值后，Supervisor 会拦截
     后续继续推进请求，避免无限续跑；默认值 0 表示不限制，
-    避免阻碍长任务。当前不覆盖 `max_minutes`。
+    避免阻碍长任务。
 163. Codex Supervisor 上下文请求预算 B 层：新增
     `--max-context-requests`；显式传入正数时，每个 supervise/loop
     轮次达到阈值后会拦截 `request_context`，避免陷入反复查资料。
-164. Codex Supervisor 预算默认宽松：`--max-continue-count` 和
-    `--max-context-requests` 默认都为 0，即不启用硬限制；
+164. Codex Supervisor 预算默认宽松：`--max-continue-count`、
+    `--max-context-requests` 和 `--max-run-minutes` 默认都为 0，即不启用硬限制；
     预算只做可选护栏，不作为长期托管任务的默认阻碍。
 165. Codex Supervisor 多 lane 默认宽松验收：新增 loop 回归测试，
     预置两个已有较高 `continue_count` 的托管窗口，LLM 连续选择
     `send_continue` 推进 lane-a 和 lane-b；默认预算不拦截，
     显式预算测试仍保留。
-166. Codex Supervisor process 主线状态修正：loop 的 automation 状态
+166. Codex Supervisor 时间预算 B 层：新增 `--max-run-minutes`，
+    按托管登记的 `started_at` 判断同名 lane 是否超时；显式传入正数时，
+    超时 lane 的自动或 LLM 继续推进会被拦截，默认 0 不限制。
+167. Codex Supervisor process 主线状态修正：loop 的 automation 状态
     会识别后台 process 托管记录，LLM prompt 也会把 process lane
     列入候选目标；tmux 只作为旁观 TUI 或兼容旧窗口，不再作为
     Supervisor 主线默认叙事。
-167. Codex Supervisor process log 状态修正：真实 `launch` smoke 验收发现
+168. Codex Supervisor process log 状态修正：真实 `launch` smoke 验收发现
     `codex exec` 已输出 `SUPERVISOR_STATUS: done`，但 scan 只看 PID
     退出，dashboard 没归入“已完成”；现已读取托管 log 尾部并解析
     状态协议，已退出但明确 `done` 的 process lane 会进入完成组。
-168. Codex Supervisor LLM JSON 稳定性：真实 LLM 建议验收发现默认
+169. Codex Supervisor LLM JSON 稳定性：真实 LLM 建议验收发现默认
     512 tokens 会把 `request_context` JSON 截断成半截对象；默认
     Supervisor LLM 输出上限已调到 2048 tokens，避免动作 JSON 被截断。
-169. Codex Supervisor launch 冷却：真实 2 轮 process-first loop 验收发现
+170. Codex Supervisor launch 冷却：真实 2 轮 process-first loop 验收发现
     LLM 会连续启动同名 `planner-session`；现已让 `launch_session`
     写入 lane state 并遵守 `--prompt-cooldown`，第二轮同名启动会跳过。
-170. Codex Supervisor resume 成本提示：真实 `codex exec resume`
+171. Codex Supervisor resume 成本提示：真实 `codex exec resume`
     验收确认后台恢复和状态协议解析可用，但一个 92KB session 仍消耗
     约 47K tokens；现已在 `scan` 和 LLM planner 输入里加入
     `source_size_bytes` 与 `resume_context_hint`，提示模型不要无意识恢复
     大历史。
-171. Codex Supervisor worker 成本参数：真实 `launch` 小流量验收确认
+172. Codex Supervisor worker 成本参数：真实 `launch` 小流量验收确认
     process backend 可托管真实 `codex exec` 并解析 `done`，但短任务仍因
     继承本机 `gpt-5.5 xhigh` 消耗约 31K tokens；现已给
     `launch/resume` 增加 `--codex-model/--codex-config`，并给
     `supervise/loop/daemon start` 增加
     `--worker-codex-model/--worker-codex-config`，让 LLM 自动 worker
     也能显式传模型和推理强度配置。
-172. Codex Supervisor daemon 日志刷新：真实 daemon 目标验收发现
+173. Codex Supervisor daemon 日志刷新：真实 daemon 目标验收发现
     LLM 已启动 worker，但 `daemon.log` 为空；根因是后台 Python stdout
     文件输出缓冲。现已让 `daemon start` 生成 `python -u -m ... loop`
     命令，确保常驻自动动作能及时写入日志。
-173. Codex Supervisor 写代码 worker 默认值：`supervise/loop/daemon start`
+174. Codex Supervisor 写代码 worker 默认值：`supervise/loop/daemon start`
     现在默认给自动启动或恢复的 Codex worker 使用 `gpt-5.5` 和
     `model_reasoning_effort="high"`，`guide` 也会生成同样默认值的
     `loop/daemon` 命令；如需低成本检查，可用 `--worker-codex-model`
     和 `--worker-codex-config` 显式降配。
-174. Codex Supervisor daemon 可观测性：`daemon status` 现在会聚合
+175. Codex Supervisor daemon 可观测性：`daemon status` 现在会聚合
     `daemon.log` 和托管登记表，直接显示最近 LLM 动作、最近执行结果、
     最近 worker 的模型/配置和状态协议，避免用户手动 tail 日志判断
     Supervisor 是否真的在推进。
-175. Codex Supervisor 日常一键入口：新增 `up` 命令。它会在 daemon
+176. Codex Supervisor 日常一键入口：新增 `up` 命令。它会在 daemon
     未运行时启动后台 `loop`，并立即显示 daemon 状态和最近活动；
     已有 daemon 运行时则复用原进程，不重复启动。
 

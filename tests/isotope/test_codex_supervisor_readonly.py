@@ -4929,6 +4929,111 @@ def test_codex_supervisor_runner_supervise_launch_respects_prompt_cooldown(
     ]
 
 
+def test_codex_supervisor_runner_supervise_launch_skips_running_named_process(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    log_path = codex_home / "supervisor" / "logs" / "managed-running.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text("worker still running\n", encoding="utf-8")
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-running",
+                "name": "planner-session",
+                "cwd": str(workspace),
+                "prompt": "继续推进 Supervisor。",
+                "command": [
+                    "codex",
+                    "exec",
+                    "-C",
+                    str(workspace),
+                    "--skip-git-repo-check",
+                    "继续推进 Supervisor。",
+                ],
+                "pid": 4242,
+                "started_at": NOW.isoformat(),
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._pid_is_running",
+        lambda pid: pid == 4242,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._pid_is_running",
+        lambda pid: pid == 4242,
+        raising=False,
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            return json.dumps(
+                {
+                    "kind": "launch_session",
+                    "target_name": "planner-session",
+                    "cwd": str(workspace),
+                    "prompt": "继续推进 Supervisor 下一步。",
+                    "reason": "继续开新 worker。",
+                },
+                ensure_ascii=False,
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+
+    def fake_launch_managed_codex(*args: object, **kwargs: object) -> object:
+        raise AssertionError("running planner-session should not be relaunched")
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.launch_managed_codex",
+        fake_launch_managed_codex,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"]["kind"] == "launch_session"
+    assert payload["executed"] == {
+        "kind": "launch_session",
+        "skipped": True,
+        "reason": "managed process already running",
+        "managed": {
+            "name": "planner-session",
+            "record_id": "managed-running",
+            "pid": 4242,
+            "backend": "process",
+        },
+    }
+
+
 def test_codex_supervisor_runner_supervise_llm_execute_can_request_context(
     tmp_path,
     capsys,
@@ -6398,6 +6503,94 @@ def test_codex_supervisor_runner_supervise_auto_respects_max_continue_count(
         "kind": "monitor",
         "skipped": True,
         "reason": "lane continue budget exhausted",
+    }
+    assert calls == []
+
+
+def test_codex_supervisor_runner_supervise_auto_respects_max_run_minutes(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-done.jsonl",
+        session_id="done-session",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:30Z",
+                "SUPERVISOR_STATUS: done\n"
+                "SUPERVISOR_SUMMARY: 当前任务已完成。\n"
+                "SUPERVISOR_NEXT: 可以继续下一步。",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: (
+            "SUPERVISOR_STATUS: done\n"
+            "SUPERVISOR_SUMMARY: 当前任务已完成。\n"
+            "SUPERVISOR_NEXT: 可以继续下一步。"
+        ),
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--prompt-cooldown",
+            "0",
+            "--max-run-minutes",
+            "1",
+            "--auto-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["auto_action"] == {
+        "kind": "monitor",
+        "reason": "lane run budget exhausted",
+        "target_name": "lane-a",
+    }
+    assert payload["executed"] == {
+        "kind": "monitor",
+        "skipped": True,
+        "reason": "lane run budget exhausted",
     }
     assert calls == []
 

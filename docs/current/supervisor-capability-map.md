@@ -89,7 +89,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - LLM planner 会看到 process 托管记录作为候选目标，避免状态面板
   误报“只有 tmux 才可控”。
 - `launch_session` 会写入 lane state 并遵守 `--prompt-cooldown`，
-  避免长跑时对同一个 `target_name` 反复启动后台 Codex。
+  发现同名后台 process worker 仍在运行时会跳过，避免长跑时对同一个
+  `target_name` 反复启动后台 Codex。
 - `launch/resume` 可用 `--codex-model`、`--codex-config` 覆盖
   Codex worker 配置；`supervise/loop/daemon start` 可用
   `--worker-codex-model`、`--worker-codex-config` 把同类配置传给
@@ -232,18 +233,20 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 
 当前已做 A 层：把这些边界写进 `launch_session` 的 prompt。
 这只能提高 worker 自觉遵守的概率，不代表 Supervisor 已经能强制预算。
-不得把 A 层描述成真正的 `max_minutes`、`max_continue_count` 或
+不得把 A 层描述成真正的 `max_run_minutes`、`max_continue_count` 或
 `max_context_requests` 控制。
 
 B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
-`--max-continue-count` 和 `--max-context-requests`：
+`--max-continue-count`、`--max-context-requests` 和
+`--max-run-minutes`：
 前者用 lane state 记录 `continue_count`，限制同一 lane
 同一状态下的继续推进；后者限制同一 supervise/loop 轮次里
-`request_context` 的执行次数。二者默认值都是 0，表示不启用限制；
-只有显式传入正数阈值时才会拦截，避免阻碍需要长时间运行的任务。
+`request_context` 的执行次数；`--max-run-minutes` 按托管登记的
+`started_at` 判断同名 lane 是否已超时，超时后拦截自动或 LLM 继续推进。
+三者默认值都是 0，表示不启用限制；只有显式传入正数阈值时才会拦截，
+避免阻碍需要长时间运行的任务。
 当前回归测试已覆盖默认宽松预算下，多 lane loop 连续推进不同
 托管窗口。
-`max_minutes` 尚未强制实现，后续即使加入也应默认关闭。
 
 当前 A 层字段：
 

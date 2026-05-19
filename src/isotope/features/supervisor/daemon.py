@@ -81,6 +81,7 @@ def start_supervisor_daemon(
     prompt_cooldown: int,
     max_continue_count: int,
     max_context_requests: int,
+    max_run_minutes: int,
     name: str | None = None,
     llm_summary: bool = False,
     auto_adopt: bool = True,
@@ -107,6 +108,7 @@ def start_supervisor_daemon(
         prompt_cooldown=prompt_cooldown,
         max_continue_count=max_continue_count,
         max_context_requests=max_context_requests,
+        max_run_minutes=max_run_minutes,
         name=name,
         llm_summary=llm_summary,
         auto_adopt=auto_adopt,
@@ -321,6 +323,7 @@ def _build_loop_command(
     prompt_cooldown: int,
     max_continue_count: int,
     max_context_requests: int,
+    max_run_minutes: int,
     name: str | None,
     llm_summary: bool,
     auto_adopt: bool,
@@ -350,6 +353,8 @@ def _build_loop_command(
         command.extend(["--max-continue-count", str(max_continue_count)])
     if max_context_requests != 0:
         command.extend(["--max-context-requests", str(max_context_requests)])
+    if max_run_minutes != 0:
+        command.extend(["--max-run-minutes", str(max_run_minutes)])
     if name:
         command.extend(["--name", name])
     if worker_codex_model:

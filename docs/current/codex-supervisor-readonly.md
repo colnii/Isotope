@@ -63,6 +63,8 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
 - `advise/supervise --llm-execute` 可执行 LLM 选择的白名单 send 动作；
   `monitor` 只记录跳过。
 - `--prompt-cooldown` 可避免短时间重复催促同一个托管 lane。
+- `launch_session` 发现同名后台 process worker 仍在运行时会跳过，
+  避免常驻 loop 重复启动同一个任务。
 - `watch --changes-only` 可持续运行，只在会话状态变化时重新输出。
 - `watch --bell` 可在本轮建议需要人看时输出终端 bell（提醒音）。
 - `launch` 可启动一个 Codex 进程，并写入托管登记文件。
@@ -277,6 +279,8 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 
 它会在后台 daemon 未运行时启动日常 `loop`，并立即显示 daemon 状态、
 最近 LLM 动作、最近执行结果和最近 worker 状态。
+如果上一轮已经启动了同名后台 worker，后续 loop 会先复用运行中的
+登记记录，不会反复开新进程。
 
 `guide` 是命令说明入口，会生成一组可复制命令：
 
@@ -381,6 +385,8 @@ JSON 仍保留完整 scan 报告。
 `done` 只监控，不再自动续跑。
 未指定 `--name` 时，自动策略会扫描所有活跃托管 lane，
 优先选择可自动处理且不在 `--prompt-cooldown` 冷却期内的窗口。
+显式传入 `--max-run-minutes <分钟>` 时，超时的同名 lane 会被拦截；
+默认 0 表示不启用时间限制。
 如果 lane 仍在运行、终端未回到可输入态且没有 bell/stale 证据，
 即使缺少状态协议也只监控，不会提前催促。
 如果终端明确显示 `Working ... esc to interrupt`，

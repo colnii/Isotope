@@ -108,12 +108,14 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     context history，避免重复请求同一个 cwd/query；
     `resume_session` 也受 `--prompt-cooldown` 约束，避免短时间重复恢复
     同一历史会话；`launch_session` 同样受 `--prompt-cooldown` 约束，
-    避免 LLM 长跑时反复启动同名后台任务；B 层预算控制已落地
-    `--max-continue-count` 和
-    `--max-context-requests`；前者用 lane state 记录
+    且发现同名后台 process worker 仍在运行时会跳过，避免 LLM
+    长跑时反复启动同名后台任务；B 层预算控制已落地
+    `--max-continue-count`、`--max-context-requests` 和
+    `--max-run-minutes`；前者用 lane state 记录
     `continue_count`，达到显式阈值后拦截继续推进请求；后者限制
-    每轮可执行的上下文检索次数；二者默认值都是 0，
-    表示不启用限制，避免阻碍长期托管任务；
+    每轮可执行的上下文检索次数；时间预算按托管登记的 `started_at`
+    判断同名 lane 是否超时，超时后拦截自动或 LLM 继续推进；
+    三者默认值都是 0，表示不启用限制，避免阻碍长期托管任务；
     `launch/resume` 支持 `--codex-model` 和可重复的
     `--codex-config key=value`，`supervise/loop/daemon start`
     支持 `--worker-codex-model` 和可重复的 `--worker-codex-config`，
@@ -124,8 +126,7 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `guide` 会生成同样默认值的 `loop/daemon` 命令，
     用户仍可用参数降配或覆盖；
     已有多 lane loop 回归测试覆盖默认宽松预算下连续推进不同
-    托管窗口；
-    时间预算尚未强制实现；
+    托管窗口，并有显式时间预算回归覆盖超时 lane 不再继续推进；
     模型动作返回非 JSON、非法目标或模型池空响应时会降级为
     可见 `monitor`，不让 loop 直接退出；OpenAI-compatible provider
     遇到 `finish_reason=length` 且只有 `reasoning_content`、无正文时，

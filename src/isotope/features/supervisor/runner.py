@@ -8,6 +8,7 @@ import shlex
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +35,7 @@ from .flow import (
     CodexSupervisorReport,
     CodexSupervisorFlow,
     _managed_process_log_excerpt,
+    _pid_is_running,
     _supervisor_protocol_from_text,
     _terminal_has_active_work_marker,
     _tmux_capture_pane,
@@ -56,6 +58,7 @@ from .registry import (
     archive_managed_codex,
     default_registry_path,
     launch_managed_codex,
+    read_managed_records,
     read_managed_record_events,
     repair_tmux_bell_hooks,
     resume_managed_codex,
@@ -65,6 +68,7 @@ from .tmux_discovery import discover_tmux_adopt_candidates
 
 EXECUTABLE_ADVICE_KINDS = {"send_status", "send_continue"}
 DEFAULT_MAX_CONTEXT_REQUESTS = 0
+DEFAULT_MAX_RUN_MINUTES = 0
 DEFAULT_WORKER_CODEX_MODEL = "gpt-5.5"
 DEFAULT_WORKER_CODEX_CONFIG = ('model_reasoning_effort="high"',)
 TERMINAL_DONE_NEXT_MARKERS = (
@@ -216,6 +220,12 @@ def _build_parser() -> argparse.ArgumentParser:
             help="Maximum request_context executions per supervise iteration. Default 0 disables.",
         )
         subparsers.choices[command].add_argument(
+            "--max-run-minutes",
+            type=int,
+            default=DEFAULT_MAX_RUN_MINUTES,
+            help="Maximum elapsed minutes before send_continue is blocked for a lane. Default 0 disables.",
+        )
+        subparsers.choices[command].add_argument(
             "--worker-codex-model",
             help="Pass -m/--model to Codex workers launched by LLM execution.",
         )
@@ -323,6 +333,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Maximum request_context executions per loop iteration. Default 0 disables.",
     )
     loop_parser.add_argument(
+        "--max-run-minutes",
+        type=int,
+        default=DEFAULT_MAX_RUN_MINUTES,
+        help="Maximum elapsed minutes before send_continue is blocked for a lane. Default 0 disables.",
+    )
+    loop_parser.add_argument(
         "--worker-codex-model",
         help="Pass -m/--model to Codex workers launched by the loop.",
     )
@@ -415,6 +431,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Maximum request_context executions per loop iteration. Default 0 disables.",
     )
     up_parser.add_argument(
+        "--max-run-minutes",
+        type=int,
+        default=DEFAULT_MAX_RUN_MINUTES,
+        help="Maximum elapsed minutes before send_continue is blocked for a lane. Default 0 disables.",
+    )
+    up_parser.add_argument(
         "--worker-codex-model",
         help="Pass -m/--model to Codex workers launched by the daemon loop.",
     )
@@ -499,6 +521,12 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=DEFAULT_MAX_CONTEXT_REQUESTS,
         help="Maximum request_context executions per loop iteration. Default 0 disables.",
+    )
+    daemon_start_parser.add_argument(
+        "--max-run-minutes",
+        type=int,
+        default=DEFAULT_MAX_RUN_MINUTES,
+        help="Maximum elapsed minutes before send_continue is blocked for a lane. Default 0 disables.",
     )
     daemon_start_parser.add_argument(
         "--worker-codex-model",
@@ -1167,6 +1195,8 @@ def _start_daemon_from_args(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("max_continue_count must be zero or positive")
     if args.max_context_requests < 0:
         raise ValueError("max_context_requests must be zero or positive")
+    if args.max_run_minutes < 0:
+        raise ValueError("max_run_minutes must be zero or positive")
     return start_supervisor_daemon(
         codex_home=Path(args.codex_home),
         interval=args.interval,
@@ -1176,6 +1206,7 @@ def _start_daemon_from_args(args: argparse.Namespace) -> dict[str, Any]:
         prompt_cooldown=args.prompt_cooldown,
         max_continue_count=args.max_continue_count,
         max_context_requests=args.max_context_requests,
+        max_run_minutes=args.max_run_minutes,
         name=args.name,
         llm_summary=args.llm_summary,
         auto_adopt=args.auto_adopt,
@@ -1879,6 +1910,8 @@ def _validate_execution_modes(args: argparse.Namespace) -> None:
         raise ValueError("max_continue_count must be zero or positive")
     if getattr(args, "max_context_requests", 0) < 0:
         raise ValueError("max_context_requests must be zero or positive")
+    if getattr(args, "max_run_minutes", 0) < 0:
+        raise ValueError("max_run_minutes must be zero or positive")
     modes = [
         name
         for name, enabled in (
@@ -1982,6 +2015,7 @@ def _supervise_payload(
             codex_home=Path(args.codex_home),
             prompt_cooldown_seconds=args.prompt_cooldown,
             max_continue_count=args.max_continue_count,
+            max_run_minutes=args.max_run_minutes,
         )
         payload["auto_action"] = auto_action
         payload["executed"] = precomputed_executed or _execute_auto_action(
@@ -3089,6 +3123,18 @@ def _execute_advice(
                 "reason": "lane continue budget exhausted",
                 "lane_state": budget_state.to_dict(),
             }
+        if run_budget := _run_budget_state(
+            codex_home=Path(args.codex_home),
+            name=target.managed_name,
+            max_run_minutes=args.max_run_minutes,
+        ):
+            return {
+                "kind": kind,
+                "command": suggestion["command"],
+                "skipped": True,
+                "reason": "lane run budget exhausted",
+                "run_budget": run_budget,
+            }
     if cooldown_state := prompt_cooldown_state(
         codex_home=Path(args.codex_home),
         name=target.managed_name,
@@ -3156,6 +3202,60 @@ def _context_request_budget_result(
         "context_request_count": count,
         "max_context_requests": max_requests,
     }
+
+
+def _run_budget_state(
+    *,
+    codex_home: Path,
+    name: str,
+    max_run_minutes: int,
+) -> dict[str, Any] | None:
+    if max_run_minutes <= 0:
+        return None
+    records = [
+        record
+        for record in read_managed_records(default_registry_path(codex_home))
+        if record.name == name
+    ]
+    if not records:
+        return None
+    latest = max(records, key=lambda record: _timestamp_sort_value(record.started_at))
+    started_at = _parse_timestamp(latest.started_at)
+    if started_at is None:
+        return None
+    elapsed_seconds = max(0, int((_utc_now() - started_at).total_seconds()))
+    if elapsed_seconds < max_run_minutes * 60:
+        return None
+    return {
+        "name": latest.name,
+        "record_id": latest.record_id,
+        "started_at": latest.started_at,
+        "elapsed_seconds": elapsed_seconds,
+        "max_run_minutes": max_run_minutes,
+    }
+
+
+def _timestamp_sort_value(value: str) -> float:
+    parsed = _parse_timestamp(value)
+    return parsed.timestamp() if parsed is not None else 0.0
+
+
+def _parse_timestamp(value: str) -> datetime | None:
+    normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
+    try:
+        return _ensure_aware_utc(datetime.fromisoformat(normalized))
+    except ValueError:
+        return None
+
+
+def _ensure_aware_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def _execute_llm_action(
@@ -3246,6 +3346,18 @@ def _execute_resume_action(
                 "reason": "lane continue budget exhausted",
                 "lane_state": budget_state.to_dict(),
             }
+        if run_budget := _run_budget_state(
+            codex_home=Path(args.codex_home),
+            name=target_name,
+            max_run_minutes=args.max_run_minutes,
+        ):
+            return {
+                "kind": "resume_session",
+                "command": suggestion["command"],
+                "skipped": True,
+                "reason": "lane run budget exhausted",
+                "run_budget": run_budget,
+            }
     if cooldown_state := prompt_cooldown_state(
         codex_home=Path(args.codex_home),
         name=target_name,
@@ -3302,6 +3414,32 @@ def _execute_launch_action(
         raise ValueError("cwd is required for launch_session")
     if not isinstance(prompt, str) or not prompt.strip():
         raise ValueError("prompt is required for launch_session")
+    if run_budget := _run_budget_state(
+        codex_home=Path(args.codex_home),
+        name=target_name,
+        max_run_minutes=args.max_run_minutes,
+    ):
+        return {
+            "kind": "launch_session",
+            "skipped": True,
+            "reason": "lane run budget exhausted",
+            "run_budget": run_budget,
+        }
+    if running_record := _running_managed_process_by_name(
+        codex_home=Path(args.codex_home),
+        name=target_name,
+    ):
+        return {
+            "kind": "launch_session",
+            "skipped": True,
+            "reason": "managed process already running",
+            "managed": {
+                "name": running_record.name,
+                "record_id": running_record.record_id,
+                "pid": running_record.pid,
+                "backend": running_record.backend,
+            },
+        }
     if cooldown_state := prompt_cooldown_state(
         codex_home=Path(args.codex_home),
         name=target_name,
@@ -3358,6 +3496,21 @@ def _execute_launch_action(
             "backend": record.backend,
         },
     }
+
+
+def _running_managed_process_by_name(
+    *,
+    codex_home: Path,
+    name: str,
+) -> Any | None:
+    for record in reversed(read_managed_records(default_registry_path(codex_home))):
+        if record.name != name:
+            continue
+        if record.backend == "tmux":
+            continue
+        if _pid_is_running(record.pid):
+            return record
+    return None
 
 
 def _launch_work_order_prompt(
@@ -3496,6 +3649,7 @@ def _auto_execute_action(
     codex_home: Path | None = None,
     prompt_cooldown_seconds: int = DEFAULT_PROMPT_COOLDOWN_SECONDS,
     max_continue_count: int = DEFAULT_MAX_CONTINUE_COUNT,
+    max_run_minutes: int = DEFAULT_MAX_RUN_MINUTES,
 ) -> dict[str, str]:
     if target_name:
         managed = _managed_tmux_session_by_name(report, target_name)
@@ -3514,6 +3668,17 @@ def _auto_execute_action(
             return {
                 "kind": "monitor",
                 "reason": "lane continue budget exhausted",
+                "target_name": managed.managed_name or target_name,
+            }
+        if _auto_action_exhausts_run_budget(
+            action,
+            codex_home=codex_home,
+            managed=managed,
+            max_run_minutes=max_run_minutes,
+        ):
+            return {
+                "kind": "monitor",
+                "reason": "lane run budget exhausted",
                 "target_name": managed.managed_name or target_name,
             }
         return action
@@ -3547,6 +3712,20 @@ def _auto_execute_action(
                 {
                     "kind": "monitor",
                     "reason": "lane continue budget exhausted",
+                    **({"target_name": managed.managed_name} if managed.managed_name else {}),
+                }
+            )
+            continue
+        if _auto_action_exhausts_run_budget(
+            action,
+            codex_home=codex_home,
+            managed=managed,
+            max_run_minutes=max_run_minutes,
+        ):
+            continue_budget_candidates.append(
+                {
+                    "kind": "monitor",
+                    "reason": "lane run budget exhausted",
                     **({"target_name": managed.managed_name} if managed.managed_name else {}),
                 }
             )
@@ -3587,6 +3766,29 @@ def _auto_action_exhausts_continue_budget(
             codex_home=codex_home,
             name=managed.managed_name,
             max_continue_count=max_continue_count,
+        )
+        is not None
+    )
+
+
+def _auto_action_exhausts_run_budget(
+    action: dict[str, str],
+    *,
+    codex_home: Path | None,
+    managed: Any,
+    max_run_minutes: int,
+) -> bool:
+    if (
+        action["kind"] != "send_continue"
+        or codex_home is None
+        or not managed.managed_name
+    ):
+        return False
+    return (
+        _run_budget_state(
+            codex_home=codex_home,
+            name=managed.managed_name,
+            max_run_minutes=max_run_minutes,
         )
         is not None
     )
