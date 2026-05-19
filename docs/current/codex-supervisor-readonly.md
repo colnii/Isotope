@@ -65,6 +65,8 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
 - `--prompt-cooldown` 可避免短时间重复催促同一个托管 lane。
 - `launch_session` 发现同名后台 process worker 仍在运行时会跳过，
   避免常驻 loop 重复启动同一个任务。
+- LLM 自动 `launch_session` 会优先创建 `.worktrees/supervisor/...`
+  下的独立 git worktree，再在隔离工作区启动 worker。
 - `watch --changes-only` 可持续运行，只在会话状态变化时重新输出。
 - `watch --bell` 可在本轮建议需要人看时输出终端 bell（提醒音）。
 - `launch` 可启动一个 Codex 进程，并写入托管登记文件。
@@ -281,6 +283,11 @@ web 启动时会给登记过的活跃 tmux lane 自动补装一次 bell hook。
 最近 LLM 动作、最近执行结果和最近 worker 状态。
 如果上一轮已经启动了同名后台 worker，后续 loop 会先复用运行中的
 登记记录，不会反复开新进程。
+当 LLM 要启动新 worker 且目标 cwd 属于 git 仓库时，会从当前 `HEAD`
+创建 `supervisor/<name>-<suffix>` 分支和 `.worktrees/supervisor/...`
+工作区；如果目标 cwd 是仓库子目录，会进入隔离 worktree 里的对应子目录。
+非 git 工作区不会强制隔离；git worktree 创建失败时本轮会跳过启动，
+避免退回共享工作区造成文件抢写。
 
 `guide` 是命令说明入口，会生成一组可复制命令：
 

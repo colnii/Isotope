@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shlex
 import subprocess
 import sys
 import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -3451,9 +3453,18 @@ def _execute_launch_action(
             "reason": "launch prompt cooldown active",
             "lane_state": cooldown_state.to_dict(),
         }
+    worktree = _prepare_launch_worktree(cwd=Path(cwd), target_name=target_name)
+    if worktree.get("failed"):
+        return {
+            "kind": "launch_session",
+            "skipped": True,
+            "reason": "worktree setup failed",
+            "worktree": worktree,
+        }
+    worker_cwd = str(worktree["cwd"])
     work_order_prompt = _launch_work_order_prompt(
         target_name=target_name,
-        cwd=cwd,
+        cwd=worker_cwd,
         goal=prompt,
     )
     command = shlex.join(
@@ -3463,14 +3474,14 @@ def _execute_launch_action(
             "--name",
             target_name,
             "--cwd",
-            cwd,
+            worker_cwd,
             "--prompt",
             work_order_prompt,
         ]
     )
     record = launch_managed_codex(
         codex_home=Path(args.codex_home),
-        cwd=Path(cwd),
+        cwd=Path(worker_cwd),
         name=target_name,
         prompt=work_order_prompt,
         codex_model=_worker_codex_model(args),
@@ -3495,7 +3506,98 @@ def _execute_launch_action(
             "pid": record.pid,
             "backend": record.backend,
         },
+        "worktree": worktree,
     }
+
+
+def _prepare_launch_worktree(*, cwd: Path, target_name: str) -> dict[str, Any]:
+    source_cwd = cwd.expanduser()
+    root = _git_root_for_worktree(source_cwd)
+    if root is None:
+        return {
+            "enabled": False,
+            "source_cwd": str(source_cwd),
+            "cwd": str(source_cwd),
+            "reason": "not_git_repo",
+        }
+    suffix = uuid.uuid4().hex[:8]
+    safe_name = _safe_worktree_name(target_name)
+    branch = f"supervisor/{safe_name}-{suffix}"
+    worktree = root / ".worktrees" / "supervisor" / f"{safe_name}-{suffix}"
+    worktree.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        completed = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(root),
+                "worktree",
+                "add",
+                "-b",
+                branch,
+                str(worktree),
+                "HEAD",
+            ],
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+    except (OSError, subprocess.SubprocessError, TypeError) as exc:
+        return {
+            "enabled": False,
+            "failed": True,
+            "source_cwd": str(source_cwd),
+            "cwd": str(source_cwd),
+            "worktree_root": str(worktree),
+            "branch": branch,
+            "reason": str(exc),
+        }
+    if completed.returncode != 0:
+        return {
+            "enabled": False,
+            "failed": True,
+            "source_cwd": str(source_cwd),
+            "cwd": str(source_cwd),
+            "worktree_root": str(worktree),
+            "branch": branch,
+            "reason": (completed.stderr or completed.stdout or "git worktree add failed").strip(),
+        }
+    worker_cwd = worktree / _relative_cwd_in_repo(source_cwd, root)
+    return {
+        "enabled": True,
+        "source_cwd": str(source_cwd),
+        "cwd": str(worker_cwd),
+        "worktree_root": str(worktree),
+        "branch": branch,
+    }
+
+
+def _git_root_for_worktree(cwd: Path) -> Path | None:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(cwd), "rev-parse", "--show-toplevel"],
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+    except (OSError, subprocess.SubprocessError, TypeError):
+        return None
+    if completed.returncode != 0:
+        return None
+    root = completed.stdout.strip()
+    return Path(root) if root else None
+
+
+def _safe_worktree_name(name: str) -> str:
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "-", name.strip()).strip(".-_")
+    return safe.lower() or "worker"
+
+
+def _relative_cwd_in_repo(cwd: Path, root: Path) -> Path:
+    try:
+        return cwd.resolve().relative_to(root.resolve())
+    except ValueError:
+        return Path()
 
 
 def _running_managed_process_by_name(

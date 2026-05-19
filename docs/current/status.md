@@ -109,7 +109,11 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `resume_session` 也受 `--prompt-cooldown` 约束，避免短时间重复恢复
     同一历史会话；`launch_session` 同样受 `--prompt-cooldown` 约束，
     且发现同名后台 process worker 仍在运行时会跳过，避免 LLM
-    长跑时反复启动同名后台任务；B 层预算控制已落地
+    长跑时反复启动同名后台任务；LLM 自动 `launch_session`
+    会优先创建 `.worktrees/supervisor/...` 独立 git worktree，
+    在隔离工作区启动 worker，子目录任务会保留相对路径；
+    非 git 工作区不强制隔离，git worktree 创建失败则跳过启动，
+    不退回共享工作区；B 层预算控制已落地
     `--max-continue-count`、`--max-context-requests` 和
     `--max-run-minutes`；前者用 lane state 记录
     `continue_count`，达到显式阈值后拦截继续推进请求；后者限制

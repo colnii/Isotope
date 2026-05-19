@@ -91,6 +91,10 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `launch_session` 会写入 lane state 并遵守 `--prompt-cooldown`，
   发现同名后台 process worker 仍在运行时会跳过，避免长跑时对同一个
   `target_name` 反复启动后台 Codex。
+- LLM 自动 `launch_session` 默认把 git 仓库任务放进
+  `.worktrees/supervisor/...` 独立工作区；子目录任务会进入隔离
+  worktree 里的对应子目录。非 git 工作区不强制隔离，git worktree
+  创建失败时跳过启动，避免退回共享工作区抢文件。
 - `launch/resume` 可用 `--codex-model`、`--codex-config` 覆盖
   Codex worker 配置；`supervise/loop/daemon start` 可用
   `--worker-codex-model`、`--worker-codex-config` 把同类配置传给

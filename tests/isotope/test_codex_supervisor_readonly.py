@@ -4824,6 +4824,217 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_launch_session(
     assert captured["stderr"] is subprocess.STDOUT
 
 
+def test_codex_supervisor_runner_supervise_launch_uses_isolated_worktree(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    launch_prompt = "请在隔离工作区继续推进 Supervisor。"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-source.jsonl",
+        session_id="source-session",
+        cwd=str(repo_root),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "SUPERVISOR_STATUS: done\nSUPERVISOR_SUMMARY: 已完成。\nSUPERVISOR_NEXT: 可开新任务。",
+            )
+        ],
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            return json.dumps(
+                {
+                    "kind": "launch_session",
+                    "target_name": "new-planner",
+                    "cwd": str(repo_root),
+                    "prompt": launch_prompt,
+                    "reason": "需要隔离工作区推进下一批。",
+                },
+                ensure_ascii=False,
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+    run_calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool = False,
+        text: bool = False,
+        capture_output: bool = False,
+    ) -> subprocess.CompletedProcess[str]:
+        run_calls.append(command)
+        if command[:4] == ["git", "-C", str(repo_root), "rev-parse"]:
+            return subprocess.CompletedProcess(command, 0, str(repo_root) + "\n", "")
+        if command[:4] == ["git", "-C", str(repo_root), "worktree"]:
+            Path(command[-2]).mkdir(parents=True)
+            return subprocess.CompletedProcess(command, 0, "", "")
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 45678
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured["command"] = command
+        captured["cwd"] = cwd
+        return FakeProcess()
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    worktree = payload["executed"]["worktree"]
+    assert worktree["enabled"] is True
+    assert worktree["source_cwd"] == str(repo_root)
+    assert worktree["cwd"].startswith(str(repo_root / ".worktrees" / "supervisor"))
+    assert worktree["branch"].startswith("supervisor/new-planner-")
+    assert ["git", "-C", str(repo_root), "worktree", "add", "-b"] == run_calls[1][:6]
+    assert captured["cwd"] == worktree["cwd"]
+    assert captured["command"][captured["command"].index("-C") + 1] == worktree["cwd"]
+    assert f"cwd: {worktree['cwd']}" in payload["executed"]["text"]
+
+
+def test_codex_supervisor_runner_supervise_launch_preserves_subdir_in_worktree(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    repo_root = tmp_path / "repo"
+    workspace = repo_root / "apps" / "api"
+    workspace.mkdir(parents=True)
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-source.jsonl",
+        session_id="source-session",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "SUPERVISOR_STATUS: done\nSUPERVISOR_SUMMARY: 已完成。\nSUPERVISOR_NEXT: 可开新任务。",
+            )
+        ],
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            return json.dumps(
+                {
+                    "kind": "launch_session",
+                    "target_name": "api-worker",
+                    "cwd": str(workspace),
+                    "prompt": "继续推进 API 子目录任务。",
+                    "reason": "需要隔离子目录任务。",
+                },
+                ensure_ascii=False,
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool = False,
+        text: bool = False,
+        capture_output: bool = False,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:4] == ["git", "-C", str(workspace), "rev-parse"]:
+            return subprocess.CompletedProcess(command, 0, str(repo_root) + "\n", "")
+        if command[:4] == ["git", "-C", str(repo_root), "worktree"]:
+            worktree_root = Path(command[-2])
+            (worktree_root / "apps" / "api").mkdir(parents=True)
+            return subprocess.CompletedProcess(command, 0, "", "")
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 45678
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured["command"] = command
+        captured["cwd"] = cwd
+        return FakeProcess()
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    worktree = payload["executed"]["worktree"]
+    assert worktree["source_cwd"] == str(workspace)
+    assert worktree["cwd"].endswith("/apps/api")
+    assert worktree["worktree_root"] in worktree["cwd"]
+    assert captured["cwd"] == worktree["cwd"]
+
+
 def test_codex_supervisor_runner_supervise_launch_respects_prompt_cooldown(
     tmp_path,
     capsys,

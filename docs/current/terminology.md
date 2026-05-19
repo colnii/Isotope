@@ -143,7 +143,7 @@
 | `--rule-execute` | `loop` 的备用参数，切回旧规则自动策略 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `monitor` | 白名单动作，表示当前没有需要发送的托管指令，只继续观察 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
 | `resume_session` | LLM planner 可选动作，恢复一个普通 Codex 历史会话并发送受控 prompt | 产品功能/模型/控制通道 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
-| `launch_session` | LLM planner 可选动作，由 LLM 生成 prompt 并启动一个新的 Codex 托管会话 | 产品功能/模型/控制通道 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
+| `launch_session` | LLM planner 可选动作，由 LLM 生成 prompt 并启动一个新的 Codex 托管会话；git 仓库任务默认进入独立 worktree | 产品功能/模型/控制通道 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
 | `work order` | 托管任务单，描述一次 Codex 托管执行的目标、工作区、允许范围、预算、完成条件和停等用户条件 | 产品功能/控制策略 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/registry.py` |
 | `request_context` | LLM planner 可选动作，按 query 请求项目上下文检索，不固定注入文档全文 | 产品功能/模型/上下文能力 | `src/isotope/features/supervisor/context.py`, `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
 | `ask_user` | LLM planner 可选动作，只有 Codex 明确请求拍板、既有用户指示不足且上下文缺失/过时/冲突时才允许停等用户；执行后会写入拍板列表 | 产品功能/模型/拍板 gate | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
@@ -152,7 +152,7 @@
 | `context` | Supervisor 命令，执行项目上下文检索并记录结果供后续 LLM planner 使用；当前 `rg` 优先、Python 兜底，不是 BM25 | 产品功能/上下文能力 | `src/isotope/features/supervisor/context.py`, `src/isotope/features/supervisor/runner.py` |
 | `OpenAI-compatible` | 兼容 OpenAI Chat Completions 形状的模型接口 | 模型/外部集成 | `src/isotope/features/supervisor/llm_summary.py` |
 | `LLM pool TOML` | 本机模型号池配置，声明 provider、base URL、model 和 key | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
-| `git worktree` | Git 工作树，同一仓库的独立开发目录，用于多分支并行 | 工作区/开发协作 | `docs/current/status.md`, `AGENTS.md` |
+| `git worktree` | Git 工作树，同一仓库的独立开发目录，用于多分支并行；Supervisor 自动 worker 默认放在 `.worktrees/supervisor/...` | 工作区/开发协作 | `src/isotope/features/supervisor/runner.py`, `docs/current/status.md`, `AGENTS.md` |
 | `assistant` | 助手，只作为产品描述或历史术语，不作为新目录叙事 | 产品描述/历史术语 | 已删除旧目录 |
 | `agent loop` | 智能体循环，AI 多步规划、调用工具、读取结果并继续执行 | 应用/智能体 | `src/isotope/agents/loop/step.py`, `docs/features/` |
 | `app_friction` | 应用摩擦，应用层试跑暴露的卡点或待收束问题 | 应用验证 | `src/isotope/demo.py`, `docs/features/` |

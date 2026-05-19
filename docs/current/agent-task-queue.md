@@ -428,6 +428,11 @@
 176. Codex Supervisor 日常一键入口：新增 `up` 命令。它会在 daemon
     未运行时启动后台 `loop`，并立即显示 daemon 状态和最近活动；
     已有 daemon 运行时则复用原进程，不重复启动。
+177. Codex Supervisor worker 隔离：LLM 自动 `launch_session` 现在会优先
+    为 git 仓库创建 `.worktrees/supervisor/...` 独立工作区和
+    `supervisor/<name>-<suffix>` 分支，再在隔离 cwd 启动 Codex worker；
+    子目录任务会保留相对路径。非 git 工作区不强制隔离，git worktree
+    创建失败时跳过启动，避免退回共享工作区抢文件。
 
 ## 最近完成：Codex Supervisor process-first loop 验收
 
@@ -443,6 +448,8 @@
 - 真实 LLM + fake Codex 两轮 loop 已验证：第一轮
   `request_context -> launch_session`，第二轮同名 `launch_session`
   被 `prompt-cooldown` 拦截，不会重复开同名后台任务。
+- LLM 自动 `launch_session` 已补独立 worktree 隔离，避免 Supervisor
+  自己启动的 worker 和当前 Codex 窗口抢同一工作区。
 
 下一步：
 
