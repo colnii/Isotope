@@ -9358,6 +9358,118 @@ def test_codex_supervisor_scan_marks_managed_process_exited(tmp_path):
     assert report.sessions[0].reason == "Supervisor 托管进程已退出"
 
 
+def test_codex_supervisor_scan_parses_managed_process_log_protocol(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    log_path = codex_home / "supervisor" / "logs" / "managed-001.log"
+    log_path.parent.mkdir(parents=True)
+    log_path.write_text(
+        "\n".join(
+            [
+                "OpenAI Codex v0.130.0",
+                "exec",
+                "/bin/bash -lc 'git status --short --branch'",
+                "codex",
+                "SUPERVISOR_STATUS: done",
+                "SUPERVISOR_SUMMARY: process 后端 smoke 已完成。",
+                "SUPERVISOR_NEXT: 等待 Supervisor 归档。",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "lane-a",
+                "cwd": str(workspace),
+                "prompt": "继续实现 supervisor",
+                "command": ["codex", "exec", "-C", str(workspace), "继续"],
+                "pid": 12345,
+                "started_at": "2026-05-16T11:59:30+00:00",
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = CodexSupervisorFlow(
+        codex_home=codex_home,
+        now=lambda: NOW,
+        process_checker=lambda pid: False,
+    ).scan()
+
+    session = report.sessions[0]
+    assert session.status == "done"
+    assert session.status_label == "已完成"
+    assert session.reason == "process 后端 smoke 已完成。"
+    assert session.supervisor_status == "done"
+    assert session.supervisor_summary == "process 后端 smoke 已完成。"
+    assert session.supervisor_next == "等待 Supervisor 归档。"
+    assert session.status_evidence == {
+        "source": "supervisor_protocol",
+        "label": "主动状态协议",
+        "detail": "SUPERVISOR_STATUS: done",
+    }
+    assert session.managed_terminal_excerpt is not None
+    assert "SUPERVISOR_STATUS: done" in session.managed_terminal_excerpt
+
+
+def test_codex_supervisor_dashboard_keeps_finished_process_with_protocol(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    log_path = codex_home / "supervisor" / "logs" / "managed-001.log"
+    log_path.parent.mkdir(parents=True)
+    log_path.write_text(
+        "SUPERVISOR_STATUS: done\n"
+        "SUPERVISOR_SUMMARY: 已完成后台 smoke。\n"
+        "SUPERVISOR_NEXT: 等待归档。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "lane-a",
+                "cwd": str(workspace),
+                "prompt": "继续实现 supervisor",
+                "command": ["codex", "exec", "-C", str(workspace), "继续"],
+                "pid": 12345,
+                "started_at": "2026-05-16T11:59:30+00:00",
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = CodexSupervisorFlow(
+        codex_home=codex_home,
+        now=lambda: NOW,
+        process_checker=lambda pid: False,
+    ).scan()
+    payload = _dashboard_payload(report)
+
+    assert payload["counts"]["done"] == 1
+    item = payload["groups"]["done"][0]
+    assert item["name"] == "lane-a"
+    assert item["status"] == "done"
+    assert item["supervisor_summary"] == "已完成后台 smoke。"
+
+
 def test_codex_supervisor_scan_marks_tmux_managed_session_running(tmp_path):
     codex_home = tmp_path / ".codex"
     workspace = tmp_path / "workspace"

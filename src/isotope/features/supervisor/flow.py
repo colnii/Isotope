@@ -53,6 +53,7 @@ SUPERVISOR_STATUS_VALUES = {"working", "done", "blocked", "needs_user"}
 MAX_FULL_SESSION_READ_BYTES = 2 * 1024 * 1024
 SESSION_HEAD_READ_BYTES = 64 * 1024
 SESSION_TAIL_READ_BYTES = 1024 * 1024
+MANAGED_LOG_TAIL_READ_BYTES = 64 * 1024
 
 
 @dataclass(frozen=True)
@@ -616,6 +617,9 @@ def _managed_summary(
     age_seconds = max(0, int((now - started_at).total_seconds()))
     managed_terminal_excerpt = None
     managed_terminal_ready = False
+    supervisor_status: str | None = None
+    supervisor_summary: str | None = None
+    supervisor_next: str | None = None
     if record.backend == "tmux":
         is_running = bool(record.tmux_session and tmux_session_checker(record.tmux_session))
         if is_running and record.tmux_session:
@@ -656,6 +660,12 @@ def _managed_summary(
         )
     else:
         is_running = process_checker(record.pid)
+        managed_terminal_excerpt = _managed_process_log_excerpt(record.log_path)
+        if managed_terminal_excerpt:
+            protocol = _supervisor_protocol_from_text(managed_terminal_excerpt)
+            supervisor_status = protocol.get("status")
+            supervisor_summary = protocol.get("summary")
+            supervisor_next = protocol.get("next")
         managed_bell = False
         managed_bell_event_at = None
         managed_bell_hook_installed = None
@@ -666,6 +676,10 @@ def _managed_summary(
             "label": "托管进程状态",
             "detail": f"pid {record.pid} 仍在运行" if is_running else f"pid {record.pid} 已退出",
         }
+    if supervisor_status:
+        status = supervisor_status
+        reason = supervisor_summary or _supervisor_status_reason(supervisor_status)
+        status_evidence = _supervisor_status_evidence(supervisor_status)
     return CodexSessionSummary(
         session_id=f"managed:{record.record_id}",
         cwd=record.cwd,
@@ -690,7 +704,28 @@ def _managed_summary(
         managed_bell_hook_installed=managed_bell_hook_installed,
         managed_resume_session_id=record.resume_session_id,
         managed_resume_last=record.resume_last,
+        supervisor_status=supervisor_status,
+        supervisor_summary=supervisor_summary,
+        supervisor_next=supervisor_next,
     )
+
+
+def _managed_process_log_excerpt(log_path: str | None) -> str | None:
+    if not log_path:
+        return None
+    path = Path(log_path).expanduser()
+    try:
+        size = path.stat().st_size
+    except OSError:
+        return None
+    try:
+        with path.open("rb") as handle:
+            if size > MANAGED_LOG_TAIL_READ_BYTES:
+                handle.seek(size - MANAGED_LOG_TAIL_READ_BYTES)
+            data = handle.read()
+    except OSError:
+        return None
+    return _terminal_tail_excerpt(data.decode("utf-8", errors="ignore"))
 
 
 def _supervisor_protocol_from_text(text: str) -> dict[str, str]:

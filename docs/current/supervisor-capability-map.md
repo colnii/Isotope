@@ -83,6 +83,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `launch` 默认 process 后端使用 `codex exec` 非交互启动，tmux 后端继续
   使用交互式 Codex；process 后端是后台托管主线，tmux 仅用于旁观
   同一个 TUI 或兼容旧窗口。
+- process 后端会读取托管 log 尾部，解析
+  `SUPERVISOR_STATUS/SUMMARY/NEXT`，所以后台 `codex exec` 退出后仍能
+  在 dashboard 里显示明确完成状态，而不是只显示 PID 已退出。
 - LLM planner 会看到 process 托管记录作为候选目标，避免状态面板
   误报“只有 tmux 才可控”。
 - LLM planner 会看到可恢复会话、已完成会话和最近 context 查询历史，

@@ -387,6 +387,26 @@
     会识别后台 process 托管记录，LLM prompt 也会把 process lane
     列入候选目标；tmux 只作为旁观 TUI 或兼容旧窗口，不再作为
     Supervisor 主线默认叙事。
+167. Codex Supervisor process log 状态修正：真实 `launch` smoke 验收发现
+    `codex exec` 已输出 `SUPERVISOR_STATUS: done`，但 scan 只看 PID
+    退出，dashboard 没归入“已完成”；现已读取托管 log 尾部并解析
+    状态协议，已退出但明确 `done` 的 process lane 会进入完成组。
+
+## 最近完成：Codex Supervisor process log 状态修正
+
+完成内容：
+
+- 用 `launch` 默认 process 后端启动真实短任务，确认 `codex exec`
+  可在后台运行并输出状态协议。
+- 修复 `scan` 只看 PID、不读 process log 的问题；现在可从托管 log
+  解析 `SUPERVISOR_STATUS/SUMMARY/NEXT`。
+- `dashboard` 已能把已退出但明确 `done` 的 process lane 放入“已完成”。
+
+下一步：
+
+- 做更长时间的 process-first loop 验收，验证 LLM 是否能稳定在
+  `launch_session`、`resume_session`、`request_context` 和 `ask_user`
+  之间自主选择。
 
 ## 最近完成：Codex Supervisor 真实 resume 执行验收修复
 

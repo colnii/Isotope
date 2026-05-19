@@ -68,7 +68,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `launch` 可启动 Codex 并写入本机托管登记，默认 process 后端使用
     `codex exec -C <cwd> --skip-git-repo-check <prompt>`，避免无 TTY
     后台进程报 `stdin is not a terminal`；`launch --backend tmux`
-    可在本机 tmux 会话中启动交互式 Codex；`resume` 可通过
+    可在本机 tmux 会话中启动交互式 Codex；process 后端会读取
+    托管 log 尾部，从 `SUPERVISOR_STATUS/SUMMARY/NEXT` 解析完成状态，
+    dashboard 可把已退出但明确 `done` 的后台任务归入“已完成”；
+    `resume` 可通过
     `codex exec resume <session> <prompt>` 或 `--last` 恢复历史会话，
     会带 `--skip-git-repo-check` 以兼容历史会话落在非仓库父目录的情况，
     并登记成后台托管进程；`discover` 可只读列出现有
