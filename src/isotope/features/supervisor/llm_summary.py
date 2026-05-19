@@ -30,6 +30,7 @@ from ...llm.provider import OpenAICompatibleChatProvider, Transport
 from .flow import CodexSupervisorReport
 
 DEFAULT_MAX_TOKENS = 2048
+LARGE_RESUME_SOURCE_BYTES = 64 * 1024
 LLM_ACTION_ALLOWED_KINDS = (
     "monitor",
     "send_status",
@@ -148,6 +149,7 @@ def build_llm_summary_messages(report: CodexSupervisorReport) -> list[dict[str, 
             "status": session.status_label,
             "reason": session.reason,
             "status_evidence": session.status_evidence,
+            "source_size_bytes": session.source_size_bytes,
             "age_seconds": session.age_seconds,
             "managed": session.managed,
             "managed_name": session.managed_name,
@@ -215,6 +217,8 @@ def build_llm_action_messages(
             "cwd": session.cwd,
             "status": session.supervisor_status or session.status,
             "reason": session.supervisor_summary or session.reason,
+            "source_size_bytes": session.source_size_bytes,
+            "resume_context_hint": _resume_context_hint(session),
             "can_send_to_tmux": _has_managed_send_target(session),
             "can_resume": _can_resume_session(session),
             "tmux_session": session.managed_tmux_session,
@@ -278,6 +282,11 @@ def build_llm_action_messages(
                         (
                             "已有上下文足够时优先选择 launch_session、send_continue、"
                             "send_status、ask_user 或 monitor。"
+                        ),
+                        (
+                            "candidate_targets.resume_context_hint 为 large_session_file 时，"
+                            "恢复历史可能消耗大量 tokens；除非确实需要该完整历史，"
+                            "恢复前优先考虑 request_context 或 launch_session。"
                         ),
                     ],
                     "context_capability": {
@@ -863,6 +872,15 @@ def _can_resume_session(session: Any) -> bool:
         and not session_id.startswith("managed:")
         and not _is_completed_session(session)
     )
+
+
+def _resume_context_hint(session: Any) -> str | None:
+    if not _can_resume_session(session):
+        return None
+    source_size = getattr(session, "source_size_bytes", None)
+    if isinstance(source_size, int) and source_size >= LARGE_RESUME_SOURCE_BYTES:
+        return "large_session_file"
+    return "normal_session_file"
 
 
 def _suggested_target_name(session: Any) -> str:

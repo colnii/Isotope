@@ -397,6 +397,11 @@
 169. Codex Supervisor launch 冷却：真实 2 轮 process-first loop 验收发现
     LLM 会连续启动同名 `planner-session`；现已让 `launch_session`
     写入 lane state 并遵守 `--prompt-cooldown`，第二轮同名启动会跳过。
+170. Codex Supervisor resume 成本提示：真实 `codex exec resume`
+    验收确认后台恢复和状态协议解析可用，但一个 92KB session 仍消耗
+    约 47K tokens；现已在 `scan` 和 LLM planner 输入里加入
+    `source_size_bytes` 与 `resume_context_hint`，提示模型不要无意识恢复
+    大历史。
 
 ## 最近完成：Codex Supervisor process-first loop 验收
 
@@ -415,8 +420,8 @@
 
 下一步：
 
-- 增加真实 `resume_session` process-first 验收，确认恢复旧会话、
-  新开会话和上下文检索可以在同一日常 loop 里稳定共存。
+- 做更长的混合 loop 验收，确认恢复旧会话、新开会话和上下文检索
+  可以稳定共存，且 LLM 会避开高成本 resume。
 
 ## 最近完成：Codex Supervisor 真实 resume 执行验收修复
 

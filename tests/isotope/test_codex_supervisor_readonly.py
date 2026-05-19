@@ -242,7 +242,7 @@ def test_codex_supervisor_report_serializes_to_json_shape(tmp_path):
 
 def test_codex_supervisor_scan_parses_supervisor_status_protocol(tmp_path):
     codex_home = tmp_path / ".codex"
-    _write_session(
+    session_path = _write_session(
         codex_home,
         "2026/05/16/rollout-status.jsonl",
         session_id="status-session",
@@ -268,6 +268,8 @@ def test_codex_supervisor_scan_parses_supervisor_status_protocol(tmp_path):
     assert session.supervisor_status == "done"
     assert session.supervisor_summary == "测试已经通过，等待用户审阅。"
     assert session.supervisor_next == "等待用户确认后继续状态协议下一片。"
+    assert session.source_size_bytes == session_path.stat().st_size
+    assert session.to_dict()["source_size_bytes"] == session_path.stat().st_size
     assert session.to_dict()["supervisor_status"] == "done"
     assert "Supervisor 状态：done" in render_plain_report(report)
     messages = build_llm_summary_messages(report)
@@ -2929,6 +2931,31 @@ def test_codex_supervisor_llm_action_messages_include_whitelist_and_commands():
     assert '"managed_terminal_ready": true' in messages[1]["content"]
     assert '"managed_bell": true' in messages[1]["content"]
     assert '"supervisor_status": "done"' in messages[1]["content"]
+
+
+def test_codex_supervisor_llm_action_messages_include_resume_context_size_hint():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="active-session",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/sessions/active.jsonl",
+                source_size_bytes=92178,
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="working",
+                reason="仍在处理 Supervisor 任务",
+            ),
+        ),
+    )
+    suggestions = _advice_payload(report, include_all_managed=True)["command_suggestions"]
+
+    messages = build_llm_action_messages(report, suggestions)
+
+    assert '"source_size_bytes": 92178' in messages[1]["content"]
+    assert '"resume_context_hint": "large_session_file"' in messages[1]["content"]
+    assert "恢复前优先考虑 request_context 或 launch_session" in messages[1]["content"]
 
 
 def test_codex_supervisor_llm_action_skips_done_resume_candidates():

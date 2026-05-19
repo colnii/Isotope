@@ -65,6 +65,7 @@ class CodexSessionSummary:
     age_seconds: int
     status: str
     reason: str
+    source_size_bytes: int | None = None
     status_evidence: dict[str, str] | None = None
     thread_name: str | None = None
     thread_id: str | None = None
@@ -123,6 +124,7 @@ class CodexSessionSummary:
             "cwd": self.cwd,
             "git_branch": self.git_branch,
             "source_path": self.source_path,
+            "source_size_bytes": self.source_size_bytes,
             "last_event_at": self.last_event_at,
             "age_seconds": self.age_seconds,
             "status": self.status,
@@ -482,6 +484,7 @@ def _read_session_summary(
         cwd=cwd,
         git_branch=branch_resolver(cwd) if cwd else None,
         source_path=str(path),
+        source_size_bytes=_path_size_bytes(path),
         last_event_at=last_event_at.isoformat(),
         age_seconds=age_seconds,
         status=status,
@@ -587,6 +590,13 @@ def _path_mtime_ns(path: Path) -> int:
         return 0
 
 
+def _path_size_bytes(path: Path) -> int | None:
+    try:
+        return path.stat().st_size
+    except OSError:
+        return None
+
+
 def _read_session_lines(path: Path) -> list[str]:
     size = path.stat().st_size
     if size <= MAX_FULL_SESSION_READ_BYTES:
@@ -685,6 +695,7 @@ def _managed_summary(
         cwd=record.cwd,
         git_branch=branch_resolver(record.cwd) if record.cwd else None,
         source_path=str(registry_path),
+        source_size_bytes=None,
         last_event_at=started_at.isoformat(),
         age_seconds=age_seconds,
         status=status,
