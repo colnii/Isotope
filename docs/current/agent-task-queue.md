@@ -413,6 +413,11 @@
     LLM 已启动 worker，但 `daemon.log` 为空；根因是后台 Python stdout
     文件输出缓冲。现已让 `daemon start` 生成 `python -u -m ... loop`
     命令，确保常驻自动动作能及时写入日志。
+173. Codex Supervisor guide 成本入口：`guide` 现在默认把
+    `gpt-5.4-mini` 和 `model_reasoning_effort="low"` 写进生成的
+    `loop/daemon` 命令，用户不必再手动记忆低成本 worker 参数；
+    如需更强模型，可用 `guide --worker-codex-model` 和
+    `guide --worker-codex-config` 覆盖。
 
 ## 最近完成：Codex Supervisor process-first loop 验收
 

@@ -7531,8 +7531,16 @@ def test_codex_supervisor_runner_guide_prints_usable_workflow(tmp_path, capsys):
         "isotope-supervisor adopt --name doc-lane "
         f"--cwd {workspace} --tmux-session doc-tmux"
     ) in text
-    assert "isotope-supervisor daemon start --interval 30" in text
-    assert "isotope-supervisor loop --interval 30" in text
+    assert (
+        "isotope-supervisor daemon start --interval 30 "
+        "--worker-codex-model gpt-5.4-mini "
+        "--worker-codex-config 'model_reasoning_effort=\"low\"'"
+    ) in text
+    assert (
+        "isotope-supervisor loop --interval 30 "
+        "--worker-codex-model gpt-5.4-mini "
+        "--worker-codex-config 'model_reasoning_effort=\"low\"'"
+    ) in text
     assert "isotope-supervisor web" in text
     assert "isotope-supervisor archive --name doc-lane" in text
 
@@ -7558,6 +7566,10 @@ def test_codex_supervisor_runner_guide_can_print_json(tmp_path, capsys):
     assert payload["workflow"]["lane_name"] == "doc-lane"
     assert payload["workflow"]["tmux_session"] == "doc-lane"
     assert payload["workflow"]["cwd"] == str(workspace)
+    assert payload["workflow"]["worker_codex_model"] == "gpt-5.4-mini"
+    assert payload["workflow"]["worker_codex_config"] == [
+        'model_reasoning_effort="low"'
+    ]
     assert payload["commands"]["resume"] == (
         "isotope-supervisor resume --name doc-lane "
         f"--cwd {workspace} --session-id '<session-id>' "
@@ -7575,13 +7587,48 @@ def test_codex_supervisor_runner_guide_can_print_json(tmp_path, capsys):
         "SUPERVISOR_STATUS/SUMMARY/NEXT 汇报。'"
     )
     assert payload["commands"]["supervise"] == (
-        "isotope-supervisor loop --interval 30"
+        "isotope-supervisor loop --interval 30 "
+        "--worker-codex-model gpt-5.4-mini "
+        "--worker-codex-config 'model_reasoning_effort=\"low\"'"
     )
-    assert (
-        payload["commands"]["daemon"]
-        == "isotope-supervisor daemon start --interval 30"
+    assert payload["commands"]["daemon"] == (
+        "isotope-supervisor daemon start --interval 30 "
+        "--worker-codex-model gpt-5.4-mini "
+        "--worker-codex-config 'model_reasoning_effort=\"low\"'"
     )
     assert payload["commands"]["archive"] == "isotope-supervisor archive --name doc-lane"
+
+
+def test_codex_supervisor_runner_guide_can_override_worker_options(tmp_path, capsys):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+
+    exit_code = supervisor_main(
+        [
+            "guide",
+            "--cwd",
+            str(workspace),
+            "--name",
+            "doc-lane",
+            "--worker-codex-model",
+            "gpt-5.5",
+            "--worker-codex-config",
+            'model_reasoning_effort="medium"',
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["workflow"]["worker_codex_model"] == "gpt-5.5"
+    assert payload["workflow"]["worker_codex_config"] == [
+        'model_reasoning_effort="medium"'
+    ]
+    assert payload["commands"]["daemon"] == (
+        "isotope-supervisor daemon start --interval 30 "
+        "--worker-codex-model gpt-5.5 "
+        "--worker-codex-config 'model_reasoning_effort=\"medium\"'"
+    )
 
 
 def test_codex_supervisor_runner_discover_lists_adoptable_tmux_codex_sessions(

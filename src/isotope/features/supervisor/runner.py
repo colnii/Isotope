@@ -106,6 +106,8 @@ ADOPT_TMUX_HINT = (
     "isotope-supervisor adopt --name <name> --cwd <repo> --tmux-session <session>"
 )
 DEFAULT_CONTEXT_QUERY = "Supervisor 当前状态 下一步开发方向 AGENTS.md docs/current/status.md"
+DEFAULT_GUIDE_WORKER_CODEX_MODEL = "gpt-5.4-mini"
+DEFAULT_GUIDE_WORKER_CODEX_CONFIG = ('model_reasoning_effort="low"',)
 DEFAULT_LAUNCH_PROMPT = " ".join(
     [
         "请阅读 AGENTS.md 和 docs/current/status.md，",
@@ -789,6 +791,19 @@ def _build_parser() -> argparse.ArgumentParser:
         default=30,
         help="Supervise loop interval seconds.",
     )
+    guide_parser.add_argument(
+        "--worker-codex-model",
+        default=DEFAULT_GUIDE_WORKER_CODEX_MODEL,
+        help="Codex worker model used in generated loop/daemon commands.",
+    )
+    guide_parser.add_argument(
+        "--worker-codex-config",
+        action="append",
+        help=(
+            "Codex worker -c key=value override used in generated loop/daemon "
+            "commands. Repeatable; replaces the guide default when provided."
+        ),
+    )
     guide_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     return parser
 
@@ -1360,6 +1375,11 @@ def _guide_payload(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("interval must be positive")
     cwd = str(Path(args.cwd).expanduser())
     tmux_session = args.tmux_session or args.name
+    worker_codex_config = _guide_worker_codex_config(args)
+    worker_codex_args = _guide_worker_codex_args(
+        model=args.worker_codex_model,
+        config=worker_codex_config,
+    )
     commands = {
         "resume": shlex.join(
             [
@@ -1450,6 +1470,7 @@ def _guide_payload(args: argparse.Namespace) -> dict[str, Any]:
                 "loop",
                 "--interval",
                 str(args.interval),
+                *worker_codex_args,
             ]
         ),
         "daemon": shlex.join(
@@ -1459,6 +1480,7 @@ def _guide_payload(args: argparse.Namespace) -> dict[str, Any]:
                 "start",
                 "--interval",
                 str(args.interval),
+                *worker_codex_args,
             ]
         ),
         "web": shlex.join(["isotope-supervisor", "web"]),
@@ -1473,9 +1495,29 @@ def _guide_payload(args: argparse.Namespace) -> dict[str, Any]:
             "tmux_session": tmux_session,
             "prompt": args.prompt,
             "interval": args.interval,
+            "worker_codex_model": args.worker_codex_model,
+            "worker_codex_config": list(worker_codex_config),
         },
         "commands": commands,
     }
+
+
+def _guide_worker_codex_config(args: argparse.Namespace) -> tuple[str, ...]:
+    value = getattr(args, "worker_codex_config", None)
+    if value is None:
+        return DEFAULT_GUIDE_WORKER_CODEX_CONFIG
+    if not isinstance(value, list):
+        return ()
+    return tuple(item for item in value if isinstance(item, str))
+
+
+def _guide_worker_codex_args(*, model: str | None, config: tuple[str, ...]) -> list[str]:
+    args: list[str] = []
+    if model:
+        args.extend(["--worker-codex-model", model])
+    for item in config:
+        args.extend(["--worker-codex-config", item])
+    return args
 
 
 def _print_guide_plain(payload: dict[str, Any]) -> None:

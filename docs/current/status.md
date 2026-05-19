@@ -119,6 +119,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     支持 `--worker-codex-model` 和可重复的 `--worker-codex-config`，
     用于把模型、`model_reasoning_effort` 等 Codex 配置传给后台 worker，
     避免自动托管无意识继承本机高成本默认配置；
+    `guide` 默认生成带 `gpt-5.4-mini` 和
+    `model_reasoning_effort="low"` 的 `loop/daemon` 命令，
+    用户仍可用 guide 参数覆盖；
     已有多 lane loop 回归测试覆盖默认宽松预算下连续推进不同
     托管窗口；
     时间预算尚未强制实现；
@@ -287,7 +290,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner advise
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise --iterations 1 --llm-summary --json
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner loop --interval 30
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner loop --interval 30 --no-auto-adopt
-PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon start --interval 30
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon start --interval 30 --worker-codex-model gpt-5.4-mini --worker-codex-config 'model_reasoning_effort="low"'
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon status
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon watchdog
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon watcher start --interval 60
