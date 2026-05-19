@@ -82,6 +82,18 @@ DEFAULT_MAX_CONTEXT_REQUESTS = 0
 DEFAULT_MAX_RUN_MINUTES = 0
 DEFAULT_WORKER_CODEX_MODEL = "gpt-5.5"
 DEFAULT_WORKER_CODEX_CONFIG = ('model_reasoning_effort="high"',)
+DEFAULT_WORKER_PROFILE = "coding"
+WORKER_PROFILE_DEFAULTS = {
+    "coding": {
+        "model": DEFAULT_WORKER_CODEX_MODEL,
+        "config": DEFAULT_WORKER_CODEX_CONFIG,
+    },
+    "light": {
+        "model": DEFAULT_WORKER_CODEX_MODEL,
+        "config": ('model_reasoning_effort="low"',),
+    },
+}
+WORKER_PROFILE_CHOICES = tuple(WORKER_PROFILE_DEFAULTS)
 TERMINAL_DONE_NEXT_MARKERS = (
     "可结束",
     "可以结束",
@@ -125,8 +137,6 @@ ADOPT_TMUX_HINT = (
     "isotope-supervisor adopt --name <name> --cwd <repo> --tmux-session <session>"
 )
 DEFAULT_CONTEXT_QUERY = "Supervisor 当前状态 下一步开发方向 AGENTS.md docs/current/status.md"
-DEFAULT_GUIDE_WORKER_CODEX_MODEL = DEFAULT_WORKER_CODEX_MODEL
-DEFAULT_GUIDE_WORKER_CODEX_CONFIG = DEFAULT_WORKER_CODEX_CONFIG
 DEFAULT_LAUNCH_PROMPT = " ".join(
     [
         "请阅读 AGENTS.md 和 docs/current/status.md，",
@@ -239,6 +249,12 @@ def _build_parser() -> argparse.ArgumentParser:
             type=int,
             default=DEFAULT_MAX_RUN_MINUTES,
             help="Maximum elapsed minutes before send_continue is blocked for a lane. Default 0 disables.",
+        )
+        subparsers.choices[command].add_argument(
+            "--worker-profile",
+            choices=WORKER_PROFILE_CHOICES,
+            default=DEFAULT_WORKER_PROFILE,
+            help="Worker profile for launched Codex workers.",
         )
         subparsers.choices[command].add_argument(
             "--worker-codex-model",
@@ -358,6 +374,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Maximum elapsed minutes before send_continue is blocked for a lane. Default 0 disables.",
     )
     loop_parser.add_argument(
+        "--worker-profile",
+        choices=WORKER_PROFILE_CHOICES,
+        default=DEFAULT_WORKER_PROFILE,
+        help="Worker profile for Codex workers launched by the loop.",
+    )
+    loop_parser.add_argument(
         "--worker-codex-model",
         help="Pass -m/--model to Codex workers launched by the loop.",
     )
@@ -456,6 +478,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Maximum elapsed minutes before send_continue is blocked for a lane. Default 0 disables.",
     )
     up_parser.add_argument(
+        "--worker-profile",
+        choices=WORKER_PROFILE_CHOICES,
+        default=DEFAULT_WORKER_PROFILE,
+        help="Worker profile for Codex workers launched by the daemon loop.",
+    )
+    up_parser.add_argument(
         "--worker-codex-model",
         help="Pass -m/--model to Codex workers launched by the daemon loop.",
     )
@@ -550,6 +578,12 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=DEFAULT_MAX_RUN_MINUTES,
         help="Maximum elapsed minutes before send_continue is blocked for a lane. Default 0 disables.",
+    )
+    daemon_start_parser.add_argument(
+        "--worker-profile",
+        choices=WORKER_PROFILE_CHOICES,
+        default=DEFAULT_WORKER_PROFILE,
+        help="Worker profile for Codex workers launched by the daemon loop.",
     )
     daemon_start_parser.add_argument(
         "--worker-codex-model",
@@ -984,8 +1018,13 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Supervise loop interval seconds.",
     )
     guide_parser.add_argument(
+        "--worker-profile",
+        choices=WORKER_PROFILE_CHOICES,
+        default=DEFAULT_WORKER_PROFILE,
+        help="Worker profile used in generated loop/daemon commands.",
+    )
+    guide_parser.add_argument(
         "--worker-codex-model",
-        default=DEFAULT_GUIDE_WORKER_CODEX_MODEL,
         help="Codex worker model used in generated loop/daemon commands.",
     )
     guide_parser.add_argument(
@@ -1286,6 +1325,7 @@ def _start_daemon_from_args(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("max_context_requests must be zero or positive")
     if args.max_run_minutes < 0:
         raise ValueError("max_run_minutes must be zero or positive")
+    worker_profile = _worker_profile_from_args(args)
     return start_supervisor_daemon(
         codex_home=Path(args.codex_home),
         interval=args.interval,
@@ -1300,8 +1340,8 @@ def _start_daemon_from_args(args: argparse.Namespace) -> dict[str, Any]:
         goal=_explicit_goal_text(args),
         llm_summary=args.llm_summary,
         auto_adopt=args.auto_adopt,
-        worker_codex_model=_worker_codex_model(args),
-        worker_codex_config=_worker_codex_config(args),
+        worker_codex_model=_worker_codex_model(args, profile=worker_profile),
+        worker_codex_config=_worker_codex_config(args, profile=worker_profile),
     )
 
 
@@ -1858,9 +1898,11 @@ def _guide_payload(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("interval must be positive")
     cwd = str(Path(args.cwd).expanduser())
     tmux_session = args.tmux_session or args.name
-    worker_codex_config = _guide_worker_codex_config(args)
+    worker_profile = _worker_profile_from_args(args)
+    worker_codex_model = _worker_codex_model(args, profile=worker_profile)
+    worker_codex_config = _worker_codex_config(args, profile=worker_profile)
     worker_codex_args = _guide_worker_codex_args(
-        model=args.worker_codex_model,
+        model=worker_codex_model,
         config=worker_codex_config,
     )
     commands = {
@@ -1978,20 +2020,12 @@ def _guide_payload(args: argparse.Namespace) -> dict[str, Any]:
             "tmux_session": tmux_session,
             "prompt": args.prompt,
             "interval": args.interval,
-            "worker_codex_model": args.worker_codex_model,
+            "worker_profile": worker_profile,
+            "worker_codex_model": worker_codex_model,
             "worker_codex_config": list(worker_codex_config),
         },
         "commands": commands,
     }
-
-
-def _guide_worker_codex_config(args: argparse.Namespace) -> tuple[str, ...]:
-    value = getattr(args, "worker_codex_config", None)
-    if value is None:
-        return DEFAULT_GUIDE_WORKER_CODEX_CONFIG
-    if not isinstance(value, list):
-        return ()
-    return tuple(item for item in value if isinstance(item, str))
 
 
 def _guide_worker_codex_args(*, model: str | None, config: tuple[str, ...]) -> list[str]:
@@ -3700,21 +3734,61 @@ def _execute_llm_action(
     )
 
 
-def _worker_codex_model(args: argparse.Namespace) -> str | None:
+def _worker_profile_from_args(args: argparse.Namespace) -> str:
+    raw = getattr(args, "worker_profile", DEFAULT_WORKER_PROFILE)
+    profile = raw if isinstance(raw, str) and raw else DEFAULT_WORKER_PROFILE
+    if profile not in WORKER_PROFILE_DEFAULTS:
+        supported = ", ".join(WORKER_PROFILE_CHOICES)
+        raise ValueError(f"unsupported worker_profile: {profile}; allowed: {supported}")
+    return profile
+
+
+def _worker_profile_for_action(
+    args: argparse.Namespace,
+    action: dict[str, Any],
+) -> str:
+    raw = action.get("worker_profile")
+    if isinstance(raw, str) and raw:
+        if raw not in WORKER_PROFILE_DEFAULTS:
+            supported = ", ".join(WORKER_PROFILE_CHOICES)
+            raise ValueError(f"unsupported worker_profile: {raw}; allowed: {supported}")
+        return raw
+    return _worker_profile_from_args(args)
+
+
+def _worker_profile_defaults(profile: str) -> dict[str, Any]:
+    defaults = WORKER_PROFILE_DEFAULTS.get(profile)
+    if defaults is None:
+        supported = ", ".join(WORKER_PROFILE_CHOICES)
+        raise ValueError(f"unsupported worker_profile: {profile}; allowed: {supported}")
+    return defaults
+
+
+def _worker_codex_model(
+    args: argparse.Namespace,
+    *,
+    profile: str | None = None,
+) -> str | None:
     if not hasattr(args, "worker_codex_model"):
         return None
     value = getattr(args, "worker_codex_model", None)
     if value is None:
-        return DEFAULT_WORKER_CODEX_MODEL
+        defaults = _worker_profile_defaults(profile or _worker_profile_from_args(args))
+        return str(defaults["model"])
     return value if isinstance(value, str) else None
 
 
-def _worker_codex_config(args: argparse.Namespace) -> tuple[str, ...]:
+def _worker_codex_config(
+    args: argparse.Namespace,
+    *,
+    profile: str | None = None,
+) -> tuple[str, ...]:
     if not hasattr(args, "worker_codex_config"):
         return ()
     value = getattr(args, "worker_codex_config", None)
     if value is None:
-        return DEFAULT_WORKER_CODEX_CONFIG
+        defaults = _worker_profile_defaults(profile or _worker_profile_from_args(args))
+        return tuple(defaults["config"])
     if not isinstance(value, list):
         return ()
     return tuple(item for item in value if isinstance(item, str))
@@ -3901,6 +3975,7 @@ def _execute_launch_action(
             "worktree": worktree,
         }
     worker_cwd = str(worktree["cwd"])
+    worker_profile = _worker_profile_for_action(args, action)
     work_order_prompt = _launch_work_order_prompt(
         target_name=target_name,
         cwd=worker_cwd,
@@ -3923,8 +3998,8 @@ def _execute_launch_action(
         cwd=Path(worker_cwd),
         name=target_name,
         prompt=work_order_prompt,
-        codex_model=_worker_codex_model(args),
-        codex_config=_worker_codex_config(args),
+        codex_model=_worker_codex_model(args, profile=worker_profile),
+        codex_config=_worker_codex_config(args, profile=worker_profile),
         popen=subprocess.Popen,
         run=subprocess.run,
     )
@@ -3939,6 +4014,7 @@ def _execute_launch_action(
         "kind": "launch_session",
         "command": command,
         "text": work_order_prompt,
+        "worker_profile": worker_profile,
         "managed": {
             "name": record.name,
             "record_id": record.record_id,

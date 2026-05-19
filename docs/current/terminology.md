@@ -146,6 +146,7 @@
 | `loop` | Supervisor 日常常驻入口，默认由 LLM planner 驱动受控动作 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py` |
 | `--codex-model` | `launch/resume` 参数，传给后台 Codex worker 的 `-m/--model`，用于控制 worker 模型 | 产品功能/控制通道/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
 | `--codex-config` | `launch/resume` 参数，传给后台 Codex worker 的 `-c key=value`，可重复使用 | 产品功能/控制通道/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
+| `--worker-profile` | worker 工作档位，`coding` 保持代码任务默认 `gpt-5.5 high`，`light` 给只读检查、状态汇报和 smoke 降低推理成本 | 产品功能/控制策略/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/llm_summary.py` |
 | `--worker-codex-model` | `supervise/loop/daemon start` 参数，控制 LLM 自动启动或恢复的 Codex worker 模型 | 产品功能/控制策略/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/daemon.py` |
 | `--worker-codex-config` | `supervise/loop/daemon start` 参数，给 LLM 自动启动或恢复的 Codex worker 传 `-c key=value` 配置 | 产品功能/控制策略/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/daemon.py` |
 | `--rule-execute` | `loop` 的备用参数，切回旧规则自动策略 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |

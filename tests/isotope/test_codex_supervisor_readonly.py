@@ -3603,6 +3603,48 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_launch_session():
     }
 
 
+def test_codex_supervisor_generate_llm_action_decision_accepts_launch_worker_profile():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="019e35a2-e442-75e2-84ab-3761a685a736",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/sessions/rollout.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="done",
+                reason="已有窗口已完成",
+            ),
+        ),
+    )
+    suggestions = _advice_payload(report)["command_suggestions"]
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert '"worker_profiles"' in content
+            assert '"light"' in content
+            return json.dumps(
+                {
+                    "kind": "launch_session",
+                    "target_name": "quick-smoke",
+                    "cwd": "/home/lumber/Github/isotope",
+                    "prompt": "只读检查当前状态并输出三行状态协议。",
+                    "worker_profile": "light",
+                    "reason": "只读 smoke 不需要高推理代码档。",
+                },
+                ensure_ascii=False,
+            )
+
+    decision = generate_llm_action_decision(report, suggestions, FakeProvider())
+
+    assert decision["kind"] == "launch_session"
+    assert decision["target_name"] == "quick-smoke"
+    assert decision["worker_profile"] == "light"
+    assert decision["command_suggestion"]["worker_profile"] == "light"
+
+
 def test_codex_supervisor_generate_llm_action_decision_accepts_request_context():
     report = CodexSupervisorReport(
         generated_at=NOW.isoformat(),
@@ -5413,6 +5455,98 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_launch_session(
     assert captured["cwd"] == str(workspace)
     assert captured["stdin"] is subprocess.DEVNULL
     assert captured["stderr"] is subprocess.STDOUT
+
+
+def test_codex_supervisor_runner_supervise_launch_uses_light_worker_profile(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-source.jsonl",
+        session_id="source-session",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "SUPERVISOR_STATUS: done\nSUPERVISOR_SUMMARY: 已完成。\nSUPERVISOR_NEXT: 可开新任务。",
+            )
+        ],
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            return json.dumps(
+                {
+                    "kind": "launch_session",
+                    "target_name": "quick-smoke",
+                    "cwd": str(workspace),
+                    "prompt": "只读检查当前状态并输出三行状态协议。",
+                    "worker_profile": "light",
+                    "reason": "只读 smoke 不需要高推理代码档。",
+                },
+                ensure_ascii=False,
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 45678
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured["command"] = command
+        captured["cwd"] = cwd
+        return FakeProcess()
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"]["worker_profile"] == "light"
+    assert payload["executed"]["kind"] == "launch_session"
+    assert payload["executed"]["worker_profile"] == "light"
+    assert captured["command"][:6] == [
+        "codex",
+        "exec",
+        "-m",
+        "gpt-5.5",
+        "-c",
+        'model_reasoning_effort="low"',
+    ]
 
 
 def test_codex_supervisor_runner_supervise_launch_uses_isolated_worktree(
@@ -8637,6 +8771,37 @@ def test_codex_supervisor_runner_guide_can_override_worker_options(tmp_path, cap
     assert payload["commands"]["daemon"] == (
         "isotope-supervisor daemon start --interval 30 "
         "--worker-codex-model gpt-5.4-mini "
+        "--worker-codex-config 'model_reasoning_effort=\"low\"'"
+    )
+
+
+def test_codex_supervisor_runner_guide_can_use_light_worker_profile(tmp_path, capsys):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+
+    exit_code = supervisor_main(
+        [
+            "guide",
+            "--cwd",
+            str(workspace),
+            "--name",
+            "doc-lane",
+            "--worker-profile",
+            "light",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["workflow"]["worker_profile"] == "light"
+    assert payload["workflow"]["worker_codex_model"] == "gpt-5.5"
+    assert payload["workflow"]["worker_codex_config"] == [
+        'model_reasoning_effort="low"'
+    ]
+    assert payload["commands"]["supervise"] == (
+        "isotope-supervisor loop --interval 30 "
+        "--worker-codex-model gpt-5.5 "
         "--worker-codex-config 'model_reasoning_effort=\"low\"'"
     )
 

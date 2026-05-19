@@ -42,6 +42,7 @@ LLM_ACTION_ALLOWED_KINDS = (
 )
 LLM_RESUME_PROMPT_KINDS = ("send_status", "send_continue")
 LLM_ASK_USER_CONTEXT_STATUSES = ("missing", "outdated", "conflict")
+LLM_WORKER_PROFILES = ("coding", "light")
 
 
 # ---------------------------------------------------------------------------
@@ -269,6 +270,10 @@ def build_llm_action_messages(
                     "recent_context_results": recent_context_results or [],
                     "recent_decision_answers": recent_decision_answers or [],
                     "context_request_history": context_request_history,
+                    "worker_profiles": {
+                        "coding": "默认代码开发档，适合需要改代码、跑测试、做复杂判断的任务。",
+                        "light": "低成本轻任务档，适合只读检查、状态汇报、smoke 或短小验证。",
+                    },
                     "action_rules": [
                         (
                             "recommendation.target_session_id 只是状态线索，"
@@ -356,6 +361,7 @@ def build_llm_action_messages(
                         "target_name": "new-lane",
                         "cwd": "/path/to/repo",
                         "prompt": "由 LLM 根据上下文自由写给新 Codex 会话的中文指令",
+                        "worker_profile": "coding|light",
                         "reason": "一句中文原因",
                     },
                 },
@@ -400,6 +406,7 @@ def generate_llm_action_decision(
     session_id: str | None = None
     prompt_kind: str | None = None
     goal_id: str | None = None
+    worker_profile: str | None = None
     question: str | None = None
     context_status: str | None = None
     codex_requested_decision: bool | None = None
@@ -433,10 +440,17 @@ def generate_llm_action_decision(
         ):
             raise ValueError(f"unknown workspace for LLM action: {cwd}")
         prompt = _required_payload_string(payload, "prompt")
+        worker_profile = _optional_payload_string(payload, "worker_profile")
+        if worker_profile is not None and worker_profile not in LLM_WORKER_PROFILES:
+            supported = ", ".join(LLM_WORKER_PROFILES)
+            raise ValueError(
+                f"unsupported worker_profile: {worker_profile}; allowed: {supported}"
+            )
         command_suggestion = _launch_session_command_suggestion(
             target_name=target_name,
             cwd=cwd,
             prompt=prompt,
+            worker_profile=worker_profile,
         )
     elif kind == "request_context":
         target_name = None
@@ -508,6 +522,7 @@ def generate_llm_action_decision(
         **({"session_id": session_id} if session_id is not None else {}),
         **({"goal_id": goal_id} if goal_id is not None else {}),
         **({"prompt_kind": prompt_kind} if prompt_kind is not None else {}),
+        **({"worker_profile": worker_profile} if worker_profile is not None else {}),
         **({"cwd": cwd} if kind == "launch_session" else {}),
         **({"prompt": prompt} if kind == "launch_session" else {}),
         **({"cwd": cwd} if kind == "request_context" else {}),
@@ -750,6 +765,7 @@ def _launch_session_command_suggestion(
     target_name: str,
     cwd: str,
     prompt: str,
+    worker_profile: str | None = None,
 ) -> dict[str, str]:
     return {
         "kind": "launch_session",
@@ -757,6 +773,7 @@ def _launch_session_command_suggestion(
         "target_name": target_name,
         "cwd": cwd,
         "prompt": prompt,
+        **({"worker_profile": worker_profile} if worker_profile else {}),
         "command": shlex.join(
             [
                 "isotope-supervisor",
