@@ -29,7 +29,7 @@ from typing import Any, Callable, Protocol
 from ...llm.provider import OpenAICompatibleChatProvider, Transport
 from .flow import CodexSupervisorReport
 
-DEFAULT_MAX_TOKENS = 512
+DEFAULT_MAX_TOKENS = 2048
 LLM_ACTION_ALLOWED_KINDS = (
     "monitor",
     "send_status",

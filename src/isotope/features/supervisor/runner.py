@@ -2928,6 +2928,17 @@ def _execute_launch_action(
         raise ValueError("cwd is required for launch_session")
     if not isinstance(prompt, str) or not prompt.strip():
         raise ValueError("prompt is required for launch_session")
+    if cooldown_state := prompt_cooldown_state(
+        codex_home=Path(args.codex_home),
+        name=target_name,
+        cooldown_seconds=args.prompt_cooldown,
+    ):
+        return {
+            "kind": "launch_session",
+            "skipped": True,
+            "reason": "launch prompt cooldown active",
+            "lane_state": cooldown_state.to_dict(),
+        }
     work_order_prompt = _launch_work_order_prompt(
         target_name=target_name,
         cwd=cwd,
@@ -2952,6 +2963,13 @@ def _execute_launch_action(
         prompt=work_order_prompt,
         popen=subprocess.Popen,
         run=subprocess.run,
+    )
+    record_lane_prompt(
+        codex_home=Path(args.codex_home),
+        name=record.name,
+        tmux_session=None,
+        status="launch_session",
+        prompt_kind="launch_session",
     )
     return {
         "kind": "launch_session",

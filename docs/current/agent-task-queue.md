@@ -391,8 +391,14 @@
     `codex exec` 已输出 `SUPERVISOR_STATUS: done`，但 scan 只看 PID
     退出，dashboard 没归入“已完成”；现已读取托管 log 尾部并解析
     状态协议，已退出但明确 `done` 的 process lane 会进入完成组。
+168. Codex Supervisor LLM JSON 稳定性：真实 LLM 建议验收发现默认
+    512 tokens 会把 `request_context` JSON 截断成半截对象；默认
+    Supervisor LLM 输出上限已调到 2048 tokens，避免动作 JSON 被截断。
+169. Codex Supervisor launch 冷却：真实 2 轮 process-first loop 验收发现
+    LLM 会连续启动同名 `planner-session`；现已让 `launch_session`
+    写入 lane state 并遵守 `--prompt-cooldown`，第二轮同名启动会跳过。
 
-## 最近完成：Codex Supervisor process log 状态修正
+## 最近完成：Codex Supervisor process-first loop 验收
 
 完成内容：
 
@@ -401,12 +407,16 @@
 - 修复 `scan` 只看 PID、不读 process log 的问题；现在可从托管 log
   解析 `SUPERVISOR_STATUS/SUMMARY/NEXT`。
 - `dashboard` 已能把已退出但明确 `done` 的 process lane 放入“已完成”。
+- 真实 LLM 建议在 512 tokens 下会输出半截 JSON；默认上限已调到
+  2048 tokens。
+- 真实 LLM + fake Codex 两轮 loop 已验证：第一轮
+  `request_context -> launch_session`，第二轮同名 `launch_session`
+  被 `prompt-cooldown` 拦截，不会重复开同名后台任务。
 
 下一步：
 
-- 做更长时间的 process-first loop 验收，验证 LLM 是否能稳定在
-  `launch_session`、`resume_session`、`request_context` 和 `ask_user`
-  之间自主选择。
+- 增加真实 `resume_session` process-first 验收，确认恢复旧会话、
+  新开会话和上下文检索可以在同一日常 loop 里稳定共存。
 
 ## 最近完成：Codex Supervisor 真实 resume 执行验收修复
 

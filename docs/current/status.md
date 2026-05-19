@@ -107,7 +107,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `request_context` 使用；LLM 重规划时会看到已检索过的
     context history，避免重复请求同一个 cwd/query；
     `resume_session` 也受 `--prompt-cooldown` 约束，避免短时间重复恢复
-    同一历史会话；B 层预算控制已落地 `--max-continue-count` 和
+    同一历史会话；`launch_session` 同样受 `--prompt-cooldown` 约束，
+    避免 LLM 长跑时反复启动同名后台任务；B 层预算控制已落地
+    `--max-continue-count` 和
     `--max-context-requests`；前者用 lane state 记录
     `continue_count`，达到显式阈值后拦截继续推进请求；后者限制
     每轮可执行的上下文检索次数；二者默认值都是 0，
@@ -119,6 +121,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     可见 `monitor`，不让 loop 直接退出；OpenAI-compatible provider
     遇到 `finish_reason=length` 且只有 `reasoning_content`、无正文时，
     会重试一次并关闭 thinking，避免 reasoning token 吃完整个输出预算；
+    Supervisor LLM 默认输出上限为 2048 tokens，降低动作 JSON 被截断
+    导致误降级为 `monitor` 的概率；
     `monitor` 只记录跳过；
     `advise` 可单独输出建议和命令草案，并可显式执行 send 类草案；
     `guide` 可生成一组可复制的启动、接管、日常 loop 和观察命令，

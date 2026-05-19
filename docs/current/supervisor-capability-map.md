@@ -88,6 +88,10 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   在 dashboard 里显示明确完成状态，而不是只显示 PID 已退出。
 - LLM planner 会看到 process 托管记录作为候选目标，避免状态面板
   误报“只有 tmux 才可控”。
+- `launch_session` 会写入 lane state 并遵守 `--prompt-cooldown`，
+  避免长跑时对同一个 `target_name` 反复启动后台 Codex。
+- Supervisor LLM 默认输出上限是 2048 tokens，给动作 JSON 留足空间；
+  单个 TOML provider 仍可用 `max_tokens` 覆盖。
 - LLM planner 会看到可恢复会话、已完成会话和最近 context 查询历史，
   避免恢复已完成会话或重复检索同一个 cwd/query。
 - OpenAI-compatible provider 遇到 reasoning-only 空正文时会重试关闭

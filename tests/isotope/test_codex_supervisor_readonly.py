@@ -4708,6 +4708,100 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_launch_session(
     assert captured["stderr"] is subprocess.STDOUT
 
 
+def test_codex_supervisor_runner_supervise_launch_respects_prompt_cooldown(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-source.jsonl",
+        session_id="source-session",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "SUPERVISOR_STATUS: done\nSUPERVISOR_SUMMARY: 已完成。\nSUPERVISOR_NEXT: 可开新任务。",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            return json.dumps(
+                {
+                    "kind": "launch_session",
+                    "target_name": "planner-session",
+                    "cwd": str(workspace),
+                    "prompt": "继续推进 Supervisor 下一步。",
+                    "reason": "启动新会话继续推进。",
+                },
+                ensure_ascii=False,
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+    popen_calls: list[list[str]] = []
+
+    class FakeProcess:
+        pid = 45678
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        popen_calls.append(command)
+        return FakeProcess()
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "2",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--prompt-cooldown",
+            "300",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payloads = [
+        json.loads(line)
+        for line in capsys.readouterr().out.splitlines()
+        if line.strip()
+    ]
+    assert [payload["executed"]["kind"] for payload in payloads] == [
+        "launch_session",
+        "launch_session",
+    ]
+    assert payloads[0]["executed"]["managed"]["name"] == "planner-session"
+    assert payloads[1]["executed"]["skipped"] is True
+    assert payloads[1]["executed"]["reason"] == "launch prompt cooldown active"
+    assert len(popen_calls) == 1
+
+
 def test_codex_supervisor_runner_supervise_llm_execute_can_request_context(
     tmp_path,
     capsys,
@@ -9895,7 +9989,7 @@ def test_codex_supervisor_pooled_provider_strips_thinking():
         "model": "fake-model",
         "messages": [{"role": "user", "content": "hello"}],
         "temperature": 0,
-        "max_tokens": 512,
+        "max_tokens": 2048,
         "stream": False,
     }
 
