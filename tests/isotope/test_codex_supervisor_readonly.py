@@ -4703,6 +4703,115 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_resume_session(
     assert captured["stderr"] is subprocess.STDOUT
 
 
+def test_codex_supervisor_runner_supervise_resume_skips_running_process_cwd(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    log_path = codex_home / "supervisor" / "logs" / "managed-running.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text("worker still running\n", encoding="utf-8")
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-running",
+                "name": "planner-session",
+                "cwd": str(workspace),
+                "prompt": "继续推进 Supervisor。",
+                "command": ["codex", "exec", "-C", str(workspace), "WORK ORDER"],
+                "pid": 4242,
+                "started_at": NOW.isoformat(),
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-active-worker.jsonl",
+        session_id="019e4055-c9d9-7c22-87c9-b30bc57875a2",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "SUPERVISOR_STATUS: working\n"
+                "SUPERVISOR_SUMMARY: 正在读取项目状态。\n"
+                "SUPERVISOR_NEXT: 继续读取项目状态并判断下一步。",
+            )
+        ],
+    )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._pid_is_running",
+        lambda pid: pid == 4242,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._pid_is_running",
+        lambda pid: pid == 4242,
+        raising=False,
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            return json.dumps(
+                {
+                    "kind": "resume_session",
+                    "session_id": "019e4055-c9d9-7c22-87c9-b30bc57875a2",
+                    "prompt_kind": "send_status",
+                    "reason": "恢复正在运行的 worker 查看状态。",
+                },
+                ensure_ascii=False,
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+
+    def fake_resume_managed_codex(*args: object, **kwargs: object) -> object:
+        raise AssertionError("running worker cwd should not be resumed")
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resume_managed_codex",
+        fake_resume_managed_codex,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"]["kind"] == "resume_session"
+    assert payload["executed"]["kind"] == "resume_session"
+    assert payload["executed"]["skipped"] is True
+    assert payload["executed"]["reason"] == "managed process already running"
+    assert payload["executed"]["managed"] == {
+        "name": "planner-session",
+        "record_id": "managed-running",
+        "pid": 4242,
+        "backend": "process",
+    }
+
+
 def test_codex_supervisor_runner_supervise_llm_execute_can_launch_session(
     tmp_path,
     capsys,
@@ -9440,6 +9549,81 @@ def test_codex_supervisor_runner_daemon_status_includes_recent_activity(
     assert activity["recent_worker"]["next"] == "等待 Supervisor 归档。"
 
 
+def test_codex_supervisor_runner_daemon_status_marks_exited_worker_not_working(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    state_path = codex_home / "supervisor" / "daemon.json"
+    worker_log_path = codex_home / "supervisor" / "logs" / "managed-001.log"
+    state_path.parent.mkdir(parents=True)
+    worker_log_path.parent.mkdir(parents=True)
+    state_path.write_text(
+        json.dumps(
+            {
+                "pid": 45678,
+                "status": "stopped",
+                "started_at": "2026-05-18T10:00:00+00:00",
+                "stopped_at": "2026-05-18T10:05:00+00:00",
+                "command": [sys.executable, "-m", "isotope.features.supervisor.runner"],
+                "codex_home": str(codex_home),
+                "log_path": str(codex_home / "supervisor" / "logs" / "daemon.log"),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    worker_log_path.write_text(
+        "SUPERVISOR_STATUS: working\n"
+        "SUPERVISOR_SUMMARY: 正在读取项目状态。\n"
+        "SUPERVISOR_NEXT: 继续读取项目状态并判断下一步。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "planner-session",
+                "cwd": str(workspace),
+                "prompt": "继续推进",
+                "command": ["codex", "exec", "-C", str(workspace), "继续推进"],
+                "pid": 45679,
+                "started_at": "2026-05-18T10:01:00+00:00",
+                "log_path": str(worker_log_path),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon._process_is_alive",
+        lambda pid: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._pid_is_running",
+        lambda pid: False,
+        raising=False,
+    )
+
+    exit_code = supervisor_main(
+        ["daemon", "status", "--codex-home", str(codex_home), "--json"]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    worker = payload["daemon"]["activity"]["recent_worker"]
+    assert worker["status"] == "exited"
+    assert worker["summary"] == "正在读取项目状态。"
+
+
 def test_codex_supervisor_runner_up_reports_existing_daemon_activity(
     tmp_path,
     capsys,
@@ -10577,6 +10761,53 @@ def test_codex_supervisor_scan_parses_managed_process_log_protocol(tmp_path):
     }
     assert session.managed_terminal_excerpt is not None
     assert "SUPERVISOR_STATUS: done" in session.managed_terminal_excerpt
+
+
+def test_codex_supervisor_scan_keeps_exited_process_when_log_says_working(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    log_path = codex_home / "supervisor" / "logs" / "managed-001.log"
+    log_path.parent.mkdir(parents=True)
+    log_path.write_text(
+        "SUPERVISOR_STATUS: working\n"
+        "SUPERVISOR_SUMMARY: 正在读取项目状态。\n"
+        "SUPERVISOR_NEXT: 继续读取项目状态并判断下一步。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "lane-a",
+                "cwd": str(workspace),
+                "prompt": "继续实现 supervisor",
+                "command": ["codex", "exec", "-C", str(workspace), "继续"],
+                "pid": 12345,
+                "started_at": "2026-05-16T11:59:30+00:00",
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = CodexSupervisorFlow(
+        codex_home=codex_home,
+        now=lambda: NOW,
+        process_checker=lambda pid: False,
+    ).scan()
+
+    session = report.sessions[0]
+    assert session.status == "exited"
+    assert session.reason == "Supervisor 托管进程已退出"
+    assert session.supervisor_status == "working"
+    assert session.supervisor_summary == "正在读取项目状态。"
 
 
 def test_codex_supervisor_dashboard_keeps_finished_process_with_protocol(tmp_path):

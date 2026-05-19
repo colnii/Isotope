@@ -70,7 +70,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     后台进程报 `stdin is not a terminal`；`launch --backend tmux`
     可在本机 tmux 会话中启动交互式 Codex；process 后端会读取
     托管 log 尾部，从 `SUPERVISOR_STATUS/SUMMARY/NEXT` 解析完成状态，
-    dashboard 可把已退出但明确 `done` 的后台任务归入“已完成”；
+    dashboard 可把已退出但明确 `done` 的后台任务归入“已完成”，
+    但已退出进程不会因日志残留 `working` 被误判为仍在工作；
     `resume` 可通过
     `codex exec resume <session> <prompt>` 或 `--last` 恢复历史会话，
     会带 `--skip-git-repo-check` 以兼容历史会话落在非仓库父目录的情况，
@@ -107,7 +108,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `request_context` 使用；LLM 重规划时会看到已检索过的
     context history，避免重复请求同一个 cwd/query；
     `resume_session` 也受 `--prompt-cooldown` 约束，避免短时间重复恢复
-    同一历史会话；`launch_session` 同样受 `--prompt-cooldown` 约束，
+    同一历史会话；如果目标 session 所在 cwd 已有后台 process worker
+    仍在运行，`resume_session` 会跳过，避免同一个隔离工作区被重复驱动；
+    `launch_session` 同样受 `--prompt-cooldown` 约束，
     且发现同名后台 process worker 仍在运行时会跳过，避免 LLM
     长跑时反复启动同名后台任务；LLM 自动 `launch_session`
     会优先创建 `.worktrees/supervisor/...` 独立 git worktree，

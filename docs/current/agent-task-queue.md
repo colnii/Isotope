@@ -433,6 +433,10 @@
     `supervisor/<name>-<suffix>` 分支，再在隔离 cwd 启动 Codex worker；
     子目录任务会保留相对路径。非 git 工作区不强制隔离，git worktree
     创建失败时跳过启动，避免退回共享工作区抢文件。
+178. Codex Supervisor worker 重复驱动修正：真实 `up` 验收发现新启动
+    worker 后又可能被 `resume_session` 恢复同一 cwd。现已在执行层拦截
+    运行中 process worker 的同 cwd resume，并修正已退出 worker 日志
+    残留 `working` 时的状态展示。
 
 ## 最近完成：Codex Supervisor process-first loop 验收
 

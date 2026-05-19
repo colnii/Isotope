@@ -686,7 +686,7 @@ def _managed_summary(
             "label": "托管进程状态",
             "detail": f"pid {record.pid} 仍在运行" if is_running else f"pid {record.pid} 已退出",
         }
-    if supervisor_status:
+    if supervisor_status and (supervisor_status != "working" or status == "working"):
         status = supervisor_status
         reason = supervisor_summary or _supervisor_status_reason(supervisor_status)
         status_evidence = _supervisor_status_evidence(supervisor_status)

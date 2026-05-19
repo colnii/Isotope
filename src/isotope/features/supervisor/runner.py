@@ -1291,6 +1291,12 @@ def _recent_worker_payload(codex_home: Path) -> dict[str, Any] | None:
     excerpt = _managed_process_log_excerpt(record.log_path)
     protocol = _supervisor_protocol_from_text(excerpt or "")
     status = protocol.get("status") or record.status
+    if (
+        record.backend != "tmux"
+        and status in {"launched", "resumed", "working"}
+        and not _pid_is_running(record.pid)
+    ):
+        status = "exited"
     return {
         "name": record.name,
         "record_id": record.record_id,
@@ -3335,6 +3341,22 @@ def _execute_resume_action(
     target_name = action.get("target_name") or suggestion.get("target_name")
     if not isinstance(target_name, str) or not target_name:
         target_name = _resume_managed_name_for_session(target)
+    if running_record := _running_managed_process_for_session(
+        codex_home=Path(args.codex_home),
+        session=target,
+    ):
+        return {
+            "kind": "resume_session",
+            "command": suggestion["command"],
+            "skipped": True,
+            "reason": "managed process already running",
+            "managed": {
+                "name": running_record.name,
+                "record_id": running_record.record_id,
+                "pid": running_record.pid,
+                "backend": running_record.backend,
+            },
+        }
     if prompt_kind == "send_continue":
         if budget_state := continue_budget_state(
             codex_home=Path(args.codex_home),
@@ -3613,6 +3635,31 @@ def _running_managed_process_by_name(
         if _pid_is_running(record.pid):
             return record
     return None
+
+
+def _running_managed_process_for_session(
+    *,
+    codex_home: Path,
+    session: Any,
+) -> Any | None:
+    session_id = getattr(session, "session_id", None)
+    session_cwd = _path_identity(getattr(session, "cwd", None))
+    for record in reversed(read_managed_records(default_registry_path(codex_home))):
+        if record.backend == "tmux":
+            continue
+        if not _pid_is_running(record.pid):
+            continue
+        if isinstance(session_id, str) and record.resume_session_id == session_id:
+            return record
+        if session_cwd is not None and _path_identity(record.cwd) == session_cwd:
+            return record
+    return None
+
+
+def _path_identity(value: object) -> str | None:
+    if not isinstance(value, str) or not value:
+        return None
+    return str(Path(value).expanduser().resolve(strict=False))
 
 
 def _launch_work_order_prompt(
