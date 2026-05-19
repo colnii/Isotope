@@ -110,6 +110,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `resume_session` 也受 `--prompt-cooldown` 约束，避免短时间重复恢复
     同一历史会话；如果目标 session 所在 cwd 已有后台 process worker
     仍在运行，`resume_session` 会跳过，避免同一个隔离工作区被重复驱动；
+    已删除 worktree 或不存在 cwd 不再作为 resume/context/launch 的正常
+    候选，LLM 误选时会记录为 skipped，不让 loop 退出；
     `launch_session` 同样受 `--prompt-cooldown` 约束，
     且发现同名后台 process worker 仍在运行时会跳过，避免 LLM
     长跑时反复启动同名后台任务；LLM 自动 `launch_session`

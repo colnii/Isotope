@@ -4812,6 +4812,140 @@ def test_codex_supervisor_runner_supervise_resume_skips_running_process_cwd(
     }
 
 
+def test_codex_supervisor_runner_supervise_resume_skips_missing_cwd(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    missing_workspace = tmp_path / "deleted-worktree"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-deleted-worktree.jsonl",
+        session_id="019e4055-c9d9-7c22-87c9-b30bc57875a2",
+        cwd=str(missing_workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:59:20Z",
+                "SUPERVISOR_STATUS: working\n"
+                "SUPERVISOR_SUMMARY: 正在读取项目状态。\n"
+                "SUPERVISOR_NEXT: 继续读取项目状态并判断下一步。",
+            )
+        ],
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            return json.dumps(
+                {
+                    "kind": "resume_session",
+                    "session_id": "019e4055-c9d9-7c22-87c9-b30bc57875a2",
+                    "prompt_kind": "send_status",
+                    "reason": "恢复旧 worker 会话查看状态。",
+                },
+                ensure_ascii=False,
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+
+    def fake_resume_managed_codex(*args: object, **kwargs: object) -> object:
+        raise AssertionError("missing cwd should not be passed to codex exec resume")
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resume_managed_codex",
+        fake_resume_managed_codex,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"]["kind"] == "monitor"
+    assert payload["executed"]["kind"] == "monitor"
+    assert payload["executed"]["skipped"] is True
+    assert all(
+        suggestion.get("cwd") != str(missing_workspace)
+        for suggestion in payload["command_suggestions"]
+    )
+
+
+def test_codex_supervisor_runner_supervise_context_skips_missing_cwd(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    missing_workspace = tmp_path / "deleted-worktree"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-deleted-worktree.jsonl",
+        session_id="019e4055-c9d9-7c22-87c9-b30bc57875a2",
+        cwd=str(missing_workspace),
+        events=[_assistant_message("2026-05-16T11:59:20Z", "仍在整理状态。")],
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            return json.dumps(
+                {
+                    "kind": "request_context",
+                    "cwd": str(missing_workspace),
+                    "query": "Supervisor 当前状态",
+                    "reason": "先查上下文。",
+                },
+                ensure_ascii=False,
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"]["kind"] == "request_context"
+    assert payload["executed"] == {
+        "kind": "request_context",
+        "command": (
+            "isotope-supervisor context "
+            f"--cwd {missing_workspace} --query 'Supervisor 当前状态'"
+        ),
+        "cwd": str(missing_workspace),
+        "query": "Supervisor 当前状态",
+        "skipped": True,
+        "reason": "request_context cwd missing",
+    }
+
+
 def test_codex_supervisor_runner_supervise_llm_execute_can_launch_session(
     tmp_path,
     capsys,

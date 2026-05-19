@@ -2875,6 +2875,8 @@ def _workspace_cwds(report: Any) -> list[str]:
         cwd = getattr(session, "cwd", None)
         if not isinstance(cwd, str) or not cwd or cwd in seen:
             continue
+        if not _cwd_is_existing_dir(cwd):
+            continue
         seen.add(cwd)
         workspaces.append(cwd)
     return workspaces
@@ -3075,6 +3077,7 @@ def _is_resume_capable_session(session: Any) -> bool:
         and bool(session_id)
         and not session_id.startswith("managed:")
         and bool(getattr(session, "cwd", None))
+        and _cwd_is_existing_dir(getattr(session, "cwd", None))
         and not _is_completed_session(session)
     )
 
@@ -3357,6 +3360,14 @@ def _execute_resume_action(
                 "backend": running_record.backend,
             },
         }
+    if not _cwd_is_existing_dir(target.cwd):
+        return {
+            "kind": "resume_session",
+            "command": suggestion["command"],
+            "skipped": True,
+            "reason": "resume cwd missing",
+            "cwd": target.cwd,
+        }
     if prompt_kind == "send_continue":
         if budget_state := continue_budget_state(
             codex_home=Path(args.codex_home),
@@ -3448,6 +3459,13 @@ def _execute_launch_action(
             "skipped": True,
             "reason": "lane run budget exhausted",
             "run_budget": run_budget,
+        }
+    if not _cwd_is_existing_dir(cwd):
+        return {
+            "kind": "launch_session",
+            "skipped": True,
+            "reason": "launch cwd missing",
+            "cwd": cwd,
         }
     if running_record := _running_managed_process_by_name(
         codex_home=Path(args.codex_home),
@@ -3662,6 +3680,10 @@ def _path_identity(value: object) -> str | None:
     return str(Path(value).expanduser().resolve(strict=False))
 
 
+def _cwd_is_existing_dir(value: object) -> bool:
+    return isinstance(value, str) and bool(value) and Path(value).expanduser().is_dir()
+
+
 def _launch_work_order_prompt(
     *,
     target_name: str,
@@ -3719,6 +3741,15 @@ def _execute_context_action(
             ]
         )
     )
+    if not _cwd_is_existing_dir(cwd):
+        return {
+            "kind": "request_context",
+            "command": command,
+            "cwd": cwd,
+            "query": query,
+            "skipped": True,
+            "reason": "request_context cwd missing",
+        }
     result = request_project_context(
         codex_home=Path(args.codex_home),
         cwd=Path(cwd),

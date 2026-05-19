@@ -156,7 +156,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `resume_session` 会写入 lane state，并受 `--prompt-cooldown` 和
   `--max-continue-count` 约束；如果目标 session 所在 cwd 已有
   后台 process worker 仍在运行，会跳过恢复，避免同一个工作区被
-  多个后台 Codex 重复驱动；
+  多个后台 Codex 重复驱动；已删除 worktree 或不存在 cwd 不再作为
+  resume/context/launch 的正常候选，LLM 误选时只记录 skipped；
   LLM 临时空响应或误选非法目标时会记录为 `monitor`，不让常驻 loop 退出。
 - `ask_user` 是拍板请求动作，必须同时满足：Codex 明确请求拍板、
   LLM 无法从用户既有指示判断、上下文检索缺失/过时/冲突。

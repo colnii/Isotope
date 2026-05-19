@@ -437,6 +437,9 @@
     worker 后又可能被 `resume_session` 恢复同一 cwd。现已在执行层拦截
     运行中 process worker 的同 cwd resume，并修正已退出 worker 日志
     残留 `working` 时的状态展示。
+179. Codex Supervisor stale cwd 容错：修复已删除 `.worktrees/supervisor/...`
+    仍留在 Codex 历史里时，LLM 选择 `request_context` 或 `resume_session`
+    会让 loop 退出的问题；缺失 cwd 现在会被过滤或记录为 skipped。
 
 ## 最近完成：Codex Supervisor process-first loop 验收
 
