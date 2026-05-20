@@ -114,6 +114,36 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
 
 ## 运行方式
 
+日常使用闭环优先按这条路径走：
+
+1. 启动或唤起 Supervisor：
+   `isotope-supervisor up --goal "继续推进当前项目目标"`。
+   `up` 会在后台 daemon 未运行时启动日常 `loop`，然后打印后台状态、
+   最近 LLM 动作、执行结果、worker 状态和活跃目标。
+2. 持续监督：
+   `isotope-supervisor loop --interval 180` 适合前台常驻；
+   `isotope-supervisor daemon start --interval 30` 适合后台常驻；
+   `isotope-supervisor daemon status` 用来看后台 loop 是否还活着。
+3. 追加目标：
+   `isotope-supervisor goal add --cwd /path/to/repo --goal "目标文本"`。
+   目标会进入 `~/.codex/supervisor/goals.jsonl`，后续 `loop` 会动态读取，
+   不必重启 daemon。
+4. 查看状态：
+   `isotope-supervisor goal list` 看活跃目标的最近状态、摘要和下一步；
+   `isotope-supervisor dashboard` 看当前窗口分组；
+   `isotope-supervisor web --host 127.0.0.1 --port 8765` 打开本机页面。
+5. 提交拍板答案：
+   先用 `isotope-supervisor decision list` 查看等待拍板项；
+   再用
+   `isotope-supervisor decision answer --request-id <request-id> --answer "你的答案"`
+   记录答案。该命令只写拍板答案账本，下一轮 LLM planner 会读取
+   `recent_decision_answers` 后继续判断。
+6. 归档目标：
+   worker 汇报 `SUPERVISOR_STATUS: done` 时，同名目标会自动归档；
+   需要手动结束时，用
+   `isotope-supervisor goal archive --goal-id <goal-id>`。
+   旧托管 lane 仍用 `isotope-supervisor archive --name <lane>` 归档。
+
 开发态：
 
 ```bash

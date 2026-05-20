@@ -26,9 +26,14 @@ python3 -m venv .venv
 .venv/bin/isotope-demo --scenario v0.2 --trace
 .venv/bin/isotope-supervisor scan --limit 3
 .venv/bin/isotope-supervisor scan --limit 3 --llm-summary
-.venv/bin/isotope-supervisor advise
-.venv/bin/isotope-supervisor supervise --interval 180 --llm-summary
-.venv/bin/isotope-supervisor watch --interval 180 --changes-only --llm-summary
+.venv/bin/isotope-supervisor up --goal "继续推进当前项目目标"
+.venv/bin/isotope-supervisor loop --interval 180
+.venv/bin/isotope-supervisor web --host 127.0.0.1 --port 8765
+.venv/bin/isotope-supervisor goal add --cwd /path/to/repo --goal "继续推进当前项目目标"
+.venv/bin/isotope-supervisor goal list
+.venv/bin/isotope-supervisor decision list
+.venv/bin/isotope-supervisor decision answer --request-id <request-id> --answer "同意按方案 A 继续"
+.venv/bin/isotope-supervisor goal archive --goal-id <goal-id>
 .venv/bin/isotope-supervisor launch --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
 .venv/bin/isotope-supervisor launch --backend tmux --tmux-session isotope-lane-a --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
 .venv/bin/isotope-supervisor send --name lane-a --text "继续"
