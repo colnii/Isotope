@@ -396,7 +396,7 @@ def generate_llm_action_decision(
             recent_decision_answers,
         )
     )
-    payload = _extract_json_object(raw)
+    payload = _normalize_llm_action_payload(_extract_json_object(raw))
     kind = _required_payload_string(payload, "kind")
     if kind not in LLM_ACTION_ALLOWED_KINDS:
         supported = ", ".join(LLM_ACTION_ALLOWED_KINDS)
@@ -702,6 +702,17 @@ def _extract_json_object(text: str) -> dict[str, Any]:
         if isinstance(payload.get("kind"), str):
             return payload
     return candidates[-1]
+
+
+def _normalize_llm_action_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    if isinstance(payload.get("kind"), str):
+        return payload
+    action = payload.get("action")
+    if not isinstance(action, str) or not action.strip():
+        return payload
+    normalized = dict(payload)
+    normalized["kind"] = action.strip()
+    return normalized
 
 
 def _json_object_candidates(text: str) -> list[dict[str, Any]]:

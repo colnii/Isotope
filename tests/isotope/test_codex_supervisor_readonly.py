@@ -3798,6 +3798,44 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_launch_session():
     }
 
 
+def test_codex_supervisor_generate_llm_action_decision_accepts_action_alias_for_kind():
+    launch_prompt = "请推进 Search/RAG 检索升级。"
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="source-session",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/tmp/source.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=60,
+                status="working",
+                reason="最近仍有事件",
+            ),
+        ),
+    )
+    suggestions = _advice_payload(report)["command_suggestions"]
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            return json.dumps(
+                {
+                    "action": "launch_session",
+                    "target_name": "search-rag-bm25",
+                    "cwd": "/home/lumber/Github/isotope",
+                    "prompt": launch_prompt,
+                    "reason": "检索后继续启动 Search/RAG worker。",
+                },
+                ensure_ascii=False,
+            )
+
+    decision = generate_llm_action_decision(report, suggestions, FakeProvider())
+
+    assert decision["kind"] == "launch_session"
+    assert decision["target_name"] == "search-rag-bm25"
+    assert decision["prompt"] == launch_prompt
+
+
 def test_codex_supervisor_generate_llm_action_decision_rejects_running_target_launch():
     report = CodexSupervisorReport(
         generated_at=NOW.isoformat(),
