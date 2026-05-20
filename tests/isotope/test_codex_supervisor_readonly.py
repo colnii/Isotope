@@ -3662,6 +3662,53 @@ def test_codex_supervisor_llm_action_messages_resumable_ids_follow_command_white
     assert '"session_id": "working-session"' not in content
 
 
+def test_codex_supervisor_generate_llm_action_rejects_missing_workspace_not_in_whitelist(
+    tmp_path,
+):
+    missing_workspace = tmp_path / "deleted-worktree"
+    valid_workspace = tmp_path / "workspace"
+    valid_workspace.mkdir()
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="stale-session",
+                cwd=str(missing_workspace),
+                source_path="/home/lumber/.codex/sessions/stale.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=900,
+                status="stale",
+                reason="历史 worktree 已删除。",
+            ),
+        ),
+    )
+    suggestions = [
+        {
+            "kind": "request_context",
+            "cwd": str(valid_workspace),
+            "query": "Supervisor 目标队列",
+            "command": f"isotope-supervisor context --cwd {valid_workspace} --query 'Supervisor 目标队列'",
+        }
+    ]
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert str(missing_workspace) not in content
+            return json.dumps(
+                {
+                    "kind": "request_context",
+                    "cwd": str(missing_workspace),
+                    "query": "错误旧路径",
+                    "reason": "模型误选已删除 worktree。",
+                },
+                ensure_ascii=False,
+            )
+
+    with pytest.raises(ValueError, match="unknown workspace"):
+        generate_llm_action_decision(report, suggestions, FakeProvider())
+
+
 def test_codex_supervisor_llm_action_messages_explain_recent_context_should_not_repeat():
     report = CodexSupervisorReport(
         generated_at=NOW.isoformat(),
@@ -3912,6 +3959,47 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_launch_session():
             "prompt": launch_prompt,
         },
     }
+
+
+def test_codex_supervisor_generate_llm_action_decision_can_launch_named_suggestion_without_prompt():
+    goal = "为 Supervisor 增加目标规划入口，并补测试。"
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(),
+    )
+    suggestions = _advice_payload(
+        report,
+        include_all_managed=True,
+        active_goals=[
+            {
+                "goal_id": "goal-123",
+                "goal": goal,
+                "cwd": "/home/lumber/Github/isotope",
+                "target_name": "supervisor-goal-planner",
+            }
+        ],
+    )["command_suggestions"]
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert "可只输出 target_name" in content
+            return json.dumps(
+                {
+                    "kind": "launch_session",
+                    "target_name": "supervisor-goal-planner",
+                    "reason": "直接启动目标队列里的 worker。",
+                },
+                ensure_ascii=False,
+            )
+
+    decision = generate_llm_action_decision(report, suggestions, FakeProvider())
+
+    assert decision["kind"] == "launch_session"
+    assert decision["target_name"] == "supervisor-goal-planner"
+    assert decision["cwd"] == "/home/lumber/Github/isotope"
+    assert decision["prompt"] == goal
+    assert decision["command_suggestion"]["target_name"] == "supervisor-goal-planner"
 
 
 def test_codex_supervisor_generate_llm_action_decision_accepts_action_alias_for_kind():
@@ -5677,7 +5765,7 @@ def test_codex_supervisor_runner_supervise_resume_skips_missing_cwd(
     )
 
 
-def test_codex_supervisor_runner_supervise_context_skips_missing_cwd(
+def test_codex_supervisor_runner_supervise_context_rejects_missing_cwd(
     tmp_path,
     capsys,
     monkeypatch,
@@ -5725,18 +5813,12 @@ def test_codex_supervisor_runner_supervise_context_skips_missing_cwd(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"]["kind"] == "request_context"
-    assert payload["executed"] == {
-        "kind": "request_context",
-        "command": (
-            "isotope-supervisor context "
-            f"--cwd {missing_workspace} --query 'Supervisor 当前状态'"
-        ),
-        "cwd": str(missing_workspace),
-        "query": "Supervisor 当前状态",
-        "skipped": True,
-        "reason": "request_context cwd missing",
-    }
+    assert payload["llm_action"]["kind"] == "monitor"
+    assert payload["llm_action"]["error"] == (
+        f"unknown workspace for LLM action: {missing_workspace}"
+    )
+    assert payload["executed"]["skipped"] is True
+    assert payload["executed"]["kind"] == "monitor"
 
 
 def test_codex_supervisor_runner_supervise_llm_execute_can_launch_session(

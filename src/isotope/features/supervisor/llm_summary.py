@@ -304,6 +304,11 @@ def build_llm_action_messages(
                             "send_continue、ask_user 或等待下一轮。"
                         ),
                         (
+                            "launch_session 如果命中已有 command_suggestions 的 target_name，"
+                            "可只输出 target_name 和 reason；Supervisor 会从白名单命令补 cwd 和 prompt，"
+                            "不要复制很长的 goal 文本进 JSON。"
+                        ),
+                        (
                             "blocked/needs_user 目标只有满足 decision_gate 时才允许 ask_user；"
                             "否则继续查上下文或启动新 worker 推进。"
                         ),
@@ -361,8 +366,8 @@ def build_llm_action_messages(
                     "launch_schema": {
                         "kind": "launch_session",
                         "target_name": "new-lane",
-                        "cwd": "/path/to/repo",
-                        "prompt": "由 LLM 根据上下文自由写给新 Codex 会话的中文指令",
+                        "cwd": "/path/to/repo，可省略：命中已有 target_name 时由白名单命令补齐",
+                        "prompt": "可省略：命中已有 target_name 时由白名单命令补齐；否则写给新 Codex 会话的中文指令",
                         "worker_profile": "coding|light",
                         "reason": "一句中文原因",
                     },
@@ -434,9 +439,18 @@ def generate_llm_action_decision(
         target_name = target_name or "planner-session"
         if _has_running_managed_worker(report, target_name):
             raise ValueError(f"target already has running managed worker: {target_name}")
-        cwd = _optional_payload_string(payload, "cwd") or _default_workspace(
+        existing_launch_suggestion = _command_suggestion_for_kind(
+            command_suggestions,
+            kind,
+            target_name=target_name,
+        )
+        cwd = (
+            _optional_payload_string(payload, "cwd")
+            or _suggestion_string(existing_launch_suggestion, "cwd")
+            or _default_workspace(
             report,
             command_suggestions,
+            )
         )
         if cwd is None or cwd not in _available_workspaces(
             report,
@@ -449,7 +463,12 @@ def generate_llm_action_decision(
             cwd,
         ):
             raise ValueError(f"no command suggestion for LLM action: {kind}")
-        prompt = _required_payload_string(payload, "prompt")
+        prompt = _optional_payload_string(payload, "prompt") or _suggestion_string(
+            existing_launch_suggestion,
+            "prompt",
+        )
+        if prompt is None:
+            raise ValueError("LLM action field is required: prompt")
         worker_profile = _optional_payload_string(payload, "worker_profile")
         if worker_profile is not None and worker_profile not in LLM_WORKER_PROFILES:
             supported = ", ".join(LLM_WORKER_PROFILES)
@@ -753,6 +772,16 @@ def _required_payload_string(payload: dict[str, Any], field: str) -> str:
 
 def _optional_payload_string(payload: dict[str, Any], field: str) -> str | None:
     value = payload.get(field)
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _suggestion_string(
+    suggestion: dict[str, str] | None,
+    field: str,
+) -> str | None:
+    if not isinstance(suggestion, dict):
+        return None
+    value = suggestion.get(field)
     return value.strip() if isinstance(value, str) and value.strip() else None
 
 
@@ -1208,15 +1237,23 @@ def _available_workspaces(
         cwd = getattr(session, "cwd", None)
         if not isinstance(cwd, str) or not cwd or cwd in seen:
             continue
+        if not _workspace_exists(cwd):
+            continue
         seen.add(cwd)
         workspaces.append(cwd)
     for suggestion in command_suggestions or []:
         cwd = suggestion.get("cwd")
         if not isinstance(cwd, str) or not cwd or cwd in seen:
             continue
+        if not _workspace_exists(cwd):
+            continue
         seen.add(cwd)
         workspaces.append(cwd)
     return workspaces
+
+
+def _workspace_exists(cwd: str) -> bool:
+    return Path(cwd).expanduser().is_dir()
 
 
 def _default_workspace(
