@@ -3969,6 +3969,13 @@ def _execute_llm_action(
             "reason": action["reason"],
         }
     if kind == "resume_session":
+        if _resume_action_outside_active_goals(payload, action):
+            return {
+                "kind": "resume_session",
+                "skipped": True,
+                "reason": "resume session outside active goals",
+                "session_id": action.get("session_id"),
+            }
         return _execute_resume_action(args, report, action)
     if kind == "launch_session":
         return _execute_launch_action(args, action)
@@ -3985,6 +3992,57 @@ def _execute_llm_action(
         kind=kind,
         target_name=action.get("target_name"),
     )
+
+
+def _resume_action_outside_active_goals(
+    payload: dict[str, Any],
+    action: dict[str, Any],
+) -> bool:
+    active_goals = payload.get("active_goals")
+    if not isinstance(active_goals, list) or not active_goals:
+        return False
+    session_id = action.get("session_id")
+    if not isinstance(session_id, str) or not session_id:
+        return False
+    allowed_session_ids = _active_goal_resume_session_ids(
+        payload.get("command_suggestions"),
+        active_goals,
+    )
+    return session_id not in allowed_session_ids
+
+
+def _active_goal_resume_session_ids(
+    command_suggestions: Any,
+    active_goals: list[Any],
+) -> set[str]:
+    if not isinstance(command_suggestions, list):
+        return set()
+    goal_names = {
+        target_name
+        for goal in active_goals
+        if isinstance(goal, dict)
+        for target_name in (goal.get("target_name"),)
+        if isinstance(target_name, str) and target_name
+    }
+    allowed: set[str] = set()
+    for suggestion in command_suggestions:
+        if not isinstance(suggestion, dict) or suggestion.get("kind") != "resume_session":
+            continue
+        session_id = suggestion.get("session_id")
+        if not isinstance(session_id, str) or not session_id:
+            continue
+        target_name = suggestion.get("target_name")
+        command = suggestion.get("command")
+        targets_goal = (
+            isinstance(target_name, str)
+            and target_name in goal_names
+        ) or (
+            isinstance(command, str)
+            and any(_command_targets_name(command, name) for name in goal_names)
+        )
+        if targets_goal:
+            allowed.add(session_id)
+    return allowed
 
 
 def _worker_profile_from_args(args: argparse.Namespace) -> str:

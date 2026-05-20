@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import http.client
 import json
 import os
@@ -38,6 +39,7 @@ from isotope.features.supervisor.runner import (
     EXECUTABLE_ADVICE_TEXT,
     _advice_payload,
     _dashboard_payload,
+    _execute_llm_action,
     _report_fingerprint,
     main as supervisor_main,
 )
@@ -46,6 +48,18 @@ from isotope.features.supervisor.runner import (
 NOW = datetime(2026, 5, 16, 12, 0, tzinfo=timezone.utc)
 STATUS_REQUEST_TEXT = EXECUTABLE_ADVICE_TEXT["send_status"]
 CONTINUE_REQUEST_TEXT = EXECUTABLE_ADVICE_TEXT["send_continue"]
+
+
+def _runner_args(codex_home: Path) -> argparse.Namespace:
+    return argparse.Namespace(
+        codex_home=str(codex_home),
+        max_continue_count=0,
+        max_run_minutes=0,
+        prompt_cooldown=0,
+        worker_codex_model=None,
+        worker_codex_config=[],
+        worker_profile="coding",
+    )
 
 
 def _supervisor_send_command(name: str, text: str) -> str:
@@ -5887,6 +5901,89 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_resume_session(
     assert captured["cwd"] == str(workspace)
     assert captured["stdin"] is subprocess.DEVNULL
     assert captured["stderr"] is subprocess.STDOUT
+
+
+def test_codex_supervisor_llm_execute_blocks_old_resume_when_active_goal_exists(
+    tmp_path,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="old-session",
+                cwd=str(workspace),
+                source_path=str(codex_home / "sessions/old.jsonl"),
+                last_event_at=NOW.isoformat(),
+                age_seconds=900,
+                status="stale",
+                reason="旧普通会话长时间没有新事件。",
+            ),
+        ),
+    )
+    payload = {
+        "active_goals": [
+            {
+                "goal_id": "goal-001",
+                "goal": "推进目标队列里的新功能。",
+                "cwd": str(workspace),
+                "target_name": "goal-worker",
+            }
+        ],
+        "command_suggestions": [
+            {
+                "kind": "request_context",
+                "cwd": str(workspace),
+                "query": "推进目标队列里的新功能。",
+                "command": "isotope-supervisor context",
+            },
+            {
+                "kind": "launch_session",
+                "target_name": "goal-worker",
+                "cwd": str(workspace),
+                "prompt": "推进目标队列里的新功能。",
+                "command": "isotope-supervisor launch --name goal-worker",
+            },
+        ],
+        "llm_action": {
+            "kind": "resume_session",
+            "session_id": "old-session",
+            "prompt_kind": "send_continue",
+            "target_name": "resume-old",
+            "reason": "错误地恢复旧普通会话。",
+            "command_suggestion": {
+                "kind": "resume_session",
+                "session_id": "old-session",
+                "prompt_kind": "send_continue",
+                "target_name": "resume-old",
+                "command": "isotope-supervisor resume --name resume-old",
+            },
+        },
+    }
+
+    def fake_resume_managed_codex(*args: object, **kwargs: object) -> object:
+        raise AssertionError("old session must not be resumed while active goals exist")
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resume_managed_codex",
+        fake_resume_managed_codex,
+    )
+
+    result = _execute_llm_action(
+        _runner_args(codex_home),
+        report,
+        payload,
+    )
+
+    assert result == {
+        "kind": "resume_session",
+        "skipped": True,
+        "reason": "resume session outside active goals",
+        "session_id": "old-session",
+    }
 
 
 def test_codex_supervisor_runner_supervise_resume_skips_running_process_cwd(
