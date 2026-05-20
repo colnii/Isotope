@@ -2531,6 +2531,13 @@ def _supervise_payload(
     if args.llm_execute:
         if fanout_plan is not None:
             payload["executed"] = _execute_fanout_launch_actions(args, fanout_plan)
+            if _fanout_execution_launched_workers(payload["executed"]):
+                refreshed_report = _scan_report(args)
+                payload["current_batch"] = _current_batch_payload(
+                    refreshed_report,
+                    active_goals=active_goals,
+                    worker_reviews=worker_reviews,
+                )
         else:
             payload["executed"] = _execute_llm_action(args, action_report, payload)
             _maybe_replan_after_context_request(args, action_report, payload)
@@ -2628,6 +2635,11 @@ def _execute_fanout_launch_actions(
         "results": results,
         "skipped": skipped,
     }
+
+
+def _fanout_execution_launched_workers(executed: dict[str, Any]) -> bool:
+    summary = executed.get("summary")
+    return isinstance(summary, dict) and bool(summary.get("launched"))
 
 
 def _loop_without_autonomous_scope(

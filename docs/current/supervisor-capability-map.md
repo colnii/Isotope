@@ -359,7 +359,9 @@ B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
 4. `LLM planner`：fanout 不适用时，在 `active_goals`、recent context、worker review 和白名单命令内选择一个动作。
 5. `execute`：只执行通过校验的 `request_context`、`launch_session`、`resume_session`、send 或 `ask_user`。
 6. `replan`：只有本轮执行的是成功的 `request_context` 时，才把检索结果加入 prompt，再执行一次 follow-up 动作。
-7. `current_batch refresh`：下一轮 dashboard/web 再反映 worker、goal status 或 decision request 的变化。
+7. `current_batch refresh`：fanout 同轮执行了 `launch_session` 后，
+   `loop --json` 会刷新一次 `current_batch`；下一轮 dashboard/web
+   继续反映 worker、goal status 或 decision request 的变化。
 
 ### 验收命令
 
@@ -367,13 +369,15 @@ B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
 
 ```bash
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_readonly.py::test_codex_supervisor_dashboard_json_separates_current_batch_from_deleted_worktree_history -q
+PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_loop_fanout_launches_parallel_active_goals -q
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_loop_suggests_all_active_goals -q
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_supervise_request_context_replans_same_iteration -q
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_loop_replans_blocked_goal_with_llm_context -q
 ```
 
 fanout 回归必须覆盖：多个 active goals 中已有同名 running worker 时，只能为剩余目标执行
-`launch_session`；`goal plan` 的 `parallel_recommendations` 只能在显式
+`launch_session`，并且同轮 `loop` payload 与随后 `dashboard` 的
+`current_batch` 都能看见当前 worker；`goal plan` 的 `parallel_recommendations` 只能在显式
 `--fanout-execute` 下同轮执行，且不能直接归档任何目标。
 
 ## 当前不要重复实现

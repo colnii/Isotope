@@ -12125,13 +12125,14 @@ def test_codex_supervisor_runner_loop_fanout_launches_parallel_active_goals(
         + "\n",
         encoding="utf-8",
     )
+    running_pids = {4242}
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._pid_is_running",
-        lambda pid: pid == 4242,
+        lambda pid: pid in running_pids,
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner._pid_is_running",
-        lambda pid: pid == 4242,
+        lambda pid: pid in running_pids,
         raising=False,
     )
     monkeypatch.setattr(
@@ -12163,7 +12164,9 @@ def test_codex_supervisor_runner_loop_fanout_launches_parallel_active_goals(
         start_new_session: bool,
     ) -> FakeProcess:
         captured.append(command)
-        return FakeProcess(45690 + len(captured))
+        pid = 45690 + len(captured)
+        running_pids.add(pid)
+        return FakeProcess(pid)
 
     monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
 
@@ -12228,6 +12231,46 @@ def test_codex_supervisor_runner_loop_fanout_launches_parallel_active_goals(
     ]
     assert len(captured) == 2
     assert all(command[9].startswith("WORK ORDER") for command in captured)
+    assert sorted(
+        worker["name"] for worker in payload["current_batch"]["managed_workers"]
+    ) == [
+        "worker-a",
+        "worker-b",
+        "worker-c",
+    ]
+    assert payload["current_batch"]["target_names"] == [
+        "worker-a",
+        "worker-b",
+        "worker-c",
+        "worker-d",
+    ]
+
+    exit_code = supervisor_main(
+        [
+            "dashboard",
+            "--codex-home",
+            str(codex_home),
+            "--limit",
+            "10",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    dashboard_payload = json.loads(capsys.readouterr().out)
+    assert sorted(
+        worker["name"] for worker in dashboard_payload["current"]["managed_workers"]
+    ) == [
+        "worker-a",
+        "worker-b",
+        "worker-c",
+    ]
+    assert dashboard_payload["current"]["target_names"] == [
+        "worker-a",
+        "worker-b",
+        "worker-c",
+        "worker-d",
+    ]
 
 
 def test_codex_supervisor_runner_loop_archives_goal_when_worker_reports_done(
