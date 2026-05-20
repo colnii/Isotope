@@ -13,6 +13,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
+from .fanout import DEFAULT_FANOUT_LIMIT
+
 
 @dataclass(frozen=True)
 class SupervisorDaemonState:
@@ -82,6 +84,7 @@ def start_supervisor_daemon(
     max_continue_count: int,
     max_context_requests: int,
     max_run_minutes: int,
+    max_fanout_launches: int,
     name: str | None = None,
     goal: str | None = None,
     llm_summary: bool = False,
@@ -110,6 +113,7 @@ def start_supervisor_daemon(
         max_continue_count=max_continue_count,
         max_context_requests=max_context_requests,
         max_run_minutes=max_run_minutes,
+        max_fanout_launches=max_fanout_launches,
         name=name,
         goal=goal,
         llm_summary=llm_summary,
@@ -326,6 +330,7 @@ def _build_loop_command(
     max_continue_count: int,
     max_context_requests: int,
     max_run_minutes: int,
+    max_fanout_launches: int,
     name: str | None,
     goal: str | None,
     llm_summary: bool,
@@ -358,6 +363,8 @@ def _build_loop_command(
         command.extend(["--max-context-requests", str(max_context_requests)])
     if max_run_minutes != 0:
         command.extend(["--max-run-minutes", str(max_run_minutes)])
+    if max_fanout_launches != DEFAULT_FANOUT_LIMIT:
+        command.extend(["--max-fanout-launches", str(max_fanout_launches)])
     if name:
         command.extend(["--name", name])
     if goal:

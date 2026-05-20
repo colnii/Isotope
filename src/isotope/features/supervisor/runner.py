@@ -504,6 +504,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Maximum elapsed minutes before send_continue is blocked for a lane. Default 0 disables.",
     )
     up_parser.add_argument(
+        "--max-fanout-launches",
+        type=int,
+        default=DEFAULT_FANOUT_LIMIT,
+        help="Maximum launch_session actions fanout may execute in one loop iteration.",
+    )
+    up_parser.add_argument(
         "--worker-profile",
         choices=WORKER_PROFILE_CHOICES,
         default=DEFAULT_WORKER_PROFILE,
@@ -604,6 +610,12 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=DEFAULT_MAX_RUN_MINUTES,
         help="Maximum elapsed minutes before send_continue is blocked for a lane. Default 0 disables.",
+    )
+    daemon_start_parser.add_argument(
+        "--max-fanout-launches",
+        type=int,
+        default=DEFAULT_FANOUT_LIMIT,
+        help="Maximum launch_session actions fanout may execute in one loop iteration.",
     )
     daemon_start_parser.add_argument(
         "--worker-profile",
@@ -1551,6 +1563,8 @@ def _start_daemon_from_args(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("max_context_requests must be zero or positive")
     if args.max_run_minutes < 0:
         raise ValueError("max_run_minutes must be zero or positive")
+    if args.max_fanout_launches <= 0:
+        raise ValueError("max_fanout_launches must be positive")
     worker_profile = _worker_profile_from_args(args)
     queued_goal = _queue_daemon_goal_from_args(args)
     daemon = start_supervisor_daemon(
@@ -1563,6 +1577,7 @@ def _start_daemon_from_args(args: argparse.Namespace) -> dict[str, Any]:
         max_continue_count=args.max_continue_count,
         max_context_requests=args.max_context_requests,
         max_run_minutes=args.max_run_minutes,
+        max_fanout_launches=args.max_fanout_launches,
         name=args.name,
         goal=None,
         llm_summary=args.llm_summary,

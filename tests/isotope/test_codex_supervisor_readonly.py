@@ -11336,6 +11336,81 @@ def test_codex_supervisor_runner_daemon_start_defaults_to_strong_worker(
     assert captured["command"] == payload["daemon"]["command"]
 
 
+def test_codex_supervisor_runner_daemon_start_passes_max_fanout_launches_to_loop(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 45679
+
+    def fake_popen(
+        command: list[str],
+        *,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured["command"] = command
+        return FakeProcess()
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon.subprocess.Popen",
+        fake_popen,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon._process_is_alive",
+        lambda _: False,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "daemon",
+            "start",
+            "--codex-home",
+            str(codex_home),
+            "--interval",
+            "7",
+            "--limit",
+            "3",
+            "--max-fanout-launches",
+            "2",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["daemon"]["command"] == [
+        sys.executable,
+        "-u",
+        "-m",
+        "isotope.features.supervisor.runner",
+        "loop",
+        "--codex-home",
+        str(codex_home),
+        "--interval",
+        "7",
+        "--limit",
+        "3",
+        "--max-fanout-launches",
+        "2",
+        "--worker-codex-model",
+        "gpt-5.5",
+        "--worker-codex-config",
+        'model_reasoning_effort="high"',
+    ]
+    assert captured["command"] == payload["daemon"]["command"]
+    state = json.loads(
+        (codex_home / "supervisor" / "daemon.json").read_text(encoding="utf-8")
+    )
+    assert state["command"] == payload["daemon"]["command"]
+
+
 def test_codex_supervisor_runner_daemon_start_queues_goal_instead_of_repeating_explicit_goal(
     tmp_path,
     capsys,

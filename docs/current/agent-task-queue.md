@@ -450,6 +450,10 @@
 182. Codex Supervisor 目标状态可见化：`goal list` 和 `daemon status`
     会显示活跃目标最近 `last_status`、摘要和下一步，阻塞原因不再需要
     手动翻 `goals.jsonl`。
+183. Codex Supervisor daemon fanout 配置透传：`daemon start` 和 `up`
+    支持 `--max-fanout-launches`，会把同轮 fanout 自动启动上限写进后台
+    `loop` 原始命令；`daemon watchdog` 重启时继续复用该命令，不重新猜
+    fanout 参数。
 
 ## 最近完成：Codex Supervisor process-first loop 验收
 

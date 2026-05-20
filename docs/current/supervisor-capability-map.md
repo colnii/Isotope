@@ -189,6 +189,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   pid（进程号）、命令、状态文件和日志路径。
 - `daemon start` 的后台 loop 使用 Python `-u` 非缓冲输出，避免
   自动动作已经发生但 `daemon.log` 仍为空。
+- `daemon start --max-fanout-launches N` 会把同轮 fanout 自动启动上限
+  透传给后台 `loop`；watchdog 重启时仍复用状态文件里的原始命令。
 - `daemon status` 会从 `daemon.log` 和托管登记表汇总最近 LLM 动作、
   最近执行结果、最近 worker 模型/配置和状态协议。
 - `daemon watchdog` 可按状态文件检查后台 `loop` 是否还活着；
@@ -379,6 +381,7 @@ B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
 ```bash
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_readonly.py::test_codex_supervisor_dashboard_json_separates_current_batch_from_deleted_worktree_history -q
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_loop_fanout_launches_parallel_active_goals -q
+PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_daemon_start_passes_max_fanout_launches_to_loop -q
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_loop_suggests_all_active_goals -q
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_supervise_request_context_replans_same_iteration -q
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_loop_replans_blocked_goal_with_llm_context -q
