@@ -29,6 +29,81 @@ SKIPPED_DIRS = {
     "node_modules",
 }
 SEARCH_SUFFIXES = {".md", ".py", ".toml", ".yaml", ".yml", ".json", ".txt"}
+PROJECT_CONTEXT_ANCHOR_SCORE_BOOST = 80
+PROJECT_CONTEXT_ANCHORS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "docs/current/status.md",
+        (
+            "当前状态",
+            "status",
+            "状态文档",
+            "项目状态",
+            "AI-first",
+            "产品方向",
+        ),
+    ),
+    (
+        "docs/current/supervisor-capability-map.md",
+        (
+            "Supervisor 能力地图",
+            "能力图",
+            "能力地图",
+            "capability map",
+            "request_context",
+            "LLM planner",
+            "上下文能力",
+        ),
+    ),
+    (
+        "docs/current/docs-map.md",
+        (
+            "docs/current",
+            "文档地图",
+            "docs map",
+            "入口文档",
+            "当前入口",
+        ),
+    ),
+    (
+        "docs/current/agent-task-queue.md",
+        (
+            "任务队列",
+            "agent task queue",
+            "下一步",
+            "current queue",
+        ),
+    ),
+    (
+        "src/isotope/features/supervisor/context.py",
+        (
+            "request_context",
+            "request_project_context",
+            "ranked evidence",
+            "上下文检索",
+            "代码入口",
+        ),
+    ),
+    (
+        "src/isotope/features/supervisor/llm_summary.py",
+        (
+            "LLM planner",
+            "generate_llm_action_decision",
+            "request_context action",
+            "ask_user gate",
+            "规划器",
+        ),
+    ),
+    (
+        "src/isotope/features/supervisor/runner.py",
+        (
+            "isotope-supervisor",
+            "supervise",
+            "loop",
+            "_execute_context_action",
+            "CLI 入口",
+        ),
+    ),
+)
 
 
 @dataclass(frozen=True)
@@ -166,8 +241,23 @@ def _search_workspace(
         rg_bin=rg_bin,
     )
     if rg_items is not None:
-        return rg_items, "rg"
-    return _search_workspace_with_python(workspace, query, max_results=max_results), "python"
+        return _with_project_context_anchors(
+            workspace,
+            query,
+            rg_items,
+            max_results=max_results,
+        ), "rg"
+    python_items = _search_workspace_with_python(
+        workspace,
+        query,
+        max_results=max_results,
+    )
+    return _with_project_context_anchors(
+        workspace,
+        query,
+        python_items,
+        max_results=max_results,
+    ), "python"
 
 
 def _search_workspace_with_python(
@@ -402,6 +492,143 @@ def _rank_context_items(query: str, items: list[ContextItem]) -> list[ContextIte
         if (item.path, item.line, item.text) not in ranked_item_ids:
             ranked.append(item)
     return sorted(ranked, key=lambda item: (-item.score, item.path, item.line))
+
+
+def _with_project_context_anchors(
+    workspace: Path,
+    query: str,
+    items: list[ContextItem],
+    *,
+    max_results: int,
+) -> list[ContextItem]:
+    anchors = _project_context_anchor_items(workspace, query)
+    combined = _dedupe_context_items([*items, *anchors])
+    return _rank_context_items(query, combined)[:max_results]
+
+
+def _project_context_anchor_items(workspace: Path, query: str) -> list[ContextItem]:
+    query_lower = query.lower()
+    terms = _query_terms(query)
+    items: list[ContextItem] = []
+    for relative, aliases in PROJECT_CONTEXT_ANCHORS:
+        file_path = workspace / relative
+        if not file_path.is_file():
+            continue
+        try:
+            lines = file_path.read_text(encoding="utf-8", errors="ignore").splitlines()
+        except OSError:
+            continue
+        title = (
+            _heading_from_lines(lines)
+            or _python_symbol_from_lines(lines)
+            or Path(relative).name
+        )
+        alias_text = " ".join(aliases)
+        anchor_score = _score_text(
+            f"{relative} {title} {alias_text}".lower(),
+            query_lower,
+            terms,
+        )
+        snippet_line, snippet = _best_anchor_snippet(
+            lines,
+            query=query,
+            terms=terms,
+            aliases=aliases,
+        )
+        if file_path.suffix.lower() == ".py":
+            title = _python_symbol_title(snippet) or title
+        content_score = _score_text(snippet.lower(), query_lower, terms)
+        score = anchor_score + content_score
+        if score <= 0:
+            continue
+        items.append(
+            ContextItem(
+                path=relative,
+                line=snippet_line,
+                text=snippet,
+                score=score + PROJECT_CONTEXT_ANCHOR_SCORE_BOOST,
+                title=title,
+                snippet=snippet,
+                match_reason=_anchor_match_reason(
+                    path=relative,
+                    title=title,
+                    snippet=snippet,
+                    terms=terms,
+                    aliases=aliases,
+                ),
+            )
+        )
+    return items
+
+
+def _heading_from_lines(lines: list[str]) -> str | None:
+    for line in lines:
+        heading = line.strip()
+        if heading.startswith("#"):
+            return heading.lstrip("#").strip() or None
+    return None
+
+
+def _python_symbol_from_lines(lines: list[str]) -> str | None:
+    for line in lines:
+        title = _python_symbol_title(line.strip())
+        if title:
+            return title
+    return None
+
+
+def _best_anchor_snippet(
+    lines: list[str],
+    *,
+    query: str,
+    terms: list[str],
+    aliases: tuple[str, ...],
+) -> tuple[int, str]:
+    query_lower = query.lower()
+    alias_terms = _query_terms(" ".join(aliases))
+    best_line_number = 1
+    best_text = ""
+    best_score = -1
+    for line_number, line in enumerate(lines, start=1):
+        text = " ".join(line.split())
+        if not text:
+            continue
+        score = _score_text(text.lower(), query_lower, terms)
+        score += _score_text(text.lower(), "", alias_terms)
+        if symbol_title := _python_symbol_title(text):
+            score += 6
+            if symbol_title.casefold() in " ".join(aliases).casefold():
+                score += 6
+        if score > best_score:
+            best_line_number = line_number
+            best_text = text
+            best_score = score
+    return best_line_number, _clip(best_text or aliases[0])
+
+
+def _anchor_match_reason(
+    *,
+    path: str,
+    title: str,
+    snippet: str,
+    terms: list[str],
+    aliases: tuple[str, ...],
+) -> str:
+    searchable = f"{path} {title} {snippet} {' '.join(aliases)}".casefold()
+    matched_terms = [term for term in terms if term.casefold() in searchable]
+    if matched_terms:
+        return "project context anchor matched: " + ", ".join(matched_terms[:8])
+    return "project context anchor"
+
+
+def _dedupe_context_items(items: list[ContextItem]) -> list[ContextItem]:
+    merged: dict[tuple[str, int, str], ContextItem] = {}
+    for item in items:
+        key = (item.path, item.line, item.text)
+        existing = merged.get(key)
+        if existing is None or item.score > existing.score:
+            merged[key] = item
+    return list(merged.values())
 
 
 def _score_text(text: str, query: str, terms: list[str]) -> int:

@@ -7871,6 +7871,66 @@ def test_codex_supervisor_context_request_returns_ranked_evidence(tmp_path):
     assert recent[0].items[0].match_reason == first.match_reason
 
 
+def test_codex_supervisor_context_request_surfaces_project_context_anchors(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    (workspace / "docs" / "current").mkdir(parents=True)
+    (workspace / "src" / "isotope" / "features" / "supervisor").mkdir(parents=True)
+    (workspace / "docs" / "current" / "status.md").write_text(
+        "# Isotope 当前状态\n\n当前主线要求 AI-first，避免把产品能力降级成诊断。\n",
+        encoding="utf-8",
+    )
+    (workspace / "docs" / "current" / "supervisor-capability-map.md").write_text(
+        "# Codex Supervisor 能力地图\n\n"
+        "上下文能力层登记 context 和 request_context，给 planner 提供排序证据。\n",
+        encoding="utf-8",
+    )
+    (workspace / "docs" / "current" / "docs-map.md").write_text(
+        "# 当前文档地图\n\n先读 status、任务队列和 Supervisor 能力地图。\n",
+        encoding="utf-8",
+    )
+    (workspace / "src" / "isotope" / "features" / "supervisor" / "context.py").write_text(
+        "def request_project_context():\n"
+        "    return 'ranked evidence'\n",
+        encoding="utf-8",
+    )
+    (workspace / "src" / "isotope" / "features" / "supervisor" / "llm_summary.py").write_text(
+        "def generate_llm_action_decision():\n"
+        "    return 'planner entry'\n",
+        encoding="utf-8",
+    )
+
+    def fake_run(
+        command: list[str],
+        *,
+        cwd: str,
+        text: bool,
+        capture_output: bool,
+        check: bool,
+        timeout: int,
+    ) -> subprocess.CompletedProcess[str]:
+        del cwd, text, capture_output, check, timeout
+        return subprocess.CompletedProcess(command, 1, "", "")
+
+    result = request_project_context(
+        codex_home=codex_home,
+        cwd=workspace,
+        query="Supervisor request_context docs/current 能力图 状态文档 代码入口",
+        run=fake_run,
+        rg_bin="rg",
+        max_results=5,
+    )
+
+    paths = [item.path for item in result.items]
+    assert result.backend == "rg"
+    assert "docs/current/supervisor-capability-map.md" in paths
+    assert "docs/current/status.md" in paths
+    assert "docs/current/docs-map.md" in paths
+    assert "src/isotope/features/supervisor/context.py" in paths
+    assert all(len(item.snippet) <= 240 for item in result.items)
+    assert any("project context anchor" in item.match_reason for item in result.items)
+
+
 def test_codex_supervisor_context_request_falls_back_without_rg(tmp_path):
     codex_home = tmp_path / ".codex"
     workspace = tmp_path / "workspace"
