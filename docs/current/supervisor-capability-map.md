@@ -82,6 +82,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `dashboard JSON` 和 `web` 会读取通知索引，展示通知列表、未读数量、
   标题、类型和低敏 `source_ref`；输出层会按 allowlist 再过滤
   `source_ref`，避免把 prompt/log/key 类字段暴露到页面。
+- `dashboard JSON` 和 `web` 会输出“当前批次”，把仍活跃的
+  `active_goals` 与当前托管 worker 从历史 done/stale session 中分离。
 - `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
 - `/managed/send` 成功发送后会更新 lane state。
 - `guide` 会按 cwd、lane name 和 tmux session 打印可复制工作流命令。
@@ -160,6 +162,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   队列目标已阻塞但没有普通 Codex session 可恢复时的拍板记录问题。
 - goal 状态回写和 decision request 写入会尽力生成低敏通知；
   notification index 损坏或写入失败不能破坏原 goal/decision 账本。
+- `cleanup list/archive` 会列出可归档的 done goal、done managed worker
+  和未读 done 通知；归档不删除 Codex 历史，tmux worker 会读取当前
+  pane 文本，避免用旧 log 误归档仍在工作的窗口。
 - `goal list` 和 `daemon status` 会合并活跃目标的最近状态、
   摘要和下一步，便于直接看阻塞原因。
 - `daemon start/status/stop` 可把 `loop` 放到后台常驻，记录
@@ -357,7 +362,7 @@ B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
 
 ## 下一步顺序
 
-1. 用真实 daemon 长跑验证 goal 优先级和通知展示是否稳定。
+1. 用真实 daemon 长跑验证 cleanup/current dashboard 在多批任务中的稳定性。
 2. 后续再决定是否把通知接到更多 worker 生命周期事件。
 3. 再拆分 `runner.py` 中的匹配、建议和 tmux 控制代码。
 

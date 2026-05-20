@@ -207,7 +207,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     目标状态回写为 `done/blocked/needs_user` 时会尽力生成低敏通知，
     且通知失败不会反向破坏 goal 账本；
     `cleanup list/archive` 可列出并归档已汇报 `done` 的 goal、managed
-    worker 和对应通知；归档只追加 Supervisor 账本事件或把通知标记已读，
+    worker 和对应通知；tmux 托管 worker 会读取当前 pane 文本判断状态，
+    避免旧 log 误导归档；归档只追加 Supervisor 账本事件或把通知标记已读，
     不删除 Codex `sessions` 历史，也不会处理仍是 `working` 或无完成汇报的任务；
     当没有显式 `--goal`、没有活跃目标且没有可控托管 lane 时，
     `loop` 只监控，不会从普通历史会话或 workspace 自行发明下一批
@@ -262,6 +263,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     两个动作都会要求托管 Codex 按状态协议汇报；
     dashboard JSON 和 web 已展示通知列表、未读数量、标题、类型和
     低敏 `source_ref`；
+    dashboard JSON 和 web 已新增“当前批次”区，单独展示仍活跃的
+    `active_goals` 与当前托管 worker；已完成 worker、已删除 worktree
+    的历史 session 不会进入当前批次；
     web 等待拍板列表已可直接填写答案并提交到 `/decision/answer`，
     该接口只记录 `decision answer`，不会变成任意文本发送通道；
     web 已可通过手动“模型建议”按钮调用 `/llm-action`，展示 LLM

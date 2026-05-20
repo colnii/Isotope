@@ -76,6 +76,7 @@
 | `recommendation` | 结构化建议，表达下一步建议动作、优先级和目标窗口，不等于自动执行 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
 | `payload` | Supervisor 每轮整理出的运行状态包，通常是 Python `dict`，包含扫描结果、候选命令、LLM 动作、执行结果和上下文检索结果 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `active_goals` | 本轮仍活跃的目标列表，会带上最近 `last_status`、摘要和下一步，作为 LLM planner 的输入；存在时动作校验会收窄到目标相关命令 | 产品功能/模型/状态账本 | `src/isotope/features/supervisor/goal_queue.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/llm_summary.py` |
+| `current batch` | 当前批次视图，把仍活跃目标和当前托管 worker 从历史 done/stale session 中分离 | 产品功能/视图/状态判断 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `status_evidence` | 状态依据，解释 Supervisor 为什么把窗口判为工作中、等待用户、停住或报错 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/web.py` |
 | `supervisor_protocol` | 状态依据来源，表示被托管 Codex 主动写了 `SUPERVISOR_STATUS` | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
 | `状态汇报` | web 卡片里的结构化状态区，单独展示 `SUPERVISOR_STATUS/SUMMARY/NEXT` | 产品功能/视图/状态判断 | `src/isotope/features/supervisor/web.py` |
@@ -148,6 +149,7 @@
 | `goals.jsonl` | Supervisor 目标队列事件文件，保存目标添加、状态回写和归档事件 | 产品功能/状态账本 | `src/isotope/features/supervisor/goal_queue.py` |
 | `goal add/list/archive` | Supervisor 目标队列命令，用于添加、查看和归档活跃目标 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py` |
 | `goal status` | 目标状态回写事件，记录 worker 汇报的 `done/blocked/needs_user`，其中 `done` 会触发自动归档 | 产品功能/状态账本 | `src/isotope/features/supervisor/goal_queue.py`, `src/isotope/features/supervisor/runner.py` |
+| `cleanup list/archive` | Supervisor 生命周期清理命令，列出或归档 done goal、done managed worker 和 done 通知；不删除 Codex 历史 | 产品功能/控制通道/状态账本 | `src/isotope/features/supervisor/runner.py` |
 | `last_status` | `goal list` 和 `daemon status` 展示的目标最近状态字段，来源于 `goals.jsonl` 状态回写事件 | 产品功能/状态账本 | `src/isotope/features/supervisor/goal_queue.py`, `src/isotope/features/supervisor/runner.py` |
 | `loop` | Supervisor 日常常驻入口，默认由 LLM planner 驱动受控动作 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py` |
 | `--codex-model` | `launch/resume` 参数，传给后台 Codex worker 的 `-m/--model`，用于控制 worker 模型 | 产品功能/控制通道/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
