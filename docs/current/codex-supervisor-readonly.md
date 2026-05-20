@@ -128,7 +128,7 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
    `isotope-supervisor daemon start --interval 30` 适合后台常驻；
    `isotope-supervisor daemon status` 用来看后台 loop 是否还活着。
 3. 追加目标：
-   `isotope-supervisor goal add --cwd /path/to/repo --goal "目标文本"`。
+   `isotope-supervisor goal add --cwd /path/to/repo "目标文本"`。
    目标会进入 `~/.codex/supervisor/goals.jsonl`，后续 `loop` 会动态读取，
    不必重启 daemon。
 4. 查看状态：
@@ -155,7 +155,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner guide --cwd /path/to/repo --name lane-a
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner up
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner up --goal "继续推进 Supervisor 可用入口"
-PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner goal add --cwd /path/to/repo --goal "继续推进 Supervisor 可用入口"
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner goal add --cwd /path/to/repo "继续推进 Supervisor 可用入口"
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner goal plan "拆解当前 Supervisor 高层目标" --cwd /path/to/repo --write
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner goal list
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner web
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner advise

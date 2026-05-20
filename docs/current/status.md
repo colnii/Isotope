@@ -195,9 +195,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     LLM planner 可见的动作候选；即使当前没有现成托管窗口，
     LLM 也可以先 `request_context`，或直接 `launch_session`
     启动新的后台 Codex worker 推进该目标；
-    `goal add/list/archive` 可维护持久目标队列；`goal plan` 是显式
+    `goal add/list/archive` 可维护持久目标队列，`goal add "目标文本"`
+    支持一句话直接入队；`goal plan "高层目标" --write` 是显式
     AI-first 目标规划入口，会读取当前 `status`、任务队列和能力地图，
-    让 LLM 生成一小批候选目标，默认只预览，传 `--write` 才写入
+    围绕高层目标让 LLM 生成一小批候选目标，默认只预览，传 `--write` 才写入
     `~/.codex/supervisor/goals.jsonl`；`goal plan` 会从带说明的模型输出中
     提取真正可用的 goals JSON，忽略后续非 goal JSON 片段，并在无可用
     目标时返回可行动错误；日常 `loop` 没有显式
@@ -371,8 +372,9 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner web --prin
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --limit 3 --json
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner advise
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise --iterations 1 --llm-summary --json
-PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner goal plan --cwd /path/to/repo
-PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner goal plan --cwd /path/to/repo --write
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner goal add --cwd /path/to/repo "继续推进 Supervisor 可用入口"
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner goal plan "拆解当前 Supervisor 高层目标" --cwd /path/to/repo
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner goal plan "拆解当前 Supervisor 高层目标" --cwd /path/to/repo --write
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner loop --interval 30
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner loop --interval 30 --no-auto-adopt
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon start --interval 30

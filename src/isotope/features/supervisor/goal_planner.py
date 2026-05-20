@@ -42,6 +42,7 @@ def plan_supervisor_goals(
     root: Path | str,
     codex_home: Path | str,
     provider: GoalPlanningProvider,
+    user_goal: str | None = None,
     write: bool = False,
     limit: int = 3,
 ) -> dict[str, Any]:
@@ -58,6 +59,7 @@ def plan_supervisor_goals(
         build_goal_planning_messages(
             root=workspace,
             facts=facts,
+            user_goal=_optional_string(user_goal),
             limit=limit,
             write_mode=write,
         )
@@ -81,6 +83,7 @@ def plan_supervisor_goals(
         "status": "ok",
         "mode": "write" if write else "preview",
         "root": str(workspace),
+        "user_goal": _optional_string(user_goal),
         "sources": list(PLANNING_DOCS),
         "candidates": [candidate.to_dict() for candidate in candidates],
         "written_goals": written,
@@ -107,6 +110,7 @@ def build_goal_planning_messages(
     *,
     root: Path,
     facts: dict[str, str],
+    user_goal: str | None,
     limit: int,
     write_mode: bool,
 ) -> list[dict[str, str]]:
@@ -126,6 +130,7 @@ def build_goal_planning_messages(
             "content": json.dumps(
                 {
                     "workspace": str(root),
+                    "user_goal": user_goal,
                     "facts": facts,
                     "goal_count_limit": limit,
                     "write_mode": write_mode,
@@ -140,6 +145,7 @@ def build_goal_planning_messages(
                     },
                     "rules": [
                         "每个 goal 必须能独立启动一个 Supervisor worker。",
+                        "如果 user_goal 存在，必须围绕它拆解可执行目标。",
                         "不要输出泛泛的继续推进、优化系统、阅读文档。",
                         "不要生成需要用户另行解释范围的任务。",
                         "target_name 使用小写字母、数字和短横线。",

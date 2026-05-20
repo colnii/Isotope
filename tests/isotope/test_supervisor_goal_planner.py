@@ -36,6 +36,30 @@ class FakeGoalProvider:
         )
 
 
+class SeededGoalProvider:
+    def __init__(self, expected_goal: str, workspace: Path) -> None:
+        self.expected_goal = expected_goal
+        self.workspace = workspace
+        self.seen_user_goal = False
+
+    def summarize(self, messages: list[dict[str, str]]) -> str:
+        user_payload = json.loads(messages[1]["content"])
+        assert user_payload["user_goal"] == self.expected_goal
+        self.seen_user_goal = True
+        return json.dumps(
+            {
+                "goals": [
+                    {
+                        "goal": "把高层目标拆成可由 daemon 消费的目标队列项。",
+                        "target_name": "supervisor-autopilot-goal-entry",
+                        "reason": "用户给出一句高层目标，需要进入持久目标队列。",
+                    }
+                ]
+            },
+            ensure_ascii=False,
+        )
+
+
 class NonJsonGoalProvider:
     def summarize(self, messages: list[dict[str, str]]) -> str:
         return "我需要更多上下文，暂时不能给出目标。"
@@ -135,6 +159,134 @@ def test_supervisor_goal_plan_writes_selected_candidates(
     assert len(active) == 1
     assert active[0].goal == "为 Supervisor web 增加目标队列状态筛选。"
     assert active[0].target_name == "supervisor-web-goal-filter"
+
+
+def test_supervisor_goal_add_accepts_positional_one_sentence_goal(tmp_path, capsys):
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    goal = "一句话进入 Supervisor 目标队列。"
+
+    exit_code = supervisor_main(
+        [
+            "goal",
+            "add",
+            goal,
+            "--codex-home",
+            str(tmp_path / ".codex"),
+            "--cwd",
+            str(workspace),
+            "--target-name",
+            "one-sentence-goal",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["goal"]["goal"] == goal
+    assert payload["goal"]["target_name"] == "one-sentence-goal"
+    assert payload["active_goals"][0]["goal"] == goal
+
+
+def test_supervisor_goal_plan_write_feeds_loop_without_explicit_goal(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    root = tmp_path / "repo"
+    root.mkdir()
+    _write_current_docs(root)
+    codex_home = tmp_path / ".codex"
+    user_goal = "减少人类主控 Codex 参与。"
+    provider = SeededGoalProvider(user_goal, root)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: provider,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "goal",
+            "plan",
+            user_goal,
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(root),
+            "--write",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    plan_payload = json.loads(capsys.readouterr().out)
+    assert provider.seen_user_goal is True
+    assert plan_payload["user_goal"] == user_goal
+    assert plan_payload["written_goals"][0]["target_name"] == (
+        "supervisor-autopilot-goal-entry"
+    )
+
+    class LoopProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert "把高层目标拆成可由 daemon 消费的目标队列项。" in content
+            assert '"target_name": "supervisor-autopilot-goal-entry"' in content
+            return json.dumps(
+                {
+                    "kind": "launch_session",
+                    "target_name": "supervisor-autopilot-goal-entry",
+                    "cwd": str(root),
+                    "prompt": "把高层目标拆成可由 daemon 消费的目标队列项。",
+                    "reason": "loop 没有显式 goal 时消费 active_goals。",
+                },
+                ensure_ascii=False,
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: LoopProvider(),
+    )
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 45682
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured["command"] = command
+        captured["cwd"] = cwd
+        return FakeProcess()
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    loop_payload = json.loads(capsys.readouterr().out)
+    assert loop_payload["active_goals"] == plan_payload["written_goals"]
+    assert loop_payload["llm_action"]["target_name"] == "supervisor-autopilot-goal-entry"
+    assert loop_payload["executed"]["managed"]["name"] == "supervisor-autopilot-goal-entry"
+    assert captured["command"][9].startswith("WORK ORDER")
+    assert "goal: 把高层目标拆成可由 daemon 消费的目标队列项。" in captured["command"][9]
 
 
 def test_supervisor_goal_plan_extracts_json_fragment_after_explanatory_text():

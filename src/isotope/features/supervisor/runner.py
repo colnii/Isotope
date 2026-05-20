@@ -849,6 +849,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Add one persistent goal for the Supervisor loop.",
     )
     goal_add_parser.add_argument(
+        "goal_text",
+        nargs="?",
+        help="Goal text. Positional form for one-sentence goal entry.",
+    )
+    goal_add_parser.add_argument(
         "--codex-home",
         default=str(Path.home() / ".codex"),
         help="Codex home directory. Defaults to ~/.codex.",
@@ -858,7 +863,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=str(Path.cwd()),
         help="Workspace directory for this goal. Defaults to the current directory.",
     )
-    goal_add_parser.add_argument("--goal", required=True, help="Goal text.")
+    goal_add_parser.add_argument("--goal", help="Goal text. Kept for compatibility.")
     goal_add_parser.add_argument(
         "--target-name",
         help="Preferred managed worker name. Defaults to the generated goal id.",
@@ -867,6 +872,11 @@ def _build_parser() -> argparse.ArgumentParser:
     goal_plan_parser = goal_subparsers.add_parser(
         "plan",
         help="Use LLM to propose a small batch of Supervisor goals.",
+    )
+    goal_plan_parser.add_argument(
+        "goal_text",
+        nargs="?",
+        help="Optional high-level user goal to seed planning.",
     )
     goal_plan_parser.add_argument(
         "--codex-home",
@@ -3229,7 +3239,7 @@ def _goal_payload(args: argparse.Namespace) -> dict[str, Any]:
         goal = record_supervisor_goal(
             codex_home=Path(args.codex_home),
             cwd=Path(args.cwd),
-            goal=args.goal,
+            goal=_goal_command_goal_text(args),
             target_name=args.target_name,
         )
         return {
@@ -3243,6 +3253,7 @@ def _goal_payload(args: argparse.Namespace) -> dict[str, Any]:
             root=Path(args.cwd),
             codex_home=Path(args.codex_home),
             provider=provider,
+            user_goal=_goal_command_goal_text(args, required=False),
             write=args.write,
             limit=args.limit,
         )
@@ -3262,6 +3273,27 @@ def _goal_payload(args: argparse.Namespace) -> dict[str, Any]:
             "active_goals": _active_goal_dicts(args, include_status=True),
         }
     raise ValueError(f"unsupported goal command: {args.goal_command}")
+
+
+def _goal_command_goal_text(
+    args: argparse.Namespace,
+    *,
+    required: bool = True,
+) -> str | None:
+    positional = _optional_text(getattr(args, "goal_text", None))
+    option = _optional_text(getattr(args, "goal", None))
+    if positional and option and positional != option:
+        raise ValueError("goal positional argument and --goal must match when both are set")
+    goal = option or positional
+    if required and goal is None:
+        raise ValueError("goal must not be empty")
+    return goal
+
+
+def _optional_text(value: object) -> str | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    return value.strip()
 
 
 def _print_goal_plain(payload: dict[str, Any]) -> None:
