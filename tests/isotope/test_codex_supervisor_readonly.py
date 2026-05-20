@@ -3017,6 +3017,91 @@ def test_codex_supervisor_runner_loop_suggests_all_active_goals(
     ]
 
 
+def test_codex_supervisor_runner_loop_prioritizes_active_goals_over_stale_resume(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    goal = "推进目标队列里的新功能。"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-stale.jsonl",
+        session_id="stale-session",
+        cwd=str(workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:45:00Z",
+                "旧会话已经长时间没有新事件。",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
+
+    exit_code = supervisor_main(
+        [
+            "goal",
+            "add",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(workspace),
+            "--goal",
+            goal,
+            "--target-name",
+            "goal-worker",
+            "--json",
+        ]
+    )
+    assert exit_code == 0
+    capsys.readouterr()
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            return json.dumps(
+                {
+                    "kind": "monitor",
+                    "reason": "只检查候选排序。",
+                },
+                ensure_ascii=False,
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--workspace-root",
+            str(workspace),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert [
+        suggestion["kind"] for suggestion in payload["command_suggestions"][:2]
+    ] == ["request_context", "launch_session"]
+    assert payload["command_suggestions"][0]["query"] == goal
+    assert payload["command_suggestions"][1]["target_name"] == "goal-worker"
+
+
 def test_codex_supervisor_runner_loop_does_not_launch_after_terminal_done_goals(
     tmp_path,
     capsys,

@@ -3316,38 +3316,6 @@ def _command_suggestions(
                 _watch_command_suggestion()
             ]
         return [_watch_command_suggestion()]
-    if include_all_managed:
-        suggestions: list[dict[str, str]] = []
-        for session in report.sessions:
-            if _is_active_managed_tmux_session(session):
-                suggestions.extend(_managed_tmux_command_suggestions(session))
-            if _is_resume_capable_session(session):
-                suggestions.extend(_resume_session_command_suggestions(session))
-        if allow_workspace_actions:
-            suggestions.extend(_workspace_action_command_suggestions(report))
-        suggestions.extend(
-            _active_goal_action_command_suggestions(
-                active_goals,
-                running_target_names=_running_managed_target_names(report),
-            )
-            or _goal_action_command_suggestions(
-                goal,
-                goal_workspace,
-                goal_target_name=goal_target_name,
-            )
-        )
-        if suggestions:
-            suggestions.append(_watch_command_suggestion())
-            return _dedupe_command_suggestions(suggestions)
-    recommendation = report.recommendation
-    target = _target_session(report, recommendation.target_session_id)
-    if target is not None and target.managed_tmux_session:
-        return _managed_tmux_command_suggestions(target)
-    if target is not None and _is_resume_capable_session(target):
-        return _resume_session_command_suggestions(target) + [_watch_command_suggestion()]
-    managed_tmux = _first_managed_tmux_session(report)
-    if managed_tmux is not None:
-        return _managed_tmux_command_suggestions(managed_tmux) + [_watch_command_suggestion()]
     goal_suggestions = (
         _active_goal_action_command_suggestions(
             active_goals,
@@ -3359,8 +3327,30 @@ def _command_suggestions(
             goal_target_name=goal_target_name,
         )
     )
+    if include_all_managed:
+        suggestions: list[dict[str, str]] = []
+        suggestions.extend(goal_suggestions)
+        for session in report.sessions:
+            if _is_active_managed_tmux_session(session):
+                suggestions.extend(_managed_tmux_command_suggestions(session))
+            if _is_resume_capable_session(session):
+                suggestions.extend(_resume_session_command_suggestions(session))
+        if allow_workspace_actions:
+            suggestions.extend(_workspace_action_command_suggestions(report))
+        if suggestions:
+            suggestions.append(_watch_command_suggestion())
+            return _dedupe_command_suggestions(suggestions)
     if goal_suggestions:
         return _dedupe_command_suggestions(goal_suggestions + [_watch_command_suggestion()])
+    recommendation = report.recommendation
+    target = _target_session(report, recommendation.target_session_id)
+    if target is not None and target.managed_tmux_session:
+        return _managed_tmux_command_suggestions(target)
+    if target is not None and _is_resume_capable_session(target):
+        return _resume_session_command_suggestions(target) + [_watch_command_suggestion()]
+    managed_tmux = _first_managed_tmux_session(report)
+    if managed_tmux is not None:
+        return _managed_tmux_command_suggestions(managed_tmux) + [_watch_command_suggestion()]
     if recommendation.action == "monitor":
         return [_watch_command_suggestion()]
     return []
