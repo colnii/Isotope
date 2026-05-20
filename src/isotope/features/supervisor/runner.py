@@ -2513,6 +2513,7 @@ def _print_dashboard(args: argparse.Namespace) -> None:
     report = _scan_report(args)
     payload = _dashboard_payload(
         report,
+        active_goals=_active_goal_dicts(args, include_status=True),
         decision_requests=_decision_request_dicts(args),
         notifications=_notification_dicts(Path(args.codex_home)),
     )
@@ -2525,6 +2526,7 @@ def _print_dashboard(args: argparse.Namespace) -> None:
 def _dashboard_payload(
     report: Any,
     *,
+    active_goals: list[dict[str, Any]] | None = None,
     decision_requests: list[dict[str, Any]] | None = None,
     notifications: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
@@ -2533,7 +2535,8 @@ def _dashboard_payload(
         "done": [],
         "working": [],
     }
-    for session, linked_session, linked_match in _dashboard_display_sessions(report.sessions):
+    display_sessions = _dashboard_display_sessions(report.sessions)
+    for session, linked_session, linked_match in display_sessions:
         groups[_dashboard_group_for(session, linked_session=linked_session)].append(
             _dashboard_item(
                 session,
@@ -2548,6 +2551,10 @@ def _dashboard_payload(
         "recommendation": report.recommendation.to_dict(),
         "counts": {key: len(value) for key, value in groups.items()},
         "groups": groups,
+        "current": _dashboard_current_payload(
+            display_sessions,
+            active_goals=active_goals,
+        ),
         "decision_requests": decision_requests or [],
         "notifications": notification_items,
         "notification_counts": {
@@ -2555,6 +2562,53 @@ def _dashboard_payload(
             "unread": sum(1 for item in notification_items if item.get("unread") is True),
         },
     }
+
+
+def _dashboard_current_payload(
+    display_sessions: list[tuple[Any, Any | None, dict[str, Any] | None]],
+    *,
+    active_goals: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    current_goals = [
+        item
+        for item in (_dashboard_active_goal_item(goal) for goal in active_goals or [])
+        if item["current"]
+    ]
+    managed_workers = [
+        _dashboard_item(
+            session,
+            linked_session=linked_session,
+            linked_match=linked_match,
+        )
+        for session, linked_session, linked_match in display_sessions
+        if _is_current_managed_worker(session)
+    ]
+    return {
+        "active_goals": current_goals,
+        "managed_workers": managed_workers,
+        "counts": {
+            "active_goals": len(current_goals),
+            "managed_workers": len(managed_workers),
+        },
+    }
+
+
+def _dashboard_active_goal_item(goal: dict[str, Any]) -> dict[str, Any]:
+    item = dict(goal)
+    cwd_exists = _cwd_is_existing_dir(goal.get("cwd"))
+    item["cwd_exists"] = cwd_exists
+    item["current"] = cwd_exists and goal.get("last_status") != "done"
+    return item
+
+
+def _is_current_managed_worker(session: Any) -> bool:
+    return bool(
+        getattr(session, "managed", False)
+        and getattr(session, "status", None) != "exited"
+        and not _is_completed_session(session)
+        and getattr(session, "managed_name", None)
+        and _cwd_is_existing_dir(getattr(session, "cwd", None))
+    )
 
 
 def _notification_dicts(codex_home: Path) -> list[dict[str, Any]]:
@@ -2612,6 +2666,8 @@ def _dashboard_display_sessions(sessions: Any) -> list[tuple[Any, Any | None, di
         if session.managed:
             continue
         if session.status == "exited":
+            continue
+        if not _cwd_is_existing_dir(getattr(session, "cwd", None)):
             continue
         linkable_sessions.append(session)
 
@@ -2979,6 +3035,7 @@ def _dashboard_item(
     display_source = linked_session or session
     resume_session = linked_session or session
     status_source = _dashboard_status_source(session, linked_session)
+    cwd_exists = _cwd_is_existing_dir(session.cwd)
     return {
         "session_id": session.session_id,
         "short_session_id": display_source.short_session_id,
@@ -3000,6 +3057,8 @@ def _dashboard_item(
         "agent_nickname": display_source.agent_nickname,
         "agent_role": display_source.agent_role,
         "cwd": session.cwd,
+        "cwd_exists": cwd_exists,
+        "current": _dashboard_item_is_current(session, cwd_exists=cwd_exists),
         "git_branch": display_source.git_branch or session.git_branch,
         "status": status_source.status,
         "status_label": status_source.status_label,
@@ -3021,6 +3080,14 @@ def _dashboard_item(
         "reason": status_source.reason,
         "age_seconds": status_source.age_seconds,
     }
+
+
+def _dashboard_item_is_current(session: Any, *, cwd_exists: bool) -> bool:
+    if not cwd_exists or _session_marks_terminal_done(session):
+        return False
+    if _is_current_managed_worker(session):
+        return True
+    return getattr(session, "status", None) in {"working", "needs_user", "error"}
 
 
 def _dashboard_status_source(session: Any, linked_session: Any | None) -> Any:

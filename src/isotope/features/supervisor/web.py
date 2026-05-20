@@ -29,6 +29,7 @@ from .runner import (
     EXECUTABLE_ADVICE_KINDS,
     EXECUTABLE_ADVICE_TEXT,
     _advice_payload,
+    _active_goal_dicts_for_codex_home,
     _dashboard_payload,
     _notification_dicts,
 )
@@ -76,6 +77,10 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         report = self._scan_report()
         return _dashboard_payload(
             report,
+            active_goals=_active_goal_dicts_for_codex_home(
+                self.codex_home,
+                include_status=True,
+            ),
             decision_requests=_decision_request_dicts(self.codex_home),
             notifications=_notification_dicts(self.codex_home),
         )
@@ -481,12 +486,56 @@ def dashboard_page_html() -> str:
       padding: 12px 14px;
       font-size: 14px;
     }
+    .current-list {
+      margin-bottom: 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--done);
+      border-radius: 6px;
+      background: var(--panel);
+      padding: 12px 14px;
+      font-size: 14px;
+    }
+    .current-list-head,
     .notification-list-head {
       display: flex;
       justify-content: space-between;
       gap: 12px;
       align-items: center;
       font-weight: 700;
+    }
+    .current-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .current-subhead {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .current-items {
+      display: grid;
+      gap: 8px;
+    }
+    .current-item {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #f8fafc;
+      padding: 8px;
+      min-width: 0;
+    }
+    .current-title {
+      color: var(--text);
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+    .current-detail {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+      overflow-wrap: anywhere;
     }
     .notification-list-body {
       display: grid;
@@ -715,6 +764,7 @@ def dashboard_page_html() -> str:
       .meta { text-align: left; margin-top: 6px; }
       main { padding: 16px; }
       .grid { grid-template-columns: 1fr; }
+      .current-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -733,6 +783,22 @@ def dashboard_page_html() -> str:
         <button id="llm-action-button" type="button">模型建议</button>
       </div>
       <div class="llm-action" id="llm-action-result">未请求模型建议</div>
+    </div>
+    <div class="current-list" id="current-list">
+      <div class="current-list-head">
+        <span>当前批次</span>
+        <span class="count" id="current-count">0</span>
+      </div>
+      <div class="current-grid">
+        <div>
+          <div class="current-subhead">当前目标</div>
+          <div class="current-items" id="current-goals"></div>
+        </div>
+        <div>
+          <div class="current-subhead">托管 worker</div>
+          <div class="current-items" id="current-workers"></div>
+        </div>
+      </div>
     </div>
     <div class="notification-list" id="notification-list">
       <div class="notification-list-head">
@@ -843,6 +909,58 @@ def dashboard_page_html() -> str:
       }
       lane.append(actions);
       return lane;
+    }
+
+    function renderCurrentItem(title, detail) {
+      const item = document.createElement("div");
+      item.className = "current-item";
+      const titleNode = document.createElement("div");
+      titleNode.className = "current-title";
+      titleNode.textContent = title;
+      const detailNode = document.createElement("div");
+      detailNode.className = "current-detail";
+      detailNode.textContent = detail;
+      item.append(titleNode, detailNode);
+      return item;
+    }
+
+    function renderCurrentBucket(target, items, emptyText, mapper) {
+      target.replaceChildren();
+      if (!items.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = emptyText;
+        target.append(empty);
+        return;
+      }
+      for (const item of items) {
+        const mapped = mapper(item);
+        target.append(renderCurrentItem(mapped.title, mapped.detail));
+      }
+    }
+
+    function renderCurrentBatch(current) {
+      const goals = current && Array.isArray(current.active_goals) ? current.active_goals : [];
+      const workers = current && Array.isArray(current.managed_workers) ? current.managed_workers : [];
+      document.getElementById("current-count").textContent = goals.length + workers.length;
+      renderCurrentBucket(
+        document.getElementById("current-goals"),
+        goals,
+        "暂无当前目标",
+        (item) => ({
+          title: item.target_name || item.goal_id,
+          detail: [item.goal, item.cwd].filter(Boolean).join(" · ")
+        })
+      );
+      renderCurrentBucket(
+        document.getElementById("current-workers"),
+        workers,
+        "暂无托管 worker",
+        (item) => ({
+          title: item.name || item.display_title || item.session_id,
+          detail: [item.status_label || item.status, item.cwd].filter(Boolean).join(" · ")
+        })
+      );
     }
 
     function renderCardSource(item) {
@@ -1291,6 +1409,7 @@ def dashboard_page_html() -> str:
       const payload = await response.json();
       document.getElementById("generated-at").textContent = payload.generated_at;
       document.getElementById("recommendation").textContent = payload.recommendation.label;
+      renderCurrentBatch(payload.current || {});
       renderNotifications(payload.notifications || [], payload.notification_counts || {});
       renderDecisionRequests(payload.decision_requests || []);
       for (const key of groups) renderGroup(key, payload.groups[key] || []);

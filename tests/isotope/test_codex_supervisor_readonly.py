@@ -1439,6 +1439,148 @@ def test_codex_supervisor_dashboard_uses_launch_prompt_to_disambiguate_similar_l
     assert long_item["display_title"] == long_prompt[:47] + "…"
 
 
+def test_codex_supervisor_dashboard_json_separates_current_batch_from_deleted_worktree_history(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    current_workspace = tmp_path / "current-worktree"
+    deleted_workspace = tmp_path / "deleted-worktree"
+    current_workspace.mkdir()
+    target_name = "supervisor-current-batch-dashboard"
+    goals_path = codex_home / "supervisor" / "goals.jsonl"
+    goals_path.parent.mkdir(parents=True, exist_ok=True)
+    goals_path.write_text(
+        json.dumps(
+            {
+                "event": "supervisor_goal",
+                "goal_id": "goal-current",
+                "created_at": NOW.isoformat(),
+                "cwd": str(current_workspace),
+                "goal": "改进当前批次 dashboard 视图",
+                "target_name": target_name,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    _write_managed_tmux_record(
+        codex_home,
+        workspace=current_workspace,
+        name=target_name,
+        record_id="managed-current",
+        tmux_session="isotope-current-batch",
+    )
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-deleted-worktree.jsonl",
+        session_id="historical-deleted-worktree",
+        cwd=str(deleted_workspace),
+        events=[
+            _event(
+                "2026-05-16T11:40:00Z",
+                "event_msg",
+                {"type": "thread_name_updated", "thread_name": target_name},
+            ),
+            _assistant_message(
+                "2026-05-16T11:40:00Z",
+                "\n".join(
+                    [
+                        "SUPERVISOR_STATUS: done",
+                        "SUPERVISOR_SUMMARY: 旧 worktree 里的任务已完成。",
+                        "SUPERVISOR_NEXT: 等待 Supervisor 归档。",
+                    ]
+                ),
+            ),
+        ],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-current-batch",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: "当前批次正在运行 pytest",
+    )
+
+    exit_code = supervisor_main(
+        [
+            "dashboard",
+            "--codex-home",
+            str(codex_home),
+            "--limit",
+            "5",
+            "--stale-after",
+            "600",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert [goal["goal_id"] for goal in payload["current"]["active_goals"]] == [
+        "goal-current"
+    ]
+    assert payload["current"]["active_goals"][0]["cwd_exists"] is True
+    assert [worker["name"] for worker in payload["current"]["managed_workers"]] == [
+        target_name
+    ]
+    assert payload["current"]["managed_workers"][0]["cwd_exists"] is True
+    assert payload["current"]["managed_workers"][0]["current"] is True
+
+    historical = next(
+        item
+        for items in payload["groups"].values()
+        for item in items
+        if item["session_id"] == "historical-deleted-worktree"
+    )
+    assert historical["cwd_exists"] is False
+    assert historical["current"] is False
+    assert "historical-deleted-worktree" not in {
+        worker.get("linked_session_id")
+        for worker in payload["current"]["managed_workers"]
+    }
+
+
+def test_codex_supervisor_dashboard_current_batch_excludes_done_managed_worker(
+    tmp_path,
+):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    done_worker = CodexSessionSummary(
+        session_id="managed:done-worker",
+        cwd=str(workspace),
+        source_path=str(tmp_path / "done.log"),
+        last_event_at=NOW.isoformat(),
+        age_seconds=20,
+        status="done",
+        reason="Supervisor 托管进程已完成",
+        managed=True,
+        managed_name="done-worker",
+        managed_backend="process",
+        supervisor_status="done",
+        supervisor_summary="worker 已完成。",
+        supervisor_next="等待 Supervisor 归档。",
+    )
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(done_worker,),
+    )
+
+    payload = _dashboard_payload(report)
+
+    assert payload["groups"]["done"][0]["name"] == "done-worker"
+    assert payload["groups"]["done"][0]["current"] is False
+    assert payload["current"]["managed_workers"] == []
+
+
 def test_codex_supervisor_dashboard_follows_new_session_in_same_tmux_lane(
     tmp_path,
 ):
@@ -2161,6 +2303,12 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "renderDecisionRequest" in html
     assert "renderDecisionRequests" in html
     assert "renderNotifications" in html
+    assert "current-list" in html
+    assert "当前批次" in html
+    assert "renderCurrentBatch" in html
+    assert "current-count" in html
+    assert "暂无当前目标" in html
+    assert "暂无托管 worker" in html
     assert "notification-list" in html
     assert "通知列表" in html
     assert "source_ref" in html
@@ -2211,6 +2359,11 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "dashboard.json" in html
     assert json_response.status == 200
     assert payload["status"] == "ok"
+    assert payload["current"] == {
+        "active_goals": [],
+        "managed_workers": [],
+        "counts": {"active_goals": 0, "managed_workers": 0},
+    }
     assert payload["counts"]["needs_attention"] == 1
     assert payload["decision_requests"] == []
     assert payload["notifications"] == [
