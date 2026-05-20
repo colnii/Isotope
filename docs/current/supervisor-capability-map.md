@@ -248,6 +248,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   多个后台 Codex 重复驱动；已删除 worktree 或不存在 cwd 不再作为
   resume/context/launch 的正常候选，LLM 误选时只记录 skipped；
   LLM 临时空响应或误选非法目标时会记录为 `monitor`，不让常驻 loop 退出。
+- `delete_worktree` 是 deny-by-default（默认拒绝）的受控动作：LLM 只能
+  对已知且 cwd 已缺失的 worker 表达清理意图；执行层固定 skipped，
+  不自动删除目录、分支或登记。
 - `ask_user` 是拍板请求动作，可绑定普通 session 或持久 `goal_id`，
   必须同时满足：Codex 明确请求拍板、
   LLM 无法从用户既有指示判断、上下文检索缺失/过时/冲突。
@@ -514,6 +517,8 @@ fanout 回归必须覆盖：多个 active goals 中已有同名 running worker �
 - 不要把 `integration-review`、`replan` 或 `merge-work-order` 的候选结果
   当成自动删除分支、清理 worktree、force push、rebase 已共享分支或
   重写历史的授权。
+- 即便 LLM 输出 `delete_worktree`，当前实现也只记录 skipped；真正清理
+  worktree、分支或登记仍需要人工或后续显式审批路径。
 
 ## 后续拆分方向
 

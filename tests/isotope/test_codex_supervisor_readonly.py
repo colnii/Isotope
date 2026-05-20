@@ -4442,7 +4442,8 @@ def test_codex_supervisor_llm_action_messages_include_whitelist_and_commands():
     assert "guardrail" in messages[0]["content"]
     assert (
         '"allowed_kinds": ["monitor", "send_status", "send_continue", '
-        '"resume_session", "launch_session", "request_context", "ask_user"]'
+        '"resume_session", "launch_session", "request_context", "ask_user", '
+        '"delete_worktree"]'
         in messages[1]["content"]
     )
     assert '"context_capability"' in messages[1]["content"]
@@ -6551,7 +6552,8 @@ def test_codex_supervisor_runner_supervise_llm_execute_sends_whitelisted_action(
             content = messages[1]["content"]
             assert (
                 '"allowed_kinds": ["monitor", "send_status", "send_continue", '
-                '"resume_session", "launch_session", "request_context", "ask_user"]'
+                '"resume_session", "launch_session", "request_context", "ask_user", '
+                '"delete_worktree"]'
             ) in content
             assert '"managed_terminal_ready": true' in content
             return '{"kind":"send_status","target_name":"lane-a","reason":"先看进度。"}'

@@ -40,6 +40,7 @@ LLM_ACTION_ALLOWED_KINDS = (
     "launch_session",
     "request_context",
     "ask_user",
+    "delete_worktree",
 )
 LLM_RESUME_PROMPT_KINDS = ("send_status", "send_continue")
 LLM_ASK_USER_CONTEXT_STATUSES = ("missing", "outdated", "conflict")
@@ -351,6 +352,11 @@ def build_llm_action_messages(
                             "next_decision.merge_suitable 不是自动合并授权，"
                             "不得输出白名单之外的 merge/rebase/delete 动作。"
                         ),
+                        (
+                            "delete_worktree 是 deny-by-default（默认拒绝）的受控动作；"
+                            "只能指向已知且 cwd 已缺失的 worker，用于记录人工清理意图，"
+                            "Supervisor 不会自动删除目录、分支或登记。"
+                        ),
                     ],
                     "context_capability": {
                         "kind": "request_context",
@@ -402,6 +408,12 @@ def build_llm_action_messages(
                         "cwd": "/path/to/repo，可省略：命中已有 target_name 时由白名单命令补齐",
                         "prompt": "可省略：命中已有 target_name 时由白名单命令补齐；否则写给新 Codex 会话的中文指令",
                         "worker_profile": "coding|light",
+                        "reason": "一句中文原因",
+                    },
+                    "delete_worktree_schema": {
+                        "kind": "delete_worktree",
+                        "target_name": "worker-name",
+                        "cwd": "/path/to/missing/.worktrees/supervisor/worker",
                         "reason": "一句中文原因",
                     },
                 },
@@ -576,6 +588,20 @@ def generate_llm_action_decision(
             else _suggested_target_name(target)
         )
         command_suggestion = None
+    elif kind == "delete_worktree":
+        if target_name is None:
+            raise ValueError("target_name is required for LLM action: delete_worktree")
+        cwd = _optional_payload_string(payload, "cwd") or _delete_worktree_target_cwd(
+            report,
+            target_name,
+        )
+        if cwd is None:
+            raise ValueError(f"unknown delete_worktree target for LLM action: {target_name}")
+        if not _is_known_missing_worktree_target(report, target_name, cwd):
+            raise ValueError(
+                "delete_worktree requires a known missing worktree target"
+            )
+        command_suggestion = None
     elif kind != "monitor":
         if target_name is None:
             raise ValueError(f"target_name is required for LLM action: {kind}")
@@ -604,6 +630,7 @@ def generate_llm_action_decision(
         **({"prompt": prompt} if kind == "launch_session" else {}),
         **({"cwd": cwd} if kind == "request_context" else {}),
         **({"query": query} if kind == "request_context" else {}),
+        **({"cwd": cwd} if kind == "delete_worktree" else {}),
         **({"question": question} if question is not None else {}),
         **({"context_status": context_status} if context_status is not None else {}),
         **(
@@ -1178,6 +1205,31 @@ def _command_targets_name(command: str, target_name: str) -> bool:
 def _has_managed_target(report: CodexSupervisorReport, target_name: str) -> bool:
     return any(
         _has_managed_send_target(session) and session.managed_name == target_name
+        for session in report.sessions
+    )
+
+
+def _delete_worktree_target_cwd(
+    report: CodexSupervisorReport,
+    target_name: str,
+) -> str | None:
+    for session in report.sessions:
+        if _suggested_target_name(session) == target_name:
+            cwd = getattr(session, "cwd", None)
+            return cwd if isinstance(cwd, str) and cwd else None
+    return None
+
+
+def _is_known_missing_worktree_target(
+    report: CodexSupervisorReport,
+    target_name: str,
+    cwd: str,
+) -> bool:
+    if Path(cwd).expanduser().is_dir():
+        return False
+    return any(
+        _suggested_target_name(session) == target_name
+        and getattr(session, "cwd", None) == cwd
         for session in report.sessions
     )
 

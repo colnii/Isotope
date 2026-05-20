@@ -153,6 +153,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     仍在运行，`resume_session` 会跳过，避免同一个隔离工作区被重复驱动；
     已删除 worktree 或不存在 cwd 不再作为 resume/context/launch 的正常
     候选，LLM 误选时会记录为 skipped，不让 loop 退出；
+    `delete_worktree` 目前是 deny-by-default 受控动作，只接受已知且
+    cwd 已缺失的 worker 并固定 skipped，不自动删除目录、分支或登记；
     `launch_session` 同样受 `--prompt-cooldown` 约束，
     且发现同名后台 process worker 仍在运行时会跳过，避免 LLM
     长跑时反复启动同名后台任务；LLM 自动 `launch_session`

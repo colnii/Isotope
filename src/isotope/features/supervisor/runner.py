@@ -5258,6 +5258,8 @@ def _execute_llm_action(
         return _execute_context_action(args, action)
     if kind == "ask_user":
         return _execute_ask_user_action(args, action)
+    if kind == "delete_worktree":
+        return _execute_delete_worktree_action(action)
     return _execute_advice(
         args,
         report,
@@ -5828,6 +5830,16 @@ def _execute_ask_user_action(
         "context_status": action.get("context_status"),
         "gate": gate,
         "decision_request": decision_request.to_dict(),
+    }
+
+
+def _execute_delete_worktree_action(action: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "kind": "delete_worktree",
+        "target_name": action.get("target_name"),
+        "cwd": action.get("cwd"),
+        "skipped": True,
+        "reason": "delete_worktree requires explicit human approval",
     }
 
 
