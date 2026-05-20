@@ -224,6 +224,7 @@ def build_llm_action_messages(
     recent_context_results: list[dict[str, Any]] | None = None,
     active_goals: list[dict[str, Any]] | None = None,
     recent_decision_answers: list[dict[str, Any]] | None = None,
+    worker_reviews: dict[str, Any] | None = None,
 ) -> list[dict[str, str]]:
     """Build the prompt for guarded LLM planning."""
     prompt_command_suggestions = _active_goal_scoped_command_suggestions(
@@ -327,6 +328,11 @@ def build_llm_action_messages(
                             "恢复历史可能消耗大量 tokens；除非确实需要该完整历史，"
                             "恢复前优先考虑 request_context 或 launch_session。"
                         ),
+                        (
+                            "worker_reviews 只提供下一轮决策上下文；"
+                            "next_decision.merge_suitable 不是自动合并授权，"
+                            "不得输出白名单之外的 merge/rebase/delete 动作。"
+                        ),
                     ],
                     "context_capability": {
                         "kind": "request_context",
@@ -364,6 +370,7 @@ def build_llm_action_messages(
                     },
                     "generated_at": report.generated_at,
                     "recommendation": report.recommendation.to_dict(),
+                    "worker_reviews": _worker_review_context_payload(worker_reviews),
                     "output_schema": {
                         "kind": "resume_session",
                         "target_name": "lane-a",
@@ -394,6 +401,7 @@ def generate_llm_action_decision(
     recent_context_results: list[dict[str, Any]] | None = None,
     active_goals: list[dict[str, Any]] | None = None,
     recent_decision_answers: list[dict[str, Any]] | None = None,
+    worker_reviews: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     action_command_suggestions = _active_goal_scoped_command_suggestions(
         command_suggestions,
@@ -413,6 +421,7 @@ def generate_llm_action_decision(
             recent_context_results,
             active_goals,
             recent_decision_answers,
+            worker_reviews,
         )
     )
     payload = _normalize_llm_action_payload(_extract_json_object(raw))
@@ -597,6 +606,70 @@ def generate_llm_action_decision(
 # ---------------------------------------------------------------------------
 # 内部工具
 # ---------------------------------------------------------------------------
+
+
+def _worker_review_context_payload(
+    worker_reviews: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if not isinstance(worker_reviews, dict):
+        return {}
+    workers = [
+        _worker_review_prompt_item(worker)
+        for worker in worker_reviews.get("workers", [])
+        if isinstance(worker, dict)
+    ]
+    return {
+        "status": worker_reviews.get("status"),
+        "summary": worker_reviews.get("summary") or {},
+        "decision_summary": worker_reviews.get("decision_summary") or {},
+        "safety": worker_reviews.get("safety") or {},
+        "workers": workers,
+    }
+
+
+def _worker_review_prompt_item(worker: dict[str, Any]) -> dict[str, Any]:
+    reviewer = worker.get("reviewer")
+    reviewer_payload = reviewer if isinstance(reviewer, dict) else {}
+    worktree = worker.get("worktree")
+    worktree_payload = worktree if isinstance(worktree, dict) else {}
+    changes = worker.get("changes")
+    changes_payload = changes if isinstance(changes, dict) else {}
+    protocol = worker.get("supervisor_protocol")
+    protocol_payload = protocol if isinstance(protocol, dict) else {}
+    return {
+        "record_id": worker.get("record_id"),
+        "name": worker.get("name"),
+        "backend": worker.get("backend"),
+        "process_running": worker.get("process_running"),
+        "registry_status": worker.get("registry_status"),
+        "cwd": worker.get("cwd"),
+        "cwd_exists": worker.get("cwd_exists"),
+        "worktree": {
+            "exists": worktree_payload.get("exists"),
+            "branch": worktree_payload.get("branch"),
+            "inferred_branch": worktree_payload.get("inferred_branch"),
+        },
+        "supervisor_protocol": {
+            "status": protocol_payload.get("status"),
+            "summary": _clip(protocol_payload.get("summary")),
+            "next": _clip(protocol_payload.get("next")),
+        },
+        "changes": {
+            "status": changes_payload.get("status"),
+            "summary": changes_payload.get("summary"),
+            "files": changes_payload.get("files") or [],
+            "stat": _clip(changes_payload.get("stat")),
+        },
+        "validation_commands": worker.get("validation_commands") or [],
+        "next_decision": worker.get("next_decision") or {},
+        "reviewer": {
+            "needed": reviewer_payload.get("needed"),
+            "reason": reviewer_payload.get("reason"),
+            "command": reviewer_payload.get("command"),
+            "must_check_risks": reviewer_payload.get("must_check_risks") or [],
+        },
+        "merge_hint": worker.get("merge_hint"),
+    }
 
 
 def _pool_toml_paths(env: Mapping[str, str]) -> list[Path]:

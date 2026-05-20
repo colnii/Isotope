@@ -4111,6 +4111,124 @@ def test_codex_supervisor_llm_action_messages_include_whitelist_and_commands():
     assert '"supervisor_status": "done"' in messages[1]["content"]
 
 
+def test_codex_supervisor_llm_action_messages_include_worker_review_context():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="managed:managed-001",
+                cwd=EXISTING_WORKSPACE,
+                source_path="/home/lumber/.codex/supervisor/logs/managed-001.log",
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="done",
+                reason="worker 已完成",
+                managed=True,
+                managed_name="worker-a",
+                managed_backend="process",
+                supervisor_status="done",
+                supervisor_summary="worker 已完成入口和测试。",
+                supervisor_next="主控 Codex 审查 diff 后合并。",
+            ),
+        ),
+    )
+    suggestions = _advice_payload(report, include_all_managed=True)["command_suggestions"]
+    worker_reviews = {
+        "status": "ok",
+        "decision_summary": {
+            "merge_candidates": 1,
+            "continue_or_split_tasks": 0,
+            "missing_worktrees": 0,
+            "needs_fresh_review": 1,
+        },
+        "workers": [
+            {
+                "name": "worker-a",
+                "cwd": EXISTING_WORKSPACE,
+                "next_decision": {
+                    "recommendation": "review_then_merge_candidate",
+                    "summary": "worker 已完成且有本地改动；建议先复查 diff 并跑验证，通过后再人工合并。",
+                    "merge_suitable": True,
+                    "continue_or_split_task": False,
+                    "risk_level": "medium",
+                },
+            }
+        ],
+        "safety": {"auto_merge": False, "delete_branch": False},
+    }
+
+    messages = build_llm_action_messages(
+        report,
+        suggestions,
+        worker_reviews=worker_reviews,
+    )
+    payload = json.loads(messages[1]["content"])
+
+    assert payload["worker_reviews"]["workers"][0]["next_decision"][
+        "recommendation"
+    ] == "review_then_merge_candidate"
+    assert payload["worker_reviews"]["safety"]["auto_merge"] is False
+    assert "merge" not in payload["allowed_kinds"]
+    assert "worker_reviews 只提供下一轮决策上下文" in "".join(
+        payload["action_rules"]
+    )
+
+
+def test_codex_supervisor_generate_llm_action_rejects_merge_even_with_worker_review_context():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="done-session",
+                cwd=EXISTING_WORKSPACE,
+                source_path="/home/lumber/.codex/sessions/done.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="done",
+                reason="worker 已完成",
+                supervisor_status="done",
+            ),
+        ),
+    )
+    suggestions = _advice_payload(report, include_all_managed=True)["command_suggestions"]
+    worker_reviews = {
+        "status": "ok",
+        "decision_summary": {"merge_candidates": 1},
+        "workers": [
+            {
+                "name": "worker-a",
+                "next_decision": {
+                    "recommendation": "review_then_merge_candidate",
+                    "merge_suitable": True,
+                },
+            }
+        ],
+        "safety": {"auto_merge": False},
+    }
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert '"worker_reviews"' in content
+            assert '"merge_suitable": true' in content
+            return json.dumps(
+                {
+                    "kind": "merge_worker",
+                    "target_name": "worker-a",
+                    "reason": "模型错误地把 review context 当成合并授权。",
+                },
+                ensure_ascii=False,
+            )
+
+    with pytest.raises(ValueError, match="unsupported LLM action"):
+        generate_llm_action_decision(
+            report,
+            suggestions,
+            FakeProvider(),
+            worker_reviews=worker_reviews,
+        )
+
+
 def test_codex_supervisor_llm_action_messages_include_resume_context_size_hint():
     report = CodexSupervisorReport(
         generated_at=NOW.isoformat(),
@@ -5304,6 +5422,100 @@ def test_codex_supervisor_runner_llm_action_becomes_primary_command_suggestion(
     assert payload["command_suggestion"] == payload["llm_action"]["command_suggestion"]
     assert payload["command_suggestion"]["kind"] == "request_context"
     assert payload["rule_command_suggestion"]["kind"] == "resume_session"
+
+
+def test_codex_supervisor_runner_supervise_llm_action_passes_worker_reviews(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-done.jsonl",
+        session_id="done-session",
+        cwd=str(workspace),
+        events=[_assistant_message("2026-05-16T11:59:20Z", "上一轮 worker 已完成。")],
+    )
+    worker_reviews = {
+        "status": "ok",
+        "decision_summary": {
+            "merge_candidates": 1,
+            "continue_or_split_tasks": 0,
+            "missing_worktrees": 0,
+            "needs_fresh_review": 1,
+        },
+        "workers": [
+            {
+                "record_id": "managed-001",
+                "name": "worker-a",
+                "cwd": str(workspace),
+                "cwd_exists": True,
+                "next_decision": {
+                    "recommendation": "review_then_merge_candidate",
+                    "summary": "worker 已完成且有本地改动；建议先复查 diff 并跑验证，通过后再人工合并。",
+                    "merge_suitable": True,
+                    "continue_or_split_task": False,
+                    "risk_level": "medium",
+                },
+            }
+        ],
+        "safety": {"auto_merge": False, "delete_branch": False},
+    }
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            payload = json.loads(messages[1]["content"])
+            assert payload["worker_reviews"]["workers"][0]["name"] == "worker-a"
+            assert payload["worker_reviews"]["workers"][0]["next_decision"][
+                "merge_suitable"
+            ] is True
+            assert payload["worker_reviews"]["safety"]["auto_merge"] is False
+            assert "merge" not in payload["allowed_kinds"]
+            return json.dumps(
+                {
+                    "kind": "request_context",
+                    "cwd": str(workspace),
+                    "query": "worker-a diff review next_decision",
+                    "reason": "worker review 指向 fresh review，先检索上下文。",
+                },
+                ensure_ascii=False,
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_worker_reviews",
+        lambda *, codex_home: worker_reviews,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-action",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["worker_reviews"] == worker_reviews
+    assert payload["llm_action"]["kind"] == "request_context"
+    assert payload["llm_action"]["query"] == "worker-a diff review next_decision"
 
 
 def test_codex_supervisor_runner_llm_action_scopes_to_workspace_root(

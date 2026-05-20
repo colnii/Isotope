@@ -2428,6 +2428,7 @@ def _supervise_payload(
     if args.llm_action or args.llm_execute:
         payload["recent_context_results"] = _recent_context_results(args, action_report)
         payload["recent_decision_answers"] = _decision_answer_dicts(args)
+        payload["worker_reviews"] = _worker_review_context(args)
     if args.llm_summary:
         payload["llm_summary"] = _summarize_with_llm(report)
     if args.llm_action or args.llm_execute:
@@ -3707,6 +3708,7 @@ def _print_advice(args: argparse.Namespace) -> None:
     if args.llm_action or args.llm_execute:
         payload["recent_context_results"] = _recent_context_results(args, action_report)
         payload["recent_decision_answers"] = _decision_answer_dicts(args)
+        payload["worker_reviews"] = _worker_review_context(args)
         payload["llm_action"] = _decide_action_with_llm(action_report, payload)
         _promote_llm_command_suggestion(payload)
     if args.llm_execute:
@@ -5377,6 +5379,7 @@ def _decide_action_with_llm(report: Any, payload: dict[str, Any]) -> dict[str, A
             payload.get("recent_context_results"),
             payload.get("active_goals"),
             payload.get("recent_decision_answers"),
+            payload.get("worker_reviews"),
         )
     try:
         provider = resolve_summary_provider_from_env(agent_name="supervisor")
@@ -5387,6 +5390,7 @@ def _decide_action_with_llm(report: Any, payload: dict[str, Any]) -> dict[str, A
             payload.get("recent_context_results"),
             payload.get("active_goals"),
             payload.get("recent_decision_answers"),
+            payload.get("worker_reviews"),
         )
     except ValueError as exc:
         error = str(exc)
@@ -5421,6 +5425,10 @@ def _decision_answer_dicts(args: argparse.Namespace) -> list[dict[str, Any]]:
         dict(answer)
         for answer in read_recent_decision_answers(codex_home=Path(args.codex_home))
     ]
+
+
+def _worker_review_context(args: argparse.Namespace) -> dict[str, Any]:
+    return collect_worker_reviews(codex_home=Path(args.codex_home))
 
 
 def _active_goal_dicts(
