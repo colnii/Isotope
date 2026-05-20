@@ -153,6 +153,8 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
    目标会进入 `~/.codex/supervisor/goals.jsonl`，后续 `loop` 会动态读取，
    不必重启 daemon。
 4. 查看状态：
+   `isotope-supervisor check` 一次汇总 daemon、watcher、活跃目标、
+   integration-review 和 cleanup 候选，适合早上看 overnight 结果；
    `isotope-supervisor goal list` 看活跃目标的最近状态、摘要和下一步；
    `isotope-supervisor dashboard` 看当前窗口分组；
    `isotope-supervisor web --host 127.0.0.1 --port 8765` 打开本机页面。
@@ -213,6 +215,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner archive --
 .venv/bin/isotope-supervisor goal add --cwd /path/to/repo "继续推进 Supervisor 可用入口"
 .venv/bin/isotope-supervisor goal plan "拆解当前 Supervisor 高层目标" --cwd /path/to/repo --write
 .venv/bin/isotope-supervisor goal list
+.venv/bin/isotope-supervisor check
+.venv/bin/isotope-supervisor overnight-check --json
 .venv/bin/isotope-supervisor web
 .venv/bin/isotope-supervisor advise
 .venv/bin/isotope-supervisor supervise --interval 180 --llm-summary

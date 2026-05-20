@@ -585,6 +585,28 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     up_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     up_parser.set_defaults(auto_adopt=True)
+    for check_command, help_text in (
+        (
+            "check",
+            "Print one read-only morning summary across daemon, goals, review, and cleanup.",
+        ),
+        (
+            "overnight-check",
+            "Alias for check; useful after an overnight Supervisor run.",
+        ),
+    ):
+        check_parser = subparsers.add_parser(check_command, help=help_text)
+        check_parser.add_argument(
+            "--codex-home",
+            default=str(Path.home() / ".codex"),
+            help="Codex home directory. Defaults to ~/.codex.",
+        )
+        check_parser.add_argument(
+            "--base",
+            default="main",
+            help="Base branch/ref for integration-review. Defaults to main.",
+        )
+        check_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     daemon_parser = subparsers.add_parser(
         "daemon",
         help="Start, inspect, or stop the background Supervisor loop.",
@@ -1330,6 +1352,13 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 _print_daemon_plain(payload)
             return 0
+        if args.command in {"check", "overnight-check"}:
+            payload = _overnight_check_payload(args)
+            if args.json:
+                _print_json(payload)
+            else:
+                _print_overnight_check_plain(payload)
+            return 0
         if args.command == "daemon":
             if (
                 args.daemon_command == "watcher"
@@ -1821,6 +1850,51 @@ def _watcher_payload(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def _overnight_check_payload(args: argparse.Namespace) -> dict[str, Any]:
+    codex_home = Path(args.codex_home)
+    daemon = supervisor_daemon_status(codex_home=codex_home)
+    daemon["activity"] = _daemon_activity_payload(codex_home, daemon)
+    watcher = supervisor_watcher_status(codex_home=codex_home)
+    goals = {
+        "status": "ok",
+        "active_goals": _active_goal_dicts_for_codex_home(
+            codex_home,
+            include_status=True,
+        ),
+    }
+    integration_review = collect_integration_reviews(
+        codex_home=codex_home,
+        base_ref=args.base,
+        include_unfinished=True,
+    )
+    cleanup = {
+        "status": "ok",
+        "candidates": _cleanup_candidate_dicts(codex_home),
+    }
+    integration_summary = integration_review.get("summary") or {}
+    return {
+        "status": "ok",
+        "summary": {
+            "daemon_status": daemon.get("status"),
+            "watcher_status": watcher.get("status"),
+            "active_goals": len(goals["active_goals"]),
+            "integration_review": {
+                "total": integration_summary.get("total", 0),
+                "ready_to_integrate": integration_summary.get("ready_to_integrate", 0),
+                "already_integrated": integration_summary.get("already_integrated", 0),
+                "needs_review": integration_summary.get("needs_review", 0),
+                "conflict_risk": integration_summary.get("conflict_risk", 0),
+            },
+            "cleanup_candidates": len(cleanup["candidates"]),
+        },
+        "daemon": daemon,
+        "watcher": watcher,
+        "goals": goals,
+        "integration_review": integration_review,
+        "cleanup": cleanup,
+    }
+
+
 def _run_daemon_watcher(args: argparse.Namespace) -> None:
     if args.interval <= 0:
         raise ValueError("interval must be positive")
@@ -1946,6 +2020,24 @@ def _print_watcher_run_plain(payload: dict[str, Any]) -> None:
     print(f"状态：{watchdog.get('status')}")
     if watchdog.get("pid") is not None:
         print(f"pid：{watchdog['pid']}")
+
+
+def _print_overnight_check_plain(payload: dict[str, Any]) -> None:
+    summary = payload["summary"]
+    integration = summary["integration_review"]
+    print("[Codex Supervisor overnight check]")
+    print(f"daemon：{summary['daemon_status']}")
+    print(f"watcher：{summary['watcher_status']}")
+    print(f"活跃目标：{summary['active_goals']}")
+    print(
+        "integration-review："
+        f"total={integration['total']} "
+        f"ready={integration['ready_to_integrate']} "
+        f"integrated={integration['already_integrated']} "
+        f"review={integration['needs_review']} "
+        f"conflict={integration['conflict_risk']}"
+    )
+    print(f"可归档项：{summary['cleanup_candidates']}")
 
 
 def _print_report(

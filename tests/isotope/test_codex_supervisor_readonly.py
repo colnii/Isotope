@@ -3719,6 +3719,64 @@ def test_codex_supervisor_runner_cleanup_lists_and_archives_only_done_items(
     assert notifications[0].unread is False
 
 
+def test_codex_supervisor_runner_check_json_summarizes_readonly_surfaces(
+    tmp_path,
+    capsys,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    goal = _add_supervisor_goal(
+        capsys,
+        codex_home=codex_home,
+        workspace=workspace,
+        goal="早上检查 Supervisor 状态。",
+        target_name="morning-check",
+    )
+
+    exit_code = supervisor_main(["check", "--codex-home", str(codex_home), "--json"])
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["summary"] == {
+        "daemon_status": "not_running",
+        "watcher_status": "not_running",
+        "active_goals": 1,
+        "integration_review": {
+            "total": 0,
+            "ready_to_integrate": 0,
+            "already_integrated": 0,
+            "needs_review": 0,
+            "conflict_risk": 0,
+        },
+        "cleanup_candidates": 0,
+    }
+    assert payload["daemon"]["status"] == "not_running"
+    assert payload["watcher"]["status"] == "not_running"
+    assert payload["goals"]["active_goals"][0]["goal_id"] == goal["goal_id"]
+    assert payload["integration_review"]["include_unfinished"] is True
+    assert payload["cleanup"]["candidates"] == []
+
+
+def test_codex_supervisor_runner_overnight_check_plain_is_compact_summary(
+    tmp_path,
+    capsys,
+):
+    codex_home = tmp_path / ".codex"
+
+    exit_code = supervisor_main(["overnight-check", "--codex-home", str(codex_home)])
+
+    assert exit_code == 0
+    text = capsys.readouterr().out
+    assert "[Codex Supervisor overnight check]" in text
+    assert "daemon：not_running" in text
+    assert "watcher：not_running" in text
+    assert "活跃目标：0" in text
+    assert "integration-review：total=0 ready=0 integrated=0 review=0 conflict=0" in text
+    assert "可归档项：0" in text
+
+
 def test_codex_supervisor_runner_loop_suggests_all_active_goals(
     tmp_path,
     capsys,
