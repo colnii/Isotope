@@ -57,6 +57,8 @@ Python 代码使用 4 空格缩进，模块和函数用 `snake_case`。
 
 提交信息遵守 Conventional Commits。
 提交前运行 `git diff --check` 和必要测试。
+Supervisor 托管 worker 完成代码或文档改动后，应在自己的 worktree 内提交。
+若验证失败、需求需拍板或只做只读检查，才可以不提交，并在汇报中说明原因。
 保持线性历史，优先 rebase 或 fast-forward。
 不要在共享分支制造无说明的 merge commit。
 不要主动合并、删除或重写分支；分支处理先做状态审计。

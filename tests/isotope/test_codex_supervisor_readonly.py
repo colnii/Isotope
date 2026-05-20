@@ -6930,6 +6930,10 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_launch_session(
     assert f"cwd: {workspace}" in payload["executed"]["text"]
     assert "budget_hint: prompt-only" in payload["executed"]["text"]
     assert "这不是 Supervisor 强制预算控制" in payload["executed"]["text"]
+    assert "必须在本 worktree 内提交一个 Conventional Commits 提交" in payload[
+        "executed"
+    ]["text"]
+    assert "commit_exception" in payload["executed"]["text"]
     assert "SUPERVISOR_STATUS" in payload["executed"]["text"]
     assert captured["command"][:9] == [
         "codex",
@@ -6946,6 +6950,10 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_launch_session(
     assert f"goal: {launch_prompt}" in captured["command"][9]
     assert "budget_hint: prompt-only" in captured["command"][9]
     assert "这不是 Supervisor 强制预算控制" in captured["command"][9]
+    assert "必须在本 worktree 内提交一个 Conventional Commits 提交" in captured[
+        "command"
+    ][9]
+    assert "commit_exception" in captured["command"][9]
     assert "SUPERVISOR_STATUS" in captured["command"][9]
     assert captured["cwd"] == str(workspace)
     assert captured["stdin"] is subprocess.DEVNULL
@@ -11759,6 +11767,9 @@ def test_codex_supervisor_runner_loop_goal_can_launch_first_worker(
     ]
     assert captured["command"][9].startswith("WORK ORDER")
     assert f"goal: {goal}" in captured["command"][9]
+    assert "必须在本 worktree 内提交一个 Conventional Commits 提交" in captured[
+        "command"
+    ][9]
     assert captured["cwd"] == str(workspace)
     assert captured["stdin"] is subprocess.DEVNULL
     assert captured["stderr"] is subprocess.STDOUT
@@ -11857,6 +11868,9 @@ def test_codex_supervisor_runner_loop_uses_persisted_goal_queue(
     assert payload["executed"]["worktree"]["cwd"] == str(workspace)
     assert captured["command"][9].startswith("WORK ORDER")
     assert f"goal: {goal}" in captured["command"][9]
+    assert "必须在本 worktree 内提交一个 Conventional Commits 提交" in captured[
+        "command"
+    ][9]
 
 
 def test_codex_supervisor_runner_loop_archives_goal_when_worker_reports_done(

@@ -4920,7 +4920,15 @@ def _launch_work_order_prompt(
                 "最多主动继续 3 轮，最多请求上下文 2 次。"
             ),
             "budget_note: 这不是 Supervisor 强制预算控制；真正计数和拦截属于后续 B 层。",
-            "done_conditions: 目标完成、必要验证通过，并说明改动、证据和剩余风险。",
+            (
+                "done_conditions: 目标完成、必要验证通过，若产生代码或文档改动，"
+                "必须在本 worktree 内提交一个 Conventional Commits 提交；"
+                "最后说明改动、证据、提交哈希和剩余风险。"
+            ),
+            (
+                "commit_exception: 只有验证失败、需求需要用户拍板或任务明确只读时才可以不提交，"
+                "并必须在 SUPERVISOR_SUMMARY 或 SUPERVISOR_NEXT 说明原因。"
+            ),
             (
                 "ask_user_conditions: 只有 Codex 明确请求拍板、既有用户指示不足，"
                 "且上下文缺失、过时或冲突时才停下来问用户。"
