@@ -206,6 +206,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `SUPERVISOR_STATUS: done` 时，`loop` 会记录目标状态并自动归档；
     目标状态回写为 `done/blocked/needs_user` 时会尽力生成低敏通知，
     且通知失败不会反向破坏 goal 账本；
+    `cleanup list/archive` 可列出并归档已汇报 `done` 的 goal、managed
+    worker 和对应通知；归档只追加 Supervisor 账本事件或把通知标记已读，
+    不删除 Codex `sessions` 历史，也不会处理仍是 `working` 或无完成汇报的任务；
     当没有显式 `--goal`、没有活跃目标且没有可控托管 lane 时，
     `loop` 只监控，不会从普通历史会话或 workspace 自行发明下一批
     `launch_session`；
@@ -378,6 +381,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon sto
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner adopt --name lane-a --cwd /path/to/repo --tmux-session isotope-lane-a
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --name lane-a --text "继续"
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner archive --name lane-a
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner cleanup list
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner cleanup archive --all
 .venv/bin/isotope-demo --scenario v0.2 --trace
 git status --short
 ```

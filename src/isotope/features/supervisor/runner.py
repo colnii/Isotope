@@ -158,6 +158,7 @@ DASHBOARD_GROUP_LABELS = {
     "done": "已完成",
     "working": "工作中",
 }
+ARCHIVABLE_SUPERVISOR_STATUSES = {"done"}
 
 
 def _print_json(payload: dict[str, Any]) -> None:
@@ -905,6 +906,45 @@ def _build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Supervisor goal id to archive.",
     )
+    cleanup_parser = subparsers.add_parser(
+        "cleanup",
+        help="List or archive completed Supervisor lifecycle items.",
+    )
+    cleanup_subparsers = cleanup_parser.add_subparsers(
+        dest="cleanup_command",
+        required=True,
+    )
+    for cleanup_command, help_text in (
+        ("list", "List completed goals, managed workers, and notifications."),
+        ("archive", "Archive completed lifecycle items without deleting Codex history."),
+    ):
+        cleanup_command_parser = cleanup_subparsers.add_parser(
+            cleanup_command,
+            help=help_text,
+        )
+        cleanup_command_parser.add_argument(
+            "--codex-home",
+            default=str(Path.home() / ".codex"),
+            help="Codex home directory. Defaults to ~/.codex.",
+        )
+        cleanup_command_parser.add_argument(
+            "--json",
+            action="store_true",
+            help="Print JSON output.",
+        )
+    cleanup_archive_parser = cleanup_subparsers.choices["archive"]
+    cleanup_target = cleanup_archive_parser.add_mutually_exclusive_group(required=True)
+    cleanup_target.add_argument(
+        "--all",
+        action="store_true",
+        help="Archive every currently listed cleanup candidate.",
+    )
+    cleanup_target.add_argument("--goal-id", help="Archive one completed goal.")
+    cleanup_target.add_argument("--name", help="Archive one completed managed worker.")
+    cleanup_target.add_argument(
+        "--notification-id",
+        help="Mark one completed Supervisor notification as read.",
+    )
     resume_parser = subparsers.add_parser(
         "resume",
         help="Resume a Codex session with a prompt and register the managed process.",
@@ -1204,6 +1244,13 @@ def main(argv: list[str] | None = None) -> int:
                 _print_json(payload)
             else:
                 _print_goal_plain(payload)
+            return 0
+        if args.command == "cleanup":
+            payload = _cleanup_payload(args)
+            if args.json:
+                _print_json(payload)
+            else:
+                _print_cleanup_plain(payload)
             return 0
         if args.command == "resume":
             record = resume_managed_codex(
@@ -3258,6 +3305,248 @@ def _print_goal_plain(payload: dict[str, Any]) -> None:
         if item.get("last_next"):
             print(f"  下一步：{item['last_next']}")
         print(f"  归档：{archive_command}")
+
+
+def _cleanup_payload(args: argparse.Namespace) -> dict[str, Any]:
+    codex_home = Path(args.codex_home)
+    candidates = _cleanup_candidate_dicts(codex_home)
+    if args.cleanup_command == "list":
+        return {
+            "status": "ok",
+            "candidates": candidates,
+        }
+    if args.cleanup_command == "archive":
+        selected = _select_cleanup_candidates(args, candidates)
+        archived = [_archive_cleanup_candidate(codex_home, item) for item in selected]
+        return {
+            "status": "ok",
+            "candidates": _cleanup_candidate_dicts(codex_home),
+            "archived": archived,
+            "active_goals": _active_goal_dicts_for_codex_home(
+                codex_home,
+                include_status=True,
+            ),
+        }
+    raise ValueError(f"unsupported cleanup command: {args.cleanup_command}")
+
+
+def _print_cleanup_plain(payload: dict[str, Any]) -> None:
+    archived = payload.get("archived") or []
+    if archived:
+        print(f"已归档/标记：{len(archived)}")
+        for item in archived:
+            target = item.get("goal_id") or item.get("name") or item.get("notification_id")
+            print(f"- {item['kind']} {target}")
+    candidates = payload.get("candidates") or []
+    print(f"可归档项：{len(candidates)}")
+    for item in candidates:
+        target = item.get("goal_id") or item.get("name") or item.get("notification_id")
+        print(f"- {item['kind']} {target}")
+        if item.get("summary"):
+            print(f"  摘要：{item['summary']}")
+        if item.get("command"):
+            print(f"  归档：{item['command']}")
+
+
+def _cleanup_candidate_dicts(codex_home: Path) -> list[dict[str, Any]]:
+    goals = _cleanup_goal_candidates(codex_home)
+    return [
+        *goals,
+        *_cleanup_managed_worker_candidates(codex_home),
+        *_cleanup_notification_candidates(codex_home),
+    ]
+
+
+def _cleanup_goal_candidates(codex_home: Path) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    for goal in _active_goal_dicts_for_codex_home(codex_home, include_status=True):
+        status = goal.get("last_status")
+        if status not in ARCHIVABLE_SUPERVISOR_STATUSES:
+            continue
+        goal_id = goal.get("goal_id")
+        if not isinstance(goal_id, str) or not goal_id:
+            continue
+        candidate = {
+            "kind": "goal",
+            "goal_id": goal_id,
+            "status": status,
+            "target_name": goal.get("target_name"),
+            "cwd": goal.get("cwd"),
+            "goal": goal.get("goal"),
+            "summary": goal.get("last_summary"),
+            "next": goal.get("last_next"),
+            "command": _cleanup_archive_command(
+                codex_home,
+                "--goal-id",
+                goal_id,
+            ),
+        }
+        candidates.append(_drop_none_values(candidate))
+    return candidates
+
+
+def _cleanup_managed_worker_candidates(codex_home: Path) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    for record in read_managed_records(default_registry_path(codex_home)):
+        protocol = _managed_record_supervisor_protocol(record)
+        if protocol.get("status") not in ARCHIVABLE_SUPERVISOR_STATUSES:
+            continue
+        if _managed_record_is_still_working(record):
+            continue
+        candidate = {
+            "kind": "managed_worker",
+            "name": record.name,
+            "record_id": record.record_id,
+            "status": protocol.get("status"),
+            "summary": protocol.get("summary"),
+            "next": protocol.get("next"),
+            "backend": record.backend,
+            "tmux_session": record.tmux_session,
+            "command": _cleanup_archive_command(
+                codex_home,
+                "--name",
+                record.name,
+            ),
+        }
+        candidates.append(_drop_none_values(candidate))
+    return candidates
+
+
+def _cleanup_notification_candidates(codex_home: Path) -> list[dict[str, Any]]:
+    try:
+        notifications = NotificationFlow.in_process(codex_home).list_notifications(
+            unread=True,
+            notification_type="supervisor_goal_status",
+        )
+    except (OSError, ValueError):
+        return []
+    candidates: list[dict[str, Any]] = []
+    for notification in notifications:
+        source_ref = notification.source_ref or {}
+        if not isinstance(source_ref, dict):
+            continue
+        goal_id = source_ref.get("goal_id")
+        status = source_ref.get("status")
+        if status not in ARCHIVABLE_SUPERVISOR_STATUSES:
+            continue
+        candidate = {
+            "kind": "notification",
+            "notification_id": notification.notification_id,
+            "type": notification.notification_type,
+            "title": notification.title,
+            "goal_id": goal_id,
+            "status": status,
+            "command": _cleanup_archive_command(
+                codex_home,
+                "--notification-id",
+                notification.notification_id,
+            ),
+        }
+        candidates.append(_drop_none_values(candidate))
+    return candidates
+
+
+def _cleanup_archive_command(codex_home: Path, *target_args: str) -> str:
+    return shlex.join(
+        [
+            "isotope-supervisor",
+            "cleanup",
+            "archive",
+            "--codex-home",
+            str(codex_home),
+            *target_args,
+        ]
+    )
+
+
+def _select_cleanup_candidates(
+    args: argparse.Namespace,
+    candidates: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if getattr(args, "all", False):
+        return candidates
+    goal_id = getattr(args, "goal_id", None)
+    name = getattr(args, "name", None)
+    notification_id = getattr(args, "notification_id", None)
+    selected = [
+        item
+        for item in candidates
+        if (goal_id and item.get("kind") == "goal" and item.get("goal_id") == goal_id)
+        or (
+            name
+            and item.get("kind") == "managed_worker"
+            and item.get("name") == name
+        )
+        or (
+            notification_id
+            and item.get("kind") == "notification"
+            and item.get("notification_id") == notification_id
+        )
+    ]
+    if not selected:
+        raise ValueError("cleanup target is not currently archivable")
+    return selected
+
+
+def _archive_cleanup_candidate(
+    codex_home: Path,
+    candidate: dict[str, Any],
+) -> dict[str, Any]:
+    kind = candidate.get("kind")
+    if kind == "goal":
+        goal_id = str(candidate["goal_id"])
+        archived = archive_supervisor_goal(codex_home=codex_home, goal_id=goal_id)
+        return {
+            "kind": kind,
+            "goal_id": goal_id,
+            "archived": archived,
+        }
+    if kind == "managed_worker":
+        name = str(candidate["name"])
+        record = archive_managed_codex(codex_home=codex_home, name=name)
+        return {
+            "kind": kind,
+            "name": name,
+            "managed": record.to_dict(),
+        }
+    if kind == "notification":
+        notification_id = str(candidate["notification_id"])
+        marked = NotificationFlow.in_process(codex_home).mark_read(notification_id)
+        return {
+            "kind": kind,
+            "notification_id": notification_id,
+            "notification": marked.to_dict(),
+        }
+    raise ValueError(f"unsupported cleanup candidate kind: {kind}")
+
+
+def _managed_record_supervisor_protocol(record: Any) -> dict[str, str]:
+    excerpt = _managed_record_status_excerpt(record)
+    if not excerpt:
+        return {}
+    return _supervisor_protocol_from_text(excerpt)
+
+
+def _managed_record_is_still_working(record: Any) -> bool:
+    if record.backend != "tmux" and record.pid > 0 and _pid_is_running(record.pid):
+        return True
+    excerpt = _managed_record_status_excerpt(record)
+    if not excerpt:
+        return False
+    lines = [line.strip() for line in excerpt.splitlines() if line.strip()]
+    return _terminal_has_active_work_marker(lines[-8:])
+
+
+def _managed_record_status_excerpt(record: Any) -> str | None:
+    if record.backend == "tmux" and record.tmux_session:
+        pane_text = _tmux_capture_pane(record.tmux_session)
+        if pane_text:
+            return pane_text
+    return _managed_process_log_excerpt(record.log_path)
+
+
+def _drop_none_values(item: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in item.items() if value is not None}
 
 
 def _dashboard_item_suffix(item: dict[str, Any]) -> str:

@@ -15,6 +15,7 @@ from pathlib import Path
 
 import pytest
 
+from isotope.features.notifications.flow import NotificationFlow
 from isotope.features.supervisor import flow as supervisor_flow
 from isotope.features.supervisor.flow import (
     CodexSessionSummary,
@@ -3208,6 +3209,228 @@ def test_codex_supervisor_runner_goal_add_list_and_archive(
     assert archive_payload["archived"]["event"] == "supervisor_goal_archive"
     assert archive_payload["archived"]["goal_id"] == goal["goal_id"]
     assert archive_payload["active_goals"] == []
+
+
+def test_codex_supervisor_runner_cleanup_lists_and_archives_only_done_items(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    done_goal = _add_supervisor_goal(
+        capsys,
+        codex_home=codex_home,
+        workspace=workspace,
+        goal="已完成后等待清理。",
+        target_name="done-worker",
+    )
+    working_goal = _add_supervisor_goal(
+        capsys,
+        codex_home=codex_home,
+        workspace=workspace,
+        goal="还在工作中。",
+        target_name="working-worker",
+    )
+    assert working_goal["goal_id"] != done_goal["goal_id"]
+
+    goals_path = codex_home / "supervisor" / "goals.jsonl"
+    with goals_path.open("a", encoding="utf-8") as handle:
+        handle.write(
+            json.dumps(
+                {
+                    "event": "supervisor_goal_status",
+                    "goal_id": done_goal["goal_id"],
+                    "status": "done",
+                    "target_name": "done-worker",
+                    "summary": "目标已完成。",
+                    "next": "等待 Supervisor 归档。",
+                    "created_at": NOW.isoformat(),
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+            + "\n"
+        )
+    NotificationFlow.in_process(codex_home).create_notification(
+        notification_type="supervisor_goal_status",
+        title="Supervisor goal status: done",
+        source_ref={
+            "ref_type": "supervisor_goal_status",
+            "goal_id": done_goal["goal_id"],
+            "status": "done",
+        },
+    )
+
+    done_log_path = codex_home / "supervisor" / "logs" / "managed-done.log"
+    done_log_path.parent.mkdir(parents=True, exist_ok=True)
+    done_log_path.write_text(
+        "SUPERVISOR_STATUS: done\n"
+        "SUPERVISOR_SUMMARY: worker 已完成。\n"
+        "SUPERVISOR_NEXT: 等待 Supervisor 归档。\n",
+        encoding="utf-8",
+    )
+    working_log_path = codex_home / "supervisor" / "logs" / "managed-working.log"
+    working_log_path.write_text(
+        "SUPERVISOR_STATUS: working\n"
+        "SUPERVISOR_SUMMARY: worker 仍在执行。\n"
+        "SUPERVISOR_NEXT: 继续等待。\n",
+        encoding="utf-8",
+    )
+    done_tmux_log_path = codex_home / "supervisor" / "logs" / "managed-done-tmux.log"
+    working_tmux_log_path = codex_home / "supervisor" / "logs" / "managed-working-tmux.log"
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "record_id": "managed-done",
+                        "name": "done-worker",
+                        "cwd": str(workspace),
+                        "prompt": "已完成后等待清理。",
+                        "command": ["codex", "exec", "-C", str(workspace), "继续"],
+                        "pid": 0,
+                        "started_at": NOW.isoformat(),
+                        "log_path": str(done_log_path),
+                        "status": "launched",
+                        "backend": "process",
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+                json.dumps(
+                    {
+                        "record_id": "managed-done-tmux",
+                        "name": "done-tmux-worker",
+                        "cwd": str(workspace),
+                        "prompt": "tmux 已完成后等待清理。",
+                        "command": ["tmux", "attach", "-t", "done-tmux"],
+                        "pid": 0,
+                        "started_at": NOW.isoformat(),
+                        "log_path": str(done_tmux_log_path),
+                        "status": "launched",
+                        "backend": "tmux",
+                        "tmux_session": "done-tmux",
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+                json.dumps(
+                    {
+                        "record_id": "managed-working-tmux",
+                        "name": "working-tmux-worker",
+                        "cwd": str(workspace),
+                        "prompt": "tmux 仍在工作中。",
+                        "command": ["tmux", "attach", "-t", "working-tmux"],
+                        "pid": 0,
+                        "started_at": NOW.isoformat(),
+                        "log_path": str(working_tmux_log_path),
+                        "status": "launched",
+                        "backend": "tmux",
+                        "tmux_session": "working-tmux",
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+                json.dumps(
+                    {
+                        "record_id": "managed-working",
+                        "name": "working-worker",
+                        "cwd": str(workspace),
+                        "prompt": "还在工作中。",
+                        "command": ["codex", "exec", "-C", str(workspace), "继续"],
+                        "pid": 0,
+                        "started_at": NOW.isoformat(),
+                        "log_path": str(working_log_path),
+                        "status": "launched",
+                        "backend": "process",
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    pane_texts = {
+        "done-tmux": (
+            "SUPERVISOR_STATUS: done\n"
+            "SUPERVISOR_SUMMARY: tmux worker 已完成。\n"
+            "SUPERVISOR_NEXT: 等待 Supervisor 归档。\n"
+        ),
+        "working-tmux": (
+            "SUPERVISOR_STATUS: done\n"
+            "SUPERVISOR_SUMMARY: tmux worker 正在收尾。\n"
+            "SUPERVISOR_NEXT: 等待 Supervisor 归档。\n"
+            "◦ Working (esc to interrupt)\n"
+        ),
+    }
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: pane_texts.get(session),
+    )
+    codex_history_path = _write_session(
+        codex_home,
+        "2026/05/20/rollout-history.jsonl",
+        session_id="history-session",
+        cwd=str(workspace),
+        events=[_assistant_message("2026-05-20T12:00:00Z", "历史记录")],
+    )
+
+    exit_code = supervisor_main(["cleanup", "list", "--codex-home", str(codex_home), "--json"])
+
+    assert exit_code == 0
+    list_payload = json.loads(capsys.readouterr().out)
+    assert list_payload["status"] == "ok"
+    assert [item["kind"] for item in list_payload["candidates"]] == [
+        "goal",
+        "managed_worker",
+        "managed_worker",
+        "notification",
+    ]
+    assert list_payload["candidates"][0]["goal_id"] == done_goal["goal_id"]
+    assert list_payload["candidates"][1]["name"] == "done-worker"
+    assert list_payload["candidates"][2]["name"] == "done-tmux-worker"
+    assert list_payload["candidates"][3]["notification_id"].startswith("notif_")
+    assert all("--codex-home" in item["command"] for item in list_payload["candidates"])
+    assert all(
+        item.get("goal_id") != working_goal["goal_id"]
+        and item.get("name") != "working-worker"
+        and item.get("name") != "working-tmux-worker"
+        for item in list_payload["candidates"]
+    )
+
+    exit_code = supervisor_main(
+        ["cleanup", "archive", "--codex-home", str(codex_home), "--all", "--json"]
+    )
+
+    assert exit_code == 0
+    archive_payload = json.loads(capsys.readouterr().out)
+    assert archive_payload["status"] == "ok"
+    assert [item["kind"] for item in archive_payload["archived"]] == [
+        "goal",
+        "managed_worker",
+        "managed_worker",
+        "notification",
+    ]
+    assert archive_payload["active_goals"] == [working_goal]
+    assert codex_history_path.exists()
+    assert "history-session" in codex_history_path.read_text(encoding="utf-8")
+    registry_events = [
+        json.loads(line)
+        for line in registry_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert registry_events[-2]["record_id"] == "managed-done"
+    assert registry_events[-2]["status"] == "archived"
+    assert registry_events[-1]["record_id"] == "managed-done-tmux"
+    assert registry_events[-1]["status"] == "archived"
+    notifications = NotificationFlow.in_process(codex_home).list_notifications(
+        notification_type="supervisor_goal_status"
+    )
+    assert notifications[0].unread is False
 
 
 def test_codex_supervisor_runner_loop_suggests_all_active_goals(
@@ -14769,6 +14992,33 @@ def test_codex_supervisor_generate_llm_summary_returns_provider_text(tmp_path):
             return "窗口 A 正在读文件，暂时不用介入。"
 
     assert generate_llm_summary(report, FakeProvider()) == "窗口 A 正在读文件，暂时不用介入。"
+
+
+def _add_supervisor_goal(
+    capsys,
+    *,
+    codex_home: Path,
+    workspace: Path,
+    goal: str,
+    target_name: str,
+) -> dict[str, object]:
+    exit_code = supervisor_main(
+        [
+            "goal",
+            "add",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(workspace),
+            "--goal",
+            goal,
+            "--target-name",
+            target_name,
+            "--json",
+        ]
+    )
+    assert exit_code == 0
+    return json.loads(capsys.readouterr().out)["goal"]
 
 
 def _write_session(
