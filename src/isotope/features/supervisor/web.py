@@ -330,8 +330,8 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         self.send_header("cache-control", "no-store")
         self.send_header("connection", "keep-alive")
         self.end_headers()
-        self._write_sse("ready", {"status": "ok"})
         previous_stamp = self.server.bell_event_stamp()
+        self._write_sse("ready", {"status": "ok"})
         last_heartbeat = time.monotonic()
         while True:
             time.sleep(0.25)
