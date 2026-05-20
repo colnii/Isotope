@@ -74,6 +74,7 @@ def test_supervisor_loop_auto_archives_ready_worker_and_marks_done_notification(
             "--interval",
             "1",
             "--no-auto-adopt",
+            "--rule-execute",
             "--json",
         ]
     )
