@@ -455,6 +455,10 @@
     `--goal-replenish-limit`，会把同轮 fanout 自动启动上限和低水位补任务
     参数写进后台 `loop` 原始命令；`daemon watchdog` 重启时继续复用该命令，
     不重新猜 fanout 或低水位参数。
+184. Codex Supervisor merge worker 归档收窄：普通 done worker 不再被
+    `loop` 自动归档或删除 worktree；只有 merge worker 汇报 done，且工单
+    候选全部进入 `integration-review.already_integrated` 时，`loop`
+    才自动归档该 merge worker、关联 goal 并写入低敏通知。
 
 ## 最近完成：Codex Supervisor process-first loop 验收
 

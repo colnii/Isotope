@@ -90,7 +90,10 @@ from .merge_dispatch import (
     build_merge_dispatch_launch_spec,
 )
 from .merge_work_order import build_merge_work_order_prompt
-from .notifications import notify_worker_integration_review_passed
+from .notifications import (
+    notify_merge_worker_auto_archived,
+    notify_worker_integration_review_passed,
+)
 from .registry import (
     adopt_tmux_session,
     archive_managed_codex,
@@ -2285,7 +2288,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
         auto_adopted = _auto_adopt_discovered_tmux_sessions(args)
         report = _scan_report(args)
         goal_updates = _sync_goal_lifecycle(args, report)
-        cleanup_archived = _auto_cleanup_done_workers(args)
+        cleanup_archived = _auto_archive_done_merge_workers(args)
         decision_timeout_alerts = mark_stale_decision_request_timeouts(
             codex_home=Path(args.codex_home),
             timeout_seconds=decision_timeout,
@@ -2586,6 +2589,8 @@ def _sync_goal_lifecycle(
         status = _goal_status_from_session(session)
         if status is None:
             continue
+        if target_name == MERGE_DISPATCH_TARGET_NAME and status == "done":
+            continue
         goal = active_goals.pop(target_name, None)
         if goal is None:
             continue
@@ -2600,55 +2605,154 @@ def _sync_goal_lifecycle(
     return updates
 
 
-def _auto_cleanup_done_workers(args: argparse.Namespace) -> list[dict[str, Any]]:
+def _auto_archive_done_merge_workers(args: argparse.Namespace) -> list[dict[str, Any]]:
     if getattr(args, "command", None) != "loop":
         return []
     if _current_workspace_has_worker_role(args, RECURSIVE_WORKER_ROLES):
         return []
     codex_home = Path(args.codex_home)
-    integration_payload = collect_integration_reviews(
+    review_payload = collect_integration_reviews(
         codex_home=codex_home,
         base_ref="main",
         include_unfinished=False,
     )
-    integration_reviews = _integration_reviews_by_record_ref(integration_payload)
+    return _auto_archive_integrated_merge_workers(
+        codex_home=codex_home,
+        review_payload=review_payload,
+    )
+
+
+def _auto_archive_integrated_merge_workers(
+    *,
+    codex_home: Path,
+    review_payload: dict[str, Any],
+) -> list[dict[str, Any]]:
+    groups = review_payload.get("groups")
+    if not isinstance(groups, dict):
+        return []
+    integrated_record_ids = _review_group_record_ids(groups, "already_integrated")
+    if not integrated_record_ids:
+        return []
+    records = {
+        record.record_id: record
+        for record in read_managed_records(default_registry_path(codex_home))
+    }
     archived: list[dict[str, Any]] = []
-    for candidate in _cleanup_managed_worker_candidates(
-        codex_home,
-        require_existing_cwd=True,
-    ):
-        review = _integration_review_for_cleanup_candidate(
-            candidate,
-            integration_reviews,
-        )
-        group = review.get("group") if isinstance(review, dict) else None
-        if group not in {"ready_to_integrate", "already_integrated"}:
+    for item in _review_group_items(groups, "merge_workers"):
+        record_id = item.get("record_id")
+        if not isinstance(record_id, str) or not record_id:
             continue
-        archived_item = _archive_cleanup_candidate(codex_home, candidate)
-        archived_item["integration_group"] = group
-        archived_item["integration_review"] = _auto_cleanup_integration_summary(review)
-        if group == "already_integrated":
-            delete_result = _execute_delete_worktree_action(
-                args,
-                {
-                    "kind": "delete_worktree",
-                    "target_name": candidate.get("name"),
-                    "record_id": candidate.get("record_id"),
-                    "confirm_delete_worktree": True,
-                    "base_ref": review.get("base_ref")
-                    or integration_payload.get("base_ref")
-                    or "main",
-                    "reason": "loop auto cleanup: worker archived and already integrated.",
-                },
-            )
-            archived_item["delete_worktree"] = delete_result
-        archived.append(archived_item)
-    if archived:
-        archived.extend(
-            _archive_cleanup_candidate(codex_home, candidate)
-            for candidate in _cleanup_notification_candidates(codex_home)
-        )
+        record = records.get(record_id)
+        if record is None:
+            continue
+        if not _merge_worker_review_item_is_done(item):
+            continue
+        candidate_record_ids = _merge_candidate_record_ids(record)
+        if not candidate_record_ids:
+            continue
+        if not candidate_record_ids <= integrated_record_ids:
+            continue
+        archived.append(_archive_integrated_merge_worker(codex_home, record, item))
     return archived
+
+
+def _archive_integrated_merge_worker(
+    codex_home: Path,
+    record: Any,
+    review_item: dict[str, Any],
+) -> dict[str, Any]:
+    managed = archive_managed_codex(codex_home=codex_home, name=record.name)
+    protocol = review_item.get("supervisor_protocol")
+    protocol = protocol if isinstance(protocol, dict) else {}
+    goal = _archive_related_merge_goal(
+        codex_home=codex_home,
+        target_name=record.name,
+        protocol=protocol,
+    )
+    notification = notify_merge_worker_auto_archived(
+        codex_home=codex_home,
+        record_id=record.record_id,
+        status="done",
+        group="already_integrated",
+    )
+    result: dict[str, Any] = {
+        "kind": "merge_worker",
+        "name": record.name,
+        "record_id": record.record_id,
+        "managed": managed.to_dict(),
+        "integration_group": "already_integrated",
+    }
+    if goal is not None:
+        result["goal"] = goal
+    if notification is not None:
+        result["notification"] = notification.to_dict()
+    return result
+
+
+def _archive_related_merge_goal(
+    *,
+    codex_home: Path,
+    target_name: str,
+    protocol: dict[str, Any],
+) -> dict[str, Any] | None:
+    for goal in read_active_supervisor_goals(codex_home=codex_home, limit=1000):
+        if goal.target_name != target_name:
+            continue
+        return archive_supervisor_goal(
+            codex_home=codex_home,
+            goal_id=goal.goal_id,
+            status="done",
+            target_name=target_name,
+            summary=(
+                protocol.get("summary")
+                if isinstance(protocol.get("summary"), str)
+                else None
+            ),
+            next_step=(
+                protocol.get("next")
+                if isinstance(protocol.get("next"), str)
+                else None
+            ),
+        )
+    return None
+
+
+def _merge_worker_review_item_is_done(item: dict[str, Any]) -> bool:
+    protocol = item.get("supervisor_protocol")
+    if not isinstance(protocol, dict):
+        return False
+    status = protocol.get("status")
+    return isinstance(status, str) and status.lower() == "done"
+
+
+def _merge_candidate_record_ids(record: Any) -> set[str]:
+    text = "\n".join(
+        [
+            str(getattr(record, "prompt", "") or ""),
+            " ".join(str(part) for part in getattr(record, "command", ()) or ()),
+        ]
+    )
+    return {
+        match.group(0)
+        for match in re.finditer(r"\bmanaged-[A-Za-z0-9_-]+\b", text)
+        if match.group(0) != getattr(record, "record_id", None)
+    }
+
+
+def _review_group_record_ids(groups: dict[str, Any], group: str) -> set[str]:
+    return {
+        record_id
+        for item in _review_group_items(groups, group)
+        for record_id in (item.get("record_id"),)
+        if isinstance(record_id, str) and record_id
+    }
+
+
+def _review_group_items(groups: dict[str, Any], group: str) -> list[dict[str, Any]]:
+    items = groups.get(group)
+    if not isinstance(items, list):
+        return []
+    return [item for item in items if isinstance(item, dict)]
 
 
 def _integration_reviews_by_record_ref(

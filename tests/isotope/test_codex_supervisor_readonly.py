@@ -13194,7 +13194,7 @@ def test_codex_supervisor_runner_loop_archives_goal_when_worker_reports_done(
     assert json.loads(capsys.readouterr().out)["active_goals"] == []
 
 
-def test_codex_supervisor_runner_loop_auto_archives_done_managed_worker(
+def test_codex_supervisor_runner_loop_does_not_auto_archive_plain_done_managed_worker(
     tmp_path,
     capsys,
     monkeypatch,
@@ -13212,7 +13212,7 @@ def test_codex_supervisor_runner_loop_auto_archives_done_managed_worker(
             "--cwd",
             str(workspace),
             "--goal",
-            "完成目标后自动归档 worker。",
+            "完成目标后等待显式 cleanup 归档 worker。",
             "--target-name",
             "done-worker",
             "--json",
@@ -13253,7 +13253,7 @@ def test_codex_supervisor_runner_loop_auto_archives_done_managed_worker(
                         "record_id": "managed-done",
                         "name": "done-worker",
                         "cwd": str(workspace),
-                        "prompt": "完成目标后自动归档 worker。",
+                        "prompt": "完成目标后等待显式 cleanup 归档 worker。",
                         "command": ["codex", "exec", "-C", str(workspace), "继续"],
                         "pid": 0,
                         "started_at": NOW.isoformat(),
@@ -13371,14 +13371,7 @@ def test_codex_supervisor_runner_loop_auto_archives_done_managed_worker(
     assert payload["goal_updates"][0]["goal_id"] == goal["goal_id"]
     assert payload["goal_updates"][0]["status"] == "done"
     assert payload["active_goals"] == []
-    assert [item["kind"] for item in payload["cleanup_archived"]] == [
-        "managed_worker",
-        "notification",
-    ]
-    assert payload["cleanup_archived"][0]["name"] == "done-worker"
-    assert payload["cleanup_archived"][0]["managed"]["status"] == "archived"
-    assert payload["cleanup_archived"][0]["integration_group"] == "ready_to_integrate"
-    assert payload["cleanup_archived"][1]["notification"]["unread"] is False
+    assert "cleanup_archived" not in payload
     registry_events = [
         json.loads(line)
         for line in registry_path.read_text(encoding="utf-8").splitlines()
@@ -13386,7 +13379,7 @@ def test_codex_supervisor_runner_loop_auto_archives_done_managed_worker(
     archived_names = [
         item["name"] for item in registry_events if item.get("status") == "archived"
     ]
-    assert archived_names == ["done-worker"]
+    assert archived_names == []
 
 
 def test_codex_supervisor_runner_loop_keeps_blocked_goal_active(

@@ -254,10 +254,12 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     目标状态回写为 `done/blocked/needs_user` 时会尽力生成低敏通知，
     且通知失败不会反向破坏 goal 账本；
     `cleanup list/archive` 可列出并归档已汇报 `done` 的 goal、managed
-    worker 和对应通知；`loop` 会对已完成且不忙的 worker 先读取
-    `integration-review`，仅在 `ready_to_integrate` 时自动归档托管记录，
-    或在 `already_integrated` 时归档后按 `delete_worktree` 护栏清理
-    worktree；tmux 托管 worker 会读取当前 pane 文本判断状态，避免旧 log
+    worker 和对应通知；普通 done worker 不再由 `loop` 自动归档或删除
+    worktree，需显式 cleanup 或交给后续 merge worker 流程处理；
+    `loop` 只会在 merge worker 汇报 done 且它处理的候选 worker
+    已全部进入 `integration-review.already_integrated` 时，自动归档该
+    merge worker 的 managed 记录、关联 goal 并写入低敏通知；
+    tmux 托管 worker 会读取当前 pane 文本判断状态，避免旧 log
     误导归档；归档只追加 Supervisor 账本事件或把通知标记已读，不删除
     Codex `sessions` 历史，也不会处理仍是 `working` 或无完成汇报的任务；
     当没有显式 `--goal`、没有活跃目标且没有可控托管 lane 时，

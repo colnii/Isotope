@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import sys
 
+from isotope.features.notifications.flow import NotificationFlow
+from isotope.features.supervisor.goal_queue import record_supervisor_goal
 from isotope.features.supervisor.merge_dispatch import DEFAULT_TARGET_NAME
 from isotope.features.supervisor.runner import main as supervisor_main
 
@@ -367,6 +369,232 @@ def test_supervisor_loop_waits_when_merge_worker_is_already_running(
     assert "merge_dispatch" not in payload
     assert payload["llm_action"]["kind"] == "monitor"
     assert payload["llm_action"]["reason"] == "merge worker 正在运行，等待下一轮。"
+
+
+def test_supervisor_loop_auto_archives_done_merge_worker_after_integrated_review(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    merge_workspace = tmp_path / "merge-workspace"
+    merge_workspace.mkdir()
+    log_path = codex_home / "supervisor" / "logs" / "merge.log"
+    log_path.parent.mkdir(parents=True)
+    log_path.write_text(
+        "SUPERVISOR_STATUS: done\n"
+        "SUPERVISOR_SUMMARY: merge worker 已完成并确认已集成。\n"
+        "SUPERVISOR_NEXT: 等待 Supervisor 归档。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    registry_path.write_text(
+        json.dumps(
+                {
+                    "record_id": "managed-merge",
+                    "name": DEFAULT_TARGET_NAME,
+                    "cwd": str(merge_workspace),
+                "prompt": (
+                    "WORK ORDER\n"
+                    "source: supervisor integration-review payload\n"
+                    "merge_candidates:\n"
+                    "- ready-one / managed-ready\n"
+                ),
+                "command": ["codex", "exec", "-C", str(merge_workspace), "merge"],
+                "pid": 0,
+                "started_at": "2026-05-20T00:00:00+00:00",
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+                "worker_role": "merge_dispatch",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    goal = record_supervisor_goal(
+        codex_home=codex_home,
+        cwd=workspace,
+        goal="归档 merge worker。",
+        target_name=DEFAULT_TARGET_NAME,
+    )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_integration_reviews",
+        lambda *, codex_home, base_ref, include_unfinished: {
+            "status": "ok",
+            "base_ref": "main",
+            "summary": {
+                "total": 2,
+                "merge_workers": 1,
+                "ready_to_integrate": 0,
+                "already_integrated": 1,
+                "needs_review": 0,
+                "conflict_risk": 0,
+            },
+            "groups": {
+                "merge_workers": [
+                    {
+                        "record_id": "managed-merge",
+                        "name": DEFAULT_TARGET_NAME,
+                        "cwd": str(merge_workspace),
+                        "supervisor_protocol": {"status": "done"},
+                        "merge_worker": True,
+                        "merge_worker_source": "worker_role",
+                        "group": "merge_workers",
+                    }
+                ],
+                "ready_to_integrate": [],
+                "already_integrated": [{"record_id": "managed-ready"}],
+                "needs_review": [],
+                "conflict_risk": [],
+            },
+        },
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--workspace-root",
+            str(workspace),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["cleanup_archived"][0]["kind"] == "merge_worker"
+    assert payload["cleanup_archived"][0]["managed"]["status"] == "archived"
+    assert payload["cleanup_archived"][0]["goal"]["goal_id"] == goal.goal_id
+    assert merge_workspace.exists() is True
+
+    registry_events = [
+        json.loads(line)
+        for line in registry_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert registry_events[-1]["record_id"] == "managed-merge"
+    assert registry_events[-1]["status"] == "archived"
+    goal_events = [
+        json.loads(line)
+        for line in (codex_home / "supervisor" / "goals.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    assert goal_events[-1]["event"] == "supervisor_goal_archive"
+    assert goal_events[-1]["goal_id"] == goal.goal_id
+    notifications = NotificationFlow.in_process(codex_home).list_notifications()
+    assert len(notifications) == 1
+    assert notifications[0].notification_type == "supervisor_merge_worker_archive"
+    assert notifications[0].source_ref == {
+        "ref_type": "supervisor_merge_worker_archive",
+        "record_id": "managed-merge",
+        "status": "done",
+        "group": "already_integrated",
+    }
+
+
+def test_supervisor_loop_keeps_done_merge_worker_when_candidates_not_integrated(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    log_path = codex_home / "supervisor" / "logs" / "merge.log"
+    log_path.parent.mkdir(parents=True)
+    log_path.write_text("SUPERVISOR_STATUS: done\n", encoding="utf-8")
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-merge",
+                "name": DEFAULT_TARGET_NAME,
+                "cwd": str(workspace),
+                "prompt": "merge_candidates:\n- ready-one / managed-ready\n",
+                "command": ["codex", "exec", "-C", str(workspace), "merge"],
+                "pid": 0,
+                "started_at": "2026-05-20T00:00:00+00:00",
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+                "worker_role": "merge_dispatch",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_integration_reviews",
+        lambda *, codex_home, base_ref, include_unfinished: {
+            "status": "ok",
+            "base_ref": "main",
+            "summary": {
+                "total": 2,
+                "merge_workers": 1,
+                "ready_to_integrate": 0,
+                "already_integrated": 0,
+                "needs_review": 0,
+                "conflict_risk": 0,
+            },
+            "groups": {
+                "merge_workers": [
+                    {
+                        "record_id": "managed-merge",
+                        "name": DEFAULT_TARGET_NAME,
+                        "cwd": str(workspace),
+                        "supervisor_protocol": {"status": "done"},
+                        "merge_worker": True,
+                        "merge_worker_source": "worker_role",
+                        "group": "merge_workers",
+                    }
+                ],
+                "ready_to_integrate": [],
+                "already_integrated": [],
+                "needs_review": [],
+                "conflict_risk": [],
+            },
+        },
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--workspace-root",
+            str(workspace),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert "cleanup_archived" not in payload
+    registry_events = [
+        json.loads(line)
+        for line in registry_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert [item["status"] for item in registry_events] == ["launched"]
 
 
 def _integration_review_payload() -> dict[str, object]:

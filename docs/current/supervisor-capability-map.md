@@ -117,10 +117,13 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   worker 已 `done`、登记表最后状态已 `archived`、当前 integration review
   已是 `already_integrated`，且目标目录是 repo 内
   `.worktrees/supervisor/<worker>`，才执行 `git worktree remove`。
-- `loop` 的自动 cleanup 会复用同一套清理边界：已完成且不忙的 worker
-  只有在 `integration-review` 给出 `ready_to_integrate` 时才自动归档，
-  若已是 `already_integrated` 且 worktree 仍存在，归档后才尝试
-  `git worktree remove`；其它 running lane、来源分支和历史会话不受影响。
+- 普通 done worker 不再由 `loop` 自动归档或删除 worktree；
+  它们留给显式 `cleanup list/archive` 或后续 merge worker 流程处理。
+- `loop` 只会对 merge worker 做受限自动归档：merge worker 本身汇报
+  `SUPERVISOR_STATUS=done`，且它工单里的候选 worker 已全部进入
+  `integration-review.already_integrated` 时，才归档 merge worker
+  的 managed 记录、关联 goal，并写入低敏通知；不删除来源分支、
+  merge worker 分支或 worktree。
 - `replan` CLI 会读取 `worker-review` 的 `automation_candidates`、当前
   active goals，以及 `integration-review` 的 `ready_to_integrate`、
   `already_integrated`、`needs_review`、`conflict_risk` 分组，生成下一轮
@@ -429,10 +432,9 @@ merge worker 成功合入后的交接边界也要分清：
 - `cleanup list/archive` 是生命周期归档入口，只把已完成的 goal、
   managed worker 或通知标记为已处理，让它们退出活跃视图；它不删除 Codex
   历史、不删除 git branch。
-- 当前自动边界到“派发 merge worker”和“integration-gated cleanup”为止；
-  自动 cleanup 可以归档 ready worker，或对 `already_integrated` 的归档
-  worker 执行 `git worktree remove`，但不能顺手删除来源分支、merge/push
-  或改写历史。
+- 当前自动边界到“派发 merge worker”和“集成后归档 merge worker”为止；
+  普通 ready/already-integrated worker 不由 `loop` 自动归档或删除；
+  删除 worktree 仍必须走显式 cleanup/delete-worktree 护栏或后续专门清理工单。
 - `git worktree remove` 仍属于受控清理动作：需要先确认来源工作已被目标分支包含、
   没有未提交改动、没有活跃 managed record 仍在运行，再由 loop cleanup 或显式
   `delete_worktree` 执行。

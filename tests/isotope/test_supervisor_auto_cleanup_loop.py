@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import json
-import shutil
-import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -14,7 +12,7 @@ from isotope.features.supervisor.runner import main as supervisor_main
 NOW = datetime(2026, 5, 21, 12, 0, tzinfo=timezone.utc)
 
 
-def test_supervisor_loop_auto_archives_ready_worker_and_marks_done_notification(
+def test_supervisor_loop_keeps_ready_worker_for_explicit_cleanup(
     tmp_path,
     capsys,
     monkeypatch,
@@ -81,12 +79,7 @@ def test_supervisor_loop_auto_archives_ready_worker_and_marks_done_notification(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    archived = payload["cleanup_archived"]
-    assert [item["kind"] for item in archived] == ["managed_worker", "notification"]
-    assert archived[0]["name"] == "ready-worker"
-    assert archived[0]["integration_group"] == "ready_to_integrate"
-    assert "delete_worktree" not in archived[0]
-    assert archived[1]["notification_id"] == notification.notification_id
+    assert "cleanup_archived" not in payload
     assert ready_worktree.exists() is True
     assert active_worktree.exists() is True
 
@@ -94,13 +87,13 @@ def test_supervisor_loop_auto_archives_ready_worker_and_marks_done_notification(
     archived_names = [
         item["name"] for item in registry_events if item.get("status") == "archived"
     ]
-    assert archived_names == ["ready-worker"]
+    assert archived_names == []
     assert NotificationFlow.in_process(codex_home).get_notification(
         notification.notification_id
-    ).unread is False
+    ).unread is True
 
 
-def test_supervisor_loop_auto_removes_archived_already_integrated_worktree_only(
+def test_supervisor_loop_keeps_already_integrated_worktree_for_explicit_cleanup(
     tmp_path,
     capsys,
     monkeypatch,
@@ -126,8 +119,6 @@ def test_supervisor_loop_auto_removes_archived_already_integrated_worktree_only(
         protocol_status="done",
         extra_log="◦ Working (esc to interrupt)\n",
     )
-    remove_calls: list[list[str]] = []
-
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
         lambda *, codex_home, base_ref, include_unfinished: _integration_payload(
@@ -142,42 +133,9 @@ def test_supervisor_loop_auto_removes_archived_already_integrated_worktree_only(
         ),
     )
     monkeypatch.setattr(
-        "isotope.features.supervisor.runner.review_managed_record_integration",
-        lambda record, *, base_ref="main", run=None: {
-            "group": "already_integrated",
-            "reason": "main 已包含 worker HEAD；可检查后归档。",
-            "worker_commit": "done111",
-            "base_ref": base_ref,
-            "main_contains_worker": True,
-            "main_has_worker_patch": False,
-            "dirty": False,
-        },
-    )
-    monkeypatch.setattr(
         "isotope.features.supervisor.flow._git_branch_for",
         lambda cwd: None,
     )
-
-    def fake_run(
-        command: list[str],
-        *,
-        check: bool = False,
-        text: bool = False,
-        capture_output: bool = False,
-    ) -> subprocess.CompletedProcess[str]:
-        remove_calls.append(command)
-        assert command == [
-            "git",
-            "-C",
-            str(repo_root),
-            "worktree",
-            "remove",
-            str(done_worktree),
-        ]
-        shutil.rmtree(done_worktree)
-        return subprocess.CompletedProcess(command, 0, "", "")
-
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
 
     exit_code = supervisor_main(
         [
@@ -195,21 +153,15 @@ def test_supervisor_loop_auto_removes_archived_already_integrated_worktree_only(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    archived = payload["cleanup_archived"]
-    assert [item["name"] for item in archived] == ["done-worker"]
-    assert archived[0]["integration_group"] == "already_integrated"
-    assert archived[0]["delete_worktree"]["deleted_worktree"] == str(done_worktree)
-    assert remove_calls == [
-        ["git", "-C", str(repo_root), "worktree", "remove", str(done_worktree)]
-    ]
-    assert done_worktree.exists() is False
+    assert "cleanup_archived" not in payload
+    assert done_worktree.exists() is True
     assert active_worktree.exists() is True
 
     registry_events = _registry_events(codex_home)
     archived_names = [
         item["name"] for item in registry_events if item.get("status") == "archived"
     ]
-    assert archived_names == ["done-worker"]
+    assert archived_names == []
 
 
 def _write_managed_record(

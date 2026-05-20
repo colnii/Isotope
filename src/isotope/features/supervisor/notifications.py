@@ -148,6 +148,27 @@ def notify_worker_integration_review_passed(
     )
 
 
+def notify_merge_worker_auto_archived(
+    *,
+    codex_home: Path | str,
+    record_id: str,
+    status: str = "done",
+    group: str = "already_integrated",
+) -> NotificationSummary | None:
+    source_ref = _low_sensitive_source_ref(
+        ref_type="supervisor_merge_worker_archive",
+        record_id=record_id,
+        status=status,
+        group=group,
+    )
+    return _try_create_notification(
+        codex_home=codex_home,
+        notification_type="supervisor_merge_worker_archive",
+        title="Supervisor merge worker archived",
+        source_ref=source_ref,
+    )
+
+
 def dispatch_supervisor_webhook(
     *,
     event_type: str,
