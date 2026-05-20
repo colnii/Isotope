@@ -30,6 +30,7 @@ from .context import (
     read_recent_context_results,
     request_project_context,
 )
+from .current_batch import build_current_batch_view
 from .decision_requests import (
     archive_decision_request,
     read_active_decision_requests,
@@ -2425,10 +2426,17 @@ def _supervise_payload(
     payload["active_goals"] = active_goals
     if goal_updates:
         payload["goal_updates"] = goal_updates
+    worker_reviews: dict[str, Any] | None = None
     if args.llm_action or args.llm_execute:
         payload["recent_context_results"] = _recent_context_results(args, action_report)
         payload["recent_decision_answers"] = _decision_answer_dicts(args)
-        payload["worker_reviews"] = _worker_review_context(args)
+        worker_reviews = _worker_review_context(args)
+        payload["worker_reviews"] = worker_reviews
+    payload["current_batch"] = _current_batch_payload(
+        report,
+        active_goals=active_goals,
+        worker_reviews=worker_reviews,
+    )
     if args.llm_summary:
         payload["llm_summary"] = _summarize_with_llm(report)
     if args.llm_action or args.llm_execute:
@@ -2628,10 +2636,34 @@ def _dashboard_current_payload(
     *,
     active_goals: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    return _current_batch_payload_from_display_sessions(
+        display_sessions,
+        active_goals=active_goals,
+    )
+
+
+def _current_batch_payload(
+    report: Any,
+    *,
+    active_goals: list[dict[str, Any]] | None = None,
+    worker_reviews: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    return _current_batch_payload_from_display_sessions(
+        _dashboard_display_sessions(report.sessions),
+        active_goals=active_goals,
+        worker_reviews=worker_reviews,
+    )
+
+
+def _current_batch_payload_from_display_sessions(
+    display_sessions: list[tuple[Any, Any | None, dict[str, Any] | None]],
+    *,
+    active_goals: list[dict[str, Any]] | None = None,
+    worker_reviews: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     current_goals = [
         item
         for item in (_dashboard_active_goal_item(goal) for goal in active_goals or [])
-        if item["current"]
     ]
     managed_workers = [
         _dashboard_item(
@@ -2640,16 +2672,13 @@ def _dashboard_current_payload(
             linked_match=linked_match,
         )
         for session, linked_session, linked_match in display_sessions
-        if _is_current_managed_worker(session)
+        if getattr(session, "managed", False) and getattr(session, "managed_name", None)
     ]
-    return {
-        "active_goals": current_goals,
-        "managed_workers": managed_workers,
-        "counts": {
-            "active_goals": len(current_goals),
-            "managed_workers": len(managed_workers),
-        },
-    }
+    return build_current_batch_view(
+        active_goals=current_goals,
+        managed_workers=managed_workers,
+        worker_reviews=worker_reviews,
+    ).to_dict()
 
 
 def _dashboard_active_goal_item(goal: dict[str, Any]) -> dict[str, Any]:

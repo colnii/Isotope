@@ -42,6 +42,7 @@ from isotope.features.supervisor.runner import (
     _dashboard_payload,
     _execute_llm_action,
     _report_fingerprint,
+    _supervise_payload,
     main as supervisor_main,
 )
 
@@ -1583,6 +1584,189 @@ def test_codex_supervisor_dashboard_current_batch_excludes_done_managed_worker(
     assert payload["current"]["managed_workers"] == []
 
 
+def test_codex_supervisor_dashboard_current_batch_uses_projection_filters(
+    tmp_path,
+):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    stale_workspace = tmp_path / "stale-workspace"
+    stale_workspace.mkdir()
+    done_workspace = tmp_path / "done-workspace"
+    done_workspace.mkdir()
+    active_goals = [
+        {
+            "goal_id": "goal-current",
+            "target_name": "current-worker",
+            "goal": "推进当前批次。",
+            "cwd": str(workspace),
+            "last_status": "working",
+        },
+        {
+            "goal_id": "goal-stale",
+            "target_name": "stale-worker",
+            "goal": "历史 stale 目标。",
+            "cwd": str(stale_workspace),
+            "last_status": "stale",
+        },
+        {
+            "goal_id": "goal-done",
+            "target_name": "done-worker",
+            "goal": "历史 done 目标。",
+            "cwd": str(done_workspace),
+            "last_status": "done",
+        },
+    ]
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="managed:current-worker",
+                cwd=str(workspace),
+                source_path=str(tmp_path / "current.log"),
+                last_event_at=NOW.isoformat(),
+                age_seconds=20,
+                status="working",
+                reason="Supervisor 托管进程正在运行",
+                managed=True,
+                managed_name="current-worker",
+                managed_backend="process",
+                supervisor_status="working",
+            ),
+            CodexSessionSummary(
+                session_id="managed:stale-worker",
+                cwd=str(stale_workspace),
+                source_path=str(tmp_path / "stale.log"),
+                last_event_at=NOW.isoformat(),
+                age_seconds=7200,
+                status="stale",
+                reason="历史托管 worker 已 stale",
+                managed=True,
+                managed_name="stale-worker",
+                managed_backend="process",
+                supervisor_status="stale",
+            ),
+            CodexSessionSummary(
+                session_id="managed:done-worker",
+                cwd=str(done_workspace),
+                source_path=str(tmp_path / "done.log"),
+                last_event_at=NOW.isoformat(),
+                age_seconds=20,
+                status="done",
+                reason="历史托管 worker 已完成",
+                managed=True,
+                managed_name="done-worker",
+                managed_backend="process",
+                supervisor_status="done",
+            ),
+        ),
+    )
+
+    payload = _dashboard_payload(report, active_goals=active_goals)
+
+    assert [goal["goal_id"] for goal in payload["current"]["active_goals"]] == [
+        "goal-current"
+    ]
+    assert [worker["name"] for worker in payload["current"]["managed_workers"]] == [
+        "current-worker"
+    ]
+    assert payload["current"]["counts"] == {
+        "active_goals": 1,
+        "managed_workers": 1,
+        "worker_reviews": 0,
+        "automation_candidates": 0,
+        "total": 2,
+    }
+    assert payload["current"]["target_names"] == ["current-worker"]
+
+
+def test_codex_supervisor_loop_payload_includes_current_batch_projection(
+    tmp_path,
+    monkeypatch,
+):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    stale_workspace = tmp_path / "stale-workspace"
+    stale_workspace.mkdir()
+    active_goals = [
+        {
+            "goal_id": "goal-current",
+            "target_name": "current-worker",
+            "goal": "推进当前批次。",
+            "cwd": str(workspace),
+            "last_status": "working",
+        },
+        {
+            "goal_id": "goal-stale",
+            "target_name": "stale-worker",
+            "goal": "历史 stale 目标。",
+            "cwd": str(stale_workspace),
+            "last_status": "stale",
+        },
+    ]
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._active_goal_dicts",
+        lambda args, **kwargs: active_goals,
+    )
+    args = argparse.Namespace(
+        codex_home=str(tmp_path / ".codex"),
+        command="loop",
+        name=None,
+        all_workspaces=True,
+        workspace_root=None,
+        goal=None,
+        llm_action=False,
+        llm_execute=False,
+        llm_summary=False,
+        auto_execute=False,
+        execute=False,
+        prompt_cooldown=0,
+        max_continue_count=0,
+        max_run_minutes=0,
+    )
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="managed:current-worker",
+                cwd=str(workspace),
+                source_path=str(tmp_path / "current.log"),
+                last_event_at=NOW.isoformat(),
+                age_seconds=20,
+                status="working",
+                reason="Supervisor 托管进程正在运行",
+                managed=True,
+                managed_name="current-worker",
+                managed_backend="process",
+                supervisor_status="working",
+            ),
+            CodexSessionSummary(
+                session_id="managed:stale-worker",
+                cwd=str(stale_workspace),
+                source_path=str(tmp_path / "stale.log"),
+                last_event_at=NOW.isoformat(),
+                age_seconds=7200,
+                status="stale",
+                reason="历史托管 worker 已 stale",
+                managed=True,
+                managed_name="stale-worker",
+                managed_backend="process",
+                supervisor_status="stale",
+            ),
+        ),
+    )
+
+    payload = _supervise_payload(args, report, iteration=1)
+
+    assert [goal["goal_id"] for goal in payload["current_batch"]["active_goals"]] == [
+        "goal-current"
+    ]
+    assert [
+        worker["name"] for worker in payload["current_batch"]["managed_workers"]
+    ] == ["current-worker"]
+    assert payload["current_batch"]["target_names"] == ["current-worker"]
+
+
 def test_codex_supervisor_dashboard_follows_new_session_in_same_tmux_lane(
     tmp_path,
 ):
@@ -2364,7 +2548,20 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert payload["current"] == {
         "active_goals": [],
         "managed_workers": [],
-        "counts": {"active_goals": 0, "managed_workers": 0},
+        "worker_reviews": {
+            "summary": {"total": 0},
+            "workers": [],
+            "automation_candidates": {},
+        },
+        "automation_candidates": {},
+        "counts": {
+            "active_goals": 0,
+            "managed_workers": 0,
+            "worker_reviews": 0,
+            "automation_candidates": 0,
+            "total": 0,
+        },
+        "target_names": [],
     }
     assert payload["counts"]["needs_attention"] == 1
     assert payload["decision_requests"] == []
