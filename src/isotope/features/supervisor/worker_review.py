@@ -43,6 +43,7 @@ def collect_worker_reviews(
             "missing_cwd": sum(1 for item in workers if not item["cwd_exists"]),
         },
         "decision_summary": _decision_summary(workers),
+        "automation_candidates": _automation_candidates(workers),
         "workers": workers,
         "safety": {
             "auto_merge": False,
@@ -408,6 +409,50 @@ def _decision_summary(workers: list[dict[str, Any]]) -> dict[str, int]:
             1 for worker in workers if worker.get("reviewer", {}).get("needed")
         ),
     }
+
+
+def _automation_candidates(workers: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    candidates: dict[str, list[dict[str, Any]]] = {
+        "review_then_merge": [],
+        "continue_or_split": [],
+        "archive_or_wait": [],
+        "recover_or_archive": [],
+    }
+    for worker in workers:
+        decision = worker.get("next_decision", {})
+        bucket = _automation_candidate_bucket(decision.get("recommendation"))
+        if not bucket:
+            continue
+        worktree = worker.get("worktree", {})
+        reviewer = worker.get("reviewer", {})
+        candidates[bucket].append(
+            {
+                "record_id": worker.get("record_id"),
+                "name": worker.get("name"),
+                "cwd": worker.get("cwd"),
+                "branch": worktree.get("branch"),
+                "recommendation": decision.get("recommendation"),
+                "risk_level": decision.get("risk_level"),
+                "reason": decision.get("summary"),
+                "reasons": decision.get("reasons", []),
+                "next_actions": decision.get("next_actions", []),
+                "validation_commands": worker.get("validation_commands", []),
+                "reviewer_command": reviewer.get("command"),
+            }
+        )
+    return candidates
+
+
+def _automation_candidate_bucket(recommendation: str | None) -> str | None:
+    if recommendation == "review_then_merge_candidate":
+        return "review_then_merge"
+    if recommendation == "continue_or_split_task":
+        return "continue_or_split"
+    if recommendation == "archive_or_wait":
+        return "archive_or_wait"
+    if recommendation == "recover_or_archive_missing_worktree":
+        return "recover_or_archive"
+    return None
 
 
 def _reviewer_prompt(

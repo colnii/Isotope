@@ -101,7 +101,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   和 `git diff --stat` 摘要，并输出建议验证命令、复查提示
   （reviewer prompt）、可复制 `codex exec -C ...` 复查命令与
   主控/人工合并提示；同时输出 `next_decision`，区分合并候选、
-  继续拆任务、缺失 worktree 和可归档项；它只做高可信汇总，
+  继续拆任务、缺失 worktree 和可归档项，并把这些决策投影成结构化
+  `automation_candidates`，供后续主循环读取；它只做高可信汇总，
   不自动合并、不删除 worktree 或分支。
 - LLM planner 会看到仍在运行的 process 托管记录作为候选目标，避免状态面板
   误报“只有 tmux 才可控”；已完成的后台 worker 转入

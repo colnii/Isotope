@@ -135,6 +135,35 @@ def test_supervisor_worker_review_collects_completed_worker_with_changes(
             "验证通过后由主控/人工处理合并",
         ],
     }
+    assert payload["automation_candidates"] == {
+        "review_then_merge": [
+            {
+                "record_id": "managed-001",
+                "name": "feature-a",
+                "cwd": str(workspace),
+                "branch": "supervisor/feature-a-12345678",
+                "recommendation": "review_then_merge_candidate",
+                "risk_level": "medium",
+                "reason": "worker 已完成且有本地改动；建议先复查 diff 并跑验证，通过后再人工合并。",
+                "reasons": [
+                    "worker 汇报 done",
+                    "存在 2 个改动路径",
+                    "包含未跟踪文件",
+                    "需要先运行建议验证命令",
+                ],
+                "next_actions": [
+                    "审查 git diff 和 worker 汇报",
+                    "运行建议验证命令",
+                    "验证通过后由主控/人工处理合并",
+                ],
+                "validation_commands": item["validation_commands"],
+                "reviewer_command": item["reviewer"]["command"],
+            }
+        ],
+        "continue_or_split": [],
+        "archive_or_wait": [],
+        "recover_or_archive": [],
+    }
 
     plain = render_worker_review_plain(payload)
     assert "决策汇总：合并候选 1 / 继续拆任务 0 / 缺失 worktree 0 / 需 fresh review 1" in plain
@@ -180,6 +209,28 @@ def test_supervisor_worker_review_reports_deleted_worktree(tmp_path):
     assert item["next_decision"]["recommendation"] == "recover_or_archive_missing_worktree"
     assert item["next_decision"]["merge_suitable"] is False
     assert item["next_decision"]["continue_or_split_task"] is False
+    assert payload["automation_candidates"]["recover_or_archive"] == [
+        {
+            "record_id": "managed-002",
+            "name": "gone",
+            "cwd": str(missing_workspace),
+            "branch": "supervisor/gone-12345678",
+            "recommendation": "recover_or_archive_missing_worktree",
+            "risk_level": "high",
+            "reason": "worker worktree 缺失；先确认分支和登记表，再决定恢复或归档。",
+            "reasons": ["worker 汇报 done"],
+            "next_actions": [
+                "运行 git worktree list --porcelain",
+                "确认 worker 分支是否仍存在",
+                "人工决定恢复 worktree 或归档登记",
+            ],
+            "validation_commands": [
+                f"test -d {missing_workspace}",
+                "git worktree list --porcelain",
+            ],
+            "reviewer_command": None,
+        }
+    ]
 
 
 def test_supervisor_worker_review_reports_clean_worker_and_cli_json(
@@ -242,6 +293,7 @@ def test_supervisor_worker_review_reports_clean_worker_and_cli_json(
     assert item["reviewer"]["reason"] == "无本地改动，无需 fresh Codex 复查"
     assert item["next_decision"]["recommendation"] == "archive_or_wait"
     assert item["next_decision"]["merge_suitable"] is False
+    assert payload["automation_candidates"]["archive_or_wait"][0]["record_id"] == "managed-003"
 
 
 def test_supervisor_worker_review_decides_blocked_worker_should_continue_or_split(tmp_path):
@@ -312,6 +364,7 @@ def test_supervisor_worker_review_decides_blocked_worker_should_continue_or_spli
             "暂不合并该 worktree",
         ],
     }
+    assert payload["automation_candidates"]["continue_or_split"][0]["record_id"] == "managed-005"
 
 
 def test_supervisor_worker_review_quotes_reviewer_command(tmp_path):
