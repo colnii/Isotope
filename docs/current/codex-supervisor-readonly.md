@@ -81,7 +81,7 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
   `monitor` 只记录跳过。
 - `--prompt-cooldown` 可避免短时间重复催促同一个托管 lane。
 - 活跃目标已有同名 worker 运行时，LLM 输入会带 `worker_status`；
-  白名单校验会拒绝重复 `launch_session`，并转为 `monitor`，
+  候选动作会过滤同名 `launch_session`，白名单校验也会拒绝重复启动并转为 `monitor`，
   避免常驻 loop 重复启动同一个任务。
 - LLM 自动 `launch_session` 会优先创建 `.worktrees/supervisor/...`
   下的独立 git worktree，再在隔离工作区启动 worker。

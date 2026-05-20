@@ -3261,7 +3261,10 @@ def _command_suggestions(
                 suggestions.extend(_resume_session_command_suggestions(session))
         suggestions.extend(_workspace_action_command_suggestions(report))
         suggestions.extend(
-            _active_goal_action_command_suggestions(active_goals)
+            _active_goal_action_command_suggestions(
+                active_goals,
+                running_target_names=_running_managed_target_names(report),
+            )
             or _goal_action_command_suggestions(
                 goal,
                 goal_workspace,
@@ -3281,7 +3284,10 @@ def _command_suggestions(
     if managed_tmux is not None:
         return _managed_tmux_command_suggestions(managed_tmux) + [_watch_command_suggestion()]
     goal_suggestions = (
-        _active_goal_action_command_suggestions(active_goals)
+        _active_goal_action_command_suggestions(
+            active_goals,
+            running_target_names=_running_managed_target_names(report),
+        )
         or _goal_action_command_suggestions(
             goal,
             goal_workspace,
@@ -3323,13 +3329,18 @@ def _goal_action_command_suggestions(
 
 def _active_goal_action_command_suggestions(
     active_goals: list[dict[str, Any]] | None,
+    *,
+    running_target_names: set[str] | None = None,
 ) -> list[dict[str, str]]:
     suggestions: list[dict[str, str]] = []
+    running_names = running_target_names or set()
     for goal in active_goals or []:
         goal_text = goal.get("goal")
         goal_workspace = goal.get("cwd")
         goal_target_name = goal.get("target_name")
         if not isinstance(goal_text, str) or not isinstance(goal_workspace, str):
+            continue
+        if isinstance(goal_target_name, str) and goal_target_name in running_names:
             continue
         suggestions.extend(
             _goal_action_command_suggestions(
@@ -3341,6 +3352,20 @@ def _active_goal_action_command_suggestions(
             )
         )
     return suggestions
+
+
+def _running_managed_target_names(report: Any) -> set[str]:
+    names: set[str] = set()
+    for session in report.sessions:
+        name = getattr(session, "managed_name", None)
+        if not isinstance(name, str) or not name:
+            continue
+        if getattr(session, "status", None) != "working":
+            continue
+        if _session_marks_terminal_done(session):
+            continue
+        names.add(name)
+    return names
 
 
 def _workspace_cwds(report: Any) -> list[str]:

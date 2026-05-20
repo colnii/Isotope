@@ -3610,13 +3610,14 @@ def test_codex_supervisor_llm_action_messages_mark_active_goal_running_worker():
         }
     ]
 
+    advice = _advice_payload(
+        report,
+        include_all_managed=True,
+        active_goals=active_goals,
+    )
     messages = build_llm_action_messages(
         report,
-        _advice_payload(
-            report,
-            include_all_managed=True,
-            active_goals=active_goals,
-        )["command_suggestions"],
+        advice["command_suggestions"],
         active_goals=active_goals,
     )
     payload = json.loads(messages[1]["content"])
@@ -3626,6 +3627,11 @@ def test_codex_supervisor_llm_action_messages_mark_active_goal_running_worker():
     assert payload["active_goals"][0]["worker_session_id"] == "managed:managed-001"
     assert "同名 worker 已在运行时不得再次 launch_session" in "".join(
         payload["action_rules"]
+    )
+    assert not any(
+        suggestion.get("kind") == "launch_session"
+        and suggestion.get("target_name") == "goal-a"
+        for suggestion in advice["command_suggestions"]
     )
 
 
