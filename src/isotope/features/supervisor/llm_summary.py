@@ -226,10 +226,12 @@ def build_llm_action_messages(
     recent_decision_answers: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, str]]:
     """Build the prompt for guarded LLM planning."""
-    candidate_targets = _candidate_target_payloads(report)
-    resumable_session_ids = [
-        session.session_id for session in report.sessions if _can_resume_session(session)
-    ]
+    resumable_session_ids = _resumable_session_ids_from_suggestions(command_suggestions)
+    resumable_session_id_set = set(resumable_session_ids)
+    candidate_targets = _candidate_target_payloads(
+        report,
+        resumable_session_ids=resumable_session_id_set,
+    )
     completed_session_ids = [
         session.session_id for session in report.sessions if _is_completed_session(session)
     ]
@@ -1008,7 +1010,11 @@ def _context_request_history(
     return history
 
 
-def _candidate_target_payloads(report: CodexSupervisorReport) -> list[dict[str, Any]]:
+def _candidate_target_payloads(
+    report: CodexSupervisorReport,
+    *,
+    resumable_session_ids: set[str] | None = None,
+) -> list[dict[str, Any]]:
     return [
         {
             "target_name": _suggested_target_name(session),
@@ -1017,9 +1023,15 @@ def _candidate_target_payloads(report: CodexSupervisorReport) -> list[dict[str, 
             "status": session.supervisor_status or session.status,
             "reason": session.supervisor_summary or session.reason,
             "source_size_bytes": session.source_size_bytes,
-            "resume_context_hint": _resume_context_hint(session),
+            "resume_context_hint": _resume_context_hint(
+                session,
+                resumable_session_ids=resumable_session_ids,
+            ),
             "can_send_to_tmux": _has_managed_send_target(session),
-            "can_resume": _can_resume_session(session),
+            "can_resume": _can_resume_session(
+                session,
+                resumable_session_ids=resumable_session_ids,
+            ),
             "tmux_session": session.managed_tmux_session,
             "managed_terminal_ready": session.managed_terminal_ready,
             "managed_bell": session.managed_bell,
@@ -1029,7 +1041,10 @@ def _candidate_target_payloads(report: CodexSupervisorReport) -> list[dict[str, 
             "supervisor_next": _clip(session.supervisor_next),
         }
         for session in report.sessions
-        if _is_llm_candidate_target(session)
+        if _is_llm_candidate_target(
+            session,
+            resumable_session_ids=resumable_session_ids,
+        )
     ]
 
 
@@ -1082,11 +1097,15 @@ def _has_any_llm_target(
     )
 
 
-def _is_llm_candidate_target(session: Any) -> bool:
+def _is_llm_candidate_target(
+    session: Any,
+    *,
+    resumable_session_ids: set[str] | None = None,
+) -> bool:
     return (
         _has_managed_send_target(session)
         or _has_managed_process_target(session)
-        or _can_resume_session(session)
+        or _can_resume_session(session, resumable_session_ids=resumable_session_ids)
     )
 
 
@@ -1116,8 +1135,14 @@ def _has_running_managed_worker(report: CodexSupervisorReport, target_name: str)
     return False
 
 
-def _can_resume_session(session: Any) -> bool:
+def _can_resume_session(
+    session: Any,
+    *,
+    resumable_session_ids: set[str] | None = None,
+) -> bool:
     session_id = getattr(session, "session_id", None)
+    if resumable_session_ids is not None and session_id not in resumable_session_ids:
+        return False
     return (
         isinstance(session_id, str)
         and bool(session_id)
@@ -1126,13 +1151,33 @@ def _can_resume_session(session: Any) -> bool:
     )
 
 
-def _resume_context_hint(session: Any) -> str | None:
-    if not _can_resume_session(session):
+def _resume_context_hint(
+    session: Any,
+    *,
+    resumable_session_ids: set[str] | None = None,
+) -> str | None:
+    if not _can_resume_session(session, resumable_session_ids=resumable_session_ids):
         return None
     source_size = getattr(session, "source_size_bytes", None)
     if isinstance(source_size, int) and source_size >= LARGE_RESUME_SOURCE_BYTES:
         return "large_session_file"
     return "normal_session_file"
+
+
+def _resumable_session_ids_from_suggestions(
+    command_suggestions: list[dict[str, str]],
+) -> list[str]:
+    ids: list[str] = []
+    seen: set[str] = set()
+    for suggestion in command_suggestions:
+        if suggestion.get("kind") != "resume_session":
+            continue
+        session_id = suggestion.get("session_id")
+        if not isinstance(session_id, str) or not session_id or session_id in seen:
+            continue
+        seen.add(session_id)
+        ids.append(session_id)
+    return ids
 
 
 def _suggested_target_name(session: Any) -> str:

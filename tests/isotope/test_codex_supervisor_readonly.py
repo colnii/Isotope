@@ -3631,6 +3631,37 @@ def test_codex_supervisor_llm_action_messages_explain_done_sessions_are_not_resu
     assert "resumable_session_ids 为空时不得输出 resume_session" in content
 
 
+def test_codex_supervisor_llm_action_messages_resumable_ids_follow_command_whitelist():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="working-session",
+                cwd="/home/lumber/Github/isotope",
+                source_path="/home/lumber/.codex/sessions/working.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=30,
+                status="working",
+                reason="当前窗口仍在工作，但本轮没有 resume 白名单命令。",
+            ),
+        ),
+    )
+    suggestions = [
+        {
+            "kind": "request_context",
+            "cwd": "/home/lumber/Github/isotope",
+            "query": "Supervisor 目标队列",
+            "command": "isotope-supervisor context --cwd /home/lumber/Github/isotope --query 'Supervisor 目标队列'",
+        }
+    ]
+
+    messages = build_llm_action_messages(report, suggestions)
+
+    content = messages[1]["content"]
+    assert '"resumable_session_ids": []' in content
+    assert '"session_id": "working-session"' not in content
+
+
 def test_codex_supervisor_llm_action_messages_explain_recent_context_should_not_repeat():
     report = CodexSupervisorReport(
         generated_at=NOW.isoformat(),
