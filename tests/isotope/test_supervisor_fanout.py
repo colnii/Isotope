@@ -1,4 +1,7 @@
-from isotope.features.supervisor.fanout import build_fanout_launch_plan
+from isotope.features.supervisor.fanout import (
+    build_fanout_launch_plan,
+    build_fanout_status_summary,
+)
 
 
 def test_supervisor_fanout_turns_parallel_recommendations_into_launch_specs():
@@ -153,3 +156,97 @@ def test_supervisor_fanout_can_use_written_goals_and_explicit_cwd():
 
     assert plan["launch_specs"][0]["cwd"] == "/repo/worker"
     assert plan["launch_specs"][0]["prompt"] == "补 daemon 状态汇总。"
+
+
+def test_supervisor_fanout_status_summarizes_completed_batch():
+    summary = build_fanout_status_summary(
+        active_goals=[],
+        goal_updates=[
+            {
+                "goal_id": "goal-a",
+                "target_name": "worker-a",
+                "status": "done",
+                "summary": "A 已完成。",
+                "next": "等待归档。",
+            },
+            {
+                "goal_id": "goal-b",
+                "target_name": "worker-b",
+                "status": "done",
+                "summary": "B 已完成。",
+                "next": "等待归档。",
+            },
+        ],
+    )
+
+    assert summary == {
+        "status": "completed",
+        "summary": {
+            "total": 2,
+            "done": 2,
+            "blocked": 0,
+            "needs_user": 0,
+            "running": 0,
+            "pending": 0,
+        },
+        "message": "fanout batch completed: 2 workers done.",
+        "results": [
+            {
+                "goal_id": "goal-a",
+                "target_name": "worker-a",
+                "status": "done",
+                "summary": "A 已完成。",
+                "next": "等待归档。",
+            },
+            {
+                "goal_id": "goal-b",
+                "target_name": "worker-b",
+                "status": "done",
+                "summary": "B 已完成。",
+                "next": "等待归档。",
+            },
+        ],
+        "requires_user_attention": False,
+    }
+
+
+def test_supervisor_fanout_status_pauses_on_blocked_worker():
+    summary = build_fanout_status_summary(
+        active_goals=[
+            {
+                "goal_id": "goal-a",
+                "target_name": "worker-a",
+                "goal": "继续 A。",
+                "last_status": "blocked",
+                "last_summary": "A 缺少依赖。",
+                "last_next": "等待依赖恢复。",
+            },
+            {
+                "goal_id": "goal-b",
+                "target_name": "worker-b",
+                "goal": "继续 B。",
+            },
+        ],
+        goal_updates=[],
+        running_target_names={"worker-b"},
+    )
+
+    assert summary["status"] == "paused"
+    assert summary["requires_user_attention"] is True
+    assert summary["summary"] == {
+        "total": 2,
+        "done": 0,
+        "blocked": 1,
+        "needs_user": 0,
+        "running": 1,
+        "pending": 0,
+    }
+    assert summary["attention"] == [
+        {
+            "goal_id": "goal-a",
+            "target_name": "worker-a",
+            "status": "blocked",
+            "summary": "A 缺少依赖。",
+            "next": "等待依赖恢复。",
+        }
+    ]

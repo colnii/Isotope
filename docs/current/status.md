@@ -259,6 +259,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `loop` 只监控，不会从普通历史会话或 workspace 自行发明下一批
     `launch_session`；
     汇报 `blocked/needs_user` 时会记录状态但保留活跃目标；
+    多目标 fanout 中任一 worker 汇报 `blocked/needs_user` 时，`loop`
+    会输出 `fanout_status.status=paused`，不再继续扩展这一批 worker，
+    并通过目标状态通知提醒用户；同轮全部 `done` 时会输出
+    `fanout_status.status=completed` 和各 worker 摘要；
     活跃目标的最近状态会进入 `active_goals` 并交给 LLM planner，
     所以 `blocked/needs_user` 不是终点，模型可继续选择
     `request_context`、`launch_session`、`ask_user` 或 `monitor`；当目标

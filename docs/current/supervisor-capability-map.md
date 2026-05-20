@@ -198,6 +198,10 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   `--goal-replenish-prompt` 可覆盖默认规划说明。
 - `loop` 会把同名 worker 的 `SUPERVISOR_STATUS` 写回目标队列；
   `done` 自动归档，`blocked/needs_user` 只记录状态并等待后续处理。
+  当同一轮 fanout worker 全部汇报 `done` 时，`loop --json` 会输出
+  `fanout_status.status=completed` 和每个 worker 的摘要；当 fanout 中任一
+  worker 汇报 `blocked/needs_user` 时，`fanout_status.status=paused`，
+  本轮不再继续 fanout 扩展，并依赖 goal status notification 提醒用户。
 - `blocked/needs_user` 活跃目标会带着 `last_status`、摘要和下一步进入
   LLM planner 的 `active_goals` 输入；模型不能默认停住，应重新选择
   `request_context`、`launch_session`、`ask_user` 或 `monitor`。缺少上下文
@@ -478,7 +482,9 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_supervisor_goal_rep
 
 fanout 回归必须覆盖：多个 active goals 中已有同名 running worker 时，只能为剩余目标执行
 `launch_session`，并且同轮 `loop` payload 与随后 `dashboard` 的
-`current_batch` 都能看见当前 worker；`goal plan` 的 `parallel_recommendations` 只能在显式
+`current_batch` 都能看见当前 worker；所有 fanout worker 同轮完成时要输出
+`fanout_status` 完成摘要；任一 fanout worker 汇报 `blocked/needs_user` 时要
+暂停 fanout 扩展并保留通知证据；`goal plan` 的 `parallel_recommendations` 只能在显式
 `--fanout-execute` 下同轮执行，且不能直接归档任何目标。
 
 ## 后续目标补给设计

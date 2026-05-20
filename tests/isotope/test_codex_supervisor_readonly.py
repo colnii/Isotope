@@ -12705,6 +12705,232 @@ def test_codex_supervisor_runner_loop_fanout_launches_parallel_active_goals(
     ]
 
 
+def test_codex_supervisor_runner_loop_summarizes_completed_fanout_batch(
+    tmp_path,
+    capsys,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    first_goal = _add_supervisor_goal(
+        capsys,
+        codex_home=codex_home,
+        workspace=workspace,
+        goal="完成 fanout worker A。",
+        target_name="worker-a",
+    )
+    second_goal = _add_supervisor_goal(
+        capsys,
+        codex_home=codex_home,
+        workspace=workspace,
+        goal="完成 fanout worker B。",
+        target_name="worker-b",
+    )
+    log_dir = codex_home / "supervisor" / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    first_log = log_dir / "managed-a.log"
+    second_log = log_dir / "managed-b.log"
+    first_log.write_text(
+        "SUPERVISOR_STATUS: done\n"
+        "SUPERVISOR_SUMMARY: worker A 已完成并提交。\n"
+        "SUPERVISOR_NEXT: 等待 Supervisor 汇总。\n",
+        encoding="utf-8",
+    )
+    second_log.write_text(
+        "SUPERVISOR_STATUS: done\n"
+        "SUPERVISOR_SUMMARY: worker B 已完成并提交。\n"
+        "SUPERVISOR_NEXT: 等待 Supervisor 汇总。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "record_id": "managed-a",
+                        "name": "worker-a",
+                        "cwd": str(workspace),
+                        "prompt": "完成 fanout worker A。",
+                        "command": ["codex", "exec", "-C", str(workspace), "继续"],
+                        "pid": 0,
+                        "started_at": NOW.isoformat(),
+                        "log_path": str(first_log),
+                        "status": "launched",
+                        "backend": "process",
+                    },
+                    ensure_ascii=False,
+                ),
+                json.dumps(
+                    {
+                        "record_id": "managed-b",
+                        "name": "worker-b",
+                        "cwd": str(workspace),
+                        "prompt": "完成 fanout worker B。",
+                        "command": ["codex", "exec", "-C", str(workspace), "继续"],
+                        "pid": 0,
+                        "started_at": NOW.isoformat(),
+                        "log_path": str(second_log),
+                        "status": "launched",
+                        "backend": "process",
+                    },
+                    ensure_ascii=False,
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--rule-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert [item["status"] for item in payload["goal_updates"]] == ["done", "done"]
+    assert payload["active_goals"] == []
+    assert payload["fanout_status"]["status"] == "completed"
+    assert payload["fanout_status"]["summary"] == {
+        "total": 2,
+        "done": 2,
+        "blocked": 0,
+        "needs_user": 0,
+        "running": 0,
+        "pending": 0,
+    }
+    assert payload["fanout_status"]["results"] == [
+        {
+            "goal_id": first_goal["goal_id"],
+            "target_name": "worker-a",
+            "status": "done",
+            "summary": "worker A 已完成并提交。",
+            "next": "等待 Supervisor 汇总。",
+        },
+        {
+            "goal_id": second_goal["goal_id"],
+            "target_name": "worker-b",
+            "status": "done",
+            "summary": "worker B 已完成并提交。",
+            "next": "等待 Supervisor 汇总。",
+        },
+    ]
+
+
+def test_codex_supervisor_runner_loop_pauses_fanout_on_blocked_worker(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    blocked_goal = _add_supervisor_goal(
+        capsys,
+        codex_home=codex_home,
+        workspace=workspace,
+        goal="等待 fanout worker A。",
+        target_name="worker-a",
+    )
+    _add_supervisor_goal(
+        capsys,
+        codex_home=codex_home,
+        workspace=workspace,
+        goal="等待 fanout worker B。",
+        target_name="worker-b",
+    )
+    log_path = codex_home / "supervisor" / "logs" / "managed-a.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text(
+        "SUPERVISOR_STATUS: blocked\n"
+        "SUPERVISOR_SUMMARY: worker A 需要外部依赖。\n"
+        "SUPERVISOR_NEXT: 等待用户处理依赖。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-a",
+                "name": "worker-a",
+                "cwd": str(workspace),
+                "prompt": "等待 fanout worker A。",
+                "command": ["codex", "exec", "-C", str(workspace), "继续"],
+                "pid": 0,
+                "started_at": NOW.isoformat(),
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            raise AssertionError("paused fanout should not ask LLM for another action")
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["goal_updates"][0]["goal_id"] == blocked_goal["goal_id"]
+    assert payload["fanout_status"]["status"] == "paused"
+    assert payload["fanout_status"]["requires_user_attention"] is True
+    assert payload["fanout_plan"]["summary"] == {
+        "launchable": 0,
+        "skipped": 1,
+        "limit": 3,
+    }
+    assert payload["fanout_plan"]["skipped"] == [
+        {
+            "target_name": "worker-b",
+            "reason": "fanout_paused_for_attention",
+            "batch": "active_goals",
+        }
+    ]
+    assert payload["llm_action"]["kind"] == "monitor"
+    assert payload["executed"]["kind"] == "monitor"
+    notifications = NotificationFlow.in_process(codex_home).list_notifications(
+        notification_type="supervisor_goal_status"
+    )
+    assert notifications[0].source_ref == {
+        "ref_type": "supervisor_goal_status",
+        "goal_id": blocked_goal["goal_id"],
+        "status": "blocked",
+    }
+
+
 def test_codex_supervisor_runner_loop_archives_goal_when_worker_reports_done(
     tmp_path,
     capsys,

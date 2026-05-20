@@ -49,7 +49,11 @@ from .flow import (
     _tmux_capture_pane,
     render_plain_report,
 )
-from .fanout import DEFAULT_FANOUT_LIMIT, build_fanout_launch_plan
+from .fanout import (
+    DEFAULT_FANOUT_LIMIT,
+    build_fanout_launch_plan,
+    build_fanout_status_summary,
+)
 from .failure_ledger import FailureLedger, default_failure_ledger_path
 from .goal_queue import (
     archive_supervisor_goal,
@@ -3219,18 +3223,38 @@ def _supervise_payload(
         active_goals=active_goals,
         worker_reviews=worker_reviews,
     )
+    fanout_status = _fanout_status_payload(
+        report,
+        active_goals=active_goals,
+        goal_updates=goal_updates or [],
+    )
+    if fanout_status is not None:
+        payload["fanout_status"] = fanout_status
     if args.llm_summary:
         payload["llm_summary"] = _summarize_with_llm(report)
-    fanout_plan = _active_goals_fanout_launch_plan(args, report, active_goals)
+    fanout_paused = (
+        isinstance(fanout_status, dict) and fanout_status.get("status") == "paused"
+    )
+    fanout_plan = (
+        _paused_active_goals_fanout_plan(args, active_goals)
+        if fanout_paused
+        else _active_goals_fanout_launch_plan(args, report, active_goals)
+    )
     if fanout_plan is not None and (args.llm_action or args.llm_execute):
         payload["fanout_plan"] = fanout_plan
     merge_dispatch: dict[str, Any] | None = None
-    if fanout_plan is None and (args.llm_action or args.llm_execute):
+    if (
+        fanout_plan is None
+        and not fanout_paused
+        and (args.llm_action or args.llm_execute)
+    ):
         merge_dispatch = _integration_merge_dispatch_payload(args)
         if merge_dispatch is not None:
             payload["merge_dispatch"] = merge_dispatch
     if args.llm_action or args.llm_execute:
-        if fanout_plan is not None:
+        if fanout_paused:
+            payload["llm_action"] = _fanout_paused_action(fanout_status)
+        elif fanout_plan is not None:
             payload["llm_action"] = _fanout_llm_action(fanout_plan)
         elif merge_dispatch is not None:
             if merge_dispatch.get("status") == "worker_already_running":
@@ -3250,7 +3274,9 @@ def _supervise_payload(
             payload["llm_action"] = _decide_action_with_llm(args, action_report, payload)
             _promote_llm_command_suggestion(payload)
     if args.llm_execute:
-        if fanout_plan is not None:
+        if fanout_paused:
+            payload["executed"] = _fanout_paused_executed(fanout_status)
+        elif fanout_plan is not None:
             payload["executed"] = _execute_fanout_launch_actions(
                 args,
                 fanout_plan,
@@ -3422,6 +3448,69 @@ def _active_goals_fanout_launch_plan(
     )
 
 
+def _fanout_status_payload(
+    report: Any,
+    *,
+    active_goals: list[dict[str, Any]],
+    goal_updates: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    payload = build_fanout_status_summary(
+        active_goals=active_goals,
+        goal_updates=goal_updates,
+        running_target_names=_running_managed_target_names(report),
+    )
+    summary = payload.get("summary")
+    if not isinstance(summary, dict) or summary.get("total", 0) < 2:
+        return None
+    if payload.get("status") == "idle":
+        return None
+    return payload
+
+
+def _paused_active_goals_fanout_plan(
+    args: argparse.Namespace,
+    active_goals: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    if getattr(args, "command", None) != "loop":
+        return None
+    if getattr(args, "name", None):
+        return None
+    blocked_targets = {
+        target_name
+        for goal in active_goals
+        for target_name in (goal.get("target_name"),)
+        if goal.get("last_status") in {"blocked", "needs_user"}
+        and isinstance(target_name, str)
+        and target_name
+    }
+    skipped = [
+        {
+            "target_name": target_name,
+            "reason": "fanout_paused_for_attention",
+            "batch": "active_goals",
+        }
+        for goal in active_goals
+        for target_name in (goal.get("target_name"),)
+        if isinstance(target_name, str)
+        and target_name
+        and target_name not in blocked_targets
+    ]
+    return {
+        "status": "paused",
+        "summary": {
+            "launchable": 0,
+            "skipped": len(skipped),
+            "limit": getattr(args, "max_fanout_launches", DEFAULT_FANOUT_LIMIT),
+        },
+        "launch_specs": [],
+        "skipped": skipped,
+        "safety": {
+            "auto_launch": False,
+            "note": "fanout 已暂停，等待 blocked/needs_user worker 处理。",
+        },
+    }
+
+
 def _fanout_llm_action(fanout_plan: dict[str, Any]) -> dict[str, Any]:
     launchable = fanout_plan.get("summary", {}).get("launchable", 0)
     if launchable:
@@ -3433,6 +3522,25 @@ def _fanout_llm_action(fanout_plan: dict[str, Any]) -> dict[str, Any]:
         "target_name": None,
         "reason": reason,
         "command_suggestion": None,
+    }
+
+
+def _fanout_paused_action(fanout_status: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "kind": "monitor",
+        "target_name": None,
+        "reason": fanout_status.get("message")
+        or "fanout 已暂停，等待用户处理 blocked/needs_user worker。",
+        "command_suggestion": None,
+    }
+
+
+def _fanout_paused_executed(fanout_status: dict[str, Any]) -> dict[str, Any]:
+    action = _fanout_paused_action(fanout_status)
+    return {
+        "kind": "monitor",
+        "skipped": True,
+        "reason": action["reason"],
     }
 
 
