@@ -741,6 +741,7 @@ def _managed_process_log_excerpt(log_path: str | None) -> str | None:
 
 def _supervisor_protocol_from_text(text: str) -> dict[str, str]:
     values: dict[str, str] = {}
+    current_protocol: dict[str, str] | None = None
     keys = {
         "SUPERVISOR_STATUS": "status",
         "SUPERVISOR_SUMMARY": "summary",
@@ -758,9 +759,15 @@ def _supervisor_protocol_from_text(text: str) -> dict[str, str]:
         if normalized_key == "SUPERVISOR_STATUS":
             normalized_value = normalized_value.lower()
             if normalized_value not in SUPERVISOR_STATUS_VALUES:
+                current_protocol = None
                 continue
+            current_protocol = {"status": normalized_value}
+            values = current_protocol
+            continue
+        if current_protocol is None:
+            continue
         if normalized_value:
-            values[keys[normalized_key]] = normalized_value
+            current_protocol[keys[normalized_key]] = normalized_value
     return values
 
 

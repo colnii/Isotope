@@ -296,6 +296,59 @@ def test_supervisor_worker_review_reports_clean_worker_and_cli_json(
     assert payload["automation_candidates"]["archive_or_wait"][0]["record_id"] == "managed-003"
 
 
+def test_supervisor_worker_review_ignores_status_protocol_prompt_template(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "repo" / ".worktrees" / "supervisor" / "template-12345678"
+    workspace.mkdir(parents=True)
+    log_path = codex_home / "supervisor" / "logs" / "managed-004.log"
+    log_path.parent.mkdir(parents=True)
+    log_path.write_text(
+        "\n".join(
+            [
+                "Supervisor 状态汇报要求：",
+                "SUPERVISOR_STATUS: working|done|blocked|needs_user",
+                "SUPERVISOR_SUMMARY: 用一句中文说明当前状态",
+                "SUPERVISOR_NEXT: 用一句中文说明建议下一步",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    _write_record(
+        codex_home,
+        record_id="managed-004",
+        name="template",
+        cwd=workspace,
+        log_path=log_path,
+        status="launched",
+        pid=444,
+    )
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[3:] == ["rev-parse", "--show-toplevel"]:
+            return subprocess.CompletedProcess(command, 0, str(workspace) + "\n", "")
+        if command[3:] == ["rev-parse", "--abbrev-ref", "HEAD"]:
+            return subprocess.CompletedProcess(command, 0, "supervisor/template-12345678\n", "")
+        if command[3:] in (["status", "--short"], ["diff", "--stat"]):
+            return subprocess.CompletedProcess(command, 0, "", "")
+        raise AssertionError(f"unexpected command: {command}")
+
+    payload = collect_worker_reviews(
+        codex_home=codex_home,
+        run=fake_run,
+        process_checker=lambda pid: False,
+    )
+
+    item = payload["workers"][0]
+    assert item["supervisor_protocol"] == {"status": None, "summary": None, "next": None}
+    assert item["next_decision"]["recommendation"] == "archive_or_wait"
+
+
 def test_supervisor_worker_review_decides_blocked_worker_should_continue_or_split(tmp_path):
     codex_home = tmp_path / ".codex"
     workspace = tmp_path / "repo" / ".worktrees" / "supervisor" / "blocked-12345678"
