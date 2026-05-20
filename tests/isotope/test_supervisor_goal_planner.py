@@ -250,14 +250,23 @@ def test_supervisor_goal_plan_can_fanout_execute_parallel_recommendations(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
         lambda **_: ParallelWriteGoalProvider(),
     )
-    monkeypatch.setattr(
-        "isotope.features.supervisor.runner._prepare_launch_worktree",
-        lambda *, cwd, target_name: {
+    prepared_target_names: list[str] = []
+    captured_cwds: list[str] = []
+
+    def fake_prepare_launch_worktree(*, cwd, target_name):
+        prepared_target_names.append(target_name)
+        worker_cwd = root / ".worktrees" / "supervisor" / target_name
+        worker_cwd.mkdir(parents=True)
+        return {
             "enabled": False,
             "source_cwd": str(cwd),
-            "cwd": str(cwd),
+            "cwd": str(worker_cwd),
             "reason": "test_stub",
-        },
+        }
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._prepare_launch_worktree",
+        fake_prepare_launch_worktree,
     )
     captured: list[list[str]] = []
 
@@ -275,6 +284,7 @@ def test_supervisor_goal_plan_can_fanout_execute_parallel_recommendations(
         start_new_session: bool,
     ) -> FakeProcess:
         captured.append(command)
+        captured_cwds.append(cwd)
         return FakeProcess(45700 + len(captured))
 
     monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
@@ -290,7 +300,7 @@ def test_supervisor_goal_plan_can_fanout_execute_parallel_recommendations(
             "--write",
             "--fanout-execute",
             "--max-fanout-launches",
-            "1",
+            "2",
             "--json",
         ]
     )
@@ -302,27 +312,105 @@ def test_supervisor_goal_plan_can_fanout_execute_parallel_recommendations(
         "worker-b",
     ]
     assert payload["fanout_plan"]["summary"] == {
-        "launchable": 1,
-        "skipped": 1,
-        "limit": 1,
+        "launchable": 2,
+        "skipped": 0,
+        "limit": 2,
     }
-    assert payload["fanout_plan"]["skipped"] == [
-        {
-            "target_name": "worker-b",
-            "reason": "fanout_limit_reached",
-            "batch": "并行批次",
-        }
-    ]
+    assert payload["fanout_plan"]["skipped"] == []
     assert payload["fanout_plan"]["launch_specs"][0]["review"][
         "requires_human_review"
     ] is False
     assert payload["executed"]["summary"] == {
-        "launched": 1,
+        "launched": 2,
         "skipped": 0,
-        "limit": 1,
+        "limit": 2,
     }
-    assert payload["executed"]["results"][0]["managed"]["name"] == "worker-a"
-    assert len(captured) == 1
+    assert [item["managed"]["name"] for item in payload["executed"]["results"]] == [
+        "worker-a",
+        "worker-b",
+    ]
+    assert prepared_target_names == ["worker-a", "worker-b"]
+    assert captured_cwds == [
+        str(root / ".worktrees" / "supervisor" / "worker-a"),
+        str(root / ".worktrees" / "supervisor" / "worker-b"),
+    ]
+    assert len(captured) == 2
+
+
+def test_supervisor_goal_plan_fanout_records_launch_errors_and_continues(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    root = tmp_path / "repo"
+    root.mkdir()
+    _write_current_docs(root)
+    codex_home = tmp_path / ".codex"
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: ParallelWriteGoalProvider(),
+    )
+    attempted: list[str] = []
+
+    def fake_execute_launch_action(args, action):
+        target_name = action["target_name"]
+        attempted.append(target_name)
+        if target_name == "worker-a":
+            raise RuntimeError("boom worker-a")
+        return {
+            "kind": "launch_session",
+            "managed": {
+                "name": target_name,
+                "record_id": f"managed-{target_name}",
+                "pid": 45702,
+                "backend": "process",
+            },
+            "worktree": {
+                "enabled": True,
+                "source_cwd": str(root),
+                "cwd": str(root / ".worktrees" / "supervisor" / target_name),
+            },
+        }
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._execute_launch_action",
+        fake_execute_launch_action,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "goal",
+            "plan",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(root),
+            "--write",
+            "--fanout-execute",
+            "--max-fanout-launches",
+            "2",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert attempted == ["worker-a", "worker-b"]
+    assert payload["executed"]["summary"] == {
+        "launched": 1,
+        "skipped": 1,
+        "limit": 2,
+    }
+    assert payload["executed"]["results"][0]["managed"]["name"] == "worker-b"
+    skipped = payload["executed"]["skipped"]
+    assert len(skipped) == 1
+    assert skipped[0]["kind"] == "launch_session"
+    assert skipped[0]["skipped"] is True
+    assert skipped[0]["reason"] == "supervisor action failed"
+    assert skipped[0]["error"] == "RuntimeError: boom worker-a"
+    assert skipped[0]["failure_event"]["event_type"] == "worker_launch_failed"
+    assert skipped[0]["failure_event"]["lane_name"] == "worker-a"
+    assert skipped[0]["failure_event"]["retry_count"] == 1
 
 
 def test_supervisor_goal_plan_surfaces_board_level_review_plan(
