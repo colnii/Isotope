@@ -117,9 +117,30 @@ def test_supervisor_worker_review_collects_completed_worker_with_changes(
     assert "branch：supervisor/feature-a-12345678" in item["reviewer"]["prompt"]
     assert "建议验证命令：" in item["reviewer"]["prompt"]
     assert "必须检查的风险：" in item["reviewer"]["prompt"]
+    assert item["next_decision"] == {
+        "recommendation": "review_then_merge_candidate",
+        "summary": "worker 已完成且有本地改动；建议先复查 diff 并跑验证，通过后再人工合并。",
+        "merge_suitable": True,
+        "continue_or_split_task": False,
+        "risk_level": "medium",
+        "reasons": [
+            "worker 汇报 done",
+            "存在 2 个改动路径",
+            "包含未跟踪文件",
+            "需要先运行建议验证命令",
+        ],
+        "next_actions": [
+            "审查 git diff 和 worker 汇报",
+            "运行建议验证命令",
+            "验证通过后由主控/人工处理合并",
+        ],
+    }
 
     plain = render_worker_review_plain(payload)
+    assert "决策汇总：合并候选 1 / 继续拆任务 0 / 缺失 worktree 0 / 需 fresh review 1" in plain
     assert "Fresh Codex 复查建议：" in plain
+    assert "下一步决策：worker 已完成且有本地改动；建议先复查 diff 并跑验证，通过后再人工合并。" in plain
+    assert "决策标记：适合合并：是 / 继续拆任务：否 / 风险：medium" in plain
     assert item["reviewer"]["command"] in plain
 
 
@@ -156,6 +177,9 @@ def test_supervisor_worker_review_reports_deleted_worktree(tmp_path):
     assert "worktree 已不存在" in item["merge_hint"]
     assert item["reviewer"]["needed"] is False
     assert item["reviewer"]["reason"] == "cwd/worktree 缺失，无法生成可执行复查建议"
+    assert item["next_decision"]["recommendation"] == "recover_or_archive_missing_worktree"
+    assert item["next_decision"]["merge_suitable"] is False
+    assert item["next_decision"]["continue_or_split_task"] is False
 
 
 def test_supervisor_worker_review_reports_clean_worker_and_cli_json(
@@ -216,6 +240,78 @@ def test_supervisor_worker_review_reports_clean_worker_and_cli_json(
     assert item["supervisor_protocol"] == {"status": None, "summary": None, "next": None}
     assert item["reviewer"]["needed"] is False
     assert item["reviewer"]["reason"] == "无本地改动，无需 fresh Codex 复查"
+    assert item["next_decision"]["recommendation"] == "archive_or_wait"
+    assert item["next_decision"]["merge_suitable"] is False
+
+
+def test_supervisor_worker_review_decides_blocked_worker_should_continue_or_split(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "repo" / ".worktrees" / "supervisor" / "blocked-12345678"
+    workspace.mkdir(parents=True)
+    log_path = codex_home / "supervisor" / "logs" / "managed-005.log"
+    log_path.parent.mkdir(parents=True)
+    log_path.write_text(
+        "\n".join(
+            [
+                "SUPERVISOR_STATUS: blocked",
+                "SUPERVISOR_SUMMARY: scope too broad for one worker.",
+                "SUPERVISOR_NEXT: split tests and runner wiring into separate tasks.",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    _write_record(
+        codex_home,
+        record_id="managed-005",
+        name="blocked",
+        cwd=workspace,
+        log_path=log_path,
+        status="launched",
+        pid=555,
+    )
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[3:] == ["rev-parse", "--show-toplevel"]:
+            return subprocess.CompletedProcess(command, 0, str(workspace) + "\n", "")
+        if command[3:] == ["rev-parse", "--abbrev-ref", "HEAD"]:
+            return subprocess.CompletedProcess(command, 0, "supervisor/blocked-12345678\n", "")
+        if command[3:] == ["status", "--short"]:
+            return subprocess.CompletedProcess(command, 0, " M tests/isotope/test_x.py\n", "")
+        if command[3:] == ["diff", "--stat"]:
+            return subprocess.CompletedProcess(command, 0, " tests/isotope/test_x.py | 2 ++\n", "")
+        raise AssertionError(f"unexpected command: {command}")
+
+    payload = collect_worker_reviews(
+        codex_home=codex_home,
+        run=fake_run,
+        process_checker=lambda pid: False,
+    )
+
+    item = payload["workers"][0]
+
+    assert item["next_decision"] == {
+        "recommendation": "continue_or_split_task",
+        "summary": "worker 未完成但已有改动；不适合合并，建议按汇报继续推进或拆成后续任务。",
+        "merge_suitable": False,
+        "continue_or_split_task": True,
+        "risk_level": "high",
+        "reasons": [
+            "worker 汇报 blocked",
+            "存在 1 个改动路径",
+            "需要先运行建议验证命令",
+        ],
+        "next_actions": [
+            "阅读 worker 的 SUPERVISOR_NEXT",
+            "判断是否继续当前 worker 或拆出新任务",
+            "暂不合并该 worktree",
+        ],
+    }
 
 
 def test_supervisor_worker_review_quotes_reviewer_command(tmp_path):

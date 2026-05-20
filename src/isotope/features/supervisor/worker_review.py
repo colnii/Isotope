@@ -42,6 +42,7 @@ def collect_worker_reviews(
             "existing_cwd": sum(1 for item in workers if item["cwd_exists"]),
             "missing_cwd": sum(1 for item in workers if not item["cwd_exists"]),
         },
+        "decision_summary": _decision_summary(workers),
         "workers": workers,
         "safety": {
             "auto_merge": False,
@@ -61,10 +62,21 @@ def render_worker_review_plain(payload: dict[str, Any]) -> str:
             missing_cwd=summary.get("missing_cwd", 0),
         )
     )
+    decision_summary = payload.get("decision_summary", {})
+    lines.append(
+        "决策汇总：合并候选 {merge_candidates} / 继续拆任务 {continue_or_split_tasks} / "
+        "缺失 worktree {missing_worktrees} / 需 fresh review {needs_fresh_review}".format(
+            merge_candidates=decision_summary.get("merge_candidates", 0),
+            continue_or_split_tasks=decision_summary.get("continue_or_split_tasks", 0),
+            missing_worktrees=decision_summary.get("missing_worktrees", 0),
+            needs_fresh_review=decision_summary.get("needs_fresh_review", 0),
+        )
+    )
     for worker in payload.get("workers", []):
         protocol = worker.get("supervisor_protocol", {})
         changes = worker.get("changes", {})
         worktree = worker.get("worktree", {})
+        next_decision = worker.get("next_decision", {})
         lines.extend(
             [
                 "",
@@ -73,6 +85,14 @@ def render_worker_review_plain(payload: dict[str, Any]) -> str:
                 f"  branch：{worktree.get('branch') or '未知'}",
                 f"  状态协议：{protocol.get('status') or '未汇报'} / {protocol.get('summary') or '无摘要'}",
                 f"  改动：{changes.get('summary')}",
+                f"  下一步决策：{next_decision.get('summary') or '无'}",
+                "  决策标记：适合合并：{merge_suitable} / 继续拆任务：{continue_or_split} / 风险：{risk_level}".format(
+                    merge_suitable="是" if next_decision.get("merge_suitable") else "否",
+                    continue_or_split="是"
+                    if next_decision.get("continue_or_split_task")
+                    else "否",
+                    risk_level=next_decision.get("risk_level") or "未知",
+                ),
                 f"  合并提示：{worker.get('merge_hint')}",
             ]
         )
@@ -112,6 +132,12 @@ def _worker_review(
     }
     changes = _changes_for_cwd(cwd, run=run) if cwd_exists else _missing_changes()
     validation_commands = _validation_commands(cwd, cwd_exists=cwd_exists)
+    next_decision = _next_decision(
+        protocol=protocol,
+        cwd_exists=cwd_exists,
+        changes=changes,
+        validation_commands=validation_commands,
+    )
     reviewer = _reviewer_suggestion(
         record=record,
         cwd=cwd,
@@ -138,6 +164,7 @@ def _worker_review(
         "supervisor_protocol": protocol,
         "changes": changes,
         "validation_commands": validation_commands,
+        "next_decision": next_decision,
         "reviewer": reviewer,
         "merge_hint": _merge_hint(branch=branch, cwd_exists=cwd_exists, changes=changes),
     }
@@ -261,6 +288,125 @@ def _reviewer_suggestion(
         "must_check_risks": risks,
         "prompt": prompt,
         "command": f"codex exec -C {shlex.quote(str(cwd))} {shlex.quote(prompt)}",
+    }
+
+
+def _next_decision(
+    *,
+    protocol: dict[str, str | None],
+    cwd_exists: bool,
+    changes: dict[str, Any],
+    validation_commands: list[str],
+) -> dict[str, Any]:
+    status = (protocol.get("status") or "").strip().lower()
+    changed_files = changes.get("files") or []
+    change_count = len(changed_files)
+    reasons = _decision_reasons(
+        status=status,
+        change_count=change_count,
+        has_untracked=_has_untracked_files(changed_files),
+        needs_validation=bool(validation_commands) and changes.get("status") == "modified",
+    )
+
+    if not cwd_exists:
+        return {
+            "recommendation": "recover_or_archive_missing_worktree",
+            "summary": "worker worktree 缺失；先确认分支和登记表，再决定恢复或归档。",
+            "merge_suitable": False,
+            "continue_or_split_task": False,
+            "risk_level": "high",
+            "reasons": reasons or ["cwd/worktree 缺失"],
+            "next_actions": [
+                "运行 git worktree list --porcelain",
+                "确认 worker 分支是否仍存在",
+                "人工决定恢复 worktree 或归档登记",
+            ],
+        }
+
+    if changes.get("status") == "clean":
+        return {
+            "recommendation": "archive_or_wait",
+            "summary": "worker 没有本地改动；可检查汇报后归档或等待下一次状态。",
+            "merge_suitable": False,
+            "continue_or_split_task": False,
+            "risk_level": "low",
+            "reasons": reasons or ["无本地改动"],
+            "next_actions": [
+                "检查 worker 状态协议和日志",
+                "无需合并时归档登记",
+            ],
+        }
+
+    if status == "done":
+        return {
+            "recommendation": "review_then_merge_candidate",
+            "summary": "worker 已完成且有本地改动；建议先复查 diff 并跑验证，通过后再人工合并。",
+            "merge_suitable": True,
+            "continue_or_split_task": False,
+            "risk_level": "medium",
+            "reasons": reasons,
+            "next_actions": [
+                "审查 git diff 和 worker 汇报",
+                "运行建议验证命令",
+                "验证通过后由主控/人工处理合并",
+            ],
+        }
+
+    return {
+        "recommendation": "continue_or_split_task",
+        "summary": "worker 未完成但已有改动；不适合合并，建议按汇报继续推进或拆成后续任务。",
+        "merge_suitable": False,
+        "continue_or_split_task": True,
+        "risk_level": "high",
+        "reasons": reasons,
+        "next_actions": [
+            "阅读 worker 的 SUPERVISOR_NEXT",
+            "判断是否继续当前 worker 或拆出新任务",
+            "暂不合并该 worktree",
+        ],
+    }
+
+
+def _decision_reasons(
+    *,
+    status: str,
+    change_count: int,
+    has_untracked: bool,
+    needs_validation: bool,
+) -> list[str]:
+    reasons: list[str] = []
+    if status:
+        reasons.append(f"worker 汇报 {status}")
+    else:
+        reasons.append("worker 未汇报 SUPERVISOR_STATUS")
+    if change_count:
+        reasons.append(f"存在 {change_count} 个改动路径")
+    if has_untracked:
+        reasons.append("包含未跟踪文件")
+    if needs_validation:
+        reasons.append("需要先运行建议验证命令")
+    return reasons
+
+
+def _has_untracked_files(files: list[dict[str, str]]) -> bool:
+    return any(item.get("status") == "??" for item in files)
+
+
+def _decision_summary(workers: list[dict[str, Any]]) -> dict[str, int]:
+    decisions = [worker.get("next_decision", {}) for worker in workers]
+    return {
+        "merge_candidates": sum(1 for item in decisions if item.get("merge_suitable")),
+        "continue_or_split_tasks": sum(
+            1 for item in decisions if item.get("continue_or_split_task")
+        ),
+        "missing_worktrees": sum(
+            1
+            for item in decisions
+            if item.get("recommendation") == "recover_or_archive_missing_worktree"
+        ),
+        "needs_fresh_review": sum(
+            1 for worker in workers if worker.get("reviewer", {}).get("needed")
+        ),
     }
 
 
