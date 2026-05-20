@@ -38,7 +38,8 @@ def test_merge_work_order_prompt_keeps_branch_and_history_safety_rules():
     assert "禁止删除 worker 分支、base 分支或 worktree" in prompt
     assert "禁止 force push、reset --hard、rebase 已共享分支或重写远端历史" in prompt
     assert "遇到 conflict、测试失败、CI 失败或权限不足时停止并汇报 blocked" in prompt
-    assert "不主动归档、不清理、不删除来源分支" in prompt
+    assert "禁止删除来源分支或 worktree" in prompt
+    assert "cleanup 只允许归档 Supervisor 账本" in prompt
 
 
 def test_merge_work_order_prompt_requires_ci_watch_result_writeback():
@@ -46,9 +47,45 @@ def test_merge_work_order_prompt_requires_ci_watch_result_writeback():
 
     assert "CI run id" in prompt
     assert "CI conclusion" in prompt
+    assert "CI 通过后汇报 SUPERVISOR_STATUS: done" in prompt
+    assert "触发 cleanup 归档" in prompt
+    assert "CI 失败时保留当前 merge worktree" in prompt
     assert "SUPERVISOR_SUMMARY" in prompt
     assert "SUPERVISOR_NEXT" in prompt
     assert "CI 失败时" in prompt
+
+
+def test_merge_work_order_prompt_requires_automatic_ci_verification_after_push():
+    prompt = build_merge_work_order_prompt(_integration_review_payload())
+
+    assert "git rev-parse --abbrev-ref HEAD" in prompt
+    assert "git rev-parse HEAD" in prompt
+    assert (
+        'gh run list --workflow CI --branch "$CURRENT_BRANCH" --commit "$HEAD_SHA"'
+        in prompt
+    )
+    assert "gh run watch CI_RUN_ID --exit-status" in prompt
+    assert "gh run view CI_RUN_ID" in prompt
+    assert "未找到 CI run" in prompt
+    assert "CI conclusion 不是 success" in prompt
+
+
+def test_merge_work_order_prompt_requires_ci_failure_reason_and_stop():
+    prompt = build_merge_work_order_prompt(_integration_review_payload())
+
+    assert "gh run view CI_RUN_ID --log-failed" in prompt
+    assert "测试失败、lint 错误、安装失败或 workflow 配置错误" in prompt
+    assert "不要 rerun CI、不要再次 push、不要无限重试" in prompt
+    assert "SUPERVISOR_STATUS: blocked" in prompt
+
+
+def test_merge_work_order_prompt_requires_ci_timeout_stop():
+    prompt = build_merge_work_order_prompt(_integration_review_payload())
+
+    assert "最多等待 30 分钟" in prompt
+    assert "CI timeout" in prompt
+    assert "超过 30 分钟" in prompt
+    assert "停止并汇报 blocked" in prompt
 
 
 def test_merge_work_order_prompt_handles_empty_ready_group():

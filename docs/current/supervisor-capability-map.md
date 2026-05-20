@@ -132,9 +132,10 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `merge-work-order` builder 会把 `integration-review` 的
   `ready_to_integrate` 候选渲染成给动态 Codex merge worker 的任务单：
   包含目标 base ref、merge candidates、excluded workers、diff review、
-  cherry-pick、组合测试、push/CI watch 和停止规则。它只生成工单文本，
-  不执行 merge、不 push、不归档、不删除分支或 worktree，也不 force push、
-  不 rebase 已共享分支、不重写历史。
+  cherry-pick、组合测试、push/CI watch、CI 失败诊断、30 分钟 watch
+  timeout、CI 通过后的 `done` 汇报和 cleanup 归档交接。它只生成工单文本，
+  不执行 merge、不 push、不删除分支或 worktree，也不 force push、不 rebase
+  已共享分支、不重写历史。
 - merge dispatch 已接入 `loop`：读取 `integration-review` 产出的
   `ready_to_integrate` 候选，调用 `merge-work-order` builder 生成工单，
   再通过现有 `launch_session` 路径启动专门 merge worker。
@@ -427,8 +428,10 @@ cherry-pick、删除 worker 分支或来源历史。唯一允许的删除动作�
 merge worker 成功合入后的交接边界也要分清：
 
 - merge worker 可在工单范围内完成 diff review、cherry-pick、组合测试、
-  push 和 CI watch；只有合并提交已在目标分支、CI 明确通过并能给出提交哈希时，
-  才能汇报 `SUPERVISOR_STATUS: done`。
+  push 和 CI watch；只有合并提交已在目标分支、CI 明确通过并能给出提交哈希、
+  CI run id 和 conclusion 时，才能汇报 `SUPERVISOR_STATUS: done`。
+  CI 失败或超过 30 分钟未结束时必须汇报 `blocked`，并保留 merge worktree
+  供后续复查。
 - `cleanup list/archive` 是生命周期归档入口，只把已完成的 goal、
   managed worker 或通知标记为已处理，让它们退出活跃视图；它不删除 Codex
   历史、不删除 git branch。

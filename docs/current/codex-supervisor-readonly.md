@@ -112,16 +112,16 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
 - `merge-work-order` 当前是工单 builder（生成器）能力：根据
   `integration-review` 的 `ready_to_integrate` 结果渲染给动态 Codex
   merge worker 的任务单，写明 diff review、cherry-pick、组合测试、
-  push/CI watch 和停止条件；builder 本身不执行合并、不删除来源分支、
-  不 force push、不 rebase 已共享分支、不重写历史。
+  push/CI watch、CI 失败诊断、30 分钟 watch timeout、CI 通过后的 `done`
+  汇报和 cleanup 归档交接；builder 本身不执行合并、不删除来源分支或
+  worktree、不 force push、不 rebase 已共享分支、不重写历史。
 - merge dispatch（合并派发）已接入 `loop`：Supervisor 在确认
   `ready_to_integrate` 候选后，会通过现有 `launch_session` 路径自动启动
   专门 merge worker，并把 `merge-work-order` 交给它执行；runner 本身仍不
   直接 merge、push、删除来源分支或改写历史。
-- loop cleanup（收尾清理）会对已完成且不忙的 managed worker 读取
-  `integration-review`：`ready_to_integrate` 只自动归档托管记录并同步
-  done 通知；`already_integrated` 会在归档后复用 `delete_worktree` 护栏
-  执行 `git worktree remove`，但仍不删除来源分支。
+- loop cleanup（收尾清理）当前只对 merge worker 做受限自动归档：merge
+  worker 汇报 `done`，且候选已进入 `already_integrated` 后，归档托管记录
+  和关联 goal；普通 done worker 留给显式 cleanup 或后续专门清理工单。
 - `supervise/loop/daemon start --worker-codex-model <model>
   --worker-codex-config key=value` 可把同类覆盖传给 LLM 自动启动或恢复的
   worker，避免写代码任务继承未知的本机默认配置。

@@ -29,7 +29,8 @@ def build_merge_work_order_prompt(payload: Mapping[str, Any]) -> str:
         (
             "forbidden_scope: 禁止删除 worker 分支、base 分支或 worktree；"
             "禁止 force push、reset --hard、rebase 已共享分支或重写远端历史；"
-            "不主动归档、不清理、不删除来源分支。"
+            "禁止删除来源分支或 worktree；cleanup 只允许归档 Supervisor 账本，"
+            "不能删除 Git 历史或工作目录。"
         ),
         (
             "safety_note: integration-review 是只读 payload；本工单允许动态 worker "
@@ -127,12 +128,42 @@ def _execution_steps(
             "git diff --check，然后 push 当前合并分支。"
         ),
         (
-            "6. CI watch: push 后用 gh run list/gh run view 观察对应分支 CI，"
-            "直到通过或失败；记录 CI run id 和 CI conclusion。"
+            "6. CI watch: push 后自动验证当前分支 CI。先记录 "
+            "CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD) 和 "
+            "HEAD_SHA=$(git rev-parse HEAD)，再运行 gh run list --workflow CI "
+            "--branch \"$CURRENT_BRANCH\" --commit \"$HEAD_SHA\" --limit 1 --json "
+            "databaseId,headSha,status,conclusion,url。"
         ),
         (
-            "7. stop rules: 遇到 conflict、测试失败、CI 失败或权限不足时停止并汇报 blocked；"
-            "不要删除分支、不要重写历史。"
+            "7. CI result: 找到 CI_RUN_ID 后运行 gh run watch CI_RUN_ID --exit-status，"
+            "最多等待 30 分钟；随后运行 gh run view CI_RUN_ID --json "
+            "databaseId,headSha,status,conclusion,url，记录 CI run id、"
+            "CI conclusion 和 URL。"
+        ),
+        (
+            "   CI failure handling: 如果 conclusion 是 failure、cancelled、timed_out "
+            "或 action_required，运行 gh run view CI_RUN_ID --log-failed；"
+            "摘出失败 job/step 和第一段关键错误，区分测试失败、lint 错误、"
+            "安装失败或 workflow 配置错误。"
+        ),
+        (
+            "   CI retry rule: CI 失败后停止并汇报 SUPERVISOR_STATUS: blocked；"
+            "不要 rerun CI、不要再次 push、不要无限重试或静默退出。"
+        ),
+        (
+            "   CI timeout rule: 如果超过 30 分钟仍没有 terminal conclusion，"
+            "按 CI timeout 处理，停止并汇报 blocked，写明 run id、head sha "
+            "和已等待时长。"
+        ),
+        (
+            "8. CI pass cleanup: CI 通过后汇报 SUPERVISOR_STATUS: done，"
+            "在 SUPERVISOR_NEXT 写明触发 cleanup 归档；Supervisor loop/cleanup "
+            "会基于 done 状态归档账本。"
+        ),
+        (
+            "9. stop rules: 遇到 conflict、测试失败、CI 失败或权限不足时停止并汇报 blocked；"
+            "未找到 CI run 或 CI conclusion 不是 success 都按 CI 失败处理；"
+            "CI 失败时保留当前 merge worktree 供人工复查；不要删除分支、不要重写历史。"
         ),
     ]
     if not ready_workers:
@@ -146,7 +177,8 @@ def _report_lines() -> list[str]:
     return [
         (
             "done_conditions: diff review 完成、cherry-pick 结果明确、组合测试和 "
-            "CI watch 有证据，且报告包含 CI run id 和 CI conclusion。"
+            "CI watch 有证据，CI conclusion 必须通过，且报告包含 CI run id、"
+            "CI conclusion 和 cleanup 归档触发说明。"
         ),
         "report_protocol:",
         "SUPERVISOR_STATUS: needs_user|blocked|done",
@@ -156,7 +188,8 @@ def _report_lines() -> list[str]:
         ),
         (
             "SUPERVISOR_NEXT: 用一句中文说明下一步；CI 失败时写明失败时下一步，"
-            "包括需要查看的 CI run id 或需要后续 worker 处理什么。"
+            "包括需要查看的 CI run id 或需要后续 worker 处理什么；CI 通过时写明 "
+            "等待 Supervisor cleanup 归档。"
         ),
     ]
 
