@@ -559,20 +559,23 @@ def _fake_git(
 ):
     def fake_run(
         command: list[str],
-        *,
-        check: bool,
-        text: bool,
-        capture_output: bool,
-        cwd: str | Path | None = None,
-        **_kwargs,
+        **kwargs,
     ) -> subprocess.CompletedProcess[str]:
+        check = kwargs["check"]
+        text = kwargs["text"]
+        capture_output = kwargs["capture_output"]
         assert check is False
         assert text is True
         assert capture_output is True
+        if command == [".venv/bin/python", "-m", "pytest", "tests/isotope", "-q"]:
+            assert Path(kwargs["cwd"]) in responses
+            assert kwargs["env"]["PYTHONPATH"] == "src"
+            return subprocess.CompletedProcess(command, 0, "12 passed in 0.34s\n", "")
         if command[:2] == ["git", "-C"]:
             worktree = Path(command[2])
             args = tuple(command[3:])
         else:
+            cwd = kwargs.get("cwd")
             assert cwd is not None
             worktree = Path(cwd)
             args = tuple(command)

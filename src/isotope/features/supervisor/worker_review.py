@@ -13,6 +13,7 @@ from .flow import (
     _supervisor_protocol_from_text,
 )
 from .registry import ManagedCodexRecord, default_registry_path, read_managed_records
+from .worker_test_gate import collect_worker_test_gate
 
 
 RunCommand = Callable[..., subprocess.CompletedProcess[str]]
@@ -85,6 +86,11 @@ def render_worker_review_plain(payload: dict[str, Any]) -> str:
                 f"  cwd：{worker.get('cwd')} ({'存在' if worker.get('cwd_exists') else '缺失'})",
                 f"  branch：{worktree.get('branch') or '未知'}",
                 f"  状态协议：{protocol.get('status') or '未汇报'} / {protocol.get('summary') or '无摘要'}",
+                "  测试门控：{status} / passed={passed} / exit_code={exit_code}".format(
+                    status=worker.get("test_status") or "unknown",
+                    passed=worker.get("test_passed"),
+                    exit_code=worker.get("test_exit_code"),
+                ),
                 f"  改动：{changes.get('summary')}",
                 f"  下一步决策：{next_decision.get('summary') or '无'}",
                 "  决策标记：适合合并：{merge_suitable} / 继续拆任务：{continue_or_split} / 风险：{risk_level}".format(
@@ -133,11 +139,19 @@ def _worker_review(
     }
     changes = _changes_for_cwd(cwd, run=run) if cwd_exists else _missing_changes()
     validation_commands = _validation_commands(cwd, cwd_exists=cwd_exists)
+    test_gate = collect_worker_test_gate(
+        record,
+        protocol=protocol,
+        cwd=cwd,
+        cwd_exists=cwd_exists,
+        run=run,
+    )
     next_decision = _next_decision(
         protocol=protocol,
         cwd_exists=cwd_exists,
         changes=changes,
         validation_commands=validation_commands,
+        test_gate=test_gate,
     )
     reviewer = _reviewer_suggestion(
         record=record,
@@ -163,6 +177,7 @@ def _worker_review(
         "log_path": record.log_path,
         "worktree": worktree,
         "supervisor_protocol": protocol,
+        **test_gate,
         "changes": changes,
         "validation_commands": validation_commands,
         "next_decision": next_decision,
@@ -298,6 +313,7 @@ def _next_decision(
     cwd_exists: bool,
     changes: dict[str, Any],
     validation_commands: list[str],
+    test_gate: dict[str, Any],
 ) -> dict[str, Any]:
     status = (protocol.get("status") or "").strip().lower()
     changed_files = changes.get("files") or []
@@ -307,6 +323,7 @@ def _next_decision(
         change_count=change_count,
         has_untracked=_has_untracked_files(changed_files),
         needs_validation=bool(validation_commands) and changes.get("status") == "modified",
+        test_passed=test_gate.get("test_passed"),
     )
 
     if not cwd_exists:
@@ -339,6 +356,20 @@ def _next_decision(
         }
 
     if status == "done":
+        if test_gate.get("test_passed") is False:
+            return {
+                "recommendation": "continue_or_split_task",
+                "summary": "worker 已汇报完成但测试门控失败；先复查测试输出并修复后再考虑合并。",
+                "merge_suitable": False,
+                "continue_or_split_task": True,
+                "risk_level": "high",
+                "reasons": reasons,
+                "next_actions": [
+                    "阅读 worker 的 pytest 输出尾部",
+                    "要求 worker 修复失败测试或说明误报",
+                    "重新运行 worker-review 和 integration-review",
+                ],
+            }
         return {
             "recommendation": "review_then_merge_candidate",
             "summary": "worker 已完成且有本地改动；建议先复查 diff 并跑验证，通过后再人工合并。",
@@ -374,6 +405,7 @@ def _decision_reasons(
     change_count: int,
     has_untracked: bool,
     needs_validation: bool,
+    test_passed: bool | None,
 ) -> list[str]:
     reasons: list[str] = []
     if status:
@@ -386,6 +418,8 @@ def _decision_reasons(
         reasons.append("包含未跟踪文件")
     if needs_validation:
         reasons.append("需要先运行建议验证命令")
+    if test_passed is False:
+        reasons.append("pytest gate failed")
     return reasons
 
 
@@ -437,6 +471,10 @@ def _automation_candidates(workers: list[dict[str, Any]]) -> dict[str, list[dict
                 "reasons": decision.get("reasons", []),
                 "next_actions": decision.get("next_actions", []),
                 "validation_commands": worker.get("validation_commands", []),
+                "test_status": worker.get("test_status"),
+                "test_passed": worker.get("test_passed"),
+                "test_exit_code": worker.get("test_exit_code"),
+                "test_output_tail": worker.get("test_output_tail"),
                 "reviewer_command": reviewer.get("command"),
             }
         )

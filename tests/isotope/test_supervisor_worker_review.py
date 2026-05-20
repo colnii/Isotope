@@ -43,14 +43,18 @@ def test_supervisor_worker_review_collects_completed_worker_with_changes(
 
     def fake_run(
         command: list[str],
-        *,
-        check: bool,
-        text: bool,
-        capture_output: bool,
+        **kwargs,
     ) -> subprocess.CompletedProcess[str]:
+        check = kwargs["check"]
+        text = kwargs["text"]
+        capture_output = kwargs["capture_output"]
         assert check is False
         assert text is True
         assert capture_output is True
+        if command == [".venv/bin/python", "-m", "pytest", "tests/isotope", "-q"]:
+            assert Path(kwargs["cwd"]) == workspace
+            assert kwargs["env"]["PYTHONPATH"] == "src"
+            return subprocess.CompletedProcess(command, 0, "12 passed in 0.34s\n", "")
         if command[3:] == ["rev-parse", "--show-toplevel"]:
             return subprocess.CompletedProcess(command, 0, str(workspace) + "\n", "")
         if command[3:] == ["rev-parse", "--abbrev-ref", "HEAD"]:
@@ -157,6 +161,10 @@ def test_supervisor_worker_review_collects_completed_worker_with_changes(
                     "验证通过后由主控/人工处理合并",
                 ],
                 "validation_commands": item["validation_commands"],
+                "test_status": "passed",
+                "test_passed": True,
+                "test_exit_code": 0,
+                "test_output_tail": "12 passed in 0.34s",
                 "reviewer_command": item["reviewer"]["command"],
             }
         ],
@@ -228,6 +236,10 @@ def test_supervisor_worker_review_reports_deleted_worktree(tmp_path):
                 f"test -d {missing_workspace}",
                 "git worktree list --porcelain",
             ],
+            "test_status": "skipped",
+            "test_passed": None,
+            "test_exit_code": None,
+            "test_output_tail": "cwd/worktree 缺失，跳过 pytest。",
             "reviewer_command": None,
         }
     ]
@@ -256,11 +268,11 @@ def test_supervisor_worker_review_reports_clean_worker_and_cli_json(
 
     def fake_run(
         command: list[str],
-        *,
-        check: bool,
-        text: bool,
-        capture_output: bool,
+        **kwargs,
     ) -> subprocess.CompletedProcess[str]:
+        check = kwargs["check"]
+        text = kwargs["text"]
+        capture_output = kwargs["capture_output"]
         if command[3:] == ["rev-parse", "--show-toplevel"]:
             return subprocess.CompletedProcess(command, 0, str(workspace) + "\n", "")
         if command[3:] == ["rev-parse", "--abbrev-ref", "HEAD"]:
@@ -325,11 +337,11 @@ def test_supervisor_worker_review_ignores_status_protocol_prompt_template(tmp_pa
 
     def fake_run(
         command: list[str],
-        *,
-        check: bool,
-        text: bool,
-        capture_output: bool,
+        **kwargs,
     ) -> subprocess.CompletedProcess[str]:
+        check = kwargs["check"]
+        text = kwargs["text"]
+        capture_output = kwargs["capture_output"]
         if command[3:] == ["rev-parse", "--show-toplevel"]:
             return subprocess.CompletedProcess(command, 0, str(workspace) + "\n", "")
         if command[3:] == ["rev-parse", "--abbrev-ref", "HEAD"]:
@@ -377,11 +389,11 @@ def test_supervisor_worker_review_decides_blocked_worker_should_continue_or_spli
 
     def fake_run(
         command: list[str],
-        *,
-        check: bool,
-        text: bool,
-        capture_output: bool,
+        **kwargs,
     ) -> subprocess.CompletedProcess[str]:
+        check = kwargs["check"]
+        text = kwargs["text"]
+        capture_output = kwargs["capture_output"]
         if command[3:] == ["rev-parse", "--show-toplevel"]:
             return subprocess.CompletedProcess(command, 0, str(workspace) + "\n", "")
         if command[3:] == ["rev-parse", "--abbrev-ref", "HEAD"]:
@@ -445,11 +457,15 @@ def test_supervisor_worker_review_quotes_reviewer_command(tmp_path):
 
     def fake_run(
         command: list[str],
-        *,
-        check: bool,
-        text: bool,
-        capture_output: bool,
+        **kwargs,
     ) -> subprocess.CompletedProcess[str]:
+        check = kwargs["check"]
+        text = kwargs["text"]
+        capture_output = kwargs["capture_output"]
+        if command == [".venv/bin/python", "-m", "pytest", "tests/isotope", "-q"]:
+            assert Path(kwargs["cwd"]) == workspace
+            assert kwargs["env"]["PYTHONPATH"] == "src"
+            return subprocess.CompletedProcess(command, 0, "12 passed in 0.34s\n", "")
         if command[3:] == ["rev-parse", "--show-toplevel"]:
             return subprocess.CompletedProcess(command, 0, str(workspace) + "\n", "")
         if command[3:] == ["rev-parse", "--abbrev-ref", "HEAD"]:

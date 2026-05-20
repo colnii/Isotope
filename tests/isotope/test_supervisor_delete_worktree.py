@@ -75,12 +75,21 @@ def test_execute_delete_worktree_removes_archived_integrated_supervisor_worktree
 
     def fake_run(
         command: list[str],
-        *,
-        check: bool = False,
-        text: bool = False,
-        capture_output: bool = False,
+        **kwargs: object,
     ) -> subprocess.CompletedProcess[str]:
         run_calls.append(command)
+        check = kwargs.get("check", False)
+        text = kwargs.get("text", False)
+        capture_output = kwargs.get("capture_output", False)
+        assert check is False
+        assert text is True
+        assert capture_output is True
+        if command == [".venv/bin/python", "-m", "pytest", "tests/isotope", "-q"]:
+            assert Path(kwargs["cwd"]) == worktree
+            env = kwargs["env"]
+            assert isinstance(env, dict)
+            assert env["PYTHONPATH"] == "src"
+            return subprocess.CompletedProcess(command, 0, "12 passed in 0.34s\n", "")
         if command == ["git", "-C", str(worktree), "rev-parse", "--abbrev-ref", "HEAD"]:
             return subprocess.CompletedProcess(command, 0, "supervisor/done-worker-12345678\n", "")
         if command == ["git", "-C", str(worktree), "rev-parse", "HEAD"]:

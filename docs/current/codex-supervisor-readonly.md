@@ -95,14 +95,17 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
 - `launch --backend tmux` 可在本机 tmux 会话里启动 Codex。
 - `launch/resume --codex-model <model> --codex-config key=value` 可覆盖
   后台 Codex worker 的模型和配置。
+- `worker-review` 会对已汇报 `done` 的 process worker 运行
+  `PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q`，并在输出和
+  `automation_candidates` 里记录 `test_passed`、`test_exit_code` 和
+  `test_output_tail`；worktree 缺失时标记为 skipped。
 - `integration-review` 可只读扫描 managed worker 的 branch、worker HEAD、
-  `main` 包含关系、merge conflict 风险和候选 worktree 的 lint/test 结果，输出
+  `main` 包含关系、pytest gate、merge conflict 风险和候选 worktree
+  的 lint/test 结果，输出
   `ready_to_integrate`、`already_integrated`、`needs_review`、
   `conflict_risk` 四组，不执行 merge/push/delete；默认只看未归档且已
   汇报 done 的 worker，排查历史噪音时再加 `--include-unfinished`；
-  原本可进入 `ready_to_integrate` 的候选必须通过 `make lint`（若存在）
-  或 Python 语法检查，以及 `pytest tests/isotope -q`，失败会留在
-  `needs_review` 并输出 validation 摘要。
+  pytest gate 或 validation 失败的 worker 会留在 `needs_review` 并输出摘要。
 - `replan` 可读取 `worker-review`、活跃目标和 `integration-review`
   分组，生成下一轮只读建议、复查合并候选和候选摘要；它只产出建议，
   不自动 merge、不归档、不删除分支或 worktree。

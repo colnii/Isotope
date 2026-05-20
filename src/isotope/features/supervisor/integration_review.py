@@ -10,6 +10,7 @@ from typing import Any, Callable
 
 from .flow import _managed_process_log_excerpt, _supervisor_protocol_from_text
 from .registry import ManagedCodexRecord, default_registry_path, read_managed_records
+from .worker_test_gate import collect_worker_test_gate
 
 RunCommand = Callable[..., subprocess.CompletedProcess[str]]
 
@@ -128,6 +129,13 @@ def render_integration_review_plain(payload: dict[str, Any]) -> str:
             lines.append(f"- {item.get('name')} / {item.get('record_id')}")
             lines.append(f"  {branch} @ {commit}")
             lines.append(f"  cwd：{item.get('cwd')}")
+            lines.append(
+                "  测试门控：{status} / passed={passed} / exit_code={exit_code}".format(
+                    status=item.get("test_status") or "unknown",
+                    passed=item.get("test_passed"),
+                    exit_code=item.get("test_exit_code"),
+                )
+            )
             lines.append(f"  原因：{item.get('reason')}")
             validation = item.get("validation")
             if isinstance(validation, dict) and validation.get("status") != "not_applicable":
@@ -161,6 +169,13 @@ def _worker_integration_review(
     base_commit = _git_text(cwd, ["rev-parse", base_ref], run=run) if cwd_exists else None
     status_text = _git_text(cwd, ["status", "--short"], run=run) if cwd_exists else None
     dirty_paths = _parse_status_paths(status_text)
+    test_gate = collect_worker_test_gate(
+        record,
+        protocol=protocol,
+        cwd=cwd,
+        cwd_exists=cwd_exists,
+        run=run,
+    )
     main_contains_worker = (
         _git_success(cwd, ["merge-base", "--is-ancestor", worker_commit, base_ref], run=run)
         if cwd_exists and worker_commit
@@ -196,6 +211,7 @@ def _worker_integration_review(
         main_has_worker_patch=main_has_worker_patch,
         merge_conflict=merge_check["conflict"],
         merge_worker_source=merge_worker_source,
+        test_gate=test_gate,
     )
     validation = _not_applicable_validation()
     if group == "ready_to_integrate":
@@ -221,6 +237,7 @@ def _worker_integration_review(
         "worker_contains_main": worker_contains_main,
         "dirty": bool(dirty_paths),
         "dirty_paths": dirty_paths,
+        **test_gate,
         "supervisor_protocol": protocol,
         "merge_worker": merge_worker_source is not None,
         "merge_worker_source": merge_worker_source,
@@ -254,6 +271,7 @@ def _classify(
     main_has_worker_patch: bool | None,
     merge_conflict: bool,
     merge_worker_source: str | None,
+    test_gate: dict[str, Any],
 ) -> tuple[str, str, list[str]]:
     status = (protocol.get("status") or "").strip().lower()
     reasons: list[str] = []
@@ -285,6 +303,16 @@ def _classify(
             "needs_review",
             "worker 未汇报 done；先按 SUPERVISOR_NEXT 继续或拆分。",
             reasons,
+        )
+    if test_gate.get("test_passed") is False:
+        return (
+            "needs_review",
+            "worker pytest failed；先复查测试输出并要求 worker 修复。",
+            [
+                *reasons,
+                "pytest gate failed",
+                f"pytest exit code: {test_gate.get('test_exit_code')}",
+            ],
         )
     if not worker_commit or not base_commit:
         return (
