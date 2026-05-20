@@ -111,9 +111,11 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   `conflict_risk`；默认只看未归档且已汇报 done 的 worker，显式传
   `--include-unfinished` 才纳入未完成历史；它不执行 merge、push、
   delete 或归档。
-- `replan` CLI 会读取 `worker-review` 的 `automation_candidates` 和当前
-  active goals，生成下一轮只读建议；输出可用 plain 或 `--json`，
-  不自动合并、不自动归档、不删除 worktree 或分支。
+- `replan` CLI 会读取 `worker-review` 的 `automation_candidates`、当前
+  active goals，以及 `integration-review` 的 `ready_to_integrate`、
+  `already_integrated`、`needs_review`、`conflict_risk` 分组，生成下一轮
+  只读建议和可交给动态 Codex worker 复查的合并候选；输出可用 plain 或
+  `--json`，不自动合并、不自动归档、不删除 worktree 或分支。
 - LLM planner 会看到仍在运行的 process 托管记录作为候选目标，避免状态面板
   误报“只有 tmux 才可控”；已完成的后台 worker 转入
   `worker-review`/`cleanup`，不再被常驻 `loop` 反复催促。

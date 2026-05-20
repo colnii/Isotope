@@ -91,8 +91,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `ready_to_integrate`、`already_integrated`、`needs_review`、
     `conflict_risk` 四组；默认只看未归档且已汇报 done 的 worker，
     `--include-unfinished` 才纳入未完成历史；该入口不执行 merge/push/delete；
-    `replan` 可读取 `worker-review` 的 `automation_candidates` 和当前
-    active goals，输出下一轮只读建议，不自动合并或归档；
+    `replan` 可读取 `worker-review` 的 `automation_candidates`、当前
+    active goals 和 `integration-review` 的四组集成状态，输出下一轮
+    只读建议及可交给动态 Codex worker 复查的合并候选，不自动合并或归档；
     `resume` 可通过
     `codex exec resume <session> <prompt>` 或 `--last` 恢复历史会话，
     会带 `--skip-git-repo-check` 以兼容历史会话落在非仓库父目录的情况，

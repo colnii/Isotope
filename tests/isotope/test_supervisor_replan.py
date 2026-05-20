@@ -174,6 +174,117 @@ def test_supervisor_replan_reports_active_goals_without_worker_candidates():
     ]
 
 
+def test_supervisor_replan_turns_integration_review_groups_into_next_advice():
+    integration_reviews = {
+        "status": "ok",
+        "base_ref": "main",
+        "summary": {
+            "total": 4,
+            "ready_to_integrate": 1,
+            "already_integrated": 1,
+            "needs_review": 1,
+            "conflict_risk": 1,
+        },
+        "groups": {
+            "ready_to_integrate": [
+                {
+                    "record_id": "managed-ready",
+                    "name": "ready-worker",
+                    "cwd": "/repo/.worktrees/supervisor/ready-worker",
+                    "branch": "supervisor/ready-worker",
+                    "worker_commit": "ready111",
+                    "base_ref": "main",
+                    "reason": "worker 已完成、分支干净、main 尚未包含且未检测到 merge conflict。",
+                }
+            ],
+            "already_integrated": [
+                {
+                    "record_id": "managed-done",
+                    "name": "done-worker",
+                    "cwd": "/repo/.worktrees/supervisor/done-worker",
+                    "branch": "supervisor/done-worker",
+                    "worker_commit": "done222",
+                    "base_ref": "main",
+                    "reason": "main 已包含 worker HEAD；可检查后归档。",
+                }
+            ],
+            "needs_review": [
+                {
+                    "record_id": "managed-review",
+                    "name": "review-worker",
+                    "cwd": "/repo/.worktrees/supervisor/review-worker",
+                    "branch": "supervisor/review-worker",
+                    "worker_commit": "review333",
+                    "base_ref": "main",
+                    "reason": "worker worktree 仍有未提交改动；先复查并要求 worker 提交。",
+                }
+            ],
+            "conflict_risk": [
+                {
+                    "record_id": "managed-conflict",
+                    "name": "conflict-worker",
+                    "cwd": "/repo/.worktrees/supervisor/conflict-worker",
+                    "branch": "supervisor/conflict-worker",
+                    "worker_commit": "conflict444",
+                    "base_ref": "main",
+                    "reason": "只读 merge-tree 检测到 conflict；需要人工 rebase/merge 处理。",
+                }
+            ],
+        },
+        "safety": {"auto_merge": False, "push": False, "delete_branch": False},
+    }
+
+    payload = build_supervisor_replan(
+        worker_reviews={"automation_candidates": {}},
+        integration_reviews=integration_reviews,
+        active_goals=[],
+    )
+
+    assert payload["summary"] == {
+        "total": 4,
+        "review_then_merge": 1,
+        "continue_or_split": 1,
+        "archive_or_wait": 1,
+        "recover_or_archive": 1,
+        "active_goals": 0,
+        "ready_to_integrate": 1,
+        "already_integrated": 1,
+        "needs_review": 1,
+        "conflict_risk": 1,
+        "merge_candidates": 1,
+    }
+    kinds = [item["kind"] for item in payload["recommendations"]]
+    assert kinds == [
+        "review_then_merge",
+        "archive_or_wait",
+        "continue_or_split",
+        "recover_or_archive",
+    ]
+    ready = payload["recommendations"][0]
+    assert ready["integration_group"] == "ready_to_integrate"
+    assert ready["worker_commit"] == "ready111"
+    assert ready["dynamic_codex_candidate"] is True
+    assert ready["next_actions"] == [
+        "交给动态 Codex worker 做最终 diff/test 复查",
+        "复查通过后由主控或人工执行 merge",
+        "merge 后再次运行 integration-review 确认 main 已包含 worker HEAD",
+    ]
+    assert payload["merge_candidates"] == [
+        {
+            "record_id": "managed-ready",
+            "name": "ready-worker",
+            "target_name": "ready-worker",
+            "cwd": "/repo/.worktrees/supervisor/ready-worker",
+            "branch": "supervisor/ready-worker",
+            "worker_commit": "ready111",
+            "base_ref": "main",
+            "reason": "worker 已完成、分支干净、main 尚未包含且未检测到 merge conflict。",
+            "handoff": "dynamic_codex_worker",
+            "read_only": True,
+        }
+    ]
+
+
 def test_supervisor_replan_plain_output_keeps_safety_visible():
     payload = build_supervisor_replan(
         worker_reviews={
@@ -196,6 +307,40 @@ def test_supervisor_replan_plain_output_keeps_safety_visible():
     assert "总建议：1 / 复查合并 1 / 继续拆分 0 / 归档等待 0 / 恢复/归档 0 / active goals 0" in text
     assert "安全：只生成下一轮建议，不自动合并、不自动归档、不删除 worktree 或分支。" in text
     assert "复查合并：merge-ready / managed-001" in text
+
+
+def test_supervisor_replan_plain_output_prints_integration_merge_candidates():
+    payload = build_supervisor_replan(
+        worker_reviews={"automation_candidates": {}},
+        integration_reviews={
+            "summary": {
+                "ready_to_integrate": 1,
+                "already_integrated": 0,
+                "needs_review": 0,
+                "conflict_risk": 0,
+            },
+            "groups": {
+                "ready_to_integrate": [
+                    {
+                        "record_id": "managed-ready",
+                        "name": "ready-worker",
+                        "cwd": "/repo/.worktrees/supervisor/ready-worker",
+                        "branch": "supervisor/ready-worker",
+                        "worker_commit": "ready111",
+                        "base_ref": "main",
+                        "reason": "ready",
+                    }
+                ]
+            },
+        },
+        active_goals=[],
+    )
+
+    text = render_supervisor_replan_plain(payload)
+
+    assert "integration：ready_to_integrate 1 / already_integrated 0 / needs_review 0 / conflict_risk 0" in text
+    assert "可交给动态 Codex worker 的合并候选：" in text
+    assert "ready-worker / managed-ready / supervisor/ready-worker @ ready111" in text
 
 
 def test_supervisor_replan_cli_json_turns_worker_review_candidates_into_advice(
@@ -244,6 +389,63 @@ def test_supervisor_replan_cli_json_turns_worker_review_candidates_into_advice(
     assert payload["recommendations"][0]["target_name"] == "ready-worker"
     assert payload["recommendations"][0]["read_only"] is True
     assert payload["safety"]["auto_merge"] is False
+
+
+def test_supervisor_replan_cli_json_reads_integration_review_candidates(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_worker_reviews",
+        lambda *, codex_home: {"automation_candidates": {}},
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_integration_reviews",
+        lambda *, codex_home, base_ref, include_unfinished: {
+            "summary": {
+                "ready_to_integrate": 1,
+                "already_integrated": 0,
+                "needs_review": 0,
+                "conflict_risk": 0,
+            },
+            "groups": {
+                "ready_to_integrate": [
+                    {
+                        "record_id": "managed-ready",
+                        "name": "ready-worker",
+                        "cwd": "/repo/.worktrees/supervisor/ready-worker",
+                        "branch": "supervisor/ready-worker",
+                        "worker_commit": "ready111",
+                        "base_ref": base_ref,
+                        "reason": "ready",
+                    }
+                ]
+            },
+        },
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._active_goal_dicts",
+        lambda args, **kwargs: [],
+    )
+
+    exit_code = supervisor_main(
+        [
+            "replan",
+            "--codex-home",
+            str(tmp_path / ".codex"),
+            "--base",
+            "main",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["summary"]["ready_to_integrate"] == 1
+    assert payload["summary"]["merge_candidates"] == 1
+    assert payload["merge_candidates"][0]["record_id"] == "managed-ready"
+    assert payload["recommendations"][0]["dynamic_codex_candidate"] is True
 
 
 def test_supervisor_replan_cli_plain_prints_read_only_advice(

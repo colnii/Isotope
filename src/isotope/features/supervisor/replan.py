@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 from typing import Any
 
 
@@ -30,10 +31,44 @@ _BUCKETS: tuple[tuple[str, str, str], ...] = (
 _BUCKET_LABELS = {kind: label for kind, label, _guardrail in _BUCKETS}
 _BUCKET_GUARDRAILS = {kind: guardrail for kind, _label, guardrail in _BUCKETS}
 
+_INTEGRATION_GROUPS: tuple[str, ...] = (
+    "ready_to_integrate",
+    "already_integrated",
+    "needs_review",
+    "conflict_risk",
+)
+_INTEGRATION_KIND = {
+    "ready_to_integrate": "review_then_merge",
+    "already_integrated": "archive_or_wait",
+    "needs_review": "continue_or_split",
+    "conflict_risk": "recover_or_archive",
+}
+_INTEGRATION_NEXT_ACTIONS = {
+    "ready_to_integrate": [
+        "交给动态 Codex worker 做最终 diff/test 复查",
+        "复查通过后由主控或人工执行 merge",
+        "merge 后再次运行 integration-review 确认 main 已包含 worker HEAD",
+    ],
+    "already_integrated": [
+        "复查 main 是否包含 worker HEAD",
+        "确认无需后续动作后归档 worker 记录",
+    ],
+    "needs_review": [
+        "按 integration-review 原因复查 worker worktree",
+        "要求 worker 提交、继续或拆分下一轮任务",
+    ],
+    "conflict_risk": [
+        "不要自动合并",
+        "交给人工或专门 worker 处理 rebase/merge conflict",
+        "冲突处理后重新运行 integration-review",
+    ],
+}
+
 
 def build_supervisor_replan(
     *,
     worker_reviews: dict[str, Any] | None,
+    integration_reviews: dict[str, Any] | None = None,
     active_goals: list[dict[str, Any]] | None,
 ) -> dict[str, Any]:
     """Build read-only advice for the next Supervisor loop.
@@ -47,6 +82,7 @@ def build_supervisor_replan(
     goal_index = _active_goal_index(goals)
     matched_goal_keys: set[str] = set()
     recommendations: list[dict[str, Any]] = []
+    recommendation_index: dict[str, dict[str, Any]] = {}
 
     automation_candidates = worker_payload.get("automation_candidates")
     if not isinstance(automation_candidates, dict):
@@ -61,7 +97,18 @@ def build_supervisor_replan(
                 continue
             goal, goal_keys = _match_active_goal(candidate, goal_index)
             matched_goal_keys.update(goal_keys)
-            recommendations.append(_candidate_recommendation(kind, candidate, goal))
+            recommendation = _candidate_recommendation(kind, candidate, goal)
+            recommendations.append(recommendation)
+            _index_recommendation(recommendation_index, recommendation)
+
+    integration_payload = integration_reviews if isinstance(integration_reviews, dict) else {}
+    _append_integration_recommendations(
+        recommendations=recommendations,
+        recommendation_index=recommendation_index,
+        integration_reviews=integration_payload,
+        goal_index=goal_index,
+        matched_goal_keys=matched_goal_keys,
+    )
 
     for goal in goals:
         keys = _goal_keys(goal)
@@ -69,15 +116,25 @@ def build_supervisor_replan(
             continue
         recommendations.append(_active_goal_recommendation(goal))
 
-    summary = _summary(recommendations, len(goals))
+    merge_candidates = _merge_candidates(recommendations)
+    summary = _summary(
+        recommendations,
+        len(goals),
+        integration_reviews=integration_payload,
+        merge_candidate_count=len(merge_candidates),
+    )
     return {
         "status": "ok",
         "summary": summary,
         "recommendations": recommendations,
+        "merge_candidates": merge_candidates,
         "safety": _safety(),
         "source": {
             "worker_review_status": worker_payload.get("status"),
             "worker_review_safety": worker_payload.get("safety") or {},
+            "integration_review_status": integration_payload.get("status"),
+            "integration_review_safety": integration_payload.get("safety") or {},
+            "integration_review_base": integration_payload.get("base_ref"),
         },
     }
 
@@ -103,6 +160,31 @@ def render_supervisor_replan_plain(payload: dict[str, Any]) -> str:
         ),
         f"安全：{safety.get('note') or '只读建议。'}",
     ]
+    if _has_integration_summary(summary):
+        lines.append(
+            "integration：ready_to_integrate {ready_to_integrate} / "
+            "already_integrated {already_integrated} / needs_review {needs_review} / "
+            "conflict_risk {conflict_risk}".format(
+                ready_to_integrate=summary.get("ready_to_integrate", 0),
+                already_integrated=summary.get("already_integrated", 0),
+                needs_review=summary.get("needs_review", 0),
+                conflict_risk=summary.get("conflict_risk", 0),
+            )
+        )
+    merge_candidates = payload.get("merge_candidates")
+    if isinstance(merge_candidates, list) and merge_candidates:
+        lines.extend(["", "可交给动态 Codex worker 的合并候选："])
+        for candidate in merge_candidates:
+            if not isinstance(candidate, dict):
+                continue
+            lines.append(
+                "- {name} / {record_id} / {branch} @ {commit}".format(
+                    name=candidate.get("name") or "未知目标",
+                    record_id=candidate.get("record_id") or "无 worker record",
+                    branch=candidate.get("branch") or "未知分支",
+                    commit=candidate.get("worker_commit") or "未知提交",
+                )
+            )
     for item in payload.get("recommendations", []):
         if not isinstance(item, dict):
             continue
@@ -178,6 +260,89 @@ def _active_goal_recommendation(goal: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _append_integration_recommendations(
+    *,
+    recommendations: list[dict[str, Any]],
+    recommendation_index: dict[str, dict[str, Any]],
+    integration_reviews: dict[str, Any],
+    goal_index: dict[str, dict[str, Any]],
+    matched_goal_keys: set[str],
+) -> None:
+    groups = integration_reviews.get("groups")
+    if not isinstance(groups, dict):
+        return
+    for integration_group in _INTEGRATION_GROUPS:
+        raw_items = groups.get(integration_group)
+        if not isinstance(raw_items, list):
+            continue
+        for worker in raw_items:
+            if not isinstance(worker, dict):
+                continue
+            goal, goal_keys = _match_active_goal(worker, goal_index)
+            matched_goal_keys.update(goal_keys)
+            recommendation = _integration_recommendation(integration_group, worker, goal)
+            existing = _find_indexed_recommendation(recommendation_index, recommendation)
+            if existing is None:
+                recommendations.append(recommendation)
+                _index_recommendation(recommendation_index, recommendation)
+            else:
+                existing.update(recommendation)
+                _index_recommendation(recommendation_index, existing)
+
+
+def _integration_recommendation(
+    integration_group: str,
+    worker: dict[str, Any],
+    goal: dict[str, Any] | None,
+) -> dict[str, Any]:
+    kind = _INTEGRATION_KIND[integration_group]
+    target_name = _target_name(worker)
+    return {
+        "kind": kind,
+        "label": _BUCKET_LABELS[kind],
+        "record_id": worker.get("record_id"),
+        "name": worker.get("name"),
+        "target_name": target_name,
+        "goal": goal,
+        "cwd": worker.get("cwd"),
+        "branch": worker.get("branch"),
+        "risk_level": _integration_risk_level(integration_group),
+        "reason": worker.get("reason"),
+        "next_actions": list(_INTEGRATION_NEXT_ACTIONS[integration_group]),
+        "validation_commands": _integration_validation_commands(worker),
+        "reviewer_command": None,
+        "read_only": True,
+        "guardrail": _BUCKET_GUARDRAILS[kind],
+        "integration_group": integration_group,
+        "base_ref": worker.get("base_ref"),
+        "base_commit": worker.get("base_commit"),
+        "worker_commit": worker.get("worker_commit"),
+        "main_contains_worker": worker.get("main_contains_worker"),
+        "worker_contains_main": worker.get("worker_contains_main"),
+        "merge_conflict": worker.get("merge_conflict"),
+        "dynamic_codex_candidate": integration_group == "ready_to_integrate",
+    }
+
+
+def _integration_risk_level(integration_group: str) -> str:
+    if integration_group == "ready_to_integrate":
+        return "medium"
+    if integration_group == "already_integrated":
+        return "low"
+    return "high"
+
+
+def _integration_validation_commands(worker: dict[str, Any]) -> list[str]:
+    cwd = worker.get("cwd")
+    if not isinstance(cwd, str) or not cwd:
+        return []
+    quoted_cwd = shlex.quote(cwd)
+    return [
+        f"git -C {quoted_cwd} status --short --branch",
+        f"git -C {quoted_cwd} log --oneline -1",
+    ]
+
+
 def _active_goal_index(goals: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     index: dict[str, dict[str, Any]] = {}
     for goal in goals:
@@ -195,6 +360,25 @@ def _match_active_goal(
         if goal is not None:
             return goal, _goal_keys(goal)
     return None, set()
+
+
+def _index_recommendation(
+    recommendation_index: dict[str, dict[str, Any]],
+    recommendation: dict[str, Any],
+) -> None:
+    for key in _candidate_keys(recommendation):
+        recommendation_index.setdefault(key, recommendation)
+
+
+def _find_indexed_recommendation(
+    recommendation_index: dict[str, dict[str, Any]],
+    recommendation: dict[str, Any],
+) -> dict[str, Any] | None:
+    for key in _candidate_keys(recommendation):
+        existing = recommendation_index.get(key)
+        if existing is not None:
+            return existing
+    return None
 
 
 def _candidate_keys(candidate: dict[str, Any]) -> set[str]:
@@ -239,8 +423,11 @@ def _string_list(raw: Any) -> list[str]:
 def _summary(
     recommendations: list[dict[str, Any]],
     active_goal_count: int,
+    *,
+    integration_reviews: dict[str, Any],
+    merge_candidate_count: int,
 ) -> dict[str, int]:
-    return {
+    summary = {
         "total": len(recommendations),
         "review_then_merge": _count_kind(recommendations, "review_then_merge"),
         "continue_or_split": _count_kind(recommendations, "continue_or_split"),
@@ -248,10 +435,55 @@ def _summary(
         "recover_or_archive": _count_kind(recommendations, "recover_or_archive"),
         "active_goals": active_goal_count,
     }
+    if _has_integration_payload(integration_reviews):
+        summary.update(_integration_summary(integration_reviews))
+        summary["merge_candidates"] = merge_candidate_count
+    return summary
 
 
 def _count_kind(recommendations: list[dict[str, Any]], kind: str) -> int:
     return sum(1 for item in recommendations if item.get("kind") == kind)
+
+
+def _integration_summary(integration_reviews: dict[str, Any]) -> dict[str, int]:
+    raw_summary = integration_reviews.get("summary")
+    raw_summary = raw_summary if isinstance(raw_summary, dict) else {}
+    return {
+        group: raw_summary.get(group, 0) if isinstance(raw_summary.get(group, 0), int) else 0
+        for group in _INTEGRATION_GROUPS
+    }
+
+
+def _has_integration_payload(integration_reviews: dict[str, Any]) -> bool:
+    return isinstance(integration_reviews.get("summary"), dict) or isinstance(
+        integration_reviews.get("groups"), dict
+    )
+
+
+def _has_integration_summary(summary: dict[str, Any]) -> bool:
+    return any(summary.get(group, 0) for group in _INTEGRATION_GROUPS)
+
+
+def _merge_candidates(recommendations: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    for recommendation in recommendations:
+        if recommendation.get("integration_group") != "ready_to_integrate":
+            continue
+        candidates.append(
+            {
+                "record_id": recommendation.get("record_id"),
+                "name": recommendation.get("name"),
+                "target_name": recommendation.get("target_name"),
+                "cwd": recommendation.get("cwd"),
+                "branch": recommendation.get("branch"),
+                "worker_commit": recommendation.get("worker_commit"),
+                "base_ref": recommendation.get("base_ref"),
+                "reason": recommendation.get("reason"),
+                "handoff": "dynamic_codex_worker",
+                "read_only": True,
+            }
+        )
+    return candidates
 
 
 def _safety() -> dict[str, Any]:

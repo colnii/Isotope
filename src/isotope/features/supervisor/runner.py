@@ -833,6 +833,16 @@ def _build_parser() -> argparse.ArgumentParser:
         default=str(Path.home() / ".codex"),
         help="Codex home directory. Defaults to ~/.codex.",
     )
+    replan_parser.add_argument(
+        "--base",
+        default="main",
+        help="Base branch/ref to check integration readiness against. Defaults to main.",
+    )
+    replan_parser.add_argument(
+        "--include-unfinished",
+        action="store_true",
+        help="Also include non-done workers in the integration-review input.",
+    )
     replan_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     context_parser = subparsers.add_parser(
         "context",
@@ -3531,6 +3541,11 @@ def _goal_payload(args: argparse.Namespace) -> dict[str, Any]:
 def _replan_payload(args: argparse.Namespace) -> dict[str, Any]:
     return build_supervisor_replan(
         worker_reviews=collect_worker_reviews(codex_home=Path(args.codex_home)),
+        integration_reviews=collect_integration_reviews(
+            codex_home=Path(args.codex_home),
+            base_ref=args.base,
+            include_unfinished=args.include_unfinished,
+        ),
         active_goals=_active_goal_dicts(args, include_status=True),
     )
 
