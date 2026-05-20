@@ -48,6 +48,7 @@ from .flow import (
     _tmux_capture_pane,
     render_plain_report,
 )
+from .fanout import DEFAULT_FANOUT_LIMIT, build_fanout_launch_plan
 from .goal_queue import (
     archive_supervisor_goal,
     read_latest_supervisor_goal_statuses,
@@ -259,6 +260,12 @@ def _build_parser() -> argparse.ArgumentParser:
             help="Maximum elapsed minutes before send_continue is blocked for a lane. Default 0 disables.",
         )
         subparsers.choices[command].add_argument(
+            "--max-fanout-launches",
+            type=int,
+            default=DEFAULT_FANOUT_LIMIT,
+            help="Maximum launch_session actions fanout may execute in one iteration.",
+        )
+        subparsers.choices[command].add_argument(
             "--worker-profile",
             choices=WORKER_PROFILE_CHOICES,
             default=DEFAULT_WORKER_PROFILE,
@@ -380,6 +387,12 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=DEFAULT_MAX_RUN_MINUTES,
         help="Maximum elapsed minutes before send_continue is blocked for a lane. Default 0 disables.",
+    )
+    loop_parser.add_argument(
+        "--max-fanout-launches",
+        type=int,
+        default=DEFAULT_FANOUT_LIMIT,
+        help="Maximum launch_session actions fanout may execute in one loop iteration.",
     )
     loop_parser.add_argument(
         "--worker-profile",
@@ -910,6 +923,45 @@ def _build_parser() -> argparse.ArgumentParser:
         "--write",
         action="store_true",
         help="Write generated candidates into the persistent goal queue.",
+    )
+    goal_plan_parser.add_argument(
+        "--fanout-execute",
+        action="store_true",
+        help="After --write, execute parallel_recommendations as controlled launch_session actions.",
+    )
+    goal_plan_parser.add_argument(
+        "--max-fanout-launches",
+        type=int,
+        default=DEFAULT_FANOUT_LIMIT,
+        help="Maximum launch_session actions fanout may execute for this plan.",
+    )
+    goal_plan_parser.add_argument(
+        "--prompt-cooldown",
+        type=int,
+        default=DEFAULT_PROMPT_COOLDOWN_SECONDS,
+        help="Seconds before repeating launch_session for the same lane.",
+    )
+    goal_plan_parser.add_argument(
+        "--max-run-minutes",
+        type=int,
+        default=DEFAULT_MAX_RUN_MINUTES,
+        help="Maximum elapsed minutes before launch_session is blocked for a lane. Default 0 disables.",
+    )
+    goal_plan_parser.add_argument(
+        "--worker-profile",
+        choices=WORKER_PROFILE_CHOICES,
+        default=DEFAULT_WORKER_PROFILE,
+        help="Worker profile for Codex workers launched by fanout.",
+    )
+    goal_plan_parser.add_argument(
+        "--worker-codex-model",
+        help="Pass -m/--model to Codex workers launched by fanout.",
+    )
+    goal_plan_parser.add_argument(
+        "--worker-codex-config",
+        action="append",
+        default=None,
+        help="Pass one -c key=value override to Codex workers. Repeatable.",
     )
     goal_plan_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     for goal_command, help_text in (
@@ -2297,6 +2349,8 @@ def _validate_execution_modes(args: argparse.Namespace) -> None:
         raise ValueError("max_context_requests must be zero or positive")
     if getattr(args, "max_run_minutes", 0) < 0:
         raise ValueError("max_run_minutes must be zero or positive")
+    if getattr(args, "max_fanout_launches", 1) <= 0:
+        raise ValueError("max_fanout_launches must be positive")
     modes = [
         name
         for name, enabled in (
@@ -2457,8 +2511,13 @@ def _supervise_payload(
     )
     if args.llm_summary:
         payload["llm_summary"] = _summarize_with_llm(report)
+    fanout_plan = _active_goals_fanout_launch_plan(args, report, active_goals)
+    if fanout_plan is not None and (args.llm_action or args.llm_execute):
+        payload["fanout_plan"] = fanout_plan
     if args.llm_action or args.llm_execute:
-        if _loop_without_autonomous_scope(
+        if fanout_plan is not None:
+            payload["llm_action"] = _fanout_llm_action(fanout_plan)
+        elif _loop_without_autonomous_scope(
             args,
             action_report,
             active_goals,
@@ -2469,8 +2528,11 @@ def _supervise_payload(
             payload["llm_action"] = _decide_action_with_llm(action_report, payload)
             _promote_llm_command_suggestion(payload)
     if args.llm_execute:
-        payload["executed"] = _execute_llm_action(args, action_report, payload)
-        _maybe_replan_after_context_request(args, action_report, payload)
+        if fanout_plan is not None:
+            payload["executed"] = _execute_fanout_launch_actions(args, fanout_plan)
+        else:
+            payload["executed"] = _execute_llm_action(args, action_report, payload)
+            _maybe_replan_after_context_request(args, action_report, payload)
     elif args.auto_execute:
         auto_action = precomputed_auto_action or _auto_execute_action(
             action_report,
@@ -2490,6 +2552,81 @@ def _supervise_payload(
         payload["executed"] = _execute_advice(args, report, payload)
     payload["decision_requests"] = _decision_request_dicts(args)
     return payload
+
+
+def _active_goals_fanout_launch_plan(
+    args: argparse.Namespace,
+    report: Any,
+    active_goals: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    if getattr(args, "command", None) != "loop":
+        return None
+    if getattr(args, "name", None):
+        return None
+    targets = [
+        target_name
+        for goal in active_goals
+        for target_name in (goal.get("target_name"),)
+        if isinstance(target_name, str) and target_name
+    ]
+    if len(targets) < 2:
+        return None
+    goal_plan = {
+        "goals": active_goals,
+        "parallel_recommendations": [
+            {
+                "batch": "active_goals",
+                "targets": targets,
+                "reason": "多个 active goals 可并行启动受控 worker。",
+            }
+        ],
+    }
+    return build_fanout_launch_plan(
+        goal_plan,
+        limit=getattr(args, "max_fanout_launches", DEFAULT_FANOUT_LIMIT),
+        running_target_names=_running_managed_target_names(report),
+        requires_human_review=False,
+    )
+
+
+def _fanout_llm_action(fanout_plan: dict[str, Any]) -> dict[str, Any]:
+    launchable = fanout_plan.get("summary", {}).get("launchable", 0)
+    if launchable:
+        reason = "多个 active goals 可并行启动受控 worker。"
+    else:
+        reason = "多个 active goals 已被 running worker 或 fanout gate 跳过。"
+    return {
+        "kind": "fanout_launch_sessions",
+        "target_name": None,
+        "reason": reason,
+        "command_suggestion": None,
+    }
+
+
+def _execute_fanout_launch_actions(
+    args: argparse.Namespace,
+    fanout_plan: dict[str, Any],
+) -> dict[str, Any]:
+    results: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+    for launch_spec in fanout_plan.get("launch_specs") or []:
+        if not isinstance(launch_spec, dict):
+            continue
+        result = _execute_launch_action(args, launch_spec)
+        if result.get("skipped"):
+            skipped.append(result)
+        else:
+            results.append(result)
+    return {
+        "kind": "fanout_launch_sessions",
+        "summary": {
+            "launched": len(results),
+            "skipped": len(skipped),
+            "limit": fanout_plan.get("summary", {}).get("limit"),
+        },
+        "results": results,
+        "skipped": skipped,
+    }
 
 
 def _loop_without_autonomous_scope(
@@ -3297,8 +3434,10 @@ def _goal_payload(args: argparse.Namespace) -> dict[str, Any]:
             "active_goals": _active_goal_dicts(args, include_status=True),
         }
     if args.goal_command == "plan":
+        if args.fanout_execute and not args.write:
+            raise ValueError("fanout-execute requires --write")
         provider = resolve_summary_provider_from_env(agent_name="supervisor")
-        return plan_supervisor_goals(
+        payload = plan_supervisor_goals(
             root=Path(args.cwd),
             codex_home=Path(args.codex_home),
             provider=provider,
@@ -3306,6 +3445,19 @@ def _goal_payload(args: argparse.Namespace) -> dict[str, Any]:
             write=args.write,
             limit=args.limit,
         )
+        if args.fanout_execute:
+            fanout_plan = build_fanout_launch_plan(
+                payload,
+                cwd=str(Path(args.cwd).expanduser()),
+                limit=args.max_fanout_launches,
+                running_target_names=_running_managed_target_names_from_registry(
+                    Path(args.codex_home)
+                ),
+                requires_human_review=False,
+            )
+            payload["fanout_plan"] = fanout_plan
+            payload["executed"] = _execute_fanout_launch_actions(args, fanout_plan)
+        return payload
     if args.goal_command == "list":
         return {
             "status": "ok",
@@ -3411,6 +3563,8 @@ def _print_goal_plain(payload: dict[str, Any]) -> None:
     written_goals = payload.get("written_goals") or []
     if written_goals:
         print(f"已写入目标：{len(written_goals)}")
+    if executed := payload.get("executed"):
+        _print_executed_plain(executed)
     goals = payload.get("active_goals") or []
     print(f"活跃目标：{len(goals)}")
     for item in goals:
@@ -3877,6 +4031,20 @@ def _print_executed_plain(executed: dict[str, Any]) -> None:
     if executed.get("kind") == "ask_user":
         print(f"等待拍板：{executed['question']}")
         return
+    if executed.get("kind") == "fanout_launch_sessions":
+        summary = executed.get("summary") or {}
+        print(
+            "fanout 已执行："
+            f"{summary.get('launched', 0)} 个启动，"
+            f"{summary.get('skipped', 0)} 个跳过"
+        )
+        for result in executed.get("results") or []:
+            if isinstance(result, dict) and result.get("command"):
+                print(f"已执行：{result['command']}")
+        for result in executed.get("skipped") or []:
+            if isinstance(result, dict) and result.get("reason"):
+                print(f"已跳过：{result['reason']}")
+        return
     if executed.get("skipped"):
         print(f"已跳过：{executed['reason']}")
         return
@@ -4016,6 +4184,16 @@ def _running_managed_target_names(report: Any) -> set[str]:
         if _session_marks_terminal_done(session):
             continue
         names.add(name)
+    return names
+
+
+def _running_managed_target_names_from_registry(codex_home: Path) -> set[str]:
+    names: set[str] = set()
+    for record in read_managed_records(default_registry_path(codex_home)):
+        if record.backend == "tmux":
+            continue
+        if _pid_is_running(record.pid):
+            names.add(record.name)
     return names
 
 

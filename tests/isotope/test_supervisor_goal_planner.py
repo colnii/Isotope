@@ -108,6 +108,34 @@ class BoardPlanGoalProvider:
         )
 
 
+class ParallelWriteGoalProvider:
+    def summarize(self, messages: list[dict[str, str]]) -> str:
+        return json.dumps(
+            {
+                "parallel_recommendations": [
+                    {
+                        "batch": "并行批次",
+                        "targets": ["worker-a", "worker-b"],
+                        "reason": "两个目标可独立落地。",
+                    }
+                ],
+                "goals": [
+                    {
+                        "goal": "实现 worker A。",
+                        "target_name": "worker-a",
+                        "reason": "A 可独立执行。",
+                    },
+                    {
+                        "goal": "实现 worker B。",
+                        "target_name": "worker-b",
+                        "reason": "B 可独立执行。",
+                    },
+                ],
+            },
+            ensure_ascii=False,
+        )
+
+
 class NonJsonGoalProvider:
     def summarize(self, messages: list[dict[str, str]]) -> str:
         return "我需要更多上下文，暂时不能给出目标。"
@@ -207,6 +235,94 @@ def test_supervisor_goal_plan_writes_selected_candidates(
     assert len(active) == 1
     assert active[0].goal == "为 Supervisor web 增加目标队列状态筛选。"
     assert active[0].target_name == "supervisor-web-goal-filter"
+
+
+def test_supervisor_goal_plan_can_fanout_execute_parallel_recommendations(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    root = tmp_path / "repo"
+    root.mkdir()
+    _write_current_docs(root)
+    codex_home = tmp_path / ".codex"
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: ParallelWriteGoalProvider(),
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._prepare_launch_worktree",
+        lambda *, cwd, target_name: {
+            "enabled": False,
+            "source_cwd": str(cwd),
+            "cwd": str(cwd),
+            "reason": "test_stub",
+        },
+    )
+    captured: list[list[str]] = []
+
+    class FakeProcess:
+        def __init__(self, pid: int) -> None:
+            self.pid = pid
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured.append(command)
+        return FakeProcess(45700 + len(captured))
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+
+    exit_code = supervisor_main(
+        [
+            "goal",
+            "plan",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(root),
+            "--write",
+            "--fanout-execute",
+            "--max-fanout-launches",
+            "1",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert [goal["target_name"] for goal in payload["written_goals"]] == [
+        "worker-a",
+        "worker-b",
+    ]
+    assert payload["fanout_plan"]["summary"] == {
+        "launchable": 1,
+        "skipped": 1,
+        "limit": 1,
+    }
+    assert payload["fanout_plan"]["skipped"] == [
+        {
+            "target_name": "worker-b",
+            "reason": "fanout_limit_reached",
+            "batch": "并行批次",
+        }
+    ]
+    assert payload["fanout_plan"]["launch_specs"][0]["review"][
+        "requires_human_review"
+    ] is False
+    assert payload["executed"]["summary"] == {
+        "launched": 1,
+        "skipped": 0,
+        "limit": 1,
+    }
+    assert payload["executed"]["results"][0]["managed"]["name"] == "worker-a"
+    assert len(captured) == 1
 
 
 def test_supervisor_goal_plan_surfaces_board_level_review_plan(

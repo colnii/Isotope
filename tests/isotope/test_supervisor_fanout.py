@@ -44,7 +44,7 @@ def test_supervisor_fanout_turns_parallel_recommendations_into_launch_specs():
             "candidate_reason": "状态按钮和 hosted output 写入区域不同。",
             "review": {
                 "requires_human_review": True,
-                "note": "fanout 只生成可审阅 launch spec，不直接启动 worker。",
+                "note": "fanout 只生成受控 launch spec；runner 执行时仍需通过 launch gate。",
             },
         },
         {
@@ -58,7 +58,7 @@ def test_supervisor_fanout_turns_parallel_recommendations_into_launch_specs():
             "candidate_reason": "状态按钮和 hosted output 写入区域不同。",
             "review": {
                 "requires_human_review": True,
-                "note": "fanout 只生成可审阅 launch spec，不直接启动 worker。",
+                "note": "fanout 只生成受控 launch spec；runner 执行时仍需通过 launch gate。",
             },
         },
     ]

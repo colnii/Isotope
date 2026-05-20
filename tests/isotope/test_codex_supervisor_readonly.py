@@ -12070,6 +12070,166 @@ def test_codex_supervisor_runner_loop_uses_persisted_goal_queue(
     ][9]
 
 
+def test_codex_supervisor_runner_loop_fanout_launches_parallel_active_goals(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    goals = [
+        ("实现 worker A。", "worker-a"),
+        ("实现 worker B。", "worker-b"),
+        ("实现 worker C。", "worker-c"),
+        ("实现 worker D。", "worker-d"),
+    ]
+    for goal, target_name in goals:
+        exit_code = supervisor_main(
+            [
+                "goal",
+                "add",
+                "--codex-home",
+                str(codex_home),
+                "--cwd",
+                str(workspace),
+                "--goal",
+                goal,
+                "--target-name",
+                target_name,
+                "--json",
+            ]
+        )
+        assert exit_code == 0
+        capsys.readouterr()
+    running_log = codex_home / "supervisor" / "logs" / "managed-running.log"
+    running_log.parent.mkdir(parents=True, exist_ok=True)
+    running_log.write_text("worker B still running\n", encoding="utf-8")
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-running",
+                "name": "worker-b",
+                "cwd": str(workspace),
+                "prompt": "实现 worker B。",
+                "command": ["codex", "exec", "-C", str(workspace), "WORK ORDER"],
+                "pid": 4242,
+                "started_at": NOW.isoformat(),
+                "log_path": str(running_log),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._pid_is_running",
+        lambda pid: pid == 4242,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._pid_is_running",
+        lambda pid: pid == 4242,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            raise AssertionError("fanout should execute without a single-action LLM pick")
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+    captured: list[list[str]] = []
+
+    class FakeProcess:
+        def __init__(self, pid: int) -> None:
+            self.pid = pid
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured.append(command)
+        return FakeProcess(45690 + len(captured))
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--max-fanout-launches",
+            "2",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"] == {
+        "kind": "fanout_launch_sessions",
+        "target_name": None,
+        "reason": "多个 active goals 可并行启动受控 worker。",
+        "command_suggestion": None,
+    }
+    assert payload["fanout_plan"]["summary"] == {
+        "launchable": 2,
+        "skipped": 2,
+        "limit": 2,
+    }
+    assert [item["target_name"] for item in payload["fanout_plan"]["launch_specs"]] == [
+        "worker-a",
+        "worker-c",
+    ]
+    assert all(
+        item["review"]["requires_human_review"] is False
+        for item in payload["fanout_plan"]["launch_specs"]
+    )
+    assert payload["fanout_plan"]["skipped"] == [
+        {
+            "target_name": "worker-b",
+            "reason": "worker_already_running",
+            "batch": "active_goals",
+        },
+        {
+            "target_name": "worker-d",
+            "reason": "fanout_limit_reached",
+            "batch": "active_goals",
+        },
+    ]
+    assert payload["executed"]["kind"] == "fanout_launch_sessions"
+    assert payload["executed"]["summary"] == {
+        "launched": 2,
+        "skipped": 0,
+        "limit": 2,
+    }
+    assert [item["managed"]["name"] for item in payload["executed"]["results"]] == [
+        "worker-a",
+        "worker-c",
+    ]
+    assert len(captured) == 2
+    assert all(command[9].startswith("WORK ORDER") for command in captured)
+
+
 def test_codex_supervisor_runner_loop_archives_goal_when_worker_reports_done(
     tmp_path,
     capsys,

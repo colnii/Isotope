@@ -7,7 +7,7 @@ from typing import Any, Iterable
 
 
 DEFAULT_FANOUT_LIMIT = 3
-REVIEW_NOTE = "fanout 只生成可审阅 launch spec，不直接启动 worker。"
+REVIEW_NOTE = "fanout 只生成受控 launch spec；runner 执行时仍需通过 launch gate。"
 
 
 def build_fanout_launch_plan(
@@ -16,6 +16,7 @@ def build_fanout_launch_plan(
     cwd: str | None = None,
     limit: int = DEFAULT_FANOUT_LIMIT,
     running_target_names: Iterable[str] = (),
+    requires_human_review: bool = True,
 ) -> dict[str, Any]:
     """Convert goal-plan parallel recommendations into reviewable launch specs."""
     if limit <= 0:
@@ -72,7 +73,7 @@ def build_fanout_launch_plan(
                     "source": "parallel_recommendations",
                     "candidate_reason": _optional_string(candidate.get("reason")),
                     "review": {
-                        "requires_human_review": True,
+                        "requires_human_review": requires_human_review,
                         "note": REVIEW_NOTE,
                     },
                 }

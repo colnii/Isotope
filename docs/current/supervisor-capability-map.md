@@ -346,17 +346,17 @@ B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
 | 接线点 | 当前归属 | 后续接入边界 |
 | --- | --- | --- |
 | `current_batch` | dashboard/web read model（读取模型） | 只展示仍活跃的 `active_goals` 和当前托管 worker；不启动 worker、不改目标状态、不替代 cleanup。 |
-| `fanout` | 暂未作为独立 runner 动作落地 | 后续只能把多个活跃目标展开成一批受控 `launch_session` 候选；必须复用 goal queue、managed registry、prompt cooldown 和预算 gate，不另建队列。 |
+| `fanout` | `loop` 与 `goal plan --fanout-execute` | 把多个活跃目标或 `parallel_recommendations` 展开成一批受控 `launch_session`；复用 goal queue、managed registry、prompt cooldown 和预算 gate，不另建队列。 |
 | `replan` | `_maybe_replan_after_context_request` | 只在同一轮 `request_context` 成功后追加最近上下文，再让 LLM planner 重新选择一次受控动作；不得无限循环，不得绕过 `ask_user` gate。 |
 
 ### 建议调用顺序
 
-后续把 `current_batch`、`fanout`、`replan` 接进 runner 时，顺序应保持：
+`current_batch`、`fanout`、`replan` 接进 runner 时，顺序保持：
 
 1. `scan/report`：先读取 Codex session、managed registry、目标状态和工作区存在性。
 2. `current_batch`：投影当前仍可推进的目标和 worker，过滤 done、已归档、已删除 worktree。
-3. `fanout planning`：如果存在多个可推进目标，只生成受控候选；跳过已有同名运行中 worker 的目标。
-4. `LLM planner`：在 `active_goals`、recent context、worker review 和白名单命令内选择一个动作。
+3. `fanout planning/execution`：如果存在多个可推进目标或 goal plan 的 `parallel_recommendations`，生成受控候选并在并发上限内执行；跳过已有同名运行中 worker 的目标。
+4. `LLM planner`：fanout 不适用时，在 `active_goals`、recent context、worker review 和白名单命令内选择一个动作。
 5. `execute`：只执行通过校验的 `request_context`、`launch_session`、`resume_session`、send 或 `ask_user`。
 6. `replan`：只有本轮执行的是成功的 `request_context` 时，才把检索结果加入 prompt，再执行一次 follow-up 动作。
 7. `current_batch refresh`：下一轮 dashboard/web 再反映 worker、goal status 或 decision request 的变化。
@@ -372,9 +372,9 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_re
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_loop_replans_blocked_goal_with_llm_context -q
 ```
 
-如果后续新增真正 `fanout` 动作，还必须补一个失败优先的回归测试：
-多个 active goals 中已有同名 running worker 时，fanout 只能为剩余目标生成或执行
-`launch_session`，且不能直接改 `goals.jsonl` 或归档任何目标。
+fanout 回归必须覆盖：多个 active goals 中已有同名 running worker 时，只能为剩余目标执行
+`launch_session`；`goal plan` 的 `parallel_recommendations` 只能在显式
+`--fanout-execute` 下同轮执行，且不能直接归档任何目标。
 
 ## 当前不要重复实现
 
