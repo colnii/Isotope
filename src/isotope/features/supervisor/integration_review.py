@@ -23,11 +23,16 @@ def collect_integration_reviews(
     *,
     codex_home: Path | str,
     base_ref: str = "main",
+    include_unfinished: bool = False,
     run: RunCommand | None = None,
 ) -> dict[str, Any]:
     """Collect read-only integration status for Supervisor-managed workers."""
     run_command = run or subprocess.run
-    records = read_managed_records(default_registry_path(codex_home))
+    records = [
+        record
+        for record in read_managed_records(default_registry_path(codex_home))
+        if _integration_record_is_in_scope(record, include_unfinished=include_unfinished)
+    ]
     workers = [
         _worker_integration_review(record, base_ref=base_ref, run=run_command)
         for record in records
@@ -38,6 +43,7 @@ def collect_integration_reviews(
     return {
         "status": "ok",
         "base_ref": base_ref,
+        "include_unfinished": include_unfinished,
         "summary": {
             "total": len(workers),
             **{group: len(groups[group]) for group in GROUPS},
@@ -51,6 +57,19 @@ def collect_integration_reviews(
             "note": "只读扫描 managed worker、git 分支和提交包含关系，不执行 merge/push/delete。",
         },
     }
+
+
+def _integration_record_is_in_scope(
+    record: ManagedCodexRecord,
+    *,
+    include_unfinished: bool,
+) -> bool:
+    if record.status == "archived":
+        return False
+    if include_unfinished:
+        return True
+    protocol = _protocol_from_record(record)
+    return (protocol.get("status") or "").strip().lower() == "done"
 
 
 def render_integration_review_plain(payload: dict[str, Any]) -> str:

@@ -44,7 +44,11 @@ def test_supervisor_integration_review_groups_ready_and_already_integrated(tmp_p
         }
     )
 
-    payload = collect_integration_reviews(codex_home=codex_home, run=fake_run)
+    payload = collect_integration_reviews(
+        codex_home=codex_home,
+        include_unfinished=True,
+        run=fake_run,
+    )
 
     assert payload["status"] == "ok"
     assert payload["base_ref"] == "main"
@@ -113,12 +117,63 @@ def test_supervisor_integration_review_flags_dirty_and_unfinished_workers(tmp_pa
         }
     )
 
-    payload = collect_integration_reviews(codex_home=codex_home, run=fake_run)
+    payload = collect_integration_reviews(
+        codex_home=codex_home,
+        include_unfinished=True,
+        run=fake_run,
+    )
 
     assert payload["summary"]["needs_review"] == 2
     reasons = {item["record_id"]: item["reason"] for item in payload["groups"]["needs_review"]}
     assert reasons["managed-dirty"] == "worker worktree 仍有未提交改动；先复查并要求 worker 提交。"
     assert reasons["managed-blocked"] == "worker 未汇报 done；先按 SUPERVISOR_NEXT 继续或拆分。"
+
+
+def test_supervisor_integration_review_defaults_to_done_unarchived_workers(tmp_path):
+    from isotope.features.supervisor.integration_review import collect_integration_reviews
+
+    codex_home = tmp_path / ".codex"
+    done_cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "done-12345678"
+    blocked_cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "blocked-12345678"
+    archived_cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "archived-12345678"
+    done_cwd.mkdir(parents=True)
+    blocked_cwd.mkdir(parents=True)
+    archived_cwd.mkdir(parents=True)
+    _write_done_record(codex_home, record_id="managed-done", name="done", cwd=done_cwd)
+    _write_record(
+        codex_home,
+        record_id="managed-blocked",
+        name="blocked",
+        cwd=blocked_cwd,
+        protocol_status="blocked",
+    )
+    _write_done_record(
+        codex_home,
+        record_id="managed-archived",
+        name="archived",
+        cwd=archived_cwd,
+        record_status="archived",
+    )
+
+    fake_run = _fake_git(
+        {
+            done_cwd: {
+                ("rev-parse", "--abbrev-ref", "HEAD"): (0, "supervisor/done-12345678\n", ""),
+                ("rev-parse", "HEAD"): (0, "done111\n", ""),
+                ("rev-parse", "main"): (0, "main999\n", ""),
+                ("status", "--short"): (0, "", ""),
+                ("merge-base", "--is-ancestor", "done111", "main"): (1, "", ""),
+                ("merge-base", "--is-ancestor", "main", "done111"): (0, "", ""),
+                ("merge-tree", "--write-tree", "main", "done111"): (0, "tree-ok\n", ""),
+            },
+        }
+    )
+
+    payload = collect_integration_reviews(codex_home=codex_home, run=fake_run)
+
+    assert payload["include_unfinished"] is False
+    assert payload["summary"]["total"] == 1
+    assert payload["workers"][0]["record_id"] == "managed-done"
 
 
 def test_supervisor_integration_review_flags_merge_conflict_risk(tmp_path):
@@ -225,6 +280,7 @@ def _write_done_record(
     record_id: str,
     name: str,
     cwd: Path,
+    record_status: str = "launched",
 ) -> None:
     _write_record(
         codex_home,
@@ -232,6 +288,7 @@ def _write_done_record(
         name=name,
         cwd=cwd,
         protocol_status="done",
+        record_status=record_status,
     )
 
 
@@ -242,6 +299,7 @@ def _write_record(
     name: str,
     cwd: Path,
     protocol_status: str,
+    record_status: str = "launched",
 ) -> None:
     log_path = codex_home / "supervisor" / "logs" / f"{record_id}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -269,7 +327,7 @@ def _write_record(
                     "pid": 0,
                     "started_at": "2026-05-20T12:00:00+00:00",
                     "log_path": str(log_path),
-                    "status": "launched",
+                    "status": record_status,
                     "backend": "process",
                     "tmux_session": None,
                 },

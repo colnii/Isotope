@@ -108,7 +108,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   branch、worker HEAD、base commit、`main` 是否已包含 worker HEAD、
   worktree 是否干净和 `merge-tree --write-tree` 冲突结果，输出
   `ready_to_integrate`、`already_integrated`、`needs_review` 和
-  `conflict_risk`；它不执行 merge、push、delete 或归档。
+  `conflict_risk`；默认只看未归档且已汇报 done 的 worker，显式传
+  `--include-unfinished` 才纳入未完成历史；它不执行 merge、push、
+  delete 或归档。
 - `replan` CLI 会读取 `worker-review` 的 `automation_candidates` 和当前
   active goals，生成下一轮只读建议；输出可用 plain 或 `--json`，
   不自动合并、不自动归档、不删除 worktree 或分支。

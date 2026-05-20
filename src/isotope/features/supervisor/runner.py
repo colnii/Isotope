@@ -815,6 +815,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Base branch/ref to check containment against. Defaults to main.",
     )
     integration_review_parser.add_argument(
+        "--include-unfinished",
+        action="store_true",
+        help="Also include non-done managed workers. Defaults to integration-ready done workers only.",
+    )
+    integration_review_parser.add_argument(
         "--json",
         action="store_true",
         help="Print JSON output.",
@@ -1319,6 +1324,7 @@ def main(argv: list[str] | None = None) -> int:
             payload = collect_integration_reviews(
                 codex_home=Path(args.codex_home),
                 base_ref=args.base,
+                include_unfinished=args.include_unfinished,
             )
             if args.json:
                 _print_json(payload)

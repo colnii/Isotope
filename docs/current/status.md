@@ -89,7 +89,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `integration-review` 可只读扫描 managed worker 的 branch、
     worker HEAD、`main` 是否已包含和 merge-tree 冲突风险，并输出
     `ready_to_integrate`、`already_integrated`、`needs_review`、
-    `conflict_risk` 四组；该入口不执行 merge/push/delete；
+    `conflict_risk` 四组；默认只看未归档且已汇报 done 的 worker，
+    `--include-unfinished` 才纳入未完成历史；该入口不执行 merge/push/delete；
     `replan` 可读取 `worker-review` 的 `automation_candidates` 和当前
     active goals，输出下一轮只读建议，不自动合并或归档；
     `resume` 可通过

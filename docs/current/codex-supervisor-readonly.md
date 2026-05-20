@@ -94,7 +94,8 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
 - `integration-review` 可只读扫描 managed worker 的 branch、worker HEAD、
   `main` 包含关系和 merge conflict 风险，输出
   `ready_to_integrate`、`already_integrated`、`needs_review`、
-  `conflict_risk` 四组，不执行 merge/push/delete。
+  `conflict_risk` 四组，不执行 merge/push/delete；默认只看未归档且已
+  汇报 done 的 worker，排查历史噪音时再加 `--include-unfinished`。
 - `supervise/loop/daemon start --worker-codex-model <model>
   --worker-codex-config key=value` 可把同类覆盖传给 LLM 自动启动或恢复的
   worker，避免写代码任务继承未知的本机默认配置。
