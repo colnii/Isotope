@@ -3017,6 +3017,84 @@ def test_codex_supervisor_runner_loop_suggests_all_active_goals(
     ]
 
 
+def test_codex_supervisor_runner_loop_does_not_launch_after_terminal_done_goals(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    log_path = codex_home / "supervisor" / "logs" / "managed-done.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text(
+        "SUPERVISOR_STATUS: done\n"
+        "SUPERVISOR_SUMMARY: 已完成只读目标。\n"
+        "SUPERVISOR_NEXT: 等待 Supervisor 归档。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-done",
+                "name": "terminal-goal",
+                "cwd": str(workspace),
+                "prompt": "完成后等待归档。",
+                "command": ["codex", "exec", "-C", str(workspace), "完成后等待归档。"],
+                "pid": 0,
+                "started_at": NOW.isoformat(),
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    class ForbiddenProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            raise AssertionError("terminal done goals should not call the LLM planner")
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: ForbiddenProvider(),
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--workspace-root",
+            str(tmp_path),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["command_suggestions"] == []
+    assert payload["llm_action"] == {
+        "kind": "monitor",
+        "target_name": None,
+        "reason": "当前没有可控的 Supervisor 目标，先继续监控。",
+        "command_suggestion": None,
+    }
+    assert payload["executed"] == {
+        "kind": "monitor",
+        "skipped": True,
+        "reason": "当前没有可控的 Supervisor 目标，先继续监控。",
+    }
+
+
 def test_codex_supervisor_web_rejects_invalid_manual_llm_action(tmp_path):
     from isotope.features.supervisor.web import create_dashboard_server
 
@@ -11008,7 +11086,7 @@ def test_codex_supervisor_runner_supervise_invalid_llm_action_falls_back_to_moni
         events=[
             _assistant_message(
                 "2026-05-16T11:59:20Z",
-                "SUPERVISOR_STATUS: done\nSUPERVISOR_SUMMARY: 已完成。\nSUPERVISOR_NEXT: 等待归档。",
+                "SUPERVISOR_STATUS: done\nSUPERVISOR_SUMMARY: 已完成。\nSUPERVISOR_NEXT: 可以继续下一步。",
             )
         ],
     )

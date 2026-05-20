@@ -3331,6 +3331,8 @@ def _workspace_cwds(report: Any) -> list[str]:
     seen: set[str] = set()
     workspaces: list[str] = []
     for session in report.sessions:
+        if _session_marks_terminal_done(session):
+            continue
         cwd = getattr(session, "cwd", None)
         if not isinstance(cwd, str) or not cwd or cwd in seen:
             continue
@@ -4783,10 +4785,16 @@ def _has_llm_action_target(
     command_suggestions: Any = None,
 ) -> bool:
     if any(
-        (session.managed_name and session.managed_tmux_session)
+        (
+            session.managed_name
+            and session.managed_tmux_session
+            and not _session_marks_terminal_done(session)
+        )
         or _is_resume_capable_session(session)
         for session in report.sessions
-    ) or _context_cwd_for_report(report) is not None:
+    ):
+        return True
+    if _context_cwd_for_actionable_report(report) is not None:
         return True
     if not isinstance(command_suggestions, list):
         return False
@@ -4796,6 +4804,20 @@ def _has_llm_action_target(
         and isinstance(item.get("cwd"), str)
         for item in command_suggestions
     )
+
+
+def _session_marks_terminal_done(session: Any) -> bool:
+    return _is_completed_session(session) and _supervisor_next_marks_terminal_done(session)
+
+
+def _context_cwd_for_actionable_report(report: Any) -> str | None:
+    for session in report.sessions:
+        if _session_marks_terminal_done(session):
+            continue
+        cwd = getattr(session, "cwd", None)
+        if isinstance(cwd, str) and cwd:
+            return cwd
+    return None
 
 
 if __name__ == "__main__":

@@ -43,6 +43,19 @@ LLM_ACTION_ALLOWED_KINDS = (
 LLM_RESUME_PROMPT_KINDS = ("send_status", "send_continue")
 LLM_ASK_USER_CONTEXT_STATUSES = ("missing", "outdated", "conflict")
 LLM_WORKER_PROFILES = ("coding", "light")
+TERMINAL_DONE_NEXT_MARKERS = (
+    "可结束",
+    "可以结束",
+    "任务结束",
+    "可归档",
+    "可以归档",
+    "等待归档",
+    "等待 supervisor 归档",
+    "归档或下发新任务",
+    "无需继续",
+    "不需要继续",
+    "不用继续",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -1018,6 +1031,7 @@ def _has_managed_process_target(session: Any) -> bool:
         getattr(session, "managed", False)
         and getattr(session, "managed_name", None)
         and getattr(session, "managed_backend", None) != "tmux"
+        and not _is_terminal_done_session(session)
     )
 
 
@@ -1063,6 +1077,8 @@ def _available_workspaces(
     seen: set[str] = set()
     workspaces: list[str] = []
     for session in report.sessions:
+        if _is_terminal_done_session(session):
+            continue
         cwd = getattr(session, "cwd", None)
         if not isinstance(cwd, str) or not cwd or cwd in seen:
             continue
@@ -1090,6 +1106,19 @@ def _is_completed_session(session: Any) -> bool:
         getattr(session, "status", None) in {"done", "archived"}
         or getattr(session, "supervisor_status", None) == "done"
     )
+
+
+def _is_terminal_done_session(session: Any) -> bool:
+    if not _is_completed_session(session):
+        return False
+    next_text = _normalize_match_text(getattr(session, "supervisor_next", None))
+    return any(marker in next_text for marker in TERMINAL_DONE_NEXT_MARKERS)
+
+
+def _normalize_match_text(value: object) -> str:
+    if not isinstance(value, str):
+        return ""
+    return " ".join(value.lower().split())
 
 
 def _clip(text: str | None, *, limit: int = 160) -> str | None:
