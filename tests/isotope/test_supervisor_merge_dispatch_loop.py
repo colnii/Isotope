@@ -1,0 +1,121 @@
+from __future__ import annotations
+
+import json
+
+from isotope.features.supervisor.merge_dispatch import DEFAULT_TARGET_NAME
+from isotope.features.supervisor.runner import main as supervisor_main
+
+
+def test_supervisor_loop_dispatches_merge_worker_for_ready_integration(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    captured: list[list[str]] = []
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_integration_reviews",
+        lambda *, codex_home, base_ref, include_unfinished: _integration_review_payload(),
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._prepare_launch_worktree",
+        lambda *, cwd, target_name: {
+            "enabled": True,
+            "source_cwd": str(cwd),
+            "cwd": str(workspace),
+            "worktree_root": str(workspace),
+            "branch": f"supervisor/{target_name}-test",
+        },
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            raise AssertionError("merge dispatch should not wait for planner LLM")
+
+    class FakeProcess:
+        pid = 45678
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured.append(command)
+        return FakeProcess()
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--workspace-root",
+            str(workspace),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["merge_dispatch"]["launch_spec"]["target_name"] == DEFAULT_TARGET_NAME
+    assert payload["llm_action"]["kind"] == "launch_session"
+    assert payload["llm_action"]["source"] == "integration_review"
+    assert payload["executed"]["kind"] == "launch_session"
+    assert payload["executed"]["managed"]["name"] == DEFAULT_TARGET_NAME
+    assert len(captured) == 1
+    assert any(
+        "source: supervisor integration-review payload" in item for item in captured[0]
+    )
+
+
+def _integration_review_payload() -> dict[str, object]:
+    return {
+        "status": "ok",
+        "base_ref": "main",
+        "summary": {
+            "total": 1,
+            "ready_to_integrate": 1,
+            "already_integrated": 0,
+            "needs_review": 0,
+            "conflict_risk": 0,
+        },
+        "groups": {
+            "ready_to_integrate": [
+                {
+                    "record_id": "managed-ready",
+                    "name": "ready-one",
+                    "cwd": "/repo/.worktrees/supervisor/ready-12345678",
+                    "branch": "supervisor/ready-12345678",
+                    "worker_commit": "ready111",
+                    "base_ref": "main",
+                    "reason": "worker 已完成、分支干净、main 尚未包含且未检测到 merge conflict。",
+                    "dirty": False,
+                    "merge_conflict": False,
+                }
+            ],
+            "conflict_risk": [],
+            "needs_review": [],
+            "already_integrated": [],
+        },
+    }

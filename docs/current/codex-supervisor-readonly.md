@@ -104,10 +104,10 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
   merge worker 的任务单，写明 diff review、cherry-pick、组合测试、
   push/CI watch 和停止条件；builder 本身不执行合并、不删除来源分支、
   不 force push、不 rebase 已共享分支、不重写历史。
-- merge dispatch（合并派发）是下一阶段接线：由 Supervisor 在确认
-  `ready_to_integrate` 候选后自动启动专门 merge worker，并把
-  `merge-work-order` 交给它执行。当前阶段只生成候选和工单，不自动启动
-  merge worker。
+- merge dispatch（合并派发）已接入 `loop`：Supervisor 在确认
+  `ready_to_integrate` 候选后，会通过现有 `launch_session` 路径自动启动
+  专门 merge worker，并把 `merge-work-order` 交给它执行；runner 本身仍不
+  直接 merge、push、删除来源分支或改写历史。
 - `supervise/loop/daemon start --worker-codex-model <model>
   --worker-codex-config key=value` 可把同类覆盖传给 LLM 自动启动或恢复的
   worker，避免写代码任务继承未知的本机默认配置。

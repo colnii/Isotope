@@ -96,10 +96,11 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     只读建议及可交给动态 Codex worker 复查的合并候选，不自动合并或归档；
     `merge-work-order` builder 可把 `ready_to_integrate` 候选渲染成
     给动态 merge worker 的工单，包含 diff review、cherry-pick、
-    组合测试、push/CI watch 和停止规则；当前阶段只生成候选和工单，
-    不自动启动 merge worker，不自动删除 worker 分支或 worktree，
-    不 force push、不 rebase 已共享分支、不重写历史；merge dispatch
-    作为下一阶段接线，才负责把工单交给专门 merge worker 自动启动；
+    组合测试、push/CI watch 和停止规则；merge dispatch 已接入
+    `loop`，当 `integration-review` 出现 `ready_to_integrate` 候选时，
+    会把工单交给专门 merge worker 自动启动；runner 本身仍不直接
+    cherry-pick、不删除 worker 分支或 worktree、不 force push、
+    不 rebase 已共享分支、不重写历史；
     `resume` 可通过
     `codex exec resume <session> <prompt>` 或 `--last` 恢复历史会话，
     会带 `--skip-git-repo-check` 以兼容历史会话落在非仓库父目录的情况，

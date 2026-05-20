@@ -73,6 +73,7 @@ from .llm_summary import (
     generate_llm_summary,
     resolve_summary_provider_from_env,
 )
+from .merge_dispatch import build_merge_dispatch_launch_spec
 from .merge_work_order import build_merge_work_order_prompt
 from .registry import (
     adopt_tmux_session,
@@ -2613,9 +2614,16 @@ def _supervise_payload(
     fanout_plan = _active_goals_fanout_launch_plan(args, report, active_goals)
     if fanout_plan is not None and (args.llm_action or args.llm_execute):
         payload["fanout_plan"] = fanout_plan
+    merge_dispatch: dict[str, Any] | None = None
+    if fanout_plan is None and (args.llm_action or args.llm_execute):
+        merge_dispatch = _integration_merge_dispatch_payload(args)
+        if merge_dispatch is not None:
+            payload["merge_dispatch"] = merge_dispatch
     if args.llm_action or args.llm_execute:
         if fanout_plan is not None:
             payload["llm_action"] = _fanout_llm_action(fanout_plan)
+        elif merge_dispatch is not None:
+            payload["llm_action"] = merge_dispatch["launch_spec"]
         elif _loop_without_autonomous_scope(
             args,
             action_report,
@@ -2630,6 +2638,18 @@ def _supervise_payload(
         if fanout_plan is not None:
             payload["executed"] = _execute_fanout_launch_actions(args, fanout_plan)
             if _fanout_execution_launched_workers(payload["executed"]):
+                refreshed_report = _scan_report(args)
+                payload["current_batch"] = _current_batch_payload(
+                    refreshed_report,
+                    active_goals=active_goals,
+                    worker_reviews=worker_reviews,
+                )
+        elif merge_dispatch is not None:
+            payload["executed"] = _execute_launch_action(
+                args,
+                merge_dispatch["launch_spec"],
+            )
+            if _executed_action_forces_print(payload["executed"]):
                 refreshed_report = _scan_report(args)
                 payload["current_batch"] = _current_batch_payload(
                     refreshed_report,
@@ -2658,6 +2678,38 @@ def _supervise_payload(
         payload["executed"] = _execute_advice(args, report, payload)
     payload["decision_requests"] = _decision_request_dicts(args)
     return payload
+
+
+def _integration_merge_dispatch_payload(args: argparse.Namespace) -> dict[str, Any] | None:
+    if getattr(args, "command", None) != "loop":
+        return None
+    if getattr(args, "name", None):
+        return None
+    review_payload = collect_integration_reviews(
+        codex_home=Path(args.codex_home),
+        base_ref="main",
+        include_unfinished=False,
+    )
+    launch_spec = build_merge_dispatch_launch_spec(
+        review_payload,
+        cwd=str(_merge_dispatch_cwd(args)),
+        requires_human_review=False,
+    )
+    if launch_spec is None:
+        return None
+    return {
+        "integration_review": {
+            "base_ref": review_payload.get("base_ref"),
+            "summary": review_payload.get("summary") or {},
+            "safety": review_payload.get("safety") or {},
+        },
+        "launch_spec": launch_spec,
+    }
+
+
+def _merge_dispatch_cwd(args: argparse.Namespace) -> Path:
+    workspace_root = _workspace_root(args)
+    return workspace_root if workspace_root is not None else Path.cwd()
 
 
 def _active_goals_fanout_launch_plan(
