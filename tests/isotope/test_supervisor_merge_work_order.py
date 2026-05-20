@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
+
 from isotope.features.supervisor.merge_work_order import build_merge_work_order_prompt
+from isotope.features.supervisor.runner import main as supervisor_main
 
 
 def test_merge_work_order_prompt_lists_ready_workers_and_review_steps():
@@ -48,6 +51,76 @@ def test_merge_work_order_prompt_handles_empty_ready_group():
     assert "ready_workers: 0" in prompt
     assert "没有 ready_to_integrate worker；不要执行 cherry-pick/push" in prompt
     assert "SUPERVISOR_STATUS: needs_user|blocked|done" in prompt
+
+
+def test_supervisor_merge_work_order_cli_prints_plain_prompt(capsys, monkeypatch):
+    calls = []
+
+    def fake_collect_integration_reviews(*, codex_home, base_ref, include_unfinished):
+        calls.append(
+            {
+                "codex_home": str(codex_home),
+                "base_ref": base_ref,
+                "include_unfinished": include_unfinished,
+            }
+        )
+        return _integration_review_payload()
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_integration_reviews",
+        fake_collect_integration_reviews,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "merge-work-order",
+            "--codex-home",
+            "/tmp/test-codex-home",
+            "--base",
+            "main",
+        ]
+    )
+
+    assert exit_code == 0
+    text = capsys.readouterr().out
+    assert text.startswith("WORK ORDER\n")
+    assert "source: supervisor integration-review payload" in text
+    assert "ready-one / managed-ready" in text
+    assert calls == [
+        {
+            "codex_home": "/tmp/test-codex-home",
+            "base_ref": "main",
+            "include_unfinished": False,
+        }
+    ]
+
+
+def test_supervisor_merge_work_order_cli_json_includes_status_summary_and_prompt(
+    capsys,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_integration_reviews",
+        lambda *, codex_home, base_ref, include_unfinished: _integration_review_payload(),
+    )
+
+    exit_code = supervisor_main(
+        [
+            "merge-work-order",
+            "--codex-home",
+            "/tmp/test-codex-home",
+            "--base",
+            "main",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["summary"]["ready_to_integrate"] == 1
+    assert payload["prompt"].startswith("WORK ORDER\n")
+    assert "ready-one / managed-ready" in payload["prompt"]
 
 
 def _integration_review_payload() -> dict[str, object]:

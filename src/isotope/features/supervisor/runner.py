@@ -73,6 +73,7 @@ from .llm_summary import (
     generate_llm_summary,
     resolve_summary_provider_from_env,
 )
+from .merge_work_order import build_merge_work_order_prompt
 from .registry import (
     adopt_tmux_session,
     archive_managed_codex,
@@ -836,6 +837,21 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print JSON output.",
     )
+    merge_work_order_parser = subparsers.add_parser(
+        "merge-work-order",
+        help="Build a read-only merge work order from integration-review.",
+    )
+    merge_work_order_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    merge_work_order_parser.add_argument(
+        "--base",
+        default="main",
+        help="Base branch/ref to check containment against. Defaults to main.",
+    )
+    merge_work_order_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     replan_parser = subparsers.add_parser(
         "replan",
         help="Build read-only next-round advice from worker-review candidates.",
@@ -1352,6 +1368,24 @@ def main(argv: list[str] | None = None) -> int:
                 _print_json(payload)
             else:
                 print(render_integration_review_plain(payload))
+            return 0
+        if args.command == "merge-work-order":
+            review_payload = collect_integration_reviews(
+                codex_home=Path(args.codex_home),
+                base_ref=args.base,
+                include_unfinished=False,
+            )
+            prompt = build_merge_work_order_prompt(review_payload)
+            if args.json:
+                _print_json(
+                    {
+                        "status": review_payload.get("status", "ok"),
+                        "summary": review_payload.get("summary", {}),
+                        "prompt": prompt,
+                    }
+                )
+            else:
+                print(prompt)
             return 0
         if args.command == "replan":
             payload = _replan_payload(args)
