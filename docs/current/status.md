@@ -61,7 +61,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `NotificationFlow`、`NotificationSummary` 和 `isotope-notification`
     CLI，可创建、列表、按未读或类型过滤，并把通知标记为已读；
     `source_ref` 只允许低敏 JSON 对象，会在读写时重新校验和深拷贝；
-    本地索引使用同目录临时文件替换，降低半写入损坏风险。
+    本地索引使用同目录临时文件替换，降低半写入损坏风险；
+    dashboard/web 输出通知时会再次按低敏 allowlist 过滤 `source_ref`。
 18. `apps/api` 已有薄后端入口，当前提供 ASGI 兼容 `ApiApp`、
     `create_api_app(...)`、`isotope-api routes` 和本地
     `isotope-api request` 调用入口，真实路由仍复用
@@ -117,6 +118,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `decision answer --request-id <id> --answer <答案>` 会记录用户答案、
     移出活跃拍板项，并让后续 LLM planner 看到最近答案；
     `decision archive --request-id <id>` 可把无需继续的项移出活跃列表；
+    写入合法拍板请求时会尽力生成一条低敏通知；通知写入失败不会影响
+    原 decision request 账本；
     `--llm-execute` 可执行 LLM 选择的 send、resume、launch 或
     context 动作；执行 `send_status/send_continue` 前会检查目标
     tmux lane 是否仍显示 `Working ... esc to interrupt`，忙碌时跳过，
@@ -195,10 +198,14 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `goal add/list/archive` 可维护持久目标队列；`goal plan` 是显式
     AI-first 目标规划入口，会读取当前 `status`、任务队列和能力地图，
     让 LLM 生成一小批候选目标，默认只预览，传 `--write` 才写入
-    `~/.codex/supervisor/goals.jsonl`；日常 `loop` 没有显式
+    `~/.codex/supervisor/goals.jsonl`；`goal plan` 会从带说明的模型输出中
+    提取真正可用的 goals JSON，忽略后续非 goal JSON 片段，并在无可用
+    目标时返回可行动错误；日常 `loop` 没有显式
     `--goal` 时会读取最早活跃目标，daemon 因此可动态消费新目标，
     不需要在启动命令里写死单个目标；匹配同名 worker 汇报
     `SUPERVISOR_STATUS: done` 时，`loop` 会记录目标状态并自动归档；
+    目标状态回写为 `done/blocked/needs_user` 时会尽力生成低敏通知，
+    且通知失败不会反向破坏 goal 账本；
     当没有显式 `--goal`、没有活跃目标且没有可控托管 lane 时，
     `loop` 只监控，不会从普通历史会话或 workspace 自行发明下一批
     `launch_session`；
@@ -206,6 +213,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     活跃目标的最近状态会进入 `active_goals` 并交给 LLM planner，
     所以 `blocked/needs_user` 不是终点，模型可继续选择
     `request_context`、`launch_session`、`ask_user` 或 `monitor`；
+    存在 `active_goals` 时，LLM prompt 和动作校验都会收窄到目标相关
+    command suggestions，避免模型恢复旧普通 session 抢走新目标；
     若上下文检查后确实满足拍板门槛，`ask_user` 可直接用 `goal_id`
     生成目标级 decision request，不必依赖可恢复 session；
     用户通过 `decision answer` 拍板后，最近答案会进入
@@ -248,6 +257,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     web 已可分别复制 attach、状态请求和继续命令，并可通过
     `/managed/send` 执行 `send_status` 和 `send_continue` 两个白名单动作；
     两个动作都会要求托管 Codex 按状态协议汇报；
+    dashboard JSON 和 web 已展示通知列表、未读数量、标题、类型和
+    低敏 `source_ref`；
     web 等待拍板列表已可直接填写答案并提交到 `/decision/answer`，
     该接口只记录 `decision answer`，不会变成任意文本发送通道；
     web 已可通过手动“模型建议”按钮调用 `/llm-action`，展示 LLM

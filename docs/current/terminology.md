@@ -68,13 +68,14 @@
 | `isotope-notification` | 通知命令行入口，可创建、列表、筛选和标记已读通知 | 应用入口 | `src/isotope/features/notifications/runner.py` |
 | `source_ref` | 低敏来源引用，用 JSON 对象说明通知来自哪个 worker、decision 或其他事件 | 产品功能/通知/状态账本 | `src/isotope/features/notifications/flow.py` |
 | `notification index` | 通知摘要索引，持久化低敏通知摘要，写入时用临时文件替换 | 产品功能/通知 | `src/isotope/features/notifications/flow.py` |
+| `Supervisor notification bridge` | Supervisor 通知桥，把 goal 状态和 decision request 派生成低敏通知；通知失败不影响原账本 | 产品功能/通知/状态账本 | `src/isotope/features/supervisor/notifications.py` |
 | `Codex Supervisor` | Codex 监督器，Isotope 后续核心管理层，让 LLM 参与判断和调度，工程规则提供护栏 | 产品功能 | `src/isotope/features/supervisor/flow.py` |
 | `isotope-supervisor` | Codex Supervisor 命令行入口，支持扫描、dashboard 汇总、本机 web 页面、建议面板、supervise 小闭环、定时汇报、变化触发、托管启动、恢复历史会话、接管 tmux 和发送指令 | 应用入口 | `src/isotope/features/supervisor/runner.py`, `apps/cli/isotope_supervisor.py` |
 | `Codex session` | Codex 会话记录，本机通常保存在 `~/.codex/sessions` | 外部集成 | `src/isotope/features/supervisor/flow.py` |
 | `managed Codex` | Supervisor 启动、恢复或接管并登记的 Codex 会话，可通过 pid、tmux session、resume 目标和日志路径追踪 | 产品功能/外部集成 | `src/isotope/features/supervisor/registry.py` |
 | `recommendation` | 结构化建议，表达下一步建议动作、优先级和目标窗口，不等于自动执行 | 产品功能/控制策略 | `src/isotope/features/supervisor/flow.py` |
 | `payload` | Supervisor 每轮整理出的运行状态包，通常是 Python `dict`，包含扫描结果、候选命令、LLM 动作、执行结果和上下文检索结果 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
-| `active_goals` | 本轮仍活跃的目标列表，会带上最近 `last_status`、摘要和下一步，作为 LLM planner 的输入 | 产品功能/模型/状态账本 | `src/isotope/features/supervisor/goal_queue.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/llm_summary.py` |
+| `active_goals` | 本轮仍活跃的目标列表，会带上最近 `last_status`、摘要和下一步，作为 LLM planner 的输入；存在时动作校验会收窄到目标相关命令 | 产品功能/模型/状态账本 | `src/isotope/features/supervisor/goal_queue.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/llm_summary.py` |
 | `status_evidence` | 状态依据，解释 Supervisor 为什么把窗口判为工作中、等待用户、停住或报错 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/web.py` |
 | `supervisor_protocol` | 状态依据来源，表示被托管 Codex 主动写了 `SUPERVISOR_STATUS` | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
 | `状态汇报` | web 卡片里的结构化状态区，单独展示 `SUPERVISOR_STATUS/SUMMARY/NEXT` | 产品功能/视图/状态判断 | `src/isotope/features/supervisor/web.py` |

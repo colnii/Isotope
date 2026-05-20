@@ -31,6 +31,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 | 模型管理层 | `LLM summary`、`LLM planner` 和 TOML 号池 | `llm_summary.py` | 承担判断、调度和动作选择的 AI 路径 |
 | 状态协议层 | `SUPERVISOR_STATUS` 等状态协议 | `flow.py`、`registry.py` | 给被托管 Codex 主动汇报状态 |
 | 状态账本层 | lane state（窗口状态）和限频 | `lane_state.py` | 避免重复催促和刷屏 |
+| 通知桥接层 | Supervisor event notifications | `features/supervisor/notifications.py`、`features/notifications/flow.py` | 把 goal/decision 事件派生成低敏通知 |
 | 本地前端层 | `web`、`/dashboard.json`、`/events`、`/managed/send`、`/llm-action` | `features/supervisor/web.py` | 本机视图、bell 事件、白名单发送和手动模型建议入口 |
 
 ## 已有轮子
@@ -78,6 +79,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `web` 会高亮模型建议对应的 send 按钮，但不会自动点击。
 - `web` 等待拍板列表可填写答案并提交到 `/decision/answer`，
   只记录 `decision answer` 事件，不开放任意文本发送。
+- `dashboard JSON` 和 `web` 会读取通知索引，展示通知列表、未读数量、
+  标题、类型和低敏 `source_ref`；输出层会按 allowlist 再过滤
+  `source_ref`，避免把 prompt/log/key 类字段暴露到页面。
 - `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
 - `/managed/send` 成功发送后会更新 lane state。
 - `guide` 会按 cwd、lane name 和 tmux session 打印可复制工作流命令。
@@ -140,6 +144,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   `docs/current/agent-task-queue.md` 和
   `docs/current/supervisor-capability-map.md` 后让 LLM 生成候选目标。
   默认只预览，只有传 `--write` 才写入 `supervisor/goals.jsonl`；
+  goal planner 会从带说明文本的模型输出中提取真正可用的 goals JSON，
+  并忽略后续非 goal JSON 片段。
   日常 `loop` 没有显式 `--goal` 时会读取最早活跃目标，
   并保持 daemon 启动命令不绑定某一个队列目标。
 - `loop` 会把同名 worker 的 `SUPERVISOR_STATUS` 写回目标队列；
@@ -147,8 +153,13 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `blocked/needs_user` 活跃目标会带着 `last_status`、摘要和下一步进入
   LLM planner 的 `active_goals` 输入；模型不能默认停住，应重新选择
   `request_context`、`launch_session`、`ask_user` 或 `monitor`。
+- 存在 `active_goals` 时，LLM prompt 和动作校验都会使用收窄后的
+  目标相关 command suggestions，旧普通 session 的 `resume_session`
+  不能绕过校验抢走新目标。
 - 目标级 `ask_user` 可用 `goal_id` 写入 decision request；这解决了
   队列目标已阻塞但没有普通 Codex session 可恢复时的拍板记录问题。
+- goal 状态回写和 decision request 写入会尽力生成低敏通知；
+  notification index 损坏或写入失败不能破坏原 goal/decision 账本。
 - `goal list` 和 `daemon status` 会合并活跃目标的最近状态、
   摘要和下一步，便于直接看阻塞原因。
 - `daemon start/status/stop` 可把 `loop` 放到后台常驻，记录
@@ -346,8 +357,8 @@ B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
 
 ## 下一步顺序
 
-1. 强化持久目标队列的消费优先级，避免旧历史会话干扰新 goal。
-2. 把通知入口接入 Supervisor 事件、worker 状态和 web 展示。
+1. 用真实 daemon 长跑验证 goal 优先级和通知展示是否稳定。
+2. 后续再决定是否把通知接到更多 worker 生命周期事件。
 3. 再拆分 `runner.py` 中的匹配、建议和 tmux 控制代码。
 
 ## 登记规则
