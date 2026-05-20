@@ -100,8 +100,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   process log 状态协议、cwd/worktree 是否存在、当前 branch、`git status`
   和 `git diff --stat` 摘要，并输出建议验证命令、复查提示
   （reviewer prompt）、可复制 `codex exec -C ...` 复查命令与
-  主控/人工合并提示；它只做高可信汇总，不自动合并、不删除
-  worktree 或分支。
+  主控/人工合并提示；同时输出 `next_decision`，区分合并候选、
+  继续拆任务、缺失 worktree 和可归档项；它只做高可信汇总，
+  不自动合并、不删除 worktree 或分支。
 - LLM planner 会看到 process 托管记录作为候选目标，避免状态面板
   误报“只有 tmux 才可控”。
 - `launch_session` 会写入 lane state 并遵守 `--prompt-cooldown`，
@@ -141,10 +142,12 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `supervise/loop/up/daemon start --goal <目标>` 会把用户目标交给
   LLM planner；没有现成托管窗口时，模型仍可基于该目标选择
   `request_context` 或 `launch_session`，启动新的后台 Codex worker。
-- `goal add/list/archive` 是持久目标队列入口；`goal plan` 是显式
+- `goal add/list/archive` 是持久目标队列入口；`goal add "目标文本"`
+  支持一句话直接入队；`goal plan "高层目标"` 是显式
   AI-first 目标规划入口，读取 `docs/current/status.md`、
   `docs/current/agent-task-queue.md` 和
-  `docs/current/supervisor-capability-map.md` 后让 LLM 生成候选目标。
+  `docs/current/supervisor-capability-map.md` 后，围绕用户高层目标
+  让 LLM 生成候选目标。
   默认只预览，只有传 `--write` 才写入 `supervisor/goals.jsonl`；
   goal planner 会从带说明文本的模型输出中提取真正可用的 goals JSON，
   并忽略后续非 goal JSON 片段。
@@ -196,7 +199,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `advise`、`supervise` 和 `loop` 默认只让 LLM/action 候选使用当前工作区会话；
   `--workspace-root <path>` 可指定范围，`--all-workspaces` 可显式放开。
 - `context` 支持按 query 检索当前工作区资料，当前是 `rg` 优先、
-  Python 关键词扫描兜底，并把结果记录给后续 LLM planner 使用。
+  Python 关键词扫描兜底，并会为 `docs/current/status.md`、
+  `supervisor-capability-map.md`、`docs-map.md` 和 Supervisor 关键代码入口
+  补充项目上下文锚点，把结果记录给后续 LLM planner 使用。
 - `--llm-execute` 执行 `request_context` 后会在同一轮把检索结果交回
   LLM planner，再执行一次后续受控动作；同轮只允许一次上下文检索，避免循环。
 - 已完成会话不再作为 `resume_session` 候选，避免 LLM 把旧验收窗口反复唤醒；

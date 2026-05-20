@@ -186,7 +186,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner archive --
 .venv/bin/isotope-supervisor guide --cwd /path/to/repo --name lane-a
 .venv/bin/isotope-supervisor up
 .venv/bin/isotope-supervisor up --goal "继续推进 Supervisor 可用入口"
-.venv/bin/isotope-supervisor goal add --cwd /path/to/repo --goal "继续推进 Supervisor 可用入口"
+.venv/bin/isotope-supervisor goal add --cwd /path/to/repo "继续推进 Supervisor 可用入口"
+.venv/bin/isotope-supervisor goal plan "拆解当前 Supervisor 高层目标" --cwd /path/to/repo --write
 .venv/bin/isotope-supervisor goal list
 .venv/bin/isotope-supervisor web
 .venv/bin/isotope-supervisor advise
