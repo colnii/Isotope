@@ -12,11 +12,14 @@ from .registry import ManagedCodexRecord, default_registry_path, read_managed_re
 RunCommand = Callable[..., subprocess.CompletedProcess[str]]
 
 GROUPS = (
+    "merge_workers",
     "ready_to_integrate",
     "already_integrated",
     "needs_review",
     "conflict_risk",
 )
+
+MERGE_DISPATCH_TARGET_NAME = "supervisor-merge-dispatch"
 
 
 def collect_integration_reviews(
@@ -66,6 +69,8 @@ def _integration_record_is_in_scope(
 ) -> bool:
     if record.status == "archived":
         return False
+    if _merge_worker_source(record) is not None:
+        return True
     if include_unfinished:
         return True
     protocol = _protocol_from_record(record)
@@ -78,6 +83,7 @@ def render_integration_review_plain(payload: dict[str, Any]) -> str:
     summary = payload.get("summary", {})
     lines.extend(
         [
+            f"merge_workers：{summary.get('merge_workers', 0)}",
             f"ready_to_integrate：{summary.get('ready_to_integrate', 0)}",
             f"already_integrated：{summary.get('already_integrated', 0)}",
             f"needs_review：{summary.get('needs_review', 0)}",
@@ -109,6 +115,7 @@ def _worker_integration_review(
     cwd = Path(record.cwd).expanduser()
     cwd_exists = cwd.is_dir()
     protocol = _protocol_from_record(record)
+    merge_worker_source = _merge_worker_source(record)
     branch = _git_text(cwd, ["rev-parse", "--abbrev-ref", "HEAD"], run=run) if cwd_exists else _infer_supervisor_branch(cwd)
     worker_commit = _git_text(cwd, ["rev-parse", "HEAD"], run=run) if cwd_exists else None
     base_commit = _git_text(cwd, ["rev-parse", base_ref], run=run) if cwd_exists else None
@@ -148,6 +155,7 @@ def _worker_integration_review(
         main_contains_worker=main_contains_worker,
         main_has_worker_patch=main_has_worker_patch,
         merge_conflict=merge_check["conflict"],
+        merge_worker_source=merge_worker_source,
     )
     return {
         "record_id": record.record_id,
@@ -164,6 +172,8 @@ def _worker_integration_review(
         "dirty": bool(dirty_paths),
         "dirty_paths": dirty_paths,
         "supervisor_protocol": protocol,
+        "merge_worker": merge_worker_source is not None,
+        "merge_worker_source": merge_worker_source,
         "merge_conflict": merge_check["conflict"],
         "merge_check": merge_check,
         "group": group,
@@ -192,6 +202,7 @@ def _classify(
     main_contains_worker: bool | None,
     main_has_worker_patch: bool | None,
     merge_conflict: bool,
+    merge_worker_source: str | None,
 ) -> tuple[str, str, list[str]]:
     status = (protocol.get("status") or "").strip().lower()
     reasons: list[str] = []
@@ -200,6 +211,12 @@ def _classify(
     else:
         reasons.append("worker 未汇报 SUPERVISOR_STATUS")
 
+    if merge_worker_source is not None:
+        return (
+            "merge_workers",
+            "这是 integration-review 启动的 merge worker；单独展示，不按普通功能 worker 合入。",
+            [*reasons, f"merge worker source: {merge_worker_source}"],
+        )
     if not cwd_exists:
         return (
             "needs_review",
@@ -278,6 +295,19 @@ def _main_has_worker_patch(
     if not lines:
         return None
     return all(line.startswith("-") for line in lines)
+
+
+def _merge_worker_source(record: ManagedCodexRecord) -> str | None:
+    if record.name == MERGE_DISPATCH_TARGET_NAME:
+        return "target_name"
+    text = "\n".join([record.prompt, *record.command]).lower()
+    if "source=integration_review" in text or "source: integration_review" in text:
+        return "integration_review"
+    if '"source": "integration_review"' in text:
+        return "integration_review"
+    if "source: supervisor integration-review payload" in text:
+        return "integration_review"
+    return None
 
 
 def _parse_status_paths(status_text: str | None) -> list[dict[str, str]]:

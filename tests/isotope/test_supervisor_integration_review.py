@@ -55,6 +55,7 @@ def test_supervisor_integration_review_groups_ready_and_already_integrated(tmp_p
     assert payload["base_ref"] == "main"
     assert payload["summary"] == {
         "total": 2,
+        "merge_workers": 0,
         "ready_to_integrate": 1,
         "already_integrated": 1,
         "needs_review": 0,
@@ -167,6 +168,74 @@ def test_supervisor_integration_review_flags_dirty_and_unfinished_workers(tmp_pa
     reasons = {item["record_id"]: item["reason"] for item in payload["groups"]["needs_review"]}
     assert reasons["managed-dirty"] == "worker worktree 仍有未提交改动；先复查并要求 worker 提交。"
     assert reasons["managed-blocked"] == "worker 未汇报 done；先按 SUPERVISOR_NEXT 继续或拆分。"
+
+
+def test_supervisor_integration_review_groups_merge_workers_separately(tmp_path):
+    from isotope.features.supervisor.integration_review import (
+        collect_integration_reviews,
+        render_integration_review_plain,
+    )
+
+    codex_home = tmp_path / ".codex"
+    dispatch_cwd = (
+        tmp_path / "repo" / ".worktrees" / "supervisor" / "supervisor-merge-dispatch"
+    )
+    sourced_cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "merge-source"
+    dispatch_cwd.mkdir(parents=True)
+    sourced_cwd.mkdir(parents=True)
+    _write_record(
+        codex_home,
+        record_id="managed-dispatch",
+        name="supervisor-merge-dispatch",
+        cwd=dispatch_cwd,
+        protocol_status="working",
+    )
+    _write_record(
+        codex_home,
+        record_id="managed-source",
+        name="custom-merge-worker",
+        cwd=sourced_cwd,
+        protocol_status="working",
+        prompt="WORK ORDER\nsource=integration_review\nmerge ready workers",
+    )
+
+    fake_run = _fake_git(
+        {
+            dispatch_cwd: {
+                ("rev-parse", "--abbrev-ref", "HEAD"): (0, "supervisor/supervisor-merge-dispatch\n", ""),
+                ("rev-parse", "HEAD"): (0, "dispatch111\n", ""),
+                ("rev-parse", "main"): (0, "main999\n", ""),
+                ("status", "--short"): (0, "", ""),
+                ("merge-base", "--is-ancestor", "dispatch111", "main"): (1, "", ""),
+                ("merge-base", "--is-ancestor", "main", "dispatch111"): (0, "", ""),
+                ("merge-tree", "--write-tree", "main", "dispatch111"): (0, "tree-ok\n", ""),
+            },
+            sourced_cwd: {
+                ("rev-parse", "--abbrev-ref", "HEAD"): (0, "supervisor/merge-source\n", ""),
+                ("rev-parse", "HEAD"): (0, "source111\n", ""),
+                ("rev-parse", "main"): (0, "main999\n", ""),
+                ("status", "--short"): (0, "", ""),
+                ("merge-base", "--is-ancestor", "source111", "main"): (1, "", ""),
+                ("merge-base", "--is-ancestor", "main", "source111"): (0, "", ""),
+                ("merge-tree", "--write-tree", "main", "source111"): (0, "tree-ok\n", ""),
+            },
+        }
+    )
+
+    payload = collect_integration_reviews(codex_home=codex_home, run=fake_run)
+
+    assert payload["summary"]["total"] == 2
+    assert payload["include_unfinished"] is False
+    assert payload["summary"]["merge_workers"] == 2
+    assert payload["summary"]["ready_to_integrate"] == 0
+    assert payload["summary"]["needs_review"] == 0
+    assert [item["record_id"] for item in payload["groups"]["merge_workers"]] == [
+        "managed-dispatch",
+        "managed-source",
+    ]
+    assert payload["groups"]["merge_workers"][0]["merge_worker"] is True
+    assert payload["groups"]["merge_workers"][1]["merge_worker_source"] == "integration_review"
+    assert "merge_workers：2" in render_integration_review_plain(payload)
 
 
 def test_supervisor_integration_review_defaults_to_done_unarchived_workers(tmp_path):
@@ -343,6 +412,7 @@ def _write_record(
     cwd: Path,
     protocol_status: str,
     record_status: str = "launched",
+    prompt: str | None = None,
 ) -> None:
     log_path = codex_home / "supervisor" / "logs" / f"{record_id}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -365,7 +435,7 @@ def _write_record(
                     "record_id": record_id,
                     "name": name,
                     "cwd": str(cwd),
-                    "prompt": f"review {name}",
+                    "prompt": prompt or f"review {name}",
                     "command": ["codex", "exec", "-C", str(cwd), "prompt"],
                     "pid": 0,
                     "started_at": "2026-05-20T12:00:00+00:00",
