@@ -126,6 +126,18 @@ def main(argv: list[str] | None = None) -> int:
     routes_parser = subparsers.add_parser("routes", help="List supported API routes.")
     routes_parser.add_argument("--root", required=True, help="Runtime root directory.")
     routes_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    request_parser = subparsers.add_parser(
+        "request",
+        help="Invoke a local API route through the in-process HTTP facade.",
+    )
+    request_parser.add_argument("--root", required=True, help="Runtime root directory.")
+    request_parser.add_argument("method", help="HTTP method, for example GET or POST.")
+    request_parser.add_argument("path", help="API path, for example /health.")
+    request_parser.add_argument(
+        "--body-json",
+        help="JSON object body to send with the request.",
+    )
+    request_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     args = parser.parse_args(argv)
 
     app = create_api_app(args.root)
@@ -142,6 +154,22 @@ def main(argv: list[str] | None = None) -> int:
         else:
             for route in payload["routes"]:
                 print(f"{route['method']} {route['path']}")
+        return 0
+    if args.command == "request":
+        try:
+            body = _decode_cli_json_body(args.body_json)
+        except ValueError as exc:
+            parser.error(str(exc))
+        response = app.request(args.method, args.path, body)
+        payload = {
+            "status_code": response.status_code,
+            "body": response.body,
+        }
+        if args.json:
+            print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        else:
+            print(f"status_code: {response.status_code}")
+            print(json.dumps(response.body, ensure_ascii=False, sort_keys=True))
         return 0
     parser.error(f"unknown command: {args.command}")
     return 2
@@ -165,6 +193,18 @@ def _decode_json_body(body: bytes) -> dict[str, Any] | None:
         raise ValueError("request body must be valid JSON") from exc
     if not isinstance(decoded, dict):
         raise ValueError("request body must be a JSON object")
+    return decoded
+
+
+def _decode_cli_json_body(raw_body: str | None) -> dict[str, Any] | None:
+    if raw_body is None:
+        return None
+    try:
+        decoded = json.loads(raw_body)
+    except json.JSONDecodeError as exc:
+        raise ValueError("--body-json must be valid JSON") from exc
+    if not isinstance(decoded, dict):
+        raise ValueError("--body-json must be a JSON object")
     return decoded
 
 

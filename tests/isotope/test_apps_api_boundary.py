@@ -99,6 +99,36 @@ def test_apps_api_routes_cli_prints_supported_routes_as_json(tmp_path):
     assert {"method": "POST", "path": "/projects/workspace"} in payload["routes"]
 
 
+def test_apps_api_request_cli_invokes_local_http_facade_as_json(tmp_path):
+    result = _run_cli("request", "--root", str(tmp_path), "GET", "/health", "--json")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload == {
+        "status_code": 200,
+        "body": {"status": "ok"},
+    }
+
+
+def test_apps_api_request_cli_accepts_json_body(tmp_path):
+    result = _run_cli(
+        "request",
+        "--root",
+        str(tmp_path),
+        "POST",
+        "/tasks",
+        "--body-json",
+        json.dumps({"goal": "ship api entry", "message": "first note"}),
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status_code"] == 201
+    assert payload["body"]["status"] == "ok"
+    assert payload["body"]["task"]["goal"] == "ship api entry"
+
+
 def test_apps_api_asgi_health_route(tmp_path):
     app = create_api_app(tmp_path)
 

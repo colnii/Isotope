@@ -57,7 +57,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     project/task/file 摘要；已接入 `POST /workbench/ask`，也可通过
     `isotope-ask` 和 `isotope-demo --scenario workbench-ask --trace` 调用。
 17. `apps/api` 已有薄后端入口，当前提供 ASGI 兼容 `ApiApp`、
-    `create_api_app(...)` 和 `isotope-api routes`，真实路由仍复用
+    `create_api_app(...)`、`isotope-api routes` 和本地
+    `isotope-api request` 调用入口，真实路由仍复用
     `interfaces/http.py`；ASGI 请求已支持 query string（查询参数）转 body、
     JSON 响应头和稳定 invalid JSON 错误。
 18. `features/supervisor` 已有 Codex Supervisor 监控与托管启动，
@@ -317,6 +318,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario workbench --trace
 PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario workbench-ask --trace
 PYTHONPATH=src .venv/bin/python -m isotope.features.ask.runner ask --root /tmp/isotope-ask --question "下一步做什么？" --mock-answer "先整理一个可展示任务。"
 PYTHONPATH=src .venv/bin/python -m isotope.apps.api routes --root /tmp/isotope-api --json
+PYTHONPATH=src .venv/bin/python -m isotope.apps.api request --root /tmp/isotope-api GET /health --json
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --limit 3
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard --limit 3
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner guide --cwd /path/to/repo --name lane-a
