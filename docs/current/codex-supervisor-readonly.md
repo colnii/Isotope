@@ -91,6 +91,10 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
 - `launch --backend tmux` 可在本机 tmux 会话里启动 Codex。
 - `launch/resume --codex-model <model> --codex-config key=value` 可覆盖
   后台 Codex worker 的模型和配置。
+- `integration-review` 可只读扫描 managed worker 的 branch、worker HEAD、
+  `main` 包含关系和 merge conflict 风险，输出
+  `ready_to_integrate`、`already_integrated`、`needs_review`、
+  `conflict_risk` 四组，不执行 merge/push/delete。
 - `supervise/loop/daemon start --worker-codex-model <model>
   --worker-codex-config key=value` 可把同类覆盖传给 LLM 自动启动或恢复的
   worker，避免写代码任务继承未知的本机默认配置。
@@ -173,6 +177,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --in
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner watch --interval 180 --changes-only
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner launch --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner launch --backend tmux --tmux-session isotope-lane-a --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner integration-review --json
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner adopt --name lane-a --cwd /path/to/repo --tmux-session isotope-lane-a
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --name lane-a --text "继续"
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner archive --name lane-a
@@ -204,6 +209,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner archive --
 .venv/bin/isotope-supervisor watch --interval 180 --changes-only
 .venv/bin/isotope-supervisor launch --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
 .venv/bin/isotope-supervisor launch --backend tmux --tmux-session isotope-lane-a --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
+.venv/bin/isotope-supervisor integration-review --json
 .venv/bin/isotope-supervisor adopt --name lane-a --cwd /path/to/repo --tmux-session isotope-lane-a
 .venv/bin/isotope-supervisor send --name lane-a --text "继续"
 .venv/bin/isotope-supervisor archive --name lane-a

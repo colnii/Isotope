@@ -19,7 +19,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 | --- | --- | --- | --- |
 | 用户功能层 | `scan`、`dashboard`、`guide`、`up`、`discover`、`web`、`watch`、`advise`、`supervise`、`loop`、`daemon` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
 | 托管控制层 | `launch`、`adopt`、`send`、`archive`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
-| Worker 审查层 | `worker-review` | `features/supervisor/worker_review.py`、`features/supervisor/runner.py` | 汇总已托管 worker 的 worktree、branch、状态协议、改动、复查提示和合并提示 |
+| Worker 审查层 | `worker-review`、`integration-review` | `features/supervisor/worker_review.py`、`features/supervisor/integration_review.py`、`features/supervisor/runner.py` | 汇总已托管 worker 的 worktree、branch、状态协议、改动、复查提示、合并提示和只读集成分组 |
 | Codex 执行通道 | `resume`、`codex exec resume`、`--last` | `features/supervisor/runner.py`、`features/supervisor/registry.py` | 不依赖 tmux 恢复历史会话并投喂新 prompt |
 | 上下文能力层 | `context`、`request_context`、上下文结果记录 | `features/supervisor/context.py`、`features/supervisor/runner.py` | LLM 按需请求检索项目资料，`rg` 优先、Python 兜底，不固定注入全文 |
 | Codex 集成层 | 读取 Codex session（会话记录）、索引标题和 agent 元数据 | `features/supervisor/flow.py` | 当前读取本机 `.jsonl`、`session_index.jsonl` 和 SQLite |
@@ -104,6 +104,11 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   继续拆任务、缺失 worktree 和可归档项，并把这些决策投影成结构化
   `automation_candidates`，供后续主循环读取；它只做高可信汇总，
   不自动合并、不删除 worktree 或分支。
+- `integration-review` 是 managed worker 集成前只读分组入口，会读取
+  branch、worker HEAD、base commit、`main` 是否已包含 worker HEAD、
+  worktree 是否干净和 `merge-tree --write-tree` 冲突结果，输出
+  `ready_to_integrate`、`already_integrated`、`needs_review` 和
+  `conflict_risk`；它不执行 merge、push、delete 或归档。
 - `replan` CLI 会读取 `worker-review` 的 `automation_candidates` 和当前
   active goals，生成下一轮只读建议；输出可用 plain 或 `--json`，
   不自动合并、不自动归档、不删除 worktree 或分支。

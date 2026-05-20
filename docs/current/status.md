@@ -86,6 +86,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     改动摘要、建议验证命令、复查提示（reviewer prompt）和可复制
     `codex exec -C ...` 复查命令；该入口只做高可信审查汇总，
     不自动合并、不删除 worktree 或分支；
+    `integration-review` 可只读扫描 managed worker 的 branch、
+    worker HEAD、`main` 是否已包含和 merge-tree 冲突风险，并输出
+    `ready_to_integrate`、`already_integrated`、`needs_review`、
+    `conflict_risk` 四组；该入口不执行 merge/push/delete；
     `replan` 可读取 `worker-review` 的 `automation_candidates` 和当前
     active goals，输出下一轮只读建议，不自动合并或归档；
     `resume` 可通过

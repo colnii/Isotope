@@ -57,6 +57,10 @@ from .goal_queue import (
     record_supervisor_goal_status,
 )
 from .goal_planner import plan_supervisor_goals
+from .integration_review import (
+    collect_integration_reviews,
+    render_integration_review_plain,
+)
 from .lane_state import (
     DEFAULT_MAX_CONTINUE_COUNT,
     DEFAULT_PROMPT_COOLDOWN_SECONDS,
@@ -796,6 +800,25 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Codex home directory. Defaults to ~/.codex.",
     )
     worker_review_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    integration_review_parser = subparsers.add_parser(
+        "integration-review",
+        help="Group managed workers by read-only integration readiness.",
+    )
+    integration_review_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    integration_review_parser.add_argument(
+        "--base",
+        default="main",
+        help="Base branch/ref to check containment against. Defaults to main.",
+    )
+    integration_review_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print JSON output.",
+    )
     replan_parser = subparsers.add_parser(
         "replan",
         help="Build read-only next-round advice from worker-review candidates.",
@@ -1291,6 +1314,16 @@ def main(argv: list[str] | None = None) -> int:
                 _print_json(payload)
             else:
                 print(render_worker_review_plain(payload))
+            return 0
+        if args.command == "integration-review":
+            payload = collect_integration_reviews(
+                codex_home=Path(args.codex_home),
+                base_ref=args.base,
+            )
+            if args.json:
+                _print_json(payload)
+            else:
+                print(render_integration_review_plain(payload))
             return 0
         if args.command == "replan":
             payload = _replan_payload(args)
