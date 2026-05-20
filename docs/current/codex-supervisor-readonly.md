@@ -499,6 +499,119 @@ worker 已经可审、已合入或有冲突风险；`cleanup list` 只列出可�
 如果看到 CI 失败、冲突风险、`blocked` 或 `needs_user`，先处理这些证据，
 再决定是否继续 `goal add`、重跑 daemon，或让 merge worker 继续。
 
+## 夜间 smoke 验收清单
+
+这组清单用于真实 daemon（后台守护进程）验收，不是单元测试替代品。
+运行前先确认当前仓库没有未保存改动，Codex CLI 已登录，且本轮允许
+后台 worker 创建 `.worktrees/supervisor/...` 工作区。建议用独立
+`--codex-home` 保存 smoke 账本，避免污染日常 Supervisor 记录：
+
+```bash
+export ISO_ROOT=/home/lumber/Github/isotope
+export SMOKE_HOME="$ISO_ROOT/.tmp/supervisor-night-smoke-codex-home"
+
+cd "$ISO_ROOT"
+git status --short --branch
+mkdir -p "$SMOKE_HOME"
+.venv/bin/isotope-supervisor daemon stop --codex-home "$SMOKE_HOME" || true
+.venv/bin/isotope-supervisor daemon watcher stop --codex-home "$SMOKE_HOME" || true
+```
+
+第一段确认 daemon 能用真实 LLM planner 启动多批 worker，并触发
+fanout（同轮多目标派发）：
+
+```bash
+.venv/bin/isotope-supervisor goal add \
+  --codex-home "$SMOKE_HOME" \
+  --cwd "$ISO_ROOT" \
+  --target-name night-smoke-a \
+  "只改 docs/current/codex-supervisor-readonly.md，补一行 night smoke A 标记后提交。"
+
+.venv/bin/isotope-supervisor goal add \
+  --codex-home "$SMOKE_HOME" \
+  --cwd "$ISO_ROOT" \
+  --target-name night-smoke-b \
+  "只改 docs/current/codex-supervisor-readonly.md，补一行 night smoke B 标记后提交。"
+
+.venv/bin/isotope-supervisor daemon start \
+  --codex-home "$SMOKE_HOME" \
+  --interval 60 \
+  --max-fanout-launches 2 \
+  --worker-profile light \
+  --worker-codex-model gpt-5.4-mini \
+  --worker-codex-config 'model_reasoning_effort="low"' \
+  --no-auto-adopt
+```
+
+通过标准：
+
+- `daemon status --codex-home "$SMOKE_HOME"` 显示后台 loop 正在运行。
+- `goal list --codex-home "$SMOKE_HOME"` 能看到两个活跃目标及其最近状态。
+- `rg "fanout_launch_sessions|night-smoke-a|night-smoke-b" "$SMOKE_HOME/supervisor/logs/daemon.log"`
+  能看到同轮 fanout 计划或两条 worker 启动记录。
+- `$ISO_ROOT/.worktrees/supervisor/` 下出现两个独立 worker 工作区；
+  任何 worker 都不得直接在 `ISO_ROOT` 主工作区抢写。
+
+第二段确认目标生命周期、merge dispatch（合并派发）和 cleanup（收尾归档）：
+
+```bash
+.venv/bin/isotope-supervisor goal list --codex-home "$SMOKE_HOME"
+.venv/bin/isotope-supervisor integration-review --codex-home "$SMOKE_HOME" --json
+.venv/bin/isotope-supervisor merge-work-order --codex-home "$SMOKE_HOME" --json
+.venv/bin/isotope-supervisor loop --codex-home "$SMOKE_HOME" --iterations 1 --json
+.venv/bin/isotope-supervisor cleanup list --codex-home "$SMOKE_HOME"
+```
+
+通过标准：
+
+- worker 完成后会输出 `SUPERVISOR_STATUS: done`，同名 goal 被自动归档；
+  若输出 `blocked` 或 `needs_user`，goal 必须继续留在活跃队列。
+- `integration-review` 把已完成且可合并的 worker 放进
+  `ready_to_integrate`，冲突或未完成 worker 不得进入该组。
+- `merge-work-order` 能渲染给 merge worker 的任务单；随后
+  `loop --iterations 1 --json` 在存在 `ready_to_integrate` 候选时应出现
+  `merge_dispatch`，并启动名为 `supervisor-merge-dispatch` 的受控 worker。
+- `cleanup list` 只列出已完成目标、已完成托管 worker 或可读通知；
+  `cleanup archive --all --codex-home "$SMOKE_HOME"` 只追加归档事件，
+  不手删账本、不删除源码分支、不删除 worktree。
+
+第三段确认 CI 和 watchdog（看门进程）：
+
+```bash
+.venv/bin/python -m pytest tests/isotope -q
+python -m isotope.demo
+python -m isotope.demo --json
+
+.venv/bin/isotope-supervisor daemon watchdog --codex-home "$SMOKE_HOME"
+.venv/bin/isotope-supervisor daemon watcher start --codex-home "$SMOKE_HOME" --interval 60
+.venv/bin/isotope-supervisor daemon watcher status --codex-home "$SMOKE_HOME"
+```
+
+通过标准：
+
+- 本机测试与 demo smoke 通过；远端 CI 只在本轮允许 push 或已有 PR 时检查
+  GitHub Actions 的 `CI / smoke (3.13)` 和 `CI / smoke (3.14)`。
+- `daemon watchdog` 对仍存活的 daemon 返回 `alive`，不会重复拉起；
+  手动停止或异常退出后再次执行，应按 `daemon.json` 的原始命令重启，
+  并保留 `--max-fanout-launches` 等启动参数。
+- `daemon watcher status` 显示 watcher 正在运行，`watcher.log` 中能看到
+  周期 watchdog 结果。
+
+收尾必须显式执行：
+
+```bash
+.venv/bin/isotope-supervisor cleanup list --codex-home "$SMOKE_HOME"
+.venv/bin/isotope-supervisor cleanup archive --all --codex-home "$SMOKE_HOME"
+.venv/bin/isotope-supervisor daemon watcher stop --codex-home "$SMOKE_HOME"
+.venv/bin/isotope-supervisor daemon stop --codex-home "$SMOKE_HOME"
+git worktree list
+git status --short --branch
+```
+
+若 smoke 过程中生成了验收专用分支或 worktree，先确认对应提交已经进入
+merge worker 或已明确废弃，再由人类维护者删除；Supervisor 的 cleanup
+只负责归档自己的账本，不负责清理 Git 历史。
+
 `supervise` 是当前的监控小闭环：
 
 ```bash
