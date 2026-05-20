@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from isotope.features.notifications.flow import NotificationFlow
+
 from .daemon import (
     run_supervisor_watcher,
     start_supervisor_daemon,
@@ -2509,7 +2511,11 @@ def _run_web(args: argparse.Namespace) -> None:
 
 def _print_dashboard(args: argparse.Namespace) -> None:
     report = _scan_report(args)
-    payload = _dashboard_payload(report, decision_requests=_decision_request_dicts(args))
+    payload = _dashboard_payload(
+        report,
+        decision_requests=_decision_request_dicts(args),
+        notifications=_notification_dicts(Path(args.codex_home)),
+    )
     if args.json:
         _print_json(payload)
         return
@@ -2520,6 +2526,7 @@ def _dashboard_payload(
     report: Any,
     *,
     decision_requests: list[dict[str, Any]] | None = None,
+    notifications: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     groups: dict[str, list[dict[str, Any]]] = {
         "needs_attention": [],
@@ -2534,6 +2541,7 @@ def _dashboard_payload(
                 linked_match=linked_match,
             )
         )
+    notification_items = notifications or []
     return {
         "status": "ok",
         "generated_at": report.generated_at,
@@ -2541,6 +2549,46 @@ def _dashboard_payload(
         "counts": {key: len(value) for key, value in groups.items()},
         "groups": groups,
         "decision_requests": decision_requests or [],
+        "notifications": notification_items,
+        "notification_counts": {
+            "total": len(notification_items),
+            "unread": sum(1 for item in notification_items if item.get("unread") is True),
+        },
+    }
+
+
+def _notification_dicts(codex_home: Path) -> list[dict[str, Any]]:
+    return [
+        _dashboard_notification_dict(notification.to_dict())
+        for notification in NotificationFlow.in_process(codex_home).list_notifications()
+    ]
+
+
+def _dashboard_notification_dict(notification: dict[str, Any]) -> dict[str, Any]:
+    item = dict(notification)
+    source_ref = item.get("source_ref")
+    item["source_ref"] = (
+        _dashboard_notification_source_ref(source_ref)
+        if isinstance(source_ref, dict)
+        else {}
+    )
+    return item
+
+
+def _dashboard_notification_source_ref(source_ref: dict[str, Any]) -> dict[str, Any]:
+    allowed_keys = {
+        "ref_type",
+        "goal_id",
+        "request_id",
+        "run_id",
+        "session_id",
+        "notification_id",
+        "status",
+    }
+    return {
+        key: value
+        for key, value in source_ref.items()
+        if key in allowed_keys and isinstance(value, (str, bool, int, float))
     }
 
 

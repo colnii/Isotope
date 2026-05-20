@@ -30,6 +30,7 @@ from .runner import (
     EXECUTABLE_ADVICE_TEXT,
     _advice_payload,
     _dashboard_payload,
+    _notification_dicts,
 )
 
 
@@ -76,6 +77,7 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         return _dashboard_payload(
             report,
             decision_requests=_decision_request_dicts(self.codex_home),
+            notifications=_notification_dicts(self.codex_home),
         )
 
     def llm_action_payload(self) -> dict[str, Any]:
@@ -470,6 +472,45 @@ def dashboard_page_html() -> str:
       padding: 12px 14px;
       font-size: 14px;
     }
+    .notification-list {
+      margin-bottom: 18px;
+      border: 1px solid #b2ddff;
+      border-left: 4px solid var(--working);
+      border-radius: 6px;
+      background: #f5fbff;
+      padding: 12px 14px;
+      font-size: 14px;
+    }
+    .notification-list-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      font-weight: 700;
+    }
+    .notification-list-body {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .notification-list-item {
+      color: #1849a9;
+      overflow-wrap: anywhere;
+    }
+    .notification-title-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      color: var(--text);
+      font-weight: 700;
+    }
+    .notification-source {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
     .decision-list-head {
       display: flex;
       justify-content: space-between;
@@ -692,6 +733,13 @@ def dashboard_page_html() -> str:
         <button id="llm-action-button" type="button">模型建议</button>
       </div>
       <div class="llm-action" id="llm-action-result">未请求模型建议</div>
+    </div>
+    <div class="notification-list" id="notification-list">
+      <div class="notification-list-head">
+        <span>通知列表</span>
+        <span class="count" id="notification-count">0</span>
+      </div>
+      <div class="notification-list-body" id="notifications"></div>
     </div>
     <div class="decision-list" id="decision-list">
       <div class="decision-list-head">
@@ -1057,6 +1105,46 @@ def dashboard_page_html() -> str:
       return card;
     }
 
+    function renderNotifications(notifications, counts) {
+      const count = document.getElementById("notification-count");
+      const list = document.getElementById("notifications");
+      const unread = counts && Number.isInteger(counts.unread)
+        ? counts.unread
+        : notifications.filter((item) => item.unread).length;
+      count.textContent = unread + "/" + notifications.length;
+      list.replaceChildren();
+      if (notifications.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "暂无";
+        list.append(empty);
+        return;
+      }
+      for (const notification of notifications) {
+        const item = document.createElement("div");
+        item.className = "notification-list-item";
+
+        const title = document.createElement("div");
+        title.className = "notification-title-line";
+        const state = document.createElement("span");
+        state.className = "badge";
+        state.textContent = notification.unread ? "未读" : "已读";
+        const type = document.createElement("span");
+        type.className = "badge";
+        type.textContent = text(notification.type);
+        const name = document.createElement("span");
+        name.textContent = text(notification.title);
+        title.append(state, type, name);
+        item.append(title);
+
+        const source = document.createElement("div");
+        source.className = "notification-source";
+        source.textContent = "source_ref: " + text(JSON.stringify(notification.source_ref || {}));
+        item.append(source);
+        list.append(item);
+      }
+    }
+
     function renderDecisionRequests(requests) {
       const count = document.getElementById("decision-count");
       const list = document.getElementById("decision-requests");
@@ -1203,6 +1291,7 @@ def dashboard_page_html() -> str:
       const payload = await response.json();
       document.getElementById("generated-at").textContent = payload.generated_at;
       document.getElementById("recommendation").textContent = payload.recommendation.label;
+      renderNotifications(payload.notifications || [], payload.notification_counts || {});
       renderDecisionRequests(payload.decision_requests || []);
       for (const key of groups) renderGroup(key, payload.groups[key] || []);
       document.getElementById("refresh-state").textContent = "最近刷新 " + new Date().toLocaleTimeString();

@@ -812,6 +812,61 @@ def test_codex_supervisor_runner_dashboard_json_groups_lanes(tmp_path, capsys):
     }
 
 
+def test_codex_supervisor_runner_dashboard_json_includes_notifications(
+    tmp_path,
+    capsys,
+):
+    from isotope.features.notifications.flow import NotificationFlow
+
+    codex_home = tmp_path / ".codex"
+    created = NotificationFlow.in_process(codex_home).create_notification(
+        notification_type="approval",
+        title="Worker needs approval",
+        source_ref={"ref_type": "supervisor_run", "run_id": "run_123"},
+    )
+    status = NotificationFlow.in_process(codex_home).create_notification(
+        notification_type="worker_status",
+        title="Worker finished tests",
+        source_ref={"ref_type": "session", "session_id": "session_456"},
+    )
+    marked = NotificationFlow.in_process(codex_home).mark_read(status.notification_id)
+    unsafe = NotificationFlow.in_process(codex_home).create_notification(
+        notification_type="worker_status",
+        title="Worker source check",
+        source_ref={
+            "ref_type": "supervisor_run",
+            "run_id": "run_unsafe",
+            "prompt": "RAW_PROMPT_SHOULD_NOT_LEAK",
+            "api_key": "sk-test-secret",
+            "log_path": "/tmp/raw.log",
+        },
+    )
+
+    exit_code = supervisor_main(
+        [
+            "dashboard",
+            "--codex-home",
+            str(codex_home),
+            "--limit",
+            "1",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["notifications"][:2] == [created.to_dict(), marked.to_dict()]
+    assert payload["notifications"][2] == {
+        **unsafe.to_dict(),
+        "source_ref": {"ref_type": "supervisor_run", "run_id": "run_unsafe"},
+    }
+    raw_payload = json.dumps(payload, ensure_ascii=False)
+    assert "RAW_PROMPT_SHOULD_NOT_LEAK" not in raw_payload
+    assert "sk-test-secret" not in raw_payload
+    assert "/tmp/raw.log" not in raw_payload
+    assert payload["notification_counts"] == {"total": 3, "unread": 2}
+
+
 def test_codex_supervisor_dashboard_json_includes_display_title_and_short_hash(
     tmp_path,
     capsys,
@@ -2015,8 +2070,25 @@ def test_codex_supervisor_runner_dashboard_plain_is_grouped(tmp_path, capsys):
 
 def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     from isotope.features.supervisor.web import create_dashboard_server
+    from isotope.features.notifications.flow import NotificationFlow
 
     codex_home = tmp_path / ".codex"
+    notification = NotificationFlow.in_process(codex_home).create_notification(
+        notification_type="approval",
+        title="Worker needs approval",
+        source_ref={"ref_type": "supervisor_run", "run_id": "run_123"},
+    )
+    unsafe_notification = NotificationFlow.in_process(codex_home).create_notification(
+        notification_type="approval",
+        title="Worker source check",
+        source_ref={
+            "ref_type": "supervisor_run",
+            "run_id": "run_unsafe",
+            "prompt": "RAW_PROMPT_SHOULD_NOT_LEAK",
+            "api_key": "sk-test-secret",
+            "log_path": "/tmp/raw.log",
+        },
+    )
     _write_session(
         codex_home,
         "2026/05/16/rollout-blocked.jsonl",
@@ -2074,6 +2146,10 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "requestLlmAction" in html
     assert "renderDecisionRequest" in html
     assert "renderDecisionRequests" in html
+    assert "renderNotifications" in html
+    assert "notification-list" in html
+    assert "通知列表" in html
+    assert "source_ref" in html
     assert "submitDecisionAnswer" in html
     assert "/decision/answer" in html
     assert "填写答案" in html
@@ -2123,6 +2199,18 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert payload["status"] == "ok"
     assert payload["counts"]["needs_attention"] == 1
     assert payload["decision_requests"] == []
+    assert payload["notifications"] == [
+        notification.to_dict(),
+        {
+            **unsafe_notification.to_dict(),
+            "source_ref": {"ref_type": "supervisor_run", "run_id": "run_unsafe"},
+        },
+    ]
+    raw_payload = json.dumps(payload, ensure_ascii=False)
+    assert "RAW_PROMPT_SHOULD_NOT_LEAK" not in raw_payload
+    assert "sk-test-secret" not in raw_payload
+    assert "/tmp/raw.log" not in raw_payload
+    assert payload["notification_counts"] == {"total": 2, "unread": 2}
     assert payload["groups"]["needs_attention"][0]["session_id"] == "blocked-session"
     assert payload["groups"]["needs_attention"][0]["status_evidence"]["source"] == (
         "supervisor_protocol"
