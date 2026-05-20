@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import re
-import shutil
 import subprocess
 import uuid
 from dataclasses import dataclass
@@ -137,7 +136,7 @@ class ContextResult:
     query: str
     created_at: str
     items: tuple[ContextItem, ...]
-    backend: str = "python"
+    backend: str = "bm25"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -235,21 +234,8 @@ def _search_workspace(
     run: Callable[..., subprocess.CompletedProcess[str]],
     rg_bin: str | None,
 ) -> tuple[list[ContextItem], str]:
-    rg_items = _search_workspace_with_rg(
-        workspace,
-        query,
-        max_results=max_results,
-        run=run,
-        rg_bin=rg_bin,
-    )
-    if rg_items is not None:
-        return _with_project_context_anchors(
-            workspace,
-            query,
-            rg_items,
-            max_results=max_results,
-        ), "rg"
-    python_items = _search_workspace_with_python(
+    del run, rg_bin
+    bm25_items = _search_workspace_with_bm25(
         workspace,
         query,
         max_results=max_results,
@@ -257,24 +243,60 @@ def _search_workspace(
     return _with_project_context_anchors(
         workspace,
         query,
-        python_items,
+        bm25_items,
         max_results=max_results,
-    ), "python"
+    ), "bm25"
 
 
-def _search_workspace_with_python(
+def _search_workspace_with_bm25(
     workspace: Path,
     query: str,
     *,
     max_results: int,
 ) -> list[ContextItem]:
-    query_lower = query.lower()
+    documents = _build_bm25_context_index(workspace)
     terms = _query_terms(query)
-    candidates: list[ContextItem] = []
+    try:
+        hits = rank_summary_documents(query, documents)
+    except ValueError:
+        return []
+    items: list[ContextItem] = []
+    ranked_hits = sorted(
+        hits,
+        key=lambda hit: (-hit.score, hit.document.document_id),
+    )
+    for hit in ranked_hits[: max(max_results * 4, 20)]:
+        metadata = hit.document.metadata or {}
+        item = metadata.get("item")
+        if not isinstance(item, ContextItem):
+            continue
+        items.append(
+            ContextItem(
+                path=item.path,
+                line=item.line,
+                text=item.text,
+                score=round(float(hit.score) + float(item.score) / 10.0, 4),
+                title=item.title,
+                snippet=item.snippet,
+                match_reason=_match_reason(
+                    path=item.path,
+                    title=item.title,
+                    snippet=item.snippet,
+                    terms=terms,
+                    source_group=item.source_group,
+                ),
+                source_group=item.source_group,
+            )
+        )
+    return items
+
+
+def _build_bm25_context_index(workspace: Path) -> list[SummarySearchDocument]:
+    documents: list[SummarySearchDocument] = []
     title_cache: dict[str, str] = {}
     for file_path in _candidate_files(workspace):
         relative = file_path.relative_to(workspace).as_posix()
-        path_score = _score_text(relative.lower(), query_lower, terms)
+        source_group = _source_group_for_path(relative)
         try:
             lines = file_path.read_text(encoding="utf-8", errors="ignore").splitlines()
         except OSError:
@@ -283,158 +305,63 @@ def _search_workspace_with_python(
             text = " ".join(line.split())
             if not text:
                 continue
-            line_score = _score_text(text.lower(), query_lower, terms)
-            score = line_score + path_score
-            if score <= 0:
-                continue
             snippet = _clip(text)
-            source_group = _source_group_for_path(relative)
             title = _title_for_path(
                 workspace,
                 relative,
                 fallback_text=snippet,
                 title_cache=title_cache,
             )
-            candidates.append(
-                ContextItem(
-                    path=relative,
-                    line=line_number,
-                    text=snippet,
-                    score=score,
-                    title=title,
-                    snippet=snippet,
-                    match_reason=_match_reason(
-                        path=relative,
-                        title=title,
-                        snippet=snippet,
-                        terms=terms,
-                        source_group=source_group,
-                    ),
-                    source_group=source_group,
-                )
-            )
-    return _rank_context_items(query, candidates)[:max_results]
-
-
-def _search_workspace_with_rg(
-    workspace: Path,
-    query: str,
-    *,
-    max_results: int,
-    run: Callable[..., subprocess.CompletedProcess[str]],
-    rg_bin: str | None,
-) -> list[ContextItem] | None:
-    if rg_bin is None:
-        return None
-    executable = shutil.which("rg") if rg_bin == "auto" else rg_bin
-    if not executable:
-        return None
-    terms = _query_terms(query)
-    if not terms:
-        return None
-    pattern = "|".join(re.escape(term) for term in terms)
-    command = [
-        executable,
-        "--json",
-        "--line-number",
-        "--ignore-case",
-        "--glob",
-        "!.git/**",
-        "--glob",
-        "!.venv/**",
-        "--glob",
-        "!.worktrees/**",
-        "--glob",
-        "!node_modules/**",
-        "--glob",
-        "!__pycache__/**",
-        "-e",
-        pattern,
-        ".",
-    ]
-    try:
-        completed = run(
-            command,
-            cwd=str(workspace),
-            text=True,
-            capture_output=True,
-            check=False,
-            timeout=3,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    if completed.returncode not in {0, 1}:
-        return None
-    candidates = _context_items_from_rg_json(completed.stdout, query, workspace=workspace)
-    candidates = _rank_context_items(query, candidates)
-    return candidates[:max_results]
-
-
-def _context_items_from_rg_json(
-    output: str,
-    query: str,
-    *,
-    workspace: Path,
-) -> list[ContextItem]:
-    query_lower = query.lower()
-    terms = _query_terms(query)
-    items: list[ContextItem] = []
-    title_cache: dict[str, str] = {}
-    for line in output.splitlines():
-        try:
-            event = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if not isinstance(event, dict) or event.get("type") != "match":
-            continue
-        data = event.get("data")
-        if not isinstance(data, dict):
-            continue
-        path = _rg_text(data.get("path"))
-        line_text = _rg_text(data.get("lines"))
-        line_number = data.get("line_number")
-        if not path or not line_text or not isinstance(line_number, int):
-            continue
-        submatches = data.get("submatches")
-        submatch_score = len(submatches) if isinstance(submatches, list) else 0
-        score = _score_text(path.lower(), query_lower, terms)
-        score += _score_text(line_text.lower(), query_lower, terms)
-        score += submatch_score
-        relative = path.lstrip("./")
-        snippet = _clip(" ".join(line_text.split()))
-        source_group = _source_group_for_path(relative)
-        title = _title_for_path(
-            workspace,
-            relative,
-            fallback_text=snippet,
-            title_cache=title_cache,
-        )
-        items.append(
-            ContextItem(
+            item = ContextItem(
                 path=relative,
                 line=line_number,
                 text=snippet,
-                score=score,
+                score=0.0,
                 title=title,
                 snippet=snippet,
                 match_reason=_match_reason(
                     path=relative,
                     title=title,
                     snippet=snippet,
-                    terms=terms,
+                    terms=[],
                     source_group=source_group,
                 ),
                 source_group=source_group,
             )
+            documents.append(
+                SummarySearchDocument(
+                    document_id=f"{relative}:{line_number}",
+                    title=title,
+                    summary=_bm25_context_document_text(item),
+                    metadata={"item": item, "source_group": source_group},
+                )
+            )
+    return documents
+
+
+def _bm25_context_document_text(item: ContextItem) -> str:
+    return " ".join(
+        part
+        for part in (
+            item.source_group,
+            item.path,
+            _identifier_search_text(item.path),
+            item.title,
+            _identifier_search_text(item.title),
+            item.snippet,
+            _identifier_search_text(item.snippet),
         )
-    return items
+        if part
+    )
 
 
-def _rg_text(value: object) -> str | None:
-    if not isinstance(value, dict):
-        return None
-    text = value.get("text")
-    return text if isinstance(text, str) else None
+def _identifier_search_text(value: str) -> str:
+    words = re.findall(r"[A-Za-z][a-z0-9]*|[A-Z]+(?=[A-Z][a-z]|$)|[0-9]+", value)
+    underscored = re.findall(r"[A-Za-z0-9_./-]{2,}", value)
+    split_parts: list[str] = []
+    for token in underscored:
+        split_parts.extend(part for part in re.split(r"[_./-]+", token) if len(part) >= 2)
+    return " ".join([*words, *split_parts])
 
 
 def _candidate_files(workspace: Path) -> list[Path]:
@@ -729,7 +656,7 @@ def _match_reason(
     prefix = f"group: {source_group}; "
     if matched_terms:
         return prefix + "matched query terms: " + ", ".join(matched_terms[:8])
-    return prefix + "matched by rg/python candidate score"
+    return prefix + "matched by bm25 candidate score"
 
 
 def _source_group_for_path(path: str) -> str:

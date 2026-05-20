@@ -321,9 +321,9 @@
 145. Codex Supervisor 上下文能力：新增 `request_context` 和 `context`
     命令，LLM 可按需检索项目资料，结果记录后供下一轮 planner 使用；
     不再把“读文档”实现成每轮固定塞全文。
-146. Codex Supervisor context 检索后端：`context` 当前不是 BM25，
-    而是 `rg` 优先、Python 关键词扫描兜底；实测当前仓库检索约
-    0.06 秒，Python 兜底约 0.68 秒。
+146. Codex Supervisor context 检索后端：`context` 当前使用 BM25
+    候选索引，对工作区文档和代码文件按 query 排序；不再走 `rg`
+    或 Python 关键词扫描主路径。
 147. Codex Supervisor 同轮上下文闭环：`--llm-execute` 遇到
     `request_context` 时，会同轮检索上下文、再调用一次 LLM planner，
     并执行后续受控动作。
@@ -549,7 +549,7 @@
 
 - 新增 `request_context` 动作。
 - 新增 `context` 命令，用 query 检索工作区资料并记录结果。
-- `context` 优先调用 `rg`，不可用时回退到 Python 关键词扫描。
+- `context` 使用 BM25 候选索引排序工作区文档和代码文件。
 - `loop` 下一轮会把最近上下文检索结果交给 LLM planner。
 - `--llm-execute` 已支持同轮“请求上下文 -> 再决策 -> 执行后续动作”。
 - 这不是固定读取 `status.md` 或 `agent-task-queue.md`；

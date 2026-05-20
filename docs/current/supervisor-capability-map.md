@@ -22,7 +22,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 | Worker 审查层 | `worker-review`、`integration-review`、`replan` | `features/supervisor/worker_review.py`、`features/supervisor/integration_review.py`、`features/supervisor/replan.py`、`features/supervisor/runner.py` | 汇总已托管 worker 的 worktree、branch、状态协议、改动、复查提示、合并提示、只读集成分组和下一轮候选 |
 | Merge 工单层 | `merge-work-order` builder、merge dispatch | `features/supervisor/merge_work_order.py`、`features/supervisor/merge_dispatch.py`、`features/supervisor/runner.py` | 根据 `integration-review` 生成动态 merge worker 工单，并由 `loop` 在有 `ready_to_integrate` 候选时自动启动专门 merge worker |
 | Codex 执行通道 | `resume`、`codex exec resume`、`--last` | `features/supervisor/runner.py`、`features/supervisor/registry.py` | 不依赖 tmux 恢复历史会话并投喂新 prompt |
-| 上下文能力层 | `context`、`request_context`、上下文结果记录 | `features/supervisor/context.py`、`features/supervisor/runner.py` | LLM 按需请求检索项目资料，`rg` 优先、Python 兜底，不固定注入全文 |
+| 上下文能力层 | `context`、`request_context`、上下文结果记录 | `features/supervisor/context.py`、`features/supervisor/runner.py` | LLM 按需请求检索项目资料，BM25 后端按 query 对文档和代码候选排序，不固定注入全文 |
 | Codex 集成层 | 读取 Codex session（会话记录）、索引标题和 agent 元数据 | `features/supervisor/flow.py` | 当前读取本机 `.jsonl`、`session_index.jsonl` 和 SQLite |
 | 扫描优化层 | 最近候选、首尾读取和标题兜底 | `features/supervisor/flow.py` | 避免每次页面刷新全量读历史 |
 | tmux 集成层 | tmux 启动、buffer/paste 发送和 bell hook | `bell_events.py`、`flow.py`、`registry.py` | 只控制登记过的 tmux 会话 |
@@ -242,8 +242,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   兼容历史会话工作目录不是 Git 仓库的情况。
 - `advise`、`supervise` 和 `loop` 默认只让 LLM/action 候选使用当前工作区会话；
   `--workspace-root <path>` 可指定范围，`--all-workspaces` 可显式放开。
-- `context` 支持按 query 检索当前工作区资料，当前是 `rg` 优先、
-  Python 关键词扫描兜底，并会为 `docs/current/status.md`、
+- `context` 支持按 query 检索当前工作区资料，当前会基于文档和代码文件
+  构建 BM25 候选索引，并会为 `docs/current/status.md`、
   `supervisor-capability-map.md`、`docs-map.md` 和 Supervisor 关键代码入口
   补充项目上下文锚点，把结果记录给后续 LLM planner 使用；结果会带
   `source_group` 和更清晰的 `match_reason`，让 `docs/current` 与

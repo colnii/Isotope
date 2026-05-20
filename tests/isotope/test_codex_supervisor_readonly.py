@@ -8405,7 +8405,7 @@ def test_codex_supervisor_runner_supervise_context_followup_can_ask_user_after_g
     assert provider.calls == 2
 
 
-def test_codex_supervisor_context_request_prefers_rg_backend(tmp_path):
+def test_codex_supervisor_context_request_uses_bm25_backend_without_rg(tmp_path):
     codex_home = tmp_path / ".codex"
     workspace = tmp_path / "workspace"
     (workspace / "docs" / "current").mkdir(parents=True)
@@ -8418,7 +8418,6 @@ def test_codex_supervisor_context_request_prefers_rg_backend(tmp_path):
         "Supervisor 下一步节奏：旧工作树内容不应该参与。\n",
         encoding="utf-8",
     )
-    calls: list[list[str]] = []
 
     def fake_run(
         command: list[str],
@@ -8429,25 +8428,8 @@ def test_codex_supervisor_context_request_prefers_rg_backend(tmp_path):
         check: bool,
         timeout: int,
     ) -> subprocess.CompletedProcess[str]:
-        calls.append(command)
-        assert cwd == str(workspace)
-        assert text is True
-        assert capture_output is True
-        assert check is False
-        assert timeout == 3
-        assert "--json" in command
-        assert "--glob" in command
-        assert "!.worktrees/**" in command
-        event = {
-            "type": "match",
-            "data": {
-                "path": {"text": "docs/current/status.md"},
-                "line_number": 1,
-                "lines": {"text": "Supervisor 下一步节奏：由 LLM 主导。\n"},
-                "submatches": [{"match": {"text": "Supervisor"}}],
-            },
-        }
-        return subprocess.CompletedProcess(command, 0, json.dumps(event), "")
+        del command, cwd, text, capture_output, check, timeout
+        raise AssertionError("request_context should use the BM25 backend, not rg")
 
     result = request_project_context(
         codex_home=codex_home,
@@ -8457,10 +8439,9 @@ def test_codex_supervisor_context_request_prefers_rg_backend(tmp_path):
         rg_bin="rg",
     )
 
-    assert result.backend == "rg"
+    assert result.backend == "bm25"
     assert result.items[0].path == "docs/current/status.md"
     assert "LLM 主导" in result.items[0].text
-    assert calls
 
 
 def test_codex_supervisor_context_request_returns_ranked_evidence(tmp_path):
@@ -8480,67 +8461,23 @@ def test_codex_supervisor_context_request_returns_ranked_evidence(tmp_path):
         encoding="utf-8",
     )
 
-    def fake_run(
-        command: list[str],
-        *,
-        cwd: str,
-        text: bool,
-        capture_output: bool,
-        check: bool,
-        timeout: int,
-    ) -> subprocess.CompletedProcess[str]:
-        del cwd, text, capture_output, check, timeout
-        events = [
-            {
-                "type": "match",
-                "data": {
-                    "path": {"text": "src/isotope/features/supervisor/context.py"},
-                    "line_number": 1,
-                    "lines": {"text": "def request_project_context():\n"},
-                    "submatches": [{"match": {"text": "request_context"}}],
-                },
-            },
-            {
-                "type": "match",
-                "data": {
-                    "path": {"text": "docs/current/status.md"},
-                    "line_number": 3,
-                    "lines": {
-                        "text": (
-                            "request_context ranked evidence 会给 LLM title path "
-                            "snippet score match_reason。\n"
-                        ),
-                    },
-                    "submatches": [
-                        {"match": {"text": "request_context"}},
-                        {"match": {"text": "ranked"}},
-                        {"match": {"text": "evidence"}},
-                    ],
-                },
-            },
-        ]
-        return subprocess.CompletedProcess(
-            command,
-            0,
-            "\n".join(json.dumps(event) for event in events),
-            "",
-        )
-
     result = request_project_context(
         codex_home=codex_home,
         cwd=workspace,
         query="request_context ranked evidence",
-        run=fake_run,
-        rg_bin="rg",
         max_results=2,
     )
 
     first = result.items[0]
-    assert result.backend == "rg"
+    assert result.backend == "bm25"
     assert [item.score for item in result.items] == sorted(
         (item.score for item in result.items),
         reverse=True,
     )
+    assert {item.path for item in result.items[:2]} == {
+        "docs/current/status.md",
+        "src/isotope/features/supervisor/context.py",
+    }
     assert first.path == "docs/current/status.md"
     assert first.title == "Codex Supervisor Status"
     assert first.snippet == first.text
@@ -8564,6 +8501,41 @@ def test_codex_supervisor_context_request_returns_ranked_evidence(tmp_path):
     assert recent[0].items[0].snippet == first.snippet
     assert recent[0].items[0].match_reason == first.match_reason
     assert recent[0].items[0].source_group == "docs/current"
+
+
+def test_codex_supervisor_context_request_bm25_top_two_keeps_keyword_baseline_hits(
+    tmp_path,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    (workspace / "docs").mkdir(parents=True)
+    (workspace / "src").mkdir(parents=True)
+    (workspace / "docs" / "approval.md").write_text(
+        "approval resume context gate keeps restart evidence current.\n",
+        encoding="utf-8",
+    )
+    (workspace / "src" / "resume_context.py").write_text(
+        "def approval_resume_context():\n"
+        "    return 'restart evidence'\n",
+        encoding="utf-8",
+    )
+    (workspace / "docs" / "noise.md").write_text(
+        "approval approval approval approval unrelated note.\n",
+        encoding="utf-8",
+    )
+
+    result = request_project_context(
+        codex_home=codex_home,
+        cwd=workspace,
+        query="approval resume context",
+        max_results=2,
+    )
+
+    assert result.backend == "bm25"
+    assert {item.path for item in result.items[:2]} == {
+        "docs/approval.md",
+        "src/resume_context.py",
+    }
 
 
 def test_codex_supervisor_context_request_surfaces_project_context_anchors(tmp_path):
@@ -8617,7 +8589,7 @@ def test_codex_supervisor_context_request_surfaces_project_context_anchors(tmp_p
     )
 
     paths = [item.path for item in result.items]
-    assert result.backend == "rg"
+    assert result.backend == "bm25"
     assert "docs/current/supervisor-capability-map.md" in paths
     assert "docs/current/status.md" in paths
     assert "docs/current/docs-map.md" in paths
@@ -8696,7 +8668,7 @@ def test_codex_supervisor_context_request_falls_back_without_rg(tmp_path):
         rg_bin=None,
     )
 
-    assert result.backend == "python"
+    assert result.backend == "bm25"
     assert result.items[0].path == "docs/note.md"
 
 

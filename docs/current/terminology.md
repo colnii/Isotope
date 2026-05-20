@@ -178,7 +178,7 @@
 | `decision request` | 拍板请求账本项，记录合法 `ask_user` 的问题、session 或 `goal_id`、原因和 gate 证据，供 dashboard 和 web 稳定展示；有答案用 `decision answer`，无需继续才归档 | 产品功能/通知/拍板 | `src/isotope/features/supervisor/decision_requests.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `decision answer` | 用户拍板答案事件，追加写入 JSONL，把请求移出活跃列表，并作为 `recent_decision_answers` 交给 LLM planner 继续推进 | 产品功能/通知/拍板/模型输入 | `src/isotope/features/supervisor/decision_requests.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/web.py` |
 | `decision archive` | 拍板归档事件，追加写入 JSONL，让无需继续的拍板项从活跃列表移走，不直接删除历史 | 产品功能/通知/拍板 | `src/isotope/features/supervisor/decision_requests.py`, `src/isotope/features/supervisor/runner.py` |
-| `context` | Supervisor 命令，执行项目上下文检索并记录结果供后续 LLM planner 使用；当前 `rg` 优先、Python 兜底，不是 BM25 | 产品功能/上下文能力 | `src/isotope/features/supervisor/context.py`, `src/isotope/features/supervisor/runner.py` |
+| `context` | Supervisor 命令，执行项目上下文检索并记录结果供后续 LLM planner 使用；当前用 BM25 候选索引排序工作区文档和代码文件 | 产品功能/上下文能力 | `src/isotope/features/supervisor/context.py`, `src/isotope/features/supervisor/runner.py` |
 | `OpenAI-compatible` | 兼容 OpenAI Chat Completions 形状的模型接口 | 模型/外部集成 | `src/isotope/features/supervisor/llm_summary.py` |
 | `LLM pool TOML` | 本机模型号池配置，声明 provider、base URL、model 和 key | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
 | `git worktree` | Git 工作树，同一仓库的独立开发目录，用于多分支并行；Supervisor 自动 worker 默认放在 `.worktrees/supervisor/...` | 工作区/开发协作 | `src/isotope/features/supervisor/runner.py`, `docs/current/status.md`, `AGENTS.md` |

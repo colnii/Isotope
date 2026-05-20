@@ -123,8 +123,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     执行时会包成 A 层 `work order` prompt，写明 goal、cwd、
     scope、budget hint、完成条件和停等用户条件；这只是提示边界，
     不是 Supervisor 强制预算控制；`request_context` 是按需上下文检索能力，
-    当前使用 `rg` 优先、Python 关键词扫描兜底，并复用 `rag`
-    的 BM25-style 排序处理候选片段，不是每轮固定塞文档全文；
+    当前使用 BM25 候选索引排序工作区文档和代码片段，
+    不是每轮固定塞文档全文；
     `scan --json` 包含结构化建议；
     `ask_user` 只有在 Codex 明确提出拍板请求、LLM 无法根据用户
     既有指示判断、并且上下文检索结果缺失/过时/冲突时才允许；
