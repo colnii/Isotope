@@ -128,9 +128,13 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `supervise/loop/up/daemon start --goal <目标>` 会把用户目标交给
   LLM planner；没有现成托管窗口时，模型仍可基于该目标选择
   `request_context` 或 `launch_session`，启动新的后台 Codex worker。
-- `goal add/list/archive` 是持久目标队列入口；活跃目标写入
-  `supervisor/goals.jsonl`，日常 `loop` 没有显式 `--goal` 时会读取
-  最早活跃目标，并保持 daemon 启动命令不绑定某一个队列目标。
+- `goal add/list/archive` 是持久目标队列入口；`goal plan` 是显式
+  AI-first 目标规划入口，读取 `docs/current/status.md`、
+  `docs/current/agent-task-queue.md` 和
+  `docs/current/supervisor-capability-map.md` 后让 LLM 生成候选目标。
+  默认只预览，只有传 `--write` 才写入 `supervisor/goals.jsonl`；
+  日常 `loop` 没有显式 `--goal` 时会读取最早活跃目标，
+  并保持 daemon 启动命令不绑定某一个队列目标。
 - `loop` 会把同名 worker 的 `SUPERVISOR_STATUS` 写回目标队列；
   `done` 自动归档，`blocked/needs_user` 只记录状态并等待后续处理。
 - `blocked/needs_user` 活跃目标会带着 `last_status`、摘要和下一步进入

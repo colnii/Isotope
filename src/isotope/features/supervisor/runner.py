@@ -52,6 +52,7 @@ from .goal_queue import (
     record_supervisor_goal,
     record_supervisor_goal_status,
 )
+from .goal_planner import plan_supervisor_goals
 from .lane_state import (
     DEFAULT_MAX_CONTINUE_COUNT,
     DEFAULT_PROMPT_COOLDOWN_SECONDS,
@@ -849,6 +850,32 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Preferred managed worker name. Defaults to the generated goal id.",
     )
     goal_add_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    goal_plan_parser = goal_subparsers.add_parser(
+        "plan",
+        help="Use LLM to propose a small batch of Supervisor goals.",
+    )
+    goal_plan_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    goal_plan_parser.add_argument(
+        "--cwd",
+        default=str(Path.cwd()),
+        help="Workspace directory whose current docs seed planning.",
+    )
+    goal_plan_parser.add_argument(
+        "--limit",
+        type=int,
+        default=3,
+        help="Maximum goal candidates to return or write.",
+    )
+    goal_plan_parser.add_argument(
+        "--write",
+        action="store_true",
+        help="Write generated candidates into the persistent goal queue.",
+    )
+    goal_plan_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     for goal_command, help_text in (
         ("list", "List active Supervisor goals."),
         ("archive", "Archive one handled Supervisor goal."),
@@ -3030,6 +3057,15 @@ def _goal_payload(args: argparse.Namespace) -> dict[str, Any]:
             "goal": goal.to_dict(),
             "active_goals": _active_goal_dicts(args, include_status=True),
         }
+    if args.goal_command == "plan":
+        provider = resolve_summary_provider_from_env(agent_name="supervisor")
+        return plan_supervisor_goals(
+            root=Path(args.cwd),
+            codex_home=Path(args.codex_home),
+            provider=provider,
+            write=args.write,
+            limit=args.limit,
+        )
     if args.goal_command == "list":
         return {
             "status": "ok",
@@ -3058,6 +3094,16 @@ def _print_goal_plain(payload: dict[str, Any]) -> None:
     archived = payload.get("archived")
     if isinstance(archived, dict):
         print(f"已归档目标：{archived['goal_id']}")
+    candidates = payload.get("candidates") or []
+    if candidates:
+        mode = "写入" if payload.get("mode") == "write" else "预览"
+        print(f"LLM 目标规划：{mode}")
+        for item in candidates:
+            print(f"- {item['target_name']} {item['goal']}")
+            print(f"  依据：{item['reason']}")
+    written_goals = payload.get("written_goals") or []
+    if written_goals:
+        print(f"已写入目标：{len(written_goals)}")
     goals = payload.get("active_goals") or []
     print(f"活跃目标：{len(goals)}")
     for item in goals:
