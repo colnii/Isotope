@@ -30,6 +30,7 @@ def test_supervisor_integration_review_groups_ready_and_already_integrated(tmp_p
                 ("status", "--short"): (0, "", ""),
                 ("merge-base", "--is-ancestor", "ready111", "main"): (1, "", ""),
                 ("merge-base", "--is-ancestor", "main", "ready111"): (0, "", ""),
+                ("cherry", "main", "ready111"): (0, "+ ready111\n", ""),
                 ("merge-tree", "--write-tree", "main", "ready111"): (0, "tree-ok\n", ""),
             },
             done_cwd: {
@@ -75,6 +76,45 @@ def test_supervisor_integration_review_groups_ready_and_already_integrated(tmp_p
     assert "ready_to_integrate：1" in plain
     assert "already_integrated：1" in plain
     assert "supervisor/ready-12345678 @ ready111" in plain
+
+
+def test_supervisor_integration_review_treats_cherry_picked_worker_as_integrated(tmp_path):
+    from isotope.features.supervisor.integration_review import collect_integration_reviews
+
+    codex_home = tmp_path / ".codex"
+    picked_cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "picked-12345678"
+    picked_cwd.mkdir(parents=True)
+    _write_done_record(
+        codex_home,
+        record_id="managed-picked",
+        name="picked",
+        cwd=picked_cwd,
+    )
+
+    fake_run = _fake_git(
+        {
+            picked_cwd: {
+                ("rev-parse", "--abbrev-ref", "HEAD"): (0, "supervisor/picked-12345678\n", ""),
+                ("rev-parse", "HEAD"): (0, "picked111\n", ""),
+                ("rev-parse", "main"): (0, "main999\n", ""),
+                ("status", "--short"): (0, "", ""),
+                ("merge-base", "--is-ancestor", "picked111", "main"): (1, "", ""),
+                ("merge-base", "--is-ancestor", "main", "picked111"): (0, "", ""),
+                ("cherry", "main", "picked111"): (0, "- picked111\n", ""),
+                ("merge-tree", "--write-tree", "main", "picked111"): (0, "tree-ok\n", ""),
+            },
+        }
+    )
+
+    payload = collect_integration_reviews(codex_home=codex_home, run=fake_run)
+
+    assert payload["summary"]["ready_to_integrate"] == 0
+    assert payload["summary"]["already_integrated"] == 1
+    item = payload["groups"]["already_integrated"][0]
+    assert item["record_id"] == "managed-picked"
+    assert item["main_contains_worker"] is False
+    assert item["main_has_worker_patch"] is True
+    assert item["reason"] == "main 已包含 worker 等价补丁；可检查后归档。"
 
 
 def test_supervisor_integration_review_flags_dirty_and_unfinished_workers(tmp_path):
@@ -164,6 +204,7 @@ def test_supervisor_integration_review_defaults_to_done_unarchived_workers(tmp_p
                 ("status", "--short"): (0, "", ""),
                 ("merge-base", "--is-ancestor", "done111", "main"): (1, "", ""),
                 ("merge-base", "--is-ancestor", "main", "done111"): (0, "", ""),
+                ("cherry", "main", "done111"): (0, "+ done111\n", ""),
                 ("merge-tree", "--write-tree", "main", "done111"): (0, "tree-ok\n", ""),
             },
         }
@@ -198,6 +239,7 @@ def test_supervisor_integration_review_flags_merge_conflict_risk(tmp_path):
                 ("status", "--short"): (0, "", ""),
                 ("merge-base", "--is-ancestor", "conflict111", "main"): (1, "", ""),
                 ("merge-base", "--is-ancestor", "main", "conflict111"): (1, "", ""),
+                ("cherry", "main", "conflict111"): (0, "+ conflict111\n", ""),
                 ("merge-tree", "--write-tree", "main", "conflict111"): (
                     1,
                     "",
@@ -233,6 +275,7 @@ def test_supervisor_integration_review_cli_json(tmp_path, capsys, monkeypatch):
                     ("status", "--short"): (0, "", ""),
                     ("merge-base", "--is-ancestor", "ready111", "main"): (1, "", ""),
                     ("merge-base", "--is-ancestor", "main", "ready111"): (0, "", ""),
+                    ("cherry", "main", "ready111"): (0, "+ ready111\n", ""),
                     ("merge-tree", "--write-tree", "main", "ready111"): (0, "tree-ok\n", ""),
                 }
             }

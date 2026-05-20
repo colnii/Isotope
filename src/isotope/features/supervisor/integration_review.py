@@ -124,6 +124,16 @@ def _worker_integration_review(
         if cwd_exists and worker_commit
         else None
     )
+    main_has_worker_patch = _main_has_worker_patch(
+        cwd=cwd,
+        base_ref=base_ref,
+        worker_commit=worker_commit,
+        protocol=protocol,
+        dirty_paths=dirty_paths,
+        main_contains_worker=main_contains_worker,
+        cwd_exists=cwd_exists,
+        run=run,
+    )
     merge_check = (
         _merge_tree_check(cwd, base_ref=base_ref, worker_commit=worker_commit, run=run)
         if cwd_exists and worker_commit
@@ -136,6 +146,7 @@ def _worker_integration_review(
         worker_commit=worker_commit,
         base_commit=base_commit,
         main_contains_worker=main_contains_worker,
+        main_has_worker_patch=main_has_worker_patch,
         merge_conflict=merge_check["conflict"],
     )
     return {
@@ -148,6 +159,7 @@ def _worker_integration_review(
         "base_ref": base_ref,
         "base_commit": base_commit,
         "main_contains_worker": main_contains_worker,
+        "main_has_worker_patch": main_has_worker_patch,
         "worker_contains_main": worker_contains_main,
         "dirty": bool(dirty_paths),
         "dirty_paths": dirty_paths,
@@ -178,6 +190,7 @@ def _classify(
     worker_commit: str | None,
     base_commit: str | None,
     main_contains_worker: bool | None,
+    main_has_worker_patch: bool | None,
     merge_conflict: bool,
 ) -> tuple[str, str, list[str]]:
     status = (protocol.get("status") or "").strip().lower()
@@ -217,6 +230,12 @@ def _classify(
             "main 已包含 worker HEAD；可检查后归档。",
             [*reasons, "main 已包含 worker 提交"],
         )
+    if main_has_worker_patch:
+        return (
+            "already_integrated",
+            "main 已包含 worker 等价补丁；可检查后归档。",
+            [*reasons, "main 已包含 worker 等价补丁"],
+        )
     if merge_conflict:
         return (
             "conflict_risk",
@@ -226,8 +245,39 @@ def _classify(
     return (
         "ready_to_integrate",
         "worker 已完成、分支干净、main 尚未包含且未检测到 merge conflict。",
-        [*reasons, "main 尚未包含 worker 提交", "未检测到 merge conflict"],
+        [*reasons, "main 尚未包含 worker 提交或等价补丁", "未检测到 merge conflict"],
     )
+
+
+def _main_has_worker_patch(
+    *,
+    cwd: Path,
+    base_ref: str,
+    worker_commit: str | None,
+    protocol: dict[str, str | None],
+    dirty_paths: list[dict[str, str]],
+    main_contains_worker: bool | None,
+    cwd_exists: bool,
+    run: RunCommand,
+) -> bool | None:
+    if main_contains_worker is True:
+        return True
+    status = (protocol.get("status") or "").strip().lower()
+    if (
+        not cwd_exists
+        or not worker_commit
+        or status != "done"
+        or dirty_paths
+        or main_contains_worker is not False
+    ):
+        return None
+    completed = _git_completed(cwd, ["cherry", base_ref, worker_commit], run=run)
+    if completed is None or completed.returncode != 0:
+        return None
+    lines = [line.strip() for line in completed.stdout.splitlines() if line.strip()]
+    if not lines:
+        return None
+    return all(line.startswith("-") for line in lines)
 
 
 def _parse_status_paths(status_text: str | None) -> list[dict[str, str]]:
