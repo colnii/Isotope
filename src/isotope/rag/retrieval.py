@@ -115,7 +115,7 @@ def rank_summary_documents(
         term: sum(1 for tokens in tokenized_documents if term in tokens)
         for term in set(query_terms)
     }
-    hits: list[tuple[int, SummarySearchHit]] = []
+    hits: list[tuple[int, int, SummarySearchHit]] = []
     for position, (document, tokens) in enumerate(zip(documents, tokenized_documents)):
         score = _bm25_score(
             query_terms=query_terms,
@@ -125,13 +125,21 @@ def rank_summary_documents(
             average_document_length=average_length,
         )
         if score > 0:
-            hits.append((position, SummarySearchHit(document=document, score=score)))
+            hits.append(
+                (
+                    position,
+                    _matched_query_term_count(query_terms, tokens),
+                    SummarySearchHit(document=document, score=score),
+                )
+            )
 
+    if len({matched_terms for _, matched_terms, _ in hits}) <= 1:
+        return [hit for _, _, hit in hits]
     return [
         hit
-        for _, hit in sorted(
+        for _, _, hit in sorted(
             hits,
-            key=lambda item: (-item[1].score, item[0]),
+            key=lambda item: (-item[1], -item[2].score, item[0]),
         )
     ]
 
@@ -171,6 +179,11 @@ def _bm25_score(
             term_frequency * (k1 + 1) / denominator
         )
     return score
+
+
+def _matched_query_term_count(query_terms: list[str], document_terms: list[str]) -> int:
+    document_term_set = set(document_terms)
+    return sum(1 for term in dict.fromkeys(query_terms) if term in document_term_set)
 
 
 def _tokenize(value: str | None) -> list[str]:

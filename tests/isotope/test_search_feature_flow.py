@@ -121,6 +121,31 @@ def test_search_flow_matches_multi_term_summary_queries(tmp_path):
     _assert_low_sensitive({"results": [result.to_dict() for result in results]})
 
 
+def test_search_flow_preserves_source_order_when_rank_matches_same_terms(tmp_path):
+    project = ProjectFlow.in_process(tmp_path).create_project(
+        name="portfolio demo",
+        summary="autumn recruiting workspace",
+    )
+    task = TaskFlow.in_process(tmp_path).create_task(
+        goal="build portfolio story",
+        first_message="private task note",
+    )
+    file_summary = FileFlow.in_process(tmp_path).create_text_file(
+        name="portfolio-notes.md",
+        summary="portfolio notes",
+        content="private file content",
+    )
+
+    results = SearchFlow.in_process(tmp_path).search("portfolio 下一步做什么？")
+
+    assert [result.result_type for result in results] == ["project", "task", "file"]
+    assert [result.result_id for result in results] == [
+        project.project_id,
+        task.task_id,
+        file_summary.file_id,
+    ]
+
+
 @pytest.mark.parametrize("bad_type", ["", "unknown"])
 def test_search_flow_rejects_unknown_result_types(tmp_path, bad_type):
     flow = SearchFlow.in_process(tmp_path)
