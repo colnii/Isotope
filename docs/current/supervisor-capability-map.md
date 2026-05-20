@@ -19,7 +19,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 | --- | --- | --- | --- |
 | 用户功能层 | `scan`、`dashboard`、`guide`、`up`、`discover`、`web`、`watch`、`advise`、`supervise`、`loop`、`daemon` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
 | 托管控制层 | `launch`、`adopt`、`send`、`archive`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
-| Worker 审查层 | `worker-review`、`integration-review` | `features/supervisor/worker_review.py`、`features/supervisor/integration_review.py`、`features/supervisor/runner.py` | 汇总已托管 worker 的 worktree、branch、状态协议、改动、复查提示、合并提示和只读集成分组 |
+| Worker 审查层 | `worker-review`、`integration-review`、`replan` | `features/supervisor/worker_review.py`、`features/supervisor/integration_review.py`、`features/supervisor/replan.py`、`features/supervisor/runner.py` | 汇总已托管 worker 的 worktree、branch、状态协议、改动、复查提示、合并提示、只读集成分组和下一轮候选 |
+| Merge 工单层 | `merge-work-order` builder、后续 merge dispatch | `features/supervisor/merge_work_order.py` | 当前只根据 `integration-review` 生成动态 merge worker 工单；下一步才接自动启动 merge worker |
 | Codex 执行通道 | `resume`、`codex exec resume`、`--last` | `features/supervisor/runner.py`、`features/supervisor/registry.py` | 不依赖 tmux 恢复历史会话并投喂新 prompt |
 | 上下文能力层 | `context`、`request_context`、上下文结果记录 | `features/supervisor/context.py`、`features/supervisor/runner.py` | LLM 按需请求检索项目资料，`rg` 优先、Python 兜底，不固定注入全文 |
 | Codex 集成层 | 读取 Codex session（会话记录）、索引标题和 agent 元数据 | `features/supervisor/flow.py` | 当前读取本机 `.jsonl`、`session_index.jsonl` 和 SQLite |
@@ -116,6 +117,15 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   `already_integrated`、`needs_review`、`conflict_risk` 分组，生成下一轮
   只读建议和可交给动态 Codex worker 复查的合并候选；输出可用 plain 或
   `--json`，不自动合并、不自动归档、不删除 worktree 或分支。
+- `merge-work-order` builder 会把 `integration-review` 的
+  `ready_to_integrate` 候选渲染成给动态 Codex merge worker 的任务单：
+  包含目标 base ref、merge candidates、excluded workers、diff review、
+  cherry-pick、组合测试、push/CI watch 和停止规则。它只生成工单文本，
+  不执行 merge、不 push、不归档、不删除分支或 worktree，也不 force push、
+  不 rebase 已共享分支、不重写历史。
+- merge dispatch 是下一阶段接线：读取 `integration-review`/`replan`
+  产出的候选，调用 `merge-work-order` builder 生成工单，再启动专门
+  merge worker。当前阶段只到候选和工单，不自动启动 merge worker。
 - LLM planner 会看到仍在运行的 process 托管记录作为候选目标，避免状态面板
   误报“只有 tmux 才可控”；已完成的后台 worker 转入
   `worker-review`/`cleanup`，不再被常驻 `loop` 反复催促。
@@ -346,6 +356,27 @@ B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
 - `ask_user_conditions`：只有哪些情况能停下来问用户。
 - `report_protocol`：最后按 `SUPERVISOR_STATUS/SUMMARY/NEXT` 汇报。
 
+## Merge Worker 交接边界
+
+动态合并 worker 分成四个职责，不要混在一个入口里：
+
+- `integration-review`：只读扫描 managed worker，按
+  `ready_to_integrate`、`already_integrated`、`needs_review` 和
+  `conflict_risk` 分组；它负责回答“哪些 worker 看起来能进合并复查”，
+  不执行 merge/push/delete。
+- `replan`：读取 worker 审查、活跃目标和集成分组，生成下一轮建议和
+  merge candidates；它负责回答“下一轮应该复查哪些候选”，不自动合并、
+  不归档、不删除分支。
+- `merge-work-order`：把 ready 候选渲染成专门给 merge worker 的工单；
+  它负责回答“merge worker 应按什么步骤复查、cherry-pick、测试和
+  watch CI”，但 builder 本身不碰 git 状态。
+- merge dispatch：下一阶段才接入的派发层；它负责在候选明确时自动启动
+  merge worker，并把 `merge-work-order` 交给 worker。当前尚未把这一步接入
+  `loop/daemon` 自动执行。
+
+当前阶段的安全线：Supervisor 只生成候选和工单，不自动删除 worker 分支、
+worktree 或来源历史，不 force push，不 rebase 已共享分支，不重写远端历史。
+
 ## Runner 接线边界
 
 本节只登记后续接入 `features/supervisor/runner.py` 时的分工。
@@ -359,6 +390,7 @@ B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
 | `current_batch` | dashboard/web read model（读取模型） | 只展示仍活跃的 `active_goals` 和当前托管 worker；不启动 worker、不改目标状态、不替代 cleanup。 |
 | `fanout` | `loop` 与 `goal plan --fanout-execute` | 把多个活跃目标或 `parallel_recommendations` 展开成一批受控 `launch_session`；复用 goal queue、managed registry、prompt cooldown 和预算 gate，不另建队列。 |
 | `replan` | `_maybe_replan_after_context_request` | 只在同一轮 `request_context` 成功后追加最近上下文，再让 LLM planner 重新选择一次受控动作；不得无限循环，不得绕过 `ask_user` gate。 |
+| `merge dispatch` | 下一阶段 runner 接线 | 读取 `ready_to_integrate` 候选，生成 `merge-work-order`，再用现有 `launch_session` 路径启动专门 merge worker；不得在 runner 内直接 cherry-pick、delete branch 或改写历史。 |
 
 ### 建议调用顺序
 
@@ -370,7 +402,10 @@ B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
 4. `LLM planner`：fanout 不适用时，在 `active_goals`、recent context、worker review 和白名单命令内选择一个动作。
 5. `execute`：只执行通过校验的 `request_context`、`launch_session`、`resume_session`、send 或 `ask_user`。
 6. `replan`：只有本轮执行的是成功的 `request_context` 时，才把检索结果加入 prompt，再执行一次 follow-up 动作。
-7. `current_batch refresh`：fanout 同轮执行了 `launch_session` 后，
+7. `merge dispatch`：下一阶段在 `integration-review`/`replan` 给出
+   `ready_to_integrate` 候选后，生成 `merge-work-order` 并启动专门
+   merge worker；本阶段还不自动执行。
+8. `current_batch refresh`：fanout 同轮执行了 `launch_session` 后，
    `loop --json` 会刷新一次 `current_batch`；下一轮 dashboard/web
    继续反映 worker、goal status 或 decision request 的变化。
 
@@ -418,6 +453,9 @@ fanout 回归必须覆盖：多个 active goals 中已有同名 running worker �
 - 高亮模型建议不等于执行动作，执行必须由人类点击或显式参数触发。
 - 没有可控托管目标时，不要为了动作建议调用 LLM。
 - LLM 动作选择必须落到可审计的白名单能力上。
+- 不要把 `integration-review`、`replan` 或 `merge-work-order` 的候选结果
+  当成自动删除分支、清理 worktree、force push、rebase 已共享分支或
+  重写历史的授权。
 
 ## 后续拆分方向
 

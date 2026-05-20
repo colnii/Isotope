@@ -96,6 +96,18 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
   `ready_to_integrate`、`already_integrated`、`needs_review`、
   `conflict_risk` 四组，不执行 merge/push/delete；默认只看未归档且已
   汇报 done 的 worker，排查历史噪音时再加 `--include-unfinished`。
+- `replan` 可读取 `worker-review`、活跃目标和 `integration-review`
+  分组，生成下一轮只读建议、复查合并候选和候选摘要；它只产出建议，
+  不自动 merge、不归档、不删除分支或 worktree。
+- `merge-work-order` 当前是工单 builder（生成器）能力：根据
+  `integration-review` 的 `ready_to_integrate` 结果渲染给动态 Codex
+  merge worker 的任务单，写明 diff review、cherry-pick、组合测试、
+  push/CI watch 和停止条件；builder 本身不执行合并、不删除来源分支、
+  不 force push、不 rebase 已共享分支、不重写历史。
+- merge dispatch（合并派发）是下一阶段接线：由 Supervisor 在确认
+  `ready_to_integrate` 候选后自动启动专门 merge worker，并把
+  `merge-work-order` 交给它执行。当前阶段只生成候选和工单，不自动启动
+  merge worker。
 - `supervise/loop/daemon start --worker-codex-model <model>
   --worker-codex-config key=value` 可把同类覆盖传给 LLM 自动启动或恢复的
   worker，避免写代码任务继承未知的本机默认配置。
