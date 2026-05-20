@@ -3105,6 +3105,126 @@ def test_codex_supervisor_runner_loop_prioritizes_active_goals_over_stale_resume
     assert payload["command_suggestions"][1]["target_name"] == "goal-worker"
 
 
+def test_codex_supervisor_llm_action_prompt_scopes_to_active_goal_over_old_session(
+    tmp_path,
+):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    goal = "推进目标队列里的新功能。"
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="stale-session",
+                cwd=str(workspace),
+                source_path="/home/lumber/.codex/sessions/stale.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=900,
+                status="stale",
+                reason="旧普通会话长时间没有新事件。",
+            ),
+        ),
+    )
+    active_goals = [
+        {
+            "goal_id": "goal-001",
+            "goal": goal,
+            "cwd": str(workspace),
+            "target_name": "goal-worker",
+        }
+    ]
+    suggestions = _advice_payload(
+        report,
+        include_all_managed=True,
+        active_goals=active_goals,
+    )["command_suggestions"]
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            payload = json.loads(messages[1]["content"])
+            assert payload["active_goals"][0]["target_name"] == "goal-worker"
+            assert payload["candidate_targets"] == []
+            assert "stale-session" not in payload["resumable_session_ids"]
+            assert not any(
+                suggestion.get("kind") == "resume_session"
+                for suggestion in payload["command_suggestions"]
+            )
+            return json.dumps(
+                {
+                    "kind": "launch_session",
+                    "target_name": "goal-worker",
+                    "reason": "优先消费 active goal。",
+                },
+                ensure_ascii=False,
+            )
+
+    decision = generate_llm_action_decision(
+        report,
+        suggestions,
+        FakeProvider(),
+        active_goals=active_goals,
+    )
+
+    assert decision["kind"] == "launch_session"
+    assert decision["target_name"] == "goal-worker"
+    assert decision["prompt"] == goal
+
+
+def test_codex_supervisor_llm_action_rejects_old_resume_with_active_goal(
+    tmp_path,
+):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    goal = "推进目标队列里的新功能。"
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="stale-session",
+                cwd=str(workspace),
+                source_path="/home/lumber/.codex/sessions/stale.jsonl",
+                last_event_at=NOW.isoformat(),
+                age_seconds=900,
+                status="stale",
+                reason="旧普通会话长时间没有新事件。",
+            ),
+        ),
+    )
+    active_goals = [
+        {
+            "goal_id": "goal-001",
+            "goal": goal,
+            "cwd": str(workspace),
+            "target_name": "goal-worker",
+        }
+    ]
+    suggestions = _advice_payload(
+        report,
+        include_all_managed=True,
+        active_goals=active_goals,
+    )["command_suggestions"]
+
+    class FakeProvider:
+        def summarize(self, _messages: list[dict[str, str]]) -> str:
+            return json.dumps(
+                {
+                    "kind": "resume_session",
+                    "session_id": "stale-session",
+                    "prompt_kind": "send_continue",
+                    "reason": "错误地恢复旧普通会话。",
+                },
+                ensure_ascii=False,
+            )
+
+    with pytest.raises(ValueError, match="no command suggestion"):
+        generate_llm_action_decision(
+            report,
+            suggestions,
+            FakeProvider(),
+            active_goals=active_goals,
+        )
+
+
 def test_codex_supervisor_runner_loop_does_not_launch_after_terminal_done_goals(
     tmp_path,
     capsys,

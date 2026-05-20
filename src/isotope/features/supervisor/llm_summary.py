@@ -226,7 +226,13 @@ def build_llm_action_messages(
     recent_decision_answers: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, str]]:
     """Build the prompt for guarded LLM planning."""
-    resumable_session_ids = _resumable_session_ids_from_suggestions(command_suggestions)
+    prompt_command_suggestions = _active_goal_scoped_command_suggestions(
+        command_suggestions,
+        active_goals,
+    )
+    resumable_session_ids = _resumable_session_ids_from_suggestions(
+        prompt_command_suggestions
+    )
     resumable_session_id_set = set(resumable_session_ids)
     candidate_targets = _candidate_target_payloads(
         report,
@@ -254,7 +260,7 @@ def build_llm_action_messages(
                     "allowed_kinds": list(LLM_ACTION_ALLOWED_KINDS),
                     "available_workspaces": _available_workspaces(
                         report,
-                        command_suggestions,
+                        prompt_command_suggestions,
                     ),
                     "candidate_targets": candidate_targets,
                     "active_goals": _active_goal_payload(
@@ -263,7 +269,7 @@ def build_llm_action_messages(
                     ),
                     "resumable_session_ids": resumable_session_ids,
                     "completed_session_ids": completed_session_ids,
-                    "command_suggestions": command_suggestions,
+                    "command_suggestions": prompt_command_suggestions,
                     "recent_context_results": recent_context_results or [],
                     "recent_decision_answers": recent_decision_answers or [],
                     "context_request_history": context_request_history,
@@ -389,7 +395,11 @@ def generate_llm_action_decision(
     active_goals: list[dict[str, Any]] | None = None,
     recent_decision_answers: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    if not _has_any_llm_target(report, command_suggestions):
+    action_command_suggestions = _active_goal_scoped_command_suggestions(
+        command_suggestions,
+        active_goals,
+    )
+    if not _has_any_llm_target(report, action_command_suggestions):
         return {
             "kind": "monitor",
             "target_name": None,
@@ -429,7 +439,7 @@ def generate_llm_action_decision(
             supported = ", ".join(LLM_RESUME_PROMPT_KINDS)
             raise ValueError(f"unsupported resume prompt_kind: {prompt_kind}; allowed: {supported}")
         command_suggestion = _command_suggestion_for_kind(
-            command_suggestions,
+            action_command_suggestions,
             kind,
             session_id=session_id,
             prompt_kind=prompt_kind,
@@ -442,7 +452,7 @@ def generate_llm_action_decision(
         if _has_running_managed_worker(report, target_name):
             raise ValueError(f"target already has running managed worker: {target_name}")
         existing_launch_suggestion = _command_suggestion_for_kind(
-            command_suggestions,
+            action_command_suggestions,
             kind,
             target_name=target_name,
         )
@@ -451,16 +461,16 @@ def generate_llm_action_decision(
             or _suggestion_string(existing_launch_suggestion, "cwd")
             or _default_workspace(
             report,
-            command_suggestions,
+            action_command_suggestions,
             )
         )
         if cwd is None or cwd not in _available_workspaces(
             report,
-            command_suggestions,
+            action_command_suggestions,
         ):
             raise ValueError(f"unknown workspace for LLM action: {cwd}")
         if _requires_workspace_action_suggestion(cwd) and not _has_workspace_action_suggestion(
-            command_suggestions,
+            action_command_suggestions,
             kind,
             cwd,
         ):
@@ -487,15 +497,15 @@ def generate_llm_action_decision(
         target_name = None
         cwd = _optional_payload_string(payload, "cwd") or _default_workspace(
             report,
-            command_suggestions,
+            action_command_suggestions,
         )
         if cwd is None or cwd not in _available_workspaces(
             report,
-            command_suggestions,
+            action_command_suggestions,
         ):
             raise ValueError(f"unknown workspace for LLM action: {cwd}")
         if _requires_workspace_action_suggestion(cwd) and not _has_workspace_action_suggestion(
-            command_suggestions,
+            action_command_suggestions,
             kind,
             cwd,
         ):
@@ -545,14 +555,17 @@ def generate_llm_action_decision(
         if not _has_managed_target(report, target_name):
             raise ValueError(f"unknown managed target for LLM action: {target_name}")
         command_suggestion = _command_suggestion_for_kind(
-            command_suggestions,
+            action_command_suggestions,
             kind,
             target_name=target_name,
         )
         if command_suggestion is None:
             raise ValueError(f"no command suggestion for LLM action: {kind}")
     else:
-        command_suggestion = _command_suggestion_for_kind(command_suggestions, kind)
+        command_suggestion = _command_suggestion_for_kind(
+            action_command_suggestions,
+            kind,
+        )
     return {
         "kind": kind,
         "target_name": target_name,
@@ -763,6 +776,57 @@ def _json_object_candidates(text: str) -> list[dict[str, Any]]:
         if isinstance(payload, dict):
             candidates.append(payload)
     return candidates
+
+
+def _active_goal_scoped_command_suggestions(
+    command_suggestions: list[dict[str, str]],
+    active_goals: list[dict[str, Any]] | None,
+) -> list[dict[str, str]]:
+    if not active_goals:
+        return command_suggestions
+    goal_names = {
+        target_name
+        for goal in active_goals
+        if isinstance(goal, dict)
+        for target_name in (goal.get("target_name"),)
+        if isinstance(target_name, str) and target_name
+    }
+    goal_texts = {
+        text
+        for goal in active_goals
+        if isinstance(goal, dict)
+        for text in (goal.get("goal"),)
+        if isinstance(text, str) and text
+    }
+    scoped: list[dict[str, str]] = []
+    for suggestion in command_suggestions:
+        kind = suggestion.get("kind")
+        if kind == "monitor":
+            scoped.append(suggestion)
+            continue
+        if _command_suggestion_targets_goal(suggestion, goal_names, goal_texts):
+            scoped.append(suggestion)
+    return scoped
+
+
+def _command_suggestion_targets_goal(
+    suggestion: dict[str, str],
+    goal_names: set[str],
+    goal_texts: set[str],
+) -> bool:
+    target_name = suggestion.get("target_name")
+    if isinstance(target_name, str) and target_name in goal_names:
+        return True
+    query = suggestion.get("query")
+    if isinstance(query, str) and query in goal_texts:
+        return True
+    prompt = suggestion.get("prompt")
+    if isinstance(prompt, str) and prompt in goal_texts:
+        return True
+    command = suggestion.get("command")
+    return isinstance(command, str) and any(
+        _command_targets_name(command, name) for name in goal_names
+    )
 
 
 def _required_payload_string(payload: dict[str, Any], field: str) -> str:

@@ -155,9 +155,16 @@ def build_goal_planning_messages(
 def parse_goal_candidates(raw_answer: str) -> list[GoalCandidate]:
     text = _required_string(raw_answer, "LLM answer")
     payload = _load_json_payload(text)
+    candidates = _goal_candidates_from_payload(payload)
+    if not candidates:
+        raise ValueError("LLM goal planning answer must contain usable goals")
+    return candidates
+
+
+def _goal_candidates_from_payload(payload: Any) -> list[GoalCandidate]:
     raw_goals = payload.get("goals") if isinstance(payload, dict) else payload
     if not isinstance(raw_goals, list):
-        raise ValueError("LLM goal planning answer must contain a goals list")
+        return []
     candidates: list[GoalCandidate] = []
     for raw in raw_goals:
         if not isinstance(raw, dict):
@@ -181,13 +188,30 @@ def _load_json_payload(text: str) -> Any:
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        match = re.search(r"\{.*\}", text, flags=re.DOTALL)
-        if match is None:
-            raise ValueError("LLM goal planning answer is not valid JSON") from None
+        for payload in reversed(_json_payload_candidates(text)):
+            if _has_goal_list_payload(payload):
+                return payload
+        raise ValueError(
+            "LLM goal planning answer did not contain usable goals JSON"
+        ) from None
+
+
+def _json_payload_candidates(text: str) -> list[Any]:
+    decoder = json.JSONDecoder()
+    candidates: list[Any] = []
+    for index, char in enumerate(text):
+        if char not in "{[":
+            continue
         try:
-            return json.loads(match.group(0))
-        except json.JSONDecodeError as exc:
-            raise ValueError("LLM goal planning answer is not valid JSON") from exc
+            payload, _ = decoder.raw_decode(text[index:])
+        except json.JSONDecodeError:
+            continue
+        candidates.append(payload)
+    return candidates
+
+
+def _has_goal_list_payload(payload: Any) -> bool:
+    return bool(_goal_candidates_from_payload(payload))
 
 
 def _target_name_from_goal(goal: str) -> str:

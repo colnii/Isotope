@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+from isotope.features.supervisor.goal_planner import parse_goal_candidates
 from isotope.features.supervisor.goal_queue import read_active_supervisor_goals
 from isotope.features.supervisor.runner import main as supervisor_main
 
@@ -33,6 +34,11 @@ class FakeGoalProvider:
             },
             ensure_ascii=False,
         )
+
+
+class NonJsonGoalProvider:
+    def summarize(self, messages: list[dict[str, str]]) -> str:
+        return "我需要更多上下文，暂时不能给出目标。"
 
 
 def _write_current_docs(root: Path) -> None:
@@ -129,6 +135,87 @@ def test_supervisor_goal_plan_writes_selected_candidates(
     assert len(active) == 1
     assert active[0].goal == "为 Supervisor web 增加目标队列状态筛选。"
     assert active[0].target_name == "supervisor-web-goal-filter"
+
+
+def test_supervisor_goal_plan_extracts_json_fragment_after_explanatory_text():
+    candidates = parse_goal_candidates(
+        "先说明：不要使用这个示例 {\"goals\": []}。\n"
+        "```json\n"
+        "{\"goals\":[{\"goal\":\"修复 active goal 调度。\","
+        "\"target_name\":\"active-goal-routing\","
+        "\"reason\":\"当前目标队列仍有活跃项。\"}]}\n"
+        "```"
+    )
+
+    assert [candidate.to_dict() for candidate in candidates] == [
+        {
+            "goal": "修复 active goal 调度。",
+            "target_name": "active-goal-routing",
+            "reason": "当前目标队列仍有活跃项。",
+        }
+    ]
+
+
+def test_supervisor_goal_plan_extracts_noisy_json_array_fragment():
+    candidates = parse_goal_candidates(
+        "候选如下：\n"
+        "[{\"goal\":\"补 goal plan JSON 降级测试。\","
+        "\"target_name\":\"goal-plan-json-fallback\","
+        "\"reason\":\"LLM 可能返回数组片段。\"}]"
+    )
+
+    assert candidates[0].target_name == "goal-plan-json-fallback"
+
+
+def test_supervisor_goal_plan_ignores_later_non_goal_json_fragment():
+    candidates = parse_goal_candidates(
+        "真正的目标："
+        "{\"goals\":[{\"goal\":\"修复 active goal 调度。\","
+        "\"target_name\":\"active-goal-routing\","
+        "\"reason\":\"当前目标队列仍有活跃项。\"}]}\n"
+        "补充编号：[1, 2]"
+    )
+
+    assert [candidate.to_dict() for candidate in candidates] == [
+        {
+            "goal": "修复 active goal 调度。",
+            "target_name": "active-goal-routing",
+            "reason": "当前目标队列仍有活跃项。",
+        }
+    ]
+
+
+def test_supervisor_goal_plan_json_reports_actionable_parse_error(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    root = tmp_path / "repo"
+    root.mkdir()
+    _write_current_docs(root)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: NonJsonGoalProvider(),
+    )
+
+    exit_code = supervisor_main(
+        [
+            "goal",
+            "plan",
+            "--codex-home",
+            str(tmp_path / ".codex"),
+            "--cwd",
+            str(root),
+            "--json",
+        ]
+    )
+
+    assert exit_code == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "error"
+    message = payload["error"]["message"]
+    assert "usable goals JSON" in message
+    assert "invalid JSON" not in message
 
 
 def test_supervisor_goal_plan_without_llm_provider_returns_visible_error(
