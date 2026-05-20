@@ -69,7 +69,9 @@ from .lane_state import (
     DEFAULT_MAX_CONTINUE_COUNT,
     DEFAULT_PROMPT_COOLDOWN_SECONDS,
     continue_budget_state,
+    lane_failure_state,
     prompt_cooldown_state,
+    record_lane_failure,
     record_lane_prompt,
 )
 from .llm_summary import (
@@ -1763,6 +1765,10 @@ def _daemon_activity_payload(
 ) -> dict[str, Any]:
     log_path = daemon.get("log_path")
     daemon_log = _read_tail_text(log_path if isinstance(log_path, str) else None)
+    _sync_managed_worker_failures(
+        codex_home=codex_home,
+        max_run_minutes=_max_run_minutes_from_daemon_command(daemon),
+    )
     recent_ci = _recent_ci_from_log(daemon_log)
     recent_execution = _recent_execution_from_log(daemon_log)
     recent_worker = _recent_worker_payload(codex_home)
@@ -1790,6 +1796,20 @@ def _daemon_activity_payload(
     if active_goals:
         activity["active_goals"] = active_goals
     return activity
+
+
+def _max_run_minutes_from_daemon_command(daemon: dict[str, Any]) -> int:
+    command = daemon.get("command")
+    if not isinstance(command, list):
+        return 0
+    for index, item in enumerate(command):
+        if item != "--max-run-minutes" or index + 1 >= len(command):
+            continue
+        try:
+            return max(0, int(command[index + 1]))
+        except (TypeError, ValueError):
+            return 0
+    return 0
 
 
 def _read_tail_text(path_text: str | None, *, max_bytes: int = 64 * 1024) -> str:
@@ -1876,12 +1896,12 @@ def _daemon_integration_reviews(codex_home: Path) -> dict[str, Any]:
 
 def _daemon_managed_worker_payloads(codex_home: Path) -> list[dict[str, Any]]:
     return [
-        _daemon_managed_worker_payload(record)
+        _daemon_managed_worker_payload(codex_home=codex_home, record=record)
         for record in read_managed_records(default_registry_path(codex_home))
     ]
 
 
-def _daemon_managed_worker_payload(record: Any) -> dict[str, Any]:
+def _daemon_managed_worker_payload(*, codex_home: Path, record: Any) -> dict[str, Any]:
     model, config = _codex_worker_options_from_command(record.command)
     protocol = _supervisor_protocol_from_text(
         _managed_process_log_excerpt(record.log_path) or ""
@@ -1892,6 +1912,9 @@ def _daemon_managed_worker_payload(record: Any) -> dict[str, Any]:
         if record.backend != "tmux" and record.pid
         else None
     )
+    failure = _lane_failure_payload(codex_home=codex_home, record=record)
+    if failure is not None:
+        status = "error"
     if (
         record.backend != "tmux"
         and status in {"launched", "resumed", "working"}
@@ -1910,6 +1933,7 @@ def _daemon_managed_worker_payload(record: Any) -> dict[str, Any]:
         "summary": protocol.get("summary"),
         "next": protocol.get("next"),
         "log_path": record.log_path,
+        **({"failure": failure} if failure is not None else {}),
     }
 
 
@@ -2337,6 +2361,10 @@ def _known_managed_tmux_sessions(codex_home: Path) -> set[str]:
 
 
 def _scan_report(args: argparse.Namespace) -> Any:
+    _sync_managed_worker_failures(
+        codex_home=Path(args.codex_home),
+        max_run_minutes=getattr(args, "max_run_minutes", 0),
+    )
     needs_tmux_pane = (
         getattr(args, "command", None) == "dashboard"
         or bool(getattr(args, "auto_execute", False))
@@ -2357,6 +2385,133 @@ def _scan_report(args: argparse.Namespace) -> Any:
         stale_after_seconds=args.stale_after,
         active_within_seconds=args.active_within,
     )
+
+
+def _sync_managed_worker_failures(
+    *,
+    codex_home: Path,
+    max_run_minutes: int = 0,
+) -> list[dict[str, Any]]:
+    failures: list[dict[str, Any]] = []
+    for record in read_managed_records(default_registry_path(codex_home)):
+        if record.backend == "tmux":
+            continue
+        failure = _managed_worker_failure_from_record(
+            record,
+            max_run_minutes=max_run_minutes,
+        )
+        if failure is None:
+            continue
+        state = record_lane_failure(
+            codex_home=codex_home,
+            name=record.name,
+            tmux_session=record.tmux_session,
+            reason=failure["reason"],
+            exit_code=failure.get("exit_code"),
+            stderr_summary=failure.get("stderr_summary"),
+            record_id=record.record_id,
+        )
+        failures.append(state.to_dict())
+    return failures
+
+
+def _managed_worker_failure_from_record(
+    record: Any,
+    *,
+    max_run_minutes: int = 0,
+) -> dict[str, Any] | None:
+    excerpt = _managed_process_log_excerpt(record.log_path) or ""
+    protocol = _supervisor_protocol_from_text(excerpt)
+    if protocol.get("status") in {"done", "blocked", "needs_user"}:
+        return None
+    is_running = _pid_is_running(record.pid)
+    if not is_running and (parsed := _nonzero_exit_failure(excerpt)):
+        return parsed
+    if max_run_minutes > 0 and _managed_record_exceeded_run_budget(
+        record,
+        max_run_minutes=max_run_minutes,
+    ):
+        return {
+            "reason": "timeout",
+            "exit_code": None,
+            "stderr_summary": _stderr_summary_from_excerpt(excerpt)
+            or f"worker exceeded {max_run_minutes} minute run budget",
+        }
+    return None
+
+
+def _managed_record_exceeded_run_budget(
+    record: Any,
+    *,
+    max_run_minutes: int,
+) -> bool:
+    started_at = _parse_timestamp(record.started_at)
+    if started_at is None:
+        return False
+    elapsed_seconds = max(0, int((_utc_now() - started_at).total_seconds()))
+    return elapsed_seconds >= max_run_minutes * 60
+
+
+def _nonzero_exit_failure(excerpt: str) -> dict[str, Any] | None:
+    for pattern in (
+        r"process exited with code\s+(-?\d+)",
+        r"exit code\s+(-?\d+)",
+        r"exited with status\s+(-?\d+)",
+        r"returncode[=:]\s*(-?\d+)",
+    ):
+        match = re.search(pattern, excerpt, flags=re.IGNORECASE)
+        if match is None:
+            continue
+        exit_code = int(match.group(1))
+        if exit_code == 0:
+            return None
+        return {
+            "reason": "exit_code",
+            "exit_code": exit_code,
+            "stderr_summary": _stderr_summary_from_excerpt(excerpt),
+        }
+    return None
+
+
+def _stderr_summary_from_excerpt(excerpt: str, *, limit: int = 500) -> str | None:
+    lines = [line.strip() for line in excerpt.splitlines() if line.strip()]
+    stderr_lines = [
+        line
+        for line in lines
+        if line.lower().startswith(("stderr:", "error:", "traceback"))
+    ]
+    candidates = stderr_lines or [
+        line
+        for line in lines
+        if not line.upper().startswith("SUPERVISOR_")
+        and not re.search(
+            r"(process exited with code|exit code|exited with status|returncode[=:])",
+            line,
+            flags=re.IGNORECASE,
+        )
+    ]
+    if not candidates:
+        return None
+    summary = " / ".join(candidates[-3:])
+    return summary[:limit]
+
+
+def _lane_failure_payload(
+    *,
+    codex_home: Path,
+    record: Any,
+) -> dict[str, Any] | None:
+    state = lane_failure_state(codex_home=codex_home, name=record.name)
+    if state is None:
+        return None
+    if state.last_failure_record_id and state.last_failure_record_id != record.record_id:
+        return None
+    return {
+        "reason": state.last_failure_reason,
+        "exit_code": state.last_failure_exit_code,
+        "stderr_summary": state.last_failure_stderr_summary,
+        "record_id": state.last_failure_record_id,
+    }
 
 
 def _sync_goal_lifecycle(
@@ -5876,15 +6031,37 @@ def _execute_launch_action(
         raise ValueError("cwd is required for launch_session")
     if not isinstance(prompt, str) or not prompt.strip():
         raise ValueError("prompt is required for launch_session")
+    if failure_state := lane_failure_state(
+        codex_home=Path(args.codex_home),
+        name=target_name,
+    ):
+        return {
+            "kind": "monitor",
+            "skipped": True,
+            "reason": "worker failure recorded",
+            "degraded_from": "launch_session",
+            "target_name": target_name,
+            "lane_state": failure_state.to_dict(),
+        }
     if run_budget := _run_budget_state(
         codex_home=Path(args.codex_home),
         name=target_name,
         max_run_minutes=args.max_run_minutes,
     ):
+        failure_state = record_lane_failure(
+            codex_home=Path(args.codex_home),
+            name=target_name,
+            tmux_session=None,
+            reason="timeout",
+            stderr_summary="worker exceeded run budget",
+        )
         return {
-            "kind": "launch_session",
+            "kind": "monitor",
             "skipped": True,
-            "reason": "lane run budget exhausted",
+            "reason": "worker timeout recorded",
+            "degraded_from": "launch_session",
+            "target_name": target_name,
+            "lane_state": failure_state.to_dict(),
             "run_budget": run_budget,
         }
     if not _cwd_is_existing_dir(cwd):

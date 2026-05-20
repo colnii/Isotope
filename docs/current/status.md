@@ -167,11 +167,16 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     护栏，不删除分支或改写历史；
     `launch_session` 同样受 `--prompt-cooldown` 约束，
     且发现同名后台 process worker 仍在运行时会跳过，避免 LLM
-    长跑时反复启动同名后台任务；LLM 自动 `launch_session`
+    长跑时反复启动同名后台任务；process worker 的非零退出或
+    显式 `--max-run-minutes` 超时会写入 lane state，记录
+    `timeout`/`exit_code`、stderr 摘要和对应托管记录，并让后续
+    自动 `launch_session` 降级为 `monitor`，避免同名目标无限重启；
+    daemon status 和 dashboard 会把该 worker 显示为失败状态；
+    LLM 自动 `launch_session`
     会优先创建 `.worktrees/supervisor/...` 独立 git worktree，
     在隔离工作区启动 worker，子目录任务会保留相对路径；
     非 git 工作区不强制隔离，git worktree 创建失败则跳过启动，
-    不退回共享工作区；B 层预算控制已落地
+    不退回共享工作区；当前已有提示级预算和防重启 guard：
     `--max-continue-count`、`--max-context-requests` 和
     `--max-run-minutes`；前者用 lane state 记录
     `continue_count`，达到显式阈值后拦截继续推进请求；后者限制

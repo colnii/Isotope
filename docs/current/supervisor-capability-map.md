@@ -141,6 +141,10 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `launch_session` 会写入 lane state 并遵守 `--prompt-cooldown`，
   发现同名后台 process worker 仍在运行时会跳过，避免长跑时对同一个
   `target_name` 反复启动后台 Codex。
+- process worker 非零退出或显式 `--max-run-minutes` 超时会把失败原因
+  写入 lane state（含 `timeout`/`exit_code`、stderr 摘要和托管记录 id）；
+  后续自动 `launch_session` 会降级为 `monitor`，daemon status 和
+  dashboard 会展示失败状态，避免同名目标无限重启。
 - LLM 自动 `launch_session` 默认把 git 仓库任务放进
   `.worktrees/supervisor/...` 独立工作区；子目录任务会进入隔离
   worktree 里的对应子目录。非 git 工作区不强制隔离，git worktree

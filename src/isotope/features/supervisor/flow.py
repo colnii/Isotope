@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .bell_events import default_bell_events_path, read_latest_bell_events
+from .lane_state import read_lane_states
 from .registry import ManagedCodexRecord, default_registry_path, read_managed_records
 
 
@@ -90,6 +91,7 @@ class CodexSessionSummary:
     managed_bell_hook_installed: bool | None = None
     managed_resume_session_id: str | None = None
     managed_resume_last: bool = False
+    managed_failure: dict[str, Any] | None = None
     supervisor_status: str | None = None
     supervisor_summary: str | None = None
     supervisor_next: str | None = None
@@ -153,6 +155,7 @@ class CodexSessionSummary:
             "managed_bell_hook_installed": self.managed_bell_hook_installed,
             "managed_resume_session_id": self.managed_resume_session_id,
             "managed_resume_last": self.managed_resume_last,
+            "managed_failure": self.managed_failure,
             "supervisor_status": self.supervisor_status,
             "supervisor_summary": _shorten_optional(self.supervisor_summary),
             "supervisor_next": _shorten_optional(self.supervisor_next),
@@ -630,6 +633,7 @@ def _managed_summary(
     supervisor_status: str | None = None
     supervisor_summary: str | None = None
     supervisor_next: str | None = None
+    managed_failure = _managed_failure_payload(record, registry_path=registry_path)
     if record.backend == "tmux":
         is_running = bool(record.tmux_session and tmux_session_checker(record.tmux_session))
         if is_running and record.tmux_session:
@@ -690,6 +694,14 @@ def _managed_summary(
         status = supervisor_status
         reason = supervisor_summary or _supervisor_status_reason(supervisor_status)
         status_evidence = _supervisor_status_evidence(supervisor_status)
+    if managed_failure is not None:
+        status = "error"
+        reason = f"worker failed: {managed_failure['reason']}"
+        status_evidence = {
+            "source": "managed_worker_failure",
+            "label": "托管 worker 失败",
+            "detail": _managed_failure_detail(managed_failure),
+        }
     return CodexSessionSummary(
         session_id=f"managed:{record.record_id}",
         cwd=record.cwd,
@@ -715,10 +727,44 @@ def _managed_summary(
         managed_bell_hook_installed=managed_bell_hook_installed,
         managed_resume_session_id=record.resume_session_id,
         managed_resume_last=record.resume_last,
+        managed_failure=managed_failure,
         supervisor_status=supervisor_status,
         supervisor_summary=supervisor_summary,
         supervisor_next=supervisor_next,
     )
+
+
+def _managed_failure_payload(
+    record: ManagedCodexRecord,
+    *,
+    registry_path: Path,
+) -> dict[str, Any] | None:
+    state_path = registry_path.parent / "lane_state.json"
+    state = read_lane_states(state_path).get(record.name)
+    if state is None or state.last_status != "failed" or not state.last_failure_reason:
+        return None
+    if state.last_failure_record_id and state.last_failure_record_id != record.record_id:
+        return None
+    payload: dict[str, Any] = {
+        "reason": state.last_failure_reason,
+        "exit_code": state.last_failure_exit_code,
+        "stderr_summary": state.last_failure_stderr_summary,
+        "record_id": state.last_failure_record_id,
+        "failed_at": state.last_failed_at,
+    }
+    return payload
+
+
+def _managed_failure_detail(failure: dict[str, Any]) -> str:
+    reason = failure.get("reason")
+    exit_code = failure.get("exit_code")
+    summary = failure.get("stderr_summary")
+    parts = [str(reason)]
+    if isinstance(exit_code, int):
+        parts.append(f"exit_code={exit_code}")
+    if isinstance(summary, str) and summary:
+        parts.append(_shorten(summary, limit=96))
+    return " / ".join(parts)
 
 
 def _managed_process_log_excerpt(log_path: str | None) -> str | None:
