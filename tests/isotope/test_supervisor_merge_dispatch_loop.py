@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 
 from isotope.features.supervisor.merge_dispatch import DEFAULT_TARGET_NAME
 from isotope.features.supervisor.runner import main as supervisor_main
@@ -87,6 +88,113 @@ def test_supervisor_loop_dispatches_merge_worker_for_ready_integration(
     assert any(
         "source: supervisor integration-review payload" in item for item in captured[0]
     )
+
+
+def test_supervisor_daemon_status_surfaces_merge_dispatch_activity(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    log_path = codex_home / "supervisor" / "logs" / "daemon.log"
+    state_path = codex_home / "supervisor" / "daemon.json"
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_integration_reviews",
+        lambda *, codex_home, base_ref, include_unfinished: _integration_review_payload(),
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._prepare_launch_worktree",
+        lambda *, cwd, target_name: {
+            "enabled": True,
+            "source_cwd": str(cwd),
+            "cwd": str(workspace),
+            "worktree_root": str(workspace),
+            "branch": f"supervisor/{target_name}-test",
+        },
+    )
+
+    class FakeProcess:
+        pid = 45678
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        return FakeProcess()
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--workspace-root",
+            str(workspace),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+        ]
+    )
+    assert exit_code == 0
+    loop_output = capsys.readouterr().out
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text(loop_output, encoding="utf-8")
+    state_path.write_text(
+        json.dumps(
+            {
+                "pid": 45678,
+                "status": "running",
+                "started_at": "2026-05-18T10:00:00+00:00",
+                "stopped_at": None,
+                "command": [
+                    sys.executable,
+                    "-u",
+                    "-m",
+                    "isotope.features.supervisor.runner",
+                    "loop",
+                ],
+                "codex_home": str(codex_home),
+                "log_path": str(log_path),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon._process_is_alive",
+        lambda pid: pid == 45678,
+    )
+
+    exit_code = supervisor_main(
+        ["daemon", "status", "--codex-home", str(codex_home), "--json"]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    activity = payload["daemon"]["activity"]
+    assert activity["recent_llm_action"]["kind"] == "merge_dispatch"
+    assert activity["recent_llm_action"]["reason"] == (
+        "ready_to_integrate workers require merge dispatch"
+    )
+    assert activity["recent_execution"]["status"] == "executed"
+    assert activity["recent_execution"]["detail"].startswith("merge_dispatch / ")
 
 
 def _integration_review_payload() -> dict[str, object]:

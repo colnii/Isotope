@@ -73,7 +73,7 @@ from .llm_summary import (
     generate_llm_summary,
     resolve_summary_provider_from_env,
 )
-from .merge_dispatch import build_merge_dispatch_launch_spec
+from .merge_dispatch import DEFAULT_TARGET_NAME, build_merge_dispatch_launch_spec
 from .merge_work_order import build_merge_work_order_prompt
 from .registry import (
     adopt_tmux_session,
@@ -2763,9 +2763,11 @@ def _supervise_payload(
                     worker_reviews=worker_reviews,
                 )
         elif merge_dispatch is not None:
-            payload["executed"] = _execute_launch_action(
-                args,
-                merge_dispatch["launch_spec"],
+            payload["executed"] = _mark_merge_dispatch_execution(
+                _execute_launch_action(
+                    args,
+                    merge_dispatch["launch_spec"],
+                )
             )
             if _executed_action_forces_print(payload["executed"]):
                 refreshed_report = _scan_report(args)
@@ -4162,12 +4164,15 @@ def _print_supervise_plain(payload: dict[str, Any], report: Any) -> None:
     if llm_action := payload.get("llm_action"):
         print()
         print("[LLM 白名单动作]")
-        print(f"{llm_action['kind']} / {llm_action['reason']}")
+        print(f"{_llm_action_activity_kind(llm_action)} / {llm_action['reason']}")
         _print_ask_user_action_plain(llm_action)
     if llm_followup_action := payload.get("llm_followup_action"):
         print()
         print("[LLM 同轮后续动作]")
-        print(f"{llm_followup_action['kind']} / {llm_followup_action['reason']}")
+        print(
+            f"{_llm_action_activity_kind(llm_followup_action)} / "
+            f"{llm_followup_action['reason']}"
+        )
         _print_ask_user_action_plain(llm_followup_action)
     if auto_action := payload.get("auto_action"):
         print()
@@ -4332,9 +4337,38 @@ def _print_executed_plain(executed: dict[str, Any]) -> None:
                 print(f"已跳过：{result['reason']}")
         return
     if executed.get("skipped"):
-        print(f"已跳过：{executed['reason']}")
+        print(f"已跳过：{_executed_activity_detail(executed, executed['reason'])}")
         return
-    print(f"已执行：{executed['command']}")
+    print(f"已执行：{_executed_activity_detail(executed, executed['command'])}")
+
+
+def _llm_action_activity_kind(action: dict[str, Any]) -> str:
+    kind = str(action.get("kind") or "unknown")
+    if _is_merge_dispatch_launch_action(action):
+        return "merge_dispatch"
+    return kind
+
+
+def _is_merge_dispatch_launch_action(action: dict[str, Any]) -> bool:
+    return (
+        action.get("kind") == "launch_session"
+        and action.get("source") == "integration_review"
+        and action.get("target_name") == DEFAULT_TARGET_NAME
+    )
+
+
+def _mark_merge_dispatch_execution(executed: dict[str, Any]) -> dict[str, Any]:
+    if executed.get("kind") == "launch_session":
+        executed["display_kind"] = "merge_dispatch"
+        executed["source"] = "integration_review"
+    return executed
+
+
+def _executed_activity_detail(executed: dict[str, Any], detail: str) -> str:
+    display_kind = executed.get("display_kind")
+    if isinstance(display_kind, str) and display_kind:
+        return f"{display_kind} / {detail}"
+    return detail
 
 
 def _print_ask_user_action_plain(action: dict[str, Any]) -> None:
