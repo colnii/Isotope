@@ -28,6 +28,7 @@ from typing import Any, Callable, Protocol
 
 from ...llm.provider import OpenAICompatibleChatProvider, Transport
 from .flow import CodexSupervisorReport
+from .merge_dispatch import DEFAULT_TARGET_NAME as MERGE_DISPATCH_TARGET_NAME
 
 DEFAULT_MAX_TOKENS = 2048
 LARGE_RESUME_SOURCE_BYTES = 64 * 1024
@@ -231,6 +232,14 @@ def build_llm_action_messages(
         command_suggestions,
         active_goals,
     )
+    planner_priority = _running_worker_planner_priority(
+        report,
+        active_goals=active_goals,
+    )
+    prompt_command_suggestions = _running_worker_scoped_command_suggestions(
+        prompt_command_suggestions,
+        planner_priority=planner_priority,
+    )
     resumable_session_ids = _resumable_session_ids_from_suggestions(
         prompt_command_suggestions
     )
@@ -274,6 +283,7 @@ def build_llm_action_messages(
                     "recent_context_results": recent_context_results or [],
                     "recent_decision_answers": recent_decision_answers or [],
                     "context_request_history": context_request_history,
+                    "planner_priority": planner_priority,
                     "worker_profiles": {
                         "coding": "默认代码开发档，适合需要改代码、跑测试、做复杂判断的任务。",
                         "light": "低成本轻任务档，适合只读检查、状态汇报、smoke 或短小验证。",
@@ -309,6 +319,14 @@ def build_llm_action_messages(
                             "active_goals 里同名 worker 已在运行时不得再次 launch_session；"
                             "应根据 worker_status 选择 monitor、send_status、"
                             "send_continue、ask_user 或等待下一轮。"
+                        ),
+                        (
+                            "已有 active goal worker 正在运行时优先 monitor 或等待下一轮；"
+                            "不要重复 request_context 或 launch_session。"
+                        ),
+                        (
+                            "已有 merge dispatch worker 正在运行时优先 monitor 或等待下一轮；"
+                            "不要重复 request_context 或 launch_session。"
                         ),
                         (
                             "launch_session 如果命中已有 command_suggestions 的 target_name，"
@@ -940,6 +958,89 @@ def _command_suggestion_targets_goal(
     command = suggestion.get("command")
     return isinstance(command, str) and any(
         _command_targets_name(command, name) for name in goal_names
+    )
+
+
+def _running_worker_scoped_command_suggestions(
+    command_suggestions: list[dict[str, str]],
+    *,
+    planner_priority: list[dict[str, Any]],
+) -> list[dict[str, str]]:
+    if not planner_priority:
+        return command_suggestions
+    noisy_kinds = {"request_context", "launch_session", "resume_session", "watch_changes"}
+    return [
+        suggestion
+        for suggestion in command_suggestions
+        if suggestion.get("kind") not in noisy_kinds
+    ]
+
+
+def _running_worker_planner_priority(
+    report: CodexSupervisorReport,
+    *,
+    active_goals: list[dict[str, Any]] | None,
+) -> list[dict[str, Any]]:
+    priorities: list[dict[str, Any]] = []
+    running_by_name = _running_managed_worker_payload_by_name(report)
+    merge_worker = running_by_name.get(MERGE_DISPATCH_TARGET_NAME)
+    if merge_worker is not None:
+        priorities.append(
+            {
+                "kind": "monitor",
+                "reason": "running_merge_worker",
+                "target_name": MERGE_DISPATCH_TARGET_NAME,
+                "worker_session_id": merge_worker["session_id"],
+                "message": "merge dispatch worker 正在运行，等待下一轮状态变化。",
+            }
+        )
+    for goal in active_goals or []:
+        if not isinstance(goal, dict):
+            continue
+        target_name = goal.get("target_name")
+        if not isinstance(target_name, str) or not target_name:
+            continue
+        worker = running_by_name.get(target_name)
+        if worker is None:
+            continue
+        priorities.append(
+            {
+                "kind": "monitor",
+                "reason": "running_worker",
+                "target_name": target_name,
+                "goal_id": goal.get("goal_id"),
+                "worker_session_id": worker["session_id"],
+                "message": "active goal worker 正在运行，等待下一轮状态变化。",
+            }
+        )
+    return priorities
+
+
+def _running_managed_worker_payload_by_name(
+    report: CodexSupervisorReport,
+) -> dict[str, dict[str, Any]]:
+    workers: dict[str, dict[str, Any]] = {}
+    for session in report.sessions:
+        name = getattr(session, "managed_name", None)
+        if not isinstance(name, str) or not name:
+            continue
+        if not _is_running_managed_worker(session):
+            continue
+        workers[name] = {
+            "session_id": session.session_id,
+            "cwd": session.cwd,
+            "status": session.status,
+        }
+    return workers
+
+
+def _is_running_managed_worker(session: Any) -> bool:
+    return bool(
+        getattr(session, "managed", False)
+        and getattr(session, "managed_name", None)
+        and getattr(session, "managed_backend", None) != "tmux"
+        and getattr(session, "status", None) == "working"
+        and not _is_terminal_done_session(session)
     )
 
 

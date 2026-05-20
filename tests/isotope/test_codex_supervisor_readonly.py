@@ -36,6 +36,7 @@ from isotope.features.supervisor.llm_summary import (
     generate_llm_summary,
     resolve_summary_provider_from_env,
 )
+from isotope.features.supervisor.merge_dispatch import DEFAULT_TARGET_NAME
 from isotope.features.supervisor.runner import (
     EXECUTABLE_ADVICE_TEXT,
     _advice_payload,
@@ -4818,6 +4819,115 @@ def test_codex_supervisor_llm_action_messages_mark_active_goal_running_worker():
         suggestion.get("kind") == "launch_session"
         and suggestion.get("target_name") == "goal-a"
         for suggestion in advice["command_suggestions"]
+    )
+
+
+def test_codex_supervisor_llm_action_messages_prefer_monitor_for_running_active_goal(
+    tmp_path,
+):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    goal = "推进已经启动的 active goal。"
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="managed:goal-a",
+                cwd=str(workspace),
+                source_path="/home/lumber/.codex/supervisor/logs/goal-a.log",
+                last_event_at=NOW.isoformat(),
+                age_seconds=15,
+                status="working",
+                reason="active goal worker 正在运行",
+                managed=True,
+                managed_name="goal-a",
+                managed_backend="process",
+            ),
+        ),
+    )
+    messages = build_llm_action_messages(
+        report,
+        [
+            {
+                "kind": "request_context",
+                "cwd": str(workspace),
+                "query": goal,
+                "command": f"isotope-supervisor context --cwd {workspace} --query {shlex.quote(goal)}",
+            },
+            {
+                "kind": "launch_session",
+                "target_name": "goal-a",
+                "cwd": str(workspace),
+                "prompt": goal,
+                "command": f"isotope-supervisor launch --name goal-a --cwd {workspace} --prompt {shlex.quote(goal)}",
+            },
+        ],
+        active_goals=[
+            {
+                "goal_id": "goal-a",
+                "goal": goal,
+                "cwd": str(workspace),
+                "target_name": "goal-a",
+            }
+        ],
+    )
+    payload = json.loads(messages[1]["content"])
+
+    assert payload["planner_priority"][0]["kind"] == "monitor"
+    assert payload["planner_priority"][0]["reason"] == "running_worker"
+    assert payload["command_suggestions"] == []
+    assert "已有 active goal worker 正在运行时优先 monitor 或等待下一轮" in "".join(
+        payload["action_rules"]
+    )
+
+
+def test_codex_supervisor_llm_action_messages_prefer_monitor_for_running_merge_worker(
+    tmp_path,
+):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="managed:merge",
+                cwd=str(workspace),
+                source_path="/home/lumber/.codex/supervisor/logs/merge.log",
+                last_event_at=NOW.isoformat(),
+                age_seconds=15,
+                status="working",
+                reason="merge dispatch worker 正在运行",
+                managed=True,
+                managed_name=DEFAULT_TARGET_NAME,
+                managed_backend="process",
+            ),
+        ),
+    )
+    messages = build_llm_action_messages(
+        report,
+        [
+            {
+                "kind": "request_context",
+                "cwd": str(workspace),
+                "query": "integration review",
+                "command": f"isotope-supervisor context --cwd {workspace} --query 'integration review'",
+            },
+            {
+                "kind": "launch_session",
+                "target_name": DEFAULT_TARGET_NAME,
+                "cwd": str(workspace),
+                "prompt": "合并 ready workers。",
+                "command": f"isotope-supervisor launch --name {DEFAULT_TARGET_NAME} --cwd {workspace} --prompt '合并 ready workers。'",
+            },
+        ],
+    )
+    payload = json.loads(messages[1]["content"])
+
+    assert payload["planner_priority"][0]["kind"] == "monitor"
+    assert payload["planner_priority"][0]["reason"] == "running_merge_worker"
+    assert payload["command_suggestions"] == []
+    assert "已有 merge dispatch worker 正在运行时优先 monitor 或等待下一轮" in "".join(
+        payload["action_rules"]
     )
 
 

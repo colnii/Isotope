@@ -74,7 +74,10 @@ from .llm_summary import (
     generate_llm_summary,
     resolve_summary_provider_from_env,
 )
-from .merge_dispatch import DEFAULT_TARGET_NAME, build_merge_dispatch_launch_spec
+from .merge_dispatch import (
+    DEFAULT_TARGET_NAME as MERGE_DISPATCH_TARGET_NAME,
+    build_merge_dispatch_launch_spec,
+)
 from .merge_work_order import build_merge_work_order_prompt
 from .registry import (
     adopt_tmux_session,
@@ -2816,6 +2819,10 @@ def _integration_merge_dispatch_payload(args: argparse.Namespace) -> dict[str, A
         return None
     if getattr(args, "name", None):
         return None
+    if MERGE_DISPATCH_TARGET_NAME in _running_managed_target_names_from_registry(
+        Path(args.codex_home)
+    ):
+        return None
     review_payload = collect_integration_reviews(
         codex_home=Path(args.codex_home),
         base_ref="main",
@@ -4440,7 +4447,7 @@ def _is_merge_dispatch_launch_action(action: dict[str, Any]) -> bool:
     return (
         action.get("kind") == "launch_session"
         and action.get("source") == "integration_review"
-        and action.get("target_name") == DEFAULT_TARGET_NAME
+        and action.get("target_name") == MERGE_DISPATCH_TARGET_NAME
     )
 
 
@@ -4487,6 +4494,8 @@ def _command_suggestions(
                 _watch_command_suggestion()
             ]
         return [_watch_command_suggestion()]
+    if _should_wait_for_running_worker(report, active_goals):
+        return [_watch_command_suggestion()]
     goal_suggestions = (
         _active_goal_action_command_suggestions(
             active_goals,
@@ -4525,6 +4534,23 @@ def _command_suggestions(
     if recommendation.action == "monitor":
         return [_watch_command_suggestion()]
     return []
+
+
+def _should_wait_for_running_worker(
+    report: Any,
+    active_goals: list[dict[str, Any]] | None,
+) -> bool:
+    running_names = _running_managed_target_names(report)
+    if MERGE_DISPATCH_TARGET_NAME in running_names:
+        return True
+    active_target_names = {
+        target_name
+        for goal in active_goals or []
+        if isinstance(goal, dict)
+        for target_name in (goal.get("target_name"),)
+        if isinstance(target_name, str) and target_name
+    }
+    return bool(active_target_names & running_names)
 
 
 def _workspace_action_command_suggestions(report: Any) -> list[dict[str, str]]:

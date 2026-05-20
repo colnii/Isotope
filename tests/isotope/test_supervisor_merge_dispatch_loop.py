@@ -197,7 +197,7 @@ def test_supervisor_daemon_status_surfaces_merge_dispatch_activity(
     assert activity["recent_execution"]["detail"].startswith("merge_dispatch / ")
 
 
-def test_supervisor_loop_reports_running_merge_worker_without_relaunch(
+def test_supervisor_loop_waits_when_merge_worker_is_already_running(
     tmp_path,
     capsys,
     monkeypatch,
@@ -205,19 +205,21 @@ def test_supervisor_loop_reports_running_merge_worker_without_relaunch(
     codex_home = tmp_path / ".codex"
     workspace = tmp_path / "workspace"
     workspace.mkdir()
+    log_path = codex_home / "supervisor" / "logs" / "merge.log"
+    log_path.parent.mkdir(parents=True)
+    log_path.write_text("merge worker 正在运行。\n", encoding="utf-8")
     registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
-    registry_path.parent.mkdir(parents=True)
     registry_path.write_text(
         json.dumps(
             {
-                "record_id": "managed-merge-001",
+                "record_id": "managed-merge",
                 "name": DEFAULT_TARGET_NAME,
                 "cwd": str(workspace),
-                "prompt": "merge worker already running",
-                "command": ["codex", "exec", "-C", str(workspace)],
+                "prompt": "合并 ready workers。",
+                "command": ["codex", "exec", "-C", str(workspace), "合并 ready workers。"],
                 "pid": 45678,
-                "started_at": "2026-05-20T10:00:00+08:00",
-                "log_path": str(codex_home / "supervisor" / "logs" / "managed.log"),
+                "started_at": "2026-05-20T00:00:00+00:00",
+                "log_path": str(log_path),
                 "status": "launched",
                 "backend": "process",
             },
@@ -232,24 +234,31 @@ def test_supervisor_loop_reports_running_merge_worker_without_relaunch(
         lambda *, codex_home, base_ref, include_unfinished: _integration_review_payload(),
     )
     monkeypatch.setattr(
+        "isotope.features.supervisor.flow._pid_is_running",
+        lambda pid: pid == 45678,
+    )
+    monkeypatch.setattr(
         "isotope.features.supervisor.runner._pid_is_running",
         lambda pid: pid == 45678,
         raising=False,
     )
     monkeypatch.setattr(
-        "isotope.features.supervisor.runner._prepare_launch_worktree",
-        lambda *, cwd, target_name: {
-            "enabled": True,
-            "source_cwd": str(cwd),
-            "cwd": str(workspace),
-            "worktree_root": str(workspace),
-            "branch": f"supervisor/{target_name}-test",
-        },
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
     )
 
     class FakeProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
-            raise AssertionError("merge dispatch should not wait for planner LLM")
+            payload = json.loads(messages[1]["content"])
+            assert payload["planner_priority"][0]["reason"] == "running_merge_worker"
+            assert payload["command_suggestions"] == []
+            return json.dumps(
+                {
+                    "kind": "monitor",
+                    "reason": "merge worker 正在运行，等待下一轮。",
+                },
+                ensure_ascii=False,
+            )
 
     def fake_launch_managed_codex(*args: object, **kwargs: object) -> object:
         raise AssertionError("running merge worker should not be relaunched")
@@ -257,10 +266,6 @@ def test_supervisor_loop_reports_running_merge_worker_without_relaunch(
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
         lambda **_: FakeProvider(),
-    )
-    monkeypatch.setattr(
-        "isotope.features.supervisor.flow._git_branch_for",
-        lambda cwd: None,
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.launch_managed_codex",
@@ -285,29 +290,9 @@ def test_supervisor_loop_reports_running_merge_worker_without_relaunch(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["merge_dispatch"]["status"] == "worker_already_running"
-    assert payload["merge_dispatch"]["launch_spec"]["target_name"] == DEFAULT_TARGET_NAME
-    assert payload["llm_action"] == {
-        "kind": "monitor",
-        "reason": "merge worker already running",
-        "managed": {
-            "name": DEFAULT_TARGET_NAME,
-            "record_id": "managed-merge-001",
-            "pid": 45678,
-            "backend": "process",
-        },
-    }
-    assert payload["executed"] == {
-        "kind": "monitor",
-        "skipped": True,
-        "reason": "merge worker already running",
-        "managed": {
-            "name": DEFAULT_TARGET_NAME,
-            "record_id": "managed-merge-001",
-            "pid": 45678,
-            "backend": "process",
-        },
-    }
+    assert "merge_dispatch" not in payload
+    assert payload["llm_action"]["kind"] == "monitor"
+    assert payload["llm_action"]["reason"] == "merge worker 正在运行，等待下一轮。"
 
 
 def _integration_review_payload() -> dict[str, object]:
