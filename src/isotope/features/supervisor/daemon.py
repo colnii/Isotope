@@ -11,9 +11,11 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Iterator, Mapping
 
 from .fanout import DEFAULT_FANOUT_LIMIT
+
+RUNNING_WORKER_STATUSES = {"launched", "resumed", "running", "working"}
 
 
 @dataclass(frozen=True)
@@ -268,6 +270,39 @@ def supervisor_daemon_status(*, codex_home: Path | str) -> dict[str, Any]:
     return state.to_dict()
 
 
+def build_supervisor_daemon_night_summary(
+    *,
+    active_goals: list[dict[str, Any]],
+    managed_workers: list[dict[str, Any]],
+    integration_reviews: Mapping[str, Any] | None,
+    recent_ci: Mapping[str, Any] | None,
+    recent_execution: Mapping[str, Any] | None,
+    recent_worker: Mapping[str, Any] | None,
+    merge_worker_name: str,
+) -> dict[str, Any]:
+    """Build the compact long-run summary shown by daemon status."""
+    running_workers = [
+        worker for worker in managed_workers if _worker_counts_as_running(worker)
+    ]
+    return {
+        "active_goals": len(active_goals),
+        "running_workers": len(running_workers),
+        "ready_to_integrate": _integration_summary_count(
+            integration_reviews,
+            "ready_to_integrate",
+        ),
+        "merge_worker_running": any(
+            worker.get("name") == merge_worker_name for worker in running_workers
+        ),
+        "recent_ci_status": _mapping_text(recent_ci, "status"),
+        "recent_ci_detail": _mapping_text(recent_ci, "detail"),
+        "recent_execution_status": _mapping_text(recent_execution, "status"),
+        "recent_execution_detail": _mapping_text(recent_execution, "detail"),
+        "recent_worker_status": _mapping_text(recent_worker, "status"),
+        "recent_worker_name": _mapping_text(recent_worker, "name"),
+    }
+
+
 def stop_supervisor_daemon(*, codex_home: Path | str) -> dict[str, Any]:
     home = Path(codex_home).expanduser()
     state = read_supervisor_daemon_state(home)
@@ -455,6 +490,39 @@ def _not_running_watcher_payload(codex_home: Path) -> dict[str, Any]:
         "log_path": str(default_watcher_log_path(codex_home)),
         "state_path": str(default_watcher_state_path(codex_home)),
     }
+
+
+def _worker_counts_as_running(worker: Mapping[str, Any]) -> bool:
+    status = _lower_text(worker.get("status"))
+    if status in RUNNING_WORKER_STATUSES:
+        if worker.get("process_running") is False:
+            return False
+        return True
+    return False
+
+
+def _integration_summary_count(
+    integration_reviews: Mapping[str, Any] | None,
+    key: str,
+) -> int:
+    if not isinstance(integration_reviews, Mapping):
+        return 0
+    summary = integration_reviews.get("summary")
+    if not isinstance(summary, Mapping):
+        return 0
+    value = summary.get(key)
+    return value if isinstance(value, int) else 0
+
+
+def _mapping_text(mapping: Mapping[str, Any] | None, key: str) -> str | None:
+    if not isinstance(mapping, Mapping):
+        return None
+    value = mapping.get(key)
+    return value if isinstance(value, str) and value else None
+
+
+def _lower_text(value: object) -> str:
+    return value.lower() if isinstance(value, str) else ""
 
 
 def _process_is_alive(pid: int) -> bool:

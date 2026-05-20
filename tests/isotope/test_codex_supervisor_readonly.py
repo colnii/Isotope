@@ -11932,8 +11932,21 @@ def test_codex_supervisor_runner_up_starts_daemon_with_strong_worker_defaults(
     ]
     assert payload["daemon"]["activity"] == {
         "recent_llm_action": None,
+        "recent_ci": None,
         "recent_execution": None,
         "recent_worker": None,
+        "night_summary": {
+            "active_goals": 0,
+            "running_workers": 0,
+            "ready_to_integrate": 0,
+            "merge_worker_running": False,
+            "recent_ci_status": None,
+            "recent_ci_detail": None,
+            "recent_execution_status": None,
+            "recent_execution_detail": None,
+            "recent_worker_status": None,
+            "recent_worker_name": None,
+        },
     }
     assert captured["command"] == payload["daemon"]["command"]
 
@@ -13999,6 +14012,180 @@ def test_codex_supervisor_runner_daemon_status_includes_recent_activity(
     assert activity["recent_worker"]["status"] == "done"
     assert activity["recent_worker"]["summary"] == "worker 已完成状态汇报。"
     assert activity["recent_worker"]["next"] == "等待 Supervisor 归档。"
+
+
+def test_codex_supervisor_runner_daemon_status_includes_night_summary(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    exit_code = supervisor_main(
+        [
+            "goal",
+            "add",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(workspace),
+            "--goal",
+            "夜间长跑摘要展示关键计数。",
+            "--target-name",
+            "night-summary",
+            "--json",
+        ]
+    )
+    assert exit_code == 0
+    capsys.readouterr()
+
+    state_path = codex_home / "supervisor" / "daemon.json"
+    log_path = codex_home / "supervisor" / "logs" / "daemon.log"
+    worker_log_path = codex_home / "supervisor" / "logs" / "managed-001.log"
+    merge_log_path = codex_home / "supervisor" / "logs" / "managed-merge.log"
+    done_log_path = codex_home / "supervisor" / "logs" / "managed-done.log"
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text(
+        "CI：success / workflow CI passed\n"
+        "已执行：isotope-supervisor integration-review --json\n",
+        encoding="utf-8",
+    )
+    worker_log_path.write_text(
+        "SUPERVISOR_STATUS: working\n"
+        "SUPERVISOR_SUMMARY: 正在跑夜间任务。\n"
+        "SUPERVISOR_NEXT: 继续等待下一轮。\n",
+        encoding="utf-8",
+    )
+    merge_log_path.write_text(
+        "SUPERVISOR_STATUS: working\n"
+        "SUPERVISOR_SUMMARY: 正在复查 ready worker。\n"
+        "SUPERVISOR_NEXT: 跑完测试后汇报。\n",
+        encoding="utf-8",
+    )
+    done_log_path.write_text(
+        "SUPERVISOR_STATUS: done\n"
+        "SUPERVISOR_SUMMARY: 已完成。\n"
+        "SUPERVISOR_NEXT: 等待归档。\n",
+        encoding="utf-8",
+    )
+    state_path.write_text(
+        json.dumps(
+            {
+                "pid": 45678,
+                "status": "running",
+                "started_at": "2026-05-18T10:00:00+00:00",
+                "stopped_at": None,
+                "command": [sys.executable, "-m", "isotope.features.supervisor.runner"],
+                "codex_home": str(codex_home),
+                "log_path": str(log_path),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        "\n".join(
+            json.dumps(item, ensure_ascii=False)
+            for item in [
+                {
+                    "record_id": "managed-001",
+                    "name": "night-summary",
+                    "cwd": str(workspace),
+                    "prompt": "夜间长跑摘要展示关键计数。",
+                    "command": ["codex", "exec", "-C", str(workspace), "继续"],
+                    "pid": 45679,
+                    "started_at": NOW.isoformat(),
+                    "log_path": str(worker_log_path),
+                    "status": "launched",
+                    "backend": "process",
+                },
+                {
+                    "record_id": "managed-done",
+                    "name": "done-worker",
+                    "cwd": str(workspace),
+                    "prompt": "已完成 worker。",
+                    "command": ["codex", "exec", "-C", str(workspace), "done"],
+                    "pid": 45681,
+                    "started_at": NOW.isoformat(),
+                    "log_path": str(done_log_path),
+                    "status": "launched",
+                    "backend": "process",
+                },
+                {
+                    "record_id": "managed-merge",
+                    "name": "supervisor-merge-dispatch",
+                    "cwd": str(workspace),
+                    "prompt": "复查 ready worker 后合入。",
+                    "command": ["codex", "exec", "-C", str(workspace), "merge"],
+                    "pid": 45680,
+                    "started_at": NOW.isoformat(),
+                    "log_path": str(merge_log_path),
+                    "status": "launched",
+                    "backend": "process",
+                },
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon._process_is_alive",
+        lambda pid: pid == 45678,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._pid_is_running",
+        lambda pid: pid in {45679, 45680},
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_integration_reviews",
+        lambda *, codex_home, base_ref, include_unfinished: {
+            "status": "ok",
+            "summary": {
+                "total": 4,
+                "ready_to_integrate": 3,
+                "already_integrated": 0,
+                "needs_review": 1,
+                "conflict_risk": 0,
+            },
+            "groups": {},
+        },
+    )
+
+    exit_code = supervisor_main(
+        ["daemon", "status", "--codex-home", str(codex_home), "--json"]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    summary = payload["daemon"]["activity"]["night_summary"]
+    assert summary == {
+        "active_goals": 1,
+        "running_workers": 2,
+        "ready_to_integrate": 3,
+        "merge_worker_running": True,
+        "recent_ci_status": "success",
+        "recent_ci_detail": "workflow CI passed",
+        "recent_execution_status": "executed",
+        "recent_execution_detail": "isotope-supervisor integration-review --json",
+        "recent_worker_status": "working",
+        "recent_worker_name": "supervisor-merge-dispatch",
+    }
+
+    exit_code = supervisor_main(["daemon", "status", "--codex-home", str(codex_home)])
+
+    assert exit_code == 0
+    text = capsys.readouterr().out
+    assert (
+        "夜间摘要：active goals 1 / running workers 2 / "
+        "ready_to_integrate 3 / merge worker 运行中"
+    ) in text
+    assert "CI：success / workflow CI passed" in text
+    assert "执行结果：executed / isotope-supervisor integration-review --json" in text
 
 
 def test_codex_supervisor_runner_daemon_status_marks_exited_worker_not_working(

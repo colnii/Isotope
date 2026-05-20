@@ -17,6 +17,7 @@ from typing import Any
 from isotope.features.notifications.flow import NotificationFlow
 
 from .daemon import (
+    build_supervisor_daemon_night_summary,
     run_supervisor_watcher,
     start_supervisor_daemon,
     start_supervisor_watcher,
@@ -1717,15 +1718,30 @@ def _daemon_activity_payload(
 ) -> dict[str, Any]:
     log_path = daemon.get("log_path")
     daemon_log = _read_tail_text(log_path if isinstance(log_path, str) else None)
-    activity: dict[str, Any] = {
-        "recent_llm_action": _recent_llm_action_from_log(daemon_log),
-        "recent_execution": _recent_execution_from_log(daemon_log),
-        "recent_worker": _recent_worker_payload(codex_home),
-    }
+    recent_ci = _recent_ci_from_log(daemon_log)
+    recent_execution = _recent_execution_from_log(daemon_log)
+    recent_worker = _recent_worker_payload(codex_home)
     active_goals = _active_goal_dicts_for_codex_home(
         codex_home,
         include_status=True,
     )
+    managed_workers = _daemon_managed_worker_payloads(codex_home)
+    integration_reviews = _daemon_integration_reviews(codex_home)
+    activity: dict[str, Any] = {
+        "recent_llm_action": _recent_llm_action_from_log(daemon_log),
+        "recent_ci": recent_ci,
+        "recent_execution": recent_execution,
+        "recent_worker": recent_worker,
+        "night_summary": build_supervisor_daemon_night_summary(
+            active_goals=active_goals,
+            managed_workers=managed_workers,
+            integration_reviews=integration_reviews,
+            recent_ci=recent_ci,
+            recent_execution=recent_execution,
+            recent_worker=recent_worker,
+            merge_worker_name=MERGE_DISPATCH_TARGET_NAME,
+        ),
+    }
     if active_goals:
         activity["active_goals"] = active_goals
     return activity
@@ -1779,23 +1795,62 @@ def _recent_execution_from_log(text: str) -> dict[str, str] | None:
     return recent
 
 
-def _recent_worker_payload(codex_home: Path) -> dict[str, Any] | None:
-    records = [
-        record
-        for record in read_managed_record_events(default_registry_path(codex_home))
-        if record.status != "archived"
+def _recent_ci_from_log(text: str) -> dict[str, str] | None:
+    recent: dict[str, str] | None = None
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if line.startswith("CI："):
+            recent = _status_detail_from_text(line.removeprefix("CI：").strip())
+        elif line.startswith("CI:"):
+            recent = _status_detail_from_text(line.removeprefix("CI:").strip())
+    return recent
+
+
+def _status_detail_from_text(text: str) -> dict[str, str]:
+    if " / " in text:
+        status, detail = text.split(" / ", 1)
+    else:
+        status, detail = text, ""
+    return {"status": status.strip(), "detail": detail.strip()}
+
+
+def _daemon_integration_reviews(codex_home: Path) -> dict[str, Any]:
+    try:
+        return collect_integration_reviews(
+            codex_home=codex_home,
+            base_ref="main",
+            include_unfinished=False,
+        )
+    except Exception as exc:  # pragma: no cover - defensive status surface
+        return {
+            "status": "error",
+            "error": str(exc),
+            "summary": {"ready_to_integrate": 0},
+        }
+
+
+def _daemon_managed_worker_payloads(codex_home: Path) -> list[dict[str, Any]]:
+    return [
+        _daemon_managed_worker_payload(record)
+        for record in read_managed_records(default_registry_path(codex_home))
     ]
-    if not records:
-        return None
-    record = records[-1]
+
+
+def _daemon_managed_worker_payload(record: Any) -> dict[str, Any]:
     model, config = _codex_worker_options_from_command(record.command)
-    excerpt = _managed_process_log_excerpt(record.log_path)
-    protocol = _supervisor_protocol_from_text(excerpt or "")
+    protocol = _supervisor_protocol_from_text(
+        _managed_process_log_excerpt(record.log_path) or ""
+    )
     status = protocol.get("status") or record.status
+    process_running = (
+        _pid_is_running(record.pid)
+        if record.backend != "tmux" and record.pid
+        else None
+    )
     if (
         record.backend != "tmux"
         and status in {"launched", "resumed", "working"}
-        and not _pid_is_running(record.pid)
+        and not process_running
     ):
         status = "exited"
     return {
@@ -1803,6 +1858,7 @@ def _recent_worker_payload(codex_home: Path) -> dict[str, Any] | None:
         "record_id": record.record_id,
         "backend": record.backend,
         "pid": record.pid,
+        "process_running": process_running,
         "model": model,
         "config": config,
         "status": status,
@@ -1810,6 +1866,13 @@ def _recent_worker_payload(codex_home: Path) -> dict[str, Any] | None:
         "next": protocol.get("next"),
         "log_path": record.log_path,
     }
+
+
+def _recent_worker_payload(codex_home: Path) -> dict[str, Any] | None:
+    workers = _daemon_managed_worker_payloads(codex_home)
+    if not workers:
+        return None
+    return workers[-1]
 
 
 def _codex_worker_options_from_command(command: tuple[str, ...]) -> tuple[str | None, list[str]]:
@@ -1952,14 +2015,36 @@ def _print_daemon_activity_plain(activity: Any) -> None:
     if not isinstance(activity, dict):
         return
     action = activity.get("recent_llm_action")
+    ci = activity.get("recent_ci")
     execution = activity.get("recent_execution")
     worker = activity.get("recent_worker")
     active_goals = activity.get("active_goals")
-    if not action and not execution and not worker and not active_goals:
+    night_summary = activity.get("night_summary")
+    if (
+        not action
+        and not ci
+        and not execution
+        and not worker
+        and not active_goals
+        and not night_summary
+    ):
         return
     print("最近活动：")
+    if isinstance(night_summary, dict):
+        merge_label = "运行中" if night_summary.get("merge_worker_running") else "未运行"
+        print(
+            "夜间摘要：active goals {active_goals} / running workers {running_workers} / "
+            "ready_to_integrate {ready_to_integrate} / merge worker {merge_label}".format(
+                active_goals=night_summary.get("active_goals", 0),
+                running_workers=night_summary.get("running_workers", 0),
+                ready_to_integrate=night_summary.get("ready_to_integrate", 0),
+                merge_label=merge_label,
+            )
+        )
     if isinstance(action, dict):
         print(f"LLM 动作：{action.get('kind') or '未知'} / {action.get('reason') or '无'}")
+    if isinstance(ci, dict):
+        print(f"CI：{ci.get('status') or 'unknown'} / {ci.get('detail') or '无'}")
     if isinstance(execution, dict):
         print(
             f"执行结果：{execution.get('status') or 'unknown'} / "
