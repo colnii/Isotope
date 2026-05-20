@@ -1326,7 +1326,8 @@ def _start_daemon_from_args(args: argparse.Namespace) -> dict[str, Any]:
     if args.max_run_minutes < 0:
         raise ValueError("max_run_minutes must be zero or positive")
     worker_profile = _worker_profile_from_args(args)
-    return start_supervisor_daemon(
+    queued_goal = _queue_daemon_goal_from_args(args)
+    daemon = start_supervisor_daemon(
         codex_home=Path(args.codex_home),
         interval=args.interval,
         limit=args.limit,
@@ -1337,12 +1338,27 @@ def _start_daemon_from_args(args: argparse.Namespace) -> dict[str, Any]:
         max_context_requests=args.max_context_requests,
         max_run_minutes=args.max_run_minutes,
         name=args.name,
-        goal=_explicit_goal_text(args),
+        goal=None,
         llm_summary=args.llm_summary,
         auto_adopt=args.auto_adopt,
         worker_codex_model=_worker_codex_model(args, profile=worker_profile),
         worker_codex_config=_worker_codex_config(args, profile=worker_profile),
     )
+    if queued_goal is not None:
+        daemon["queued_goal"] = queued_goal
+    return daemon
+
+
+def _queue_daemon_goal_from_args(args: argparse.Namespace) -> dict[str, Any] | None:
+    goal = _explicit_goal_text(args)
+    if goal is None:
+        return None
+    queued = record_supervisor_goal(
+        codex_home=Path(args.codex_home),
+        cwd=_explicit_goal_workspace(args),
+        goal=goal,
+    )
+    return queued.to_dict()
 
 
 def _daemon_activity_payload(

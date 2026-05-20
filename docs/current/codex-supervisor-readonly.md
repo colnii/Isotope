@@ -120,6 +120,8 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
    `isotope-supervisor up --goal "继续推进当前项目目标"`。
    `up` 会在后台 daemon 未运行时启动日常 `loop`，然后打印后台状态、
    最近 LLM 动作、执行结果、worker 状态和活跃目标。
+   带 `--goal` 时会先把目标写入持久目标队列，后台 `loop` 动态读取；
+   目标完成后由队列生命周期负责记录状态和归档，避免常驻进程反复执行同一显式目标。
 2. 持续监督：
    `isotope-supervisor loop --interval 180` 适合前台常驻；
    `isotope-supervisor daemon start --interval 30` 适合后台常驻；

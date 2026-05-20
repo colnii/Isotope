@@ -9559,7 +9559,7 @@ def test_codex_supervisor_runner_daemon_start_defaults_to_strong_worker(
     assert captured["command"] == payload["daemon"]["command"]
 
 
-def test_codex_supervisor_runner_daemon_start_passes_goal_to_loop(
+def test_codex_supervisor_runner_daemon_start_queues_goal_instead_of_repeating_explicit_goal(
     tmp_path,
     capsys,
     monkeypatch,
@@ -9609,6 +9609,9 @@ def test_codex_supervisor_runner_daemon_start_passes_goal_to_loop(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
+    assert "--goal" not in payload["daemon"]["command"]
+    assert payload["daemon"]["queued_goal"]["goal"] == goal
+    assert payload["daemon"]["queued_goal"]["cwd"] == str(Path.cwd())
     assert payload["daemon"]["command"] == [
         sys.executable,
         "-u",
@@ -9621,8 +9624,6 @@ def test_codex_supervisor_runner_daemon_start_passes_goal_to_loop(
         "7",
         "--limit",
         "3",
-        "--goal",
-        goal,
         "--worker-codex-model",
         "gpt-5.5",
         "--worker-codex-config",
@@ -9771,6 +9772,63 @@ def test_codex_supervisor_runner_up_starts_daemon_with_strong_worker_defaults(
         "recent_execution": None,
         "recent_worker": None,
     }
+    assert captured["command"] == payload["daemon"]["command"]
+
+
+def test_codex_supervisor_runner_up_goal_enters_persistent_queue(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    goal = "用日常入口启动后自动消费目标。"
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 45683
+
+    def fake_popen(
+        command: list[str],
+        *,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured["command"] = command
+        return FakeProcess()
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon.subprocess.Popen",
+        fake_popen,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon._process_is_alive",
+        lambda _: False,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "up",
+            "--codex-home",
+            str(codex_home),
+            "--interval",
+            "7",
+            "--limit",
+            "3",
+            "--goal",
+            goal,
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert "--goal" not in payload["daemon"]["command"]
+    assert payload["daemon"]["queued_goal"]["goal"] == goal
+    assert payload["daemon"]["queued_goal"]["cwd"] == str(Path.cwd())
+    assert payload["daemon"]["activity"]["active_goals"][0]["goal"] == goal
+    assert payload["daemon"]["activity"]["active_goals"][0]["cwd"] == str(Path.cwd())
     assert captured["command"] == payload["daemon"]["command"]
 
 
