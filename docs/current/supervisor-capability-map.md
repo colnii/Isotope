@@ -19,6 +19,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 | --- | --- | --- | --- |
 | 用户功能层 | `scan`、`dashboard`、`guide`、`up`、`discover`、`web`、`watch`、`advise`、`supervise`、`loop`、`daemon` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
 | 托管控制层 | `launch`、`adopt`、`send`、`archive`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
+| Worker 审查层 | `worker-review` | `features/supervisor/worker_review.py`、`features/supervisor/runner.py` | 汇总已托管 worker 的 worktree、branch、状态协议、改动和人工合并提示 |
 | Codex 执行通道 | `resume`、`codex exec resume`、`--last` | `features/supervisor/runner.py`、`features/supervisor/registry.py` | 不依赖 tmux 恢复历史会话并投喂新 prompt |
 | 上下文能力层 | `context`、`request_context`、上下文结果记录 | `features/supervisor/context.py`、`features/supervisor/runner.py` | LLM 按需请求检索项目资料，`rg` 优先、Python 兜底，不固定注入全文 |
 | Codex 集成层 | 读取 Codex session（会话记录）、索引标题和 agent 元数据 | `features/supervisor/flow.py` | 当前读取本机 `.jsonl`、`session_index.jsonl` 和 SQLite |
@@ -89,6 +90,10 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   `SUPERVISOR_STATUS/SUMMARY/NEXT`，所以后台 `codex exec` 退出后仍能
   在 dashboard 里显示明确完成状态，而不是只显示 PID 已退出；
   已退出进程不会因为日志残留 `working` 被继续算作工作中。
+- `worker-review` 是已完成 worker 的收集/审查入口，会读取托管登记、
+  process log 状态协议、cwd/worktree 是否存在、当前 branch、`git status`
+  和 `git diff --stat` 摘要，并输出建议验证命令与主控/人工合并提示；
+  它只做高可信汇总，不自动合并、不删除 worktree 或分支。
 - LLM planner 会看到 process 托管记录作为候选目标，避免状态面板
   误报“只有 tmux 才可控”。
 - `launch_session` 会写入 lane state 并遵守 `--prompt-cooldown`，

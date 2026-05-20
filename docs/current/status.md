@@ -75,6 +75,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     托管 log 尾部，从 `SUPERVISOR_STATUS/SUMMARY/NEXT` 解析完成状态，
     dashboard 可把已退出但明确 `done` 的后台任务归入“已完成”，
     但已退出进程不会因日志残留 `working` 被误判为仍在工作；
+    `worker-review` 可汇总 Supervisor 启动的 worker，列出 cwd/worktree
+    是否仍存在、当前 branch、最近状态协议、`git status`/`diff --stat`
+    改动摘要、建议验证命令和人工/主控 Codex 合并提示；该入口只做
+    高可信审查汇总，不自动合并、不删除 worktree 或分支；
     `resume` 可通过
     `codex exec resume <session> <prompt>` 或 `--last` 恢复历史会话，
     会带 `--skip-git-repo-check` 以兼容历史会话落在非仓库父目录的情况，

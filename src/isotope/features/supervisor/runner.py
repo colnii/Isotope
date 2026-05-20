@@ -77,6 +77,7 @@ from .registry import (
     send_to_managed_codex,
 )
 from .tmux_discovery import discover_tmux_adopt_candidates
+from .worker_review import collect_worker_reviews, render_worker_review_plain
 
 EXECUTABLE_ADVICE_KINDS = {"send_status", "send_continue"}
 DEFAULT_MAX_CONTEXT_REQUESTS = 0
@@ -766,6 +767,16 @@ def _build_parser() -> argparse.ArgumentParser:
         help="tmux session name when --backend tmux is used. Defaults to --name.",
     )
     launch_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    worker_review_parser = subparsers.add_parser(
+        "worker-review",
+        help="Summarize Supervisor-managed workers for human review.",
+    )
+    worker_review_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    worker_review_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     context_parser = subparsers.add_parser(
         "context",
         help="Search project context and record the result for the LLM planner.",
@@ -1156,6 +1167,13 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"已启动托管 Codex：{record.name}")
                 print(f"pid：{record.pid}")
                 print(f"日志：{record.log_path}")
+            return 0
+        if args.command == "worker-review":
+            payload = collect_worker_reviews(codex_home=Path(args.codex_home))
+            if args.json:
+                _print_json(payload)
+            else:
+                print(render_worker_review_plain(payload))
             return 0
         if args.command == "context":
             result = request_project_context(
