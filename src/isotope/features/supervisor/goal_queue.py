@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from .notifications import notify_goal_status_written
+
 GOAL_STATUS_VALUES = {"done", "blocked", "needs_user"}
 
 
@@ -135,6 +137,12 @@ def record_supervisor_goal_status(
     if latest is not None and _status_event_matches(latest, event):
         return None
     append_goal_event(path, event)
+    notify_goal_status_written(
+        codex_home=codex_home,
+        goal_id=goal_id_text,
+        status=status_text,
+        target_name=event.get("target_name"),
+    )
     return event
 
 

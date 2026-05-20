@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from .notifications import notify_decision_request_written
+
 
 @dataclass(frozen=True)
 class DecisionRequest:
@@ -79,6 +81,12 @@ def record_decision_request(
         goal_id=goal_id,
     )
     append_decision_request(default_decision_requests_path(codex_home), request)
+    notify_decision_request_written(
+        codex_home=codex_home,
+        request_id=request.request_id,
+        target_name=request.target_name,
+        goal_id=request.goal_id,
+    )
     return request
 
 
