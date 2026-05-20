@@ -27,6 +27,24 @@ class AskProvider(Protocol):
 
 
 @dataclass(frozen=True)
+class WorkbenchAskReference:
+    rank: int
+    result_type: str
+    result_id: str
+    title: str
+    summary: str | None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "rank": self.rank,
+            "result_type": self.result_type,
+            "result_id": self.result_id,
+            "title": self.title,
+            "summary": self.summary,
+        }
+
+
+@dataclass(frozen=True)
 class WorkbenchAskAnswer:
     question: str
     answer: str
@@ -35,6 +53,7 @@ class WorkbenchAskAnswer:
     finish_reason: str
     usage: dict[str, Any]
     workbench: WorkbenchView
+    references: tuple[WorkbenchAskReference, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -45,6 +64,7 @@ class WorkbenchAskAnswer:
             "model": self.model,
             "finish_reason": self.finish_reason,
             "usage": dict(self.usage),
+            "references": [reference.to_dict() for reference in self.references],
             "context": self.workbench.to_dict(),
         }
 
@@ -82,8 +102,9 @@ class WorkbenchAskFlow:
             ),
             search_limit=search_limit,
         )
+        references = _build_references(workbench)
         response = self.provider.generate(
-            _build_workbench_ask_messages(clean_question, workbench),
+            _build_workbench_ask_messages(clean_question, workbench, references),
             max_tokens=max_tokens,
         )
         answer = response.content.strip()
@@ -97,12 +118,14 @@ class WorkbenchAskFlow:
             finish_reason=response.finish_reason,
             usage=dict(response.usage),
             workbench=workbench,
+            references=references,
         )
 
 
 def _build_workbench_ask_messages(
     question: str,
     workbench: WorkbenchView,
+    references: tuple[WorkbenchAskReference, ...] = (),
 ) -> list[dict[str, str]]:
     return [
         {
@@ -118,11 +141,13 @@ def _build_workbench_ask_messages(
             "content": json.dumps(
                 {
                     "question": question,
+                    "references": [reference.to_dict() for reference in references],
                     "workbench": workbench.to_dict(),
                     "output_requirements": [
                         "用中文回答",
                         "一到三句话",
                         "优先给可执行下一步",
+                        "如果 references 不为空，优先根据 references 中的条目回答",
                         "不要输出 JSON",
                     ],
                 },
@@ -131,6 +156,21 @@ def _build_workbench_ask_messages(
             ),
         },
     ]
+
+
+def _build_references(
+    workbench: WorkbenchView,
+) -> tuple[WorkbenchAskReference, ...]:
+    return tuple(
+        WorkbenchAskReference(
+            rank=index,
+            result_type=result.result_type,
+            result_id=result.result_id,
+            title=result.title,
+            summary=result.summary,
+        )
+        for index, result in enumerate(workbench.search_results, start=1)
+    )
 
 
 def _with_generic_context_fallback(

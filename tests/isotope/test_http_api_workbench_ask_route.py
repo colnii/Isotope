@@ -85,6 +85,12 @@ def test_http_api_workbench_ask_route_answers_from_low_sensitive_context(tmp_pat
         "files": 1,
         "search_results": 3,
     }
+    assert [reference["result_type"] for reference in payload["answer"]["references"]] == [
+        "project",
+        "task",
+        "file",
+    ]
+    assert payload["answer"]["references"][0]["title"] == "portfolio demo"
     assert provider.calls[0]["max_tokens"] == 128
     _assert_no_private_content(payload)
 

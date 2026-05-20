@@ -83,10 +83,34 @@ def test_workbench_ask_flow_answers_from_low_sensitive_workbench_context(tmp_pat
     payload = answer.to_dict()
     assert payload["status"] == "ok"
     assert payload["context"]["counts"] == answer.workbench.counts
+    assert payload["references"] == [
+        {
+            "rank": 1,
+            "result_type": "project",
+            "result_id": payload["context"]["search_results"][0]["result_id"],
+            "title": "portfolio demo",
+            "summary": "autumn recruiting workspace",
+        },
+        {
+            "rank": 2,
+            "result_type": "task",
+            "result_id": payload["context"]["search_results"][1]["result_id"],
+            "title": "build portfolio story",
+            "summary": payload["context"]["search_results"][1]["summary"],
+        },
+        {
+            "rank": 3,
+            "result_type": "file",
+            "result_id": payload["context"]["search_results"][2]["result_id"],
+            "title": "portfolio-notes.md",
+            "summary": "portfolio notes",
+        },
+    ]
     _assert_low_sensitive(payload)
 
     prompt_payload = json.loads(provider.calls[0]["messages"][1]["content"])
     assert prompt_payload["question"] == "portfolio 下一步做什么？"
+    assert prompt_payload["references"][0]["title"] == "portfolio demo"
     assert prompt_payload["workbench"]["projects"][0]["summary"] == "autumn recruiting workspace"
     assert "PRIVATE_FILE_CONTENT_SHOULD_NOT_LEAK" not in provider.calls[0]["messages"][1]["content"]
     assert "PRIVATE_TASK_NOTE_SHOULD_NOT_LEAK" not in provider.calls[0]["messages"][1]["content"]

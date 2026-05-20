@@ -61,6 +61,8 @@ def main(argv: list[str] | None = None) -> int:
                     "context: projects={projects} tasks={tasks} files={files} "
                     "search_results={search_results}".format(**counts)
                 )
+                if answer.references:
+                    print(f"references: {_format_references(answer.references)}")
             return 0
     except ValueError as exc:
         if getattr(args, "json", False):
@@ -105,6 +107,18 @@ def _provider_from_args(args: argparse.Namespace) -> Any:
         base_url=args.base_url,
         model=args.model,
     )
+
+
+def _format_references(references: tuple[Any, ...]) -> str:
+    return "; ".join(
+        _format_reference(reference)
+        for reference in references
+    )
+
+
+def _format_reference(reference: Any) -> str:
+    text = f"{reference.rank}. {reference.result_type} {reference.title}"
+    return f"{text} - {reference.summary}" if reference.summary else text
 
 
 def _resolve_api_key(args: argparse.Namespace) -> str | None:
