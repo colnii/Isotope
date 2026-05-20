@@ -49,6 +49,7 @@ from isotope.features.supervisor.runner import (
 NOW = datetime(2026, 5, 16, 12, 0, tzinfo=timezone.utc)
 STATUS_REQUEST_TEXT = EXECUTABLE_ADVICE_TEXT["send_status"]
 CONTINUE_REQUEST_TEXT = EXECUTABLE_ADVICE_TEXT["send_continue"]
+EXISTING_WORKSPACE = str(Path(__file__).resolve().parents[2])
 
 
 def _runner_args(codex_home: Path) -> argparse.Namespace:
@@ -1367,7 +1368,7 @@ def test_codex_supervisor_dashboard_uses_launch_prompt_to_disambiguate_similar_l
         sessions=(
             CodexSessionSummary(
                 session_id="managed:short",
-                cwd="/home/lumber/Github/isotope",
+                cwd=EXISTING_WORKSPACE,
                 source_path="/home/lumber/.codex/supervisor/managed_sessions.jsonl",
                 last_event_at=NOW.isoformat(),
                 age_seconds=20,
@@ -1382,7 +1383,7 @@ def test_codex_supervisor_dashboard_uses_launch_prompt_to_disambiguate_similar_l
             ),
             CodexSessionSummary(
                 session_id="managed:long",
-                cwd="/home/lumber/Github/isotope",
+                cwd=EXISTING_WORKSPACE,
                 source_path="/home/lumber/.codex/supervisor/managed_sessions.jsonl",
                 last_event_at=NOW.isoformat(),
                 age_seconds=20,
@@ -1397,7 +1398,7 @@ def test_codex_supervisor_dashboard_uses_launch_prompt_to_disambiguate_similar_l
             ),
             CodexSessionSummary(
                 session_id="real-long",
-                cwd="/home/lumber/Github/isotope",
+                cwd=EXISTING_WORKSPACE,
                 source_path="/home/lumber/.codex/sessions/long.jsonl",
                 last_event_at=NOW.isoformat(),
                 age_seconds=10,
@@ -1411,7 +1412,7 @@ def test_codex_supervisor_dashboard_uses_launch_prompt_to_disambiguate_similar_l
             ),
             CodexSessionSummary(
                 session_id="real-short",
-                cwd="/home/lumber/Github/isotope",
+                cwd=EXISTING_WORKSPACE,
                 source_path="/home/lumber/.codex/sessions/short.jsonl",
                 last_event_at=NOW.isoformat(),
                 age_seconds=10,
@@ -3993,7 +3994,7 @@ def test_codex_supervisor_runner_advise_plain_is_short(tmp_path, capsys):
         codex_home,
         "2026/05/16/rollout-attention.jsonl",
         session_id="attention-session",
-        cwd="/home/lumber/Github/isotope",
+        cwd=EXISTING_WORKSPACE,
         events=[
             _assistant_message("2026-05-16T11:58:00Z", "需要你确认是否继续。"),
         ],
@@ -4116,7 +4117,7 @@ def test_codex_supervisor_llm_action_messages_include_resume_context_size_hint()
         sessions=(
             CodexSessionSummary(
                 session_id="active-session",
-                cwd="/home/lumber/Github/isotope",
+                cwd=EXISTING_WORKSPACE,
                 source_path="/home/lumber/.codex/sessions/active.jsonl",
                 source_size_bytes=92178,
                 last_event_at=NOW.isoformat(),
@@ -4141,7 +4142,7 @@ def test_codex_supervisor_llm_action_skips_done_resume_candidates():
         sessions=(
             CodexSessionSummary(
                 session_id="done-session",
-                cwd="/home/lumber/Github/isotope",
+                cwd=EXISTING_WORKSPACE,
                 source_path="/home/lumber/.codex/sessions/done.jsonl",
                 last_event_at=NOW.isoformat(),
                 age_seconds=30,
@@ -4153,7 +4154,7 @@ def test_codex_supervisor_llm_action_skips_done_resume_candidates():
             ),
             CodexSessionSummary(
                 session_id="stale-session",
-                cwd="/home/lumber/Github/isotope",
+                cwd=EXISTING_WORKSPACE,
                 source_path="/home/lumber/.codex/sessions/stale.jsonl",
                 last_event_at=NOW.isoformat(),
                 age_seconds=900,
@@ -4179,7 +4180,7 @@ def test_codex_supervisor_llm_action_offers_workspace_actions_after_done_session
         sessions=(
             CodexSessionSummary(
                 session_id="done-session",
-                cwd="/home/lumber/Github/isotope",
+                cwd=EXISTING_WORKSPACE,
                 source_path="/home/lumber/.codex/sessions/done.jsonl",
                 last_event_at=NOW.isoformat(),
                 age_seconds=30,
@@ -4452,7 +4453,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_resume_session():
         sessions=(
             CodexSessionSummary(
                 session_id="019e35a2-e442-75e2-84ab-3761a685a736",
-                cwd="/home/lumber/Github/isotope",
+                cwd=EXISTING_WORKSPACE,
                 source_path="/home/lumber/.codex/sessions/rollout.jsonl",
                 last_event_at=NOW.isoformat(),
                 age_seconds=900,
@@ -4489,7 +4490,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_resume_session():
         "command_suggestion": {
             "command": (
                 "isotope-supervisor resume --name resume-019e35a2 "
-                "--cwd /home/lumber/Github/isotope "
+                f"--cwd {EXISTING_WORKSPACE} "
                 "--session-id 019e35a2-e442-75e2-84ab-3761a685a736 "
                 f"--prompt {shlex.quote(CONTINUE_REQUEST_TEXT)}"
             ),
@@ -4512,7 +4513,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_launch_session():
         sessions=(
             CodexSessionSummary(
                 session_id="019e35a2-e442-75e2-84ab-3761a685a736",
-                cwd="/home/lumber/Github/isotope",
+                cwd=EXISTING_WORKSPACE,
                 source_path="/home/lumber/.codex/sessions/rollout.jsonl",
                 last_event_at=NOW.isoformat(),
                 age_seconds=30,
@@ -4527,12 +4528,12 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_launch_session():
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert '"kind": "launch_session"' in content
-            assert '"available_workspaces": ["/home/lumber/Github/isotope"]' in content
+            assert f'"available_workspaces": ["{EXISTING_WORKSPACE}"]' in content
             return json.dumps(
                 {
                     "kind": "launch_session",
                     "target_name": "planner-docs",
-                    "cwd": "/home/lumber/Github/isotope",
+                    "cwd": EXISTING_WORKSPACE,
                     "prompt": launch_prompt,
                     "reason": "需要单独开新会话推进文档整理。",
                 },
@@ -4544,19 +4545,19 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_launch_session():
     assert decision == {
         "kind": "launch_session",
         "target_name": "planner-docs",
-        "cwd": "/home/lumber/Github/isotope",
+        "cwd": EXISTING_WORKSPACE,
         "prompt": launch_prompt,
         "reason": "需要单独开新会话推进文档整理。",
         "command_suggestion": {
             "command": (
                 "isotope-supervisor launch --name planner-docs "
-                "--cwd /home/lumber/Github/isotope "
+                f"--cwd {EXISTING_WORKSPACE} "
                 f"--prompt {shlex.quote(launch_prompt)}"
             ),
             "kind": "launch_session",
             "label": "启动新的 Codex 托管会话",
             "target_name": "planner-docs",
-            "cwd": "/home/lumber/Github/isotope",
+            "cwd": EXISTING_WORKSPACE,
             "prompt": launch_prompt,
         },
     }
@@ -4575,7 +4576,7 @@ def test_codex_supervisor_generate_llm_action_decision_can_launch_named_suggesti
             {
                 "goal_id": "goal-123",
                 "goal": goal,
-                "cwd": "/home/lumber/Github/isotope",
+                "cwd": EXISTING_WORKSPACE,
                 "target_name": "supervisor-goal-planner",
             }
         ],
@@ -4598,7 +4599,7 @@ def test_codex_supervisor_generate_llm_action_decision_can_launch_named_suggesti
 
     assert decision["kind"] == "launch_session"
     assert decision["target_name"] == "supervisor-goal-planner"
-    assert decision["cwd"] == "/home/lumber/Github/isotope"
+    assert decision["cwd"] == EXISTING_WORKSPACE
     assert decision["prompt"] == goal
     assert decision["command_suggestion"]["target_name"] == "supervisor-goal-planner"
 
@@ -4610,7 +4611,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_action_alias_for_
         sessions=(
             CodexSessionSummary(
                 session_id="source-session",
-                cwd="/home/lumber/Github/isotope",
+                cwd=EXISTING_WORKSPACE,
                 source_path="/tmp/source.jsonl",
                 last_event_at=NOW.isoformat(),
                 age_seconds=60,
@@ -4627,7 +4628,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_action_alias_for_
                 {
                     "action": "launch_session",
                     "target_name": "search-rag-bm25",
-                    "cwd": "/home/lumber/Github/isotope",
+                    "cwd": EXISTING_WORKSPACE,
                     "prompt": launch_prompt,
                     "reason": "检索后继续启动 Search/RAG worker。",
                 },
@@ -4701,7 +4702,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_launch_worker_pro
         sessions=(
             CodexSessionSummary(
                 session_id="019e35a2-e442-75e2-84ab-3761a685a736",
-                cwd="/home/lumber/Github/isotope",
+                cwd=EXISTING_WORKSPACE,
                 source_path="/home/lumber/.codex/sessions/rollout.jsonl",
                 last_event_at=NOW.isoformat(),
                 age_seconds=30,
@@ -4721,7 +4722,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_launch_worker_pro
                 {
                     "kind": "launch_session",
                     "target_name": "quick-smoke",
-                    "cwd": "/home/lumber/Github/isotope",
+                    "cwd": EXISTING_WORKSPACE,
                     "prompt": "只读检查当前状态并输出三行状态协议。",
                     "worker_profile": "light",
                     "reason": "只读 smoke 不需要高推理代码档。",
@@ -4743,7 +4744,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_request_context()
         sessions=(
             CodexSessionSummary(
                 session_id="019e35a2-e442-75e2-84ab-3761a685a736",
-                cwd="/home/lumber/Github/isotope",
+                cwd=EXISTING_WORKSPACE,
                 source_path="/home/lumber/.codex/sessions/rollout.jsonl",
                 last_event_at=NOW.isoformat(),
                 age_seconds=30,
@@ -4762,7 +4763,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_request_context()
             return json.dumps(
                 {
                     "kind": "request_context",
-                    "cwd": "/home/lumber/Github/isotope",
+                    "cwd": EXISTING_WORKSPACE,
                     "query": "Supervisor 下一步节奏",
                     "reason": "需要先查项目当前说明再决定。",
                 },
@@ -4774,17 +4775,17 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_request_context()
     assert decision == {
         "kind": "request_context",
         "target_name": None,
-        "cwd": "/home/lumber/Github/isotope",
+        "cwd": EXISTING_WORKSPACE,
         "query": "Supervisor 下一步节奏",
         "reason": "需要先查项目当前说明再决定。",
         "command_suggestion": {
             "command": (
-                "isotope-supervisor context --cwd /home/lumber/Github/isotope "
+                f"isotope-supervisor context --cwd {EXISTING_WORKSPACE} "
                 "--query 'Supervisor 下一步节奏'"
             ),
             "kind": "request_context",
             "label": "检索项目上下文",
-            "cwd": "/home/lumber/Github/isotope",
+            "cwd": EXISTING_WORKSPACE,
             "query": "Supervisor 下一步节奏",
         },
     }
@@ -4796,7 +4797,7 @@ def test_codex_supervisor_generate_llm_action_decision_rejects_ask_user_without_
         sessions=(
             CodexSessionSummary(
                 session_id="019e35a2-e442-75e2-84ab-3761a685a736",
-                cwd="/home/lumber/Github/isotope",
+                cwd=EXISTING_WORKSPACE,
                 source_path="/home/lumber/.codex/sessions/rollout.jsonl",
                 last_event_at=NOW.isoformat(),
                 age_seconds=30,
@@ -6105,7 +6106,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_skips_monitor(
         codex_home,
         "2026/05/16/rollout-active.jsonl",
         session_id="active-session",
-        cwd="/home/lumber/Github/isotope",
+        cwd=EXISTING_WORKSPACE,
         events=[
             _event(
                 "2026-05-16T11:59:20Z",
