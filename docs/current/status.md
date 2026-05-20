@@ -250,7 +250,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     汇报 `blocked/needs_user` 时会记录状态但保留活跃目标；
     活跃目标的最近状态会进入 `active_goals` 并交给 LLM planner，
     所以 `blocked/needs_user` 不是终点，模型可继续选择
-    `request_context`、`launch_session`、`ask_user` 或 `monitor`；
+    `request_context`、`launch_session`、`ask_user` 或 `monitor`；当目标
+    缺少上下文时，prompt 会把 `request_context` 作为优先候选，只有检索后仍
+    无法判断且满足拍板 gate 时才允许 `ask_user`，避免因缺上下文直接
+    `monitor`；
     存在 `active_goals` 时，LLM prompt 和动作校验都会收窄到目标相关
     command suggestions，避免模型恢复旧普通 session 抢走新目标；
     若上下文检查后确实满足拍板门槛，`ask_user` 可直接用 `goal_id`

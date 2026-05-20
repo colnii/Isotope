@@ -4940,6 +4940,65 @@ def test_codex_supervisor_llm_action_messages_prefer_monitor_for_running_active_
     )
 
 
+def test_codex_supervisor_llm_action_messages_prioritize_context_for_blocked_goal(
+    tmp_path,
+):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    goal = "修复 blocked goal 的上下文优先级。"
+    messages = build_llm_action_messages(
+        CodexSupervisorReport(generated_at=NOW.isoformat(), sessions=()),
+        [
+            {
+                "kind": "request_context",
+                "cwd": str(workspace),
+                "query": goal,
+                "command": (
+                    f"isotope-supervisor context --cwd {workspace} "
+                    f"--query {shlex.quote(goal)}"
+                ),
+            },
+            {
+                "kind": "launch_session",
+                "target_name": "blocked-worker",
+                "cwd": str(workspace),
+                "prompt": goal,
+                "command": (
+                    f"isotope-supervisor launch --name blocked-worker "
+                    f"--cwd {workspace} --prompt {shlex.quote(goal)}"
+                ),
+            },
+        ],
+        active_goals=[
+            {
+                "goal_id": "goal-blocked",
+                "goal": goal,
+                "cwd": str(workspace),
+                "target_name": "blocked-worker",
+                "last_status": "blocked",
+                "last_summary": "worker 缺少上下文。",
+                "last_next": "先查相关文档。",
+            }
+        ],
+    )
+    payload = json.loads(messages[1]["content"])
+
+    assert payload["blocked_context_priority"] == [
+        {
+            "kind": "request_context",
+            "reason": "context_first_for_blocked_goal",
+            "goal_id": "goal-blocked",
+            "target_name": "blocked-worker",
+            "cwd": str(workspace),
+            "query": goal,
+            "message": "blocked/needs_user 目标缺上下文时先检索，再判断是否 ask_user。",
+        }
+    ]
+    assert "blocked/needs_user 目标缺少上下文时优先 request_context" in "".join(
+        payload["action_rules"]
+    )
+
+
 def test_codex_supervisor_llm_action_messages_prefer_monitor_for_running_merge_worker(
     tmp_path,
 ):

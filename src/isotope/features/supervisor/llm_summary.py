@@ -254,6 +254,11 @@ def build_llm_action_messages(
         session.session_id for session in report.sessions if _is_completed_session(session)
     ]
     context_request_history = _context_request_history(recent_context_results)
+    blocked_context_priority = _blocked_context_priority(
+        active_goals,
+        prompt_command_suggestions,
+        context_request_history,
+    )
     return [
         {
             "role": "system",
@@ -286,6 +291,7 @@ def build_llm_action_messages(
                     "recent_decision_answers": recent_decision_answers or [],
                     "context_request_history": context_request_history,
                     "planner_priority": planner_priority,
+                    "blocked_context_priority": blocked_context_priority,
                     "worker_profiles": {
                         "coding": "默认代码开发档，适合需要改代码、跑测试、做复杂判断的任务。",
                         "light": "低成本轻任务档，适合只读检查、状态汇报、smoke 或短小验证。",
@@ -339,6 +345,11 @@ def build_llm_action_messages(
                         (
                             "blocked/needs_user 目标只有满足 decision_gate 时才允许 ask_user；"
                             "否则继续查上下文或启动新 worker 推进。"
+                        ),
+                        (
+                            "blocked/needs_user 目标缺少上下文时优先 request_context；"
+                            "仍无法判断且满足 decision_gate 后，才输出 ask_user；"
+                            "不要因为缺上下文直接选择 monitor。"
                         ),
                         (
                             "recent_decision_answers 是用户已经拍板的答案；"
@@ -1415,6 +1426,69 @@ def _context_request_history(
             }
         )
     return history
+
+
+def _blocked_context_priority(
+    active_goals: list[dict[str, Any]] | None,
+    command_suggestions: list[dict[str, str]],
+    context_request_history: list[dict[str, str]],
+) -> list[dict[str, str]]:
+    history_keys = {
+        (item.get("cwd"), item.get("query"))
+        for item in context_request_history
+        if isinstance(item.get("cwd"), str) and isinstance(item.get("query"), str)
+    }
+    priorities: list[dict[str, str]] = []
+    for goal in active_goals or []:
+        if not isinstance(goal, dict):
+            continue
+        status = str(goal.get("last_status") or "").lower()
+        if status not in {"blocked", "needs_user"}:
+            continue
+        suggestion = _request_context_suggestion_for_goal(goal, command_suggestions)
+        if suggestion is None:
+            continue
+        cwd = suggestion["cwd"]
+        query = suggestion["query"]
+        if (cwd, query) in history_keys:
+            continue
+        priority: dict[str, str] = {
+            "kind": "request_context",
+            "reason": "context_first_for_blocked_goal",
+            "cwd": cwd,
+            "query": query,
+            "message": "blocked/needs_user 目标缺上下文时先检索，再判断是否 ask_user。",
+        }
+        for key in ("goal_id", "target_name"):
+            value = goal.get(key)
+            if isinstance(value, str) and value:
+                priority[key] = value
+        priorities.append(priority)
+    return priorities
+
+
+def _request_context_suggestion_for_goal(
+    goal: dict[str, Any],
+    command_suggestions: list[dict[str, str]],
+) -> dict[str, str] | None:
+    goal_cwd = goal.get("cwd")
+    if not isinstance(goal_cwd, str) or not goal_cwd:
+        return None
+    goal_text = goal.get("goal")
+    for suggestion in command_suggestions:
+        if suggestion.get("kind") != "request_context":
+            continue
+        if suggestion.get("cwd") != goal_cwd:
+            continue
+        if isinstance(goal_text, str) and suggestion.get("query") == goal_text:
+            return suggestion
+    for suggestion in command_suggestions:
+        if (
+            suggestion.get("kind") == "request_context"
+            and suggestion.get("cwd") == goal_cwd
+        ):
+            return suggestion
+    return None
 
 
 def _candidate_target_payloads(

@@ -196,7 +196,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   `done` 自动归档，`blocked/needs_user` 只记录状态并等待后续处理。
 - `blocked/needs_user` 活跃目标会带着 `last_status`、摘要和下一步进入
   LLM planner 的 `active_goals` 输入；模型不能默认停住，应重新选择
-  `request_context`、`launch_session`、`ask_user` 或 `monitor`。
+  `request_context`、`launch_session`、`ask_user` 或 `monitor`。缺少上下文
+  时 prompt 会额外提供 `blocked_context_priority`，要求先考虑
+  `request_context`，检索后仍无法判断且满足拍板 gate 时才 `ask_user`。
 - 存在 `active_goals` 时，LLM prompt 和动作校验都会使用收窄后的
   目标相关 command suggestions，旧普通 session 的 `resume_session`
   不能绕过校验抢走新目标。
