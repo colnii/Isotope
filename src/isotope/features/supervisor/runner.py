@@ -2197,6 +2197,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
         auto_adopted = _auto_adopt_discovered_tmux_sessions(args)
         report = _scan_report(args)
         goal_updates = _sync_goal_lifecycle(args, report)
+        cleanup_archived = _auto_cleanup_done_workers(args)
         fingerprint = _report_fingerprint(report)
         report_changed = previous_fingerprint != fingerprint
         precomputed_auto_action: dict[str, Any] | None = None
@@ -2211,6 +2212,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
                     iteration=count + 1,
                     auto_adopted=auto_adopted,
                     goal_updates=goal_updates,
+                    cleanup_archived=cleanup_archived,
                 )
                 force_print = _executed_action_forces_print(
                     precomputed_payload.get("executed", {})
@@ -2235,6 +2237,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
             or force_print
             or bool(auto_adopted)
             or bool(goal_updates)
+            or bool(cleanup_archived)
         )
         if should_print:
             payload = precomputed_payload or _supervise_payload(
@@ -2245,6 +2248,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
                 precomputed_auto_action=precomputed_auto_action,
                 precomputed_executed=precomputed_executed,
                 goal_updates=goal_updates,
+                cleanup_archived=cleanup_archived,
             )
             bell_fingerprint = _supervise_bell_fingerprint(report, payload)
             if (
@@ -2366,6 +2370,19 @@ def _sync_goal_lifecycle(
         )
         updates.append(update)
     return updates
+
+
+def _auto_cleanup_done_workers(args: argparse.Namespace) -> list[dict[str, Any]]:
+    if getattr(args, "command", None) != "loop":
+        return []
+    codex_home = Path(args.codex_home)
+    return [
+        _archive_cleanup_candidate(codex_home, candidate)
+        for candidate in _cleanup_managed_worker_candidates(
+            codex_home,
+            require_existing_cwd=True,
+        )
+    ]
 
 
 def _goal_status_from_session(session: Any) -> str | None:
@@ -2885,6 +2902,7 @@ def _supervise_payload(
     iteration: int,
     auto_adopted: list[dict[str, str]] | None = None,
     goal_updates: list[dict[str, Any]] | None = None,
+    cleanup_archived: list[dict[str, Any]] | None = None,
     precomputed_auto_action: dict[str, Any] | None = None,
     precomputed_executed: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -2922,6 +2940,8 @@ def _supervise_payload(
         payload["goal_replenishment"] = goal_replenishment
     if goal_updates:
         payload["goal_updates"] = goal_updates
+    if cleanup_archived:
+        payload["cleanup_archived"] = cleanup_archived
     worker_reviews: dict[str, Any] | None = None
     if args.llm_action or args.llm_execute:
         payload["recent_context_results"] = _recent_context_results(args, action_report)
@@ -4288,9 +4308,15 @@ def _cleanup_goal_candidates(codex_home: Path) -> list[dict[str, Any]]:
     return candidates
 
 
-def _cleanup_managed_worker_candidates(codex_home: Path) -> list[dict[str, Any]]:
+def _cleanup_managed_worker_candidates(
+    codex_home: Path,
+    *,
+    require_existing_cwd: bool = False,
+) -> list[dict[str, Any]]:
     candidates: list[dict[str, Any]] = []
     for record in read_managed_records(default_registry_path(codex_home)):
+        if require_existing_cwd and not _cwd_is_existing_dir(record.cwd):
+            continue
         protocol = _managed_record_supervisor_protocol(record)
         if protocol.get("status") not in ARCHIVABLE_SUPERVISOR_STATUSES:
             continue
@@ -4303,6 +4329,7 @@ def _cleanup_managed_worker_candidates(codex_home: Path) -> list[dict[str, Any]]
             "status": protocol.get("status"),
             "summary": protocol.get("summary"),
             "next": protocol.get("next"),
+            "cwd": record.cwd,
             "backend": record.backend,
             "tmux_session": record.tmux_session,
             "command": _cleanup_archive_command(

@@ -12754,6 +12754,151 @@ def test_codex_supervisor_runner_loop_archives_goal_when_worker_reports_done(
     assert json.loads(capsys.readouterr().out)["active_goals"] == []
 
 
+def test_codex_supervisor_runner_loop_auto_archives_done_managed_worker(
+    tmp_path,
+    capsys,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    missing_workspace = tmp_path / "missing-workspace"
+    exit_code = supervisor_main(
+        [
+            "goal",
+            "add",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(workspace),
+            "--goal",
+            "完成目标后自动归档 worker。",
+            "--target-name",
+            "done-worker",
+            "--json",
+        ]
+    )
+    assert exit_code == 0
+    goal = json.loads(capsys.readouterr().out)["goal"]
+    log_dir = codex_home / "supervisor" / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    done_log_path = log_dir / "managed-done.log"
+    done_log_path.write_text(
+        "SUPERVISOR_STATUS: done\n"
+        "SUPERVISOR_SUMMARY: worker 已完成。\n"
+        "SUPERVISOR_NEXT: 等待 Supervisor 归档。\n",
+        encoding="utf-8",
+    )
+    active_log_path = log_dir / "managed-active.log"
+    active_log_path.write_text(
+        "SUPERVISOR_STATUS: done\n"
+        "SUPERVISOR_SUMMARY: worker 正在收尾。\n"
+        "SUPERVISOR_NEXT: 等待 Supervisor 归档。\n"
+        "◦ Working (esc to interrupt)\n",
+        encoding="utf-8",
+    )
+    missing_log_path = log_dir / "managed-missing.log"
+    missing_log_path.write_text(
+        "SUPERVISOR_STATUS: done\n"
+        "SUPERVISOR_SUMMARY: worker 已完成但 worktree 不存在。\n"
+        "SUPERVISOR_NEXT: 等待人工确认。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "record_id": "managed-done",
+                        "name": "done-worker",
+                        "cwd": str(workspace),
+                        "prompt": "完成目标后自动归档 worker。",
+                        "command": ["codex", "exec", "-C", str(workspace), "继续"],
+                        "pid": 0,
+                        "started_at": NOW.isoformat(),
+                        "log_path": str(done_log_path),
+                        "status": "launched",
+                        "backend": "process",
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+                json.dumps(
+                    {
+                        "record_id": "managed-active",
+                        "name": "active-worker",
+                        "cwd": str(workspace),
+                        "prompt": "仍在工作。",
+                        "command": ["codex", "exec", "-C", str(workspace), "继续"],
+                        "pid": 0,
+                        "started_at": NOW.isoformat(),
+                        "log_path": str(active_log_path),
+                        "status": "launched",
+                        "backend": "process",
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+                json.dumps(
+                    {
+                        "record_id": "managed-missing",
+                        "name": "missing-worker",
+                        "cwd": str(missing_workspace),
+                        "prompt": "worktree 不存在。",
+                        "command": [
+                            "codex",
+                            "exec",
+                            "-C",
+                            str(missing_workspace),
+                            "继续",
+                        ],
+                        "pid": 0,
+                        "started_at": NOW.isoformat(),
+                        "log_path": str(missing_log_path),
+                        "status": "launched",
+                        "backend": "process",
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--rule-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["goal_updates"][0]["goal_id"] == goal["goal_id"]
+    assert payload["goal_updates"][0]["status"] == "done"
+    assert payload["active_goals"] == []
+    assert [item["name"] for item in payload["cleanup_archived"]] == ["done-worker"]
+    assert payload["cleanup_archived"][0]["managed"]["status"] == "archived"
+    registry_events = [
+        json.loads(line)
+        for line in registry_path.read_text(encoding="utf-8").splitlines()
+    ]
+    archived_names = [
+        item["name"] for item in registry_events if item.get("status") == "archived"
+    ]
+    assert archived_names == ["done-worker"]
+
+
 def test_codex_supervisor_runner_loop_keeps_blocked_goal_active(
     tmp_path,
     capsys,
