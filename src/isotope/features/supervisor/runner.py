@@ -62,6 +62,7 @@ from .goal_planner import plan_supervisor_goals
 from .integration_review import (
     collect_integration_reviews,
     render_integration_review_plain,
+    review_managed_record_integration,
 )
 from .lane_state import (
     DEFAULT_MAX_CONTINUE_COUNT,
@@ -2903,6 +2904,7 @@ def _supervise_payload(
         payload["recent_decision_answers"] = _decision_answer_dicts(args)
         worker_reviews = _worker_review_context(args)
         payload["worker_reviews"] = worker_reviews
+        payload["delete_worktree_candidates"] = _delete_worktree_candidate_payloads(args)
     payload["current_batch"] = _current_batch_payload(
         report,
         active_goals=active_goals,
@@ -5259,7 +5261,7 @@ def _execute_llm_action(
     if kind == "ask_user":
         return _execute_ask_user_action(args, action)
     if kind == "delete_worktree":
-        return _execute_delete_worktree_action(action)
+        return _execute_delete_worktree_action(args, action)
     return _execute_advice(
         args,
         report,
@@ -5833,13 +5835,220 @@ def _execute_ask_user_action(
     }
 
 
-def _execute_delete_worktree_action(action: dict[str, Any]) -> dict[str, Any]:
+def _execute_delete_worktree_action(
+    args: argparse.Namespace,
+    action: dict[str, Any],
+) -> dict[str, Any]:
+    target_name = action.get("target_name") or action.get("name")
+    record_id = action.get("record_id")
+    if not isinstance(target_name, str) or not target_name.strip():
+        raise ValueError("target_name is required for delete_worktree")
+    if record_id is not None and not isinstance(record_id, str):
+        raise ValueError("record_id must be a string for delete_worktree")
+    if action.get("confirm_delete_worktree") is not True:
+        return {
+            "kind": "delete_worktree",
+            "target_name": target_name,
+            "skipped": True,
+            "reason": "missing delete_worktree confirmation",
+        }
+    record = _latest_managed_record_event(
+        codex_home=Path(args.codex_home),
+        target_name=target_name,
+        record_id=record_id,
+    )
+    if record is None:
+        return {
+            "kind": "delete_worktree",
+            "target_name": target_name,
+            "skipped": True,
+            "reason": "managed worker not found",
+        }
+    if record.status != "archived":
+        return {
+            "kind": "delete_worktree",
+            "target_name": target_name,
+            "skipped": True,
+            "reason": "managed worker is not archived",
+            "managed": _managed_record_ref(record),
+        }
+    protocol = _supervisor_protocol_from_text(
+        _managed_process_log_excerpt(record.log_path) or ""
+    )
+    if (protocol.get("status") or "").strip().lower() != "done":
+        return {
+            "kind": "delete_worktree",
+            "target_name": target_name,
+            "skipped": True,
+            "reason": "managed worker is not done",
+            "managed": _managed_record_ref(record),
+            "supervisor_protocol": protocol,
+        }
+    worktree = _supervisor_worktree_root_for_cwd(record.cwd)
+    if worktree is None:
+        return {
+            "kind": "delete_worktree",
+            "target_name": target_name,
+            "skipped": True,
+            "reason": "worktree is outside .worktrees/supervisor",
+            "managed": _managed_record_ref(record),
+            "cwd": record.cwd,
+        }
+    if not worktree["worktree_root"].is_dir():
+        return {
+            "kind": "delete_worktree",
+            "target_name": target_name,
+            "skipped": True,
+            "reason": "worktree missing",
+            "managed": _managed_record_ref(record),
+            "worktree_root": str(worktree["worktree_root"]),
+        }
+    integration = review_managed_record_integration(
+        record,
+        base_ref=str(action.get("base_ref") or "main"),
+        run=subprocess.run,
+    )
+    if not _integration_review_allows_worktree_delete(integration):
+        return {
+            "kind": "delete_worktree",
+            "target_name": target_name,
+            "skipped": True,
+            "reason": "worker is not integrated",
+            "managed": _managed_record_ref(record),
+            "integration": _delete_worktree_integration_summary(integration),
+        }
+    command = [
+        "git",
+        "-C",
+        str(worktree["repo_root"]),
+        "worktree",
+        "remove",
+        str(worktree["worktree_root"]),
+    ]
+    completed = subprocess.run(
+        command,
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+    command_text = shlex.join(command)
+    if completed.returncode != 0:
+        return {
+            "kind": "delete_worktree",
+            "target_name": target_name,
+            "command": command_text,
+            "skipped": True,
+            "reason": "git worktree remove failed",
+            "managed": _managed_record_ref(record),
+            "worktree_root": str(worktree["worktree_root"]),
+            "stderr": (completed.stderr or completed.stdout or "").strip(),
+        }
     return {
         "kind": "delete_worktree",
-        "target_name": action.get("target_name"),
-        "cwd": action.get("cwd"),
-        "skipped": True,
-        "reason": "delete_worktree requires explicit human approval",
+        "target_name": target_name,
+        "command": command_text,
+        "deleted_worktree": str(worktree["worktree_root"]),
+        "managed": _managed_record_ref(record),
+        "integration": _delete_worktree_integration_summary(integration),
+    }
+
+
+def _delete_worktree_candidate_payloads(args: argparse.Namespace) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    for record in _latest_managed_record_events(Path(args.codex_home)):
+        if record.status != "archived":
+            continue
+        if _supervisor_worktree_root_for_cwd(record.cwd) is None:
+            continue
+        protocol = _supervisor_protocol_from_text(
+            _managed_process_log_excerpt(record.log_path) or ""
+        )
+        if (protocol.get("status") or "").strip().lower() != "done":
+            continue
+        integration = review_managed_record_integration(record, run=subprocess.run)
+        if not _integration_review_allows_worktree_delete(integration):
+            continue
+        candidates.append(
+            {
+                "name": record.name,
+                "target_name": record.name,
+                "record_id": record.record_id,
+                "cwd": record.cwd,
+                "archived": True,
+                "integration_group": integration.get("group"),
+                "main_contains_worker": integration.get("main_contains_worker"),
+                "main_has_worker_patch": integration.get("main_has_worker_patch"),
+                "worker_commit": integration.get("worker_commit"),
+                "base_ref": integration.get("base_ref"),
+            }
+        )
+    return candidates
+
+
+def _latest_managed_record_event(
+    *,
+    codex_home: Path,
+    target_name: str,
+    record_id: str | None,
+) -> Any | None:
+    for record in reversed(read_managed_record_events(default_registry_path(codex_home))):
+        if record_id is not None and record.record_id != record_id:
+            continue
+        if record.name == target_name:
+            return record
+    return None
+
+
+def _latest_managed_record_events(codex_home: Path) -> list[Any]:
+    latest: dict[str, Any] = {}
+    for record in read_managed_record_events(default_registry_path(codex_home)):
+        latest[record.record_id] = record
+    return list(latest.values())
+
+
+def _managed_record_ref(record: Any) -> dict[str, Any]:
+    return {
+        "name": record.name,
+        "record_id": record.record_id,
+        "status": record.status,
+        "cwd": record.cwd,
+    }
+
+
+def _supervisor_worktree_root_for_cwd(cwd: str) -> dict[str, Path] | None:
+    path = Path(cwd).expanduser().resolve(strict=False)
+    parts = path.parts
+    for index in range(0, len(parts) - 2):
+        if parts[index] != ".worktrees" or parts[index + 1] != "supervisor":
+            continue
+        repo_root = Path(*parts[:index])
+        worktree_root = Path(*parts[: index + 3])
+        if worktree_root.parent.name != "supervisor":
+            return None
+        return {"repo_root": repo_root, "worktree_root": worktree_root}
+    return None
+
+
+def _integration_review_allows_worktree_delete(integration: dict[str, Any]) -> bool:
+    return (
+        integration.get("group") == "already_integrated"
+        and integration.get("dirty") is False
+        and (
+            integration.get("main_contains_worker") is True
+            or integration.get("main_has_worker_patch") is True
+        )
+    )
+
+
+def _delete_worktree_integration_summary(integration: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "group": integration.get("group"),
+        "reason": integration.get("reason"),
+        "worker_commit": integration.get("worker_commit"),
+        "base_ref": integration.get("base_ref"),
+        "main_contains_worker": integration.get("main_contains_worker"),
+        "main_has_worker_patch": integration.get("main_has_worker_patch"),
+        "dirty": integration.get("dirty"),
     }
 
 
@@ -6193,7 +6402,11 @@ def _summarize_with_llm(report: Any) -> str:
 
 
 def _decide_action_with_llm(report: Any, payload: dict[str, Any]) -> dict[str, Any]:
-    if not _has_llm_action_target(report, payload.get("command_suggestions")):
+    if not _has_llm_action_target(
+        report,
+        payload.get("command_suggestions"),
+        payload.get("delete_worktree_candidates"),
+    ):
         return generate_llm_action_decision(
             report,
             payload["command_suggestions"],
@@ -6202,6 +6415,7 @@ def _decide_action_with_llm(report: Any, payload: dict[str, Any]) -> dict[str, A
             payload.get("active_goals"),
             payload.get("recent_decision_answers"),
             payload.get("worker_reviews"),
+            payload.get("delete_worktree_candidates"),
         )
     try:
         provider = resolve_summary_provider_from_env(agent_name="supervisor")
@@ -6213,6 +6427,7 @@ def _decide_action_with_llm(report: Any, payload: dict[str, Any]) -> dict[str, A
             payload.get("active_goals"),
             payload.get("recent_decision_answers"),
             payload.get("worker_reviews"),
+            payload.get("delete_worktree_candidates"),
         )
     except ValueError as exc:
         error = str(exc)
@@ -6316,7 +6531,10 @@ class _UnavailableSummaryProvider:
 def _has_llm_action_target(
     report: Any,
     command_suggestions: Any = None,
+    delete_worktree_candidates: Any = None,
 ) -> bool:
+    if isinstance(delete_worktree_candidates, list) and delete_worktree_candidates:
+        return True
     if any(
         (
             session.managed_name

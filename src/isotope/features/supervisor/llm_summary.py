@@ -227,6 +227,7 @@ def build_llm_action_messages(
     active_goals: list[dict[str, Any]] | None = None,
     recent_decision_answers: list[dict[str, Any]] | None = None,
     worker_reviews: dict[str, Any] | None = None,
+    delete_worktree_candidates: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, str]]:
     """Build the prompt for guarded LLM planning."""
     prompt_command_suggestions = _active_goal_scoped_command_suggestions(
@@ -289,6 +290,7 @@ def build_llm_action_messages(
                         "coding": "默认代码开发档，适合需要改代码、跑测试、做复杂判断的任务。",
                         "light": "低成本轻任务档，适合只读检查、状态汇报、smoke 或短小验证。",
                     },
+                    "delete_worktree_candidates": delete_worktree_candidates or [],
                     "action_rules": [
                         (
                             "recommendation.target_session_id 只是状态线索，"
@@ -353,9 +355,10 @@ def build_llm_action_messages(
                             "不得输出白名单之外的 merge/rebase/delete 动作。"
                         ),
                         (
-                            "delete_worktree 是 deny-by-default（默认拒绝）的受控动作；"
-                            "只能指向已知且 cwd 已缺失的 worker，用于记录人工清理意图，"
-                            "Supervisor 不会自动删除目录、分支或登记。"
+                            "delete_worktree 是受控清理动作；只允许用于 "
+                            "delete_worktree_candidates 中已经完成、已归档、"
+                            "已集成的 worker；输出前必须设置 "
+                            "confirm_delete_worktree=true。"
                         ),
                     ],
                     "context_capability": {
@@ -412,9 +415,10 @@ def build_llm_action_messages(
                     },
                     "delete_worktree_schema": {
                         "kind": "delete_worktree",
-                        "target_name": "worker-name",
-                        "cwd": "/path/to/missing/.worktrees/supervisor/worker",
-                        "reason": "一句中文原因",
+                        "target_name": "done-lane",
+                        "record_id": "managed-optional-but-recommended",
+                        "confirm_delete_worktree": True,
+                        "reason": "一句中文说明已确认完成、归档且集成",
                     },
                 },
                 ensure_ascii=False,
@@ -432,12 +436,17 @@ def generate_llm_action_decision(
     active_goals: list[dict[str, Any]] | None = None,
     recent_decision_answers: list[dict[str, Any]] | None = None,
     worker_reviews: dict[str, Any] | None = None,
+    delete_worktree_candidates: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     action_command_suggestions = _active_goal_scoped_command_suggestions(
         command_suggestions,
         active_goals,
     )
-    if not _has_any_llm_target(report, action_command_suggestions):
+    if not _has_any_llm_target(
+        report,
+        action_command_suggestions,
+        delete_worktree_candidates=delete_worktree_candidates,
+    ):
         return {
             "kind": "monitor",
             "target_name": None,
@@ -452,6 +461,7 @@ def generate_llm_action_decision(
             active_goals,
             recent_decision_answers,
             worker_reviews,
+            delete_worktree_candidates,
         )
     )
     payload = _normalize_llm_action_payload(_extract_json_object(raw))
@@ -469,6 +479,8 @@ def generate_llm_action_decision(
     context_status: str | None = None
     codex_requested_decision: bool | None = None
     instructions_exhausted: bool | None = None
+    record_id: str | None = None
+    confirm_delete_worktree: bool | None = None
     if kind == "resume_session":
         session_id = _required_payload_string(payload, "session_id")
         if not _has_resume_target(report, session_id):
@@ -589,18 +601,26 @@ def generate_llm_action_decision(
         )
         command_suggestion = None
     elif kind == "delete_worktree":
-        if target_name is None:
-            raise ValueError("target_name is required for LLM action: delete_worktree")
-        cwd = _optional_payload_string(payload, "cwd") or _delete_worktree_target_cwd(
-            report,
-            target_name,
+        target_name = target_name or _optional_payload_string(payload, "name")
+        record_id = _optional_payload_string(payload, "record_id")
+        if not isinstance(target_name, str) or not target_name:
+            raise ValueError("target_name is required for delete_worktree")
+        if payload.get("confirm_delete_worktree") is not True:
+            raise ValueError("delete_worktree requires confirm_delete_worktree=true")
+        confirm_delete_worktree = True
+        candidate = _delete_worktree_candidate(
+            delete_worktree_candidates,
+            target_name=target_name,
+            record_id=record_id,
         )
-        if cwd is None:
-            raise ValueError(f"unknown delete_worktree target for LLM action: {target_name}")
-        if not _is_known_missing_worktree_target(report, target_name, cwd):
-            raise ValueError(
-                "delete_worktree requires a known missing worktree target"
-            )
+        if candidate is None:
+            raise ValueError("delete_worktree target is not an allowed cleanup candidate")
+        if candidate.get("archived") is not True:
+            raise ValueError("delete_worktree candidate must be archived")
+        if candidate.get("integration_group") != "already_integrated":
+            raise ValueError("delete_worktree candidate must be already_integrated")
+        candidate_cwd = candidate.get("cwd")
+        cwd = candidate_cwd if isinstance(candidate_cwd, str) else None
         command_suggestion = None
     elif kind != "monitor":
         if target_name is None:
@@ -632,6 +652,12 @@ def generate_llm_action_decision(
         **({"query": query} if kind == "request_context" else {}),
         **({"cwd": cwd} if kind == "delete_worktree" else {}),
         **({"question": question} if question is not None else {}),
+        **({"record_id": record_id} if record_id is not None else {}),
+        **(
+            {"confirm_delete_worktree": confirm_delete_worktree}
+            if confirm_delete_worktree is not None
+            else {}
+        ),
         **({"context_status": context_status} if context_status is not None else {}),
         **(
             {"codex_requested_decision": codex_requested_decision}
@@ -1350,6 +1376,25 @@ def _has_context_check_for_goal(
     return False
 
 
+def _delete_worktree_candidate(
+    candidates: list[dict[str, Any]] | None,
+    *,
+    target_name: str,
+    record_id: str | None,
+) -> dict[str, Any] | None:
+    for candidate in candidates or []:
+        if not isinstance(candidate, dict):
+            continue
+        if record_id is not None and candidate.get("record_id") != record_id:
+            continue
+        if (
+            candidate.get("name") == target_name
+            or candidate.get("target_name") == target_name
+        ):
+            return candidate
+    return None
+
+
 def _context_request_history(
     recent_context_results: list[dict[str, Any]] | None,
 ) -> list[dict[str, str]]:
@@ -1453,7 +1498,11 @@ def _active_goal_payload(
 def _has_any_llm_target(
     report: CodexSupervisorReport,
     command_suggestions: list[dict[str, str]] | None = None,
+    *,
+    delete_worktree_candidates: list[dict[str, Any]] | None = None,
 ) -> bool:
+    if delete_worktree_candidates:
+        return True
     return any(_is_llm_candidate_target(session) for session in report.sessions) or bool(
         _available_workspaces(report, command_suggestions)
     )

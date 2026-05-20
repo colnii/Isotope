@@ -62,6 +62,20 @@ def collect_integration_reviews(
     }
 
 
+def review_managed_record_integration(
+    record: ManagedCodexRecord,
+    *,
+    base_ref: str = "main",
+    run: RunCommand | None = None,
+) -> dict[str, Any]:
+    """Review one managed worker record without applying registry scope filters."""
+    return _worker_integration_review(
+        record,
+        base_ref=base_ref,
+        run=run or subprocess.run,
+    )
+
+
 def _integration_record_is_in_scope(
     record: ManagedCodexRecord,
     *,

@@ -112,6 +112,11 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   `conflict_risk`；默认只看未归档且已汇报 done 的 worker，显式传
   `--include-unfinished` 才纳入未完成历史；它不执行 merge、push、
   delete 或归档。
+- `delete_worktree` 是 LLM planner 的受控清理动作，只能由模型显式输出
+  `confirm_delete_worktree=true` 后触发；runner 会重新确认对应 managed
+  worker 已 `done`、登记表最后状态已 `archived`、当前 integration review
+  已是 `already_integrated`，且目标目录是 repo 内
+  `.worktrees/supervisor/<worker>`，才执行 `git worktree remove`。
 - `replan` CLI 会读取 `worker-review` 的 `automation_candidates`、当前
   active goals，以及 `integration-review` 的 `ready_to_integrate`、
   `already_integrated`、`needs_review`、`conflict_risk` 分组，生成下一轮
@@ -385,9 +390,11 @@ B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
 - merge dispatch：已接入 `loop` 的派发层；它负责在候选明确时自动启动
   merge worker，并把 `merge-work-order` 交给 worker。
 
-当前阶段的安全线：Supervisor 可以自动启动 merge worker，但不在
-runner 内直接 cherry-pick、删除 worker 分支、worktree 或来源历史；
-不 force push，不 rebase 已共享分支，不重写远端历史。
+当前阶段的安全线：Supervisor 可以自动启动 merge worker；runner 不直接
+cherry-pick、删除 worker 分支或来源历史。唯一允许的删除动作是
+`delete_worktree`：只清理已完成、已归档、已集成的
+`.worktrees/supervisor/<worker>`，不 force push，不 rebase 已共享分支，
+不重写远端历史。
 
 merge worker 成功合入后的交接边界也要分清：
 
@@ -515,10 +522,8 @@ fanout 回归必须覆盖：多个 active goals 中已有同名 running worker �
 - 没有可控托管目标时，不要为了动作建议调用 LLM。
 - LLM 动作选择必须落到可审计的白名单能力上。
 - 不要把 `integration-review`、`replan` 或 `merge-work-order` 的候选结果
-  当成自动删除分支、清理 worktree、force push、rebase 已共享分支或
-  重写历史的授权。
-- 即便 LLM 输出 `delete_worktree`，当前实现也只记录 skipped；真正清理
-  worktree、分支或登记仍需要人工或后续显式审批路径。
+  当成自动删除分支、force push、rebase 已共享分支或重写历史的授权；
+  worktree 清理必须走 `delete_worktree` 的归档、集成和路径护栏。
 
 ## 后续拆分方向
 

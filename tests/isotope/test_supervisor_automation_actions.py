@@ -469,7 +469,7 @@ def test_supervisor_loop_executes_ask_user_after_context_check(
     assert payload["decision_requests"][0]["question"] == "请确认本轮保留 A 方案还是 B 方案？"
 
 
-def test_supervisor_loop_delete_worktree_is_controlled_and_non_destructive(
+def test_supervisor_loop_ignores_missing_worktree_delete_target(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
@@ -483,25 +483,27 @@ def test_supervisor_loop_delete_worktree_is_controlled_and_non_destructive(
         status="launched",
         log_text="SUPERVISOR_STATUS: blocked\nSUPERVISOR_SUMMARY: worktree 已缺失。\n",
     )
+
     _patch_provider(
         monkeypatch,
         {
             "kind": "delete_worktree",
             "target_name": "gone-worker",
-            "cwd": str(missing_worktree),
+            "confirm_delete_worktree": True,
             "reason": "worker worktree 已缺失，模型想清理记录。",
         },
     )
 
     payload = _run_loop(codex_home=codex_home, workspace_root=tmp_path, capsys=capsys)
 
-    assert payload["llm_action"]["kind"] == "delete_worktree"
+    assert payload["llm_action"]["kind"] == "monitor"
+    assert payload["llm_action"]["error"] == (
+        "delete_worktree target is not an allowed cleanup candidate"
+    )
     assert payload["executed"] == {
-        "kind": "delete_worktree",
-        "target_name": "gone-worker",
-        "cwd": str(missing_worktree),
+        "kind": "monitor",
         "skipped": True,
-        "reason": "delete_worktree requires explicit human approval",
+        "reason": payload["llm_action"]["reason"],
     }
     assert not missing_worktree.exists()
 
