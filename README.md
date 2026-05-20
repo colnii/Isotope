@@ -1,16 +1,30 @@
 # Isotope
 
-Isotope 是一个面向真实使用的 AI 应用软件。
+Isotope 是一个面向本地 AI 编程工作流的 Agent Supervisor / AI 工程工作台。
 
-它会包含 AI 规划、智能体循环、工具调用、终端能力、任务产物、
-状态恢复和产品界面。早期从底座能力做起，但项目目标不是只做内核。
+目标是解决 AI 辅助开发中的一个实际问题：
+当多个 Codex / Agent 窗口并行工作时，用户很难持续判断它们分别在做什么、
+是否卡住、是否需要拍板、下一步该继续还是回收。
 
-当前阶段已经完成主线收束：
+Isotope 通过本地会话扫描、状态识别、LLM 规划、受控 worker 启动和
+Web dashboard，把这些分散的 AI 编程过程组织成可观察、可恢复、可审查的工作流。
 
-- 旧功能分支已完成审计、代码抽取和清理。
-- AI 协作规则和当前状态文档已更新。
-- `docs/` 已按当前、架构、功能、评审、归档分层。
-- 已迁移到 `src/isotope/` 应用包结构。
+## 核心能力
+
+- **Codex 会话扫描**：读取本机 Codex session 记录，识别工作目录、分支、最近消息和状态证据。
+- **状态判断**：区分 `working`、`needs_user`、`stale`、`done` 等状态，并输出中文摘要。
+- **LLM-driven supervision**：让模型在受控动作集合中选择 `monitor`、`request_context`、`launch_session`、`ask_user` 等下一步动作。
+- **多 worker 托管**：可启动后台 Codex worker 或接管 tmux 会话，并跟踪 worker 的状态协议和日志输出。
+- **目标队列**：支持把长期目标写入队列，由后台 daemon 动态消费、推进、归档或等待用户拍板。
+- **集成审查**：对已完成 worker 做只读检查，汇总分支、提交、diff、合并风险和后续验证建议。
+- **Web dashboard**：本地页面展示活跃目标、等待拍板、运行中 worker、已完成任务和可复制的恢复命令。
+
+## 使用场景
+
+- 同时开多个 AI 编程窗口时，快速判断哪些任务还在跑、哪些需要人处理。
+- 把“继续推进当前项目”拆成多个受控 worker，并在完成后回收 diff、测试和提交。
+- 在长期任务中记录用户拍板，避免模型反复询问或重复启动同名 worker。
+- 用低敏摘要和结构化事件保留可审查证据，而不是只依赖聊天窗口记忆。
 
 ## 快速开始
 
@@ -21,46 +35,72 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -U pip
 .venv/bin/python -m pip install -e ".[test]"
 .venv/bin/python -m pytest tests/isotope -q
-.venv/bin/python -m isotope.demo --scenario v0.2 --trace
-.venv/bin/python -m isotope.features.supervisor.runner scan --limit 3
-.venv/bin/isotope-demo --scenario v0.2 --trace
-.venv/bin/isotope-supervisor scan --limit 3
-.venv/bin/isotope-supervisor scan --limit 3 --llm-summary
-.venv/bin/isotope-supervisor up --goal "继续推进当前项目目标"
-.venv/bin/isotope-supervisor loop --interval 180
-.venv/bin/isotope-supervisor web --host 127.0.0.1 --port 8765
-.venv/bin/isotope-supervisor goal add --cwd /path/to/repo --goal "继续推进当前项目目标"
-.venv/bin/isotope-supervisor goal list
-.venv/bin/isotope-supervisor decision list
-.venv/bin/isotope-supervisor decision answer --request-id <request-id> --answer "同意按方案 A 继续"
-.venv/bin/isotope-supervisor goal archive --goal-id <goal-id>
-.venv/bin/isotope-supervisor launch --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
-.venv/bin/isotope-supervisor launch --backend tmux --tmux-session isotope-lane-a --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
-.venv/bin/isotope-supervisor send --name lane-a --text "继续"
 ```
 
-## 当前可用能力
+扫描最近的 Codex 会话：
 
-- 事件记录、审批、产物记录、回放和检查点。
-- 受控工具调用和终端命令执行的基础路径。
-- 模型服务适配器的基础封装。
-- 若干演示场景，用来验证底座能力是否仍可运行。
-- Codex Supervisor 监控与托管，可观察本机多个 Codex 会话，
-  支持变化触发汇报、结构化建议、托管启动、tmux 会话启动和发送一行指令，
-  并可选调用已配置 LLM 输出中文智能汇报。
+```bash
+.venv/bin/isotope-supervisor scan --limit 5
+```
 
-这些能力是产品的基础，不是产品的全部。
+启动本地 Web dashboard：
 
-## 当前约束
+```bash
+.venv/bin/isotope-supervisor web --host 127.0.0.1 --port 8765
+```
 
-- 不把当前分支当成项目方向定义。
-- 不再把真实产品功能自动降级成预检查或诊断工具。
-- 不再堆叠只服务于“看起来安全”的文档和检查。
+把一个目标交给后台 Supervisor：
+
+```bash
+.venv/bin/isotope-supervisor up --goal "继续推进当前项目目标"
+```
+
+查看目标和等待拍板项：
+
+```bash
+.venv/bin/isotope-supervisor goal list
+.venv/bin/isotope-supervisor decision list
+```
+
+## 架构概览
+
+```text
+Codex sessions / tmux lanes / managed workers
+        ↓
+Supervisor scanner
+        ↓
+status evidence + workspace context
+        ↓
+LLM planner + rule guardrails
+        ↓
+controlled actions
+        ↓
+worker launch / context request / decision request / archive
+        ↓
+CLI report + Web dashboard + local event logs
+```
+
+核心设计原则：
+
+- **AI-first, guardrail-backed**：让 LLM 参与判断和调度，但所有动作都经过白名单和工作区边界约束。
+- **Local-first**：优先服务本机开发流程，不依赖中心化服务即可运行。
+- **Evidence-oriented**：状态判断要带证据来源，worker 完成后要能回看分支、diff 和验证建议。
+- **Recoverable workflow**：重要目标、拍板、worker 状态和 daemon 日志都落到本地账本，便于恢复。
+
+## 当前状态
+
+项目当前处于个人开发阶段，主线能力集中在 Codex Supervisor：
+
+- CLI 和本地 Web dashboard 已可运行。
+- 目标队列、拍板记录、后台 daemon、worker 启动和集成审查已形成闭环。
+- 仍在迭代产品交互、README 展示、前端可视化和更稳定的任务回收流程。
+
+这不是一个成熟商业产品，而是一个围绕真实 AI 编程工作流持续演进的工程项目。
 
 ## 主要入口
 
-- AI 协作规则：[AGENTS.md](AGENTS.md)
-- 当前状态：[docs/current/status.md](docs/current/status.md)
+- 项目状态：[docs/current/status.md](docs/current/status.md)
+- Supervisor 说明：[docs/current/codex-supervisor-readonly.md](docs/current/codex-supervisor-readonly.md)
 - 文档地图：[docs/current/docs-map.md](docs/current/docs-map.md)
-- 整备队列：[docs/current/agent-task-queue.md](docs/current/agent-task-queue.md)
-- Codex Supervisor：[docs/current/codex-supervisor-readonly.md](docs/current/codex-supervisor-readonly.md)
+- 任务队列：[docs/current/agent-task-queue.md](docs/current/agent-task-queue.md)
+- 协作规则：[AGENTS.md](AGENTS.md)

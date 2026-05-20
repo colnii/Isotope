@@ -1,66 +1,73 @@
-# 仓库指南
+# Repository Guide
 
-## 项目定位与目录
+## Project Scope
 
-Isotope 是面向真实使用的 AI 应用软件，不是单纯内核项目；目标是在秋招前搭出可展示、可扩展的产品。
-代码迁移到 `src/isotope/`，测试迁移到 `tests/isotope/`；`src/isotope/` 是长期 Python 包命名空间。
-后续目录按 AI 应用拆成 `apps/`、`core/`、`features/`、`capabilities/`、`execution/`、`workspace/`、`memory/` 等层级。
-`assistant` 只作为产品描述或历史术语，不再扩展成目录叙事。
-文档放在 `docs/`；当前状态先看 `docs/current/status.md`。
-文档地图和清理计划看 `docs/current/docs-map.md` 与 `docs/current/agent-task-queue.md`。
+Isotope is a local-first AI engineering workbench focused on Agent supervision,
+Codex session management, controlled worker launch, evidence collection, and
+recoverable development workflows.
 
-## 构建、测试与开发命令
+The main Python package lives under `src/isotope/`; tests live under
+`tests/isotope/`. Current product status and longer notes live under `docs/`.
+Start with `README.md` for the public overview and `docs/current/status.md` for
+the detailed current state.
 
-需要 Python `3.13` 或更新版本。
+## Common Commands
+
+Use Python `3.13` or newer.
 
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -U pip
 .venv/bin/python -m pip install -e ".[test]"
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q
-PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2 --trace
-.venv/bin/isotope-demo --scenario v0.2 --trace
+.venv/bin/python -m pytest tests/isotope -q
+.venv/bin/isotope-supervisor scan --limit 5
+.venv/bin/isotope-supervisor web --host 127.0.0.1 --port 8765
 ```
 
-按任务风险选择验证范围；不要为了形式运行无关长流程。
+For source-tree execution without installing scripts, use `PYTHONPATH=src`.
 
-## 代码风格与命名
+## Code Style
 
-Python 代码使用 4 空格缩进，模块和函数用 `snake_case`。
-测试文件用 `test_*.py`，测试函数用 `test_*`。
-保持文件职责清楚，不把货架、执行器、界面和诊断混成大文件。
-新增依赖可以接受，但要说明用途、维护成本和替代方案。
-不要为了“自主实现”重复造轮子。
+Python code uses 4-space indentation, `snake_case` modules/functions, and
+focused files with clear responsibilities. Test files and test functions use the
+`test_*` naming pattern. Keep public interfaces small and prefer explicit data
+objects over loosely shaped dictionaries when behavior is shared.
 
-## 产品导向开发
+New dependencies are acceptable when they reduce maintenance cost; document why
+they are needed and avoid duplicating mature libraries without a clear reason.
 
-先确认用户要的最终可用效果，再动手；不得把产品功能降级成诊断、预检查或半成品。
-若需求过大，拆成可运行、可演示的阶段成果；速度和质量都重要，不用“稳定”掩盖低效推进。
-不为“安全感”堆无意义检查，不重复做已证明的底层铺垫。
+## Development Rules
 
-实现 AI agent 功能时，AI 必须是主流程，不是可选装饰；规则和白名单只能做护栏，不能替代 AI 判断、规划、执行和输出打磨。
-不得把用户要的产品入口改写成预检查、诊断、冒烟检查、未启用状态或模拟演示。
-必须收窄时，先说明原需求的 AI 主流程、最小可交付体验和暂缓项；验收要证明用户入口能触发真实 AI 路径并产出可用结果。
+Prefer small, reviewable changes. When adding or changing behavior, update the
+relevant CLI/API entry point, tests, and user-facing docs in the same change.
 
-用户给出参考产品、仓库或实现时，先提炼可复用设计、可复制代码、差异点、落地方案。
-可以积极参考 GitHub 优秀项目；满足需求、许可证允许、少量适配即可使用的代码，可以直接复制再改。
-参考材料是需求输入，不是背景噪音；忽略前必须说明原因。
+Agent and LLM features should keep the model on the main execution path while
+using rules, allowlists, budgets, and workspace boundaries as guardrails. Do not
+replace a requested product path with a diagnostic-only or disabled stub unless
+the limitation is intentional and documented.
 
-## 测试要求
+## Testing
 
-测试使用 `pytest`。
-功能开发要有测试，但测试服务于交付，不是拖慢交付的理由。
-小改动可做最小验证；共享行为、执行路径或状态恢复改动要跑相关回归。
-行为变化后，同步入口文档和相关状态说明。
+Use `pytest` for automated tests. Choose the smallest meaningful verification
+scope for the change:
 
-## 提交与合并请求
+- Documentation-only changes: run `git diff --check` and inspect the diff.
+- CLI/API behavior changes: run the targeted test file plus relevant smoke
+  command.
+- Shared state, recovery, or Supervisor changes: run the relevant regression
+  tests under `tests/isotope/`.
 
-提交信息遵守 Conventional Commits。
-提交前运行 `git diff --check` 和必要测试。
-Supervisor 托管 worker 完成代码或文档改动后，应在自己的 worktree 内提交。
-若验证失败、需求需拍板或只做只读检查，才可以不提交，并在汇报中说明原因。
-保持线性历史，优先 rebase 或 fast-forward。
-不要在共享分支制造无说明的 merge commit。
-不要主动合并、删除或重写分支；分支处理先做状态审计。
-当前分支只表示代码位置，不代表项目方向。
-分支和清理状态以 `docs/current/status.md` 为准，不写进本文件。
+If verification is skipped or blocked, state that explicitly.
+
+## Git Workflow
+
+Use Conventional Commits, such as `docs: polish public project guide` or
+`fix(supervisor): handle completed worker state`.
+
+Keep history linear. Prefer rebase or fast-forward updates; do not create merge
+commits unless a maintainer explicitly asks for one. Stage only files related to
+the current task. Before committing, inspect the staged diff and run the minimum
+relevant verification.
+
+For normal scoped changes, finish with verification, commit, and push unless the
+maintainer asks to pause or leave work uncommitted.
