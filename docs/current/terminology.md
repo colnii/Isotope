@@ -137,6 +137,7 @@
 | `--max-continue-count` | 继续次数预算，同一 lane 同一状态下的 `send_continue` 达到显式阈值后会被 Supervisor 拦截；默认 0 不限制 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/lane_state.py` |
 | `--max-context-requests` | 上下文请求预算，同一 supervise/loop 轮次里 `request_context` 达到显式阈值后会被 Supervisor 拦截；默认 0 不限制 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `--max-run-minutes` | 时间预算，按托管登记的 `started_at` 判断同名 lane 是否超时，超时后拦截继续推进；默认 0 不限制 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
+| `worker_role` | 托管登记表字段，用来区分普通 worker、`merge_dispatch` 等内部 worker；runner 会用它阻止 merge/cleanup worker 递归启动同类调度 | 产品功能/控制策略/状态账本 | `src/isotope/features/supervisor/registry.py`, `src/isotope/features/supervisor/runner.py` |
 | `continue_count` | lane state 中的继续推进计数，只统计 `send_continue`，用于限制无限续跑 | 产品功能/状态判断 | `src/isotope/features/supervisor/lane_state.py` |
 | `LLM summary` | 大模型摘要，把压缩后的窗口状态和结构化建议交给模型生成中文判断 | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
 | `LLM planner` | 大模型规划器，从候选状态里选择 `monitor`、send、`resume_session`、`launch_session`、`request_context` 或 `ask_user`，规则只做护栏 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |

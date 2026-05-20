@@ -88,6 +88,80 @@ def test_supervisor_loop_dispatches_merge_worker_for_ready_integration(
     assert any(
         "source: supervisor integration-review payload" in item for item in captured[0]
     )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    managed_records = [
+        json.loads(line) for line in registry_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert managed_records[0]["worker_role"] == "merge_dispatch"
+    assert payload["executed"]["managed"]["worker_role"] == "merge_dispatch"
+
+
+def test_supervisor_loop_does_not_dispatch_merge_worker_inside_merge_worker_workspace(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    log_path = codex_home / "supervisor" / "logs" / "merge.log"
+    log_path.parent.mkdir(parents=True)
+    log_path.write_text("merge worker 正在运行自己的 loop。\n", encoding="utf-8")
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-merge",
+                "name": DEFAULT_TARGET_NAME,
+                "cwd": str(workspace),
+                "prompt": "合并 ready workers。",
+                "command": ["codex", "exec", "-C", str(workspace), "合并 ready workers。"],
+                "pid": 0,
+                "started_at": "2026-05-20T00:00:00+00:00",
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+                "worker_role": "merge_dispatch",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    def fake_collect_integration_reviews(**kwargs: object) -> dict[str, object]:
+        raise AssertionError("merge worker workspace must not recursively review/dispatch")
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_integration_reviews",
+        fake_collect_integration_reviews,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--workspace-root",
+            str(workspace),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert "merge_dispatch" not in payload
+    assert payload["llm_action"]["kind"] == "monitor"
+    assert payload["llm_action"]["reason"] == "当前工作区是 merge worker，跳过 merge dispatch。"
 
 
 def test_supervisor_daemon_status_surfaces_merge_dispatch_activity(

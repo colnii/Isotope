@@ -28,6 +28,7 @@ def build_merge_dispatch_launch_spec(
     return {
         "kind": "launch_session",
         "target_name": launch_target,
+        "worker_role": "merge_dispatch",
         "cwd": launch_cwd,
         "prompt": build_merge_work_order_prompt(payload),
         "reason": "ready_to_integrate workers require merge dispatch",

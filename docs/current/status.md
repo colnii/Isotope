@@ -260,6 +260,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     当没有显式 `--goal`、没有活跃目标且没有可控托管 lane 时，
     `loop` 只监控，不会从普通历史会话或 workspace 自行发明下一批
     `launch_session`；
+    merge dispatch 启动的托管 worker 会在登记表写入
+    `worker_role=merge_dispatch`；当 `loop` 运行在这类 worker
+    自己的工作区时，会跳过自动 cleanup 和新的 merge dispatch，避免
+    merge worker 递归启动下一层 merge worker；
     汇报 `blocked/needs_user` 时会记录状态但保留活跃目标；
     多目标 fanout 中任一 worker 汇报 `blocked/needs_user` 时，`loop`
     会输出 `fanout_status.status=paused`，不再继续扩展这一批 worker，

@@ -32,6 +32,7 @@ class ManagedCodexRecord:
     tmux_session: str | None = None
     resume_session_id: str | None = None
     resume_last: bool = False
+    worker_role: str = "worker"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -48,6 +49,7 @@ class ManagedCodexRecord:
             "tmux_session": self.tmux_session,
             "resume_session_id": self.resume_session_id,
             "resume_last": self.resume_last,
+            "worker_role": self.worker_role,
         }
 
 
@@ -121,6 +123,7 @@ def launch_managed_codex(
     codex_config: tuple[str, ...] = (),
     backend: str = "process",
     tmux_session: str | None = None,
+    worker_role: str = "worker",
     now: Callable[[], datetime] | None = None,
     popen: Callable[..., Any] = subprocess.Popen,
     run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
@@ -137,6 +140,7 @@ def launch_managed_codex(
         raise ValueError("prompt must not be empty")
     if not codex_bin_text:
         raise ValueError("codex_bin must not be empty")
+    worker_role_text = _worker_role(worker_role)
     codex_options = _codex_option_args(
         codex_model=codex_model,
         codex_config=codex_config,
@@ -223,6 +227,7 @@ def launch_managed_codex(
         log_path=str(log_path),
         backend=backend_text,
         tmux_session=tmux_session_text,
+        worker_role=worker_role_text,
     )
     append_managed_record(default_registry_path(codex_home), record)
     return record
@@ -239,6 +244,7 @@ def resume_managed_codex(
     codex_bin: str = "codex",
     codex_model: str | None = None,
     codex_config: tuple[str, ...] = (),
+    worker_role: str = "worker",
     now: Callable[[], datetime] | None = None,
     popen: Callable[..., Any] = subprocess.Popen,
 ) -> ManagedCodexRecord:
@@ -255,6 +261,7 @@ def resume_managed_codex(
         raise ValueError("prompt must not be empty")
     if not codex_bin_text:
         raise ValueError("codex_bin must not be empty")
+    worker_role_text = _worker_role(worker_role)
     codex_options = _codex_option_args(
         codex_model=codex_model,
         codex_config=codex_config,
@@ -306,6 +313,7 @@ def resume_managed_codex(
         backend="codex_exec_resume",
         resume_session_id=session_text,
         resume_last=last,
+        worker_role=worker_role_text,
     )
     append_managed_record(default_registry_path(codex_home), record)
     return record
@@ -337,6 +345,7 @@ def adopt_tmux_session(
     name: str,
     tmux_session: str,
     prompt: str = "接管已有 tmux 会话",
+    worker_role: str = "worker",
     now: Callable[[], datetime] | None = None,
     run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> ManagedCodexRecord:
@@ -352,6 +361,7 @@ def adopt_tmux_session(
         raise ValueError("tmux_session must not be empty")
     if not prompt_text:
         raise ValueError("prompt must not be empty")
+    worker_role_text = _worker_role(worker_role)
 
     completed = run(
         ["tmux", "has-session", "-t", tmux_session_text],
@@ -390,6 +400,7 @@ def adopt_tmux_session(
         status="adopted",
         backend="tmux",
         tmux_session=tmux_session_text,
+        worker_role=worker_role_text,
     )
     append_managed_record(default_registry_path(codex_home), record)
     return record
@@ -469,6 +480,9 @@ def archive_managed_codex(
         status=ARCHIVED_MANAGED_STATUS,
         backend=record.backend,
         tmux_session=record.tmux_session,
+        resume_session_id=record.resume_session_id,
+        resume_last=record.resume_last,
+        worker_role=record.worker_role,
     )
     append_managed_record(registry_path, archived)
     return archived
@@ -587,6 +601,7 @@ def _record_from_dict(raw: dict[str, object]) -> ManagedCodexRecord | None:
     tmux_session = _string(raw.get("tmux_session"))
     resume_session_id = _string(raw.get("resume_session_id"))
     resume_last = raw.get("resume_last")
+    worker_role = _string(raw.get("worker_role")) or "worker"
     if (
         record_id is None
         or name is None
@@ -615,7 +630,15 @@ def _record_from_dict(raw: dict[str, object]) -> ManagedCodexRecord | None:
         tmux_session=tmux_session,
         resume_session_id=resume_session_id,
         resume_last=resume_last if isinstance(resume_last, bool) else False,
+        worker_role=worker_role,
     )
+
+
+def _worker_role(value: object) -> str:
+    text = str(value).strip() if value is not None else ""
+    if not text:
+        raise ValueError("worker_role must not be empty")
+    return text
 
 
 def _string(value: object) -> str | None:
