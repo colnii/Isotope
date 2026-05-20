@@ -3403,7 +3403,7 @@ def test_codex_supervisor_llm_action_messages_include_whitelist_and_commands():
             ),
         ),
     )
-    suggestions = _advice_payload(report)["command_suggestions"]
+    suggestions = _advice_payload(report, include_all_managed=True)["command_suggestions"]
 
     messages = build_llm_action_messages(report, suggestions)
 
@@ -3654,7 +3654,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_whitelisted_json(
             ),
         ),
     )
-    suggestions = _advice_payload(report)["command_suggestions"]
+    suggestions = _advice_payload(report, include_all_managed=True)["command_suggestions"]
 
     class FakeProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
@@ -3697,7 +3697,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_resume_session():
             ),
         ),
     )
-    suggestions = _advice_payload(report)["command_suggestions"]
+    suggestions = _advice_payload(report, include_all_managed=True)["command_suggestions"]
 
     class FakeProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
@@ -3757,7 +3757,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_launch_session():
             ),
         ),
     )
-    suggestions = _advice_payload(report)["command_suggestions"]
+    suggestions = _advice_payload(report, include_all_managed=True)["command_suggestions"]
 
     class FakeProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
@@ -3814,7 +3814,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_action_alias_for_
             ),
         ),
     )
-    suggestions = _advice_payload(report)["command_suggestions"]
+    suggestions = _advice_payload(report, include_all_managed=True)["command_suggestions"]
 
     class FakeProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
@@ -3905,7 +3905,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_launch_worker_pro
             ),
         ),
     )
-    suggestions = _advice_payload(report)["command_suggestions"]
+    suggestions = _advice_payload(report, include_all_managed=True)["command_suggestions"]
 
     class FakeProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
@@ -3947,7 +3947,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_request_context()
             ),
         ),
     )
-    suggestions = _advice_payload(report)["command_suggestions"]
+    suggestions = _advice_payload(report, include_all_managed=True)["command_suggestions"]
 
     class FakeProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
@@ -6813,7 +6813,7 @@ def test_codex_supervisor_context_request_falls_back_without_rg(tmp_path):
     assert result.items[0].path == "docs/note.md"
 
 
-def test_codex_supervisor_runner_loop_context_request_feeds_next_planner_call(
+def test_codex_supervisor_runner_loop_with_goal_context_request_feeds_next_planner_call(
     tmp_path,
     capsys,
     monkeypatch,
@@ -6875,6 +6875,10 @@ def test_codex_supervisor_runner_loop_context_request_feeds_next_planner_call(
             "loop",
             "--codex-home",
             str(codex_home),
+            "--workspace-root",
+            str(workspace),
+            "--goal",
+            "继续推进 Supervisor 自主节奏验证。",
             "--iterations",
             "2",
             "--interval",
@@ -6889,6 +6893,61 @@ def test_codex_supervisor_runner_loop_context_request_feeds_next_planner_call(
     assert len(lines) == 1
     assert json.loads(lines[0])["executed"]["kind"] == "request_context"
     assert seen_context_on_second_call is True
+
+
+def test_codex_supervisor_runner_loop_without_active_goal_idles(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-source.jsonl",
+        session_id="source-session",
+        cwd=str(workspace),
+        events=[_assistant_message("2026-05-16T11:59:20Z", "上一轮已完成。")],
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            raise AssertionError("loop without active goals should not ask LLM to invent work")
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["active_goals"] == []
+    assert payload["llm_action"] == {
+        "kind": "monitor",
+        "target_name": None,
+        "reason": "当前没有可控的 Supervisor 目标，先继续监控。",
+        "command_suggestion": None,
+    }
+    assert payload["executed"] == {
+        "kind": "monitor",
+        "skipped": True,
+        "reason": "当前没有可控的 Supervisor 目标，先继续监控。",
+    }
 
 
 def test_codex_supervisor_runner_supervise_reports_no_managed_lane(

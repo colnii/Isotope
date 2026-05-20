@@ -148,6 +148,7 @@ DEFAULT_LAUNCH_PROMPT = " ".join(
         "第三行 `SUPERVISOR_NEXT: 用一句中文说明建议下一步`。",
     ]
 )
+IDLE_LOOP_REASON = "当前没有可控的 Supervisor 目标，先继续监控。"
 DASHBOARD_GROUP_LABELS = {
     "needs_attention": "需要看",
     "done": "已完成",
@@ -2302,6 +2303,11 @@ def _supervise_payload(
         action_report,
         target_name=args.name,
         include_all_managed=args.llm_action or args.llm_execute,
+        allow_workspace_actions=_loop_allows_workspace_actions(
+            args,
+            active_goals,
+            explicit_goal,
+        ),
         goal=_goal_text(args),
         goal_workspace=_goal_workspace(args),
         goal_target_name=_goal_target_name(args),
@@ -2321,8 +2327,16 @@ def _supervise_payload(
     if args.llm_summary:
         payload["llm_summary"] = _summarize_with_llm(report)
     if args.llm_action or args.llm_execute:
-        payload["llm_action"] = _decide_action_with_llm(action_report, payload)
-        _promote_llm_command_suggestion(payload)
+        if _loop_without_autonomous_scope(
+            args,
+            action_report,
+            active_goals,
+            explicit_goal,
+        ):
+            payload["llm_action"] = _idle_loop_llm_action()
+        else:
+            payload["llm_action"] = _decide_action_with_llm(action_report, payload)
+            _promote_llm_command_suggestion(payload)
     if args.llm_execute:
         payload["executed"] = _execute_llm_action(args, action_report, payload)
         _maybe_replan_after_context_request(args, action_report, payload)
@@ -2345,6 +2359,53 @@ def _supervise_payload(
         payload["executed"] = _execute_advice(args, report, payload)
     payload["decision_requests"] = _decision_request_dicts(args)
     return payload
+
+
+def _loop_without_autonomous_scope(
+    args: argparse.Namespace,
+    report: Any,
+    active_goals: list[dict[str, Any]],
+    explicit_goal: str | None,
+) -> bool:
+    if getattr(args, "command", None) != "loop":
+        return False
+    if getattr(args, "name", None):
+        return False
+    if explicit_goal or active_goals:
+        return False
+    return not _has_loop_managed_scope(report)
+
+
+def _loop_allows_workspace_actions(
+    args: argparse.Namespace,
+    active_goals: list[dict[str, Any]],
+    explicit_goal: str | None,
+) -> bool:
+    if getattr(args, "command", None) != "loop":
+        return True
+    return bool(getattr(args, "name", None) or explicit_goal or active_goals)
+
+
+def _has_loop_managed_scope(report: Any) -> bool:
+    for session in report.sessions:
+        if _is_active_managed_tmux_session(session):
+            return True
+        if (
+            getattr(session, "managed", False)
+            and getattr(session, "managed_name", None)
+            and not _session_marks_terminal_done(session)
+        ):
+            return True
+    return False
+
+
+def _idle_loop_llm_action() -> dict[str, Any]:
+    return {
+        "kind": "monitor",
+        "target_name": None,
+        "reason": IDLE_LOOP_REASON,
+        "command_suggestion": None,
+    }
 
 
 def _maybe_replan_after_context_request(
@@ -3179,6 +3240,7 @@ def _advice_payload(
     *,
     target_name: str | None = None,
     include_all_managed: bool = False,
+    allow_workspace_actions: bool = True,
     goal: str | None = None,
     goal_workspace: str | None = None,
     goal_target_name: str | None = None,
@@ -3189,6 +3251,7 @@ def _advice_payload(
         report,
         target_name=target_name,
         include_all_managed=include_all_managed,
+        allow_workspace_actions=allow_workspace_actions,
         goal=goal,
         goal_workspace=goal_workspace,
         goal_target_name=goal_target_name,
@@ -3240,6 +3303,7 @@ def _command_suggestions(
     *,
     target_name: str | None = None,
     include_all_managed: bool = False,
+    allow_workspace_actions: bool = True,
     goal: str | None = None,
     goal_workspace: str | None = None,
     goal_target_name: str | None = None,
@@ -3259,7 +3323,8 @@ def _command_suggestions(
                 suggestions.extend(_managed_tmux_command_suggestions(session))
             if _is_resume_capable_session(session):
                 suggestions.extend(_resume_session_command_suggestions(session))
-        suggestions.extend(_workspace_action_command_suggestions(report))
+        if allow_workspace_actions:
+            suggestions.extend(_workspace_action_command_suggestions(report))
         suggestions.extend(
             _active_goal_action_command_suggestions(
                 active_goals,

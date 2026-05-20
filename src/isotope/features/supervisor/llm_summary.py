@@ -441,6 +441,12 @@ def generate_llm_action_decision(
             command_suggestions,
         ):
             raise ValueError(f"unknown workspace for LLM action: {cwd}")
+        if _requires_workspace_action_suggestion(cwd) and not _has_workspace_action_suggestion(
+            command_suggestions,
+            kind,
+            cwd,
+        ):
+            raise ValueError(f"no command suggestion for LLM action: {kind}")
         prompt = _required_payload_string(payload, "prompt")
         worker_profile = _optional_payload_string(payload, "worker_profile")
         if worker_profile is not None and worker_profile not in LLM_WORKER_PROFILES:
@@ -465,6 +471,12 @@ def generate_llm_action_decision(
             command_suggestions,
         ):
             raise ValueError(f"unknown workspace for LLM action: {cwd}")
+        if _requires_workspace_action_suggestion(cwd) and not _has_workspace_action_suggestion(
+            command_suggestions,
+            kind,
+            cwd,
+        ):
+            raise ValueError(f"no command suggestion for LLM action: {kind}")
         query = _required_payload_string(payload, "query")
         command_suggestion = _request_context_command_suggestion(cwd=cwd, query=query)
     elif kind == "ask_user":
@@ -771,6 +783,21 @@ def _command_suggestion_for_kind(
             continue
         return suggestion
     return None
+
+
+def _has_workspace_action_suggestion(
+    command_suggestions: list[dict[str, str]],
+    kind: str,
+    cwd: str,
+) -> bool:
+    return any(
+        suggestion.get("kind") == kind and suggestion.get("cwd") == cwd
+        for suggestion in command_suggestions
+    )
+
+
+def _requires_workspace_action_suggestion(cwd: str) -> bool:
+    return Path(cwd).expanduser().is_dir()
 
 
 def _launch_session_command_suggestion(

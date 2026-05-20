@@ -180,6 +180,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `--goal` 时会读取最早活跃目标，daemon 因此可动态消费新目标，
     不需要在启动命令里写死单个目标；匹配同名 worker 汇报
     `SUPERVISOR_STATUS: done` 时，`loop` 会记录目标状态并自动归档；
+    当没有显式 `--goal`、没有活跃目标且没有可控托管 lane 时，
+    `loop` 只监控，不会从普通历史会话或 workspace 自行发明下一批
+    `launch_session`；
     汇报 `blocked/needs_user` 时会记录状态但保留活跃目标；
     活跃目标的最近状态会进入 `active_goals` 并交给 LLM planner，
     所以 `blocked/needs_user` 不是终点，模型可继续选择
