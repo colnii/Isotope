@@ -2,7 +2,25 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+import math
+import re
+
 from ..platform.schemas.refs import ResourceRef
+
+
+@dataclass(frozen=True)
+class SummarySearchDocument:
+    document_id: str
+    title: str
+    summary: str | None = None
+    metadata: dict | None = None
+
+
+@dataclass(frozen=True)
+class SummarySearchHit:
+    document: SummarySearchDocument
+    score: float
 
 
 class RetrievalService:
@@ -76,3 +94,88 @@ class RetrievalService:
         if not isinstance(artifact_grants, dict):
             raise PermissionError(missing_message)
         return artifact_grants
+
+
+def rank_summary_documents(
+    query: str,
+    documents: list[SummarySearchDocument],
+) -> list[SummarySearchHit]:
+    """Rank low-sensitive title/summary documents with a small BM25 scorer."""
+    query_terms = _tokenize(query)
+    if not query_terms:
+        raise ValueError("query must not be empty")
+    if not documents:
+        return []
+
+    tokenized_documents = [_document_tokens(document) for document in documents]
+    average_length = (
+        sum(len(tokens) for tokens in tokenized_documents) / len(tokenized_documents)
+    ) or 1.0
+    document_frequencies = {
+        term: sum(1 for tokens in tokenized_documents if term in tokens)
+        for term in set(query_terms)
+    }
+    hits: list[tuple[int, SummarySearchHit]] = []
+    for position, (document, tokens) in enumerate(zip(documents, tokenized_documents)):
+        score = _bm25_score(
+            query_terms=query_terms,
+            document_terms=tokens,
+            document_frequencies=document_frequencies,
+            document_count=len(documents),
+            average_document_length=average_length,
+        )
+        if score > 0:
+            hits.append((position, SummarySearchHit(document=document, score=score)))
+
+    return [
+        hit
+        for _, hit in sorted(
+            hits,
+            key=lambda item: (-item[1].score, item[0]),
+        )
+    ]
+
+
+def _document_tokens(document: SummarySearchDocument) -> list[str]:
+    if not isinstance(document, SummarySearchDocument):
+        raise TypeError("documents must contain SummarySearchDocument values")
+    return _tokenize(f"{document.title} {document.summary or ''}")
+
+
+def _bm25_score(
+    *,
+    query_terms: list[str],
+    document_terms: list[str],
+    document_frequencies: dict[str, int],
+    document_count: int,
+    average_document_length: float,
+) -> float:
+    if not document_terms:
+        return 0.0
+    score = 0.0
+    k1 = 1.2
+    b = 0.75
+    document_length = len(document_terms)
+    for term in dict.fromkeys(query_terms):
+        term_frequency = document_terms.count(term)
+        if term_frequency == 0:
+            continue
+        frequency = document_frequencies[term]
+        inverse_document_frequency = math.log(
+            1 + (document_count - frequency + 0.5) / (frequency + 0.5)
+        )
+        denominator = term_frequency + k1 * (
+            1 - b + b * document_length / average_document_length
+        )
+        score += inverse_document_frequency * (
+            term_frequency * (k1 + 1) / denominator
+        )
+    return score
+
+
+def _tokenize(value: str | None) -> list[str]:
+    if value is None:
+        return []
+    if not isinstance(value, str):
+        raise TypeError("search text must be a string")
+    return re.findall(r"\w+", value.casefold())

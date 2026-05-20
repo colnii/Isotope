@@ -100,6 +100,27 @@ def test_search_flow_filters_types_and_limits_results(tmp_path):
     assert [result.result_id for result in results] == [task.task_id]
 
 
+def test_search_flow_matches_multi_term_summary_queries(tmp_path):
+    project = ProjectFlow.in_process(tmp_path).create_project(
+        name="portfolio demo",
+        summary="general workspace",
+    )
+    file_summary = FileFlow.in_process(tmp_path).create_text_file(
+        name="interview-story.md",
+        summary="portfolio hiring practice",
+        content="private file content",
+    )
+
+    results = SearchFlow.in_process(tmp_path).search("portfolio interview")
+
+    assert [result.result_type for result in results] == ["file", "project"]
+    assert [result.result_id for result in results] == [
+        file_summary.file_id,
+        project.project_id,
+    ]
+    _assert_low_sensitive({"results": [result.to_dict() for result in results]})
+
+
 @pytest.mark.parametrize("bad_type", ["", "unknown"])
 def test_search_flow_rejects_unknown_result_types(tmp_path, bad_type):
     flow = SearchFlow.in_process(tmp_path)

@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from ...core import ProductCore
+from ...rag import SummarySearchDocument, rank_summary_documents
 from ..files.flow import FileFlow, FileSummary
 from ..projects.flow import ProjectFlow, ProjectSummary
 from ..tasks.flow import TaskFlow, TaskSummary
@@ -58,29 +59,38 @@ class SearchFlow:
         task_flow = TaskFlow(self.core)
         file_flow = FileFlow(self.core)
         results: list[SearchResult] = []
+        ranked_candidates: list[SearchResult] = []
         if "project" in allowed_types:
+            project_results = [
+                self._project_result(project) for project in project_flow.list_projects()
+            ]
             results.extend(
-                self._project_result(project)
-                for project in project_flow.list_projects()
-                if _matches(needle, project.project_id, project.name, project.summary)
+                result
+                for result in project_results
+                if _matches(needle, result.result_id, result.title, result.summary)
             )
+            ranked_candidates.extend(project_results)
         if "task" in allowed_types:
+            task_results = [self._task_result(task) for task in task_flow.list_tasks()]
             results.extend(
-                self._task_result(task)
-                for task in task_flow.list_tasks()
-                if _matches(needle, task.task_id, task.goal, task.result_summary)
+                result
+                for result in task_results
+                if _matches(needle, result.result_id, result.title, result.summary)
             )
+            ranked_candidates.extend(task_results)
         if "file" in allowed_types:
-            results.extend(
+            file_results = [
                 self._file_result(file_summary)
                 for file_summary in file_flow.list_files()
-                if _matches(
-                    needle,
-                    file_summary.file_id,
-                    file_summary.name,
-                    file_summary.summary,
-                )
+            ]
+            results.extend(
+                result
+                for result in file_results
+                if _matches(needle, result.result_id, result.title, result.summary)
             )
+            ranked_candidates.extend(file_results)
+        if not results:
+            results = _rank_results(clean_query, ranked_candidates)
         if clean_limit is None:
             return results
         return results[:clean_limit]
@@ -144,3 +154,25 @@ class SearchFlow:
 
 def _matches(needle: str, *values: str | None) -> bool:
     return any(value is not None and needle in value.casefold() for value in values)
+
+
+def _rank_results(query: str, results: list[SearchResult]) -> list[SearchResult]:
+    result_by_document_id = {
+        _document_id_for_result(result): result for result in results
+    }
+    documents = [
+        SummarySearchDocument(
+            document_id=_document_id_for_result(result),
+            title=result.title,
+            summary=result.summary,
+        )
+        for result in results
+    ]
+    return [
+        result_by_document_id[hit.document.document_id]
+        for hit in rank_summary_documents(query, documents)
+    ]
+
+
+def _document_id_for_result(result: SearchResult) -> str:
+    return f"{result.result_type}:{result.result_id}"

@@ -104,3 +104,28 @@ def test_retrieval_rejects_non_artifact_resource_ref(tmp_path):
             non_artifact_ref,
             grants={"artifact": {"read": "summary"}},
         )
+
+
+def test_summary_bm25_ranking_prefers_multi_term_overlap():
+    documents = [
+        retrieval.SummarySearchDocument(
+            document_id="project_1",
+            title="portfolio demo",
+            summary="general workspace",
+        ),
+        retrieval.SummarySearchDocument(
+            document_id="task_1",
+            title="interview story",
+            summary="portfolio hiring practice",
+        ),
+        retrieval.SummarySearchDocument(
+            document_id="file_1",
+            title="meal plan",
+            summary="weekly groceries",
+        ),
+    ]
+
+    hits = retrieval.rank_summary_documents("portfolio interview", documents)
+
+    assert [hit.document.document_id for hit in hits] == ["task_1", "project_1"]
+    assert hits[0].score > hits[1].score > 0

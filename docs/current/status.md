@@ -44,7 +44,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `/projects`、`POST /projects/workspace` 和
     `POST /projects/{project_id}/workspace` 调用。
 14. `features/search` 已有薄入口，当前可统一搜索 project/task/file
-    低敏摘要，支持类型过滤和结果数量限制，并通过 `isotope-search`
+    低敏摘要，支持类型过滤和结果数量限制；整句无直接命中时会复用
+    `rag` 的 BM25-style 摘要排序处理多词查询，并通过 `isotope-search`
     和 `POST /search` 调用。
 15. `features/workbench` 已有薄入口，当前可聚合 projects/tasks/files
     低敏摘要、可选 search 结果、空状态和最近更新时间，并通过
