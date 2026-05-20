@@ -2583,6 +2583,93 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     )
 
 
+def test_codex_supervisor_web_dashboard_highlights_night_overview(
+    tmp_path,
+    monkeypatch,
+):
+    from isotope.features.supervisor.web import create_dashboard_server
+
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace, name="merge-worker")
+    state_dir = codex_home / "supervisor"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    for filename, pid, log_name in (
+        ("daemon.json", 45678, "daemon.log"),
+        ("watcher.json", 33333, "watcher.log"),
+    ):
+        (state_dir / filename).write_text(
+            json.dumps(
+                {
+                    "pid": pid,
+                    "status": "running",
+                    "started_at": "2026-05-18T10:00:00+00:00",
+                    "stopped_at": None,
+                    "command": ["python", "-m", "isotope.features.supervisor.runner"],
+                    "codex_home": str(codex_home),
+                    "log_path": str(state_dir / "logs" / log_name),
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon._process_is_alive",
+        lambda pid: pid in {33333, 45678},
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda _session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda _session: "SUPERVISOR_STATUS: working\nSUPERVISOR_SUMMARY: 合并中。",
+    )
+
+    server = create_dashboard_server(
+        codex_home=codex_home,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        conn.request("GET", "/")
+        html_response = conn.getresponse()
+        html = html_response.read().decode("utf-8")
+        conn.request("GET", "/dashboard.json")
+        json_response = conn.getresponse()
+        payload = json.loads(json_response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert html_response.status == 200
+    assert "night-overview" in html
+    assert "renderNightOverview" in html
+    assert "daemon running" in html
+    assert "watcher running" in html
+    assert "active goals" in html
+    assert "running workers" in html
+    assert "ready_to_integrate" in html
+    assert "merge worker" in html
+    assert json_response.status == 200
+    assert payload["daemon"]["status"] == "running"
+    assert payload["watcher"]["status"] == "running"
+
+
 def test_codex_supervisor_web_events_stream_bell_changes(tmp_path):
     from isotope.features.supervisor.web import create_dashboard_server
 

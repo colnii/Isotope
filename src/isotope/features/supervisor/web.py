@@ -17,6 +17,7 @@ from .decision_requests import (
     read_recent_decision_answers,
     record_decision_answer,
 )
+from .daemon import supervisor_daemon_status, supervisor_watcher_status
 from .flow import CodexSupervisorFlow, _tmux_capture_pane
 from .lane_state import record_lane_prompt
 from .llm_summary import (
@@ -75,7 +76,7 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
 
     def dashboard_payload(self) -> dict[str, Any]:
         report = self._scan_report()
-        return _dashboard_payload(
+        payload = _dashboard_payload(
             report,
             active_goals=_active_goal_dicts_for_codex_home(
                 self.codex_home,
@@ -84,6 +85,9 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
             decision_requests=_decision_request_dicts(self.codex_home),
             notifications=_notification_dicts(self.codex_home),
         )
+        payload["daemon"] = supervisor_daemon_status(codex_home=self.codex_home)
+        payload["watcher"] = supervisor_watcher_status(codex_home=self.codex_home)
+        return payload
 
     def llm_action_payload(self) -> dict[str, Any]:
         report = self._scan_report()
@@ -495,6 +499,51 @@ def dashboard_page_html() -> str:
       padding: 12px 14px;
       font-size: 14px;
     }
+    .night-overview {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .overview-card {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      padding: 10px;
+    }
+    .overview-card[data-state="running"],
+    .overview-card[data-state="ready"] {
+      border-left: 4px solid var(--done);
+    }
+    .overview-card[data-state="working"] {
+      border-left: 4px solid var(--working);
+    }
+    .overview-card[data-state="attention"] {
+      border-left: 4px solid var(--attention);
+    }
+    .overview-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+    .overview-value {
+      display: block;
+      margin-top: 4px;
+      color: var(--text);
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1.1;
+      overflow-wrap: anywhere;
+    }
+    .overview-detail {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
     .current-list-head,
     .notification-list-head {
       display: flex;
@@ -764,6 +813,7 @@ def dashboard_page_html() -> str:
       .meta { text-align: left; margin-top: 6px; }
       main { padding: 16px; }
       .grid { grid-template-columns: 1fr; }
+      .night-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .current-grid { grid-template-columns: 1fr; }
     }
   </style>
@@ -783,6 +833,38 @@ def dashboard_page_html() -> str:
         <button id="llm-action-button" type="button">模型建议</button>
       </div>
       <div class="llm-action" id="llm-action-result">未请求模型建议</div>
+    </div>
+    <div class="night-overview" id="night-overview">
+      <div class="overview-card" id="overview-card-daemon" data-state="attention">
+        <span class="overview-label">daemon running</span>
+        <strong class="overview-value" id="overview-daemon">unknown</strong>
+        <span class="overview-detail" id="overview-daemon-detail">等待数据</span>
+      </div>
+      <div class="overview-card" id="overview-card-watcher" data-state="attention">
+        <span class="overview-label">watcher running</span>
+        <strong class="overview-value" id="overview-watcher">unknown</strong>
+        <span class="overview-detail" id="overview-watcher-detail">等待数据</span>
+      </div>
+      <div class="overview-card" id="overview-card-active-goals" data-state="working">
+        <span class="overview-label">active goals</span>
+        <strong class="overview-value" id="overview-active-goals">0</strong>
+        <span class="overview-detail" id="overview-active-goals-detail">当前目标</span>
+      </div>
+      <div class="overview-card" id="overview-card-running-workers" data-state="working">
+        <span class="overview-label">running workers</span>
+        <strong class="overview-value" id="overview-running-workers">0</strong>
+        <span class="overview-detail" id="overview-running-workers-detail">托管 worker</span>
+      </div>
+      <div class="overview-card" id="overview-card-ready-to-integrate" data-state="ready">
+        <span class="overview-label">ready_to_integrate</span>
+        <strong class="overview-value" id="overview-ready-to-integrate">0</strong>
+        <span class="overview-detail" id="overview-ready-to-integrate-detail">等待合入</span>
+      </div>
+      <div class="overview-card" id="overview-card-merge-worker" data-state="attention">
+        <span class="overview-label">merge worker</span>
+        <strong class="overview-value" id="overview-merge-worker">none</strong>
+        <span class="overview-detail" id="overview-merge-worker-detail">未发现</span>
+      </div>
     </div>
     <div class="current-list" id="current-list">
       <div class="current-list-head">
@@ -937,6 +1019,114 @@ def dashboard_page_html() -> str:
         const mapped = mapper(item);
         target.append(renderCurrentItem(mapped.title, mapped.detail));
       }
+    }
+
+    function renderNightOverview(payload) {
+      const current = payload.current || {};
+      const goals = Array.isArray(current.active_goals) ? current.active_goals : [];
+      const workers = Array.isArray(current.managed_workers) ? current.managed_workers : [];
+      const runningWorkers = workers.filter((item) => !isTerminalWorker(item));
+      const readyItems = readyToIntegrateItems(current);
+      const mergeWorker = mergeWorkerStatus(workers);
+
+      renderOverviewItem(
+        "daemon",
+        serviceIsRunning(payload.daemon) ? "yes" : "no",
+        serviceDetail(payload.daemon),
+        serviceIsRunning(payload.daemon) ? "running" : "attention"
+      );
+      renderOverviewItem(
+        "watcher",
+        serviceIsRunning(payload.watcher) ? "yes" : "no",
+        serviceDetail(payload.watcher),
+        serviceIsRunning(payload.watcher) ? "running" : "attention"
+      );
+      renderOverviewItem(
+        "active-goals",
+        String(goals.length),
+        goals.length ? goalNames(goals) : "暂无当前目标",
+        goals.length ? "working" : "ready"
+      );
+      renderOverviewItem(
+        "running-workers",
+        String(runningWorkers.length),
+        runningWorkers.length ? workerNames(runningWorkers) : "暂无运行 worker",
+        runningWorkers.length ? "working" : "ready"
+      );
+      renderOverviewItem(
+        "ready-to-integrate",
+        String(readyItems.length),
+        readyItems.length ? workerNames(readyItems) : "暂无待合入 worker",
+        readyItems.length ? "attention" : "ready"
+      );
+      renderOverviewItem(
+        "merge-worker",
+        mergeWorker.value,
+        mergeWorker.detail,
+        mergeWorker.state
+      );
+    }
+
+    function renderOverviewItem(key, value, detail, state) {
+      document.getElementById("overview-" + key).textContent = value;
+      document.getElementById("overview-" + key + "-detail").textContent = detail;
+      document.getElementById("overview-card-" + key).dataset.state = state;
+    }
+
+    function serviceIsRunning(item) {
+      return item && item.status === "running";
+    }
+
+    function serviceDetail(item) {
+      if (!item) return "无状态";
+      const pid = item.pid ? "pid " + item.pid : "无 pid";
+      return text(item.status) + " · " + pid;
+    }
+
+    function isTerminalWorker(item) {
+      const status = String(item.supervisor_status || item.status || "").toLowerCase();
+      return ["archived", "completed", "done", "exited", "stale"].includes(status);
+    }
+
+    function readyToIntegrateItems(current) {
+      const candidates = current.automation_candidates || {};
+      const reviews = current.worker_reviews || {};
+      const reviewCandidates = reviews.automation_candidates || {};
+      const direct = Array.isArray(candidates.ready_to_integrate) ? candidates.ready_to_integrate : [];
+      const reviewed = Array.isArray(reviewCandidates.ready_to_integrate)
+        ? reviewCandidates.ready_to_integrate
+        : [];
+      return [...direct, ...reviewed];
+    }
+
+    function mergeWorkerStatus(workers) {
+      const worker = workers.find((item) => {
+        const label = [
+          item.name,
+          item.display_title,
+          item.managed_display_title,
+          item.target_name,
+          item.session_id
+        ].filter(Boolean).join(" ").toLowerCase();
+        return label.includes("merge");
+      });
+      if (!worker) {
+        return { value: "none", detail: "未发现", state: "attention" };
+      }
+      const status = text(worker.supervisor_status || worker.status_label || worker.status);
+      return {
+        value: status,
+        detail: text(worker.name || worker.display_title || worker.session_id),
+        state: status === "done" ? "ready" : "working"
+      };
+    }
+
+    function goalNames(items) {
+      return items.map((item) => item.target_name || item.goal_id || item.goal || "目标").slice(0, 3).join(" / ");
+    }
+
+    function workerNames(items) {
+      return items.map((item) => item.name || item.display_title || item.target_name || item.record_id || "worker").slice(0, 3).join(" / ");
     }
 
     function renderCurrentBatch(current) {
@@ -1409,6 +1599,7 @@ def dashboard_page_html() -> str:
       const payload = await response.json();
       document.getElementById("generated-at").textContent = payload.generated_at;
       document.getElementById("recommendation").textContent = payload.recommendation.label;
+      renderNightOverview(payload);
       renderCurrentBatch(payload.current || {});
       renderNotifications(payload.notifications || [], payload.notification_counts || {});
       renderDecisionRequests(payload.decision_requests || []);
