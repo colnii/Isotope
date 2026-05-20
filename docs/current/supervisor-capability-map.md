@@ -19,7 +19,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 | --- | --- | --- | --- |
 | 用户功能层 | `scan`、`dashboard`、`guide`、`up`、`discover`、`web`、`watch`、`advise`、`supervise`、`loop`、`daemon` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
 | 托管控制层 | `launch`、`adopt`、`send`、`archive`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
-| Worker 审查层 | `worker-review` | `features/supervisor/worker_review.py`、`features/supervisor/runner.py` | 汇总已托管 worker 的 worktree、branch、状态协议、改动和人工合并提示 |
+| Worker 审查层 | `worker-review` | `features/supervisor/worker_review.py`、`features/supervisor/runner.py` | 汇总已托管 worker 的 worktree、branch、状态协议、改动、复查提示和合并提示 |
 | Codex 执行通道 | `resume`、`codex exec resume`、`--last` | `features/supervisor/runner.py`、`features/supervisor/registry.py` | 不依赖 tmux 恢复历史会话并投喂新 prompt |
 | 上下文能力层 | `context`、`request_context`、上下文结果记录 | `features/supervisor/context.py`、`features/supervisor/runner.py` | LLM 按需请求检索项目资料，`rg` 优先、Python 兜底，不固定注入全文 |
 | Codex 集成层 | 读取 Codex session（会话记录）、索引标题和 agent 元数据 | `features/supervisor/flow.py` | 当前读取本机 `.jsonl`、`session_index.jsonl` 和 SQLite |
@@ -92,8 +92,10 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   已退出进程不会因为日志残留 `working` 被继续算作工作中。
 - `worker-review` 是已完成 worker 的收集/审查入口，会读取托管登记、
   process log 状态协议、cwd/worktree 是否存在、当前 branch、`git status`
-  和 `git diff --stat` 摘要，并输出建议验证命令与主控/人工合并提示；
-  它只做高可信汇总，不自动合并、不删除 worktree 或分支。
+  和 `git diff --stat` 摘要，并输出建议验证命令、复查提示
+  （reviewer prompt）、可复制 `codex exec -C ...` 复查命令与
+  主控/人工合并提示；它只做高可信汇总，不自动合并、不删除
+  worktree 或分支。
 - LLM planner 会看到 process 托管记录作为候选目标，避免状态面板
   误报“只有 tmux 才可控”。
 - `launch_session` 会写入 lane state 并遵守 `--prompt-cooldown`，
@@ -233,6 +235,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `--execute` 只执行 `send_status` 和 `send_continue`。
 - `advise/supervise --name <lane>` 可把建议、显式执行和自动执行收窄到指定托管 lane。
 - `send_status/send_continue` 会要求托管 Codex 按三行状态协议汇报。
+- LLM 或显式执行 `send_status/send_continue` 前，会在执行层检查
+  托管 tmux pane 是否仍显示 `Working ... esc to interrupt`；
+  若仍在工作则跳过发送，避免打断正在输出的交互式 Codex。
 - `supervise` 循环执行扫描、建议、摘要和显式发送。
 - `supervise` plain 视图复用 dashboard 当前分组，再输出托管自动化
   是否 ready；没有托管目标时优先给出 process `launch` 命令形状，
@@ -341,8 +346,8 @@ B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
 
 ## 下一步顺序
 
-1. 再评估是否补可选 `max_minutes`，若实现也必须默认关闭。
-2. 后续再决定是否增加人工输入框；默认仍保持白名单。
+1. 强化持久目标队列的消费优先级，避免旧历史会话干扰新 goal。
+2. 把通知入口接入 Supervisor 事件、worker 状态和 web 展示。
 3. 再拆分 `runner.py` 中的匹配、建议和 tmux 控制代码。
 
 ## 登记规则

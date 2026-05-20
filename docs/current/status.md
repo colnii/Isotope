@@ -57,12 +57,17 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     上下文候选；回答会返回低敏 `references`，让用户看到依据了哪些
     project/task/file 摘要；已接入 `POST /workbench/ask`，也可通过
     `isotope-ask` 和 `isotope-demo --scenario workbench-ask --trace` 调用。
-17. `apps/api` 已有薄后端入口，当前提供 ASGI 兼容 `ApiApp`、
+17. `features/notifications` 已有薄入口，当前提供本地低敏通知索引、
+    `NotificationFlow`、`NotificationSummary` 和 `isotope-notification`
+    CLI，可创建、列表、按未读或类型过滤，并把通知标记为已读；
+    `source_ref` 只允许低敏 JSON 对象，会在读写时重新校验和深拷贝；
+    本地索引使用同目录临时文件替换，降低半写入损坏风险。
+18. `apps/api` 已有薄后端入口，当前提供 ASGI 兼容 `ApiApp`、
     `create_api_app(...)`、`isotope-api routes` 和本地
     `isotope-api request` 调用入口，真实路由仍复用
     `interfaces/http.py`；ASGI 请求已支持 query string（查询参数）转 body、
     JSON 响应头和稳定 invalid JSON 错误。
-18. `features/supervisor` 已有 Codex Supervisor 监控与托管启动，
+19. `features/supervisor` 已有 Codex Supervisor 监控与托管启动，
     可从本机 `~/.codex/sessions` 读取多个 Codex 会话，判断工作中、
     等待用户、疑似停住、疑似报错和空闲，并通过 `isotope-supervisor`
     输出中文汇报；`watch --changes-only` 可只在变化时再次输出；
@@ -77,8 +82,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     但已退出进程不会因日志残留 `working` 被误判为仍在工作；
     `worker-review` 可汇总 Supervisor 启动的 worker，列出 cwd/worktree
     是否仍存在、当前 branch、最近状态协议、`git status`/`diff --stat`
-    改动摘要、建议验证命令和人工/主控 Codex 合并提示；该入口只做
-    高可信审查汇总，不自动合并、不删除 worktree 或分支；
+    改动摘要、建议验证命令、复查提示（reviewer prompt）和可复制
+    `codex exec -C ...` 复查命令；该入口只做高可信审查汇总，
+    不自动合并、不删除 worktree 或分支；
     `resume` 可通过
     `codex exec resume <session> <prompt>` 或 `--last` 恢复历史会话，
     会带 `--skip-git-repo-check` 以兼容历史会话落在非仓库父目录的情况，
@@ -112,8 +118,11 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     移出活跃拍板项，并让后续 LLM planner 看到最近答案；
     `decision archive --request-id <id>` 可把无需继续的项移出活跃列表；
     `--llm-execute` 可执行 LLM 选择的 send、resume、launch 或
-    context 动作；当 LLM 选择 `request_context` 时，Supervisor 会在同轮
-    检索后再让 LLM 选择一个后续动作；已完成会话不再作为
+    context 动作；执行 `send_status/send_continue` 前会检查目标
+    tmux lane 是否仍显示 `Working ... esc to interrupt`，忙碌时跳过，
+    避免向正在输出的交互式 Codex 插话；当 LLM 选择
+    `request_context` 时，Supervisor 会在同轮检索后再让 LLM 选择
+    一个后续动作；已完成会话不再作为
     `resume_session` 候选，但其 cwd 仍可供 `launch_session` 和
     `request_context` 使用；LLM 重规划时会看到已检索过的
     context history，避免重复请求同一个 cwd/query；

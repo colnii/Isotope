@@ -63,6 +63,11 @@
 | `WorkbenchAskFlow` | 工作台问答功能入口，组装摘要上下文、调用 LLM provider 并返回答案 | 产品功能/模型 | `src/isotope/features/ask/flow.py` |
 | `isotope-ask` | 工作台问答命令行入口，可用 mock 或 OpenAI-compatible provider 回答问题 | 应用入口 | `src/isotope/features/ask/runner.py`, `apps/cli/isotope_ask.py` |
 | `workbench-ask demo` | 工作台问答 demo 场景，展示项目摘要进入问答上下文并产出中文答案 | 应用验证 | `src/isotope/demo.py`, `tests/isotope/test_workbench_ask_demo_scenario.py` |
+| `NotificationFlow` | 通知功能入口，维护本地低敏通知摘要索引 | 产品功能/通知 | `src/isotope/features/notifications/flow.py` |
+| `NotificationSummary` | 通知摘要，面向用户展示类型、标题、未读状态、时间和低敏来源引用 | 产品功能/通知 | `src/isotope/features/notifications/flow.py` |
+| `isotope-notification` | 通知命令行入口，可创建、列表、筛选和标记已读通知 | 应用入口 | `src/isotope/features/notifications/runner.py` |
+| `source_ref` | 低敏来源引用，用 JSON 对象说明通知来自哪个 worker、decision 或其他事件 | 产品功能/通知/状态账本 | `src/isotope/features/notifications/flow.py` |
+| `notification index` | 通知摘要索引，持久化低敏通知摘要，写入时用临时文件替换 | 产品功能/通知 | `src/isotope/features/notifications/flow.py` |
 | `Codex Supervisor` | Codex 监督器，Isotope 后续核心管理层，让 LLM 参与判断和调度，工程规则提供护栏 | 产品功能 | `src/isotope/features/supervisor/flow.py` |
 | `isotope-supervisor` | Codex Supervisor 命令行入口，支持扫描、dashboard 汇总、本机 web 页面、建议面板、supervise 小闭环、定时汇报、变化触发、托管启动、恢复历史会话、接管 tmux 和发送指令 | 应用入口 | `src/isotope/features/supervisor/runner.py`, `apps/cli/isotope_supervisor.py` |
 | `Codex session` | Codex 会话记录，本机通常保存在 `~/.codex/sessions` | 外部集成 | `src/isotope/features/supervisor/flow.py` |
