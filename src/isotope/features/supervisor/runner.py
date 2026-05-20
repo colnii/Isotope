@@ -2741,7 +2741,12 @@ def _supervise_payload(
         if fanout_plan is not None:
             payload["llm_action"] = _fanout_llm_action(fanout_plan)
         elif merge_dispatch is not None:
-            payload["llm_action"] = merge_dispatch["launch_spec"]
+            if merge_dispatch.get("status") == "worker_already_running":
+                payload["llm_action"] = _merge_dispatch_already_running_action(
+                    merge_dispatch
+                )
+            else:
+                payload["llm_action"] = merge_dispatch["launch_spec"]
         elif _loop_without_autonomous_scope(
             args,
             action_report,
@@ -2763,12 +2768,17 @@ def _supervise_payload(
                     worker_reviews=worker_reviews,
                 )
         elif merge_dispatch is not None:
-            payload["executed"] = _mark_merge_dispatch_execution(
-                _execute_launch_action(
-                    args,
-                    merge_dispatch["launch_spec"],
+            if merge_dispatch.get("status") == "worker_already_running":
+                payload["executed"] = _merge_dispatch_already_running_executed(
+                    merge_dispatch
                 )
-            )
+            else:
+                payload["executed"] = _mark_merge_dispatch_execution(
+                    _execute_launch_action(
+                        args,
+                        merge_dispatch["launch_spec"],
+                    )
+                )
             if _executed_action_forces_print(payload["executed"]):
                 refreshed_report = _scan_report(args)
                 payload["current_batch"] = _current_batch_payload(
@@ -2817,13 +2827,50 @@ def _integration_merge_dispatch_payload(args: argparse.Namespace) -> dict[str, A
     )
     if launch_spec is None:
         return None
-    return {
+    running_worker = _running_managed_process_by_name(
+        codex_home=Path(args.codex_home),
+        name=str(launch_spec["target_name"]),
+    )
+    payload: dict[str, Any] = {
+        "status": "worker_already_running" if running_worker else "ready_to_launch",
         "integration_review": {
             "base_ref": review_payload.get("base_ref"),
             "summary": review_payload.get("summary") or {},
             "safety": review_payload.get("safety") or {},
         },
         "launch_spec": launch_spec,
+    }
+    if running_worker is not None:
+        payload["running_worker"] = _managed_worker_reference(running_worker)
+    return payload
+
+
+def _merge_dispatch_already_running_action(
+    merge_dispatch: dict[str, Any],
+) -> dict[str, Any]:
+    action: dict[str, Any] = {
+        "kind": "monitor",
+        "reason": "merge worker already running",
+    }
+    if running_worker := merge_dispatch.get("running_worker"):
+        action["managed"] = running_worker
+    return action
+
+
+def _merge_dispatch_already_running_executed(
+    merge_dispatch: dict[str, Any],
+) -> dict[str, Any]:
+    executed = _merge_dispatch_already_running_action(merge_dispatch)
+    executed["skipped"] = True
+    return executed
+
+
+def _managed_worker_reference(record: Any) -> dict[str, Any]:
+    return {
+        "name": record.name,
+        "record_id": record.record_id,
+        "pid": record.pid,
+        "backend": record.backend,
     }
 
 
