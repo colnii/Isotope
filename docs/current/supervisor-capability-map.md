@@ -235,7 +235,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `context` 支持按 query 检索当前工作区资料，当前是 `rg` 优先、
   Python 关键词扫描兜底，并会为 `docs/current/status.md`、
   `supervisor-capability-map.md`、`docs-map.md` 和 Supervisor 关键代码入口
-  补充项目上下文锚点，把结果记录给后续 LLM planner 使用。
+  补充项目上下文锚点，把结果记录给后续 LLM planner 使用；结果会带
+  `source_group` 和更清晰的 `match_reason`，让 `docs/current` 与
+  `src/isotope/features/supervisor` 命中不再只是散乱关键词。
 - `--llm-execute` 执行 `request_context` 后会在同一轮把检索结果交回
   LLM planner，再执行一次后续受控动作；同轮只允许一次上下文检索，避免循环。
 - 已完成会话不再作为 `resume_session` 候选，避免 LLM 把旧验收窗口反复唤醒；

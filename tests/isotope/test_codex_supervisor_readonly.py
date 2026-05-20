@@ -8386,12 +8386,14 @@ def test_codex_supervisor_context_request_returns_ranked_evidence(tmp_path):
         "snippet": first.snippet,
         "score": first.score,
         "match_reason": first.match_reason,
+        "source_group": "docs/current",
     }
 
     recent = read_recent_context_results(codex_home=codex_home, cwd=workspace)
     assert recent[0].items[0].title == "Codex Supervisor Status"
     assert recent[0].items[0].snippet == first.snippet
     assert recent[0].items[0].match_reason == first.match_reason
+    assert recent[0].items[0].source_group == "docs/current"
 
 
 def test_codex_supervisor_context_request_surfaces_project_context_anchors(tmp_path):
@@ -8452,6 +8454,60 @@ def test_codex_supervisor_context_request_surfaces_project_context_anchors(tmp_p
     assert "src/isotope/features/supervisor/context.py" in paths
     assert all(len(item.snippet) <= 240 for item in result.items)
     assert any("project context anchor" in item.match_reason for item in result.items)
+
+
+def test_codex_supervisor_context_request_groups_current_docs_and_supervisor_code(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    (workspace / "docs" / "current").mkdir(parents=True)
+    (workspace / "src" / "isotope" / "features" / "supervisor").mkdir(parents=True)
+    (workspace / "docs" / "current" / "status.md").write_text(
+        "# Isotope 当前状态\n\n"
+        "`request_context` 会返回结构化 ranked evidence，供 LLM planner 判断下一步。\n",
+        encoding="utf-8",
+    )
+    (workspace / "docs" / "current" / "supervisor-capability-map.md").write_text(
+        "# Codex Supervisor 能力地图\n\n"
+        "上下文能力层包含 context、request_context 和结果记录。\n",
+        encoding="utf-8",
+    )
+    (workspace / "src" / "isotope" / "features" / "supervisor" / "context.py").write_text(
+        "def request_project_context():\n"
+        "    return 'ranked evidence'\n",
+        encoding="utf-8",
+    )
+
+    def fake_run(
+        command: list[str],
+        *,
+        cwd: str,
+        text: bool,
+        capture_output: bool,
+        check: bool,
+        timeout: int,
+    ) -> subprocess.CompletedProcess[str]:
+        del cwd, text, capture_output, check, timeout
+        return subprocess.CompletedProcess(command, 1, "", "")
+
+    result = request_project_context(
+        codex_home=codex_home,
+        cwd=workspace,
+        query="Supervisor request_context docs/current 状态文档 代码入口",
+        run=fake_run,
+        rg_bin="rg",
+        max_results=4,
+    )
+
+    by_path = {item.path: item for item in result.items}
+    status = by_path["docs/current/status.md"].to_dict()
+    context_py = by_path["src/isotope/features/supervisor/context.py"].to_dict()
+
+    assert status["source_group"] == "docs/current"
+    assert context_py["source_group"] == "supervisor feature code"
+    assert "group: docs/current" in status["match_reason"]
+    assert "matched aliases:" in status["match_reason"]
+    assert "group: supervisor feature code" in context_py["match_reason"]
+    assert "matched aliases:" in context_py["match_reason"]
 
 
 def test_codex_supervisor_context_request_falls_back_without_rg(tmp_path):

@@ -115,6 +115,7 @@ class ContextItem:
     title: str = ""
     snippet: str = ""
     match_reason: str = ""
+    source_group: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -125,6 +126,7 @@ class ContextItem:
             "snippet": self.snippet,
             "score": self.score,
             "match_reason": self.match_reason,
+            "source_group": self.source_group or _source_group_for_path(self.path),
         }
 
 
@@ -286,6 +288,7 @@ def _search_workspace_with_python(
             if score <= 0:
                 continue
             snippet = _clip(text)
+            source_group = _source_group_for_path(relative)
             title = _title_for_path(
                 workspace,
                 relative,
@@ -305,7 +308,9 @@ def _search_workspace_with_python(
                         title=title,
                         snippet=snippet,
                         terms=terms,
+                        source_group=source_group,
                     ),
+                    source_group=source_group,
                 )
             )
     return _rank_context_items(query, candidates)[:max_results]
@@ -397,6 +402,7 @@ def _context_items_from_rg_json(
         score += submatch_score
         relative = path.lstrip("./")
         snippet = _clip(" ".join(line_text.split()))
+        source_group = _source_group_for_path(relative)
         title = _title_for_path(
             workspace,
             relative,
@@ -416,7 +422,9 @@ def _context_items_from_rg_json(
                     title=title,
                     snippet=snippet,
                     terms=terms,
+                    source_group=source_group,
                 ),
+                source_group=source_group,
             )
         )
     return items
@@ -457,8 +465,15 @@ def _rank_context_items(query: str, items: list[ContextItem]) -> list[ContextIte
         SummarySearchDocument(
             document_id=str(position),
             title=item.title,
-            summary=f"{item.path} {item.snippet} {item.match_reason}",
-            metadata={"item": item, "base_score": item.score},
+            summary=(
+                f"{item.source_group or _source_group_for_path(item.path)} "
+                f"{item.path} {item.snippet} {item.match_reason}"
+            ),
+            metadata={
+                "item": item,
+                "base_score": item.score,
+                "source_group": item.source_group,
+            },
         )
         for position, item in enumerate(items)
     ]
@@ -485,6 +500,7 @@ def _rank_context_items(query: str, items: list[ContextItem]) -> list[ContextIte
                 title=item.title,
                 snippet=item.snippet,
                 match_reason=item.match_reason,
+                source_group=item.source_group,
             )
         )
     ranked_item_ids = {(item.path, item.line, item.text) for item in ranked}
@@ -523,6 +539,7 @@ def _project_context_anchor_items(workspace: Path, query: str) -> list[ContextIt
             or _python_symbol_from_lines(lines)
             or Path(relative).name
         )
+        source_group = _source_group_for_path(relative)
         alias_text = " ".join(aliases)
         anchor_score = _score_text(
             f"{relative} {title} {alias_text}".lower(),
@@ -555,7 +572,9 @@ def _project_context_anchor_items(workspace: Path, query: str) -> list[ContextIt
                     snippet=snippet,
                     terms=terms,
                     aliases=aliases,
+                    source_group=source_group,
                 ),
+                source_group=source_group,
             )
         )
     return items
@@ -613,12 +632,27 @@ def _anchor_match_reason(
     snippet: str,
     terms: list[str],
     aliases: tuple[str, ...],
+    source_group: str,
 ) -> str:
     searchable = f"{path} {title} {snippet} {' '.join(aliases)}".casefold()
     matched_terms = [term for term in terms if term.casefold() in searchable]
+    matched_aliases = _matched_aliases(aliases, terms)
+    parts = [f"group: {source_group}", "project context anchor"]
     if matched_terms:
-        return "project context anchor matched: " + ", ".join(matched_terms[:8])
-    return "project context anchor"
+        parts.append("matched query terms: " + ", ".join(matched_terms[:8]))
+    if matched_aliases:
+        parts.append("matched aliases: " + ", ".join(matched_aliases[:4]))
+    return "; ".join(parts)
+
+
+def _matched_aliases(aliases: tuple[str, ...], terms: list[str]) -> list[str]:
+    matched: list[str] = []
+    term_text = " ".join(terms).casefold()
+    for alias in aliases:
+        alias_text = alias.casefold()
+        if alias_text in term_text or any(term.casefold() in alias_text for term in terms):
+            matched.append(alias)
+    return matched
 
 
 def _dedupe_context_items(items: list[ContextItem]) -> list[ContextItem]:
@@ -688,12 +722,28 @@ def _match_reason(
     title: str,
     snippet: str,
     terms: list[str],
+    source_group: str,
 ) -> str:
     searchable = f"{path} {title} {snippet}".casefold()
     matched_terms = [term for term in terms if term.casefold() in searchable]
+    prefix = f"group: {source_group}; "
     if matched_terms:
-        return "matched query terms: " + ", ".join(matched_terms[:8])
-    return "matched by rg/python candidate score"
+        return prefix + "matched query terms: " + ", ".join(matched_terms[:8])
+    return prefix + "matched by rg/python candidate score"
+
+
+def _source_group_for_path(path: str) -> str:
+    if path.startswith("docs/current/"):
+        return "docs/current"
+    if path.startswith("src/isotope/features/supervisor/"):
+        return "supervisor feature code"
+    if path.startswith("tests/isotope/"):
+        return "isotope tests"
+    if path.startswith("docs/"):
+        return "docs"
+    if path.startswith("src/isotope/"):
+        return "isotope source"
+    return "workspace"
 
 
 def _result_from_dict(raw: dict[str, Any]) -> ContextResult | None:
@@ -718,6 +768,7 @@ def _result_from_dict(raw: dict[str, Any]) -> ContextResult | None:
         snippet = item.get("snippet")
         score = item.get("score")
         match_reason = item.get("match_reason")
+        source_group = item.get("source_group")
         if (
             isinstance(path, str)
             and isinstance(line, int)
@@ -736,6 +787,11 @@ def _result_from_dict(raw: dict[str, Any]) -> ContextResult | None:
                         match_reason
                         if isinstance(match_reason, str) and match_reason
                         else "legacy context result"
+                    ),
+                    source_group=(
+                        source_group
+                        if isinstance(source_group, str) and source_group
+                        else _source_group_for_path(path)
                     ),
                 )
             )

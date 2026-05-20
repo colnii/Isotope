@@ -145,8 +145,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `request_context` 使用；LLM 重规划时会看到已检索过的
     context history，避免重复请求同一个 cwd/query；
     `request_context` 的每条结果是结构化 ranked evidence，
-    包含 `title`、`path`、`snippet`、`score` 和 `match_reason`，
-    以便 LLM 看到排序依据和低敏片段，而不是每轮塞全文；
+    包含 `title`、`path`、`snippet`、`score`、`source_group` 和
+    `match_reason`，其中 `docs/current` 和 Supervisor 关键代码入口会显示
+    更清晰的分组与匹配原因，以便 LLM 看到排序依据和低敏片段，而不是每轮塞全文；
     `resume_session` 也受 `--prompt-cooldown` 约束，避免短时间重复恢复
     同一历史会话；如果目标 session 所在 cwd 已有后台 process worker
     仍在运行，`resume_session` 会跳过，避免同一个隔离工作区被重复驱动；
