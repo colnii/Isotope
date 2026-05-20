@@ -112,6 +112,10 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
   `ready_to_integrate` 候选后，会通过现有 `launch_session` 路径自动启动
   专门 merge worker，并把 `merge-work-order` 交给它执行；runner 本身仍不
   直接 merge、push、删除来源分支或改写历史。
+- loop cleanup（收尾清理）会对已完成且不忙的 managed worker 读取
+  `integration-review`：`ready_to_integrate` 只自动归档托管记录并同步
+  done 通知；`already_integrated` 会在归档后复用 `delete_worktree` 护栏
+  执行 `git worktree remove`，但仍不删除来源分支。
 - `supervise/loop/daemon start --worker-codex-model <model>
   --worker-codex-config key=value` 可把同类覆盖传给 LLM 自动启动或恢复的
   worker，避免写代码任务继承未知的本机默认配置。
@@ -574,6 +578,10 @@ fanout（同轮多目标派发）：
 - `cleanup list` 只列出已完成目标、已完成托管 worker 或可读通知；
   `cleanup archive --all --codex-home "$SMOKE_HOME"` 只追加归档事件，
   不手删账本、不删除源码分支、不删除 worktree。
+- `loop --iterations 1 --json` 对 `already_integrated` 且位于
+  `.worktrees/supervisor/...` 的已归档 worker 可自动执行
+  `git worktree remove`；仍在 `Working ... esc to interrupt` 的 lane
+  不会被归档或删除。
 
 第三段确认 CI 和 watchdog（看门进程）：
 

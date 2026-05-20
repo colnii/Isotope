@@ -12757,6 +12757,7 @@ def test_codex_supervisor_runner_loop_archives_goal_when_worker_reports_done(
 def test_codex_supervisor_runner_loop_auto_archives_done_managed_worker(
     tmp_path,
     capsys,
+    monkeypatch,
 ):
     codex_home = tmp_path / ".codex"
     workspace = tmp_path / "workspace"
@@ -12866,6 +12867,49 @@ def test_codex_supervisor_runner_loop_auto_archives_done_managed_worker(
         + "\n",
         encoding="utf-8",
     )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_integration_reviews",
+        lambda *, codex_home, base_ref, include_unfinished: {
+            "status": "ok",
+            "base_ref": base_ref,
+            "include_unfinished": include_unfinished,
+            "summary": {
+                "total": 1,
+                "merge_workers": 0,
+                "ready_to_integrate": 1,
+                "already_integrated": 0,
+                "needs_review": 0,
+                "conflict_risk": 0,
+            },
+            "groups": {
+                "merge_workers": [],
+                "ready_to_integrate": [
+                    {
+                        "record_id": "managed-done",
+                        "name": "done-worker",
+                        "group": "ready_to_integrate",
+                        "base_ref": base_ref,
+                    }
+                ],
+                "already_integrated": [],
+                "needs_review": [],
+                "conflict_risk": [],
+            },
+            "workers": [
+                {
+                    "record_id": "managed-done",
+                    "name": "done-worker",
+                    "group": "ready_to_integrate",
+                    "base_ref": base_ref,
+                }
+            ],
+            "safety": {
+                "auto_merge": False,
+                "push": False,
+                "delete_branch": False,
+            },
+        },
+    )
 
     exit_code = supervisor_main(
         [
@@ -12887,8 +12931,14 @@ def test_codex_supervisor_runner_loop_auto_archives_done_managed_worker(
     assert payload["goal_updates"][0]["goal_id"] == goal["goal_id"]
     assert payload["goal_updates"][0]["status"] == "done"
     assert payload["active_goals"] == []
-    assert [item["name"] for item in payload["cleanup_archived"]] == ["done-worker"]
+    assert [item["kind"] for item in payload["cleanup_archived"]] == [
+        "managed_worker",
+        "notification",
+    ]
+    assert payload["cleanup_archived"][0]["name"] == "done-worker"
     assert payload["cleanup_archived"][0]["managed"]["status"] == "archived"
+    assert payload["cleanup_archived"][0]["integration_group"] == "ready_to_integrate"
+    assert payload["cleanup_archived"][1]["notification"]["unread"] is False
     registry_events = [
         json.loads(line)
         for line in registry_path.read_text(encoding="utf-8").splitlines()

@@ -2376,13 +2376,99 @@ def _auto_cleanup_done_workers(args: argparse.Namespace) -> list[dict[str, Any]]
     if getattr(args, "command", None) != "loop":
         return []
     codex_home = Path(args.codex_home)
-    return [
-        _archive_cleanup_candidate(codex_home, candidate)
-        for candidate in _cleanup_managed_worker_candidates(
-            codex_home,
-            require_existing_cwd=True,
+    integration_payload = collect_integration_reviews(
+        codex_home=codex_home,
+        base_ref="main",
+        include_unfinished=False,
+    )
+    integration_reviews = _integration_reviews_by_record_ref(integration_payload)
+    archived: list[dict[str, Any]] = []
+    for candidate in _cleanup_managed_worker_candidates(
+        codex_home,
+        require_existing_cwd=True,
+    ):
+        review = _integration_review_for_cleanup_candidate(
+            candidate,
+            integration_reviews,
         )
-    ]
+        group = review.get("group") if isinstance(review, dict) else None
+        if group not in {"ready_to_integrate", "already_integrated"}:
+            continue
+        archived_item = _archive_cleanup_candidate(codex_home, candidate)
+        archived_item["integration_group"] = group
+        archived_item["integration_review"] = _auto_cleanup_integration_summary(review)
+        if group == "already_integrated":
+            delete_result = _execute_delete_worktree_action(
+                args,
+                {
+                    "kind": "delete_worktree",
+                    "target_name": candidate.get("name"),
+                    "record_id": candidate.get("record_id"),
+                    "confirm_delete_worktree": True,
+                    "base_ref": review.get("base_ref")
+                    or integration_payload.get("base_ref")
+                    or "main",
+                    "reason": "loop auto cleanup: worker archived and already integrated.",
+                },
+            )
+            archived_item["delete_worktree"] = delete_result
+        archived.append(archived_item)
+    if archived:
+        archived.extend(
+            _archive_cleanup_candidate(codex_home, candidate)
+            for candidate in _cleanup_notification_candidates(codex_home)
+        )
+    return archived
+
+
+def _integration_reviews_by_record_ref(
+    payload: dict[str, Any],
+) -> dict[tuple[str, str], dict[str, Any]]:
+    reviews: dict[tuple[str, str], dict[str, Any]] = {}
+    raw_workers = payload.get("workers")
+    workers = raw_workers if isinstance(raw_workers, list) else []
+    for raw in workers:
+        if not isinstance(raw, dict):
+            continue
+        record_id = raw.get("record_id")
+        name = raw.get("name")
+        if isinstance(record_id, str) and record_id:
+            reviews[("record_id", record_id)] = raw
+        if isinstance(name, str) and name:
+            reviews[("name", name)] = raw
+    return reviews
+
+
+def _integration_review_for_cleanup_candidate(
+    candidate: dict[str, Any],
+    reviews: dict[tuple[str, str], dict[str, Any]],
+) -> dict[str, Any] | None:
+    record_id = candidate.get("record_id")
+    if isinstance(record_id, str) and record_id:
+        review = reviews.get(("record_id", record_id))
+        if review is not None:
+            return review
+    name = candidate.get("name")
+    if isinstance(name, str) and name:
+        return reviews.get(("name", name))
+    return None
+
+
+def _auto_cleanup_integration_summary(review: dict[str, Any]) -> dict[str, Any]:
+    return _drop_none_values(
+        {
+            "group": review.get("group"),
+            "reason": review.get("reason"),
+            "record_id": review.get("record_id"),
+            "name": review.get("name"),
+            "branch": review.get("branch"),
+            "worker_commit": review.get("worker_commit"),
+            "base_ref": review.get("base_ref"),
+            "main_contains_worker": review.get("main_contains_worker"),
+            "main_has_worker_patch": review.get("main_has_worker_patch"),
+            "dirty": review.get("dirty"),
+        }
+    )
 
 
 def _goal_status_from_session(session: Any) -> str | None:

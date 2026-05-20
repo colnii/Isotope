@@ -157,8 +157,11 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     仍在运行，`resume_session` 会跳过，避免同一个隔离工作区被重复驱动；
     已删除 worktree 或不存在 cwd 不再作为 resume/context/launch 的正常
     候选，LLM 误选时会记录为 skipped，不让 loop 退出；
-    `delete_worktree` 目前是 deny-by-default 受控动作，只接受已知且
-    cwd 已缺失的 worker 并固定 skipped，不自动删除目录、分支或登记；
+    `delete_worktree` 目前是 deny-by-default 受控动作，只有 worker 已
+    `done`、托管记录已 `archived`、integration review 确认为
+    `already_integrated`，且路径位于 repo 内 `.worktrees/supervisor/...`
+    时才会执行 `git worktree remove`；`loop` 的自动 cleanup 也复用这组
+    护栏，不删除分支或改写历史；
     `launch_session` 同样受 `--prompt-cooldown` 约束，
     且发现同名后台 process worker 仍在运行时会跳过，避免 LLM
     长跑时反复启动同名后台任务；LLM 自动 `launch_session`
@@ -235,9 +238,12 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     目标状态回写为 `done/blocked/needs_user` 时会尽力生成低敏通知，
     且通知失败不会反向破坏 goal 账本；
     `cleanup list/archive` 可列出并归档已汇报 `done` 的 goal、managed
-    worker 和对应通知；tmux 托管 worker 会读取当前 pane 文本判断状态，
-    避免旧 log 误导归档；归档只追加 Supervisor 账本事件或把通知标记已读，
-    不删除 Codex `sessions` 历史，也不会处理仍是 `working` 或无完成汇报的任务；
+    worker 和对应通知；`loop` 会对已完成且不忙的 worker 先读取
+    `integration-review`，仅在 `ready_to_integrate` 时自动归档托管记录，
+    或在 `already_integrated` 时归档后按 `delete_worktree` 护栏清理
+    worktree；tmux 托管 worker 会读取当前 pane 文本判断状态，避免旧 log
+    误导归档；归档只追加 Supervisor 账本事件或把通知标记已读，不删除
+    Codex `sessions` 历史，也不会处理仍是 `working` 或无完成汇报的任务；
     当没有显式 `--goal`、没有活跃目标且没有可控托管 lane 时，
     `loop` 只监控，不会从普通历史会话或 workspace 自行发明下一批
     `launch_session`；
