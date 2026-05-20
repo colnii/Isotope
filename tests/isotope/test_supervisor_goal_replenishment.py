@@ -390,3 +390,68 @@ def test_supervisor_daemon_start_passes_goal_replenishment_options_to_loop(
         'model_reasoning_effort="high"',
     ]
     assert captured["command"] == payload["daemon"]["command"]
+
+
+def test_supervisor_daemon_watchdog_preserves_low_water_defaults_on_restart(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    captured: list[list[str]] = []
+
+    class FakeProcess:
+        def __init__(self, pid: int) -> None:
+            self.pid = pid
+
+    def fake_popen(
+        command: list[str],
+        *,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured.append(command)
+        return FakeProcess(47020 + len(captured))
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon.subprocess.Popen",
+        fake_popen,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon._process_is_alive",
+        lambda _: False,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "daemon",
+            "start",
+            "--codex-home",
+            str(codex_home),
+            "--interval",
+            "7",
+            "--limit",
+            "3",
+            "--goal-low-water",
+            "2",
+            "--json",
+        ]
+    )
+    assert exit_code == 0
+    start_payload = json.loads(capsys.readouterr().out)
+
+    command = start_payload["daemon"]["command"]
+    assert command[command.index("--goal-low-water") + 1] == "2"
+    assert command[command.index("--goal-replenish-limit") + 1] == "3"
+
+    exit_code = supervisor_main(
+        ["daemon", "watchdog", "--codex-home", str(codex_home), "--json"]
+    )
+    assert exit_code == 0
+    watchdog_payload = json.loads(capsys.readouterr().out)
+
+    assert watchdog_payload["daemon"]["action"] == "restarted"
+    assert watchdog_payload["daemon"]["command"] == command
+    assert captured == [command, command]

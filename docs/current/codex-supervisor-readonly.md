@@ -457,7 +457,9 @@ Codex 的 tmux 会话，并生成可复制的 `adopt` 和 `attach` 命令。
 `~/.codex/supervisor/daemon.json`，日志写到
 `~/.codex/supervisor/logs/daemon.log`。
 `daemon start --max-fanout-launches N` 会把同轮 fanout 自动启动上限传给
-后台 `loop`，并随原始命令写入 `daemon.json`；
+后台 `loop`；`--goal-low-water N` 和 `--goal-replenish-limit N`
+会把低水位补任务阈值和单轮补充上限传给后台 `loop`。
+这些参数都会随原始命令写入 `daemon.json`；
 `daemon status` 会检查本机进程是否还活着，并汇总最近 LLM 动作、
 最近执行结果、最近 worker 模型/配置和 worker 状态；
 `daemon watchdog` 会检查后台 `loop`，如果进程异常退出，
@@ -793,8 +795,9 @@ tmux attach -t isotope-lane-a
 - `daemon start` 只是把 `loop` 放进后台，并记录 pid（进程号）、
   命令和日志路径。
 - `daemon watchdog` 只复用状态文件里的原始命令，不重新猜参数。
-- `daemon start --max-fanout-launches N` 会随原始命令保存，watchdog
-  重启后继续使用同一个 fanout 上限。
+- `daemon start --max-fanout-launches N`、`--goal-low-water N` 和
+  `--goal-replenish-limit N` 会随原始命令保存，watchdog 重启后
+  继续使用同一组 fanout / 低水位补任务参数。
 - `daemon watcher` 只负责周期触发 watchdog，不直接判断业务状态。
 - `supervise --auto-execute` 可按规则自动执行一个白名单动作。
 - `changes-only` 不会阻断自动策略；无变化轮次仍会检查冷却并继续必要发送。

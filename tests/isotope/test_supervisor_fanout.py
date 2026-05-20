@@ -1,7 +1,10 @@
+from types import SimpleNamespace
+
 from isotope.features.supervisor.fanout import (
     build_fanout_launch_plan,
     build_fanout_status_summary,
 )
+from isotope.features.supervisor.runner import _execute_fanout_launch_actions
 
 
 def test_supervisor_fanout_turns_parallel_recommendations_into_launch_specs():
@@ -250,3 +253,83 @@ def test_supervisor_fanout_status_pauses_on_blocked_worker():
             "next": "等待依赖恢复。",
         }
     ]
+
+
+def test_supervisor_fanout_execution_dedupes_duplicate_launch_specs(
+    tmp_path,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    captured: list[list[str]] = []
+
+    class FakeProcess:
+        def __init__(self, pid: int) -> None:
+            self.pid = pid
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured.append(command)
+        return FakeProcess(47100 + len(captured))
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.subprocess.Popen",
+        fake_popen,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._pid_is_running",
+        lambda _: False,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._prepare_launch_worktree",
+        lambda *, cwd, target_name: {"cwd": str(cwd), "branch": target_name},
+    )
+
+    args = SimpleNamespace(
+        codex_home=str(codex_home),
+        max_run_minutes=0,
+        prompt_cooldown=0,
+        worker_profile="coding",
+        worker_codex_model="gpt-5.5",
+        worker_codex_config=('model_reasoning_effort="high"',),
+    )
+    fanout_plan = {
+        "summary": {"limit": 3},
+        "launch_specs": [
+            {
+                "kind": "launch_session",
+                "target_name": "worker-a",
+                "cwd": str(workspace),
+                "prompt": "实现 worker A。",
+            },
+            {
+                "kind": "launch_session",
+                "target_name": "worker-a",
+                "cwd": str(workspace),
+                "prompt": "重复的 worker A。",
+            },
+        ],
+    }
+
+    executed = _execute_fanout_launch_actions(args, fanout_plan)
+
+    assert executed["summary"] == {"launched": 1, "skipped": 1, "limit": 3}
+    assert executed["results"][0]["managed"]["name"] == "worker-a"
+    assert executed["skipped"] == [
+        {
+            "kind": "launch_session",
+            "skipped": True,
+            "reason": "duplicate_fanout_target",
+            "target_name": "worker-a",
+        }
+    ]
+    assert len(captured) == 1

@@ -3602,9 +3602,23 @@ def _execute_fanout_launch_actions(
 ) -> dict[str, Any]:
     results: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
+    seen_target_names: set[str] = set()
     for launch_spec in fanout_plan.get("launch_specs") or []:
         if not isinstance(launch_spec, dict):
             continue
+        target_name = _optional_text(launch_spec.get("target_name"))
+        if target_name is not None:
+            if target_name in seen_target_names:
+                skipped.append(
+                    {
+                        "kind": "launch_session",
+                        "skipped": True,
+                        "reason": "duplicate_fanout_target",
+                        "target_name": target_name,
+                    }
+                )
+                continue
+            seen_target_names.add(target_name)
         result = _execute_failure_guarded_action(
             args,
             report=report,

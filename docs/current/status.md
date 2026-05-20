@@ -244,6 +244,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     不需要在启动命令里写死单个目标；`loop/up/daemon start`
     支持 `--goal-low-water N`，当活跃目标少于 N 个时让 LLM
     根据当前文档补充目标队列，`--goal-replenish-limit` 控制单轮补充上限；
+    daemon 会把这两个低水位参数写进原始 `loop` 命令，watchdog
+    重启后继续按同一组参数运行；
     匹配同名 worker 汇报
     `SUPERVISOR_STATUS: done` 时，`loop` 会记录目标状态并自动归档；
     目标状态回写为 `done/blocked/needs_user` 时会尽力生成低敏通知，

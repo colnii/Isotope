@@ -422,7 +422,7 @@ def _build_loop_command(
         command.extend(["--max-fanout-launches", str(max_fanout_launches)])
     if goal_low_water != 0:
         command.extend(["--goal-low-water", str(goal_low_water)])
-    if goal_replenish_limit != DEFAULT_FANOUT_LIMIT:
+    if goal_low_water != 0 or goal_replenish_limit != DEFAULT_FANOUT_LIMIT:
         command.extend(["--goal-replenish-limit", str(goal_replenish_limit)])
     if goal_replenish_prompt:
         command.extend(["--goal-replenish-prompt", goal_replenish_prompt])
