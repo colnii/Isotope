@@ -384,6 +384,20 @@ B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
 runner 内直接 cherry-pick、删除 worker 分支、worktree 或来源历史；
 不 force push，不 rebase 已共享分支，不重写远端历史。
 
+merge worker 成功合入后的交接边界也要分清：
+
+- merge worker 可在工单范围内完成 diff review、cherry-pick、组合测试、
+  push 和 CI watch；只有合并提交已在目标分支、CI 明确通过并能给出提交哈希时，
+  才能汇报 `SUPERVISOR_STATUS: done`。
+- `cleanup list/archive` 是生命周期归档入口，只把已完成的 goal、
+  managed worker 或通知标记为已处理，让它们退出活跃视图；它不删除 Codex
+  历史、不删除 git branch、不执行 `git worktree remove`。
+- 当前自动边界到“派发 merge worker”和“列出/执行显式 cleanup archive”为止；
+  自动 cleanup 即使后续接入，也只能在 merge worker 成功、CI 通过且状态协议有证据后
+  归档登记项，不能顺手删除来源分支或 worktree。
+- `git worktree remove` 属于人工/运维清理动作：需要先确认来源分支已被目标分支包含、
+  CI 通过、没有活跃 managed record 仍引用该 cwd，再由人或后续专门清理工单执行。
+
 ## Runner 接线边界
 
 本节只登记后续接入 `features/supervisor/runner.py` 时的分工。
