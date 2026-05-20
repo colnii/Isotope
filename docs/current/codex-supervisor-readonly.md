@@ -62,6 +62,10 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
   新的后台 Codex worker。
 - `goal add/list/archive` 可维护持久目标队列；daemon 启动后会由
   `loop` 动态读取活跃目标，不必把目标写死在启动命令里。
+- `loop/up/daemon start --goal-low-water N` 可在活跃目标少于 N 个时，
+  调用 LLM 根据当前文档补充目标队列；默认 0 表示关闭。
+- `--goal-replenish-limit N` 控制单轮最多补多少个目标；
+  `--goal-replenish-prompt` 可覆盖补任务时交给模型的高层说明。
 - 同名 worker 汇报 `SUPERVISOR_STATUS: done` 时，`loop` 会自动归档
   对应目标；汇报 `blocked/needs_user` 时只记录状态，不删除目标。
 - `blocked/needs_user` 会继续作为活跃目标进入 LLM planner 输入，
@@ -180,6 +184,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner advise
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise --interval 180 --llm-summary
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon start --interval 30
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon start --interval 30 --goal "持续跟进当前项目目标"
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon start --interval 30 --goal-low-water 3 --goal-replenish-limit 3
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon status
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon watchdog
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon watcher start --interval 60
@@ -213,6 +218,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner archive --
 .venv/bin/isotope-supervisor supervise --interval 180 --llm-summary
 .venv/bin/isotope-supervisor daemon start --interval 30
 .venv/bin/isotope-supervisor daemon start --interval 30 --goal "持续跟进当前项目目标"
+.venv/bin/isotope-supervisor daemon start --interval 30 --goal-low-water 3 --goal-replenish-limit 3
 .venv/bin/isotope-supervisor daemon status
 .venv/bin/isotope-supervisor daemon watchdog
 .venv/bin/isotope-supervisor daemon watcher start --interval 60

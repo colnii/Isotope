@@ -162,6 +162,15 @@ DEFAULT_LAUNCH_PROMPT = " ".join(
         "第三行 `SUPERVISOR_NEXT: 用一句中文说明建议下一步`。",
     ]
 )
+DEFAULT_GOAL_REPLENISH_PROMPT = " ".join(
+    [
+        "根据 AGENTS.md、docs/current/status.md、docs/current/agent-task-queue.md",
+        "和 docs/current/supervisor-capability-map.md，",
+        "为 Supervisor/Isotope 当前目标继续规划下一批可并行、可验证的 Codex worker 任务。",
+        "优先选择能推动长跑自动开发闭环、低冲突、完成后可独立提交的目标；",
+        "只有满足拍板条件才生成需要用户决策的任务。",
+    ]
+)
 IDLE_LOOP_REASON = "当前没有可控的 Supervisor 目标，先继续监控。"
 DASHBOARD_GROUP_LABELS = {
     "needs_attention": "需要看",
@@ -173,6 +182,28 @@ ARCHIVABLE_SUPERVISOR_STATUSES = {"done"}
 
 def _print_json(payload: dict[str, Any]) -> None:
     print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+
+
+def _add_goal_replenishment_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--goal-low-water",
+        type=int,
+        default=0,
+        help=(
+            "When active goals fall below this count, ask LLM to plan more goals "
+            "from current docs. Default 0 disables."
+        ),
+    )
+    parser.add_argument(
+        "--goal-replenish-limit",
+        type=int,
+        default=DEFAULT_FANOUT_LIMIT,
+        help="Maximum goals the LLM low-water planner may write in one loop.",
+    )
+    parser.add_argument(
+        "--goal-replenish-prompt",
+        help="Optional seed prompt for low-water goal planning.",
+    )
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -401,6 +432,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_FANOUT_LIMIT,
         help="Maximum launch_session actions fanout may execute in one loop iteration.",
     )
+    _add_goal_replenishment_args(loop_parser)
     loop_parser.add_argument(
         "--worker-profile",
         choices=WORKER_PROFILE_CHOICES,
@@ -511,6 +543,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_FANOUT_LIMIT,
         help="Maximum launch_session actions fanout may execute in one loop iteration.",
     )
+    _add_goal_replenishment_args(up_parser)
     up_parser.add_argument(
         "--worker-profile",
         choices=WORKER_PROFILE_CHOICES,
@@ -619,6 +652,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_FANOUT_LIMIT,
         help="Maximum launch_session actions fanout may execute in one loop iteration.",
     )
+    _add_goal_replenishment_args(daemon_start_parser)
     daemon_start_parser.add_argument(
         "--worker-profile",
         choices=WORKER_PROFILE_CHOICES,
@@ -1600,6 +1634,10 @@ def _start_daemon_from_args(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("max_run_minutes must be zero or positive")
     if args.max_fanout_launches <= 0:
         raise ValueError("max_fanout_launches must be positive")
+    if getattr(args, "goal_low_water", 0) < 0:
+        raise ValueError("goal_low_water must be zero or positive")
+    if getattr(args, "goal_replenish_limit", 1) <= 0:
+        raise ValueError("goal_replenish_limit must be positive")
     worker_profile = _worker_profile_from_args(args)
     queued_goal = _queue_daemon_goal_from_args(args)
     daemon = start_supervisor_daemon(
@@ -1613,6 +1651,9 @@ def _start_daemon_from_args(args: argparse.Namespace) -> dict[str, Any]:
         max_context_requests=args.max_context_requests,
         max_run_minutes=args.max_run_minutes,
         max_fanout_launches=args.max_fanout_launches,
+        goal_low_water=args.goal_low_water,
+        goal_replenish_limit=args.goal_replenish_limit,
+        goal_replenish_prompt=args.goal_replenish_prompt,
         name=args.name,
         goal=None,
         llm_summary=args.llm_summary,
@@ -2451,6 +2492,10 @@ def _validate_execution_modes(args: argparse.Namespace) -> None:
         raise ValueError("max_run_minutes must be zero or positive")
     if getattr(args, "max_fanout_launches", 1) <= 0:
         raise ValueError("max_fanout_launches must be positive")
+    if getattr(args, "goal_low_water", 0) < 0:
+        raise ValueError("goal_low_water must be zero or positive")
+    if getattr(args, "goal_replenish_limit", 1) <= 0:
+        raise ValueError("goal_replenish_limit must be positive")
     modes = [
         name
         for name, enabled in (
@@ -2507,6 +2552,70 @@ def _workspace_root(args: argparse.Namespace) -> Path | None:
         return None
     raw = getattr(args, "workspace_root", None)
     return Path(raw).expanduser().resolve() if raw else Path.cwd().resolve()
+
+
+def _maybe_replenish_active_goals(
+    args: argparse.Namespace,
+    active_goals: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    if getattr(args, "command", None) != "loop":
+        return None
+    low_water = getattr(args, "goal_low_water", 0)
+    if low_water <= 0:
+        return None
+    if getattr(args, "name", None) or _explicit_goal_text(args):
+        return None
+    active_before = len(active_goals)
+    if active_before >= low_water:
+        return None
+
+    replenish_limit = min(
+        getattr(args, "goal_replenish_limit", DEFAULT_FANOUT_LIMIT),
+        low_water - active_before,
+    )
+    root = _workspace_root(args) or Path.cwd().resolve()
+    try:
+        provider = resolve_summary_provider_from_env(agent_name="supervisor")
+        plan = plan_supervisor_goals(
+            root=root,
+            codex_home=Path(args.codex_home),
+            provider=provider,
+            user_goal=_goal_replenishment_prompt(args),
+            write=True,
+            limit=replenish_limit,
+            planning_trigger="low_water",
+        )
+    except Exception as exc:
+        return {
+            "status": "error",
+            "trigger": "low_water",
+            "active_before": active_before,
+            "low_water": low_water,
+            "requested_limit": replenish_limit,
+            "root": str(root),
+            "reason": str(exc),
+        }
+    written_goals = plan.get("written_goals") if isinstance(plan, dict) else []
+    if not isinstance(written_goals, list):
+        written_goals = []
+    return {
+        "status": "ok",
+        "trigger": "low_water",
+        "active_before": active_before,
+        "low_water": low_water,
+        "requested_limit": replenish_limit,
+        "root": str(root),
+        "written_count": len(written_goals),
+        "written_goals": written_goals,
+        "plan_summary": plan.get("plan_summary") if isinstance(plan, dict) else None,
+    }
+
+
+def _goal_replenishment_prompt(args: argparse.Namespace) -> str:
+    raw = getattr(args, "goal_replenish_prompt", None)
+    if isinstance(raw, str) and raw.strip():
+        return raw.strip()
+    return DEFAULT_GOAL_REPLENISH_PROMPT
 
 
 def _goal_text(args: argparse.Namespace) -> str | None:
@@ -2575,6 +2684,13 @@ def _supervise_payload(
 ) -> dict[str, Any]:
     action_report = _action_report_for_workspace(args, report)
     active_goals = _active_goal_dicts(args, include_status=True)
+    goal_replenishment = _maybe_replenish_active_goals(args, active_goals)
+    if (
+        isinstance(goal_replenishment, dict)
+        and goal_replenishment.get("status") == "ok"
+        and goal_replenishment.get("written_count")
+    ):
+        active_goals = _active_goal_dicts(args, include_status=True)
     explicit_goal = _explicit_goal_text(args)
     payload = _advice_payload(
         action_report,
@@ -2596,6 +2712,8 @@ def _supervise_payload(
     payload["automation"] = _automation_status(report)
     payload["auto_adopted"] = auto_adopted or []
     payload["active_goals"] = active_goals
+    if goal_replenishment is not None:
+        payload["goal_replenishment"] = goal_replenishment
     if goal_updates:
         payload["goal_updates"] = goal_updates
     worker_reviews: dict[str, Any] | None = None

@@ -55,6 +55,7 @@ def plan_supervisor_goals(
     user_goal: str | None = None,
     write: bool = False,
     limit: int = 3,
+    planning_trigger: str = "manual",
 ) -> dict[str, Any]:
     if limit <= 0:
         raise ValueError("limit must be positive")
@@ -72,6 +73,7 @@ def plan_supervisor_goals(
             user_goal=_optional_string(user_goal),
             limit=limit,
             write_mode=write,
+            planning_trigger=planning_trigger,
         )
     )
     planning = parse_goal_planning_result(raw_answer)
@@ -95,6 +97,7 @@ def plan_supervisor_goals(
         "mode": "write" if write else "preview",
         "root": str(workspace),
         "user_goal": _optional_string(user_goal),
+        "planning_trigger": planning_trigger,
         "sources": list(PLANNING_DOCS),
         "candidates": [candidate.to_dict() for candidate in candidates],
         "written_goals": written,
@@ -129,15 +132,16 @@ def build_goal_planning_messages(
     user_goal: str | None,
     limit: int,
     write_mode: bool,
+    planning_trigger: str = "manual",
 ) -> list[dict[str, str]]:
     return [
         {
             "role": "system",
             "content": (
                 "你是 Codex Supervisor 的 AI-first goal planner。"
-                "只能基于用户显式执行 goal plan 命令时提供的当前事实，"
+                "只能基于用户显式执行 goal plan 命令，或用户显式启用的 low_water 低水位补任务，"
                 "生成一小批可执行 Supervisor goals；"
-                "不得让无人下达目标的 loop 自行发明任务。"
+                "不得让无人授权的 loop 自行发明任务。"
                 "只输出 JSON。"
             ),
         },
@@ -147,6 +151,7 @@ def build_goal_planning_messages(
                 {
                     "workspace": str(root),
                     "user_goal": user_goal,
+                    "planning_trigger": planning_trigger,
                     "facts": facts,
                     "goal_count_limit": limit,
                     "write_mode": write_mode,

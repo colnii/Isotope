@@ -178,6 +178,11 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   并忽略后续非 goal JSON 片段。
   日常 `loop` 没有显式 `--goal` 时会读取最早活跃目标，
   并保持 daemon 启动命令不绑定某一个队列目标。
+- `loop/up/daemon start --goal-low-water N` 是低水位补任务入口：
+  当活跃目标少于 N 个且当前 loop 没有指定单 lane 或显式目标时，
+  Supervisor 会调用同一个 goal planner 读取当前文档并写入新 goals；
+  `--goal-replenish-limit` 控制单轮补充上限，
+  `--goal-replenish-prompt` 可覆盖默认规划说明。
 - `loop` 会把同名 worker 的 `SUPERVISOR_STATUS` 写回目标队列；
   `done` 自动归档，`blocked/needs_user` 只记录状态并等待后续处理。
 - `blocked/needs_user` 活跃目标会带着 `last_status`、摘要和下一步进入
@@ -201,6 +206,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   自动动作已经发生但 `daemon.log` 仍为空。
 - `daemon start --max-fanout-launches N` 会把同轮 fanout 自动启动上限
   透传给后台 `loop`；watchdog 重启时仍复用状态文件里的原始命令。
+- `daemon start` 会把低水位补任务参数透传给后台 `loop`，
+  watchdog 重启时继续复用同一低水位策略。
 - `daemon status` 会从 `daemon.log` 和托管登记表汇总最近 LLM 动作、
   最近执行结果、最近 worker 模型/配置和状态协议。
 - `daemon watchdog` 可按状态文件检查后台 `loop` 是否还活着；
@@ -394,18 +401,20 @@ runner 内直接 cherry-pick、删除 worker 分支、worktree 或来源历史�
 
 ### 建议调用顺序
 
-`current_batch`、`fanout`、`replan` 接进 runner 时，顺序保持：
+`current_batch`、低水位补任务、`fanout`、`replan` 接进 runner 时，顺序保持：
 
 1. `scan/report`：先读取 Codex session、managed registry、目标状态和工作区存在性。
-2. `current_batch`：投影当前仍可推进的目标和 worker，过滤 done、已归档、已删除 worktree。
-3. `fanout planning/execution`：如果存在多个可推进目标或 goal plan 的 `parallel_recommendations`，生成受控候选并在并发上限内执行；跳过已有同名运行中 worker 的目标。
-4. `merge dispatch`：fanout 不适用且 `integration-review` 给出
+2. `low-water goal replenishment`：活跃目标低于显式阈值时，先让 LLM
+   根据当前文档补充目标队列。
+3. `current_batch`：投影当前仍可推进的目标和 worker，过滤 done、已归档、已删除 worktree。
+4. `fanout planning/execution`：如果存在多个可推进目标或 goal plan 的 `parallel_recommendations`，生成受控候选并在并发上限内执行；跳过已有同名运行中 worker 的目标。
+5. `merge dispatch`：fanout 不适用且 `integration-review` 给出
    `ready_to_integrate` 候选时，生成 `merge-work-order` 并启动专门
    merge worker。
-5. `LLM planner`：fanout 和 merge dispatch 都不适用时，在 `active_goals`、recent context、worker review 和白名单命令内选择一个动作。
-6. `execute`：只执行通过校验的 `request_context`、`launch_session`、`resume_session`、send 或 `ask_user`。
-7. `replan`：只有本轮执行的是成功的 `request_context` 时，才把检索结果加入 prompt，再执行一次 follow-up 动作。
-8. `current_batch refresh`：fanout 或 merge dispatch 同轮执行了 `launch_session` 后，
+6. `LLM planner`：fanout 和 merge dispatch 都不适用时，在 `active_goals`、recent context、worker review 和白名单命令内选择一个动作。
+7. `execute`：只执行通过校验的 `request_context`、`launch_session`、`resume_session`、send 或 `ask_user`。
+8. `replan`：只有本轮执行的是成功的 `request_context` 时，才把检索结果加入 prompt，再执行一次 follow-up 动作。
+9. `current_batch refresh`：fanout 或 merge dispatch 同轮执行了 `launch_session` 后，
    `loop --json` 会刷新一次 `current_batch`；下一轮 dashboard/web
    继续反映 worker、goal status 或 decision request 的变化。
 
@@ -420,6 +429,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_re
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_loop_suggests_all_active_goals -q
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_supervise_request_context_replans_same_iteration -q
 PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_loop_replans_blocked_goal_with_llm_context -q
+PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_supervisor_goal_replenishment.py -q
 ```
 
 fanout 回归必须覆盖：多个 active goals 中已有同名 running worker 时，只能为剩余目标执行

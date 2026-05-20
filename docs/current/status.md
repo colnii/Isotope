@@ -220,7 +220,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     提取真正可用的 goals JSON，忽略后续非 goal JSON 片段，并在无可用
     目标时返回可行动错误；日常 `loop` 没有显式
     `--goal` 时会读取最早活跃目标，daemon 因此可动态消费新目标，
-    不需要在启动命令里写死单个目标；匹配同名 worker 汇报
+    不需要在启动命令里写死单个目标；`loop/up/daemon start`
+    支持 `--goal-low-water N`，当活跃目标少于 N 个时让 LLM
+    根据当前文档补充目标队列，`--goal-replenish-limit` 控制单轮补充上限；
+    匹配同名 worker 汇报
     `SUPERVISOR_STATUS: done` 时，`loop` 会记录目标状态并自动归档；
     目标状态回写为 `done/blocked/needs_user` 时会尽力生成低敏通知，
     且通知失败不会反向破坏 goal 账本；

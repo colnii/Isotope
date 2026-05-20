@@ -85,6 +85,9 @@ def start_supervisor_daemon(
     max_context_requests: int,
     max_run_minutes: int,
     max_fanout_launches: int,
+    goal_low_water: int = 0,
+    goal_replenish_limit: int = DEFAULT_FANOUT_LIMIT,
+    goal_replenish_prompt: str | None = None,
     name: str | None = None,
     goal: str | None = None,
     llm_summary: bool = False,
@@ -114,6 +117,9 @@ def start_supervisor_daemon(
         max_context_requests=max_context_requests,
         max_run_minutes=max_run_minutes,
         max_fanout_launches=max_fanout_launches,
+        goal_low_water=goal_low_water,
+        goal_replenish_limit=goal_replenish_limit,
+        goal_replenish_prompt=goal_replenish_prompt,
         name=name,
         goal=goal,
         llm_summary=llm_summary,
@@ -331,6 +337,9 @@ def _build_loop_command(
     max_context_requests: int,
     max_run_minutes: int,
     max_fanout_launches: int,
+    goal_low_water: int = 0,
+    goal_replenish_limit: int = DEFAULT_FANOUT_LIMIT,
+    goal_replenish_prompt: str | None = None,
     name: str | None,
     goal: str | None,
     llm_summary: bool,
@@ -365,6 +374,12 @@ def _build_loop_command(
         command.extend(["--max-run-minutes", str(max_run_minutes)])
     if max_fanout_launches != DEFAULT_FANOUT_LIMIT:
         command.extend(["--max-fanout-launches", str(max_fanout_launches)])
+    if goal_low_water != 0:
+        command.extend(["--goal-low-water", str(goal_low_water)])
+    if goal_replenish_limit != DEFAULT_FANOUT_LIMIT:
+        command.extend(["--goal-replenish-limit", str(goal_replenish_limit)])
+    if goal_replenish_prompt:
+        command.extend(["--goal-replenish-prompt", goal_replenish_prompt])
     if name:
         command.extend(["--name", name])
     if goal:
