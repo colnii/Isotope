@@ -3242,6 +3242,10 @@ def _supervise_payload(
     )
     if fanout_plan is not None and (args.llm_action or args.llm_execute):
         payload["fanout_plan"] = fanout_plan
+        payload["fanout_log"] = _fanout_log_payload(
+            fanout_plan,
+            goal_replenishment=goal_replenishment,
+        )
     merge_dispatch: dict[str, Any] | None = None
     if (
         fanout_plan is None
@@ -3282,6 +3286,11 @@ def _supervise_payload(
                 fanout_plan,
                 report=action_report,
                 payload=payload,
+            )
+            payload["fanout_log"] = _fanout_log_payload(
+                fanout_plan,
+                goal_replenishment=goal_replenishment,
+                executed=payload["executed"],
             )
             if _fanout_execution_launched_workers(payload["executed"]):
                 refreshed_report = _scan_report(args)
@@ -3542,6 +3551,46 @@ def _fanout_paused_executed(fanout_status: dict[str, Any]) -> dict[str, Any]:
         "skipped": True,
         "reason": action["reason"],
     }
+
+
+def _fanout_log_payload(
+    fanout_plan: dict[str, Any],
+    *,
+    goal_replenishment: dict[str, Any] | None = None,
+    executed: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    plan_summary = fanout_plan.get("summary") if isinstance(fanout_plan, dict) else {}
+    if not isinstance(plan_summary, dict):
+        plan_summary = {}
+    log = {
+        "status": "executed" if executed is not None else "planned",
+        "trigger": _fanout_trigger(goal_replenishment),
+        "planned_launches": _int_value(plan_summary.get("launchable")),
+        "planned_skips": _int_value(plan_summary.get("skipped")),
+        "limit": _int_value(plan_summary.get("limit")),
+    }
+    if executed is not None:
+        executed_summary = executed.get("summary")
+        if not isinstance(executed_summary, dict):
+            executed_summary = {}
+        log["executed_launches"] = _int_value(executed_summary.get("launched"))
+        log["executed_skips"] = _int_value(executed_summary.get("skipped"))
+    return log
+
+
+def _fanout_trigger(goal_replenishment: dict[str, Any] | None) -> str:
+    if (
+        isinstance(goal_replenishment, dict)
+        and goal_replenishment.get("trigger") == "low_water"
+        and goal_replenishment.get("status") == "ok"
+        and _int_value(goal_replenishment.get("written_count")) > 0
+    ):
+        return "low_water"
+    return "active_goals"
+
+
+def _int_value(value: object) -> int:
+    return value if isinstance(value, int) else 0
 
 
 def _execute_fanout_launch_actions(

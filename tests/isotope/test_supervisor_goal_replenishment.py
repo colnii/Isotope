@@ -45,6 +45,36 @@ class BrokenGoalProvider:
         raise RuntimeError("provider unavailable")
 
 
+class ThreeGoalProvider:
+    def summarize(self, messages: list[dict[str, str]]) -> str:
+        payload = json.loads(messages[1]["content"])
+        assert payload["planning_trigger"] == "low_water"
+        assert payload["goal_count_limit"] == 3
+        return json.dumps(
+            {
+                "plan_summary": "低水位一次补三条任务。",
+                "goals": [
+                    {
+                        "goal": "实现低水位 fanout 目标 A。",
+                        "target_name": "low-water-fanout-a",
+                        "reason": "A 可独立验证。",
+                    },
+                    {
+                        "goal": "实现低水位 fanout 目标 B。",
+                        "target_name": "low-water-fanout-b",
+                        "reason": "B 可独立验证。",
+                    },
+                    {
+                        "goal": "实现低水位 fanout 目标 C。",
+                        "target_name": "low-water-fanout-c",
+                        "reason": "C 可独立验证。",
+                    },
+                ],
+            },
+            ensure_ascii=False,
+        )
+
+
 def _write_current_docs(root: Path) -> None:
     current = root / "docs" / "current"
     current.mkdir(parents=True)
@@ -145,6 +175,102 @@ def test_supervisor_loop_replenishes_goals_from_docs_when_low_water(
     assert payload["executed"]["summary"]["launched"] == 2
     assert len(captured) == 2
     assert read_active_supervisor_goals(codex_home=codex_home)
+
+
+def test_low_water_fanout_respects_launch_limit_and_logs_trigger(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_current_docs(workspace)
+    captured: list[list[str]] = []
+    running_pids: set[int] = set()
+
+    class FakeProcess:
+        def __init__(self, pid: int) -> None:
+            self.pid = pid
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured.append(command)
+        pid = 48000 + len(captured)
+        running_pids.add(pid)
+        return FakeProcess(pid)
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: ThreeGoalProvider(),
+    )
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._pid_is_running",
+        lambda pid: pid in running_pids,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._pid_is_running",
+        lambda pid: pid in running_pids,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--workspace-root",
+            str(workspace),
+            "--goal-low-water",
+            "3",
+            "--goal-replenish-limit",
+            "3",
+            "--max-fanout-launches",
+            "2",
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["goal_replenishment"]["written_count"] == 3
+    assert payload["fanout_plan"]["summary"] == {
+        "launchable": 2,
+        "skipped": 1,
+        "limit": 2,
+    }
+    assert payload["executed"]["summary"] == {
+        "launched": 2,
+        "skipped": 0,
+        "limit": 2,
+    }
+    assert payload["fanout_log"] == {
+        "status": "executed",
+        "trigger": "low_water",
+        "planned_launches": 2,
+        "planned_skips": 1,
+        "executed_launches": 2,
+        "executed_skips": 0,
+        "limit": 2,
+    }
+    assert len(captured) == 2
 
 
 def test_supervisor_loop_reports_low_water_goal_planning_errors_without_crashing(
