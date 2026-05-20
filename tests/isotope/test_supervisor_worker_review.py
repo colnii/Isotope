@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import json
+import shlex
 import subprocess
 from pathlib import Path
 
 from isotope.features.supervisor.runner import main as supervisor_main
-from isotope.features.supervisor.worker_review import collect_worker_reviews
+from isotope.features.supervisor.worker_review import (
+    collect_worker_reviews,
+    render_worker_review_plain,
+)
 
 
 def test_supervisor_worker_review_collects_completed_worker_with_changes(
@@ -94,6 +98,29 @@ def test_supervisor_worker_review_collects_completed_worker_with_changes(
     assert item["validation_commands"][0] == f"git -C {workspace} status --short --branch"
     assert "pytest tests/isotope -q" in item["validation_commands"][2]
     assert "不自动合并" in item["merge_hint"]
+    assert item["reviewer"]["needed"] is True
+    assert item["reviewer"]["cwd"] == str(workspace)
+    assert item["reviewer"]["branch"] == "supervisor/feature-a-12345678"
+    assert item["reviewer"]["goal"] == "review feature-a"
+    assert item["reviewer"]["change_summary"] == "2 个路径有改动"
+    assert item["reviewer"]["validation_commands"] == item["validation_commands"]
+    assert item["reviewer"]["must_check_risks"] == [
+        "只复查 diff、测试和 worker 汇报，不自动启动新 worker。",
+        "不自动合并、不删除 worktree、不重写分支。",
+        "确认改动是否越过原目标范围，尤其是未跟踪文件和 Supervisor 入口行为。",
+        "验证命令失败时先记录证据，避免用合并掩盖失败。",
+    ]
+    assert "codex exec" in item["reviewer"]["command"]
+    assert str(workspace) in item["reviewer"]["command"]
+    assert "目标：review feature-a" in item["reviewer"]["prompt"]
+    assert "cwd：" + str(workspace) in item["reviewer"]["prompt"]
+    assert "branch：supervisor/feature-a-12345678" in item["reviewer"]["prompt"]
+    assert "建议验证命令：" in item["reviewer"]["prompt"]
+    assert "必须检查的风险：" in item["reviewer"]["prompt"]
+
+    plain = render_worker_review_plain(payload)
+    assert "Fresh Codex 复查建议：" in plain
+    assert item["reviewer"]["command"] in plain
 
 
 def test_supervisor_worker_review_reports_deleted_worktree(tmp_path):
@@ -127,6 +154,8 @@ def test_supervisor_worker_review_reports_deleted_worktree(tmp_path):
         "git worktree list --porcelain",
     ]
     assert "worktree 已不存在" in item["merge_hint"]
+    assert item["reviewer"]["needed"] is False
+    assert item["reviewer"]["reason"] == "cwd/worktree 缺失，无法生成可执行复查建议"
 
 
 def test_supervisor_worker_review_reports_clean_worker_and_cli_json(
@@ -185,6 +214,75 @@ def test_supervisor_worker_review_reports_clean_worker_and_cli_json(
         "summary": "无本地改动",
     }
     assert item["supervisor_protocol"] == {"status": None, "summary": None, "next": None}
+    assert item["reviewer"]["needed"] is False
+    assert item["reviewer"]["reason"] == "无本地改动，无需 fresh Codex 复查"
+
+
+def test_supervisor_worker_review_quotes_reviewer_command(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = (
+        tmp_path
+        / "repo with spaces"
+        / ".worktrees"
+        / "supervisor"
+        / "feature-a;$(bad)-12345678"
+    )
+    workspace.mkdir(parents=True)
+    log_path = codex_home / "supervisor" / "logs" / "managed-004.log"
+    log_path.parent.mkdir(parents=True)
+    log_path.write_text("SUPERVISOR_STATUS: done\n", encoding="utf-8")
+    _write_record(
+        codex_home,
+        record_id="managed-004",
+        name="feature-a;$(bad)",
+        cwd=workspace,
+        log_path=log_path,
+        status="launched",
+        pid=444,
+    )
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[3:] == ["rev-parse", "--show-toplevel"]:
+            return subprocess.CompletedProcess(command, 0, str(workspace) + "\n", "")
+        if command[3:] == ["rev-parse", "--abbrev-ref", "HEAD"]:
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                "supervisor/feature-a;$(bad)-12345678\n",
+                "",
+            )
+        if command[3:] == ["status", "--short"]:
+            return subprocess.CompletedProcess(command, 0, " M src/example.py\n", "")
+        if command[3:] == ["diff", "--stat"]:
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                " src/example.py | 1 +\n",
+                "",
+            )
+        raise AssertionError(f"unexpected command: {command}")
+
+    payload = collect_worker_reviews(
+        codex_home=codex_home,
+        run=fake_run,
+        process_checker=lambda pid: False,
+    )
+
+    reviewer = payload["workers"][0]["reviewer"]
+
+    assert reviewer["needed"] is True
+    assert reviewer["command"] == (
+        "codex exec -C "
+        + shlex.quote(str(workspace))
+        + " "
+        + shlex.quote(reviewer["prompt"])
+    )
 
 
 def _write_record(

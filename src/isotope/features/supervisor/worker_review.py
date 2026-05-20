@@ -80,6 +80,14 @@ def render_worker_review_plain(payload: dict[str, Any]) -> str:
         if commands:
             lines.append("  建议验证：")
             lines.extend(f"    {command}" for command in commands)
+        reviewer = worker.get("reviewer", {})
+        if reviewer.get("needed"):
+            lines.append("  Fresh Codex 复查建议：")
+            lines.append(f"    {reviewer.get('command')}")
+            lines.append("    必查风险：")
+            lines.extend(f"      - {risk}" for risk in reviewer.get("must_check_risks", []))
+        elif reviewer.get("reason"):
+            lines.append(f"  Fresh Codex 复查：{reviewer.get('reason')}")
     return "\n".join(lines)
 
 
@@ -103,6 +111,15 @@ def _worker_review(
         "inferred_branch": _infer_supervisor_branch(cwd) if not cwd_exists else None,
     }
     changes = _changes_for_cwd(cwd, run=run) if cwd_exists else _missing_changes()
+    validation_commands = _validation_commands(cwd, cwd_exists=cwd_exists)
+    reviewer = _reviewer_suggestion(
+        record=record,
+        cwd=cwd,
+        cwd_exists=cwd_exists,
+        branch=branch,
+        changes=changes,
+        validation_commands=validation_commands,
+    )
     return {
         "record_id": record.record_id,
         "name": record.name,
@@ -120,7 +137,8 @@ def _worker_review(
         "worktree": worktree,
         "supervisor_protocol": protocol,
         "changes": changes,
-        "validation_commands": _validation_commands(cwd, cwd_exists=cwd_exists),
+        "validation_commands": validation_commands,
+        "reviewer": reviewer,
         "merge_hint": _merge_hint(branch=branch, cwd_exists=cwd_exists, changes=changes),
     }
 
@@ -193,6 +211,93 @@ def _validation_commands(cwd: Path, *, cwd_exists: bool) -> list[str]:
         f"git -C {quoted_cwd} diff --stat",
         f"cd {quoted_cwd} && PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q",
     ]
+
+
+def _reviewer_suggestion(
+    *,
+    record: ManagedCodexRecord,
+    cwd: Path,
+    cwd_exists: bool,
+    branch: str | None,
+    changes: dict[str, Any],
+    validation_commands: list[str],
+) -> dict[str, Any]:
+    if not cwd_exists:
+        return {
+            "needed": False,
+            "reason": "cwd/worktree 缺失，无法生成可执行复查建议",
+        }
+    if changes.get("status") != "modified":
+        return {
+            "needed": False,
+            "reason": "无本地改动，无需 fresh Codex 复查",
+        }
+
+    goal = record.prompt or record.name
+    branch_text = branch or "未知"
+    risks = [
+        "只复查 diff、测试和 worker 汇报，不自动启动新 worker。",
+        "不自动合并、不删除 worktree、不重写分支。",
+        "确认改动是否越过原目标范围，尤其是未跟踪文件和 Supervisor 入口行为。",
+        "验证命令失败时先记录证据，避免用合并掩盖失败。",
+    ]
+    prompt = _reviewer_prompt(
+        goal=goal,
+        cwd=cwd,
+        branch=branch_text,
+        changes=changes,
+        validation_commands=validation_commands,
+        risks=risks,
+    )
+    return {
+        "needed": True,
+        "goal": goal,
+        "cwd": str(cwd),
+        "branch": branch_text,
+        "change_summary": changes.get("summary"),
+        "changed_files": changes.get("files", []),
+        "diff_stat": changes.get("stat"),
+        "validation_commands": validation_commands,
+        "must_check_risks": risks,
+        "prompt": prompt,
+        "command": f"codex exec -C {shlex.quote(str(cwd))} {shlex.quote(prompt)}",
+    }
+
+
+def _reviewer_prompt(
+    *,
+    goal: str,
+    cwd: Path,
+    branch: str,
+    changes: dict[str, Any],
+    validation_commands: list[str],
+    risks: list[str],
+) -> str:
+    files = changes.get("files", [])
+    file_lines = [
+        f"- {item.get('status')}: {item.get('path')}"
+        for item in files
+        if item.get("path")
+    ]
+    lines = [
+        "请作为 fresh Codex 复查这个 worker 的结果，只审查和汇报，不自动启动、不自动合并、不删除 worktree。",
+        "",
+        f"目标：{goal}",
+        f"cwd：{cwd}",
+        f"branch：{branch}",
+        f"改动摘要：{changes.get('summary')}",
+    ]
+    if file_lines:
+        lines.append("改动文件：")
+        lines.extend(file_lines)
+    if changes.get("stat"):
+        lines.extend(["diff stat：", str(changes["stat"])])
+    lines.append("建议验证命令：")
+    lines.extend(f"- {command}" for command in validation_commands)
+    lines.append("必须检查的风险：")
+    lines.extend(f"- {risk}" for risk in risks)
+    lines.append("请最终用中文给出发现、验证证据和是否建议主控人工合并。")
+    return "\n".join(lines)
 
 
 def _merge_hint(
