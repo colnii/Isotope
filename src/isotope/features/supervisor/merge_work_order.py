@@ -126,7 +126,10 @@ def _execution_steps(
             "5. commit/push: 如果 cherry-pick 已产生提交且组合测试通过，检查 git log 和 "
             "git diff --check，然后 push 当前合并分支。"
         ),
-        "6. CI watch: push 后用 gh run list/gh run view 观察对应分支 CI，直到通过或失败。",
+        (
+            "6. CI watch: push 后用 gh run list/gh run view 观察对应分支 CI，"
+            "直到通过或失败；记录 CI run id 和 CI conclusion。"
+        ),
         (
             "7. stop rules: 遇到 conflict、测试失败、CI 失败或权限不足时停止并汇报 blocked；"
             "不要删除分支、不要重写历史。"
@@ -141,11 +144,20 @@ def _execution_steps(
 
 def _report_lines() -> list[str]:
     return [
-        "done_conditions: diff review 完成、cherry-pick 结果明确、组合测试和 CI watch 有证据。",
+        (
+            "done_conditions: diff review 完成、cherry-pick 结果明确、组合测试和 "
+            "CI watch 有证据，且报告包含 CI run id 和 CI conclusion。"
+        ),
         "report_protocol:",
         "SUPERVISOR_STATUS: needs_user|blocked|done",
-        "SUPERVISOR_SUMMARY: 用一句中文说明合并执行结果、测试/CI 证据和提交哈希。",
-        "SUPERVISOR_NEXT: 用一句中文说明下一步；若 blocked，写明需要用户或后续 worker 处理什么。",
+        (
+            "SUPERVISOR_SUMMARY: 用一句中文说明合并执行结果、测试证据、提交哈希、"
+            "CI run id 和 CI conclusion。"
+        ),
+        (
+            "SUPERVISOR_NEXT: 用一句中文说明下一步；CI 失败时写明失败时下一步，"
+            "包括需要查看的 CI run id 或需要后续 worker 处理什么。"
+        ),
     ]
 
 

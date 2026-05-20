@@ -47,6 +47,19 @@ def test_launch_work_order_prompt_includes_ask_user_gate():
     ) in prompt
 
 
+def test_launch_work_order_prompt_includes_ci_watch_writeback_contract():
+    prompt = build_launch_work_order_prompt(
+        target_name="worker-a",
+        cwd="/tmp/isotope-worker",
+        goal="实现目标队列 worker。",
+    )
+
+    assert "push 后 CI watch" in prompt
+    assert "CI run id" in prompt
+    assert "CI conclusion" in prompt
+    assert "失败时下一步" in prompt
+
+
 def test_coding_worker_profile_defaults_to_high_reasoning_gpt_5_5():
     args = argparse.Namespace(
         worker_codex_model=None,

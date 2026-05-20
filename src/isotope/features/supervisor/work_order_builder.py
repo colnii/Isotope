@@ -39,6 +39,12 @@ def build_launch_work_order_prompt(
                 "report_protocol: 完成、暂停或遇到阻塞时，严格输出 "
                 "SUPERVISOR_STATUS、SUPERVISOR_SUMMARY、SUPERVISOR_NEXT 三行。"
             ),
+            (
+                "ci_watch_writeback: 若本工单包含 push 后 CI watch，"
+                "SUPERVISOR_SUMMARY 必须写明 CI run id 和 CI conclusion；"
+                "SUPERVISOR_NEXT 必须写明结论后的下一步，失败时下一步要说明"
+                "需要查看哪条 run 或交给谁修复。"
+            ),
         ]
     )
 

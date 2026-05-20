@@ -41,6 +41,16 @@ def test_merge_work_order_prompt_keeps_branch_and_history_safety_rules():
     assert "不主动归档、不清理、不删除来源分支" in prompt
 
 
+def test_merge_work_order_prompt_requires_ci_watch_result_writeback():
+    prompt = build_merge_work_order_prompt(_integration_review_payload())
+
+    assert "CI run id" in prompt
+    assert "CI conclusion" in prompt
+    assert "SUPERVISOR_SUMMARY" in prompt
+    assert "SUPERVISOR_NEXT" in prompt
+    assert "CI 失败时" in prompt
+
+
 def test_merge_work_order_prompt_handles_empty_ready_group():
     payload = _integration_review_payload()
     payload["groups"]["ready_to_integrate"] = []
