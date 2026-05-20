@@ -259,7 +259,10 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   后台 process worker 仍在运行，会跳过恢复，避免同一个工作区被
   多个后台 Codex 重复驱动；已删除 worktree 或不存在 cwd 不再作为
   resume/context/launch 的正常候选，LLM 误选时只记录 skipped；
-  LLM 临时空响应或误选非法目标时会记录为 `monitor`，不让常驻 loop 退出。
+  LLM 临时空响应、非 JSON、worker 启动失败、resume/context 检索失败
+  和 merge dispatch 派发失败会写入 `supervisor/failure_events.jsonl`；
+  同一 lane 同类失败超过 `--max-failure-retries`（默认 3）后，
+  会自动生成 `ask_user` 拍板请求并复用低敏通知桥接层。
 - `delete_worktree` 是 deny-by-default（默认拒绝）的受控动作：LLM 只能
   对已知且 cwd 已缺失的 worker 表达清理意图；执行层固定 skipped，
   不自动删除目录、分支或登记。
@@ -359,12 +362,14 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 
 B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
 `--max-continue-count`、`--max-context-requests` 和
-`--max-run-minutes`：
-前者用 lane state 记录 `continue_count`，限制同一 lane
-同一状态下的继续推进；后者限制同一 supervise/loop 轮次里
-`request_context` 的执行次数；`--max-run-minutes` 按托管登记的
-`started_at` 判断同名 lane 是否已超时，超时后拦截自动或 LLM 继续推进。
-三者默认值都是 0，表示不启用限制；只有显式传入正数阈值时才会拦截，
+`--max-run-minutes`，以及失败重试护栏 `--max-failure-retries`：
+`--max-continue-count` 用 lane state 记录 `continue_count`，
+限制同一 lane 同一状态下的继续推进；`--max-context-requests`
+限制同一 supervise/loop 轮次里 `request_context` 的执行次数；
+`--max-run-minutes` 按托管登记的
+`started_at` 判断同名 lane 是否已超时，超时后拦截自动或 LLM 继续推进；
+`--max-failure-retries` 默认 3，超过后生成 `needs_user` 类拍板请求。
+前三者默认值都是 0，表示不启用限制；只有显式传入正数阈值时才会拦截，
 避免阻碍需要长时间运行的任务。
 当前回归测试已覆盖默认宽松预算下，多 lane loop 连续推进不同
 托管窗口。

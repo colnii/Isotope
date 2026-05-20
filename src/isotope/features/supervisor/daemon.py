@@ -85,6 +85,7 @@ def start_supervisor_daemon(
     prompt_cooldown: int,
     max_continue_count: int,
     max_context_requests: int,
+    max_failure_retries: int,
     max_run_minutes: int,
     max_fanout_launches: int,
     goal_low_water: int = 0,
@@ -119,6 +120,7 @@ def start_supervisor_daemon(
         prompt_cooldown=prompt_cooldown,
         max_continue_count=max_continue_count,
         max_context_requests=max_context_requests,
+        max_failure_retries=max_failure_retries,
         max_run_minutes=max_run_minutes,
         max_fanout_launches=max_fanout_launches,
         goal_low_water=goal_low_water,
@@ -374,6 +376,7 @@ def _build_loop_command(
     prompt_cooldown: int,
     max_continue_count: int,
     max_context_requests: int,
+    max_failure_retries: int,
     max_run_minutes: int,
     max_fanout_launches: int,
     goal_low_water: int = 0,
@@ -411,6 +414,8 @@ def _build_loop_command(
         command.extend(["--max-continue-count", str(max_continue_count)])
     if max_context_requests != 0:
         command.extend(["--max-context-requests", str(max_context_requests)])
+    if max_failure_retries != 3:
+        command.extend(["--max-failure-retries", str(max_failure_retries)])
     if max_run_minutes != 0:
         command.extend(["--max-run-minutes", str(max_run_minutes)])
     if max_fanout_launches != DEFAULT_FANOUT_LIMIT:

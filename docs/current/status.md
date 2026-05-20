@@ -189,8 +189,11 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     用户仍可用参数降配或覆盖；
     已有多 lane loop 回归测试覆盖默认宽松预算下连续推进不同
     托管窗口，并有显式时间预算回归覆盖超时 lane 不再继续推进；
-    模型动作返回非 JSON、非法目标或模型池空响应时会降级为
-    可见 `monitor`，不让 loop 直接退出；OpenAI-compatible provider
+    模型动作返回非 JSON、非法目标或模型池空响应时会写入
+    `supervisor/failure_events.jsonl` 并先降级为可见 `monitor`；
+    同一 lane 失败超过 `--max-failure-retries`（默认 3）后，
+    会写入 `supervisor/decision_requests.jsonl` 并发出低敏通知，
+    不让 loop 直接退出；OpenAI-compatible provider
     遇到 `finish_reason=length` 且只有 `reasoning_content`、无正文时，
     会重试一次并关闭 thinking，避免 reasoning token 吃完整个输出预算；
     Supervisor LLM 默认输出上限为 2048 tokens，降低动作 JSON 被截断

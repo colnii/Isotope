@@ -50,6 +50,7 @@ from .flow import (
     render_plain_report,
 )
 from .fanout import DEFAULT_FANOUT_LIMIT, build_fanout_launch_plan
+from .failure_ledger import FailureLedger, default_failure_ledger_path
 from .goal_queue import (
     archive_supervisor_goal,
     build_supervisor_goal_queue_view,
@@ -100,6 +101,7 @@ from .work_order_builder import build_launch_work_order_prompt
 
 EXECUTABLE_ADVICE_KINDS = {"send_status", "send_continue"}
 DEFAULT_MAX_CONTEXT_REQUESTS = 0
+DEFAULT_MAX_FAILURE_RETRIES = 3
 DEFAULT_MAX_RUN_MINUTES = 0
 DEFAULT_WORKER_CODEX_MODEL = "gpt-5.5"
 DEFAULT_WORKER_CODEX_CONFIG = ('model_reasoning_effort="high"',)
@@ -213,6 +215,18 @@ def _add_goal_replenishment_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_failure_retry_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--max-failure-retries",
+        type=int,
+        default=DEFAULT_MAX_FAILURE_RETRIES,
+        help=(
+            "Maximum repeated Supervisor failures before creating a decision "
+            "request. Default 3."
+        ),
+    )
+
+
 def _add_webhook_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--webhook-url",
@@ -311,6 +325,8 @@ def _build_parser() -> argparse.ArgumentParser:
             default=DEFAULT_MAX_CONTEXT_REQUESTS,
             help="Maximum request_context executions per supervise iteration. Default 0 disables.",
         )
+        if command == "supervise":
+            _add_failure_retry_args(subparsers.choices[command])
         subparsers.choices[command].add_argument(
             "--max-run-minutes",
             type=int,
@@ -441,6 +457,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_MAX_CONTEXT_REQUESTS,
         help="Maximum request_context executions per loop iteration. Default 0 disables.",
     )
+    _add_failure_retry_args(loop_parser)
     loop_parser.add_argument(
         "--max-run-minutes",
         type=int,
@@ -552,6 +569,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_MAX_CONTEXT_REQUESTS,
         help="Maximum request_context executions per loop iteration. Default 0 disables.",
     )
+    _add_failure_retry_args(up_parser)
     up_parser.add_argument(
         "--max-run-minutes",
         type=int,
@@ -684,6 +702,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_MAX_CONTEXT_REQUESTS,
         help="Maximum request_context executions per loop iteration. Default 0 disables.",
     )
+    _add_failure_retry_args(daemon_start_parser)
     daemon_start_parser.add_argument(
         "--max-run-minutes",
         type=int,
@@ -1685,6 +1704,8 @@ def _start_daemon_from_args(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("max_continue_count must be zero or positive")
     if args.max_context_requests < 0:
         raise ValueError("max_context_requests must be zero or positive")
+    if args.max_failure_retries < 0:
+        raise ValueError("max_failure_retries must be zero or positive")
     if args.max_run_minutes < 0:
         raise ValueError("max_run_minutes must be zero or positive")
     if args.max_fanout_launches <= 0:
@@ -1704,6 +1725,7 @@ def _start_daemon_from_args(args: argparse.Namespace) -> dict[str, Any]:
         prompt_cooldown=args.prompt_cooldown,
         max_continue_count=args.max_continue_count,
         max_context_requests=args.max_context_requests,
+        max_failure_retries=args.max_failure_retries,
         max_run_minutes=args.max_run_minutes,
         max_fanout_launches=args.max_fanout_launches,
         goal_low_water=args.goal_low_water,
@@ -2797,6 +2819,8 @@ def _validate_execution_modes(args: argparse.Namespace) -> None:
         raise ValueError("max_continue_count must be zero or positive")
     if getattr(args, "max_context_requests", 0) < 0:
         raise ValueError("max_context_requests must be zero or positive")
+    if getattr(args, "max_failure_retries", DEFAULT_MAX_FAILURE_RETRIES) < 0:
+        raise ValueError("max_failure_retries must be zero or positive")
     if getattr(args, "max_run_minutes", 0) < 0:
         raise ValueError("max_run_minutes must be zero or positive")
     if getattr(args, "max_fanout_launches", 1) <= 0:
@@ -3068,11 +3092,16 @@ def _supervise_payload(
         ):
             payload["llm_action"] = _idle_loop_llm_action()
         else:
-            payload["llm_action"] = _decide_action_with_llm(action_report, payload)
+            payload["llm_action"] = _decide_action_with_llm(args, action_report, payload)
             _promote_llm_command_suggestion(payload)
     if args.llm_execute:
         if fanout_plan is not None:
-            payload["executed"] = _execute_fanout_launch_actions(args, fanout_plan)
+            payload["executed"] = _execute_fanout_launch_actions(
+                args,
+                fanout_plan,
+                report=action_report,
+                payload=payload,
+            )
             if _fanout_execution_launched_workers(payload["executed"]):
                 refreshed_report = _scan_report(args)
                 payload["current_batch"] = _current_batch_payload(
@@ -3087,9 +3116,16 @@ def _supervise_payload(
                 )
             else:
                 payload["executed"] = _mark_merge_dispatch_execution(
-                    _execute_launch_action(
+                    _execute_failure_guarded_action(
                         args,
-                        merge_dispatch["launch_spec"],
+                        report=action_report,
+                        payload=payload,
+                        action=merge_dispatch["launch_spec"],
+                        event_type="merge_dispatch_failed",
+                        execute=lambda: _execute_launch_action(
+                            args,
+                            merge_dispatch["launch_spec"],
+                        ),
                     )
                 )
             if _executed_action_forces_print(payload["executed"]):
@@ -3248,13 +3284,26 @@ def _fanout_llm_action(fanout_plan: dict[str, Any]) -> dict[str, Any]:
 def _execute_fanout_launch_actions(
     args: argparse.Namespace,
     fanout_plan: dict[str, Any],
+    *,
+    report: Any | None = None,
+    payload: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     results: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
     for launch_spec in fanout_plan.get("launch_specs") or []:
         if not isinstance(launch_spec, dict):
             continue
-        result = _execute_launch_action(args, launch_spec)
+        result = _execute_failure_guarded_action(
+            args,
+            report=report,
+            payload=payload or {},
+            action=launch_spec,
+            event_type="worker_launch_failed",
+            execute=lambda launch_spec=launch_spec: _execute_launch_action(
+                args,
+                launch_spec,
+            ),
+        )
         if result.get("skipped"):
             skipped.append(result)
         else:
@@ -3339,7 +3388,7 @@ def _maybe_replan_after_context_request(
         recent = list(payload.get("recent_context_results") or [])
         recent.append(context_result)
         payload["recent_context_results"] = recent[-3:]
-    payload["llm_followup_action"] = _decide_action_with_llm(report, payload)
+    payload["llm_followup_action"] = _decide_action_with_llm(args, report, payload)
     followup_payload = {
         **payload,
         "llm_action": payload["llm_followup_action"],
@@ -4655,7 +4704,7 @@ def _print_advice(args: argparse.Namespace) -> None:
         payload["recent_context_results"] = _recent_context_results(args, action_report)
         payload["recent_decision_answers"] = _decision_answer_dicts(args)
         payload["worker_reviews"] = _worker_review_context(args)
-        payload["llm_action"] = _decide_action_with_llm(action_report, payload)
+        payload["llm_action"] = _decide_action_with_llm(args, action_report, payload)
         _promote_llm_command_suggestion(payload)
     if args.llm_execute:
         payload["executed"] = _execute_llm_action(args, action_report, payload)
@@ -5425,13 +5474,34 @@ def _execute_llm_action(
                 "reason": "resume session outside active goals",
                 "session_id": action.get("session_id"),
             }
-        return _execute_resume_action(args, report, action)
+        return _execute_failure_guarded_action(
+            args,
+            report=report,
+            payload=payload,
+            action=action,
+            event_type="resume_failed",
+            execute=lambda: _execute_resume_action(args, report, action),
+        )
     if kind == "launch_session":
-        return _execute_launch_action(args, action)
+        return _execute_failure_guarded_action(
+            args,
+            report=report,
+            payload=payload,
+            action=action,
+            event_type="worker_launch_failed",
+            execute=lambda: _execute_launch_action(args, action),
+        )
     if kind == "request_context":
         if budget_result := _context_request_budget_result(args, payload):
             return budget_result
-        return _execute_context_action(args, action)
+        return _execute_failure_guarded_action(
+            args,
+            report=report,
+            payload=payload,
+            action=action,
+            event_type="context_retrieval_failed",
+            execute=lambda: _execute_context_action(args, action),
+        )
     if kind == "ask_user":
         return _execute_ask_user_action(args, action)
     if kind == "delete_worktree":
@@ -5442,6 +5512,128 @@ def _execute_llm_action(
         payload,
         kind=kind,
         target_name=action.get("target_name"),
+    )
+
+
+def _execute_failure_guarded_action(
+    args: argparse.Namespace,
+    *,
+    report: Any,
+    payload: dict[str, Any],
+    action: dict[str, Any],
+    event_type: str,
+    execute: Any,
+) -> dict[str, Any]:
+    try:
+        result = execute()
+    except Exception as exc:  # noqa: BLE001 - failed lane should not stop the loop.
+        summary = _exception_summary(exc)
+        event = _record_failure_event(
+            args,
+            event_type=event_type,
+            report=report,
+            payload=payload,
+            action=action,
+            error_summary=summary,
+        )
+        if _failure_retry_exhausted(args, event):
+            return _execute_ask_user_action(
+                args,
+                _failure_decision_request_action(
+                    event=event,
+                    question=_failure_question(event_type),
+                    reason=f"{event_type} retry limit exceeded",
+                ),
+            )
+        return {
+            "kind": action.get("kind") or event_type,
+            "skipped": True,
+            "reason": "supervisor action failed",
+            "error": summary,
+            "failure_event": event,
+        }
+    if not isinstance(result, dict):
+        return result
+    skipped_event_type = _failure_event_type_for_skipped_result(
+        action,
+        result,
+        fallback_event_type=event_type,
+    )
+    if skipped_event_type is None:
+        return result
+    event = _record_failure_event(
+        args,
+        event_type=skipped_event_type,
+        report=report,
+        payload=payload,
+        action=action,
+        error_summary=str(result.get("reason") or "supervisor action skipped"),
+    )
+    result = {**result, "failure_event": event}
+    if _failure_retry_exhausted(args, event):
+        return _execute_ask_user_action(
+            args,
+            _failure_decision_request_action(
+                event=event,
+                question=_failure_question(skipped_event_type),
+                reason=f"{skipped_event_type} retry limit exceeded",
+            ),
+        )
+    return result
+
+
+def _failure_event_type_for_skipped_result(
+    action: dict[str, Any],
+    result: dict[str, Any],
+    *,
+    fallback_event_type: str,
+) -> str | None:
+    if result.get("skipped") is not True:
+        return None
+    reason = result.get("reason")
+    if not isinstance(reason, str):
+        return None
+    if _is_merge_dispatch_launch_action(action):
+        return "merge_dispatch_failed"
+    if reason in {"launch cwd missing", "worktree setup failed"}:
+        return "worker_launch_failed"
+    if reason == "resume cwd missing":
+        return "resume_failed"
+    if reason == "request_context cwd missing":
+        return "context_retrieval_failed"
+    if reason == "supervisor action failed":
+        return fallback_event_type
+    return None
+
+
+def _exception_summary(exc: Exception) -> str:
+    message = str(exc).strip()
+    if not message:
+        return type(exc).__name__
+    return f"{type(exc).__name__}: {message}"
+
+
+def _failure_question(event_type: str) -> str:
+    questions = {
+        "llm_planner_invalid_response": (
+            "Supervisor LLM planner 连续返回无效动作，请确认是否调整配置或改为人工处理当前目标。"
+        ),
+        "worker_launch_failed": (
+            "Supervisor 连续启动 worker 失败，请确认是否修复启动环境或跳过当前目标。"
+        ),
+        "resume_failed": (
+            "Supervisor 连续 resume 会话失败，请确认是否改为重新启动 worker 或人工接管。"
+        ),
+        "context_retrieval_failed": (
+            "Supervisor 连续检索上下文失败，请确认是否修复路径或跳过当前目标。"
+        ),
+        "merge_dispatch_failed": (
+            "Supervisor 连续派发 merge worker 失败，请确认是否人工处理合并。"
+        ),
+    }
+    return questions.get(
+        event_type,
+        "Supervisor 连续遇到同类失败，请确认下一步处理方式。",
     )
 
 
@@ -6577,7 +6769,11 @@ def _summarize_with_llm(report: Any) -> str:
     return generate_llm_summary(report, provider)
 
 
-def _decide_action_with_llm(report: Any, payload: dict[str, Any]) -> dict[str, Any]:
+def _decide_action_with_llm(
+    args: argparse.Namespace,
+    report: Any,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
     if not _has_llm_action_target(
         report,
         payload.get("command_suggestions"),
@@ -6607,6 +6803,19 @@ def _decide_action_with_llm(report: Any, payload: dict[str, Any]) -> dict[str, A
         )
     except ValueError as exc:
         error = str(exc)
+        failure_event = _record_failure_event(
+            args,
+            event_type="llm_planner_invalid_response",
+            report=report,
+            payload=payload,
+            error_summary=error,
+        )
+        if _failure_retry_exhausted(args, failure_event):
+            return _failure_decision_request_action(
+                event=failure_event,
+                question="Supervisor LLM planner 连续返回无效动作，请确认是否调整配置或改为人工处理当前目标。",
+                reason="LLM planner failure retry limit exceeded",
+            )
         reason = f"LLM 动作无效，已跳过执行：{error}"
         return {
             "kind": "monitor",
@@ -6615,6 +6824,110 @@ def _decide_action_with_llm(report: Any, payload: dict[str, Any]) -> dict[str, A
             "command_suggestion": None,
             "error": error,
         }
+
+
+def _record_failure_event(
+    args: argparse.Namespace,
+    *,
+    event_type: str,
+    report: Any | None = None,
+    payload: dict[str, Any] | None = None,
+    action: dict[str, Any] | None = None,
+    error_summary: str,
+) -> dict[str, Any]:
+    ledger = FailureLedger(default_failure_ledger_path(Path(args.codex_home)))
+    lane_name = _failure_lane_name(args, report=report, payload=payload, action=action)
+    goal_id = _failure_goal_id(payload=payload, action=action, lane_name=lane_name)
+    return ledger.record_failure(
+        event_type=event_type,
+        lane_name=lane_name,
+        goal_id=goal_id,
+        error_summary=error_summary,
+    )
+
+
+def _failure_retry_exhausted(
+    args: argparse.Namespace,
+    event: dict[str, Any],
+) -> bool:
+    retry_count = event.get("retry_count")
+    max_retries = getattr(args, "max_failure_retries", DEFAULT_MAX_FAILURE_RETRIES)
+    return isinstance(retry_count, int) and retry_count > max_retries
+
+
+def _failure_decision_request_action(
+    *,
+    event: dict[str, Any],
+    question: str,
+    reason: str,
+) -> dict[str, Any]:
+    event_type = str(event.get("event_type") or "supervisor_failure")
+    lane_name = event.get("lane_name")
+    lane_text = lane_name if isinstance(lane_name, str) and lane_name else "global"
+    goal_id = event.get("goal_id")
+    return {
+        "kind": "ask_user",
+        "session_id": f"failure:{event_type}:{lane_text}",
+        "target_name": lane_name if isinstance(lane_name, str) else None,
+        **({"goal_id": goal_id} if isinstance(goal_id, str) and goal_id else {}),
+        "question": question,
+        "reason": reason,
+        "context_status": "conflict",
+        "codex_requested_decision": True,
+        "instructions_exhausted": True,
+        "command_suggestion": None,
+        "failure_event": event,
+    }
+
+
+def _failure_lane_name(
+    args: argparse.Namespace,
+    *,
+    report: Any | None = None,
+    payload: dict[str, Any] | None = None,
+    action: dict[str, Any] | None = None,
+) -> str | None:
+    for value in (
+        action.get("target_name") if isinstance(action, dict) else None,
+        getattr(args, "name", None),
+    ):
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    if report is not None:
+        for session in getattr(report, "sessions", []):
+            name = getattr(session, "managed_name", None)
+            if isinstance(name, str) and name:
+                return name
+    if isinstance(payload, dict):
+        for goal in payload.get("active_goals") or []:
+            if isinstance(goal, dict):
+                name = goal.get("target_name")
+                if isinstance(name, str) and name.strip():
+                    return name.strip()
+    return None
+
+
+def _failure_goal_id(
+    *,
+    payload: dict[str, Any] | None = None,
+    action: dict[str, Any] | None = None,
+    lane_name: str | None = None,
+) -> str | None:
+    if isinstance(action, dict):
+        goal_id = action.get("goal_id")
+        if isinstance(goal_id, str) and goal_id.strip():
+            return goal_id.strip()
+    if isinstance(payload, dict):
+        for goal in payload.get("active_goals") or []:
+            if not isinstance(goal, dict):
+                continue
+            goal_id = goal.get("goal_id")
+            target_name = goal.get("target_name")
+            if not isinstance(goal_id, str) or not goal_id.strip():
+                continue
+            if lane_name is None or target_name == lane_name:
+                return goal_id.strip()
+    return None
 
 
 def _recent_context_results(args: argparse.Namespace, report: Any) -> list[dict[str, Any]]:

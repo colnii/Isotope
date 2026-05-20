@@ -207,6 +207,61 @@ def test_supervisor_loop_turns_empty_llm_response_into_monitor(
     assert payload["executed"]["skipped"] is True
 
 
+def test_supervisor_loop_escalates_repeated_empty_llm_response_to_decision_request(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    _patch_managed_tmux(monkeypatch, run_calls=[])
+
+    class EmptyProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            return ""
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: EmptyProvider(),
+    )
+
+    first = _run_loop(
+        codex_home=codex_home,
+        workspace_root=tmp_path,
+        capsys=capsys,
+        extra_args=["--max-failure-retries", "1"],
+    )
+    second = _run_loop(
+        codex_home=codex_home,
+        workspace_root=tmp_path,
+        capsys=capsys,
+        extra_args=["--max-failure-retries", "1"],
+    )
+
+    assert first["executed"]["kind"] == "monitor"
+    assert second["llm_action"]["kind"] == "ask_user"
+    assert second["executed"]["kind"] == "ask_user"
+    assert second["executed"]["requires_user"] is True
+    assert second["executed"]["target_name"] == "lane-a"
+    assert second["decision_requests"][0]["target_name"] == "lane-a"
+    assert second["decision_requests"][0]["session_id"] == (
+        "failure:llm_planner_invalid_response:lane-a"
+    )
+    ledger_path = codex_home / "supervisor" / "failure_events.jsonl"
+    events = [
+        json.loads(line)
+        for line in ledger_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert [event["retry_count"] for event in events] == [1, 2]
+    assert events[-1]["event_type"] == "llm_planner_invalid_response"
+    notifications = json.loads(
+        (codex_home / "notifications" / "index.json").read_text(encoding="utf-8")
+    )
+    assert notifications["notifications"][0]["type"] == "supervisor_decision_request"
+
+
 def test_supervisor_loop_turns_unknown_target_into_monitor(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -355,6 +410,50 @@ def test_supervisor_loop_executes_launch_session(
     assert captured["cwd"] == str(workspace)
     assert captured["command"][0:2] == ["codex", "exec"]
     assert f"goal: {goal}" in captured["command"][-1]
+
+
+def test_supervisor_loop_records_worker_launch_failure_without_crashing(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+
+    def fail_popen(*args: Any, **kwargs: Any) -> None:
+        raise OSError("codex binary missing")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fail_popen)
+    _patch_provider(
+        monkeypatch,
+        {
+            "kind": "launch_session",
+            "target_name": "new-worker",
+            "cwd": str(workspace),
+            "prompt": "继续推进 Supervisor 集成测试。",
+            "reason": "启动新 worker 推进目标。",
+        },
+    )
+
+    payload = _run_loop(
+        codex_home=codex_home,
+        workspace_root=workspace,
+        capsys=capsys,
+        extra_args=["--goal", "继续推进 Supervisor 集成测试。"],
+    )
+
+    assert payload["executed"]["kind"] == "launch_session"
+    assert payload["executed"]["skipped"] is True
+    assert payload["executed"]["reason"] == "supervisor action failed"
+    assert payload["executed"]["failure_event"]["event_type"] == "worker_launch_failed"
+    ledger_path = codex_home / "supervisor" / "failure_events.jsonl"
+    events = [
+        json.loads(line)
+        for line in ledger_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert events[-1]["lane_name"] == "new-worker"
+    assert events[-1]["retry_count"] == 1
 
 
 def test_supervisor_loop_executes_request_context(
