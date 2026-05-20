@@ -96,10 +96,13 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
 - `launch/resume --codex-model <model> --codex-config key=value` 可覆盖
   后台 Codex worker 的模型和配置。
 - `integration-review` 可只读扫描 managed worker 的 branch、worker HEAD、
-  `main` 包含关系和 merge conflict 风险，输出
+  `main` 包含关系、merge conflict 风险和候选 worktree 的 lint/test 结果，输出
   `ready_to_integrate`、`already_integrated`、`needs_review`、
   `conflict_risk` 四组，不执行 merge/push/delete；默认只看未归档且已
-  汇报 done 的 worker，排查历史噪音时再加 `--include-unfinished`。
+  汇报 done 的 worker，排查历史噪音时再加 `--include-unfinished`；
+  原本可进入 `ready_to_integrate` 的候选必须通过 `make lint`（若存在）
+  或 Python 语法检查，以及 `pytest tests/isotope -q`，失败会留在
+  `needs_review` 并输出 validation 摘要。
 - `replan` 可读取 `worker-review`、活跃目标和 `integration-review`
   分组，生成下一轮只读建议、复查合并候选和候选摘要；它只产出建议，
   不自动 merge、不归档、不删除分支或 worktree。
@@ -570,8 +573,9 @@ fanout（同轮多目标派发）：
 
 - worker 完成后会输出 `SUPERVISOR_STATUS: done`，同名 goal 被自动归档；
   若输出 `blocked` 或 `needs_user`，goal 必须继续留在活跃队列。
-- `integration-review` 把已完成且可合并的 worker 放进
-  `ready_to_integrate`，冲突或未完成 worker 不得进入该组。
+- `integration-review` 把已完成、分支干净、无冲突且 lint/test 通过的
+  worker 放进 `ready_to_integrate`；冲突、未完成或测试失败的 worker
+  不得进入该组。
 - `merge-work-order` 能渲染给 merge worker 的任务单；随后
   `loop --iterations 1 --json` 在存在 `ready_to_integrate` 候选时应出现
   `merge_dispatch`，并启动名为 `supervisor-merge-dispatch` 的受控 worker。

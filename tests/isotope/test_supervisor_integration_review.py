@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 from isotope.features.supervisor.runner import main as supervisor_main
@@ -49,6 +50,14 @@ def test_supervisor_integration_review_groups_ready_and_already_integrated(tmp_p
         codex_home=codex_home,
         include_unfinished=True,
         run=fake_run,
+        validation_run=_fake_validation(
+            {
+                ready_cwd: {
+                    _lint_command(): (0, "lint ok\n", ""),
+                    _pytest_command(): (0, "12 passed\n", ""),
+                },
+            }
+        ),
     )
 
     assert payload["status"] == "ok"
@@ -68,7 +77,8 @@ def test_supervisor_integration_review_groups_ready_and_already_integrated(tmp_p
     assert ready["base_commit"] == "main999"
     assert ready["main_contains_worker"] is False
     assert ready["worker_contains_main"] is True
-    assert ready["reason"] == "worker 已完成、分支干净、main 尚未包含且未检测到 merge conflict。"
+    assert ready["reason"] == "worker 已完成、分支干净、main 尚未包含、未检测到 merge conflict，且 lint/test 已通过。"
+    assert ready["validation"]["status"] == "passed"
     already = payload["groups"]["already_integrated"][0]
     assert already["record_id"] == "managed-done"
     assert already["main_contains_worker"] is True
@@ -77,6 +87,104 @@ def test_supervisor_integration_review_groups_ready_and_already_integrated(tmp_p
     assert "ready_to_integrate：1" in plain
     assert "already_integrated：1" in plain
     assert "supervisor/ready-12345678 @ ready111" in plain
+    assert "validation：passed" in plain
+
+
+def test_supervisor_integration_review_blocks_ready_worker_when_tests_fail(tmp_path):
+    from isotope.features.supervisor.integration_review import (
+        collect_integration_reviews,
+        render_integration_review_plain,
+    )
+
+    codex_home = tmp_path / ".codex"
+    cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "ready-tests-fail"
+    cwd.mkdir(parents=True)
+    _write_done_record(codex_home, record_id="managed-ready", name="ready", cwd=cwd)
+
+    fake_run = _fake_git(
+        {
+            cwd: {
+                ("rev-parse", "--abbrev-ref", "HEAD"): (0, "supervisor/ready-tests-fail\n", ""),
+                ("rev-parse", "HEAD"): (0, "ready111\n", ""),
+                ("rev-parse", "main"): (0, "main999\n", ""),
+                ("status", "--short"): (0, "", ""),
+                ("merge-base", "--is-ancestor", "ready111", "main"): (1, "", ""),
+                ("merge-base", "--is-ancestor", "main", "ready111"): (0, "", ""),
+                ("cherry", "main", "ready111"): (0, "+ ready111\n", ""),
+                ("merge-tree", "--write-tree", "main", "ready111"): (0, "tree-ok\n", ""),
+            },
+        }
+    )
+
+    payload = collect_integration_reviews(
+        codex_home=codex_home,
+        run=fake_run,
+        validation_run=_fake_validation(
+            {
+                cwd: {
+                    _lint_command(): (0, "lint ok\n", ""),
+                    _pytest_command(): (1, "1 failed, 7 passed\n", ""),
+                },
+            }
+        ),
+    )
+
+    assert payload["summary"]["ready_to_integrate"] == 0
+    assert payload["summary"]["needs_review"] == 1
+    item = payload["groups"]["needs_review"][0]
+    assert item["record_id"] == "managed-ready"
+    assert item["validation"]["status"] == "failed"
+    assert item["validation"]["commands"][0]["name"] == "lint"
+    assert item["validation"]["commands"][0]["status"] == "passed"
+    assert item["validation"]["commands"][1]["name"] == "unit_tests"
+    assert item["validation"]["commands"][1]["status"] == "failed"
+    assert "pytest tests/isotope -q failed" in item["reasons"]
+    assert item["reason"] == "worker 已完成但 lint/test 未通过；修复后才能进入 ready_to_integrate。"
+
+    plain = render_integration_review_plain(payload)
+    assert "ready_to_integrate：0" in plain
+    assert "needs_review：1" in plain
+    assert "validation：failed" in plain
+    assert "unit_tests failed rc=1" in plain
+
+
+def test_supervisor_integration_review_uses_make_lint_when_available(tmp_path):
+    from isotope.features.supervisor.integration_review import collect_integration_reviews
+
+    codex_home = tmp_path / ".codex"
+    cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "ready-make-lint"
+    cwd.mkdir(parents=True)
+    (cwd / "Makefile").write_text("lint:\n\tpython -m compileall -q src tests\n", encoding="utf-8")
+    _write_done_record(codex_home, record_id="managed-ready", name="ready", cwd=cwd)
+
+    payload = collect_integration_reviews(
+        codex_home=codex_home,
+        run=_fake_git(
+            {
+                cwd: {
+                    ("rev-parse", "--abbrev-ref", "HEAD"): (0, "supervisor/ready-make-lint\n", ""),
+                    ("rev-parse", "HEAD"): (0, "ready111\n", ""),
+                    ("rev-parse", "main"): (0, "main999\n", ""),
+                    ("status", "--short"): (0, "", ""),
+                    ("merge-base", "--is-ancestor", "ready111", "main"): (1, "", ""),
+                    ("merge-base", "--is-ancestor", "main", "ready111"): (0, "", ""),
+                    ("cherry", "main", "ready111"): (0, "+ ready111\n", ""),
+                    ("merge-tree", "--write-tree", "main", "ready111"): (0, "tree-ok\n", ""),
+                },
+            }
+        ),
+        validation_run=_fake_validation(
+            {
+                cwd: {
+                    ("make", "lint"): (0, "lint ok\n", ""),
+                    _pytest_command(): (0, "12 passed\n", ""),
+                },
+            }
+        ),
+    )
+
+    item = payload["groups"]["ready_to_integrate"][0]
+    assert item["validation"]["commands"][0]["display"] == "make lint"
 
 
 def test_supervisor_integration_review_treats_cherry_picked_worker_as_integrated(tmp_path):
@@ -346,6 +454,8 @@ def test_supervisor_integration_review_cli_json(tmp_path, capsys, monkeypatch):
                     ("merge-base", "--is-ancestor", "main", "ready111"): (0, "", ""),
                     ("cherry", "main", "ready111"): (0, "+ ready111\n", ""),
                     ("merge-tree", "--write-tree", "main", "ready111"): (0, "tree-ok\n", ""),
+                    _lint_command(): (0, "lint ok\n", ""),
+                    _pytest_command(): (0, "12 passed\n", ""),
                 }
             }
         ),
@@ -453,20 +563,60 @@ def _fake_git(
         check: bool,
         text: bool,
         capture_output: bool,
+        cwd: str | Path | None = None,
+        **_kwargs,
     ) -> subprocess.CompletedProcess[str]:
-        assert command[:3] == ["git", "-C", command[2]]
         assert check is False
         assert text is True
         assert capture_output is True
-        cwd = Path(command[2])
-        args = tuple(command[3:])
+        if command[:2] == ["git", "-C"]:
+            worktree = Path(command[2])
+            args = tuple(command[3:])
+        else:
+            assert cwd is not None
+            worktree = Path(cwd)
+            args = tuple(command)
         try:
-            returncode, stdout, stderr = responses[cwd][args]
+            returncode, stdout, stderr = responses[worktree][args]
         except KeyError as exc:
             raise AssertionError(f"unexpected command: {command}") from exc
         return subprocess.CompletedProcess(command, returncode, stdout, stderr)
 
     return fake_run
+
+
+def _fake_validation(
+    responses: dict[Path, dict[tuple[str, ...], tuple[int, str, str]]],
+):
+    def fake_run(
+        command: list[str],
+        *,
+        cwd: str | Path,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+        **_kwargs,
+    ) -> subprocess.CompletedProcess[str]:
+        assert check is False
+        assert text is True
+        assert capture_output is True
+        worktree = Path(cwd)
+        args = tuple(command)
+        try:
+            returncode, stdout, stderr = responses[worktree][args]
+        except KeyError as exc:
+            raise AssertionError(f"unexpected validation command: {command}") from exc
+        return subprocess.CompletedProcess(command, returncode, stdout, stderr)
+
+    return fake_run
+
+
+def _lint_command() -> tuple[str, ...]:
+    return (sys.executable, "-m", "compileall", "-q", "src/isotope", "tests/isotope")
+
+
+def _pytest_command() -> tuple[str, ...]:
+    return (sys.executable, "-m", "pytest", "tests/isotope", "-q")
 
 
 def _write_done_record(

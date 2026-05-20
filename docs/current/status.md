@@ -91,10 +91,13 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `codex exec -C ...` 复查命令；该入口只做高可信审查汇总，
     不自动合并、不删除 worktree 或分支；
     `integration-review` 可只读扫描 managed worker 的 branch、
-    worker HEAD、`main` 是否已包含和 merge-tree 冲突风险，并输出
+    worker HEAD、`main` 是否已包含、merge-tree 冲突风险和候选 worktree
+    的 lint/test 结果，并输出
     `ready_to_integrate`、`already_integrated`、`needs_review`、
     `conflict_risk` 四组；默认只看未归档且已汇报 done 的 worker，
-    `--include-unfinished` 才纳入未完成历史；该入口不执行 merge/push/delete；
+    `--include-unfinished` 才纳入未完成历史；测试失败的候选留在
+    `needs_review`，不会计入 `ready_to_integrate`；该入口不执行
+    merge/push/delete；
     `replan` 可读取 `worker-review` 的 `automation_candidates`、当前
     active goals 和 `integration-review` 的四组集成状态，输出下一轮
     只读建议及可交给动态 Codex worker 复查的合并候选，不自动合并或归档；

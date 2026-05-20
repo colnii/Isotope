@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Callable
 
@@ -28,16 +30,23 @@ def collect_integration_reviews(
     base_ref: str = "main",
     include_unfinished: bool = False,
     run: RunCommand | None = None,
+    validation_run: RunCommand | None = None,
 ) -> dict[str, Any]:
     """Collect read-only integration status for Supervisor-managed workers."""
     run_command = run or subprocess.run
+    validation_command = validation_run or (subprocess.run if run is None else None)
     records = [
         record
         for record in read_managed_records(default_registry_path(codex_home))
         if _integration_record_is_in_scope(record, include_unfinished=include_unfinished)
     ]
     workers = [
-        _worker_integration_review(record, base_ref=base_ref, run=run_command)
+        _worker_integration_review(
+            record,
+            base_ref=base_ref,
+            run=run_command,
+            validation_run=validation_command,
+        )
         for record in records
     ]
     groups: dict[str, list[dict[str, Any]]] = {group: [] for group in GROUPS}
@@ -67,12 +76,15 @@ def review_managed_record_integration(
     *,
     base_ref: str = "main",
     run: RunCommand | None = None,
+    validation_run: RunCommand | None = None,
 ) -> dict[str, Any]:
     """Review one managed worker record without applying registry scope filters."""
+    run_command = run or subprocess.run
     return _worker_integration_review(
         record,
         base_ref=base_ref,
-        run=run or subprocess.run,
+        run=run_command,
+        validation_run=validation_run or (subprocess.run if run is None else None),
     )
 
 
@@ -117,6 +129,19 @@ def render_integration_review_plain(payload: dict[str, Any]) -> str:
             lines.append(f"  {branch} @ {commit}")
             lines.append(f"  cwd：{item.get('cwd')}")
             lines.append(f"  原因：{item.get('reason')}")
+            validation = item.get("validation")
+            if isinstance(validation, dict) and validation.get("status") != "not_applicable":
+                lines.append(f"  validation：{validation.get('status')}")
+                for command in validation.get("commands") or []:
+                    if not isinstance(command, dict):
+                        continue
+                    lines.append(
+                        "    - {name} {status} rc={returncode}".format(
+                            name=command.get("name"),
+                            status=command.get("status"),
+                            returncode=command.get("returncode"),
+                        )
+                    )
     return "\n".join(lines)
 
 
@@ -125,6 +150,7 @@ def _worker_integration_review(
     *,
     base_ref: str,
     run: RunCommand,
+    validation_run: RunCommand | None,
 ) -> dict[str, Any]:
     cwd = Path(record.cwd).expanduser()
     cwd_exists = cwd.is_dir()
@@ -171,6 +197,16 @@ def _worker_integration_review(
         merge_conflict=merge_check["conflict"],
         merge_worker_source=merge_worker_source,
     )
+    validation = _not_applicable_validation()
+    if group == "ready_to_integrate":
+        validation = _run_candidate_validation(cwd, run=validation_run)
+        if validation["status"] == "passed":
+            reason = "worker 已完成、分支干净、main 尚未包含、未检测到 merge conflict，且 lint/test 已通过。"
+            reasons = [*reasons, "lint/test 已通过"]
+        elif validation["status"] == "failed":
+            group = "needs_review"
+            reason = "worker 已完成但 lint/test 未通过；修复后才能进入 ready_to_integrate。"
+            reasons = [*reasons, *_validation_failure_reasons(validation)]
     return {
         "record_id": record.record_id,
         "name": record.name,
@@ -190,6 +226,7 @@ def _worker_integration_review(
         "merge_worker_source": merge_worker_source,
         "merge_conflict": merge_check["conflict"],
         "merge_check": merge_check,
+        "validation": validation,
         "group": group,
         "reason": reason,
         "reasons": reasons,
@@ -278,6 +315,121 @@ def _classify(
         "worker 已完成、分支干净、main 尚未包含且未检测到 merge conflict。",
         [*reasons, "main 尚未包含 worker 提交或等价补丁", "未检测到 merge conflict"],
     )
+
+
+def _run_candidate_validation(
+    cwd: Path,
+    *,
+    run: RunCommand | None,
+) -> dict[str, Any]:
+    if run is None:
+        return {
+            "status": "skipped",
+            "commands": [],
+            "note": "validation_run 未提供；测试注入场景跳过 lint/test。",
+        }
+    commands = [
+        ("lint", *_lint_command(cwd)),
+        (
+            "unit_tests",
+            [sys.executable, "-m", "pytest", "tests/isotope", "-q"],
+            "pytest tests/isotope -q",
+        ),
+    ]
+    results = [
+        _run_validation_command(cwd, name=name, command=command, display=display, run=run)
+        for name, command, display in commands
+    ]
+    return {
+        "status": "passed" if all(result["status"] == "passed" for result in results) else "failed",
+        "commands": results,
+    }
+
+
+def _lint_command(cwd: Path) -> tuple[list[str], str]:
+    makefile = cwd / "Makefile"
+    if makefile.exists() and _makefile_has_lint_target(makefile):
+        return ["make", "lint"], "make lint"
+    return (
+        [sys.executable, "-m", "compileall", "-q", "src/isotope", "tests/isotope"],
+        "python -m compileall -q src/isotope tests/isotope",
+    )
+
+
+def _makefile_has_lint_target(makefile: Path) -> bool:
+    try:
+        text = makefile.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return any(line.startswith("lint:") for line in text.splitlines())
+
+
+def _run_validation_command(
+    cwd: Path,
+    *,
+    name: str,
+    command: list[str],
+    display: str,
+    run: RunCommand,
+) -> dict[str, Any]:
+    try:
+        completed = run(
+            command,
+            cwd=str(cwd),
+            check=False,
+            text=True,
+            capture_output=True,
+            env=_validation_env(cwd),
+        )
+    except (OSError, subprocess.SubprocessError, TypeError) as exc:
+        return {
+            "name": name,
+            "command": command,
+            "display": display,
+            "status": "failed",
+            "returncode": None,
+            "stdout_tail": "",
+            "stderr_tail": str(exc),
+        }
+    return {
+        "name": name,
+        "command": command,
+        "display": display,
+        "status": "passed" if completed.returncode == 0 else "failed",
+        "returncode": completed.returncode,
+        "stdout_tail": _tail_text(completed.stdout),
+        "stderr_tail": _tail_text(completed.stderr),
+    }
+
+
+def _validation_env(cwd: Path) -> dict[str, str]:
+    env = dict(os.environ)
+    src_path = str(cwd / "src")
+    current = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = src_path if not current else f"{src_path}{os.pathsep}{current}"
+    return env
+
+
+def _tail_text(text: str | None, *, limit: int = 1200) -> str:
+    if not text:
+        return ""
+    stripped = text.strip()
+    if len(stripped) <= limit:
+        return stripped
+    return stripped[-limit:]
+
+
+def _validation_failure_reasons(validation: dict[str, Any]) -> list[str]:
+    reasons: list[str] = []
+    for command in validation.get("commands") or []:
+        if not isinstance(command, dict) or command.get("status") == "passed":
+            continue
+        reasons.append(f"{command.get('display')} failed")
+    return reasons
+
+
+def _not_applicable_validation() -> dict[str, Any]:
+    return {"status": "not_applicable", "commands": []}
 
 
 def _main_has_worker_patch(
