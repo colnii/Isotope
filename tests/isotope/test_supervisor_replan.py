@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import json
+
 from isotope.features.supervisor.replan import (
     build_supervisor_replan,
     render_supervisor_replan_plain,
 )
+from isotope.features.supervisor.runner import main as supervisor_main
 
 
 def test_supervisor_replan_turns_worker_review_candidates_into_read_only_advice():
@@ -193,3 +196,84 @@ def test_supervisor_replan_plain_output_keeps_safety_visible():
     assert "总建议：1 / 复查合并 1 / 继续拆分 0 / 归档等待 0 / 恢复/归档 0 / active goals 0" in text
     assert "安全：只生成下一轮建议，不自动合并、不自动归档、不删除 worktree 或分支。" in text
     assert "复查合并：merge-ready / managed-001" in text
+
+
+def test_supervisor_replan_cli_json_turns_worker_review_candidates_into_advice(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    worker_reviews = {
+        "status": "ok",
+        "automation_candidates": {
+            "review_then_merge": [
+                {
+                    "record_id": "managed-011",
+                    "name": "ready-worker",
+                    "reason": "worker 已完成且有本地改动。",
+                    "next_actions": ["审查 diff", "运行 pytest"],
+                }
+            ]
+        },
+        "safety": {"auto_merge": False},
+    }
+    active_goals = [
+        {
+            "goal_id": "goal-011",
+            "target_name": "ready-worker",
+            "worker_session_id": "managed:managed-011",
+        }
+    ]
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_worker_reviews",
+        lambda *, codex_home: worker_reviews,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._active_goal_dicts",
+        lambda args, **kwargs: active_goals,
+    )
+
+    exit_code = supervisor_main(
+        ["replan", "--codex-home", str(tmp_path / ".codex"), "--json"]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["summary"]["review_then_merge"] == 1
+    assert payload["recommendations"][0]["target_name"] == "ready-worker"
+    assert payload["recommendations"][0]["read_only"] is True
+    assert payload["safety"]["auto_merge"] is False
+
+
+def test_supervisor_replan_cli_plain_prints_read_only_advice(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_worker_reviews",
+        lambda *, codex_home: {
+            "automation_candidates": {
+                "continue_or_split": [
+                    {
+                        "record_id": "managed-012",
+                        "name": "blocked-worker",
+                        "reason": "worker 汇报 blocked。",
+                    }
+                ]
+            }
+        },
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._active_goal_dicts",
+        lambda args, **kwargs: [],
+    )
+
+    exit_code = supervisor_main(["replan", "--codex-home", str(tmp_path / ".codex")])
+
+    assert exit_code == 0
+    text = capsys.readouterr().out
+    assert "[Supervisor Replan]" in text
+    assert "继续拆分：blocked-worker / managed-012" in text
+    assert "安全：只生成下一轮建议，不自动合并、不自动归档、不删除 worktree 或分支。" in text

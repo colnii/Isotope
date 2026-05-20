@@ -79,6 +79,7 @@ from .registry import (
     resume_managed_codex,
     send_to_managed_codex,
 )
+from .replan import build_supervisor_replan, render_supervisor_replan_plain
 from .tmux_discovery import discover_tmux_adopt_candidates
 from .worker_review import collect_worker_reviews, render_worker_review_plain
 
@@ -781,6 +782,16 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Codex home directory. Defaults to ~/.codex.",
     )
     worker_review_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    replan_parser = subparsers.add_parser(
+        "replan",
+        help="Build read-only next-round advice from worker-review candidates.",
+    )
+    replan_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    replan_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     context_parser = subparsers.add_parser(
         "context",
         help="Search project context and record the result for the LLM planner.",
@@ -1227,6 +1238,13 @@ def main(argv: list[str] | None = None) -> int:
                 _print_json(payload)
             else:
                 print(render_worker_review_plain(payload))
+            return 0
+        if args.command == "replan":
+            payload = _replan_payload(args)
+            if args.json:
+                _print_json(payload)
+            else:
+                print(render_supervisor_replan_plain(payload))
             return 0
         if args.command == "context":
             result = request_project_context(
@@ -3304,6 +3322,13 @@ def _goal_payload(args: argparse.Namespace) -> dict[str, Any]:
             "active_goals": _active_goal_dicts(args, include_status=True),
         }
     raise ValueError(f"unsupported goal command: {args.goal_command}")
+
+
+def _replan_payload(args: argparse.Namespace) -> dict[str, Any]:
+    return build_supervisor_replan(
+        worker_reviews=collect_worker_reviews(codex_home=Path(args.codex_home)),
+        active_goals=_active_goal_dicts(args, include_status=True),
+    )
 
 
 def _goal_command_goal_text(

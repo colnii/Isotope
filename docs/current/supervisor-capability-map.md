@@ -104,6 +104,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   继续拆任务、缺失 worktree 和可归档项，并把这些决策投影成结构化
   `automation_candidates`，供后续主循环读取；它只做高可信汇总，
   不自动合并、不删除 worktree 或分支。
+- `replan` CLI 会读取 `worker-review` 的 `automation_candidates` 和当前
+  active goals，生成下一轮只读建议；输出可用 plain 或 `--json`，
+  不自动合并、不自动归档、不删除 worktree 或分支。
 - LLM planner 会看到仍在运行的 process 托管记录作为候选目标，避免状态面板
   误报“只有 tmux 才可控”；已完成的后台 worker 转入
   `worker-review`/`cleanup`，不再被常驻 `loop` 反复催促。

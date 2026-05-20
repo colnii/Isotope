@@ -86,6 +86,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     改动摘要、建议验证命令、复查提示（reviewer prompt）和可复制
     `codex exec -C ...` 复查命令；该入口只做高可信审查汇总，
     不自动合并、不删除 worktree 或分支；
+    `replan` 可读取 `worker-review` 的 `automation_candidates` 和当前
+    active goals，输出下一轮只读建议，不自动合并或归档；
     `resume` 可通过
     `codex exec resume <session> <prompt>` 或 `--last` 恢复历史会话，
     会带 `--skip-git-repo-check` 以兼容历史会话落在非仓库父目录的情况，
