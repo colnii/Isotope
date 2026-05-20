@@ -198,7 +198,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `goal add/list/archive` 可维护持久目标队列，`goal add "目标文本"`
     支持一句话直接入队；`goal plan "高层目标" --write` 是显式
     AI-first 目标规划入口，会读取当前 `status`、任务队列和能力地图，
-    围绕高层目标让 LLM 生成一小批候选目标，默认只预览，传 `--write` 才写入
+    围绕高层目标让 LLM 生成一小批候选目标；当目标面向完整功能板块时，
+    还会返回可审阅的计划摘要、阶段/批次、并行建议、停止条件和验收条件。
+    默认只预览，传 `--write` 才写入
     `~/.codex/supervisor/goals.jsonl`；`goal plan` 会从带说明的模型输出中
     提取真正可用的 goals JSON，忽略后续非 goal JSON 片段，并在无可用
     目标时返回可行动错误；日常 `loop` 没有显式

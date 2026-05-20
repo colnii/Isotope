@@ -3311,6 +3311,45 @@ def _print_goal_plain(payload: dict[str, Any]) -> None:
     if candidates:
         mode = "写入" if payload.get("mode") == "write" else "预览"
         print(f"LLM 目标规划：{mode}")
+        plan_summary = payload.get("plan_summary")
+        if isinstance(plan_summary, str) and plan_summary:
+            print(f"计划摘要：{plan_summary}")
+        phases = payload.get("phases") or []
+        if phases:
+            print("阶段/批次：")
+            for phase in phases:
+                if not isinstance(phase, dict):
+                    continue
+                name = phase.get("name") or "未命名阶段"
+                print(f"- {name}")
+                for goal in phase.get("goals") or []:
+                    print(f"  目标：{goal}")
+                for condition in phase.get("stop_conditions") or []:
+                    print(f"  停止条件：{condition}")
+                for condition in phase.get("acceptance_conditions") or []:
+                    print(f"  验收条件：{condition}")
+        recommendations = payload.get("parallel_recommendations") or []
+        if recommendations:
+            print("并行建议：")
+            for item in recommendations:
+                if not isinstance(item, dict):
+                    continue
+                batch = item.get("batch") or "未命名批次"
+                targets = ", ".join(item.get("targets") or [])
+                reason = item.get("reason") or ""
+                print(f"- {batch}: {targets}")
+                if reason:
+                    print(f"  依据：{reason}")
+        stop_conditions = payload.get("stop_conditions") or []
+        if stop_conditions:
+            print("停止条件：")
+            for condition in stop_conditions:
+                print(f"- {condition}")
+        acceptance_conditions = payload.get("acceptance_conditions") or []
+        if acceptance_conditions:
+            print("验收条件：")
+            for condition in acceptance_conditions:
+                print(f"- {condition}")
         for item in candidates:
             print(f"- {item['target_name']} {item['goal']}")
             print(f"  依据：{item['reason']}")

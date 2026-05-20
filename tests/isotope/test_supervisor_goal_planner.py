@@ -60,6 +60,54 @@ class SeededGoalProvider:
         )
 
 
+class BoardPlanGoalProvider:
+    def summarize(self, messages: list[dict[str, str]]) -> str:
+        user_payload = json.loads(messages[1]["content"])
+        schema = user_payload["output_schema"]
+        assert "plan_summary" in schema
+        assert "phases" in schema
+        assert "parallel_recommendations" in schema
+        assert "stop_conditions" in schema
+        assert "acceptance_conditions" in schema
+        return json.dumps(
+            {
+                "plan_summary": "把 Supervisor dashboard 作为完整板块推进。",
+                "phases": [
+                    {
+                        "name": "入口收敛",
+                        "goals": ["梳理 dashboard 刷新和托管输出入口。"],
+                        "stop_conditions": ["发现入口 contract 冲突时暂停。"],
+                        "acceptance_conditions": ["入口 contract 有 pytest 覆盖。"],
+                    },
+                    {
+                        "name": "并行实现",
+                        "goals": ["拆分状态按钮和 hosted output 展示。"],
+                    },
+                ],
+                "parallel_recommendations": [
+                    {
+                        "batch": "批次 2",
+                        "targets": [
+                            "supervisor-status-buttons",
+                            "supervisor-hosted-output",
+                        ],
+                        "reason": "两个目标写入区域不同，可并行。",
+                    }
+                ],
+                "stop_conditions": ["任一 worker 返回 needs_user 时停止继续派发。"],
+                "acceptance_conditions": ["dashboard 可看到刷新后的 goals 和 worker 状态。"],
+                "goals": [
+                    {
+                        "goal": "补 Supervisor dashboard 刷新验收。",
+                        "target_name": "supervisor-dashboard-refresh",
+                        "reason": "板块计划第一阶段需要先锁入口。",
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        )
+
+
 class NonJsonGoalProvider:
     def summarize(self, messages: list[dict[str, str]]) -> str:
         return "我需要更多上下文，暂时不能给出目标。"
@@ -159,6 +207,67 @@ def test_supervisor_goal_plan_writes_selected_candidates(
     assert len(active) == 1
     assert active[0].goal == "为 Supervisor web 增加目标队列状态筛选。"
     assert active[0].target_name == "supervisor-web-goal-filter"
+
+
+def test_supervisor_goal_plan_surfaces_board_level_review_plan(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    root = tmp_path / "repo"
+    root.mkdir()
+    _write_current_docs(root)
+    codex_home = tmp_path / ".codex"
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: BoardPlanGoalProvider(),
+    )
+
+    exit_code = supervisor_main(
+        [
+            "goal",
+            "plan",
+            "推进 Supervisor dashboard 完整板块",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(root),
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["plan_summary"] == "把 Supervisor dashboard 作为完整板块推进。"
+    assert payload["phases"] == [
+        {
+            "name": "入口收敛",
+            "goals": ["梳理 dashboard 刷新和托管输出入口。"],
+            "stop_conditions": ["发现入口 contract 冲突时暂停。"],
+            "acceptance_conditions": ["入口 contract 有 pytest 覆盖。"],
+        },
+        {
+            "name": "并行实现",
+            "goals": ["拆分状态按钮和 hosted output 展示。"],
+        },
+    ]
+    assert payload["parallel_recommendations"] == [
+        {
+            "batch": "批次 2",
+            "targets": [
+                "supervisor-status-buttons",
+                "supervisor-hosted-output",
+            ],
+            "reason": "两个目标写入区域不同，可并行。",
+        }
+    ]
+    assert payload["stop_conditions"] == ["任一 worker 返回 needs_user 时停止继续派发。"]
+    assert payload["acceptance_conditions"] == [
+        "dashboard 可看到刷新后的 goals 和 worker 状态。"
+    ]
+    assert payload["candidates"][0]["target_name"] == "supervisor-dashboard-refresh"
+    assert payload["written_goals"] == []
+    assert read_active_supervisor_goals(codex_home=codex_home) == ()
 
 
 def test_supervisor_goal_add_accepts_positional_one_sentence_goal(tmp_path, capsys):

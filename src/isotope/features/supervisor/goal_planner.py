@@ -37,6 +37,16 @@ class GoalCandidate:
         }
 
 
+@dataclass(frozen=True)
+class GoalPlanningResult:
+    candidates: list[GoalCandidate]
+    plan_summary: str | None
+    phases: list[dict[str, Any]]
+    parallel_recommendations: list[dict[str, Any]]
+    stop_conditions: list[str]
+    acceptance_conditions: list[str]
+
+
 def plan_supervisor_goals(
     *,
     root: Path | str,
@@ -64,7 +74,8 @@ def plan_supervisor_goals(
             write_mode=write,
         )
     )
-    candidates = parse_goal_candidates(raw_answer)[:limit]
+    planning = parse_goal_planning_result(raw_answer)
+    candidates = planning.candidates[:limit]
     if not candidates:
         raise ValueError("LLM returned no goal candidates")
 
@@ -87,6 +98,11 @@ def plan_supervisor_goals(
         "sources": list(PLANNING_DOCS),
         "candidates": [candidate.to_dict() for candidate in candidates],
         "written_goals": written,
+        "plan_summary": planning.plan_summary,
+        "phases": planning.phases,
+        "parallel_recommendations": planning.parallel_recommendations,
+        "stop_conditions": planning.stop_conditions,
+        "acceptance_conditions": planning.acceptance_conditions,
     }
 
 
@@ -135,6 +151,27 @@ def build_goal_planning_messages(
                     "goal_count_limit": limit,
                     "write_mode": write_mode,
                     "output_schema": {
+                        "plan_summary": (
+                            "面向完整功能板块的可审阅计划摘要；"
+                            "如果只是在拆一个小目标，可用一句话说明范围。"
+                        ),
+                        "phases": [
+                            {
+                                "name": "阶段或批次名称",
+                                "goals": ["本阶段覆盖的可执行目标或交付点"],
+                                "stop_conditions": ["本阶段应该暂停或回到用户的条件"],
+                                "acceptance_conditions": ["本阶段可验收的具体证据"],
+                            }
+                        ],
+                        "parallel_recommendations": [
+                            {
+                                "batch": "可并行批次名称",
+                                "targets": ["可并行 worker target_name"],
+                                "reason": "为什么这些目标可以并行",
+                            }
+                        ],
+                        "stop_conditions": ["整个板块规划应停止或请求用户的条件"],
+                        "acceptance_conditions": ["整个板块完成验收所需的证据"],
                         "goals": [
                             {
                                 "goal": "清晰、可执行、可交给 Codex worker 的目标",
@@ -146,6 +183,7 @@ def build_goal_planning_messages(
                     "rules": [
                         "每个 goal 必须能独立启动一个 Supervisor worker。",
                         "如果 user_goal 存在，必须围绕它拆解可执行目标。",
+                        "当 user_goal 指向完整功能板块时，必须输出 plan_summary、phases、parallel_recommendations、stop_conditions 和 acceptance_conditions。",
                         "不要输出泛泛的继续推进、优化系统、阅读文档。",
                         "不要生成需要用户另行解释范围的任务。",
                         "target_name 使用小写字母、数字和短横线。",
@@ -159,12 +197,26 @@ def build_goal_planning_messages(
 
 
 def parse_goal_candidates(raw_answer: str) -> list[GoalCandidate]:
+    return parse_goal_planning_result(raw_answer).candidates
+
+
+def parse_goal_planning_result(raw_answer: str) -> GoalPlanningResult:
     text = _required_string(raw_answer, "LLM answer")
     payload = _load_json_payload(text)
     candidates = _goal_candidates_from_payload(payload)
     if not candidates:
         raise ValueError("LLM goal planning answer must contain usable goals")
-    return candidates
+    return GoalPlanningResult(
+        candidates=candidates,
+        plan_summary=_planning_summary_from_payload(payload),
+        phases=_phase_list_from_payload(payload),
+        parallel_recommendations=_parallel_recommendations_from_payload(payload),
+        stop_conditions=_string_list_from_mapping(payload, "stop_conditions"),
+        acceptance_conditions=_string_list_from_mapping(
+            payload,
+            "acceptance_conditions",
+        ),
+    )
 
 
 def _goal_candidates_from_payload(payload: Any) -> list[GoalCandidate]:
@@ -188,6 +240,84 @@ def _goal_candidates_from_payload(payload: Any) -> list[GoalCandidate]:
             )
         )
     return candidates
+
+
+def _planning_summary_from_payload(payload: Any) -> str | None:
+    if not isinstance(payload, dict):
+        return None
+    return _optional_string(payload.get("plan_summary"))
+
+
+def _phase_list_from_payload(payload: Any) -> list[dict[str, Any]]:
+    if not isinstance(payload, dict):
+        return []
+    raw_phases = payload.get("phases")
+    if not isinstance(raw_phases, list):
+        return []
+    phases: list[dict[str, Any]] = []
+    for raw in raw_phases:
+        if not isinstance(raw, dict):
+            continue
+        phase: dict[str, Any] = {}
+        name = _optional_string(raw.get("name"))
+        if name:
+            phase["name"] = name
+        goals = _string_list(raw.get("goals"))
+        if goals:
+            phase["goals"] = goals
+        stop_conditions = _string_list(raw.get("stop_conditions"))
+        if stop_conditions:
+            phase["stop_conditions"] = stop_conditions
+        acceptance_conditions = _string_list(raw.get("acceptance_conditions"))
+        if acceptance_conditions:
+            phase["acceptance_conditions"] = acceptance_conditions
+        if phase:
+            phases.append(phase)
+    return phases
+
+
+def _parallel_recommendations_from_payload(payload: Any) -> list[dict[str, Any]]:
+    if not isinstance(payload, dict):
+        return []
+    raw_recommendations = payload.get("parallel_recommendations")
+    if not isinstance(raw_recommendations, list):
+        return []
+    recommendations: list[dict[str, Any]] = []
+    for raw in raw_recommendations:
+        if not isinstance(raw, dict):
+            continue
+        recommendation: dict[str, Any] = {}
+        batch = _optional_string(raw.get("batch"))
+        if batch:
+            recommendation["batch"] = batch
+        targets = _string_list(raw.get("targets"))
+        if targets:
+            recommendation["targets"] = [
+                _normalize_target_name(target) for target in targets
+            ]
+        reason = _optional_string(raw.get("reason"))
+        if reason:
+            recommendation["reason"] = reason
+        if recommendation:
+            recommendations.append(recommendation)
+    return recommendations
+
+
+def _string_list_from_mapping(payload: Any, key: str) -> list[str]:
+    if not isinstance(payload, dict):
+        return []
+    return _string_list(payload.get(key))
+
+
+def _string_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    items: list[str] = []
+    for item in value:
+        text = _optional_string(item)
+        if text:
+            items.append(text)
+    return items
 
 
 def _load_json_payload(text: str) -> Any:
