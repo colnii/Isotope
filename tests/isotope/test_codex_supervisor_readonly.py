@@ -3583,6 +3583,52 @@ def test_codex_supervisor_llm_action_messages_explain_recent_context_should_not_
     assert "已有上下文足够时优先选择 launch_session、send_continue、send_status、ask_user 或 monitor" in content
 
 
+def test_codex_supervisor_llm_action_messages_mark_active_goal_running_worker():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="managed:managed-001",
+                cwd="/home/lumber/Github/isotope/.worktrees/supervisor/goal-a-12345678",
+                source_path="/home/lumber/.codex/supervisor/logs/managed-001.log",
+                last_event_at=NOW.isoformat(),
+                age_seconds=15,
+                status="working",
+                reason="Supervisor 托管进程已启动",
+                managed=True,
+                managed_name="goal-a",
+                managed_backend="process",
+            ),
+        ),
+    )
+    active_goals = [
+        {
+            "goal_id": "goal-a",
+            "goal": "只读检查 Supervisor 日常入口。",
+            "cwd": "/home/lumber/Github/isotope",
+            "target_name": "goal-a",
+        }
+    ]
+
+    messages = build_llm_action_messages(
+        report,
+        _advice_payload(
+            report,
+            include_all_managed=True,
+            active_goals=active_goals,
+        )["command_suggestions"],
+        active_goals=active_goals,
+    )
+    payload = json.loads(messages[1]["content"])
+
+    assert payload["active_goals"][0]["target_name"] == "goal-a"
+    assert payload["active_goals"][0]["worker_status"] == "working"
+    assert payload["active_goals"][0]["worker_session_id"] == "managed:managed-001"
+    assert "同名 worker 已在运行时不得再次 launch_session" in "".join(
+        payload["action_rules"]
+    )
+
+
 def test_codex_supervisor_generate_llm_action_decision_accepts_whitelisted_json():
     report = CodexSupervisorReport(
         generated_at=NOW.isoformat(),
@@ -3744,6 +3790,60 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_launch_session():
             "prompt": launch_prompt,
         },
     }
+
+
+def test_codex_supervisor_generate_llm_action_decision_rejects_running_target_launch():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(
+            CodexSessionSummary(
+                session_id="managed:managed-001",
+                cwd="/home/lumber/Github/isotope/.worktrees/supervisor/goal-a-12345678",
+                source_path="/home/lumber/.codex/supervisor/logs/managed-001.log",
+                last_event_at=NOW.isoformat(),
+                age_seconds=15,
+                status="working",
+                reason="Supervisor 托管进程已启动",
+                managed=True,
+                managed_name="goal-a",
+                managed_backend="process",
+            ),
+        ),
+    )
+    active_goals = [
+        {
+            "goal_id": "goal-a",
+            "goal": "只读检查 Supervisor 日常入口。",
+            "cwd": "/home/lumber/Github/isotope",
+            "target_name": "goal-a",
+        }
+    ]
+    suggestions = _advice_payload(
+        report,
+        include_all_managed=True,
+        active_goals=active_goals,
+    )["command_suggestions"]
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            return json.dumps(
+                {
+                    "kind": "launch_session",
+                    "target_name": "goal-a",
+                    "cwd": "/home/lumber/Github/isotope",
+                    "prompt": "继续做同一个目标。",
+                    "reason": "错误地重复启动同名 worker。",
+                },
+                ensure_ascii=False,
+            )
+
+    with pytest.raises(ValueError, match="running managed worker"):
+        generate_llm_action_decision(
+            report,
+            suggestions,
+            FakeProvider(),
+            active_goals=active_goals,
+        )
 
 
 def test_codex_supervisor_generate_llm_action_decision_accepts_launch_worker_profile():
@@ -6099,17 +6199,17 @@ def test_codex_supervisor_runner_supervise_launch_skips_running_named_process(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"]["kind"] == "launch_session"
+    assert payload["llm_action"]["kind"] == "monitor"
+    assert payload["llm_action"]["error"] == (
+        "target already has running managed worker: planner-session"
+    )
     assert payload["executed"] == {
-        "kind": "launch_session",
+        "kind": "monitor",
         "skipped": True,
-        "reason": "managed process already running",
-        "managed": {
-            "name": "planner-session",
-            "record_id": "managed-running",
-            "pid": 4242,
-            "backend": "process",
-        },
+        "reason": (
+            "LLM 动作无效，已跳过执行："
+            "target already has running managed worker: planner-session"
+        ),
     }
 
 

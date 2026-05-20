@@ -226,28 +226,7 @@ def build_llm_action_messages(
     recent_decision_answers: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, str]]:
     """Build the prompt for guarded LLM planning."""
-    candidate_targets = [
-        {
-            "target_name": _suggested_target_name(session),
-            "session_id": session.session_id,
-            "cwd": session.cwd,
-            "status": session.supervisor_status or session.status,
-            "reason": session.supervisor_summary or session.reason,
-            "source_size_bytes": session.source_size_bytes,
-            "resume_context_hint": _resume_context_hint(session),
-            "can_send_to_tmux": _has_managed_send_target(session),
-            "can_resume": _can_resume_session(session),
-            "tmux_session": session.managed_tmux_session,
-            "managed_terminal_ready": session.managed_terminal_ready,
-            "managed_bell": session.managed_bell,
-            "managed_bell_event_at": session.managed_bell_event_at,
-            "supervisor_status": session.supervisor_status,
-            "supervisor_summary": _clip(session.supervisor_summary),
-            "supervisor_next": _clip(session.supervisor_next),
-        }
-        for session in report.sessions
-        if _is_llm_candidate_target(session)
-    ]
+    candidate_targets = _candidate_target_payloads(report)
     resumable_session_ids = [
         session.session_id for session in report.sessions if _can_resume_session(session)
     ]
@@ -276,7 +255,10 @@ def build_llm_action_messages(
                         command_suggestions,
                     ),
                     "candidate_targets": candidate_targets,
-                    "active_goals": _active_goal_payload(active_goals),
+                    "active_goals": _active_goal_payload(
+                        active_goals,
+                        candidate_targets,
+                    ),
                     "resumable_session_ids": resumable_session_ids,
                     "completed_session_ids": completed_session_ids,
                     "command_suggestions": command_suggestions,
@@ -313,6 +295,11 @@ def build_llm_action_messages(
                             "last_status 为 blocked/needs_user 时不要默认停住，"
                             "应根据已有信息选择 request_context、launch_session、"
                             "ask_user 或 monitor。"
+                        ),
+                        (
+                            "active_goals 里同名 worker 已在运行时不得再次 launch_session；"
+                            "应根据 worker_status 选择 monitor、send_status、"
+                            "send_continue、ask_user 或等待下一轮。"
                         ),
                         (
                             "blocked/needs_user 目标只有满足 decision_gate 时才允许 ask_user；"
@@ -443,6 +430,8 @@ def generate_llm_action_decision(
         target_name = target_name or command_suggestion.get("target_name")
     elif kind == "launch_session":
         target_name = target_name or "planner-session"
+        if _has_running_managed_worker(report, target_name):
+            raise ValueError(f"target already has running managed worker: {target_name}")
         cwd = _optional_payload_string(payload, "cwd") or _default_workspace(
             report,
             command_suggestions,
@@ -981,7 +970,40 @@ def _context_request_history(
     return history
 
 
-def _active_goal_payload(active_goals: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+def _candidate_target_payloads(report: CodexSupervisorReport) -> list[dict[str, Any]]:
+    return [
+        {
+            "target_name": _suggested_target_name(session),
+            "session_id": session.session_id,
+            "cwd": session.cwd,
+            "status": session.supervisor_status or session.status,
+            "reason": session.supervisor_summary or session.reason,
+            "source_size_bytes": session.source_size_bytes,
+            "resume_context_hint": _resume_context_hint(session),
+            "can_send_to_tmux": _has_managed_send_target(session),
+            "can_resume": _can_resume_session(session),
+            "tmux_session": session.managed_tmux_session,
+            "managed_terminal_ready": session.managed_terminal_ready,
+            "managed_bell": session.managed_bell,
+            "managed_bell_event_at": session.managed_bell_event_at,
+            "supervisor_status": session.supervisor_status,
+            "supervisor_summary": _clip(session.supervisor_summary),
+            "supervisor_next": _clip(session.supervisor_next),
+        }
+        for session in report.sessions
+        if _is_llm_candidate_target(session)
+    ]
+
+
+def _active_goal_payload(
+    active_goals: list[dict[str, Any]] | None,
+    candidate_targets: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    runtime_by_name = {
+        target["target_name"]: target
+        for target in candidate_targets or []
+        if isinstance(target.get("target_name"), str)
+    }
     items: list[dict[str, Any]] = []
     for goal in active_goals or []:
         if not isinstance(goal, dict):
@@ -1000,6 +1022,14 @@ def _active_goal_payload(active_goals: list[dict[str, Any]] | None) -> list[dict
             value = goal.get(key)
             if isinstance(value, str) and value:
                 item[key] = _clip(value)
+        target_name = item.get("target_name")
+        runtime = runtime_by_name.get(target_name) if isinstance(target_name, str) else None
+        if runtime is not None:
+            item["worker_status"] = runtime.get("status")
+            item["worker_session_id"] = runtime.get("session_id")
+            reason = runtime.get("reason")
+            if isinstance(reason, str) and reason:
+                item["worker_reason"] = _clip(reason)
         if item:
             items.append(item)
     return items
@@ -1033,6 +1063,19 @@ def _has_managed_process_target(session: Any) -> bool:
         and getattr(session, "managed_backend", None) != "tmux"
         and not _is_terminal_done_session(session)
     )
+
+
+def _has_running_managed_worker(report: CodexSupervisorReport, target_name: str) -> bool:
+    for session in report.sessions:
+        if _suggested_target_name(session) != target_name:
+            continue
+        if not getattr(session, "managed", False):
+            continue
+        if _is_terminal_done_session(session):
+            continue
+        if getattr(session, "status", None) == "working":
+            return True
+    return False
 
 
 def _can_resume_session(session: Any) -> bool:

@@ -80,7 +80,8 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
 - `advise/supervise --llm-execute` 可执行 LLM 选择的白名单 send 动作；
   `monitor` 只记录跳过。
 - `--prompt-cooldown` 可避免短时间重复催促同一个托管 lane。
-- `launch_session` 发现同名后台 process worker 仍在运行时会跳过，
+- 活跃目标已有同名 worker 运行时，LLM 输入会带 `worker_status`；
+  白名单校验会拒绝重复 `launch_session`，并转为 `monitor`，
   避免常驻 loop 重复启动同一个任务。
 - LLM 自动 `launch_session` 会优先创建 `.worktrees/supervisor/...`
   下的独立 git worktree，再在隔离工作区启动 worker。
