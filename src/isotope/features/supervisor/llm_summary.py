@@ -1213,6 +1213,7 @@ def _has_managed_process_target(session: Any) -> bool:
         getattr(session, "managed", False)
         and getattr(session, "managed_name", None)
         and getattr(session, "managed_backend", None) != "tmux"
+        and not _is_completed_session(session)
         and not _is_terminal_done_session(session)
     )
 

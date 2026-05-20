@@ -11348,6 +11348,87 @@ def test_codex_supervisor_runner_loop_reports_process_backend_as_managed(
     }
 
 
+def test_codex_supervisor_runner_loop_does_not_reprompt_completed_process_worker(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    log_path = codex_home / "supervisor" / "logs" / "managed-process-001.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text(
+        "SUPERVISOR_STATUS: done\n"
+        "SUPERVISOR_SUMMARY: worker 已完成实现和验证。\n"
+        "SUPERVISOR_NEXT: 建议主控复查 diff 后进入合并流程。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-process-001",
+                "name": "process-lane",
+                "cwd": str(workspace),
+                "prompt": "后台继续推进 Supervisor。",
+                "command": ["codex", "exec", "-C", str(workspace), "后台继续推进。"],
+                "pid": 4242,
+                "started_at": NOW.isoformat(),
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._pid_is_running",
+        lambda pid: False,
+    )
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
+
+    class FailingProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            raise AssertionError("completed process worker should not be reprompted")
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FailingProvider(),
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"] == {
+        "kind": "monitor",
+        "target_name": None,
+        "reason": "当前没有可控的 Supervisor 目标，先继续监控。",
+        "command_suggestion": None,
+    }
+    assert payload["executed"] == {
+        "kind": "monitor",
+        "skipped": True,
+        "reason": "当前没有可控的 Supervisor 目标，先继续监控。",
+    }
+
+
 def test_codex_supervisor_runner_loop_goal_can_launch_first_worker(
     tmp_path,
     capsys,

@@ -2497,6 +2497,7 @@ def _has_loop_managed_scope(report: Any) -> bool:
         if (
             getattr(session, "managed", False)
             and getattr(session, "managed_name", None)
+            and not _is_completed_session(session)
             and not _session_marks_terminal_done(session)
         ):
             return True
@@ -4132,6 +4133,7 @@ def _is_active_managed_process_session(session: Any) -> bool:
         getattr(session, "managed", False)
         and getattr(session, "managed_name", None)
         and getattr(session, "managed_backend", None) != "tmux"
+        and not _is_completed_session(session)
         and getattr(session, "status", None) != "exited"
     )
 
