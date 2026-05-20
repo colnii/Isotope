@@ -622,8 +622,49 @@ def _worker_review_context_payload(
         "status": worker_reviews.get("status"),
         "summary": worker_reviews.get("summary") or {},
         "decision_summary": worker_reviews.get("decision_summary") or {},
+        "automation_candidates": _worker_review_automation_candidates_payload(
+            worker_reviews.get("automation_candidates")
+        ),
         "safety": worker_reviews.get("safety") or {},
         "workers": workers,
+    }
+
+
+def _worker_review_automation_candidates_payload(raw: Any) -> dict[str, list[dict[str, Any]]]:
+    if not isinstance(raw, dict):
+        return {}
+    payload: dict[str, list[dict[str, Any]]] = {}
+    for bucket in (
+        "review_then_merge",
+        "continue_or_split",
+        "archive_or_wait",
+        "recover_or_archive",
+    ):
+        items = raw.get(bucket)
+        if not isinstance(items, list):
+            continue
+        compact_items = [
+            _worker_review_automation_candidate_item(item)
+            for item in items[:5]
+            if isinstance(item, dict)
+        ]
+        if compact_items:
+            payload[bucket] = compact_items
+    return payload
+
+
+def _worker_review_automation_candidate_item(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "record_id": item.get("record_id"),
+        "name": item.get("name"),
+        "cwd": item.get("cwd"),
+        "branch": item.get("branch"),
+        "recommendation": item.get("recommendation"),
+        "risk_level": item.get("risk_level"),
+        "reason": _clip(item.get("reason")),
+        "next_actions": item.get("next_actions") or [],
+        "validation_commands": (item.get("validation_commands") or [])[:3],
+        "reviewer_command": _clip(item.get("reviewer_command")),
     }
 
 

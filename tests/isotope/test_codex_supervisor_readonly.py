@@ -4141,6 +4141,22 @@ def test_codex_supervisor_llm_action_messages_include_worker_review_context():
             "missing_worktrees": 0,
             "needs_fresh_review": 1,
         },
+        "automation_candidates": {
+            "review_then_merge": [
+                {
+                    "record_id": "managed-001",
+                    "name": "worker-a",
+                    "cwd": EXISTING_WORKSPACE,
+                    "branch": "worker/a",
+                    "recommendation": "review_then_merge_candidate",
+                    "risk_level": "medium",
+                    "reason": "worker 已完成且有本地改动；建议先复查 diff。",
+                    "next_actions": ["review_diff", "run_tests"],
+                    "validation_commands": ["pytest tests/isotope -q"],
+                    "reviewer_command": "codex exec -C /repo 'review'",
+                }
+            ],
+        },
         "workers": [
             {
                 "name": "worker-a",
@@ -4167,6 +4183,9 @@ def test_codex_supervisor_llm_action_messages_include_worker_review_context():
     assert payload["worker_reviews"]["workers"][0]["next_decision"][
         "recommendation"
     ] == "review_then_merge_candidate"
+    assert payload["worker_reviews"]["automation_candidates"]["review_then_merge"][
+        0
+    ]["record_id"] == "managed-001"
     assert payload["worker_reviews"]["safety"]["auto_merge"] is False
     assert "merge" not in payload["allowed_kinds"]
     assert "worker_reviews 只提供下一轮决策上下文" in "".join(
