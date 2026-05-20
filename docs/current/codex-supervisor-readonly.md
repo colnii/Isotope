@@ -454,6 +454,47 @@ Codex 的 tmux 会话，并生成可复制的 `adopt` 和 `attach` 命令。
 `daemon stop` 发送 `SIGTERM`（终止信号）并把状态标成 `stopped`。
 这一步还不是系统级开机自启动；如果机器重启，仍需要重新启动 watcher。
 
+### 过夜长跑流程
+
+睡觉前推荐按“目标入队 -> 唤起后台 -> 看门保活”的顺序启动：
+
+```bash
+.venv/bin/isotope-supervisor goal add --cwd /path/to/repo "过夜要推进的目标"
+.venv/bin/isotope-supervisor up
+.venv/bin/isotope-supervisor daemon start --interval 30
+.venv/bin/isotope-supervisor daemon watcher start --interval 60
+```
+
+如果只想用一条命令临时追加目标，也可以用：
+
+```bash
+.venv/bin/isotope-supervisor up --goal "过夜要推进的目标"
+```
+
+`goal add` 只是把目标写入持久队列；`up` 会在 daemon 未运行时启动后台
+`loop` 并立刻打印最近状态；`daemon start` 适合显式确认后台常驻参数；
+`daemon watcher start` 会周期触发 watchdog，后台 loop 异常退出时按记录命令
+重启。当前自动化可以根据活跃目标启动写代码 worker，也可以在
+`integration-review` 出现 `ready_to_integrate` 候选后启动 merge worker；
+但它仍然不是无人值守发布系统，早上必须人工看 CI、merge conflict
+（合并冲突）和 `blocked/needs_user` 状态。
+
+早上先用这些只读命令收口：
+
+```bash
+.venv/bin/isotope-supervisor daemon status
+.venv/bin/isotope-supervisor daemon watcher status
+.venv/bin/isotope-supervisor goal list
+.venv/bin/isotope-supervisor integration-review
+.venv/bin/isotope-supervisor cleanup list
+```
+
+`daemon status` 看后台 loop 是否还活着、最近 LLM 动作和 worker 状态；
+`goal list` 看目标是否完成、阻塞或等待拍板；`integration-review` 看哪些
+worker 已经可审、已合入或有冲突风险；`cleanup list` 只列出可归档的完成项。
+如果看到 CI 失败、冲突风险、`blocked` 或 `needs_user`，先处理这些证据，
+再决定是否继续 `goal add`、重跑 daemon，或让 merge worker 继续。
+
 `supervise` 是当前的监控小闭环：
 
 ```bash
