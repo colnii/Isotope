@@ -5317,6 +5317,100 @@ def test_codex_supervisor_runner_supervise_llm_execute_sends_whitelisted_action(
     assert calls == _tmux_send_calls(STATUS_REQUEST_TEXT)
 
 
+@pytest.mark.parametrize(
+    ("kind", "request_text"),
+    [
+        ("send_status", STATUS_REQUEST_TEXT),
+        ("send_continue", CONTINUE_REQUEST_TEXT),
+    ],
+)
+def test_codex_supervisor_runner_supervise_llm_execute_blocks_busy_tmux_send(
+    tmp_path,
+    capsys,
+    monkeypatch,
+    kind,
+    request_text,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_managed_tmux_record(codex_home, workspace=workspace)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_session_exists",
+        lambda session: session == "isotope-lane-a",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._tmux_window_has_bell",
+        lambda session: False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._tmux_capture_pane",
+        lambda session: "\n".join(
+            [
+                "• Running tests",
+                "◦ Working (esc to interrupt)",
+            ]
+        ),
+    )
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert '"managed_terminal_ready": false' in content
+            return json.dumps(
+                {"kind": kind, "target_name": "lane-a", "reason": "直接追问。"},
+                ensure_ascii=False,
+            )
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FakeProvider(),
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        if command[:2] == ["git", "-C"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+
+    exit_code = supervisor_main(
+        [
+            "supervise",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--llm-execute",
+            "--prompt-cooldown",
+            "0",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"]["kind"] == kind
+    assert payload["executed"] == {
+        "kind": "monitor",
+        "skipped": True,
+        "reason": "managed lane is running without ready signal",
+        "blocked_kind": kind,
+        "command": _supervisor_send_command("lane-a", request_text),
+    }
+    assert calls == []
+
+
 def test_codex_supervisor_runner_supervise_llm_execute_uses_selected_target_command(
     tmp_path,
     capsys,

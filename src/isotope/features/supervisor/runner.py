@@ -3751,6 +3751,14 @@ def _execute_advice(
     suggestion = _suggestion_by_kind(_managed_tmux_command_suggestions(target), kind)
     if suggestion is None:
         raise ValueError(f"no generated command suggestion for: {kind}")
+    if _managed_terminal_looks_busy(target):
+        return {
+            "kind": "monitor",
+            "skipped": True,
+            "reason": "managed lane is running without ready signal",
+            "blocked_kind": kind,
+            "command": suggestion["command"],
+        }
     if kind == "send_continue":
         if budget_state := continue_budget_state(
             codex_home=Path(args.codex_home),
