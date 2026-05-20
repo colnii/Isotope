@@ -81,6 +81,7 @@ from .merge_dispatch import (
     build_merge_dispatch_launch_spec,
 )
 from .merge_work_order import build_merge_work_order_prompt
+from .notifications import notify_worker_integration_review_passed
 from .registry import (
     adopt_tmux_session,
     archive_managed_codex,
@@ -212,6 +213,17 @@ def _add_goal_replenishment_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_webhook_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--webhook-url",
+        help="HTTP endpoint for low-sensitive Supervisor event POSTs.",
+    )
+    parser.add_argument(
+        "--webhook-secret",
+        help="Optional shared secret for X-Isotope-Signature HMAC headers.",
+    )
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Watch local Codex sessions.")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -256,6 +268,8 @@ def _build_parser() -> argparse.ArgumentParser:
             action="store_true",
             help="Let LLM/action candidates span every discovered workspace.",
         )
+        if command == "supervise":
+            _add_webhook_args(subparser)
     for command in ("advise", "supervise"):
         subparsers.choices[command].add_argument(
             "--name",
@@ -400,6 +414,7 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Let LLM/action candidates span every discovered workspace.",
     )
+    _add_webhook_args(loop_parser)
     loop_parser.add_argument(
         "--name",
         help="Target one managed lane by name. Omit to rotate across active lanes.",
@@ -579,6 +594,7 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Use configured LLM to add a compact Chinese summary.",
     )
+    _add_webhook_args(up_parser)
     up_parser.add_argument(
         "--no-auto-adopt",
         action="store_false",
@@ -710,6 +726,7 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Use configured LLM to add a compact Chinese summary.",
     )
+    _add_webhook_args(daemon_start_parser)
     daemon_start_parser.add_argument(
         "--no-auto-adopt",
         action="store_false",
@@ -900,6 +917,7 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print JSON output.",
     )
+    _add_webhook_args(integration_review_parser)
     merge_work_order_parser = subparsers.add_parser(
         "merge-work-order",
         help="Build a read-only merge work order from integration-review.",
@@ -991,6 +1009,7 @@ def _build_parser() -> argparse.ArgumentParser:
         required=True,
         help="User decision answer.",
     )
+    _add_webhook_args(decision_subparsers.choices["answer"])
     goal_parser = subparsers.add_parser(
         "goal",
         help="Add, list, or archive persistent Supervisor goals.",
@@ -1434,6 +1453,7 @@ def main(argv: list[str] | None = None) -> int:
                 base_ref=args.base,
                 include_unfinished=args.include_unfinished,
             )
+            _notify_integration_review_webhooks(args, payload)
             if args.json:
                 _print_json(payload)
             else:
@@ -1695,6 +1715,8 @@ def _start_daemon_from_args(args: argparse.Namespace) -> dict[str, Any]:
         auto_adopt=args.auto_adopt,
         worker_codex_model=_worker_codex_model(args, profile=worker_profile),
         worker_codex_config=_worker_codex_config(args, profile=worker_profile),
+        webhook_url=args.webhook_url,
+        webhook_secret=args.webhook_secret,
     )
     if queued_goal is not None:
         daemon["queued_goal"] = queued_goal
@@ -2375,6 +2397,8 @@ def _record_goal_status_from_session(
         session_id=session_id if isinstance(session_id, str) else None,
         summary=summary if isinstance(summary, str) else None,
         next_step=next_step if isinstance(next_step, str) else None,
+        webhook_url=args.webhook_url,
+        webhook_secret=args.webhook_secret,
     )
     update: dict[str, Any] = {
         "goal_id": goal_id,
@@ -3901,6 +3925,8 @@ def _decision_payload(args: argparse.Namespace) -> dict[str, Any]:
             codex_home=Path(args.codex_home),
             request_id=args.request_id,
             answer=args.answer,
+            webhook_url=args.webhook_url,
+            webhook_secret=args.webhook_secret,
         )
         return {
             "status": "ok",
@@ -3909,6 +3935,41 @@ def _decision_payload(args: argparse.Namespace) -> dict[str, Any]:
             "recent_decision_answers": _decision_answer_dicts(args),
         }
     raise ValueError(f"unsupported decision command: {args.decision_command}")
+
+
+def _notify_integration_review_webhooks(
+    args: argparse.Namespace,
+    payload: dict[str, Any],
+) -> None:
+    webhook_url = getattr(args, "webhook_url", None)
+    if not isinstance(webhook_url, str) or not webhook_url.strip():
+        return
+    groups = payload.get("groups")
+    if not isinstance(groups, dict):
+        return
+    for group in ("ready_to_integrate", "already_integrated"):
+        items = groups.get(group)
+        if not isinstance(items, list):
+            continue
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            protocol = item.get("supervisor_protocol")
+            if not isinstance(protocol, dict):
+                continue
+            status = protocol.get("status")
+            if not isinstance(status, str) or status.lower() != "done":
+                continue
+            record_id = item.get("record_id")
+            if not isinstance(record_id, str) or not record_id.strip():
+                continue
+            notify_worker_integration_review_passed(
+                record_id=record_id,
+                group=group,
+                status="done",
+                webhook_url=webhook_url,
+                webhook_secret=getattr(args, "webhook_secret", None),
+            )
 
 
 def _print_decision_plain(payload: dict[str, Any]) -> None:
@@ -5820,6 +5881,8 @@ def _execute_ask_user_action(
     decision_request = record_decision_request(
         codex_home=Path(args.codex_home),
         action={**action, "session_id": session_id, "gate": gate},
+        webhook_url=args.webhook_url,
+        webhook_secret=args.webhook_secret,
     )
     return {
         "kind": "ask_user",

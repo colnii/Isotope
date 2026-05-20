@@ -96,6 +96,8 @@ def start_supervisor_daemon(
     auto_adopt: bool = True,
     worker_codex_model: str | None = None,
     worker_codex_config: tuple[str, ...] = (),
+    webhook_url: str | None = None,
+    webhook_secret: str | None = None,
 ) -> dict[str, Any]:
     home = Path(codex_home).expanduser()
     existing = read_supervisor_daemon_state(home)
@@ -128,6 +130,8 @@ def start_supervisor_daemon(
         auto_adopt=auto_adopt,
         worker_codex_model=worker_codex_model,
         worker_codex_config=worker_codex_config,
+        webhook_url=webhook_url,
+        webhook_secret=webhook_secret,
     )
     pid = _spawn_daemon_process(command, log_path)
     state = SupervisorDaemonState(
@@ -381,6 +385,8 @@ def _build_loop_command(
     auto_adopt: bool,
     worker_codex_model: str | None,
     worker_codex_config: tuple[str, ...],
+    webhook_url: str | None = None,
+    webhook_secret: str | None = None,
 ) -> tuple[str, ...]:
     command = [
         sys.executable,
@@ -423,6 +429,10 @@ def _build_loop_command(
         command.extend(["--worker-codex-model", worker_codex_model])
     for item in worker_codex_config:
         command.extend(["--worker-codex-config", item])
+    if webhook_url:
+        command.extend(["--webhook-url", webhook_url])
+    if webhook_secret:
+        command.extend(["--webhook-secret", webhook_secret])
     if llm_summary:
         command.append("--llm-summary")
     if not auto_adopt:

@@ -9,7 +9,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from .notifications import notify_decision_request_written
+from .notifications import (
+    notify_decision_answer_written,
+    notify_decision_request_written,
+)
 
 
 @dataclass(frozen=True)
@@ -49,6 +52,8 @@ def record_decision_request(
     *,
     codex_home: Path | str,
     action: dict[str, Any],
+    webhook_url: str | None = None,
+    webhook_secret: str | None = None,
     now: Callable[[], datetime] | None = None,
 ) -> DecisionRequest:
     goal_id = _optional_string(action.get("goal_id"))
@@ -86,6 +91,8 @@ def record_decision_request(
         request_id=request.request_id,
         target_name=request.target_name,
         goal_id=request.goal_id,
+        webhook_url=webhook_url,
+        webhook_secret=webhook_secret,
     )
     return request
 
@@ -117,6 +124,8 @@ def record_decision_answer(
     codex_home: Path | str,
     request_id: str,
     answer: str,
+    webhook_url: str | None = None,
+    webhook_secret: str | None = None,
     now: Callable[[], datetime] | None = None,
 ) -> dict[str, Any]:
     request_id_text = _required_string(request_id, "request_id")
@@ -134,6 +143,12 @@ def record_decision_answer(
     if request.goal_id:
         event["goal_id"] = request.goal_id
     append_decision_answer(default_decision_requests_path(codex_home), event)
+    notify_decision_answer_written(
+        request_id=request.request_id,
+        goal_id=request.goal_id,
+        webhook_url=webhook_url,
+        webhook_secret=webhook_secret,
+    )
     return event
 
 

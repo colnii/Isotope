@@ -32,7 +32,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 | 模型管理层 | `LLM summary`、`LLM planner` 和 TOML 号池 | `llm_summary.py` | 承担判断、调度和动作选择的 AI 路径 |
 | 状态协议层 | `SUPERVISOR_STATUS` 等状态协议 | `flow.py`、`registry.py` | 给被托管 Codex 主动汇报状态 |
 | 状态账本层 | lane state（窗口状态）和限频 | `lane_state.py` | 避免重复催促和刷屏 |
-| 通知桥接层 | Supervisor event notifications | `features/supervisor/notifications.py`、`features/notifications/flow.py` | 把 goal/decision 事件派生成低敏通知 |
+| 通知桥接层 | Supervisor event notifications/webhooks | `features/supervisor/notifications.py`、`features/notifications/flow.py` | 把 goal/decision/integration-review 事件派生成低敏通知或外部 POST |
 | 本地前端层 | `web`、`/dashboard.json`、`/events`、`/managed/send`、`/llm-action` | `features/supervisor/web.py` | 本机视图、bell 事件、白名单发送和手动模型建议入口 |
 
 ## 已有轮子
@@ -198,8 +198,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   不能绕过校验抢走新目标。
 - 目标级 `ask_user` 可用 `goal_id` 写入 decision request；这解决了
   队列目标已阻塞但没有普通 Codex session 可恢复时的拍板记录问题。
-- goal 状态回写和 decision request 写入会尽力生成低敏通知；
-  notification index 损坏或写入失败不能破坏原 goal/decision 账本。
+- goal 状态回写、decision request/answer 和通过 `integration-review` 的
+  done worker 会尽力生成低敏通知或 webhook；notification index 损坏、
+  本地写入失败或外部 POST 失败都不能破坏原 goal/decision 账本。
 - `cleanup list/archive` 会列出可归档的 done goal、done managed worker
   和未读 done 通知；归档不删除 Codex 历史，tmux worker 会读取当前
   pane 文本，避免用旧 log 误归档仍在工作的窗口。

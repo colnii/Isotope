@@ -361,6 +361,89 @@ def test_supervisor_integration_review_cli_json(tmp_path, capsys, monkeypatch):
     assert payload["groups"]["ready_to_integrate"][0]["record_id"] == "managed-ready"
 
 
+def test_supervisor_integration_review_cli_posts_webhook_for_passing_done_worker(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    import isotope.features.supervisor.runner as runner
+
+    payloads: list[dict[str, object]] = []
+
+    def fake_collect(**_kwargs):
+        return {
+            "status": "ok",
+            "summary": {
+                "total": 1,
+                "ready_to_integrate": 1,
+                "already_integrated": 0,
+                "needs_review": 0,
+                "conflict_risk": 0,
+            },
+            "groups": {
+                "ready_to_integrate": [
+                    {
+                        "record_id": "managed-ready",
+                        "name": "raw_content=secret",
+                        "supervisor_protocol": {"status": "done"},
+                        "group": "ready_to_integrate",
+                    }
+                ],
+                "already_integrated": [],
+                "needs_review": [],
+                "conflict_risk": [],
+            },
+            "workers": [],
+        }
+
+    def fake_urlopen(request, timeout):
+        payloads.append(json.loads(request.data.decode("utf-8")))
+
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self):
+                return b"ok"
+
+        return Response()
+
+    monkeypatch.setattr(runner, "collect_integration_reviews", fake_collect)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.notifications.urllib.request.urlopen",
+        fake_urlopen,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "integration-review",
+            "--codex-home",
+            str(tmp_path / ".codex"),
+            "--webhook-url",
+            "https://example.test/supervisor",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    capsys.readouterr()
+    assert payloads == [
+        {
+            "event_type": "supervisor_worker_integration_review",
+            "source_ref": {
+                "ref_type": "supervisor_worker_integration_review",
+                "record_id": "managed-ready",
+                "status": "done",
+                "group": "ready_to_integrate",
+            },
+        }
+    ]
+    assert "raw_content=secret" not in json.dumps(payloads, ensure_ascii=False)
+
+
 def _fake_git(
     responses: dict[Path, dict[tuple[str, ...], tuple[int, str, str]]],
 ):

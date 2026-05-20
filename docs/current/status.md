@@ -63,6 +63,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `source_ref` 只允许低敏 JSON 对象，会在读写时重新校验和深拷贝；
     本地索引使用同目录临时文件替换，降低半写入损坏风险；
     dashboard/web 输出通知时会再次按低敏 allowlist 过滤 `source_ref`。
+    Supervisor 可通过 `--webhook-url` 把 goal 状态、decision request/answer
+    和通过 `integration-review` 的 done worker 作为低敏 HTTP POST
+    发给外部系统；`--webhook-secret` 只用于 HMAC 签名，POST 失败只告警，
+    不阻断原 goal/decision 账本。
 18. `apps/api` 已有薄后端入口，当前提供 ASGI 兼容 `ApiApp`、
     `create_api_app(...)`、`isotope-api routes` 和本地
     `isotope-api request` 调用入口，真实路由仍复用
@@ -133,8 +137,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `decision answer --request-id <id> --answer <答案>` 会记录用户答案、
     移出活跃拍板项，并让后续 LLM planner 看到最近答案；
     `decision archive --request-id <id>` 可把无需继续的项移出活跃列表；
-    写入合法拍板请求时会尽力生成一条低敏通知；通知写入失败不会影响
-    原 decision request 账本；
+    写入合法拍板请求和拍板答案时会尽力生成低敏通知或 webhook；
+    通知写入或 webhook POST 失败不会影响原 decision request 账本；
     `--llm-execute` 可执行 LLM 选择的 send、resume、launch 或
     context 动作；执行 `send_status/send_continue` 前会检查目标
     tmux lane 是否仍显示 `Working ... esc to interrupt`，忙碌时跳过，
@@ -249,6 +253,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `recent_decision_answers` 并交给 LLM planner 继续推进；
     `goal list` 和 `daemon status` 会直接显示活跃目标的最近状态、
     摘要和下一步，不必手动读取 `goals.jsonl`；
+    goal 状态回写会尽力生成低敏通知或 webhook，但外部 POST 失败
+    不会影响 `goals.jsonl`；
     `daemon watcher start/status/stop` 可启动 watcher（周期看门进程），
     定期触发 `watchdog`，状态写入 `~/.codex/supervisor/watcher.json`；
     `advise/supervise --name <lane>` 可把建议、显式执行和自动执行

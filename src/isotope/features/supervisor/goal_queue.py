@@ -107,6 +107,8 @@ def record_supervisor_goal_status(
     session_id: str | None = None,
     summary: str | None = None,
     next_step: str | None = None,
+    webhook_url: str | None = None,
+    webhook_secret: str | None = None,
     now: Callable[[], datetime] | None = None,
 ) -> dict[str, Any] | None:
     goal_id_text = _required_string(goal_id, "goal_id")
@@ -143,6 +145,8 @@ def record_supervisor_goal_status(
         goal_id=goal_id_text,
         status=status_text,
         target_name=event.get("target_name"),
+        webhook_url=webhook_url,
+        webhook_secret=webhook_secret,
     )
     return event
 

@@ -68,7 +68,7 @@
 | `isotope-notification` | 通知命令行入口，可创建、列表、筛选和标记已读通知 | 应用入口 | `src/isotope/features/notifications/runner.py` |
 | `source_ref` | 低敏来源引用，用 JSON 对象说明通知来自哪个 worker、decision 或其他事件 | 产品功能/通知/状态账本 | `src/isotope/features/notifications/flow.py` |
 | `notification index` | 通知摘要索引，持久化低敏通知摘要，写入时用临时文件替换 | 产品功能/通知 | `src/isotope/features/notifications/flow.py` |
-| `Supervisor notification bridge` | Supervisor 通知桥，把 goal 状态和 decision request 派生成低敏通知；通知失败不影响原账本 | 产品功能/通知/状态账本 | `src/isotope/features/supervisor/notifications.py` |
+| `Supervisor notification bridge` | Supervisor 通知桥，把 goal 状态、decision request/answer 和通过 integration-review 的 done worker 派生成低敏通知或 webhook；通知失败不影响原账本 | 产品功能/通知/状态账本 | `src/isotope/features/supervisor/notifications.py` |
 | `Codex Supervisor` | Codex 监督器，Isotope 后续核心管理层，让 LLM 参与判断和调度，工程规则提供护栏 | 产品功能 | `src/isotope/features/supervisor/flow.py` |
 | `isotope-supervisor` | Codex Supervisor 命令行入口，支持扫描、dashboard 汇总、本机 web 页面、建议面板、supervise 小闭环、定时汇报、变化触发、托管启动、恢复历史会话、接管 tmux 和发送指令 | 应用入口 | `src/isotope/features/supervisor/runner.py`, `apps/cli/isotope_supervisor.py` |
 | `Codex session` | Codex 会话记录，本机通常保存在 `~/.codex/sessions` | 外部集成 | `src/isotope/features/supervisor/flow.py` |
@@ -160,6 +160,8 @@
 | `--worker-profile` | worker 工作档位，`coding` 保持代码任务默认 `gpt-5.5 high`，`light` 给只读检查、状态汇报和 smoke 降低推理成本 | 产品功能/控制策略/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/llm_summary.py` |
 | `--worker-codex-model` | `supervise/loop/daemon start` 参数，控制 LLM 自动启动或恢复的 Codex worker 模型 | 产品功能/控制策略/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/daemon.py` |
 | `--worker-codex-config` | `supervise/loop/daemon start` 参数，给 LLM 自动启动或恢复的 Codex worker 传 `-c key=value` 配置 | 产品功能/控制策略/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/daemon.py` |
+| `--webhook-url` | Supervisor 外部通知端点，触发 goal 状态、decision request/answer 或通过 integration-review 的 done worker 时发送低敏 HTTP POST；失败只记录 warning | 产品功能/通知/状态账本 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/notifications.py` |
+| `--webhook-secret` | Supervisor webhook 共享密钥；配置后用请求 body 生成 `X-Isotope-Signature: sha256=...` HMAC 签名，不写入 payload | 产品功能/通知/安全 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/notifications.py` |
 | `--rule-execute` | `loop` 的备用参数，切回旧规则自动策略 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `monitor` | 白名单动作，表示当前没有需要发送的托管指令，只继续观察 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
 | `resume_session` | LLM planner 可选动作，恢复一个普通 Codex 历史会话并发送受控 prompt | 产品功能/模型/控制通道 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |

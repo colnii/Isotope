@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 import pytest
@@ -11,12 +12,15 @@ from isotope.features.supervisor.goal_queue import (
     record_supervisor_goal,
     record_supervisor_goal_status,
 )
+from isotope.features.supervisor.decision_requests import record_decision_answer
 
 
 ALLOWED_SOURCE_REF_KEYS = {
     "ref_type",
     "goal_id",
     "request_id",
+    "record_id",
+    "group",
     "status",
 }
 FORBIDDEN_CONTENT_KEYS = {
@@ -33,6 +37,7 @@ FORBIDDEN_CONTENT_KEYS = {
     "question",
     "reason",
     "gate",
+    "answer",
 }
 
 
@@ -213,3 +218,155 @@ def test_notification_bridge_does_not_leak_target_name_value(tmp_path):
         ]
     }
     assert unsafe_target not in json.dumps(payload, ensure_ascii=False)
+
+
+def test_goal_status_webhook_posts_low_sensitive_signed_payload(tmp_path, monkeypatch):
+    requests: list[dict[str, Any]] = []
+
+    def fake_urlopen(request, timeout):
+        requests.append(
+            {
+                "url": request.full_url,
+                "body": json.loads(request.data.decode("utf-8")),
+                "headers": dict(request.header_items()),
+                "timeout": timeout,
+            }
+        )
+
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self):
+                return b"ok"
+
+        return Response()
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.notifications.urllib.request.urlopen",
+        fake_urlopen,
+    )
+    goal = record_supervisor_goal(
+        codex_home=tmp_path,
+        cwd=tmp_path,
+        goal="Ship supervisor notifications",
+        target_name="worker-a",
+    )
+
+    event = record_supervisor_goal_status(
+        codex_home=tmp_path,
+        goal_id=goal.goal_id,
+        status="done",
+        target_name="worker-a",
+        session_id="session-secret",
+        summary="contains task details",
+        next_step="contains next step",
+        webhook_url="https://example.test/supervisor",
+        webhook_secret="shared-secret",
+    )
+
+    assert event is not None
+    assert len(requests) == 1
+    assert requests[0]["url"] == "https://example.test/supervisor"
+    body = requests[0]["body"]
+    assert body["event_type"] == "supervisor_goal_status"
+    assert body["source_ref"] == {
+        "ref_type": "supervisor_goal_status",
+        "goal_id": goal.goal_id,
+        "status": "done",
+    }
+    assert requests[0]["headers"]["X-isotope-event"] == "supervisor_goal_status"
+    assert requests[0]["headers"]["X-isotope-signature"].startswith("sha256=")
+    _assert_low_sensitive_source_ref(body["source_ref"])
+    assert "shared-secret" not in json.dumps(requests[0], ensure_ascii=False)
+
+
+def test_decision_answer_webhook_posts_without_answer_text(tmp_path, monkeypatch):
+    payloads: list[dict[str, Any]] = []
+
+    def fake_urlopen(request, timeout):
+        payloads.append(json.loads(request.data.decode("utf-8")))
+
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self):
+                return b"ok"
+
+        return Response()
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.notifications.urllib.request.urlopen",
+        fake_urlopen,
+    )
+    request = record_decision_request(
+        codex_home=tmp_path,
+        action={
+            "session_id": "session-secret",
+            "target_name": "worker-a",
+            "goal_id": "goal-123",
+            "question": "Should we continue?",
+            "reason": "Need a human decision",
+            "context_status": "current",
+            "gate": {
+                "codex_requested_decision": True,
+                "instructions_exhausted": True,
+                "context_status": "current",
+            },
+        },
+    )
+
+    answer = record_decision_answer(
+        codex_home=tmp_path,
+        request_id=request.request_id,
+        answer="Use the private branch details.",
+        webhook_url="https://example.test/supervisor",
+    )
+
+    assert answer["request_id"] == request.request_id
+    assert payloads == [
+        {
+            "event_type": "supervisor_decision_answer",
+            "source_ref": {
+                "ref_type": "supervisor_decision_answer",
+                "goal_id": "goal-123",
+                "request_id": request.request_id,
+            },
+        }
+    ]
+    assert "Use the private branch details" not in json.dumps(payloads, ensure_ascii=False)
+
+
+def test_webhook_failure_warns_without_breaking_goal_ledger(tmp_path, monkeypatch, caplog):
+    def fake_urlopen(_request, _timeout):
+        raise OSError("network down")
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.notifications.urllib.request.urlopen",
+        fake_urlopen,
+    )
+    goal = record_supervisor_goal(
+        codex_home=tmp_path,
+        cwd=tmp_path,
+        goal="Ship supervisor notifications",
+        target_name="worker-a",
+    )
+
+    with caplog.at_level(logging.WARNING):
+        event = record_supervisor_goal_status(
+            codex_home=tmp_path,
+            goal_id=goal.goal_id,
+            status="blocked",
+            webhook_url="https://example.test/supervisor",
+        )
+
+    assert event is not None
+    assert event["status"] == "blocked"
+    assert "supervisor webhook POST failed" in caplog.text
