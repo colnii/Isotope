@@ -453,6 +453,38 @@ fanout 回归必须覆盖：多个 active goals 中已有同名 running worker �
 `current_batch` 都能看见当前 worker；`goal plan` 的 `parallel_recommendations` 只能在显式
 `--fanout-execute` 下同轮执行，且不能直接归档任何目标。
 
+## 后续目标补给设计
+
+目标补给是下一阶段让 Supervisor 真正持续工作到明早的 B 层机制。
+它不替代现有 `goal add/plan`、`fanout`、`daemon` 和 worker registry，
+而是在每轮 `loop` 开头读取一个用户给定的 `goal seed`（目标种子）和
+当前活跃目标水位，决定是否补充新的可执行 goal。
+
+推荐规则：
+
+1. `goal seed` 只保存高层方向、允许范围、禁区、预算提示和验收口径。
+   它不是正在执行的 goal，也不能被 worker 直接消费；补给器必须把它
+   拆成小目标后写入现有 goal queue。
+2. 低水位补充以“可推进 active goals 数量”为判断口径，而不是只看
+   `goals.jsonl` 行数。`done`、已归档、同名 worker 正在执行的目标、
+   明确 `needs_user` 且没有新答案的目标，都不计入可补给水位。
+3. 同一轮补给必须受最大任务数约束：先用全局 active goal 上限控制
+   队列规模，再用 `--max-fanout-launches` 控制同轮启动数。补给可以写入
+   多个候选 goal，但不能绕过 fanout 上限一次性启动所有 worker。
+4. 补给前要做冲突检查：同名或同 scope worker 正在运行时不重复发放；
+   `integration-review` 已标记 `conflict_risk` 的分支不再继续生成同一区域
+   写代码任务；存在未处理 merge worker 时，优先等待 merge 结果。
+5. 停止条件必须比“还有 seed”优先：CI 红灯、merge conflict、worker
+   汇报 `blocked/needs_user` 且需要人类拍板、连续补给没有产生完成结果、
+   或达到用户给定时间/任务预算时，补给器只能写 decision request 或
+   `monitor`，不得继续扩散新任务。
+
+接线位置应保持保守：补给器只在 `scan/report` 之后、`fanout` 之前运行，
+产物仍是普通 active goals；后面的 fanout、merge dispatch、LLM planner
+继续复用现有动作白名单和 budget gate。这样下一阶段实现时只需要新增
+“何时补目标、补几个、何时停”的决策层，不需要再造目标队列或新 worker
+启动通道。
+
 ## 当前不要重复实现
 
 - 不要把规则、白名单或状态协议写成替代 LLM 的最终智能。
