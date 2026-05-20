@@ -12598,6 +12598,128 @@ def test_codex_supervisor_runner_goal_list_shows_latest_blocked_status(
     assert "下一步：请求用户拍板。" in text
 
 
+def test_codex_supervisor_runner_goal_list_outputs_queue_view_groups(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _add_supervisor_goal(
+        capsys,
+        codex_home=codex_home,
+        workspace=workspace,
+        goal="等待启动的目标。",
+        target_name="pending-worker",
+    )
+    _add_supervisor_goal(
+        capsys,
+        codex_home=codex_home,
+        workspace=workspace,
+        goal="夜间正在执行的目标。",
+        target_name="running-worker",
+    )
+    blocked_goal = _add_supervisor_goal(
+        capsys,
+        codex_home=codex_home,
+        workspace=workspace,
+        goal="被依赖卡住的目标。",
+        target_name="blocked-worker",
+    )
+    needs_user_goal = _add_supervisor_goal(
+        capsys,
+        codex_home=codex_home,
+        workspace=workspace,
+        goal="等待用户确认的目标。",
+        target_name="needs-user-worker",
+    )
+    done_goal = _add_supervisor_goal(
+        capsys,
+        codex_home=codex_home,
+        workspace=workspace,
+        goal="刚跑完等待归档的目标。",
+        target_name="done-worker",
+    )
+    _append_supervisor_goal_status(
+        codex_home,
+        goal_id=str(blocked_goal["goal_id"]),
+        status="blocked",
+        target_name="blocked-worker",
+        summary="依赖服务不可用。",
+        next_step="等待依赖恢复。",
+    )
+    _append_supervisor_goal_status(
+        codex_home,
+        goal_id=str(needs_user_goal["goal_id"]),
+        status="needs_user",
+        target_name="needs-user-worker",
+        summary="需要确认验收范围。",
+        next_step="等待用户确认。",
+    )
+    _append_supervisor_goal_status(
+        codex_home,
+        goal_id=str(done_goal["goal_id"]),
+        status="done",
+        target_name="done-worker",
+        summary="目标已经完成。",
+        next_step="等待 Supervisor 归档。",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "running-worker",
+                "cwd": str(workspace),
+                "prompt": "夜间正在执行的目标。",
+                "command": ["codex", "exec", "-C", str(workspace), "继续"],
+                "pid": 4242,
+                "started_at": NOW.isoformat(),
+                "log_path": str(codex_home / "supervisor" / "logs" / "managed-001.log"),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._pid_is_running",
+        lambda pid: pid == 4242,
+    )
+
+    exit_code = supervisor_main(["goal", "list", "--codex-home", str(codex_home), "--json"])
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    queue = payload["queue_view"]
+    assert [item["target_name"] for item in queue["pending"]] == ["pending-worker"]
+    assert [item["target_name"] for item in queue["running"]] == ["running-worker"]
+    assert queue["running"][0]["worker_status"] == "running"
+    assert [item["target_name"] for item in queue["blocked"]] == ["blocked-worker"]
+    assert queue["blocked"][0]["last_summary"] == "依赖服务不可用。"
+    assert [item["target_name"] for item in queue["needs_user"]] == [
+        "needs-user-worker"
+    ]
+    assert [item["target_name"] for item in queue["done_recent"]] == ["done-worker"]
+    assert queue["done_recent"][0]["last_next"] == "等待 Supervisor 归档。"
+
+    exit_code = supervisor_main(["goal", "list", "--codex-home", str(codex_home)])
+
+    assert exit_code == 0
+    text = capsys.readouterr().out
+    assert "队列视图：" in text
+    assert "- pending: 1" in text
+    assert "- running: 1" in text
+    assert "- blocked: 1" in text
+    assert "- needs_user: 1" in text
+    assert "- done-recent: 1" in text
+    assert "pending-worker 等待启动的目标。" in text
+    assert "done-worker 刚跑完等待归档的目标。" in text
+
+
 def test_codex_supervisor_runner_daemon_status_includes_active_goal_status(
     tmp_path,
     capsys,
@@ -15881,6 +16003,35 @@ def _add_supervisor_goal(
     )
     assert exit_code == 0
     return json.loads(capsys.readouterr().out)["goal"]
+
+
+def _append_supervisor_goal_status(
+    codex_home: Path,
+    *,
+    goal_id: str,
+    status: str,
+    target_name: str,
+    summary: str,
+    next_step: str,
+) -> None:
+    goals_path = codex_home / "supervisor" / "goals.jsonl"
+    with goals_path.open("a", encoding="utf-8") as handle:
+        handle.write(
+            json.dumps(
+                {
+                    "event": "supervisor_goal_status",
+                    "goal_id": goal_id,
+                    "status": status,
+                    "target_name": target_name,
+                    "summary": summary,
+                    "next": next_step,
+                    "created_at": NOW.isoformat(),
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+            + "\n"
+        )
 
 
 def _write_session(

@@ -51,6 +51,7 @@ from .flow import (
 from .fanout import DEFAULT_FANOUT_LIMIT, build_fanout_launch_plan
 from .goal_queue import (
     archive_supervisor_goal,
+    build_supervisor_goal_queue_view,
     read_latest_supervisor_goal_statuses,
     read_active_supervisor_goals,
     record_supervisor_goal,
@@ -3789,9 +3790,11 @@ def _goal_payload(args: argparse.Namespace) -> dict[str, Any]:
             payload["executed"] = _execute_fanout_launch_actions(args, fanout_plan)
         return payload
     if args.goal_command == "list":
+        active_goals = _active_goal_dicts(args, include_status=True)
         return {
             "status": "ok",
-            "active_goals": _active_goal_dicts(args, include_status=True),
+            "active_goals": active_goals,
+            "queue_view": _goal_queue_view(args, active_goals),
         }
     if args.goal_command == "archive":
         archived = archive_supervisor_goal(
@@ -3837,6 +3840,18 @@ def _optional_text(value: object) -> str | None:
     if not isinstance(value, str) or not value.strip():
         return None
     return value.strip()
+
+
+def _goal_queue_view(
+    args: argparse.Namespace,
+    active_goals: list[dict[str, Any]],
+) -> dict[str, list[dict[str, Any]]]:
+    return build_supervisor_goal_queue_view(
+        active_goals,
+        running_target_names=_running_managed_target_names_from_registry(
+            Path(args.codex_home)
+        ),
+    )
 
 
 def _print_goal_plain(payload: dict[str, Any]) -> None:
@@ -3900,6 +3915,7 @@ def _print_goal_plain(payload: dict[str, Any]) -> None:
         print(f"已写入目标：{len(written_goals)}")
     if executed := payload.get("executed"):
         _print_executed_plain(executed)
+    _print_goal_queue_view_plain(payload.get("queue_view"))
     goals = payload.get("active_goals") or []
     print(f"活跃目标：{len(goals)}")
     for item in goals:
@@ -3921,6 +3937,30 @@ def _print_goal_plain(payload: dict[str, Any]) -> None:
         if item.get("last_next"):
             print(f"  下一步：{item['last_next']}")
         print(f"  归档：{archive_command}")
+
+
+def _print_goal_queue_view_plain(queue_view: object) -> None:
+    if not isinstance(queue_view, dict):
+        return
+    print("队列视图：")
+    for key, label in (
+        ("pending", "pending"),
+        ("running", "running"),
+        ("blocked", "blocked"),
+        ("needs_user", "needs_user"),
+        ("done_recent", "done-recent"),
+    ):
+        raw_items = queue_view.get(key) or []
+        items = [item for item in raw_items if isinstance(item, dict)]
+        print(f"- {label}: {len(items)}")
+        for item in items:
+            target = item.get("target_name") or item.get("goal_id") or "unknown"
+            goal_text = item.get("goal") or ""
+            print(f"  - {target} {goal_text}".rstrip())
+            if item.get("last_summary"):
+                print(f"    摘要：{item['last_summary']}")
+            if item.get("last_next"):
+                print(f"    下一步：{item['last_next']}")
 
 
 def _cleanup_payload(args: argparse.Namespace) -> dict[str, Any]:
