@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator, Mapping
 
+from .decision_requests import DEFAULT_DECISION_TIMEOUT_SECONDS
 from .fanout import DEFAULT_FANOUT_LIMIT
 
 RUNNING_WORKER_STATUSES = {"launched", "resumed", "running", "working"}
@@ -86,6 +87,7 @@ def start_supervisor_daemon(
     max_continue_count: int,
     max_context_requests: int,
     max_failure_retries: int,
+    decision_timeout: int,
     max_run_minutes: int,
     max_fanout_launches: int,
     goal_low_water: int = 0,
@@ -120,6 +122,7 @@ def start_supervisor_daemon(
         prompt_cooldown=prompt_cooldown,
         max_continue_count=max_continue_count,
         max_context_requests=max_context_requests,
+        decision_timeout=decision_timeout,
         max_failure_retries=max_failure_retries,
         max_run_minutes=max_run_minutes,
         max_fanout_launches=max_fanout_launches,
@@ -377,6 +380,7 @@ def _build_loop_command(
     max_continue_count: int,
     max_context_requests: int,
     max_failure_retries: int,
+    decision_timeout: int,
     max_run_minutes: int,
     max_fanout_launches: int,
     goal_low_water: int = 0,
@@ -414,6 +418,8 @@ def _build_loop_command(
         command.extend(["--max-continue-count", str(max_continue_count)])
     if max_context_requests != 0:
         command.extend(["--max-context-requests", str(max_context_requests)])
+    if decision_timeout != DEFAULT_DECISION_TIMEOUT_SECONDS:
+        command.extend(["--decision-timeout", str(decision_timeout)])
     if max_failure_retries != 3:
         command.extend(["--max-failure-retries", str(max_failure_retries)])
     if max_run_minutes != 0:

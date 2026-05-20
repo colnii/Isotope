@@ -3304,6 +3304,189 @@ def test_codex_supervisor_runner_decision_answer_records_user_decision(
     assert json.loads(capsys.readouterr().out)["decision_requests"] == []
 
 
+def test_codex_supervisor_runner_loop_marks_stale_decision_request_timeout(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    decision_path = codex_home / "supervisor" / "decision_requests.jsonl"
+    decision_path.parent.mkdir(parents=True)
+    decision_path.write_text(
+        json.dumps(
+            {
+                "event": "decision_request",
+                "request_id": "decision-001",
+                "created_at": "2026-05-20T12:00:00+00:00",
+                "session_id": "goal:goal-001",
+                "goal_id": "goal-001",
+                "target_name": "goal-supervisor",
+                "question": "保留兼容层还是直接迁移？",
+                "reason": "目标明确请求拍板。",
+                "context_status": "conflict",
+                "gate": {
+                    "codex_requested_decision": True,
+                    "instructions_exhausted": True,
+                    "context_status": "conflict",
+                },
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.decision_requests._utc_now",
+        lambda: datetime(2026, 5, 20, 12, 2, tzinfo=timezone.utc),
+    )
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--decision-timeout",
+            "60",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["decision_timeout_alerts"] == [
+        {
+            "request_id": "decision-001",
+            "goal_id": "goal-001",
+            "target_name": "goal-supervisor",
+            "lane_name": "goal-supervisor",
+            "timeout_seconds": 60,
+        }
+    ]
+    lane_state = json.loads(
+        (codex_home / "supervisor" / "lane_state.json").read_text(encoding="utf-8")
+    )
+    assert lane_state["goal-supervisor"]["decision_timeout_request_id"] == "decision-001"
+    assert lane_state["goal-supervisor"]["decision_timeout_seconds"] == 60
+    notifications = NotificationFlow.in_process(codex_home).list_notifications(
+        notification_type="supervisor_decision_timeout"
+    )
+    assert len(notifications) == 1
+    assert notifications[0].source_ref == {
+        "ref_type": "supervisor_decision_timeout",
+        "request_id": "decision-001",
+        "goal_id": "goal-001",
+        "target_name": "goal-supervisor",
+        "timeout_seconds": "60",
+    }
+
+    exit_code = supervisor_main(
+        [
+            "decision",
+            "archive",
+            "--codex-home",
+            str(codex_home),
+            "--request-id",
+            "decision-001",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    capsys.readouterr()
+    lane_state = json.loads(
+        (codex_home / "supervisor" / "lane_state.json").read_text(encoding="utf-8")
+    )
+    assert lane_state["goal-supervisor"]["decision_timeout_request_id"] is None
+    assert lane_state["goal-supervisor"]["decision_timeout_alerted_at"] is None
+    assert lane_state["goal-supervisor"]["decision_timeout_seconds"] is None
+
+
+def test_codex_supervisor_runner_loop_ignores_answered_decision_request_timeout(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    decision_path = codex_home / "supervisor" / "decision_requests.jsonl"
+    decision_path.parent.mkdir(parents=True)
+    decision_path.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "event": "decision_request",
+                        "request_id": "decision-001",
+                        "created_at": "2026-05-20T12:00:00+00:00",
+                        "session_id": "goal:goal-001",
+                        "goal_id": "goal-001",
+                        "target_name": "goal-supervisor",
+                        "question": "保留兼容层还是直接迁移？",
+                        "reason": "目标明确请求拍板。",
+                        "context_status": "conflict",
+                        "gate": {
+                            "codex_requested_decision": True,
+                            "instructions_exhausted": True,
+                            "context_status": "conflict",
+                        },
+                    },
+                    ensure_ascii=False,
+                ),
+                json.dumps(
+                    {
+                        "event": "decision_answer",
+                        "request_id": "decision-001",
+                        "created_at": "2026-05-20T12:01:00+00:00",
+                        "session_id": "goal:goal-001",
+                        "goal_id": "goal-001",
+                        "target_name": "goal-supervisor",
+                        "question": "保留兼容层还是直接迁移？",
+                        "answer": "保留兼容层。",
+                    },
+                    ensure_ascii=False,
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.decision_requests._utc_now",
+        lambda: datetime(2026, 5, 20, 12, 2, tzinfo=timezone.utc),
+    )
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--decision-timeout",
+            "60",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["decision_timeout_alerts"] == []
+    assert not (codex_home / "supervisor" / "lane_state.json").exists()
+    notifications = NotificationFlow.in_process(codex_home).list_notifications(
+        notification_type="supervisor_decision_timeout"
+    )
+    assert notifications == []
+
+
 def test_codex_supervisor_runner_loop_uses_decision_answer_to_continue_goal(
     tmp_path,
     capsys,

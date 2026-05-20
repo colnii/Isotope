@@ -215,6 +215,11 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - goal 状态回写、decision request/answer 和通过 `integration-review` 的
   done worker 会尽力生成低敏通知或 webhook；notification index 损坏、
   本地写入失败或外部 POST 失败都不能破坏原 goal/decision 账本。
+- `loop/up/daemon start --decision-timeout <秒>` 会扫描活跃 decision
+  request；超过阈值时写入 lane state、生成
+  `supervisor_decision_timeout` 低敏通知，并在本轮 payload 输出
+  `decision_timeout_alerts`；同一个 request 不重复提醒，answer/archive
+  会清理对应 timeout 状态。
 - `cleanup list/archive` 会列出可归档的 done goal、done managed worker
   和未读 done 通知；归档不删除 Codex 历史，tmux worker 会读取当前
   pane 文本，避免用旧 log 误归档仍在工作的窗口。

@@ -94,6 +94,38 @@ def notify_decision_answer_written(
     )
 
 
+def notify_decision_request_timeout(
+    *,
+    codex_home: Path | str,
+    request_id: str,
+    target_name: str | None = None,
+    goal_id: str | None = None,
+    timeout_seconds: int,
+    webhook_url: str | None = None,
+    webhook_secret: str | None = None,
+) -> NotificationSummary | None:
+    source_ref = _low_sensitive_source_ref(
+        ref_type="supervisor_decision_timeout",
+        goal_id=goal_id,
+        request_id=request_id,
+        target_name=target_name,
+        timeout_seconds=str(timeout_seconds),
+    )
+    summary = _try_create_notification(
+        codex_home=codex_home,
+        notification_type="supervisor_decision_timeout",
+        title="Supervisor decision request timeout",
+        source_ref=source_ref,
+    )
+    dispatch_supervisor_webhook(
+        event_type="supervisor_decision_timeout",
+        source_ref=source_ref,
+        webhook_url=webhook_url,
+        webhook_secret=webhook_secret,
+    )
+    return summary
+
+
 def notify_worker_integration_review_passed(
     *,
     record_id: str,

@@ -9,10 +9,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from .lane_state import clear_lane_decision_timeout, record_lane_decision_timeout
 from .notifications import (
     notify_decision_answer_written,
+    notify_decision_request_timeout,
     notify_decision_request_written,
 )
+
+
+DEFAULT_DECISION_TIMEOUT_SECONDS = 3600
 
 
 @dataclass(frozen=True)
@@ -104,18 +109,18 @@ def archive_decision_request(
     now: Callable[[], datetime] | None = None,
 ) -> dict[str, Any]:
     request_id_text = _required_string(request_id, "request_id")
-    active = {
-        request.request_id
-        for request in read_active_decision_requests(codex_home=codex_home, limit=1000)
-    }
-    if request_id_text not in active:
-        raise ValueError(f"active decision request not found: {request_id_text}")
+    request = _active_request_by_id(codex_home=codex_home, request_id=request_id_text)
     event = {
         "event": "decision_archive",
         "request_id": request_id_text,
         "created_at": _ensure_aware_utc((now or _utc_now)()).isoformat(),
     }
     append_decision_archive(default_decision_requests_path(codex_home), event)
+    clear_lane_decision_timeout(
+        codex_home=codex_home,
+        name=_decision_lane_name(request),
+        request_id=request.request_id,
+    )
     return event
 
 
@@ -143,6 +148,11 @@ def record_decision_answer(
     if request.goal_id:
         event["goal_id"] = request.goal_id
     append_decision_answer(default_decision_requests_path(codex_home), event)
+    clear_lane_decision_timeout(
+        codex_home=codex_home,
+        name=_decision_lane_name(request),
+        request_id=request.request_id,
+    )
     notify_decision_answer_written(
         request_id=request.request_id,
         goal_id=request.goal_id,
@@ -150,6 +160,55 @@ def record_decision_answer(
         webhook_secret=webhook_secret,
     )
     return event
+
+
+def mark_stale_decision_request_timeouts(
+    *,
+    codex_home: Path | str,
+    timeout_seconds: int = DEFAULT_DECISION_TIMEOUT_SECONDS,
+    webhook_url: str | None = None,
+    webhook_secret: str | None = None,
+    now: Callable[[], datetime] | None = None,
+) -> list[dict[str, Any]]:
+    if timeout_seconds <= 0:
+        return []
+    current = _ensure_aware_utc((now or _utc_now)())
+    alerts: list[dict[str, Any]] = []
+    for request in read_active_decision_requests(codex_home=codex_home, limit=1000):
+        created_at = _parse_timestamp(request.created_at)
+        if created_at is None:
+            continue
+        age_seconds = max(0, int((current - created_at).total_seconds()))
+        if age_seconds < timeout_seconds:
+            continue
+        lane_name = _decision_lane_name(request)
+        _state, first_alert = record_lane_decision_timeout(
+            codex_home=codex_home,
+            name=lane_name,
+            request_id=request.request_id,
+            timeout_seconds=timeout_seconds,
+            now=current,
+        )
+        if not first_alert:
+            continue
+        alert = {
+            "request_id": request.request_id,
+            "goal_id": request.goal_id,
+            "target_name": request.target_name,
+            "lane_name": lane_name,
+            "timeout_seconds": timeout_seconds,
+        }
+        alerts.append(alert)
+        notify_decision_request_timeout(
+            codex_home=codex_home,
+            request_id=request.request_id,
+            target_name=request.target_name,
+            goal_id=request.goal_id,
+            timeout_seconds=timeout_seconds,
+            webhook_url=webhook_url,
+            webhook_secret=webhook_secret,
+        )
+    return alerts
 
 
 def append_decision_request(path: Path | str, request: DecisionRequest) -> None:
@@ -310,6 +369,18 @@ def _answer_from_dict(raw: dict[str, Any]) -> dict[str, Any] | None:
     if goal_id := _optional_string(raw.get("goal_id")):
         payload["goal_id"] = goal_id
     return payload
+
+
+def _decision_lane_name(request: DecisionRequest) -> str:
+    return request.target_name or request.session_id
+
+
+def _parse_timestamp(value: str) -> datetime | None:
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    return _ensure_aware_utc(parsed)
 
 
 def _request_from_dict(raw: dict[str, Any]) -> DecisionRequest | None:

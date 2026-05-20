@@ -33,7 +33,9 @@ from .context import (
 )
 from .current_batch import build_current_batch_view
 from .decision_requests import (
+    DEFAULT_DECISION_TIMEOUT_SECONDS,
     archive_decision_request,
+    mark_stale_decision_request_timeouts,
     read_active_decision_requests,
     read_recent_decision_answers,
     record_decision_answer,
@@ -465,6 +467,12 @@ def _build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_MAX_CONTEXT_REQUESTS,
         help="Maximum request_context executions per loop iteration. Default 0 disables.",
     )
+    loop_parser.add_argument(
+        "--decision-timeout",
+        type=int,
+        default=DEFAULT_DECISION_TIMEOUT_SECONDS,
+        help="Seconds before an active decision request raises a timeout alert.",
+    )
     _add_failure_retry_args(loop_parser)
     loop_parser.add_argument(
         "--max-run-minutes",
@@ -576,6 +584,12 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=DEFAULT_MAX_CONTEXT_REQUESTS,
         help="Maximum request_context executions per loop iteration. Default 0 disables.",
+    )
+    up_parser.add_argument(
+        "--decision-timeout",
+        type=int,
+        default=DEFAULT_DECISION_TIMEOUT_SECONDS,
+        help="Seconds before an active decision request raises a timeout alert.",
     )
     _add_failure_retry_args(up_parser)
     up_parser.add_argument(
@@ -709,6 +723,12 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=DEFAULT_MAX_CONTEXT_REQUESTS,
         help="Maximum request_context executions per loop iteration. Default 0 disables.",
+    )
+    daemon_start_parser.add_argument(
+        "--decision-timeout",
+        type=int,
+        default=DEFAULT_DECISION_TIMEOUT_SECONDS,
+        help="Seconds before an active decision request raises a timeout alert.",
     )
     _add_failure_retry_args(daemon_start_parser)
     daemon_start_parser.add_argument(
@@ -1718,6 +1738,8 @@ def _start_daemon_from_args(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("max_continue_count must be zero or positive")
     if args.max_context_requests < 0:
         raise ValueError("max_context_requests must be zero or positive")
+    if args.decision_timeout < 0:
+        raise ValueError("decision_timeout must be zero or positive")
     if args.max_failure_retries < 0:
         raise ValueError("max_failure_retries must be zero or positive")
     if args.max_run_minutes < 0:
@@ -1739,6 +1761,7 @@ def _start_daemon_from_args(args: argparse.Namespace) -> dict[str, Any]:
         prompt_cooldown=args.prompt_cooldown,
         max_continue_count=args.max_continue_count,
         max_context_requests=args.max_context_requests,
+        decision_timeout=args.decision_timeout,
         max_failure_retries=args.max_failure_retries,
         max_run_minutes=args.max_run_minutes,
         max_fanout_launches=args.max_fanout_launches,
@@ -2247,6 +2270,13 @@ def _run_supervise(args: argparse.Namespace) -> None:
         raise ValueError("interval must be positive")
     if args.iterations is not None and args.iterations <= 0:
         raise ValueError("iterations must be positive")
+    decision_timeout = getattr(
+        args,
+        "decision_timeout",
+        DEFAULT_DECISION_TIMEOUT_SECONDS,
+    )
+    if decision_timeout < 0:
+        raise ValueError("decision_timeout must be zero or positive")
     iterations = args.iterations
     count = 0
     previous_fingerprint: tuple[object, ...] | None = None
@@ -2256,6 +2286,12 @@ def _run_supervise(args: argparse.Namespace) -> None:
         report = _scan_report(args)
         goal_updates = _sync_goal_lifecycle(args, report)
         cleanup_archived = _auto_cleanup_done_workers(args)
+        decision_timeout_alerts = mark_stale_decision_request_timeouts(
+            codex_home=Path(args.codex_home),
+            timeout_seconds=decision_timeout,
+            webhook_url=getattr(args, "webhook_url", None),
+            webhook_secret=getattr(args, "webhook_secret", None),
+        )
         fingerprint = _report_fingerprint(report)
         report_changed = previous_fingerprint != fingerprint
         precomputed_auto_action: dict[str, Any] | None = None
@@ -2271,6 +2307,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
                     auto_adopted=auto_adopted,
                     goal_updates=goal_updates,
                     cleanup_archived=cleanup_archived,
+                    decision_timeout_alerts=decision_timeout_alerts,
                 )
                 force_print = _executed_action_forces_print(
                     precomputed_payload.get("executed", {})
@@ -2296,6 +2333,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
             or bool(auto_adopted)
             or bool(goal_updates)
             or bool(cleanup_archived)
+            or bool(decision_timeout_alerts)
         )
         if should_print:
             payload = precomputed_payload or _supervise_payload(
@@ -2307,6 +2345,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
                 precomputed_executed=precomputed_executed,
                 goal_updates=goal_updates,
                 cleanup_archived=cleanup_archived,
+                decision_timeout_alerts=decision_timeout_alerts,
             )
             bell_fingerprint = _supervise_bell_fingerprint(report, payload)
             if (
@@ -3182,6 +3221,7 @@ def _supervise_payload(
     auto_adopted: list[dict[str, str]] | None = None,
     goal_updates: list[dict[str, Any]] | None = None,
     cleanup_archived: list[dict[str, Any]] | None = None,
+    decision_timeout_alerts: list[dict[str, Any]] | None = None,
     precomputed_auto_action: dict[str, Any] | None = None,
     precomputed_executed: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -3221,6 +3261,7 @@ def _supervise_payload(
         payload["goal_updates"] = goal_updates
     if cleanup_archived:
         payload["cleanup_archived"] = cleanup_archived
+    payload["decision_timeout_alerts"] = decision_timeout_alerts or []
     worker_reviews: dict[str, Any] | None = None
     if args.llm_action or args.llm_execute:
         payload["recent_context_results"] = _recent_context_results(args, action_report)
@@ -3984,6 +4025,8 @@ def _dashboard_notification_source_ref(source_ref: dict[str, Any]) -> dict[str, 
         "session_id",
         "notification_id",
         "status",
+        "target_name",
+        "timeout_seconds",
     }
     return {
         key: value
@@ -4061,6 +4104,19 @@ def _attention_bell_fingerprint(report: Any) -> tuple[object, ...] | None:
 def _supervise_bell_fingerprint(
     report: Any, payload: dict[str, Any]
 ) -> tuple[object, ...] | None:
+    decision_timeout_alerts = payload.get("decision_timeout_alerts")
+    if isinstance(decision_timeout_alerts, list) and decision_timeout_alerts:
+        return (
+            "supervise",
+            "decision_timeout",
+            tuple(
+                sorted(
+                    str(item.get("request_id"))
+                    for item in decision_timeout_alerts
+                    if isinstance(item, dict)
+                )
+            ),
+        )
     followup_executed = payload.get("followup_executed")
     if isinstance(followup_executed, dict) and followup_executed.get("kind") == "ask_user":
         return (

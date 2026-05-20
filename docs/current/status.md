@@ -142,6 +142,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `decision archive --request-id <id>` 可把无需继续的项移出活跃列表；
     写入合法拍板请求和拍板答案时会尽力生成低敏通知或 webhook；
     通知写入或 webhook POST 失败不会影响原 decision request 账本；
+    `loop/up/daemon start --decision-timeout <秒>` 可让活跃拍板请求
+    超过阈值后写入 lane state、生成低敏通知，并在 `loop --json`
+    输出 `decision_timeout_alerts`；默认 3600 秒，传 0 可关闭；
     `--llm-execute` 可执行 LLM 选择的 send、resume、launch 或
     context 动作；执行 `send_status/send_continue` 前会检查目标
     tmux lane 是否仍显示 `Working ... esc to interrupt`，忙碌时跳过，

@@ -28,6 +28,9 @@ class LaneState:
     last_failure_record_id: str | None = None
     last_failed_at: str | None = None
     failure_count: int = 0
+    decision_timeout_request_id: str | None = None
+    decision_timeout_alerted_at: str | None = None
+    decision_timeout_seconds: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -44,6 +47,9 @@ class LaneState:
             "last_failure_record_id": self.last_failure_record_id,
             "last_failed_at": self.last_failed_at,
             "failure_count": self.failure_count,
+            "decision_timeout_request_id": self.decision_timeout_request_id,
+            "decision_timeout_alerted_at": self.decision_timeout_alerted_at,
+            "decision_timeout_seconds": self.decision_timeout_seconds,
         }
 
 
@@ -164,6 +170,25 @@ def record_lane_prompt(
         prompt_count=prompt_count,
         last_prompt_kind=prompt_kind,
         continue_count=continue_count,
+        last_failure_reason=previous.last_failure_reason if previous is not None else None,
+        last_failure_exit_code=previous.last_failure_exit_code if previous is not None else None,
+        last_failure_stderr_summary=(
+            previous.last_failure_stderr_summary if previous is not None else None
+        ),
+        last_failure_record_id=(
+            previous.last_failure_record_id if previous is not None else None
+        ),
+        last_failed_at=previous.last_failed_at if previous is not None else None,
+        failure_count=previous.failure_count if previous is not None else 0,
+        decision_timeout_request_id=(
+            previous.decision_timeout_request_id if previous is not None else None
+        ),
+        decision_timeout_alerted_at=(
+            previous.decision_timeout_alerted_at if previous is not None else None
+        ),
+        decision_timeout_seconds=(
+            previous.decision_timeout_seconds if previous is not None else None
+        ),
     )
     states[name] = state
     write_lane_states(path, states)
@@ -214,6 +239,99 @@ def record_lane_failure(
         last_failure_record_id=record_id,
         last_failed_at=previous.last_failed_at if same_failure and previous else current.isoformat(),
         failure_count=failure_count,
+        decision_timeout_request_id=(
+            previous.decision_timeout_request_id if previous is not None else None
+        ),
+        decision_timeout_alerted_at=(
+            previous.decision_timeout_alerted_at if previous is not None else None
+        ),
+        decision_timeout_seconds=(
+            previous.decision_timeout_seconds if previous is not None else None
+        ),
+    )
+    states[name] = state
+    write_lane_states(path, states)
+    return state
+
+
+def record_lane_decision_timeout(
+    *,
+    codex_home: Path | str,
+    name: str,
+    request_id: str,
+    timeout_seconds: int,
+    now: datetime | None = None,
+) -> tuple[LaneState, bool]:
+    path = default_lane_state_path(codex_home)
+    states = read_lane_states(path)
+    current = _ensure_aware_utc(now or _utc_now())
+    previous = states.get(name)
+    already_alerted = (
+        previous is not None
+        and previous.decision_timeout_request_id == request_id
+        and previous.decision_timeout_alerted_at is not None
+    )
+    state = LaneState(
+        name=name,
+        tmux_session=previous.tmux_session if previous is not None else None,
+        last_status=previous.last_status if previous is not None else "needs_user",
+        last_prompted_at=previous.last_prompted_at if previous is not None else None,
+        prompt_count=previous.prompt_count if previous is not None else 0,
+        last_prompt_kind=previous.last_prompt_kind if previous is not None else None,
+        continue_count=previous.continue_count if previous is not None else 0,
+        last_failure_reason=previous.last_failure_reason if previous is not None else None,
+        last_failure_exit_code=previous.last_failure_exit_code if previous is not None else None,
+        last_failure_stderr_summary=(
+            previous.last_failure_stderr_summary if previous is not None else None
+        ),
+        last_failure_record_id=(
+            previous.last_failure_record_id if previous is not None else None
+        ),
+        last_failed_at=previous.last_failed_at if previous is not None else None,
+        failure_count=previous.failure_count if previous is not None else 0,
+        decision_timeout_request_id=request_id,
+        decision_timeout_alerted_at=(
+            previous.decision_timeout_alerted_at
+            if already_alerted and previous is not None
+            else current.isoformat()
+        ),
+        decision_timeout_seconds=timeout_seconds,
+    )
+    states[name] = state
+    write_lane_states(path, states)
+    return state, not already_alerted
+
+
+def clear_lane_decision_timeout(
+    *,
+    codex_home: Path | str,
+    name: str,
+    request_id: str | None = None,
+) -> LaneState | None:
+    path = default_lane_state_path(codex_home)
+    states = read_lane_states(path)
+    previous = states.get(name)
+    if previous is None:
+        return None
+    if request_id is not None and previous.decision_timeout_request_id != request_id:
+        return previous
+    state = LaneState(
+        name=previous.name,
+        tmux_session=previous.tmux_session,
+        last_status=previous.last_status,
+        last_prompted_at=previous.last_prompted_at,
+        prompt_count=previous.prompt_count,
+        last_prompt_kind=previous.last_prompt_kind,
+        continue_count=previous.continue_count,
+        last_failure_reason=previous.last_failure_reason,
+        last_failure_exit_code=previous.last_failure_exit_code,
+        last_failure_stderr_summary=previous.last_failure_stderr_summary,
+        last_failure_record_id=previous.last_failure_record_id,
+        last_failed_at=previous.last_failed_at,
+        failure_count=previous.failure_count,
+        decision_timeout_request_id=None,
+        decision_timeout_alerted_at=None,
+        decision_timeout_seconds=None,
     )
     states[name] = state
     write_lane_states(path, states)
@@ -234,6 +352,9 @@ def _state_from_dict(raw: dict[str, Any]) -> LaneState | None:
     last_failure_record_id = raw.get("last_failure_record_id")
     last_failed_at = raw.get("last_failed_at")
     failure_count = raw.get("failure_count", 0)
+    decision_timeout_request_id = raw.get("decision_timeout_request_id")
+    decision_timeout_alerted_at = raw.get("decision_timeout_alerted_at")
+    decision_timeout_seconds = raw.get("decision_timeout_seconds")
     if not isinstance(name, str) or not isinstance(last_status, str):
         return None
     if tmux_session is not None and not isinstance(tmux_session, str):
@@ -263,6 +384,19 @@ def _state_from_dict(raw: dict[str, Any]) -> LaneState | None:
         return None
     if not isinstance(failure_count, int) or failure_count < 0:
         return None
+    if decision_timeout_request_id is not None and not isinstance(
+        decision_timeout_request_id, str
+    ):
+        return None
+    if decision_timeout_alerted_at is not None and not isinstance(
+        decision_timeout_alerted_at, str
+    ):
+        return None
+    if decision_timeout_seconds is not None and (
+        not isinstance(decision_timeout_seconds, int)
+        or decision_timeout_seconds < 0
+    ):
+        return None
     return LaneState(
         name=name,
         tmux_session=tmux_session,
@@ -277,6 +411,9 @@ def _state_from_dict(raw: dict[str, Any]) -> LaneState | None:
         last_failure_record_id=last_failure_record_id,
         last_failed_at=last_failed_at,
         failure_count=failure_count,
+        decision_timeout_request_id=decision_timeout_request_id,
+        decision_timeout_alerted_at=decision_timeout_alerted_at,
+        decision_timeout_seconds=decision_timeout_seconds,
     )
 
 
