@@ -12,6 +12,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from ...rag.retrieval import (
+    SummarySearchDocument,
+    rank_summary_documents,
+)
+
 
 SKIPPED_DIRS = {
     ".git",
@@ -31,14 +36,20 @@ class ContextItem:
     path: str
     line: int
     text: str
-    score: int
+    score: float
+    title: str = ""
+    snippet: str = ""
+    match_reason: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "path": self.path,
             "line": self.line,
+            "title": self.title,
             "text": self.text,
+            "snippet": self.snippet,
             "score": self.score,
+            "match_reason": self.match_reason,
         }
 
 
@@ -168,6 +179,7 @@ def _search_workspace_with_python(
     query_lower = query.lower()
     terms = _query_terms(query)
     candidates: list[ContextItem] = []
+    title_cache: dict[str, str] = {}
     for file_path in _candidate_files(workspace):
         relative = file_path.relative_to(workspace).as_posix()
         path_score = _score_text(relative.lower(), query_lower, terms)
@@ -183,16 +195,30 @@ def _search_workspace_with_python(
             score = line_score + path_score
             if score <= 0:
                 continue
+            snippet = _clip(text)
+            title = _title_for_path(
+                workspace,
+                relative,
+                fallback_text=snippet,
+                title_cache=title_cache,
+            )
             candidates.append(
                 ContextItem(
                     path=relative,
                     line=line_number,
-                    text=_clip(text),
+                    text=snippet,
                     score=score,
+                    title=title,
+                    snippet=snippet,
+                    match_reason=_match_reason(
+                        path=relative,
+                        title=title,
+                        snippet=snippet,
+                        terms=terms,
+                    ),
                 )
             )
-    candidates.sort(key=lambda item: (-item.score, item.path, item.line))
-    return candidates[:max_results]
+    return _rank_context_items(query, candidates)[:max_results]
 
 
 def _search_workspace_with_rg(
@@ -244,15 +270,21 @@ def _search_workspace_with_rg(
         return None
     if completed.returncode not in {0, 1}:
         return None
-    candidates = _context_items_from_rg_json(completed.stdout, query)
-    candidates.sort(key=lambda item: (-item.score, item.path, item.line))
+    candidates = _context_items_from_rg_json(completed.stdout, query, workspace=workspace)
+    candidates = _rank_context_items(query, candidates)
     return candidates[:max_results]
 
 
-def _context_items_from_rg_json(output: str, query: str) -> list[ContextItem]:
+def _context_items_from_rg_json(
+    output: str,
+    query: str,
+    *,
+    workspace: Path,
+) -> list[ContextItem]:
     query_lower = query.lower()
     terms = _query_terms(query)
     items: list[ContextItem] = []
+    title_cache: dict[str, str] = {}
     for line in output.splitlines():
         try:
             event = json.loads(line)
@@ -273,12 +305,28 @@ def _context_items_from_rg_json(output: str, query: str) -> list[ContextItem]:
         score = _score_text(path.lower(), query_lower, terms)
         score += _score_text(line_text.lower(), query_lower, terms)
         score += submatch_score
+        relative = path.lstrip("./")
+        snippet = _clip(" ".join(line_text.split()))
+        title = _title_for_path(
+            workspace,
+            relative,
+            fallback_text=snippet,
+            title_cache=title_cache,
+        )
         items.append(
             ContextItem(
-                path=path.lstrip("./"),
+                path=relative,
                 line=line_number,
-                text=_clip(" ".join(line_text.split())),
+                text=snippet,
                 score=score,
+                title=title,
+                snippet=snippet,
+                match_reason=_match_reason(
+                    path=relative,
+                    title=title,
+                    snippet=snippet,
+                    terms=terms,
+                ),
             )
         )
     return items
@@ -312,6 +360,50 @@ def _query_terms(query: str) -> list[str]:
     return list(dict.fromkeys(terms))
 
 
+def _rank_context_items(query: str, items: list[ContextItem]) -> list[ContextItem]:
+    if not items:
+        return []
+    documents = [
+        SummarySearchDocument(
+            document_id=str(position),
+            title=item.title,
+            summary=f"{item.path} {item.snippet} {item.match_reason}",
+            metadata={"item": item, "base_score": item.score},
+        )
+        for position, item in enumerate(items)
+    ]
+    try:
+        hits = rank_summary_documents(query, documents)
+    except ValueError:
+        hits = []
+    if not hits:
+        return sorted(items, key=lambda item: (-item.score, item.path, item.line))
+
+    ranked: list[ContextItem] = []
+    for hit in hits:
+        metadata = hit.document.metadata or {}
+        item = metadata.get("item")
+        base_score = metadata.get("base_score", 0.0)
+        if not isinstance(item, ContextItem):
+            continue
+        ranked.append(
+            ContextItem(
+                path=item.path,
+                line=item.line,
+                text=item.text,
+                score=round(float(hit.score) + float(base_score) / 10.0, 4),
+                title=item.title,
+                snippet=item.snippet,
+                match_reason=item.match_reason,
+            )
+        )
+    ranked_item_ids = {(item.path, item.line, item.text) for item in ranked}
+    for item in sorted(items, key=lambda item: (-item.score, item.path, item.line)):
+        if (item.path, item.line, item.text) not in ranked_item_ids:
+            ranked.append(item)
+    return sorted(ranked, key=lambda item: (-item.score, item.path, item.line))
+
+
 def _score_text(text: str, query: str, terms: list[str]) -> int:
     score = 0
     if query and query in text:
@@ -320,6 +412,61 @@ def _score_text(text: str, query: str, terms: list[str]) -> int:
         if term.lower() in text:
             score += 2
     return score
+
+
+def _title_for_path(
+    workspace: Path,
+    relative: str,
+    *,
+    fallback_text: str,
+    title_cache: dict[str, str] | None = None,
+) -> str:
+    if title_cache is not None and relative in title_cache:
+        return title_cache[relative]
+    file_path = workspace / relative
+    title: str | None = None
+    if file_path.suffix.lower() == ".md":
+        try:
+            for line in file_path.read_text(
+                encoding="utf-8",
+                errors="ignore",
+            ).splitlines():
+                heading = line.strip()
+                if heading.startswith("#"):
+                    title = heading.lstrip("#").strip() or Path(relative).name
+                    break
+        except OSError:
+            pass
+    if title is None and file_path.suffix.lower() == ".py":
+        symbol_title = _python_symbol_title(fallback_text)
+        if symbol_title:
+            title = symbol_title
+    if title is None:
+        title = Path(relative).name
+    if title_cache is not None:
+        title_cache[relative] = title
+    return title
+
+
+def _python_symbol_title(text: str) -> str | None:
+    match = re.match(r"(?:async\s+def|def|class)\s+([A-Za-z_][A-Za-z0-9_]*)", text)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _match_reason(
+    *,
+    path: str,
+    title: str,
+    snippet: str,
+    terms: list[str],
+) -> str:
+    searchable = f"{path} {title} {snippet}".casefold()
+    matched_terms = [term for term in terms if term.casefold() in searchable]
+    if matched_terms:
+        return "matched query terms: " + ", ".join(matched_terms[:8])
+    return "matched by rg/python candidate score"
 
 
 def _result_from_dict(raw: dict[str, Any]) -> ContextResult | None:
@@ -340,14 +487,31 @@ def _result_from_dict(raw: dict[str, Any]) -> ContextResult | None:
         path = item.get("path")
         line = item.get("line")
         text = item.get("text")
+        title = item.get("title")
+        snippet = item.get("snippet")
         score = item.get("score")
+        match_reason = item.get("match_reason")
         if (
             isinstance(path, str)
             and isinstance(line, int)
             and isinstance(text, str)
-            and isinstance(score, int)
+            and isinstance(score, (int, float))
         ):
-            items.append(ContextItem(path=path, line=line, text=text, score=score))
+            items.append(
+                ContextItem(
+                    path=path,
+                    line=line,
+                    text=text,
+                    score=score,
+                    title=title if isinstance(title, str) and title else Path(path).name,
+                    snippet=snippet if isinstance(snippet, str) and snippet else text,
+                    match_reason=(
+                        match_reason
+                        if isinstance(match_reason, str) and match_reason
+                        else "legacy context result"
+                    ),
+                )
+            )
     return ContextResult(
         result_id=result_id,
         cwd=cwd,

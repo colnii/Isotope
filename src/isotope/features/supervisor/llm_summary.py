@@ -326,6 +326,8 @@ def build_llm_action_messages(
                         "kind": "request_context",
                         "description": (
                             "信息不足时，按 query 主动检索项目上下文；"
+                            "结果会返回 ranked evidence（排序证据）的 "
+                            "title/path/snippet/score/match_reason；"
                             "不要要求系统每轮固定塞文档全文。"
                         ),
                         "schema": {

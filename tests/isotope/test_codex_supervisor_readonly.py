@@ -21,7 +21,10 @@ from isotope.features.supervisor.flow import (
     CodexSupervisorReport,
     render_plain_report,
 )
-from isotope.features.supervisor.context import request_project_context
+from isotope.features.supervisor.context import (
+    read_recent_context_results,
+    request_project_context,
+)
 from isotope.features.supervisor.llm_summary import (
     PooledSummaryProvider,
     PoolEntry,
@@ -6989,6 +6992,107 @@ def test_codex_supervisor_context_request_prefers_rg_backend(tmp_path):
     assert result.items[0].path == "docs/current/status.md"
     assert "LLM 主导" in result.items[0].text
     assert calls
+
+
+def test_codex_supervisor_context_request_returns_ranked_evidence(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    (workspace / "docs" / "current").mkdir(parents=True)
+    (workspace / "src" / "isotope" / "features" / "supervisor").mkdir(parents=True)
+    (workspace / "docs" / "current" / "status.md").write_text(
+        "# Codex Supervisor Status\n\n"
+        "request_context ranked evidence 会给 LLM "
+        "title path snippet score match_reason。\n",
+        encoding="utf-8",
+    )
+    (workspace / "src" / "isotope" / "features" / "supervisor" / "context.py").write_text(
+        "def request_project_context():\n"
+        "    return 'context only'\n",
+        encoding="utf-8",
+    )
+
+    def fake_run(
+        command: list[str],
+        *,
+        cwd: str,
+        text: bool,
+        capture_output: bool,
+        check: bool,
+        timeout: int,
+    ) -> subprocess.CompletedProcess[str]:
+        del cwd, text, capture_output, check, timeout
+        events = [
+            {
+                "type": "match",
+                "data": {
+                    "path": {"text": "src/isotope/features/supervisor/context.py"},
+                    "line_number": 1,
+                    "lines": {"text": "def request_project_context():\n"},
+                    "submatches": [{"match": {"text": "request_context"}}],
+                },
+            },
+            {
+                "type": "match",
+                "data": {
+                    "path": {"text": "docs/current/status.md"},
+                    "line_number": 3,
+                    "lines": {
+                        "text": (
+                            "request_context ranked evidence 会给 LLM title path "
+                            "snippet score match_reason。\n"
+                        ),
+                    },
+                    "submatches": [
+                        {"match": {"text": "request_context"}},
+                        {"match": {"text": "ranked"}},
+                        {"match": {"text": "evidence"}},
+                    ],
+                },
+            },
+        ]
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            "\n".join(json.dumps(event) for event in events),
+            "",
+        )
+
+    result = request_project_context(
+        codex_home=codex_home,
+        cwd=workspace,
+        query="request_context ranked evidence",
+        run=fake_run,
+        rg_bin="rg",
+        max_results=2,
+    )
+
+    first = result.items[0]
+    assert result.backend == "rg"
+    assert [item.score for item in result.items] == sorted(
+        (item.score for item in result.items),
+        reverse=True,
+    )
+    assert first.path == "docs/current/status.md"
+    assert first.title == "Codex Supervisor Status"
+    assert first.snippet == first.text
+    assert "title path snippet score match_reason" in first.snippet
+    assert first.score > result.items[1].score
+    assert "request_context" in first.match_reason
+    assert "ranked" in first.match_reason
+    assert first.to_dict() == {
+        "path": "docs/current/status.md",
+        "line": 3,
+        "title": "Codex Supervisor Status",
+        "text": first.text,
+        "snippet": first.snippet,
+        "score": first.score,
+        "match_reason": first.match_reason,
+    }
+
+    recent = read_recent_context_results(codex_home=codex_home, cwd=workspace)
+    assert recent[0].items[0].title == "Codex Supervisor Status"
+    assert recent[0].items[0].snippet == first.snippet
+    assert recent[0].items[0].match_reason == first.match_reason
 
 
 def test_codex_supervisor_context_request_falls_back_without_rg(tmp_path):

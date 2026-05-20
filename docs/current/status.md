@@ -93,8 +93,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     执行时会包成 A 层 `work order` prompt，写明 goal、cwd、
     scope、budget hint、完成条件和停等用户条件；这只是提示边界，
     不是 Supervisor 强制预算控制；`request_context` 是按需上下文检索能力，
-    当前使用 `rg` 优先、Python 关键词扫描兜底，不是 BM25，
-    也不是每轮固定塞文档全文；
+    当前使用 `rg` 优先、Python 关键词扫描兜底，并复用 `rag`
+    的 BM25-style 排序处理候选片段，不是每轮固定塞文档全文；
     `scan --json` 包含结构化建议；
     `ask_user` 只有在 Codex 明确提出拍板请求、LLM 无法根据用户
     既有指示判断、并且上下文检索结果缺失/过时/冲突时才允许；
@@ -113,6 +113,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `resume_session` 候选，但其 cwd 仍可供 `launch_session` 和
     `request_context` 使用；LLM 重规划时会看到已检索过的
     context history，避免重复请求同一个 cwd/query；
+    `request_context` 的每条结果是结构化 ranked evidence，
+    包含 `title`、`path`、`snippet`、`score` 和 `match_reason`，
+    以便 LLM 看到排序依据和低敏片段，而不是每轮塞全文；
     `resume_session` 也受 `--prompt-cooldown` 约束，避免短时间重复恢复
     同一历史会话；如果目标 session 所在 cwd 已有后台 process worker
     仍在运行，`resume_session` 会跳过，避免同一个隔离工作区被重复驱动；
