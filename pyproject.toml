@@ -21,6 +21,7 @@ isotope-workbench = "isotope.features.workbench.runner:main"
 isotope-ask = "isotope.features.ask.runner:main"
 isotope-api = "isotope.apps.api:main"
 isotope-supervisor = "isotope.features.supervisor.runner:main"
+isotope-notification = "isotope.features.notifications.runner:main"
 
 [project.optional-dependencies]
 test = ["pytest>=8.0"]
