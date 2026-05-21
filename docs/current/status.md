@@ -365,7 +365,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `/managed/send` 执行 `send_status` 和 `send_continue` 两个白名单动作；
     两个动作都会要求托管 Codex 按状态协议汇报；
     dashboard JSON 和 web 已展示通知列表、未读数量、标题、类型和
-    低敏 `source_ref`；
+    低敏来源摘要；web 通知列表默认折叠，只显示未读/总数和最近摘要，
+    展开后最多显示最近 50 条，避免历史通知淹没主控制台；
     dashboard JSON 和 web 已新增“当前批次”区，单独展示仍活跃的
     `active_goals` 与当前托管 worker；已完成 worker、已删除 worktree
     的历史 session 不会进入当前批次；

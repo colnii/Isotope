@@ -2492,6 +2492,7 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "control-center" in html
     assert "Supervisor 控制台" in html
     assert "sendSupervisorServiceAction" in html
+    assert "状态已刷新" in html
     assert "/daemon/start" in html
     assert "/daemon/stop" in html
     assert "/watcher/start" in html
@@ -2515,7 +2516,11 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "worker-detail:" in html
     assert "notification-list" in html
     assert "通知列表" in html
-    assert "source_ref" in html
+    assert "notification-toggle" in html
+    assert "renderNotificationSummary" in html
+    assert "notificationSourceSummary" in html
+    assert "展开通知" in html
+    assert "默认折叠" in html
     assert "submitDecisionAnswer" in html
     assert "/decision/answer" in html
     assert "填写答案" in html

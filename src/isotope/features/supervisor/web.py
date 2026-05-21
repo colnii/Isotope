@@ -906,6 +906,11 @@ def dashboard_page_html() -> str:
       gap: 8px;
       margin-top: 8px;
     }
+    .notification-summary {
+      color: var(--muted);
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
     .notification-list-item {
       color: #1849a9;
       overflow-wrap: anywhere;
@@ -1250,10 +1255,27 @@ def dashboard_page_html() -> str:
       </div>
       <div class="worker-detail-body" id="worker-detail-list"></div>
     </div>
+    <div class="grid">
+      <section data-group="needs_attention">
+        <div class="group-head"><h2>需要看</h2><span class="count" id="count-needs_attention">0</span></div>
+        <div class="lane-list" id="group-needs_attention"></div>
+      </section>
+      <section data-group="working">
+        <div class="group-head"><h2>工作中</h2><span class="count" id="count-working">0</span></div>
+        <div class="lane-list" id="group-working"></div>
+      </section>
+      <section data-group="done">
+        <div class="group-head"><h2>已完成</h2><span class="count" id="count-done">0</span></div>
+        <div class="lane-list" id="group-done"></div>
+      </section>
+    </div>
     <div class="notification-list" id="notification-list">
       <div class="notification-list-head">
         <span>通知列表</span>
-        <span class="count" id="notification-count">0</span>
+        <span>
+          <button type="button" id="notification-toggle">展开通知</button>
+          <span class="count" id="notification-count">0</span>
+        </span>
       </div>
       <div class="notification-list-body" id="notifications"></div>
     </div>
@@ -1264,24 +1286,11 @@ def dashboard_page_html() -> str:
       </div>
       <div class="decision-list-body" id="decision-requests"></div>
     </div>
-    <div class="grid">
-      <section data-group="needs_attention">
-        <div class="group-head"><h2>需要看</h2><span class="count" id="count-needs_attention">0</span></div>
-        <div class="lane-list" id="group-needs_attention"></div>
-      </section>
-      <section data-group="done">
-        <div class="group-head"><h2>已完成</h2><span class="count" id="count-done">0</span></div>
-        <div class="lane-list" id="group-done"></div>
-      </section>
-      <section data-group="working">
-        <div class="group-head"><h2>工作中</h2><span class="count" id="count-working">0</span></div>
-        <div class="lane-list" id="group-working"></div>
-      </section>
-    </div>
   </main>
   <script>
     const groups = ["needs_attention", "done", "working"];
     let latestLlmAction = null;
+    let notificationsExpanded = false;
     const terminalScrollState = new Map();
 
     function text(value) {
@@ -1438,6 +1447,7 @@ def dashboard_page_html() -> str:
     function renderControlCenter(payload) {
       renderServiceControl("daemon", payload.daemon);
       renderServiceControl("watcher", payload.watcher);
+      document.getElementById("control-message").textContent = "状态已刷新";
     }
 
     function renderGoalQueue(current) {
@@ -1965,10 +1975,12 @@ def dashboard_page_html() -> str:
     function renderNotifications(notifications, counts) {
       const count = document.getElementById("notification-count");
       const list = document.getElementById("notifications");
+      const toggle = document.getElementById("notification-toggle");
       const unread = counts && Number.isInteger(counts.unread)
         ? counts.unread
         : notifications.filter((item) => item.unread).length;
       count.textContent = unread + "/" + notifications.length;
+      toggle.textContent = notificationsExpanded ? "收起通知" : "展开通知";
       list.replaceChildren();
       if (notifications.length === 0) {
         const empty = document.createElement("div");
@@ -1977,7 +1989,33 @@ def dashboard_page_html() -> str:
         list.append(empty);
         return;
       }
-      for (const notification of notifications) {
+      if (!notificationsExpanded) {
+        list.append(renderNotificationSummary(notifications, unread));
+        return;
+      }
+      for (const notification of notifications.slice(0, 50)) {
+        list.append(renderNotificationItem(notification));
+      }
+      if (notifications.length > 50) {
+        const more = document.createElement("div");
+        more.className = "notification-summary";
+        more.textContent = "已展开最近 50 条，剩余 " + String(notifications.length - 50) + " 条未显示。";
+        list.append(more);
+      }
+    }
+
+    function renderNotificationSummary(notifications, unread) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "notification-summary";
+      const latest = notifications.slice(0, 5).map((item) => {
+        return text(item.title) + "（" + text(item.type) + " / " + notificationSourceSummary(item.source_ref) + "）";
+      });
+      wrapper.textContent = "默认折叠：未读 " + String(unread) + " / 总计 " + String(notifications.length)
+        + "。最近：" + (latest.length ? latest.join("；") : "无");
+      return wrapper;
+    }
+
+    function renderNotificationItem(notification) {
         const item = document.createElement("div");
         item.className = "notification-list-item";
 
@@ -1996,10 +2034,16 @@ def dashboard_page_html() -> str:
 
         const source = document.createElement("div");
         source.className = "notification-source";
-        source.textContent = "source_ref: " + text(JSON.stringify(notification.source_ref || {}));
+        source.textContent = "来源：" + notificationSourceSummary(notification.source_ref);
         item.append(source);
-        list.append(item);
-      }
+        return item;
+    }
+
+    function notificationSourceSummary(sourceRef) {
+      const source = sourceRef || {};
+      return [source.ref_type, source.status, source.goal_id, source.run_id]
+        .filter(Boolean)
+        .join(" · ") || "无";
     }
 
     function renderDecisionRequests(requests) {
@@ -2172,6 +2216,10 @@ def dashboard_page_html() -> str:
     });
     document.getElementById("goal-add-button").addEventListener("click", (event) => {
       submitGoalAdd(event.currentTarget);
+    });
+    document.getElementById("notification-toggle").addEventListener("click", () => {
+      notificationsExpanded = !notificationsExpanded;
+      loadDashboard();
     });
 
     function connectSupervisorEvents() {

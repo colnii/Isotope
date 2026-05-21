@@ -82,8 +82,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `web` 等待拍板列表可填写答案并提交到 `/decision/answer`，
   只记录 `decision answer` 事件，不开放任意文本发送。
 - `dashboard JSON` 和 `web` 会读取通知索引，展示通知列表、未读数量、
-  标题、类型和低敏 `source_ref`；输出层会按 allowlist 再过滤
-  `source_ref`，避免把 prompt/log/key 类字段暴露到页面。
+  标题、类型和低敏来源摘要；输出层会按 allowlist 再过滤
+  `source_ref`，避免把 prompt/log/key 类字段暴露到页面；web 默认折叠
+  通知列表，只显示未读/总数和最近摘要，展开后最多显示最近 50 条。
 - `dashboard JSON` 和 `web` 会输出“当前批次”，把仍活跃的
   `active_goals` 与当前托管 worker 从历史 done/stale session 中分离。
 - `web` 会用“Worker 详情”集中展示当前 worker 的身份、工作区、
