@@ -989,6 +989,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Also include non-done managed workers. Defaults to integration-ready done workers only.",
     )
     integration_review_parser.add_argument(
+        "--include-missing-worktrees",
+        action="store_true",
+        help="Also include stale records whose worktree is already missing.",
+    )
+    integration_review_parser.add_argument(
         "--json",
         action="store_true",
         help="Print JSON output.",
@@ -1563,6 +1568,7 @@ def main(argv: list[str] | None = None) -> int:
                 codex_home=Path(args.codex_home),
                 base_ref=args.base,
                 include_unfinished=args.include_unfinished,
+                include_missing_worktrees=args.include_missing_worktrees,
             )
             _notify_integration_review_webhooks(args, payload)
             if args.json:

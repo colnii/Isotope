@@ -30,6 +30,7 @@ def collect_integration_reviews(
     codex_home: Path | str,
     base_ref: str = "main",
     include_unfinished: bool = False,
+    include_missing_worktrees: bool = False,
     run: RunCommand | None = None,
     validation_run: RunCommand | None = None,
 ) -> dict[str, Any]:
@@ -41,6 +42,15 @@ def collect_integration_reviews(
         for record in read_managed_records(default_registry_path(codex_home))
         if _integration_record_is_in_scope(record, include_unfinished=include_unfinished)
     ]
+    stale_missing_worktrees = [
+        _missing_worktree_record_dict(record)
+        for record in records
+        if not Path(record.cwd).expanduser().is_dir()
+    ]
+    if not include_missing_worktrees:
+        records = [
+            record for record in records if Path(record.cwd).expanduser().is_dir()
+        ]
     workers = [
         _worker_integration_review(
             record,
@@ -57,8 +67,11 @@ def collect_integration_reviews(
         "status": "ok",
         "base_ref": base_ref,
         "include_unfinished": include_unfinished,
+        "include_missing_worktrees": include_missing_worktrees,
+        "stale_missing_worktrees": stale_missing_worktrees,
         "summary": {
             "total": len(workers),
+            "stale_missing_worktrees": len(stale_missing_worktrees),
             **{group: len(groups[group]) for group in GROUPS},
         },
         "groups": groups,
@@ -104,6 +117,17 @@ def _integration_record_is_in_scope(
     return (protocol.get("status") or "").strip().lower() == "done"
 
 
+def _missing_worktree_record_dict(record: ManagedCodexRecord) -> dict[str, Any]:
+    cwd = Path(record.cwd).expanduser()
+    return {
+        "record_id": record.record_id,
+        "name": record.name,
+        "cwd": str(cwd),
+        "branch": _infer_supervisor_branch(cwd),
+        "status": record.status,
+    }
+
+
 def render_integration_review_plain(payload: dict[str, Any]) -> str:
     lines = ["[Supervisor Integration Review]"]
     lines.append(f"base：{payload.get('base_ref') or 'main'}")
@@ -115,6 +139,7 @@ def render_integration_review_plain(payload: dict[str, Any]) -> str:
             f"already_integrated：{summary.get('already_integrated', 0)}",
             f"needs_review：{summary.get('needs_review', 0)}",
             f"conflict_risk：{summary.get('conflict_risk', 0)}",
+            f"stale_missing_worktrees：{summary.get('stale_missing_worktrees', 0)}",
         ]
     )
     groups = payload.get("groups", {})

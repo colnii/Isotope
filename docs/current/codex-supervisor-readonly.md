@@ -106,7 +106,8 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
   的 lint/test 结果，输出
   `ready_to_integrate`、`already_integrated`、`needs_review`、
   `conflict_risk` 四组，不执行 merge/push/delete；默认只看未归档且已
-  汇报 done 的 worker，排查历史噪音时再加 `--include-unfinished`；
+  汇报 done 且 worktree 仍存在的 worker，排查历史噪音时再加
+  `--include-unfinished` 或 `--include-missing-worktrees`；
   pytest gate 或 validation 失败的 worker 会留在 `needs_review` 并输出摘要。
 - `replan` 可读取 `worker-review`、活跃目标和 `integration-review`
   分组，生成下一轮只读建议、复查合并候选和候选摘要；它只产出建议，

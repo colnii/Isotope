@@ -69,6 +69,7 @@ def test_supervisor_integration_review_groups_ready_and_already_integrated(tmp_p
         "already_integrated": 1,
         "needs_review": 0,
         "conflict_risk": 0,
+        "stale_missing_worktrees": 0,
     }
     ready = payload["groups"]["ready_to_integrate"][0]
     assert ready["record_id"] == "managed-ready"
@@ -392,6 +393,51 @@ def test_supervisor_integration_review_defaults_to_done_unarchived_workers(tmp_p
     assert payload["include_unfinished"] is False
     assert payload["summary"]["total"] == 1
     assert payload["workers"][0]["record_id"] == "managed-done"
+
+
+def test_supervisor_integration_review_hides_missing_worktrees_by_default(tmp_path):
+    from isotope.features.supervisor.integration_review import collect_integration_reviews
+
+    codex_home = tmp_path / ".codex"
+    missing_cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "missing-12345678"
+    _write_done_record(
+        codex_home,
+        record_id="managed-missing",
+        name="missing",
+        cwd=missing_cwd,
+    )
+
+    payload = collect_integration_reviews(codex_home=codex_home)
+
+    assert payload["summary"]["total"] == 0
+    assert payload["summary"]["needs_review"] == 0
+    assert payload["summary"]["stale_missing_worktrees"] == 1
+    assert payload["stale_missing_worktrees"][0]["record_id"] == "managed-missing"
+
+
+def test_supervisor_integration_review_can_include_missing_worktrees(tmp_path):
+    from isotope.features.supervisor.integration_review import collect_integration_reviews
+
+    codex_home = tmp_path / ".codex"
+    missing_cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "missing-12345678"
+    _write_done_record(
+        codex_home,
+        record_id="managed-missing",
+        name="missing",
+        cwd=missing_cwd,
+    )
+
+    payload = collect_integration_reviews(
+        codex_home=codex_home,
+        include_missing_worktrees=True,
+    )
+
+    assert payload["summary"]["total"] == 1
+    assert payload["summary"]["needs_review"] == 1
+    assert payload["summary"]["stale_missing_worktrees"] == 1
+    assert payload["groups"]["needs_review"][0]["reason"] == (
+        "worker worktree 缺失；先确认登记表和分支是否仍存在。"
+    )
 
 
 def test_supervisor_integration_review_flags_merge_conflict_risk(tmp_path):

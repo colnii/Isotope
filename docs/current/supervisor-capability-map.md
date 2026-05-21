@@ -112,9 +112,10 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   branch、worker HEAD、base commit、`main` 是否已包含 worker HEAD、
   worktree 是否干净和 `merge-tree --write-tree` 冲突结果，输出
   `ready_to_integrate`、`already_integrated`、`needs_review` 和
-  `conflict_risk`；默认只看未归档且已汇报 done 的 worker，显式传
-  `--include-unfinished` 才纳入未完成历史；它不执行 merge、push、
-  delete 或归档。
+  `conflict_risk`；默认只看未归档、已汇报 done 且 worktree 仍存在的
+  worker，显式传 `--include-unfinished` 才纳入未完成历史，
+  `--include-missing-worktrees` 才纳入缺失 worktree 历史；它不执行
+  merge、push、delete 或归档。
 - `delete_worktree` 是受控清理动作，可由 LLM planner 显式输出，也可通过
   `cleanup delete-worktree` 手动触发；两者都必须带
   `confirm_delete_worktree=true`，runner 会重新确认对应 managed worker 已

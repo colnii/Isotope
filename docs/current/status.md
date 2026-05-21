@@ -95,7 +95,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     候选 worktree 的 lint/test 结果，并输出
     `ready_to_integrate`、`already_integrated`、`needs_review`、
     `conflict_risk` 四组；默认只看未归档且已汇报 done 的 worker，
-    `--include-unfinished` 才纳入未完成历史；pytest gate 或 validation
+    且默认隐藏 worktree 已缺失的旧记录；`--include-unfinished` 才纳入未完成历史，
+    `--include-missing-worktrees` 才纳入缺失 worktree 历史；pytest gate 或 validation
     失败的候选会进入 `needs_review`，不会计入 `ready_to_integrate`；
     该入口不执行 merge/push/delete；
     `replan` 可读取 `worker-review` 的 `automation_candidates`、当前
