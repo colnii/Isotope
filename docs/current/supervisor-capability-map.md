@@ -98,8 +98,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   在 dashboard 里显示明确完成状态，而不是只显示 PID 已退出；
   已退出进程不会因为日志残留 `working` 被继续算作工作中。
 - process worker 如果进程已退出且最后明确汇报过 `SUPERVISOR_STATUS: working`，
-  `loop` 会按同名 lane 的 `worker_retry_count` 最多自动重启 2 次；
-  每次重启仍走 `launch_managed_codex` 登记表和现有 worker model 配置。
+  或检测到非零退出 / 显式 `--max-run-minutes` 超时，`loop` 会按同名 lane
+  的 `worker_retry_count` 最多自动重启 2 次；每次重启仍走
+  `launch_managed_codex` 登记表和现有 worker model 配置。
 - `worker-review` 是已完成 worker 的收集/审查入口，会读取托管登记、
   process log 状态协议、cwd/worktree 是否存在、当前 branch、`git status`
   和 `git diff --stat` 摘要，并输出建议验证命令、复查提示
@@ -154,9 +155,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   发现同名后台 process worker 仍在运行时会跳过，避免长跑时对同一个
   `target_name` 反复启动后台 Codex。
 - process worker 非零退出或显式 `--max-run-minutes` 超时会把失败原因
-  写入 lane state（含 `timeout`/`exit_code`、stderr 摘要和托管记录 id）；
-  后续自动 `launch_session` 会降级为 `monitor`，daemon status 和
-  dashboard 会展示失败状态，避免同名目标无限重启。
+  写入 lane state（含 `timeout`/`exit_code`、stderr 摘要和托管记录 id），
+  并自动重试 2 次；重试仍失败后会生成 `worker_retry_failed` 拍板请求，
+  daemon status 和 dashboard 会展示失败状态，避免同名目标无限重启。
 - LLM 自动 `launch_session` 默认把 git 仓库任务放进
   `.worktrees/supervisor/...` 独立工作区；子目录任务会进入隔离
   worktree 里的对应子目录。非 git 工作区不强制隔离，git worktree
@@ -389,15 +390,19 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 
 B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
 `--max-continue-count`、`--max-context-requests` 和
-`--max-run-minutes`，以及失败重试护栏 `--max-failure-retries`：
+`--max-run-minutes`、worker 自动重启上限 `--max-worker-retry-count`，
+以及失败重试护栏 `--max-failure-retries`：
 `--max-continue-count` 用 lane state 记录 `continue_count`，
 限制同一 lane 同一状态下的继续推进；`--max-context-requests`
 限制同一 supervise/loop 轮次里 `request_context` 的执行次数；
 `--max-run-minutes` 按托管登记的
-`started_at` 判断同名 lane 是否已超时，超时后拦截自动或 LLM 继续推进；
+`started_at` 判断同名 lane 是否已超时，超时后纳入 worker 自动重启路径；
+`--max-worker-retry-count` 默认 2，耗尽后生成 `worker_retry_failed` 拍板请求；
 `--max-failure-retries` 默认 3，超过后生成 `needs_user` 类拍板请求。
-前三者默认值都是 0，表示不启用限制；只有显式传入正数阈值时才会拦截，
-避免阻碍需要长时间运行的任务。
+`--max-continue-count`、`--max-context-requests` 和 `--max-run-minutes`
+默认值都是 0，表示不启用限制；只有显式传入正数阈值时才会拦截，
+避免阻碍需要长时间运行的任务。`--max-worker-retry-count` 默认开启，
+用于减少需要人工手动重启 worker 的场景。
 当前回归测试已覆盖默认宽松预算下，多 lane loop 连续推进不同
 托管窗口。
 

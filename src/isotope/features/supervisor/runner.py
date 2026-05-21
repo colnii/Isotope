@@ -2582,11 +2582,36 @@ def _auto_retry_exited_process_workers(args: argparse.Namespace) -> list[dict[st
     retried: list[dict[str, Any]] = []
     lane_states = read_lane_states(default_lane_state_path(codex_home))
     for record in latest_by_name.values():
-        if not _process_worker_needs_retry(record):
+        failure = _process_worker_retry_failure(
+            record,
+            max_run_minutes=getattr(args, "max_run_minutes", 0),
+        )
+        legacy_working_retry = failure is None and _process_worker_needs_retry(record)
+        if failure is None and not legacy_working_retry:
             continue
-        state = lane_states.get(record.name)
+        state = (
+            record_lane_failure(
+                codex_home=codex_home,
+                name=record.name,
+                tmux_session=record.tmux_session,
+                reason=str(failure["reason"]),
+                exit_code=failure.get("exit_code"),
+                stderr_summary=failure.get("stderr_summary"),
+                record_id=record.record_id,
+            )
+            if failure is not None
+            else lane_states.get(record.name)
+        )
         retry_count = state.worker_retry_count if state is not None else 0
         if retry_count >= max_retries:
+            if failure is not None:
+                _ensure_worker_retry_decision_request(
+                    args,
+                    record=record,
+                    state=state,
+                    failure=failure,
+                    max_retries=max_retries,
+                )
             continue
         launched = launch_managed_codex(
             codex_home=codex_home,
@@ -2612,9 +2637,81 @@ def _auto_retry_exited_process_workers(args: argparse.Namespace) -> list[dict[st
                 "pid": launched.pid,
                 "retry_count": updated_state.worker_retry_count,
                 "max_retries": max_retries,
+                **({"failure": failure} if failure is not None else {}),
             }
         )
     return retried
+
+
+def _process_worker_retry_failure(
+    record: Any,
+    *,
+    max_run_minutes: int = 0,
+) -> dict[str, Any] | None:
+    if record.backend != "process":
+        return None
+    if not _cwd_is_existing_dir(record.cwd):
+        return None
+    return _managed_worker_failure_from_record(
+        record,
+        max_run_minutes=max_run_minutes,
+    )
+
+
+def _ensure_worker_retry_decision_request(
+    args: argparse.Namespace,
+    *,
+    record: Any,
+    state: Any,
+    failure: dict[str, Any],
+    max_retries: int,
+) -> dict[str, Any] | None:
+    if _active_worker_retry_decision_exists(
+        codex_home=Path(args.codex_home),
+        lane_name=record.name,
+    ):
+        return None
+    event = {
+        "event_type": "worker_retry_failed",
+        "lane_name": record.name,
+        "goal_id": None,
+        "error_summary": _worker_retry_error_summary(failure),
+        "retry_count": state.worker_retry_count if state is not None else max_retries,
+        "max_retries": max_retries,
+        "record_id": record.record_id,
+        "failure": failure,
+    }
+    return _execute_ask_user_action(
+        args,
+        _failure_decision_request_action(
+            event=event,
+            question=_failure_question("worker_retry_failed"),
+            reason="worker retry limit exceeded",
+        ),
+    )
+
+
+def _active_worker_retry_decision_exists(
+    *,
+    codex_home: Path,
+    lane_name: str,
+) -> bool:
+    session_id = f"failure:worker_retry_failed:{lane_name}"
+    return any(
+        request.session_id == session_id
+        for request in read_active_decision_requests(codex_home=codex_home, limit=1000)
+    )
+
+
+def _worker_retry_error_summary(failure: dict[str, Any]) -> str:
+    reason = str(failure.get("reason") or "worker failed")
+    stderr_summary = failure.get("stderr_summary")
+    if isinstance(stderr_summary, str) and stderr_summary.strip():
+        return f"{reason}: {stderr_summary.strip()}"
+    exit_code = failure.get("exit_code")
+    if isinstance(exit_code, int):
+        return f"{reason}: exit code {exit_code}"
+    return reason
 
 
 def _process_worker_needs_retry(record: Any) -> bool:
@@ -6609,6 +6706,9 @@ def _failure_question(event_type: str) -> str:
         ),
         "merge_dispatch_failed": (
             "Supervisor 连续派发 merge worker 失败，请确认是否人工处理合并。"
+        ),
+        "worker_retry_failed": (
+            "Supervisor 已达到 worker 自动重启上限但仍失败，请确认是否拆分目标、修复环境或人工接管。"
         ),
     }
     return questions.get(
