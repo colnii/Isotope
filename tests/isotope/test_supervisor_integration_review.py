@@ -614,8 +614,10 @@ def _fake_git(
         assert text is True
         assert capture_output is True
         if _is_pytest_gate_command(command):
-            assert Path(kwargs["cwd"]) in responses
-            assert "src" in kwargs["env"]["PYTHONPATH"].split(":")
+            cwd = Path(kwargs["cwd"])
+            assert cwd in responses
+            pythonpath = kwargs["env"]["PYTHONPATH"].split(":")
+            assert "src" in pythonpath or str(cwd / "src") in pythonpath
             return subprocess.CompletedProcess(command, 0, "12 passed in 0.34s\n", "")
         if command[:2] == ["git", "-C"]:
             worktree = Path(command[2])
