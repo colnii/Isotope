@@ -8,7 +8,13 @@ def build_launch_work_order_prompt(
     target_name: str,
     cwd: str,
     goal: str,
+    allow_remote_push: bool = False,
 ) -> str:
+    remote_push_rule = (
+        "只允许按本工单要求推送当前工作分支，用于远端 CI 验证；不推送无关分支。"
+        if allow_remote_push
+        else "不主动推送远端。"
+    )
     return "\n".join(
         [
             "WORK ORDER",
@@ -16,7 +22,10 @@ def build_launch_work_order_prompt(
             f"cwd: {cwd.strip()}",
             f"target_name: {target_name.strip()}",
             "allowed_scope: 只处理本次 goal 直接相关的代码、测试和必要文档。",
-            "forbidden_scope: 不主动推送远端；不扩大到无关功能；不改用户未要求的仓库规则。",
+            (
+                f"forbidden_scope: {remote_push_rule}"
+                "不扩大到无关功能；不改用户未要求的仓库规则。"
+            ),
             (
                 "budget_hint: prompt-only，建议 20 分钟内给出状态，"
                 "最多主动继续 3 轮，最多请求上下文 2 次。"

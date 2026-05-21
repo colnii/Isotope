@@ -439,6 +439,8 @@ cherry-pick、删除 worker 分支或来源历史。唯一允许的删除动作�
 `delete_worktree`：只清理已完成、已归档、已集成的
 `.worktrees/supervisor/<worker>`，不 force push，不 rebase 已共享分支，
 不重写远端历史。
+`launch_session` 的通用工单默认禁止主动 push；merge dispatch worker
+例外，只允许按 `merge-work-order` 推送当前合并分支用于 CI watch。
 
 merge worker 成功合入后的交接边界也要分清：
 

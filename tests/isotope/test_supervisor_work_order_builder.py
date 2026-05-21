@@ -30,6 +30,18 @@ def test_launch_work_order_prompt_includes_commit_rules():
     assert "提交哈希和剩余风险" in prompt
 
 
+def test_launch_work_order_prompt_can_allow_ci_push_for_merge_workers():
+    prompt = build_launch_work_order_prompt(
+        target_name="supervisor-merge-dispatch",
+        cwd="/tmp/isotope-worker",
+        goal="合并 ready worker 并观察 CI。",
+        allow_remote_push=True,
+    )
+
+    assert "只允许按本工单要求推送当前工作分支，用于远端 CI 验证" in prompt
+    assert "不主动推送远端" not in prompt
+
+
 def test_launch_work_order_prompt_includes_ask_user_gate():
     prompt = build_launch_work_order_prompt(
         target_name="worker-a",

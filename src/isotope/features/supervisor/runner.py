@@ -6926,10 +6926,12 @@ def _execute_launch_action(
         }
     worker_cwd = str(worktree["cwd"])
     worker_profile = _worker_profile_for_action(args, action)
+    worker_role = _worker_role_for_launch_action(action)
     work_order_prompt = build_launch_work_order_prompt(
         target_name=target_name,
         cwd=worker_cwd,
         goal=prompt,
+        allow_remote_push=worker_role == MERGE_DISPATCH_WORKER_ROLE,
     )
     command = shlex.join(
         [
@@ -6950,7 +6952,7 @@ def _execute_launch_action(
         prompt=work_order_prompt,
         codex_model=_worker_codex_model(args, profile=worker_profile),
         codex_config=_worker_codex_config(args, profile=worker_profile),
-        worker_role=_worker_role_for_launch_action(action),
+        worker_role=worker_role,
         popen=subprocess.Popen,
         run=subprocess.run,
     )

@@ -108,7 +108,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `loop`，当 `integration-review` 出现 `ready_to_integrate` 候选时，
     会把工单交给专门 merge worker 自动启动；runner 本身仍不直接
     cherry-pick、不删除 worker 分支或 worktree、不 force push、
-    不 rebase 已共享分支、不重写历史；
+    不 rebase 已共享分支、不重写历史；普通 worker 的通用工单仍禁止主动
+    push，merge worker 只放行推送当前合并分支用于 CI watch；
     `resume` 可通过
     `codex exec resume <session> <prompt>` 或 `--last` 恢复历史会话，
     会带 `--skip-git-repo-check` 以兼容历史会话落在非仓库父目录的情况，

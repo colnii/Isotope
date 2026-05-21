@@ -90,6 +90,9 @@ def test_supervisor_loop_dispatches_merge_worker_for_ready_integration(
     assert any(
         "source: supervisor integration-review payload" in item for item in captured[0]
     )
+    prompt = captured[0][-1]
+    assert "只允许按本工单要求推送当前工作分支，用于远端 CI 验证" in prompt
+    assert "不主动推送远端" not in prompt
     registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
     managed_records = [
         json.loads(line) for line in registry_path.read_text(encoding="utf-8").splitlines()

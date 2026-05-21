@@ -121,6 +121,8 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
   `ready_to_integrate` 候选后，会通过现有 `launch_session` 路径自动启动
   专门 merge worker，并把 `merge-work-order` 交给它执行；runner 本身仍不
   直接 merge、push、删除来源分支或改写历史。
+  普通 worker 的通用工单仍禁止主动 push；merge worker 的通用工单会放行
+  “只推送当前合并分支用于 CI watch”，避免和 `merge-work-order` 冲突。
 - loop cleanup（收尾清理）当前只对 merge worker 做受限自动归档：merge
   worker 汇报 `done`，且候选已进入 `already_integrated` 后，归档托管记录
   和关联 goal；普通 done worker 留给显式 cleanup 或后续专门清理工单。
