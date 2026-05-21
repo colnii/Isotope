@@ -408,6 +408,141 @@ def test_supervisor_loop_fanout_uses_replenished_plan_parallel_recommendations(
     assert len(captured) == 2
 
 
+def test_supervisor_loop_replenishment_skips_blocked_goal_during_fanout(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_current_docs(workspace)
+    exit_code = supervisor_main(
+        [
+            "goal",
+            "add",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(workspace),
+            "--goal",
+            "等待用户拍板的目标。",
+            "--target-name",
+            "blocked-target",
+            "--json",
+        ]
+    )
+    assert exit_code == 0
+    capsys.readouterr()
+    log_path = codex_home / "supervisor" / "logs" / "managed-blocked.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text(
+        "SUPERVISOR_STATUS: blocked\n"
+        "SUPERVISOR_SUMMARY: 缺少用户拍板。\n"
+        "SUPERVISOR_NEXT: 等待用户补充范围。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-blocked",
+                "name": "blocked-target",
+                "cwd": str(workspace),
+                "prompt": "等待用户拍板的目标。",
+                "command": ["codex", "exec", "-C", str(workspace), "继续"],
+                "pid": 0,
+                "started_at": "2026-05-16T12:00:00+00:00",
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    captured: list[list[str]] = []
+    running_pids: set[int] = set()
+
+    class FakeProcess:
+        def __init__(self, pid: int) -> None:
+            self.pid = pid
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured.append(command)
+        pid = 50000 + len(captured)
+        running_pids.add(pid)
+        return FakeProcess(pid)
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: LowWaterGoalProvider(),
+    )
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._pid_is_running",
+        lambda pid: pid in running_pids,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._pid_is_running",
+        lambda pid: pid in running_pids,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--workspace-root",
+            str(workspace),
+            "--goal-low-water",
+            "3",
+            "--goal-replenish-limit",
+            "2",
+            "--max-fanout-launches",
+            "2",
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["goal_updates"][0]["target_name"] == "blocked-target"
+    assert payload["goal_replenishment"]["active_before"] == 0
+    assert payload["goal_replenishment"]["active_total_before"] == 1
+    assert payload["goal_replenishment"]["written_count"] == 2
+    assert [item["target_name"] for item in payload["fanout_plan"]["launch_specs"]] == [
+        "supervisor-low-water-loop",
+        "supervisor-low-water-daemon",
+    ]
+    assert payload["fanout_plan"]["skipped"] == []
+    assert [item["managed"]["name"] for item in payload["executed"]["results"]] == [
+        "supervisor-low-water-loop",
+        "supervisor-low-water-daemon",
+    ]
+    assert len(captured) == 2
+    assert "blocked-target" in payload["current_batch"]["target_names"]
+
+
 def test_supervisor_loop_reports_low_water_goal_planning_errors_without_crashing(
     tmp_path,
     capsys,

@@ -518,8 +518,9 @@ fanout 回归必须覆盖：多个 active goals 中已有同名 running worker �
    它不是正在执行的 goal，也不能被 worker 直接消费；补给器必须把它
    拆成小目标后写入现有 goal queue。
 2. 低水位补充以“可推进 active goals 数量”为判断口径，而不是只看
-   `goals.jsonl` 行数。`done`、已归档、同名 worker 正在执行的目标、
-   明确 `needs_user` 且没有新答案的目标，都不计入可补给水位。
+   `goals.jsonl` 行数。`done`、`blocked`、已归档、同名 worker
+   正在执行的目标、明确 `needs_user` 且没有新答案的目标，都不计入
+   可补给水位。
 3. 同一轮补给必须受最大任务数约束：先用全局 active goal 上限控制
    队列规模，再用 `--max-fanout-launches` 控制同轮启动数。补给可以写入
    多个候选 goal，但不能绕过 fanout 上限一次性启动所有 worker。

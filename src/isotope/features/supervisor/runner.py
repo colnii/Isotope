@@ -3202,6 +3202,8 @@ def _workspace_root(args: argparse.Namespace) -> Path | None:
 def _maybe_replenish_active_goals(
     args: argparse.Namespace,
     active_goals: list[dict[str, Any]],
+    *,
+    running_target_names: set[str] | None = None,
 ) -> dict[str, Any] | None:
     if getattr(args, "command", None) != "loop":
         return None
@@ -3210,7 +3212,12 @@ def _maybe_replenish_active_goals(
         return None
     if getattr(args, "name", None) or _explicit_goal_text(args):
         return None
-    active_before = len(active_goals)
+    active_before = len(
+        _replenishment_counted_active_goals(
+            active_goals,
+            running_target_names=running_target_names,
+        )
+    )
     if active_before >= low_water:
         return None
 
@@ -3235,6 +3242,7 @@ def _maybe_replenish_active_goals(
             "status": "error",
             "trigger": "low_water",
             "active_before": active_before,
+            "active_total_before": len(active_goals),
             "low_water": low_water,
             "requested_limit": replenish_limit,
             "root": str(root),
@@ -3252,6 +3260,7 @@ def _maybe_replenish_active_goals(
         "status": "ok",
         "trigger": "low_water",
         "active_before": active_before,
+        "active_total_before": len(active_goals),
         "low_water": low_water,
         "requested_limit": replenish_limit,
         "root": str(root),
@@ -3267,6 +3276,41 @@ def _goal_replenishment_prompt(args: argparse.Namespace) -> str:
     if isinstance(raw, str) and raw.strip():
         return raw.strip()
     return DEFAULT_GOAL_REPLENISH_PROMPT
+
+
+def _replenishment_counted_active_goals(
+    active_goals: list[dict[str, Any]],
+    *,
+    running_target_names: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    running_names = running_target_names or set()
+    counted: list[dict[str, Any]] = []
+    for goal in active_goals:
+        if _active_goal_is_deferred(goal):
+            continue
+        target_name = goal.get("target_name")
+        if isinstance(target_name, str) and target_name in running_names:
+            continue
+        counted.append(goal)
+    return counted
+
+
+def _fanout_candidate_active_goals(
+    active_goals: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    return [goal for goal in active_goals if not _active_goal_is_deferred(goal)]
+
+
+def _active_goal_is_deferred(goal: dict[str, Any]) -> bool:
+    for key in ("last_status", "status", "supervisor_status"):
+        status = goal.get(key)
+        if isinstance(status, str) and status.lower() in {
+            "blocked",
+            "done",
+            "needs_user",
+        }:
+            return True
+    return False
 
 
 def _goal_text(args: argparse.Namespace) -> str | None:
@@ -3337,7 +3381,12 @@ def _supervise_payload(
 ) -> dict[str, Any]:
     action_report = _action_report_for_workspace(args, report)
     active_goals = _active_goal_dicts(args, include_status=True)
-    goal_replenishment = _maybe_replenish_active_goals(args, active_goals)
+    running_target_names = _running_managed_target_names(report)
+    goal_replenishment = _maybe_replenish_active_goals(
+        args,
+        active_goals,
+        running_target_names=running_target_names,
+    )
     if (
         isinstance(goal_replenishment, dict)
         and goal_replenishment.get("status") == "ok"
@@ -3386,7 +3435,7 @@ def _supervise_payload(
     )
     fanout_status = _fanout_status_payload(
         report,
-        active_goals=active_goals,
+        active_goals=_fanout_candidate_active_goals(active_goals),
         goal_updates=goal_updates or [],
     )
     if fanout_status is not None:
@@ -3395,6 +3444,7 @@ def _supervise_payload(
         payload["llm_summary"] = _summarize_with_llm(report)
     fanout_paused = (
         isinstance(fanout_status, dict) and fanout_status.get("status") == "paused"
+        and not _goal_replenishment_wrote_goals(goal_replenishment)
     )
     fanout_plan = (
         _paused_active_goals_fanout_plan(args, active_goals)
@@ -3668,16 +3718,17 @@ def _active_goals_fanout_launch_plan(
         return None
     if getattr(args, "name", None):
         return None
+    fanout_goals = _fanout_candidate_active_goals(active_goals)
     targets = [
         target_name
-        for goal in active_goals
+        for goal in fanout_goals
         for target_name in (goal.get("target_name"),)
         if isinstance(target_name, str) and target_name
     ]
     if len(targets) < 2:
         return None
     goal_plan = {
-        "goals": active_goals,
+        "goals": fanout_goals,
         "parallel_recommendations": [
             {
                 "batch": "active_goals",
@@ -3691,6 +3742,16 @@ def _active_goals_fanout_launch_plan(
         limit=getattr(args, "max_fanout_launches", DEFAULT_FANOUT_LIMIT),
         running_target_names=_running_managed_target_names(report),
         requires_human_review=False,
+    )
+
+
+def _goal_replenishment_wrote_goals(
+    goal_replenishment: dict[str, Any] | None,
+) -> bool:
+    return (
+        isinstance(goal_replenishment, dict)
+        and goal_replenishment.get("status") == "ok"
+        and _int_value(goal_replenishment.get("written_count")) > 0
     )
 
 
