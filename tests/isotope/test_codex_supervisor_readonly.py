@@ -13687,6 +13687,17 @@ def test_codex_supervisor_runner_loop_summarizes_completed_fanout_batch(
             "next": "等待 Supervisor 汇总。",
         },
     ]
+    assert payload["lifecycle_trace"]["summary"]["active_goals"] == 0
+    assert payload["lifecycle_trace"]["summary"]["active_managed_workers"] == 2
+    assert payload["lifecycle_trace"]["next_attention"] == {
+        "kind": "archive_cleanup",
+        "target": "worker-a",
+    }
+    assert [
+        item["name"]
+        for item in payload["lifecycle_trace"]["stages"]["cleanup"]["candidates"]
+        if item["kind"] == "managed_worker"
+    ] == ["worker-a", "worker-b"]
 
 
 def test_codex_supervisor_runner_loop_pauses_fanout_on_blocked_worker(

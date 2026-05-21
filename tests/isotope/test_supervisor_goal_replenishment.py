@@ -219,6 +219,10 @@ def test_supervisor_loop_replenishes_goals_from_docs_when_low_water(
         worker["name"]
         for worker in payload["lifecycle_trace"]["stages"]["workers"]["active"]
     } == {"supervisor-low-water-loop", "supervisor-low-water-daemon"}
+    assert payload["lifecycle_trace"]["next_attention"] == {
+        "kind": "wait_workers",
+        "active_managed_workers": 2,
+    }
     assert len(captured) == 2
     assert read_active_supervisor_goals(codex_home=codex_home)
 

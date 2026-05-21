@@ -294,7 +294,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     用一个阶段化 payload 判断长跑链路卡在目标、执行、拍板、合并修复
     还是清理；`loop --json` 每轮也会在执行动作后带出
     `lifecycle_trace`，daemon 日志因此能直接留下本轮目标、worker、
-    拍板和清理台账摘要；
+    拍板和清理台账摘要；当本轮刚启动 worker 且没有拍板或清理项时，
+    `next_attention.kind` 会显示 `wait_workers`，明确当前应该等待
+    worker 完成；
     当没有显式 `--goal`、没有活跃目标且没有可控托管 lane 时，
     `loop` 只监控，不会从普通历史会话或 workspace 自行发明下一批
     `launch_session`；

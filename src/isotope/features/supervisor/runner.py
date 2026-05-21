@@ -6235,6 +6235,22 @@ def _lifecycle_next_attention(stages: dict[str, Any]) -> dict[str, Any]:
             or first.get("goal_id")
             or first.get("notification_id"),
         }
+    workers = stages.get("workers")
+    active_workers = (
+        workers.get("active")
+        if isinstance(workers, dict) and isinstance(workers.get("active"), list)
+        else []
+    )
+    waiting_workers = [
+        worker
+        for worker in active_workers
+        if _lifecycle_worker_is_waiting(worker)
+    ]
+    if waiting_workers:
+        return {
+            "kind": "wait_workers",
+            "active_managed_workers": len(waiting_workers),
+        }
     merge = stages.get("merge")
     repair_workers = (
         merge.get("repair_workers")
@@ -6261,6 +6277,23 @@ def _lifecycle_next_attention(stages: dict[str, Any]) -> dict[str, Any]:
             "target_name": active_goals[0].get("target_name"),
         }
     return {"kind": "idle"}
+
+
+def _lifecycle_worker_is_waiting(worker: Any) -> bool:
+    if not isinstance(worker, dict):
+        return False
+    protocol = worker.get("protocol")
+    protocol_status = (
+        protocol.get("status")
+        if isinstance(protocol, dict) and isinstance(protocol.get("status"), str)
+        else None
+    )
+    if protocol_status in {"done", "blocked", "needs_user"}:
+        return False
+    if worker.get("still_working") is True:
+        return True
+    record_status = worker.get("status")
+    return record_status in {"launched", "resumed", "adopted"}
 
 
 def _print_lifecycle_trace_plain(payload: dict[str, Any]) -> None:
