@@ -501,8 +501,9 @@ fanout 回归必须覆盖：多个 active goals 中已有同名 running worker �
 `launch_session`，并且同轮 `loop` payload 与随后 `dashboard` 的
 `current_batch` 都能看见当前 worker；所有 fanout worker 同轮完成时要输出
 `fanout_status` 完成摘要；任一 fanout worker 汇报 `blocked/needs_user` 时要
-暂停 fanout 扩展并保留通知证据；`goal plan` 的 `parallel_recommendations` 只能在显式
-`--fanout-execute` 下同轮执行，且不能直接归档任何目标。
+暂停 fanout 扩展并保留通知证据；显式 `goal plan --fanout-execute` 和
+低水位补任务返回的 `parallel_recommendations` 都必须复用同一条受控
+`launch_session` fanout 路径，且不能直接归档任何目标。
 
 ## 后续目标补给设计
 

@@ -3243,6 +3243,11 @@ def _maybe_replenish_active_goals(
     written_goals = plan.get("written_goals") if isinstance(plan, dict) else []
     if not isinstance(written_goals, list):
         written_goals = []
+    parallel_recommendations = (
+        plan.get("parallel_recommendations") if isinstance(plan, dict) else []
+    )
+    if not isinstance(parallel_recommendations, list):
+        parallel_recommendations = []
     return {
         "status": "ok",
         "trigger": "low_water",
@@ -3253,6 +3258,7 @@ def _maybe_replenish_active_goals(
         "written_count": len(written_goals),
         "written_goals": written_goals,
         "plan_summary": plan.get("plan_summary") if isinstance(plan, dict) else None,
+        "parallel_recommendations": parallel_recommendations,
     }
 
 
@@ -3393,7 +3399,12 @@ def _supervise_payload(
     fanout_plan = (
         _paused_active_goals_fanout_plan(args, active_goals)
         if fanout_paused
-        else _active_goals_fanout_launch_plan(args, report, active_goals)
+        else _replenished_goal_plan_fanout_launch_plan(
+            args,
+            report,
+            goal_replenishment,
+        )
+        or _active_goals_fanout_launch_plan(args, report, active_goals)
     )
     if fanout_plan is not None and (args.llm_action or args.llm_execute):
         payload["fanout_plan"] = fanout_plan
@@ -3677,6 +3688,36 @@ def _active_goals_fanout_launch_plan(
     }
     return build_fanout_launch_plan(
         goal_plan,
+        limit=getattr(args, "max_fanout_launches", DEFAULT_FANOUT_LIMIT),
+        running_target_names=_running_managed_target_names(report),
+        requires_human_review=False,
+    )
+
+
+def _replenished_goal_plan_fanout_launch_plan(
+    args: argparse.Namespace,
+    report: Any,
+    goal_replenishment: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    if getattr(args, "command", None) != "loop":
+        return None
+    if getattr(args, "name", None):
+        return None
+    if not isinstance(goal_replenishment, dict):
+        return None
+    if goal_replenishment.get("status") != "ok":
+        return None
+    recommendations = goal_replenishment.get("parallel_recommendations")
+    if not isinstance(recommendations, list) or not recommendations:
+        return None
+    written_goals = goal_replenishment.get("written_goals")
+    if not isinstance(written_goals, list) or not written_goals:
+        return None
+    return build_fanout_launch_plan(
+        {
+            "goals": written_goals,
+            "parallel_recommendations": recommendations,
+        },
         limit=getattr(args, "max_fanout_launches", DEFAULT_FANOUT_LIMIT),
         running_target_names=_running_managed_target_names(report),
         requires_human_review=False,

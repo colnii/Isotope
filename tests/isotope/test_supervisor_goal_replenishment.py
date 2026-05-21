@@ -45,6 +45,43 @@ class BrokenGoalProvider:
         raise RuntimeError("provider unavailable")
 
 
+class LowWaterParallelGoalProvider:
+    def summarize(self, messages: list[dict[str, str]]) -> str:
+        payload = json.loads(messages[1]["content"])
+        assert payload["planning_trigger"] == "low_water"
+        assert payload["goal_count_limit"] == 3
+        return json.dumps(
+            {
+                "plan_summary": "按 planner 推荐只并行启动 A 和 C。",
+                "parallel_recommendations": [
+                    {
+                        "batch": "planner 推荐批次",
+                        "targets": ["worker-a", "worker-c"],
+                        "reason": "A 和 C 不共享文件，B 需要等 A 的接口。",
+                    }
+                ],
+                "goals": [
+                    {
+                        "goal": "实现 worker A。",
+                        "target_name": "worker-a",
+                        "reason": "A 可独立执行。",
+                    },
+                    {
+                        "goal": "实现 worker B。",
+                        "target_name": "worker-b",
+                        "reason": "B 依赖 A 的接口。",
+                    },
+                    {
+                        "goal": "实现 worker C。",
+                        "target_name": "worker-c",
+                        "reason": "C 可独立执行。",
+                    },
+                ],
+            },
+            ensure_ascii=False,
+        )
+
+
 class ThreeGoalProvider:
     def summarize(self, messages: list[dict[str, str]]) -> str:
         payload = json.loads(messages[1]["content"])
@@ -270,6 +307,104 @@ def test_low_water_fanout_respects_launch_limit_and_logs_trigger(
         "executed_skips": 0,
         "limit": 2,
     }
+    assert len(captured) == 2
+
+
+def test_supervisor_loop_fanout_uses_replenished_plan_parallel_recommendations(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_current_docs(workspace)
+    captured: list[list[str]] = []
+    running_pids: set[int] = set()
+
+    class FakeProcess:
+        def __init__(self, pid: int) -> None:
+            self.pid = pid
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured.append(command)
+        pid = 49000 + len(captured)
+        running_pids.add(pid)
+        return FakeProcess(pid)
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: LowWaterParallelGoalProvider(),
+    )
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._pid_is_running",
+        lambda pid: pid in running_pids,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._pid_is_running",
+        lambda pid: pid in running_pids,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--workspace-root",
+            str(workspace),
+            "--goal-low-water",
+            "3",
+            "--goal-replenish-limit",
+            "3",
+            "--max-fanout-launches",
+            "2",
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["goal_replenishment"]["parallel_recommendations"] == [
+        {
+            "batch": "planner 推荐批次",
+            "targets": ["worker-a", "worker-c"],
+            "reason": "A 和 C 不共享文件，B 需要等 A 的接口。",
+        }
+    ]
+    assert payload["fanout_plan"]["summary"] == {
+        "launchable": 2,
+        "skipped": 0,
+        "limit": 2,
+    }
+    assert [item["target_name"] for item in payload["fanout_plan"]["launch_specs"]] == [
+        "worker-a",
+        "worker-c",
+    ]
+    assert payload["fanout_plan"]["launch_specs"][0]["batch"] == "planner 推荐批次"
+    assert payload["executed"]["summary"]["launched"] == 2
+    assert [item["managed"]["name"] for item in payload["executed"]["results"]] == [
+        "worker-a",
+        "worker-c",
+    ]
     assert len(captured) == 2
 
 
