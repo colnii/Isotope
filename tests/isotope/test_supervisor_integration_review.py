@@ -267,6 +267,54 @@ def test_supervisor_integration_review_treats_cherry_picked_worker_as_integrated
     assert item["reason"] == "main 已包含 worker 等价补丁；可检查后归档。"
 
 
+def test_supervisor_integration_review_treats_noop_merge_tree_as_integrated(tmp_path):
+    from isotope.features.supervisor.integration_review import collect_integration_reviews
+
+    codex_home = tmp_path / ".codex"
+    absorbed_cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "absorbed-12345678"
+    absorbed_cwd.mkdir(parents=True)
+    _write_done_record(
+        codex_home,
+        record_id="managed-absorbed",
+        name="absorbed",
+        cwd=absorbed_cwd,
+    )
+
+    fake_run = _fake_git(
+        {
+            absorbed_cwd: {
+                ("rev-parse", "--abbrev-ref", "HEAD"): (
+                    0,
+                    "supervisor/absorbed-12345678\n",
+                    "",
+                ),
+                ("rev-parse", "HEAD"): (0, "absorbed111\n", ""),
+                ("rev-parse", "main"): (0, "main999\n", ""),
+                ("rev-parse", "main^{tree}"): (0, "main-tree\n", ""),
+                ("status", "--short"): (0, "", ""),
+                ("merge-base", "--is-ancestor", "absorbed111", "main"): (1, "", ""),
+                ("merge-base", "--is-ancestor", "main", "absorbed111"): (0, "", ""),
+                ("cherry", "main", "absorbed111"): (0, "+ absorbed111\n", ""),
+                ("merge-tree", "--write-tree", "main", "absorbed111"): (
+                    0,
+                    "main-tree\n",
+                    "",
+                ),
+            },
+        }
+    )
+
+    payload = collect_integration_reviews(codex_home=codex_home, run=fake_run)
+
+    assert payload["summary"]["ready_to_integrate"] == 0
+    assert payload["summary"]["already_integrated"] == 1
+    item = payload["groups"]["already_integrated"][0]
+    assert item["record_id"] == "managed-absorbed"
+    assert item["main_contains_worker"] is False
+    assert item["main_has_worker_patch"] is True
+    assert item["reason"] == "main 已包含 worker 等价补丁；可检查后归档。"
+
+
 def test_supervisor_integration_review_flags_dirty_and_unfinished_workers(tmp_path):
     from isotope.features.supervisor.integration_review import collect_integration_reviews
 
@@ -667,6 +715,8 @@ def _fake_git(
             assert cwd is not None
             worktree = Path(cwd)
             args = tuple(command)
+        if args == ("rev-parse", "main^{tree}"):
+            return subprocess.CompletedProcess(command, 0, "main-tree\n", "")
         try:
             returncode, stdout, stderr = responses[worktree][args]
         except KeyError as exc:

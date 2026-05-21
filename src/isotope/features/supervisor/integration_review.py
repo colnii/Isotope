@@ -202,6 +202,7 @@ def _worker_integration_review(
     branch = _git_text(cwd, ["rev-parse", "--abbrev-ref", "HEAD"], run=run) if cwd_exists else _infer_supervisor_branch(cwd)
     worker_commit = _git_text(cwd, ["rev-parse", "HEAD"], run=run) if cwd_exists else None
     base_commit = _git_text(cwd, ["rev-parse", base_ref], run=run) if cwd_exists else None
+    base_tree = _git_text(cwd, ["rev-parse", f"{base_ref}^{{tree}}"], run=run) if cwd_exists else None
     status_text = _git_text(cwd, ["status", "--short"], run=run) if cwd_exists else None
     dirty_paths = _parse_status_paths(status_text)
     test_gate = (
@@ -225,6 +226,11 @@ def _worker_integration_review(
         if cwd_exists and worker_commit
         else None
     )
+    merge_check = (
+        _merge_tree_check(cwd, base_ref=base_ref, worker_commit=worker_commit, run=run)
+        if cwd_exists and worker_commit
+        else _empty_merge_check()
+    )
     main_has_worker_patch = _main_has_worker_patch(
         cwd=cwd,
         base_ref=base_ref,
@@ -234,11 +240,11 @@ def _worker_integration_review(
         main_contains_worker=main_contains_worker,
         cwd_exists=cwd_exists,
         run=run,
-    )
-    merge_check = (
-        _merge_tree_check(cwd, base_ref=base_ref, worker_commit=worker_commit, run=run)
-        if cwd_exists and worker_commit
-        else _empty_merge_check()
+    ) or _merge_result_matches_base_tree(
+        merge_check,
+        base_tree=base_tree,
+        protocol=protocol,
+        dirty_paths=dirty_paths,
     )
     group, reason, reasons = _classify(
         cwd_exists=cwd_exists,
@@ -277,6 +283,7 @@ def _worker_integration_review(
         "worker_commit": worker_commit,
         "base_ref": base_ref,
         "base_commit": base_commit,
+        "base_tree": base_tree,
         "main_contains_worker": main_contains_worker,
         "main_has_worker_patch": main_has_worker_patch,
         "worker_contains_main": worker_contains_main,
@@ -551,6 +558,28 @@ def _main_has_worker_patch(
     if not lines:
         return None
     return all(line.startswith("-") for line in lines)
+
+
+def _merge_result_matches_base_tree(
+    merge_check: dict[str, Any],
+    *,
+    base_tree: str | None,
+    protocol: dict[str, str | None],
+    dirty_paths: list[dict[str, str]],
+) -> bool | None:
+    status = (protocol.get("status") or "").strip().lower()
+    if (
+        not base_tree
+        or status != "done"
+        or dirty_paths
+        or merge_check.get("conflict")
+        or merge_check.get("returncode") != 0
+    ):
+        return None
+    merge_tree = merge_check.get("stdout")
+    if not isinstance(merge_tree, str):
+        return None
+    return merge_tree.strip() == base_tree.strip()
 
 
 def _merge_worker_source(record: ManagedCodexRecord) -> str | None:
