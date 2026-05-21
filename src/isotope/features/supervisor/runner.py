@@ -1215,6 +1215,7 @@ def _build_parser() -> argparse.ArgumentParser:
     for cleanup_command, help_text in (
         ("list", "List completed goals, managed workers, and notifications."),
         ("archive", "Archive completed lifecycle items without deleting Codex history."),
+        ("delete-worktree", "Remove one archived and integrated Supervisor worktree."),
     ):
         cleanup_command_parser = cleanup_subparsers.add_parser(
             cleanup_command,
@@ -1242,6 +1243,26 @@ def _build_parser() -> argparse.ArgumentParser:
     cleanup_target.add_argument(
         "--notification-id",
         help="Mark one completed Supervisor notification as read.",
+    )
+    cleanup_delete_worktree_parser = cleanup_subparsers.choices["delete-worktree"]
+    cleanup_delete_worktree_parser.add_argument(
+        "--name",
+        required=True,
+        help="Managed worker name whose worktree should be removed.",
+    )
+    cleanup_delete_worktree_parser.add_argument(
+        "--record-id",
+        help="Managed record id to guard against deleting a newer worker.",
+    )
+    cleanup_delete_worktree_parser.add_argument(
+        "--base",
+        default="main",
+        help="Base ref used for integration confirmation. Defaults to main.",
+    )
+    cleanup_delete_worktree_parser.add_argument(
+        "--confirm-delete-worktree",
+        action="store_true",
+        help="Required confirmation before removing the worktree.",
     )
     resume_parser = subparsers.add_parser(
         "resume",
@@ -5133,6 +5154,7 @@ def _cleanup_payload(args: argparse.Namespace) -> dict[str, Any]:
         return {
             "status": "ok",
             "candidates": candidates,
+            "worktree_candidates": _cleanup_worktree_candidate_dicts(args),
         }
     if args.cleanup_command == "archive":
         selected = _select_cleanup_candidates(args, candidates)
@@ -5145,6 +5167,22 @@ def _cleanup_payload(args: argparse.Namespace) -> dict[str, Any]:
                 codex_home,
                 include_status=True,
             ),
+        }
+    if args.cleanup_command == "delete-worktree":
+        deleted = _execute_delete_worktree_action(
+            args,
+            {
+                "kind": "delete_worktree",
+                "target_name": args.name,
+                "record_id": args.record_id,
+                "confirm_delete_worktree": args.confirm_delete_worktree,
+                "base_ref": args.base,
+            },
+        )
+        return {
+            "status": "ok",
+            "deleted": deleted,
+            "worktree_candidates": _cleanup_worktree_candidate_dicts(args),
         }
     raise ValueError(f"unsupported cleanup command: {args.cleanup_command}")
 
@@ -5165,6 +5203,16 @@ def _print_cleanup_plain(payload: dict[str, Any]) -> None:
             print(f"  摘要：{item['summary']}")
         if item.get("command"):
             print(f"  归档：{item['command']}")
+    worktree_candidates = payload.get("worktree_candidates") or []
+    if worktree_candidates:
+        print(f"可删除 worktree：{len(worktree_candidates)}")
+        for item in worktree_candidates:
+            target = item.get("name") or item.get("target_name")
+            print(f"- worktree {target}")
+            if item.get("cwd"):
+                print(f"  cwd：{item['cwd']}")
+            if item.get("command"):
+                print(f"  删除：{item['command']}")
 
 
 def _cleanup_candidate_dicts(codex_home: Path) -> list[dict[str, Any]]:
@@ -5272,6 +5320,26 @@ def _cleanup_notification_candidates(codex_home: Path) -> list[dict[str, Any]]:
     return candidates
 
 
+def _cleanup_worktree_candidate_dicts(args: argparse.Namespace) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    for item in _delete_worktree_candidate_payloads(args):
+        candidate = dict(item)
+        target_name = candidate.get("target_name") or candidate.get("name")
+        record_id = candidate.get("record_id")
+        if not isinstance(target_name, str) or not target_name:
+            continue
+        if not isinstance(record_id, str) or not record_id:
+            continue
+        candidate["command"] = _cleanup_delete_worktree_command(
+            Path(args.codex_home),
+            target_name=target_name,
+            record_id=record_id,
+            base_ref=str(getattr(args, "base", "main") or "main"),
+        )
+        candidates.append(candidate)
+    return candidates
+
+
 def _cleanup_archive_command(codex_home: Path, *target_args: str) -> str:
     return shlex.join(
         [
@@ -5283,6 +5351,30 @@ def _cleanup_archive_command(codex_home: Path, *target_args: str) -> str:
             *target_args,
         ]
     )
+
+
+def _cleanup_delete_worktree_command(
+    codex_home: Path,
+    *,
+    target_name: str,
+    record_id: str,
+    base_ref: str = "main",
+) -> str:
+    args = [
+        "isotope-supervisor",
+        "cleanup",
+        "delete-worktree",
+        "--codex-home",
+        str(codex_home),
+        "--name",
+        target_name,
+        "--record-id",
+        record_id,
+    ]
+    if base_ref != "main":
+        args.extend(["--base", base_ref])
+    args.append("--confirm-delete-worktree")
+    return shlex.join(args)
 
 
 def _select_cleanup_candidates(

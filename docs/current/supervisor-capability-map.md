@@ -115,10 +115,11 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   `conflict_risk`；默认只看未归档且已汇报 done 的 worker，显式传
   `--include-unfinished` 才纳入未完成历史；它不执行 merge、push、
   delete 或归档。
-- `delete_worktree` 是 LLM planner 的受控清理动作，只能由模型显式输出
-  `confirm_delete_worktree=true` 后触发；runner 会重新确认对应 managed
-  worker 已 `done`、登记表最后状态已 `archived`、当前 integration review
-  已是 `already_integrated`，且目标目录是 repo 内
+- `delete_worktree` 是受控清理动作，可由 LLM planner 显式输出，也可通过
+  `cleanup delete-worktree` 手动触发；两者都必须带
+  `confirm_delete_worktree=true`，runner 会重新确认对应 managed worker 已
+  `done`、登记表最后状态已 `archived`、当前 integration review 已是
+  `already_integrated`，且目标目录是 repo 内
   `.worktrees/supervisor/<worker>`，才执行 `git worktree remove`。
 - 普通 done worker 不再由 `loop` 自动归档或删除 worktree；
   它们留给显式 `cleanup list/archive` 或后续 merge worker 流程处理。
@@ -441,9 +442,11 @@ merge worker 成功合入后的交接边界也要分清：
   CI run id 和 conclusion 时，才能汇报 `SUPERVISOR_STATUS: done`。
   CI 失败或超过 30 分钟未结束时必须汇报 `blocked`，并保留 merge worktree
   供后续复查。
-- `cleanup list/archive` 是生命周期归档入口，只把已完成的 goal、
-  managed worker 或通知标记为已处理，让它们退出活跃视图；它不删除 Codex
-  历史、不删除 git branch。
+- `cleanup list/archive/delete-worktree` 是生命周期清理入口；`list` 会展示
+  可归档项和可删除 worktree 候选，`archive` 只把已完成的 goal、managed
+  worker 或通知标记为已处理，`delete-worktree` 复用 `delete_worktree`
+  护栏删除已归档且已集成的 Supervisor worktree。它不删除 Codex 历史、
+  不删除 git branch。
 - 当前自动边界到“派发 merge worker”和“集成后归档 merge worker”为止；
   普通 ready/already-integrated worker 不由 `loop` 自动归档或删除；
   删除 worktree 仍必须走显式 cleanup/delete-worktree 护栏或后续专门清理工单。

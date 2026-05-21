@@ -3962,6 +3962,99 @@ def test_codex_supervisor_runner_cleanup_lists_and_archives_only_done_items(
     assert notifications[0].unread is False
 
 
+def test_codex_supervisor_runner_cleanup_list_includes_worktree_delete_candidates(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    worktree = workspace / ".worktrees" / "supervisor" / "done-worker-abcd1234"
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._delete_worktree_candidate_payloads",
+        lambda args: [
+            {
+                "name": "done-worker",
+                "target_name": "done-worker",
+                "record_id": "managed-done",
+                "cwd": str(worktree),
+                "archived": True,
+                "integration_group": "already_integrated",
+            }
+        ],
+    )
+
+    exit_code = supervisor_main(["cleanup", "list", "--codex-home", str(codex_home), "--json"])
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["worktree_candidates"] == [
+        {
+            "name": "done-worker",
+            "target_name": "done-worker",
+            "record_id": "managed-done",
+            "cwd": str(worktree),
+            "archived": True,
+            "integration_group": "already_integrated",
+            "command": (
+                "isotope-supervisor cleanup delete-worktree "
+                f"--codex-home {codex_home} --name done-worker "
+                "--record-id managed-done --confirm-delete-worktree"
+            ),
+        }
+    ]
+
+
+def test_codex_supervisor_runner_cleanup_delete_worktree_uses_guarded_action(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    captured: dict[str, Any] = {}
+
+    def fake_execute(args: Any, action: dict[str, Any]) -> dict[str, Any]:
+        captured["action"] = action
+        return {
+            "kind": "delete_worktree",
+            "target_name": action["target_name"],
+            "record_id": action["record_id"],
+            "deleted_worktree": "/tmp/worktree",
+        }
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._execute_delete_worktree_action",
+        fake_execute,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "cleanup",
+            "delete-worktree",
+            "--codex-home",
+            str(codex_home),
+            "--name",
+            "done-worker",
+            "--record-id",
+            "managed-done",
+            "--confirm-delete-worktree",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert captured["action"] == {
+        "kind": "delete_worktree",
+        "target_name": "done-worker",
+        "record_id": "managed-done",
+        "confirm_delete_worktree": True,
+        "base_ref": "main",
+    }
+    assert payload["deleted"]["deleted_worktree"] == "/tmp/worktree"
+
+
 def test_codex_supervisor_runner_check_json_summarizes_readonly_surfaces(
     tmp_path,
     capsys,
