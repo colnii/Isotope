@@ -3084,7 +3084,10 @@ def _auto_promote_merge_worker_review_item(
         "main_ci": main_ci,
     }
     if repair_completed is not None:
-        payload["repair_completed"] = repair_completed
+        payload["repair_completed"] = _archive_completed_merge_promotion_repair_worker(
+            codex_home=codex_home,
+            repair_completed=repair_completed,
+        )
     return payload
 
 
@@ -3345,6 +3348,30 @@ def _completed_merge_promotion_repair_worker(
             payload["next"] = next_step
         return payload
     return None
+
+
+def _archive_completed_merge_promotion_repair_worker(
+    *,
+    codex_home: Path,
+    repair_completed: dict[str, Any],
+) -> dict[str, Any]:
+    managed = repair_completed.get("managed")
+    if not isinstance(managed, dict):
+        return repair_completed
+    name = _non_empty_text(managed.get("name"))
+    record_id = _non_empty_text(managed.get("record_id"))
+    if not name or not record_id:
+        return repair_completed
+    archived = archive_managed_codex(
+        codex_home=codex_home,
+        name=name,
+        record_id=record_id,
+    )
+    return {
+        **repair_completed,
+        "status": "archived",
+        "managed": archived.to_dict(),
+    }
 
 
 def _merge_promotion_recent_decision_answer(

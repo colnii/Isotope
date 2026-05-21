@@ -888,7 +888,12 @@ def test_auto_promote_done_merge_worker_retries_after_repair_worker_done(
 
     assert retried[0]["status"] == "done"
     assert retried[0]["repair_completed"]["managed"]["record_id"] == "managed-repair"
+    assert retried[0]["repair_completed"]["managed"]["status"] == "archived"
     assert ["git", "-C", str(repo_root), "merge", "--ff-only", "merge123"] in calls
+    latest_status_by_record_id = {
+        item["record_id"]: item["status"] for item in _registry_events(codex_home)
+    }
+    assert latest_status_by_record_id["managed-repair"] == "archived"
 
 
 def _write_managed_record(

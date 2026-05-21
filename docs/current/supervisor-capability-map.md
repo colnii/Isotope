@@ -468,7 +468,8 @@ merge worker 成功合入后的交接边界也要分清：
   不再重复查 CI 或重复生成同一拍板请求；用户回答“修复/fix/repair”后，
   `loop` 会在独立 worktree 启动 `worker_role=merge_repair` 的 repair
   worker；该 repair worker 汇报 done 后，后续 loop 会带上
-  `repair_completed` 证据并重新走 promotion gate；用户回答“重试/retry”后，
+  `repair_completed` 证据并重新走 promotion gate；promotion 成功后会
+  归档对应 repair worker 的 managed 记录；用户回答“重试/retry”后，
   后续 loop 也会重新走 promotion gate。
 - `cleanup list/archive/delete-worktree` 是生命周期清理入口；`list` 会展示
   可归档项和可删除 worktree 候选，`archive` 只把已完成的 goal、managed
