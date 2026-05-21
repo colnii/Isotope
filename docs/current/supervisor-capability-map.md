@@ -17,7 +17,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 
 | 层级 | 当前能力 | 主要位置 | 说明 |
 | --- | --- | --- | --- |
-| 用户功能层 | `scan`、`dashboard`、`guide`、`up`、`discover`、`web`、`watch`、`advise`、`supervise`、`loop`、`daemon` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
+| 用户功能层 | `scan`、`dashboard`、`trace`、`guide`、`up`、`discover`、`web`、`watch`、`advise`、`supervise`、`loop`、`daemon` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
 | 托管控制层 | `launch`、`adopt`、`send`、`archive`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
 | Worker 审查层 | `worker-review`、`integration-review`、`replan` | `features/supervisor/worker_review.py`、`features/supervisor/integration_review.py`、`features/supervisor/replan.py`、`features/supervisor/runner.py` | 汇总已托管 worker 的 worktree、branch、状态协议、改动、复查提示、合并提示、只读集成分组和下一轮候选 |
 | Merge 工单层 | `merge-work-order` builder、merge dispatch | `features/supervisor/merge_work_order.py`、`features/supervisor/merge_dispatch.py`、`features/supervisor/runner.py` | 根据 `integration-review` 生成动态 merge worker 工单，并由 `loop` 在有 `ready_to_integrate` 候选时自动启动专门 merge worker |
@@ -32,6 +32,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 | 模型管理层 | `LLM summary`、`LLM planner` 和 TOML 号池 | `llm_summary.py` | 承担判断、调度和动作选择的 AI 路径 |
 | 状态协议层 | `SUPERVISOR_STATUS` 等状态协议 | `flow.py`、`registry.py` | 给被托管 Codex 主动汇报状态 |
 | 状态账本层 | lane state（窗口状态）和限频 | `lane_state.py` | 避免重复催促和刷屏 |
+| 生命周期观测层 | `trace --json` | `features/supervisor/runner.py` | 只读汇总 goal、worker、decision、merge/repair 和 cleanup 台账 |
 | 通知桥接层 | Supervisor event notifications/webhooks | `features/supervisor/notifications.py`、`features/notifications/flow.py` | 把 goal/decision/integration-review 事件派生成低敏通知或外部 POST |
 | 本地前端层 | `web`、`/dashboard.json`、`/events`、`/managed/send`、`/llm-action` | `features/supervisor/web.py` | 本机视图、bell 事件、白名单发送和手动模型建议入口 |
 
@@ -238,6 +239,10 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `cleanup list/archive` 会列出可归档的 done goal、done managed worker
   和未读 done 通知；归档不删除 Codex 历史，tmux worker 会读取当前
   pane 文本，避免用旧 log 误归档仍在工作的窗口。
+- `trace --json` 是只读生命周期观测入口，会把 active goals、managed
+  workers、decision requests、merge/repair worker 和 archived workers
+  聚合成一个阶段化 payload，方便排查长跑链路停在目标、执行、拍板、
+  合并修复还是清理。
 - `goal list` 和 `daemon status` 会合并活跃目标的最近状态、
   摘要和下一步，便于直接看阻塞原因。
 - `daemon start/status/stop` 可把 `loop` 放到后台常驻，记录

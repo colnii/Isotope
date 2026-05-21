@@ -289,6 +289,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     tmux 托管 worker 会读取当前 pane 文本判断状态，避免旧 log
     误导归档；归档只追加 Supervisor 账本事件或把通知标记已读，不删除
     Codex `sessions` 历史，也不会处理仍是 `working` 或无完成汇报的任务；
+    `trace --json` 可只读汇总 active goals、managed workers、
+    decision requests、merge/repair worker 和 archived workers，
+    用一个阶段化 payload 判断长跑链路卡在目标、执行、拍板、合并修复
+    还是清理；
     当没有显式 `--goal`、没有活跃目标且没有可控托管 lane 时，
     `loop` 只监控，不会从普通历史会话或 workspace 自行发明下一批
     `launch_session`；

@@ -1287,6 +1287,16 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Required confirmation before removing the worktree.",
     )
+    trace_parser = subparsers.add_parser(
+        "trace",
+        help="Print a read-only Supervisor lifecycle trace.",
+    )
+    trace_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    trace_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     resume_parser = subparsers.add_parser(
         "resume",
         help="Resume a Codex session with a prompt and register the managed process.",
@@ -1639,6 +1649,13 @@ def main(argv: list[str] | None = None) -> int:
                 _print_json(payload)
             else:
                 _print_cleanup_plain(payload)
+            return 0
+        if args.command == "trace":
+            payload = _lifecycle_trace_payload(args)
+            if args.json:
+                _print_json(payload)
+            else:
+                _print_lifecycle_trace_plain(payload)
             return 0
         if args.command == "resume":
             record = resume_managed_codex(
@@ -6097,6 +6114,164 @@ def _print_cleanup_plain(payload: dict[str, Any]) -> None:
                 print(f"  cwd：{item['cwd']}")
             if item.get("command"):
                 print(f"  删除：{item['command']}")
+
+
+def _lifecycle_trace_payload(args: argparse.Namespace) -> dict[str, Any]:
+    codex_home = Path(args.codex_home)
+    active_goals = _active_goal_dicts_for_codex_home(codex_home, include_status=True)
+    active_records = [
+        _managed_record_trace_dict(record)
+        for record in read_managed_records(default_registry_path(codex_home))
+    ]
+    archived_records = [
+        _managed_record_trace_dict(record)
+        for record in _latest_managed_record_events(codex_home)
+        if record.status == "archived"
+    ]
+    active_decisions = _decision_request_dicts(args)
+    recent_decision_answers = _decision_answer_dicts(args)
+    merge_workers = [
+        record
+        for record in active_records
+        if record.get("worker_role") == MERGE_DISPATCH_WORKER_ROLE
+    ]
+    repair_workers = [
+        record
+        for record in active_records
+        if record.get("worker_role") == MERGE_REPAIR_WORKER_ROLE
+    ]
+    stages = {
+        "goal_queue": {
+            "active": active_goals,
+        },
+        "workers": {
+            "active": active_records,
+        },
+        "merge": {
+            "merge_workers": merge_workers,
+            "repair_workers": repair_workers,
+        },
+        "decisions": {
+            "active": active_decisions,
+            "recent_answers": recent_decision_answers,
+        },
+        "cleanup": {
+            "candidates": _cleanup_candidate_dicts(codex_home),
+            "archived_workers": archived_records,
+        },
+    }
+    summary = {
+        "active_goals": len(active_goals),
+        "active_managed_workers": len(active_records),
+        "active_decisions": len(active_decisions),
+        "merge_workers": len(merge_workers),
+        "repair_workers": len(repair_workers),
+        "archived_workers": len(archived_records),
+    }
+    return {
+        "status": "ok",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "summary": summary,
+        "next_attention": _lifecycle_next_attention(stages),
+        "stages": stages,
+    }
+
+
+def _latest_managed_record_events(codex_home: Path) -> list[Any]:
+    latest_by_record_id: dict[str, Any] = {}
+    for record in read_managed_record_events(default_registry_path(codex_home)):
+        latest_by_record_id[record.record_id] = record
+    return list(latest_by_record_id.values())
+
+
+def _managed_record_trace_dict(record: Any) -> dict[str, Any]:
+    protocol = _managed_record_supervisor_protocol(record)
+    return _drop_none_values(
+        {
+            "name": record.name,
+            "record_id": record.record_id,
+            "cwd": record.cwd,
+            "pid": record.pid,
+            "backend": record.backend,
+            "tmux_session": record.tmux_session,
+            "status": record.status,
+            "worker_role": getattr(record, "worker_role", "worker"),
+            "started_at": record.started_at,
+            "resume_session_id": record.resume_session_id,
+            "resume_last": record.resume_last or None,
+            "protocol": protocol or None,
+            "still_working": _managed_record_is_still_working(record),
+        }
+    )
+
+
+def _lifecycle_next_attention(stages: dict[str, Any]) -> dict[str, Any]:
+    decisions = stages.get("decisions")
+    active_decisions = (
+        decisions.get("active")
+        if isinstance(decisions, dict) and isinstance(decisions.get("active"), list)
+        else []
+    )
+    if active_decisions:
+        first = active_decisions[0]
+        return {
+            "kind": "answer_decision",
+            "request_id": first.get("request_id"),
+            "target_name": first.get("target_name"),
+        }
+    cleanup = stages.get("cleanup")
+    cleanup_candidates = (
+        cleanup.get("candidates")
+        if isinstance(cleanup, dict) and isinstance(cleanup.get("candidates"), list)
+        else []
+    )
+    if cleanup_candidates:
+        first = cleanup_candidates[0]
+        return {
+            "kind": "archive_cleanup",
+            "target": first.get("name")
+            or first.get("goal_id")
+            or first.get("notification_id"),
+        }
+    merge = stages.get("merge")
+    repair_workers = (
+        merge.get("repair_workers")
+        if isinstance(merge, dict) and isinstance(merge.get("repair_workers"), list)
+        else []
+    )
+    for worker in repair_workers:
+        protocol = worker.get("protocol")
+        status = protocol.get("status") if isinstance(protocol, dict) else None
+        if status != "done":
+            return {
+                "kind": "wait_repair",
+                "target_name": worker.get("name"),
+            }
+    goals = stages.get("goal_queue")
+    active_goals = (
+        goals.get("active")
+        if isinstance(goals, dict) and isinstance(goals.get("active"), list)
+        else []
+    )
+    if active_goals:
+        return {
+            "kind": "continue_goal",
+            "target_name": active_goals[0].get("target_name"),
+        }
+    return {"kind": "idle"}
+
+
+def _print_lifecycle_trace_plain(payload: dict[str, Any]) -> None:
+    summary = payload.get("summary") or {}
+    print("Supervisor 生命周期 trace")
+    print(f"- active goals: {summary.get('active_goals', 0)}")
+    print(f"- active workers: {summary.get('active_managed_workers', 0)}")
+    print(f"- active decisions: {summary.get('active_decisions', 0)}")
+    print(f"- merge workers: {summary.get('merge_workers', 0)}")
+    print(f"- repair workers: {summary.get('repair_workers', 0)}")
+    print(f"- archived workers: {summary.get('archived_workers', 0)}")
+    attention = payload.get("next_attention") or {}
+    print(f"下一关注：{attention.get('kind', 'unknown')}")
 
 
 def _cleanup_candidate_dicts(codex_home: Path) -> list[dict[str, Any]]:
