@@ -7,8 +7,10 @@ from isotope.features.supervisor import runner
 
 def test_supervisor_runner_uses_command_dispatch_module():
     main_module = importlib.import_module("isotope.features.supervisor.commands.main")
+    parser_module = importlib.import_module("isotope.features.supervisor.commands.parser")
 
     assert runner._run_cli is main_module.run_cli
+    assert runner._build_parser is parser_module.build_parser
     assert runner.main(["guide", "--json"]) == 0
 
 

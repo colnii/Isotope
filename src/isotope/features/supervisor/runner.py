@@ -114,6 +114,7 @@ from .tmux_discovery import discover_tmux_adopt_candidates
 from .worker_review import collect_worker_reviews, render_worker_review_plain
 from .work_order_builder import build_launch_work_order_prompt
 from .commands.main import run_cli as _run_cli
+from .commands.parser import build_parser as _build_parser
 from .planner.goal_scope import (
     _explicit_goal_text,
     _explicit_goal_workspace,
@@ -274,7 +275,7 @@ def _add_webhook_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def _build_parser() -> argparse.ArgumentParser:
+def _build_parser_impl() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Watch local Codex sessions.")
     subparsers = parser.add_subparsers(dest="command", required=True)
     for command, help_text in (
