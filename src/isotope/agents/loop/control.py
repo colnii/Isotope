@@ -13,6 +13,7 @@ READY_NEXT_ACTIONS = [
     "create_source_artifact",
     "submit_worker_handoff",
     "submit_approval_gated_action",
+    "call_capability",
 ]
 APPROVAL_NEXT_ACTIONS = ["get_approval", "resolve_approval"]
 DEFERRED_CAPABILITIES = [

@@ -71,6 +71,7 @@ def test_agent_loop_control_for_new_run_exposes_ready_product_summary(tmp_path):
         "create_source_artifact",
         "submit_worker_handoff",
         "submit_approval_gated_action",
+        "call_capability",
     ]
     assert control["progress"] == {
         "actions_total": 0,

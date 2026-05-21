@@ -88,6 +88,29 @@ def test_http_agent_loop_step_driver_can_resume_approval(tmp_path):
     assert body["control"]["phase"] == "completed"
 
 
+def test_http_agent_loop_step_driver_can_call_allowlisted_capability(tmp_path):
+    app = create_http_app(tmp_path)
+    run = _create_run(app)
+
+    response = _request(
+        app,
+        "POST",
+        f"/runs/{run['run_id']}/agent-loop-step",
+        {
+            "step": "call_capability",
+            "capability_id": "artifact.review",
+        },
+    )
+
+    assert _status_code(response) == 200
+    body = _body(response)
+    assert body["step"] == "call_capability"
+    assert body["status"] == "completed"
+    assert body["action_result"]["capability_run"]["capability_id"] == "artifact.review"
+    assert body["action_result"]["artifact_ref"]["ref_type"] == "artifact"
+    assert body["control"]["phase"] == "ready"
+
+
 def test_http_agent_loop_step_driver_unknown_run_is_404(tmp_path):
     app = create_http_app(tmp_path)
 

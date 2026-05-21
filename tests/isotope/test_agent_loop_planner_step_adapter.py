@@ -94,6 +94,40 @@ def test_planner_step_adapter_executes_valid_symbolic_step_through_step_driver(t
     _assert_no_forbidden_content_keys(result)
 
 
+def test_planner_step_adapter_can_select_capability_call_through_step_driver(tmp_path):
+    api, run_id = _new_run(tmp_path)
+    control = api.get_agent_loop_control(run_id)
+    before_events = list(api.get_events(run_id))
+
+    result = api.run_agent_loop_planner_step(
+        run_id,
+        _planner_output(
+            control,
+            "call_capability",
+            {"capability_id": "artifact.review"},
+        ),
+    )
+
+    assert result["planner_status"] == "accepted"
+    assert result["selected_step"] == "call_capability"
+    assert result["step_result"]["status"] == "completed"
+    capability_run = result["step_result"]["action_result"]["capability_run"]
+    assert capability_run["kind"] == "capability_run_result"
+    assert capability_run["capability_id"] == "artifact.review"
+    assert capability_run["status"] == "completed"
+    assert result["step_result"]["action_result"]["artifact_ref"]["ref_type"] == "artifact"
+    assert result["control"]["phase"] == "ready"
+    event_types = [event.event_type for event in api.get_events(run_id)]
+    assert event_types[len(before_events) :] == [
+        "action.proposed",
+        "action.decided",
+        "action.started",
+        "artifact.created",
+        "action.completed",
+    ]
+    _assert_no_forbidden_content_keys(result)
+
+
 def test_planner_step_adapter_can_resume_approval_after_restart(tmp_path):
     api, run_id = _new_run(tmp_path)
     pending = api.run_agent_loop_step(

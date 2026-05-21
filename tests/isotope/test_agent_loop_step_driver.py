@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pytest
@@ -128,6 +129,43 @@ def test_agent_loop_step_driver_can_create_source_artifact_as_one_step(tmp_path)
     assert result["action_result"]["artifact_summary"] == "source brief"
     assert result["control"]["phase"] == "ready"
     assert result["control"]["progress"]["artifacts_total"] == 1
+    _assert_no_forbidden_content_keys(result)
+
+
+def test_agent_loop_step_driver_can_call_allowlisted_capability_as_one_step(tmp_path):
+    api, run_id = _new_run(tmp_path)
+    before_events = list(api.get_events(run_id))
+
+    result = api.run_agent_loop_step(
+        run_id,
+        {
+            "step": "call_capability",
+            "capability_id": "artifact.review",
+        },
+    )
+
+    assert result["step"] == "call_capability"
+    assert result["status"] == "completed"
+    capability_run = result["action_result"]["capability_run"]
+    assert capability_run["kind"] == "capability_run_result"
+    assert capability_run["capability_id"] == "artifact.review"
+    assert capability_run["status"] == "completed"
+    assert capability_run["scenario"] == "artifact-review"
+    assert capability_run["replay_ok"] is True
+    assert capability_run["checkpoint_ok"] is True
+    assert result["action_result"]["artifact_ref"]["ref_type"] == "artifact"
+    assert result["action_result"]["artifact_summary"] == "Capability artifact.review completed"
+    assert result["control"]["phase"] == "ready"
+    assert result["control"]["progress"]["artifacts_total"] == 1
+    event_types = [event.event_type for event in api.get_events(run_id)]
+    assert event_types[len(before_events) :] == [
+        "action.proposed",
+        "action.decided",
+        "action.started",
+        "artifact.created",
+        "action.completed",
+    ]
+    json.dumps(result)
     _assert_no_forbidden_content_keys(result)
 
 

@@ -29,7 +29,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
 5. AI agent 功能默认 AI-first，规则、白名单和边界文档只做护栏。
 6. `assistant` 不再作为新目录叙事，旧路径入口已删除。
 7. 活跃 demo 输出使用 `app_friction` 描述应用摩擦，不再传播旧的底座摩擦字段。
-8. agent loop 活跃实现已迁入 `src/isotope/agents/loop/`。
+8. agent loop 活跃实现已迁入 `src/isotope/agents/loop/`，当前 step handler
+   可通过 `call_capability` 调用 allowlisted `CapabilityRunner` 能力，并把
+   低敏运行摘要写回当前 run 的 artifact ref；LLM 侧走 parsed planner output，
+   不把 raw prompt / response 交给 step handler。
 9. 兼容代理迁移需同步维护 `docs/current/import-map.md`，并写明计划删除节点。
 10. `core` 当前薄包 `InProcessServer`，已有 conversation（对话）、
    task（任务）和 turn（回合）状态，不承载 agent loop 内部实现。
@@ -57,6 +60,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     上下文候选；回答会返回低敏 `references`，让用户看到依据了哪些
     project/task/file 摘要；已接入 `POST /workbench/ask`，也可通过
     `isotope-ask` 和 `isotope-demo --scenario workbench-ask --trace` 调用。
+    `src/isotope/llm/capacity_calling.py` 另提供 prompt-only
+    capacity calling（能力调用）原型：把低敏 capacity manifest 和用户目标
+    交给注入的 LLM provider，返回已选择的 `capacity_id`、参数草案和缺失
+    必填项；该路径只生成 call plan，不执行 capability。
 17. `features/notifications` 已有薄入口，当前提供本地低敏通知索引、
     `NotificationFlow`、`NotificationSummary` 和 `isotope-notification`
     CLI，可创建、列表、按未读或类型过滤，并把通知标记为已读；

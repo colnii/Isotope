@@ -4,66 +4,116 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import asdict, is_dataclass
+import json
+from pathlib import Path
 from typing import Any
 
+from ...loop_engine import LoopEngine, LoopStepContext
 from ...platform.schemas.refs import ResourceRef
 
 
 def run_agent_loop_step(api: Any, run_id: str, request: dict[str, Any]) -> dict[str, Any]:
     """Run one currently available Agent loop step through public helpers."""
-    if not isinstance(request, dict):
-        raise ValueError("agent loop step request must be a dict")
-    step = request.get("step")
-    if not isinstance(step, str) or not step:
-        raise ValueError("step must be a non-empty string")
+    engine = LoopEngine(
+        get_control=api.get_agent_loop_control,
+        step_handlers=_agent_loop_step_handlers(api),
+        interrupt_policy=_agent_loop_interrupt_policy,
+    )
+    return engine.run_step(run_id, request)
 
-    control = api.get_agent_loop_control(run_id)
-    if step not in control["next_actions"]:
-        raise ValueError(f"agent loop step {step} is not available in current phase {control['phase']}")
 
-    action_result = _dispatch_step(api, run_id, step, request)
-    updated_control = api.get_agent_loop_control(run_id)
+def _agent_loop_step_handlers(api: Any):
     return {
-        "step": step,
-        "status": str(action_result.get("status", updated_control["status"])),
-        "action_result": _public_action_result(action_result),
-        "control": updated_control,
+        "create_source_artifact": lambda context: _public_action_result(
+            api.create_source_artifact(
+                context.run_id,
+                summary=_required_string(context.request, "summary"),
+                content=_required_string(context.request, "content"),
+            )
+        ),
+        "submit_worker_handoff": lambda context: _public_action_result(
+            api.submit_worker_handoff(
+                context.run_id,
+                delegation_intent=_required_dict(context.request, "delegation_intent"),
+                artifact_ref=_resource_ref_from_dict(_required_dict(context.request, "artifact_ref")),
+                summary=_required_string(context.request, "summary"),
+            )
+        ),
+        "submit_approval_gated_action": lambda context: _public_action_result(
+            api.submit_action(
+                context.run_id,
+                deepcopy(_required_dict(context.request, "intent")),
+                requires_approval=True,
+            )
+        ),
+        "call_capability": lambda context: _public_action_result(
+            _call_capability_step(api, context.run_id, context.request)
+        ),
+        "get_approval": lambda context: _public_action_result(
+            {
+                "status": "ok",
+                "approval": api.get_approval(
+                    context.run_id,
+                    _approval_id_from_request_or_control(context.request, context.control),
+                ),
+            }
+        ),
+        "resolve_approval": lambda context: _public_action_result(
+            api.resolve_approval(
+                _approval_id_from_request_or_control(context.request, context.control),
+                deepcopy(_required_dict(context.request, "resolution")),
+            )
+        ),
     }
 
 
-def _dispatch_step(api: Any, run_id: str, step: str, request: dict[str, Any]) -> dict[str, Any]:
-    if step == "create_source_artifact":
-        return api.create_source_artifact(
-            run_id,
-            summary=_required_string(request, "summary"),
-            content=_required_string(request, "content"),
-        )
-    if step == "submit_worker_handoff":
-        return api.submit_worker_handoff(
-            run_id,
-            delegation_intent=_required_dict(request, "delegation_intent"),
-            artifact_ref=_resource_ref_from_dict(_required_dict(request, "artifact_ref")),
-            summary=_required_string(request, "summary"),
-        )
-    if step == "submit_approval_gated_action":
-        return api.submit_action(
-            run_id,
-            deepcopy(_required_dict(request, "intent")),
-            requires_approval=True,
-        )
-    if step == "get_approval":
-        approval_id = _approval_id_from_request_or_control(request, api.get_agent_loop_control(run_id))
-        return {
-            "status": "ok",
-            "approval": api.get_approval(run_id, approval_id),
-        }
-    if step == "resolve_approval":
-        approval_id = _approval_id_from_request_or_control(request, api.get_agent_loop_control(run_id))
-        return api.resolve_approval(
-            approval_id,
-            deepcopy(_required_dict(request, "resolution")),
-        )
-    raise ValueError(f"unsupported agent loop step: {step}")
+def _agent_loop_interrupt_policy(context: LoopStepContext) -> str | None:
+    if context.step in context.control["next_actions"]:
+        return None
+    raise ValueError(
+        f"agent loop step {context.step} is not available in current phase {context.control['phase']}"
+    )
+
+
+def _call_capability_step(api: Any, run_id: str, request: dict[str, Any]) -> dict[str, Any]:
+    from ...capabilities.runner import CapabilityRunner
+
+    capability_id = _required_string(request, "capability_id")
+    capability_run = CapabilityRunner().run_capability(
+        capability_id,
+        root_path=_capability_run_root(api, run_id, capability_id),
+    )
+    artifact_result = api.create_source_artifact(
+        run_id,
+        summary=f"Capability {capability_id} completed",
+        content=json.dumps(
+            {
+                "kind": "agent_loop_capability_call",
+                "capability_run": capability_run,
+            },
+            sort_keys=True,
+        ),
+    )
+    return {
+        "status": capability_run["status"],
+        "capability_run": capability_run,
+        "artifact_ref": artifact_result["artifact_ref"],
+        "artifact_summary": artifact_result["artifact_summary"],
+        "proposal_id": artifact_result["proposal_id"],
+        "decision_id": artifact_result["decision_id"],
+        "execution_id": artifact_result["execution_id"],
+    }
+
+
+def _capability_run_root(api: Any, run_id: str, capability_id: str) -> Path:
+    root = getattr(api, "root", None)
+    if root is None:
+        return Path.cwd() / ".isotope-capability-runs" / run_id / _path_segment(capability_id)
+    return Path(root) / "capability-runs" / run_id / _path_segment(capability_id)
+
+
+def _path_segment(value: str) -> str:
+    return "".join(character if character.isalnum() or character in {"-", "_"} else "_" for character in value)
 
 
 def _approval_id_from_request_or_control(request: dict[str, Any], control: dict[str, Any]) -> str:

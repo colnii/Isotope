@@ -44,7 +44,9 @@
 27. runtime 命名澄清：活跃实现已迁入 `src/isotope/runtime/in_process.py`，
     `runtime/server.py` 和 `isotope.server` 旧代理已删除。
 28. LLM 层拆出：活跃实现已迁入 `src/isotope/llm/`，
-    `integrations/llm` 和顶层旧路径已删除。
+    `integrations/llm` 和顶层旧路径已删除；新增 `capacity_calling.py`
+    作为 prompt-only 能力选择与参数填充原型，只返回 call plan，不执行
+    capability。
 29. chat flow 正名：活跃实现已迁入 `src/isotope/features/chat/flow.py`，
     `product_chat.py` 和顶层旧路径已删除。
 30. terminal runner 正名：活跃实现已迁入 `src/isotope/execution/terminal_runner.py`，
@@ -1424,7 +1426,8 @@
 - `src/isotope/runtime/`：进程内运行入口。
 - `src/isotope/workspace/`：文件、项目、git 工作区。
 - `src/isotope/rag/`：接入、检索、索引。
-- `src/isotope/llm/`：模型服务层，优先于 `models/llm/`。
+- `src/isotope/llm/`：模型服务层，包含 provider、tool-call 边界和
+  prompt-only capacity calling 原型，优先于 `models/llm/`。
 - `src/isotope/memory/`：记忆、总结、上下文。
 - `src/isotope/policy/`：权限、审批、风险。
 - `src/isotope/platform/`：事件、schema、registry、state、lifecycle。

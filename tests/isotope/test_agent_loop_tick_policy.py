@@ -50,6 +50,7 @@ def test_tick_policy_for_ready_run_allows_one_planner_tick_without_side_effects(
         "create_source_artifact",
         "submit_worker_handoff",
         "submit_approval_gated_action",
+        "call_capability",
     ]
     assert policy["deferred_capabilities"] == [
         "real_llm_provider",
