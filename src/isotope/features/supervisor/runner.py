@@ -132,6 +132,11 @@ from .state.memory_view import (
     build_memory_status_payload,
     render_memory_status_plain,
 )
+from .state.worker_event_channel import (
+    list_worker_events,
+    publish_worker_event,
+    render_worker_event_channel_plain,
+)
 
 EXECUTABLE_ADVICE_KINDS = {"send_status", "send_continue"}
 MERGE_DISPATCH_WORKER_ROLE = "merge_dispatch"
@@ -232,6 +237,18 @@ ARCHIVABLE_SUPERVISOR_STATUSES = {"done"}
 
 def _print_json(payload: dict[str, Any]) -> None:
     print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+
+
+def _json_object_arg(raw: str | None, field_name: str) -> dict[str, Any] | None:
+    if raw is None:
+        return None
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{field_name} must be a JSON object") from exc
+    if not isinstance(value, dict):
+        raise ValueError(f"{field_name} must be a JSON object")
+    return value
 
 
 def _add_goal_replenishment_args(parser: argparse.ArgumentParser) -> None:
@@ -1021,6 +1038,48 @@ def _build_parser_impl() -> argparse.ArgumentParser:
         help="Maximum records to preview.",
     )
     memory_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    worker_event_parser = subparsers.add_parser(
+        "worker-event",
+        help="Publish or list memory-backed worker events.",
+    )
+    worker_event_subparsers = worker_event_parser.add_subparsers(
+        dest="worker_event_command",
+        required=True,
+    )
+    worker_event_publish = worker_event_subparsers.add_parser(
+        "publish",
+        help="Publish one worker event into the memory-backed channel.",
+    )
+    worker_event_publish.add_argument(
+        "--root",
+        default=".",
+        help="Runtime root containing memory/*.json. Defaults to current directory.",
+    )
+    worker_event_publish.add_argument("--from", dest="from_worker", required=True)
+    worker_event_publish.add_argument("--to", dest="to_worker")
+    worker_event_publish.add_argument("--type", dest="event_type", default="message")
+    worker_event_publish.add_argument("--channel", default="default")
+    worker_event_publish.add_argument("--message", required=True)
+    worker_event_publish.add_argument(
+        "--payload-json",
+        help="Optional JSON object payload for the event.",
+    )
+    worker_event_publish.add_argument("--json", action="store_true", help="Print JSON output.")
+    worker_event_list = worker_event_subparsers.add_parser(
+        "list",
+        help="List worker events from the memory-backed channel.",
+    )
+    worker_event_list.add_argument(
+        "--root",
+        default=".",
+        help="Runtime root containing memory/*.json. Defaults to current directory.",
+    )
+    worker_event_list.add_argument("--from", dest="from_worker")
+    worker_event_list.add_argument("--to", dest="to_worker")
+    worker_event_list.add_argument("--type", dest="event_type")
+    worker_event_list.add_argument("--channel")
+    worker_event_list.add_argument("--limit", type=int, default=20)
+    worker_event_list.add_argument("--json", action="store_true", help="Print JSON output.")
     integration_review_parser = subparsers.add_parser(
         "integration-review",
         help="Group managed workers by read-only integration readiness.",
@@ -1671,6 +1730,36 @@ def _run_cli_impl(argv: list[str] | None = None) -> int:
             else:
                 print(render_memory_status_plain(payload))
             return 0
+        if args.command == "worker-event":
+            if args.worker_event_command == "publish":
+                payload = publish_worker_event(
+                    root=Path(args.root),
+                    from_worker=args.from_worker,
+                    to_worker=args.to_worker,
+                    event_type=args.event_type,
+                    channel=args.channel,
+                    message=args.message,
+                    payload=_json_object_arg(args.payload_json, "payload-json"),
+                )
+                if args.json:
+                    _print_json(payload)
+                else:
+                    print(render_worker_event_channel_plain({"store": payload["store"], "events": [payload["event"]]}))
+                return 0
+            if args.worker_event_command == "list":
+                payload = list_worker_events(
+                    root=Path(args.root),
+                    channel=args.channel,
+                    from_worker=args.from_worker,
+                    to_worker=args.to_worker,
+                    event_type=args.event_type,
+                    limit=args.limit,
+                )
+                if args.json:
+                    _print_json(payload)
+                else:
+                    print(render_worker_event_channel_plain(payload))
+                return 0
         if args.command == "integration-review":
             payload = collect_integration_reviews(
                 codex_home=Path(args.codex_home),
