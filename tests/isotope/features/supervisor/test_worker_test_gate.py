@@ -178,6 +178,7 @@ def _fake_integration_run(
                 ),
                 ("rev-parse", "HEAD"): (0, worker_commit + "\n", ""),
                 ("rev-parse", "main"): (0, "main999\n", ""),
+                ("rev-parse", "main^{tree}"): (0, "tree-ok\n", ""),
                 ("status", "--short"): (0, "", ""),
                 ("merge-base", "--is-ancestor", worker_commit, "main"): (1, "", ""),
                 ("merge-base", "--is-ancestor", "main", worker_commit): (0, "", ""),

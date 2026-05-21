@@ -100,6 +100,8 @@ def test_execute_delete_worktree_removes_archived_integrated_supervisor_worktree
             return subprocess.CompletedProcess(command, 0, "done111\n", "")
         if command == ["git", "-C", str(worktree), "rev-parse", "main"]:
             return subprocess.CompletedProcess(command, 0, "main999\n", "")
+        if command == ["git", "-C", str(worktree), "rev-parse", "main^{tree}"]:
+            return subprocess.CompletedProcess(command, 0, "tree-ok\n", "")
         if command == ["git", "-C", str(worktree), "status", "--short"]:
             return subprocess.CompletedProcess(command, 0, "", "")
         if command == ["git", "-C", str(worktree), "merge-base", "--is-ancestor", "done111", "main"]:
@@ -185,6 +187,8 @@ def test_delete_worktree_candidates_include_archived_integrated_merge_worker(
             return subprocess.CompletedProcess(command, 0, "merge111\n", "")
         if command == ["git", "-C", str(worktree), "rev-parse", "main"]:
             return subprocess.CompletedProcess(command, 0, "merge111\n", "")
+        if command == ["git", "-C", str(worktree), "rev-parse", "main^{tree}"]:
+            return subprocess.CompletedProcess(command, 0, "tree-ok\n", "")
         if command == ["git", "-C", str(worktree), "status", "--short"]:
             return subprocess.CompletedProcess(command, 0, "", "")
         if command == ["git", "-C", str(worktree), "merge-base", "--is-ancestor", "merge111", "main"]:
