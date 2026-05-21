@@ -13817,6 +13817,155 @@ def test_codex_supervisor_runner_loop_does_not_auto_archive_plain_done_managed_w
     assert archived_names == []
 
 
+def test_codex_supervisor_runner_loop_cleans_worktree_after_merge_worker_archive(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    worktree = workspace / ".worktrees" / "supervisor" / "merge-worker-abcd1234"
+    merge_log_path = codex_home / "supervisor" / "logs" / "managed-merge.log"
+    merge_log_path.parent.mkdir(parents=True, exist_ok=True)
+    merge_log_path.write_text(
+        "SUPERVISOR_STATUS: done\n"
+        "SUPERVISOR_SUMMARY: ready worker 已合入 main。\n"
+        "SUPERVISOR_NEXT: 等待 Supervisor 归档。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-merge",
+                "name": DEFAULT_TARGET_NAME,
+                "cwd": str(worktree),
+                "prompt": "合并 managed-source 的改动。",
+                "command": ["codex", "exec", "-C", str(worktree), "managed-source"],
+                "pid": 0,
+                "started_at": NOW.isoformat(),
+                "log_path": str(merge_log_path),
+                "status": "launched",
+                "backend": "process",
+                "worker_role": "merge_dispatch",
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    review_payload = {
+        "status": "ok",
+        "base_ref": "main",
+        "include_unfinished": False,
+        "summary": {
+            "total": 2,
+            "merge_workers": 1,
+            "ready_to_integrate": 0,
+            "already_integrated": 1,
+            "needs_review": 0,
+            "conflict_risk": 0,
+        },
+        "groups": {
+            "merge_workers": [
+                {
+                    "record_id": "managed-merge",
+                    "name": DEFAULT_TARGET_NAME,
+                    "group": "merge_workers",
+                    "supervisor_protocol": {
+                        "status": "done",
+                        "summary": "ready worker 已合入 main。",
+                        "next": "等待 Supervisor 归档。",
+                    },
+                }
+            ],
+            "ready_to_integrate": [],
+            "already_integrated": [
+                {
+                    "record_id": "managed-source",
+                    "name": "source-worker",
+                    "group": "already_integrated",
+                }
+            ],
+            "needs_review": [],
+            "conflict_risk": [],
+        },
+        "workers": [],
+        "safety": {"auto_merge": False, "push": False, "delete_branch": False},
+    }
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_integration_reviews",
+        lambda *, codex_home, base_ref, include_unfinished: review_payload,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._delete_worktree_candidate_payloads",
+        lambda args: [
+            {
+                "name": DEFAULT_TARGET_NAME,
+                "target_name": DEFAULT_TARGET_NAME,
+                "record_id": "managed-merge",
+                "cwd": str(worktree),
+                "archived": True,
+                "integration_group": "already_integrated",
+            }
+        ],
+    )
+    deleted_actions: list[dict[str, Any]] = []
+
+    def fake_delete(args: Any, action: dict[str, Any]) -> dict[str, Any]:
+        deleted_actions.append(action)
+        return {
+            "kind": "delete_worktree",
+            "target_name": action["target_name"],
+            "record_id": action["record_id"],
+            "deleted_worktree": str(worktree),
+        }
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._execute_delete_worktree_action",
+        fake_delete,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--rule-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["cleanup_archived"][0]["record_id"] == "managed-merge"
+    assert payload["cleanup_deleted_worktrees"] == [
+        {
+            "kind": "delete_worktree",
+            "target_name": DEFAULT_TARGET_NAME,
+            "record_id": "managed-merge",
+            "deleted_worktree": str(worktree),
+        }
+    ]
+    assert deleted_actions == [
+        {
+            "kind": "delete_worktree",
+            "target_name": DEFAULT_TARGET_NAME,
+            "record_id": "managed-merge",
+            "confirm_delete_worktree": True,
+            "base_ref": "main",
+            "source": "cleanup_auto",
+        }
+    ]
+
+
 def test_codex_supervisor_runner_loop_keeps_blocked_goal_active(
     tmp_path,
     capsys,

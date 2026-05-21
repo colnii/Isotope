@@ -126,8 +126,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `loop` 只会对 merge worker 做受限自动归档：merge worker 本身汇报
   `SUPERVISOR_STATUS=done`，且它工单里的候选 worker 已全部进入
   `integration-review.already_integrated` 时，才归档 merge worker
-  的 managed 记录、关联 goal，并写入低敏通知；不删除来源分支、
-  merge worker 分支或 worktree。
+  的 managed 记录、关联 goal，并写入低敏通知；随后只对本轮刚归档的
+  merge worker 尝试 `delete_worktree` 清理。它不删除来源分支、不删除
+  merge worker 分支，不顺手清理其他历史 worktree。
 - `replan` CLI 会读取 `worker-review` 的 `automation_candidates`、当前
   active goals，以及 `integration-review` 的 `ready_to_integrate`、
   `already_integrated`、`needs_review`、`conflict_risk` 分组，生成下一轮
@@ -447,7 +448,8 @@ merge worker 成功合入后的交接边界也要分清：
   worker 或通知标记为已处理，`delete-worktree` 复用 `delete_worktree`
   护栏删除已归档且已集成的 Supervisor worktree。它不删除 Codex 历史、
   不删除 git branch。
-- 当前自动边界到“派发 merge worker”和“集成后归档 merge worker”为止；
+- 当前自动边界到“派发 merge worker”、“集成后归档 merge worker”和
+  “清理本轮刚归档且已集成的 merge worker worktree”为止；
   普通 ready/already-integrated worker 不由 `loop` 自动归档或删除；
   删除 worktree 仍必须走显式 cleanup/delete-worktree 护栏或后续专门清理工单。
 - `git worktree remove` 仍属于受控清理动作：需要先确认来源工作已被目标分支包含、

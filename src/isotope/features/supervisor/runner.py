@@ -2331,6 +2331,10 @@ def _run_supervise(args: argparse.Namespace) -> None:
         report = _scan_report(args)
         goal_updates = _sync_goal_lifecycle(args, report)
         cleanup_archived = _auto_archive_done_merge_workers(args)
+        cleanup_deleted_worktrees = _auto_delete_archived_worktrees_after_cleanup(
+            args,
+            cleanup_archived=cleanup_archived,
+        )
         decision_timeout_alerts = mark_stale_decision_request_timeouts(
             codex_home=Path(args.codex_home),
             timeout_seconds=decision_timeout,
@@ -2353,6 +2357,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
                     auto_retried_workers=auto_retried_workers,
                     goal_updates=goal_updates,
                     cleanup_archived=cleanup_archived,
+                    cleanup_deleted_worktrees=cleanup_deleted_worktrees,
                     decision_timeout_alerts=decision_timeout_alerts,
                 )
                 force_print = _executed_action_forces_print(
@@ -2380,6 +2385,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
             or bool(auto_retried_workers)
             or bool(goal_updates)
             or bool(cleanup_archived)
+            or bool(cleanup_deleted_worktrees)
             or bool(decision_timeout_alerts)
         )
         if should_print:
@@ -2393,6 +2399,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
                 precomputed_executed=precomputed_executed,
                 goal_updates=goal_updates,
                 cleanup_archived=cleanup_archived,
+                cleanup_deleted_worktrees=cleanup_deleted_worktrees,
                 decision_timeout_alerts=decision_timeout_alerts,
             )
             bell_fingerprint = _supervise_bell_fingerprint(report, payload)
@@ -2729,6 +2736,51 @@ def _auto_archive_done_merge_workers(args: argparse.Namespace) -> list[dict[str,
         codex_home=codex_home,
         review_payload=review_payload,
     )
+
+
+def _auto_delete_archived_worktrees_after_cleanup(
+    args: argparse.Namespace,
+    *,
+    cleanup_archived: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if not cleanup_archived:
+        return []
+    if getattr(args, "command", None) != "loop":
+        return []
+    if _current_workspace_has_worker_role(args, RECURSIVE_WORKER_ROLES):
+        return []
+    archived_record_ids = {
+        record_id
+        for item in cleanup_archived
+        for record_id in (item.get("record_id"),)
+        if isinstance(record_id, str) and record_id
+    }
+    if not archived_record_ids:
+        return []
+    deleted: list[dict[str, Any]] = []
+    for candidate in _delete_worktree_candidate_payloads(args):
+        target_name = candidate.get("target_name") or candidate.get("name")
+        record_id = candidate.get("record_id")
+        if not isinstance(target_name, str) or not target_name.strip():
+            continue
+        if not isinstance(record_id, str) or not record_id.strip():
+            continue
+        if record_id not in archived_record_ids:
+            continue
+        deleted.append(
+            _execute_delete_worktree_action(
+                args,
+                {
+                    "kind": "delete_worktree",
+                    "target_name": target_name,
+                    "record_id": record_id,
+                    "confirm_delete_worktree": True,
+                    "base_ref": "main",
+                    "source": "cleanup_auto",
+                },
+            )
+        )
+    return deleted
 
 
 def _auto_archive_integrated_merge_workers(
@@ -3487,6 +3539,7 @@ def _supervise_payload(
     auto_retried_workers: list[dict[str, Any]] | None = None,
     goal_updates: list[dict[str, Any]] | None = None,
     cleanup_archived: list[dict[str, Any]] | None = None,
+    cleanup_deleted_worktrees: list[dict[str, Any]] | None = None,
     decision_timeout_alerts: list[dict[str, Any]] | None = None,
     precomputed_auto_action: dict[str, Any] | None = None,
     precomputed_executed: dict[str, Any] | None = None,
@@ -3533,6 +3586,8 @@ def _supervise_payload(
         payload["goal_updates"] = goal_updates
     if cleanup_archived:
         payload["cleanup_archived"] = cleanup_archived
+    if cleanup_deleted_worktrees:
+        payload["cleanup_deleted_worktrees"] = cleanup_deleted_worktrees
     payload["decision_timeout_alerts"] = decision_timeout_alerts or []
     worker_reviews: dict[str, Any] | None = None
     if args.llm_action or args.llm_execute:
@@ -5503,6 +5558,21 @@ def _print_supervise_plain(payload: dict[str, Any], report: Any) -> None:
             print(f"{item['target_name']} / {item['status']}{archived}")
             if item.get("summary"):
                 print(f"摘要：{item['summary']}")
+    if cleanup_archived := payload.get("cleanup_archived"):
+        print()
+        print("[自动归档]")
+        for item in cleanup_archived:
+            target = item.get("name") or item.get("record_id")
+            print(f"{item.get('kind', 'item')} {target}")
+    if cleanup_deleted_worktrees := payload.get("cleanup_deleted_worktrees"):
+        print()
+        print("[自动 worktree 清理]")
+        for item in cleanup_deleted_worktrees:
+            target = item.get("target_name") or item.get("record_id")
+            if item.get("deleted_worktree"):
+                print(f"{target} / {item['deleted_worktree']}")
+            else:
+                print(f"{target} / {item.get('reason', 'skipped')}")
     if not automation["ready"]:
         print(f"启动：{automation['launch_hint']}")
         print(f"接管：{automation['adopt_hint']}")
