@@ -60,6 +60,22 @@ def test_launch_work_order_prompt_includes_ci_watch_writeback_contract():
     assert "失败时下一步" in prompt
 
 
+def test_launch_work_order_prompt_includes_standard_completion_template():
+    prompt = build_launch_work_order_prompt(
+        target_name="worker-a",
+        cwd="/tmp/isotope-worker",
+        goal="实现目标队列 worker。",
+    )
+
+    assert "completion_template:" in prompt
+    assert "done: 目标完成、验证通过、必要改动已提交" in prompt
+    assert "needs_user: 只有上下文缺失、过时、冲突或产品取舍会改变实现方向时使用" in prompt
+    assert "blocked: 只有验证失败、工具/环境阻塞或无法安全继续时使用" in prompt
+    assert "integration_review_marker: 保持 worktree 干净" in prompt
+    assert "integration-review 会自动归入 already_integrated" in prompt
+    assert "SUPERVISOR_STATUS: done" not in prompt
+
+
 def test_coding_worker_profile_defaults_to_high_reasoning_gpt_5_5():
     args = argparse.Namespace(
         worker_codex_model=None,

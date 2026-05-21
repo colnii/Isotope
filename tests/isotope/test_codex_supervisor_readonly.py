@@ -12846,6 +12846,12 @@ def test_codex_supervisor_runner_loop_fanout_launches_parallel_active_goals(
     ]
     assert len(captured) == 2
     assert all(command[9].startswith("WORK ORDER") for command in captured)
+    assert all("completion_template:" in command[9] for command in captured)
+    assert all(
+        "integration-review 会自动归入 already_integrated" in command[9]
+        for command in captured
+    )
+    assert all("SUPERVISOR_STATUS: done" not in command[9] for command in captured)
     assert sorted(
         worker["name"] for worker in payload["current_batch"]["managed_workers"]
     ) == [

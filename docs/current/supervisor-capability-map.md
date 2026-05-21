@@ -399,6 +399,12 @@ B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
 - `forbidden_scope`：明确不碰什么。
 - `budget_hint`：写给 worker 的时间、轮次和上下文请求提醒。
 - `done_conditions`：什么证据算完成。
+- `completion_template`：写清 `done`、`needs_user`、`blocked`
+  的使用条件，并要求 summary 带验证证据、提交哈希和剩余风险；
+  这里只描述 status value，不写会被日志解析器误判的状态示例行。
+- `integration_review_marker`：要求 worker 保持 worktree 干净，并把最终
+  commit 写进 summary；base 分支包含该 commit 或等价补丁后，
+  `integration-review` 会归入 `already_integrated`。
 - `ask_user_conditions`：只有哪些情况能停下来问用户。
 - `report_protocol`：最后按 `SUPERVISOR_STATUS/SUMMARY/NEXT` 汇报。
 
