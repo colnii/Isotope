@@ -5288,6 +5288,12 @@ def _cleanup_payload(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _print_cleanup_plain(payload: dict[str, Any]) -> None:
+    deleted = payload.get("deleted")
+    if isinstance(deleted, dict) and deleted:
+        target = deleted.get("target_name") or deleted.get("name") or "unknown"
+        print(f"已删除 worktree：{target}")
+        if deleted.get("deleted_worktree"):
+            print(f"  cwd：{deleted['deleted_worktree']}")
     archived = payload.get("archived") or []
     if archived:
         print(f"已归档/标记：{len(archived)}")

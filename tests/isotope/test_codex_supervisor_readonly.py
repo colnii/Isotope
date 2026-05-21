@@ -4064,6 +4064,50 @@ def test_codex_supervisor_runner_cleanup_delete_worktree_uses_guarded_action(
     assert payload["deleted"]["deleted_worktree"] == "/tmp/worktree"
 
 
+def test_codex_supervisor_runner_cleanup_delete_worktree_plain_reports_deleted(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+
+    def fake_execute(args: Any, action: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "kind": "delete_worktree",
+            "target_name": action["target_name"],
+            "record_id": action["record_id"],
+            "deleted_worktree": "/tmp/worktree",
+        }
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._execute_delete_worktree_action",
+        fake_execute,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._delete_worktree_candidate_payloads",
+        lambda args: [],
+    )
+
+    exit_code = supervisor_main(
+        [
+            "cleanup",
+            "delete-worktree",
+            "--codex-home",
+            str(codex_home),
+            "--name",
+            "done-worker",
+            "--record-id",
+            "managed-done",
+            "--confirm-delete-worktree",
+        ]
+    )
+
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "已删除 worktree：done-worker" in out
+    assert "cwd：/tmp/worktree" in out
+
+
 def test_codex_supervisor_runner_check_json_summarizes_readonly_surfaces(
     tmp_path,
     capsys,
