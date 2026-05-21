@@ -15,7 +15,9 @@
 - `InProcessServer.run_agent_loop_step(run_id, request)`
 - `POST /runs/{run_id}/agent-loop-step` in the in-process `HttpApiApp`
 - 当前支持的 step：
+  - `query_memory`
   - `create_source_artifact`
+  - `record_turn_memory`
   - `submit_worker_handoff`
   - `submit_approval_gated_action`
   - `call_capability`
@@ -28,7 +30,9 @@ Step driver 会先读取 `get_agent_loop_control(run_id)`，只允许执行当�
 
 如果 run 还在 `ready`：
 
+- 可以按需 query run / session / thread memory，返回 summary / refs / provenance，不返回 full content。
 - 可以创建 source artifact。
+- 可以把一轮 loop 的结构化状态写成 turn memory；写入走 `write_memory` action chain、`memory.record_created` canonical event 和本地 memory store。
 - 可以提交 approval-gated action，让 run 进入 `awaiting_approval`。
 - 可以提交 worker handoff，只要 app 提供已有 artifact `ResourceRef` 和 delegation intent。
 - 可以调用一个已在 `CapabilityRunner` allowlist 中的 capability，step handler
@@ -51,13 +55,14 @@ Step driver 会先读取 `get_agent_loop_control(run_id)`，只允许执行当�
 - 不自动串联任意 capability；unsupported、diagnostic、experimental、
   provider-required 或 unallowlisted capability 仍由 `CapabilityRunner`
   fail closed。
-- 不实现 memory query engine、product UI、auth、notification 或 real listening HTTP server。
+- agent-loop memory 只支持本地 structured record + summary/ref query；不实现 embedding、ranking、controlled expand、promotion policy、product UI、auth、notification 或 real listening HTTP server。
 - 不允许执行不在当前 `next_actions` 里的 step；这种请求在写入 event 前 fail closed。
 - HTTP 入口仍是 in-process facade，不是 hosted API。
 
 ## 5. Current Tests
 
 - `tests/isotope/test_agent_loop_step_driver.py`
+- `tests/isotope/test_agent_loop_memory_integration.py`
 - `tests/isotope/test_http_api_agent_loop_step_driver.py`
 - HTTP route inventory coverage in `tests/isotope/test_http_api_route_inventory.py`
 - Minimal HTTP surface coverage in `tests/isotope/test_http_api_boundary.py`

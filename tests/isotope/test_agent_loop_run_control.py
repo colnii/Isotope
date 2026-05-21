@@ -68,7 +68,9 @@ def test_agent_loop_control_for_new_run_exposes_ready_product_summary(tmp_path):
     assert control["phase"] == "ready"
     assert control["waiting_on"] == []
     assert control["next_actions"] == [
+        "query_memory",
         "create_source_artifact",
+        "record_turn_memory",
         "submit_worker_handoff",
         "submit_approval_gated_action",
         "call_capability",
@@ -78,6 +80,7 @@ def test_agent_loop_control_for_new_run_exposes_ready_product_summary(tmp_path):
         "actions_completed": 0,
         "actions_pending_approval": 0,
         "artifacts_total": 0,
+        "memory_records_total": 0,
         "workers_total": 0,
         "workspaces_total": 0,
     }
@@ -85,7 +88,6 @@ def test_agent_loop_control_for_new_run_exposes_ready_product_summary(tmp_path):
         "real_llm_provider",
         "scheduler",
         "real_worker_runtime",
-        "memory_query_engine",
     ]
     assert api.get_events(run_id) == before_events
     _assert_no_forbidden_content_keys(control)

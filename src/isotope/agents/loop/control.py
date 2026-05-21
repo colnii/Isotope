@@ -10,7 +10,9 @@ from ...platform.state.projector import RunState
 
 
 READY_NEXT_ACTIONS = [
+    "query_memory",
     "create_source_artifact",
+    "record_turn_memory",
     "submit_worker_handoff",
     "submit_approval_gated_action",
     "call_capability",
@@ -20,7 +22,6 @@ DEFERRED_CAPABILITIES = [
     "real_llm_provider",
     "scheduler",
     "real_worker_runtime",
-    "memory_query_engine",
 ]
 
 
@@ -211,6 +212,7 @@ def _progress(state: RunState) -> dict[str, int]:
         "actions_completed": _count_status(action_summaries, "completed"),
         "actions_pending_approval": _count_status(action_summaries, "pending_user_approval"),
         "artifacts_total": len(state.artifacts),
+        "memory_records_total": len(state.memory_records),
         "workers_total": len(state.workers),
         "workspaces_total": len(state.workspaces),
     }

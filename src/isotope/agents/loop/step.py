@@ -46,6 +46,12 @@ def _agent_loop_step_handlers(api: Any):
                 requires_approval=True,
             )
         ),
+        "record_turn_memory": lambda context: _public_action_result(
+            api.record_agent_loop_turn_memory(context.run_id, context.request)
+        ),
+        "query_memory": lambda context: _public_action_result(
+            api.query_agent_loop_memory(context.run_id, context.request)
+        ),
         "call_capability": lambda context: _public_action_result(
             _call_capability_step(api, context.run_id, context.request)
         ),

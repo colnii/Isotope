@@ -47,7 +47,9 @@ def test_tick_policy_for_ready_run_allows_one_planner_tick_without_side_effects(
     assert policy["requires_human"] is False
     assert policy["max_next_tick_kind"] == "planner_step"
     assert policy["next_actions"] == [
+        "query_memory",
         "create_source_artifact",
+        "record_turn_memory",
         "submit_worker_handoff",
         "submit_approval_gated_action",
         "call_capability",
@@ -56,7 +58,6 @@ def test_tick_policy_for_ready_run_allows_one_planner_tick_without_side_effects(
         "real_llm_provider",
         "scheduler",
         "real_worker_runtime",
-        "memory_query_engine",
     ]
     assert api.get_events(run_id) == before_events
     _assert_no_forbidden_content_keys(policy)

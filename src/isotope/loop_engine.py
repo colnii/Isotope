@@ -69,7 +69,12 @@ class LoopEngine:
         updated_control = self._get_control(run_id)
         return {
             "step": step,
-            "status": str(action_result.get("status", updated_control["status"])),
+            "status": str(
+                action_result.get(
+                    "step_status",
+                    action_result.get("status", updated_control["status"]),
+                )
+            ),
             "action_result": action_result,
             "control": updated_control,
         }

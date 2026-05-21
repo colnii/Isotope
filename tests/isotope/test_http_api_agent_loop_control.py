@@ -83,7 +83,9 @@ def test_http_agent_loop_control_returns_product_read_model(tmp_path):
     assert body["phase"] == "ready"
     assert body["waiting_on"] == []
     assert body["next_actions"] == [
+        "query_memory",
         "create_source_artifact",
+        "record_turn_memory",
         "submit_worker_handoff",
         "submit_approval_gated_action",
         "call_capability",
@@ -92,13 +94,13 @@ def test_http_agent_loop_control_returns_product_read_model(tmp_path):
         "real_llm_provider",
         "scheduler",
         "real_worker_runtime",
-        "memory_query_engine",
     ]
     assert body["progress"] == {
         "actions_total": 0,
         "actions_completed": 0,
         "actions_pending_approval": 0,
         "artifacts_total": 0,
+        "memory_records_total": 0,
         "workers_total": 0,
         "workspaces_total": 0,
     }

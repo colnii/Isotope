@@ -28,6 +28,7 @@
 现在产品层可以直接拿到一份更像“驾驶舱”的结果：
 
 - 新 run：`phase=ready`，可以继续创建 source artifact、交给 worker、或提交需要审批的动作。
+- 如果需要回合间上下文，`ready` 阶段也可以按需 `query_memory`，或用 `record_turn_memory` 写入结构化 turn memory。
 - 等审批：`phase=awaiting_approval`，明确显示 pending approval 和可执行的 `get_approval` / `resolve_approval`。
 - 已完成：`phase=completed`，没有下一步动作。
 
@@ -37,7 +38,8 @@
 - 不返回 artifact full content、raw tool text、prompt 或 model response。
 - 不扫描 public `get_events(...)` 来拼产品状态；它复用 projected `RunState`。
 - HTTP 入口仍是 in-process facade，不是 real listening HTTP server。
-- 不实现 real LLM provider、scheduler、real worker runtime、memory query engine、UI、auth 或 notification。
+- 不实现 real LLM provider、scheduler、real worker runtime、semantic memory query engine、UI、auth 或 notification。
+- memory progress 只暴露 `memory_records_total`；不把 memory full content 放进 control read model。
 
 ## 5. Current Tests
 
