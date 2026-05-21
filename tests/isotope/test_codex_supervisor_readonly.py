@@ -2718,6 +2718,66 @@ def test_codex_supervisor_web_events_stream_bell_changes(tmp_path):
     assert any('"tmux_session": "isotope-lane-a"' in line for line in lines)
 
 
+def test_codex_supervisor_web_events_stream_keeps_ready_after_ready_race(
+    tmp_path,
+    monkeypatch,
+):
+    from isotope.features.supervisor import web
+
+    codex_home = tmp_path / ".codex"
+    event_path = codex_home / "supervisor" / "bell_events.jsonl"
+    original_write_sse = web._DashboardRequestHandler._write_sse
+
+    def write_sse_and_create_event(self, event, payload):
+        original_write_sse(self, event, payload)
+        if event != "ready":
+            return
+        event_path.parent.mkdir(parents=True)
+        event_path.write_text(
+            (
+                '{"event":"bell","name":"lane-a","tmux_session":"isotope-lane-a",'
+                '"created_at":"2026-05-16T12:00:00Z"}\n'
+            ),
+            encoding="utf-8",
+        )
+
+    monkeypatch.setattr(
+        web._DashboardRequestHandler,
+        "_write_sse",
+        write_sse_and_create_event,
+    )
+    server = web.create_dashboard_server(
+        codex_home=codex_home,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        conn.request("GET", "/events")
+        response = conn.getresponse()
+        lines: list[str] = []
+        while len(lines) < 6:
+            lines.append(response.readline().decode("utf-8").strip())
+            if "tmux_session" in lines[-1]:
+                break
+    finally:
+        conn.close()
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert response.status == 200
+    assert lines[0] == "event: ready"
+    assert "event: bell" in lines
+    assert any('"tmux_session": "isotope-lane-a"' in line for line in lines)
+
+
 def test_codex_supervisor_web_repairs_bell_hooks_on_startup(tmp_path):
     from isotope.features.supervisor.web import create_dashboard_server
 
