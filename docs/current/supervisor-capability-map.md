@@ -467,7 +467,9 @@ merge worker 成功合入后的交接边界也要分清：
   后，`loop` 会把该 merge worker 标记为 `skipped_by_decision`，
   不再重复查 CI 或重复生成同一拍板请求；用户回答“修复/fix/repair”后，
   `loop` 会在独立 worktree 启动 `worker_role=merge_repair` 的 repair
-  worker；用户回答“重试/retry”后，后续 loop 重新走 promotion gate。
+  worker；该 repair worker 汇报 done 后，后续 loop 会带上
+  `repair_completed` 证据并重新走 promotion gate；用户回答“重试/retry”后，
+  后续 loop 也会重新走 promotion gate。
 - `cleanup list/archive/delete-worktree` 是生命周期清理入口；`list` 会展示
   可归档项和可删除 worktree 候选，`archive` 只把已完成的 goal、managed
   worker 或通知标记为已处理，`delete-worktree` 复用 `delete_worktree`

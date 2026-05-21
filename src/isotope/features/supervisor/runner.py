@@ -2923,6 +2923,7 @@ def _auto_promote_merge_worker_review_item(
         record_id=record_id,
     )
     decision_intent = _merge_promotion_decision_intent(answered_decision)
+    repair_completed: dict[str, Any] | None = None
     if decision_intent == "abandon":
         return {
             "kind": "merge_worker_main_promotion",
@@ -2935,19 +2936,24 @@ def _auto_promote_merge_worker_review_item(
             "decision_answer": answered_decision,
         }
     if decision_intent == "repair":
-        branch_ci = _latest_ci_run_for_ref(
-            branch=branch,
-            commit=worker_commit,
-            run=run,
-        )
-        return _launch_merge_promotion_repair_worker(
-            args=args,
+        repair_completed = _completed_merge_promotion_repair_worker(
             codex_home=codex_home,
-            repo_root=repo_root,
-            item=item,
-            branch_ci=branch_ci,
-            decision_answer=answered_decision,
+            repair_name=f"{name}-repair",
         )
+        if repair_completed is None:
+            branch_ci = _latest_ci_run_for_ref(
+                branch=branch,
+                commit=worker_commit,
+                run=run,
+            )
+            return _launch_merge_promotion_repair_worker(
+                args=args,
+                codex_home=codex_home,
+                repo_root=repo_root,
+                item=item,
+                branch_ci=branch_ci,
+                decision_answer=answered_decision,
+            )
     branch_ci = _latest_ci_run_for_ref(
         branch=branch,
         commit=worker_commit,
@@ -3066,7 +3072,7 @@ def _auto_promote_merge_worker_review_item(
             webhook_url=webhook_url,
             webhook_secret=webhook_secret,
         )
-    return {
+    payload = {
         "kind": "merge_worker_main_promotion",
         "name": name,
         "record_id": record_id,
@@ -3077,6 +3083,9 @@ def _auto_promote_merge_worker_review_item(
         "branch_ci": branch_ci,
         "main_ci": main_ci,
     }
+    if repair_completed is not None:
+        payload["repair_completed"] = repair_completed
+    return payload
 
 
 def _blocked_merge_promotion(
@@ -3308,6 +3317,34 @@ def _merge_promotion_repair_prompt(
             "不要 force push，不要改写共享历史；完成后按 SUPERVISOR_STATUS 协议汇报。",
         ]
     )
+
+
+def _completed_merge_promotion_repair_worker(
+    *,
+    codex_home: Path,
+    repair_name: str,
+) -> dict[str, Any] | None:
+    for record in reversed(read_managed_records(default_registry_path(codex_home))):
+        if record.name != repair_name:
+            continue
+        if getattr(record, "worker_role", "worker") != MERGE_REPAIR_WORKER_ROLE:
+            continue
+        protocol = _supervisor_protocol_from_text(
+            _managed_process_log_excerpt(record.log_path) or ""
+        )
+        status = str(protocol.get("status") or "").strip().lower()
+        if status != "done":
+            return None
+        payload = {
+            "status": "done",
+            "managed": _managed_worker_reference(record),
+        }
+        if summary := _non_empty_text(protocol.get("summary")):
+            payload["summary"] = summary
+        if next_step := _non_empty_text(protocol.get("next")):
+            payload["next"] = next_step
+        return payload
+    return None
 
 
 def _merge_promotion_recent_decision_answer(

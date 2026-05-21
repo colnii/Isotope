@@ -282,8 +282,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     promotion，不再重复查 CI 或重复生成同一拍板请求；用户回答
     “修复/fix/repair” 后，loop 会在独立 worktree 启动
     `worker_role=merge_repair` 的 repair worker，要求它修复 CI 或工作区
-    问题后按状态协议汇报；用户回答“重试/retry” 后，loop 会重新走
-    promotion gate；
+    问题后按状态协议汇报；该 repair worker 汇报 done 后，后续 loop
+    会带上 `repair_completed` 证据并重新走 promotion gate；用户回答
+    “重试/retry” 后，loop 也会重新走 promotion gate；
     tmux 托管 worker 会读取当前 pane 文本判断状态，避免旧 log
     误导归档；归档只追加 Supervisor 账本事件或把通知标记已读，不删除
     Codex `sessions` 历史，也不会处理仍是 `working` 或无完成汇报的任务；

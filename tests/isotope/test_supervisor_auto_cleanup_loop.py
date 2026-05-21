@@ -769,6 +769,128 @@ def test_auto_promote_done_merge_worker_retries_after_retry_decision(
     assert read_active_decision_requests(codex_home=codex_home) == ()
 
 
+def test_auto_promote_done_merge_worker_retries_after_repair_worker_done(
+    tmp_path,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    repo_root = tmp_path / "repo"
+    repair_worktree = repo_root / ".worktrees" / "supervisor" / "repair"
+    repo_root.mkdir()
+    repair_worktree.mkdir(parents=True)
+    review_payload = _integration_payload(
+        merge_workers=[
+            {
+                "record_id": "managed-merge",
+                "name": "supervisor-merge-dispatch",
+                "group": "merge_workers",
+                "branch": "supervisor/supervisor-merge-dispatch-abcd1234",
+                "worker_commit": "merge123",
+                "main_contains_worker": False,
+                "supervisor_protocol": {
+                    "status": "done",
+                    "summary": "CI run 101 conclusion 为 failure。",
+                    "next": "等待 Supervisor 处理 promotion 失败。",
+                },
+            }
+        ],
+        ready_to_integrate=[],
+        already_integrated=[],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_integration_reviews",
+        lambda *, codex_home, base_ref, include_unfinished: review_payload,
+    )
+    ci_succeeds = False
+    calls: list[list[str]] = []
+
+    def fake_run(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        if command[:3] == ["gh", "run", "list"]:
+            branch = command[command.index("--branch") + 1]
+            conclusion = "success" if ci_succeeds else "failure"
+            stdout = json.dumps(
+                [
+                    {
+                        "databaseId": 101 if branch != "main" else 102,
+                        "headSha": "merge123",
+                        "status": "completed",
+                        "conclusion": conclusion,
+                    }
+                ]
+            )
+            return subprocess.CompletedProcess(command, 0, stdout, "")
+        if command == ["gh", "run", "watch", "102", "--exit-status"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        if command[:4] == ["gh", "run", "view", "102"]:
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                json.dumps(
+                    {
+                        "databaseId": 102,
+                        "headSha": "merge123",
+                        "status": "completed",
+                        "conclusion": "success",
+                    }
+                ),
+                "",
+            )
+        if command[:3] == ["git", "-C", str(repo_root)]:
+            args = command[3:]
+            if args == ["status", "--short"]:
+                return subprocess.CompletedProcess(command, 0, "", "")
+            if args == ["rev-parse", "--abbrev-ref", "HEAD"]:
+                return subprocess.CompletedProcess(command, 0, "main\n", "")
+            if args == ["merge", "--ff-only", "merge123"]:
+                return subprocess.CompletedProcess(command, 0, "Updating main\n", "")
+            if args == ["diff", "--check"]:
+                return subprocess.CompletedProcess(command, 0, "", "")
+            if args == ["push", "origin", "main"]:
+                return subprocess.CompletedProcess(command, 0, "", "")
+            if args == ["rev-parse", "HEAD"]:
+                return subprocess.CompletedProcess(command, 0, "merge123\n", "")
+        raise AssertionError(f"unexpected command: {command}")
+
+    args = type(
+        "Args",
+        (),
+        {
+            "command": "loop",
+            "codex_home": str(codex_home),
+            "workspace_root": str(repo_root),
+            "webhook_url": None,
+            "webhook_secret": None,
+            "worker_profile": "coding",
+            "worker_codex_model": None,
+            "worker_codex_config": None,
+        },
+    )()
+    first = _auto_promote_done_merge_workers_to_main(args, run=fake_run)
+    decision = first[0]["decision_request"]
+    record_decision_answer(
+        codex_home=codex_home,
+        request_id=decision["request_id"],
+        answer="修复后重试 promotion。",
+    )
+    _write_managed_record(
+        codex_home,
+        record_id="managed-repair",
+        name="supervisor-merge-dispatch-repair",
+        cwd=repair_worktree,
+        protocol_status="done",
+        worker_role="merge_repair",
+    )
+    ci_succeeds = True
+    calls.clear()
+
+    retried = _auto_promote_done_merge_workers_to_main(args, run=fake_run)
+
+    assert retried[0]["status"] == "done"
+    assert retried[0]["repair_completed"]["managed"]["record_id"] == "managed-repair"
+    assert ["git", "-C", str(repo_root), "merge", "--ff-only", "merge123"] in calls
+
+
 def _write_managed_record(
     codex_home: Path,
     *,
@@ -778,6 +900,7 @@ def _write_managed_record(
     protocol_status: str,
     extra_log: str = "",
     prompt: str | None = None,
+    worker_role: str = "worker",
 ) -> None:
     log_path = codex_home / "supervisor" / "logs" / f"{record_id}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -815,6 +938,7 @@ def _write_managed_record(
                     "status": "launched",
                     "backend": "process",
                     "tmux_session": None,
+                    "worker_role": worker_role,
                 },
                 ensure_ascii=False,
                 sort_keys=True,
