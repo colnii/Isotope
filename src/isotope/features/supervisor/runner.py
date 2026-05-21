@@ -116,7 +116,8 @@ from .work_order_builder import build_launch_work_order_prompt
 
 EXECUTABLE_ADVICE_KINDS = {"send_status", "send_continue"}
 MERGE_DISPATCH_WORKER_ROLE = "merge_dispatch"
-RECURSIVE_WORKER_ROLES = {MERGE_DISPATCH_WORKER_ROLE, "cleanup"}
+MERGE_REPAIR_WORKER_ROLE = "merge_repair"
+RECURSIVE_WORKER_ROLES = {MERGE_DISPATCH_WORKER_ROLE, MERGE_REPAIR_WORKER_ROLE, "cleanup"}
 DEFAULT_MAX_CONTEXT_REQUESTS = 0
 DEFAULT_MAX_FAILURE_RETRIES = 3
 DEFAULT_MAX_RUN_MINUTES = 0
@@ -2885,6 +2886,7 @@ def _auto_promote_done_merge_workers_to_main(
     for item in _review_group_items(groups, "merge_workers"):
         promotion = _auto_promote_merge_worker_review_item(
             item,
+            args=args,
             codex_home=codex_home,
             repo_root=repo_root,
             run=run,
@@ -2899,6 +2901,7 @@ def _auto_promote_done_merge_workers_to_main(
 def _auto_promote_merge_worker_review_item(
     item: dict[str, Any],
     *,
+    args: argparse.Namespace,
     codex_home: Path,
     repo_root: Path,
     run: Any,
@@ -2919,7 +2922,8 @@ def _auto_promote_merge_worker_review_item(
         codex_home=codex_home,
         record_id=record_id,
     )
-    if _merge_promotion_decision_intent(answered_decision) == "abandon":
+    decision_intent = _merge_promotion_decision_intent(answered_decision)
+    if decision_intent == "abandon":
         return {
             "kind": "merge_worker_main_promotion",
             "name": name,
@@ -2930,6 +2934,20 @@ def _auto_promote_merge_worker_review_item(
             "reason": "merge promotion abandoned by decision",
             "decision_answer": answered_decision,
         }
+    if decision_intent == "repair":
+        branch_ci = _latest_ci_run_for_ref(
+            branch=branch,
+            commit=worker_commit,
+            run=run,
+        )
+        return _launch_merge_promotion_repair_worker(
+            args=args,
+            codex_home=codex_home,
+            repo_root=repo_root,
+            item=item,
+            branch_ci=branch_ci,
+            decision_answer=answered_decision,
+        )
     branch_ci = _latest_ci_run_for_ref(
         branch=branch,
         commit=worker_commit,
@@ -3144,6 +3162,154 @@ def _merge_promotion_decision_request(
     ).to_dict()
 
 
+def _launch_merge_promotion_repair_worker(
+    *,
+    args: argparse.Namespace,
+    codex_home: Path,
+    repo_root: Path,
+    item: dict[str, Any],
+    branch_ci: dict[str, Any],
+    decision_answer: dict[str, Any] | None,
+) -> dict[str, Any]:
+    name = _non_empty_text(item.get("name")) or MERGE_DISPATCH_TARGET_NAME
+    record_id = _non_empty_text(item.get("record_id")) or "unknown"
+    branch = _non_empty_text(item.get("branch")) or "unknown"
+    worker_commit = _non_empty_text(item.get("worker_commit")) or "unknown"
+    repair_name = f"{name}-repair"
+    if running_worker := _running_managed_process_by_name(
+        codex_home=codex_home,
+        name=repair_name,
+    ):
+        return {
+            "kind": "merge_worker_main_promotion",
+            "name": name,
+            "record_id": record_id,
+            "branch": branch,
+            "worker_commit": worker_commit,
+            "status": "repair_already_running",
+            "repair": _managed_worker_reference(running_worker),
+            "decision_answer": decision_answer,
+        }
+    if cooldown_state := prompt_cooldown_state(
+        codex_home=codex_home,
+        name=repair_name,
+        cooldown_seconds=getattr(args, "prompt_cooldown", DEFAULT_PROMPT_COOLDOWN_SECONDS),
+    ):
+        return {
+            "kind": "merge_worker_main_promotion",
+            "name": name,
+            "record_id": record_id,
+            "branch": branch,
+            "worker_commit": worker_commit,
+            "status": "repair_cooldown_active",
+            "repair": {
+                "kind": "launch_session",
+                "skipped": True,
+                "reason": "launch prompt cooldown active",
+                "lane_state": cooldown_state.to_dict(),
+            },
+            "decision_answer": decision_answer,
+        }
+    worktree = _prepare_launch_worktree(cwd=repo_root, target_name=repair_name)
+    if worktree.get("failed"):
+        return {
+            "kind": "merge_worker_main_promotion",
+            "name": name,
+            "record_id": record_id,
+            "branch": branch,
+            "worker_commit": worker_commit,
+            "status": "repair_blocked",
+            "repair": {
+                "kind": "launch_session",
+                "skipped": True,
+                "reason": "worktree setup failed",
+                "worktree": worktree,
+            },
+            "decision_answer": decision_answer,
+        }
+    repair_prompt = _merge_promotion_repair_prompt(
+        item=item,
+        branch_ci=branch_ci,
+        decision_answer=decision_answer,
+    )
+    worker_cwd = Path(str(worktree["cwd"]))
+    work_order_prompt = build_launch_work_order_prompt(
+        target_name=repair_name,
+        cwd=str(worker_cwd),
+        goal=repair_prompt,
+        allow_remote_push=False,
+    )
+    record = launch_managed_codex(
+        codex_home=codex_home,
+        cwd=worker_cwd,
+        name=repair_name,
+        prompt=work_order_prompt,
+        codex_model=_worker_codex_model(args, profile=DEFAULT_WORKER_PROFILE),
+        codex_config=_worker_codex_config(args, profile=DEFAULT_WORKER_PROFILE),
+        worker_role=MERGE_REPAIR_WORKER_ROLE,
+        popen=subprocess.Popen,
+        run=subprocess.run,
+    )
+    record_lane_prompt(
+        codex_home=codex_home,
+        name=record.name,
+        tmux_session=None,
+        status="launch_session",
+        prompt_kind="merge_promotion_repair",
+    )
+    return {
+        "kind": "merge_worker_main_promotion",
+        "name": name,
+        "record_id": record_id,
+        "branch": branch,
+        "worker_commit": worker_commit,
+        "status": "repair_launched",
+        "branch_ci": branch_ci,
+        "decision_answer": decision_answer,
+        "repair": {
+            "kind": "launch_session",
+            "target_name": repair_name,
+            "worker_role": record.worker_role,
+            "text": work_order_prompt,
+            "managed": {
+                "name": record.name,
+                "record_id": record.record_id,
+                "pid": record.pid,
+                "backend": record.backend,
+                "worker_role": record.worker_role,
+            },
+            "worktree": worktree,
+        },
+    }
+
+
+def _merge_promotion_repair_prompt(
+    *,
+    item: dict[str, Any],
+    branch_ci: dict[str, Any],
+    decision_answer: dict[str, Any] | None,
+) -> str:
+    answer_text = (
+        str(decision_answer.get("answer"))
+        if isinstance(decision_answer, dict) and decision_answer.get("answer") is not None
+        else ""
+    ).strip()
+    return "\n".join(
+        [
+            "修复 merge promotion 失败，并在修复后汇报状态。",
+            f"merge worker: {_non_empty_text(item.get('name')) or 'unknown'}",
+            f"record_id: {_non_empty_text(item.get('record_id')) or 'unknown'}",
+            f"branch: {_non_empty_text(item.get('branch')) or 'unknown'}",
+            f"worker_commit: {_non_empty_text(item.get('worker_commit')) or 'unknown'}",
+            f"用户拍板: {answer_text or '修复后重试'}",
+            "失败 CI:",
+            json.dumps(branch_ci, ensure_ascii=False, sort_keys=True),
+            "要求：检查失败原因，做必要代码修复和相关测试。",
+            "不要 force push，不要改写共享历史；完成后按 SUPERVISOR_STATUS 协议汇报。",
+        ]
+    )
+
+
 def _merge_promotion_recent_decision_answer(
     *,
     codex_home: Path,
@@ -3168,10 +3334,10 @@ def _merge_promotion_decision_intent(answer: dict[str, Any] | None) -> str | Non
         return None
     if any(token in text for token in ("放弃", "不再", "不要合", "丢弃", "abandon", "drop")):
         return "abandon"
-    if any(token in text for token in ("重试", "再试", "retry", "rerun")):
-        return "retry"
     if any(token in text for token in ("修复", "fix", "repair")):
         return "repair"
+    if any(token in text for token in ("重试", "再试", "retry", "rerun")):
+        return "retry"
     return "unknown"
 
 

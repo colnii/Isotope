@@ -279,7 +279,11 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     的 managed 记录、关联 goal 并写入低敏通知；promotion 任一 gate 失败
     会生成 `merge_promotion_failed` 拍板请求，不进入自动归档；用户回答
     “放弃/不再/abandon/drop” 后，后续 loop 会跳过该 merge worker 的
-    promotion，不再重复查 CI 或重复生成同一拍板请求；
+    promotion，不再重复查 CI 或重复生成同一拍板请求；用户回答
+    “修复/fix/repair” 后，loop 会在独立 worktree 启动
+    `worker_role=merge_repair` 的 repair worker，要求它修复 CI 或工作区
+    问题后按状态协议汇报；用户回答“重试/retry” 后，loop 会重新走
+    promotion gate；
     tmux 托管 worker 会读取当前 pane 文本判断状态，避免旧 log
     误导归档；归档只追加 Supervisor 账本事件或把通知标记已读，不删除
     Codex `sessions` 历史，也不会处理仍是 `working` 或无完成汇报的任务；
@@ -287,9 +291,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `loop` 只监控，不会从普通历史会话或 workspace 自行发明下一批
     `launch_session`；
     merge dispatch 启动的托管 worker 会在登记表写入
-    `worker_role=merge_dispatch`；当 `loop` 运行在这类 worker
-    自己的工作区时，会跳过自动 cleanup 和新的 merge dispatch，避免
-    merge worker 递归启动下一层 merge worker；
+    `worker_role=merge_dispatch`，promotion repair worker 会写入
+    `worker_role=merge_repair`；当 `loop` 运行在这些 worker
+    自己的工作区时，会跳过自动 cleanup、promotion 和新的 merge dispatch，
+    避免递归启动下一层 worker；
     汇报 `blocked/needs_user` 时会记录状态但保留活跃目标；
     多目标 fanout 中任一 worker 汇报 `blocked/needs_user` 时，`loop`
     会输出 `fanout_status.status=paused`，不再继续扩展这一批 worker，

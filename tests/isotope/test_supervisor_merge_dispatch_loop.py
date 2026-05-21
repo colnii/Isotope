@@ -169,6 +169,74 @@ def test_supervisor_loop_does_not_dispatch_merge_worker_inside_merge_worker_work
     assert payload["llm_action"]["reason"] == "当前工作区是 merge worker，跳过 merge dispatch。"
 
 
+def test_supervisor_loop_does_not_dispatch_merge_worker_inside_repair_workspace(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    log_path = codex_home / "supervisor" / "logs" / "repair.log"
+    log_path.parent.mkdir(parents=True)
+    log_path.write_text("repair worker 正在修复 promotion 失败。\n", encoding="utf-8")
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-repair",
+                "name": "supervisor-merge-dispatch-repair",
+                "cwd": str(workspace),
+                "prompt": "修复 merge promotion 失败。",
+                "command": ["codex", "exec", "-C", str(workspace), "修复 promotion。"],
+                "pid": 0,
+                "started_at": "2026-05-20T00:00:00+00:00",
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+                "worker_role": "merge_repair",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    def fake_collect_integration_reviews(**kwargs: object) -> dict[str, object]:
+        raise AssertionError("repair worker workspace must not recursively review/dispatch")
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_integration_reviews",
+        fake_collect_integration_reviews,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--workspace-root",
+            str(workspace),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert "merge_dispatch" not in payload
+    assert payload["llm_action"]["kind"] == "monitor"
+    assert payload["llm_action"]["reason"] == "当前工作区是 merge_repair worker，跳过递归调度。"
+
+
 def test_supervisor_daemon_status_surfaces_merge_dispatch_activity(
     tmp_path,
     capsys,

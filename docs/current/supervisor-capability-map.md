@@ -465,8 +465,9 @@ merge worker 成功合入后的交接边界也要分清：
   `merge_promotion_failed` 拍板请求，并在请求的 gate 中保留失败原因、
   分支、worker commit 和 CI payload。用户回答“放弃/不再/abandon/drop”
   后，`loop` 会把该 merge worker 标记为 `skipped_by_decision`，
-  不再重复查 CI 或重复生成同一拍板请求；重试或修复类答案仍会让
-  后续 loop 重新走 promotion gate。
+  不再重复查 CI 或重复生成同一拍板请求；用户回答“修复/fix/repair”后，
+  `loop` 会在独立 worktree 启动 `worker_role=merge_repair` 的 repair
+  worker；用户回答“重试/retry”后，后续 loop 重新走 promotion gate。
 - `cleanup list/archive/delete-worktree` 是生命周期清理入口；`list` 会展示
   可归档项和可删除 worktree 候选，`archive` 只把已完成的 goal、managed
   worker 或通知标记为已处理，`delete-worktree` 复用 `delete_worktree`
@@ -507,8 +508,9 @@ merge worker 成功合入后的交接边界也要分清：
 4. `fanout planning/execution`：如果存在多个可推进目标或 goal plan 的 `parallel_recommendations`，生成受控候选并在并发上限内执行；跳过已有同名运行中 worker 的目标。
 5. `merge dispatch`：fanout 不适用且 `integration-review` 给出
    `ready_to_integrate` 候选时，生成 `merge-work-order` 并启动专门
-   merge worker；如果当前工作区本身是 `merge_dispatch` 或 cleanup
-   worker，则跳过自动 cleanup 和新的 merge dispatch，避免递归嵌套。
+   merge worker；如果当前工作区本身是 `merge_dispatch`、`merge_repair`
+   或 cleanup worker，则跳过自动 cleanup、promotion 和新的 merge
+   dispatch，避免递归嵌套。
 6. `LLM planner`：fanout 和 merge dispatch 都不适用时，在 `active_goals`、recent context、worker review 和白名单命令内选择一个动作。
 7. `execute`：只执行通过校验的 `request_context`、`launch_session`、`resume_session`、send 或 `ask_user`。
 8. `replan`：只有本轮执行的是成功的 `request_context` 时，才把检索结果加入 prompt，再执行一次 follow-up 动作。
