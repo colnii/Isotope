@@ -3729,6 +3729,12 @@ def test_codex_supervisor_runner_goal_add_list_and_archive(
             str(codex_home),
             "--goal-id",
             goal["goal_id"],
+            "--status",
+            "done",
+            "--summary",
+            "目标已完成并准备归档。",
+            "--next-step",
+            "等待下一批 Supervisor 目标。",
             "--json",
         ]
     )
@@ -3737,6 +3743,9 @@ def test_codex_supervisor_runner_goal_add_list_and_archive(
     archive_payload = json.loads(capsys.readouterr().out)
     assert archive_payload["archived"]["event"] == "supervisor_goal_archive"
     assert archive_payload["archived"]["goal_id"] == goal["goal_id"]
+    assert archive_payload["archived"]["status"] == "done"
+    assert archive_payload["archived"]["summary"] == "目标已完成并准备归档。"
+    assert archive_payload["archived"]["next"] == "等待下一批 Supervisor 目标。"
     assert archive_payload["active_goals"] == []
 
 

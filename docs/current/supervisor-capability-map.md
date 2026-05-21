@@ -191,7 +191,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   LLM planner；没有现成托管窗口时，模型仍可基于该目标选择
   `request_context` 或 `launch_session`，启动新的后台 Codex worker。
 - `goal add/list/archive` 是持久目标队列入口；`goal add "目标文本"`
-  支持一句话直接入队；`goal plan "高层目标"` 是显式
+  支持一句话直接入队；`goal archive --goal-id <goal-id>` 可附带
+  `--status`、`--summary`、`--next-step`，把最终状态、完成摘要和下一步
+  写入 goal archive 事件；`goal plan "高层目标"` 是显式
   AI-first 目标规划入口，读取 `docs/current/status.md`、
   `docs/current/agent-task-queue.md` 和
   `docs/current/supervisor-capability-map.md` 后，围绕用户高层目标

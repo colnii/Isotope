@@ -238,7 +238,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     LLM 也可以先 `request_context`，或直接 `launch_session`
     启动新的后台 Codex worker 推进该目标；
     `goal add/list/archive` 可维护持久目标队列，`goal add "目标文本"`
-    支持一句话直接入队；`goal plan "高层目标" --write` 是显式
+    支持一句话直接入队；`goal archive --goal-id <goal-id>` 可附带
+    `--status`、`--summary`、`--next-step`，把最终状态、完成摘要和下一步
+    写入 goal archive 事件；`goal plan "高层目标" --write` 是显式
     AI-first 目标规划入口，会读取当前 `status`、任务队列和能力地图，
     围绕高层目标让 LLM 生成一小批候选目标；当目标面向完整功能板块时，
     还会返回可审阅的计划摘要、阶段/批次、并行建议、停止条件和验收条件。

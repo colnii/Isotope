@@ -179,7 +179,9 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
 6. 归档目标：
    worker 汇报 `SUPERVISOR_STATUS: done` 时，同名目标会自动归档；
    需要手动结束时，用
-   `isotope-supervisor goal archive --goal-id <goal-id>`。
+   `isotope-supervisor goal archive --goal-id <goal-id>`；可选
+   `--status done|blocked|needs_user`、`--summary` 和 `--next-step`
+   会写入 goal archive 事件，便于后续审计完成状态和下一步。
    旧托管 lane 仍用 `isotope-supervisor archive --name <lane>` 归档。
 
 开发态：

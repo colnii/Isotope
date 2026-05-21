@@ -58,6 +58,7 @@ from .fanout import (
 )
 from .failure_ledger import FailureLedger, default_failure_ledger_path
 from .goal_queue import (
+    GOAL_STATUS_VALUES,
     archive_supervisor_goal,
     build_supervisor_goal_queue_view,
     read_latest_supervisor_goal_statuses,
@@ -1203,6 +1204,19 @@ def _build_parser() -> argparse.ArgumentParser:
         "--goal-id",
         required=True,
         help="Supervisor goal id to archive.",
+    )
+    goal_subparsers.choices["archive"].add_argument(
+        "--status",
+        choices=sorted(GOAL_STATUS_VALUES),
+        help="Optional final Supervisor status to store on the archive event.",
+    )
+    goal_subparsers.choices["archive"].add_argument(
+        "--summary",
+        help="Optional completion summary to store on the archive event.",
+    )
+    goal_subparsers.choices["archive"].add_argument(
+        "--next-step",
+        help="Optional next step to store as next on the archive event.",
     )
     cleanup_parser = subparsers.add_parser(
         "cleanup",
@@ -5067,6 +5081,9 @@ def _goal_payload(args: argparse.Namespace) -> dict[str, Any]:
         archived = archive_supervisor_goal(
             codex_home=Path(args.codex_home),
             goal_id=args.goal_id,
+            status=args.status,
+            summary=args.summary,
+            next_step=args.next_step,
         )
         return {
             "status": "ok",
