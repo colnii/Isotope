@@ -2489,6 +2489,13 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "requestLlmAction" in html
     assert "renderDecisionRequest" in html
     assert "renderDecisionRequests" in html
+    assert "control-center" in html
+    assert "Supervisor 控制台" in html
+    assert "sendSupervisorServiceAction" in html
+    assert "/daemon/start" in html
+    assert "/daemon/stop" in html
+    assert "/watcher/start" in html
+    assert "/watcher/stop" in html
     assert "renderNotifications" in html
     assert "current-list" in html
     assert "当前批次" in html
@@ -2588,6 +2595,73 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert payload["groups"]["needs_attention"][0]["status_evidence"]["source"] == (
         "supervisor_protocol"
     )
+
+
+def test_codex_supervisor_web_can_control_daemon_and_watcher(tmp_path, monkeypatch):
+    from isotope.features.supervisor import web
+
+    codex_home = tmp_path / ".codex"
+    calls: list[tuple[str, dict[str, object]]] = []
+
+    def fake_start_daemon(**kwargs):
+        calls.append(("daemon_start", dict(kwargs)))
+        return {"action": "started", "status": "running", "pid": 111}
+
+    def fake_stop_daemon(**kwargs):
+        calls.append(("daemon_stop", dict(kwargs)))
+        return {"status": "stopped", "pid": 111}
+
+    def fake_start_watcher(**kwargs):
+        calls.append(("watcher_start", dict(kwargs)))
+        return {"action": "started", "status": "running", "pid": 222}
+
+    def fake_stop_watcher(**kwargs):
+        calls.append(("watcher_stop", dict(kwargs)))
+        return {"status": "stopped", "pid": 222}
+
+    monkeypatch.setattr(web, "start_supervisor_daemon", fake_start_daemon)
+    monkeypatch.setattr(web, "stop_supervisor_daemon", fake_stop_daemon)
+    monkeypatch.setattr(web, "start_supervisor_watcher", fake_start_watcher)
+    monkeypatch.setattr(web, "stop_supervisor_watcher", fake_stop_watcher)
+
+    server = web.create_dashboard_server(
+        codex_home=codex_home,
+        host="127.0.0.1",
+        port=0,
+        limit=7,
+        stale_after_seconds=901,
+        active_within_seconds=123,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        responses = []
+        for path in ["/daemon/start", "/daemon/stop", "/watcher/start", "/watcher/stop"]:
+            conn.request("POST", path, body="{}", headers={"content-type": "application/json"})
+            response = conn.getresponse()
+            responses.append(json.loads(response.read().decode("utf-8")))
+            assert response.status == 200
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert [response["status"] for response in responses] == ["ok", "ok", "ok", "ok"]
+    assert [call[0] for call in calls] == [
+        "daemon_start",
+        "daemon_stop",
+        "watcher_start",
+        "watcher_stop",
+    ]
+    assert calls[0][1]["codex_home"] == codex_home
+    assert calls[0][1]["limit"] == 7
+    assert calls[0][1]["stale_after"] == 901
+    assert calls[0][1]["active_within"] == 123
+    assert calls[0][1]["worker_codex_model"] == "gpt-5.5"
+    assert calls[0][1]["worker_codex_config"] == ('model_reasoning_effort="high"',)
+    assert calls[2][1] == {"codex_home": codex_home, "interval": 60}
 
 
 def test_codex_supervisor_web_dashboard_highlights_night_overview(

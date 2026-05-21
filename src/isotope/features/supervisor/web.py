@@ -13,13 +13,26 @@ from urllib.parse import urlparse
 from .bell_events import default_bell_events_path, read_latest_bell_events
 from .context import read_recent_context_results
 from .decision_requests import (
+    DEFAULT_DECISION_TIMEOUT_SECONDS,
     read_active_decision_requests,
     read_recent_decision_answers,
     record_decision_answer,
 )
-from .daemon import supervisor_daemon_status, supervisor_watcher_status
+from .daemon import (
+    start_supervisor_daemon,
+    start_supervisor_watcher,
+    stop_supervisor_daemon,
+    stop_supervisor_watcher,
+    supervisor_daemon_status,
+    supervisor_watcher_status,
+)
+from .fanout import DEFAULT_FANOUT_LIMIT
 from .flow import CodexSupervisorFlow, _tmux_capture_pane
-from .lane_state import record_lane_prompt
+from .lane_state import (
+    DEFAULT_MAX_CONTINUE_COUNT,
+    DEFAULT_PROMPT_COOLDOWN_SECONDS,
+    record_lane_prompt,
+)
 from .llm_summary import (
     SummaryProvider,
     generate_llm_action_decision,
@@ -29,6 +42,11 @@ from .registry import TmuxBellHookRepair, repair_tmux_bell_hooks, send_to_manage
 from .runner import (
     EXECUTABLE_ADVICE_KINDS,
     EXECUTABLE_ADVICE_TEXT,
+    DEFAULT_MAX_CONTEXT_REQUESTS,
+    DEFAULT_MAX_FAILURE_RETRIES,
+    DEFAULT_MAX_RUN_MINUTES,
+    DEFAULT_WORKER_CODEX_CONFIG,
+    DEFAULT_WORKER_CODEX_MODEL,
     _advice_payload,
     _active_goal_dicts_for_codex_home,
     _dashboard_payload,
@@ -215,6 +233,9 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/decision/answer":
             self._send_decision_answer()
             return
+        if path in {"/daemon/start", "/daemon/stop", "/watcher/start", "/watcher/stop"}:
+            self._send_service_action(path)
+            return
         self._send_json(
             {
                 "status": "error",
@@ -321,6 +342,64 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
                 "answered": answered,
                 "decision_requests": _decision_request_dicts(self.server.codex_home),
                 "recent_decision_answers": _decision_answer_dicts(self.server.codex_home),
+            }
+        )
+
+    def _send_service_action(self, path: str) -> None:
+        try:
+            self._read_json_body()
+            if path == "/daemon/start":
+                target = "daemon"
+                action = "start"
+                service = start_supervisor_daemon(
+                    codex_home=self.server.codex_home,
+                    interval=30,
+                    limit=self.server.limit,
+                    stale_after=self.server.stale_after_seconds,
+                    active_within=self.server.active_within_seconds,
+                    prompt_cooldown=DEFAULT_PROMPT_COOLDOWN_SECONDS,
+                    max_continue_count=DEFAULT_MAX_CONTINUE_COUNT,
+                    max_context_requests=DEFAULT_MAX_CONTEXT_REQUESTS,
+                    max_failure_retries=DEFAULT_MAX_FAILURE_RETRIES,
+                    decision_timeout=DEFAULT_DECISION_TIMEOUT_SECONDS,
+                    max_run_minutes=DEFAULT_MAX_RUN_MINUTES,
+                    max_fanout_launches=DEFAULT_FANOUT_LIMIT,
+                    worker_codex_model=DEFAULT_WORKER_CODEX_MODEL,
+                    worker_codex_config=DEFAULT_WORKER_CODEX_CONFIG,
+                )
+            elif path == "/daemon/stop":
+                target = "daemon"
+                action = "stop"
+                service = stop_supervisor_daemon(codex_home=self.server.codex_home)
+            elif path == "/watcher/start":
+                target = "watcher"
+                action = "start"
+                service = start_supervisor_watcher(
+                    codex_home=self.server.codex_home,
+                    interval=60,
+                )
+            else:
+                target = "watcher"
+                action = "stop"
+                service = stop_supervisor_watcher(codex_home=self.server.codex_home)
+        except ValueError as exc:
+            self._send_json(
+                {
+                    "status": "error",
+                    "error": {
+                        "code": "codex_supervisor_web_error",
+                        "message": str(exc),
+                    },
+                },
+                status_code=400,
+            )
+            return
+        self._send_json(
+            {
+                "status": "ok",
+                "target": target,
+                "action": action,
+                "service": service,
             }
         )
 
@@ -463,6 +542,60 @@ def dashboard_page_html() -> str:
       background: #fffbfa;
       color: #7a271a;
       padding: 8px;
+    }
+    .control-center {
+      margin-bottom: 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--working);
+      border-radius: 6px;
+      background: var(--panel);
+      padding: 12px 14px;
+      font-size: 14px;
+    }
+    .control-center-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      font-weight: 700;
+    }
+    .control-center-body {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .control-service {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #f8fafc;
+      padding: 10px;
+    }
+    .control-service-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      color: var(--text);
+      font-weight: 700;
+    }
+    .control-service-detail {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+    .control-service-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .control-message {
+      color: var(--muted);
+      font-size: 12px;
+      overflow-wrap: anywhere;
     }
     .decision-title {
       color: var(--text);
@@ -892,6 +1025,7 @@ def dashboard_page_html() -> str:
       main { padding: 16px; }
       .grid { grid-template-columns: 1fr; }
       .night-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .control-center-body { grid-template-columns: 1fr; }
       .current-grid { grid-template-columns: 1fr; }
       .worker-detail-grid { grid-template-columns: 1fr; }
     }
@@ -912,6 +1046,37 @@ def dashboard_page_html() -> str:
         <button id="llm-action-button" type="button">模型建议</button>
       </div>
       <div class="llm-action" id="llm-action-result">未请求模型建议</div>
+    </div>
+    <div class="control-center" id="control-center">
+      <div class="control-center-head">
+        <span>Supervisor 控制台</span>
+        <span class="control-message" id="control-message">等待数据</span>
+      </div>
+      <div class="control-center-body">
+        <div class="control-service">
+          <div class="control-service-title">
+            <span>daemon 后台循环</span>
+            <span class="badge" id="control-daemon-state">unknown</span>
+          </div>
+          <div class="control-service-detail" id="control-daemon-detail">等待数据</div>
+          <div class="control-service-actions">
+            <button type="button" data-service-endpoint="/daemon/start">启动 daemon</button>
+            <button type="button" data-service-endpoint="/daemon/stop">停止 daemon</button>
+          </div>
+        </div>
+        <div class="control-service">
+          <div class="control-service-title">
+            <span>watcher 看门进程</span>
+            <span class="badge" id="control-watcher-state">unknown</span>
+          </div>
+          <div class="control-service-detail" id="control-watcher-detail">等待数据</div>
+          <div class="control-service-actions">
+            <button type="button" data-service-endpoint="/watcher/start">启动 watcher</button>
+            <button type="button" data-service-endpoint="/watcher/stop">停止 watcher</button>
+            <button type="button" id="control-refresh">刷新状态</button>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="night-overview" id="night-overview">
       <div class="overview-card" id="overview-card-daemon" data-state="attention">
@@ -1151,6 +1316,41 @@ def dashboard_page_html() -> str:
         mergeWorker.detail,
         mergeWorker.state
       );
+    }
+
+    function renderControlCenter(payload) {
+      renderServiceControl("daemon", payload.daemon);
+      renderServiceControl("watcher", payload.watcher);
+    }
+
+    function renderServiceControl(key, service) {
+      document.getElementById("control-" + key + "-state").textContent = text(service && service.status);
+      document.getElementById("control-" + key + "-detail").textContent = serviceDetail(service);
+    }
+
+    async function sendSupervisorServiceAction(endpoint, button) {
+      const label = button.textContent;
+      const message = document.getElementById("control-message");
+      button.disabled = true;
+      button.textContent = "执行中";
+      message.textContent = "正在执行 " + endpoint;
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: "{}"
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error ? payload.error.message : "操作失败");
+        const service = payload.service || {};
+        message.textContent = text(payload.target) + " " + text(payload.action) + "：" + text(service.status);
+        await loadDashboard();
+      } catch (error) {
+        message.textContent = "操作失败：" + text(error.message);
+      } finally {
+        button.disabled = false;
+        button.textContent = label;
+      }
     }
 
     function renderOverviewItem(key, value, detail, state) {
@@ -1765,6 +1965,7 @@ def dashboard_page_html() -> str:
       const payload = await response.json();
       document.getElementById("generated-at").textContent = payload.generated_at;
       document.getElementById("recommendation").textContent = payload.recommendation.label;
+      renderControlCenter(payload);
       renderNightOverview(payload);
       renderCurrentBatch(payload.current || {});
       renderWorkerDetails(payload.current || {});
@@ -1776,6 +1977,14 @@ def dashboard_page_html() -> str:
 
     document.getElementById("llm-action-button").addEventListener("click", (event) => {
       requestLlmAction(event.currentTarget);
+    });
+    document.querySelectorAll("[data-service-endpoint]").forEach((button) => {
+      button.addEventListener("click", () => {
+        sendSupervisorServiceAction(button.dataset.serviceEndpoint, button);
+      });
+    });
+    document.getElementById("control-refresh").addEventListener("click", () => {
+      loadDashboard();
     });
 
     function connectSupervisorEvents() {
