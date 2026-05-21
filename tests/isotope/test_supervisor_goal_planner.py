@@ -1,7 +1,11 @@
 import json
 from pathlib import Path
 
-from isotope.features.supervisor.goal_planner import parse_goal_candidates
+from isotope.features.supervisor.goal_planner import (
+    build_goal_planning_messages,
+    parse_goal_candidates,
+    parse_goal_planning_result,
+)
 from isotope.features.supervisor.goal_queue import read_active_supervisor_goals
 from isotope.features.supervisor.runner import main as supervisor_main
 
@@ -185,11 +189,10 @@ class SoftSyntaxRepairGoalProvider:
         self.calls.append(messages)
         if len(self.calls) == 1:
             return (
-                "plan_summary = \"并行推进三个板块\"\n\n"
-                "[[goals]]\n"
-                "goal = \"模块化 Supervisor。\"\n"
-                "target_name = \"supervisor-modularization\"\n"
-                "reason = \"runner.py 已经过大。\"\n"
+                "规划摘要：并行推进三个板块\n"
+                "目标一：模块化 Supervisor。\n"
+                "目标名：supervisor-modularization\n"
+                "依据：runner.py 已经过大。\n"
             )
         user_payload = json.loads(messages[1]["content"])
         assert user_payload["task"] == "repair_goal_planning_output"
@@ -206,6 +209,30 @@ class SoftSyntaxRepairGoalProvider:
                 ],
             },
             ensure_ascii=False,
+        )
+
+
+class TomlGoalProvider:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def summarize(self, messages: list[dict[str, str]]) -> str:
+        self.calls += 1
+        return (
+            'plan_summary = "并行推进三个板块"\n'
+            'acceptance_conditions = ["目标可写入队列"]\n\n'
+            '[[parallel_recommendations]]\n'
+            'batch = "第一批"\n'
+            'targets = ["supervisor-modularization", "memory-storage-layer"]\n'
+            'reason = "两个目标边界不同"\n\n'
+            '[[goals]]\n'
+            'goal = "模块化 Supervisor。"\n'
+            'target_name = "supervisor-modularization"\n'
+            'reason = "runner.py 已经过大。"\n\n'
+            '[[goals]]\n'
+            'goal = "建立 memory 存储层。"\n'
+            'target_name = "memory-storage-layer"\n'
+            'reason = "memory 架构需要先落存储接口。"\n'
         )
 
 
@@ -810,6 +837,71 @@ def test_supervisor_goal_plan_repairs_soft_syntax_output(
     ]
     assert payload["parse_repaired"] is True
     assert len(provider.calls) == 2
+
+
+def test_supervisor_goal_plan_parses_toml_without_repair_llm(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    root = tmp_path / "repo"
+    root.mkdir()
+    _write_current_docs(root)
+    codex_home = tmp_path / ".codex"
+    provider = TomlGoalProvider()
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: provider,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "goal",
+            "plan",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(root),
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert provider.calls == 1
+    assert payload["parse_repaired"] is False
+    assert payload["plan_summary"] == "并行推进三个板块"
+    assert [item["target_name"] for item in payload["candidates"]] == [
+        "supervisor-modularization",
+        "memory-storage-layer",
+    ]
+    assert payload["parallel_recommendations"] == [
+        {
+            "batch": "第一批",
+            "targets": ["supervisor-modularization", "memory-storage-layer"],
+            "reason": "两个目标边界不同",
+        }
+    ]
+
+
+def test_supervisor_goal_plan_prompt_allows_toml_but_not_markdown(tmp_path):
+    root = tmp_path / "repo"
+    root.mkdir()
+    messages = build_goal_planning_messages(
+        root=root,
+        facts={
+            "docs/current/status.md": "状态",
+            "docs/current/agent-task-queue.md": "任务",
+            "docs/current/supervisor-capability-map.md": "能力",
+        },
+        user_goal="拆目标",
+        limit=3,
+        write_mode=False,
+    )
+
+    content = messages[1]["content"]
+    assert "TOML" in content
+    assert "Markdown" not in content
 
 
 def test_supervisor_goal_plan_json_reports_actionable_parse_error(

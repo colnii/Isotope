@@ -918,6 +918,39 @@ def dashboard_page_html() -> str:
       font-size: 12px;
       overflow-wrap: anywhere;
     }
+    .goal-plan-edit-grid {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .goal-plan-edit-grid label {
+      display: grid;
+      gap: 3px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .goal-plan-edit-grid input,
+    .goal-plan-edit-grid textarea {
+      width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--panel);
+      color: var(--text);
+      font: inherit;
+      padding: 6px 8px;
+    }
+    .goal-plan-edit-grid textarea {
+      min-height: 54px;
+      resize: vertical;
+    }
+    .goal-plan-card-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
     .goal-plan-actions {
       display: none;
       flex-wrap: wrap;
@@ -1911,14 +1944,44 @@ def dashboard_page_html() -> str:
     function goalPlanRequestBody(goal, write) {
       const body = { goal, write };
       if (write && latestGoalPlanPayload && Array.isArray(latestGoalPlanPayload.candidates)) {
-        body.candidates = latestGoalPlanPayload.candidates;
-        body.plan_summary = latestGoalPlanPayload.plan_summary;
-        body.phases = latestGoalPlanPayload.phases;
-        body.parallel_recommendations = latestGoalPlanPayload.parallel_recommendations;
-        body.stop_conditions = latestGoalPlanPayload.stop_conditions;
-        body.acceptance_conditions = latestGoalPlanPayload.acceptance_conditions;
+        Object.assign(body, collectEditedGoalPlanPayload());
       }
       return body;
+    }
+
+    function collectEditedGoalPlanPayload() {
+      const preview = document.getElementById("goal-plan-preview");
+      const candidates = Array.from(preview.querySelectorAll(".goal-plan-candidate"))
+        .map((item) => ({
+          target_name: fieldValue(item, "target_name"),
+          goal: fieldValue(item, "goal"),
+          reason: fieldValue(item, "reason")
+        }))
+        .filter((item) => item.goal);
+      const parallel = Array.from(preview.querySelectorAll(".goal-plan-parallel"))
+        .map((item) => ({
+          batch: fieldValue(item, "batch"),
+          targets: splitTargets(fieldValue(item, "targets")),
+          reason: fieldValue(item, "reason")
+        }))
+        .filter((item) => item.batch || item.targets.length || item.reason);
+      return {
+        candidates,
+        plan_summary: latestGoalPlanPayload ? latestGoalPlanPayload.plan_summary : null,
+        phases: latestGoalPlanPayload ? latestGoalPlanPayload.phases : [],
+        parallel_recommendations: parallel,
+        stop_conditions: latestGoalPlanPayload ? latestGoalPlanPayload.stop_conditions : [],
+        acceptance_conditions: latestGoalPlanPayload ? latestGoalPlanPayload.acceptance_conditions : []
+      };
+    }
+
+    function fieldValue(container, name) {
+      const field = container.querySelector('[data-goal-plan-field="' + name + '"]');
+      return field ? field.value.trim() : "";
+    }
+
+    function splitTargets(value) {
+      return value.split(/[\n,，/]+/).map((item) => item.trim()).filter(Boolean);
     }
 
     function renderGoalPlanPreview(payload) {
@@ -1933,15 +1996,11 @@ def dashboard_page_html() -> str:
       const parallel = Array.isArray(payload.parallel_recommendations)
         ? payload.parallel_recommendations
         : [];
-      for (const item of parallel.slice(0, 3)) {
-        const detail = [
-          item.reason || "",
-          Array.isArray(item.targets) ? "targets: " + item.targets.join(" / ") : ""
-        ].filter(Boolean).join(" · ");
-        target.append(renderGoalPlanCard(item.batch || "并行建议", detail || "无详情"));
+      for (const item of parallel) {
+        target.append(renderEditableParallelRecommendation(item));
       }
       for (const item of candidates) {
-        target.append(renderGoalPlanCard(item.target_name || "目标", item.goal || item.reason || "无详情"));
+        target.append(renderEditableGoalCandidate(item));
       }
     }
 
@@ -1956,6 +2015,94 @@ def dashboard_page_html() -> str:
       detail.textContent = detailText;
       item.append(title, detail);
       return item;
+    }
+
+    function renderEditableGoalCandidate(item) {
+      const card = document.createElement("div");
+      card.className = "goal-plan-card goal-plan-candidate";
+      const title = document.createElement("div");
+      title.className = "goal-plan-title";
+      title.textContent = item.target_name || "目标";
+      const grid = document.createElement("div");
+      grid.className = "goal-plan-edit-grid";
+      grid.append(
+        goalPlanInput("target_name", "目标名", item.target_name || ""),
+        goalPlanTextarea("goal", "目标内容", item.goal || ""),
+        goalPlanTextarea("reason", "依据", item.reason || "")
+      );
+      card.append(title, grid, goalPlanMoveActions(card));
+      return card;
+    }
+
+    function renderEditableParallelRecommendation(item) {
+      const card = document.createElement("div");
+      card.className = "goal-plan-card goal-plan-parallel";
+      const title = document.createElement("div");
+      title.className = "goal-plan-title";
+      title.textContent = "并行建议";
+      const targets = Array.isArray(item.targets) ? item.targets.join("\\n") : "";
+      const grid = document.createElement("div");
+      grid.className = "goal-plan-edit-grid";
+      grid.append(
+        goalPlanInput("batch", "批次", item.batch || ""),
+        goalPlanTextarea("targets", "目标名列表", targets),
+        goalPlanTextarea("reason", "并行原因", item.reason || "")
+      );
+      card.append(title, grid, goalPlanMoveActions(card));
+      return card;
+    }
+
+    function goalPlanInput(name, labelText, value) {
+      const label = document.createElement("label");
+      label.textContent = labelText;
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = value;
+      input.dataset.goalPlanField = name;
+      label.append(input);
+      return label;
+    }
+
+    function goalPlanTextarea(name, labelText, value) {
+      const label = document.createElement("label");
+      label.textContent = labelText;
+      const textarea = document.createElement("textarea");
+      textarea.value = value;
+      textarea.dataset.goalPlanField = name;
+      label.append(textarea);
+      return label;
+    }
+
+    function goalPlanMoveActions(card) {
+      const actions = document.createElement("div");
+      actions.className = "goal-plan-card-actions";
+      const up = document.createElement("button");
+      up.type = "button";
+      up.textContent = "上移";
+      up.addEventListener("click", () => moveGoalPlanCard(card, -1));
+      const down = document.createElement("button");
+      down.type = "button";
+      down.textContent = "下移";
+      down.addEventListener("click", () => moveGoalPlanCard(card, 1));
+      actions.append(up, down);
+      return actions;
+    }
+
+    function moveGoalPlanCard(card, direction) {
+      const parent = card.parentElement;
+      if (!parent) return;
+      const selector = card.classList.contains("goal-plan-parallel")
+        ? ".goal-plan-parallel"
+        : ".goal-plan-candidate";
+      const cards = Array.from(parent.querySelectorAll(selector));
+      const index = cards.indexOf(card);
+      const swap = cards[index + direction];
+      if (!swap) return;
+      if (direction < 0) {
+        parent.insertBefore(card, swap);
+      } else {
+        parent.insertBefore(swap, card);
+      }
     }
 
     function renderServiceControl(key, service) {

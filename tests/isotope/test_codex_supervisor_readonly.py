@@ -2510,6 +2510,11 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "submitGoalAdd" in html
     assert "submitGoalPlan" in html
     assert "goalPlanRequestBody" in html
+    assert "collectEditedGoalPlanPayload" in html
+    assert "renderEditableGoalCandidate" in html
+    assert "renderEditableParallelRecommendation" in html
+    assert "上移" in html
+    assert "下移" in html
     assert "latestGoalPlanPayload" in html
     assert "renderGoalPlanPreview" in html
     assert "/goal/plan" in html

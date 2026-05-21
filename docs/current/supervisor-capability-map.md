@@ -97,8 +97,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `web` 会用“目标队列”展示 active goals，并通过 `/goal/add`
   写入新的 Supervisor 目标，默认 cwd 是 Web server 当前工作区。
 - `web` 会通过 `/goal/plan` 复用现有 AI goal planner，把自然语言目标
-  先转成可审阅预览，再由“写入规划目标”批量进入目标队列；写入复用
-  预览 candidates，不再二次调用 LLM。
+  先转成可审阅预览；页面可编辑目标和并行批次顺序，再由“写入规划目标”
+  批量进入目标队列；写入复用编辑后的 candidates，不再二次调用 LLM。
 - `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
 - `/managed/send` 成功发送后会更新 lane state。
 - `guide` 会按 cwd、lane name 和 tmux session 打印可复制工作流命令。
@@ -217,8 +217,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   不再截断完整规划结果；当高层目标覆盖完整功能板块时，同时输出
   可审阅的计划摘要、阶段/批次、并行建议、停止条件和验收条件。
   默认只预览，只有传 `--write` 才写入 `supervisor/goals.jsonl`；
-  goal planner 会从 JSON、带说明文本、Markdown/TOML 风格软语法输出中
-  提取或修复出真正可用的 goals JSON，并忽略后续非 goal JSON 片段。
+  goal planner 会从 JSON、TOML 软语法输出中用本地解析器提取可用 goals；
+  中文条目等非结构化输出再交给 LLM 修复成 goals JSON，并忽略后续非 goal JSON 片段。
   日常 `loop` 没有显式 `--goal` 时会读取最早活跃目标，
   并保持 daemon 启动命令不绑定某一个队列目标。
 - `loop/up/daemon start --goal-low-water N` 是低水位补任务入口：

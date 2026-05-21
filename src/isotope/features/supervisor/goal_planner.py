@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -162,7 +163,7 @@ def build_goal_planning_messages(
                     "write_mode": write_mode,
                     "accepted_output_formats": [
                         "首选严格 JSON。",
-                        "如果模型无法稳定输出 JSON，可输出清晰 Markdown 或 TOML；系统会再转成 JSON。",
+                        "如果模型无法稳定输出 JSON，可输出清晰 TOML；系统会先用本地解析器转成 JSON。",
                         "无论哪种格式，都必须包含可执行 goals。",
                     ],
                     "output_schema": {
@@ -247,7 +248,7 @@ def build_goal_planning_repair_messages(
             "role": "system",
             "content": (
                 "你是 goal planning 输出修复器。"
-                "把上一个回答里的 Markdown、TOML 或中文条目转换成系统可用 JSON。"
+                "把上一个回答里的 TOML 或中文条目转换成系统可用 JSON。"
                 "不要新增目标，不要解释，只输出 JSON。"
             ),
         },
@@ -430,6 +431,9 @@ def _load_json_payload(text: str) -> Any:
         for payload in reversed(_json_payload_candidates(text)):
             if _has_goal_list_payload(payload):
                 return payload
+        toml_payload = _toml_payload(text)
+        if _has_goal_list_payload(toml_payload):
+            return toml_payload
         raise ValueError(
             "LLM goal planning answer did not contain usable goals JSON"
         ) from None
@@ -447,6 +451,13 @@ def _json_payload_candidates(text: str) -> list[Any]:
             continue
         candidates.append(payload)
     return candidates
+
+
+def _toml_payload(text: str) -> Any:
+    try:
+        return tomllib.loads(text)
+    except tomllib.TOMLDecodeError:
+        return None
 
 
 def _has_goal_list_payload(payload: Any) -> bool:
