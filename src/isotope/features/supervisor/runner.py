@@ -2952,7 +2952,11 @@ def _archive_integrated_source_worker(
     codex_home: Path,
     record: Any,
 ) -> dict[str, Any]:
-    managed = archive_managed_codex(codex_home=codex_home, name=record.name)
+    managed = archive_managed_codex(
+        codex_home=codex_home,
+        name=record.name,
+        record_id=record.record_id,
+    )
     return {
         "kind": "source_worker",
         "name": record.name,
@@ -2967,7 +2971,11 @@ def _archive_integrated_merge_worker(
     record: Any,
     review_item: dict[str, Any],
 ) -> dict[str, Any]:
-    managed = archive_managed_codex(codex_home=codex_home, name=record.name)
+    managed = archive_managed_codex(
+        codex_home=codex_home,
+        name=record.name,
+        record_id=record.record_id,
+    )
     protocol = review_item.get("supervisor_protocol")
     protocol = protocol if isinstance(protocol, dict) else {}
     goal = _archive_related_merge_goal(

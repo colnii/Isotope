@@ -460,14 +460,23 @@ def archive_managed_codex(
     *,
     codex_home: Path | str,
     name: str,
+    record_id: str | None = None,
 ) -> ManagedCodexRecord:
     name_text = name.strip()
     if not name_text:
         raise ValueError("name must not be empty")
+    record_id_text = record_id.strip() if record_id is not None else None
+    if record_id is not None and not record_id_text:
+        raise ValueError("record_id must not be empty")
     registry_path = default_registry_path(codex_home)
-    record = _find_managed_record(read_managed_records(registry_path), name_text)
+    record = _find_managed_record(
+        read_managed_records(registry_path),
+        name_text,
+        record_id=record_id_text,
+    )
     if record is None:
-        raise ValueError(f"managed Codex not found: {name_text}")
+        suffix = f" / {record_id_text}" if record_id_text else ""
+        raise ValueError(f"managed Codex not found: {name_text}{suffix}")
     archived = ManagedCodexRecord(
         record_id=record.record_id,
         name=record.name,
@@ -579,10 +588,13 @@ def _with_supervisor_protocol(prompt: str) -> str:
 
 
 def _find_managed_record(
-    records: tuple[ManagedCodexRecord, ...], name: str
+    records: tuple[ManagedCodexRecord, ...],
+    name: str,
+    *,
+    record_id: str | None = None,
 ) -> ManagedCodexRecord | None:
     for record in reversed(records):
-        if record.name == name:
+        if record.name == name and (record_id is None or record.record_id == record_id):
             return record
     return None
 

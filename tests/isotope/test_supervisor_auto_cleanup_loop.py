@@ -6,7 +6,10 @@ from pathlib import Path
 from typing import Any
 
 from isotope.features.notifications.flow import NotificationFlow
-from isotope.features.supervisor.runner import main as supervisor_main
+from isotope.features.supervisor.runner import (
+    _auto_archive_integrated_merge_workers,
+    main as supervisor_main,
+)
 
 
 NOW = datetime(2026, 5, 21, 12, 0, tzinfo=timezone.utc)
@@ -164,6 +167,76 @@ def test_supervisor_loop_keeps_already_integrated_worktree_for_explicit_cleanup(
     assert archived_names == []
 
 
+def test_auto_archive_merge_cleanup_targets_source_record_id_when_names_repeat(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    old_source_worktree = workspace / "source-old"
+    new_source_worktree = workspace / "source-new"
+    merge_worktree = workspace / "merge-worker"
+    old_source_worktree.mkdir(parents=True)
+    new_source_worktree.mkdir()
+    merge_worktree.mkdir()
+    _write_managed_record(
+        codex_home,
+        record_id="managed-source-old",
+        name="source-worker",
+        cwd=old_source_worktree,
+        protocol_status="done",
+    )
+    _write_managed_record(
+        codex_home,
+        record_id="managed-source-new",
+        name="source-worker",
+        cwd=new_source_worktree,
+        protocol_status="working",
+    )
+    _write_managed_record(
+        codex_home,
+        record_id="managed-merge",
+        name="supervisor-merge-dispatch",
+        cwd=merge_worktree,
+        protocol_status="done",
+        prompt="merge source candidate managed-source-old",
+    )
+
+    archived = _auto_archive_integrated_merge_workers(
+        codex_home=codex_home,
+        review_payload=_integration_payload(
+            merge_workers=[
+                {
+                    "record_id": "managed-merge",
+                    "name": "supervisor-merge-dispatch",
+                    "group": "merge_workers",
+                    "supervisor_protocol": {
+                        "status": "done",
+                        "summary": "merge worker done",
+                        "next": "等待 Supervisor 归档",
+                    },
+                }
+            ],
+            ready_to_integrate=[],
+            already_integrated=[
+                {
+                    "record_id": "managed-source-old",
+                    "name": "source-worker",
+                    "group": "already_integrated",
+                }
+            ],
+        ),
+    )
+
+    assert [item["record_id"] for item in archived] == [
+        "managed-source-old",
+        "managed-merge",
+    ]
+    latest_status_by_record_id = {
+        item["record_id"]: item["status"] for item in _registry_events(codex_home)
+    }
+    assert latest_status_by_record_id["managed-source-old"] == "archived"
+    assert latest_status_by_record_id["managed-source-new"] == "launched"
+    assert latest_status_by_record_id["managed-merge"] == "archived"
+
+
 def _write_managed_record(
     codex_home: Path,
     *,
@@ -172,6 +245,7 @@ def _write_managed_record(
     cwd: Path,
     protocol_status: str,
     extra_log: str = "",
+    prompt: str | None = None,
 ) -> None:
     log_path = codex_home / "supervisor" / "logs" / f"{record_id}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -195,8 +269,14 @@ def _write_managed_record(
                     "record_id": record_id,
                     "name": name,
                     "cwd": str(cwd),
-                    "prompt": f"review {name}",
-                    "command": ["codex", "exec", "-C", str(cwd), "prompt"],
+                    "prompt": prompt or f"review {name}",
+                    "command": [
+                        "codex",
+                        "exec",
+                        "-C",
+                        str(cwd),
+                        prompt or "prompt",
+                    ],
                     "pid": 0,
                     "started_at": NOW.isoformat(),
                     "log_path": str(log_path),
@@ -213,17 +293,18 @@ def _write_managed_record(
 
 def _integration_payload(
     *,
+    merge_workers: list[dict[str, Any]] | None = None,
     ready_to_integrate: list[dict[str, Any]],
     already_integrated: list[dict[str, Any]],
 ) -> dict[str, Any]:
     groups = {
-        "merge_workers": [],
+        "merge_workers": merge_workers or [],
         "ready_to_integrate": ready_to_integrate,
         "already_integrated": already_integrated,
         "needs_review": [],
         "conflict_risk": [],
     }
-    workers = [*ready_to_integrate, *already_integrated]
+    workers = [*(merge_workers or []), *ready_to_integrate, *already_integrated]
     return {
         "status": "ok",
         "base_ref": "main",
