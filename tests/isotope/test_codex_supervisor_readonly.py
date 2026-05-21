@@ -2496,6 +2496,10 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "/daemon/stop" in html
     assert "/watcher/start" in html
     assert "/watcher/stop" in html
+    assert "goal-queue-panel" in html
+    assert "目标队列" in html
+    assert "submitGoalAdd" in html
+    assert "/goal/add" in html
     assert "renderNotifications" in html
     assert "current-list" in html
     assert "当前批次" in html
@@ -2662,6 +2666,43 @@ def test_codex_supervisor_web_can_control_daemon_and_watcher(tmp_path, monkeypat
     assert calls[0][1]["worker_codex_model"] == "gpt-5.5"
     assert calls[0][1]["worker_codex_config"] == ('model_reasoning_effort="high"',)
     assert calls[2][1] == {"codex_home": codex_home, "interval": 60}
+
+
+def test_codex_supervisor_web_can_add_goal_from_page(tmp_path):
+    from isotope.features.supervisor import web
+
+    codex_home = tmp_path / ".codex"
+    server = web.create_dashboard_server(
+        codex_home=codex_home,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=600,
+        active_within_seconds=180,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        body = json.dumps({"goal": "从页面新增目标。"}, ensure_ascii=False).encode("utf-8")
+        conn.request("POST", "/goal/add", body=body, headers={"content-type": "application/json"})
+        add_response = conn.getresponse()
+        add_payload = json.loads(add_response.read().decode("utf-8"))
+        conn.request("GET", "/dashboard.json")
+        dashboard_response = conn.getresponse()
+        dashboard_payload = json.loads(dashboard_response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert add_response.status == 200
+    assert add_payload["status"] == "ok"
+    assert add_payload["goal"]["goal"] == "从页面新增目标。"
+    assert add_payload["goal"]["cwd"] == str(Path.cwd())
+    assert dashboard_response.status == 200
+    assert dashboard_payload["current"]["active_goals"][0]["goal"] == "从页面新增目标。"
 
 
 def test_codex_supervisor_web_dashboard_highlights_night_overview(

@@ -34,7 +34,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 | 状态账本层 | lane state（窗口状态）和限频 | `lane_state.py` | 避免重复催促和刷屏 |
 | 生命周期观测层 | `trace --json` | `features/supervisor/runner.py` | 只读汇总 goal、worker、decision、merge/repair 和 cleanup 台账 |
 | 通知桥接层 | Supervisor event notifications/webhooks | `features/supervisor/notifications.py`、`features/notifications/flow.py` | 把 goal/decision/integration-review 事件派生成低敏通知或外部 POST |
-| 本地前端层 | `web`、`/dashboard.json`、`/events`、`/managed/send`、`/llm-action`、daemon/watcher 控制接口 | `features/supervisor/web.py` | 本机视图、bell 事件、白名单发送、后台循环控制和手动模型建议入口 |
+| 本地前端层 | `web`、`/dashboard.json`、`/events`、`/managed/send`、`/llm-action`、`/goal/add`、daemon/watcher 控制接口 | `features/supervisor/web.py` | 本机视图、bell 事件、目标写入、白名单发送、后台循环控制和手动模型建议入口 |
 
 ## 已有轮子
 
@@ -90,6 +90,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   worktree、branch、状态依据、下一步、状态协议和最近输出。
 - `web` 会用“Supervisor 控制台”直接启动/停止 daemon 后台循环和
   watcher 看门进程，并复用页面刷新展示最新状态。
+- `web` 会用“目标队列”展示 active goals，并通过 `/goal/add`
+  写入新的 Supervisor 目标，默认 cwd 是 Web server 当前工作区。
 - `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
 - `/managed/send` 成功发送后会更新 lane state。
 - `guide` 会按 cwd、lane name 和 tmux session 打印可复制工作流命令。

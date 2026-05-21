@@ -374,6 +374,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     让人类先看清楚信息再决定是否介入；
     web 已新增“Supervisor 控制台”区，可直接启动/停止 daemon 后台循环、
     启动/停止 watcher 看门进程并刷新状态，不再只依赖复制命令；
+    web 已新增“目标队列”区，可直接查看 active goals 并通过 `/goal/add`
+    写入新的 Supervisor 目标，默认绑定当前 Web 工作区；
     web 等待拍板列表已可直接填写答案并提交到 `/decision/answer`，
     该接口只记录 `decision answer`，不会变成任意文本发送通道；
     web 已可通过手动“模型建议”按钮调用 `/llm-action`，展示 LLM

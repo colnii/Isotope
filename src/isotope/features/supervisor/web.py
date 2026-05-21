@@ -28,6 +28,7 @@ from .daemon import (
 )
 from .fanout import DEFAULT_FANOUT_LIMIT
 from .flow import CodexSupervisorFlow, _tmux_capture_pane
+from .goal_queue import record_supervisor_goal
 from .lane_state import (
     DEFAULT_MAX_CONTINUE_COUNT,
     DEFAULT_PROMPT_COOLDOWN_SECONDS,
@@ -233,6 +234,9 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/decision/answer":
             self._send_decision_answer()
             return
+        if path == "/goal/add":
+            self._send_goal_add()
+            return
         if path in {"/daemon/start", "/daemon/stop", "/watcher/start", "/watcher/stop"}:
             self._send_service_action(path)
             return
@@ -342,6 +346,38 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
                 "answered": answered,
                 "decision_requests": _decision_request_dicts(self.server.codex_home),
                 "recent_decision_answers": _decision_answer_dicts(self.server.codex_home),
+            }
+        )
+
+    def _send_goal_add(self) -> None:
+        try:
+            payload = self._read_json_body()
+            goal = record_supervisor_goal(
+                codex_home=self.server.codex_home,
+                cwd=Path.cwd(),
+                goal=_required_string(payload.get("goal"), "goal"),
+                target_name=_optional_string(payload.get("target_name")),
+            )
+        except ValueError as exc:
+            self._send_json(
+                {
+                    "status": "error",
+                    "error": {
+                        "code": "codex_supervisor_web_error",
+                        "message": str(exc),
+                    },
+                },
+                status_code=400,
+            )
+            return
+        self._send_json(
+            {
+                "status": "ok",
+                "goal": goal.to_dict(),
+                "active_goals": _active_goal_dicts_for_codex_home(
+                    self.server.codex_home,
+                    include_status=True,
+                ),
             }
         )
 
@@ -475,6 +511,12 @@ def _required_string(value: object, field: str) -> str:
     return value.strip()
 
 
+def _optional_string(value: object) -> str | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    return value.strip()
+
+
 def dashboard_page_html() -> str:
     return """<!doctype html>
 <html lang="zh-CN">
@@ -593,6 +635,68 @@ def dashboard_page_html() -> str:
       margin-top: 8px;
     }
     .control-message {
+      color: var(--muted);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+    .goal-queue-panel {
+      margin-bottom: 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--done);
+      border-radius: 6px;
+      background: var(--panel);
+      padding: 12px 14px;
+      font-size: 14px;
+    }
+    .goal-queue-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      font-weight: 700;
+    }
+    .goal-add-form {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .goal-add-form textarea {
+      width: 100%;
+      min-height: 72px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px;
+      color: var(--text);
+      font: inherit;
+      line-height: 1.4;
+    }
+    .goal-add-message {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+    .goal-queue-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .goal-queue-item {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #f8fafc;
+      padding: 8px;
+    }
+    .goal-title {
+      color: var(--text);
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+    .goal-detail {
+      margin-top: 2px;
       color: var(--muted);
       font-size: 12px;
       overflow-wrap: anywhere;
@@ -1026,6 +1130,7 @@ def dashboard_page_html() -> str:
       .grid { grid-template-columns: 1fr; }
       .night-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .control-center-body { grid-template-columns: 1fr; }
+      .goal-add-form { grid-template-columns: 1fr; }
       .current-grid { grid-template-columns: 1fr; }
       .worker-detail-grid { grid-template-columns: 1fr; }
     }
@@ -1077,6 +1182,18 @@ def dashboard_page_html() -> str:
           </div>
         </div>
       </div>
+    </div>
+    <div class="goal-queue-panel" id="goal-queue-panel">
+      <div class="goal-queue-head">
+        <span>目标队列</span>
+        <span class="count" id="goal-queue-count">0</span>
+      </div>
+      <div class="goal-add-form">
+        <textarea id="goal-add-text" aria-label="新增目标" placeholder="新增目标"></textarea>
+        <button type="button" id="goal-add-button">新增目标</button>
+      </div>
+      <div class="goal-add-message" id="goal-add-message">等待输入目标</div>
+      <div class="goal-queue-list" id="goal-queue-list"></div>
     </div>
     <div class="night-overview" id="night-overview">
       <div class="overview-card" id="overview-card-daemon" data-state="attention">
@@ -1321,6 +1438,72 @@ def dashboard_page_html() -> str:
     function renderControlCenter(payload) {
       renderServiceControl("daemon", payload.daemon);
       renderServiceControl("watcher", payload.watcher);
+    }
+
+    function renderGoalQueue(current) {
+      const goals = current && Array.isArray(current.active_goals) ? current.active_goals : [];
+      const target = document.getElementById("goal-queue-list");
+      document.getElementById("goal-queue-count").textContent = goals.length;
+      target.replaceChildren();
+      if (!goals.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "暂无活跃目标";
+        target.append(empty);
+        return;
+      }
+      for (const goal of goals) {
+        target.append(renderGoalQueueItem(goal));
+      }
+    }
+
+    function renderGoalQueueItem(goal) {
+      const item = document.createElement("div");
+      item.className = "goal-queue-item";
+      const title = document.createElement("div");
+      title.className = "goal-title";
+      title.textContent = goal.goal || goal.target_name || goal.goal_id || "目标";
+      const detail = document.createElement("div");
+      detail.className = "goal-detail";
+      detail.textContent = [
+        goal.target_name ? "target " + goal.target_name : "",
+        goal.goal_id || "",
+        goal.last_status ? "状态 " + goal.last_status : "",
+        goal.cwd || ""
+      ].filter(Boolean).join(" · ");
+      item.append(title, detail);
+      return item;
+    }
+
+    async function submitGoalAdd(button) {
+      const textarea = document.getElementById("goal-add-text");
+      const message = document.getElementById("goal-add-message");
+      const goal = textarea.value.trim();
+      if (!goal) {
+        message.textContent = "请先填写目标";
+        return;
+      }
+      const label = button.textContent;
+      button.disabled = true;
+      button.textContent = "写入中";
+      message.textContent = "正在写入目标";
+      try {
+        const response = await fetch("/goal/add", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ goal })
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error ? payload.error.message : "写入失败");
+        textarea.value = "";
+        message.textContent = "已写入目标：" + text(payload.goal && payload.goal.target_name);
+        await loadDashboard();
+      } catch (error) {
+        message.textContent = "写入失败：" + text(error.message);
+      } finally {
+        button.disabled = false;
+        button.textContent = label;
+      }
     }
 
     function renderServiceControl(key, service) {
@@ -1966,6 +2149,7 @@ def dashboard_page_html() -> str:
       document.getElementById("generated-at").textContent = payload.generated_at;
       document.getElementById("recommendation").textContent = payload.recommendation.label;
       renderControlCenter(payload);
+      renderGoalQueue(payload.current || {});
       renderNightOverview(payload);
       renderCurrentBatch(payload.current || {});
       renderWorkerDetails(payload.current || {});
@@ -1985,6 +2169,9 @@ def dashboard_page_html() -> str:
     });
     document.getElementById("control-refresh").addEventListener("click", () => {
       loadDashboard();
+    });
+    document.getElementById("goal-add-button").addEventListener("click", (event) => {
+      submitGoalAdd(event.currentTarget);
     });
 
     function connectSupervisorEvents() {
