@@ -31,6 +31,7 @@ class LaneState:
     decision_timeout_request_id: str | None = None
     decision_timeout_alerted_at: str | None = None
     decision_timeout_seconds: int | None = None
+    worker_retry_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -50,6 +51,7 @@ class LaneState:
             "decision_timeout_request_id": self.decision_timeout_request_id,
             "decision_timeout_alerted_at": self.decision_timeout_alerted_at,
             "decision_timeout_seconds": self.decision_timeout_seconds,
+            "worker_retry_count": self.worker_retry_count,
         }
 
 
@@ -189,6 +191,7 @@ def record_lane_prompt(
         decision_timeout_seconds=(
             previous.decision_timeout_seconds if previous is not None else None
         ),
+        worker_retry_count=previous.worker_retry_count if previous is not None else 0,
     )
     states[name] = state
     write_lane_states(path, states)
@@ -248,6 +251,57 @@ def record_lane_failure(
         decision_timeout_seconds=(
             previous.decision_timeout_seconds if previous is not None else None
         ),
+        worker_retry_count=previous.worker_retry_count if previous is not None else 0,
+    )
+    states[name] = state
+    write_lane_states(path, states)
+    return state
+
+
+def record_worker_retry(
+    *,
+    codex_home: Path | str,
+    name: str,
+    tmux_session: str | None,
+    now: datetime | None = None,
+) -> LaneState:
+    path = default_lane_state_path(codex_home)
+    states = read_lane_states(path)
+    current = _ensure_aware_utc(now or _utc_now())
+    previous = states.get(name)
+    retry_count = previous.worker_retry_count + 1 if previous is not None else 1
+    state = LaneState(
+        name=name,
+        tmux_session=tmux_session,
+        last_status="worker_retry",
+        last_prompted_at=current.isoformat(),
+        prompt_count=(
+            previous.prompt_count + 1
+            if previous is not None and previous.last_status == "worker_retry"
+            else 1
+        ),
+        last_prompt_kind="worker_retry",
+        continue_count=previous.continue_count if previous is not None else 0,
+        last_failure_reason=previous.last_failure_reason if previous is not None else None,
+        last_failure_exit_code=previous.last_failure_exit_code if previous is not None else None,
+        last_failure_stderr_summary=(
+            previous.last_failure_stderr_summary if previous is not None else None
+        ),
+        last_failure_record_id=(
+            previous.last_failure_record_id if previous is not None else None
+        ),
+        last_failed_at=previous.last_failed_at if previous is not None else None,
+        failure_count=previous.failure_count if previous is not None else 0,
+        decision_timeout_request_id=(
+            previous.decision_timeout_request_id if previous is not None else None
+        ),
+        decision_timeout_alerted_at=(
+            previous.decision_timeout_alerted_at if previous is not None else None
+        ),
+        decision_timeout_seconds=(
+            previous.decision_timeout_seconds if previous is not None else None
+        ),
+        worker_retry_count=retry_count,
     )
     states[name] = state
     write_lane_states(path, states)
@@ -296,6 +350,7 @@ def record_lane_decision_timeout(
             else current.isoformat()
         ),
         decision_timeout_seconds=timeout_seconds,
+        worker_retry_count=previous.worker_retry_count if previous is not None else 0,
     )
     states[name] = state
     write_lane_states(path, states)
@@ -332,6 +387,7 @@ def clear_lane_decision_timeout(
         decision_timeout_request_id=None,
         decision_timeout_alerted_at=None,
         decision_timeout_seconds=None,
+        worker_retry_count=previous.worker_retry_count,
     )
     states[name] = state
     write_lane_states(path, states)
@@ -355,6 +411,7 @@ def _state_from_dict(raw: dict[str, Any]) -> LaneState | None:
     decision_timeout_request_id = raw.get("decision_timeout_request_id")
     decision_timeout_alerted_at = raw.get("decision_timeout_alerted_at")
     decision_timeout_seconds = raw.get("decision_timeout_seconds")
+    worker_retry_count = raw.get("worker_retry_count", 0)
     if not isinstance(name, str) or not isinstance(last_status, str):
         return None
     if tmux_session is not None and not isinstance(tmux_session, str):
@@ -397,6 +454,8 @@ def _state_from_dict(raw: dict[str, Any]) -> LaneState | None:
         or decision_timeout_seconds < 0
     ):
         return None
+    if not isinstance(worker_retry_count, int) or worker_retry_count < 0:
+        return None
     return LaneState(
         name=name,
         tmux_session=tmux_session,
@@ -414,6 +473,7 @@ def _state_from_dict(raw: dict[str, Any]) -> LaneState | None:
         decision_timeout_request_id=decision_timeout_request_id,
         decision_timeout_alerted_at=decision_timeout_alerted_at,
         decision_timeout_seconds=decision_timeout_seconds,
+        worker_retry_count=worker_retry_count,
     )
 
 

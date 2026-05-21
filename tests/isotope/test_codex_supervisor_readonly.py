@@ -12540,6 +12540,213 @@ def test_codex_supervisor_runner_loop_does_not_reprompt_completed_process_worker
     }
 
 
+def test_codex_supervisor_runner_loop_retries_exited_process_worker(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    log_path = codex_home / "supervisor" / "logs" / "managed-process-001.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text(
+        "SUPERVISOR_STATUS: working\n"
+        "SUPERVISOR_SUMMARY: worker 正在写代码但进程退出。\n"
+        "SUPERVISOR_NEXT: 继续推进当前任务。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-process-001",
+                "name": "process-lane",
+                "cwd": str(workspace),
+                "prompt": "后台继续推进 Supervisor。",
+                "command": [
+                    "codex",
+                    "exec",
+                    "-m",
+                    "gpt-5.5",
+                    "-c",
+                    'model_reasoning_effort="high"',
+                    "-C",
+                    str(workspace),
+                    "--skip-git-repo-check",
+                    "后台继续推进 Supervisor。",
+                ],
+                "pid": 4242,
+                "started_at": NOW.isoformat(),
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("isotope.features.supervisor.flow._pid_is_running", lambda _: False)
+    monkeypatch.setattr("isotope.features.supervisor.runner._pid_is_running", lambda _: False)
+    monkeypatch.setattr("isotope.features.supervisor.flow._git_branch_for", lambda _: None)
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
+
+    class FakeProcess:
+        pid = 5252
+
+    captured: dict[str, object] = {}
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        captured["command"] = command
+        captured["cwd"] = cwd
+        captured["stdin"] = stdin
+        captured["stderr"] = stderr
+        captured["start_new_session"] = start_new_session
+        return FakeProcess()
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["auto_retried_workers"] == [
+        {
+            "name": "process-lane",
+            "previous_record_id": "managed-process-001",
+            "record_id": payload["auto_retried_workers"][0]["record_id"],
+            "pid": 5252,
+            "retry_count": 1,
+            "max_retries": 2,
+        }
+    ]
+    assert captured["command"][:7] == [
+        "codex",
+        "exec",
+        "-m",
+        "gpt-5.5",
+        "-c",
+        'model_reasoning_effort="high"',
+        "-C",
+    ]
+    assert captured["cwd"] == str(workspace)
+    assert captured["stdin"] is subprocess.DEVNULL
+    assert captured["stderr"] is subprocess.STDOUT
+    assert captured["start_new_session"] is True
+    lane_state = json.loads(
+        (codex_home / "supervisor" / "lane_state.json").read_text(encoding="utf-8")
+    )
+    assert lane_state["process-lane"]["worker_retry_count"] == 1
+
+
+def test_codex_supervisor_runner_loop_stops_process_worker_retry_at_budget(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    log_path = codex_home / "supervisor" / "logs" / "managed-process-001.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text("worker exited before reporting done\n", encoding="utf-8")
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-process-001",
+                "name": "process-lane",
+                "cwd": str(workspace),
+                "prompt": "后台继续推进 Supervisor。",
+                "command": ["codex", "exec", "-C", str(workspace), "后台继续推进。"],
+                "pid": 4242,
+                "started_at": NOW.isoformat(),
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    lane_state_path = codex_home / "supervisor" / "lane_state.json"
+    lane_state_path.parent.mkdir(parents=True, exist_ok=True)
+    lane_state_path.write_text(
+        json.dumps(
+            {
+                "process-lane": {
+                    "name": "process-lane",
+                    "tmux_session": None,
+                    "last_status": "worker_retry",
+                    "last_prompted_at": NOW.isoformat(),
+                    "prompt_count": 0,
+                    "last_prompt_kind": "worker_retry",
+                    "continue_count": 0,
+                    "worker_retry_count": 2,
+                }
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("isotope.features.supervisor.flow._pid_is_running", lambda _: False)
+    monkeypatch.setattr("isotope.features.supervisor.runner._pid_is_running", lambda _: False)
+    monkeypatch.setattr("isotope.features.supervisor.flow._git_branch_for", lambda _: None)
+    monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
+
+    def fail_launch(*_args: object, **_kwargs: object) -> object:
+        raise AssertionError("worker retry budget is exhausted")
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.launch_managed_codex",
+        fail_launch,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["auto_retried_workers"] == []
+    lane_state = json.loads(lane_state_path.read_text(encoding="utf-8"))
+    assert lane_state["process-lane"]["worker_retry_count"] == 2
+
+
 def test_codex_supervisor_runner_loop_goal_can_launch_first_worker(
     tmp_path,
     capsys,

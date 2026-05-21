@@ -74,11 +74,14 @@ from .integration_review import (
 from .lane_state import (
     DEFAULT_MAX_CONTINUE_COUNT,
     DEFAULT_PROMPT_COOLDOWN_SECONDS,
+    default_lane_state_path,
     continue_budget_state,
     lane_failure_state,
     prompt_cooldown_state,
+    read_lane_states,
     record_lane_failure,
     record_lane_prompt,
+    record_worker_retry,
 )
 from .llm_summary import (
     generate_llm_action_decision,
@@ -116,6 +119,7 @@ RECURSIVE_WORKER_ROLES = {MERGE_DISPATCH_WORKER_ROLE, "cleanup"}
 DEFAULT_MAX_CONTEXT_REQUESTS = 0
 DEFAULT_MAX_FAILURE_RETRIES = 3
 DEFAULT_MAX_RUN_MINUTES = 0
+DEFAULT_MAX_WORKER_RETRY_COUNT = 2
 DEFAULT_WORKER_CODEX_MODEL = "gpt-5.5"
 DEFAULT_WORKER_CODEX_CONFIG = ('model_reasoning_effort="high"',)
 DEFAULT_WORKER_PROFILE = "coding"
@@ -352,6 +356,16 @@ def _build_parser() -> argparse.ArgumentParser:
             default=DEFAULT_FANOUT_LIMIT,
             help="Maximum launch_session actions fanout may execute in one iteration.",
         )
+        if command == "supervise":
+            subparsers.choices[command].add_argument(
+                "--max-worker-retry-count",
+                type=int,
+                default=DEFAULT_MAX_WORKER_RETRY_COUNT,
+                help=(
+                    "Maximum automatic restarts for an exited process worker. "
+                    "Default 2."
+                ),
+            )
         subparsers.choices[command].add_argument(
             "--worker-profile",
             choices=WORKER_PROFILE_CHOICES,
@@ -488,6 +502,12 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=DEFAULT_FANOUT_LIMIT,
         help="Maximum launch_session actions fanout may execute in one loop iteration.",
+    )
+    loop_parser.add_argument(
+        "--max-worker-retry-count",
+        type=int,
+        default=DEFAULT_MAX_WORKER_RETRY_COUNT,
+        help="Maximum automatic restarts for an exited process worker. Default 2.",
     )
     _add_goal_replenishment_args(loop_parser)
     loop_parser.add_argument(
@@ -2286,6 +2306,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
     previous_bell_fingerprint: tuple[object, ...] | None = None
     while iterations is None or count < iterations:
         auto_adopted = _auto_adopt_discovered_tmux_sessions(args)
+        auto_retried_workers = _auto_retry_exited_process_workers(args)
         report = _scan_report(args)
         goal_updates = _sync_goal_lifecycle(args, report)
         cleanup_archived = _auto_archive_done_merge_workers(args)
@@ -2308,6 +2329,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
                     report,
                     iteration=count + 1,
                     auto_adopted=auto_adopted,
+                    auto_retried_workers=auto_retried_workers,
                     goal_updates=goal_updates,
                     cleanup_archived=cleanup_archived,
                     decision_timeout_alerts=decision_timeout_alerts,
@@ -2334,6 +2356,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
             or report_changed
             or force_print
             or bool(auto_adopted)
+            or bool(auto_retried_workers)
             or bool(goal_updates)
             or bool(cleanup_archived)
             or bool(decision_timeout_alerts)
@@ -2344,6 +2367,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
                 report,
                 iteration=count + 1,
                 auto_adopted=auto_adopted,
+                auto_retried_workers=auto_retried_workers,
                 precomputed_auto_action=precomputed_auto_action,
                 precomputed_executed=precomputed_executed,
                 goal_updates=goal_updates,
@@ -2492,6 +2516,70 @@ def _managed_worker_failure_from_record(
             or f"worker exceeded {max_run_minutes} minute run budget",
         }
     return None
+
+
+def _auto_retry_exited_process_workers(args: argparse.Namespace) -> list[dict[str, Any]]:
+    max_retries = getattr(
+        args,
+        "max_worker_retry_count",
+        DEFAULT_MAX_WORKER_RETRY_COUNT,
+    )
+    if max_retries <= 0:
+        return []
+    codex_home = Path(args.codex_home)
+    latest_by_name: dict[str, Any] = {}
+    for record in read_managed_records(default_registry_path(codex_home)):
+        latest_by_name[record.name] = record
+
+    retried: list[dict[str, Any]] = []
+    lane_states = read_lane_states(default_lane_state_path(codex_home))
+    for record in latest_by_name.values():
+        if not _process_worker_needs_retry(record):
+            continue
+        state = lane_states.get(record.name)
+        retry_count = state.worker_retry_count if state is not None else 0
+        if retry_count >= max_retries:
+            continue
+        launched = launch_managed_codex(
+            codex_home=codex_home,
+            cwd=Path(record.cwd),
+            name=record.name,
+            prompt=record.prompt,
+            codex_model=_worker_codex_model(args),
+            codex_config=_worker_codex_config(args),
+            worker_role=record.worker_role,
+            popen=subprocess.Popen,
+            run=subprocess.run,
+        )
+        updated_state = record_worker_retry(
+            codex_home=codex_home,
+            name=record.name,
+            tmux_session=None,
+        )
+        retried.append(
+            {
+                "name": record.name,
+                "previous_record_id": record.record_id,
+                "record_id": launched.record_id,
+                "pid": launched.pid,
+                "retry_count": updated_state.worker_retry_count,
+                "max_retries": max_retries,
+            }
+        )
+    return retried
+
+
+def _process_worker_needs_retry(record: Any) -> bool:
+    if record.backend != "process":
+        return False
+    if _pid_is_running(record.pid):
+        return False
+    if not _cwd_is_existing_dir(record.cwd):
+        return False
+    excerpt = _managed_process_log_excerpt(record.log_path) or ""
+    protocol = _supervisor_protocol_from_text(excerpt)
+    status = (protocol.get("status") or "").strip().lower()
+    return status not in {"done", "blocked", "needs_user"}
 
 
 def _managed_record_exceeded_run_budget(
@@ -3135,6 +3223,8 @@ def _validate_execution_modes(args: argparse.Namespace) -> None:
         raise ValueError("max_failure_retries must be zero or positive")
     if getattr(args, "max_run_minutes", 0) < 0:
         raise ValueError("max_run_minutes must be zero or positive")
+    if getattr(args, "max_worker_retry_count", DEFAULT_MAX_WORKER_RETRY_COUNT) < 0:
+        raise ValueError("max_worker_retry_count must be zero or positive")
     if getattr(args, "max_fanout_launches", 1) <= 0:
         raise ValueError("max_fanout_launches must be positive")
     if getattr(args, "goal_low_water", 0) < 0:
@@ -3373,6 +3463,7 @@ def _supervise_payload(
     *,
     iteration: int,
     auto_adopted: list[dict[str, str]] | None = None,
+    auto_retried_workers: list[dict[str, Any]] | None = None,
     goal_updates: list[dict[str, Any]] | None = None,
     cleanup_archived: list[dict[str, Any]] | None = None,
     decision_timeout_alerts: list[dict[str, Any]] | None = None,
@@ -3413,6 +3504,7 @@ def _supervise_payload(
     payload["report"] = report.to_dict()
     payload["automation"] = _automation_status(report)
     payload["auto_adopted"] = auto_adopted or []
+    payload["auto_retried_workers"] = auto_retried_workers or []
     payload["active_goals"] = active_goals
     if goal_replenishment is not None:
         payload["goal_replenishment"] = goal_replenishment

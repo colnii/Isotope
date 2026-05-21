@@ -171,7 +171,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     护栏，不删除分支或改写历史；
     `launch_session` 同样受 `--prompt-cooldown` 约束，
     且发现同名后台 process worker 仍在运行时会跳过，避免 LLM
-    长跑时反复启动同名后台任务；process worker 的非零退出或
+    长跑时反复启动同名后台任务；process worker 已退出但还未汇报
+    `done/blocked/needs_user` 时，`loop` 会按 lane state 里的
+    `worker_retry_count` 最多自动重启 2 次；process worker 的非零退出或
     显式 `--max-run-minutes` 超时会写入 lane state，记录
     `timeout`/`exit_code`、stderr 摘要和对应托管记录，并让后续
     自动 `launch_session` 降级为 `monitor`，避免同名目标无限重启；
