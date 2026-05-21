@@ -38,13 +38,22 @@ python3 -m venv .venv
 .venv/bin/python -m pytest tests/isotope -q
 ```
 
+第一次试 Supervisor，先生成一条最短试用路径：
+
+```bash
+.venv/bin/isotope-supervisor start-here --goal "继续推进当前项目目标"
+```
+
+它会打印四类命令：启动后台、打开页面、查看状态、停止后台。
+之后通常只需要先跑其中的启动命令，再打开本地 Web dashboard。
+
 扫描最近的 Codex 会话：
 
 ```bash
 .venv/bin/isotope-supervisor scan --limit 5
 ```
 
-启动本地 Web dashboard：
+直接启动本地 Web dashboard：
 
 ```bash
 .venv/bin/isotope-supervisor web --host 127.0.0.1 --port 8765

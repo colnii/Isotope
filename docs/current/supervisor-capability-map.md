@@ -17,7 +17,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 
 | 层级 | 当前能力 | 主要位置 | 说明 |
 | --- | --- | --- | --- |
-| 用户功能层 | `scan`、`dashboard`、`trace`、`guide`、`up`、`discover`、`web`、`watch`、`advise`、`supervise`、`loop`、`daemon` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
+| 用户功能层 | `start-here`、`scan`、`dashboard`、`trace`、`guide`、`up`、`discover`、`web`、`watch`、`advise`、`supervise`、`loop`、`daemon` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
 | 托管控制层 | `launch`、`adopt`、`send`、`archive`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
 | Worker 审查层 | `worker-review`、`integration-review`、`replan` | `features/supervisor/worker_review.py`、`features/supervisor/integration_review.py`、`features/supervisor/replan.py`、`features/supervisor/runner.py` | 汇总已托管 worker 的 worktree、branch、状态协议、改动、复查提示、合并提示、只读集成分组和下一轮候选 |
 | Merge 工单层 | `merge-work-order` builder、merge dispatch | `features/supervisor/merge_work_order.py`、`features/supervisor/merge_dispatch.py`、`features/supervisor/runner.py` | 根据 `integration-review` 生成动态 merge worker 工单，并由 `loop` 在有 `ready_to_integrate` 候选时自动启动专门 merge worker |
@@ -243,6 +243,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   workers、decision requests、merge/repair worker 和 archived workers
   聚合成一个阶段化 payload，方便排查长跑链路停在目标、执行、拍板、
   合并修复还是清理。
+- `start-here` 是第一次试用入口，只打印“启动后台、打开页面、看状态、
+  反馈观察点、停止后台”的最短路径，不展开高级命令清单。
 - `loop --json` 每轮也会带 `lifecycle_trace`，读取本轮执行后的同一套
   台账摘要，让 daemon 日志直接留下长跑链路证据；刚启动 worker 且没有
   拍板或清理项时，`next_attention.kind` 会显示 `wait_workers`，避免把

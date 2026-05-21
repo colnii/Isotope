@@ -1422,6 +1422,37 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Codex home directory. Defaults to ~/.codex.",
     )
     repair_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    start_here_parser = subparsers.add_parser(
+        "start-here",
+        help="Print the shortest human-first Supervisor trial workflow.",
+    )
+    start_here_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    start_here_parser.add_argument(
+        "--cwd",
+        default=str(Path.cwd()),
+        help="Workspace directory. Defaults to the current directory.",
+    )
+    start_here_parser.add_argument(
+        "--goal",
+        default="让 Supervisor 根据当前项目文档继续推进下一步可验证任务。",
+        help="The first goal to hand to Supervisor.",
+    )
+    start_here_parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Web dashboard host used in the printed command.",
+    )
+    start_here_parser.add_argument(
+        "--port",
+        type=int,
+        default=8765,
+        help="Web dashboard port used in the printed command.",
+    )
+    start_here_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     guide_parser = subparsers.add_parser(
         "guide", help="Print a ready-to-run Supervisor workflow."
     )
@@ -1757,6 +1788,13 @@ def main(argv: list[str] | None = None) -> int:
                         f"{repair.tmux_session} / {repair.name}: {repair.status}"
                         + (f" / {repair.message}" if repair.message else "")
                     )
+            return 0
+        if args.command == "start-here":
+            payload = _start_here_payload(args)
+            if args.json:
+                _print_json(payload)
+            else:
+                _print_start_here_plain(payload)
             return 0
         if args.command == "guide":
             payload = _guide_payload(args)
@@ -3862,6 +3900,122 @@ def _record_goal_status_from_session(
 
 def _unknown_tmux_bell_hook(_session: str) -> None:
     return None
+
+
+def _start_here_payload(args: argparse.Namespace) -> dict[str, Any]:
+    cwd = str(Path(args.cwd).expanduser())
+    codex_home = str(Path(args.codex_home).expanduser())
+    goal = str(args.goal).strip()
+    if not goal:
+        raise ValueError("goal must not be empty")
+    start_command = " && ".join(
+        [
+            shlex.join(["cd", cwd]),
+            shlex.join(
+                [
+                    "isotope-supervisor",
+                    "up",
+                    "--codex-home",
+                    codex_home,
+                    "--goal",
+                    goal,
+                    "--goal-low-water",
+                    "2",
+                    "--goal-replenish-limit",
+                    "2",
+                    "--max-fanout-launches",
+                    "2",
+                ]
+            ),
+        ]
+    )
+    commands = {
+        "start": start_command,
+        "open_web": shlex.join(
+            [
+                "isotope-supervisor",
+                "web",
+                "--codex-home",
+                codex_home,
+                "--host",
+                str(args.host),
+                "--port",
+                str(args.port),
+            ]
+        ),
+        "check_status": shlex.join(
+            ["isotope-supervisor", "daemon", "status", "--codex-home", codex_home]
+        ),
+        "list_goals": shlex.join(
+            ["isotope-supervisor", "goal", "list", "--codex-home", codex_home]
+        ),
+        "list_decisions": shlex.join(
+            ["isotope-supervisor", "decision", "list", "--codex-home", codex_home]
+        ),
+        "trace": shlex.join(
+            ["isotope-supervisor", "trace", "--codex-home", codex_home, "--json"]
+        ),
+        "stop": shlex.join(
+            ["isotope-supervisor", "daemon", "stop", "--codex-home", codex_home]
+        ),
+    }
+    return {
+        "status": "ok",
+        "workflow": {
+            "cwd": cwd,
+            "codex_home": codex_home,
+            "goal": goal,
+            "goal_low_water": 2,
+            "goal_replenish_limit": 2,
+            "max_fanout_launches": 2,
+            "web_url": f"http://{args.host}:{args.port}",
+        },
+        "recommended_order": [
+            "start",
+            "open_web",
+            "check_status",
+            "send_feedback",
+        ],
+        "commands": commands,
+        "what_to_expect": [
+            "start 会启动或唤起后台 daemon，并把目标交给 Supervisor。",
+            "后台 loop 会让 LLM 读当前文档，必要时补充目标并启动 worker。",
+            "web 和 trace 用来观察 goal、worker、decision、merge、cleanup 停在哪一步。",
+        ],
+        "feedback_prompts": [
+            "页面是否能看出哪些 worker 正在跑？",
+            "lifecycle_trace.next_attention 是否符合你的直觉？",
+            "如果它停住了，停在 goal、worker、decision、merge 还是 cleanup？",
+        ],
+    }
+
+
+def _print_start_here_plain(payload: dict[str, Any]) -> None:
+    workflow = payload["workflow"]
+    commands = payload["commands"]
+    print("[Supervisor 从这里开始]")
+    print(f"工作目录：{workflow['cwd']}")
+    print(f"目标：{workflow['goal']}")
+    print()
+    print("1. 先启动后台 Supervisor：")
+    print(commands["start"])
+    print()
+    print("2. 打开本地页面观察：")
+    print(commands["open_web"])
+    print(f"浏览器地址：{workflow['web_url']}")
+    print()
+    print("3. 需要命令行看状态时：")
+    print(commands["check_status"])
+    print(commands["list_goals"])
+    print(commands["list_decisions"])
+    print(commands["trace"])
+    print()
+    print("4. 给我反馈时，优先看这三点：")
+    for item in payload["feedback_prompts"]:
+        print(f"- {item}")
+    print()
+    print("5. 想停掉后台 Supervisor：")
+    print(commands["stop"])
 
 
 def _guide_payload(args: argparse.Namespace) -> dict[str, Any]:

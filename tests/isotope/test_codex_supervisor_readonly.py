@@ -13700,6 +13700,63 @@ def test_codex_supervisor_runner_loop_summarizes_completed_fanout_batch(
     ] == ["worker-a", "worker-b"]
 
 
+def test_codex_supervisor_start_here_prints_human_first_workflow(
+    tmp_path,
+    capsys,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+
+    exit_code = supervisor_main(
+        [
+            "start-here",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(workspace),
+            "--goal",
+            "让 Supervisor 帮我推进当前项目。",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["workflow"]["cwd"] == str(workspace)
+    assert payload["workflow"]["goal"] == "让 Supervisor 帮我推进当前项目。"
+    assert payload["recommended_order"] == [
+        "start",
+        "open_web",
+        "check_status",
+        "send_feedback",
+    ]
+    assert payload["commands"]["start"] == (
+        "cd "
+        + shlex.quote(str(workspace))
+        + " && isotope-supervisor up --codex-home "
+        + shlex.quote(str(codex_home))
+        + " --goal '让 Supervisor 帮我推进当前项目。' --goal-low-water 2"
+        + " --goal-replenish-limit 2 --max-fanout-launches 2"
+    )
+    assert payload["commands"]["open_web"] == (
+        "isotope-supervisor web --codex-home "
+        + shlex.quote(str(codex_home))
+        + " --host 127.0.0.1 --port 8765"
+    )
+    assert payload["commands"]["trace"] == (
+        "isotope-supervisor trace --codex-home "
+        + shlex.quote(str(codex_home))
+        + " --json"
+    )
+    assert payload["feedback_prompts"] == [
+        "页面是否能看出哪些 worker 正在跑？",
+        "lifecycle_trace.next_attention 是否符合你的直觉？",
+        "如果它停住了，停在 goal、worker、decision、merge 还是 cleanup？",
+    ]
+
+
 def test_codex_supervisor_runner_loop_pauses_fanout_on_blocked_worker(
     tmp_path,
     capsys,

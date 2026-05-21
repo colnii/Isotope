@@ -75,7 +75,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
 19. `features/supervisor` 已有 Codex Supervisor 监控与托管启动，
     可从本机 `~/.codex/sessions` 读取多个 Codex 会话，判断工作中、
     等待用户、疑似停住、疑似报错和空闲，并通过 `isotope-supervisor`
-    输出中文汇报；`watch --changes-only` 可只在变化时再次输出；
+    输出中文汇报；`start-here` 可打印第一次试用的最短路径，
+    包含启动后台、打开页面、查看状态、反馈观察点和停止后台；
+    `watch --changes-only` 可只在变化时再次输出；
     `watch --bell` 可在建议目标变化时输出终端 bell，
     不会因静默秒数增长而按固定 interval 重复响；
     `launch` 可启动 Codex 并写入本机托管登记，默认 process 后端使用
