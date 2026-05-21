@@ -369,6 +369,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     dashboard JSON 和 web 已新增“当前批次”区，单独展示仍活跃的
     `active_goals` 与当前托管 worker；已完成 worker、已删除 worktree
     的历史 session 不会进入当前批次；
+    web 已新增“Worker 详情”区，把每个当前 worker 的身份、工作区、
+    worktree、branch、状态依据、下一步、状态协议和最近输出集中展示，
+    让人类先看清楚信息再决定是否介入；
     web 等待拍板列表已可直接填写答案并提交到 `/decision/answer`，
     该接口只记录 `decision answer`，不会变成任意文本发送通道；
     web 已可通过手动“模型建议”按钮调用 `/llm-action`，展示 LLM

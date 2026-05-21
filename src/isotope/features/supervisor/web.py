@@ -586,6 +586,84 @@ def dashboard_page_html() -> str:
       font-size: 12px;
       overflow-wrap: anywhere;
     }
+    .worker-detail-list {
+      margin-bottom: 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--working);
+      border-radius: 6px;
+      background: var(--panel);
+      padding: 12px 14px;
+      font-size: 14px;
+    }
+    .worker-detail-list-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      font-weight: 700;
+    }
+    .worker-detail-body {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .worker-detail-card {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #f8fafc;
+      padding: 10px;
+    }
+    .worker-detail-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      min-width: 0;
+    }
+    .worker-detail-title {
+      color: var(--text);
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+    .worker-detail-meta {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+    .worker-detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 12px;
+      margin-top: 10px;
+    }
+    .worker-detail-field {
+      min-width: 0;
+    }
+    .worker-detail-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .worker-detail-value {
+      color: var(--text);
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+    .worker-detail-output {
+      margin: 10px 0 0;
+      max-height: 180px;
+      overflow: auto;
+      white-space: pre-wrap;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #ffffff;
+      color: #344054;
+      padding: 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+    }
     .notification-list-body {
       display: grid;
       gap: 8px;
@@ -815,6 +893,7 @@ def dashboard_page_html() -> str:
       .grid { grid-template-columns: 1fr; }
       .night-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .current-grid { grid-template-columns: 1fr; }
+      .worker-detail-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -881,6 +960,13 @@ def dashboard_page_html() -> str:
           <div class="current-items" id="current-workers"></div>
         </div>
       </div>
+    </div>
+    <div class="worker-detail-list" id="worker-detail-panel">
+      <div class="worker-detail-list-head">
+        <span>Worker 详情</span>
+        <span class="count" id="worker-detail-count">0</span>
+      </div>
+      <div class="worker-detail-body" id="worker-detail-list"></div>
     </div>
     <div class="notification-list" id="notification-list">
       <div class="notification-list-head">
@@ -1151,6 +1237,86 @@ def dashboard_page_html() -> str:
           detail: [item.status_label || item.status, item.cwd].filter(Boolean).join(" · ")
         })
       );
+    }
+
+    function renderWorkerDetails(current) {
+      const workers = current && Array.isArray(current.managed_workers) ? current.managed_workers : [];
+      const target = document.getElementById("worker-detail-list");
+      document.getElementById("worker-detail-count").textContent = workers.length;
+      target.replaceChildren();
+      if (!workers.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "暂无托管 worker";
+        target.append(empty);
+        return;
+      }
+      for (const worker of workers) {
+        target.append(renderWorkerDetailCard(worker));
+      }
+    }
+
+    function renderWorkerDetailCard(worker) {
+      const card = document.createElement("article");
+      card.className = "worker-detail-card";
+
+      const head = document.createElement("div");
+      head.className = "worker-detail-head";
+      const titleBox = document.createElement("div");
+      const title = document.createElement("div");
+      title.className = "worker-detail-title";
+      title.textContent = worker.display_title || worker.name || worker.target_name || worker.session_id || "worker";
+      const meta = document.createElement("div");
+      meta.className = "worker-detail-meta";
+      meta.textContent = [
+        worker.name ? "托管 " + worker.name : "",
+        worker.short_session_id ? "#" + worker.short_session_id : "",
+        worker.cwd || "",
+        worker.git_branch ? "分支 " + worker.git_branch : ""
+      ].filter(Boolean).join(" · ");
+      titleBox.append(title, meta);
+      const badge = document.createElement("span");
+      badge.className = "badge";
+      badge.textContent = worker.supervisor_status || worker.status_label || worker.status || "unknown";
+      head.append(titleBox, badge);
+      card.append(head);
+
+      const grid = document.createElement("div");
+      grid.className = "worker-detail-grid";
+      grid.append(
+        workerDetailField("目标", worker.goal || worker.target_name || worker.goal_id),
+        workerDetailField("工作区", worker.cwd),
+        workerDetailField("worktree", worker.worktree || worker.worktree_path),
+        workerDetailField("branch", worker.git_branch || worker.branch),
+        workerDetailField("状态依据", worker.status_evidence ? worker.status_evidence.label + " - " + worker.status_evidence.detail : null),
+        workerDetailField("下一步", worker.supervisor_next)
+      );
+      card.append(grid);
+
+      const protocol = renderSupervisorProtocol(worker);
+      if (protocol) card.append(protocol);
+
+      const output = document.createElement("pre");
+      output.className = "worker-detail-output";
+      output.dataset.scrollKey = "worker-detail:" + terminalExcerptScrollKey(worker);
+      output.textContent = worker.managed_terminal_excerpt || worker.last_assistant_message || worker.last_user_message || "暂无可读输出";
+      output.addEventListener("scroll", () => rememberTerminalExcerptScroll(output));
+      card.append(output);
+      restoreTerminalExcerptScroll(output);
+      return card;
+    }
+
+    function workerDetailField(label, value) {
+      const field = document.createElement("div");
+      field.className = "worker-detail-field";
+      const labelNode = document.createElement("div");
+      labelNode.className = "worker-detail-label";
+      labelNode.textContent = label;
+      const valueNode = document.createElement("div");
+      valueNode.className = "worker-detail-value";
+      valueNode.textContent = text(value);
+      field.append(labelNode, valueNode);
+      return field;
     }
 
     function renderCardSource(item) {
@@ -1601,6 +1767,7 @@ def dashboard_page_html() -> str:
       document.getElementById("recommendation").textContent = payload.recommendation.label;
       renderNightOverview(payload);
       renderCurrentBatch(payload.current || {});
+      renderWorkerDetails(payload.current || {});
       renderNotifications(payload.notifications || [], payload.notification_counts || {});
       renderDecisionRequests(payload.decision_requests || []);
       for (const key of groups) renderGroup(key, payload.groups[key] || []);

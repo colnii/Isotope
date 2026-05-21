@@ -86,6 +86,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   `source_ref`，避免把 prompt/log/key 类字段暴露到页面。
 - `dashboard JSON` 和 `web` 会输出“当前批次”，把仍活跃的
   `active_goals` 与当前托管 worker 从历史 done/stale session 中分离。
+- `web` 会用“Worker 详情”集中展示当前 worker 的身份、工作区、
+  worktree、branch、状态依据、下一步、状态协议和最近输出。
 - `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
 - `/managed/send` 成功发送后会更新 lane state。
 - `guide` 会按 cwd、lane name 和 tmux session 打印可复制工作流命令。

@@ -2496,6 +2496,12 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "current-count" in html
     assert "暂无当前目标" in html
     assert "暂无托管 worker" in html
+    assert "worker-detail-list" in html
+    assert "Worker 详情" in html
+    assert "renderWorkerDetails" in html
+    assert "renderWorkerDetailCard" in html
+    assert "workerDetailField" in html
+    assert "worker-detail:" in html
     assert "notification-list" in html
     assert "通知列表" in html
     assert "source_ref" in html
