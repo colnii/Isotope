@@ -103,7 +103,9 @@ def test_merge_work_order_prompt_handles_empty_ready_group():
 def test_supervisor_merge_work_order_cli_prints_plain_prompt(capsys, monkeypatch):
     calls = []
 
-    def fake_collect_integration_reviews(*, codex_home, base_ref, include_unfinished):
+    def fake_collect_integration_reviews(
+        *, codex_home, base_ref, include_unfinished, **kwargs
+    ):
         calls.append(
             {
                 "codex_home": str(codex_home),
@@ -148,7 +150,7 @@ def test_supervisor_merge_work_order_cli_json_includes_status_summary_and_prompt
 ):
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        lambda *, codex_home, base_ref, include_unfinished: _integration_review_payload(),
+        lambda *, codex_home, base_ref, include_unfinished, **kwargs: _integration_review_payload(),
     )
 
     exit_code = supervisor_main(

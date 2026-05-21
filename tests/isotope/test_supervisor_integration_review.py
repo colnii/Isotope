@@ -91,6 +91,46 @@ def test_supervisor_integration_review_groups_ready_and_already_integrated(tmp_p
     assert "validation：passed" in plain
 
 
+def test_supervisor_integration_review_can_skip_candidate_validation(tmp_path):
+    from isotope.features.supervisor.integration_review import collect_integration_reviews
+
+    codex_home = tmp_path / ".codex"
+    cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "ready-fast-scan"
+    cwd.mkdir(parents=True)
+    _write_done_record(codex_home, record_id="managed-ready", name="ready", cwd=cwd)
+
+    fake_run = _fake_git(
+        {
+            cwd: {
+                ("rev-parse", "--abbrev-ref", "HEAD"): (0, "supervisor/ready-fast-scan\n", ""),
+                ("rev-parse", "HEAD"): (0, "ready111\n", ""),
+                ("rev-parse", "main"): (0, "main999\n", ""),
+                ("status", "--short"): (0, "", ""),
+                ("merge-base", "--is-ancestor", "ready111", "main"): (1, "", ""),
+                ("merge-base", "--is-ancestor", "main", "ready111"): (0, "", ""),
+                ("cherry", "main", "ready111"): (0, "+ ready111\n", ""),
+                ("merge-tree", "--write-tree", "main", "ready111"): (0, "tree-ok\n", ""),
+            },
+        }
+    )
+
+    def fail_validation(*args, **kwargs):
+        raise AssertionError("candidate validation should not run")
+
+    payload = collect_integration_reviews(
+        codex_home=codex_home,
+        run=fake_run,
+        validation_run=fail_validation,
+        run_test_gate=False,
+        run_candidate_validation=False,
+    )
+
+    ready = payload["groups"]["ready_to_integrate"][0]
+    assert ready["record_id"] == "managed-ready"
+    assert ready["test_status"] == "skipped"
+    assert ready["validation"]["status"] == "skipped"
+
+
 def test_supervisor_integration_review_blocks_ready_worker_when_tests_fail(tmp_path):
     from isotope.features.supervisor.integration_review import (
         collect_integration_reviews,

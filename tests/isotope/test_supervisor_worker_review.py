@@ -85,7 +85,13 @@ def test_supervisor_worker_review_collects_completed_worker_with_changes(
     )
 
     assert payload["status"] == "ok"
-    assert payload["summary"] == {"total": 1, "existing_cwd": 1, "missing_cwd": 0}
+    assert payload["summary"] == {
+        "total": 1,
+        "visible": 1,
+        "hidden_by_lightweight_limit": 0,
+        "existing_cwd": 1,
+        "missing_cwd": 0,
+    }
     item = payload["workers"][0]
     assert item["name"] == "feature-a"
     assert item["cwd_exists"] is True
@@ -502,6 +508,74 @@ def test_supervisor_worker_review_quotes_reviewer_command(tmp_path):
         + " "
         + shlex.quote(reviewer["prompt"])
     )
+
+
+def test_supervisor_worker_review_lightweight_limits_and_omits_heavy_fields(tmp_path):
+    codex_home = tmp_path / ".codex"
+    for index in range(45):
+        workspace = (
+            tmp_path
+            / "repo"
+            / ".worktrees"
+            / "supervisor"
+            / f"feature-{index:02d}-12345678"
+        )
+        workspace.mkdir(parents=True)
+        log_path = codex_home / "supervisor" / "logs" / f"managed-{index:03d}.log"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_path.write_text(
+            "\n".join(
+                [
+                    "SUPERVISOR_STATUS: done",
+                    f"SUPERVISOR_SUMMARY: feature {index} done.",
+                    "SUPERVISOR_NEXT: wait for integration.",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        _write_record(
+            codex_home,
+            record_id=f"managed-{index:03d}",
+            name=f"feature-{index:02d}",
+            cwd=workspace,
+            log_path=log_path,
+            status="launched",
+            pid=1000 + index,
+        )
+
+    def fail_run(command: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
+        raise AssertionError(f"lightweight mode should not run commands: {command}")
+
+    payload = collect_worker_reviews(
+        codex_home=codex_home,
+        lightweight=True,
+        run=fail_run,
+        process_checker=lambda pid: False,
+    )
+
+    assert payload["summary"] == {
+        "total": 45,
+        "visible": 40,
+        "hidden_by_lightweight_limit": 5,
+        "existing_cwd": 45,
+        "missing_cwd": 0,
+    }
+    assert len(payload["workers"]) == 40
+    assert payload["workers"][0]["record_id"] == "managed-005"
+    assert payload["workers"][-1]["record_id"] == "managed-044"
+    for worker in payload["workers"]:
+        assert "prompt" not in worker
+        assert "validation_commands" not in worker
+        assert "command" not in worker["reviewer"]
+        assert worker["test_status"] == "skipped"
+        assert worker["changes"] == {
+            "status": "unknown",
+            "summary": "loop 快速状态未读取 diff",
+        }
+    for candidates in payload["automation_candidates"].values():
+        for candidate in candidates:
+            assert "validation_commands" not in candidate
+            assert "reviewer_command" not in candidate
 
 
 def _write_record(

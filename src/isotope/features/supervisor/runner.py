@@ -553,6 +553,14 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Use the old rule-based executor instead of the LLM planner.",
     )
+    loop_parser.add_argument(
+        "--merge-dispatch-execute",
+        action="store_true",
+        help=(
+            "Actually launch merge-dispatch workers from ready_to_integrate. "
+            "Default loop only reports the launch action."
+        ),
+    )
     loop_parser.set_defaults(
         auto_execute=False,
         auto_adopt=True,
@@ -2043,6 +2051,8 @@ def _daemon_integration_reviews(codex_home: Path) -> dict[str, Any]:
             codex_home=codex_home,
             base_ref="main",
             include_unfinished=False,
+            run_test_gate=False,
+            run_candidate_validation=False,
         )
     except Exception as exc:  # pragma: no cover - defensive status surface
         return {
@@ -2911,6 +2921,8 @@ def _auto_archive_done_merge_workers(args: argparse.Namespace) -> list[dict[str,
         codex_home=codex_home,
         base_ref="main",
         include_unfinished=False,
+        run_test_gate=False,
+        run_candidate_validation=False,
     )
     return _auto_archive_integrated_merge_workers(
         codex_home=codex_home,
@@ -2924,6 +2936,8 @@ def _auto_promote_done_merge_workers_to_main(
     run: Any = subprocess.run,
 ) -> list[dict[str, Any]]:
     if getattr(args, "command", None) != "loop":
+        return []
+    if not getattr(args, "auto_merge_promote", False):
         return []
     if _current_workspace_has_worker_role(args, RECURSIVE_WORKER_ROLES):
         return []
@@ -4605,15 +4619,27 @@ def _supervise_payload(
         isinstance(fanout_status, dict) and fanout_status.get("status") == "paused"
         and not _goal_replenishment_wrote_goals(goal_replenishment)
     )
+    worker_role_guard = _recursive_worker_role_guard_payload(args)
+    merge_dispatch = (
+        _integration_merge_dispatch_payload(args)
+        if not fanout_paused
+        and worker_role_guard is None
+        and (args.llm_action or args.llm_execute)
+        else None
+    )
     fanout_plan = (
-        _paused_active_goals_fanout_plan(args, active_goals)
-        if fanout_paused
-        else _replenished_goal_plan_fanout_launch_plan(
-            args,
-            report,
-            goal_replenishment,
+        None
+        if merge_dispatch is not None
+        else (
+            _paused_active_goals_fanout_plan(args, active_goals)
+            if fanout_paused
+            else _replenished_goal_plan_fanout_launch_plan(
+                args,
+                report,
+                goal_replenishment,
+            )
+            or _active_goals_fanout_launch_plan(args, report, active_goals)
         )
-        or _active_goals_fanout_launch_plan(args, report, active_goals)
     )
     if fanout_plan is not None and (args.llm_action or args.llm_execute):
         payload["fanout_plan"] = fanout_plan
@@ -4621,10 +4647,11 @@ def _supervise_payload(
             fanout_plan,
             goal_replenishment=goal_replenishment,
         )
-    worker_role_guard = _recursive_worker_role_guard_payload(args)
-    merge_dispatch: dict[str, Any] | None = None
+    if merge_dispatch is not None:
+        payload["merge_dispatch"] = merge_dispatch
     if (
         fanout_plan is None
+        and merge_dispatch is None
         and not fanout_paused
         and worker_role_guard is None
         and (args.llm_action or args.llm_execute)
@@ -4689,6 +4716,8 @@ def _supervise_payload(
                 payload["executed"] = _merge_dispatch_already_running_executed(
                     merge_dispatch
                 )
+            elif not getattr(args, "merge_dispatch_execute", False):
+                payload["executed"] = _merge_dispatch_planned_executed(merge_dispatch)
             else:
                 payload["executed"] = _mark_merge_dispatch_execution(
                     _execute_failure_guarded_action(
@@ -4732,7 +4761,7 @@ def _supervise_payload(
         payload["executed"] = _execute_advice(args, report, payload)
     payload["decision_requests"] = _decision_request_dicts(args)
     if getattr(args, "command", None) == "loop":
-        payload["lifecycle_trace"] = _lifecycle_trace_payload(args)
+        payload["lifecycle_trace"] = _lifecycle_trace_payload(args, lightweight=True)
     return payload
 
 
@@ -4749,6 +4778,8 @@ def _integration_merge_dispatch_payload(args: argparse.Namespace) -> dict[str, A
         codex_home=Path(args.codex_home),
         base_ref="main",
         include_unfinished=False,
+        run_test_gate=False,
+        run_candidate_validation=False,
     )
     launch_spec = build_merge_dispatch_launch_spec(
         review_payload,
@@ -4793,6 +4824,21 @@ def _merge_dispatch_already_running_executed(
     executed = _merge_dispatch_already_running_action(merge_dispatch)
     executed["skipped"] = True
     return executed
+
+
+def _merge_dispatch_planned_executed(merge_dispatch: dict[str, Any]) -> dict[str, Any]:
+    launch_spec = merge_dispatch.get("launch_spec")
+    target_name = (
+        launch_spec.get("target_name") if isinstance(launch_spec, dict) else None
+    )
+    return {
+        "kind": "launch_session",
+        "display_kind": "merge_dispatch",
+        "source": "integration_review",
+        "target_name": target_name,
+        "skipped": True,
+        "reason": "merge dispatch launch not enabled",
+    }
 
 
 def _managed_worker_reference(record: Any) -> dict[str, Any]:
@@ -6082,11 +6128,57 @@ def _goal_queue_view(
     active_goals: list[dict[str, Any]],
 ) -> dict[str, list[dict[str, Any]]]:
     return build_supervisor_goal_queue_view(
-        active_goals,
+        _active_goal_dicts_with_managed_protocol_status(
+            active_goals,
+            codex_home=Path(args.codex_home),
+        ),
         running_target_names=_running_managed_target_names_from_registry(
             Path(args.codex_home)
         ),
     )
+
+
+def _active_goal_dicts_with_managed_protocol_status(
+    active_goals: list[dict[str, Any]],
+    *,
+    codex_home: Path,
+) -> list[dict[str, Any]]:
+    statuses = _managed_protocol_statuses_by_name(codex_home)
+    if not statuses:
+        return active_goals
+    enriched: list[dict[str, Any]] = []
+    for goal in active_goals:
+        target_name = goal.get("target_name")
+        status = statuses.get(target_name) if isinstance(target_name, str) else None
+        if status is None or goal.get("last_status") in {"blocked", "needs_user", "done"}:
+            enriched.append(goal)
+            continue
+        merged = dict(goal)
+        merged["last_status"] = status["status"]
+        merged["worker_status"] = status["status"]
+        if status.get("summary"):
+            merged["last_summary"] = status["summary"]
+        if status.get("next"):
+            merged["last_next"] = status["next"]
+        enriched.append(merged)
+    return enriched
+
+
+def _managed_protocol_statuses_by_name(codex_home: Path) -> dict[str, dict[str, str]]:
+    statuses: dict[str, dict[str, str]] = {}
+    for record in read_managed_records(default_registry_path(codex_home)):
+        excerpt = _managed_process_log_excerpt(record.log_path) or ""
+        protocol = _supervisor_protocol_from_text(excerpt)
+        status = protocol.get("status")
+        if status not in {"done", "blocked", "needs_user"}:
+            continue
+        item = {"status": status}
+        if summary := protocol.get("summary"):
+            item["summary"] = summary
+        if next_step := protocol.get("next"):
+            item["next"] = next_step
+        statuses[record.name] = item
+    return statuses
 
 
 def _print_goal_plain(payload: dict[str, Any]) -> None:
@@ -6272,17 +6364,32 @@ def _print_cleanup_plain(payload: dict[str, Any]) -> None:
                 print(f"  删除：{item['command']}")
 
 
-def _lifecycle_trace_payload(args: argparse.Namespace) -> dict[str, Any]:
+def _lifecycle_trace_payload(
+    args: argparse.Namespace,
+    *,
+    lightweight: bool = False,
+) -> dict[str, Any]:
     codex_home = Path(args.codex_home)
     active_goals = _active_goal_dicts_for_codex_home(codex_home, include_status=True)
+    records = read_managed_records(default_registry_path(codex_home))
+    record_limit = 40 if lightweight else None
+    visible_records = records[-record_limit:] if record_limit else records
     active_records = [
         _managed_record_trace_dict(record)
-        for record in read_managed_records(default_registry_path(codex_home))
+        for record in visible_records
     ]
-    archived_records = [
-        _managed_record_trace_dict(record)
+    archived_events = [
+        record
         for record in _latest_managed_record_events(codex_home)
         if record.status == "archived"
+    ]
+    archive_limit = 20 if lightweight else None
+    visible_archived_events = (
+        archived_events[-archive_limit:] if archive_limit else archived_events
+    )
+    archived_records = [
+        _managed_record_trace_dict(record)
+        for record in visible_archived_events
     ]
     active_decisions = _decision_request_dicts(args)
     recent_decision_answers = _decision_answer_dicts(args)
@@ -6318,19 +6425,87 @@ def _lifecycle_trace_payload(args: argparse.Namespace) -> dict[str, Any]:
     }
     summary = {
         "active_goals": len(active_goals),
-        "active_managed_workers": len(active_records),
+        "active_managed_workers": len(records),
+        "visible_managed_workers": len(active_records),
+        "hidden_managed_workers": len(records) - len(active_records),
         "active_decisions": len(active_decisions),
         "merge_workers": len(merge_workers),
         "repair_workers": len(repair_workers),
-        "archived_workers": len(archived_records),
+        "archived_workers": len(archived_events),
+        "visible_archived_workers": len(archived_records),
+        "hidden_archived_workers": len(archived_events) - len(archived_records),
     }
     return {
         "status": "ok",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "summary": summary,
         "next_attention": _lifecycle_next_attention(stages),
-        "stages": stages,
+        "stages": _lightweight_lifecycle_stages(stages) if lightweight else stages,
     }
+
+
+def _lightweight_lifecycle_stages(stages: dict[str, Any]) -> dict[str, Any]:
+    workers = stages.get("workers") if isinstance(stages.get("workers"), dict) else {}
+    goals = stages.get("goal_queue") if isinstance(stages.get("goal_queue"), dict) else {}
+    decisions = stages.get("decisions") if isinstance(stages.get("decisions"), dict) else {}
+    merge = stages.get("merge") if isinstance(stages.get("merge"), dict) else {}
+    cleanup = stages.get("cleanup") if isinstance(stages.get("cleanup"), dict) else {}
+    return {
+        "goal_queue": {
+            "active_count": len(goals.get("active", [])),
+        },
+        "workers": {
+            "active_count": len(workers.get("active", [])),
+            "active": [
+                _lightweight_lifecycle_worker(worker)
+                for worker in workers.get("active", [])
+                if isinstance(worker, dict)
+            ],
+        },
+        "merge": {
+            "merge_worker_count": len(merge.get("merge_workers", [])),
+            "repair_worker_count": len(merge.get("repair_workers", [])),
+        },
+        "decisions": {
+            "active_count": len(decisions.get("active", [])),
+            "recent_answer_count": len(decisions.get("recent_answers", [])),
+        },
+        "cleanup": {
+            "candidate_count": len(cleanup.get("candidates", [])),
+            "candidates": [
+                _lightweight_cleanup_candidate(candidate)
+                for candidate in cleanup.get("candidates", [])[:20]
+                if isinstance(candidate, dict)
+            ],
+            "archived_worker_count": len(cleanup.get("archived_workers", [])),
+        },
+    }
+
+
+def _lightweight_lifecycle_worker(worker: dict[str, Any]) -> dict[str, Any]:
+    return _drop_none_values(
+        {
+            "name": worker.get("name"),
+            "record_id": worker.get("record_id"),
+            "status": worker.get("status"),
+            "worker_role": worker.get("worker_role"),
+            "protocol": worker.get("protocol"),
+            "still_working": worker.get("still_working"),
+        }
+    )
+
+
+def _lightweight_cleanup_candidate(candidate: dict[str, Any]) -> dict[str, Any]:
+    return _drop_none_values(
+        {
+            "kind": candidate.get("kind"),
+            "name": candidate.get("name") or candidate.get("target_name"),
+            "goal_id": candidate.get("goal_id"),
+            "record_id": candidate.get("record_id"),
+            "notification_id": candidate.get("notification_id"),
+            "archived": candidate.get("archived"),
+        }
+    )
 
 
 def _latest_managed_record_events(codex_home: Path) -> list[Any]:
@@ -9108,7 +9283,7 @@ def _decision_answer_dicts(args: argparse.Namespace) -> list[dict[str, Any]]:
 
 
 def _worker_review_context(args: argparse.Namespace) -> dict[str, Any]:
-    return collect_worker_reviews(codex_home=Path(args.codex_home))
+    return collect_worker_reviews(codex_home=Path(args.codex_home), lightweight=True)
 
 
 def _active_goal_dicts(

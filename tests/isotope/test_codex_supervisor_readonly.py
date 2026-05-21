@@ -6665,7 +6665,7 @@ def test_codex_supervisor_runner_supervise_llm_action_passes_worker_reviews(
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_worker_reviews",
-        lambda *, codex_home: worker_reviews,
+        lambda *, codex_home, **kwargs: worker_reviews,
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._git_branch_for",
@@ -14303,7 +14303,7 @@ def test_codex_supervisor_runner_loop_does_not_auto_archive_plain_done_managed_w
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        lambda *, codex_home, base_ref, include_unfinished: {
+        lambda *, codex_home, base_ref, include_unfinished, **kwargs: {
             "status": "ok",
             "base_ref": base_ref,
             "include_unfinished": include_unfinished,
@@ -14496,7 +14496,7 @@ def test_codex_supervisor_runner_loop_cleans_worktree_after_merge_worker_archive
     }
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        lambda *, codex_home, base_ref, include_unfinished: review_payload,
+        lambda *, codex_home, base_ref, include_unfinished, **kwargs: review_payload,
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner._delete_worktree_candidate_payloads",
@@ -14893,6 +14893,64 @@ def test_codex_supervisor_runner_goal_list_outputs_queue_view_groups(
     assert "- done-recent: 1" in text
     assert "pending-worker 等待启动的目标。" in text
     assert "done-worker 刚跑完等待归档的目标。" in text
+
+
+def test_codex_supervisor_runner_goal_list_reads_done_status_from_worker_log(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _add_supervisor_goal(
+        capsys,
+        codex_home=codex_home,
+        workspace=workspace,
+        goal="已经由 worker 完成的目标。",
+        target_name="done-worker",
+    )
+    log_path = codex_home / "supervisor" / "logs" / "managed-001.log"
+    log_path.parent.mkdir(parents=True)
+    log_path.write_text(
+        "SUPERVISOR_STATUS: done\n"
+        "SUPERVISOR_SUMMARY: worker 已完成并等待合并。\n"
+        "SUPERVISOR_NEXT: 等待 Supervisor 触发 merge dispatch。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-001",
+                "name": "done-worker",
+                "cwd": str(workspace),
+                "prompt": "已经由 worker 完成的目标。",
+                "command": ["codex", "exec", "-C", str(workspace), "继续"],
+                "pid": 4242,
+                "started_at": NOW.isoformat(),
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._pid_is_running",
+        lambda pid: pid == 4242,
+    )
+
+    exit_code = supervisor_main(["goal", "list", "--codex-home", str(codex_home), "--json"])
+
+    assert exit_code == 0
+    queue = json.loads(capsys.readouterr().out)["queue_view"]
+    assert queue["running"] == []
+    assert [item["target_name"] for item in queue["done_recent"]] == ["done-worker"]
+    assert queue["done_recent"][0]["worker_status"] == "done"
+    assert queue["done_recent"][0]["last_summary"] == "worker 已完成并等待合并。"
 
 
 def test_codex_supervisor_runner_daemon_status_includes_active_goal_status(
@@ -15994,7 +16052,7 @@ def test_codex_supervisor_runner_daemon_status_includes_night_summary(
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        lambda *, codex_home, base_ref, include_unfinished: {
+        lambda *, codex_home, base_ref, include_unfinished, **kwargs: {
             "status": "ok",
             "summary": {
                 "total": 4,

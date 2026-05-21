@@ -4,6 +4,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+from isotope.features.supervisor.goal_queue import (
+    record_supervisor_goal,
+    record_supervisor_goal_status,
+)
 from isotope.features.supervisor.registry import (
     default_registry_path,
     read_managed_records,
@@ -74,7 +78,7 @@ def test_supervisor_loop_replenishes_done_workers_and_dispatches_merge_e2e(
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        lambda *, codex_home, base_ref, include_unfinished: _ready_done_worker_reviews(
+        lambda *, codex_home, base_ref, include_unfinished, **kwargs: _ready_done_worker_reviews(
             codex_home=Path(codex_home),
             base_ref=base_ref,
         ),
@@ -130,6 +134,99 @@ def test_supervisor_loop_replenishes_done_workers_and_dispatches_merge_e2e(
     )
 
 
+def test_supervisor_loop_dispatches_merge_before_launching_more_fanout(
+    tmp_path: Path,
+    capsys: Any,
+    monkeypatch: Any,
+) -> None:
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write_current_docs(workspace)
+    launched_commands: list[list[str]] = []
+
+    class FakeProcess:
+        def __init__(self, pid: int) -> None:
+            self.pid = pid
+
+    def fake_popen(
+        command: list[str],
+        *,
+        cwd: str,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> FakeProcess:
+        del cwd, stdin, stdout, stderr, start_new_session
+        launched_commands.append(command)
+        return FakeProcess(52000 + len(launched_commands))
+
+    done_goal = record_supervisor_goal(
+        codex_home=codex_home,
+        cwd=workspace,
+        goal="完成等待合并的 worker。",
+        target_name="done-worker",
+    )
+    record_supervisor_goal_status(
+        codex_home=codex_home,
+        goal_id=done_goal.goal_id,
+        status="done",
+        target_name="done-worker",
+        summary="worker 已完成。",
+        next_step="等待 merge worker 合入。",
+    )
+    record_supervisor_goal(
+        codex_home=codex_home,
+        cwd=workspace,
+        goal="继续执行后续 worker A。",
+        target_name="pending-worker-a",
+    )
+    record_supervisor_goal(
+        codex_home=codex_home,
+        cwd=workspace,
+        goal="继续执行后续 worker B。",
+        target_name="pending-worker-b",
+    )
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_integration_reviews",
+        lambda **kwargs: _ready_payload_for_names(
+            base_ref=kwargs["base_ref"],
+            names=["done-worker"],
+        ),
+    )
+
+    payload = _run_loop(
+        codex_home=codex_home,
+        workspace=workspace,
+        capsys=capsys,
+        extra_args=[
+            "--max-fanout-launches",
+            "3",
+        ],
+    )
+
+    assert "fanout_plan" not in payload
+    assert payload["merge_dispatch"]["integration_review"]["summary"][
+        "ready_to_integrate"
+    ] == 1
+    assert payload["llm_action"]["kind"] == "launch_session"
+    assert payload["llm_action"]["source"] == "integration_review"
+    assert payload["executed"]["display_kind"] == "merge_dispatch"
+    assert payload["executed"]["managed"]["name"] == "supervisor-merge-dispatch"
+    assert len(launched_commands) == 1
+    assert any(
+        "source: supervisor integration-review payload" in part
+        for part in launched_commands[0]
+    )
+
+
 def _run_loop(
     *,
     codex_home: Path,
@@ -150,6 +247,7 @@ def _run_loop(
             "1",
             "--no-auto-adopt",
             "--json",
+            "--merge-dispatch-execute",
             *extra_args,
         ]
     )
@@ -222,6 +320,42 @@ def _ready_done_worker_reviews(
             "conflict_risk": [],
             "needs_review": [],
             "already_integrated": [],
+        },
+        "safety": {"auto_merge": False, "push": False, "delete_branch": False},
+    }
+
+
+def _ready_payload_for_names(*, base_ref: str, names: list[str]) -> dict[str, Any]:
+    ready = [
+        {
+            "record_id": f"managed-{name}",
+            "name": name,
+            "cwd": f"/tmp/{name}",
+            "branch": f"supervisor/{name}",
+            "worker_commit": f"{name}-commit",
+            "base_ref": base_ref,
+            "reason": "worker 已完成、分支干净、main 尚未包含且未检测到 merge conflict。",
+            "dirty": False,
+            "merge_conflict": False,
+        }
+        for name in names
+    ]
+    return {
+        "status": "ok",
+        "base_ref": base_ref,
+        "summary": {
+            "total": len(ready),
+            "ready_to_integrate": len(ready),
+            "already_integrated": 0,
+            "needs_review": 0,
+            "conflict_risk": 0,
+        },
+        "groups": {
+            "ready_to_integrate": ready,
+            "conflict_risk": [],
+            "needs_review": [],
+            "already_integrated": [],
+            "merge_workers": [],
         },
         "safety": {"auto_merge": False, "push": False, "delete_branch": False},
     }

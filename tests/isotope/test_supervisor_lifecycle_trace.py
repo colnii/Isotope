@@ -86,10 +86,14 @@ def test_supervisor_trace_projects_lifecycle_ledgers(tmp_path, capsys):
     assert payload["summary"] == {
         "active_goals": 1,
         "active_managed_workers": 2,
+        "visible_managed_workers": 2,
+        "hidden_managed_workers": 0,
         "active_decisions": 1,
         "merge_workers": 0,
         "repair_workers": 1,
         "archived_workers": 1,
+        "visible_archived_workers": 1,
+        "hidden_archived_workers": 0,
     }
     assert payload["next_attention"]["kind"] == "answer_decision"
     assert payload["stages"]["goal_queue"]["active"][0]["target_name"] == "trace-target"

@@ -215,9 +215,8 @@ def test_supervisor_loop_replenishes_goals_from_docs_when_low_water(
     assert payload["executed"]["summary"]["launched"] == 2
     assert payload["lifecycle_trace"]["summary"]["active_goals"] == 2
     assert payload["lifecycle_trace"]["summary"]["active_managed_workers"] == 2
-    assert payload["lifecycle_trace"]["stages"]["goal_queue"]["active"][0][
-        "target_name"
-    ] == "supervisor-low-water-loop"
+    assert payload["lifecycle_trace"]["stages"]["goal_queue"]["active_count"] == 2
+    assert payload["lifecycle_trace"]["stages"]["workers"]["active_count"] == 2
     assert {
         worker["name"]
         for worker in payload["lifecycle_trace"]["stages"]["workers"]["active"]

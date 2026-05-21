@@ -371,7 +371,7 @@ def test_supervisor_replan_cli_json_turns_worker_review_candidates_into_advice(
     ]
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_worker_reviews",
-        lambda *, codex_home: worker_reviews,
+        lambda *, codex_home, **kwargs: worker_reviews,
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner._active_goal_dicts",
@@ -398,11 +398,11 @@ def test_supervisor_replan_cli_json_reads_integration_review_candidates(
 ):
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_worker_reviews",
-        lambda *, codex_home: {"automation_candidates": {}},
+        lambda *, codex_home, **kwargs: {"automation_candidates": {}},
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        lambda *, codex_home, base_ref, include_unfinished: {
+        lambda *, codex_home, base_ref, include_unfinished, **kwargs: {
             "summary": {
                 "ready_to_integrate": 1,
                 "already_integrated": 0,
@@ -455,7 +455,7 @@ def test_supervisor_replan_cli_plain_prints_read_only_advice(
 ):
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_worker_reviews",
-        lambda *, codex_home: {
+        lambda *, codex_home, **kwargs: {
             "automation_candidates": {
                 "continue_or_split": [
                     {

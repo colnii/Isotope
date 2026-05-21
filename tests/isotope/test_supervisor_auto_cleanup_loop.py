@@ -21,6 +21,46 @@ from isotope.features.supervisor.runner import (
 NOW = datetime(2026, 5, 21, 12, 0, tzinfo=timezone.utc)
 
 
+def test_supervisor_loop_skips_blocking_merge_promotion_by_default(tmp_path, monkeypatch):
+    codex_home = tmp_path / ".codex"
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_integration_reviews",
+        lambda **kwargs: _integration_payload(
+            ready_to_integrate=[],
+            already_integrated=[],
+            merge_workers=[
+                {
+                    "record_id": "managed-merge",
+                    "name": "supervisor-merge-dispatch",
+                    "branch": "supervisor/supervisor-merge-dispatch",
+                    "worker_commit": "merge123",
+                    "supervisor_protocol": {
+                        "status": "done",
+                        "summary": "CI 已通过。",
+                    },
+                }
+            ],
+        ),
+    )
+
+    def fail_run(*args: Any, **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        raise AssertionError("merge promotion should not run during the default loop")
+
+    args = type(
+        "Args",
+        (),
+        {
+            "command": "loop",
+            "codex_home": str(codex_home),
+            "workspace_root": str(repo_root),
+        },
+    )()
+
+    assert _auto_promote_done_merge_workers_to_main(args, run=fail_run) == []
+
+
 def test_supervisor_loop_keeps_ready_worker_for_explicit_cleanup(
     tmp_path,
     capsys,
@@ -59,7 +99,7 @@ def test_supervisor_loop_keeps_ready_worker_for_explicit_cleanup(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        lambda *, codex_home, base_ref, include_unfinished: _integration_payload(
+        lambda *, codex_home, base_ref, include_unfinished, **kwargs: _integration_payload(
             ready_to_integrate=[
                 {
                     "record_id": "managed-ready",
@@ -130,7 +170,7 @@ def test_supervisor_loop_keeps_already_integrated_worktree_for_explicit_cleanup(
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        lambda *, codex_home, base_ref, include_unfinished: _integration_payload(
+        lambda *, codex_home, base_ref, include_unfinished, **kwargs: _integration_payload(
             ready_to_integrate=[],
             already_integrated=[
                 {
@@ -271,7 +311,7 @@ def test_auto_promote_done_merge_worker_fast_forwards_main_after_branch_ci_succe
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        lambda *, codex_home, base_ref, include_unfinished: review_payload,
+        lambda *, codex_home, base_ref, include_unfinished, **kwargs: review_payload,
     )
     calls: list[list[str]] = []
 
@@ -345,6 +385,7 @@ def test_auto_promote_done_merge_worker_fast_forwards_main_after_branch_ci_succe
             "command": "loop",
             "codex_home": str(codex_home),
             "workspace_root": str(repo_root),
+                "auto_merge_promote": True,
         },
     )()
 
@@ -408,7 +449,7 @@ def test_auto_promote_done_merge_worker_records_decision_when_branch_ci_fails(
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        lambda *, codex_home, base_ref, include_unfinished: review_payload,
+        lambda *, codex_home, base_ref, include_unfinished, **kwargs: review_payload,
     )
     calls: list[list[str]] = []
 
@@ -436,6 +477,7 @@ def test_auto_promote_done_merge_worker_records_decision_when_branch_ci_fails(
             "command": "loop",
             "codex_home": str(codex_home),
             "workspace_root": str(repo_root),
+                "auto_merge_promote": True,
             "webhook_url": None,
             "webhook_secret": None,
         },
@@ -488,7 +530,7 @@ def test_auto_promote_done_merge_worker_honors_abandon_decision_without_retry(
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        lambda *, codex_home, base_ref, include_unfinished: review_payload,
+        lambda *, codex_home, base_ref, include_unfinished, **kwargs: review_payload,
     )
     calls: list[list[str]] = []
 
@@ -515,6 +557,7 @@ def test_auto_promote_done_merge_worker_honors_abandon_decision_without_retry(
             "command": "loop",
             "codex_home": str(codex_home),
             "workspace_root": str(repo_root),
+                "auto_merge_promote": True,
             "webhook_url": None,
             "webhook_secret": None,
         },
@@ -578,7 +621,7 @@ def test_auto_promote_done_merge_worker_launches_repair_worker_from_decision(
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        lambda *, codex_home, base_ref, include_unfinished: review_payload,
+        lambda *, codex_home, base_ref, include_unfinished, **kwargs: review_payload,
     )
 
     def fake_run(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
@@ -604,6 +647,7 @@ def test_auto_promote_done_merge_worker_launches_repair_worker_from_decision(
             "command": "loop",
             "codex_home": str(codex_home),
             "workspace_root": str(repo_root),
+                "auto_merge_promote": True,
             "webhook_url": None,
             "webhook_secret": None,
             "worker_profile": "coding",
@@ -688,7 +732,7 @@ def test_auto_promote_done_merge_worker_retries_after_retry_decision(
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        lambda *, codex_home, base_ref, include_unfinished: review_payload,
+        lambda *, codex_home, base_ref, include_unfinished, **kwargs: review_payload,
     )
     ci_succeeds = False
     calls: list[list[str]] = []
@@ -748,6 +792,7 @@ def test_auto_promote_done_merge_worker_retries_after_retry_decision(
             "command": "loop",
             "codex_home": str(codex_home),
             "workspace_root": str(repo_root),
+                "auto_merge_promote": True,
             "webhook_url": None,
             "webhook_secret": None,
         },
@@ -799,7 +844,7 @@ def test_auto_promote_done_merge_worker_retries_after_repair_worker_done(
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        lambda *, codex_home, base_ref, include_unfinished: review_payload,
+        lambda *, codex_home, base_ref, include_unfinished, **kwargs: review_payload,
     )
     ci_succeeds = False
     calls: list[list[str]] = []
@@ -859,6 +904,7 @@ def test_auto_promote_done_merge_worker_retries_after_repair_worker_done(
             "command": "loop",
             "codex_home": str(codex_home),
             "workspace_root": str(repo_root),
+                "auto_merge_promote": True,
             "webhook_url": None,
             "webhook_secret": None,
             "worker_profile": "coding",

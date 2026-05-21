@@ -31,6 +31,8 @@ def collect_integration_reviews(
     base_ref: str = "main",
     include_unfinished: bool = False,
     include_missing_worktrees: bool = False,
+    run_test_gate: bool = True,
+    run_candidate_validation: bool = True,
     run: RunCommand | None = None,
     validation_run: RunCommand | None = None,
 ) -> dict[str, Any]:
@@ -57,6 +59,8 @@ def collect_integration_reviews(
             base_ref=base_ref,
             run=run_command,
             validation_run=validation_command,
+            run_test_gate=run_test_gate,
+            run_candidate_validation=run_candidate_validation,
         )
         for record in records
     ]
@@ -89,6 +93,8 @@ def review_managed_record_integration(
     record: ManagedCodexRecord,
     *,
     base_ref: str = "main",
+    run_test_gate: bool = True,
+    run_candidate_validation: bool = True,
     run: RunCommand | None = None,
     validation_run: RunCommand | None = None,
 ) -> dict[str, Any]:
@@ -99,6 +105,8 @@ def review_managed_record_integration(
         base_ref=base_ref,
         run=run_command,
         validation_run=validation_run or (subprocess.run if run is None else None),
+        run_test_gate=run_test_gate,
+        run_candidate_validation=run_candidate_validation,
     )
 
 
@@ -184,6 +192,8 @@ def _worker_integration_review(
     base_ref: str,
     run: RunCommand,
     validation_run: RunCommand | None,
+    run_test_gate: bool,
+    run_candidate_validation: bool,
 ) -> dict[str, Any]:
     cwd = Path(record.cwd).expanduser()
     cwd_exists = cwd.is_dir()
@@ -194,12 +204,16 @@ def _worker_integration_review(
     base_commit = _git_text(cwd, ["rev-parse", base_ref], run=run) if cwd_exists else None
     status_text = _git_text(cwd, ["status", "--short"], run=run) if cwd_exists else None
     dirty_paths = _parse_status_paths(status_text)
-    test_gate = collect_worker_test_gate(
-        record,
-        protocol=protocol,
-        cwd=cwd,
-        cwd_exists=cwd_exists,
-        run=run,
+    test_gate = (
+        collect_worker_test_gate(
+            record,
+            protocol=protocol,
+            cwd=cwd,
+            cwd_exists=cwd_exists,
+            run=run,
+        )
+        if run_test_gate
+        else _skipped_test_gate("loop 快速扫描跳过 pytest gate，交给 merge worker 复查。")
     )
     main_contains_worker = (
         _git_success(cwd, ["merge-base", "--is-ancestor", worker_commit, base_ref], run=run)
@@ -240,7 +254,13 @@ def _worker_integration_review(
     )
     validation = _not_applicable_validation()
     if group == "ready_to_integrate":
-        validation = _run_candidate_validation(cwd, run=validation_run)
+        validation = (
+            _run_candidate_validation(cwd, run=validation_run)
+            if run_candidate_validation
+            else _skipped_candidate_validation(
+                "loop 快速扫描跳过候选验证，交给 merge worker 复查。"
+            )
+        )
         if validation["status"] == "passed":
             reason = "worker 已完成、分支干净、main 尚未包含、未检测到 merge conflict，且 lint/test 已通过。"
             reasons = [*reasons, "lint/test 已通过"]
@@ -396,6 +416,23 @@ def _run_candidate_validation(
     return {
         "status": "passed" if all(result["status"] == "passed" for result in results) else "failed",
         "commands": results,
+    }
+
+
+def _skipped_test_gate(reason: str) -> dict[str, Any]:
+    return {
+        "test_status": "skipped",
+        "test_passed": None,
+        "test_exit_code": None,
+        "test_output_tail": reason,
+    }
+
+
+def _skipped_candidate_validation(reason: str) -> dict[str, Any]:
+    return {
+        "status": "skipped",
+        "commands": [],
+        "note": reason,
     }
 
 

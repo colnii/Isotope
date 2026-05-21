@@ -18,33 +18,48 @@ from .worker_test_gate import collect_worker_test_gate
 
 RunCommand = Callable[..., subprocess.CompletedProcess[str]]
 ProcessChecker = Callable[[int], bool]
+LIGHTWEIGHT_WORKER_LIMIT = 40
 
 
 def collect_worker_reviews(
     *,
     codex_home: Path | str,
+    lightweight: bool = False,
     run: RunCommand = subprocess.run,
     process_checker: ProcessChecker | None = None,
 ) -> dict[str, Any]:
     """Build a no-side-effect review payload for Supervisor-managed workers."""
     records = read_managed_records(default_registry_path(codex_home))
+    review_records = (
+        records[-LIGHTWEIGHT_WORKER_LIMIT:]
+        if lightweight and len(records) > LIGHTWEIGHT_WORKER_LIMIT
+        else records
+    )
     workers = [
         _worker_review(
             record,
+            lightweight=lightweight,
             run=run,
             process_checker=process_checker or _pid_is_running,
         )
-        for record in records
+        for record in review_records
     ]
+    hidden_workers = len(records) - len(review_records)
     return {
         "status": "ok",
         "summary": {
-            "total": len(workers),
-            "existing_cwd": sum(1 for item in workers if item["cwd_exists"]),
-            "missing_cwd": sum(1 for item in workers if not item["cwd_exists"]),
+            "total": len(records),
+            "visible": len(workers),
+            "hidden_by_lightweight_limit": hidden_workers,
+            "existing_cwd": sum(
+                1 for record in records if Path(record.cwd).expanduser().is_dir()
+            ),
+            "missing_cwd": sum(
+                1 for record in records if not Path(record.cwd).expanduser().is_dir()
+            ),
         },
         "decision_summary": _decision_summary(workers),
-        "automation_candidates": _automation_candidates(workers),
+        "automation_candidates": _automation_candidates(workers, lightweight=lightweight),
         "workers": workers,
         "safety": {
             "auto_merge": False,
@@ -121,30 +136,43 @@ def render_worker_review_plain(payload: dict[str, Any]) -> str:
 def _worker_review(
     record: ManagedCodexRecord,
     *,
+    lightweight: bool,
     run: RunCommand,
     process_checker: ProcessChecker,
 ) -> dict[str, Any]:
     cwd = Path(record.cwd).expanduser()
     cwd_exists = cwd.is_dir()
     protocol = _protocol_from_record(record)
-    branch = _branch_for_record(record, cwd_exists=cwd_exists, run=run)
+    branch = (
+        _infer_supervisor_branch(cwd)
+        if lightweight
+        else _branch_for_record(record, cwd_exists=cwd_exists, run=run)
+    )
     worktree = {
         "exists": cwd_exists,
         "cwd": str(cwd),
-        "root": _git_text(cwd, ["rev-parse", "--show-toplevel"], run=run)
-        if cwd_exists
-        else None,
+        "root": None
+        if lightweight or not cwd_exists
+        else _git_text(cwd, ["rev-parse", "--show-toplevel"], run=run),
         "branch": branch,
         "inferred_branch": _infer_supervisor_branch(cwd) if not cwd_exists else None,
     }
-    changes = _changes_for_cwd(cwd, run=run) if cwd_exists else _missing_changes()
+    changes = (
+        _lightweight_changes(cwd_exists=cwd_exists)
+        if lightweight
+        else (_changes_for_cwd(cwd, run=run) if cwd_exists else _missing_changes())
+    )
     validation_commands = _validation_commands(cwd, cwd_exists=cwd_exists)
-    test_gate = collect_worker_test_gate(
-        record,
-        protocol=protocol,
-        cwd=cwd,
-        cwd_exists=cwd_exists,
-        run=run,
+    test_gate = (
+        _skipped_test_gate("loop 快速状态跳过 pytest gate；运行 worker-review 可做重审。")
+        if lightweight
+        else collect_worker_test_gate(
+            record,
+            protocol=protocol,
+            cwd=cwd,
+            cwd_exists=cwd_exists,
+            run=run,
+        )
     )
     next_decision = _next_decision(
         protocol=protocol,
@@ -161,7 +189,7 @@ def _worker_review(
         changes=changes,
         validation_commands=validation_commands,
     )
-    return {
+    payload = {
         "record_id": record.record_id,
         "name": record.name,
         "backend": record.backend,
@@ -184,6 +212,19 @@ def _worker_review(
         "reviewer": reviewer,
         "merge_hint": _merge_hint(branch=branch, cwd_exists=cwd_exists, changes=changes),
     }
+    if lightweight:
+        payload.pop("prompt", None)
+        payload.pop("validation_commands", None)
+        payload["reviewer"] = {
+            "needed": bool(reviewer.get("needed")),
+            "reason": reviewer.get("reason"),
+        }
+        if isinstance(payload.get("changes"), dict):
+            payload["changes"] = {
+                "status": payload["changes"].get("status"),
+                "summary": payload["changes"].get("summary"),
+            }
+    return payload
 
 
 def _protocol_from_record(record: ManagedCodexRecord) -> dict[str, str | None]:
@@ -233,6 +274,26 @@ def _missing_changes() -> dict[str, Any]:
         "files": [],
         "stat": None,
         "summary": "cwd/worktree 缺失，无法读取改动",
+    }
+
+
+def _lightweight_changes(*, cwd_exists: bool) -> dict[str, Any]:
+    if not cwd_exists:
+        return _missing_changes()
+    return {
+        "status": "unknown",
+        "files": [],
+        "stat": None,
+        "summary": "loop 快速状态未读取 diff",
+    }
+
+
+def _skipped_test_gate(reason: str) -> dict[str, Any]:
+    return {
+        "test_status": "skipped",
+        "test_passed": None,
+        "test_exit_code": None,
+        "test_output_tail": reason,
     }
 
 
@@ -445,7 +506,11 @@ def _decision_summary(workers: list[dict[str, Any]]) -> dict[str, int]:
     }
 
 
-def _automation_candidates(workers: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+def _automation_candidates(
+    workers: list[dict[str, Any]],
+    *,
+    lightweight: bool = False,
+) -> dict[str, list[dict[str, Any]]]:
     candidates: dict[str, list[dict[str, Any]]] = {
         "review_then_merge": [],
         "continue_or_split": [],
@@ -459,25 +524,29 @@ def _automation_candidates(workers: list[dict[str, Any]]) -> dict[str, list[dict
             continue
         worktree = worker.get("worktree", {})
         reviewer = worker.get("reviewer", {})
-        candidates[bucket].append(
-            {
-                "record_id": worker.get("record_id"),
-                "name": worker.get("name"),
-                "cwd": worker.get("cwd"),
-                "branch": worktree.get("branch"),
-                "recommendation": decision.get("recommendation"),
-                "risk_level": decision.get("risk_level"),
-                "reason": decision.get("summary"),
-                "reasons": decision.get("reasons", []),
-                "next_actions": decision.get("next_actions", []),
-                "validation_commands": worker.get("validation_commands", []),
-                "test_status": worker.get("test_status"),
-                "test_passed": worker.get("test_passed"),
-                "test_exit_code": worker.get("test_exit_code"),
-                "test_output_tail": worker.get("test_output_tail"),
-                "reviewer_command": reviewer.get("command"),
-            }
-        )
+        candidate = {
+            "record_id": worker.get("record_id"),
+            "name": worker.get("name"),
+            "cwd": worker.get("cwd"),
+            "branch": worktree.get("branch"),
+            "recommendation": decision.get("recommendation"),
+            "risk_level": decision.get("risk_level"),
+            "reason": decision.get("summary"),
+        }
+        if not lightweight:
+            candidate.update(
+                {
+                    "reasons": decision.get("reasons", []),
+                    "next_actions": decision.get("next_actions", []),
+                    "validation_commands": worker.get("validation_commands", []),
+                    "test_status": worker.get("test_status"),
+                    "test_passed": worker.get("test_passed"),
+                    "test_exit_code": worker.get("test_exit_code"),
+                    "test_output_tail": worker.get("test_output_tail"),
+                    "reviewer_command": reviewer.get("command"),
+                }
+            )
+        candidates[bucket].append(candidate)
     return candidates
 
 

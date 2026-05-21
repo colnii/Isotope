@@ -21,7 +21,7 @@ def test_supervisor_loop_dispatches_merge_worker_for_ready_integration(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        lambda *, codex_home, base_ref, include_unfinished: _integration_review_payload(),
+        lambda *, codex_home, base_ref, include_unfinished, **kwargs: _integration_review_payload(),
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner._prepare_launch_worktree",
@@ -76,6 +76,7 @@ def test_supervisor_loop_dispatches_merge_worker_for_ready_integration(
             "1",
             "--no-auto-adopt",
             "--json",
+            "--merge-dispatch-execute",
         ]
     )
 
@@ -250,7 +251,7 @@ def test_supervisor_daemon_status_surfaces_merge_dispatch_activity(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        lambda *, codex_home, base_ref, include_unfinished: _integration_review_payload(),
+        lambda *, codex_home, base_ref, include_unfinished, **kwargs: _integration_review_payload(),
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner._prepare_launch_worktree",
@@ -340,8 +341,10 @@ def test_supervisor_daemon_status_surfaces_merge_dispatch_activity(
     assert activity["recent_llm_action"]["reason"] == (
         "ready_to_integrate workers require merge dispatch"
     )
-    assert activity["recent_execution"]["status"] == "executed"
-    assert activity["recent_execution"]["detail"].startswith("merge_dispatch / ")
+    assert activity["recent_execution"] == {
+        "status": "skipped",
+        "detail": "merge_dispatch / merge dispatch launch not enabled",
+    }
 
 
 def test_supervisor_loop_waits_when_merge_worker_is_already_running(
@@ -378,7 +381,7 @@ def test_supervisor_loop_waits_when_merge_worker_is_already_running(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        lambda *, codex_home, base_ref, include_unfinished: _integration_review_payload(),
+        lambda *, codex_home, base_ref, include_unfinished, **kwargs: _integration_review_payload(),
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._pid_is_running",
@@ -496,7 +499,7 @@ def test_supervisor_loop_auto_archives_done_merge_worker_after_integrated_review
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        lambda *, codex_home, base_ref, include_unfinished: {
+        lambda *, codex_home, base_ref, include_unfinished, **kwargs: {
             "status": "ok",
             "base_ref": "main",
             "summary": {
@@ -611,7 +614,7 @@ def test_supervisor_loop_keeps_done_merge_worker_when_candidates_not_integrated(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        lambda *, codex_home, base_ref, include_unfinished: {
+        lambda *, codex_home, base_ref, include_unfinished, **kwargs: {
             "status": "ok",
             "base_ref": "main",
             "summary": {
