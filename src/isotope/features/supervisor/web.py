@@ -106,6 +106,7 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         )
         payload["daemon"] = supervisor_daemon_status(codex_home=self.codex_home)
         payload["watcher"] = supervisor_watcher_status(codex_home=self.codex_home)
+        payload["workspace_cwd"] = str(Path.cwd())
         return payload
 
     def llm_action_payload(self) -> dict[str, Any]:
@@ -584,6 +585,73 @@ def dashboard_page_html() -> str:
       background: #fffbfa;
       color: #7a271a;
       padding: 8px;
+    }
+    .operator-focus {
+      margin-bottom: 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--attention);
+      border-radius: 6px;
+      background: var(--panel);
+      padding: 12px 14px;
+      font-size: 14px;
+    }
+    .operator-focus-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      color: var(--text);
+      font-weight: 800;
+    }
+    .focus-primary-action {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+      text-align: right;
+    }
+    .focus-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .focus-card,
+    .focus-item {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #f8fafc;
+      padding: 10px;
+    }
+    .focus-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .focus-value {
+      display: block;
+      margin-top: 3px;
+      color: var(--text);
+      font-size: 20px;
+      line-height: 1.1;
+      overflow-wrap: anywhere;
+    }
+    .focus-detail {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+    .focus-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .focus-title {
+      color: var(--text);
+      font-weight: 800;
+      overflow-wrap: anywhere;
     }
     .control-center {
       margin-bottom: 18px;
@@ -1134,6 +1202,7 @@ def dashboard_page_html() -> str:
       main { padding: 16px; }
       .grid { grid-template-columns: 1fr; }
       .night-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .focus-grid { grid-template-columns: 1fr; }
       .control-center-body { grid-template-columns: 1fr; }
       .goal-add-form { grid-template-columns: 1fr; }
       .current-grid { grid-template-columns: 1fr; }
@@ -1156,6 +1225,35 @@ def dashboard_page_html() -> str:
         <button id="llm-action-button" type="button">模型建议</button>
       </div>
       <div class="llm-action" id="llm-action-result">未请求模型建议</div>
+    </div>
+    <div class="operator-focus" id="operator-focus">
+      <div class="operator-focus-head">
+        <span>运行焦点</span>
+        <span class="focus-primary-action" id="focus-primary-action">等待数据</span>
+      </div>
+      <div class="focus-grid">
+        <div class="focus-card">
+          <span class="focus-label">后台循环</span>
+          <strong class="focus-value" id="focus-daemon">unknown</strong>
+          <span class="focus-detail" id="focus-daemon-detail">等待数据</span>
+        </div>
+        <div class="focus-card">
+          <span class="focus-label">需要看</span>
+          <strong class="focus-value" id="focus-needs-attention">0</strong>
+          <span class="focus-detail" id="focus-needs-attention-detail">暂无</span>
+        </div>
+        <div class="focus-card">
+          <span class="focus-label">工作中</span>
+          <strong class="focus-value" id="focus-working">0</strong>
+          <span class="focus-detail" id="focus-working-detail">暂无</span>
+        </div>
+        <div class="focus-card">
+          <span class="focus-label">当前目标</span>
+          <strong class="focus-value" id="focus-active-goals">0</strong>
+          <span class="focus-detail" id="focus-active-goals-detail">暂无</span>
+        </div>
+      </div>
+      <div class="focus-list" id="focus-list"></div>
     </div>
     <div class="control-center" id="control-center">
       <div class="control-center-head">
@@ -1442,6 +1540,93 @@ def dashboard_page_html() -> str:
         mergeWorker.detail,
         mergeWorker.state
       );
+    }
+
+    function renderOperatorFocus(payload) {
+      const current = payload.current || {};
+      const grouped = payload.groups || {};
+      const needs = Array.isArray(grouped.needs_attention) ? grouped.needs_attention : [];
+      const working = Array.isArray(grouped.working) ? grouped.working : [];
+      const focusedNeeds = preferredWorkspaceItems(needs, payload.workspace_cwd);
+      const focusedWorking = preferredWorkspaceItems(working, payload.workspace_cwd);
+      const goals = Array.isArray(current.active_goals) ? current.active_goals : [];
+      document.getElementById("focus-primary-action").textContent = payload.recommendation
+        ? payload.recommendation.label
+        : "等待数据";
+      document.getElementById("focus-daemon").textContent = serviceIsRunning(payload.daemon)
+        ? "运行中"
+        : "未运行";
+      document.getElementById("focus-daemon-detail").textContent = serviceDetail(payload.daemon);
+      document.getElementById("focus-needs-attention").textContent = focusCount(focusedNeeds.length, needs.length);
+      document.getElementById("focus-needs-attention-detail").textContent = needs.length
+        ? focusNames(focusedNeeds)
+        : "暂无需要处理的窗口";
+      document.getElementById("focus-working").textContent = focusCount(focusedWorking.length, working.length);
+      document.getElementById("focus-working-detail").textContent = working.length
+        ? focusNames(focusedWorking)
+        : "暂无运行窗口";
+      document.getElementById("focus-active-goals").textContent = String(goals.length);
+      document.getElementById("focus-active-goals-detail").textContent = goals.length
+        ? goalNames(goals)
+        : "暂无活跃目标";
+
+      const target = document.getElementById("focus-list");
+      target.replaceChildren();
+      const limit = 3;
+      const focusItems = focusedNeeds
+        .slice(0, limit)
+        .concat(focusedWorking.slice(0, Math.max(0, limit - focusedNeeds.length)));
+      if (!focusItems.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "暂无需要立即处理的 Codex 窗口";
+        target.append(empty);
+        return;
+      }
+      for (const item of focusItems) {
+        target.append(renderFocusItem(item));
+      }
+    }
+
+    function renderFocusItem(item) {
+      const focus = document.createElement("div");
+      focus.className = "focus-item";
+      const title = document.createElement("div");
+      title.className = "focus-title";
+      title.textContent = item.display_title || item.name || item.short_session_id || item.session_id || "Codex 窗口";
+      const detail = document.createElement("div");
+      detail.className = "focus-detail";
+      detail.textContent = [
+        item.status_label || item.supervisor_status || item.status,
+        item.status_evidence ? item.status_evidence.label + " - " + item.status_evidence.detail : "",
+        item.cwd || ""
+      ].filter(Boolean).join(" · ");
+      focus.append(title, detail);
+      return focus;
+    }
+
+    function focusNames(items) {
+      return items
+        .map((item) => item.display_title || item.name || item.short_session_id || item.session_id || "窗口")
+        .slice(0, 3)
+        .join(" / ");
+    }
+
+    function preferredWorkspaceItems(items, workspaceCwd) {
+      const local = items.filter((item) => itemInWorkspace(item, workspaceCwd));
+      return local.length ? local : items;
+    }
+
+    function itemInWorkspace(item, workspaceCwd) {
+      if (!workspaceCwd || !item || !item.cwd) return false;
+      const cwd = String(item.cwd);
+      const workspace = String(workspaceCwd).replace(/\\/+$/, "");
+      return cwd === workspace || cwd.startsWith(workspace + "/");
+    }
+
+    function focusCount(localCount, totalCount) {
+      if (localCount === totalCount) return String(totalCount);
+      return String(localCount) + "/" + String(totalCount);
     }
 
     function renderControlCenter(payload) {
@@ -2192,6 +2377,7 @@ def dashboard_page_html() -> str:
       const payload = await response.json();
       document.getElementById("generated-at").textContent = payload.generated_at;
       document.getElementById("recommendation").textContent = payload.recommendation.label;
+      renderOperatorFocus(payload);
       renderControlCenter(payload);
       renderGoalQueue(payload.current || {});
       renderNightOverview(payload);

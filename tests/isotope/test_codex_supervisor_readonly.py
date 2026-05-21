@@ -2489,6 +2489,14 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "requestLlmAction" in html
     assert "renderDecisionRequest" in html
     assert "renderDecisionRequests" in html
+    assert "operator-focus" in html
+    assert "运行焦点" in html
+    assert "renderOperatorFocus" in html
+    assert "renderFocusItem" in html
+    assert "focus-primary-action" in html
+    assert "preferredWorkspaceItems" in html
+    assert "itemInWorkspace" in html
+    assert "workspace_cwd" in html
     assert "control-center" in html
     assert "Supervisor 控制台" in html
     assert "sendSupervisorServiceAction" in html
@@ -2568,6 +2576,7 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "dashboard.json" in html
     assert json_response.status == 200
     assert payload["status"] == "ok"
+    assert payload["workspace_cwd"] == str(Path.cwd())
     assert payload["current"] == {
         "active_goals": [],
         "managed_workers": [],
