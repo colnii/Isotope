@@ -338,6 +338,11 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     摘要和下一步，不必手动读取 `goals.jsonl`；
     goal 状态回写会尽力生成低敏通知或 webhook，但外部 POST 失败
     不会影响 `goals.jsonl`；
+    `memory` 可读取 runtime root 下的 `memory/*.json`，只输出低敏摘要；
+    `worker-event publish/list` 可把 worker 之间的 handoff/status 等事件
+    写入同一 memory store；`worker-manager` 会按 worker 聚合 memory
+    数量、事件收发、broadcast 事件、capacity call 数和最近摘要，用作
+    多 worker 管理的数据入口；
     `daemon watcher start/status/stop` 可启动 watcher（周期看门进程），
     定期触发 `watchdog`，状态写入 `~/.codex/supervisor/watcher.json`；
     `advise/supervise --name <lane>` 可把建议、显式执行和自动执行
@@ -504,6 +509,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise 
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner goal add --cwd /path/to/repo "继续推进 Supervisor 可用入口"
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner goal plan "拆解当前 Supervisor 高层目标" --cwd /path/to/repo
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner goal plan "拆解当前 Supervisor 高层目标" --cwd /path/to/repo --write
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner worker-manager --root ~/.codex --json
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner worker-event list --root ~/.codex
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner loop --interval 30
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner loop --interval 30 --no-auto-adopt
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner daemon start --interval 30

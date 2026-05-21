@@ -132,6 +132,10 @@ from .state.memory_view import (
     build_memory_status_payload,
     render_memory_status_plain,
 )
+from .state.multi_worker import (
+    build_multi_worker_status_payload,
+    render_multi_worker_status_plain,
+)
 from .state.worker_event_channel import (
     list_worker_events,
     publish_worker_event,
@@ -1080,6 +1084,23 @@ def _build_parser_impl() -> argparse.ArgumentParser:
     worker_event_list.add_argument("--channel")
     worker_event_list.add_argument("--limit", type=int, default=20)
     worker_event_list.add_argument("--json", action="store_true", help="Print JSON output.")
+    worker_manager_parser = subparsers.add_parser(
+        "worker-manager",
+        help="Show a memory-backed multi-worker status view.",
+    )
+    worker_manager_parser.add_argument(
+        "--root",
+        default=".",
+        help="Runtime root containing memory/*.json. Defaults to current directory.",
+    )
+    worker_manager_parser.add_argument("--worker", help="Only show one worker.")
+    worker_manager_parser.add_argument(
+        "--limit",
+        type=int,
+        default=50,
+        help="Maximum workers to preview.",
+    )
+    worker_manager_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     integration_review_parser = subparsers.add_parser(
         "integration-review",
         help="Group managed workers by read-only integration readiness.",
@@ -1760,6 +1781,17 @@ def _run_cli_impl(argv: list[str] | None = None) -> int:
                 else:
                     print(render_worker_event_channel_plain(payload))
                 return 0
+        if args.command == "worker-manager":
+            payload = build_multi_worker_status_payload(
+                root=Path(args.root),
+                worker=args.worker,
+                limit=args.limit,
+            )
+            if args.json:
+                _print_json(payload)
+            else:
+                print(render_multi_worker_status_plain(payload))
+            return 0
         if args.command == "integration-review":
             payload = collect_integration_reviews(
                 codex_home=Path(args.codex_home),
