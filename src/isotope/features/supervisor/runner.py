@@ -113,6 +113,20 @@ from .replan import build_supervisor_replan, render_supervisor_replan_plain
 from .tmux_discovery import discover_tmux_adopt_candidates
 from .worker_review import collect_worker_reviews, render_worker_review_plain
 from .work_order_builder import build_launch_work_order_prompt
+from .commands.main import run_cli as _run_cli
+from .planner.goal_scope import (
+    _explicit_goal_text,
+    _explicit_goal_workspace,
+    _goal_target_name,
+    _goal_text,
+    _goal_workspace,
+)
+from .state.time_utils import (
+    _ensure_aware_utc,
+    _parse_timestamp,
+    _timestamp_sort_value,
+    _utc_now,
+)
 
 EXECUTABLE_ADVICE_KINDS = {"send_status", "send_continue"}
 MERGE_DISPATCH_WORKER_ROLE = "merge_dispatch"
@@ -1512,6 +1526,10 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    return _run_cli(argv)
+
+
+def _run_cli_impl(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
     try:
@@ -4476,47 +4494,6 @@ def _active_goal_is_deferred(goal: dict[str, Any]) -> bool:
         }:
             return True
     return False
-
-
-def _goal_text(args: argparse.Namespace) -> str | None:
-    explicit = _explicit_goal_text(args)
-    if explicit is not None:
-        return explicit
-    active_goal = _selected_active_goal(args)
-    return active_goal.get("goal") if active_goal else None
-
-
-def _explicit_goal_text(args: argparse.Namespace) -> str | None:
-    raw = getattr(args, "goal", None)
-    if not isinstance(raw, str):
-        return None
-    return raw.strip() or None
-
-
-def _goal_workspace(args: argparse.Namespace) -> str | None:
-    raw = getattr(args, "goal", None)
-    if isinstance(raw, str) and raw.strip():
-        workspace = _explicit_goal_workspace(args)
-        return str(workspace.resolve())
-    active_goal = _selected_active_goal(args)
-    if active_goal and isinstance(active_goal.get("cwd"), str):
-        return active_goal["cwd"]
-    return None
-
-
-def _goal_target_name(args: argparse.Namespace) -> str | None:
-    raw = getattr(args, "goal", None)
-    if isinstance(raw, str) and raw.strip():
-        return None
-    active_goal = _selected_active_goal(args)
-    if active_goal and isinstance(active_goal.get("target_name"), str):
-        return active_goal["target_name"]
-    return None
-
-
-def _explicit_goal_workspace(args: argparse.Namespace) -> Path:
-    raw = getattr(args, "workspace_root", None)
-    return Path(raw).expanduser() if isinstance(raw, str) and raw else Path.cwd()
 
 
 def _selected_active_goal(args: argparse.Namespace) -> dict[str, Any] | None:
@@ -7719,29 +7696,6 @@ def _run_budget_state(
         "elapsed_seconds": elapsed_seconds,
         "max_run_minutes": max_run_minutes,
     }
-
-
-def _timestamp_sort_value(value: str) -> float:
-    parsed = _parse_timestamp(value)
-    return parsed.timestamp() if parsed is not None else 0.0
-
-
-def _parse_timestamp(value: str) -> datetime | None:
-    normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
-    try:
-        return _ensure_aware_utc(datetime.fromisoformat(normalized))
-    except ValueError:
-        return None
-
-
-def _ensure_aware_utc(value: datetime) -> datetime:
-    if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
-
-
-def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
 
 
 def _execute_llm_action(
