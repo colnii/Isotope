@@ -3345,6 +3345,13 @@ def test_codex_supervisor_runner_decision_answer_records_user_decision(
         "target_name": "goal-supervisor",
         "question": "保留兼容层还是直接迁移？",
         "answer": "保留兼容层，后续再清理旧入口。",
+        "reason": "目标明确请求拍板。",
+        "context_status": "conflict",
+        "gate": {
+            "codex_requested_decision": True,
+            "instructions_exhausted": True,
+            "context_status": "conflict",
+        },
     }
     assert payload["decision_requests"] == []
 

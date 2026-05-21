@@ -7,6 +7,10 @@ from pathlib import Path
 from typing import Any
 
 from isotope.features.notifications.flow import NotificationFlow
+from isotope.features.supervisor.decision_requests import (
+    read_active_decision_requests,
+    record_decision_answer,
+)
 from isotope.features.supervisor.runner import (
     _auto_archive_integrated_merge_workers,
     _auto_promote_done_merge_workers_to_main,
@@ -454,6 +458,94 @@ def test_auto_promote_done_merge_worker_records_decision_when_branch_ci_fails(
         .splitlines()
     ]
     assert active_decisions == [decision]
+
+
+def test_auto_promote_done_merge_worker_honors_abandon_decision_without_retry(
+    tmp_path,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    review_payload = _integration_payload(
+        merge_workers=[
+            {
+                "record_id": "managed-merge",
+                "name": "supervisor-merge-dispatch",
+                "group": "merge_workers",
+                "branch": "supervisor/supervisor-merge-dispatch-abcd1234",
+                "worker_commit": "merge123",
+                "main_contains_worker": False,
+                "supervisor_protocol": {
+                    "status": "done",
+                    "summary": "CI run 101 conclusion 为 failure。",
+                    "next": "等待 Supervisor 处理 promotion 失败。",
+                },
+            }
+        ],
+        ready_to_integrate=[],
+        already_integrated=[],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_integration_reviews",
+        lambda *, codex_home, base_ref, include_unfinished: review_payload,
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        if command[:3] == ["gh", "run", "list"]:
+            stdout = json.dumps(
+                [
+                    {
+                        "databaseId": 101,
+                        "headSha": "merge123",
+                        "status": "completed",
+                        "conclusion": "failure",
+                    }
+                ]
+            )
+            return subprocess.CompletedProcess(command, 0, stdout, "")
+        raise AssertionError(f"unexpected command: {command}")
+
+    args = type(
+        "Args",
+        (),
+        {
+            "command": "loop",
+            "codex_home": str(codex_home),
+            "workspace_root": str(repo_root),
+            "webhook_url": None,
+            "webhook_secret": None,
+        },
+    )()
+    first = _auto_promote_done_merge_workers_to_main(args, run=fake_run)
+    decision = first[0]["decision_request"]
+    assert decision["reason"] == "merge_promotion_failed"
+    record_decision_answer(
+        codex_home=codex_home,
+        request_id=decision["request_id"],
+        answer="放弃这个 merge worker，不再尝试合入。",
+    )
+    calls.clear()
+
+    second = _auto_promote_done_merge_workers_to_main(args, run=fake_run)
+
+    assert second[0]["status"] == "skipped_by_decision"
+    assert second[0]["reason"] == "merge promotion abandoned by decision"
+    assert second[0]["name"] == "supervisor-merge-dispatch"
+    assert second[0]["record_id"] == "managed-merge"
+    answered = second[0]["decision_answer"]
+    assert answered["event"] == "decision_answer"
+    assert answered["request_id"] == decision["request_id"]
+    assert answered["session_id"] == "managed:managed-merge"
+    assert answered["target_name"] == "supervisor-merge-dispatch"
+    assert answered["answer"] == "放弃这个 merge worker，不再尝试合入。"
+    assert answered["reason"] == "merge_promotion_failed"
+    assert answered["context_status"] == "promotion_blocked"
+    assert answered["gate"] == decision["gate"]
+    assert calls == []
+    assert read_active_decision_requests(codex_home=codex_home) == ()
 
 
 def _write_managed_record(

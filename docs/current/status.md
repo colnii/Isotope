@@ -146,7 +146,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     会读取成稳定拍板列表；拍板请求既可绑定 Codex session，
     也可绑定持久目标队列里的 `goal_id`；`decision list` 可查看活跃拍板项，
     `decision answer --request-id <id> --answer <答案>` 会记录用户答案、
-    移出活跃拍板项，并让后续 LLM planner 看到最近答案；
+    原请求 reason/gate 和低敏元数据，移出活跃拍板项，并让后续
+    LLM planner 看到最近答案；
     `decision archive --request-id <id>` 可把无需继续的项移出活跃列表；
     写入合法拍板请求和拍板答案时会尽力生成低敏通知或 webhook；
     通知写入或 webhook POST 失败不会影响原 decision request 账本；
@@ -276,7 +277,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     fast-forward/push/main CI 完成，且它处理的候选 worker 已全部进入
     `integration-review.already_integrated` 时，自动归档该 merge worker
     的 managed 记录、关联 goal 并写入低敏通知；promotion 任一 gate 失败
-    会生成 `merge_promotion_failed` 拍板请求，不进入自动归档；
+    会生成 `merge_promotion_failed` 拍板请求，不进入自动归档；用户回答
+    “放弃/不再/abandon/drop” 后，后续 loop 会跳过该 merge worker 的
+    promotion，不再重复查 CI 或重复生成同一拍板请求；
     tmux 托管 worker 会读取当前 pane 文本判断状态，避免旧 log
     误导归档；归档只追加 Supervisor 账本事件或把通知标记已读，不删除
     Codex `sessions` 历史，也不会处理仍是 `working` 或无完成汇报的任务；

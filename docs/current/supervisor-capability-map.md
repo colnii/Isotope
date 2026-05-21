@@ -463,7 +463,10 @@ merge worker 成功合入后的交接边界也要分清：
   promotion 结果会写入 `merge_promotions`。验证分支 CI、main 工作区、
   fast-forward、push 或 main CI 任一 gate 失败时，会写入
   `merge_promotion_failed` 拍板请求，并在请求的 gate 中保留失败原因、
-  分支、worker commit 和 CI payload。
+  分支、worker commit 和 CI payload。用户回答“放弃/不再/abandon/drop”
+  后，`loop` 会把该 merge worker 标记为 `skipped_by_decision`，
+  不再重复查 CI 或重复生成同一拍板请求；重试或修复类答案仍会让
+  后续 loop 重新走 promotion gate。
 - `cleanup list/archive/delete-worktree` 是生命周期清理入口；`list` 会展示
   可归档项和可删除 worktree 候选，`archive` 只把已完成的 goal、managed
   worker 或通知标记为已处理，`delete-worktree` 复用 `delete_worktree`

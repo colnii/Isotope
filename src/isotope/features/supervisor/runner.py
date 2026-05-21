@@ -124,6 +124,9 @@ DEFAULT_MAX_WORKER_RETRY_COUNT = 2
 DEFAULT_WORKER_CODEX_MODEL = "gpt-5.5"
 DEFAULT_WORKER_CODEX_CONFIG = ('model_reasoning_effort="high"',)
 DEFAULT_WORKER_PROFILE = "coding"
+_MERGE_PROMOTION_DECISION_QUESTION = (
+    "merge promotion 失败：是否修复 CI/工作区后重试，还是放弃本次 merge worker？"
+)
 WORKER_PROFILE_DEFAULTS = {
     "coding": {
         "model": DEFAULT_WORKER_CODEX_MODEL,
@@ -2912,6 +2915,21 @@ def _auto_promote_merge_worker_review_item(
     worker_commit = _non_empty_text(item.get("worker_commit"))
     if not name or not record_id or not branch or not worker_commit:
         return None
+    answered_decision = _merge_promotion_recent_decision_answer(
+        codex_home=codex_home,
+        record_id=record_id,
+    )
+    if _merge_promotion_decision_intent(answered_decision) == "abandon":
+        return {
+            "kind": "merge_worker_main_promotion",
+            "name": name,
+            "record_id": record_id,
+            "branch": branch,
+            "worker_commit": worker_commit,
+            "status": "skipped_by_decision",
+            "reason": "merge promotion abandoned by decision",
+            "decision_answer": answered_decision,
+        }
     branch_ci = _latest_ci_run_for_ref(
         branch=branch,
         commit=worker_commit,
@@ -3095,21 +3113,18 @@ def _merge_promotion_decision_request(
     target_name = _non_empty_text(item.get("name"))
     branch = _non_empty_text(item.get("branch")) or "unknown"
     worker_commit = _non_empty_text(item.get("worker_commit")) or "unknown"
-    question = (
-        "merge promotion 失败：是否修复 CI/工作区后重试，还是放弃本次 merge worker？"
-    )
     for request in read_active_decision_requests(codex_home=codex_home, limit=1000):
         if (
             request.session_id == f"managed:{record_id}"
             and request.reason == "merge_promotion_failed"
-            and request.question == question
+            and request.question == _MERGE_PROMOTION_DECISION_QUESTION
         ):
             return request.to_dict()
     action = {
         "kind": "ask_user",
         "session_id": f"managed:{record_id}",
         "target_name": target_name,
-        "question": question,
+        "question": _MERGE_PROMOTION_DECISION_QUESTION,
         "reason": "merge_promotion_failed",
         "context_status": "promotion_blocked",
         "gate": {
@@ -3127,6 +3142,37 @@ def _merge_promotion_decision_request(
         webhook_url=webhook_url,
         webhook_secret=webhook_secret,
     ).to_dict()
+
+
+def _merge_promotion_recent_decision_answer(
+    *,
+    codex_home: Path,
+    record_id: str,
+) -> dict[str, Any] | None:
+    session_id = f"managed:{record_id}"
+    for answer in read_recent_decision_answers(codex_home=codex_home, limit=1000):
+        if answer.get("session_id") != session_id:
+            continue
+        if answer.get("reason") == "merge_promotion_failed":
+            return dict(answer)
+        if answer.get("question") == _MERGE_PROMOTION_DECISION_QUESTION:
+            return dict(answer)
+    return None
+
+
+def _merge_promotion_decision_intent(answer: dict[str, Any] | None) -> str | None:
+    if not isinstance(answer, dict):
+        return None
+    text = str(answer.get("answer") or "").strip().lower()
+    if not text:
+        return None
+    if any(token in text for token in ("放弃", "不再", "不要合", "丢弃", "abandon", "drop")):
+        return "abandon"
+    if any(token in text for token in ("重试", "再试", "retry", "rerun")):
+        return "retry"
+    if any(token in text for token in ("修复", "fix", "repair")):
+        return "repair"
+    return "unknown"
 
 
 def _check_main_promotion_preconditions(repo_root: Path, *, run: Any) -> str | None:

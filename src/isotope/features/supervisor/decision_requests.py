@@ -144,6 +144,9 @@ def record_decision_answer(
         "target_name": request.target_name,
         "question": request.question,
         "answer": answer_text,
+        "reason": request.reason,
+        "context_status": request.context_status,
+        "gate": dict(request.gate),
     }
     if request.goal_id:
         event["goal_id"] = request.goal_id
@@ -366,6 +369,13 @@ def _answer_from_dict(raw: dict[str, Any]) -> dict[str, Any] | None:
         "question": question,
         "answer": answer,
     }
+    if reason := _optional_string(raw.get("reason")):
+        payload["reason"] = reason
+    if context_status := _optional_string(raw.get("context_status")):
+        payload["context_status"] = context_status
+    gate = raw.get("gate")
+    if isinstance(gate, dict):
+        payload["gate"] = dict(gate)
     if goal_id := _optional_string(raw.get("goal_id")):
         payload["goal_id"] = goal_id
     return payload
