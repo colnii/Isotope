@@ -153,7 +153,7 @@
 | `goals.jsonl` | Supervisor 目标队列事件文件，保存目标添加、状态回写和归档事件 | 产品功能/状态账本 | `src/isotope/features/supervisor/goal_queue.py` |
 | `goal add/list/archive` | Supervisor 目标队列命令，用于添加、查看和归档活跃目标 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py` |
 | `goal status` | 目标状态回写事件，记录 worker 汇报的 `done/blocked/needs_user`，其中 `done` 会触发自动归档 | 产品功能/状态账本 | `src/isotope/features/supervisor/goal_queue.py`, `src/isotope/features/supervisor/runner.py` |
-| `cleanup list/archive/delete-worktree` | Supervisor 生命周期清理命令，列出或归档 done goal、done managed worker 和 done 通知；`delete-worktree` 只删除已归档且已集成的 Supervisor worktree，不删除 Codex 历史或 git branch；loop 可自动清理本轮刚归档的 merge worker worktree | 产品功能/控制通道/状态账本 | `src/isotope/features/supervisor/runner.py` |
+| `cleanup list/archive/delete-worktree` | Supervisor 生命周期清理命令，列出或归档 done goal、done managed worker 和 done 通知；`delete-worktree` 只删除已归档且已集成的 Supervisor worktree，不删除 Codex 历史或 git branch；loop 可自动清理本轮刚归档的 source/merge worktree | 产品功能/控制通道/状态账本 | `src/isotope/features/supervisor/runner.py` |
 | `last_status` | `goal list` 和 `daemon status` 展示的目标最近状态字段，来源于 `goals.jsonl` 状态回写事件 | 产品功能/状态账本 | `src/isotope/features/supervisor/goal_queue.py`, `src/isotope/features/supervisor/runner.py` |
 | `loop` | Supervisor 日常常驻入口，默认由 LLM planner 驱动受控动作 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py` |
 | `--codex-model` | `launch/resume` 参数，传给后台 Codex worker 的 `-m/--model`，用于控制 worker 模型 | 产品功能/控制通道/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |

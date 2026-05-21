@@ -13834,24 +13834,64 @@ def test_codex_supervisor_runner_loop_cleans_worktree_after_merge_worker_archive
         "SUPERVISOR_NEXT: 等待 Supervisor 归档。\n",
         encoding="utf-8",
     )
+    source_log_path = codex_home / "supervisor" / "logs" / "managed-source.log"
+    source_log_path.write_text(
+        "SUPERVISOR_STATUS: done\n"
+        "SUPERVISOR_SUMMARY: source worker 已完成。\n"
+        "SUPERVISOR_NEXT: 等待 merge worker 合入。\n",
+        encoding="utf-8",
+    )
+    source_worktree = workspace / ".worktrees" / "supervisor" / "source-worker-abcd1234"
     registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
     registry_path.write_text(
-        json.dumps(
-            {
-                "record_id": "managed-merge",
-                "name": DEFAULT_TARGET_NAME,
-                "cwd": str(worktree),
-                "prompt": "合并 managed-source 的改动。",
-                "command": ["codex", "exec", "-C", str(worktree), "managed-source"],
-                "pid": 0,
-                "started_at": NOW.isoformat(),
-                "log_path": str(merge_log_path),
-                "status": "launched",
-                "backend": "process",
-                "worker_role": "merge_dispatch",
-            },
-            ensure_ascii=False,
-            sort_keys=True,
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "record_id": "managed-source",
+                        "name": "source-worker",
+                        "cwd": str(source_worktree),
+                        "prompt": "完成 source worker。",
+                        "command": [
+                            "codex",
+                            "exec",
+                            "-C",
+                            str(source_worktree),
+                            "source",
+                        ],
+                        "pid": 0,
+                        "started_at": NOW.isoformat(),
+                        "log_path": str(source_log_path),
+                        "status": "launched",
+                        "backend": "process",
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+                json.dumps(
+                    {
+                        "record_id": "managed-merge",
+                        "name": DEFAULT_TARGET_NAME,
+                        "cwd": str(worktree),
+                        "prompt": "合并 managed-source 的改动。",
+                        "command": [
+                            "codex",
+                            "exec",
+                            "-C",
+                            str(worktree),
+                            "managed-source",
+                        ],
+                        "pid": 0,
+                        "started_at": NOW.isoformat(),
+                        "log_path": str(merge_log_path),
+                        "status": "launched",
+                        "backend": "process",
+                        "worker_role": "merge_dispatch",
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+            ]
         )
         + "\n",
         encoding="utf-8",
@@ -13903,6 +13943,14 @@ def test_codex_supervisor_runner_loop_cleans_worktree_after_merge_worker_archive
         "isotope.features.supervisor.runner._delete_worktree_candidate_payloads",
         lambda args: [
             {
+                "name": "source-worker",
+                "target_name": "source-worker",
+                "record_id": "managed-source",
+                "cwd": str(source_worktree),
+                "archived": True,
+                "integration_group": "already_integrated",
+            },
+            {
                 "name": DEFAULT_TARGET_NAME,
                 "target_name": DEFAULT_TARGET_NAME,
                 "record_id": "managed-merge",
@@ -13916,11 +13964,16 @@ def test_codex_supervisor_runner_loop_cleans_worktree_after_merge_worker_archive
 
     def fake_delete(args: Any, action: dict[str, Any]) -> dict[str, Any]:
         deleted_actions.append(action)
+        deleted_worktree = (
+            str(source_worktree)
+            if action["record_id"] == "managed-source"
+            else str(worktree)
+        )
         return {
             "kind": "delete_worktree",
             "target_name": action["target_name"],
             "record_id": action["record_id"],
-            "deleted_worktree": str(worktree),
+            "deleted_worktree": deleted_worktree,
         }
 
     monkeypatch.setattr(
@@ -13945,8 +13998,17 @@ def test_codex_supervisor_runner_loop_cleans_worktree_after_merge_worker_archive
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["cleanup_archived"][0]["record_id"] == "managed-merge"
+    assert [item["record_id"] for item in payload["cleanup_archived"]] == [
+        "managed-source",
+        "managed-merge",
+    ]
     assert payload["cleanup_deleted_worktrees"] == [
+        {
+            "kind": "delete_worktree",
+            "target_name": "source-worker",
+            "record_id": "managed-source",
+            "deleted_worktree": str(source_worktree),
+        },
         {
             "kind": "delete_worktree",
             "target_name": DEFAULT_TARGET_NAME,
@@ -13957,6 +14019,14 @@ def test_codex_supervisor_runner_loop_cleans_worktree_after_merge_worker_archive
     assert deleted_actions == [
         {
             "kind": "delete_worktree",
+            "target_name": "source-worker",
+            "record_id": "managed-source",
+            "confirm_delete_worktree": True,
+            "base_ref": "main",
+            "source": "cleanup_auto",
+        },
+        {
+            "kind": "delete_worktree",
             "target_name": DEFAULT_TARGET_NAME,
             "record_id": "managed-merge",
             "confirm_delete_worktree": True,
@@ -13964,6 +14034,14 @@ def test_codex_supervisor_runner_loop_cleans_worktree_after_merge_worker_archive
             "source": "cleanup_auto",
         }
     ]
+    registry_events = [
+        json.loads(line)
+        for line in registry_path.read_text(encoding="utf-8").splitlines()
+    ]
+    archived_names = [
+        item["name"] for item in registry_events if item.get("status") == "archived"
+    ]
+    assert archived_names == ["source-worker", DEFAULT_TARGET_NAME]
 
 
 def test_codex_supervisor_runner_loop_keeps_blocked_goal_active(

@@ -2799,6 +2799,7 @@ def _auto_archive_integrated_merge_workers(
         for record in read_managed_records(default_registry_path(codex_home))
     }
     archived: list[dict[str, Any]] = []
+    archived_record_ids: set[str] = set()
     for item in _review_group_items(groups, "merge_workers"):
         record_id = item.get("record_id")
         if not isinstance(record_id, str) or not record_id:
@@ -2813,8 +2814,35 @@ def _auto_archive_integrated_merge_workers(
             continue
         if not candidate_record_ids <= integrated_record_ids:
             continue
+        for candidate_record_id in sorted(candidate_record_ids):
+            if candidate_record_id in archived_record_ids:
+                continue
+            candidate_record = records.get(candidate_record_id)
+            if candidate_record is None:
+                continue
+            archived.append(
+                _archive_integrated_source_worker(codex_home, candidate_record)
+            )
+            archived_record_ids.add(candidate_record_id)
+        if record_id in archived_record_ids:
+            continue
         archived.append(_archive_integrated_merge_worker(codex_home, record, item))
+        archived_record_ids.add(record_id)
     return archived
+
+
+def _archive_integrated_source_worker(
+    codex_home: Path,
+    record: Any,
+) -> dict[str, Any]:
+    managed = archive_managed_codex(codex_home=codex_home, name=record.name)
+    return {
+        "kind": "source_worker",
+        "name": record.name,
+        "record_id": record.record_id,
+        "managed": managed.to_dict(),
+        "integration_group": "already_integrated",
+    }
 
 
 def _archive_integrated_merge_worker(
