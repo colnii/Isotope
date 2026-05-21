@@ -79,6 +79,13 @@ def record_decision_request(
             "instructions_exhausted": action.get("instructions_exhausted"),
             "context_status": context_status,
         }
+    existing = _active_request_for_identity(
+        codex_home=codex_home,
+        session_id=session_id,
+        question=question,
+    )
+    if existing is not None:
+        return existing
     request = DecisionRequest(
         request_id="decision-" + uuid.uuid4().hex[:12],
         created_at=_ensure_aware_utc((now or _utc_now)()).isoformat(),
@@ -100,6 +107,18 @@ def record_decision_request(
         webhook_secret=webhook_secret,
     )
     return request
+
+
+def _active_request_for_identity(
+    *,
+    codex_home: Path | str,
+    session_id: str,
+    question: str,
+) -> DecisionRequest | None:
+    for request in read_active_decision_requests(codex_home=codex_home, limit=1000):
+        if request.session_id == session_id and request.question == question:
+            return request
+    return None
 
 
 def archive_decision_request(

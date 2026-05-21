@@ -130,6 +130,31 @@ def test_decision_request_write_creates_low_sensitive_notification(tmp_path):
     _assert_low_sensitive_source_ref(summary.source_ref)
 
 
+def test_duplicate_decision_request_reuses_active_request_without_notification(tmp_path):
+    action = {
+        "session_id": "session-secret",
+        "target_name": "worker-a",
+        "goal_id": "goal-123",
+        "question": "Should we continue?",
+        "reason": "Need a human decision",
+        "context_status": "current",
+        "gate": {
+            "codex_requested_decision": True,
+            "instructions_exhausted": True,
+            "context_status": "current",
+        },
+    }
+
+    first = record_decision_request(codex_home=tmp_path, action=action)
+    second = record_decision_request(codex_home=tmp_path, action={**action, "reason": "Retry"})
+
+    assert second.request_id == first.request_id
+    ledger_path = tmp_path / "supervisor" / "decision_requests.jsonl"
+    records = [json.loads(line) for line in ledger_path.read_text(encoding="utf-8").splitlines()]
+    assert [record["event"] for record in records] == ["decision_request"]
+    assert len(NotificationFlow.in_process(tmp_path).list_notifications()) == 1
+
+
 def test_goal_status_notification_failure_does_not_break_goal_ledger(tmp_path):
     goal = record_supervisor_goal(
         codex_home=tmp_path,

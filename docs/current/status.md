@@ -145,7 +145,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     会显示“等待拍板”、问题和上下文状态；`--llm-execute` 执行
     合法 `ask_user` 时会写入
     `~/.codex/supervisor/decision_requests.jsonl`，dashboard 和 web
-    会读取成稳定拍板列表；拍板请求既可绑定 Codex session，
+    会读取成稳定拍板列表；同一 `session_id` 和问题的活跃拍板请求
+    会复用已有账本项，不重复写入或重复通知；拍板请求既可绑定 Codex session，
     也可绑定持久目标队列里的 `goal_id`；`decision list` 可查看活跃拍板项，
     `decision answer --request-id <id> --answer <答案>` 会记录用户答案、
     原请求 reason/gate 和低敏元数据，移出活跃拍板项，并让后续

@@ -325,7 +325,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   结果；合法 `ask_user` 会显示“等待拍板”、问题和 `context_status`。
 - `--llm-execute` 执行合法 `ask_user` 时会写入
   `supervisor/decision_requests.jsonl`；dashboard 和 web 会读取成
-  稳定拍板列表。
+  稳定拍板列表；同一 `session_id` 和问题已有活跃请求时会复用旧项，
+  不重复追加和通知。
 - `decision list` 可查看活跃拍板项；`decision answer --request-id <id>
   --answer <答案>` 会写入用户答案并移出活跃拍板项，后续 LLM planner
   会收到 `recent_decision_answers`；web 可通过 `/decision/answer`
