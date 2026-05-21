@@ -326,18 +326,25 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
     def _send_goal_plan(self) -> None:
         try:
             payload = self._read_json_body()
-            provider = self.server.llm_action_provider or resolve_summary_provider_from_env(
-                agent_name="supervisor"
-            )
-            planned = plan_supervisor_goals(
-                root=Path.cwd(),
-                codex_home=self.server.codex_home,
-                provider=provider,
-                user_goal=_required_string(payload.get("goal"), "goal"),
-                write=bool(payload.get("write")),
-                limit=_positive_int(payload.get("limit"), "limit", default=3),
-                planning_trigger="web",
-            )
+            write = bool(payload.get("write"))
+            if write and isinstance(payload.get("candidates"), list):
+                planned = _write_goal_plan_candidates(
+                    codex_home=self.server.codex_home,
+                    payload=payload,
+                )
+            else:
+                provider = self.server.llm_action_provider or resolve_summary_provider_from_env(
+                    agent_name="supervisor"
+                )
+                planned = plan_supervisor_goals(
+                    root=Path.cwd(),
+                    codex_home=self.server.codex_home,
+                    provider=provider,
+                    user_goal=_required_string(payload.get("goal"), "goal"),
+                    write=write,
+                    limit=_positive_int(payload.get("limit"), "limit", default=3),
+                    planning_trigger="web",
+                )
             planned["active_goals"] = _active_goal_dicts_for_codex_home(
                 self.server.codex_home,
                 include_status=True,
@@ -567,6 +574,68 @@ def _positive_int(value: object, field: str, *, default: int) -> int:
     if number <= 0:
         raise ValueError(f"{field} must be a positive integer")
     return number
+
+
+def _write_goal_plan_candidates(
+    *,
+    codex_home: Path,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    candidates = _goal_plan_candidates(payload)
+    written = [
+        record_supervisor_goal(
+            codex_home=codex_home,
+            cwd=Path.cwd(),
+            goal=candidate["goal"],
+            target_name=candidate.get("target_name"),
+        ).to_dict()
+        for candidate in candidates
+    ]
+    return {
+        "status": "ok",
+        "mode": "write",
+        "root": str(Path.cwd()),
+        "user_goal": _optional_string(payload.get("goal")),
+        "planning_trigger": "web",
+        "sources": [],
+        "candidates": candidates,
+        "written_goals": written,
+        "plan_summary": _optional_string(payload.get("plan_summary")),
+        "phases": payload.get("phases") if isinstance(payload.get("phases"), list) else [],
+        "parallel_recommendations": payload.get("parallel_recommendations")
+        if isinstance(payload.get("parallel_recommendations"), list)
+        else [],
+        "stop_conditions": payload.get("stop_conditions")
+        if isinstance(payload.get("stop_conditions"), list)
+        else [],
+        "acceptance_conditions": payload.get("acceptance_conditions")
+        if isinstance(payload.get("acceptance_conditions"), list)
+        else [],
+    }
+
+
+def _goal_plan_candidates(payload: dict[str, Any]) -> list[dict[str, str]]:
+    raw_candidates = payload.get("candidates")
+    if not isinstance(raw_candidates, list) or not raw_candidates:
+        raise ValueError("candidates must not be empty")
+    candidates: list[dict[str, str]] = []
+    for raw in raw_candidates:
+        if not isinstance(raw, dict):
+            continue
+        goal = _optional_string(raw.get("goal"))
+        if goal is None:
+            continue
+        target_name = _optional_string(raw.get("target_name"))
+        reason = _optional_string(raw.get("reason"))
+        item = {"goal": goal}
+        if target_name is not None:
+            item["target_name"] = target_name
+        if reason is not None:
+            item["reason"] = reason
+        candidates.append(item)
+    if not candidates:
+        raise ValueError("candidates must contain usable goals")
+    return candidates
 
 
 def dashboard_page_html() -> str:
@@ -1485,6 +1554,7 @@ def dashboard_page_html() -> str:
     const groups = ["needs_attention", "done", "working"];
     let latestLlmAction = null;
     let latestGoalPlanSeed = "";
+    let latestGoalPlanPayload = null;
     let notificationsExpanded = false;
     const terminalScrollState = new Map();
 
@@ -1814,11 +1884,12 @@ def dashboard_page_html() -> str:
         const response = await fetch("/goal/plan", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ goal, write })
+          body: JSON.stringify(goalPlanRequestBody(goal, write))
         });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error ? payload.error.message : "规划失败");
         latestGoalPlanSeed = goal;
+        latestGoalPlanPayload = write ? null : payload;
         renderGoalPlanPreview(payload);
         message.textContent = write
           ? "已写入规划目标：" + String((payload.written_goals || []).length)
@@ -1826,6 +1897,7 @@ def dashboard_page_html() -> str:
         if (write) {
           textarea.value = "";
           latestGoalPlanSeed = "";
+          latestGoalPlanPayload = null;
           await loadDashboard();
         }
       } catch (error) {
@@ -1834,6 +1906,19 @@ def dashboard_page_html() -> str:
         button.disabled = false;
         button.textContent = label;
       }
+    }
+
+    function goalPlanRequestBody(goal, write) {
+      const body = { goal, write };
+      if (write && latestGoalPlanPayload && Array.isArray(latestGoalPlanPayload.candidates)) {
+        body.candidates = latestGoalPlanPayload.candidates;
+        body.plan_summary = latestGoalPlanPayload.plan_summary;
+        body.phases = latestGoalPlanPayload.phases;
+        body.parallel_recommendations = latestGoalPlanPayload.parallel_recommendations;
+        body.stop_conditions = latestGoalPlanPayload.stop_conditions;
+        body.acceptance_conditions = latestGoalPlanPayload.acceptance_conditions;
+      }
+      return body;
     }
 
     function renderGoalPlanPreview(payload) {

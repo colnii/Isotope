@@ -2509,6 +2509,8 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "目标队列" in html
     assert "submitGoalAdd" in html
     assert "submitGoalPlan" in html
+    assert "goalPlanRequestBody" in html
+    assert "latestGoalPlanPayload" in html
     assert "renderGoalPlanPreview" in html
     assert "/goal/plan" in html
     assert "规划目标" in html
@@ -2729,12 +2731,15 @@ def test_codex_supervisor_web_can_plan_goals_from_page(tmp_path):
 
     class FakeProvider:
         def __init__(self) -> None:
-            self.write_modes: list[bool] = []
+            self.calls = 0
 
         def summarize(self, messages):
+            self.calls += 1
+            if self.calls > 1:
+                raise AssertionError("write should reuse preview candidates without recalling LLM")
             payload = json.loads(messages[1]["content"])
             assert payload["user_goal"] == "并行推进三个方向。"
-            self.write_modes.append(payload["write_mode"])
+            assert payload["write_mode"] is False
             return json.dumps(
                 {
                     "plan_summary": "拆成三个并行 worker。",
@@ -2782,7 +2787,13 @@ def test_codex_supervisor_web_can_plan_goals_from_page(tmp_path):
         plan_response = conn.getresponse()
         plan_payload = json.loads(plan_response.read().decode("utf-8"))
         write_body = json.dumps(
-            {"goal": "并行推进三个方向。", "write": True},
+            {
+                "goal": "并行推进三个方向。",
+                "write": True,
+                "candidates": plan_payload["candidates"],
+                "plan_summary": plan_payload["plan_summary"],
+                "parallel_recommendations": plan_payload["parallel_recommendations"],
+            },
             ensure_ascii=False,
         ).encode("utf-8")
         conn.request(
@@ -2811,7 +2822,7 @@ def test_codex_supervisor_web_can_plan_goals_from_page(tmp_path):
         "supervisor-modularize",
         "agent-loop-capacity",
     ]
-    assert provider.write_modes == [False, True]
+    assert provider.calls == 1
 
 
 def test_codex_supervisor_web_dashboard_highlights_night_overview(
