@@ -2579,7 +2579,7 @@ def _process_worker_needs_retry(record: Any) -> bool:
     excerpt = _managed_process_log_excerpt(record.log_path) or ""
     protocol = _supervisor_protocol_from_text(excerpt)
     status = (protocol.get("status") or "").strip().lower()
-    return status not in {"done", "blocked", "needs_user"}
+    return status == "working"
 
 
 def _managed_record_exceeded_run_budget(

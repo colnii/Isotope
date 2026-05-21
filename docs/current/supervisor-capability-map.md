@@ -97,7 +97,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   `SUPERVISOR_STATUS/SUMMARY/NEXT`，所以后台 `codex exec` 退出后仍能
   在 dashboard 里显示明确完成状态，而不是只显示 PID 已退出；
   已退出进程不会因为日志残留 `working` 被继续算作工作中。
-- process worker 如果进程已退出但尚未汇报 `done/blocked/needs_user`，
+- process worker 如果进程已退出且最后明确汇报过 `SUPERVISOR_STATUS: working`，
   `loop` 会按同名 lane 的 `worker_retry_count` 最多自动重启 2 次；
   每次重启仍走 `launch_managed_codex` 登记表和现有 worker model 配置。
 - `worker-review` 是已完成 worker 的收集/审查入口，会读取托管登记、
