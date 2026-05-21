@@ -128,6 +128,10 @@ from .state.time_utils import (
     _timestamp_sort_value,
     _utc_now,
 )
+from .state.memory_view import (
+    build_memory_status_payload,
+    render_memory_status_plain,
+)
 
 EXECUTABLE_ADVICE_KINDS = {"send_status", "send_continue"}
 MERGE_DISPATCH_WORKER_ROLE = "merge_dispatch"
@@ -996,6 +1000,27 @@ def _build_parser_impl() -> argparse.ArgumentParser:
         help="Codex home directory. Defaults to ~/.codex.",
     )
     worker_review_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    memory_parser = subparsers.add_parser(
+        "memory",
+        help="Show a low-sensitive summary of local memory records.",
+    )
+    memory_parser.add_argument(
+        "--root",
+        default=".",
+        help="Runtime root containing memory/*.json. Defaults to current directory.",
+    )
+    memory_parser.add_argument(
+        "--scope",
+        choices=("thread", "run", "session"),
+        help="Only show one memory scope.",
+    )
+    memory_parser.add_argument(
+        "--limit",
+        type=int,
+        default=20,
+        help="Maximum records to preview.",
+    )
+    memory_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     integration_review_parser = subparsers.add_parser(
         "integration-review",
         help="Group managed workers by read-only integration readiness.",
@@ -1634,6 +1659,17 @@ def _run_cli_impl(argv: list[str] | None = None) -> int:
                 _print_json(payload)
             else:
                 print(render_worker_review_plain(payload))
+            return 0
+        if args.command == "memory":
+            payload = build_memory_status_payload(
+                root=Path(args.root),
+                scope=args.scope,
+                limit=args.limit,
+            )
+            if args.json:
+                _print_json(payload)
+            else:
+                print(render_memory_status_plain(payload))
             return 0
         if args.command == "integration-review":
             payload = collect_integration_reviews(
