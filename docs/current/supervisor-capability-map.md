@@ -243,6 +243,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   workers、decision requests、merge/repair worker 和 archived workers
   聚合成一个阶段化 payload，方便排查长跑链路停在目标、执行、拍板、
   合并修复还是清理。
+- `loop --json` 每轮也会带 `lifecycle_trace`，读取本轮执行后的同一套
+  台账摘要，让 daemon 日志直接留下长跑链路证据。
 - `goal list` 和 `daemon status` 会合并活跃目标的最近状态、
   摘要和下一步，便于直接看阻塞原因。
 - `daemon start/status/stop` 可把 `loop` 放到后台常驻，记录

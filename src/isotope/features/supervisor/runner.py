@@ -4577,6 +4577,8 @@ def _supervise_payload(
     elif args.execute:
         payload["executed"] = _execute_advice(args, report, payload)
     payload["decision_requests"] = _decision_request_dicts(args)
+    if getattr(args, "command", None) == "loop":
+        payload["lifecycle_trace"] = _lifecycle_trace_payload(args)
     return payload
 
 
