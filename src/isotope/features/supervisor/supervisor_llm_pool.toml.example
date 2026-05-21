@@ -34,6 +34,16 @@ api_keys = [
 # ]
 
 # [[agents]]
+# name = "workbench_ask"
+#
+# [[agents.providers]]
+# base_url = "https://api.deepseek.com"
+# model = "deepseek-chat"
+# api_keys = [
+#   "env:WORKBENCH_ASK_DEEPSEEK_KEY",
+# ]
+
+# [[agents]]
 # name = "codex_runner"
 #
 # [[agents.providers]]

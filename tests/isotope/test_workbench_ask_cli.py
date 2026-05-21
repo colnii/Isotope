@@ -16,9 +16,14 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = REPO_ROOT / "src"
 
 
-def _run_cli(*args: str) -> subprocess.CompletedProcess[str]:
+def _run_cli(
+    *args: str,
+    extra_env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(SRC_ROOT)
+    if extra_env:
+        env.update(extra_env)
     return subprocess.run(
         [sys.executable, "-m", "isotope.features.ask.runner", *args],
         cwd=REPO_ROOT,
@@ -114,6 +119,44 @@ def test_workbench_ask_cli_plain_reference_omits_empty_summary_dash(tmp_path):
     assert result.returncode == 0, result.stderr
     assert "references: 1. task build interview demo\n" in result.stdout
     assert "build interview demo -" not in result.stdout
+
+
+def test_workbench_ask_cli_reports_missing_llm_pool_config(tmp_path):
+    result = _run_cli(
+        "ask",
+        "--root",
+        str(tmp_path),
+        "--question",
+        "下一步做什么？",
+        "--llm-pool",
+        "--json",
+        extra_env={"ISOTOPE_LLM_POOL_TOML_FILES": str(tmp_path / "missing.toml")},
+    )
+
+    assert result.returncode == 2
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "error"
+    assert payload["error"]["code"] == "ask_runner_error"
+    assert "No Workbench Ask LLM pool entries" in payload["error"]["message"]
+
+
+def test_workbench_ask_cli_rejects_multiple_provider_modes(tmp_path):
+    result = _run_cli(
+        "ask",
+        "--root",
+        str(tmp_path),
+        "--question",
+        "下一步做什么？",
+        "--mock-answer",
+        "mock",
+        "--llm-pool",
+        "--json",
+    )
+
+    assert result.returncode == 2
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "error"
+    assert "only one provider mode" in payload["error"]["message"]
 
 
 def _assert_no_private_content(value: Any) -> None:

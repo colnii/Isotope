@@ -10,6 +10,7 @@ from typing import Any
 
 from ...llm.provider import LLMResponse, OpenAICompatibleChatProvider
 from .flow import WorkbenchAskFlow
+from .pool import resolve_workbench_ask_provider_from_env
 
 
 def _print_json(payload: dict[str, Any]) -> None:
@@ -29,6 +30,15 @@ def _build_parser() -> argparse.ArgumentParser:
     ask_parser.add_argument(
         "--mock-answer",
         help="Use a deterministic local answer instead of calling a real provider.",
+    )
+    ask_parser.add_argument(
+        "--llm-pool",
+        action="store_true",
+        help="Use the local TOML LLM pool for the provider.",
+    )
+    ask_parser.add_argument(
+        "--llm-pool-agent-name",
+        help="Only use providers from this TOML agent group.",
     )
     ask_parser.add_argument("--provider-name", help="Provider label for OpenAI-compatible API.")
     ask_parser.add_argument("--base-url", help="OpenAI-compatible base URL.")
@@ -83,8 +93,32 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _provider_from_args(args: argparse.Namespace) -> Any:
+    direct_provider_mode = any(
+        value
+        for value in (
+            args.provider_name,
+            args.base_url,
+            args.model,
+            args.api_key,
+            args.api_key_env,
+        )
+    )
+    provider_modes = [
+        args.mock_answer is not None,
+        args.llm_pool,
+        direct_provider_mode,
+    ]
+    if sum(1 for mode in provider_modes if mode) > 1:
+        raise ValueError(
+            "only one provider mode is allowed: --mock-answer, --llm-pool, "
+            "or direct provider config"
+        )
     if args.mock_answer is not None:
         return _MockAskProvider(args.mock_answer)
+    if args.llm_pool:
+        return resolve_workbench_ask_provider_from_env(
+            agent_name=args.llm_pool_agent_name,
+        )
     missing = [
         name
         for name, value in (
