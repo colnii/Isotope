@@ -96,6 +96,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   watcher 看门进程，并复用页面刷新展示最新状态。
 - `web` 会用“目标队列”展示 active goals，并通过 `/goal/add`
   写入新的 Supervisor 目标，默认 cwd 是 Web server 当前工作区。
+- `web` 会通过 `/goal/plan` 复用现有 AI goal planner，把自然语言目标
+  先转成可审阅预览，再由“写入规划目标”批量进入目标队列。
 - `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
 - `/managed/send` 成功发送后会更新 lane state。
 - `guide` 会按 cwd、lane name 和 tmux session 打印可复制工作流命令。

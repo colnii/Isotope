@@ -2508,6 +2508,11 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "goal-queue-panel" in html
     assert "目标队列" in html
     assert "submitGoalAdd" in html
+    assert "submitGoalPlan" in html
+    assert "renderGoalPlanPreview" in html
+    assert "/goal/plan" in html
+    assert "规划目标" in html
+    assert "写入规划目标" in html
     assert "/goal/add" in html
     assert "renderNotifications" in html
     assert "current-list" in html
@@ -2717,6 +2722,96 @@ def test_codex_supervisor_web_can_add_goal_from_page(tmp_path):
     assert add_payload["goal"]["cwd"] == str(Path.cwd())
     assert dashboard_response.status == 200
     assert dashboard_payload["current"]["active_goals"][0]["goal"] == "从页面新增目标。"
+
+
+def test_codex_supervisor_web_can_plan_goals_from_page(tmp_path):
+    from isotope.features.supervisor import web
+
+    class FakeProvider:
+        def __init__(self) -> None:
+            self.write_modes: list[bool] = []
+
+        def summarize(self, messages):
+            payload = json.loads(messages[1]["content"])
+            assert payload["user_goal"] == "并行推进三个方向。"
+            self.write_modes.append(payload["write_mode"])
+            return json.dumps(
+                {
+                    "plan_summary": "拆成三个并行 worker。",
+                    "parallel_recommendations": [
+                        {
+                            "batch": "第一批",
+                            "targets": ["supervisor-modularize", "agent-loop-capacity"],
+                            "reason": "修改范围不同。",
+                        }
+                    ],
+                    "goals": [
+                        {
+                            "goal": "整理 Supervisor 模块边界。",
+                            "target_name": "supervisor-modularize",
+                            "reason": "runner 复杂度较高。",
+                        },
+                        {
+                            "goal": "打通 agent loop 能力调用。",
+                            "target_name": "agent-loop-capacity",
+                            "reason": "agent loop 是产品主线。",
+                        },
+                    ],
+                },
+                ensure_ascii=False,
+            )
+
+    provider = FakeProvider()
+    codex_home = tmp_path / ".codex"
+    server = web.create_dashboard_server(
+        codex_home=codex_home,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=600,
+        active_within_seconds=180,
+        llm_action_provider=provider,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        body = json.dumps({"goal": "并行推进三个方向。"}, ensure_ascii=False).encode("utf-8")
+        conn.request("POST", "/goal/plan", body=body, headers={"content-type": "application/json"})
+        plan_response = conn.getresponse()
+        plan_payload = json.loads(plan_response.read().decode("utf-8"))
+        write_body = json.dumps(
+            {"goal": "并行推进三个方向。", "write": True},
+            ensure_ascii=False,
+        ).encode("utf-8")
+        conn.request(
+            "POST",
+            "/goal/plan",
+            body=write_body,
+            headers={"content-type": "application/json"},
+        )
+        write_response = conn.getresponse()
+        write_payload = json.loads(write_response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert plan_response.status == 200
+    assert plan_payload["mode"] == "preview"
+    assert plan_payload["plan_summary"] == "拆成三个并行 worker。"
+    assert [item["target_name"] for item in plan_payload["candidates"]] == [
+        "supervisor-modularize",
+        "agent-loop-capacity",
+    ]
+    assert write_response.status == 200
+    assert write_payload["mode"] == "write"
+    assert [item["target_name"] for item in write_payload["written_goals"]] == [
+        "supervisor-modularize",
+        "agent-loop-capacity",
+    ]
+    assert provider.write_modes == [False, True]
 
 
 def test_codex_supervisor_web_dashboard_highlights_night_overview(

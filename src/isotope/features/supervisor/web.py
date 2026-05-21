@@ -28,6 +28,7 @@ from .daemon import (
 )
 from .fanout import DEFAULT_FANOUT_LIMIT
 from .flow import CodexSupervisorFlow, _tmux_capture_pane
+from .goal_planner import plan_supervisor_goals
 from .goal_queue import record_supervisor_goal
 from .lane_state import (
     DEFAULT_MAX_CONTINUE_COUNT,
@@ -238,6 +239,9 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/goal/add":
             self._send_goal_add()
             return
+        if path == "/goal/plan":
+            self._send_goal_plan()
+            return
         if path in {"/daemon/start", "/daemon/stop", "/watcher/start", "/watcher/stop"}:
             self._send_service_action(path)
             return
@@ -318,6 +322,39 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             )
             return
         self._send_json(payload)
+
+    def _send_goal_plan(self) -> None:
+        try:
+            payload = self._read_json_body()
+            provider = self.server.llm_action_provider or resolve_summary_provider_from_env(
+                agent_name="supervisor"
+            )
+            planned = plan_supervisor_goals(
+                root=Path.cwd(),
+                codex_home=self.server.codex_home,
+                provider=provider,
+                user_goal=_required_string(payload.get("goal"), "goal"),
+                write=bool(payload.get("write")),
+                limit=_positive_int(payload.get("limit"), "limit", default=3),
+                planning_trigger="web",
+            )
+            planned["active_goals"] = _active_goal_dicts_for_codex_home(
+                self.server.codex_home,
+                include_status=True,
+            )
+        except ValueError as exc:
+            self._send_json(
+                {
+                    "status": "error",
+                    "error": {
+                        "code": "codex_supervisor_web_error",
+                        "message": str(exc),
+                    },
+                },
+                status_code=400,
+            )
+            return
+        self._send_json(planned)
 
     def _send_decision_answer(self) -> None:
         try:
@@ -516,6 +553,20 @@ def _optional_string(value: object) -> str | None:
     if not isinstance(value, str) or not value.strip():
         return None
     return value.strip()
+
+
+def _positive_int(value: object, field: str, *, default: int) -> int:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        raise ValueError(f"{field} must be a positive integer")
+    try:
+        number = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{field} must be a positive integer") from exc
+    if number <= 0:
+        raise ValueError(f"{field} must be a positive integer")
+    return number
 
 
 def dashboard_page_html() -> str:
@@ -746,6 +797,12 @@ def dashboard_page_html() -> str:
       font-size: 12px;
       overflow-wrap: anywhere;
     }
+    .goal-add-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: stretch;
+    }
     .goal-queue-list {
       display: grid;
       gap: 8px;
@@ -768,6 +825,38 @@ def dashboard_page_html() -> str:
       color: var(--muted);
       font-size: 12px;
       overflow-wrap: anywhere;
+    }
+    .goal-plan-preview {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .goal-plan-card {
+      min-width: 0;
+      border: 1px solid #b2ddff;
+      border-radius: 6px;
+      background: #eff8ff;
+      padding: 10px;
+    }
+    .goal-plan-title {
+      color: var(--text);
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+    .goal-plan-detail {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+    .goal-plan-actions {
+      display: none;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .goal-plan-actions[data-visible="true"] {
+      display: flex;
     }
     .decision-title {
       color: var(--text);
@@ -1293,9 +1382,16 @@ def dashboard_page_html() -> str:
       </div>
       <div class="goal-add-form">
         <textarea id="goal-add-text" aria-label="新增目标" placeholder="新增目标"></textarea>
-        <button type="button" id="goal-add-button">新增目标</button>
+        <div class="goal-add-actions">
+          <button type="button" id="goal-plan-button">规划目标</button>
+          <button type="button" id="goal-add-button">直接新增</button>
+        </div>
       </div>
       <div class="goal-add-message" id="goal-add-message">等待输入目标</div>
+      <div class="goal-plan-actions" id="goal-plan-actions">
+        <button type="button" id="goal-plan-write-button">写入规划目标</button>
+      </div>
+      <div class="goal-plan-preview" id="goal-plan-preview"></div>
       <div class="goal-queue-list" id="goal-queue-list"></div>
     </div>
     <div class="night-overview" id="night-overview">
@@ -1388,6 +1484,7 @@ def dashboard_page_html() -> str:
   <script>
     const groups = ["needs_attention", "done", "working"];
     let latestLlmAction = null;
+    let latestGoalPlanSeed = "";
     let notificationsExpanded = false;
     const terminalScrollState = new Map();
 
@@ -1699,6 +1796,81 @@ def dashboard_page_html() -> str:
         button.disabled = false;
         button.textContent = label;
       }
+    }
+
+    async function submitGoalPlan(button, write) {
+      const textarea = document.getElementById("goal-add-text");
+      const message = document.getElementById("goal-add-message");
+      const goal = textarea.value.trim() || latestGoalPlanSeed;
+      if (!goal) {
+        message.textContent = "请先填写目标";
+        return;
+      }
+      const label = button.textContent;
+      button.disabled = true;
+      button.textContent = write ? "写入中" : "规划中";
+      message.textContent = write ? "正在写入规划目标" : "正在让模型规划目标";
+      try {
+        const response = await fetch("/goal/plan", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ goal, write })
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error ? payload.error.message : "规划失败");
+        latestGoalPlanSeed = goal;
+        renderGoalPlanPreview(payload);
+        message.textContent = write
+          ? "已写入规划目标：" + String((payload.written_goals || []).length)
+          : "已生成规划：" + String((payload.candidates || []).length) + " 个目标";
+        if (write) {
+          textarea.value = "";
+          latestGoalPlanSeed = "";
+          await loadDashboard();
+        }
+      } catch (error) {
+        message.textContent = (write ? "写入失败：" : "规划失败：") + text(error.message);
+      } finally {
+        button.disabled = false;
+        button.textContent = label;
+      }
+    }
+
+    function renderGoalPlanPreview(payload) {
+      const target = document.getElementById("goal-plan-preview");
+      const actions = document.getElementById("goal-plan-actions");
+      target.replaceChildren();
+      const candidates = Array.isArray(payload.candidates) ? payload.candidates : [];
+      actions.dataset.visible = candidates.length && payload.mode !== "write" ? "true" : "false";
+      if (payload.plan_summary) {
+        target.append(renderGoalPlanCard("规划摘要", payload.plan_summary));
+      }
+      const parallel = Array.isArray(payload.parallel_recommendations)
+        ? payload.parallel_recommendations
+        : [];
+      for (const item of parallel.slice(0, 3)) {
+        const detail = [
+          item.reason || "",
+          Array.isArray(item.targets) ? "targets: " + item.targets.join(" / ") : ""
+        ].filter(Boolean).join(" · ");
+        target.append(renderGoalPlanCard(item.batch || "并行建议", detail || "无详情"));
+      }
+      for (const item of candidates) {
+        target.append(renderGoalPlanCard(item.target_name || "目标", item.goal || item.reason || "无详情"));
+      }
+    }
+
+    function renderGoalPlanCard(titleText, detailText) {
+      const item = document.createElement("div");
+      item.className = "goal-plan-card";
+      const title = document.createElement("div");
+      title.className = "goal-plan-title";
+      title.textContent = titleText;
+      const detail = document.createElement("div");
+      detail.className = "goal-plan-detail";
+      detail.textContent = detailText;
+      item.append(title, detail);
+      return item;
     }
 
     function renderServiceControl(key, service) {
@@ -2402,6 +2574,12 @@ def dashboard_page_html() -> str:
     });
     document.getElementById("goal-add-button").addEventListener("click", (event) => {
       submitGoalAdd(event.currentTarget);
+    });
+    document.getElementById("goal-plan-button").addEventListener("click", (event) => {
+      submitGoalPlan(event.currentTarget, false);
+    });
+    document.getElementById("goal-plan-write-button").addEventListener("click", (event) => {
+      submitGoalPlan(event.currentTarget, true);
     });
     document.getElementById("notification-toggle").addEventListener("click", () => {
       notificationsExpanded = !notificationsExpanded;
