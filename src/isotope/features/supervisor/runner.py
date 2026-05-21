@@ -2350,6 +2350,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
         auto_retried_workers = _auto_retry_exited_process_workers(args)
         report = _scan_report(args)
         goal_updates = _sync_goal_lifecycle(args, report)
+        merge_promotions = _auto_promote_done_merge_workers_to_main(args)
         cleanup_archived = _auto_archive_done_merge_workers(args)
         cleanup_deleted_worktrees = _auto_delete_archived_worktrees_after_cleanup(
             args,
@@ -2376,6 +2377,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
                     auto_adopted=auto_adopted,
                     auto_retried_workers=auto_retried_workers,
                     goal_updates=goal_updates,
+                    merge_promotions=merge_promotions,
                     cleanup_archived=cleanup_archived,
                     cleanup_deleted_worktrees=cleanup_deleted_worktrees,
                     decision_timeout_alerts=decision_timeout_alerts,
@@ -2404,6 +2406,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
             or bool(auto_adopted)
             or bool(auto_retried_workers)
             or bool(goal_updates)
+            or bool(merge_promotions)
             or bool(cleanup_archived)
             or bool(cleanup_deleted_worktrees)
             or bool(decision_timeout_alerts)
@@ -2418,6 +2421,7 @@ def _run_supervise(args: argparse.Namespace) -> None:
                 precomputed_auto_action=precomputed_auto_action,
                 precomputed_executed=precomputed_executed,
                 goal_updates=goal_updates,
+                merge_promotions=merge_promotions,
                 cleanup_archived=cleanup_archived,
                 cleanup_deleted_worktrees=cleanup_deleted_worktrees,
                 decision_timeout_alerts=decision_timeout_alerts,
@@ -2853,6 +2857,282 @@ def _auto_archive_done_merge_workers(args: argparse.Namespace) -> list[dict[str,
         codex_home=codex_home,
         review_payload=review_payload,
     )
+
+
+def _auto_promote_done_merge_workers_to_main(
+    args: argparse.Namespace,
+    *,
+    run: Any = subprocess.run,
+) -> list[dict[str, Any]]:
+    if getattr(args, "command", None) != "loop":
+        return []
+    if _current_workspace_has_worker_role(args, RECURSIVE_WORKER_ROLES):
+        return []
+    repo_root = _workspace_root(args) or Path.cwd()
+    codex_home = Path(args.codex_home)
+    review_payload = collect_integration_reviews(
+        codex_home=codex_home,
+        base_ref="main",
+        include_unfinished=False,
+    )
+    groups = review_payload.get("groups")
+    if not isinstance(groups, dict):
+        return []
+    promoted: list[dict[str, Any]] = []
+    for item in _review_group_items(groups, "merge_workers"):
+        promotion = _auto_promote_merge_worker_review_item(
+            item,
+            repo_root=repo_root,
+            run=run,
+        )
+        if promotion is not None:
+            promoted.append(promotion)
+    return promoted
+
+
+def _auto_promote_merge_worker_review_item(
+    item: dict[str, Any],
+    *,
+    repo_root: Path,
+    run: Any,
+) -> dict[str, Any] | None:
+    if not _merge_worker_review_item_is_done(item):
+        return None
+    if item.get("main_contains_worker") is True:
+        return None
+    name = _non_empty_text(item.get("name"))
+    record_id = _non_empty_text(item.get("record_id"))
+    branch = _non_empty_text(item.get("branch"))
+    worker_commit = _non_empty_text(item.get("worker_commit"))
+    if not name or not record_id or not branch or not worker_commit:
+        return None
+    branch_ci = _latest_ci_run_for_ref(
+        branch=branch,
+        commit=worker_commit,
+        run=run,
+    )
+    if not _ci_run_succeeded(branch_ci, expected_commit=worker_commit):
+        return {
+            "kind": "merge_worker_main_promotion",
+            "name": name,
+            "record_id": record_id,
+            "branch": branch,
+            "worker_commit": worker_commit,
+            "status": "waiting_for_branch_ci",
+            "branch_ci": branch_ci,
+        }
+    precheck = _check_main_promotion_preconditions(repo_root, run=run)
+    if precheck is not None:
+        return {
+            "kind": "merge_worker_main_promotion",
+            "name": name,
+            "record_id": record_id,
+            "branch": branch,
+            "worker_commit": worker_commit,
+            "status": "blocked",
+            "reason": precheck,
+            "branch_ci": branch_ci,
+        }
+    merge_result = _run_checked(
+        ["git", "-C", str(repo_root), "merge", "--ff-only", worker_commit],
+        run=run,
+    )
+    if merge_result is not None:
+        return _blocked_merge_promotion(
+            item,
+            status_reason=merge_result,
+            branch_ci=branch_ci,
+        )
+    diff_result = _run_checked(
+        ["git", "-C", str(repo_root), "diff", "--check"],
+        run=run,
+    )
+    if diff_result is not None:
+        return _blocked_merge_promotion(
+            item,
+            status_reason=diff_result,
+            branch_ci=branch_ci,
+        )
+    push_result = _run_checked(
+        ["git", "-C", str(repo_root), "push", "origin", "main"],
+        run=run,
+    )
+    if push_result is not None:
+        return _blocked_merge_promotion(
+            item,
+            status_reason=push_result,
+            branch_ci=branch_ci,
+        )
+    main_head = _git_text(repo_root, ["rev-parse", "HEAD"], run=run)
+    if not main_head:
+        main_head = worker_commit
+    main_ci = _latest_ci_run_for_ref(branch="main", commit=main_head, run=run)
+    main_ci_run_id = main_ci.get("databaseId") if isinstance(main_ci, dict) else None
+    if main_ci_run_id is not None:
+        watch_result = _run_checked(
+            ["gh", "run", "watch", str(main_ci_run_id), "--exit-status"],
+            run=run,
+        )
+        if watch_result is not None:
+            return _blocked_merge_promotion(
+                item,
+                status_reason=watch_result,
+                branch_ci=branch_ci,
+                main_ci=main_ci,
+                main_head=main_head,
+            )
+        viewed = _view_ci_run(str(main_ci_run_id), run=run)
+        if viewed:
+            main_ci = viewed
+    if not _ci_run_succeeded(main_ci, expected_commit=main_head):
+        return _blocked_merge_promotion(
+            item,
+            status_reason="main CI did not succeed",
+            branch_ci=branch_ci,
+            main_ci=main_ci,
+            main_head=main_head,
+        )
+    return {
+        "kind": "merge_worker_main_promotion",
+        "name": name,
+        "record_id": record_id,
+        "branch": branch,
+        "worker_commit": worker_commit,
+        "status": "done",
+        "main_head": main_head,
+        "branch_ci": branch_ci,
+        "main_ci": main_ci,
+    }
+
+
+def _blocked_merge_promotion(
+    item: dict[str, Any],
+    *,
+    status_reason: str,
+    branch_ci: dict[str, Any],
+    main_ci: dict[str, Any] | None = None,
+    main_head: str | None = None,
+) -> dict[str, Any]:
+    payload = {
+        "kind": "merge_worker_main_promotion",
+        "name": item.get("name"),
+        "record_id": item.get("record_id"),
+        "branch": item.get("branch"),
+        "worker_commit": item.get("worker_commit"),
+        "status": "blocked",
+        "reason": status_reason,
+        "branch_ci": branch_ci,
+    }
+    if main_ci is not None:
+        payload["main_ci"] = main_ci
+    if main_head is not None:
+        payload["main_head"] = main_head
+    return payload
+
+
+def _check_main_promotion_preconditions(repo_root: Path, *, run: Any) -> str | None:
+    branch = _git_text(repo_root, ["rev-parse", "--abbrev-ref", "HEAD"], run=run)
+    if branch != "main":
+        return f"workspace branch is {branch or 'unknown'}, expected main"
+    status = _git_text(repo_root, ["status", "--short"], run=run)
+    if status is None:
+        return "unable to read git status"
+    if status.strip():
+        return "main worktree is dirty"
+    return None
+
+
+def _latest_ci_run_for_ref(*, branch: str, commit: str, run: Any) -> dict[str, Any]:
+    completed = run(
+        [
+            "gh",
+            "run",
+            "list",
+            "--workflow",
+            "CI",
+            "--branch",
+            branch,
+            "--commit",
+            commit,
+            "--limit",
+            "1",
+            "--json",
+            "databaseId,headSha,status,conclusion,url",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+    if completed.returncode != 0:
+        return {
+            "status": "unavailable",
+            "conclusion": "failure",
+            "stderr": _tail_text(completed.stderr),
+        }
+    try:
+        runs = json.loads(completed.stdout or "[]")
+    except json.JSONDecodeError:
+        return {"status": "invalid_json", "conclusion": "failure"}
+    if not isinstance(runs, list) or not runs:
+        return {"status": "missing", "conclusion": None}
+    first = runs[0]
+    return first if isinstance(first, dict) else {"status": "invalid_item"}
+
+
+def _view_ci_run(run_id: str, *, run: Any) -> dict[str, Any]:
+    completed = run(
+        [
+            "gh",
+            "run",
+            "view",
+            run_id,
+            "--json",
+            "databaseId,headSha,status,conclusion,url",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+    if completed.returncode != 0:
+        return {}
+    try:
+        payload = json.loads(completed.stdout or "{}")
+    except json.JSONDecodeError:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _ci_run_succeeded(run_payload: dict[str, Any], *, expected_commit: str) -> bool:
+    return (
+        run_payload.get("status") == "completed"
+        and run_payload.get("conclusion") == "success"
+        and run_payload.get("headSha") == expected_commit
+    )
+
+
+def _run_checked(command: list[str], *, run: Any) -> str | None:
+    completed = run(command, check=False, text=True, capture_output=True)
+    if completed.returncode == 0:
+        return None
+    detail = _tail_text(completed.stderr) or _tail_text(completed.stdout)
+    return f"{shlex.join(command)} failed" + (f": {detail}" if detail else "")
+
+
+def _git_text(repo_root: Path, args: list[str], *, run: Any) -> str | None:
+    completed = run(
+        ["git", "-C", str(repo_root), *args],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+    if completed.returncode != 0:
+        return None
+    return (completed.stdout or "").strip()
+
+
+def _non_empty_text(value: object) -> str | None:
+    text = str(value).strip() if value is not None else ""
+    return text or None
 
 
 def _auto_delete_archived_worktrees_after_cleanup(
@@ -3691,6 +3971,7 @@ def _supervise_payload(
     auto_adopted: list[dict[str, str]] | None = None,
     auto_retried_workers: list[dict[str, Any]] | None = None,
     goal_updates: list[dict[str, Any]] | None = None,
+    merge_promotions: list[dict[str, Any]] | None = None,
     cleanup_archived: list[dict[str, Any]] | None = None,
     cleanup_deleted_worktrees: list[dict[str, Any]] | None = None,
     decision_timeout_alerts: list[dict[str, Any]] | None = None,
@@ -3737,6 +4018,8 @@ def _supervise_payload(
         payload["goal_replenishment"] = goal_replenishment
     if goal_updates:
         payload["goal_updates"] = goal_updates
+    if merge_promotions:
+        payload["merge_promotions"] = merge_promotions
     if cleanup_archived:
         payload["cleanup_archived"] = cleanup_archived
     if cleanup_deleted_worktrees:

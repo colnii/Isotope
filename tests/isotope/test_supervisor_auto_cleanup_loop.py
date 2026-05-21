@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -8,6 +9,7 @@ from typing import Any
 from isotope.features.notifications.flow import NotificationFlow
 from isotope.features.supervisor.runner import (
     _auto_archive_integrated_merge_workers,
+    _auto_promote_done_merge_workers_to_main,
     main as supervisor_main,
 )
 
@@ -235,6 +237,143 @@ def test_auto_archive_merge_cleanup_targets_source_record_id_when_names_repeat(t
     assert latest_status_by_record_id["managed-source-old"] == "archived"
     assert latest_status_by_record_id["managed-source-new"] == "launched"
     assert latest_status_by_record_id["managed-merge"] == "archived"
+
+
+def test_auto_promote_done_merge_worker_fast_forwards_main_after_branch_ci_success(
+    tmp_path,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    review_payload = _integration_payload(
+        merge_workers=[
+            {
+                "record_id": "managed-merge",
+                "name": "supervisor-merge-dispatch",
+                "group": "merge_workers",
+                "branch": "supervisor/supervisor-merge-dispatch-abcd1234",
+                "worker_commit": "merge123",
+                "main_contains_worker": False,
+                "supervisor_protocol": {
+                    "status": "done",
+                    "summary": "CI run 101 conclusion 为 success。",
+                    "next": "等待 Supervisor cleanup 归档。",
+                },
+            }
+        ],
+        ready_to_integrate=[],
+        already_integrated=[],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_integration_reviews",
+        lambda *, codex_home, base_ref, include_unfinished: review_payload,
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        if command[:3] == ["gh", "run", "list"]:
+            branch = command[command.index("--branch") + 1]
+            if branch == "supervisor/supervisor-merge-dispatch-abcd1234":
+                stdout = json.dumps(
+                    [
+                        {
+                            "databaseId": 101,
+                            "headSha": "merge123",
+                            "status": "completed",
+                            "conclusion": "success",
+                            "url": "https://example.test/branch-ci",
+                        }
+                    ]
+                )
+                return subprocess.CompletedProcess(command, 0, stdout, "")
+            if branch == "main":
+                stdout = json.dumps(
+                    [
+                        {
+                            "databaseId": 102,
+                            "headSha": "merge123",
+                            "status": "completed",
+                            "conclusion": "success",
+                            "url": "https://example.test/main-ci",
+                        }
+                    ]
+                )
+                return subprocess.CompletedProcess(command, 0, stdout, "")
+        if command == ["gh", "run", "watch", "102", "--exit-status"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        if command[:4] == ["gh", "run", "view", "102"]:
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                json.dumps(
+                    {
+                        "databaseId": 102,
+                        "headSha": "merge123",
+                        "status": "completed",
+                        "conclusion": "success",
+                        "url": "https://example.test/main-ci",
+                    }
+                ),
+                "",
+            )
+        if command[:3] == ["git", "-C", str(repo_root)]:
+            args = command[3:]
+            if args == ["status", "--short"]:
+                return subprocess.CompletedProcess(command, 0, "", "")
+            if args == ["rev-parse", "--abbrev-ref", "HEAD"]:
+                return subprocess.CompletedProcess(command, 0, "main\n", "")
+            if args == ["merge", "--ff-only", "merge123"]:
+                return subprocess.CompletedProcess(command, 0, "Updating main\n", "")
+            if args == ["diff", "--check"]:
+                return subprocess.CompletedProcess(command, 0, "", "")
+            if args == ["push", "origin", "main"]:
+                return subprocess.CompletedProcess(command, 0, "", "")
+            if args == ["rev-parse", "HEAD"]:
+                return subprocess.CompletedProcess(command, 0, "merge123\n", "")
+        raise AssertionError(f"unexpected command: {command}")
+
+    args = type(
+        "Args",
+        (),
+        {
+            "command": "loop",
+            "codex_home": str(codex_home),
+            "workspace_root": str(repo_root),
+        },
+    )()
+
+    promoted = _auto_promote_done_merge_workers_to_main(args, run=fake_run)
+
+    assert promoted == [
+        {
+            "kind": "merge_worker_main_promotion",
+            "name": "supervisor-merge-dispatch",
+            "record_id": "managed-merge",
+            "branch": "supervisor/supervisor-merge-dispatch-abcd1234",
+            "worker_commit": "merge123",
+            "status": "done",
+            "main_head": "merge123",
+            "branch_ci": {
+                "databaseId": 101,
+                "headSha": "merge123",
+                "status": "completed",
+                "conclusion": "success",
+                "url": "https://example.test/branch-ci",
+            },
+            "main_ci": {
+                "databaseId": 102,
+                "headSha": "merge123",
+                "status": "completed",
+                "conclusion": "success",
+                "url": "https://example.test/main-ci",
+            },
+        }
+    ]
+    assert ["git", "-C", str(repo_root), "merge", "--ff-only", "merge123"] in calls
+    assert ["git", "-C", str(repo_root), "push", "origin", "main"] in calls
+    assert ["gh", "run", "watch", "102", "--exit-status"] in calls
 
 
 def _write_managed_record(

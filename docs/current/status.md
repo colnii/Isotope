@@ -107,7 +107,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     组合测试、push/CI watch、CI 失败诊断、30 分钟 watch timeout、
     CI 通过后的 done 汇报和 cleanup 归档交接；merge dispatch 已接入
     `loop`，当 `integration-review` 出现 `ready_to_integrate` 候选时，
-    会把工单交给专门 merge worker 自动启动；runner 本身仍不直接
+    会把工单交给专门 merge worker 自动启动；merge worker 推送验证分支且
+    CI 成功后，`loop` 可在干净 `main` 上受控执行
+    `git merge --ff-only <merge-worker-commit>`、`git push origin main`
+    并等待 main CI 成功，结果写入 `merge_promotions`；runner 仍不直接
     cherry-pick、不删除 worker 分支或 worktree、不 force push、
     不 rebase 已共享分支、不重写历史；普通 worker 的通用工单仍禁止主动
     push，merge worker 只放行推送当前合并分支用于 CI watch；
@@ -267,9 +270,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `cleanup list/archive` 可列出并归档已汇报 `done` 的 goal、managed
     worker 和对应通知；普通 done worker 不再由 `loop` 自动归档或删除
     worktree，需显式 cleanup 或交给后续 merge worker 流程处理；
-    `loop` 只会在 merge worker 汇报 done 且它处理的候选 worker
-    已全部进入 `integration-review.already_integrated` 时，自动归档该
-    merge worker 的 managed 记录、关联 goal 并写入低敏通知；
+    `loop` 只会在 merge worker 汇报 done、验证分支 CI 成功、main
+    fast-forward/push/main CI 完成，且它处理的候选 worker 已全部进入
+    `integration-review.already_integrated` 时，自动归档该 merge worker
+    的 managed 记录、关联 goal 并写入低敏通知；
     tmux 托管 worker 会读取当前 pane 文本判断状态，避免旧 log
     误导归档；归档只追加 Supervisor 账本事件或把通知标记已读，不删除
     Codex `sessions` 历史，也不会处理仍是 `working` 或无完成汇报的任务；

@@ -440,7 +440,9 @@ B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
 - merge dispatch：已接入 `loop` 的派发层；它负责在候选明确时自动启动
   merge worker，并把 `merge-work-order` 交给 worker。
 
-当前阶段的安全线：Supervisor 可以自动启动 merge worker；runner 不直接
+当前阶段的安全线：Supervisor 可以自动启动 merge worker；当 merge worker
+的验证分支 CI 成功且它汇报 `done` 后，runner 可受控 fast-forward `main`、
+push `main` 并等待 main CI；除此之外 runner 不直接
 cherry-pick、删除 worker 分支或来源历史。唯一允许的删除动作是
 `delete_worktree`：只清理已完成、已归档、已集成的
 `.worktrees/supervisor/<worker>`，不 force push，不 rebase 已共享分支，
@@ -451,17 +453,22 @@ cherry-pick、删除 worker 分支或来源历史。唯一允许的删除动作�
 merge worker 成功合入后的交接边界也要分清：
 
 - merge worker 可在工单范围内完成 diff review、cherry-pick、组合测试、
-  push 和 CI watch；只有合并提交已在目标分支、CI 明确通过并能给出提交哈希、
+  推送验证分支和 CI watch；只有验证分支 CI 明确通过并能给出提交哈希、
   CI run id 和 conclusion 时，才能汇报 `SUPERVISOR_STATUS: done`。
   CI 失败或超过 30 分钟未结束时必须汇报 `blocked`，并保留 merge worktree
   供后续复查。
+- `loop` 会在主工作区看到 done merge worker 后，确认验证分支 CI 为
+  `success`，再要求当前工作区位于干净的 `main`，执行 `git merge --ff-only`
+  到 merge worker 提交、`git push origin main`，并等待 main CI 成功；
+  promotion 结果会写入 `merge_promotions`。
 - `cleanup list/archive/delete-worktree` 是生命周期清理入口；`list` 会展示
   可归档项和可删除 worktree 候选，`archive` 只把已完成的 goal、managed
   worker 或通知标记为已处理，`delete-worktree` 复用 `delete_worktree`
   护栏删除已归档且已集成的 Supervisor worktree。它不删除 Codex 历史、
   不删除 git branch。
-- 当前自动边界到“派发 merge worker”、“集成后归档 source/merge worker”和
-  “清理本轮刚归档且已集成的 source/merge worktree”为止；
+- 当前自动边界到“派发 merge worker”、“验证分支成功后 fast-forward main
+  并 watch main CI”、“集成后归档 source/merge worker”和“清理本轮刚归档且
+  已集成的 source/merge worktree”为止；
   普通 ready/already-integrated worker 不由 `loop` 自动归档或删除；
   删除 worktree 仍必须走显式 cleanup/delete-worktree 护栏或后续专门清理工单。
 - `git worktree remove` 仍属于受控清理动作：需要先确认来源工作已被目标分支包含、
