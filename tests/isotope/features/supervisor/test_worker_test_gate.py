@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 from isotope.features.supervisor.integration_review import collect_integration_reviews
@@ -39,6 +40,36 @@ def test_worker_review_marks_done_worker_test_passed(tmp_path):
     assert "测试门控：passed / passed=True / exit_code=0" in render_worker_review_plain(
         payload
     )
+
+
+def test_done_worker_gate_falls_back_to_current_python_when_worktree_venv_missing(
+    tmp_path,
+):
+    codex_home = tmp_path / ".codex"
+    cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "pass-12345678"
+    cwd.mkdir(parents=True)
+    _write_done_record(codex_home, record_id="managed-pass", name="pass", cwd=cwd)
+    commands: list[list[str]] = []
+
+    def fake_run(command: list[str], **kwargs):
+        commands.append(command)
+        _assert_completed_process_kwargs(kwargs)
+        if command == [sys.executable, "-m", "pytest", "tests/isotope", "-q"]:
+            assert Path(kwargs["cwd"]) == cwd
+            assert kwargs["env"]["PYTHONPATH"] == "src"
+            return subprocess.CompletedProcess(command, 0, "12 passed\n", "")
+        if command[:3] == ["git", "-C", str(cwd)]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        raise AssertionError(f"unexpected command: {command}")
+
+    payload = collect_worker_reviews(
+        codex_home=codex_home,
+        run=fake_run,
+        process_checker=lambda pid: False,
+    )
+
+    assert payload["workers"][0]["test_passed"] is True
+    assert [sys.executable, "-m", "pytest", "tests/isotope", "-q"] in commands
 
 
 def test_failed_done_worker_gate_moves_integration_review_to_needs_review(tmp_path):
@@ -103,7 +134,7 @@ def _fake_worker_review_run(
         **kwargs,
     ) -> subprocess.CompletedProcess[str]:
         _assert_completed_process_kwargs(kwargs)
-        if command == [".venv/bin/python", "-m", "pytest", "tests/isotope", "-q"]:
+        if _is_pytest_gate_command(command):
             assert Path(kwargs["cwd"]) == cwd
             assert kwargs["env"]["PYTHONPATH"] == "src"
             return subprocess.CompletedProcess(command, *pytest_result)
@@ -133,7 +164,7 @@ def _fake_integration_run(
         **kwargs,
     ) -> subprocess.CompletedProcess[str]:
         _assert_completed_process_kwargs(kwargs)
-        if command == [".venv/bin/python", "-m", "pytest", "tests/isotope", "-q"]:
+        if _is_pytest_gate_command(command):
             assert Path(kwargs["cwd"]) == cwd
             assert kwargs["env"]["PYTHONPATH"] == "src"
             return subprocess.CompletedProcess(command, *pytest_result)
@@ -170,6 +201,13 @@ def _assert_completed_process_kwargs(kwargs: dict[str, object]) -> None:
     assert kwargs["check"] is False
     assert kwargs["text"] is True
     assert kwargs["capture_output"] is True
+
+
+def _is_pytest_gate_command(command: list[str]) -> bool:
+    return (
+        command[1:] == ["-m", "pytest", "tests/isotope", "-q"]
+        and command[0] in {".venv/bin/python", sys.executable}
+    )
 
 
 def _write_done_record(

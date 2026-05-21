@@ -613,9 +613,9 @@ def _fake_git(
         assert check is False
         assert text is True
         assert capture_output is True
-        if command == [".venv/bin/python", "-m", "pytest", "tests/isotope", "-q"]:
+        if _is_pytest_gate_command(command):
             assert Path(kwargs["cwd"]) in responses
-            assert kwargs["env"]["PYTHONPATH"] == "src"
+            assert "src" in kwargs["env"]["PYTHONPATH"].split(":")
             return subprocess.CompletedProcess(command, 0, "12 passed in 0.34s\n", "")
         if command[:2] == ["git", "-C"]:
             worktree = Path(command[2])
@@ -666,6 +666,13 @@ def _lint_command() -> tuple[str, ...]:
 
 def _pytest_command() -> tuple[str, ...]:
     return (sys.executable, "-m", "pytest", "tests/isotope", "-q")
+
+
+def _is_pytest_gate_command(command: list[str]) -> bool:
+    return (
+        command[1:] == ["-m", "pytest", "tests/isotope", "-q"]
+        and command[0] in {".venv/bin/python", sys.executable}
+    )
 
 
 def _write_done_record(

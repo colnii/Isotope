@@ -4,6 +4,7 @@ import argparse
 import json
 import shutil
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -87,7 +88,7 @@ def test_execute_delete_worktree_removes_archived_integrated_supervisor_worktree
         assert check is False
         assert text is True
         assert capture_output is True
-        if command == [".venv/bin/python", "-m", "pytest", "tests/isotope", "-q"]:
+        if _is_pytest_gate_command(command):
             assert Path(kwargs["cwd"]) == worktree
             env = kwargs["env"]
             assert isinstance(env, dict)
@@ -171,7 +172,7 @@ def test_delete_worktree_candidates_include_archived_integrated_merge_worker(
         command: list[str],
         **kwargs: object,
     ) -> subprocess.CompletedProcess[str]:
-        if command == [".venv/bin/python", "-m", "pytest", "tests/isotope", "-q"]:
+        if _is_pytest_gate_command(command):
             return subprocess.CompletedProcess(command, 0, "12 passed\n", "")
         if command == ["git", "-C", str(worktree), "rev-parse", "--abbrev-ref", "HEAD"]:
             return subprocess.CompletedProcess(
@@ -341,3 +342,10 @@ def _write_managed_record_event(
             )
             + "\n"
         )
+
+
+def _is_pytest_gate_command(command: list[str]) -> bool:
+    return (
+        command[1:] == ["-m", "pytest", "tests/isotope", "-q"]
+        and command[0] in {".venv/bin/python", sys.executable}
+    )

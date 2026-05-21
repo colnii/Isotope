@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Callable
 
@@ -34,9 +35,10 @@ def collect_worker_test_gate(
 
     env = os.environ.copy()
     env["PYTHONPATH"] = "src"
+    command = _test_gate_command(cwd)
     try:
         completed = run(
-            TEST_GATE_COMMAND,
+            command,
             cwd=str(cwd),
             env=env,
             check=False,
@@ -59,6 +61,13 @@ def collect_worker_test_gate(
         "test_exit_code": completed.returncode,
         "test_output_tail": output_tail,
     }
+
+
+def _test_gate_command(cwd: Path) -> list[str]:
+    local_python = cwd / ".venv" / "bin" / "python"
+    if local_python.exists():
+        return TEST_GATE_COMMAND
+    return [sys.executable, *TEST_GATE_COMMAND[1:]]
 
 
 def _skipped(reason: str) -> dict[str, Any]:

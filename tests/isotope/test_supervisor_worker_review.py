@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import shlex
 import subprocess
+import sys
 from pathlib import Path
 
 from isotope.features.supervisor.runner import main as supervisor_main
@@ -51,7 +52,7 @@ def test_supervisor_worker_review_collects_completed_worker_with_changes(
         assert check is False
         assert text is True
         assert capture_output is True
-        if command == [".venv/bin/python", "-m", "pytest", "tests/isotope", "-q"]:
+        if _is_pytest_gate_command(command):
             assert Path(kwargs["cwd"]) == workspace
             assert kwargs["env"]["PYTHONPATH"] == "src"
             return subprocess.CompletedProcess(command, 0, "12 passed in 0.34s\n", "")
@@ -462,7 +463,7 @@ def test_supervisor_worker_review_quotes_reviewer_command(tmp_path):
         check = kwargs["check"]
         text = kwargs["text"]
         capture_output = kwargs["capture_output"]
-        if command == [".venv/bin/python", "-m", "pytest", "tests/isotope", "-q"]:
+        if _is_pytest_gate_command(command):
             assert Path(kwargs["cwd"]) == workspace
             assert kwargs["env"]["PYTHONPATH"] == "src"
             return subprocess.CompletedProcess(command, 0, "12 passed in 0.34s\n", "")
@@ -535,3 +536,10 @@ def _write_record(
             )
             + "\n"
         )
+
+
+def _is_pytest_gate_command(command: list[str]) -> bool:
+    return (
+        command[1:] == ["-m", "pytest", "tests/isotope", "-q"]
+        and command[0] in {".venv/bin/python", sys.executable}
+    )
