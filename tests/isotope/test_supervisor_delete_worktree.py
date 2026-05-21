@@ -11,7 +11,10 @@ import pytest
 
 from isotope.features.supervisor.flow import CodexSupervisorReport
 from isotope.features.supervisor.llm_summary import generate_llm_action_decision
-from isotope.features.supervisor.runner import _execute_llm_action
+from isotope.features.supervisor.runner import (
+    _delete_worktree_candidate_payloads,
+    _execute_llm_action,
+)
 
 
 NOW = datetime(2026, 5, 20, 12, 0, tzinfo=timezone.utc)
@@ -137,6 +140,84 @@ def test_execute_delete_worktree_removes_archived_integrated_supervisor_worktree
     assert ["git", "-C", str(repo_root), "worktree", "remove", str(worktree)] in run_calls
 
 
+def test_delete_worktree_candidates_include_archived_integrated_merge_worker(
+    tmp_path,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    repo_root = tmp_path / "repo"
+    worktree = repo_root / ".worktrees" / "supervisor" / "merge-worker-12345678"
+    worktree.mkdir(parents=True)
+    _write_managed_record_event(
+        codex_home,
+        record_id="managed-merge",
+        name="supervisor-merge-dispatch",
+        cwd=worktree,
+        record_status="launched",
+        protocol_status="done",
+        prompt="source=integration_review merge managed-source",
+    )
+    _write_managed_record_event(
+        codex_home,
+        record_id="managed-merge",
+        name="supervisor-merge-dispatch",
+        cwd=worktree,
+        record_status="archived",
+        protocol_status="done",
+        prompt="source=integration_review merge managed-source",
+    )
+
+    def fake_run(
+        command: list[str],
+        **kwargs: object,
+    ) -> subprocess.CompletedProcess[str]:
+        if command == [".venv/bin/python", "-m", "pytest", "tests/isotope", "-q"]:
+            return subprocess.CompletedProcess(command, 0, "12 passed\n", "")
+        if command == ["git", "-C", str(worktree), "rev-parse", "--abbrev-ref", "HEAD"]:
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                "supervisor/supervisor-merge-dispatch-12345678\n",
+                "",
+            )
+        if command == ["git", "-C", str(worktree), "rev-parse", "HEAD"]:
+            return subprocess.CompletedProcess(command, 0, "merge111\n", "")
+        if command == ["git", "-C", str(worktree), "rev-parse", "main"]:
+            return subprocess.CompletedProcess(command, 0, "merge111\n", "")
+        if command == ["git", "-C", str(worktree), "status", "--short"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        if command == ["git", "-C", str(worktree), "merge-base", "--is-ancestor", "merge111", "main"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        if command == ["git", "-C", str(worktree), "merge-base", "--is-ancestor", "main", "merge111"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        if command == ["git", "-C", str(worktree), "merge-tree", "--write-tree", "main", "merge111"]:
+            return subprocess.CompletedProcess(command, 0, "tree-ok\n", "")
+        raise AssertionError(f"unexpected command: {command}")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.integration_review.subprocess.run",
+        fake_run,
+    )
+
+    candidates = _delete_worktree_candidate_payloads(_runner_args(codex_home))
+
+    assert candidates == [
+        {
+            "name": "supervisor-merge-dispatch",
+            "target_name": "supervisor-merge-dispatch",
+            "record_id": "managed-merge",
+            "cwd": str(worktree),
+            "archived": True,
+            "integration_group": "merge_workers",
+            "main_contains_worker": True,
+            "main_has_worker_patch": True,
+            "worker_commit": "merge111",
+            "base_ref": "main",
+        }
+    ]
+
+
 def test_execute_delete_worktree_skips_unarchived_worker(tmp_path, monkeypatch):
     codex_home = tmp_path / ".codex"
     repo_root = tmp_path / "repo"
@@ -223,6 +304,7 @@ def _write_managed_record_event(
     cwd: Path,
     record_status: str,
     protocol_status: str,
+    prompt: str | None = None,
 ) -> None:
     log_path = codex_home / "supervisor" / "logs" / f"{record_id}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -245,7 +327,7 @@ def _write_managed_record_event(
                     "record_id": record_id,
                     "name": name,
                     "cwd": str(cwd),
-                    "prompt": f"review {name}",
+                    "prompt": prompt or f"review {name}",
                     "command": ["codex", "exec", "-C", str(cwd), "prompt"],
                     "pid": 0,
                     "started_at": NOW.isoformat(),

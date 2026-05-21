@@ -7383,7 +7383,7 @@ def _supervisor_worktree_root_for_cwd(cwd: str) -> dict[str, Path] | None:
 
 def _integration_review_allows_worktree_delete(integration: dict[str, Any]) -> bool:
     return (
-        integration.get("group") == "already_integrated"
+        integration.get("group") in {"already_integrated", "merge_workers"}
         and integration.get("dirty") is False
         and (
             integration.get("main_contains_worker") is True
