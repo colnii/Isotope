@@ -1981,7 +1981,7 @@ def dashboard_page_html() -> str:
     }
 
     function splitTargets(value) {
-      return value.split(/[\n,，/]+/).map((item) => item.trim()).filter(Boolean);
+      return value.split(/[\\n,，/]+/).map((item) => item.trim()).filter(Boolean);
     }
 
     function renderGoalPlanPreview(payload) {

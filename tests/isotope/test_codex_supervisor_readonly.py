@@ -2513,6 +2513,8 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "collectEditedGoalPlanPayload" in html
     assert "renderEditableGoalCandidate" in html
     assert "renderEditableParallelRecommendation" in html
+    assert "value.split(/[\\n,，/]+/)" in html
+    assert "value.split(/[\n" not in html
     assert "上移" in html
     assert "下移" in html
     assert "latestGoalPlanPayload" in html
