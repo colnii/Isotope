@@ -253,12 +253,13 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `--status`、`--summary`、`--next-step`，把最终状态、完成摘要和下一步
     写入 goal archive 事件；`goal plan "高层目标" --write` 是显式
     AI-first 目标规划入口，会读取当前 `status`、任务队列和能力地图，
-    围绕高层目标让 LLM 生成一小批候选目标；当目标面向完整功能板块时，
+    围绕高层目标让 LLM 生成候选目标；`--limit` 表示建议首批并发上限，
+    不再截断完整规划结果；当目标面向完整功能板块时，
     还会返回可审阅的计划摘要、阶段/批次、并行建议、停止条件和验收条件。
     默认只预览，传 `--write` 才写入
-    `~/.codex/supervisor/goals.jsonl`；`goal plan` 会从带说明的模型输出中
-    提取真正可用的 goals JSON，忽略后续非 goal JSON 片段，并在无可用
-    目标时返回可行动错误；日常 `loop` 没有显式
+    `~/.codex/supervisor/goals.jsonl`；`goal plan` 会从 JSON、带说明文本、
+    Markdown/TOML 风格软语法输出中提取或修复出真正可用的 goals JSON，
+    忽略后续非 goal JSON 片段，并在无可用目标时返回可行动错误；日常 `loop` 没有显式
     `--goal` 时会读取最早活跃目标，daemon 因此可动态消费新目标，
     不需要在启动命令里写死单个目标；`loop/up/daemon start`
     支持 `--goal-low-water N`，当活跃目标少于 N 个时让 LLM

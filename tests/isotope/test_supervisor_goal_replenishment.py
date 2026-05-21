@@ -16,7 +16,8 @@ class LowWaterGoalProvider:
         payload = json.loads(messages[1]["content"])
         self.payloads.append(payload)
         assert payload["planning_trigger"] == "low_water"
-        assert payload["goal_count_limit"] == 2
+        assert payload["parallel_launch_limit"] == 2
+        assert "goal_count_limit" not in payload
         assert "docs/current/status.md" in payload["facts"]
         assert "docs/current/agent-task-queue.md" in payload["facts"]
         assert "docs/current/supervisor-capability-map.md" in payload["facts"]
@@ -49,7 +50,8 @@ class LowWaterParallelGoalProvider:
     def summarize(self, messages: list[dict[str, str]]) -> str:
         payload = json.loads(messages[1]["content"])
         assert payload["planning_trigger"] == "low_water"
-        assert payload["goal_count_limit"] == 3
+        assert payload["parallel_launch_limit"] == 3
+        assert "goal_count_limit" not in payload
         return json.dumps(
             {
                 "plan_summary": "按 planner 推荐只并行启动 A 和 C。",
@@ -86,7 +88,8 @@ class ThreeGoalProvider:
     def summarize(self, messages: list[dict[str, str]]) -> str:
         payload = json.loads(messages[1]["content"])
         assert payload["planning_trigger"] == "low_water"
-        assert payload["goal_count_limit"] == 3
+        assert payload["parallel_launch_limit"] == 3
+        assert "goal_count_limit" not in payload
         return json.dumps(
             {
                 "plan_summary": "低水位一次补三条任务。",

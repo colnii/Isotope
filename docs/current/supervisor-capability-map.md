@@ -213,11 +213,12 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   AI-first 目标规划入口，读取 `docs/current/status.md`、
   `docs/current/agent-task-queue.md` 和
   `docs/current/supervisor-capability-map.md` 后，围绕用户高层目标
-  让 LLM 生成候选目标；当高层目标覆盖完整功能板块时，同时输出
+  让 LLM 生成候选目标；`--limit` 表示建议首批并发上限，
+  不再截断完整规划结果；当高层目标覆盖完整功能板块时，同时输出
   可审阅的计划摘要、阶段/批次、并行建议、停止条件和验收条件。
   默认只预览，只有传 `--write` 才写入 `supervisor/goals.jsonl`；
-  goal planner 会从带说明文本的模型输出中提取真正可用的 goals JSON，
-  并忽略后续非 goal JSON 片段。
+  goal planner 会从 JSON、带说明文本、Markdown/TOML 风格软语法输出中
+  提取或修复出真正可用的 goals JSON，并忽略后续非 goal JSON 片段。
   日常 `loop` 没有显式 `--goal` 时会读取最早活跃目标，
   并保持 daemon 启动命令不绑定某一个队列目标。
 - `loop/up/daemon start --goal-low-water N` 是低水位补任务入口：

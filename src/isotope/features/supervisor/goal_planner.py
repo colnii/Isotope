@@ -66,18 +66,21 @@ def plan_supervisor_goals(
         raise ValueError("LLM provider is required for goal planning")
 
     facts = read_goal_planning_facts(workspace)
-    raw_answer = provider.summarize(
-        build_goal_planning_messages(
-            root=workspace,
-            facts=facts,
-            user_goal=_optional_string(user_goal),
-            limit=limit,
-            write_mode=write,
-            planning_trigger=planning_trigger,
-        )
+    messages = build_goal_planning_messages(
+        root=workspace,
+        facts=facts,
+        user_goal=_optional_string(user_goal),
+        limit=limit,
+        write_mode=write,
+        planning_trigger=planning_trigger,
     )
-    planning = parse_goal_planning_result(raw_answer)
-    candidates = planning.candidates[:limit]
+    raw_answer = provider.summarize(messages)
+    planning, parse_repaired = _parse_or_repair_goal_planning_result(
+        raw_answer,
+        provider=provider,
+        original_messages=messages,
+    )
+    candidates = planning.candidates
     if not candidates:
         raise ValueError("LLM returned no goal candidates")
 
@@ -98,6 +101,8 @@ def plan_supervisor_goals(
         "root": str(workspace),
         "user_goal": _optional_string(user_goal),
         "planning_trigger": planning_trigger,
+        "parallel_launch_limit": limit,
+        "parse_repaired": parse_repaired,
         "sources": list(PLANNING_DOCS),
         "candidates": [candidate.to_dict() for candidate in candidates],
         "written_goals": written,
@@ -153,8 +158,13 @@ def build_goal_planning_messages(
                     "user_goal": user_goal,
                     "planning_trigger": planning_trigger,
                     "facts": facts,
-                    "goal_count_limit": limit,
+                    "parallel_launch_limit": limit,
                     "write_mode": write_mode,
+                    "accepted_output_formats": [
+                        "首选严格 JSON。",
+                        "如果模型无法稳定输出 JSON，可输出清晰 Markdown 或 TOML；系统会再转成 JSON。",
+                        "无论哪种格式，都必须包含可执行 goals。",
+                    ],
                     "output_schema": {
                         "plan_summary": (
                             "面向完整功能板块的可审阅计划摘要；"
@@ -187,6 +197,7 @@ def build_goal_planning_messages(
                     },
                     "rules": [
                         "每个 goal 必须能独立启动一个 Supervisor worker。",
+                        "完整规划可以多于 parallel_launch_limit；parallel_launch_limit 只表示建议首批并发上限，不是规划截断上限。",
                         "如果 user_goal 存在，必须围绕它拆解可执行目标。",
                         "当 user_goal 指向完整功能板块时，必须输出 plan_summary、phases、parallel_recommendations、stop_conditions 和 acceptance_conditions。",
                         "不要输出泛泛的继续推进、优化系统、阅读文档。",
@@ -203,6 +214,93 @@ def build_goal_planning_messages(
 
 def parse_goal_candidates(raw_answer: str) -> list[GoalCandidate]:
     return parse_goal_planning_result(raw_answer).candidates
+
+
+def _parse_or_repair_goal_planning_result(
+    raw_answer: str,
+    *,
+    provider: GoalPlanningProvider,
+    original_messages: list[dict[str, str]],
+) -> tuple[GoalPlanningResult, bool]:
+    try:
+        return parse_goal_planning_result(raw_answer), False
+    except ValueError as original_error:
+        repair_answer = provider.summarize(
+            build_goal_planning_repair_messages(
+                raw_answer=raw_answer,
+                original_messages=original_messages,
+            )
+        )
+        try:
+            return parse_goal_planning_result(repair_answer), True
+        except ValueError:
+            raise original_error from None
+
+
+def build_goal_planning_repair_messages(
+    *,
+    raw_answer: str,
+    original_messages: list[dict[str, str]],
+) -> list[dict[str, str]]:
+    return [
+        {
+            "role": "system",
+            "content": (
+                "你是 goal planning 输出修复器。"
+                "把上一个回答里的 Markdown、TOML 或中文条目转换成系统可用 JSON。"
+                "不要新增目标，不要解释，只输出 JSON。"
+            ),
+        },
+        {
+            "role": "user",
+            "content": json.dumps(
+                {
+                    "task": "repair_goal_planning_output",
+                    "raw_answer": raw_answer,
+                    "original_goal_request": (
+                        original_messages[1]["content"]
+                        if len(original_messages) > 1
+                        else ""
+                    ),
+                    "required_json_shape": {
+                        "plan_summary": "可选，规划摘要",
+                        "phases": [
+                            {
+                                "name": "可选，阶段名",
+                                "goals": ["可选，本阶段目标"],
+                                "stop_conditions": ["可选，暂停条件"],
+                                "acceptance_conditions": ["可选，验收条件"],
+                            }
+                        ],
+                        "parallel_recommendations": [
+                            {
+                                "batch": "可选，并行批次名",
+                                "targets": ["可选，worker target_name"],
+                                "reason": "可选，并行原因",
+                            }
+                        ],
+                        "stop_conditions": ["可选，整体暂停条件"],
+                        "acceptance_conditions": ["可选，整体验收条件"],
+                        "goals": [
+                            {
+                                "goal": "必填，可执行目标",
+                                "target_name": "必填，小写短横线 worker 名",
+                                "reason": "必填，依据",
+                            }
+                        ],
+                    },
+                    "rules": [
+                        "必须输出一个 JSON object。",
+                        "必须包含非空 goals 数组。",
+                        "不得输出 Markdown 代码块包裹。",
+                        "如果原文没有 target_name，按 goal 生成短横线英文名。",
+                    ],
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            ),
+        },
+    ]
 
 
 def parse_goal_planning_result(raw_answer: str) -> GoalPlanningResult:

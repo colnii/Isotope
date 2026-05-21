@@ -136,6 +136,79 @@ class ParallelWriteGoalProvider:
         )
 
 
+class FourGoalProvider:
+    def summarize(self, messages: list[dict[str, str]]) -> str:
+        user_payload = json.loads(messages[1]["content"])
+        assert user_payload["parallel_launch_limit"] == 3
+        assert "goal_count_limit" not in user_payload
+        return json.dumps(
+            {
+                "parallel_recommendations": [
+                    {
+                        "batch": "第一批",
+                        "targets": ["worker-a", "worker-b", "worker-c"],
+                        "reason": "前三个目标可先并行。",
+                    }
+                ],
+                "goals": [
+                    {
+                        "goal": "实现 worker A。",
+                        "target_name": "worker-a",
+                        "reason": "A 可独立执行。",
+                    },
+                    {
+                        "goal": "实现 worker B。",
+                        "target_name": "worker-b",
+                        "reason": "B 可独立执行。",
+                    },
+                    {
+                        "goal": "实现 worker C。",
+                        "target_name": "worker-c",
+                        "reason": "C 可独立执行。",
+                    },
+                    {
+                        "goal": "实现 worker D。",
+                        "target_name": "worker-d",
+                        "reason": "D 是后续目标，不能被规划截断丢弃。",
+                    },
+                ],
+            },
+            ensure_ascii=False,
+        )
+
+
+class SoftSyntaxRepairGoalProvider:
+    def __init__(self) -> None:
+        self.calls: list[list[dict[str, str]]] = []
+
+    def summarize(self, messages: list[dict[str, str]]) -> str:
+        self.calls.append(messages)
+        if len(self.calls) == 1:
+            return (
+                "plan_summary = \"并行推进三个板块\"\n\n"
+                "[[goals]]\n"
+                "goal = \"模块化 Supervisor。\"\n"
+                "target_name = \"supervisor-modularization\"\n"
+                "reason = \"runner.py 已经过大。\"\n"
+            )
+        user_payload = json.loads(messages[1]["content"])
+        assert user_payload["task"] == "repair_goal_planning_output"
+        assert "模块化 Supervisor" in user_payload["raw_answer"]
+        return json.dumps(
+            {
+                "plan_summary": "并行推进三个板块",
+                "goals": [
+                    {
+                        "goal": "模块化 Supervisor。",
+                        "target_name": "supervisor-modularization",
+                        "reason": "runner.py 已经过大。",
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        )
+
+
 class NonJsonGoalProvider:
     def summarize(self, messages: list[dict[str, str]]) -> str:
         return "我需要更多上下文，暂时不能给出目标。"
@@ -229,12 +302,61 @@ def test_supervisor_goal_plan_writes_selected_candidates(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["mode"] == "write"
-    assert len(payload["candidates"]) == 1
-    assert len(payload["written_goals"]) == 1
+    assert len(payload["candidates"]) == 2
+    assert len(payload["written_goals"]) == 2
     active = read_active_supervisor_goals(codex_home=codex_home)
-    assert len(active) == 1
+    assert len(active) == 2
     assert active[0].goal == "为 Supervisor web 增加目标队列状态筛选。"
     assert active[0].target_name == "supervisor-web-goal-filter"
+
+
+def test_supervisor_goal_plan_limit_does_not_truncate_planned_candidates(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    root = tmp_path / "repo"
+    root.mkdir()
+    _write_current_docs(root)
+    codex_home = tmp_path / ".codex"
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: FourGoalProvider(),
+    )
+
+    exit_code = supervisor_main(
+        [
+            "goal",
+            "plan",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(root),
+            "--limit",
+            "3",
+            "--write",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert [item["target_name"] for item in payload["candidates"]] == [
+        "worker-a",
+        "worker-b",
+        "worker-c",
+        "worker-d",
+    ]
+    assert [item["target_name"] for item in payload["written_goals"]] == [
+        "worker-a",
+        "worker-b",
+        "worker-c",
+        "worker-d",
+    ]
+    assert payload["parallel_launch_limit"] == 3
+    assert read_active_supervisor_goals(codex_home=codex_home)[-1].target_name == (
+        "worker-d"
+    )
 
 
 def test_supervisor_goal_plan_can_fanout_execute_parallel_recommendations(
@@ -648,6 +770,46 @@ def test_supervisor_goal_plan_ignores_later_non_goal_json_fragment():
             "reason": "当前目标队列仍有活跃项。",
         }
     ]
+
+
+def test_supervisor_goal_plan_repairs_soft_syntax_output(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    root = tmp_path / "repo"
+    root.mkdir()
+    _write_current_docs(root)
+    codex_home = tmp_path / ".codex"
+    provider = SoftSyntaxRepairGoalProvider()
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: provider,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "goal",
+            "plan",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(root),
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["candidates"] == [
+        {
+            "goal": "模块化 Supervisor。",
+            "target_name": "supervisor-modularization",
+            "reason": "runner.py 已经过大。",
+        }
+    ]
+    assert payload["parse_repaired"] is True
+    assert len(provider.calls) == 2
 
 
 def test_supervisor_goal_plan_json_reports_actionable_parse_error(
