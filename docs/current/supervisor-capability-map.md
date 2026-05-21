@@ -460,7 +460,10 @@ merge worker 成功合入后的交接边界也要分清：
 - `loop` 会在主工作区看到 done merge worker 后，确认验证分支 CI 为
   `success`，再要求当前工作区位于干净的 `main`，执行 `git merge --ff-only`
   到 merge worker 提交、`git push origin main`，并等待 main CI 成功；
-  promotion 结果会写入 `merge_promotions`。
+  promotion 结果会写入 `merge_promotions`。验证分支 CI、main 工作区、
+  fast-forward、push 或 main CI 任一 gate 失败时，会写入
+  `merge_promotion_failed` 拍板请求，并在请求的 gate 中保留失败原因、
+  分支、worker commit 和 CI payload。
 - `cleanup list/archive/delete-worktree` 是生命周期清理入口；`list` 会展示
   可归档项和可删除 worktree 候选，`archive` 只把已完成的 goal、managed
   worker 或通知标记为已处理，`delete-worktree` 复用 `delete_worktree`

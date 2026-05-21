@@ -376,6 +376,86 @@ def test_auto_promote_done_merge_worker_fast_forwards_main_after_branch_ci_succe
     assert ["gh", "run", "watch", "102", "--exit-status"] in calls
 
 
+def test_auto_promote_done_merge_worker_records_decision_when_branch_ci_fails(
+    tmp_path,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    review_payload = _integration_payload(
+        merge_workers=[
+            {
+                "record_id": "managed-merge",
+                "name": "supervisor-merge-dispatch",
+                "group": "merge_workers",
+                "branch": "supervisor/supervisor-merge-dispatch-abcd1234",
+                "worker_commit": "merge123",
+                "main_contains_worker": False,
+                "supervisor_protocol": {
+                    "status": "done",
+                    "summary": "CI run 101 conclusion 为 failure。",
+                    "next": "等待 Supervisor 处理 promotion 失败。",
+                },
+            }
+        ],
+        ready_to_integrate=[],
+        already_integrated=[],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_integration_reviews",
+        lambda *, codex_home, base_ref, include_unfinished: review_payload,
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        if command[:3] == ["gh", "run", "list"]:
+            stdout = json.dumps(
+                [
+                    {
+                        "databaseId": 101,
+                        "headSha": "merge123",
+                        "status": "completed",
+                        "conclusion": "failure",
+                        "url": "https://example.test/branch-ci",
+                    }
+                ]
+            )
+            return subprocess.CompletedProcess(command, 0, stdout, "")
+        raise AssertionError(f"unexpected command: {command}")
+
+    args = type(
+        "Args",
+        (),
+        {
+            "command": "loop",
+            "codex_home": str(codex_home),
+            "workspace_root": str(repo_root),
+            "webhook_url": None,
+            "webhook_secret": None,
+        },
+    )()
+
+    promoted = _auto_promote_done_merge_workers_to_main(args, run=fake_run)
+
+    assert promoted[0]["status"] == "blocked"
+    assert promoted[0]["reason"] == "branch CI did not succeed"
+    decision = promoted[0]["decision_request"]
+    assert decision["request_id"].startswith("decision-")
+    assert decision["target_name"] == "supervisor-merge-dispatch"
+    assert decision["reason"] == "merge_promotion_failed"
+    assert decision["gate"]["event_type"] == "merge_promotion_failed"
+    assert not any(command[:3] == ["git", "-C", str(repo_root)] for command in calls)
+    active_decisions = [
+        json.loads(line)
+        for line in (codex_home / "supervisor" / "decision_requests.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    assert active_decisions == [decision]
+
+
 def _write_managed_record(
     codex_home: Path,
     *,

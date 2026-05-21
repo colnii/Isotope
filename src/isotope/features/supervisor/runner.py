@@ -2882,8 +2882,11 @@ def _auto_promote_done_merge_workers_to_main(
     for item in _review_group_items(groups, "merge_workers"):
         promotion = _auto_promote_merge_worker_review_item(
             item,
+            codex_home=codex_home,
             repo_root=repo_root,
             run=run,
+            webhook_url=getattr(args, "webhook_url", None),
+            webhook_secret=getattr(args, "webhook_secret", None),
         )
         if promotion is not None:
             promoted.append(promotion)
@@ -2893,8 +2896,11 @@ def _auto_promote_done_merge_workers_to_main(
 def _auto_promote_merge_worker_review_item(
     item: dict[str, Any],
     *,
+    codex_home: Path,
     repo_root: Path,
     run: Any,
+    webhook_url: str | None = None,
+    webhook_secret: str | None = None,
 ) -> dict[str, Any] | None:
     if not _merge_worker_review_item_is_done(item):
         return None
@@ -2912,6 +2918,15 @@ def _auto_promote_merge_worker_review_item(
         run=run,
     )
     if not _ci_run_succeeded(branch_ci, expected_commit=worker_commit):
+        if _ci_run_is_terminal(branch_ci):
+            return _blocked_merge_promotion(
+                item,
+                status_reason="branch CI did not succeed",
+                branch_ci=branch_ci,
+                codex_home=codex_home,
+                webhook_url=webhook_url,
+                webhook_secret=webhook_secret,
+            )
         return {
             "kind": "merge_worker_main_promotion",
             "name": name,
@@ -2932,6 +2947,14 @@ def _auto_promote_merge_worker_review_item(
             "status": "blocked",
             "reason": precheck,
             "branch_ci": branch_ci,
+            "decision_request": _merge_promotion_decision_request(
+                codex_home=codex_home,
+                item=item,
+                reason=precheck,
+                branch_ci=branch_ci,
+                webhook_url=webhook_url,
+                webhook_secret=webhook_secret,
+            ),
         }
     merge_result = _run_checked(
         ["git", "-C", str(repo_root), "merge", "--ff-only", worker_commit],
@@ -2942,6 +2965,9 @@ def _auto_promote_merge_worker_review_item(
             item,
             status_reason=merge_result,
             branch_ci=branch_ci,
+            codex_home=codex_home,
+            webhook_url=webhook_url,
+            webhook_secret=webhook_secret,
         )
     diff_result = _run_checked(
         ["git", "-C", str(repo_root), "diff", "--check"],
@@ -2952,6 +2978,9 @@ def _auto_promote_merge_worker_review_item(
             item,
             status_reason=diff_result,
             branch_ci=branch_ci,
+            codex_home=codex_home,
+            webhook_url=webhook_url,
+            webhook_secret=webhook_secret,
         )
     push_result = _run_checked(
         ["git", "-C", str(repo_root), "push", "origin", "main"],
@@ -2962,6 +2991,9 @@ def _auto_promote_merge_worker_review_item(
             item,
             status_reason=push_result,
             branch_ci=branch_ci,
+            codex_home=codex_home,
+            webhook_url=webhook_url,
+            webhook_secret=webhook_secret,
         )
     main_head = _git_text(repo_root, ["rev-parse", "HEAD"], run=run)
     if not main_head:
@@ -2980,6 +3012,9 @@ def _auto_promote_merge_worker_review_item(
                 branch_ci=branch_ci,
                 main_ci=main_ci,
                 main_head=main_head,
+                codex_home=codex_home,
+                webhook_url=webhook_url,
+                webhook_secret=webhook_secret,
             )
         viewed = _view_ci_run(str(main_ci_run_id), run=run)
         if viewed:
@@ -2991,6 +3026,9 @@ def _auto_promote_merge_worker_review_item(
             branch_ci=branch_ci,
             main_ci=main_ci,
             main_head=main_head,
+            codex_home=codex_home,
+            webhook_url=webhook_url,
+            webhook_secret=webhook_secret,
         )
     return {
         "kind": "merge_worker_main_promotion",
@@ -3012,6 +3050,9 @@ def _blocked_merge_promotion(
     branch_ci: dict[str, Any],
     main_ci: dict[str, Any] | None = None,
     main_head: str | None = None,
+    codex_home: Path | None = None,
+    webhook_url: str | None = None,
+    webhook_secret: str | None = None,
 ) -> dict[str, Any]:
     payload = {
         "kind": "merge_worker_main_promotion",
@@ -3027,7 +3068,65 @@ def _blocked_merge_promotion(
         payload["main_ci"] = main_ci
     if main_head is not None:
         payload["main_head"] = main_head
+    if codex_home is not None:
+        payload["decision_request"] = _merge_promotion_decision_request(
+            codex_home=codex_home,
+            item=item,
+            reason=status_reason,
+            branch_ci=branch_ci,
+            main_ci=main_ci,
+            webhook_url=webhook_url,
+            webhook_secret=webhook_secret,
+        )
     return payload
+
+
+def _merge_promotion_decision_request(
+    *,
+    codex_home: Path,
+    item: dict[str, Any],
+    reason: str,
+    branch_ci: dict[str, Any],
+    main_ci: dict[str, Any] | None = None,
+    webhook_url: str | None = None,
+    webhook_secret: str | None = None,
+) -> dict[str, Any]:
+    record_id = _non_empty_text(item.get("record_id")) or "unknown"
+    target_name = _non_empty_text(item.get("name"))
+    branch = _non_empty_text(item.get("branch")) or "unknown"
+    worker_commit = _non_empty_text(item.get("worker_commit")) or "unknown"
+    question = (
+        "merge promotion 失败：是否修复 CI/工作区后重试，还是放弃本次 merge worker？"
+    )
+    for request in read_active_decision_requests(codex_home=codex_home, limit=1000):
+        if (
+            request.session_id == f"managed:{record_id}"
+            and request.reason == "merge_promotion_failed"
+            and request.question == question
+        ):
+            return request.to_dict()
+    action = {
+        "kind": "ask_user",
+        "session_id": f"managed:{record_id}",
+        "target_name": target_name,
+        "question": question,
+        "reason": "merge_promotion_failed",
+        "context_status": "promotion_blocked",
+        "gate": {
+            "event_type": "merge_promotion_failed",
+            "reason": reason,
+            "branch": branch,
+            "worker_commit": worker_commit,
+            "branch_ci": branch_ci,
+            "main_ci": main_ci,
+        },
+    }
+    return record_decision_request(
+        codex_home=codex_home,
+        action=action,
+        webhook_url=webhook_url,
+        webhook_secret=webhook_secret,
+    ).to_dict()
 
 
 def _check_main_promotion_preconditions(repo_root: Path, *, run: Any) -> str | None:
@@ -3108,6 +3207,15 @@ def _ci_run_succeeded(run_payload: dict[str, Any], *, expected_commit: str) -> b
         and run_payload.get("conclusion") == "success"
         and run_payload.get("headSha") == expected_commit
     )
+
+
+def _ci_run_is_terminal(run_payload: dict[str, Any]) -> bool:
+    return run_payload.get("status") == "completed" or run_payload.get("conclusion") in {
+        "failure",
+        "cancelled",
+        "timed_out",
+        "action_required",
+    }
 
 
 def _run_checked(command: list[str], *, run: Any) -> str | None:

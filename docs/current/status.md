@@ -110,8 +110,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     会把工单交给专门 merge worker 自动启动；merge worker 推送验证分支且
     CI 成功后，`loop` 可在干净 `main` 上受控执行
     `git merge --ff-only <merge-worker-commit>`、`git push origin main`
-    并等待 main CI 成功，结果写入 `merge_promotions`；runner 仍不直接
-    cherry-pick、不删除 worker 分支或 worktree、不 force push、
+    并等待 main CI 成功，结果写入 `merge_promotions`；如果验证分支 CI、
+    main 工作区、fast-forward、push 或 main CI 失败，会写入
+    `merge_promotion_failed` 拍板请求，避免 promotion 失败只停在日志里；
+    runner 仍不直接 cherry-pick、不删除 worker 分支或 worktree、不 force push、
     不 rebase 已共享分支、不重写历史；普通 worker 的通用工单仍禁止主动
     push，merge worker 只放行推送当前合并分支用于 CI watch；
     `resume` 可通过
@@ -273,7 +275,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     `loop` 只会在 merge worker 汇报 done、验证分支 CI 成功、main
     fast-forward/push/main CI 完成，且它处理的候选 worker 已全部进入
     `integration-review.already_integrated` 时，自动归档该 merge worker
-    的 managed 记录、关联 goal 并写入低敏通知；
+    的 managed 记录、关联 goal 并写入低敏通知；promotion 任一 gate 失败
+    会生成 `merge_promotion_failed` 拍板请求，不进入自动归档；
     tmux 托管 worker 会读取当前 pane 文本判断状态，避免旧 log
     误导归档；归档只追加 Supervisor 账本事件或把通知标记已读，不删除
     Codex `sessions` 历史，也不会处理仍是 `working` 或无完成汇报的任务；
