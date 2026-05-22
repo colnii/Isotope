@@ -48,7 +48,8 @@
     作为 prompt-only 能力选择与参数填充原型，只返回 call plan，不执行
     capability；`src/isotope/agents/scheduler/capacity_graph.py` 已提供
     Capacity graph 第一片，可把 capacity node 组合到底层
-    `DependencyGraph`，生成只读 capacity call plan；该路径不调用 LLM、
+    `DependencyGraph`，生成只读 capacity call plan；该路径还可把
+    `CapacityCallSelection` 适配成 capacity node，但不调用 LLM、
     不执行 capability、不定义 executor。
 29. chat flow 正名：活跃实现已迁入 `src/isotope/features/chat/flow.py`，
     `product_chat.py` 和顶层旧路径已删除。

@@ -107,6 +107,34 @@ def build_capacity_graph(nodes: Sequence[CapacityGraphNode]) -> CapacityGraph:
     )
 
 
+def capacity_graph_node_from_call_selection(
+    selection: Mapping[str, Any] | Any,
+    *,
+    node_id: str | None = None,
+    depends_on: tuple[str, ...] = (),
+    stage: str | None = None,
+    scope: str | None = None,
+    merge_gate: bool = True,
+) -> CapacityGraphNode:
+    payload = _selection_payload(selection)
+    status = _required_string(payload.get("status"), "status")
+    if status != "ready_to_call":
+        raise ValueError(f"capacity selection is not ready_to_call: {status}")
+    capacity_id = _required_string(payload.get("capacity_id"), "capacity_id")
+    arguments = payload.get("arguments")
+    if not isinstance(arguments, Mapping):
+        raise ValueError("capacity selection arguments must be a mapping")
+    return CapacityGraphNode(
+        node_id=node_id or _default_node_id(capacity_id),
+        capacity_id=capacity_id,
+        arguments=dict(arguments),
+        depends_on=depends_on,
+        stage=stage,
+        scope=scope,
+        merge_gate=merge_gate,
+    )
+
+
 def resolve_ready_capacity_plan(
     graph: CapacityGraph,
     *,
@@ -171,3 +199,24 @@ def _node_dependency_summary(node: CapacityGraphNode) -> dict[str, Any]:
     if not node.merge_gate:
         summary["merge_gate"] = False
     return summary
+
+
+def _selection_payload(selection: Mapping[str, Any] | Any) -> Mapping[str, Any]:
+    if isinstance(selection, Mapping):
+        return selection
+    to_dict = getattr(selection, "to_dict", None)
+    if callable(to_dict):
+        payload = to_dict()
+        if isinstance(payload, Mapping):
+            return payload
+    raise ValueError("capacity selection must be a mapping or expose to_dict()")
+
+
+def _required_string(value: Any, field_name: str) -> str:
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    raise ValueError(f"capacity selection {field_name} must be a non-empty string")
+
+
+def _default_node_id(capacity_id: str) -> str:
+    return capacity_id.replace(".", "-")

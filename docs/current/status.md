@@ -66,8 +66,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     必填项；该路径只生成 call plan，不执行 capability。
     `src/isotope/agents/scheduler/capacity_graph.py` 已提供第一片
     Capacity graph（能力图）计划层，把 capacity node 组合到
-    `DependencyGraph`，只生成 ready capacity call plan，不调用 LLM、
-    不执行 capability、不定义 executor。
+    `DependencyGraph`，并可把 `CapacityCallSelection` 适配成 capacity
+    node；该层只生成 ready capacity call plan，不调用 LLM、不执行
+    capability、不定义 executor。
 17. `features/notifications` 已有薄入口，当前提供本地低敏通知索引、
     `NotificationFlow`、`NotificationSummary` 和 `isotope-notification`
     CLI，可创建、列表、按未读或类型过滤，并把通知标记为已读；
