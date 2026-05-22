@@ -605,6 +605,22 @@ fanout 回归必须覆盖：多个 active goals 中已有同名 running worker �
 “何时补目标、补几个、何时停”的决策层，不需要再造目标队列或新 worker
 启动通道。
 
+## 条件推进与迁移表
+
+Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分出分支。
+目标队列需要支持 dependency graph（依赖图）：同阶段目标可以并行，
+下游目标必须等前置阶段完成、合入并验证后才能启动。
+
+典型节奏是：`A/B/C` 并行完成并合入后，才启动 `D/E`；
+`D/E` 通过组合测试和 CI 后，才启动 `F`。任一阶段出现 conflict
+（冲突）、CI fail（持续集成失败）或 `needs_user`（需要用户拍板），
+后续阶段必须暂停，而不是继续扩散新分支。
+
+架构迁移和逐文件并行实测以
+[Supervisor 架构迁移表](./supervisor-architecture-migration-table.md)
+为准。该表记录每类职责应从 `features/supervisor` 迁往哪个长期目录，
+也记录后续用 Codex Supervisor 跑迁移 worker 时的批次条件。
+
 ## 当前不要重复实现
 
 - 不要把规则、白名单或状态协议写成替代 LLM 的最终智能。
