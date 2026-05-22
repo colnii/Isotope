@@ -13,6 +13,22 @@ Codex Supervisor 已经不只是一个小命令。
 同时必须先遵守 `AGENTS.md` 的 AI-first 产品约束：
 LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品智能。
 
+## 项目级能力盘点索引
+
+2026-05-22 的 capability inventory（能力盘点）结论已经写入
+[Supervisor 架构迁移表](./supervisor-architecture-migration-table.md)。
+当前判断如下：
+
+- 主路径已经接入：Web/CLI、goal queue、fanout、current batch、
+  dependency batch、worker/integration review、merge dispatch、
+  decision/failure ledger adapter、Codex session reader。
+- 半成品或闲置：`agents/loop` 尚未驱动 Supervisor 主循环；
+  `llm/capacity_calling.py`、`agents/scheduler/capacity_graph.py`、
+  `capabilities/runner.py`、`runtime/ActionCompiler` 与
+  `integrations/codex/CodexCliBackend` 尚未成为 Supervisor 主执行路径。
+- 当前最高杠杆方向：把 `agent loop + capacity calling + capabilities`
+  打通为主路径，再把 Codex worker 生命周期和状态投影迁出 feature 私有实现。
+
 ## 当前分层
 
 | 层级 | 当前能力 | 主要位置 | 说明 |

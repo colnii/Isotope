@@ -39,6 +39,52 @@ Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
 | Supervisor 对 `platform/` 复用不足 | 已有 decision/failure ledger 进入 `platform/state/`，但大量 worker 状态、失败策略和控制面仍留在 feature 私有实现 | 只把跨 agent 的状态事实、账本接口和 schema 下沉到 `platform/` | 优先抽 decision request / failure ledger 的通用账本接口，避免把产品视图下沉到底座 |
 | 新功能容易绕过既有调度模块 | `agents/scheduler/` 已有 goal queue、fanout、dependency graph、dependency batches 和 capacity graph | Supervisor fanout、batch、capacity 相关逻辑默认复用 scheduler 层 | worker 工单必须列出将复用的 scheduler API；不能在 `runner.py` 中再写一套 DAG 或批次判断 |
 
+## 2026-05-22 能力盘点与架构对齐审计
+
+本次审计结论：Supervisor 不是缺少底座，而是主路径还没有统一收口。
+`agents/scheduler`、`platform/state`、`capabilities`、`runtime` 和
+`integrations/codex` 已经各自长出部分可复用能力，但
+`features/supervisor/runner.py` 与周边模块仍承担太多系统级编排。
+
+| 能力区 | 已接入主路径 | 半成品或闲置 | 对齐动作 |
+| --- | --- | --- | --- |
+| `features/supervisor/` | CLI/Web、daemon/loop、goal queue、fanout 调用、worker review、integration review、merge dispatch、decision request、failure ledger adapter、Codex 托管登记 | `runner.py` 仍有大量命令实现、状态拼装、自动动作执行、merge/cleanup 编排；LLM action 仍是私有 JSON 动作体系 | 保留用户入口，把通用编排迁到 `agents/`、`integrations/codex/`、`workspace/` 和 `platform/state/` |
+| `agents/loop/` | `step.py` 可通过 `CapabilityRunner` 执行 `call_capability`；planner adapter 会校验 basis 和 phase | 还没有成为 Supervisor loop 的主执行循环；Supervisor 仍主要走 `llm_summary.py` 的动作解析与 runner 执行 | 把 Supervisor planning/execution 改成 agent loop 驱动，而不是继续扩写私有 LLM action |
+| `agents/scheduler/` | `fanout.py` 已复用 dependency graph；`current_batch.py` 已调用 dependency batch；goal queue view 已被 Supervisor adapter 使用 | `capacity_graph.py` 仍偏原型；goal queue 的持久化事件仍在 feature adapter | 让 fanout、batch、capacity graph 成为唯一调度层，禁止 runner 再写批次/DAG 判断 |
+| `capabilities/` | `CapabilityRunner` 可列出、搜索、规划和受控运行少量 allowlist 能力；agent loop 已能调用 | 能力目录目前很薄，真实 Supervisor worker/merge/context 能力尚未注册进 catalog | 把可复用操作登记成能力，由 LLM 选择能力，再由 runner/loop 执行 |
+| `llm/capacity_calling.py` | 已能让模型在候选能力中选择能力并填参数，只返回调用计划 | 未接入 Supervisor goal planner 或 loop 主路径；仍要求严格 JSON | 接到 `agents/loop` 与 `capabilities`，成为高层 agent 管理者的主杠杆 |
+| `platform/state/` | `DecisionRequestLedger`、`FailureLedger` 已被 Supervisor adapter 复用；event/memory/checkpoint/projector 已服务 runtime | lane state、worker event channel、goal status、notification index 仍多为 feature 私有 JSONL | 统一跨 worker 事实、事件、记忆和拍板账本，dashboard 读取投影而不是拼散表 |
+| `runtime/` | `InProcessServer` 串起 session/run/policy/executor/memory；`ActionCompiler` 可把模型意图编译成动作提案 | Supervisor 没有通过 runtime action/policy 主链路托管 Codex worker；很多命令仍直接 subprocess/git | 后续 Supervisor 应请求 runtime/capability 执行动作，而不是自己直接做执行层 |
+| `integrations/codex/` | `session_reader.py` 只读读取 Codex JSONL/索引/SQLite；`CodexCliBackend` 和 `CodexTaskAdapter` 已有受控 Codex task 边界 | Supervisor worker launch 仍主要在 `registry.py` 和 runner；`CodexCliBackend` 首片只支持 shared_ro/read-only | 把 Codex launch/resume/session/log 变成集成层合同，Supervisor 只发 worker 请求 |
+| `workspace/` | `ArtifactStore` 已被 runtime 使用；`WorkspaceManager` 目前提供 shared_ro 边界 | worktree、branch、cherry-pick、cleanup、CI 观察仍在 Supervisor feature 文件内 | 把 git/worktree/产物边界搬到 workspace/integration，merge worker 只调用这些能力 |
+
+### 已确认的复用不足
+
+- `llm_summary.py` 自带 TOML 号池、模型动作、JSON 修复和上下文请求策略，
+  与 `llm/provider.py`、`llm/capacity_calling.py` 和后续 agent loop 主路径重叠。
+- `registry.py` 直接拼 `codex exec`、tmux、日志和托管登记，
+  与 `integrations/codex/cli.py`、`integrations/codex/task.py` 的边界重叠。
+- `merge_dispatch.py`、`merge_promotion.py`、`integration_review.py` 和 runner
+  里存在 git/worktree/CI 编排，应该逐步迁到 `workspace/` 和 `agents/integration/`。
+- `context.py` 已有 BM25-style 项目检索，但仍是 Supervisor 私有能力，
+  没有注册为通用 capability，也没有接入 runtime memory/query 统一边界。
+- `current_batch.py` 已经复用 dependency batch，这是正确方向；
+  但 batch 展示、goal queue 写入、fanout 启动还没有完全收敛为同一调度合同。
+
+### 最高杠杆的后续任务
+
+1. **打通 `agent loop + capacity calling + capabilities` 主路径。**
+   让 LLM 先选择 capability（能力）并填参数，再由 agent loop 执行。
+   这会把 Supervisor 从“写死动作的 Codex 管理器”推进到“能选择系统能力的高层 agent”。
+
+2. **把 Codex worker 生命周期收口到 `integrations/codex` 与 `workspace`。**
+   Codex launch/resume/session/log、worktree、branch、merge、cleanup 应有稳定合同。
+   这样未来 worker 不只限于 Codex，Supervisor 也不用继续背 subprocess/git 细节。
+
+3. **统一状态、事件和记忆投影。**
+   goal、worker、decision、failure、memory 和 notification 应写成通用状态事实。
+   Web/dashboard/daemon 读取投影后，多 worker 协调才不会继续靠 feature 私有 JSONL 拼接。
+
 ## 迁移表
 
 | 当前职责 | 现有位置 | 目标位置 | 迁移方式 | 备注 |

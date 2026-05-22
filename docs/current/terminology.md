@@ -181,6 +181,10 @@
 | `decision answer` | 用户拍板答案事件，追加写入 JSONL，把请求移出活跃列表，并作为 `recent_decision_answers` 交给 LLM planner 继续推进 | 产品功能/通知/拍板/模型输入 | `src/isotope/features/supervisor/decision_requests.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/web.py` |
 | `decision archive` | 拍板归档事件，追加写入 JSONL，让无需继续的拍板项从活跃列表移走，不直接删除历史 | 产品功能/通知/拍板 | `src/isotope/features/supervisor/decision_requests.py`, `src/isotope/features/supervisor/runner.py` |
 | `context` | Supervisor 命令，执行项目上下文检索并记录结果供后续 LLM planner 使用；当前用 BM25 候选索引排序工作区文档和代码文件 | 产品功能/上下文能力 | `src/isotope/features/supervisor/context.py`, `src/isotope/features/supervisor/runner.py` |
+| `capability inventory` | 能力盘点，按项目层级确认已有能力、主路径接入、半成品和复用缺口 | 架构审计/能力地图 | `docs/current/supervisor-architecture-migration-table.md`, `docs/current/supervisor-capability-map.md` |
+| `architecture alignment audit` | 架构对齐审计，确认功能实现是否落在长期目录和正确抽象层，而不是继续堆在局部 feature | 架构审计/迁移 | `docs/current/supervisor-architecture-migration-table.md` |
+| `capacity calling` | 能力调用，让 LLM 在候选能力中选择一个能力并填参数，系统再按护栏执行 | 模型/能力/智能体 | `src/isotope/llm/capacity_calling.py`, `src/isotope/agents/loop/step.py`, `src/isotope/capabilities/runner.py` |
+| `capacity graph` | 能力依赖图，把多个能力调用按依赖关系、阶段和合并门槛组织成可执行计划 | 调度/能力/智能体 | `src/isotope/agents/scheduler/capacity_graph.py`, `src/isotope/agents/scheduler/dependency_graph.py` |
 | `OpenAI-compatible` | 兼容 OpenAI Chat Completions 形状的模型接口 | 模型/外部集成 | `src/isotope/features/supervisor/llm_summary.py` |
 | `LLM pool TOML` | 本机模型号池配置，声明 provider、base URL、model 和 key | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
 | `git worktree` | Git 工作树，同一仓库的独立开发目录，用于多分支并行；Supervisor 自动 worker 默认放在 `.worktrees/supervisor/...` | 工作区/开发协作 | `src/isotope/features/supervisor/runner.py`, `docs/current/status.md`, `AGENTS.md` |
