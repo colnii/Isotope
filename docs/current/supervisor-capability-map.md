@@ -118,7 +118,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   批量进入目标队列；写入复用编辑后的 candidates，不再二次调用 LLM。
 - `capacity plan` 是 Supervisor 的第一条 `capacity calling` 接入路径：
   默认只让 LLM 选择一个能力并生成 `capacity_graph` 与 capability launch plan；
-  显式 `--execute-agent-loop` 才通过 agent loop 执行 allowlist 低风险能力。
+  缺少必填输入时停在 plan 层，不生成可执行 graph call；显式
+  `--execute-agent-loop` 才通过 agent loop 执行 allowlist 低风险能力。
 - `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
 - `/managed/send` 成功发送后会更新 lane state。
 - `guide` 会按 cwd、lane name 和 tmux session 打印可复制工作流命令。

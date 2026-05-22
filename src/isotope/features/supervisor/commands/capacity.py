@@ -102,6 +102,17 @@ def build_supervisor_capacity_plan(
         goal=goal,
         capacities=_capacity_manifests_from_capabilities(capabilities),
     )
+    if selection.status != "ready_to_call":
+        return {
+            "status": "needs_input",
+            "kind": "supervisor_capacity_plan",
+            "goal": goal,
+            "selection": selection.to_dict(),
+            "capacity_graph": _blocked_capacity_graph(selection),
+            "capability_launch_plan": None,
+            "agent_loop": None,
+            "safety": _capacity_plan_safety(execute_agent_loop=execute_agent_loop),
+        }
     node = capacity_graph_node_from_call_selection(selection)
     graph = build_capacity_graph([node])
     capacity_plan = resolve_ready_capacity_plan(graph, states={})
@@ -125,11 +136,7 @@ def build_supervisor_capacity_plan(
         "capacity_graph": capacity_plan.to_dict(),
         "capability_launch_plan": launch_plan,
         "agent_loop": agent_loop,
-        "safety": {
-            "default_mode": "plan_only",
-            "execute_agent_loop": execute_agent_loop,
-            "note": "默认只生成能力调用计划；显式开启 execute_agent_loop 才运行 allowlist 低风险能力。",
-        },
+        "safety": _capacity_plan_safety(execute_agent_loop=execute_agent_loop),
     }
 
 
@@ -198,6 +205,33 @@ def _capacity_manifests_from_capabilities(
             }
         )
     return manifests
+
+
+def _blocked_capacity_graph(selection: Any) -> dict[str, Any]:
+    return {
+        "kind": "capacity_graph_plan",
+        "status": "blocked",
+        "summary": {
+            "ready": 0,
+            "blocked": 1,
+        },
+        "calls": [],
+        "blocked": [
+            {
+                "node_id": selection.capacity_id.replace(".", "-"),
+                "capacity_id": selection.capacity_id,
+                "reason": selection.status,
+            }
+        ],
+    }
+
+
+def _capacity_plan_safety(*, execute_agent_loop: bool) -> dict[str, Any]:
+    return {
+        "default_mode": "plan_only",
+        "execute_agent_loop": execute_agent_loop,
+        "note": "默认只生成能力调用计划；缺少输入时停在 plan 层；显式开启 execute_agent_loop 才运行 allowlist 低风险能力。",
+    }
 
 
 def _print_capacity_plan_plain(payload: Mapping[str, Any]) -> None:

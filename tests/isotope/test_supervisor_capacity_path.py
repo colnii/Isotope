@@ -5,6 +5,8 @@ import inspect
 
 from isotope.features.supervisor import runner
 from isotope.features.supervisor.commands import capacity as capacity_command
+from isotope.capabilities.catalog import Capability, CapabilityCatalog
+from isotope.capabilities.runner import CapabilityRunner
 from isotope.llm.provider import LLMResponse
 
 
@@ -74,6 +76,51 @@ def test_supervisor_capacity_plan_can_execute_low_risk_agent_loop_step(tmp_path)
     capability_run = loop["step_result"]["action_result"]["capability_run"]
     assert capability_run["capability_id"] == "artifact.review"
     assert capability_run["status"] == "completed"
+
+
+def test_supervisor_capacity_plan_blocks_missing_inputs_without_graph_call_or_execution(tmp_path):
+    provider = FakeCapacityProvider(
+        '{"capacity_id":"context.search","arguments":{},"confidence":0.77,'
+        '"rationale":"needs query"}'
+    )
+    runner_with_required_input = CapabilityRunner(
+        catalog=CapabilityCatalog(
+            capabilities=[
+                Capability(
+                    capability_id="context.search",
+                    title="Context Search",
+                    description="Search project context.",
+                    maturity="v0.1",
+                    shelf="product_candidate",
+                    domain_tags=("context", "search"),
+                    input_contract={
+                        "type": "object",
+                        "required": ["query"],
+                        "properties": {"query": {"type": "string"}},
+                    },
+                    output_contract={"type": "object"},
+                    safety_boundaries=("low_sensitive_manifest_only",),
+                )
+            ]
+        )
+    )
+
+    result = capacity_command.build_supervisor_capacity_plan(
+        goal="搜索项目文档，但用户没有提供 query",
+        provider=provider,
+        runner=runner_with_required_input,
+        state_root=tmp_path / "state",
+        execute_agent_loop=True,
+    )
+
+    assert result["status"] == "needs_input"
+    assert result["selection"]["capacity_id"] == "context.search"
+    assert result["selection"]["status"] == "missing_inputs"
+    assert result["selection"]["missing_inputs"] == ["query"]
+    assert result["capacity_graph"]["status"] == "blocked"
+    assert result["capacity_graph"]["summary"]["ready"] == 0
+    assert result["capacity_graph"]["calls"] == []
+    assert result["agent_loop"] is None
 
 
 def test_supervisor_capacity_command_handler_is_thin_and_runner_delegates():
