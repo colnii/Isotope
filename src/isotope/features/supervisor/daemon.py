@@ -97,6 +97,8 @@ def start_supervisor_daemon(
     goal: str | None = None,
     llm_summary: bool = False,
     auto_adopt: bool = True,
+    merge_dispatch_execute: bool = False,
+    auto_merge_promote: bool = False,
     worker_codex_model: str | None = None,
     worker_codex_config: tuple[str, ...] = (),
     webhook_url: str | None = None,
@@ -133,6 +135,8 @@ def start_supervisor_daemon(
         goal=goal,
         llm_summary=llm_summary,
         auto_adopt=auto_adopt,
+        merge_dispatch_execute=merge_dispatch_execute,
+        auto_merge_promote=auto_merge_promote,
         worker_codex_model=worker_codex_model,
         worker_codex_config=worker_codex_config,
         webhook_url=webhook_url,
@@ -390,6 +394,8 @@ def _build_loop_command(
     goal: str | None,
     llm_summary: bool,
     auto_adopt: bool,
+    merge_dispatch_execute: bool = False,
+    auto_merge_promote: bool = False,
     worker_codex_model: str | None,
     worker_codex_config: tuple[str, ...],
     webhook_url: str | None = None,
@@ -448,6 +454,10 @@ def _build_loop_command(
         command.append("--llm-summary")
     if not auto_adopt:
         command.append("--no-auto-adopt")
+    if merge_dispatch_execute:
+        command.append("--merge-dispatch-execute")
+    if auto_merge_promote:
+        command.append("--auto-merge-promote")
     return tuple(command)
 
 

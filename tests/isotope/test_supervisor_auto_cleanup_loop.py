@@ -61,6 +61,103 @@ def test_supervisor_loop_skips_blocking_merge_promotion_by_default(tmp_path, mon
     assert _auto_promote_done_merge_workers_to_main(args, run=fail_run) == []
 
 
+def test_auto_promote_blocked_merge_worker_launches_same_worktree_repair(
+    tmp_path,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    repo_root = tmp_path / "repo"
+    merge_worktree = repo_root / ".worktrees" / "supervisor" / "merge-dispatch"
+    repo_root.mkdir()
+    merge_worktree.mkdir(parents=True)
+    _write_managed_record(
+        codex_home,
+        record_id="managed-merge",
+        name="supervisor-merge-dispatch",
+        cwd=merge_worktree,
+        protocol_status="blocked",
+        worker_role="merge_dispatch",
+        extra_log=(
+            "SUPERVISOR_SUMMARY: cherry-pick fe47809 时 tests/isotope/test_flow.py "
+            "出现 content conflict\n"
+            "SUPERVISOR_NEXT: 需要继续处理当前 cherry-pick 冲突\n"
+        ),
+        prompt="source: integration_review",
+    )
+    review_payload = _integration_payload(
+        merge_workers=[
+            {
+                "record_id": "managed-merge",
+                "name": "supervisor-merge-dispatch",
+                "group": "merge_workers",
+                "cwd": str(merge_worktree),
+                "cwd_exists": True,
+                "branch": "supervisor/supervisor-merge-dispatch-abcd1234",
+                "worker_commit": "merge123",
+                "main_contains_worker": False,
+                "supervisor_protocol": {
+                    "status": "blocked",
+                    "summary": (
+                        "cherry-pick fe47809 时 tests/isotope/test_flow.py "
+                        "出现 content conflict"
+                    ),
+                    "next": "需要继续处理当前 cherry-pick 冲突",
+                },
+            }
+        ],
+        ready_to_integrate=[],
+        already_integrated=[],
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_integration_reviews",
+        lambda *, codex_home, base_ref, include_unfinished, **kwargs: review_payload,
+    )
+    launched: dict[str, Any] = {}
+
+    class FakeRecord:
+        name = "supervisor-merge-dispatch-repair"
+        record_id = "managed-repair"
+        pid = 45690
+        backend = "process"
+        worker_role = "merge_repair"
+
+    def fake_launch_managed_codex(**kwargs: Any) -> FakeRecord:
+        launched.update(kwargs)
+        return FakeRecord()
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.launch_managed_codex",
+        fake_launch_managed_codex,
+    )
+    args = type(
+        "Args",
+        (),
+        {
+            "command": "loop",
+            "codex_home": str(codex_home),
+            "workspace_root": str(repo_root),
+            "auto_merge_promote": True,
+            "prompt_cooldown": 0,
+            "worker_profile": "coding",
+            "worker_codex_model": None,
+            "worker_codex_config": None,
+        },
+    )()
+
+    repaired = _auto_promote_done_merge_workers_to_main(args, run=subprocess.run)
+
+    assert repaired[0]["status"] == "repair_launched"
+    assert repaired[0]["kind"] == "merge_worker_conflict_repair"
+    assert repaired[0]["repair"]["managed"]["worker_role"] == "merge_repair"
+    assert launched["cwd"] == merge_worktree
+    assert launched["name"] == "supervisor-merge-dispatch-repair"
+    assert launched["worker_role"] == "merge_repair"
+    assert "source: integration_review" in launched["prompt"]
+    assert "git status" in launched["prompt"]
+    assert "cherry-pick --continue" in launched["prompt"]
+    assert "tests/isotope/test_flow.py" in launched["prompt"]
+
+
 def test_supervisor_loop_keeps_ready_worker_for_explicit_cleanup(
     tmp_path,
     capsys,

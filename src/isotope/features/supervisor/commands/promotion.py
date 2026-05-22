@@ -34,6 +34,14 @@ def auto_promote_done_merge_workers_to_main(
         return []
     promoted: list[dict[str, Any]] = []
     for item in api._review_group_items(groups, "merge_workers"):
+        repair = api._auto_repair_blocked_merge_worker_review_item(
+            item,
+            args=args,
+            codex_home=codex_home,
+        )
+        if repair is not None:
+            promoted.append(repair)
+            continue
         promotion = api._auto_promote_merge_worker_review_item(
             item,
             args=args,

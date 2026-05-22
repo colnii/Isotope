@@ -251,6 +251,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     状态写入 `~/.codex/supervisor/daemon.json`，日志写入
     `~/.codex/supervisor/logs/daemon.log`；`watchdog` 可按状态文件
     检查后台 `loop`，异常退出时用原命令重新拉起；
+    `loop/up/daemon start --merge-dispatch-execute --auto-merge-promote`
+    会打开后半段自动化：ready worker 完成后可启动 merge-dispatch，
+    merge worker 完成后可自动合回 main，merge worker 汇报 blocked 时
+    可在同一 worktree 启动 merge_repair worker 继续处理冲突；
     `supervise/loop/up/daemon start --goal <目标>` 会把用户目标放入
     LLM planner 可见的动作候选；即使当前没有现成托管窗口，
     LLM 也可以先 `request_context`，或直接 `launch_session`

@@ -271,6 +271,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   自动动作已经发生但 `daemon.log` 仍为空。
 - `daemon start --max-fanout-launches N` 会把同轮 fanout 自动启动上限
   透传给后台 `loop`；watchdog 重启时仍复用状态文件里的原始命令。
+- `loop/up/daemon start --merge-dispatch-execute --auto-merge-promote`
+  会启用合并后半段自动化：启动 merge-dispatch、合回 main，
+  并在 merge worker 阻塞时启动同 worktree 的 `merge_repair`。
 - `daemon start` 会把低水位补任务参数透传给后台 `loop`，
   watchdog 重启时继续复用同一低水位策略。
 - `daemon status` 会从 `daemon.log` 和托管登记表汇总最近 LLM 动作、

@@ -637,6 +637,14 @@ def _build_parser_impl() -> argparse.ArgumentParser:
             "Default loop only reports the launch action."
         ),
     )
+    loop_parser.add_argument(
+        "--auto-merge-promote",
+        action="store_true",
+        help=(
+            "After merge-dispatch workers finish or block, automatically continue "
+            "the merge promotion or repair flow."
+        ),
+    )
     loop_parser.set_defaults(
         auto_execute=False,
         auto_adopt=True,
@@ -752,6 +760,16 @@ def _build_parser_impl() -> argparse.ArgumentParser:
         action="store_false",
         dest="auto_adopt",
         help="Disable automatic adoption of discovered Codex-like tmux sessions.",
+    )
+    up_parser.add_argument(
+        "--merge-dispatch-execute",
+        action="store_true",
+        help="Let the daemon loop launch merge-dispatch workers.",
+    )
+    up_parser.add_argument(
+        "--auto-merge-promote",
+        action="store_true",
+        help="Let the daemon loop promote or repair merge-dispatch workers.",
     )
     up_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     up_parser.set_defaults(auto_adopt=True)
@@ -891,6 +909,16 @@ def _build_parser_impl() -> argparse.ArgumentParser:
         action="store_false",
         dest="auto_adopt",
         help="Disable automatic adoption of discovered Codex-like tmux sessions.",
+    )
+    daemon_start_parser.add_argument(
+        "--merge-dispatch-execute",
+        action="store_true",
+        help="Let the daemon loop launch merge-dispatch workers.",
+    )
+    daemon_start_parser.add_argument(
+        "--auto-merge-promote",
+        action="store_true",
+        help="Let the daemon loop promote or repair merge-dispatch workers.",
     )
     daemon_start_parser.add_argument(
         "--json",
@@ -2082,6 +2110,8 @@ def _start_daemon_from_args(args: argparse.Namespace) -> dict[str, Any]:
         goal=None,
         llm_summary=args.llm_summary,
         auto_adopt=args.auto_adopt,
+        merge_dispatch_execute=getattr(args, "merge_dispatch_execute", False),
+        auto_merge_promote=getattr(args, "auto_merge_promote", False),
         worker_codex_model=_worker_codex_model(args, profile=worker_profile),
         worker_codex_config=_worker_codex_config(args, profile=worker_profile),
         webhook_url=args.webhook_url,
@@ -3090,6 +3120,188 @@ def _sync_goal_lifecycle(
     return updates
 
 
+def _auto_repair_blocked_merge_worker_review_item(
+    item: dict[str, Any],
+    *,
+    args: argparse.Namespace,
+    codex_home: Path,
+) -> dict[str, Any] | None:
+    if not _merge_worker_review_item_is_blocked(item):
+        return None
+    name = _non_empty_text(item.get("name")) or MERGE_DISPATCH_TARGET_NAME
+    record_id = _non_empty_text(item.get("record_id"))
+    if not record_id:
+        return None
+    repair_name = f"{name}-repair"
+    record = _managed_record_by_id(codex_home=codex_home, record_id=record_id)
+    if record is not None and record.backend != "tmux" and _pid_is_running(record.pid):
+        return {
+            "kind": "merge_worker_conflict_repair",
+            "name": name,
+            "record_id": record_id,
+            "status": "merge_worker_still_running",
+        }
+    if running_worker := _running_managed_process_by_name(
+        codex_home=codex_home,
+        name=repair_name,
+    ):
+        return {
+            "kind": "merge_worker_conflict_repair",
+            "name": name,
+            "record_id": record_id,
+            "status": "repair_already_running",
+            "repair": _managed_worker_reference(running_worker),
+        }
+    if previous_repair := _latest_managed_record_by_name(
+        codex_home=codex_home,
+        name=repair_name,
+    ):
+        protocol = _supervisor_protocol_from_text(
+            _managed_process_log_excerpt(previous_repair.log_path) or ""
+        )
+        status = str(protocol.get("status") or "").strip().lower()
+        if status in {"done", "blocked", "needs_user"}:
+            return {
+                "kind": "merge_worker_conflict_repair",
+                "name": name,
+                "record_id": record_id,
+                "status": f"repair_{status}",
+                "repair": _managed_worker_reference(previous_repair),
+            }
+    if cooldown_state := prompt_cooldown_state(
+        codex_home=codex_home,
+        name=repair_name,
+        cooldown_seconds=getattr(args, "prompt_cooldown", DEFAULT_PROMPT_COOLDOWN_SECONDS),
+    ):
+        return {
+            "kind": "merge_worker_conflict_repair",
+            "name": name,
+            "record_id": record_id,
+            "status": "repair_cooldown_active",
+            "repair": {
+                "kind": "launch_session",
+                "skipped": True,
+                "reason": "launch prompt cooldown active",
+                "lane_state": cooldown_state.to_dict(),
+            },
+        }
+    cwd = _blocked_merge_worker_cwd(item, record=record)
+    if cwd is None:
+        return {
+            "kind": "merge_worker_conflict_repair",
+            "name": name,
+            "record_id": record_id,
+            "status": "repair_blocked",
+            "reason": "merge worker cwd missing",
+        }
+    repair_prompt = _merge_dispatch_conflict_repair_prompt(item=item, cwd=cwd)
+    work_order_prompt = build_launch_work_order_prompt(
+        target_name=repair_name,
+        cwd=str(cwd),
+        goal=repair_prompt,
+        allow_remote_push=True,
+    )
+    launched = launch_managed_codex(
+        codex_home=codex_home,
+        cwd=cwd,
+        name=repair_name,
+        prompt=work_order_prompt,
+        codex_model=_worker_codex_model(args, profile=DEFAULT_WORKER_PROFILE),
+        codex_config=_worker_codex_config(args, profile=DEFAULT_WORKER_PROFILE),
+        worker_role=MERGE_REPAIR_WORKER_ROLE,
+        popen=subprocess.Popen,
+        run=subprocess.run,
+    )
+    record_lane_prompt(
+        codex_home=codex_home,
+        name=launched.name,
+        tmux_session=None,
+        status="launch_session",
+        prompt_kind="merge_conflict_repair",
+    )
+    return {
+        "kind": "merge_worker_conflict_repair",
+        "name": name,
+        "record_id": record_id,
+        "branch": _non_empty_text(item.get("branch")),
+        "worker_commit": _non_empty_text(item.get("worker_commit")),
+        "status": "repair_launched",
+        "repair": {
+            "kind": "launch_session",
+            "target_name": repair_name,
+            "worker_role": launched.worker_role,
+            "text": work_order_prompt,
+            "managed": {
+                "name": launched.name,
+                "record_id": launched.record_id,
+                "pid": launched.pid,
+                "backend": launched.backend,
+                "worker_role": launched.worker_role,
+            },
+            "cwd": str(cwd),
+        },
+    }
+
+
+def _blocked_merge_worker_cwd(item: dict[str, Any], *, record: Any | None) -> Path | None:
+    candidates = [item.get("cwd"), getattr(record, "cwd", None)]
+    for candidate in candidates:
+        text = _non_empty_text(candidate)
+        if text is None:
+            continue
+        cwd = Path(text).expanduser()
+        if cwd.is_dir():
+            return cwd
+    return None
+
+
+def _merge_dispatch_conflict_repair_prompt(
+    *,
+    item: dict[str, Any],
+    cwd: Path,
+) -> str:
+    protocol = item.get("supervisor_protocol")
+    protocol = protocol if isinstance(protocol, dict) else {}
+    summary = _non_empty_text(protocol.get("summary")) or "merge worker 汇报 blocked"
+    next_step = _non_empty_text(protocol.get("next")) or "继续处理当前 merge worktree"
+    return "\n".join(
+        [
+            "修复 merge-dispatch worker 在当前 worktree 中留下的阻塞状态。",
+            f"cwd: {cwd}",
+            f"merge worker: {_non_empty_text(item.get('name')) or MERGE_DISPATCH_TARGET_NAME}",
+            f"record_id: {_non_empty_text(item.get('record_id')) or 'unknown'}",
+            f"branch: {_non_empty_text(item.get('branch')) or 'unknown'}",
+            f"worker_commit: {_non_empty_text(item.get('worker_commit')) or 'unknown'}",
+            "source: integration_review",
+            f"blocked summary: {summary}",
+            f"blocked next: {next_step}",
+            "要求：先运行 git status，确认是否处于 cherry-pick/merge 冲突。",
+            (
+                "如果是 cherry-pick 冲突，最小化解决冲突后运行 "
+                "git cherry-pick --continue；如果不是 cherry-pick，按 git status "
+                "显示的真实状态继续。"
+            ),
+            "继续原 merge worker 的合并目标，不切换到无关任务，不删除分支或 worktree。",
+            "修复后运行相关测试，推送当前 merge 分支并观察 CI；失败时说明 run id 和关键错误。",
+            "完成后严格按 SUPERVISOR_STATUS、SUPERVISOR_SUMMARY、SUPERVISOR_NEXT 汇报。",
+        ]
+    )
+
+
+def _managed_record_by_id(*, codex_home: Path, record_id: str) -> Any | None:
+    for record in reversed(read_managed_records(default_registry_path(codex_home))):
+        if record.record_id == record_id:
+            return record
+    return None
+
+
+def _latest_managed_record_by_name(*, codex_home: Path, name: str) -> Any | None:
+    for record in reversed(read_managed_records(default_registry_path(codex_home))):
+        if record.name == name:
+            return record
+    return None
+
+
 def _auto_promote_merge_worker_review_item(
     item: dict[str, Any],
     *,
@@ -3895,6 +4107,14 @@ def _merge_worker_review_item_is_done(item: dict[str, Any]) -> bool:
     return isinstance(status, str) and status.lower() == "done"
 
 
+def _merge_worker_review_item_is_blocked(item: dict[str, Any]) -> bool:
+    protocol = item.get("supervisor_protocol")
+    if not isinstance(protocol, dict):
+        return False
+    status = protocol.get("status")
+    return isinstance(status, str) and status.lower() == "blocked"
+
+
 def _merge_candidate_record_ids(record: Any) -> set[str]:
     text = "\n".join(
         [
@@ -4062,6 +4282,8 @@ def _start_here_payload(args: argparse.Namespace) -> dict[str, Any]:
                     "2",
                     "--max-fanout-launches",
                     "2",
+                    "--merge-dispatch-execute",
+                    "--auto-merge-promote",
                 ]
             ),
         ]

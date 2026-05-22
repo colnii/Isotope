@@ -167,6 +167,10 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
    `isotope-supervisor loop --interval 180` 适合前台常驻；
    `isotope-supervisor daemon start --interval 30` 适合后台常驻；
    `isotope-supervisor daemon status` 用来看后台 loop 是否还活着。
+   需要让 worker 完成后自动进入合并后半段时，加
+   `--merge-dispatch-execute --auto-merge-promote`；
+   merge worker 若汇报 `blocked`，Supervisor 会在同一 worktree
+   启动 `merge_repair` worker 处理冲突。
 3. 追加目标：
    `isotope-supervisor goal add --cwd /path/to/repo "目标文本"`。
    目标会进入 `~/.codex/supervisor/goals.jsonl`，后续 `loop` 会动态读取，
@@ -470,6 +474,9 @@ Codex 的 tmux 会话，并生成可复制的 `adopt` 和 `attach` 命令。
 `daemon start --max-fanout-launches N` 会把同轮 fanout 自动启动上限传给
 后台 `loop`；`--goal-low-water N` 和 `--goal-replenish-limit N`
 会把低水位补任务阈值和单轮补充上限传给后台 `loop`。
+`--merge-dispatch-execute` 和 `--auto-merge-promote` 会随 daemon
+命令透传给后台 `loop`，用于自动启动 merge-dispatch、合回 main，
+以及在 merge worker 阻塞时启动同 worktree repair。
 这些参数都会随原始命令写入 `daemon.json`；
 `daemon status` 会检查本机进程是否还活着，并汇总最近 LLM 动作、
 最近执行结果、最近 worker 模型/配置和 worker 状态；
