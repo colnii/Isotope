@@ -162,6 +162,68 @@ def test_supervisor_daemon_status_records_usage_limit_worker_failure(
     assert "try again at 5:04 AM" in state.last_failure_stderr_summary
 
 
+def test_supervisor_daemon_status_suppresses_live_activity_when_stopped(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    state_path = codex_home / "supervisor" / "daemon.json"
+    log_path = codex_home / "supervisor" / "logs" / "daemon.log"
+    worker_log_path = codex_home / "supervisor" / "logs" / "managed-001.log"
+    state_path.parent.mkdir(parents=True)
+    log_path.parent.mkdir(parents=True)
+    worker_log_path.write_text("SUPERVISOR_STATUS: working\n", encoding="utf-8")
+    log_path.write_text(
+        "[LLM 白名单动作]\n"
+        "monitor / merge dispatch worker 正在运行，等待下一轮状态变化。\n"
+        "已跳过：merge dispatch worker 正在运行，等待下一轮状态变化。\n",
+        encoding="utf-8",
+    )
+    state_path.write_text(
+        json.dumps(
+            {
+                "pid": 45678,
+                "status": "stopped",
+                "started_at": "2026-05-18T10:00:00+00:00",
+                "stopped_at": "2026-05-18T10:05:00+00:00",
+                "command": [sys.executable, "-m", "isotope.features.supervisor.runner"],
+                "codex_home": str(codex_home),
+                "log_path": str(log_path),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    _write_managed_record(
+        codex_home,
+        workspace=workspace,
+        log_path=worker_log_path,
+        pid=45679,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._pid_is_running",
+        lambda pid: False,
+        raising=False,
+    )
+
+    exit_code = supervisor_main(
+        ["daemon", "status", "--codex-home", str(codex_home), "--json"]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    activity = payload["daemon"]["activity"]
+    assert activity["recent_llm_action"] is None
+    assert activity["recent_execution"] is None
+    assert activity["recent_worker"] is None
+    assert activity["night_summary"]["running_workers"] == 0
+    assert activity["night_summary"]["recent_worker_name"] is None
+
+
 def test_supervisor_launch_action_degrades_after_recorded_worker_failure(
     tmp_path,
     monkeypatch,

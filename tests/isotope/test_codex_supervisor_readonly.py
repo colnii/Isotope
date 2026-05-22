@@ -16468,9 +16468,9 @@ def test_codex_supervisor_runner_daemon_status_marks_exited_worker_not_working(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    worker = payload["daemon"]["activity"]["recent_worker"]
-    assert worker["status"] == "exited"
-    assert worker["summary"] == "正在读取项目状态。"
+    activity = payload["daemon"]["activity"]
+    assert activity["recent_worker"] is None
+    assert activity["night_summary"]["running_workers"] == 0
 
 
 def test_codex_supervisor_runner_up_reports_existing_daemon_activity(

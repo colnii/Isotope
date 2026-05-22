@@ -2156,6 +2156,29 @@ def _daemon_activity_payload(
     codex_home: Path,
     daemon: dict[str, Any],
 ) -> dict[str, Any]:
+    if daemon.get("status") != "running":
+        active_goals = _active_goal_dicts_for_codex_home(
+            codex_home,
+            include_status=True,
+        )
+        activity: dict[str, Any] = {
+            "recent_llm_action": None,
+            "recent_ci": None,
+            "recent_execution": None,
+            "recent_worker": None,
+            "night_summary": build_supervisor_daemon_night_summary(
+                active_goals=active_goals,
+                managed_workers=[],
+                integration_reviews=None,
+                recent_ci=None,
+                recent_execution=None,
+                recent_worker=None,
+                merge_worker_name=MERGE_DISPATCH_TARGET_NAME,
+            ),
+        }
+        if active_goals:
+            activity["active_goals"] = active_goals
+        return activity
     log_path = daemon.get("log_path")
     daemon_log = _read_tail_text(log_path if isinstance(log_path, str) else None)
     _sync_managed_worker_failures(
