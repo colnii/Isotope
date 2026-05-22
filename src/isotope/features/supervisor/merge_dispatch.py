@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from pathlib import Path
 from typing import Any
 
 from .merge_work_order import build_merge_work_order_prompt
@@ -44,6 +45,71 @@ def build_merge_dispatch_launch_spec(
     }
 
 
+def build_merge_dispatch_payload(
+    review_payload: Mapping[str, Any],
+    *,
+    cwd: Path,
+    running_worker: Any | None,
+    managed_worker_reference: Callable[[Any], dict[str, Any]],
+) -> dict[str, Any] | None:
+    launch_spec = build_merge_dispatch_launch_spec(
+        review_payload,
+        cwd=str(cwd),
+        requires_human_review=False,
+    )
+    if launch_spec is None:
+        return None
+    payload: dict[str, Any] = {
+        "status": "worker_already_running" if running_worker else "ready_to_launch",
+        "integration_review": {
+            "base_ref": review_payload.get("base_ref"),
+            "summary": review_payload.get("summary") or {},
+            "safety": review_payload.get("safety") or {},
+        },
+        "launch_spec": launch_spec,
+    }
+    if running_worker is not None:
+        payload["running_worker"] = managed_worker_reference(running_worker)
+    return payload
+
+
+def merge_dispatch_already_running_action(
+    merge_dispatch: Mapping[str, Any],
+) -> dict[str, Any]:
+    action: dict[str, Any] = {
+        "kind": "monitor",
+        "reason": "merge worker already running",
+    }
+    if running_worker := merge_dispatch.get("running_worker"):
+        action["managed"] = running_worker
+    return action
+
+
+def merge_dispatch_already_running_executed(
+    merge_dispatch: Mapping[str, Any],
+) -> dict[str, Any]:
+    executed = merge_dispatch_already_running_action(merge_dispatch)
+    executed["skipped"] = True
+    return executed
+
+
+def merge_dispatch_planned_executed(
+    merge_dispatch: Mapping[str, Any],
+) -> dict[str, Any]:
+    launch_spec = merge_dispatch.get("launch_spec")
+    target_name = (
+        launch_spec.get("target_name") if isinstance(launch_spec, Mapping) else None
+    )
+    return {
+        "kind": "launch_session",
+        "display_kind": "merge_dispatch",
+        "source": "integration_review",
+        "target_name": target_name,
+        "skipped": True,
+        "reason": "merge dispatch launch not enabled",
+    }
+
+
 def _ready_workers(payload: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     groups = payload.get("groups")
     if not isinstance(groups, Mapping):
@@ -70,5 +136,9 @@ def _required_text(value: object, *, field_name: str) -> str:
 __all__ = [
     "DEFAULT_TARGET_NAME",
     "REVIEW_NOTE",
+    "build_merge_dispatch_payload",
     "build_merge_dispatch_launch_spec",
+    "merge_dispatch_already_running_action",
+    "merge_dispatch_already_running_executed",
+    "merge_dispatch_planned_executed",
 ]

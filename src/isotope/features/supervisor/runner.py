@@ -90,7 +90,25 @@ from .llm_summary import (
 )
 from .merge_dispatch import (
     DEFAULT_TARGET_NAME as MERGE_DISPATCH_TARGET_NAME,
-    build_merge_dispatch_launch_spec,
+    build_merge_dispatch_payload,
+    merge_dispatch_already_running_action as _merge_dispatch_already_running_action,
+    merge_dispatch_already_running_executed as _merge_dispatch_already_running_executed,
+    merge_dispatch_planned_executed as _merge_dispatch_planned_executed,
+)
+from .merge_promotion import (
+    check_main_promotion_preconditions as _check_main_promotion_preconditions,
+    ci_run_is_terminal as _ci_run_is_terminal,
+    ci_run_succeeded as _ci_run_succeeded,
+    git_text as _git_text,
+    latest_ci_run_for_ref as _latest_ci_run_for_ref,
+    merge_promotion_decision_intent as _merge_promotion_decision_intent,
+    merge_promotion_repair_prompt as _merge_promotion_repair_prompt,
+    run_checked as _run_checked,
+    view_ci_run as _view_ci_run,
+)
+from .merge_repair import (
+    blocked_merge_worker_cwd as _blocked_merge_worker_cwd,
+    merge_dispatch_conflict_repair_prompt as _merge_dispatch_conflict_repair_prompt,
 )
 from .notifications import (
     notify_merge_worker_auto_archived,
@@ -3243,51 +3261,6 @@ def _auto_repair_blocked_merge_worker_review_item(
     }
 
 
-def _blocked_merge_worker_cwd(item: dict[str, Any], *, record: Any | None) -> Path | None:
-    candidates = [item.get("cwd"), getattr(record, "cwd", None)]
-    for candidate in candidates:
-        text = _non_empty_text(candidate)
-        if text is None:
-            continue
-        cwd = Path(text).expanduser()
-        if cwd.is_dir():
-            return cwd
-    return None
-
-
-def _merge_dispatch_conflict_repair_prompt(
-    *,
-    item: dict[str, Any],
-    cwd: Path,
-) -> str:
-    protocol = item.get("supervisor_protocol")
-    protocol = protocol if isinstance(protocol, dict) else {}
-    summary = _non_empty_text(protocol.get("summary")) or "merge worker 汇报 blocked"
-    next_step = _non_empty_text(protocol.get("next")) or "继续处理当前 merge worktree"
-    return "\n".join(
-        [
-            "修复 merge-dispatch worker 在当前 worktree 中留下的阻塞状态。",
-            f"cwd: {cwd}",
-            f"merge worker: {_non_empty_text(item.get('name')) or MERGE_DISPATCH_TARGET_NAME}",
-            f"record_id: {_non_empty_text(item.get('record_id')) or 'unknown'}",
-            f"branch: {_non_empty_text(item.get('branch')) or 'unknown'}",
-            f"worker_commit: {_non_empty_text(item.get('worker_commit')) or 'unknown'}",
-            "source: integration_review",
-            f"blocked summary: {summary}",
-            f"blocked next: {next_step}",
-            "要求：先运行 git status，确认是否处于 cherry-pick/merge 冲突。",
-            (
-                "如果是 cherry-pick 冲突，最小化解决冲突后运行 "
-                "git cherry-pick --continue；如果不是 cherry-pick，按 git status "
-                "显示的真实状态继续。"
-            ),
-            "继续原 merge worker 的合并目标，不切换到无关任务，不删除分支或 worktree。",
-            "修复后运行相关测试，推送当前 merge 分支并观察 CI；失败时说明 run id 和关键错误。",
-            "完成后严格按 SUPERVISOR_STATUS、SUPERVISOR_SUMMARY、SUPERVISOR_NEXT 汇报。",
-        ]
-    )
-
-
 def _managed_record_by_id(*, codex_home: Path, record_id: str) -> Any | None:
     for record in reversed(read_managed_records(default_registry_path(codex_home))):
         if record.record_id == record_id:
@@ -3699,33 +3672,6 @@ def _launch_merge_promotion_repair_worker(
     }
 
 
-def _merge_promotion_repair_prompt(
-    *,
-    item: dict[str, Any],
-    branch_ci: dict[str, Any],
-    decision_answer: dict[str, Any] | None,
-) -> str:
-    answer_text = (
-        str(decision_answer.get("answer"))
-        if isinstance(decision_answer, dict) and decision_answer.get("answer") is not None
-        else ""
-    ).strip()
-    return "\n".join(
-        [
-            "修复 merge promotion 失败，并在修复后汇报状态。",
-            f"merge worker: {_non_empty_text(item.get('name')) or 'unknown'}",
-            f"record_id: {_non_empty_text(item.get('record_id')) or 'unknown'}",
-            f"branch: {_non_empty_text(item.get('branch')) or 'unknown'}",
-            f"worker_commit: {_non_empty_text(item.get('worker_commit')) or 'unknown'}",
-            f"用户拍板: {answer_text or '修复后重试'}",
-            "失败 CI:",
-            json.dumps(branch_ci, ensure_ascii=False, sort_keys=True),
-            "要求：检查失败原因，做必要代码修复和相关测试。",
-            "不要 force push，不要改写共享历史；完成后按 SUPERVISOR_STATUS 协议汇报。",
-        ]
-    )
-
-
 def _completed_merge_promotion_repair_worker(
     *,
     codex_home: Path,
@@ -3792,130 +3738,6 @@ def _merge_promotion_recent_decision_answer(
         if answer.get("question") == _MERGE_PROMOTION_DECISION_QUESTION:
             return dict(answer)
     return None
-
-
-def _merge_promotion_decision_intent(answer: dict[str, Any] | None) -> str | None:
-    if not isinstance(answer, dict):
-        return None
-    text = str(answer.get("answer") or "").strip().lower()
-    if not text:
-        return None
-    if any(token in text for token in ("放弃", "不再", "不要合", "丢弃", "abandon", "drop")):
-        return "abandon"
-    if any(token in text for token in ("修复", "fix", "repair")):
-        return "repair"
-    if any(token in text for token in ("重试", "再试", "retry", "rerun")):
-        return "retry"
-    return "unknown"
-
-
-def _check_main_promotion_preconditions(repo_root: Path, *, run: Any) -> str | None:
-    branch = _git_text(repo_root, ["rev-parse", "--abbrev-ref", "HEAD"], run=run)
-    if branch != "main":
-        return f"workspace branch is {branch or 'unknown'}, expected main"
-    status = _git_text(repo_root, ["status", "--short"], run=run)
-    if status is None:
-        return "unable to read git status"
-    if status.strip():
-        return "main worktree is dirty"
-    return None
-
-
-def _latest_ci_run_for_ref(*, branch: str, commit: str, run: Any) -> dict[str, Any]:
-    completed = run(
-        [
-            "gh",
-            "run",
-            "list",
-            "--workflow",
-            "CI",
-            "--branch",
-            branch,
-            "--commit",
-            commit,
-            "--limit",
-            "1",
-            "--json",
-            "databaseId,headSha,status,conclusion,url",
-        ],
-        check=False,
-        text=True,
-        capture_output=True,
-    )
-    if completed.returncode != 0:
-        return {
-            "status": "unavailable",
-            "conclusion": "failure",
-            "stderr": _tail_text(completed.stderr),
-        }
-    try:
-        runs = json.loads(completed.stdout or "[]")
-    except json.JSONDecodeError:
-        return {"status": "invalid_json", "conclusion": "failure"}
-    if not isinstance(runs, list) or not runs:
-        return {"status": "missing", "conclusion": None}
-    first = runs[0]
-    return first if isinstance(first, dict) else {"status": "invalid_item"}
-
-
-def _view_ci_run(run_id: str, *, run: Any) -> dict[str, Any]:
-    completed = run(
-        [
-            "gh",
-            "run",
-            "view",
-            run_id,
-            "--json",
-            "databaseId,headSha,status,conclusion,url",
-        ],
-        check=False,
-        text=True,
-        capture_output=True,
-    )
-    if completed.returncode != 0:
-        return {}
-    try:
-        payload = json.loads(completed.stdout or "{}")
-    except json.JSONDecodeError:
-        return {}
-    return payload if isinstance(payload, dict) else {}
-
-
-def _ci_run_succeeded(run_payload: dict[str, Any], *, expected_commit: str) -> bool:
-    return (
-        run_payload.get("status") == "completed"
-        and run_payload.get("conclusion") == "success"
-        and run_payload.get("headSha") == expected_commit
-    )
-
-
-def _ci_run_is_terminal(run_payload: dict[str, Any]) -> bool:
-    return run_payload.get("status") == "completed" or run_payload.get("conclusion") in {
-        "failure",
-        "cancelled",
-        "timed_out",
-        "action_required",
-    }
-
-
-def _run_checked(command: list[str], *, run: Any) -> str | None:
-    completed = run(command, check=False, text=True, capture_output=True)
-    if completed.returncode == 0:
-        return None
-    detail = _tail_text(completed.stderr) or _tail_text(completed.stdout)
-    return f"{shlex.join(command)} failed" + (f": {detail}" if detail else "")
-
-
-def _git_text(repo_root: Path, args: list[str], *, run: Any) -> str | None:
-    completed = run(
-        ["git", "-C", str(repo_root), *args],
-        check=False,
-        text=True,
-        capture_output=True,
-    )
-    if completed.returncode != 0:
-        return None
-    return (completed.stdout or "").strip()
 
 
 def _non_empty_text(value: object) -> str | None:
@@ -5085,64 +4907,16 @@ def _integration_merge_dispatch_payload(args: argparse.Namespace) -> dict[str, A
         run_test_gate=False,
         run_candidate_validation=False,
     )
-    launch_spec = build_merge_dispatch_launch_spec(
-        review_payload,
-        cwd=str(_merge_dispatch_cwd(args)),
-        requires_human_review=False,
-    )
-    if launch_spec is None:
-        return None
     running_worker = _running_managed_process_by_name(
         codex_home=Path(args.codex_home),
-        name=str(launch_spec["target_name"]),
+        name=MERGE_DISPATCH_TARGET_NAME,
     )
-    payload: dict[str, Any] = {
-        "status": "worker_already_running" if running_worker else "ready_to_launch",
-        "integration_review": {
-            "base_ref": review_payload.get("base_ref"),
-            "summary": review_payload.get("summary") or {},
-            "safety": review_payload.get("safety") or {},
-        },
-        "launch_spec": launch_spec,
-    }
-    if running_worker is not None:
-        payload["running_worker"] = _managed_worker_reference(running_worker)
-    return payload
-
-
-def _merge_dispatch_already_running_action(
-    merge_dispatch: dict[str, Any],
-) -> dict[str, Any]:
-    action: dict[str, Any] = {
-        "kind": "monitor",
-        "reason": "merge worker already running",
-    }
-    if running_worker := merge_dispatch.get("running_worker"):
-        action["managed"] = running_worker
-    return action
-
-
-def _merge_dispatch_already_running_executed(
-    merge_dispatch: dict[str, Any],
-) -> dict[str, Any]:
-    executed = _merge_dispatch_already_running_action(merge_dispatch)
-    executed["skipped"] = True
-    return executed
-
-
-def _merge_dispatch_planned_executed(merge_dispatch: dict[str, Any]) -> dict[str, Any]:
-    launch_spec = merge_dispatch.get("launch_spec")
-    target_name = (
-        launch_spec.get("target_name") if isinstance(launch_spec, dict) else None
+    return build_merge_dispatch_payload(
+        review_payload,
+        cwd=_merge_dispatch_cwd(args),
+        running_worker=running_worker,
+        managed_worker_reference=_managed_worker_reference,
     )
-    return {
-        "kind": "launch_session",
-        "display_kind": "merge_dispatch",
-        "source": "integration_review",
-        "target_name": target_name,
-        "skipped": True,
-        "reason": "merge dispatch launch not enabled",
-    }
 
 
 def _managed_worker_reference(record: Any) -> dict[str, Any]:
