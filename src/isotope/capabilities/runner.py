@@ -117,6 +117,11 @@ class CapabilityRunner:
         scenario = _CAPABILITY_SCENARIOS.get(capability_id)
         required_inputs = _required_inputs(capability)
         missing_inputs = _missing_inputs(required_inputs, inputs)
+        if capability_id == SUPERVISOR_REQUEST_CONTEXT_CAPABILITY:
+            _validate_supervisor_request_context_inputs(
+                inputs=inputs,
+                missing_inputs=missing_inputs,
+            )
         runner_kind = _runner_kind(capability, scenario=scenario)
         blocking_reasons: list[str] = []
         can_launch = False
@@ -309,18 +314,15 @@ def _run_supervisor_request_context(
     missing_inputs = _missing_inputs(required_inputs, inputs)
     if missing_inputs:
         raise ValueError("missing required capability inputs: " + ", ".join(missing_inputs))
-    input_mapping = inputs or {}
-    max_results = input_mapping.get("max_results", 5)
-    if not isinstance(max_results, int):
-        try:
-            max_results = int(max_results)
-        except (TypeError, ValueError) as exc:
-            raise ValueError("max_results must be an integer") from exc
+    input_mapping = _validate_supervisor_request_context_inputs(
+        inputs=inputs,
+        missing_inputs=missing_inputs,
+    )
     result = request_project_context(
         codex_home=input_mapping["codex_home"],
         cwd=input_mapping["cwd"],
-        query=str(input_mapping["query"]),
-        max_results=max_results,
+        query=input_mapping["query"],
+        max_results=input_mapping["max_results"],
     )
     result_dict = result.to_dict()
     return {
@@ -337,6 +339,30 @@ def _run_supervisor_request_context(
             "items": result_dict["items"],
         },
     }
+
+
+def _validate_supervisor_request_context_inputs(
+    *,
+    inputs: Mapping[str, Any] | None,
+    missing_inputs: list[str],
+) -> dict[str, Any]:
+    input_mapping = inputs or {}
+    for name in ("codex_home", "cwd", "query"):
+        if name in missing_inputs:
+            continue
+        value = input_mapping.get(name)
+        if not isinstance(value, str):
+            raise ValueError(f"{name} must be a string")
+
+    max_results = input_mapping.get("max_results", 5)
+    if isinstance(max_results, bool) or not isinstance(max_results, int):
+        raise ValueError("max_results must be a positive integer")
+    if max_results <= 0:
+        raise ValueError("max_results must be a positive integer")
+
+    normalized = dict(input_mapping)
+    normalized["max_results"] = max_results
+    return normalized
 
 
 def _json_object_argument(value: str | None) -> dict[str, Any]:

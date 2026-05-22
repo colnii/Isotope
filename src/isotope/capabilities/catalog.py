@@ -188,9 +188,9 @@ class CapabilityCatalog:
                         ],
                     },
                     safety_boundaries=(
-                        "read_only",
+                        "workspace_read_only",
+                        "writes_existing_supervisor_context_store",
                         "low_sensitive_summary_only",
-                        "uses_existing_supervisor_context_store",
                     ),
                     default_enabled=True,
                     network_required=False,

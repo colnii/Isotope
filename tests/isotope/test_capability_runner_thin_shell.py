@@ -105,7 +105,8 @@ def test_runner_discovers_supervisor_request_context_from_default_catalog():
     assert _ids(search["capabilities"]) == ["supervisor.request_context"]
     description = runner.describe_capability("supervisor.request_context")
     assert description["input_contract"]["required"] == ["codex_home", "cwd", "query"]
-    assert "read_only" in description["safety_boundaries"]
+    assert "workspace_read_only" in description["safety_boundaries"]
+    assert "writes_existing_supervisor_context_store" in description["safety_boundaries"]
 
 
 def test_runner_status_mirrors_catalog_status_without_executing_capability():
@@ -222,6 +223,58 @@ def test_request_context_plan_stops_when_required_inputs_are_missing():
     assert plan["runner_kind"] == "deterministic_readonly"
     assert plan["missing_inputs"] == ["codex_home", "query"]
     assert plan["scenario"] is None
+
+
+@pytest.mark.parametrize(
+    ("field_name", "bad_value"),
+    [
+        ("codex_home", 123),
+        ("cwd", ["workspace"]),
+        ("query", {"text": "request_context"}),
+    ],
+)
+def test_request_context_plan_rejects_non_string_required_inputs(field_name, bad_value):
+    inputs = {
+        "codex_home": "/tmp/codex-home",
+        "cwd": "/tmp/workspace",
+        "query": "request_context",
+    }
+    inputs[field_name] = bad_value
+
+    with pytest.raises(ValueError, match=field_name):
+        _runner().plan_capability_run("supervisor.request_context", inputs=inputs)
+
+
+@pytest.mark.parametrize("bad_max_results", [0, -1, "3", True])
+def test_request_context_plan_rejects_invalid_max_results(bad_max_results):
+    with pytest.raises(ValueError, match="max_results"):
+        _runner().plan_capability_run(
+            "supervisor.request_context",
+            inputs={
+                "codex_home": "/tmp/codex-home",
+                "cwd": "/tmp/workspace",
+                "query": "request_context",
+                "max_results": bad_max_results,
+            },
+        )
+
+
+def test_request_context_run_rejects_non_string_query_without_coercion(tmp_path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+
+    with pytest.raises(ValueError, match="query"):
+        _runner().run_capability(
+            "supervisor.request_context",
+            inputs={
+                "codex_home": str(tmp_path / "codex-home"),
+                "cwd": str(workspace),
+                "query": 123,
+                "max_results": 1,
+            },
+        )
+
+    assert not (tmp_path / "codex-home" / "supervisor" / "context_results.jsonl").exists()
 
 
 def test_request_context_capability_runs_existing_readonly_context_search(tmp_path):

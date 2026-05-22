@@ -153,6 +153,71 @@ def test_capability_runner_cli_plans_request_context_missing_inputs_as_json():
     _assert_low_sensitive(payload)
 
 
+def test_capability_runner_cli_rejects_non_object_input_json():
+    result = _run_cli(
+        "plan",
+        "supervisor.request_context",
+        "--input-json",
+        json.dumps(["not", "an", "object"]),
+        "--json",
+    )
+
+    assert result.returncode == 2
+    payload = json.loads(result.stdout)
+    assert payload == {
+        "status": "error",
+        "error": {
+            "code": "capability_runner_error",
+            "message": "input JSON must be an object",
+        },
+    }
+
+
+def test_capability_runner_cli_rejects_required_input_type_errors(tmp_path):
+    result = _run_cli(
+        "run",
+        "supervisor.request_context",
+        "--input-json",
+        json.dumps(
+            {
+                "codex_home": str(tmp_path / "codex-home"),
+                "cwd": str(tmp_path),
+                "query": 123,
+            }
+        ),
+        "--json",
+    )
+
+    assert result.returncode == 2
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "error"
+    assert payload["error"]["code"] == "capability_runner_error"
+    assert payload["error"]["message"] == "query must be a string"
+
+
+def test_capability_runner_cli_rejects_invalid_max_results(tmp_path):
+    result = _run_cli(
+        "run",
+        "supervisor.request_context",
+        "--input-json",
+        json.dumps(
+            {
+                "codex_home": str(tmp_path / "codex-home"),
+                "cwd": str(tmp_path),
+                "query": "request_context",
+                "max_results": 0,
+            }
+        ),
+        "--json",
+    )
+
+    assert result.returncode == 2
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "error"
+    assert payload["error"]["code"] == "capability_runner_error"
+    assert payload["error"]["message"] == "max_results must be a positive integer"
+
+
 def test_capability_runner_cli_runs_allowlisted_capability_as_json(tmp_path):
     result = _run_cli("run", "artifact.review", "--root", str(tmp_path), "--json")
 

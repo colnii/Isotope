@@ -187,7 +187,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     更清晰的分组与匹配原因，以便 LLM 看到排序依据和低敏片段，而不是每轮塞全文；
     同一实现已包装为 `supervisor.request_context` capability，可通过
     `isotope-capability list/search/describe/plan/run` 发现和只读调用，
-    不改变现有 context 存储格式或 BM25 排序逻辑；
+    不改变现有 context 存储格式或 BM25 排序逻辑；该 capability 对
+    workspace 只读，但会写入既有 Supervisor context store
+    `context_results.jsonl`，输出仍限制为低敏摘要；
     `resume_session` 也受 `--prompt-cooldown` 约束，避免短时间重复恢复
     同一历史会话；如果目标 session 所在 cwd 已有后台 process worker
     仍在运行，`resume_session` 会跳过，避免同一个隔离工作区被重复驱动；
