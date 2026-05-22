@@ -35,9 +35,14 @@ def test_agent_scheduler_plans_fanout_with_running_worker_and_limit_guards():
         requires_human_review=False,
     )
 
-    assert [item["target_name"] for item in plan["launch_specs"]] == ["worker-a"]
-    assert plan["summary"] == {"launchable": 1, "skipped": 2, "limit": 1}
+    assert plan["launch_specs"] == []
+    assert plan["summary"] == {"launchable": 0, "skipped": 3, "limit": 1}
     assert plan["skipped"] == [
+        {
+            "target_name": "worker-a",
+            "reason": "global_running_limit_reached",
+            "batch": "active_goals",
+        },
         {
             "target_name": "worker-b",
             "reason": "worker_already_running",
@@ -45,8 +50,113 @@ def test_agent_scheduler_plans_fanout_with_running_worker_and_limit_guards():
         },
         {
             "target_name": "worker-c",
-            "reason": "fanout_limit_reached",
+            "reason": "global_running_limit_reached",
             "batch": "active_goals",
+        },
+    ]
+
+
+def test_agent_scheduler_counts_running_workers_against_global_cap():
+    goal_plan = {
+        "root": "/repo/isotope",
+        "goals": [
+            {"goal": "实现 A。", "target_name": "worker-a"},
+            {"goal": "实现 B。", "target_name": "worker-b"},
+            {"goal": "实现 C。", "target_name": "worker-c"},
+        ],
+        "parallel_recommendations": [
+            {
+                "batch": "active_goals",
+                "targets": ["worker-a", "worker-b", "worker-c"],
+                "reason": "同阶段目标可并行。",
+            }
+        ],
+    }
+
+    plan = build_fanout_launch_plan(
+        goal_plan,
+        limit=3,
+        running_target_names={"already-running-1", "already-running-2"},
+        requires_human_review=False,
+    )
+
+    assert [item["target_name"] for item in plan["launch_specs"]] == ["worker-a"]
+    assert plan["summary"] == {"launchable": 1, "skipped": 2, "limit": 3}
+    assert [item["reason"] for item in plan["skipped"]] == [
+        "global_running_limit_reached",
+        "global_running_limit_reached",
+    ]
+
+
+def test_agent_scheduler_skips_goals_with_unmet_dependencies_and_stage_gate():
+    goal_plan = {
+        "root": "/repo/isotope",
+        "goals": [
+            {
+                "goal_id": "goal-a",
+                "goal": "实现 A。",
+                "target_name": "worker-a",
+                "stage": "foundation",
+                "scope": "scheduler",
+                "last_status": "done",
+            },
+            {
+                "goal_id": "goal-b",
+                "goal": "实现 B。",
+                "target_name": "worker-b",
+                "stage": "foundation",
+                "scope": "scheduler",
+            },
+            {
+                "goal_id": "goal-c",
+                "goal": "实现 C。",
+                "target_name": "worker-c",
+                "depends_on": ["worker-a"],
+                "stage": "fanout",
+                "scope": "scheduler",
+                "merge_gate": "merge-foundation",
+            },
+            {
+                "goal_id": "goal-d",
+                "goal": "实现 D。",
+                "target_name": "worker-d",
+                "depends_on": ["worker-a", "worker-b"],
+                "stage": "fanout",
+                "scope": "scheduler",
+            },
+        ],
+        "parallel_recommendations": [
+            {
+                "batch": "graph",
+                "targets": ["worker-b", "worker-c", "worker-d"],
+                "reason": "planner 给出候选并行批次。",
+            }
+        ],
+    }
+
+    plan = build_fanout_launch_plan(
+        goal_plan,
+        limit=3,
+        requires_human_review=False,
+    )
+
+    assert [item["target_name"] for item in plan["launch_specs"]] == ["worker-b"]
+    assert plan["launch_specs"][0]["dependency_graph"] == {
+        "stage": "foundation",
+        "scope": "scheduler",
+    }
+    assert plan["skipped"] == [
+        {
+            "target_name": "worker-c",
+            "reason": "dependency_unmet",
+            "batch": "graph",
+            "dependency": "worker-a",
+        },
+        {
+            "target_name": "worker-d",
+            "reason": "dependency_unmet",
+            "batch": "graph",
+            "dependency": "worker-a",
         },
     ]
 
@@ -77,6 +187,52 @@ def test_agent_scheduler_selects_active_goal_targets_for_fanout():
             "target_name": "worker-b",
             "reason": "worker_already_running",
             "batch": "active_goals",
+        }
+    ]
+
+
+def test_agent_scheduler_applies_dependency_gate_to_active_goals():
+    active_goals = [
+        {
+            "goal_id": "goal-a",
+            "goal": "实现 A。",
+            "target_name": "worker-a",
+            "cwd": "/repo",
+            "last_status": "done",
+            "merged": True,
+            "verified": True,
+        },
+        {
+            "goal_id": "goal-b",
+            "goal": "实现 B。",
+            "target_name": "worker-b",
+            "cwd": "/repo",
+            "depends_on": ["worker-a"],
+            "stage": "foundation",
+        },
+        {
+            "goal_id": "goal-c",
+            "goal": "实现 C。",
+            "target_name": "worker-c",
+            "cwd": "/repo",
+            "depends_on": ["worker-b"],
+            "stage": "fanout",
+        },
+    ]
+
+    plan = build_active_goals_fanout_launch_plan(
+        active_goals,
+        limit=3,
+    )
+
+    assert plan is not None
+    assert [item["target_name"] for item in plan["launch_specs"]] == ["worker-b"]
+    assert plan["skipped"] == [
+        {
+            "target_name": "worker-c",
+            "reason": "dependency_unmet",
+            "batch": "active_goals",
+            "dependency": "worker-b",
         }
     ]
 

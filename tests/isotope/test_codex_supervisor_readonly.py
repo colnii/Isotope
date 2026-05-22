@@ -14167,13 +14167,12 @@ def test_codex_supervisor_runner_loop_fanout_launches_parallel_active_goals(
         "command_suggestion": None,
     }
     assert payload["fanout_plan"]["summary"] == {
-        "launchable": 2,
-        "skipped": 2,
+        "launchable": 1,
+        "skipped": 3,
         "limit": 2,
     }
     assert [item["target_name"] for item in payload["fanout_plan"]["launch_specs"]] == [
         "worker-a",
-        "worker-c",
     ]
     assert all(
         item["review"]["requires_human_review"] is False
@@ -14186,22 +14185,26 @@ def test_codex_supervisor_runner_loop_fanout_launches_parallel_active_goals(
             "batch": "active_goals",
         },
         {
+            "target_name": "worker-c",
+            "reason": "global_running_limit_reached",
+            "batch": "active_goals",
+        },
+        {
             "target_name": "worker-d",
-            "reason": "fanout_limit_reached",
+            "reason": "global_running_limit_reached",
             "batch": "active_goals",
         },
     ]
     assert payload["executed"]["kind"] == "fanout_launch_sessions"
     assert payload["executed"]["summary"] == {
-        "launched": 2,
+        "launched": 1,
         "skipped": 0,
         "limit": 2,
     }
     assert [item["managed"]["name"] for item in payload["executed"]["results"]] == [
         "worker-a",
-        "worker-c",
     ]
-    assert len(captured) == 2
+    assert len(captured) == 1
     assert all(command[9].startswith("WORK ORDER") for command in captured)
     assert all("completion_template:" in command[9] for command in captured)
     assert all(
@@ -14214,7 +14217,6 @@ def test_codex_supervisor_runner_loop_fanout_launches_parallel_active_goals(
     ) == [
         "worker-a",
         "worker-b",
-        "worker-c",
     ]
     assert payload["current_batch"]["target_names"] == [
         "worker-a",
@@ -14241,7 +14243,6 @@ def test_codex_supervisor_runner_loop_fanout_launches_parallel_active_goals(
     ) == [
         "worker-a",
         "worker-b",
-        "worker-c",
     ]
     assert dashboard_payload["current"]["target_names"] == [
         "worker-a",

@@ -6,6 +6,12 @@ from collections.abc import Mapping
 import re
 from typing import Any, Iterable
 
+from .dependency_graph import (
+    DependencyGraphError,
+    build_dependency_graph_from_goal_records,
+    build_node_states_from_goal_records,
+    resolve_ready_nodes,
+)
 from .goal_queue import filter_fanout_candidate_goals
 
 
@@ -27,6 +33,7 @@ def build_fanout_launch_plan(
     if limit <= 0:
         raise ValueError("limit must be positive")
     candidates = _candidate_by_target_name(goal_plan)
+    dependency_state = _resolved_dependency_state(candidates.values())
     running_names = {
         _normalize_target_name(name)
         for name in running_target_names
@@ -56,8 +63,20 @@ def build_fanout_launch_plan(
             if target_name in running_names:
                 skipped.append({**skip_base, "reason": "worker_already_running"})
                 continue
-            if len(launch_specs) >= limit:
-                skipped.append({**skip_base, "reason": "fanout_limit_reached"})
+            dependency_skip = _dependency_skip(
+                candidate,
+                dependency_state=dependency_state,
+            )
+            if dependency_skip is not None:
+                skipped.append({**skip_base, **dependency_skip})
+                continue
+            if len(running_names) + len(launch_specs) >= limit:
+                reason = (
+                    "global_running_limit_reached"
+                    if running_names
+                    else "fanout_limit_reached"
+                )
+                skipped.append({**skip_base, "reason": reason})
                 continue
             launch_cwd = _optional_string(candidate.get("cwd")) or default_cwd
             if not launch_cwd:
@@ -67,22 +86,24 @@ def build_fanout_launch_plan(
             if not goal:
                 skipped.append({**skip_base, "reason": "goal_missing"})
                 continue
-            launch_specs.append(
-                {
-                    "kind": "launch_session",
-                    "target_name": target_name,
-                    "cwd": launch_cwd,
-                    "prompt": goal,
-                    "reason": reason,
-                    "batch": batch,
-                    "source": "parallel_recommendations",
-                    "candidate_reason": _optional_string(candidate.get("reason")),
-                    "review": {
-                        "requires_human_review": requires_human_review,
-                        "note": REVIEW_NOTE,
-                    },
-                }
-            )
+            spec = {
+                "kind": "launch_session",
+                "target_name": target_name,
+                "cwd": launch_cwd,
+                "prompt": goal,
+                "reason": reason,
+                "batch": batch,
+                "source": "parallel_recommendations",
+                "candidate_reason": _optional_string(candidate.get("reason")),
+                "review": {
+                    "requires_human_review": requires_human_review,
+                    "note": REVIEW_NOTE,
+                },
+            }
+            dependency_graph = _launch_dependency_graph(candidate)
+            if dependency_graph:
+                spec["dependency_graph"] = dependency_graph
+            launch_specs.append(spec)
 
     return {
         "status": "ok",
@@ -118,7 +139,7 @@ def build_active_goals_fanout_launch_plan(
         return None
     return build_fanout_launch_plan(
         {
-            "goals": fanout_goals,
+            "goals": active_goals,
             "parallel_recommendations": [
                 {
                     "batch": "active_goals",
@@ -279,6 +300,115 @@ def _candidate_by_target_name(goal_plan: dict[str, Any]) -> dict[str, dict[str, 
     return candidates
 
 
+def _resolved_dependency_state(
+    candidates: Iterable[dict[str, Any]],
+) -> dict[str, Any]:
+    candidate_list = list(candidates)
+    try:
+        graph = build_dependency_graph_from_goal_records(candidate_list)
+        states = build_node_states_from_goal_records(candidate_list)
+        ready_nodes = resolve_ready_nodes(graph, states=states)
+    except DependencyGraphError as exc:
+        return {
+            "status": "invalid",
+            "reason": str(exc),
+            "ready_target_names": set(),
+            "states": {},
+        }
+    return {
+        "status": "ok",
+        "reason": None,
+        "ready_target_names": {
+            _normalize_target_name(node.node_id)
+            for node in ready_nodes
+        },
+        "states": states,
+    }
+
+
+def _dependency_skip(
+    candidate: Mapping[str, Any],
+    *,
+    dependency_state: Mapping[str, Any],
+) -> dict[str, str] | None:
+    if dependency_state.get("status") != "ok":
+        reason = _optional_string(dependency_state.get("reason")) or "invalid graph"
+        return {
+            "reason": "dependency_graph_invalid",
+            "dependency": reason,
+        }
+    target_name = _optional_string(candidate.get("target_name"))
+    if target_name is None:
+        return None
+    ready_targets = dependency_state.get("ready_target_names")
+    if not isinstance(ready_targets, set):
+        return None
+    if _normalize_target_name(target_name) in ready_targets:
+        return None
+    states = dependency_state.get("states")
+    if not isinstance(states, Mapping):
+        states = {}
+    for dependency in _goal_dependencies(candidate):
+        if not _dependency_ready(dependency, states=states):
+            return {
+                "reason": "dependency_unmet",
+                "dependency": dependency,
+            }
+    stage = _optional_string(candidate.get("stage"))
+    if stage is not None:
+        return {
+            "reason": "dependency_unmet",
+            "dependency": stage,
+        }
+    return {
+        "reason": "dependency_unmet",
+        "dependency": _normalize_target_name(target_name),
+    }
+
+
+def _dependency_ready(dependency: str, *, states: Mapping[str, Any]) -> bool:
+    state = states.get(dependency) or states.get(_normalize_target_name(dependency))
+    if state is None:
+        return False
+    return (
+        getattr(state, "status", None) == "done"
+        and getattr(state, "merged", False)
+        and getattr(state, "verified", False)
+    )
+
+
+def _goal_status(candidate: Mapping[str, Any]) -> str | None:
+    for key in ("last_status", "status", "supervisor_status"):
+        status = _optional_string(candidate.get(key))
+        if status is not None:
+            return status.lower()
+    return None
+
+
+def _goal_dependencies(candidate: Mapping[str, Any]) -> list[str]:
+    return [
+        _normalize_target_name(item)
+        for item in _string_list(candidate.get("depends_on"))
+    ]
+
+
+def _launch_dependency_graph(candidate: Mapping[str, Any]) -> dict[str, Any]:
+    graph: dict[str, Any] = {}
+    depends_on = _goal_dependencies(candidate)
+    if depends_on:
+        graph["depends_on"] = depends_on
+    stage = _optional_string(candidate.get("stage"))
+    if stage is not None:
+        graph["stage"] = stage
+    scope = _optional_string(candidate.get("scope"))
+    if scope is not None:
+        graph["scope"] = scope
+    merge_gate = _optional_string(candidate.get("merge_gate"))
+    if merge_gate is not None:
+        graph["merge_gate"] = merge_gate
+    return graph
+
+
 def _fanout_status_items(
     *,
     active_goals: Iterable[dict[str, Any]],
@@ -399,3 +529,14 @@ def _optional_string(value: object) -> str | None:
     if not isinstance(value, str) or not value.strip():
         return None
     return value.strip()
+
+
+def _string_list(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    items: list[str] = []
+    for item in value:
+        text = _optional_string(item)
+        if text is not None:
+            items.append(text)
+    return items

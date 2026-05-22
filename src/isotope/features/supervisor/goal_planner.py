@@ -29,13 +29,26 @@ class GoalCandidate:
     goal: str
     target_name: str
     reason: str
+    depends_on: tuple[str, ...] = ()
+    stage: str | None = None
+    scope: str | None = None
+    merge_gate: str | None = None
 
-    def to_dict(self) -> dict[str, str]:
-        return {
+    def to_dict(self) -> dict[str, Any]:
+        item: dict[str, Any] = {
             "goal": self.goal,
             "target_name": self.target_name,
             "reason": self.reason,
         }
+        if self.depends_on:
+            item["depends_on"] = list(self.depends_on)
+        if self.stage is not None:
+            item["stage"] = self.stage
+        if self.scope is not None:
+            item["scope"] = self.scope
+        if self.merge_gate is not None:
+            item["merge_gate"] = self.merge_gate
+        return item
 
 
 @dataclass(frozen=True)
@@ -93,6 +106,10 @@ def plan_supervisor_goals(
                 cwd=workspace,
                 goal=candidate.goal,
                 target_name=candidate.target_name,
+                depends_on=candidate.depends_on,
+                stage=candidate.stage,
+                scope=candidate.scope,
+                merge_gate=candidate.merge_gate,
             )
             written.append(goal.to_dict())
 
@@ -193,6 +210,10 @@ def build_goal_planning_messages(
                                 "goal": "清晰、可执行、可交给 Codex worker 的目标",
                                 "target_name": "短横线命名的 worker 名",
                                 "reason": "一句话说明依据来自哪些当前事实",
+                                "depends_on": ["可选，必须先完成并合入的 target_name 或 goal_id"],
+                                "stage": "可选，同阶段可并行；后续阶段必须等前置阶段完成",
+                                "scope": "可选，本目标触碰的代码或文档范围",
+                                "merge_gate": "可选，解锁本目标前必须完成的 merge gate 名称",
                             }
                         ]
                     },
@@ -287,6 +308,10 @@ def build_goal_planning_repair_messages(
                                 "goal": "必填，可执行目标",
                                 "target_name": "必填，小写短横线 worker 名",
                                 "reason": "必填，依据",
+                                "depends_on": ["可选，依赖的 target_name 或 goal_id"],
+                                "stage": "可选，阶段名",
+                                "scope": "可选，影响范围",
+                                "merge_gate": "可选，依赖的 merge gate",
                             }
                         ],
                     },
@@ -336,11 +361,19 @@ def _goal_candidates_from_payload(payload: Any) -> list[GoalCandidate]:
             continue
         target_name = _optional_string(raw.get("target_name")) or _target_name_from_goal(goal)
         reason = _optional_string(raw.get("reason")) or "LLM 基于当前事实生成。"
+        depends_on = tuple(
+            _normalize_target_name(item)
+            for item in _string_list(raw.get("depends_on"))
+        )
         candidates.append(
             GoalCandidate(
                 goal=goal,
                 target_name=_normalize_target_name(target_name),
                 reason=reason,
+                depends_on=depends_on,
+                stage=_optional_string(raw.get("stage")),
+                scope=_optional_string(raw.get("scope")),
+                merge_gate=_optional_string(raw.get("merge_gate")),
             )
         )
     return candidates

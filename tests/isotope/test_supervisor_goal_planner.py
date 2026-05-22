@@ -181,6 +181,46 @@ class FourGoalProvider:
         )
 
 
+class DependencyGraphGoalProvider:
+    def summarize(self, messages: list[dict[str, str]]) -> str:
+        user_payload = json.loads(messages[1]["content"])
+        goal_schema = user_payload["output_schema"]["goals"][0]
+        assert "depends_on" in goal_schema
+        assert "stage" in goal_schema
+        assert "scope" in goal_schema
+        assert "merge_gate" in goal_schema
+        return json.dumps(
+            {
+                "parallel_recommendations": [
+                    {
+                        "batch": "第二阶段",
+                        "targets": ["worker-a", "worker-b"],
+                        "reason": "planner 认为两者可进入 fanout gate。",
+                    }
+                ],
+                "goals": [
+                    {
+                        "goal": "实现 worker A。",
+                        "target_name": "worker-a",
+                        "reason": "A 是基础阶段。",
+                        "stage": "foundation",
+                        "scope": "scheduler",
+                    },
+                    {
+                        "goal": "实现 worker B。",
+                        "target_name": "worker-b",
+                        "reason": "B 依赖 A 合入后再启动。",
+                        "depends_on": ["worker-a"],
+                        "stage": "fanout",
+                        "scope": "scheduler",
+                        "merge_gate": "merge-foundation",
+                    },
+                ],
+            },
+            ensure_ascii=False,
+        )
+
+
 class SoftSyntaxRepairGoalProvider:
     def __init__(self) -> None:
         self.calls: list[list[dict[str, str]]] = []
@@ -384,6 +424,58 @@ def test_supervisor_goal_plan_limit_does_not_truncate_planned_candidates(
     assert read_active_supervisor_goals(codex_home=codex_home)[-1].target_name == (
         "worker-d"
     )
+
+
+def test_supervisor_goal_plan_and_active_goals_preserve_dependency_graph_fields(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    root = tmp_path / "repo"
+    root.mkdir()
+    _write_current_docs(root)
+    codex_home = tmp_path / ".codex"
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: DependencyGraphGoalProvider(),
+    )
+
+    exit_code = supervisor_main(
+        [
+            "goal",
+            "plan",
+            "--codex-home",
+            str(codex_home),
+            "--cwd",
+            str(root),
+            "--write",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    plan_payload = json.loads(capsys.readouterr().out)
+    assert plan_payload["written_goals"][1]["depends_on"] == ["worker-a"]
+    assert plan_payload["written_goals"][1]["stage"] == "fanout"
+    assert plan_payload["written_goals"][1]["scope"] == "scheduler"
+    assert plan_payload["written_goals"][1]["merge_gate"] == "merge-foundation"
+
+    exit_code = supervisor_main(
+        [
+            "goal",
+            "list",
+            "--codex-home",
+            str(codex_home),
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    list_payload = json.loads(capsys.readouterr().out)
+    assert list_payload["active_goals"][1]["depends_on"] == ["worker-a"]
+    assert list_payload["active_goals"][1]["stage"] == "fanout"
+    assert list_payload["active_goals"][1]["scope"] == "scheduler"
+    assert list_payload["active_goals"][1]["merge_gate"] == "merge-foundation"
 
 
 def test_supervisor_goal_plan_can_fanout_execute_parallel_recommendations(

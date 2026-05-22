@@ -111,9 +111,14 @@ def test_supervisor_fanout_dedupes_caps_and_skips_running_workers():
         running_target_names={"worker-b"},
     )
 
-    assert plan["summary"] == {"launchable": 1, "skipped": 4, "limit": 1}
-    assert [item["target_name"] for item in plan["launch_specs"]] == ["worker-a"]
+    assert plan["summary"] == {"launchable": 0, "skipped": 5, "limit": 1}
+    assert plan["launch_specs"] == []
     assert plan["skipped"] == [
+        {
+            "target_name": "worker-a",
+            "reason": "global_running_limit_reached",
+            "batch": "批次 1",
+        },
         {
             "target_name": "worker-a",
             "reason": "duplicate_target",
@@ -126,7 +131,7 @@ def test_supervisor_fanout_dedupes_caps_and_skips_running_workers():
         },
         {
             "target_name": "worker-c",
-            "reason": "fanout_limit_reached",
+            "reason": "global_running_limit_reached",
             "batch": "批次 1",
         },
         {

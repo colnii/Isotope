@@ -7,7 +7,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
 from ...agents.scheduler.goal_queue import (
     GOAL_QUEUE_VIEW_GROUPS,
@@ -25,9 +25,13 @@ class SupervisorGoal:
     cwd: str
     goal: str
     target_name: str
+    depends_on: tuple[str, ...] = ()
+    stage: str | None = None
+    scope: str | None = None
+    merge_gate: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        item: dict[str, Any] = {
             "event": "supervisor_goal",
             "goal_id": self.goal_id,
             "created_at": self.created_at,
@@ -35,6 +39,15 @@ class SupervisorGoal:
             "goal": self.goal,
             "target_name": self.target_name,
         }
+        if self.depends_on:
+            item["depends_on"] = list(self.depends_on)
+        if self.stage is not None:
+            item["stage"] = self.stage
+        if self.scope is not None:
+            item["scope"] = self.scope
+        if self.merge_gate is not None:
+            item["merge_gate"] = self.merge_gate
+        return item
 
 
 def default_goals_path(codex_home: Path | str) -> Path:
@@ -47,6 +60,10 @@ def record_supervisor_goal(
     cwd: Path | str,
     goal: str,
     target_name: str | None = None,
+    depends_on: Iterable[str] = (),
+    stage: str | None = None,
+    scope: str | None = None,
+    merge_gate: str | None = None,
     now: Callable[[], datetime] | None = None,
 ) -> SupervisorGoal:
     workspace = Path(cwd).expanduser()
@@ -61,6 +78,15 @@ def record_supervisor_goal(
         cwd=str(workspace),
         goal=goal_text,
         target_name=target,
+        depends_on=tuple(
+            dependency
+            for value in depends_on
+            for dependency in (_optional_string(value),)
+            if dependency is not None
+        ),
+        stage=_optional_string(stage),
+        scope=_optional_string(scope),
+        merge_gate=_optional_string(merge_gate),
     )
     append_goal_event(default_goals_path(codex_home), item.to_dict())
     return item
@@ -273,6 +299,10 @@ def _goal_from_dict(raw: dict[str, Any]) -> SupervisorGoal | None:
         cwd=cwd,
         goal=goal,
         target_name=target_name,
+        depends_on=tuple(_string_list(raw.get("depends_on"))),
+        stage=_optional_string(raw.get("stage")),
+        scope=_optional_string(raw.get("scope")),
+        merge_gate=_optional_string(raw.get("merge_gate")),
     )
 
 
@@ -332,6 +362,17 @@ def _optional_string(value: object) -> str | None:
     if not isinstance(value, str) or not value.strip():
         return None
     return value.strip()
+
+
+def _string_list(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    items: list[str] = []
+    for item in value:
+        text = _optional_string(item)
+        if text is not None:
+            items.append(text)
+    return items
 
 
 def _utc_now() -> datetime:
