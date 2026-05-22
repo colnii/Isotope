@@ -113,6 +113,60 @@ def test_execute_delete_worktree_removes_archived_integrated_supervisor_worktree
         if command == ["git", "-C", str(repo_root), "worktree", "remove", str(worktree)]:
             shutil.rmtree(worktree)
             return subprocess.CompletedProcess(command, 0, "", "")
+        if command == [
+            "git",
+            "-C",
+            str(repo_root),
+            "rev-parse",
+            "--abbrev-ref",
+            "--symbolic-full-name",
+            "supervisor/done-worker-12345678@{upstream}",
+        ]:
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                "origin/supervisor/done-worker-12345678\n",
+                "",
+            )
+        if command == [
+            "git",
+            "-C",
+            str(repo_root),
+            "merge-base",
+            "--is-ancestor",
+            "supervisor/done-worker-12345678",
+            "main",
+        ]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        if command == [
+            "git",
+            "-C",
+            str(repo_root),
+            "branch",
+            "-d",
+            "supervisor/done-worker-12345678",
+        ]:
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                "Deleted branch supervisor/done-worker-12345678.\n",
+                "",
+            )
+        if command == [
+            "git",
+            "-C",
+            str(repo_root),
+            "push",
+            "origin",
+            "--delete",
+            "supervisor/done-worker-12345678",
+        ]:
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                "",
+                "To https://example.test/repo.git\n - [deleted] supervisor/done-worker-12345678\n",
+            )
         raise AssertionError(f"unexpected command: {command}")
 
     monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
@@ -139,8 +193,31 @@ def test_execute_delete_worktree_removes_archived_integrated_supervisor_worktree
     assert result["deleted_worktree"] == str(worktree)
     assert result["managed"]["record_id"] == "managed-done"
     assert result["integration"]["group"] == "already_integrated"
+    assert result["branch_cleanup"] == {
+        "branch": "supervisor/done-worker-12345678",
+        "deleted_local_branch": "supervisor/done-worker-12345678",
+        "upstream": "origin/supervisor/done-worker-12345678",
+        "deleted_upstream_branch": "origin/supervisor/done-worker-12345678",
+    }
     assert worktree.exists() is False
     assert ["git", "-C", str(repo_root), "worktree", "remove", str(worktree)] in run_calls
+    assert [
+        "git",
+        "-C",
+        str(repo_root),
+        "branch",
+        "-d",
+        "supervisor/done-worker-12345678",
+    ] in run_calls
+    assert [
+        "git",
+        "-C",
+        str(repo_root),
+        "push",
+        "origin",
+        "--delete",
+        "supervisor/done-worker-12345678",
+    ] in run_calls
 
 
 def test_delete_worktree_candidates_include_archived_integrated_merge_worker(

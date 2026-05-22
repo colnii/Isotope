@@ -6720,7 +6720,7 @@ def _execute_delete_worktree_action(
             "worktree_root": str(worktree["worktree_root"]),
             "stderr": (completed.stderr or completed.stdout or "").strip(),
         }
-    return {
+    result = {
         "kind": "delete_worktree",
         "target_name": target_name,
         "command": command_text,
@@ -6728,6 +6728,124 @@ def _execute_delete_worktree_action(
         "managed": _managed_record_ref(record),
         "integration": _delete_worktree_integration_summary(integration),
     }
+    branch = _delete_worktree_branch_name(integration)
+    if branch is not None:
+        result["branch_cleanup"] = _delete_integrated_supervisor_branch(
+            repo_root=worktree["repo_root"],
+            branch=branch,
+            base_ref=str(action.get("base_ref") or "main"),
+            run=subprocess.run,
+        )
+    return result
+
+
+def _delete_worktree_branch_name(integration: dict[str, Any]) -> str | None:
+    branch = integration.get("branch")
+    if isinstance(branch, str) and branch.strip():
+        return branch.strip()
+    return None
+
+
+def _delete_integrated_supervisor_branch(
+    *,
+    repo_root: Path,
+    branch: str,
+    base_ref: str,
+    run: Any,
+) -> dict[str, Any]:
+    result: dict[str, Any] = {"branch": branch}
+    if not _is_deletable_supervisor_branch(branch):
+        result.update({"skipped": True, "reason": "branch is outside supervisor namespace"})
+        return result
+    upstream = _branch_upstream(repo_root=repo_root, branch=branch, run=run)
+    if upstream is not None:
+        result["upstream"] = upstream
+    if not _branch_is_merged_into_base(
+        repo_root=repo_root,
+        branch=branch,
+        base_ref=base_ref,
+        run=run,
+    ):
+        result.update({"skipped": True, "reason": "branch is not merged into base"})
+        return result
+    local_delete = run(
+        ["git", "-C", str(repo_root), "branch", "-d", branch],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+    if local_delete.returncode != 0:
+        result.update(
+            {
+                "skipped": True,
+                "reason": "git branch delete failed",
+                "stderr": (local_delete.stderr or local_delete.stdout or "").strip(),
+            }
+        )
+        return result
+    result["deleted_local_branch"] = branch
+    if upstream is not None and _is_deletable_supervisor_upstream(upstream):
+        remote, remote_branch = upstream.split("/", 1)
+        remote_delete = run(
+            ["git", "-C", str(repo_root), "push", remote, "--delete", remote_branch],
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+        if remote_delete.returncode == 0:
+            result["deleted_upstream_branch"] = upstream
+        else:
+            result["upstream_delete_skipped"] = True
+            result["upstream_delete_reason"] = "git push --delete failed"
+            result["upstream_delete_stderr"] = (
+                remote_delete.stderr or remote_delete.stdout or ""
+            ).strip()
+    return result
+
+
+def _is_deletable_supervisor_branch(branch: str) -> bool:
+    return branch.startswith("supervisor/") and branch not in {"supervisor/main"}
+
+
+def _is_deletable_supervisor_upstream(upstream: str) -> bool:
+    return upstream.startswith("origin/supervisor/")
+
+
+def _branch_upstream(*, repo_root: Path, branch: str, run: Any) -> str | None:
+    completed = run(
+        [
+            "git",
+            "-C",
+            str(repo_root),
+            "rev-parse",
+            "--abbrev-ref",
+            "--symbolic-full-name",
+            f"{branch}@{{upstream}}",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+    if completed.returncode != 0:
+        return None
+    upstream = (completed.stdout or "").strip()
+    return upstream or None
+
+
+def _branch_is_merged_into_base(
+    *,
+    repo_root: Path,
+    branch: str,
+    base_ref: str,
+    run: Any,
+) -> bool:
+    completed = run(
+        ["git", "-C", str(repo_root), "merge-base", "--is-ancestor", branch, base_ref],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+    return completed.returncode == 0
 
 
 def _delete_worktree_candidate_payloads(args: argparse.Namespace) -> list[dict[str, Any]]:
