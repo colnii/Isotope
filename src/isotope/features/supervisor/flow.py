@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
-import json
 import os
-import re
-import sqlite3
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
+
+from isotope.integrations.codex.session_reader import (
+    find_codex_session_paths,
+    merge_recent_session_ids,
+    read_codex_session,
+    read_codex_session_index,
+    read_codex_state_threads,
+)
 
 from .bell_events import default_bell_events_path, read_latest_bell_events
 from .lane_state import read_lane_states
@@ -51,9 +56,6 @@ ERROR_MARKERS = (
     "命令失败",
 )
 SUPERVISOR_STATUS_VALUES = {"working", "done", "blocked", "needs_user"}
-MAX_FULL_SESSION_READ_BYTES = 2 * 1024 * 1024
-SESSION_HEAD_READ_BYTES = 64 * 1024
-SESSION_TAIL_READ_BYTES = 1024 * 1024
 MANAGED_LOG_TAIL_READ_BYTES = 64 * 1024
 
 
@@ -253,12 +255,13 @@ class CodexSupervisorFlow:
         if active_within_seconds <= 0:
             raise ValueError("active_within_seconds must be positive")
         now = _ensure_aware_utc(self.now())
-        session_index_titles, session_index_recent_ids = _read_session_index(
-            self.codex_home / "session_index.jsonl"
+        session_index = read_codex_session_index(self.codex_home / "session_index.jsonl")
+        state_threads = read_codex_state_threads(self.codex_home / "state_5.sqlite")
+        session_titles = {**session_index.titles, **state_threads.titles}
+        recent_session_ids = merge_recent_session_ids(
+            state_threads.recent_session_ids,
+            session_index.recent_session_ids,
         )
-        state_titles, state_recent_ids = _read_state_threads(self.codex_home / "state_5.sqlite")
-        session_titles = {**session_index_titles, **state_titles}
-        recent_session_ids = _merge_recent_session_ids(state_recent_ids, session_index_recent_ids)
         sessions = [
             summary
             for path in self._session_paths(limit=limit, recent_session_ids=recent_session_ids)
@@ -302,32 +305,11 @@ class CodexSupervisorFlow:
         limit: int,
         recent_session_ids: tuple[str, ...] = (),
     ) -> list[Path]:
-        sessions_root = self.codex_home / "sessions"
-        if not sessions_root.exists():
-            return []
-        paths = sorted(sessions_root.rglob("*.jsonl"))
-        candidate_limit = max(4, limit + 3)
-        if len(paths) <= candidate_limit:
-            return paths
-        selected: list[Path] = []
-        seen: set[Path] = set()
-        paths_by_id = {
-            session_id: path
-            for path in paths
-            if (session_id := _session_id_from_path(path)) is not None
-        }
-        for session_id in recent_session_ids[:candidate_limit]:
-            if path := paths_by_id.get(session_id):
-                selected.append(path)
-                seen.add(path)
-        for path in sorted(paths, key=_path_mtime_ns, reverse=True):
-            if len(selected) >= candidate_limit:
-                break
-            if path in seen:
-                continue
-            selected.append(path)
-            seen.add(path)
-        return selected
+        return find_codex_session_paths(
+            self.codex_home,
+            limit=limit,
+            recent_session_ids=recent_session_ids,
+        )
 
 
 def render_plain_report(report: CodexSupervisorReport) -> str:
@@ -411,8 +393,6 @@ def _read_session_summary(
     branch_resolver: Callable[[str], str | None],
     session_index_titles: dict[str, str] | None = None,
 ) -> CodexSessionSummary | None:
-    meta: dict[str, Any] = {}
-    last_event_at: datetime | None = None
     last_user_message: str | None = None
     first_user_message: str | None = None
     last_assistant_message: str | None = None
@@ -422,54 +402,30 @@ def _read_session_summary(
     supervisor_next: str | None = None
     thread_name: str | None = None
     thread_id: str | None = None
-    pending_thread_name: str | None = None
-    pending_thread_id: str | None = None
-    try:
-        lines = _read_session_lines(path)
-    except OSError:
+    snapshot = read_codex_session(path)
+    if snapshot is None:
         return None
-    for line in lines:
-        try:
-            event = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        event_time = _parse_timestamp(event.get("timestamp"))
-        if event_time is not None:
-            last_event_at = event_time
-        if event.get("type") == "session_meta":
-            payload = event.get("payload")
-            if isinstance(payload, dict):
-                meta.update(payload)
-            continue
-        if event.get("type") == "event_msg":
-            payload = event.get("payload")
-            if isinstance(payload, dict) and payload.get("type") == "thread_name_updated":
-                pending_thread_name = _optional_string(payload.get("thread_name")) or pending_thread_name
-                pending_thread_id = _optional_string(payload.get("thread_id")) or pending_thread_id
-        role, text = _message_from_event(event)
-        if text:
-            last_text = text
-            if role == "user":
-                if first_user_message is None and not _is_title_noise(text):
-                    first_user_message = text
-                last_user_message = text
-            if role == "assistant":
-                protocol = _supervisor_protocol_from_text(text)
-                supervisor_status = protocol.get("status") or supervisor_status
-                supervisor_summary = protocol.get("summary") or supervisor_summary
-                supervisor_next = protocol.get("next") or supervisor_next
-                last_assistant_message = text
-    if not meta and last_event_at is None:
-        return None
-    if last_event_at is None:
-        last_event_at = _parse_timestamp(meta.get("timestamp")) or now
-    session_id = str(meta.get("id") or path.stem)
-    if pending_thread_name and (pending_thread_id is None or pending_thread_id == session_id):
-        thread_name = pending_thread_name
-        thread_id = pending_thread_id
+    for message in snapshot.messages:
+        last_text = message.text
+        if message.role == "user":
+            if first_user_message is None and not _is_title_noise(message.text):
+                first_user_message = message.text
+            last_user_message = message.text
+        if message.role == "assistant":
+            protocol = _supervisor_protocol_from_text(message.text)
+            supervisor_status = protocol.get("status") or supervisor_status
+            supervisor_summary = protocol.get("summary") or supervisor_summary
+            supervisor_next = protocol.get("next") or supervisor_next
+            last_assistant_message = message.text
+    session_id = snapshot.session_id
+    for update in snapshot.thread_updates:
+        if update.thread_id is None or update.thread_id == session_id:
+            thread_name = update.thread_name
+            thread_id = update.thread_id
     if thread_name is None and session_index_titles:
         thread_name = session_index_titles.get(session_id)
-    cwd = str(meta.get("cwd") or "")
+    last_event_at = snapshot.last_event_at or now
+    cwd = snapshot.cwd
     age_seconds = max(0, int((now - last_event_at).total_seconds()))
     status, reason, status_evidence = _classify_session(
         age_seconds=age_seconds,
@@ -487,7 +443,7 @@ def _read_session_summary(
         cwd=cwd,
         git_branch=branch_resolver(cwd) if cwd else None,
         source_path=str(path),
-        source_size_bytes=_path_size_bytes(path),
+        source_size_bytes=snapshot.source_size_bytes,
         last_event_at=last_event_at.isoformat(),
         age_seconds=age_seconds,
         status=status,
@@ -496,121 +452,16 @@ def _read_session_summary(
         thread_name=thread_name,
         thread_id=thread_id,
         initial_user_title=_title_from_user_message(first_user_message),
-        agent_nickname=_optional_string(meta.get("agent_nickname")),
-        agent_role=_optional_string(meta.get("agent_role")),
+        agent_nickname=_optional_string(snapshot.meta.get("agent_nickname")),
+        agent_role=_optional_string(snapshot.meta.get("agent_role")),
         last_user_message=last_user_message,
         last_assistant_message=last_assistant_message,
-        cli_version=_optional_string(meta.get("cli_version")),
-        model_provider=_optional_string(meta.get("model_provider")),
+        cli_version=_optional_string(snapshot.meta.get("cli_version")),
+        model_provider=_optional_string(snapshot.meta.get("model_provider")),
         supervisor_status=supervisor_status,
         supervisor_summary=supervisor_summary,
         supervisor_next=supervisor_next,
     )
-
-
-def _read_session_index(path: Path) -> tuple[dict[str, str], tuple[str, ...]]:
-    titles: dict[str, str] = {}
-    updated_at: dict[str, datetime] = {}
-    try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except OSError:
-        return titles, ()
-    for line in lines:
-        try:
-            item = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if not isinstance(item, dict):
-            continue
-        session_id = _optional_string(item.get("id"))
-        thread_name = _optional_string(item.get("thread_name"))
-        if session_id and thread_name:
-            titles[session_id] = thread_name
-        if session_id:
-            updated_at[session_id] = _parse_timestamp(item.get("updated_at")) or datetime.min.replace(
-                tzinfo=timezone.utc
-            )
-    recent_session_ids = tuple(
-        sorted(updated_at, key=lambda session_id: updated_at[session_id], reverse=True)
-    )
-    return titles, recent_session_ids
-
-
-def _read_state_threads(path: Path) -> tuple[dict[str, str], tuple[str, ...]]:
-    if not path.exists():
-        return {}, ()
-    try:
-        connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
-    except sqlite3.Error:
-        return {}, ()
-    try:
-        rows = connection.execute("select id, title, updated_at from threads").fetchall()
-    except sqlite3.Error:
-        return {}, ()
-    finally:
-        connection.close()
-    titles: dict[str, str] = {}
-    updated_at: dict[str, int] = {}
-    for session_id_value, title_value, updated_at_value in rows:
-        session_id = _optional_string(session_id_value)
-        title = _optional_string(title_value)
-        if session_id and title:
-            titles[session_id] = title
-        if session_id and isinstance(updated_at_value, int):
-            updated_at[session_id] = updated_at_value
-    recent_session_ids = tuple(
-        sorted(updated_at, key=lambda session_id: updated_at[session_id], reverse=True)
-    )
-    return titles, recent_session_ids
-
-
-def _merge_recent_session_ids(
-    *groups: tuple[str, ...],
-) -> tuple[str, ...]:
-    merged: list[str] = []
-    seen: set[str] = set()
-    for group in groups:
-        for session_id in group:
-            if session_id in seen:
-                continue
-            merged.append(session_id)
-            seen.add(session_id)
-    return tuple(merged)
-
-
-def _session_id_from_path(path: Path) -> str | None:
-    match = re.search(
-        r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})",
-        path.name,
-    )
-    return match.group(1) if match else None
-
-
-def _path_mtime_ns(path: Path) -> int:
-    try:
-        return path.stat().st_mtime_ns
-    except OSError:
-        return 0
-
-
-def _path_size_bytes(path: Path) -> int | None:
-    try:
-        return path.stat().st_size
-    except OSError:
-        return None
-
-
-def _read_session_lines(path: Path) -> list[str]:
-    size = path.stat().st_size
-    if size <= MAX_FULL_SESSION_READ_BYTES:
-        return path.read_text(encoding="utf-8").splitlines()
-    with path.open("rb") as handle:
-        head = handle.read(SESSION_HEAD_READ_BYTES)
-        tail_offset = max(0, size - SESSION_TAIL_READ_BYTES)
-        handle.seek(tail_offset)
-        tail = handle.read(SESSION_TAIL_READ_BYTES)
-    data = head + b"\n" + tail
-    return data.decode("utf-8", errors="ignore").splitlines()
 
 
 def _managed_summary(
@@ -815,35 +666,6 @@ def _supervisor_protocol_from_text(text: str) -> dict[str, str]:
         if normalized_value:
             current_protocol[keys[normalized_key]] = normalized_value
     return values
-
-
-def _message_from_event(event: dict[str, Any]) -> tuple[str | None, str | None]:
-    payload = event.get("payload")
-    if not isinstance(payload, dict):
-        return None, None
-    if event.get("type") == "event_msg":
-        return None, _optional_string(payload.get("message"))
-    if event.get("type") != "response_item":
-        return None, None
-    if payload.get("type") != "message":
-        return None, None
-    role = _optional_string(payload.get("role"))
-    return role, _content_text(payload.get("content"))
-
-
-def _content_text(content: Any) -> str | None:
-    if isinstance(content, str):
-        return content
-    if not isinstance(content, list):
-        return None
-    parts: list[str] = []
-    for item in content:
-        if not isinstance(item, dict):
-            continue
-        text = item.get("text")
-        if isinstance(text, str) and text:
-            parts.append(text)
-    return "\n".join(parts) if parts else None
 
 
 def _classify_session(
