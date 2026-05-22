@@ -21,10 +21,11 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 
 - 主路径已经接入：Web/CLI、goal queue、fanout、current batch、
   dependency batch、worker/integration review、merge dispatch、
-  decision/failure ledger adapter、Codex session reader。
+  decision/failure ledger adapter、Codex session reader、`capacity plan`。
 - 半成品或闲置：`agents/loop` 尚未驱动 Supervisor 主循环；
   `llm/capacity_calling.py`、`agents/scheduler/capacity_graph.py`、
-  `capabilities/runner.py`、`runtime/ActionCompiler` 与
+  `capabilities/runner.py` 已完成 Supervisor plan-only 第一片，但尚未进入
+  常驻 `loop/supervise` 主决策；`runtime/ActionCompiler` 与
   `integrations/codex/CodexCliBackend` 尚未成为 Supervisor 主执行路径。
 - 当前最高杠杆方向：把 `agent loop + capacity calling + capabilities`
   打通为主路径，再把 Codex worker 生命周期和状态投影迁出 feature 私有实现。
@@ -115,6 +116,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `web` 会通过 `/goal/plan` 复用现有 AI goal planner，把自然语言目标
   先转成可审阅预览；页面可编辑目标和并行批次顺序，再由“写入规划目标”
   批量进入目标队列；写入复用编辑后的 candidates，不再二次调用 LLM。
+- `capacity plan` 是 Supervisor 的第一条 `capacity calling` 接入路径：
+  默认只让 LLM 选择一个能力并生成 `capacity_graph` 与 capability launch plan；
+  显式 `--execute-agent-loop` 才通过 agent loop 执行 allowlist 低风险能力。
 - `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
 - `/managed/send` 成功发送后会更新 lane state。
 - `guide` 会按 cwd、lane name 和 tmux session 打印可复制工作流命令。

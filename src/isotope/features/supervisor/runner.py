@@ -161,6 +161,7 @@ from .commands.cleanup import (
     print_cleanup_plain as _print_cleanup_plain,
     select_cleanup_candidates as _select_cleanup_candidates,
 )
+from .commands.capacity import handle_capacity_command as _handle_capacity_command
 from .commands.dashboard import handle_dashboard_command as _handle_dashboard_command
 from .commands.goal import (
     active_goal_dicts_with_managed_protocol_status as _active_goal_dicts_with_managed_protocol_status,
@@ -330,6 +331,7 @@ _COMMAND_HANDLERS = {
     "merge-work-order": _handle_merge_work_order_command,
     "goal": _handle_goal_command,
     "cleanup": _handle_cleanup_command,
+    "capacity": _handle_capacity_command,
 }
 
 

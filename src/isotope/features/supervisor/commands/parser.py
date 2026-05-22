@@ -980,6 +980,29 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         help="Maximum context snippets.",
     )
     context_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    capacity_parser = subparsers.add_parser(
+        "capacity",
+        help="Plan one low-risk Supervisor capacity call.",
+    )
+    capacity_subparsers = capacity_parser.add_subparsers(
+        dest="capacity_command",
+        required=True,
+    )
+    capacity_plan_parser = capacity_subparsers.add_parser(
+        "plan",
+        help="Ask LLM capacity calling to select one capability.",
+    )
+    capacity_plan_parser.add_argument("--goal", required=True, help="Capacity planning goal.")
+    capacity_plan_parser.add_argument(
+        "--state-root",
+        help="State root for optional agent-loop execution. Defaults to ~/.codex.",
+    )
+    capacity_plan_parser.add_argument(
+        "--execute-agent-loop",
+        action="store_true",
+        help="Execute the selected allowlisted capability through the agent loop.",
+    )
+    capacity_plan_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     decision_parser = subparsers.add_parser(
         "decision",
         help="List or archive Supervisor decision requests.",

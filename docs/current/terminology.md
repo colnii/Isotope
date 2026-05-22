@@ -185,6 +185,7 @@
 | `architecture alignment audit` | 架构对齐审计，确认功能实现是否落在长期目录和正确抽象层，而不是继续堆在局部 feature | 架构审计/迁移 | `docs/current/supervisor-architecture-migration-table.md` |
 | `capacity calling` | 能力调用，让 LLM 在候选能力中选择一个能力并填参数，系统再按护栏执行 | 模型/能力/智能体 | `src/isotope/llm/capacity_calling.py`, `src/isotope/agents/loop/step.py`, `src/isotope/capabilities/runner.py` |
 | `capacity graph` | 能力依赖图，把多个能力调用按依赖关系、阶段和合并门槛组织成可执行计划 | 调度/能力/智能体 | `src/isotope/agents/scheduler/capacity_graph.py`, `src/isotope/agents/scheduler/dependency_graph.py` |
+| `capacity plan` | Supervisor 低风险能力规划入口，默认只生成能力选择、依赖图和 launch plan，显式开关后才走 agent loop 执行 allowlist 能力 | 产品功能/模型/能力 | `src/isotope/features/supervisor/commands/capacity.py`, `isotope-supervisor capacity plan` |
 | `OpenAI-compatible` | 兼容 OpenAI Chat Completions 形状的模型接口 | 模型/外部集成 | `src/isotope/features/supervisor/llm_summary.py` |
 | `LLM pool TOML` | 本机模型号池配置，声明 provider、base URL、model 和 key | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
 | `git worktree` | Git 工作树，同一仓库的独立开发目录，用于多分支并行；Supervisor 自动 worker 默认放在 `.worktrees/supervisor/...` | 工作区/开发协作 | `src/isotope/features/supervisor/runner.py`, `docs/current/status.md`, `AGENTS.md` |
