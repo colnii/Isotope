@@ -1557,7 +1557,7 @@ def test_codex_supervisor_dashboard_does_not_raise_attention_for_missing_worktre
     tmp_path,
 ):
     codex_home = tmp_path / ".codex"
-    missing_workspace = tmp_path / "missing-merge-worktree"
+    missing_workspace = tmp_path / "repo" / ".worktrees" / "supervisor" / "missing-merge-worktree"
     _write_session(
         codex_home,
         "2026/05/16/rollout-missing-blocked.jsonl",

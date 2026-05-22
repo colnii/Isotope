@@ -5533,8 +5533,10 @@ def _dashboard_notification_source_ref(source_ref: dict[str, Any]) -> dict[str, 
 def _dashboard_group_for(session: Any, *, linked_session: Any | None = None) -> str:
     status_source = _dashboard_status_source(session, linked_session)
     supervisor_status = (status_source.supervisor_status or "").lower()
-    if not getattr(session, "managed", False) and not _cwd_is_existing_dir(
-        getattr(session, "cwd", None)
+    cwd = getattr(session, "cwd", None)
+    if (
+        not getattr(session, "managed", False)
+        and _is_missing_supervisor_worktree(cwd)
     ):
         return "done"
     if supervisor_status in {"blocked", "needs_user"}:
@@ -5546,6 +5548,13 @@ def _dashboard_group_for(session: Any, *, linked_session: Any | None = None) -> 
     if session.managed_bell:
         return "needs_attention"
     return "working"
+
+
+def _is_missing_supervisor_worktree(cwd: Any) -> bool:
+    if not isinstance(cwd, (str, Path)) or not str(cwd):
+        return False
+    path = Path(cwd)
+    return ".worktrees" in path.parts and not _cwd_is_existing_dir(path)
 
 
 def _dashboard_display_sessions(sessions: Any) -> list[tuple[Any, Any | None, dict[str, Any] | None]]:
