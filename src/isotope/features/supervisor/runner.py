@@ -2902,6 +2902,15 @@ def _auto_retry_exited_process_workers(args: argparse.Namespace) -> list[dict[st
             if failure is not None
             else lane_states.get(record.name)
         )
+        if failure is not None and failure.get("reason") == "usage_limit":
+            _ensure_worker_retry_decision_request(
+                args,
+                record=record,
+                state=state,
+                failure=failure,
+                max_retries=max_retries,
+            )
+            continue
         retry_count = state.worker_retry_count if state is not None else 0
         if retry_count >= max_retries:
             if failure is not None:
@@ -3040,6 +3049,9 @@ def _managed_record_exceeded_run_budget(
 
 
 def _nonzero_exit_failure(excerpt: str) -> dict[str, Any] | None:
+    usage_limit = _usage_limit_failure(excerpt)
+    if usage_limit is not None:
+        return usage_limit
     for pattern in (
         r"process exited with code\s+(-?\d+)",
         r"exit code\s+(-?\d+)",
@@ -3058,6 +3070,20 @@ def _nonzero_exit_failure(excerpt: str) -> dict[str, Any] | None:
             "stderr_summary": _stderr_summary_from_excerpt(excerpt),
         }
     return None
+
+
+def _usage_limit_failure(excerpt: str) -> dict[str, Any] | None:
+    lowered = excerpt.lower()
+    if (
+        "you've hit your usage limit" not in lowered
+        and "you have hit your usage limit" not in lowered
+    ):
+        return None
+    return {
+        "reason": "usage_limit",
+        "exit_code": None,
+        "stderr_summary": _stderr_summary_from_excerpt(excerpt),
+    }
 
 
 def _stderr_summary_from_excerpt(excerpt: str, *, limit: int = 500) -> str | None:
