@@ -5342,12 +5342,7 @@ def _has_loop_managed_scope(report: Any) -> bool:
     for session in report.sessions:
         if _is_active_managed_tmux_session(session):
             return True
-        if (
-            getattr(session, "managed", False)
-            and getattr(session, "managed_name", None)
-            and not _is_completed_session(session)
-            and not _session_marks_terminal_done(session)
-        ):
+        if _is_active_managed_process_session(session):
             return True
     return False
 

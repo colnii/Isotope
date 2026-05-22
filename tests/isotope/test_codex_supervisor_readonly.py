@@ -5019,6 +5019,78 @@ def test_codex_supervisor_runner_loop_does_not_launch_after_terminal_done_goals(
     }
 
 
+def test_codex_supervisor_runner_loop_ignores_exited_managed_process_without_active_goals(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    log_path = codex_home / "supervisor" / "logs" / "managed-exited.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text("worker exited before reporting terminal status\n", encoding="utf-8")
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-exited",
+                "name": "old-cleanup-worker",
+                "cwd": str(workspace),
+                "prompt": "历史清理任务。",
+                "command": ["codex", "exec", "-C", str(workspace), "历史清理任务。"],
+                "pid": 0,
+                "started_at": NOW.isoformat(),
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    class ForbiddenProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            raise AssertionError("exited historical workers should not call the LLM planner")
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda **_: ForbiddenProvider(),
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--workspace-root",
+            str(tmp_path),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["llm_action"] == {
+        "kind": "monitor",
+        "target_name": None,
+        "reason": "当前没有可控的 Supervisor 目标，先继续监控。",
+        "command_suggestion": None,
+    }
+    assert payload["executed"] == {
+        "kind": "monitor",
+        "skipped": True,
+        "reason": "当前没有可控的 Supervisor 目标，先继续监控。",
+    }
+
+
 def test_codex_supervisor_web_rejects_invalid_manual_llm_action(tmp_path):
     from isotope.features.supervisor.web import create_dashboard_server
 
