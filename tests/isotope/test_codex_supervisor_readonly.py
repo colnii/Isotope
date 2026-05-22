@@ -1761,6 +1761,7 @@ def test_codex_supervisor_loop_payload_includes_current_batch_projection(
         prompt_cooldown=0,
         max_continue_count=0,
         max_run_minutes=0,
+        max_fanout_launches=2,
     )
     report = CodexSupervisorReport(
         generated_at=NOW.isoformat(),
@@ -1803,6 +1804,7 @@ def test_codex_supervisor_loop_payload_includes_current_batch_projection(
         worker["name"] for worker in payload["current_batch"]["managed_workers"]
     ] == ["current-worker"]
     assert payload["current_batch"]["target_names"] == ["current-worker"]
+    assert payload["current_batch"]["dependency_batch"]["summary"]["limit"] == 2
 
 
 def test_codex_supervisor_dashboard_follows_new_session_in_same_tmux_lane(

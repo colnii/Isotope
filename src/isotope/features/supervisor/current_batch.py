@@ -6,8 +6,11 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from isotope.agents.scheduler.dependency_batches import build_dependency_batch_plan
+
 
 TERMINAL_STATUSES = frozenset({"archived", "completed", "done", "exited", "stale"})
+DEPENDENCY_SOURCE_EXCLUDED_STATUSES = TERMINAL_STATUSES - {"done"}
 
 
 @dataclass(frozen=True)
@@ -17,10 +20,11 @@ class CurrentBatchView:
     worker_reviews: dict[str, Any]
     automation_candidates: dict[str, list[dict[str, Any]]]
     target_names: tuple[str, ...]
+    dependency_batch: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         automation_count = sum(len(items) for items in self.automation_candidates.values())
-        return {
+        payload = {
             "active_goals": list(self.active_goals),
             "managed_workers": list(self.managed_workers),
             "worker_reviews": dict(self.worker_reviews),
@@ -38,6 +42,9 @@ class CurrentBatchView:
             },
             "target_names": list(self.target_names),
         }
+        if self.dependency_batch is not None:
+            payload["dependency_batch"] = dict(self.dependency_batch)
+        return payload
 
 
 @dataclass(frozen=True)
@@ -54,8 +61,14 @@ def build_current_batch_view(
     managed_workers: Iterable[Mapping[str, Any]] | None,
     worker_reviews: Mapping[str, Any] | None = None,
     automation_candidates: Mapping[str, Iterable[Mapping[str, Any]]] | None = None,
+    dependency_limit: int | None = None,
 ) -> CurrentBatchView:
     """Return a JSON-ready current batch view from already-collected inputs."""
+    dependency_goals = tuple(
+        dict(goal)
+        for goal in active_goals or ()
+        if isinstance(goal, Mapping) and _is_dependency_source_goal(goal)
+    )
     current_goals = tuple(
         dict(goal)
         for goal in active_goals or ()
@@ -82,6 +95,11 @@ def build_current_batch_view(
         worker_reviews=filtered_reviews,
         automation_candidates=filtered_candidates,
         target_names=tuple(_ordered_target_names(current_goals, current_workers)),
+        dependency_batch=_dependency_batch(
+            dependency_goals,
+            current_workers=current_workers,
+            dependency_limit=dependency_limit,
+        ),
     )
 
 
@@ -95,6 +113,34 @@ def _is_current_worker(worker: Mapping[str, Any]) -> bool:
     if worker.get("current") is False or worker.get("cwd_exists") is False:
         return False
     return not _has_terminal_status(worker, ("status", "supervisor_status", "registry_status"))
+
+
+def _is_dependency_source_goal(goal: Mapping[str, Any]) -> bool:
+    if goal.get("current") is False or goal.get("cwd_exists") is False:
+        return False
+    return not _has_status_in(
+        goal,
+        ("last_status", "status", "supervisor_status"),
+        DEPENDENCY_SOURCE_EXCLUDED_STATUSES,
+    )
+
+
+def _dependency_batch(
+    dependency_goals: tuple[dict[str, Any], ...],
+    *,
+    current_workers: tuple[dict[str, Any], ...],
+    dependency_limit: int | None,
+) -> dict[str, Any] | None:
+    if not dependency_goals:
+        return None
+    limit = dependency_limit if dependency_limit is not None else len(dependency_goals)
+    if limit <= 0:
+        limit = 1
+    return build_dependency_batch_plan(
+        dependency_goals,
+        limit=limit,
+        running_target_names=_ordered_target_names((), current_workers),
+    )
 
 
 def _filter_worker_reviews(
@@ -217,6 +263,14 @@ def _has_terminal_review_status(worker: Mapping[str, Any]) -> bool:
 
 def _has_terminal_status(item: Mapping[str, Any], keys: tuple[str, ...]) -> bool:
     return any(_normalized_status(item.get(key)) in TERMINAL_STATUSES for key in keys)
+
+
+def _has_status_in(
+    item: Mapping[str, Any],
+    keys: tuple[str, ...],
+    statuses: frozenset[str],
+) -> bool:
+    return any(_normalized_status(item.get(key)) in statuses for key in keys)
 
 
 def _normalized_status(value: Any) -> str | None:

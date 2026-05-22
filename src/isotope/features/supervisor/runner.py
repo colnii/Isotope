@@ -3369,6 +3369,7 @@ def _supervise_payload(
         report,
         active_goals=active_goals,
         worker_reviews=worker_reviews,
+        dependency_limit=getattr(args, "max_fanout_launches", DEFAULT_FANOUT_LIMIT),
     )
     fanout_status = _fanout_status_payload(
         report,
@@ -3470,6 +3471,9 @@ def _supervise_payload(
                     refreshed_report,
                     active_goals=active_goals,
                     worker_reviews=worker_reviews,
+                    dependency_limit=getattr(
+                        args, "max_fanout_launches", DEFAULT_FANOUT_LIMIT
+                    ),
                 )
         elif worker_role_guard is not None:
             payload["executed"] = _recursive_worker_role_guard_executed(
@@ -3502,6 +3506,9 @@ def _supervise_payload(
                     refreshed_report,
                     active_goals=active_goals,
                     worker_reviews=worker_reviews,
+                    dependency_limit=getattr(
+                        args, "max_fanout_launches", DEFAULT_FANOUT_LIMIT
+                    ),
                 )
         else:
             payload["executed"] = _execute_llm_action(args, action_report, payload)
@@ -3998,10 +4005,12 @@ def _dashboard_current_payload(
     display_sessions: list[tuple[Any, Any | None, dict[str, Any] | None]],
     *,
     active_goals: list[dict[str, Any]] | None = None,
+    dependency_limit: int | None = None,
 ) -> dict[str, Any]:
     return _current_batch_payload_from_display_sessions(
         display_sessions,
         active_goals=active_goals,
+        dependency_limit=dependency_limit,
     )
 
 
@@ -4010,11 +4019,13 @@ def _current_batch_payload(
     *,
     active_goals: list[dict[str, Any]] | None = None,
     worker_reviews: dict[str, Any] | None = None,
+    dependency_limit: int | None = None,
 ) -> dict[str, Any]:
     return _current_batch_payload_from_display_sessions(
         _dashboard_display_sessions(report.sessions),
         active_goals=active_goals,
         worker_reviews=worker_reviews,
+        dependency_limit=dependency_limit,
     )
 
 
@@ -4023,6 +4034,7 @@ def _current_batch_payload_from_display_sessions(
     *,
     active_goals: list[dict[str, Any]] | None = None,
     worker_reviews: dict[str, Any] | None = None,
+    dependency_limit: int | None = None,
 ) -> dict[str, Any]:
     current_goals = [
         item
@@ -4041,6 +4053,7 @@ def _current_batch_payload_from_display_sessions(
         active_goals=current_goals,
         managed_workers=managed_workers,
         worker_reviews=worker_reviews,
+        dependency_limit=dependency_limit,
     ).to_dict()
 
 

@@ -147,6 +147,20 @@ def test_current_batch_view_filters_done_stale_noise() -> None:
             "total": 2,
         },
         "target_names": ["current-worker"],
+        "dependency_batch": {
+            "status": "idle",
+            "summary": {
+                "ready": 0,
+                "blocked": 0,
+                "running": 1,
+                "attention": 0,
+                "limit": 2,
+            },
+            "ready_goals": [],
+            "blocked_goals": [],
+            "running_goals": [{"target_name": "current-worker", "status": "running"}],
+            "attention_goals": [],
+        },
     }
 
 
@@ -178,3 +192,68 @@ def test_current_batch_view_keeps_live_items_without_runner_flags() -> None:
         "automation_candidates": {},
     }
     assert view.to_dict()["target_names"] == ["live-worker"]
+    assert view.to_dict()["dependency_batch"]["status"] == "idle"
+
+
+def test_current_batch_view_exposes_dependency_batch_projection() -> None:
+    active_goals = [
+        {
+            "goal_id": "goal-a",
+            "target_name": "worker-a",
+            "goal": "完成基础模块。",
+            "last_status": "done",
+            "merged": True,
+            "verified": True,
+            "cwd": "/repo",
+            "cwd_exists": True,
+        },
+        {
+            "goal_id": "goal-b",
+            "target_name": "worker-b",
+            "goal": "接入基础模块。",
+            "depends_on": ["worker-a"],
+            "cwd": "/repo",
+            "cwd_exists": True,
+        },
+        {
+            "goal_id": "goal-c",
+            "target_name": "worker-c",
+            "goal": "等待 worker-b 后做端到端验证。",
+            "depends_on": ["worker-b"],
+            "cwd": "/repo",
+            "cwd_exists": True,
+        },
+    ]
+    managed_workers = [
+        {
+            "record_id": "managed-b",
+            "name": "worker-b",
+            "cwd": "/repo",
+            "status": "working",
+            "cwd_exists": True,
+        }
+    ]
+
+    payload = build_current_batch_view(
+        active_goals=active_goals,
+        managed_workers=managed_workers,
+        dependency_limit=2,
+    ).to_dict()
+
+    assert payload["dependency_batch"]["summary"] == {
+        "ready": 0,
+        "blocked": 1,
+        "running": 1,
+        "attention": 0,
+        "limit": 2,
+    }
+    assert payload["dependency_batch"]["running_goals"] == [
+        {"target_name": "worker-b", "status": "running"}
+    ]
+    assert payload["dependency_batch"]["blocked_goals"] == [
+        {
+            "target_name": "worker-c",
+            "reason": "dependency_unmet",
+            "dependency": "worker-b",
+        }
+    ]
