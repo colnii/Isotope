@@ -69,7 +69,6 @@ from .goal_queue import (
 from .goal_planner import plan_supervisor_goals
 from .integration_review import (
     collect_integration_reviews,
-    render_integration_review_plain,
     review_managed_record_integration,
 )
 from .lane_state import (
@@ -93,7 +92,6 @@ from .merge_dispatch import (
     DEFAULT_TARGET_NAME as MERGE_DISPATCH_TARGET_NAME,
     build_merge_dispatch_launch_spec,
 )
-from .merge_work_order import build_merge_work_order_prompt
 from .notifications import (
     notify_merge_worker_auto_archived,
     notify_worker_integration_review_passed,
@@ -115,6 +113,44 @@ from .worker_review import collect_worker_reviews, render_worker_review_plain
 from .work_order_builder import build_launch_work_order_prompt
 from .commands.main import run_cli as _run_cli
 from .commands.parser import build_parser as _build_parser
+from .commands.cleanup import (
+    auto_archive_done_merge_workers as _auto_archive_done_merge_workers,
+    archive_cleanup_candidate as _archive_cleanup_candidate,
+    cleanup_archive_command as _cleanup_archive_command,
+    cleanup_candidate_dicts as _cleanup_candidate_dicts,
+    cleanup_delete_worktree_command as _cleanup_delete_worktree_command,
+    cleanup_goal_candidates as _cleanup_goal_candidates,
+    cleanup_managed_worker_candidates as _cleanup_managed_worker_candidates,
+    cleanup_notification_candidates as _cleanup_notification_candidates,
+    cleanup_payload as _cleanup_payload,
+    cleanup_worktree_candidate_dicts as _cleanup_worktree_candidate_dicts,
+    drop_none_values as _drop_none_values,
+    handle_cleanup_command as _handle_cleanup_command,
+    managed_record_is_still_working as _managed_record_is_still_working,
+    managed_record_status_excerpt as _managed_record_status_excerpt,
+    managed_record_supervisor_protocol as _managed_record_supervisor_protocol,
+    print_cleanup_plain as _print_cleanup_plain,
+    select_cleanup_candidates as _select_cleanup_candidates,
+)
+from .commands.dashboard import handle_dashboard_command as _handle_dashboard_command
+from .commands.goal import (
+    active_goal_dicts_with_managed_protocol_status as _active_goal_dicts_with_managed_protocol_status,
+    goal_command_goal_text as _goal_command_goal_text,
+    goal_payload as _goal_payload,
+    goal_queue_view as _goal_queue_view,
+    handle_goal_command as _handle_goal_command,
+    managed_protocol_statuses_by_name as _managed_protocol_statuses_by_name,
+    optional_text as _optional_text,
+    print_goal_plain as _print_goal_plain,
+    print_goal_queue_view_plain as _print_goal_queue_view_plain,
+)
+from .commands.merge import (
+    handle_integration_review_command as _handle_integration_review_command,
+    handle_merge_work_order_command as _handle_merge_work_order_command,
+)
+from .commands.promotion import (
+    auto_promote_done_merge_workers_to_main as _auto_promote_done_merge_workers_to_main,
+)
 from .planner.goal_scope import (
     _explicit_goal_text,
     _explicit_goal_workspace,
@@ -1635,6 +1671,15 @@ def main(argv: list[str] | None = None) -> int:
     return _run_cli(argv)
 
 
+_COMMAND_HANDLERS = {
+    "dashboard": _handle_dashboard_command,
+    "integration-review": _handle_integration_review_command,
+    "merge-work-order": _handle_merge_work_order_command,
+    "goal": _handle_goal_command,
+    "cleanup": _handle_cleanup_command,
+}
+
+
 def _run_cli_impl(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -1642,9 +1687,8 @@ def _run_cli_impl(argv: list[str] | None = None) -> int:
         if args.command == "scan":
             _print_report(args)
             return 0
-        if args.command == "dashboard":
-            _print_dashboard(args)
-            return 0
+        if args.command in _COMMAND_HANDLERS:
+            return _COMMAND_HANDLERS[args.command](args, api=sys.modules[__name__])
         if args.command == "advise":
             _validate_execution_modes(args)
             _print_advice(args)
@@ -1792,37 +1836,6 @@ def _run_cli_impl(argv: list[str] | None = None) -> int:
             else:
                 print(render_multi_worker_status_plain(payload))
             return 0
-        if args.command == "integration-review":
-            payload = collect_integration_reviews(
-                codex_home=Path(args.codex_home),
-                base_ref=args.base,
-                include_unfinished=args.include_unfinished,
-                include_missing_worktrees=args.include_missing_worktrees,
-            )
-            _notify_integration_review_webhooks(args, payload)
-            if args.json:
-                _print_json(payload)
-            else:
-                print(render_integration_review_plain(payload))
-            return 0
-        if args.command == "merge-work-order":
-            review_payload = collect_integration_reviews(
-                codex_home=Path(args.codex_home),
-                base_ref=args.base,
-                include_unfinished=False,
-            )
-            prompt = build_merge_work_order_prompt(review_payload)
-            if args.json:
-                _print_json(
-                    {
-                        "status": review_payload.get("status", "ok"),
-                        "summary": review_payload.get("summary", {}),
-                        "prompt": prompt,
-                    }
-                )
-            else:
-                print(prompt)
-            return 0
         if args.command == "replan":
             payload = _replan_payload(args)
             if args.json:
@@ -1850,20 +1863,6 @@ def _run_cli_impl(argv: list[str] | None = None) -> int:
                 _print_json(payload)
             else:
                 _print_decision_plain(payload)
-            return 0
-        if args.command == "goal":
-            payload = _goal_payload(args)
-            if args.json:
-                _print_json(payload)
-            else:
-                _print_goal_plain(payload)
-            return 0
-        if args.command == "cleanup":
-            payload = _cleanup_payload(args)
-            if args.json:
-                _print_json(payload)
-            else:
-                _print_cleanup_plain(payload)
             return 0
         if args.command == "trace":
             payload = _lifecycle_trace_payload(args)
@@ -3085,62 +3084,6 @@ def _sync_goal_lifecycle(
         )
         updates.append(update)
     return updates
-
-
-def _auto_archive_done_merge_workers(args: argparse.Namespace) -> list[dict[str, Any]]:
-    if getattr(args, "command", None) != "loop":
-        return []
-    if _current_workspace_has_worker_role(args, RECURSIVE_WORKER_ROLES):
-        return []
-    codex_home = Path(args.codex_home)
-    review_payload = collect_integration_reviews(
-        codex_home=codex_home,
-        base_ref="main",
-        include_unfinished=False,
-        run_test_gate=False,
-        run_candidate_validation=False,
-    )
-    return _auto_archive_integrated_merge_workers(
-        codex_home=codex_home,
-        review_payload=review_payload,
-    )
-
-
-def _auto_promote_done_merge_workers_to_main(
-    args: argparse.Namespace,
-    *,
-    run: Any = subprocess.run,
-) -> list[dict[str, Any]]:
-    if getattr(args, "command", None) != "loop":
-        return []
-    if not getattr(args, "auto_merge_promote", False):
-        return []
-    if _current_workspace_has_worker_role(args, RECURSIVE_WORKER_ROLES):
-        return []
-    repo_root = _workspace_root(args) or Path.cwd()
-    codex_home = Path(args.codex_home)
-    review_payload = collect_integration_reviews(
-        codex_home=codex_home,
-        base_ref="main",
-        include_unfinished=False,
-    )
-    groups = review_payload.get("groups")
-    if not isinstance(groups, dict):
-        return []
-    promoted: list[dict[str, Any]] = []
-    for item in _review_group_items(groups, "merge_workers"):
-        promotion = _auto_promote_merge_worker_review_item(
-            item,
-            args=args,
-            codex_home=codex_home,
-            repo_root=repo_root,
-            run=run,
-            webhook_url=getattr(args, "webhook_url", None),
-            webhook_secret=getattr(args, "webhook_secret", None),
-        )
-        if promotion is not None:
-            promoted.append(promotion)
-    return promoted
 
 
 def _auto_promote_merge_worker_review_item(
@@ -5423,21 +5366,6 @@ def _run_web(args: argparse.Namespace) -> None:
         server.server_close()
 
 
-def _print_dashboard(args: argparse.Namespace) -> None:
-    report = _scan_report(args)
-    payload = _dashboard_payload(
-        report,
-        active_goals=_active_goal_dicts(args, include_status=True),
-        decision_requests=_decision_request_dicts(args),
-        notifications=_notification_dicts(Path(args.codex_home)),
-        multi_worker=build_multi_worker_status_payload(root=Path(args.codex_home)),
-    )
-    if args.json:
-        _print_json(payload)
-        return
-    _print_dashboard_plain(payload)
-
-
 def _dashboard_payload(
     report: Any,
     *,
@@ -6183,67 +6111,6 @@ def _print_decision_plain(payload: dict[str, Any]) -> None:
         print(f"  归档：{archive_command}")
 
 
-def _goal_payload(args: argparse.Namespace) -> dict[str, Any]:
-    if args.goal_command == "add":
-        goal = record_supervisor_goal(
-            codex_home=Path(args.codex_home),
-            cwd=Path(args.cwd),
-            goal=_goal_command_goal_text(args),
-            target_name=args.target_name,
-        )
-        return {
-            "status": "ok",
-            "goal": goal.to_dict(),
-            "active_goals": _active_goal_dicts(args, include_status=True),
-        }
-    if args.goal_command == "plan":
-        if args.fanout_execute and not args.write:
-            raise ValueError("fanout-execute requires --write")
-        provider = resolve_summary_provider_from_env(agent_name="supervisor")
-        payload = plan_supervisor_goals(
-            root=Path(args.cwd),
-            codex_home=Path(args.codex_home),
-            provider=provider,
-            user_goal=_goal_command_goal_text(args, required=False),
-            write=args.write,
-            limit=args.limit,
-        )
-        if args.fanout_execute:
-            fanout_plan = build_fanout_launch_plan(
-                payload,
-                cwd=str(Path(args.cwd).expanduser()),
-                limit=args.max_fanout_launches,
-                running_target_names=_running_managed_target_names_from_registry(
-                    Path(args.codex_home)
-                ),
-                requires_human_review=False,
-            )
-            payload["fanout_plan"] = fanout_plan
-            payload["executed"] = _execute_fanout_launch_actions(args, fanout_plan)
-        return payload
-    if args.goal_command == "list":
-        active_goals = _active_goal_dicts(args, include_status=True)
-        return {
-            "status": "ok",
-            "active_goals": active_goals,
-            "queue_view": _goal_queue_view(args, active_goals),
-        }
-    if args.goal_command == "archive":
-        archived = archive_supervisor_goal(
-            codex_home=Path(args.codex_home),
-            goal_id=args.goal_id,
-            status=args.status,
-            summary=args.summary,
-            next_step=args.next_step,
-        )
-        return {
-            "status": "ok",
-            "archived": archived,
-            "active_goals": _active_goal_dicts(args, include_status=True),
-        }
-    raise ValueError(f"unsupported goal command: {args.goal_command}")
-
-
 def _replan_payload(args: argparse.Namespace) -> dict[str, Any]:
     return build_supervisor_replan(
         worker_reviews=collect_worker_reviews(codex_home=Path(args.codex_home)),
@@ -6255,267 +6122,6 @@ def _replan_payload(args: argparse.Namespace) -> dict[str, Any]:
         active_goals=_active_goal_dicts(args, include_status=True),
     )
 
-
-def _goal_command_goal_text(
-    args: argparse.Namespace,
-    *,
-    required: bool = True,
-) -> str | None:
-    positional = _optional_text(getattr(args, "goal_text", None))
-    option = _optional_text(getattr(args, "goal", None))
-    if positional and option and positional != option:
-        raise ValueError("goal positional argument and --goal must match when both are set")
-    goal = option or positional
-    if required and goal is None:
-        raise ValueError("goal must not be empty")
-    return goal
-
-
-def _optional_text(value: object) -> str | None:
-    if not isinstance(value, str) or not value.strip():
-        return None
-    return value.strip()
-
-
-def _goal_queue_view(
-    args: argparse.Namespace,
-    active_goals: list[dict[str, Any]],
-) -> dict[str, list[dict[str, Any]]]:
-    return build_supervisor_goal_queue_view(
-        _active_goal_dicts_with_managed_protocol_status(
-            active_goals,
-            codex_home=Path(args.codex_home),
-        ),
-        running_target_names=_running_managed_target_names_from_registry(
-            Path(args.codex_home)
-        ),
-    )
-
-
-def _active_goal_dicts_with_managed_protocol_status(
-    active_goals: list[dict[str, Any]],
-    *,
-    codex_home: Path,
-) -> list[dict[str, Any]]:
-    statuses = _managed_protocol_statuses_by_name(codex_home)
-    if not statuses:
-        return active_goals
-    enriched: list[dict[str, Any]] = []
-    for goal in active_goals:
-        target_name = goal.get("target_name")
-        status = statuses.get(target_name) if isinstance(target_name, str) else None
-        if status is None or goal.get("last_status") in {"blocked", "needs_user", "done"}:
-            enriched.append(goal)
-            continue
-        merged = dict(goal)
-        merged["last_status"] = status["status"]
-        merged["worker_status"] = status["status"]
-        if status.get("summary"):
-            merged["last_summary"] = status["summary"]
-        if status.get("next"):
-            merged["last_next"] = status["next"]
-        enriched.append(merged)
-    return enriched
-
-
-def _managed_protocol_statuses_by_name(codex_home: Path) -> dict[str, dict[str, str]]:
-    statuses: dict[str, dict[str, str]] = {}
-    for record in read_managed_records(default_registry_path(codex_home)):
-        excerpt = _managed_process_log_excerpt(record.log_path) or ""
-        protocol = _supervisor_protocol_from_text(excerpt)
-        status = protocol.get("status")
-        if status not in {"done", "blocked", "needs_user"}:
-            continue
-        item = {"status": status}
-        if summary := protocol.get("summary"):
-            item["summary"] = summary
-        if next_step := protocol.get("next"):
-            item["next"] = next_step
-        statuses[record.name] = item
-    return statuses
-
-
-def _print_goal_plain(payload: dict[str, Any]) -> None:
-    goal = payload.get("goal")
-    if isinstance(goal, dict):
-        print(f"已添加目标：{goal['goal_id']}")
-        print(f"目标：{goal['goal']}")
-        print(f"工作区：{goal['cwd']}")
-        print(f"worker：{goal['target_name']}")
-    archived = payload.get("archived")
-    if isinstance(archived, dict):
-        print(f"已归档目标：{archived['goal_id']}")
-    candidates = payload.get("candidates") or []
-    if candidates:
-        mode = "写入" if payload.get("mode") == "write" else "预览"
-        print(f"LLM 目标规划：{mode}")
-        plan_summary = payload.get("plan_summary")
-        if isinstance(plan_summary, str) and plan_summary:
-            print(f"计划摘要：{plan_summary}")
-        phases = payload.get("phases") or []
-        if phases:
-            print("阶段/批次：")
-            for phase in phases:
-                if not isinstance(phase, dict):
-                    continue
-                name = phase.get("name") or "未命名阶段"
-                print(f"- {name}")
-                for goal in phase.get("goals") or []:
-                    print(f"  目标：{goal}")
-                for condition in phase.get("stop_conditions") or []:
-                    print(f"  停止条件：{condition}")
-                for condition in phase.get("acceptance_conditions") or []:
-                    print(f"  验收条件：{condition}")
-        recommendations = payload.get("parallel_recommendations") or []
-        if recommendations:
-            print("并行建议：")
-            for item in recommendations:
-                if not isinstance(item, dict):
-                    continue
-                batch = item.get("batch") or "未命名批次"
-                targets = ", ".join(item.get("targets") or [])
-                reason = item.get("reason") or ""
-                print(f"- {batch}: {targets}")
-                if reason:
-                    print(f"  依据：{reason}")
-        stop_conditions = payload.get("stop_conditions") or []
-        if stop_conditions:
-            print("停止条件：")
-            for condition in stop_conditions:
-                print(f"- {condition}")
-        acceptance_conditions = payload.get("acceptance_conditions") or []
-        if acceptance_conditions:
-            print("验收条件：")
-            for condition in acceptance_conditions:
-                print(f"- {condition}")
-        for item in candidates:
-            print(f"- {item['target_name']} {item['goal']}")
-            print(f"  依据：{item['reason']}")
-    written_goals = payload.get("written_goals") or []
-    if written_goals:
-        print(f"已写入目标：{len(written_goals)}")
-    if executed := payload.get("executed"):
-        _print_executed_plain(executed)
-    _print_goal_queue_view_plain(payload.get("queue_view"))
-    goals = payload.get("active_goals") or []
-    print(f"活跃目标：{len(goals)}")
-    for item in goals:
-        archive_command = shlex.join(
-            [
-                "isotope-supervisor",
-                "goal",
-                "archive",
-                "--goal-id",
-                item["goal_id"],
-            ]
-        )
-        print(f"- {item['goal_id']} {item['goal']}")
-        print(f"  cwd={item['cwd']} worker={item['target_name']}")
-        if item.get("last_status"):
-            print(f"  状态：{item['last_status']}")
-        if item.get("last_summary"):
-            print(f"  摘要：{item['last_summary']}")
-        if item.get("last_next"):
-            print(f"  下一步：{item['last_next']}")
-        print(f"  归档：{archive_command}")
-
-
-def _print_goal_queue_view_plain(queue_view: object) -> None:
-    if not isinstance(queue_view, dict):
-        return
-    print("队列视图：")
-    for key, label in (
-        ("pending", "pending"),
-        ("running", "running"),
-        ("blocked", "blocked"),
-        ("needs_user", "needs_user"),
-        ("done_recent", "done-recent"),
-    ):
-        raw_items = queue_view.get(key) or []
-        items = [item for item in raw_items if isinstance(item, dict)]
-        print(f"- {label}: {len(items)}")
-        for item in items:
-            target = item.get("target_name") or item.get("goal_id") or "unknown"
-            goal_text = item.get("goal") or ""
-            print(f"  - {target} {goal_text}".rstrip())
-            if item.get("last_summary"):
-                print(f"    摘要：{item['last_summary']}")
-            if item.get("last_next"):
-                print(f"    下一步：{item['last_next']}")
-
-
-def _cleanup_payload(args: argparse.Namespace) -> dict[str, Any]:
-    codex_home = Path(args.codex_home)
-    candidates = _cleanup_candidate_dicts(codex_home)
-    if args.cleanup_command == "list":
-        return {
-            "status": "ok",
-            "candidates": candidates,
-            "worktree_candidates": _cleanup_worktree_candidate_dicts(args),
-        }
-    if args.cleanup_command == "archive":
-        selected = _select_cleanup_candidates(args, candidates)
-        archived = [_archive_cleanup_candidate(codex_home, item) for item in selected]
-        return {
-            "status": "ok",
-            "candidates": _cleanup_candidate_dicts(codex_home),
-            "archived": archived,
-            "active_goals": _active_goal_dicts_for_codex_home(
-                codex_home,
-                include_status=True,
-            ),
-        }
-    if args.cleanup_command == "delete-worktree":
-        deleted = _execute_delete_worktree_action(
-            args,
-            {
-                "kind": "delete_worktree",
-                "target_name": args.name,
-                "record_id": args.record_id,
-                "confirm_delete_worktree": args.confirm_delete_worktree,
-                "base_ref": args.base,
-            },
-        )
-        return {
-            "status": "ok",
-            "deleted": deleted,
-            "worktree_candidates": _cleanup_worktree_candidate_dicts(args),
-        }
-    raise ValueError(f"unsupported cleanup command: {args.cleanup_command}")
-
-
-def _print_cleanup_plain(payload: dict[str, Any]) -> None:
-    deleted = payload.get("deleted")
-    if isinstance(deleted, dict) and deleted:
-        target = deleted.get("target_name") or deleted.get("name") or "unknown"
-        print(f"已删除 worktree：{target}")
-        if deleted.get("deleted_worktree"):
-            print(f"  cwd：{deleted['deleted_worktree']}")
-    archived = payload.get("archived") or []
-    if archived:
-        print(f"已归档/标记：{len(archived)}")
-        for item in archived:
-            target = item.get("goal_id") or item.get("name") or item.get("notification_id")
-            print(f"- {item['kind']} {target}")
-    candidates = payload.get("candidates") or []
-    print(f"可归档项：{len(candidates)}")
-    for item in candidates:
-        target = item.get("goal_id") or item.get("name") or item.get("notification_id")
-        print(f"- {item['kind']} {target}")
-        if item.get("summary"):
-            print(f"  摘要：{item['summary']}")
-        if item.get("command"):
-            print(f"  归档：{item['command']}")
-    worktree_candidates = payload.get("worktree_candidates") or []
-    if worktree_candidates:
-        print(f"可删除 worktree：{len(worktree_candidates)}")
-        for item in worktree_candidates:
-            target = item.get("name") or item.get("target_name")
-            print(f"- worktree {target}")
-            if item.get("cwd"):
-                print(f"  cwd：{item['cwd']}")
-            if item.get("command"):
-                print(f"  删除：{item['command']}")
 
 
 def _lifecycle_trace_payload(
@@ -6790,258 +6396,6 @@ def _print_lifecycle_trace_plain(payload: dict[str, Any]) -> None:
     print(f"- archived workers: {summary.get('archived_workers', 0)}")
     attention = payload.get("next_attention") or {}
     print(f"下一关注：{attention.get('kind', 'unknown')}")
-
-
-def _cleanup_candidate_dicts(codex_home: Path) -> list[dict[str, Any]]:
-    goals = _cleanup_goal_candidates(codex_home)
-    return [
-        *goals,
-        *_cleanup_managed_worker_candidates(codex_home),
-        *_cleanup_notification_candidates(codex_home),
-    ]
-
-
-def _cleanup_goal_candidates(codex_home: Path) -> list[dict[str, Any]]:
-    candidates: list[dict[str, Any]] = []
-    for goal in _active_goal_dicts_for_codex_home(codex_home, include_status=True):
-        status = goal.get("last_status")
-        if status not in ARCHIVABLE_SUPERVISOR_STATUSES:
-            continue
-        goal_id = goal.get("goal_id")
-        if not isinstance(goal_id, str) or not goal_id:
-            continue
-        candidate = {
-            "kind": "goal",
-            "goal_id": goal_id,
-            "status": status,
-            "target_name": goal.get("target_name"),
-            "cwd": goal.get("cwd"),
-            "goal": goal.get("goal"),
-            "summary": goal.get("last_summary"),
-            "next": goal.get("last_next"),
-            "command": _cleanup_archive_command(
-                codex_home,
-                "--goal-id",
-                goal_id,
-            ),
-        }
-        candidates.append(_drop_none_values(candidate))
-    return candidates
-
-
-def _cleanup_managed_worker_candidates(
-    codex_home: Path,
-    *,
-    require_existing_cwd: bool = False,
-) -> list[dict[str, Any]]:
-    candidates: list[dict[str, Any]] = []
-    for record in read_managed_records(default_registry_path(codex_home)):
-        if require_existing_cwd and not _cwd_is_existing_dir(record.cwd):
-            continue
-        protocol = _managed_record_supervisor_protocol(record)
-        if protocol.get("status") not in ARCHIVABLE_SUPERVISOR_STATUSES:
-            continue
-        if _managed_record_is_still_working(record):
-            continue
-        candidate = {
-            "kind": "managed_worker",
-            "name": record.name,
-            "record_id": record.record_id,
-            "status": protocol.get("status"),
-            "summary": protocol.get("summary"),
-            "next": protocol.get("next"),
-            "cwd": record.cwd,
-            "backend": record.backend,
-            "tmux_session": record.tmux_session,
-            "command": _cleanup_archive_command(
-                codex_home,
-                "--name",
-                record.name,
-            ),
-        }
-        candidates.append(_drop_none_values(candidate))
-    return candidates
-
-
-def _cleanup_notification_candidates(codex_home: Path) -> list[dict[str, Any]]:
-    try:
-        notifications = NotificationFlow.in_process(codex_home).list_notifications(
-            unread=True,
-            notification_type="supervisor_goal_status",
-        )
-    except (OSError, ValueError):
-        return []
-    candidates: list[dict[str, Any]] = []
-    for notification in notifications:
-        source_ref = notification.source_ref or {}
-        if not isinstance(source_ref, dict):
-            continue
-        goal_id = source_ref.get("goal_id")
-        status = source_ref.get("status")
-        if status not in ARCHIVABLE_SUPERVISOR_STATUSES:
-            continue
-        candidate = {
-            "kind": "notification",
-            "notification_id": notification.notification_id,
-            "type": notification.notification_type,
-            "title": notification.title,
-            "goal_id": goal_id,
-            "status": status,
-            "command": _cleanup_archive_command(
-                codex_home,
-                "--notification-id",
-                notification.notification_id,
-            ),
-        }
-        candidates.append(_drop_none_values(candidate))
-    return candidates
-
-
-def _cleanup_worktree_candidate_dicts(args: argparse.Namespace) -> list[dict[str, Any]]:
-    candidates: list[dict[str, Any]] = []
-    for item in _delete_worktree_candidate_payloads(args):
-        candidate = dict(item)
-        target_name = candidate.get("target_name") or candidate.get("name")
-        record_id = candidate.get("record_id")
-        if not isinstance(target_name, str) or not target_name:
-            continue
-        if not isinstance(record_id, str) or not record_id:
-            continue
-        candidate["command"] = _cleanup_delete_worktree_command(
-            Path(args.codex_home),
-            target_name=target_name,
-            record_id=record_id,
-            base_ref=str(getattr(args, "base", "main") or "main"),
-        )
-        candidates.append(candidate)
-    return candidates
-
-
-def _cleanup_archive_command(codex_home: Path, *target_args: str) -> str:
-    return shlex.join(
-        [
-            "isotope-supervisor",
-            "cleanup",
-            "archive",
-            "--codex-home",
-            str(codex_home),
-            *target_args,
-        ]
-    )
-
-
-def _cleanup_delete_worktree_command(
-    codex_home: Path,
-    *,
-    target_name: str,
-    record_id: str,
-    base_ref: str = "main",
-) -> str:
-    args = [
-        "isotope-supervisor",
-        "cleanup",
-        "delete-worktree",
-        "--codex-home",
-        str(codex_home),
-        "--name",
-        target_name,
-        "--record-id",
-        record_id,
-    ]
-    if base_ref != "main":
-        args.extend(["--base", base_ref])
-    args.append("--confirm-delete-worktree")
-    return shlex.join(args)
-
-
-def _select_cleanup_candidates(
-    args: argparse.Namespace,
-    candidates: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    if getattr(args, "all", False):
-        return candidates
-    goal_id = getattr(args, "goal_id", None)
-    name = getattr(args, "name", None)
-    notification_id = getattr(args, "notification_id", None)
-    selected = [
-        item
-        for item in candidates
-        if (goal_id and item.get("kind") == "goal" and item.get("goal_id") == goal_id)
-        or (
-            name
-            and item.get("kind") == "managed_worker"
-            and item.get("name") == name
-        )
-        or (
-            notification_id
-            and item.get("kind") == "notification"
-            and item.get("notification_id") == notification_id
-        )
-    ]
-    if not selected:
-        raise ValueError("cleanup target is not currently archivable")
-    return selected
-
-
-def _archive_cleanup_candidate(
-    codex_home: Path,
-    candidate: dict[str, Any],
-) -> dict[str, Any]:
-    kind = candidate.get("kind")
-    if kind == "goal":
-        goal_id = str(candidate["goal_id"])
-        archived = archive_supervisor_goal(codex_home=codex_home, goal_id=goal_id)
-        return {
-            "kind": kind,
-            "goal_id": goal_id,
-            "archived": archived,
-        }
-    if kind == "managed_worker":
-        name = str(candidate["name"])
-        record = archive_managed_codex(codex_home=codex_home, name=name)
-        return {
-            "kind": kind,
-            "name": name,
-            "managed": record.to_dict(),
-        }
-    if kind == "notification":
-        notification_id = str(candidate["notification_id"])
-        marked = NotificationFlow.in_process(codex_home).mark_read(notification_id)
-        return {
-            "kind": kind,
-            "notification_id": notification_id,
-            "notification": marked.to_dict(),
-        }
-    raise ValueError(f"unsupported cleanup candidate kind: {kind}")
-
-
-def _managed_record_supervisor_protocol(record: Any) -> dict[str, str]:
-    excerpt = _managed_record_status_excerpt(record)
-    if not excerpt:
-        return {}
-    return _supervisor_protocol_from_text(excerpt)
-
-
-def _managed_record_is_still_working(record: Any) -> bool:
-    if record.backend != "tmux" and record.pid > 0 and _pid_is_running(record.pid):
-        return True
-    excerpt = _managed_record_status_excerpt(record)
-    if not excerpt:
-        return False
-    lines = [line.strip() for line in excerpt.splitlines() if line.strip()]
-    return _terminal_has_active_work_marker(lines[-8:])
-
-
-def _managed_record_status_excerpt(record: Any) -> str | None:
-    if record.backend == "tmux" and record.tmux_session:
-        pane_text = _tmux_capture_pane(record.tmux_session)
-        if pane_text:
-            return pane_text
-    return _managed_process_log_excerpt(record.log_path)
-
-
-def _drop_none_values(item: dict[str, Any]) -> dict[str, Any]:
-    return {key: value for key, value in item.items() if value is not None}
 
 
 def _dashboard_item_suffix(item: dict[str, Any]) -> str:
