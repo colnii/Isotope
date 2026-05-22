@@ -14,7 +14,10 @@ from typing import Any, Mapping
 
 from .catalog import CapabilityCatalog
 from ..demo import run_demo
+from ..features.supervisor.context import request_project_context
 
+
+SUPERVISOR_REQUEST_CONTEXT_CAPABILITY = "supervisor.request_context"
 
 _CAPABILITY_SCENARIOS = {
     "approval.tool.runner": "approval-tool-runner",
@@ -99,7 +102,11 @@ class CapabilityRunner:
         return self._catalog.get_capability_status(capability_id, env=env)
 
     def plan_capability_run(
-        self, capability_id: str, *, env: Mapping[str, str] | None = None
+        self,
+        capability_id: str,
+        *,
+        inputs: Mapping[str, Any] | None = None,
+        env: Mapping[str, str] | None = None,
     ) -> dict[str, Any]:
         try:
             capability = self._lookup_capability(capability_id)
@@ -109,6 +116,7 @@ class CapabilityRunner:
         status = self._catalog.get_capability_status(capability_id, env=env)
         scenario = _CAPABILITY_SCENARIOS.get(capability_id)
         required_inputs = _required_inputs(capability)
+        missing_inputs = _missing_inputs(required_inputs, inputs)
         runner_kind = _runner_kind(capability, scenario=scenario)
         blocking_reasons: list[str] = []
         can_launch = False
@@ -123,7 +131,10 @@ class CapabilityRunner:
         elif capability["shelf"] in {"diagnostic", "experimental"}:
             launch_status = "not_allowlisted"
             blocking_reasons.append("not_allowlisted")
-        elif scenario is None:
+        elif missing_inputs:
+            launch_status = "missing_inputs"
+            blocking_reasons.append("missing_inputs")
+        elif scenario is None and capability_id != SUPERVISOR_REQUEST_CONTEXT_CAPABILITY:
             launch_status = "not_allowlisted"
             blocking_reasons.append("not_allowlisted")
         else:
@@ -142,7 +153,7 @@ class CapabilityRunner:
             "scenario": scenario if can_launch else None,
             "blocking_reasons": blocking_reasons,
             "required_inputs": required_inputs,
-            "missing_inputs": [],
+            "missing_inputs": missing_inputs,
             "required_env": list(capability.get("required_env", [])),
             "missing_env": list(status.get("missing_env", [])),
             "network_required": bool(capability.get("network_required")),
@@ -158,6 +169,7 @@ class CapabilityRunner:
         capability_id: str,
         *,
         root_path: Path | str | None = None,
+        inputs: Mapping[str, Any] | None = None,
         env: Mapping[str, str] | None = None,
     ) -> dict[str, Any]:
         capability = self._lookup_capability(capability_id)
@@ -168,6 +180,9 @@ class CapabilityRunner:
         status = self._catalog.get_capability_status(capability_id, env=env)
         if not status["ready"]:
             raise PermissionError(f"capability not ready: {status['status']}")
+
+        if capability_id == SUPERVISOR_REQUEST_CONTEXT_CAPABILITY:
+            return _run_supervisor_request_context(inputs=inputs)
 
         try:
             scenario = _CAPABILITY_SCENARIOS[capability_id]
@@ -235,11 +250,24 @@ def _required_inputs(capability: Mapping[str, Any]) -> list[str]:
     return [item for item in required if isinstance(item, str)]
 
 
+def _missing_inputs(
+    required_inputs: list[str], inputs: Mapping[str, Any] | None
+) -> list[str]:
+    input_mapping = inputs or {}
+    return [
+        name
+        for name in required_inputs
+        if name not in input_mapping or input_mapping.get(name) in (None, "")
+    ]
+
+
 def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
     if capability.get("network_required") or capability.get("provider"):
         return "provider_required"
     if scenario is not None:
         return "deterministic_demo"
+    if capability.get("capability_id") == SUPERVISOR_REQUEST_CONTEXT_CAPABILITY:
+        return "deterministic_readonly"
     return "deferred"
 
 
@@ -272,6 +300,55 @@ def _unknown_launch_plan(capability_id: str) -> dict[str, Any]:
         "safety_boundaries": [],
         "output_policy": _output_policy(),
     }
+
+
+def _run_supervisor_request_context(
+    *, inputs: Mapping[str, Any] | None
+) -> dict[str, Any]:
+    required_inputs = ["codex_home", "cwd", "query"]
+    missing_inputs = _missing_inputs(required_inputs, inputs)
+    if missing_inputs:
+        raise ValueError("missing required capability inputs: " + ", ".join(missing_inputs))
+    input_mapping = inputs or {}
+    max_results = input_mapping.get("max_results", 5)
+    if not isinstance(max_results, int):
+        try:
+            max_results = int(max_results)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("max_results must be an integer") from exc
+    result = request_project_context(
+        codex_home=input_mapping["codex_home"],
+        cwd=input_mapping["cwd"],
+        query=str(input_mapping["query"]),
+        max_results=max_results,
+    )
+    result_dict = result.to_dict()
+    return {
+        "kind": "capability_run_result",
+        "capability_id": SUPERVISOR_REQUEST_CONTEXT_CAPABILITY,
+        "status": "completed",
+        "runner_kind": "deterministic_readonly",
+        "context_result": {
+            "result_id": result_dict["result_id"],
+            "cwd": result_dict["cwd"],
+            "query": result_dict["query"],
+            "backend": result_dict["backend"],
+            "item_count": len(result_dict["items"]),
+            "items": result_dict["items"],
+        },
+    }
+
+
+def _json_object_argument(value: str | None) -> dict[str, Any]:
+    if value is None:
+        return {}
+    try:
+        payload = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"invalid input JSON: {exc.msg}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("input JSON must be an object")
+    return payload
 
 
 def _print_json(payload: Mapping[str, Any]) -> None:
@@ -321,11 +398,13 @@ def _build_parser() -> argparse.ArgumentParser:
 
     plan_parser = subparsers.add_parser("plan", help="Plan one capability run.")
     plan_parser.add_argument("capability_id")
+    plan_parser.add_argument("--input-json")
     plan_parser.add_argument("--json", action="store_true", dest="as_json")
 
     run_parser = subparsers.add_parser("run", help="Run an allowlisted capability.")
     run_parser.add_argument("capability_id")
     run_parser.add_argument("--root", type=Path)
+    run_parser.add_argument("--input-json")
     run_parser.add_argument("--json", action="store_true", dest="as_json")
 
     return parser
@@ -380,7 +459,8 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.command == "plan":
-            plan = runner.plan_capability_run(args.capability_id)
+            inputs = _json_object_argument(args.input_json)
+            plan = runner.plan_capability_run(args.capability_id, inputs=inputs)
             if args.as_json:
                 _print_json({"status": "ok", "plan": plan})
             else:
@@ -388,14 +468,22 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.command == "run":
-            result = runner.run_capability(args.capability_id, root_path=args.root)
+            inputs = _json_object_argument(args.input_json)
+            result = runner.run_capability(
+                args.capability_id,
+                root_path=args.root,
+                inputs=inputs,
+            )
             if args.as_json:
                 _print_json({"status": "ok", "run": result})
             else:
                 print(f"{args.capability_id}: {result['status']}")
-                print(f"scenario: {result['scenario']}")
-                print(f"replay_ok: {str(result['replay_ok']).lower()}")
-                print(f"checkpoint_ok: {str(result['checkpoint_ok']).lower()}")
+                if "scenario" in result:
+                    print(f"scenario: {result['scenario']}")
+                    print(f"replay_ok: {str(result['replay_ok']).lower()}")
+                    print(f"checkpoint_ok: {str(result['checkpoint_ok']).lower()}")
+                elif "runner_kind" in result:
+                    print(f"runner_kind: {result['runner_kind']}")
             return 0
     except (KeyError, PermissionError, ValueError) as exc:
         if getattr(args, "as_json", False):

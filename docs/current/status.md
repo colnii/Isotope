@@ -68,7 +68,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     Capacity graph（能力图）计划层，把 capacity node 组合到
     `DependencyGraph`，并可把 `CapacityCallSelection` 适配成 capacity
     node；该层只生成 ready capacity call plan，不调用 LLM、不执行
-    capability、不定义 executor。
+    capability、不定义 executor。Supervisor `capacity plan` 已作为
+    plan-only（只规划不执行）路径接入主流程：缺少必填输入会停在 plan 层，
+    不生成可执行 graph call；只有显式传 `--execute-agent-loop` 才会通过
+    agent loop 执行 allowlist 低风险能力。
 17. `features/notifications` 已有薄入口，当前提供本地低敏通知索引、
     `NotificationFlow`、`NotificationSummary` 和 `isotope-notification`
     CLI，可创建、列表、按未读或类型过滤，并把通知标记为已读；
@@ -182,6 +185,9 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     包含 `title`、`path`、`snippet`、`score`、`source_group` 和
     `match_reason`，其中 `docs/current` 和 Supervisor 关键代码入口会显示
     更清晰的分组与匹配原因，以便 LLM 看到排序依据和低敏片段，而不是每轮塞全文；
+    同一实现已包装为 `supervisor.request_context` capability，可通过
+    `isotope-capability list/search/describe/plan/run` 发现和只读调用，
+    不改变现有 context 存储格式或 BM25 排序逻辑；
     `resume_session` 也受 `--prompt-cooldown` 约束，避免短时间重复恢复
     同一历史会话；如果目标 session 所在 cwd 已有后台 process worker
     仍在运行，`resume_session` 会跳过，避免同一个隔离工作区被重复驱动；

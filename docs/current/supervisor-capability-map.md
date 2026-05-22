@@ -21,7 +21,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 
 - 主路径已经接入：Web/CLI、goal queue、fanout、current batch、
   dependency batch、worker/integration review、merge dispatch、
-  decision/failure ledger adapter、Codex session reader、`capacity plan`。
+  decision/failure ledger adapter、Codex session reader、`capacity plan`、
+  `supervisor.request_context` capability。
 - 半成品或闲置：`agents/loop` 尚未驱动 Supervisor 主循环；
   `llm/capacity_calling.py`、`agents/scheduler/capacity_graph.py`、
   `capabilities/runner.py` 已完成 Supervisor plan-only 第一片，但尚未进入
@@ -39,7 +40,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 | Worker 审查层 | `worker-review`、`integration-review`、`replan` | `features/supervisor/worker_review.py`、`features/supervisor/integration_review.py`、`features/supervisor/replan.py`、`features/supervisor/runner.py` | 汇总已托管 worker 的 worktree、branch、状态协议、改动、复查提示、合并提示、只读集成分组和下一轮候选 |
 | Merge 工单层 | `merge-work-order` builder、merge dispatch | `features/supervisor/merge_work_order.py`、`features/supervisor/merge_dispatch.py`、`features/supervisor/runner.py` | 根据 `integration-review` 生成动态 merge worker 工单，并由 `loop` 在有 `ready_to_integrate` 候选时自动启动专门 merge worker |
 | Codex 执行通道 | `resume`、`codex exec resume`、`--last` | `features/supervisor/runner.py`、`features/supervisor/registry.py` | 不依赖 tmux 恢复历史会话并投喂新 prompt |
-| 上下文能力层 | `context`、`request_context`、上下文结果记录 | `features/supervisor/context.py`、`features/supervisor/runner.py` | LLM 按需请求检索项目资料，BM25 后端按 query 对文档和代码候选排序，不固定注入全文 |
+| 上下文能力层 | `context`、`request_context`、`supervisor.request_context`、上下文结果记录 | `features/supervisor/context.py`、`capabilities/catalog.py`、`capabilities/runner.py`、`features/supervisor/runner.py` | LLM 按需请求检索项目资料，BM25 后端按 query 对文档和代码候选排序，不固定注入全文；能力目录已提供低风险只读 wrapper |
 | Codex 集成层 | 读取 Codex session（会话记录）、索引标题和 agent 元数据 | `features/supervisor/flow.py` | 当前读取本机 `.jsonl`、`session_index.jsonl` 和 SQLite |
 | 扫描优化层 | 最近候选、首尾读取和标题兜底 | `features/supervisor/flow.py` | 避免每次页面刷新全量读历史 |
 | tmux 集成层 | tmux 启动、buffer/paste 发送和 bell hook | `bell_events.py`、`flow.py`、`registry.py` | 只控制登记过的 tmux 会话 |
@@ -120,6 +121,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   默认只让 LLM 选择一个能力并生成 `capacity_graph` 与 capability launch plan；
   缺少必填输入时停在 plan 层，不生成可执行 graph call；显式
   `--execute-agent-loop` 才通过 agent loop 执行 allowlist 低风险能力。
+- `supervisor.request_context` 已注册为可发现 capability：`list/search/describe`
+  能看到它，`plan/run --input-json` 会复用现有
+  `request_project_context`，保持只读、BM25 排序和原有 context 结果存储格式。
 - `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
 - `/managed/send` 成功发送后会更新 lane state。
 - `guide` 会按 cwd、lane name 和 tmux session 打印可复制工作流命令。

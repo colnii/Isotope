@@ -96,6 +96,18 @@ def test_runner_describe_returns_low_sensitive_catalog_metadata():
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
 
 
+def test_runner_discovers_supervisor_request_context_from_default_catalog():
+    runner = _runner()
+
+    assert "supervisor.request_context" in _ids(runner.list_capabilities())
+    search = runner.search_capabilities(query="request_context")
+
+    assert _ids(search["capabilities"]) == ["supervisor.request_context"]
+    description = runner.describe_capability("supervisor.request_context")
+    assert description["input_contract"]["required"] == ["codex_home", "cwd", "query"]
+    assert "read_only" in description["safety_boundaries"]
+
+
 def test_runner_status_mirrors_catalog_status_without_executing_capability():
     catalog = CapabilityCatalog(
         capabilities=[
@@ -197,3 +209,48 @@ def test_unallowlisted_ready_capability_fails_closed_before_side_effects(tmp_pat
         )
 
     assert not list(Path(tmp_path).rglob("*"))
+
+
+def test_request_context_plan_stops_when_required_inputs_are_missing():
+    plan = _runner().plan_capability_run(
+        "supervisor.request_context",
+        inputs={"cwd": "/tmp/project"},
+    )
+
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["missing_inputs"] == ["codex_home", "query"]
+    assert plan["scenario"] is None
+
+
+def test_request_context_capability_runs_existing_readonly_context_search(tmp_path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "README.md").write_text(
+        "# Project\n\nSupervisor request_context finds capability evidence.\n",
+        encoding="utf-8",
+    )
+    codex_home = tmp_path / "codex-home"
+
+    result = _runner().run_capability(
+        "supervisor.request_context",
+        inputs={
+            "codex_home": str(codex_home),
+            "cwd": str(workspace),
+            "query": "request_context capability evidence",
+            "max_results": 3,
+        },
+    )
+
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "supervisor.request_context"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "deterministic_readonly"
+    assert result["context_result"]["backend"] == "bm25"
+    assert result["context_result"]["query"] == "request_context capability evidence"
+    assert result["context_result"]["item_count"] >= 1
+    assert (codex_home / "supervisor" / "context_results.jsonl").is_file()
+    json.dumps(result)
+    for mapping in _walk_mapping(result):
+        assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)

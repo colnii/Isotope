@@ -170,3 +170,18 @@ def test_module_level_default_manifest_uses_same_low_sensitive_contract():
     json.dumps(manifest)
     for mapping in _walk_mapping(manifest):
         assert FORBIDDEN_MANIFEST_KEYS.isdisjoint(mapping)
+
+
+def test_default_catalog_registers_supervisor_request_context_capability():
+    catalog = _catalog_class().default()
+
+    capability = {
+        entry["capability_id"]: entry
+        for entry in catalog.list_capabilities()
+    }["supervisor.request_context"]
+
+    assert capability["shelf"] == "product_candidate"
+    assert capability["input_contract"]["required"] == ["codex_home", "cwd", "query"]
+    assert capability["input_contract"]["properties"]["max_results"]["type"] == "integer"
+    assert "read_only" in capability["safety_boundaries"]
+    assert "uses_existing_supervisor_context_store" in capability["safety_boundaries"]

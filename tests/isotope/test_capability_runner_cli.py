@@ -63,6 +63,7 @@ def test_capability_runner_cli_lists_capabilities_as_json():
         "approval.tool.runner",
         "artifact.review",
         "external.snapshot.review",
+        "supervisor.request_context",
     ]
     _assert_low_sensitive(payload)
 
@@ -104,6 +105,18 @@ def test_capability_runner_cli_searches_capabilities_as_json():
     _assert_low_sensitive(payload)
 
 
+def test_capability_runner_cli_searches_supervisor_request_context_as_json():
+    result = _run_cli("search", "request_context", "--json")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert [item["capability_id"] for item in payload["search"]["capabilities"]] == [
+        "supervisor.request_context"
+    ]
+    _assert_low_sensitive(payload)
+
+
 def test_capability_runner_cli_plans_capability_run_as_json():
     result = _run_cli("plan", "artifact.review", "--json")
 
@@ -119,6 +132,27 @@ def test_capability_runner_cli_plans_capability_run_as_json():
     _assert_low_sensitive(payload)
 
 
+def test_capability_runner_cli_plans_request_context_missing_inputs_as_json():
+    result = _run_cli(
+        "plan",
+        "supervisor.request_context",
+        "--input-json",
+        json.dumps({"cwd": "/tmp/project"}),
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    plan = payload["plan"]
+    assert plan["capability_id"] == "supervisor.request_context"
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["missing_inputs"] == ["codex_home", "query"]
+    _assert_low_sensitive(payload)
+
+
 def test_capability_runner_cli_runs_allowlisted_capability_as_json(tmp_path):
     result = _run_cli("run", "artifact.review", "--root", str(tmp_path), "--json")
 
@@ -131,6 +165,44 @@ def test_capability_runner_cli_runs_allowlisted_capability_as_json(tmp_path):
     assert run["scenario"] == "artifact-review"
     assert run["replay_ok"] is True
     assert run["checkpoint_ok"] is True
+    _assert_low_sensitive(payload)
+
+
+def test_capability_runner_cli_runs_request_context_with_input_json(tmp_path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "notes.md").write_text(
+        "Supervisor request_context can retrieve project context.\n",
+        encoding="utf-8",
+    )
+    codex_home = tmp_path / "codex-home"
+    input_json = json.dumps(
+        {
+            "codex_home": str(codex_home),
+            "cwd": str(workspace),
+            "query": "request_context project context",
+            "max_results": 2,
+        }
+    )
+
+    result = _run_cli(
+        "run",
+        "supervisor.request_context",
+        "--input-json",
+        input_json,
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    run = payload["run"]
+    assert run["capability_id"] == "supervisor.request_context"
+    assert run["status"] == "completed"
+    assert run["runner_kind"] == "deterministic_readonly"
+    assert run["context_result"]["backend"] == "bm25"
+    assert run["context_result"]["item_count"] >= 1
+    assert (codex_home / "supervisor" / "context_results.jsonl").is_file()
     _assert_low_sensitive(payload)
 
 

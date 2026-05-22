@@ -12,7 +12,7 @@ import re
 from typing import Any, Mapping
 
 
-_CAPABILITY_ID_RE = re.compile(r"^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)+$")
+_CAPABILITY_ID_RE = re.compile(r"^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$")
 _SHELVES = frozenset(
     {"product_candidate", "prototype", "diagnostic", "experimental"}
 )
@@ -144,6 +144,56 @@ class CapabilityCatalog:
                     title="External Snapshot Review",
                     description="Review imported snapshot observations without overriding native state.",
                     tags=("external", "snapshot", "review"),
+                ),
+                Capability(
+                    capability_id="supervisor.request_context",
+                    title="Supervisor Request Context",
+                    description=(
+                        "Retrieve ranked project context through the existing "
+                        "Supervisor request_project_context path."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=("supervisor", "request_context", "context", "search"),
+                    input_contract={
+                        "type": "object",
+                        "required": ["codex_home", "cwd", "query"],
+                        "properties": {
+                            "codex_home": {
+                                "type": "string",
+                                "description": "Codex home directory used for existing context result storage.",
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Workspace directory to search.",
+                            },
+                            "query": {
+                                "type": "string",
+                                "description": "Project context query.",
+                            },
+                            "max_results": {
+                                "type": "integer",
+                                "description": "Maximum ranked context items to return.",
+                                "default": 5,
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "result_id",
+                            "backend",
+                            "item_count",
+                            "items",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "read_only",
+                        "low_sensitive_summary_only",
+                        "uses_existing_supervisor_context_store",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
                 ),
             ]
         )
