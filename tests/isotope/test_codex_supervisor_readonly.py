@@ -4311,6 +4311,127 @@ def test_codex_supervisor_runner_cleanup_list_includes_worktree_delete_candidate
     ]
 
 
+def test_codex_supervisor_runner_cleanup_archives_stale_missing_worker_by_record_id(
+    tmp_path,
+    capsys,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    missing_worktree = workspace / ".worktrees" / "supervisor" / "same-name-old"
+    current_worktree = workspace / ".worktrees" / "supervisor" / "same-name-new"
+    current_worktree.mkdir(parents=True)
+    old_log = codex_home / "supervisor" / "logs" / "managed-old.log"
+    new_log = codex_home / "supervisor" / "logs" / "managed-new.log"
+    old_log.parent.mkdir(parents=True, exist_ok=True)
+    old_log.write_text(
+        "SUPERVISOR_STATUS: blocked\n"
+        "SUPERVISOR_SUMMARY: 旧 worktree 已不存在。\n"
+        "SUPERVISOR_NEXT: 等待 cleanup 归档。\n",
+        encoding="utf-8",
+    )
+    new_log.write_text(
+        "SUPERVISOR_STATUS: working\n"
+        "SUPERVISOR_SUMMARY: 新 worker 正在执行。\n"
+        "SUPERVISOR_NEXT: 继续等待。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "record_id": "managed-old",
+                        "name": "same-name",
+                        "cwd": str(missing_worktree),
+                        "prompt": "旧 worker。",
+                        "command": ["codex", "exec", "-C", str(missing_worktree), "继续"],
+                        "pid": 0,
+                        "started_at": NOW.isoformat(),
+                        "log_path": str(old_log),
+                        "status": "launched",
+                        "backend": "process",
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+                json.dumps(
+                    {
+                        "record_id": "managed-new",
+                        "name": "same-name",
+                        "cwd": str(current_worktree),
+                        "prompt": "新 worker。",
+                        "command": ["codex", "exec", "-C", str(current_worktree), "继续"],
+                        "pid": 0,
+                        "started_at": NOW.isoformat(),
+                        "log_path": str(new_log),
+                        "status": "launched",
+                        "backend": "process",
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    exit_code = supervisor_main(["cleanup", "list", "--codex-home", str(codex_home), "--json"])
+
+    assert exit_code == 0
+    list_payload = json.loads(capsys.readouterr().out)
+    stale = [
+        item
+        for item in list_payload["candidates"]
+        if item.get("record_id") == "managed-old"
+    ]
+    assert stale == [
+        {
+            "kind": "managed_worker",
+            "name": "same-name",
+            "record_id": "managed-old",
+            "status": "stale_missing_worktree",
+            "summary": "旧 worktree 已不存在。",
+            "next": "等待 cleanup 归档。",
+            "cwd": str(missing_worktree),
+            "backend": "process",
+            "command": (
+                "isotope-supervisor cleanup archive "
+                f"--codex-home {codex_home} --name same-name --record-id managed-old"
+            ),
+        }
+    ]
+
+    exit_code = supervisor_main(
+        [
+            "cleanup",
+            "archive",
+            "--codex-home",
+            str(codex_home),
+            "--name",
+            "same-name",
+            "--record-id",
+            "managed-old",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    archive_payload = json.loads(capsys.readouterr().out)
+    assert archive_payload["archived"][0]["managed"]["record_id"] == "managed-old"
+    latest_status_by_record_id = {
+        item["record_id"]: item["status"]
+        for item in (
+            json.loads(line)
+            for line in registry_path.read_text(encoding="utf-8").splitlines()
+        )
+    }
+    assert latest_status_by_record_id["managed-old"] == "archived"
+    assert latest_status_by_record_id["managed-new"] == "launched"
+
+
 def test_codex_supervisor_runner_cleanup_delete_worktree_uses_guarded_action(
     tmp_path,
     capsys,

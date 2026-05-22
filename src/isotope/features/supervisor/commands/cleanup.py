@@ -117,6 +117,7 @@ def cleanup_candidate_dicts(
     return [
         *goals,
         *cleanup_managed_worker_candidates(codex_home, api=api),
+        *cleanup_stale_missing_worker_candidates(codex_home, api=api),
         *cleanup_notification_candidates(codex_home),
     ]
 
@@ -188,6 +189,45 @@ def cleanup_managed_worker_candidates(
                 codex_home,
                 "--name",
                 record.name,
+            ),
+        }
+        candidates.append(drop_none_values(candidate))
+    return candidates
+
+
+def cleanup_stale_missing_worker_candidates(
+    codex_home: Path,
+    *,
+    api: Any | None = None,
+) -> list[dict[str, Any]]:
+    if api is None:
+        from isotope.features.supervisor import runner as api
+
+    candidates: list[dict[str, Any]] = []
+    for record in api.read_managed_records(api.default_registry_path(codex_home)):
+        if ".worktrees" not in Path(record.cwd).expanduser().parts:
+            continue
+        if api._cwd_is_existing_dir(record.cwd):
+            continue
+        if managed_record_is_still_working(record, api=api):
+            continue
+        protocol = managed_record_supervisor_protocol(record, api=api)
+        candidate = {
+            "kind": "managed_worker",
+            "name": record.name,
+            "record_id": record.record_id,
+            "status": "stale_missing_worktree",
+            "summary": protocol.get("summary"),
+            "next": protocol.get("next"),
+            "cwd": record.cwd,
+            "backend": record.backend,
+            "tmux_session": record.tmux_session,
+            "command": cleanup_archive_command(
+                codex_home,
+                "--name",
+                record.name,
+                "--record-id",
+                record.record_id,
             ),
         }
         candidates.append(drop_none_values(candidate))
@@ -300,6 +340,7 @@ def select_cleanup_candidates(
         return candidates
     goal_id = getattr(args, "goal_id", None)
     name = getattr(args, "name", None)
+    record_id = getattr(args, "record_id", None)
     notification_id = getattr(args, "notification_id", None)
     selected = [
         item
@@ -309,6 +350,7 @@ def select_cleanup_candidates(
             name
             and item.get("kind") == "managed_worker"
             and item.get("name") == name
+            and (not record_id or item.get("record_id") == record_id)
         )
         or (
             notification_id
@@ -336,7 +378,12 @@ def archive_cleanup_candidate(
         }
     if kind == "managed_worker":
         name = str(candidate["name"])
-        record = archive_managed_codex(codex_home=codex_home, name=name)
+        record_id = candidate.get("record_id")
+        record = archive_managed_codex(
+            codex_home=codex_home,
+            name=name,
+            record_id=str(record_id) if record_id else None,
+        )
         return {
             "kind": kind,
             "name": name,

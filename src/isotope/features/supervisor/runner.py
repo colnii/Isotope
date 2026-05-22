@@ -1431,6 +1431,10 @@ def _build_parser_impl() -> argparse.ArgumentParser:
         "--notification-id",
         help="Mark one completed Supervisor notification as read.",
     )
+    cleanup_archive_parser.add_argument(
+        "--record-id",
+        help="When archiving by --name, target one managed record id.",
+    )
     cleanup_delete_worktree_parser = cleanup_subparsers.choices["delete-worktree"]
     cleanup_delete_worktree_parser.add_argument(
         "--name",

@@ -520,12 +520,41 @@ def test_supervisor_integration_review_can_include_missing_worktrees(tmp_path):
         include_missing_worktrees=True,
     )
 
-    assert payload["summary"]["total"] == 1
-    assert payload["summary"]["needs_review"] == 1
+    assert payload["summary"]["total"] == 0
+    assert payload["summary"]["needs_review"] == 0
     assert payload["summary"]["stale_missing_worktrees"] == 1
-    assert payload["groups"]["needs_review"][0]["reason"] == (
-        "worker worktree 缺失；先确认登记表和分支是否仍存在。"
+    assert payload["stale_missing_worktrees"][0]["record_id"] == "managed-missing"
+
+
+def test_supervisor_integration_review_keeps_missing_merge_worker_out_of_active_groups(tmp_path):
+    from isotope.features.supervisor.integration_review import collect_integration_reviews
+
+    codex_home = tmp_path / ".codex"
+    missing_cwd = (
+        tmp_path
+        / "repo"
+        / ".worktrees"
+        / "supervisor"
+        / "supervisor-merge-dispatch-12345678"
     )
+    _write_record(
+        codex_home,
+        record_id="managed-merge-missing",
+        name="supervisor-merge-dispatch",
+        cwd=missing_cwd,
+        protocol_status="blocked",
+    )
+
+    payload = collect_integration_reviews(
+        codex_home=codex_home,
+        include_missing_worktrees=True,
+    )
+
+    assert payload["summary"]["total"] == 0
+    assert payload["summary"]["merge_workers"] == 0
+    assert payload["summary"]["needs_review"] == 0
+    assert payload["summary"]["stale_missing_worktrees"] == 1
+    assert payload["stale_missing_worktrees"][0]["record_id"] == "managed-merge-missing"
 
 
 def test_supervisor_integration_review_flags_merge_conflict_risk(tmp_path):

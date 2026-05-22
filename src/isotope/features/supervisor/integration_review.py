@@ -49,10 +49,9 @@ def collect_integration_reviews(
         for record in records
         if not Path(record.cwd).expanduser().is_dir()
     ]
-    if not include_missing_worktrees:
-        records = [
-            record for record in records if Path(record.cwd).expanduser().is_dir()
-        ]
+    records = [
+        record for record in records if Path(record.cwd).expanduser().is_dir()
+    ]
     workers = [
         _worker_integration_review(
             record,
