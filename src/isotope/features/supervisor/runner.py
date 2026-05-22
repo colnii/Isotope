@@ -5430,6 +5430,7 @@ def _print_dashboard(args: argparse.Namespace) -> None:
         active_goals=_active_goal_dicts(args, include_status=True),
         decision_requests=_decision_request_dicts(args),
         notifications=_notification_dicts(Path(args.codex_home)),
+        multi_worker=build_multi_worker_status_payload(root=Path(args.codex_home)),
     )
     if args.json:
         _print_json(payload)
@@ -5443,6 +5444,7 @@ def _dashboard_payload(
     active_goals: list[dict[str, Any]] | None = None,
     decision_requests: list[dict[str, Any]] | None = None,
     notifications: list[dict[str, Any]] | None = None,
+    multi_worker: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     groups: dict[str, list[dict[str, Any]]] = {
         "needs_attention": [],
@@ -5469,12 +5471,29 @@ def _dashboard_payload(
             display_sessions,
             active_goals=active_goals,
         ),
+        "multi_worker": multi_worker or _empty_multi_worker_payload(),
         "decision_requests": decision_requests or [],
         "notifications": notification_items,
         "notification_counts": {
             "total": len(notification_items),
             "unread": sum(1 for item in notification_items if item.get("unread") is True),
         },
+    }
+
+
+def _empty_multi_worker_payload() -> dict[str, Any]:
+    return {
+        "status": "ok",
+        "store": {"root": "", "path": "", "format": "file_memory_store"},
+        "filters": {"worker": None},
+        "summary": {
+            "worker_count": 0,
+            "memory_records_total": 0,
+            "worker_events_total": 0,
+            "capacity_calls_total": 0,
+            "hidden_workers": 0,
+        },
+        "workers": [],
     }
 
 

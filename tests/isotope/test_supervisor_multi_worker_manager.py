@@ -155,6 +155,66 @@ def test_supervisor_worker_manager_plain_output_is_human_readable(tmp_path, caps
     assert "hidden" not in output
 
 
+def test_supervisor_dashboard_json_includes_multi_worker_status(tmp_path, capsys):
+    codex_home = tmp_path / ".codex"
+    memory_dir = codex_home / "memory"
+    memory_dir.mkdir(parents=True)
+    _write_memory_record(
+        memory_dir,
+        MemoryRecord(
+            memory_id="mem_worker_a_capacity",
+            scope="run",
+            content={
+                "kind": "capacity_call",
+                "worker_id": "worker-a",
+                "capacity_id": "artifact.review",
+                "arguments": {"secret": "PRIVATE_CAPACITY_ARGUMENT"},
+            },
+            summary="Worker A selected artifact.review.",
+            source_refs=[],
+            provenance={
+                "run_id": "run_a",
+                "execution_id": "exec_capacity",
+                "action_type": "capacity_call",
+            },
+            created_at="2026-05-22T01:10:00Z",
+            supersedes=[],
+            quality="verified",
+        ),
+    )
+    _publish_event(
+        codex_home,
+        from_worker="worker-a",
+        to_worker="worker-b",
+        event_type="handoff",
+        message="Ready for Worker B.",
+    )
+    capsys.readouterr()
+
+    assert (
+        runner.main(
+            [
+                "dashboard",
+                "--codex-home",
+                str(codex_home),
+                "--stale-after",
+                "999999",
+                "--json",
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    payload = json.loads(output)
+    assert payload["multi_worker"]["summary"]["worker_count"] == 2
+    assert payload["multi_worker"]["summary"]["capacity_calls_total"] == 1
+    workers = {worker["name"]: worker for worker in payload["multi_worker"]["workers"]}
+    assert workers["worker-a"]["capacity_ids"] == ["artifact.review"]
+    assert workers["worker-b"]["incoming_events_total"] == 1
+    assert "PRIVATE_" not in output
+
+
 def _publish_event(
     tmp_path,
     *,

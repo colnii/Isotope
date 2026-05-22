@@ -2536,6 +2536,10 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "renderWorkerDetailCard" in html
     assert "workerDetailField" in html
     assert "worker-detail:" in html
+    assert "multi-worker-panel" in html
+    assert "多 Worker 状态" in html
+    assert "renderMultiWorkerStatus" in html
+    assert "renderMultiWorkerCard" in html
     assert "notification-list" in html
     assert "通知列表" in html
     assert "notification-toggle" in html

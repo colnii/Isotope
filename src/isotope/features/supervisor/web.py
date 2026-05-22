@@ -41,6 +41,7 @@ from .llm_summary import (
     resolve_summary_provider_from_env,
 )
 from .registry import TmuxBellHookRepair, repair_tmux_bell_hooks, send_to_managed_codex
+from .state.multi_worker import build_multi_worker_status_payload
 from .runner import (
     EXECUTABLE_ADVICE_KINDS,
     EXECUTABLE_ADVICE_TEXT,
@@ -104,6 +105,7 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
             ),
             decision_requests=_decision_request_dicts(self.codex_home),
             notifications=_notification_dicts(self.codex_home),
+            multi_worker=build_multi_worker_status_payload(root=self.codex_home),
         )
         payload["daemon"] = supervisor_daemon_status(codex_home=self.codex_home)
         payload["watcher"] = supervisor_watcher_status(codex_home=self.codex_home)
@@ -1041,6 +1043,7 @@ def dashboard_page_html() -> str:
       overflow-wrap: anywhere;
     }
     .current-list-head,
+    .multi-worker-head,
     .notification-list-head {
       display: flex;
       justify-content: space-between;
@@ -1159,6 +1162,63 @@ def dashboard_page_html() -> str:
       padding: 8px;
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 12px;
+    }
+    .multi-worker-panel {
+      margin-bottom: 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--ready);
+      border-radius: 6px;
+      background: var(--panel);
+      padding: 12px 14px;
+      font-size: 14px;
+    }
+    .multi-worker-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .multi-worker-stat {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #f8fafc;
+      padding: 8px;
+      min-width: 0;
+    }
+    .multi-worker-stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .multi-worker-stat strong {
+      display: block;
+      color: var(--text);
+      font-size: 20px;
+      line-height: 1.2;
+    }
+    .multi-worker-body {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .multi-worker-card {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #f8fafc;
+      padding: 10px;
+      min-width: 0;
+    }
+    .multi-worker-title {
+      color: var(--text);
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+    .multi-worker-detail {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      overflow-wrap: anywhere;
     }
     .notification-list-body {
       display: grid;
@@ -1550,6 +1610,14 @@ def dashboard_page_html() -> str:
         <span class="count" id="worker-detail-count">0</span>
       </div>
       <div class="worker-detail-body" id="worker-detail-list"></div>
+    </div>
+    <div class="multi-worker-panel" id="multi-worker-panel">
+      <div class="multi-worker-head">
+        <span>多 Worker 状态</span>
+        <span class="count" id="multi-worker-count">0</span>
+      </div>
+      <div class="multi-worker-summary" id="multi-worker-summary"></div>
+      <div class="multi-worker-body" id="multi-worker-list"></div>
     </div>
     <div class="grid">
       <section data-group="needs_attention">
@@ -2301,6 +2369,88 @@ def dashboard_page_html() -> str:
       return field;
     }
 
+    function renderMultiWorkerStatus(multiWorker) {
+      const summary = multiWorker && multiWorker.summary ? multiWorker.summary : {};
+      const workers = multiWorker && Array.isArray(multiWorker.workers) ? multiWorker.workers : [];
+      document.getElementById("multi-worker-count").textContent = workers.length;
+      const summaryTarget = document.getElementById("multi-worker-summary");
+      summaryTarget.replaceChildren();
+      summaryTarget.append(
+        multiWorkerStat("workers", summary.worker_count || 0),
+        multiWorkerStat("memory", summary.memory_records_total || 0),
+        multiWorkerStat("events", summary.worker_events_total || 0),
+        multiWorkerStat("capacity calls", summary.capacity_calls_total || 0)
+      );
+      const list = document.getElementById("multi-worker-list");
+      list.replaceChildren();
+      if (!workers.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "暂无多 worker 状态";
+        list.append(empty);
+        return;
+      }
+      for (const worker of workers) list.append(renderMultiWorkerCard(worker));
+    }
+
+    function multiWorkerStat(label, value) {
+      const item = document.createElement("div");
+      item.className = "multi-worker-stat";
+      const labelNode = document.createElement("span");
+      labelNode.textContent = label;
+      const valueNode = document.createElement("strong");
+      valueNode.textContent = String(value);
+      item.append(labelNode, valueNode);
+      return item;
+    }
+
+    function renderMultiWorkerCard(worker) {
+      const card = document.createElement("article");
+      card.className = "multi-worker-card";
+      const title = document.createElement("div");
+      title.className = "multi-worker-title";
+      title.textContent = worker.name || "worker";
+      const stats = document.createElement("div");
+      stats.className = "multi-worker-detail";
+      stats.textContent = [
+        "memory " + (worker.memory_records_total || 0),
+        "in " + (worker.incoming_events_total || 0),
+        "out " + (worker.outgoing_events_total || 0),
+        "capacity " + (worker.capacity_calls_total || 0)
+      ].join(" · ");
+      card.append(title, stats);
+      if (Array.isArray(worker.capacity_ids) && worker.capacity_ids.length) {
+        const capacities = document.createElement("div");
+        capacities.className = "multi-worker-detail";
+        capacities.textContent = "capacity_id: " + worker.capacity_ids.join(", ");
+        card.append(capacities);
+      }
+      if (worker.recent_event) {
+        const event = document.createElement("div");
+        event.className = "multi-worker-detail";
+        event.textContent = "最近事件：" + [
+          worker.recent_event.from_worker || "unknown",
+          "->",
+          worker.recent_event.to_worker || "*",
+          "/",
+          worker.recent_event.event_type || "message",
+          "/",
+          worker.recent_event.message || ""
+        ].join(" ");
+        card.append(event);
+      }
+      if (worker.recent_memory) {
+        const memory = document.createElement("div");
+        memory.className = "multi-worker-detail";
+        memory.textContent = "最近记忆：" + [
+          worker.recent_memory.record_id || "unknown",
+          worker.recent_memory.summary || ""
+        ].filter(Boolean).join(" / ");
+        card.append(memory);
+      }
+      return card;
+    }
+
     function renderCardSource(item) {
       const source = document.createElement("div");
       source.className = "source-line";
@@ -2787,6 +2937,7 @@ def dashboard_page_html() -> str:
       renderNightOverview(payload);
       renderCurrentBatch(payload.current || {});
       renderWorkerDetails(payload.current || {});
+      renderMultiWorkerStatus(payload.multi_worker || {});
       renderNotifications(payload.notifications || [], payload.notification_counts || {});
       renderDecisionRequests(payload.decision_requests || []);
       for (const key of groups) renderGroup(key, payload.groups[key] || []);

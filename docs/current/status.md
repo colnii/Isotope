@@ -392,6 +392,8 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     web 已新增“Worker 详情”区，把每个当前 worker 的身份、工作区、
     worktree、branch、状态依据、下一步、状态协议和最近输出集中展示，
     让人类先看清楚信息再决定是否介入；
+    dashboard JSON 和 web 已新增 `multi_worker` 视图，展示按 worker
+    聚合后的 memory 数、事件收发、capacity call 数、最近事件和最近记忆；
     web 已新增“Supervisor 控制台”区，可直接启动/停止 daemon 后台循环、
     启动/停止 watcher 看门进程并刷新状态，不再只依赖复制命令；
     web 已新增“目标队列”区，可直接查看 active goals 并通过 `/goal/add`
