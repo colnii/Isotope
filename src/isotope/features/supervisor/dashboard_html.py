@@ -1073,30 +1073,50 @@ def dashboard_page_html() -> str:
       if (managedDetails) lane.append(managedDetails);
       const actions = document.createElement("div");
       actions.className = "actions";
-      const copyResume = document.createElement("button");
-      copyResume.type = "button";
-      copyResume.textContent = "复制 resume";
-      copyResume.addEventListener("click", () => copyResumeCommand(item, copyResume));
-      actions.append(copyResume);
-      for (const command of item.control_commands || []) {
-        const copyCommand = document.createElement("button");
-        copyCommand.type = "button";
-        copyCommand.textContent = copyControlLabel(command);
-        copyCommand.addEventListener("click", () => copyControlCommand(command, copyCommand));
-        actions.append(copyCommand);
-        if (command.kind === "send_status" || command.kind === "send_continue") {
-          const sendButton = document.createElement("button");
-          sendButton.type = "button";
-          sendButton.dataset.action = "send";
-          sendButton.dataset.commandKind = command.kind;
-          sendButton.dataset.laneName = item.name || "";
-          sendButton.textContent = command.kind === "send_status" ? "请求状态" : "继续";
-          sendButton.addEventListener("click", () => sendManagedCommand(item, command, sendButton));
-          actions.append(sendButton);
-        }
-      }
+      appendLaneActions(actions, item);
       lane.append(actions);
       return lane;
+    }
+
+    function appendLaneActions(actions, item) {
+      actions.append(renderResumeButton(item));
+      for (const command of item.control_commands || []) {
+        actions.append(renderCopyControlButton(command));
+        if (isManagedSendCommand(command)) {
+          actions.append(renderManagedSendButton(item, command));
+        }
+      }
+    }
+
+    function renderResumeButton(item) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = "复制 resume";
+      button.addEventListener("click", () => copyResumeCommand(item, button));
+      return button;
+    }
+
+    function renderCopyControlButton(command) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = copyControlLabel(command);
+      button.addEventListener("click", () => copyControlCommand(command, button));
+      return button;
+    }
+
+    function renderManagedSendButton(item, command) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.action = "send";
+      button.dataset.commandKind = command.kind;
+      button.dataset.laneName = item.name || "";
+      button.textContent = command.kind === "send_status" ? "请求状态" : "继续";
+      button.addEventListener("click", () => sendManagedCommand(item, command, button));
+      return button;
+    }
+
+    function isManagedSendCommand(command) {
+      return command.kind === "send_status" || command.kind === "send_continue";
     }
 
     function renderCurrentItem(title, detail) {
@@ -1678,32 +1698,20 @@ def dashboard_page_html() -> str:
       const titleBox = document.createElement("div");
       const title = document.createElement("div");
       title.className = "worker-detail-title";
-      title.textContent = worker.display_title || worker.name || worker.target_name || worker.session_id || "worker";
+      title.textContent = workerTitle(worker);
       const meta = document.createElement("div");
       meta.className = "worker-detail-meta";
-      meta.textContent = [
-        worker.name ? "托管 " + worker.name : "",
-        worker.short_session_id ? "#" + worker.short_session_id : "",
-        worker.cwd || "",
-        worker.git_branch ? "分支 " + worker.git_branch : ""
-      ].filter(Boolean).join(" · ");
+      meta.textContent = workerMeta(worker);
       titleBox.append(title, meta);
       const badge = document.createElement("span");
       badge.className = "badge";
-      badge.textContent = worker.supervisor_status || worker.status_label || worker.status || "unknown";
+      badge.textContent = workerStatus(worker);
       head.append(titleBox, badge);
       card.append(head);
 
       const grid = document.createElement("div");
       grid.className = "worker-detail-grid";
-      grid.append(
-        workerDetailField("目标", worker.goal || worker.target_name || worker.goal_id),
-        workerDetailField("工作区", worker.cwd),
-        workerDetailField("worktree", worker.worktree || worker.worktree_path),
-        workerDetailField("branch", worker.git_branch || worker.branch),
-        workerDetailField("状态依据", worker.status_evidence ? worker.status_evidence.label + " - " + worker.status_evidence.detail : null),
-        workerDetailField("下一步", worker.supervisor_next)
-      );
+      grid.append(...workerDetailFields(worker));
       card.append(grid);
 
       const protocol = renderSupervisorProtocol(worker);
@@ -1712,11 +1720,51 @@ def dashboard_page_html() -> str:
       const output = document.createElement("pre");
       output.className = "worker-detail-output";
       output.dataset.scrollKey = "worker-detail:" + terminalExcerptScrollKey(worker);
-      output.textContent = worker.managed_terminal_excerpt || worker.last_assistant_message || worker.last_user_message || "暂无可读输出";
+      output.textContent = workerOutput(worker);
       output.addEventListener("scroll", () => rememberTerminalExcerptScroll(output));
       card.append(output);
       restoreTerminalExcerptScroll(output);
       return card;
+    }
+
+    function workerTitle(worker) {
+      return worker.display_title || worker.name || worker.target_name || worker.session_id || "worker";
+    }
+
+    function workerMeta(worker) {
+      return [
+        worker.name ? "托管 " + worker.name : "",
+        worker.short_session_id ? "#" + worker.short_session_id : "",
+        worker.cwd || "",
+        worker.git_branch ? "分支 " + worker.git_branch : ""
+      ].filter(Boolean).join(" · ");
+    }
+
+    function workerStatus(worker) {
+      return worker.supervisor_status || worker.status_label || worker.status || "unknown";
+    }
+
+    function workerDetailFields(worker) {
+      return [
+        workerDetailField("目标", worker.goal || worker.target_name || worker.goal_id),
+        workerDetailField("工作区", worker.cwd),
+        workerDetailField("worktree", worker.worktree || worker.worktree_path),
+        workerDetailField("branch", worker.git_branch || worker.branch),
+        workerDetailField("状态依据", workerStatusEvidence(worker)),
+        workerDetailField("下一步", worker.supervisor_next)
+      ];
+    }
+
+    function workerStatusEvidence(worker) {
+      if (!worker.status_evidence) return null;
+      return worker.status_evidence.label + " - " + worker.status_evidence.detail;
+    }
+
+    function workerOutput(worker) {
+      return worker.managed_terminal_excerpt
+        || worker.last_assistant_message
+        || worker.last_user_message
+        || "暂无可读输出";
     }
 
     function workerDetailField(label, value) {
@@ -2292,6 +2340,10 @@ def dashboard_page_html() -> str:
     async function loadDashboard() {
       const response = await fetch("/dashboard.json", { cache: "no-store" });
       const payload = await response.json();
+      renderDashboardPayload(payload);
+    }
+
+    function renderDashboardPayload(payload) {
       document.getElementById("generated-at").textContent = payload.generated_at;
       document.getElementById("recommendation").textContent = payload.recommendation.label;
       renderOperatorFocus(payload);

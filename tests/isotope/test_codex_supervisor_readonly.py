@@ -2670,6 +2670,31 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     )
 
 
+def test_codex_supervisor_web_dashboard_payload_builder_keeps_page_fields(tmp_path):
+    from isotope.features.supervisor.web import build_dashboard_web_payload
+
+    codex_home = tmp_path / ".codex"
+    report = CodexSupervisorReport(generated_at=NOW.isoformat(), sessions=())
+
+    payload = build_dashboard_web_payload(
+        report,
+        codex_home=codex_home,
+        workspace_cwd=Path("/tmp/isotope-workspace"),
+    )
+
+    assert payload["status"] == "ok"
+    assert payload["workspace_cwd"] == "/tmp/isotope-workspace"
+    assert payload["daemon"]["status"] == "not_running"
+    assert payload["watcher"]["status"] == "not_running"
+    assert payload["current"]["counts"] == {
+        "active_goals": 0,
+        "managed_workers": 0,
+        "worker_reviews": 0,
+        "automation_candidates": 0,
+        "total": 0,
+    }
+
+
 def test_codex_supervisor_web_can_control_daemon_and_watcher(tmp_path, monkeypatch):
     from isotope.features.supervisor import web
 

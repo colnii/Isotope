@@ -58,6 +58,9 @@ from .runner import (
 )
 
 
+SERVICE_ACTION_PATHS = {"/daemon/start", "/daemon/stop", "/watcher/start", "/watcher/stop"}
+
+
 class SupervisorDashboardServer(ThreadingHTTPServer):
     daemon_threads = True
 
@@ -98,20 +101,11 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
 
     def dashboard_payload(self) -> dict[str, Any]:
         report = self._scan_report()
-        payload = _dashboard_payload(
+        return build_dashboard_web_payload(
             report,
-            active_goals=_active_goal_dicts_for_codex_home(
-                self.codex_home,
-                include_status=True,
-            ),
-            decision_requests=_decision_request_dicts(self.codex_home),
-            notifications=_notification_dicts(self.codex_home),
-            multi_worker=build_multi_worker_status_payload(root=self.codex_home),
+            codex_home=self.codex_home,
+            workspace_cwd=Path.cwd(),
         )
-        payload["daemon"] = supervisor_daemon_status(codex_home=self.codex_home)
-        payload["watcher"] = supervisor_watcher_status(codex_home=self.codex_home)
-        payload["workspace_cwd"] = str(Path.cwd())
-        return payload
 
     def llm_action_payload(self) -> dict[str, Any]:
         report = self._scan_report()
@@ -171,6 +165,29 @@ def create_dashboard_server(
         repair_run=repair_run,
         llm_action_provider=llm_action_provider,
     )
+
+
+def build_dashboard_web_payload(
+    report: Any,
+    *,
+    codex_home: Path,
+    workspace_cwd: Path,
+) -> dict[str, Any]:
+    """Build the `/dashboard.json` payload used by the local web page."""
+    payload = _dashboard_payload(
+        report,
+        active_goals=_active_goal_dicts_for_codex_home(
+            codex_home,
+            include_status=True,
+        ),
+        decision_requests=_decision_request_dicts(codex_home),
+        notifications=_notification_dicts(codex_home),
+        multi_worker=build_multi_worker_status_payload(root=codex_home),
+    )
+    payload["daemon"] = supervisor_daemon_status(codex_home=codex_home)
+    payload["watcher"] = supervisor_watcher_status(codex_home=codex_home)
+    payload["workspace_cwd"] = str(workspace_cwd)
+    return payload
 
 
 def _recent_context_results_for_report(
@@ -245,7 +262,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/goal/plan":
             self._send_goal_plan()
             return
-        if path in {"/daemon/start", "/daemon/stop", "/watcher/start", "/watcher/stop"}:
+        if path in SERVICE_ACTION_PATHS:
             self._send_service_action(path)
             return
         self._send_json(
@@ -432,40 +449,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
     def _send_service_action(self, path: str) -> None:
         try:
             self._read_json_body()
-            if path == "/daemon/start":
-                target = "daemon"
-                action = "start"
-                service = start_supervisor_daemon(
-                    codex_home=self.server.codex_home,
-                    interval=30,
-                    limit=self.server.limit,
-                    stale_after=self.server.stale_after_seconds,
-                    active_within=self.server.active_within_seconds,
-                    prompt_cooldown=DEFAULT_PROMPT_COOLDOWN_SECONDS,
-                    max_continue_count=DEFAULT_MAX_CONTINUE_COUNT,
-                    max_context_requests=DEFAULT_MAX_CONTEXT_REQUESTS,
-                    max_failure_retries=DEFAULT_MAX_FAILURE_RETRIES,
-                    decision_timeout=DEFAULT_DECISION_TIMEOUT_SECONDS,
-                    max_run_minutes=DEFAULT_MAX_RUN_MINUTES,
-                    max_fanout_launches=DEFAULT_FANOUT_LIMIT,
-                    worker_codex_model=DEFAULT_WORKER_CODEX_MODEL,
-                    worker_codex_config=DEFAULT_WORKER_CODEX_CONFIG,
-                )
-            elif path == "/daemon/stop":
-                target = "daemon"
-                action = "stop"
-                service = stop_supervisor_daemon(codex_home=self.server.codex_home)
-            elif path == "/watcher/start":
-                target = "watcher"
-                action = "start"
-                service = start_supervisor_watcher(
-                    codex_home=self.server.codex_home,
-                    interval=60,
-                )
-            else:
-                target = "watcher"
-                action = "stop"
-                service = stop_supervisor_watcher(codex_home=self.server.codex_home)
+            result = _run_service_action(self.server, path)
         except ValueError as exc:
             self._send_json(
                 {
@@ -481,9 +465,9 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         self._send_json(
             {
                 "status": "ok",
-                "target": target,
-                "action": action,
-                "service": service,
+                "target": result["target"],
+                "action": result["action"],
+                "service": result["service"],
             }
         )
 
@@ -563,6 +547,55 @@ def _optional_string(value: object) -> str | None:
     if not isinstance(value, str) or not value.strip():
         return None
     return value.strip()
+
+
+def _run_service_action(
+    server: SupervisorDashboardServer,
+    path: str,
+) -> dict[str, Any]:
+    if path == "/daemon/start":
+        return {
+            "target": "daemon",
+            "action": "start",
+            "service": start_supervisor_daemon(
+                codex_home=server.codex_home,
+                interval=30,
+                limit=server.limit,
+                stale_after=server.stale_after_seconds,
+                active_within=server.active_within_seconds,
+                prompt_cooldown=DEFAULT_PROMPT_COOLDOWN_SECONDS,
+                max_continue_count=DEFAULT_MAX_CONTINUE_COUNT,
+                max_context_requests=DEFAULT_MAX_CONTEXT_REQUESTS,
+                max_failure_retries=DEFAULT_MAX_FAILURE_RETRIES,
+                decision_timeout=DEFAULT_DECISION_TIMEOUT_SECONDS,
+                max_run_minutes=DEFAULT_MAX_RUN_MINUTES,
+                max_fanout_launches=DEFAULT_FANOUT_LIMIT,
+                worker_codex_model=DEFAULT_WORKER_CODEX_MODEL,
+                worker_codex_config=DEFAULT_WORKER_CODEX_CONFIG,
+            ),
+        }
+    if path == "/daemon/stop":
+        return {
+            "target": "daemon",
+            "action": "stop",
+            "service": stop_supervisor_daemon(codex_home=server.codex_home),
+        }
+    if path == "/watcher/start":
+        return {
+            "target": "watcher",
+            "action": "start",
+            "service": start_supervisor_watcher(
+                codex_home=server.codex_home,
+                interval=60,
+            ),
+        }
+    if path == "/watcher/stop":
+        return {
+            "target": "watcher",
+            "action": "stop",
+            "service": stop_supervisor_watcher(codex_home=server.codex_home),
+        }
+    raise ValueError("unknown service action")
 
 
 def _positive_int(value: object, field: str, *, default: int) -> int:
