@@ -17,7 +17,7 @@ def test_supervisor_runner_uses_command_dispatch_module():
 
 def test_supervisor_runner_uses_planner_and_state_helper_modules():
     goal_scope = importlib.import_module("isotope.features.supervisor.planner.goal_scope")
-    time_utils = importlib.import_module("isotope.features.supervisor.state.time_utils")
+    time_utils = importlib.import_module("isotope.core.time")
 
     assert runner._goal_text is goal_scope._goal_text
     assert runner._goal_workspace is goal_scope._goal_workspace
@@ -54,3 +54,14 @@ def test_supervisor_runner_delegates_lifecycle_command_handlers():
         "cleanup",
     ):
         assert f'args.command == "{command}"' not in source
+
+
+def test_supervisor_runner_uses_memory_worker_event_channel():
+    worker_event_channel = importlib.import_module("isotope.memory.worker_event_channel")
+
+    assert runner.publish_worker_event is worker_event_channel.publish_worker_event
+    assert runner.list_worker_events is worker_event_channel.list_worker_events
+    assert (
+        runner.render_worker_event_channel_plain
+        is worker_event_channel.render_worker_event_channel_plain
+    )
