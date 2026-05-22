@@ -55,6 +55,7 @@ preflight（预检查）、diagnostic（诊断）或 not_enabled（未启用）�
 - 边界文档阅读规则：先看 `AGENTS.md` 的 AI-first 产品约束。
 - 应用目录迁移：[application-structure-plan](./application-structure-plan.md)
 - 目录结构最新说明：[目录结构最新说明](./目录结构最新说明.md)
+- 目录结构精简说明：[目录结构精简说明](./目录结构精简说明.md)
 - 目录结构逻辑补充：[重新梳理目录结构逻辑](./重新梳理目录结构逻辑.md)
 - 命名与目录审计：[naming-and-structure-review](./naming-and-structure-review.md)
 - Codex Supervisor 只读版：[codex-supervisor-readonly](./codex-supervisor-readonly.md)
