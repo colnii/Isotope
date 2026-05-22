@@ -189,6 +189,8 @@ def cleanup_managed_worker_candidates(
                 codex_home,
                 "--name",
                 record.name,
+                "--record-id",
+                record.record_id,
             ),
         }
         candidates.append(drop_none_values(candidate))
@@ -212,6 +214,8 @@ def cleanup_stale_missing_worker_candidates(
         if managed_record_is_still_working(record, api=api):
             continue
         protocol = managed_record_supervisor_protocol(record, api=api)
+        if protocol.get("status") in api.ARCHIVABLE_SUPERVISOR_STATUSES:
+            continue
         candidate = {
             "kind": "managed_worker",
             "name": record.name,

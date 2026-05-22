@@ -4432,6 +4432,69 @@ def test_codex_supervisor_runner_cleanup_archives_stale_missing_worker_by_record
     assert latest_status_by_record_id["managed-new"] == "launched"
 
 
+def test_codex_supervisor_runner_cleanup_all_deduplicates_done_missing_worker(
+    tmp_path,
+    capsys,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    missing_worktree = workspace / ".worktrees" / "supervisor" / "done-missing"
+    log_path = codex_home / "supervisor" / "logs" / "managed-done-missing.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text(
+        "SUPERVISOR_STATUS: done\n"
+        "SUPERVISOR_SUMMARY: 旧 worker 已完成但 worktree 已删除。\n"
+        "SUPERVISOR_NEXT: 等待 cleanup 归档。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-done-missing",
+                "name": "done-missing",
+                "cwd": str(missing_worktree),
+                "prompt": "旧 worker。",
+                "command": ["codex", "exec", "-C", str(missing_worktree), "继续"],
+                "pid": 0,
+                "started_at": NOW.isoformat(),
+                "log_path": str(log_path),
+                "status": "launched",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    exit_code = supervisor_main(["cleanup", "list", "--codex-home", str(codex_home), "--json"])
+
+    assert exit_code == 0
+    list_payload = json.loads(capsys.readouterr().out)
+    matching = [
+        item
+        for item in list_payload["candidates"]
+        if item.get("record_id") == "managed-done-missing"
+    ]
+    assert len(matching) == 1
+    assert matching[0]["command"].endswith("--name done-missing --record-id managed-done-missing")
+
+    exit_code = supervisor_main(
+        ["cleanup", "archive", "--codex-home", str(codex_home), "--all", "--json"]
+    )
+
+    assert exit_code == 0
+    archive_payload = json.loads(capsys.readouterr().out)
+    assert [
+        item["managed"]["record_id"]
+        for item in archive_payload["archived"]
+        if item["kind"] == "managed_worker"
+    ] == ["managed-done-missing"]
+
+
 def test_codex_supervisor_runner_cleanup_delete_worktree_uses_guarded_action(
     tmp_path,
     capsys,
