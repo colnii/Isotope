@@ -1553,6 +1553,43 @@ def test_codex_supervisor_dashboard_json_separates_current_batch_from_deleted_wo
     }
 
 
+def test_codex_supervisor_dashboard_does_not_raise_attention_for_missing_worktree_blocked_history(
+    tmp_path,
+):
+    codex_home = tmp_path / ".codex"
+    missing_workspace = tmp_path / "missing-merge-worktree"
+    _write_session(
+        codex_home,
+        "2026/05/16/rollout-missing-blocked.jsonl",
+        session_id="missing-blocked",
+        cwd=str(missing_workspace),
+        events=[
+            _assistant_message(
+                "2026-05-16T11:40:00Z",
+                "\n".join(
+                    [
+                        "SUPERVISOR_STATUS: blocked",
+                        "SUPERVISOR_SUMMARY: 旧合并 worktree 发生冲突。",
+                        "SUPERVISOR_NEXT: 需要人工复查旧 worktree。",
+                    ]
+                ),
+            ),
+        ],
+    )
+
+    report = CodexSupervisorFlow(
+        codex_home=codex_home,
+        now=lambda: NOW,
+    ).scan(limit=5, stale_after_seconds=600, active_within_seconds=180)
+    payload = _dashboard_payload(report)
+
+    assert payload["counts"]["needs_attention"] == 0
+    assert [item["session_id"] for item in payload["groups"]["done"]] == [
+        "missing-blocked"
+    ]
+    assert payload["groups"]["done"][0]["cwd_exists"] is False
+
+
 def test_codex_supervisor_dashboard_current_batch_excludes_done_managed_worker(
     tmp_path,
 ):

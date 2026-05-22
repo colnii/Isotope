@@ -5533,6 +5533,10 @@ def _dashboard_notification_source_ref(source_ref: dict[str, Any]) -> dict[str, 
 def _dashboard_group_for(session: Any, *, linked_session: Any | None = None) -> str:
     status_source = _dashboard_status_source(session, linked_session)
     supervisor_status = (status_source.supervisor_status or "").lower()
+    if not getattr(session, "managed", False) and not _cwd_is_existing_dir(
+        getattr(session, "cwd", None)
+    ):
+        return "done"
     if supervisor_status in {"blocked", "needs_user"}:
         return "needs_attention"
     if supervisor_status == "done":
