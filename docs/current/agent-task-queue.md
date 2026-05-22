@@ -46,7 +46,10 @@
 28. LLM 层拆出：活跃实现已迁入 `src/isotope/llm/`，
     `integrations/llm` 和顶层旧路径已删除；新增 `capacity_calling.py`
     作为 prompt-only 能力选择与参数填充原型，只返回 call plan，不执行
-    capability。
+    capability；`src/isotope/agents/scheduler/capacity_graph.py` 已提供
+    Capacity graph 第一片，可把 capacity node 组合到底层
+    `DependencyGraph`，生成只读 capacity call plan；该路径不调用 LLM、
+    不执行 capability、不定义 executor。
 29. chat flow 正名：活跃实现已迁入 `src/isotope/features/chat/flow.py`，
     `product_chat.py` 和顶层旧路径已删除。
 30. terminal runner 正名：活跃实现已迁入 `src/isotope/execution/terminal_runner.py`，

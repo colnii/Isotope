@@ -64,6 +64,10 @@ Isotope 是 AI 应用软件，不是单纯内核项目。
     capacity calling（能力调用）原型：把低敏 capacity manifest 和用户目标
     交给注入的 LLM provider，返回已选择的 `capacity_id`、参数草案和缺失
     必填项；该路径只生成 call plan，不执行 capability。
+    `src/isotope/agents/scheduler/capacity_graph.py` 已提供第一片
+    Capacity graph（能力图）计划层，把 capacity node 组合到
+    `DependencyGraph`，只生成 ready capacity call plan，不调用 LLM、
+    不执行 capability、不定义 executor。
 17. `features/notifications` 已有薄入口，当前提供本地低敏通知索引、
     `NotificationFlow`、`NotificationSummary` 和 `isotope-notification`
     CLI，可创建、列表、按未读或类型过滤，并把通知标记为已读；
