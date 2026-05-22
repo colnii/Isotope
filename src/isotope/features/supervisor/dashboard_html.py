@@ -437,6 +437,51 @@ def dashboard_page_html() -> str:
       padding: 8px;
       min-width: 0;
     }
+    .dependency-batch {
+      margin-top: 12px;
+      border: 1px solid #b2ddff;
+      border-radius: 6px;
+      background: #eff8ff;
+      padding: 10px;
+    }
+    .dependency-batch-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      color: var(--text);
+      font-weight: 800;
+    }
+    .dependency-batch-summary {
+      color: var(--muted);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+    .dependency-batch-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .dependency-bucket {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #ffffff;
+      padding: 8px;
+    }
+    .dependency-bucket-title {
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+    .dependency-bucket-item {
+      color: var(--muted);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+      margin-top: 4px;
+    }
     .current-title {
       color: var(--text);
       font-weight: 700;
@@ -820,6 +865,7 @@ def dashboard_page_html() -> str:
       .control-center-body { grid-template-columns: 1fr; }
       .goal-add-form { grid-template-columns: 1fr; }
       .current-grid { grid-template-columns: 1fr; }
+      .dependency-batch-grid { grid-template-columns: 1fr; }
       .worker-detail-grid { grid-template-columns: 1fr; }
     }
   </style>
@@ -966,6 +1012,7 @@ def dashboard_page_html() -> str:
           <div class="current-items" id="current-workers"></div>
         </div>
       </div>
+      <div class="dependency-batch" id="dependency-batch"></div>
     </div>
     <div class="worker-detail-list" id="worker-detail-panel">
       <div class="worker-detail-list-head">
@@ -1670,6 +1717,93 @@ def dashboard_page_html() -> str:
           detail: [item.status_label || item.status, item.cwd].filter(Boolean).join(" · ")
         })
       );
+      renderDependencyBatch(current ? current.dependency_batch : null);
+    }
+
+    function renderDependencyBatch(batch) {
+      const target = document.getElementById("dependency-batch");
+      target.replaceChildren();
+      if (!batch || !batch.summary) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "暂无依赖批次";
+        target.append(empty);
+        return;
+      }
+      const head = document.createElement("div");
+      head.className = "dependency-batch-head";
+      const title = document.createElement("span");
+      title.textContent = "依赖批次";
+      const summary = document.createElement("span");
+      summary.className = "dependency-batch-summary";
+      summary.textContent = dependencyBatchSummary(batch);
+      head.append(title, summary);
+
+      const grid = document.createElement("div");
+      grid.className = "dependency-batch-grid";
+      grid.append(
+        renderDependencyBucket("可启动", batch.ready_goals, dependencyReadyDetail),
+        renderDependencyBucket("工作中", batch.running_goals, dependencyRunningDetail),
+        renderDependencyBucket("等待依赖", batch.blocked_goals, dependencyBlockedDetail),
+        renderDependencyBucket("需要处理", batch.attention_goals, dependencyAttentionDetail)
+      );
+      target.append(head, grid);
+    }
+
+    function dependencyBatchSummary(batch) {
+      const summary = batch.summary || {};
+      return [
+        "状态 " + text(batch.status),
+        "ready " + text(summary.ready),
+        "running " + text(summary.running),
+        "blocked " + text(summary.blocked),
+        "attention " + text(summary.attention),
+        "limit " + text(summary.limit)
+      ].join(" · ");
+    }
+
+    function renderDependencyBucket(titleText, items, detailMapper) {
+      const bucket = document.createElement("div");
+      bucket.className = "dependency-bucket";
+      const title = document.createElement("div");
+      title.className = "dependency-bucket-title";
+      const values = Array.isArray(items) ? items : [];
+      title.textContent = titleText + " " + String(values.length);
+      bucket.append(title);
+      if (!values.length) {
+        const empty = document.createElement("div");
+        empty.className = "dependency-bucket-item";
+        empty.textContent = "无";
+        bucket.append(empty);
+        return bucket;
+      }
+      for (const item of values.slice(0, 6)) {
+        const row = document.createElement("div");
+        row.className = "dependency-bucket-item";
+        row.textContent = detailMapper(item);
+        bucket.append(row);
+      }
+      return bucket;
+    }
+
+    function dependencyGoalName(item) {
+      return text(item && (item.target_name || item.goal_id || item.name));
+    }
+
+    function dependencyReadyDetail(item) {
+      return dependencyGoalName(item);
+    }
+
+    function dependencyRunningDetail(item) {
+      return dependencyGoalName(item) + " · " + text(item && item.status);
+    }
+
+    function dependencyBlockedDetail(item) {
+      return dependencyGoalName(item) + " <- " + text(item && item.dependency);
+    }
+
+    function dependencyAttentionDetail(item) {
+      return dependencyGoalName(item) + " · " + text(item && item.status);
     }
 
     function renderWorkerDetails(current) {

@@ -42,6 +42,7 @@ from isotope.features.supervisor.runner import (
     _advice_payload,
     _dashboard_payload,
     _execute_llm_action,
+    _print_dashboard_plain,
     _report_fingerprint,
     _supervise_payload,
     main as supervisor_main,
@@ -2450,6 +2451,44 @@ def test_codex_supervisor_runner_dashboard_plain_is_grouped(tmp_path, capsys):
     assert "done-session 已完成 / 文档已完成。" in text
 
 
+def test_codex_supervisor_dashboard_plain_shows_dependency_batch(tmp_path, capsys):
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    active_goals = [
+        {
+            "goal_id": "goal-a",
+            "target_name": "worker-a",
+            "goal": "完成基础。",
+            "last_status": "done",
+            "merged": True,
+            "verified": True,
+            "cwd": str(workspace),
+        },
+        {
+            "goal_id": "goal-b",
+            "target_name": "worker-b",
+            "goal": "接入基础。",
+            "depends_on": ["worker-a"],
+            "cwd": str(workspace),
+        },
+        {
+            "goal_id": "goal-c",
+            "target_name": "worker-c",
+            "goal": "端到端验证。",
+            "depends_on": ["worker-b"],
+            "cwd": str(workspace),
+        },
+    ]
+    report = CodexSupervisorReport(generated_at=NOW.isoformat(), sessions=())
+
+    _print_dashboard_plain(_dashboard_payload(report, active_goals=active_goals))
+
+    text = capsys.readouterr().out
+    assert "依赖批次：ready" in text
+    assert "可启动：worker-b" in text
+    assert "等待依赖：worker-c <- worker-b" in text
+
+
 def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     from isotope.features.supervisor.web import create_dashboard_server
     from isotope.features.notifications.flow import NotificationFlow
@@ -2569,6 +2608,12 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "current-count" in html
     assert "暂无当前目标" in html
     assert "暂无托管 worker" in html
+    assert "dependency-batch" in html
+    assert "依赖批次" in html
+    assert "renderDependencyBatch" in html
+    assert "ready_goals" in html
+    assert "blocked_goals" in html
+    assert "等待依赖" in html
     assert "worker-detail-list" in html
     assert "Worker 详情" in html
     assert "renderWorkerDetails" in html

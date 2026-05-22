@@ -4598,6 +4598,7 @@ def _print_dashboard_plain(payload: dict[str, Any]) -> None:
         target = item.get("target_name") or item.get("session_id") or "未知"
         context_status = item.get("context_status") or "unknown"
         print(f"- {item['question']} context={context_status} target={target}")
+    _print_dashboard_dependency_batch(payload)
     for group_key, label in DASHBOARD_GROUP_LABELS.items():
         items = payload["groups"][group_key]
         print(f"{label}：{len(items)}")
@@ -4610,6 +4611,67 @@ def _print_dashboard_plain(payload: dict[str, Any]) -> None:
             if item["status_evidence"]:
                 evidence = item["status_evidence"]
                 print(f"  依据：{evidence['label']} - {evidence['detail']}")
+
+
+def _print_dashboard_dependency_batch(payload: dict[str, Any]) -> None:
+    current = payload.get("current")
+    if not isinstance(current, dict):
+        return
+    batch = current.get("dependency_batch")
+    if not isinstance(batch, dict):
+        return
+    status = batch.get("status") or "unknown"
+    summary = batch.get("summary") if isinstance(batch.get("summary"), dict) else {}
+    print(
+        "依赖批次："
+        f"{status} / "
+        f"可启动={summary.get('ready', 0)} "
+        f"工作中={summary.get('running', 0)} "
+        f"等待={summary.get('blocked', 0)} "
+        f"需处理={summary.get('attention', 0)} "
+        f"上限={summary.get('limit', 0)}"
+    )
+    ready = _dependency_batch_items(batch, "ready_goals")
+    if ready:
+        print("  可启动：" + " / ".join(_dependency_item_name(item) for item in ready))
+    running = _dependency_batch_items(batch, "running_goals")
+    if running:
+        print("  工作中：" + " / ".join(_dependency_item_name(item) for item in running))
+    blocked = _dependency_batch_items(batch, "blocked_goals")
+    if blocked:
+        print(
+            "  等待依赖："
+            + " / ".join(_dependency_blocked_text(item) for item in blocked)
+        )
+    attention = _dependency_batch_items(batch, "attention_goals")
+    if attention:
+        print("  需要处理：" + " / ".join(_dependency_item_name(item) for item in attention))
+
+
+def _dependency_batch_items(batch: dict[str, Any], key: str) -> list[dict[str, Any]]:
+    value = batch.get(key)
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
+def _dependency_item_name(item: dict[str, Any]) -> str:
+    for key in ("target_name", "goal_id", "name"):
+        value = item.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return "unknown"
+
+
+def _dependency_blocked_text(item: dict[str, Any]) -> str:
+    name = _dependency_item_name(item)
+    dependency = item.get("dependency")
+    if isinstance(dependency, str) and dependency.strip():
+        return f"{name} <- {dependency.strip()}"
+    reason = item.get("reason")
+    if isinstance(reason, str) and reason.strip():
+        return f"{name} ({reason.strip()})"
+    return name
 
 
 def _decision_payload(args: argparse.Namespace) -> dict[str, Any]:

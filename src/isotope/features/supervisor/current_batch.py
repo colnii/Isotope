@@ -116,7 +116,7 @@ def _is_current_worker(worker: Mapping[str, Any]) -> bool:
 
 
 def _is_dependency_source_goal(goal: Mapping[str, Any]) -> bool:
-    if goal.get("current") is False or goal.get("cwd_exists") is False:
+    if goal.get("cwd_exists") is False:
         return False
     return not _has_status_in(
         goal,
