@@ -1,14 +1,1431 @@
-"""Argument parser entrypoint for the Supervisor CLI."""
+"""Argument parser registration for the Supervisor CLI."""
 
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 from typing import Any
 
 
 def build_parser(*, api: Any | None = None) -> argparse.ArgumentParser:
-    """Build the Supervisor CLI parser through the legacy runner implementation."""
+    """Build the Supervisor CLI parser with defaults from the runner API surface."""
     if api is None:
         from isotope.features.supervisor import runner as api
 
-    return api._build_parser_impl()
+    return _build_parser_impl(api=api)
+
+
+def _add_goal_replenishment_args(
+    parser: argparse.ArgumentParser,
+    *,
+    api: Any,
+) -> None:
+    parser.add_argument(
+        "--goal-low-water",
+        type=int,
+        default=0,
+        help=(
+            "When active goals fall below this count, ask LLM to plan more goals "
+            "from current docs. Default 0 disables."
+        ),
+    )
+    parser.add_argument(
+        "--goal-replenish-limit",
+        type=int,
+        default=api.DEFAULT_FANOUT_LIMIT,
+        help="Maximum goals the LLM low-water planner may write in one loop.",
+    )
+    parser.add_argument(
+        "--goal-replenish-prompt",
+        help="Optional seed prompt for low-water goal planning.",
+    )
+
+
+def _add_failure_retry_args(
+    parser: argparse.ArgumentParser,
+    *,
+    api: Any,
+) -> None:
+    parser.add_argument(
+        "--max-failure-retries",
+        type=int,
+        default=api.DEFAULT_MAX_FAILURE_RETRIES,
+        help=(
+            "Maximum repeated Supervisor failures before creating a decision "
+            "request. Default 3."
+        ),
+    )
+
+
+def _add_webhook_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--webhook-url",
+        help="HTTP endpoint for low-sensitive Supervisor event POSTs.",
+    )
+    parser.add_argument(
+        "--webhook-secret",
+        help="Optional shared secret for X-Isotope-Signature HMAC headers.",
+    )
+
+
+def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Watch local Codex sessions.")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    for command, help_text in (
+        ("scan", "Print one Codex supervisor report."),
+        ("dashboard", "Print one grouped supervisor dashboard."),
+        ("watch", "Print reports repeatedly."),
+        ("advise", "Print one compact next-action suggestion."),
+        ("supervise", "Run repeated reports with advice, optional LLM summary, and send execution."),
+    ):
+        subparser = subparsers.add_parser(command, help=help_text)
+        subparser.add_argument(
+            "--codex-home",
+            default=str(Path.home() / ".codex"),
+            help="Codex home directory. Defaults to ~/.codex.",
+        )
+        subparser.add_argument("--limit", type=int, default=10, help="Maximum sessions.")
+        subparser.add_argument(
+            "--stale-after",
+            type=int,
+            default=600,
+            help="Seconds without events before marking a session stale.",
+        )
+        subparser.add_argument(
+            "--active-within",
+            type=int,
+            default=180,
+            help="Seconds with recent events before marking a session working.",
+        )
+        subparser.add_argument("--json", action="store_true", help="Print JSON output.")
+        subparser.add_argument(
+            "--llm-summary",
+            action="store_true",
+            help="Use configured LLM to add a compact Chinese summary.",
+        )
+        subparser.add_argument(
+            "--workspace-root",
+            help="Limit LLM/action candidates to this workspace. Defaults to cwd.",
+        )
+        subparser.add_argument(
+            "--all-workspaces",
+            action="store_true",
+            help="Let LLM/action candidates span every discovered workspace.",
+        )
+        if command == "supervise":
+            _add_webhook_args(subparser)
+    for command in ("advise", "supervise"):
+        subparsers.choices[command].add_argument(
+            "--name",
+            help="Target one managed lane by name for suggestions or execution.",
+        )
+        subparsers.choices[command].add_argument(
+            "--goal",
+            help="User goal for the LLM planner when it may need to launch a new worker.",
+        )
+        subparsers.choices[command].add_argument(
+            "--execute",
+            help="Execute one generated send suggestion. Supports send_status or send_continue.",
+        )
+        subparsers.choices[command].add_argument(
+            "--llm-action",
+            action="store_true",
+            help="Ask configured LLM to choose one whitelist action without executing it.",
+        )
+        subparsers.choices[command].add_argument(
+            "--llm-execute",
+            action="store_true",
+            help="Execute one LLM-chosen whitelist send action, or skip monitor.",
+        )
+        subparsers.choices[command].add_argument(
+            "--prompt-cooldown",
+            type=int,
+            default=api.DEFAULT_PROMPT_COOLDOWN_SECONDS,
+            help="Seconds before repeating send_status/send_continue for the same lane.",
+        )
+        subparsers.choices[command].add_argument(
+            "--max-continue-count",
+            type=int,
+            default=api.DEFAULT_MAX_CONTINUE_COUNT,
+            help="Maximum consecutive send_continue prompts for the same lane status. Default 0 disables.",
+        )
+        subparsers.choices[command].add_argument(
+            "--max-context-requests",
+            type=int,
+            default=api.DEFAULT_MAX_CONTEXT_REQUESTS,
+            help="Maximum request_context executions per supervise iteration. Default 0 disables.",
+        )
+        if command == "supervise":
+            _add_failure_retry_args(subparsers.choices[command], api=api)
+        subparsers.choices[command].add_argument(
+            "--max-run-minutes",
+            type=int,
+            default=api.DEFAULT_MAX_RUN_MINUTES,
+            help="Maximum elapsed minutes before send_continue is blocked for a lane. Default 0 disables.",
+        )
+        subparsers.choices[command].add_argument(
+            "--max-fanout-launches",
+            type=int,
+            default=api.DEFAULT_FANOUT_LIMIT,
+            help="Maximum launch_session actions fanout may execute in one iteration.",
+        )
+        if command == "supervise":
+            subparsers.choices[command].add_argument(
+                "--max-worker-retry-count",
+                type=int,
+                default=api.DEFAULT_MAX_WORKER_RETRY_COUNT,
+                help=(
+                    "Maximum automatic restarts for an exited process worker. "
+                    "Default 2."
+                ),
+            )
+        subparsers.choices[command].add_argument(
+            "--worker-profile",
+            choices=api.WORKER_PROFILE_CHOICES,
+            default=api.DEFAULT_WORKER_PROFILE,
+            help="Worker profile for launched Codex workers.",
+        )
+        subparsers.choices[command].add_argument(
+            "--worker-codex-model",
+            help="Pass -m/--model to Codex workers launched by LLM execution.",
+        )
+        subparsers.choices[command].add_argument(
+            "--worker-codex-config",
+            action="append",
+            default=None,
+            help="Pass one -c key=value override to Codex workers. Repeatable.",
+        )
+    for command in ("watch", "supervise"):
+        command_parser = subparsers.choices[command]
+        command_parser.add_argument(
+            "--interval",
+            type=int,
+            default=180,
+            help="Seconds between reports.",
+        )
+        command_parser.add_argument(
+            "--iterations",
+            type=int,
+            help="Stop after this many reports. Omit to watch until interrupted.",
+        )
+        command_parser.add_argument(
+            "--changes-only",
+            action="store_true",
+            help="Print only when session state changes.",
+        )
+    subparsers.choices["watch"].add_argument(
+        "--bell",
+        action="store_true",
+        help="Write a terminal bell when a printed report needs attention.",
+    )
+    subparsers.choices["supervise"].add_argument(
+        "--auto-execute",
+        action="store_true",
+        help="Use the rule-based auto policy to execute one whitelist action per loop.",
+    )
+    subparsers.choices["supervise"].add_argument(
+        "--auto-adopt",
+        action="store_true",
+        help="Automatically adopt newly discovered Codex-like tmux sessions before each loop.",
+    )
+    subparsers.choices["supervise"].add_argument(
+        "--bell",
+        action="store_true",
+        help="Write a terminal bell when a supervise iteration still needs human attention.",
+    )
+    loop_parser = subparsers.add_parser(
+        "loop",
+        help="Run the daily managed Supervisor loop with safe defaults.",
+    )
+    loop_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    loop_parser.add_argument("--limit", type=int, default=10, help="Maximum sessions.")
+    loop_parser.add_argument(
+        "--stale-after",
+        type=int,
+        default=600,
+        help="Seconds without events before marking a session stale.",
+    )
+    loop_parser.add_argument(
+        "--active-within",
+        type=int,
+        default=180,
+        help="Seconds with recent events before marking a session working.",
+    )
+    loop_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    loop_parser.add_argument(
+        "--llm-summary",
+        action="store_true",
+        help="Use configured LLM to add a compact Chinese summary.",
+    )
+    loop_parser.add_argument(
+        "--workspace-root",
+        help="Limit LLM/action candidates to this workspace. Defaults to cwd.",
+    )
+    loop_parser.add_argument(
+        "--all-workspaces",
+        action="store_true",
+        help="Let LLM/action candidates span every discovered workspace.",
+    )
+    _add_webhook_args(loop_parser)
+    loop_parser.add_argument(
+        "--name",
+        help="Target one managed lane by name. Omit to rotate across active lanes.",
+    )
+    loop_parser.add_argument(
+        "--goal",
+        help="User goal for the LLM planner when it may need to launch a new worker.",
+    )
+    loop_parser.add_argument(
+        "--prompt-cooldown",
+        type=int,
+        default=api.DEFAULT_PROMPT_COOLDOWN_SECONDS,
+        help="Seconds before repeating send_status/send_continue for the same lane.",
+    )
+    loop_parser.add_argument(
+        "--max-continue-count",
+        type=int,
+        default=api.DEFAULT_MAX_CONTINUE_COUNT,
+        help="Maximum consecutive send_continue prompts for the same lane status. Default 0 disables.",
+    )
+    loop_parser.add_argument(
+        "--max-context-requests",
+        type=int,
+        default=api.DEFAULT_MAX_CONTEXT_REQUESTS,
+        help="Maximum request_context executions per loop iteration. Default 0 disables.",
+    )
+    loop_parser.add_argument(
+        "--decision-timeout",
+        type=int,
+        default=api.DEFAULT_DECISION_TIMEOUT_SECONDS,
+        help="Seconds before an active decision request raises a timeout alert.",
+    )
+    _add_failure_retry_args(loop_parser, api=api)
+    loop_parser.add_argument(
+        "--max-run-minutes",
+        type=int,
+        default=api.DEFAULT_MAX_RUN_MINUTES,
+        help="Maximum elapsed minutes before send_continue is blocked for a lane. Default 0 disables.",
+    )
+    loop_parser.add_argument(
+        "--max-fanout-launches",
+        type=int,
+        default=api.DEFAULT_FANOUT_LIMIT,
+        help="Maximum launch_session actions fanout may execute in one loop iteration.",
+    )
+    loop_parser.add_argument(
+        "--max-worker-retry-count",
+        type=int,
+        default=api.DEFAULT_MAX_WORKER_RETRY_COUNT,
+        help="Maximum automatic restarts for an exited process worker. Default 2.",
+    )
+    _add_goal_replenishment_args(loop_parser, api=api)
+    loop_parser.add_argument(
+        "--worker-profile",
+        choices=api.WORKER_PROFILE_CHOICES,
+        default=api.DEFAULT_WORKER_PROFILE,
+        help="Worker profile for Codex workers launched by the loop.",
+    )
+    loop_parser.add_argument(
+        "--worker-codex-model",
+        help="Pass -m/--model to Codex workers launched by the loop.",
+    )
+    loop_parser.add_argument(
+        "--worker-codex-config",
+        action="append",
+        default=None,
+        help="Pass one -c key=value override to Codex workers. Repeatable.",
+    )
+    loop_parser.add_argument(
+        "--interval",
+        type=int,
+        default=30,
+        help="Seconds between reports.",
+    )
+    loop_parser.add_argument(
+        "--iterations",
+        type=int,
+        help="Stop after this many reports. Omit to loop until interrupted.",
+    )
+    loop_parser.add_argument(
+        "--no-auto-adopt",
+        action="store_false",
+        dest="auto_adopt",
+        help="Disable automatic adoption of discovered Codex-like tmux sessions.",
+    )
+    loop_parser.add_argument(
+        "--rule-execute",
+        action="store_true",
+        help="Use the old rule-based executor instead of the LLM planner.",
+    )
+    loop_parser.add_argument(
+        "--merge-dispatch-execute",
+        action="store_true",
+        help=(
+            "Actually launch merge-dispatch workers from ready_to_integrate. "
+            "Default loop only reports the launch action."
+        ),
+    )
+    loop_parser.add_argument(
+        "--auto-merge-promote",
+        action="store_true",
+        help=(
+            "After merge-dispatch workers finish or block, automatically continue "
+            "the merge promotion or repair flow."
+        ),
+    )
+    loop_parser.set_defaults(
+        auto_execute=False,
+        auto_adopt=True,
+        changes_only=True,
+        bell=True,
+        execute=None,
+        llm_action=False,
+        llm_execute=True,
+    )
+    up_parser = subparsers.add_parser(
+        "up",
+        help="Start the daily Supervisor daemon if needed, then print status.",
+    )
+    up_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    up_parser.add_argument(
+        "--limit",
+        type=int,
+        default=10,
+        help="Maximum sessions.",
+    )
+    up_parser.add_argument(
+        "--stale-after",
+        type=int,
+        default=600,
+        help="Seconds without events before marking a session stale.",
+    )
+    up_parser.add_argument(
+        "--active-within",
+        type=int,
+        default=180,
+        help="Seconds with recent events before marking a session working.",
+    )
+    up_parser.add_argument(
+        "--interval",
+        type=int,
+        default=30,
+        help="Seconds between loop reports.",
+    )
+    up_parser.add_argument(
+        "--prompt-cooldown",
+        type=int,
+        default=api.DEFAULT_PROMPT_COOLDOWN_SECONDS,
+        help="Seconds before repeating send_status/send_continue for the same lane.",
+    )
+    up_parser.add_argument(
+        "--max-continue-count",
+        type=int,
+        default=api.DEFAULT_MAX_CONTINUE_COUNT,
+        help="Maximum consecutive send_continue prompts for the same lane status. Default 0 disables.",
+    )
+    up_parser.add_argument(
+        "--max-context-requests",
+        type=int,
+        default=api.DEFAULT_MAX_CONTEXT_REQUESTS,
+        help="Maximum request_context executions per loop iteration. Default 0 disables.",
+    )
+    up_parser.add_argument(
+        "--decision-timeout",
+        type=int,
+        default=api.DEFAULT_DECISION_TIMEOUT_SECONDS,
+        help="Seconds before an active decision request raises a timeout alert.",
+    )
+    _add_failure_retry_args(up_parser, api=api)
+    up_parser.add_argument(
+        "--max-run-minutes",
+        type=int,
+        default=api.DEFAULT_MAX_RUN_MINUTES,
+        help="Maximum elapsed minutes before send_continue is blocked for a lane. Default 0 disables.",
+    )
+    up_parser.add_argument(
+        "--max-fanout-launches",
+        type=int,
+        default=api.DEFAULT_FANOUT_LIMIT,
+        help="Maximum launch_session actions fanout may execute in one loop iteration.",
+    )
+    _add_goal_replenishment_args(up_parser, api=api)
+    up_parser.add_argument(
+        "--worker-profile",
+        choices=api.WORKER_PROFILE_CHOICES,
+        default=api.DEFAULT_WORKER_PROFILE,
+        help="Worker profile for Codex workers launched by the daemon loop.",
+    )
+    up_parser.add_argument(
+        "--worker-codex-model",
+        help="Pass -m/--model to Codex workers launched by the daemon loop.",
+    )
+    up_parser.add_argument(
+        "--worker-codex-config",
+        action="append",
+        default=None,
+        help="Pass one -c key=value override to Codex workers. Repeatable.",
+    )
+    up_parser.add_argument(
+        "--name",
+        help="Target one managed lane. Omit to rotate across active lanes.",
+    )
+    up_parser.add_argument(
+        "--goal",
+        help="User goal for the LLM planner when it may need to launch a new worker.",
+    )
+    up_parser.add_argument(
+        "--llm-summary",
+        action="store_true",
+        help="Use configured LLM to add a compact Chinese summary.",
+    )
+    _add_webhook_args(up_parser)
+    up_parser.add_argument(
+        "--no-auto-adopt",
+        action="store_false",
+        dest="auto_adopt",
+        help="Disable automatic adoption of discovered Codex-like tmux sessions.",
+    )
+    up_parser.add_argument(
+        "--merge-dispatch-execute",
+        action="store_true",
+        help="Let the daemon loop launch merge-dispatch workers.",
+    )
+    up_parser.add_argument(
+        "--auto-merge-promote",
+        action="store_true",
+        help="Let the daemon loop promote or repair merge-dispatch workers.",
+    )
+    up_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    up_parser.set_defaults(auto_adopt=True)
+    for check_command, help_text in (
+        (
+            "check",
+            "Print one read-only morning summary across daemon, goals, review, and cleanup.",
+        ),
+        (
+            "overnight-check",
+            "Alias for check; useful after an overnight Supervisor run.",
+        ),
+    ):
+        check_parser = subparsers.add_parser(check_command, help=help_text)
+        check_parser.add_argument(
+            "--codex-home",
+            default=str(Path.home() / ".codex"),
+            help="Codex home directory. Defaults to ~/.codex.",
+        )
+        check_parser.add_argument(
+            "--base",
+            default="main",
+            help="Base branch/ref for integration-review. Defaults to main.",
+        )
+        check_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    daemon_parser = subparsers.add_parser(
+        "daemon",
+        help="Start, inspect, or stop the background Supervisor loop.",
+    )
+    daemon_subparsers = daemon_parser.add_subparsers(
+        dest="daemon_command",
+        required=True,
+    )
+    daemon_start_parser = daemon_subparsers.add_parser(
+        "start",
+        help="Start the Supervisor loop in the background.",
+    )
+    daemon_start_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    daemon_start_parser.add_argument(
+        "--limit",
+        type=int,
+        default=10,
+        help="Maximum sessions.",
+    )
+    daemon_start_parser.add_argument(
+        "--stale-after",
+        type=int,
+        default=600,
+        help="Seconds without events before marking a session stale.",
+    )
+    daemon_start_parser.add_argument(
+        "--active-within",
+        type=int,
+        default=180,
+        help="Seconds with recent events before marking a session working.",
+    )
+    daemon_start_parser.add_argument(
+        "--interval",
+        type=int,
+        default=30,
+        help="Seconds between loop reports.",
+    )
+    daemon_start_parser.add_argument(
+        "--prompt-cooldown",
+        type=int,
+        default=api.DEFAULT_PROMPT_COOLDOWN_SECONDS,
+        help="Seconds before repeating send_status/send_continue for the same lane.",
+    )
+    daemon_start_parser.add_argument(
+        "--max-continue-count",
+        type=int,
+        default=api.DEFAULT_MAX_CONTINUE_COUNT,
+        help="Maximum consecutive send_continue prompts for the same lane status. Default 0 disables.",
+    )
+    daemon_start_parser.add_argument(
+        "--max-context-requests",
+        type=int,
+        default=api.DEFAULT_MAX_CONTEXT_REQUESTS,
+        help="Maximum request_context executions per loop iteration. Default 0 disables.",
+    )
+    daemon_start_parser.add_argument(
+        "--decision-timeout",
+        type=int,
+        default=api.DEFAULT_DECISION_TIMEOUT_SECONDS,
+        help="Seconds before an active decision request raises a timeout alert.",
+    )
+    _add_failure_retry_args(daemon_start_parser, api=api)
+    daemon_start_parser.add_argument(
+        "--max-run-minutes",
+        type=int,
+        default=api.DEFAULT_MAX_RUN_MINUTES,
+        help="Maximum elapsed minutes before send_continue is blocked for a lane. Default 0 disables.",
+    )
+    daemon_start_parser.add_argument(
+        "--max-fanout-launches",
+        type=int,
+        default=api.DEFAULT_FANOUT_LIMIT,
+        help="Maximum launch_session actions fanout may execute in one loop iteration.",
+    )
+    _add_goal_replenishment_args(daemon_start_parser, api=api)
+    daemon_start_parser.add_argument(
+        "--worker-profile",
+        choices=api.WORKER_PROFILE_CHOICES,
+        default=api.DEFAULT_WORKER_PROFILE,
+        help="Worker profile for Codex workers launched by the daemon loop.",
+    )
+    daemon_start_parser.add_argument(
+        "--worker-codex-model",
+        help="Pass -m/--model to Codex workers launched by the daemon loop.",
+    )
+    daemon_start_parser.add_argument(
+        "--worker-codex-config",
+        action="append",
+        default=None,
+        help="Pass one -c key=value override to Codex workers. Repeatable.",
+    )
+    daemon_start_parser.add_argument(
+        "--name",
+        help="Target one managed lane. Omit to rotate across active lanes.",
+    )
+    daemon_start_parser.add_argument(
+        "--goal",
+        help="User goal for the LLM planner when it may need to launch a new worker.",
+    )
+    daemon_start_parser.add_argument(
+        "--llm-summary",
+        action="store_true",
+        help="Use configured LLM to add a compact Chinese summary.",
+    )
+    _add_webhook_args(daemon_start_parser)
+    daemon_start_parser.add_argument(
+        "--no-auto-adopt",
+        action="store_false",
+        dest="auto_adopt",
+        help="Disable automatic adoption of discovered Codex-like tmux sessions.",
+    )
+    daemon_start_parser.add_argument(
+        "--merge-dispatch-execute",
+        action="store_true",
+        help="Let the daemon loop launch merge-dispatch workers.",
+    )
+    daemon_start_parser.add_argument(
+        "--auto-merge-promote",
+        action="store_true",
+        help="Let the daemon loop promote or repair merge-dispatch workers.",
+    )
+    daemon_start_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print JSON output.",
+    )
+    daemon_start_parser.set_defaults(auto_adopt=True)
+    for daemon_command in ("status", "stop", "watchdog"):
+        daemon_command_parser = daemon_subparsers.add_parser(
+            daemon_command,
+            help=f"{daemon_command.title()} the background Supervisor loop.",
+        )
+        daemon_command_parser.add_argument(
+            "--codex-home",
+            default=str(Path.home() / ".codex"),
+            help="Codex home directory. Defaults to ~/.codex.",
+        )
+        daemon_command_parser.add_argument(
+            "--json",
+            action="store_true",
+            help="Print JSON output.",
+        )
+    watcher_parser = daemon_subparsers.add_parser(
+        "watcher",
+        help="Manage the background periodic watchdog.",
+    )
+    watcher_subparsers = watcher_parser.add_subparsers(
+        dest="watcher_command",
+        required=True,
+    )
+    watcher_start_parser = watcher_subparsers.add_parser(
+        "start",
+        help="Start the periodic watchdog in the background.",
+    )
+    watcher_start_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    watcher_start_parser.add_argument(
+        "--interval",
+        type=int,
+        default=60,
+        help="Seconds between watchdog checks.",
+    )
+    watcher_start_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print JSON output.",
+    )
+    watcher_run_parser = watcher_subparsers.add_parser(
+        "run",
+        help="Run watchdog checks in the foreground.",
+    )
+    watcher_run_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    watcher_run_parser.add_argument(
+        "--interval",
+        type=int,
+        default=60,
+        help="Seconds between watchdog checks.",
+    )
+    watcher_run_parser.add_argument(
+        "--iterations",
+        type=int,
+        help="Stop after this many checks. Omit to run until interrupted.",
+    )
+    watcher_run_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print JSON output.",
+    )
+    for watcher_command in ("status", "stop"):
+        watcher_command_parser = watcher_subparsers.add_parser(
+            watcher_command,
+            help=f"{watcher_command.title()} the periodic watchdog.",
+        )
+        watcher_command_parser.add_argument(
+            "--codex-home",
+            default=str(Path.home() / ".codex"),
+            help="Codex home directory. Defaults to ~/.codex.",
+        )
+        watcher_command_parser.add_argument(
+            "--json",
+            action="store_true",
+            help="Print JSON output.",
+        )
+    web_parser = subparsers.add_parser("web", help="Serve a local Supervisor dashboard page.")
+    web_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    web_parser.add_argument("--limit", type=int, default=10, help="Maximum sessions.")
+    web_parser.add_argument(
+        "--stale-after",
+        type=int,
+        default=600,
+        help="Seconds without events before marking a session stale.",
+    )
+    web_parser.add_argument(
+        "--active-within",
+        type=int,
+        default=180,
+        help="Seconds with recent events before marking a session working.",
+    )
+    web_parser.add_argument("--host", default="127.0.0.1", help="Bind host.")
+    web_parser.add_argument("--port", type=int, default=8765, help="Bind port.")
+    web_parser.add_argument(
+        "--print-url",
+        action="store_true",
+        help="Print the local URL and exit without starting the server.",
+    )
+    launch_parser = subparsers.add_parser("launch", help="Launch and register a Codex process.")
+    launch_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    launch_parser.add_argument("--cwd", required=True, help="Workspace directory for Codex.")
+    launch_parser.add_argument("--name", required=True, help="Managed lane name.")
+    launch_parser.add_argument("--prompt", required=True, help="Initial Codex prompt.")
+    launch_parser.add_argument(
+        "--codex-bin",
+        default="codex",
+        help="Codex executable name or path.",
+    )
+    launch_parser.add_argument(
+        "--codex-model",
+        help="Pass -m/--model to the launched Codex worker.",
+    )
+    launch_parser.add_argument(
+        "--codex-config",
+        action="append",
+        default=[],
+        help="Pass one -c key=value override to the launched Codex worker. Repeatable.",
+    )
+    launch_parser.add_argument(
+        "--backend",
+        choices=("process", "tmux"),
+        default="process",
+        help="Launch backend.",
+    )
+    launch_parser.add_argument(
+        "--tmux-session",
+        help="tmux session name when --backend tmux is used. Defaults to --name.",
+    )
+    launch_parser.add_argument(
+        "--worker-role",
+        default="worker",
+        help="Worker role stored in the managed registry. Defaults to worker.",
+    )
+    launch_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    worker_review_parser = subparsers.add_parser(
+        "worker-review",
+        help="Summarize Supervisor-managed workers for human review.",
+    )
+    worker_review_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    worker_review_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    memory_parser = subparsers.add_parser(
+        "memory",
+        help="Show a low-sensitive summary of local memory records.",
+    )
+    memory_parser.add_argument(
+        "--root",
+        default=".",
+        help="Runtime root containing memory/*.json. Defaults to current directory.",
+    )
+    memory_parser.add_argument(
+        "--scope",
+        choices=("thread", "run", "session"),
+        help="Only show one memory scope.",
+    )
+    memory_parser.add_argument(
+        "--limit",
+        type=int,
+        default=20,
+        help="Maximum records to preview.",
+    )
+    memory_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    worker_event_parser = subparsers.add_parser(
+        "worker-event",
+        help="Publish or list memory-backed worker events.",
+    )
+    worker_event_subparsers = worker_event_parser.add_subparsers(
+        dest="worker_event_command",
+        required=True,
+    )
+    worker_event_publish = worker_event_subparsers.add_parser(
+        "publish",
+        help="Publish one worker event into the memory-backed channel.",
+    )
+    worker_event_publish.add_argument(
+        "--root",
+        default=".",
+        help="Runtime root containing memory/*.json. Defaults to current directory.",
+    )
+    worker_event_publish.add_argument("--from", dest="from_worker", required=True)
+    worker_event_publish.add_argument("--to", dest="to_worker")
+    worker_event_publish.add_argument("--type", dest="event_type", default="message")
+    worker_event_publish.add_argument("--channel", default="default")
+    worker_event_publish.add_argument("--message", required=True)
+    worker_event_publish.add_argument(
+        "--payload-json",
+        help="Optional JSON object payload for the event.",
+    )
+    worker_event_publish.add_argument("--json", action="store_true", help="Print JSON output.")
+    worker_event_list = worker_event_subparsers.add_parser(
+        "list",
+        help="List worker events from the memory-backed channel.",
+    )
+    worker_event_list.add_argument(
+        "--root",
+        default=".",
+        help="Runtime root containing memory/*.json. Defaults to current directory.",
+    )
+    worker_event_list.add_argument("--from", dest="from_worker")
+    worker_event_list.add_argument("--to", dest="to_worker")
+    worker_event_list.add_argument("--type", dest="event_type")
+    worker_event_list.add_argument("--channel")
+    worker_event_list.add_argument("--limit", type=int, default=20)
+    worker_event_list.add_argument("--json", action="store_true", help="Print JSON output.")
+    worker_manager_parser = subparsers.add_parser(
+        "worker-manager",
+        help="Show a memory-backed multi-worker status view.",
+    )
+    worker_manager_parser.add_argument(
+        "--root",
+        default=".",
+        help="Runtime root containing memory/*.json. Defaults to current directory.",
+    )
+    worker_manager_parser.add_argument("--worker", help="Only show one worker.")
+    worker_manager_parser.add_argument(
+        "--limit",
+        type=int,
+        default=50,
+        help="Maximum workers to preview.",
+    )
+    worker_manager_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    integration_review_parser = subparsers.add_parser(
+        "integration-review",
+        help="Group managed workers by read-only integration readiness.",
+    )
+    integration_review_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    integration_review_parser.add_argument(
+        "--base",
+        default="main",
+        help="Base branch/ref to check containment against. Defaults to main.",
+    )
+    integration_review_parser.add_argument(
+        "--include-unfinished",
+        action="store_true",
+        help="Also include non-done managed workers. Defaults to integration-ready done workers only.",
+    )
+    integration_review_parser.add_argument(
+        "--include-missing-worktrees",
+        action="store_true",
+        help="Also include stale records whose worktree is already missing.",
+    )
+    integration_review_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print JSON output.",
+    )
+    _add_webhook_args(integration_review_parser)
+    merge_work_order_parser = subparsers.add_parser(
+        "merge-work-order",
+        help="Build a read-only merge work order from integration-review.",
+    )
+    merge_work_order_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    merge_work_order_parser.add_argument(
+        "--base",
+        default="main",
+        help="Base branch/ref to check containment against. Defaults to main.",
+    )
+    merge_work_order_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    replan_parser = subparsers.add_parser(
+        "replan",
+        help="Build read-only next-round advice from worker-review candidates.",
+    )
+    replan_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    replan_parser.add_argument(
+        "--base",
+        default="main",
+        help="Base branch/ref to check integration readiness against. Defaults to main.",
+    )
+    replan_parser.add_argument(
+        "--include-unfinished",
+        action="store_true",
+        help="Also include non-done workers in the integration-review input.",
+    )
+    replan_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    context_parser = subparsers.add_parser(
+        "context",
+        help="Search project context and record the result for the LLM planner.",
+    )
+    context_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    context_parser.add_argument("--cwd", required=True, help="Workspace directory.")
+    context_parser.add_argument("--query", required=True, help="Context search query.")
+    context_parser.add_argument(
+        "--limit",
+        type=int,
+        default=5,
+        help="Maximum context snippets.",
+    )
+    context_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    decision_parser = subparsers.add_parser(
+        "decision",
+        help="List or archive Supervisor decision requests.",
+    )
+    decision_subparsers = decision_parser.add_subparsers(
+        dest="decision_command",
+        required=True,
+    )
+    for decision_command, help_text in (
+        ("list", "List active decision requests."),
+        ("archive", "Archive one handled decision request."),
+        ("answer", "Record a user answer for one decision request."),
+    ):
+        command_parser = decision_subparsers.add_parser(
+            decision_command,
+            help=help_text,
+        )
+        command_parser.add_argument(
+            "--codex-home",
+            default=str(Path.home() / ".codex"),
+            help="Codex home directory. Defaults to ~/.codex.",
+        )
+        command_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    decision_subparsers.choices["archive"].add_argument(
+        "--request-id",
+        required=True,
+        help="Decision request id to archive.",
+    )
+    decision_subparsers.choices["answer"].add_argument(
+        "--request-id",
+        required=True,
+        help="Decision request id to answer.",
+    )
+    decision_subparsers.choices["answer"].add_argument(
+        "--answer",
+        required=True,
+        help="User decision answer.",
+    )
+    _add_webhook_args(decision_subparsers.choices["answer"])
+    goal_parser = subparsers.add_parser(
+        "goal",
+        help="Add, list, or archive persistent Supervisor goals.",
+    )
+    goal_subparsers = goal_parser.add_subparsers(
+        dest="goal_command",
+        required=True,
+    )
+    goal_add_parser = goal_subparsers.add_parser(
+        "add",
+        help="Add one persistent goal for the Supervisor loop.",
+    )
+    goal_add_parser.add_argument(
+        "goal_text",
+        nargs="?",
+        help="Goal text. Positional form for one-sentence goal entry.",
+    )
+    goal_add_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    goal_add_parser.add_argument(
+        "--cwd",
+        default=str(Path.cwd()),
+        help="Workspace directory for this goal. Defaults to the current directory.",
+    )
+    goal_add_parser.add_argument("--goal", help="Goal text. Kept for compatibility.")
+    goal_add_parser.add_argument(
+        "--target-name",
+        help="Preferred managed worker name. Defaults to the generated goal id.",
+    )
+    goal_add_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    goal_plan_parser = goal_subparsers.add_parser(
+        "plan",
+        help="Use LLM to propose a small batch of Supervisor goals.",
+    )
+    goal_plan_parser.add_argument(
+        "goal_text",
+        nargs="?",
+        help="Optional high-level user goal to seed planning.",
+    )
+    goal_plan_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    goal_plan_parser.add_argument(
+        "--cwd",
+        default=str(Path.cwd()),
+        help="Workspace directory whose current docs seed planning.",
+    )
+    goal_plan_parser.add_argument(
+        "--limit",
+        type=int,
+        default=3,
+        help="Maximum goal candidates to return or write.",
+    )
+    goal_plan_parser.add_argument(
+        "--write",
+        action="store_true",
+        help="Write generated candidates into the persistent goal queue.",
+    )
+    goal_plan_parser.add_argument(
+        "--fanout-execute",
+        action="store_true",
+        help="After --write, execute parallel_recommendations as controlled launch_session actions.",
+    )
+    goal_plan_parser.add_argument(
+        "--max-fanout-launches",
+        type=int,
+        default=api.DEFAULT_FANOUT_LIMIT,
+        help="Maximum launch_session actions fanout may execute for this plan.",
+    )
+    goal_plan_parser.add_argument(
+        "--prompt-cooldown",
+        type=int,
+        default=api.DEFAULT_PROMPT_COOLDOWN_SECONDS,
+        help="Seconds before repeating launch_session for the same lane.",
+    )
+    goal_plan_parser.add_argument(
+        "--max-run-minutes",
+        type=int,
+        default=api.DEFAULT_MAX_RUN_MINUTES,
+        help="Maximum elapsed minutes before launch_session is blocked for a lane. Default 0 disables.",
+    )
+    goal_plan_parser.add_argument(
+        "--worker-profile",
+        choices=api.WORKER_PROFILE_CHOICES,
+        default=api.DEFAULT_WORKER_PROFILE,
+        help="Worker profile for Codex workers launched by fanout.",
+    )
+    goal_plan_parser.add_argument(
+        "--worker-codex-model",
+        help="Pass -m/--model to Codex workers launched by fanout.",
+    )
+    goal_plan_parser.add_argument(
+        "--worker-codex-config",
+        action="append",
+        default=None,
+        help="Pass one -c key=value override to Codex workers. Repeatable.",
+    )
+    goal_plan_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    for goal_command, help_text in (
+        ("list", "List active Supervisor goals."),
+        ("archive", "Archive one handled Supervisor goal."),
+    ):
+        goal_command_parser = goal_subparsers.add_parser(goal_command, help=help_text)
+        goal_command_parser.add_argument(
+            "--codex-home",
+            default=str(Path.home() / ".codex"),
+            help="Codex home directory. Defaults to ~/.codex.",
+        )
+        goal_command_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    goal_subparsers.choices["archive"].add_argument(
+        "--goal-id",
+        required=True,
+        help="Supervisor goal id to archive.",
+    )
+    goal_subparsers.choices["archive"].add_argument(
+        "--status",
+        choices=sorted(api.GOAL_STATUS_VALUES),
+        help="Optional final Supervisor status to store on the archive event.",
+    )
+    goal_subparsers.choices["archive"].add_argument(
+        "--summary",
+        help="Optional completion summary to store on the archive event.",
+    )
+    goal_subparsers.choices["archive"].add_argument(
+        "--next-step",
+        help="Optional next step to store as next on the archive event.",
+    )
+    cleanup_parser = subparsers.add_parser(
+        "cleanup",
+        help="List or archive completed Supervisor lifecycle items.",
+    )
+    cleanup_subparsers = cleanup_parser.add_subparsers(
+        dest="cleanup_command",
+        required=True,
+    )
+    for cleanup_command, help_text in (
+        ("list", "List completed goals, managed workers, and notifications."),
+        ("archive", "Archive completed lifecycle items without deleting Codex history."),
+        ("delete-worktree", "Remove one archived and integrated Supervisor worktree."),
+    ):
+        cleanup_command_parser = cleanup_subparsers.add_parser(
+            cleanup_command,
+            help=help_text,
+        )
+        cleanup_command_parser.add_argument(
+            "--codex-home",
+            default=str(Path.home() / ".codex"),
+            help="Codex home directory. Defaults to ~/.codex.",
+        )
+        cleanup_command_parser.add_argument(
+            "--json",
+            action="store_true",
+            help="Print JSON output.",
+        )
+    cleanup_archive_parser = cleanup_subparsers.choices["archive"]
+    cleanup_target = cleanup_archive_parser.add_mutually_exclusive_group(required=True)
+    cleanup_target.add_argument(
+        "--all",
+        action="store_true",
+        help="Archive every currently listed cleanup candidate.",
+    )
+    cleanup_target.add_argument("--goal-id", help="Archive one completed goal.")
+    cleanup_target.add_argument("--name", help="Archive one completed managed worker.")
+    cleanup_target.add_argument(
+        "--notification-id",
+        help="Mark one completed Supervisor notification as read.",
+    )
+    cleanup_archive_parser.add_argument(
+        "--record-id",
+        help="When archiving by --name, target one managed record id.",
+    )
+    cleanup_delete_worktree_parser = cleanup_subparsers.choices["delete-worktree"]
+    cleanup_delete_worktree_parser.add_argument(
+        "--name",
+        required=True,
+        help="Managed worker name whose worktree should be removed.",
+    )
+    cleanup_delete_worktree_parser.add_argument(
+        "--record-id",
+        help="Managed record id to guard against deleting a newer worker.",
+    )
+    cleanup_delete_worktree_parser.add_argument(
+        "--base",
+        default="main",
+        help="Base ref used for integration confirmation. Defaults to main.",
+    )
+    cleanup_delete_worktree_parser.add_argument(
+        "--confirm-delete-worktree",
+        action="store_true",
+        help="Required confirmation before removing the worktree.",
+    )
+    trace_parser = subparsers.add_parser(
+        "trace",
+        help="Print a read-only Supervisor lifecycle trace.",
+    )
+    trace_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    trace_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    resume_parser = subparsers.add_parser(
+        "resume",
+        help="Resume a Codex session with a prompt and register the managed process.",
+    )
+    resume_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    resume_parser.add_argument(
+        "--cwd",
+        default=str(Path.cwd()),
+        help="Workspace directory for Codex. Defaults to the current directory.",
+    )
+    resume_parser.add_argument("--name", required=True, help="Managed lane name.")
+    resume_parser.add_argument("--prompt", required=True, help="Prompt sent after resume.")
+    resume_target = resume_parser.add_mutually_exclusive_group(required=True)
+    resume_target.add_argument("--session-id", help="Codex session id or thread name.")
+    resume_target.add_argument(
+        "--last",
+        action="store_true",
+        help="Resume the most recent Codex session.",
+    )
+    resume_parser.add_argument(
+        "--codex-bin",
+        default="codex",
+        help="Codex executable name or path.",
+    )
+    resume_parser.add_argument(
+        "--codex-model",
+        help="Pass -m/--model to the resumed Codex worker.",
+    )
+    resume_parser.add_argument(
+        "--codex-config",
+        action="append",
+        default=[],
+        help="Pass one -c key=value override to the resumed Codex worker. Repeatable.",
+    )
+    resume_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    adopt_parser = subparsers.add_parser(
+        "adopt", help="Register an existing tmux session as a managed Codex lane."
+    )
+    adopt_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    adopt_parser.add_argument("--cwd", required=True, help="Workspace directory.")
+    adopt_parser.add_argument("--name", required=True, help="Managed lane name.")
+    adopt_parser.add_argument("--tmux-session", required=True, help="Existing tmux session.")
+    adopt_parser.add_argument(
+        "--prompt",
+        default="接管已有 tmux 会话",
+        help="Short note stored in the managed registry.",
+    )
+    adopt_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    discover_parser = subparsers.add_parser(
+        "discover", help="List existing tmux sessions that can be adopted."
+    )
+    discover_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    discover_parser.add_argument(
+        "--cwd",
+        default=str(Path.cwd()),
+        help="Workspace directory used in generated adopt commands.",
+    )
+    discover_parser.add_argument(
+        "--adopt-index",
+        type=int,
+        help="Adopt the 1-based candidate index from the discovery result.",
+    )
+    discover_parser.add_argument(
+        "--adopt-first",
+        action="store_true",
+        help="Adopt the first discovered Codex-like tmux session.",
+    )
+    discover_parser.add_argument(
+        "--name",
+        help="Managed lane name when adopting. Defaults to the suggested candidate name.",
+    )
+    discover_parser.add_argument(
+        "--prompt",
+        default="接管已有 tmux 会话",
+        help="Short note stored in the managed registry when adopting.",
+    )
+    discover_parser.add_argument(
+        "--include-all",
+        action="store_true",
+        help="Include tmux sessions whose pane text does not look like Codex.",
+    )
+    discover_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    archive_parser = subparsers.add_parser(
+        "archive", help="Archive a managed Codex lane so it stops appearing as active."
+    )
+    archive_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    archive_parser.add_argument("--name", required=True, help="Managed lane name.")
+    archive_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    send_parser = subparsers.add_parser(
+        "send", help="Send one line to a tmux-managed Codex process."
+    )
+    send_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    send_parser.add_argument("--name", required=True, help="Managed lane name.")
+    send_parser.add_argument("--text", required=True, help="Text to send.")
+    send_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    repair_parser = subparsers.add_parser(
+        "repair-hooks",
+        help="Repair tmux bell hooks for registered managed Codex lanes.",
+    )
+    repair_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    repair_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    start_here_parser = subparsers.add_parser(
+        "start-here",
+        help="Print the shortest human-first Supervisor trial workflow.",
+    )
+    start_here_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    start_here_parser.add_argument(
+        "--cwd",
+        default=str(Path.cwd()),
+        help="Workspace directory. Defaults to the current directory.",
+    )
+    start_here_parser.add_argument(
+        "--goal",
+        default="让 Supervisor 根据当前项目文档继续推进下一步可验证任务。",
+        help="The first goal to hand to Supervisor.",
+    )
+    start_here_parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Web dashboard host used in the printed command.",
+    )
+    start_here_parser.add_argument(
+        "--port",
+        type=int,
+        default=8765,
+        help="Web dashboard port used in the printed command.",
+    )
+    start_here_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    guide_parser = subparsers.add_parser(
+        "guide", help="Print a ready-to-run Supervisor workflow."
+    )
+    guide_parser.add_argument(
+        "--cwd",
+        default=str(Path.cwd()),
+        help="Workspace directory. Defaults to the current directory.",
+    )
+    guide_parser.add_argument(
+        "--name",
+        default="lane-a",
+        help="Managed lane name used in generated commands.",
+    )
+    guide_parser.add_argument(
+        "--tmux-session",
+        help="tmux session name. Defaults to --name.",
+    )
+    guide_parser.add_argument(
+        "--prompt",
+        default="继续推进当前任务，并在完成或阻塞时按 SUPERVISOR_STATUS/SUMMARY/NEXT 汇报。",
+        help="Prompt used by the launch command.",
+    )
+    guide_parser.add_argument(
+        "--interval",
+        type=int,
+        default=30,
+        help="Supervise loop interval seconds.",
+    )
+    guide_parser.add_argument(
+        "--worker-profile",
+        choices=api.WORKER_PROFILE_CHOICES,
+        default=api.DEFAULT_WORKER_PROFILE,
+        help="Worker profile used in generated loop/daemon commands.",
+    )
+    guide_parser.add_argument(
+        "--worker-codex-model",
+        help="Codex worker model used in generated loop/daemon commands.",
+    )
+    guide_parser.add_argument(
+        "--worker-codex-config",
+        action="append",
+        help=(
+            "Codex worker -c key=value override used in generated loop/daemon "
+            "commands. Repeatable; replaces the guide default when provided."
+        ),
+    )
+    guide_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    return parser

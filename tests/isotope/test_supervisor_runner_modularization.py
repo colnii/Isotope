@@ -15,6 +15,15 @@ def test_supervisor_runner_uses_command_dispatch_module():
     assert runner.main(["guide", "--json"]) == 0
 
 
+def test_supervisor_runner_parser_implementation_lives_in_command_module():
+    parser_module = importlib.import_module("isotope.features.supervisor.commands.parser")
+
+    assert runner._build_parser_impl is parser_module._build_parser_impl
+    assert inspect.getsourcefile(runner._build_parser_impl) == inspect.getsourcefile(
+        parser_module._build_parser_impl
+    )
+
+
 def test_supervisor_runner_uses_planner_and_state_helper_modules():
     goal_scope = importlib.import_module("isotope.features.supervisor.planner.goal_scope")
     time_utils = importlib.import_module("isotope.core.time")
