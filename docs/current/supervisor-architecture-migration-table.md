@@ -17,6 +17,28 @@
 - `integrations/codex/`：承接 Codex session、resume、exec 和 worktree worker。
 - `workspace/`：承接 git worktree、branch、项目文件和产物边界。
 
+## 复用审计与重构债务
+
+本表也是 Supervisor 的 refactoring debt（重构债务）账本。后续所有
+Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
+
+- 先查本表、[能力地图](./supervisor-capability-map.md)、`AGENTS.md`
+  和相关代码目录，列出已有模块、helper、schema、状态账本和文档入口。
+- 新增代码必须说明复用了什么；不复用已有代码时，要写明 contract
+  （契约）、failure mode（失败模式）、层级或 owner（维护归属）不一致。
+- 如果为了交付暂时保留重复逻辑、legacy 入口或大文件职责，必须把债务
+  写回本节或迁移表，而不是只在对话里说“以后重构”。
+- 每个迁移 worker 只能处理自己负责的债务项；完成后更新状态、测试和
+  下一个可解锁项。
+
+当前高优先级债务：
+
+| 债务 | 现状证据 | 目标 | 下一步 |
+| --- | --- | --- | --- |
+| `runner.py` 仍是过大 legacy 入口 | `src/isotope/features/supervisor/runner.py` 仍承载 CLI、loop、dispatch、cleanup、merge、部分状态判断等职责 | 让 `runner.py` 只保留入口转发和兼容 glue（胶水代码） | 每次新增 Supervisor 行为前先判断能否落到 `commands/`、`agents/`、`integrations/codex/`、`platform/state/` 或 `workspace/` |
+| Supervisor 对 `platform/` 复用不足 | 已有 decision/failure ledger 进入 `platform/state/`，但大量 worker 状态、失败策略和控制面仍留在 feature 私有实现 | 只把跨 agent 的状态事实、账本接口和 schema 下沉到 `platform/` | 优先抽 decision request / failure ledger 的通用账本接口，避免把产品视图下沉到底座 |
+| 新功能容易绕过既有调度模块 | `agents/scheduler/` 已有 goal queue、fanout、dependency graph、dependency batches 和 capacity graph | Supervisor fanout、batch、capacity 相关逻辑默认复用 scheduler 层 | worker 工单必须列出将复用的 scheduler API；不能在 `runner.py` 中再写一套 DAG 或批次判断 |
+
 ## 迁移表
 
 | 当前职责 | 现有位置 | 目标位置 | 迁移方式 | 备注 |

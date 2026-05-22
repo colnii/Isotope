@@ -673,4 +673,9 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
 - 本文件。
 - [当前状态](./status.md)。
 - [任务队列](./agent-task-queue.md)。
+- [Supervisor 架构迁移表](./supervisor-architecture-migration-table.md)
+  中的 reuse audit（复用审计）和 refactoring debt（重构债务）条目。
 - 新术语或新命令还要同步 [术语索引](./terminology.md)。
+
+登记时必须写清楚：本能力复用了哪些现有模块、没有复用哪些相似模块、
+原因是什么，以及是否新增了需要后续迁移或拆分的债务。

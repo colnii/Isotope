@@ -41,6 +41,17 @@ they are needed and avoid duplicating mature libraries without a clear reason.
 Prefer small, reviewable changes. When adding or changing behavior, update the
 relevant CLI/API entry point, tests, and user-facing docs in the same change.
 
+Before implementing a non-trivial feature or refactor, perform a reuse audit:
+identify the existing modules, helpers, schemas, and docs that already cover
+part of the work; state what will be reused; and document why any similar logic
+cannot be reused. Do not add a parallel implementation when an existing
+contract can be reused or slightly generalized.
+
+When a change leaves known duplication, legacy routing, or oversized entrypoint
+code behind, record it in the relevant current doc as refactoring debt with a
+clear owner area and next action. Do not rely on "refactor later" as an
+untracked promise.
+
 Agent and LLM features should keep the model on the main execution path while
 using rules, allowlists, budgets, and workspace boundaries as guardrails. Do not
 replace a requested product path with a diagnostic-only or disabled stub unless
