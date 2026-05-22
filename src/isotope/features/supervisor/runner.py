@@ -53,8 +53,11 @@ from .flow import (
 )
 from .fanout import (
     DEFAULT_FANOUT_LIMIT,
+    build_active_goals_fanout_launch_plan,
     build_fanout_launch_plan,
     build_fanout_status_summary,
+    build_paused_active_goals_fanout_plan,
+    build_replenished_goal_plan_fanout_launch_plan,
 )
 from .failure_ledger import FailureLedger, default_failure_ledger_path
 from .goal_queue import (
@@ -65,6 +68,11 @@ from .goal_queue import (
     read_active_supervisor_goals,
     record_supervisor_goal,
     record_supervisor_goal_status,
+)
+from ...agents.scheduler.goal_queue import (
+    active_goal_is_deferred,
+    filter_fanout_candidate_goals,
+    filter_replenishment_counted_goals,
 )
 from .goal_planner import plan_supervisor_goals
 from .integration_review import (
@@ -4664,34 +4672,20 @@ def _replenishment_counted_active_goals(
     *,
     running_target_names: set[str] | None = None,
 ) -> list[dict[str, Any]]:
-    running_names = running_target_names or set()
-    counted: list[dict[str, Any]] = []
-    for goal in active_goals:
-        if _active_goal_is_deferred(goal):
-            continue
-        target_name = goal.get("target_name")
-        if isinstance(target_name, str) and target_name in running_names:
-            continue
-        counted.append(goal)
-    return counted
+    return filter_replenishment_counted_goals(
+        active_goals,
+        running_target_names=running_target_names or set(),
+    )
 
 
 def _fanout_candidate_active_goals(
     active_goals: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    return [goal for goal in active_goals if not _active_goal_is_deferred(goal)]
+    return filter_fanout_candidate_goals(active_goals)
 
 
 def _active_goal_is_deferred(goal: dict[str, Any]) -> bool:
-    for key in ("last_status", "status", "supervisor_status"):
-        status = goal.get(key)
-        if isinstance(status, str) and status.lower() in {
-            "blocked",
-            "done",
-            "needs_user",
-        }:
-            return True
-    return False
+    return active_goal_is_deferred(goal)
 
 
 def _selected_active_goal(args: argparse.Namespace) -> dict[str, Any] | None:
@@ -5052,30 +5046,10 @@ def _active_goals_fanout_launch_plan(
         return None
     if getattr(args, "name", None):
         return None
-    fanout_goals = _fanout_candidate_active_goals(active_goals)
-    targets = [
-        target_name
-        for goal in fanout_goals
-        for target_name in (goal.get("target_name"),)
-        if isinstance(target_name, str) and target_name
-    ]
-    if len(targets) < 2:
-        return None
-    goal_plan = {
-        "goals": fanout_goals,
-        "parallel_recommendations": [
-            {
-                "batch": "active_goals",
-                "targets": targets,
-                "reason": "多个 active goals 可并行启动受控 worker。",
-            }
-        ],
-    }
-    return build_fanout_launch_plan(
-        goal_plan,
+    return build_active_goals_fanout_launch_plan(
+        active_goals,
         limit=getattr(args, "max_fanout_launches", DEFAULT_FANOUT_LIMIT),
         running_target_names=_running_managed_target_names(report),
-        requires_human_review=False,
     )
 
 
@@ -5098,24 +5072,10 @@ def _replenished_goal_plan_fanout_launch_plan(
         return None
     if getattr(args, "name", None):
         return None
-    if not isinstance(goal_replenishment, dict):
-        return None
-    if goal_replenishment.get("status") != "ok":
-        return None
-    recommendations = goal_replenishment.get("parallel_recommendations")
-    if not isinstance(recommendations, list) or not recommendations:
-        return None
-    written_goals = goal_replenishment.get("written_goals")
-    if not isinstance(written_goals, list) or not written_goals:
-        return None
-    return build_fanout_launch_plan(
-        {
-            "goals": written_goals,
-            "parallel_recommendations": recommendations,
-        },
+    return build_replenished_goal_plan_fanout_launch_plan(
+        goal_replenishment,
         limit=getattr(args, "max_fanout_launches", DEFAULT_FANOUT_LIMIT),
         running_target_names=_running_managed_target_names(report),
-        requires_human_review=False,
     )
 
 
@@ -5146,40 +5106,10 @@ def _paused_active_goals_fanout_plan(
         return None
     if getattr(args, "name", None):
         return None
-    blocked_targets = {
-        target_name
-        for goal in active_goals
-        for target_name in (goal.get("target_name"),)
-        if goal.get("last_status") in {"blocked", "needs_user"}
-        and isinstance(target_name, str)
-        and target_name
-    }
-    skipped = [
-        {
-            "target_name": target_name,
-            "reason": "fanout_paused_for_attention",
-            "batch": "active_goals",
-        }
-        for goal in active_goals
-        for target_name in (goal.get("target_name"),)
-        if isinstance(target_name, str)
-        and target_name
-        and target_name not in blocked_targets
-    ]
-    return {
-        "status": "paused",
-        "summary": {
-            "launchable": 0,
-            "skipped": len(skipped),
-            "limit": getattr(args, "max_fanout_launches", DEFAULT_FANOUT_LIMIT),
-        },
-        "launch_specs": [],
-        "skipped": skipped,
-        "safety": {
-            "auto_launch": False,
-            "note": "fanout 已暂停，等待 blocked/needs_user worker 处理。",
-        },
-    }
+    return build_paused_active_goals_fanout_plan(
+        active_goals,
+        limit=getattr(args, "max_fanout_launches", DEFAULT_FANOUT_LIMIT),
+    )
 
 
 def _fanout_llm_action(fanout_plan: dict[str, Any]) -> dict[str, Any]:

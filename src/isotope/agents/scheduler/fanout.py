@@ -1,0 +1,401 @@
+"""Pure fanout planning helpers for agent scheduler goals."""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+import re
+from typing import Any, Iterable
+
+from .goal_queue import filter_fanout_candidate_goals
+
+
+DEFAULT_FANOUT_LIMIT = 3
+REVIEW_NOTE = "fanout 只生成受控 launch spec；runner 执行时仍需通过 launch gate。"
+ATTENTION_STATUSES = {"blocked", "needs_user"}
+FANOUT_STATUS_VALUES = ("done", "blocked", "needs_user", "running", "pending")
+
+
+def build_fanout_launch_plan(
+    goal_plan: dict[str, Any],
+    *,
+    cwd: str | None = None,
+    limit: int = DEFAULT_FANOUT_LIMIT,
+    running_target_names: Iterable[str] = (),
+    requires_human_review: bool = True,
+) -> dict[str, Any]:
+    """Convert goal-plan parallel recommendations into reviewable launch specs."""
+    if limit <= 0:
+        raise ValueError("limit must be positive")
+    candidates = _candidate_by_target_name(goal_plan)
+    running_names = {
+        _normalize_target_name(name)
+        for name in running_target_names
+        if isinstance(name, str) and name.strip()
+    }
+    default_cwd = _optional_string(cwd) or _optional_string(goal_plan.get("root"))
+    launch_specs: list[dict[str, Any]] = []
+    skipped: list[dict[str, str]] = []
+    seen_targets: set[str] = set()
+
+    for recommendation in _parallel_recommendations(goal_plan):
+        batch = _optional_string(recommendation.get("batch"))
+        reason = _optional_string(recommendation.get("reason")) or (
+            "goal plan 建议并行启动。"
+        )
+        for raw_target in _target_names(recommendation):
+            target_name = _normalize_target_name(raw_target)
+            skip_base = _skip_base(target_name=target_name, batch=batch)
+            if target_name in seen_targets:
+                skipped.append({**skip_base, "reason": "duplicate_target"})
+                continue
+            seen_targets.add(target_name)
+            candidate = candidates.get(target_name)
+            if candidate is None:
+                skipped.append({**skip_base, "reason": "candidate_not_found"})
+                continue
+            if target_name in running_names:
+                skipped.append({**skip_base, "reason": "worker_already_running"})
+                continue
+            if len(launch_specs) >= limit:
+                skipped.append({**skip_base, "reason": "fanout_limit_reached"})
+                continue
+            launch_cwd = _optional_string(candidate.get("cwd")) or default_cwd
+            if not launch_cwd:
+                skipped.append({**skip_base, "reason": "cwd_missing"})
+                continue
+            goal = _optional_string(candidate.get("goal"))
+            if not goal:
+                skipped.append({**skip_base, "reason": "goal_missing"})
+                continue
+            launch_specs.append(
+                {
+                    "kind": "launch_session",
+                    "target_name": target_name,
+                    "cwd": launch_cwd,
+                    "prompt": goal,
+                    "reason": reason,
+                    "batch": batch,
+                    "source": "parallel_recommendations",
+                    "candidate_reason": _optional_string(candidate.get("reason")),
+                    "review": {
+                        "requires_human_review": requires_human_review,
+                        "note": REVIEW_NOTE,
+                    },
+                }
+            )
+
+    return {
+        "status": "ok",
+        "summary": {
+            "launchable": len(launch_specs),
+            "skipped": len(skipped),
+            "limit": limit,
+        },
+        "launch_specs": launch_specs,
+        "skipped": skipped,
+        "safety": {
+            "auto_launch": False,
+            "note": REVIEW_NOTE,
+        },
+    }
+
+
+def build_active_goals_fanout_launch_plan(
+    active_goals: list[dict[str, Any]],
+    *,
+    limit: int = DEFAULT_FANOUT_LIMIT,
+    running_target_names: Iterable[str] = (),
+    requires_human_review: bool = False,
+) -> dict[str, Any] | None:
+    fanout_goals = filter_fanout_candidate_goals(active_goals)
+    targets = [
+        target_name
+        for goal in fanout_goals
+        for target_name in (goal.get("target_name"),)
+        if isinstance(target_name, str) and target_name
+    ]
+    if len(targets) < 2:
+        return None
+    return build_fanout_launch_plan(
+        {
+            "goals": fanout_goals,
+            "parallel_recommendations": [
+                {
+                    "batch": "active_goals",
+                    "targets": targets,
+                    "reason": "多个 active goals 可并行启动受控 worker。",
+                }
+            ],
+        },
+        limit=limit,
+        running_target_names=running_target_names,
+        requires_human_review=requires_human_review,
+    )
+
+
+def build_replenished_goal_plan_fanout_launch_plan(
+    goal_replenishment: Mapping[str, Any] | None,
+    *,
+    limit: int = DEFAULT_FANOUT_LIMIT,
+    running_target_names: Iterable[str] = (),
+    requires_human_review: bool = False,
+) -> dict[str, Any] | None:
+    if not isinstance(goal_replenishment, Mapping):
+        return None
+    if goal_replenishment.get("status") != "ok":
+        return None
+    recommendations = goal_replenishment.get("parallel_recommendations")
+    if not isinstance(recommendations, list) or not recommendations:
+        return None
+    written_goals = goal_replenishment.get("written_goals")
+    if not isinstance(written_goals, list) or not written_goals:
+        return None
+    return build_fanout_launch_plan(
+        {
+            "goals": written_goals,
+            "parallel_recommendations": recommendations,
+        },
+        limit=limit,
+        running_target_names=running_target_names,
+        requires_human_review=requires_human_review,
+    )
+
+
+def build_paused_active_goals_fanout_plan(
+    active_goals: list[dict[str, Any]],
+    *,
+    limit: int = DEFAULT_FANOUT_LIMIT,
+) -> dict[str, Any]:
+    blocked_targets = {
+        target_name
+        for goal in active_goals
+        for target_name in (goal.get("target_name"),)
+        if goal.get("last_status") in {"blocked", "needs_user"}
+        and isinstance(target_name, str)
+        and target_name
+    }
+    skipped = [
+        {
+            "target_name": target_name,
+            "reason": "fanout_paused_for_attention",
+            "batch": "active_goals",
+        }
+        for goal in active_goals
+        for target_name in (goal.get("target_name"),)
+        if isinstance(target_name, str)
+        and target_name
+        and target_name not in blocked_targets
+    ]
+    return {
+        "status": "paused",
+        "summary": {
+            "launchable": 0,
+            "skipped": len(skipped),
+            "limit": limit,
+        },
+        "launch_specs": [],
+        "skipped": skipped,
+        "safety": {
+            "auto_launch": False,
+            "note": "fanout 已暂停，等待 blocked/needs_user worker 处理。",
+        },
+    }
+
+
+def build_fanout_status_summary(
+    *,
+    active_goals: Iterable[dict[str, Any]],
+    goal_updates: Iterable[dict[str, Any]] = (),
+    running_target_names: Iterable[str] = (),
+) -> dict[str, Any]:
+    """Project active goals and status updates into a fanout batch state."""
+    running_names = {
+        name for name in running_target_names if isinstance(name, str) and name
+    }
+    items = _fanout_status_items(
+        active_goals=active_goals,
+        goal_updates=goal_updates,
+        running_target_names=running_names,
+    )
+    counts = {status: 0 for status in FANOUT_STATUS_VALUES}
+    for item in items:
+        status = item["status"]
+        if status in counts:
+            counts[status] += 1
+    summary = {
+        "total": len(items),
+        "done": counts["done"],
+        "blocked": counts["blocked"],
+        "needs_user": counts["needs_user"],
+        "running": counts["running"],
+        "pending": counts["pending"],
+    }
+    attention = [
+        item for item in items if item.get("status") in ATTENTION_STATUSES
+    ]
+    if attention:
+        return {
+            "status": "paused",
+            "summary": summary,
+            "message": f"fanout paused: {len(attention)} workers need attention.",
+            "attention": attention,
+            "requires_user_attention": True,
+        }
+    if items and summary["done"] == summary["total"]:
+        return {
+            "status": "completed",
+            "summary": summary,
+            "message": f"fanout batch completed: {summary['done']} workers done.",
+            "results": items,
+            "requires_user_attention": False,
+        }
+    if items:
+        return {
+            "status": "running",
+            "summary": summary,
+            "message": "fanout batch still has running or pending workers.",
+            "results": items,
+            "requires_user_attention": False,
+        }
+    return {
+        "status": "idle",
+        "summary": summary,
+        "message": "no fanout batch targets.",
+        "results": [],
+        "requires_user_attention": False,
+    }
+
+
+def _candidate_by_target_name(goal_plan: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    candidates: dict[str, dict[str, Any]] = {}
+    for raw in _candidate_items(goal_plan):
+        if not isinstance(raw, dict):
+            continue
+        target_name = _optional_string(raw.get("target_name"))
+        if not target_name:
+            continue
+        normalized = _normalize_target_name(target_name)
+        candidates.setdefault(normalized, raw)
+    return candidates
+
+
+def _fanout_status_items(
+    *,
+    active_goals: Iterable[dict[str, Any]],
+    goal_updates: Iterable[dict[str, Any]],
+    running_target_names: set[str],
+) -> list[dict[str, Any]]:
+    items_by_key: dict[str, dict[str, Any]] = {}
+    order: list[str] = []
+    for goal in active_goals:
+        item = _fanout_item_from_goal(goal, running_target_names=running_target_names)
+        if item is None:
+            continue
+        key = _fanout_item_key(item)
+        if key not in items_by_key:
+            order.append(key)
+        items_by_key[key] = item
+    for update in goal_updates:
+        item = _fanout_item_from_update(update)
+        if item is None:
+            continue
+        key = _fanout_item_key(item)
+        if key not in items_by_key:
+            order.append(key)
+        items_by_key[key] = {**items_by_key.get(key, {}), **item}
+    return [items_by_key[key] for key in order]
+
+
+def _fanout_item_from_goal(
+    goal: dict[str, Any],
+    *,
+    running_target_names: set[str],
+) -> dict[str, Any] | None:
+    goal_id = _optional_string(goal.get("goal_id"))
+    target_name = _optional_string(goal.get("target_name"))
+    if not goal_id and not target_name:
+        return None
+    status = _optional_string(goal.get("last_status"))
+    if status not in {"done", "blocked", "needs_user"}:
+        status = "running" if target_name in running_target_names else "pending"
+    item = {
+        "goal_id": goal_id,
+        "target_name": target_name,
+        "status": status,
+        "summary": _optional_string(goal.get("last_summary")),
+        "next": _optional_string(goal.get("last_next")),
+    }
+    return {key: value for key, value in item.items() if value is not None}
+
+
+def _fanout_item_from_update(update: dict[str, Any]) -> dict[str, Any] | None:
+    goal_id = _optional_string(update.get("goal_id"))
+    target_name = _optional_string(update.get("target_name"))
+    status = _optional_string(update.get("status"))
+    if status not in {"done", "blocked", "needs_user"}:
+        return None
+    item = {
+        "goal_id": goal_id,
+        "target_name": target_name,
+        "status": status,
+        "summary": _optional_string(update.get("summary")),
+        "next": _optional_string(update.get("next")),
+    }
+    return {key: value for key, value in item.items() if value is not None}
+
+
+def _fanout_item_key(item: dict[str, Any]) -> str:
+    goal_id = item.get("goal_id")
+    if isinstance(goal_id, str) and goal_id:
+        return f"goal:{goal_id}"
+    target_name = item.get("target_name")
+    if isinstance(target_name, str) and target_name:
+        return f"target:{target_name}"
+    return "unknown"
+
+
+def _candidate_items(goal_plan: dict[str, Any]) -> list[Any]:
+    items: list[Any] = []
+    for key in ("candidates", "written_goals", "goals"):
+        value = goal_plan.get(key)
+        if isinstance(value, list):
+            items.extend(value)
+    return items
+
+
+def _parallel_recommendations(goal_plan: dict[str, Any]) -> list[dict[str, Any]]:
+    value = goal_plan.get("parallel_recommendations")
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
+def _target_names(recommendation: dict[str, Any]) -> list[str]:
+    value = recommendation.get("targets")
+    if not isinstance(value, list):
+        return []
+    names: list[str] = []
+    for item in value:
+        text = _optional_string(item)
+        if text:
+            names.append(text)
+    return names
+
+
+def _skip_base(*, target_name: str, batch: str | None) -> dict[str, str]:
+    base = {"target_name": target_name}
+    if batch:
+        base["batch"] = batch
+    return base
+
+
+def _normalize_target_name(value: str) -> str:
+    text = re.sub(r"[^a-z0-9-]+", "-", value.lower()).strip("-")
+    text = re.sub(r"-+", "-", text)
+    return text[:80] or "supervisor-goal"
+
+
+def _optional_string(value: object) -> str | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    return value.strip()
