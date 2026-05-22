@@ -4336,6 +4336,71 @@ def test_codex_supervisor_runner_cleanup_list_includes_worktree_delete_candidate
     ]
 
 
+def test_codex_supervisor_cleanup_list_skips_expensive_worktree_validation(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    worktree = workspace / ".worktrees" / "supervisor" / "done-worker-abcd1234"
+    worktree.mkdir(parents=True)
+    log_path = codex_home / "supervisor" / "logs" / "managed-done.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text(
+        "SUPERVISOR_STATUS: done\n"
+        "SUPERVISOR_SUMMARY: worker 已完成。\n"
+        "SUPERVISOR_NEXT: 等待 cleanup。\n",
+        encoding="utf-8",
+    )
+    registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "record_id": "managed-done",
+                "name": "done-worker",
+                "cwd": str(worktree),
+                "prompt": "已完成后等待清理。",
+                "command": ["codex", "exec", "-C", str(worktree), "继续"],
+                "pid": 0,
+                "started_at": NOW.isoformat(),
+                "log_path": str(log_path),
+                "status": "archived",
+                "backend": "process",
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    captured = {}
+
+    def fake_review(record, **kwargs):
+        captured.update(kwargs)
+        return {
+            "group": "already_integrated",
+            "dirty": False,
+            "main_contains_worker": False,
+            "main_has_worker_patch": True,
+            "worker_commit": "abc123",
+            "base_ref": kwargs.get("base_ref", "main"),
+        }
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.review_managed_record_integration",
+        fake_review,
+    )
+
+    exit_code = supervisor_main(["cleanup", "list", "--codex-home", str(codex_home), "--json"])
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["worktree_candidates"][0]["record_id"] == "managed-done"
+    assert captured["run_test_gate"] is False
+    assert captured["run_candidate_validation"] is False
+
+
 def test_codex_supervisor_runner_cleanup_archives_stale_missing_worker_by_record_id(
     tmp_path,
     capsys,

@@ -8134,7 +8134,12 @@ def _delete_worktree_candidate_payloads(args: argparse.Namespace) -> list[dict[s
         )
         if (protocol.get("status") or "").strip().lower() != "done":
             continue
-        integration = review_managed_record_integration(record, run=subprocess.run)
+        integration = review_managed_record_integration(
+            record,
+            run=subprocess.run,
+            run_test_gate=False,
+            run_candidate_validation=False,
+        )
         if not _integration_review_allows_worktree_delete(integration):
             continue
         candidates.append(
