@@ -235,6 +235,17 @@ def test_agent_scheduler_applies_dependency_gate_to_active_goals():
             "dependency": "worker-b",
         }
     ]
+    assert plan["dependency_batch"]["status"] == "ready"
+    assert [item["target_name"] for item in plan["dependency_batch"]["ready_goals"]] == [
+        "worker-b"
+    ]
+    assert plan["dependency_batch"]["blocked_goals"] == [
+        {
+            "target_name": "worker-c",
+            "reason": "dependency_unmet",
+            "dependency": "worker-b",
+        }
+    ]
 
 
 def test_agent_scheduler_plans_replenished_goal_recommendations():

@@ -12,6 +12,7 @@ from .dependency_graph import (
     build_node_states_from_goal_records,
     resolve_ready_nodes,
 )
+from .dependency_batches import build_dependency_batch_plan
 from .goal_queue import filter_fanout_candidate_goals
 
 
@@ -129,6 +130,11 @@ def build_active_goals_fanout_launch_plan(
     requires_human_review: bool = False,
 ) -> dict[str, Any] | None:
     fanout_goals = filter_fanout_candidate_goals(active_goals)
+    dependency_batch = build_dependency_batch_plan(
+        active_goals,
+        limit=limit,
+        running_target_names=running_target_names,
+    )
     targets = [
         target_name
         for goal in fanout_goals
@@ -137,7 +143,7 @@ def build_active_goals_fanout_launch_plan(
     ]
     if len(targets) < 2:
         return None
-    return build_fanout_launch_plan(
+    plan = build_fanout_launch_plan(
         {
             "goals": active_goals,
             "parallel_recommendations": [
@@ -152,6 +158,8 @@ def build_active_goals_fanout_launch_plan(
         running_target_names=running_target_names,
         requires_human_review=requires_human_review,
     )
+    plan["dependency_batch"] = dependency_batch
+    return plan
 
 
 def build_replenished_goal_plan_fanout_launch_plan(
