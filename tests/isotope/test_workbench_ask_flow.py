@@ -117,6 +117,41 @@ def test_workbench_ask_flow_answers_from_low_sensitive_workbench_context(tmp_pat
     assert provider.calls[0]["max_tokens"] == 256
 
 
+def test_workbench_ask_flow_uses_refreshed_task_and_file_summaries(tmp_path):
+    task = TaskFlow.in_process(tmp_path).create_task(
+        goal="build portfolio story",
+        first_message="PRIVATE_TASK_NOTE_SHOULD_NOT_LEAK",
+    )
+    FileFlow.in_process(tmp_path).create_text_file(
+        name="portfolio-notes.md",
+        summary="canonical file summary",
+        content="PRIVATE_FILE_CONTENT_SHOULD_NOT_LEAK",
+    )
+    task_index_path = tmp_path / "tasks" / "index.json"
+    task_index = json.loads(task_index_path.read_text(encoding="utf-8"))
+    task_index["tasks"][0]["result_summary"] = "stale task index summary"
+    task_index_path.write_text(json.dumps(task_index), encoding="utf-8")
+    file_index_path = tmp_path / "files" / "index.json"
+    file_index = json.loads(file_index_path.read_text(encoding="utf-8"))
+    file_index["files"][0]["summary"] = "stale file index summary"
+    file_index_path.write_text(json.dumps(file_index), encoding="utf-8")
+    provider = RecordingProvider("用刷新后的摘要推进。")
+
+    WorkbenchAskFlow.in_process(tmp_path, provider=provider).answer(
+        "portfolio 下一步做什么？",
+        search_limit=3,
+    )
+
+    prompt_payload = json.loads(provider.calls[0]["messages"][1]["content"])
+    prompt_context = json.dumps(prompt_payload, ensure_ascii=False, sort_keys=True)
+    assert "stale task index summary" not in prompt_context
+    assert "stale file index summary" not in prompt_context
+    assert task.result_summary in prompt_context
+    assert "canonical file summary" in prompt_context
+    assert "PRIVATE_FILE_CONTENT_SHOULD_NOT_LEAK" not in prompt_context
+    assert "PRIVATE_TASK_NOTE_SHOULD_NOT_LEAK" not in prompt_context
+
+
 def test_workbench_ask_flow_rejects_empty_question(tmp_path):
     provider = RecordingProvider()
 
