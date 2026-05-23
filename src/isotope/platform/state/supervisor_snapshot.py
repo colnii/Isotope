@@ -52,6 +52,8 @@ class SupervisorStateSnapshot:
     def to_dict(self) -> dict[str, Any]:
         return {
             "status": self.status,
+            "kind": "supervisor_state_snapshot",
+            "schema_version": 1,
             "codex_home": self.codex_home,
             "summary": dict(self.summary),
             "active_goals": [dict(item) for item in self.active_goals],

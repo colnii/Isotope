@@ -114,7 +114,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `build_supervisor_state_snapshot(...)` 已提供只读低敏状态投影，统一读取
   active goals、goal status、decision requests、lane failure、worker events
   和 notifications；当前先作为 read model（读取模型）存在，不改变既有账本
-  写入格式。
+  写入格式；顶层 `kind=supervisor_state_snapshot` 和 `schema_version=1`
+  标记当前 read model contract（读模型契约）。
 - `web` 会用“运行焦点”把后台循环、需要看的 Codex 窗口、工作中的
   Codex 窗口、当前目标和前三个重点项放到页面顶部，并优先显示当前
   Web 工作区内的 Codex 窗口，先给运行结论。

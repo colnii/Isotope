@@ -13307,6 +13307,8 @@ def test_codex_supervisor_runner_up_starts_daemon_with_strong_worker_defaults(
         "recent_worker": None,
         "state_snapshot": {
             "status": "ok",
+            "kind": "supervisor_state_snapshot",
+            "schema_version": 1,
             "codex_home": str(codex_home),
             "summary": {
                 "active_goals": 0,

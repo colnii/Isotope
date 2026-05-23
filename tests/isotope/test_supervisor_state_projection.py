@@ -30,6 +30,8 @@ def test_supervisor_state_snapshot_empty_root_is_read_only(tmp_path):
 
     assert snapshot == {
         "status": "ok",
+        "kind": "supervisor_state_snapshot",
+        "schema_version": 1,
         "codex_home": str(tmp_path),
         "summary": {
             "active_goals": 0,
@@ -217,6 +219,8 @@ def test_supervisor_state_command_outputs_snapshot_json(tmp_path, capsys):
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
+    assert payload["kind"] == "supervisor_state_snapshot"
+    assert payload["schema_version"] == 1
     assert payload["summary"]["active_goals"] == 1
     assert payload["active_goals"][0]["goal_id"] == goal.goal_id
     assert payload["active_goals"][0]["target_name"] == "state-command"
