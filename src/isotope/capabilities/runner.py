@@ -116,6 +116,7 @@ class CapabilityRunner:
         status = self._catalog.get_capability_status(capability_id, env=env)
         scenario = _CAPABILITY_SCENARIOS.get(capability_id)
         required_inputs = _required_inputs(capability)
+        _validate_input_keys(capability, inputs=inputs)
         missing_inputs = _missing_inputs(required_inputs, inputs)
         if capability_id == SUPERVISOR_REQUEST_CONTEXT_CAPABILITY:
             _validate_supervisor_request_context_inputs(
@@ -178,6 +179,7 @@ class CapabilityRunner:
         env: Mapping[str, str] | None = None,
     ) -> dict[str, Any]:
         capability = self._lookup_capability(capability_id)
+        _validate_input_keys(capability, inputs=inputs)
         shelf = capability["shelf"]
         if shelf in {"diagnostic", "experimental"}:
             raise PermissionError(f"{shelf} capability cannot run by default")
@@ -264,6 +266,26 @@ def _missing_inputs(
         for name in required_inputs
         if name not in input_mapping or input_mapping.get(name) in (None, "")
     ]
+
+
+def _validate_input_keys(
+    capability: Mapping[str, Any], *, inputs: Mapping[str, Any] | None
+) -> None:
+    if not inputs:
+        return
+    input_contract = capability.get("input_contract", {})
+    properties = (
+        input_contract.get("properties", {}) if isinstance(input_contract, Mapping) else {}
+    )
+    if not isinstance(properties, Mapping) or not properties:
+        return
+    allowed = {name for name in properties if isinstance(name, str)}
+    unexpected = sorted(name for name in inputs if name not in allowed)
+    if unexpected:
+        raise ValueError(
+            "capability inputs not allowed by input_contract: "
+            + ", ".join(unexpected)
+        )
 
 
 def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:

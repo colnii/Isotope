@@ -259,6 +259,19 @@ def test_request_context_plan_rejects_invalid_max_results(bad_max_results):
         )
 
 
+def test_request_context_plan_rejects_inputs_outside_contract():
+    with pytest.raises(ValueError, match="not allowed by input_contract"):
+        _runner().plan_capability_run(
+            "supervisor.request_context",
+            inputs={
+                "codex_home": "/tmp/codex-home",
+                "cwd": "/tmp/workspace",
+                "query": "request_context",
+                "raw_content": "PRIVATE_CONTENT_SHOULD_NOT_PASS",
+            },
+        )
+
+
 def test_request_context_run_rejects_non_string_query_without_coercion(tmp_path):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
@@ -271,6 +284,25 @@ def test_request_context_run_rejects_non_string_query_without_coercion(tmp_path)
                 "cwd": str(workspace),
                 "query": 123,
                 "max_results": 1,
+            },
+        )
+
+    assert not (tmp_path / "codex-home" / "supervisor" / "context_results.jsonl").exists()
+
+
+def test_request_context_run_rejects_inputs_outside_contract_without_side_effects(tmp_path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+
+    with pytest.raises(ValueError, match="not allowed by input_contract"):
+        _runner().run_capability(
+            "supervisor.request_context",
+            inputs={
+                "codex_home": str(tmp_path / "codex-home"),
+                "cwd": str(workspace),
+                "query": "request_context",
+                "max_results": 1,
+                "raw_content": "PRIVATE_CONTENT_SHOULD_NOT_PASS",
             },
         )
 
