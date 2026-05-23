@@ -247,6 +247,34 @@ def test_select_capacity_call_rejects_required_inputs_not_declared_in_properties
     assert provider.calls == []
 
 
+def test_select_capacity_call_rejects_duplicate_required_inputs_before_provider_call():
+    provider = RecordingProvider(
+        json.dumps(
+            {
+                "capacity_id": "artifact.review",
+                "arguments": {},
+                "confidence": 0.75,
+                "rationale": "should not be called",
+            }
+        )
+    )
+    capacity = _capacity(
+        input_contract={
+            "type": "object",
+            "required": ["artifact_ref", "question", "question"],
+            "properties": {
+                "artifact_ref": {"type": "string"},
+                "question": {"type": "string"},
+            },
+        }
+    )
+
+    with pytest.raises(ValueError, match="duplicate required input"):
+        select_capacity_call(provider, goal="检查摘要", capacities=[capacity])
+
+    assert provider.calls == []
+
+
 def test_select_capacity_call_rejects_duplicate_capacity_ids_before_provider_call():
     provider = RecordingProvider(
         json.dumps(

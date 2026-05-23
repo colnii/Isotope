@@ -231,6 +231,11 @@ def _validate_required_properties(input_contract: Mapping[str, Any]) -> None:
     properties = input_contract.get("properties", {})
     if not isinstance(required, list) or not isinstance(properties, Mapping):
         return
+    duplicates = sorted({name for name in required if required.count(name) > 1})
+    if duplicates:
+        raise ValueError(
+            "capacity duplicate required input: " + ", ".join(duplicates)
+        )
     missing = sorted(name for name in required if name not in properties)
     if missing:
         raise ValueError(
