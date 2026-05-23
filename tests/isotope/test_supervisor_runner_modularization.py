@@ -216,6 +216,47 @@ def test_supervisor_runner_delegates_llm_side_effect_execution_helpers():
         assert f"def {function_name}(" not in source
 
 
+def test_supervisor_runner_delegates_fanout_orchestration_helpers():
+    fanout_module = importlib.import_module("isotope.features.supervisor.commands.fanout")
+
+    assert runner._fanout_candidate_active_goals is fanout_module.fanout_candidate_active_goals
+    assert runner._active_goals_fanout_launch_plan is fanout_module.active_goals_fanout_launch_plan
+    assert runner._goal_replenishment_wrote_goals is fanout_module.goal_replenishment_wrote_goals
+    assert (
+        runner._replenished_goal_plan_fanout_launch_plan
+        is fanout_module.replenished_goal_plan_fanout_launch_plan
+    )
+    assert runner._fanout_status_payload is fanout_module.fanout_status_payload
+    assert runner._paused_active_goals_fanout_plan is fanout_module.paused_active_goals_fanout_plan
+    assert runner._fanout_llm_action is fanout_module.fanout_llm_action
+    assert runner._fanout_paused_action is fanout_module.fanout_paused_action
+    assert runner._fanout_paused_executed is fanout_module.fanout_paused_executed
+    assert runner._fanout_log_payload is fanout_module.fanout_log_payload
+    assert runner._execute_fanout_launch_actions is fanout_module.execute_fanout_launch_actions
+    assert (
+        runner._fanout_execution_launched_workers
+        is fanout_module.fanout_execution_launched_workers
+    )
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_fanout_candidate_active_goals",
+        "_active_goals_fanout_launch_plan",
+        "_goal_replenishment_wrote_goals",
+        "_replenished_goal_plan_fanout_launch_plan",
+        "_fanout_status_payload",
+        "_paused_active_goals_fanout_plan",
+        "_fanout_llm_action",
+        "_fanout_paused_action",
+        "_fanout_paused_executed",
+        "_fanout_log_payload",
+        "_fanout_trigger",
+        "_execute_fanout_launch_actions",
+        "_fanout_execution_launched_workers",
+    ):
+        assert f"def {function_name}(" not in source
+
+
 def test_supervisor_runner_delegates_daemon_command_helpers():
     daemon_module = importlib.import_module(
         "isotope.features.supervisor.commands.daemon_command"

@@ -36,11 +36,7 @@ from .flow import (
 )
 from .fanout import (
     DEFAULT_FANOUT_LIMIT,
-    build_active_goals_fanout_launch_plan,
     build_fanout_launch_plan,
-    build_fanout_status_summary,
-    build_paused_active_goals_fanout_plan,
-    build_replenished_goal_plan_fanout_launch_plan,
 )
 from .failure_ledger import FailureLedger, default_failure_ledger_path
 from .goal_queue import (
@@ -54,7 +50,6 @@ from .goal_queue import (
 )
 from ...agents.scheduler.goal_queue import (
     active_goal_is_deferred,
-    filter_fanout_candidate_goals,
     filter_replenishment_counted_goals,
 )
 from .goal_planner import plan_supervisor_goals
@@ -201,6 +196,22 @@ from .commands.llm_execution import (
     worker_profile_for_action as _worker_profile_for_action,
     worker_profile_from_args as _worker_profile_from_args,
     worker_role_for_launch_action as _worker_role_for_launch_action,
+)
+from .commands.fanout import (
+    active_goals_fanout_launch_plan as _active_goals_fanout_launch_plan,
+    execute_fanout_launch_actions as _execute_fanout_launch_actions,
+    fanout_candidate_active_goals as _fanout_candidate_active_goals,
+    fanout_execution_launched_workers as _fanout_execution_launched_workers,
+    fanout_llm_action as _fanout_llm_action,
+    fanout_log_payload as _fanout_log_payload,
+    fanout_paused_action as _fanout_paused_action,
+    fanout_paused_executed as _fanout_paused_executed,
+    fanout_status_payload as _fanout_status_payload,
+    fanout_trigger as _fanout_trigger,
+    goal_replenishment_wrote_goals as _goal_replenishment_wrote_goals,
+    int_value as _int_value,
+    paused_active_goals_fanout_plan as _paused_active_goals_fanout_plan,
+    replenished_goal_plan_fanout_launch_plan as _replenished_goal_plan_fanout_launch_plan,
 )
 from .commands.capacity import handle_capacity_command as _handle_capacity_command
 from .commands.context import handle_context_command as _handle_context_command
@@ -2421,12 +2432,6 @@ def _replenishment_counted_active_goals(
     )
 
 
-def _fanout_candidate_active_goals(
-    active_goals: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    return filter_fanout_candidate_goals(active_goals)
-
-
 def _active_goal_is_deferred(goal: dict[str, Any]) -> bool:
     return active_goal_is_deferred(goal)
 
@@ -2785,212 +2790,6 @@ def _current_workspace_worker_role(
         if _path_identity(record.cwd) == workspace_identity:
             return role
     return None
-
-
-def _active_goals_fanout_launch_plan(
-    args: argparse.Namespace,
-    report: Any,
-    active_goals: list[dict[str, Any]],
-) -> dict[str, Any] | None:
-    if getattr(args, "command", None) != "loop":
-        return None
-    if getattr(args, "name", None):
-        return None
-    return build_active_goals_fanout_launch_plan(
-        active_goals,
-        limit=getattr(args, "max_fanout_launches", DEFAULT_FANOUT_LIMIT),
-        running_target_names=_running_managed_target_names(report),
-    )
-
-
-def _goal_replenishment_wrote_goals(
-    goal_replenishment: dict[str, Any] | None,
-) -> bool:
-    return (
-        isinstance(goal_replenishment, dict)
-        and goal_replenishment.get("status") == "ok"
-        and _int_value(goal_replenishment.get("written_count")) > 0
-    )
-
-
-def _replenished_goal_plan_fanout_launch_plan(
-    args: argparse.Namespace,
-    report: Any,
-    goal_replenishment: dict[str, Any] | None,
-) -> dict[str, Any] | None:
-    if getattr(args, "command", None) != "loop":
-        return None
-    if getattr(args, "name", None):
-        return None
-    return build_replenished_goal_plan_fanout_launch_plan(
-        goal_replenishment,
-        limit=getattr(args, "max_fanout_launches", DEFAULT_FANOUT_LIMIT),
-        running_target_names=_running_managed_target_names(report),
-    )
-
-
-def _fanout_status_payload(
-    report: Any,
-    *,
-    active_goals: list[dict[str, Any]],
-    goal_updates: list[dict[str, Any]],
-) -> dict[str, Any] | None:
-    payload = build_fanout_status_summary(
-        active_goals=active_goals,
-        goal_updates=goal_updates,
-        running_target_names=_running_managed_target_names(report),
-    )
-    summary = payload.get("summary")
-    if not isinstance(summary, dict) or summary.get("total", 0) < 2:
-        return None
-    if payload.get("status") == "idle":
-        return None
-    return payload
-
-
-def _paused_active_goals_fanout_plan(
-    args: argparse.Namespace,
-    active_goals: list[dict[str, Any]],
-) -> dict[str, Any] | None:
-    if getattr(args, "command", None) != "loop":
-        return None
-    if getattr(args, "name", None):
-        return None
-    return build_paused_active_goals_fanout_plan(
-        active_goals,
-        limit=getattr(args, "max_fanout_launches", DEFAULT_FANOUT_LIMIT),
-    )
-
-
-def _fanout_llm_action(fanout_plan: dict[str, Any]) -> dict[str, Any]:
-    launchable = fanout_plan.get("summary", {}).get("launchable", 0)
-    if launchable:
-        reason = "多个 active goals 可并行启动受控 worker。"
-    else:
-        reason = "多个 active goals 已被 running worker 或 fanout gate 跳过。"
-    return {
-        "kind": "fanout_launch_sessions",
-        "target_name": None,
-        "reason": reason,
-        "command_suggestion": None,
-    }
-
-
-def _fanout_paused_action(fanout_status: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "kind": "monitor",
-        "target_name": None,
-        "reason": fanout_status.get("message")
-        or "fanout 已暂停，等待用户处理 blocked/needs_user worker。",
-        "command_suggestion": None,
-    }
-
-
-def _fanout_paused_executed(fanout_status: dict[str, Any]) -> dict[str, Any]:
-    action = _fanout_paused_action(fanout_status)
-    return {
-        "kind": "monitor",
-        "skipped": True,
-        "reason": action["reason"],
-    }
-
-
-def _fanout_log_payload(
-    fanout_plan: dict[str, Any],
-    *,
-    goal_replenishment: dict[str, Any] | None = None,
-    executed: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    plan_summary = fanout_plan.get("summary") if isinstance(fanout_plan, dict) else {}
-    if not isinstance(plan_summary, dict):
-        plan_summary = {}
-    log = {
-        "status": "executed" if executed is not None else "planned",
-        "trigger": _fanout_trigger(goal_replenishment),
-        "planned_launches": _int_value(plan_summary.get("launchable")),
-        "planned_skips": _int_value(plan_summary.get("skipped")),
-        "limit": _int_value(plan_summary.get("limit")),
-    }
-    if executed is not None:
-        executed_summary = executed.get("summary")
-        if not isinstance(executed_summary, dict):
-            executed_summary = {}
-        log["executed_launches"] = _int_value(executed_summary.get("launched"))
-        log["executed_skips"] = _int_value(executed_summary.get("skipped"))
-    return log
-
-
-def _fanout_trigger(goal_replenishment: dict[str, Any] | None) -> str:
-    if (
-        isinstance(goal_replenishment, dict)
-        and goal_replenishment.get("trigger") == "low_water"
-        and goal_replenishment.get("status") == "ok"
-        and _int_value(goal_replenishment.get("written_count")) > 0
-    ):
-        return "low_water"
-    return "active_goals"
-
-
-def _int_value(value: object) -> int:
-    return value if isinstance(value, int) else 0
-
-
-def _execute_fanout_launch_actions(
-    args: argparse.Namespace,
-    fanout_plan: dict[str, Any],
-    *,
-    report: Any | None = None,
-    payload: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    results: list[dict[str, Any]] = []
-    skipped: list[dict[str, Any]] = []
-    seen_target_names: set[str] = set()
-    for launch_spec in fanout_plan.get("launch_specs") or []:
-        if not isinstance(launch_spec, dict):
-            continue
-        target_name = _optional_text(launch_spec.get("target_name"))
-        if target_name is not None:
-            if target_name in seen_target_names:
-                skipped.append(
-                    {
-                        "kind": "launch_session",
-                        "skipped": True,
-                        "reason": "duplicate_fanout_target",
-                        "target_name": target_name,
-                    }
-                )
-                continue
-            seen_target_names.add(target_name)
-        result = _execute_failure_guarded_action(
-            args,
-            report=report,
-            payload=payload or {},
-            action=launch_spec,
-            event_type="worker_launch_failed",
-            execute=lambda launch_spec=launch_spec: _execute_launch_action(
-                args,
-                launch_spec,
-            ),
-        )
-        if result.get("skipped"):
-            skipped.append(result)
-        else:
-            results.append(result)
-    return {
-        "kind": "fanout_launch_sessions",
-        "summary": {
-            "launched": len(results),
-            "skipped": len(skipped),
-            "limit": fanout_plan.get("summary", {}).get("limit"),
-        },
-        "results": results,
-        "skipped": skipped,
-    }
-
-
-def _fanout_execution_launched_workers(executed: dict[str, Any]) -> bool:
-    summary = executed.get("summary")
-    return isinstance(summary, dict) and bool(summary.get("launched"))
 
 
 def _loop_without_autonomous_scope(

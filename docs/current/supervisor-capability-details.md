@@ -717,6 +717,10 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   `request_context`、`ask_user`、worker profile、worktree 准备和运行中
   worker 检查；实现仍通过 `api` 复用 runner 兼容名，保护旧测试和
   monkeypatch 表面。
+- `features/supervisor/commands/fanout.py`：已承接 fanout orchestration
+  （并行派发编排）的 active goal launch plan、低水位补任务 plan、暂停
+  action、fanout log 和批量 launch 执行汇总；纯规划仍复用
+  `agents/scheduler/fanout.py`，不在命令层再写一套调度算法。
 - `features/supervisor/commands/advice.py`：已承接 `advise`、`supervise`
   和 `loop` 共同使用的 advice payload、automation status 和
   command suggestion 生成；`_execute_advice` 仍留在 `runner.py`，后续需要
