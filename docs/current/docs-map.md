@@ -8,7 +8,7 @@
 2. [AGENTS](../../AGENTS.md)：AI 协作、验证、提交和 worktree 规则。
 3. [docs 总入口](../README.md)：`docs/` 各目录职责。
 4. [当前状态](./status.md)：主线真实状态。
-5. [任务队列](agent-task-queue.md)：已完成批次和下一步。
+5. [任务队列](agent-task-queue.md)：当前可执行任务。
 6. [术语索引](./terminology.md)：英文定位词和中文解释。
 
 ## 当前事实
@@ -58,7 +58,8 @@ preflight（预检查）、diagnostic（诊断）或 not_enabled（未启用）�
 | 查英文术语和中文解释 | [terminology](./terminology.md) |
 | 调整应用目录 | [application-structure-plan](./application-structure-plan.md)、[目录结构最新说明](./目录结构最新说明.md) |
 | 查导入迁移或兼容代理 | [import-map](./import-map.md)、[compat-proxy-audit](./compat-proxy-audit.md) |
-| 做 Supervisor 相关工作 | [codex-supervisor-readonly](./codex-supervisor-readonly.md)、[supervisor-capability-map](./supervisor-capability-map.md)、[supervisor-architecture-migration-table](./supervisor-architecture-migration-table.md) |
+| 做 Supervisor 相关工作 | [codex-supervisor-readonly](./codex-supervisor-readonly.md)、[supervisor-command-reference](./supervisor-command-reference.md)、[supervisor-capability-map](./supervisor-capability-map.md)、[supervisor-capability-details](./supervisor-capability-details.md)、[supervisor-architecture-migration-table](./supervisor-architecture-migration-table.md) |
+| 查旧任务/旧状态全文 | [agent-task-history](../archive/current/agent-task-history.md)、[status-history](../archive/current/status-history.md) |
 | 看文档迁移边界 | [docs-migration-plan](../reviews/docs-migration-plan.md) |
 | 看第三批长文拆分准备 | [current-docs-refactor-plan](../reviews/current-docs-refactor-plan.md) |
 | 查旧分支清理证据 | [branch-cleanup](../reviews/branch-cleanup-2026-05-15.md) |

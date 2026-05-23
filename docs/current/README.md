@@ -19,11 +19,16 @@
 它只保留历史追溯价值，不再作为当前文档地图。
 目录讨论原文、外部审查原文和一次性目录快照已移到 `docs/archive/current/`，
 只保留追溯价值。
+任务历史和旧状态全文也已移到 `docs/archive/current/`，当前入口只保留短摘要。
 
 ## 当前入口边界
 
 - `status.md` 记录主线事实，不是完整 changelog。
-- `agent-task-queue.md` 记录批次和后续队列，可能很长；查状态时不要先读它。
+- `agent-task-queue.md` 记录当前可执行任务；历史批次看 archive。
+- `codex-supervisor-readonly.md` 是 quick start；完整命令看
+  `supervisor-command-reference.md`。
+- `supervisor-capability-map.md` 是能力索引；详细登记看
+  `supervisor-capability-details.md`。
 - `docs-map.md` 是导航，不替代具体设计文档。
 - `application-structure-plan.md`、`import-map.md` 和 `compat-proxy-audit.md`
   服务于目录/导入收束，不代表所有产品方向。

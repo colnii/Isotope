@@ -9,7 +9,7 @@
 
 1. [当前状态](current/status.md)：主线真实状态和当前优先级。
 2. [当前文档地图](current/docs-map.md)：按读者路径找材料。
-3. [任务队列](current/agent-task-queue.md)：已完成批次和下一步。
+3. [任务队列](current/agent-task-queue.md)：当前可执行任务和后续规划。
 4. [术语索引](current/terminology.md)：英文定位词和中文解释。
 5. [协作规则](../AGENTS.md)：AI 协作、验证、提交和 worktree 规则。
 

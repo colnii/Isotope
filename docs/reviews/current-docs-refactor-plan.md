@@ -1,8 +1,8 @@
 # Current Docs Refactor Plan
 
-状态：`third batch prepared`
+状态：`third batch completed`
 
-本文准备第三批文档重构，只定范围和验收，不在本批拆长文。
+本文记录第三批文档重构的范围、结果和后续边界。
 
 ## 目标
 
@@ -19,6 +19,15 @@ boundary 文档。
 | `docs/current/supervisor-capability-map.md` | 约 700 行，能力索引和细节表混在一起。 | 保留能力索引；详细能力登记拆到 `docs/current/supervisor-capability-details.md`。 |
 | `docs/current/status.md` | 当前事实和大量历史流水并列。 | 保留当前事实和最近状态；历史流水转入 review 或 archive。 |
 
+## 已完成拆分
+
+| 原入口 | 当前短入口 | 详情/历史 |
+| --- | --- | --- |
+| `docs/current/agent-task-queue.md` | 当前可执行任务 | `docs/archive/current/agent-task-history.md` |
+| `docs/current/codex-supervisor-readonly.md` | Supervisor quick start | `docs/current/supervisor-command-reference.md` |
+| `docs/current/supervisor-capability-map.md` | 能力索引 | `docs/current/supervisor-capability-details.md` |
+| `docs/current/status.md` | 当前事实摘要 | `docs/archive/current/status-history.md` |
+
 ## 第三批边界
 
 - 不移动 `docs/architecture/` 里的 kernel、checkpoint、memory、track 文档。
@@ -28,10 +37,10 @@ boundary 文档。
 
 ## 建议顺序
 
-1. 拆 `agent-task-queue.md`：收益最大，风险最低。
-2. 拆 `codex-supervisor-readonly.md`：保留 quick start，降低新读者负担。
-3. 拆 `supervisor-capability-map.md`：把索引和详细登记分开。
-4. 最后整理 `status.md`：等前三个入口稳定后再收缩状态页。
+1. 继续保持短入口，不把历史流水重新写回 `docs/current/`。
+2. 若新增 Supervisor 命令，先更新 quick start / command reference 的对应位置。
+3. 若新增 Supervisor 能力，先更新能力索引，再补能力详情。
+4. 后续大规模目录迁移仍需另开批次，不能和 current 长文拆分混在一起。
 
 ## 验证
 

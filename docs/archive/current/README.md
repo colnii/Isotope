@@ -16,6 +16,10 @@
 - [重新梳理目录结构逻辑](重新梳理目录结构逻辑.md)：目录结构讨论原文；
   当前规则以 `docs/current/application-structure-plan.md` 和
   `docs/current/naming-and-structure-review.md` 为准。
+- [agent-task-history](agent-task-history.md)：旧任务队列完整历史；当前任务以
+  `docs/current/agent-task-queue.md` 为准。
+- [status-history](status-history.md)：旧状态页完整历史；当前事实以
+  `docs/current/status.md` 为准。
 
 ## 使用规则
 
