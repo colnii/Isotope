@@ -141,6 +141,24 @@ def test_supervisor_runner_delegates_auto_action_helpers():
         assert f"def {function_name}(" not in source
 
 
+def test_supervisor_runner_delegates_advice_execution_helpers():
+    execution_module = importlib.import_module(
+        "isotope.features.supervisor.commands.advice_execution"
+    )
+
+    assert runner._execute_advice is execution_module.execute_advice
+    assert runner._run_budget_state is execution_module.run_budget_state
+    assert runner._suggestion_by_kind is execution_module.suggestion_by_kind
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_execute_advice",
+        "_run_budget_state",
+        "_suggestion_by_kind",
+    ):
+        assert f"def {function_name}(" not in source
+
+
 def test_supervisor_runner_delegates_llm_action_execution_helpers():
     llm_action_module = importlib.import_module(
         "isotope.features.supervisor.commands.llm_action"

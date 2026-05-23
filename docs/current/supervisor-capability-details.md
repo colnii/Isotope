@@ -741,7 +741,8 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   现有 `.worktrees/supervisor` 路径边界。
 - `features/supervisor/commands/auto_action.py`：已承接 `loop --auto-execute`
   的 rule-based auto action（规则自动动作）选择、continue/run budget
-  与 prompt cooldown 判断；执行仍通过既有 `_execute_advice` 护栏。
+  与 prompt cooldown 判断；执行仍通过 `commands/advice_execution.py`
+  的旧 command suggestion 执行护栏。
 - `features/supervisor/commands/llm_action.py`：已承接 LLM action execution
   dispatch（模型动作执行分发）、failure guard（失败护栏）、context request
   budget 和 active-goal resume gate；底层 `resume/launch/context/ask_user`
@@ -776,8 +777,13 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   `goal_queue.py`、`notifications.py` 和 managed registry，不绕过删除护栏。
 - `features/supervisor/commands/advice.py`：已承接 `advise`、`supervise`
   和 `loop` 共同使用的 advice payload、automation status 和
-  command suggestion 生成；`_execute_advice` 仍留在 `runner.py`，后续需要
-  连同预算、cooldown（冷却时间）和托管发送护栏一起拆。
+  command suggestion 生成；实际发送、预算、cooldown（冷却时间）和托管
+  发送护栏已拆到 `features/supervisor/commands/advice_execution.py`。
+- `features/supervisor/commands/advice_execution.py`：已承接旧 command
+  suggestion 执行路径，包括 `send_status`/`send_continue` 白名单校验、
+  tmux target 选择、run budget、prompt cooldown、busy lane 拦截、
+  `send_to_managed_codex` 调用和 lane prompt 记录；继续复用 runner
+  兼容 alias，保护既有 monkeypatch 测试表面。
 - `features/supervisor/commands/decision.py`：已承接 `decision list/archive/answer`
   的 payload 和 plain renderer；继续复用既有 decision request 账本与
   answer/webhook helper，避免在命令入口重写拍板流程。
@@ -821,7 +827,7 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
    `platform/state`，同时保持入口继续复用 state projection。
 2. 用真实 daemon 长跑验证 cleanup/current dashboard 在多批任务中的稳定性。
 3. 后续再决定是否把通知接到更多 worker 生命周期事件。
-4. 再拆分 `runner.py` 中的自动执行、tmux 控制和 loop 状态拼装代码。
+4. 再拆分 `runner.py` 中的 tmux 控制和 loop 状态拼装代码。
 
 ## 登记规则
 

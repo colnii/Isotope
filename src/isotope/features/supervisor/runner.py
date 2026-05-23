@@ -183,6 +183,11 @@ from .commands.auto_action import (
     managed_terminal_looks_busy as _managed_terminal_looks_busy,
     supervisor_next_marks_terminal_done as _supervisor_next_marks_terminal_done,
 )
+from .commands.advice_execution import (
+    execute_advice as _execute_advice,
+    run_budget_state as _run_budget_state,
+    suggestion_by_kind as _suggestion_by_kind,
+)
 from .commands.llm_action import (
     active_goal_resume_session_ids as _active_goal_resume_session_ids,
     context_request_budget_result as _context_request_budget_result,
@@ -2013,144 +2018,6 @@ def _print_ask_user_action_plain(action: dict[str, Any]) -> None:
     context_status = action.get("context_status")
     if context_status:
         print(f"上下文状态：{context_status}")
-
-
-def _execute_advice(
-    args: argparse.Namespace,
-    report: Any,
-    payload: dict[str, Any],
-    *,
-    kind: str | None = None,
-    target_name: str | None = None,
-) -> dict[str, Any]:
-    kind = str(kind or args.execute)
-    if kind not in EXECUTABLE_ADVICE_KINDS:
-        supported = ", ".join(sorted(EXECUTABLE_ADVICE_KINDS))
-        raise ValueError(f"execute supports only: {supported}")
-    explicit_target_name = target_name or args.name
-    if explicit_target_name:
-        target = _managed_tmux_session_by_name(report, explicit_target_name)
-        if target is None:
-            raise ValueError(f"managed lane not found: {explicit_target_name}")
-    else:
-        target = _target_session(report, report.recommendation.target_session_id)
-        if target is None or not target.managed_name:
-            target = _first_managed_tmux_session(report)
-    if target is None or not target.managed_name:
-        target = _first_managed_tmux_session(report)
-    if target is None or not target.managed_name:
-        raise ValueError(f"no managed tmux target for: {kind}")
-    suggestion = _suggestion_by_kind(_managed_tmux_command_suggestions(target), kind)
-    if suggestion is None:
-        raise ValueError(f"no generated command suggestion for: {kind}")
-    if _managed_terminal_looks_busy(target):
-        return {
-            "kind": "monitor",
-            "skipped": True,
-            "reason": "managed lane is running without ready signal",
-            "blocked_kind": kind,
-            "command": suggestion["command"],
-        }
-    if kind == "send_continue":
-        if budget_state := continue_budget_state(
-            codex_home=Path(args.codex_home),
-            name=target.managed_name,
-            max_continue_count=args.max_continue_count,
-        ):
-            return {
-                "kind": kind,
-                "command": suggestion["command"],
-                "skipped": True,
-                "reason": "lane continue budget exhausted",
-                "lane_state": budget_state.to_dict(),
-            }
-        if run_budget := _run_budget_state(
-            codex_home=Path(args.codex_home),
-            name=target.managed_name,
-            max_run_minutes=args.max_run_minutes,
-        ):
-            return {
-                "kind": kind,
-                "command": suggestion["command"],
-                "skipped": True,
-                "reason": "lane run budget exhausted",
-                "run_budget": run_budget,
-            }
-    if cooldown_state := prompt_cooldown_state(
-        codex_home=Path(args.codex_home),
-        name=target.managed_name,
-        cooldown_seconds=args.prompt_cooldown,
-    ):
-        return {
-            "kind": kind,
-            "command": suggestion["command"],
-            "skipped": True,
-            "reason": "lane prompt cooldown active",
-            "lane_state": cooldown_state.to_dict(),
-        }
-    result = send_to_managed_codex(
-        codex_home=Path(args.codex_home),
-        name=target.managed_name,
-        text=EXECUTABLE_ADVICE_TEXT[kind],
-        run=subprocess.run,
-    )
-    record_lane_prompt(
-        codex_home=Path(args.codex_home),
-        name=result.record.name,
-        tmux_session=result.record.tmux_session,
-        status=target.supervisor_status or target.status,
-        prompt_kind=kind,
-    )
-    return {
-        "kind": kind,
-        "command": suggestion["command"],
-        "text": result.text,
-        "managed": {
-            "name": result.record.name,
-            "record_id": result.record.record_id,
-            "tmux_session": result.record.tmux_session,
-        },
-    }
-
-
-def _run_budget_state(
-    *,
-    codex_home: Path,
-    name: str,
-    max_run_minutes: int,
-) -> dict[str, Any] | None:
-    if max_run_minutes <= 0:
-        return None
-    records = [
-        record
-        for record in read_managed_records(default_registry_path(codex_home))
-        if record.name == name
-    ]
-    if not records:
-        return None
-    latest = max(records, key=lambda record: _timestamp_sort_value(record.started_at))
-    started_at = _parse_timestamp(latest.started_at)
-    if started_at is None:
-        return None
-    elapsed_seconds = max(0, int((_utc_now() - started_at).total_seconds()))
-    if elapsed_seconds < max_run_minutes * 60:
-        return None
-    return {
-        "name": latest.name,
-        "record_id": latest.record_id,
-        "started_at": latest.started_at,
-        "elapsed_seconds": elapsed_seconds,
-        "max_run_minutes": max_run_minutes,
-    }
-
-
-def _suggestion_by_kind(
-    suggestions: list[dict[str, str]], kind: str
-) -> dict[str, str] | None:
-    for suggestion in suggestions:
-        if suggestion["kind"] == kind:
-            return suggestion
-    return None
 
 
 def _target_session(report: Any, session_id: str | None) -> Any | None:
