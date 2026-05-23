@@ -219,6 +219,34 @@ def test_select_capacity_call_rejects_arguments_outside_contract_enum():
     assert "not allowed by input_contract enum" in str(exc_info.value)
 
 
+def test_select_capacity_call_rejects_required_inputs_not_declared_in_properties():
+    provider = RecordingProvider(
+        json.dumps(
+            {
+                "capacity_id": "artifact.review",
+                "arguments": {},
+                "confidence": 0.75,
+                "rationale": "should not be called",
+            }
+        )
+    )
+    capacity = _capacity(
+        input_contract={
+            "type": "object",
+            "required": ["artifact_ref", "question", "raw_content"],
+            "properties": {
+                "artifact_ref": {"type": "string"},
+                "question": {"type": "string"},
+            },
+        }
+    )
+
+    with pytest.raises(ValueError, match="required inputs must be declared"):
+        select_capacity_call(provider, goal="检查摘要", capacities=[capacity])
+
+    assert provider.calls == []
+
+
 def test_select_capacity_call_rejects_unoffered_capacity():
     provider = RecordingProvider(
         json.dumps(

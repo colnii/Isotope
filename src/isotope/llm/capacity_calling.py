@@ -177,12 +177,14 @@ def _build_messages(
 def _safe_capacity_manifest(capacity: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(capacity, Mapping):
         raise ValueError("capacity entries must be mappings")
+    input_contract = _safe_contract(capacity.get("input_contract", {}))
+    _validate_required_properties(input_contract)
     return {
         "capacity_id": _require_non_empty_string("capacity_id", capacity.get("capacity_id")),
         "title": _optional_string(capacity.get("title")),
         "description": _optional_string(capacity.get("description")),
         "domain_tags": _safe_string_list(capacity.get("domain_tags", [])),
-        "input_contract": _safe_contract(capacity.get("input_contract", {})),
+        "input_contract": input_contract,
     }
 
 
@@ -212,6 +214,19 @@ def _safe_contract_value(key: str, value: Any) -> Any:
     if _is_safe_scalar(value):
         return value
     return None
+
+
+def _validate_required_properties(input_contract: Mapping[str, Any]) -> None:
+    required = input_contract.get("required", [])
+    properties = input_contract.get("properties", {})
+    if not isinstance(required, list) or not isinstance(properties, Mapping):
+        return
+    missing = sorted(name for name in required if name not in properties)
+    if missing:
+        raise ValueError(
+            "capacity required inputs must be declared in input_contract properties: "
+            + ", ".join(missing)
+        )
 
 
 def _required_inputs(capacity: Mapping[str, Any]) -> list[str]:
