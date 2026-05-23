@@ -182,6 +182,7 @@ def _execute_agent_loop_capacity_step(
     server = InProcessServer(state_root)
     session = server.create_session()
     run = server.create_run(session["session_id"], goal)
+    tick_policy_before = server.get_agent_loop_tick_policy(run["run_id"])
     step_result = server.run_agent_loop_step(
         run["run_id"],
         {
@@ -190,12 +191,28 @@ def _execute_agent_loop_capacity_step(
             "inputs": dict(inputs),
         },
     )
+    tick_policy_after = server.get_agent_loop_tick_policy(run["run_id"])
     return {
         "executed": True,
         "state_root": str(state_root),
         "session_id": session["session_id"],
         "run_id": run["run_id"],
+        "tick_policy_before": tick_policy_before,
         "step_result": step_result,
+        "tick_policy_after": tick_policy_after,
+        "handoff": _agent_loop_handoff_summary(tick_policy_before, tick_policy_after),
+    }
+
+
+def _agent_loop_handoff_summary(
+    tick_policy_before: Mapping[str, Any],
+    tick_policy_after: Mapping[str, Any],
+) -> dict[str, Any]:
+    return {
+        "initial_next_tick_kind": tick_policy_before.get("max_next_tick_kind"),
+        "post_step_phase": tick_policy_after.get("phase"),
+        "post_step_should_continue": tick_policy_after.get("should_continue"),
+        "post_step_stop_reason": tick_policy_after.get("must_stop_reason"),
     }
 
 
@@ -267,3 +284,13 @@ def _print_capacity_plan_plain(payload: Mapping[str, Any]) -> None:
     print(f"status_reason: {status_reason}")
     print(f"launch_status: {launch_status}")
     print(f"agent_loop_executed: {bool(payload.get('agent_loop'))}")
+    agent_loop = payload.get("agent_loop")
+    handoff = agent_loop.get("handoff") if isinstance(agent_loop, Mapping) else None
+    if isinstance(handoff, Mapping):
+        print(f"agent_loop_next_tick_kind: {handoff.get('initial_next_tick_kind')}")
+        print(f"agent_loop_post_step_phase: {handoff.get('post_step_phase')}")
+        print(
+            "agent_loop_post_step_should_continue: "
+            f"{handoff.get('post_step_should_continue')}"
+        )
+        print(f"agent_loop_post_step_stop_reason: {handoff.get('post_step_stop_reason')}")

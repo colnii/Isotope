@@ -113,8 +113,19 @@ def test_supervisor_capacity_plan_can_execute_low_risk_agent_loop_step(tmp_path)
 
     loop = result["agent_loop"]
     assert loop["executed"] is True
+    assert loop["tick_policy_before"]["should_continue"] is True
+    assert loop["tick_policy_before"]["max_next_tick_kind"] == "planner_step"
     assert loop["step_result"]["step"] == "call_capability"
     assert loop["step_result"]["status"] == "completed"
+    assert loop["tick_policy_after"]["phase"] == "ready"
+    assert loop["tick_policy_after"]["should_continue"] is True
+    assert loop["tick_policy_after"]["must_stop_reason"] is None
+    assert loop["handoff"] == {
+        "initial_next_tick_kind": "planner_step",
+        "post_step_phase": "ready",
+        "post_step_should_continue": True,
+        "post_step_stop_reason": None,
+    }
     capability_run = loop["step_result"]["action_result"]["capability_run"]
     assert capability_run["capability_id"] == "artifact.review"
     assert capability_run["status"] == "completed"
@@ -231,7 +242,6 @@ def test_supervisor_capacity_command_handler_is_thin_and_runner_delegates():
         ),
     ) == 0
 
-
 def test_supervisor_capacity_command_handler_prints_json_status_reason(capsys):
     args = argparse.Namespace(
         capacity_command="plan",
@@ -276,3 +286,28 @@ def test_supervisor_capacity_command_handler_prints_json_status_reason(capsys):
     assert payload["status"] == "blocked"
     assert payload["status_reason"] == "not_launchable"
     assert payload["agent_loop"] is None
+
+
+def test_supervisor_capacity_plain_output_includes_agent_loop_handoff(tmp_path, capsys):
+    args = argparse.Namespace(
+        capacity_command="plan",
+        goal="检查 artifact review",
+        state_root=str(tmp_path / "state"),
+        execute_agent_loop=True,
+        json=False,
+    )
+
+    assert capacity_command.handle_capacity_command(
+        args,
+        provider=FakeCapacityProvider(
+            '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
+            '"rationale":"low risk review"}'
+        ),
+    ) == 0
+
+    output = capsys.readouterr().out
+    assert "agent_loop_executed: True" in output
+    assert "agent_loop_next_tick_kind: planner_step" in output
+    assert "agent_loop_post_step_phase: ready" in output
+    assert "agent_loop_post_step_should_continue: True" in output
+    assert "agent_loop_post_step_stop_reason: None" in output
