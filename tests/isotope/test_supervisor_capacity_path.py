@@ -355,3 +355,80 @@ def test_supervisor_capacity_plain_output_includes_agent_loop_handoff(tmp_path, 
     assert "agent_loop_post_step_phase: ready" in output
     assert "agent_loop_post_step_should_continue: True" in output
     assert "agent_loop_post_step_stop_reason: None" in output
+
+
+def test_supervisor_capacity_plain_output_explains_missing_inputs(capsys):
+    args = argparse.Namespace(
+        capacity_command="plan",
+        goal="搜索项目上下文但缺少参数",
+        state_root=None,
+        execute_agent_loop=True,
+        json=False,
+    )
+
+    assert capacity_command.handle_capacity_command(
+        args,
+        provider=FakeCapacityProvider(
+            json.dumps(
+                {
+                    "capacity_id": "supervisor.request_context",
+                    "arguments": {},
+                    "confidence": 0.74,
+                    "rationale": "needs context",
+                }
+            )
+        ),
+    ) == 0
+
+    output = capsys.readouterr().out
+    assert "capacity_id: supervisor.request_context" in output
+    assert "selection_status: missing_inputs" in output
+    assert "status_reason: needs_input" in output
+    assert "capacity_blocked_reason: missing_inputs" in output
+    assert "capacity_missing_inputs: codex_home, cwd, query" in output
+    assert "agent_loop_executed: False" in output
+
+
+def test_supervisor_capacity_plain_output_explains_not_launchable(tmp_path, capsys):
+    provider = FakeCapacityProvider(
+        '{"capacity_id":"context.search","arguments":{"query":"capacity"},'
+        '"confidence":0.77,"rationale":"not allowlisted"}'
+    )
+    runner_with_deferred_capability = CapabilityRunner(
+        catalog=CapabilityCatalog(
+            capabilities=[
+                Capability(
+                    capability_id="context.search",
+                    title="Context Search",
+                    description="Search project context.",
+                    maturity="v0.1",
+                    shelf="product_candidate",
+                    domain_tags=("context", "search"),
+                    input_contract={
+                        "type": "object",
+                        "required": ["query"],
+                        "properties": {"query": {"type": "string"}},
+                    },
+                    output_contract={"type": "object"},
+                    safety_boundaries=("low_sensitive_manifest_only",),
+                )
+            ]
+        )
+    )
+    payload = capacity_command.build_supervisor_capacity_plan(
+        goal="搜索项目文档",
+        provider=provider,
+        runner=runner_with_deferred_capability,
+        state_root=tmp_path / "state",
+        execute_agent_loop=True,
+    )
+
+    capacity_command._print_capacity_plan_plain(payload)
+
+    output = capsys.readouterr().out
+    assert "capacity_id: context.search" in output
+    assert "selection_status: ready_to_call" in output
+    assert "status_reason: not_launchable" in output
+    assert "launch_status: not_allowlisted" in output
+    assert "launch_blocking_reasons: not_allowlisted" in output
+    assert "agent_loop_executed: False" in output

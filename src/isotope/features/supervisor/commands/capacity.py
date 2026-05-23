@@ -283,6 +283,7 @@ def _print_capacity_plan_plain(payload: Mapping[str, Any]) -> None:
     print(f"selection_status: {selection_status}")
     print(f"status_reason: {status_reason}")
     print(f"launch_status: {launch_status}")
+    _print_capacity_blockers(payload, selection=selection, launch_plan=launch_plan)
     print(f"agent_loop_executed: {bool(payload.get('agent_loop'))}")
     agent_loop = payload.get("agent_loop")
     handoff = agent_loop.get("handoff") if isinstance(agent_loop, Mapping) else None
@@ -294,3 +295,24 @@ def _print_capacity_plan_plain(payload: Mapping[str, Any]) -> None:
             f"{handoff.get('post_step_should_continue')}"
         )
         print(f"agent_loop_post_step_stop_reason: {handoff.get('post_step_stop_reason')}")
+
+
+def _print_capacity_blockers(
+    payload: Mapping[str, Any],
+    *,
+    selection: Any,
+    launch_plan: Any,
+) -> None:
+    if payload.get("status_reason") == "needs_input" and isinstance(selection, Mapping):
+        missing_inputs = selection.get("missing_inputs")
+        if isinstance(missing_inputs, list) and missing_inputs:
+            print("capacity_blocked_reason: missing_inputs")
+            print(f"capacity_missing_inputs: {_comma_join_strings(missing_inputs)}")
+    if payload.get("status_reason") == "not_launchable" and isinstance(launch_plan, Mapping):
+        blocking_reasons = launch_plan.get("blocking_reasons")
+        if isinstance(blocking_reasons, list) and blocking_reasons:
+            print(f"launch_blocking_reasons: {_comma_join_strings(blocking_reasons)}")
+
+
+def _comma_join_strings(values: list[Any]) -> str:
+    return ", ".join(str(value) for value in values if isinstance(value, str))
