@@ -85,9 +85,11 @@ def _call_capability_step(api: Any, run_id: str, request: dict[str, Any]) -> dic
     from ...capabilities.runner import CapabilityRunner
 
     capability_id = _required_string(request, "capability_id")
+    inputs = _optional_dict(request, "inputs")
     capability_run = CapabilityRunner().run_capability(
         capability_id,
         root_path=_capability_run_root(api, run_id, capability_id),
+        inputs=inputs,
     )
     artifact_result = api.create_source_artifact(
         run_id,
@@ -145,6 +147,15 @@ def _required_dict(data: dict[str, Any], field_name: str) -> dict[str, Any]:
     if not isinstance(value, dict) or not value:
         raise ValueError(f"{field_name} must be a non-empty dict")
     return value
+
+
+def _optional_dict(data: dict[str, Any], field_name: str) -> dict[str, Any] | None:
+    value = data.get(field_name)
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise ValueError(f"{field_name} must be a dict")
+    return deepcopy(value)
 
 
 def _resource_ref_from_dict(raw: dict[str, Any]) -> ResourceRef:

@@ -116,12 +116,16 @@ def build_supervisor_capacity_plan(
     node = capacity_graph_node_from_call_selection(selection)
     graph = build_capacity_graph([node])
     capacity_plan = resolve_ready_capacity_plan(graph, states={})
-    launch_plan = capacity_runner.plan_capability_run(selection.capacity_id)
+    launch_plan = capacity_runner.plan_capability_run(
+        selection.capacity_id,
+        inputs=selection.arguments,
+    )
     agent_loop = None
-    if execute_agent_loop:
+    if execute_agent_loop and launch_plan.get("can_launch") is True:
         agent_loop = _execute_agent_loop_capacity_step(
             goal=goal,
             capability_id=selection.capacity_id,
+            inputs=selection.arguments,
             state_root=(
                 Path(state_root)
                 if state_root is not None
@@ -129,7 +133,7 @@ def build_supervisor_capacity_plan(
             ),
         )
     return {
-        "status": "ok",
+        "status": "ok" if launch_plan.get("can_launch") is True else "blocked",
         "kind": "supervisor_capacity_plan",
         "goal": goal,
         "selection": selection.to_dict(),
@@ -166,6 +170,7 @@ def _execute_agent_loop_capacity_step(
     *,
     goal: str,
     capability_id: str,
+    inputs: Mapping[str, Any],
     state_root: Path,
 ) -> dict[str, Any]:
     server = InProcessServer(state_root)
@@ -176,6 +181,7 @@ def _execute_agent_loop_capacity_step(
         {
             "step": "call_capability",
             "capability_id": capability_id,
+            "inputs": dict(inputs),
         },
     )
     return {

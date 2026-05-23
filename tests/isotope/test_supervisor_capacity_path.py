@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import inspect
+import json
 
 from isotope.features.supervisor import runner
 from isotope.features.supervisor.commands import capacity as capacity_command
@@ -54,6 +55,46 @@ def test_supervisor_capacity_plan_uses_capacity_calling_graph_and_capability_run
     assert result["capability_launch_plan"]["can_launch"] is True
     assert result["agent_loop"] is None
     assert "artifact.review" in provider.messages[0][1]["content"]
+
+
+def test_supervisor_capacity_plan_passes_selection_arguments_to_launch_plan(tmp_path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "notes.md").write_text(
+        "Supervisor request_context can retrieve project context.\n",
+        encoding="utf-8",
+    )
+    codex_home = tmp_path / "codex-home"
+    provider = FakeCapacityProvider(
+        json.dumps(
+            {
+                "capacity_id": "supervisor.request_context",
+                "arguments": {
+                    "codex_home": str(codex_home),
+                    "cwd": str(workspace),
+                    "query": "request_context project context",
+                    "max_results": 2,
+                },
+                "confidence": 0.91,
+                "rationale": "needs existing project context",
+            }
+        )
+    )
+
+    result = capacity_command.build_supervisor_capacity_plan(
+        goal="搜索当前项目上下文",
+        provider=provider,
+        state_root=tmp_path / "state",
+        execute_agent_loop=False,
+    )
+
+    assert result["status"] == "ok"
+    assert result["selection"]["capacity_id"] == "supervisor.request_context"
+    assert result["selection"]["arguments"]["query"] == "request_context project context"
+    assert result["capability_launch_plan"]["capability_id"] == "supervisor.request_context"
+    assert result["capability_launch_plan"]["can_launch"] is True
+    assert result["capability_launch_plan"]["missing_inputs"] == []
+    assert result["agent_loop"] is None
 
 
 def test_supervisor_capacity_plan_can_execute_low_risk_agent_loop_step(tmp_path):
@@ -120,6 +161,49 @@ def test_supervisor_capacity_plan_blocks_missing_inputs_without_graph_call_or_ex
     assert result["capacity_graph"]["status"] == "blocked"
     assert result["capacity_graph"]["summary"]["ready"] == 0
     assert result["capacity_graph"]["calls"] == []
+    assert result["agent_loop"] is None
+
+
+def test_supervisor_capacity_plan_does_not_execute_unlaunchable_capacity(tmp_path):
+    provider = FakeCapacityProvider(
+        '{"capacity_id":"context.search","arguments":{"query":"capacity"},'
+        '"confidence":0.77,"rationale":"not allowlisted"}'
+    )
+    runner_with_deferred_capability = CapabilityRunner(
+        catalog=CapabilityCatalog(
+            capabilities=[
+                Capability(
+                    capability_id="context.search",
+                    title="Context Search",
+                    description="Search project context.",
+                    maturity="v0.1",
+                    shelf="product_candidate",
+                    domain_tags=("context", "search"),
+                    input_contract={
+                        "type": "object",
+                        "required": ["query"],
+                        "properties": {"query": {"type": "string"}},
+                    },
+                    output_contract={"type": "object"},
+                    safety_boundaries=("low_sensitive_manifest_only",),
+                )
+            ]
+        )
+    )
+
+    result = capacity_command.build_supervisor_capacity_plan(
+        goal="搜索项目文档",
+        provider=provider,
+        runner=runner_with_deferred_capability,
+        state_root=tmp_path / "state",
+        execute_agent_loop=True,
+    )
+
+    assert result["status"] == "blocked"
+    assert result["selection"]["status"] == "ready_to_call"
+    assert result["capacity_graph"]["status"] == "ready"
+    assert result["capability_launch_plan"]["can_launch"] is False
+    assert result["capability_launch_plan"]["status"] == "not_allowlisted"
     assert result["agent_loop"] is None
 
 

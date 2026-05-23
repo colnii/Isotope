@@ -169,6 +169,41 @@ def test_agent_loop_step_driver_can_call_allowlisted_capability_as_one_step(tmp_
     _assert_no_forbidden_content_keys(result)
 
 
+def test_agent_loop_step_driver_passes_inputs_to_capability_runner(tmp_path):
+    api, run_id = _new_run(tmp_path)
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "notes.md").write_text(
+        "Supervisor request_context can retrieve project context.\n",
+        encoding="utf-8",
+    )
+    codex_home = tmp_path / "codex-home"
+
+    result = api.run_agent_loop_step(
+        run_id,
+        {
+            "step": "call_capability",
+            "capability_id": "supervisor.request_context",
+            "inputs": {
+                "codex_home": str(codex_home),
+                "cwd": str(workspace),
+                "query": "request_context project context",
+                "max_results": 2,
+            },
+        },
+    )
+
+    assert result["step"] == "call_capability"
+    assert result["status"] == "completed"
+    capability_run = result["action_result"]["capability_run"]
+    assert capability_run["capability_id"] == "supervisor.request_context"
+    assert capability_run["status"] == "completed"
+    assert capability_run["runner_kind"] == "deterministic_readonly"
+    assert capability_run["context_result"]["item_count"] >= 1
+    assert (codex_home / "supervisor" / "context_results.jsonl").is_file()
+    _assert_no_forbidden_content_keys(result)
+
+
 def test_agent_loop_step_driver_rejects_unavailable_step_without_side_effects(tmp_path):
     api, run_id = _new_run(tmp_path)
     before_events = list(api.get_events(run_id))

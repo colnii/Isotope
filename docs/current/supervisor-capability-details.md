@@ -131,8 +131,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   批量进入目标队列；写入复用编辑后的 candidates，不再二次调用 LLM。
 - `capacity plan` 是 Supervisor 的第一条 `capacity calling` 接入路径：
   默认只让 LLM 选择一个能力并生成 `capacity_graph` 与 capability launch plan；
-  缺少必填输入时停在 plan 层，不生成可执行 graph call；显式
-  `--execute-agent-loop` 才通过 agent loop 执行 allowlist 低风险能力。
+  LLM 填好的 `arguments` 会进入 launch plan；缺少必填输入或 launch plan
+  不可执行时停在 plan 层，不生成可执行 graph call；显式
+  `--execute-agent-loop` 才通过 agent loop 带 `inputs` 执行 allowlist 低风险能力。
 - `supervisor.request_context` 已注册为可发现 capability：`list/search/describe`
   能看到它，`plan/run --input-json` 会复用现有
   `request_project_context`，保持 workspace read-only、BM25 排序和原有
