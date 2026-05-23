@@ -176,6 +176,46 @@ def test_supervisor_runner_delegates_llm_action_execution_helpers():
         assert f"def {function_name}(" not in source
 
 
+def test_supervisor_runner_delegates_llm_side_effect_execution_helpers():
+    execution_module = importlib.import_module(
+        "isotope.features.supervisor.commands.llm_execution"
+    )
+
+    assert runner._execute_resume_action is execution_module.execute_resume_action
+    assert runner._execute_launch_action is execution_module.execute_launch_action
+    assert runner._execute_context_action is execution_module.execute_context_action
+    assert runner._execute_ask_user_action is execution_module.execute_ask_user_action
+    assert runner._prepare_launch_worktree is execution_module.prepare_launch_worktree
+    assert runner._worker_codex_model is execution_module.worker_codex_model
+    assert runner._worker_codex_config is execution_module.worker_codex_config
+    assert (
+        runner._running_managed_process_by_name
+        is execution_module.running_managed_process_by_name
+    )
+    assert runner._cwd_is_existing_dir is execution_module.cwd_is_existing_dir
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_execute_resume_action",
+        "_execute_launch_action",
+        "_execute_context_action",
+        "_execute_ask_user_action",
+        "_prepare_launch_worktree",
+        "_git_root_for_worktree",
+        "_safe_worktree_name",
+        "_relative_cwd_in_repo",
+        "_running_managed_process_by_name",
+        "_running_managed_process_for_session",
+        "_path_identity",
+        "_cwd_is_existing_dir",
+        "_worker_profile_from_args",
+        "_worker_profile_for_action",
+        "_worker_codex_model",
+        "_worker_codex_config",
+    ):
+        assert f"def {function_name}(" not in source
+
+
 def test_supervisor_runner_delegates_daemon_command_helpers():
     daemon_module = importlib.import_module(
         "isotope.features.supervisor.commands.daemon_command"
