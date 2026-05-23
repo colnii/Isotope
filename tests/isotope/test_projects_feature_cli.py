@@ -304,3 +304,70 @@ def test_project_cli_appends_workspace_items_to_existing_project(tmp_path):
         "search_results": 5,
     }
     _assert_low_sensitive(payload)
+
+
+def test_project_cli_workspace_add_uses_refreshed_linked_summaries(tmp_path):
+    created = _run_cli(
+        "workspace",
+        "--root",
+        str(tmp_path),
+        "--project-name",
+        "portfolio demo",
+        "--project-summary",
+        "autumn recruiting workspace",
+        "--task-goal",
+        "build portfolio story",
+        "--task-message",
+        "private task note",
+        "--file-name",
+        "portfolio-notes.md",
+        "--file-summary",
+        "canonical file summary",
+        "--file-content",
+        "private file content",
+        "--search-query",
+        "portfolio",
+        "--json",
+    )
+    created_workspace = json.loads(created.stdout)["workspace"]
+    project_id = created_workspace["project_detail"]["project"]["project_id"]
+    original_task_summary = created_workspace["project_detail"]["tasks"][0]["result_summary"]
+    original_file_summary = created_workspace["project_detail"]["files"][0]["summary"]
+    task_index_path = tmp_path / "tasks" / "index.json"
+    task_index = json.loads(task_index_path.read_text(encoding="utf-8"))
+    task_index["tasks"][0]["result_summary"] = "stale task index summary"
+    task_index_path.write_text(json.dumps(task_index), encoding="utf-8")
+    file_index_path = tmp_path / "files" / "index.json"
+    file_index = json.loads(file_index_path.read_text(encoding="utf-8"))
+    file_index["files"][0]["summary"] = "stale file index summary"
+    file_index_path.write_text(json.dumps(file_index), encoding="utf-8")
+
+    result = _run_cli(
+        "workspace-add",
+        "--root",
+        str(tmp_path),
+        "--project-id",
+        project_id,
+        "--task-goal",
+        "polish portfolio case study",
+        "--task-message",
+        "private second task note",
+        "--file-name",
+        "portfolio-case-study.md",
+        "--file-summary",
+        "portfolio case study notes",
+        "--file-content",
+        "private second file content",
+        "--search-query",
+        "portfolio",
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    payload_text = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+    assert "stale task index summary" not in payload_text
+    assert "stale file index summary" not in payload_text
+    assert original_task_summary in payload_text
+    assert original_file_summary in payload_text
+    _assert_low_sensitive(payload)
