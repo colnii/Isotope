@@ -111,6 +111,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   标题、类型和低敏来源摘要；输出层会按 allowlist 再过滤
   `source_ref`，避免把 prompt/log/key 类字段暴露到页面；web 默认折叠
   通知列表，只显示未读/总数和最近摘要，展开后最多显示最近 50 条。
+- `dashboard JSON` 和 `/dashboard.json` 会在顶层输出
+  `state_snapshot_meta`，只包含 snapshot kind、schema version、schema label
+  和来源账本说明，调用方不用展开完整 `state_snapshot` 也能确认读模型版本。
 - `build_supervisor_state_snapshot(...)` 已提供只读低敏状态投影，统一读取
   active goals、goal status、decision requests、lane failure、worker events
   和 notifications；当前先作为 read model（读取模型）存在，不改变既有账本

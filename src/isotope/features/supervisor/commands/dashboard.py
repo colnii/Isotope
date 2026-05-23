@@ -8,6 +8,10 @@ from typing import Any
 
 from isotope.features.notifications.flow import NotificationFlow
 from isotope.features.supervisor.current_batch import build_current_batch_view
+from isotope.features.supervisor.commands.snapshot_display import (
+    STATE_SNAPSHOT_SOURCE_LABEL,
+    state_snapshot_schema_label,
+)
 from isotope.platform.state.multi_worker import (
     build_multi_worker_status_payload,
 )
@@ -71,6 +75,11 @@ def dashboard_payload(
         notification_items,
         state_snapshot=state_snapshot,
     )
+    snapshot = state_snapshot or dashboard_state_snapshot_from_items(
+        active_goals=active_goals or [],
+        decision_requests=decision_requests or [],
+        notifications=notification_items,
+    )
     return {
         "status": "ok",
         "generated_at": report.generated_at,
@@ -86,12 +95,8 @@ def dashboard_payload(
         "decision_requests": decision_requests or [],
         "notifications": notification_items,
         "notification_counts": notification_counts,
-        "state_snapshot": state_snapshot
-        or dashboard_state_snapshot_from_items(
-            active_goals=active_goals or [],
-            decision_requests=decision_requests or [],
-            notifications=notification_items,
-        ),
+        "state_snapshot_meta": dashboard_state_snapshot_meta(snapshot),
+        "state_snapshot": snapshot,
     }
 
 
@@ -116,6 +121,15 @@ def dashboard_notification_counts(
 
 def dashboard_state_snapshot(codex_home: Path) -> dict[str, Any]:
     return build_supervisor_state_snapshot(codex_home=codex_home)
+
+
+def dashboard_state_snapshot_meta(snapshot: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "kind": snapshot.get("kind"),
+        "schema_version": snapshot.get("schema_version"),
+        "schema_label": state_snapshot_schema_label(snapshot),
+        "source_label": STATE_SNAPSHOT_SOURCE_LABEL,
+    }
 
 
 def dashboard_state_snapshot_from_items(

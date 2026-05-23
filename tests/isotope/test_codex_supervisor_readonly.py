@@ -877,6 +877,15 @@ def test_codex_supervisor_runner_dashboard_json_includes_notifications(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["notifications"][:2] == [created.to_dict(), marked.to_dict()]
+    assert payload["state_snapshot_meta"] == {
+        "kind": "supervisor_state_snapshot",
+        "schema_version": 1,
+        "schema_label": "supervisor_state_snapshot v1",
+        "source_label": (
+            "goal queue / decision requests / lane state / "
+            "worker events / notifications"
+        ),
+    }
     assert payload["notifications"][2] == {
         **unsafe.to_dict(),
         "source_ref": {"ref_type": "supervisor_run", "run_id": "run_unsafe"},
@@ -2768,6 +2777,15 @@ def test_codex_supervisor_web_dashboard_payload_builder_keeps_page_fields(tmp_pa
     assert payload["workspace_cwd"] == "/tmp/isotope-workspace"
     assert payload["daemon"]["status"] == "not_running"
     assert payload["watcher"]["status"] == "not_running"
+    assert payload["state_snapshot_meta"] == {
+        "kind": "supervisor_state_snapshot",
+        "schema_version": 1,
+        "schema_label": "supervisor_state_snapshot v1",
+        "source_label": (
+            "goal queue / decision requests / lane state / "
+            "worker events / notifications"
+        ),
+    }
     assert payload["state_snapshot"]["summary"] == {
         "active_goals": 0,
         "goals_done": 0,
