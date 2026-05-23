@@ -3,8 +3,21 @@ from __future__ import annotations
 import json
 from dataclasses import asdict
 
+import isotope.features.supervisor.state.multi_worker as supervisor_multi_worker
+import isotope.platform.state.multi_worker as platform_multi_worker
 from isotope.features.supervisor import runner
 from isotope.platform.schemas.memory import MemoryRecord
+
+
+def test_multi_worker_status_uses_platform_state_implementation():
+    assert (
+        supervisor_multi_worker.build_multi_worker_status_payload
+        is platform_multi_worker.build_multi_worker_status_payload
+    )
+    assert (
+        supervisor_multi_worker.render_multi_worker_status_plain
+        is platform_multi_worker.render_multi_worker_status_plain
+    )
 
 
 def test_supervisor_worker_manager_groups_memory_events_and_capacity_calls(

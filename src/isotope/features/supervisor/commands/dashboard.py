@@ -8,7 +8,7 @@ from typing import Any
 
 from isotope.features.notifications.flow import NotificationFlow
 from isotope.features.supervisor.current_batch import build_current_batch_view
-from isotope.features.supervisor.state.multi_worker import (
+from isotope.platform.state.multi_worker import (
     build_multi_worker_status_payload,
 )
 from isotope.features.supervisor.state.projection import build_supervisor_state_snapshot

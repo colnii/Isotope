@@ -5,6 +5,7 @@ from .decision_ledger import DecisionRequest, DecisionRequestLedger
 from .event_store import FileEventStore
 from .failure_ledger import FailureLedger
 from .memory_store import FileMemoryStore, JsonlMemoryStore, MemoryStore
+from .multi_worker import build_multi_worker_status_payload, render_multi_worker_status_plain
 from .projector import RunProjector, RunState
 from .worker_event_channel import (
     DEFAULT_CHANNEL,
@@ -24,6 +25,8 @@ __all__ = [
     "FileMemoryStore",
     "JsonlMemoryStore",
     "MemoryStore",
+    "build_multi_worker_status_payload",
+    "render_multi_worker_status_plain",
     "RunProjector",
     "RunState",
     "DEFAULT_CHANNEL",

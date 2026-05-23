@@ -11,7 +11,7 @@ from isotope.features.supervisor.state.memory_view import (
     build_memory_status_payload,
     render_memory_status_plain,
 )
-from isotope.features.supervisor.state.multi_worker import (
+from isotope.platform.state.multi_worker import (
     build_multi_worker_status_payload,
     render_multi_worker_status_plain,
 )

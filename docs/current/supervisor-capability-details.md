@@ -749,8 +749,9 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   只聚合 worker review、integration review 和 active goals，不执行 merge、
   归档或删除 worktree。
 - `features/supervisor/commands/memory.py`：已承接 `memory`、
-  `worker-event` 和 `worker-manager` CLI handler；底层继续复用现有
-  memory view、multi-worker projection 和 `memory/worker_event_channel.py`。
+  `worker-event` 和 `worker-manager` CLI handler；底层继续复用 memory view，
+  并通过 `platform/state` 的 worker event channel、`WorkerEvent` schema
+  和 multi-worker read model 读取低敏 worker 状态。
 - `features/supervisor/state/projection.py`：已承接第一片只读 Supervisor
   state projection，复用 goal queue、decision request、lane state、
   worker event channel 和 notification index；dashboard/web/daemon
