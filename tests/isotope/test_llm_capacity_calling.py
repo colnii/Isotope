@@ -149,6 +149,41 @@ def test_select_capacity_call_rejects_arguments_outside_input_contract():
     assert "not allowed by capacity input_contract" in str(exc_info.value)
 
 
+def test_select_capacity_call_rejects_arguments_with_wrong_contract_type():
+    provider = RecordingProvider(
+        json.dumps(
+            {
+                "capacity_id": "artifact.review",
+                "arguments": {
+                    "artifact_ref": "artifact://run-1/summary",
+                    "question": "检查摘要",
+                    "max_results": "5",
+                },
+                "confidence": 0.75,
+                "rationale": "fills max_results with a string",
+            }
+        )
+    )
+    capacity = _capacity(
+        input_contract={
+            "type": "object",
+            "required": ["artifact_ref", "question"],
+            "properties": {
+                "artifact_ref": {"type": "string"},
+                "question": {"type": "string"},
+                "max_results": {"type": "integer"},
+            },
+        }
+    )
+
+    with pytest.raises(IsotopeError) as exc_info:
+        select_capacity_call(provider, goal="检查摘要", capacities=[capacity])
+
+    assert exc_info.value.code == "llm_capacity_invalid_response"
+    assert exc_info.value.category == "validation"
+    assert "does not match input_contract type" in str(exc_info.value)
+
+
 def test_select_capacity_call_rejects_unoffered_capacity():
     provider = RecordingProvider(
         json.dumps(

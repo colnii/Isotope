@@ -240,6 +240,46 @@ def _validate_argument_keys(
             "capacity arguments not allowed by capacity input_contract: "
             + ", ".join(unexpected),
         )
+    _validate_argument_types(arguments, properties=properties, provider=provider)
+
+
+def _validate_argument_types(
+    arguments: Mapping[str, Any],
+    *,
+    properties: Mapping[str, Any],
+    provider: CapacityCallingProvider,
+) -> None:
+    for name, value in arguments.items():
+        schema = properties.get(name)
+        if not isinstance(schema, Mapping):
+            continue
+        expected_type = schema.get("type")
+        if not isinstance(expected_type, str):
+            continue
+        if not _matches_contract_type(value, expected_type):
+            raise _invalid_response(
+                provider,
+                f"capacity argument {name} does not match input_contract type: "
+                f"{expected_type}",
+            )
+
+
+def _matches_contract_type(value: Any, expected_type: str) -> bool:
+    if expected_type == "string":
+        return isinstance(value, str)
+    if expected_type == "integer":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if expected_type == "number":
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    if expected_type == "boolean":
+        return isinstance(value, bool)
+    if expected_type == "object":
+        return isinstance(value, Mapping)
+    if expected_type == "array":
+        return isinstance(value, list)
+    if expected_type == "null":
+        return value is None
+    return True
 
 
 def _extract_json_object(text: str, *, provider: CapacityCallingProvider) -> dict[str, Any]:
