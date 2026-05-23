@@ -125,6 +125,30 @@ def test_select_capacity_call_reports_missing_required_arguments_without_executi
     assert selection.missing_inputs == ["question"]
 
 
+def test_select_capacity_call_rejects_arguments_outside_input_contract():
+    provider = RecordingProvider(
+        json.dumps(
+            {
+                "capacity_id": "artifact.review",
+                "arguments": {
+                    "artifact_ref": "artifact://run-1/summary",
+                    "question": "检查摘要",
+                    "raw_content": "PRIVATE_ARTIFACT_CONTENT_SHOULD_NOT_LEAK",
+                },
+                "confidence": 0.75,
+                "rationale": "tries to include extra data",
+            }
+        )
+    )
+
+    with pytest.raises(IsotopeError) as exc_info:
+        select_capacity_call(provider, goal="检查摘要", capacities=[_capacity()])
+
+    assert exc_info.value.code == "llm_capacity_invalid_response"
+    assert exc_info.value.category == "validation"
+    assert "not allowed by capacity input_contract" in str(exc_info.value)
+
+
 def test_select_capacity_call_rejects_unoffered_capacity():
     provider = RecordingProvider(
         json.dumps(

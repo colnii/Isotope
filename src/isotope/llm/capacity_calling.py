@@ -113,6 +113,7 @@ def select_capacity_call(
     arguments = payload.get("arguments")
     if not isinstance(arguments, dict):
         raise _invalid_response(provider, "capacity arguments must be a JSON object")
+    _validate_argument_keys(arguments, capacity=offered[capacity_id], provider=provider)
     confidence = _payload_confidence(payload, provider=provider)
     rationale = _payload_optional_string(payload, "rationale")
     required_inputs = _required_inputs(offered[capacity_id])
@@ -217,6 +218,28 @@ def _required_inputs(capacity: Mapping[str, Any]) -> list[str]:
     input_contract = capacity.get("input_contract", {})
     required = input_contract.get("required", []) if isinstance(input_contract, Mapping) else []
     return _safe_string_list(required)
+
+
+def _validate_argument_keys(
+    arguments: Mapping[str, Any],
+    *,
+    capacity: Mapping[str, Any],
+    provider: CapacityCallingProvider,
+) -> None:
+    input_contract = capacity.get("input_contract", {})
+    properties = (
+        input_contract.get("properties", {}) if isinstance(input_contract, Mapping) else {}
+    )
+    if not isinstance(properties, Mapping) or not properties:
+        return
+    allowed = {key for key in properties if isinstance(key, str)}
+    unexpected = sorted(key for key in arguments if key not in allowed)
+    if unexpected:
+        raise _invalid_response(
+            provider,
+            "capacity arguments not allowed by capacity input_contract: "
+            + ", ".join(unexpected),
+        )
 
 
 def _extract_json_object(text: str, *, provider: CapacityCallingProvider) -> dict[str, Any]:
