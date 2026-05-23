@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from isotope.platform.schemas.input_contract import matches_contract_type
+from isotope.platform.schemas.input_contract import (
+    contract_value_violation,
+    matches_contract_type,
+)
 
 
 @pytest.mark.parametrize(
@@ -40,3 +43,27 @@ def test_matches_contract_type_rejects_mismatched_json_like_types(value, expecte
 
 def test_matches_contract_type_allows_unknown_contract_type_for_forward_compatibility():
     assert matches_contract_type("anything", "future-type") is True
+
+
+def test_contract_value_violation_reports_type_mismatch_before_enum():
+    violation = contract_value_violation(
+        "summary",
+        {"type": "integer", "enum": ["summary"]},
+    )
+
+    assert violation == "type"
+
+
+def test_contract_value_violation_reports_enum_mismatch_after_type_match():
+    violation = contract_value_violation(
+        "raw",
+        {"type": "string", "enum": ["summary", "detail"]},
+    )
+
+    assert violation == "enum"
+
+
+def test_contract_value_violation_accepts_values_without_type_or_enum_mismatch():
+    assert contract_value_violation("summary", {"type": "string"}) is None
+    assert contract_value_violation("anything", {"type": "future-type"}) is None
+    assert contract_value_violation("anything", {}) is None

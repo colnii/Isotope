@@ -15,7 +15,7 @@ from typing import Any, Mapping
 from .catalog import CapabilityCatalog
 from ..demo import run_demo
 from ..features.supervisor.context import request_project_context
-from ..platform.schemas.input_contract import matches_contract_type
+from ..platform.schemas.input_contract import contract_value_violation
 
 
 SUPERVISOR_REQUEST_CONTEXT_CAPABILITY = "supervisor.request_context"
@@ -298,16 +298,14 @@ def _validate_inputs_against_contract(
         schema = properties.get(name)
         if not isinstance(schema, Mapping):
             continue
-        expected_type = schema.get("type")
-        if isinstance(expected_type, str) and not matches_contract_type(
-            value, expected_type
-        ):
+        violation = contract_value_violation(value, schema)
+        if violation == "type":
+            expected_type = schema.get("type")
             raise ValueError(
                 f"capability input {name} does not match input_contract type: "
                 f"{expected_type}"
             )
-        enum_values = schema.get("enum")
-        if isinstance(enum_values, list) and value not in enum_values:
+        if violation == "enum":
             raise ValueError(
                 f"capability input {name} is not allowed by input_contract enum"
             )

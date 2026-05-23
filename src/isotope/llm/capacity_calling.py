@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Mapping, Protocol
 
-from ..platform.schemas.input_contract import matches_contract_type
+from ..platform.schemas.input_contract import contract_value_violation
 from ..platform.errors import IsotopeError
 from .provider import LLMResponse
 
@@ -284,17 +284,15 @@ def _validate_argument_types(
         schema = properties.get(name)
         if not isinstance(schema, Mapping):
             continue
-        expected_type = schema.get("type")
-        if not isinstance(expected_type, str):
-            continue
-        if not matches_contract_type(value, expected_type):
+        violation = contract_value_violation(value, schema)
+        if violation == "type":
+            expected_type = schema.get("type")
             raise _invalid_response(
                 provider,
                 f"capacity argument {name} does not match input_contract type: "
                 f"{expected_type}",
             )
-        enum_values = schema.get("enum")
-        if isinstance(enum_values, list) and value not in enum_values:
+        if violation == "enum":
             raise _invalid_response(
                 provider,
                 f"capacity argument {name} is not allowed by input_contract enum",
