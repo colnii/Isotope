@@ -230,3 +230,49 @@ def test_supervisor_capacity_command_handler_is_thin_and_runner_delegates():
             '"rationale":"low risk review"}'
         ),
     ) == 0
+
+
+def test_supervisor_capacity_command_handler_prints_json_status_reason(capsys):
+    args = argparse.Namespace(
+        capacity_command="plan",
+        goal="搜索项目文档",
+        state_root=None,
+        execute_agent_loop=True,
+        json=True,
+    )
+    runner_with_deferred_capability = CapabilityRunner(
+        catalog=CapabilityCatalog(
+            capabilities=[
+                Capability(
+                    capability_id="context.search",
+                    title="Context Search",
+                    description="Search project context.",
+                    maturity="v0.1",
+                    shelf="product_candidate",
+                    domain_tags=("context", "search"),
+                    input_contract={
+                        "type": "object",
+                        "required": ["query"],
+                        "properties": {"query": {"type": "string"}},
+                    },
+                    output_contract={"type": "object"},
+                    safety_boundaries=("low_sensitive_manifest_only",),
+                )
+            ]
+        )
+    )
+
+    exit_code = capacity_command.handle_capacity_command(
+        args,
+        provider=FakeCapacityProvider(
+            '{"capacity_id":"context.search","arguments":{"query":"capacity"},'
+            '"confidence":0.77,"rationale":"not allowlisted"}'
+        ),
+        runner=runner_with_deferred_capability,
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "blocked"
+    assert payload["status_reason"] == "not_launchable"
+    assert payload["agent_loop"] is None

@@ -153,6 +153,7 @@ def handle_capacity_command(
     *,
     api: Any | None = None,
     provider: CapacityCallingProvider | None = None,
+    runner: CapabilityRunner | None = None,
 ) -> int:
     if args.capacity_command != "plan":
         raise ValueError(f"unsupported capacity command: {args.capacity_command}")
@@ -160,6 +161,7 @@ def handle_capacity_command(
     payload = build_supervisor_capacity_plan(
         goal=args.goal,
         provider=active_provider,
+        runner=runner,
         state_root=args.state_root,
         execute_agent_loop=args.execute_agent_loop,
     )
