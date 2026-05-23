@@ -117,13 +117,13 @@ class CapabilityRunner:
         status = self._catalog.get_capability_status(capability_id, env=env)
         scenario = _CAPABILITY_SCENARIOS.get(capability_id)
         required_inputs = _required_inputs(capability)
-        _validate_inputs_against_contract(capability, inputs=inputs)
         missing_inputs = _missing_inputs(required_inputs, inputs)
         if capability_id == SUPERVISOR_REQUEST_CONTEXT_CAPABILITY:
             _validate_supervisor_request_context_inputs(
                 inputs=inputs,
                 missing_inputs=missing_inputs,
             )
+        _validate_inputs_against_contract(capability, inputs=inputs)
         runner_kind = _runner_kind(capability, scenario=scenario)
         blocking_reasons: list[str] = []
         can_launch = False
@@ -180,6 +180,13 @@ class CapabilityRunner:
         env: Mapping[str, str] | None = None,
     ) -> dict[str, Any]:
         capability = self._lookup_capability(capability_id)
+        if capability_id == SUPERVISOR_REQUEST_CONTEXT_CAPABILITY:
+            required_inputs = _required_inputs(capability)
+            missing_inputs = _missing_inputs(required_inputs, inputs)
+            _validate_supervisor_request_context_inputs(
+                inputs=inputs,
+                missing_inputs=missing_inputs,
+            )
         _validate_inputs_against_contract(capability, inputs=inputs)
         shelf = capability["shelf"]
         if shelf in {"diagnostic", "experimental"}:
