@@ -355,6 +355,31 @@ def test_runner_plan_rejects_input_outside_contract_enum():
         )
 
 
+def test_runner_run_rejects_input_with_wrong_contract_type_before_allowlist(tmp_path):
+    catalog = CapabilityCatalog(
+        capabilities=[
+            _capability(
+                "custom.typed.capability",
+                "product_candidate",
+                input_contract={
+                    "type": "object",
+                    "required": [],
+                    "properties": {"max_results": {"type": "integer"}},
+                },
+            )
+        ]
+    )
+
+    with pytest.raises(ValueError, match="does not match input_contract type"):
+        _runner(catalog=catalog).run_capability(
+            "custom.typed.capability",
+            root_path=tmp_path,
+            inputs={"max_results": "5"},
+        )
+
+    assert not list(Path(tmp_path).rglob("*"))
+
+
 def test_request_context_capability_runs_existing_readonly_context_search(tmp_path):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
