@@ -28,7 +28,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - 主路径已经接入：Web/CLI、goal queue、fanout、current batch、
   dependency batch、worker/integration review、merge dispatch、
   decision/failure ledger adapter、Codex session reader、`capacity plan`、
-  `supervisor.request_context` capability。
+  `supervisor.request_context` capability、Supervisor state projection
+  （状态投影）。
 - 半成品或闲置：`agents/loop` 尚未驱动 Supervisor 主循环；
   `llm/capacity_calling.py`、`agents/scheduler/capacity_graph.py`、
   `capabilities/runner.py` 已完成 Supervisor plan-only 第一片，但尚未进入
@@ -56,6 +57,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 | 模型管理层 | `LLM summary`、`LLM planner` 和 TOML 号池 | `llm_summary.py` | 承担判断、调度和动作选择的 AI 路径 |
 | 状态协议层 | `SUPERVISOR_STATUS` 等状态协议 | `flow.py`、`registry.py` | 给被托管 Codex 主动汇报状态 |
 | 状态账本层 | lane state（窗口状态）和限频 | `lane_state.py` | 避免重复催促和刷屏 |
+| 状态投影层 | `build_supervisor_state_snapshot(...)` | `features/supervisor/state/projection.py` | 只读聚合 active goals、decision requests、lane failure、worker events 和 notifications，给后续 dashboard/daemon/loop 统一读取 |
 | 生命周期观测层 | `trace --json`、`loop.lifecycle_trace` | `features/supervisor/commands/trace.py`、`features/supervisor/runner.py` | 只读汇总 goal、worker、decision、merge/repair 和 cleanup 台账；payload/rendering 已迁出 runner |
 | 通知桥接层 | Supervisor event notifications/webhooks | `features/supervisor/notifications.py`、`features/notifications/flow.py` | 把 goal/decision/integration-review 事件派生成低敏通知或外部 POST |
 | 本地前端层 | `web`、`dashboard`、`/dashboard.json`、`/events`、`/managed/send`、`/llm-action`、`/goal/add`、daemon/watcher 控制接口 | `features/supervisor/web.py`、`features/supervisor/commands/dashboard.py` | 本机视图、bell 事件、目标写入、白名单发送、后台循环控制和手动模型建议入口；dashboard payload/plain renderer 已在命令层集中 |
@@ -109,6 +111,10 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   标题、类型和低敏来源摘要；输出层会按 allowlist 再过滤
   `source_ref`，避免把 prompt/log/key 类字段暴露到页面；web 默认折叠
   通知列表，只显示未读/总数和最近摘要，展开后最多显示最近 50 条。
+- `build_supervisor_state_snapshot(...)` 已提供只读低敏状态投影，统一读取
+  active goals、goal status、decision requests、lane failure、worker events
+  和 notifications；当前先作为 read model（读取模型）存在，不改变既有账本
+  写入格式。
 - `web` 会用“运行焦点”把后台循环、需要看的 Codex 窗口、工作中的
   Codex 窗口、当前目标和前三个重点项放到页面顶部，并优先显示当前
   Web 工作区内的 Codex 窗口，先给运行结论。
@@ -737,6 +743,10 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
 - `features/supervisor/commands/memory.py`：已承接 `memory`、
   `worker-event` 和 `worker-manager` CLI handler；底层继续复用现有
   memory view、multi-worker projection 和 `memory/worker_event_channel.py`。
+- `features/supervisor/state/projection.py`：已承接第一片只读 Supervisor
+  state projection，复用 goal queue、decision request、lane state、
+  worker event channel 和 notification index；后续 dashboard/daemon
+  可逐步改为读取该 snapshot，而不是继续拼散表。
 - `features/supervisor/status.py`：后续可下沉状态分类和状态依据生成。
 - `features/supervisor/advice.py`：后续可承接自动策略和执行白名单，避免
   `runner.py` 继续扩写动作执行分支。
@@ -747,9 +757,10 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
 
 ## 下一步顺序
 
-1. 用真实 daemon 长跑验证 cleanup/current dashboard 在多批任务中的稳定性。
-2. 后续再决定是否把通知接到更多 worker 生命周期事件。
-3. 再拆分 `runner.py` 中的自动执行、tmux 控制和 merge/worktree 编排代码。
+1. 先让 dashboard/daemon 的只读状态读取逐步复用 Supervisor state projection。
+2. 用真实 daemon 长跑验证 cleanup/current dashboard 在多批任务中的稳定性。
+3. 后续再决定是否把通知接到更多 worker 生命周期事件。
+4. 再拆分 `runner.py` 中的自动执行、tmux 控制和 merge/worktree 编排代码。
 
 ## 登记规则
 

@@ -30,7 +30,10 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    [架构迁移表](./supervisor-architecture-migration-table.md)，避免重复造轮子。
 4. AI agent 功能默认 AI-first；规则、白名单、冷却和工作区边界是 guardrail
    （护栏），不能替代模型主路径。
-5. 代码结构继续以 `src/isotope/` 为 Python 主包，不新增 `packages/`、
+5. `features/supervisor/state/projection.py` 已提供只读低敏 Supervisor state
+   projection（状态投影），统一读取 active goals、decision、lane failure、
+   worker events 和 notifications；后续 dashboard/daemon 接入前不要重复拼散表。
+6. 代码结构继续以 `src/isotope/` 为 Python 主包，不新增 `packages/`、
    `aios` 或 kernel 主叙事。
 
 ## 当前入口

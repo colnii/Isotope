@@ -36,7 +36,7 @@ Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
 | 债务 | 现状证据 | 目标 | 下一步 |
 | --- | --- | --- | --- |
 | `runner.py` 仍是过大 legacy 入口 | `daemon/up/check/watcher` 的命令层 payload 和 plain renderer 已抽到 `src/isotope/features/supervisor/commands/daemon_command.py`；`start-here/guide/discover` 的上手与接管命令层已抽到 `src/isotope/features/supervisor/commands/onboarding.py`；dashboard payload/plain renderer、managed lane linking 和 current batch projection 已补进 `src/isotope/features/supervisor/commands/dashboard.py`；`trace` 与 `loop` 共用的 lifecycle trace payload/plain renderer 已抽到 `src/isotope/features/supervisor/commands/trace.py`；`advise/supervise/loop` 复用的 command suggestion（命令建议）与 automation status（自动化状态）已抽到 `src/isotope/features/supervisor/commands/advice.py`；LLM action execution（模型动作执行分发）和 failure guard（失败护栏）已抽到 `src/isotope/features/supervisor/commands/llm_action.py`；LLM side-effect execution（模型动作副作用执行）的 `resume/launch/context/ask_user` 与 worktree helper 已抽到 `src/isotope/features/supervisor/commands/llm_execution.py`；fanout orchestration（并行派发编排）的计划、暂停、日志和执行汇总已抽到 `src/isotope/features/supervisor/commands/fanout.py`；rule-based auto action（规则自动动作）选择已抽到 `src/isotope/features/supervisor/commands/auto_action.py`；`cleanup` 的 worktree 删除护栏和候选扫描已收进 `src/isotope/features/supervisor/commands/cleanup_worktree.py`；`decision/context/replan/memory/worker-event/worker-manager` 的只读或状态命令 handler 已抽到 `src/isotope/features/supervisor/commands/decision.py`、`context.py`、`replan.py` 和 `memory.py`；`runner.py` 仍承载 loop、dispatch、merge、失败记录和部分状态判断等职责 | 让 `runner.py` 只保留入口转发和兼容 glue（胶水代码） | 下一批优先拆 `runner.py` 中的 loop payload/build orchestration、tmux 控制或 merge/worktree promotion；每次新增 Supervisor 行为前先判断能否落到 `commands/`、`agents/`、`integrations/codex/`、`platform/state/` 或 `workspace/` |
-| Supervisor 对 `platform/` 复用不足 | 已有 decision/failure ledger 进入 `platform/state/`，但大量 worker 状态、失败策略和控制面仍留在 feature 私有实现 | 只把跨 agent 的状态事实、账本接口和 schema 下沉到 `platform/` | 优先抽 decision request / failure ledger 的通用账本接口，避免把产品视图下沉到底座 |
+| Supervisor 对 `platform/` 复用不足 | 已有 decision/failure ledger 进入 `platform/state/`；`features/supervisor/state/projection.py` 已提供第一片只读状态投影，聚合 active goals、decision、lane failure、worker event 和 notification；但大量 worker 状态、失败策略和控制面仍留在 feature 私有实现 | 只把跨 agent 的状态事实、账本接口和 schema 下沉到 `platform/`；产品视图先通过 read model（读取模型）收敛 | 下一步让 dashboard/daemon 读取 projection，再评估哪些状态事实应下沉到 `platform/state` |
 | 新功能容易绕过既有调度模块 | `agents/scheduler/` 已有 goal queue、fanout、dependency graph、dependency batches 和 capacity graph | Supervisor fanout、batch、capacity 相关逻辑默认复用 scheduler 层 | worker 工单必须列出将复用的 scheduler API；不能在 `runner.py` 中再写一套 DAG 或批次判断 |
 
 ## 2026-05-22 能力盘点与架构对齐审计
@@ -86,6 +86,8 @@ Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
 3. **统一状态、事件和记忆投影。**
    goal、worker、decision、failure、memory 和 notification 应写成通用状态事实。
    Web/dashboard/daemon 读取投影后，多 worker 协调才不会继续靠 feature 私有 JSONL 拼接。
+   进展：`features/supervisor/state/projection.py` 已完成第一片只读
+   `build_supervisor_state_snapshot(...)`，先聚合现有账本，不改变写入格式。
 
 ## 迁移表
 
@@ -105,6 +107,7 @@ Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
 | context request（上下文请求） | `context.py`, `runner.py` | `rag/` + `agents/context/` | 抽检索接口，feature 留命令包装 | 当前偏 rg/BM25-style，后续可接语义检索。 |
 | capacity calling（能力调用） | `llm/capacity_calling.py`, `agents/loop/` | `capabilities/` + `agents/loop/` | 优先打通真实 loop，不再只做原型 | Supervisor planner 应能调用能力，而不是写死动作。 |
 | memory view / worker event channel | `features/supervisor/state/`, `memory/worker_event_channel.py` | `memory/` + `platform/state/` | 先统一 store 和事件 schema | 多 worker 协调要复用同一记忆/事件层。 |
+| state projection（状态投影） | `features/supervisor/state/projection.py` | 先留在 `features/supervisor/state/`，后续按事实层下沉 | 已新增只读 snapshot 聚合 active goals、decision requests、lane failure、worker events 和 notifications；下一步接 dashboard/daemon 读取 | 当前只做 read model，不新增账本、不改写入格式。 |
 | daemon / watcher | `commands/daemon_command.py`, `daemon.py`, `runner.py` | `agents/runtime/` 或 `runtime/` | 命令层 payload/plain renderer 已从 runner 抽出；下一步再抽循环运行器、活动投影和生命周期管理 | 后台循环是运行时能力，不应塞在一个命令文件里。 |
 | failure ledger / retry guard | `failure_ledger.py`, `runner.py` | `platform/state/` + `agents/policy/` | 先抽失败账本，再抽重试策略 | 失败记录和策略要能服务其他 agent。 |
 | 通知桥 | `features/supervisor/notifications.py` | `features/notifications/` + adapter | 已有薄整合，继续减少私有字段 | 通知是产品能力，Supervisor 只负责派生事件。 |
