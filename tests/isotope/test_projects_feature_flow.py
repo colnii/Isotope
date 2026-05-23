@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import pytest
 from typing import Any
 
@@ -134,3 +135,41 @@ def test_project_flow_rejects_missing_file_link(tmp_path):
         project_flow.add_file(project.project_id, "artifact_missing")
 
     assert project_flow.get_project(project.project_id).file_ids == ()
+
+
+def test_project_flow_rejects_reloaded_project_with_missing_task_link(tmp_path):
+    project_flow = ProjectFlow.in_process(tmp_path)
+    project = project_flow.create_project(
+        name="portfolio demo",
+        summary="usable demo workspace",
+    )
+    index_path = tmp_path / "projects" / "index.json"
+    payload = json.loads(index_path.read_text(encoding="utf-8"))
+    payload["projects"][0]["task_ids"] = ["task_missing"]
+    index_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+
+    reloaded = ProjectFlow.in_process(tmp_path)
+
+    with pytest.raises(ValueError, match="unknown task_id"):
+        reloaded.get_project(project.project_id)
+    with pytest.raises(ValueError, match="unknown task_id"):
+        reloaded.list_projects()
+
+
+def test_project_flow_rejects_reloaded_project_with_missing_file_link(tmp_path):
+    project_flow = ProjectFlow.in_process(tmp_path)
+    project = project_flow.create_project(
+        name="portfolio demo",
+        summary="usable demo workspace",
+    )
+    index_path = tmp_path / "projects" / "index.json"
+    payload = json.loads(index_path.read_text(encoding="utf-8"))
+    payload["projects"][0]["file_ids"] = ["artifact_missing"]
+    index_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+
+    reloaded = ProjectFlow.in_process(tmp_path)
+
+    with pytest.raises(ValueError, match="unknown file_id"):
+        reloaded.get_project(project.project_id)
+    with pytest.raises(ValueError, match="unknown file_id"):
+        reloaded.list_projects()

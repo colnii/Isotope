@@ -78,12 +78,15 @@ class ProjectFlow:
 
     def get_project(self, project_id: str) -> ProjectSummary:
         try:
-            return self._projects[project_id]
+            return self._validate_links(self._projects[project_id])
         except KeyError as exc:
             raise ValueError(f"unknown project_id: {project_id}") from exc
 
     def list_projects(self) -> list[ProjectSummary]:
-        return list(self._projects.values())
+        return [
+            self._validate_links(summary)
+            for summary in self._projects.values()
+        ]
 
     def get_project_detail(self, project_id: str) -> ProjectDetail:
         project = self.get_project(project_id)
@@ -128,6 +131,15 @@ class ProjectFlow:
     def _store_summary(self, summary: ProjectSummary) -> ProjectSummary:
         self._projects[summary.project_id] = summary
         self._save_index()
+        return summary
+
+    def _validate_links(self, summary: ProjectSummary) -> ProjectSummary:
+        task_flow = TaskFlow(self.core)
+        file_flow = FileFlow(self.core)
+        for task_id in summary.task_ids:
+            task_flow.get_task(task_id)
+        for file_id in summary.file_ids:
+            file_flow.get_file(file_id)
         return summary
 
     def _require_non_empty_text(self, field_name: str, value: str) -> str:
