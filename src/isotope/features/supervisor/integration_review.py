@@ -10,7 +10,7 @@ from typing import Any, Callable
 
 from .flow import _managed_process_log_excerpt, _supervisor_protocol_from_text
 from .registry import ManagedCodexRecord, default_registry_path, read_managed_records
-from .worker_test_gate import collect_worker_test_gate
+from .workers.test_gate import collect_worker_test_gate
 
 RunCommand = Callable[..., subprocess.CompletedProcess[str]]
 
