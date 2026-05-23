@@ -144,6 +144,107 @@ def test_codex_cli_backend_invokes_codex_exec_with_stdin_and_isotope_limits(tmp_
     assert "OPENAI_API_KEY" not in kwargs["env"]
 
 
+def test_supervisor_launch_exec_argv_builder_matches_managed_registry_shape(tmp_path):
+    argv = codex_cli.build_supervisor_launch_exec_argv(
+        codex_cli.CodexSupervisorCliConfig(
+            executable="codex",
+            workspace_root=str(tmp_path),
+            model="gpt-5.4-mini",
+            config_overrides=('model_reasoning_effort="low"',),
+        ),
+        prompt="继续实现 supervisor\n\nSUPERVISOR_STATUS: working",
+    )
+
+    assert argv == (
+        "codex",
+        "exec",
+        "-m",
+        "gpt-5.4-mini",
+        "-c",
+        'model_reasoning_effort="low"',
+        "-C",
+        str(tmp_path),
+        "--skip-git-repo-check",
+        "继续实现 supervisor\n\nSUPERVISOR_STATUS: working",
+    )
+
+
+def test_supervisor_tmux_launch_command_builder_matches_managed_registry_shape(tmp_path):
+    command = codex_cli.build_supervisor_tmux_launch_command(
+        codex_cli.CodexSupervisorCliConfig(
+            executable="codex",
+            workspace_root=str(tmp_path),
+        ),
+        tmux_session="isotope-lane-a",
+        prompt="继续实现 supervisor\n\nSUPERVISOR_STATUS: working",
+    )
+
+    assert command == (
+        "tmux",
+        "new-session",
+        "-d",
+        "-s",
+        "isotope-lane-a",
+        "-c",
+        str(tmp_path),
+        (
+            "codex --cd "
+            + str(tmp_path)
+            + " --no-alt-screen '继续实现 supervisor\n\nSUPERVISOR_STATUS: working'"
+        ),
+    )
+
+
+def test_supervisor_resume_exec_argv_builder_matches_managed_registry_shape(tmp_path):
+    argv = codex_cli.build_supervisor_resume_exec_argv(
+        codex_cli.CodexSupervisorCliConfig(
+            executable="codex",
+            workspace_root=str(tmp_path),
+            model="gpt-5.4-mini",
+            config_overrides=('model_reasoning_effort="low"',),
+        ),
+        session_id="019e35a2-e442-75e2-84ab-3761a685a736",
+        prompt="继续推进 supervisor 前端测试\n\nSUPERVISOR_STATUS: working",
+    )
+
+    assert argv == (
+        "codex",
+        "exec",
+        "-m",
+        "gpt-5.4-mini",
+        "-c",
+        'model_reasoning_effort="low"',
+        "-C",
+        str(tmp_path),
+        "--skip-git-repo-check",
+        "resume",
+        "019e35a2-e442-75e2-84ab-3761a685a736",
+        "继续推进 supervisor 前端测试\n\nSUPERVISOR_STATUS: working",
+    )
+
+
+def test_supervisor_resume_exec_argv_builder_matches_last_flag_shape(tmp_path):
+    argv = codex_cli.build_supervisor_resume_exec_argv(
+        codex_cli.CodexSupervisorCliConfig(
+            executable="codex",
+            workspace_root=str(tmp_path),
+        ),
+        last=True,
+        prompt="请汇报当前状态\n\nSUPERVISOR_STATUS: working",
+    )
+
+    assert argv == (
+        "codex",
+        "exec",
+        "-C",
+        str(tmp_path),
+        "--skip-git-repo-check",
+        "resume",
+        "--last",
+        "请汇报当前状态\n\nSUPERVISOR_STATUS: working",
+    )
+
+
 def test_codex_cli_backend_can_skip_git_repo_check_for_temp_workspace(tmp_path):
     workspace_root = tmp_path / "workspace"
     runner = RecordingProcessRunner(FakeCompletedProcess())

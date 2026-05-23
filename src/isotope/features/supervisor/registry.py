@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import shlex
 import subprocess
 import time
 import uuid
@@ -11,6 +10,13 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
+
+from isotope.integrations.codex.cli import (
+    CodexSupervisorCliConfig,
+    build_supervisor_launch_exec_argv,
+    build_supervisor_resume_exec_argv,
+    build_supervisor_tmux_launch_command,
+)
 
 from .bell_events import install_tmux_bell_hook
 
@@ -141,10 +147,6 @@ def launch_managed_codex(
     if not codex_bin_text:
         raise ValueError("codex_bin must not be empty")
     worker_role_text = _worker_role(worker_role)
-    codex_options = _codex_option_args(
-        codex_model=codex_model,
-        codex_config=codex_config,
-    )
     backend_text = backend.strip()
     if backend_text not in {"process", "tmux"}:
         raise ValueError("backend must be process or tmux")
@@ -155,22 +157,15 @@ def launch_managed_codex(
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"{record_id}.log"
     supervisor_prompt = _with_supervisor_protocol(prompt_text)
-    interactive_codex_command = (
-        codex_bin_text,
-        *codex_options,
-        "--cd",
-        str(workspace),
-        "--no-alt-screen",
-        supervisor_prompt,
+    command_config = CodexSupervisorCliConfig(
+        executable=codex_bin_text,
+        workspace_root=str(workspace),
+        model=codex_model,
+        config_overrides=codex_config,
     )
-    process_codex_command = (
-        codex_bin_text,
-        "exec",
-        *codex_options,
-        "-C",
-        str(workspace),
-        "--skip-git-repo-check",
-        supervisor_prompt,
+    process_codex_command = build_supervisor_launch_exec_argv(
+        command_config,
+        prompt=supervisor_prompt,
     )
     tmux_session_text: str | None = None
     pid = 0
@@ -190,15 +185,10 @@ def launch_managed_codex(
         tmux_session_text = (tmux_session or name_text).strip()
         if not tmux_session_text:
             raise ValueError("tmux_session must not be empty")
-        command = (
-            "tmux",
-            "new-session",
-            "-d",
-            "-s",
-            tmux_session_text,
-            "-c",
-            str(workspace),
-            shlex.join(interactive_codex_command),
+        command = build_supervisor_tmux_launch_command(
+            command_config,
+            tmux_session=tmux_session_text,
+            prompt=supervisor_prompt,
         )
         try:
             run(list(command), check=True, text=True, capture_output=True)
@@ -262,10 +252,6 @@ def resume_managed_codex(
     if not codex_bin_text:
         raise ValueError("codex_bin must not be empty")
     worker_role_text = _worker_role(worker_role)
-    codex_options = _codex_option_args(
-        codex_model=codex_model,
-        codex_config=codex_config,
-    )
     if last and session_text:
         raise ValueError("use either session_id or last, not both")
     if not last and not session_text:
@@ -276,21 +262,17 @@ def resume_managed_codex(
     log_dir = default_log_dir(codex_home)
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"{record_id}.log"
-    command_parts = [
-        codex_bin_text,
-        "exec",
-        *codex_options,
-        "-C",
-        str(workspace),
-        "--skip-git-repo-check",
-        "resume",
-    ]
-    if last:
-        command_parts.append("--last")
-    else:
-        command_parts.append(session_text or "")
-    command_parts.append(_with_supervisor_protocol(prompt_text))
-    command = tuple(command_parts)
+    command = build_supervisor_resume_exec_argv(
+        CodexSupervisorCliConfig(
+            executable=codex_bin_text,
+            workspace_root=str(workspace),
+            model=codex_model,
+            config_overrides=codex_config,
+        ),
+        session_id=session_text,
+        last=last,
+        prompt=_with_supervisor_protocol(prompt_text),
+    )
     with log_path.open("ab") as log_file:
         process = popen(
             list(command),
@@ -317,25 +299,6 @@ def resume_managed_codex(
     )
     append_managed_record(default_registry_path(codex_home), record)
     return record
-
-
-def _codex_option_args(
-    *,
-    codex_model: str | None,
-    codex_config: tuple[str, ...],
-) -> tuple[str, ...]:
-    args: list[str] = []
-    if codex_model is not None:
-        model = codex_model.strip()
-        if not model:
-            raise ValueError("codex_model must not be empty")
-        args.extend(["-m", model])
-    for item in codex_config:
-        config = item.strip()
-        if not config:
-            raise ValueError("codex_config entries must not be empty")
-        args.extend(["-c", config])
-    return tuple(args)
 
 
 def adopt_tmux_session(
