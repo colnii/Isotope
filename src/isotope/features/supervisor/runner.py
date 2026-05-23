@@ -333,6 +333,17 @@ from .commands.onboarding import (
     selected_discover_candidate as _selected_discover_candidate,
     start_here_payload as _start_here_payload,
 )
+from .commands.loop_state import (
+    IDLE_LOOP_REASON,
+    context_cwd_for_actionable_report as _context_cwd_for_actionable_report,
+    has_llm_action_target as _has_llm_action_target,
+    has_loop_managed_scope as _has_loop_managed_scope,
+    idle_loop_llm_action as _idle_loop_llm_action,
+    loop_allows_workspace_actions as _loop_allows_workspace_actions,
+    loop_without_autonomous_scope as _loop_without_autonomous_scope,
+    session_marks_terminal_done as _session_marks_terminal_done,
+    target_session as _target_session,
+)
 from .commands.advice import (
     active_goal_action_command_suggestions as _active_goal_action_command_suggestions,
     advice_payload as _advice_payload,
@@ -523,7 +534,6 @@ DEFAULT_GOAL_REPLENISH_PROMPT = " ".join(
         "只有满足拍板条件才生成需要用户决策的任务。",
     ]
 )
-IDLE_LOOP_REASON = "当前没有可控的 Supervisor 目标，先继续监控。"
 DASHBOARD_GROUP_LABELS = {
     "needs_attention": "需要看",
     "done": "已完成",
@@ -1625,49 +1635,6 @@ def _capacity_decision_goal(
     return None
 
 
-def _loop_without_autonomous_scope(
-    args: argparse.Namespace,
-    report: Any,
-    active_goals: list[dict[str, Any]],
-    explicit_goal: str | None,
-) -> bool:
-    if getattr(args, "command", None) != "loop":
-        return False
-    if getattr(args, "name", None):
-        return False
-    if explicit_goal or active_goals:
-        return False
-    return not _has_loop_managed_scope(report)
-
-
-def _loop_allows_workspace_actions(
-    args: argparse.Namespace,
-    active_goals: list[dict[str, Any]],
-    explicit_goal: str | None,
-) -> bool:
-    if getattr(args, "command", None) != "loop":
-        return True
-    return bool(getattr(args, "name", None) or explicit_goal or active_goals)
-
-
-def _has_loop_managed_scope(report: Any) -> bool:
-    for session in report.sessions:
-        if _is_active_managed_tmux_session(session):
-            return True
-        if _is_active_managed_process_session(session):
-            return True
-    return False
-
-
-def _idle_loop_llm_action() -> dict[str, Any]:
-    return {
-        "kind": "monitor",
-        "target_name": None,
-        "reason": IDLE_LOOP_REASON,
-        "command_suggestion": None,
-    }
-
-
 def _maybe_replan_after_context_request(
     args: argparse.Namespace,
     report: Any,
@@ -2007,15 +1974,6 @@ def _print_ask_user_action_plain(action: dict[str, Any]) -> None:
         print(f"上下文状态：{context_status}")
 
 
-def _target_session(report: Any, session_id: str | None) -> Any | None:
-    if session_id is None:
-        return None
-    for session in report.sessions:
-        if session.session_id == session_id:
-            return session
-    return None
-
-
 def _report_fingerprint(report: Any) -> tuple[object, ...]:
     """生成变化指纹；忽略生成时间和纯计时文案，避免空转被当作变化。"""
     return tuple(
@@ -2303,49 +2261,6 @@ def _context_cwd_for_report(report: Any) -> str | None:
 class _UnavailableSummaryProvider:
     def summarize(self, messages: list[dict[str, str]]) -> str:
         raise AssertionError("LLM provider should not be called without Supervisor context")
-
-
-def _has_llm_action_target(
-    report: Any,
-    command_suggestions: Any = None,
-    delete_worktree_candidates: Any = None,
-) -> bool:
-    if isinstance(delete_worktree_candidates, list) and delete_worktree_candidates:
-        return True
-    if any(
-        (
-            session.managed_name
-            and session.managed_tmux_session
-            and not _session_marks_terminal_done(session)
-        )
-        or _is_resume_capable_session(session)
-        for session in report.sessions
-    ):
-        return True
-    if _context_cwd_for_actionable_report(report) is not None:
-        return True
-    if not isinstance(command_suggestions, list):
-        return False
-    return any(
-        isinstance(item, dict)
-        and item.get("kind") in {"request_context", "launch_session"}
-        and isinstance(item.get("cwd"), str)
-        for item in command_suggestions
-    )
-
-
-def _session_marks_terminal_done(session: Any) -> bool:
-    return _is_completed_session(session) and _supervisor_next_marks_terminal_done(session)
-
-
-def _context_cwd_for_actionable_report(report: Any) -> str | None:
-    for session in report.sessions:
-        if _session_marks_terminal_done(session):
-            continue
-        cwd = getattr(session, "cwd", None)
-        if isinstance(cwd, str) and cwd:
-            return cwd
-    return None
 
 
 if __name__ == "__main__":

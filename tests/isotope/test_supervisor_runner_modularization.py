@@ -712,3 +712,44 @@ def test_supervisor_runner_delegates_tmux_auto_adoption_helpers():
         "_known_managed_tmux_sessions",
     ):
         assert f"def {function_name}(" not in source
+
+
+def test_supervisor_runner_delegates_loop_state_helpers():
+    loop_state_module = importlib.import_module(
+        "isotope.features.supervisor.commands.loop_state"
+    )
+
+    assert runner.IDLE_LOOP_REASON == loop_state_module.IDLE_LOOP_REASON
+    assert runner._target_session is loop_state_module.target_session
+    assert (
+        runner._loop_without_autonomous_scope
+        is loop_state_module.loop_without_autonomous_scope
+    )
+    assert (
+        runner._loop_allows_workspace_actions
+        is loop_state_module.loop_allows_workspace_actions
+    )
+    assert runner._has_loop_managed_scope is loop_state_module.has_loop_managed_scope
+    assert runner._idle_loop_llm_action is loop_state_module.idle_loop_llm_action
+    assert runner._has_llm_action_target is loop_state_module.has_llm_action_target
+    assert (
+        runner._session_marks_terminal_done
+        is loop_state_module.session_marks_terminal_done
+    )
+    assert (
+        runner._context_cwd_for_actionable_report
+        is loop_state_module.context_cwd_for_actionable_report
+    )
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_target_session",
+        "_loop_without_autonomous_scope",
+        "_loop_allows_workspace_actions",
+        "_has_loop_managed_scope",
+        "_idle_loop_llm_action",
+        "_has_llm_action_target",
+        "_session_marks_terminal_done",
+        "_context_cwd_for_actionable_report",
+    ):
+        assert f"def {function_name}(" not in source

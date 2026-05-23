@@ -784,6 +784,11 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   和 `loop` 共同使用的 advice payload、automation status 和
   command suggestion 生成；实际发送、预算、cooldown（冷却时间）和托管
   发送护栏已拆到 `features/supervisor/commands/advice_execution.py`。
+- `features/supervisor/commands/loop_state.py`：已承接 loop target/scope/
+  actionability（目标、作用域、可行动性）判断，包括 idle loop reason、
+  target session 查找、managed scope 检查、workspace action gate 和
+  terminal-done 过滤；继续通过 runner 兼容 alias 复用 advice/auto_action
+  的状态判断 contract。
 - `features/supervisor/commands/advice_execution.py`：已承接旧 command
   suggestion 执行路径，包括 `send_status`/`send_continue` 白名单校验、
   tmux target 选择、run budget、prompt cooldown、busy lane 拦截、
@@ -833,7 +838,7 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
    `platform/state`，同时保持入口继续复用 state projection。
 2. 用真实 daemon 长跑验证 cleanup/current dashboard 在多批任务中的稳定性。
 3. 后续再决定是否把通知接到更多 worker 生命周期事件。
-4. 再拆分 `runner.py` 中的 loop 状态拼装代码。
+4. 再拆分 `runner.py` 中的 loop payload 拼装或 capacity decision glue。
 
 ## 登记规则
 
