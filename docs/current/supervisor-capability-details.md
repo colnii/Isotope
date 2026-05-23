@@ -791,6 +791,10 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   target session 查找、managed scope 检查、workspace action gate 和
   terminal-done 过滤；继续通过 runner 兼容 alias 复用 advice/auto_action
   的状态判断 contract。
+- `features/supervisor/commands/workspace_scope.py`：已承接 loop/advise 共用的
+  workspace scope（工作区作用域）过滤、scope payload、workspace root 解析和
+  context cwd 选择；保留 runner alias 供 merge dispatch/promotion 等命令层
+  复用同一工作区边界。
 - `features/supervisor/commands/capacity.py`：已承接 capacity plan 命令、
   low-risk capability execution（低风险能力执行）和 loop
   `capacity_decisions` / `capacity_call_specs` 生产 glue；继续复用

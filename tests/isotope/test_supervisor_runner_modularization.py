@@ -774,3 +774,34 @@ def test_supervisor_runner_delegates_capacity_loop_helpers():
         "_capacity_decision_goal",
     ):
         assert f"def {function_name}(" not in source
+
+
+def test_supervisor_runner_delegates_workspace_scope_helpers():
+    workspace_scope_module = importlib.import_module(
+        "isotope.features.supervisor.commands.workspace_scope"
+    )
+
+    assert (
+        runner._action_report_for_workspace
+        is workspace_scope_module.action_report_for_workspace
+    )
+    assert (
+        runner._workspace_scope_payload
+        is workspace_scope_module.workspace_scope_payload
+    )
+    assert runner._workspace_root is workspace_scope_module.workspace_root
+    assert runner._session_in_workspace is workspace_scope_module.session_in_workspace
+    assert (
+        runner._context_cwd_for_report
+        is workspace_scope_module.context_cwd_for_report
+    )
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_action_report_for_workspace",
+        "_workspace_scope_payload",
+        "_workspace_root",
+        "_session_in_workspace",
+        "_context_cwd_for_report",
+    ):
+        assert f"def {function_name}(" not in source

@@ -24,7 +24,6 @@ from .decision_requests import (
     record_decision_request,
 )
 from .flow import (
-    CodexSupervisorReport,
     CodexSupervisorFlow,
     _managed_process_log_excerpt,
     _pid_is_running,
@@ -346,6 +345,13 @@ from .commands.loop_state import (
     loop_without_autonomous_scope as _loop_without_autonomous_scope,
     session_marks_terminal_done as _session_marks_terminal_done,
     target_session as _target_session,
+)
+from .commands.workspace_scope import (
+    action_report_for_workspace as _action_report_for_workspace,
+    context_cwd_for_report as _context_cwd_for_report,
+    session_in_workspace as _session_in_workspace,
+    workspace_root as _workspace_root,
+    workspace_scope_payload as _workspace_scope_payload,
 )
 from .commands.advice import (
     active_goal_action_command_suggestions as _active_goal_action_command_suggestions,
@@ -1155,44 +1161,6 @@ def _normalize_loop_execution_mode(args: argparse.Namespace) -> None:
         args.llm_action = False
 
 
-def _action_report_for_workspace(args: argparse.Namespace, report: Any) -> Any:
-    workspace_root = _workspace_root(args)
-    if workspace_root is None:
-        return report
-    sessions = tuple(
-        session
-        for session in report.sessions
-        if _session_in_workspace(session, workspace_root)
-    )
-    if not sessions and not getattr(args, "workspace_root", None):
-        return report
-    return CodexSupervisorReport(
-        generated_at=report.generated_at,
-        sessions=sessions,
-    )
-
-
-def _workspace_scope_payload(
-    args: argparse.Namespace,
-    report: Any,
-    action_report: Any,
-) -> dict[str, Any]:
-    workspace_root = _workspace_root(args)
-    return {
-        "mode": "all" if workspace_root is None else "workspace",
-        "workspace_root": str(workspace_root) if workspace_root is not None else None,
-        "total_sessions": len(report.sessions),
-        "candidate_sessions": len(action_report.sessions),
-    }
-
-
-def _workspace_root(args: argparse.Namespace) -> Path | None:
-    if getattr(args, "all_workspaces", False):
-        return None
-    raw = getattr(args, "workspace_root", None)
-    return Path(raw).expanduser().resolve() if raw else Path.cwd().resolve()
-
-
 def _maybe_replenish_active_goals(
     args: argparse.Namespace,
     active_goals: list[dict[str, Any]],
@@ -1290,14 +1258,6 @@ def _active_goal_is_deferred(goal: dict[str, Any]) -> bool:
 def _selected_active_goal(args: argparse.Namespace) -> dict[str, Any] | None:
     goals = _active_goal_dicts(args, limit=1)
     return goals[0] if goals else None
-
-
-def _session_in_workspace(session: Any, workspace_root: Path) -> bool:
-    cwd = getattr(session, "cwd", None)
-    if not isinstance(cwd, str) or not cwd:
-        return False
-    session_cwd = Path(cwd).expanduser().resolve()
-    return session_cwd == workspace_root or workspace_root in session_cwd.parents
 
 
 def _supervise_payload(
@@ -2173,14 +2133,6 @@ def _goal_dict_with_status(
         if key != "goal_id":
             merged[key] = value
     return merged
-
-
-def _context_cwd_for_report(report: Any) -> str | None:
-    for session in report.sessions:
-        cwd = getattr(session, "cwd", None)
-        if isinstance(cwd, str) and cwd:
-            return cwd
-    return None
 
 
 class _UnavailableSummaryProvider:
