@@ -57,7 +57,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 | 模型管理层 | `LLM summary`、`LLM planner` 和 TOML 号池 | `llm_summary.py` | 承担判断、调度和动作选择的 AI 路径 |
 | 状态协议层 | `SUPERVISOR_STATUS` 等状态协议 | `flow.py`、`registry.py` | 给被托管 Codex 主动汇报状态 |
 | 状态账本层 | lane state（窗口状态）和限频 | `lane_state.py` | 避免重复催促和刷屏 |
-| 状态投影层 | `build_supervisor_state_snapshot(...)` | `features/supervisor/state/projection.py` | 只读聚合 active goals、decision requests、lane failure、worker events 和 notifications；dashboard/web/daemon 已读取，loop payload 已带只读 snapshot |
+| 状态投影层 | `build_supervisor_state_snapshot(...)` | `features/supervisor/state/projection.py`、`platform/state/supervisor_snapshot.py` | 只读聚合 active goals、decision requests、lane failure、worker events 和 notifications；dashboard/web/daemon 已读取，loop payload 已带只读 snapshot；输出结构复用 `SupervisorStateSnapshot` schema |
 | 生命周期观测层 | `trace --json`、`loop.lifecycle_trace` | `features/supervisor/commands/trace.py`、`features/supervisor/runner.py` | 只读汇总 goal、worker、decision、merge/repair 和 cleanup 台账；payload/rendering 已迁出 runner |
 | 通知桥接层 | Supervisor event notifications/webhooks | `features/supervisor/notifications.py`、`features/notifications/flow.py` | 把 goal/decision/integration-review 事件派生成低敏通知或外部 POST |
 | 本地前端层 | `web`、`dashboard`、`/dashboard.json`、`/events`、`/managed/send`、`/llm-action`、`/goal/add`、daemon/watcher 控制接口 | `features/supervisor/web.py`、`features/supervisor/commands/dashboard.py` | 本机视图、bell 事件、目标写入、白名单发送、后台循环控制和手动模型建议入口；dashboard payload/plain renderer 已在命令层集中 |
@@ -771,6 +771,9 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   state projection，复用 goal queue、decision request、lane state、
   worker event channel 和 notification index；dashboard/web/daemon
   已读取该 snapshot，loop payload 已带只读 snapshot，后续入口不应继续拼散表。
+  该 builder 仍留在 feature 层，输出结构改为复用
+  `platform/state/supervisor_snapshot.py` 的 `SupervisorStateSnapshot`，
+  避免 `platform/state` 反向依赖 Supervisor feature。
 - `features/supervisor/status.py`：后续可下沉状态分类和状态依据生成。
 - `features/supervisor/advice.py`：后续可承接自动策略和执行白名单，避免
   `runner.py` 继续扩写动作执行分支。
@@ -781,7 +784,8 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
 
 ## 下一步顺序
 
-1. 评估哪些状态事实应下沉到 `platform/state`，同时保持入口继续复用 state projection。
+1. 继续评估 lane state、goal status 和 notification index 中哪些事实应下沉到
+   `platform/state`，同时保持入口继续复用 state projection。
 2. 用真实 daemon 长跑验证 cleanup/current dashboard 在多批任务中的稳定性。
 3. 后续再决定是否把通知接到更多 worker 生命周期事件。
 4. 再拆分 `runner.py` 中的自动执行、tmux 控制、worker failure lifecycle

@@ -11,8 +11,18 @@ from isotope.features.supervisor.goal_queue import (
 )
 from isotope.features.supervisor.lane_state import record_lane_failure
 from isotope.features.supervisor.runner import main as supervisor_main
+import isotope.features.supervisor.state.projection as feature_projection
+from isotope.platform.state.supervisor_snapshot import SupervisorStateSnapshot
 from isotope.features.supervisor.state.projection import build_supervisor_state_snapshot
 from isotope.memory.worker_event_channel import publish_worker_event
+
+
+def test_supervisor_state_projection_uses_platform_snapshot_schema(tmp_path):
+    assert feature_projection.SupervisorStateSnapshot is SupervisorStateSnapshot
+
+    snapshot = build_supervisor_state_snapshot(codex_home=tmp_path)
+
+    assert snapshot == SupervisorStateSnapshot.empty(codex_home=tmp_path).to_dict()
 
 
 def test_supervisor_state_snapshot_empty_root_is_read_only(tmp_path):

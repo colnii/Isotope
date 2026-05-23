@@ -7,6 +7,7 @@ from .failure_ledger import FailureLedger
 from .memory_store import FileMemoryStore, JsonlMemoryStore, MemoryStore
 from .multi_worker import build_multi_worker_status_payload, render_multi_worker_status_plain
 from .projector import RunProjector, RunState
+from .supervisor_snapshot import SupervisorStateSnapshot
 from .worker_event_channel import (
     DEFAULT_CHANNEL,
     WORKER_EVENT_KIND,
@@ -29,6 +30,7 @@ __all__ = [
     "render_multi_worker_status_plain",
     "RunProjector",
     "RunState",
+    "SupervisorStateSnapshot",
     "DEFAULT_CHANNEL",
     "WORKER_EVENT_KIND",
     "WorkerEvent",

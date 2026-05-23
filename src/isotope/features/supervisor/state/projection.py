@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from isotope.features.notifications.flow import NotificationFlow, NotificationSummary
+from isotope.platform.state.supervisor_snapshot import SupervisorStateSnapshot
 from isotope.platform.state.worker_event_channel import list_worker_events
 
 from ..decision_requests import read_active_decision_requests
@@ -51,10 +52,9 @@ def build_supervisor_state_snapshot(
         else 0
     )
 
-    return {
-        "status": "ok",
-        "codex_home": str(codex_home_path),
-        "summary": {
+    return SupervisorStateSnapshot(
+        codex_home=str(codex_home_path),
+        summary={
             "active_goals": len(active_goals),
             "goals_done": _goal_status_count(active_goals, "done"),
             "goals_blocked": _goal_status_count(active_goals, "blocked"),
@@ -65,12 +65,12 @@ def build_supervisor_state_snapshot(
             "notifications": notifications["total"],
             "unread_notifications": notifications["unread"],
         },
-        "active_goals": active_goals,
-        "active_decisions": active_decisions,
-        "failed_lanes": failed_lanes,
-        "recent_worker_events": list(worker_events.get("events") or []),
-        "notifications": notifications,
-    }
+        active_goals=active_goals,
+        active_decisions=active_decisions,
+        failed_lanes=failed_lanes,
+        recent_worker_events=list(worker_events.get("events") or []),
+        notifications=notifications,
+    ).to_dict()
 
 
 def _active_goal_payloads(codex_home: Path, *, limit: int) -> list[dict[str, Any]]:
