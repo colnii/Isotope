@@ -211,7 +211,9 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   `src/isotope/execution/terminal_backend.py` 和顶层旧路径已删除。
 - 工具能力：`src/isotope/tools/` 旧空包已删除；真实工具能力放入
   `src/isotope/capabilities/tools/`，动作声明放入平台注册表。
-- 接口层：`http_api.py` 已迁入 `src/isotope/interfaces/http.py`。
+- 接口层：`http_api.py` 已迁入 `src/isotope/interfaces/http.py`；
+  `HttpApiApp` 仍是库内 HTTP facade（门面入口），具体 dispatch（分发）
+  已按 artifact、LLM、product 和 run 拆到 `interfaces/http_*_routes.py`。
 - LLM 层：模型 provider 和 tool bridge 已迁入 `src/isotope/llm/`；
   `src/isotope/integrations/llm/` 和顶层旧路径已删除。
 - Codex 集成：`codex_task.py`、`codex_cli.py`、`codex_server.py`、`codex_live_smoke.py` 已迁入 `src/isotope/integrations/`，旧根路径已删除。

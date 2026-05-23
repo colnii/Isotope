@@ -122,7 +122,9 @@ src/isotope/
 - `workspace/artifacts.py`：可接受。
 - `rag/ingestion.py`、`rag/retrieval.py`：可接受。
 - `capabilities/catalog.py`：可接受。
-- `interfaces/http.py`：当前测试和 demo 大量使用，先保留为库内 facade。
+- `interfaces/http.py`：当前测试和 demo 大量使用，先保留为库内 facade；
+  具体 route handler 已拆进 `http_artifact_routes.py`、`http_llm_routes.py`、
+  `http_product_routes.py` 和 `http_run_routes.py`。
 - `integrations/codex/`：外部接入语义明确。
 - `assistant/` 兼容代理：已删除。
 - `tools/` 旧空包：已删除。
