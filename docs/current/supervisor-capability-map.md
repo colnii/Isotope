@@ -46,7 +46,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 | tmux 集成层 | tmux 启动、buffer/paste 发送和 bell hook | `bell_events.py`、`flow.py`、`registry.py` | 只控制登记过的 tmux 会话 |
 | 状态判断层 | 工作中、等待用户、疑似停住、疑似报错 | `features/supervisor/flow.py` | 规则提供候选和证据，不替代 LLM 判断 |
 | 状态依据层 | `status_evidence` 说明每个状态标签的来源 | `features/supervisor/flow.py` | 避免只给结论、不说明证据 |
-| 建议执行层 | `recommendation`、`command_suggestions`、`--execute` | `flow.py`、`runner.py` | 只允许白名单动作 |
+| 建议执行层 | `recommendation`、`command_suggestions`、`--execute` | `flow.py`、`commands/advice.py`、`runner.py` | command suggestion（命令建议）已拆到命令层，执行白名单仍留在 `runner.py` |
 | 模型管理层 | `LLM summary`、`LLM planner` 和 TOML 号池 | `llm_summary.py` | 承担判断、调度和动作选择的 AI 路径 |
 | 状态协议层 | `SUPERVISOR_STATUS` 等状态协议 | `flow.py`、`registry.py` | 给被托管 Codex 主动汇报状态 |
 | 状态账本层 | lane state（窗口状态）和限频 | `lane_state.py` | 避免重复催促和刷屏 |
@@ -687,8 +687,13 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
 - `features/supervisor/commands/onboarding.py`：已承接 `start-here`、`guide`
   和 `discover` 的上手/接管命令层 payload 与 plain renderer；继续复用
   `tmux_discovery.py` 和 `registry.py` 的既有 contract（契约）。
+- `features/supervisor/commands/advice.py`：已承接 `advise`、`supervise`
+  和 `loop` 共同使用的 advice payload、automation status 和
+  command suggestion 生成；`_execute_advice` 仍留在 `runner.py`，后续需要
+  连同预算、cooldown（冷却时间）和托管发送护栏一起拆。
 - `features/supervisor/status.py`：后续可下沉状态分类和状态依据生成。
-- `features/supervisor/advice.py`：建议、命令草案、自动策略和执行白名单。
+- `features/supervisor/advice.py`：后续可承接自动策略和执行白名单，避免
+  `runner.py` 继续扩写动作执行分支。
 - `features/supervisor/protocol.py`：后续可下沉状态协议解析和提示语注入。
 - `features/supervisor/tmux_control.py`：后续可下沉 tmux 会话、发送和 bell hook。
 - `features/supervisor/lane_state.py`：每个窗口的最近状态、催促次数和限频。
@@ -698,7 +703,7 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
 
 1. 用真实 daemon 长跑验证 cleanup/current dashboard 在多批任务中的稳定性。
 2. 后续再决定是否把通知接到更多 worker 生命周期事件。
-3. 再拆分 `runner.py` 中的匹配、建议、自动执行和 tmux 控制代码。
+3. 再拆分 `runner.py` 中的自动执行、tmux 控制和 merge/worktree 编排代码。
 
 ## 登记规则
 

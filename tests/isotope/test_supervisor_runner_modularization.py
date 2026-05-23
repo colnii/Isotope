@@ -116,6 +116,43 @@ def test_supervisor_runner_delegates_onboarding_command_helpers():
         assert f"def {function_name}(" not in source
 
 
+def test_supervisor_runner_delegates_advice_command_helpers():
+    advice_module = importlib.import_module("isotope.features.supervisor.commands.advice")
+
+    assert runner._automation_status is advice_module.automation_status
+    assert runner._advice_payload is advice_module.advice_payload
+    assert runner._command_suggestions is advice_module.command_suggestions
+    assert (
+        runner._workspace_action_command_suggestions
+        is advice_module.workspace_action_command_suggestions
+    )
+    assert runner._goal_action_command_suggestions is advice_module.goal_action_command_suggestions
+    assert (
+        runner._active_goal_action_command_suggestions
+        is advice_module.active_goal_action_command_suggestions
+    )
+    assert runner._managed_tmux_command_suggestions is advice_module.managed_tmux_command_suggestions
+    assert (
+        runner._resume_session_command_suggestions
+        is advice_module.resume_session_command_suggestions
+    )
+    assert runner._watch_command_suggestion is advice_module.watch_command_suggestion
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_automation_status",
+        "_advice_payload",
+        "_command_suggestions",
+        "_workspace_action_command_suggestions",
+        "_goal_action_command_suggestions",
+        "_active_goal_action_command_suggestions",
+        "_managed_tmux_command_suggestions",
+        "_resume_session_command_suggestions",
+        "_watch_command_suggestion",
+    ):
+        assert f"def {function_name}(" not in source
+
+
 def test_supervisor_runner_uses_memory_worker_event_channel():
     worker_event_channel = importlib.import_module("isotope.memory.worker_event_channel")
 
