@@ -757,6 +757,11 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   promotion gate、CI watch、拍板请求、repair worker lifecycle 和旧
   runner 私有入口兼容；底层 CI/git 判定仍复用
   `features/supervisor/merge_promotion.py` 的 helper。
+- `features/supervisor/commands/failure_lifecycle.py`：已承接 worker failure
+  lifecycle（worker 失败生命周期），包括 process worker 失败同步、
+  非零退出/usage limit/timeout 解析、自动重试、retry-limit 拍板请求和
+  lane failure payload；底层继续复用 `lane_state.py`、managed registry、
+  decision request 和 runner 兼容 alias，不新建失败账本。
 - `features/supervisor/commands/advice.py`：已承接 `advise`、`supervise`
   和 `loop` 共同使用的 advice payload、automation status 和
   command suggestion 生成；`_execute_advice` 仍留在 `runner.py`，后续需要
@@ -795,8 +800,8 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
    `platform/state`，同时保持入口继续复用 state projection。
 2. 用真实 daemon 长跑验证 cleanup/current dashboard 在多批任务中的稳定性。
 3. 后续再决定是否把通知接到更多 worker 生命周期事件。
-4. 再拆分 `runner.py` 中的自动执行、tmux 控制、worker failure lifecycle
-   和 auto cleanup 串联代码。
+4. 再拆分 `runner.py` 中的自动执行、tmux 控制、loop 状态拼装和
+   auto cleanup 串联代码。
 
 ## 登记规则
 

@@ -369,6 +369,59 @@ def test_supervisor_runner_delegates_merge_promotion_orchestration_helpers():
         assert f"def {function_name}(" not in source
 
 
+def test_supervisor_runner_delegates_worker_failure_lifecycle_helpers():
+    failure_module = importlib.import_module(
+        "isotope.features.supervisor.commands.failure_lifecycle"
+    )
+
+    assert runner._sync_managed_worker_failures is failure_module.sync_managed_worker_failures
+    assert (
+        runner._managed_worker_failure_from_record
+        is failure_module.managed_worker_failure_from_record
+    )
+    assert (
+        runner._auto_retry_exited_process_workers
+        is failure_module.auto_retry_exited_process_workers
+    )
+    assert runner._process_worker_retry_failure is failure_module.process_worker_retry_failure
+    assert (
+        runner._ensure_worker_retry_decision_request
+        is failure_module.ensure_worker_retry_decision_request
+    )
+    assert (
+        runner._active_worker_retry_decision_exists
+        is failure_module.active_worker_retry_decision_exists
+    )
+    assert runner._worker_retry_error_summary is failure_module.worker_retry_error_summary
+    assert runner._process_worker_needs_retry is failure_module.process_worker_needs_retry
+    assert (
+        runner._managed_record_exceeded_run_budget
+        is failure_module.managed_record_exceeded_run_budget
+    )
+    assert runner._nonzero_exit_failure is failure_module.nonzero_exit_failure
+    assert runner._usage_limit_failure is failure_module.usage_limit_failure
+    assert runner._stderr_summary_from_excerpt is failure_module.stderr_summary_from_excerpt
+    assert runner._lane_failure_payload is failure_module.lane_failure_payload
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_sync_managed_worker_failures",
+        "_managed_worker_failure_from_record",
+        "_auto_retry_exited_process_workers",
+        "_process_worker_retry_failure",
+        "_ensure_worker_retry_decision_request",
+        "_active_worker_retry_decision_exists",
+        "_worker_retry_error_summary",
+        "_process_worker_needs_retry",
+        "_managed_record_exceeded_run_budget",
+        "_nonzero_exit_failure",
+        "_usage_limit_failure",
+        "_stderr_summary_from_excerpt",
+        "_lane_failure_payload",
+    ):
+        assert f"def {function_name}(" not in source
+
+
 def test_supervisor_runner_delegates_daemon_command_helpers():
     daemon_module = importlib.import_module(
         "isotope.features.supervisor.commands.daemon_command"
