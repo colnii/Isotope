@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from . import projector_checkpoint as _projector_checkpoint
 from .projector_checkpoint import RunProjectorCheckpointMixin
 from .projector_handlers import RunProjectorHandlersMixin
 from .projector_state import RunState
@@ -136,6 +137,10 @@ class RunProjector(RunProjectorCheckpointMixin, RunProjectorHandlersMixin, RunPr
         self._workspace_last_event_ids: dict[str, str] = {}
         self._artifact_ref_event_ids: dict[str, str] = {}
         self._run_completed = False
+
+    def create_checkpoint(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        _projector_checkpoint.datetime = datetime
+        return super().create_checkpoint(*args, **kwargs)
 
 
 __all__ = ["RunProjector", "RunState"]
