@@ -141,6 +141,41 @@ def test_supervisor_runner_delegates_auto_action_helpers():
         assert f"def {function_name}(" not in source
 
 
+def test_supervisor_runner_delegates_llm_action_execution_helpers():
+    llm_action_module = importlib.import_module(
+        "isotope.features.supervisor.commands.llm_action"
+    )
+
+    assert runner._execute_llm_action is llm_action_module.execute_llm_action
+    assert (
+        runner._execute_failure_guarded_action
+        is llm_action_module.execute_failure_guarded_action
+    )
+    assert (
+        runner._context_request_budget_result
+        is llm_action_module.context_request_budget_result
+    )
+    assert (
+        runner._resume_action_outside_active_goals
+        is llm_action_module.resume_action_outside_active_goals
+    )
+    assert runner._failure_question is llm_action_module.failure_question
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_execute_llm_action",
+        "_execute_failure_guarded_action",
+        "_failure_event_type_for_skipped_result",
+        "_exception_summary",
+        "_failure_question",
+        "_resume_action_outside_active_goals",
+        "_active_goal_resume_session_ids",
+        "_context_request_count",
+        "_context_request_budget_result",
+    ):
+        assert f"def {function_name}(" not in source
+
+
 def test_supervisor_runner_delegates_daemon_command_helpers():
     daemon_module = importlib.import_module(
         "isotope.features.supervisor.commands.daemon_command"

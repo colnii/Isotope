@@ -46,7 +46,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 | tmux 集成层 | tmux 启动、buffer/paste 发送和 bell hook | `bell_events.py`、`flow.py`、`registry.py` | 只控制登记过的 tmux 会话 |
 | 状态判断层 | 工作中、等待用户、疑似停住、疑似报错 | `features/supervisor/flow.py` | 规则提供候选和证据，不替代 LLM 判断 |
 | 状态依据层 | `status_evidence` 说明每个状态标签的来源 | `features/supervisor/flow.py` | 避免只给结论、不说明证据 |
-| 建议执行层 | `recommendation`、`command_suggestions`、`--execute` | `flow.py`、`commands/advice.py`、`runner.py` | command suggestion（命令建议）已拆到命令层，执行白名单仍留在 `runner.py` |
+| 建议执行层 | `recommendation`、`command_suggestions`、`--execute` | `flow.py`、`commands/advice.py`、`commands/llm_action.py`、`runner.py` | command suggestion（命令建议）和 LLM action dispatch（模型动作分发）已拆到命令层，具体 launch/resume/send 执行护栏仍复用 `runner.py` |
 | 模型管理层 | `LLM summary`、`LLM planner` 和 TOML 号池 | `llm_summary.py` | 承担判断、调度和动作选择的 AI 路径 |
 | 状态协议层 | `SUPERVISOR_STATUS` 等状态协议 | `flow.py`、`registry.py` | 给被托管 Codex 主动汇报状态 |
 | 状态账本层 | lane state（窗口状态）和限频 | `lane_state.py` | 避免重复催促和刷屏 |
@@ -702,6 +702,10 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
 - `features/supervisor/commands/auto_action.py`：已承接 `loop --auto-execute`
   的 rule-based auto action（规则自动动作）选择、continue/run budget
   与 prompt cooldown 判断；执行仍通过既有 `_execute_advice` 护栏。
+- `features/supervisor/commands/llm_action.py`：已承接 LLM action execution
+  dispatch（模型动作执行分发）、failure guard（失败护栏）、context request
+  budget 和 active-goal resume gate；底层 `resume/launch/context/ask_user`
+  执行函数暂时继续复用 `runner.py` 兼容入口。
 - `features/supervisor/commands/advice.py`：已承接 `advise`、`supervise`
   和 `loop` 共同使用的 advice payload、automation status 和
   command suggestion 生成；`_execute_advice` 仍留在 `runner.py`，后续需要
