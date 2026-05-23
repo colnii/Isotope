@@ -61,7 +61,7 @@ preflight（预检查）、diagnostic（诊断）或 not_enabled（未启用）�
 | 做 Supervisor 相关工作 | [codex-supervisor-readonly](./codex-supervisor-readonly.md)、[supervisor-command-reference](./supervisor-command-reference.md)、[supervisor-capability-map](./supervisor-capability-map.md)、[supervisor-capability-details](./supervisor-capability-details.md)、[supervisor-architecture-migration-table](./supervisor-architecture-migration-table.md) |
 | 查旧任务/旧状态全文 | [agent-task-history](../archive/current/agent-task-history.md)、[status-history](../archive/current/status-history.md) |
 | 查早期 v0.1 旧计划 | [archived plans](../archive/plans/) |
-| 看文档迁移边界 | [docs-migration-plan](../reviews/docs-migration-plan.md) |
+| 看文档迁移边界 | [docs-migration-plan](../reviews/docs-migration-plan.md)、[old-docs-closure-audit](../reviews/old-docs-closure-audit.md) |
 | 看第三批长文拆分准备 | [current-docs-refactor-plan](../reviews/current-docs-refactor-plan.md) |
 | 查旧分支清理证据 | [branch-cleanup](../reviews/branch-cleanup-2026-05-15.md) |
 | 查已归档的 current 来源材料 | [archive/current](../archive/current/) |

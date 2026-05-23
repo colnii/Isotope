@@ -31,6 +31,8 @@ review 推断下一批迁移。
   `docs/status/`、不移动 current status / roadmap / v0.2 closure 的判断。
 - [Deferred docs placement review](deferred-docs-placement-review.md)：记录 track /
   checkpoint / memory 文档迁移继续暂停的判断。
+- [Old docs closure audit](old-docs-closure-audit.md)：旧文档整理线收束结论；
+  下一步回 Supervisor 前先审计工作区、冲突和分支归属。
 
 ### 分支审计和旧代码 intake
 
@@ -82,6 +84,7 @@ runtime slice。它们是决策背景，不直接打开新实现。
 
 - 要查当前事实，先回到 [`../current/`](../current/)。
 - 要移动文档，先读 `docs-migration-plan.md`，不要从单个 review 推断下一批迁移。
+- 旧文档整理线已收束；除非用户明确指定单一类别，不继续做默认迁移。
 - review 可以作为证据来源，但不能覆盖 `AGENTS.md`、`README.md` 和
   `docs/current/status.md` 的当前规则。
 - 旧 branch audit、closure review 和 intake review 只能解释历史判断，不能当作

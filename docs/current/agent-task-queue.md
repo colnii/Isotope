@@ -50,22 +50,25 @@
   [status docs placement review](../reviews/status-docs-placement-review.md)。
 - track / checkpoint / memory placement 已记录：继续暂停这三类目录迁移；原因见
   [deferred docs placement review](../reviews/deferred-docs-placement-review.md)。
+- 旧文档整理收束审计已完成：旧文档线可以停止，下一步回 Supervisor 前先做
+  工作区、冲突和分支归属审计；原因见
+  [old docs closure audit](../reviews/old-docs-closure-audit.md)。
 
 ## 下一批任务
 
-### 1. 旧文档整理收束审计
+### 1. Supervisor 工作恢复前状态归属审计
 
 目标：
 
-- 复查旧文档整理已完成的 decision review：kernel、status、deferred docs。
-- 确认 `docs/current/agent-task-queue.md`、`docs/reviews/README.md`、
-  `docs/archive/README.md` 和 `docs/reviews/docs-migration-plan.md` 互相一致。
-- 判断是否可以停止旧文档线，回到 Supervisor 任务。
+- 先确认 root worktree 是否还有 detached HEAD、conflict（冲突）或未提交代码改动。
+- 解释每个并行 worktree 对应的任务线和是否已经合入 `origin/main`。
+- 再决定是否恢复 `refactor/supervisor-flat-refactor`、继续产品化小批次或先清理。
 
 验收：
 
-- 给出“继续文档线 / 回 Supervisor”的明确下一步。
-- 不移动文件。
+- 不把旧文档整理提交和 Supervisor 代码提交混在一起。
+- 能列出每个剩余 worktree 的用途、风险和下一步。
+- 如果 root 有冲突，先说明冲突来源和安全处理顺序。
 
 ### 2. Supervisor 任务暂缓但保留
 
@@ -89,6 +92,8 @@
 - 后续新增 Supervisor 命令时，同步更新 quick start 和 command reference。
 - 后续新增 Supervisor 能力时，先更新能力索引，再更新能力详情。
 - `docs/current/` 保持当前入口，不重新塞入长历史流水。
+- 旧文档线默认停止；除非用户明确指定单一类别，不继续移动 track、checkpoint、
+  memory、kernel 或 status 文档。
 
 ## 验证命令
 

@@ -17,6 +17,10 @@ historical plan（历史计划）归档；kernel 和 status placement reviews �
 判断；track、checkpoint、memory 迁移继续暂停，见
 `deferred-docs-placement-review.md`。
 
+2026-05-24 收束审计：旧文档整理线已关闭，见
+`old-docs-closure-audit.md`。默认下一步回 Supervisor 前先审计工作区、冲突和分支
+归属；不要把继续文档迁移当作隐含下一步。
+
 ## 2. Target Directory Structure
 
 建议未来目录结构：
@@ -65,12 +69,13 @@ Recommended order:
 5. Low-risk historical v0.1 implementation / coding plans moved to `../archive/plans/` after explicit user request for old-doc cleanup.
 6. Pause migration after the low-risk old-doc cleanup; do not move track / checkpoint / memory / kernel / status entrypoint docs by default.
 7. Track / checkpoint / memory placement reviewed in `deferred-docs-placement-review.md`; keep paused unless a single category is explicitly reopened.
-8. If track migration is explicitly reopened later, move closed Track A / C / E docs to `docs/tracks/` with stubs and same-commit link updates.
-9. Move checkpoint docs only as a separate later batch.
-10. Move memory docs only as a separate later batch.
-11. Move remaining track docs only after recent Track F links settle.
-12. Move kernel docs only as a separate later batch.
-13. Move status entrypoints only after README / AGENTS / current-status / roadmap link checks are stable.
+8. Old docs cleanup closure reviewed in `old-docs-closure-audit.md`; stop the old-docs line by default and return to Supervisor prep.
+9. If track migration is explicitly reopened later, move closed Track A / C / E docs to `docs/tracks/` with stubs and same-commit link updates.
+10. Move checkpoint docs only as a separate later batch.
+11. Move memory docs only as a separate later batch.
+12. Move remaining track docs only after recent Track F links settle.
+13. Move kernel docs only as a separate later batch.
+14. Move status entrypoints only after README / AGENTS / current-status / roadmap link checks are stable.
 
 Do not combine the next track-doc migration with later checkpoint / memory / kernel migrations unless there is a specific review reason to take the extra link risk.
 
