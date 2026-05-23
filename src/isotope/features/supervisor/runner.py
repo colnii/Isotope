@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import shlex
 import subprocess
 import sys
@@ -152,6 +151,21 @@ from .commands.cleanup_worktree import (
     latest_managed_record_event as _latest_managed_record_event,
     managed_record_ref as _managed_record_ref,
     supervisor_worktree_root_for_cwd as _supervisor_worktree_root_for_cwd,
+)
+from .commands.auto_cleanup import (
+    archive_integrated_merge_worker as _archive_integrated_merge_worker,
+    archive_integrated_source_worker as _archive_integrated_source_worker,
+    archive_related_merge_goal as _archive_related_merge_goal,
+    auto_archive_integrated_merge_workers as _auto_archive_integrated_merge_workers,
+    auto_cleanup_integration_summary as _auto_cleanup_integration_summary,
+    auto_delete_archived_worktrees_after_cleanup as _auto_delete_archived_worktrees_after_cleanup,
+    integration_review_for_cleanup_candidate as _integration_review_for_cleanup_candidate,
+    integration_reviews_by_record_ref as _integration_reviews_by_record_ref,
+    merge_candidate_record_ids as _merge_candidate_record_ids,
+    merge_worker_review_item_is_blocked as _merge_worker_review_item_is_blocked,
+    merge_worker_review_item_is_done as _merge_worker_review_item_is_done,
+    review_group_items as _review_group_items,
+    review_group_record_ids as _review_group_record_ids,
 )
 from .commands.auto_action import (
     auto_action_exhausts_continue_budget as _auto_action_exhausts_continue_budget,
@@ -1054,278 +1068,6 @@ def _sync_goal_lifecycle(
 def _non_empty_text(value: object) -> str | None:
     text = str(value).strip() if value is not None else ""
     return text or None
-
-
-def _auto_delete_archived_worktrees_after_cleanup(
-    args: argparse.Namespace,
-    *,
-    cleanup_archived: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    if not cleanup_archived:
-        return []
-    if getattr(args, "command", None) != "loop":
-        return []
-    if _current_workspace_has_worker_role(args, RECURSIVE_WORKER_ROLES):
-        return []
-    archived_record_ids = {
-        record_id
-        for item in cleanup_archived
-        for record_id in (item.get("record_id"),)
-        if isinstance(record_id, str) and record_id
-    }
-    if not archived_record_ids:
-        return []
-    deleted: list[dict[str, Any]] = []
-    for candidate in _delete_worktree_candidate_payloads(args):
-        target_name = candidate.get("target_name") or candidate.get("name")
-        record_id = candidate.get("record_id")
-        if not isinstance(target_name, str) or not target_name.strip():
-            continue
-        if not isinstance(record_id, str) or not record_id.strip():
-            continue
-        if record_id not in archived_record_ids:
-            continue
-        deleted.append(
-            _execute_delete_worktree_action(
-                args,
-                {
-                    "kind": "delete_worktree",
-                    "target_name": target_name,
-                    "record_id": record_id,
-                    "confirm_delete_worktree": True,
-                    "base_ref": "main",
-                    "source": "cleanup_auto",
-                },
-            )
-        )
-    return deleted
-
-
-def _auto_archive_integrated_merge_workers(
-    *,
-    codex_home: Path,
-    review_payload: dict[str, Any],
-) -> list[dict[str, Any]]:
-    groups = review_payload.get("groups")
-    if not isinstance(groups, dict):
-        return []
-    integrated_record_ids = _review_group_record_ids(groups, "already_integrated")
-    if not integrated_record_ids:
-        return []
-    records = {
-        record.record_id: record
-        for record in read_managed_records(default_registry_path(codex_home))
-    }
-    archived: list[dict[str, Any]] = []
-    archived_record_ids: set[str] = set()
-    for item in _review_group_items(groups, "merge_workers"):
-        record_id = item.get("record_id")
-        if not isinstance(record_id, str) or not record_id:
-            continue
-        record = records.get(record_id)
-        if record is None:
-            continue
-        if not _merge_worker_review_item_is_done(item):
-            continue
-        candidate_record_ids = _merge_candidate_record_ids(record)
-        if not candidate_record_ids:
-            continue
-        if not candidate_record_ids <= integrated_record_ids:
-            continue
-        for candidate_record_id in sorted(candidate_record_ids):
-            if candidate_record_id in archived_record_ids:
-                continue
-            candidate_record = records.get(candidate_record_id)
-            if candidate_record is None:
-                continue
-            archived.append(
-                _archive_integrated_source_worker(codex_home, candidate_record)
-            )
-            archived_record_ids.add(candidate_record_id)
-        if record_id in archived_record_ids:
-            continue
-        archived.append(_archive_integrated_merge_worker(codex_home, record, item))
-        archived_record_ids.add(record_id)
-    return archived
-
-
-def _archive_integrated_source_worker(
-    codex_home: Path,
-    record: Any,
-) -> dict[str, Any]:
-    managed = archive_managed_codex(
-        codex_home=codex_home,
-        name=record.name,
-        record_id=record.record_id,
-    )
-    return {
-        "kind": "source_worker",
-        "name": record.name,
-        "record_id": record.record_id,
-        "managed": managed.to_dict(),
-        "integration_group": "already_integrated",
-    }
-
-
-def _archive_integrated_merge_worker(
-    codex_home: Path,
-    record: Any,
-    review_item: dict[str, Any],
-) -> dict[str, Any]:
-    managed = archive_managed_codex(
-        codex_home=codex_home,
-        name=record.name,
-        record_id=record.record_id,
-    )
-    protocol = review_item.get("supervisor_protocol")
-    protocol = protocol if isinstance(protocol, dict) else {}
-    goal = _archive_related_merge_goal(
-        codex_home=codex_home,
-        target_name=record.name,
-        protocol=protocol,
-    )
-    notification = notify_merge_worker_auto_archived(
-        codex_home=codex_home,
-        record_id=record.record_id,
-        status="done",
-        group="already_integrated",
-    )
-    result: dict[str, Any] = {
-        "kind": "merge_worker",
-        "name": record.name,
-        "record_id": record.record_id,
-        "managed": managed.to_dict(),
-        "integration_group": "already_integrated",
-    }
-    if goal is not None:
-        result["goal"] = goal
-    if notification is not None:
-        result["notification"] = notification.to_dict()
-    return result
-
-
-def _archive_related_merge_goal(
-    *,
-    codex_home: Path,
-    target_name: str,
-    protocol: dict[str, Any],
-) -> dict[str, Any] | None:
-    for goal in read_active_supervisor_goals(codex_home=codex_home, limit=1000):
-        if goal.target_name != target_name:
-            continue
-        return archive_supervisor_goal(
-            codex_home=codex_home,
-            goal_id=goal.goal_id,
-            status="done",
-            target_name=target_name,
-            summary=(
-                protocol.get("summary")
-                if isinstance(protocol.get("summary"), str)
-                else None
-            ),
-            next_step=(
-                protocol.get("next")
-                if isinstance(protocol.get("next"), str)
-                else None
-            ),
-        )
-    return None
-
-
-def _merge_worker_review_item_is_done(item: dict[str, Any]) -> bool:
-    protocol = item.get("supervisor_protocol")
-    if not isinstance(protocol, dict):
-        return False
-    status = protocol.get("status")
-    return isinstance(status, str) and status.lower() == "done"
-
-
-def _merge_worker_review_item_is_blocked(item: dict[str, Any]) -> bool:
-    protocol = item.get("supervisor_protocol")
-    if not isinstance(protocol, dict):
-        return False
-    status = protocol.get("status")
-    return isinstance(status, str) and status.lower() == "blocked"
-
-
-def _merge_candidate_record_ids(record: Any) -> set[str]:
-    text = "\n".join(
-        [
-            str(getattr(record, "prompt", "") or ""),
-            " ".join(str(part) for part in getattr(record, "command", ()) or ()),
-        ]
-    )
-    return {
-        match.group(0)
-        for match in re.finditer(r"\bmanaged-[A-Za-z0-9_-]+\b", text)
-        if match.group(0) != getattr(record, "record_id", None)
-    }
-
-
-def _review_group_record_ids(groups: dict[str, Any], group: str) -> set[str]:
-    return {
-        record_id
-        for item in _review_group_items(groups, group)
-        for record_id in (item.get("record_id"),)
-        if isinstance(record_id, str) and record_id
-    }
-
-
-def _review_group_items(groups: dict[str, Any], group: str) -> list[dict[str, Any]]:
-    items = groups.get(group)
-    if not isinstance(items, list):
-        return []
-    return [item for item in items if isinstance(item, dict)]
-
-
-def _integration_reviews_by_record_ref(
-    payload: dict[str, Any],
-) -> dict[tuple[str, str], dict[str, Any]]:
-    reviews: dict[tuple[str, str], dict[str, Any]] = {}
-    raw_workers = payload.get("workers")
-    workers = raw_workers if isinstance(raw_workers, list) else []
-    for raw in workers:
-        if not isinstance(raw, dict):
-            continue
-        record_id = raw.get("record_id")
-        name = raw.get("name")
-        if isinstance(record_id, str) and record_id:
-            reviews[("record_id", record_id)] = raw
-        if isinstance(name, str) and name:
-            reviews[("name", name)] = raw
-    return reviews
-
-
-def _integration_review_for_cleanup_candidate(
-    candidate: dict[str, Any],
-    reviews: dict[tuple[str, str], dict[str, Any]],
-) -> dict[str, Any] | None:
-    record_id = candidate.get("record_id")
-    if isinstance(record_id, str) and record_id:
-        review = reviews.get(("record_id", record_id))
-        if review is not None:
-            return review
-    name = candidate.get("name")
-    if isinstance(name, str) and name:
-        return reviews.get(("name", name))
-    return None
-
-
-def _auto_cleanup_integration_summary(review: dict[str, Any]) -> dict[str, Any]:
-    return _drop_none_values(
-        {
-            "group": review.get("group"),
-            "reason": review.get("reason"),
-            "record_id": review.get("record_id"),
-            "name": review.get("name"),
-            "branch": review.get("branch"),
-            "worker_commit": review.get("worker_commit"),
-            "base_ref": review.get("base_ref"),
-            "main_contains_worker": review.get("main_contains_worker"),
-            "main_has_worker_patch": review.get("main_has_worker_patch"),
-            "dirty": review.get("dirty"),
-        }
-    )
 
 
 def _goal_status_from_session(session: Any) -> str | None:

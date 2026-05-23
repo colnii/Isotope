@@ -422,6 +422,71 @@ def test_supervisor_runner_delegates_worker_failure_lifecycle_helpers():
         assert f"def {function_name}(" not in source
 
 
+def test_supervisor_runner_delegates_auto_cleanup_lifecycle_helpers():
+    cleanup_module = importlib.import_module(
+        "isotope.features.supervisor.commands.auto_cleanup"
+    )
+
+    assert (
+        runner._auto_delete_archived_worktrees_after_cleanup
+        is cleanup_module.auto_delete_archived_worktrees_after_cleanup
+    )
+    assert (
+        runner._auto_archive_integrated_merge_workers
+        is cleanup_module.auto_archive_integrated_merge_workers
+    )
+    assert (
+        runner._archive_integrated_source_worker
+        is cleanup_module.archive_integrated_source_worker
+    )
+    assert (
+        runner._archive_integrated_merge_worker
+        is cleanup_module.archive_integrated_merge_worker
+    )
+    assert runner._archive_related_merge_goal is cleanup_module.archive_related_merge_goal
+    assert (
+        runner._merge_worker_review_item_is_done
+        is cleanup_module.merge_worker_review_item_is_done
+    )
+    assert (
+        runner._merge_worker_review_item_is_blocked
+        is cleanup_module.merge_worker_review_item_is_blocked
+    )
+    assert runner._merge_candidate_record_ids is cleanup_module.merge_candidate_record_ids
+    assert runner._review_group_record_ids is cleanup_module.review_group_record_ids
+    assert runner._review_group_items is cleanup_module.review_group_items
+    assert (
+        runner._integration_reviews_by_record_ref
+        is cleanup_module.integration_reviews_by_record_ref
+    )
+    assert (
+        runner._integration_review_for_cleanup_candidate
+        is cleanup_module.integration_review_for_cleanup_candidate
+    )
+    assert (
+        runner._auto_cleanup_integration_summary
+        is cleanup_module.auto_cleanup_integration_summary
+    )
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_auto_delete_archived_worktrees_after_cleanup",
+        "_auto_archive_integrated_merge_workers",
+        "_archive_integrated_source_worker",
+        "_archive_integrated_merge_worker",
+        "_archive_related_merge_goal",
+        "_merge_worker_review_item_is_done",
+        "_merge_worker_review_item_is_blocked",
+        "_merge_candidate_record_ids",
+        "_review_group_record_ids",
+        "_review_group_items",
+        "_integration_reviews_by_record_ref",
+        "_integration_review_for_cleanup_candidate",
+        "_auto_cleanup_integration_summary",
+    ):
+        assert f"def {function_name}(" not in source
+
+
 def test_supervisor_runner_delegates_daemon_command_helpers():
     daemon_module = importlib.import_module(
         "isotope.features.supervisor.commands.daemon_command"

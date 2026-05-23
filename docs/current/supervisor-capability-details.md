@@ -762,6 +762,11 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   非零退出/usage limit/timeout 解析、自动重试、retry-limit 拍板请求和
   lane failure payload；底层继续复用 `lane_state.py`、managed registry、
   decision request 和 runner 兼容 alias，不新建失败账本。
+- `features/supervisor/commands/auto_cleanup.py`：已承接 auto cleanup lifecycle
+  （自动清理生命周期），包括集成后 merge/source worker 自动归档、关联
+  merge goal 归档、低敏通知写入、归档后 worktree 删除串联和 integration
+  review 摘要 helper；继续复用 `cleanup.py`、`cleanup_worktree.py`、
+  `goal_queue.py`、`notifications.py` 和 managed registry，不绕过删除护栏。
 - `features/supervisor/commands/advice.py`：已承接 `advise`、`supervise`
   和 `loop` 共同使用的 advice payload、automation status 和
   command suggestion 生成；`_execute_advice` 仍留在 `runner.py`，后续需要
@@ -804,8 +809,7 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
    `platform/state`，同时保持入口继续复用 state projection。
 2. 用真实 daemon 长跑验证 cleanup/current dashboard 在多批任务中的稳定性。
 3. 后续再决定是否把通知接到更多 worker 生命周期事件。
-4. 再拆分 `runner.py` 中的自动执行、tmux 控制、loop 状态拼装和
-   auto cleanup 串联代码。
+4. 再拆分 `runner.py` 中的自动执行、tmux 控制和 loop 状态拼装代码。
 
 ## 登记规则
 
