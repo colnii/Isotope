@@ -148,6 +148,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   且每个参数都必须在 `input_contract.properties` 中声明，并符合当前支持的
   top-level `type` 与 `enum` 约束。校验失败会停在 plan 层，不进入
   capability runner 或 agent loop。
+- `CapabilityRunner` 的 `plan/run --input-json` 同样拒绝未在
+  `input_contract.properties` 声明的输入键，避免绕过 `capacity calling`
+  直接把未知 runner inputs 传给能力执行层。
 - `supervisor.request_context` 已注册为可发现 capability：`list/search/describe`
   能看到它，`plan/run --input-json` 会复用现有
   `request_project_context`，保持 workspace read-only、BM25 排序和原有
