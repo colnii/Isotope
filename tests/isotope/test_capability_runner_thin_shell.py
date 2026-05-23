@@ -309,6 +309,52 @@ def test_request_context_run_rejects_inputs_outside_contract_without_side_effect
     assert not (tmp_path / "codex-home" / "supervisor" / "context_results.jsonl").exists()
 
 
+def test_runner_plan_rejects_input_with_wrong_contract_type():
+    catalog = CapabilityCatalog(
+        capabilities=[
+            _capability(
+                "custom.typed.capability",
+                "product_candidate",
+                input_contract={
+                    "type": "object",
+                    "required": [],
+                    "properties": {"max_results": {"type": "integer"}},
+                },
+            )
+        ]
+    )
+
+    with pytest.raises(ValueError, match="does not match input_contract type"):
+        _runner(catalog=catalog).plan_capability_run(
+            "custom.typed.capability",
+            inputs={"max_results": "5"},
+        )
+
+
+def test_runner_plan_rejects_input_outside_contract_enum():
+    catalog = CapabilityCatalog(
+        capabilities=[
+            _capability(
+                "custom.mode.capability",
+                "product_candidate",
+                input_contract={
+                    "type": "object",
+                    "required": [],
+                    "properties": {
+                        "mode": {"type": "string", "enum": ["summary", "detail"]}
+                    },
+                },
+            )
+        ]
+    )
+
+    with pytest.raises(ValueError, match="not allowed by input_contract enum"):
+        _runner(catalog=catalog).plan_capability_run(
+            "custom.mode.capability",
+            inputs={"mode": "raw"},
+        )
+
+
 def test_request_context_capability_runs_existing_readonly_context_search(tmp_path):
     workspace = tmp_path / "workspace"
     workspace.mkdir()

@@ -116,7 +116,7 @@ class CapabilityRunner:
         status = self._catalog.get_capability_status(capability_id, env=env)
         scenario = _CAPABILITY_SCENARIOS.get(capability_id)
         required_inputs = _required_inputs(capability)
-        _validate_input_keys(capability, inputs=inputs)
+        _validate_inputs_against_contract(capability, inputs=inputs)
         missing_inputs = _missing_inputs(required_inputs, inputs)
         if capability_id == SUPERVISOR_REQUEST_CONTEXT_CAPABILITY:
             _validate_supervisor_request_context_inputs(
@@ -179,7 +179,7 @@ class CapabilityRunner:
         env: Mapping[str, str] | None = None,
     ) -> dict[str, Any]:
         capability = self._lookup_capability(capability_id)
-        _validate_input_keys(capability, inputs=inputs)
+        _validate_inputs_against_contract(capability, inputs=inputs)
         shelf = capability["shelf"]
         if shelf in {"diagnostic", "experimental"}:
             raise PermissionError(f"{shelf} capability cannot run by default")
@@ -268,7 +268,7 @@ def _missing_inputs(
     ]
 
 
-def _validate_input_keys(
+def _validate_inputs_against_contract(
     capability: Mapping[str, Any], *, inputs: Mapping[str, Any] | None
 ) -> None:
     if not inputs:
@@ -286,6 +286,41 @@ def _validate_input_keys(
             "capability inputs not allowed by input_contract: "
             + ", ".join(unexpected)
         )
+    for name, value in inputs.items():
+        schema = properties.get(name)
+        if not isinstance(schema, Mapping):
+            continue
+        expected_type = schema.get("type")
+        if isinstance(expected_type, str) and not _matches_contract_type(
+            value, expected_type
+        ):
+            raise ValueError(
+                f"capability input {name} does not match input_contract type: "
+                f"{expected_type}"
+            )
+        enum_values = schema.get("enum")
+        if isinstance(enum_values, list) and value not in enum_values:
+            raise ValueError(
+                f"capability input {name} is not allowed by input_contract enum"
+            )
+
+
+def _matches_contract_type(value: Any, expected_type: str) -> bool:
+    if expected_type == "string":
+        return isinstance(value, str)
+    if expected_type == "integer":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if expected_type == "number":
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    if expected_type == "boolean":
+        return isinstance(value, bool)
+    if expected_type == "object":
+        return isinstance(value, Mapping)
+    if expected_type == "array":
+        return isinstance(value, list)
+    if expected_type == "null":
+        return value is None
+    return True
 
 
 def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
