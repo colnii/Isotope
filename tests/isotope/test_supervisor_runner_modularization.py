@@ -65,6 +65,42 @@ def test_supervisor_runner_delegates_lifecycle_command_handlers():
         assert f'args.command == "{command}"' not in source
 
 
+def test_supervisor_runner_delegates_cleanup_worktree_helpers():
+    cleanup_module = importlib.import_module(
+        "isotope.features.supervisor.commands.cleanup_worktree"
+    )
+
+    assert (
+        runner._execute_delete_worktree_action
+        is cleanup_module.execute_delete_worktree_action
+    )
+    assert (
+        runner._delete_worktree_candidate_payloads
+        is cleanup_module.delete_worktree_candidate_payloads
+    )
+    assert runner._managed_record_ref is cleanup_module.managed_record_ref
+    assert (
+        runner._supervisor_worktree_root_for_cwd
+        is cleanup_module.supervisor_worktree_root_for_cwd
+    )
+    assert (
+        runner._integration_review_allows_worktree_delete
+        is cleanup_module.integration_review_allows_worktree_delete
+    )
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_execute_delete_worktree_action",
+        "_delete_worktree_candidate_payloads",
+        "_latest_managed_record_event",
+        "_managed_record_ref",
+        "_supervisor_worktree_root_for_cwd",
+        "_integration_review_allows_worktree_delete",
+        "_delete_worktree_integration_summary",
+    ):
+        assert f"def {function_name}(" not in source
+
+
 def test_supervisor_runner_delegates_daemon_command_helpers():
     daemon_module = importlib.import_module(
         "isotope.features.supervisor.commands.daemon_command"

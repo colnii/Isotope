@@ -693,6 +693,12 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
 - `features/supervisor/commands/trace.py`：已承接 `trace` 命令和 `loop`
   payload 共用的 lifecycle trace 生成、轻量投影和 plain renderer；底层
   goal、decision、cleanup 与 registry 账本继续复用既有模块。
+- `features/supervisor/commands/cleanup.py`：已承接 `cleanup` 命令层、
+  可归档项和可删除 worktree 候选展示；继续复用 managed registry、
+  goal queue 与 notification。
+- `features/supervisor/commands/cleanup_worktree.py`：已承接删除确认护栏、
+  worktree 候选扫描、integration review 校验和 branch cleanup；继续复用
+  现有 `.worktrees/supervisor` 路径边界。
 - `features/supervisor/commands/advice.py`：已承接 `advise`、`supervise`
   和 `loop` 共同使用的 advice payload、automation status 和
   command suggestion 生成；`_execute_advice` 仍留在 `runner.py`，后续需要
