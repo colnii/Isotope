@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import inspect
+import importlib
 
+from isotope.features.supervisor import work_order_builder
 from isotope.features.supervisor.runner import (
     _worker_codex_config,
     _worker_codex_model,
@@ -9,6 +12,17 @@ from isotope.features.supervisor.runner import (
 from isotope.features.supervisor.work_order_builder import (
     build_launch_work_order_prompt,
 )
+
+
+def test_launch_work_order_prompt_lives_in_planner_module():
+    work_order = importlib.import_module("isotope.features.supervisor.planner.work_order")
+
+    assert work_order_builder.build_launch_work_order_prompt is (
+        work_order.build_launch_work_order_prompt
+    )
+    assert inspect.getsourcefile(work_order_builder.build_launch_work_order_prompt) == (
+        inspect.getsourcefile(work_order.build_launch_work_order_prompt)
+    )
 
 
 def test_launch_work_order_prompt_includes_commit_rules():
