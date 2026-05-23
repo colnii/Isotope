@@ -223,6 +223,88 @@ def execute_capacity_action(
     }
 
 
+def loop_capacity_decision_payload(
+    args: Any,
+    *,
+    active_goals: list[dict[str, Any]],
+    explicit_goal: str | None,
+    api: Any | None = None,
+) -> dict[str, Any] | None:
+    if api is None:
+        from isotope.features.supervisor import runner as api
+
+    if not getattr(args, "capacity_decisions", False):
+        return None
+    goal = capacity_decision_goal(
+        explicit_goal=explicit_goal,
+        active_goals=active_goals,
+    )
+    if goal is None:
+        return {
+            "status": "skipped",
+            "reason": "missing_goal",
+            "capacity_decisions": [],
+            "capacity_call_specs": [],
+        }
+    try:
+        provider = api.resolve_capacity_calling_provider_from_env()
+        plan = api.build_supervisor_capacity_plan(
+            goal=goal,
+            provider=provider,
+            execute_agent_loop=False,
+        )
+    except Exception as exc:
+        return {
+            "status": "unavailable",
+            "reason": str(exc),
+            "error_type": type(exc).__name__,
+            "capacity_decisions": [],
+            "capacity_call_specs": [],
+        }
+    decision = plan.get("supervisor_decision")
+    decisions = [decision] if isinstance(decision, dict) else []
+    return {
+        "status": plan.get("status", "unknown"),
+        "reason": plan.get("status_reason"),
+        "goal": goal,
+        "capacity_decisions": decisions,
+        "capacity_call_specs": capacity_call_specs(plan, goal=goal),
+    }
+
+
+def capacity_call_specs(plan: dict[str, Any], *, goal: str) -> list[dict[str, Any]]:
+    decision = plan.get("supervisor_decision")
+    if not isinstance(decision, dict):
+        return []
+    if decision.get("next_action") != "call_capacity":
+        return []
+    if decision.get("can_execute_agent_loop") is not True:
+        return []
+    capacity_id = decision.get("capacity_id")
+    if not isinstance(capacity_id, str) or not capacity_id:
+        return []
+    selection = plan.get("selection")
+    if not isinstance(selection, dict) or selection.get("capacity_id") != capacity_id:
+        return []
+    arguments = selection.get("arguments")
+    inputs = dict(arguments) if isinstance(arguments, dict) else {}
+    return [{"capacity_id": capacity_id, "goal": goal, "inputs": inputs}]
+
+
+def capacity_decision_goal(
+    *,
+    explicit_goal: str | None,
+    active_goals: list[dict[str, Any]],
+) -> str | None:
+    if explicit_goal is not None:
+        return explicit_goal
+    for goal in active_goals:
+        value = goal.get("goal")
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
 def _capacity_call_spec(
     specs: Any,
     capacity_id: str,

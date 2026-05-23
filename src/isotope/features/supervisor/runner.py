@@ -168,7 +168,10 @@ from .commands.auto_cleanup import (
 )
 from .commands.capacity import (
     build_supervisor_capacity_plan,
+    capacity_call_specs as _capacity_call_specs,
+    capacity_decision_goal as _capacity_decision_goal,
     execute_capacity_action as _execute_capacity_action,
+    loop_capacity_decision_payload as _loop_capacity_decision_payload,
     resolve_capacity_calling_provider_from_env,
 )
 from .commands.auto_action import (
@@ -1555,84 +1558,6 @@ def _supervise_payload(
     if getattr(args, "command", None) == "loop":
         payload["lifecycle_trace"] = _lifecycle_trace_payload(args, lightweight=True)
     return payload
-
-
-def _loop_capacity_decision_payload(
-    args: argparse.Namespace,
-    *,
-    active_goals: list[dict[str, Any]],
-    explicit_goal: str | None,
-) -> dict[str, Any] | None:
-    if not getattr(args, "capacity_decisions", False):
-        return None
-    goal = _capacity_decision_goal(
-        explicit_goal=explicit_goal,
-        active_goals=active_goals,
-    )
-    if goal is None:
-        return {
-            "status": "skipped",
-            "reason": "missing_goal",
-            "capacity_decisions": [],
-            "capacity_call_specs": [],
-        }
-    try:
-        provider = resolve_capacity_calling_provider_from_env()
-        plan = build_supervisor_capacity_plan(
-            goal=goal,
-            provider=provider,
-            execute_agent_loop=False,
-        )
-    except Exception as exc:
-        return {
-            "status": "unavailable",
-            "reason": str(exc),
-            "error_type": type(exc).__name__,
-            "capacity_decisions": [],
-            "capacity_call_specs": [],
-        }
-    decision = plan.get("supervisor_decision")
-    decisions = [decision] if isinstance(decision, dict) else []
-    return {
-        "status": plan.get("status", "unknown"),
-        "reason": plan.get("status_reason"),
-        "goal": goal,
-        "capacity_decisions": decisions,
-        "capacity_call_specs": _capacity_call_specs(plan, goal=goal),
-    }
-
-
-def _capacity_call_specs(plan: dict[str, Any], *, goal: str) -> list[dict[str, Any]]:
-    decision = plan.get("supervisor_decision")
-    if not isinstance(decision, dict):
-        return []
-    if decision.get("next_action") != "call_capacity":
-        return []
-    if decision.get("can_execute_agent_loop") is not True:
-        return []
-    capacity_id = decision.get("capacity_id")
-    if not isinstance(capacity_id, str) or not capacity_id:
-        return []
-    selection = plan.get("selection")
-    if not isinstance(selection, dict) or selection.get("capacity_id") != capacity_id:
-        return []
-    arguments = selection.get("arguments")
-    inputs = dict(arguments) if isinstance(arguments, dict) else {}
-    return [{"capacity_id": capacity_id, "goal": goal, "inputs": inputs}]
-
-
-def _capacity_decision_goal(
-    *,
-    explicit_goal: str | None,
-    active_goals: list[dict[str, Any]],
-) -> str | None:
-    if explicit_goal is not None:
-        return explicit_goal
-    for goal in active_goals:
-        value = goal.get("goal")
-        if isinstance(value, str) and value.strip():
-            return value.strip()
-    return None
 
 
 def _maybe_replan_after_context_request(

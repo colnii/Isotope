@@ -753,3 +753,24 @@ def test_supervisor_runner_delegates_loop_state_helpers():
         "_context_cwd_for_actionable_report",
     ):
         assert f"def {function_name}(" not in source
+
+
+def test_supervisor_runner_delegates_capacity_loop_helpers():
+    capacity_module = importlib.import_module(
+        "isotope.features.supervisor.commands.capacity"
+    )
+
+    assert (
+        runner._loop_capacity_decision_payload
+        is capacity_module.loop_capacity_decision_payload
+    )
+    assert runner._capacity_call_specs is capacity_module.capacity_call_specs
+    assert runner._capacity_decision_goal is capacity_module.capacity_decision_goal
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_loop_capacity_decision_payload",
+        "_capacity_call_specs",
+        "_capacity_decision_goal",
+    ):
+        assert f"def {function_name}(" not in source

@@ -789,6 +789,11 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   target session 查找、managed scope 检查、workspace action gate 和
   terminal-done 过滤；继续通过 runner 兼容 alias 复用 advice/auto_action
   的状态判断 contract。
+- `features/supervisor/commands/capacity.py`：已承接 capacity plan 命令、
+  low-risk capability execution（低风险能力执行）和 loop
+  `capacity_decisions` / `capacity_call_specs` 生产 glue；继续复用
+  `agents/scheduler/capacity_graph.py`、`CapabilityRunner` 和
+  `llm.capacity_calling`，不在 runner 中重写 capacity graph。
 - `features/supervisor/commands/advice_execution.py`：已承接旧 command
   suggestion 执行路径，包括 `send_status`/`send_continue` 白名单校验、
   tmux target 选择、run budget、prompt cooldown、busy lane 拦截、
@@ -838,7 +843,7 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
    `platform/state`，同时保持入口继续复用 state projection。
 2. 用真实 daemon 长跑验证 cleanup/current dashboard 在多批任务中的稳定性。
 3. 后续再决定是否把通知接到更多 worker 生命周期事件。
-4. 再拆分 `runner.py` 中的 loop payload 拼装或 capacity decision glue。
+4. 再拆分 `runner.py` 中的 loop payload 拼装。
 
 ## 登记规则
 
