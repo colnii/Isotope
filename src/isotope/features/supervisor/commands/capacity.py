@@ -186,6 +186,55 @@ def handle_capacity_command(
     return 0
 
 
+def execute_capacity_action(
+    args: Any,
+    action: Mapping[str, Any],
+    payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    capacity_id = action.get("capacity_id")
+    if not isinstance(capacity_id, str) or not capacity_id:
+        raise ValueError("call_capacity requires capacity_id")
+    spec = _capacity_call_spec(payload.get("capacity_call_specs"), capacity_id)
+    if spec is None:
+        return {
+            "kind": "call_capacity",
+            "capacity_id": capacity_id,
+            "skipped": True,
+            "reason": "capacity call spec unavailable",
+        }
+    goal = spec.get("goal")
+    inputs = spec.get("inputs")
+    state_root = spec.get("state_root")
+    agent_loop = _execute_agent_loop_capacity_step(
+        goal=goal if isinstance(goal, str) and goal else f"Call {capacity_id}",
+        capability_id=capacity_id,
+        inputs=inputs if isinstance(inputs, Mapping) else {},
+        state_root=(
+            Path(state_root)
+            if isinstance(state_root, str) and state_root
+            else Path(args.codex_home) / "supervisor" / "capacity-loop-runs"
+        ),
+    )
+    return {
+        "kind": "call_capacity",
+        "capacity_id": capacity_id,
+        "goal": goal if isinstance(goal, str) and goal else f"Call {capacity_id}",
+        "agent_loop": agent_loop,
+    }
+
+
+def _capacity_call_spec(
+    specs: Any,
+    capacity_id: str,
+) -> Mapping[str, Any] | None:
+    if not isinstance(specs, list):
+        return None
+    for spec in specs:
+        if isinstance(spec, Mapping) and spec.get("capacity_id") == capacity_id:
+            return spec
+    return None
+
+
 def _execute_agent_loop_capacity_step(
     *,
     goal: str,

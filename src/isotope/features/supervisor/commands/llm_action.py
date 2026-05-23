@@ -69,6 +69,16 @@ def execute_llm_action(
         return api._execute_ask_user_action(args, action)
     if kind == "delete_worktree":
         return api._execute_delete_worktree_action(args, action)
+    if kind == "call_capacity":
+        return execute_failure_guarded_action(
+            args,
+            report=report,
+            payload=payload,
+            action=action,
+            event_type="capacity_call_failed",
+            execute=lambda: api._execute_capacity_action(args, action, payload),
+            api=api,
+        )
     return api._execute_advice(
         args,
         report,

@@ -49,10 +49,10 @@ Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
 | 能力区 | 已接入主路径 | 半成品或闲置 | 对齐动作 |
 | --- | --- | --- | --- |
 | `features/supervisor/` | CLI/Web、daemon/loop、goal queue、fanout 调用、worker review、integration review、merge dispatch、decision request、failure ledger adapter、Codex 托管登记 | `runner.py` 仍有大量命令实现、状态拼装、自动动作执行、merge/cleanup 编排；LLM action 仍是私有 JSON 动作体系 | 保留用户入口，把通用编排迁到 `agents/`、`integrations/codex/`、`workspace/` 和 `platform/state/` |
-| `agents/loop/` | `step.py` 可通过 `CapabilityRunner` 执行 `call_capability`；`capacity plan --execute-agent-loop` 已能从 Supervisor 入口打到 agent loop | 还没有成为 Supervisor loop 的主执行循环；Supervisor 常驻 loop 仍主要走 `llm_summary.py` 的动作解析与 runner 执行 | 把 Supervisor planning/execution 改成 agent loop 驱动，而不是继续扩写私有 LLM action |
+| `agents/loop/` | `step.py` 可通过 `CapabilityRunner` 执行 `call_capability`；`capacity plan --execute-agent-loop` 已能从 Supervisor 入口打到 agent loop；`loop --capacity-decisions --llm-execute` 已可在 LLM planner 选择 `call_capacity` 后复用 agent loop 执行 | Supervisor 常驻 loop 还没有整体成为 agent loop 主循环；`llm_summary.py` 仍承担私有动作解析 | 把 Supervisor planning/execution 改成 agent loop 驱动，而不是继续扩写私有 LLM action |
 | `agents/scheduler/` | `fanout.py` 已复用 dependency graph；`current_batch.py` 已承接 current batch 纯投影并调用 dependency batch；goal queue view 和 goal event parsing 已被 Supervisor adapter 使用 | `capacity_graph.py` 仍偏原型；goal queue 的写入和持久化文件仍在 feature adapter | 让 fanout、batch、capacity graph、current batch projection 和 goal event parsing 成为唯一调度层，禁止 runner 再写批次/DAG 判断 |
 | `capabilities/` | `CapabilityRunner` 可列出、搜索、规划和受控运行少量 allowlist 能力；Supervisor `capacity plan` 已复用 launch plan；runner `plan/run` 会按 `input_contract` 拒绝未声明输入键并检查当前支持的 type/enum 约束 | 能力目录目前很薄，真实 Supervisor worker/merge/context 能力尚未注册进 catalog | 把可复用操作登记成能力，由 LLM 选择能力，再由 runner/loop 执行 |
-| `llm/capacity_calling.py` | 已接入 Supervisor `capacity plan`：LLM 选择 capacity，再生成 capacity graph 和 capability launch plan | 尚未接入 `supervise/loop` 常驻主循环；仍要求严格 JSON | 下一步接入 goal planner 或 loop 的一个真实决策点，继续避免私有 LLM action 膨胀 |
+| `llm/capacity_calling.py` | 已接入 Supervisor `capacity plan`：LLM 选择 capacity，再生成 capacity graph 和 capability launch plan；`capacity_decisions` 已进入 `supervise/loop` 的 LLM planner，并可触发 ready 的 `call_capacity` | 仍要求严格 JSON；capacity action 还是 LLM action 的一类私有动作 | 下一步把更多 Supervisor 操作注册成 capability，减少私有 LLM action 膨胀 |
 | `platform/state/` | `DecisionRequestLedger`、`FailureLedger`、`FileMemoryStore`、worker event channel、multi-worker read model、`SupervisorStateSnapshot`、`SupervisorGoalStatus` 和 `SupervisorLaneState` schema 已被 Supervisor adapter 复用；event/memory/checkpoint/projector 已服务 runtime | lane state 持久化、goal queue 持久化、notification index 仍多为 feature 私有 JSONL | 继续统一跨 worker 事实、事件、记忆和拍板账本，dashboard 读取投影而不是拼散表 |
 | `runtime/` | `InProcessServer` 串起 session/run/policy/executor/memory；`ActionCompiler` 可把模型意图编译成动作提案 | Supervisor 没有通过 runtime action/policy 主链路托管 Codex worker；很多命令仍直接 subprocess/git | 后续 Supervisor 应请求 runtime/capability 执行动作，而不是自己直接做执行层 |
 | `integrations/codex/` | `session_reader.py` 只读读取 Codex JSONL/索引/SQLite；`CodexCliBackend` 和 `CodexTaskAdapter` 已有受控 Codex task 边界 | Supervisor worker launch 仍主要在 `registry.py` 和 runner；`CodexCliBackend` 首片只支持 shared_ro/read-only | 把 Codex launch/resume/session/log 变成集成层合同，Supervisor 只发 worker 请求 |
@@ -70,9 +70,11 @@ Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
   没有注册为通用 capability，也没有接入 runtime memory/query 统一边界。
 - `current_batch.py` 已经复用 dependency batch，这是正确方向；
   但 batch 展示、goal queue 写入、fanout 启动还没有完全收敛为同一调度合同。
-- `loop --capacity-decisions` 的 goal 到只读 `capacity_decisions` 生产 glue
-  仍暂留 `runner.py` 的 `_supervise_payload` 附近；等 capacity 主路径稳定后，
-  应抽到 `commands/capacity.py` 或 scheduler adapter，避免继续扩写 runner。
+- `loop --capacity-decisions` 的 goal 到 `capacity_decisions` /
+  `capacity_call_specs` 生产 glue 仍暂留 `runner.py` 的 `_supervise_payload`
+  附近；`call_capacity` 仍经 LLM action 分发；等 capacity 主路径稳定后，
+  应抽到 `commands/capacity.py`、scheduler adapter 或 agent loop planner，
+  避免继续扩写 runner 和私有动作体系。
 
 ### 最高杠杆的后续任务
 
@@ -80,8 +82,10 @@ Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
    让 LLM 先选择 capability（能力）并填参数，再由 agent loop 执行。
    这会把 Supervisor 从“写死动作的 Codex 管理器”推进到“能选择系统能力的高层 agent”。
    进展：已完成第一片 `capacity plan`，默认 plan-only；显式
-   `--execute-agent-loop` 时可通过 agent loop 调用低风险 allowlist 能力，
-   把 selection `arguments` 作为 structured `inputs` 传入，并返回 tick policy handoff。
+   `--execute-agent-loop` 时可通过 agent loop 调用低风险 allowlist 能力；
+   `loop/supervise --capacity-decisions --llm-execute` 也可在 LLM planner
+   选择 ready 的 `call_capacity` 后，把 selection `arguments` 作为
+   structured `inputs` 传入 agent loop，并返回 tick policy handoff。
 
 2. **把 Codex worker 生命周期收口到 `integrations/codex` 与 `workspace`。**
    Codex launch/resume/session/log、worktree、branch、merge、cleanup 应有稳定合同。

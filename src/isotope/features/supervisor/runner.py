@@ -169,6 +169,7 @@ from .commands.auto_cleanup import (
 )
 from .commands.capacity import (
     build_supervisor_capacity_plan,
+    execute_capacity_action as _execute_capacity_action,
     resolve_capacity_calling_provider_from_env,
 )
 from .commands.auto_action import (
@@ -1403,10 +1404,13 @@ def _supervise_payload(
             payload["capacity_decisions"] = capacity_decision_payload[
                 "capacity_decisions"
             ]
+            payload["capacity_call_specs"] = capacity_decision_payload[
+                "capacity_call_specs"
+            ]
             payload["capacity_decision_status"] = {
                 key: value
                 for key, value in capacity_decision_payload.items()
-                if key != "capacity_decisions"
+                if key not in {"capacity_decisions", "capacity_call_specs"}
             }
         worker_reviews = _worker_review_context(args)
         payload["worker_reviews"] = worker_reviews
@@ -1599,6 +1603,7 @@ def _loop_capacity_decision_payload(
             "status": "skipped",
             "reason": "missing_goal",
             "capacity_decisions": [],
+            "capacity_call_specs": [],
         }
     try:
         provider = resolve_capacity_calling_provider_from_env()
@@ -1613,6 +1618,7 @@ def _loop_capacity_decision_payload(
             "reason": str(exc),
             "error_type": type(exc).__name__,
             "capacity_decisions": [],
+            "capacity_call_specs": [],
         }
     decision = plan.get("supervisor_decision")
     decisions = [decision] if isinstance(decision, dict) else []
@@ -1621,7 +1627,27 @@ def _loop_capacity_decision_payload(
         "reason": plan.get("status_reason"),
         "goal": goal,
         "capacity_decisions": decisions,
+        "capacity_call_specs": _capacity_call_specs(plan, goal=goal),
     }
+
+
+def _capacity_call_specs(plan: dict[str, Any], *, goal: str) -> list[dict[str, Any]]:
+    decision = plan.get("supervisor_decision")
+    if not isinstance(decision, dict):
+        return []
+    if decision.get("next_action") != "call_capacity":
+        return []
+    if decision.get("can_execute_agent_loop") is not True:
+        return []
+    capacity_id = decision.get("capacity_id")
+    if not isinstance(capacity_id, str) or not capacity_id:
+        return []
+    selection = plan.get("selection")
+    if not isinstance(selection, dict) or selection.get("capacity_id") != capacity_id:
+        return []
+    arguments = selection.get("arguments")
+    inputs = dict(arguments) if isinstance(arguments, dict) else {}
+    return [{"capacity_id": capacity_id, "goal": goal, "inputs": inputs}]
 
 
 def _capacity_decision_goal(

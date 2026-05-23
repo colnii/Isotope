@@ -143,7 +143,10 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   三类下一步；`supervise --capacity-decisions` 与
   `loop --capacity-decisions` 会为当前显式 goal 或第一个 active goal
   生成一条 `capacity_decisions`，放进 LLM action prompt，供真实决策点读取；
-  不生成可执行 graph call；显式
+  当该读模型为 `call_capacity` 且 `--llm-execute` 打开时，
+  LLM planner 可选择 `call_capacity`，Supervisor 会用已保存的
+  `capacity_call_specs` 通过 agent loop 的 `call_capability` 步骤执行；
+  显式
   `--execute-agent-loop` 才通过 agent loop 带 `inputs` 执行 allowlist 低风险能力，
   并输出执行前后的 tick policy handoff。
 - `capacity calling` 当前会做两层低敏 contract guardrail（契约护栏）：
@@ -463,7 +466,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   `supervisor_decision`，再交给 LLM planner；缺配置或缺 goal 时只记录
   `capacity_decision_status`，不打断 loop。
 - `--llm-execute` 会执行 LLM 选择的 `send_status/send_continue`、
-  `resume_session` 或 `launch_session`，`monitor` 只记录跳过。
+  `resume_session`、`launch_session` 或 ready 的 `call_capacity`，
+  `monitor` 只记录跳过。
 - LLM 动作提示会携带托管窗口的终端可输入、bell、状态协议短字段，
   普通 Codex session 的 `resume` 候选和可启动新会话的工作目录。
 - `launch_session` 的 goal 由 LLM 根据上下文生成，执行时会包成

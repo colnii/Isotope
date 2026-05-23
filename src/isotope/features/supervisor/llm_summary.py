@@ -41,6 +41,7 @@ LLM_ACTION_ALLOWED_KINDS = (
     "request_context",
     "ask_user",
     "delete_worktree",
+    "call_capacity",
 )
 LLM_RESUME_PROMPT_KINDS = ("send_status", "send_continue")
 LLM_ASK_USER_CONTEXT_STATUSES = ("missing", "outdated", "conflict")
@@ -379,6 +380,11 @@ def build_llm_action_messages(
                             "call_capacity 时说明能力计划已 ready，"
                             "request_input 表示需要先补输入，blocked 表示当前能力不可启动。"
                         ),
+                        (
+                            "只有 capacity_decisions 中同一 capacity_id 的 "
+                            "next_action=call_capacity 且 can_execute_agent_loop=true "
+                            "时，才允许输出 call_capacity。"
+                        ),
                     ],
                     "context_capability": {
                         "kind": "request_context",
@@ -438,6 +444,11 @@ def build_llm_action_messages(
                         "record_id": "managed-optional-but-recommended",
                         "confirm_delete_worktree": True,
                         "reason": "一句中文说明已确认完成、归档且集成",
+                    },
+                    "call_capacity_schema": {
+                        "kind": "call_capacity",
+                        "capacity_id": "capacity_decisions 中 ready 的 capacity_id",
+                        "reason": "一句中文说明为什么现在调用该能力",
                     },
                 },
                 ensure_ascii=False,
@@ -502,6 +513,7 @@ def generate_llm_action_decision(
     instructions_exhausted: bool | None = None
     record_id: str | None = None
     confirm_delete_worktree: bool | None = None
+    capacity_id: str | None = None
     if kind == "resume_session":
         session_id = _required_payload_string(payload, "session_id")
         if not _has_resume_target(report, session_id):
@@ -643,6 +655,12 @@ def generate_llm_action_decision(
         candidate_cwd = candidate.get("cwd")
         cwd = candidate_cwd if isinstance(candidate_cwd, str) else None
         command_suggestion = None
+    elif kind == "call_capacity":
+        target_name = None
+        capacity_id = _required_payload_string(payload, "capacity_id")
+        if _call_capacity_decision(capacity_decisions, capacity_id) is None:
+            raise ValueError("call_capacity requires a ready capacity decision")
+        command_suggestion = None
     elif kind != "monitor":
         if target_name is None:
             raise ValueError(f"target_name is required for LLM action: {kind}")
@@ -665,6 +683,7 @@ def generate_llm_action_decision(
         "target_name": target_name,
         **({"session_id": session_id} if session_id is not None else {}),
         **({"goal_id": goal_id} if goal_id is not None else {}),
+        **({"capacity_id": capacity_id} if capacity_id is not None else {}),
         **({"prompt_kind": prompt_kind} if prompt_kind is not None else {}),
         **({"worker_profile": worker_profile} if worker_profile is not None else {}),
         **({"cwd": cwd} if kind == "launch_session" else {}),
@@ -1168,6 +1187,23 @@ def _command_suggestion_for_kind(
         ):
             continue
         return suggestion
+    return None
+
+
+def _call_capacity_decision(
+    capacity_decisions: list[dict[str, Any]] | None,
+    capacity_id: str,
+) -> dict[str, Any] | None:
+    for decision in capacity_decisions or []:
+        if not isinstance(decision, dict):
+            continue
+        if decision.get("capacity_id") != capacity_id:
+            continue
+        if decision.get("next_action") != "call_capacity":
+            continue
+        if decision.get("can_execute_agent_loop") is not True:
+            continue
+        return decision
     return None
 
 

@@ -5615,7 +5615,7 @@ def test_codex_supervisor_llm_action_messages_include_whitelist_and_commands():
     assert (
         '"allowed_kinds": ["monitor", "send_status", "send_continue", '
         '"resume_session", "launch_session", "request_context", "ask_user", '
-        '"delete_worktree"]'
+        '"delete_worktree", "call_capacity"]'
         in messages[1]["content"]
     )
     assert '"context_capability"' in messages[1]["content"]
@@ -6531,11 +6531,11 @@ def test_codex_supervisor_loop_payload_produces_capacity_decisions_for_llm(
     goal = "补齐当前目标需要的上下文。"
     decision = {
         "kind": "supervisor_capacity_decision",
-        "next_action": "request_input",
-        "reason": "needs_input",
+        "next_action": "call_capacity",
+        "reason": "ready",
         "capacity_id": "supervisor.request_context",
-        "can_execute_agent_loop": False,
-        "missing_inputs": ["query"],
+        "can_execute_agent_loop": True,
+        "missing_inputs": [],
         "blocking_reasons": [],
     }
     provider = object()
@@ -6551,7 +6551,12 @@ def test_codex_supervisor_loop_payload_produces_capacity_decisions_for_llm(
         assert kwargs["execute_agent_loop"] is False
         return {
             "kind": "supervisor_capacity_plan",
-            "status": "needs_input",
+            "status": "ok",
+            "status_reason": "ready",
+            "selection": {
+                "capacity_id": "supervisor.request_context",
+                "arguments": {"query": "补齐上下文输入"},
+            },
             "supervisor_decision": decision,
         }
 
@@ -6603,6 +6608,13 @@ def test_codex_supervisor_loop_payload_produces_capacity_decisions_for_llm(
 
     assert payload["capacity_decisions"] == [decision]
     assert captured["capacity_decisions"] == [decision]
+    assert payload["capacity_call_specs"] == [
+        {
+            "capacity_id": "supervisor.request_context",
+            "goal": goal,
+            "inputs": {"query": "补齐上下文输入"},
+        }
+    ]
 
 
 def test_codex_supervisor_parser_accepts_capacity_decisions_for_loop_and_supervise():
@@ -6613,6 +6625,108 @@ def test_codex_supervisor_parser_accepts_capacity_decisions_for_loop_and_supervi
 
     assert loop_args.capacity_decisions is True
     assert supervise_args.capacity_decisions is True
+
+
+def test_codex_supervisor_generate_llm_action_decision_accepts_call_capacity(tmp_path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    report = CodexSupervisorReport(generated_at=NOW.isoformat(), sessions=())
+    suggestions = [
+        {
+            "kind": "request_context",
+            "cwd": str(workspace),
+            "query": "capacity",
+            "command": f"isotope-supervisor context --cwd {workspace} --query capacity",
+        }
+    ]
+    decision = {
+        "kind": "supervisor_capacity_decision",
+        "next_action": "call_capacity",
+        "reason": "ready",
+        "capacity_id": "artifact.review",
+        "can_execute_agent_loop": True,
+        "missing_inputs": [],
+        "blocking_reasons": [],
+    }
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert '"call_capacity"' in content
+            assert '"capacity_id": "artifact.review"' in content
+            return json.dumps(
+                {
+                    "kind": "call_capacity",
+                    "capacity_id": "artifact.review",
+                    "reason": "capacity plan 已 ready，调用能力。",
+                },
+                ensure_ascii=False,
+            )
+
+    result = generate_llm_action_decision(
+        report,
+        suggestions,
+        FakeProvider(),
+        capacity_decisions=[decision],
+    )
+
+    assert result == {
+        "kind": "call_capacity",
+        "target_name": None,
+        "capacity_id": "artifact.review",
+        "reason": "capacity plan 已 ready，调用能力。",
+        "command_suggestion": None,
+    }
+
+
+def test_codex_supervisor_execute_llm_action_dispatches_call_capacity(
+    tmp_path,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    report = CodexSupervisorReport(generated_at=NOW.isoformat(), sessions=())
+    action = {
+        "kind": "call_capacity",
+        "capacity_id": "artifact.review",
+        "reason": "capacity plan 已 ready，调用能力。",
+        "command_suggestion": None,
+    }
+    payload = {
+        "llm_action": action,
+        "capacity_call_specs": [
+            {
+                "capacity_id": "artifact.review",
+                "goal": "检查 artifact review 能力。",
+                "inputs": {},
+            }
+        ],
+    }
+    captured: dict[str, object] = {}
+
+    def fake_execute_capacity_action(args: object, action: dict[str, object], payload):
+        captured["action"] = action
+        captured["payload"] = payload
+        return {
+            "kind": "call_capacity",
+            "capacity_id": "artifact.review",
+            "agent_loop": {"executed": True},
+        }
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._execute_capacity_action",
+        fake_execute_capacity_action,
+        raising=False,
+    )
+
+    result = _execute_llm_action(_runner_args(codex_home), report, payload)
+
+    assert result == {
+        "kind": "call_capacity",
+        "capacity_id": "artifact.review",
+        "agent_loop": {"executed": True},
+    }
+    assert captured["action"] == action
+    assert captured["payload"] == payload
 
 
 def test_codex_supervisor_generate_llm_action_decision_can_launch_named_suggestion_without_prompt():
@@ -8015,7 +8129,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_sends_whitelisted_action(
             assert (
                 '"allowed_kinds": ["monitor", "send_status", "send_continue", '
                 '"resume_session", "launch_session", "request_context", "ask_user", '
-                '"delete_worktree"]'
+                '"delete_worktree", "call_capacity"]'
             ) in content
             assert '"managed_terminal_ready": true' in content
             return '{"kind":"send_status","target_name":"lane-a","reason":"先看进度。"}'
