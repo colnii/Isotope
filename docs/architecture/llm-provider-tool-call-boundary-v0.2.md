@@ -34,7 +34,9 @@
 当前已实现：
 
 - `src/isotope/llm_provider.py`
-- `src/isotope/llm_live_smoke.py`
+- `src/isotope/llm_live_smoke.py` 作为命令 facade（门面入口）
+- `src/isotope/llm_live_smoke_config.py` 承接 smoke config（配置）
+- `src/isotope/llm_live_smoke_runs.py` 承接 run/diagnose（运行/诊断）helper
 - `src/isotope/llm_product_chat_app.py`
 - `src/isotope/http_api.py`
 - `src/isotope/demo.py`
