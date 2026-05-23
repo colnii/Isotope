@@ -138,9 +138,9 @@ Reason: README, AGENTS, current-status, roadmap, and recent task instructions li
 | `../architecture/http-api-minimal-surface-v0.2.md` | `docs/tracks/http-api-minimal-surface-v0.2.md` | track | No | High | README / AGENTS link directly. |
 | `../architecture/implementation-plan-v0.1.md` | `../archive/plans/implementation-plan-v0.1.md` | archive | Done | Low | Historical plan; moved to archived plans after active links checked. |
 | `../architecture/kernel-architecture-v0.1.md` | `docs/kernel/kernel-architecture-v0.1.md` | kernel | No | High | Current reference; many docs mention it. |
-| `../archive/kernel-decision-log.md` | `docs/kernel/kernel-decision-log.md` | kernel | No | Medium | Move with kernel batch. |
+| `../archive/kernel-decision-log.md` | `docs/kernel/kernel-decision-log.md` | kernel | No | Medium | Placement reviewed in `kernel-archive-placement-review.md`; keep in archive until full kernel batch. |
 | `../architecture/kernel-living-spec.md` | `docs/kernel/kernel-living-spec.md` | kernel | No | High | Current reference; keep stubs if moved. |
-| `../archive/kernel-one-pager.md` | `docs/kernel/kernel-one-pager.md` | kernel | No | Medium | Move with kernel batch. |
+| `../archive/kernel-one-pager.md` | `docs/kernel/kernel-one-pager.md` | kernel | No | Medium | Placement reviewed in `kernel-archive-placement-review.md`; keep in archive until full kernel batch. |
 | `../architecture/kernel-spec-v0.1.md` | `docs/kernel/kernel-spec-v0.1.md` | kernel | No | High | Current reference; many docs mention it. |
 | `../architecture/memory-record-persistence-boundary-v0.1.md` | `docs/memory/memory-record-persistence-boundary-v0.1.md` | memory | No | Medium | Move with memory batch. |
 | `../architecture/memory-v0.1-scope-freeze.md` | `docs/memory/memory-v0.1-scope-freeze.md` | memory | No | High | Current memory scope reference. |

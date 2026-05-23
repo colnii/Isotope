@@ -39,24 +39,15 @@
   是 obsolete rule（废止规则）。
 - `docs/reviews/` 已补分类索引：migration 控制、branch audit / old-code
   intake、v0.2 阶段复盘、kernel gap / closure 背景和 app spike 压力测试分开读。
+- kernel archive placement 已记录：
+  [kernel-one-pager](../archive/kernel-one-pager.md) 和
+  [kernel-decision-log](../archive/kernel-decision-log.md) 暂不单独迁入
+  `docs/kernel/`；原因见
+  [kernel archive placement review](../reviews/kernel-archive-placement-review.md)。
 
 ## 下一批任务
 
-### 1. 旧文档第四刀：kernel 批次是否移动
-
-目标：
-
-- 对照 `docs/reviews/docs-migration-plan.md` 的 medium-risk kernel batch，
-  判断 `kernel-one-pager.md` 和 `kernel-decision-log.md` 是否仍留在 archive
-  根目录，还是迁到未来 `docs/kernel/`。
-- 不和 reviews 分组混在同一提交里。
-
-验收：
-
-- 若移动，必须同提交修链接并保留旧路径风险说明。
-- 若不移动，说明延后原因。
-
-### 2. 旧文档第五刀：status 类文档是否需要专门目录
+### 1. 旧文档第五刀：status 类文档是否需要专门目录
 
 目标：
 
@@ -68,6 +59,18 @@
 
 - 明确哪些 status 类文档继续原地保留。
 - 不移动 `docs/current/status.md`。
+
+### 2. track / checkpoint / memory 迁移继续暂停
+
+目标：
+
+- 不默认移动 track、checkpoint 或 memory 文档。
+- 若后续要打开其中一类，先写 placement review（放置评审），再做文件迁移。
+
+验收：
+
+- 不从单个 review 或旧 inventory 推断迁移授权。
+- 仍以 `docs/reviews/docs-migration-plan.md` 为迁移控制文档。
 
 ### 3. Supervisor 任务暂缓但保留
 
