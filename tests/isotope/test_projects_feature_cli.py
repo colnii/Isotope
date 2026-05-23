@@ -198,6 +198,75 @@ def test_project_cli_reads_project_detail_with_linked_summaries(tmp_path):
     _assert_low_sensitive(json.loads(detail_result.stdout))
 
 
+def test_project_cli_detail_uses_refreshed_linked_summaries(tmp_path):
+    task = TaskFlow.in_process(tmp_path).create_task(
+        goal="collect portfolio evidence",
+        first_message="private note",
+    )
+    file_summary = FileFlow.in_process(tmp_path).create_text_file(
+        name="evidence.md",
+        summary="canonical file summary",
+        content="private file content",
+    )
+    created_result = _run_cli(
+        "create",
+        "--root",
+        str(tmp_path),
+        "--name",
+        "portfolio demo",
+        "--summary",
+        "usable demo workspace",
+        "--json",
+    )
+    project_id = json.loads(created_result.stdout)["project"]["project_id"]
+    _run_cli(
+        "add-task",
+        "--root",
+        str(tmp_path),
+        "--project-id",
+        project_id,
+        "--task-id",
+        task.task_id,
+        "--json",
+    )
+    _run_cli(
+        "add-file",
+        "--root",
+        str(tmp_path),
+        "--project-id",
+        project_id,
+        "--file-id",
+        file_summary.file_id,
+        "--json",
+    )
+    task_index_path = tmp_path / "tasks" / "index.json"
+    task_index = json.loads(task_index_path.read_text(encoding="utf-8"))
+    task_index["tasks"][0]["result_summary"] = "stale task index summary"
+    task_index_path.write_text(json.dumps(task_index), encoding="utf-8")
+    file_index_path = tmp_path / "files" / "index.json"
+    file_index = json.loads(file_index_path.read_text(encoding="utf-8"))
+    file_index["files"][0]["summary"] = "stale file index summary"
+    file_index_path.write_text(json.dumps(file_index), encoding="utf-8")
+
+    detail_result = _run_cli(
+        "detail",
+        "--root",
+        str(tmp_path),
+        "--project-id",
+        project_id,
+        "--json",
+    )
+
+    assert detail_result.returncode == 0, detail_result.stderr
+    payload = json.loads(detail_result.stdout)
+    payload_text = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+    assert "stale task index summary" not in payload_text
+    assert "stale file index summary" not in payload_text
+    assert task.result_summary in payload_text
+    assert file_summary.summary in payload_text
+    _assert_low_sensitive(payload)
+
+
 def test_project_cli_creates_workspace_with_detail_and_workbench(tmp_path):
     result = _run_cli(
         "workspace",
