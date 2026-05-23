@@ -180,6 +180,26 @@ def test_supervisor_runner_delegates_dashboard_command_helpers():
         assert f"def {function_name}(" not in source
 
 
+def test_supervisor_runner_delegates_lifecycle_trace_helpers():
+    trace_module = importlib.import_module("isotope.features.supervisor.commands.trace")
+
+    assert runner._lifecycle_trace_payload is trace_module.lifecycle_trace_payload
+    assert runner._lightweight_lifecycle_stages is trace_module.lightweight_lifecycle_stages
+    assert runner._managed_record_trace_dict is trace_module.managed_record_trace_dict
+    assert runner._lifecycle_next_attention is trace_module.lifecycle_next_attention
+    assert runner._print_lifecycle_trace_plain is trace_module.print_lifecycle_trace_plain
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_lifecycle_trace_payload",
+        "_lightweight_lifecycle_stages",
+        "_managed_record_trace_dict",
+        "_lifecycle_next_attention",
+        "_print_lifecycle_trace_plain",
+    ):
+        assert f"def {function_name}(" not in source
+
+
 def test_supervisor_runner_uses_memory_worker_event_channel():
     worker_event_channel = importlib.import_module("isotope.memory.worker_event_channel")
 

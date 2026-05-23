@@ -35,7 +35,7 @@ Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
 
 | 债务 | 现状证据 | 目标 | 下一步 |
 | --- | --- | --- | --- |
-| `runner.py` 仍是过大 legacy 入口 | `daemon/up/check/watcher` 的命令层 payload 和 plain renderer 已抽到 `src/isotope/features/supervisor/commands/daemon_command.py`；`start-here/guide/discover` 的上手与接管命令层已抽到 `src/isotope/features/supervisor/commands/onboarding.py`；dashboard payload/plain renderer、managed lane linking 和 current batch projection 已补进 `src/isotope/features/supervisor/commands/dashboard.py`；`advise/supervise/loop` 复用的 command suggestion（命令建议）与 automation status（自动化状态）已抽到 `src/isotope/features/supervisor/commands/advice.py`；`runner.py` 仍承载 loop、dispatch、merge、执行动作和部分状态判断等职责 | 让 `runner.py` 只保留入口转发和兼容 glue（胶水代码） | 下一批优先拆 `runner.py` 中的自动执行、tmux 控制或 merge/worktree 编排；每次新增 Supervisor 行为前先判断能否落到 `commands/`、`agents/`、`integrations/codex/`、`platform/state/` 或 `workspace/` |
+| `runner.py` 仍是过大 legacy 入口 | `daemon/up/check/watcher` 的命令层 payload 和 plain renderer 已抽到 `src/isotope/features/supervisor/commands/daemon_command.py`；`start-here/guide/discover` 的上手与接管命令层已抽到 `src/isotope/features/supervisor/commands/onboarding.py`；dashboard payload/plain renderer、managed lane linking 和 current batch projection 已补进 `src/isotope/features/supervisor/commands/dashboard.py`；`trace` 与 `loop` 共用的 lifecycle trace payload/plain renderer 已抽到 `src/isotope/features/supervisor/commands/trace.py`；`advise/supervise/loop` 复用的 command suggestion（命令建议）与 automation status（自动化状态）已抽到 `src/isotope/features/supervisor/commands/advice.py`；`runner.py` 仍承载 loop、dispatch、merge、执行动作和部分状态判断等职责 | 让 `runner.py` 只保留入口转发和兼容 glue（胶水代码） | 下一批优先拆 `runner.py` 中的自动执行、tmux 控制或 merge/worktree 编排；每次新增 Supervisor 行为前先判断能否落到 `commands/`、`agents/`、`integrations/codex/`、`platform/state/` 或 `workspace/` |
 | Supervisor 对 `platform/` 复用不足 | 已有 decision/failure ledger 进入 `platform/state/`，但大量 worker 状态、失败策略和控制面仍留在 feature 私有实现 | 只把跨 agent 的状态事实、账本接口和 schema 下沉到 `platform/` | 优先抽 decision request / failure ledger 的通用账本接口，避免把产品视图下沉到底座 |
 | 新功能容易绕过既有调度模块 | `agents/scheduler/` 已有 goal queue、fanout、dependency graph、dependency batches 和 capacity graph | Supervisor fanout、batch、capacity 相关逻辑默认复用 scheduler 层 | worker 工单必须列出将复用的 scheduler API；不能在 `runner.py` 中再写一套 DAG 或批次判断 |
 
@@ -91,7 +91,7 @@ Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
 
 | 当前职责 | 现有位置 | 目标位置 | 迁移方式 | 备注 |
 | --- | --- | --- | --- | --- |
-| CLI 参数、命令分发 | `features/supervisor/runner.py`, `commands/` | `features/supervisor/commands/` | 已拆出 parser、dashboard payload/rendering、goal/cleanup/merge/promotion/capacity、daemon、onboarding 和 advice suggestion 命令层；继续保留 runner 兼容导出，逐个命令拆 handler | `runner.py` 最终只做入口转发和兼容 glue（胶水代码）。 |
+| CLI 参数、命令分发 | `features/supervisor/runner.py`, `commands/` | `features/supervisor/commands/` | 已拆出 parser、dashboard payload/rendering、trace lifecycle payload、goal/cleanup/merge/promotion/capacity、daemon、onboarding 和 advice suggestion 命令层；继续保留 runner 兼容导出，逐个命令拆 handler | `runner.py` 最终只做入口转发和兼容 glue（胶水代码）。 |
 | Dashboard / Web 视图 | `features/supervisor/web.py`, `dashboard_html.py`, `runner.py` | `features/supervisor/web/` 或保持 feature 内 | 可以先留在 feature | 这是用户可见产品入口，暂不下沉到底座。 |
 | Codex session 扫描 | `features/supervisor/flow.py` | `integrations/codex/session_reader.py` | 抽只读 reader，再由 feature 调用 | 未来支持 Qoder/Minimax worker 时不能绑定在 supervisor feature 内。 |
 | Codex exec / resume / launch | `runner.py`, `registry.py` | `integrations/codex/` + `execution/` | 先抽 process 后端和 resume 命令构造 | Codex 是外部集成，不是 Supervisor 核心本体。 |
