@@ -15,7 +15,7 @@ from isotope.features.supervisor.state.multi_worker import (
     build_multi_worker_status_payload,
     render_multi_worker_status_plain,
 )
-from isotope.memory.worker_event_channel import (
+from isotope.platform.state.worker_event_channel import (
     list_worker_events,
     publish_worker_event,
     render_worker_event_channel_plain,

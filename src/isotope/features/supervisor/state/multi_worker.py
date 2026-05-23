@@ -5,10 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from isotope.memory import FileMemoryStore
 from isotope.platform.schemas.memory import MemoryRecord
-
-from .worker_event_channel import DEFAULT_CHANNEL, WORKER_EVENT_KIND
+from isotope.platform.state.memory_store import FileMemoryStore
+from isotope.platform.state.worker_event_channel import DEFAULT_CHANNEL, WORKER_EVENT_KIND
 
 
 CAPACITY_KINDS = {"capacity_call", "capacity_call_selection"}

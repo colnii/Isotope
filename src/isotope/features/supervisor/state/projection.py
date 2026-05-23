@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from isotope.features.notifications.flow import NotificationFlow, NotificationSummary
-from isotope.memory.worker_event_channel import list_worker_events
+from isotope.platform.state.worker_event_channel import list_worker_events
 
 from ..decision_requests import read_active_decision_requests
 from ..goal_queue import (

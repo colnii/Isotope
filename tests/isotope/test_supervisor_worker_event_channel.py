@@ -2,7 +2,24 @@ from __future__ import annotations
 
 import json
 
+import isotope.memory.worker_event_channel as memory_worker_event_channel
+import isotope.platform.state.worker_event_channel as platform_worker_event_channel
 from isotope.features.supervisor import runner
+
+
+def test_worker_event_channel_uses_platform_state_implementation():
+    assert (
+        memory_worker_event_channel.publish_worker_event
+        is platform_worker_event_channel.publish_worker_event
+    )
+    assert (
+        memory_worker_event_channel.list_worker_events
+        is platform_worker_event_channel.list_worker_events
+    )
+    assert (
+        memory_worker_event_channel.render_worker_event_channel_plain
+        is platform_worker_event_channel.render_worker_event_channel_plain
+    )
 
 
 def test_supervisor_worker_event_channel_publish_and_list_json(tmp_path, capsys):

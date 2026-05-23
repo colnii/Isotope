@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from isotope.memory.worker_event_channel import (
+from isotope.platform.state.worker_event_channel import (
     DEFAULT_CHANNEL,
     WORKER_EVENT_KIND,
     list_worker_events,

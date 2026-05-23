@@ -381,7 +381,7 @@ from isotope.core.time import (
     _timestamp_sort_value,
     _utc_now,
 )
-from isotope.memory.worker_event_channel import (
+from isotope.platform.state.worker_event_channel import (
     list_worker_events,
     publish_worker_event,
     render_worker_event_channel_plain,
