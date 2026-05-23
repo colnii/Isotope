@@ -33,6 +33,15 @@ focused files with clear responsibilities. Test files and test functions use the
 `test_*` naming pattern. Keep public interfaces small and prefer explicit data
 objects over loosely shaped dictionaries when behavior is shared.
 
+For mature source files under `src/`, treat 150-500 lines as the comfortable
+range, 600+ lines as a prompt for a responsibility audit, and 1000+ lines as a
+strong refactoring signal unless the file is generated code, a large constant
+table, a protocol definition, or another documented exception. Do not split
+files mechanically by line count; split by concepts such as model, schema,
+service, repository, validator, CLI/API adapter, or exception. If a function is
+roughly 40+ lines, check whether it can be named and tested as smaller focused
+helpers.
+
 New dependencies are acceptable when they reduce maintenance cost; document why
 they are needed and avoid duplicating mature libraries without a clear reason.
 
