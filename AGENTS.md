@@ -33,15 +33,6 @@ focused files with clear responsibilities. Test files and test functions use the
 `test_*` naming pattern. Keep public interfaces small and prefer explicit data
 objects over loosely shaped dictionaries when behavior is shared.
 
-For mature source files under `src/`, treat 150-500 lines as the comfortable
-range, 600+ lines as a prompt for a responsibility audit, and 1000+ lines as a
-strong refactoring signal unless the file is generated code, a large constant
-table, a protocol definition, or another documented exception. Do not split
-files mechanically by line count; split by concepts such as model, schema,
-service, repository, validator, CLI/API adapter, or exception. If a function is
-roughly 40+ lines, check whether it can be named and tested as smaller focused
-helpers.
-
 New dependencies are acceptable when they reduce maintenance cost; document why
 they are needed and avoid duplicating mature libraries without a clear reason.
 
@@ -49,17 +40,6 @@ they are needed and avoid duplicating mature libraries without a clear reason.
 
 Prefer small, reviewable changes. When adding or changing behavior, update the
 relevant CLI/API entry point, tests, and user-facing docs in the same change.
-
-Before implementing a non-trivial feature or refactor, perform a reuse audit:
-identify the existing modules, helpers, schemas, and docs that already cover
-part of the work; state what will be reused; and document why any similar logic
-cannot be reused. Do not add a parallel implementation when an existing
-contract can be reused or slightly generalized.
-
-When a change leaves known duplication, legacy routing, or oversized entrypoint
-code behind, record it in the relevant current doc as refactoring debt with a
-clear owner area and next action. Do not rely on "refactor later" as an
-untracked promise.
 
 Agent and LLM features should keep the model on the main execution path while
 using rules, allowlists, budgets, and workspace boundaries as guardrails. Do not
