@@ -90,6 +90,32 @@ def test_supervisor_runner_delegates_daemon_command_helpers():
         assert f"def {function_name}(" not in source
 
 
+def test_supervisor_runner_delegates_onboarding_command_helpers():
+    onboarding_module = importlib.import_module(
+        "isotope.features.supervisor.commands.onboarding"
+    )
+
+    assert runner._start_here_payload is onboarding_module.start_here_payload
+    assert runner._print_start_here_plain is onboarding_module.print_start_here_plain
+    assert runner._guide_payload is onboarding_module.guide_payload
+    assert runner._guide_worker_codex_args is onboarding_module.guide_worker_codex_args
+    assert runner._print_guide_plain is onboarding_module.print_guide_plain
+    assert runner._discover_payload is onboarding_module.discover_payload
+    assert runner._selected_discover_candidate is onboarding_module.selected_discover_candidate
+    assert runner._print_discover_plain is onboarding_module.print_discover_plain
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_start_here_payload",
+        "_guide_payload",
+        "_discover_payload",
+        "_print_start_here_plain",
+        "_print_guide_plain",
+        "_print_discover_plain",
+    ):
+        assert f"def {function_name}(" not in source
+
+
 def test_supervisor_runner_uses_memory_worker_event_channel():
     worker_event_channel = importlib.import_module("isotope.memory.worker_event_channel")
 

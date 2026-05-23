@@ -684,6 +684,9 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   的命令层 payload、最近活动摘要和 plain renderer；继续复用
   `features/supervisor/daemon.py` 的进程生命周期 helper，后续再把后台
   loop/runtime 下沉到 `agents/runtime/` 或 `runtime/`。
+- `features/supervisor/commands/onboarding.py`：已承接 `start-here`、`guide`
+  和 `discover` 的上手/接管命令层 payload 与 plain renderer；继续复用
+  `tmux_discovery.py` 和 `registry.py` 的既有 contract（契约）。
 - `features/supervisor/status.py`：后续可下沉状态分类和状态依据生成。
 - `features/supervisor/advice.py`：建议、命令草案、自动策略和执行白名单。
 - `features/supervisor/protocol.py`：后续可下沉状态协议解析和提示语注入。
