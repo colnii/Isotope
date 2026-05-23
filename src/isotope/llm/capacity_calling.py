@@ -8,6 +8,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Mapping, Protocol
 
+from ..platform.schemas.input_contract import matches_contract_type
 from ..platform.errors import IsotopeError
 from .provider import LLMResponse
 
@@ -286,7 +287,7 @@ def _validate_argument_types(
         expected_type = schema.get("type")
         if not isinstance(expected_type, str):
             continue
-        if not _matches_contract_type(value, expected_type):
+        if not matches_contract_type(value, expected_type):
             raise _invalid_response(
                 provider,
                 f"capacity argument {name} does not match input_contract type: "
@@ -298,25 +299,6 @@ def _validate_argument_types(
                 provider,
                 f"capacity argument {name} is not allowed by input_contract enum",
             )
-
-
-def _matches_contract_type(value: Any, expected_type: str) -> bool:
-    if expected_type == "string":
-        return isinstance(value, str)
-    if expected_type == "integer":
-        return isinstance(value, int) and not isinstance(value, bool)
-    if expected_type == "number":
-        return isinstance(value, (int, float)) and not isinstance(value, bool)
-    if expected_type == "boolean":
-        return isinstance(value, bool)
-    if expected_type == "object":
-        return isinstance(value, Mapping)
-    if expected_type == "array":
-        return isinstance(value, list)
-    if expected_type == "null":
-        return value is None
-    return True
-
 
 def _extract_json_object(text: str, *, provider: CapacityCallingProvider) -> dict[str, Any]:
     if not isinstance(text, str) or not text.strip():

@@ -15,6 +15,7 @@ from typing import Any, Mapping
 from .catalog import CapabilityCatalog
 from ..demo import run_demo
 from ..features.supervisor.context import request_project_context
+from ..platform.schemas.input_contract import matches_contract_type
 
 
 SUPERVISOR_REQUEST_CONTEXT_CAPABILITY = "supervisor.request_context"
@@ -291,7 +292,7 @@ def _validate_inputs_against_contract(
         if not isinstance(schema, Mapping):
             continue
         expected_type = schema.get("type")
-        if isinstance(expected_type, str) and not _matches_contract_type(
+        if isinstance(expected_type, str) and not matches_contract_type(
             value, expected_type
         ):
             raise ValueError(
@@ -303,25 +304,6 @@ def _validate_inputs_against_contract(
             raise ValueError(
                 f"capability input {name} is not allowed by input_contract enum"
             )
-
-
-def _matches_contract_type(value: Any, expected_type: str) -> bool:
-    if expected_type == "string":
-        return isinstance(value, str)
-    if expected_type == "integer":
-        return isinstance(value, int) and not isinstance(value, bool)
-    if expected_type == "number":
-        return isinstance(value, (int, float)) and not isinstance(value, bool)
-    if expected_type == "boolean":
-        return isinstance(value, bool)
-    if expected_type == "object":
-        return isinstance(value, Mapping)
-    if expected_type == "array":
-        return isinstance(value, list)
-    if expected_type == "null":
-        return value is None
-    return True
-
 
 def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
     if capability.get("network_required") or capability.get("provider"):
