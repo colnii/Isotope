@@ -262,6 +262,12 @@ def _validate_argument_types(
                 f"capacity argument {name} does not match input_contract type: "
                 f"{expected_type}",
             )
+        enum_values = schema.get("enum")
+        if isinstance(enum_values, list) and value not in enum_values:
+            raise _invalid_response(
+                provider,
+                f"capacity argument {name} is not allowed by input_contract enum",
+            )
 
 
 def _matches_contract_type(value: Any, expected_type: str) -> bool:
