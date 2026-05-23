@@ -31,27 +31,16 @@
   [archived plans](../archive/plans/)。归档原因：它们是早期最小闭环和编码拆解，
   已被后续实现、目录重组和 Supervisor 产品路径替代，不应继续放在
   `architecture/` 里当当前边界读。
+- `docs/archive/` 根目录旧文档已经补充归档原因和保留边界：
+  [docs inventory pre reorg](../archive/docs-inventory-pre-reorg.md) 是迁移记录，
+  [kernel one pager](../archive/kernel-one-pager.md) 和
+  [kernel decision log](../archive/kernel-decision-log.md) 是 historical kernel
+  reference（历史 kernel 参考），[kernel mainline maintenance mode](../archive/kernel-mainline-maintenance-mode.md)
+  是 obsolete rule（废止规则）。
 
 ## 下一批任务
 
-### 1. 旧文档第二刀：archive 根目录再分层
-
-目标：
-
-- 盘点 `docs/archive/` 根目录剩余旧文档：
-  `kernel-one-pager.md`、`kernel-decision-log.md`、
-  `kernel-mainline-maintenance-mode.md` 和 `docs-inventory-pre-reorg.md`。
-- 先判断它们是 historical kernel reference（历史 kernel 参考）还是 migration
-  record（迁移记录），不要混进同一个目录。
-- 中风险 kernel 文档先只补索引和归档原因；若要移动，单独开批次并同提交修链接。
-
-验收：
-
-- `docs/archive/README.md` 能解释 archive 根目录每个旧文件为什么还留着。
-- 不移动 current status、roadmap、track、checkpoint、memory 文档。
-- `git diff --check` 和 Markdown 本地链接检查通过。
-
-### 2. 旧文档第三刀：reviews 过期审查分组
+### 1. 旧文档第三刀：reviews 过期审查分组
 
 目标：
 
@@ -65,6 +54,21 @@
 
 - `reviews/README.md` 能把旧审查材料按用途找出来。
 - 不把 review 里的旧结论提升为当前执行规则。
+- `git diff --check` 和 Markdown 本地链接检查通过。
+
+### 2. 旧文档第四刀：kernel 批次是否移动
+
+目标：
+
+- 对照 `docs/reviews/docs-migration-plan.md` 的 medium-risk kernel batch，
+  判断 `kernel-one-pager.md` 和 `kernel-decision-log.md` 是否仍留在 archive
+  根目录，还是迁到未来 `docs/kernel/`。
+- 不和 reviews 分组混在同一提交里。
+
+验收：
+
+- 若移动，必须同提交修链接并保留旧路径风险说明。
+- 若不移动，说明延后原因。
 
 ### 3. Supervisor 任务暂缓但保留
 

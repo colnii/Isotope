@@ -10,5 +10,5 @@
 当前项目目标见 [README](../../README.md) 和
 [当前状态](../current/status.md)。
 
-后续文档整理时，本文件应移动到归档目录，
-或在确认无追溯价值后删除。
+归档原因：保留它是为了追溯“kernel mainline conservative maintenance mode”
+为什么被废止；不要把它恢复为当前开发规则。

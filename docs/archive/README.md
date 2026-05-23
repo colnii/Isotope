@@ -17,6 +17,18 @@
 - [Kernel one pager](kernel-one-pager.md)：早期 kernel 概览。
 - [Kernel decision log](kernel-decision-log.md)：早期 kernel 决策记录。
 
+## 根目录旧文档
+
+这些文件暂时留在 `docs/archive/` 根目录，不是因为它们仍是当前入口，而是因为
+引用范围和迁移风险不同。后续要移动时应单独成批，同提交修链接。
+
+| 文件 | 类型 | 留在根目录的原因 | 当前替代入口 |
+| --- | --- | --- | --- |
+| [docs-inventory-pre-reorg](docs-inventory-pre-reorg.md) | migration record（迁移记录） | `docs-migration-plan` 和 dry run 仍引用它作为迁移前清单。 | [docs-map](../current/docs-map.md)、[docs migration plan](../reviews/docs-migration-plan.md) |
+| [kernel-mainline-maintenance-mode](kernel-mainline-maintenance-mode.md) | obsolete rule（废止规则） | 已在 archive；保留是为了解释“底座保守维护”规则为什么不再适用。 | [AGENTS](../../AGENTS.md)、[current status](../current/status.md) |
+| [kernel-one-pager](kernel-one-pager.md) | historical kernel reference（历史 kernel 参考） | 迁移计划标为 medium risk kernel batch；先补归档原因，不和本批旧文档清理混动。 | [current status](../current/status.md)、[architecture README](../architecture/) |
+| [kernel-decision-log](kernel-decision-log.md) | historical kernel reference（历史 kernel 参考） | 迁移计划标为 medium risk kernel batch；后续若移动，应随 kernel 文档一起处理。 | [current status](../current/status.md)、[architecture README](../architecture/) |
+
 ## 使用规则
 
 - 当前事实以 [`../current/status.md`](../current/status.md) 为准。

@@ -1,5 +1,13 @@
 # Isotope Kernel Decision Log（决策日志）
 
+状态：`archived / historical kernel reference`
+
+归档原因：本文记录早期 `Isotope v0` kernel（内核）方向的决策日志，可用于追溯
+当时为什么选择 kernel-first、server-first 和 policy-gated execution（策略裁决执行）。
+它不是当前执行规则；当前事实以 `../current/status.md` 为准，当前架构边界以
+`../architecture/README.md` 和对应 boundary 文档为准。迁移计划把本文件归入
+medium-risk kernel batch，因此本批只补归档说明，不移动路径。
+
 这个文件记录当前 `Isotope v0` 方向里，已经做出的关键架构选择。
 
 `Commitment` 表示承诺强度：

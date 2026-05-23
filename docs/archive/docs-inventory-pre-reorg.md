@@ -1,6 +1,11 @@
 # Docs Inventory
 
-状态：`current`
+状态：`archived / pre-reorg inventory`
+
+归档原因：本文是文档重组前后的历史清单和迁移证据，已经不再表示当前文档数量、
+当前入口或当前执行队列。它保留在 archive 根目录，是因为
+`docs/reviews/docs-migration-plan.md` 和 dry run 仍把它当作迁移前基线引用。
+当前阅读入口以 `../current/docs-map.md` 和 `../current/status.md` 为准。
 
 ## 1. Purpose
 

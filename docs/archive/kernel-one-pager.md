@@ -1,5 +1,12 @@
 # Isotope Kernel One-Pager（一页说明）
 
+状态：`archived / historical kernel reference`
+
+归档原因：本文记录早期 kernel-first（内核优先）叙事和对象模型，仍有历史参考价值，
+但它不是当前产品状态或当前任务队列。当前事实以 `../current/status.md` 为准；
+当前架构边界以 `../architecture/README.md` 和对应 boundary 文档为准。
+迁移计划把本文件归入 medium-risk kernel batch，因此本批只补归档说明，不移动路径。
+
 ## 这个 Kernel 想解决什么问题
 
 `Isotope` 不是想再做一个固定流程的 workflow runner（工作流执行器）。当前设想里的 kernel（内核）想提供的是一个通用 agent runtime/platform（智能体运行时 / 平台），它至少要能：
