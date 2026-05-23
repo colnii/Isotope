@@ -19,6 +19,9 @@
   （禁用占位）、diagnostic-only（只诊断）或纯规则脚本。
 - 已删除的旧路径 stub 不再作为入口；例如 event schema compatibility
   直接读 `event-schema-registry-compatibility-boundary-v0.2.md`。
+- 早期 v0.1 implementation / coding plans 已移到
+  [archive/plans](../archive/plans/)，因为它们是历史实施拆解，不是当前
+  architecture boundary。
 - 移动 architecture 文档前先看
   [docs migration plan](../reviews/docs-migration-plan.md)，当前默认不继续迁移
   kernel、checkpoint、memory 或 track 文档。

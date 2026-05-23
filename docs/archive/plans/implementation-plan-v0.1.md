@@ -1,12 +1,18 @@
 # Isotope Implementation Plan v0.1
 
-状态：`draft`
+状态：`archived / historical plan`
+
+归档原因：本文是早期 v0.1 最小 vertical slice（纵向切片）计划，证明当时的
+kernel hard contracts（内核硬契约）能跑通；当前产品和实现已经转向
+Supervisor、受控 worker 和应用层可用性路径。当前事实以
+`../../current/status.md` 为准，当前架构边界以
+`../../architecture/README.md` 和对应 boundary 文档为准。
 
 本文件基于：
 
-- `kernel-spec-v0.1.md`
-- `kernel-architecture-v0.1.md`
-- `commitment-levels.md`
+- `../../architecture/kernel-spec-v0.1.md`
+- `../../architecture/kernel-architecture-v0.1.md`
+- `../../architecture/commitment-levels.md`
 
 它的目的不是新增架构概念，也不是最终代码任务拆解，而是把 v0.1 第一条最小 vertical slice（纵向切片）定清楚：先证明 kernel hard contracts 能跑通，再进入具体实现计划。
 

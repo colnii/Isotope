@@ -12,6 +12,10 @@ Phase 1 dry-run 已记录在 `docs-migration-phase-1-dry-run.md`。Phase 1a 已�
 
 Phase 1 当前 closed / paused。不要继续迁移 track docs、checkpoint docs、memory docs、kernel docs、`../current/status.md` 或 `../architecture/v0.2-roadmap.md`，除非用户明确请求下一批迁移。Kernel Gap Review 已在 `kernel-gap-review-v0.2.md` 落地，Agent / Worker lifecycle boundary 已在 `../architecture/agent-worker-lifecycle-boundary-v0.2.md` 落地；默认下一阶段可进入对应 red tests 或 Workspace substrate boundary design。
 
+2026-05-24 旧文档清理补充：用户明确要求先处理旧文档，因此只执行低风险
+historical plan（历史计划）归档；仍不移动 track、checkpoint、memory、kernel、
+current status 或 roadmap 入口。
+
 ## 2. Target Directory Structure
 
 建议未来目录结构：
@@ -57,13 +61,14 @@ Recommended order:
 2. Phase 1b completed: v0.1 demo explainer docs moved to `docs/demo/`.
 3. Phase 1c completed: demo acceptance / readiness / scenario docs moved to `docs/demo/`.
 4. Phase 1d completed: low-risk old-path compatibility stubs for demo, release draft, and event schema compatibility were removed after link audit.
-5. Pause migration after Phase 1d; do not move track / checkpoint / memory / kernel / status entrypoint docs by default.
-6. If migration is explicitly reopened later, move closed Track A / C / E docs to `docs/tracks/` with stubs and same-commit link updates.
-7. Move checkpoint docs only as a separate later batch.
-8. Move memory docs only as a separate later batch.
-9. Move remaining track docs only after recent Track F links settle.
-10. Move kernel docs only as a separate later batch.
-11. Move status entrypoints only after README / AGENTS / current-status / roadmap link checks are stable.
+5. Low-risk historical v0.1 implementation / coding plans moved to `../archive/plans/` after explicit user request for old-doc cleanup.
+6. Pause migration after the low-risk old-doc cleanup; do not move track / checkpoint / memory / kernel / status entrypoint docs by default.
+7. If migration is explicitly reopened later, move closed Track A / C / E docs to `docs/tracks/` with stubs and same-commit link updates.
+8. Move checkpoint docs only as a separate later batch.
+9. Move memory docs only as a separate later batch.
+10. Move remaining track docs only after recent Track F links settle.
+11. Move kernel docs only as a separate later batch.
+12. Move status entrypoints only after README / AGENTS / current-status / roadmap link checks are stable.
 
 Do not combine the next track-doc migration with later checkpoint / memory / kernel migrations unless there is a specific review reason to take the extra link risk.
 
@@ -116,7 +121,7 @@ Reason: README, AGENTS, current-status, roadmap, and recent task instructions li
 | `../architecture/checkpoint-save-trigger-v0.1.md` | `docs/checkpoint/checkpoint-save-trigger-v0.1.md` | checkpoint | No | Medium | Move with checkpoint batch. |
 | `../architecture/checkpoint-schema-version-fields-v0.1.md` | `docs/checkpoint/checkpoint-schema-version-fields-v0.1.md` | checkpoint | No | Medium | Move with checkpoint batch. |
 | `../architecture/checkpoint-v0.1-scope-freeze.md` | `docs/checkpoint/checkpoint-v0.1-scope-freeze.md` | checkpoint | No | Medium | Move with checkpoint batch. |
-| `../architecture/coding-plan-v0.1.md` | `docs/archive/coding-plan-v0.1.md` | archive | No | Low | Historical plan; move after active links checked. |
+| `../architecture/coding-plan-v0.1.md` | `../archive/plans/coding-plan-v0.1.md` | archive | Done | Low | Historical plan; moved to archived plans after active links checked. |
 | `../architecture/commitment-levels.md` | `docs/kernel/commitment-levels.md` | kernel | No | Medium | Current reference; move with kernel batch. |
 | `../current/status.md` | `../current/status.md` first; later `docs/status/current-status.md` | status entrypoint | No | High | Stable entrypoint; do not move in first migration. |
 | `deferred-boundary-review-v0.1.md` | `docs/tracks/deferred-boundary-review-v0.1.md` | track/status | No | High | Current deferred-surface reference; move with track docs. |
@@ -131,7 +136,7 @@ Reason: README, AGENTS, current-status, roadmap, and recent task instructions li
 | `../architecture/event-prefix-digest-v0.1.md` | `docs/kernel/event-prefix-digest-v0.1.md` | kernel/checkpoint | No | Medium | Could go under kernel; referenced by checkpoint docs. |
 | `../architecture/external-ingestion-boundary-v0.2.md` | `docs/tracks/external-ingestion-boundary-v0.2.md` | track | No | High | Recently active Track F doc; keep until external review links settle. |
 | `../architecture/http-api-minimal-surface-v0.2.md` | `docs/tracks/http-api-minimal-surface-v0.2.md` | track | No | High | README / AGENTS link directly. |
-| `../architecture/implementation-plan-v0.1.md` | `docs/archive/implementation-plan-v0.1.md` | archive | No | Low | Historical plan; move late. |
+| `../architecture/implementation-plan-v0.1.md` | `../archive/plans/implementation-plan-v0.1.md` | archive | Done | Low | Historical plan; moved to archived plans after active links checked. |
 | `../architecture/kernel-architecture-v0.1.md` | `docs/kernel/kernel-architecture-v0.1.md` | kernel | No | High | Current reference; many docs mention it. |
 | `../archive/kernel-decision-log.md` | `docs/kernel/kernel-decision-log.md` | kernel | No | Medium | Move with kernel batch. |
 | `../architecture/kernel-living-spec.md` | `docs/kernel/kernel-living-spec.md` | kernel | No | High | Current reference; keep stubs if moved. |

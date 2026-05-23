@@ -1,11 +1,16 @@
 # Isotope Coding Plan v0.1
 
-状态：`draft`
+状态：`archived / historical plan`
+
+归档原因：本文是早期 v0.1 vertical slice（纵向切片）的编码拆解，记录当时的
+目录、模块和测试设想；这些设想已经被后续实现、目录重组和 Supervisor 产品路径
+替代。当前任务以 `../../current/agent-task-queue.md` 为准，当前架构边界以
+`../../architecture/README.md` 和对应 boundary 文档为准。
 
 本文件基于：
 
-- `kernel-spec-v0.1.md`
-- `kernel-architecture-v0.1.md`
+- `../../architecture/kernel-spec-v0.1.md`
+- `../../architecture/kernel-architecture-v0.1.md`
 - `implementation-plan-v0.1.md`
 
 它的目的，是把第一条 v0.1 vertical slice 拆成可执行的 coding plan（编码计划）。它不是最终 package 结构，也不是永久 API 协议。
