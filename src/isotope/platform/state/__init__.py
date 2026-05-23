@@ -9,6 +9,7 @@ from .projector import RunProjector, RunState
 from .worker_event_channel import (
     DEFAULT_CHANNEL,
     WORKER_EVENT_KIND,
+    WorkerEvent,
     list_worker_events,
     publish_worker_event,
     render_worker_event_channel_plain,
@@ -27,6 +28,7 @@ __all__ = [
     "RunState",
     "DEFAULT_CHANNEL",
     "WORKER_EVENT_KIND",
+    "WorkerEvent",
     "list_worker_events",
     "publish_worker_event",
     "render_worker_event_channel_plain",

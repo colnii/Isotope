@@ -5,6 +5,8 @@ import json
 import isotope.memory.worker_event_channel as memory_worker_event_channel
 import isotope.platform.state.worker_event_channel as platform_worker_event_channel
 from isotope.features.supervisor import runner
+from isotope.platform.schemas.memory import MemoryRecord
+from isotope.platform.state.worker_event_channel import WorkerEvent
 
 
 def test_worker_event_channel_uses_platform_state_implementation():
@@ -20,6 +22,62 @@ def test_worker_event_channel_uses_platform_state_implementation():
         memory_worker_event_channel.render_worker_event_channel_plain
         is platform_worker_event_channel.render_worker_event_channel_plain
     )
+
+
+def test_worker_event_schema_builds_memory_record_without_raw_content():
+    event = WorkerEvent(
+        event_id="mem_event_test",
+        channel="reviews",
+        event_type="handoff",
+        from_worker="worker-a",
+        to_worker="worker-b",
+        message="Ready for review.",
+        payload={"branch": "feature/a"},
+        created_at="2026-05-24T01:02:03Z",
+        execution_id="exec_event_test",
+    )
+
+    record = event.to_memory_record()
+
+    assert isinstance(record, MemoryRecord)
+    assert record.memory_id == "mem_event_test"
+    assert record.scope == "session"
+    assert record.content == {
+        "kind": "worker_event",
+        "channel": "reviews",
+        "event_type": "handoff",
+        "from_worker": "worker-a",
+        "to_worker": "worker-b",
+        "message": "Ready for review.",
+        "payload": {"branch": "feature/a"},
+    }
+    assert record.summary == "worker-a -> worker-b / handoff / Ready for review."
+    assert record.provenance == {
+        "run_id": "supervisor_worker_event_channel",
+        "execution_id": "exec_event_test",
+        "action_type": "worker_event",
+    }
+    assert record.quality == "worker_event"
+    assert "raw_content" not in record.content
+
+
+def test_worker_event_schema_rejects_empty_required_text():
+    try:
+        WorkerEvent(
+            event_id="mem_event_test",
+            channel="reviews",
+            event_type="handoff",
+            from_worker=" ",
+            to_worker="worker-b",
+            message="Ready for review.",
+            payload={},
+            created_at="2026-05-24T01:02:03Z",
+            execution_id="exec_event_test",
+        )
+    except ValueError as exc:
+        assert "from_worker must be a non-empty string" in str(exc)
+    else:
+        raise AssertionError("WorkerEvent must reject empty from_worker")
 
 
 def test_supervisor_worker_event_channel_publish_and_list_json(tmp_path, capsys):

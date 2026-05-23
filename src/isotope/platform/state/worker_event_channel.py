@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,64 @@ from isotope.platform.state.memory_store import FileMemoryStore
 
 DEFAULT_CHANNEL = "default"
 WORKER_EVENT_KIND = "worker_event"
+
+
+@dataclass(frozen=True)
+class WorkerEvent:
+    """Structured worker event that can be persisted as a memory record."""
+
+    event_id: str
+    channel: str
+    event_type: str
+    from_worker: str
+    to_worker: str | None
+    message: str
+    payload: dict[str, Any]
+    created_at: str
+    execution_id: str
+
+    def __post_init__(self) -> None:
+        _required_text(self.event_id, "event_id")
+        _required_text(self.channel, "channel")
+        _required_text(self.event_type, "event_type")
+        _required_text(self.from_worker, "from_worker")
+        _required_text(self.message, "message")
+        _required_text(self.created_at, "created_at")
+        _required_text(self.execution_id, "execution_id")
+        if self.to_worker is not None:
+            _required_text(self.to_worker, "to_worker")
+        if not isinstance(self.payload, dict):
+            raise TypeError("payload must be a dict")
+
+    def to_memory_record(self) -> MemoryRecord:
+        return MemoryRecord(
+            memory_id=self.event_id.strip(),
+            scope="session",
+            content={
+                "kind": WORKER_EVENT_KIND,
+                "channel": self.channel.strip(),
+                "event_type": self.event_type.strip(),
+                "from_worker": self.from_worker.strip(),
+                "to_worker": self.to_worker.strip() if self.to_worker is not None else None,
+                "message": self.message.strip(),
+                "payload": dict(self.payload),
+            },
+            summary=_event_summary(
+                from_worker=self.from_worker.strip(),
+                to_worker=self.to_worker.strip() if self.to_worker is not None else None,
+                event_type=self.event_type.strip(),
+                message=self.message.strip(),
+            ),
+            source_refs=[],
+            provenance={
+                "run_id": "supervisor_worker_event_channel",
+                "execution_id": self.execution_id.strip(),
+                "action_type": "worker_event",
+            },
+            created_at=self.created_at.strip(),
+            supersedes=[],
+            quality="worker_event",
+        )
 
 
 def publish_worker_event(
@@ -33,34 +92,18 @@ def publish_worker_event(
     channel_text = _required_text(channel, "channel")
     to_text = _optional_text(to_worker)
     payload_dict = dict(payload or {})
-    record = MemoryRecord(
-        memory_id="mem_event_" + uuid.uuid4().hex[:12],
-        scope="session",
-        content={
-            "kind": WORKER_EVENT_KIND,
-            "channel": channel_text,
-            "event_type": event_type_text,
-            "from_worker": from_text,
-            "to_worker": to_text,
-            "message": message_text,
-            "payload": payload_dict,
-        },
-        summary=_event_summary(
-            from_worker=from_text,
-            to_worker=to_text,
-            event_type=event_type_text,
-            message=message_text,
-        ),
-        source_refs=[],
-        provenance={
-            "run_id": "supervisor_worker_event_channel",
-            "execution_id": "exec_event_" + uuid.uuid4().hex[:12],
-            "action_type": "worker_event",
-        },
+    event = WorkerEvent(
+        event_id="mem_event_" + uuid.uuid4().hex[:12],
+        channel=channel_text,
+        event_type=event_type_text,
+        from_worker=from_text,
+        to_worker=to_text,
+        message=message_text,
+        payload=payload_dict,
         created_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        supersedes=[],
-        quality="worker_event",
+        execution_id="exec_event_" + uuid.uuid4().hex[:12],
     )
+    record = event.to_memory_record()
     execution = ActionExecution(
         execution_id=record.provenance["execution_id"],
         proposal_id="prop_event_" + uuid.uuid4().hex[:12],
