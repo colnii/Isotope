@@ -9,6 +9,10 @@ from isotope.agents.scheduler.goal_queue import (
     build_supervisor_goal_queue_view,
     filter_replenishment_counted_goals,
 )
+from isotope.agents.scheduler.goal_events import (
+    active_supervisor_goals_from_events,
+    latest_supervisor_goal_statuses_from_events,
+)
 
 
 def test_agent_scheduler_plans_fanout_with_running_worker_and_limit_guards():
@@ -347,4 +351,61 @@ def test_agent_scheduler_status_summary_remains_scheduler_owned():
         "needs_user": 0,
         "running": 1,
         "pending": 1,
+    }
+
+
+def test_agent_scheduler_derives_active_goals_and_latest_statuses_from_events():
+    events = [
+        {
+            "event": "supervisor_goal",
+            "goal_id": "goal-a",
+            "created_at": "2026-05-22T01:00:00+00:00",
+            "cwd": "/repo",
+            "goal": "Ship A",
+            "target_name": "worker-a",
+            "depends_on": ["goal-z", "", 3],
+            "stage": "stage-1",
+        },
+        {
+            "event": "supervisor_goal",
+            "goal_id": "goal-b",
+            "created_at": "2026-05-22T02:00:00+00:00",
+            "cwd": "/repo",
+            "goal": "Ship B",
+            "target_name": "worker-b",
+        },
+        {
+            "event": "supervisor_goal_status",
+            "goal_id": "goal-a",
+            "status": "blocked",
+            "created_at": "2026-05-22T03:00:00+00:00",
+            "summary": "needs review",
+        },
+        {
+            "event": "supervisor_goal_status",
+            "goal_id": "goal-a",
+            "status": "done",
+            "created_at": "2026-05-22T04:00:00+00:00",
+            "next": "archive",
+        },
+        {
+            "event": "supervisor_goal_archive",
+            "goal_id": "goal-b",
+            "created_at": "2026-05-22T05:00:00+00:00",
+        },
+    ]
+
+    active = active_supervisor_goals_from_events(events, limit=10)
+    statuses = latest_supervisor_goal_statuses_from_events(events)
+
+    assert [goal.goal_id for goal in active] == ["goal-a"]
+    assert active[0].depends_on == ("goal-z",)
+    assert active[0].stage == "stage-1"
+    assert statuses == {
+        "goal-a": {
+            "goal_id": "goal-a",
+            "last_status": "done",
+            "last_status_at": "2026-05-22T04:00:00+00:00",
+            "last_next": "archive",
+        }
     }

@@ -4,49 +4,21 @@ from __future__ import annotations
 
 import json
 import uuid
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
+from ...agents.scheduler.goal_events import (
+    SupervisorGoal,
+    active_supervisor_goals_from_events,
+    latest_supervisor_goal_statuses_from_events,
+)
 from ...agents.scheduler.goal_queue import (
     GOAL_QUEUE_VIEW_GROUPS,
     build_supervisor_goal_queue_view,
 )
 from ...platform.state.goal_status import GOAL_STATUS_VALUES, SupervisorGoalStatus
 from .notifications import notify_goal_status_written
-
-
-@dataclass(frozen=True)
-class SupervisorGoal:
-    goal_id: str
-    created_at: str
-    cwd: str
-    goal: str
-    target_name: str
-    depends_on: tuple[str, ...] = ()
-    stage: str | None = None
-    scope: str | None = None
-    merge_gate: str | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        item: dict[str, Any] = {
-            "event": "supervisor_goal",
-            "goal_id": self.goal_id,
-            "created_at": self.created_at,
-            "cwd": self.cwd,
-            "goal": self.goal,
-            "target_name": self.target_name,
-        }
-        if self.depends_on:
-            item["depends_on"] = list(self.depends_on)
-        if self.stage is not None:
-            item["stage"] = self.stage
-        if self.scope is not None:
-            item["scope"] = self.scope
-        if self.merge_gate is not None:
-            item["merge_gate"] = self.merge_gate
-        return item
 
 
 def default_goals_path(codex_home: Path | str) -> Path:
@@ -189,44 +161,16 @@ def read_active_supervisor_goals(
     path = default_goals_path(codex_home)
     if not path.is_file():
         return ()
-    latest: dict[str, SupervisorGoal] = {}
-    archived: set[str] = set()
-    try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except OSError:
-        return ()
-    for line in lines:
-        try:
-            raw = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if not isinstance(raw, dict):
-            continue
-        archived_id = _archive_goal_id(raw)
-        if archived_id is not None:
-            archived.add(archived_id)
-            latest.pop(archived_id, None)
-            continue
-        goal = _goal_from_dict(raw)
-        if goal is None or goal.goal_id in archived:
-            continue
-        latest[goal.goal_id] = goal
-    goals = sorted(latest.values(), key=lambda item: item.created_at)
-    return tuple(goals[:limit])
+    return active_supervisor_goals_from_events(_read_goal_event_dicts(path), limit=limit)
 
 
 def read_latest_supervisor_goal_statuses(
     *,
     codex_home: Path | str,
 ) -> dict[str, dict[str, Any]]:
-    latest: dict[str, dict[str, Any]] = {}
-    for raw in _read_goal_event_dicts(default_goals_path(codex_home)):
-        if raw.get("event") != "supervisor_goal_status":
-            continue
-        status = _goal_status_from_dict(raw)
-        if status is not None:
-            latest[status["goal_id"]] = status
-    return latest
+    return latest_supervisor_goal_statuses_from_events(
+        _read_goal_event_dicts(default_goals_path(codex_home))
+    )
 
 
 def append_goal_event(path: Path | str, event: dict[str, Any]) -> None:
@@ -270,48 +214,6 @@ def _read_goal_event_dicts(path: Path) -> tuple[dict[str, Any], ...]:
     return tuple(events)
 
 
-def _archive_goal_id(raw: dict[str, Any]) -> str | None:
-    if raw.get("event") != "supervisor_goal_archive":
-        return None
-    goal_id = raw.get("goal_id")
-    if not isinstance(goal_id, str) or not goal_id:
-        return None
-    return goal_id
-
-
-def _goal_from_dict(raw: dict[str, Any]) -> SupervisorGoal | None:
-    if raw.get("event") != "supervisor_goal":
-        return None
-    goal_id = raw.get("goal_id")
-    created_at = raw.get("created_at")
-    cwd = raw.get("cwd")
-    goal = raw.get("goal")
-    target_name = raw.get("target_name")
-    if not all(
-        isinstance(value, str) and value
-        for value in (goal_id, created_at, cwd, goal, target_name)
-    ):
-        return None
-    return SupervisorGoal(
-        goal_id=goal_id,
-        created_at=created_at,
-        cwd=cwd,
-        goal=goal,
-        target_name=target_name,
-        depends_on=tuple(_string_list(raw.get("depends_on"))),
-        stage=_optional_string(raw.get("stage")),
-        scope=_optional_string(raw.get("scope")),
-        merge_gate=_optional_string(raw.get("merge_gate")),
-    )
-
-
-def _goal_status_from_dict(raw: dict[str, Any]) -> dict[str, Any] | None:
-    status = SupervisorGoalStatus.from_event(raw)
-    if status is None:
-        return None
-    return status.to_latest_payload()
-
-
 def _add_optional_event_fields(
     event: dict[str, Any],
     *,
@@ -343,17 +245,6 @@ def _optional_string(value: object) -> str | None:
     if not isinstance(value, str) or not value.strip():
         return None
     return value.strip()
-
-
-def _string_list(value: object) -> list[str]:
-    if not isinstance(value, list):
-        return []
-    items: list[str] = []
-    for item in value:
-        text = _optional_string(item)
-        if text is not None:
-            items.append(text)
-    return items
 
 
 def _utc_now() -> datetime:
