@@ -110,7 +110,6 @@ from .registry import (
     send_to_managed_codex,
 )
 from .state.projection import build_supervisor_state_snapshot
-from .tmux_discovery import discover_tmux_adopt_candidates
 from .worker_review import collect_worker_reviews, render_worker_review_plain
 from .work_order_builder import build_launch_work_order_prompt
 from .commands.main import run_cli as _run_cli
@@ -323,9 +322,11 @@ from .commands.memory import (
     json_object_arg as _json_object_arg,
 )
 from .commands.onboarding import (
+    auto_adopt_discovered_tmux_sessions as _auto_adopt_discovered_tmux_sessions,
     discover_payload as _discover_payload,
     guide_payload as _guide_payload,
     guide_worker_codex_args as _guide_worker_codex_args,
+    known_managed_tmux_sessions as _known_managed_tmux_sessions,
     print_discover_plain as _print_discover_plain,
     print_guide_plain as _print_guide_plain,
     print_start_here_plain as _print_start_here_plain,
@@ -969,46 +970,6 @@ def _run_supervise(args: argparse.Namespace) -> None:
 
 def _sleep(seconds: float) -> None:
     time.sleep(seconds)
-
-
-def _auto_adopt_discovered_tmux_sessions(args: argparse.Namespace) -> list[dict[str, str]]:
-    if not getattr(args, "auto_adopt", False):
-        return []
-    known_tmux = _known_managed_tmux_sessions(Path(args.codex_home))
-    candidates = discover_tmux_adopt_candidates(
-        cwd=Path.cwd(),
-        include_all=False,
-        run=subprocess.run,
-    )
-    adopted: list[dict[str, str]] = []
-    for candidate in candidates:
-        if candidate.tmux_session in known_tmux:
-            continue
-        record = adopt_tmux_session(
-            codex_home=Path(args.codex_home),
-            cwd=Path(candidate.cwd),
-            name=candidate.suggested_name,
-            tmux_session=candidate.tmux_session,
-            run=subprocess.run,
-        )
-        known_tmux.add(candidate.tmux_session)
-        adopted.append(
-            {
-                "name": record.name,
-                "tmux_session": record.tmux_session or candidate.tmux_session,
-                "cwd": record.cwd,
-                "status": record.status,
-            }
-        )
-    return adopted
-
-
-def _known_managed_tmux_sessions(codex_home: Path) -> set[str]:
-    return {
-        record.tmux_session
-        for record in read_managed_record_events(default_registry_path(codex_home))
-        if record.tmux_session
-    }
 
 
 def _scan_report(args: argparse.Namespace) -> Any:

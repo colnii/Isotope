@@ -690,3 +690,25 @@ def test_supervisor_runner_uses_memory_worker_event_channel():
         runner.render_worker_event_channel_plain
         is worker_event_channel.render_worker_event_channel_plain
     )
+
+
+def test_supervisor_runner_delegates_tmux_auto_adoption_helpers():
+    onboarding_module = importlib.import_module(
+        "isotope.features.supervisor.commands.onboarding"
+    )
+
+    assert (
+        runner._auto_adopt_discovered_tmux_sessions
+        is onboarding_module.auto_adopt_discovered_tmux_sessions
+    )
+    assert (
+        runner._known_managed_tmux_sessions
+        is onboarding_module.known_managed_tmux_sessions
+    )
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_auto_adopt_discovered_tmux_sessions",
+        "_known_managed_tmux_sessions",
+    ):
+        assert f"def {function_name}(" not in source

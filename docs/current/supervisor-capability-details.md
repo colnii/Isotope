@@ -729,8 +729,9 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   `features/supervisor/daemon.py` 的进程生命周期 helper，后续再把后台
   loop/runtime 下沉到 `agents/runtime/` 或 `runtime/`。
 - `features/supervisor/commands/onboarding.py`：已承接 `start-here`、`guide`
-  和 `discover` 的上手/接管命令层 payload 与 plain renderer；继续复用
-  `tmux_discovery.py` 和 `registry.py` 的既有 contract（契约）。
+  和 `discover` 的上手/接管命令层 payload、plain renderer，以及 loop
+  auto-adopt（自动接管）tmux helper；继续复用 `tmux_discovery.py` 和
+  `registry.py` 的既有 contract（契约）。
 - `features/supervisor/commands/dashboard.py`：已承接 `dashboard` payload、
   plain renderer、managed lane linking 和 current batch projection；`web.py`
   仍保留本地 HTTP 页面和 API 包装。
@@ -821,7 +822,8 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
 - `features/supervisor/advice.py`：后续可承接自动策略和执行白名单，避免
   `runner.py` 继续扩写动作执行分支。
 - `features/supervisor/protocol.py`：后续可下沉状态协议解析和提示语注入。
-- `features/supervisor/tmux_control.py`：后续可下沉 tmux 会话、发送和 bell hook。
+- `features/supervisor/tmux_control.py`：后续可下沉更底层的 tmux 会话、发送和
+  bell hook；loop 自动接管胶水已先并入 onboarding 命令层。
 - `features/supervisor/lane_state.py`：每个窗口的最近状态、催促次数和限频。
 - `integrations/codex/session_reader.py`：后续可把 Codex `.jsonl` 读取下沉。
 
@@ -831,7 +833,7 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
    `platform/state`，同时保持入口继续复用 state projection。
 2. 用真实 daemon 长跑验证 cleanup/current dashboard 在多批任务中的稳定性。
 3. 后续再决定是否把通知接到更多 worker 生命周期事件。
-4. 再拆分 `runner.py` 中的 tmux 控制和 loop 状态拼装代码。
+4. 再拆分 `runner.py` 中的 loop 状态拼装代码。
 
 ## 登记规则
 

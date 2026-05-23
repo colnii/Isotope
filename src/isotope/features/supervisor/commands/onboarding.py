@@ -361,6 +361,60 @@ def discover_payload(
     return payload
 
 
+def auto_adopt_discovered_tmux_sessions(
+    args: argparse.Namespace,
+    *,
+    api: Any | None = None,
+) -> list[dict[str, str]]:
+    if api is None:
+        api = _default_api()
+    if not getattr(args, "auto_adopt", False):
+        return []
+    known_tmux = known_managed_tmux_sessions(Path(args.codex_home), api=api)
+    candidates = discover_tmux_adopt_candidates(
+        cwd=Path.cwd(),
+        include_all=False,
+        run=api.subprocess.run,
+    )
+    adopted: list[dict[str, str]] = []
+    for candidate in candidates:
+        if candidate.tmux_session in known_tmux:
+            continue
+        record = api.adopt_tmux_session(
+            codex_home=Path(args.codex_home),
+            cwd=Path(candidate.cwd),
+            name=candidate.suggested_name,
+            tmux_session=candidate.tmux_session,
+            run=api.subprocess.run,
+        )
+        known_tmux.add(candidate.tmux_session)
+        adopted.append(
+            {
+                "name": record.name,
+                "tmux_session": record.tmux_session or candidate.tmux_session,
+                "cwd": record.cwd,
+                "status": record.status,
+            }
+        )
+    return adopted
+
+
+def known_managed_tmux_sessions(
+    codex_home: Path,
+    *,
+    api: Any | None = None,
+) -> set[str]:
+    if api is None:
+        api = _default_api()
+    return {
+        record.tmux_session
+        for record in api.read_managed_record_events(
+            api.default_registry_path(codex_home)
+        )
+        if record.tmux_session
+    }
+
+
 def selected_discover_candidate(
     args: argparse.Namespace,
     candidates: tuple[Any, ...],
