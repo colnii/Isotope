@@ -4822,6 +4822,7 @@ def test_codex_supervisor_runner_overnight_check_plain_is_compact_summary(
     assert "daemon：not_running" in text
     assert "watcher：not_running" in text
     assert "活跃目标：0" in text
+    assert "状态快照：supervisor_state_snapshot v1" in text
     assert "integration-review：total=0 ready=0 integrated=0 review=0 conflict=0" in text
     assert "可归档项：0" in text
 
@@ -16954,6 +16955,7 @@ def test_codex_supervisor_runner_daemon_status_includes_night_summary(
         "夜间摘要：active goals 1 / running workers 2 / "
         "ready_to_integrate 3 / merge worker 运行中"
     ) in text
+    assert "状态快照：supervisor_state_snapshot v1" in text
     assert "CI：success / workflow CI passed" in text
     assert "执行结果：executed / isotope-supervisor integration-review --json" in text
 

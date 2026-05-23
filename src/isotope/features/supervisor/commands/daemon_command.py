@@ -547,6 +547,7 @@ def print_daemon_plain(payload: dict[str, Any]) -> None:
 def print_daemon_activity_plain(activity: Any) -> None:
     if not isinstance(activity, dict):
         return
+    snapshot_label = state_snapshot_schema_label(activity.get("state_snapshot"))
     action = activity.get("recent_llm_action")
     ci = activity.get("recent_ci")
     execution = activity.get("recent_execution")
@@ -560,6 +561,7 @@ def print_daemon_activity_plain(activity: Any) -> None:
         and not worker
         and not active_goals
         and not night_summary
+        and not snapshot_label
     ):
         return
     print("最近活动：")
@@ -574,6 +576,8 @@ def print_daemon_activity_plain(activity: Any) -> None:
                 merge_label=merge_label,
             )
         )
+    if snapshot_label is not None:
+        print(f"状态快照：{snapshot_label}")
     if isinstance(action, dict):
         print(f"LLM 动作：{action.get('kind') or '未知'} / {action.get('reason') or '无'}")
     if isinstance(ci, dict):
@@ -603,6 +607,18 @@ def print_daemon_activity_plain(activity: Any) -> None:
             )
             if item.get("last_summary"):
                 print(f"  摘要：{item['last_summary']}")
+
+
+def state_snapshot_schema_label(snapshot: Any) -> str | None:
+    if not isinstance(snapshot, dict):
+        return None
+    kind = snapshot.get("kind")
+    if not isinstance(kind, str) or not kind:
+        return None
+    schema_version = snapshot.get("schema_version")
+    if isinstance(schema_version, int):
+        return f"{kind} v{schema_version}"
+    return kind
 
 
 def print_watcher_plain(payload: dict[str, Any]) -> None:
@@ -643,10 +659,15 @@ def print_watcher_run_plain(payload: dict[str, Any]) -> None:
 def print_overnight_check_plain(payload: dict[str, Any]) -> None:
     summary = payload["summary"]
     integration = summary["integration_review"]
+    snapshot_label = state_snapshot_schema_label(
+        ((payload.get("daemon") or {}).get("activity") or {}).get("state_snapshot")
+    )
     print("[Codex Supervisor overnight check]")
     print(f"daemon：{summary['daemon_status']}")
     print(f"watcher：{summary['watcher_status']}")
     print(f"活跃目标：{summary['active_goals']}")
+    if snapshot_label is not None:
+        print(f"状态快照：{snapshot_label}")
     print(
         "integration-review："
         f"total={integration['total']} "

@@ -492,7 +492,7 @@ Codex 的 tmux 会话，并生成可复制的 `adopt` 和 `attach` 命令。
 以及在 merge worker 阻塞时启动同 worktree repair。
 这些参数都会随原始命令写入 `daemon.json`；
 `daemon status` 会检查本机进程是否还活着，并汇总最近 LLM 动作、
-最近执行结果、最近 worker 模型/配置和 worker 状态；
+最近执行结果、最近 worker 模型/配置、worker 状态和状态快照 schema；
 `daemon watchdog` 会检查后台 `loop`，如果进程异常退出，
 就按 `daemon.json` 里记录的原始命令重新拉起；
 `daemon watcher start` 会再启动一个后台 watcher（周期看门进程），
