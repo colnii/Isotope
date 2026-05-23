@@ -1,7 +1,9 @@
 import json
+from types import SimpleNamespace
 
 import pytest
 
+import isotope.memory as runtime_memory
 from isotope.platform.schemas.memory import MemoryRecord
 import isotope.platform.state as platform_state
 import isotope.platform.state.memory_store as memory_store
@@ -72,6 +74,35 @@ def test_jsonl_memory_store_loads_record_by_id(tmp_path):
 
 def test_jsonl_memory_store_rejects_duplicate_memory_id(tmp_path):
     store = memory_store.JsonlMemoryStore(tmp_path)
+    store.append_record(_memory_record("mem_001"))
+
+    with pytest.raises(ValueError, match="duplicate memory_id"):
+        store.append_record(_memory_record("mem_001"))
+
+
+def test_file_memory_store_is_platform_store_with_runtime_compatibility(tmp_path):
+    assert hasattr(memory_store, "FileMemoryStore")
+    assert platform_state.FileMemoryStore is memory_store.FileMemoryStore
+    assert runtime_memory.FileMemoryStore is memory_store.FileMemoryStore
+
+    store = memory_store.FileMemoryStore(tmp_path)
+    record = _memory_record()
+
+    result = store.save_record(
+        record,
+        execution=SimpleNamespace(execution_id="exec_mem_001"),
+        grants={"tools": ["write_memory"]},
+    )
+
+    assert result == {"status": "saved", "record_id": "mem_001"}
+    assert store.record_path("mem_001") == tmp_path / "memory" / "mem_001.json"
+    assert store.load_record("mem_001") == record
+    assert store.list_records() == [record]
+    assert store.list_records(scope="thread") == [record]
+
+
+def test_file_memory_store_rejects_duplicate_memory_id(tmp_path):
+    store = memory_store.FileMemoryStore(tmp_path)
     store.append_record(_memory_record("mem_001"))
 
     with pytest.raises(ValueError, match="duplicate memory_id"):

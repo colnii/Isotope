@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
 import json
 import tempfile
 from pathlib import Path
 from typing import Any
 
 from ..platform.schemas.memory import MemoryRecord
+from ..platform.state.memory_store import FileMemoryStore
 
 
 def _has_write_memory_grant(grants: dict[str, Any] | None) -> bool:
@@ -83,44 +83,6 @@ class NotEnabledMemoryStore:
         return self.root / "memory" / f"{memory_id}.json"
 
 
-class FileMemoryStore:
-    """Small local memory store for structured records."""
-
-    def __init__(self, root: str | Path) -> None:
-        self.root = Path(root)
-
-    def save_record(
-        self,
-        record: MemoryRecord | dict[str, Any],
-        execution=None,
-        grants: dict[str, Any] | None = None,
-        event_store=None,
-    ) -> dict[str, str]:
-        if execution is None:
-            raise PermissionError("memory persistence requires authorized execution")
-        if not _has_write_memory_grant(grants):
-            raise PermissionError("memory persistence requires write_memory grant")
-        normalized = _normalize_memory_record(record)
-        path = self.record_path(normalized.memory_id)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(asdict(normalized), sort_keys=True), encoding="utf-8")
-        return {"status": "saved", "record_id": normalized.memory_id}
-
-    def list_records(self, scope: str | None = None) -> list[MemoryRecord]:
-        records: list[MemoryRecord] = []
-        for path in sorted((self.root / "memory").glob("*.json")):
-            try:
-                record = MemoryRecord(**json.loads(path.read_text(encoding="utf-8")))
-            except (OSError, TypeError, ValueError, json.JSONDecodeError):
-                continue
-            if scope is None or record.scope == scope:
-                records.append(record)
-        return records
-
-    def record_path(self, memory_id: str) -> Path:
-        return self.root / "memory" / f"{memory_id}.json"
-
-
 class LocalMemoryQueryService:
     """Query local memory records and return previews only by default."""
 
@@ -168,14 +130,6 @@ class LocalMemoryQueryService:
                 }
             )
         return {"status": "ok", "capability": "memory_query", "results": results}
-
-
-def _normalize_memory_record(record: MemoryRecord | dict[str, Any]) -> MemoryRecord:
-    if isinstance(record, MemoryRecord):
-        return record
-    if not isinstance(record, dict):
-        raise TypeError("memory record must be a MemoryRecord or dict")
-    return MemoryRecord(**record)
 
 
 class NotEnabledMemoryQueryService:

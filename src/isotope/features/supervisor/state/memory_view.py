@@ -6,8 +6,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from isotope.memory import FileMemoryStore
 from isotope.platform.schemas.memory import MemoryRecord
+from isotope.platform.state.memory_store import FileMemoryStore
 
 
 VALID_SCOPES = ("thread", "run", "session")

@@ -106,7 +106,7 @@ Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
 | decision requests（拍板请求） | `decision_requests.py` | `agents/decision/` 或 `platform/state/` | 先抽账本接口 | 拍板请求是通用 agent 控制面，不应只服务 Supervisor。 |
 | context request（上下文请求） | `context.py`, `runner.py` | `rag/` + `agents/context/` | 抽检索接口，feature 留命令包装 | 当前偏 rg/BM25-style，后续可接语义检索。 |
 | capacity calling（能力调用） | `llm/capacity_calling.py`, `agents/loop/` | `capabilities/` + `agents/loop/` | 优先打通真实 loop，不再只做原型 | Supervisor planner 应能调用能力，而不是写死动作。 |
-| memory view / worker event channel | `features/supervisor/state/`, `memory/worker_event_channel.py` | `memory/` + `platform/state/` | 先统一 store 和事件 schema | 多 worker 协调要复用同一记忆/事件层。 |
+| memory view / worker event channel | `features/supervisor/state/`, `memory/worker_event_channel.py` | `memory/` + `platform/state/` | `FileMemoryStore` 已归到 `platform/state/memory_store.py`，`isotope.memory` 保留兼容导出；下一步统一 worker event schema | 多 worker 协调要复用同一记忆/事件层。 |
 | state projection（状态投影） | `features/supervisor/state/projection.py` | 先留在 `features/supervisor/state/`，后续按事实层下沉 | 已新增只读 snapshot 聚合 active goals、decision requests、lane failure、worker events 和 notifications；下一步接 dashboard/daemon 读取 | 当前只做 read model，不新增账本、不改写入格式。 |
 | daemon / watcher | `commands/daemon_command.py`, `daemon.py`, `runner.py` | `agents/runtime/` 或 `runtime/` | 命令层 payload/plain renderer 已从 runner 抽出；下一步再抽循环运行器、活动投影和生命周期管理 | 后台循环是运行时能力，不应塞在一个命令文件里。 |
 | failure ledger / retry guard | `failure_ledger.py`, `runner.py` | `platform/state/` + `agents/policy/` | 先抽失败账本，再抽重试策略 | 失败记录和策略要能服务其他 agent。 |
