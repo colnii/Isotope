@@ -70,3 +70,50 @@ def test_supervisor_parser_delegates_daemon_command_to_daemon_parser_module():
     source = inspect.getsource(parser_module._build_parser_impl)
     assert '"daemon"' not in source
     assert '"watcher"' not in source
+
+
+def test_supervisor_parser_delegates_loop_commands_to_loop_parser_module():
+    loop_parser_module = importlib.import_module(
+        "isotope.features.supervisor.commands.parser_loop"
+    )
+
+    assert (
+        parser_module.add_loop_command_parsers
+        is loop_parser_module.add_loop_command_parsers
+    )
+
+    built_parser = parser_module.build_parser()
+    assert {"loop", "up"} <= _top_level_command_names(built_parser)
+
+    loop_args = built_parser.parse_args(
+        [
+            "loop",
+            "--goal-low-water",
+            "2",
+            "--webhook-url",
+            "http://127.0.0.1/hook",
+            "--no-auto-adopt",
+            "--merge-dispatch-execute",
+        ]
+    )
+    assert loop_args.command == "loop"
+    assert loop_args.goal_low_water == 2
+    assert loop_args.webhook_url == "http://127.0.0.1/hook"
+    assert loop_args.auto_adopt is False
+    assert loop_args.merge_dispatch_execute is True
+
+    up_args = built_parser.parse_args(
+        [
+            "up",
+            "--max-fanout-launches",
+            "4",
+            "--auto-merge-promote",
+        ]
+    )
+    assert up_args.command == "up"
+    assert up_args.max_fanout_launches == 4
+    assert up_args.auto_merge_promote is True
+
+    source = inspect.getsource(parser_module._build_parser_impl)
+    assert '"loop"' not in source
+    assert '"up"' not in source
