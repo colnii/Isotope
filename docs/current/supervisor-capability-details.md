@@ -139,6 +139,14 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   三类下一步，供后续 Supervisor loop 消费；不生成可执行 graph call；显式
   `--execute-agent-loop` 才通过 agent loop 带 `inputs` 执行 allowlist 低风险能力，
   并输出执行前后的 tick policy handoff。
+- `capacity calling` 当前会做两层低敏 contract guardrail（契约护栏）：
+  发给 provider 前先清洗 manifest，只保留低敏字段和安全的
+  `input_contract` 子集，并拒绝重复 `capacity_id`、重复 `required`
+  输入名，以及 `required` 未在 `properties` 声明的坏 contract；provider
+  返回后只接受已提供的 `capacity_id`，`arguments` 必须是 JSON object，
+  且每个参数都必须在 `input_contract.properties` 中声明，并符合当前支持的
+  top-level `type` 与 `enum` 约束。校验失败会停在 plan 层，不进入
+  capability runner 或 agent loop。
 - `supervisor.request_context` 已注册为可发现 capability：`list/search/describe`
   能看到它，`plan/run --input-json` 会复用现有
   `request_project_context`，保持 workspace read-only、BM25 排序和原有
