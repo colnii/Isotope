@@ -2,18 +2,20 @@
 
 状态：`当前入口`
 
-## 先读这些
+## 快速入口
 
 1. [README](../../README.md)：项目目标和快速开始。
-2. [AGENTS](../../AGENTS.md)：AI 协作规则。
-3. [当前状态](./status.md)：本轮整备的真实状态。
-4. [任务队列](agent-task-queue.md)：接下来做什么。
-5. [术语索引](./terminology.md)：英文定位词和中文解释。
+2. [AGENTS](../../AGENTS.md)：AI 协作、验证、提交和 worktree 规则。
+3. [docs 总入口](../README.md)：`docs/` 各目录职责。
+4. [当前状态](./status.md)：主线真实状态。
+5. [任务队列](agent-task-queue.md)：已完成批次和下一步。
+6. [术语索引](./terminology.md)：英文定位词和中文解释。
 
 ## 当前事实
 
 `docs/` 已完成第一轮分层，根目录没有 Markdown 残留。
-当前入口集中在 `docs/current/`，历史材料不再和当前规则并列。
+当前入口集中在 `docs/current/`，历史材料不再和当前规则并列。`docs/README.md`
+现在是顶层导航入口，本文件继续作为“当前事实怎么读”的地图。
 
 行为优先级：
 
@@ -29,7 +31,8 @@ preflight（预检查）、diagnostic（诊断）或 not_enabled（未启用）�
 
 - `archive/` 和部分评审文档会保留旧说法，只用于追溯。
 - `architecture/` 和 `features/` 里仍可能有早期命名，需要按需更新。
-- 目录结构迁移还没有执行，新结构先看迁移方案。
+- 目录结构迁移已完成 demo / release 的第一批，后续迁移处于暂停状态；
+  不要默认继续移动 track、checkpoint、memory、kernel 或 status 文档。
 - 最新目录命名讨论见 [目录结构最新说明](./目录结构最新说明.md)，其中
   `assistant` 泛化命名已被降级为兼容历史词。
 
@@ -45,32 +48,18 @@ preflight（预检查）、diagnostic（诊断）或 not_enabled（未启用）�
 
 术语索引保留英文定位词，并补中文解释、所在层级和主要文件。
 
-## 目录入口
+## 按任务找文档
 
-- 当前事实：[current/](./)
-- 架构设计：[architecture/](../architecture/)
-- 产品能力：[features/](../features/)
-- 评审记录：[reviews/](../reviews/)
-- 历史归档：[archive/](../archive/)
-- 边界文档阅读规则：先看 `AGENTS.md` 的 AI-first 产品约束。
-- 应用目录迁移：[application-structure-plan](./application-structure-plan.md)
-- 目录结构最新说明：[目录结构最新说明](./目录结构最新说明.md)
-- 目录结构精简说明：[目录结构精简说明](./目录结构精简说明.md)
-- 目录结构逻辑补充：[重新梳理目录结构逻辑](./重新梳理目录结构逻辑.md)
-- 命名与目录审计：[naming-and-structure-review](./naming-and-structure-review.md)
-- Codex Supervisor 只读版：[codex-supervisor-readonly](./codex-supervisor-readonly.md)
-- Codex Supervisor 能力地图：[supervisor-capability-map](./supervisor-capability-map.md)
-- Supervisor 架构迁移表：[supervisor-architecture-migration-table](./supervisor-architecture-migration-table.md)
-- ChatGPT 审查：[chatgpt审查](./chatgpt审查.md)
-- 导入路径迁移表：[import-map](./import-map.md)
-- 兼容代理审计：[compat-proxy-audit](./compat-proxy-audit.md)
-- 分支初审：[branch-audit-initial-2026-05-15](../reviews/branch-audit-initial-2026-05-15.md)
-- 分支审计刷新：[branch-audit-refresh-2026-05-15](../reviews/branch-audit-refresh-2026-05-15.md)
-- 终端分支深审：[controlled-terminal-exec-deep-review-2026-05-15](../reviews/controlled-terminal-exec-deep-review-2026-05-15.md)
-- Agent loop tick policy：[agent-loop-tick-policy-boundary-v0.2](../architecture/agent-loop-tick-policy-boundary-v0.2.md)
-- Agent loop planner adapter：[agent-loop-planner-adapter-boundary-v0.2](../architecture/agent-loop-planner-adapter-boundary-v0.2.md)
-- Agent loop 分支闭环：[agent-loop-chain-closure-2026-05-15](../reviews/agent-loop-chain-closure-2026-05-15.md)
-- 分支清理记录：[branch-cleanup-2026-05-15](../reviews/branch-cleanup-2026-05-15.md)
+| 你要做的事 | 先看 |
+| --- | --- |
+| 判断项目当前状态 | [status](./status.md) |
+| 找下一步任务 | [agent-task-queue](./agent-task-queue.md) |
+| 查英文术语和中文解释 | [terminology](./terminology.md) |
+| 调整应用目录 | [application-structure-plan](./application-structure-plan.md)、[目录结构最新说明](./目录结构最新说明.md) |
+| 查导入迁移或兼容代理 | [import-map](./import-map.md)、[compat-proxy-audit](./compat-proxy-audit.md) |
+| 做 Supervisor 相关工作 | [codex-supervisor-readonly](./codex-supervisor-readonly.md)、[supervisor-capability-map](./supervisor-capability-map.md)、[supervisor-architecture-migration-table](./supervisor-architecture-migration-table.md) |
+| 看文档迁移边界 | [docs-migration-plan](../reviews/docs-migration-plan.md) |
+| 查旧分支清理证据 | [branch-cleanup](../reviews/branch-cleanup-2026-05-15.md) |
 
 ## 废止入口
 
