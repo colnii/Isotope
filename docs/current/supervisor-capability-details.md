@@ -114,6 +114,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `dashboard JSON` 和 `/dashboard.json` 会在顶层输出
   `state_snapshot_meta`，只包含 snapshot kind、schema version、schema label
   和来源账本说明，调用方不用展开完整 `state_snapshot` 也能确认读模型版本。
+- `web` 顶部会显示 `state_snapshot_meta.schema_label`，让页面上直接可见
+  当前读取的 Supervisor state snapshot 版本。
 - `build_supervisor_state_snapshot(...)` 已提供只读低敏状态投影，统一读取
   active goals、goal status、decision requests、lane failure、worker events
   和 notifications；当前先作为 read model（读取模型）存在，不改变既有账本

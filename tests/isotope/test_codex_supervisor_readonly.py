@@ -2633,6 +2633,10 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "copyResumeCommand" in html
     assert "copyControlCommand" in html
     assert "copyControlLabel" in html
+    assert "snapshot-meta" in html
+    assert "payload.state_snapshot_meta" in html
+    assert 'document.getElementById("snapshot-meta")' in html
+    assert "读模型：" in html
     assert "复制状态" in html
     assert "复制继续" in html
     assert "sendManagedCommand" in html

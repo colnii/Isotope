@@ -329,6 +329,8 @@ DASHBOARD_SCRIPT_INTERACTIONS = r'''    async function copyResumeCommand(item, b
 
     function renderDashboardPayload(payload) {
       document.getElementById("generated-at").textContent = payload.generated_at;
+      const snapshotMeta = payload.state_snapshot_meta || {};
+      document.getElementById("snapshot-meta").textContent = "读模型：" + text(snapshotMeta.schema_label);
       document.getElementById("recommendation").textContent = payload.recommendation.label;
       renderOperatorFocus(payload);
       renderControlCenter(payload);

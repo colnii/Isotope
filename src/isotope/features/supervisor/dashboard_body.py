@@ -7,6 +7,7 @@ DASHBOARD_BODY = r'''  <header>
     <h1>Codex Supervisor</h1>
     <div class="meta">
       <div id="generated-at">等待数据</div>
+      <div id="snapshot-meta">读模型：unknown</div>
       <div id="refresh-state">自动刷新中</div>
     </div>
   </header>
