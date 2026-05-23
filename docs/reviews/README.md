@@ -42,6 +42,8 @@ review 推断下一批迁移。
 - [Branch audit initial](branch-audit-initial-2026-05-15.md)：旧分支第一次盘点。
 - [Branch audit refresh](branch-audit-refresh-2026-05-15.md)：旧分支刷新盘点。
 - [Branch cleanup](branch-cleanup-2026-05-15.md)：旧分支清理记录。
+- [Supervisor worktree recovery audit](supervisor-worktree-recovery-audit.md)：恢复
+  Supervisor 工作前的 root/worktree 归属和清理顺序。
 - [Agent loop chain closure](agent-loop-chain-closure-2026-05-15.md)：agent-loop 链尾抽取闭环。
 - [Controlled terminal exec deep review](controlled-terminal-exec-deep-review-2026-05-15.md)：受控终端执行深审。
 - [Aggressive remaining code review](aggressive-remaining-code-review-v0.md)：aggressive 剩余代码首次 intake。
