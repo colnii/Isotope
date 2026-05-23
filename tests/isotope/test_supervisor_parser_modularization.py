@@ -90,6 +90,7 @@ def test_supervisor_parser_delegates_loop_commands_to_loop_parser_module():
             "loop",
             "--goal-low-water",
             "2",
+            "--capacity-decisions",
             "--webhook-url",
             "http://127.0.0.1/hook",
             "--no-auto-adopt",
@@ -98,6 +99,7 @@ def test_supervisor_parser_delegates_loop_commands_to_loop_parser_module():
     )
     assert loop_args.command == "loop"
     assert loop_args.goal_low_water == 2
+    assert loop_args.capacity_decisions is True
     assert loop_args.webhook_url == "http://127.0.0.1/hook"
     assert loop_args.auto_adopt is False
     assert loop_args.merge_dispatch_execute is True

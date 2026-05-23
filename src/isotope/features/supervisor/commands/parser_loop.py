@@ -147,6 +147,14 @@ def add_loop_command_parsers(
         help="Use the old rule-based executor instead of the LLM planner.",
     )
     loop_parser.add_argument(
+        "--capacity-decisions",
+        action="store_true",
+        help=(
+            "Plan one capacity decision for the current goal each iteration and "
+            "pass it to the LLM planner."
+        ),
+    )
+    loop_parser.add_argument(
         "--merge-dispatch-execute",
         action="store_true",
         help=(
