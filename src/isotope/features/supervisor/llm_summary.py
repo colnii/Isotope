@@ -228,6 +228,7 @@ def build_llm_action_messages(
     recent_decision_answers: list[dict[str, Any]] | None = None,
     worker_reviews: dict[str, Any] | None = None,
     delete_worktree_candidates: list[dict[str, Any]] | None = None,
+    capacity_decisions: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, str]]:
     """Build the prompt for guarded LLM planning."""
     prompt_command_suggestions = _active_goal_scoped_command_suggestions(
@@ -292,6 +293,7 @@ def build_llm_action_messages(
                     "context_request_history": context_request_history,
                     "planner_priority": planner_priority,
                     "blocked_context_priority": blocked_context_priority,
+                    "capacity_decisions": capacity_decisions or [],
                     "worker_profiles": {
                         "coding": "默认代码开发档，适合需要改代码、跑测试、做复杂判断的任务。",
                         "light": "低成本轻任务档，适合只读检查、状态汇报、smoke 或短小验证。",
@@ -371,6 +373,12 @@ def build_llm_action_messages(
                             "已集成的 worker；输出前必须设置 "
                             "confirm_delete_worktree=true。"
                         ),
+                        (
+                            "capacity_decisions 来自 capacity plan 的 "
+                            "supervisor_decision 读模型；next_action 为 "
+                            "call_capacity 时说明能力计划已 ready，"
+                            "request_input 表示需要先补输入，blocked 表示当前能力不可启动。"
+                        ),
                     ],
                     "context_capability": {
                         "kind": "request_context",
@@ -448,6 +456,7 @@ def generate_llm_action_decision(
     recent_decision_answers: list[dict[str, Any]] | None = None,
     worker_reviews: dict[str, Any] | None = None,
     delete_worktree_candidates: list[dict[str, Any]] | None = None,
+    capacity_decisions: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     action_command_suggestions = _active_goal_scoped_command_suggestions(
         command_suggestions,
@@ -473,6 +482,7 @@ def generate_llm_action_decision(
             recent_decision_answers,
             worker_reviews,
             delete_worktree_candidates,
+            capacity_decisions,
         )
     )
     payload = _normalize_llm_action_payload(_extract_json_object(raw))

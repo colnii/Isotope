@@ -17,6 +17,7 @@ import pytest
 
 from isotope.features.notifications.flow import NotificationFlow
 from isotope.features.supervisor import flow as supervisor_flow
+from isotope.features.supervisor import runner as supervisor_runner
 from isotope.features.supervisor.flow import (
     CodexSessionSummary,
     CodexSupervisorFlow,
@@ -6123,6 +6124,40 @@ def test_codex_supervisor_llm_action_messages_prioritize_context_for_blocked_goa
     )
 
 
+def test_codex_supervisor_llm_action_messages_include_capacity_decisions(tmp_path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    decision = {
+        "kind": "supervisor_capacity_decision",
+        "next_action": "request_input",
+        "reason": "needs_input",
+        "capacity_id": "supervisor.request_context",
+        "can_execute_agent_loop": False,
+        "missing_inputs": ["codex_home", "cwd", "query"],
+        "blocking_reasons": [],
+    }
+
+    messages = build_llm_action_messages(
+        CodexSupervisorReport(generated_at=NOW.isoformat(), sessions=()),
+        [
+            {
+                "kind": "request_context",
+                "cwd": str(workspace),
+                "query": "补齐上下文输入",
+                "command": (
+                    f"isotope-supervisor context --cwd {workspace} "
+                    "--query 补齐上下文输入"
+                ),
+            }
+        ],
+        capacity_decisions=[decision],
+    )
+    payload = json.loads(messages[1]["content"])
+
+    assert payload["capacity_decisions"] == [decision]
+    assert "capacity_decisions" in "".join(payload["action_rules"])
+
+
 def test_codex_supervisor_llm_action_messages_prefer_monitor_for_running_merge_worker(
     tmp_path,
 ):
@@ -6334,6 +6369,109 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_launch_session():
             "prompt": launch_prompt,
         },
     }
+
+
+def test_codex_supervisor_generate_llm_action_decision_passes_capacity_decisions():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(),
+    )
+    suggestions = [
+        {
+            "kind": "request_context",
+            "cwd": EXISTING_WORKSPACE,
+            "query": "补齐 capacity 输入",
+            "command": (
+                "isotope-supervisor context "
+                f"--cwd {EXISTING_WORKSPACE} --query 补齐 capacity 输入"
+            ),
+        }
+    ]
+    decision = {
+        "kind": "supervisor_capacity_decision",
+        "next_action": "request_input",
+        "reason": "needs_input",
+        "capacity_id": "supervisor.request_context",
+        "can_execute_agent_loop": False,
+        "missing_inputs": ["codex_home", "cwd", "query"],
+        "blocking_reasons": [],
+    }
+
+    class FakeProvider:
+        def summarize(self, messages: list[dict[str, str]]) -> str:
+            content = messages[1]["content"]
+            assert '"capacity_decisions"' in content
+            assert '"next_action": "request_input"' in content
+            return json.dumps(
+                {
+                    "kind": "request_context",
+                    "cwd": EXISTING_WORKSPACE,
+                    "query": "补齐 capacity 输入",
+                    "reason": "capacity decision 缺少输入，先检索上下文。",
+                },
+                ensure_ascii=False,
+            )
+
+    result = generate_llm_action_decision(
+        report,
+        suggestions,
+        FakeProvider(),
+        capacity_decisions=[decision],
+    )
+
+    assert result["kind"] == "request_context"
+    assert result["query"] == "补齐 capacity 输入"
+
+
+def test_codex_supervisor_runner_decide_action_passes_capacity_decisions(monkeypatch):
+    report = CodexSupervisorReport(generated_at=NOW.isoformat(), sessions=())
+    decision = {
+        "kind": "supervisor_capacity_decision",
+        "next_action": "call_capacity",
+        "reason": "ready",
+        "capacity_id": "artifact.review",
+        "can_execute_agent_loop": True,
+        "missing_inputs": [],
+        "blocking_reasons": [],
+    }
+    captured: dict[str, object] = {}
+
+    def fake_generate(*args: object, **kwargs: object) -> dict[str, object]:
+        captured["capacity_decisions"] = kwargs.get("capacity_decisions")
+        return {
+            "kind": "monitor",
+            "target_name": None,
+            "reason": "只检查透传。",
+            "command_suggestion": None,
+        }
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda agent_name: object(),
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.generate_llm_action_decision",
+        fake_generate,
+    )
+
+    result = supervisor_runner._decide_action_with_llm(
+        argparse.Namespace(),
+        report,
+        {
+            "command_suggestions": [
+                {
+                    "kind": "request_context",
+                    "cwd": EXISTING_WORKSPACE,
+                    "query": "capacity",
+                    "command": "isotope-supervisor context --query capacity",
+                }
+            ],
+            "capacity_decisions": [decision],
+        },
+    )
+
+    assert result["kind"] == "monitor"
+    assert captured["capacity_decisions"] == [decision]
 
 
 def test_codex_supervisor_generate_llm_action_decision_can_launch_named_suggestion_without_prompt():

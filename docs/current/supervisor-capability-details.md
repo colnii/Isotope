@@ -137,7 +137,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   `not_launchable`，plain 输出会列出缺失 inputs 或 launch blocking reasons；
   同时输出 `supervisor_decision` 读模型，把 `ready`、`needs_input` 和
   `not_launchable` 归一成 `call_capacity`、`request_input` 和 `blocked`
-  三类下一步，供后续 Supervisor loop 消费；不生成可执行 graph call；显式
+  三类下一步；Supervisor loop planner（规划器）已能把外部传入的
+  `capacity_decisions` 放进 LLM action prompt，供真实决策点读取；
+  不生成可执行 graph call；显式
   `--execute-agent-loop` 才通过 agent loop 带 `inputs` 执行 allowlist 低风险能力，
   并输出执行前后的 tick policy handoff。
 - `capacity calling` 当前会做两层低敏 contract guardrail（契约护栏）：

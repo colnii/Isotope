@@ -2703,6 +2703,7 @@ def _decide_action_with_llm(
             payload.get("recent_decision_answers"),
             payload.get("worker_reviews"),
             payload.get("delete_worktree_candidates"),
+            capacity_decisions=payload.get("capacity_decisions"),
         )
     try:
         provider = resolve_summary_provider_from_env(agent_name="supervisor")
@@ -2715,6 +2716,7 @@ def _decide_action_with_llm(
             payload.get("recent_decision_answers"),
             payload.get("worker_reviews"),
             payload.get("delete_worktree_candidates"),
+            capacity_decisions=payload.get("capacity_decisions"),
         )
     except ValueError as exc:
         error = str(exc)
