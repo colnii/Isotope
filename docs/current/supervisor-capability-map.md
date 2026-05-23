@@ -37,7 +37,8 @@
   lane failure、worker event 和 notification 的，不重新拼散表；dashboard/web
   和 daemon 已读取，loop payload 已带只读 snapshot；命令行直接查看用
   `isotope-supervisor state`。projection builder 仍留在 Supervisor feature，
-  但输出结构必须复用 `platform/state` 的 `SupervisorStateSnapshot` schema。
+  但输出结构必须复用 `platform/state` 的 `SupervisorStateSnapshot` schema；
+  active goal 的最近状态 payload 必须复用 `SupervisorGoalStatus` schema。
 - 能用 capability runner（能力运行器）的，只加 catalog/plan/run 包装，不开新执行面。
 - 能用 `commands/` 内已拆 handler 的，不把新命令继续塞回 runner。
 - 新增术语或命令后，同步 [术语索引](./terminology.md) 和

@@ -9,9 +9,11 @@ from isotope.features.supervisor.goal_queue import (
     record_supervisor_goal,
     record_supervisor_goal_status,
 )
+import isotope.features.supervisor.goal_queue as feature_goal_queue
 from isotope.features.supervisor.lane_state import record_lane_failure
 from isotope.features.supervisor.runner import main as supervisor_main
 import isotope.features.supervisor.state.projection as feature_projection
+from isotope.platform.state.goal_status import SupervisorGoalStatus
 from isotope.platform.state.supervisor_snapshot import SupervisorStateSnapshot
 from isotope.features.supervisor.state.projection import build_supervisor_state_snapshot
 from isotope.memory.worker_event_channel import publish_worker_event
@@ -23,6 +25,30 @@ def test_supervisor_state_projection_uses_platform_snapshot_schema(tmp_path):
     snapshot = build_supervisor_state_snapshot(codex_home=tmp_path)
 
     assert snapshot == SupervisorStateSnapshot.empty(codex_home=tmp_path).to_dict()
+
+
+def test_supervisor_goal_status_uses_platform_schema():
+    assert feature_goal_queue.SupervisorGoalStatus is SupervisorGoalStatus
+
+    status = SupervisorGoalStatus(
+        goal_id="goal-1",
+        status="blocked",
+        created_at="2026-05-24T02:02:00+00:00",
+        target_name="state-projection",
+        session_id="session-goal",
+        summary="等待主线重构完成",
+        next_step="保持 projection 分支独立",
+    )
+
+    assert status.to_latest_payload() == {
+        "goal_id": "goal-1",
+        "last_status": "blocked",
+        "last_status_at": "2026-05-24T02:02:00+00:00",
+        "last_target_name": "state-projection",
+        "last_session_id": "session-goal",
+        "last_summary": "等待主线重构完成",
+        "last_next": "保持 projection 分支独立",
+    }
 
 
 def test_supervisor_state_snapshot_empty_root_is_read_only(tmp_path):

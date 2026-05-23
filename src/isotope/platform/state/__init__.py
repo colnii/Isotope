@@ -4,6 +4,7 @@ from .checkpoint_store import FileCheckpointStore
 from .decision_ledger import DecisionRequest, DecisionRequestLedger
 from .event_store import FileEventStore
 from .failure_ledger import FailureLedger
+from .goal_status import GOAL_STATUS_VALUES, SupervisorGoalStatus
 from .memory_store import FileMemoryStore, JsonlMemoryStore, MemoryStore
 from .multi_worker import build_multi_worker_status_payload, render_multi_worker_status_plain
 from .projector import RunProjector, RunState
@@ -21,6 +22,8 @@ __all__ = [
     "DecisionRequest",
     "DecisionRequestLedger",
     "FailureLedger",
+    "GOAL_STATUS_VALUES",
+    "SupervisorGoalStatus",
     "FileCheckpointStore",
     "FileEventStore",
     "FileMemoryStore",

@@ -13,9 +13,8 @@ from ...agents.scheduler.goal_queue import (
     GOAL_QUEUE_VIEW_GROUPS,
     build_supervisor_goal_queue_view,
 )
+from ...platform.state.goal_status import GOAL_STATUS_VALUES, SupervisorGoalStatus
 from .notifications import notify_goal_status_written
-
-GOAL_STATUS_VALUES = {"done", "blocked", "needs_user"}
 
 
 @dataclass(frozen=True)
@@ -307,28 +306,10 @@ def _goal_from_dict(raw: dict[str, Any]) -> SupervisorGoal | None:
 
 
 def _goal_status_from_dict(raw: dict[str, Any]) -> dict[str, Any] | None:
-    goal_id = raw.get("goal_id")
-    status = raw.get("status")
-    created_at = raw.get("created_at")
-    if not all(isinstance(value, str) and value for value in (goal_id, status, created_at)):
+    status = SupervisorGoalStatus.from_event(raw)
+    if status is None:
         return None
-    if status not in GOAL_STATUS_VALUES:
-        return None
-    item: dict[str, Any] = {
-        "goal_id": goal_id,
-        "last_status": status,
-        "last_status_at": created_at,
-    }
-    for source_key, target_key in (
-        ("target_name", "last_target_name"),
-        ("session_id", "last_session_id"),
-        ("summary", "last_summary"),
-        ("next", "last_next"),
-    ):
-        value = raw.get(source_key)
-        if isinstance(value, str) and value:
-            item[target_key] = value
-    return item
+    return status.to_latest_payload()
 
 
 def _add_optional_event_fields(
