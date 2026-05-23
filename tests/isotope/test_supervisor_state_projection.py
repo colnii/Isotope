@@ -4,6 +4,10 @@ from datetime import UTC, datetime
 
 from isotope.features.notifications.flow import NotificationFlow
 from isotope.features.supervisor.decision_requests import record_decision_request
+from isotope.features.supervisor.goal_queue import (
+    record_supervisor_goal,
+    record_supervisor_goal_status,
+)
 from isotope.features.supervisor.lane_state import record_lane_failure
 from isotope.features.supervisor.state.projection import build_supervisor_state_snapshot
 from isotope.memory.worker_event_channel import publish_worker_event
@@ -16,12 +20,17 @@ def test_supervisor_state_snapshot_empty_root_is_read_only(tmp_path):
         "status": "ok",
         "codex_home": str(tmp_path),
         "summary": {
+            "active_goals": 0,
+            "goals_done": 0,
+            "goals_blocked": 0,
+            "goals_needs_user": 0,
             "active_decisions": 0,
             "failed_lanes": 0,
             "worker_events": 0,
             "notifications": 0,
             "unread_notifications": 0,
         },
+        "active_goals": [],
         "active_decisions": [],
         "failed_lanes": [],
         "recent_worker_events": [],
@@ -74,6 +83,10 @@ def test_supervisor_state_snapshot_projects_existing_low_sensitive_state(tmp_pat
     snapshot = build_supervisor_state_snapshot(codex_home=tmp_path)
 
     assert snapshot["summary"] == {
+        "active_goals": 0,
+        "goals_done": 0,
+        "goals_blocked": 0,
+        "goals_needs_user": 0,
         "active_decisions": 1,
         "failed_lanes": 1,
         "worker_events": 1,
@@ -115,3 +128,52 @@ def test_supervisor_state_snapshot_projects_existing_low_sensitive_state(tmp_pat
         "manual",
     ]
     assert "content" not in repr(snapshot)
+
+
+def test_supervisor_state_snapshot_includes_active_goal_status_summary(tmp_path):
+    goal = record_supervisor_goal(
+        codex_home=tmp_path,
+        cwd=tmp_path,
+        goal="继续拆分 Supervisor 状态读取模型",
+        target_name="state-projection",
+        stage="projection",
+        scope="supervisor",
+        merge_gate="manual",
+        now=lambda: datetime(2026, 5, 24, 2, 1, tzinfo=UTC),
+    )
+    record_supervisor_goal_status(
+        codex_home=tmp_path,
+        goal_id=goal.goal_id,
+        status="blocked",
+        target_name="state-projection",
+        session_id="session-goal",
+        summary="等待主线重构完成",
+        next_step="保持 projection 分支独立",
+        now=lambda: datetime(2026, 5, 24, 2, 2, tzinfo=UTC),
+    )
+
+    snapshot = build_supervisor_state_snapshot(codex_home=tmp_path)
+
+    assert snapshot["summary"]["active_goals"] == 1
+    assert snapshot["summary"]["goals_blocked"] == 1
+    assert snapshot["summary"]["goals_done"] == 0
+    assert snapshot["summary"]["goals_needs_user"] == 0
+    assert snapshot["active_goals"] == [
+        {
+            "goal_id": goal.goal_id,
+            "created_at": "2026-05-24T02:01:00+00:00",
+            "cwd": str(tmp_path),
+            "goal": "继续拆分 Supervisor 状态读取模型",
+            "target_name": "state-projection",
+            "depends_on": [],
+            "stage": "projection",
+            "scope": "supervisor",
+            "merge_gate": "manual",
+            "last_status": "blocked",
+            "last_status_at": "2026-05-24T02:02:00+00:00",
+            "last_target_name": "state-projection",
+            "last_session_id": "session-goal",
+            "last_summary": "等待主线重构完成",
+            "last_next": "保持 projection 分支独立",
+        }
+    ]

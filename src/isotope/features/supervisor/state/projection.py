@@ -9,6 +9,11 @@ from isotope.features.notifications.flow import NotificationFlow, NotificationSu
 from isotope.memory.worker_event_channel import list_worker_events
 
 from ..decision_requests import read_active_decision_requests
+from ..goal_queue import (
+    SupervisorGoal,
+    read_active_supervisor_goals,
+    read_latest_supervisor_goal_statuses,
+)
 from ..lane_state import LaneState, default_lane_state_path, read_lane_states
 
 
@@ -18,9 +23,11 @@ def build_supervisor_state_snapshot(
     decision_limit: int = 20,
     worker_event_limit: int = 20,
     notification_limit: int = 20,
+    goal_limit: int = 20,
 ) -> dict[str, Any]:
     """Build a low-sensitive read model from existing Supervisor ledgers."""
     codex_home_path = Path(codex_home).expanduser()
+    active_goals = _active_goal_payloads(codex_home_path, limit=goal_limit)
     active_decisions = [
         _decision_request_payload(request)
         for request in read_active_decision_requests(
@@ -48,17 +55,55 @@ def build_supervisor_state_snapshot(
         "status": "ok",
         "codex_home": str(codex_home_path),
         "summary": {
+            "active_goals": len(active_goals),
+            "goals_done": _goal_status_count(active_goals, "done"),
+            "goals_blocked": _goal_status_count(active_goals, "blocked"),
+            "goals_needs_user": _goal_status_count(active_goals, "needs_user"),
             "active_decisions": len(active_decisions),
             "failed_lanes": len(failed_lanes),
             "worker_events": total_worker_events,
             "notifications": notifications["total"],
             "unread_notifications": notifications["unread"],
         },
+        "active_goals": active_goals,
         "active_decisions": active_decisions,
         "failed_lanes": failed_lanes,
         "recent_worker_events": list(worker_events.get("events") or []),
         "notifications": notifications,
     }
+
+
+def _active_goal_payloads(codex_home: Path, *, limit: int) -> list[dict[str, Any]]:
+    statuses = read_latest_supervisor_goal_statuses(codex_home=codex_home)
+    return [
+        _active_goal_payload(goal, latest_status=statuses.get(goal.goal_id))
+        for goal in read_active_supervisor_goals(codex_home=codex_home, limit=limit)
+    ]
+
+
+def _active_goal_payload(
+    goal: SupervisorGoal,
+    *,
+    latest_status: dict[str, Any] | None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "goal_id": goal.goal_id,
+        "created_at": goal.created_at,
+        "cwd": goal.cwd,
+        "goal": goal.goal,
+        "target_name": goal.target_name,
+        "depends_on": list(goal.depends_on),
+        "stage": goal.stage,
+        "scope": goal.scope,
+        "merge_gate": goal.merge_gate,
+    }
+    if latest_status:
+        payload.update(dict(latest_status))
+    return payload
+
+
+def _goal_status_count(goals: list[dict[str, Any]], status: str) -> int:
+    return sum(1 for goal in goals if goal.get("last_status") == status)
 
 
 def _decision_request_payload(request: Any) -> dict[str, Any]:
