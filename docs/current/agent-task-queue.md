@@ -16,27 +16,34 @@
 - 文档迁移仍保持收窄：不默认移动 `architecture/` 里的 kernel、
   checkpoint、memory 或 track 文档。
 
-## 当前批次
+## 已完成
 
-### 1. 收尾：current 长文拆分验收
+- 第三批已经完成 current 长文拆分：
+  [当前状态](./status.md)、本文件、
+  [Codex Supervisor 监控与托管](./codex-supervisor-readonly.md) 和
+  [Supervisor 能力地图](./supervisor-capability-map.md) 都保留为短入口。
+- 归档原因：历史流水、命令大全和详细能力表会干扰当前接手判断，所以移到
+  [agent-task-history](../archive/current/agent-task-history.md)、
+  [status-history](../archive/current/status-history.md)、
+  [supervisor-command-reference](./supervisor-command-reference.md) 和
+  [supervisor-capability-details](./supervisor-capability-details.md)。
+
+## 下一批任务
+
+### 1. 接手前：未暂存改动归属确认
 
 目标：
 
-- 确认 [当前状态](./status.md)、本文件、
-  [Codex Supervisor 监控与托管](./codex-supervisor-readonly.md) 和
-  [Supervisor 能力地图](./supervisor-capability-map.md) 都是短入口。
-- 确认长文详情已移到：
-  [agent-task-history](../archive/current/agent-task-history.md)、
-  [status-history](../archive/current/status-history.md)、
-  [supervisor-command-reference](./supervisor-command-reference.md)、
-  [supervisor-capability-details](./supervisor-capability-details.md)。
-- 跑 Markdown link check 和 `git diff --check`。
+- 梳理当前 `git status` 里的代码和文档改动，确认哪些来自并行任务，哪些应进入
+  下一批。
+- 不把 `runner.py`、`commands/llm_execution.py`、demo 拆分文件和文档整理混在一个
+  提交里。
+- 若发现第三批文档提交误带代码改动，先停下来修正。
 
 验收：
 
-- `git diff --check` 通过。
-- Markdown 本地链接解析通过。
-- `docs/current/` 的四个入口不再承担历史流水正文。
+- 能说明每个未暂存文件的归属和下一步动作。
+- 下一批提交前只 stage 对应任务文件。
 
 ### 2. Supervisor flat refactor 复核
 
@@ -66,6 +73,19 @@
 - 让 `check` 输出更适合作为早上接手的摘要。
 - 让 `worker-review` 更清楚地区分“可合并”“需复查”“只剩归档”。
 - 让 `web` 的受控操作文案和状态分组更适合扫读。
+
+### 4. 文档维护边界
+
+目标：
+
+- 后续新增 Supervisor 命令时，同步更新 quick start 和 command reference。
+- 后续新增 Supervisor 能力时，先更新能力索引，再更新能力详情。
+- `docs/current/` 保持当前入口，不重新塞入长历史流水。
+
+验收：
+
+- 新文档能从 [docs-map](./docs-map.md) 找到。
+- 长历史、一次性快照和外部审查原文继续进入 archive 或 reviews。
 
 ## 验证命令
 
