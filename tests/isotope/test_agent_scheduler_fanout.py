@@ -13,6 +13,10 @@ from isotope.agents.scheduler.goal_events import (
     active_supervisor_goals_from_events,
     latest_supervisor_goal_statuses_from_events,
 )
+from isotope.agents.scheduler.current_batch import (
+    CurrentBatchView,
+    build_current_batch_view,
+)
 
 
 def test_agent_scheduler_plans_fanout_with_running_worker_and_limit_guards():
@@ -409,3 +413,48 @@ def test_agent_scheduler_derives_active_goals_and_latest_statuses_from_events():
             "last_next": "archive",
         }
     }
+
+
+def test_agent_scheduler_owns_current_batch_projection():
+    view = build_current_batch_view(
+        active_goals=[
+            {
+                "goal_id": "goal-current",
+                "target_name": "current-worker",
+                "goal": "Ship current work",
+                "last_status": "working",
+                "cwd": "/repo/current",
+            },
+            {
+                "goal_id": "goal-done",
+                "target_name": "done-worker",
+                "goal": "Historical work",
+                "last_status": "done",
+                "cwd": "/repo/done",
+            },
+        ],
+        managed_workers=[
+            {
+                "record_id": "managed-current",
+                "name": "current-worker",
+                "cwd": "/repo/current",
+                "status": "working",
+            }
+        ],
+        worker_reviews={
+            "workers": [
+                {
+                    "record_id": "managed-current",
+                    "name": "current-worker",
+                    "cwd": "/repo/current",
+                    "supervisor_protocol": {"status": "working"},
+                }
+            ]
+        },
+    )
+
+    assert isinstance(view, CurrentBatchView)
+    assert view.to_dict()["target_names"] == ["current-worker"]
+    assert [goal["goal_id"] for goal in view.to_dict()["active_goals"]] == [
+        "goal-current"
+    ]
