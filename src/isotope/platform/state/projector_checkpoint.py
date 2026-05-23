@@ -15,6 +15,12 @@ from .projector_state import RunState
 PROJECTOR_VERSION = "run_projector@v1"
 
 
+def _facade_datetime():
+    from . import projector
+
+    return getattr(projector, "datetime", datetime)
+
+
 class RunProjectorCheckpointMixin:
     """Rebuild RunState from events and checkpoint snapshots."""
 
@@ -95,7 +101,7 @@ class RunProjectorCheckpointMixin:
             "projector_version": projector_version,
             "basis_event_id": canonical_events[-1].event_id,
             "state": self._checkpoint_state_payload(state),
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": _facade_datetime().now(timezone.utc).isoformat(),
         }
         checkpoint["integrity"] = {
             "algorithm": "sha256",
