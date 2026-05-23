@@ -155,6 +155,47 @@ def test_supervisor_capacity_plan_reports_ready_supervisor_decision(tmp_path):
     }
 
 
+def test_execute_capacity_action_requires_matching_ready_decision(tmp_path, monkeypatch):
+    calls: list[object] = []
+
+    def fake_execute_agent_loop_capacity_step(**kwargs):
+        calls.append(kwargs)
+        raise AssertionError("stale capacity call spec must not execute")
+
+    monkeypatch.setattr(
+        capacity_command,
+        "_execute_agent_loop_capacity_step",
+        fake_execute_agent_loop_capacity_step,
+    )
+
+    result = capacity_command.execute_capacity_action(
+        argparse.Namespace(codex_home=str(tmp_path / ".codex")),
+        {
+            "kind": "call_capacity",
+            "capacity_id": "artifact.review",
+            "reason": "stale spec",
+        },
+        {
+            "capacity_call_specs": [
+                {
+                    "capacity_id": "artifact.review",
+                    "goal": "检查 artifact review 能力。",
+                    "inputs": {},
+                }
+            ],
+            "capacity_decisions": [],
+        },
+    )
+
+    assert result == {
+        "kind": "call_capacity",
+        "capacity_id": "artifact.review",
+        "skipped": True,
+        "reason": "capacity decision not ready",
+    }
+    assert calls == []
+
+
 def test_supervisor_capacity_plan_passes_arguments_into_agent_loop_inputs(tmp_path):
     workspace = tmp_path / "workspace"
     workspace.mkdir()

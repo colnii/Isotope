@@ -194,6 +194,13 @@ def execute_capacity_action(
     capacity_id = action.get("capacity_id")
     if not isinstance(capacity_id, str) or not capacity_id:
         raise ValueError("call_capacity requires capacity_id")
+    if _ready_capacity_decision(payload.get("capacity_decisions"), capacity_id) is None:
+        return {
+            "kind": "call_capacity",
+            "capacity_id": capacity_id,
+            "skipped": True,
+            "reason": "capacity decision not ready",
+        }
     spec = _capacity_call_spec(payload.get("capacity_call_specs"), capacity_id)
     if spec is None:
         return {
@@ -314,6 +321,25 @@ def _capacity_call_spec(
     for spec in specs:
         if isinstance(spec, Mapping) and spec.get("capacity_id") == capacity_id:
             return spec
+    return None
+
+
+def _ready_capacity_decision(
+    decisions: Any,
+    capacity_id: str,
+) -> Mapping[str, Any] | None:
+    if not isinstance(decisions, list):
+        return None
+    for decision in decisions:
+        if not isinstance(decision, Mapping):
+            continue
+        if decision.get("capacity_id") != capacity_id:
+            continue
+        if decision.get("next_action") != "call_capacity":
+            continue
+        if decision.get("can_execute_agent_loop") is not True:
+            continue
+        return decision
     return None
 
 

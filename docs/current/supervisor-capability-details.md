@@ -148,6 +148,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   当该读模型为 `call_capacity` 且 `--llm-execute` 打开时，
   LLM planner 可选择 `call_capacity`，Supervisor 会用已保存的
   `capacity_call_specs` 通过 agent loop 的 `call_capability` 步骤执行；
+  执行前仍会重新确认同一 `capacity_id` 存在 ready 的
+  `capacity_decisions`，避免旧 spec 或手工拼接 payload 直接触发调用；
   显式
   `--execute-agent-loop` 才通过 agent loop 带 `inputs` 执行 allowlist 低风险能力，
   并输出执行前后的 tick policy handoff。
