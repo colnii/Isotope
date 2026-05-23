@@ -48,20 +48,24 @@
   [当前状态](./status.md)、`v0.2-roadmap`、v0.2 closure、tag delta 或
   docs inventory；原因见
   [status docs placement review](../reviews/status-docs-placement-review.md)。
+- track / checkpoint / memory placement 已记录：继续暂停这三类目录迁移；原因见
+  [deferred docs placement review](../reviews/deferred-docs-placement-review.md)。
 
 ## 下一批任务
 
-### 1. track / checkpoint / memory 迁移继续暂停
+### 1. 旧文档整理收束审计
 
 目标：
 
-- 不默认移动 track、checkpoint 或 memory 文档。
-- 若后续要打开其中一类，先写 placement review（放置评审），再做文件迁移。
+- 复查旧文档整理已完成的 decision review：kernel、status、deferred docs。
+- 确认 `docs/current/agent-task-queue.md`、`docs/reviews/README.md`、
+  `docs/archive/README.md` 和 `docs/reviews/docs-migration-plan.md` 互相一致。
+- 判断是否可以停止旧文档线，回到 Supervisor 任务。
 
 验收：
 
-- 不从单个 review 或旧 inventory 推断迁移授权。
-- 仍以 `docs/reviews/docs-migration-plan.md` 为迁移控制文档。
+- 给出“继续文档线 / 回 Supervisor”的明确下一步。
+- 不移动文件。
 
 ### 2. Supervisor 任务暂缓但保留
 

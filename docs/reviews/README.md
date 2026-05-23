@@ -29,6 +29,8 @@ review 推断下一批迁移。
   参考文档暂不迁入 `docs/kernel/` 的判断。
 - [Status docs placement review](status-docs-placement-review.md)：记录暂不创建
   `docs/status/`、不移动 current status / roadmap / v0.2 closure 的判断。
+- [Deferred docs placement review](deferred-docs-placement-review.md)：记录 track /
+  checkpoint / memory 文档迁移继续暂停的判断。
 
 ### 分支审计和旧代码 intake
 
