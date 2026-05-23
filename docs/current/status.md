@@ -32,8 +32,8 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    （护栏），不能替代模型主路径。
 5. `features/supervisor/state/projection.py` 已提供只读低敏 Supervisor state
    projection（状态投影），统一读取 active goals、decision、lane failure、
-   worker events 和 notifications；dashboard/web 已接入该读模型，后续 daemon
-   接入前不要重复拼散表。
+   worker events 和 notifications；dashboard/web/daemon 已接入该读模型，
+   后续入口接入前不要重复拼散表。
 6. 代码结构继续以 `src/isotope/` 为 Python 主包，不新增 `packages/`、
    `aios` 或 kernel 主叙事。
 

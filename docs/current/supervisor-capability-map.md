@@ -35,7 +35,7 @@
   和 integration review 的，不另造状态账本。
 - 能用 Supervisor state projection（状态投影）读取 active goals、decision、
   lane failure、worker event 和 notification 的，不重新拼散表；dashboard/web
-  已接入，daemon 是下一步。
+  和 daemon 已接入。
 - 能用 capability runner（能力运行器）的，只加 catalog/plan/run 包装，不开新执行面。
 - 能用 `commands/` 内已拆 handler 的，不把新命令继续塞回 runner。
 - 新增术语或命令后，同步 [术语索引](./terminology.md) 和

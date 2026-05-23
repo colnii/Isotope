@@ -22,6 +22,7 @@ from isotope.features.supervisor.registry import (
     default_registry_path,
     read_managed_records,
 )
+from isotope.features.supervisor.state.projection import build_supervisor_state_snapshot
 
 
 def _default_api() -> Any:
@@ -162,16 +163,15 @@ def daemon_activity_payload(
 ) -> dict[str, Any]:
     if api is None:
         api = _default_api()
+    state_snapshot = build_supervisor_state_snapshot(codex_home=codex_home)
+    active_goals = list(state_snapshot["active_goals"])
     if daemon.get("status") != "running":
-        active_goals = api._active_goal_dicts_for_codex_home(
-            codex_home,
-            include_status=True,
-        )
         activity: dict[str, Any] = {
             "recent_llm_action": None,
             "recent_ci": None,
             "recent_execution": None,
             "recent_worker": None,
+            "state_snapshot": state_snapshot,
             "night_summary": build_supervisor_daemon_night_summary(
                 active_goals=active_goals,
                 managed_workers=[],
@@ -194,10 +194,6 @@ def daemon_activity_payload(
     recent_ci = recent_ci_from_log(daemon_log)
     recent_execution = recent_execution_from_log(daemon_log)
     recent_worker = recent_worker_payload(codex_home, api=api)
-    active_goals = api._active_goal_dicts_for_codex_home(
-        codex_home,
-        include_status=True,
-    )
     managed_workers = daemon_managed_worker_payloads(codex_home, api=api)
     integration_reviews = daemon_integration_reviews(codex_home, api=api)
     activity = {
@@ -205,6 +201,7 @@ def daemon_activity_payload(
         "recent_ci": recent_ci,
         "recent_execution": recent_execution,
         "recent_worker": recent_worker,
+        "state_snapshot": state_snapshot,
         "night_summary": build_supervisor_daemon_night_summary(
             active_goals=active_goals,
             managed_workers=managed_workers,

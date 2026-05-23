@@ -13301,6 +13301,26 @@ def test_codex_supervisor_runner_up_starts_daemon_with_strong_worker_defaults(
         "recent_ci": None,
         "recent_execution": None,
         "recent_worker": None,
+        "state_snapshot": {
+            "status": "ok",
+            "codex_home": str(codex_home),
+            "summary": {
+                "active_goals": 0,
+                "goals_done": 0,
+                "goals_blocked": 0,
+                "goals_needs_user": 0,
+                "active_decisions": 0,
+                "failed_lanes": 0,
+                "worker_events": 0,
+                "notifications": 0,
+                "unread_notifications": 0,
+            },
+            "active_goals": [],
+            "active_decisions": [],
+            "failed_lanes": [],
+            "recent_worker_events": [],
+            "notifications": {"total": 0, "unread": 0, "recent": []},
+        },
         "night_summary": {
             "active_goals": 0,
             "running_workers": 0,
@@ -15746,6 +15766,12 @@ def test_codex_supervisor_runner_daemon_status_includes_active_goal_status(
     assert item["last_status"] == "needs_user"
     assert item["last_summary"] == "需要确认验收范围。"
     assert item["last_next"] == "等待用户确认。"
+    assert payload["daemon"]["activity"]["state_snapshot"]["active_goals"] == [
+        item
+    ]
+    assert payload["daemon"]["activity"]["state_snapshot"]["summary"][
+        "goals_needs_user"
+    ] == 1
 
 
 def test_codex_supervisor_runner_loop_replans_blocked_goal_with_llm_context(
