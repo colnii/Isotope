@@ -35,7 +35,7 @@ Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
 
 | 债务 | 现状证据 | 目标 | 下一步 |
 | --- | --- | --- | --- |
-| `runner.py` 仍是过大 legacy 入口 | `daemon/up/check/watcher` 的命令层 payload 和 plain renderer 已抽到 `src/isotope/features/supervisor/commands/daemon.py`；`src/isotope/features/supervisor/runner.py` 仍承载 loop、dispatch、merge、执行动作和部分状态判断等职责 | 让 `runner.py` 只保留入口转发和兼容 glue（胶水代码） | 下一批优先拆 `runner.py` 中的建议/自动执行、tmux 控制或 merge/worktree 编排；每次新增 Supervisor 行为前先判断能否落到 `commands/`、`agents/`、`integrations/codex/`、`platform/state/` 或 `workspace/` |
+| `runner.py` 仍是过大 legacy 入口 | `daemon/up/check/watcher` 的命令层 payload 和 plain renderer 已抽到 `src/isotope/features/supervisor/commands/daemon_command.py`；`src/isotope/features/supervisor/runner.py` 仍承载 loop、dispatch、merge、执行动作和部分状态判断等职责 | 让 `runner.py` 只保留入口转发和兼容 glue（胶水代码） | 下一批优先拆 `runner.py` 中的建议/自动执行、tmux 控制或 merge/worktree 编排；每次新增 Supervisor 行为前先判断能否落到 `commands/`、`agents/`、`integrations/codex/`、`platform/state/` 或 `workspace/` |
 | Supervisor 对 `platform/` 复用不足 | 已有 decision/failure ledger 进入 `platform/state/`，但大量 worker 状态、失败策略和控制面仍留在 feature 私有实现 | 只把跨 agent 的状态事实、账本接口和 schema 下沉到 `platform/` | 优先抽 decision request / failure ledger 的通用账本接口，避免把产品视图下沉到底座 |
 | 新功能容易绕过既有调度模块 | `agents/scheduler/` 已有 goal queue、fanout、dependency graph、dependency batches 和 capacity graph | Supervisor fanout、batch、capacity 相关逻辑默认复用 scheduler 层 | worker 工单必须列出将复用的 scheduler API；不能在 `runner.py` 中再写一套 DAG 或批次判断 |
 
@@ -105,7 +105,7 @@ Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
 | context request（上下文请求） | `context.py`, `runner.py` | `rag/` + `agents/context/` | 抽检索接口，feature 留命令包装 | 当前偏 rg/BM25-style，后续可接语义检索。 |
 | capacity calling（能力调用） | `llm/capacity_calling.py`, `agents/loop/` | `capabilities/` + `agents/loop/` | 优先打通真实 loop，不再只做原型 | Supervisor planner 应能调用能力，而不是写死动作。 |
 | memory view / worker event channel | `features/supervisor/state/`, `memory/worker_event_channel.py` | `memory/` + `platform/state/` | 先统一 store 和事件 schema | 多 worker 协调要复用同一记忆/事件层。 |
-| daemon / watcher | `commands/daemon.py`, `daemon.py`, `runner.py` | `agents/runtime/` 或 `runtime/` | 命令层 payload/plain renderer 已从 runner 抽出；下一步再抽循环运行器、活动投影和生命周期管理 | 后台循环是运行时能力，不应塞在一个命令文件里。 |
+| daemon / watcher | `commands/daemon_command.py`, `daemon.py`, `runner.py` | `agents/runtime/` 或 `runtime/` | 命令层 payload/plain renderer 已从 runner 抽出；下一步再抽循环运行器、活动投影和生命周期管理 | 后台循环是运行时能力，不应塞在一个命令文件里。 |
 | failure ledger / retry guard | `failure_ledger.py`, `runner.py` | `platform/state/` + `agents/policy/` | 先抽失败账本，再抽重试策略 | 失败记录和策略要能服务其他 agent。 |
 | 通知桥 | `features/supervisor/notifications.py` | `features/notifications/` + adapter | 已有薄整合，继续减少私有字段 | 通知是产品能力，Supervisor 只负责派生事件。 |
 

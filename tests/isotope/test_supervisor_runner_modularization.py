@@ -66,7 +66,9 @@ def test_supervisor_runner_delegates_lifecycle_command_handlers():
 
 
 def test_supervisor_runner_delegates_daemon_command_helpers():
-    daemon_module = importlib.import_module("isotope.features.supervisor.commands.daemon")
+    daemon_module = importlib.import_module(
+        "isotope.features.supervisor.commands.daemon_command"
+    )
 
     assert runner._daemon_payload is daemon_module.daemon_payload
     assert runner._up_payload is daemon_module.up_payload

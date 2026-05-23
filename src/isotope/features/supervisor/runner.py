@@ -168,7 +168,7 @@ from .commands.merge import (
     handle_integration_review_command as _handle_integration_review_command,
     handle_merge_work_order_command as _handle_merge_work_order_command,
 )
-from .commands.daemon import (
+from .commands.daemon_command import (
     codex_worker_options_from_command as _codex_worker_options_from_command,
     daemon_activity_payload as _daemon_activity_payload,
     daemon_integration_reviews as _daemon_integration_reviews,

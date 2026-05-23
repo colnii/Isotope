@@ -680,7 +680,7 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
 
 ## 后续拆分方向
 
-- `features/supervisor/commands/daemon.py`：已承接 `daemon/up/check/watcher`
+- `features/supervisor/commands/daemon_command.py`：已承接 `daemon/up/check/watcher`
   的命令层 payload、最近活动摘要和 plain renderer；继续复用
   `features/supervisor/daemon.py` 的进程生命周期 helper，后续再把后台
   loop/runtime 下沉到 `agents/runtime/` 或 `runtime/`。
