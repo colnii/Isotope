@@ -288,9 +288,9 @@ def test_supervisor_worker_review_reports_clean_worker_and_cli_json(
             return subprocess.CompletedProcess(command, 0, "", "")
         raise AssertionError(f"unexpected command: {command}")
 
-    monkeypatch.setattr("isotope.features.supervisor.worker_review.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.workers.review.subprocess.run", fake_run)
     monkeypatch.setattr(
-        "isotope.features.supervisor.worker_review._pid_is_running",
+        "isotope.features.supervisor.workers.review._pid_is_running",
         lambda pid: False,
     )
 
