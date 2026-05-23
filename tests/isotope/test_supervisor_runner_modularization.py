@@ -257,6 +257,62 @@ def test_supervisor_runner_delegates_fanout_orchestration_helpers():
         assert f"def {function_name}(" not in source
 
 
+def test_supervisor_runner_delegates_merge_dispatch_orchestration_helpers():
+    merge_dispatch_module = importlib.import_module(
+        "isotope.features.supervisor.commands.merge_dispatch"
+    )
+
+    assert (
+        runner._integration_merge_dispatch_payload
+        is merge_dispatch_module.integration_merge_dispatch_payload
+    )
+    assert runner._managed_worker_reference is merge_dispatch_module.managed_worker_reference
+    assert runner._merge_dispatch_cwd is merge_dispatch_module.merge_dispatch_cwd
+    assert (
+        runner._recursive_worker_role_guard_payload
+        is merge_dispatch_module.recursive_worker_role_guard_payload
+    )
+    assert (
+        runner._recursive_worker_role_guard_action
+        is merge_dispatch_module.recursive_worker_role_guard_action
+    )
+    assert (
+        runner._recursive_worker_role_guard_executed
+        is merge_dispatch_module.recursive_worker_role_guard_executed
+    )
+    assert (
+        runner._current_workspace_has_worker_role
+        is merge_dispatch_module.current_workspace_has_worker_role
+    )
+    assert (
+        runner._current_workspace_worker_role
+        is merge_dispatch_module.current_workspace_worker_role
+    )
+    assert (
+        runner._is_merge_dispatch_launch_action
+        is merge_dispatch_module.is_merge_dispatch_launch_action
+    )
+    assert (
+        runner._mark_merge_dispatch_execution
+        is merge_dispatch_module.mark_merge_dispatch_execution
+    )
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_integration_merge_dispatch_payload",
+        "_managed_worker_reference",
+        "_merge_dispatch_cwd",
+        "_recursive_worker_role_guard_payload",
+        "_recursive_worker_role_guard_action",
+        "_recursive_worker_role_guard_executed",
+        "_current_workspace_has_worker_role",
+        "_current_workspace_worker_role",
+        "_is_merge_dispatch_launch_action",
+        "_mark_merge_dispatch_execution",
+    ):
+        assert f"def {function_name}(" not in source
+
+
 def test_supervisor_runner_delegates_daemon_command_helpers():
     daemon_module = importlib.import_module(
         "isotope.features.supervisor.commands.daemon_command"

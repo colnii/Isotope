@@ -45,7 +45,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 | 用户功能层 | `start-here`、`scan`、`dashboard`、`trace`、`guide`、`up`、`discover`、`web`、`watch`、`advise`、`supervise`、`loop`、`daemon` | `features/supervisor/runner.py`、`features/supervisor/commands/` | 面向人类使用的命令入口；dashboard、trace、decision、context、replan、memory、worker event 等命令的 handler/payload/rendering 已迁出 runner |
 | 托管控制层 | `launch`、`adopt`、`send`、`archive`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
 | Worker 审查层 | `worker-review`、`integration-review`、`replan` | `features/supervisor/worker_review.py`、`features/supervisor/integration_review.py`、`features/supervisor/replan.py`、`features/supervisor/commands/replan.py` | 汇总已托管 worker 的 worktree、branch、状态协议、改动、复查提示、合并提示、只读集成分组和下一轮候选 |
-| Merge 工单层 | `merge-work-order` builder、merge dispatch | `features/supervisor/merge_work_order.py`、`features/supervisor/merge_dispatch.py`、`features/supervisor/runner.py` | 根据 `integration-review` 生成动态 merge worker 工单，并由 `loop` 在有 `ready_to_integrate` 候选时自动启动专门 merge worker |
+| Merge 工单层 | `merge-work-order` builder、merge dispatch | `features/supervisor/merge_work_order.py`、`features/supervisor/merge_dispatch.py`、`features/supervisor/commands/merge_dispatch.py`、`features/supervisor/runner.py` | 根据 `integration-review` 生成动态 merge worker 工单；命令层负责 loop 派发、递归 worker guard 和兼容接线 |
 | Codex 执行通道 | `resume`、`codex exec resume`、`--last` | `features/supervisor/runner.py`、`features/supervisor/registry.py` | 不依赖 tmux 恢复历史会话并投喂新 prompt |
 | 上下文能力层 | `context`、`request_context`、`supervisor.request_context`、上下文结果记录 | `features/supervisor/context.py`、`features/supervisor/commands/context.py`、`capabilities/catalog.py`、`capabilities/runner.py` | LLM 按需请求检索项目资料，BM25 后端按 query 对文档和代码候选排序，不固定注入全文；能力目录已提供 workspace read-only wrapper，会写入既有 Supervisor context store |
 | Codex 集成层 | 读取 Codex session（会话记录）、索引标题和 agent 元数据 | `features/supervisor/flow.py` | 当前读取本机 `.jsonl`、`session_index.jsonl` 和 SQLite |
@@ -729,6 +729,10 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   （并行派发编排）的 active goal launch plan、低水位补任务 plan、暂停
   action、fanout log 和批量 launch 执行汇总；纯规划仍复用
   `agents/scheduler/fanout.py`，不在命令层再写一套调度算法。
+- `features/supervisor/commands/merge_dispatch.py`：已承接 merge dispatch
+  orchestration（合并派发编排）、当前 worktree worker role 判断、recursive
+  worker guard（递归 worker 护栏）和 merge dispatch execution 标记；底层
+  launch spec 仍复用 `features/supervisor/merge_dispatch.py` 的纯 builder。
 - `features/supervisor/commands/advice.py`：已承接 `advise`、`supervise`
   和 `loop` 共同使用的 advice payload、automation status 和
   command suggestion 生成；`_execute_advice` 仍留在 `runner.py`，后续需要

@@ -76,7 +76,6 @@ from .llm_summary import (
 )
 from .merge_dispatch import (
     DEFAULT_TARGET_NAME as MERGE_DISPATCH_TARGET_NAME,
-    build_merge_dispatch_payload,
     merge_dispatch_already_running_action as _merge_dispatch_already_running_action,
     merge_dispatch_already_running_executed as _merge_dispatch_already_running_executed,
     merge_dispatch_planned_executed as _merge_dispatch_planned_executed,
@@ -212,6 +211,18 @@ from .commands.fanout import (
     int_value as _int_value,
     paused_active_goals_fanout_plan as _paused_active_goals_fanout_plan,
     replenished_goal_plan_fanout_launch_plan as _replenished_goal_plan_fanout_launch_plan,
+)
+from .commands.merge_dispatch import (
+    current_workspace_has_worker_role as _current_workspace_has_worker_role,
+    current_workspace_worker_role as _current_workspace_worker_role,
+    integration_merge_dispatch_payload as _integration_merge_dispatch_payload,
+    is_merge_dispatch_launch_action as _is_merge_dispatch_launch_action,
+    managed_worker_reference as _managed_worker_reference,
+    mark_merge_dispatch_execution as _mark_merge_dispatch_execution,
+    merge_dispatch_cwd as _merge_dispatch_cwd,
+    recursive_worker_role_guard_action as _recursive_worker_role_guard_action,
+    recursive_worker_role_guard_executed as _recursive_worker_role_guard_executed,
+    recursive_worker_role_guard_payload as _recursive_worker_role_guard_payload,
 )
 from .commands.capacity import handle_capacity_command as _handle_capacity_command
 from .commands.context import handle_context_command as _handle_context_command
@@ -2689,109 +2700,6 @@ def _supervise_payload(
     return payload
 
 
-def _integration_merge_dispatch_payload(args: argparse.Namespace) -> dict[str, Any] | None:
-    if getattr(args, "command", None) != "loop":
-        return None
-    if getattr(args, "name", None):
-        return None
-    if MERGE_DISPATCH_TARGET_NAME in _running_managed_target_names_from_registry(
-        Path(args.codex_home)
-    ):
-        return None
-    review_payload = collect_integration_reviews(
-        codex_home=Path(args.codex_home),
-        base_ref="main",
-        include_unfinished=False,
-        run_test_gate=False,
-        run_candidate_validation=False,
-    )
-    running_worker = _running_managed_process_by_name(
-        codex_home=Path(args.codex_home),
-        name=MERGE_DISPATCH_TARGET_NAME,
-    )
-    return build_merge_dispatch_payload(
-        review_payload,
-        cwd=_merge_dispatch_cwd(args),
-        running_worker=running_worker,
-        managed_worker_reference=_managed_worker_reference,
-    )
-
-
-def _managed_worker_reference(record: Any) -> dict[str, Any]:
-    return {
-        "name": record.name,
-        "record_id": record.record_id,
-        "pid": record.pid,
-        "backend": record.backend,
-        "worker_role": getattr(record, "worker_role", "worker"),
-    }
-
-
-def _merge_dispatch_cwd(args: argparse.Namespace) -> Path:
-    workspace_root = _workspace_root(args)
-    return workspace_root if workspace_root is not None else Path.cwd()
-
-
-def _recursive_worker_role_guard_payload(
-    args: argparse.Namespace,
-) -> dict[str, Any] | None:
-    role = _current_workspace_worker_role(args, RECURSIVE_WORKER_ROLES)
-    if role is None:
-        return None
-    reason = (
-        "当前工作区是 merge worker，跳过 merge dispatch。"
-        if role == MERGE_DISPATCH_WORKER_ROLE
-        else f"当前工作区是 {role} worker，跳过递归调度。"
-    )
-    return {
-        "status": "skipped_current_worker_role",
-        "worker_role": role,
-        "reason": reason,
-    }
-
-
-def _recursive_worker_role_guard_action(guard: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "kind": "monitor",
-        "target_name": None,
-        "reason": guard["reason"],
-        "command_suggestion": None,
-    }
-
-
-def _recursive_worker_role_guard_executed(guard: dict[str, Any]) -> dict[str, Any]:
-    executed = _recursive_worker_role_guard_action(guard)
-    executed["skipped"] = True
-    executed["worker_role"] = guard["worker_role"]
-    return executed
-
-
-def _current_workspace_has_worker_role(
-    args: argparse.Namespace,
-    roles: set[str],
-) -> bool:
-    return _current_workspace_worker_role(args, roles) is not None
-
-
-def _current_workspace_worker_role(
-    args: argparse.Namespace,
-    roles: set[str],
-) -> str | None:
-    workspace = _workspace_root(args)
-    if workspace is None:
-        return None
-    workspace_identity = _path_identity(str(workspace))
-    if workspace_identity is None:
-        return None
-    for record in reversed(read_managed_records(default_registry_path(Path(args.codex_home)))):
-        role = getattr(record, "worker_role", "worker")
-        if role not in roles:
-            continue
-        if _path_identity(record.cwd) == workspace_identity:
-            return role
-    return None
-
-
 def _loop_without_autonomous_scope(
     args: argparse.Namespace,
     report: Any,
@@ -3154,21 +3062,6 @@ def _llm_action_activity_kind(action: dict[str, Any]) -> str:
     if _is_merge_dispatch_launch_action(action):
         return "merge_dispatch"
     return kind
-
-
-def _is_merge_dispatch_launch_action(action: dict[str, Any]) -> bool:
-    return (
-        action.get("kind") == "launch_session"
-        and action.get("source") == "integration_review"
-        and action.get("target_name") == MERGE_DISPATCH_TARGET_NAME
-    )
-
-
-def _mark_merge_dispatch_execution(executed: dict[str, Any]) -> dict[str, Any]:
-    if executed.get("kind") == "launch_session":
-        executed["display_kind"] = "merge_dispatch"
-        executed["source"] = "integration_review"
-    return executed
 
 
 def _executed_activity_detail(executed: dict[str, Any], detail: str) -> str:
