@@ -19,6 +19,9 @@
 - `InProcessServer.get_agent_loop_tick_policy(...)`
 - `GET /runs/{run_id}/agent-loop-tick-policy`
 - `build_agent_loop_tick_policy(...)`
+- `python -m isotope.demo --scenario agent-loop-tick-policy-trace --trace`
+  用 deterministic demo 展示 continue / pause / budget exhausted / approval /
+  completed 的 handoff。
 
 它复用 `get_agent_loop_control(run_id)` 的结果，不维护第二套状态。
 
@@ -52,6 +55,7 @@
 ## 5. 验证
 
 - `tests/isotope/test_agent_loop_tick_policy.py`
+- `tests/isotope/test_agent_loop_tick_policy_demo_scenario.py`
 - `tests/isotope/test_http_api_agent_loop_tick_policy.py`
 - `tests/isotope/test_http_api_boundary.py`
 - `tests/isotope/test_http_api_route_inventory.py`
@@ -60,6 +64,5 @@
 
 下一步不应直接接 real LLM。
 
-更合适的是继续审 `feature/agent-loop-tick-budget-read-model-spike`
-里剩余的 planner adapter / real planner contract 代码，
-只抽能复用的小接口。
+更合适的是先用 `agent-loop-tick-policy-trace` 作为产品 handoff，
+再决定是否把某个 Supervisor 受控入口接到 agent-loop-driven execution。

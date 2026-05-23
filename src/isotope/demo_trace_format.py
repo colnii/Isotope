@@ -13,6 +13,8 @@ def _format_trace(result: dict[str, Any]) -> str:
         return _format_agent_loop_planner_io_validator_trace(result)
     if scenario == "agent-loop-planner-restart-pause":
         return _format_agent_loop_planner_restart_pause_trace(result)
+    if scenario == "agent-loop-tick-policy-trace":
+        return _format_agent_loop_tick_policy_trace(result)
     if scenario == "agent-loop-planner-matrix":
         return _format_agent_loop_planner_matrix_trace(result)
     if scenario == "agent-loop-planner-friction":
@@ -205,6 +207,25 @@ def _format_agent_loop_planner_restart_pause_trace(result: dict[str, Any]) -> st
         f"private append required: {_bool_text(result['private_append_required'])}",
         f"replay verified: {_bool_text(result['replay_ok'])}",
         f"checkpoint verified: {_bool_text(result['checkpoint_ok'])}",
+        f"next development step: {result['next_development_step']}",
+    ]
+    return _format_trace_steps(result["scenario"], steps)
+
+
+def _format_agent_loop_tick_policy_trace(result: dict[str, Any]) -> str:
+    cases = {policy["case_id"]: policy for policy in result["tick_policies"]}
+    steps = [
+        (
+            "ready_continue should_continue="
+            f"{_bool_text(cases['ready_continue']['should_continue'])}"
+        ),
+        f"user_pause stop reason: {cases['user_pause']['must_stop_reason']}",
+        f"budget_exhausted stop reason: {cases['budget_exhausted']['must_stop_reason']}",
+        f"awaiting_approval stop reason: {cases['awaiting_approval']['must_stop_reason']}",
+        f"completed stop reason: {cases['completed']['must_stop_reason']}",
+        f"app friction count: {result['app_friction_count']}",
+        f"model status: {result['model_status']}",
+        f"scheduler status: {result['scheduler_status']}",
         f"next development step: {result['next_development_step']}",
     ]
     return _format_trace_steps(result["scenario"], steps)

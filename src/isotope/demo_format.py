@@ -15,6 +15,8 @@ def _format_plain_text(result: dict[str, Any]) -> str:
         return _format_agent_loop_planner_io_validator_plain_text(result)
     if result.get("scenario") == "agent-loop-planner-restart-pause":
         return _format_agent_loop_planner_restart_pause_plain_text(result)
+    if result.get("scenario") == "agent-loop-tick-policy-trace":
+        return _format_agent_loop_tick_policy_trace_plain_text(result)
     if result.get("scenario") == "agent-loop-planner-matrix":
         return _format_agent_loop_planner_matrix_plain_text(result)
     if result.get("scenario") == "agent-loop-planner-friction":
@@ -223,6 +225,28 @@ def _format_agent_loop_planner_restart_pause_plain_text(result: dict[str, Any]) 
         f"app_friction_count: {result['app_friction_count']}",
         f"replay_ok: {str(result['replay_ok']).lower()}",
         f"checkpoint_ok: {str(result['checkpoint_ok']).lower()}",
+        f"model_status: {result['model_status']}",
+        f"scheduler_status: {result['scheduler_status']}",
+        f"memory_status: {result['memory_status']}",
+        f"next_development_step: {result['next_development_step']}",
+    ]
+    return "\n".join(lines)
+
+
+def _format_agent_loop_tick_policy_trace_plain_text(result: dict[str, Any]) -> str:
+    lines = [
+        f"scenario: {result['scenario']}",
+        f"session_id: {result['session_id']}",
+        f"run_id: {result['run_id']}",
+        f"run_status: {result['run_status']}",
+        f"transport: {result['transport']}",
+        f"tick_policy_trace_ok: {str(result['tick_policy_trace_ok']).lower()}",
+        f"ready_continue_ok: {str(result['ready_continue_ok']).lower()}",
+        f"user_pause_stop_reason: {result['user_pause_stop_reason']}",
+        f"budget_stop_reason: {result['budget_stop_reason']}",
+        f"approval_stop_reason: {result['approval_stop_reason']}",
+        f"completed_stop_reason: {result['completed_stop_reason']}",
+        f"app_friction_count: {result['app_friction_count']}",
         f"model_status: {result['model_status']}",
         f"scheduler_status: {result['scheduler_status']}",
         f"memory_status: {result['memory_status']}",
