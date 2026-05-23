@@ -930,6 +930,34 @@ def test_codex_supervisor_runner_dashboard_notification_counts_use_snapshot_tota
     assert payload["state_snapshot"]["summary"]["notifications"] == 22
 
 
+def test_codex_supervisor_dashboard_fallback_snapshot_keeps_schema_meta():
+    report = CodexSupervisorReport(generated_at=NOW.isoformat(), sessions=())
+
+    payload = _dashboard_payload(
+        report,
+        active_goals=[
+            {
+                "goal_id": "goal-001",
+                "goal": "keep fallback snapshot versioned",
+                "target_name": "fallback-meta",
+                "last_status": "blocked",
+            }
+        ],
+    )
+
+    assert payload["state_snapshot"]["kind"] == "supervisor_state_snapshot"
+    assert payload["state_snapshot"]["schema_version"] == 1
+    assert payload["state_snapshot_meta"] == {
+        "kind": "supervisor_state_snapshot",
+        "schema_version": 1,
+        "schema_label": "supervisor_state_snapshot v1",
+        "source_label": (
+            "goal queue / decision requests / lane state / "
+            "worker events / notifications"
+        ),
+    }
+
+
 def test_codex_supervisor_dashboard_json_includes_display_title_and_short_hash(
     tmp_path,
     capsys,

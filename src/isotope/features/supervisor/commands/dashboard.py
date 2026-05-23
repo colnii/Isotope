@@ -140,6 +140,8 @@ def dashboard_state_snapshot_from_items(
 ) -> dict[str, Any]:
     return {
         "status": "ok",
+        "kind": "supervisor_state_snapshot",
+        "schema_version": 1,
         "summary": {
             "active_goals": len(active_goals),
             "goals_done": _goal_status_count(active_goals, "done"),
