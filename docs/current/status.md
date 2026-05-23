@@ -40,7 +40,9 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    `files/index.json` / `tasks/index.json`。
 7. `ProjectFlow` 关联、读取和列出 task/file 链接时复用 `TaskFlow.get_task()`
    和 `FileFlow.get_file()` 校验目标可读，避免传播不可解析的本地关联 ID。
-8. 代码结构继续以 `src/isotope/` 为 Python 主包，不新增 `packages/`、
+8. HTTP artifact summary endpoint 已通过 platform artifact record 返回低敏摘要，
+   不再由 HTTP 层直接拼 `artifact.created` event payload。
+9. 代码结构继续以 `src/isotope/` 为 Python 主包，不新增 `packages/`、
    `aios` 或 kernel 主叙事。
 
 ## 当前入口

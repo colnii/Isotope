@@ -21,6 +21,7 @@ from ..features.search.flow import SearchFlow, SearchResult
 from ..features.tasks.flow import TaskFlow, TaskSummary
 from ..features.workbench.flow import WorkbenchFlow, WorkbenchView
 from ..platform.errors import IsotopeError
+from ..platform.schemas.refs import ResourceRef
 from ..runtime.in_process import InProcessServer
 
 
@@ -773,11 +774,12 @@ class HttpApiApp:
                 ref = artifact.get("ref")
                 if not isinstance(ref, dict) or ref.get("artifact_id") != artifact_id:
                     continue
+                record = self.server.get_artifact_record(_artifact_ref_from_dict(ref))
                 return {
-                    "ref": dict(ref),
-                    "artifact_type": artifact["artifact_type"],
-                    "summary": artifact["summary"],
-                    "provenance": dict(artifact["provenance"]),
+                    "ref": dict(record["ref"]),
+                    "artifact_type": record["artifact_type"],
+                    "summary": record["summary"],
+                    "provenance": dict(record["provenance"]),
                 }
         return None
 
@@ -1315,6 +1317,22 @@ def create_http_app(
         artifact_content_retrieval_service=artifact_content_retrieval_service,
         workbench_ask_provider=workbench_ask_provider,
     )
+
+
+def _artifact_ref_from_dict(data: dict[str, Any]) -> ResourceRef:
+    return ResourceRef(
+        ref_type=_required_string(data, "ref_type"),
+        scope=_required_string(data, "scope"),
+        run_id=_required_string(data, "run_id"),
+        artifact_id=_required_string(data, "artifact_id"),
+    )
+
+
+def _required_string(data: dict[str, Any], field_name: str) -> str:
+    value = data.get(field_name)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"artifact ref requires {field_name}")
+    return value
 
 
 def create_codex_cli_http_app(

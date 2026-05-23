@@ -1,4 +1,5 @@
 import importlib
+import json
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -767,6 +768,25 @@ def test_artifact_summary_endpoint_does_not_return_full_or_raw_content(tmp_path)
     assert summary["summary"] == "hello artifact"
     assert summary["ref"] == artifact_ref
     assert summary["provenance"]
+    _assert_no_forbidden_content_keys(summary)
+
+
+def test_artifact_summary_endpoint_uses_artifact_record_metadata(tmp_path):
+    app = _create_app(tmp_path)
+    _, run_id = _create_run_via_http(app)
+    _submit_input_via_http(app, run_id)
+    state = _successful_json(_request(app, "GET", f"/runs/{run_id}"))
+    artifact_ref = state["artifacts"][0]["ref"]
+    artifact_id = artifact_ref["artifact_id"]
+    artifact_path = tmp_path / "runs" / run_id / "artifacts" / f"{artifact_id}.json"
+    payload = json.loads(artifact_path.read_text(encoding="utf-8"))
+    payload["summary"] = "metadata-backed artifact summary"
+    artifact_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+
+    summary = _successful_json(_request(app, "GET", f"/artifacts/{artifact_id}/summary"))
+
+    assert summary["summary"] == "metadata-backed artifact summary"
+    assert summary["ref"] == artifact_ref
     _assert_no_forbidden_content_keys(summary)
 
 
