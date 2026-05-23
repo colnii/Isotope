@@ -70,6 +70,9 @@ Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
   没有注册为通用 capability，也没有接入 runtime memory/query 统一边界。
 - `current_batch.py` 已经复用 dependency batch，这是正确方向；
   但 batch 展示、goal queue 写入、fanout 启动还没有完全收敛为同一调度合同。
+- `loop --capacity-decisions` 的 goal 到只读 `capacity_decisions` 生产 glue
+  仍暂留 `runner.py` 的 `_supervise_payload` 附近；等 capacity 主路径稳定后，
+  应抽到 `commands/capacity.py` 或 scheduler adapter，避免继续扩写 runner。
 
 ### 最高杠杆的后续任务
 

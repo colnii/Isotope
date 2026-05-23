@@ -137,8 +137,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   `not_launchable`，plain 输出会列出缺失 inputs 或 launch blocking reasons；
   同时输出 `supervisor_decision` 读模型，把 `ready`、`needs_input` 和
   `not_launchable` 归一成 `call_capacity`、`request_input` 和 `blocked`
-  三类下一步；Supervisor loop planner（规划器）已能把外部传入的
-  `capacity_decisions` 放进 LLM action prompt，供真实决策点读取；
+  三类下一步；`supervise --capacity-decisions` 与
+  `loop --capacity-decisions` 会为当前显式 goal 或第一个 active goal
+  生成一条 `capacity_decisions`，放进 LLM action prompt，供真实决策点读取；
   不生成可执行 graph call；显式
   `--execute-agent-loop` 才通过 agent loop 带 `inputs` 执行 allowlist 低风险能力，
   并输出执行前后的 tick policy handoff。
@@ -455,6 +456,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - `--prompt-cooldown` 可避免短时间重复催促同一个 lane。
 - `--llm-summary` 通过本机 TOML 号池生成中文摘要。
 - `--llm-action` 通过本机 TOML 号池让 LLM planner 选择受控动作。
+- `--capacity-decisions` 会先调用 `capacity plan` 生成一条只读
+  `supervisor_decision`，再交给 LLM planner；缺配置或缺 goal 时只记录
+  `capacity_decision_status`，不打断 loop。
 - `--llm-execute` 会执行 LLM 选择的 `send_status/send_continue`、
   `resume_session` 或 `launch_session`，`monitor` 只记录跳过。
 - LLM 动作提示会携带托管窗口的终端可输入、bell、状态协议短字段，

@@ -6475,6 +6475,100 @@ def test_codex_supervisor_runner_decide_action_passes_capacity_decisions(monkeyp
     assert captured["capacity_decisions"] == [decision]
 
 
+def test_codex_supervisor_loop_payload_produces_capacity_decisions_for_llm(
+    tmp_path,
+    monkeypatch,
+):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    codex_home = tmp_path / ".codex"
+    goal = "补齐当前目标需要的上下文。"
+    decision = {
+        "kind": "supervisor_capacity_decision",
+        "next_action": "request_input",
+        "reason": "needs_input",
+        "capacity_id": "supervisor.request_context",
+        "can_execute_agent_loop": False,
+        "missing_inputs": ["query"],
+        "blocking_reasons": [],
+    }
+    provider = object()
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_capacity_calling_provider_from_env",
+        lambda: provider,
+    )
+
+    def fake_build_capacity_plan(**kwargs: object) -> dict[str, object]:
+        assert kwargs["goal"] == goal
+        assert kwargs["provider"] is provider
+        assert kwargs["execute_agent_loop"] is False
+        return {
+            "kind": "supervisor_capacity_plan",
+            "status": "needs_input",
+            "supervisor_decision": decision,
+        }
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.build_supervisor_capacity_plan",
+        fake_build_capacity_plan,
+    )
+    captured: dict[str, object] = {}
+
+    def fake_decide_action(args: object, report: object, payload: dict[str, object]):
+        captured["capacity_decisions"] = payload.get("capacity_decisions")
+        return {
+            "kind": "monitor",
+            "target_name": None,
+            "reason": "只检查 capacity decision 输入。",
+            "command_suggestion": None,
+        }
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner._decide_action_with_llm",
+        fake_decide_action,
+    )
+
+    args = argparse.Namespace(
+        codex_home=str(codex_home),
+        command="loop",
+        name=None,
+        all_workspaces=False,
+        workspace_root=str(workspace),
+        goal=goal,
+        llm_action=True,
+        llm_execute=False,
+        llm_summary=False,
+        capacity_decisions=True,
+        auto_execute=False,
+        execute=False,
+        prompt_cooldown=0,
+        max_continue_count=0,
+        max_context_requests=0,
+        max_run_minutes=0,
+        max_fanout_launches=2,
+        max_worker_retry_count=0,
+        merge_dispatch_execute=False,
+        auto_merge_promote=False,
+    )
+    report = CodexSupervisorReport(generated_at=NOW.isoformat(), sessions=())
+
+    payload = _supervise_payload(args, report, iteration=1)
+
+    assert payload["capacity_decisions"] == [decision]
+    assert captured["capacity_decisions"] == [decision]
+
+
+def test_codex_supervisor_parser_accepts_capacity_decisions_for_loop_and_supervise():
+    parser = supervisor_runner._build_parser()
+
+    loop_args = parser.parse_args(["loop", "--capacity-decisions"])
+    supervise_args = parser.parse_args(["supervise", "--capacity-decisions"])
+
+    assert loop_args.capacity_decisions is True
+    assert supervise_args.capacity_decisions is True
+
+
 def test_codex_supervisor_generate_llm_action_decision_can_launch_named_suggestion_without_prompt():
     goal = "为 Supervisor 增加目标规划入口，并补测试。"
     report = CodexSupervisorReport(

@@ -147,6 +147,15 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
             action="store_true",
             help="Execute one LLM-chosen whitelist send action, or skip monitor.",
         )
+        if command == "supervise":
+            subparsers.choices[command].add_argument(
+                "--capacity-decisions",
+                action="store_true",
+                help=(
+                    "Plan one capacity decision for the current goal and pass it "
+                    "to the LLM planner."
+                ),
+            )
         subparsers.choices[command].add_argument(
             "--prompt-cooldown",
             type=int,
@@ -370,6 +379,14 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         "--rule-execute",
         action="store_true",
         help="Use the old rule-based executor instead of the LLM planner.",
+    )
+    loop_parser.add_argument(
+        "--capacity-decisions",
+        action="store_true",
+        help=(
+            "Plan one capacity decision for the current goal each iteration and "
+            "pass it to the LLM planner."
+        ),
     )
     loop_parser.add_argument(
         "--merge-dispatch-execute",
