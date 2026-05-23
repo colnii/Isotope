@@ -27,6 +27,8 @@ review 推断下一批迁移。
 - [Current docs refactor plan](current-docs-refactor-plan.md)：current 长文拆分记录和后续边界。
 - [Kernel archive placement review](kernel-archive-placement-review.md)：记录旧 kernel
   参考文档暂不迁入 `docs/kernel/` 的判断。
+- [Status docs placement review](status-docs-placement-review.md)：记录暂不创建
+  `docs/status/`、不移动 current status / roadmap / v0.2 closure 的判断。
 
 ### 分支审计和旧代码 intake
 

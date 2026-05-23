@@ -44,23 +44,14 @@
   [kernel-decision-log](../archive/kernel-decision-log.md) 暂不单独迁入
   `docs/kernel/`；原因见
   [kernel archive placement review](../reviews/kernel-archive-placement-review.md)。
+- status docs placement 已记录：暂不创建 `docs/status/`，不移动
+  [当前状态](./status.md)、`v0.2-roadmap`、v0.2 closure、tag delta 或
+  docs inventory；原因见
+  [status docs placement review](../reviews/status-docs-placement-review.md)。
 
 ## 下一批任务
 
-### 1. 旧文档第五刀：status 类文档是否需要专门目录
-
-目标：
-
-- 只做判断，不默认迁移：`docs-migration-plan.md` 里 status entrypoint 风险高，
-  包括 current status、roadmap、cycle closure 和 tag delta。
-- 如果要开 `docs/status/`，必须另起批次并保留旧路径风险说明。
-
-验收：
-
-- 明确哪些 status 类文档继续原地保留。
-- 不移动 `docs/current/status.md`。
-
-### 2. track / checkpoint / memory 迁移继续暂停
+### 1. track / checkpoint / memory 迁移继续暂停
 
 目标：
 
@@ -72,7 +63,7 @@
 - 不从单个 review 或旧 inventory 推断迁移授权。
 - 仍以 `docs/reviews/docs-migration-plan.md` 为迁移控制文档。
 
-### 3. Supervisor 任务暂缓但保留
+### 2. Supervisor 任务暂缓但保留
 
 目标：
 
@@ -85,7 +76,7 @@
 - 恢复 Supervisor 工作前，能解释每个剩余 worktree 的用途。
 - 任何代码提交都不和旧文档整理混在一起。
 
-### 4. 文档维护边界
+### 3. 文档维护边界
 
 规则：
 

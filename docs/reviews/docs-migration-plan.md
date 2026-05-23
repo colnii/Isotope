@@ -123,14 +123,14 @@ Reason: README, AGENTS, current-status, roadmap, and recent task instructions li
 | `../architecture/checkpoint-v0.1-scope-freeze.md` | `docs/checkpoint/checkpoint-v0.1-scope-freeze.md` | checkpoint | No | Medium | Move with checkpoint batch. |
 | `../architecture/coding-plan-v0.1.md` | `../archive/plans/coding-plan-v0.1.md` | archive | Done | Low | Historical plan; moved to archived plans after active links checked. |
 | `../architecture/commitment-levels.md` | `docs/kernel/commitment-levels.md` | kernel | No | Medium | Current reference; move with kernel batch. |
-| `../current/status.md` | `../current/status.md` first; later `docs/status/current-status.md` | status entrypoint | No | High | Stable entrypoint; do not move in first migration. |
+| `../current/status.md` | `../current/status.md` first; later `docs/status/current-status.md` | status entrypoint | No | High | Placement reviewed in `status-docs-placement-review.md`; keep as current-truth entrypoint. |
 | `deferred-boundary-review-v0.1.md` | `docs/tracks/deferred-boundary-review-v0.1.md` | track/status | No | High | Current deferred-surface reference; move with track docs. |
 | `../architecture/demo-architecture-v0.1.md` | `../features/demo/demo-architecture-v0.1.md` | demo | Done | Low | Phase 1b completed; old path stub removed in Phase 1d. |
 | `../features/demo-entrypoint-v0.1.md` | `../features/demo/demo-entrypoint-v0.1.md` | demo | Done | Low | Phase 1b completed; old path stub removed in Phase 1d. |
 | `../features/demo-walkthrough-v0.1.md` | `../features/demo/demo-walkthrough-v0.1.md` | demo | Done | Low | Phase 1b completed; old path stub removed in Phase 1d. |
-| `../archive/docs-inventory-pre-reorg.md` | `../archive/docs-inventory-pre-reorg.md` first; later `docs/status/docs-inventory.md` | status entrypoint | No | High | Keep until migration plan itself is executed. |
-| `docs-migration-phase-1-dry-run.md` | `docs/status/docs-migration-phase-1-dry-run.md` later | status entrypoint | No | Medium | Current dry-run checklist; do not move during Phase 1 execution. |
-| `docs-migration-plan.md` | `docs-migration-plan.md` first; later `docs/status/docs-migration-plan.md` | status entrypoint | No | High | This plan is the migration control doc; do not move during execution planning. |
+| `../archive/docs-inventory-pre-reorg.md` | `../archive/docs-inventory-pre-reorg.md` first; later `docs/status/docs-inventory.md` | status entrypoint | No | High | Placement reviewed in `status-docs-placement-review.md`; keep as archive migration baseline. |
+| `docs-migration-phase-1-dry-run.md` | `docs/status/docs-migration-phase-1-dry-run.md` later | status entrypoint | No | Medium | Placement reviewed in `status-docs-placement-review.md`; keep beside migration plan. |
+| `docs-migration-plan.md` | `docs-migration-plan.md` first; later `docs/status/docs-migration-plan.md` | status entrypoint | No | High | Placement reviewed in `status-docs-placement-review.md`; keep as migration control doc. |
 | `../architecture/event-envelope-schema-registry-v0.1.md` | `docs/kernel/event-envelope-schema-registry-v0.1.md` | kernel | No | Medium | Move with event docs. |
 | `../architecture/event-envelope-versioning-v0.1.md` | `docs/kernel/event-envelope-versioning-v0.1.md` | kernel | No | Medium | Move with event docs. |
 | `../architecture/event-prefix-digest-v0.1.md` | `docs/kernel/event-prefix-digest-v0.1.md` | kernel/checkpoint | No | Medium | Could go under kernel; referenced by checkpoint docs. |
@@ -145,17 +145,17 @@ Reason: README, AGENTS, current-status, roadmap, and recent task instructions li
 | `../architecture/memory-record-persistence-boundary-v0.1.md` | `docs/memory/memory-record-persistence-boundary-v0.1.md` | memory | No | Medium | Move with memory batch. |
 | `../architecture/memory-v0.1-scope-freeze.md` | `docs/memory/memory-v0.1-scope-freeze.md` | memory | No | High | Current memory scope reference. |
 | `../architecture/memory-write-query-boundary-v0.1.md` | `docs/memory/memory-write-query-boundary-v0.1.md` | memory | No | Medium | Move with memory batch. |
-| `post-v0.2-tag-delta.md` | `docs/status/post-v0.2-tag-delta.md` | status | No | High | Recent review doc; keep until status docs move together. |
+| `post-v0.2-tag-delta.md` | `docs/status/post-v0.2-tag-delta.md` | status | No | High | Placement reviewed in `status-docs-placement-review.md`; keep in reviews until full status batch. |
 | `../features/release-draft-v0.1-demo.md` | `../archive/release/release-draft-v0.1-demo.md` | release | Done | Low | Phase 1a completed; old path stub removed in Phase 1d. |
 | `../architecture/server-checkpoint-boundary-v0.1.md` | `docs/checkpoint/server-checkpoint-boundary-v0.1.md` | checkpoint | No | Medium | Move with checkpoint batch. |
 | `../features/v0.1-demo-acceptance.md` | `../features/demo/v0.1-demo-acceptance.md` | demo | Done | Low | Phase 1c completed; old path stub removed in Phase 1d. |
-| `v0.2-cycle-closure-review.md` | `docs/status/v0.2-cycle-closure-review.md` | status | No | High | Current closure record; keep until status docs move together. |
+| `v0.2-cycle-closure-review.md` | `docs/status/v0.2-cycle-closure-review.md` | status | No | High | Placement reviewed in `status-docs-placement-review.md`; keep in reviews until full status batch. |
 | `../features/v0.2-demo-acceptance.md` | `../features/demo/v0.2-demo-acceptance.md` | demo/status | Done | Low | Phase 1c completed; old path stub removed in Phase 1d. |
 | `../features/v0.2-demo-readiness.md` | `../features/demo/v0.2-demo-readiness.md` | demo/status | Done | Low | Phase 1c completed; old path stub removed in Phase 1d. |
 | `../features/v0.2-demo-scenario.md` | `../features/demo/v0.2-demo-scenario.md` | demo | Done | Low | Phase 1c completed; old path stub removed in Phase 1d. |
-| `v0.2-mid-cycle-review.md` | `docs/status/v0.2-mid-cycle-review.md` | status | No | Medium | Historical decision but still referenced. |
-| `v0.2-next-track-selection.md` | `docs/status/v0.2-next-track-selection.md` | status | No | Medium | Historical decision but still referenced. |
-| `../architecture/v0.2-roadmap.md` | `../architecture/v0.2-roadmap.md` first; later `docs/status/v0.2-roadmap.md` | status entrypoint | No | High | Stable entrypoint; do not move in first migration. |
+| `v0.2-mid-cycle-review.md` | `docs/status/v0.2-mid-cycle-review.md` | status | No | Medium | Placement reviewed in `status-docs-placement-review.md`; keep in reviews until full status batch. |
+| `v0.2-next-track-selection.md` | `docs/status/v0.2-next-track-selection.md` | status | No | Medium | Placement reviewed in `status-docs-placement-review.md`; keep in reviews until full status batch. |
+| `../architecture/v0.2-roadmap.md` | `../architecture/v0.2-roadmap.md` first; later `docs/status/v0.2-roadmap.md` | status entrypoint | No | High | Placement reviewed in `status-docs-placement-review.md`; keep stable roadmap entrypoint. |
 
 ## 7. Link Update Checklist
 
