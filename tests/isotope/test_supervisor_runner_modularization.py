@@ -313,6 +313,62 @@ def test_supervisor_runner_delegates_merge_dispatch_orchestration_helpers():
         assert f"def {function_name}(" not in source
 
 
+def test_supervisor_runner_delegates_merge_promotion_orchestration_helpers():
+    promotion_module = importlib.import_module(
+        "isotope.features.supervisor.commands.promotion"
+    )
+
+    assert (
+        runner._auto_repair_blocked_merge_worker_review_item
+        is promotion_module.auto_repair_blocked_merge_worker_review_item
+    )
+    assert (
+        runner._auto_promote_merge_worker_review_item
+        is promotion_module.auto_promote_merge_worker_review_item
+    )
+    assert runner._managed_record_by_id is promotion_module.managed_record_by_id
+    assert (
+        runner._latest_managed_record_by_name
+        is promotion_module.latest_managed_record_by_name
+    )
+    assert runner._blocked_merge_promotion is promotion_module.blocked_merge_promotion
+    assert (
+        runner._merge_promotion_decision_request
+        is promotion_module.merge_promotion_decision_request
+    )
+    assert (
+        runner._launch_merge_promotion_repair_worker
+        is promotion_module.launch_merge_promotion_repair_worker
+    )
+    assert (
+        runner._completed_merge_promotion_repair_worker
+        is promotion_module.completed_merge_promotion_repair_worker
+    )
+    assert (
+        runner._archive_completed_merge_promotion_repair_worker
+        is promotion_module.archive_completed_merge_promotion_repair_worker
+    )
+    assert (
+        runner._merge_promotion_recent_decision_answer
+        is promotion_module.merge_promotion_recent_decision_answer
+    )
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_auto_repair_blocked_merge_worker_review_item",
+        "_auto_promote_merge_worker_review_item",
+        "_managed_record_by_id",
+        "_latest_managed_record_by_name",
+        "_blocked_merge_promotion",
+        "_merge_promotion_decision_request",
+        "_launch_merge_promotion_repair_worker",
+        "_completed_merge_promotion_repair_worker",
+        "_archive_completed_merge_promotion_repair_worker",
+        "_merge_promotion_recent_decision_answer",
+    ):
+        assert f"def {function_name}(" not in source
+
+
 def test_supervisor_runner_delegates_daemon_command_helpers():
     daemon_module = importlib.import_module(
         "isotope.features.supervisor.commands.daemon_command"
