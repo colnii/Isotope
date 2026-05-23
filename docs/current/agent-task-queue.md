@@ -53,33 +53,32 @@
 - 旧文档整理收束审计已完成：旧文档线可以停止，下一步回 Supervisor 前先做
   工作区、冲突和分支归属审计；原因见
   [old docs closure audit](../reviews/old-docs-closure-audit.md)。
-- Supervisor 工作恢复前状态归属审计已记录：root `main` behind 3，root 里有独立
-  runtime / projector 改动，当前没有可直接删除的 clean duplicate worktree；原因见
+- Supervisor 工作恢复前状态归属审计已刷新：root `main` 已跟上 `origin/main`，
+  runtime / projector 拆分、state command 和 worker event state migration 已进入主线，
+  剩余 worktree 需要逐条处理；原因见
   [supervisor worktree recovery audit](../reviews/supervisor-worktree-recovery-audit.md)。
 
 ## 下一批任务
 
-### 1. root runtime / projector 改动归属
+### 1. clean duplicate worktree 清理确认
 
 目标：
 
-- 判断 root 的 `InProcessServer` runtime 拆分和 projector checkpoint 改动是提交、
-  迁出到 worktree、拆分，还是放弃。
-- root 改动处理清楚后，让 `main` 跟进最新 `origin/main`。
-- 不在 root 上继续叠 Supervisor 改动。
+- 先确认 `refactor/http-api-boundary-split` 是否只是 clean duplicate。
+- 如果没有，清理对应 worktree 和本地分支。
+- 不清理仍有 ahead 提交的 worktree。
 
 验收：
 
-- root 的 runtime 改动有明确归属，不再和 Supervisor 分支混在一起。
-- `main` 不再 behind `origin/main`。
-- 处理前后都重新检查 `git worktree list`。
+- 清理前后都重新检查 `git worktree list`、`git branch --list` 和
+  `git status --short --branch`。
+- 不删除有未推提交或未提交改动的 worktree。
 
 ### 2. 小分支合并准备
 
 目标：
 
-- `supervisor-capacity-decision` 和 `supervisor-state-command` 都需要单独确认是否
-  ready。
+- `supervisor-capacity-decision` 需要单独确认是否 ready。
 - 先确认它们是否重复、互补或需要合并成同一条小批次。
 
 验收：
@@ -91,9 +90,9 @@
 
 目标：
 
-- `worker-event-state-channel` 保留为独立 platform state 迁移候选。
-- `refactor/supervisor-flat-refactor` 和 `refactor/supervisor-runner-promotion-split`
-  暂不直接合并；它们都需要先按最新 `origin/main` 做 conflict / reuse audit。
+- `refactor/supervisor-flat-refactor` 暂不直接合并；它需要先按最新 `origin/main`
+  做 conflict / reuse audit。
+- promotion split 和 worker event state migration 已进入主线，不要从旧 worktree 回退。
 
 验收：
 
