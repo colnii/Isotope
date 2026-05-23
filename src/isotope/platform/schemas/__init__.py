@@ -6,6 +6,7 @@ from .input_contract import (
     ContractValueViolation,
     contract_value_violation,
     matches_contract_type,
+    unexpected_contract_keys,
 )
 from .memory import MemoryRecord
 from .refs import ResourceRef, make_artifact_ref
@@ -23,4 +24,5 @@ __all__ = [
     "contract_value_violation",
     "matches_contract_type",
     "make_artifact_ref",
+    "unexpected_contract_keys",
 ]

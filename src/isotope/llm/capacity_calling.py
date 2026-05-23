@@ -8,7 +8,10 @@ import re
 from dataclasses import dataclass
 from typing import Any, Mapping, Protocol
 
-from ..platform.schemas.input_contract import contract_value_violation
+from ..platform.schemas.input_contract import (
+    contract_value_violation,
+    unexpected_contract_keys,
+)
 from ..platform.errors import IsotopeError
 from .provider import LLMResponse
 
@@ -263,8 +266,7 @@ def _validate_argument_keys(
     )
     if not isinstance(properties, Mapping) or not properties:
         return
-    allowed = {key for key in properties if isinstance(key, str)}
-    unexpected = sorted(key for key in arguments if key not in allowed)
+    unexpected = unexpected_contract_keys(arguments, properties)
     if unexpected:
         raise _invalid_response(
             provider,

@@ -15,7 +15,10 @@ from typing import Any, Mapping
 from .catalog import CapabilityCatalog
 from ..demo import run_demo
 from ..features.supervisor.context import request_project_context
-from ..platform.schemas.input_contract import contract_value_violation
+from ..platform.schemas.input_contract import (
+    contract_value_violation,
+    unexpected_contract_keys,
+)
 
 
 SUPERVISOR_REQUEST_CONTEXT_CAPABILITY = "supervisor.request_context"
@@ -287,8 +290,7 @@ def _validate_inputs_against_contract(
     )
     if not isinstance(properties, Mapping) or not properties:
         return
-    allowed = {name for name in properties if isinstance(name, str)}
-    unexpected = sorted(name for name in inputs if name not in allowed)
+    unexpected = unexpected_contract_keys(inputs, properties)
     if unexpected:
         raise ValueError(
             "capability inputs not allowed by input_contract: "

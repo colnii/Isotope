@@ -43,8 +43,18 @@ def contract_value_violation(
     return None
 
 
+def unexpected_contract_keys(
+    values: Mapping[str, Any], properties: Mapping[str, Any]
+) -> list[str]:
+    """Return input keys not declared in contract properties."""
+
+    allowed = {name for name in properties if isinstance(name, str)}
+    return sorted(name for name in values if name not in allowed)
+
+
 __all__ = [
     "ContractValueViolation",
     "contract_value_violation",
     "matches_contract_type",
+    "unexpected_contract_keys",
 ]

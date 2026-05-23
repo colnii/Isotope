@@ -5,6 +5,7 @@ import pytest
 from isotope.platform.schemas.input_contract import (
     contract_value_violation,
     matches_contract_type,
+    unexpected_contract_keys,
 )
 
 
@@ -67,3 +68,24 @@ def test_contract_value_violation_accepts_values_without_type_or_enum_mismatch()
     assert contract_value_violation("summary", {"type": "string"}) is None
     assert contract_value_violation("anything", {"type": "future-type"}) is None
     assert contract_value_violation("anything", {}) is None
+
+
+def test_unexpected_contract_keys_reports_inputs_outside_properties():
+    unexpected = unexpected_contract_keys(
+        {"query": "capacity", "raw_content": "...", "mode": "summary"},
+        {
+            "query": {"type": "string"},
+            "mode": {"type": "string"},
+        },
+    )
+
+    assert unexpected == ["raw_content"]
+
+
+def test_unexpected_contract_keys_returns_empty_for_declared_inputs():
+    unexpected = unexpected_contract_keys(
+        {"query": "capacity"},
+        {"query": {"type": "string"}},
+    )
+
+    assert unexpected == []
