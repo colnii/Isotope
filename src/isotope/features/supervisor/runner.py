@@ -14,10 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from isotope.capabilities.runner import CapabilityRunner
-from .context import (
-    read_recent_context_results,
-    request_project_context,
-)
+from .context import read_recent_context_results, request_project_context
 from .decision_requests import (
     DEFAULT_DECISION_TIMEOUT_SECONDS,
     archive_decision_request,
@@ -119,7 +116,6 @@ from .registry import (
     resume_managed_codex,
     send_to_managed_codex,
 )
-from .replan import build_supervisor_replan, render_supervisor_replan_plain
 from .tmux_discovery import discover_tmux_adopt_candidates
 from .worker_review import collect_worker_reviews, render_worker_review_plain
 from .work_order_builder import build_launch_work_order_prompt
@@ -148,6 +144,7 @@ from .commands.cleanup import (
     select_cleanup_candidates as _select_cleanup_candidates,
 )
 from .commands.capacity import handle_capacity_command as _handle_capacity_command
+from .commands.context import handle_context_command as _handle_context_command
 from .commands.dashboard import (
     best_linked_session_for_managed as _best_linked_session_for_managed,
     best_linked_sessions_for_managed_lanes as _best_linked_sessions_for_managed_lanes,
@@ -178,6 +175,11 @@ from .commands.dashboard import (
     current_batch_payload as _current_batch_payload,
     current_batch_payload_from_display_sessions as _current_batch_payload_from_display_sessions,
 )
+from .commands.decision import (
+    decision_payload as _decision_payload,
+    handle_decision_command as _handle_decision_command,
+    print_decision_plain as _print_decision_plain,
+)
 from .commands.goal import (
     active_goal_dicts_with_managed_protocol_status as _active_goal_dicts_with_managed_protocol_status,
     goal_command_goal_text as _goal_command_goal_text,
@@ -192,6 +194,12 @@ from .commands.goal import (
 from .commands.merge import (
     handle_integration_review_command as _handle_integration_review_command,
     handle_merge_work_order_command as _handle_merge_work_order_command,
+)
+from .commands.memory import (
+    handle_memory_command as _handle_memory_command,
+    handle_worker_event_command as _handle_worker_event_command,
+    handle_worker_manager_command as _handle_worker_manager_command,
+    json_object_arg as _json_object_arg,
 )
 from .commands.onboarding import (
     discover_payload as _discover_payload,
@@ -258,6 +266,10 @@ from .commands.daemon_command import (
 from .commands.promotion import (
     auto_promote_done_merge_workers_to_main as _auto_promote_done_merge_workers_to_main,
 )
+from .commands.replan import (
+    handle_replan_command as _handle_replan_command,
+    replan_payload as _replan_payload,
+)
 from .commands.trace import (
     latest_managed_record_events as _latest_managed_record_events,
     lifecycle_next_attention as _lifecycle_next_attention,
@@ -281,14 +293,6 @@ from isotope.core.time import (
     _parse_timestamp,
     _timestamp_sort_value,
     _utc_now,
-)
-from .state.memory_view import (
-    build_memory_status_payload,
-    render_memory_status_plain,
-)
-from .state.multi_worker import (
-    build_multi_worker_status_payload,
-    render_multi_worker_status_plain,
 )
 from isotope.memory.worker_event_channel import (
     list_worker_events,
@@ -420,6 +424,12 @@ _COMMAND_HANDLERS = {
     "goal": _handle_goal_command,
     "cleanup": _handle_cleanup_command,
     "capacity": _handle_capacity_command,
+    "context": _handle_context_command,
+    "decision": _handle_decision_command,
+    "memory": _handle_memory_command,
+    "replan": _handle_replan_command,
+    "worker-event": _handle_worker_event_command,
+    "worker-manager": _handle_worker_manager_command,
 }
 
 
@@ -526,86 +536,6 @@ def _run_cli_impl(argv: list[str] | None = None) -> int:
                 _print_json(payload)
             else:
                 print(render_worker_review_plain(payload))
-            return 0
-        if args.command == "memory":
-            payload = build_memory_status_payload(
-                root=Path(args.root),
-                scope=args.scope,
-                limit=args.limit,
-            )
-            if args.json:
-                _print_json(payload)
-            else:
-                print(render_memory_status_plain(payload))
-            return 0
-        if args.command == "worker-event":
-            if args.worker_event_command == "publish":
-                payload = publish_worker_event(
-                    root=Path(args.root),
-                    from_worker=args.from_worker,
-                    to_worker=args.to_worker,
-                    event_type=args.event_type,
-                    channel=args.channel,
-                    message=args.message,
-                    payload=_json_object_arg(args.payload_json, "payload-json"),
-                )
-                if args.json:
-                    _print_json(payload)
-                else:
-                    print(render_worker_event_channel_plain({"store": payload["store"], "events": [payload["event"]]}))
-                return 0
-            if args.worker_event_command == "list":
-                payload = list_worker_events(
-                    root=Path(args.root),
-                    channel=args.channel,
-                    from_worker=args.from_worker,
-                    to_worker=args.to_worker,
-                    event_type=args.event_type,
-                    limit=args.limit,
-                )
-                if args.json:
-                    _print_json(payload)
-                else:
-                    print(render_worker_event_channel_plain(payload))
-                return 0
-        if args.command == "worker-manager":
-            payload = build_multi_worker_status_payload(
-                root=Path(args.root),
-                worker=args.worker,
-                limit=args.limit,
-            )
-            if args.json:
-                _print_json(payload)
-            else:
-                print(render_multi_worker_status_plain(payload))
-            return 0
-        if args.command == "replan":
-            payload = _replan_payload(args)
-            if args.json:
-                _print_json(payload)
-            else:
-                print(render_supervisor_replan_plain(payload))
-            return 0
-        if args.command == "context":
-            result = request_project_context(
-                codex_home=Path(args.codex_home),
-                cwd=Path(args.cwd),
-                query=args.query,
-                max_results=args.limit,
-            )
-            if args.json:
-                _print_json({"status": "ok", "context": result.to_dict()})
-            else:
-                print(f"上下文：{result.query}")
-                for item in result.items:
-                    print(f"{item.path}:{item.line}: {item.text}")
-            return 0
-        if args.command == "decision":
-            payload = _decision_payload(args)
-            if args.json:
-                _print_json(payload)
-            else:
-                _print_decision_plain(payload)
             return 0
         if args.command == "trace":
             payload = _lifecycle_trace_payload(args)
@@ -3168,39 +3098,6 @@ def _emit_terminal_bell() -> None:
     sys.stderr.flush()
 
 
-def _decision_payload(args: argparse.Namespace) -> dict[str, Any]:
-    if args.decision_command == "list":
-        return {
-            "status": "ok",
-            "decision_requests": _decision_request_dicts(args),
-        }
-    if args.decision_command == "archive":
-        archived = archive_decision_request(
-            codex_home=Path(args.codex_home),
-            request_id=args.request_id,
-        )
-        return {
-            "status": "ok",
-            "archived": archived,
-            "decision_requests": _decision_request_dicts(args),
-        }
-    if args.decision_command == "answer":
-        answered = record_decision_answer(
-            codex_home=Path(args.codex_home),
-            request_id=args.request_id,
-            answer=args.answer,
-            webhook_url=args.webhook_url,
-            webhook_secret=args.webhook_secret,
-        )
-        return {
-            "status": "ok",
-            "answered": answered,
-            "decision_requests": _decision_request_dicts(args),
-            "recent_decision_answers": _decision_answer_dicts(args),
-        }
-    raise ValueError(f"unsupported decision command: {args.decision_command}")
-
-
 def _notify_integration_review_webhooks(
     args: argparse.Namespace,
     payload: dict[str, Any],
@@ -3234,44 +3131,6 @@ def _notify_integration_review_webhooks(
                 webhook_url=webhook_url,
                 webhook_secret=getattr(args, "webhook_secret", None),
             )
-
-
-def _print_decision_plain(payload: dict[str, Any]) -> None:
-    archived = payload.get("archived")
-    if isinstance(archived, dict):
-        print(f"已归档拍板请求：{archived['request_id']}")
-    answered = payload.get("answered")
-    if isinstance(answered, dict):
-        print(f"已记录拍板答案：{answered['request_id']}")
-    requests = payload.get("decision_requests") or []
-    print(f"等待拍板：{len(requests)}")
-    for item in requests:
-        archive_command = shlex.join(
-            [
-                "isotope-supervisor",
-                "decision",
-                "archive",
-                "--request-id",
-                item["request_id"],
-            ]
-        )
-        target = item.get("target_name") or item.get("session_id") or "未知"
-        context_status = item.get("context_status") or "unknown"
-        print(f"- {item['request_id']} {item['question']}")
-        print(f"  target={target} context={context_status}")
-        print(f"  归档：{archive_command}")
-
-
-def _replan_payload(args: argparse.Namespace) -> dict[str, Any]:
-    return build_supervisor_replan(
-        worker_reviews=collect_worker_reviews(codex_home=Path(args.codex_home)),
-        integration_reviews=collect_integration_reviews(
-            codex_home=Path(args.codex_home),
-            base_ref=args.base,
-            include_unfinished=args.include_unfinished,
-        ),
-        active_goals=_active_goal_dicts(args, include_status=True),
-    )
 
 
 def _print_supervise_plain(payload: dict[str, Any], report: Any) -> None:

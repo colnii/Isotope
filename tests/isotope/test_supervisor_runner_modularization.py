@@ -200,6 +200,44 @@ def test_supervisor_runner_delegates_lifecycle_trace_helpers():
         assert f"def {function_name}(" not in source
 
 
+def test_supervisor_runner_delegates_readonly_command_handlers():
+    decision_module = importlib.import_module(
+        "isotope.features.supervisor.commands.decision"
+    )
+    context_module = importlib.import_module("isotope.features.supervisor.commands.context")
+    replan_module = importlib.import_module("isotope.features.supervisor.commands.replan")
+    memory_module = importlib.import_module("isotope.features.supervisor.commands.memory")
+
+    assert runner._handle_decision_command is decision_module.handle_decision_command
+    assert runner._decision_payload is decision_module.decision_payload
+    assert runner._print_decision_plain is decision_module.print_decision_plain
+    assert runner._handle_context_command is context_module.handle_context_command
+    assert runner._handle_replan_command is replan_module.handle_replan_command
+    assert runner._replan_payload is replan_module.replan_payload
+    assert runner._handle_memory_command is memory_module.handle_memory_command
+    assert runner._handle_worker_event_command is memory_module.handle_worker_event_command
+    assert runner._handle_worker_manager_command is memory_module.handle_worker_manager_command
+
+    source = inspect.getsource(runner._run_cli_impl)
+    for command in (
+        "decision",
+        "context",
+        "replan",
+        "memory",
+        "worker-event",
+        "worker-manager",
+    ):
+        assert f'args.command == "{command}"' not in source
+
+    runner_source = inspect.getsource(runner)
+    for function_name in (
+        "_decision_payload",
+        "_print_decision_plain",
+        "_replan_payload",
+    ):
+        assert f"def {function_name}(" not in runner_source
+
+
 def test_supervisor_runner_uses_memory_worker_event_channel():
     worker_event_channel = importlib.import_module("isotope.memory.worker_event_channel")
 
