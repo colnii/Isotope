@@ -77,7 +77,7 @@ def select_capacity_call(
     safe_capacities = [_safe_capacity_manifest(capacity) for capacity in capacities]
     if not safe_capacities:
         raise ValueError("capacities must contain at least one capacity")
-    offered = {capacity["capacity_id"]: capacity for capacity in safe_capacities}
+    offered = _offered_capacity_map(safe_capacities)
 
     try:
         response = provider.generate(
@@ -136,6 +136,16 @@ def select_capacity_call(
         finish_reason=response.finish_reason,
         usage=_safe_usage(response.usage),
     )
+
+
+def _offered_capacity_map(capacities: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    offered: dict[str, dict[str, Any]] = {}
+    for capacity in capacities:
+        capacity_id = capacity["capacity_id"]
+        if capacity_id in offered:
+            raise ValueError(f"duplicate capacity_id: {capacity_id}")
+        offered[capacity_id] = capacity
+    return offered
 
 
 def _build_messages(

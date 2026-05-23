@@ -247,6 +247,31 @@ def test_select_capacity_call_rejects_required_inputs_not_declared_in_properties
     assert provider.calls == []
 
 
+def test_select_capacity_call_rejects_duplicate_capacity_ids_before_provider_call():
+    provider = RecordingProvider(
+        json.dumps(
+            {
+                "capacity_id": "artifact.review",
+                "arguments": {},
+                "confidence": 0.75,
+                "rationale": "should not be called",
+            }
+        )
+    )
+
+    with pytest.raises(ValueError, match="duplicate capacity_id"):
+        select_capacity_call(
+            provider,
+            goal="检查摘要",
+            capacities=[
+                _capacity(title="Artifact Review A"),
+                _capacity(title="Artifact Review B"),
+            ],
+        )
+
+    assert provider.calls == []
+
+
 def test_select_capacity_call_rejects_unoffered_capacity():
     provider = RecordingProvider(
         json.dumps(
