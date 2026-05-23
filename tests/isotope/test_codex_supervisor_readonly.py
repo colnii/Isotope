@@ -4888,6 +4888,10 @@ def test_codex_supervisor_runner_loop_suggests_all_active_goals(
         ("goal-a", str(workspace_a), "推进第一个功能目标。"),
         ("goal-b", str(workspace_b), "推进第二个功能目标。"),
     ]
+    assert [
+        goal["goal_id"] for goal in payload["state_snapshot"]["active_goals"]
+    ] == [goal["goal_id"] for goal in payload["active_goals"]]
+    assert payload["state_snapshot"]["summary"]["active_goals"] == 2
 
 
 def test_codex_supervisor_runner_loop_prioritizes_active_goals_over_stale_resume(

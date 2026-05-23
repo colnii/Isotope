@@ -33,7 +33,7 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
 5. `features/supervisor/state/projection.py` 已提供只读低敏 Supervisor state
    projection（状态投影），统一读取 active goals、decision、lane failure、
    worker events 和 notifications；dashboard/web/daemon 已接入该读模型，
-   后续入口接入前不要重复拼散表。
+   loop payload 已带只读 snapshot，后续入口接入前不要重复拼散表。
 6. `FileFlow` 文件摘要和 `TaskFlow` 结果摘要读取已通过 platform
    `ResourceRef` + artifact record 校验并刷新本地 index，避免盲信
    `files/index.json` / `tasks/index.json`。

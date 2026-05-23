@@ -110,6 +110,7 @@ from .registry import (
     resume_managed_codex,
     send_to_managed_codex,
 )
+from .state.projection import build_supervisor_state_snapshot
 from .tmux_discovery import discover_tmux_adopt_candidates
 from .worker_review import collect_worker_reviews, render_worker_review_plain
 from .work_order_builder import build_launch_work_order_prompt
@@ -2476,6 +2477,7 @@ def _supervise_payload(
     precomputed_executed: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     action_report = _action_report_for_workspace(args, report)
+    state_snapshot = build_supervisor_state_snapshot(codex_home=Path(args.codex_home))
     active_goals = _active_goal_dicts(args, include_status=True)
     running_target_names = _running_managed_target_names(report)
     goal_replenishment = _maybe_replenish_active_goals(
@@ -2488,6 +2490,7 @@ def _supervise_payload(
         and goal_replenishment.get("status") == "ok"
         and goal_replenishment.get("written_count")
     ):
+        state_snapshot = build_supervisor_state_snapshot(codex_home=Path(args.codex_home))
         active_goals = _active_goal_dicts(args, include_status=True)
     explicit_goal = _explicit_goal_text(args)
     payload = _advice_payload(
@@ -2511,6 +2514,7 @@ def _supervise_payload(
     payload["auto_adopted"] = auto_adopted or []
     payload["auto_retried_workers"] = auto_retried_workers or []
     payload["active_goals"] = active_goals
+    payload["state_snapshot"] = state_snapshot
     if goal_replenishment is not None:
         payload["goal_replenishment"] = goal_replenishment
     if goal_updates:
