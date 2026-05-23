@@ -41,6 +41,7 @@ from isotope.features.supervisor.runner import (
     EXECUTABLE_ADVICE_TEXT,
     _advice_payload,
     _dashboard_payload,
+    _execute_context_action,
     _execute_llm_action,
     _print_dashboard_plain,
     _report_fingerprint,
@@ -9136,6 +9137,120 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_request_context(
         for line in context_log.read_text(encoding="utf-8").splitlines()
     ]
     assert records[0]["query"] == "Supervisor 下一步节奏"
+
+
+def test_execute_context_action_routes_through_request_context_capability(
+    tmp_path,
+    monkeypatch,
+):
+    from isotope.features.supervisor import runner as runner_module
+
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    calls: list[dict[str, object]] = []
+
+    def fail_direct_request_context(**kwargs: object) -> object:
+        raise AssertionError("direct request_project_context should not be called")
+
+    def fake_run_capability(
+        self: object,
+        capability_id: str,
+        *,
+        inputs: dict[str, object],
+        **kwargs: object,
+    ) -> dict[str, object]:
+        calls.append(
+            {
+                "capability_id": capability_id,
+                "inputs": inputs,
+                "kwargs": kwargs,
+            }
+        )
+        return {
+            "kind": "capability_run_result",
+            "capability_id": "supervisor.request_context",
+            "status": "completed",
+            "runner_kind": "deterministic_readonly",
+            "context_result": {
+                "result_id": "context-test",
+                "cwd": str(workspace),
+                "query": "Supervisor 下一步节奏",
+                "created_at": "2026-05-23T12:00:00+00:00",
+                "backend": "bm25",
+                "item_count": 1,
+                "items": [
+                    {
+                        "path": "docs/current/status.md",
+                        "line": 1,
+                        "title": "status",
+                        "text": "LLM 主导",
+                        "snippet": "LLM 主导",
+                        "score": 1.0,
+                        "match_reason": "query term",
+                        "source_group": "docs/current",
+                    }
+                ],
+            },
+        }
+
+    monkeypatch.setattr(
+        runner_module,
+        "request_project_context",
+        fail_direct_request_context,
+    )
+    monkeypatch.setattr(
+        runner_module.CapabilityRunner,
+        "run_capability",
+        fake_run_capability,
+    )
+
+    result = _execute_context_action(
+        _runner_args(codex_home),
+        {
+            "kind": "request_context",
+            "cwd": str(workspace),
+            "query": "Supervisor 下一步节奏",
+            "command_suggestion": {"command": "custom context command"},
+        },
+    )
+
+    assert calls == [
+        {
+            "capability_id": "supervisor.request_context",
+            "inputs": {
+                "codex_home": str(codex_home),
+                "cwd": str(workspace),
+                "query": "Supervisor 下一步节奏",
+            },
+            "kwargs": {},
+        }
+    ]
+    assert result == {
+        "kind": "request_context",
+        "command": "custom context command",
+        "cwd": str(workspace),
+        "query": "Supervisor 下一步节奏",
+        "context": {
+            "result_id": "context-test",
+            "cwd": str(workspace),
+            "query": "Supervisor 下一步节奏",
+            "created_at": "2026-05-23T12:00:00+00:00",
+            "backend": "bm25",
+            "items": [
+                {
+                    "path": "docs/current/status.md",
+                    "line": 1,
+                    "title": "status",
+                    "text": "LLM 主导",
+                    "snippet": "LLM 主导",
+                    "score": 1.0,
+                    "match_reason": "query term",
+                    "source_group": "docs/current",
+                }
+            ],
+        },
+    }
 
 
 def test_codex_supervisor_runner_supervise_request_context_replans_same_iteration(

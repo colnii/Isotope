@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from isotope.capabilities.runner import CapabilityRunner
 from isotope.features.notifications.flow import NotificationFlow
 
 from .daemon import (
@@ -6620,18 +6621,30 @@ def _execute_context_action(
             "skipped": True,
             "reason": "request_context cwd missing",
         }
-    result = request_project_context(
-        codex_home=Path(args.codex_home),
-        cwd=Path(cwd),
-        query=query,
+    result = CapabilityRunner().run_capability(
+        "supervisor.request_context",
+        inputs={
+            "codex_home": str(Path(args.codex_home)),
+            "cwd": cwd,
+            "query": query,
+        },
     )
     return {
         "kind": "request_context",
         "command": command,
         "cwd": cwd,
         "query": query,
-        "context": result.to_dict(),
+        "context": _context_from_capability_result(result),
     }
+
+
+def _context_from_capability_result(result: dict[str, Any]) -> dict[str, Any]:
+    context_result = result.get("context_result")
+    if not isinstance(context_result, dict):
+        raise ValueError("supervisor.request_context did not return context_result")
+    context = dict(context_result)
+    context.pop("item_count", None)
+    return context
 
 
 def _execute_ask_user_action(
