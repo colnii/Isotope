@@ -10,10 +10,12 @@ from isotope.features.supervisor.goal_queue import (
     record_supervisor_goal_status,
 )
 import isotope.features.supervisor.goal_queue as feature_goal_queue
+import isotope.features.supervisor.lane_state as feature_lane_state
 from isotope.features.supervisor.lane_state import record_lane_failure
 from isotope.features.supervisor.runner import main as supervisor_main
 import isotope.features.supervisor.state.projection as feature_projection
 from isotope.platform.state.goal_status import SupervisorGoalStatus
+from isotope.platform.state.lane_state import SupervisorLaneState
 from isotope.platform.state.supervisor_snapshot import SupervisorStateSnapshot
 from isotope.features.supervisor.state.projection import build_supervisor_state_snapshot
 from isotope.memory.worker_event_channel import publish_worker_event
@@ -48,6 +50,34 @@ def test_supervisor_goal_status_uses_platform_schema():
         "last_session_id": "session-goal",
         "last_summary": "等待主线重构完成",
         "last_next": "保持 projection 分支独立",
+    }
+
+
+def test_supervisor_lane_state_uses_platform_schema():
+    assert feature_lane_state.LaneState is SupervisorLaneState
+
+    state = SupervisorLaneState(
+        name="worker-a",
+        tmux_session=None,
+        last_status="failed",
+        last_failure_reason="exit_code",
+        last_failure_exit_code=1,
+        last_failure_stderr_summary="pytest failed",
+        last_failure_record_id="managed-1",
+        last_failed_at="2026-05-24T01:03:00+00:00",
+        failure_count=1,
+        worker_retry_count=2,
+    )
+
+    assert state.to_failed_lane_payload() == {
+        "name": "worker-a",
+        "last_failure_reason": "exit_code",
+        "last_failure_exit_code": 1,
+        "last_failure_stderr_summary": "pytest failed",
+        "last_failure_record_id": "managed-1",
+        "last_failed_at": "2026-05-24T01:03:00+00:00",
+        "failure_count": 1,
+        "worker_retry_count": 2,
     }
 
 

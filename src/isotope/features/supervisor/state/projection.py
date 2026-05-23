@@ -130,16 +130,7 @@ def _failed_lane_payloads(codex_home: Path) -> list[dict[str, Any]]:
 
 
 def _failed_lane_payload(state: LaneState) -> dict[str, Any]:
-    return {
-        "name": state.name,
-        "last_failure_reason": state.last_failure_reason,
-        "last_failure_exit_code": state.last_failure_exit_code,
-        "last_failure_stderr_summary": state.last_failure_stderr_summary,
-        "last_failure_record_id": state.last_failure_record_id,
-        "last_failed_at": state.last_failed_at,
-        "failure_count": state.failure_count,
-        "worker_retry_count": state.worker_retry_count,
-    }
+    return state.to_failed_lane_payload()
 
 
 def _notification_payload(codex_home: Path, *, limit: int) -> dict[str, Any]:
