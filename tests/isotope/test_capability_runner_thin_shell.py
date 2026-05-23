@@ -302,6 +302,8 @@ def test_request_context_capability_runs_existing_readonly_context_search(tmp_pa
     assert result["runner_kind"] == "deterministic_readonly"
     assert result["context_result"]["backend"] == "bm25"
     assert result["context_result"]["query"] == "request_context capability evidence"
+    assert isinstance(result["context_result"]["created_at"], str)
+    assert result["context_result"]["created_at"]
     assert result["context_result"]["item_count"] >= 1
     assert (codex_home / "supervisor" / "context_results.jsonl").is_file()
     json.dumps(result)

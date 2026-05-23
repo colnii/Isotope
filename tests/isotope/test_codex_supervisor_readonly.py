@@ -9253,6 +9253,55 @@ def test_execute_context_action_routes_through_request_context_capability(
     }
 
 
+def test_execute_context_action_preserves_legacy_context_shape_with_real_capability(
+    tmp_path,
+):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "workspace"
+    docs_dir = workspace / "docs" / "current"
+    docs_dir.mkdir(parents=True)
+    (docs_dir / "status.md").write_text(
+        "Supervisor request_context capability keeps created_at for replan.\n",
+        encoding="utf-8",
+    )
+
+    result = _execute_context_action(
+        _runner_args(codex_home),
+        {
+            "kind": "request_context",
+            "cwd": str(workspace),
+            "query": "request_context capability created_at",
+        },
+    )
+
+    assert result["kind"] == "request_context"
+    assert result["command"] == shlex.join(
+        [
+            "isotope-supervisor",
+            "context",
+            "--cwd",
+            str(workspace),
+            "--query",
+            "request_context capability created_at",
+        ]
+    )
+    context = result["context"]
+    assert set(context) == {
+        "result_id",
+        "cwd",
+        "query",
+        "created_at",
+        "backend",
+        "items",
+    }
+    assert context["cwd"] == str(workspace)
+    assert context["query"] == "request_context capability created_at"
+    assert context["backend"] == "bm25"
+    assert isinstance(context["created_at"], str)
+    assert context["created_at"]
+    assert isinstance(context["items"], list)
+
+
 def test_codex_supervisor_runner_supervise_request_context_replans_same_iteration(
     tmp_path,
     capsys,

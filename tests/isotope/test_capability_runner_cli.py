@@ -266,6 +266,8 @@ def test_capability_runner_cli_runs_request_context_with_input_json(tmp_path):
     assert run["status"] == "completed"
     assert run["runner_kind"] == "deterministic_readonly"
     assert run["context_result"]["backend"] == "bm25"
+    assert isinstance(run["context_result"]["created_at"], str)
+    assert run["context_result"]["created_at"]
     assert run["context_result"]["item_count"] >= 1
     assert (codex_home / "supervisor" / "context_results.jsonl").is_file()
     _assert_low_sensitive(payload)

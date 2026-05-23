@@ -325,19 +325,14 @@ def _run_supervisor_request_context(
         max_results=input_mapping["max_results"],
     )
     result_dict = result.to_dict()
+    context_result = dict(result_dict)
+    context_result["item_count"] = len(result_dict["items"])
     return {
         "kind": "capability_run_result",
         "capability_id": SUPERVISOR_REQUEST_CONTEXT_CAPABILITY,
         "status": "completed",
         "runner_kind": "deterministic_readonly",
-        "context_result": {
-            "result_id": result_dict["result_id"],
-            "cwd": result_dict["cwd"],
-            "query": result_dict["query"],
-            "backend": result_dict["backend"],
-            "item_count": len(result_dict["items"]),
-            "items": result_dict["items"],
-        },
+        "context_result": context_result,
     }
 
 
