@@ -27,65 +27,67 @@
   [status-history](../archive/current/status-history.md)、
   [supervisor-command-reference](./supervisor-command-reference.md) 和
   [supervisor-capability-details](./supervisor-capability-details.md)。
+- 旧 v0.1 implementation / coding plans 已移到
+  [archived plans](../archive/plans/)。归档原因：它们是早期最小闭环和编码拆解，
+  已被后续实现、目录重组和 Supervisor 产品路径替代，不应继续放在
+  `architecture/` 里当当前边界读。
 
 ## 下一批任务
 
-### 1. 接手前：未暂存改动归属确认
+### 1. 旧文档第二刀：archive 根目录再分层
 
 目标：
 
-- 梳理当前 `git status` 里的代码和文档改动，确认哪些来自并行任务，哪些应进入
-  下一批。
-- 不把 `runner.py`、`commands/llm_execution.py`、demo 拆分文件和文档整理混在一个
-  提交里。
-- 若发现第三批文档提交误带代码改动，先停下来修正。
+- 盘点 `docs/archive/` 根目录剩余旧文档：
+  `kernel-one-pager.md`、`kernel-decision-log.md`、
+  `kernel-mainline-maintenance-mode.md` 和 `docs-inventory-pre-reorg.md`。
+- 先判断它们是 historical kernel reference（历史 kernel 参考）还是 migration
+  record（迁移记录），不要混进同一个目录。
+- 中风险 kernel 文档先只补索引和归档原因；若要移动，单独开批次并同提交修链接。
 
 验收：
 
-- 能说明每个未暂存文件的归属和下一步动作。
-- 下一批提交前只 stage 对应任务文件。
+- `docs/archive/README.md` 能解释 archive 根目录每个旧文件为什么还留着。
+- 不移动 current status、roadmap、track、checkpoint、memory 文档。
+- `git diff --check` 和 Markdown 本地链接检查通过。
 
-### 2. Supervisor flat refactor 复核
+### 2. 旧文档第三刀：reviews 过期审查分组
 
 目标：
 
-- 复核当前已有的 `refactor/supervisor-flat-refactor` worktree 是否还需要合并。
-- 对照 `src/isotope/features/supervisor/runner.py` 和
-  `src/isotope/features/supervisor/commands/`，确认 runner 是否继续变薄。
-- 若该分支已合并，按 `AGENTS.md` 清理 worktree、本地分支和远端临时分支。
+- 盘点 `docs/reviews/` 里的旧 branch audit、closure review、external review
+  记录，区分 still-useful decision background（仍有用的决策背景）和 purely
+  historical transcript（纯历史流水）。
+- 优先更新 `docs/reviews/README.md` 分类，不急着批量移动。
+- 若要移动，先选低风险、少引用、已关闭的旧审查记录。
 
 验收：
 
-- `git worktree list` 能解释每个剩余 worktree 的用途。
-- 若执行合并，至少跑相关 Supervisor 测试或说明阻塞原因。
+- `reviews/README.md` 能把旧审查材料按用途找出来。
+- 不把 review 里的旧结论提升为当前执行规则。
 
-### 3. Supervisor 产品可用性小批次
+### 3. Supervisor 任务暂缓但保留
 
 目标：
 
-- 从用户最常用路径出发，继续打磨 `start-here`、`up`、`web`、`check`、
-  `worker-review` 和 `integration-review`。
-- 每个小批次都要说明用户入口、复用的 helper、验证命令和失败回退。
-- 不把 AI 路径降级成只读诊断；LLM planner（规划器）仍应处在主路径之一。
+- 当前先处理旧文档；Supervisor flat refactor 和产品可用性小批次暂不删除。
+- 回到 Supervisor 前，先确认 `git status` 里的代码改动归属，再决定是否合并
+  `refactor/supervisor-flat-refactor`。
 
-候选：
+验收：
 
-- 让 `check` 输出更适合作为早上接手的摘要。
-- 让 `worker-review` 更清楚地区分“可合并”“需复查”“只剩归档”。
-- 让 `web` 的受控操作文案和状态分组更适合扫读。
+- 恢复 Supervisor 工作前，能解释每个剩余 worktree 的用途。
+- 任何代码提交都不和旧文档整理混在一起。
 
 ### 4. 文档维护边界
 
-目标：
-
-- 后续新增 Supervisor 命令时，同步更新 quick start 和 command reference。
-- 后续新增 Supervisor 能力时，先更新能力索引，再更新能力详情。
-- `docs/current/` 保持当前入口，不重新塞入长历史流水。
-
-验收：
+规则：
 
 - 新文档能从 [docs-map](./docs-map.md) 找到。
 - 长历史、一次性快照和外部审查原文继续进入 archive 或 reviews。
+- 后续新增 Supervisor 命令时，同步更新 quick start 和 command reference。
+- 后续新增 Supervisor 能力时，先更新能力索引，再更新能力详情。
+- `docs/current/` 保持当前入口，不重新塞入长历史流水。
 
 ## 验证命令
 
