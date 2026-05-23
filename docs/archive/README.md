@@ -8,6 +8,8 @@
 ## 主要入口
 
 - [Concepts](concepts/)：早期概念设计、应用层设想和参考项目对比。
+- [Former current docs](current/)：曾放在 `docs/current/` 的讨论原文、
+  外部审查和一次性快照；已不再作为当前执行入口。
 - [Release archive](release/)：旧 release draft。
 - [Docs inventory pre reorg](docs-inventory-pre-reorg.md)：文档重组前清单。
 - [Kernel one pager](kernel-one-pager.md)：早期 kernel 概览。

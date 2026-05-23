@@ -8,11 +8,13 @@
 
 Dry-run 本身没有移动、不重命名、不删除、不合并任何文件，不批量改链接，不修改 `src/`、`tests/`、`.github/` 或 `pyproject.toml`。
 
-Follow-up status: Phase 1a release draft migration 已执行。Full release draft now lives at `../archive/release/release-draft-v0.1-demo.md`; old path `../features/release-draft-v0.1-demo.md` remains as a compatibility stub.
+Follow-up status: Phase 1a release draft migration 已执行。Full release draft now lives at `../archive/release/release-draft-v0.1-demo.md`; old path `../features/release-draft-v0.1-demo.md` was later removed in Phase 1d.
 
-Follow-up status: Phase 1b v0.1 demo explainer migration 已执行。Full explainer docs now live at `../features/demo/demo-entrypoint-v0.1.md`, `../features/demo/demo-walkthrough-v0.1.md`, and `../features/demo/demo-architecture-v0.1.md`; old paths remain as compatibility stubs.
+Follow-up status: Phase 1b v0.1 demo explainer migration 已执行。Full explainer docs now live at `../features/demo/demo-entrypoint-v0.1.md`, `../features/demo/demo-walkthrough-v0.1.md`, and `../features/demo/demo-architecture-v0.1.md`; old paths were later removed in Phase 1d.
 
-Follow-up status: Phase 1c demo acceptance / readiness / scenario migration 已执行。Full docs now live at `../features/demo/v0.1-demo-acceptance.md`, `../features/demo/v0.2-demo-readiness.md`, `../features/demo/v0.2-demo-scenario.md`, and `../features/demo/v0.2-demo-acceptance.md`; old paths remain as compatibility stubs.
+Follow-up status: Phase 1c demo acceptance / readiness / scenario migration 已执行。Full docs now live at `../features/demo/v0.1-demo-acceptance.md`, `../features/demo/v0.2-demo-readiness.md`, `../features/demo/v0.2-demo-scenario.md`, and `../features/demo/v0.2-demo-acceptance.md`; old paths were later removed in Phase 1d.
+
+Follow-up status: Phase 1d low-risk stub cleanup 已执行。Demo、release draft 和 event schema compatibility 的旧路径 stubs 已删除，当前链接应直接指向真实文档路径。
 
 Closure status: Phase 1 is now closed / paused. Do not continue into track, checkpoint, memory, kernel, current-status, or roadmap migrations unless explicitly requested. Kernel Gap Review has landed in `kernel-gap-review-v0.2.md`; Agent / Worker lifecycle boundary has landed in `../architecture/agent-worker-lifecycle-boundary-v0.2.md`; the next default workstream is the corresponding red tests or Workspace substrate boundary design.
 
@@ -42,14 +44,14 @@ Track F 文档暂不列入实际第一批迁移。它刚完成 closure，且 `ma
 
 | Candidate file | Proposed path | Current references | Link risk | Stub needed? |
 | --- | --- | --- | --- | --- |
-| `../features/release-draft-v0.1-demo.md` | `../archive/release/release-draft-v0.1-demo.md` | `../current/status.md`, `../features/demo/v0.1-demo-acceptance.md`, `../architecture/v0.2-roadmap.md`, `deferred-boundary-review-v0.1.md`, `../archive/docs-inventory-pre-reorg.md` | Low after Phase 1a | Stub exists. |
-| `../features/demo-entrypoint-v0.1.md` | `../features/demo/demo-entrypoint-v0.1.md` | `../current/status.md`, `../architecture/memory-v0.1-scope-freeze.md`, `deferred-boundary-review-v0.1.md`, `../archive/docs-inventory-pre-reorg.md` | Low after Phase 1b | Stub exists. |
-| `../features/demo-walkthrough-v0.1.md` | `../features/demo/demo-walkthrough-v0.1.md` | `README.md`, `AGENTS.md`, `../current/status.md`, `../features/demo/v0.1-demo-acceptance.md`, `../architecture/v0.2-roadmap.md`, `../archive/docs-inventory-pre-reorg.md` | Low after Phase 1b | Stub exists. |
-| `../architecture/demo-architecture-v0.1.md` | `../features/demo/demo-architecture-v0.1.md` | `README.md`, `AGENTS.md`, `../current/status.md`, `../features/demo/v0.1-demo-acceptance.md`, `../features/demo/demo-walkthrough-v0.1.md`, `../architecture/v0.2-roadmap.md`, `../archive/docs-inventory-pre-reorg.md` | Low after Phase 1b | Stub exists. |
-| `../features/v0.1-demo-acceptance.md` | `../features/demo/v0.1-demo-acceptance.md` | `README.md`, `AGENTS.md`, `../current/status.md`, `../features/demo/demo-entrypoint-v0.1.md`, `../architecture/v0.2-roadmap.md`, `../archive/docs-inventory-pre-reorg.md` | Low after Phase 1c | Stub exists. |
-| `../features/v0.2-demo-acceptance.md` | `../features/demo/v0.2-demo-acceptance.md` | `README.md`, `AGENTS.md`, `../current/status.md`, `../architecture/v0.2-roadmap.md`, `../features/demo/v0.2-demo-readiness.md`, `../archive/docs-inventory-pre-reorg.md` | Low after Phase 1c | Stub exists. |
-| `../features/v0.2-demo-readiness.md` | `../features/demo/v0.2-demo-readiness.md` | `README.md`, `AGENTS.md`, `../current/status.md`, `../architecture/v0.2-roadmap.md`, `../features/demo/v0.2-demo-scenario.md`, `../archive/docs-inventory-pre-reorg.md` | Low after Phase 1c | Stub exists. |
-| `../features/v0.2-demo-scenario.md` | `../features/demo/v0.2-demo-scenario.md` | `README.md`, `AGENTS.md`, `../current/status.md`, `../architecture/v0.2-roadmap.md`, `../features/demo/v0.2-demo-readiness.md`, `../archive/docs-inventory-pre-reorg.md` | Low after Phase 1c | Stub exists. |
+| `../features/release-draft-v0.1-demo.md` | `../archive/release/release-draft-v0.1-demo.md` | `../current/status.md`, `../features/demo/v0.1-demo-acceptance.md`, `../architecture/v0.2-roadmap.md`, `deferred-boundary-review-v0.1.md`, `../archive/docs-inventory-pre-reorg.md` | Low after Phase 1a | Stub removed in Phase 1d. |
+| `../features/demo-entrypoint-v0.1.md` | `../features/demo/demo-entrypoint-v0.1.md` | `../current/status.md`, `../architecture/memory-v0.1-scope-freeze.md`, `deferred-boundary-review-v0.1.md`, `../archive/docs-inventory-pre-reorg.md` | Low after Phase 1b | Stub removed in Phase 1d. |
+| `../features/demo-walkthrough-v0.1.md` | `../features/demo/demo-walkthrough-v0.1.md` | `README.md`, `AGENTS.md`, `../current/status.md`, `../features/demo/v0.1-demo-acceptance.md`, `../architecture/v0.2-roadmap.md`, `../archive/docs-inventory-pre-reorg.md` | Low after Phase 1b | Stub removed in Phase 1d. |
+| `../architecture/demo-architecture-v0.1.md` | `../features/demo/demo-architecture-v0.1.md` | `README.md`, `AGENTS.md`, `../current/status.md`, `../features/demo/v0.1-demo-acceptance.md`, `../features/demo/demo-walkthrough-v0.1.md`, `../architecture/v0.2-roadmap.md`, `../archive/docs-inventory-pre-reorg.md` | Low after Phase 1b | Stub removed in Phase 1d. |
+| `../features/v0.1-demo-acceptance.md` | `../features/demo/v0.1-demo-acceptance.md` | `README.md`, `AGENTS.md`, `../current/status.md`, `../features/demo/demo-entrypoint-v0.1.md`, `../architecture/v0.2-roadmap.md`, `../archive/docs-inventory-pre-reorg.md` | Low after Phase 1c | Stub removed in Phase 1d. |
+| `../features/v0.2-demo-acceptance.md` | `../features/demo/v0.2-demo-acceptance.md` | `README.md`, `AGENTS.md`, `../current/status.md`, `../architecture/v0.2-roadmap.md`, `../features/demo/v0.2-demo-readiness.md`, `../archive/docs-inventory-pre-reorg.md` | Low after Phase 1c | Stub removed in Phase 1d. |
+| `../features/v0.2-demo-readiness.md` | `../features/demo/v0.2-demo-readiness.md` | `README.md`, `AGENTS.md`, `../current/status.md`, `../architecture/v0.2-roadmap.md`, `../features/demo/v0.2-demo-scenario.md`, `../archive/docs-inventory-pre-reorg.md` | Low after Phase 1c | Stub removed in Phase 1d. |
+| `../features/v0.2-demo-scenario.md` | `../features/demo/v0.2-demo-scenario.md` | `README.md`, `AGENTS.md`, `../current/status.md`, `../architecture/v0.2-roadmap.md`, `../features/demo/v0.2-demo-readiness.md`, `../archive/docs-inventory-pre-reorg.md` | Low after Phase 1c | Stub removed in Phase 1d. |
 | `../architecture/http-api-minimal-surface-v0.2.md` | `docs/tracks/http-api-minimal-surface-v0.2.md` | `README.md`, `AGENTS.md`, `../current/status.md`, `../architecture/v0.2-roadmap.md`, `../archive/docs-inventory-pre-reorg.md` | High | Yes. |
 | `../architecture/artifact-content-read-policy-v0.2.md` | `docs/tracks/artifact-content-read-policy-v0.2.md` | `README.md`, `AGENTS.md`, `../current/status.md`, `../architecture/v0.2-roadmap.md`, `deferred-boundary-review-v0.1.md`, `../archive/docs-inventory-pre-reorg.md` | High | Yes. |
 | `../architecture/approval-pause-resume-boundary-v0.2.md` | `docs/tracks/approval-pause-resume-boundary-v0.2.md` | `README.md`, `AGENTS.md`, `../current/status.md`, `../architecture/v0.2-roadmap.md`, `deferred-boundary-review-v0.1.md`, `../archive/docs-inventory-pre-reorg.md` | High | Yes. |
@@ -58,10 +60,11 @@ Track F 文档暂不列入实际第一批迁移。它刚完成 closure，且 `ma
 
 Phase 1a / 1b / 1c 已执行。Phase 1 当前 closed / paused，不再默认继续迁移剩余候选。已执行顺序：
 
-1. Phase 1a: completed; release draft 已迁移到 `docs/release/`，旧路径留 stub。
-2. Phase 1b: completed; v0.1 demo explainer docs 已迁移到 `docs/demo/`，旧路径留 stub。
-3. Phase 1c: completed; demo acceptance / readiness / scenario docs 已迁移到 `docs/demo/`，旧路径留 stub。
-4. Stop here for Phase 1 closure. Track / checkpoint / memory / kernel / status-entrypoint migrations stay deferred unless explicitly requested.
+1. Phase 1a: completed; release draft 已迁移到 `docs/release/`。
+2. Phase 1b: completed; v0.1 demo explainer docs 已迁移到 `docs/demo/`。
+3. Phase 1c: completed; demo acceptance / readiness / scenario docs 已迁移到 `docs/demo/`。
+4. Phase 1d: completed; 低风险旧路径 stubs 已删除。
+5. Stop here for Phase 1 closure. Track / checkpoint / memory / kernel / status-entrypoint migrations stay deferred unless explicitly requested.
 
 原因：
 
@@ -109,7 +112,7 @@ Any actual migration commit must update links in the same commit:
 - `../archive/docs-inventory-pre-reorg.md`
 - `docs-migration-plan.md`
 - moved docs that link to sibling docs
-- compatibility stubs at old paths
+- compatibility stubs at old paths, if the migration wave still needs them
 
 Do not move files first and leave link cleanup for a later commit.
 
@@ -125,7 +128,7 @@ Stub format:
 This document moved to `docs/<target>/<file>.md`.
 ```
 
-Stubs should be short and should not duplicate the moved document content. Remove stubs only after one stable cycle and a dedicated link audit.
+Stubs should be short and should not duplicate the moved document content. The first low-risk stub deletion batch has now run after a dedicated link audit.
 
 ## 8. Rollback Plan
 
@@ -144,4 +147,4 @@ Phase 1 closure 后，下一步默认不继续 migration；Kernel Gap Review 和
 
 如果用户明确要求继续 migration，建议迁移 closed Track A / C / E docs 到 `docs/tracks/` 并为每个旧路径保留 stub。不要和 checkpoint / memory / kernel docs 迁移合并。
 
-Dry-run 本身没有移动、删除、重命名或合并任何文档；Phase 1a 后续单独迁移了 release draft，并保留旧路径 stub；Phase 1b 后续单独迁移了 v0.1 demo explainer docs，并保留旧路径 stubs。
+Dry-run 本身没有移动、删除、重命名或合并任何文档；Phase 1a 后续单独迁移了 release draft，Phase 1b 后续单独迁移了 v0.1 demo explainer docs，Phase 1d 后续删除了低风险旧路径 stubs。

@@ -1,3 +1,11 @@
+> 状态：归档 / 外部审查来源材料。
+>
+> 归档原因：本文保留外部审查原文和当时语境，相关可执行结论已经吸收到
+> [naming-and-structure-review](../../current/naming-and-structure-review.md)、
+> [import-map](../../current/import-map.md) 和
+> [compat-proxy-audit](../../current/compat-proxy-audit.md)。为避免旧建议和
+> 当前规则并列造成误读，本文不再作为 `docs/current/` 执行入口。
+
 我觉得这份文档**整体方向是对的，而且比我前面给的版本更贴近真实工程状态**。
 它没有继续追求“宏大目录”，而是抓住了真正的问题：**当前 Isotope 的目录不是包名错，而是包内命名带着迁移痕迹，导致语义不稳定。**
 

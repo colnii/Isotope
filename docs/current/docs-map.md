@@ -31,8 +31,9 @@ preflight（预检查）、diagnostic（诊断）或 not_enabled（未启用）�
 
 - `archive/` 和部分评审文档会保留旧说法，只用于追溯。
 - `architecture/` 和 `features/` 里仍可能有早期命名，需要按需更新。
-- 目录结构迁移已完成 demo / release 的第一批，后续迁移处于暂停状态；
-  不要默认继续移动 track、checkpoint、memory、kernel 或 status 文档。
+- 目录结构迁移已完成 demo / release 的第一批；旧路径 stub 已在稳定后删除。
+  后续迁移仍处于暂停状态，不要默认继续移动 track、checkpoint、memory、
+  kernel 或 status 文档。
 - 最新目录命名讨论见 [目录结构最新说明](./目录结构最新说明.md)，其中
   `assistant` 泛化命名已被降级为兼容历史词。
 
@@ -59,7 +60,9 @@ preflight（预检查）、diagnostic（诊断）或 not_enabled（未启用）�
 | 查导入迁移或兼容代理 | [import-map](./import-map.md)、[compat-proxy-audit](./compat-proxy-audit.md) |
 | 做 Supervisor 相关工作 | [codex-supervisor-readonly](./codex-supervisor-readonly.md)、[supervisor-capability-map](./supervisor-capability-map.md)、[supervisor-architecture-migration-table](./supervisor-architecture-migration-table.md) |
 | 看文档迁移边界 | [docs-migration-plan](../reviews/docs-migration-plan.md) |
+| 看第三批长文拆分准备 | [current-docs-refactor-plan](../reviews/current-docs-refactor-plan.md) |
 | 查旧分支清理证据 | [branch-cleanup](../reviews/branch-cleanup-2026-05-15.md) |
+| 查已归档的 current 来源材料 | [archive/current](../archive/current/) |
 
 ## 废止入口
 

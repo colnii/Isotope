@@ -10,6 +10,7 @@
 - [Docs migration plan](docs-migration-plan.md)：文档迁移计划；当前
   `phase 1 closed / paused`。
 - [Docs migration phase 1 dry run](docs-migration-phase-1-dry-run.md)：第一轮迁移演练记录。
+- [Current docs refactor plan](current-docs-refactor-plan.md)：第三批长文拆分准备。
 - [Branch cleanup](branch-cleanup-2026-05-15.md)：旧分支清理记录。
 - [External review package v0.2](external-review-package-v0.2.md)：外部审查材料。
 - [v0.2 cycle closure review](v0.2-cycle-closure-review.md)：v0.2 周期闭环。

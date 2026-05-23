@@ -17,6 +17,8 @@
 
 旧目录清单已移到 `docs/archive/docs-inventory-pre-reorg.md`。
 它只保留历史追溯价值，不再作为当前文档地图。
+目录讨论原文、外部审查原文和一次性目录快照已移到 `docs/archive/current/`，
+只保留追溯价值。
 
 ## 当前入口边界
 

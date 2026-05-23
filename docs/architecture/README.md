@@ -17,6 +17,8 @@
 - `v0.2` 和早期 `v0.1` 文档可能保留历史命名。
 - boundary 文档只提供工程约束，不能把 AI 功能降级成 disabled stub
   （禁用占位）、diagnostic-only（只诊断）或纯规则脚本。
+- 已删除的旧路径 stub 不再作为入口；例如 event schema compatibility
+  直接读 `event-schema-registry-compatibility-boundary-v0.2.md`。
 - 移动 architecture 文档前先看
   [docs migration plan](../reviews/docs-migration-plan.md)，当前默认不继续迁移
   kernel、checkpoint、memory 或 track 文档。

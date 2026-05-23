@@ -38,7 +38,9 @@
 22. `assistant` 命名收束：活跃循环实现已迁入 `agents/loop/`，`assistant/` 旧包已删除。
 23. demo 旧叙事清理：活跃 agent-loop demo 统一改用 `app_friction`。
 24. 命名与目录审计：已写 [naming-and-structure-review](./naming-and-structure-review.md)。
-25. 外部审查吸收：已加入 [chatgpt审查](./chatgpt审查.md) 和 [import-map](./import-map.md)。
+25. 外部审查吸收：审查原文已归档到
+    [chatgpt审查](../archive/current/chatgpt审查.md)，当前执行入口是
+    [import-map](./import-map.md)。
 26. agent loop 正名：活跃实现已迁入 `src/isotope/agents/loop/`，
     `core`、`assistant` 和顶层旧路径已删除。
 27. runtime 命名澄清：活跃实现已迁入 `src/isotope/runtime/in_process.py`，

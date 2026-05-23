@@ -14,7 +14,8 @@
 
 ## 旧路径说明
 
-部分根层 feature 文档是 compatibility stub（兼容占位文件），例如：
+曾经保留过一批根层 feature compatibility stub（兼容占位文件），用于避免
+旧链接断裂。稳定一轮并完成链接审计后，这些旧路径已经删除：
 
 - `demo-entrypoint-v0.1.md`
 - `demo-walkthrough-v0.1.md`
@@ -23,4 +24,4 @@
 - `v0.2-demo-readiness.md`
 - `v0.2-demo-scenario.md`
 
-完整内容已移到 [`demo/`](demo/)。保留这些旧路径是为了不打断历史链接。
+完整内容在 [`demo/`](demo/)。新增链接应直接指向 `demo/` 下的真实文件。
