@@ -37,26 +37,12 @@
   [kernel decision log](../archive/kernel-decision-log.md) 是 historical kernel
   reference（历史 kernel 参考），[kernel mainline maintenance mode](../archive/kernel-mainline-maintenance-mode.md)
   是 obsolete rule（废止规则）。
+- `docs/reviews/` 已补分类索引：migration 控制、branch audit / old-code
+  intake、v0.2 阶段复盘、kernel gap / closure 背景和 app spike 压力测试分开读。
 
 ## 下一批任务
 
-### 1. 旧文档第三刀：reviews 过期审查分组
-
-目标：
-
-- 盘点 `docs/reviews/` 里的旧 branch audit、closure review、external review
-  记录，区分 still-useful decision background（仍有用的决策背景）和 purely
-  historical transcript（纯历史流水）。
-- 优先更新 `docs/reviews/README.md` 分类，不急着批量移动。
-- 若要移动，先选低风险、少引用、已关闭的旧审查记录。
-
-验收：
-
-- `reviews/README.md` 能把旧审查材料按用途找出来。
-- 不把 review 里的旧结论提升为当前执行规则。
-- `git diff --check` 和 Markdown 本地链接检查通过。
-
-### 2. 旧文档第四刀：kernel 批次是否移动
+### 1. 旧文档第四刀：kernel 批次是否移动
 
 目标：
 
@@ -69,6 +55,19 @@
 
 - 若移动，必须同提交修链接并保留旧路径风险说明。
 - 若不移动，说明延后原因。
+
+### 2. 旧文档第五刀：status 类文档是否需要专门目录
+
+目标：
+
+- 只做判断，不默认迁移：`docs-migration-plan.md` 里 status entrypoint 风险高，
+  包括 current status、roadmap、cycle closure 和 tag delta。
+- 如果要开 `docs/status/`，必须另起批次并保留旧路径风险说明。
+
+验收：
+
+- 明确哪些 status 类文档继续原地保留。
+- 不移动 `docs/current/status.md`。
 
 ### 3. Supervisor 任务暂缓但保留
 
