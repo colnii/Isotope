@@ -78,7 +78,7 @@ Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
    这会把 Supervisor 从“写死动作的 Codex 管理器”推进到“能选择系统能力的高层 agent”。
    进展：已完成第一片 `capacity plan`，默认 plan-only；显式
    `--execute-agent-loop` 时可通过 agent loop 调用低风险 allowlist 能力，
-   并返回 tick policy handoff。
+   把 selection `arguments` 作为 structured `inputs` 传入，并返回 tick policy handoff。
 
 2. **把 Codex worker 生命周期收口到 `integrations/codex` 与 `workspace`。**
    Codex launch/resume/session/log、worktree、branch、merge、cleanup 应有稳定合同。

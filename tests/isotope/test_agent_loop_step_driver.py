@@ -199,7 +199,9 @@ def test_agent_loop_step_driver_passes_inputs_to_capability_runner(tmp_path):
     assert capability_run["capability_id"] == "supervisor.request_context"
     assert capability_run["status"] == "completed"
     assert capability_run["runner_kind"] == "deterministic_readonly"
+    assert capability_run["context_result"]["query"] == "request_context project context"
     assert capability_run["context_result"]["item_count"] >= 1
+    assert result["action_result"]["artifact_ref"]["ref_type"] == "artifact"
     assert (codex_home / "supervisor" / "context_results.jsonl").is_file()
     _assert_no_forbidden_content_keys(result)
 
@@ -215,6 +217,24 @@ def test_agent_loop_step_driver_rejects_unavailable_step_without_side_effects(tm
                 "step": "resolve_approval",
                 "approval_id": "approval_missing",
                 "resolution": _approved_body(),
+            },
+        )
+
+    assert api.get_events(run_id) == before_events
+    assert api.get_agent_loop_control(run_id)["phase"] == "ready"
+
+
+def test_agent_loop_step_driver_rejects_malformed_capability_inputs_without_side_effects(tmp_path):
+    api, run_id = _new_run(tmp_path)
+    before_events = list(api.get_events(run_id))
+
+    with pytest.raises(ValueError, match="inputs must be a dict"):
+        api.run_agent_loop_step(
+            run_id,
+            {
+                "step": "call_capability",
+                "capability_id": "artifact.review",
+                "inputs": ["not", "an", "object"],
             },
         )
 

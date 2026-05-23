@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import os
 from pathlib import Path
@@ -183,14 +184,12 @@ def _execute_agent_loop_capacity_step(
     session = server.create_session()
     run = server.create_run(session["session_id"], goal)
     tick_policy_before = server.get_agent_loop_tick_policy(run["run_id"])
-    step_result = server.run_agent_loop_step(
-        run["run_id"],
-        {
-            "step": "call_capability",
-            "capability_id": capability_id,
-            "inputs": dict(inputs),
-        },
-    )
+    step_request = {
+        "step": "call_capability",
+        "capability_id": capability_id,
+        "inputs": copy.deepcopy(dict(inputs)),
+    }
+    step_result = server.run_agent_loop_step(run["run_id"], step_request)
     tick_policy_after = server.get_agent_loop_tick_policy(run["run_id"])
     return {
         "executed": True,
@@ -198,6 +197,7 @@ def _execute_agent_loop_capacity_step(
         "session_id": session["session_id"],
         "run_id": run["run_id"],
         "tick_policy_before": tick_policy_before,
+        "step_request": step_request,
         "step_result": step_result,
         "tick_policy_after": tick_policy_after,
         "handoff": _agent_loop_handoff_summary(tick_policy_before, tick_policy_after),

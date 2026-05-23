@@ -131,6 +131,50 @@ def test_supervisor_capacity_plan_can_execute_low_risk_agent_loop_step(tmp_path)
     assert capability_run["status"] == "completed"
 
 
+def test_supervisor_capacity_plan_passes_arguments_into_agent_loop_inputs(tmp_path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "notes.md").write_text(
+        "Supervisor request_context can retrieve capacity arguments.\n",
+        encoding="utf-8",
+    )
+    provider = FakeCapacityProvider(
+        '{"capacity_id":"supervisor.request_context","arguments":{'
+        f'"codex_home":"{tmp_path / "codex-home"}",'
+        f'"cwd":"{workspace}",'
+        '"query":"capacity arguments",'
+        '"max_results":1'
+        '},"confidence":0.88,"rationale":"need context"}'
+    )
+
+    result = capacity_command.build_supervisor_capacity_plan(
+        goal="通过 agent loop 调用带参数的 request_context 能力",
+        provider=provider,
+        state_root=tmp_path / "state",
+        execute_agent_loop=True,
+    )
+
+    assert result["status"] == "ok"
+    assert result["capability_launch_plan"]["can_launch"] is True
+    assert result["capacity_graph"]["calls"][0]["arguments"]["query"] == "capacity arguments"
+    loop = result["agent_loop"]
+    assert loop["step_request"] == {
+        "step": "call_capability",
+        "capability_id": "supervisor.request_context",
+        "inputs": {
+            "codex_home": str(tmp_path / "codex-home"),
+            "cwd": str(workspace),
+            "query": "capacity arguments",
+            "max_results": 1,
+        },
+    }
+    capability_run = loop["step_result"]["action_result"]["capability_run"]
+    assert capability_run["capability_id"] == "supervisor.request_context"
+    assert capability_run["status"] == "completed"
+    assert capability_run["context_result"]["query"] == "capacity arguments"
+    assert capability_run["context_result"]["item_count"] >= 1
+
+
 def test_supervisor_capacity_plan_blocks_missing_inputs_without_graph_call_or_execution(tmp_path):
     provider = FakeCapacityProvider(
         '{"capacity_id":"context.search","arguments":{},"confidence":0.77,'

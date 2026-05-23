@@ -36,7 +36,9 @@ Step driver 会先读取 `get_agent_loop_control(run_id)`，只允许执行当�
 - 可以提交 approval-gated action，让 run 进入 `awaiting_approval`。
 - 可以提交 worker handoff，只要 app 提供已有 artifact `ResourceRef` 和 delegation intent。
 - 可以调用一个已在 `CapabilityRunner` allowlist 中的 capability，step handler
-  会执行 capability，并把低敏运行摘要写回当前 run 的 artifact ref。
+  会执行 capability，并把低敏运行摘要写回当前 run 的 artifact ref。若 capability
+  有输入合同，request 里的 `inputs` 会作为 structured inputs 传给
+  `CapabilityRunner.run_capability(...)`。
 
 如果 run 正在 `awaiting_approval`：
 
@@ -48,9 +50,9 @@ Step driver 会先读取 `get_agent_loop_control(run_id)`，只允许执行当�
 - 每次只执行一个 step。
 - 不做 scheduler，不自动循环。
 - 不接 real LLM provider，不读取 prompt / model response。
-- `call_capability` 只接收结构化 `capability_id`；LLM 侧必须先经过
-  planner adapter / parsed symbolic output，不能把 raw prompt 或 raw model
-  response 交给 step handler。
+- `call_capability` 只接收结构化 `capability_id` 和可选 `inputs` object；LLM
+  侧必须先经过 planner adapter / parsed symbolic output，不能把 raw prompt
+  或 raw model response 交给 step handler。
 - 不实现 real worker runtime、process spawn、container、git worktree 或 remote executor。
 - 不自动串联任意 capability；unsupported、diagnostic、experimental、
   provider-required 或 unallowlisted capability 仍由 `CapabilityRunner`
