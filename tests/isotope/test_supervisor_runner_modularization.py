@@ -153,6 +153,33 @@ def test_supervisor_runner_delegates_advice_command_helpers():
         assert f"def {function_name}(" not in source
 
 
+def test_supervisor_runner_delegates_dashboard_command_helpers():
+    dashboard_module = importlib.import_module(
+        "isotope.features.supervisor.commands.dashboard"
+    )
+
+    assert runner._dashboard_payload is dashboard_module.dashboard_payload
+    assert runner._current_batch_payload is dashboard_module.current_batch_payload
+    assert (
+        runner._current_batch_payload_from_display_sessions
+        is dashboard_module.current_batch_payload_from_display_sessions
+    )
+    assert runner._dashboard_item is dashboard_module.dashboard_item
+    assert runner._dashboard_display_sessions is dashboard_module.dashboard_display_sessions
+    assert runner._print_dashboard_plain is dashboard_module.print_dashboard_plain
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_dashboard_payload",
+        "_current_batch_payload",
+        "_current_batch_payload_from_display_sessions",
+        "_dashboard_item",
+        "_dashboard_display_sessions",
+        "_print_dashboard_plain",
+    ):
+        assert f"def {function_name}(" not in source
+
+
 def test_supervisor_runner_uses_memory_worker_event_channel():
     worker_event_channel = importlib.import_module("isotope.memory.worker_event_channel")
 

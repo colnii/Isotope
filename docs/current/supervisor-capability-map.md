@@ -35,7 +35,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 
 | 层级 | 当前能力 | 主要位置 | 说明 |
 | --- | --- | --- | --- |
-| 用户功能层 | `start-here`、`scan`、`dashboard`、`trace`、`guide`、`up`、`discover`、`web`、`watch`、`advise`、`supervise`、`loop`、`daemon` | `features/supervisor/runner.py` | 面向人类使用的命令入口 |
+| 用户功能层 | `start-here`、`scan`、`dashboard`、`trace`、`guide`、`up`、`discover`、`web`、`watch`、`advise`、`supervise`、`loop`、`daemon` | `features/supervisor/runner.py`、`features/supervisor/commands/` | 面向人类使用的命令入口；多个命令的 payload/rendering 已迁出 runner |
 | 托管控制层 | `launch`、`adopt`、`send`、`archive`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
 | Worker 审查层 | `worker-review`、`integration-review`、`replan` | `features/supervisor/worker_review.py`、`features/supervisor/integration_review.py`、`features/supervisor/replan.py`、`features/supervisor/runner.py` | 汇总已托管 worker 的 worktree、branch、状态协议、改动、复查提示、合并提示、只读集成分组和下一轮候选 |
 | Merge 工单层 | `merge-work-order` builder、merge dispatch | `features/supervisor/merge_work_order.py`、`features/supervisor/merge_dispatch.py`、`features/supervisor/runner.py` | 根据 `integration-review` 生成动态 merge worker 工单，并由 `loop` 在有 `ready_to_integrate` 候选时自动启动专门 merge worker |
@@ -52,7 +52,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 | 状态账本层 | lane state（窗口状态）和限频 | `lane_state.py` | 避免重复催促和刷屏 |
 | 生命周期观测层 | `trace --json` | `features/supervisor/runner.py` | 只读汇总 goal、worker、decision、merge/repair 和 cleanup 台账 |
 | 通知桥接层 | Supervisor event notifications/webhooks | `features/supervisor/notifications.py`、`features/notifications/flow.py` | 把 goal/decision/integration-review 事件派生成低敏通知或外部 POST |
-| 本地前端层 | `web`、`/dashboard.json`、`/events`、`/managed/send`、`/llm-action`、`/goal/add`、daemon/watcher 控制接口 | `features/supervisor/web.py` | 本机视图、bell 事件、目标写入、白名单发送、后台循环控制和手动模型建议入口 |
+| 本地前端层 | `web`、`dashboard`、`/dashboard.json`、`/events`、`/managed/send`、`/llm-action`、`/goal/add`、daemon/watcher 控制接口 | `features/supervisor/web.py`、`features/supervisor/commands/dashboard.py` | 本机视图、bell 事件、目标写入、白名单发送、后台循环控制和手动模型建议入口；dashboard payload/plain renderer 已在命令层集中 |
 
 ## 已有轮子
 
@@ -687,6 +687,9 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
 - `features/supervisor/commands/onboarding.py`：已承接 `start-here`、`guide`
   和 `discover` 的上手/接管命令层 payload 与 plain renderer；继续复用
   `tmux_discovery.py` 和 `registry.py` 的既有 contract（契约）。
+- `features/supervisor/commands/dashboard.py`：已承接 `dashboard` payload、
+  plain renderer、managed lane linking 和 current batch projection；`web.py`
+  仍保留本地 HTTP 页面和 API 包装。
 - `features/supervisor/commands/advice.py`：已承接 `advise`、`supervise`
   和 `loop` 共同使用的 advice payload、automation status 和
   command suggestion 生成；`_execute_advice` 仍留在 `runner.py`，后续需要
