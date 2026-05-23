@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from ...core import CoreTaskState, ProductCore
+from ...platform.schemas.refs import ResourceRef
 
 
 @dataclass(frozen=True)
@@ -81,17 +82,42 @@ class TaskFlow:
 
     def get_task(self, task_id: str) -> TaskSummary:
         try:
-            return self._store_summary(self._summarize(self.core.get_task(task_id)))
+            summary = self._summarize(self.core.get_task(task_id))
+            refreshed = self._refresh_from_result_record(summary)
+            return self._store_summary(refreshed)
         except ValueError as exc:
             if "unknown task_id" not in str(exc):
                 raise
             try:
-                return self._tasks[task_id]
+                return self._refresh_from_result_record(self._tasks[task_id])
             except KeyError:
                 raise exc
 
     def list_tasks(self) -> list[TaskSummary]:
-        return list(self._tasks.values())
+        return [
+            self._refresh_from_result_record(summary)
+            for summary in self._tasks.values()
+        ]
+
+    def _refresh_from_result_record(self, summary: TaskSummary) -> TaskSummary:
+        if summary.result_ref is None:
+            return summary
+        result_ref = _artifact_ref_from_dict(summary.result_ref)
+        record = self.core.runtime.get_artifact_record(result_ref)
+        refreshed = TaskSummary(
+            task_id=summary.task_id,
+            goal=summary.goal,
+            status=summary.status,
+            turn_count=summary.turn_count,
+            run_ids=summary.run_ids,
+            latest_run_id=summary.latest_run_id,
+            result_summary=_required_string(record, "summary"),
+            result_ref=dict(_required_dict(record, "ref")),
+        )
+        if refreshed != summary:
+            self._tasks[summary.task_id] = refreshed
+            self._save_index()
+        return refreshed
 
     def _summarize(self, state: CoreTaskState) -> TaskSummary:
         run_ids = state.conversation.run_ids
@@ -153,8 +179,24 @@ def _required_int(data: dict[str, Any], field_name: str) -> int:
     return value
 
 
+def _required_dict(data: dict[str, Any], field_name: str) -> dict[str, Any]:
+    value = data.get(field_name)
+    if not isinstance(value, dict):
+        raise ValueError(f"task summary requires {field_name}")
+    return value
+
+
 def _required_string_list(data: dict[str, Any], field_name: str) -> list[str]:
     value = data.get(field_name)
     if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
         raise ValueError(f"task summary requires {field_name}")
     return value
+
+
+def _artifact_ref_from_dict(data: dict[str, Any]) -> ResourceRef:
+    return ResourceRef(
+        ref_type=_required_string(data, "ref_type"),
+        scope=_required_string(data, "scope"),
+        run_id=_required_string(data, "run_id"),
+        artifact_id=_required_string(data, "artifact_id"),
+    )
