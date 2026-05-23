@@ -65,6 +65,29 @@ def test_supervisor_runner_delegates_lifecycle_command_handlers():
         assert f'args.command == "{command}"' not in source
 
 
+def test_supervisor_runner_delegates_daemon_command_helpers():
+    daemon_module = importlib.import_module("isotope.features.supervisor.commands.daemon")
+
+    assert runner._daemon_payload is daemon_module.daemon_payload
+    assert runner._up_payload is daemon_module.up_payload
+    assert runner._watcher_payload is daemon_module.watcher_payload
+    assert runner._overnight_check_payload is daemon_module.overnight_check_payload
+    assert runner._run_daemon_watcher is daemon_module.run_daemon_watcher
+    assert runner._print_daemon_plain is daemon_module.print_daemon_plain
+    assert runner._print_watcher_plain is daemon_module.print_watcher_plain
+    assert runner._print_overnight_check_plain is daemon_module.print_overnight_check_plain
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_daemon_payload",
+        "_up_payload",
+        "_watcher_payload",
+        "_overnight_check_payload",
+        "_print_daemon_plain",
+    ):
+        assert f"def {function_name}(" not in source
+
+
 def test_supervisor_runner_uses_memory_worker_event_channel():
     worker_event_channel = importlib.import_module("isotope.memory.worker_event_channel")
 

@@ -680,6 +680,10 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
 
 ## 后续拆分方向
 
+- `features/supervisor/commands/daemon.py`：已承接 `daemon/up/check/watcher`
+  的命令层 payload、最近活动摘要和 plain renderer；继续复用
+  `features/supervisor/daemon.py` 的进程生命周期 helper，后续再把后台
+  loop/runtime 下沉到 `agents/runtime/` 或 `runtime/`。
 - `features/supervisor/status.py`：后续可下沉状态分类和状态依据生成。
 - `features/supervisor/advice.py`：建议、命令草案、自动策略和执行白名单。
 - `features/supervisor/protocol.py`：后续可下沉状态协议解析和提示语注入。
@@ -691,7 +695,7 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
 
 1. 用真实 daemon 长跑验证 cleanup/current dashboard 在多批任务中的稳定性。
 2. 后续再决定是否把通知接到更多 worker 生命周期事件。
-3. 再拆分 `runner.py` 中的匹配、建议和 tmux 控制代码。
+3. 再拆分 `runner.py` 中的匹配、建议、自动执行和 tmux 控制代码。
 
 ## 登记规则
 
