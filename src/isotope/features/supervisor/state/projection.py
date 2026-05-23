@@ -162,5 +162,26 @@ def _notification_summary_payload(summary: NotificationSummary) -> dict[str, Any
         "unread": payload["unread"],
         "created_at": payload["created_at"],
         "read_at": payload["read_at"],
-        "source_ref": payload["source_ref"],
+        "source_ref": _notification_source_ref(payload["source_ref"]),
+    }
+
+
+def _notification_source_ref(source_ref: Any) -> dict[str, Any]:
+    if not isinstance(source_ref, dict):
+        return {}
+    allowed_keys = {
+        "ref_type",
+        "goal_id",
+        "request_id",
+        "run_id",
+        "session_id",
+        "notification_id",
+        "status",
+        "target_name",
+        "timeout_seconds",
+    }
+    return {
+        key: value
+        for key, value in source_ref.items()
+        if key in allowed_keys and isinstance(value, (str, bool, int, float))
     }

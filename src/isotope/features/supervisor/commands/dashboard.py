@@ -11,6 +11,7 @@ from isotope.features.supervisor.current_batch import build_current_batch_view
 from isotope.features.supervisor.state.multi_worker import (
     build_multi_worker_status_payload,
 )
+from isotope.features.supervisor.state.projection import build_supervisor_state_snapshot
 
 
 def _default_api() -> Any:
@@ -21,12 +22,14 @@ def _default_api() -> Any:
 
 def handle_dashboard_command(args: argparse.Namespace, *, api: Any) -> int:
     report = api._scan_report(args)
+    state_snapshot = dashboard_state_snapshot(Path(args.codex_home))
     payload = dashboard_payload(
         report,
-        active_goals=api._active_goal_dicts(args, include_status=True),
-        decision_requests=api._decision_request_dicts(args),
-        notifications=notification_dicts(Path(args.codex_home)),
+        active_goals=state_snapshot["active_goals"],
+        decision_requests=state_snapshot["active_decisions"],
+        notifications=state_snapshot["notifications"]["recent"],
         multi_worker=build_multi_worker_status_payload(root=Path(args.codex_home)),
+        state_snapshot=state_snapshot,
         api=api,
     )
     if args.json:
@@ -43,6 +46,7 @@ def dashboard_payload(
     decision_requests: list[dict[str, Any]] | None = None,
     notifications: list[dict[str, Any]] | None = None,
     multi_worker: dict[str, Any] | None = None,
+    state_snapshot: dict[str, Any] | None = None,
     api: Any | None = None,
 ) -> dict[str, Any]:
     if api is None:
@@ -63,6 +67,10 @@ def dashboard_payload(
             )
         )
     notification_items = notifications or []
+    notification_counts = dashboard_notification_counts(
+        notification_items,
+        state_snapshot=state_snapshot,
+    )
     return {
         "status": "ok",
         "generated_at": report.generated_at,
@@ -77,11 +85,74 @@ def dashboard_payload(
         "multi_worker": multi_worker or empty_multi_worker_payload(),
         "decision_requests": decision_requests or [],
         "notifications": notification_items,
-        "notification_counts": {
-            "total": len(notification_items),
-            "unread": sum(1 for item in notification_items if item.get("unread") is True),
+        "notification_counts": notification_counts,
+        "state_snapshot": state_snapshot
+        or dashboard_state_snapshot_from_items(
+            active_goals=active_goals or [],
+            decision_requests=decision_requests or [],
+            notifications=notification_items,
+        ),
+    }
+
+
+def dashboard_notification_counts(
+    notifications: list[dict[str, Any]],
+    *,
+    state_snapshot: dict[str, Any] | None,
+) -> dict[str, int]:
+    snapshot_notifications = (
+        state_snapshot.get("notifications") if isinstance(state_snapshot, dict) else None
+    )
+    if isinstance(snapshot_notifications, dict):
+        total = snapshot_notifications.get("total")
+        unread = snapshot_notifications.get("unread")
+        if isinstance(total, int) and isinstance(unread, int):
+            return {"total": total, "unread": unread}
+    return {
+        "total": len(notifications),
+        "unread": sum(1 for item in notifications if item.get("unread") is True),
+    }
+
+
+def dashboard_state_snapshot(codex_home: Path) -> dict[str, Any]:
+    return build_supervisor_state_snapshot(codex_home=codex_home)
+
+
+def dashboard_state_snapshot_from_items(
+    *,
+    active_goals: list[dict[str, Any]],
+    decision_requests: list[dict[str, Any]],
+    notifications: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "status": "ok",
+        "summary": {
+            "active_goals": len(active_goals),
+            "goals_done": _goal_status_count(active_goals, "done"),
+            "goals_blocked": _goal_status_count(active_goals, "blocked"),
+            "goals_needs_user": _goal_status_count(active_goals, "needs_user"),
+            "active_decisions": len(decision_requests),
+            "failed_lanes": 0,
+            "worker_events": 0,
+            "notifications": len(notifications),
+            "unread_notifications": sum(
+                1 for item in notifications if item.get("unread") is True
+            ),
+        },
+        "active_goals": list(active_goals),
+        "active_decisions": list(decision_requests),
+        "failed_lanes": [],
+        "recent_worker_events": [],
+        "notifications": {
+            "total": len(notifications),
+            "unread": sum(1 for item in notifications if item.get("unread") is True),
+            "recent": list(notifications),
         },
     }
+
+
+def _goal_status_count(goals: list[dict[str, Any]], status: str) -> int:
+    return sum(1 for goal in goals if goal.get("last_status") == status)
 
 
 def empty_multi_worker_payload() -> dict[str, Any]:

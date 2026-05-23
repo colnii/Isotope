@@ -52,10 +52,9 @@ from .runner import (
     DEFAULT_WORKER_CODEX_CONFIG,
     DEFAULT_WORKER_CODEX_MODEL,
     _advice_payload,
-    _active_goal_dicts_for_codex_home,
     _dashboard_payload,
-    _notification_dicts,
 )
+from .state.projection import build_supervisor_state_snapshot
 
 
 SERVICE_ACTION_PATHS = {"/daemon/start", "/daemon/stop", "/watcher/start", "/watcher/stop"}
@@ -174,15 +173,14 @@ def build_dashboard_web_payload(
     workspace_cwd: Path,
 ) -> dict[str, Any]:
     """Build the `/dashboard.json` payload used by the local web page."""
+    state_snapshot = build_supervisor_state_snapshot(codex_home=codex_home)
     payload = _dashboard_payload(
         report,
-        active_goals=_active_goal_dicts_for_codex_home(
-            codex_home,
-            include_status=True,
-        ),
-        decision_requests=_decision_request_dicts(codex_home),
-        notifications=_notification_dicts(codex_home),
+        active_goals=state_snapshot["active_goals"],
+        decision_requests=state_snapshot["active_decisions"],
+        notifications=state_snapshot["notifications"]["recent"],
         multi_worker=build_multi_worker_status_payload(root=codex_home),
+        state_snapshot=state_snapshot,
     )
     payload["daemon"] = supervisor_daemon_status(codex_home=codex_home)
     payload["watcher"] = supervisor_watcher_status(codex_home=codex_home)

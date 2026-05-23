@@ -887,6 +887,39 @@ def test_codex_supervisor_runner_dashboard_json_includes_notifications(
     assert payload["notification_counts"] == {"total": 3, "unread": 2}
 
 
+def test_codex_supervisor_runner_dashboard_notification_counts_use_snapshot_total(
+    tmp_path,
+    capsys,
+):
+    from isotope.features.notifications.flow import NotificationFlow
+
+    codex_home = tmp_path / ".codex"
+    flow = NotificationFlow.in_process(codex_home)
+    for index in range(22):
+        flow.create_notification(
+            notification_type="worker_status",
+            title=f"Worker update {index}",
+            source_ref={"ref_type": "supervisor_run", "run_id": f"run_{index}"},
+        )
+
+    exit_code = supervisor_main(
+        [
+            "dashboard",
+            "--codex-home",
+            str(codex_home),
+            "--limit",
+            "1",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert len(payload["notifications"]) == 20
+    assert payload["notification_counts"] == {"total": 22, "unread": 22}
+    assert payload["state_snapshot"]["summary"]["notifications"] == 22
+
+
 def test_codex_supervisor_dashboard_json_includes_display_title_and_short_hash(
     tmp_path,
     capsys,
@@ -2734,6 +2767,17 @@ def test_codex_supervisor_web_dashboard_payload_builder_keeps_page_fields(tmp_pa
     assert payload["workspace_cwd"] == "/tmp/isotope-workspace"
     assert payload["daemon"]["status"] == "not_running"
     assert payload["watcher"]["status"] == "not_running"
+    assert payload["state_snapshot"]["summary"] == {
+        "active_goals": 0,
+        "goals_done": 0,
+        "goals_blocked": 0,
+        "goals_needs_user": 0,
+        "active_decisions": 0,
+        "failed_lanes": 0,
+        "worker_events": 0,
+        "notifications": 0,
+        "unread_notifications": 0,
+    }
     assert payload["current"]["counts"] == {
         "active_goals": 0,
         "managed_workers": 0,
@@ -3496,21 +3540,18 @@ def test_codex_supervisor_dashboard_json_includes_persisted_decision_requests(
     payload = json.loads(capsys.readouterr().out)
     assert payload["decision_requests"] == [
         {
-            "event": "decision_request",
             "request_id": "decision-001",
-            "created_at": "2026-05-16T12:00:00+00:00",
             "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
             "target_name": "resume-019e35a2",
+            "goal_id": None,
             "question": "目录迁移是保留兼容层，还是直接迁移并删除旧入口？",
             "reason": "Codex 明确要拍板。",
             "context_status": "conflict",
-            "gate": {
-                "codex_requested_decision": True,
-                "instructions_exhausted": True,
-                "context_status": "conflict",
-            },
+            "created_at": "2026-05-16T12:00:00+00:00",
         }
     ]
+    assert payload["state_snapshot"]["summary"]["active_decisions"] == 1
+    assert payload["state_snapshot"]["active_decisions"] == payload["decision_requests"]
 
 
 def test_codex_supervisor_dashboard_plain_prints_decision_requests(

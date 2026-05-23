@@ -77,7 +77,12 @@ def test_supervisor_state_snapshot_projects_existing_low_sensitive_state(tmp_pat
     ).create_notification(
         notification_type="manual",
         title="人工提醒",
-        source_ref={"worker": "worker-a"},
+        source_ref={
+            "ref_type": "supervisor_run",
+            "run_id": "run-1",
+            "raw_prompt": "RAW_PROMPT_SHOULD_NOT_LEAK",
+            "api_key": "sk-test-secret",
+        },
     )
 
     snapshot = build_supervisor_state_snapshot(codex_home=tmp_path)
@@ -127,7 +132,13 @@ def test_supervisor_state_snapshot_projects_existing_low_sensitive_state(tmp_pat
         "supervisor_decision_request",
         "manual",
     ]
+    assert snapshot["notifications"]["recent"][1]["source_ref"] == {
+        "ref_type": "supervisor_run",
+        "run_id": "run-1",
+    }
     assert "content" not in repr(snapshot)
+    assert "RAW_PROMPT_SHOULD_NOT_LEAK" not in repr(snapshot)
+    assert "sk-test-secret" not in repr(snapshot)
 
 
 def test_supervisor_state_snapshot_includes_active_goal_status_summary(tmp_path):
