@@ -50,6 +50,15 @@ def _assert_low_sensitive(value: Any) -> None:
 
 
 def test_project_cli_creates_gets_lists_and_links_project_summaries_as_json(tmp_path):
+    task = TaskFlow.in_process(tmp_path).create_task(
+        goal="collect notes",
+        first_message="private note",
+    )
+    file_summary = FileFlow.in_process(tmp_path).create_text_file(
+        name="notes.md",
+        summary="useful notes",
+        content="private file content",
+    )
     created_result = _run_cli(
         "create",
         "--root",
@@ -73,7 +82,7 @@ def test_project_cli_creates_gets_lists_and_links_project_summaries_as_json(tmp_
         "--project-id",
         project_id,
         "--task-id",
-        "task_example",
+        task.task_id,
         "--json",
     )
     with_file = _run_cli(
@@ -83,7 +92,7 @@ def test_project_cli_creates_gets_lists_and_links_project_summaries_as_json(tmp_
         "--project-id",
         project_id,
         "--file-id",
-        "artifact_example",
+        file_summary.file_id,
         "--json",
     )
     get_result = _run_cli("get", "--root", str(tmp_path), "--project-id", project_id, "--json")
@@ -94,11 +103,11 @@ def test_project_cli_creates_gets_lists_and_links_project_summaries_as_json(tmp_
     assert project["name"] == "portfolio demo"
     assert project["summary"] == "autumn recruiting project"
     assert with_task.returncode == 0, with_task.stderr
-    assert json.loads(with_task.stdout)["project"]["task_ids"] == ["task_example"]
+    assert json.loads(with_task.stdout)["project"]["task_ids"] == [task.task_id]
     assert with_file.returncode == 0, with_file.stderr
     linked = json.loads(with_file.stdout)["project"]
-    assert linked["task_ids"] == ["task_example"]
-    assert linked["file_ids"] == ["artifact_example"]
+    assert linked["task_ids"] == [task.task_id]
+    assert linked["file_ids"] == [file_summary.file_id]
     assert get_result.returncode == 0, get_result.stderr
     assert json.loads(get_result.stdout) == {"status": "ok", "project": linked}
     assert list_result.returncode == 0, list_result.stderr

@@ -98,6 +98,7 @@ class ProjectFlow:
     def add_task(self, project_id: str, task_id: str) -> ProjectSummary:
         project = self.get_project(project_id)
         clean_task_id = self._require_non_empty_text("task_id", task_id)
+        TaskFlow(self.core).get_task(clean_task_id)
         task_ids = _append_unique(project.task_ids, clean_task_id)
         return self._store_summary(
             ProjectSummary(
@@ -112,6 +113,7 @@ class ProjectFlow:
     def add_file(self, project_id: str, file_id: str) -> ProjectSummary:
         project = self.get_project(project_id)
         clean_file_id = self._require_non_empty_text("file_id", file_id)
+        FileFlow(self.core).get_file(clean_file_id)
         file_ids = _append_unique(project.file_ids, clean_file_id)
         return self._store_summary(
             ProjectSummary(

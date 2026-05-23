@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from typing import Any
 
 from isotope.features.files.flow import FileFlow
@@ -107,3 +108,29 @@ def test_project_flow_reads_linked_task_and_file_summaries(tmp_path):
         "files": [file_summary.to_dict()],
     }
     _assert_no_forbidden_content_keys(detail.to_dict())
+
+
+def test_project_flow_rejects_missing_task_link(tmp_path):
+    project_flow = ProjectFlow.in_process(tmp_path)
+    project = project_flow.create_project(
+        name="portfolio demo",
+        summary="usable demo workspace",
+    )
+
+    with pytest.raises(ValueError, match="unknown task_id"):
+        project_flow.add_task(project.project_id, "task_missing")
+
+    assert project_flow.get_project(project.project_id).task_ids == ()
+
+
+def test_project_flow_rejects_missing_file_link(tmp_path):
+    project_flow = ProjectFlow.in_process(tmp_path)
+    project = project_flow.create_project(
+        name="portfolio demo",
+        summary="usable demo workspace",
+    )
+
+    with pytest.raises(ValueError, match="unknown file_id"):
+        project_flow.add_file(project.project_id, "artifact_missing")
+
+    assert project_flow.get_project(project.project_id).file_ids == ()
