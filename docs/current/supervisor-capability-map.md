@@ -17,7 +17,7 @@
 
 | 能力层 | 入口 | 主要位置 |
 | --- | --- | --- |
-| 用户入口 | `start-here`、`up`、`check`、`scan`、`dashboard`、`web` | `features/supervisor/commands/` |
+| 用户入口 | `start-here`、`up`、`check`、`scan`、`dashboard`、`state`、`web` | `features/supervisor/commands/` |
 | 托管控制 | `launch`、`resume`、`adopt`、`send`、`archive` | `features/supervisor/registry.py`、`runner.py` |
 | 目标队列 | `goal add/list/archive/plan`、goal replenish | `goal_queue.py`、Supervisor commands |
 | 拍板系统 | `decision list/answer/archive`、dashboard 等待拍板 | decision ledger、web handlers |
@@ -25,7 +25,7 @@
 | 上下文检索 | `context`、`request_context`、`supervisor.request_context` | `context.py`、`capabilities/runner.py` |
 | worker 审查 | `worker-review`、`integration-review`、`replan` | `worker_review.py`、`integration_review.py`、`replan.py` |
 | merge 工单 | `merge-work-order`、merge dispatch、auto promote | `merge_work_order.py`、`merge_dispatch.py` |
-| 状态投影 | `build_supervisor_state_snapshot(...)` | `features/supervisor/state/projection.py` |
+| 状态投影 | `state`、`build_supervisor_state_snapshot(...)` | `features/supervisor/state/projection.py`、`commands/state.py` |
 | 本机页面 | `/dashboard.json`、`/events`、`/managed/send`、`/llm-action` | `web.py`、dashboard modules |
 | cleanup 护栏 | `delete_worktree` deny-by-default | cleanup command modules |
 
@@ -35,7 +35,8 @@
   和 integration review 的，不另造状态账本。
 - 能用 Supervisor state projection（状态投影）读取 active goals、decision、
   lane failure、worker event 和 notification 的，不重新拼散表；dashboard/web
-  和 daemon 已读取，loop payload 已带只读 snapshot。
+  和 daemon 已读取，loop payload 已带只读 snapshot；命令行直接查看用
+  `isotope-supervisor state`。
 - 能用 capability runner（能力运行器）的，只加 catalog/plan/run 包装，不开新执行面。
 - 能用 `commands/` 内已拆 handler 的，不把新命令继续塞回 runner。
 - 新增术语或命令后，同步 [术语索引](./terminology.md) 和

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 
 from isotope.features.notifications.flow import NotificationFlow
@@ -9,6 +10,7 @@ from isotope.features.supervisor.goal_queue import (
     record_supervisor_goal_status,
 )
 from isotope.features.supervisor.lane_state import record_lane_failure
+from isotope.features.supervisor.runner import main as supervisor_main
 from isotope.features.supervisor.state.projection import build_supervisor_state_snapshot
 from isotope.memory.worker_event_channel import publish_worker_event
 
@@ -188,3 +190,47 @@ def test_supervisor_state_snapshot_includes_active_goal_status_summary(tmp_path)
             "last_next": "保持 projection 分支独立",
         }
     ]
+
+
+def test_supervisor_state_command_outputs_snapshot_json(tmp_path, capsys):
+    goal = record_supervisor_goal(
+        codex_home=tmp_path,
+        cwd=tmp_path,
+        goal="统一 Supervisor 状态读取入口",
+        target_name="state-command",
+        now=lambda: datetime(2026, 5, 24, 3, 1, tzinfo=UTC),
+    )
+
+    exit_code = supervisor_main(
+        ["state", "--codex-home", str(tmp_path), "--json"]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["summary"]["active_goals"] == 1
+    assert payload["active_goals"][0]["goal_id"] == goal.goal_id
+    assert payload["active_goals"][0]["target_name"] == "state-command"
+
+
+def test_supervisor_state_command_plain_prints_compact_summary(tmp_path, capsys):
+    record_decision_request(
+        codex_home=tmp_path,
+        action={
+            "session_id": "session-1",
+            "target_name": "worker-a",
+            "question": "是否继续？",
+            "reason": "需要拍板",
+            "context_status": "needs_user",
+        },
+        now=lambda: datetime(2026, 5, 24, 3, 2, tzinfo=UTC),
+    )
+
+    exit_code = supervisor_main(["state", "--codex-home", str(tmp_path)])
+
+    assert exit_code == 0
+    text = capsys.readouterr().out
+    assert "[Supervisor state]" in text
+    assert "active goals：0" in text
+    assert "decisions：1" in text
+    assert "failed lanes：0" in text
+    assert "notifications：1 / unread 1" in text

@@ -352,6 +352,11 @@ from .commands.replan import (
     handle_replan_command as _handle_replan_command,
     replan_payload as _replan_payload,
 )
+from .commands.state import (
+    handle_state_command as _handle_state_command,
+    print_state_plain as _print_state_plain,
+    state_payload as _state_payload,
+)
 from .commands.trace import (
     latest_managed_record_events as _latest_managed_record_events,
     lifecycle_next_attention as _lifecycle_next_attention,
@@ -510,6 +515,7 @@ _COMMAND_HANDLERS = {
     "decision": _handle_decision_command,
     "memory": _handle_memory_command,
     "replan": _handle_replan_command,
+    "state": _handle_state_command,
     "worker-event": _handle_worker_event_command,
     "worker-manager": _handle_worker_manager_command,
 }

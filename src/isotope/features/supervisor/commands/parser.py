@@ -114,6 +114,16 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         )
         if command == "supervise":
             _add_webhook_args(subparser)
+    state_parser = subparsers.add_parser(
+        "state",
+        help="Print the unified low-sensitive Supervisor state projection.",
+    )
+    state_parser.add_argument(
+        "--codex-home",
+        default=str(Path.home() / ".codex"),
+        help="Codex home directory. Defaults to ~/.codex.",
+    )
+    state_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     for command in ("advise", "supervise"):
         subparsers.choices[command].add_argument(
             "--name",

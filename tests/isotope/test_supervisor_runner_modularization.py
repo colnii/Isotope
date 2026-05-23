@@ -455,6 +455,7 @@ def test_supervisor_runner_delegates_readonly_command_handlers():
     context_module = importlib.import_module("isotope.features.supervisor.commands.context")
     replan_module = importlib.import_module("isotope.features.supervisor.commands.replan")
     memory_module = importlib.import_module("isotope.features.supervisor.commands.memory")
+    state_module = importlib.import_module("isotope.features.supervisor.commands.state")
 
     assert runner._handle_decision_command is decision_module.handle_decision_command
     assert runner._decision_payload is decision_module.decision_payload
@@ -462,6 +463,7 @@ def test_supervisor_runner_delegates_readonly_command_handlers():
     assert runner._handle_context_command is context_module.handle_context_command
     assert runner._handle_replan_command is replan_module.handle_replan_command
     assert runner._replan_payload is replan_module.replan_payload
+    assert runner._handle_state_command is state_module.handle_state_command
     assert runner._handle_memory_command is memory_module.handle_memory_command
     assert runner._handle_worker_event_command is memory_module.handle_worker_event_command
     assert runner._handle_worker_manager_command is memory_module.handle_worker_manager_command
@@ -471,6 +473,7 @@ def test_supervisor_runner_delegates_readonly_command_handlers():
         "decision",
         "context",
         "replan",
+        "state",
         "memory",
         "worker-event",
         "worker-manager",

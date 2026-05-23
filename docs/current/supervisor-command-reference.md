@@ -82,6 +82,9 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
   `recent_decision_answers`，并可据此继续启动或恢复 worker。
 - `goal list` 和 `daemon status` 会直接展示活跃目标最近状态、
   摘要和下一步。
+- `state` 可直接输出统一的低敏 Supervisor state projection（状态投影），
+  用于查看 active goals、decision、lane failure、worker events 和
+  notifications 的同一份读模型。
 - `daemon watcher` 可启动 watcher（周期看门进程），定期触发 watchdog。
 - `supervise` 可按间隔循环执行扫描、建议、可选 LLM 摘要和显式 send。
 - `advise/supervise --name <lane>` 可只针对一个托管 lane 生成建议或执行动作。
@@ -185,6 +188,7 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
    `isotope-supervisor check` 一次汇总 daemon、watcher、活跃目标、
    integration-review 和 cleanup 候选，适合早上看 overnight 结果；
    `isotope-supervisor goal list` 看活跃目标的最近状态、摘要和下一步；
+   `isotope-supervisor state --json` 看统一状态投影；
    `isotope-supervisor dashboard` 看当前窗口分组；
    `isotope-supervisor web --host 127.0.0.1 --port 8765` 打开本机页面。
 5. 提交拍板答案：
@@ -212,6 +216,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner up --goal 
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner goal add --cwd /path/to/repo "继续推进 Supervisor 可用入口"
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner goal plan "拆解当前 Supervisor 高层目标" --cwd /path/to/repo --write
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner goal list
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner state --json
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner web
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner advise
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner supervise --interval 180 --llm-summary
@@ -246,6 +251,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner archive --
 .venv/bin/isotope-supervisor goal add --cwd /path/to/repo "继续推进 Supervisor 可用入口"
 .venv/bin/isotope-supervisor goal plan "拆解当前 Supervisor 高层目标" --cwd /path/to/repo --write
 .venv/bin/isotope-supervisor goal list
+.venv/bin/isotope-supervisor state --json
 .venv/bin/isotope-supervisor check
 .venv/bin/isotope-supervisor overnight-check --json
 .venv/bin/isotope-supervisor web
@@ -276,6 +282,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner archive --
 ```bash
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --json
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard --json
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner state --json
 ```
 
 `dashboard` 是面向人类和后续前端的汇总视图：
