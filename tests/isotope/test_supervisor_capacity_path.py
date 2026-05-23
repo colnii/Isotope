@@ -45,6 +45,7 @@ def test_supervisor_capacity_plan_uses_capacity_calling_graph_and_capability_run
     )
 
     assert result["status"] == "ok"
+    assert result["status_reason"] == "ready"
     assert result["selection"]["kind"] == "capacity_call_selection"
     assert result["selection"]["capacity_id"] == "artifact.review"
     assert result["selection"]["status"] == "ready_to_call"
@@ -155,6 +156,7 @@ def test_supervisor_capacity_plan_blocks_missing_inputs_without_graph_call_or_ex
     )
 
     assert result["status"] == "needs_input"
+    assert result["status_reason"] == "needs_input"
     assert result["selection"]["capacity_id"] == "context.search"
     assert result["selection"]["status"] == "missing_inputs"
     assert result["selection"]["missing_inputs"] == ["query"]
@@ -200,6 +202,7 @@ def test_supervisor_capacity_plan_does_not_execute_unlaunchable_capacity(tmp_pat
     )
 
     assert result["status"] == "blocked"
+    assert result["status_reason"] == "not_launchable"
     assert result["selection"]["status"] == "ready_to_call"
     assert result["capacity_graph"]["status"] == "ready"
     assert result["capability_launch_plan"]["can_launch"] is False

@@ -105,6 +105,7 @@ def build_supervisor_capacity_plan(
     if selection.status != "ready_to_call":
         return {
             "status": "needs_input",
+            "status_reason": "needs_input",
             "kind": "supervisor_capacity_plan",
             "goal": goal,
             "selection": selection.to_dict(),
@@ -134,6 +135,9 @@ def build_supervisor_capacity_plan(
         )
     return {
         "status": "ok" if launch_plan.get("can_launch") is True else "blocked",
+        "status_reason": (
+            "ready" if launch_plan.get("can_launch") is True else "not_launchable"
+        ),
         "kind": "supervisor_capacity_plan",
         "goal": goal,
         "selection": selection.to_dict(),
@@ -255,7 +259,9 @@ def _print_capacity_plan_plain(payload: Mapping[str, Any]) -> None:
     launch_status = (
         launch_plan.get("status") if isinstance(launch_plan, Mapping) else "unknown"
     )
+    status_reason = payload.get("status_reason", "unknown")
     print(f"capacity_id: {capacity_id}")
     print(f"selection_status: {selection_status}")
+    print(f"status_reason: {status_reason}")
     print(f"launch_status: {launch_status}")
     print(f"agent_loop_executed: {bool(payload.get('agent_loop'))}")
