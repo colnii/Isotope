@@ -104,15 +104,21 @@ def build_supervisor_capacity_plan(
         capacities=_capacity_manifests_from_capabilities(capabilities),
     )
     if selection.status != "ready_to_call":
+        selection_payload = selection.to_dict()
         return {
             "status": "needs_input",
             "status_reason": "needs_input",
             "kind": "supervisor_capacity_plan",
             "goal": goal,
-            "selection": selection.to_dict(),
+            "selection": selection_payload,
             "capacity_graph": _blocked_capacity_graph(selection),
             "capability_launch_plan": None,
             "agent_loop": None,
+            "supervisor_decision": _capacity_supervisor_decision(
+                status_reason="needs_input",
+                selection=selection_payload,
+                launch_plan=None,
+            ),
             "safety": _capacity_plan_safety(execute_agent_loop=execute_agent_loop),
         }
     node = capacity_graph_node_from_call_selection(selection)
@@ -134,17 +140,24 @@ def build_supervisor_capacity_plan(
                 else DEFAULT_CAPACITY_PLAN_STATE_ROOT
             ),
         )
+    selection_payload = selection.to_dict()
+    status_reason = (
+        "ready" if launch_plan.get("can_launch") is True else "not_launchable"
+    )
     return {
         "status": "ok" if launch_plan.get("can_launch") is True else "blocked",
-        "status_reason": (
-            "ready" if launch_plan.get("can_launch") is True else "not_launchable"
-        ),
+        "status_reason": status_reason,
         "kind": "supervisor_capacity_plan",
         "goal": goal,
-        "selection": selection.to_dict(),
+        "selection": selection_payload,
         "capacity_graph": capacity_plan.to_dict(),
         "capability_launch_plan": launch_plan,
         "agent_loop": agent_loop,
+        "supervisor_decision": _capacity_supervisor_decision(
+            status_reason=status_reason,
+            selection=selection_payload,
+            launch_plan=launch_plan,
+        ),
         "safety": _capacity_plan_safety(execute_agent_loop=execute_agent_loop),
     }
 
@@ -216,6 +229,36 @@ def _agent_loop_handoff_summary(
     }
 
 
+def _capacity_supervisor_decision(
+    *,
+    status_reason: str,
+    selection: Mapping[str, Any],
+    launch_plan: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    capacity_id = selection.get("capacity_id")
+    return {
+        "kind": "supervisor_capacity_decision",
+        "next_action": _capacity_decision_next_action(status_reason),
+        "reason": status_reason,
+        "capacity_id": capacity_id if isinstance(capacity_id, str) else "unknown",
+        "can_execute_agent_loop": status_reason == "ready",
+        "missing_inputs": _string_list(selection.get("missing_inputs")),
+        "blocking_reasons": _string_list(
+            launch_plan.get("blocking_reasons") if launch_plan is not None else None
+        ),
+    }
+
+
+def _capacity_decision_next_action(status_reason: str) -> str:
+    if status_reason == "ready":
+        return "call_capacity"
+    if status_reason == "needs_input":
+        return "request_input"
+    if status_reason == "not_launchable":
+        return "blocked"
+    return "wait"
+
+
 def _capacity_manifests_from_capabilities(
     capabilities: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
@@ -283,6 +326,12 @@ def _print_capacity_plan_plain(payload: Mapping[str, Any]) -> None:
     print(f"selection_status: {selection_status}")
     print(f"status_reason: {status_reason}")
     print(f"launch_status: {launch_status}")
+    supervisor_decision = payload.get("supervisor_decision")
+    if isinstance(supervisor_decision, Mapping):
+        print(
+            "supervisor_decision_next_action: "
+            f"{supervisor_decision.get('next_action')}"
+        )
     _print_capacity_blockers(payload, selection=selection, launch_plan=launch_plan)
     print(f"agent_loop_executed: {bool(payload.get('agent_loop'))}")
     agent_loop = payload.get("agent_loop")
@@ -316,3 +365,9 @@ def _print_capacity_blockers(
 
 def _comma_join_strings(values: list[Any]) -> str:
     return ", ".join(str(value) for value in values if isinstance(value, str))
+
+
+def _string_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str)]

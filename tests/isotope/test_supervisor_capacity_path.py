@@ -131,6 +131,30 @@ def test_supervisor_capacity_plan_can_execute_low_risk_agent_loop_step(tmp_path)
     assert capability_run["status"] == "completed"
 
 
+def test_supervisor_capacity_plan_reports_ready_supervisor_decision(tmp_path):
+    provider = FakeCapacityProvider(
+        '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
+        '"rationale":"low risk review"}'
+    )
+
+    result = capacity_command.build_supervisor_capacity_plan(
+        goal="检查低敏 artifact review 能力是否可用",
+        provider=provider,
+        state_root=tmp_path / "state",
+        execute_agent_loop=False,
+    )
+
+    assert result["supervisor_decision"] == {
+        "kind": "supervisor_capacity_decision",
+        "next_action": "call_capacity",
+        "reason": "ready",
+        "capacity_id": "artifact.review",
+        "can_execute_agent_loop": True,
+        "missing_inputs": [],
+        "blocking_reasons": [],
+    }
+
+
 def test_supervisor_capacity_plan_passes_arguments_into_agent_loop_inputs(tmp_path):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
@@ -219,6 +243,15 @@ def test_supervisor_capacity_plan_blocks_missing_inputs_without_graph_call_or_ex
     assert result["capacity_graph"]["summary"]["ready"] == 0
     assert result["capacity_graph"]["calls"] == []
     assert result["agent_loop"] is None
+    assert result["supervisor_decision"] == {
+        "kind": "supervisor_capacity_decision",
+        "next_action": "request_input",
+        "reason": "needs_input",
+        "capacity_id": "context.search",
+        "can_execute_agent_loop": False,
+        "missing_inputs": ["query"],
+        "blocking_reasons": [],
+    }
 
 
 def test_supervisor_capacity_plan_does_not_execute_unlaunchable_capacity(tmp_path):
@@ -263,6 +296,15 @@ def test_supervisor_capacity_plan_does_not_execute_unlaunchable_capacity(tmp_pat
     assert result["capability_launch_plan"]["can_launch"] is False
     assert result["capability_launch_plan"]["status"] == "not_allowlisted"
     assert result["agent_loop"] is None
+    assert result["supervisor_decision"] == {
+        "kind": "supervisor_capacity_decision",
+        "next_action": "blocked",
+        "reason": "not_launchable",
+        "capacity_id": "context.search",
+        "can_execute_agent_loop": False,
+        "missing_inputs": [],
+        "blocking_reasons": ["not_allowlisted"],
+    }
 
 
 def test_supervisor_capacity_command_handler_is_thin_and_runner_delegates():
@@ -350,6 +392,7 @@ def test_supervisor_capacity_plain_output_includes_agent_loop_handoff(tmp_path, 
     ) == 0
 
     output = capsys.readouterr().out
+    assert "supervisor_decision_next_action: call_capacity" in output
     assert "agent_loop_executed: True" in output
     assert "agent_loop_next_tick_kind: planner_step" in output
     assert "agent_loop_post_step_phase: ready" in output
