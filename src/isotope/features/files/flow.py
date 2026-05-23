@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from ...core import ProductCore
+from ...platform.schemas.refs import ResourceRef
 
 
 @dataclass(frozen=True)
@@ -80,12 +81,32 @@ class FileFlow:
 
     def get_file(self, file_id: str) -> FileSummary:
         try:
-            return self._files[file_id]
+            summary = self._files[file_id]
         except KeyError as exc:
             raise ValueError(f"unknown file_id: {file_id}") from exc
+        return self._refresh_from_artifact_record(summary)
 
     def list_files(self) -> list[FileSummary]:
-        return list(self._files.values())
+        return [
+            self._refresh_from_artifact_record(summary)
+            for summary in self._files.values()
+        ]
+
+    def _refresh_from_artifact_record(self, summary: FileSummary) -> FileSummary:
+        artifact_ref = _artifact_ref_from_dict(summary.artifact_ref)
+        record = self.core.runtime.get_artifact_record(artifact_ref)
+        refreshed = FileSummary(
+            file_id=summary.file_id,
+            name=summary.name,
+            summary=_required_string(record, "summary"),
+            artifact_type=_required_string(record, "artifact_type"),
+            artifact_ref=dict(_required_dict(record, "ref")),
+            run_id=summary.run_id,
+        )
+        if refreshed != summary:
+            self._files[summary.file_id] = refreshed
+            self._save_index()
+        return refreshed
 
     def _require_non_empty_text(self, field_name: str, value: str) -> str:
         if not isinstance(value, str):
@@ -135,3 +156,12 @@ def _required_dict(data: dict[str, Any], field_name: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"file summary requires {field_name}")
     return value
+
+
+def _artifact_ref_from_dict(data: dict[str, Any]) -> ResourceRef:
+    return ResourceRef(
+        ref_type=_required_string(data, "ref_type"),
+        scope=_required_string(data, "scope"),
+        run_id=_required_string(data, "run_id"),
+        artifact_id=_required_string(data, "artifact_id"),
+    )

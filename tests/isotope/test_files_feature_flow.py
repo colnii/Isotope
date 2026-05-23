@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from isotope.features.files.flow import FileFlow
@@ -72,3 +73,28 @@ def test_file_flow_lists_and_reloads_file_summaries(tmp_path):
     _assert_no_forbidden_content_keys(
         {"files": [file_summary.to_dict() for file_summary in reloaded.list_files()]}
     )
+
+
+def test_file_flow_refreshes_reloaded_summary_from_artifact_record(tmp_path):
+    flow = FileFlow.in_process(tmp_path)
+    created = flow.create_text_file(
+        name="notes.md",
+        summary="platform artifact summary",
+        content="private durable file content",
+    )
+    index_path = tmp_path / "files" / "index.json"
+    payload = json.loads(index_path.read_text(encoding="utf-8"))
+    payload["files"][0]["summary"] = "stale local summary"
+    payload["files"][0]["artifact_type"] = "stale_type"
+    index_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+
+    reloaded = FileFlow.in_process(tmp_path)
+    listed = reloaded.list_files()
+    refreshed = reloaded.get_file(created.file_id)
+
+    assert listed == [refreshed]
+    assert refreshed.summary == "platform artifact summary"
+    assert refreshed.artifact_type == "text"
+    assert refreshed.artifact_ref == created.artifact_ref
+    assert reloaded.list_files() == [refreshed]
+    _assert_no_forbidden_content_keys(refreshed.to_dict())
