@@ -101,6 +101,46 @@ def test_supervisor_runner_delegates_cleanup_worktree_helpers():
         assert f"def {function_name}(" not in source
 
 
+def test_supervisor_runner_delegates_auto_action_helpers():
+    auto_action_module = importlib.import_module(
+        "isotope.features.supervisor.commands.auto_action"
+    )
+
+    assert runner._auto_execute_action is auto_action_module.auto_execute_action
+    assert runner._execute_auto_action is auto_action_module.execute_auto_action
+    assert (
+        runner._executed_action_forces_print
+        is auto_action_module.executed_action_forces_print
+    )
+    assert (
+        runner._auto_execute_action_for_managed
+        is auto_action_module.auto_execute_action_for_managed
+    )
+    assert (
+        runner._managed_terminal_looks_busy
+        is auto_action_module.managed_terminal_looks_busy
+    )
+    assert (
+        runner._supervisor_next_marks_terminal_done
+        is auto_action_module.supervisor_next_marks_terminal_done
+    )
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_execute_auto_action",
+        "_executed_action_forces_print",
+        "_auto_execute_action",
+        "_auto_action_exhausts_continue_budget",
+        "_auto_action_exhausts_run_budget",
+        "_auto_action_in_prompt_cooldown",
+        "_auto_execute_action_for_managed",
+        "_supervisor_next_marks_terminal_done",
+        "_managed_terminal_looks_busy",
+        "_auto_status_source",
+    ):
+        assert f"def {function_name}(" not in source
+
+
 def test_supervisor_runner_delegates_daemon_command_helpers():
     daemon_module = importlib.import_module(
         "isotope.features.supervisor.commands.daemon_command"

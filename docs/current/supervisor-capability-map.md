@@ -699,6 +699,9 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
 - `features/supervisor/commands/cleanup_worktree.py`：已承接删除确认护栏、
   worktree 候选扫描、integration review 校验和 branch cleanup；继续复用
   现有 `.worktrees/supervisor` 路径边界。
+- `features/supervisor/commands/auto_action.py`：已承接 `loop --auto-execute`
+  的 rule-based auto action（规则自动动作）选择、continue/run budget
+  与 prompt cooldown 判断；执行仍通过既有 `_execute_advice` 护栏。
 - `features/supervisor/commands/advice.py`：已承接 `advise`、`supervise`
   和 `loop` 共同使用的 advice payload、automation status 和
   command suggestion 生成；`_execute_advice` 仍留在 `runner.py`，后续需要
