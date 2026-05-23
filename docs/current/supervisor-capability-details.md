@@ -825,6 +825,9 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   `worker-event` 和 `worker-manager` CLI handler；底层继续复用 memory view，
   并通过 `platform/state` 的 worker event channel、`WorkerEvent` schema
   和 multi-worker read model 读取低敏 worker 状态。
+- `features/supervisor/commands/parser_memory.py`：已承接 `memory`、
+  `worker-event` 和 `worker-manager` 的 argparse（参数解析器）注册；
+  `parser.py` 只导入该 helper，避免继续扩大巨型 parser 函数。
 - `features/supervisor/state/projection.py`：已承接第一片只读 Supervisor
   state projection，复用 goal queue、decision request、lane state、
   worker event channel 和 notification index；dashboard/web/daemon

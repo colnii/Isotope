@@ -6,6 +6,8 @@ import argparse
 from pathlib import Path
 from typing import Any
 
+from isotope.features.supervisor.commands.parser_memory import add_memory_command_parsers
+
 
 def build_parser(*, api: Any | None = None) -> argparse.ArgumentParser:
     """Build the Supervisor CLI parser with defaults from the runner API surface."""
@@ -844,86 +846,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         help="Codex home directory. Defaults to ~/.codex.",
     )
     worker_review_parser.add_argument("--json", action="store_true", help="Print JSON output.")
-    memory_parser = subparsers.add_parser(
-        "memory",
-        help="Show a low-sensitive summary of local memory records.",
-    )
-    memory_parser.add_argument(
-        "--root",
-        default=".",
-        help="Runtime root containing memory/*.json. Defaults to current directory.",
-    )
-    memory_parser.add_argument(
-        "--scope",
-        choices=("thread", "run", "session"),
-        help="Only show one memory scope.",
-    )
-    memory_parser.add_argument(
-        "--limit",
-        type=int,
-        default=20,
-        help="Maximum records to preview.",
-    )
-    memory_parser.add_argument("--json", action="store_true", help="Print JSON output.")
-    worker_event_parser = subparsers.add_parser(
-        "worker-event",
-        help="Publish or list memory-backed worker events.",
-    )
-    worker_event_subparsers = worker_event_parser.add_subparsers(
-        dest="worker_event_command",
-        required=True,
-    )
-    worker_event_publish = worker_event_subparsers.add_parser(
-        "publish",
-        help="Publish one worker event into the memory-backed channel.",
-    )
-    worker_event_publish.add_argument(
-        "--root",
-        default=".",
-        help="Runtime root containing memory/*.json. Defaults to current directory.",
-    )
-    worker_event_publish.add_argument("--from", dest="from_worker", required=True)
-    worker_event_publish.add_argument("--to", dest="to_worker")
-    worker_event_publish.add_argument("--type", dest="event_type", default="message")
-    worker_event_publish.add_argument("--channel", default="default")
-    worker_event_publish.add_argument("--message", required=True)
-    worker_event_publish.add_argument(
-        "--payload-json",
-        help="Optional JSON object payload for the event.",
-    )
-    worker_event_publish.add_argument("--json", action="store_true", help="Print JSON output.")
-    worker_event_list = worker_event_subparsers.add_parser(
-        "list",
-        help="List worker events from the memory-backed channel.",
-    )
-    worker_event_list.add_argument(
-        "--root",
-        default=".",
-        help="Runtime root containing memory/*.json. Defaults to current directory.",
-    )
-    worker_event_list.add_argument("--from", dest="from_worker")
-    worker_event_list.add_argument("--to", dest="to_worker")
-    worker_event_list.add_argument("--type", dest="event_type")
-    worker_event_list.add_argument("--channel")
-    worker_event_list.add_argument("--limit", type=int, default=20)
-    worker_event_list.add_argument("--json", action="store_true", help="Print JSON output.")
-    worker_manager_parser = subparsers.add_parser(
-        "worker-manager",
-        help="Show a memory-backed multi-worker status view.",
-    )
-    worker_manager_parser.add_argument(
-        "--root",
-        default=".",
-        help="Runtime root containing memory/*.json. Defaults to current directory.",
-    )
-    worker_manager_parser.add_argument("--worker", help="Only show one worker.")
-    worker_manager_parser.add_argument(
-        "--limit",
-        type=int,
-        default=50,
-        help="Maximum workers to preview.",
-    )
-    worker_manager_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    add_memory_command_parsers(subparsers)
     integration_review_parser = subparsers.add_parser(
         "integration-review",
         help="Group managed workers by read-only integration readiness.",
