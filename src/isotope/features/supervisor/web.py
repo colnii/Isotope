@@ -188,6 +188,20 @@ def build_dashboard_web_payload(
     return payload
 
 
+def _active_goal_dicts_for_codex_home(
+    codex_home: Path,
+    *,
+    limit: int = 20,
+    include_status: bool = False,
+) -> list[dict[str, Any]]:
+    return list(
+        build_supervisor_state_snapshot(
+            codex_home=codex_home,
+            goal_limit=limit,
+        )["active_goals"]
+    )
+
+
 def _recent_context_results_for_report(
     *,
     codex_home: Path,
