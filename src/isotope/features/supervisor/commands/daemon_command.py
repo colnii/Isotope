@@ -22,6 +22,9 @@ from isotope.features.supervisor.registry import (
     default_registry_path,
     read_managed_records,
 )
+from isotope.features.supervisor.commands.snapshot_display import (
+    state_snapshot_schema_label,
+)
 from isotope.features.supervisor.state.projection import build_supervisor_state_snapshot
 
 
@@ -607,18 +610,6 @@ def print_daemon_activity_plain(activity: Any) -> None:
             )
             if item.get("last_summary"):
                 print(f"  摘要：{item['last_summary']}")
-
-
-def state_snapshot_schema_label(snapshot: Any) -> str | None:
-    if not isinstance(snapshot, dict):
-        return None
-    kind = snapshot.get("kind")
-    if not isinstance(kind, str) or not kind:
-        return None
-    schema_version = snapshot.get("schema_version")
-    if isinstance(schema_version, int):
-        return f"{kind} v{schema_version}"
-    return kind
 
 
 def print_watcher_plain(payload: dict[str, Any]) -> None:

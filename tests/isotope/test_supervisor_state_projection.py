@@ -270,6 +270,11 @@ def test_supervisor_state_command_plain_prints_compact_summary(tmp_path, capsys)
     assert exit_code == 0
     text = capsys.readouterr().out
     assert "[Supervisor state]" in text
+    assert "状态快照：supervisor_state_snapshot v1" in text
+    assert (
+        "来源账本：goal queue / decision requests / lane state / "
+        "worker events / notifications"
+    ) in text
     assert "active goals：0" in text
     assert "decisions：1" in text
     assert "failed lanes：0" in text
