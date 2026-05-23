@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from isotope.features.notifications.flow import NotificationFlow, NotificationSummary
+from isotope.platform.state.notification_summary import SupervisorNotificationSummary
 from isotope.platform.state.supervisor_snapshot import SupervisorStateSnapshot
 from isotope.platform.state.worker_event_channel import list_worker_events
 
@@ -145,34 +146,4 @@ def _notification_payload(codex_home: Path, *, limit: int) -> dict[str, Any]:
 
 
 def _notification_summary_payload(summary: NotificationSummary) -> dict[str, Any]:
-    payload = summary.to_dict()
-    return {
-        "notification_id": payload["notification_id"],
-        "type": payload["type"],
-        "title": payload["title"],
-        "unread": payload["unread"],
-        "created_at": payload["created_at"],
-        "read_at": payload["read_at"],
-        "source_ref": _notification_source_ref(payload["source_ref"]),
-    }
-
-
-def _notification_source_ref(source_ref: Any) -> dict[str, Any]:
-    if not isinstance(source_ref, dict):
-        return {}
-    allowed_keys = {
-        "ref_type",
-        "goal_id",
-        "request_id",
-        "run_id",
-        "session_id",
-        "notification_id",
-        "status",
-        "target_name",
-        "timeout_seconds",
-    }
-    return {
-        key: value
-        for key, value in source_ref.items()
-        if key in allowed_keys and isinstance(value, (str, bool, int, float))
-    }
+    return SupervisorNotificationSummary.from_payload(summary.to_dict()).to_state_payload()

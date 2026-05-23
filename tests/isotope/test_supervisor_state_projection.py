@@ -16,6 +16,7 @@ from isotope.features.supervisor.runner import main as supervisor_main
 import isotope.features.supervisor.state.projection as feature_projection
 from isotope.platform.state.goal_status import SupervisorGoalStatus
 from isotope.platform.state.lane_state import SupervisorLaneState
+from isotope.platform.state.notification_summary import SupervisorNotificationSummary
 from isotope.platform.state.supervisor_snapshot import SupervisorStateSnapshot
 from isotope.features.supervisor.state.projection import build_supervisor_state_snapshot
 from isotope.memory.worker_event_channel import publish_worker_event
@@ -78,6 +79,41 @@ def test_supervisor_lane_state_uses_platform_schema():
         "last_failed_at": "2026-05-24T01:03:00+00:00",
         "failure_count": 1,
         "worker_retry_count": 2,
+    }
+
+
+def test_supervisor_notification_summary_uses_platform_schema():
+    assert feature_projection.SupervisorNotificationSummary is SupervisorNotificationSummary
+
+    summary = SupervisorNotificationSummary(
+        notification_id="notif-manual",
+        notification_type="manual",
+        title="人工提醒",
+        unread=True,
+        created_at="2026-05-24T01:04:00+00:00",
+        read_at=None,
+        source_ref={
+            "ref_type": "supervisor_run",
+            "run_id": "run-1",
+            "timeout_seconds": 30,
+            "raw_prompt": "RAW_PROMPT_SHOULD_NOT_LEAK",
+            "api_key": "sk-test-secret",
+            "nested": {"run_id": "nested-run"},
+        },
+    )
+
+    assert summary.to_state_payload() == {
+        "notification_id": "notif-manual",
+        "type": "manual",
+        "title": "人工提醒",
+        "unread": True,
+        "created_at": "2026-05-24T01:04:00+00:00",
+        "read_at": None,
+        "source_ref": {
+            "ref_type": "supervisor_run",
+            "run_id": "run-1",
+            "timeout_seconds": 30,
+        },
     }
 
 
