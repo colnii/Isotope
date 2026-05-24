@@ -273,13 +273,19 @@ normalized result 必须标明失败状态。
 - 后续 retrieval / search 能看到低敏 summary 和 source refs。
 - memory 仍保持 ref-first / provenance-aware，不直接吞网页全文。
 
-## 11. Open Questions
+## 11. Resolved Decisions
 
-实现计划前还需要确认：
+用户已确认第一版按以下决策进入 implementation plan：
 
-1. 第一版真实 Codex delegated provider 是否必须自动启动新的 Codex session，
-   还是先用手动/fixture 导入结构化结果验证 substrate。
-2. normalized research artifact 的 artifact type 命名：`web_research_result`、
-   `research.report`，还是沿用现有 artifact type 风格。
-3. Supervisor CLI 是否第一批就加 `research` 子命令，还是先只加
-   `features.research.runner`。
+1. 第一版保留 fake provider 测试，同时真实入口应尝试自动启动 Codex session。
+   fake provider 证明 validation / artifact / retrieval substrate；真实入口证明
+   Codex Supervisor delegated research 的可用性。
+2. artifact type 使用：
+   - normalized result: `research.report`
+   - raw Codex output / transcript: `research.raw_transcript`
+   这样不把能力锁死成只支持 web API，后续 Tavily / SearXNG / Deep Research
+   也可以复用 research 命名。
+3. CLI 第一批保留两个入口：
+   - `isotope.features.research.runner search`: 底层功能入口，开发和测试优先。
+   - `isotope.features.supervisor.runner research`: Supervisor 薄代理入口，贴近日常使用。
+   底层逻辑必须在 `ResearchFlow`，Supervisor CLI 不能另写一套 research 流程。
