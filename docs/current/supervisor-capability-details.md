@@ -613,7 +613,7 @@ merge worker 成功合入后的交接边界也要分清：
 | --- | --- | --- |
 | `current_batch` | dashboard/web read model（读取模型） | 只展示仍活跃的 `active_goals` 和当前托管 worker；不启动 worker、不改目标状态、不替代 cleanup。 |
 | `fanout` | `loop` 与 `goal plan --fanout-execute` | 把多个活跃目标或 `parallel_recommendations` 展开成一批受控 `launch_session`；复用 goal queue、managed registry、prompt cooldown 和预算 gate，不另建队列。 |
-| `replan` | `_maybe_replan_after_context_request` | 只在同一轮 `request_context` 成功后追加最近上下文，再让 LLM planner 重新选择一次受控动作；不得无限循环，不得绕过 `ask_user` gate。 |
+| `replan` | `commands/llm_context.py::maybe_replan_after_context_request` | 只在同一轮 `request_context` 成功后追加最近上下文，再让 LLM planner 重新选择一次受控动作；不得无限循环，不得绕过 `ask_user` gate。 |
 | `merge dispatch` | 已接入 runner loop | 读取 `ready_to_integrate` 候选，生成 `merge-work-order`，再用现有 `launch_session` 路径启动专门 merge worker；登记表写入 `worker_role=merge_dispatch`，runner 本身不得直接 cherry-pick、delete branch 或改写历史。 |
 
 ### 建议调用顺序
@@ -768,6 +768,10 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   dispatch（模型动作执行分发）、failure guard（失败护栏）、context request
   budget 和 active-goal resume gate；底层 `resume/launch/context/ask_user`
   执行函数继续走 `commands/llm_execution.py`，并保留 `runner.py` 兼容 alias。
+- `features/supervisor/commands/failure_guard.py`：已承接 failure ledger guard
+  （失败账本护栏），包括失败事件记录、retry exhausted（重试耗尽）判断、
+  failure decision request action（失败拍板动作）构造、lane name 和 goal id
+  归属解析；继续复用 `failure_ledger.py`，不新建账本格式。
 - `features/supervisor/commands/llm_execution.py`：已承接 LLM side-effect
   execution（模型动作副作用执行）的 `resume_session`、`launch_session`、
   `request_context`、`ask_user`、worker profile、worktree 准备和运行中
@@ -817,7 +821,8 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
 - `features/supervisor/commands/llm_context.py`：已承接 supervise/loop 传给
   LLM planner 的 context payload（上下文载荷），包括 recent context、
   decision answers、capacity decisions/call specs、worker review 和
-  delete-worktree candidates。
+  delete-worktree candidates；也承接成功 `request_context` 后的 follow-up
+  replan，runner 只保留兼容 alias。
 - `features/supervisor/commands/supervise_planning.py`：已承接 supervise/loop
   planning payload（规划载荷），包括 current batch、fanout status/plan、
   fanout log、merge dispatch 和 recursive worker guard；继续复用
@@ -885,7 +890,8 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
    已下沉，notification index 写入仍留在 feature flow。
 2. 用真实 daemon 长跑验证 cleanup/current dashboard 在多批任务中的稳定性。
 3. 后续再决定是否把通知接到更多 worker 生命周期事件。
-4. 再拆分 `runner.py` 中的 execution dispatch。
+4. 再拆分 `_decide_action_with_llm` 的 provider/failure glue 或 supervise plain
+   rendering。
 
 ## 登记规则
 

@@ -207,6 +207,43 @@ def test_supervisor_runner_delegates_supervise_execution_dispatch():
     assert "def _append_supervise_execution(" not in inspect.getsource(runner)
 
 
+def test_supervisor_runner_delegates_context_request_followup_replan():
+    llm_context_module = importlib.import_module(
+        "isotope.features.supervisor.commands.llm_context"
+    )
+
+    assert (
+        runner._maybe_replan_after_context_request
+        is llm_context_module.maybe_replan_after_context_request
+    )
+    assert "def _maybe_replan_after_context_request(" not in inspect.getsource(runner)
+
+
+def test_supervisor_runner_delegates_failure_guard_helpers():
+    failure_module = importlib.import_module(
+        "isotope.features.supervisor.commands.failure_guard"
+    )
+
+    assert runner._record_failure_event is failure_module.record_failure_event
+    assert runner._failure_retry_exhausted is failure_module.failure_retry_exhausted
+    assert (
+        runner._failure_decision_request_action
+        is failure_module.failure_decision_request_action
+    )
+    assert runner._failure_lane_name is failure_module.failure_lane_name
+    assert runner._failure_goal_id is failure_module.failure_goal_id
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_record_failure_event",
+        "_failure_retry_exhausted",
+        "_failure_decision_request_action",
+        "_failure_lane_name",
+        "_failure_goal_id",
+    ):
+        assert f"def {function_name}(" not in source
+
+
 def test_supervisor_runner_delegates_llm_side_effect_execution_helpers():
     execution_module = importlib.import_module(
         "isotope.features.supervisor.commands.llm_execution"
@@ -1006,3 +1043,118 @@ def test_supervisor_runner_delegates_supervise_action_selection():
 
     source = inspect.getsource(runner)
     assert "def _append_supervise_llm_action(" not in source
+
+
+def test_llm_context_replans_after_successful_context_request():
+    llm_context_module = importlib.import_module(
+        "isotope.features.supervisor.commands.llm_context"
+    )
+    calls: list[tuple[str, object]] = []
+
+    class FakeApi:
+        def _decide_action_with_llm(self, args, report, payload):
+            calls.append(
+                ("decide", {"args": args, "report": report, "payload": payload})
+            )
+            return {"kind": "send_status", "reason": "context reviewed"}
+
+        def _execute_llm_action(self, args, report, payload):
+            calls.append(
+                ("execute", {"args": args, "report": report, "payload": payload})
+            )
+            return {"kind": "send_status", "sent": True}
+
+    args = argparse.Namespace()
+    payload = {
+        "executed": {
+            "kind": "request_context",
+            "context": {"query": "third"},
+        },
+        "recent_context_results": [
+            {"query": "old"},
+            {"query": "first"},
+            {"query": "second"},
+        ],
+    }
+
+    replanned = llm_context_module.maybe_replan_after_context_request(
+        args,
+        "report",
+        payload,
+        api=FakeApi(),
+    )
+
+    assert replanned is True
+    assert payload["recent_context_results"] == [
+        {"query": "first"},
+        {"query": "second"},
+        {"query": "third"},
+    ]
+    assert payload["llm_followup_action"] == {
+        "kind": "send_status",
+        "reason": "context reviewed",
+    }
+    assert payload["followup_executed"] == {"kind": "send_status", "sent": True}
+    assert calls[0] == (
+        "decide",
+        {"args": args, "report": "report", "payload": payload},
+    )
+    assert calls[1][0] == "execute"
+    execute_payload = {
+        key: value for key, value in payload.items() if key != "followup_executed"
+    }
+    assert calls[1][1]["payload"] == {
+        **execute_payload,
+        "llm_action": payload["llm_followup_action"],
+    }
+
+
+def test_llm_context_skips_followup_replan_for_non_context_execution():
+    llm_context_module = importlib.import_module(
+        "isotope.features.supervisor.commands.llm_context"
+    )
+
+    class FakeApi:
+        def _decide_action_with_llm(self, args, report, payload):
+            raise AssertionError("non-context executions must not replan")
+
+        def _execute_llm_action(self, args, report, payload):
+            raise AssertionError("non-context executions must not execute follow-up")
+
+    payload = {"executed": {"kind": "send_status"}}
+
+    replanned = llm_context_module.maybe_replan_after_context_request(
+        argparse.Namespace(),
+        "report",
+        payload,
+        api=FakeApi(),
+    )
+
+    assert replanned is False
+    assert payload == {"executed": {"kind": "send_status"}}
+
+
+def test_failure_guard_records_failure_with_lane_and_goal(tmp_path):
+    failure_module = importlib.import_module(
+        "isotope.features.supervisor.commands.failure_guard"
+    )
+    args = argparse.Namespace(codex_home=tmp_path, name="worker-a")
+    payload = {
+        "active_goals": [
+            {"goal_id": "goal-other", "target_name": "worker-b"},
+            {"goal_id": "goal-123", "target_name": "worker-a"},
+        ]
+    }
+
+    event = failure_module.record_failure_event(
+        args,
+        event_type="llm_planner_invalid_response",
+        payload=payload,
+        error_summary="LLM action must be a JSON object",
+    )
+
+    assert event["event_type"] == "llm_planner_invalid_response"
+    assert event["lane_name"] == "worker-a"
+    assert event["goal_id"] == "goal-123"
+    assert event["error_summary"] == "LLM action must be a JSON object"
+    assert event["retry_count"] == 1

@@ -38,7 +38,6 @@ from .fanout import (
     DEFAULT_FANOUT_LIMIT,
     build_fanout_launch_plan,
 )
-from .failure_ledger import FailureLedger, default_failure_ledger_path
 from .goal_queue import (
     GOAL_STATUS_VALUES,
     archive_supervisor_goal,
@@ -203,7 +202,17 @@ from .commands.llm_action import (
     failure_question as _failure_question,
     resume_action_outside_active_goals as _resume_action_outside_active_goals,
 )
-from .commands.llm_context import planner_context_payload as _planner_context_payload
+from .commands.llm_context import (
+    maybe_replan_after_context_request as _maybe_replan_after_context_request,
+    planner_context_payload as _planner_context_payload,
+)
+from .commands.failure_guard import (
+    failure_decision_request_action as _failure_decision_request_action,
+    failure_goal_id as _failure_goal_id,
+    failure_lane_name as _failure_lane_name,
+    failure_retry_exhausted as _failure_retry_exhausted,
+    record_failure_event as _record_failure_event,
+)
 from .commands.llm_execution import (
     context_from_capability_result as _context_from_capability_result,
     cwd_is_existing_dir as _cwd_is_existing_dir,
@@ -1386,29 +1395,6 @@ def _supervise_payload(
     return payload
 
 
-def _maybe_replan_after_context_request(
-    args: argparse.Namespace,
-    report: Any,
-    payload: dict[str, Any],
-) -> None:
-    executed = payload.get("executed")
-    if not isinstance(executed, dict) or executed.get("kind") != "request_context":
-        return
-    if executed.get("skipped"):
-        return
-    context_result = executed.get("context")
-    if isinstance(context_result, dict):
-        recent = list(payload.get("recent_context_results") or [])
-        recent.append(context_result)
-        payload["recent_context_results"] = recent[-3:]
-    payload["llm_followup_action"] = _decide_action_with_llm(args, report, payload)
-    followup_payload = {
-        **payload,
-        "llm_action": payload["llm_followup_action"],
-    }
-    payload["followup_executed"] = _execute_llm_action(args, report, followup_payload)
-
-
 def _run_web(args: argparse.Namespace) -> None:
     if args.limit <= 0:
         raise ValueError("limit must be positive")
@@ -1821,110 +1807,6 @@ def _decide_action_with_llm(
             "command_suggestion": None,
             "error": error,
         }
-
-
-def _record_failure_event(
-    args: argparse.Namespace,
-    *,
-    event_type: str,
-    report: Any | None = None,
-    payload: dict[str, Any] | None = None,
-    action: dict[str, Any] | None = None,
-    error_summary: str,
-) -> dict[str, Any]:
-    ledger = FailureLedger(default_failure_ledger_path(Path(args.codex_home)))
-    lane_name = _failure_lane_name(args, report=report, payload=payload, action=action)
-    goal_id = _failure_goal_id(payload=payload, action=action, lane_name=lane_name)
-    return ledger.record_failure(
-        event_type=event_type,
-        lane_name=lane_name,
-        goal_id=goal_id,
-        error_summary=error_summary,
-    )
-
-
-def _failure_retry_exhausted(
-    args: argparse.Namespace,
-    event: dict[str, Any],
-) -> bool:
-    retry_count = event.get("retry_count")
-    max_retries = getattr(args, "max_failure_retries", DEFAULT_MAX_FAILURE_RETRIES)
-    return isinstance(retry_count, int) and retry_count > max_retries
-
-
-def _failure_decision_request_action(
-    *,
-    event: dict[str, Any],
-    question: str,
-    reason: str,
-) -> dict[str, Any]:
-    event_type = str(event.get("event_type") or "supervisor_failure")
-    lane_name = event.get("lane_name")
-    lane_text = lane_name if isinstance(lane_name, str) and lane_name else "global"
-    goal_id = event.get("goal_id")
-    return {
-        "kind": "ask_user",
-        "session_id": f"failure:{event_type}:{lane_text}",
-        "target_name": lane_name if isinstance(lane_name, str) else None,
-        **({"goal_id": goal_id} if isinstance(goal_id, str) and goal_id else {}),
-        "question": question,
-        "reason": reason,
-        "context_status": "conflict",
-        "codex_requested_decision": True,
-        "instructions_exhausted": True,
-        "command_suggestion": None,
-        "failure_event": event,
-    }
-
-
-def _failure_lane_name(
-    args: argparse.Namespace,
-    *,
-    report: Any | None = None,
-    payload: dict[str, Any] | None = None,
-    action: dict[str, Any] | None = None,
-) -> str | None:
-    for value in (
-        action.get("target_name") if isinstance(action, dict) else None,
-        getattr(args, "name", None),
-    ):
-        if isinstance(value, str) and value.strip():
-            return value.strip()
-    if report is not None:
-        for session in getattr(report, "sessions", []):
-            name = getattr(session, "managed_name", None)
-            if isinstance(name, str) and name:
-                return name
-    if isinstance(payload, dict):
-        for goal in payload.get("active_goals") or []:
-            if isinstance(goal, dict):
-                name = goal.get("target_name")
-                if isinstance(name, str) and name.strip():
-                    return name.strip()
-    return None
-
-
-def _failure_goal_id(
-    *,
-    payload: dict[str, Any] | None = None,
-    action: dict[str, Any] | None = None,
-    lane_name: str | None = None,
-) -> str | None:
-    if isinstance(action, dict):
-        goal_id = action.get("goal_id")
-        if isinstance(goal_id, str) and goal_id.strip():
-            return goal_id.strip()
-    if isinstance(payload, dict):
-        for goal in payload.get("active_goals") or []:
-            if not isinstance(goal, dict):
-                continue
-            goal_id = goal.get("goal_id")
-            target_name = goal.get("target_name")
-            if not isinstance(goal_id, str) or not goal_id.strip():
-                continue
-            if lane_name is None or target_name == lane_name:
-                return goal_id.strip()
-    return None
 
 
 def _recent_context_results(args: argparse.Namespace, report: Any) -> list[dict[str, Any]]:

@@ -38,3 +38,40 @@ def planner_context_payload(
     payload["worker_reviews"] = api._worker_review_context(args)
     payload["delete_worktree_candidates"] = api._delete_worktree_candidate_payloads(args)
     return payload
+
+
+def maybe_replan_after_context_request(
+    args: Any,
+    report: Any,
+    payload: dict[str, Any],
+    *,
+    api: Any | None = None,
+) -> bool:
+    if api is None:
+        from isotope.features.supervisor import runner as api
+
+    executed = payload.get("executed")
+    if not isinstance(executed, dict) or executed.get("kind") != "request_context":
+        return False
+    if executed.get("skipped"):
+        return False
+    context_result = executed.get("context")
+    if isinstance(context_result, dict):
+        recent = list(payload.get("recent_context_results") or [])
+        recent.append(context_result)
+        payload["recent_context_results"] = recent[-3:]
+    payload["llm_followup_action"] = api._decide_action_with_llm(
+        args,
+        report,
+        payload,
+    )
+    followup_payload = {
+        **payload,
+        "llm_action": payload["llm_followup_action"],
+    }
+    payload["followup_executed"] = api._execute_llm_action(
+        args,
+        report,
+        followup_payload,
+    )
+    return True
