@@ -7,10 +7,11 @@ stable metadata for app shells without constructing providers or executing work.
 from __future__ import annotations
 
 import copy
+from collections.abc import Mapping
 from dataclasses import dataclass
 import os
 import re
-from typing import Any, Mapping
+from typing import Any
 
 
 _CAPABILITY_ID_RE = re.compile(r"^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$")
@@ -263,6 +264,8 @@ class CapabilityCatalog:
         except KeyError as exc:
             raise KeyError(capability_id) from exc
         env_mapping = os.environ if env is None else env
+        if not isinstance(env_mapping, Mapping):
+            raise ValueError("env must be a mapping")
         missing_env = [
             name for name in capability.required_env if not env_mapping.get(name)
         ]

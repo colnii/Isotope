@@ -222,6 +222,15 @@ def test_capability_status_reports_missing_configuration_without_provider_setup(
     }
 
 
+def test_capability_status_rejects_malformed_env_mapping():
+    catalog = _catalog_class()(
+        capabilities=[_valid_capability(required_env=("ISOTOPE_TEST_REQUIRED_KEY",))]
+    )
+
+    with pytest.raises(ValueError, match="env"):
+        catalog.get_capability_status("artifact.review", env=[])
+
+
 def test_module_level_default_manifest_uses_same_low_sensitive_contract():
     module = _catalog_module()
 
