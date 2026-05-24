@@ -8,6 +8,17 @@ from typing import Any, Literal, Mapping
 ContractValueViolation = Literal["type", "enum"]
 
 
+def contract_properties(input_contract: Any) -> Mapping[str, Any]:
+    """Return contract properties when they are mapping-shaped."""
+
+    if not isinstance(input_contract, Mapping):
+        return {}
+    properties = input_contract.get("properties", {})
+    if not isinstance(properties, Mapping):
+        return {}
+    return properties
+
+
 def matches_contract_type(value: Any, expected_type: str) -> bool:
     """Return whether a JSON-like value matches a top-level contract type."""
 
@@ -101,6 +112,7 @@ def missing_required_input_keys(
 
 __all__ = [
     "ContractValueViolation",
+    "contract_properties",
     "contract_value_violation",
     "duplicate_required_contract_keys",
     "matches_contract_type",

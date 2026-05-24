@@ -16,6 +16,7 @@ from .catalog import CapabilityCatalog
 from ..demo import run_demo
 from ..features.supervisor.context import request_project_context
 from ..platform.schemas.input_contract import (
+    contract_properties,
     contract_value_violation,
     missing_required_input_keys,
     required_contract_keys,
@@ -280,11 +281,8 @@ def _validate_inputs_against_contract(
 ) -> None:
     if not inputs:
         return
-    input_contract = capability.get("input_contract", {})
-    properties = (
-        input_contract.get("properties", {}) if isinstance(input_contract, Mapping) else {}
-    )
-    if not isinstance(properties, Mapping) or not properties:
+    properties = contract_properties(capability.get("input_contract", {}))
+    if not properties:
         return
     unexpected = unexpected_contract_keys(inputs, properties)
     if unexpected:

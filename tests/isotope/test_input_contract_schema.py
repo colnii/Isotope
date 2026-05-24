@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from isotope.platform.schemas.input_contract import (
+    contract_properties,
     contract_value_violation,
     duplicate_required_contract_keys,
     matches_contract_type,
@@ -72,6 +73,28 @@ def test_contract_value_violation_accepts_values_without_type_or_enum_mismatch()
     assert contract_value_violation("summary", {"type": "string"}) is None
     assert contract_value_violation("anything", {"type": "future-type"}) is None
     assert contract_value_violation("anything", {}) is None
+
+
+def test_contract_properties_returns_property_schemas():
+    properties = contract_properties(
+        {
+            "properties": {
+                "query": {"type": "string"},
+                "mode": {"type": "string", "enum": ["summary"]},
+            }
+        }
+    )
+
+    assert properties == {
+        "query": {"type": "string"},
+        "mode": {"type": "string", "enum": ["summary"]},
+    }
+
+
+def test_contract_properties_returns_empty_for_malformed_contract_shapes():
+    assert contract_properties(None) == {}
+    assert contract_properties({"properties": ["query"]}) == {}
+    assert contract_properties({}) == {}
 
 
 def test_unexpected_contract_keys_reports_inputs_outside_properties():

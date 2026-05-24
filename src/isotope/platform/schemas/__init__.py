@@ -4,6 +4,7 @@ from .actions import ActionExecution, ActionProposal, PolicyDecision
 from .artifacts import Artifact
 from .input_contract import (
     ContractValueViolation,
+    contract_properties,
     contract_value_violation,
     duplicate_required_contract_keys,
     matches_contract_type,
@@ -25,6 +26,7 @@ __all__ = [
     "MemoryRecord",
     "PolicyDecision",
     "ResourceRef",
+    "contract_properties",
     "contract_value_violation",
     "duplicate_required_contract_keys",
     "matches_contract_type",

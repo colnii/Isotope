@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping, Protocol
 
 from ..platform.schemas.input_contract import (
+    contract_properties,
     contract_value_violation,
     duplicate_required_contract_keys,
     missing_required_input_keys,
@@ -257,11 +258,8 @@ def _validate_argument_keys(
     capacity: Mapping[str, Any],
     provider: CapacityCallingProvider,
 ) -> None:
-    input_contract = capacity.get("input_contract", {})
-    properties = (
-        input_contract.get("properties", {}) if isinstance(input_contract, Mapping) else {}
-    )
-    if not isinstance(properties, Mapping) or not properties:
+    properties = contract_properties(capacity.get("input_contract", {}))
+    if not properties:
         return
     unexpected = unexpected_contract_keys(arguments, properties)
     if unexpected:
