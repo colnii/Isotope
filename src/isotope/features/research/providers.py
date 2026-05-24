@@ -68,7 +68,7 @@ class CodexDelegatedResearchProvider:
         clean_query = _require_query(query)
         prompt = build_codex_research_prompt(clean_query)
         raw_output = self.backend(prompt)
-        payload = extract_research_json(raw_output)
+        payload = _normalize_codex_research_payload(extract_research_json(raw_output))
         payload["query"] = clean_query
         payload["provider"] = self.provider_name
         payload.setdefault("provenance", {})
@@ -175,12 +175,59 @@ def build_codex_cli_research_backend(
             try:
                 transcript = json.loads(content)
             except json.JSONDecodeError:
-                return content
+                return extract_codex_agent_message_text(content) or content
             stdout = transcript.get("stdout")
-            return stdout if isinstance(stdout, str) else content
+            if isinstance(stdout, str):
+                return extract_codex_agent_message_text(stdout) or stdout
+            return content
         return result.summary
 
     return run_prompt
+
+
+def _normalize_codex_research_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(payload)
+    if normalized.get("status") in {"complete", "completed", "success"}:
+        normalized["status"] = "ok"
+    if normalized.get("evidence_status") not in {"complete", "partial", "incomplete_evidence"}:
+        normalized["evidence_status"] = "complete" if normalized.get("sources") else "incomplete_evidence"
+    report = normalized.get("report")
+    if isinstance(report, list):
+        claims = [dict(item) for item in report if isinstance(item, dict)]
+        summary = " ".join(
+            str(claim.get("text", "")).strip()
+            for claim in claims[:1]
+            if isinstance(claim.get("text"), str)
+        )
+        normalized["report"] = {
+            "summary": summary,
+            "claims": claims,
+            "limitations": [],
+            "next_queries": [],
+        }
+    return normalized
+
+
+def extract_codex_agent_message_text(stdout: str) -> str | None:
+    if not isinstance(stdout, str):
+        return None
+    latest_text: str | None = None
+    for line in stdout.splitlines():
+        if not line.strip():
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("type") != "item.completed":
+            continue
+        item = event.get("item")
+        if not isinstance(item, dict) or item.get("type") != "agent_message":
+            continue
+        text = item.get("text")
+        if isinstance(text, str) and text.strip():
+            latest_text = text.strip()
+    return latest_text
 
 
 def _require_query(query: str) -> str:
