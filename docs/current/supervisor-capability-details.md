@@ -53,7 +53,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 | tmux 集成层 | tmux 启动、buffer/paste 发送和 bell hook | `bell_events.py`、`flow.py`、`registry.py` | 只控制登记过的 tmux 会话 |
 | 状态判断层 | 工作中、等待用户、疑似停住、疑似报错 | `features/supervisor/flow.py` | 规则提供候选和证据，不替代 LLM 判断 |
 | 状态依据层 | `status_evidence` 说明每个状态标签的来源 | `features/supervisor/flow.py` | 避免只给结论、不说明证据 |
-| 建议执行层 | `recommendation`、`command_suggestions`、`--execute` | `flow.py`、`commands/advice.py`、`commands/llm_action.py`、`commands/llm_execution.py`、`runner.py` | command suggestion（命令建议）、LLM action dispatch（模型动作分发）和 LLM side-effect execution（副作用执行）已拆到命令层；tmux send 执行护栏仍复用 `runner.py` |
+| 建议执行层 | `recommendation`、`command_suggestions`、`--execute` | `flow.py`、`commands/advice.py`、`commands/supervise_execution.py`、`commands/llm_action.py`、`commands/llm_execution.py`、`runner.py` | command suggestion（命令建议）、supervise/loop execution dispatch（执行分发）、LLM action dispatch（模型动作分发）和 LLM side-effect execution（副作用执行）已拆到命令层；tmux send 执行护栏仍复用 `runner.py` |
 | 模型管理层 | `LLM summary`、`LLM planner` 和 TOML 号池 | `llm_summary.py` | 承担判断、调度和动作选择的 AI 路径 |
 | 状态协议层 | `SUPERVISOR_STATUS` 等状态协议 | `flow.py`、`registry.py` | 给被托管 Codex 主动汇报状态 |
 | 状态账本层 | lane state（窗口状态）和限频 | `lane_state.py` | 避免重复催促和刷屏 |

@@ -367,6 +367,9 @@ from .commands.supervise_planning import (
 from .commands.supervise_action import (
     append_supervise_llm_action as _append_supervise_llm_action,
 )
+from .commands.supervise_execution import (
+    append_supervise_execution as _append_supervise_execution,
+)
 from .commands.advice import (
     active_goal_action_command_suggestions as _active_goal_action_command_suggestions,
     advice_payload as _advice_payload,
@@ -1363,81 +1366,22 @@ def _supervise_payload(
         merge_dispatch=merge_dispatch,
         fanout_plan=fanout_plan,
     )
-    if args.llm_execute:
-        if fanout_paused:
-            payload["executed"] = _fanout_paused_executed(fanout_status)
-        elif fanout_plan is not None:
-            payload["executed"] = _execute_fanout_launch_actions(
-                args,
-                fanout_plan,
-                report=action_report,
-                payload=payload,
-            )
-            payload["fanout_log"] = _fanout_log_payload(
-                fanout_plan,
-                goal_replenishment=goal_replenishment,
-                executed=payload["executed"],
-            )
-            if _fanout_execution_launched_workers(payload["executed"]):
-                _refresh_current_batch_after_execution(
-                    args,
-                    payload,
-                    executed=payload["executed"],
-                    active_goals=active_goals,
-                    worker_reviews=worker_reviews,
-                )
-        elif worker_role_guard is not None:
-            payload["executed"] = _recursive_worker_role_guard_executed(
-                worker_role_guard
-            )
-        elif merge_dispatch is not None:
-            if merge_dispatch.get("status") == "worker_already_running":
-                payload["executed"] = _merge_dispatch_already_running_executed(
-                    merge_dispatch
-                )
-            elif not getattr(args, "merge_dispatch_execute", False):
-                payload["executed"] = _merge_dispatch_planned_executed(merge_dispatch)
-            else:
-                payload["executed"] = _mark_merge_dispatch_execution(
-                    _execute_failure_guarded_action(
-                        args,
-                        report=action_report,
-                        payload=payload,
-                        action=merge_dispatch["launch_spec"],
-                        event_type="merge_dispatch_failed",
-                        execute=lambda: _execute_launch_action(
-                            args,
-                            merge_dispatch["launch_spec"],
-                        ),
-                    )
-                )
-            _refresh_current_batch_after_execution(
-                args,
-                payload,
-                executed=payload["executed"],
-                active_goals=active_goals,
-                worker_reviews=worker_reviews,
-            )
-        else:
-            payload["executed"] = _execute_llm_action(args, action_report, payload)
-            _maybe_replan_after_context_request(args, action_report, payload)
-    elif args.auto_execute:
-        auto_action = precomputed_auto_action or _auto_execute_action(
-            action_report,
-            target_name=args.name,
-            codex_home=Path(args.codex_home),
-            prompt_cooldown_seconds=args.prompt_cooldown,
-            max_continue_count=args.max_continue_count,
-            max_run_minutes=args.max_run_minutes,
-        )
-        payload["auto_action"] = auto_action
-        payload["executed"] = precomputed_executed or _execute_auto_action(
-            args,
-            action_report,
-            auto_action,
-        )
-    elif args.execute:
-        payload["executed"] = _execute_advice(args, report, payload)
+    _append_supervise_execution(
+        args,
+        payload,
+        report,
+        action_report=action_report,
+        active_goals=active_goals,
+        goal_replenishment=goal_replenishment,
+        worker_reviews=worker_reviews,
+        fanout_status=fanout_status,
+        fanout_paused=fanout_paused,
+        worker_role_guard=worker_role_guard,
+        merge_dispatch=merge_dispatch,
+        fanout_plan=fanout_plan,
+        precomputed_auto_action=precomputed_auto_action,
+        precomputed_executed=precomputed_executed,
+    )
     _append_supervise_final_payload(args, payload)
     return payload
 

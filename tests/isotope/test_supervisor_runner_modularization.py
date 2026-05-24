@@ -195,6 +195,18 @@ def test_supervisor_runner_delegates_llm_action_execution_helpers():
         assert f"def {function_name}(" not in source
 
 
+def test_supervisor_runner_delegates_supervise_execution_dispatch():
+    execution_module = importlib.import_module(
+        "isotope.features.supervisor.commands.supervise_execution"
+    )
+
+    assert (
+        runner._append_supervise_execution
+        is execution_module.append_supervise_execution
+    )
+    assert "def _append_supervise_execution(" not in inspect.getsource(runner)
+
+
 def test_supervisor_runner_delegates_llm_side_effect_execution_helpers():
     execution_module = importlib.import_module(
         "isotope.features.supervisor.commands.llm_execution"
