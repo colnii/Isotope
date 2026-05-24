@@ -69,6 +69,11 @@ def test_capability_runner_module_exists():
     assert module.__name__ == "isotope.capabilities.runner"
 
 
+def test_runner_rejects_malformed_catalog_dependency():
+    with pytest.raises(ValueError, match="catalog"):
+        _runner_module().CapabilityRunner(catalog=object())
+
+
 def test_runner_list_uses_capability_catalog_as_source_of_truth():
     catalog = CapabilityCatalog(
         capabilities=[

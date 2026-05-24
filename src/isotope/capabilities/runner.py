@@ -48,7 +48,11 @@ _SUMMARY_KEYS = (
 
 class CapabilityRunner:
     def __init__(self, *, catalog: CapabilityCatalog | None = None):
-        self._catalog = catalog or CapabilityCatalog.default()
+        if catalog is None:
+            catalog = CapabilityCatalog.default()
+        if not isinstance(catalog, CapabilityCatalog):
+            raise ValueError("catalog must be a CapabilityCatalog")
+        self._catalog = catalog
 
     def list_capabilities(self, **kwargs: Any) -> list[dict[str, Any]]:
         return self._catalog.list_capabilities(**kwargs)
