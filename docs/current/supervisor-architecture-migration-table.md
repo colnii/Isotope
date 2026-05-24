@@ -63,8 +63,10 @@ Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
 - `llm_summary.py` 的 TOML 号池 adapter 已拆到
   `features/supervisor/llm_pool.py`，并复用 `llm/pool.py` 的通用解析；
   LLM action prompt（动作提示词）的 schema/rules 已拆到
-  `features/supervisor/llm_action_prompt.py`；但模型动作校验、JSON 修复和
-  上下文请求策略 helper 仍留在 `llm_summary.py`，与
+  `features/supervisor/llm_action_prompt.py`；JSON payload 解析、action alias
+  normalize（归一化）和字段校验已拆到
+  `features/supervisor/llm_action_payload.py`；但模型动作校验和上下文请求策略
+  helper 仍留在 `llm_summary.py`，与
   `llm/capacity_calling.py` 和后续 agent loop 主路径重叠。
 - `registry.py` 直接拼 `codex exec`、tmux、日志和托管登记，
   与 `integrations/codex/cli.py`、`integrations/codex/task.py` 的边界重叠。
