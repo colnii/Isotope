@@ -471,6 +471,7 @@ def _no_offered_capacities_plan(
     return {
         "status": "blocked",
         "status_reason": status_reason,
+        "capacity_blocked_reason": status_reason,
         "kind": "supervisor_capacity_plan",
         "goal": goal,
         "selection": None,

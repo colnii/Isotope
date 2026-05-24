@@ -257,6 +257,7 @@ def test_supervisor_capacity_plan_blocks_when_no_capabilities_can_be_offered(tmp
     assert provider.messages == []
     assert result["status"] == "blocked"
     assert result["status_reason"] == "no_offered_capacities"
+    assert result["capacity_blocked_reason"] == "no_offered_capacities"
     assert result["selection"] is None
     assert result["capacity_graph"]["status"] == "blocked"
     assert result["capability_launch_plan"] is None
