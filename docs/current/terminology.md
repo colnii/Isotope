@@ -54,6 +54,9 @@
 | `ResearchReport` | Research 报告模型，记录 query、provider、sources、findings 和 evidence status | 产品功能/外部研究 | `src/isotope/features/research/models.py` |
 | `ResearchProvider` | Research provider contract，封装 fake 或 Codex delegated research backend；Codex backend 会提取 JSONL agent message，error-only JSONL 会归类为 provider failure，不写成功 report | 产品功能/外部研究 | `src/isotope/features/research/providers.py` |
 | `isotope-research` | Research 命令行入口，可运行 delegated research 并返回 artifact refs | 应用入口 | `src/isotope/features/research/runner.py` |
+| `screen_observe` | Screen 观察 tool，通过 policy-gated backend 捕获窗口 metadata/screenshot，并只把低敏 summary/ref 暴露给事件和读模型 | 工具/本机控制 | `src/isotope/execution/screen_backend_adapter.py`, `src/isotope/execution/screen_windows_backend.py` |
+| `screen_control` | Screen 控制 tool，默认 dry-run 生成控制计划，execute 需要显式批准或策略放行 | 工具/本机控制 | `src/isotope/execution/screen_backend_adapter.py`, `src/isotope/policy/__init__.py` |
+| `isotope-screen` | Screen 手动 smoke 命令行入口，用于本机窗口 observe/control 验收，不属于默认 CI | 应用入口/本机控制 | `src/isotope/features/screen/runner.py` |
 | `WorkbenchFlow` | 工作台功能入口，聚合 project/task/file 摘要和可选搜索结果 | 产品功能 | `src/isotope/features/workbench/flow.py` |
 | `WorkbenchView` | 工作台视图，包含摘要列表、搜索结果、空状态、最近更新时间和 counts 数量 | 产品功能 | `src/isotope/features/workbench/flow.py` |
 | `empty_state` | 空状态，工作台没有内容时给用户的下一步提示 | 产品功能 | `src/isotope/features/workbench/flow.py` |
@@ -191,8 +194,8 @@
 | `capacity calling` | 能力调用，让 LLM 在候选能力中选择一个能力并填参数，系统再按护栏执行 | 模型/能力/智能体 | `src/isotope/llm/capacity_calling.py`, `src/isotope/agents/loop/step.py`, `src/isotope/capabilities/runner.py` |
 | `capacity graph` | 能力依赖图，把多个能力调用按依赖关系、阶段和合并门槛组织成可执行计划 | 调度/能力/智能体 | `src/isotope/agents/scheduler/capacity_graph.py`, `src/isotope/agents/scheduler/dependency_graph.py` |
 | `capacity plan` | Supervisor 低风险能力规划入口，默认只生成能力选择、依赖图和 launch plan，显式开关后才走 agent loop 执行 allowlist 能力 | 产品功能/模型/能力 | `src/isotope/features/supervisor/commands/capacity.py`, `isotope-supervisor capacity plan` |
-| `OpenAI-compatible` | 兼容 OpenAI Chat Completions 形状的模型接口 | 模型/外部集成 | `src/isotope/features/supervisor/llm_summary.py` |
-| `LLM pool TOML` | 本机模型号池配置，声明 provider、base URL、model 和 key | 产品功能/模型 | `src/isotope/features/supervisor/llm_summary.py` |
+| `OpenAI-compatible` | 兼容 OpenAI Chat Completions 形状的模型接口 | 模型/外部集成 | `src/isotope/features/supervisor/llm_pool.py`, `src/isotope/llm/provider.py` |
+| `LLM pool TOML` | 本机模型号池配置，声明 provider、base URL、model 和 key | 产品功能/模型 | `src/isotope/features/supervisor/llm_pool.py`, `src/isotope/llm/pool.py` |
 | `git worktree` | Git 工作树，同一仓库的独立开发目录，用于多分支并行；Supervisor 自动 worker 默认放在 `.worktrees/supervisor/...` | 工作区/开发协作 | `src/isotope/features/supervisor/runner.py`, `docs/current/status.md`, `AGENTS.md` |
 | `assistant` | 助手，只作为产品描述或历史术语，不作为新目录叙事 | 产品描述/历史术语 | 已删除旧目录 |
 | `agent loop` | 智能体循环，AI 多步规划、调用工具、读取结果并继续执行 | 应用/智能体 | `src/isotope/agents/loop/step.py`, `docs/features/` |

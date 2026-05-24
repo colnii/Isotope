@@ -189,6 +189,11 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   Codex delegated provider 的 error-only JSONL 会归类成 retryable
   `provider_failed`，不生成成功 artifact。当前是低敏 artifact 入口，
   不是浏览器爬虫或完整 research agent。
+- Screen 功能入口：`src/isotope/features/screen/` 已提供 `isotope-screen`
+  manual smoke runner；底层 `screen_observe` / `screen_control` 作为普通 tool
+  通过 ActionTypeRegistry、PolicyEngine、Executor 和 artifact store。
+  Windows backend 可做 metadata/screenshot observe、dry-run control plan 和
+  显式批准后的本机输入执行；当前不是默认自动 GUI agent。
 - 工作台功能入口：`src/isotope/features/workbench/flow.py` 已提供
   `WorkbenchFlow` 和 `WorkbenchView`，可聚合 projects/tasks/files
   低敏摘要、可选 search 结果、空状态与最近更新时间；

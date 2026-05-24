@@ -46,7 +46,10 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
 9. Agent loop 已有单 tick driver：`run_agent_loop_tick(...)` 会先读取
    tick policy，允许继续时只执行一个已解析的 planner-selected step，再返回
    执行后的 tick policy；它不调用真实 LLM，不自动多轮循环。
-10. 代码结构继续以 `src/isotope/` 为 Python 主包，不新增 `packages/`、
+10. Screen observe/control 已有 policy-gated（策略门控）第一片：
+    `screen_observe` / `screen_control` 走 registry、policy、executor 和 artifact
+    边界，Windows backend 仅用于手动 smoke；当前不是默认自动 GUI agent。
+11. 代码结构继续以 `src/isotope/` 为 Python 主包，不新增 `packages/`、
    `aios` 或 kernel 主叙事。
 
 ## 当前入口
