@@ -230,3 +230,18 @@ def test_windows_backend_reports_not_configured_off_windows(monkeypatch):
     assert result.status == "failed"
     assert result.reason_code == "screen_windows_backend_unavailable"
     assert result.retryable is False
+
+
+def test_windows_backend_reads_powershell_utf8_bom_json(tmp_path):
+    from isotope.execution import screen_windows_backend
+
+    output_path = tmp_path / "result.json"
+    output_path.write_text('{"status":"captured"}', encoding="utf-8-sig")
+
+    assert screen_windows_backend._load_result_payload(output_path) == {"status": "captured"}
+
+
+def test_windows_backend_script_does_not_shadow_reserved_pid_variable():
+    from isotope.execution import screen_windows_backend
+
+    assert "$pid =" not in screen_windows_backend._POWERSHELL_SCRIPT.lower()

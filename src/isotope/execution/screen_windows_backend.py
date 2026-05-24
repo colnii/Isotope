@@ -101,7 +101,7 @@ class WindowsScreenBackend:
                     diagnostic=completed.stdout + completed.stderr,
                 )
             try:
-                raw_result = json.loads(output_path.read_text(encoding="utf-8"))
+                raw_result = _load_result_payload(output_path)
             except Exception as exc:
                 return _failed_result(
                     started_at=started_at,
@@ -111,6 +111,13 @@ class WindowsScreenBackend:
                     diagnostic=f"{exc}\n{completed.stdout}\n{completed.stderr}",
                 )
             return _result_from_payload(raw_result, started_at=started_at)
+
+
+def _load_result_payload(output_path: Path) -> dict[str, Any]:
+    payload = json.loads(output_path.read_text(encoding="utf-8-sig"))
+    if not isinstance(payload, dict):
+        raise ValueError("Windows screen backend output must be a JSON object")
+    return payload
 
 
 def _request_payload(request: ScreenBackendRequest) -> dict[str, Any]:
@@ -238,10 +245,10 @@ _POWERSHELL_SCRIPT = textwrap.dedent(
             [void][NativeScreen]::GetWindowText($hWnd, $builder, $builder.Capacity)
             $title = $builder.ToString()
             if ([string]::IsNullOrWhiteSpace($title)) { return $true }
-            $pid = 0
-            [void][NativeScreen]::GetWindowThreadProcessId($hWnd, [ref]$pid)
+            $processId = 0
+            [void][NativeScreen]::GetWindowThreadProcessId($hWnd, [ref]$processId)
             $processName = ""
-            try { $processName = (Get-Process -Id $pid -ErrorAction Stop).ProcessName + ".exe" } catch {}
+            try { $processName = (Get-Process -Id $processId -ErrorAction Stop).ProcessName + ".exe" } catch {}
             $rect = New-Object NativeScreen+RECT
             [void][NativeScreen]::GetWindowRect($hWnd, [ref]$rect)
             $items.Add([pscustomobject]@{
