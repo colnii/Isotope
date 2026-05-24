@@ -59,6 +59,8 @@
   标题、类型和低敏来源摘要；输出层会按 allowlist 再过滤
   `source_ref`，避免把 prompt/log/key 类字段暴露到页面；web 默认折叠
   通知列表，只显示未读/总数和最近摘要，展开后最多显示最近 50 条。
+- dashboard notification counts 会优先读取 state snapshot totals；snapshot
+  缺字段时回退到通知列表计数，避免局部 schema 缺口把页面数量渲染坏。
 - `dashboard JSON` 和 `/dashboard.json` 会在顶层输出
   `state_snapshot_meta`，只包含 snapshot kind、schema version、schema label
   schema status、schema reason 和来源账本说明，调用方不用展开完整
@@ -74,6 +76,8 @@
   和 notifications；当前先作为 read model（读取模型）存在，不改变既有账本
   写入格式；顶层 `kind=supervisor_state_snapshot` 和 `schema_version=1`
   标记当前 read model contract（读模型契约）。
+- dashboard fallback snapshot 已有测试覆盖，确保 dashboard 在缺少完整
+  state snapshot 时仍能生成受控 fallback payload。
 - `web` 会用“运行焦点”把后台循环、需要看的 Codex 窗口、工作中的
   Codex 窗口、当前目标和前三个重点项放到页面顶部，并优先显示当前
   Web 工作区内的 Codex 窗口，先给运行结论。
@@ -123,6 +127,8 @@
   `input_contract.properties` 校验手动 inputs：拒绝未声明输入键，并检查当前
   支持的 top-level `type` 与 `enum` 约束，避免绕过 `capacity calling`
   直接把未知或形状错误的 runner inputs 传给能力执行层。
+- `CapabilityCatalog` 会拒绝 malformed constructor inputs 和 listing flags，
+  避免调用方用坏类型绕过 shelf/readiness 过滤。
 - `supervisor.request_context` 已注册为可发现 capability：`list/search/describe`
   能看到它，`plan/run --input-json` 会复用现有
   `request_project_context`，保持 workspace read-only、BM25 排序和原有
