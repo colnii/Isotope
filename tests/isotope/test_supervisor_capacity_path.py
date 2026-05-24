@@ -115,8 +115,24 @@ def test_supervisor_capacity_plan_can_execute_low_risk_agent_loop_step(tmp_path)
     assert loop["executed"] is True
     assert loop["tick_policy_before"]["should_continue"] is True
     assert loop["tick_policy_before"]["max_next_tick_kind"] == "planner_step"
-    assert loop["step_result"]["step"] == "call_capability"
-    assert loop["step_result"]["status"] == "completed"
+    assert loop["planner_output_summary"] == {
+        "planner_run_id": "supervisor_capacity:artifact.review",
+        "selected_step": "call_capability",
+        "capability_id": "artifact.review",
+    }
+    assert loop["tick_result"]["tick_status"] == "executed"
+    assert loop["tick_result"]["planner_result"]["planner_status"] == "accepted"
+    assert loop["tick_result"]["planner_result"]["selected_step"] == "call_capability"
+    assert loop["tick_result"]["after_policy"]["tick_budget"] == {
+        "max_ticks": 1,
+        "ticks_used": 1,
+        "remaining_ticks": 0,
+        "budget_exhausted": True,
+        "budget_basis": "supervisor_capacity:artifact.review",
+    }
+    step_result = loop["tick_result"]["planner_result"]["step_result"]
+    assert step_result["step"] == "call_capability"
+    assert step_result["status"] == "completed"
     assert loop["tick_policy_after"]["phase"] == "ready"
     assert loop["tick_policy_after"]["should_continue"] is True
     assert loop["tick_policy_after"]["must_stop_reason"] is None
@@ -126,7 +142,7 @@ def test_supervisor_capacity_plan_can_execute_low_risk_agent_loop_step(tmp_path)
         "post_step_should_continue": True,
         "post_step_stop_reason": None,
     }
-    capability_run = loop["step_result"]["action_result"]["capability_run"]
+    capability_run = step_result["action_result"]["capability_run"]
     assert capability_run["capability_id"] == "artifact.review"
     assert capability_run["status"] == "completed"
 

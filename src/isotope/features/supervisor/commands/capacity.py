@@ -370,24 +370,54 @@ def _execute_agent_loop_capacity_step(
     server = InProcessServer(state_root)
     session = server.create_session()
     run = server.create_run(session["session_id"], goal)
-    tick_policy_before = server.get_agent_loop_tick_policy(run["run_id"])
+    control = server.get_agent_loop_control(run["run_id"])
     step_request = {
         "step": "call_capability",
         "capability_id": capability_id,
         "inputs": copy.deepcopy(dict(inputs)),
     }
-    step_result = server.run_agent_loop_step(run["run_id"], step_request)
+    planner_run_id = f"supervisor_capacity:{capability_id}"
+    planner_output = {
+        "planner_run_id": planner_run_id,
+        "basis": {
+            "run_id": control["run_id"],
+            "last_event_id": control["last_event_id"],
+        },
+        "decision": {
+            "step": "call_capability",
+            "request": step_request,
+        },
+    }
+    tick_result = server.run_agent_loop_tick(
+        run["run_id"],
+        planner_output,
+        tick_budget={
+            "max_ticks": 1,
+            "ticks_used": 0,
+            "budget_basis": planner_run_id,
+        },
+    )
+    step_result = tick_result["planner_result"]["step_result"]
     tick_policy_after = server.get_agent_loop_tick_policy(run["run_id"])
     return {
         "executed": True,
         "state_root": str(state_root),
         "session_id": session["session_id"],
         "run_id": run["run_id"],
-        "tick_policy_before": tick_policy_before,
+        "tick_policy_before": tick_result["before_policy"],
+        "planner_output_summary": {
+            "planner_run_id": planner_run_id,
+            "selected_step": "call_capability",
+            "capability_id": capability_id,
+        },
+        "tick_result": tick_result,
         "step_request": step_request,
         "step_result": step_result,
         "tick_policy_after": tick_policy_after,
-        "handoff": _agent_loop_handoff_summary(tick_policy_before, tick_policy_after),
+        "handoff": _agent_loop_handoff_summary(
+            tick_result["before_policy"],
+            tick_policy_after,
+        ),
     }
 
 

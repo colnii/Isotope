@@ -64,6 +64,10 @@
 - `agent-loop-tick-driver-trace` demo 已补齐人类可读 handoff，展示
   `before_policy -> planner_result -> after_policy`，并覆盖 budget / user pause
   停止时不产生 side effect。
+- Supervisor `call_capacity` handoff 已接入单 tick driver：capacity action 会
+  构造现有 `planner_output`，经 `run_agent_loop_tick(...)` 执行一次
+  `call_capability`，结果里保留 `tick_result` 和低敏
+  `planner_output_summary`。
 
 ## 下一批任务
 
@@ -93,7 +97,21 @@
 - 能给出先合哪一个、怎么验证、哪些测试必须跑。
 - 不和 root runtime 拆分或 flat refactor 混提交。
 
-### 3. Supervisor 大分支暂缓
+### 3. Agent loop 下一小片
+
+目标：
+
+- 在现有 `call_capacity -> run_agent_loop_tick(...)` 基础上补一个 CLI / demo
+  可读 trace，展示 Supervisor action、planner output summary、tick result 和
+  persisted run policy 的关系。
+- 仍不接真实 LLM，不做自动多轮循环。
+
+验收：
+
+- 目标测试覆盖 trace 输出和 no raw payload（不暴露原始内容）边界。
+- 运行 `isotope-supervisor` 相关 smoke 时不要求真实 provider 配置。
+
+### 4. Supervisor 大分支暂缓
 
 目标：
 
@@ -106,7 +124,7 @@
 - 任何大分支 rebase 前先列出同名/同职责现有模块和冲突文件。
 - 不让旧分支回退已经进入 `origin/main` 的 docs、capacity 或 agent-loop 变更。
 
-### 4. 文档维护边界
+### 5. 文档维护边界
 
 规则：
 
@@ -117,20 +135,6 @@
 - `docs/current/` 保持当前入口，不重新塞入长历史流水。
 - 旧文档线默认停止；除非用户明确指定单一类别，不继续移动 track、checkpoint、
   memory、kernel 或 status 文档。
-
-### 5. Agent loop 后续小片
-
-目标：
-
-- 继续完善 agent loop，但下一片仍不要直接接真实 LLM。
-- 优先考虑把一个受控 Supervisor handoff 接到 tick driver，证明真实产品入口能
-  解释 `before_policy -> planner_result -> after_policy`，但仍不启动自动多轮循环。
-
-验收：
-
-- 不新增后台自动循环。
-- 不绕过 planner adapter 的 basis 校验。
-- 不把 raw prompt、model response 或 artifact full content 放入 tick 结果。
 
 ## 验证命令
 

@@ -19,6 +19,9 @@
 - `POST /runs/{run_id}/agent-loop-tick`
 - `python -m isotope.demo --scenario agent-loop-tick-driver-trace --trace`
   展示 `before_policy -> planner_result -> after_policy` 的人类可读 handoff。
+- Supervisor `call_capacity` action 会复用同一个 `planner_output` contract，
+  通过 `run_agent_loop_tick(...)` 执行一次 `call_capability`，并返回
+  `tick_result` 供上层 handoff 查看。
 
 HTTP body 只接受：
 
@@ -49,6 +52,8 @@ HTTP body 只接受：
 - 不自动多轮循环。
 - 不接 scheduler 或 real worker runtime。
 - 不绕过 planner adapter 的 basis 校验和 raw payload 隔离。
+- Supervisor handoff 只允许已由 capacity decision 标记为
+  `can_execute_agent_loop=true` 的 `call_capacity` 进入这一条路径。
 - HTTP 入口仍是 in-process facade，不是 hosted API。
 
 ## 5. 验证
@@ -58,5 +63,6 @@ HTTP body 只接受：
 - `tests/isotope/test_agent_loop_tick_driver_demo_scenario.py`
 - `tests/isotope/test_agent_loop_planner_step_adapter.py`
 - `tests/isotope/test_agent_loop_tick_policy.py`
+- `tests/isotope/test_supervisor_capacity_path.py`
 - `tests/isotope/test_http_api_boundary.py`
 - `tests/isotope/test_http_api_route_inventory.py`
