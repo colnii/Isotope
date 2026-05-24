@@ -14,6 +14,7 @@ import isotope.features.supervisor.lane_state as feature_lane_state
 from isotope.features.supervisor.lane_state import record_lane_failure
 from isotope.features.supervisor.runner import main as supervisor_main
 import isotope.features.supervisor.state.projection as feature_projection
+from isotope.platform.state.active_goal import SupervisorActiveGoal
 from isotope.platform.state.goal_status import SupervisorGoalStatus
 from isotope.platform.state.lane_state import SupervisorLaneState
 from isotope.platform.state.notification_summary import SupervisorNotificationSummary
@@ -45,6 +46,49 @@ def test_supervisor_goal_status_uses_platform_schema():
 
     assert status.to_latest_payload() == {
         "goal_id": "goal-1",
+        "last_status": "blocked",
+        "last_status_at": "2026-05-24T02:02:00+00:00",
+        "last_target_name": "state-projection",
+        "last_session_id": "session-goal",
+        "last_summary": "等待主线重构完成",
+        "last_next": "保持 projection 分支独立",
+    }
+
+
+def test_supervisor_active_goal_uses_platform_schema():
+    assert feature_projection.SupervisorActiveGoal is SupervisorActiveGoal
+
+    goal = SupervisorActiveGoal(
+        goal_id="goal-1",
+        created_at="2026-05-24T02:01:00+00:00",
+        cwd="/repo",
+        goal="继续拆分 Supervisor 状态读取模型",
+        target_name="state-projection",
+        depends_on=("goal-0",),
+        stage="projection",
+        scope="supervisor",
+        merge_gate="manual",
+    )
+    status = SupervisorGoalStatus(
+        goal_id="goal-1",
+        status="blocked",
+        created_at="2026-05-24T02:02:00+00:00",
+        target_name="state-projection",
+        session_id="session-goal",
+        summary="等待主线重构完成",
+        next_step="保持 projection 分支独立",
+    )
+
+    assert goal.to_state_payload(latest_status=status.to_latest_payload()) == {
+        "goal_id": "goal-1",
+        "created_at": "2026-05-24T02:01:00+00:00",
+        "cwd": "/repo",
+        "goal": "继续拆分 Supervisor 状态读取模型",
+        "target_name": "state-projection",
+        "depends_on": ["goal-0"],
+        "stage": "projection",
+        "scope": "supervisor",
+        "merge_gate": "manual",
         "last_status": "blocked",
         "last_status_at": "2026-05-24T02:02:00+00:00",
         "last_target_name": "state-projection",

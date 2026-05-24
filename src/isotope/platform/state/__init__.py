@@ -1,5 +1,6 @@
 """Event-sourced run state, replay, and checkpoint storage."""
 
+from .active_goal import SupervisorActiveGoal
 from .checkpoint_store import FileCheckpointStore
 from .decision_ledger import DecisionRequest, DecisionRequestLedger
 from .event_store import FileEventStore
@@ -28,6 +29,7 @@ __all__ = [
     "DecisionRequest",
     "DecisionRequestLedger",
     "FailureLedger",
+    "SupervisorActiveGoal",
     "GOAL_STATUS_VALUES",
     "SupervisorGoalStatus",
     "SupervisorLaneState",

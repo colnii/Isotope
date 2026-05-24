@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from isotope.features.notifications.flow import NotificationFlow, NotificationSummary
+from isotope.platform.state.active_goal import SupervisorActiveGoal
 from isotope.platform.state.notification_summary import SupervisorNotificationSummary
 from isotope.platform.state.supervisor_snapshot import SupervisorStateSnapshot
 from isotope.platform.state.worker_event_channel import list_worker_events
@@ -87,20 +88,9 @@ def _active_goal_payload(
     *,
     latest_status: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "goal_id": goal.goal_id,
-        "created_at": goal.created_at,
-        "cwd": goal.cwd,
-        "goal": goal.goal,
-        "target_name": goal.target_name,
-        "depends_on": list(goal.depends_on),
-        "stage": goal.stage,
-        "scope": goal.scope,
-        "merge_gate": goal.merge_gate,
-    }
-    if latest_status:
-        payload.update(dict(latest_status))
-    return payload
+    return SupervisorActiveGoal.from_scheduler_goal(goal).to_state_payload(
+        latest_status=latest_status
+    )
 
 
 def _goal_status_count(goals: list[dict[str, Any]], status: str) -> int:
