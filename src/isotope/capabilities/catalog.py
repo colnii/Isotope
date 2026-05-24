@@ -72,6 +72,10 @@ class Capability:
             raise ValueError("default_enabled must be bool")
         if not isinstance(self.network_required, bool):
             raise ValueError("network_required must be bool")
+        for field_name in ("provider", "model"):
+            value = getattr(self, field_name)
+            if value is not None and (not isinstance(value, str) or not value):
+                raise ValueError(f"{field_name} must be a non-empty string or None")
         if not isinstance(self.input_contract, Mapping):
             raise ValueError("input_contract must be a mapping")
         if not isinstance(self.output_contract, Mapping):

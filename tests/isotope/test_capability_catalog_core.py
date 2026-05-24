@@ -152,6 +152,22 @@ def test_capability_rejects_unknown_shelf():
         _valid_capability(shelf="private_experiment")
 
 
+@pytest.mark.parametrize(
+    ("field_name", "bad_value"),
+    [
+        ("provider", ""),
+        ("provider", 5),
+        ("model", ""),
+        ("model", 5),
+    ],
+)
+def test_capability_rejects_malformed_optional_provider_metadata(
+    field_name, bad_value
+):
+    with pytest.raises(ValueError, match=field_name):
+        _valid_capability(**{field_name: bad_value})
+
+
 def test_manifest_returns_json_compatible_metadata_and_readiness_only():
     catalog = _catalog_class()(
         capabilities=[
