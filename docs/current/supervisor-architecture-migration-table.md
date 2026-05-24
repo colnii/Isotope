@@ -81,6 +81,9 @@ Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
   merge dispatch 和 recursive worker guard）已收口到
   `commands/supervise_planning.py`，底层仍复用 dashboard/fanout/merge_dispatch
   既有 helper，不重写调度和合并规则。
+- LLM execute 后刷新 `current_batch` 的重复 payload 更新已收口到
+  `commands/supervise_payload.py`，`runner.py` 只在 fanout/merge dispatch
+  分支中调用该 helper。
 
 ### 最高杠杆的后续任务
 

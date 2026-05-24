@@ -98,3 +98,28 @@ def build_supervise_base_payload(
         explicit_goal=explicit_goal,
         goal_replenishment=goal_replenishment,
     )
+
+
+def refresh_current_batch_after_execution(
+    args: Any,
+    payload: dict[str, Any],
+    *,
+    executed: dict[str, Any],
+    active_goals: list[dict[str, Any]],
+    worker_reviews: dict[str, Any] | None,
+    api: Any | None = None,
+) -> bool:
+    if api is None:
+        from isotope.features.supervisor import runner as api
+
+    if not api._executed_action_forces_print(executed):
+        return False
+    default_limit = getattr(api, "DEFAULT_FANOUT_LIMIT", None)
+    refreshed_report = api._scan_report(args)
+    payload["current_batch"] = api._current_batch_payload(
+        refreshed_report,
+        active_goals=active_goals,
+        worker_reviews=worker_reviews,
+        dependency_limit=getattr(args, "max_fanout_launches", default_limit),
+    )
+    return True

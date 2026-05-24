@@ -356,6 +356,7 @@ from .commands.workspace_scope import (
 )
 from .commands.supervise_payload import (
     build_supervise_base_payload as _build_supervise_base_payload,
+    refresh_current_batch_after_execution as _refresh_current_batch_after_execution,
 )
 from .commands.supervise_planning import (
     append_supervise_planning_payload as _append_supervise_planning_payload,
@@ -1368,14 +1369,12 @@ def _supervise_payload(
                 executed=payload["executed"],
             )
             if _fanout_execution_launched_workers(payload["executed"]):
-                refreshed_report = _scan_report(args)
-                payload["current_batch"] = _current_batch_payload(
-                    refreshed_report,
+                _refresh_current_batch_after_execution(
+                    args,
+                    payload,
+                    executed=payload["executed"],
                     active_goals=active_goals,
                     worker_reviews=worker_reviews,
-                    dependency_limit=getattr(
-                        args, "max_fanout_launches", DEFAULT_FANOUT_LIMIT
-                    ),
                 )
         elif worker_role_guard is not None:
             payload["executed"] = _recursive_worker_role_guard_executed(
@@ -1402,16 +1401,13 @@ def _supervise_payload(
                         ),
                     )
                 )
-            if _executed_action_forces_print(payload["executed"]):
-                refreshed_report = _scan_report(args)
-                payload["current_batch"] = _current_batch_payload(
-                    refreshed_report,
-                    active_goals=active_goals,
-                    worker_reviews=worker_reviews,
-                    dependency_limit=getattr(
-                        args, "max_fanout_launches", DEFAULT_FANOUT_LIMIT
-                    ),
-                )
+            _refresh_current_batch_after_execution(
+                args,
+                payload,
+                executed=payload["executed"],
+                active_goals=active_goals,
+                worker_reviews=worker_reviews,
+            )
         else:
             payload["executed"] = _execute_llm_action(args, action_report, payload)
             _maybe_replan_after_context_request(args, action_report, payload)

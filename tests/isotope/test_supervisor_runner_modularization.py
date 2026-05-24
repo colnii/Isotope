@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import importlib
 import inspect
 
@@ -816,9 +817,14 @@ def test_supervisor_runner_delegates_supervise_payload_base_builder():
         runner._build_supervise_base_payload
         is payload_module.build_supervise_base_payload
     )
+    assert (
+        runner._refresh_current_batch_after_execution
+        is payload_module.refresh_current_batch_after_execution
+    )
 
     source = inspect.getsource(runner)
     assert "def _build_supervise_base_payload(" not in source
+    assert "def _refresh_current_batch_after_execution(" not in source
 
 
 def test_supervisor_runner_delegates_supervise_planning_payload_builder():
@@ -833,3 +839,86 @@ def test_supervisor_runner_delegates_supervise_planning_payload_builder():
 
     source = inspect.getsource(runner)
     assert "def _append_supervise_planning_payload(" not in source
+
+
+def test_supervise_payload_refreshes_current_batch_only_when_execution_requires_print():
+    payload_module = importlib.import_module(
+        "isotope.features.supervisor.commands.supervise_payload"
+    )
+    calls: list[tuple[str, object]] = []
+
+    class FakeApi:
+        def _executed_action_forces_print(self, executed):
+            calls.append(("force", executed))
+            return executed.get("force_print") is True
+
+        def _scan_report(self, args):
+            calls.append(("scan", args))
+            return "refreshed-report"
+
+        def _current_batch_payload(
+            self,
+            report,
+            *,
+            active_goals,
+            worker_reviews,
+            dependency_limit,
+        ):
+            calls.append(
+                (
+                    "current_batch",
+                    {
+                        "report": report,
+                        "active_goals": active_goals,
+                        "worker_reviews": worker_reviews,
+                        "dependency_limit": dependency_limit,
+                    },
+                )
+            )
+            return {"target_names": ["new-worker"]}
+
+    args = argparse.Namespace(max_fanout_launches=3)
+    payload = {"current_batch": {"target_names": ["old-worker"]}}
+    active_goals = [{"goal_id": "goal-1"}]
+    worker_reviews = {"workers": []}
+    api = FakeApi()
+
+    assert (
+        payload_module.refresh_current_batch_after_execution(
+            args,
+            payload,
+            executed={"kind": "monitor"},
+            active_goals=active_goals,
+            worker_reviews=worker_reviews,
+            api=api,
+        )
+        is False
+    )
+    assert payload["current_batch"] == {"target_names": ["old-worker"]}
+    assert calls == [("force", {"kind": "monitor"})]
+
+    assert (
+        payload_module.refresh_current_batch_after_execution(
+            args,
+            payload,
+            executed={"kind": "launch_session", "force_print": True},
+            active_goals=active_goals,
+            worker_reviews=worker_reviews,
+            api=api,
+        )
+        is True
+    )
+    assert payload["current_batch"] == {"target_names": ["new-worker"]}
+    assert calls[-3:] == [
+        ("force", {"kind": "launch_session", "force_print": True}),
+        ("scan", args),
+        (
+            "current_batch",
+            {
+                "report": "refreshed-report",
+                "active_goals": active_goals,
+                "worker_reviews": worker_reviews,
+                "dependency_limit": 3,
+            },
+        ),
+    ]
