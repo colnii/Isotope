@@ -171,9 +171,11 @@ def build_dashboard_web_payload(
     *,
     codex_home: Path,
     workspace_cwd: Path,
+    state_snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the `/dashboard.json` payload used by the local web page."""
-    state_snapshot = build_supervisor_state_snapshot(codex_home=codex_home)
+    if state_snapshot is None:
+        state_snapshot = build_supervisor_state_snapshot(codex_home=codex_home)
     payload = _dashboard_payload(
         report,
         active_goals=state_snapshot["active_goals"],

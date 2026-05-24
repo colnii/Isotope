@@ -2885,6 +2885,55 @@ def test_codex_supervisor_web_dashboard_payload_builder_keeps_page_fields(tmp_pa
     }
 
 
+def test_codex_supervisor_web_dashboard_payload_builder_keeps_degraded_snapshot_meta(
+    tmp_path,
+):
+    from isotope.features.supervisor.web import build_dashboard_web_payload
+
+    codex_home = tmp_path / ".codex"
+    report = CodexSupervisorReport(generated_at=NOW.isoformat(), sessions=())
+    legacy_snapshot = {
+        "status": "ok",
+        "summary": {
+            "active_goals": 0,
+            "goals_done": 0,
+            "goals_blocked": 0,
+            "goals_needs_user": 0,
+            "active_decisions": 0,
+            "failed_lanes": 0,
+            "worker_events": 0,
+            "notifications": 0,
+            "unread_notifications": 0,
+        },
+        "active_goals": [],
+        "active_decisions": [],
+        "failed_lanes": [],
+        "recent_worker_events": [],
+        "notifications": {"total": 0, "unread": 0, "recent": []},
+    }
+
+    payload = build_dashboard_web_payload(
+        report,
+        codex_home=codex_home,
+        workspace_cwd=Path("/tmp/isotope-workspace"),
+        state_snapshot=legacy_snapshot,
+    )
+
+    assert payload["state_snapshot"] == legacy_snapshot
+    assert payload["state_snapshot_meta"] == {
+        "kind": None,
+        "schema_version": None,
+        "schema_label": "degraded snapshot schema",
+        "schema_status": "degraded",
+        "schema_reason": "missing kind",
+        "source_label": (
+            "goal queue / decision requests / lane state / "
+            "worker events / notifications"
+        ),
+    }
+    assert payload["workspace_cwd"] == "/tmp/isotope-workspace"
+
+
 def test_codex_supervisor_web_can_control_daemon_and_watcher(tmp_path, monkeypatch):
     from isotope.features.supervisor import web
 
