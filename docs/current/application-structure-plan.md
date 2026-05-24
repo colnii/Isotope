@@ -220,7 +220,10 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 - LLM 层：模型 provider 和 tool bridge 已迁入 `src/isotope/llm/`；
   `src/isotope/integrations/llm/` 和顶层旧路径已删除。
 - Codex 集成：`codex_task.py`、`codex_cli.py`、`codex_server.py`、`codex_live_smoke.py` 已迁入 `src/isotope/integrations/`，旧根路径已删除。
-- 状态恢复：`checkpoint_store.py`、`event_store.py`、`projector.py` 已迁入 `src/isotope/platform/state/`。
+- 状态恢复：`checkpoint_store.py`、`event_store.py`、`projector.py`
+  已迁入 `src/isotope/platform/state/`；checkpoint-assisted rebuild 的
+  validation chain 已从 `projector_checkpoint.py` 拆到
+  `projector_checkpoint_validation.py`。
 - 运行入口：活跃实现已迁入 `src/isotope/runtime/in_process.py`；
   `src/isotope/runtime/server.py` 旧代理已删除；workspace lease、workspace
   artifact capture 和 worker handoff helper 已从 `in_process_workspace.py`
