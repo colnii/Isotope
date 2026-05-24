@@ -74,6 +74,9 @@ Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
   `capacity_call_specs` 生产 glue 已抽到 `commands/capacity.py`；`call_capacity`
   仍经 LLM action 分发，后续应继续评估是否下沉到 scheduler adapter 或
   agent loop planner，避免继续扩写私有动作体系。
+- `loop/supervise` 传给 LLM planner 的上下文 payload（最近 context、拍板答案、
+  capacity decision、worker review 和 delete-worktree 候选）已收口到
+  `commands/llm_context.py`，`runner.py` 仍负责主循环编排和调用时机。
 
 ### 最高杠杆的后续任务
 

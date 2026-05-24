@@ -201,6 +201,7 @@ from .commands.llm_action import (
     failure_question as _failure_question,
     resume_action_outside_active_goals as _resume_action_outside_active_goals,
 )
+from .commands.llm_context import planner_context_payload as _planner_context_payload
 from .commands.llm_execution import (
     context_from_capability_result as _context_from_capability_result,
     cwd_is_existing_dir as _cwd_is_existing_dir,
@@ -1297,28 +1298,15 @@ def _supervise_payload(
     goal_replenishment = base.goal_replenishment
     worker_reviews: dict[str, Any] | None = None
     if args.llm_action or args.llm_execute:
-        payload["recent_context_results"] = _recent_context_results(args, action_report)
-        payload["recent_decision_answers"] = _decision_answer_dicts(args)
-        capacity_decision_payload = _loop_capacity_decision_payload(
+        llm_context = _planner_context_payload(
             args,
+            report,
+            action_report=action_report,
             active_goals=active_goals,
             explicit_goal=explicit_goal,
         )
-        if capacity_decision_payload is not None:
-            payload["capacity_decisions"] = capacity_decision_payload[
-                "capacity_decisions"
-            ]
-            payload["capacity_call_specs"] = capacity_decision_payload[
-                "capacity_call_specs"
-            ]
-            payload["capacity_decision_status"] = {
-                key: value
-                for key, value in capacity_decision_payload.items()
-                if key not in {"capacity_decisions", "capacity_call_specs"}
-            }
-        worker_reviews = _worker_review_context(args)
-        payload["worker_reviews"] = worker_reviews
-        payload["delete_worktree_candidates"] = _delete_worktree_candidate_payloads(args)
+        payload.update(llm_context)
+        worker_reviews = llm_context["worker_reviews"]
     payload["current_batch"] = _current_batch_payload(
         report,
         active_goals=active_goals,
