@@ -113,6 +113,10 @@ def build_supervisor_capacity_plan(
         return {
             "status": "needs_input",
             "status_reason": "needs_input",
+            "capacity_blocked_reason": _capacity_blocked_reason(
+                status_reason="needs_input",
+                launch_plan=None,
+            ),
             "kind": "supervisor_capacity_plan",
             "goal": goal,
             "selection": selection_payload,
@@ -149,7 +153,7 @@ def build_supervisor_capacity_plan(
     status_reason = (
         "ready" if launch_plan.get("can_launch") is True else "not_launchable"
     )
-    return {
+    payload = {
         "status": "ok" if launch_plan.get("can_launch") is True else "blocked",
         "status_reason": status_reason,
         "kind": "supervisor_capacity_plan",
@@ -165,6 +169,13 @@ def build_supervisor_capacity_plan(
         ),
         "safety": _capacity_plan_safety(execute_agent_loop=execute_agent_loop),
     }
+    blocked_reason = _capacity_blocked_reason(
+        status_reason=status_reason,
+        launch_plan=launch_plan,
+    )
+    if blocked_reason is not None:
+        payload["capacity_blocked_reason"] = blocked_reason
+    return payload
 
 
 def handle_capacity_command(
@@ -461,6 +472,25 @@ def _capacity_decision_next_action(status_reason: str) -> str:
     if status_reason in {"not_launchable", "no_offered_capacities"}:
         return "blocked"
     return "wait"
+
+
+def _capacity_blocked_reason(
+    *,
+    status_reason: str,
+    launch_plan: Mapping[str, Any] | None,
+) -> str | None:
+    if status_reason == "ready":
+        return None
+    if status_reason == "needs_input":
+        return "missing_inputs"
+    if status_reason == "no_offered_capacities":
+        return "no_offered_capacities"
+    if status_reason == "not_launchable":
+        blocking_reasons = _string_list(
+            launch_plan.get("blocking_reasons") if launch_plan is not None else None
+        )
+        return blocking_reasons[0] if blocking_reasons else "not_launchable"
+    return status_reason
 
 
 def _capacity_manifests_from_runner(
