@@ -381,6 +381,11 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   和 `loop` 共同使用的 advice payload、automation status 和
   command suggestion 生成；实际发送、预算、cooldown（冷却时间）和托管
   发送护栏已拆到 `features/supervisor/commands/advice_execution.py`。
+- `features/supervisor/commands/plain_rendering.py`：已承接 `advise` 和
+  `supervise` 的 plain rendering（终端文本渲染），包括 LLM action、
+  follow-up action、auto action、fanout execution、ask-user 和旧 command
+  suggestion 的人类可读输出；payload 构造和执行仍通过 runner 兼容 alias
+  复用既有 helper。
 - `features/supervisor/commands/loop_state.py`：已承接 loop target/scope/
   actionability（目标、作用域、可行动性）判断，包括 idle loop reason、
   target session 查找、managed scope 检查、workspace action gate 和
@@ -466,8 +471,7 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
    已下沉，notification index 写入仍留在 feature flow。
 2. 用真实 daemon 长跑验证 cleanup/current dashboard 在多批任务中的稳定性。
 3. 后续再决定是否把通知接到更多 worker 生命周期事件。
-4. 再拆分 `_decide_action_with_llm` 的 provider/failure glue 或 supervise plain
-   rendering。
+4. 再拆分 `_decide_action_with_llm` 的 provider/failure glue。
 
 ## 登记规则
 

@@ -244,6 +244,30 @@ def test_supervisor_runner_delegates_failure_guard_helpers():
         assert f"def {function_name}(" not in source
 
 
+def test_supervisor_runner_delegates_plain_rendering_helpers():
+    plain_module = importlib.import_module(
+        "isotope.features.supervisor.commands.plain_rendering"
+    )
+
+    assert runner._print_supervise_plain is plain_module.print_supervise_plain
+    assert runner._print_advice is plain_module.print_advice
+    assert runner._print_executed_plain is plain_module.print_executed_plain
+    assert runner._llm_action_activity_kind is plain_module.llm_action_activity_kind
+    assert runner._executed_activity_detail is plain_module.executed_activity_detail
+    assert runner._print_ask_user_action_plain is plain_module.print_ask_user_action_plain
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_print_supervise_plain",
+        "_print_advice",
+        "_print_executed_plain",
+        "_llm_action_activity_kind",
+        "_executed_activity_detail",
+        "_print_ask_user_action_plain",
+    ):
+        assert f"def {function_name}(" not in source
+
+
 def test_supervisor_runner_delegates_llm_side_effect_execution_helpers():
     execution_module = importlib.import_module(
         "isotope.features.supervisor.commands.llm_execution"
