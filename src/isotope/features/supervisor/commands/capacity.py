@@ -625,12 +625,12 @@ def _print_capacity_blockers(
     selection: Any,
     launch_plan: Any,
 ) -> None:
-    if payload.get("status_reason") == "no_offered_capacities":
-        print("capacity_blocked_reason: no_offered_capacities")
+    blocked_reason = payload.get("capacity_blocked_reason")
+    if isinstance(blocked_reason, str) and blocked_reason:
+        print(f"capacity_blocked_reason: {blocked_reason}")
     if payload.get("status_reason") == "needs_input" and isinstance(selection, Mapping):
         missing_inputs = selection.get("missing_inputs")
         if isinstance(missing_inputs, list) and missing_inputs:
-            print("capacity_blocked_reason: missing_inputs")
             print(f"capacity_missing_inputs: {_comma_join_strings(missing_inputs)}")
     if payload.get("status_reason") == "not_launchable" and isinstance(launch_plan, Mapping):
         blocking_reasons = launch_plan.get("blocking_reasons")

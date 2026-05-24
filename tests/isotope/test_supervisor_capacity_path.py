@@ -791,6 +791,7 @@ def test_supervisor_capacity_plain_output_explains_not_launchable(tmp_path, caps
     assert "capacity_id: context.search" in output
     assert "selection_status: ready_to_call" in output
     assert "status_reason: not_launchable" in output
+    assert "capacity_blocked_reason: not_allowlisted" in output
     assert "launch_status: not_allowlisted" in output
     assert "launch_blocking_reasons: not_allowlisted" in output
     assert "agent_loop_executed: False" in output
