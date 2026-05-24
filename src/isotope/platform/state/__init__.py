@@ -25,6 +25,11 @@ from .worker_event_channel import (
     publish_worker_event,
     render_worker_event_channel_plain,
 )
+from .worker_event_summary import (
+    SupervisorWorkerEventSummary,
+    WORKER_EVENT_PAYLOAD_KEYS,
+    filter_worker_event_payload,
+)
 
 __all__ = [
     "DecisionRequest",
@@ -50,7 +55,10 @@ __all__ = [
     "DEFAULT_CHANNEL",
     "WORKER_EVENT_KIND",
     "WorkerEvent",
+    "SupervisorWorkerEventSummary",
+    "WORKER_EVENT_PAYLOAD_KEYS",
     "filter_notification_source_ref",
+    "filter_worker_event_payload",
     "list_worker_events",
     "publish_worker_event",
     "render_worker_event_channel_plain",

@@ -21,6 +21,7 @@ from isotope.platform.state.goal_status import SupervisorGoalStatus
 from isotope.platform.state.lane_state import SupervisorLaneState
 from isotope.platform.state.notification_summary import SupervisorNotificationSummary
 from isotope.platform.state.supervisor_snapshot import SupervisorStateSnapshot
+from isotope.platform.state.worker_event_summary import SupervisorWorkerEventSummary
 from isotope.features.supervisor.state.projection import build_supervisor_state_snapshot
 from isotope.memory.worker_event_channel import publish_worker_event
 
@@ -190,6 +191,43 @@ def test_supervisor_notification_summary_uses_platform_schema():
     }
 
 
+def test_supervisor_worker_event_summary_uses_platform_schema():
+    assert feature_projection.SupervisorWorkerEventSummary is SupervisorWorkerEventSummary
+
+    summary = SupervisorWorkerEventSummary.from_payload(
+        {
+            "record_id": "mem-event-1",
+            "channel": "handoff",
+            "event_type": "handoff",
+            "from_worker": "worker-a",
+            "to_worker": "worker-b",
+            "message": "Ready for review.",
+            "payload": {
+                "branch": "feature/a",
+                "raw_prompt": "RAW_PROMPT_SHOULD_NOT_LEAK",
+                "api_key": "sk-test-secret",
+                "nested": {"branch": "nested"},
+            },
+            "created_at": "2026-05-24T01:05:00Z",
+            "summary": "worker-a -> worker-b / handoff / Ready for review.",
+            "quality": "worker_event",
+        }
+    )
+
+    assert summary.to_state_payload() == {
+        "record_id": "mem-event-1",
+        "channel": "handoff",
+        "event_type": "handoff",
+        "from_worker": "worker-a",
+        "to_worker": "worker-b",
+        "message": "Ready for review.",
+        "payload": {"branch": "feature/a"},
+        "created_at": "2026-05-24T01:05:00Z",
+        "summary": "worker-a -> worker-b / handoff / Ready for review.",
+        "quality": "worker_event",
+    }
+
+
 def test_supervisor_state_snapshot_empty_root_is_read_only(tmp_path):
     snapshot = build_supervisor_state_snapshot(codex_home=tmp_path)
 
@@ -247,7 +285,11 @@ def test_supervisor_state_snapshot_projects_existing_low_sensitive_state(tmp_pat
         to_worker="worker-b",
         event_type="handoff",
         message="Ready for review.",
-        payload={"branch": "feature/a"},
+        payload={
+            "branch": "feature/a",
+            "raw_prompt": "RAW_PROMPT_SHOULD_NOT_LEAK",
+            "api_key": "sk-test-secret",
+        },
     )
     NotificationFlow(
         tmp_path,

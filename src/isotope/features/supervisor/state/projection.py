@@ -11,6 +11,7 @@ from isotope.platform.state.decision_request import SupervisorDecisionRequest
 from isotope.platform.state.notification_summary import SupervisorNotificationSummary
 from isotope.platform.state.supervisor_snapshot import SupervisorStateSnapshot
 from isotope.platform.state.worker_event_channel import list_worker_events
+from isotope.platform.state.worker_event_summary import SupervisorWorkerEventSummary
 
 from ..decision_requests import read_active_decision_requests
 from ..goal_queue import (
@@ -71,7 +72,9 @@ def build_supervisor_state_snapshot(
         active_goals=active_goals,
         active_decisions=active_decisions,
         failed_lanes=failed_lanes,
-        recent_worker_events=list(worker_events.get("events") or []),
+        recent_worker_events=[
+            _worker_event_payload(item) for item in worker_events.get("events") or []
+        ],
         notifications=notifications,
     ).to_dict()
 
@@ -114,6 +117,10 @@ def _failed_lane_payloads(codex_home: Path) -> list[dict[str, Any]]:
 
 def _failed_lane_payload(state: LaneState) -> dict[str, Any]:
     return state.to_failed_lane_payload()
+
+
+def _worker_event_payload(event: dict[str, Any]) -> dict[str, Any]:
+    return SupervisorWorkerEventSummary.from_payload(event).to_state_payload()
 
 
 def _notification_payload(codex_home: Path, *, limit: int) -> dict[str, Any]:

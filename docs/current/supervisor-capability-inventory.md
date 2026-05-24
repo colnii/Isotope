@@ -73,7 +73,8 @@
   degraded snapshot 后显示原因，方便只看终端输出时定位缺少的 schema 字段。
 - `build_supervisor_state_snapshot(...)` 已提供只读低敏状态投影，统一读取
   active goals、goal status、decision requests、lane failure、worker events
-  和 notifications；当前先作为 read model（读取模型）存在，不改变既有账本
+  和 notifications；worker event payload 通过 `SupervisorWorkerEventSummary`
+  过滤成低敏 summary；当前先作为 read model（读取模型）存在，不改变既有账本
   写入格式；顶层 `kind=supervisor_state_snapshot` 和 `schema_version=1`
   标记当前 read model contract（读模型契约）。
 - dashboard fallback snapshot 已有测试覆盖，确保 dashboard 在缺少完整

@@ -42,7 +42,8 @@
   active goal payload 必须复用 `SupervisorActiveGoal` schema；active goal
   的最近状态 payload 必须复用 `SupervisorGoalStatus` schema；active decision
   payload 必须复用 `SupervisorDecisionRequest` schema；failed lane payload
-  必须复用 `SupervisorLaneState` schema；notification summary payload 必须复用
+  必须复用 `SupervisorLaneState` schema；recent worker event payload 必须复用
+  `SupervisorWorkerEventSummary` schema；notification summary payload 必须复用
   `SupervisorNotificationSummary` schema。
 - 能用 capability runner（能力运行器）的，只加 catalog/plan/run 包装，不开新执行面。
 - 能用 `commands/` 内已拆 handler 的，不把新命令继续塞回 runner。
