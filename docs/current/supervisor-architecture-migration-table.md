@@ -39,6 +39,24 @@ Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
 | Supervisor 对 `platform/` 复用不足 | 已有 decision/failure ledger 进入 `platform/state/`；`features/supervisor/state/projection.py` 已提供第一片只读状态投影，聚合 active goals、decision、lane failure、worker event 和 notification；snapshot、goal status、lane state、worker event summary 和 notification summary schema 已下沉；dashboard/web/daemon 已读取该模型，loop payload 已带只读 snapshot；但大量 worker 状态、失败策略和控制面仍留在 feature 私有实现 | 只把跨 agent 的状态事实、账本接口和 schema 下沉到 `platform/`；产品视图先通过 read model（读取模型）收敛 | 下一步评估哪些状态事实应下沉到 `platform/state` |
 | 新功能容易绕过既有调度模块 | `agents/scheduler/` 已有 goal queue、fanout、dependency graph、dependency batches 和 capacity graph | Supervisor fanout、batch、capacity 相关逻辑默认复用 scheduler 层 | worker 工单必须列出将复用的 scheduler API；不能在 `runner.py` 中再写一套 DAG 或批次判断 |
 
+`runner.py` 文件大小分阶段验收：
+
+- 阶段 1 止血：`runner.py` 降到 800-1000 行；已迁出
+  `constants.py`、`compat_api.py`、`web_runner.py`、
+  `supervise/fingerprint.py` 和 `supervise/goal_lifecycle.py`。
+- 阶段 2 健康：`runner.py` 降到 400-600 行；下一步迁出
+  `supervise/loop.py`、`supervise/payload.py` 和
+  `commands/dispatch.py` 的大部分命令分发。
+- 阶段 3 理想：`runner.py` 降到 250-400 行，只保留 `main`、
+  parser 调用、顶层 dispatch、少量异常处理和兼容 re-export。
+
+全局文件大小债务：阶段 1 完成后仍有若干手写 Python 文件超过 600 行，
+包括 `commands/parser.py`、`llm_summary.py`、`flow.py`、`commands/dashboard.py`、
+`context.py`、`commands/promotion.py`、`integration_review.py`、`web.py`、
+`commands/daemon_command.py`、`commands/llm_execution.py`、`worker_review.py`
+和 `registry.py`。后续拆分时普通功能模块目标不超过 350 行，复杂
+orchestration 模块目标不超过 450 行。
+
 ## 2026-05-22 能力盘点与架构对齐审计
 
 本次审计结论：Supervisor 不是缺少底座，而是主路径还没有统一收口。

@@ -183,6 +183,15 @@ merge worker 成功合入后的交接边界也要分清：
 `runner.py` 当前仍是 Supervisor CLI 入口和受控动作编排层，
 不应被扩成新的目标队列、worker registry、LLM provider 或真实代码合并器。
 
+当前 runner 拆分边界：兼容 re-export 集中在
+`features/supervisor/compat_api.py`；默认 prompt、profile 和 marker 常量在
+`features/supervisor/constants.py`；Web 命令入口在
+`features/supervisor/web_runner.py`；loop/report 指纹在
+`features/supervisor/supervise/fingerprint.py`；goal 状态同步在
+`features/supervisor/supervise/goal_lifecycle.py`。后续继续优先迁出
+`supervise/loop.py`、`supervise/payload.py` 和 `commands/dispatch.py`，
+让 `runner.py` 只保留入口与路由。
+
 ### 现有输入与归属
 
 | 接线点 | 当前归属 | 后续接入边界 |

@@ -1195,3 +1195,46 @@ def test_failure_guard_records_failure_with_lane_and_goal(tmp_path):
     assert event["goal_id"] == "goal-123"
     assert event["error_summary"] == "LLM action must be a JSON object"
     assert event["retry_count"] == 1
+
+
+def test_supervisor_runner_uses_compat_api_for_legacy_helpers():
+    compat_module = importlib.import_module("isotope.features.supervisor.compat_api")
+
+    assert runner._handle_dashboard_command is compat_module._handle_dashboard_command
+    assert runner._execute_llm_action is compat_module._execute_llm_action
+    assert runner._decide_action_with_llm is compat_module._decide_action_with_llm
+
+    source = inspect.getsource(runner)
+    assert "from .commands." not in source
+
+
+def test_supervisor_runner_delegates_web_and_fingerprint_helpers():
+    fingerprint_module = importlib.import_module(
+        "isotope.features.supervisor.supervise.fingerprint"
+    )
+    web_runner_module = importlib.import_module(
+        "isotope.features.supervisor.web_runner"
+    )
+
+    assert runner._report_fingerprint is fingerprint_module.report_fingerprint
+    assert runner._supervise_bell_fingerprint is fingerprint_module.supervise_bell_fingerprint
+    assert runner._run_web is web_runner_module.run_web
+
+    source = inspect.getsource(runner)
+    assert "def _report_fingerprint(" not in source
+    assert "def _supervise_bell_fingerprint(" not in source
+    assert "def _run_web(" not in source
+
+
+def test_supervisor_runner_delegates_goal_lifecycle_helpers():
+    lifecycle_module = importlib.import_module(
+        "isotope.features.supervisor.supervise.goal_lifecycle"
+    )
+
+    assert runner._sync_goal_lifecycle is lifecycle_module.sync_goal_lifecycle
+    assert runner._record_goal_status_from_session is lifecycle_module.record_goal_status_from_session
+    assert runner._goal_status_from_session is lifecycle_module.goal_status_from_session
+
+    source = inspect.getsource(runner)
+    assert "def _sync_goal_lifecycle(" not in source
+    assert "def _record_goal_status_from_session(" not in source
