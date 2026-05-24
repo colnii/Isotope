@@ -89,7 +89,8 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
   来源账本，便于确认读的是哪版状态模型。
 - `research` 可代理 shared Research flow（研究流程），把 delegated web
   research 请求写成低敏 report/raw transcript artifacts；当前支持 fake
-  provider，用于验证 CLI 和 artifact contract。
+  provider 和 Codex delegated provider；若 Codex provider 只返回 error-only
+  JSONL 而没有 agent message，flow 会返回 `provider_failed`，不写成功 artifact。
 - `daemon watcher` 可启动 watcher（周期看门进程），定期触发 watchdog。
 - `supervise` 可按间隔循环执行扫描、建议、可选 LLM 摘要和显式 send。
 - `advise/supervise --name <lane>` 可只针对一个托管 lane 生成建议或执行动作。

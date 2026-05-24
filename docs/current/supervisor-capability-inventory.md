@@ -117,9 +117,11 @@
   `--execute-agent-loop` 才通过 agent loop 带 `inputs` 执行 allowlist 低风险能力，
   并输出执行前后的 tick policy handoff。
 - `capacity calling` 当前会做两层低敏 contract guardrail（契约护栏）：
-  发给 provider 前先清洗 manifest，只保留低敏字段和安全的
-  `input_contract` 子集，并拒绝重复 `capacity_id`、重复 `required`
-  输入名，以及 `required` 未在 `properties` 声明的坏 contract；这类
+  发给 provider 前先用 `CapabilityRunner.plan_capability_run(..., inputs={})`
+  做 preflight（预检查），只提供 `can_launch=true` 或缺少输入的能力，
+  不把 provider/env 等当前不可启动的能力交给 LLM 选择；随后清洗 manifest，
+  只保留低敏字段和安全的 `input_contract` 子集，并拒绝重复 `capacity_id`、
+  重复 `required` 输入名，以及 `required` 未在 `properties` 声明的坏 contract；这类
   required/key-level contract 校验、required fallback 和 `properties` lookup 已下沉到
   `platform/schemas/input_contract.py`，供 LLM capacity calling 和手动
   `CapabilityRunner` 复用，避免两条路径各自处理 malformed contract；provider

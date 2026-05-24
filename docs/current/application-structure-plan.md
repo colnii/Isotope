@@ -185,8 +185,10 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   `POST /search` 已可调用；当前不是全文检索或 RAG。
 - Research 功能入口：`src/isotope/features/research/` 已提供 delegated
   web research request/report model、provider contract、artifact 持久化 flow
-  和 `isotope-research` CLI；Supervisor 已有 `research` proxy command。当前
-  是低敏 artifact 入口，不是浏览器爬虫或完整 research agent。
+  和 `isotope-research` CLI；Supervisor 已有 `research` proxy command。
+  Codex delegated provider 的 error-only JSONL 会归类成 retryable
+  `provider_failed`，不生成成功 artifact。当前是低敏 artifact 入口，
+  不是浏览器爬虫或完整 research agent。
 - 工作台功能入口：`src/isotope/features/workbench/flow.py` 已提供
   `WorkbenchFlow` 和 `WorkbenchView`，可聚合 projects/tasks/files
   低敏摘要、可选 search 结果、空状态与最近更新时间；

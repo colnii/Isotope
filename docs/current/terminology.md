@@ -52,7 +52,7 @@
 | `POST /search` | 搜索 API 入口，按 query 返回低敏摘要结果，支持 `types` 和 `limit` | 接口 | `src/isotope/interfaces/http.py` |
 | `ResearchFlow` | Research 功能入口，把 delegated web research 结果保存成低敏 report/raw transcript artifacts | 产品功能/外部研究 | `src/isotope/features/research/flow.py` |
 | `ResearchReport` | Research 报告模型，记录 query、provider、sources、findings 和 evidence status | 产品功能/外部研究 | `src/isotope/features/research/models.py` |
-| `ResearchProvider` | Research provider contract，封装 fake 或 Codex delegated research backend；Codex backend 会提取 JSONL agent message 并归一化常见 report shape | 产品功能/外部研究 | `src/isotope/features/research/providers.py` |
+| `ResearchProvider` | Research provider contract，封装 fake 或 Codex delegated research backend；Codex backend 会提取 JSONL agent message，error-only JSONL 会归类为 provider failure，不写成功 report | 产品功能/外部研究 | `src/isotope/features/research/providers.py` |
 | `isotope-research` | Research 命令行入口，可运行 delegated research 并返回 artifact refs | 应用入口 | `src/isotope/features/research/runner.py` |
 | `WorkbenchFlow` | 工作台功能入口，聚合 project/task/file 摘要和可选搜索结果 | 产品功能 | `src/isotope/features/workbench/flow.py` |
 | `WorkbenchView` | 工作台视图，包含摘要列表、搜索结果、空状态、最近更新时间和 counts 数量 | 产品功能 | `src/isotope/features/workbench/flow.py` |
