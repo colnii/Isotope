@@ -123,3 +123,20 @@ def refresh_current_batch_after_execution(
         dependency_limit=getattr(args, "max_fanout_launches", default_limit),
     )
     return True
+
+
+def append_supervise_final_payload(
+    args: Any,
+    payload: dict[str, Any],
+    *,
+    api: Any | None = None,
+) -> None:
+    if api is None:
+        from isotope.features.supervisor import runner as api
+
+    payload["decision_requests"] = api._decision_request_dicts(args)
+    if getattr(args, "command", None) == "loop":
+        payload["lifecycle_trace"] = api._lifecycle_trace_payload(
+            args,
+            lightweight=True,
+        )

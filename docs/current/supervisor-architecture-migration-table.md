@@ -87,6 +87,8 @@ Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
 - `loop/supervise` 的 LLM action selection 已收口到
   `commands/supervise_action.py`，只编排 fanout、merge dispatch、worker guard、
   idle loop 和 LLM planner 的既有 action builder，不进入执行层。
+- `loop/supervise` 的最终 payload 附加（decision requests 和 loop lifecycle
+  trace）已收口到 `commands/supervise_payload.py`，`runner.py` 仍只负责调用时机。
 
 ### 最高杠杆的后续任务
 

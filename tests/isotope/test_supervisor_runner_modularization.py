@@ -821,10 +821,15 @@ def test_supervisor_runner_delegates_supervise_payload_base_builder():
         runner._refresh_current_batch_after_execution
         is payload_module.refresh_current_batch_after_execution
     )
+    assert (
+        runner._append_supervise_final_payload
+        is payload_module.append_supervise_final_payload
+    )
 
     source = inspect.getsource(runner)
     assert "def _build_supervise_base_payload(" not in source
     assert "def _refresh_current_batch_after_execution(" not in source
+    assert "def _append_supervise_final_payload(" not in source
 
 
 def test_supervisor_runner_delegates_supervise_planning_payload_builder():
@@ -922,6 +927,59 @@ def test_supervise_payload_refreshes_current_batch_only_when_execution_requires_
             },
         ),
     ]
+
+
+def test_supervise_payload_appends_final_decisions_and_loop_trace():
+    payload_module = importlib.import_module(
+        "isotope.features.supervisor.commands.supervise_payload"
+    )
+    calls: list[tuple[str, object]] = []
+
+    class FakeApi:
+        def _decision_request_dicts(self, args):
+            calls.append(("decisions", args))
+            return [{"request_id": "decision-1"}]
+
+        def _lifecycle_trace_payload(self, args, *, lightweight=False):
+            calls.append(("trace", {"args": args, "lightweight": lightweight}))
+            return {"status": "ok", "lightweight": lightweight}
+
+    args = argparse.Namespace(command="loop")
+    payload: dict[str, object] = {}
+
+    payload_module.append_supervise_final_payload(args, payload, api=FakeApi())
+
+    assert payload == {
+        "decision_requests": [{"request_id": "decision-1"}],
+        "lifecycle_trace": {"status": "ok", "lightweight": True},
+    }
+    assert calls == [
+        ("decisions", args),
+        ("trace", {"args": args, "lightweight": True}),
+    ]
+
+
+def test_supervise_payload_omits_lifecycle_trace_outside_loop():
+    payload_module = importlib.import_module(
+        "isotope.features.supervisor.commands.supervise_payload"
+    )
+
+    class FakeApi:
+        def _decision_request_dicts(self, args):
+            return []
+
+        def _lifecycle_trace_payload(self, args, *, lightweight=False):
+            raise AssertionError("non-loop commands must not build lifecycle trace")
+
+    payload: dict[str, object] = {}
+
+    payload_module.append_supervise_final_payload(
+        argparse.Namespace(command="supervise"),
+        payload,
+        api=FakeApi(),
+    )
+
+    assert payload == {"decision_requests": []}
 
 
 def test_supervisor_runner_delegates_supervise_action_selection():

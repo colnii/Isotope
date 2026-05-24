@@ -355,6 +355,7 @@ from .commands.workspace_scope import (
     workspace_scope_payload as _workspace_scope_payload,
 )
 from .commands.supervise_payload import (
+    append_supervise_final_payload as _append_supervise_final_payload,
     build_supervise_base_payload as _build_supervise_base_payload,
     refresh_current_batch_after_execution as _refresh_current_batch_after_execution,
 )
@@ -1417,9 +1418,7 @@ def _supervise_payload(
         )
     elif args.execute:
         payload["executed"] = _execute_advice(args, report, payload)
-    payload["decision_requests"] = _decision_request_dicts(args)
-    if getattr(args, "command", None) == "loop":
-        payload["lifecycle_trace"] = _lifecycle_trace_payload(args, lightweight=True)
+    _append_supervise_final_payload(args, payload)
     return payload
 
 
