@@ -6,7 +6,7 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from isotope.features.supervisor.commands.snapshot_display import (
+from isotope.features.supervisor.state.snapshot_display import (
     STATE_SNAPSHOT_SOURCE_LABEL,
     state_snapshot_schema_display,
 )

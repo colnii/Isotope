@@ -22,7 +22,7 @@ from isotope.features.supervisor.registry import (
     default_registry_path,
     read_managed_records,
 )
-from isotope.features.supervisor.commands.snapshot_display import (
+from isotope.features.supervisor.state.snapshot_display import (
     state_snapshot_schema_display,
 )
 from isotope.features.supervisor.state.projection import build_supervisor_state_snapshot

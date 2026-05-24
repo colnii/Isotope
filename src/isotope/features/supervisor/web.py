@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 from .bell_events import default_bell_events_path, read_latest_bell_events
 from .context import read_recent_context_results
-from .dashboard_html import dashboard_page_html
+from .dashboard.html import dashboard_page_html
 from .decision_requests import (
     DEFAULT_DECISION_TIMEOUT_SECONDS,
     read_active_decision_requests,

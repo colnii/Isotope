@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from .dashboard_body import DASHBOARD_BODY
-from .dashboard_script_batches import DASHBOARD_SCRIPT_BATCHES
-from .dashboard_script_core import DASHBOARD_SCRIPT_CORE
-from .dashboard_script_goals import DASHBOARD_SCRIPT_GOALS
-from .dashboard_script_interactions import DASHBOARD_SCRIPT_INTERACTIONS
-from .dashboard_script_managed import DASHBOARD_SCRIPT_MANAGED
-from .dashboard_style_base import DASHBOARD_STYLE_BASE
-from .dashboard_style_panels import DASHBOARD_STYLE_PANELS
-from .dashboard_style_responsive import DASHBOARD_STYLE_RESPONSIVE
+from .body import DASHBOARD_BODY
+from .script_batches import DASHBOARD_SCRIPT_BATCHES
+from .script_core import DASHBOARD_SCRIPT_CORE
+from .script_goals import DASHBOARD_SCRIPT_GOALS
+from .script_interactions import DASHBOARD_SCRIPT_INTERACTIONS
+from .script_managed import DASHBOARD_SCRIPT_MANAGED
+from .style_base import DASHBOARD_STYLE_BASE
+from .style_panels import DASHBOARD_STYLE_PANELS
+from .style_responsive import DASHBOARD_STYLE_RESPONSIVE
 
 
 def dashboard_page_html() -> str:
