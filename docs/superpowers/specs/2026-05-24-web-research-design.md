@@ -1,6 +1,6 @@
 # Web Research Design
 
-状态：`draft for user review`
+状态：`implementation plan written`
 
 日期：2026-05-24
 
@@ -251,6 +251,9 @@ normalized result 必须标明失败状态。
 5. 新增 CLI runner：`research search --query ... --json`。
 6. 保存 normalized research artifact，并带 provenance。
 7. 提供 summary / source refs 低敏输出。
+
+Implementation plan:
+`docs/superpowers/plans/2026-05-24-web-research-implementation-plan.md`.
 
 明确不做：
 
