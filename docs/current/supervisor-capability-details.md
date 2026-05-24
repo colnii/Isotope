@@ -151,8 +151,10 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   当该读模型为 `call_capacity` 且 `--llm-execute` 打开时，
   LLM planner 可选择 `call_capacity`，Supervisor 会用已保存的
   `capacity_call_specs` 通过 agent loop 的 `call_capability` 步骤执行；
+  `capacity_call_specs` 只会从 `status=ok` 且 `status_reason=ready` 的计划生成，
   执行前仍会重新确认同一 `capacity_id` 存在 ready 的
-  `capacity_decisions`，避免旧 spec 或手工拼接 payload 直接触发调用；
+  `capacity_decisions`，避免 blocked plan、旧 spec 或手工拼接 payload
+  直接触发调用；
   显式
   `--execute-agent-loop` 才通过 agent loop 带 `inputs` 执行 allowlist 低风险能力，
   并输出执行前后的 tick policy handoff。
@@ -160,8 +162,9 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   发给 provider 前先清洗 manifest，只保留低敏字段和安全的
   `input_contract` 子集，并拒绝重复 `capacity_id`、重复 `required`
   输入名，以及 `required` 未在 `properties` 声明的坏 contract；这类
-  key-level contract 校验已下沉到 `platform/schemas/input_contract.py`，供
-  LLM capacity calling 和手动 `CapabilityRunner` 复用；provider
+  required/key-level contract 校验已下沉到
+  `platform/schemas/input_contract.py`，供 LLM capacity calling 和手动
+  `CapabilityRunner` 复用；provider
   返回后只接受已提供的 `capacity_id`，`arguments` 必须是 JSON object，
   且每个参数都必须在 `input_contract.properties` 中声明，并符合当前支持的
   top-level `type` 与 `enum` 约束。校验失败会停在 plan 层，不进入
