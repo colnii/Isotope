@@ -280,6 +280,8 @@ def loop_capacity_decision_payload(
 
 
 def capacity_call_specs(plan: dict[str, Any], *, goal: str) -> list[dict[str, Any]]:
+    if plan.get("status") != "ok" or plan.get("status_reason") != "ready":
+        return []
     decision = plan.get("supervisor_decision")
     if not isinstance(decision, dict):
         return []

@@ -167,7 +167,6 @@ from .commands.auto_cleanup import (
 )
 from .commands.capacity import (
     build_supervisor_capacity_plan,
-    capacity_call_specs as _capacity_call_specs,
     capacity_decision_goal as _capacity_decision_goal,
     execute_capacity_action as _execute_capacity_action,
     loop_capacity_decision_payload as _loop_capacity_decision_payload,

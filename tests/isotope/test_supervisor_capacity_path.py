@@ -196,6 +196,40 @@ def test_execute_capacity_action_requires_matching_ready_decision(tmp_path, monk
     assert calls == []
 
 
+def test_capacity_call_specs_require_ready_plan_status():
+    decision = {
+        "kind": "supervisor_capacity_decision",
+        "next_action": "call_capacity",
+        "reason": "ready",
+        "capacity_id": "artifact.review",
+        "can_execute_agent_loop": True,
+        "missing_inputs": [],
+        "blocking_reasons": [],
+    }
+    plan = {
+        "status": "blocked",
+        "status_reason": "not_launchable",
+        "selection": {
+            "capacity_id": "artifact.review",
+            "arguments": {"path": "notes.md"},
+        },
+        "supervisor_decision": decision,
+    }
+
+    assert capacity_command.capacity_call_specs(plan, goal="检查 artifact") == []
+
+    plan["status"] = "ok"
+    plan["status_reason"] = "ready"
+
+    assert capacity_command.capacity_call_specs(plan, goal="检查 artifact") == [
+        {
+            "capacity_id": "artifact.review",
+            "goal": "检查 artifact",
+            "inputs": {"path": "notes.md"},
+        }
+    ]
+
+
 def test_supervisor_capacity_plan_passes_arguments_into_agent_loop_inputs(tmp_path):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
