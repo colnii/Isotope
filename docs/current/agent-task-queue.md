@@ -57,6 +57,10 @@
   runtime / projector 拆分、state command 和 worker event state migration 已进入主线，
   剩余 worktree 需要逐条处理；原因见
   [supervisor worktree recovery audit](../reviews/supervisor-worktree-recovery-audit.md)。
+- Agent loop 单 tick driver 已补齐：`run_agent_loop_tick(...)` 和
+  `POST /runs/{run_id}/agent-loop-tick` 会先看 tick policy，允许继续时只执行
+  一个已解析的 planner-selected step，再返回执行后的 tick policy；它仍不接
+  真实 LLM，不自动多轮循环。
 
 ## 下一批任务
 
@@ -110,6 +114,21 @@
 - `docs/current/` 保持当前入口，不重新塞入长历史流水。
 - 旧文档线默认停止；除非用户明确指定单一类别，不继续移动 track、checkpoint、
   memory、kernel 或 status 文档。
+
+### 5. Agent loop 后续小片
+
+目标：
+
+- 继续完善 agent loop，但下一片仍不要直接接真实 LLM。
+- 优先考虑把 tick driver 的结果接到一个人类可读 trace 或受控 Supervisor
+  handoff，证明 `before_policy -> planner_result -> after_policy` 这条链路能被
+  产品层解释。
+
+验收：
+
+- 不新增后台自动循环。
+- 不绕过 planner adapter 的 basis 校验。
+- 不把 raw prompt、model response 或 artifact full content 放入 tick 结果。
 
 ## 验证命令
 

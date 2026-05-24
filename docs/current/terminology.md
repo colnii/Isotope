@@ -200,6 +200,7 @@
 | `planner` | 规划器，把用户目标转成可执行步骤或工具选择 | 智能体 | `docs/architecture/planner-input-output-contract-v0.2.md`, `src/isotope/agents/loop/planner_adapter.py` |
 | `planner adapter` | 规划器适配层，把规划输出接到现有执行循环 | 智能体 | `src/isotope/agents/loop/planner_adapter.py` |
 | `tick policy` | 步进策略，决定智能体循环每轮是否继续、暂停或停止 | 智能体 | `src/isotope/agents/loop/control.py`, `docs/architecture/agent-loop-tick-policy-boundary-v0.2.md` |
+| `tick driver` | 单 tick 驱动器，先看 tick policy，允许时执行一个 planner-selected step，再返回执行后的 policy | 智能体 | `src/isotope/agents/loop/tick.py`, `docs/architecture/agent-loop-tick-driver-boundary-v0.2.md` |
 | `executor` | 执行器，执行已批准的动作或工具调用 | 执行 | `src/isotope/execution/executor.py` |
 | `ActionCompiler` | 动作编译器，把紧凑意图转换成可审批的动作提案 | 运行时 | `src/isotope/runtime/action_compiler.py` |
 | `tool call` | 工具调用，模型请求系统执行某个能力 | 模型/工具 | `src/isotope/llm/provider.py`, `src/isotope/llm/tool_bridge.py` |

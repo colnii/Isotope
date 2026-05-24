@@ -43,7 +43,10 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    和 `FileFlow.get_file()` 校验目标可读，避免传播不可解析的本地关联 ID。
 8. HTTP artifact summary endpoint 已通过 platform artifact record 返回低敏摘要，
    不再由 HTTP 层直接拼 `artifact.created` event payload。
-9. 代码结构继续以 `src/isotope/` 为 Python 主包，不新增 `packages/`、
+9. Agent loop 已有单 tick driver：`run_agent_loop_tick(...)` 会先读取
+   tick policy，允许继续时只执行一个已解析的 planner-selected step，再返回
+   执行后的 tick policy；它不调用真实 LLM，不自动多轮循环。
+10. 代码结构继续以 `src/isotope/` 为 Python 主包，不新增 `packages/`、
    `aios` 或 kernel 主叙事。
 
 ## 当前入口

@@ -38,6 +38,7 @@ POST /sessions/{session_id}/runs
 POST /runs/{run_id}/input
 POST /runs/{run_id}/agent-loop-step
 POST /runs/{run_id}/agent-loop-planner-step
+POST /runs/{run_id}/agent-loop-tick
 GET  /runs/{run_id}
 GET  /runs/{run_id}/agent-loop-control
 GET  /runs/{run_id}/agent-loop-tick-policy
@@ -97,6 +98,16 @@ run 创建只能产生当前 runtime/service boundary 允许的 canonical events
 该 endpoint 会验证 planner basis 没有过期，并拒绝 raw prompt / raw model response /
 artifact full content 等 payload。它不调用真实 LLM，只把合法的 step 交给
 `run_agent_loop_step(...)`。
+
+### POST /runs/{run_id}/agent-loop-tick
+
+执行一个受 tick policy 保护的单 tick。
+
+该 endpoint 先读取 `get_agent_loop_tick_policy(...)`。如果 policy 要求暂停或停止，
+它不执行 planner step、不创建 event 或 artifact，只返回 `tick_status=stopped`
+和 `stop_reason`。如果 policy 允许继续，它只接受已解析的 `planner_output`，
+通过 `run_agent_loop_planner_step(...)` 执行一个 step，然后返回执行前后的
+tick policy。它不调用真实 LLM，不自动多轮循环。
 
 ### GET /runs/{run_id}
 

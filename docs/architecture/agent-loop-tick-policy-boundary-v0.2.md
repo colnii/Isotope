@@ -64,5 +64,7 @@
 
 下一步不应直接接 real LLM。
 
-更合适的是先用 `agent-loop-tick-policy-trace` 作为产品 handoff，
-再决定是否把某个 Supervisor 受控入口接到 agent-loop-driven execution。
+`agent-loop-tick-driver-boundary-v0.2.md` 已补齐单 tick driver：
+调用方可以先读 tick policy，再执行一个已解析的 planner-selected step，
+并拿到执行后的 tick policy。后续再决定是否把某个 Supervisor 受控入口接到
+agent-loop-driven execution。

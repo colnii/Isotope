@@ -76,6 +76,24 @@ class HttpRunRouteMixin:
             if not self._run_exists(parts[1]):
                 return self._error(404, "not_found", "run not found")
             return self._json(200, self.server.run_agent_loop_planner_step(parts[1], json_body))
+        if (
+            method == "POST"
+            and len(parts) == 3
+            and parts[0] == "runs"
+            and parts[2] == "agent-loop-tick"
+        ):
+            if not self._run_exists(parts[1]):
+                return self._error(404, "not_found", "run not found")
+            body = self._agent_loop_tick_body(json_body)
+            return self._json(
+                200,
+                self.server.run_agent_loop_tick(
+                    parts[1],
+                    body["planner_output"],
+                    tick_budget=body["tick_budget"],
+                    user_pause=body["user_pause"],
+                ),
+            )
         if method == "GET" and len(parts) == 3 and parts[0] == "runs" and parts[2] == "approvals":
             if not self._run_exists(parts[1]):
                 return self._error(404, "not_found", "run not found")

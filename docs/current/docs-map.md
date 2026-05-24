@@ -56,6 +56,7 @@ preflight（预检查）、diagnostic（诊断）或 not_enabled（未启用）�
 | 判断项目当前状态 | [status](./status.md) |
 | 找下一步任务 | [agent-task-queue](./agent-task-queue.md) |
 | 查英文术语和中文解释 | [terminology](./terminology.md) |
+| 查 agent loop tick 边界 | [agent-loop-tick-policy-boundary](../architecture/agent-loop-tick-policy-boundary-v0.2.md)、[agent-loop-tick-driver-boundary](../architecture/agent-loop-tick-driver-boundary-v0.2.md) |
 | 调整应用目录 | [application-structure-plan](./application-structure-plan.md)、[目录结构最新说明](./目录结构最新说明.md) |
 | 查导入迁移或兼容代理 | [import-map](./import-map.md)、[compat-proxy-audit](./compat-proxy-audit.md) |
 | 做 Supervisor 相关工作 | [codex-supervisor-readonly](./codex-supervisor-readonly.md)、[supervisor-command-reference](./supervisor-command-reference.md)、[supervisor-operations-runbook](./supervisor-operations-runbook.md)、[supervisor-capability-map](./supervisor-capability-map.md)、[supervisor-capability-details](./supervisor-capability-details.md)、[supervisor-capability-inventory](./supervisor-capability-inventory.md)、[supervisor-architecture-migration-table](./supervisor-architecture-migration-table.md) |

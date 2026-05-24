@@ -9,6 +9,7 @@ from ..agents.loop.control import build_agent_loop_control, build_agent_loop_tic
 from ..agents.loop.planner_adapter import run_agent_loop_planner_step
 from ..agents.loop.planner_contract import run_agent_loop_real_planner_contract_step
 from ..agents.loop.step import run_agent_loop_step
+from ..agents.loop.tick import run_agent_loop_tick
 from ..platform.ids import new_id
 from ..platform.schemas.actions import ActionExecution
 from ..platform.schemas.memory import MemoryRecord
@@ -35,6 +36,22 @@ class InProcessAgentLoopMixin:
 
     def run_agent_loop_step(self, run_id: str, request: dict[str, Any]) -> dict[str, Any]:
         return run_agent_loop_step(self, run_id, request)
+
+    def run_agent_loop_tick(
+        self,
+        run_id: str,
+        planner_output: dict[str, Any] | None,
+        *,
+        tick_budget: dict[str, Any] | None = None,
+        user_pause: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return run_agent_loop_tick(
+            self,
+            run_id,
+            planner_output,
+            tick_budget=tick_budget,
+            user_pause=user_pause,
+        )
 
     def record_agent_loop_turn_memory(self, run_id: str, request: dict[str, Any]) -> dict[str, Any]:
         run = self._runtime_context_for_write_helper(run_id)

@@ -29,6 +29,7 @@ SUPPORTED_ROUTES = [
     ("POST", "/runs/{run_id}/input"),
     ("POST", "/runs/{run_id}/agent-loop-step"),
     ("POST", "/runs/{run_id}/agent-loop-planner-step"),
+    ("POST", "/runs/{run_id}/agent-loop-tick"),
     ("GET", "/runs/{run_id}"),
     ("GET", "/runs/{run_id}/agent-loop-control"),
     ("GET", "/runs/{run_id}/agent-loop-tick-policy"),

@@ -26,6 +26,21 @@ class HttpValidationMixin:
             if key in allowed
         }
 
+    def _agent_loop_tick_body(self, json_body: dict[str, Any] | None) -> dict[str, Any]:
+        if json_body is None:
+            json_body = {}
+        if not isinstance(json_body, dict):
+            raise ValueError("request body must be an object")
+        allowed = {"planner_output", "tick_budget", "user_pause"}
+        unknown = sorted(set(json_body) - allowed)
+        if unknown:
+            raise ValueError(f"unsupported agent loop tick fields: {', '.join(unknown)}")
+        return {
+            "planner_output": deepcopy(json_body.get("planner_output")),
+            "tick_budget": deepcopy(json_body.get("tick_budget")),
+            "user_pause": deepcopy(json_body.get("user_pause")),
+        }
+
     def _search_options(self, body: dict[str, Any]) -> dict[str, Any]:
         result_types = body.get("types")
         if result_types is not None:
