@@ -275,13 +275,16 @@ def loop_capacity_decision_payload(
         }
     decision = plan.get("supervisor_decision")
     decisions = [decision] if isinstance(decision, dict) else []
-    return {
+    payload = {
         "status": plan.get("status", "unknown"),
         "reason": plan.get("status_reason"),
         "goal": goal,
         "capacity_decisions": decisions,
         "capacity_call_specs": capacity_call_specs(plan, goal=goal),
     }
+    if plan.get("status_reason") == "no_offered_capacities":
+        payload["capacity_blocked_reason"] = "no_offered_capacities"
+    return payload
 
 
 def capacity_call_specs(plan: dict[str, Any], *, goal: str) -> list[dict[str, Any]]:
@@ -561,6 +564,8 @@ def _print_capacity_blockers(
     selection: Any,
     launch_plan: Any,
 ) -> None:
+    if payload.get("status_reason") == "no_offered_capacities":
+        print("capacity_blocked_reason: no_offered_capacities")
     if payload.get("status_reason") == "needs_input" and isinstance(selection, Mapping):
         missing_inputs = selection.get("missing_inputs")
         if isinstance(missing_inputs, list) and missing_inputs:

@@ -593,6 +593,42 @@ def test_supervisor_capacity_command_handler_prints_json_status_reason(capsys):
     assert payload["agent_loop"] is None
 
 
+def test_loop_capacity_payload_explains_no_offered_capacities():
+    decision = {
+        "kind": "supervisor_capacity_decision",
+        "next_action": "blocked",
+        "reason": "no_offered_capacities",
+        "capacity_id": "unknown",
+        "can_execute_agent_loop": False,
+        "missing_inputs": [],
+        "blocking_reasons": ["no_offered_capacities"],
+    }
+
+    class FakeCapacityApi:
+        def resolve_capacity_calling_provider_from_env(self):
+            return object()
+
+        def build_supervisor_capacity_plan(self, **kwargs):
+            return {
+                "status": "blocked",
+                "status_reason": "no_offered_capacities",
+                "supervisor_decision": decision,
+            }
+
+    payload = capacity_command.loop_capacity_decision_payload(
+        argparse.Namespace(capacity_decisions=True),
+        active_goals=[{"goal": "检查 provider-backed 能力"}],
+        explicit_goal=None,
+        api=FakeCapacityApi(),
+    )
+
+    assert payload["status"] == "blocked"
+    assert payload["reason"] == "no_offered_capacities"
+    assert payload["capacity_blocked_reason"] == "no_offered_capacities"
+    assert payload["capacity_decisions"] == [decision]
+    assert payload["capacity_call_specs"] == []
+
+
 def test_supervisor_capacity_plain_output_includes_agent_loop_handoff(tmp_path, capsys):
     args = argparse.Namespace(
         capacity_command="plan",
@@ -648,6 +684,51 @@ def test_supervisor_capacity_plain_output_explains_missing_inputs(capsys):
     assert "status_reason: needs_input" in output
     assert "capacity_blocked_reason: missing_inputs" in output
     assert "capacity_missing_inputs: codex_home, cwd, query" in output
+    assert "agent_loop_executed: False" in output
+
+
+def test_supervisor_capacity_plain_output_explains_no_offered_capacities(
+    tmp_path, capsys
+):
+    runner_with_unavailable_capability = CapabilityRunner(
+        catalog=CapabilityCatalog(
+            capabilities=[
+                Capability(
+                    capability_id="llm.artifact.review",
+                    title="LLM Artifact Review",
+                    description="Provider-backed artifact review.",
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=("artifact", "llm"),
+                    input_contract={"type": "object"},
+                    output_contract={"type": "object"},
+                    safety_boundaries=("provider_required",),
+                    required_env=("ISOTOPE_TEST_PROVIDER_KEY",),
+                    network_required=True,
+                    provider="test-provider",
+                    model="test-model",
+                )
+            ]
+        )
+    )
+    payload = capacity_command.build_supervisor_capacity_plan(
+        goal="检查 provider-backed 能力",
+        provider=FakeCapacityProvider(
+            '{"capacity_id":"llm.artifact.review","arguments":{},'
+            '"confidence":0.91,"rationale":"provider required"}'
+        ),
+        runner=runner_with_unavailable_capability,
+        state_root=tmp_path / "state",
+        execute_agent_loop=True,
+    )
+
+    capacity_command._print_capacity_plan_plain(payload)
+
+    output = capsys.readouterr().out
+    assert "capacity_id: unknown" in output
+    assert "selection_status: unknown" in output
+    assert "status_reason: no_offered_capacities" in output
+    assert "capacity_blocked_reason: no_offered_capacities" in output
     assert "agent_loop_executed: False" in output
 
 
