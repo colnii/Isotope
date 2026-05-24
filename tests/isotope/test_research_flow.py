@@ -87,3 +87,14 @@ def test_research_flow_rejects_unknown_claim_source_without_success_artifact(tmp
     assert result.research is None
     assert result.artifact_refs == ()
     assert "unknown source_id" in result.error["message"]
+
+
+def test_research_report_can_be_found_through_artifact_record(tmp_path):
+    flow = ResearchFlow.in_process(tmp_path, provider=FakeResearchProvider())
+
+    result = flow.search("agent memory retrieval")
+    record = flow.core.runtime.get_artifact_record(result.artifact_refs[1])
+
+    assert record["artifact_type"] == "research.report"
+    assert "Fake research summary" in record["summary"]
+    assert record["source_refs"] == [result.artifact_refs[0].to_dict()]
