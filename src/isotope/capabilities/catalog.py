@@ -221,6 +221,12 @@ class CapabilityCatalog:
         include_diagnostics: bool = False,
         include_experimental: bool = False,
     ) -> list[dict[str, Any]]:
+        for field_name, value in (
+            ("include_diagnostics", include_diagnostics),
+            ("include_experimental", include_experimental),
+        ):
+            if not isinstance(value, bool):
+                raise ValueError(f"{field_name} must be bool")
         if shelf is not None:
             _validate_shelf(shelf)
         visible = []

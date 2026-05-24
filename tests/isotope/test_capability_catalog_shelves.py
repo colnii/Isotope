@@ -1,5 +1,7 @@
 import importlib
 
+import pytest
+
 
 def _catalog_module():
     return importlib.import_module("isotope.capabilities.catalog")
@@ -77,6 +79,14 @@ def test_experimental_capabilities_require_explicit_opt_in():
         "artifact.review",
         "external.snapshot.review",
     ]
+
+
+def test_listing_rejects_malformed_include_flags():
+    catalog = _catalog()
+
+    for flag_name in ("include_diagnostics", "include_experimental"):
+        with pytest.raises(ValueError, match=flag_name):
+            catalog.list_capabilities(**{flag_name: "yes"})
 
 
 def test_shelf_filter_can_select_diagnostics_without_showing_other_shelves():
