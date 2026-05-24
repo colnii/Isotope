@@ -217,6 +217,22 @@ def test_unallowlisted_ready_capability_fails_closed_before_side_effects(tmp_pat
     assert not list(Path(tmp_path).rglob("*"))
 
 
+def test_runner_plan_rejects_malformed_inputs_mapping():
+    with pytest.raises(ValueError, match="inputs"):
+        _runner().plan_capability_run("artifact.review", inputs=[])
+
+
+def test_runner_run_rejects_malformed_inputs_mapping_without_side_effects(tmp_path):
+    with pytest.raises(ValueError, match="inputs"):
+        _runner().run_capability(
+            "artifact.review",
+            root_path=tmp_path,
+            inputs=[],
+        )
+
+    assert not list(Path(tmp_path).rglob("*"))
+
+
 def test_request_context_plan_stops_when_required_inputs_are_missing():
     plan = _runner().plan_capability_run(
         "supervisor.request_context",
