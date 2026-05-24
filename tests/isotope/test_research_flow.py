@@ -15,6 +15,18 @@ def test_research_flow_persists_raw_and_normalized_artifacts(tmp_path):
     assert payload["status"] == "ok"
     assert payload["research"]["evidence_status"] == "complete"
     assert len(payload["artifact_refs"]) == 2
+    assert payload["artifacts"] == [
+        {
+            "artifact_type": "research.raw_transcript",
+            "ref": result.artifact_refs[0].to_dict(),
+            "summary": "raw research provider output: agent memory retrieval",
+        },
+        {
+            "artifact_type": "research.report",
+            "ref": result.artifact_refs[1].to_dict(),
+            "summary": "Fake research summary for agent memory retrieval.",
+        },
+    ]
     records = [
         flow.core.runtime.get_artifact_record(ref)
         for ref in result.artifact_refs
@@ -110,6 +122,15 @@ def test_research_flow_marks_provider_errors_without_success_artifact(tmp_path):
         "message": "codex cli did not return an agent message",
         "retryable": True,
     }
+    payload = result.to_dict()
+    assert payload["query"] == "python docs"
+    assert payload["artifacts"] == [
+        {
+            "artifact_type": "research.provider_trace",
+            "ref": result.artifact_refs[0].to_dict(),
+            "summary": "provider failure trace: python docs",
+        }
+    ]
     trace_record = flow.core.runtime.get_artifact_record(result.artifact_refs[0])
     assert trace_record["artifact_type"] == "research.provider_trace"
     assert trace_record["summary"] == "provider failure trace: python docs"

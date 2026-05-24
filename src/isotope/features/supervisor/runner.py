@@ -15,6 +15,7 @@ from typing import Any
 from isotope.capabilities.runner import CapabilityRunner
 from ..research.flow import ResearchFlow
 from ..research.providers import FakeResearchProvider
+from ..research.runner import print_artifacts_plain as _print_research_artifacts_plain
 from .context import read_recent_context_results, request_project_context
 from .decision_requests import (
     DEFAULT_DECISION_TIMEOUT_SECONDS,
@@ -160,8 +161,13 @@ def _handle_research_command(args: argparse.Namespace, *, api) -> int:
         research = payload.get("research") or {}
         print("[Codex Supervisor Research]")
         print(f"status: {payload['status']}")
-        print(f"query: {research.get('query', '')}")
+        print(f"query: {research.get('query') or payload.get('query', '')}")
         print(f"evidence: {research.get('evidence_status', '')}")
+        error = payload.get("error")
+        if isinstance(error, dict):
+            print(f"retryable: {str(error.get('retryable', False)).lower()}")
+            print(f"error: {error.get('message', '')}")
+        _print_research_artifacts_plain(payload)
     return 0
 
 

@@ -17,14 +17,19 @@ from .providers import FakeResearchProvider, ResearchProvider, ResearchProviderE
 class ResearchFlowResult:
     status: str
     research: WebResearchRun | None
+    query: str = ""
     artifact_refs: tuple[ResourceRef, ...] = ()
+    artifacts: tuple[dict[str, Any], ...] = ()
     error: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "status": self.status,
             "artifact_refs": [ref.to_dict() for ref in self.artifact_refs],
+            "artifacts": [dict(artifact) for artifact in self.artifacts],
         }
+        if self.query:
+            payload["query"] = self.query
         if self.research is not None:
             payload["research"] = self.research.to_dict()
         if self.error is not None:
@@ -79,13 +84,16 @@ class ResearchFlow:
             return ResearchFlowResult(
                 status="provider_failed",
                 research=None,
+                query=clean_query,
                 artifact_refs=(trace_artifact["artifact_ref"],),
+                artifacts=(_artifact_summary(trace_artifact),),
                 error=error,
             )
         except Exception as exc:
             return ResearchFlowResult(
                 status="validation_failed",
                 research=None,
+                query=clean_query,
                 error={
                     "code": "research_validation_failed",
                     "message": str(exc),
@@ -120,7 +128,12 @@ class ResearchFlow:
         return ResearchFlowResult(
             status=normalized.status,
             research=WebResearchRun.from_dict(final_payload),
+            query=clean_query,
             artifact_refs=artifact_refs,
+            artifacts=(
+                _artifact_summary(raw_artifact),
+                _artifact_summary(report_artifact),
+            ),
         )
 
 
@@ -128,3 +141,11 @@ def _require_query(query: str) -> str:
     if not isinstance(query, str) or not query.strip():
         raise ValueError("query must be a non-empty string")
     return query.strip()
+
+
+def _artifact_summary(artifact: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "artifact_type": artifact["artifact_type"],
+        "ref": artifact["artifact_ref"].to_dict(),
+        "summary": artifact["artifact_summary"],
+    }

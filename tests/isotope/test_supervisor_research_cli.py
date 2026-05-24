@@ -42,3 +42,24 @@ def test_supervisor_research_command_proxies_research_flow(tmp_path):
     assert payload["status"] == "ok"
     assert payload["research"]["query"] == "agent memory retrieval"
     assert payload["research"]["provider"] == "fake"
+    assert [artifact["artifact_type"] for artifact in payload["artifacts"]] == [
+        "research.raw_transcript",
+        "research.report",
+    ]
+
+
+def test_supervisor_research_plain_output_lists_artifacts(tmp_path):
+    result = _run_cli(
+        "research",
+        "--root",
+        str(tmp_path),
+        "--query",
+        "agent memory retrieval",
+        "--provider",
+        "fake",
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "[Codex Supervisor Research]" in result.stdout
+    assert "artifact: research.raw_transcript artifact_001" in result.stdout
+    assert "artifact: research.report artifact_002" in result.stdout

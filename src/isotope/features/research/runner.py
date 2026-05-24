@@ -86,10 +86,26 @@ def main(argv: list[str] | None = None) -> int:
 def _print_plain(payload: dict[str, Any]) -> None:
     research = payload.get("research") or {}
     print(f"status: {payload['status']}")
-    print(f"query: {research.get('query', '')}")
+    print(f"query: {research.get('query') or payload.get('query', '')}")
     print(f"evidence: {research.get('evidence_status', '')}")
+    error = payload.get("error")
+    if isinstance(error, dict):
+        print(f"retryable: {str(error.get('retryable', False)).lower()}")
+        print(f"error: {error.get('message', '')}")
+    print_artifacts_plain(payload)
     for source in research.get("sources", []):
         print(f"- {source['title']} {source['url']}")
+
+
+def print_artifacts_plain(payload: dict[str, Any]) -> None:
+    for artifact in payload.get("artifacts", []):
+        ref = artifact.get("ref") or {}
+        print(
+            "artifact: "
+            f"{artifact.get('artifact_type', '')} "
+            f"{ref.get('artifact_id', '')} "
+            f"{artifact.get('summary', '')}"
+        )
 
 
 def _provider_from_args(args: argparse.Namespace):
