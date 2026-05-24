@@ -78,6 +78,16 @@ class Capability:
             raise ValueError("output_contract must be a mapping")
         object.__setattr__(
             self,
+            "input_contract",
+            copy.deepcopy(dict(self.input_contract)),
+        )
+        object.__setattr__(
+            self,
+            "output_contract",
+            copy.deepcopy(dict(self.output_contract)),
+        )
+        object.__setattr__(
+            self,
             "domain_tags",
             _as_tuple(self.domain_tags, field_name="domain_tags"),
         )

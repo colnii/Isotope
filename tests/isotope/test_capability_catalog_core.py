@@ -104,6 +104,32 @@ def test_capability_manifest_nested_contracts_are_isolated_copies():
     )
 
 
+def test_capability_copies_nested_contracts_at_construction():
+    input_contract = {
+        "type": "object",
+        "properties": {"artifact_ref": {"type": "string"}},
+    }
+    output_contract = {
+        "type": "object",
+        "fields": [{"name": "review_artifact_ref", "type": "string"}],
+    }
+    capability = _valid_capability(
+        input_contract=input_contract,
+        output_contract=output_contract,
+    )
+
+    input_contract["properties"]["artifact_ref"]["type"] = "object"
+    output_contract["fields"][0]["type"] = "object"
+
+    manifest = capability.to_manifest_dict()
+
+    assert (
+        manifest["input_contract"]["properties"]["artifact_ref"]["type"]
+        == "string"
+    )
+    assert manifest["output_contract"]["fields"][0]["type"] == "string"
+
+
 def test_capability_catalog_rejects_duplicate_capability_ids():
     capability = _valid_capability(capability_id="artifact.review")
     duplicate = _valid_capability(capability_id="artifact.review", title="Duplicate")
