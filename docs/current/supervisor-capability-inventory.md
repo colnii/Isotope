@@ -99,7 +99,10 @@
   默认只让 LLM 选择一个能力并生成 `capacity_graph` 与 capability launch plan；
   LLM 填好的 `arguments` 会进入 launch plan；缺少必填输入或 launch plan
   不可执行时停在 plan 层，并用 `status_reason` 区分 `needs_input` 与
-  `not_launchable`，plain 输出会列出缺失 inputs 或 launch blocking reasons；
+  `not_launchable`；`capacity_blocked_reason` 会把
+  `needs_input` 归一为 `missing_inputs`，把 `not_launchable` 归一为首个
+  launch blocking reason（没有时回退为 `not_launchable`），plain 输出会列出
+  缺失 inputs 或 launch blocking reasons；
   同时输出 `supervisor_decision` 读模型，把 `ready`、`needs_input` 和
   `not_launchable` 归一成 `call_capacity`、`request_input` 和 `blocked`
   三类下一步；`supervise --capacity-decisions` 与
@@ -122,7 +125,9 @@
   不把 provider/env 等当前不可启动的能力交给 LLM 选择；如果没有任何
   offered capability，本轮直接返回 `status_reason=no_offered_capacities`，
   JSON / plain 输出同时带 `capacity_blocked_reason=no_offered_capacities`，
-  不调用 provider 或 agent loop；随后清洗 manifest，
+  不调用 provider 或 agent loop；其他 blocked plan 也会带低敏
+  `capacity_blocked_reason`，便于上层区分缺输入、缺 allowlist 或其他
+  launch 阻塞原因；随后清洗 manifest，
   只保留低敏字段和安全的 `input_contract` 子集，并拒绝重复 `capacity_id`、
   重复 `required` 输入名，以及 `required` 未在 `properties` 声明的坏 contract；这类
   required/key-level contract 校验、required fallback 和 `properties` lookup 已下沉到
