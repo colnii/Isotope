@@ -15,6 +15,8 @@ from isotope.features.supervisor.lane_state import record_lane_failure
 from isotope.features.supervisor.runner import main as supervisor_main
 import isotope.features.supervisor.state.projection as feature_projection
 from isotope.platform.state.active_goal import SupervisorActiveGoal
+from isotope.platform.state.decision_ledger import DecisionRequest
+from isotope.platform.state.decision_request import SupervisorDecisionRequest
 from isotope.platform.state.goal_status import SupervisorGoalStatus
 from isotope.platform.state.lane_state import SupervisorLaneState
 from isotope.platform.state.notification_summary import SupervisorNotificationSummary
@@ -95,6 +97,33 @@ def test_supervisor_active_goal_uses_platform_schema():
         "last_session_id": "session-goal",
         "last_summary": "等待主线重构完成",
         "last_next": "保持 projection 分支独立",
+    }
+
+
+def test_supervisor_decision_request_uses_platform_schema():
+    assert feature_projection.SupervisorDecisionRequest is SupervisorDecisionRequest
+
+    request = DecisionRequest(
+        request_id="decision-1",
+        created_at="2026-05-24T01:02:00+00:00",
+        session_id="session-1",
+        target_name="worker-a",
+        question="是否继续合并？",
+        reason="worker 需要用户确认",
+        context_status="conflict",
+        gate={"raw_prompt": "RAW_PROMPT_SHOULD_NOT_LEAK"},
+        goal_id="goal-1",
+    )
+
+    assert SupervisorDecisionRequest.from_ledger_request(request).to_state_payload() == {
+        "request_id": "decision-1",
+        "session_id": "session-1",
+        "target_name": "worker-a",
+        "goal_id": "goal-1",
+        "question": "是否继续合并？",
+        "reason": "worker 需要用户确认",
+        "context_status": "conflict",
+        "created_at": "2026-05-24T01:02:00+00:00",
     }
 
 

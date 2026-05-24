@@ -3,6 +3,7 @@
 from .active_goal import SupervisorActiveGoal
 from .checkpoint_store import FileCheckpointStore
 from .decision_ledger import DecisionRequest, DecisionRequestLedger
+from .decision_request import SupervisorDecisionRequest
 from .event_store import FileEventStore
 from .failure_ledger import FailureLedger
 from .goal_status import GOAL_STATUS_VALUES, SupervisorGoalStatus
@@ -30,6 +31,7 @@ __all__ = [
     "DecisionRequestLedger",
     "FailureLedger",
     "SupervisorActiveGoal",
+    "SupervisorDecisionRequest",
     "GOAL_STATUS_VALUES",
     "SupervisorGoalStatus",
     "SupervisorLaneState",

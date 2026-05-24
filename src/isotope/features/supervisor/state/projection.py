@@ -7,6 +7,7 @@ from typing import Any
 
 from isotope.features.notifications.flow import NotificationFlow, NotificationSummary
 from isotope.platform.state.active_goal import SupervisorActiveGoal
+from isotope.platform.state.decision_request import SupervisorDecisionRequest
 from isotope.platform.state.notification_summary import SupervisorNotificationSummary
 from isotope.platform.state.supervisor_snapshot import SupervisorStateSnapshot
 from isotope.platform.state.worker_event_channel import list_worker_events
@@ -98,16 +99,7 @@ def _goal_status_count(goals: list[dict[str, Any]], status: str) -> int:
 
 
 def _decision_request_payload(request: Any) -> dict[str, Any]:
-    return {
-        "request_id": request.request_id,
-        "session_id": request.session_id,
-        "target_name": request.target_name,
-        "goal_id": request.goal_id,
-        "question": request.question,
-        "reason": request.reason,
-        "context_status": request.context_status,
-        "created_at": request.created_at,
-    }
+    return SupervisorDecisionRequest.from_ledger_request(request).to_state_payload()
 
 
 def _failed_lane_payloads(codex_home: Path) -> list[dict[str, Any]]:
