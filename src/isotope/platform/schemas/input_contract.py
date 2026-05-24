@@ -52,9 +52,35 @@ def unexpected_contract_keys(
     return sorted(name for name in values if name not in allowed)
 
 
+def duplicate_required_contract_keys(input_contract: Mapping[str, Any]) -> list[str]:
+    """Return required keys that appear more than once."""
+
+    required = input_contract.get("required", [])
+    if not isinstance(required, list):
+        return []
+    required_names = [name for name in required if isinstance(name, str)]
+    return sorted(
+        {name for name in required_names if required_names.count(name) > 1}
+    )
+
+
+def undeclared_required_contract_keys(input_contract: Mapping[str, Any]) -> list[str]:
+    """Return required keys not declared in contract properties."""
+
+    required = input_contract.get("required", [])
+    properties = input_contract.get("properties", {})
+    if not isinstance(required, list) or not isinstance(properties, Mapping):
+        return []
+    return sorted(
+        name for name in required if isinstance(name, str) and name not in properties
+    )
+
+
 __all__ = [
     "ContractValueViolation",
     "contract_value_violation",
+    "duplicate_required_contract_keys",
     "matches_contract_type",
+    "undeclared_required_contract_keys",
     "unexpected_contract_keys",
 ]

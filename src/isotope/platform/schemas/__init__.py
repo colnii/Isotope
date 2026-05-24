@@ -5,7 +5,9 @@ from .artifacts import Artifact
 from .input_contract import (
     ContractValueViolation,
     contract_value_violation,
+    duplicate_required_contract_keys,
     matches_contract_type,
+    undeclared_required_contract_keys,
     unexpected_contract_keys,
 )
 from .memory import MemoryRecord
@@ -22,7 +24,9 @@ __all__ = [
     "PolicyDecision",
     "ResourceRef",
     "contract_value_violation",
+    "duplicate_required_contract_keys",
     "matches_contract_type",
     "make_artifact_ref",
+    "undeclared_required_contract_keys",
     "unexpected_contract_keys",
 ]

@@ -10,6 +10,8 @@ from typing import Any, Mapping, Protocol
 
 from ..platform.schemas.input_contract import (
     contract_value_violation,
+    duplicate_required_contract_keys,
+    undeclared_required_contract_keys,
     unexpected_contract_keys,
 )
 from ..platform.errors import IsotopeError
@@ -231,16 +233,12 @@ def _safe_contract_value(key: str, value: Any) -> Any:
 
 
 def _validate_required_properties(input_contract: Mapping[str, Any]) -> None:
-    required = input_contract.get("required", [])
-    properties = input_contract.get("properties", {})
-    if not isinstance(required, list) or not isinstance(properties, Mapping):
-        return
-    duplicates = sorted({name for name in required if required.count(name) > 1})
+    duplicates = duplicate_required_contract_keys(input_contract)
     if duplicates:
         raise ValueError(
             "capacity duplicate required input: " + ", ".join(duplicates)
         )
-    missing = sorted(name for name in required if name not in properties)
+    missing = undeclared_required_contract_keys(input_contract)
     if missing:
         raise ValueError(
             "capacity required inputs must be declared in input_contract properties: "

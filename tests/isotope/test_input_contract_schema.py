@@ -4,7 +4,9 @@ import pytest
 
 from isotope.platform.schemas.input_contract import (
     contract_value_violation,
+    duplicate_required_contract_keys,
     matches_contract_type,
+    undeclared_required_contract_keys,
     unexpected_contract_keys,
 )
 
@@ -89,3 +91,52 @@ def test_unexpected_contract_keys_returns_empty_for_declared_inputs():
     )
 
     assert unexpected == []
+
+
+def test_duplicate_required_contract_keys_reports_unique_sorted_duplicates():
+    duplicates = duplicate_required_contract_keys(
+        {
+            "required": ["question", "artifact_ref", "question", "artifact_ref"],
+            "properties": {
+                "artifact_ref": {"type": "string"},
+                "question": {"type": "string"},
+            },
+        }
+    )
+
+    assert duplicates == ["artifact_ref", "question"]
+
+
+def test_undeclared_required_contract_keys_reports_required_missing_from_properties():
+    missing = undeclared_required_contract_keys(
+        {
+            "required": ["artifact_ref", "question", "raw_content"],
+            "properties": {
+                "artifact_ref": {"type": "string"},
+                "question": {"type": "string"},
+            },
+        }
+    )
+
+    assert missing == ["raw_content"]
+
+
+def test_required_contract_key_helpers_ignore_malformed_contract_shapes():
+    assert duplicate_required_contract_keys({"required": "question"}) == []
+    assert duplicate_required_contract_keys({"required": ["question", 5, 5]}) == []
+    assert undeclared_required_contract_keys({"required": "question"}) == []
+    assert undeclared_required_contract_keys(
+        {
+            "required": ["question", 5],
+            "properties": {"question": {"type": "string"}},
+        }
+    ) == []
+    assert undeclared_required_contract_keys(
+        {"required": ["question"], "properties": ["question"]}
+    ) == []
+
+
+def test_undeclared_required_contract_keys_treats_missing_properties_as_empty():
+    missing = undeclared_required_contract_keys({"required": ["question"]})
+
+    assert missing == ["question"]
