@@ -930,6 +930,19 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         help="Maximum context snippets.",
     )
     context_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    research_parser = subparsers.add_parser(
+        "research",
+        help="Run delegated research through the shared research flow.",
+    )
+    research_parser.add_argument("--root", required=True, help="Runtime root directory.")
+    research_parser.add_argument("--query", required=True, help="Research query.")
+    research_parser.add_argument(
+        "--provider",
+        default="fake",
+        choices=("fake",),
+        help="Research provider. First implementation supports fake for tests.",
+    )
+    research_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     capacity_parser = subparsers.add_parser(
         "capacity",
         help="Plan one low-risk Supervisor capacity call.",

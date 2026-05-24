@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Any
 
 from isotope.capabilities.runner import CapabilityRunner
+from ..research.flow import ResearchFlow
+from ..research.providers import FakeResearchProvider
 from .context import read_recent_context_results, request_project_context
 from .decision_requests import (
     DEFAULT_DECISION_TIMEOUT_SECONDS,
@@ -583,6 +585,23 @@ def main(argv: list[str] | None = None) -> int:
     return _run_cli(argv)
 
 
+def _handle_research_command(args: argparse.Namespace, *, api) -> int:
+    flow = ResearchFlow.in_process(
+        Path(args.root),
+        provider=FakeResearchProvider(),
+    )
+    payload = flow.search(args.query).to_dict()
+    if args.json:
+        _print_json(payload)
+    else:
+        research = payload.get("research") or {}
+        print("[Codex Supervisor Research]")
+        print(f"status: {payload['status']}")
+        print(f"query: {research.get('query', '')}")
+        print(f"evidence: {research.get('evidence_status', '')}")
+    return 0
+
+
 _COMMAND_HANDLERS = {
     "dashboard": _handle_dashboard_command,
     "integration-review": _handle_integration_review_command,
@@ -593,6 +612,7 @@ _COMMAND_HANDLERS = {
     "context": _handle_context_command,
     "decision": _handle_decision_command,
     "memory": _handle_memory_command,
+    "research": _handle_research_command,
     "replan": _handle_replan_command,
     "state": _handle_state_command,
     "worker-event": _handle_worker_event_command,
