@@ -219,6 +219,59 @@ def test_supervisor_capacity_plan_only_offers_preflight_launchable_capabilities(
     assert offered_ids == ["artifact.review"]
 
 
+def test_supervisor_capacity_plan_blocks_when_no_capabilities_can_be_offered(tmp_path):
+    provider = FakeCapacityProvider(
+        '{"capacity_id":"llm.artifact.review","arguments":{},"confidence":0.91,'
+        '"rationale":"provider required"}'
+    )
+    runner_with_unavailable_capability = CapabilityRunner(
+        catalog=CapabilityCatalog(
+            capabilities=[
+                Capability(
+                    capability_id="llm.artifact.review",
+                    title="LLM Artifact Review",
+                    description="Provider-backed artifact review.",
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=("artifact", "llm"),
+                    input_contract={"type": "object"},
+                    output_contract={"type": "object"},
+                    safety_boundaries=("provider_required",),
+                    required_env=("ISOTOPE_TEST_PROVIDER_KEY",),
+                    network_required=True,
+                    provider="test-provider",
+                    model="test-model",
+                )
+            ]
+        )
+    )
+
+    result = capacity_command.build_supervisor_capacity_plan(
+        goal="检查 provider-backed 能力",
+        provider=provider,
+        runner=runner_with_unavailable_capability,
+        state_root=tmp_path / "state",
+        execute_agent_loop=True,
+    )
+
+    assert provider.messages == []
+    assert result["status"] == "blocked"
+    assert result["status_reason"] == "no_offered_capacities"
+    assert result["selection"] is None
+    assert result["capacity_graph"]["status"] == "blocked"
+    assert result["capability_launch_plan"] is None
+    assert result["agent_loop"] is None
+    assert result["supervisor_decision"] == {
+        "kind": "supervisor_capacity_decision",
+        "next_action": "blocked",
+        "reason": "no_offered_capacities",
+        "capacity_id": "unknown",
+        "can_execute_agent_loop": False,
+        "missing_inputs": [],
+        "blocking_reasons": ["no_offered_capacities"],
+    }
+
+
 def test_execute_capacity_action_requires_matching_ready_decision(tmp_path, monkeypatch):
     calls: list[object] = []
 

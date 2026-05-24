@@ -97,10 +97,16 @@ def build_supervisor_capacity_plan(
 ) -> dict[str, Any]:
     """Plan one Supervisor capacity call, optionally proving the agent-loop path."""
     capacity_runner = runner or CapabilityRunner()
+    offered_capacities = _capacity_manifests_from_runner(capacity_runner)
+    if not offered_capacities:
+        return _no_offered_capacities_plan(
+            goal=goal,
+            execute_agent_loop=execute_agent_loop,
+        )
     selection = select_capacity_call(
         provider,
         goal=goal,
-        capacities=_capacity_manifests_from_runner(capacity_runner),
+        capacities=offered_capacities,
     )
     if selection.status != "ready_to_call":
         selection_payload = selection.to_dict()
@@ -419,7 +425,7 @@ def _capacity_decision_next_action(status_reason: str) -> str:
         return "call_capacity"
     if status_reason == "needs_input":
         return "request_input"
-    if status_reason == "not_launchable":
+    if status_reason in {"not_launchable", "no_offered_capacities"}:
         return "blocked"
     return "wait"
 
@@ -451,6 +457,35 @@ def _can_offer_capacity_manifest(launch_plan: Mapping[str, Any]) -> bool:
     if launch_plan.get("can_launch") is True:
         return True
     return launch_plan.get("status") == "missing_inputs"
+
+
+def _no_offered_capacities_plan(
+    *,
+    goal: str,
+    execute_agent_loop: bool,
+) -> dict[str, Any]:
+    status_reason = "no_offered_capacities"
+    return {
+        "status": "blocked",
+        "status_reason": status_reason,
+        "kind": "supervisor_capacity_plan",
+        "goal": goal,
+        "selection": None,
+        "capacity_graph": {
+            "kind": "capacity_graph_plan",
+            "status": "blocked",
+            "summary": {"ready": 0, "blocked": 0},
+            "calls": [],
+        },
+        "capability_launch_plan": None,
+        "agent_loop": None,
+        "supervisor_decision": _capacity_supervisor_decision(
+            status_reason=status_reason,
+            selection={"capacity_id": "unknown", "missing_inputs": []},
+            launch_plan={"blocking_reasons": [status_reason]},
+        ),
+        "safety": _capacity_plan_safety(execute_agent_loop=execute_agent_loop),
+    }
 
 
 def _blocked_capacity_graph(selection: Any) -> dict[str, Any]:
