@@ -92,6 +92,8 @@ class InProcessServer(
         terminal_backend_config=None,
         codex_task_adapter=None,
         codex_task_adapter_config=None,
+        screen_backend=None,
+        screen_backend_config=None,
         memory_store=None,
         memory_query_service=None,
         *,
@@ -127,6 +129,8 @@ class InProcessServer(
             terminal_backend_config=terminal_backend_config,
             codex_task_adapter=codex_task_adapter,
             codex_task_adapter_config=codex_task_adapter_config,
+            screen_backend=screen_backend,
+            screen_backend_config=screen_backend_config,
         )
         self.retrieval = RetrievalService(self.artifact_store)
         self._sessions: dict[str, dict[str, Any]] = {}

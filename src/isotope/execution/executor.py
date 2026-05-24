@@ -19,6 +19,12 @@ from ..platform.schemas.memory import MemoryRecord
 from ..platform.schemas.refs import ResourceRef
 from ..platform.schemas.tool_protocol import ToolInvocation, ToolResult
 from ..capabilities.tools.terminal import ControlledTerminalRunner
+from .screen_backend_adapter import ScreenBackendAdapter
+from .screen_backend_types import (
+    ScreenBackendExecutionError,
+    ScreenBackendNotConfiguredError,
+    ScreenBackendProtocolError,
+)
 from .terminal_runner import (
     TerminalBackendAdapter,
     TerminalBackendExecutionError,
@@ -45,6 +51,8 @@ class Executor:
         terminal_backend_config=None,
         codex_task_adapter=None,
         codex_task_adapter_config=None,
+        screen_backend=None,
+        screen_backend_config=None,
     ):
         self.event_store = event_store
         self.artifact_store = artifact_store
@@ -71,6 +79,16 @@ class Executor:
                 adapter_config=codex_task_adapter_config,
             )
             if codex_task_adapter is not None
+            else None
+        )
+        self.screen_backend_config = screen_backend_config
+        self.screen_backend_adapter = (
+            ScreenBackendAdapter(
+                artifact_store=self.artifact_store,
+                backend=screen_backend,
+                backend_config=screen_backend_config,
+            )
+            if screen_backend is not None
             else None
         )
 
@@ -189,6 +207,40 @@ class Executor:
                     )
                 artifact_refs = list(codex_result.artifact_refs)
                 completion_metadata = {"codex_task": dict(codex_result.adapter_summary)}
+            elif tool_name in {"screen_observe", "screen_control"}:
+                workspace_binding = self.workspace_manager.get_binding(decision.grants)
+                execution = self._new_execution(execution_id, proposal, decision, status="completed")
+                if self.screen_backend_adapter is None:
+                    backend_id = None
+                    if isinstance(self.screen_backend_config, dict):
+                        backend_id = self.screen_backend_config.get("backend_id")
+                    else:
+                        backend_id = getattr(self.screen_backend_config, "backend_id", None)
+                    raise ScreenBackendNotConfiguredError(details={"backend_id": backend_id})
+                screen_result = self.screen_backend_adapter.prepare_and_run(
+                    proposal=proposal,
+                    decision=decision,
+                    execution_id=execution.execution_id,
+                    workspace_binding=self._workspace_binding_payload(workspace_binding),
+                    basis_event_ids=[started_event.event_id],
+                )
+                if screen_result.status not in {"captured", "metadata_only", "planned", "completed"}:
+                    raise ScreenBackendExecutionError(
+                        screen_result.summary,
+                        reason_code=screen_result.reason_code,
+                        details={
+                            "backend_session_id": screen_result.backend_session_id,
+                            "backend_status": screen_result.status,
+                            "retryable": screen_result.retryable,
+                        },
+                    )
+                if not screen_result.artifact_refs:
+                    raise ScreenBackendProtocolError(
+                        "screen backend completed without output artifacts",
+                        details={"backend_session_id": screen_result.backend_session_id},
+                    )
+                artifact_refs = list(screen_result.artifact_refs)
+                completion_metadata = {"screen_backend": dict(screen_result.backend_summary)}
             elif tool_name == "write_memory" and self.memory_service is not None:
                 execution = self._new_execution(execution_id, proposal, decision, status="started")
                 record = self._memory_record_from_proposal(proposal, execution_id)
