@@ -12,9 +12,9 @@ from .demo_planner_helpers import (
     _run_planner_blocked_deferred_fixture,
     _run_planner_malformed_action_fixture,
 )
-from .platform.state.checkpoint_store import FileCheckpointStore
-from .platform.state.projector import RunProjector
-from .runtime.in_process import InProcessServer
+from ..platform.state.checkpoint_store import FileCheckpointStore
+from ..platform.state.projector import RunProjector
+from ..runtime.in_process import InProcessServer
 
 
 def _run_agent_loop_planner_matrix_spike(root: Path) -> dict[str, Any]:

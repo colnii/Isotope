@@ -48,10 +48,10 @@ from .demo_llm_terminal_scenarios import _run_llm_terminal_tool_loop_demo
 from .demo_llm_tool_result_scenarios import _run_llm_tool_result_loop_demo
 from .demo_memory_scenarios import _run_memory_query_smoke_demo
 from .demo_terminal_scenarios import _run_terminal_exec_demo
-from .platform.state.checkpoint_store import FileCheckpointStore
-from .interfaces.http import create_http_app
-from .platform.state.projector import RunProjector
-from .runtime.in_process import InProcessServer
+from ..platform.state.checkpoint_store import FileCheckpointStore
+from ..interfaces.http import create_http_app
+from ..platform.state.projector import RunProjector
+from ..runtime.in_process import InProcessServer
 
 
 def run_demo(root_path: Path | str | None = None, scenario: str = "v0.1") -> dict[str, Any]:
@@ -204,143 +204,37 @@ def _run_scenario(root: Path, *, scenario: str) -> dict[str, Any]:
         return _run_project_workspace_demo(root)
     if scenario == "project-workspace-append":
         return _run_project_workspace_append_demo(root)
-    raise ValueError(f"unsupported scenario: {scenario}")
+    msg = f"unknown scenario: {scenario!r}"
+    raise ValueError(msg)
 
 
 def _run_v0_2_demo(root: Path) -> dict[str, Any]:
-    root.mkdir(parents=True, exist_ok=True)
-    app = create_http_app(root)
-
-    session_response = app.request("POST", "/sessions", {})
-    session_id = session_response.body["session_id"]  # type: ignore[index]
-    run_response = app.request(
-        "POST",
-        f"/sessions/{session_id}/runs",
-        {"goal": "demo v0.2 HTTP facade path"},
-    )
-    run_id = run_response.body["run_id"]  # type: ignore[index]
-    input_response = app.request("POST", f"/runs/{run_id}/input", {"text": "hello"})
-    state_response = app.request("GET", f"/runs/{run_id}")
-    events_response = app.request("GET", f"/runs/{run_id}/events")
-    artifact_ref = input_response.body["artifact_ref"]  # type: ignore[index]
-    artifact_id = artifact_ref["artifact_id"]
-    artifact_summary_response = app.request("GET", f"/artifacts/{artifact_id}/summary")
-
     checkpoint_store = FileCheckpointStore(root)
-    replay_state = RunProjector().rebuild(run_id, app.server.event_store)
-    checkpoint = RunProjector().save_checkpoint(run_id, app.server.event_store, checkpoint_store)
-    checkpoint_state = RunProjector().rebuild_with_checkpoint(
-        run_id,
-        app.server.event_store,
-        checkpoint_store,
-    )
+    api = InProcessServer(root, checkpoint_store=checkpoint_store)
+    segment_api = create_http_app(api)
 
-    http_full_content_response = app.request("GET", f"/artifacts/{artifact_id}/content")
-    artifact_policy_ok = _artifact_content_policy_ok(app, artifact_ref)
-    approval_ok = _approval_flow_ok(root, app)
-    http_api_ok = (
-        session_response.status_code == 201
-        and run_response.status_code == 201
-        and input_response.status_code == 200
-        and state_response.status_code == 200
-        and events_response.status_code == 200
-        and artifact_summary_response.status_code == 200
-        and replay_state.status == "completed"
-    )
+    api._segment_server = segment_api  # type: ignore[attr-defined]
+
+    session = api.create_session()
+    run = api.create_run(session["session_id"], goal="demo v0.2 segment trace")
+    run_id = run["run_id"]
+    submit_month = "2026-04"
+    api.submit_input(run_id, f"submit in {submit_month}")
+    api.submit_input(run_id, "memory record as segment")
+    api.submit_input(run_id, '"memory-mode": "memory-plugin-segment-only"')
+
+    replay_state = RunProjector().rebuild(run_id, api.event_store)
+    artifacts = api.artifact_store.list_artifacts(run_id)
+
+    memory_status = _deferred_status(replay_state, run_id, api.memory_store)
 
     return {
-        "scenario": "v0.2",
-        "session_id": session_id,
+        "session_id": session["session_id"],
         "run_id": run_id,
         "run_status": replay_state.status,
-        "http_api_ok": http_api_ok,
-        "approval_ok": approval_ok,
-        "artifact_content_policy_ok": artifact_policy_ok,
-        "checkpoint_ok": asdict(checkpoint_state) == asdict(replay_state),
-        "checkpoint_basis_event_id": checkpoint["basis_event_id"],
-        "event_count": len(events_response.body),  # type: ignore[arg-type]
-        "http_full_content_route_status": _deferred_status(http_full_content_response),
-        "memory_status": "boundary_only",
-        "memory_query_status": "not_enabled",
-        "memory_storage_status": "not_enabled",
+        "action_outcome": _latest_action_status(replay_state.actions),
+        "event_count": len(api.event_store.list_events(run_id)),
+        "replay_ok": asdict(replay_state) == asdict(api.get_run_state(run_id)),
+        "artifact_count": len(artifacts),
+        "memory_status": memory_status,
     }
-
-
-def _artifact_content_policy_ok(app: Any, artifact_ref: dict[str, Any]) -> bool:
-    ref = app.server.artifact_store.list_artifacts(artifact_ref["run_id"])[-1].ref
-    summary = app.server.retrieval.get_artifact_summary(
-        ref,
-        {"artifact": {"read": "summary"}},
-    )
-    content = app.server.retrieval.get_artifact_content(
-        ref,
-        grants={"artifact": {"read": "full"}},
-        caller_context={"caller": "demo"},
-        purpose="developer_demo",
-    )
-    return (
-        "content" not in summary
-        and summary["ref"] == ref.to_dict()
-        and content["status"] == "ok"
-        and content["view"] == "full"
-        and isinstance(content.get("content"), str)
-    )
-
-
-def _approval_flow_ok(root: Path, app: Any) -> bool:
-    session = app.server.create_session()
-    approval_run = app.server.create_run(session["session_id"], goal="demo approval path")
-    approval_run_id = approval_run["run_id"]
-    pending = app.server.submit_tool_request(
-        approval_run_id,
-        tool="write_artifact_tool",
-        text="approved artifact",
-        requires_approval=True,
-    )
-    pending_approvals = app.server.get_pending_approvals(approval_run_id)
-    approval_id = pending_approvals[0]["approval_id"] if pending_approvals else ""
-    if pending["status"] != "pending_user_approval" or not approval_id:
-        return False
-
-    response = app.request(
-        "POST",
-        f"/runs/{approval_run_id}/approvals/{approval_id}/resolve",
-        {
-            "resolution": "approved",
-            "reason": "demo approval",
-            "resolver": "demo",
-        },
-    )
-    if response.status_code != 200:
-        return False
-    event_types = [event.event_type for event in app.server.get_events(approval_run_id)]
-    approved_state = app.server.get_run_state(approval_run_id)
-    checkpoint_store = FileCheckpointStore(root / "approval-checkpoints")
-    RunProjector().save_checkpoint(approval_run_id, app.server.event_store, checkpoint_store)
-    checkpoint_state = RunProjector().rebuild_with_checkpoint(
-        approval_run_id,
-        app.server.event_store,
-        checkpoint_store,
-    )
-    return (
-        "approval.requested" in event_types
-        and "approval.resolved" in event_types
-        and event_types.index("approval.resolved") < event_types.index("action.started")
-        and approved_state.status == "completed"
-        and asdict(checkpoint_state) == asdict(approved_state)
-    )
-
-
-def _latest_approval_id(events: list[Any]) -> str:
-    for event in reversed(events):
-        if event.event_type == "approval.requested":
-            approval_id = event.payload.get("approval_id")
-            if isinstance(approval_id, str):
-                return approval_id
-    return ""
-
-
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

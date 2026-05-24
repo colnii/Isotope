@@ -12,11 +12,11 @@ from .demo_llm_fakes import (
     _demo_product_chat_ready_preflight,
 )
 from .demo_terminal_scenarios import _DemoCompletedProcess, _RecordingProcessRunner
-from .features.chat.flow import submit_llm_product_chat_user_message_with_preflight
-from .integrations.codex import server as codex_server
-from .interfaces.http import create_llm_product_chat_http_app
-from .platform.state.checkpoint_store import FileCheckpointStore
-from .platform.state.projector import RunProjector
+from ..features.chat.flow import submit_llm_product_chat_user_message_with_preflight
+from ..integrations.codex import server as codex_server
+from ..interfaces.http import create_llm_product_chat_http_app
+from ..platform.state.checkpoint_store import FileCheckpointStore
+from ..platform.state.projector import RunProjector
 
 
 def _run_llm_product_chat_app_entry_demo(root: Path) -> dict[str, Any]:

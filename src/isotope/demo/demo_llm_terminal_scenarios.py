@@ -12,11 +12,11 @@ from .demo_llm_fakes import (
     _demo_terminal_final_answer_response,
     _demo_terminal_tool_call_response,
 )
-from .interfaces.http import HttpApiApp
-from .llm.provider import build_llm_tool_result_message
-from .platform.state.checkpoint_store import FileCheckpointStore
-from .platform.state.projector import RunProjector
-from .runtime.in_process import InProcessServer
+from ..interfaces.http import HttpApiApp
+from ..llm.provider import build_llm_tool_result_message
+from ..platform.state.checkpoint_store import FileCheckpointStore
+from ..platform.state.projector import RunProjector
+from ..runtime.in_process import InProcessServer
 
 
 def _run_llm_terminal_tool_loop_demo(root: Path) -> dict[str, Any]:

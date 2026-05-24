@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import Any
 
 from .demo_common import _deferred_status
-from .interfaces.http import create_http_app
-from .platform.state.checkpoint_store import FileCheckpointStore
-from .platform.state.projector import RunProjector
+from ..interfaces.http import create_http_app
+from ..platform.state.checkpoint_store import FileCheckpointStore
+from ..platform.state.projector import RunProjector
 
 
 def _run_artifact_review_spike(root: Path) -> dict[str, Any]:

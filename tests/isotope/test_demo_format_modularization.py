@@ -1,7 +1,7 @@
-import isotope.demo_format as demo_format
-from isotope import demo_format_agent_loop
-from isotope import demo_format_core
-from isotope import demo_format_llm
+import isotope.demo.demo_format as demo_format
+from isotope.demo import demo_format_agent_loop
+from isotope.demo import demo_format_core
+from isotope.demo import demo_format_llm
 
 
 def test_demo_format_facade_uses_scenario_formatter_modules():

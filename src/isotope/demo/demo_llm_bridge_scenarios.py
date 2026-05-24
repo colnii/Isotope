@@ -13,11 +13,11 @@ from .demo_llm_fakes import (
     _demo_tool_call_response,
 )
 from .demo_terminal_scenarios import _DemoCompletedProcess, _RecordingProcessRunner
-from .integrations.codex import server as codex_server
-from .interfaces.http import create_codex_cli_http_app, create_llm_provider_http_app
-from .llm.tool_bridge import submit_model_tool_call
-from .platform.state.checkpoint_store import FileCheckpointStore
-from .platform.state.projector import RunProjector
+from ..integrations.codex import server as codex_server
+from ..interfaces.http import create_codex_cli_http_app, create_llm_provider_http_app
+from ..llm.tool_bridge import submit_model_tool_call
+from ..platform.state.checkpoint_store import FileCheckpointStore
+from ..platform.state.projector import RunProjector
 
 
 def _run_model_tool_bridge_demo(root: Path) -> dict[str, Any]:

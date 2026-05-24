@@ -9,7 +9,7 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = REPO_ROOT / "src"
-DEMO_SOURCE = SRC_ROOT / "isotope" / "demo.py"
+DEMO_SOURCE = SRC_ROOT / "isotope" / "demo" / "__init__.py"
 
 REQUIRED_TEXT_FIELDS = (
     "run_status",
@@ -91,7 +91,7 @@ def _directory_snapshot(path: Path) -> list[str] | None:
 
 
 def _imported_modules(path: Path) -> set[str]:
-    assert path.exists(), "src/isotope/demo.py must exist"
+    assert path.exists(), "src/isotope/demo/__init__.py must exist"
     tree = ast.parse(path.read_text(encoding="utf-8"))
     imports: set[str] = set()
     for node in ast.walk(tree):

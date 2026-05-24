@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from isotope.loop_engine import LoopEngine, LoopInterrupted
+from isotope.agents.loop.loop_engine import LoopEngine, LoopInterrupted
 
 
 def test_loop_engine_runs_registered_step_handler_and_refreshes_control():

@@ -12,7 +12,7 @@ from isotope.runtime.in_process import InProcessServer
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = REPO_ROOT / "src"
-DEMO_SOURCE = SRC_ROOT / "isotope" / "demo.py"
+DEMO_SOURCE = SRC_ROOT / "isotope" / "demo" / "__init__.py"
 SCENARIO = "external-snapshot-review"
 
 REQUIRED_TEXT_FIELDS = (

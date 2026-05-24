@@ -1,5 +1,5 @@
 import isotope.demo as demo
-from isotope import demo_artifact_review_scenarios
+from isotope.demo import demo_artifact_review_scenarios
 
 
 def test_demo_facade_reexports_artifact_review_scenario_runner():

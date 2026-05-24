@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from .platform.errors import IsotopeError
-from .llm.provider import (
+from ..platform.errors import IsotopeError
+from ..llm.provider import (
     ToolCallProvider,
     resolve_llm_tool_call_provider,
     submit_llm_tool_call,

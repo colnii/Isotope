@@ -5,9 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .memory.views import build_memory_query_payload
-from .platform.schemas.memory import MemoryRecord
-from .platform.state.memory_store import FileMemoryStore
+from ..memory.views import build_memory_query_payload
+from ..platform.schemas.memory import MemoryRecord
+from ..platform.state.memory_store import FileMemoryStore
 
 
 def _run_memory_query_smoke_demo(root: Path) -> dict[str, Any]:

@@ -9,8 +9,8 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = REPO_ROOT / "src"
-DEMO_SOURCE = SRC_ROOT / "isotope" / "demo.py"
-ARTIFACT_REVIEW_SOURCE = SRC_ROOT / "isotope" / "demo_artifact_review_scenarios.py"
+DEMO_SOURCE = SRC_ROOT / "isotope" / "demo" / "__init__.py"
+ARTIFACT_REVIEW_SOURCE = SRC_ROOT / "isotope" / "demo" / "demo_artifact_review_scenarios.py"
 SCENARIO = "artifact-review"
 
 REQUIRED_TEXT_FIELDS = (

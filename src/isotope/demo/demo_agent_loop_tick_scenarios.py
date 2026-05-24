@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .runtime.in_process import InProcessServer
+from ..runtime.in_process import InProcessServer
 
 
 def _run_agent_loop_tick_policy_trace(root: Path) -> dict[str, Any]:
@@ -202,7 +202,7 @@ def _run_agent_loop_tick_driver_trace(root: Path) -> dict[str, Any]:
 
 
 def _run_supervisor_capacity_handoff_trace(root: Path) -> dict[str, Any]:
-    from .features.supervisor.commands.capacity import build_supervisor_capacity_plan
+    from ..features.supervisor.commands.capacity import build_supervisor_capacity_plan
 
     root.mkdir(parents=True, exist_ok=True)
     plan = build_supervisor_capacity_plan(
@@ -294,7 +294,7 @@ class _FixtureCapacityProvider:
         *,
         max_tokens: int = 512,
     ) -> Any:
-        from .llm.provider import LLMResponse
+        from ..llm.provider import LLMResponse
 
         return LLMResponse(
             provider=self.provider,

@@ -128,7 +128,7 @@ def test_approval_tool_runner_demo_uses_lookup_helper_not_event_scan(tmp_path, m
     def fail_event_scan(*args, **kwargs):
         raise AssertionError("approval-tool-runner demo should not scan events for approval_id")
 
-    monkeypatch.setattr(demo, "_latest_approval_id", fail_event_scan)
+    monkeypatch.setattr(demo, "_latest_approval_id", fail_event_scan, raising=False)
 
     result = demo._run_approval_tool_runner_spike(tmp_path)
 

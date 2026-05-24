@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .llm.provider import (
+from ..llm.provider import (
     LLMFinalAnswerResponse,
     LLMToolCall,
     LLMToolCallResponse,

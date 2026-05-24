@@ -9,7 +9,7 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = REPO_ROOT / "src"
-DEMO_SOURCE = SRC_ROOT / "isotope" / "demo.py"
+DEMO_SOURCE = SRC_ROOT / "isotope" / "demo" / "__init__.py"
 SCENARIO = "approval-tool-runner"
 
 REQUIRED_TEXT_FIELDS = (

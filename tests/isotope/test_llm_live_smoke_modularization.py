@@ -1,10 +1,10 @@
-import isotope.llm_live_smoke as llm_live_smoke
-from isotope import llm_live_smoke_config
-from isotope import llm_live_smoke_cli_support
-from isotope import llm_live_smoke_diagnosis
-from isotope import llm_live_smoke_product_chat_entry_state
-from isotope import llm_live_smoke_runs
-from isotope import llm_live_smoke_terminal_diagnosis
+import isotope.demo.llm_live_smoke as llm_live_smoke
+from isotope.demo import llm_live_smoke_config
+from isotope.demo import llm_live_smoke_cli_support
+from isotope.demo import llm_live_smoke_diagnosis
+from isotope.demo import llm_live_smoke_product_chat_entry_state
+from isotope.demo import llm_live_smoke_runs
+from isotope.demo import llm_live_smoke_terminal_diagnosis
 
 
 def test_llm_live_smoke_facade_preserves_config_exports():

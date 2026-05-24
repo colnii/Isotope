@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .interfaces.http import create_http_app
-from .llm.provider import LLMResponse
+from ..interfaces.http import create_http_app
+from ..llm.provider import LLMResponse
 
 
 def _run_project_workspace_demo(root: Path) -> dict[str, Any]:

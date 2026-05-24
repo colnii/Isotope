@@ -7,11 +7,11 @@ from pathlib import Path
 from typing import Any
 
 from .demo_common import _deferred_status
-from .interfaces.http import create_http_app
-from .platform.schemas.refs import make_artifact_ref
-from .platform.schemas.snapshots import ImportedSnapshot
-from .platform.state.checkpoint_store import FileCheckpointStore
-from .platform.state.projector import RunProjector
+from ..interfaces.http import create_http_app
+from ..platform.schemas.refs import make_artifact_ref
+from ..platform.schemas.snapshots import ImportedSnapshot
+from ..platform.state.checkpoint_store import FileCheckpointStore
+from ..platform.state.projector import RunProjector
 
 
 def _run_approval_tool_runner_spike(root: Path) -> dict[str, Any]:

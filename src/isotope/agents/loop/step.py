@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from ...loop_engine import LoopEngine, LoopStepContext
+from .loop_engine import LoopEngine, LoopStepContext
 from ...platform.schemas.refs import ResourceRef
 
 
