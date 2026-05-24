@@ -231,10 +231,13 @@ class Executor:
                 summary = proposal.payload.get("summary", "hello artifact")
                 if not isinstance(summary, str) or not summary:
                     summary = "hello artifact"
+                artifact_type = proposal.payload.get("artifact_type", "text")
+                if not isinstance(artifact_type, str) or not artifact_type:
+                    artifact_type = "text"
                 artifact = self.artifact_store.create_artifact(
                     run_id=proposal.run_id,
                     execution_id=execution.execution_id,
-                    artifact_type="text",
+                    artifact_type=artifact_type,
                     summary=summary,
                     content=str(proposal.payload.get("text", "")),
                     proposal_id=proposal.proposal_id,

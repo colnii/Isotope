@@ -76,6 +76,30 @@ def test_source_artifact_helper_creates_summary_ref_and_provenance(tmp_path):
     }
 
 
+def test_source_artifact_helper_allows_research_artifact_types(tmp_path):
+    api = server.InProcessServer(tmp_path)
+    session = api.create_session()
+    run = api.create_run(session["session_id"], goal="store research artifacts")
+
+    report = api.create_source_artifact(
+        run["run_id"],
+        summary="research report for agent memory",
+        content='{"status": "ok", "sources": []}',
+        artifact_type="research.report",
+    )
+    raw = api.create_source_artifact(
+        run["run_id"],
+        summary="raw Codex research transcript",
+        content='{"stdout": "raw"}',
+        artifact_type="research.raw_transcript",
+    )
+
+    assert report["artifact_type"] == "research.report"
+    assert raw["artifact_type"] == "research.raw_transcript"
+    assert api.get_artifact_record(report["artifact_ref"])["artifact_type"] == "research.report"
+    assert api.get_artifact_record(raw["artifact_ref"])["artifact_type"] == "research.raw_transcript"
+
+
 def test_source_artifact_helper_does_not_expose_full_content_in_returned_summary(tmp_path):
     api, run_id = _new_run(tmp_path)
 

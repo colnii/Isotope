@@ -8,6 +8,13 @@ from ..platform.events.events import CanonicalEvent
 from ..platform.schemas.refs import ResourceRef
 
 
+SOURCE_ARTIFACT_TYPES = {
+    "text",
+    "research.report",
+    "research.raw_transcript",
+}
+
+
 class InProcessArtifactMixin:
     """Create and inspect low-sensitive artifact records."""
 
@@ -24,8 +31,8 @@ class InProcessArtifactMixin:
         run = self._runtime_context_for_write_helper(run_id)
         self._validate_non_empty_string("summary", summary)
         self._validate_non_empty_string("content", content)
-        if artifact_type != "text":
-            raise ValueError("artifact_type must be text")
+        if artifact_type not in SOURCE_ARTIFACT_TYPES:
+            raise ValueError("artifact_type is not supported")
         basis_ref_payloads = self._validate_artifact_ref_list("basis_refs", basis_refs, run_id)
         source_ref_payloads = self._validate_artifact_ref_list("source_refs", source_refs, run_id)
 
@@ -42,6 +49,7 @@ class InProcessArtifactMixin:
                 "thread_id": run["thread_id"],
             },
         )
+        proposal.payload["artifact_type"] = artifact_type
         if basis_ref_payloads:
             proposal.payload["basis_refs"] = basis_ref_payloads
         if source_ref_payloads:
