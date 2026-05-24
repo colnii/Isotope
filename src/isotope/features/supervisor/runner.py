@@ -206,6 +206,10 @@ from .commands.llm_context import (
     maybe_replan_after_context_request as _maybe_replan_after_context_request,
     planner_context_payload as _planner_context_payload,
 )
+from .commands.llm_planner import (
+    UnavailableSummaryProvider as _UnavailableSummaryProvider,
+    decide_action_with_llm as _decide_action_with_llm,
+)
 from .commands.failure_guard import (
     failure_decision_request_action as _failure_decision_request_action,
     failure_goal_id as _failure_goal_id,
@@ -1586,65 +1590,6 @@ def _summarize_with_llm(report: Any) -> str:
     return generate_llm_summary(report, provider)
 
 
-def _decide_action_with_llm(
-    args: argparse.Namespace,
-    report: Any,
-    payload: dict[str, Any],
-) -> dict[str, Any]:
-    if not _has_llm_action_target(
-        report,
-        payload.get("command_suggestions"),
-        payload.get("delete_worktree_candidates"),
-    ):
-        return generate_llm_action_decision(
-            report,
-            payload["command_suggestions"],
-            _UnavailableSummaryProvider(),
-            payload.get("recent_context_results"),
-            payload.get("active_goals"),
-            payload.get("recent_decision_answers"),
-            payload.get("worker_reviews"),
-            payload.get("delete_worktree_candidates"),
-            capacity_decisions=payload.get("capacity_decisions"),
-        )
-    try:
-        provider = resolve_summary_provider_from_env(agent_name="supervisor")
-        return generate_llm_action_decision(
-            report,
-            payload["command_suggestions"],
-            provider,
-            payload.get("recent_context_results"),
-            payload.get("active_goals"),
-            payload.get("recent_decision_answers"),
-            payload.get("worker_reviews"),
-            payload.get("delete_worktree_candidates"),
-            capacity_decisions=payload.get("capacity_decisions"),
-        )
-    except ValueError as exc:
-        error = str(exc)
-        failure_event = _record_failure_event(
-            args,
-            event_type="llm_planner_invalid_response",
-            report=report,
-            payload=payload,
-            error_summary=error,
-        )
-        if _failure_retry_exhausted(args, failure_event):
-            return _failure_decision_request_action(
-                event=failure_event,
-                question="Supervisor LLM planner 连续返回无效动作，请确认是否调整配置或改为人工处理当前目标。",
-                reason="LLM planner failure retry limit exceeded",
-            )
-        reason = f"LLM 动作无效，已跳过执行：{error}"
-        return {
-            "kind": "monitor",
-            "target_name": None,
-            "reason": reason,
-            "command_suggestion": None,
-            "error": error,
-        }
-
-
 def _recent_context_results(args: argparse.Namespace, report: Any) -> list[dict[str, Any]]:
     cwd = _context_cwd_for_report(report) or _goal_workspace(args)
     results = read_recent_context_results(
@@ -1717,11 +1662,6 @@ def _goal_dict_with_status(
         if key != "goal_id":
             merged[key] = value
     return merged
-
-
-class _UnavailableSummaryProvider:
-    def summarize(self, messages: list[dict[str, str]]) -> str:
-        raise AssertionError("LLM provider should not be called without Supervisor context")
 
 
 if __name__ == "__main__":

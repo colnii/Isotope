@@ -268,6 +268,19 @@ def test_supervisor_runner_delegates_plain_rendering_helpers():
         assert f"def {function_name}(" not in source
 
 
+def test_supervisor_runner_delegates_llm_planner_helpers():
+    planner_module = importlib.import_module(
+        "isotope.features.supervisor.commands.llm_planner"
+    )
+
+    assert runner._decide_action_with_llm is planner_module.decide_action_with_llm
+    assert runner._UnavailableSummaryProvider is planner_module.UnavailableSummaryProvider
+
+    source = inspect.getsource(runner)
+    assert "def _decide_action_with_llm(" not in source
+    assert "class _UnavailableSummaryProvider" not in source
+
+
 def test_supervisor_runner_delegates_llm_side_effect_execution_helpers():
     execution_module = importlib.import_module(
         "isotope.features.supervisor.commands.llm_execution"

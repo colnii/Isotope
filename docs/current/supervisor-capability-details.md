@@ -344,6 +344,11 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   dispatch（模型动作执行分发）、failure guard（失败护栏）、context request
   budget 和 active-goal resume gate；底层 `resume/launch/context/ask_user`
   执行函数继续走 `commands/llm_execution.py`，并保留 `runner.py` 兼容 alias。
+- `features/supervisor/commands/llm_planner.py`：已承接 LLM planner
+  provider/failure glue（模型规划器供应商与失败处理胶水），包括无 target
+  fallback、provider 选择、invalid response 失败记录和 retry-limit 拍板动作；
+  继续通过 runner 兼容 alias 复用 `generate_llm_action_decision(...)` 和
+  `resolve_summary_provider_from_env(...)`，保护现有 monkeypatch 测试表面。
 - `features/supervisor/commands/failure_guard.py`：已承接 failure ledger guard
   （失败账本护栏），包括失败事件记录、retry exhausted（重试耗尽）判断、
   failure decision request action（失败拍板动作）构造、lane name 和 goal id
@@ -471,7 +476,7 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
    已下沉，notification index 写入仍留在 feature flow。
 2. 用真实 daemon 长跑验证 cleanup/current dashboard 在多批任务中的稳定性。
 3. 后续再决定是否把通知接到更多 worker 生命周期事件。
-4. 再拆分 `_decide_action_with_llm` 的 provider/failure glue。
+4. 再拆分 web/bell/notification glue 或继续压缩 `_run_cli_impl`。
 
 ## 登记规则
 
