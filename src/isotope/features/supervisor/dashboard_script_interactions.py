@@ -330,7 +330,12 @@ DASHBOARD_SCRIPT_INTERACTIONS = r'''    async function copyResumeCommand(item, b
     function renderDashboardPayload(payload) {
       document.getElementById("generated-at").textContent = payload.generated_at;
       const snapshotMeta = payload.state_snapshot_meta || {};
-      document.getElementById("snapshot-meta").textContent = "读模型：" + text(snapshotMeta.schema_label);
+      let snapshotMetaText = "读模型：" + text(snapshotMeta.schema_label);
+      if (snapshotMeta.schema_status === "degraded") {
+        snapshotMetaText += " / degraded";
+        if (snapshotMeta.schema_reason) snapshotMetaText += " / " + text(snapshotMeta.schema_reason);
+      }
+      document.getElementById("snapshot-meta").textContent = snapshotMetaText;
       document.getElementById("recommendation").textContent = payload.recommendation.label;
       renderOperatorFocus(payload);
       renderControlCenter(payload);

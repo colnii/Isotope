@@ -881,6 +881,8 @@ def test_codex_supervisor_runner_dashboard_json_includes_notifications(
         "kind": "supervisor_state_snapshot",
         "schema_version": 1,
         "schema_label": "supervisor_state_snapshot v1",
+        "schema_status": "ok",
+        "schema_reason": None,
         "source_label": (
             "goal queue / decision requests / lane state / "
             "worker events / notifications"
@@ -951,6 +953,47 @@ def test_codex_supervisor_dashboard_fallback_snapshot_keeps_schema_meta():
         "kind": "supervisor_state_snapshot",
         "schema_version": 1,
         "schema_label": "supervisor_state_snapshot v1",
+        "schema_status": "ok",
+        "schema_reason": None,
+        "source_label": (
+            "goal queue / decision requests / lane state / "
+            "worker events / notifications"
+        ),
+    }
+
+
+def test_codex_supervisor_dashboard_snapshot_meta_marks_legacy_snapshot_degraded():
+    report = CodexSupervisorReport(generated_at=NOW.isoformat(), sessions=())
+
+    payload = _dashboard_payload(
+        report,
+        state_snapshot={
+            "status": "ok",
+            "summary": {
+                "active_goals": 0,
+                "goals_done": 0,
+                "goals_blocked": 0,
+                "goals_needs_user": 0,
+                "active_decisions": 0,
+                "failed_lanes": 0,
+                "worker_events": 0,
+                "notifications": 0,
+                "unread_notifications": 0,
+            },
+            "active_goals": [],
+            "active_decisions": [],
+            "failed_lanes": [],
+            "recent_worker_events": [],
+            "notifications": {"total": 0, "unread": 0, "recent": []},
+        },
+    )
+
+    assert payload["state_snapshot_meta"] == {
+        "kind": None,
+        "schema_version": None,
+        "schema_label": "degraded snapshot schema",
+        "schema_status": "degraded",
+        "schema_reason": "missing kind",
         "source_label": (
             "goal queue / decision requests / lane state / "
             "worker events / notifications"
@@ -2635,6 +2678,8 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "copyControlLabel" in html
     assert "snapshot-meta" in html
     assert "payload.state_snapshot_meta" in html
+    assert "snapshotMeta.schema_status" in html
+    assert "snapshotMeta.schema_reason" in html
     assert 'document.getElementById("snapshot-meta")' in html
     assert "读模型：" in html
     assert "复制状态" in html
@@ -2813,6 +2858,8 @@ def test_codex_supervisor_web_dashboard_payload_builder_keeps_page_fields(tmp_pa
         "kind": "supervisor_state_snapshot",
         "schema_version": 1,
         "schema_label": "supervisor_state_snapshot v1",
+        "schema_status": "ok",
+        "schema_reason": None,
         "source_label": (
             "goal queue / decision requests / lane state / "
             "worker events / notifications"

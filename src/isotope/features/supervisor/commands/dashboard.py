@@ -11,6 +11,7 @@ from isotope.features.supervisor.current_batch import build_current_batch_view
 from isotope.features.supervisor.commands.snapshot_display import (
     STATE_SNAPSHOT_SOURCE_LABEL,
     state_snapshot_schema_label,
+    state_snapshot_schema_status,
 )
 from isotope.platform.state.multi_worker import (
     build_multi_worker_status_payload,
@@ -124,10 +125,13 @@ def dashboard_state_snapshot(codex_home: Path) -> dict[str, Any]:
 
 
 def dashboard_state_snapshot_meta(snapshot: dict[str, Any]) -> dict[str, Any]:
+    schema_status = state_snapshot_schema_status(snapshot)
     return {
         "kind": snapshot.get("kind"),
         "schema_version": snapshot.get("schema_version"),
         "schema_label": state_snapshot_schema_label(snapshot),
+        "schema_status": schema_status["schema_status"],
+        "schema_reason": schema_status["schema_reason"],
         "source_label": STATE_SNAPSHOT_SOURCE_LABEL,
     }
 
