@@ -922,3 +922,17 @@ def test_supervise_payload_refreshes_current_batch_only_when_execution_requires_
             },
         ),
     ]
+
+
+def test_supervisor_runner_delegates_supervise_action_selection():
+    action_module = importlib.import_module(
+        "isotope.features.supervisor.commands.supervise_action"
+    )
+
+    assert (
+        runner._append_supervise_llm_action
+        is action_module.append_supervise_llm_action
+    )
+
+    source = inspect.getsource(runner)
+    assert "def _append_supervise_llm_action(" not in source

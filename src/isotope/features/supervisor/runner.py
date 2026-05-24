@@ -361,6 +361,9 @@ from .commands.supervise_payload import (
 from .commands.supervise_planning import (
     append_supervise_planning_payload as _append_supervise_planning_payload,
 )
+from .commands.supervise_action import (
+    append_supervise_llm_action as _append_supervise_llm_action,
+)
 from .commands.advice import (
     active_goal_action_command_suggestions as _active_goal_action_command_suggestions,
     advice_payload as _advice_payload,
@@ -1327,32 +1330,18 @@ def _supervise_payload(
     fanout_plan = planning.fanout_plan
     if args.llm_summary:
         payload["llm_summary"] = _summarize_with_llm(report)
-    if args.llm_action or args.llm_execute:
-        if fanout_paused:
-            payload["llm_action"] = _fanout_paused_action(fanout_status)
-        elif fanout_plan is not None:
-            payload["llm_action"] = _fanout_llm_action(fanout_plan)
-        elif worker_role_guard is not None:
-            payload["llm_action"] = _recursive_worker_role_guard_action(
-                worker_role_guard
-            )
-        elif merge_dispatch is not None:
-            if merge_dispatch.get("status") == "worker_already_running":
-                payload["llm_action"] = _merge_dispatch_already_running_action(
-                    merge_dispatch
-                )
-            else:
-                payload["llm_action"] = merge_dispatch["launch_spec"]
-        elif _loop_without_autonomous_scope(
-            args,
-            action_report,
-            active_goals,
-            explicit_goal,
-        ):
-            payload["llm_action"] = _idle_loop_llm_action()
-        else:
-            payload["llm_action"] = _decide_action_with_llm(args, action_report, payload)
-            _promote_llm_command_suggestion(payload)
+    _append_supervise_llm_action(
+        args,
+        payload,
+        action_report,
+        active_goals=active_goals,
+        explicit_goal=explicit_goal,
+        fanout_status=fanout_status,
+        fanout_paused=fanout_paused,
+        worker_role_guard=worker_role_guard,
+        merge_dispatch=merge_dispatch,
+        fanout_plan=fanout_plan,
+    )
     if args.llm_execute:
         if fanout_paused:
             payload["executed"] = _fanout_paused_executed(fanout_status)

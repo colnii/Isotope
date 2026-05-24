@@ -819,6 +819,10 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   planning payload（规划载荷），包括 current batch、fanout status/plan、
   fanout log、merge dispatch 和 recursive worker guard；继续复用
   `dashboard.py`、`fanout.py` 和 `merge_dispatch.py` 的 helper，不重写调度规则。
+- `features/supervisor/commands/supervise_action.py`：已承接 supervise/loop
+  LLM action selection（模型动作选择），按 fanout pause/plan、recursive worker
+  guard、merge dispatch、idle loop 和 LLM planner 顺序选择本轮 `llm_action`；
+  继续复用既有 action builder 和 `_promote_llm_command_suggestion(...)`。
 - `features/supervisor/commands/capacity.py`：已承接 capacity plan 命令、
   low-risk capability execution（低风险能力执行）和 loop
   `capacity_decisions` / `capacity_call_specs` 生产 glue；继续复用
@@ -878,7 +882,7 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
    已下沉，notification index 写入仍留在 feature flow。
 2. 用真实 daemon 长跑验证 cleanup/current dashboard 在多批任务中的稳定性。
 3. 后续再决定是否把通知接到更多 worker 生命周期事件。
-4. 再拆分 `runner.py` 中的 LLM action selection 或 execution dispatch。
+4. 再拆分 `runner.py` 中的 execution dispatch。
 
 ## 登记规则
 
