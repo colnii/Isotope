@@ -155,6 +155,70 @@ def test_supervisor_capacity_plan_reports_ready_supervisor_decision(tmp_path):
     }
 
 
+def test_supervisor_capacity_plan_only_offers_preflight_launchable_capabilities(tmp_path):
+    provider = FakeCapacityProvider(
+        '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
+        '"rationale":"low risk review"}'
+    )
+    runner_with_unavailable_capabilities = CapabilityRunner(
+        catalog=CapabilityCatalog(
+            capabilities=[
+                Capability(
+                    capability_id="artifact.review",
+                    title="Artifact Review",
+                    description="Review low-sensitive artifact summaries.",
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=("artifact", "review"),
+                    input_contract={"type": "object"},
+                    output_contract={"type": "object"},
+                    safety_boundaries=("low_sensitive_manifest_only",),
+                ),
+                Capability(
+                    capability_id="llm.artifact.review",
+                    title="LLM Artifact Review",
+                    description="Provider-backed artifact review.",
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=("artifact", "llm"),
+                    input_contract={"type": "object"},
+                    output_contract={"type": "object"},
+                    safety_boundaries=("provider_required",),
+                    required_env=("ISOTOPE_TEST_PROVIDER_KEY",),
+                    network_required=True,
+                    provider="test-provider",
+                    model="test-model",
+                ),
+                Capability(
+                    capability_id="context.search",
+                    title="Context Search",
+                    description="Deferred context search capability.",
+                    maturity="v0.1",
+                    shelf="product_candidate",
+                    domain_tags=("context", "search"),
+                    input_contract={"type": "object"},
+                    output_contract={"type": "object"},
+                    safety_boundaries=("low_sensitive_manifest_only",),
+                ),
+            ]
+        )
+    )
+
+    capacity_command.build_supervisor_capacity_plan(
+        goal="检查低敏 artifact review 能力是否可用",
+        provider=provider,
+        runner=runner_with_unavailable_capabilities,
+        state_root=tmp_path / "state",
+        execute_agent_loop=False,
+    )
+
+    offered_payload = json.loads(provider.messages[0][1]["content"])
+    offered_ids = [
+        capacity["capacity_id"] for capacity in offered_payload["capacities"]
+    ]
+    assert offered_ids == ["artifact.review"]
+
+
 def test_execute_capacity_action_requires_matching_ready_decision(tmp_path, monkeypatch):
     calls: list[object] = []
 

@@ -97,11 +97,10 @@ def build_supervisor_capacity_plan(
 ) -> dict[str, Any]:
     """Plan one Supervisor capacity call, optionally proving the agent-loop path."""
     capacity_runner = runner or CapabilityRunner()
-    capabilities = capacity_runner.list_capabilities()
     selection = select_capacity_call(
         provider,
         goal=goal,
-        capacities=_capacity_manifests_from_capabilities(capabilities),
+        capacities=_capacity_manifests_from_runner(capacity_runner),
     )
     if selection.status != "ready_to_call":
         selection_payload = selection.to_dict()
@@ -425,13 +424,16 @@ def _capacity_decision_next_action(status_reason: str) -> str:
     return "wait"
 
 
-def _capacity_manifests_from_capabilities(
-    capabilities: list[dict[str, Any]],
+def _capacity_manifests_from_runner(
+    capacity_runner: CapabilityRunner,
 ) -> list[dict[str, Any]]:
     manifests: list[dict[str, Any]] = []
-    for capability in capabilities:
+    for capability in capacity_runner.list_capabilities():
         capability_id = capability.get("capability_id")
         if not isinstance(capability_id, str) or not capability_id:
+            continue
+        launch_plan = capacity_runner.plan_capability_run(capability_id, inputs={})
+        if not _can_offer_capacity_manifest(launch_plan):
             continue
         manifests.append(
             {
@@ -443,6 +445,12 @@ def _capacity_manifests_from_capabilities(
             }
         )
     return manifests
+
+
+def _can_offer_capacity_manifest(launch_plan: Mapping[str, Any]) -> bool:
+    if launch_plan.get("can_launch") is True:
+        return True
+    return launch_plan.get("status") == "missing_inputs"
 
 
 def _blocked_capacity_graph(selection: Any) -> dict[str, Any]:
