@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from isotope.features.research.flow import ResearchFlow
 from isotope.features.research.providers import FakeResearchProvider, ResearchProviderError
 
@@ -102,11 +104,25 @@ def test_research_flow_marks_provider_errors_without_success_artifact(tmp_path):
 
     assert result.status == "provider_failed"
     assert result.research is None
-    assert result.artifact_refs == ()
+    assert len(result.artifact_refs) == 1
     assert result.error == {
         "code": "research_provider_failed",
         "message": "codex cli did not return an agent message",
         "retryable": True,
+    }
+    trace_record = flow.core.runtime.get_artifact_record(result.artifact_refs[0])
+    assert trace_record["artifact_type"] == "research.provider_trace"
+    assert trace_record["summary"] == "provider failure trace: python docs"
+    trace_content = json.loads(flow.core.runtime.artifact_store.get_content(result.artifact_refs[0]))
+    assert trace_content == {
+        "error": {
+            "code": "research_provider_failed",
+            "message": "codex cli did not return an agent message",
+            "retryable": True,
+        },
+        "provider": "failing",
+        "query": "python docs",
+        "status": "provider_failed",
     }
 
 

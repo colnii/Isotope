@@ -224,8 +224,9 @@ Memory promotion 第一版只标记 candidate，不自动写 `MemoryRecord`。
 - retryable flag
 - low-sensitive details
 
-失败不能留下看起来成功的 research summary。若保存 raw transcript 作为调试 artifact，
-normalized result 必须标明失败状态。
+失败不能留下看起来成功的 research summary。provider 没有返回可解析结果时，
+只保存 `research.provider_trace` 调用轨迹；`research.report` 只用于通过校验的
+normalized research result。
 
 ## 8. Testing Strategy
 
@@ -286,6 +287,7 @@ Implementation plan:
 2. artifact type 使用：
    - normalized result: `research.report`
    - raw Codex output / transcript: `research.raw_transcript`
+   - provider failure trace: `research.provider_trace`
    这样不把能力锁死成只支持 web API，后续 Tavily / SearXNG / Deep Research
    也可以复用 research 命名。
 3. CLI 第一批保留两个入口：

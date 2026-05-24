@@ -12,6 +12,7 @@ SOURCE_ARTIFACT_TYPES = {
     "text",
     "research.report",
     "research.raw_transcript",
+    "research.provider_trace",
 }
 
 

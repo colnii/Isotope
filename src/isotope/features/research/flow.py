@@ -54,14 +54,33 @@ class ResearchFlow:
             provider_payload = self.provider.run(clean_query)
             research = WebResearchRun.from_dict(provider_payload)
         except ResearchProviderError as exc:
+            session = self.core.start_session()
+            run = self.core.start_run(session.session_id, goal=f"research: {clean_query}")
+            error = {
+                "code": "research_provider_failed",
+                "message": str(exc),
+                "retryable": True,
+            }
+            trace_artifact = self.core.runtime.create_source_artifact(
+                run.run_id,
+                summary=f"provider failure trace: {clean_query}",
+                content=json.dumps(
+                    {
+                        "query": clean_query,
+                        "provider": getattr(self.provider, "provider_name", "unknown"),
+                        "status": "provider_failed",
+                        "error": error,
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+                artifact_type="research.provider_trace",
+            )
             return ResearchFlowResult(
                 status="provider_failed",
                 research=None,
-                error={
-                    "code": "research_provider_failed",
-                    "message": str(exc),
-                    "retryable": True,
-                },
+                artifact_refs=(trace_artifact["artifact_ref"],),
+                error=error,
             )
         except Exception as exc:
             return ResearchFlowResult(

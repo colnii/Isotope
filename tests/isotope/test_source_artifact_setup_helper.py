@@ -93,11 +93,19 @@ def test_source_artifact_helper_allows_research_artifact_types(tmp_path):
         content='{"stdout": "raw"}',
         artifact_type="research.raw_transcript",
     )
+    trace = api.create_source_artifact(
+        run["run_id"],
+        summary="Codex provider failure trace",
+        content='{"status": "provider_failed"}',
+        artifact_type="research.provider_trace",
+    )
 
     assert report["artifact_type"] == "research.report"
     assert raw["artifact_type"] == "research.raw_transcript"
+    assert trace["artifact_type"] == "research.provider_trace"
     assert api.get_artifact_record(report["artifact_ref"])["artifact_type"] == "research.report"
     assert api.get_artifact_record(raw["artifact_ref"])["artifact_type"] == "research.raw_transcript"
+    assert api.get_artifact_record(trace["artifact_ref"])["artifact_type"] == "research.provider_trace"
 
 
 def test_source_artifact_helper_does_not_expose_full_content_in_returned_summary(tmp_path):
