@@ -88,9 +88,11 @@ def undeclared_required_contract_keys(input_contract: Mapping[str, Any]) -> list
     )
 
 
-def required_contract_keys(input_contract: Mapping[str, Any]) -> list[str]:
+def required_contract_keys(input_contract: Any) -> list[str]:
     """Return string required keys from a contract in declaration order."""
 
+    if not isinstance(input_contract, Mapping):
+        return []
     required = input_contract.get("required", [])
     if not isinstance(required, list):
         return []

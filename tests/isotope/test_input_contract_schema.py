@@ -182,6 +182,7 @@ def test_required_contract_keys_returns_string_required_fields_in_order():
 
 
 def test_required_contract_keys_ignores_malformed_required_shape():
+    assert required_contract_keys(None) == []
     assert required_contract_keys({"required": "question"}) == []
 
 

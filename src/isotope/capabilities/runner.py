@@ -264,10 +264,7 @@ def run_capability(capability_id: str, **kwargs: Any) -> dict[str, Any]:
 
 
 def _required_inputs(capability: Mapping[str, Any]) -> list[str]:
-    input_contract = capability.get("input_contract", {})
-    if not isinstance(input_contract, Mapping):
-        return []
-    return required_contract_keys(input_contract)
+    return required_contract_keys(capability.get("input_contract", {}))
 
 
 def _missing_inputs(

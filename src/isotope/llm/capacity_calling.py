@@ -246,10 +246,7 @@ def _validate_required_properties(input_contract: Mapping[str, Any]) -> None:
 
 
 def _required_inputs(capacity: Mapping[str, Any]) -> list[str]:
-    input_contract = capacity.get("input_contract", {})
-    if not isinstance(input_contract, Mapping):
-        return []
-    return required_contract_keys(input_contract)
+    return required_contract_keys(capacity.get("input_contract", {}))
 
 
 def _validate_argument_keys(
