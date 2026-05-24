@@ -1,0 +1,95 @@
+"""Planning payload assembly for supervise/loop commands."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+
+
+@dataclass
+class SupervisePlanningPayload:
+    fanout_status: dict[str, Any] | None
+    fanout_paused: bool
+    worker_role_guard: dict[str, Any] | None
+    merge_dispatch: dict[str, Any] | None
+    fanout_plan: dict[str, Any] | None
+
+
+def append_supervise_planning_payload(
+    args: Any,
+    payload: dict[str, Any],
+    report: Any,
+    *,
+    active_goals: list[dict[str, Any]],
+    goal_updates: list[dict[str, Any]] | None,
+    goal_replenishment: dict[str, Any] | None,
+    worker_reviews: dict[str, Any] | None,
+    api: Any | None = None,
+) -> SupervisePlanningPayload:
+    if api is None:
+        from isotope.features.supervisor import runner as api
+
+    payload["current_batch"] = api._current_batch_payload(
+        report,
+        active_goals=active_goals,
+        worker_reviews=worker_reviews,
+        dependency_limit=getattr(args, "max_fanout_launches", api.DEFAULT_FANOUT_LIMIT),
+    )
+    fanout_status = api._fanout_status_payload(
+        report,
+        active_goals=api._fanout_candidate_active_goals(active_goals),
+        goal_updates=goal_updates or [],
+    )
+    if fanout_status is not None:
+        payload["fanout_status"] = fanout_status
+    fanout_paused = (
+        isinstance(fanout_status, dict)
+        and fanout_status.get("status") == "paused"
+        and not api._goal_replenishment_wrote_goals(goal_replenishment)
+    )
+    worker_role_guard = api._recursive_worker_role_guard_payload(args)
+    allows_llm = args.llm_action or args.llm_execute
+    merge_dispatch = (
+        api._integration_merge_dispatch_payload(args)
+        if not fanout_paused and worker_role_guard is None and allows_llm
+        else None
+    )
+    fanout_plan = (
+        None
+        if merge_dispatch is not None
+        else (
+            api._paused_active_goals_fanout_plan(args, active_goals)
+            if fanout_paused
+            else api._replenished_goal_plan_fanout_launch_plan(
+                args,
+                report,
+                goal_replenishment,
+            )
+            or api._active_goals_fanout_launch_plan(args, report, active_goals)
+        )
+    )
+    if fanout_plan is not None and allows_llm:
+        payload["fanout_plan"] = fanout_plan
+        payload["fanout_log"] = api._fanout_log_payload(
+            fanout_plan,
+            goal_replenishment=goal_replenishment,
+        )
+    if merge_dispatch is not None:
+        payload["merge_dispatch"] = merge_dispatch
+    if (
+        fanout_plan is None
+        and merge_dispatch is None
+        and not fanout_paused
+        and worker_role_guard is None
+        and allows_llm
+    ):
+        merge_dispatch = api._integration_merge_dispatch_payload(args)
+        if merge_dispatch is not None:
+            payload["merge_dispatch"] = merge_dispatch
+    return SupervisePlanningPayload(
+        fanout_status=fanout_status,
+        fanout_paused=fanout_paused,
+        worker_role_guard=worker_role_guard,
+        merge_dispatch=merge_dispatch,
+        fanout_plan=fanout_plan,
+    )

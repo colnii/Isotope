@@ -357,6 +357,9 @@ from .commands.workspace_scope import (
 from .commands.supervise_payload import (
     build_supervise_base_payload as _build_supervise_base_payload,
 )
+from .commands.supervise_planning import (
+    append_supervise_planning_payload as _append_supervise_planning_payload,
+)
 from .commands.advice import (
     active_goal_action_command_suggestions as _active_goal_action_command_suggestions,
     advice_payload as _advice_payload,
@@ -1307,65 +1310,22 @@ def _supervise_payload(
         )
         payload.update(llm_context)
         worker_reviews = llm_context["worker_reviews"]
-    payload["current_batch"] = _current_batch_payload(
+    planning = _append_supervise_planning_payload(
+        args,
+        payload,
         report,
         active_goals=active_goals,
+        goal_updates=goal_updates,
+        goal_replenishment=goal_replenishment,
         worker_reviews=worker_reviews,
-        dependency_limit=getattr(args, "max_fanout_launches", DEFAULT_FANOUT_LIMIT),
     )
-    fanout_status = _fanout_status_payload(
-        report,
-        active_goals=_fanout_candidate_active_goals(active_goals),
-        goal_updates=goal_updates or [],
-    )
-    if fanout_status is not None:
-        payload["fanout_status"] = fanout_status
+    fanout_status = planning.fanout_status
+    fanout_paused = planning.fanout_paused
+    worker_role_guard = planning.worker_role_guard
+    merge_dispatch = planning.merge_dispatch
+    fanout_plan = planning.fanout_plan
     if args.llm_summary:
         payload["llm_summary"] = _summarize_with_llm(report)
-    fanout_paused = (
-        isinstance(fanout_status, dict) and fanout_status.get("status") == "paused"
-        and not _goal_replenishment_wrote_goals(goal_replenishment)
-    )
-    worker_role_guard = _recursive_worker_role_guard_payload(args)
-    merge_dispatch = (
-        _integration_merge_dispatch_payload(args)
-        if not fanout_paused
-        and worker_role_guard is None
-        and (args.llm_action or args.llm_execute)
-        else None
-    )
-    fanout_plan = (
-        None
-        if merge_dispatch is not None
-        else (
-            _paused_active_goals_fanout_plan(args, active_goals)
-            if fanout_paused
-            else _replenished_goal_plan_fanout_launch_plan(
-                args,
-                report,
-                goal_replenishment,
-            )
-            or _active_goals_fanout_launch_plan(args, report, active_goals)
-        )
-    )
-    if fanout_plan is not None and (args.llm_action or args.llm_execute):
-        payload["fanout_plan"] = fanout_plan
-        payload["fanout_log"] = _fanout_log_payload(
-            fanout_plan,
-            goal_replenishment=goal_replenishment,
-        )
-    if merge_dispatch is not None:
-        payload["merge_dispatch"] = merge_dispatch
-    if (
-        fanout_plan is None
-        and merge_dispatch is None
-        and not fanout_paused
-        and worker_role_guard is None
-        and (args.llm_action or args.llm_execute)
-    ):
-        merge_dispatch = _integration_merge_dispatch_payload(args)
-        if merge_dispatch is not None:
-            payload["merge_dispatch"] = merge_dispatch
     if args.llm_action or args.llm_execute:
         if fanout_paused:
             payload["llm_action"] = _fanout_paused_action(fanout_status)

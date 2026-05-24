@@ -819,3 +819,17 @@ def test_supervisor_runner_delegates_supervise_payload_base_builder():
 
     source = inspect.getsource(runner)
     assert "def _build_supervise_base_payload(" not in source
+
+
+def test_supervisor_runner_delegates_supervise_planning_payload_builder():
+    planning_module = importlib.import_module(
+        "isotope.features.supervisor.commands.supervise_planning"
+    )
+
+    assert (
+        runner._append_supervise_planning_payload
+        is planning_module.append_supervise_planning_payload
+    )
+
+    source = inspect.getsource(runner)
+    assert "def _append_supervise_planning_payload(" not in source

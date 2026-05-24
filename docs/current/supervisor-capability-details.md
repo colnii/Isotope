@@ -808,7 +808,15 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
 - `features/supervisor/commands/supervise_payload.py`：已承接 supervise/loop
   base payload（基础载荷）初始化，包括 action report、state snapshot、
   active goals、goal replenishment、advice payload、workspace scope 和固定
-  lifecycle 字段；后续继续拆 LLM context 附加和 execution dispatch。
+  lifecycle 字段。
+- `features/supervisor/commands/llm_context.py`：已承接 supervise/loop 传给
+  LLM planner 的 context payload（上下文载荷），包括 recent context、
+  decision answers、capacity decisions/call specs、worker review 和
+  delete-worktree candidates。
+- `features/supervisor/commands/supervise_planning.py`：已承接 supervise/loop
+  planning payload（规划载荷），包括 current batch、fanout status/plan、
+  fanout log、merge dispatch 和 recursive worker guard；继续复用
+  `dashboard.py`、`fanout.py` 和 `merge_dispatch.py` 的 helper，不重写调度规则。
 - `features/supervisor/commands/capacity.py`：已承接 capacity plan 命令、
   low-risk capability execution（低风险能力执行）和 loop
   `capacity_decisions` / `capacity_call_specs` 生产 glue；继续复用
@@ -868,7 +876,7 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
    已下沉，notification index 写入仍留在 feature flow。
 2. 用真实 daemon 长跑验证 cleanup/current dashboard 在多批任务中的稳定性。
 3. 后续再决定是否把通知接到更多 worker 生命周期事件。
-4. 再拆分 `runner.py` 中的 loop LLM context 附加或 execution dispatch。
+4. 再拆分 `runner.py` 中的 LLM action selection 或 execution dispatch。
 
 ## 登记规则
 
