@@ -805,3 +805,17 @@ def test_supervisor_runner_delegates_workspace_scope_helpers():
         "_context_cwd_for_report",
     ):
         assert f"def {function_name}(" not in source
+
+
+def test_supervisor_runner_delegates_supervise_payload_base_builder():
+    payload_module = importlib.import_module(
+        "isotope.features.supervisor.commands.supervise_payload"
+    )
+
+    assert (
+        runner._build_supervise_base_payload
+        is payload_module.build_supervise_base_payload
+    )
+
+    source = inspect.getsource(runner)
+    assert "def _build_supervise_base_payload(" not in source

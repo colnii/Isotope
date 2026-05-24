@@ -353,6 +353,9 @@ from .commands.workspace_scope import (
     workspace_root as _workspace_root,
     workspace_scope_payload as _workspace_scope_payload,
 )
+from .commands.supervise_payload import (
+    build_supervise_base_payload as _build_supervise_base_payload,
+)
 from .commands.advice import (
     active_goal_action_command_suggestions as _active_goal_action_command_suggestions,
     advice_payload as _advice_payload,
@@ -1275,56 +1278,23 @@ def _supervise_payload(
     precomputed_auto_action: dict[str, Any] | None = None,
     precomputed_executed: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    action_report = _action_report_for_workspace(args, report)
-    state_snapshot = build_supervisor_state_snapshot(codex_home=Path(args.codex_home))
-    active_goals = _active_goal_dicts(args, include_status=True)
-    running_target_names = _running_managed_target_names(report)
-    goal_replenishment = _maybe_replenish_active_goals(
+    base = _build_supervise_base_payload(
         args,
-        active_goals,
-        running_target_names=running_target_names,
+        report,
+        iteration=iteration,
+        auto_adopted=auto_adopted,
+        auto_retried_workers=auto_retried_workers,
+        goal_updates=goal_updates,
+        merge_promotions=merge_promotions,
+        cleanup_archived=cleanup_archived,
+        cleanup_deleted_worktrees=cleanup_deleted_worktrees,
+        decision_timeout_alerts=decision_timeout_alerts,
     )
-    if (
-        isinstance(goal_replenishment, dict)
-        and goal_replenishment.get("status") == "ok"
-        and goal_replenishment.get("written_count")
-    ):
-        state_snapshot = build_supervisor_state_snapshot(codex_home=Path(args.codex_home))
-        active_goals = _active_goal_dicts(args, include_status=True)
-    explicit_goal = _explicit_goal_text(args)
-    payload = _advice_payload(
-        action_report,
-        target_name=args.name,
-        include_all_managed=args.llm_action or args.llm_execute,
-        allow_workspace_actions=_loop_allows_workspace_actions(
-            args,
-            active_goals,
-            explicit_goal,
-        ),
-        goal=_goal_text(args),
-        goal_workspace=_goal_workspace(args),
-        goal_target_name=_goal_target_name(args),
-        active_goals=None if explicit_goal else active_goals,
-    )
-    payload["workspace_scope"] = _workspace_scope_payload(args, report, action_report)
-    payload["iteration"] = iteration
-    payload["report"] = report.to_dict()
-    payload["automation"] = _automation_status(report)
-    payload["auto_adopted"] = auto_adopted or []
-    payload["auto_retried_workers"] = auto_retried_workers or []
-    payload["active_goals"] = active_goals
-    payload["state_snapshot"] = state_snapshot
-    if goal_replenishment is not None:
-        payload["goal_replenishment"] = goal_replenishment
-    if goal_updates:
-        payload["goal_updates"] = goal_updates
-    if merge_promotions:
-        payload["merge_promotions"] = merge_promotions
-    if cleanup_archived:
-        payload["cleanup_archived"] = cleanup_archived
-    if cleanup_deleted_worktrees:
-        payload["cleanup_deleted_worktrees"] = cleanup_deleted_worktrees
-    payload["decision_timeout_alerts"] = decision_timeout_alerts or []
+    payload = base.payload
+    action_report = base.action_report
+    active_goals = base.active_goals
+    explicit_goal = base.explicit_goal
+    goal_replenishment = base.goal_replenishment
     worker_reviews: dict[str, Any] | None = None
     if args.llm_action or args.llm_execute:
         payload["recent_context_results"] = _recent_context_results(args, action_report)
