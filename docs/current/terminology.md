@@ -229,7 +229,7 @@
 | `approval` | 人工确认，敏感动作执行前的暂停和恢复机制 | 权限/产品 | `src/isotope/runtime/in_process.py` |
 | `capability` | 能力，产品可发现、可运行的功能单元 | 产品能力 | `src/isotope/capabilities/catalog.py` |
 | `capability runner` | 能力运行器，用命令行方式搜索能力、生成计划或启动能力 | 产品能力 | `src/isotope/capabilities/runner.py`, `isotope-capability` |
-| `Codex task` | Codex 任务，把外部 Codex 执行封装成可路由能力 | 工具/任务 | `src/isotope/integrations/codex/task.py`, `src/isotope/integrations/codex/cli.py` |
+| `Codex task` | Codex 任务，把外部 Codex 执行封装成可路由能力；`task.py` 保留 facade，request 和 adapter contract 已拆到专门模块 | 工具/任务 | `src/isotope/integrations/codex/task.py`, `src/isotope/integrations/codex/task_request.py`, `src/isotope/integrations/codex/task_contract.py`, `src/isotope/integrations/codex/cli.py` |
 | `workspace` | 工作区，任务运行时读写资源的边界 | 产品/资源 | `src/isotope/workspace/` |
 | `memory` | 记忆，用于保存、查询和只读投影长期上下文 | 智能体 | `src/isotope/memory/`, `src/isotope/memory/views.py` |
 | `RAG` | 检索增强生成，先检索资料再让模型回答 | 应用能力 | `src/isotope/rag/` |
