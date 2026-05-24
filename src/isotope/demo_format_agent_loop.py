@@ -116,6 +116,35 @@ def _format_agent_loop_tick_policy_trace_plain_text(result: dict[str, Any]) -> s
     return "\n".join(lines)
 
 
+def _format_agent_loop_tick_driver_trace_plain_text(result: dict[str, Any]) -> str:
+    executed = result["executed_tick"]
+    stopped = {tick["case_id"]: tick for tick in result["stopped_ticks"]}
+    lines = [
+        f"scenario: {result['scenario']}",
+        f"session_id: {result['session_id']}",
+        f"run_id: {result['run_id']}",
+        f"run_status: {result['run_status']}",
+        f"transport: {result['transport']}",
+        f"tick_driver_trace_ok: {str(result['tick_driver_trace_ok']).lower()}",
+        f"executed_tick_status: {executed['tick_status']}",
+        f"executed_selected_step: {executed['selected_step']}",
+        f"executed_before_phase: {executed['before_policy']['phase']}",
+        f"executed_after_phase: {executed['after_policy']['phase']}",
+        (
+            "executed_after_ticks_used: "
+            f"{executed['after_policy']['tick_budget']['ticks_used']}"
+        ),
+        f"budget_stop_reason: {stopped['budget_exhausted']['stop_reason']}",
+        f"user_pause_stop_reason: {stopped['user_pause']['stop_reason']}",
+        f"app_friction_count: {result['app_friction_count']}",
+        f"model_status: {result['model_status']}",
+        f"scheduler_status: {result['scheduler_status']}",
+        f"memory_status: {result['memory_status']}",
+        f"next_development_step: {result['next_development_step']}",
+    ]
+    return "\n".join(lines)
+
+
 def _format_agent_loop_planner_io_validator_plain_text(result: dict[str, Any]) -> str:
     lines = [
         f"scenario: {result['scenario']}",

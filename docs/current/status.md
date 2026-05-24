@@ -45,7 +45,9 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    不再由 HTTP 层直接拼 `artifact.created` event payload。
 9. Agent loop 已有单 tick driver：`run_agent_loop_tick(...)` 会先读取
    tick policy，允许继续时只执行一个已解析的 planner-selected step，再返回
-   执行后的 tick policy；它不调用真实 LLM，不自动多轮循环。
+   执行后的 tick policy；`agent-loop-tick-driver-trace` demo 已能输出
+   `before_policy -> planner_result -> after_policy` 的人类可读 handoff。
+   它不调用真实 LLM，不自动多轮循环。
 10. Screen observe/control 已有 policy-gated（策略门控）第一片：
     `screen_observe` / `screen_control` 走 registry、policy、executor 和 artifact
     边界，Windows backend 仅用于手动 smoke；当前不是默认自动 GUI agent。

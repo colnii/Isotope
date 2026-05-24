@@ -19,7 +19,10 @@ from .demo_agent_loop_matrix_scenarios import (
     _run_agent_loop_planner_matrix_spike,
     _run_agent_loop_planner_restart_pause_spike,
 )
-from .demo_agent_loop_tick_scenarios import _run_agent_loop_tick_policy_trace
+from .demo_agent_loop_tick_scenarios import (
+    _run_agent_loop_tick_driver_trace,
+    _run_agent_loop_tick_policy_trace,
+)
 from .demo_agent_loop_validation_scenarios import (
     _run_agent_loop_planner_io_validator_spike,
     _run_agent_loop_planner_validated_runner_spike,
@@ -72,6 +75,7 @@ def main(argv: list[str] | None = None) -> int:
             "agent-loop-planner-matrix",
             "agent-loop-planner-restart-pause",
             "agent-loop-tick-policy-trace",
+            "agent-loop-tick-driver-trace",
             "agent-loop-planner-io-validator",
             "agent-loop-planner-validated-runner",
             "terminal-exec",
@@ -165,6 +169,8 @@ def _run_scenario(root: Path, *, scenario: str) -> dict[str, Any]:
         return _run_agent_loop_planner_restart_pause_spike(root)
     if scenario == "agent-loop-tick-policy-trace":
         return _run_agent_loop_tick_policy_trace(root)
+    if scenario == "agent-loop-tick-driver-trace":
+        return _run_agent_loop_tick_driver_trace(root)
     if scenario == "agent-loop-planner-io-validator":
         return _run_agent_loop_planner_io_validator_spike(root)
     if scenario == "agent-loop-planner-validated-runner":

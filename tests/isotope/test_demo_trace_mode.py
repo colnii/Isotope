@@ -16,6 +16,7 @@ TRACE_SCENARIOS = (
     "agent-loop-planner-friction",
     "agent-loop-planner-matrix",
     "agent-loop-planner-restart-pause",
+    "agent-loop-tick-driver-trace",
     "agent-loop-planner-io-validator",
     "agent-loop-planner-validated-runner",
     "terminal-exec",

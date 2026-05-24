@@ -15,6 +15,8 @@ def _format_trace(result: dict[str, Any]) -> str:
         return _format_agent_loop_planner_restart_pause_trace(result)
     if scenario == "agent-loop-tick-policy-trace":
         return _format_agent_loop_tick_policy_trace(result)
+    if scenario == "agent-loop-tick-driver-trace":
+        return _format_agent_loop_tick_driver_trace(result)
     if scenario == "agent-loop-planner-matrix":
         return _format_agent_loop_planner_matrix_trace(result)
     if scenario == "agent-loop-planner-friction":
@@ -226,6 +228,38 @@ def _format_agent_loop_tick_policy_trace(result: dict[str, Any]) -> str:
         f"app friction count: {result['app_friction_count']}",
         f"model status: {result['model_status']}",
         f"scheduler status: {result['scheduler_status']}",
+        f"next development step: {result['next_development_step']}",
+    ]
+    return _format_trace_steps(result["scenario"], steps)
+
+
+def _format_agent_loop_tick_driver_trace(result: dict[str, Any]) -> str:
+    executed = result["executed_tick"]
+    stopped = {tick["case_id"]: tick for tick in result["stopped_ticks"]}
+    steps = [
+        f"create session: {result['session_id']}",
+        f"create run: {result['run_id']}",
+        f"before policy phase: {executed['before_policy']['phase']}",
+        f"planner selected step: {executed['selected_step']}",
+        f"action result status: {executed['step_status']}",
+        f"artifact ref created: {_artifact_id(executed['artifact_ref'])}",
+        f"after policy phase: {executed['after_policy']['phase']}",
+        (
+            "after policy ticks used: "
+            f"{executed['after_policy']['tick_budget']['ticks_used']}"
+        ),
+        (
+            "budget_exhausted stopped without events: "
+            f"{_bool_text(stopped['budget_exhausted']['event_delta'] == 0)}"
+        ),
+        (
+            "user_pause stopped without events: "
+            f"{_bool_text(stopped['user_pause']['event_delta'] == 0)}"
+        ),
+        f"model status: {result['model_status']}",
+        f"scheduler status: {result['scheduler_status']}",
+        f"replay status: {result['replay_status']}",
+        f"checkpoint status: {result['checkpoint_status']}",
         f"next development step: {result['next_development_step']}",
     ]
     return _format_trace_steps(result["scenario"], steps)

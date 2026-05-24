@@ -61,6 +61,9 @@
   `POST /runs/{run_id}/agent-loop-tick` 会先看 tick policy，允许继续时只执行
   一个已解析的 planner-selected step，再返回执行后的 tick policy；它仍不接
   真实 LLM，不自动多轮循环。
+- `agent-loop-tick-driver-trace` demo 已补齐人类可读 handoff，展示
+  `before_policy -> planner_result -> after_policy`，并覆盖 budget / user pause
+  停止时不产生 side effect。
 
 ## 下一批任务
 
@@ -120,9 +123,8 @@
 目标：
 
 - 继续完善 agent loop，但下一片仍不要直接接真实 LLM。
-- 优先考虑把 tick driver 的结果接到一个人类可读 trace 或受控 Supervisor
-  handoff，证明 `before_policy -> planner_result -> after_policy` 这条链路能被
-  产品层解释。
+- 优先考虑把一个受控 Supervisor handoff 接到 tick driver，证明真实产品入口能
+  解释 `before_policy -> planner_result -> after_policy`，但仍不启动自动多轮循环。
 
 验收：
 

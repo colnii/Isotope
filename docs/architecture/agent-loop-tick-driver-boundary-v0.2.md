@@ -17,6 +17,8 @@
 - `src/isotope/agents/loop/tick.py::run_agent_loop_tick(...)`
 - `InProcessServer.run_agent_loop_tick(...)`
 - `POST /runs/{run_id}/agent-loop-tick`
+- `python -m isotope.demo --scenario agent-loop-tick-driver-trace --trace`
+  展示 `before_policy -> planner_result -> after_policy` 的人类可读 handoff。
 
 HTTP body 只接受：
 
@@ -53,6 +55,7 @@ HTTP body 只接受：
 
 - `tests/isotope/test_agent_loop_tick_driver.py`
 - `tests/isotope/test_http_api_agent_loop_tick_driver.py`
+- `tests/isotope/test_agent_loop_tick_driver_demo_scenario.py`
 - `tests/isotope/test_agent_loop_planner_step_adapter.py`
 - `tests/isotope/test_agent_loop_tick_policy.py`
 - `tests/isotope/test_http_api_boundary.py`

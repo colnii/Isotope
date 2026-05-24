@@ -12,6 +12,7 @@ from .demo_format_agent_loop import (
     _format_agent_loop_planner_matrix_plain_text,
     _format_agent_loop_planner_restart_pause_plain_text,
     _format_agent_loop_planner_validated_runner_plain_text,
+    _format_agent_loop_tick_driver_trace_plain_text,
     _format_agent_loop_tick_policy_trace_plain_text,
 )
 from .demo_format_core import (
@@ -45,6 +46,7 @@ _FORMATTERS: dict[str, Callable[[dict[str, Any]], str]] = {
     "agent-loop-planner-restart-pause": (
         _format_agent_loop_planner_restart_pause_plain_text
     ),
+    "agent-loop-tick-driver-trace": _format_agent_loop_tick_driver_trace_plain_text,
     "agent-loop-tick-policy-trace": _format_agent_loop_tick_policy_trace_plain_text,
     "agent-loop-planner-matrix": _format_agent_loop_planner_matrix_plain_text,
     "agent-loop-planner-friction": _format_agent_loop_planner_friction_plain_text,
