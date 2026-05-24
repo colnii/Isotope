@@ -230,6 +230,33 @@ def test_capacity_call_specs_require_ready_plan_status():
     ]
 
 
+def test_capacity_call_specs_require_launchable_capability_plan():
+    plan = {
+        "status": "ok",
+        "status_reason": "ready",
+        "selection": {
+            "capacity_id": "context.search",
+            "arguments": {"query": "capacity"},
+        },
+        "capability_launch_plan": {
+            "capability_id": "context.search",
+            "can_launch": False,
+            "status": "not_allowlisted",
+        },
+        "supervisor_decision": {
+            "kind": "supervisor_capacity_decision",
+            "next_action": "call_capacity",
+            "reason": "ready",
+            "capacity_id": "context.search",
+            "can_execute_agent_loop": True,
+            "missing_inputs": [],
+            "blocking_reasons": [],
+        },
+    }
+
+    assert capacity_command.capacity_call_specs(plan, goal="搜索项目文档") == []
+
+
 def test_supervisor_capacity_plan_passes_arguments_into_agent_loop_inputs(tmp_path):
     workspace = tmp_path / "workspace"
     workspace.mkdir()

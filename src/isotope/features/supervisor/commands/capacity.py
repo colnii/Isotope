@@ -292,6 +292,13 @@ def capacity_call_specs(plan: dict[str, Any], *, goal: str) -> list[dict[str, An
     capacity_id = decision.get("capacity_id")
     if not isinstance(capacity_id, str) or not capacity_id:
         return []
+    launch_plan = plan.get("capability_launch_plan")
+    if isinstance(launch_plan, Mapping):
+        if (
+            launch_plan.get("capability_id") != capacity_id
+            or launch_plan.get("can_launch") is not True
+        ):
+            return []
     selection = plan.get("selection")
     if not isinstance(selection, dict) or selection.get("capacity_id") != capacity_id:
         return []
