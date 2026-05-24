@@ -10,6 +10,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = REPO_ROOT / "src"
 DEMO_SOURCE = SRC_ROOT / "isotope" / "demo.py"
+ARTIFACT_REVIEW_SOURCE = SRC_ROOT / "isotope" / "demo_artifact_review_scenarios.py"
 SCENARIO = "artifact-review"
 
 REQUIRED_TEXT_FIELDS = (
@@ -158,7 +159,7 @@ def test_artifact_review_demo_source_does_not_import_network_listener_dependenci
 
 
 def test_artifact_review_demo_uses_artifact_record_helper_for_source_provenance():
-    source = DEMO_SOURCE.read_text(encoding="utf-8")
+    source = ARTIFACT_REVIEW_SOURCE.read_text(encoding="utf-8")
     function_source = ast.get_source_segment(
         source,
         next(
