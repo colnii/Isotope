@@ -83,6 +83,8 @@
   Web 工作区内的 Codex 窗口，先给运行结论。
 - `dashboard JSON` 和 `web` 会输出“当前批次”，把仍活跃的
   `active_goals` 与当前托管 worker 从历史 done/stale session 中分离。
+- dashboard current payload helper 已集中生成当前 goals/workers 桥接 payload，
+  让页面和 CLI 复用同一份 current 读模型。
 - `web` 会用“Worker 详情”集中展示当前 worker 的身份、工作区、
   worktree、branch、状态依据、下一步、状态协议和最近输出。
 - `web` 会用“Supervisor 控制台”直接启动/停止 daemon 后台循环和
@@ -127,8 +129,9 @@
   `input_contract.properties` 校验手动 inputs：拒绝未声明输入键，并检查当前
   支持的 top-level `type` 与 `enum` 约束，避免绕过 `capacity calling`
   直接把未知或形状错误的 runner inputs 传给能力执行层。
-- `CapabilityCatalog` 会拒绝 malformed constructor inputs 和 listing flags，
-  避免调用方用坏类型绕过 shelf/readiness 过滤。
+- `CapabilityCatalog` 会拒绝 malformed constructor inputs 和 listing flags；
+  `CapabilityRunner` 会拒绝 malformed runner inputs mapping，避免调用方用坏类型
+  绕过 shelf/readiness 或 input contract 过滤。
 - `supervisor.request_context` 已注册为可发现 capability：`list/search/describe`
   能看到它，`plan/run --input-json` 会复用现有
   `request_project_context`，保持 workspace read-only、BM25 排序和原有
