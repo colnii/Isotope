@@ -1,0 +1,89 @@
+from __future__ import annotations
+
+from isotope.features.research.flow import ResearchFlow
+from isotope.features.research.providers import FakeResearchProvider
+
+
+def test_research_flow_persists_raw_and_normalized_artifacts(tmp_path):
+    flow = ResearchFlow.in_process(tmp_path, provider=FakeResearchProvider())
+
+    result = flow.search("agent memory retrieval")
+
+    payload = result.to_dict()
+    assert payload["status"] == "ok"
+    assert payload["research"]["evidence_status"] == "complete"
+    assert len(payload["artifact_refs"]) == 2
+    records = [
+        flow.core.runtime.get_artifact_record(ref)
+        for ref in result.artifact_refs
+    ]
+    assert [record["artifact_type"] for record in records] == [
+        "research.raw_transcript",
+        "research.report",
+    ]
+    assert records[1]["summary"] == "Fake research summary for agent memory retrieval."
+
+
+def test_research_flow_marks_missing_sources_incomplete(tmp_path):
+    class NoSourcesProvider:
+        provider_name = "no_sources"
+
+        def run(self, query: str) -> dict:
+            return {
+                "research_id": "research_no_sources",
+                "query": query,
+                "provider": "no_sources",
+                "created_at": "2026-05-24T00:00:00Z",
+                "status": "ok",
+                "evidence_status": "complete",
+                "sources": [],
+                "report": {"summary": "no sources"},
+                "provenance": {"provider": "no_sources"},
+            }
+
+    flow = ResearchFlow.in_process(tmp_path, provider=NoSourcesProvider())
+
+    result = flow.search("unsupported claim")
+
+    assert result.research.evidence_status == "incomplete_evidence"
+    normalized = flow.core.runtime.get_artifact_record(result.artifact_refs[1])
+    assert normalized["artifact_type"] == "research.report"
+
+
+def test_research_flow_rejects_unknown_claim_source_without_success_artifact(tmp_path):
+    class BadClaimProvider:
+        provider_name = "bad_claim"
+
+        def run(self, query: str) -> dict:
+            return {
+                "research_id": "research_bad_claim",
+                "query": query,
+                "provider": "bad_claim",
+                "created_at": "2026-05-24T00:00:00Z",
+                "status": "ok",
+                "evidence_status": "complete",
+                "sources": [
+                    {
+                        "source_id": "src_001",
+                        "title": "Bad source",
+                        "url": "https://example.com/bad",
+                        "snippet": "bad",
+                        "why_used": "test",
+                        "retrieved_at": "2026-05-24T00:00:00Z",
+                    }
+                ],
+                "report": {
+                    "summary": "bad claim",
+                    "claims": [{"text": "bad", "source_ids": ["missing"]}],
+                },
+                "provenance": {"provider": "bad_claim"},
+            }
+
+    flow = ResearchFlow.in_process(tmp_path, provider=BadClaimProvider())
+
+    result = flow.search("bad claim")
+
+    assert result.status == "validation_failed"
+    assert result.research is None
+    assert result.artifact_refs == ()
+    assert "unknown source_id" in result.error["message"]
