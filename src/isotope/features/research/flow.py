@@ -10,7 +10,7 @@ from typing import Any
 from ...core import ProductCore
 from ...platform.schemas.refs import ResourceRef
 from .models import WebResearchRun
-from .providers import FakeResearchProvider, ResearchProvider
+from .providers import FakeResearchProvider, ResearchProvider, ResearchProviderError
 
 
 @dataclass(frozen=True)
@@ -53,6 +53,16 @@ class ResearchFlow:
         try:
             provider_payload = self.provider.run(clean_query)
             research = WebResearchRun.from_dict(provider_payload)
+        except ResearchProviderError as exc:
+            return ResearchFlowResult(
+                status="provider_failed",
+                research=None,
+                error={
+                    "code": "research_provider_failed",
+                    "message": str(exc),
+                    "retryable": True,
+                },
+            )
         except Exception as exc:
             return ResearchFlowResult(
                 status="validation_failed",

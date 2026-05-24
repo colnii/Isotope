@@ -19,6 +19,10 @@ class ResearchProvider(Protocol):
         """Return a structured WebResearchRun-like payload."""
 
 
+class ResearchProviderError(RuntimeError):
+    """Raised when a delegated provider fails before returning research data."""
+
+
 class FakeResearchProvider:
     provider_name = "fake"
 
@@ -175,10 +179,18 @@ def build_codex_cli_research_backend(
             try:
                 transcript = json.loads(content)
             except json.JSONDecodeError:
-                return extract_codex_agent_message_text(content) or content
+                agent_text = extract_codex_agent_message_text(content)
+                if agent_text is not None:
+                    return agent_text
+                _raise_if_codex_error_only_jsonl(content)
+                return content
             stdout = transcript.get("stdout")
             if isinstance(stdout, str):
-                return extract_codex_agent_message_text(stdout) or stdout
+                agent_text = extract_codex_agent_message_text(stdout)
+                if agent_text is not None:
+                    return agent_text
+                _raise_if_codex_error_only_jsonl(stdout)
+                return stdout
             return content
         return result.summary
 
@@ -228,6 +240,33 @@ def extract_codex_agent_message_text(stdout: str) -> str | None:
         if isinstance(text, str) and text.strip():
             latest_text = text.strip()
     return latest_text
+
+
+def _raise_if_codex_error_only_jsonl(stdout: str) -> None:
+    error_messages = _extract_codex_error_messages(stdout)
+    if error_messages:
+        raise ResearchProviderError(
+            "codex cli did not return an agent message: " + "; ".join(error_messages)
+        )
+
+
+def _extract_codex_error_messages(stdout: str) -> list[str]:
+    if not isinstance(stdout, str):
+        return []
+    messages: list[str] = []
+    for line in stdout.splitlines():
+        if not line.strip():
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("type") != "error":
+            continue
+        message = event.get("message")
+        if isinstance(message, str) and message.strip():
+            messages.append(message.strip())
+    return messages
 
 
 def _require_query(query: str) -> str:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from isotope.features.research.flow import ResearchFlow
-from isotope.features.research.providers import FakeResearchProvider
+from isotope.features.research.providers import FakeResearchProvider, ResearchProviderError
 
 
 def test_research_flow_persists_raw_and_normalized_artifacts(tmp_path):
@@ -87,6 +87,27 @@ def test_research_flow_rejects_unknown_claim_source_without_success_artifact(tmp
     assert result.research is None
     assert result.artifact_refs == ()
     assert "unknown source_id" in result.error["message"]
+
+
+def test_research_flow_marks_provider_errors_without_success_artifact(tmp_path):
+    class FailingProvider:
+        provider_name = "failing"
+
+        def run(self, query: str) -> dict:
+            raise ResearchProviderError("codex cli did not return an agent message")
+
+    flow = ResearchFlow.in_process(tmp_path, provider=FailingProvider())
+
+    result = flow.search("python docs")
+
+    assert result.status == "provider_failed"
+    assert result.research is None
+    assert result.artifact_refs == ()
+    assert result.error == {
+        "code": "research_provider_failed",
+        "message": "codex cli did not return an agent message",
+        "retryable": True,
+    }
 
 
 def test_research_report_can_be_found_through_artifact_record(tmp_path):

@@ -7,6 +7,7 @@ import pytest
 from isotope.features.research.providers import (
     CodexDelegatedResearchProvider,
     FakeResearchProvider,
+    ResearchProviderError,
     build_codex_cli_research_backend,
     extract_research_json,
 )
@@ -142,3 +143,26 @@ def test_codex_cli_research_backend_extracts_agent_message_from_jsonl(tmp_path):
         "sources": [],
         "report": {"summary": "debug"},
     }
+
+
+def test_codex_cli_research_backend_rejects_error_only_jsonl(tmp_path):
+    stdout = "\n".join(
+        [
+            '{"type":"thread.started","thread_id":"thread_001"}',
+            '{"type":"error","message":"Reconnecting... 2/5 (request timed out)"}',
+            '{"type":"error","message":"stream disconnected before final answer"}',
+        ]
+    )
+    backend = build_codex_cli_research_backend(
+        workspace_root=tmp_path,
+        executable="codex",
+        executable_resolver=lambda name: "/usr/bin/codex",
+        process_runner=lambda *args, **kwargs: type(
+            "Completed",
+            (),
+            {"stdout": stdout, "stderr": "", "returncode": 0},
+        )(),
+    )
+
+    with pytest.raises(ResearchProviderError, match="codex cli did not return an agent message"):
+        backend("research prompt")
