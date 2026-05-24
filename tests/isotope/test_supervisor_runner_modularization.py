@@ -1205,7 +1205,9 @@ def test_supervisor_runner_uses_compat_api_for_legacy_helpers():
     assert runner._decide_action_with_llm is compat_module._decide_action_with_llm
 
     source = inspect.getsource(runner)
-    assert "from .commands." not in source
+    assert "from .commands.dispatch import" in source
+    assert "from .commands.parser import" not in source
+    assert "from .commands.cleanup import" not in source
 
 
 def test_supervisor_runner_delegates_web_and_fingerprint_helpers():
@@ -1238,3 +1240,38 @@ def test_supervisor_runner_delegates_goal_lifecycle_helpers():
     source = inspect.getsource(runner)
     assert "def _sync_goal_lifecycle(" not in source
     assert "def _record_goal_status_from_session(" not in source
+
+
+def test_supervisor_runner_delegates_cli_dispatch():
+    dispatch_module = importlib.import_module(
+        "isotope.features.supervisor.commands.dispatch"
+    )
+
+    assert runner._run_cli_impl is dispatch_module.run_cli_impl
+    assert runner._COMMAND_HANDLERS is dispatch_module.COMMAND_HANDLERS
+
+    source = inspect.getsource(runner)
+    assert "def _run_cli_impl(" not in source
+    assert "_COMMAND_HANDLERS = {" not in source
+
+
+def test_supervisor_runner_delegates_supervise_loop():
+    loop_module = importlib.import_module("isotope.features.supervisor.supervise.loop")
+
+    assert runner._run_supervise is loop_module.run_supervise
+    assert runner._sleep is loop_module.sleep
+
+    source = inspect.getsource(runner)
+    assert "def _run_supervise(" not in source
+    assert "def _sleep(" not in source
+
+
+def test_supervisor_runner_delegates_supervise_payload_pipeline():
+    payload_module = importlib.import_module(
+        "isotope.features.supervisor.supervise.payload"
+    )
+
+    assert runner._supervise_payload is payload_module.supervise_payload
+
+    source = inspect.getsource(runner)
+    assert "def _supervise_payload(" not in source

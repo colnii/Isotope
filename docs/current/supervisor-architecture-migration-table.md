@@ -44,11 +44,12 @@ Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
 - 阶段 1 止血：`runner.py` 降到 800-1000 行；已迁出
   `constants.py`、`compat_api.py`、`web_runner.py`、
   `supervise/fingerprint.py` 和 `supervise/goal_lifecycle.py`。
-- 阶段 2 健康：`runner.py` 降到 400-600 行；下一步迁出
+- 阶段 2 健康：`runner.py` 降到 400-600 行；已迁出
   `supervise/loop.py`、`supervise/payload.py` 和
-  `commands/dispatch.py` 的大部分命令分发。
+  `commands/dispatch.py` 的命令分发主干。
 - 阶段 3 理想：`runner.py` 降到 250-400 行，只保留 `main`、
-  parser 调用、顶层 dispatch、少量异常处理和兼容 re-export。
+  parser 调用、顶层 dispatch、少量异常处理和兼容 re-export；下一步优先
+  拆 `scan/report`、goal replenishment 和剩余 notification glue。
 
 全局文件大小债务：阶段 1 完成后仍有若干手写 Python 文件超过 600 行，
 包括 `commands/parser.py`、`llm_summary.py`、`flow.py`、`commands/dashboard.py`、

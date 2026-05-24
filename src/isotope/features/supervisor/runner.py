@@ -4,10 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import shlex
 import subprocess
 import sys
-import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -114,6 +112,11 @@ from .state.projection import build_supervisor_state_snapshot
 from .worker_review import collect_worker_reviews, render_worker_review_plain
 from .work_order_builder import build_launch_work_order_prompt
 from .compat_api import *  # noqa: F403 - legacy runner helper re-exports
+from .commands.dispatch import (
+    COMMAND_HANDLERS as _COMMAND_HANDLERS,
+    handle_research_command as _handle_research_command,
+    run_cli_impl as _run_cli_impl,
+)
 from .constants import *  # noqa: F403 - legacy runner constant re-exports
 from .supervise.fingerprint import (
     attention_bell_fingerprint as _attention_bell_fingerprint,
@@ -127,7 +130,13 @@ from .supervise.goal_lifecycle import (
     record_goal_status_from_session as _record_goal_status_from_session,
     sync_goal_lifecycle as _sync_goal_lifecycle,
 )
+from .supervise.loop import (
+    run_supervise as _run_supervise,
+    sleep as _sleep,
+)
+from .supervise.payload import supervise_payload as _supervise_payload
 from .web_runner import run_web as _run_web
+
 
 def _print_json(payload: dict[str, Any]) -> None:
     print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
@@ -147,292 +156,6 @@ def _json_object_arg(raw: str | None, field_name: str) -> dict[str, Any] | None:
 
 def main(argv: list[str] | None = None) -> int:
     return _run_cli(argv)
-
-
-def _handle_research_command(args: argparse.Namespace, *, api) -> int:
-    flow = ResearchFlow.in_process(
-        Path(args.root),
-        provider=FakeResearchProvider(),
-    )
-    payload = flow.search(args.query).to_dict()
-    if args.json:
-        _print_json(payload)
-    else:
-        research = payload.get("research") or {}
-        print("[Codex Supervisor Research]")
-        print(f"status: {payload['status']}")
-        print(f"query: {research.get('query') or payload.get('query', '')}")
-        print(f"evidence: {research.get('evidence_status', '')}")
-        error = payload.get("error")
-        if isinstance(error, dict):
-            print(f"retryable: {str(error.get('retryable', False)).lower()}")
-            print(f"error: {error.get('message', '')}")
-        _print_research_artifacts_plain(payload)
-    return 0
-
-
-_COMMAND_HANDLERS = {
-    "dashboard": _handle_dashboard_command,
-    "integration-review": _handle_integration_review_command,
-    "merge-work-order": _handle_merge_work_order_command,
-    "goal": _handle_goal_command,
-    "cleanup": _handle_cleanup_command,
-    "capacity": _handle_capacity_command,
-    "context": _handle_context_command,
-    "decision": _handle_decision_command,
-    "memory": _handle_memory_command,
-    "research": _handle_research_command,
-    "replan": _handle_replan_command,
-    "state": _handle_state_command,
-    "worker-event": _handle_worker_event_command,
-    "worker-manager": _handle_worker_manager_command,
-}
-
-
-def _run_cli_impl(argv: list[str] | None = None) -> int:
-    parser = _build_parser()
-    args = parser.parse_args(argv)
-    try:
-        if args.command == "scan":
-            _print_report(args)
-            return 0
-        if args.command in _COMMAND_HANDLERS:
-            return _COMMAND_HANDLERS[args.command](args, api=sys.modules[__name__])
-        if args.command == "advise":
-            _validate_execution_modes(args)
-            _print_advice(args)
-            return 0
-        if args.command == "supervise":
-            _validate_execution_modes(args)
-            _run_supervise(args)
-            return 0
-        if args.command == "loop":
-            _normalize_loop_execution_mode(args)
-            _validate_execution_modes(args)
-            _run_supervise(args)
-            return 0
-        if args.command == "up":
-            payload = _up_payload(args)
-            if args.json:
-                _print_json(payload)
-            else:
-                _print_daemon_plain(payload)
-            return 0
-        if args.command in {"check", "overnight-check"}:
-            payload = _overnight_check_payload(args)
-            if args.json:
-                _print_json(payload)
-            else:
-                _print_overnight_check_plain(payload)
-            return 0
-        if args.command == "daemon":
-            if (
-                args.daemon_command == "watcher"
-                and args.watcher_command == "run"
-            ):
-                _run_daemon_watcher(args)
-                return 0
-            payload = _daemon_payload(args)
-            if args.json:
-                _print_json(payload)
-            elif args.daemon_command == "watcher":
-                _print_watcher_plain(payload)
-            else:
-                _print_daemon_plain(payload)
-            return 0
-        if args.command == "watch":
-            if args.interval <= 0:
-                raise ValueError("interval must be positive")
-            if args.iterations is not None and args.iterations <= 0:
-                raise ValueError("iterations must be positive")
-            iterations = args.iterations
-            count = 0
-            previous_fingerprint: tuple[object, ...] | None = None
-            previous_bell_fingerprint: tuple[object, ...] | None = None
-            while iterations is None or count < iterations:
-                printed, previous_fingerprint, previous_bell_fingerprint = _print_report(
-                    args,
-                    previous_fingerprint=previous_fingerprint,
-                    previous_bell_fingerprint=previous_bell_fingerprint,
-                )
-                if printed and iterations is not None and count + 1 < iterations:
-                    print()
-                count += 1
-                if iterations is None or count < iterations:
-                    _sleep(args.interval)
-            return 0
-        if args.command == "web":
-            _run_web(args)
-            return 0
-        if args.command == "launch":
-            record = launch_managed_codex(
-                codex_home=Path(args.codex_home),
-                cwd=Path(args.cwd),
-                name=args.name,
-                prompt=args.prompt,
-                codex_bin=args.codex_bin,
-                codex_model=args.codex_model,
-                codex_config=tuple(args.codex_config),
-                backend=args.backend,
-                tmux_session=args.tmux_session,
-                worker_role=getattr(args, "worker_role", "worker"),
-                popen=subprocess.Popen,
-                run=subprocess.run,
-            )
-            if args.json:
-                _print_json({"status": "ok", "managed": record.to_dict()})
-            else:
-                print(f"已启动托管 Codex：{record.name}")
-                print(f"pid：{record.pid}")
-                print(f"日志：{record.log_path}")
-            return 0
-        if args.command == "worker-review":
-            payload = collect_worker_reviews(codex_home=Path(args.codex_home))
-            if args.json:
-                _print_json(payload)
-            else:
-                print(render_worker_review_plain(payload))
-            return 0
-        if args.command == "trace":
-            payload = _lifecycle_trace_payload(args)
-            if args.json:
-                _print_json(payload)
-            else:
-                _print_lifecycle_trace_plain(payload)
-            return 0
-        if args.command == "resume":
-            record = resume_managed_codex(
-                codex_home=Path(args.codex_home),
-                cwd=Path(args.cwd),
-                name=args.name,
-                prompt=args.prompt,
-                session_id=args.session_id,
-                last=args.last,
-                codex_bin=args.codex_bin,
-                codex_model=args.codex_model,
-                codex_config=tuple(args.codex_config),
-                popen=subprocess.Popen,
-            )
-            if args.json:
-                _print_json({"status": "ok", "managed": record.to_dict()})
-            else:
-                print(f"已恢复托管 Codex：{record.name}")
-                target = "--last" if record.resume_last else record.resume_session_id
-                print(f"session：{target}")
-                print(f"pid：{record.pid}")
-                print(f"日志：{record.log_path}")
-            return 0
-        if args.command == "adopt":
-            record = adopt_tmux_session(
-                codex_home=Path(args.codex_home),
-                cwd=Path(args.cwd),
-                name=args.name,
-                tmux_session=args.tmux_session,
-                prompt=args.prompt,
-                run=subprocess.run,
-            )
-            if args.json:
-                _print_json({"status": "ok", "managed": record.to_dict()})
-            else:
-                print(f"已接管 tmux 会话：{record.name}")
-                print(f"tmux：{record.tmux_session}")
-            return 0
-        if args.command == "discover":
-            payload = _discover_payload(args)
-            if args.json:
-                _print_json(payload)
-            else:
-                _print_discover_plain(payload)
-            return 0
-        if args.command == "archive":
-            record = archive_managed_codex(
-                codex_home=Path(args.codex_home),
-                name=args.name,
-            )
-            if args.json:
-                _print_json({"status": "ok", "managed": record.to_dict()})
-            else:
-                print(f"已归档托管 Codex：{record.name}")
-                if record.tmux_session:
-                    print(f"tmux：{record.tmux_session}")
-            return 0
-        if args.command == "send":
-            result = send_to_managed_codex(
-                codex_home=Path(args.codex_home),
-                name=args.name,
-                text=args.text,
-                run=subprocess.run,
-            )
-            if args.json:
-                _print_json(
-                    {
-                        "status": "ok",
-                        "text": result.text,
-                        "managed": {
-                            "name": result.record.name,
-                            "record_id": result.record.record_id,
-                            "tmux_session": result.record.tmux_session,
-                        },
-                    }
-                )
-            else:
-                print(f"已发送到托管 Codex：{result.record.name}")
-                print(f"tmux：{result.record.tmux_session}")
-                print(f"内容：{result.text}")
-            return 0
-        if args.command == "repair-hooks":
-            repairs = repair_tmux_bell_hooks(
-                codex_home=Path(args.codex_home),
-                run=subprocess.run,
-            )
-            if args.json:
-                _print_json(
-                    {
-                        "status": "ok",
-                        "repairs": [repair.to_dict() for repair in repairs],
-                    }
-                )
-            else:
-                if not repairs:
-                    print("没有需要修复的托管 tmux 会话。")
-                for repair in repairs:
-                    print(
-                        f"{repair.tmux_session} / {repair.name}: {repair.status}"
-                        + (f" / {repair.message}" if repair.message else "")
-                    )
-            return 0
-        if args.command == "start-here":
-            payload = _start_here_payload(args)
-            if args.json:
-                _print_json(payload)
-            else:
-                _print_start_here_plain(payload)
-            return 0
-        if args.command == "guide":
-            payload = _guide_payload(args)
-            if args.json:
-                _print_json(payload)
-            else:
-                _print_guide_plain(payload)
-            return 0
-    except KeyboardInterrupt:
-        return 130
-    except ValueError as exc:
-        if getattr(args, "json", False):
-            _print_json(
-                {
-                    "status": "error",
-                    "error": {
-                        "code": "codex_supervisor_runner_error",
-                        "message": str(exc),
-                    },
-                }
-            )
-        else:
-            print(f"error: {exc}")
-        return 2
-    parser.error(f"unknown command: {args.command}")
-    return 2
 
 
 def _print_report(
@@ -469,127 +192,6 @@ def _print_report(
             print("[LLM 摘要]")
             print(_summarize_with_llm(report))
     return True, fingerprint, bell_fingerprint
-
-
-def _run_supervise(args: argparse.Namespace) -> None:
-    if args.interval <= 0:
-        raise ValueError("interval must be positive")
-    if args.iterations is not None and args.iterations <= 0:
-        raise ValueError("iterations must be positive")
-    decision_timeout = getattr(
-        args,
-        "decision_timeout",
-        DEFAULT_DECISION_TIMEOUT_SECONDS,
-    )
-    if decision_timeout < 0:
-        raise ValueError("decision_timeout must be zero or positive")
-    iterations = args.iterations
-    count = 0
-    previous_fingerprint: tuple[object, ...] | None = None
-    previous_bell_fingerprint: tuple[object, ...] | None = None
-    while iterations is None or count < iterations:
-        auto_adopted = _auto_adopt_discovered_tmux_sessions(args)
-        auto_retried_workers = _auto_retry_exited_process_workers(args)
-        report = _scan_report(args)
-        goal_updates = _sync_goal_lifecycle(args, report)
-        merge_promotions = _auto_promote_done_merge_workers_to_main(args)
-        cleanup_archived = _auto_archive_done_merge_workers(args)
-        cleanup_deleted_worktrees = _auto_delete_archived_worktrees_after_cleanup(
-            args,
-            cleanup_archived=cleanup_archived,
-        )
-        decision_timeout_alerts = mark_stale_decision_request_timeouts(
-            codex_home=Path(args.codex_home),
-            timeout_seconds=decision_timeout,
-            webhook_url=getattr(args, "webhook_url", None),
-            webhook_secret=getattr(args, "webhook_secret", None),
-        )
-        fingerprint = _report_fingerprint(report)
-        report_changed = previous_fingerprint != fingerprint
-        precomputed_auto_action: dict[str, Any] | None = None
-        precomputed_executed: dict[str, Any] | None = None
-        precomputed_payload: dict[str, Any] | None = None
-        force_print = False
-        if args.changes_only and not report_changed:
-            if args.llm_execute:
-                precomputed_payload = _supervise_payload(
-                    args,
-                    report,
-                    iteration=count + 1,
-                    auto_adopted=auto_adopted,
-                    auto_retried_workers=auto_retried_workers,
-                    goal_updates=goal_updates,
-                    merge_promotions=merge_promotions,
-                    cleanup_archived=cleanup_archived,
-                    cleanup_deleted_worktrees=cleanup_deleted_worktrees,
-                    decision_timeout_alerts=decision_timeout_alerts,
-                )
-                force_print = _executed_action_forces_print(
-                    precomputed_payload.get("executed", {})
-                )
-            elif args.auto_execute:
-                precomputed_auto_action = _auto_execute_action(
-                    report,
-                    target_name=args.name,
-                    codex_home=Path(args.codex_home),
-                    prompt_cooldown_seconds=args.prompt_cooldown,
-                    max_continue_count=args.max_continue_count,
-                )
-                precomputed_executed = _execute_auto_action(
-                    args,
-                    report,
-                    precomputed_auto_action,
-                )
-                force_print = _executed_action_forces_print(precomputed_executed)
-        should_print = (
-            not args.changes_only
-            or report_changed
-            or force_print
-            or bool(auto_adopted)
-            or bool(auto_retried_workers)
-            or bool(goal_updates)
-            or bool(merge_promotions)
-            or bool(cleanup_archived)
-            or bool(cleanup_deleted_worktrees)
-            or bool(decision_timeout_alerts)
-        )
-        if should_print:
-            payload = precomputed_payload or _supervise_payload(
-                args,
-                report,
-                iteration=count + 1,
-                auto_adopted=auto_adopted,
-                auto_retried_workers=auto_retried_workers,
-                precomputed_auto_action=precomputed_auto_action,
-                precomputed_executed=precomputed_executed,
-                goal_updates=goal_updates,
-                merge_promotions=merge_promotions,
-                cleanup_archived=cleanup_archived,
-                cleanup_deleted_worktrees=cleanup_deleted_worktrees,
-                decision_timeout_alerts=decision_timeout_alerts,
-            )
-            bell_fingerprint = _supervise_bell_fingerprint(report, payload)
-            if (
-                args.bell
-                and bell_fingerprint is not None
-                and bell_fingerprint != previous_bell_fingerprint
-            ):
-                _emit_terminal_bell()
-            if args.json:
-                _print_json(payload)
-            else:
-                _print_supervise_plain(payload, report)
-            if iterations is not None and count + 1 < iterations:
-                print()
-            previous_bell_fingerprint = bell_fingerprint
-        previous_fingerprint = fingerprint
-        count += 1
-        if iterations is None or count < iterations:
-            _sleep(args.interval)
-
-
-def _sleep(seconds: float) -> None:
-    time.sleep(seconds)
 
 
 def _scan_report(args: argparse.Namespace) -> Any:
@@ -757,96 +359,6 @@ def _selected_active_goal(args: argparse.Namespace) -> dict[str, Any] | None:
     goals = _active_goal_dicts(args, limit=1)
     return goals[0] if goals else None
 
-
-def _supervise_payload(
-    args: argparse.Namespace,
-    report: Any,
-    *,
-    iteration: int,
-    auto_adopted: list[dict[str, str]] | None = None,
-    auto_retried_workers: list[dict[str, Any]] | None = None,
-    goal_updates: list[dict[str, Any]] | None = None,
-    merge_promotions: list[dict[str, Any]] | None = None,
-    cleanup_archived: list[dict[str, Any]] | None = None,
-    cleanup_deleted_worktrees: list[dict[str, Any]] | None = None,
-    decision_timeout_alerts: list[dict[str, Any]] | None = None,
-    precomputed_auto_action: dict[str, Any] | None = None,
-    precomputed_executed: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    base = _build_supervise_base_payload(
-        args,
-        report,
-        iteration=iteration,
-        auto_adopted=auto_adopted,
-        auto_retried_workers=auto_retried_workers,
-        goal_updates=goal_updates,
-        merge_promotions=merge_promotions,
-        cleanup_archived=cleanup_archived,
-        cleanup_deleted_worktrees=cleanup_deleted_worktrees,
-        decision_timeout_alerts=decision_timeout_alerts,
-    )
-    payload = base.payload
-    action_report = base.action_report
-    active_goals = base.active_goals
-    explicit_goal = base.explicit_goal
-    goal_replenishment = base.goal_replenishment
-    worker_reviews: dict[str, Any] | None = None
-    if args.llm_action or args.llm_execute:
-        llm_context = _planner_context_payload(
-            args,
-            report,
-            action_report=action_report,
-            active_goals=active_goals,
-            explicit_goal=explicit_goal,
-        )
-        payload.update(llm_context)
-        worker_reviews = llm_context["worker_reviews"]
-    planning = _append_supervise_planning_payload(
-        args,
-        payload,
-        report,
-        active_goals=active_goals,
-        goal_updates=goal_updates,
-        goal_replenishment=goal_replenishment,
-        worker_reviews=worker_reviews,
-    )
-    fanout_status = planning.fanout_status
-    fanout_paused = planning.fanout_paused
-    worker_role_guard = planning.worker_role_guard
-    merge_dispatch = planning.merge_dispatch
-    fanout_plan = planning.fanout_plan
-    if args.llm_summary:
-        payload["llm_summary"] = _summarize_with_llm(report)
-    _append_supervise_llm_action(
-        args,
-        payload,
-        action_report,
-        active_goals=active_goals,
-        explicit_goal=explicit_goal,
-        fanout_status=fanout_status,
-        fanout_paused=fanout_paused,
-        worker_role_guard=worker_role_guard,
-        merge_dispatch=merge_dispatch,
-        fanout_plan=fanout_plan,
-    )
-    _append_supervise_execution(
-        args,
-        payload,
-        report,
-        action_report=action_report,
-        active_goals=active_goals,
-        goal_replenishment=goal_replenishment,
-        worker_reviews=worker_reviews,
-        fanout_status=fanout_status,
-        fanout_paused=fanout_paused,
-        worker_role_guard=worker_role_guard,
-        merge_dispatch=merge_dispatch,
-        fanout_plan=fanout_plan,
-        precomputed_auto_action=precomputed_auto_action,
-        precomputed_executed=precomputed_executed,
-    )
-    _append_supervise_final_payload(args, payload)
-    return payload
 
 def _emit_terminal_bell() -> None:
     sys.stderr.write("\a")

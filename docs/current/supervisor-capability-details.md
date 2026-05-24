@@ -188,9 +188,12 @@ merge worker 成功合入后的交接边界也要分清：
 `features/supervisor/constants.py`；Web 命令入口在
 `features/supervisor/web_runner.py`；loop/report 指纹在
 `features/supervisor/supervise/fingerprint.py`；goal 状态同步在
-`features/supervisor/supervise/goal_lifecycle.py`。后续继续优先迁出
-`supervise/loop.py`、`supervise/payload.py` 和 `commands/dispatch.py`，
-让 `runner.py` 只保留入口与路由。
+`features/supervisor/supervise/goal_lifecycle.py`；supervise/loop 主循环在
+`features/supervisor/supervise/loop.py`；payload 组装管线在
+`features/supervisor/supervise/payload.py`；命令分发主干在
+`features/supervisor/commands/dispatch.py`。后续继续优先迁出
+`scan/report`、goal replenishment 和剩余 notification glue，让
+`runner.py` 只保留入口与路由。
 
 ### 现有输入与归属
 
