@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -171,9 +172,14 @@ def render_memory_query_plain(payload: dict[str, Any]) -> str:
     results = payload.get("results") if isinstance(payload.get("results"), list) else []
     lines = [
         "Memory query",
+        f"status: {payload.get('status', '')}",
         f"root: {store.get('root', '')}",
         f"query: {payload.get('query', '')}",
+        "content_policy: summary_refs_provenance_only",
+        f"scope: {payload.get('scope') or 'all'}",
+        f"run_id: {payload.get('run_id') or 'all'}",
         f"matched: {summary.get('matched', len(results))}",
+        f"result_count: {len(results)}",
     ]
     if summary.get("hidden_records"):
         lines.append(f"hidden_records: {summary['hidden_records']}")
@@ -188,6 +194,12 @@ def render_memory_query_plain(payload: dict[str, Any]) -> str:
                     summary=record.get("summary", ""),
                 )
             )
+            source_refs = record.get("source_refs")
+            if source_refs:
+                lines.append(f"  source_refs: {json.dumps(source_refs, sort_keys=True)}")
+            provenance = record.get("provenance")
+            if provenance:
+                lines.append(f"  provenance: {json.dumps(provenance, sort_keys=True)}")
     else:
         lines.append("results: none")
     return "\n".join(lines)

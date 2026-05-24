@@ -38,7 +38,14 @@ PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2
 PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario v0.2 --json
 ```
 
-v0.2 scenario 仍不启动 real HTTP server / network listener，不调用 real LLM，不实现 memory storage/query，也不打开 HTTP full-content route。
+v0.2 scenario 仍不启动 real HTTP server / network listener，不调用 real LLM，
+也不打开 HTTP full-content route。memory query 另有独立 smoke scenario，
+只展示本地 `FileMemoryStore` 写入和 summary / refs / provenance recall：
+
+```bash
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario memory-query-smoke
+PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario memory-query-smoke --json
+```
 
 ## 3. What Happens Internally
 
@@ -98,7 +105,8 @@ JSON 输出适合脚本或 CI smoke 检查，字段名与 plain text 一致。
 - state 来自 canonical events，而不是 executor / artifact store / memory store 直接写入。
 - event replay 可重建 `RunState`。
 - checkpoint 可辅助恢复 `RunState`。
-- memory boundary 存在，但不是产品级 memory。
+- memory boundary 存在；独立 `memory-query-smoke` 可证明本地 memory record
+  写入后能低敏 query recall。
 
 ## 6. What This Does Not Prove
 
@@ -107,7 +115,8 @@ JSON 输出适合脚本或 CI smoke 检查，字段名与 plain text 一致。
 - real LLM agent 已可用。
 - real listening HTTP server / hosted API 已可用。
 - UI 已可用。
-- real memory storage / query 已可用。
+- product-level memory query 已可用。
+- vector / semantic memory search 已可用。
 - external ingestion 已可用。
 - plugin system 已可用。
 - production readiness 已达到。

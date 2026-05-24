@@ -102,6 +102,25 @@ def _format_external_snapshot_review_plain_text(result: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _format_memory_query_smoke_plain_text(result: dict[str, Any]) -> str:
+    lines = [
+        f"scenario: {result['scenario']}",
+        f"transport: {result['transport']}",
+        f"memory_write_status: {result['memory_write_status']}",
+        f"memory_query_status: {result['memory_query_status']}",
+        f"memory_query_smoke_ok: {str(result['memory_query_smoke_ok']).lower()}",
+        f"query: {result['query']}",
+        f"query_result_count: {result['query_result_count']}",
+        f"recalled_record_id: {result['recalled_record_id']}",
+        f"content_policy: {result['content_policy']}",
+        f"model_status: {result['model_status']}",
+        f"provider_status: {result['provider_status']}",
+        f"network_listener_status: {result['network_listener_status']}",
+        f"next_development_step: {result['next_development_step']}",
+    ]
+    return "\n".join(lines)
+
+
 def _format_workbench_plain_text(result: dict[str, Any]) -> str:
     lines = [
         f"scenario: {result['scenario']}",

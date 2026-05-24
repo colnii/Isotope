@@ -46,6 +46,7 @@ from .demo_llm_bridge_scenarios import (
 from .demo_llm_product_chat_scenarios import _run_llm_product_chat_app_entry_demo
 from .demo_llm_terminal_scenarios import _run_llm_terminal_tool_loop_demo
 from .demo_llm_tool_result_scenarios import _run_llm_tool_result_loop_demo
+from .demo_memory_scenarios import _run_memory_query_smoke_demo
 from .demo_terminal_scenarios import _run_terminal_exec_demo
 from .platform.state.checkpoint_store import FileCheckpointStore
 from .interfaces.http import create_http_app
@@ -87,6 +88,7 @@ def main(argv: list[str] | None = None) -> int:
             "llm-tool-result-loop",
             "llm-product-chat-app-entry",
             "llm-terminal-tool-loop",
+            "memory-query-smoke",
             "workbench",
             "workbench-ask",
             "project-workspace",
@@ -192,6 +194,8 @@ def _run_scenario(root: Path, *, scenario: str) -> dict[str, Any]:
         return _run_llm_product_chat_app_entry_demo(root)
     if scenario == "llm-terminal-tool-loop":
         return _run_llm_terminal_tool_loop_demo(root)
+    if scenario == "memory-query-smoke":
+        return _run_memory_query_smoke_demo(root)
     if scenario == "workbench":
         return _run_workbench_demo(root)
     if scenario == "workbench-ask":

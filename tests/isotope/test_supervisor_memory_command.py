@@ -141,6 +141,58 @@ def test_supervisor_memory_command_queries_memory_without_content(tmp_path, caps
     assert "raw memory" not in output
 
 
+def test_supervisor_memory_query_plain_output_explains_low_sensitive_preview(
+    tmp_path,
+    capsys,
+):
+    memory_dir = tmp_path / "memory"
+    memory_dir.mkdir()
+    _write_memory_record(
+        memory_dir,
+        MemoryRecord(
+            memory_id="mem_plain_query",
+            scope="run",
+            content={"raw": "raw memory content must not leak"},
+            summary="Resume from the memory query smoke boundary.",
+            source_refs=[{"ref_type": "artifact", "artifact_id": "artifact_plain"}],
+            provenance={
+                "run_id": "run_plain",
+                "execution_id": "exec_plain",
+                "action_type": "write_memory",
+            },
+            created_at="2026-05-22T01:00:00Z",
+            supersedes=[],
+            quality="candidate",
+        ),
+    )
+
+    assert (
+        runner.main(
+            [
+                "memory",
+                "--root",
+                str(tmp_path),
+                "--query",
+                "query smoke",
+                "--run-id",
+                "run_plain",
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    assert "Memory query" in output
+    assert "status: ok" in output
+    assert "content_policy: summary_refs_provenance_only" in output
+    assert "run_id: run_plain" in output
+    assert "result_count: 1" in output
+    assert "mem_plain_query / run / candidate / Resume from the memory query smoke boundary." in output
+    assert "artifact_plain" in output
+    assert "exec_plain" in output
+    assert "raw memory" not in output
+
+
 def _write_memory_record(memory_dir, record: MemoryRecord) -> None:
     (memory_dir / f"{record.memory_id}.json").write_text(
         json.dumps(asdict(record), sort_keys=True),
