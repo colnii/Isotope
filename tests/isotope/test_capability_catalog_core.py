@@ -84,6 +84,26 @@ def test_capability_serializes_to_low_sensitive_manifest_dict():
         assert FORBIDDEN_MANIFEST_KEYS.isdisjoint(mapping)
 
 
+def test_capability_manifest_nested_contracts_are_isolated_copies():
+    capability = _valid_capability(
+        input_contract={
+            "type": "object",
+            "required": ["artifact_ref"],
+            "properties": {"artifact_ref": {"type": "string"}},
+        }
+    )
+
+    manifest = capability.to_manifest_dict()
+    manifest["input_contract"]["properties"]["artifact_ref"]["type"] = "object"
+
+    fresh_manifest = capability.to_manifest_dict()
+
+    assert (
+        fresh_manifest["input_contract"]["properties"]["artifact_ref"]["type"]
+        == "string"
+    )
+
+
 def test_capability_catalog_rejects_duplicate_capability_ids():
     capability = _valid_capability(capability_id="artifact.review")
     duplicate = _valid_capability(capability_id="artifact.review", title="Duplicate")

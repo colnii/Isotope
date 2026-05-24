@@ -6,6 +6,7 @@ stable metadata for app shells without constructing providers or executing work.
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 import os
 import re
@@ -99,8 +100,8 @@ class Capability:
             "maturity": self.maturity,
             "shelf": self.shelf,
             "domain_tags": list(self.domain_tags),
-            "input_contract": dict(self.input_contract),
-            "output_contract": dict(self.output_contract),
+            "input_contract": copy.deepcopy(dict(self.input_contract)),
+            "output_contract": copy.deepcopy(dict(self.output_contract)),
             "safety_boundaries": list(self.safety_boundaries),
             "default_enabled": self.default_enabled,
             "required_env": list(self.required_env),
