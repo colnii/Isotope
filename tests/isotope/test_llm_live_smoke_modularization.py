@@ -1,6 +1,8 @@
 import isotope.llm_live_smoke as llm_live_smoke
 from isotope import llm_live_smoke_config
+from isotope import llm_live_smoke_cli_support
 from isotope import llm_live_smoke_diagnosis
+from isotope import llm_live_smoke_product_chat_entry_state
 from isotope import llm_live_smoke_runs
 from isotope import llm_live_smoke_terminal_diagnosis
 
@@ -50,4 +52,23 @@ def test_llm_live_smoke_diagnosis_reexports_terminal_diagnosis_helpers():
     assert (
         llm_live_smoke_diagnosis._terminal_error_reason_summary
         is llm_live_smoke_terminal_diagnosis._terminal_error_reason_summary
+    )
+
+
+def test_llm_live_smoke_cli_support_reexports_product_chat_entry_state_helpers():
+    assert (
+        llm_live_smoke_cli_support._maybe_write_product_chat_entry_state
+        is llm_live_smoke_product_chat_entry_state._maybe_write_product_chat_entry_state
+    )
+    assert (
+        llm_live_smoke_cli_support._load_product_chat_entry_state
+        is llm_live_smoke_product_chat_entry_state._load_product_chat_entry_state
+    )
+    assert (
+        llm_live_smoke_cli_support._mark_product_chat_entry_state_resumed
+        is llm_live_smoke_product_chat_entry_state._mark_product_chat_entry_state_resumed
+    )
+    assert (
+        llm_live_smoke_cli_support._product_chat_entry_error_payload
+        is llm_live_smoke_product_chat_entry_state._product_chat_entry_error_payload
     )
