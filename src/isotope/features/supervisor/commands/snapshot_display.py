@@ -43,3 +43,14 @@ def state_snapshot_schema_label(snapshot: Any) -> str | None:
     if not isinstance(snapshot, dict):
         return None
     return state_snapshot_schema_status(snapshot)["schema_label"]
+
+
+def state_snapshot_schema_display(snapshot: Any) -> str | None:
+    if snapshot is None:
+        return None
+    schema_status = state_snapshot_schema_status(snapshot)
+    label = schema_status["schema_label"]
+    reason = schema_status["schema_reason"]
+    if schema_status["schema_status"] == "degraded" and reason:
+        return f"{label} / {reason}"
+    return label

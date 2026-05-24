@@ -23,7 +23,7 @@ from isotope.features.supervisor.registry import (
     read_managed_records,
 )
 from isotope.features.supervisor.commands.snapshot_display import (
-    state_snapshot_schema_label,
+    state_snapshot_schema_display,
 )
 from isotope.features.supervisor.state.projection import build_supervisor_state_snapshot
 
@@ -550,7 +550,7 @@ def print_daemon_plain(payload: dict[str, Any]) -> None:
 def print_daemon_activity_plain(activity: Any) -> None:
     if not isinstance(activity, dict):
         return
-    snapshot_label = state_snapshot_schema_label(activity.get("state_snapshot"))
+    snapshot_label = state_snapshot_schema_display(activity.get("state_snapshot"))
     action = activity.get("recent_llm_action")
     ci = activity.get("recent_ci")
     execution = activity.get("recent_execution")
@@ -650,7 +650,7 @@ def print_watcher_run_plain(payload: dict[str, Any]) -> None:
 def print_overnight_check_plain(payload: dict[str, Any]) -> None:
     summary = payload["summary"]
     integration = summary["integration_review"]
-    snapshot_label = state_snapshot_schema_label(
+    snapshot_label = state_snapshot_schema_display(
         ((payload.get("daemon") or {}).get("activity") or {}).get("state_snapshot")
     )
     print("[Codex Supervisor overnight check]")

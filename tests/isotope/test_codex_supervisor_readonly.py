@@ -4973,6 +4973,75 @@ def test_codex_supervisor_runner_overnight_check_plain_is_compact_summary(
     assert "可归档项：0" in text
 
 
+def test_codex_supervisor_state_plain_includes_degraded_snapshot_reason(capsys):
+    supervisor_runner._print_state_plain(
+        {
+            "status": "ok",
+            "codex_home": "/tmp/codex",
+            "kind": "supervisor_state_snapshot",
+            "summary": {
+                "active_goals": 0,
+                "active_decisions": 0,
+                "failed_lanes": 0,
+                "worker_events": 0,
+                "notifications": 0,
+                "unread_notifications": 0,
+            },
+        }
+    )
+
+    text = capsys.readouterr().out
+    assert "状态快照：supervisor_state_snapshot degraded / missing schema_version" in text
+
+
+def test_codex_supervisor_overnight_plain_includes_degraded_snapshot_reason(capsys):
+    supervisor_runner._print_overnight_check_plain(
+        {
+            "summary": {
+                "daemon_status": "not_running",
+                "watcher_status": "not_running",
+                "active_goals": 0,
+                "integration_review": {
+                    "total": 0,
+                    "ready_to_integrate": 0,
+                    "already_integrated": 0,
+                    "needs_review": 0,
+                    "conflict_risk": 0,
+                },
+                "cleanup_candidates": 0,
+            },
+            "daemon": {
+                "activity": {
+                    "state_snapshot": {
+                        "status": "ok",
+                        "summary": {},
+                    }
+                }
+            },
+        }
+    )
+
+    text = capsys.readouterr().out
+    assert "状态快照：degraded snapshot schema / missing kind" in text
+
+
+def test_codex_supervisor_daemon_activity_plain_includes_degraded_snapshot_reason(
+    capsys,
+):
+    supervisor_runner._print_daemon_activity_plain(
+        {
+            "state_snapshot": {
+                "status": "ok",
+                "kind": "supervisor_state_snapshot",
+                "summary": {},
+            }
+        }
+    )
+
+    text = capsys.readouterr().out
+    assert "状态快照：supervisor_state_snapshot degraded / missing schema_version" in text
+
+
 def test_codex_supervisor_runner_loop_suggests_all_active_goals(
     tmp_path,
     capsys,

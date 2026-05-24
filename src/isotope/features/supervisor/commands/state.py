@@ -8,7 +8,7 @@ from typing import Any
 
 from isotope.features.supervisor.commands.snapshot_display import (
     STATE_SNAPSHOT_SOURCE_LABEL,
-    state_snapshot_schema_label,
+    state_snapshot_schema_display,
 )
 from isotope.features.supervisor.state.projection import (
     build_supervisor_state_snapshot,
@@ -32,7 +32,7 @@ def print_state_plain(payload: dict[str, Any]) -> None:
     summary = payload.get("summary")
     if not isinstance(summary, dict):
         summary = {}
-    snapshot_label = state_snapshot_schema_label(payload)
+    snapshot_label = state_snapshot_schema_display(payload)
     print("[Supervisor state]")
     print(f"codex_home：{payload.get('codex_home', '')}")
     if snapshot_label is not None:
