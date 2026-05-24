@@ -22,6 +22,9 @@
 - Supervisor `call_capacity` action 会复用同一个 `planner_output` contract，
   通过 `run_agent_loop_tick(...)` 执行一次 `call_capability`，并返回
   `tick_result` 供上层 handoff 查看。
+- `python -m isotope.demo --scenario supervisor-capacity-handoff-trace --trace`
+  展示 `Supervisor action -> planner_output_summary -> tick_result ->
+  persisted policy` 的可读链路。
 
 HTTP body 只接受：
 
@@ -61,6 +64,7 @@ HTTP body 只接受：
 - `tests/isotope/test_agent_loop_tick_driver.py`
 - `tests/isotope/test_http_api_agent_loop_tick_driver.py`
 - `tests/isotope/test_agent_loop_tick_driver_demo_scenario.py`
+- `tests/isotope/test_supervisor_capacity_handoff_demo_scenario.py`
 - `tests/isotope/test_agent_loop_planner_step_adapter.py`
 - `tests/isotope/test_agent_loop_tick_policy.py`
 - `tests/isotope/test_supervisor_capacity_path.py`

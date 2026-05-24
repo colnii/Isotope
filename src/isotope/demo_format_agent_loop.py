@@ -145,6 +145,37 @@ def _format_agent_loop_tick_driver_trace_plain_text(result: dict[str, Any]) -> s
     return "\n".join(lines)
 
 
+def _format_supervisor_capacity_handoff_trace_plain_text(result: dict[str, Any]) -> str:
+    action = result["supervisor_action"]
+    decision = result["capacity_decision"]
+    planner = result["planner_output_summary"]
+    tick = result["tick_summary"]
+    persisted = result["persisted_run_policy"]
+    lines = [
+        f"scenario: {result['scenario']}",
+        f"session_id: {result['session_id']}",
+        f"run_id: {result['run_id']}",
+        f"run_status: {result['run_status']}",
+        f"transport: {result['transport']}",
+        f"capacity_handoff_trace_ok: {str(result['capacity_handoff_trace_ok']).lower()}",
+        f"supervisor_action_kind: {action['kind']}",
+        f"capacity_id: {action['capacity_id']}",
+        f"capacity_decision_next_action: {decision['next_action']}",
+        f"planner_selected_step: {planner['selected_step']}",
+        f"tick_status: {tick['tick_status']}",
+        f"tick_after_stop_reason: {tick['after_policy']['must_stop_reason']}",
+        f"persisted_policy_phase: {persisted['phase']}",
+        f"persisted_policy_stop_reason: {persisted['must_stop_reason']}",
+        f"app_friction_count: {result['app_friction_count']}",
+        f"model_status: {result['model_status']}",
+        f"scheduler_status: {result['scheduler_status']}",
+        f"provider_status: {result['provider_status']}",
+        f"memory_status: {result['memory_status']}",
+        f"next_development_step: {result['next_development_step']}",
+    ]
+    return "\n".join(lines)
+
+
 def _format_agent_loop_planner_io_validator_plain_text(result: dict[str, Any]) -> str:
     lines = [
         f"scenario: {result['scenario']}",

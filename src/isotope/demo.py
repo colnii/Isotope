@@ -22,6 +22,7 @@ from .demo_agent_loop_matrix_scenarios import (
 from .demo_agent_loop_tick_scenarios import (
     _run_agent_loop_tick_driver_trace,
     _run_agent_loop_tick_policy_trace,
+    _run_supervisor_capacity_handoff_trace,
 )
 from .demo_agent_loop_validation_scenarios import (
     _run_agent_loop_planner_io_validator_spike,
@@ -77,6 +78,7 @@ def main(argv: list[str] | None = None) -> int:
             "agent-loop-planner-restart-pause",
             "agent-loop-tick-policy-trace",
             "agent-loop-tick-driver-trace",
+            "supervisor-capacity-handoff-trace",
             "agent-loop-planner-io-validator",
             "agent-loop-planner-validated-runner",
             "terminal-exec",
@@ -172,6 +174,8 @@ def _run_scenario(root: Path, *, scenario: str) -> dict[str, Any]:
         return _run_agent_loop_tick_policy_trace(root)
     if scenario == "agent-loop-tick-driver-trace":
         return _run_agent_loop_tick_driver_trace(root)
+    if scenario == "supervisor-capacity-handoff-trace":
+        return _run_supervisor_capacity_handoff_trace(root)
     if scenario == "agent-loop-planner-io-validator":
         return _run_agent_loop_planner_io_validator_spike(root)
     if scenario == "agent-loop-planner-validated-runner":

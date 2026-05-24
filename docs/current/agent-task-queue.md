@@ -68,6 +68,9 @@
   构造现有 `planner_output`，经 `run_agent_loop_tick(...)` 执行一次
   `call_capability`，结果里保留 `tick_result` 和低敏
   `planner_output_summary`。
+- `supervisor-capacity-handoff-trace` demo 已补齐人类可读链路，展示
+  `Supervisor action -> planner_output_summary -> tick_result -> persisted policy`；
+  它使用 fixture provider，不要求真实 LLM 配置。
 
 ## 下一批任务
 
@@ -101,15 +104,15 @@
 
 目标：
 
-- 在现有 `call_capacity -> run_agent_loop_tick(...)` 基础上补一个 CLI / demo
-  可读 trace，展示 Supervisor action、planner output summary、tick result 和
-  persisted run policy 的关系。
+- 在现有 `supervisor-capacity-handoff-trace` 基础上，补一条更接近
+  `isotope-supervisor` 命令层的 smoke，证明手动 capacity plan / action
+  路径能被低敏 summary 检查。
 - 仍不接真实 LLM，不做自动多轮循环。
 
 验收：
 
-- 目标测试覆盖 trace 输出和 no raw payload（不暴露原始内容）边界。
-- 运行 `isotope-supervisor` 相关 smoke 时不要求真实 provider 配置。
+- 目标测试覆盖 CLI 输出和 no raw payload（不暴露原始内容）边界。
+- smoke 使用 fixture / fake provider，不要求真实 provider 配置。
 
 ### 4. Supervisor 大分支暂缓
 

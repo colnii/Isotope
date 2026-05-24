@@ -17,6 +17,8 @@ def _format_trace(result: dict[str, Any]) -> str:
         return _format_agent_loop_tick_policy_trace(result)
     if scenario == "agent-loop-tick-driver-trace":
         return _format_agent_loop_tick_driver_trace(result)
+    if scenario == "supervisor-capacity-handoff-trace":
+        return _format_supervisor_capacity_handoff_trace(result)
     if scenario == "agent-loop-planner-matrix":
         return _format_agent_loop_planner_matrix_trace(result)
     if scenario == "agent-loop-planner-friction":
@@ -260,6 +262,33 @@ def _format_agent_loop_tick_driver_trace(result: dict[str, Any]) -> str:
         f"scheduler status: {result['scheduler_status']}",
         f"replay status: {result['replay_status']}",
         f"checkpoint status: {result['checkpoint_status']}",
+        f"next development step: {result['next_development_step']}",
+    ]
+    return _format_trace_steps(result["scenario"], steps)
+
+
+def _format_supervisor_capacity_handoff_trace(result: dict[str, Any]) -> str:
+    action = result["supervisor_action"]
+    decision = result["capacity_decision"]
+    planner = result["planner_output_summary"]
+    tick = result["tick_summary"]
+    persisted = result["persisted_run_policy"]
+    steps = [
+        f"create session: {result['session_id']}",
+        f"create run: {result['run_id']}",
+        f"supervisor action: {action['kind']} {action['capacity_id']}",
+        f"capacity decision: {decision['next_action']}",
+        f"planner output summary: {planner['selected_step']}",
+        f"tick result: {tick['tick_status']}",
+        f"policy before phase: {tick['before_policy']['phase']}",
+        f"policy after stop reason: {tick['after_policy']['must_stop_reason']}",
+        f"artifact ref created: {_artifact_id(tick['artifact_ref'])}",
+        f"persisted run policy phase: {persisted['phase']}",
+        f"replay status: {result['replay_status']}",
+        f"checkpoint status: {result['checkpoint_status']}",
+        f"app friction count: {result['app_friction_count']}",
+        f"model status: {result['model_status']}",
+        f"scheduler status: {result['scheduler_status']}",
         f"next development step: {result['next_development_step']}",
     ]
     return _format_trace_steps(result["scenario"], steps)
