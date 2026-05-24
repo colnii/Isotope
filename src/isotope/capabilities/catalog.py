@@ -132,7 +132,11 @@ class Capability:
 class CapabilityCatalog:
     def __init__(self, *, capabilities: list[Capability] | tuple[Capability, ...] | None = None):
         self._capabilities: dict[str, Capability] = {}
-        for capability in capabilities or ():
+        if capabilities is None:
+            capabilities = ()
+        if not isinstance(capabilities, (list, tuple)):
+            raise ValueError("capabilities must be a list or tuple")
+        for capability in capabilities:
             if not isinstance(capability, Capability):
                 raise ValueError("capabilities must contain Capability objects")
             if capability.capability_id in self._capabilities:

@@ -138,6 +138,11 @@ def test_capability_catalog_rejects_duplicate_capability_ids():
         _catalog_class()(capabilities=[capability, duplicate])
 
 
+def test_capability_catalog_rejects_malformed_capabilities_collection():
+    with pytest.raises(ValueError, match="capabilities"):
+        _catalog_class()(capabilities=object())
+
+
 @pytest.mark.parametrize(
     "capability_id",
     ["", "Artifact Review", "artifact_review", "artifact/review", "artifact..review"],
