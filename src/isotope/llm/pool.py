@@ -28,6 +28,7 @@ def resolve_pool_entries_from_env(
     agent_name: str | None = None,
     env_var: str = "ISOTOPE_LLM_POOL_TOML_FILES",
     default_paths: Sequence[Path] = (),
+    default_provider: str = "llm_pool",
 ) -> tuple[PoolEntry, ...]:
     """从环境变量和默认路径读取 TOML 号池，不绑定具体调用场景。"""
     env = os.environ if environ is None else environ
@@ -36,6 +37,7 @@ def resolve_pool_entries_from_env(
             _pool_toml_paths(env, env_var=env_var, default_paths=default_paths),
             env,
             agent_name=agent_name,
+            default_provider=default_provider,
         )
     )
 
@@ -57,6 +59,7 @@ def _load_pool_entries(
     env: Mapping[str, str],
     *,
     agent_name: str | None = None,
+    default_provider: str = "llm_pool",
 ) -> list[PoolEntry]:
     entries: list[PoolEntry] = []
     for path in files:
@@ -78,12 +81,22 @@ def _load_pool_entries(
                     continue
                 for item in provider_list:
                     if isinstance(item, dict):
-                        _append_entries_from_toml_item(entries, item, env)
+                        _append_entries_from_toml_item(
+                            entries,
+                            item,
+                            env,
+                            default_provider=default_provider,
+                        )
 
         if isinstance(data.get("keys"), list):
             for item in data["keys"]:
                 if isinstance(item, dict):
-                    _append_entries_from_toml_item(entries, item, env)
+                    _append_entries_from_toml_item(
+                        entries,
+                        item,
+                        env,
+                        default_provider=default_provider,
+                    )
 
     return entries
 
@@ -92,8 +105,10 @@ def _append_entries_from_toml_item(
     entries: list[PoolEntry],
     item: dict[str, object],
     env: Mapping[str, str],
+    *,
+    default_provider: str,
 ) -> None:
-    provider = _optional_toml_str(item, "provider") or "llm_pool"
+    provider = _optional_toml_str(item, "provider") or default_provider
     base_url = _require_toml_str(item, "base_url")
     model = _require_toml_str(item, "model")
     max_tokens_val = item.get("max_tokens")
