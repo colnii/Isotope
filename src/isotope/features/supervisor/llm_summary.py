@@ -8,6 +8,26 @@ from pathlib import Path
 from typing import Any
 
 from .flow import CodexSupervisorReport
+from .llm_action_guards import (
+    ask_user_goal as _ask_user_goal,
+    ask_user_target as _ask_user_target,
+    can_resume_session as _can_resume_session,
+    delete_worktree_candidate as _delete_worktree_candidate,
+    goal_requests_user_decision as _goal_requests_user_decision,
+    goal_target_name as _goal_target_name,
+    has_any_llm_target as _has_any_llm_target,
+    has_context_check_for_goal as _has_context_check_for_goal,
+    has_context_check_for_target as _has_context_check_for_target,
+    has_managed_process_target as _has_managed_process_target,
+    has_managed_send_target as _has_managed_send_target,
+    has_resume_target as _has_resume_target,
+    has_running_managed_worker as _has_running_managed_worker,
+    is_completed_session as _is_completed_session,
+    is_llm_candidate_target as _is_llm_candidate_target,
+    is_terminal_done_session as _is_terminal_done_session,
+    session_requests_user_decision as _session_requests_user_decision,
+    suggested_target_name as _suggested_target_name,
+)
 from .llm_action_payload import (
     extract_json_object as _extract_json_object,
     normalize_llm_action_payload as _normalize_llm_action_payload,
@@ -31,19 +51,6 @@ LARGE_RESUME_SOURCE_BYTES = 64 * 1024
 LLM_RESUME_PROMPT_KINDS = ("send_status", "send_continue")
 LLM_ASK_USER_CONTEXT_STATUSES = ("missing", "outdated", "conflict")
 LLM_WORKER_PROFILES = ("coding", "light")
-TERMINAL_DONE_NEXT_MARKERS = (
-    "可结束",
-    "可以结束",
-    "任务结束",
-    "可归档",
-    "可以归档",
-    "等待归档",
-    "等待 supervisor 归档",
-    "归档或下发新任务",
-    "无需继续",
-    "不需要继续",
-    "不用继续",
-)
 
 
 # Re-exported from ``llm_pool`` to keep the historical import path stable.
@@ -132,6 +139,10 @@ def generate_llm_action_decision(
         report,
         action_command_suggestions,
         delete_worktree_candidates=delete_worktree_candidates,
+        available_workspaces=_available_workspaces(
+            report,
+            action_command_suggestions,
+        ),
     ):
         return {
             "kind": "monitor",
@@ -774,141 +785,6 @@ def _is_known_missing_worktree_target(
     )
 
 
-def _has_resume_target(report: CodexSupervisorReport, session_id: str) -> bool:
-    return any(
-        _can_resume_session(session) and session.session_id == session_id
-        for session in report.sessions
-    )
-
-
-def _ask_user_target(report: CodexSupervisorReport, session_id: str) -> Any | None:
-    for session in report.sessions:
-        if session.session_id == session_id and _session_requests_user_decision(session):
-            return session
-    return None
-
-
-def _ask_user_goal(
-    active_goals: list[dict[str, Any]] | None,
-    goal_id: str,
-) -> dict[str, Any] | None:
-    for goal in active_goals or []:
-        if not isinstance(goal, dict) or goal.get("goal_id") != goal_id:
-            continue
-        if _goal_requests_user_decision(goal):
-            return goal
-    return None
-
-
-def _goal_requests_user_decision(goal: dict[str, Any]) -> bool:
-    status = str(goal.get("last_status") or "").lower()
-    if status == "needs_user":
-        return True
-    if status != "blocked":
-        return False
-    text = " ".join(
-        str(goal.get(key) or "")
-        for key in ("last_summary", "last_next", "goal")
-    )
-    return any(
-        marker in text
-        for marker in (
-            "用户",
-            "确认",
-            "选择",
-            "决定",
-            "拍板",
-            "提供",
-            "是否",
-            "人工",
-        )
-    )
-
-
-def _session_requests_user_decision(session: Any) -> bool:
-    status = (getattr(session, "supervisor_status", None) or "").lower()
-    if status == "needs_user":
-        return True
-    if status != "blocked" and getattr(session, "status", None) != "needs_user":
-        return False
-    text = " ".join(
-        str(value)
-        for value in (
-            getattr(session, "supervisor_summary", None),
-            getattr(session, "supervisor_next", None),
-            getattr(session, "reason", None),
-            getattr(session, "last_assistant_message", None),
-        )
-        if value
-    )
-    return any(
-        marker in text
-        for marker in (
-            "用户",
-            "确认",
-            "选择",
-            "决定",
-            "拍板",
-            "提供",
-            "是否",
-            "人工",
-        )
-    )
-
-
-def _has_context_check_for_target(
-    recent_context_results: list[dict[str, Any]] | None,
-    target: Any,
-) -> bool:
-    if not recent_context_results:
-        return False
-    target_cwd = getattr(target, "cwd", None)
-    for result in recent_context_results:
-        if not isinstance(result, dict):
-            continue
-        if isinstance(target_cwd, str) and target_cwd:
-            if result.get("cwd") != target_cwd:
-                continue
-        return True
-    return False
-
-
-def _has_context_check_for_goal(
-    recent_context_results: list[dict[str, Any]] | None,
-    goal: dict[str, Any],
-) -> bool:
-    if not recent_context_results:
-        return False
-    target_cwd = goal.get("cwd")
-    for result in recent_context_results:
-        if not isinstance(result, dict):
-            continue
-        if isinstance(target_cwd, str) and target_cwd:
-            if result.get("cwd") != target_cwd:
-                continue
-        return True
-    return False
-
-
-def _delete_worktree_candidate(
-    candidates: list[dict[str, Any]] | None,
-    *,
-    target_name: str,
-    record_id: str | None,
-) -> dict[str, Any] | None:
-    for candidate in candidates or []:
-        if not isinstance(candidate, dict):
-            continue
-        if record_id is not None and candidate.get("record_id") != record_id:
-            continue
-        if (
-            candidate.get("name") == target_name
-            or candidate.get("target_name") == target_name
-        ):
-            return candidate
-    return None
-
-
 def _context_request_history(
     recent_context_results: list[dict[str, Any]] | None,
 ) -> list[dict[str, str]]:
@@ -1072,74 +948,6 @@ def _active_goal_payload(
     return items
 
 
-def _has_any_llm_target(
-    report: CodexSupervisorReport,
-    command_suggestions: list[dict[str, str]] | None = None,
-    *,
-    delete_worktree_candidates: list[dict[str, Any]] | None = None,
-) -> bool:
-    if delete_worktree_candidates:
-        return True
-    return any(_is_llm_candidate_target(session) for session in report.sessions) or bool(
-        _available_workspaces(report, command_suggestions)
-    )
-
-
-def _is_llm_candidate_target(
-    session: Any,
-    *,
-    resumable_session_ids: set[str] | None = None,
-) -> bool:
-    return (
-        _has_managed_send_target(session)
-        or _has_managed_process_target(session)
-        or _can_resume_session(session, resumable_session_ids=resumable_session_ids)
-    )
-
-
-def _has_managed_send_target(session: Any) -> bool:
-    return bool(session.managed_name and session.managed_tmux_session)
-
-
-def _has_managed_process_target(session: Any) -> bool:
-    return bool(
-        getattr(session, "managed", False)
-        and getattr(session, "managed_name", None)
-        and getattr(session, "managed_backend", None) != "tmux"
-        and not _is_completed_session(session)
-        and not _is_terminal_done_session(session)
-    )
-
-
-def _has_running_managed_worker(report: CodexSupervisorReport, target_name: str) -> bool:
-    for session in report.sessions:
-        if _suggested_target_name(session) != target_name:
-            continue
-        if not getattr(session, "managed", False):
-            continue
-        if _is_terminal_done_session(session):
-            continue
-        if getattr(session, "status", None) == "working":
-            return True
-    return False
-
-
-def _can_resume_session(
-    session: Any,
-    *,
-    resumable_session_ids: set[str] | None = None,
-) -> bool:
-    session_id = getattr(session, "session_id", None)
-    if resumable_session_ids is not None and session_id not in resumable_session_ids:
-        return False
-    return (
-        isinstance(session_id, str)
-        and bool(session_id)
-        and not session_id.startswith("managed:")
-        and not _is_completed_session(session)
-    )
-
-
 def _resume_context_hint(
     session: Any,
     *,
@@ -1167,22 +975,6 @@ def _resumable_session_ids_from_suggestions(
         seen.add(session_id)
         ids.append(session_id)
     return ids
-
-
-def _suggested_target_name(session: Any) -> str:
-    if session.managed_name:
-        return session.managed_name
-    return "resume-" + session.short_session_id
-
-
-def _goal_target_name(goal: dict[str, Any] | None) -> str | None:
-    if not isinstance(goal, dict):
-        return None
-    target_name = goal.get("target_name")
-    if isinstance(target_name, str) and target_name:
-        return target_name
-    goal_id = goal.get("goal_id")
-    return goal_id if isinstance(goal_id, str) and goal_id else None
 
 
 def _available_workspaces(
@@ -1222,26 +1014,6 @@ def _default_workspace(
 ) -> str | None:
     workspaces = _available_workspaces(report, command_suggestions)
     return workspaces[0] if workspaces else None
-
-
-def _is_completed_session(session: Any) -> bool:
-    return (
-        getattr(session, "status", None) in {"done", "archived"}
-        or getattr(session, "supervisor_status", None) == "done"
-    )
-
-
-def _is_terminal_done_session(session: Any) -> bool:
-    if not _is_completed_session(session):
-        return False
-    next_text = _normalize_match_text(getattr(session, "supervisor_next", None))
-    return any(marker in next_text for marker in TERMINAL_DONE_NEXT_MARKERS)
-
-
-def _normalize_match_text(value: object) -> str:
-    if not isinstance(value, str):
-        return ""
-    return " ".join(value.lower().split())
 
 
 def _clip(text: str | None, *, limit: int = 160) -> str | None:
