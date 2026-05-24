@@ -94,7 +94,7 @@ scripts/
 ## 初步映射
 
 - `core/`：产品主流程，负责 session、conversation、task、turn、dispatch 和 response；当前薄包单进程运行时，不承载 agent loop。
-- `features/`：真实可用功能，如聊天、任务、项目、文件、搜索、工作台、监督器、研究和自动化；当前已有聊天、任务、文件、项目、搜索、工作台和 Codex Supervisor 薄入口。
+- `features/`：真实可用功能，如聊天、任务、项目、文件、搜索、工作台、监督器、研究和自动化；当前已有聊天、任务、文件、项目、搜索、工作台、Research 和 Codex Supervisor 薄入口。
 - `agents/`：子 agent 定义、角色、任务委派和 agent loop。
 - `capabilities/`：工具、技能和能力注册，不再使用顶层 `tools/` 空包。
 - `llm/`：LLM、embedding、rerank 等模型服务 provider，不放 Pydantic schema 或数据库模型。
@@ -183,6 +183,10 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   `SearchFlow` 和 `SearchResult`，可统一搜索 project/task/file
   低敏摘要，并支持类型过滤和结果数量限制；`isotope-search` 和
   `POST /search` 已可调用；当前不是全文检索或 RAG。
+- Research 功能入口：`src/isotope/features/research/` 已提供 delegated
+  web research request/report model、provider contract、artifact 持久化 flow
+  和 `isotope-research` CLI；Supervisor 已有 `research` proxy command。当前
+  是低敏 artifact 入口，不是浏览器爬虫或完整 research agent。
 - 工作台功能入口：`src/isotope/features/workbench/flow.py` 已提供
   `WorkbenchFlow` 和 `WorkbenchView`，可聚合 projects/tasks/files
   低敏摘要、可选 search 结果、空状态与最近更新时间；
@@ -273,7 +277,6 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 暂缓完整展开：
 
 - `apps/web/`
-- `features/research/`
 - `features/capability_building/`
 - `integrations/github/`
 - `integrations/browser/`

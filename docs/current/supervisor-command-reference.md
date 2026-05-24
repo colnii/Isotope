@@ -86,6 +86,9 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
   用于查看 active goals、decision、lane failure、worker events 和
   notifications 的同一份读模型；plain 输出会显示 snapshot schema 和
   来源账本，便于确认读的是哪版状态模型。
+- `research` 可代理 shared Research flow（研究流程），把 delegated web
+  research 请求写成低敏 report/raw transcript artifacts；当前支持 fake
+  provider，用于验证 CLI 和 artifact contract。
 - `daemon watcher` 可启动 watcher（周期看门进程），定期触发 watchdog。
 - `supervise` 可按间隔循环执行扫描、建议、可选 LLM 摘要和显式 send。
 - `advise/supervise --name <lane>` 可只针对一个托管 lane 生成建议或执行动作。
@@ -237,6 +240,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner launch --n
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner launch --backend tmux --tmux-session isotope-lane-a --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner integration-review --json
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner replan --json
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner research --root . --query "agent memory retrieval" --provider fake --json
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner adopt --name lane-a --cwd /path/to/repo --tmux-session isotope-lane-a
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner send --name lane-a --text "继续"
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner archive --name lane-a
@@ -274,6 +278,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner archive --
 .venv/bin/isotope-supervisor launch --backend tmux --tmux-session isotope-lane-a --name lane-a --cwd /path/to/repo --prompt "继续实现当前任务"
 .venv/bin/isotope-supervisor integration-review --json
 .venv/bin/isotope-supervisor replan --json
+.venv/bin/isotope-supervisor research --root . --query "agent memory retrieval" --provider fake --json
 .venv/bin/isotope-supervisor adopt --name lane-a --cwd /path/to/repo --tmux-session isotope-lane-a
 .venv/bin/isotope-supervisor send --name lane-a --text "继续"
 .venv/bin/isotope-supervisor archive --name lane-a
