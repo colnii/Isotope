@@ -208,7 +208,7 @@
 | `query string` | URL 中 `?` 后的查询参数，当前由 ASGI 入口转成内部 JSON body | 后端入口 | `src/isotope/apps/api.py` |
 | `isotope-api` | API 命令行入口，当前用于检查后端路由 | 应用入口 | `src/isotope/apps/api.py`, `apps/api/isotope_api.py` |
 | `HttpApiApp` | 进程内 HTTP 风格接口，用于测试和应用边界，不监听端口 | 接口 | `src/isotope/interfaces/http.py` |
-| `InProcessServer` | 进程内运行入口，串起会话、run、策略、执行和状态读取 | 运行时 | `src/isotope/runtime/in_process.py` |
+| `InProcessServer` | 进程内运行 facade（门面），串起会话、run、策略、执行和状态读取；workspace lease/artifact/handoff 细节已拆到同目录 helper | 运行时 | `src/isotope/runtime/in_process.py`, `src/isotope/runtime/in_process_workspace_leases.py`, `src/isotope/runtime/in_process_workspace_artifacts.py`, `src/isotope/runtime/in_process_worker_handoff.py` |
 | `CanonicalEvent` | 标准事件，所有状态回放的事实来源 | 平台事件 | `src/isotope/platform/events/events.py` |
 | `artifact` | 产物记录，保存执行结果摘要和引用 | 平台数据 | `src/isotope/platform/schemas/artifacts.py` |
 | `ArtifactStore` | 产物存储，负责保存和读取 artifact 元数据与内容 | 工作区资源 | `src/isotope/workspace/artifacts.py` |
