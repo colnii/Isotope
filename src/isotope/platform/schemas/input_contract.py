@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any, Literal, Mapping
 
 ContractValueViolation = Literal["type", "enum"]
@@ -76,11 +77,35 @@ def undeclared_required_contract_keys(input_contract: Mapping[str, Any]) -> list
     )
 
 
+def required_contract_keys(input_contract: Mapping[str, Any]) -> list[str]:
+    """Return string required keys from a contract in declaration order."""
+
+    required = input_contract.get("required", [])
+    if not isinstance(required, list):
+        return []
+    return [name for name in required if isinstance(name, str)]
+
+
+def missing_required_input_keys(
+    values: Mapping[str, Any] | None, required_keys: Sequence[str]
+) -> list[str]:
+    """Return required keys absent from input values."""
+
+    input_mapping = values or {}
+    return [
+        name
+        for name in required_keys
+        if name not in input_mapping or input_mapping.get(name) in (None, "")
+    ]
+
+
 __all__ = [
     "ContractValueViolation",
     "contract_value_violation",
     "duplicate_required_contract_keys",
     "matches_contract_type",
+    "missing_required_input_keys",
+    "required_contract_keys",
     "undeclared_required_contract_keys",
     "unexpected_contract_keys",
 ]

@@ -7,6 +7,8 @@ from .input_contract import (
     contract_value_violation,
     duplicate_required_contract_keys,
     matches_contract_type,
+    missing_required_input_keys,
+    required_contract_keys,
     undeclared_required_contract_keys,
     unexpected_contract_keys,
 )
@@ -26,7 +28,9 @@ __all__ = [
     "contract_value_violation",
     "duplicate_required_contract_keys",
     "matches_contract_type",
+    "missing_required_input_keys",
     "make_artifact_ref",
+    "required_contract_keys",
     "undeclared_required_contract_keys",
     "unexpected_contract_keys",
 ]

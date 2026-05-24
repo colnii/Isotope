@@ -17,6 +17,8 @@ from ..demo import run_demo
 from ..features.supervisor.context import request_project_context
 from ..platform.schemas.input_contract import (
     contract_value_violation,
+    missing_required_input_keys,
+    required_contract_keys,
     unexpected_contract_keys,
 )
 
@@ -262,21 +264,15 @@ def run_capability(capability_id: str, **kwargs: Any) -> dict[str, Any]:
 
 def _required_inputs(capability: Mapping[str, Any]) -> list[str]:
     input_contract = capability.get("input_contract", {})
-    required = input_contract.get("required", []) if isinstance(input_contract, Mapping) else []
-    if not isinstance(required, list):
+    if not isinstance(input_contract, Mapping):
         return []
-    return [item for item in required if isinstance(item, str)]
+    return required_contract_keys(input_contract)
 
 
 def _missing_inputs(
     required_inputs: list[str], inputs: Mapping[str, Any] | None
 ) -> list[str]:
-    input_mapping = inputs or {}
-    return [
-        name
-        for name in required_inputs
-        if name not in input_mapping or input_mapping.get(name) in (None, "")
-    ]
+    return missing_required_input_keys(inputs, required_inputs)
 
 
 def _validate_inputs_against_contract(

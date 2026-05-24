@@ -11,6 +11,8 @@ from typing import Any, Mapping, Protocol
 from ..platform.schemas.input_contract import (
     contract_value_violation,
     duplicate_required_contract_keys,
+    missing_required_input_keys,
+    required_contract_keys,
     undeclared_required_contract_keys,
     unexpected_contract_keys,
 )
@@ -123,11 +125,7 @@ def select_capacity_call(
     confidence = _payload_confidence(payload, provider=provider)
     rationale = _payload_optional_string(payload, "rationale")
     required_inputs = _required_inputs(offered[capacity_id])
-    missing_inputs = [
-        name
-        for name in required_inputs
-        if name not in arguments or arguments[name] is None or arguments[name] == ""
-    ]
+    missing_inputs = missing_required_input_keys(arguments, required_inputs)
 
     return CapacityCallSelection(
         kind="capacity_call_selection",
@@ -248,8 +246,9 @@ def _validate_required_properties(input_contract: Mapping[str, Any]) -> None:
 
 def _required_inputs(capacity: Mapping[str, Any]) -> list[str]:
     input_contract = capacity.get("input_contract", {})
-    required = input_contract.get("required", []) if isinstance(input_contract, Mapping) else []
-    return _safe_string_list(required)
+    if not isinstance(input_contract, Mapping):
+        return []
+    return required_contract_keys(input_contract)
 
 
 def _validate_argument_keys(

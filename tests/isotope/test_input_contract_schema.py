@@ -6,6 +6,8 @@ from isotope.platform.schemas.input_contract import (
     contract_value_violation,
     duplicate_required_contract_keys,
     matches_contract_type,
+    missing_required_input_keys,
+    required_contract_keys,
     undeclared_required_contract_keys,
     unexpected_contract_keys,
 )
@@ -140,3 +142,36 @@ def test_undeclared_required_contract_keys_treats_missing_properties_as_empty():
     missing = undeclared_required_contract_keys({"required": ["question"]})
 
     assert missing == ["question"]
+
+
+def test_required_contract_keys_returns_string_required_fields_in_order():
+    required = required_contract_keys(
+        {
+            "required": ["artifact_ref", "question", 5],
+            "properties": {
+                "artifact_ref": {"type": "string"},
+                "question": {"type": "string"},
+            },
+        }
+    )
+
+    assert required == ["artifact_ref", "question"]
+
+
+def test_required_contract_keys_ignores_malformed_required_shape():
+    assert required_contract_keys({"required": "question"}) == []
+
+
+def test_missing_required_input_keys_reports_absent_none_and_empty_values():
+    missing = missing_required_input_keys(
+        {"artifact_ref": "artifact://1", "question": "", "count": 0, "enabled": False},
+        ["artifact_ref", "question", "cwd", "count", "enabled", "note"],
+    )
+
+    assert missing == ["question", "cwd", "note"]
+
+
+def test_missing_required_input_keys_treats_none_inputs_as_empty():
+    missing = missing_required_input_keys(None, ["query", "cwd"])
+
+    assert missing == ["query", "cwd"]
