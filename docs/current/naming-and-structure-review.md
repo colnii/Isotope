@@ -11,7 +11,9 @@
 
 - `core/` 已进入产品主流程，先薄包现有单进程运行时。
 - `runtime/server.py` 已删除，活跃实现位于 `runtime/in_process.py`。
-- 根目录只剩正式入口：`__init__.py`、`demo.py`、`llm_live_smoke.py`。
+- 包根层保留正式入口和 demo helper：`demo.py` 是场景入口，
+  `demo_format.py` 是 formatter facade，具体 plain text formatter 已按
+  core / agent loop / LLM 场景拆到专门模块。
 - 一些文件名是历史工作流命名，不像长期产品代码。
 - `features/` 还没形成任务、项目、文件、研究等用户功能层。
 - `tools/` 旧空包已删除，真实工具能力归入 `capabilities/tools/`。

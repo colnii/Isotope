@@ -189,6 +189,9 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   `isotope-workbench`、`GET /workbench` 和 `POST /workbench` 已可调用；
   `isotope-demo --scenario workbench --trace` 可展示一条人类可读工作台流程；
   当前不是完整 UI。
+- Demo 输出：`src/isotope/demo.py` 仍是场景入口；plain text formatter
+  已拆到 `demo_format_core.py`、`demo_format_agent_loop.py` 和
+  `demo_format_llm.py`，`demo_format.py` 只保留 facade（门面）和兼容导出。
 - Codex Supervisor：`src/isotope/features/supervisor/` 已提供
   本机会话扫描、中文汇报、托管启动和一行指令发送，
   `isotope-supervisor scan/advise/supervise/watch/launch/send`
