@@ -774,7 +774,8 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
 - `features/supervisor/commands/fanout.py`：已承接 fanout orchestration
   （并行派发编排）的 active goal launch plan、低水位补任务 plan、暂停
   action、fanout log 和批量 launch 执行汇总；纯规划仍复用
-  `agents/scheduler/fanout.py`，不在命令层再写一套调度算法。
+  `agents/scheduler/fanout.py`，status summary（状态摘要）复用
+  `agents/scheduler/fanout_status.py`，不在命令层再写一套调度算法或摘要。
 - `features/supervisor/commands/merge_dispatch.py`：已承接 merge dispatch
   orchestration（合并派发编排）、当前 worktree worker role 判断、recursive
   worker guard（递归 worker 护栏）和 merge dispatch execution 标记；底层
