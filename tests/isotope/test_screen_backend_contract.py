@@ -186,3 +186,47 @@ def test_artifact_policy_rejects_full_content_in_events():
         )
 
     assert exc_info.value.error_reason_code == "screen_artifact_policy_denied"
+
+
+def test_windows_backend_reports_not_configured_off_windows(monkeypatch):
+    from isotope.execution.screen_windows_backend import WindowsScreenBackend
+
+    monkeypatch.setattr("sys.platform", "linux")
+    backend = WindowsScreenBackend()
+
+    result = backend.run(
+        screen_types.ScreenBackendRequest(
+            run_id="run_screen",
+            proposal_id="prop_screen",
+            decision_id="dec_screen",
+            execution_id="exec_screen",
+            tool_name="screen_observe",
+            operation="observe",
+            policy_profile_id="default",
+            policy_version="v0.2",
+            registry_id="default",
+            registry_version="v0.2",
+            grants={"tools": ["screen_observe"], "screen": {"observe": True}},
+            workspace_binding={"workspace_id": "workspace_shared_ro", "mode": "shared_ro"},
+            target_selector=screen_types.ScreenTargetSelector(
+                kind="window",
+                selector={"app": "notepad.exe"},
+            ),
+            mode="non_intrusive",
+            capture=["metadata"],
+            execution_mode=None,
+            actions=[],
+            budget={"seconds": 5},
+            artifact_policy={
+                "capture": ["metadata", "diagnostic"],
+                "full_content_in_events": False,
+                "full_content_in_read_model": False,
+            },
+            basis_event_ids=["evt_decided"],
+            backend_config={"backend_id": "windows_screen", "backend_version": "0.1"},
+        )
+    )
+
+    assert result.status == "failed"
+    assert result.reason_code == "screen_windows_backend_unavailable"
+    assert result.retryable is False
