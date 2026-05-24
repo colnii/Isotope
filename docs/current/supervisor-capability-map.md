@@ -2,8 +2,9 @@
 
 状态：`当前入口 / 能力索引`
 
-详细能力登记已移到
-[Supervisor 能力详情](./supervisor-capability-details.md)。架构归属和迁移判断见
+分层和迁移判断见
+[Supervisor 能力详情](./supervisor-capability-details.md)，长能力清单见
+[Supervisor 能力详细清单](./supervisor-capability-inventory.md)。架构归属和迁移判断见
 [Supervisor 架构迁移表](./supervisor-architecture-migration-table.md)。
 
 ## 用途
@@ -58,6 +59,7 @@
 ## 相关文档
 
 - [Supervisor 能力详情](./supervisor-capability-details.md)
+- [Supervisor 能力详细清单](./supervisor-capability-inventory.md)
 - [Supervisor 监控与托管](./codex-supervisor-readonly.md)
 - [Supervisor 命令参考](./supervisor-command-reference.md)
 - [任务队列](./agent-task-queue.md)

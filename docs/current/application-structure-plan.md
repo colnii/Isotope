@@ -225,7 +225,9 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   `src/isotope/integrations/llm/` 和顶层旧路径已删除。
 - Codex 集成：`codex_task.py`、`codex_cli.py`、`codex_server.py`、`codex_live_smoke.py` 已迁入 `src/isotope/integrations/`，旧根路径已删除；
   `integrations/codex/task.py` 现在是 task adapter facade（门面），request
-  shape 和 adapter contract 已拆到 `task_request.py` 与 `task_contract.py`。
+  shape 和 adapter contract 已拆到 `task_request.py` 与 `task_contract.py`；
+  Supervisor CLI 命令构造和参数校验已从 `cli.py` 拆到
+  `cli_supervisor.py` 与 `cli_validation.py`。
 - 状态恢复：`checkpoint_store.py`、`event_store.py`、`projector.py`
   已迁入 `src/isotope/platform/state/`；checkpoint-assisted rebuild 的
   validation chain 已从 `projector_checkpoint.py` 拆到
