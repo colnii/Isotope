@@ -7,6 +7,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from ...capabilities.tools.terminal import default_terminal_capabilities
+from ...execution.screen_backend_types import (
+    ALLOWED_CAPTURE_KINDS,
+    ALLOWED_SCREEN_ACTION_TYPES,
+    SUPPORTED_EXECUTION_MODES,
+    SUPPORTED_SCREEN_MODES,
+)
 
 
 @dataclass(frozen=True)
@@ -35,6 +41,9 @@ class ActionTypeEntry:
         terminal_capabilities = required_capabilities.get("terminal")
         if terminal_capabilities is not None:
             _validate_terminal_capabilities(terminal_capabilities)
+        screen_capabilities = required_capabilities.get("screen")
+        if screen_capabilities is not None:
+            _validate_screen_capabilities(screen_capabilities)
         default_workspace_mode = _required_string(entry, "default_workspace_mode")
         result_kind = _required_string(entry, "result_kind")
         enabled = entry.get("enabled")
@@ -76,7 +85,12 @@ class ActionTypeRegistry:
         enable_codex_task: bool = False,
         codex_task_budget_seconds: int | None = None,
     ) -> "ActionTypeRegistry":
-        entries = [_write_artifact_tool_entry(), _terminal_exec_tool_entry()]
+        entries = [
+            _write_artifact_tool_entry(),
+            _terminal_exec_tool_entry(),
+            _screen_observe_tool_entry(),
+            _screen_control_tool_entry(),
+        ]
         if enable_codex_task:
             codex_entry = _codex_task_tool_entry()
             if codex_task_budget_seconds is not None:
@@ -150,6 +164,71 @@ def _validate_terminal_capabilities(capabilities: Any) -> None:
         raise ValueError("terminal.approval_required_commands must be a list of non-empty strings")
 
 
+def _validate_screen_capabilities(capabilities: Any) -> None:
+    if not isinstance(capabilities, dict):
+        raise ValueError("screen capabilities must be a dict")
+    if not isinstance(capabilities.get("observe"), bool):
+        raise ValueError("screen.observe must be a bool")
+    if not isinstance(capabilities.get("control"), bool):
+        raise ValueError("screen.control must be a bool")
+    _validate_target_selector_policy(capabilities.get("target_selector_policy", {}))
+    _validate_action_policy(capabilities.get("action_policy", {}))
+    _validate_artifact_policy(capabilities.get("artifact_policy", {}))
+
+
+def _validate_target_selector_policy(policy: Any) -> None:
+    if not isinstance(policy, dict):
+        raise ValueError("screen.target_selector_policy must be a dict")
+    for field_name in ("allowed_apps", "allowed_title_contains"):
+        value = policy.get(field_name, [])
+        if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+            raise ValueError(f"screen.target_selector_policy.{field_name} must be a list of strings")
+
+
+def _validate_action_policy(policy: Any) -> None:
+    if not isinstance(policy, dict):
+        raise ValueError("screen.action_policy must be a dict")
+    execution_modes = policy.get("execution_modes", [])
+    if not isinstance(execution_modes, list) or not all(
+        isinstance(item, str) and item in SUPPORTED_EXECUTION_MODES for item in execution_modes
+    ):
+        raise ValueError("screen.action_policy.execution_modes must be supported strings")
+    allowed_action_types = policy.get("allowed_action_types", [])
+    if not isinstance(allowed_action_types, list) or not all(
+        isinstance(item, str) and item in ALLOWED_SCREEN_ACTION_TYPES
+        for item in allowed_action_types
+    ):
+        raise ValueError("screen.action_policy.allowed_action_types must be supported strings")
+    allowed_buttons = policy.get("allowed_buttons", [])
+    if not isinstance(allowed_buttons, list) or not all(isinstance(item, str) for item in allowed_buttons):
+        raise ValueError("screen.action_policy.allowed_buttons must be a list of strings")
+    max_actions = policy.get("max_actions", 0)
+    if not isinstance(max_actions, int) or max_actions <= 0:
+        raise ValueError("screen.action_policy.max_actions must be a positive integer")
+    modes = policy.get("modes", [])
+    if not isinstance(modes, list) or not all(
+        isinstance(item, str) and item in SUPPORTED_SCREEN_MODES for item in modes
+    ):
+        raise ValueError("screen.action_policy.modes must be supported strings")
+
+
+def _validate_artifact_policy(policy: Any) -> None:
+    if not isinstance(policy, dict):
+        raise ValueError("screen.artifact_policy must be a dict")
+    capture = policy.get("capture", [])
+    if not isinstance(capture, list) or not all(
+        isinstance(item, str) and item in ALLOWED_CAPTURE_KINDS for item in capture
+    ):
+        raise ValueError("screen.artifact_policy.capture must be supported strings")
+    for field_name in ("max_screenshot_bytes", "max_screenshot_width", "max_screenshot_height"):
+        value = policy.get(field_name)
+        if not isinstance(value, int) or value <= 0:
+            raise ValueError(f"screen.artifact_policy.{field_name} must be a positive integer")
+    for field_name in ("full_content_in_events", "full_content_in_read_model"):
+        if policy.get(field_name) is not False:
+            raise ValueError(f"screen.artifact_policy.{field_name} must be false")
+
+
 def _validate_budget_seconds(field_name: str, value: int) -> None:
     if not isinstance(value, int) or value <= 0:
         raise ValueError(f"{field_name} must be a positive integer")
@@ -184,6 +263,89 @@ def _terminal_exec_tool_entry() -> dict[str, Any]:
         },
         "default_workspace_mode": "shared_ro",
         "result_kind": "terminal_output",
+        "enabled": True,
+    }
+
+
+def _default_screen_artifact_policy() -> dict[str, Any]:
+    return {
+        "capture": ["screenshot", "metadata", "control_plan", "control_result", "diagnostic"],
+        "max_screenshot_bytes": 500000,
+        "max_screenshot_width": 1600,
+        "max_screenshot_height": 1200,
+        "full_content_in_events": False,
+        "full_content_in_read_model": False,
+    }
+
+
+def _default_screen_action_policy(*, execution_modes: list[str]) -> dict[str, Any]:
+    return {
+        "modes": ["manual", "assist", "auto", "non_intrusive", "interactive"],
+        "execution_modes": execution_modes,
+        "allowed_action_types": [
+            "move",
+            "button_down",
+            "button_up",
+            "click",
+            "wheel",
+            "key_down",
+            "key_up",
+            "key_press",
+        ],
+        "allowed_buttons": ["left", "middle", "right", "x1", "x2"],
+        "max_actions": 16,
+    }
+
+
+def _default_screen_target_selector_policy() -> dict[str, Any]:
+    return {
+        "allowed_apps": [],
+        "allowed_title_contains": [],
+    }
+
+
+def _screen_observe_tool_entry() -> dict[str, Any]:
+    return {
+        "action_type": "call_tool",
+        "tool_name": "screen_observe",
+        "payload_requirements": {"required": ["target_selector"]},
+        "required_capabilities": {
+            "tools": ["screen_observe"],
+            "workspace": {"mode": "shared_ro"},
+            "budget": {"seconds": 5},
+            "screen": {
+                "observe": True,
+                "control": False,
+                "target_selector_policy": _default_screen_target_selector_policy(),
+                "action_policy": _default_screen_action_policy(execution_modes=["dry_run"]),
+                "artifact_policy": _default_screen_artifact_policy(),
+            },
+        },
+        "default_workspace_mode": "shared_ro",
+        "result_kind": "screen_observation",
+        "enabled": True,
+    }
+
+
+def _screen_control_tool_entry() -> dict[str, Any]:
+    return {
+        "action_type": "call_tool",
+        "tool_name": "screen_control",
+        "payload_requirements": {"required": ["target_selector", "execution_mode", "actions"]},
+        "required_capabilities": {
+            "tools": ["screen_control"],
+            "workspace": {"mode": "shared_ro"},
+            "budget": {"seconds": 5},
+            "screen": {
+                "observe": True,
+                "control": True,
+                "target_selector_policy": _default_screen_target_selector_policy(),
+                "action_policy": _default_screen_action_policy(execution_modes=["dry_run"]),
+                "artifact_policy": _default_screen_artifact_policy(),
+            },
+        },
+        "default_workspace_mode": "shared_ro",
+        "result_kind": "screen_control_result",
         "enabled": True,
     }
 
@@ -233,6 +395,23 @@ def _model_tool_entry(entry: ActionTypeEntry) -> dict[str, Any]:
             "allowed_commands": list(terminal.get("allowed_commands", [])),
             "approval_required_commands": list(terminal.get("approval_required_commands", [])),
             "max_output_bytes": terminal.get("max_output_bytes"),
+        })
+    screen = capabilities.get("screen")
+    if isinstance(screen, dict):
+        artifact_policy = screen.get("artifact_policy", {})
+        action_policy = screen.get("action_policy", {})
+        tool["constraints"].update({
+            "screen_observe": screen.get("observe", False),
+            "screen_control": screen.get("control", False),
+            "screen_modes": list(action_policy.get("modes", []))
+            if isinstance(action_policy, dict)
+            else [],
+            "screen_execution_modes": list(action_policy.get("execution_modes", []))
+            if isinstance(action_policy, dict)
+            else [],
+            "full_content_in_events": artifact_policy.get("full_content_in_events", False)
+            if isinstance(artifact_policy, dict)
+            else False,
         })
     codex = capabilities.get("codex_task")
     if isinstance(codex, dict):

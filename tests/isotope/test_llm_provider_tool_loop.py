@@ -200,6 +200,8 @@ def test_llm_tool_loop_sends_catalog_to_provider_and_waits_for_approval(tmp_path
     assert [tool["name"] for tool in provider.calls[0]["tools"]] == [
         "write_artifact_tool",
         "terminal_exec",
+        "screen_observe",
+        "screen_control",
         "codex_task",
     ]
     assert runner.calls == []

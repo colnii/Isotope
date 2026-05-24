@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from ..capabilities.tools.terminal import validate_argv
+from ..execution.screen_backend_types import ScreenAction, ScreenTargetSelector
 from ..platform.ids import new_id
 from ..platform.registry.actions import ActionTypeRegistry
 from ..platform.schemas.actions import ActionProposal, PolicyDecision
@@ -118,6 +119,46 @@ class PolicyEngine:
             grants["codex_task"] = {
                 "adapter_required": codex_capabilities.get("adapter_required", True) is True,
             }
+        if tool_name in {"screen_observe", "screen_control"}:
+            screen_capabilities = required_capabilities.get("screen")
+            if not isinstance(screen_capabilities, dict):
+                raise ValueError("registry required_capabilities.screen must be a dict")
+            screen_grant = _screen_grant_from_capabilities(screen_capabilities)
+            target_selector = _screen_target_selector_from_payload(
+                proposal.payload.get("target_selector")
+            )
+            target_denial = _target_policy_denial(
+                target_selector,
+                screen_grant.get("target_selector_policy", {}),
+            )
+            if target_denial is not None:
+                return self._denied(proposal, target_denial)
+            if tool_name == "screen_observe":
+                if screen_grant.get("observe") is not True:
+                    return self._denied(proposal, "screen_observe_not_allowed")
+                grants["screen"] = screen_grant
+            else:
+                if screen_grant.get("control") is not True:
+                    return self._denied(proposal, "screen_control_not_allowed")
+                execution_mode = proposal.payload.get("execution_mode")
+                if not isinstance(execution_mode, str):
+                    return self._denied(proposal, "screen_execution_mode_required")
+                actions = _screen_actions_from_payload(proposal.payload.get("actions"))
+                action_denial = _action_policy_denial(
+                    execution_mode=execution_mode,
+                    actions=actions,
+                    action_policy=screen_grant.get("action_policy", {}),
+                )
+                if action_denial is not None:
+                    return self._denied(proposal, action_denial)
+                if execution_mode == "execute":
+                    if proposal.payload.get("approval_requested") is not True:
+                        return self._denied(proposal, "screen_approval_required")
+                    screen_grant["action_policy"]["execution_modes"] = _with_unique(
+                        screen_grant["action_policy"]["execution_modes"],
+                        "execute",
+                    )
+                grants["screen"] = screen_grant
         requested_matches = (
             requested_tools == grants["tools"]
             and requested_workspace.get("mode", "shared_ro") == "shared_ro"
@@ -192,3 +233,110 @@ class PolicyEngine:
         if not isinstance(value, str) or not value:
             raise ValueError(f"{field_name} must be a non-empty string")
         return value
+
+
+def _screen_grant_from_capabilities(capabilities: dict) -> dict:
+    target_policy = capabilities.get("target_selector_policy", {})
+    action_policy = capabilities.get("action_policy", {})
+    artifact_policy = capabilities.get("artifact_policy", {})
+    if not isinstance(target_policy, dict):
+        raise ValueError("registry screen.target_selector_policy must be a dict")
+    if not isinstance(action_policy, dict):
+        raise ValueError("registry screen.action_policy must be a dict")
+    if not isinstance(artifact_policy, dict):
+        raise ValueError("registry screen.artifact_policy must be a dict")
+    return {
+        "observe": capabilities.get("observe") is True,
+        "control": capabilities.get("control") is True,
+        "target_selector_policy": {
+            "allowed_apps": list(target_policy.get("allowed_apps", [])),
+            "allowed_title_contains": list(target_policy.get("allowed_title_contains", [])),
+        },
+        "action_policy": {
+            "modes": list(action_policy.get("modes", [])),
+            "execution_modes": list(action_policy.get("execution_modes", [])),
+            "allowed_action_types": list(action_policy.get("allowed_action_types", [])),
+            "allowed_buttons": list(action_policy.get("allowed_buttons", [])),
+            "max_actions": action_policy.get("max_actions", 0),
+        },
+        "artifact_policy": {
+            "capture": list(artifact_policy.get("capture", [])),
+            "max_screenshot_bytes": artifact_policy.get("max_screenshot_bytes"),
+            "max_screenshot_width": artifact_policy.get("max_screenshot_width"),
+            "max_screenshot_height": artifact_policy.get("max_screenshot_height"),
+            "full_content_in_events": artifact_policy.get("full_content_in_events", False),
+            "full_content_in_read_model": artifact_policy.get("full_content_in_read_model", False),
+        },
+    }
+
+
+def _screen_target_selector_from_payload(value: object) -> ScreenTargetSelector:
+    if not isinstance(value, dict):
+        raise ValueError("screen target_selector must be a dict")
+    selector = value.get("selector")
+    if not isinstance(selector, dict):
+        raise ValueError("screen target_selector.selector must be a dict")
+    return ScreenTargetSelector(kind=value.get("kind"), selector=dict(selector))
+
+
+def _target_policy_denial(
+    target_selector: ScreenTargetSelector,
+    target_policy: object,
+) -> str | None:
+    if not isinstance(target_policy, dict):
+        raise ValueError("screen target_selector_policy must be a dict")
+    allowed_apps = target_policy.get("allowed_apps", [])
+    if not isinstance(allowed_apps, list):
+        raise ValueError("screen target_selector_policy.allowed_apps must be a list")
+    allowed_titles = target_policy.get("allowed_title_contains", [])
+    if not isinstance(allowed_titles, list):
+        raise ValueError("screen target_selector_policy.allowed_title_contains must be a list")
+    app = target_selector.selector.get("app")
+    if allowed_apps and app is not None and app not in allowed_apps:
+        return "screen_target_not_allowed"
+    title = target_selector.selector.get("title_contains")
+    if allowed_titles and title is not None and title not in allowed_titles:
+        return "screen_target_not_allowed"
+    return None
+
+
+def _screen_actions_from_payload(value: object) -> list[ScreenAction]:
+    if not isinstance(value, list) or not value:
+        raise ValueError("screen actions must be a non-empty list")
+    return [ScreenAction.from_dict(action) for action in value]
+
+
+def _action_policy_denial(
+    *,
+    execution_mode: str,
+    actions: list[ScreenAction],
+    action_policy: object,
+) -> str | None:
+    if not isinstance(action_policy, dict):
+        raise ValueError("screen action_policy must be a dict")
+    execution_modes = action_policy.get("execution_modes", [])
+    if not isinstance(execution_modes, list):
+        raise ValueError("screen action_policy.execution_modes must be a list")
+    if execution_mode not in execution_modes and execution_mode != "execute":
+        return "screen_execution_mode_not_allowed"
+    max_actions = action_policy.get("max_actions", 0)
+    if not isinstance(max_actions, int) or max_actions <= 0 or len(actions) > max_actions:
+        return "screen_action_not_allowed"
+    allowed_action_types = action_policy.get("allowed_action_types", [])
+    if not isinstance(allowed_action_types, list):
+        raise ValueError("screen action_policy.allowed_action_types must be a list")
+    allowed_buttons = action_policy.get("allowed_buttons", [])
+    if not isinstance(allowed_buttons, list):
+        raise ValueError("screen action_policy.allowed_buttons must be a list")
+    for action in actions:
+        if action.type not in allowed_action_types:
+            return "screen_action_not_allowed"
+        if action.button is not None and action.button not in allowed_buttons:
+            return "screen_action_not_allowed"
+    return None
+
+
+def _with_unique(values: list[str], value: str) -> list[str]:
+    if value in values:
+        return values
+    return [*values, value]

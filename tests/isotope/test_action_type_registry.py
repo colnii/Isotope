@@ -46,13 +46,20 @@ def test_action_type_registry_class_exists():
 def test_default_registry_contains_current_controlled_tool_slices():
     registry = _default_registry()
 
-    assert registry.tool_names() == ["write_artifact_tool", "terminal_exec"]
+    assert registry.tool_names() == [
+        "write_artifact_tool",
+        "terminal_exec",
+        "screen_observe",
+        "screen_control",
+    ]
     entry = registry.get_tool("write_artifact_tool")
     assert entry.action_type == "call_tool"
     assert entry.tool_name == "write_artifact_tool"
     terminal_entry = registry.get_tool("terminal_exec")
     assert terminal_entry.action_type == "call_tool"
     assert terminal_entry.tool_name == "terminal_exec"
+    assert registry.get_tool("screen_observe").result_kind == "screen_observation"
+    assert registry.get_tool("screen_control").result_kind == "screen_control_result"
 
 
 def test_default_registry_gets_write_artifact_tool_entry():

@@ -6,6 +6,13 @@ from copy import deepcopy
 from typing import Any
 
 from ..capabilities.tools.terminal import validate_argv
+from ..execution.screen_backend_types import (
+    ALLOWED_CAPTURE_KINDS,
+    SUPPORTED_EXECUTION_MODES,
+    SUPPORTED_SCREEN_MODES,
+    ScreenAction,
+    ScreenTargetSelector,
+)
 from ..platform.ids import new_id
 from ..platform.registry.actions import ActionTypeRegistry
 from ..platform.schemas.actions import ActionProposal
@@ -75,6 +82,12 @@ class ActionCompiler:
             if not isinstance(prompt, str) or not prompt:
                 raise ValueError("codex_task prompt must be a non-empty string")
             payload["approval_requested"] = runtime_context.get("requires_approval") is True
+        if tool == "screen_observe":
+            payload = self._screen_observe_payload(intent, tool)
+            payload["approval_requested"] = runtime_context.get("requires_approval") is True
+        if tool == "screen_control":
+            payload = self._screen_control_payload(intent, tool)
+            payload["approval_requested"] = runtime_context.get("requires_approval") is True
         return ActionProposal(
             proposal_id=new_id("prop"),
             run_id=runtime_context["run_id"],
@@ -118,3 +131,69 @@ class ActionCompiler:
         if "summary" in intent:
             payload["summary"] = deepcopy(intent["summary"])
         return payload
+
+    def _screen_observe_payload(self, intent: dict[str, Any], tool: str) -> dict[str, Any]:
+        payload = {
+            "tool": tool,
+            "target_selector": _normalized_target_selector(intent.get("target_selector")),
+            "mode": _normalized_screen_mode(intent.get("mode", "non_intrusive")),
+            "capture": _normalized_capture(intent.get("capture", ["metadata", "screenshot"])),
+        }
+        if "summary" in intent:
+            payload["summary"] = deepcopy(intent["summary"])
+        return payload
+
+    def _screen_control_payload(self, intent: dict[str, Any], tool: str) -> dict[str, Any]:
+        payload = {
+            "tool": tool,
+            "target_selector": _normalized_target_selector(intent.get("target_selector")),
+            "mode": _normalized_screen_mode(intent.get("mode", "interactive")),
+            "execution_mode": _normalized_execution_mode(intent.get("execution_mode")),
+            "actions": _normalized_screen_actions(intent.get("actions")),
+            "capture": _normalized_capture(intent.get("capture", ["control_plan", "control_result"])),
+        }
+        if "summary" in intent:
+            payload["summary"] = deepcopy(intent["summary"])
+        return payload
+
+
+def _normalized_target_selector(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ValueError("screen target_selector must be a dict")
+    selector = value.get("selector")
+    if not isinstance(selector, dict):
+        raise ValueError("screen target_selector.selector must be a dict")
+    normalized = ScreenTargetSelector(kind=value.get("kind"), selector=deepcopy(selector))
+    return {
+        "kind": normalized.kind,
+        "selector": deepcopy(normalized.selector),
+    }
+
+
+def _normalized_screen_mode(value: Any) -> str:
+    if not isinstance(value, str) or value not in SUPPORTED_SCREEN_MODES:
+        raise ValueError("screen mode is not supported")
+    return value
+
+
+def _normalized_execution_mode(value: Any) -> str:
+    if not isinstance(value, str) or value not in SUPPORTED_EXECUTION_MODES:
+        raise ValueError("screen execution_mode is not supported")
+    return value
+
+
+def _normalized_capture(value: Any) -> list[str]:
+    if not isinstance(value, list) or not value:
+        raise ValueError("screen capture must be a non-empty list")
+    normalized = []
+    for index, item in enumerate(value):
+        if not isinstance(item, str) or item not in ALLOWED_CAPTURE_KINDS:
+            raise ValueError(f"screen capture[{index}] is not supported")
+        normalized.append(item)
+    return normalized
+
+
+def _normalized_screen_actions(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list) or not value:
+        raise ValueError("screen actions must be a non-empty list")
+    return [ScreenAction.from_dict(action).to_dict() for action in value]
