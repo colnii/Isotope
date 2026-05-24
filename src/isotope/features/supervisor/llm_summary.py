@@ -1,4 +1,4 @@
-"""Codex Supervisor 的 LLM summary（大模型摘要）和 action prompt 工具."""
+"""Codex Supervisor 的 LLM summary（大模型摘要）和 action decision 工具."""
 
 from __future__ import annotations
 
@@ -9,6 +9,10 @@ from pathlib import Path
 from typing import Any
 
 from .flow import CodexSupervisorReport
+from .llm_action_prompt import (
+    LLM_ACTION_ALLOWED_KINDS,
+    build_llm_action_messages,
+)
 from .llm_pool import (
     PoolEntry,
     PooledSummaryProvider,
@@ -19,17 +23,6 @@ from .llm_pool import (
 from .merge_dispatch import DEFAULT_TARGET_NAME as MERGE_DISPATCH_TARGET_NAME
 
 LARGE_RESUME_SOURCE_BYTES = 64 * 1024
-LLM_ACTION_ALLOWED_KINDS = (
-    "monitor",
-    "send_status",
-    "send_continue",
-    "resume_session",
-    "launch_session",
-    "request_context",
-    "ask_user",
-    "delete_worktree",
-    "call_capacity",
-)
 LLM_RESUME_PROMPT_KINDS = ("send_status", "send_continue")
 LLM_ASK_USER_CONTEXT_STATUSES = ("missing", "outdated", "conflict")
 LLM_WORKER_PROFILES = ("coding", "light")
@@ -113,243 +106,6 @@ def generate_llm_summary(
     provider: SummaryProvider,
 ) -> str:
     return provider.summarize(build_llm_summary_messages(report))
-
-
-def build_llm_action_messages(
-    report: CodexSupervisorReport,
-    command_suggestions: list[dict[str, str]],
-    recent_context_results: list[dict[str, Any]] | None = None,
-    active_goals: list[dict[str, Any]] | None = None,
-    recent_decision_answers: list[dict[str, Any]] | None = None,
-    worker_reviews: dict[str, Any] | None = None,
-    delete_worktree_candidates: list[dict[str, Any]] | None = None,
-    capacity_decisions: list[dict[str, Any]] | None = None,
-) -> list[dict[str, str]]:
-    """Build the prompt for guarded LLM planning."""
-    prompt_command_suggestions = _active_goal_scoped_command_suggestions(
-        command_suggestions,
-        active_goals,
-    )
-    planner_priority = _running_worker_planner_priority(
-        report,
-        active_goals=active_goals,
-    )
-    prompt_command_suggestions = _running_worker_scoped_command_suggestions(
-        prompt_command_suggestions,
-        planner_priority=planner_priority,
-    )
-    resumable_session_ids = _resumable_session_ids_from_suggestions(
-        prompt_command_suggestions
-    )
-    resumable_session_id_set = set(resumable_session_ids)
-    candidate_targets = _candidate_target_payloads(
-        report,
-        resumable_session_ids=resumable_session_id_set,
-    )
-    completed_session_ids = [
-        session.session_id for session in report.sessions if _is_completed_session(session)
-    ]
-    context_request_history = _context_request_history(recent_context_results)
-    blocked_context_priority = _blocked_context_priority(
-        active_goals,
-        prompt_command_suggestions,
-        context_request_history,
-    )
-    return [
-        {
-            "role": "system",
-            "content": (
-                "你是 Codex Supervisor 的 LLM planner（规划器）。"
-                "你负责根据窗口状态选择下一步动作；"
-                "规则和白名单只是 guardrail（护栏）。"
-                "只能从允许动作里选择一个动作，不得编造命令，不得要求任意文本发送。"
-                "只输出 JSON。"
-            ),
-        },
-        {
-            "role": "user",
-            "content": json.dumps(
-                {
-                    "allowed_kinds": list(LLM_ACTION_ALLOWED_KINDS),
-                    "available_workspaces": _available_workspaces(
-                        report,
-                        prompt_command_suggestions,
-                    ),
-                    "candidate_targets": candidate_targets,
-                    "active_goals": _active_goal_payload(
-                        active_goals,
-                        candidate_targets,
-                    ),
-                    "resumable_session_ids": resumable_session_ids,
-                    "completed_session_ids": completed_session_ids,
-                    "command_suggestions": prompt_command_suggestions,
-                    "recent_context_results": recent_context_results or [],
-                    "recent_decision_answers": recent_decision_answers or [],
-                    "context_request_history": context_request_history,
-                    "planner_priority": planner_priority,
-                    "blocked_context_priority": blocked_context_priority,
-                    "capacity_decisions": capacity_decisions or [],
-                    "worker_profiles": {
-                        "coding": "默认代码开发档，适合需要改代码、跑测试、做复杂判断的任务。",
-                        "light": "低成本轻任务档，适合只读检查、状态汇报、smoke 或短小验证。",
-                    },
-                    "delete_worktree_candidates": delete_worktree_candidates or [],
-                    "action_rules": [
-                        (
-                            "recommendation.target_session_id 只是状态线索，"
-                            "不代表可执行目标。"
-                        ),
-                        (
-                            "resume_session.session_id 必须来自 resumable_session_ids；"
-                            "resumable_session_ids 为空时不得输出 resume_session。"
-                        ),
-                        (
-                            "completed_session_ids 里的会话已经完成或归档，"
-                            "不得恢复；需要继续下一批时使用 request_context 或 launch_session。"
-                        ),
-                        (
-                            "不要重复同一个 cwd/query 的 request_context；"
-                            "已查过的组合记录在 context_request_history。"
-                        ),
-                        (
-                            "已有上下文足够时优先选择 launch_session、send_continue、"
-                            "send_status、ask_user 或 monitor。"
-                        ),
-                        (
-                            "active_goals 里的目标仍然活跃；"
-                            "last_status 为 blocked/needs_user 时不要默认停住，"
-                            "应根据已有信息选择 request_context、launch_session、"
-                            "ask_user 或 monitor。"
-                        ),
-                        (
-                            "active_goals 里同名 worker 已在运行时不得再次 launch_session；"
-                            "应根据 worker_status 选择 monitor、send_status、"
-                            "send_continue、ask_user 或等待下一轮。"
-                        ),
-                        (
-                            "已有 active goal worker 正在运行时优先 monitor 或等待下一轮；"
-                            "不要重复 request_context 或 launch_session。"
-                        ),
-                        (
-                            "已有 merge dispatch worker 正在运行时优先 monitor 或等待下一轮；"
-                            "不要重复 request_context 或 launch_session。"
-                        ),
-                        (
-                            "launch_session 如果命中已有 command_suggestions 的 target_name，"
-                            "可只输出 target_name 和 reason；Supervisor 会从白名单命令补 cwd 和 prompt，"
-                            "不要复制很长的 goal 文本进 JSON。"
-                        ),
-                        (
-                            "blocked/needs_user 目标只有满足 decision_gate 时才允许 ask_user；"
-                            "否则继续查上下文或启动新 worker 推进。"
-                        ),
-                        (
-                            "blocked/needs_user 目标缺少上下文时优先 request_context；"
-                            "仍无法判断且满足 decision_gate 后，才输出 ask_user；"
-                            "不要因为缺上下文直接选择 monitor。"
-                        ),
-                        (
-                            "recent_decision_answers 是用户已经拍板的答案；"
-                            "相关 goal 或 session 后续应按答案继续推进，不要再次 ask_user。"
-                        ),
-                        (
-                            "candidate_targets.resume_context_hint 为 large_session_file 时，"
-                            "恢复历史可能消耗大量 tokens；除非确实需要该完整历史，"
-                            "恢复前优先考虑 request_context 或 launch_session。"
-                        ),
-                        (
-                            "worker_reviews 只提供下一轮决策上下文；"
-                            "next_decision.merge_suitable 不是自动合并授权，"
-                            "不得输出白名单之外的 merge/rebase/delete 动作。"
-                        ),
-                        (
-                            "delete_worktree 是受控清理动作；只允许用于 "
-                            "delete_worktree_candidates 中已经完成、已归档、"
-                            "已集成的 worker；输出前必须设置 "
-                            "confirm_delete_worktree=true。"
-                        ),
-                        (
-                            "capacity_decisions 来自 capacity plan 的 "
-                            "supervisor_decision 读模型；next_action 为 "
-                            "call_capacity 时说明能力计划已 ready，"
-                            "request_input 表示需要先补输入，blocked 表示当前能力不可启动。"
-                        ),
-                        (
-                            "只有 capacity_decisions 中同一 capacity_id 的 "
-                            "next_action=call_capacity 且 can_execute_agent_loop=true "
-                            "时，才允许输出 call_capacity。"
-                        ),
-                    ],
-                    "context_capability": {
-                        "kind": "request_context",
-                        "description": (
-                            "信息不足时，按 query 主动检索项目上下文；"
-                            "结果会返回 ranked evidence（排序证据）的 "
-                            "title/path/snippet/score/match_reason；"
-                            "不要要求系统每轮固定塞文档全文。"
-                        ),
-                        "schema": {
-                            "kind": "request_context",
-                            "cwd": "/path/to/repo",
-                            "query": "要查的问题或关键词",
-                            "reason": "一句中文原因",
-                        },
-                    },
-                    "decision_gate": {
-                        "kind": "ask_user",
-                        "description": (
-                            "只有同时满足三项才允许停下来问用户拍板："
-                            "Codex 已明确提出拍板请求；"
-                            "LLM 无法从用户已有指示判断；"
-                            "已检索上下文且结果缺失、过时或冲突。"
-                        ),
-                        "schema": {
-                            "kind": "ask_user",
-                            "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
-                            "goal_id": "goal-optional-for-goal-level-request",
-                            "question": "需要用户拍板的问题",
-                            "codex_requested_decision": True,
-                            "instructions_exhausted": True,
-                            "context_status": "missing|outdated|conflict",
-                            "reason": "一句中文原因",
-                        },
-                    },
-                    "generated_at": report.generated_at,
-                    "recommendation": report.recommendation.to_dict(),
-                    "worker_reviews": _worker_review_context_payload(worker_reviews),
-                    "output_schema": {
-                        "kind": "resume_session",
-                        "target_name": "lane-a",
-                        "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
-                        "prompt_kind": "send_continue",
-                        "reason": "一句中文原因",
-                    },
-                    "launch_schema": {
-                        "kind": "launch_session",
-                        "target_name": "new-lane",
-                        "cwd": "/path/to/repo，可省略：命中已有 target_name 时由白名单命令补齐",
-                        "prompt": "可省略：命中已有 target_name 时由白名单命令补齐；否则写给新 Codex 会话的中文指令",
-                        "worker_profile": "coding|light",
-                        "reason": "一句中文原因",
-                    },
-                    "delete_worktree_schema": {
-                        "kind": "delete_worktree",
-                        "target_name": "done-lane",
-                        "record_id": "managed-optional-but-recommended",
-                        "confirm_delete_worktree": True,
-                        "reason": "一句中文说明已确认完成、归档且集成",
-                    },
-                    "call_capacity_schema": {
-                        "kind": "call_capacity",
-                        "capacity_id": "capacity_decisions 中 ready 的 capacity_id",
-                        "reason": "一句中文说明为什么现在调用该能力",
-                    },
-                },
-                ensure_ascii=False,
-                sort_keys=True,
-            ),
-        },
-    ]
 
 
 def generate_llm_action_decision(
