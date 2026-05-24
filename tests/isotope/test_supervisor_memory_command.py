@@ -96,6 +96,51 @@ def test_supervisor_memory_command_plain_output_is_human_readable(tmp_path, caps
     assert "hidden" not in output
 
 
+def test_supervisor_memory_command_queries_memory_without_content(tmp_path, capsys):
+    memory_dir = tmp_path / "memory"
+    memory_dir.mkdir()
+    _write_memory_record(
+        memory_dir,
+        MemoryRecord(
+            memory_id="mem_query",
+            scope="run",
+            content={"raw": "raw memory content must not leak"},
+            summary="Resume from the memory integration boundary.",
+            source_refs=[{"ref_type": "artifact", "artifact_id": "artifact_query"}],
+            provenance={
+                "run_id": "run_query",
+                "execution_id": "exec_query",
+                "action_type": "write_memory",
+            },
+            created_at="2026-05-22T01:00:00Z",
+            supersedes=[],
+            quality="candidate",
+        ),
+    )
+
+    assert (
+        runner.main(
+            [
+                "memory",
+                "--root",
+                str(tmp_path),
+                "--query",
+                "integration boundary",
+                "--json",
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    payload = json.loads(output)
+    assert payload["status"] == "ok"
+    assert payload["query"] == "integration boundary"
+    assert payload["results"][0]["record_id"] == "mem_query"
+    assert "content" not in payload["results"][0]
+    assert "raw memory" not in output
+
+
 def _write_memory_record(memory_dir, record: MemoryRecord) -> None:
     (memory_dir / f"{record.memory_id}.json").write_text(
         json.dumps(asdict(record), sort_keys=True),

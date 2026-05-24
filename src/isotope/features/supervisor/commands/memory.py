@@ -8,7 +8,9 @@ from pathlib import Path
 from typing import Any
 
 from isotope.features.supervisor.state.memory_view import (
+    build_memory_query_payload,
     build_memory_status_payload,
+    render_memory_query_plain,
     render_memory_status_plain,
 )
 from isotope.platform.state.multi_worker import (
@@ -23,15 +25,26 @@ from isotope.platform.state.worker_event_channel import (
 
 
 def handle_memory_command(args: argparse.Namespace, *, api: Any) -> int:
-    payload = build_memory_status_payload(
-        root=Path(args.root),
-        scope=args.scope,
-        limit=args.limit,
-    )
+    if args.query:
+        payload = build_memory_query_payload(
+            root=Path(args.root),
+            query=args.query,
+            scope=args.scope,
+            run_id=args.run_id,
+            limit=args.limit,
+        )
+        plain = render_memory_query_plain(payload)
+    else:
+        payload = build_memory_status_payload(
+            root=Path(args.root),
+            scope=args.scope,
+            limit=args.limit,
+        )
+        plain = render_memory_status_plain(payload)
     if args.json:
         api._print_json(payload)
     else:
-        print(render_memory_status_plain(payload))
+        print(plain)
     return 0
 
 

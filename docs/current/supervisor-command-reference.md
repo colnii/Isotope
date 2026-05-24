@@ -87,6 +87,8 @@ LLM 应作为判断、调度和下一步建议的主路径之一，
   用于查看 active goals、decision、lane failure、worker events 和
   notifications 的同一份读模型；plain 输出会显示 snapshot schema 和
   来源账本，便于确认读的是哪版状态模型。
+- `memory --query <query>` 可按 summary / refs / provenance 查询本地 memory
+  preview，不返回 memory `content`、artifact full content 或 raw text。
 - `research` 可代理 shared Research flow（研究流程），把 delegated web
   research 请求写成低敏 report/raw transcript artifacts；当前支持 fake
   provider 和 Codex delegated provider；若 Codex provider 只返回 error-only

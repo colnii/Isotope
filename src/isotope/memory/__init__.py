@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import json
 import tempfile
 from pathlib import Path
 from typing import Any
 
 from ..platform.schemas.memory import MemoryRecord
 from ..platform.state.memory_store import FileMemoryStore
+from .views import query_memory_records
 
 
 def _has_write_memory_grant(grants: dict[str, Any] | None) -> bool:
@@ -111,24 +111,22 @@ class LocalMemoryQueryService:
         if scope is not None and scope not in {"thread", "run", "session"}:
             raise ValueError("memory query scope must be thread, run, or session")
 
-        needle = query.casefold()
-        results = []
-        for record in self.memory_store.list_records(scope=scope):
-            if record.provenance.get("run_id") != run_id:
-                continue
-            searchable = f"{record.summary}\n{json.dumps(record.content, sort_keys=True)}".casefold()
-            if needle not in searchable:
-                continue
-            results.append(
-                {
-                    "record_id": record.memory_id,
-                    "scope": record.scope,
-                    "summary": record.summary,
-                    "source_refs": [dict(ref) for ref in record.source_refs],
-                    "provenance": dict(record.provenance),
-                    "quality": record.quality,
-                }
-            )
+        matches = query_memory_records(
+            self.memory_store.list_records(scope=scope),
+            query=query,
+            run_id=run_id,
+        )
+        results = [
+            {
+                "record_id": record.memory_id,
+                "scope": record.scope,
+                "summary": record.summary,
+                "source_refs": [dict(ref) for ref in record.source_refs],
+                "provenance": dict(record.provenance),
+                "quality": record.quality,
+            }
+            for record in matches.visible
+        ]
         return {"status": "ok", "capability": "memory_query", "results": results}
 
 

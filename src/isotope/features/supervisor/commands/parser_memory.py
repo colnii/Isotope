@@ -26,6 +26,14 @@ def add_memory_command_parsers(subparsers: argparse._SubParsersAction) -> None:
         default=20,
         help="Maximum records to preview.",
     )
+    memory_parser.add_argument(
+        "--query",
+        help="Search low-sensitive memory summaries and references.",
+    )
+    memory_parser.add_argument(
+        "--run-id",
+        help="Only include records with matching provenance.run_id.",
+    )
     memory_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     worker_event_parser = subparsers.add_parser(
         "worker-event",

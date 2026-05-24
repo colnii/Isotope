@@ -6,8 +6,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from isotope.memory import FileMemoryStore
 from isotope.platform.schemas.memory import MemoryRecord
+from isotope.platform.state.memory_store import FileMemoryStore
 from isotope.platform.state.multi_worker import (
     build_multi_worker_status_payload,
     render_multi_worker_status_plain,
@@ -56,6 +56,75 @@ def build_memory_status_payload(
     }
 
 
+def build_memory_query_payload(
+    *,
+    root: Path | str,
+    query: str,
+    scope: str | None = None,
+    run_id: str | None = None,
+    limit: int = 20,
+) -> dict[str, Any]:
+    root_path = Path(root).expanduser()
+    if scope is not None and scope not in VALID_SCOPES:
+        raise ValueError("memory scope must be thread, run, or session")
+    if limit <= 0:
+        raise ValueError("limit must be positive")
+    clean_query = _required_query(query)
+
+    records = FileMemoryStore(root_path).list_records(scope=scope)
+    matched = query_memory_records(
+        records,
+        query=clean_query,
+        run_id=run_id,
+        limit=limit,
+    )
+    return {
+        "status": "ok",
+        "store": {
+            "root": str(root_path),
+            "path": str(root_path / "memory"),
+            "format": "file_memory_store",
+        },
+        "query": clean_query,
+        "scope": scope,
+        "run_id": run_id,
+        "summary": {
+            "total": len(records),
+            "matched": len(matched.all_matches),
+            "hidden_records": max(0, len(matched.all_matches) - len(matched.visible)),
+        },
+        "results": [_memory_query_result(record) for record in matched.visible],
+    }
+
+
+def query_memory_records(
+    records: list[MemoryRecord],
+    *,
+    query: str,
+    run_id: str | None = None,
+    limit: int = 20,
+) -> "_MemoryQueryMatches":
+    if limit <= 0:
+        raise ValueError("limit must be positive")
+    clean_query = _required_query(query)
+    terms = _query_terms(clean_query)
+    matches = [
+        record
+        for record in records
+        if _record_matches(record, query=clean_query, terms=terms, run_id=run_id)
+    ]
+    ranked = sorted(
+        matches,
+        key=lambda record: (
+            _record_score(record, query=clean_query, terms=terms),
+            record.created_at,
+            record.memory_id,
+        ),
+        reverse=True,
+    )
+    return _MemoryQueryMatches(all_matches=ranked, visible=ranked[:limit])
+
+
 def render_memory_status_plain(payload: dict[str, Any]) -> str:
     store = payload.get("store") if isinstance(payload.get("store"), dict) else {}
     summary = payload.get("summary") if isinstance(payload.get("summary"), dict) else {}
@@ -96,6 +165,34 @@ def render_memory_status_plain(payload: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def render_memory_query_plain(payload: dict[str, Any]) -> str:
+    store = payload.get("store") if isinstance(payload.get("store"), dict) else {}
+    summary = payload.get("summary") if isinstance(payload.get("summary"), dict) else {}
+    results = payload.get("results") if isinstance(payload.get("results"), list) else []
+    lines = [
+        "Memory query",
+        f"root: {store.get('root', '')}",
+        f"query: {payload.get('query', '')}",
+        f"matched: {summary.get('matched', len(results))}",
+    ]
+    if summary.get("hidden_records"):
+        lines.append(f"hidden_records: {summary['hidden_records']}")
+    if results:
+        lines.append("results:")
+        for record in results:
+            lines.append(
+                "- {record_id} / {scope} / {quality} / {summary}".format(
+                    record_id=record.get("record_id", "unknown"),
+                    scope=record.get("scope", "unknown"),
+                    quality=record.get("quality", "unknown"),
+                    summary=record.get("summary", ""),
+                )
+            )
+    else:
+        lines.append("results: none")
+    return "\n".join(lines)
+
+
 def _memory_record_preview(record: MemoryRecord) -> dict[str, Any]:
     return {
         "record_id": record.memory_id,
@@ -109,10 +206,73 @@ def _memory_record_preview(record: MemoryRecord) -> dict[str, Any]:
     }
 
 
+def _memory_query_result(record: MemoryRecord) -> dict[str, Any]:
+    return {
+        "record_id": record.memory_id,
+        "scope": record.scope,
+        "summary": record.summary,
+        "source_refs": [dict(ref) for ref in record.source_refs],
+        "provenance": dict(record.provenance),
+        "quality": record.quality,
+    }
+
+
+class _MemoryQueryMatches:
+    def __init__(
+        self,
+        *,
+        all_matches: list[MemoryRecord],
+        visible: list[MemoryRecord],
+    ) -> None:
+        self.all_matches = all_matches
+        self.visible = visible
+
+
+def _required_query(query: str) -> str:
+    if not isinstance(query, str) or not query.strip():
+        raise ValueError("memory query must be a non-empty string")
+    return query.strip()
+
+
+def _query_terms(query: str) -> list[str]:
+    return [term for term in query.casefold().split() if term]
+
+
+def _record_matches(
+    record: MemoryRecord,
+    *,
+    query: str,
+    terms: list[str],
+    run_id: str | None,
+) -> bool:
+    if run_id is not None and record.provenance.get("run_id") != run_id:
+        return False
+    haystack = _record_search_text(record)
+    return query.casefold() in haystack or any(term in haystack for term in terms)
+
+
+def _record_score(record: MemoryRecord, *, query: str, terms: list[str]) -> int:
+    haystack = _record_search_text(record)
+    score = 0
+    if query.casefold() in haystack:
+        score += 10
+    score += sum(1 for term in terms if term in haystack)
+    return score
+
+
+def _record_search_text(record: MemoryRecord) -> str:
+    source_text = " ".join(str(value) for ref in record.source_refs for value in ref.values())
+    provenance_text = " ".join(str(value) for value in record.provenance.values())
+    return f"{record.summary} {source_text} {provenance_text}".casefold()
+
+
 __all__ = [
     "VALID_SCOPES",
+    "build_memory_query_payload",
     "build_memory_status_payload",
     "build_multi_worker_status_payload",
+    "query_memory_records",
+    "render_memory_query_plain",
     "render_memory_status_plain",
     "render_multi_worker_status_plain",
 ]

@@ -102,7 +102,8 @@ scripts/
 - `execution/`：shell、python、浏览器、桌面、沙箱等执行环境。
 - `runtime/`：进程内运行入口，串起会话、策略、执行、事件和状态读取。
 - `workspace/`：项目、文件、artifact 产物和 git 工作树边界。
-- `memory/`：长期记忆存储、总结和共享上下文，不把所有检索都塞进这里。
+- `memory/`：长期记忆存储、总结和共享上下文；当前已有本地低敏 query
+  read model，但不把所有检索都塞进这里。
 - `integrations/`：Codex、MCP、GitHub、浏览器、VS Code 等外部系统接入。
 - `interfaces/`：当前只保留库内 HTTP facade，不扩张成 CLI / SDK。
 - `policy/`：权限、风险、审批和审计。

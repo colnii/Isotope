@@ -4,6 +4,7 @@ import json
 from dataclasses import asdict
 
 from isotope.memory.views import (
+    build_memory_query_payload,
     build_memory_status_payload,
     build_multi_worker_status_payload,
 )
@@ -34,6 +35,69 @@ def test_memory_views_build_memory_status_payload(tmp_path):
     assert payload["summary"]["by_scope"]["thread"] == 1
     assert payload["records"][0]["record_id"] == "mem-thread"
     assert "content" not in payload["records"][0]
+
+
+def test_memory_views_build_memory_query_payload_without_content(tmp_path):
+    memory_dir = tmp_path / "memory"
+    memory_dir.mkdir()
+    _write_memory_record(
+        memory_dir,
+        MemoryRecord(
+            memory_id="mem-match",
+            scope="run",
+            content={"secret": "raw memory content must not leak"},
+            summary="Resume from the memory integration boundary.",
+            source_refs=[{"ref_type": "artifact", "artifact_id": "artifact_001"}],
+            provenance={
+                "run_id": "run_001",
+                "execution_id": "exec_001",
+                "action_type": "write_memory",
+            },
+            created_at="2026-05-22T01:00:00Z",
+            supersedes=[],
+            quality="candidate",
+        ),
+    )
+    _write_memory_record(
+        memory_dir,
+        MemoryRecord(
+            memory_id="mem-other",
+            scope="session",
+            content={"secret": "another raw memory payload"},
+            summary="Unrelated session note.",
+            source_refs=[],
+            provenance={
+                "run_id": "run_002",
+                "execution_id": "exec_002",
+                "action_type": "write_memory",
+            },
+            created_at="2026-05-22T02:00:00Z",
+            supersedes=[],
+            quality="verified",
+        ),
+    )
+
+    payload = build_memory_query_payload(root=tmp_path, query="integration boundary")
+
+    assert payload["status"] == "ok"
+    assert payload["query"] == "integration boundary"
+    assert payload["summary"] == {"total": 2, "matched": 1, "hidden_records": 0}
+    assert payload["results"] == [
+        {
+            "record_id": "mem-match",
+            "scope": "run",
+            "summary": "Resume from the memory integration boundary.",
+            "source_refs": [{"ref_type": "artifact", "artifact_id": "artifact_001"}],
+            "provenance": {
+                "run_id": "run_001",
+                "execution_id": "exec_001",
+                "action_type": "write_memory",
+            },
+            "quality": "candidate",
+        }
+    ]
+    assert "content" not in json.dumps(payload)
+    assert "raw memory" not in json.dumps(payload)
 
 
 def test_memory_views_build_multi_worker_status_payload(tmp_path):

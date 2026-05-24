@@ -239,7 +239,7 @@
 | `capability runner` | 能力运行器，用命令行方式搜索能力、生成计划或启动能力 | 产品能力 | `src/isotope/capabilities/runner.py`, `isotope-capability` |
 | `Codex task` | Codex 任务，把外部 Codex 执行封装成可路由能力；`task.py` 保留 facade，request 和 adapter contract 已拆到专门模块 | 工具/任务 | `src/isotope/integrations/codex/task.py`, `src/isotope/integrations/codex/task_request.py`, `src/isotope/integrations/codex/task_contract.py`, `src/isotope/integrations/codex/cli.py` |
 | `workspace` | 工作区，任务运行时读写资源的边界 | 产品/资源 | `src/isotope/workspace/` |
-| `memory` | 记忆，用于保存、查询和只读投影长期上下文 | 智能体 | `src/isotope/memory/`, `src/isotope/memory/views.py` |
+| `memory` | 记忆，用于保存、查询和只读投影长期上下文；当前本地 query 只返回 summary / refs / provenance，不返回 full content | 智能体 | `src/isotope/memory/`, `src/isotope/memory/views.py` |
 | `RAG` | 检索增强生成，先检索资料再让模型回答 | 应用能力 | `src/isotope/rag/` |
 | `workflow` | 工作流，多个步骤组成的任务流程 | 应用能力 | 待新目录设计 |
 | `feature` | 业务功能，如聊天、搜索、工作区、权限 | 产品能力 | 待新目录设计 |

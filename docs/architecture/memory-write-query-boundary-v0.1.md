@@ -68,9 +68,11 @@
 - projector 仍不读取 memory query service 推进 `RunState`。
 - server 仍没有 public direct memory write / update 或 `query_memory(...)` API。
 - 当前没有 durable memory write implementation。
-- 当前没有 memory storage。
+- 当前已有本地 `FileMemoryStore` 和 agent-loop record/query first slice；它仍不是
+  public memory API 或完整 product memory。
 - 当前没有 successful memory record persistence implementation。
-- 当前没有 memory query implementation。
+- 当前已有本地低敏 query read model：`memory/views.py` 和 Supervisor
+  `memory --query` 返回 summary / refs / provenance preview，不返回 full content。
 - 当前没有 vector index、ranking 或 controlled expand implementation。
 - 当前测试基线是 `539 passed`。
 

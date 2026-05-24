@@ -438,6 +438,7 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   归档或删除 worktree。
 - `features/supervisor/commands/memory.py`：已承接 `memory`、
   `worker-event` 和 `worker-manager` CLI handler；底层继续复用 memory view，
+  `memory --query` 会返回 summary / refs / provenance 的低敏 recall 结果；
   并通过 `platform/state` 的 worker event channel、`WorkerEvent` schema
   和 multi-worker read model 读取低敏 worker 状态。
 - `features/supervisor/commands/parser_memory.py`：已承接 `memory`、
