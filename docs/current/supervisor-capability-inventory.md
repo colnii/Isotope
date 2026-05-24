@@ -121,6 +121,7 @@
   做 preflight（预检查），只提供 `can_launch=true` 或缺少输入的能力，
   不把 provider/env 等当前不可启动的能力交给 LLM 选择；如果没有任何
   offered capability，本轮直接返回 `status_reason=no_offered_capacities`，
+  JSON / plain 输出同时带 `capacity_blocked_reason=no_offered_capacities`，
   不调用 provider 或 agent loop；随后清洗 manifest，
   只保留低敏字段和安全的 `input_contract` 子集，并拒绝重复 `capacity_id`、
   重复 `required` 输入名，以及 `required` 未在 `properties` 声明的坏 contract；这类

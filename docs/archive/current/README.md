@@ -13,6 +13,11 @@
   `compat-proxy-audit.md` 为准。
 - [目录结构精简说明](目录结构精简说明.md)：2026-05-23 的一次性精简目录快照；
   当前结构以 `docs/current/目录结构最新说明.md` 和实际 `git ls-files` 为准。
+- [目录结构完整快照 2026-05-24](目录结构完整快照-2026-05-24.md)：曾在
+  current 维护的逐文件 tracked 清单；因篇幅长、更新频率高、容易滞后和产生
+  rebase 冲突，已降级为归档快照。当前结构职责以
+  `docs/current/目录结构最新说明.md` 为准，真实文件列表以
+  `git -c core.quotePath=false ls-files` 为准。
 - [重新梳理目录结构逻辑](重新梳理目录结构逻辑.md)：目录结构讨论原文；
   当前规则以 `docs/current/application-structure-plan.md` 和
   `docs/current/naming-and-structure-review.md` 为准。
