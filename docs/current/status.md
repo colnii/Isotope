@@ -62,7 +62,7 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
 - [文档地图](./docs-map.md)：按任务找文档。
 - [任务队列](./agent-task-queue.md)：当前可执行任务。
 - [Supervisor 监控与托管](./codex-supervisor-readonly.md)：Supervisor 快速入口。
-- [Supervisor 命令参考](./supervisor-command-reference.md)：完整命令和边界。
+- [Supervisor 命令参考](./supervisor-command-reference.md)：命令索引和边界。
 - [Supervisor operations runbook](./supervisor-operations-runbook.md)：夜间 smoke 和长流程验收。
 - [Supervisor 能力地图](./supervisor-capability-map.md)：能力索引。
 - [Supervisor 能力详情](./supervisor-capability-details.md)：详细能力登记。

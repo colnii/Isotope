@@ -25,7 +25,7 @@
 
 - `status.md` 记录主线事实，不是完整 changelog。
 - `agent-task-queue.md` 记录当前可执行任务；历史批次看 archive。
-- `codex-supervisor-readonly.md` 是 quick start；完整命令看
+- `codex-supervisor-readonly.md` 是 quick start；命令索引看
   `supervisor-command-reference.md`。
 - `supervisor-operations-runbook.md` 记录夜间 smoke、`supervise`、LLM summary
   和托管登记等长流程。

@@ -18,6 +18,10 @@
   rebase 冲突，已降级为归档快照。当前结构职责以
   `docs/current/目录结构最新说明.md` 为准，真实文件列表以
   `git -c core.quotePath=false ls-files` 为准。
+- [Supervisor 命令参考完整快照 2026-05-24](supervisor-command-reference-full-2026-05-24.md)：
+  曾在 current 维护的逐命令长说明；因和 runbook、能力清单重复，且随
+  Supervisor 高频变更容易滞后和冲突，已降级为归档快照。当前命令入口以
+  `docs/current/supervisor-command-reference.md` 为准。
 - [重新梳理目录结构逻辑](重新梳理目录结构逻辑.md)：目录结构讨论原文；
   当前规则以 `docs/current/application-structure-plan.md` 和
   `docs/current/naming-and-structure-review.md` 为准。

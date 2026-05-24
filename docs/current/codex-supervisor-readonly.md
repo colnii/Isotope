@@ -2,7 +2,7 @@
 
 状态：`当前入口 / quick start`
 
-完整命令说明见 [Supervisor 命令参考](./supervisor-command-reference.md)，
+命令索引和边界见 [Supervisor 命令参考](./supervisor-command-reference.md)，
 历史长跑流程见 [Supervisor operations runbook](./supervisor-operations-runbook.md)。
 能力登记见
 [Supervisor 能力地图](./supervisor-capability-map.md)。
