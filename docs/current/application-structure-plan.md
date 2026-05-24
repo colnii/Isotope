@@ -195,7 +195,8 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   manual smoke runner；底层 `screen_observe` / `screen_control` 作为普通 tool
   通过 ActionTypeRegistry、PolicyEngine、Executor 和 artifact store。
   Windows backend 可做 metadata/screenshot observe、dry-run control plan 和
-  显式批准后的本机输入执行；当前不是默认自动 GUI agent。
+  显式批准后的本机输入执行；`control-click` 是不手写 JSON 的 click
+  dry-run smoke 入口；当前不是默认自动 GUI agent。
 - 工作台功能入口：`src/isotope/features/workbench/flow.py` 已提供
   `WorkbenchFlow` 和 `WorkbenchView`，可聚合 projects/tasks/files
   低敏摘要、可选 search 结果、空状态与最近更新时间；

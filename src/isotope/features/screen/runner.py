@@ -91,6 +91,15 @@ def _build_control_intent(
     }
 
 
+def _build_click_action(*, x: int, y: int, button: str) -> dict[str, Any]:
+    return {
+        "type": "click",
+        "button": button,
+        "x": x,
+        "y": y,
+    }
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run manual screen observe/control smoke checks.")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -115,6 +124,26 @@ def _build_parser() -> argparse.ArgumentParser:
         help="JSON list of screen actions, for example '[{\"type\":\"click\",\"button\":\"left\",\"x\":1,\"y\":2}]'.",
     )
     control_parser.add_argument(
+        "--approve-execute",
+        action="store_true",
+        help="Request approval and execute after immediate local approval.",
+    )
+
+    click_parser = subparsers.add_parser(
+        "control-click",
+        help="Plan or execute one click without writing action JSON.",
+    )
+    _add_runtime_args(click_parser)
+    _add_target_args(click_parser)
+    click_parser.add_argument("--x", type=int, required=True, help="Screen x coordinate.")
+    click_parser.add_argument("--y", type=int, required=True, help="Screen y coordinate.")
+    click_parser.add_argument(
+        "--button",
+        choices=["left", "middle", "right", "x1", "x2"],
+        default="left",
+        help="Mouse button.",
+    )
+    click_parser.add_argument(
         "--approve-execute",
         action="store_true",
         help="Request approval and execute after immediate local approval.",
@@ -188,6 +217,28 @@ def main(argv: list[str] | None = None) -> int:
                     {
                         "resolution": "approved",
                         "reason": "screen smoke execute approved",
+                        "resolver": "local_operator",
+                    },
+                )
+            else:
+                result = pending_or_result
+        elif args.command == "control-click":
+            execution_mode = "execute" if args.approve_execute else "dry_run"
+            pending_or_result = api.submit_action(
+                run_id,
+                _build_control_intent(
+                    target_selector=target_selector,
+                    actions=[_build_click_action(x=args.x, y=args.y, button=args.button)],
+                    execution_mode=execution_mode,
+                ),
+                requires_approval=args.approve_execute,
+            )
+            if args.approve_execute and pending_or_result["status"] == "pending_user_approval":
+                result = api.resolve_approval(
+                    pending_or_result["approval_id"],
+                    {
+                        "resolution": "approved",
+                        "reason": "screen smoke click execute approved",
                         "resolver": "local_operator",
                     },
                 )

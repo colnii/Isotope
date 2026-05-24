@@ -56,7 +56,7 @@
 | `isotope-research` | Research 命令行入口，可运行 delegated research 并返回 artifact refs | 应用入口 | `src/isotope/features/research/runner.py` |
 | `screen_observe` | Screen 观察 tool，通过 policy-gated backend 捕获窗口 metadata/screenshot，并只把低敏 summary/ref 暴露给事件和读模型 | 工具/本机控制 | `src/isotope/execution/screen_backend_adapter.py`, `src/isotope/execution/screen_windows_backend.py` |
 | `screen_control` | Screen 控制 tool，默认 dry-run 生成控制计划，execute 需要显式批准或策略放行 | 工具/本机控制 | `src/isotope/execution/screen_backend_adapter.py`, `src/isotope/policy/__init__.py` |
-| `isotope-screen` | Screen 手动 smoke 命令行入口，用于本机窗口 observe/control 验收，不属于默认 CI | 应用入口/本机控制 | `src/isotope/features/screen/runner.py` |
+| `isotope-screen` | Screen 手动 smoke 命令行入口，用于本机窗口 observe/control 验收；`control-click` 可生成 click dry-run plan，避免在 PowerShell 手写 action JSON；不属于默认 CI | 应用入口/本机控制 | `src/isotope/features/screen/runner.py` |
 | `WorkbenchFlow` | 工作台功能入口，聚合 project/task/file 摘要和可选搜索结果 | 产品功能 | `src/isotope/features/workbench/flow.py` |
 | `WorkbenchView` | 工作台视图，包含摘要列表、搜索结果、空状态、最近更新时间和 counts 数量 | 产品功能 | `src/isotope/features/workbench/flow.py` |
 | `empty_state` | 空状态，工作台没有内容时给用户的下一步提示 | 产品功能 | `src/isotope/features/workbench/flow.py` |
