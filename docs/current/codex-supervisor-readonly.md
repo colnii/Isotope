@@ -2,8 +2,9 @@
 
 状态：`当前入口 / quick start`
 
-完整命令说明和历史长跑流程已移到
-[Supervisor 命令参考](./supervisor-command-reference.md)。能力登记见
+完整命令说明见 [Supervisor 命令参考](./supervisor-command-reference.md)，
+历史长跑流程见 [Supervisor operations runbook](./supervisor-operations-runbook.md)。
+能力登记见
 [Supervisor 能力地图](./supervisor-capability-map.md)。
 
 ## 目标
@@ -53,6 +54,7 @@ worker，汇总证据，生成下一步建议，并通过白名单动作进行�
 ## 相关文档
 
 - [Supervisor 命令参考](./supervisor-command-reference.md)
+- [Supervisor operations runbook](./supervisor-operations-runbook.md)
 - [Supervisor 能力地图](./supervisor-capability-map.md)
 - [Supervisor 能力详情](./supervisor-capability-details.md)
 - [Supervisor 架构迁移表](./supervisor-architecture-migration-table.md)

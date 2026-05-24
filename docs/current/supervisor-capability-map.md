@@ -63,4 +63,5 @@
 - [Supervisor 能力详细清单](./supervisor-capability-inventory.md)
 - [Supervisor 监控与托管](./codex-supervisor-readonly.md)
 - [Supervisor 命令参考](./supervisor-command-reference.md)
+- [Supervisor operations runbook](./supervisor-operations-runbook.md)
 - [任务队列](./agent-task-queue.md)

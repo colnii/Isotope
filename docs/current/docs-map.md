@@ -58,7 +58,7 @@ preflight（预检查）、diagnostic（诊断）或 not_enabled（未启用）�
 | 查英文术语和中文解释 | [terminology](./terminology.md) |
 | 调整应用目录 | [application-structure-plan](./application-structure-plan.md)、[目录结构最新说明](./目录结构最新说明.md) |
 | 查导入迁移或兼容代理 | [import-map](./import-map.md)、[compat-proxy-audit](./compat-proxy-audit.md) |
-| 做 Supervisor 相关工作 | [codex-supervisor-readonly](./codex-supervisor-readonly.md)、[supervisor-command-reference](./supervisor-command-reference.md)、[supervisor-capability-map](./supervisor-capability-map.md)、[supervisor-capability-details](./supervisor-capability-details.md)、[supervisor-capability-inventory](./supervisor-capability-inventory.md)、[supervisor-architecture-migration-table](./supervisor-architecture-migration-table.md) |
+| 做 Supervisor 相关工作 | [codex-supervisor-readonly](./codex-supervisor-readonly.md)、[supervisor-command-reference](./supervisor-command-reference.md)、[supervisor-operations-runbook](./supervisor-operations-runbook.md)、[supervisor-capability-map](./supervisor-capability-map.md)、[supervisor-capability-details](./supervisor-capability-details.md)、[supervisor-capability-inventory](./supervisor-capability-inventory.md)、[supervisor-architecture-migration-table](./supervisor-architecture-migration-table.md) |
 | 查旧任务/旧状态全文 | [agent-task-history](../archive/current/agent-task-history.md)、[status-history](../archive/current/status-history.md) |
 | 查早期 v0.1 旧计划 | [archived plans](../archive/plans/) |
 | 看文档迁移边界 | [docs-migration-plan](../reviews/docs-migration-plan.md)、[old-docs-closure-audit](../reviews/old-docs-closure-audit.md) |

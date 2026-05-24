@@ -27,6 +27,8 @@
 - `agent-task-queue.md` 记录当前可执行任务；历史批次看 archive。
 - `codex-supervisor-readonly.md` 是 quick start；完整命令看
   `supervisor-command-reference.md`。
+- `supervisor-operations-runbook.md` 记录夜间 smoke、`supervise`、LLM summary
+  和托管登记等长流程。
 - `supervisor-capability-map.md` 是能力索引；详细登记看
   `supervisor-capability-details.md`。
 - `docs-map.md` 是导航，不替代具体设计文档。

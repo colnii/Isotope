@@ -108,10 +108,11 @@
   当该读模型为 `call_capacity` 且 `--llm-execute` 打开时，
   LLM planner 可选择 `call_capacity`，Supervisor 会用已保存的
   `capacity_call_specs` 通过 agent loop 的 `call_capability` 步骤执行；
-  `capacity_call_specs` 只会从 `status=ok` 且 `status_reason=ready` 的计划生成，
+  `capacity_call_specs` 只会从 `status=ok`、`status_reason=ready`，
+  且 `capability_launch_plan.can_launch=true`、`capacity_id` 匹配的计划生成；
   执行前仍会重新确认同一 `capacity_id` 存在 ready 的
-  `capacity_decisions`，避免 blocked plan、旧 spec 或手工拼接 payload
-  直接触发调用；
+  `capacity_decisions`，避免 blocked plan、不可启动的 launch plan、旧 spec
+  或手工拼接 payload 直接触发调用；
   显式
   `--execute-agent-loop` 才通过 agent loop 带 `inputs` 执行 allowlist 低风险能力，
   并输出执行前后的 tick policy handoff。
