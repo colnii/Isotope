@@ -7,6 +7,7 @@ import pytest
 from isotope.features.research.providers import (
     CodexDelegatedResearchProvider,
     FakeResearchProvider,
+    build_codex_cli_research_backend,
     extract_research_json,
 )
 
@@ -46,3 +47,26 @@ def test_codex_delegated_provider_builds_research_prompt():
     assert payload["provider"] == "codex_delegated"
     assert "sources" in calls[0]
     assert "report" in calls[0]
+
+
+def test_build_codex_cli_research_backend_returns_callable(tmp_path):
+    backend = build_codex_cli_research_backend(
+        workspace_root=tmp_path,
+        executable="codex",
+        executable_resolver=lambda name: "/usr/bin/codex",
+        process_runner=lambda *args, **kwargs: type(
+            "Completed",
+            (),
+            {
+                "stdout": '{"sources":[],"report":{"summary":"empty"}}',
+                "stderr": "",
+                "returncode": 0,
+            },
+        )(),
+    )
+
+    assert callable(backend)
+    assert json.loads(backend("research prompt")) == {
+        "sources": [],
+        "report": {"summary": "empty"},
+    }

@@ -8,7 +8,11 @@ from pathlib import Path
 from typing import Any
 
 from .flow import ResearchFlow
-from .providers import FakeResearchProvider
+from .providers import (
+    CodexDelegatedResearchProvider,
+    FakeResearchProvider,
+    build_codex_cli_research_backend,
+)
 
 
 def _print_json(payload: dict[str, Any]) -> None:
@@ -24,8 +28,25 @@ def _build_parser() -> argparse.ArgumentParser:
     search_parser.add_argument(
         "--provider",
         default="fake",
-        choices=("fake",),
-        help="Research provider. First implementation supports fake for tests.",
+        choices=("fake", "codex"),
+        help="Research provider.",
+    )
+    search_parser.add_argument(
+        "--workspace-root",
+        help="Workspace root for Codex delegated research. Defaults to current directory.",
+    )
+    search_parser.add_argument(
+        "--codex-executable",
+        default="codex",
+        help="Codex CLI executable for --provider codex.",
+    )
+    search_parser.add_argument("--codex-home", help="Codex home for --provider codex.")
+    search_parser.add_argument("--model", help="Codex model for --provider codex.")
+    search_parser.add_argument(
+        "--timeout-seconds",
+        type=int,
+        default=120,
+        help="Codex delegated research timeout in seconds.",
     )
     search_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     return parser
@@ -40,7 +61,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError("research search requires --query")
             flow = ResearchFlow.in_process(
                 Path(args.root),
-                provider=FakeResearchProvider(),
+                provider=_provider_from_args(args),
             )
             payload = flow.search(args.query).to_dict()
             if args.json:
@@ -69,6 +90,22 @@ def _print_plain(payload: dict[str, Any]) -> None:
     print(f"evidence: {research.get('evidence_status', '')}")
     for source in research.get("sources", []):
         print(f"- {source['title']} {source['url']}")
+
+
+def _provider_from_args(args: argparse.Namespace):
+    if args.provider == "fake":
+        return FakeResearchProvider()
+    if args.provider == "codex":
+        return CodexDelegatedResearchProvider(
+            build_codex_cli_research_backend(
+                workspace_root=args.workspace_root or Path.cwd(),
+                executable=args.codex_executable,
+                codex_home=args.codex_home,
+                model=args.model,
+                timeout_seconds=args.timeout_seconds,
+            )
+        )
+    raise ValueError(f"unsupported research provider: {args.provider}")
 
 
 if __name__ == "__main__":

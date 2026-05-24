@@ -6,6 +6,8 @@ from pathlib import Path
 import subprocess
 import sys
 
+from isotope.features.research.runner import _build_parser
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = REPO_ROOT / "src"
@@ -50,3 +52,30 @@ def test_research_cli_requires_query(tmp_path):
 
     assert result.returncode == 2
     assert json.loads(result.stdout)["error"]["code"] == "research_runner_error"
+
+
+def test_research_cli_accepts_codex_provider_args(tmp_path):
+    parser = _build_parser()
+
+    args = parser.parse_args(
+        [
+            "search",
+            "--root",
+            str(tmp_path),
+            "--query",
+            "agent memory retrieval",
+            "--provider",
+            "codex",
+            "--workspace-root",
+            str(tmp_path),
+            "--codex-executable",
+            "codex",
+            "--timeout-seconds",
+            "60",
+        ]
+    )
+
+    assert args.provider == "codex"
+    assert args.workspace_root == str(tmp_path)
+    assert args.codex_executable == "codex"
+    assert args.timeout_seconds == 60

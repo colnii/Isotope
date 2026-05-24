@@ -5,7 +5,11 @@ from __future__ import annotations
 import json
 import re
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Callable, Protocol
+
+from ...integrations.codex.cli import CodexCliBackend, CodexCliBackendConfig
+from ...integrations.codex.task import CodexTaskConfig, CodexTaskRequest
 
 
 class ResearchProvider(Protocol):
@@ -101,6 +105,82 @@ def extract_research_json(raw_output: str) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError("research JSON object must be a dict")
     return payload
+
+
+def build_codex_cli_research_backend(
+    *,
+    workspace_root: str | Path,
+    executable: str = "codex",
+    codex_home: str | None = None,
+    model: str | None = None,
+    timeout_seconds: int = 120,
+    executable_resolver=None,
+    process_runner=None,
+) -> Callable[[str], str]:
+    backend = CodexCliBackend(
+        CodexCliBackendConfig(
+            workspace_root=str(workspace_root),
+            executable=executable,
+            codex_home=codex_home,
+            model=model,
+            skip_git_repo_check=True,
+        ),
+        **{
+            key: value
+            for key, value in {
+                "executable_resolver": executable_resolver,
+                "process_runner": process_runner,
+            }.items()
+            if value is not None
+        },
+    )
+
+    def run_prompt(prompt: str) -> str:
+        request = CodexTaskRequest(
+            run_id="run_research_cli",
+            proposal_id="prop_research_cli",
+            decision_id="dec_research_cli",
+            execution_id="exec_research_cli",
+            policy_profile_id="default",
+            policy_version="v0.2",
+            registry_id="default",
+            registry_version="v0.2",
+            grants={
+                "tools": ["codex_task"],
+                "workspace": {"mode": "shared_ro"},
+                "budget": {"seconds": timeout_seconds},
+                "codex_task": {"adapter_required": True},
+            },
+            workspace_binding={
+                "workspace_id": "workspace_research_cli",
+                "mode": "shared_ro",
+                "lease_status": "active",
+            },
+            task_request={"kind": "codex_prompt", "prompt": prompt},
+            budget={"seconds": timeout_seconds},
+            artifact_policy={
+                "capture": ["transcript"],
+                "full_content_in_events": False,
+                "full_content_in_read_model": False,
+            },
+            basis_event_ids=["research_cli"],
+            adapter_config=CodexTaskConfig(
+                adapter_id="codex_cli_research",
+                adapter_version="v0.1",
+            ).to_dict(),
+        )
+        result = backend.run(request)
+        for output in result.output_artifacts:
+            content = output.content if hasattr(output, "content") else output["content"]
+            try:
+                transcript = json.loads(content)
+            except json.JSONDecodeError:
+                return content
+            stdout = transcript.get("stdout")
+            return stdout if isinstance(stdout, str) else content
+        return result.summary
+
+    return run_prompt
 
 
 def _require_query(query: str) -> str:
