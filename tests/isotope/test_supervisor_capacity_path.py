@@ -669,6 +669,10 @@ def test_supervisor_capacity_plain_output_includes_agent_loop_handoff(tmp_path, 
     assert "supervisor_decision_next_action: call_capacity" in output
     assert "agent_loop_executed: True" in output
     assert "agent_loop_next_tick_kind: planner_step" in output
+    assert "agent_loop_planner_selected_step: call_capability" in output
+    assert "agent_loop_tick_status: executed" in output
+    assert "agent_loop_tick_after_stop_reason: tick_budget_exhausted" in output
+    assert "agent_loop_artifact_ref: artifact_" in output
     assert "agent_loop_post_step_phase: ready" in output
     assert "agent_loop_post_step_should_continue: True" in output
     assert "agent_loop_post_step_stop_reason: None" in output

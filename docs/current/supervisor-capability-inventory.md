@@ -111,6 +111,9 @@
   当该读模型为 `call_capacity` 且 `--llm-execute` 打开时，
   LLM planner 可选择 `call_capacity`，Supervisor 会用已保存的
   `capacity_call_specs` 通过 agent loop 的 `call_capability` 步骤执行；
+  `isotope-supervisor capacity plan --execute-agent-loop` 的 plain 输出会打印
+  低敏 handoff summary，包括 planner selected step、tick status、
+  tick stop reason 和 artifact ref；
   `capacity_call_specs` 只会从 `status=ok`、`status_reason=ready`，
   且 `capability_launch_plan.can_launch=true`、`capacity_id` 匹配的计划生成；
   执行前仍会重新确认同一 `capacity_id` 存在 ready 的

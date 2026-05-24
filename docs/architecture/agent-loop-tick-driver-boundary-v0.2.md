@@ -25,6 +25,8 @@
 - `python -m isotope.demo --scenario supervisor-capacity-handoff-trace --trace`
   展示 `Supervisor action -> planner_output_summary -> tick_result ->
   persisted policy` 的可读链路。
+- `isotope-supervisor capacity plan --execute-agent-loop` 的 plain 输出会打印
+  低敏 planner selected step、tick status、tick stop reason 和 artifact ref。
 
 HTTP body 只接受：
 

@@ -71,6 +71,8 @@
 - `supervisor-capacity-handoff-trace` demo 已补齐人类可读链路，展示
   `Supervisor action -> planner_output_summary -> tick_result -> persisted policy`；
   它使用 fixture provider，不要求真实 LLM 配置。
+- `isotope-supervisor capacity plan` 的 plain 输出已补齐低敏 handoff summary，
+  会显示 planner selected step、tick status、tick stop reason 和 artifact ref。
 
 ## 下一批任务
 
@@ -104,14 +106,13 @@
 
 目标：
 
-- 在现有 `supervisor-capacity-handoff-trace` 基础上，补一条更接近
-  `isotope-supervisor` 命令层的 smoke，证明手动 capacity plan / action
-  路径能被低敏 summary 检查。
+- 在现有 `isotope-supervisor capacity plan` plain summary 基础上，补一条
+  JSON 低敏 summary helper，方便后续 dashboard / web 复用同一组字段。
 - 仍不接真实 LLM，不做自动多轮循环。
 
 验收：
 
-- 目标测试覆盖 CLI 输出和 no raw payload（不暴露原始内容）边界。
+- 目标测试覆盖 JSON summary 和 no raw payload（不暴露原始内容）边界。
 - smoke 使用 fixture / fake provider，不要求真实 provider 配置。
 
 ### 4. Supervisor 大分支暂缓

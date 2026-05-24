@@ -611,6 +611,39 @@ def _print_capacity_plan_plain(payload: Mapping[str, Any]) -> None:
     handoff = agent_loop.get("handoff") if isinstance(agent_loop, Mapping) else None
     if isinstance(handoff, Mapping):
         print(f"agent_loop_next_tick_kind: {handoff.get('initial_next_tick_kind')}")
+        planner_summary = agent_loop.get("planner_output_summary")
+        if isinstance(planner_summary, Mapping):
+            print(
+                "agent_loop_planner_selected_step: "
+                f"{planner_summary.get('selected_step')}"
+            )
+        tick_result = agent_loop.get("tick_result")
+        if isinstance(tick_result, Mapping):
+            print(f"agent_loop_tick_status: {tick_result.get('tick_status')}")
+            after_policy = tick_result.get("after_policy")
+            if isinstance(after_policy, Mapping):
+                print(
+                    "agent_loop_tick_after_stop_reason: "
+                    f"{after_policy.get('must_stop_reason')}"
+                )
+            planner_result = tick_result.get("planner_result")
+            step_result = (
+                planner_result.get("step_result")
+                if isinstance(planner_result, Mapping)
+                else None
+            )
+            action_result = (
+                step_result.get("action_result")
+                if isinstance(step_result, Mapping)
+                else None
+            )
+            artifact_ref = (
+                action_result.get("artifact_ref")
+                if isinstance(action_result, Mapping)
+                else None
+            )
+            if isinstance(artifact_ref, Mapping):
+                print(f"agent_loop_artifact_ref: {artifact_ref.get('artifact_id')}")
         print(f"agent_loop_post_step_phase: {handoff.get('post_step_phase')}")
         print(
             "agent_loop_post_step_should_continue: "

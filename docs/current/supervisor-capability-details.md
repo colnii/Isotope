@@ -428,7 +428,8 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   继续复用既有 action builder 和 `_promote_llm_command_suggestion(...)`。
 - `features/supervisor/commands/capacity.py`：已承接 capacity plan 命令、
   low-risk capability execution（低风险能力执行）和 loop
-  `capacity_decisions` / `capacity_call_specs` 生产 glue；继续复用
+  `capacity_decisions` / `capacity_call_specs` 生产 glue；plain 输出已补齐
+  低敏 planner / tick / artifact handoff summary；继续复用
   `agents/scheduler/capacity_graph.py`、`CapabilityRunner` 和
   `llm.capacity_calling`，不在 runner 中重写 capacity graph。
 - `features/supervisor/commands/advice_execution.py`：已承接旧 command
