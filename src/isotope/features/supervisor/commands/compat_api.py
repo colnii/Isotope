@@ -357,6 +357,13 @@ from .handlers.state import (
     print_state_plain as _print_state_plain,
     state_payload as _state_payload,
 )
+from .handlers.worktree_audit import (
+    audit_worktree_records as _audit_worktree_records,
+    handle_worktree_audit_command as _handle_worktree_audit_command,
+    parse_worktree_list_porcelain as _parse_worktree_list_porcelain,
+    print_worktree_audit_plain as _print_worktree_audit_plain,
+    worktree_audit_payload as _worktree_audit_payload,
+)
 from .trace import (
     latest_managed_record_events as _latest_managed_record_events,
     lifecycle_next_attention as _lifecycle_next_attention,

@@ -18,6 +18,7 @@
 | 第一次启动 Supervisor | `isotope-supervisor start-here --goal "..."` |
 | 日常唤起后台和看状态 | `isotope-supervisor up --goal "..."` |
 | 浏览本机页面 | `isotope-supervisor web --host 127.0.0.1 --port 8765` |
+| 开工前查重复 worktree | `isotope-supervisor worktree-audit --repo-root .` |
 | 看当前整体状态 | `isotope-supervisor check`、`dashboard`、`state`、`goal list` |
 | 追加或归档目标 | `goal add`、`goal list`、`goal archive` |
 | 提交用户拍板答案 | `decision list`、`decision answer` |
@@ -48,6 +49,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 | `start-here` / `guide` / `discover` | 打印可复制的上手、接管和观察命令；不启动任务、不发送指令。 | [quick start](./codex-supervisor-readonly.md)、[capability details](./supervisor-capability-details.md) |
 | `up` / `loop` / `daemon` / `check` | 日常监督入口，负责后台 loop、watchdog、状态摘要和活跃目标读取。 | [operations runbook](./supervisor-operations-runbook.md) |
 | `goal` / `decision` / `state` | 持久目标队列、用户拍板账本和统一低敏 state projection（状态投影）。 | [capability inventory](./supervisor-capability-inventory.md)、[architecture migration table](./supervisor-architecture-migration-table.md) |
+| `worktree-audit` | 只读检查本地 worktree/branch 主题词，提示可能重复开发的候选；不删除、不合并、不修改文件。 | 本文 |
 | `dashboard` / `web` / `events` | 本机 dashboard、web 页面、bell 事件和受控按钮入口。 | [quick start](./codex-supervisor-readonly.md)、[operations runbook](./supervisor-operations-runbook.md) |
 | `advise` / `supervise` / `llm-action` | LLM planner（模型规划器）建议、白名单动作选择和显式执行。 | [capability inventory](./supervisor-capability-inventory.md) |
 | `launch` / `resume` / `adopt` / `send` / `archive` | 托管 Codex worker、tmux lane 和状态协议交互。 | [operations runbook](./supervisor-operations-runbook.md) |
@@ -80,6 +82,17 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 .venv/bin/isotope-supervisor decision list
 .venv/bin/isotope-supervisor decision answer --request-id <request-id> --answer "..."
 ```
+
+### 开工前协调
+
+```bash
+.venv/bin/isotope-supervisor worktree-audit --repo-root .
+.venv/bin/isotope-supervisor worktree-audit --repo-root . --json
+```
+
+`worktree-audit` 只读取 `git worktree list --porcelain`，按 branch/path 里的
+非泛化主题词提示可能重复开发的 worktree。它是 human review（人工复查）入口，
+不会自动删除 worktree、合并分支或阻止任务启动。
 
 ### Research artifact 闭环
 
@@ -121,6 +134,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 - Supervisor 不是纯规则脚本；LLM planner 应参与判断、调度和下一步建议。
 - 自动动作必须走白名单、cooldown（冷却）、state ledger（状态账本）和 workspace
   boundary（工作区边界）。
+- 开工前如果存在多个活跃 worktree，先跑 `worktree-audit`；发现候选重复时先人工
+  合并方向或收敛任务，不让多个进程各自实现一套。
 - 普通 worker 不应主动 push；merge worker 只能按 `merge-work-order` 工单推送验证分支。
 - runner 不直接重写历史、不 force push、不删除未确认集成的 worktree。
 - `delete_worktree` 只有在 done、archived、already_integrated 且路径安全时才允许。

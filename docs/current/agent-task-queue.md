@@ -115,6 +115,9 @@
   search/plan/run，运行时复用 `LocalMemoryQueryService` 和 `FileMemoryStore`，
   通过 memory query grant / caller audit 返回 summary / refs / provenance；
   `controlled_expand` 只返回 deferred metadata。
+- Supervisor `worktree-audit` 已补第一片：开工前可只读读取
+  `git worktree list --porcelain`，按 branch/path 主题词提示可能重复开发的
+  worktree 候选；它不删除、不合并、不阻止任务，只给人类做协调判断。
 
 ## 下一批任务
 
@@ -122,6 +125,7 @@
 
 目标：
 
+- 先跑 `isotope-supervisor worktree-audit --repo-root .`，确认当前是否有重复开发候选。
 - 先确认 `refactor/http-api-boundary-split` 是否只是 clean duplicate。
 - 如果没有，清理对应 worktree 和本地分支。
 - 不清理仍有 ahead 提交的 worktree。

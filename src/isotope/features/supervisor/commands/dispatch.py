@@ -19,6 +19,7 @@ from ..commands.compat_api import (
     _handle_state_command,
     _handle_worker_event_command,
     _handle_worker_manager_command,
+    _handle_worktree_audit_command,
 )
 
 
@@ -140,6 +141,7 @@ COMMAND_HANDLERS = {
     "state": _handle_state_command,
     "worker-event": _handle_worker_event_command,
     "worker-manager": _handle_worker_manager_command,
+    "worktree-audit": _handle_worktree_audit_command,
 }
 
 

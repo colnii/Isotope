@@ -80,6 +80,20 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         help="Codex home directory. Defaults to ~/.codex.",
     )
     state_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    worktree_audit_parser = subparsers.add_parser(
+        "worktree-audit",
+        help="Warn about local worktrees that appear to share a development topic.",
+    )
+    worktree_audit_parser.add_argument(
+        "--repo-root",
+        default=".",
+        help="Repository root or subdirectory to inspect. Defaults to cwd.",
+    )
+    worktree_audit_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print JSON output.",
+    )
     for command in ("advise", "supervise"):
         subparsers.choices[command].add_argument(
             "--name",
