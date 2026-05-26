@@ -364,6 +364,13 @@ from .handlers.worktree_audit import (
     print_worktree_audit_plain as _print_worktree_audit_plain,
     worktree_audit_payload as _worktree_audit_payload,
 )
+from .scan import (
+    emit_terminal_bell as _emit_terminal_bell,
+    print_report as _print_report,
+    scan_report as _scan_report,
+    summarize_with_llm as _summarize_with_llm,
+    unknown_tmux_bell_hook as _unknown_tmux_bell_hook,
+)
 from .trace import (
     latest_managed_record_events as _latest_managed_record_events,
     lifecycle_next_attention as _lifecycle_next_attention,

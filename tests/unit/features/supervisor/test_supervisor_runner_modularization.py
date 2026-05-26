@@ -1228,6 +1228,24 @@ def test_supervisor_runner_delegates_web_and_fingerprint_helpers():
     assert "def _run_web(" not in source
 
 
+def test_supervisor_runner_delegates_scan_command_helpers():
+    scan_module = importlib.import_module("isotope.features.supervisor.commands.scan")
+
+    assert runner._print_report is scan_module.print_report
+    assert runner._scan_report is scan_module.scan_report
+    assert runner._unknown_tmux_bell_hook is scan_module.unknown_tmux_bell_hook
+    assert runner._summarize_with_llm is scan_module.summarize_with_llm
+
+    source = inspect.getsource(runner)
+    for function_name in (
+        "_print_report",
+        "_scan_report",
+        "_unknown_tmux_bell_hook",
+        "_summarize_with_llm",
+    ):
+        assert f"def {function_name}(" not in source
+
+
 def test_supervisor_runner_delegates_goal_lifecycle_helpers():
     lifecycle_module = importlib.import_module(
         "isotope.features.supervisor.supervise.goal_lifecycle"

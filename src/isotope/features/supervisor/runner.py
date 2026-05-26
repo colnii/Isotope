@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
-import sys
 import uuid
 from pathlib import Path
 from typing import Any
@@ -39,13 +38,10 @@ from .planner.decision_requests import (
     record_decision_request,
 )
 from .flow import (
-    CodexSupervisorFlow,
     _managed_process_log_excerpt,
     _pid_is_running,
     _supervisor_protocol_from_text,
     _terminal_has_active_work_marker,
-    _tmux_capture_pane,
-    render_plain_report,
 )
 from .state.fanout import (
     DEFAULT_FANOUT_LIMIT,
@@ -83,7 +79,6 @@ from .state.lane_state import (
 )
 from .llm_action.llm_summary import (
     generate_llm_action_decision,
-    generate_llm_summary,
     resolve_summary_provider_from_env,
 )
 from .merge.merge_dispatch import (
@@ -170,72 +165,6 @@ def _json_object_arg(raw: str | None, field_name: str) -> dict[str, Any] | None:
 
 def main(argv: list[str] | None = None) -> int:
     return _run_cli(argv)
-
-
-def _print_report(
-    args: argparse.Namespace,
-    *,
-    previous_fingerprint: tuple[object, ...] | None = None,
-    previous_bell_fingerprint: tuple[object, ...] | None = None,
-) -> tuple[bool, tuple[object, ...], tuple[object, ...] | None]:
-    flow = CodexSupervisorFlow(codex_home=Path(args.codex_home))
-    report = flow.scan(
-        limit=args.limit,
-        stale_after_seconds=args.stale_after,
-        active_within_seconds=args.active_within,
-    )
-    fingerprint = _report_fingerprint(report)
-    if getattr(args, "changes_only", False) and previous_fingerprint == fingerprint:
-        return False, fingerprint, previous_bell_fingerprint
-    bell_fingerprint = _attention_bell_fingerprint(report)
-    if (
-        getattr(args, "bell", False)
-        and bell_fingerprint is not None
-        and bell_fingerprint != previous_bell_fingerprint
-    ):
-        _emit_terminal_bell()
-    if args.json:
-        payload = report.to_dict()
-        if args.llm_summary:
-            payload["llm_summary"] = _summarize_with_llm(report)
-        _print_json(payload)
-    else:
-        print(render_plain_report(report))
-        if args.llm_summary:
-            print()
-            print("[LLM 摘要]")
-            print(_summarize_with_llm(report))
-    return True, fingerprint, bell_fingerprint
-
-
-def _scan_report(args: argparse.Namespace) -> Any:
-    _sync_managed_worker_failures(
-        codex_home=Path(args.codex_home),
-        max_run_minutes=getattr(args, "max_run_minutes", 0),
-    )
-    needs_tmux_pane = (
-        getattr(args, "command", None) == "dashboard"
-        or bool(getattr(args, "auto_execute", False))
-        or bool(getattr(args, "llm_action", False))
-        or bool(getattr(args, "llm_execute", False))
-    )
-    command = getattr(args, "command", None)
-    needs_bell_hook_health = command in {"scan", "dashboard", "watch"}
-    flow = CodexSupervisorFlow(
-        codex_home=Path(args.codex_home),
-        tmux_bell_hook_checker=None
-        if needs_bell_hook_health
-        else _unknown_tmux_bell_hook,
-        tmux_pane_reader=_tmux_capture_pane if needs_tmux_pane else None,
-    )
-    return flow.scan(
-        limit=args.limit,
-        stale_after_seconds=args.stale_after,
-        active_within_seconds=args.active_within,
-    )
-
-def _unknown_tmux_bell_hook(_session: str) -> None:
-    return None
 
 
 def _validate_execution_modes(args: argparse.Namespace) -> None:
@@ -374,11 +303,6 @@ def _selected_active_goal(args: argparse.Namespace) -> dict[str, Any] | None:
     return goals[0] if goals else None
 
 
-def _emit_terminal_bell() -> None:
-    sys.stderr.write("\a")
-    sys.stderr.flush()
-
-
 def _notify_integration_review_webhooks(
     args: argparse.Namespace,
     payload: dict[str, Any],
@@ -423,11 +347,6 @@ def _promote_llm_command_suggestion(payload: dict[str, Any]) -> None:
     if "rule_command_suggestion" not in payload:
         payload["rule_command_suggestion"] = payload.get("command_suggestion")
     payload["command_suggestion"] = action.get("command_suggestion")
-
-
-def _summarize_with_llm(report: Any) -> str:
-    provider = resolve_summary_provider_from_env(agent_name="supervisor")
-    return generate_llm_summary(report, provider)
 
 
 def _recent_context_results(args: argparse.Namespace, report: Any) -> list[dict[str, Any]]:
