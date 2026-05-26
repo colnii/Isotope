@@ -6,12 +6,12 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from ..goal_queue import (
+from ..planner.goal_queue import (
     archive_supervisor_goal,
     read_active_supervisor_goals,
     record_supervisor_goal_status,
 )
-from ..merge_dispatch import DEFAULT_TARGET_NAME as MERGE_DISPATCH_TARGET_NAME
+from ..merge.merge_dispatch import DEFAULT_TARGET_NAME as MERGE_DISPATCH_TARGET_NAME
 
 def sync_goal_lifecycle(
     args: argparse.Namespace,

@@ -7,7 +7,7 @@ import shlex
 from pathlib import Path
 from typing import Any
 
-from isotope.features.supervisor.tmux_discovery import discover_tmux_adopt_candidates
+from isotope.features.supervisor.adoption.tmux_discovery import discover_tmux_adopt_candidates
 
 
 def _default_api() -> Any:

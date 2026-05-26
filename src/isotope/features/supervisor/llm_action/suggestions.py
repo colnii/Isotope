@@ -5,9 +5,9 @@ from __future__ import annotations
 import shlex
 from typing import Any
 
-from .flow import CodexSupervisorReport
-from .llm_action_guards import is_terminal_done_session as _is_terminal_done_session
-from .merge_dispatch import DEFAULT_TARGET_NAME as MERGE_DISPATCH_TARGET_NAME
+from ..flow import CodexSupervisorReport
+from .guards import is_terminal_done_session as _is_terminal_done_session
+from ..merge.merge_dispatch import DEFAULT_TARGET_NAME as MERGE_DISPATCH_TARGET_NAME
 
 
 # ---------------------------------------------------------------------------

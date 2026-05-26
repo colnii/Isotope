@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from isotope.features.supervisor.llm_action_guards import (
+from isotope.features.supervisor.llm_action.guards import (
     delete_worktree_candidate,
     goal_requests_user_decision,
     has_context_check_for_goal,

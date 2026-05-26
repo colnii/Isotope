@@ -7,9 +7,9 @@ import shlex
 from pathlib import Path
 from typing import Any
 
-from isotope.features.supervisor.fanout import build_fanout_launch_plan
-from isotope.features.supervisor.goal_planner import plan_supervisor_goals
-from isotope.features.supervisor.goal_queue import (
+from isotope.features.supervisor.state.fanout import build_fanout_launch_plan
+from isotope.features.supervisor.planner.goal_planner import plan_supervisor_goals
+from isotope.features.supervisor.planner.goal_queue import (
     archive_supervisor_goal,
     build_supervisor_goal_queue_view,
     record_supervisor_goal,

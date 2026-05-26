@@ -5,13 +5,13 @@ from __future__ import annotations
 import shlex
 from typing import Any
 
-from .flow import CodexSupervisorReport
-from .llm_action_constants import (
+from ..flow import CodexSupervisorReport
+from .constants import (
     LLM_ASK_USER_CONTEXT_STATUSES,
     LLM_RESUME_PROMPT_KINDS,
     LLM_WORKER_PROFILES,
 )
-from .llm_action_guards import (
+from .guards import (
     ask_user_goal,
     ask_user_target,
     delete_worktree_candidate,
@@ -22,17 +22,17 @@ from .llm_action_guards import (
     has_running_managed_worker,
     suggested_target_name,
 )
-from .llm_action_payload import (
+from .payload import (
     optional_payload_string,
     required_payload_bool,
     required_payload_string,
 )
-from .llm_action_suggestions import (
+from .suggestions import (
     _call_capacity_decision,
     _command_suggestion_for_kind,
     _suggestion_string,
 )
-from .llm_action_workspace import (
+from .workspace import (
     _available_workspaces,
     _default_workspace,
     _has_managed_target,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .projector_state import RunState
+from .state import RunState
 
 
 class RunProjectorCheckpointValidationMixin:

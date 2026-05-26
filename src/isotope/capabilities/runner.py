@@ -11,7 +11,7 @@ from typing import Any, Mapping
 
 from .catalog import CapabilityCatalog
 from ..demo import run_demo
-from ..features.supervisor.context import request_project_context
+from ..features.supervisor.notifications.context import request_project_context
 from ..platform.schemas.input_contract import (
     contract_properties,
     contract_value_violation,

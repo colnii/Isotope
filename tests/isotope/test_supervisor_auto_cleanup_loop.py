@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from isotope.features.notifications.flow import NotificationFlow
-from isotope.features.supervisor.decision_requests import (
+from isotope.features.supervisor.planner.decision_requests import (
     read_active_decision_requests,
     record_decision_answer,
 )

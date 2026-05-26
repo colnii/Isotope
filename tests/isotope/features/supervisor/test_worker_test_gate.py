@@ -5,8 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from isotope.features.supervisor.integration_review import collect_integration_reviews
-from isotope.features.supervisor.worker_review import (
+from isotope.features.supervisor.workers.integration_review import collect_integration_reviews
+from isotope.features.supervisor.workers.review import (
     collect_worker_reviews,
     render_worker_review_plain,
 )

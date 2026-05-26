@@ -7,8 +7,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from .llm_action_constants import LARGE_RESUME_SOURCE_BYTES
-from .llm_action_guards import (
+from .constants import LARGE_RESUME_SOURCE_BYTES
+from .guards import (
     can_resume_session,
     has_managed_send_target,
     is_llm_candidate_target,

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from isotope.features.supervisor.commands.dashboard import dashboard_state_snapshot_meta
-from isotope.features.supervisor.commands.snapshot_display import (
+from isotope.features.supervisor.state.snapshot_display import (
     DEGRADED_SNAPSHOT_SCHEMA_LABEL,
     STATE_SNAPSHOT_SOURCE_LABEL,
 )

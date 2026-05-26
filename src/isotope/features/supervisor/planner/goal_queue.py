@@ -8,17 +8,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
-from ...agents.scheduler.goal_events import (
+from ....agents.scheduler.goal_events import (
     SupervisorGoal,
     active_supervisor_goals_from_events,
     latest_supervisor_goal_statuses_from_events,
 )
-from ...agents.scheduler.goal_queue import (
+from ....agents.scheduler.goal_queue import (
     GOAL_QUEUE_VIEW_GROUPS,
     build_supervisor_goal_queue_view,
 )
-from ...platform.state.goal_status import GOAL_STATUS_VALUES, SupervisorGoalStatus
-from .notifications import notify_goal_status_written
+from ....platform.state.goal_status import GOAL_STATUS_VALUES, SupervisorGoalStatus
+from ..notifications.notifications import notify_goal_status_written
 
 
 def default_goals_path(codex_home: Path | str) -> Path:

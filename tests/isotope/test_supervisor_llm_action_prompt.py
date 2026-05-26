@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from types import SimpleNamespace
 
-from isotope.features.supervisor.llm_action_prompt import build_llm_action_messages
+from isotope.features.supervisor.llm_action.prompt import build_llm_action_messages
 
 
 class _FakeRecommendation:

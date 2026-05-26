@@ -8,10 +8,10 @@ from typing import Any
 
 import pytest
 
-from isotope.features.supervisor.context import ContextItem, ContextResult
-from isotope.features.supervisor.context import append_context_result
-from isotope.features.supervisor.context import default_context_results_path
-from isotope.features.supervisor.lane_state import record_lane_prompt
+from isotope.features.supervisor.notifications.context import ContextItem, ContextResult
+from isotope.features.supervisor.notifications.context import append_context_result
+from isotope.features.supervisor.notifications.context import default_context_results_path
+from isotope.features.supervisor.state.lane_state import record_lane_prompt
 from isotope.features.supervisor.runner import EXECUTABLE_ADVICE_TEXT
 from isotope.features.supervisor.runner import main as supervisor_main
 

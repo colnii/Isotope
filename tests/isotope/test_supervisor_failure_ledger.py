@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from isotope.features.supervisor.failure_ledger import FailureLedger
+from isotope.features.supervisor.state.failure_ledger import FailureLedger
 
 
 def test_failure_ledger_records_required_fields_and_retry_count(tmp_path):

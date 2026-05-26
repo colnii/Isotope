@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import isotope.features.supervisor.commands.dashboard as command_dashboard
-import isotope.features.supervisor.commands.snapshot_display as command_snapshot_display
+import isotope.features.supervisor.state.snapshot_display as command_snapshot_display
 import isotope.features.supervisor.dashboard.presentation as dashboard_presentation
 import isotope.features.supervisor.state.snapshot_display as state_snapshot_display
 

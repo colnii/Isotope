@@ -6,7 +6,7 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from isotope.features.supervisor.lane_state import (
+from isotope.features.supervisor.state.lane_state import (
     DEFAULT_MAX_CONTINUE_COUNT,
     DEFAULT_PROMPT_COOLDOWN_SECONDS,
     continue_budget_state,

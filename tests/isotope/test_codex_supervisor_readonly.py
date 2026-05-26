@@ -24,11 +24,11 @@ from isotope.features.supervisor.flow import (
     CodexSupervisorReport,
     render_plain_report,
 )
-from isotope.features.supervisor.context import (
+from isotope.features.supervisor.notifications.context import (
     read_recent_context_results,
     request_project_context,
 )
-from isotope.features.supervisor.llm_summary import (
+from isotope.features.supervisor.llm_action.llm_summary import (
     PooledSummaryProvider,
     PoolEntry,
     build_llm_action_messages,
@@ -37,7 +37,7 @@ from isotope.features.supervisor.llm_summary import (
     generate_llm_summary,
     resolve_summary_provider_from_env,
 )
-from isotope.features.supervisor.merge_dispatch import DEFAULT_TARGET_NAME
+from isotope.features.supervisor.merge.merge_dispatch import DEFAULT_TARGET_NAME
 from isotope.features.supervisor.runner import (
     EXECUTABLE_ADVICE_TEXT,
     _advice_payload,
@@ -3953,7 +3953,7 @@ def test_codex_supervisor_runner_loop_marks_stale_decision_request_timeout(
         encoding="utf-8",
     )
     monkeypatch.setattr(
-        "isotope.features.supervisor.decision_requests._utc_now",
+        "isotope.features.supervisor.planner.decision_requests._utc_now",
         lambda: datetime(2026, 5, 20, 12, 2, tzinfo=timezone.utc),
     )
     monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
@@ -4073,7 +4073,7 @@ def test_codex_supervisor_runner_loop_ignores_answered_decision_request_timeout(
         encoding="utf-8",
     )
     monkeypatch.setattr(
-        "isotope.features.supervisor.decision_requests._utc_now",
+        "isotope.features.supervisor.planner.decision_requests._utc_now",
         lambda: datetime(2026, 5, 20, 12, 2, tzinfo=timezone.utc),
     )
     monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)

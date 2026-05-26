@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from ..events.events import CanonicalEvent
-from .projector_state import RunState, _ObservationDict
+from ...events.events import CanonicalEvent
+from .state import RunState, _ObservationDict
 
 
 class RunProjectorHandlersMixin:

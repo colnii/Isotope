@@ -8,8 +8,8 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Protocol
 
-from ...llm.pool import PoolEntry, resolve_pool_entries_from_env
-from ...llm.provider import OpenAICompatibleChatProvider, Transport
+from ....llm.pool import PoolEntry, resolve_pool_entries_from_env
+from ....llm.provider import OpenAICompatibleChatProvider, Transport
 
 DEFAULT_MAX_TOKENS = 2048
 DEFAULT_SUPERVISOR_LLM_POOL_PATH = (

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .flow import CodexSupervisorReport
-from .llm_action_guards import (
+from ..flow import CodexSupervisorReport
+from .guards import (
     is_terminal_done_session,
     suggested_target_name,
 )
@@ -66,7 +66,7 @@ def _requires_workspace_action_suggestion(cwd: str) -> bool:
 
 
 def _has_managed_target(report: CodexSupervisorReport, target_name: str) -> bool:
-    from .llm_action_guards import has_managed_send_target
+    from .guards import has_managed_send_target
 
     return any(
         has_managed_send_target(session) and session.managed_name == target_name

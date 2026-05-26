@@ -4,14 +4,14 @@ import json
 from datetime import UTC, datetime
 
 from isotope.features.notifications.flow import NotificationFlow
-from isotope.features.supervisor.decision_requests import record_decision_request
-from isotope.features.supervisor.goal_queue import (
+from isotope.features.supervisor.planner.decision_requests import record_decision_request
+from isotope.features.supervisor.planner.goal_queue import (
     record_supervisor_goal,
     record_supervisor_goal_status,
 )
-import isotope.features.supervisor.goal_queue as feature_goal_queue
-import isotope.features.supervisor.lane_state as feature_lane_state
-from isotope.features.supervisor.lane_state import record_lane_failure
+import isotope.features.supervisor.planner.goal_queue as feature_goal_queue
+import isotope.features.supervisor.state.lane_state as feature_lane_state
+from isotope.features.supervisor.state.lane_state import record_lane_failure
 from isotope.features.supervisor.runner import main as supervisor_main
 import isotope.features.supervisor.state.projection as feature_projection
 from isotope.platform.state.active_goal import SupervisorActiveGoal

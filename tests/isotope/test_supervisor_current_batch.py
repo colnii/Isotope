@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from isotope.features.supervisor import CurrentBatchView
-from isotope.features.supervisor.current_batch import build_current_batch_view
+from isotope.features.supervisor.state.current_batch import build_current_batch_view
 
 
 def test_current_batch_view_filters_done_stale_noise() -> None:

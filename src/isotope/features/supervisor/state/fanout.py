@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ...agents.scheduler.fanout import (
+from ....agents.scheduler.fanout import (
     ATTENTION_STATUSES,
     DEFAULT_FANOUT_LIMIT,
     FANOUT_STATUS_VALUES,

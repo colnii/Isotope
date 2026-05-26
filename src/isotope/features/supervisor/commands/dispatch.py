@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from typing import Any
 
-from ..compat_api import (
+from ..commands.compat_api import (
     _handle_capacity_command,
     _handle_cleanup_command,
     _handle_context_command,

@@ -6,8 +6,8 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from isotope.features.supervisor.integration_review import render_integration_review_plain
-from isotope.features.supervisor.merge_work_order import build_merge_work_order_prompt
+from isotope.features.supervisor.workers.integration_review import render_integration_review_plain
+from isotope.features.supervisor.planner.merge_work_order import build_merge_work_order_prompt
 
 
 def handle_integration_review_command(args: argparse.Namespace, *, api: Any) -> int:

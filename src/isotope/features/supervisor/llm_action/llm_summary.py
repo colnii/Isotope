@@ -9,18 +9,18 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from .flow import CodexSupervisorReport
-from .llm_action_guards import (
+from ..flow import CodexSupervisorReport
+from .guards import (
     has_any_llm_target as _has_any_llm_target,
     is_completed_session as _is_completed_session,
 )
-from .llm_action_payload import (
+from .payload import (
     extract_json_object as _extract_json_object,
     normalize_llm_action_payload as _normalize_llm_action_payload,
     optional_payload_string as _optional_payload_string,
     required_payload_string as _required_payload_string,
 )
-from .llm_action_prompt import (
+from .prompt import (
     LLM_ACTION_ALLOWED_KINDS,
     build_llm_action_messages,
 )
@@ -30,7 +30,7 @@ from .llm_pool import (
     SummaryProvider,
     resolve_summary_provider_from_env,
 )
-from .llm_action_context_payload import (
+from .context_payload import (
     _active_goal_payload,
     _blocked_context_priority,
     _candidate_target_payloads,
@@ -38,7 +38,7 @@ from .llm_action_context_payload import (
     _context_request_history,
     _worker_review_context_payload,
 )
-from .llm_action_kind_handlers import (
+from .kind_handlers import (
     handle_ask_user,
     handle_call_capacity,
     handle_delete_worktree,
@@ -47,7 +47,7 @@ from .llm_action_kind_handlers import (
     handle_request_context,
     handle_resume_session,
 )
-from .llm_action_suggestions import (
+from .suggestions import (
     _active_goal_scoped_command_suggestions,
     _command_suggestion_for_kind,
     _command_targets_name,
@@ -55,7 +55,7 @@ from .llm_action_suggestions import (
     _running_worker_planner_priority,
     _running_worker_scoped_command_suggestions,
 )
-from .llm_action_workspace import (
+from .workspace import (
     _available_workspaces,
 )
 

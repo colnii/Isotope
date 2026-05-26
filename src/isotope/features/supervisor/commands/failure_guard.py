@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from isotope.features.supervisor.failure_ledger import (
+from isotope.features.supervisor.state.failure_ledger import (
     FailureLedger,
     default_failure_ledger_path,
 )

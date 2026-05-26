@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from isotope.features.notifications.flow import NotificationFlow
-from isotope.features.supervisor.current_batch import build_current_batch_view
+from isotope.features.supervisor.state.current_batch import build_current_batch_view
 from isotope.features.supervisor.state.snapshot_display import (
     STATE_SNAPSHOT_SOURCE_LABEL,
     state_snapshot_schema_label,

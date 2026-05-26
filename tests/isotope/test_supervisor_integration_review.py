@@ -9,7 +9,7 @@ from isotope.features.supervisor.runner import main as supervisor_main
 
 
 def test_supervisor_integration_review_groups_ready_and_already_integrated(tmp_path):
-    from isotope.features.supervisor.integration_review import (
+    from isotope.features.supervisor.workers.integration_review import (
         collect_integration_reviews,
         render_integration_review_plain,
     )
@@ -92,7 +92,7 @@ def test_supervisor_integration_review_groups_ready_and_already_integrated(tmp_p
 
 
 def test_supervisor_integration_review_can_skip_candidate_validation(tmp_path):
-    from isotope.features.supervisor.integration_review import collect_integration_reviews
+    from isotope.features.supervisor.workers.integration_review import collect_integration_reviews
 
     codex_home = tmp_path / ".codex"
     cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "ready-fast-scan"
@@ -132,7 +132,7 @@ def test_supervisor_integration_review_can_skip_candidate_validation(tmp_path):
 
 
 def test_supervisor_integration_review_blocks_ready_worker_when_tests_fail(tmp_path):
-    from isotope.features.supervisor.integration_review import (
+    from isotope.features.supervisor.workers.integration_review import (
         collect_integration_reviews,
         render_integration_review_plain,
     )
@@ -190,7 +190,7 @@ def test_supervisor_integration_review_blocks_ready_worker_when_tests_fail(tmp_p
 
 
 def test_supervisor_integration_review_uses_make_lint_when_available(tmp_path):
-    from isotope.features.supervisor.integration_review import collect_integration_reviews
+    from isotope.features.supervisor.workers.integration_review import collect_integration_reviews
 
     codex_home = tmp_path / ".codex"
     cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "ready-make-lint"
@@ -229,7 +229,7 @@ def test_supervisor_integration_review_uses_make_lint_when_available(tmp_path):
 
 
 def test_supervisor_integration_review_treats_cherry_picked_worker_as_integrated(tmp_path):
-    from isotope.features.supervisor.integration_review import collect_integration_reviews
+    from isotope.features.supervisor.workers.integration_review import collect_integration_reviews
 
     codex_home = tmp_path / ".codex"
     picked_cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "picked-12345678"
@@ -268,7 +268,7 @@ def test_supervisor_integration_review_treats_cherry_picked_worker_as_integrated
 
 
 def test_supervisor_integration_review_treats_noop_merge_tree_as_integrated(tmp_path):
-    from isotope.features.supervisor.integration_review import collect_integration_reviews
+    from isotope.features.supervisor.workers.integration_review import collect_integration_reviews
 
     codex_home = tmp_path / ".codex"
     absorbed_cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "absorbed-12345678"
@@ -316,7 +316,7 @@ def test_supervisor_integration_review_treats_noop_merge_tree_as_integrated(tmp_
 
 
 def test_supervisor_integration_review_flags_dirty_and_unfinished_workers(tmp_path):
-    from isotope.features.supervisor.integration_review import collect_integration_reviews
+    from isotope.features.supervisor.workers.integration_review import collect_integration_reviews
 
     codex_home = tmp_path / ".codex"
     dirty_cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "dirty-12345678"
@@ -368,7 +368,7 @@ def test_supervisor_integration_review_flags_dirty_and_unfinished_workers(tmp_pa
 
 
 def test_supervisor_integration_review_groups_merge_workers_separately(tmp_path):
-    from isotope.features.supervisor.integration_review import (
+    from isotope.features.supervisor.workers.integration_review import (
         collect_integration_reviews,
         render_integration_review_plain,
     )
@@ -436,7 +436,7 @@ def test_supervisor_integration_review_groups_merge_workers_separately(tmp_path)
 
 
 def test_supervisor_integration_review_defaults_to_done_unarchived_workers(tmp_path):
-    from isotope.features.supervisor.integration_review import collect_integration_reviews
+    from isotope.features.supervisor.workers.integration_review import collect_integration_reviews
 
     codex_home = tmp_path / ".codex"
     done_cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "done-12345678"
@@ -484,7 +484,7 @@ def test_supervisor_integration_review_defaults_to_done_unarchived_workers(tmp_p
 
 
 def test_supervisor_integration_review_hides_missing_worktrees_by_default(tmp_path):
-    from isotope.features.supervisor.integration_review import collect_integration_reviews
+    from isotope.features.supervisor.workers.integration_review import collect_integration_reviews
 
     codex_home = tmp_path / ".codex"
     missing_cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "missing-12345678"
@@ -504,7 +504,7 @@ def test_supervisor_integration_review_hides_missing_worktrees_by_default(tmp_pa
 
 
 def test_supervisor_integration_review_can_include_missing_worktrees(tmp_path):
-    from isotope.features.supervisor.integration_review import collect_integration_reviews
+    from isotope.features.supervisor.workers.integration_review import collect_integration_reviews
 
     codex_home = tmp_path / ".codex"
     missing_cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "missing-12345678"
@@ -527,7 +527,7 @@ def test_supervisor_integration_review_can_include_missing_worktrees(tmp_path):
 
 
 def test_supervisor_integration_review_keeps_missing_merge_worker_out_of_active_groups(tmp_path):
-    from isotope.features.supervisor.integration_review import collect_integration_reviews
+    from isotope.features.supervisor.workers.integration_review import collect_integration_reviews
 
     codex_home = tmp_path / ".codex"
     missing_cwd = (
@@ -558,7 +558,7 @@ def test_supervisor_integration_review_keeps_missing_merge_worker_out_of_active_
 
 
 def test_supervisor_integration_review_flags_merge_conflict_risk(tmp_path):
-    from isotope.features.supervisor.integration_review import collect_integration_reviews
+    from isotope.features.supervisor.workers.integration_review import collect_integration_reviews
 
     codex_home = tmp_path / ".codex"
     conflict_cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "conflict-12345678"
@@ -605,7 +605,7 @@ def test_supervisor_integration_review_cli_json(tmp_path, capsys, monkeypatch):
     cwd.mkdir(parents=True)
     _write_done_record(codex_home, record_id="managed-ready", name="ready", cwd=cwd)
     monkeypatch.setattr(
-        "isotope.features.supervisor.integration_review.subprocess.run",
+        "isotope.features.supervisor.workers.integration_review.subprocess.run",
         _fake_git(
             {
                 cwd: {
@@ -686,7 +686,7 @@ def test_supervisor_integration_review_cli_posts_webhook_for_passing_done_worker
 
     monkeypatch.setattr(runner, "collect_integration_reviews", fake_collect)
     monkeypatch.setattr(
-        "isotope.features.supervisor.notifications.urllib.request.urlopen",
+        "isotope.features.supervisor.notifications.notifications.urllib.request.urlopen",
         fake_urlopen,
     )
 

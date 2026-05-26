@@ -6,7 +6,7 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
-from .merge_work_order import build_merge_work_order_prompt
+from ..planner.merge_work_order import build_merge_work_order_prompt
 
 DEFAULT_TARGET_NAME = "supervisor-merge-dispatch"
 REVIEW_NOTE = "merge dispatch only builds a controlled launch spec; runner launch gates still apply."

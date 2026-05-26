@@ -14,8 +14,8 @@ from isotope.capabilities.runner import CapabilityRunner
 from ..research.flow import ResearchFlow
 from ..research.providers import FakeResearchProvider
 from ..research.runner import print_artifacts_plain as _print_research_artifacts_plain
-from .context import read_recent_context_results, request_project_context
-from .decision_requests import (
+from .notifications.context import read_recent_context_results, request_project_context
+from .planner.decision_requests import (
     DEFAULT_DECISION_TIMEOUT_SECONDS,
     archive_decision_request,
     mark_stale_decision_request_timeouts,
@@ -33,11 +33,11 @@ from .flow import (
     _tmux_capture_pane,
     render_plain_report,
 )
-from .fanout import (
+from .state.fanout import (
     DEFAULT_FANOUT_LIMIT,
     build_fanout_launch_plan,
 )
-from .goal_queue import (
+from .planner.goal_queue import (
     GOAL_STATUS_VALUES,
     archive_supervisor_goal,
     build_supervisor_goal_queue_view,
@@ -50,12 +50,12 @@ from ...agents.scheduler.goal_queue import (
     active_goal_is_deferred,
     filter_replenishment_counted_goals,
 )
-from .goal_planner import plan_supervisor_goals
-from .integration_review import (
+from .planner.goal_planner import plan_supervisor_goals
+from .workers.integration_review import (
     collect_integration_reviews,
     review_managed_record_integration,
 )
-from .lane_state import (
+from .state.lane_state import (
     DEFAULT_MAX_CONTINUE_COUNT,
     DEFAULT_PROMPT_COOLDOWN_SECONDS,
     default_lane_state_path,
@@ -67,18 +67,18 @@ from .lane_state import (
     record_lane_prompt,
     record_worker_retry,
 )
-from .llm_summary import (
+from .llm_action.llm_summary import (
     generate_llm_action_decision,
     generate_llm_summary,
     resolve_summary_provider_from_env,
 )
-from .merge_dispatch import (
+from .merge.merge_dispatch import (
     DEFAULT_TARGET_NAME as MERGE_DISPATCH_TARGET_NAME,
     merge_dispatch_already_running_action as _merge_dispatch_already_running_action,
     merge_dispatch_already_running_executed as _merge_dispatch_already_running_executed,
     merge_dispatch_planned_executed as _merge_dispatch_planned_executed,
 )
-from .merge_promotion import (
+from .merge.merge_promotion import (
     check_main_promotion_preconditions as _check_main_promotion_preconditions,
     ci_run_is_terminal as _ci_run_is_terminal,
     ci_run_succeeded as _ci_run_succeeded,
@@ -89,11 +89,11 @@ from .merge_promotion import (
     run_checked as _run_checked,
     view_ci_run as _view_ci_run,
 )
-from .merge_repair import (
+from .merge.merge_repair import (
     blocked_merge_worker_cwd as _blocked_merge_worker_cwd,
     merge_dispatch_conflict_repair_prompt as _merge_dispatch_conflict_repair_prompt,
 )
-from .notifications import (
+from .notifications.notifications import (
     notify_merge_worker_auto_archived,
     notify_worker_integration_review_passed,
 )
@@ -109,15 +109,15 @@ from .registry import (
     send_to_managed_codex,
 )
 from .state.projection import build_supervisor_state_snapshot
-from .worker_review import collect_worker_reviews, render_worker_review_plain
-from .work_order_builder import build_launch_work_order_prompt
-from .compat_api import *  # noqa: F403 - legacy runner helper re-exports
+from .workers.review import collect_worker_reviews, render_worker_review_plain
+from .planner.work_order import build_launch_work_order_prompt
+from .commands.compat_api import *  # noqa: F403 - legacy runner helper re-exports
 from .commands.dispatch import (
     COMMAND_HANDLERS as _COMMAND_HANDLERS,
     handle_research_command as _handle_research_command,
     run_cli_impl as _run_cli_impl,
 )
-from .constants import *  # noqa: F403 - legacy runner constant re-exports
+from .state.constants import *  # noqa: F403 - legacy runner constant re-exports
 from .supervise.fingerprint import (
     attention_bell_fingerprint as _attention_bell_fingerprint,
     report_fingerprint as _report_fingerprint,

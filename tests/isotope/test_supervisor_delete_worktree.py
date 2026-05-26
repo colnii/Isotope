@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from isotope.features.supervisor.flow import CodexSupervisorReport
-from isotope.features.supervisor.llm_summary import generate_llm_action_decision
+from isotope.features.supervisor.llm_action.llm_summary import generate_llm_action_decision
 from isotope.features.supervisor.runner import (
     _delete_worktree_candidate_payloads,
     _execute_llm_action,
@@ -171,7 +171,7 @@ def test_execute_delete_worktree_removes_archived_integrated_supervisor_worktree
 
     monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
     monkeypatch.setattr(
-        "isotope.features.supervisor.integration_review.subprocess.run",
+        "isotope.features.supervisor.workers.integration_review.subprocess.run",
         fake_run,
     )
 
@@ -278,7 +278,7 @@ def test_delete_worktree_candidates_include_archived_integrated_merge_worker(
 
     monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
     monkeypatch.setattr(
-        "isotope.features.supervisor.integration_review.subprocess.run",
+        "isotope.features.supervisor.workers.integration_review.subprocess.run",
         fake_run,
     )
 

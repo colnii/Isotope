@@ -17,8 +17,8 @@ from isotope.integrations.codex.session_reader import (
     read_codex_state_threads,
 )
 
-from .bell_events import default_bell_events_path, read_latest_bell_events
-from .lane_state import read_lane_states
+from .notifications.bell_events import default_bell_events_path, read_latest_bell_events
+from .state.lane_state import read_lane_states
 from .registry import ManagedCodexRecord, default_registry_path, read_managed_records
 
 

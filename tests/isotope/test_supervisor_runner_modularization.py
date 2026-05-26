@@ -1198,7 +1198,7 @@ def test_failure_guard_records_failure_with_lane_and_goal(tmp_path):
 
 
 def test_supervisor_runner_uses_compat_api_for_legacy_helpers():
-    compat_module = importlib.import_module("isotope.features.supervisor.compat_api")
+    compat_module = importlib.import_module("isotope.features.supervisor.commands.compat_api")
 
     assert runner._handle_dashboard_command is compat_module._handle_dashboard_command
     assert runner._execute_llm_action is compat_module._execute_llm_action

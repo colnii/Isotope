@@ -6,7 +6,7 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from isotope.features.supervisor.merge_dispatch import build_merge_dispatch_payload
+from isotope.features.supervisor.merge.merge_dispatch import build_merge_dispatch_payload
 
 
 def integration_merge_dispatch_payload(

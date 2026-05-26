@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from isotope.features.supervisor.llm_action_payload import (
+from isotope.features.supervisor.llm_action.payload import (
     extract_json_object,
     normalize_llm_action_payload,
     optional_payload_string,

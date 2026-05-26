@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 
-from isotope.features.supervisor.goal_queue import read_active_supervisor_goals
+from isotope.features.supervisor.planner.goal_queue import read_active_supervisor_goals
 from isotope.features.supervisor.runner import main as supervisor_main
 
 

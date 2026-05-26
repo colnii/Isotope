@@ -13,8 +13,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator, Mapping
 
-from .decision_requests import DEFAULT_DECISION_TIMEOUT_SECONDS
-from .fanout import DEFAULT_FANOUT_LIMIT
+from .planner.decision_requests import DEFAULT_DECISION_TIMEOUT_SECONDS
+from .state.fanout import DEFAULT_FANOUT_LIMIT
 
 RUNNING_WORKER_STATUSES = {"launched", "resumed", "running", "working"}
 

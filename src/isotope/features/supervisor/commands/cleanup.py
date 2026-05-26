@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from isotope.features.notifications.flow import NotificationFlow
-from isotope.features.supervisor.goal_queue import archive_supervisor_goal
+from isotope.features.supervisor.planner.goal_queue import archive_supervisor_goal
 from isotope.features.supervisor.registry import archive_managed_codex
 
 

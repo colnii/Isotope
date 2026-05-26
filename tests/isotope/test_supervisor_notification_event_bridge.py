@@ -7,12 +7,12 @@ from typing import Any
 import pytest
 
 from isotope.features.notifications.flow import NotificationFlow
-from isotope.features.supervisor.decision_requests import record_decision_request
-from isotope.features.supervisor.goal_queue import (
+from isotope.features.supervisor.planner.decision_requests import record_decision_request
+from isotope.features.supervisor.planner.goal_queue import (
     record_supervisor_goal,
     record_supervisor_goal_status,
 )
-from isotope.features.supervisor.decision_requests import record_decision_answer
+from isotope.features.supervisor.planner.decision_requests import record_decision_answer
 
 
 ALLOWED_SOURCE_REF_KEYS = {
@@ -271,7 +271,7 @@ def test_goal_status_webhook_posts_low_sensitive_signed_payload(tmp_path, monkey
         return Response()
 
     monkeypatch.setattr(
-        "isotope.features.supervisor.notifications.urllib.request.urlopen",
+        "isotope.features.supervisor.notifications.notifications.urllib.request.urlopen",
         fake_urlopen,
     )
     goal = record_supervisor_goal(
@@ -328,7 +328,7 @@ def test_decision_answer_webhook_posts_without_answer_text(tmp_path, monkeypatch
         return Response()
 
     monkeypatch.setattr(
-        "isotope.features.supervisor.notifications.urllib.request.urlopen",
+        "isotope.features.supervisor.notifications.notifications.urllib.request.urlopen",
         fake_urlopen,
     )
     request = record_decision_request(
@@ -374,7 +374,7 @@ def test_webhook_failure_warns_without_breaking_goal_ledger(tmp_path, monkeypatc
         raise OSError("network down")
 
     monkeypatch.setattr(
-        "isotope.features.supervisor.notifications.urllib.request.urlopen",
+        "isotope.features.supervisor.notifications.notifications.urllib.request.urlopen",
         fake_urlopen,
     )
     goal = record_supervisor_goal(

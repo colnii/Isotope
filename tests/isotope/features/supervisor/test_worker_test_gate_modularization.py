@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import isotope.features.supervisor.worker_test_gate as supervisor_worker_test_gate
+import isotope.features.supervisor.workers.test_gate as supervisor_worker_test_gate
 import isotope.features.supervisor.workers.test_gate as worker_test_gate
 
 

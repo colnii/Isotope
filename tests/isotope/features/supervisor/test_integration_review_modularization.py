@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import isotope.features.supervisor.integration_review as supervisor_integration_review
+import isotope.features.supervisor.workers.integration_review as supervisor_integration_review
 import isotope.features.supervisor.workers.integration_review as worker_integration_review
 
 

@@ -1,12 +1,12 @@
 import json
 from pathlib import Path
 
-from isotope.features.supervisor.goal_planner import (
+from isotope.features.supervisor.planner.goal_planner import (
     build_goal_planning_messages,
     parse_goal_candidates,
     parse_goal_planning_result,
 )
-from isotope.features.supervisor.goal_queue import read_active_supervisor_goals
+from isotope.features.supervisor.planner.goal_queue import read_active_supervisor_goals
 from isotope.features.supervisor.runner import main as supervisor_main
 
 

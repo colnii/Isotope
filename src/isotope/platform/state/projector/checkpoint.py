@@ -8,18 +8,18 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 from typing import Any, Iterable
 
-from ..events.events import EVENT_ENVELOPE_VERSION, CanonicalEvent
-from .projector_checkpoint_validation import RunProjectorCheckpointValidationMixin
-from .projector_state import RunState
+from ...events.events import EVENT_ENVELOPE_VERSION, CanonicalEvent
+from .checkpoint_validation import RunProjectorCheckpointValidationMixin
+from .state import RunState
 
 
 PROJECTOR_VERSION = "run_projector@v1"
 
 
 def _facade_datetime():
-    from . import projector
+    from datetime import datetime as _dt
 
-    return getattr(projector, "datetime", datetime)
+    return _dt
 
 
 class RunProjectorCheckpointMixin(RunProjectorCheckpointValidationMixin):

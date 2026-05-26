@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from isotope.features.supervisor.merge_dispatch import (
+from isotope.features.supervisor.merge.merge_dispatch import (
     build_merge_dispatch_launch_spec,
 )
 

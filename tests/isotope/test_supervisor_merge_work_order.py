@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from isotope.features.supervisor.merge_work_order import build_merge_work_order_prompt
+from isotope.features.supervisor.planner.merge_work_order import build_merge_work_order_prompt
 from isotope.features.supervisor.runner import main as supervisor_main
 
 

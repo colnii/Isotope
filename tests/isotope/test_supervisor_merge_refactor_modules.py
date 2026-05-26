@@ -4,14 +4,14 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from isotope.features.supervisor.merge_dispatch import (
+from isotope.features.supervisor.merge.merge_dispatch import (
     build_merge_dispatch_payload,
 )
-from isotope.features.supervisor.merge_promotion import (
+from isotope.features.supervisor.merge.merge_promotion import (
     check_main_promotion_preconditions,
     merge_promotion_decision_intent,
 )
-from isotope.features.supervisor.merge_repair import (
+from isotope.features.supervisor.merge.merge_repair import (
     blocked_merge_worker_cwd,
     merge_dispatch_conflict_repair_prompt,
 )

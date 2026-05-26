@@ -4,8 +4,8 @@ import json
 import sys
 
 from isotope.features.notifications.flow import NotificationFlow
-from isotope.features.supervisor.goal_queue import record_supervisor_goal
-from isotope.features.supervisor.merge_dispatch import DEFAULT_TARGET_NAME
+from isotope.features.supervisor.planner.goal_queue import record_supervisor_goal
+from isotope.features.supervisor.merge.merge_dispatch import DEFAULT_TARGET_NAME
 from isotope.features.supervisor.runner import main as supervisor_main
 
 

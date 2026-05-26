@@ -18,7 +18,7 @@ from isotope.integrations.codex.cli import (
     build_supervisor_tmux_launch_command,
 )
 
-from .bell_events import install_tmux_bell_hook
+from .notifications.bell_events import install_tmux_bell_hook
 
 ARCHIVED_MANAGED_STATUS = "archived"
 

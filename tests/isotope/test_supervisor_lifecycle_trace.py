@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from isotope.features.supervisor.decision_requests import record_decision_request
-from isotope.features.supervisor.goal_queue import record_supervisor_goal
+from isotope.features.supervisor.planner.decision_requests import record_decision_request
+from isotope.features.supervisor.planner.goal_queue import record_supervisor_goal
 from isotope.features.supervisor.registry import (
     ManagedCodexRecord,
     append_managed_record,

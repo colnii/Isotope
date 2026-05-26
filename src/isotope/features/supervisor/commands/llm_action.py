@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from typing import Any
 
-from isotope.features.supervisor.llm_summary import _command_targets_name
+from isotope.features.supervisor.llm_action.llm_summary import _command_targets_name
 
 
 def execute_llm_action(

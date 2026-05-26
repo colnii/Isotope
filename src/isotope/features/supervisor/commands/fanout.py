@@ -6,7 +6,7 @@ import argparse
 from typing import Any
 
 from isotope.agents.scheduler.goal_queue import filter_fanout_candidate_goals
-from isotope.features.supervisor.fanout import (
+from isotope.features.supervisor.state.fanout import (
     build_active_goals_fanout_launch_plan,
     build_fanout_status_summary,
     build_paused_active_goals_fanout_plan,

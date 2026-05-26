@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from .flow import CodexSupervisorReport
+from ..flow import CodexSupervisorReport
 
 LLM_ACTION_ALLOWED_KINDS = (
     "monitor",

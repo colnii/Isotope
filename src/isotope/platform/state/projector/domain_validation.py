@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..events.events import CanonicalEvent
+from ...events.events import CanonicalEvent
 
 
 class RunProjectorDomainValidationMixin:

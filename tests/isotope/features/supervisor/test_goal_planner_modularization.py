@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import isotope.features.supervisor.goal_planner as supervisor_goal_planner
+import isotope.features.supervisor.planner.goal_planner as supervisor_goal_planner
 import isotope.features.supervisor.planner.goal_planner as planner_goal_planner
 
 

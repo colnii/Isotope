@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from isotope.features.supervisor.fanout import (
+from isotope.features.supervisor.state.fanout import (
     build_fanout_launch_plan,
     build_fanout_status_summary,
 )

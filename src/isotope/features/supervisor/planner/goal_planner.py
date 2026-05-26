@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
-from ..goal_queue import record_supervisor_goal
+from .goal_queue import record_supervisor_goal
 
 PLANNING_DOCS = (
     "docs/current/status.md",

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..constants import EXECUTABLE_ADVICE_KINDS
+from ..state.constants import EXECUTABLE_ADVICE_KINDS
 
 def attention_bell_fingerprint(report: Any) -> tuple[object, ...] | None:
     recommendation = report.recommendation

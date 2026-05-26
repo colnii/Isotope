@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from isotope.features.supervisor.runner import main as supervisor_main
-from isotope.features.supervisor.worker_review import (
+from isotope.features.supervisor.workers.review import (
     collect_worker_reviews,
     render_worker_review_plain,
 )

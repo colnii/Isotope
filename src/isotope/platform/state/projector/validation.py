@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from .projector_domain_validation import RunProjectorDomainValidationMixin
-from .projector_lifecycle_validation import RunProjectorLifecycleValidationMixin
-from .projector_payload_validation import RunProjectorPayloadValidationMixin
+from .domain_validation import RunProjectorDomainValidationMixin
+from .lifecycle_validation import RunProjectorLifecycleValidationMixin
+from .payload_validation import RunProjectorPayloadValidationMixin
 
 
 class RunProjectorValidationMixin(

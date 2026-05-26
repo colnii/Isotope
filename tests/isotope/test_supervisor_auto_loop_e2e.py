@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from isotope.features.supervisor.goal_queue import (
+from isotope.features.supervisor.planner.goal_queue import (
     record_supervisor_goal,
     record_supervisor_goal_status,
 )

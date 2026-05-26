@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..events.event_schema import DEFAULT_EVENT_SCHEMA_REGISTRY
-from ..events.events import CanonicalEvent
+from ...events.event_schema import DEFAULT_EVENT_SCHEMA_REGISTRY
+from ...events.events import CanonicalEvent
 
 
 class RunProjectorPayloadValidationMixin:
