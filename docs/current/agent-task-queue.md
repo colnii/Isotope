@@ -245,7 +245,8 @@
   / `research.report`，usage 记录在 provenance，artifact 未泄露 key。
 - Research memory promotion 接入片已完成：`isotope-research promote` 与
   `isotope-supervisor research promote` 复用 `memory.promotion` proposal boundary，
-  只从 `research.report` artifact metadata 生成 `write_memory` proposal，不读取
+  从 `research.report` artifact metadata 与结构化 report quality gate 生成
+  `write_memory` proposal；低质量 report 返回 review-required reasons，不读取
   raw transcript、不写 memory。
 - Codex delegated provider 保持可信 fallback，Tavily 作为普通 API provider 候选，
   SearXNG 保持可选 self-hosted / fallback，browser/crawler 只做最低层 fetch

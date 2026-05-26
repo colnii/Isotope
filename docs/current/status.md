@@ -135,7 +135,8 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
     diagnostics（诊断）供 `inspect` 查看。当前 durable ingestion（持久摄取）
     路径是 `search/fetch -> research.* artifact / provenance -> retrieval ->
     optional memory promotion`；`promote` 只允许 `research.report` artifact metadata
-    生成 `write_memory` proposal，不写 memory、不读取 raw transcript。Codex delegated
+    与结构化 report quality gate 生成 `write_memory` proposal，不写 memory、不读取
+    raw transcript；低质量 report 会返回 review-required reasons。Codex delegated
     provider 已有小预算 retry；SearXNG / browser crawler 的真实接入仍是后续
     provider layering（提供方分层）工作，不要另造绕开 artifact/provenance 的搜索系统。
 12. 代码结构继续以 `src/isotope/` 为 Python 主包，不新增 `packages/`、

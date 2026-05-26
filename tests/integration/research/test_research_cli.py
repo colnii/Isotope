@@ -263,6 +263,8 @@ def test_research_cli_promotes_report_artifact_as_memory_proposal(tmp_path):
     assert proposal["payload"]["source_refs"] == [report_ref]
     assert proposal["payload"]["content"]["source_type"] == "artifact"
     assert proposal["payload"]["content"]["artifact_type"] == "research.report"
+    assert payload["quality_gate"]["status"] == "promotable"
+    assert payload["quality_gate"]["source_backed_claim_count"] == 1
     assert "raw research provider output" not in json.dumps(proposal)
 
 
@@ -299,6 +301,60 @@ def test_research_cli_promote_rejects_raw_transcript_artifact(tmp_path):
     assert result.returncode == 2
     payload = json.loads(result.stdout)
     assert payload["error"]["message"] == "only research.report artifacts can be promoted"
+
+
+def test_research_cli_promote_rejects_low_quality_report(tmp_path):
+    store = ArtifactStore(tmp_path)
+    artifact = store.create_artifact(
+        "run_001",
+        execution_id="exec_low_quality",
+        artifact_type="research.report",
+        summary="Low quality report.",
+        content=json.dumps(
+            {
+                "status": "ok",
+                "evidence_status": "incomplete_evidence",
+                "sources": [],
+                "report": {
+                    "summary": "Low quality report.",
+                    "claims": [
+                        {
+                            "text": "Uncited claim.",
+                            "source_ids": [],
+                            "confidence": "low",
+                        }
+                    ],
+                    "limitations": [],
+                    "next_queries": [],
+                },
+            }
+        ),
+    )
+
+    result = _run_cli(
+        "promote",
+        "--root",
+        str(tmp_path),
+        "--run-id",
+        "run_001",
+        "--artifact-id",
+        artifact.artifact_id,
+        "--agent-id",
+        "agent_research",
+        "--thread-id",
+        "thread_research",
+        "--json",
+    )
+
+    assert result.returncode == 2
+    payload = json.loads(result.stdout)
+    assert payload["error"]["message"] == "research report quality gate failed"
+    assert payload["error"]["details"]["status"] == "review_required"
+    assert payload["error"]["details"]["reasons"] == [
+        "evidence_status_not_complete",
+        "no_sources",
+        "uncited_claims",
+    ]
 
 
 def test_research_cli_inspect_prints_research_artifact_plain(tmp_path):

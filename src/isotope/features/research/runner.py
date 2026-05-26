@@ -16,6 +16,13 @@ from .providers import (
     list_research_provider_descriptors,
     research_provider_choices,
 )
+from .quality import research_quality_summary
+
+
+class ResearchQualityGateError(ValueError):
+    def __init__(self, message: str, *, details: dict[str, Any]):
+        super().__init__(message)
+        self.details = details
 
 
 def _print_json(payload: dict[str, Any]) -> None:
@@ -195,6 +202,9 @@ def main(argv: list[str] | None = None) -> int:
             "status": "error",
             "error": {"code": "research_runner_error", "message": str(exc)},
         }
+        details = getattr(exc, "details", None)
+        if isinstance(details, dict):
+            error["error"]["details"] = details
         if getattr(args, "json", False):
             _print_json(error)
         else:
@@ -254,6 +264,15 @@ def build_research_memory_promotion_payload(
     metadata = store.get_metadata(ref, include_provenance=True)
     if metadata["artifact_type"] != "research.report":
         raise ValueError("only research.report artifacts can be promoted")
+    report_payload = _decode_json_content(store.get_content(ref))
+    if not isinstance(report_payload, dict):
+        raise ValueError("research.report content must be a JSON object")
+    quality_gate = research_quality_summary(report_payload)
+    if quality_gate["status"] != "promotable":
+        raise ResearchQualityGateError(
+            "research report quality gate failed",
+            details=quality_gate,
+        )
     artifact = {
         **metadata,
         "ref": ref.to_dict(),
@@ -276,6 +295,7 @@ def build_research_memory_promotion_payload(
     return {
         "status": "ok",
         "artifact": artifact,
+        "quality_gate": quality_gate,
         "proposal": _proposal_to_dict(proposal),
         "note": "proposal only; memory is not written",
     }
@@ -390,6 +410,7 @@ def print_research_promotion_plain(payload: dict[str, Any]) -> None:
     print(f"artifact: {artifact['artifact_type']} {ref['artifact_id']}")
     print(f"proposal: {proposal['proposal_id']}")
     print(f"action_type: {proposal['action_type']}")
+    print(f"quality_gate: {payload['quality_gate']['status']}")
     print(f"summary: {proposal['payload']['summary']}")
     print("memory_write: proposal_only")
 

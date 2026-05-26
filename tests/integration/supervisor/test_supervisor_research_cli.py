@@ -152,6 +152,7 @@ def test_supervisor_research_promote_proxies_research_memory_promotion(tmp_path)
     payload = json.loads(result.stdout)
     assert payload["status"] == "ok"
     assert payload["artifact"]["artifact_type"] == "research.report"
+    assert payload["quality_gate"]["status"] == "promotable"
     assert payload["proposal"]["action_type"] == "write_memory"
     assert payload["proposal"]["agent_id"] == "agent_supervisor"
     assert payload["proposal"]["payload"]["source_refs"] == [report_ref]
