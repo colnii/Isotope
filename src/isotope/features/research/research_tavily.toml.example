@@ -1,0 +1,10 @@
+# Tavily research provider key -- EXAMPLE FILE
+#
+# Copy this file to research_tavily.toml and fill in your own value.
+# The real research_tavily.toml is git-ignored and never committed.
+#
+# api_key may be:
+#   "env:NAME" = read from environment variable $NAME
+#   plain text  = use directly as the Tavily API key
+
+api_key = "env:TAVILY_API_KEY"

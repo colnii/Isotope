@@ -441,6 +441,10 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         help="Tavily API key for --provider tavily.",
     )
     research_parser.add_argument(
+        "--tavily-config",
+        help="Private Tavily TOML config path. Defaults to research_tavily.toml.",
+    )
+    research_parser.add_argument(
         "--tavily-enable-network",
         action="store_true",
         help="Allow --provider tavily to make a real Tavily API request.",

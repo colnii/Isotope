@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import tomllib
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,6 +13,8 @@ from typing import Any, Callable, Protocol
 
 from ...integrations.codex.cli import CodexCliBackend, CodexCliBackendConfig
 from ...integrations.codex.task import CodexTaskConfig, CodexTaskRequest
+
+DEFAULT_TAVILY_CONFIG_PATH = Path(__file__).resolve().parent / "research_tavily.toml"
 
 
 class ResearchProvider(Protocol):
@@ -134,9 +138,25 @@ def research_provider_choices() -> tuple[str, ...]:
 
 
 def _tavily_api_key_from_env() -> str | None:
-    import os
-
     return os.environ.get("TAVILY_API_KEY")
+
+
+def tavily_api_key_from_config(
+    config_path: str | Path | None = None,
+) -> str | None:
+    path = Path(config_path) if config_path is not None else DEFAULT_TAVILY_CONFIG_PATH
+    if not path.exists():
+        return None
+    with path.open("rb") as file:
+        payload = tomllib.load(file)
+    raw_key = payload.get("api_key")
+    if not isinstance(raw_key, str):
+        return None
+    raw_key = raw_key.strip()
+    if raw_key.startswith("env:"):
+        env_name = raw_key.removeprefix("env:").strip()
+        return os.environ.get(env_name) if env_name else None
+    return raw_key or None
 
 
 def build_research_provider(
@@ -149,6 +169,7 @@ def build_research_provider(
     timeout_seconds: int = 120,
     max_attempts: int = 2,
     tavily_api_key: str | None = None,
+    tavily_config_path: str | Path | None = None,
     tavily_enable_network: bool = False,
     tavily_timeout_seconds: int = 30,
     tavily_max_results: int = 5,
@@ -180,6 +201,7 @@ def build_research_provider(
                 tavily_api_key
                 if tavily_api_key is not None
                 else _tavily_api_key_from_env()
+                or tavily_api_key_from_config(tavily_config_path)
             ),
             enable_network=tavily_enable_network,
             timeout_seconds=tavily_timeout_seconds,

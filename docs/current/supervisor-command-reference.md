@@ -163,9 +163,10 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
   侧 `research inspect` 复用同一边界。
 - `research providers` 列出 provider registry；当前 `fake` / `codex` 可运行，
   `tavily` 也可运行但默认 preflight；只有显式 `--tavily-enable-network` 才会请求
-  Tavily `/search`，缺 `TAVILY_API_KEY` 或未开网络时会复用 `ResearchFlow` 写
-  `research.provider_trace`。`searxng` / `browser` 仍是 planned provider，
-  选择时会 fail closed。
+  Tavily `/search`。Tavily key 可来自 `--tavily-api-key`、`TAVILY_API_KEY`，或
+  git-ignored 的 `src/isotope/features/research/research_tavily.toml`；缺 key 或未开
+  网络时会复用 `ResearchFlow` 写 `research.provider_trace`。`searxng` / `browser`
+  仍是 planned provider，选择时会 fail closed。
 - raw web text 后续要进入 durable memory 时，必须先经过 artifact / provenance /
   retrieval 和显式 promotion policy，不得绕过 Research flow 直接写 memory。
 

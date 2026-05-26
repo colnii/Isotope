@@ -13,6 +13,7 @@ from isotope.features.research.providers import (
     extract_research_json,
     get_research_provider_descriptor,
     list_research_provider_descriptors,
+    tavily_api_key_from_config,
 )
 from isotope.features.research.tavily import TavilyResearchProvider
 
@@ -65,6 +66,40 @@ def test_build_research_provider_reuses_tavily_preflight_provider(tmp_path):
     assert provider.enable_network is True
     assert provider.timeout_seconds == 9
     assert provider.max_results == 3
+
+
+def test_tavily_api_key_from_config_reads_plaintext_local_toml(tmp_path):
+    config_path = tmp_path / "research_tavily.toml"
+    config_path.write_text('api_key = "test-secret-key"\n', encoding="utf-8")
+
+    assert tavily_api_key_from_config(config_path) == "test-secret-key"
+
+
+def test_tavily_api_key_from_config_reads_environment_reference(tmp_path, monkeypatch):
+    config_path = tmp_path / "research_tavily.toml"
+    config_path.write_text('api_key = "env:LOCAL_TAVILY_KEY"\n', encoding="utf-8")
+    monkeypatch.setenv("LOCAL_TAVILY_KEY", "test-env-secret")
+
+    assert tavily_api_key_from_config(config_path) == "test-env-secret"
+
+
+def test_build_research_provider_uses_tavily_config_when_no_direct_key(
+    tmp_path,
+    monkeypatch,
+):
+    config_path = tmp_path / "research_tavily.toml"
+    config_path.write_text('api_key = "test-secret-key"\n', encoding="utf-8")
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+
+    provider = build_research_provider(
+        "tavily",
+        tavily_config_path=config_path,
+    )
+
+    with pytest.raises(ResearchProviderError) as exc_info:
+        provider.run("agent memory retrieval")
+    assert exc_info.value.details["error_code"] == "network_execution_deferred"
+    assert "test-secret-key" not in json.dumps(exc_info.value.details)
 
 
 def test_tavily_preflight_provider_reports_missing_api_key_as_non_retryable():

@@ -76,6 +76,7 @@ def handle_research_command(args: argparse.Namespace, *, api) -> int:
             timeout_seconds=args.timeout_seconds,
             max_attempts=args.max_attempts,
             tavily_api_key=args.tavily_api_key,
+            tavily_config_path=args.tavily_config,
             tavily_enable_network=args.tavily_enable_network,
             tavily_timeout_seconds=args.tavily_timeout_seconds,
             tavily_max_results=args.tavily_max_results,

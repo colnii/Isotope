@@ -103,10 +103,12 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
     provider registry 当前列出 `fake`、`codex`、`tavily`、`searxng`、`browser`；
     `fake`、`codex` 与 `tavily` implemented；Tavily 默认仍是 preflight（预检），
     只有显式传 `--tavily-enable-network` 才会请求 `https://api.tavily.com/search`。
-    缺 `TAVILY_API_KEY` 或未打开网络开关都会复用 `ResearchFlow` 写
-    `research.provider_trace`，不落成功 report；真实 Tavily 响应会归一化为
-    source-backed `research.raw_transcript` 与 `research.report`。SearXNG / browser
-    仍 fail closed（失败关闭，创建 flow 前报错）。成功结果写
+    key 可来自 `--tavily-api-key`、`TAVILY_API_KEY` 或 git-ignored 的
+    `src/isotope/features/research/research_tavily.toml`。缺 key 或未打开网络开关
+    都会复用 `ResearchFlow` 写 `research.provider_trace`，不落成功 report；真实
+    Tavily 响应会归一化为 source-backed `research.raw_transcript` 与
+    `research.report`。SearXNG / browser 仍 fail closed（失败关闭，创建 flow 前报错）。
+    成功结果写
     `research.raw_transcript` 与 `research.report`；provider 失败只写
     `research.provider_trace`，并保留 retry attempt、Codex event/error
     diagnostics（诊断）供 `inspect` 查看。当前 durable ingestion（持久摄取）

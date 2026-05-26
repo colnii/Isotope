@@ -213,14 +213,15 @@
   `fake`、`codex`、`tavily`、`searxng`、`browser`；`fake` / `codex` / `tavily`
   implemented，SearXNG / browser 仍 fail closed；这些路径都不会
   绕过 `ResearchFlow` 或 artifact/provenance 边界。
-- Tavily provider 的 config/preflight 小片已完成：只接 `TAVILY_API_KEY` 或显式
-  `--tavily-api-key`，并把缺配置或网络执行暂缓写入 `research.provider_trace`。
+- Tavily provider 的 config/preflight 小片已完成：key 可来自显式
+  `--tavily-api-key`、`TAVILY_API_KEY` 或 git-ignored 的
+  `src/isotope/features/research/research_tavily.toml`；缺配置或网络执行暂缓会写入
+  `research.provider_trace`。
 - Tavily provider 的真实 API execution 小片已完成：必须显式
   `--tavily-enable-network`，并把 Tavily `/search` 响应归一化为 source-backed
   `research.raw_transcript` / `research.report`。
-- 下一步优先做 Tavily live smoke / guardrail 小片：只在检测到真实
-  `TAVILY_API_KEY` 且用户显式确认时跑一条小预算 live smoke，并记录 inspect
-  检查步骤。
+- 下一步优先做 Tavily live smoke / guardrail 小片：只在检测到真实 Tavily key
+  且用户显式确认时跑一条小预算 live smoke，并记录 inspect 检查步骤。
 - Codex delegated provider 保持可信 fallback，Tavily 作为普通 API provider 候选，
   SearXNG 保持可选 self-hosted / fallback，browser/crawler 只做最低层 fetch
   fallback。

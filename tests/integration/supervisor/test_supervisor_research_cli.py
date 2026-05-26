@@ -90,6 +90,31 @@ def test_supervisor_research_search_records_tavily_preflight_failure(
     assert payload["artifacts"][0]["artifact_type"] == "research.provider_trace"
 
 
+def test_supervisor_research_accepts_tavily_config_path(tmp_path, monkeypatch):
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    config_path = tmp_path / "research_tavily.toml"
+    config_path.write_text('api_key = "test-secret-key"\n', encoding="utf-8")
+
+    result = _run_cli(
+        "research",
+        "--root",
+        str(tmp_path),
+        "--query",
+        "agent memory retrieval",
+        "--provider",
+        "tavily",
+        "--tavily-config",
+        str(config_path),
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "provider_failed"
+    assert payload["error"]["details"]["error_code"] == "network_execution_deferred"
+    assert "test-secret-key" not in result.stdout
+
+
 def test_supervisor_research_plain_output_lists_artifacts(tmp_path):
     result = _run_cli(
         "research",

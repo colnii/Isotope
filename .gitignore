@@ -7,3 +7,4 @@ __pycache__/
 dist/
 build/
 src/isotope/features/supervisor/supervisor_llm_pool.toml
+src/isotope/features/research/research_tavily.toml

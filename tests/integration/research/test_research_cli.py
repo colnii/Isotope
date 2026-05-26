@@ -147,6 +147,8 @@ def test_research_cli_accepts_tavily_network_gate_args(tmp_path):
             "--tavily-enable-network",
             "--tavily-api-key",
             "test-secret-key",
+            "--tavily-config",
+            str(tmp_path / "research_tavily.toml"),
             "--tavily-timeout-seconds",
             "9",
             "--tavily-max-results",
@@ -157,6 +159,7 @@ def test_research_cli_accepts_tavily_network_gate_args(tmp_path):
     assert args.provider == "tavily"
     assert args.tavily_enable_network is True
     assert args.tavily_api_key == "test-secret-key"
+    assert args.tavily_config == str(tmp_path / "research_tavily.toml")
     assert args.tavily_timeout_seconds == 9
     assert args.tavily_max_results == 3
 
