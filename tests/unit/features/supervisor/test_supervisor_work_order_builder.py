@@ -30,6 +30,21 @@ def test_launch_work_order_prompt_includes_commit_rules():
     assert "提交哈希和剩余风险" in prompt
 
 
+def test_launch_work_order_prompt_includes_coordination_reuse_rules():
+    prompt = build_launch_work_order_prompt(
+        target_name="supervisor-reuse-worker",
+        cwd="/tmp/isotope-worker",
+        goal="接入已有 research capability。",
+    )
+
+    assert "coordination_preflight:" in prompt
+    assert "git worktree list --porcelain" in prompt
+    assert "git branch --list" in prompt
+    assert "已有同主题 branch/worktree 时先复用或接入已有成果" in prompt
+    assert "没有对应分支时才创建清晰命名的新 branch/worktree" in prompt
+    assert "不要跨到 memory/screen/capacity/research 等无关主题长臂管辖" in prompt
+
+
 def test_launch_work_order_prompt_can_allow_ci_push_for_merge_workers():
     prompt = build_launch_work_order_prompt(
         target_name="supervisor-merge-dispatch",

@@ -106,6 +106,9 @@ B 层预算控制由 Supervisor 自己记录并拦截。当前已落地
 - `cwd`：执行所在工作区。
 - `allowed_scope`：允许改哪些目录或模块。
 - `forbidden_scope`：明确不碰什么。
+- `coordination_preflight`：开工前只读检查现有 worktree/branch；已有同主题
+  branch/worktree 时先复用或接入已有成果，不重复造功能；没有对应分支时才
+  创建清晰命名的新 branch/worktree，并避免跨到无关主题。
 - `budget_hint`：写给 worker 的时间、轮次和上下文请求提醒。
 - `done_conditions`：什么证据算完成。
 - `completion_template`：写清 `done`、`needs_user`、`blocked`
