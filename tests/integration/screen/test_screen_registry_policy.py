@@ -109,6 +109,19 @@ def test_policy_carries_intent_target_allowlist_into_screen_grants():
     ]
 
 
+def test_policy_allows_restore_window_dry_run_plan():
+    compiler = ActionCompiler(registry=ActionTypeRegistry.default())
+    intent = _control_intent(execution_mode="dry_run")
+    intent["actions"] = [{"type": "restore_window"}]
+    proposal = compiler.compile(intent, _runtime_context())
+
+    decision = PolicyEngine(registry=ActionTypeRegistry.default()).decide(proposal)
+
+    assert decision.outcome == "approved"
+    assert decision.grants["screen"]["action_policy"]["execution_modes"] == ["dry_run"]
+    assert "restore_window" in decision.grants["screen"]["action_policy"]["allowed_action_types"]
+
+
 def test_policy_denies_target_outside_intent_target_allowlist():
     compiler = ActionCompiler(registry=ActionTypeRegistry.default())
     intent = _observe_intent()
@@ -127,6 +140,18 @@ def test_policy_denies_target_outside_intent_target_allowlist():
 def test_policy_denies_execute_control_without_approval():
     compiler = ActionCompiler(registry=ActionTypeRegistry.default())
     proposal = compiler.compile(_control_intent(execution_mode="execute"), _runtime_context())
+
+    decision = PolicyEngine(registry=ActionTypeRegistry.default()).decide(proposal)
+
+    assert decision.outcome == "denied"
+    assert decision.reason_codes == ["screen_approval_required"]
+
+
+def test_policy_denies_restore_window_execute_without_approval():
+    compiler = ActionCompiler(registry=ActionTypeRegistry.default())
+    intent = _control_intent(execution_mode="execute")
+    intent["actions"] = [{"type": "restore_window"}]
+    proposal = compiler.compile(intent, _runtime_context())
 
     decision = PolicyEngine(registry=ActionTypeRegistry.default()).decide(proposal)
 

@@ -116,6 +116,10 @@ def _build_click_action(*, x: int, y: int, button: str) -> dict[str, Any]:
     }
 
 
+def _build_restore_window_action() -> dict[str, Any]:
+    return {"type": "restore_window"}
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run manual screen observe/control smoke checks.")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -160,6 +164,17 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Mouse button.",
     )
     click_parser.add_argument(
+        "--approve-execute",
+        action="store_true",
+        help="Request approval and execute after immediate local approval.",
+    )
+    restore_parser = subparsers.add_parser(
+        "control-restore",
+        help="Plan or execute a window restore action without writing action JSON.",
+    )
+    _add_runtime_args(restore_parser)
+    _add_target_args(restore_parser)
+    restore_parser.add_argument(
         "--approve-execute",
         action="store_true",
         help="Request approval and execute after immediate local approval.",
@@ -330,6 +345,29 @@ def main(argv: list[str] | None = None) -> int:
                 )
             else:
                 result = pending_or_result
+        elif args.command == "control-restore":
+            execution_mode = "execute" if args.approve_execute else "dry_run"
+            pending_or_result = api.submit_action(
+                run_id,
+                _build_control_intent(
+                    target_selector=target_selector,
+                    actions=[_build_restore_window_action()],
+                    execution_mode=execution_mode,
+                    target_allowlist=target_allowlist,
+                ),
+                requires_approval=args.approve_execute,
+            )
+            if args.approve_execute and pending_or_result["status"] == "pending_user_approval":
+                result = api.resolve_approval(
+                    pending_or_result["approval_id"],
+                    {
+                        "resolution": "approved",
+                        "reason": "screen smoke restore execute approved",
+                        "resolver": "local_operator",
+                    },
+                )
+            else:
+                result = pending_or_result
         else:
             parser.error(f"unknown command: {args.command}")
             return 2
@@ -421,6 +459,7 @@ def _real_smoke_commands(
         _shell_join([*base, "observe", *shared, "--capture", "metadata", "--json"]),
         _shell_join([*base, "observe", *shared, "--capture", "metadata", "--capture", "screenshot", "--json"]),
         _shell_join([*base, "control-click", *shared, "--x", "10", "--y", "10", "--json"]),
+        _shell_join([*base, "control-restore", *shared, "--json"]),
     ]
 
 

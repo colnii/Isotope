@@ -293,6 +293,7 @@ def _default_screen_action_policy(*, execution_modes: list[str]) -> dict[str, An
             "key_down",
             "key_up",
             "key_press",
+            "restore_window",
         ],
         "allowed_buttons": ["left", "middle", "right", "x1", "x2"],
         "max_actions": 16,

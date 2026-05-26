@@ -35,6 +35,7 @@ ALLOWED_SCREEN_ACTION_TYPES = {
     "key_down",
     "key_up",
     "key_press",
+    "restore_window",
 }
 SUPPORTED_SCREEN_MODES = {"manual", "assist", "auto", "non_intrusive", "interactive"}
 SUPPORTED_EXECUTION_MODES = {"dry_run", "execute"}

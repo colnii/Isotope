@@ -69,6 +69,10 @@ def test_build_click_action_uses_control_action_schema():
     }
 
 
+def test_build_restore_window_action_uses_control_action_schema():
+    assert runner._build_restore_window_action() == {"type": "restore_window"}
+
+
 def test_control_click_parser_accepts_coordinate_arguments():
     args = runner._build_parser().parse_args(
         [
@@ -94,6 +98,24 @@ def test_control_click_parser_accepts_coordinate_arguments():
     assert args.approve_execute is False
 
 
+def test_control_restore_parser_accepts_target_allowlist():
+    args = runner._build_parser().parse_args(
+        [
+            "control-restore",
+            "--root",
+            "runtime-root",
+            "--app",
+            "notepad.exe",
+            "--allow-app",
+            "notepad.exe",
+        ]
+    )
+
+    assert args.command == "control-restore"
+    assert args.allow_app == ["notepad.exe"]
+    assert args.approve_execute is False
+
+
 def test_real_smoke_plan_prints_real_backend_commands():
     commands = runner._real_smoke_commands(
         root="runtime-root",
@@ -103,6 +125,7 @@ def test_real_smoke_plan_prints_real_backend_commands():
 
     assert any(" observe " in command and "--capture metadata" in command for command in commands)
     assert any(" control-click " in command for command in commands)
+    assert any(" control-restore " in command for command in commands)
     assert all("fake" not in command for command in commands)
 
 

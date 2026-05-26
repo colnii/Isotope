@@ -230,12 +230,14 @@ _POWERSHELL_SCRIPT = textwrap.dedent(
         [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
         [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
         [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+        [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
         [DllImport("user32.dll")] public static extern bool SetCursorPos(int X, int Y);
         [DllImport("user32.dll")] public static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, UIntPtr dwExtraInfo);
         [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
     }
 "@
 
+    $SW_RESTORE = 9
     $MouseMove = 0x0001
     $LeftDown = 0x0002
     $LeftUp = 0x0004
@@ -360,14 +362,22 @@ _POWERSHELL_SCRIPT = textwrap.dedent(
 
     function Invoke-Control($target, $actions, [string]$executionMode) {
         $applied = 0
-        if ($executionMode -ne "execute") { return @{ action_count = $actions.Count; executed = $false } }
-        [void][NativeScreen]::SetForegroundWindow([IntPtr]::new([Int64]::Parse($target.window_id)))
+        $plannedActions = @($actions | ForEach-Object { $_.type })
+        if ($executionMode -ne "execute") {
+            return @{ action_count = $actions.Count; executed = $false; planned_actions = $plannedActions }
+        }
+        $hwnd = [IntPtr]::new([Int64]::Parse($target.window_id))
+        [void][NativeScreen]::SetForegroundWindow($hwnd)
         foreach ($action in $actions) {
             if ($null -ne $action.x -and $null -ne $action.y) {
                 [void][NativeScreen]::SetCursorPos([int]$action.x, [int]$action.y)
             }
             if ($action.type -eq "move") { $applied += 1; continue }
-            if ($action.type -eq "click") {
+            if ($action.type -eq "restore_window") {
+                [void][NativeScreen]::ShowWindow($hwnd, $SW_RESTORE)
+                [void][NativeScreen]::SetForegroundWindow($hwnd)
+                $applied += 1
+            } elseif ($action.type -eq "click") {
                 $down = $LeftDown; $up = $LeftUp
                 if ($action.button -eq "right") { $down = $RightDown; $up = $RightUp }
                 if ($action.button -eq "middle") { $down = $MiddleDown; $up = $MiddleUp }

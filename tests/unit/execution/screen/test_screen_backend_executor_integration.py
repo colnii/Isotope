@@ -167,6 +167,19 @@ def test_screen_control_execute_runs_after_approval(tmp_path):
     assert backend.calls[0].actions[0].type == "click"
 
 
+def test_screen_restore_window_execute_requires_approval_before_backend_call(tmp_path):
+    backend = FakeScreenBackend(_backend_result(content='{"restored": true}'))
+    api, run_id = _new_run(tmp_path, backend)
+    intent = _control_intent(execution_mode="execute")
+    intent["actions"] = [{"type": "restore_window"}]
+
+    result = api.submit_action(run_id, intent)
+
+    assert result["status"] == "denied"
+    assert result["decision"].reason_codes == ["screen_approval_required"]
+    assert backend.calls == []
+
+
 def test_backend_reported_widened_grants_are_rejected(tmp_path):
     raw_result = _backend_result()
     raw_result["reported_grants"] = {"tools": ["screen_observe", "screen_control"]}
@@ -258,3 +271,11 @@ def test_windows_backend_script_downgrades_uncapturable_screenshot_to_metadata_o
     assert "metadata_only" in script
     assert "screen_screenshot_unavailable" in script
     assert "restore_window_requires_approval" in script
+
+
+def test_windows_backend_script_can_restore_window_after_approval():
+    script = windows_backend._POWERSHELL_SCRIPT
+
+    assert "ShowWindow" in script
+    assert "SW_RESTORE" in script
+    assert "restore_window" in script
