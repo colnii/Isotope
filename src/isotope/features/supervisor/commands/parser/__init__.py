@@ -6,14 +6,14 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from isotope.features.supervisor.commands.parser_common import (
+from isotope.features.supervisor.commands.parser.common import (
     add_failure_retry_args as _add_failure_retry_args,
     add_goal_replenishment_args as _add_goal_replenishment_args,
     add_webhook_args as _add_webhook_args,
 )
-from isotope.features.supervisor.commands.parser_daemon import add_daemon_command_parser
-from isotope.features.supervisor.commands.parser_loop import add_loop_command_parsers
-from isotope.features.supervisor.commands.parser_memory import add_memory_command_parsers
+from isotope.features.supervisor.commands.parser.daemon import add_daemon_command_parser
+from isotope.features.supervisor.commands.parser.loop import add_loop_command_parsers
+from isotope.features.supervisor.commands.parser.memory import add_memory_command_parsers
 
 
 def build_parser(*, api: Any | None = None) -> argparse.ArgumentParser:

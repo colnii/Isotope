@@ -202,7 +202,7 @@ def _run_agent_loop_tick_driver_trace(root: Path) -> dict[str, Any]:
 
 
 def _run_supervisor_capacity_handoff_trace(root: Path) -> dict[str, Any]:
-    from ..features.supervisor.commands.capacity import build_supervisor_capacity_plan
+    from ..features.supervisor.commands.handlers.capacity import build_supervisor_capacity_plan
 
     root.mkdir(parents=True, exist_ok=True)
     plan = build_supervisor_capacity_plan(

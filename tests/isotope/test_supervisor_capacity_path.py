@@ -5,7 +5,7 @@ import inspect
 import json
 
 from isotope.features.supervisor import runner
-from isotope.features.supervisor.commands import capacity as capacity_command
+from isotope.features.supervisor.commands.handlers import capacity as capacity_command
 from isotope.capabilities.catalog import Capability, CapabilityCatalog
 from isotope.capabilities.runner import CapabilityRunner
 from isotope.llm.provider import LLMResponse

@@ -26,7 +26,7 @@ from .cleanup import (
     print_cleanup_plain as _print_cleanup_plain,
     select_cleanup_candidates as _select_cleanup_candidates,
 )
-from .cleanup_worktree import (
+from .cleanup.cleanup_worktree import (
     branch_is_merged_into_base as _branch_is_merged_into_base,
     branch_upstream as _branch_upstream,
     delete_integrated_supervisor_branch as _delete_integrated_supervisor_branch,
@@ -41,7 +41,7 @@ from .cleanup_worktree import (
     managed_record_ref as _managed_record_ref,
     supervisor_worktree_root_for_cwd as _supervisor_worktree_root_for_cwd,
 )
-from .auto_cleanup import (
+from .auto.auto_cleanup import (
     archive_integrated_merge_worker as _archive_integrated_merge_worker,
     archive_integrated_source_worker as _archive_integrated_source_worker,
     archive_related_merge_goal as _archive_related_merge_goal,
@@ -56,7 +56,7 @@ from .auto_cleanup import (
     review_group_items as _review_group_items,
     review_group_record_ids as _review_group_record_ids,
 )
-from .capacity import (
+from .handlers.capacity import (
     build_supervisor_capacity_plan,
     capacity_call_specs as _capacity_call_specs,
     capacity_decision_goal as _capacity_decision_goal,
@@ -64,7 +64,7 @@ from .capacity import (
     loop_capacity_decision_payload as _loop_capacity_decision_payload,
     resolve_capacity_calling_provider_from_env,
 )
-from .auto_action import (
+from .auto.auto_action import (
     auto_action_exhausts_continue_budget as _auto_action_exhausts_continue_budget,
     auto_action_exhausts_run_budget as _auto_action_exhausts_run_budget,
     auto_action_in_prompt_cooldown as _auto_action_in_prompt_cooldown,
@@ -76,12 +76,12 @@ from .auto_action import (
     managed_terminal_looks_busy as _managed_terminal_looks_busy,
     supervisor_next_marks_terminal_done as _supervisor_next_marks_terminal_done,
 )
-from .advice_execution import (
+from .advice.advice_execution import (
     execute_advice as _execute_advice,
     run_budget_state as _run_budget_state,
     suggestion_by_kind as _suggestion_by_kind,
 )
-from .llm_action import (
+from .llm.action import (
     active_goal_resume_session_ids as _active_goal_resume_session_ids,
     context_request_budget_result as _context_request_budget_result,
     context_request_count as _context_request_count,
@@ -92,11 +92,11 @@ from .llm_action import (
     failure_question as _failure_question,
     resume_action_outside_active_goals as _resume_action_outside_active_goals,
 )
-from .llm_context import (
+from .llm.context import (
     maybe_replan_after_context_request as _maybe_replan_after_context_request,
     planner_context_payload as _planner_context_payload,
 )
-from .llm_planner import (
+from .llm.planner import (
     UnavailableSummaryProvider as _UnavailableSummaryProvider,
     decide_action_with_llm as _decide_action_with_llm,
 )
@@ -107,7 +107,7 @@ from .failure_guard import (
     failure_retry_exhausted as _failure_retry_exhausted,
     record_failure_event as _record_failure_event,
 )
-from .llm_execution import (
+from .llm.execution import (
     context_from_capability_result as _context_from_capability_result,
     cwd_is_existing_dir as _cwd_is_existing_dir,
     execute_ask_user_action as _execute_ask_user_action,
@@ -159,7 +159,7 @@ from .failure_lifecycle import (
     usage_limit_failure as _usage_limit_failure,
     worker_retry_error_summary as _worker_retry_error_summary,
 )
-from .merge_dispatch import (
+from .merge.dispatch import (
     current_workspace_has_worker_role as _current_workspace_has_worker_role,
     current_workspace_worker_role as _current_workspace_worker_role,
     integration_merge_dispatch_payload as _integration_merge_dispatch_payload,
@@ -171,8 +171,8 @@ from .merge_dispatch import (
     recursive_worker_role_guard_executed as _recursive_worker_role_guard_executed,
     recursive_worker_role_guard_payload as _recursive_worker_role_guard_payload,
 )
-from .capacity import handle_capacity_command as _handle_capacity_command
-from .context import handle_context_command as _handle_context_command
+from .handlers.capacity import handle_capacity_command as _handle_capacity_command
+from .handlers.context import handle_context_command as _handle_context_command
 from .dashboard import (
     best_linked_session_for_managed as _best_linked_session_for_managed,
     best_linked_sessions_for_managed_lanes as _best_linked_sessions_for_managed_lanes,
@@ -203,12 +203,12 @@ from .dashboard import (
     current_batch_payload as _current_batch_payload,
     current_batch_payload_from_display_sessions as _current_batch_payload_from_display_sessions,
 )
-from .decision import (
+from .handlers.decision import (
     decision_payload as _decision_payload,
     handle_decision_command as _handle_decision_command,
     print_decision_plain as _print_decision_plain,
 )
-from .goal import (
+from .handlers.goal import (
     active_goal_dicts_with_managed_protocol_status as _active_goal_dicts_with_managed_protocol_status,
     goal_command_goal_text as _goal_command_goal_text,
     goal_payload as _goal_payload,
@@ -223,7 +223,7 @@ from .merge import (
     handle_integration_review_command as _handle_integration_review_command,
     handle_merge_work_order_command as _handle_merge_work_order_command,
 )
-from .memory import (
+from .handlers.memory import (
     handle_memory_command as _handle_memory_command,
     handle_worker_event_command as _handle_worker_event_command,
     handle_worker_manager_command as _handle_worker_manager_command,
@@ -267,18 +267,18 @@ from .workspace_scope import (
     workspace_root as _workspace_root,
     workspace_scope_payload as _workspace_scope_payload,
 )
-from .supervise_payload import (
+from .supervise.payload import (
     append_supervise_final_payload as _append_supervise_final_payload,
     build_supervise_base_payload as _build_supervise_base_payload,
     refresh_current_batch_after_execution as _refresh_current_batch_after_execution,
 )
-from .supervise_planning import (
+from .supervise.planning import (
     append_supervise_planning_payload as _append_supervise_planning_payload,
 )
-from .supervise_action import (
+from .supervise.action import (
     append_supervise_llm_action as _append_supervise_llm_action,
 )
-from .supervise_execution import (
+from .supervise.execution import (
     append_supervise_execution as _append_supervise_execution,
 )
 from .advice import (
@@ -333,7 +333,7 @@ from .daemon_command import (
     up_payload as _up_payload,
     watcher_payload as _watcher_payload,
 )
-from .promotion import (
+from .merge.promotion import (
     MERGE_PROMOTION_DECISION_QUESTION as _MERGE_PROMOTION_DECISION_QUESTION,
     MERGE_REPAIR_WORKER_ROLE,
     archive_completed_merge_promotion_repair_worker as _archive_completed_merge_promotion_repair_worker,
@@ -348,11 +348,11 @@ from .promotion import (
     merge_promotion_decision_request as _merge_promotion_decision_request,
     merge_promotion_recent_decision_answer as _merge_promotion_recent_decision_answer,
 )
-from .replan import (
+from .handlers.replan import (
     handle_replan_command as _handle_replan_command,
     replan_payload as _replan_payload,
 )
-from .state import (
+from .handlers.state import (
     handle_state_command as _handle_state_command,
     print_state_plain as _print_state_plain,
     state_payload as _state_payload,

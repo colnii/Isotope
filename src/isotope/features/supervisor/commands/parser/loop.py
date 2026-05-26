@@ -6,7 +6,7 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from isotope.features.supervisor.commands.parser_common import (
+from isotope.features.supervisor.commands.parser.common import (
     add_failure_retry_args,
     add_goal_replenishment_args,
     add_webhook_args,

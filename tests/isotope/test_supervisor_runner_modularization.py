@@ -9,7 +9,7 @@ from isotope.features.supervisor import runner
 
 def test_supervisor_runner_uses_command_dispatch_module():
     main_module = importlib.import_module("isotope.features.supervisor.commands.main")
-    parser_module = importlib.import_module("isotope.features.supervisor.commands.parser")
+    parser_module = importlib.import_module("isotope.features.supervisor.commands.parser.parser")
 
     assert runner._run_cli is main_module.run_cli
     assert runner._build_parser is parser_module.build_parser
@@ -17,7 +17,7 @@ def test_supervisor_runner_uses_command_dispatch_module():
 
 
 def test_supervisor_runner_parser_implementation_lives_in_command_module():
-    parser_module = importlib.import_module("isotope.features.supervisor.commands.parser")
+    parser_module = importlib.import_module("isotope.features.supervisor.commands.parser.parser")
 
     assert runner._build_parser_impl is parser_module._build_parser_impl
     assert inspect.getsourcefile(runner._build_parser_impl) == inspect.getsourcefile(
@@ -38,10 +38,10 @@ def test_supervisor_runner_uses_planner_and_state_helper_modules():
 
 def test_supervisor_runner_delegates_lifecycle_command_handlers():
     dashboard_module = importlib.import_module("isotope.features.supervisor.commands.dashboard")
-    goal_module = importlib.import_module("isotope.features.supervisor.commands.goal")
+    goal_module = importlib.import_module("isotope.features.supervisor.commands.handlers.goal")
     cleanup_module = importlib.import_module("isotope.features.supervisor.commands.cleanup")
     merge_module = importlib.import_module("isotope.features.supervisor.commands.merge")
-    promotion_module = importlib.import_module("isotope.features.supervisor.commands.promotion")
+    promotion_module = importlib.import_module("isotope.features.supervisor.commands.merge.promotion")
 
     assert runner._handle_dashboard_command is dashboard_module.handle_dashboard_command
     assert runner._handle_goal_command is goal_module.handle_goal_command
@@ -68,7 +68,7 @@ def test_supervisor_runner_delegates_lifecycle_command_handlers():
 
 def test_supervisor_runner_delegates_cleanup_worktree_helpers():
     cleanup_module = importlib.import_module(
-        "isotope.features.supervisor.commands.cleanup_worktree"
+        "isotope.features.supervisor.commands.cleanup.cleanup_worktree"
     )
 
     assert (
@@ -104,7 +104,7 @@ def test_supervisor_runner_delegates_cleanup_worktree_helpers():
 
 def test_supervisor_runner_delegates_auto_action_helpers():
     auto_action_module = importlib.import_module(
-        "isotope.features.supervisor.commands.auto_action"
+        "isotope.features.supervisor.commands.auto.auto_action"
     )
 
     assert runner._auto_execute_action is auto_action_module.auto_execute_action
@@ -144,7 +144,7 @@ def test_supervisor_runner_delegates_auto_action_helpers():
 
 def test_supervisor_runner_delegates_advice_execution_helpers():
     execution_module = importlib.import_module(
-        "isotope.features.supervisor.commands.advice_execution"
+        "isotope.features.supervisor.commands.advice.advice_execution"
     )
 
     assert runner._execute_advice is execution_module.execute_advice
@@ -364,7 +364,7 @@ def test_supervisor_runner_delegates_fanout_orchestration_helpers():
 
 def test_supervisor_runner_delegates_merge_dispatch_orchestration_helpers():
     merge_dispatch_module = importlib.import_module(
-        "isotope.features.supervisor.commands.merge_dispatch"
+        "isotope.features.supervisor.commands.merge.dispatch"
     )
 
     assert (
@@ -420,7 +420,7 @@ def test_supervisor_runner_delegates_merge_dispatch_orchestration_helpers():
 
 def test_supervisor_runner_delegates_merge_promotion_orchestration_helpers():
     promotion_module = importlib.import_module(
-        "isotope.features.supervisor.commands.promotion"
+        "isotope.features.supervisor.commands.merge.promotion"
     )
 
     assert (
@@ -529,7 +529,7 @@ def test_supervisor_runner_delegates_worker_failure_lifecycle_helpers():
 
 def test_supervisor_runner_delegates_auto_cleanup_lifecycle_helpers():
     cleanup_module = importlib.import_module(
-        "isotope.features.supervisor.commands.auto_cleanup"
+        "isotope.features.supervisor.commands.auto.auto_cleanup"
     )
 
     assert (
@@ -729,12 +729,12 @@ def test_supervisor_runner_delegates_lifecycle_trace_helpers():
 
 def test_supervisor_runner_delegates_readonly_command_handlers():
     decision_module = importlib.import_module(
-        "isotope.features.supervisor.commands.decision"
+        "isotope.features.supervisor.commands.handlers.decision"
     )
-    context_module = importlib.import_module("isotope.features.supervisor.commands.context")
-    replan_module = importlib.import_module("isotope.features.supervisor.commands.replan")
-    memory_module = importlib.import_module("isotope.features.supervisor.commands.memory")
-    state_module = importlib.import_module("isotope.features.supervisor.commands.state")
+    context_module = importlib.import_module("isotope.features.supervisor.commands.handlers.context")
+    replan_module = importlib.import_module("isotope.features.supervisor.commands.handlers.replan")
+    memory_module = importlib.import_module("isotope.features.supervisor.commands.handlers.memory")
+    state_module = importlib.import_module("isotope.features.supervisor.commands.handlers.state")
 
     assert runner._handle_decision_command is decision_module.handle_decision_command
     assert runner._decision_payload is decision_module.decision_payload
@@ -844,7 +844,7 @@ def test_supervisor_runner_delegates_loop_state_helpers():
 
 def test_supervisor_runner_delegates_capacity_loop_helpers():
     capacity_module = importlib.import_module(
-        "isotope.features.supervisor.commands.capacity"
+        "isotope.features.supervisor.commands.handlers.capacity"
     )
 
     assert (
@@ -1206,7 +1206,7 @@ def test_supervisor_runner_uses_compat_api_for_legacy_helpers():
 
     source = inspect.getsource(runner)
     assert "from .commands.dispatch import" in source
-    assert "from .commands.parser import" not in source
+    assert "from .commands.parser.parser import" not in source
     assert "from .commands.cleanup import" not in source
 
 
