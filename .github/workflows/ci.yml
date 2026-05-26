@@ -26,7 +26,7 @@ jobs:
           python -m pip install -e ".[test]"
 
       - name: Run Isotope tests
-        run: python -m pytest tests/isotope -q
+        run: python -m pytest tests/ -q
 
       - name: Run demo smoke
         run: |
