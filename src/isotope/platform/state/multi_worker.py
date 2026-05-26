@@ -66,6 +66,10 @@ def build_multi_worker_status_payload(
             "capacity_calls_total": capacity_calls_total,
             "hidden_workers": max(0, len(worker_payloads) - len(visible)),
         },
+        "supervised_execution": _build_supervised_execution_payload(
+            worker_payloads=worker_payloads,
+            memory_records=memory_records,
+        ),
         "workers": visible,
     }
 
@@ -84,6 +88,13 @@ def render_multi_worker_status_plain(payload: dict[str, Any]) -> str:
     ]
     if summary.get("hidden_workers"):
         lines.append(f"hidden_workers: {summary['hidden_workers']}")
+    supervised = payload.get("supervised_execution")
+    if isinstance(supervised, dict):
+        lines.append(
+            "supervised_capacity_runs: {runs}".format(
+                runs=len(supervised.get("recent_capacity_runs") or [])
+            )
+        )
     if not workers:
         lines.append("workers: none")
         return "\n".join(lines)
@@ -162,6 +173,49 @@ def _build_worker_payload(
         "recent_capacity_summary": _recent_capacity_summary(capacity_records),
         "recent_memory": _recent_memory_preview(related_memory),
         "recent_event": _recent_event_preview(related_events),
+    }
+
+
+def _build_supervised_execution_payload(
+    *,
+    worker_payloads: list[dict[str, Any]],
+    memory_records: list[MemoryRecord],
+) -> dict[str, Any]:
+    recent_capacity_runs: list[dict[str, Any]] = []
+    capacity_workers_total = 0
+    capacity_agent_loop_calls_total = sum(
+        1
+        for record in memory_records
+        if _is_capacity_call(record)
+        and _agent_loop_summary(record.content.get("agent_loop_summary")).get(
+            "agent_loop_executed"
+        )
+        is True
+    )
+    for worker in worker_payloads:
+        capacity_calls_total = worker.get("capacity_calls_total")
+        if isinstance(capacity_calls_total, int) and capacity_calls_total > 0:
+            capacity_workers_total += 1
+        recent_capacity = worker.get("recent_capacity_summary")
+        if not isinstance(recent_capacity, dict):
+            continue
+        agent_loop_summary = recent_capacity.get("agent_loop_summary")
+        if not isinstance(agent_loop_summary, dict):
+            agent_loop_summary = {"agent_loop_executed": False}
+        recent_capacity_runs.append(
+            {
+                "worker": worker.get("name"),
+                "record_id": recent_capacity.get("record_id"),
+                "capacity_id": recent_capacity.get("capacity_id"),
+                "summary": recent_capacity.get("summary", ""),
+                "agent_loop_summary": dict(agent_loop_summary),
+            }
+        )
+    return {
+        "status": "ok",
+        "capacity_workers_total": capacity_workers_total,
+        "capacity_agent_loop_calls_total": capacity_agent_loop_calls_total,
+        "recent_capacity_runs": recent_capacity_runs,
     }
 
 

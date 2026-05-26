@@ -372,8 +372,8 @@ def _run_supervisor_capacity_dashboard_smoke(root: Path) -> dict[str, Any]:
         "network_listener_status": "not_used",
         "memory_status": "capacity_record_persisted",
         "next_development_step": (
-            "Use this fixture smoke before wiring dashboard capacity summaries to "
-            "broader supervised execution views."
+            "Use the supervised_execution read model before wiring capacity "
+            "summaries to live scheduling or real provider loops."
         ),
     }
 

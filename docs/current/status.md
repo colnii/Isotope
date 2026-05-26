@@ -56,7 +56,8 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    capacity memory record。Dashboard / web 的 multi-worker read model 已从该
    record 复用这些字段展示最近能力调用摘要，不读取 raw tick payload。
    `supervisor-capacity-dashboard-smoke` demo 已用 fixture 覆盖执行、落盘和
-   dashboard read model 三段同源摘要；dashboard plain view 也会显示总能力调用数
+   dashboard read model 三段同源摘要；multi-worker payload 也已补
+   `supervised_execution` 聚合视图，dashboard plain view 也会显示总能力调用数
    和最近 capacity 的 tick / step / artifact 摘要。
    它仍不调用真实 LLM，不自动多轮循环。
 10. Screen observe/control 已有 policy-gated（策略门控）第一片：

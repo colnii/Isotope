@@ -421,6 +421,21 @@ def test_capacity_action_record_flows_into_dashboard_multi_worker_status(
         "summary": "capa called artifact.review via agent loop.",
         "agent_loop_summary": result["agent_loop_summary"],
     }
+    supervised = payload["multi_worker"]["supervised_execution"]
+    assert supervised == {
+        "status": "ok",
+        "capacity_workers_total": 1,
+        "capacity_agent_loop_calls_total": 1,
+        "recent_capacity_runs": [
+            {
+                "worker": "capa",
+                "record_id": recent_capacity["record_id"],
+                "capacity_id": "artifact.review",
+                "summary": "capa called artifact.review via agent loop.",
+                "agent_loop_summary": result["agent_loop_summary"],
+            }
+        ],
+    }
     assert recent_capacity["record_id"].startswith("mem_capacity_")
     assert "tick_result" not in output
     assert "PRIVATE_" not in output

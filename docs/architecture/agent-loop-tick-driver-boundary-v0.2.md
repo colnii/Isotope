@@ -34,6 +34,8 @@
 - Dashboard / web 的 multi-worker payload 会从 capacity memory record 读取
   `agent_loop_summary`，只展示 tick / step / artifact 摘要，不直接读取原始
   `tick_result` 深层结构。
+- Multi-worker payload 的 `supervised_execution` 会聚合最近 capacity run，
+  作为更完整 supervised execution view 的低敏读取入口。
 - `python -m isotope.demo --scenario supervisor-capacity-dashboard-smoke --trace`
   会执行 fixture `call_capacity`、读取 capacity memory record、刷新
   dashboard/web multi-worker payload，并确认三段复用同一组低敏
