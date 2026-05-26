@@ -162,7 +162,10 @@
   路径，不新增私有 `worker-review` 或 `integration-review` 执行分支。
 - `memory.query` 已接入同一 capability runner；capacity path 会给它补
   `root` default，但 `query/run_id` 仍必须来自目标或模型参数，避免把 recall
-  变成每轮自动步骤。
+  变成每轮自动步骤。通过 agent loop 执行后，`agent_loop_summary` 和 plain
+  输出会显示 `agent_loop_memory_query_status`、`result_count` 和
+  `content_policy` 这类低敏 recall 元数据，但不会嵌入 query results、source
+  refs、provenance 或 raw content。
 
 后续：
 

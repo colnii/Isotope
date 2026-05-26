@@ -420,23 +420,12 @@ def agent_loop_json_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
     artifact_ref = _agent_loop_artifact_ref(tick_result)
     if isinstance(artifact_ref, Mapping):
         summary["agent_loop_artifact_id"] = artifact_ref.get("artifact_id")
-    screen_report = _agent_loop_screen_report(tick_result)
-    if isinstance(screen_report, Mapping):
-        summary["agent_loop_screen_report_status"] = screen_report.get("status")
-        screen_summary = screen_report.get("summary")
-        if isinstance(screen_summary, Mapping):
-            summary["agent_loop_screen_observe_status"] = screen_summary.get(
-                "observe_status"
-            )
-            summary["agent_loop_screen_control_status"] = screen_summary.get(
-                "control_status"
-            )
-            summary["agent_loop_screen_screenshot_available"] = screen_summary.get(
-                "screenshot_available"
-            )
-            summary["agent_loop_screen_interferes_with_screen"] = screen_summary.get(
-                "interferes_with_screen"
-            )
+    capability_run = _agent_loop_capability_run(tick_result)
+    if isinstance(capability_run, Mapping):
+        screen_report = capability_run.get("screen_report")
+        if isinstance(screen_report, Mapping):
+            summary.update(_agent_loop_screen_report_summary(screen_report))
+        summary.update(_agent_loop_memory_query_summary(capability_run))
     return summary
 
 
@@ -852,6 +841,21 @@ def _print_capacity_plan_plain(payload: Mapping[str, Any]) -> None:
             "agent_loop_post_step_stop_reason: "
             f"{agent_loop_summary.get('agent_loop_post_step_stop_reason')}"
         )
+        memory_query_status = agent_loop_summary.get("agent_loop_memory_query_status")
+        if memory_query_status is not None:
+            print(f"agent_loop_memory_query_status: {memory_query_status}")
+            print(
+                "agent_loop_memory_query_result_count: "
+                f"{agent_loop_summary.get('agent_loop_memory_query_result_count')}"
+            )
+            content_policy = agent_loop_summary.get(
+                "agent_loop_memory_query_content_policy"
+            )
+            if content_policy is not None:
+                print(
+                    "agent_loop_memory_query_content_policy: "
+                    f"{content_policy}"
+                )
 
 
 def _print_capacity_blockers(
@@ -899,7 +903,7 @@ def _agent_loop_artifact_ref(tick_result: Mapping[str, Any]) -> Mapping[str, Any
     return artifact_ref if isinstance(artifact_ref, Mapping) else None
 
 
-def _agent_loop_screen_report(
+def _agent_loop_capability_run(
     tick_result: Mapping[str, Any],
 ) -> Mapping[str, Any] | None:
     planner_result = tick_result.get("planner_result")
@@ -916,9 +920,45 @@ def _agent_loop_screen_report(
         if isinstance(action_result, Mapping)
         else None
     )
-    screen_report = (
-        capability_run.get("screen_report")
-        if isinstance(capability_run, Mapping)
-        else None
+    return capability_run if isinstance(capability_run, Mapping) else None
+
+
+def _agent_loop_screen_report_summary(
+    screen_report: Mapping[str, Any],
+) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "agent_loop_screen_report_status": screen_report.get("status")
+    }
+    screen_summary = screen_report.get("summary")
+    if not isinstance(screen_summary, Mapping):
+        return summary
+    summary["agent_loop_screen_observe_status"] = screen_summary.get("observe_status")
+    summary["agent_loop_screen_control_status"] = screen_summary.get("control_status")
+    summary["agent_loop_screen_screenshot_available"] = screen_summary.get(
+        "screenshot_available"
     )
-    return screen_report if isinstance(screen_report, Mapping) else None
+    summary["agent_loop_screen_interferes_with_screen"] = screen_summary.get(
+        "interferes_with_screen"
+    )
+    return summary
+
+
+def _agent_loop_memory_query_summary(
+    capability_run: Mapping[str, Any],
+) -> dict[str, Any]:
+    if capability_run.get("capability_id") != "memory.query":
+        return {}
+    memory_query = capability_run.get("memory_query")
+    if not isinstance(memory_query, Mapping):
+        return {}
+    results = memory_query.get("results")
+    summary: dict[str, Any] = {
+        "agent_loop_memory_query_status": memory_query.get("status"),
+        "agent_loop_memory_query_result_count": (
+            len(results) if isinstance(results, list) else 0
+        ),
+    }
+    content_policy = memory_query.get("content_policy")
+    if isinstance(content_policy, str) and content_policy:
+        summary["agent_loop_memory_query_content_policy"] = content_policy
+    return summary

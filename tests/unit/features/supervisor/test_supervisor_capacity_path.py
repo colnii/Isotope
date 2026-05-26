@@ -690,6 +690,13 @@ def test_supervisor_capacity_plan_applies_root_default_for_memory_query(tmp_path
     assert capability_run["capability_id"] == "memory.query"
     assert capability_run["status"] == "completed"
     assert capability_run["memory_query"]["results"][0]["record_id"] == "mem_capacity"
+    assert result["agent_loop_summary"]["agent_loop_memory_query_status"] == "ok"
+    assert result["agent_loop_summary"]["agent_loop_memory_query_result_count"] == 1
+    assert (
+        result["agent_loop_summary"]["agent_loop_memory_query_content_policy"]
+        == "summary_refs_provenance_only"
+    )
+    _assert_no_agent_loop_raw_payload(result["agent_loop_summary"])
     assert "raw memory content" not in json.dumps(result)
 
 
@@ -1109,6 +1116,69 @@ def test_supervisor_capacity_plain_output_includes_agent_loop_handoff(tmp_path, 
     assert "agent_loop_post_step_phase: ready" in output
     assert "agent_loop_post_step_should_continue: True" in output
     assert "agent_loop_post_step_stop_reason: None" in output
+
+
+def test_supervisor_capacity_plain_output_includes_memory_query_summary(
+    tmp_path, capsys
+):
+    codex_home = tmp_path / "codex-home"
+    memory_dir = codex_home / "memory"
+    memory_dir.mkdir(parents=True)
+    memory_dir.joinpath("mem_capacity.json").write_text(
+        json.dumps(
+            {
+                "memory_id": "mem_capacity",
+                "scope": "run",
+                "content": {"raw": "raw memory content must not leak"},
+                "summary": "Capacity memory recall is routed through memory query.",
+                "source_refs": [],
+                "provenance": {
+                    "run_id": "run_memory_capacity",
+                    "execution_id": "exec_memory_capacity",
+                    "action_type": "write_memory",
+                },
+                "created_at": "2026-05-27T00:00:00Z",
+                "supersedes": [],
+                "quality": "verified",
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    args = argparse.Namespace(
+        capacity_command="plan",
+        goal="查询 run_memory_capacity 的 memory recall",
+        state_root=str(tmp_path / "state"),
+        execute_agent_loop=True,
+        json=False,
+        codex_home=str(codex_home),
+    )
+
+    assert capacity_command.handle_capacity_command(
+        args,
+        provider=FakeCapacityProvider(
+            json.dumps(
+                {
+                    "capacity_id": "memory.query",
+                    "arguments": {
+                        "query": "memory recall",
+                        "run_id": "run_memory_capacity",
+                    },
+                    "confidence": 0.88,
+                    "rationale": "recall existing memory",
+                }
+            )
+        ),
+    ) == 0
+
+    output = capsys.readouterr().out
+    assert "agent_loop_memory_query_status: ok" in output
+    assert "agent_loop_memory_query_result_count: 1" in output
+    assert (
+        "agent_loop_memory_query_content_policy: summary_refs_provenance_only"
+        in output
+    )
+    assert "raw memory content" not in output
 
 
 def test_supervisor_capacity_plain_output_explains_missing_inputs(capsys):
