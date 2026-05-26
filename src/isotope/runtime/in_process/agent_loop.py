@@ -187,12 +187,22 @@ class InProcessAgentLoopMixin:
         scope = request.get("scope")
         if scope is not None and scope not in {"thread", "run", "session"}:
             raise ValueError("memory query scope must be thread, run, or session")
+        controlled_expand = _memory_query_controlled_expand(request)
+        grants: dict[str, Any] = {"memory": {"query": True}}
+        if controlled_expand:
+            memory_grants = grants["memory"]
+            memory_grants["controlled_expand"] = True
+            if "expand_budget" in request:
+                memory_grants["expand_budget"] = request["expand_budget"]
+            elif "budget" in request:
+                memory_grants["budget"] = request["budget"]
         result = self.memory_query_service.query(
             run_id=run_id,
             query=query,
             scope=scope,
-            grants={"memory": {"query": True}},
+            grants=grants,
             caller_context={"run_id": run_id, "caller": "agent_loop", "purpose": "agent_recall"},
+            controlled_expand=controlled_expand,
         )
         return {"step_status": "completed", **result}
 
@@ -205,3 +215,10 @@ class InProcessAgentLoopMixin:
         provider_result: dict[str, Any],
     ) -> dict[str, Any]:
         return run_agent_loop_real_planner_contract_step(self, run_id, provider_result)
+
+
+def _memory_query_controlled_expand(request: dict[str, Any]) -> bool:
+    value = request.get("controlled_expand", False)
+    if not isinstance(value, bool):
+        raise ValueError("controlled_expand must be a boolean")
+    return value

@@ -7,6 +7,7 @@ from isotope.memory.views import (
     build_memory_query_payload,
     build_memory_status_payload,
     build_multi_worker_status_payload,
+    render_memory_query_plain,
 )
 from isotope.platform.schemas.memory import MemoryRecord
 
@@ -98,6 +99,36 @@ def test_memory_views_build_memory_query_payload_without_content(tmp_path):
     ]
     assert "content" not in json.dumps(payload)
     assert "raw memory" not in json.dumps(payload)
+
+
+def test_memory_query_plain_output_shows_deferred_controlled_expand_metadata():
+    output = render_memory_query_plain(
+        {
+            "status": "ok",
+            "query": "controlled expand metadata",
+            "scope": "run",
+            "run_id": "run_001",
+            "summary": {"matched": 1, "hidden_records": 0},
+            "controlled_expand": {
+                "status": "deferred",
+                "budget": 2,
+                "content_policy": "summary_refs_provenance_only",
+            },
+            "results": [
+                {
+                    "record_id": "mem_preview",
+                    "scope": "run",
+                    "quality": "candidate",
+                    "summary": "Preview only.",
+                }
+            ],
+        }
+    )
+
+    assert "controlled_expand: deferred" in output
+    assert "controlled_expand_budget: 2" in output
+    assert "controlled_expand_content_policy: summary_refs_provenance_only" in output
+    assert "full content" not in output
 
 
 def test_memory_views_build_multi_worker_status_payload(tmp_path):

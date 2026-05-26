@@ -96,3 +96,42 @@ def test_agent_loop_records_turn_memory_and_queries_it_after_restart(tmp_path):
     ]
     assert recalled["control"]["progress"]["memory_records_total"] == 1
     _assert_no_forbidden_content_keys(recalled)
+
+
+def test_agent_loop_query_memory_surfaces_controlled_expand_deferred_metadata(tmp_path):
+    api, run_id = _new_run(tmp_path)
+    recorded = api.run_agent_loop_step(
+        run_id,
+        {
+            "step": "record_turn_memory",
+            "scope": "run",
+            "summary": "Resume from controlled expand metadata.",
+            "content": {
+                "kind": "turn_state",
+                "text": "Hidden full memory payload must not leak.",
+            },
+            "source_refs": [],
+            "quality": "candidate",
+        },
+    )
+
+    recalled = api.run_agent_loop_step(
+        run_id,
+        {
+            "step": "query_memory",
+            "query": "controlled expand metadata",
+            "scope": "run",
+            "controlled_expand": True,
+            "expand_budget": 2,
+        },
+    )
+
+    assert recalled["action_result"]["status"] == "ok"
+    assert recalled["action_result"]["controlled_expand"] == {
+        "status": "deferred",
+        "budget": 2,
+        "content_policy": "summary_refs_provenance_only",
+    }
+    assert recalled["action_result"]["results"][0]["record_id"] == recorded["action_result"]["record_id"]
+    assert "Hidden full memory payload" not in repr(recalled)
+    _assert_no_forbidden_content_keys(recalled)

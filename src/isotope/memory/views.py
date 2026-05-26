@@ -183,6 +183,14 @@ def render_memory_query_plain(payload: dict[str, Any]) -> str:
     ]
     if summary.get("hidden_records"):
         lines.append(f"hidden_records: {summary['hidden_records']}")
+    controlled_expand = payload.get("controlled_expand")
+    if isinstance(controlled_expand, dict):
+        lines.append(f"controlled_expand: {controlled_expand.get('status', '')}")
+        if "budget" in controlled_expand:
+            lines.append(f"controlled_expand_budget: {controlled_expand['budget']}")
+        content_policy = controlled_expand.get("content_policy")
+        if isinstance(content_policy, str) and content_policy:
+            lines.append(f"controlled_expand_content_policy: {content_policy}")
     if results:
         lines.append("results:")
         for record in results:
