@@ -147,6 +147,9 @@
 - `memory.promotion.preview` 已进入 capability runner：`isotope-capability` 可
   search/plan/run，运行时复用 `memory.promotion` proposal boundary，只返回低敏
   proposal preview，不写 memory、不 append event。
+- approval-gated durable memory write 第一片已打开：默认 runtime 能编译
+  `write_memory` action，但必须显式 approval；批准后写入 `FileMemoryStore`
+  并追加低敏 `memory.record_created` canonical event。
 - Supervisor `worktree-audit` 已补第一片：开工前可只读读取
   `git worktree list --porcelain`，按 branch/path 主题词提示可能重复开发的
   worktree 候选；现在还会只读读取每个 worktree 的 `git status --porcelain=v1`，
@@ -269,11 +272,15 @@
   raw transcript、不写 memory。
 - Memory promotion preview capability 已完成：`memory.promotion.preview` 可作为
   其他系统接入 promotion boundary 的统一只读入口，避免直接散落 import helper。
+- Durable memory write 第一片已完成：approved `write_memory` action 会持久化
+  structured `MemoryRecord`，并让 projector 通过 `memory.record_created` 低敏事件
+  读取 summary / refs / provenance。
 - Codex delegated provider 保持可信 fallback，Tavily 作为普通 API provider 候选，
   SearXNG 保持可选 self-hosted / fallback，browser/crawler 只做最低层 fetch
   fallback。
-- durable memory promotion 仍保持 deferred：只能从 structured source-backed
-  artifact / observation 显式提升，不能从 raw web text 直写。
+- durable memory promotion policy 仍需继续收口：当前只能从 structured
+  source-backed artifact / observation 生成 proposal 或 approved `write_memory`
+  action，不能从 raw web text 直写。
 
 验收：
 

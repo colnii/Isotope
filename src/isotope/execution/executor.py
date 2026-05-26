@@ -242,14 +242,25 @@ class Executor:
                 artifact_refs = list(screen_result.artifact_refs)
                 completion_metadata = {"screen_backend": dict(screen_result.backend_summary)}
             elif tool_name == "write_memory" and self.memory_service is not None:
-                execution = self._new_execution(execution_id, proposal, decision, status="started")
+                execution = self._new_execution(execution_id, proposal, decision, status="completed")
                 record = self._memory_record_from_proposal(proposal, execution_id)
                 self.memory_service.write_record(
                     record,
                     execution=execution,
                     grants=decision.grants,
                 )
-                raise PermissionError("memory_write success not enabled")
+                completed_event = self._append_action_completed(
+                    proposal.run_id,
+                    execution,
+                    artifact_refs=[],
+                    metadata={"memory_record_id": record.memory_id},
+                )
+                self._append_memory_record_created(
+                    proposal.run_id,
+                    record,
+                    basis_event_id=completed_event.event_id,
+                )
+                return execution
             elif tool_name != "write_artifact_tool":
                 handler = self.tool_handlers.get(tool_name)
                 if handler is None:
@@ -505,6 +516,29 @@ class Executor:
             run_id,
             "action.completed",
             payload,
+        )
+
+    def _append_memory_record_created(
+        self,
+        run_id: str,
+        record: MemoryRecord,
+        *,
+        basis_event_id: str,
+    ) -> CanonicalEvent:
+        provenance = dict(record.provenance)
+        provenance["basis_event_id"] = basis_event_id
+        return self._append(
+            run_id,
+            "memory.record_created",
+            {
+                "record_id": record.memory_id,
+                "execution_id": record.provenance["execution_id"],
+                "summary": record.summary,
+                "source_refs": [dict(ref) for ref in record.source_refs],
+                "provenance": provenance,
+                "basis_event_id": basis_event_id,
+                "quality": record.quality,
+            },
         )
 
     def _workspace_binding_payload(self, binding) -> dict[str, Any]:

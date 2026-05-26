@@ -48,6 +48,7 @@ def test_default_registry_contains_current_controlled_tool_slices():
 
     assert registry.tool_names() == [
         "write_artifact_tool",
+        "write_memory",
         "terminal_exec",
         "screen_observe",
         "screen_control",
@@ -55,6 +56,9 @@ def test_default_registry_contains_current_controlled_tool_slices():
     entry = registry.get_tool("write_artifact_tool")
     assert entry.action_type == "call_tool"
     assert entry.tool_name == "write_artifact_tool"
+    memory_entry = registry.get_tool("write_memory")
+    assert memory_entry.action_type == "write_memory"
+    assert memory_entry.result_kind == "memory_record"
     terminal_entry = registry.get_tool("terminal_exec")
     assert terminal_entry.action_type == "call_tool"
     assert terminal_entry.tool_name == "terminal_exec"

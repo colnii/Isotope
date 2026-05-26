@@ -73,6 +73,7 @@ def _memory_proposal() -> ActionProposal:
         action_type="write_memory",
         payload={
             "tool": "write_memory",
+            "approval_requested": True,
             "content": {"kind": "fact", "text": "Learner prefers worked examples."},
             "summary": "Learner prefers worked examples.",
             "source_refs": [
@@ -154,6 +155,7 @@ def test_policy_accepts_registry_backed_write_memory_action_type():
 
     assert decision.outcome in {"approved", "modified"}
     assert "unsupported_action" not in decision.reason_codes
+    assert "memory_approval_required" not in decision.reason_codes
     assert decision.grants["tools"] == ["write_memory"]
 
 
@@ -180,3 +182,106 @@ def test_server_does_not_expose_direct_memory_write_api(tmp_path):
     api = server.InProcessServer(tmp_path)
 
     assert not hasattr(api, "write_memory")
+
+
+def test_server_approved_write_memory_action_persists_record_and_low_sensitive_event(tmp_path):
+    api = server.InProcessServer(tmp_path)
+    session = api.create_session()
+    run = api.create_run(session["session_id"], goal="promote structured memory")
+    run_id = run["run_id"]
+
+    result = api.submit_action(
+        run_id,
+        _memory_intent(
+            provenance={
+                "run_id": run_id,
+                "execution_id": "source_exec_001",
+                "action_type": "write_memory",
+            }
+        ),
+        requires_approval=True,
+        complete_run=False,
+    )
+
+    assert result["status"] == "pending_user_approval"
+    assert "action.started" not in [
+        event.event_type for event in api.get_events(run_id)
+    ]
+
+    resolved = api.resolve_approval(
+        result["approval_id"],
+        {
+            "resolution": "approved",
+            "reason": "structured source-backed memory promotion approved",
+            "resolver": "tester",
+        },
+    )
+
+    assert resolved["tool_execution_status"] == "completed"
+    records = api.memory_store.list_records(scope="run")
+    assert len(records) == 1
+    record = records[0]
+    assert record.content == {
+        "kind": "fact",
+        "text": "Learner prefers worked examples.",
+    }
+    assert record.summary == "Learner prefers worked examples."
+    assert record.provenance["run_id"] == run_id
+    assert record.provenance["action_type"] == "write_memory"
+    assert record.provenance["execution_id"].startswith("exec_")
+
+    events = api.get_events(run_id)
+    event_types = [event.event_type for event in events]
+    assert event_types.index("approval.resolved") < event_types.index("action.started")
+    assert event_types.index("action.started") < event_types.index("action.completed")
+    assert event_types.index("action.completed") < event_types.index("memory.record_created")
+    memory_payload = [
+        event.payload for event in events if event.event_type == "memory.record_created"
+    ][0]
+    assert memory_payload["record_id"] == record.memory_id
+    assert memory_payload["execution_id"] == record.provenance["execution_id"]
+    assert memory_payload["summary"] == record.summary
+    assert memory_payload["source_refs"] == record.source_refs
+    assert memory_payload["quality"] == record.quality
+    assert "content" not in memory_payload
+    assert "raw_content" not in memory_payload
+
+    state = api.get_run_state(run_id)
+    assert state.memory_records == [
+        {
+            "record_id": record.memory_id,
+            "execution_id": record.provenance["execution_id"],
+            "summary": record.summary,
+            "source_refs": record.source_refs,
+            "provenance": memory_payload["provenance"],
+            "basis_event_id": memory_payload["basis_event_id"],
+            "quality": record.quality,
+        }
+    ]
+
+
+def test_server_write_memory_action_requires_explicit_approval(tmp_path):
+    api = server.InProcessServer(tmp_path)
+    session = api.create_session()
+    run = api.create_run(session["session_id"], goal="promote structured memory")
+    run_id = run["run_id"]
+
+    result = api.submit_action(
+        run_id,
+        _memory_intent(
+            provenance={
+                "run_id": run_id,
+                "execution_id": "source_exec_001",
+                "action_type": "write_memory",
+            }
+        ),
+        requires_approval=False,
+        complete_run=False,
+    )
+
+    assert result["status"] == "denied"
+    assert "memory_approval_required" in result["decision"].reason_codes
+    event_types = [event.event_type for event in api.get_events(run_id)]
+    assert "approval.requested" not in event_types
+    assert "action.started" not in event_types
+    assert api.memory_store.list_records(scope="run") == []

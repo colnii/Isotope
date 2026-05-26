@@ -52,6 +52,23 @@ def test_model_tool_catalog_keeps_codex_task_deferred_not_callable(tmp_path):
     assert codex_task[0]["tool_kind"] == "agent_cli_task"
 
 
+def test_model_tool_catalog_exposes_write_memory_as_approval_gated_tool(tmp_path):
+    api = server.InProcessServer(tmp_path)
+
+    catalog = api.get_model_tool_catalog()
+
+    write_memory = _tool_by_name(catalog, "write_memory")
+    assert write_memory["action"] == "write_memory"
+    assert write_memory["status"] == "enabled"
+    assert write_memory["constraints"]["requires_approval"] is True
+    assert write_memory["output_contract"] == {
+        "result_kind": "memory_record",
+        "content_location": "memory_record_ref",
+        "full_content_in_events": False,
+        "full_content_in_read_model": False,
+    }
+
+
 def test_model_tool_catalog_is_read_only_and_returns_copies(tmp_path):
     api = server.InProcessServer(tmp_path)
 

@@ -99,6 +99,11 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    `isotope-capability list/search/plan/run` 能发现、预检和运行它；执行时复用
    同一 proposal boundary，只返回 action type、scope、summary、source refs、
    provenance 和 quality 等低敏字段，不写 memory、不追加事件。
+   runtime 已打开 approval-gated durable memory write 第一片：`write_memory`
+   进入默认 action registry，但 policy 要求显式 approval；批准后 executor
+   通过 `LocalMemoryWriteService` 写入 `FileMemoryStore`，再追加低敏
+   `memory.record_created` canonical event，事件只含 record id、summary、
+   source refs、provenance、quality，不含 content/raw content。
    `screen.report` 已注册为只读 capability：执行时复用现有 screen artifact
    report，要求 `root/run_id`，只返回 observe/control plan 低敏摘要，不读取
    screenshot 正文、不执行输入、不改变窗口；capacity agent-loop 执行后，

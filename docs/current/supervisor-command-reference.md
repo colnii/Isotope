@@ -153,6 +153,9 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
   `LocalMemoryQueryService` 低敏 recall 路径，要求 `root/query/run_id` 和
   caller audit；`controlled_expand` 只返回 deferred metadata，不返回 full
   content。
+- `write_memory` 是 runtime action，不是 Supervisor 直写命令；默认 action
+  registry 已启用它，但 policy 要求显式 approval。批准后只追加低敏
+  `memory.record_created` event，query/read model 仍不返回 raw content。
 - `research` 是 artifact/provenance-backed search substrate（基于产物和来源证据的搜索底座），不是 memory 直写入口。
 - `research` search 成功时保存 `research.raw_transcript` 与 `research.report`；
   source 会带 `source_kind` / `source_authority` 低敏分类字段；

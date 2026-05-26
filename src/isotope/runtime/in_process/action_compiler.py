@@ -82,6 +82,8 @@ class ActionCompiler:
             if not isinstance(prompt, str) or not prompt:
                 raise ValueError("codex_task prompt must be a non-empty string")
             payload["approval_requested"] = runtime_context.get("requires_approval") is True
+        if tool == "write_memory":
+            payload["approval_requested"] = runtime_context.get("requires_approval") is True
         if tool == "screen_observe":
             payload = self._screen_observe_payload(intent, tool)
             payload["approval_requested"] = runtime_context.get("requires_approval") is True
@@ -130,6 +132,12 @@ class ActionCompiler:
             payload[field_name] = deepcopy(intent.get(field_name, ""))
         if "summary" in intent:
             payload["summary"] = deepcopy(intent["summary"])
+        if "quality" in intent:
+            payload["quality"] = deepcopy(intent["quality"])
+        if "scope" in intent:
+            payload["scope"] = deepcopy(intent["scope"])
+        if "supersedes" in intent:
+            payload["supersedes"] = deepcopy(intent["supersedes"])
         return payload
 
     def _screen_observe_payload(self, intent: dict[str, Any], tool: str) -> dict[str, Any]:

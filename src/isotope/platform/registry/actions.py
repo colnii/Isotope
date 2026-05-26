@@ -87,6 +87,7 @@ class ActionTypeRegistry:
     ) -> "ActionTypeRegistry":
         entries = [
             _write_artifact_tool_entry(),
+            _write_memory_tool_entry(),
             _terminal_exec_tool_entry(),
             _screen_observe_tool_entry(),
             _screen_control_tool_entry(),
@@ -252,6 +253,24 @@ def _write_artifact_tool_entry() -> dict[str, Any]:
     }
 
 
+def _write_memory_tool_entry() -> dict[str, Any]:
+    return {
+        "action_type": "write_memory",
+        "tool_name": "write_memory",
+        "payload_requirements": {
+            "required": ["content", "source_refs", "provenance"],
+        },
+        "required_capabilities": {
+            "tools": ["write_memory"],
+            "workspace": {"mode": "shared_ro"},
+            "budget": {"seconds": 30},
+        },
+        "default_workspace_mode": "shared_ro",
+        "result_kind": "memory_record",
+        "enabled": True,
+    }
+
+
 def _terminal_exec_tool_entry() -> dict[str, Any]:
     return {
         "action_type": "call_tool",
@@ -375,6 +394,9 @@ def _model_tool_entry(entry: ActionTypeEntry) -> dict[str, Any]:
     capabilities = deepcopy(entry.required_capabilities)
     budget = capabilities.get("budget", {})
     budget_seconds = budget.get("seconds") if isinstance(budget, dict) else None
+    content_location = (
+        "memory_record_ref" if entry.result_kind == "memory_record" else "artifact_ref"
+    )
     tool: dict[str, Any] = {
         "name": entry.tool_name,
         "action": entry.action_type,
@@ -386,11 +408,13 @@ def _model_tool_entry(entry: ActionTypeEntry) -> dict[str, Any]:
         },
         "output_contract": {
             "result_kind": entry.result_kind,
-            "content_location": "artifact_ref",
+            "content_location": content_location,
             "full_content_in_events": False,
             "full_content_in_read_model": False,
         },
     }
+    if entry.tool_name == "write_memory":
+        tool["constraints"]["requires_approval"] = True
     terminal = capabilities.get("terminal")
     if isinstance(terminal, dict):
         tool["constraints"].update({

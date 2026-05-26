@@ -12,7 +12,7 @@ from ...platform.events.events import CanonicalEvent
 from ...platform.errors import IsotopeError, not_enabled_result
 from ...platform.ids import new_id, reserve_ids
 from ...platform.registry.actions import ActionTypeRegistry
-from ...memory import FileMemoryStore, LocalMemoryQueryService
+from ...memory import FileMemoryStore, LocalMemoryQueryService, LocalMemoryWriteService
 from ...platform.schemas.refs import ResourceRef
 from ...platform.state.event_store import FileEventStore
 from ...platform.state.projector import RunProjector
@@ -95,6 +95,7 @@ class InProcessServer(
         screen_backend=None,
         screen_backend_config=None,
         memory_store=None,
+        memory_write_service=None,
         memory_query_service=None,
         *,
         policy_profile_id: str = "default",
@@ -106,6 +107,11 @@ class InProcessServer(
         self.checkpoint_store = checkpoint_store
         self.artifact_store = ArtifactStore(self.root)
         self.memory_store = memory_store if memory_store is not None else FileMemoryStore(self.root)
+        self.memory_write_service = (
+            memory_write_service
+            if memory_write_service is not None
+            else LocalMemoryWriteService(self.memory_store)
+        )
         self.memory_query_service = (
             memory_query_service
             if memory_query_service is not None
@@ -131,6 +137,7 @@ class InProcessServer(
             codex_task_adapter_config=codex_task_adapter_config,
             screen_backend=screen_backend,
             screen_backend_config=screen_backend_config,
+            memory_service=self.memory_write_service,
         )
         self.retrieval = RetrievalService(self.artifact_store)
         self._sessions: dict[str, dict[str, Any]] = {}

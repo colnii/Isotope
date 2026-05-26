@@ -196,6 +196,12 @@
   accepted external observation metadata 生成低敏 `write_memory` proposal
   preview。它不写 memory store、不追加 canonical event，也不返回 raw text、
   raw content、artifact 正文或 provider payload。
+- `write_memory` runtime action 已打开 approval-gated durable write 第一片：
+  它在默认 action registry 中可编译、可过 policy，但 policy 要求
+  `approval_requested=true`；批准后 executor 才会通过 `LocalMemoryWriteService`
+  写入 `FileMemoryStore`，随后追加低敏 `memory.record_created` canonical event。
+  事件和 read model 只暴露 record id、summary、source refs、provenance、
+  quality，不暴露结构化 `content` 或 raw artifact/provider payload。
 - `screen.report` 已注册为可发现、可预检、可运行的只读 capability：
   `list/search/describe` 能看到它，`plan/run --input-json` 要求 `root/run_id`；
   执行时复用现有 screen artifact report，只返回 observe/control plan 低敏摘要，

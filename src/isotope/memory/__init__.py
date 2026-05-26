@@ -157,6 +157,25 @@ class NotEnabledMemoryStore:
         return self.root / "memory" / f"{memory_id}.json"
 
 
+class LocalMemoryWriteService:
+    """Authorized write boundary backed by a local memory store."""
+
+    def __init__(self, memory_store: FileMemoryStore) -> None:
+        self.memory_store = memory_store
+
+    def write_record(
+        self,
+        record: MemoryRecord | dict[str, Any],
+        execution=None,
+        grants: dict[str, Any] | None = None,
+    ) -> dict[str, str]:
+        return self.memory_store.save_record(
+            record,
+            execution=execution,
+            grants=grants,
+        )
+
+
 class LocalMemoryQueryService:
     """Query local memory records and return previews only by default."""
 

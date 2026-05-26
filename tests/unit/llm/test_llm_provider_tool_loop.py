@@ -199,11 +199,17 @@ def test_llm_tool_loop_sends_catalog_to_provider_and_waits_for_approval(tmp_path
     assert provider.calls[0]["max_tokens"] == 128
     assert [tool["name"] for tool in provider.calls[0]["tools"]] == [
         "write_artifact_tool",
+        "write_memory",
         "terminal_exec",
         "screen_observe",
         "screen_control",
         "codex_task",
     ]
+    write_memory = [
+        tool for tool in provider.calls[0]["tools"] if tool["name"] == "write_memory"
+    ][0]
+    assert write_memory["constraints"]["requires_approval"] is True
+    assert write_memory["output_contract"]["content_location"] == "memory_record_ref"
     assert runner.calls == []
     event_types = _event_types(app, run_id)
     assert "approval.requested" in event_types

@@ -119,6 +119,9 @@ class PolicyEngine:
             grants["codex_task"] = {
                 "adapter_required": codex_capabilities.get("adapter_required", True) is True,
             }
+        if tool_name == "write_memory":
+            if proposal.payload.get("approval_requested") is not True:
+                return self._denied(proposal, "memory_approval_required")
         if tool_name in {"screen_observe", "screen_control"}:
             screen_capabilities = required_capabilities.get("screen")
             if not isinstance(screen_capabilities, dict):
