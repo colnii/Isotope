@@ -189,6 +189,57 @@ def test_supervisor_worker_manager_plain_output_is_human_readable(tmp_path, caps
     assert "hidden" not in output
 
 
+def test_supervisor_worker_manager_plain_output_shows_supervised_capacity_runs(
+    tmp_path,
+    capsys,
+):
+    memory_dir = tmp_path / "memory"
+    memory_dir.mkdir()
+    _write_memory_record(
+        memory_dir,
+        MemoryRecord(
+            memory_id="mem_worker_a_capacity",
+            scope="run",
+            content={
+                "kind": "capacity_call",
+                "worker_id": "worker-a",
+                "capacity_id": "artifact.review",
+                "arguments": {"secret": "PRIVATE_CAPACITY_ARGUMENT"},
+                "agent_loop_summary": {
+                    "agent_loop_executed": True,
+                    "agent_loop_planner_selected_step": "call_capability",
+                    "agent_loop_tick_status": "executed",
+                    "agent_loop_artifact_id": "artifact_safe_summary",
+                    "tick_result": {"raw": "PRIVATE_TICK_PAYLOAD"},
+                },
+            },
+            summary="Worker A selected artifact.review.",
+            source_refs=[],
+            provenance={
+                "run_id": "run_a",
+                "execution_id": "exec_capacity",
+                "action_type": "capacity_call",
+            },
+            created_at="2026-05-22T01:10:00Z",
+            supersedes=[],
+            quality="verified",
+        ),
+    )
+    capsys.readouterr()
+
+    assert runner.main(["worker-manager", "--root", str(tmp_path)]) == 0
+
+    output = capsys.readouterr().out
+    assert "supervised_capacity_runs: 1" in output
+    assert (
+        "capacity_run: worker-a / artifact.review / tick=executed / "
+        "step=call_capability / artifact=artifact_safe_summary"
+    ) in output
+    assert "Worker A selected artifact.review." in output
+    assert "tick_result" not in output
+    assert "PRIVATE_" not in output
+
+
 def test_supervisor_dashboard_json_includes_multi_worker_status(tmp_path, capsys):
     codex_home = tmp_path / ".codex"
     memory_dir = codex_home / "memory"

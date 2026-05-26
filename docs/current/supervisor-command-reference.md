@@ -55,7 +55,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 | `merge-work-order` / `merge-dispatch` / `promotion` | 生成 merge worker 工单、派发合并、CI watch 和 promotion gate。 | [architecture migration table](./supervisor-architecture-migration-table.md) |
 | `cleanup` | 只在 done、archived、already_integrated 且路径安全时删除 worktree。 | [capability inventory](./supervisor-capability-inventory.md) |
 | `capacity` | 生成 capacity decision；显式执行时通过 tick driver 运行一次 `call_capability`。 | [capability inventory](./supervisor-capability-inventory.md)、[agent-loop tick driver boundary](../architecture/agent-loop-tick-driver-boundary-v0.2.md) |
-| `memory` / `worker-event` / `worker-manager` | 查询本地 memory preview、worker event 和 multi-worker read model。 | [terminology](./terminology.md)、[capability inventory](./supervisor-capability-inventory.md) |
+| `memory` / `worker-event` / `worker-manager` | 查询本地 memory preview、worker event、multi-worker read model 和 supervised capacity run 摘要。 | [terminology](./terminology.md)、[capability inventory](./supervisor-capability-inventory.md) |
 | `research` | 代理 shared Research flow，成功写 `research.report`，provider 失败只写 `research.provider_trace`。 | [application structure plan](./application-structure-plan.md)、[terminology](./terminology.md) |
 
 ## 常用闭环

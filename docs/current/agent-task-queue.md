@@ -90,6 +90,9 @@
 - Multi-worker payload 已补 `supervised_execution` 聚合视图：按 worker 聚合
   最近 capacity run，复用同一份 `agent_loop_summary`，给后续受监督执行视图
   一个稳定读取入口。
+- `worker-manager` plain 输出已展开 `supervised_execution` 的最近 capacity
+  run：worker、capacity id、tick、step、artifact 和低敏 summary 可直接在
+  CLI 里检查。
 
 ## 下一批任务
 
@@ -123,13 +126,13 @@
 
 目标：
 
-- 把已验证的 `supervised_execution` read model 接到更完整的 live view
-  或 CLI 状态入口。
+- 把 `supervised_execution` read model 接到更完整的 live dashboard 或 web
+  交互入口。
 - 仍不接真实 LLM，不做自动多轮循环，不引入 scheduler。
 
 验收：
 
-- 新入口直接读取 `multi_worker.supervised_execution`。
+- 新入口直接读取 `multi_worker.supervised_execution`，不重复遍历 memory store。
 - Dashboard / web 继续只从 summary 读取，不读取 raw tick payload。
 - 保持 no raw payload（不暴露原始内容）边界。
 

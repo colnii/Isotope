@@ -90,11 +90,33 @@ def render_multi_worker_status_plain(payload: dict[str, Any]) -> str:
         lines.append(f"hidden_workers: {summary['hidden_workers']}")
     supervised = payload.get("supervised_execution")
     if isinstance(supervised, dict):
+        capacity_runs = supervised.get("recent_capacity_runs")
+        if not isinstance(capacity_runs, list):
+            capacity_runs = []
         lines.append(
             "supervised_capacity_runs: {runs}".format(
-                runs=len(supervised.get("recent_capacity_runs") or [])
+                runs=len(capacity_runs)
             )
         )
+        for run in capacity_runs:
+            if not isinstance(run, dict):
+                continue
+            loop = run.get("agent_loop_summary")
+            if not isinstance(loop, dict):
+                loop = {}
+            lines.append(
+                "capacity_run: {worker} / {capacity_id} / tick={tick} / "
+                "step={step} / artifact={artifact}".format(
+                    worker=run.get("worker") or "unknown",
+                    capacity_id=run.get("capacity_id") or "unknown",
+                    tick=loop.get("agent_loop_tick_status") or "unknown",
+                    step=loop.get("agent_loop_planner_selected_step") or "unknown",
+                    artifact=loop.get("agent_loop_artifact_id") or "none",
+                )
+            )
+            summary_text = run.get("summary")
+            if isinstance(summary_text, str) and summary_text:
+                lines.append(f"  capacity_summary: {summary_text}")
     if not workers:
         lines.append("workers: none")
         return "\n".join(lines)
