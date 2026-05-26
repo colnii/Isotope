@@ -5,6 +5,8 @@ from __future__ import annotations
 import copy
 import json
 import os
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -17,6 +19,9 @@ from isotope.capabilities.runner import CapabilityRunner
 from isotope.llm.capacity_calling import CapacityCallingProvider, select_capacity_call
 from isotope.llm.pool import PoolEntry, resolve_pool_entries_from_env
 from isotope.llm.provider import OpenAICompatibleChatProvider, Transport, LLMResponse
+from isotope.platform.schemas.actions import ActionExecution
+from isotope.platform.schemas.memory import MemoryRecord
+from isotope.platform.state.memory_store import FileMemoryStore
 from isotope.runtime.in_process import InProcessServer
 
 
@@ -241,11 +246,20 @@ def execute_capacity_action(
             else Path(args.codex_home) / "supervisor" / "capacity-loop-runs"
         ),
     )
+    agent_loop_summary = agent_loop_json_summary({"agent_loop": agent_loop})
+    _record_capacity_call_memory(
+        codex_home=Path(args.codex_home),
+        worker_name=getattr(args, "name", None),
+        capacity_id=capacity_id,
+        agent_loop=agent_loop,
+        agent_loop_summary=agent_loop_summary,
+    )
     return {
         "kind": "call_capacity",
         "capacity_id": capacity_id,
         "goal": goal if isinstance(goal, str) and goal else f"Call {capacity_id}",
         "agent_loop": agent_loop,
+        "agent_loop_summary": agent_loop_summary,
     }
 
 
@@ -386,6 +400,57 @@ def agent_loop_json_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
     if isinstance(artifact_ref, Mapping):
         summary["agent_loop_artifact_id"] = artifact_ref.get("artifact_id")
     return summary
+
+
+def _record_capacity_call_memory(
+    *,
+    codex_home: Path,
+    worker_name: Any,
+    capacity_id: str,
+    agent_loop: Mapping[str, Any],
+    agent_loop_summary: Mapping[str, Any],
+) -> None:
+    worker = (
+        worker_name if isinstance(worker_name, str) and worker_name else "supervisor"
+    )
+    run_id = agent_loop.get("run_id")
+    memory_id = "mem_capacity_" + uuid.uuid4().hex[:12]
+    execution_id = "exec_capacity_memory_" + uuid.uuid4().hex[:12]
+    record = MemoryRecord(
+        memory_id=memory_id,
+        scope="run",
+        content={
+            "kind": "capacity_call",
+            "worker_name": worker,
+            "capacity_id": capacity_id,
+            "agent_loop_summary": dict(agent_loop_summary),
+        },
+        summary=f"{worker} called {capacity_id} via agent loop.",
+        source_refs=[],
+        provenance={
+            "run_id": (
+                run_id if isinstance(run_id, str) and run_id else "supervisor_capacity"
+            ),
+            "execution_id": execution_id,
+            "action_type": "capacity_call",
+        },
+        created_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        supersedes=[],
+        quality="verified",
+    )
+    execution = ActionExecution(
+        execution_id=execution_id,
+        proposal_id="prop_capacity_memory_" + uuid.uuid4().hex[:12],
+        decision_id="dec_capacity_memory_" + uuid.uuid4().hex[:12],
+        action_type="write_memory",
+        status="completed",
+        effective_grants_snapshot={"tools": ["write_memory"]},
+    )
+    FileMemoryStore(codex_home).save_record(
+        record,
+        execution=execution,
+        grants={"tools": ["write_memory"]},
+    )
 
 
 def _capacity_call_spec(

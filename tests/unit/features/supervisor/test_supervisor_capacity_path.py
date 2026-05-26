@@ -9,6 +9,7 @@ from isotope.features.supervisor.commands.handlers import capacity as capacity_c
 from isotope.capabilities.catalog import Capability, CapabilityCatalog
 from isotope.capabilities.runner import CapabilityRunner
 from isotope.llm.provider import LLMResponse
+from isotope.platform.state.memory_store import FileMemoryStore
 
 
 class FakeCapacityProvider:
@@ -381,6 +382,102 @@ def test_execute_capacity_action_requires_matching_ready_decision(tmp_path, monk
         "reason": "capacity decision not ready",
     }
     assert calls == []
+
+
+def test_execute_capacity_action_returns_low_sensitive_agent_loop_summary(
+    tmp_path, monkeypatch
+):
+    agent_loop = {
+        "handoff": {
+            "initial_next_tick_kind": "planner_step",
+            "post_step_phase": "ready",
+            "post_step_should_continue": True,
+            "post_step_stop_reason": None,
+        },
+        "planner_output_summary": {
+            "selected_step": "call_capability",
+            "capability_id": "artifact.review",
+        },
+        "tick_result": {
+            "tick_status": "executed",
+            "after_policy": {"must_stop_reason": "tick_budget_exhausted"},
+            "planner_result": {
+                "step_result": {
+                    "action_result": {
+                        "artifact_ref": {"artifact_id": "artifact_safe_summary"},
+                        "raw": "PRIVATE_ACTION_PAYLOAD",
+                    },
+                },
+            },
+        },
+    }
+
+    def fake_execute_agent_loop_capacity_step(**kwargs):
+        return agent_loop
+
+    monkeypatch.setattr(
+        capacity_command,
+        "_execute_agent_loop_capacity_step",
+        fake_execute_agent_loop_capacity_step,
+    )
+
+    codex_home = tmp_path / ".codex"
+    result = capacity_command.execute_capacity_action(
+        argparse.Namespace(codex_home=str(codex_home), name="capa"),
+        {
+            "kind": "call_capacity",
+            "capacity_id": "artifact.review",
+            "reason": "ready",
+        },
+        {
+            "capacity_call_specs": [
+                {
+                    "capacity_id": "artifact.review",
+                    "goal": "检查 artifact review 能力。",
+                    "inputs": {},
+                }
+            ],
+            "capacity_decisions": [
+                {
+                    "kind": "supervisor_capacity_decision",
+                    "next_action": "call_capacity",
+                    "reason": "ready",
+                    "capacity_id": "artifact.review",
+                    "can_execute_agent_loop": True,
+                    "missing_inputs": [],
+                    "blocking_reasons": [],
+                }
+            ],
+        },
+    )
+
+    assert result["agent_loop"] == agent_loop
+    assert result["agent_loop_summary"] == {
+        "agent_loop_executed": True,
+        "agent_loop_next_tick_kind": "planner_step",
+        "agent_loop_planner_selected_step": "call_capability",
+        "agent_loop_tick_status": "executed",
+        "agent_loop_tick_after_stop_reason": "tick_budget_exhausted",
+        "agent_loop_artifact_id": "artifact_safe_summary",
+        "agent_loop_post_step_phase": "ready",
+        "agent_loop_post_step_should_continue": True,
+        "agent_loop_post_step_stop_reason": None,
+    }
+    _assert_no_agent_loop_raw_payload(result["agent_loop_summary"])
+    records = FileMemoryStore(codex_home).list_records(scope="run")
+    assert len(records) == 1
+    record = records[0]
+    assert record.content == {
+        "kind": "capacity_call",
+        "worker_name": "capa",
+        "capacity_id": "artifact.review",
+        "agent_loop_summary": result["agent_loop_summary"],
+    }
+    assert record.provenance["action_type"] == "capacity_call"
+    assert record.summary == "capa called artifact.review via agent loop."
+    serialized = json.dumps(record.content, ensure_ascii=False, sort_keys=True)
+    assert "tick_result" not in serialized
+    assert "PRIVATE_" not in serialized
 
 
 def test_capacity_call_specs_require_ready_plan_status():
