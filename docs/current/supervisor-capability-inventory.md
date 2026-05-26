@@ -117,7 +117,10 @@
   `capacity_call_specs` 通过 agent loop 的 `call_capability` 步骤执行；
   `isotope-supervisor capacity plan --execute-agent-loop` 的 plain 输出会打印
   低敏 handoff summary，包括 planner selected step、tick status、
-  tick stop reason 和 artifact ref；
+  tick stop reason 和 artifact ref；当 agent loop 调用 `screen.report` 时，
+  JSON `agent_loop_summary` 还会带 screen report status、observe/control
+  status、screenshot availability 和 interference 标记，仍不展开截图正文或
+  原始 artifact content；
   `capacity_call_specs` 只会从 `status=ok`、`status_reason=ready`，
   且 `capability_launch_plan.can_launch=true`、`capacity_id` 匹配的计划生成；
   执行前仍会重新确认同一 `capacity_id` 存在 ready 的
@@ -179,7 +182,9 @@
 - `screen.report` 已注册为可发现、可预检、可运行的只读 capability：
   `list/search/describe` 能看到它，`plan/run --input-json` 要求 `root/run_id`；
   执行时复用现有 screen artifact report，只返回 observe/control plan 低敏摘要，
-  不读取 screenshot 正文、不执行输入、不改变窗口。
+  不读取 screenshot 正文、不执行输入、不改变窗口；capacity plan 选中并经
+  agent loop 执行后，`agent_loop_summary` 只暴露 report status、observe/control
+  status、screenshot availability 和 interference 这些低敏结论。
 - `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
 - `/managed/send` 成功发送后会更新 lane state。
 - `guide` 会按 cwd、lane name 和 tmux session 打印可复制工作流命令。

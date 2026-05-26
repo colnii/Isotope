@@ -10,6 +10,7 @@ from isotope.capabilities.catalog import Capability, CapabilityCatalog
 from isotope.capabilities.runner import CapabilityRunner
 from isotope.llm.provider import LLMResponse
 from isotope.platform.state.memory_store import FileMemoryStore
+from isotope.workspace.artifacts import ArtifactStore
 
 
 class FakeCapacityProvider:
@@ -690,6 +691,66 @@ def test_supervisor_capacity_plan_applies_root_default_for_memory_query(tmp_path
     assert capability_run["status"] == "completed"
     assert capability_run["memory_query"]["results"][0]["record_id"] == "mem_capacity"
     assert "raw memory content" not in json.dumps(result)
+
+
+def test_supervisor_capacity_plan_summarizes_screen_report_agent_loop_result(tmp_path):
+    root = tmp_path / "codex-home"
+    store = ArtifactStore(root)
+    store.create_artifact(
+        "run_screen",
+        execution_id="exec_screen",
+        artifact_type="screen_control_plan",
+        summary="screen restore plan",
+        content=json.dumps(
+            {
+                "action_count": 1,
+                "executed": False,
+                "planned_actions": ["restore_window"],
+                "private_note": "raw screen control payload must not leak",
+            },
+            sort_keys=True,
+        ),
+    )
+    provider = FakeCapacityProvider(
+        json.dumps(
+            {
+                "capacity_id": "screen.report",
+                "arguments": {"run_id": "run_screen"},
+                "confidence": 0.86,
+                "rationale": "summarize existing screen artifacts",
+            }
+        )
+    )
+
+    result = capacity_command.build_supervisor_capacity_plan(
+        goal="汇总 run_screen 的屏幕观察和控制计划",
+        provider=provider,
+        state_root=tmp_path / "state",
+        execute_agent_loop=True,
+        input_defaults={"root": str(root)},
+    )
+
+    assert result["status"] == "ok"
+    assert result["selection"]["capacity_id"] == "screen.report"
+    assert result["selection"]["arguments"] == {
+        "root": str(root),
+        "run_id": "run_screen",
+    }
+    capability_run = result["agent_loop"]["step_result"]["action_result"][
+        "capability_run"
+    ]
+    assert capability_run["capability_id"] == "screen.report"
+    assert capability_run["status"] == "completed"
+    assert capability_run["screen_report"]["summary"]["control_status"] == "planned"
+    assert result["agent_loop_summary"]["agent_loop_screen_report_status"] == "ok"
+    assert result["agent_loop_summary"]["agent_loop_screen_observe_status"] == (
+        "no_screen_artifacts"
+    )
+    assert result["agent_loop_summary"]["agent_loop_screen_control_status"] == "planned"
+    assert result["agent_loop_summary"]["agent_loop_screen_screenshot_available"] is False
+    assert result["agent_loop_summary"]["agent_loop_screen_interferes_with_screen"] is True
+    assert "raw screen control payload" not in json.dumps(result)
+    _assert_no_agent_loop_raw_payload(result["agent_loop_summary"])
 
 
 def test_supervisor_capacity_plan_blocks_missing_inputs_without_graph_call_or_execution(tmp_path):

@@ -420,6 +420,23 @@ def agent_loop_json_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
     artifact_ref = _agent_loop_artifact_ref(tick_result)
     if isinstance(artifact_ref, Mapping):
         summary["agent_loop_artifact_id"] = artifact_ref.get("artifact_id")
+    screen_report = _agent_loop_screen_report(tick_result)
+    if isinstance(screen_report, Mapping):
+        summary["agent_loop_screen_report_status"] = screen_report.get("status")
+        screen_summary = screen_report.get("summary")
+        if isinstance(screen_summary, Mapping):
+            summary["agent_loop_screen_observe_status"] = screen_summary.get(
+                "observe_status"
+            )
+            summary["agent_loop_screen_control_status"] = screen_summary.get(
+                "control_status"
+            )
+            summary["agent_loop_screen_screenshot_available"] = screen_summary.get(
+                "screenshot_available"
+            )
+            summary["agent_loop_screen_interferes_with_screen"] = screen_summary.get(
+                "interferes_with_screen"
+            )
     return summary
 
 
@@ -880,3 +897,28 @@ def _agent_loop_artifact_ref(tick_result: Mapping[str, Any]) -> Mapping[str, Any
         action_result.get("artifact_ref") if isinstance(action_result, Mapping) else None
     )
     return artifact_ref if isinstance(artifact_ref, Mapping) else None
+
+
+def _agent_loop_screen_report(
+    tick_result: Mapping[str, Any],
+) -> Mapping[str, Any] | None:
+    planner_result = tick_result.get("planner_result")
+    step_result = (
+        planner_result.get("step_result")
+        if isinstance(planner_result, Mapping)
+        else None
+    )
+    action_result = (
+        step_result.get("action_result") if isinstance(step_result, Mapping) else None
+    )
+    capability_run = (
+        action_result.get("capability_run")
+        if isinstance(action_result, Mapping)
+        else None
+    )
+    screen_report = (
+        capability_run.get("screen_report")
+        if isinstance(capability_run, Mapping)
+        else None
+    )
+    return screen_report if isinstance(screen_report, Mapping) else None
