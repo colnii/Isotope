@@ -203,8 +203,10 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   dry-run smoke 入口，`control-restore` 是恢复最小化窗口的 dry-run/批准执行
   入口；`real-smoke-plan` 会输出真实 backend metadata/screenshot、dry-run
   click 和 dry-run restore 验证命令，避免只跑 fake；target allowlist 可由
-  `--allow-app` / `--allow-title-contains` 注入到 intent/grants；窗口最小化
-  或截图不可用时 observe 降级为 `metadata_only` 并写入 diagnostic artifact；
+  `--allow-app` / `--allow-title-contains` 注入到 intent/grants，也可通过
+  `--allowlist-file` 读取可复用 JSON allowlist；该文件只影响 target allowlist，
+  不绕过 execute approval gate；窗口最小化或截图不可用时 observe 降级为
+  `metadata_only` 并写入 diagnostic artifact；
   `inspect` 可读取单个 screen artifact，`report` 可生成 run 级低敏摘要
   （artifact 列表、target metadata、截图可用性、恢复建议、control plan
   action 类型、approval 需求和屏幕干扰标记）；Supervisor `screen report/inspect`

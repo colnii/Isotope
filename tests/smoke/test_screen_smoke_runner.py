@@ -60,6 +60,32 @@ def test_build_observe_intent_can_carry_target_allowlist():
     }
 
 
+def test_target_allowlist_can_load_reusable_json_file(tmp_path):
+    allowlist_file = tmp_path / "screen-allowlist.json"
+    allowlist_file.write_text(
+        json.dumps(
+            {
+                "allowed_apps": ["notepad.exe"],
+                "allowed_title_contains": ["Mahjong Soul"],
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    allowlist = runner._target_allowlist_from_args(
+        allow_apps=["calc.exe"],
+        allow_title_contains=["local"],
+        allowlist_file=str(allowlist_file),
+    )
+
+    assert allowlist == {
+        "allowed_apps": ["notepad.exe", "calc.exe"],
+        "allowed_title_contains": ["Mahjong Soul", "local"],
+        "allow_first_match_execute": False,
+    }
+
+
 def test_build_click_action_uses_control_action_schema():
     assert runner._build_click_action(x=100, y=120, button="left") == {
         "type": "click",
@@ -113,7 +139,25 @@ def test_control_restore_parser_accepts_target_allowlist():
 
     assert args.command == "control-restore"
     assert args.allow_app == ["notepad.exe"]
+    assert args.allowlist_file is None
     assert args.approve_execute is False
+
+
+def test_observe_parser_accepts_reusable_allowlist_file():
+    args = runner._build_parser().parse_args(
+        [
+            "observe",
+            "--root",
+            "runtime-root",
+            "--app",
+            "notepad.exe",
+            "--allowlist-file",
+            "screen-allowlist.json",
+        ]
+    )
+
+    assert args.command == "observe"
+    assert args.allowlist_file == "screen-allowlist.json"
 
 
 def test_real_smoke_plan_prints_real_backend_commands():
@@ -127,6 +171,19 @@ def test_real_smoke_plan_prints_real_backend_commands():
     assert any(" control-click " in command for command in commands)
     assert any(" control-restore " in command for command in commands)
     assert all("fake" not in command for command in commands)
+
+
+def test_real_smoke_plan_carries_reusable_allowlist_file():
+    commands = runner._real_smoke_commands(
+        root="runtime-root",
+        app="notepad.exe",
+        title_contains=None,
+        allowlist_file="screen-allowlist.json",
+    )
+
+    assert all(
+        "--allowlist-file screen-allowlist.json" in command for command in commands
+    )
 
 
 def test_json_print_writes_serializable_payload(capsys):

@@ -189,6 +189,10 @@ def _build_parser() -> argparse.ArgumentParser:
     real_smoke_parser.add_argument("--root", required=True, help="Runtime root directory.")
     real_smoke_parser.add_argument("--app", help="Target process name, for example notepad.exe.")
     real_smoke_parser.add_argument("--title-contains", help="Substring expected in the target window title.")
+    real_smoke_parser.add_argument(
+        "--allowlist-file",
+        help="JSON target allowlist file reused across generated smoke commands.",
+    )
     real_smoke_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     inspect_parser = subparsers.add_parser("inspect", help="Inspect a screen artifact.")
     inspect_parser.add_argument("--root", required=True, help="Runtime root directory.")
@@ -224,6 +228,10 @@ def _add_target_args(parser: argparse.ArgumentParser) -> None:
         default=None,
         help="Allowed title fragment for this smoke command. Can be repeated.",
     )
+    parser.add_argument(
+        "--allowlist-file",
+        help="JSON target allowlist file reused across screen smoke commands.",
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -247,6 +255,7 @@ def main(argv: list[str] | None = None) -> int:
                 root=args.root,
                 app=args.app,
                 title_contains=args.title_contains,
+                allowlist_file=args.allowlist_file,
             )
             payload = {"status": "ok", "commands": commands}
             if args.json:
@@ -282,6 +291,7 @@ def main(argv: list[str] | None = None) -> int:
         target_allowlist = _target_allowlist_from_args(
             allow_apps=args.allow_app,
             allow_title_contains=args.allow_title_contains,
+            allowlist_file=args.allowlist_file,
         )
         api = _new_server(Path(args.root))
         session = api.create_session()
@@ -427,14 +437,59 @@ def _target_allowlist_from_args(
     *,
     allow_apps: list[str] | None,
     allow_title_contains: list[str] | None,
+    allowlist_file: str | None = None,
 ) -> dict[str, Any] | None:
-    if not allow_apps and not allow_title_contains:
+    file_allowlist = _target_allowlist_from_file(allowlist_file)
+    merged_apps = [
+        *file_allowlist.get("allowed_apps", []),
+        *list(allow_apps or []),
+    ]
+    merged_titles = [
+        *file_allowlist.get("allowed_title_contains", []),
+        *list(allow_title_contains or []),
+    ]
+    if not merged_apps and not merged_titles:
         return None
     return {
-        "allowed_apps": list(allow_apps or []),
-        "allowed_title_contains": list(allow_title_contains or []),
+        "allowed_apps": merged_apps,
+        "allowed_title_contains": merged_titles,
         "allow_first_match_execute": False,
     }
+
+
+def _target_allowlist_from_file(path: str | None) -> dict[str, list[str]]:
+    if path is None:
+        return {"allowed_apps": [], "allowed_title_contains": []}
+    try:
+        parsed = json.loads(Path(path).read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError("allowlist-file must be valid JSON") from exc
+    if not isinstance(parsed, dict):
+        raise ValueError("allowlist-file must contain a JSON object")
+    return {
+        "allowed_apps": _string_list_field(
+            parsed,
+            "allowed_apps",
+            source="allowlist-file",
+        ),
+        "allowed_title_contains": _string_list_field(
+            parsed,
+            "allowed_title_contains",
+            source="allowlist-file",
+        ),
+    }
+
+
+def _string_list_field(
+    mapping: dict[str, Any],
+    field_name: str,
+    *,
+    source: str,
+) -> list[str]:
+    value = mapping.get(field_name, [])
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise ValueError(f"{source}.{field_name} must be a list of strings")
+    return list(value)
 
 
 def _real_smoke_commands(
@@ -442,6 +497,7 @@ def _real_smoke_commands(
     root: str,
     app: str | None,
     title_contains: str | None,
+    allowlist_file: str | None = None,
 ) -> list[str]:
     target_args: list[str] = []
     allow_args: list[str] = []
@@ -451,6 +507,8 @@ def _real_smoke_commands(
     if title_contains:
         target_args.extend(["--title-contains", title_contains])
         allow_args.extend(["--allow-title-contains", title_contains])
+    if allowlist_file:
+        allow_args.extend(["--allowlist-file", allowlist_file])
     if not target_args:
         raise ValueError("real smoke plan requires --app or --title-contains")
     base = ["PYTHONPATH=src", ".venv/bin/python", "-m", "isotope.features.screen.runner"]

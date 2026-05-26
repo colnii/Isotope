@@ -227,3 +227,30 @@ def test_screen_cli_report_plain_output_summarizes_control_plan(tmp_path):
     assert "interference: true" in result.stdout
     assert "action: restore_window count=1 executed=false" in result.stdout
     assert "raw control payload" not in result.stdout
+
+
+def test_screen_cli_real_smoke_plan_carries_allowlist_file(tmp_path):
+    allowlist_file = tmp_path / "screen-allowlist.json"
+    allowlist_file.write_text(
+        json.dumps({"allowed_apps": ["notepad.exe"]}, sort_keys=True),
+        encoding="utf-8",
+    )
+
+    result = _run_cli(
+        "real-smoke-plan",
+        "--root",
+        str(tmp_path),
+        "--app",
+        "notepad.exe",
+        "--allowlist-file",
+        str(allowlist_file),
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert all(
+        f"--allowlist-file {allowlist_file}" in command
+        for command in payload["commands"]
+    )
