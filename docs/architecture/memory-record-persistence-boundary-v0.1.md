@@ -157,7 +157,7 @@ duplicate / overwrite 仍暂不实现；supersession 当前只实现 canonical e
 
 future memory query 可以读取 persisted records，但 query 是 read-side recall，不是 run loop mandatory stage。
 
-当前 `NotEnabledMemoryQueryService` 只锁 query-time authorization boundary：它校验 explicit `grants` / `caller_context`，`caller_context.run_id` 必须存在且和 query `run_id` 对齐，`caller_context.caller` / `caller_context.purpose` 必须是非空字符串；无 query grant、missing/mismatched caller run、invalid caller audit context、或无 controlled expand grant / budget 时 fail closed，不读取 memory store / full content，并返回低敏 `reason_code` / `content_policy` 供上层解释。它不是 query engine，也不是 controlled expand implementation。
+当前 `NotEnabledMemoryQueryService` 只锁 query-time authorization boundary：它校验 explicit `grants` / `caller_context`，`caller_context.run_id` 必须存在且和 query `run_id` 对齐，`caller_context.caller` / `caller_context.purpose` 必须是非空字符串；无 query grant、missing/mismatched caller run、invalid caller audit context、无 controlled expand grant / positive integer budget、或 invalid expand budget shape 时 fail closed，不读取 memory store / full content，并返回低敏 `reason_code` / `content_policy` 供上层解释。它不是 query engine，也不是 controlled expand implementation。
 
 默认 query result 应返回：
 

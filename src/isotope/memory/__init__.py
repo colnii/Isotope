@@ -29,9 +29,29 @@ def _has_memory_query_grant(grants: dict[str, Any]) -> bool:
 
 def _has_controlled_expand_grant(grants: dict[str, Any]) -> bool:
     memory_grants = _memory_grants(grants)
-    return memory_grants.get("controlled_expand") is True and (
-        "expand_budget" in memory_grants or "budget" in memory_grants
-    )
+    return memory_grants.get("controlled_expand") is True and _controlled_expand_budget(
+        memory_grants
+    ) is not None
+
+
+def _controlled_expand_budget(memory_grants: dict[str, Any]) -> int | None:
+    if "expand_budget" in memory_grants:
+        value = memory_grants["expand_budget"]
+    elif "budget" in memory_grants:
+        value = memory_grants["budget"]
+    else:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        return None
+    return value
+
+
+def _controlled_expand_budget_is_invalid(grants: dict[str, Any]) -> bool:
+    memory_grants = _memory_grants(grants)
+    if memory_grants.get("controlled_expand") is not True:
+        return False
+    has_budget = "expand_budget" in memory_grants or "budget" in memory_grants
+    return has_budget and _controlled_expand_budget(memory_grants) is None
 
 
 def _denied_memory_query_result(
@@ -158,12 +178,19 @@ class LocalMemoryQueryService:
                 reason_code="invalid_caller_context",
                 content_policy="no_memory_read",
             )
-        if controlled_expand and not _has_controlled_expand_grant(grants):
-            return _denied_memory_query_result(
-                capability="memory_controlled_expand",
-                reason_code="missing_controlled_expand_grant",
-                content_policy="no_full_content_read",
-            )
+        if controlled_expand:
+            if _controlled_expand_budget_is_invalid(grants):
+                return _denied_memory_query_result(
+                    capability="memory_controlled_expand",
+                    reason_code="invalid_controlled_expand_budget",
+                    content_policy="no_full_content_read",
+                )
+            if not _has_controlled_expand_grant(grants):
+                return _denied_memory_query_result(
+                    capability="memory_controlled_expand",
+                    reason_code="missing_controlled_expand_grant",
+                    content_policy="no_full_content_read",
+                )
         if not isinstance(query, str) or not query.strip():
             raise ValueError("memory query must be a non-empty string")
         if scope is not None and scope not in {"thread", "run", "session"}:
@@ -229,12 +256,19 @@ class NotEnabledMemoryQueryService:
                 reason_code="invalid_caller_context",
                 content_policy="no_memory_read",
             )
-        if controlled_expand and not _has_controlled_expand_grant(grants):
-            return _denied_memory_query_result(
-                capability="memory_controlled_expand",
-                reason_code="missing_controlled_expand_grant",
-                content_policy="no_full_content_read",
-            )
+        if controlled_expand:
+            if _controlled_expand_budget_is_invalid(grants):
+                return _denied_memory_query_result(
+                    capability="memory_controlled_expand",
+                    reason_code="invalid_controlled_expand_budget",
+                    content_policy="no_full_content_read",
+                )
+            if not _has_controlled_expand_grant(grants):
+                return _denied_memory_query_result(
+                    capability="memory_controlled_expand",
+                    reason_code="missing_controlled_expand_grant",
+                    content_policy="no_full_content_read",
+                )
         return _not_enabled_memory_query_result()
 
 

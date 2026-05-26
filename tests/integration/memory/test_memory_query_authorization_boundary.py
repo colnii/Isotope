@@ -96,6 +96,46 @@ def test_controlled_expand_without_expand_grant_does_not_read_full_content():
     assert store.calls == []
 
 
+@pytest.mark.parametrize("budget", [0, -1, "1", True, None])
+@pytest.mark.parametrize(
+    "service_factory",
+    [
+        memory.NotEnabledMemoryQueryService,
+        memory.LocalMemoryQueryService,
+    ],
+)
+def test_controlled_expand_rejects_invalid_budget_without_store_read(service_factory, budget):
+    store = ExplodingMemoryStore()
+    service = service_factory(memory_store=store)
+
+    result = service.query(
+        run_id="run_001",
+        query="worked examples",
+        grants={
+            "memory": {
+                "query": True,
+                "controlled_expand": True,
+                "expand_budget": budget,
+            }
+        },
+        caller_context={
+            "run_id": "run_001",
+            "caller": "agent_loop",
+            "purpose": "agent_recall",
+        },
+        controlled_expand=True,
+    )
+
+    assert result == {
+        "status": "denied",
+        "capability": "memory_controlled_expand",
+        "reason_code": "invalid_controlled_expand_budget",
+        "content_policy": "no_full_content_read",
+        "results": [],
+    }
+    assert store.calls == []
+
+
 def test_memory_query_default_shape_excludes_full_content():
     service = memory.NotEnabledMemoryQueryService(memory_store=ExplodingMemoryStore())
 

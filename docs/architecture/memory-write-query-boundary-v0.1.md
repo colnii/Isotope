@@ -24,7 +24,9 @@
 - `caller_context.caller` / `caller_context.purpose` 缺失、空白或不是字符串时，会在读取
   memory store 前返回 `reason_code: invalid_caller_context`。
 - 无 memory query grant 时，不读取 memory store。
-- `controlled_expand=True` 但没有 expand grant / budget 时，受控拒绝且不读取 full content。
+- `controlled_expand=True` 但没有 expand grant / positive integer budget 时，受控拒绝且不读取 full content。
+- `controlled_expand=True` 且 budget 字段存在但不是正整数时，会在读取 memory store 前返回
+  `reason_code: invalid_controlled_expand_budget`。
 - memory query denial / not-enabled result 现在包含低敏 `reason_code` 和
   `content_policy`，便于 CLI / future API 解释拒绝原因而不暴露 raw content。
 - query result 默认不返回 full content、artifact content、raw content 或 full text。
@@ -167,7 +169,8 @@ memory query 是 read-side recall。
 - `caller_context.run_id` 必须和 query `run_id` 对齐；`caller_context.caller` /
   `caller_context.purpose` 必须是非空字符串，供后续 audit / policy 解释调用来源和目的。
 - 没有 query grant 时不能读取 memory store。
-- 请求 `controlled_expand=True` 时，缺少 expand grant / budget 不能读取 full content。
+- 请求 `controlled_expand=True` 时，缺少 expand grant / positive integer budget 不能读取 full content；
+  invalid budget shape 必须在读取 memory store 前 fail closed。
 - 返回结果不得包含 full content、artifact content、raw content 或 full text。
 
 这不是 memory query engine，也不是 controlled expand implementation。
@@ -380,8 +383,10 @@ Memory record persistence boundary design note 已落在 `memory-record-persiste
 - missing / empty / non-string caller audit context returns
   `reason_code: invalid_caller_context` before reading memory store。
 - missing query grant returns `reason_code: missing_memory_query_grant` and does not read memory store。
-- controlled expand without expand grant / budget returns
+- controlled expand without expand grant / positive integer budget returns
   `reason_code: missing_controlled_expand_grant` and does not read full content。
+- controlled expand with invalid budget shape returns
+  `reason_code: invalid_controlled_expand_budget` before reading memory store。
 - not-enabled query returns `reason_code: memory_query_not_enabled` while preserving
   summary / refs / provenance-only content policy。
 - default query result excludes full content / artifact content / raw content。
