@@ -76,6 +76,7 @@ python3 -m venv .venv
 测试 research artifact 闭环：
 
 ```bash
+.venv/bin/isotope-research providers
 .venv/bin/isotope-research search --root /tmp/isotope-research --query "agent memory retrieval" --provider fake
 .venv/bin/isotope-research list --root /tmp/isotope-research
 .venv/bin/isotope-supervisor research inspect --root /tmp/isotope-research --run-id run_001 --artifact-id artifact_002

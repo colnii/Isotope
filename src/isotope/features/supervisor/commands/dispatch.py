@@ -31,6 +31,13 @@ def _runner_api(api: Any | None) -> Any:
 
 
 def handle_research_command(args: argparse.Namespace, *, api) -> int:
+    if args.research_action == "providers":
+        payload = api.list_research_providers()
+        if args.json:
+            api._print_json(payload)
+        else:
+            api._print_research_providers_plain(payload)
+        return 0
     if args.research_action == "list":
         payload = api.list_research_artifacts(
             api.Path(args.root),
@@ -59,7 +66,15 @@ def handle_research_command(args: argparse.Namespace, *, api) -> int:
         raise ValueError("supervisor research search requires --query")
     flow = api.ResearchFlow.in_process(
         api.Path(args.root),
-        provider=api.FakeResearchProvider(),
+        provider=api.build_research_provider(
+            args.provider,
+            workspace_root=args.workspace_root or api.Path.cwd(),
+            codex_executable=args.codex_executable,
+            codex_home=args.codex_home,
+            model=args.model,
+            timeout_seconds=args.timeout_seconds,
+            max_attempts=args.max_attempts,
+        ),
     )
     payload = flow.search(args.query).to_dict()
     if args.json:

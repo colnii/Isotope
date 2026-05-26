@@ -8,8 +8,11 @@ from isotope.features.research.providers import (
     CodexDelegatedResearchProvider,
     FakeResearchProvider,
     ResearchProviderError,
+    build_research_provider,
     build_codex_cli_research_backend,
     extract_research_json,
+    get_research_provider_descriptor,
+    list_research_provider_descriptors,
 )
 
 
@@ -22,6 +25,38 @@ def test_fake_research_provider_returns_source_backed_report():
     assert payload["provider"] == "fake"
     assert payload["sources"][0]["source_id"] == "src_001"
     assert payload["report"]["claims"][0]["source_ids"] == ["src_001"]
+
+
+def test_research_provider_registry_lists_implemented_and_planned_providers():
+    descriptors = list_research_provider_descriptors()
+
+    assert [descriptor.provider_id for descriptor in descriptors] == [
+        "fake",
+        "codex",
+        "tavily",
+        "searxng",
+        "browser",
+    ]
+    assert get_research_provider_descriptor("fake").implemented is True
+    assert get_research_provider_descriptor("codex").provider_name == "codex_delegated"
+    assert get_research_provider_descriptor("tavily").implemented is False
+
+
+def test_build_research_provider_reuses_fake_provider():
+    provider = build_research_provider("fake")
+
+    assert isinstance(provider, FakeResearchProvider)
+    assert provider.provider_name == "fake"
+
+
+def test_build_research_provider_fails_closed_for_planned_provider(tmp_path):
+    with pytest.raises(ValueError, match="registered but not implemented"):
+        build_research_provider("tavily", workspace_root=tmp_path)
+
+
+def test_build_research_provider_rejects_unknown_provider():
+    with pytest.raises(ValueError, match="unknown research provider"):
+        build_research_provider("missing")
 
 
 def test_extract_research_json_accepts_fenced_json():

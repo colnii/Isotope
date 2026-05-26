@@ -84,6 +84,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 ### Research artifact 闭环
 
 ```bash
+.venv/bin/isotope-supervisor research providers --root /tmp/isotope-research
 .venv/bin/isotope-supervisor research --root /tmp/isotope-research --query "agent memory retrieval" --provider fake
 .venv/bin/isotope-supervisor research list --root /tmp/isotope-research --limit 5
 .venv/bin/isotope-supervisor research inspect --root /tmp/isotope-research --run-id run_001 --artifact-id artifact_002
@@ -92,6 +93,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 独立入口同样可用：
 
 ```bash
+.venv/bin/isotope-research providers
 .venv/bin/isotope-research search --root /tmp/isotope-research --query "agent memory retrieval" --provider fake
 .venv/bin/isotope-research list --root /tmp/isotope-research --artifact-type research.provider_trace
 .venv/bin/isotope-research inspect --root /tmp/isotope-research --run-id run_001 --artifact-id artifact_001
@@ -139,6 +141,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 - `isotope-research inspect --root ... --run-id ... --artifact-id ...` 可读取
   单个 `research.*` artifact 内容；非 research artifact 会被拒绝。Supervisor
   侧 `research inspect` 复用同一边界。
+- `research providers` 列出 provider registry；当前 `fake` / `codex` 可运行，
+  `tavily` / `searxng` / `browser` 是 planned provider，选择时会 fail closed。
 - raw web text 后续要进入 durable memory 时，必须先经过 artifact / provenance /
   retrieval 和显式 promotion policy，不得绕过 Research flow 直接写 memory。
 

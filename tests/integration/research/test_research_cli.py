@@ -53,6 +53,50 @@ def test_research_cli_search_returns_json(tmp_path):
     ]
 
 
+def test_research_cli_lists_provider_registry_json():
+    result = _run_cli("providers", "--json")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert [provider["provider_id"] for provider in payload["providers"]] == [
+        "fake",
+        "codex",
+        "tavily",
+        "searxng",
+        "browser",
+    ]
+    assert payload["providers"][0]["implemented"] is True
+    assert payload["providers"][2]["implemented"] is False
+
+
+def test_research_cli_providers_plain_output_marks_planned_provider():
+    result = _run_cli("providers")
+
+    assert result.returncode == 0, result.stderr
+    assert "provider: fake implemented provider_name: fake" in result.stdout
+    assert "provider: tavily planned provider_name: tavily" in result.stdout
+
+
+def test_research_cli_search_fails_closed_for_planned_provider(tmp_path):
+    result = _run_cli(
+        "search",
+        "--root",
+        str(tmp_path),
+        "--query",
+        "agent memory retrieval",
+        "--provider",
+        "tavily",
+        "--json",
+    )
+
+    assert result.returncode == 2
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "error"
+    assert "registered but not implemented" in payload["error"]["message"]
+    assert not (tmp_path / "runs").exists()
+
+
 def test_research_cli_plain_output_lists_artifacts(tmp_path):
     result = _run_cli(
         "search",

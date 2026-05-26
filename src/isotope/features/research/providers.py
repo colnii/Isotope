@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Protocol
@@ -25,6 +26,128 @@ class ResearchProviderError(RuntimeError):
     def __init__(self, message: str, *, details: dict[str, Any] | None = None):
         super().__init__(message)
         self.details = dict(details or {})
+
+
+@dataclass(frozen=True)
+class ResearchProviderDescriptor:
+    provider_id: str
+    provider_name: str
+    label: str
+    status: str
+    entrypoint: str
+    requires: tuple[str, ...] = ()
+    notes: str = ""
+
+    @property
+    def implemented(self) -> bool:
+        return self.status == "implemented"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "provider_id": self.provider_id,
+            "provider_name": self.provider_name,
+            "label": self.label,
+            "status": self.status,
+            "implemented": self.implemented,
+            "entrypoint": self.entrypoint,
+            "requires": list(self.requires),
+            "notes": self.notes,
+        }
+
+
+_PROVIDER_DESCRIPTORS: tuple[ResearchProviderDescriptor, ...] = (
+    ResearchProviderDescriptor(
+        provider_id="fake",
+        provider_name="fake",
+        label="Fake deterministic provider",
+        status="implemented",
+        entrypoint="local_fake",
+        notes="Deterministic provider for tests and smoke checks.",
+    ),
+    ResearchProviderDescriptor(
+        provider_id="codex",
+        provider_name="codex_delegated",
+        label="Codex delegated provider",
+        status="implemented",
+        entrypoint="codex_cli",
+        requires=("codex_cli",),
+        notes="Delegates the research prompt to a Codex CLI task and stores provider traces on failure.",
+    ),
+    ResearchProviderDescriptor(
+        provider_id="tavily",
+        provider_name="tavily",
+        label="Tavily API provider",
+        status="planned",
+        entrypoint="api",
+        requires=("api_key",),
+        notes="Planned normal API provider; not wired until config, budget, and trace handling land.",
+    ),
+    ResearchProviderDescriptor(
+        provider_id="searxng",
+        provider_name="searxng",
+        label="SearXNG provider",
+        status="planned",
+        entrypoint="self_hosted_or_fallback",
+        requires=("base_url",),
+        notes="Planned optional self-hosted/fallback search provider.",
+    ),
+    ResearchProviderDescriptor(
+        provider_id="browser",
+        provider_name="browser",
+        label="Local browser/crawler fallback",
+        status="planned",
+        entrypoint="local_browser_or_crawler",
+        requires=("explicit_approval",),
+        notes="Planned lowest-level fetch fallback, gated separately from API providers.",
+    ),
+)
+
+
+def list_research_provider_descriptors() -> tuple[ResearchProviderDescriptor, ...]:
+    return _PROVIDER_DESCRIPTORS
+
+
+def get_research_provider_descriptor(provider_id: str) -> ResearchProviderDescriptor:
+    for descriptor in _PROVIDER_DESCRIPTORS:
+        if descriptor.provider_id == provider_id:
+            return descriptor
+    raise ValueError(f"unknown research provider: {provider_id}")
+
+
+def research_provider_choices() -> tuple[str, ...]:
+    return tuple(descriptor.provider_id for descriptor in _PROVIDER_DESCRIPTORS)
+
+
+def build_research_provider(
+    provider_id: str,
+    *,
+    workspace_root: str | Path | None = None,
+    codex_executable: str = "codex",
+    codex_home: str | None = None,
+    model: str | None = None,
+    timeout_seconds: int = 120,
+    max_attempts: int = 2,
+) -> ResearchProvider:
+    descriptor = get_research_provider_descriptor(provider_id)
+    if not descriptor.implemented:
+        raise ValueError(
+            f"research provider {provider_id} is registered but not implemented yet; "
+            "run `isotope-research providers` to inspect provider status"
+        )
+    if provider_id == "fake":
+        return FakeResearchProvider()
+    if provider_id == "codex":
+        return CodexDelegatedResearchProvider(
+            build_codex_cli_research_backend(
+                workspace_root=workspace_root or Path.cwd(),
+                executable=codex_executable,
+                codex_home=codex_home,
+                model=model,
+                timeout_seconds=timeout_seconds,
+            ),
+            max_attempts=max_attempts,
+        )
+    raise RuntimeError(f"research provider registry is missing builder for: {provider_id}")
 
 
 class FakeResearchProvider:

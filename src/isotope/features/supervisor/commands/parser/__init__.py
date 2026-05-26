@@ -399,7 +399,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
     research_parser.add_argument(
         "research_action",
         nargs="?",
-        choices=("search", "list", "inspect"),
+        choices=("search", "list", "inspect", "providers"),
         default="search",
         help="Research action. Defaults to search for compatibility.",
     )
@@ -408,8 +408,31 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
     research_parser.add_argument(
         "--provider",
         default="fake",
-        choices=("fake",),
-        help="Research provider. First implementation supports fake for tests.",
+        choices=api.research_provider_choices(),
+        help="Research provider.",
+    )
+    research_parser.add_argument(
+        "--workspace-root",
+        help="Workspace root for Codex delegated research. Defaults to current directory.",
+    )
+    research_parser.add_argument(
+        "--codex-executable",
+        default="codex",
+        help="Codex CLI executable for --provider codex.",
+    )
+    research_parser.add_argument("--codex-home", help="Codex home for --provider codex.")
+    research_parser.add_argument("--model", help="Codex model for --provider codex.")
+    research_parser.add_argument(
+        "--timeout-seconds",
+        type=int,
+        default=120,
+        help="Codex delegated research timeout in seconds.",
+    )
+    research_parser.add_argument(
+        "--max-attempts",
+        type=int,
+        default=2,
+        help="Maximum Codex delegated provider attempts for retryable failures.",
     )
     research_parser.add_argument(
         "--artifact-type",

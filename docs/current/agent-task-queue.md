@@ -188,8 +188,13 @@
 
 - 在现有 `ResearchFlow` / `research.*` artifact / Supervisor proxy 入口上继续做，
   不另造新搜索路径。
-- 下一步优先做 provider registry / selection design（提供方注册与选择设计）：
-  Codex delegated provider 保持可信 fallback，Tavily 作为普通 API provider 候选，
+- Provider registry / selection design（提供方注册与选择设计）第一片已完成：
+  `isotope-research providers` 与 `isotope-supervisor research providers` 都能列出
+  `fake`、`codex`、`tavily`、`searxng`、`browser`；`fake` / `codex` implemented，
+  其余 provider fail closed，不会绕过 `ResearchFlow` 或 artifact/provenance 边界。
+- 下一步优先做 Tavily provider 的 config/preflight 小片：只接环境变量或显式参数、
+  明确 budget / timeout / trace 字段，并继续复用 provider registry。
+- Codex delegated provider 保持可信 fallback，Tavily 作为普通 API provider 候选，
   SearXNG 保持可选 self-hosted / fallback，browser/crawler 只做最低层 fetch
   fallback。
 - durable memory promotion 仍保持 deferred：只能从 structured source-backed

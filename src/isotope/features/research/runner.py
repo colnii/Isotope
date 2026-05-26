@@ -12,9 +12,9 @@ from ...platform.schemas.refs import make_artifact_ref
 from ...workspace.artifacts import ArtifactStore
 from .flow import ResearchFlow
 from .providers import (
-    CodexDelegatedResearchProvider,
-    FakeResearchProvider,
-    build_codex_cli_research_backend,
+    build_research_provider,
+    list_research_provider_descriptors,
+    research_provider_choices,
 )
 
 
@@ -31,7 +31,7 @@ def _build_parser() -> argparse.ArgumentParser:
     search_parser.add_argument(
         "--provider",
         default="fake",
-        choices=("fake", "codex"),
+        choices=research_provider_choices(),
         help="Research provider.",
     )
     search_parser.add_argument(
@@ -76,6 +76,8 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Maximum number of research artifacts to list.",
     )
     list_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    providers_parser = subparsers.add_parser("providers", help="List research provider registry.")
+    providers_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     return parser
 
 
@@ -117,6 +119,13 @@ def main(argv: list[str] | None = None) -> int:
                 _print_json(payload)
             else:
                 print_research_list_plain(payload)
+            return 0
+        if args.command == "providers":
+            payload = list_research_providers()
+            if args.json:
+                _print_json(payload)
+            else:
+                print_research_providers_plain(payload)
             return 0
     except (FileNotFoundError, ValueError) as exc:
         error = {
@@ -251,6 +260,24 @@ def print_research_list_plain(payload: dict[str, Any]) -> None:
         )
 
 
+def list_research_providers() -> dict[str, Any]:
+    providers = [descriptor.to_dict() for descriptor in list_research_provider_descriptors()]
+    return {"status": "ok", "count": len(providers), "providers": providers}
+
+
+def print_research_providers_plain(payload: dict[str, Any]) -> None:
+    print(f"status: {payload['status']}")
+    print(f"providers: {payload['count']}")
+    for provider in payload.get("providers", []):
+        print(
+            "provider: "
+            f"{provider.get('provider_id', '')} "
+            f"{provider.get('status', '')} "
+            f"provider_name: {provider.get('provider_name', '')} "
+            f"entrypoint: {provider.get('entrypoint', '')}"
+        )
+
+
 def _print_provider_trace_summary(content: dict[str, Any]) -> None:
     error = content.get("error")
     if not isinstance(error, dict):
@@ -309,20 +336,15 @@ def print_artifacts_plain(payload: dict[str, Any]) -> None:
 
 
 def _provider_from_args(args: argparse.Namespace):
-    if args.provider == "fake":
-        return FakeResearchProvider()
-    if args.provider == "codex":
-        return CodexDelegatedResearchProvider(
-            build_codex_cli_research_backend(
-                workspace_root=args.workspace_root or Path.cwd(),
-                executable=args.codex_executable,
-                codex_home=args.codex_home,
-                model=args.model,
-                timeout_seconds=args.timeout_seconds,
-            ),
-            max_attempts=args.max_attempts,
-        )
-    raise ValueError(f"unsupported research provider: {args.provider}")
+    return build_research_provider(
+        args.provider,
+        workspace_root=args.workspace_root or Path.cwd(),
+        codex_executable=args.codex_executable,
+        codex_home=args.codex_home,
+        model=args.model,
+        timeout_seconds=args.timeout_seconds,
+        max_attempts=args.max_attempts,
+    )
 
 
 if __name__ == "__main__":
