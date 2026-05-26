@@ -116,7 +116,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.json:
                 _print_json(payload)
             else:
-                _print_list_plain(payload)
+                print_research_list_plain(payload)
             return 0
     except (FileNotFoundError, ValueError) as exc:
         error = {
@@ -238,7 +238,7 @@ def _print_inspect_plain(payload: dict[str, Any]) -> None:
         print(str(content))
 
 
-def _print_list_plain(payload: dict[str, Any]) -> None:
+def print_research_list_plain(payload: dict[str, Any]) -> None:
     print(f"status: {payload['status']}")
     print(f"artifacts: {payload['count']}")
     for artifact in payload.get("artifacts", []):

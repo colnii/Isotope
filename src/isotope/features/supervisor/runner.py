@@ -13,7 +13,11 @@ from typing import Any
 from isotope.capabilities.runner import CapabilityRunner
 from ..research.flow import ResearchFlow
 from ..research.providers import FakeResearchProvider
-from ..research.runner import print_artifacts_plain as _print_research_artifacts_plain
+from ..research.runner import (
+    list_research_artifacts,
+    print_research_list_plain as _print_research_list_plain,
+    print_artifacts_plain as _print_research_artifacts_plain,
+)
 from .notifications.context import read_recent_context_results, request_project_context
 from .planner.decision_requests import (
     DEFAULT_DECISION_TIMEOUT_SECONDS,

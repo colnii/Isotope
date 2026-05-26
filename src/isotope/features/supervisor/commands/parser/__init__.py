@@ -396,13 +396,30 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         "research",
         help="Run delegated research through the shared research flow.",
     )
+    research_parser.add_argument(
+        "research_action",
+        nargs="?",
+        choices=("search", "list"),
+        default="search",
+        help="Research action. Defaults to search for compatibility.",
+    )
     research_parser.add_argument("--root", required=True, help="Runtime root directory.")
-    research_parser.add_argument("--query", required=True, help="Research query.")
+    research_parser.add_argument("--query", help="Research query.")
     research_parser.add_argument(
         "--provider",
         default="fake",
         choices=("fake",),
         help="Research provider. First implementation supports fake for tests.",
+    )
+    research_parser.add_argument(
+        "--artifact-type",
+        help="Filter list output by exact research artifact type, such as research.provider_trace.",
+    )
+    research_parser.add_argument(
+        "--limit",
+        type=int,
+        default=20,
+        help="Maximum number of research artifacts to list.",
     )
     research_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     capacity_parser = subparsers.add_parser(

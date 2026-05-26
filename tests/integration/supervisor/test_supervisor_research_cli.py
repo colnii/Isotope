@@ -6,6 +6,8 @@ from pathlib import Path
 import subprocess
 import sys
 
+from isotope.workspace.artifacts import ArtifactStore
+
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
@@ -63,3 +65,56 @@ def test_supervisor_research_plain_output_lists_artifacts(tmp_path):
     assert "[Codex Supervisor Research]" in result.stdout
     assert "artifact: research.raw_transcript artifact_001" in result.stdout
     assert "artifact: research.report artifact_002" in result.stdout
+
+
+def test_supervisor_research_list_proxies_research_artifact_list_json(tmp_path):
+    store = ArtifactStore(tmp_path)
+    artifact = store.create_artifact(
+        "run_001",
+        execution_id="exec_001",
+        artifact_type="research.provider_trace",
+        summary="provider failure trace: python docs",
+        content='{"status":"provider_failed"}',
+    )
+    store.create_artifact(
+        "run_001",
+        execution_id="exec_001",
+        artifact_type="text",
+        summary="not research",
+        content="plain text",
+    )
+
+    result = _run_cli(
+        "research",
+        "list",
+        "--root",
+        str(tmp_path),
+        "--artifact-type",
+        "research.provider_trace",
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert payload["count"] == 1
+    assert payload["artifacts"][0]["run_id"] == "run_001"
+    assert payload["artifacts"][0]["artifact_id"] == artifact.artifact_id
+
+
+def test_supervisor_research_list_plain_output_is_copyable(tmp_path):
+    store = ArtifactStore(tmp_path)
+    artifact = store.create_artifact(
+        "run_001",
+        execution_id="exec_001",
+        artifact_type="research.report",
+        summary="Fake research summary.",
+        content='{"status":"ok"}',
+    )
+
+    result = _run_cli("research", "list", "--root", str(tmp_path), "--limit", "1")
+
+    assert result.returncode == 0, result.stderr
+    assert "status: ok" in result.stdout
+    assert "artifacts: 1" in result.stdout
+    assert f"artifact: research.report {artifact.artifact_id} run: run_001 Fake research summary." in result.stdout
