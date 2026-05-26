@@ -8,6 +8,7 @@ from typing import Any
 from ...agents.loop.control import build_agent_loop_control, build_agent_loop_tick_policy
 from ...agents.loop.planner_adapter import run_agent_loop_planner_step
 from ...agents.loop.planner_contract import run_agent_loop_real_planner_contract_step
+from ...agents.loop.runner import run_agent_loop_until_stop
 from ...agents.loop.step import run_agent_loop_step
 from ...agents.loop.tick import run_agent_loop_tick
 from ...platform.ids import new_id
@@ -50,6 +51,24 @@ class InProcessAgentLoopMixin:
             run_id,
             planner_output,
             tick_budget=tick_budget,
+            user_pause=user_pause,
+        )
+
+    def run_agent_loop_until_stop(
+        self,
+        run_id: str,
+        *,
+        planner: Any,
+        max_ticks: int,
+        budget_basis: str | None = None,
+        user_pause: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return run_agent_loop_until_stop(
+            self,
+            run_id,
+            planner=planner,
+            max_ticks=max_ticks,
+            budget_basis=budget_basis,
             user_pause=user_pause,
         )
 

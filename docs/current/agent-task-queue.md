@@ -61,6 +61,10 @@
   `POST /runs/{run_id}/agent-loop-tick` 会先看 tick policy，允许继续时只执行
   一个已解析的 planner-selected step，再返回执行后的 tick policy；它仍不接
   真实 LLM，不自动多轮循环。
+- Agent loop bounded goal runner 已补第一片：`run_agent_loop_until_stop(...)`
+  会在单 tick driver 外做有限 `while`，每轮重新读取 tick policy、调用外部
+  planner callable、再执行一个 tick；它复用现有 tick policy / planner adapter /
+  step driver，不接真实 LLM，不定义 agent-to-agent 对话协议，也不会无限循环。
 - `agent-loop-tick-driver-trace` demo 已补齐人类可读 handoff，展示
   `before_policy -> planner_result -> after_policy`，并覆盖 budget / user pause
   停止时不产生 side effect。

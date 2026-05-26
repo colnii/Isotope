@@ -61,7 +61,10 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    显示 capacity worker 数、agent-loop capacity 调用数和最近 run 摘要；
    `worker-manager` plain 输出也会展开同一份 supervised capacity run 摘要；
    Web 运行焦点区会显示最近 supervised capacity run 的低敏摘要。
-   它仍不调用真实 LLM，不自动多轮循环。
+   `run_agent_loop_until_stop(...)` 已在单 tick driver 外补第一层 bounded goal
+   runner（有界目标 runner）：每轮复用 tick policy 和 planner step，受
+   `max_ticks`、user pause、approval 和 completed/failed 状态限制；它仍不调用
+   真实 LLM，不定义 agent-to-agent 对话协议，也不默认打开 Supervisor 自动长循环。
    `supervisor.worker_review` 已注册为 capability runner 的只读能力，
    `isotope-capability list/search/plan/run` 能发现、预检和运行它；执行时复用
    现有 `worker-review` lightweight 路径，只返回低敏 worker 决策摘要，
