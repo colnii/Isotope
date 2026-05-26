@@ -116,6 +116,7 @@ def _print_plain(payload: dict[str, Any]) -> None:
     if isinstance(error, dict):
         print(f"retryable: {str(error.get('retryable', False)).lower()}")
         print(f"error: {error.get('message', '')}")
+        _print_provider_attempt_summary(error)
     print_artifacts_plain(payload)
     for source in research.get("sources", []):
         print(f"- {source['title']} {source['url']}")
@@ -154,9 +155,57 @@ def _print_inspect_plain(payload: dict[str, Any]) -> None:
     print(f"summary: {artifact['summary']}")
     content = payload["content"]
     if isinstance(content, (dict, list)):
+        if artifact["artifact_type"] == "research.provider_trace" and isinstance(content, dict):
+            _print_provider_trace_summary(content)
         print(json.dumps(content, ensure_ascii=False, sort_keys=True))
     else:
         print(str(content))
+
+
+def _print_provider_trace_summary(content: dict[str, Any]) -> None:
+    error = content.get("error")
+    if not isinstance(error, dict):
+        return
+    print(f"provider: {content.get('provider', '')}")
+    print(f"query: {content.get('query', '')}")
+    print(f"retryable: {str(error.get('retryable', False)).lower()}")
+    print(f"error: {error.get('message', '')}")
+    _print_provider_attempt_summary(error)
+
+
+def _print_provider_attempt_summary(error: dict[str, Any]) -> None:
+    details = error.get("details")
+    if not isinstance(details, dict):
+        return
+    attempts = details.get("attempts")
+    if not isinstance(attempts, list) or not attempts:
+        return
+    attempt_count = details.get("attempt_count")
+    if not isinstance(attempt_count, int):
+        attempt_count = len(attempts)
+    retry_exhausted = str(details.get("retry_exhausted", False)).lower()
+    print(f"attempts: {attempt_count} retry_exhausted: {retry_exhausted}")
+    for attempt in attempts:
+        if not isinstance(attempt, dict):
+            continue
+        print(
+            "- attempt "
+            f"{attempt.get('attempt', '')} "
+            f"retryable: {str(attempt.get('retryable', False)).lower()} "
+            f"{_attempt_message(attempt)}"
+        )
+
+
+def _attempt_message(attempt: dict[str, Any]) -> str:
+    details = attempt.get("details")
+    if isinstance(details, dict):
+        messages = details.get("codex_error_messages")
+        if isinstance(messages, list):
+            readable_messages = [message for message in messages if isinstance(message, str) and message]
+            if readable_messages:
+                return "; ".join(readable_messages)
+    message = attempt.get("message")
+    return message if isinstance(message, str) else ""
 
 
 def print_artifacts_plain(payload: dict[str, Any]) -> None:

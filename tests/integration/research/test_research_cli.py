@@ -210,6 +210,28 @@ def test_research_plain_output_lists_provider_failure_diagnostics(capsys):
             ],
             "error": {
                 "code": "research_provider_failed",
+                "details": {
+                    "attempt_count": 2,
+                    "retry_exhausted": True,
+                    "attempts": [
+                        {
+                            "attempt": 1,
+                            "retryable": True,
+                            "message": "codex cli did not return an agent message: request timed out",
+                            "details": {
+                                "codex_error_messages": ["request timed out on attempt 1"],
+                            },
+                        },
+                        {
+                            "attempt": 2,
+                            "retryable": True,
+                            "message": "codex cli did not return an agent message: request timed out",
+                            "details": {
+                                "codex_error_messages": ["request timed out on attempt 2"],
+                            },
+                        },
+                    ],
+                },
                 "message": "codex cli did not return an agent message",
                 "retryable": True,
             },
@@ -222,7 +244,70 @@ def test_research_plain_output_lists_provider_failure_diagnostics(capsys):
     assert "query: python docs" in output
     assert "retryable: true" in output
     assert "error: codex cli did not return an agent message" in output
+    assert "attempts: 2 retry_exhausted: true" in output
+    assert "- attempt 1 retryable: true request timed out on attempt 1" in output
+    assert "- attempt 2 retryable: true request timed out on attempt 2" in output
     assert "artifact: research.provider_trace artifact_001" in output
+
+
+def test_research_cli_inspect_prints_provider_trace_attempt_summary(tmp_path):
+    store = ArtifactStore(tmp_path)
+    artifact = store.create_artifact(
+        "run_001",
+        execution_id="exec_001",
+        artifact_type="research.provider_trace",
+        summary="provider failure trace: python docs",
+        content=json.dumps(
+            {
+                "status": "provider_failed",
+                "provider": "codex_delegated",
+                "query": "python docs",
+                "error": {
+                    "code": "research_provider_failed",
+                    "message": "codex cli did not return an agent message",
+                    "retryable": True,
+                    "details": {
+                        "attempt_count": 2,
+                        "retry_exhausted": True,
+                        "attempts": [
+                            {
+                                "attempt": 1,
+                                "retryable": True,
+                                "message": "codex cli did not return an agent message: request timed out",
+                                "details": {
+                                    "codex_error_messages": ["request timed out on attempt 1"],
+                                },
+                            },
+                            {
+                                "attempt": 2,
+                                "retryable": True,
+                                "message": "codex cli did not return an agent message: request timed out",
+                                "details": {
+                                    "codex_error_messages": ["request timed out on attempt 2"],
+                                },
+                            },
+                        ],
+                    },
+                },
+            }
+        ),
+    )
+
+    result = _run_cli(
+        "inspect",
+        "--root",
+        str(tmp_path),
+        "--run-id",
+        "run_001",
+        "--artifact-id",
+        artifact.artifact_id,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert f"artifact: research.provider_trace {artifact.artifact_id}" in result.stdout
+    assert "attempts: 2 retry_exhausted: true" in result.stdout
+    assert "- attempt 1 retryable: true request timed out on attempt 1" in result.stdout
+    assert "- attempt 2 retryable: true request timed out on attempt 2" in result.stdout
 
 
 def test_research_cli_requires_query(tmp_path):
