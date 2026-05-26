@@ -281,6 +281,65 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="research.search",
+                    title="Research Search",
+                    description=(
+                        "Run the existing research flow with the deterministic "
+                        "fake provider and return a low-sensitive result summary."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "research",
+                        "search",
+                        "web",
+                        "provenance",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["root", "query"],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "description": "Runtime root used to persist research artifacts.",
+                            },
+                            "query": {
+                                "type": "string",
+                                "description": "Research query.",
+                            },
+                            "provider": {
+                                "type": "string",
+                                "enum": ["fake"],
+                                "description": "Capability-safe research provider.",
+                                "default": "fake",
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "query",
+                            "provider",
+                            "evidence_status",
+                            "source_count",
+                            "artifact_refs",
+                            "artifacts",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "reuses_research_flow",
+                        "fake_provider_only",
+                        "no_network_provider",
+                        "no_codex_delegation",
+                        "writes_research_artifacts",
+                        "low_sensitive_summary_only",
+                        "no_raw_transcript_return",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="supervisor.integration_review",
                     title="Supervisor Integration Review",
                     description=(

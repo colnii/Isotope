@@ -124,7 +124,9 @@
   tick stop reason 和 artifact ref；当 agent loop 调用 `screen.report` 时，
   JSON `agent_loop_summary` 还会带 screen report status、observe/control
   status、screenshot availability 和 interference 标记，仍不展开截图正文或
-  原始 artifact content；
+  原始 artifact content；当 agent loop 调用 `research.search` 时，同一 summary
+  只提升 research status、provider、source_count 和 artifact_count，不返回
+  report 正文或 raw transcript；
   `capacity_call_specs` 只会从 `status=ok`、`status_reason=ready`，
   且 `capability_launch_plan.can_launch=true`、`capacity_id` 匹配的计划生成；
   执行前仍会重新确认同一 `capacity_id` 存在 ready 的
@@ -191,6 +193,12 @@
   不读取 screenshot 正文、不执行输入、不改变窗口；capacity plan 选中并经
   agent loop 执行后，`agent_loop_summary` 只暴露 report status、observe/control
   status、screenshot availability 和 interference 这些低敏结论。
+- `research.search` 已注册为可发现、可预检、可运行的 capability：
+  `list/search/describe` 能看到它，`plan/run --input-json` 要求 `root/query`；
+  执行时复用现有 `ResearchFlow` 和 provider registry，但 capability runner
+  只允许 deterministic `fake` provider，不打开 Tavily 网络，也不委托 Codex；
+  结果只返回 research status、query、provider、evidence status、source_count
+  和 artifact refs / metadata，不直接返回 report 正文或 raw transcript。
 - `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
 - `/managed/send` 成功发送后会更新 lane state。
 - `guide` 会按 cwd、lane name 和 tmux session 打印可复制工作流命令。

@@ -16,6 +16,12 @@ from .memory import (
     run_memory_query,
     validate_memory_readonly_inputs,
 )
+from .research import (
+    RESEARCH_SEARCH_CAPABILITY,
+    is_research_capability,
+    run_research_search,
+    validate_research_inputs,
+)
 from .screen import (
     SCREEN_REPORT_CAPABILITY,
     is_screen_readonly_capability,
@@ -155,6 +161,11 @@ class CapabilityRunner:
             inputs=input_mapping,
             missing_inputs=missing_inputs,
         )
+        validate_research_inputs(
+            capability_id=capability_id,
+            inputs=input_mapping,
+            missing_inputs=missing_inputs,
+        )
         validate_supervisor_readonly_inputs(
             capability_id=capability_id,
             inputs=input_mapping,
@@ -181,6 +192,7 @@ class CapabilityRunner:
         elif (
             scenario is None
             and not is_memory_readonly_capability(capability_id)
+            and not is_research_capability(capability_id)
             and not is_screen_readonly_capability(capability_id)
             and not is_supervisor_readonly_capability(capability_id)
         ):
@@ -225,6 +237,7 @@ class CapabilityRunner:
         input_mapping = _input_mapping(inputs)
         if (
             is_memory_readonly_capability(capability_id)
+            or is_research_capability(capability_id)
             or is_screen_readonly_capability(capability_id)
             or is_supervisor_readonly_capability(capability_id)
         ):
@@ -236,6 +249,11 @@ class CapabilityRunner:
                 missing_inputs=missing_inputs,
             )
             validate_screen_readonly_inputs(
+                capability_id=capability_id,
+                inputs=input_mapping,
+                missing_inputs=missing_inputs,
+            )
+            validate_research_inputs(
                 capability_id=capability_id,
                 inputs=input_mapping,
                 missing_inputs=missing_inputs,
@@ -256,6 +274,8 @@ class CapabilityRunner:
 
         if capability_id == MEMORY_QUERY_CAPABILITY:
             return run_memory_query(inputs=input_mapping)
+        if capability_id == RESEARCH_SEARCH_CAPABILITY:
+            return run_research_search(inputs=input_mapping)
         if capability_id == SCREEN_REPORT_CAPABILITY:
             return run_screen_report(inputs=input_mapping)
         if capability_id == SUPERVISOR_REQUEST_CONTEXT_CAPABILITY:
@@ -379,6 +399,8 @@ def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
         return "deterministic_demo"
     if is_memory_readonly_capability(str(capability.get("capability_id", ""))):
         return "deterministic_readonly"
+    if is_research_capability(str(capability.get("capability_id", ""))):
+        return "deterministic_local"
     if is_screen_readonly_capability(str(capability.get("capability_id", ""))):
         return "deterministic_readonly"
     if is_supervisor_readonly_capability(str(capability.get("capability_id", ""))):

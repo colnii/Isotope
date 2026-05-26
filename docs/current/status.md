@@ -89,6 +89,11 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    screenshot 正文、不执行输入、不改变窗口；capacity agent-loop 执行后，
    JSON summary 会带 screen report status、observe/control status、
    screenshot availability 和 interference 低敏结论。
+   `research.search` 已注册为 capability runner / capacity 可选能力：执行时复用
+   现有 `ResearchFlow` 和 provider registry，要求 `root/query`，但当前 capability
+   只允许 deterministic `fake` provider，不打开 Tavily 网络、不委托 Codex；capacity
+   agent-loop summary 只提升 status、provider、source_count 和 artifact_count，
+   不返回 report 正文或 raw transcript。
 10. Screen observe/control 已有 policy-gated（策略门控）第一片：
     `screen_observe` / `screen_control` 走 registry、policy、executor 和 artifact
     边界，Windows backend 仅用于手动 smoke；observe/control 已支持命令级

@@ -789,6 +789,49 @@ def test_supervisor_capacity_plan_summarizes_screen_report_agent_loop_result(tmp
     _assert_no_agent_loop_raw_payload(result["agent_loop_summary"])
 
 
+def test_supervisor_capacity_plan_summarizes_research_search_agent_loop_result(tmp_path):
+    root = tmp_path / "runtime"
+    provider = FakeCapacityProvider(
+        json.dumps(
+            {
+                "capacity_id": "research.search",
+                "arguments": {"query": "capacity research integration"},
+                "confidence": 0.86,
+                "rationale": "run existing research flow through capability runner",
+            }
+        )
+    )
+
+    result = capacity_command.build_supervisor_capacity_plan(
+        goal="研究 capacity 如何接入 research 功能",
+        provider=provider,
+        state_root=tmp_path / "state",
+        execute_agent_loop=True,
+        input_defaults={"root": str(root)},
+    )
+
+    assert result["status"] == "ok"
+    assert result["selection"]["capacity_id"] == "research.search"
+    assert result["selection"]["arguments"] == {
+        "query": "capacity research integration",
+        "root": str(root),
+    }
+    capability_run = result["agent_loop"]["step_result"]["action_result"][
+        "capability_run"
+    ]
+    assert capability_run["capability_id"] == "research.search"
+    assert capability_run["status"] == "completed"
+    research_search = capability_run["research_search"]
+    assert research_search["status"] == "ok"
+    assert research_search["provider"] == "fake"
+    assert result["agent_loop_summary"]["agent_loop_research_search_status"] == "ok"
+    assert result["agent_loop_summary"]["agent_loop_research_provider"] == "fake"
+    assert result["agent_loop_summary"]["agent_loop_research_source_count"] == 1
+    assert result["agent_loop_summary"]["agent_loop_research_artifact_count"] == 2
+    assert "raw_transcript" not in json.dumps(result["agent_loop_summary"])
+    _assert_no_agent_loop_raw_payload(result["agent_loop_summary"])
+
+
 def test_supervisor_capacity_plan_blocks_missing_inputs_without_graph_call_or_execution(tmp_path):
     provider = FakeCapacityProvider(
         '{"capacity_id":"context.search","arguments":{},"confidence":0.77,'

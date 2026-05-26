@@ -174,6 +174,20 @@ def test_runner_discovers_screen_report_from_default_catalog():
     assert "low_sensitive_summary_only" in description["safety_boundaries"]
 
 
+def test_runner_discovers_research_search_from_default_catalog():
+    runner = _runner()
+
+    assert "research.search" in _ids(runner.list_capabilities())
+    search = runner.search_capabilities(query="research search")
+
+    assert _ids(search["capabilities"]) == ["research.search"]
+    description = runner.describe_capability("research.search")
+    assert description["input_contract"]["required"] == ["root", "query"]
+    assert description["input_contract"]["properties"]["provider"]["enum"] == ["fake"]
+    assert "reuses_research_flow" in description["safety_boundaries"]
+    assert "no_network_provider" in description["safety_boundaries"]
+
+
 def test_runner_status_mirrors_catalog_status_without_executing_capability():
     catalog = CapabilityCatalog(
         capabilities=[
@@ -967,6 +981,34 @@ def test_screen_report_capability_runs_existing_low_sensitive_report(tmp_path):
         "restore_window"
     ]
     assert "raw screen control payload" not in json.dumps(result, sort_keys=True)
+    for mapping in _walk_mapping(result):
+        assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
+
+
+def test_research_search_capability_runs_existing_fake_research_flow(tmp_path):
+    result = _runner().run_capability(
+        "research.search",
+        inputs={
+            "root": str(tmp_path),
+            "query": "capacity research integration",
+        },
+    )
+
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "research.search"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "deterministic_local"
+    research_search = result["research_search"]
+    assert research_search["status"] == "ok"
+    assert research_search["query"] == "capacity research integration"
+    assert research_search["provider"] == "fake"
+    assert research_search["evidence_status"] == "complete"
+    assert research_search["source_count"] == 1
+    assert [item["artifact_type"] for item in research_search["artifacts"]] == [
+        "research.raw_transcript",
+        "research.report",
+    ]
+    assert "research" not in result
     for mapping in _walk_mapping(result):
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
 

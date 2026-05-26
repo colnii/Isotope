@@ -68,6 +68,7 @@ def test_capability_runner_cli_lists_capabilities_as_json():
         "artifact.review",
         "external.snapshot.review",
         "memory.query",
+        "research.search",
         "screen.report",
         "supervisor.integration_review",
         "supervisor.request_context",
@@ -157,6 +158,18 @@ def test_capability_runner_cli_searches_screen_report_as_json():
     assert payload["status"] == "ok"
     assert [item["capability_id"] for item in payload["search"]["capabilities"]] == [
         "screen.report"
+    ]
+    _assert_low_sensitive(payload)
+
+
+def test_capability_runner_cli_searches_research_search_as_json():
+    result = _run_cli("search", "research search", "--json")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert [item["capability_id"] for item in payload["search"]["capabilities"]] == [
+        "research.search"
     ]
     _assert_low_sensitive(payload)
 
@@ -266,6 +279,27 @@ def test_capability_runner_cli_plans_screen_report_missing_inputs_as_json():
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_readonly"
     assert plan["missing_inputs"] == ["run_id"]
+    _assert_low_sensitive(payload)
+
+
+def test_capability_runner_cli_plans_research_search_missing_inputs_as_json():
+    result = _run_cli(
+        "plan",
+        "research.search",
+        "--input-json",
+        json.dumps({"root": "/tmp/isotope-runtime"}),
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    plan = payload["plan"]
+    assert plan["capability_id"] == "research.search"
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_local"
+    assert plan["missing_inputs"] == ["query"]
     _assert_low_sensitive(payload)
 
 

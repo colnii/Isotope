@@ -426,6 +426,7 @@ def agent_loop_json_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
         if isinstance(screen_report, Mapping):
             summary.update(_agent_loop_screen_report_summary(screen_report))
         summary.update(_agent_loop_memory_query_summary(capability_run))
+        summary.update(_agent_loop_research_search_summary(capability_run))
     return summary
 
 
@@ -856,6 +857,21 @@ def _print_capacity_plan_plain(payload: Mapping[str, Any]) -> None:
                     "agent_loop_memory_query_content_policy: "
                     f"{content_policy}"
                 )
+        research_status = agent_loop_summary.get("agent_loop_research_search_status")
+        if research_status is not None:
+            print(f"agent_loop_research_search_status: {research_status}")
+            print(
+                "agent_loop_research_provider: "
+                f"{agent_loop_summary.get('agent_loop_research_provider')}"
+            )
+            print(
+                "agent_loop_research_source_count: "
+                f"{agent_loop_summary.get('agent_loop_research_source_count')}"
+            )
+            print(
+                "agent_loop_research_artifact_count: "
+                f"{agent_loop_summary.get('agent_loop_research_artifact_count')}"
+            )
 
 
 def _print_capacity_blockers(
@@ -962,3 +978,19 @@ def _agent_loop_memory_query_summary(
     if isinstance(content_policy, str) and content_policy:
         summary["agent_loop_memory_query_content_policy"] = content_policy
     return summary
+
+
+def _agent_loop_research_search_summary(
+    capability_run: Mapping[str, Any],
+) -> dict[str, Any]:
+    if capability_run.get("capability_id") != "research.search":
+        return {}
+    research_search = capability_run.get("research_search")
+    if not isinstance(research_search, Mapping):
+        return {}
+    return {
+        "agent_loop_research_search_status": research_search.get("status"),
+        "agent_loop_research_provider": research_search.get("provider"),
+        "agent_loop_research_source_count": research_search.get("source_count"),
+        "agent_loop_research_artifact_count": research_search.get("artifact_count"),
+    }
