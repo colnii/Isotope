@@ -27,6 +27,8 @@
 - `controlled_expand=True` 但没有 expand grant / positive integer budget 时，受控拒绝且不读取 full content。
 - `controlled_expand=True` 且 budget 字段存在但不是正整数时，会在读取 memory store 前返回
   `reason_code: invalid_controlled_expand_budget`。
+- `controlled_expand=True` 且授权/budget 有效时，当前仍只返回 summary / refs / provenance preview，
+  并附带 `controlled_expand.status: deferred` metadata；不读取 full content。
 - memory query denial / not-enabled result 现在包含低敏 `reason_code` 和
   `content_policy`，便于 CLI / future API 解释拒绝原因而不暴露 raw content。
 - query result 默认不返回 full content、artifact content、raw content 或 full text。
@@ -171,6 +173,8 @@ memory query 是 read-side recall。
 - 没有 query grant 时不能读取 memory store。
 - 请求 `controlled_expand=True` 时，缺少 expand grant / positive integer budget 不能读取 full content；
   invalid budget shape 必须在读取 memory store 前 fail closed。
+- 请求 `controlled_expand=True` 且授权有效时，当前 implementation 仍是 preview-only：返回
+  `controlled_expand.status: deferred` / budget metadata，但不调用 full-content expand。
 - 返回结果不得包含 full content、artifact content、raw content 或 full text。
 
 这不是 memory query engine，也不是 controlled expand implementation。
@@ -387,6 +391,8 @@ Memory record persistence boundary design note 已落在 `memory-record-persiste
   `reason_code: missing_controlled_expand_grant` and does not read full content。
 - controlled expand with invalid budget shape returns
   `reason_code: invalid_controlled_expand_budget` before reading memory store。
+- valid controlled expand grant still returns summary / refs / provenance preview only,
+  includes `controlled_expand.status: deferred`, and does not read full content。
 - not-enabled query returns `reason_code: memory_query_not_enabled` while preserving
   summary / refs / provenance-only content policy。
 - default query result excludes full content / artifact content / raw content。

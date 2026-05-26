@@ -28,6 +28,47 @@ class ExplodingMemoryStore:
         raise AssertionError("memory query must not controlled-expand without expand grant")
 
 
+class PreviewOnlyMemoryStore:
+    def __init__(self):
+        self.calls = []
+        self.records = [
+            memory.MemoryRecord(
+                memory_id="mem_preview_001",
+                scope="run",
+                content={
+                    "kind": "structured_note",
+                    "text": "hidden full memory content must not be returned",
+                },
+                summary="Resume from controlled expand preview.",
+                source_refs=[{"ref_type": "artifact", "artifact_id": "artifact_001"}],
+                provenance={
+                    "run_id": "run_001",
+                    "execution_id": "exec_001",
+                    "action_type": "write_memory",
+                },
+                created_at="2026-05-27T00:00:00Z",
+                supersedes=[],
+                quality="candidate",
+            )
+        ]
+
+    def list_records(self, *args, **kwargs):
+        self.calls.append("list_records")
+        return list(self.records)
+
+    def load_record(self, *args, **kwargs):
+        self.calls.append("load_record")
+        raise AssertionError("preview-only query must not load full memory records")
+
+    def read_content(self, *args, **kwargs):
+        self.calls.append("read_content")
+        raise AssertionError("preview-only query must not read full memory content")
+
+    def controlled_expand(self, *args, **kwargs):
+        self.calls.append("controlled_expand")
+        raise AssertionError("preview-only query must not controlled-expand full content")
+
+
 def test_not_enabled_memory_query_service_boundary_exists():
     assert hasattr(memory, "NotEnabledMemoryQueryService")
 
@@ -158,6 +199,53 @@ def test_memory_query_default_shape_excludes_full_content():
         assert "artifact_content" not in item
         assert "full_text" not in item
         assert "raw_artifact_content" not in item
+
+
+def test_valid_controlled_expand_grant_still_returns_preview_only_without_full_content_read():
+    store = PreviewOnlyMemoryStore()
+    service = memory.LocalMemoryQueryService(memory_store=store)
+
+    result = service.query(
+        run_id="run_001",
+        query="controlled expand preview",
+        grants={
+            "memory": {
+                "query": True,
+                "controlled_expand": True,
+                "expand_budget": 2,
+            }
+        },
+        caller_context={
+            "run_id": "run_001",
+            "caller": "agent_loop",
+            "purpose": "agent_recall",
+        },
+        controlled_expand=True,
+    )
+
+    assert result["status"] == "ok"
+    assert result["content_policy"] == "summary_refs_provenance_only"
+    assert result["controlled_expand"] == {
+        "status": "deferred",
+        "budget": 2,
+        "content_policy": "summary_refs_provenance_only",
+    }
+    assert result["results"] == [
+        {
+            "record_id": "mem_preview_001",
+            "scope": "run",
+            "summary": "Resume from controlled expand preview.",
+            "source_refs": [{"ref_type": "artifact", "artifact_id": "artifact_001"}],
+            "provenance": {
+                "run_id": "run_001",
+                "execution_id": "exec_001",
+                "action_type": "write_memory",
+            },
+            "quality": "candidate",
+        }
+    ]
+    assert "hidden full memory content" not in repr(result)
+    assert store.calls == ["list_records"]
 
 
 def test_local_memory_query_denials_use_same_reason_contract():

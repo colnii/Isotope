@@ -54,6 +54,17 @@ def _controlled_expand_budget_is_invalid(grants: dict[str, Any]) -> bool:
     return has_budget and _controlled_expand_budget(memory_grants) is None
 
 
+def _controlled_expand_preview_metadata(grants: dict[str, Any]) -> dict[str, Any]:
+    budget = _controlled_expand_budget(_memory_grants(grants))
+    if budget is None:
+        raise ValueError("controlled expand preview metadata requires a valid budget")
+    return {
+        "status": "deferred",
+        "budget": budget,
+        "content_policy": "summary_refs_provenance_only",
+    }
+
+
 def _denied_memory_query_result(
     *,
     capability: str,
@@ -212,12 +223,15 @@ class LocalMemoryQueryService:
             }
             for record in matches.visible
         ]
-        return {
+        result: dict[str, Any] = {
             "status": "ok",
             "capability": "memory_query",
             "content_policy": "summary_refs_provenance_only",
             "results": results,
         }
+        if controlled_expand:
+            result["controlled_expand"] = _controlled_expand_preview_metadata(grants)
+        return result
 
 
 class NotEnabledMemoryQueryService:
