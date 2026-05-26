@@ -70,6 +70,10 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    默认复用现有 `integration-review`，但关闭 pytest gate 和候选 lint/test
    validation，只返回 ready/already/needs/conflict 等低敏分组摘要，不执行
    merge、push、archive 或 cleanup。
+   `memory.query` 也已注册为只读 capability：执行时复用现有
+   `LocalMemoryQueryService`，要求 `root/query/run_id`，通过 caller audit 和
+   memory query grant 读取 summary / refs / provenance，`controlled_expand`
+   仅返回 deferred metadata，不读取 full content。
 10. Screen observe/control 已有 policy-gated（策略门控）第一片：
     `screen_observe` / `screen_control` 走 registry、policy、executor 和 artifact
     边界，Windows backend 仅用于手动 smoke；observe/control 已支持命令级

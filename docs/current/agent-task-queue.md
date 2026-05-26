@@ -111,6 +111,10 @@
   `integration-review`，关闭 test gate 和候选 validation，只返回
   ready/already/needs/conflict 等低敏分组摘要，不 merge、不 push、不 archive、
   不 cleanup。
+- `memory.query` 已进入 capability runner：`isotope-capability` 可
+  search/plan/run，运行时复用 `LocalMemoryQueryService` 和 `FileMemoryStore`，
+  通过 memory query grant / caller audit 返回 summary / refs / provenance；
+  `controlled_expand` 只返回 deferred metadata。
 
 ## 下一批任务
 
@@ -152,6 +156,8 @@
 - 选中并补齐输入后仍复用 `capacity_graph` /
   `CapabilityRunner.plan_capability_run(...)` / agent loop `call_capability`
   路径，不新增私有 `worker-review` 或 `integration-review` 执行分支。
+- `memory.query` 已接入同一 capability runner；后续 memory recall 的上层路由
+  也应优先复用 capability id，而不是再开私有入口。
 
 后续：
 

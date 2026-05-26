@@ -25,6 +25,7 @@
 | LLM planner | `--llm-action`、`--llm-execute`、context 后续动作 | `commands/llm/action.py`、`llm_summary.py` |
 | 上下文检索 | `context`、`request_context`、`supervisor.request_context` | `context.py`、`capabilities/runner.py` |
 | worker 审查 | `worker-review`、`supervisor.worker_review`、`integration-review`、`supervisor.integration_review`、`replan` | `worker_review.py`、`integration_review.py`、`capabilities/runner.py`、`replan.py` |
+| memory recall | `memory --query`、`memory.query` | `memory/__init__.py`、`memory/views.py`、`capabilities/memory.py` |
 | merge 工单 | `merge-work-order`、merge dispatch、auto promote | `merge_work_order.py`、`merge_dispatch.py` |
 | 状态投影 | `state`、`build_supervisor_state_snapshot(...)` | `features/supervisor/state/projection.py`、`platform/state/supervisor_snapshot.py`、`commands/handlers/state.py` |
 | 本机页面 | `/dashboard.json`、`/events`、`/managed/send`、`/llm-action` | `web.py`、dashboard modules |

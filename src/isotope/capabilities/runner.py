@@ -10,6 +10,12 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .catalog import CapabilityCatalog
+from .memory import (
+    MEMORY_QUERY_CAPABILITY,
+    is_memory_readonly_capability,
+    run_memory_query,
+    validate_memory_readonly_inputs,
+)
 from .supervisor import (
     SUPERVISOR_INTEGRATION_REVIEW_CAPABILITY,
     SUPERVISOR_REQUEST_CONTEXT_CAPABILITY,
@@ -133,6 +139,11 @@ class CapabilityRunner:
         scenario = _CAPABILITY_SCENARIOS.get(capability_id)
         required_inputs = _required_inputs(capability)
         missing_inputs = _missing_inputs(required_inputs, input_mapping)
+        validate_memory_readonly_inputs(
+            capability_id=capability_id,
+            inputs=input_mapping,
+            missing_inputs=missing_inputs,
+        )
         validate_supervisor_readonly_inputs(
             capability_id=capability_id,
             inputs=input_mapping,
@@ -156,7 +167,11 @@ class CapabilityRunner:
         elif missing_inputs:
             launch_status = "missing_inputs"
             blocking_reasons.append("missing_inputs")
-        elif scenario is None and not is_supervisor_readonly_capability(capability_id):
+        elif (
+            scenario is None
+            and not is_memory_readonly_capability(capability_id)
+            and not is_supervisor_readonly_capability(capability_id)
+        ):
             launch_status = "not_allowlisted"
             blocking_reasons.append("not_allowlisted")
         else:
@@ -196,9 +211,16 @@ class CapabilityRunner:
     ) -> dict[str, Any]:
         capability = self._lookup_capability(capability_id)
         input_mapping = _input_mapping(inputs)
-        if is_supervisor_readonly_capability(capability_id):
+        if is_memory_readonly_capability(capability_id) or is_supervisor_readonly_capability(
+            capability_id
+        ):
             required_inputs = _required_inputs(capability)
             missing_inputs = _missing_inputs(required_inputs, input_mapping)
+            validate_memory_readonly_inputs(
+                capability_id=capability_id,
+                inputs=input_mapping,
+                missing_inputs=missing_inputs,
+            )
             validate_supervisor_readonly_inputs(
                 capability_id=capability_id,
                 inputs=input_mapping,
@@ -213,6 +235,8 @@ class CapabilityRunner:
         if not status["ready"]:
             raise PermissionError(f"capability not ready: {status['status']}")
 
+        if capability_id == MEMORY_QUERY_CAPABILITY:
+            return run_memory_query(inputs=input_mapping)
         if capability_id == SUPERVISOR_REQUEST_CONTEXT_CAPABILITY:
             return run_supervisor_request_context(inputs=input_mapping)
         if capability_id == SUPERVISOR_INTEGRATION_REVIEW_CAPABILITY:
@@ -332,6 +356,8 @@ def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
         return "provider_required"
     if scenario is not None:
         return "deterministic_demo"
+    if is_memory_readonly_capability(str(capability.get("capability_id", ""))):
+        return "deterministic_readonly"
     if is_supervisor_readonly_capability(str(capability.get("capability_id", ""))):
         return "deterministic_readonly"
     return "deferred"

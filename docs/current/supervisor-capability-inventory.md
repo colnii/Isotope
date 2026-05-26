@@ -166,6 +166,12 @@
   `collect_integration_reviews(...)` 只返回低敏分组摘要，不返回 merge-tree
   stdout/stderr、validation command 输出或 raw payload，不自动 merge、push、
   archive、cleanup 或 delete branch。
+- `memory.query` 已注册为可发现、可预检、可运行的只读 capability：
+  `list/search/describe` 能看到它，`plan/run --input-json` 要求
+  `root/query/run_id`；执行时复用现有 `LocalMemoryQueryService` 和
+  `FileMemoryStore`，走 memory query grant 与 caller audit，只返回
+  summary / refs / provenance。`controlled_expand` 只返回 deferred metadata，
+  不读取 full content。
 - `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
 - `/managed/send` 成功发送后会更新 lane state。
 - `guide` 会按 cwd、lane name 和 tmux session 打印可复制工作流命令。

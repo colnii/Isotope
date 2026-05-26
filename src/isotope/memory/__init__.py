@@ -171,6 +171,7 @@ class LocalMemoryQueryService:
         caller_context: dict[str, Any] | None = None,
         controlled_expand: bool = False,
         scope: str | None = None,
+        limit: int = 20,
     ) -> dict[str, Any]:
         if not isinstance(grants, dict):
             raise ValueError("memory_query grants must be provided as a dict")
@@ -211,11 +212,14 @@ class LocalMemoryQueryService:
             raise ValueError("memory query must be a non-empty string")
         if scope is not None and scope not in {"thread", "run", "session"}:
             raise ValueError("memory query scope must be thread, run, or session")
+        if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0:
+            raise ValueError("memory query limit must be a positive integer")
 
         matches = query_memory_records(
             self.memory_store.list_records(scope=scope),
             query=query,
             run_id=run_id,
+            limit=limit,
         )
         results = [
             {

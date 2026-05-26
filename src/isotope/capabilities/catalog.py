@@ -166,6 +166,72 @@ class CapabilityCatalog:
                     tags=("external", "snapshot", "review"),
                 ),
                 Capability(
+                    capability_id="memory.query",
+                    title="Memory Query",
+                    description=(
+                        "Query local memory through the existing summary / refs / "
+                        "provenance boundary."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=("memory", "query", "recall", "provenance"),
+                    input_contract={
+                        "type": "object",
+                        "required": ["root", "query", "run_id"],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "description": "Runtime root containing memory/*.json.",
+                            },
+                            "query": {
+                                "type": "string",
+                                "description": "Low-sensitive memory search query.",
+                            },
+                            "run_id": {
+                                "type": "string",
+                                "description": "Run id for caller audit and provenance filtering.",
+                            },
+                            "scope": {
+                                "type": "string",
+                                "enum": ["thread", "run", "session"],
+                                "description": "Optional memory scope filter.",
+                            },
+                            "limit": {
+                                "type": "integer",
+                                "description": "Maximum records to preview.",
+                                "default": 20,
+                            },
+                            "controlled_expand": {
+                                "type": "boolean",
+                                "description": "Return deferred controlled-expand metadata only.",
+                                "default": False,
+                            },
+                            "expand_budget": {
+                                "type": "integer",
+                                "description": "Positive preview budget when controlled_expand is true.",
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "content_policy",
+                            "results",
+                            "controlled_expand",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "memory_query_grant_gated",
+                        "caller_context_audited",
+                        "summary_refs_provenance_only",
+                        "controlled_expand_deferred",
+                        "no_full_content_read",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="supervisor.integration_review",
                     title="Supervisor Integration Review",
                     description=(

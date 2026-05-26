@@ -131,6 +131,10 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
   `agent_loop_summary` 低敏字段，供 dashboard / web 复用。
 - `memory --query` 只返回 summary / refs / provenance preview；plain 输出会标出
   `content_policy`、匹配数量、source refs 和 provenance，不返回 raw content。
+- `isotope-capability run memory.query --input-json ...` 复用同一条
+  `LocalMemoryQueryService` 低敏 recall 路径，要求 `root/query/run_id` 和
+  caller audit；`controlled_expand` 只返回 deferred metadata，不返回 full
+  content。
 - `research` 是 artifact/provenance-backed search substrate（基于产物和来源证据的搜索底座），不是 memory 直写入口。
 - `research` search 成功时保存 `research.raw_transcript` 与 `research.report`；
   provider 失败时只保存 `research.provider_trace`，并写入低敏 diagnostics

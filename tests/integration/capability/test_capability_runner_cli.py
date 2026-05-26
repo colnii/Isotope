@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import json
 import os
+from dataclasses import asdict
 from pathlib import Path
 import subprocess
 import sys
 from typing import Any
+
+from isotope.platform.schemas.memory import MemoryRecord
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -63,6 +66,7 @@ def test_capability_runner_cli_lists_capabilities_as_json():
         "approval.tool.runner",
         "artifact.review",
         "external.snapshot.review",
+        "memory.query",
         "supervisor.integration_review",
         "supervisor.request_context",
         "supervisor.worker_review",
@@ -206,6 +210,27 @@ def test_capability_runner_cli_plans_integration_review_missing_inputs_as_json()
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_readonly"
     assert plan["missing_inputs"] == ["codex_home"]
+    _assert_low_sensitive(payload)
+
+
+def test_capability_runner_cli_plans_memory_query_missing_inputs_as_json():
+    result = _run_cli(
+        "plan",
+        "memory.query",
+        "--input-json",
+        json.dumps({"root": "/tmp/isotope-runtime", "query": "memory"}),
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    plan = payload["plan"]
+    assert plan["capability_id"] == "memory.query"
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["missing_inputs"] == ["run_id"]
     _assert_low_sensitive(payload)
 
 
@@ -381,6 +406,55 @@ def test_capability_runner_cli_runs_integration_review_with_input_json(tmp_path)
     _assert_low_sensitive(payload)
 
 
+def test_capability_runner_cli_runs_memory_query_with_input_json(tmp_path):
+    memory_dir = tmp_path / "memory"
+    memory_dir.mkdir()
+    _write_memory_record(
+        memory_dir,
+        MemoryRecord(
+            memory_id="mem_cli",
+            scope="run",
+            content={"raw": "raw memory content must not leak"},
+            summary="CLI can recall memory query capability.",
+            source_refs=[{"ref_type": "artifact", "artifact_id": "artifact_cli"}],
+            provenance={
+                "run_id": "run_cli",
+                "execution_id": "exec_cli",
+                "action_type": "write_memory",
+            },
+            created_at="2026-05-27T00:00:00Z",
+            supersedes=[],
+            quality="verified",
+        ),
+    )
+
+    result = _run_cli(
+        "run",
+        "memory.query",
+        "--input-json",
+        json.dumps(
+            {
+                "root": str(tmp_path),
+                "query": "memory query",
+                "run_id": "run_cli",
+            }
+        ),
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    run = payload["run"]
+    assert run["capability_id"] == "memory.query"
+    assert run["status"] == "completed"
+    assert run["runner_kind"] == "deterministic_readonly"
+    assert run["memory_query"]["content_policy"] == "summary_refs_provenance_only"
+    assert run["memory_query"]["results"][0]["record_id"] == "mem_cli"
+    assert "raw memory content" not in result.stdout
+    _assert_low_sensitive(payload)
+
+
 def test_capability_runner_cli_unknown_capability_fails_controlled_json(tmp_path):
     result = _run_cli("run", "unknown.capability", "--root", str(tmp_path), "--json")
 
@@ -394,3 +468,10 @@ def test_capability_runner_cli_unknown_capability_fails_controlled_json(tmp_path
         },
     }
     assert not list(tmp_path.rglob("*"))
+
+
+def _write_memory_record(memory_dir: Path, record: MemoryRecord) -> None:
+    (memory_dir / f"{record.memory_id}.json").write_text(
+        json.dumps(asdict(record), sort_keys=True),
+        encoding="utf-8",
+    )
