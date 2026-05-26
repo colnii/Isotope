@@ -76,6 +76,11 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    仅返回 deferred metadata，不读取 full content。capacity path 的
    `agent_loop_summary` / plain 输出只提升 status、result_count 和
    content_policy 等低敏 recall 元数据，不提升 raw memory 内容。
+   `memory.promotion` 已补 proposal boundary（提案边界）第一片：
+   `build_memory_promotion_proposal(...)` 只从 structured artifact metadata 或
+   accepted external observation metadata 生成待批准的 `write_memory`
+   `ActionProposal`，拒绝 raw text / raw content 直接进入长期 memory；它不写
+   memory store、不追加 canonical event，也不是完整 promotion policy。
    `screen.report` 已注册为只读 capability：执行时复用现有 screen artifact
    report，要求 `root/run_id`，只返回 observe/control plan 低敏摘要，不读取
    screenshot 正文、不执行输入、不改变窗口；capacity agent-loop 执行后，

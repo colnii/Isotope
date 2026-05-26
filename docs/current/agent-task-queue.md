@@ -115,6 +115,10 @@
   search/plan/run，运行时复用 `LocalMemoryQueryService` 和 `FileMemoryStore`，
   通过 memory query grant / caller audit 返回 summary / refs / provenance；
   `controlled_expand` 只返回 deferred metadata。
+- `memory.promotion` 已有 proposal boundary 第一片：只把 structured artifact
+  metadata 或 accepted external observation metadata 整理为待批准的
+  `write_memory` `ActionProposal`；raw text / raw content 会 fail closed，且
+  helper 本身不写 store、不 append event、不定义完整 promotion policy。
 - Supervisor `worktree-audit` 已补第一片：开工前可只读读取
   `git worktree list --porcelain`，按 branch/path 主题词提示可能重复开发的
   worktree 候选；现在还会只读读取每个 worktree 的 `git status --porcelain=v1`，
