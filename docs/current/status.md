@@ -52,9 +52,9 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    `Supervisor action -> planner_output_summary -> tick_result -> persisted policy`。
    `isotope-supervisor capacity plan` 的 plain 输出也会显示低敏 planner / tick
    / artifact handoff summary；JSON payload 同步暴露
-   `agent_loop_summary`。Dashboard / web 的 multi-worker read model 已从
-   capacity memory record 复用这组字段展示最近能力调用摘要，不读取 raw
-   tick payload。
+   `agent_loop_summary`；`call_capacity` 执行动作会把同源 summary 写入
+   capacity memory record。Dashboard / web 的 multi-worker read model 已从该
+   record 复用这些字段展示最近能力调用摘要，不读取 raw tick payload。
    它仍不调用真实 LLM，不自动多轮循环。
 10. Screen observe/control 已有 policy-gated（策略门控）第一片：
     `screen_observe` / `screen_control` 走 registry、policy、executor 和 artifact

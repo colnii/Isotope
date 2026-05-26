@@ -29,6 +29,8 @@
   低敏 planner selected step、tick status、tick stop reason 和 artifact ref。
 - `isotope-supervisor capacity plan --json --execute-agent-loop` 会返回同一组
   `agent_loop_summary` 低敏字段。
+- `call_capacity` 执行动作会把同源 `agent_loop_summary` 写入低敏
+  capacity memory record，不保存 raw `tick_result`。
 - Dashboard / web 的 multi-worker payload 会从 capacity memory record 读取
   `agent_loop_summary`，只展示 tick / step / artifact 摘要，不直接读取原始
   `tick_result` 深层结构。
