@@ -411,8 +411,8 @@ def _run_candidate_validation(
         ("lint", *_lint_command(cwd)),
         (
             "unit_tests",
-            [sys.executable, "-m", "pytest", "tests/isotope", "-q"],
-            "pytest tests/isotope -q",
+            [sys.executable, "-m", "pytest", "tests", "-q"],
+            "pytest tests -q",
         ),
     ]
     results = [
@@ -447,8 +447,8 @@ def _lint_command(cwd: Path) -> tuple[list[str], str]:
     if makefile.exists() and _makefile_has_lint_target(makefile):
         return ["make", "lint"], "make lint"
     return (
-        [sys.executable, "-m", "compileall", "-q", "src/isotope", "tests/isotope"],
-        "python -m compileall -q src/isotope tests/isotope",
+        [sys.executable, "-m", "compileall", "-q", "src/isotope", "tests"],
+        "python -m compileall -q src/isotope tests",
     )
 
 

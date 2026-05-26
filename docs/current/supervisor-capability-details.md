@@ -230,13 +230,13 @@ merge worker 成功合入后的交接边界也要分清：
 最小回归应覆盖三类接线点：
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_readonly.py::test_codex_supervisor_dashboard_json_separates_current_batch_from_deleted_worktree_history -q
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_loop_fanout_launches_parallel_active_goals -q
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_daemon_start_passes_max_fanout_launches_to_loop -q
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_loop_suggests_all_active_goals -q
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_supervise_request_context_replans_same_iteration -q
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_loop_replans_blocked_goal_with_llm_context -q
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope/test_supervisor_goal_replenishment.py -q
+PYTHONPATH=src .venv/bin/python -m pytest tests/integration/codex/test_codex_supervisor_readonly.py::test_codex_supervisor_dashboard_json_separates_current_batch_from_deleted_worktree_history -q
+PYTHONPATH=src .venv/bin/python -m pytest tests/integration/codex/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_loop_fanout_launches_parallel_active_goals -q
+PYTHONPATH=src .venv/bin/python -m pytest tests/integration/codex/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_daemon_start_passes_max_fanout_launches_to_loop -q
+PYTHONPATH=src .venv/bin/python -m pytest tests/integration/codex/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_loop_suggests_all_active_goals -q
+PYTHONPATH=src .venv/bin/python -m pytest tests/integration/codex/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_supervise_request_context_replans_same_iteration -q
+PYTHONPATH=src .venv/bin/python -m pytest tests/integration/codex/test_codex_supervisor_readonly.py::test_codex_supervisor_runner_loop_replans_blocked_goal_with_llm_context -q
+PYTHONPATH=src .venv/bin/python -m pytest tests/integration/supervisor/test_supervisor_goal_replenishment.py -q
 ```
 
 fanout 回归必须覆盖：多个 active goals 中已有同名 running worker 时，只能为剩余目标执行

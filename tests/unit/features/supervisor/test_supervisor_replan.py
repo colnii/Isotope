@@ -34,7 +34,7 @@ def test_supervisor_replan_turns_worker_review_candidates_into_read_only_advice(
                     "risk_level": "high",
                     "reason": "worker 未完成但已有改动。",
                     "next_actions": ["阅读 worker 的 SUPERVISOR_NEXT"],
-                    "validation_commands": ["pytest tests/isotope/test_x.py -q"],
+                    "validation_commands": ["pytest tests/unit/test_x.py -q"],
                     "reviewer_command": "codex exec -C /repo inspect",
                 }
             ],

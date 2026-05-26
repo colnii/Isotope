@@ -2493,7 +2493,7 @@ def test_codex_supervisor_scan_keeps_working_terminal_not_ready(tmp_path):
     _write_managed_tmux_record(codex_home, workspace=workspace)
     pane_text = "\n".join(
         [
-            "• Ran PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q",
+            "• Ran PYTHONPATH=src .venv/bin/python -m pytest tests -q",
             "  └ ...................................",
             "",
             "◦ Working (7m 52s • esc to interrupt)",
@@ -5837,7 +5837,7 @@ def test_codex_supervisor_llm_action_messages_include_worker_review_context():
                     "risk_level": "medium",
                     "reason": "worker 已完成且有本地改动；建议先复查 diff。",
                     "next_actions": ["review_diff", "run_tests"],
-                    "validation_commands": ["pytest tests/isotope -q"],
+                    "validation_commands": ["pytest tests -q"],
                     "reviewer_command": "codex exec -C /repo 'review'",
                 }
             ],

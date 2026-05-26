@@ -142,8 +142,8 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 
 - `src/isotope/capabilities/tools/terminal.py`
 - `src/isotope/execution/terminal/runner.py`
-- `tests/isotope/test_terminal_tool.py`
-- `tests/isotope/test_terminal_backend_app.py`
+- `tests/unit/execution/terminal/test_terminal_tool.py`
+- `tests/unit/execution/terminal/test_terminal_backend_app.py`
 
 目标：先把终端执行能力放入应用化目录。
 旧顶层 `src/agents/` 已清理，不再作为活跃包。

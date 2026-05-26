@@ -179,7 +179,7 @@ def test_supervisor_integration_review_blocks_ready_worker_when_tests_fail(tmp_p
     assert item["validation"]["commands"][0]["status"] == "passed"
     assert item["validation"]["commands"][1]["name"] == "unit_tests"
     assert item["validation"]["commands"][1]["status"] == "failed"
-    assert "pytest tests/isotope -q failed" in item["reasons"]
+    assert "pytest tests -q failed" in item["reasons"]
     assert item["reason"] == "worker 已完成但 lint/test 未通过；修复后才能进入 ready_to_integrate。"
 
     plain = render_integration_review_plain(payload)
@@ -782,16 +782,16 @@ def _fake_validation(
 
 
 def _lint_command() -> tuple[str, ...]:
-    return (sys.executable, "-m", "compileall", "-q", "src/isotope", "tests/isotope")
+    return (sys.executable, "-m", "compileall", "-q", "src/isotope", "tests")
 
 
 def _pytest_command() -> tuple[str, ...]:
-    return (sys.executable, "-m", "pytest", "tests/isotope", "-q")
+    return (sys.executable, "-m", "pytest", "tests", "-q")
 
 
 def _is_pytest_gate_command(command: list[str]) -> bool:
     return (
-        command[1:] == ["-m", "pytest", "tests/isotope", "-q"]
+        command[1:] == ["-m", "pytest", "tests", "-q"]
         and command[0] in {".venv/bin/python", sys.executable}
     )
 

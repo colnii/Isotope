@@ -78,7 +78,7 @@ def test_auto_promote_blocked_merge_worker_launches_same_worktree_repair(
         protocol_status="blocked",
         worker_role="merge_dispatch",
         extra_log=(
-            "SUPERVISOR_SUMMARY: cherry-pick fe47809 时 tests/isotope/test_flow.py "
+            "SUPERVISOR_SUMMARY: cherry-pick fe47809 时 tests/unit/test_flow.py "
             "出现 content conflict\n"
             "SUPERVISOR_NEXT: 需要继续处理当前 cherry-pick 冲突\n"
         ),
@@ -98,7 +98,7 @@ def test_auto_promote_blocked_merge_worker_launches_same_worktree_repair(
                 "supervisor_protocol": {
                     "status": "blocked",
                     "summary": (
-                        "cherry-pick fe47809 时 tests/isotope/test_flow.py "
+                        "cherry-pick fe47809 时 tests/unit/test_flow.py "
                         "出现 content conflict"
                     ),
                     "next": "需要继续处理当前 cherry-pick 冲突",
@@ -155,7 +155,7 @@ def test_auto_promote_blocked_merge_worker_launches_same_worktree_repair(
     assert "source: integration_review" in launched["prompt"]
     assert "git status" in launched["prompt"]
     assert "cherry-pick --continue" in launched["prompt"]
-    assert "tests/isotope/test_flow.py" in launched["prompt"]
+    assert "tests/unit/test_flow.py" in launched["prompt"]
 
 
 def test_supervisor_loop_keeps_ready_worker_for_explicit_cleanup(

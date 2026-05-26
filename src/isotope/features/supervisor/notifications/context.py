@@ -664,7 +664,7 @@ def _source_group_for_path(path: str) -> str:
         return "docs/current"
     if path.startswith("src/isotope/features/supervisor/"):
         return "supervisor feature code"
-    if path.startswith("tests/isotope/"):
+    if path.startswith("tests/"):
         return "isotope tests"
     if path.startswith("docs/"):
         return "docs"

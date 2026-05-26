@@ -12,7 +12,7 @@ from ..registry import ManagedCodexRecord
 
 RunCommand = Callable[..., subprocess.CompletedProcess[str]]
 
-TEST_GATE_COMMAND = [".venv/bin/python", "-m", "pytest", "tests/isotope", "-q"]
+TEST_GATE_COMMAND = [".venv/bin/python", "-m", "pytest", "tests", "-q"]
 OUTPUT_TAIL_LINES = 40
 
 
@@ -92,4 +92,3 @@ __all__ = [
     "RunCommand",
     "collect_worker_test_gate",
 ]
-

@@ -121,7 +121,7 @@ def _execution_steps(
         ),
         (
             "4. 组合测试: cherry-pick 全部成功后运行相关 pytest；共享路径改动时运行 "
-            "PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q。"
+            "PYTHONPATH=src .venv/bin/python -m pytest tests -q。"
         ),
         (
             "5. commit/push: 如果 cherry-pick 已产生提交且组合测试通过，检查 git log 和 "

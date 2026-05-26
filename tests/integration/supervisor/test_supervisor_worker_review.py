@@ -107,7 +107,7 @@ def test_supervisor_worker_review_collects_completed_worker_with_changes(
         {"status": "??", "path": "src/isotope/features/supervisor/worker_review.py"},
     ]
     assert item["validation_commands"][0] == f"git -C {workspace} status --short --branch"
-    assert "pytest tests/isotope -q" in item["validation_commands"][2]
+    assert "pytest tests -q" in item["validation_commands"][2]
     assert "不自动合并" in item["merge_hint"]
     assert item["reviewer"]["needed"] is True
     assert item["reviewer"]["cwd"] == str(workspace)
@@ -406,9 +406,9 @@ def test_supervisor_worker_review_decides_blocked_worker_should_continue_or_spli
         if command[3:] == ["rev-parse", "--abbrev-ref", "HEAD"]:
             return subprocess.CompletedProcess(command, 0, "supervisor/blocked-12345678\n", "")
         if command[3:] == ["status", "--short"]:
-            return subprocess.CompletedProcess(command, 0, " M tests/isotope/test_x.py\n", "")
+            return subprocess.CompletedProcess(command, 0, " M tests/unit/test_x.py\n", "")
         if command[3:] == ["diff", "--stat"]:
-            return subprocess.CompletedProcess(command, 0, " tests/isotope/test_x.py | 2 ++\n", "")
+            return subprocess.CompletedProcess(command, 0, " tests/unit/test_x.py | 2 ++\n", "")
         raise AssertionError(f"unexpected command: {command}")
 
     payload = collect_worker_reviews(
@@ -614,6 +614,6 @@ def _write_record(
 
 def _is_pytest_gate_command(command: list[str]) -> bool:
     return (
-        command[1:] == ["-m", "pytest", "tests/isotope", "-q"]
+        command[1:] == ["-m", "pytest", "tests", "-q"]
         and command[0] in {".venv/bin/python", sys.executable}
     )

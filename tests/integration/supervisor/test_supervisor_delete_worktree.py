@@ -427,6 +427,6 @@ def _write_managed_record_event(
 
 def _is_pytest_gate_command(command: list[str]) -> bool:
     return (
-        command[1:] == ["-m", "pytest", "tests/isotope", "-q"]
+        command[1:] == ["-m", "pytest", "tests", "-q"]
         and command[0] in {".venv/bin/python", sys.executable}
     )

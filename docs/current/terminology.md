@@ -65,12 +65,12 @@
 | `GET /workbench` | 工作台 API 入口，读取无搜索条件的低敏汇总 | 接口 | `src/isotope/interfaces/http/__init__.py` |
 | `POST /workbench` | 工作台 API 入口，可带 query/types/limit 读取汇总和搜索结果 | 接口 | `src/isotope/interfaces/http/__init__.py` |
 | `POST /workbench/ask` | 工作台问答 API 入口，用注入的 LLM provider 回答工作台问题 | 接口/模型 | `src/isotope/interfaces/http/__init__.py`, `src/isotope/features/ask/flow.py` |
-| `workbench demo` | 工作台 demo 场景，展示创建摘要、搜索和工作台汇总流程 | 应用验证 | `src/isotope/demo/__init__.py`, `tests/isotope/test_workbench_demo_scenario.py` |
+| `workbench demo` | 工作台 demo 场景，展示创建摘要、搜索和工作台汇总流程 | 应用验证 | `src/isotope/demo/__init__.py`, `tests/e2e/test_workbench_demo_scenario.py` |
 | `demo formatter` | demo plain text 输出格式化层；按 core、agent loop 和 LLM 场景拆分，避免 `demo/format/format.py` 继续承载所有格式化职责 | 应用验证/输出格式 | `src/isotope/demo/format/format.py`, `src/isotope/demo/format/core.py`, `src/isotope/demo/format/agent_loop.py`, `src/isotope/demo/format/llm.py` |
 | `Workbench Ask` | 工作台问答，用低敏工作台摘要回答一个自然语言问题 | 产品功能/模型 | `src/isotope/features/ask/flow.py` |
 | `WorkbenchAskFlow` | 工作台问答功能入口，组装摘要上下文、调用 LLM provider 并返回答案 | 产品功能/模型 | `src/isotope/features/ask/flow.py` |
 | `isotope-ask` | 工作台问答命令行入口，可用 mock 或 OpenAI-compatible provider 回答问题 | 应用入口 | `src/isotope/features/ask/runner.py`, `apps/cli/isotope_ask.py` |
-| `workbench-ask demo` | 工作台问答 demo 场景，展示项目摘要进入问答上下文并产出中文答案 | 应用验证 | `src/isotope/demo/__init__.py`, `tests/isotope/test_workbench_ask_demo_scenario.py` |
+| `workbench-ask demo` | 工作台问答 demo 场景，展示项目摘要进入问答上下文并产出中文答案 | 应用验证 | `src/isotope/demo/__init__.py`, `tests/e2e/test_workbench_ask_demo_scenario.py` |
 | `NotificationFlow` | 通知功能入口，维护本地低敏通知摘要索引 | 产品功能/通知 | `src/isotope/features/notifications/flow.py` |
 | `NotificationSummary` | 通知摘要，面向用户展示类型、标题、未读状态、时间和低敏来源引用 | 产品功能/通知 | `src/isotope/features/notifications/flow.py` |
 | `isotope-notification` | 通知命令行入口，可创建、列表、筛选和标记已读通知 | 应用入口 | `src/isotope/features/notifications/runner.py` |

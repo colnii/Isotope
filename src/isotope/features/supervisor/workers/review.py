@@ -313,7 +313,7 @@ def _validation_commands(cwd: Path, *, cwd_exists: bool) -> list[str]:
     return [
         f"git -C {quoted_cwd} status --short --branch",
         f"git -C {quoted_cwd} diff --stat",
-        f"cd {quoted_cwd} && PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q",
+        f"cd {quoted_cwd} && PYTHONPATH=src .venv/bin/python -m pytest tests -q",
     ]
 
 

@@ -19,7 +19,7 @@
 - `tools/` 旧空包已删除；工具能力以 `capabilities/tools/`
   和能力注册表为准。
 - 兼容入口已有最小测试：
-  `tests/isotope/test_compat_proxy_imports.py`。
+  `tests/unit/integrations/codex/test_compat_proxy_imports.py`。
 - `core/runtime.py`、`agent_runtime.py`、`assistant/runtime.py`
   空壳链已删除。
 - `state`、`events`、`schema refs`、`workspace artifact`、`rag`
@@ -121,7 +121,7 @@
 
 ## 当前保留项
 
-- `tests/isotope/test_compat_proxy_imports.py` 覆盖仍保留的兼容代理，
+- `tests/unit/integrations/codex/test_compat_proxy_imports.py` 覆盖仍保留的兼容代理，
   也验证已删除旧入口不可再导入。
 - `docs/architecture/` 和 `docs/reviews/` 仍有历史入口名，
   删除代理前不应按全文搜索结果机械改历史文档。

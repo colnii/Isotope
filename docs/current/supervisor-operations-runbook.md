@@ -91,7 +91,7 @@ fanout（同轮多目标派发）：
 第三段确认 CI 和 watchdog（看门进程）：
 
 ```bash
-.venv/bin/python -m pytest tests/isotope -q
+.venv/bin/python -m pytest tests -q
 python -m isotope.demo
 python -m isotope.demo --json
 

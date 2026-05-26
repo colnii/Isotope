@@ -54,7 +54,7 @@ def test_done_worker_gate_falls_back_to_current_python_when_worktree_venv_missin
     def fake_run(command: list[str], **kwargs):
         commands.append(command)
         _assert_completed_process_kwargs(kwargs)
-        if command == [sys.executable, "-m", "pytest", "tests/isotope", "-q"]:
+        if command == [sys.executable, "-m", "pytest", "tests", "-q"]:
             assert Path(kwargs["cwd"]) == cwd
             assert kwargs["env"]["PYTHONPATH"] == "src"
             return subprocess.CompletedProcess(command, 0, "12 passed\n", "")
@@ -69,7 +69,7 @@ def test_done_worker_gate_falls_back_to_current_python_when_worktree_venv_missin
     )
 
     assert payload["workers"][0]["test_passed"] is True
-    assert [sys.executable, "-m", "pytest", "tests/isotope", "-q"] in commands
+    assert [sys.executable, "-m", "pytest", "tests", "-q"] in commands
 
 
 def test_failed_done_worker_gate_moves_integration_review_to_needs_review(tmp_path):
@@ -80,14 +80,14 @@ def test_failed_done_worker_gate_moves_integration_review_to_needs_review(tmp_pa
     fake_run = _fake_integration_run(
         cwd,
         worker_commit="fail111",
-        pytest_result=(1, "FAILED tests/isotope/test_gate.py::test_x\n", ""),
+        pytest_result=(1, "FAILED tests/unit/test_gate.py::test_x\n", ""),
     )
 
     worker_payload = collect_worker_reviews(
         codex_home=codex_home,
         run=_fake_worker_review_run(
             cwd,
-            pytest_result=(1, "FAILED tests/isotope/test_gate.py::test_x\n", ""),
+            pytest_result=(1, "FAILED tests/unit/test_gate.py::test_x\n", ""),
         ),
         process_checker=lambda pid: False,
     )
@@ -102,7 +102,7 @@ def test_failed_done_worker_gate_moves_integration_review_to_needs_review(tmp_pa
     assert item["test_passed"] is False
     assert item["test_exit_code"] == 1
     assert "pytest failed" in item["reason"]
-    assert "FAILED tests/isotope/test_gate.py::test_x" in item["test_output_tail"]
+    assert "FAILED tests/unit/test_gate.py::test_x" in item["test_output_tail"]
 
 
 def test_worker_review_marks_deleted_worktree_test_skipped(tmp_path):
@@ -206,7 +206,7 @@ def _assert_completed_process_kwargs(kwargs: dict[str, object]) -> None:
 
 def _is_pytest_gate_command(command: list[str]) -> bool:
     return (
-        command[1:] == ["-m", "pytest", "tests/isotope", "-q"]
+        command[1:] == ["-m", "pytest", "tests", "-q"]
         and command[0] in {".venv/bin/python", sys.executable}
     )
 

@@ -75,7 +75,7 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
 ## 常用验证
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m pytest tests/isotope -q
+PYTHONPATH=src .venv/bin/python -m pytest tests -q
 PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario workbench --trace
 PYTHONPATH=src .venv/bin/python -m isotope.demo --scenario workbench-ask --trace
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --limit 3
