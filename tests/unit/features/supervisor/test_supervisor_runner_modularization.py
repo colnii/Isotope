@@ -9,7 +9,7 @@ from isotope.features.supervisor import runner
 
 def test_supervisor_runner_uses_command_dispatch_module():
     main_module = importlib.import_module("isotope.features.supervisor.commands.main")
-    parser_module = importlib.import_module("isotope.features.supervisor.commands.parser.parser")
+    parser_module = importlib.import_module("isotope.features.supervisor.commands.parser")
 
     assert runner._run_cli is main_module.run_cli
     assert runner._build_parser is parser_module.build_parser
@@ -17,7 +17,7 @@ def test_supervisor_runner_uses_command_dispatch_module():
 
 
 def test_supervisor_runner_parser_implementation_lives_in_command_module():
-    parser_module = importlib.import_module("isotope.features.supervisor.commands.parser.parser")
+    parser_module = importlib.import_module("isotope.features.supervisor.commands.parser")
 
     assert runner._build_parser_impl is parser_module._build_parser_impl
     assert inspect.getsourcefile(runner._build_parser_impl) == inspect.getsourcefile(
@@ -162,7 +162,7 @@ def test_supervisor_runner_delegates_advice_execution_helpers():
 
 def test_supervisor_runner_delegates_llm_action_execution_helpers():
     llm_action_module = importlib.import_module(
-        "isotope.features.supervisor.commands.llm_action"
+        "isotope.features.supervisor.commands.llm.action"
     )
 
     assert runner._execute_llm_action is llm_action_module.execute_llm_action
@@ -197,7 +197,7 @@ def test_supervisor_runner_delegates_llm_action_execution_helpers():
 
 def test_supervisor_runner_delegates_supervise_execution_dispatch():
     execution_module = importlib.import_module(
-        "isotope.features.supervisor.commands.supervise_execution"
+        "isotope.features.supervisor.commands.supervise.execution"
     )
 
     assert (
@@ -209,7 +209,7 @@ def test_supervisor_runner_delegates_supervise_execution_dispatch():
 
 def test_supervisor_runner_delegates_context_request_followup_replan():
     llm_context_module = importlib.import_module(
-        "isotope.features.supervisor.commands.llm_context"
+        "isotope.features.supervisor.commands.llm.context"
     )
 
     assert (
@@ -270,7 +270,7 @@ def test_supervisor_runner_delegates_plain_rendering_helpers():
 
 def test_supervisor_runner_delegates_llm_planner_helpers():
     planner_module = importlib.import_module(
-        "isotope.features.supervisor.commands.llm_planner"
+        "isotope.features.supervisor.commands.llm.planner"
     )
 
     assert runner._decide_action_with_llm is planner_module.decide_action_with_llm
@@ -283,7 +283,7 @@ def test_supervisor_runner_delegates_llm_planner_helpers():
 
 def test_supervisor_runner_delegates_llm_side_effect_execution_helpers():
     execution_module = importlib.import_module(
-        "isotope.features.supervisor.commands.llm_execution"
+        "isotope.features.supervisor.commands.llm.execution"
     )
 
     assert runner._execute_resume_action is execution_module.execute_resume_action
@@ -896,7 +896,7 @@ def test_supervisor_runner_delegates_workspace_scope_helpers():
 
 def test_supervisor_runner_delegates_supervise_payload_base_builder():
     payload_module = importlib.import_module(
-        "isotope.features.supervisor.commands.supervise_payload"
+        "isotope.features.supervisor.commands.supervise.payload"
     )
 
     assert (
@@ -920,7 +920,7 @@ def test_supervisor_runner_delegates_supervise_payload_base_builder():
 
 def test_supervisor_runner_delegates_supervise_planning_payload_builder():
     planning_module = importlib.import_module(
-        "isotope.features.supervisor.commands.supervise_planning"
+        "isotope.features.supervisor.commands.supervise.planning"
     )
 
     assert (
@@ -934,7 +934,7 @@ def test_supervisor_runner_delegates_supervise_planning_payload_builder():
 
 def test_supervise_payload_refreshes_current_batch_only_when_execution_requires_print():
     payload_module = importlib.import_module(
-        "isotope.features.supervisor.commands.supervise_payload"
+        "isotope.features.supervisor.commands.supervise.payload"
     )
     calls: list[tuple[str, object]] = []
 
@@ -1017,7 +1017,7 @@ def test_supervise_payload_refreshes_current_batch_only_when_execution_requires_
 
 def test_supervise_payload_appends_final_decisions_and_loop_trace():
     payload_module = importlib.import_module(
-        "isotope.features.supervisor.commands.supervise_payload"
+        "isotope.features.supervisor.commands.supervise.payload"
     )
     calls: list[tuple[str, object]] = []
 
@@ -1047,7 +1047,7 @@ def test_supervise_payload_appends_final_decisions_and_loop_trace():
 
 def test_supervise_payload_omits_lifecycle_trace_outside_loop():
     payload_module = importlib.import_module(
-        "isotope.features.supervisor.commands.supervise_payload"
+        "isotope.features.supervisor.commands.supervise.payload"
     )
 
     class FakeApi:
@@ -1070,7 +1070,7 @@ def test_supervise_payload_omits_lifecycle_trace_outside_loop():
 
 def test_supervisor_runner_delegates_supervise_action_selection():
     action_module = importlib.import_module(
-        "isotope.features.supervisor.commands.supervise_action"
+        "isotope.features.supervisor.commands.supervise.action"
     )
 
     assert (
@@ -1084,7 +1084,7 @@ def test_supervisor_runner_delegates_supervise_action_selection():
 
 def test_llm_context_replans_after_successful_context_request():
     llm_context_module = importlib.import_module(
-        "isotope.features.supervisor.commands.llm_context"
+        "isotope.features.supervisor.commands.llm.context"
     )
     calls: list[tuple[str, object]] = []
 
@@ -1148,7 +1148,7 @@ def test_llm_context_replans_after_successful_context_request():
 
 def test_llm_context_skips_followup_replan_for_non_context_execution():
     llm_context_module = importlib.import_module(
-        "isotope.features.supervisor.commands.llm_context"
+        "isotope.features.supervisor.commands.llm.context"
     )
 
     class FakeApi:

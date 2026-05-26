@@ -27,12 +27,88 @@ class RunProjector(RunProjectorCheckpointMixin, RunProjectorHandlersMixin, RunPr
         "current_agent",
         "agents",
         "delegations",
-        "current_plan_id",
-        "action_form",
-        "pending_tool_calls",
-        "awaiting_approval",
-        "action_outcomes",
+        "workers",
+        "workspaces",
+        "actions",
+        "action_retries",
+        "action_cancellations",
+        "action_supersessions",
+        "approvals",
+        "artifacts",
+        "memory_records",
+        "external_observations",
+        "last_event_id",
     )
+    CHECKPOINT_REQUIRED_STATE_FIELDS = ("run_id", "status", "current_agent", "actions", "artifacts", "last_event_id")
+    CHECKPOINT_ARTIFACT_FIELDS = ("ref", "artifact_type", "summary", "provenance")
+    CHECKPOINT_MEMORY_RECORD_FIELDS = ("record_id", "summary", "source_refs", "provenance")
+    CHECKPOINT_MEMORY_RECORD_FORBIDDEN_FIELDS = ("content", "full_content", "artifact_content", "raw_content")
+    ACTION_SUMMARY_FORBIDDEN_FIELDS = (
+        "content",
+        "full_content",
+        "artifact_content",
+        "raw_content",
+        "stdout",
+        "stderr",
+        "text",
+        "argv",
+        "args",
+        "shell_command",
+        "command_line",
+    )
+    CHECKPOINT_EXTERNAL_OBSERVATION_FORBIDDEN_FIELDS = (
+        "content",
+        "full_content",
+        "artifact_content",
+        "raw_content",
+        "stdout",
+        "stderr",
+        "text",
+        "argv",
+        "args",
+        "shell_command",
+        "command_line",
+    )
+    CHECKPOINT_WORKSPACE_FORBIDDEN_FIELDS = (
+        "content",
+        "full_content",
+        "artifact_content",
+        "raw_content",
+        "stdout",
+        "stderr",
+        "text",
+        "argv",
+        "args",
+        "shell_command",
+        "command_line",
+    )
+    KNOWN_WORKSPACE_LEASE_STATUSES = {
+        "created",
+        "active",
+        "error",
+        "released",
+        "released_with_cleanup",
+    }
+    CHECKPOINT_EXTERNAL_OBSERVATION_FIELDS = (
+        "snapshot_id",
+        "snapshot_type",
+        "source_system",
+        "captured_at",
+        "source_ref",
+        "summary",
+        "observation",
+        "quality",
+        "provenance",
+        "basis_refs",
+    )
+    CHECKPOINT_MEMORY_RECORD_ALLOWED_FIELDS = {
+        "record_id",
+        "execution_id",
+        "summary",
+        "source_refs",
+        "provenance",
+    }
+    PROJECTOR_VERSION = "run_projector@v1"
 
     def __init__(self) -> None:
         self._supported_event_types: set[str] | None = None
@@ -46,7 +122,4 @@ class RunProjector(RunProjectorCheckpointMixin, RunProjectorHandlersMixin, RunPr
         return self._supported_event_types
 
     def rebuild(self, run_id: str, event_store: Any) -> RunState:
-        state = RunState(run_id=run_id)
-        for event in event_store.list_events(run_id):
-            super().rebuild(state, event)
-        return state
+        return self.project(event_store.list_events(run_id))
