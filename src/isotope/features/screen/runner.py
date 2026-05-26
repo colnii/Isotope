@@ -192,7 +192,19 @@ def _build_parser() -> argparse.ArgumentParser:
         "validate",
         help="Validate one reusable target allowlist file.",
     )
-    allowlist_validate_parser.add_argument("--path", required=True, help="Allowlist JSON file.")
+    validate_source = allowlist_validate_parser.add_mutually_exclusive_group(
+        required=True
+    )
+    validate_source.add_argument("--path", help="Allowlist JSON file.")
+    validate_source.add_argument(
+        "--profile",
+        help="Named target allowlist profile, resolved from the profile directory.",
+    )
+    allowlist_validate_parser.add_argument(
+        "--profile-dir",
+        default=str(_default_allowlist_profile_dir()),
+        help="Directory containing named target allowlist profile JSON files.",
+    )
     allowlist_validate_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     allowlist_list_parser = allowlist_subparsers.add_parser(
         "list",
@@ -316,7 +328,13 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "allowlist":
             if args.allowlist_command == "validate":
-                payload = validate_target_allowlist_file(args.path)
+                if args.profile:
+                    payload = validate_target_allowlist_profile(
+                        profile=args.profile,
+                        profile_dir=args.profile_dir,
+                    )
+                else:
+                    payload = validate_target_allowlist_file(args.path)
                 if args.json:
                     _print_json(payload)
                 else:
@@ -573,6 +591,26 @@ def validate_target_allowlist_file(path: str) -> dict[str, Any]:
     }
 
 
+def validate_target_allowlist_profile(
+    *,
+    profile: str,
+    profile_dir: str | None = None,
+) -> dict[str, Any]:
+    path = _allowlist_profile_path(profile=profile, profile_dir=profile_dir)
+    assert path is not None
+    payload = validate_target_allowlist_file(path)
+    return {
+        "status": payload["status"],
+        "profile": profile,
+        "path": payload["path"],
+        "allowed_app_count": payload["allowed_app_count"],
+        "allowed_title_contains_count": payload[
+            "allowed_title_contains_count"
+        ],
+        "allow_first_match_execute": payload["allow_first_match_execute"],
+    }
+
+
 def list_target_allowlist_profiles(profile_dir: str) -> dict[str, Any]:
     base = Path(profile_dir).expanduser()
     if base.exists() and not base.is_dir():
@@ -609,6 +647,8 @@ def build_target_allowlist_template() -> dict[str, list[str]]:
 
 def print_screen_allowlist_validate_plain(payload: dict[str, Any]) -> None:
     print(f"status: {payload['status']}")
+    if "profile" in payload:
+        print(f"profile: {payload['profile']}")
     print(f"path: {payload['path']}")
     print(f"allowed_apps: {payload['allowed_app_count']}")
     print(f"allowed_title_contains: {payload['allowed_title_contains_count']}")

@@ -153,6 +153,44 @@ def test_validate_target_allowlist_file_returns_low_sensitive_summary(tmp_path):
     }
 
 
+def test_validate_target_allowlist_profile_resolves_named_profile(tmp_path):
+    profile_dir = tmp_path / "profiles"
+    profile_dir.mkdir()
+    profile_file = profile_dir / "mahjong.json"
+    profile_file.write_text(
+        json.dumps(
+            {
+                "allowed_apps": ["msedge.exe"],
+                "allowed_title_contains": ["Mahjong Soul"],
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    result = runner.validate_target_allowlist_profile(
+        profile="mahjong",
+        profile_dir=str(profile_dir),
+    )
+
+    assert result == {
+        "status": "ok",
+        "profile": "mahjong",
+        "path": str(profile_file),
+        "allowed_app_count": 1,
+        "allowed_title_contains_count": 1,
+        "allow_first_match_execute": False,
+    }
+
+
+def test_validate_target_allowlist_profile_rejects_path_like_names(tmp_path):
+    with pytest.raises(ValueError, match="allowlist-profile must be a simple name"):
+        runner.validate_target_allowlist_profile(
+            profile="../mahjong",
+            profile_dir=str(tmp_path),
+        )
+
+
 def test_list_target_allowlist_profiles_returns_low_sensitive_sorted_summary(tmp_path):
     profile_dir = tmp_path / "profiles"
     profile_dir.mkdir()
@@ -314,6 +352,27 @@ def test_allowlist_validate_parser_accepts_path():
     assert args.command == "allowlist"
     assert args.allowlist_command == "validate"
     assert args.path == "screen-allowlist.json"
+    assert args.json is True
+
+
+def test_allowlist_validate_parser_accepts_profile():
+    args = runner._build_parser().parse_args(
+        [
+            "allowlist",
+            "validate",
+            "--profile",
+            "mahjong",
+            "--profile-dir",
+            "profiles",
+            "--json",
+        ]
+    )
+
+    assert args.command == "allowlist"
+    assert args.allowlist_command == "validate"
+    assert args.path is None
+    assert args.profile == "mahjong"
+    assert args.profile_dir == "profiles"
     assert args.json is True
 
 

@@ -320,6 +320,44 @@ def test_screen_cli_allowlist_validate_returns_low_sensitive_json(tmp_path):
     }
 
 
+def test_screen_cli_allowlist_validate_profile_returns_low_sensitive_json(tmp_path):
+    profile_dir = tmp_path / "profiles"
+    profile_dir.mkdir()
+    profile_file = profile_dir / "mahjong.json"
+    profile_file.write_text(
+        json.dumps(
+            {
+                "allowed_apps": ["msedge.exe"],
+                "allowed_title_contains": ["private game title"],
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    result = _run_cli(
+        "allowlist",
+        "validate",
+        "--profile",
+        "mahjong",
+        "--profile-dir",
+        str(profile_dir),
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload == {
+        "status": "ok",
+        "profile": "mahjong",
+        "path": str(profile_file),
+        "allowed_app_count": 1,
+        "allowed_title_contains_count": 1,
+        "allow_first_match_execute": False,
+    }
+    assert "private game title" not in result.stdout
+
+
 def test_screen_cli_allowlist_validate_plain_output_is_low_sensitive(tmp_path):
     allowlist_file = tmp_path / "screen-allowlist.json"
     allowlist_file.write_text(
@@ -341,6 +379,37 @@ def test_screen_cli_allowlist_validate_plain_output_is_low_sensitive(tmp_path):
     assert "allowed_title_contains: 1" in result.stdout
     assert "allow_first_match_execute: false" in result.stdout
     assert "private window title fragment" not in result.stdout
+
+
+def test_screen_cli_allowlist_validate_profile_plain_output_is_low_sensitive(tmp_path):
+    profile_dir = tmp_path / "profiles"
+    profile_dir.mkdir()
+    (profile_dir / "mahjong.json").write_text(
+        json.dumps(
+            {
+                "allowed_apps": ["msedge.exe"],
+                "allowed_title_contains": ["private game title"],
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    result = _run_cli(
+        "allowlist",
+        "validate",
+        "--profile",
+        "mahjong",
+        "--profile-dir",
+        str(profile_dir),
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "status: ok" in result.stdout
+    assert "profile: mahjong" in result.stdout
+    assert "allowed_apps: 1" in result.stdout
+    assert "allowed_title_contains: 1" in result.stdout
+    assert "private game title" not in result.stdout
 
 
 def test_screen_cli_allowlist_validate_rejects_malformed_json(tmp_path):

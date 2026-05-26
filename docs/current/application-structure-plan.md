@@ -206,8 +206,9 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   `--allow-app` / `--allow-title-contains` 注入到 intent/grants，也可通过
   `--allowlist-file` 读取可复用 JSON allowlist，或通过 `--allowlist-profile`
   从 profile 目录解析命名 allowlist；这些入口只影响 target allowlist，
-  不绕过 execute approval gate；`allowlist validate --path <file>` 可离线检查
-  allowlist 格式并只输出低敏计数，`allowlist list --profile-dir <dir>` 可
+  不绕过 execute approval gate；`allowlist validate --path <file>` 或
+  `allowlist validate --profile <name>` 可离线检查 allowlist 格式并只输出
+  低敏计数，`allowlist list --profile-dir <dir>` 可
   只读列出 profile 名和低敏计数，`allowlist template` 可打印可编辑 JSON
   骨架；窗口最小化或截图不可用时 observe 降级为 `metadata_only` 并写入
   diagnostic artifact；
