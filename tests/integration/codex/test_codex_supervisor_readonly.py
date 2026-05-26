@@ -6726,6 +6726,7 @@ def test_codex_supervisor_loop_payload_produces_capacity_decisions_for_llm(
                 "capacity_id": "supervisor.request_context",
                 "arguments": {"query": "补齐上下文输入"},
             },
+            "agent_loop_summary": {"agent_loop_executed": False},
             "supervisor_decision": decision,
         }
 
@@ -6784,6 +6785,9 @@ def test_codex_supervisor_loop_payload_produces_capacity_decisions_for_llm(
             "inputs": {"query": "补齐上下文输入"},
         }
     ]
+    assert payload["capacity_decision_status"]["agent_loop_summary"] == {
+        "agent_loop_executed": False
+    }
 
 
 def test_codex_supervisor_parser_accepts_capacity_decisions_for_loop_and_supervise():

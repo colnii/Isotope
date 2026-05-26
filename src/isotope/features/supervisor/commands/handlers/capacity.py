@@ -301,6 +301,9 @@ def loop_capacity_decision_payload(
         blocked_reason = "no_offered_capacities"
     if isinstance(blocked_reason, str) and blocked_reason:
         payload["capacity_blocked_reason"] = blocked_reason
+    agent_loop_summary = plan.get("agent_loop_summary")
+    if isinstance(agent_loop_summary, dict):
+        payload["agent_loop_summary"] = copy.deepcopy(agent_loop_summary)
     return payload
 
 

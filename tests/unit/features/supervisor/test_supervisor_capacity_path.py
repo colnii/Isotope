@@ -739,6 +739,42 @@ def test_loop_capacity_payload_propagates_blocked_reason_from_plan():
     assert payload["capacity_call_specs"] == []
 
 
+def test_loop_capacity_payload_propagates_agent_loop_summary_from_plan():
+    decision = {
+        "kind": "supervisor_capacity_decision",
+        "next_action": "blocked",
+        "reason": "not_launchable",
+        "capacity_id": "context.search",
+        "can_execute_agent_loop": False,
+        "missing_inputs": [],
+        "blocking_reasons": ["not_allowlisted"],
+    }
+    summary = {"agent_loop_executed": False}
+
+    class FakeCapacityApi:
+        def resolve_capacity_calling_provider_from_env(self):
+            return object()
+
+        def build_supervisor_capacity_plan(self, **kwargs):
+            return {
+                "status": "blocked",
+                "status_reason": "not_launchable",
+                "capacity_blocked_reason": "not_allowlisted",
+                "agent_loop_summary": summary,
+                "supervisor_decision": decision,
+            }
+
+    payload = capacity_command.loop_capacity_decision_payload(
+        argparse.Namespace(capacity_decisions=True),
+        active_goals=[{"goal": "搜索项目文档"}],
+        explicit_goal=None,
+        api=FakeCapacityApi(),
+    )
+
+    assert payload["agent_loop_summary"] == summary
+    _assert_no_agent_loop_raw_payload(payload["agent_loop_summary"])
+
+
 def test_supervisor_capacity_plain_output_includes_agent_loop_handoff(tmp_path, capsys):
     args = argparse.Namespace(
         capacity_command="plan",
