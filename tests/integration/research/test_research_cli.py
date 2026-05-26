@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 import subprocess
 import sys
@@ -308,6 +309,90 @@ def test_research_cli_inspect_prints_provider_trace_attempt_summary(tmp_path):
     assert "attempts: 2 retry_exhausted: true" in result.stdout
     assert "- attempt 1 retryable: true request timed out on attempt 1" in result.stdout
     assert "- attempt 2 retryable: true request timed out on attempt 2" in result.stdout
+
+
+def test_research_cli_list_returns_recent_research_artifacts_json(tmp_path):
+    store = ArtifactStore(tmp_path)
+    report = store.create_artifact(
+        "run_001",
+        execution_id="exec_001",
+        artifact_type="research.report",
+        summary="old report",
+        content='{"status":"ok"}',
+    )
+    store.create_artifact(
+        "run_001",
+        execution_id="exec_001",
+        artifact_type="text",
+        summary="not research",
+        content="plain text",
+    )
+    trace = store.create_artifact(
+        "run_002",
+        execution_id="exec_002",
+        artifact_type="research.provider_trace",
+        summary="new provider trace",
+        content='{"status":"provider_failed"}',
+    )
+    old_mtime = datetime(2026, 5, 24, tzinfo=timezone.utc).timestamp()
+    new_mtime = datetime(2026, 5, 25, tzinfo=timezone.utc).timestamp()
+    os.utime(store.artifact_path(report.run_id, report.artifact_id), (old_mtime, old_mtime))
+    os.utime(store.artifact_path(trace.run_id, trace.artifact_id), (new_mtime, new_mtime))
+
+    result = _run_cli("list", "--root", str(tmp_path), "--json")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert payload["count"] == 2
+    assert [artifact["artifact_type"] for artifact in payload["artifacts"]] == [
+        "research.provider_trace",
+        "research.report",
+    ]
+    assert payload["artifacts"][0]["run_id"] == "run_002"
+    assert payload["artifacts"][0]["artifact_id"] == trace.artifact_id
+    assert payload["artifacts"][0]["ref"] == trace.ref.to_dict()
+
+
+def test_research_cli_list_prints_copyable_artifact_refs(tmp_path):
+    store = ArtifactStore(tmp_path)
+    artifact = store.create_artifact(
+        "run_001",
+        execution_id="exec_001",
+        artifact_type="research.provider_trace",
+        summary="provider failure trace: python docs",
+        content='{"status":"provider_failed"}',
+    )
+
+    result = _run_cli("list", "--root", str(tmp_path), "--limit", "1")
+
+    assert result.returncode == 0, result.stderr
+    assert "status: ok" in result.stdout
+    assert "artifacts: 1" in result.stdout
+    assert (
+        f"artifact: research.provider_trace {artifact.artifact_id} "
+        "run: run_001 provider failure trace: python docs"
+    ) in result.stdout
+
+
+def test_research_cli_list_accepts_type_filter(tmp_path):
+    parser = _build_parser()
+
+    args = parser.parse_args(
+        [
+            "list",
+            "--root",
+            str(tmp_path),
+            "--artifact-type",
+            "research.provider_trace",
+            "--limit",
+            "5",
+        ]
+    )
+
+    assert args.command == "list"
+    assert args.artifact_type == "research.provider_trace"
+    assert args.limit == 5
 
 
 def test_research_cli_requires_query(tmp_path):

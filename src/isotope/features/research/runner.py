@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -62,6 +63,19 @@ def _build_parser() -> argparse.ArgumentParser:
     inspect_parser.add_argument("--run-id", required=True, help="Run id for the artifact ref.")
     inspect_parser.add_argument("--artifact-id", required=True, help="Artifact id to inspect.")
     inspect_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    list_parser = subparsers.add_parser("list", help="List stored research artifacts.")
+    list_parser.add_argument("--root", required=True, help="Runtime root directory.")
+    list_parser.add_argument(
+        "--artifact-type",
+        help="Filter by exact research artifact type, such as research.provider_trace.",
+    )
+    list_parser.add_argument(
+        "--limit",
+        type=int,
+        default=20,
+        help="Maximum number of research artifacts to list.",
+    )
+    list_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     return parser
 
 
@@ -92,6 +106,17 @@ def main(argv: list[str] | None = None) -> int:
                 _print_json(payload)
             else:
                 _print_inspect_plain(payload)
+            return 0
+        if args.command == "list":
+            payload = list_research_artifacts(
+                Path(args.root),
+                artifact_type=args.artifact_type,
+                limit=args.limit,
+            )
+            if args.json:
+                _print_json(payload)
+            else:
+                _print_list_plain(payload)
             return 0
     except (FileNotFoundError, ValueError) as exc:
         error = {
@@ -139,6 +164,57 @@ def inspect_research_artifact(root: Path, *, run_id: str, artifact_id: str) -> d
     }
 
 
+def list_research_artifacts(
+    root: Path,
+    *,
+    artifact_type: str | None = None,
+    limit: int = 20,
+) -> dict[str, Any]:
+    if limit < 1:
+        raise ValueError("research list requires --limit >= 1")
+    if artifact_type is not None and not artifact_type.startswith("research."):
+        raise ValueError("--artifact-type must start with research.")
+    store = ArtifactStore(root)
+    records: list[dict[str, Any]] = []
+    runs_dir = root / "runs"
+    if not runs_dir.exists():
+        return {"status": "ok", "count": 0, "artifacts": []}
+    for run_dir in sorted(runs_dir.iterdir()):
+        if not run_dir.is_dir():
+            continue
+        for artifact in store.list_artifacts(run_dir.name):
+            if not artifact.artifact_type.startswith("research."):
+                continue
+            if artifact_type is not None and artifact.artifact_type != artifact_type:
+                continue
+            path = store.artifact_path(artifact.run_id, artifact.artifact_id)
+            modified_at = _modified_at(path)
+            records.append(
+                {
+                    "run_id": artifact.run_id,
+                    "artifact_id": artifact.artifact_id,
+                    "artifact_type": artifact.artifact_type,
+                    "summary": artifact.summary,
+                    "ref": artifact.ref.to_dict(),
+                    "modified_at": modified_at,
+                }
+            )
+    records.sort(
+        key=lambda record: (
+            str(record["modified_at"]),
+            str(record["run_id"]),
+            str(record["artifact_id"]),
+        ),
+        reverse=True,
+    )
+    limited = records[:limit]
+    return {"status": "ok", "count": len(limited), "artifacts": limited}
+
+
+def _modified_at(path: Path) -> str:
+    return datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+
+
 def _decode_json_content(content: str) -> Any:
     try:
         return json.loads(content)
@@ -160,6 +236,19 @@ def _print_inspect_plain(payload: dict[str, Any]) -> None:
         print(json.dumps(content, ensure_ascii=False, sort_keys=True))
     else:
         print(str(content))
+
+
+def _print_list_plain(payload: dict[str, Any]) -> None:
+    print(f"status: {payload['status']}")
+    print(f"artifacts: {payload['count']}")
+    for artifact in payload.get("artifacts", []):
+        print(
+            "artifact: "
+            f"{artifact.get('artifact_type', '')} "
+            f"{artifact.get('artifact_id', '')} "
+            f"run: {artifact.get('run_id', '')} "
+            f"{artifact.get('summary', '')}"
+        )
 
 
 def _print_provider_trace_summary(content: dict[str, Any]) -> None:
