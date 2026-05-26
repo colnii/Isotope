@@ -2696,6 +2696,9 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "supervised-execution-focus" in html
     assert "renderSupervisedExecutionFocus" in html
     assert "recent_capacity_runs" in html
+    assert "function capacityRunDetailText(" in html
+    assert "capacityRunDetailText(latest)" in html
+    assert "capacityRunDetailText(capacityRunFromWorker(worker))" in html
     assert "preferredWorkspaceItems" in html
     assert "itemInWorkspace" in html
     assert "workspace_cwd" in html

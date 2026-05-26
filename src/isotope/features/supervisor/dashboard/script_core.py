@@ -14,6 +14,20 @@ DASHBOARD_SCRIPT_CORE = r'''    const groups = ["needs_attention", "done", "work
       return value === null || value === undefined || value === "" ? "无" : String(value);
     }
 
+    function capacityRunDetailText(run) {
+      const item = run && typeof run === "object" ? run : {};
+      const loop = item.agent_loop_summary && typeof item.agent_loop_summary === "object"
+        ? item.agent_loop_summary
+        : {};
+      return [
+        item.worker || "unknown",
+        item.capacity_id || "unknown",
+        "tick=" + text(loop.agent_loop_tick_status),
+        "step=" + text(loop.agent_loop_planner_selected_step),
+        "artifact=" + text(loop.agent_loop_artifact_id)
+      ].join(" · ");
+    }
+
     function renderLane(item) {
       const lane = document.createElement("article");
       lane.className = "lane";
@@ -241,16 +255,7 @@ DASHBOARD_SCRIPT_CORE = r'''    const groups = ["needs_attention", "done", "work
         return;
       }
       const latest = runs[0];
-      const loop = latest.agent_loop_summary && typeof latest.agent_loop_summary === "object"
-        ? latest.agent_loop_summary
-        : {};
-      detail.textContent = [
-        latest.worker || "unknown",
-        latest.capacity_id || "unknown",
-        "tick=" + text(loop.agent_loop_tick_status),
-        "step=" + text(loop.agent_loop_planner_selected_step),
-        "artifact=" + text(loop.agent_loop_artifact_id)
-      ].join(" · ");
+      detail.textContent = capacityRunDetailText(latest);
     }
 
     function renderFocusItem(item) {
