@@ -1,14 +1,14 @@
 from isotope.interfaces.http import HttpApiApp, HttpResponse
-from isotope.interfaces.http_artifact_routes import HttpArtifactRouteMixin
-from isotope.interfaces.http_dispatch import HttpDispatchMixin
-from isotope.interfaces.http_llm_routes import HttpLlmRouteMixin
-from isotope.interfaces.http_product_routes import HttpProductRouteMixin
-from isotope.interfaces.http_responses import HttpResponseMixin
-from isotope.interfaces.http_routes import HttpRouteMixin
-from isotope.interfaces.http_run_routes import HttpRunRouteMixin
-from isotope.interfaces.http_serialization import HttpSerializationMixin
-from isotope.interfaces.http_types import HttpResponse as SplitHttpResponse
-from isotope.interfaces.http_validation import HttpValidationMixin
+from isotope.interfaces.http.artifact_routes import HttpArtifactRouteMixin
+from isotope.interfaces.http.dispatch import HttpDispatchMixin
+from isotope.interfaces.http.llm_routes import HttpLlmRouteMixin
+from isotope.interfaces.http.product_routes import HttpProductRouteMixin
+from isotope.interfaces.http.responses import HttpResponseMixin
+from isotope.interfaces.http.routes import HttpRouteMixin
+from isotope.interfaces.http.run_routes import HttpRunRouteMixin
+from isotope.interfaces.http.serialization import HttpSerializationMixin
+from isotope.interfaces.http.types import HttpResponse as SplitHttpResponse
+from isotope.interfaces.http.validation import HttpValidationMixin
 
 
 def test_http_api_app_facade_preserves_modular_boundaries():

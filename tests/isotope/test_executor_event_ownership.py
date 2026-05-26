@@ -1,4 +1,4 @@
-import isotope.runtime.action_compiler as action_compiler
+import isotope.runtime.in_process.action_compiler as action_compiler
 import isotope.workspace.artifacts as artifact_store
 import isotope.platform.state.event_store as event_store
 import isotope.execution.executor as executor

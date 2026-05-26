@@ -4,7 +4,7 @@ import pytest
 
 from isotope.platform.registry.actions import ActionTypeRegistry
 from isotope.policy import PolicyEngine
-from isotope.runtime.action_compiler import ActionCompiler
+from isotope.runtime.in_process.action_compiler import ActionCompiler
 
 
 def _runtime_context(*, requires_approval: bool = False) -> dict[str, object]:

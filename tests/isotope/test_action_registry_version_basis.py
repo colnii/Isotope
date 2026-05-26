@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-import isotope.runtime.action_compiler as action_compiler
+import isotope.runtime.in_process.action_compiler as action_compiler
 import isotope.platform.registry.actions as action_registry
 import isotope.platform.events.events as events
 import isotope.platform.state.projector as projector

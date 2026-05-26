@@ -1,6 +1,6 @@
 import pytest
 
-import isotope.runtime.action_compiler as action_compiler
+import isotope.runtime.in_process.action_compiler as action_compiler
 import isotope.platform.registry.actions as action_registry
 from isotope.platform.schemas.actions import ActionProposal
 

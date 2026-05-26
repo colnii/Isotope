@@ -19,13 +19,13 @@ from ..platform.schemas.memory import MemoryRecord
 from ..platform.schemas.refs import ResourceRef
 from ..platform.schemas.tool_protocol import ToolInvocation, ToolResult
 from ..capabilities.tools.terminal import ControlledTerminalRunner
-from .screen_backend_adapter import ScreenBackendAdapter
-from .screen_backend_types import (
+from .screen.backend_adapter import ScreenBackendAdapter
+from .screen.backend_types import (
     ScreenBackendExecutionError,
     ScreenBackendNotConfiguredError,
     ScreenBackendProtocolError,
 )
-from .terminal_runner import (
+from .terminal.runner import (
     TerminalBackendAdapter,
     TerminalBackendExecutionError,
     TerminalBackendNotConfiguredError,

@@ -7,7 +7,7 @@ import isotope.platform.state.event_store as event_store
 import isotope.execution.executor as executor
 from isotope.platform.schemas.actions import ActionProposal, PolicyDecision
 import isotope.runtime.in_process as server
-import isotope.execution.terminal_runner as terminal_backend
+import isotope.execution.terminal.runner as terminal_backend
 import isotope.workspace as workspace
 from isotope.platform.schemas.refs import ResourceRef
 

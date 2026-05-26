@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from isotope.execution.terminal_runner import (
+from isotope.execution.terminal.runner import (
     LinuxSystemTerminalRunner,
     TerminalBackendAdapter,
     TerminalBackendOutputArtifact,

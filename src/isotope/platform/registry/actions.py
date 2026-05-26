@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ...capabilities.tools.terminal import default_terminal_capabilities
-from ...execution.screen_backend_types import (
+from ...execution.screen.backend_types import (
     ALLOWED_CAPTURE_KINDS,
     ALLOWED_SCREEN_ACTION_TYPES,
     SUPPORTED_EXECUTION_MODES,

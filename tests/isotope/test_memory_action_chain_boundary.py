@@ -1,6 +1,6 @@
 import pytest
 
-import isotope.runtime.action_compiler as action_compiler
+import isotope.runtime.in_process.action_compiler as action_compiler
 import isotope.platform.registry.actions as action_registry
 import isotope.workspace.artifacts as artifact_store
 import isotope.platform.state.event_store as event_store

@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from isotope.execution.screen_windows_backend import WindowsScreenBackend
+from isotope.execution.screen.windows_backend import WindowsScreenBackend
 from isotope.runtime.in_process import InProcessServer
 
 

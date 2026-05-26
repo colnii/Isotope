@@ -4,7 +4,7 @@ import pytest
 
 import isotope.workspace.artifacts as artifact_store
 from isotope.platform.schemas.actions import ActionProposal, PolicyDecision
-import isotope.execution.terminal_runner as terminal_backend
+import isotope.execution.terminal.runner as terminal_backend
 from isotope.platform.schemas.refs import ResourceRef
 
 

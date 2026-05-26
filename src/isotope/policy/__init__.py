@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from ..capabilities.tools.terminal import validate_argv
-from ..execution.screen_backend_types import ScreenAction, ScreenTargetSelector
+from ..execution.screen.backend_types import ScreenAction, ScreenTargetSelector
 from ..platform.ids import new_id
 from ..platform.registry.actions import ActionTypeRegistry
 from ..platform.schemas.actions import ActionProposal, PolicyDecision
