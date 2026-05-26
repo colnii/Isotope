@@ -29,6 +29,8 @@
   `reason_code: invalid_controlled_expand_budget`。
 - `controlled_expand=True` 且授权/budget 有效时，当前仍只返回 summary / refs / provenance preview，
   并附带 `controlled_expand.status: deferred` metadata；不读取 full content。
+- `NotEnabledMemoryQueryService` 在 valid controlled expand 请求下也会返回同样的 deferred metadata，
+  同时保持 `reason_code: memory_query_not_enabled`。
 - agent-loop `query_memory` 可透传 controlled expand 请求并在 action result 中显示 deferred metadata。
 - Supervisor memory plain renderer 会显示已有 `controlled_expand.status` / budget / content policy metadata，
   但不会自己开启 full-content expand。
@@ -178,6 +180,7 @@ memory query 是 read-side recall。
   invalid budget shape 必须在读取 memory store 前 fail closed。
 - 请求 `controlled_expand=True` 且授权有效时，当前 implementation 仍是 preview-only：返回
   `controlled_expand.status: deferred` / budget metadata，但不调用 full-content expand。
+- not-enabled fallback 也返回 deferred metadata，明确表达授权形状有效但 query engine 仍未开启。
 - agent-loop query result 和 Supervisor plain renderer 可以展示 deferred metadata，帮助用户区分
   “已请求 expand” 与 “full-content expand 尚未实现”。
 - 返回结果不得包含 full content、artifact content、raw content 或 full text。
@@ -398,6 +401,8 @@ Memory record persistence boundary design note 已落在 `memory-record-persiste
   `reason_code: invalid_controlled_expand_budget` before reading memory store。
 - valid controlled expand grant still returns summary / refs / provenance preview only,
   includes `controlled_expand.status: deferred`, and does not read full content。
+- not-enabled query with valid controlled expand grant returns
+  `reason_code: memory_query_not_enabled` plus deferred controlled expand metadata。
 - agent-loop query memory surfaces deferred controlled expand metadata without leaking content。
 - Supervisor memory plain renderer prints deferred controlled expand metadata when present in the payload。
 - not-enabled query returns `reason_code: memory_query_not_enabled` while preserving

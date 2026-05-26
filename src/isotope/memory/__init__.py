@@ -80,14 +80,19 @@ def _denied_memory_query_result(
     }
 
 
-def _not_enabled_memory_query_result() -> dict[str, Any]:
-    return {
+def _not_enabled_memory_query_result(
+    controlled_expand: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    result: dict[str, Any] = {
         "status": "not_enabled",
         "capability": "memory_query",
         "reason_code": "memory_query_not_enabled",
         "content_policy": "summary_refs_provenance_only",
         "results": [],
     }
+    if controlled_expand is not None:
+        result["controlled_expand"] = controlled_expand
+    return result
 
 
 def _caller_context_run_mismatch(run_id: str, caller_context: dict[str, Any]) -> bool:
@@ -283,7 +288,10 @@ class NotEnabledMemoryQueryService:
                     reason_code="missing_controlled_expand_grant",
                     content_policy="no_full_content_read",
                 )
-        return _not_enabled_memory_query_result()
+        controlled_expand_metadata = (
+            _controlled_expand_preview_metadata(grants) if controlled_expand else None
+        )
+        return _not_enabled_memory_query_result(controlled_expand_metadata)
 
 
 class NotEnabledMemoryService:

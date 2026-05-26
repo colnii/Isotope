@@ -201,6 +201,43 @@ def test_memory_query_default_shape_excludes_full_content():
         assert "raw_artifact_content" not in item
 
 
+def test_not_enabled_memory_query_with_valid_controlled_expand_returns_deferred_metadata():
+    store = ExplodingMemoryStore()
+    service = memory.NotEnabledMemoryQueryService(memory_store=store)
+
+    result = service.query(
+        run_id="run_001",
+        query="worked examples",
+        grants={
+            "memory": {
+                "query": True,
+                "controlled_expand": True,
+                "expand_budget": 2,
+            }
+        },
+        caller_context={
+            "run_id": "run_001",
+            "caller": "agent_loop",
+            "purpose": "agent_recall",
+        },
+        controlled_expand=True,
+    )
+
+    assert result == {
+        "status": "not_enabled",
+        "capability": "memory_query",
+        "reason_code": "memory_query_not_enabled",
+        "content_policy": "summary_refs_provenance_only",
+        "controlled_expand": {
+            "status": "deferred",
+            "budget": 2,
+            "content_policy": "summary_refs_provenance_only",
+        },
+        "results": [],
+    }
+    assert store.calls == []
+
+
 def test_valid_controlled_expand_grant_still_returns_preview_only_without_full_content_read():
     store = PreviewOnlyMemoryStore()
     service = memory.LocalMemoryQueryService(memory_store=store)
