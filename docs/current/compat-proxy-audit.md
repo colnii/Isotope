@@ -39,7 +39,7 @@
 ## 可优先进入删除计划
 
 当前没有已确认应继续删除的兼容代理。
-根层只剩 `__init__.py`、`demo.py`、`llm_live_smoke.py`。
+根层只剩 `__init__.py`（`loop_engine.py` 已移入 `agents/loop/`，`demo`/`llm_live_smoke` 已移入 `demo/` 子包）。
 
 ## 已删除代理
 
@@ -57,7 +57,7 @@
 | `isotope.model_tool_bridge` | `isotope.llm.tool_bridge` |
 | `isotope.features.chat.product_chat` | `isotope.features.chat.flow` |
 | `isotope.llm_product_chat_app` | `isotope.features.chat.flow` |
-| `isotope.execution.terminal_backend` | `isotope.execution.terminal_runner` |
+| `isotope.execution.terminal_backend` | `isotope.execution.terminal.runner` |
 | `isotope.terminal` | `isotope.capabilities.tools.terminal` |
 | `isotope.terminal_backend` | `isotope.execution.terminal_runner` |
 | `isotope.terminal_system_runner` | `isotope.execution.terminal_runner` |
@@ -106,8 +106,8 @@
 
 | 路径 | 原因 |
 | --- | --- |
-| `isotope.demo` | 正式 demo 入口，`isotope-demo` 指向它 |
-| `isotope.llm_live_smoke` | 正式 smoke 命令，`isotope-llm-smoke` 指向它 |
+| `isotope.demo` | 正式 demo 入口包（`demo/__init__.py`），`isotope-demo` 指向它 |
+| `isotope.demo.llm_live_smoke` | 正式 smoke 命令，`isotope-llm-smoke` 指向 `isotope.demo.llm_live_smoke` |
 
 ## 空壳和旧叙事
 

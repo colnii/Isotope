@@ -10,9 +10,9 @@
 目前最大问题不是 `src/isotope/` 这个包名，而是包内职责命名还带着迁移痕迹：
 
 - `core/` 已进入产品主流程，先薄包现有单进程运行时。
-- `runtime/server.py` 已删除，活跃实现位于 `runtime/in_process.py`。
-- 包根层保留正式入口和 demo helper：`demo.py` 是场景入口，
-  `demo_format.py` 是 formatter facade，具体 plain text formatter 已按
+- `runtime/server.py` 已删除，活跃实现位于 `runtime/in_process/` 子包。
+- 包根 `demo` 已迁入 `demo/` 子包：`demo/__init__.py` 是场景入口，
+  `demo/demo_format.py` 是 formatter facade，具体 plain text formatter 已按
   core / agent loop / LLM 场景拆到专门模块。
 - 一些文件名是历史工作流命名，不像长期产品代码。
 - `features/` 还没形成任务、项目、文件、研究等用户功能层。
@@ -97,7 +97,7 @@ src/isotope/
 | `core/loop_planner_adapter.py` | 名字过长 | 已迁到 `agents/loop/planner_adapter.py` |
 | `core/real_planner_contract.py` | `real` 不像长期命名 | 已迁到 `agents/loop/planner_contract.py` |
 | `core/runtime.py` | 和 `runtime/` 撞名 | 删除空壳或并入 `agents/loop/` |
-| `runtime/server.py` | `server` 太泛 | 已迁到 `runtime/in_process.py` |
+| `runtime/server.py` | `server` 太泛 | 已迁到 `runtime/in_process/` 子包 |
 | `features/chat/product_chat.py` | product 前缀多余 | 已迁到 `features/chat/flow.py` |
 | `integrations/llm/provider.py` | LLM 不是普通外部系统集成 | 已迁到 `llm/provider.py` |
 | `integrations/llm/tool_bridge.py` | LLM 工具桥属于模型交互层 | 已迁到 `llm/tool_bridge.py` |
@@ -154,10 +154,10 @@ src/isotope/
 目标：
 
 - 将 `runtime/server.py` 改成更准确的名字。
-- 采用 `runtime/in_process.py`。
+- 采用 `runtime/in_process/` 子包。
 - 旧 `isotope.server` 和 `isotope.runtime.server` 已删除。
 
-采用 `runtime/in_process.py`，因为当前 `InProcessServer` 本来就不是真 HTTP server。
+采用 `runtime/in_process/` 子包，因为当前 `InProcessServer` 本来就不是真 HTTP server。
 
 ### 批次三：LLM 层拆出
 
@@ -249,7 +249,7 @@ src/isotope/
 - 响应只返回状态、产物引用、摘要和事件数量，不把全文内容默认抛到外层。
 - 现有普通输入会结束 run，所以 conversation 当前允许跨多个 completed run（已结束运行）。
 - `features/tasks/flow.py` 已将 core task 包成用户功能摘要。
-- 暂不迁移 `runtime/in_process.py` 内部实现，后续再按真实需求拆分。
+- 暂不迁移 `runtime/in_process/` 内部实现，后续再按真实需求拆分。
 
 ### 批次九：tasks 功能薄入口
 

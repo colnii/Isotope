@@ -71,7 +71,7 @@ planned removal: after import-map confirms no active internal imports
 | `isotope.model_tool_bridge` | `isotope.llm.tool_bridge` | 已删除，直接使用新路径 |
 | `isotope.features.chat.product_chat` | `isotope.features.chat.flow` | 已删除，直接使用新路径 |
 | `isotope.llm_product_chat_app` | `isotope.features.chat.flow` | 已删除，直接使用新路径 |
-| `isotope.execution.terminal_backend` | `isotope.execution.terminal_runner` | 已删除，直接使用新路径 |
+| `isotope.execution.terminal_backend` | `isotope.execution.terminal.runner` | 已删除，直接使用新路径 |
 | `isotope.terminal` | `isotope.capabilities.tools.terminal` | 已删除，直接使用新路径 |
 | `isotope.terminal_backend` | `isotope.execution.terminal_runner` | 已删除，直接使用新路径 |
 | `isotope.terminal_system_runner` | `isotope.execution.terminal_runner` | 已删除，直接使用新路径 |
