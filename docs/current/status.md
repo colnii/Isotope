@@ -74,6 +74,9 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    `LocalMemoryQueryService`，要求 `root/query/run_id`，通过 caller audit 和
    memory query grant 读取 summary / refs / provenance，`controlled_expand`
    仅返回 deferred metadata，不读取 full content。
+   `screen.report` 已注册为只读 capability：执行时复用现有 screen artifact
+   report，要求 `root/run_id`，只返回 observe/control plan 低敏摘要，不读取
+   screenshot 正文、不执行输入、不改变窗口。
 10. Screen observe/control 已有 policy-gated（策略门控）第一片：
     `screen_observe` / `screen_control` 走 registry、policy、executor 和 artifact
     边界，Windows backend 仅用于手动 smoke；observe/control 已支持命令级

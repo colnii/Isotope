@@ -12,6 +12,7 @@ from isotope.features.supervisor.registry import (
     default_registry_path,
 )
 from isotope.platform.schemas.memory import MemoryRecord
+from isotope.workspace.artifacts import ArtifactStore
 
 
 FORBIDDEN_RESULT_KEYS = {
@@ -158,6 +159,19 @@ def test_runner_discovers_memory_query_from_default_catalog():
     assert description["input_contract"]["required"] == ["root", "query", "run_id"]
     assert "memory_query_grant_gated" in description["safety_boundaries"]
     assert "summary_refs_provenance_only" in description["safety_boundaries"]
+
+
+def test_runner_discovers_screen_report_from_default_catalog():
+    runner = _runner()
+
+    assert "screen.report" in _ids(runner.list_capabilities())
+    search = runner.search_capabilities(query="screen report")
+
+    assert _ids(search["capabilities"]) == ["screen.report"]
+    description = runner.describe_capability("screen.report")
+    assert description["input_contract"]["required"] == ["root", "run_id"]
+    assert "screen_artifact_read_only" in description["safety_boundaries"]
+    assert "low_sensitive_summary_only" in description["safety_boundaries"]
 
 
 def test_runner_status_mirrors_catalog_status_without_executing_capability():
@@ -316,6 +330,19 @@ def test_memory_query_plan_stops_when_required_inputs_are_missing():
     plan = _runner().plan_capability_run(
         "memory.query",
         inputs={"root": "/tmp/isotope-runtime", "query": "memory boundary"},
+    )
+
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["missing_inputs"] == ["run_id"]
+    assert plan["scenario"] is None
+
+
+def test_screen_report_plan_stops_when_required_inputs_are_missing():
+    plan = _runner().plan_capability_run(
+        "screen.report",
+        inputs={"root": "/tmp/isotope-runtime"},
     )
 
     assert plan["can_launch"] is False
@@ -898,6 +925,48 @@ def test_memory_query_capability_runs_existing_low_sensitive_query(tmp_path):
     ]
     output = json.dumps(result)
     assert "raw memory content" not in output
+    for mapping in _walk_mapping(result):
+        assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
+
+
+def test_screen_report_capability_runs_existing_low_sensitive_report(tmp_path):
+    store = ArtifactStore(tmp_path)
+    store.create_artifact(
+        "run_screen",
+        execution_id="exec_screen",
+        artifact_type="screen_control_plan",
+        summary="screen control result",
+        content=json.dumps(
+            {
+                "action_count": 1,
+                "executed": False,
+                "planned_actions": ["restore_window"],
+                "private_note": "raw screen control payload must not leak",
+            },
+            sort_keys=True,
+        ),
+    )
+
+    result = _runner().run_capability(
+        "screen.report",
+        inputs={
+            "root": str(tmp_path),
+            "run_id": "run_screen",
+        },
+    )
+
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "screen.report"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "deterministic_readonly"
+    screen_report = result["screen_report"]
+    assert screen_report["status"] == "ok"
+    assert screen_report["summary"]["control_status"] == "planned"
+    assert screen_report["summary"]["approval_required"] is True
+    assert screen_report["summary"]["control_actions"][0]["action_types"] == [
+        "restore_window"
+    ]
+    assert "raw screen control payload" not in json.dumps(result, sort_keys=True)
     for mapping in _walk_mapping(result):
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
 

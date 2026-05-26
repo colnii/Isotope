@@ -232,6 +232,55 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="screen.report",
+                    title="Screen Report",
+                    description=(
+                        "Summarize existing screen run records through the shared "
+                        "low-sensitive observe/control plan report boundary."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "screen",
+                        "report",
+                        "observe",
+                        "control-plan",
+                        "gui",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["root", "run_id"],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "description": "Runtime root containing runs/*/artifacts.",
+                            },
+                            "run_id": {
+                                "type": "string",
+                                "description": "Run id whose screen artifacts should be summarized.",
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "run_id",
+                            "summary",
+                            "artifacts",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "screen_artifact_read_only",
+                        "low_sensitive_summary_only",
+                        "no_screenshot_content",
+                        "no_input_execution",
+                        "no_window_mutation",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="supervisor.integration_review",
                     title="Supervisor Integration Review",
                     description=(

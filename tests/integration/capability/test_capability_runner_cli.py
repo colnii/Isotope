@@ -9,6 +9,7 @@ import sys
 from typing import Any
 
 from isotope.platform.schemas.memory import MemoryRecord
+from isotope.workspace.artifacts import ArtifactStore
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -67,6 +68,7 @@ def test_capability_runner_cli_lists_capabilities_as_json():
         "artifact.review",
         "external.snapshot.review",
         "memory.query",
+        "screen.report",
         "supervisor.integration_review",
         "supervisor.request_context",
         "supervisor.worker_review",
@@ -143,6 +145,18 @@ def test_capability_runner_cli_searches_supervisor_worker_review_as_json():
     assert payload["status"] == "ok"
     assert [item["capability_id"] for item in payload["search"]["capabilities"]] == [
         "supervisor.worker_review"
+    ]
+    _assert_low_sensitive(payload)
+
+
+def test_capability_runner_cli_searches_screen_report_as_json():
+    result = _run_cli("search", "screen report", "--json")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert [item["capability_id"] for item in payload["search"]["capabilities"]] == [
+        "screen.report"
     ]
     _assert_low_sensitive(payload)
 
@@ -227,6 +241,27 @@ def test_capability_runner_cli_plans_memory_query_missing_inputs_as_json():
     assert payload["status"] == "ok"
     plan = payload["plan"]
     assert plan["capability_id"] == "memory.query"
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["missing_inputs"] == ["run_id"]
+    _assert_low_sensitive(payload)
+
+
+def test_capability_runner_cli_plans_screen_report_missing_inputs_as_json():
+    result = _run_cli(
+        "plan",
+        "screen.report",
+        "--input-json",
+        json.dumps({"root": "/tmp/isotope-runtime"}),
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    plan = payload["plan"]
+    assert plan["capability_id"] == "screen.report"
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_readonly"
@@ -452,6 +487,52 @@ def test_capability_runner_cli_runs_memory_query_with_input_json(tmp_path):
     assert run["memory_query"]["content_policy"] == "summary_refs_provenance_only"
     assert run["memory_query"]["results"][0]["record_id"] == "mem_cli"
     assert "raw memory content" not in result.stdout
+    _assert_low_sensitive(payload)
+
+
+def test_capability_runner_cli_runs_screen_report_with_input_json(tmp_path):
+    store = ArtifactStore(tmp_path)
+    store.create_artifact(
+        "run_screen",
+        execution_id="exec_screen",
+        artifact_type="screen_control_plan",
+        summary="screen control result",
+        content=json.dumps(
+            {
+                "action_count": 1,
+                "executed": False,
+                "planned_actions": ["restore_window"],
+                "private_note": "raw screen control payload must not leak",
+            },
+            sort_keys=True,
+        ),
+    )
+
+    result = _run_cli(
+        "run",
+        "screen.report",
+        "--input-json",
+        json.dumps(
+            {
+                "root": str(tmp_path),
+                "run_id": "run_screen",
+            }
+        ),
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    run = payload["run"]
+    assert run["capability_id"] == "screen.report"
+    assert run["status"] == "completed"
+    assert run["runner_kind"] == "deterministic_readonly"
+    assert run["screen_report"]["summary"]["control_status"] == "planned"
+    assert run["screen_report"]["summary"]["control_actions"][0]["action_types"] == [
+        "restore_window"
+    ]
+    assert "raw screen control payload" not in result.stdout
     _assert_low_sensitive(payload)
 
 

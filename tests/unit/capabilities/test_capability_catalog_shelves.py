@@ -129,6 +129,7 @@ def test_default_builtins_are_small_product_candidate_set_only():
         "artifact.review",
         "external.snapshot.review",
         "memory.query",
+        "screen.report",
         "supervisor.integration_review",
         "supervisor.request_context",
         "supervisor.worker_review",
