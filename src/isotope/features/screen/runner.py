@@ -213,6 +213,15 @@ def _build_parser() -> argparse.ArgumentParser:
         "--allowlist-file",
         help="JSON target allowlist file reused across generated smoke commands.",
     )
+    real_smoke_parser.add_argument(
+        "--allowlist-profile",
+        help="Named target allowlist profile, resolved from the profile directory.",
+    )
+    real_smoke_parser.add_argument(
+        "--allowlist-profile-dir",
+        default=str(Path.home() / ".config" / "isotope" / "screen" / "allowlists"),
+        help="Directory containing named target allowlist profile JSON files.",
+    )
     real_smoke_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     inspect_parser = subparsers.add_parser("inspect", help="Inspect a screen artifact.")
     inspect_parser.add_argument("--root", required=True, help="Runtime root directory.")
@@ -252,6 +261,15 @@ def _add_target_args(parser: argparse.ArgumentParser) -> None:
         "--allowlist-file",
         help="JSON target allowlist file reused across screen smoke commands.",
     )
+    parser.add_argument(
+        "--allowlist-profile",
+        help="Named target allowlist profile, resolved from the profile directory.",
+    )
+    parser.add_argument(
+        "--allowlist-profile-dir",
+        default=str(Path.home() / ".config" / "isotope" / "screen" / "allowlists"),
+        help="Directory containing named target allowlist profile JSON files.",
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -276,6 +294,8 @@ def main(argv: list[str] | None = None) -> int:
                 app=args.app,
                 title_contains=args.title_contains,
                 allowlist_file=args.allowlist_file,
+                allowlist_profile=args.allowlist_profile,
+                allowlist_profile_dir=args.allowlist_profile_dir,
             )
             payload = {"status": "ok", "commands": commands}
             if args.json:
@@ -325,6 +345,8 @@ def main(argv: list[str] | None = None) -> int:
             allow_apps=args.allow_app,
             allow_title_contains=args.allow_title_contains,
             allowlist_file=args.allowlist_file,
+            allowlist_profile=args.allowlist_profile,
+            allowlist_profile_dir=args.allowlist_profile_dir,
         )
         api = _new_server(Path(args.root))
         session = api.create_session()
@@ -471,13 +493,23 @@ def _target_allowlist_from_args(
     allow_apps: list[str] | None,
     allow_title_contains: list[str] | None,
     allowlist_file: str | None = None,
+    allowlist_profile: str | None = None,
+    allowlist_profile_dir: str | None = None,
 ) -> dict[str, Any] | None:
+    profile_allowlist = _target_allowlist_from_file(
+        _allowlist_profile_path(
+            profile=allowlist_profile,
+            profile_dir=allowlist_profile_dir,
+        )
+    )
     file_allowlist = _target_allowlist_from_file(allowlist_file)
     merged_apps = [
+        *profile_allowlist.get("allowed_apps", []),
         *file_allowlist.get("allowed_apps", []),
         *list(allow_apps or []),
     ]
     merged_titles = [
+        *profile_allowlist.get("allowed_title_contains", []),
         *file_allowlist.get("allowed_title_contains", []),
         *list(allow_title_contains or []),
     ]
@@ -488,6 +520,25 @@ def _target_allowlist_from_args(
         "allowed_title_contains": merged_titles,
         "allow_first_match_execute": False,
     }
+
+
+def _allowlist_profile_path(
+    *,
+    profile: str | None,
+    profile_dir: str | None,
+) -> str | None:
+    if profile is None:
+        return None
+    if not profile or any(separator in profile for separator in ("/", "\\")):
+        raise ValueError("allowlist-profile must be a simple name")
+    if profile in {".", ".."}:
+        raise ValueError("allowlist-profile must be a simple name")
+    base = (
+        Path(profile_dir)
+        if profile_dir is not None
+        else Path.home() / ".config" / "isotope" / "screen" / "allowlists"
+    )
+    return str(base / f"{profile}.json")
 
 
 def validate_target_allowlist_file(path: str) -> dict[str, Any]:
@@ -560,6 +611,8 @@ def _real_smoke_commands(
     app: str | None,
     title_contains: str | None,
     allowlist_file: str | None = None,
+    allowlist_profile: str | None = None,
+    allowlist_profile_dir: str | None = None,
 ) -> list[str]:
     target_args: list[str] = []
     allow_args: list[str] = []
@@ -571,6 +624,10 @@ def _real_smoke_commands(
         allow_args.extend(["--allow-title-contains", title_contains])
     if allowlist_file:
         allow_args.extend(["--allowlist-file", allowlist_file])
+    if allowlist_profile:
+        allow_args.extend(["--allowlist-profile", allowlist_profile])
+        if allowlist_profile_dir:
+            allow_args.extend(["--allowlist-profile-dir", allowlist_profile_dir])
     if not target_args:
         raise ValueError("real smoke plan requires --app or --title-contains")
     base = ["PYTHONPATH=src", ".venv/bin/python", "-m", "isotope.features.screen.runner"]

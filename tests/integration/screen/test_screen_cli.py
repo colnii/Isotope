@@ -256,6 +256,38 @@ def test_screen_cli_real_smoke_plan_carries_allowlist_file(tmp_path):
     )
 
 
+def test_screen_cli_real_smoke_plan_carries_allowlist_profile(tmp_path):
+    profile_dir = tmp_path / "profiles"
+    profile_dir.mkdir()
+    profile_file = profile_dir / "mahjong.json"
+    profile_file.write_text(
+        json.dumps({"allowed_title_contains": ["Mahjong Soul"]}, sort_keys=True),
+        encoding="utf-8",
+    )
+
+    result = _run_cli(
+        "real-smoke-plan",
+        "--root",
+        str(tmp_path),
+        "--app",
+        "msedge.exe",
+        "--allowlist-profile",
+        "mahjong",
+        "--allowlist-profile-dir",
+        str(profile_dir),
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert all("--allowlist-profile mahjong" in command for command in payload["commands"])
+    assert all(
+        f"--allowlist-profile-dir {profile_dir}" in command
+        for command in payload["commands"]
+    )
+
+
 def test_screen_cli_allowlist_validate_returns_low_sensitive_json(tmp_path):
     allowlist_file = tmp_path / "screen-allowlist.json"
     allowlist_file.write_text(

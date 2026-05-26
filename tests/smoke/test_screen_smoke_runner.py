@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from isotope.features.screen import runner
 
 
@@ -84,6 +86,47 @@ def test_target_allowlist_can_load_reusable_json_file(tmp_path):
         "allowed_title_contains": ["Mahjong Soul", "local"],
         "allow_first_match_execute": False,
     }
+
+
+def test_target_allowlist_can_load_named_profile(tmp_path):
+    profile_dir = tmp_path / "profiles"
+    profile_dir.mkdir()
+    profile_file = profile_dir / "mahjong.json"
+    profile_file.write_text(
+        json.dumps(
+            {
+                "allowed_apps": ["msedge.exe"],
+                "allowed_title_contains": ["Mahjong Soul"],
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    allowlist = runner._target_allowlist_from_args(
+        allow_apps=["obsidian.exe"],
+        allow_title_contains=[],
+        allowlist_file=None,
+        allowlist_profile="mahjong",
+        allowlist_profile_dir=str(profile_dir),
+    )
+
+    assert allowlist == {
+        "allowed_apps": ["msedge.exe", "obsidian.exe"],
+        "allowed_title_contains": ["Mahjong Soul"],
+        "allow_first_match_execute": False,
+    }
+
+
+def test_target_allowlist_profile_rejects_path_like_names(tmp_path):
+    with pytest.raises(ValueError, match="allowlist-profile must be a simple name"):
+        runner._target_allowlist_from_args(
+            allow_apps=[],
+            allow_title_contains=[],
+            allowlist_file=None,
+            allowlist_profile="../mahjong",
+            allowlist_profile_dir=str(tmp_path),
+        )
 
 
 def test_validate_target_allowlist_file_returns_low_sensitive_summary(tmp_path):
@@ -194,6 +237,26 @@ def test_observe_parser_accepts_reusable_allowlist_file():
     assert args.allowlist_file == "screen-allowlist.json"
 
 
+def test_observe_parser_accepts_allowlist_profile():
+    args = runner._build_parser().parse_args(
+        [
+            "observe",
+            "--root",
+            "runtime-root",
+            "--app",
+            "notepad.exe",
+            "--allowlist-profile",
+            "mahjong",
+            "--allowlist-profile-dir",
+            "profiles",
+        ]
+    )
+
+    assert args.command == "observe"
+    assert args.allowlist_profile == "mahjong"
+    assert args.allowlist_profile_dir == "profiles"
+
+
 def test_allowlist_validate_parser_accepts_path():
     args = runner._build_parser().parse_args(
         [
@@ -249,6 +312,20 @@ def test_real_smoke_plan_carries_reusable_allowlist_file():
     assert all(
         "--allowlist-file screen-allowlist.json" in command for command in commands
     )
+
+
+def test_real_smoke_plan_carries_allowlist_profile():
+    commands = runner._real_smoke_commands(
+        root="runtime-root",
+        app="notepad.exe",
+        title_contains=None,
+        allowlist_file=None,
+        allowlist_profile="mahjong",
+        allowlist_profile_dir="profiles",
+    )
+
+    assert all("--allowlist-profile mahjong" in command for command in commands)
+    assert all("--allowlist-profile-dir profiles" in command for command in commands)
 
 
 def test_json_print_writes_serializable_payload(capsys):

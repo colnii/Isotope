@@ -99,6 +99,8 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
     边界，Windows backend 仅用于手动 smoke；observe/control 已支持命令级
     target allowlist（目标白名单）和 reusable allowlist file（可复用白名单文件），
     `--allowlist-file` 只注入 target allowlist，不绕过 execute approval gate；
+    `--allowlist-profile` 可从 profile 目录解析命名 allowlist，同样不绕过
+    approval gate；
     `allowlist validate` 可离线检查 allowlist 格式并只输出低敏计数；
     `allowlist template` 可打印可编辑 JSON 骨架；
     deterministic first-match（确定性首个匹配）
