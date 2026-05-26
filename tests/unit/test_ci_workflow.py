@@ -79,7 +79,7 @@ def test_ci_workflow_installs_editable_project_with_test_extra():
 def test_ci_workflow_runs_full_kernel_tests():
     text = _workflow_text()
 
-    assert _contains_command(text, "python -m pytest tests/isotope -q")
+    assert _contains_command(text, "python -m pytest tests/ -q")
 
 
 def test_ci_workflow_runs_demo_smoke_plain_and_json():

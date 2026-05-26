@@ -85,9 +85,10 @@ class RunProjector(RunProjectorCheckpointMixin, RunProjectorHandlersMixin, RunPr
     KNOWN_WORKSPACE_LEASE_STATUSES = {
         "created",
         "active",
-        "error",
+        "bound",
         "released",
-        "released_with_cleanup",
+        "expired",
+        "revoked",
     }
     CHECKPOINT_EXTERNAL_OBSERVATION_FIELDS = (
         "snapshot_id",
@@ -107,6 +108,12 @@ class RunProjector(RunProjectorCheckpointMixin, RunProjectorHandlersMixin, RunPr
         "summary",
         "source_refs",
         "provenance",
+        "basis_event_id",
+        "quality",
+        "status",
+        "superseded_by",
+        "superseded_event_id",
+        "superseded_reason",
     }
     PROJECTOR_VERSION = "run_projector@v1"
 

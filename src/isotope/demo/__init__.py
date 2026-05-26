@@ -211,7 +211,7 @@ def _run_scenario(root: Path, *, scenario: str) -> dict[str, Any]:
 def _run_v0_2_demo(root: Path) -> dict[str, Any]:
     checkpoint_store = FileCheckpointStore(root)
     api = InProcessServer(root, checkpoint_store=checkpoint_store)
-    segment_api = create_http_app(api)
+    segment_api = create_http_app(root)
 
     api._segment_server = segment_api  # type: ignore[attr-defined]
 

@@ -17,9 +17,9 @@ PROJECTOR_VERSION = "run_projector@v1"
 
 
 def _facade_datetime():
-    from datetime import datetime as _dt
+    from ...state import projector as _projector
 
-    return _dt
+    return getattr(_projector, "datetime", datetime)
 
 
 class RunProjectorCheckpointMixin(RunProjectorCheckpointValidationMixin):

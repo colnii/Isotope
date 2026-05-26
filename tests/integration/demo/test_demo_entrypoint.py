@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
 DEMO_SOURCE = SRC_ROOT / "isotope" / "demo" / "__init__.py"
 
