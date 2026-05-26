@@ -107,7 +107,9 @@
   `not_launchable` 归一成 `call_capacity`、`request_input` 和 `blocked`
   三类下一步；`supervise --capacity-decisions` 与
   `loop --capacity-decisions` 会为当前显式 goal 或第一个 active goal
-  生成一条 `capacity_decisions`，放进 LLM action prompt，供真实决策点读取；
+  生成一条 `capacity_decisions`，并把当前 `args.codex_home` 作为受控
+  input default 传给 capacity plan；LLM 不需要猜本机 `.codex` 路径，且模型
+  显式 argument 优先于 default；随后读模型放进 LLM action prompt，供真实决策点读取；
   当该读模型为 `call_capacity` 且 `--llm-execute` 打开时，
   LLM planner 可选择 `call_capacity`，Supervisor 会用已保存的
   `capacity_call_specs` 通过 agent loop 的 `call_capability` 步骤执行；

@@ -585,6 +585,38 @@ def test_supervisor_capacity_plan_passes_arguments_into_agent_loop_inputs(tmp_pa
     assert capability_run["context_result"]["item_count"] >= 1
 
 
+def test_supervisor_capacity_plan_applies_codex_home_default_for_review_capability(tmp_path):
+    codex_home = tmp_path / "codex-home"
+    provider = FakeCapacityProvider(
+        '{"capacity_id":"supervisor.integration_review","arguments":{},'
+        '"confidence":0.88,"rationale":"review managed workers"}'
+    )
+
+    result = capacity_command.build_supervisor_capacity_plan(
+        goal="审查 Supervisor managed workers 的合入状态",
+        provider=provider,
+        state_root=tmp_path / "state",
+        execute_agent_loop=True,
+        input_defaults={"codex_home": str(codex_home)},
+    )
+
+    assert result["status"] == "ok"
+    assert result["selection"]["capacity_id"] == "supervisor.integration_review"
+    assert result["selection"]["arguments"] == {"codex_home": str(codex_home)}
+    assert result["selection"]["missing_inputs"] == []
+    assert result["capability_launch_plan"]["can_launch"] is True
+    loop = result["agent_loop"]
+    assert loop["step_request"] == {
+        "step": "call_capability",
+        "capability_id": "supervisor.integration_review",
+        "inputs": {"codex_home": str(codex_home)},
+    }
+    capability_run = loop["step_result"]["action_result"]["capability_run"]
+    assert capability_run["capability_id"] == "supervisor.integration_review"
+    assert capability_run["status"] == "completed"
+    assert capability_run["integration_review"]["summary"]["total"] == 0
+
+
 def test_supervisor_capacity_plan_blocks_missing_inputs_without_graph_call_or_execution(tmp_path):
     provider = FakeCapacityProvider(
         '{"capacity_id":"context.search","arguments":{},"confidence":0.77,'
@@ -870,6 +902,44 @@ def test_loop_capacity_payload_propagates_agent_loop_summary_from_plan():
 
     assert payload["agent_loop_summary"] == summary
     _assert_no_agent_loop_raw_payload(payload["agent_loop_summary"])
+
+
+def test_loop_capacity_payload_passes_codex_home_as_capacity_input_default(tmp_path):
+    captured: dict[str, object] = {}
+    decision = {
+        "kind": "supervisor_capacity_decision",
+        "next_action": "request_input",
+        "reason": "needs_input",
+        "capacity_id": "supervisor.integration_review",
+        "can_execute_agent_loop": False,
+        "missing_inputs": [],
+        "blocking_reasons": [],
+    }
+
+    class FakeCapacityApi:
+        def resolve_capacity_calling_provider_from_env(self):
+            return object()
+
+        def build_supervisor_capacity_plan(self, **kwargs):
+            captured.update(kwargs)
+            return {
+                "status": "needs_input",
+                "status_reason": "needs_input",
+                "supervisor_decision": decision,
+            }
+
+    payload = capacity_command.loop_capacity_decision_payload(
+        argparse.Namespace(
+            capacity_decisions=True,
+            codex_home=str(tmp_path / ".codex"),
+        ),
+        active_goals=[{"goal": "审查 managed workers"}],
+        explicit_goal=None,
+        api=FakeCapacityApi(),
+    )
+
+    assert captured["input_defaults"] == {"codex_home": str(tmp_path / ".codex")}
+    assert payload["capacity_decisions"] == [decision]
 
 
 def test_supervisor_capacity_plain_output_includes_agent_loop_handoff(tmp_path, capsys):

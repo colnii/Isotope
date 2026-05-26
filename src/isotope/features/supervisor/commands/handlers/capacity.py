@@ -19,6 +19,11 @@ from isotope.capabilities.runner import CapabilityRunner
 from isotope.llm.capacity_calling import CapacityCallingProvider, select_capacity_call
 from isotope.llm.pool import PoolEntry, resolve_pool_entries_from_env
 from isotope.llm.provider import OpenAICompatibleChatProvider, Transport, LLMResponse
+from isotope.platform.schemas.input_contract import (
+    contract_properties,
+    missing_required_input_keys,
+    required_contract_keys,
+)
 from isotope.platform.schemas.actions import ActionExecution
 from isotope.platform.schemas.memory import MemoryRecord
 from isotope.platform.state.memory_store import FileMemoryStore
@@ -99,6 +104,7 @@ def build_supervisor_capacity_plan(
     state_root: Path | str | None = None,
     execute_agent_loop: bool = False,
     runner: CapabilityRunner | None = None,
+    input_defaults: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Plan one Supervisor capacity call, optionally proving the agent-loop path."""
     capacity_runner = runner or CapabilityRunner()
@@ -113,8 +119,12 @@ def build_supervisor_capacity_plan(
         goal=goal,
         capacities=offered_capacities,
     )
-    if selection.status != "ready_to_call":
-        selection_payload = selection.to_dict()
+    selection_payload = _selection_with_input_defaults(
+        selection.to_dict(),
+        offered_capacities=offered_capacities,
+        input_defaults=input_defaults,
+    )
+    if selection_payload["status"] != "ready_to_call":
         payload = {
             "status": "needs_input",
             "status_reason": "needs_input",
@@ -125,7 +135,7 @@ def build_supervisor_capacity_plan(
             "kind": "supervisor_capacity_plan",
             "goal": goal,
             "selection": selection_payload,
-            "capacity_graph": _blocked_capacity_graph(selection),
+            "capacity_graph": _blocked_capacity_graph(selection_payload),
             "capability_launch_plan": None,
             "agent_loop": None,
             "supervisor_decision": _capacity_supervisor_decision(
@@ -137,26 +147,27 @@ def build_supervisor_capacity_plan(
         }
         payload["agent_loop_summary"] = agent_loop_json_summary(payload)
         return payload
-    node = capacity_graph_node_from_call_selection(selection)
+    node = capacity_graph_node_from_call_selection(selection_payload)
     graph = build_capacity_graph([node])
     capacity_plan = resolve_ready_capacity_plan(graph, states={})
+    capacity_id = selection_payload["capacity_id"]
+    arguments = selection_payload["arguments"]
     launch_plan = capacity_runner.plan_capability_run(
-        selection.capacity_id,
-        inputs=selection.arguments,
+        capacity_id,
+        inputs=arguments,
     )
     agent_loop = None
     if execute_agent_loop and launch_plan.get("can_launch") is True:
         agent_loop = _execute_agent_loop_capacity_step(
             goal=goal,
-            capability_id=selection.capacity_id,
-            inputs=selection.arguments,
+            capability_id=capacity_id,
+            inputs=arguments,
             state_root=(
                 Path(state_root)
                 if state_root is not None
                 else DEFAULT_CAPACITY_PLAN_STATE_ROOT
             ),
         )
-    selection_payload = selection.to_dict()
     status_reason = (
         "ready" if launch_plan.get("can_launch") is True else "not_launchable"
     )
@@ -202,6 +213,7 @@ def handle_capacity_command(
         runner=runner,
         state_root=args.state_root,
         execute_agent_loop=args.execute_agent_loop,
+        input_defaults=_supervisor_capacity_input_defaults(args),
     )
     if args.json:
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
@@ -292,6 +304,7 @@ def loop_capacity_decision_payload(
             goal=goal,
             provider=provider,
             execute_agent_loop=False,
+            input_defaults=_supervisor_capacity_input_defaults(args),
         )
     except Exception as exc:
         return {
@@ -361,6 +374,13 @@ def capacity_decision_goal(
         if isinstance(value, str) and value.strip():
             return value.strip()
     return None
+
+
+def _supervisor_capacity_input_defaults(args: Any) -> dict[str, Any]:
+    codex_home = getattr(args, "codex_home", None)
+    if not isinstance(codex_home, str) or not codex_home:
+        return {}
+    return {"codex_home": str(Path(codex_home))}
 
 
 def agent_loop_json_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -668,6 +688,14 @@ def _no_offered_capacities_plan(
 
 
 def _blocked_capacity_graph(selection: Any) -> dict[str, Any]:
+    if isinstance(selection, Mapping):
+        capacity_id = selection.get("capacity_id")
+        status = selection.get("status")
+    else:
+        capacity_id = getattr(selection, "capacity_id", None)
+        status = getattr(selection, "status", None)
+    capacity_id = capacity_id if isinstance(capacity_id, str) else "unknown"
+    status = status if isinstance(status, str) else "unknown"
     return {
         "kind": "capacity_graph_plan",
         "status": "blocked",
@@ -678,11 +706,63 @@ def _blocked_capacity_graph(selection: Any) -> dict[str, Any]:
         "calls": [],
         "blocked": [
             {
-                "node_id": selection.capacity_id.replace(".", "-"),
-                "capacity_id": selection.capacity_id,
-                "reason": selection.status,
+                "node_id": capacity_id.replace(".", "-"),
+                "capacity_id": capacity_id,
+                "reason": status,
             }
         ],
+    }
+
+
+def _selection_with_input_defaults(
+    selection: Mapping[str, Any],
+    *,
+    offered_capacities: list[Mapping[str, Any]],
+    input_defaults: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    payload = copy.deepcopy(dict(selection))
+    capacity = _offered_capacity_by_id(payload.get("capacity_id"), offered_capacities)
+    contract = capacity.get("input_contract") if isinstance(capacity, Mapping) else {}
+    properties = contract_properties(contract if isinstance(contract, Mapping) else {})
+    required_inputs = required_contract_keys(
+        contract if isinstance(contract, Mapping) else {}
+    )
+    arguments = payload.get("arguments")
+    if not isinstance(arguments, dict):
+        arguments = {}
+    defaults = _safe_input_defaults(input_defaults)
+    for name, value in defaults.items():
+        if name not in arguments and name in properties:
+            arguments[name] = value
+    payload["arguments"] = arguments
+    missing_inputs = missing_required_input_keys(arguments, required_inputs)
+    payload["missing_inputs"] = missing_inputs
+    payload["status"] = "missing_inputs" if missing_inputs else "ready_to_call"
+    return payload
+
+
+def _offered_capacity_by_id(
+    capacity_id: Any,
+    offered_capacities: list[Mapping[str, Any]],
+) -> Mapping[str, Any]:
+    for capability in offered_capacities:
+        if (
+            isinstance(capability, Mapping)
+            and capability.get("capacity_id") == capacity_id
+        ):
+            return capability
+    return {}
+
+
+def _safe_input_defaults(input_defaults: Mapping[str, Any] | None) -> dict[str, Any]:
+    if input_defaults is None:
+        return {}
+    if not isinstance(input_defaults, Mapping):
+        raise ValueError("input_defaults must be a mapping")
+    return {
+        key: value
+        for key, value in input_defaults.items()
+        if isinstance(key, str) and value not in (None, "")
     }
 
 
