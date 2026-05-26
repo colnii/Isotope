@@ -117,7 +117,9 @@
   `controlled_expand` 只返回 deferred metadata。
 - Supervisor `worktree-audit` 已补第一片：开工前可只读读取
   `git worktree list --porcelain`，按 branch/path 主题词提示可能重复开发的
-  worktree 候选；它不删除、不合并、不阻止任务，只给人类做协调判断。
+  worktree 候选；现在还会只读读取每个 worktree 的 `git status --porcelain=v1`，
+  报告多个 dirty worktree 是否修改了同一个文件。它不删除、不合并、不阻止任务，
+  只给人类做协调判断。
 
 ## 下一批任务
 

@@ -74,7 +74,9 @@ def worktree_audit_payload(
             "duplicate_candidates": [],
             "error": (completed.stderr or completed.stdout or "").strip(),
         }
-    payload = audit_worktree_records(parse_worktree_list_porcelain(completed.stdout))
+    records = parse_worktree_list_porcelain(completed.stdout)
+    records = enrich_worktree_records_with_status(records, api=api)
+    payload = audit_worktree_records(records)
     payload["repo_root"] = str(repo_root)
     return payload
 
@@ -112,15 +114,21 @@ def parse_worktree_list_porcelain(text: str) -> list[dict[str, Any]]:
 def audit_worktree_records(records: list[dict[str, Any]]) -> dict[str, Any]:
     worktrees = [_worktree_payload(record) for record in records]
     duplicate_candidates = _duplicate_topic_candidates(worktrees)
+    overlapping_modified_files = _overlapping_modified_files(worktrees)
     return {
         "kind": "supervisor_worktree_audit",
-        "status": "attention" if duplicate_candidates else "ok",
+        "status": "attention"
+        if duplicate_candidates or overlapping_modified_files
+        else "ok",
         "summary": {
             "worktrees": len(worktrees),
+            "dirty_worktrees": sum(1 for item in worktrees if item["dirty"]),
             "duplicate_candidates": len(duplicate_candidates),
+            "overlapping_modified_files": len(overlapping_modified_files),
         },
         "worktrees": worktrees,
         "duplicate_candidates": duplicate_candidates,
+        "overlapping_modified_files": overlapping_modified_files,
         "note": "read-only audit; no worktree, branch, or file is modified",
     }
 
@@ -133,9 +141,18 @@ def print_worktree_audit_plain(payload: dict[str, Any]) -> None:
         print(f"repo：{payload['repo_root']}")
     print(
         "worktrees："
-        f"{summary.get('worktrees', 0)} / duplicate candidates "
-        f"{summary.get('duplicate_candidates', 0)}"
+        f"{summary.get('worktrees', 0)} / dirty "
+        f"{summary.get('dirty_worktrees', 0)} / duplicate candidates "
+        f"{summary.get('duplicate_candidates', 0)} / overlapping files "
+        f"{summary.get('overlapping_modified_files', 0)}"
     )
+    overlaps = payload.get("overlapping_modified_files") or []
+    for overlap in overlaps:
+        files = ", ".join(overlap.get("files") or [])
+        print(f"- overlapping files：{files}")
+        for item in overlap.get("worktrees") or []:
+            branch = item.get("branch") or "detached"
+            print(f"  {branch} / {item.get('path', '')}")
     candidates = payload.get("duplicate_candidates") or []
     for candidate in candidates:
         shared = ", ".join(candidate.get("shared_tokens") or [])
@@ -145,6 +162,52 @@ def print_worktree_audit_plain(payload: dict[str, Any]) -> None:
             print(f"  {branch} / {item.get('path', '')}")
     if not candidates:
         print("duplicate candidates：none")
+
+
+def enrich_worktree_records_with_status(
+    records: list[dict[str, Any]],
+    *,
+    api: Any,
+) -> list[dict[str, Any]]:
+    enriched: list[dict[str, Any]] = []
+    for record in records:
+        item = dict(record)
+        completed = api.subprocess.run(
+            [
+                "git",
+                "-C",
+                str(item.get("path") or ""),
+                "status",
+                "--porcelain=v1",
+            ],
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+        if completed.returncode == 0:
+            modified_files = parse_worktree_status_porcelain(completed.stdout)
+            item["modified_files"] = modified_files
+            item["dirty"] = bool(modified_files)
+        else:
+            item["modified_files"] = []
+            item["dirty"] = False
+            item["status_error"] = (completed.stderr or completed.stdout or "").strip()
+        enriched.append(item)
+    return enriched
+
+
+def parse_worktree_status_porcelain(text: str) -> list[str]:
+    paths: list[str] = []
+    for raw_line in text.splitlines():
+        if not raw_line:
+            continue
+        path = raw_line[3:] if len(raw_line) > 3 else ""
+        path = path.strip()
+        if " -> " in path:
+            path = path.rsplit(" -> ", 1)[1]
+        if path:
+            paths.append(path)
+    return sorted(dict.fromkeys(paths))
 
 
 def _finish_worktree_record(record: dict[str, Any]) -> dict[str, Any]:
@@ -172,6 +235,9 @@ def _worktree_payload(record: dict[str, Any]) -> dict[str, Any]:
         "head": record.get("head"),
         "branch": branch,
         "detached": bool(record.get("detached")),
+        "dirty": bool(record.get("dirty")),
+        "modified_files": list(record.get("modified_files") or []),
+        "status_error": record.get("status_error"),
         "topic_tokens": _topic_tokens(text),
     }
 
@@ -187,6 +253,8 @@ def _duplicate_topic_candidates(worktrees: list[dict[str, Any]]) -> list[dict[st
                 continue
             candidates.append(
                 {
+                    "kind": "shared_topic",
+                    "severity": "attention",
                     "shared_tokens": shared_tokens,
                     "worktrees": [
                         _candidate_worktree_ref(left),
@@ -195,6 +263,33 @@ def _duplicate_topic_candidates(worktrees: list[dict[str, Any]]) -> list[dict[st
                 }
             )
     return candidates
+
+
+def _overlapping_modified_files(
+    worktrees: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    overlaps: list[dict[str, Any]] = []
+    for index, left in enumerate(worktrees):
+        left_files = set(left.get("modified_files") or [])
+        if not left_files:
+            continue
+        for right in worktrees[index + 1 :]:
+            right_files = set(right.get("modified_files") or [])
+            files = sorted(left_files & right_files)
+            if not files:
+                continue
+            overlaps.append(
+                {
+                    "kind": "overlapping_modified_files",
+                    "severity": "warning",
+                    "files": files,
+                    "worktrees": [
+                        _candidate_worktree_ref(left),
+                        _candidate_worktree_ref(right),
+                    ],
+                }
+            )
+    return overlaps
 
 
 def _candidate_worktree_ref(worktree: dict[str, Any]) -> dict[str, Any]:
