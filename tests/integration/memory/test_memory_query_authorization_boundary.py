@@ -155,6 +155,45 @@ def test_local_memory_query_denials_use_same_reason_contract():
     assert store.calls == []
 
 
+@pytest.mark.parametrize(
+    ("caller_context", "reason_code"),
+    [
+        ({"run_id": "run_other"}, "caller_context_run_mismatch"),
+        ({}, "caller_context_run_mismatch"),
+    ],
+)
+@pytest.mark.parametrize(
+    "service_factory",
+    [
+        memory.NotEnabledMemoryQueryService,
+        memory.LocalMemoryQueryService,
+    ],
+)
+def test_memory_query_rejects_caller_context_run_mismatch_without_store_read(
+    service_factory,
+    caller_context,
+    reason_code,
+):
+    store = ExplodingMemoryStore()
+    service = service_factory(memory_store=store)
+
+    result = service.query(
+        run_id="run_allowed",
+        query="worked examples",
+        grants={"memory": {"query": True}},
+        caller_context=caller_context,
+    )
+
+    assert result == {
+        "status": "denied",
+        "capability": "memory_query",
+        "reason_code": reason_code,
+        "content_policy": "no_memory_read",
+        "results": [],
+    }
+    assert store.calls == []
+
+
 def test_projector_rebuild_still_does_not_read_memory_query_or_store(tmp_path):
     class ExplodingMemoryQueryService:
         def query(self, *args, **kwargs):

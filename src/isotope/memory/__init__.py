@@ -59,6 +59,11 @@ def _not_enabled_memory_query_result() -> dict[str, Any]:
     }
 
 
+def _caller_context_run_mismatch(run_id: str, caller_context: dict[str, Any]) -> bool:
+    caller_run_id = caller_context.get("run_id")
+    return not isinstance(caller_run_id, str) or caller_run_id != run_id
+
+
 def _validate_memory_record_shape(record: MemoryRecord | dict[str, Any]) -> None:
     if isinstance(record, MemoryRecord):
         return
@@ -133,6 +138,12 @@ class LocalMemoryQueryService:
                 reason_code="missing_memory_query_grant",
                 content_policy="no_memory_read",
             )
+        if _caller_context_run_mismatch(run_id, caller_context):
+            return _denied_memory_query_result(
+                capability="memory_query",
+                reason_code="caller_context_run_mismatch",
+                content_policy="no_memory_read",
+            )
         if controlled_expand and not _has_controlled_expand_grant(grants):
             return _denied_memory_query_result(
                 capability="memory_controlled_expand",
@@ -190,6 +201,12 @@ class NotEnabledMemoryQueryService:
             return _denied_memory_query_result(
                 capability="memory_query",
                 reason_code="missing_memory_query_grant",
+                content_policy="no_memory_read",
+            )
+        if _caller_context_run_mismatch(run_id, caller_context):
+            return _denied_memory_query_result(
+                capability="memory_query",
+                reason_code="caller_context_run_mismatch",
                 content_policy="no_memory_read",
             )
         if controlled_expand and not _has_controlled_expand_grant(grants):
