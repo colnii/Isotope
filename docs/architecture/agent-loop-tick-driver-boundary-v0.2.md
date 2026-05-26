@@ -34,6 +34,10 @@
 - Dashboard / web 的 multi-worker payload 会从 capacity memory record 读取
   `agent_loop_summary`，只展示 tick / step / artifact 摘要，不直接读取原始
   `tick_result` 深层结构。
+- `python -m isotope.demo --scenario supervisor-capacity-dashboard-smoke --trace`
+  会执行 fixture `call_capacity`、读取 capacity memory record、刷新
+  dashboard/web multi-worker payload，并确认三段复用同一组低敏
+  `agent_loop_summary`。
 
 HTTP body 只接受：
 
@@ -74,6 +78,7 @@ HTTP body 只接受：
 - `tests/unit/interfaces/http/test_http_api_agent_loop_tick_driver.py`
 - `tests/e2e/test_agent_loop_tick_driver_demo_scenario.py`
 - `tests/e2e/test_supervisor_capacity_handoff_demo_scenario.py`
+- `tests/e2e/test_supervisor_capacity_dashboard_smoke_demo_scenario.py`
 - `tests/unit/agents/loop/test_agent_loop_planner_step_adapter.py`
 - `tests/unit/agents/loop/test_agent_loop_tick_policy.py`
 - `tests/unit/features/supervisor/test_supervisor_capacity_path.py`

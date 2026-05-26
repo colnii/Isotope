@@ -176,6 +176,32 @@ def _format_supervisor_capacity_handoff_trace_plain_text(result: dict[str, Any])
     return "\n".join(lines)
 
 
+def _format_supervisor_capacity_dashboard_smoke_plain_text(
+    result: dict[str, Any],
+) -> str:
+    recent = result["dashboard_recent_capacity_summary"]
+    loop = recent["agent_loop_summary"]
+    lines = [
+        f"scenario: {result['scenario']}",
+        (
+            "capacity_dashboard_smoke_ok: "
+            f"{str(result['capacity_dashboard_smoke_ok']).lower()}"
+        ),
+        f"capacity_id: {recent['capacity_id']}",
+        f"dashboard_tick_status: {loop['agent_loop_tick_status']}",
+        f"dashboard_selected_step: {loop['agent_loop_planner_selected_step']}",
+        f"dashboard_artifact_id: {loop['agent_loop_artifact_id']}",
+        f"dashboard_capacity_calls_total: {result['dashboard_capacity_calls_total']}",
+        f"app_friction_count: {result['app_friction_count']}",
+        f"model_status: {result['model_status']}",
+        f"scheduler_status: {result['scheduler_status']}",
+        f"provider_status: {result['provider_status']}",
+        f"memory_status: {result['memory_status']}",
+        f"next_development_step: {result['next_development_step']}",
+    ]
+    return "\n".join(lines)
+
+
 def _format_agent_loop_planner_io_validator_plain_text(result: dict[str, Any]) -> str:
     lines = [
         f"scenario: {result['scenario']}",

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 from ...runtime.in_process import InProcessServer
@@ -281,6 +282,138 @@ def _run_supervisor_capacity_handoff_trace(root: Path) -> dict[str, Any]:
             "Use this Supervisor capacity handoff trace as the readable proof "
             "before adding broader CLI smoke coverage."
         ),
+    }
+
+
+def _run_supervisor_capacity_dashboard_smoke(root: Path) -> dict[str, Any]:
+    from ...features.supervisor.commands.handlers.capacity import (
+        build_supervisor_capacity_plan,
+        capacity_call_specs,
+        execute_capacity_action,
+    )
+    from ...features.supervisor.web import build_dashboard_web_payload
+    from ...platform.state.memory_store import FileMemoryStore
+
+    root.mkdir(parents=True, exist_ok=True)
+    goal = "Supervisor capacity dashboard smoke"
+    plan = build_supervisor_capacity_plan(
+        goal=goal,
+        provider=_FixtureCapacityProvider(),
+        state_root=root / "capacity-dashboard-state",
+        execute_agent_loop=False,
+    )
+    capacity_decision = plan["supervisor_decision"]
+    action = {
+        "kind": "call_capacity",
+        "capacity_id": capacity_decision["capacity_id"],
+        "reason": capacity_decision["reason"],
+    }
+    action_payload = {
+        "capacity_decisions": [capacity_decision],
+        "capacity_call_specs": capacity_call_specs(plan, goal=goal),
+    }
+    executed = execute_capacity_action(
+        SimpleNamespace(codex_home=str(root), name="capa"),
+        action,
+        action_payload,
+    )
+    records = [
+        record
+        for record in FileMemoryStore(root).list_records(scope="run")
+        if record.content.get("kind") == "capacity_call"
+    ]
+    memory_record = records[-1]
+    dashboard_payload = build_dashboard_web_payload(
+        _EmptyDashboardReport(),
+        codex_home=root,
+        workspace_cwd=root,
+        state_snapshot=_empty_state_snapshot(),
+    )
+    workers = {
+        worker["name"]: worker
+        for worker in dashboard_payload["multi_worker"]["workers"]
+    }
+    dashboard_recent = workers["capa"]["recent_capacity_summary"]
+    execution_summary = dict(executed["agent_loop_summary"])
+    memory_summary = dict(memory_record.content["agent_loop_summary"])
+    dashboard_summary = dict(dashboard_recent["agent_loop_summary"])
+    app_friction: list[dict[str, Any]] = []
+    capacity_dashboard_smoke_ok = (
+        executed["kind"] == "call_capacity"
+        and memory_record.content["capacity_id"] == "artifact.review"
+        and dashboard_recent["capacity_id"] == "artifact.review"
+        and execution_summary == memory_summary == dashboard_summary
+        and dashboard_payload["multi_worker"]["summary"]["capacity_calls_total"] == 1
+        and app_friction == []
+    )
+    return {
+        "scenario": "supervisor-capacity-dashboard-smoke",
+        "transport": "in_process",
+        "capacity_dashboard_smoke_ok": capacity_dashboard_smoke_ok,
+        "executed": {
+            "kind": executed["kind"],
+            "capacity_id": executed["capacity_id"],
+            "agent_loop_summary": execution_summary,
+        },
+        "memory_record": {
+            "record_id": memory_record.memory_id,
+            "capacity_id": memory_record.content["capacity_id"],
+            "agent_loop_summary": memory_summary,
+        },
+        "dashboard_recent_capacity_summary": dashboard_recent,
+        "dashboard_capacity_calls_total": dashboard_payload["multi_worker"]["summary"][
+            "capacity_calls_total"
+        ],
+        "app_friction": app_friction,
+        "app_friction_count": len(app_friction),
+        "model_status": "not_used",
+        "scheduler_status": "not_used",
+        "provider_status": "fixture_only",
+        "network_listener_status": "not_used",
+        "memory_status": "capacity_record_persisted",
+        "next_development_step": (
+            "Use this fixture smoke before wiring dashboard capacity summaries to "
+            "broader supervised execution views."
+        ),
+    }
+
+
+class _EmptyDashboardReport:
+    generated_at = "2026-05-27T00:00:00Z"
+    sessions: list[Any] = []
+
+    class recommendation:
+        @staticmethod
+        def to_dict() -> dict[str, Any]:
+            return {
+                "label": "No action",
+                "action": "monitor",
+                "priority": "low",
+                "target_session_id": None,
+            }
+
+
+def _empty_state_snapshot() -> dict[str, Any]:
+    return {
+        "status": "ok",
+        "kind": "supervisor_state_snapshot",
+        "schema_version": 1,
+        "summary": {
+            "active_goals": 0,
+            "goals_done": 0,
+            "goals_blocked": 0,
+            "goals_needs_user": 0,
+            "active_decisions": 0,
+            "failed_lanes": 0,
+            "worker_events": 0,
+            "notifications": 0,
+            "unread_notifications": 0,
+        },
+        "active_goals": [],
+        "active_decisions": [],
+        "failed_lanes": [],
+        "recent_worker_events": [],
+        "notifications": {"total": 0, "unread": 0, "recent": []},
     }
 
 

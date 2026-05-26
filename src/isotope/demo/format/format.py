@@ -14,6 +14,7 @@ from .agent_loop import (
     _format_agent_loop_planner_validated_runner_plain_text,
     _format_agent_loop_tick_driver_trace_plain_text,
     _format_agent_loop_tick_policy_trace_plain_text,
+    _format_supervisor_capacity_dashboard_smoke_plain_text,
     _format_supervisor_capacity_handoff_trace_plain_text,
 )
 from .core import (
@@ -51,6 +52,9 @@ _FORMATTERS: dict[str, Callable[[dict[str, Any]], str]] = {
     "agent-loop-tick-driver-trace": _format_agent_loop_tick_driver_trace_plain_text,
     "supervisor-capacity-handoff-trace": (
         _format_supervisor_capacity_handoff_trace_plain_text
+    ),
+    "supervisor-capacity-dashboard-smoke": (
+        _format_supervisor_capacity_dashboard_smoke_plain_text
     ),
     "agent-loop-tick-policy-trace": _format_agent_loop_tick_policy_trace_plain_text,
     "agent-loop-planner-matrix": _format_agent_loop_planner_matrix_plain_text,

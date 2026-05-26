@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import argparse
 import json
 from dataclasses import asdict
 
 import isotope.features.supervisor.state.multi_worker as supervisor_multi_worker
 import isotope.platform.state.multi_worker as platform_multi_worker
 from isotope.features.supervisor import runner
+from isotope.features.supervisor.commands.handlers import capacity as capacity_command
 from isotope.platform.schemas.memory import MemoryRecord
 
 
@@ -263,6 +265,105 @@ def test_supervisor_dashboard_json_includes_multi_worker_status(tmp_path, capsys
     }
     assert workers["worker-b"]["incoming_events_total"] == 1
     assert "step_result" not in output
+    assert "PRIVATE_" not in output
+
+
+def test_capacity_action_record_flows_into_dashboard_multi_worker_status(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    codex_home = tmp_path / ".codex"
+    agent_loop = {
+        "handoff": {
+            "initial_next_tick_kind": "planner_step",
+            "post_step_phase": "ready",
+            "post_step_should_continue": True,
+            "post_step_stop_reason": None,
+        },
+        "planner_output_summary": {
+            "selected_step": "call_capability",
+            "capability_id": "artifact.review",
+        },
+        "tick_result": {
+            "tick_status": "executed",
+            "after_policy": {"must_stop_reason": "tick_budget_exhausted"},
+            "planner_result": {
+                "step_result": {
+                    "action_result": {
+                        "artifact_ref": {"artifact_id": "artifact_safe_summary"},
+                        "raw": "PRIVATE_ACTION_PAYLOAD",
+                    }
+                }
+            },
+        },
+    }
+
+    def fake_execute_agent_loop_capacity_step(**kwargs):
+        return agent_loop
+
+    monkeypatch.setattr(
+        capacity_command,
+        "_execute_agent_loop_capacity_step",
+        fake_execute_agent_loop_capacity_step,
+    )
+    result = capacity_command.execute_capacity_action(
+        argparse.Namespace(codex_home=str(codex_home), name="capa"),
+        {
+            "kind": "call_capacity",
+            "capacity_id": "artifact.review",
+            "reason": "ready",
+        },
+        {
+            "capacity_call_specs": [
+                {
+                    "capacity_id": "artifact.review",
+                    "goal": "检查 artifact review 能力。",
+                    "inputs": {},
+                }
+            ],
+            "capacity_decisions": [
+                {
+                    "kind": "supervisor_capacity_decision",
+                    "next_action": "call_capacity",
+                    "reason": "ready",
+                    "capacity_id": "artifact.review",
+                    "can_execute_agent_loop": True,
+                    "missing_inputs": [],
+                    "blocking_reasons": [],
+                }
+            ],
+        },
+    )
+    capsys.readouterr()
+
+    assert (
+        runner.main(
+            [
+                "dashboard",
+                "--codex-home",
+                str(codex_home),
+                "--stale-after",
+                "999999",
+                "--json",
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    payload = json.loads(output)
+    assert payload["multi_worker"]["summary"]["capacity_calls_total"] == 1
+    workers = {worker["name"]: worker for worker in payload["multi_worker"]["workers"]}
+    recent_capacity = workers["capa"]["recent_capacity_summary"]
+    assert workers["capa"]["recent_capacity_summary"] == {
+        "record_id": recent_capacity["record_id"],
+        "capacity_id": "artifact.review",
+        "summary": "capa called artifact.review via agent loop.",
+        "agent_loop_summary": result["agent_loop_summary"],
+    }
+    assert recent_capacity["record_id"].startswith("mem_capacity_")
+    assert "tick_result" not in output
     assert "PRIVATE_" not in output
 
 

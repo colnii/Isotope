@@ -81,6 +81,9 @@
   不读取原始 `tick_result` / `step_result`。
 - `call_capacity` 执行动作的返回 payload 已带同源 `agent_loop_summary`，
   并写入只含 summary 的 capacity memory record，不落 raw `tick_result`。
+- `supervisor-capacity-dashboard-smoke` demo 已补齐执行到 dashboard 的
+  fixture smoke：执行 `call_capacity`、读取 capacity memory record、刷新
+  multi-worker read model，并确认三段使用同一组低敏 `agent_loop_summary`。
 
 ## 下一批任务
 
@@ -114,16 +117,15 @@
 
 目标：
 
-- 补一个端到端 fixture：执行 `call_capacity` 后刷新 multi-worker read model，
-  确认 dashboard/web 读取到同一条 capacity memory record。
-- 仍不接真实 LLM，不做自动多轮循环。
+- 把已验证的 capacity dashboard smoke 扩展到更完整的 supervised execution
+  view（受监督执行视图）接入点。
+- 仍不接真实 LLM，不做自动多轮循环，不引入 scheduler。
 
 验收：
 
-- 目标测试覆盖执行、落盘、read model 三段同源 `agent_loop_summary`。
+- 新视图或入口复用 capacity memory record 里的 `agent_loop_summary`。
 - Dashboard / web 继续只从 summary 读取，不读取 raw tick payload。
-- 继续保持 no raw payload（不暴露原始内容）边界。
-- smoke 使用 fixture / fake provider，不要求真实 provider 配置。
+- 保持 no raw payload（不暴露原始内容）边界。
 
 ### 4. Supervisor 大分支暂缓
 
