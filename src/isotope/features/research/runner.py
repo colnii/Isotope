@@ -50,6 +50,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Tavily API key for --provider tavily.",
     )
     search_parser.add_argument(
+        "--tavily-enable-network",
+        action="store_true",
+        help="Allow --provider tavily to make a real Tavily API request.",
+    )
+    search_parser.add_argument(
         "--tavily-timeout-seconds",
         type=int,
         default=30,
@@ -361,6 +366,7 @@ def _provider_from_args(args: argparse.Namespace):
         timeout_seconds=args.timeout_seconds,
         max_attempts=args.max_attempts,
         tavily_api_key=args.tavily_api_key,
+        tavily_enable_network=args.tavily_enable_network,
         tavily_timeout_seconds=args.tavily_timeout_seconds,
         tavily_max_results=args.tavily_max_results,
     )

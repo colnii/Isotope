@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -92,10 +91,10 @@ _PROVIDER_DESCRIPTORS: tuple[ResearchProviderDescriptor, ...] = (
         provider_id="tavily",
         provider_name="tavily",
         label="Tavily API provider",
-        status="preflight",
+        status="implemented",
         entrypoint="api",
         requires=("TAVILY_API_KEY",),
-        notes="Preflight-only provider; validates config and records provider traces before real API wiring.",
+        notes="Network execution is available behind an explicit command flag; preflight remains the default.",
         selectable=True,
     ),
     ResearchProviderDescriptor(
@@ -134,6 +133,12 @@ def research_provider_choices() -> tuple[str, ...]:
     return tuple(descriptor.provider_id for descriptor in _PROVIDER_DESCRIPTORS)
 
 
+def _tavily_api_key_from_env() -> str | None:
+    import os
+
+    return os.environ.get("TAVILY_API_KEY")
+
+
 def build_research_provider(
     provider_id: str,
     *,
@@ -144,6 +149,7 @@ def build_research_provider(
     timeout_seconds: int = 120,
     max_attempts: int = 2,
     tavily_api_key: str | None = None,
+    tavily_enable_network: bool = False,
     tavily_timeout_seconds: int = 30,
     tavily_max_results: int = 5,
 ) -> ResearchProvider:
@@ -167,12 +173,15 @@ def build_research_provider(
             max_attempts=max_attempts,
         )
     if provider_id == "tavily":
-        return TavilyPreflightResearchProvider(
+        from .tavily import TavilyResearchProvider
+
+        return TavilyResearchProvider(
             api_key=(
                 tavily_api_key
                 if tavily_api_key is not None
-                else os.environ.get("TAVILY_API_KEY")
+                else _tavily_api_key_from_env()
             ),
+            enable_network=tavily_enable_network,
             timeout_seconds=tavily_timeout_seconds,
             max_results=tavily_max_results,
         )
@@ -216,47 +225,6 @@ class FakeResearchProvider:
             },
             "provenance": {"provider": self.provider_name},
         }
-
-
-class TavilyPreflightResearchProvider:
-    provider_name = "tavily"
-
-    def __init__(
-        self,
-        *,
-        api_key: str | None,
-        timeout_seconds: int = 120,
-        max_results: int = 5,
-    ):
-        self.api_key = api_key.strip() if isinstance(api_key, str) else None
-        self.timeout_seconds = timeout_seconds
-        self.max_results = max_results
-
-    def run(self, query: str) -> dict[str, Any]:
-        _require_query(query)
-        if not self.api_key:
-            raise ResearchProviderError(
-                "tavily provider requires TAVILY_API_KEY",
-                details={
-                    "provider_id": "tavily",
-                    "error_code": "missing_api_key",
-                    "required_env": "TAVILY_API_KEY",
-                    "retryable": False,
-                },
-                retryable=False,
-            )
-        raise ResearchProviderError(
-            "tavily provider is preflight only; network execution is deferred",
-            details={
-                "provider_id": "tavily",
-                "error_code": "network_execution_deferred",
-                "api_key_configured": True,
-                "timeout_seconds": self.timeout_seconds,
-                "max_results": self.max_results,
-                "retryable": False,
-            },
-            retryable=False,
-        )
 
 
 class CodexDelegatedResearchProvider:

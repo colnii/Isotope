@@ -4,7 +4,6 @@ import json
 
 import pytest
 
-from isotope.features.research import providers as research_providers
 from isotope.features.research.providers import (
     CodexDelegatedResearchProvider,
     FakeResearchProvider,
@@ -15,6 +14,7 @@ from isotope.features.research.providers import (
     get_research_provider_descriptor,
     list_research_provider_descriptors,
 )
+from isotope.features.research.tavily import TavilyResearchProvider
 
 
 def test_fake_research_provider_returns_source_backed_report():
@@ -40,8 +40,7 @@ def test_research_provider_registry_lists_implemented_and_planned_providers():
     ]
     assert get_research_provider_descriptor("fake").implemented is True
     assert get_research_provider_descriptor("codex").provider_name == "codex_delegated"
-    assert get_research_provider_descriptor("tavily").implemented is False
-    assert get_research_provider_descriptor("tavily").status == "preflight"
+    assert get_research_provider_descriptor("tavily").implemented is True
     assert get_research_provider_descriptor("tavily").selectable is True
 
 
@@ -56,18 +55,20 @@ def test_build_research_provider_reuses_tavily_preflight_provider(tmp_path):
     provider = build_research_provider(
         "tavily",
         tavily_api_key="test-key",
+        tavily_enable_network=True,
         tavily_timeout_seconds=9,
         tavily_max_results=3,
     )
 
-    assert type(provider).__name__ == "TavilyPreflightResearchProvider"
+    assert type(provider).__name__ == "TavilyResearchProvider"
     assert provider.provider_name == "tavily"
+    assert provider.enable_network is True
     assert provider.timeout_seconds == 9
     assert provider.max_results == 3
 
 
 def test_tavily_preflight_provider_reports_missing_api_key_as_non_retryable():
-    provider = research_providers.TavilyPreflightResearchProvider(api_key=None)
+    provider = TavilyResearchProvider(api_key=None)
 
     with pytest.raises(ResearchProviderError) as exc_info:
         provider.run("agent memory retrieval")
@@ -82,8 +83,9 @@ def test_tavily_preflight_provider_reports_missing_api_key_as_non_retryable():
 
 
 def test_tavily_preflight_provider_reports_deferred_network_execution():
-    provider = research_providers.TavilyPreflightResearchProvider(
+    provider = TavilyResearchProvider(
         api_key="test-key",
+        enable_network=False,
         timeout_seconds=7,
         max_results=3,
     )
@@ -100,6 +102,79 @@ def test_tavily_preflight_provider_reports_deferred_network_execution():
         "max_results": 3,
         "retryable": False,
     }
+
+
+def test_tavily_provider_executes_search_with_injected_http_backend():
+    calls = []
+
+    def http_post(url, *, headers, payload, timeout_seconds):
+        calls.append(
+            {
+                "url": url,
+                "headers": headers,
+                "payload": payload,
+                "timeout_seconds": timeout_seconds,
+            }
+        )
+        return {
+            "query": "agent memory retrieval",
+            "results": [
+                {
+                    "title": "Isotope research note",
+                    "url": "https://example.com/research-note",
+                    "content": "Research claims should cite source-backed snippets.",
+                    "score": 0.91,
+                }
+            ],
+            "response_time": 0.42,
+            "usage": {"credits": 1},
+        }
+
+    provider = TavilyResearchProvider(
+        api_key="test-secret-key",
+        enable_network=True,
+        timeout_seconds=9,
+        max_results=3,
+        http_post=http_post,
+    )
+
+    payload = provider.run("agent memory retrieval")
+
+    assert calls == [
+        {
+            "url": "https://api.tavily.com/search",
+            "headers": {
+                "Authorization": "Bearer test-secret-key",
+                "Content-Type": "application/json",
+            },
+            "payload": {
+                "query": "agent memory retrieval",
+                "search_depth": "basic",
+                "max_results": 3,
+                "include_answer": False,
+                "include_raw_content": False,
+                "include_usage": True,
+            },
+            "timeout_seconds": 9,
+        }
+    ]
+    assert payload["status"] == "ok"
+    assert payload["provider"] == "tavily"
+    assert payload["sources"] == [
+        {
+            "source_id": "src_001",
+            "title": "Isotope research note",
+            "url": "https://example.com/research-note",
+            "snippet": "Research claims should cite source-backed snippets.",
+            "why_used": "Tavily search result rank 1, score 0.91",
+            "retrieved_at": payload["sources"][0]["retrieved_at"],
+            "provider_rank": 1,
+        }
+    ]
+    assert payload["report"]["claims"][0]["source_ids"] == ["src_001"]
+    assert payload["provenance"]["tavily"]["response_time"] == 0.42
+    assert payload["provenance"]["tavily"]["usage"] == {"credits": 1}
+    assert "test-secret-key" not in json.dumps(payload)
 
 
 def test_build_research_provider_rejects_unknown_provider():

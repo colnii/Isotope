@@ -3,7 +3,11 @@ from __future__ import annotations
 import json
 
 from isotope.features.research.flow import ResearchFlow
-from isotope.features.research.providers import FakeResearchProvider, ResearchProviderError
+from isotope.features.research.providers import (
+    FakeResearchProvider,
+    ResearchProviderError,
+)
+from isotope.features.research.tavily import TavilyResearchProvider
 
 
 def test_research_flow_persists_raw_and_normalized_artifacts(tmp_path):
@@ -36,6 +40,45 @@ def test_research_flow_persists_raw_and_normalized_artifacts(tmp_path):
         "research.report",
     ]
     assert records[1]["summary"] == "Fake research summary for agent memory retrieval."
+
+
+def test_research_flow_persists_tavily_execution_artifacts(tmp_path):
+    def http_post(url, *, headers, payload, timeout_seconds):
+        return {
+            "query": payload["query"],
+            "results": [
+                {
+                    "title": "Isotope research note",
+                    "url": "https://example.com/research-note",
+                    "content": "Research claims should cite source-backed snippets.",
+                    "score": 0.91,
+                }
+            ],
+            "response_time": 0.42,
+            "usage": {"credits": 1},
+        }
+
+    flow = ResearchFlow.in_process(
+        tmp_path,
+        provider=TavilyResearchProvider(
+            api_key="test-key",
+            enable_network=True,
+            http_post=http_post,
+        ),
+    )
+
+    result = flow.search("agent memory retrieval")
+
+    assert result.status == "ok"
+    assert [artifact["artifact_type"] for artifact in result.artifacts] == [
+        "research.raw_transcript",
+        "research.report",
+    ]
+    raw_content = json.loads(flow.core.runtime.artifact_store.get_content(result.artifact_refs[0]))
+    report_content = json.loads(flow.core.runtime.artifact_store.get_content(result.artifact_refs[1]))
+    assert raw_content["provider"] == "tavily"
+    assert report_content["sources"][0]["url"] == "https://example.com/research-note"
+    assert report_content["report"]["claims"][0]["source_ids"] == ["src_001"]
 
 
 def test_research_flow_marks_missing_sources_incomplete(tmp_path):

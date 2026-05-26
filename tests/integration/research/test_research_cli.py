@@ -67,7 +67,7 @@ def test_research_cli_lists_provider_registry_json():
         "browser",
     ]
     assert payload["providers"][0]["implemented"] is True
-    assert payload["providers"][2]["implemented"] is False
+    assert payload["providers"][2]["implemented"] is True
 
 
 def test_research_cli_providers_plain_output_marks_planned_provider():
@@ -75,7 +75,7 @@ def test_research_cli_providers_plain_output_marks_planned_provider():
 
     assert result.returncode == 0, result.stderr
     assert "provider: fake implemented provider_name: fake" in result.stdout
-    assert "provider: tavily preflight provider_name: tavily" in result.stdout
+    assert "provider: tavily implemented provider_name: tavily" in result.stdout
 
 
 def test_research_cli_search_records_tavily_preflight_failure(tmp_path, monkeypatch):
@@ -130,6 +130,35 @@ def test_research_cli_tavily_preflight_does_not_echo_api_key(tmp_path, monkeypat
     assert payload["error"]["details"]["timeout_seconds"] == 9
     assert payload["error"]["details"]["max_results"] == 3
     assert "test-secret-key" not in result.stdout
+
+
+def test_research_cli_accepts_tavily_network_gate_args(tmp_path):
+    parser = _build_parser()
+
+    args = parser.parse_args(
+        [
+            "search",
+            "--root",
+            str(tmp_path),
+            "--query",
+            "agent memory retrieval",
+            "--provider",
+            "tavily",
+            "--tavily-enable-network",
+            "--tavily-api-key",
+            "test-secret-key",
+            "--tavily-timeout-seconds",
+            "9",
+            "--tavily-max-results",
+            "3",
+        ]
+    )
+
+    assert args.provider == "tavily"
+    assert args.tavily_enable_network is True
+    assert args.tavily_api_key == "test-secret-key"
+    assert args.tavily_timeout_seconds == 9
+    assert args.tavily_max_results == 3
 
 
 def test_research_cli_plain_output_lists_artifacts(tmp_path):

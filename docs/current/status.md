@@ -94,18 +94,19 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
     `isotope-supervisor research search/list/inspect/providers` 都复用同一套
     `ResearchFlow`、artifact store、provider registry 和 plain/json 输出边界。
     provider registry 当前列出 `fake`、`codex`、`tavily`、`searxng`、`browser`；
-    `fake` 与 `codex` implemented；`tavily` 已进入 preflight（预检）
-    provider，可读取 `TAVILY_API_KEY` 或显式 `--tavily-api-key`，但真实网络搜索仍
-    deferred（暂缓）。缺配置或网络执行暂缓都会复用 `ResearchFlow` 写
-    `research.provider_trace`，不落成功 report。SearXNG / browser 仍
-    fail closed（失败关闭，创建 flow 前报错）。成功结果写
+    `fake`、`codex` 与 `tavily` implemented；Tavily 默认仍是 preflight（预检），
+    只有显式传 `--tavily-enable-network` 才会请求 `https://api.tavily.com/search`。
+    缺 `TAVILY_API_KEY` 或未打开网络开关都会复用 `ResearchFlow` 写
+    `research.provider_trace`，不落成功 report；真实 Tavily 响应会归一化为
+    source-backed `research.raw_transcript` 与 `research.report`。SearXNG / browser
+    仍 fail closed（失败关闭，创建 flow 前报错）。成功结果写
     `research.raw_transcript` 与 `research.report`；provider 失败只写
     `research.provider_trace`，并保留 retry attempt、Codex event/error
     diagnostics（诊断）供 `inspect` 查看。当前 durable ingestion（持久摄取）
     路径是 `search/fetch -> research.* artifact / provenance -> retrieval ->
     optional memory promotion`；raw web text 不直接进入长期 memory。Codex delegated
-    provider 已有小预算 retry；Tavily / SearXNG / browser crawler 的真实接入仍是后续
-    provider layering（提供方分层）工作，不要另造绕开 artifact/provenance 的搜索系统。
+    provider 已有小预算 retry；SearXNG / browser crawler 的真实接入仍是后续 provider
+    layering（提供方分层）工作，不要另造绕开 artifact/provenance 的搜索系统。
 12. 代码结构继续以 `src/isotope/` 为 Python 主包，不新增 `packages/`、
    `aios` 或 kernel 主叙事。
 

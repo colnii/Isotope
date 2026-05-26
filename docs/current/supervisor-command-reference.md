@@ -146,9 +146,10 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
   单个 `research.*` artifact 内容；非 research artifact 会被拒绝。Supervisor
   侧 `research inspect` 复用同一边界。
 - `research providers` 列出 provider registry；当前 `fake` / `codex` 可运行，
-  `tavily` 是 preflight provider：缺 `TAVILY_API_KEY` 或真实网络执行暂缓时会
-  复用 `ResearchFlow` 写 `research.provider_trace`。`searxng` / `browser` 仍是
-  planned provider，选择时会 fail closed。
+  `tavily` 也可运行但默认 preflight；只有显式 `--tavily-enable-network` 才会请求
+  Tavily `/search`，缺 `TAVILY_API_KEY` 或未开网络时会复用 `ResearchFlow` 写
+  `research.provider_trace`。`searxng` / `browser` 仍是 planned provider，
+  选择时会 fail closed。
 - raw web text 后续要进入 durable memory 时，必须先经过 artifact / provenance /
   retrieval 和显式 promotion policy，不得绕过 Research flow 直接写 memory。
 

@@ -427,6 +427,11 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         help="Tavily API key for --provider tavily.",
     )
     research_parser.add_argument(
+        "--tavily-enable-network",
+        action="store_true",
+        help="Allow --provider tavily to make a real Tavily API request.",
+    )
+    research_parser.add_argument(
         "--tavily-timeout-seconds",
         type=int,
         default=30,
