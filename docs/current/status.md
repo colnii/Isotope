@@ -64,7 +64,12 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    `run_agent_loop_until_stop(...)` 已在单 tick driver 外补第一层 bounded goal
    runner（有界目标 runner）：每轮复用 tick policy 和 planner step，受
    `max_ticks`、user pause、approval 和 completed/failed 状态限制；它仍不调用
-   真实 LLM，不定义 agent-to-agent 对话协议，也不默认打开 Supervisor 自动长循环。
+   真实 LLM，也不默认打开 Supervisor 自动长循环。Agent loop 已补第一层
+   agent-to-agent conversation arbiter（智能体间对话仲裁器）contract：
+   `AgentConversationMessage` 表达单个 agent 的候选发言，`arbitrate_agent_conversation_turn(...)`
+   负责按 interrupt / priority / state_lock / max visible messages 做确定性筛选，
+   支持沉默、延迟和状态锁冲突防护；它是低敏同步仲裁壳，不是实时 streaming
+   群聊、真实 LLM 发言或跨进程 event bus。
    `supervisor.worker_review` 已注册为 capability runner 的只读能力，
    `isotope-capability list/search/plan/run` 能发现、预检和运行它；执行时复用
    现有 `worker-review` lightweight 路径，只返回低敏 worker 决策摘要，

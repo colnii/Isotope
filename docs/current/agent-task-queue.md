@@ -65,6 +65,11 @@
   会在单 tick driver 外做有限 `while`，每轮重新读取 tick policy、调用外部
   planner callable、再执行一个 tick；它复用现有 tick policy / planner adapter /
   step driver，不接真实 LLM，不定义 agent-to-agent 对话协议，也不会无限循环。
+- Agent loop agent-to-agent conversation arbiter 已补第一片：
+  `AgentConversationMessage` 表达单个 agent 的候选发言，
+  `arbitrate_agent_conversation_turn(...)` 按 interrupt、priority、state lock
+  和可见消息上限做确定性筛选；它支持沉默、延迟和状态锁冲突防护，但仍不是
+  实时 streaming 群聊、真实 LLM 发言或跨进程 event bus。
 - `agent-loop-tick-driver-trace` demo 已补齐人类可读 handoff，展示
   `before_policy -> planner_result -> after_policy`，并覆盖 budget / user pause
   停止时不产生 side effect。

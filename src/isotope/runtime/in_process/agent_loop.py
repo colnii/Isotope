@@ -6,6 +6,7 @@ from copy import deepcopy
 from typing import Any
 
 from ...agents.loop.control import build_agent_loop_control, build_agent_loop_tick_policy
+from ...agents.loop.conversation import arbitrate_agent_conversation_turn
 from ...agents.loop.planner_adapter import run_agent_loop_planner_step
 from ...agents.loop.planner_contract import run_agent_loop_real_planner_contract_step
 from ...agents.loop.runner import run_agent_loop_until_stop
@@ -70,6 +71,19 @@ class InProcessAgentLoopMixin:
             max_ticks=max_ticks,
             budget_basis=budget_basis,
             user_pause=user_pause,
+        )
+
+    def arbitrate_agent_conversation_turn(
+        self,
+        candidates: Any,
+        *,
+        turn_id: str,
+        max_visible_messages: int,
+    ) -> dict[str, Any]:
+        return arbitrate_agent_conversation_turn(
+            candidates,
+            turn_id=turn_id,
+            max_visible_messages=max_visible_messages,
         )
 
     def record_agent_loop_turn_memory(self, run_id: str, request: dict[str, Any]) -> dict[str, Any]:
