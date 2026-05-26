@@ -112,6 +112,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 - `memory --query` 只返回 summary / refs / provenance preview；plain 输出会标出
   `content_policy`、匹配数量、source refs 和 provenance，不返回 raw content。
 - `research` provider 失败时只保存 `research.provider_trace`，不生成成功 report。
+- `isotope-research inspect --root ... --run-id ... --artifact-id ...` 可读取
+  单个 `research.*` artifact 内容；非 research artifact 会被拒绝。
 
 ## 更新规则
 

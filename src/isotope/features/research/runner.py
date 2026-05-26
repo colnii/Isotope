@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from ...platform.schemas.refs import make_artifact_ref
+from ...workspace.artifacts import ArtifactStore
 from .flow import ResearchFlow
 from .providers import (
     CodexDelegatedResearchProvider,
@@ -49,6 +51,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Codex delegated research timeout in seconds.",
     )
     search_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    inspect_parser = subparsers.add_parser("inspect", help="Inspect a research artifact.")
+    inspect_parser.add_argument("--root", required=True, help="Runtime root directory.")
+    inspect_parser.add_argument("--run-id", required=True, help="Run id for the artifact ref.")
+    inspect_parser.add_argument("--artifact-id", required=True, help="Artifact id to inspect.")
+    inspect_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     return parser
 
 
@@ -69,7 +76,18 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 _print_plain(payload)
             return 0
-    except ValueError as exc:
+        if args.command == "inspect":
+            payload = inspect_research_artifact(
+                Path(args.root),
+                run_id=args.run_id,
+                artifact_id=args.artifact_id,
+            )
+            if args.json:
+                _print_json(payload)
+            else:
+                _print_inspect_plain(payload)
+            return 0
+    except (FileNotFoundError, ValueError) as exc:
         error = {
             "status": "error",
             "error": {"code": "research_runner_error", "message": str(exc)},
@@ -95,6 +113,44 @@ def _print_plain(payload: dict[str, Any]) -> None:
     print_artifacts_plain(payload)
     for source in research.get("sources", []):
         print(f"- {source['title']} {source['url']}")
+
+
+def inspect_research_artifact(root: Path, *, run_id: str, artifact_id: str) -> dict[str, Any]:
+    ref = make_artifact_ref(run_id=run_id, artifact_id=artifact_id)
+    store = ArtifactStore(root)
+    metadata = store.get_metadata(ref, include_provenance=True)
+    if not str(metadata["artifact_type"]).startswith("research."):
+        raise ValueError("artifact is not a research artifact")
+    content_text = store.get_content(ref)
+    return {
+        "status": "ok",
+        "artifact": {
+            **metadata,
+            "ref": ref.to_dict(),
+        },
+        "content": _decode_json_content(content_text),
+    }
+
+
+def _decode_json_content(content: str) -> Any:
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        return content
+
+
+def _print_inspect_plain(payload: dict[str, Any]) -> None:
+    artifact = payload["artifact"]
+    ref = artifact["ref"]
+    print(f"status: {payload['status']}")
+    print(f"artifact: {artifact['artifact_type']} {ref['artifact_id']}")
+    print(f"run: {ref['run_id']}")
+    print(f"summary: {artifact['summary']}")
+    content = payload["content"]
+    if isinstance(content, (dict, list)):
+        print(json.dumps(content, ensure_ascii=False, sort_keys=True))
+    else:
+        print(str(content))
 
 
 def print_artifacts_plain(payload: dict[str, Any]) -> None:

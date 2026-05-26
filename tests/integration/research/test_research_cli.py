@@ -7,9 +7,10 @@ import subprocess
 import sys
 
 from isotope.features.research.runner import _build_parser, _print_plain
+from isotope.workspace.artifacts import ArtifactStore
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
 
 
@@ -66,6 +67,120 @@ def test_research_cli_plain_output_lists_artifacts(tmp_path):
     assert "status: ok" in result.stdout
     assert "artifact: research.raw_transcript artifact_001" in result.stdout
     assert "artifact: research.report artifact_002" in result.stdout
+
+
+def test_research_cli_inspect_returns_research_artifact_json(tmp_path):
+    search = _run_cli(
+        "search",
+        "--root",
+        str(tmp_path),
+        "--query",
+        "agent memory retrieval",
+        "--provider",
+        "fake",
+        "--json",
+    )
+    assert search.returncode == 0, search.stderr
+
+    result = _run_cli(
+        "inspect",
+        "--root",
+        str(tmp_path),
+        "--run-id",
+        "run_001",
+        "--artifact-id",
+        "artifact_002",
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert payload["artifact"]["artifact_type"] == "research.report"
+    assert payload["artifact"]["summary"] == "Fake research summary for agent memory retrieval."
+    assert payload["artifact"]["ref"] == {
+        "ref_type": "artifact",
+        "scope": "run",
+        "run_id": "run_001",
+        "artifact_id": "artifact_002",
+    }
+    assert payload["content"]["report"]["summary"] == "Fake research summary for agent memory retrieval."
+
+
+def test_research_cli_inspect_prints_research_artifact_plain(tmp_path):
+    search = _run_cli(
+        "search",
+        "--root",
+        str(tmp_path),
+        "--query",
+        "agent memory retrieval",
+        "--provider",
+        "fake",
+    )
+    assert search.returncode == 0, search.stderr
+
+    result = _run_cli(
+        "inspect",
+        "--root",
+        str(tmp_path),
+        "--run-id",
+        "run_001",
+        "--artifact-id",
+        "artifact_001",
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "status: ok" in result.stdout
+    assert "artifact: research.raw_transcript artifact_001" in result.stdout
+    assert "summary: raw research provider output: agent memory retrieval" in result.stdout
+    assert '"provider": "fake"' in result.stdout
+
+
+def test_research_cli_inspect_rejects_non_research_artifact(tmp_path):
+    store = ArtifactStore(tmp_path)
+    artifact = store.create_artifact(
+        "run_001",
+        execution_id="exec_001",
+        artifact_type="text",
+        summary="plain text",
+        content="not research",
+    )
+
+    result = _run_cli(
+        "inspect",
+        "--root",
+        str(tmp_path),
+        "--run-id",
+        "run_001",
+        "--artifact-id",
+        artifact.artifact_id,
+        "--json",
+    )
+
+    assert result.returncode == 2
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "error"
+    assert payload["error"]["code"] == "research_runner_error"
+    assert payload["error"]["message"] == "artifact is not a research artifact"
+
+
+def test_research_cli_inspect_reports_missing_artifact_as_runner_error(tmp_path):
+    result = _run_cli(
+        "inspect",
+        "--root",
+        str(tmp_path),
+        "--run-id",
+        "run_001",
+        "--artifact-id",
+        "artifact_missing",
+        "--json",
+    )
+
+    assert result.returncode == 2
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "error"
+    assert payload["error"]["code"] == "research_runner_error"
+    assert "artifact not found" in payload["error"]["message"]
 
 
 def test_research_plain_output_lists_provider_failure_diagnostics(capsys):

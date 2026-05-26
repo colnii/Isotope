@@ -188,7 +188,8 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   web research request/report model、provider contract、artifact 持久化 flow
   和 `isotope-research` CLI；Supervisor 已有 `research` proxy command。
   research 输出会同时返回 artifact refs 和低敏 artifact metadata，方便
-  人看懂 report/raw/trace 分别落在什么 artifact。
+  人看懂 report/raw/trace 分别落在什么 artifact；`isotope-research inspect`
+  可按 run/artifact id 读取 research artifact 内容。
   Codex delegated provider 的 error-only JSONL 会归类成 retryable
   `provider_failed`；provider 失败只落 `research.provider_trace` 调用轨迹，
   不生成 `research.report`。当前是低敏 artifact 入口，不是浏览器爬虫或
