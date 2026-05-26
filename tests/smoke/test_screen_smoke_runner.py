@@ -86,6 +86,30 @@ def test_target_allowlist_can_load_reusable_json_file(tmp_path):
     }
 
 
+def test_validate_target_allowlist_file_returns_low_sensitive_summary(tmp_path):
+    allowlist_file = tmp_path / "screen-allowlist.json"
+    allowlist_file.write_text(
+        json.dumps(
+            {
+                "allowed_apps": ["notepad.exe", "calc.exe"],
+                "allowed_title_contains": ["Mahjong Soul"],
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    result = runner.validate_target_allowlist_file(str(allowlist_file))
+
+    assert result == {
+        "status": "ok",
+        "path": str(allowlist_file),
+        "allowed_app_count": 2,
+        "allowed_title_contains_count": 1,
+        "allow_first_match_execute": False,
+    }
+
+
 def test_build_click_action_uses_control_action_schema():
     assert runner._build_click_action(x=100, y=120, button="left") == {
         "type": "click",
@@ -158,6 +182,23 @@ def test_observe_parser_accepts_reusable_allowlist_file():
 
     assert args.command == "observe"
     assert args.allowlist_file == "screen-allowlist.json"
+
+
+def test_allowlist_validate_parser_accepts_path():
+    args = runner._build_parser().parse_args(
+        [
+            "allowlist",
+            "validate",
+            "--path",
+            "screen-allowlist.json",
+            "--json",
+        ]
+    )
+
+    assert args.command == "allowlist"
+    assert args.allowlist_command == "validate"
+    assert args.path == "screen-allowlist.json"
+    assert args.json is True
 
 
 def test_real_smoke_plan_prints_real_backend_commands():

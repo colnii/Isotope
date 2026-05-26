@@ -254,3 +254,82 @@ def test_screen_cli_real_smoke_plan_carries_allowlist_file(tmp_path):
         f"--allowlist-file {allowlist_file}" in command
         for command in payload["commands"]
     )
+
+
+def test_screen_cli_allowlist_validate_returns_low_sensitive_json(tmp_path):
+    allowlist_file = tmp_path / "screen-allowlist.json"
+    allowlist_file.write_text(
+        json.dumps(
+            {
+                "allowed_apps": ["notepad.exe"],
+                "allowed_title_contains": ["Mahjong Soul"],
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    result = _run_cli(
+        "allowlist",
+        "validate",
+        "--path",
+        str(allowlist_file),
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload == {
+        "status": "ok",
+        "path": str(allowlist_file),
+        "allowed_app_count": 1,
+        "allowed_title_contains_count": 1,
+        "allow_first_match_execute": False,
+    }
+
+
+def test_screen_cli_allowlist_validate_plain_output_is_low_sensitive(tmp_path):
+    allowlist_file = tmp_path / "screen-allowlist.json"
+    allowlist_file.write_text(
+        json.dumps(
+            {
+                "allowed_apps": ["notepad.exe"],
+                "allowed_title_contains": ["private window title fragment"],
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    result = _run_cli("allowlist", "validate", "--path", str(allowlist_file))
+
+    assert result.returncode == 0, result.stderr
+    assert "status: ok" in result.stdout
+    assert "allowed_apps: 1" in result.stdout
+    assert "allowed_title_contains: 1" in result.stdout
+    assert "allow_first_match_execute: false" in result.stdout
+    assert "private window title fragment" not in result.stdout
+
+
+def test_screen_cli_allowlist_validate_rejects_malformed_json(tmp_path):
+    allowlist_file = tmp_path / "screen-allowlist.json"
+    allowlist_file.write_text(
+        json.dumps({"allowed_apps": "not-a-list"}, sort_keys=True),
+        encoding="utf-8",
+    )
+
+    result = _run_cli(
+        "allowlist",
+        "validate",
+        "--path",
+        str(allowlist_file),
+        "--json",
+    )
+
+    assert result.returncode == 2
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "error"
+    assert payload["error"]["code"] == "screen_runner_error"
+    assert payload["error"]["message"] == (
+        "allowlist-file.allowed_apps must be a list of strings"
+    )

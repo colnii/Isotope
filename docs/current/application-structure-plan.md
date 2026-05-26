@@ -205,7 +205,8 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   click 和 dry-run restore 验证命令，避免只跑 fake；target allowlist 可由
   `--allow-app` / `--allow-title-contains` 注入到 intent/grants，也可通过
   `--allowlist-file` 读取可复用 JSON allowlist；该文件只影响 target allowlist，
-  不绕过 execute approval gate；窗口最小化或截图不可用时 observe 降级为
+  不绕过 execute approval gate；`allowlist validate --path <file>` 可离线检查
+  allowlist 格式并只输出低敏计数；窗口最小化或截图不可用时 observe 降级为
   `metadata_only` 并写入 diagnostic artifact；
   `inspect` 可读取单个 screen artifact，`report` 可生成 run 级低敏摘要
   （artifact 列表、target metadata、截图可用性、恢复建议、control plan

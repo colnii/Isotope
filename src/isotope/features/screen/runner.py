@@ -180,6 +180,21 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Request approval and execute after immediate local approval.",
     )
 
+    allowlist_parser = subparsers.add_parser(
+        "allowlist",
+        help="Validate reusable screen target allowlist files.",
+    )
+    allowlist_subparsers = allowlist_parser.add_subparsers(
+        dest="allowlist_command",
+        required=True,
+    )
+    allowlist_validate_parser = allowlist_subparsers.add_parser(
+        "validate",
+        help="Validate one reusable target allowlist file.",
+    )
+    allowlist_validate_parser.add_argument("--path", required=True, help="Allowlist JSON file.")
+    allowlist_validate_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+
     matrix_parser = subparsers.add_parser("smoke-matrix", help="Print the manual smoke matrix.")
     matrix_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     real_smoke_parser = subparsers.add_parser(
@@ -263,6 +278,15 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 for command in commands:
                     print(command)
+            return 0
+        if args.command == "allowlist":
+            if args.allowlist_command != "validate":
+                raise ValueError(f"unknown allowlist command: {args.allowlist_command}")
+            payload = validate_target_allowlist_file(args.path)
+            if args.json:
+                _print_json(payload)
+            else:
+                print_screen_allowlist_validate_plain(payload)
             return 0
         if args.command == "inspect":
             payload = inspect_screen_artifact(
@@ -455,6 +479,28 @@ def _target_allowlist_from_args(
         "allowed_title_contains": merged_titles,
         "allow_first_match_execute": False,
     }
+
+
+def validate_target_allowlist_file(path: str) -> dict[str, Any]:
+    allowlist = _target_allowlist_from_file(path)
+    return {
+        "status": "ok",
+        "path": str(path),
+        "allowed_app_count": len(allowlist["allowed_apps"]),
+        "allowed_title_contains_count": len(allowlist["allowed_title_contains"]),
+        "allow_first_match_execute": False,
+    }
+
+
+def print_screen_allowlist_validate_plain(payload: dict[str, Any]) -> None:
+    print(f"status: {payload['status']}")
+    print(f"path: {payload['path']}")
+    print(f"allowed_apps: {payload['allowed_app_count']}")
+    print(f"allowed_title_contains: {payload['allowed_title_contains_count']}")
+    print(
+        "allow_first_match_execute: "
+        f"{str(payload['allow_first_match_execute']).lower()}"
+    )
 
 
 def _target_allowlist_from_file(path: str | None) -> dict[str, list[str]]:
