@@ -79,6 +79,8 @@ def test_supervisor_research_search_records_tavily_preflight_failure(
         "agent memory retrieval",
         "--provider",
         "tavily",
+        "--tavily-config",
+        str(tmp_path / "missing_research_tavily.toml"),
         "--json",
     )
 

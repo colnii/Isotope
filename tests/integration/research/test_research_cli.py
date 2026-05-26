@@ -89,6 +89,8 @@ def test_research_cli_search_records_tavily_preflight_failure(tmp_path, monkeypa
         "agent memory retrieval",
         "--provider",
         "tavily",
+        "--tavily-config",
+        str(tmp_path / "missing_research_tavily.toml"),
         "--json",
     )
 
