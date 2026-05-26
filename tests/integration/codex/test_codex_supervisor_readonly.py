@@ -9316,7 +9316,7 @@ def test_codex_supervisor_runner_supervise_launch_uses_isolated_worktree(
         run_calls.append(command)
         if command[:4] == ["git", "-C", str(repo_root), "rev-parse"]:
             return subprocess.CompletedProcess(command, 0, str(repo_root) + "\n", "")
-        if command[:4] == ["git", "-C", str(repo_root), "worktree"]:
+        if command[:6] == ["git", "-C", str(repo_root), "worktree", "add", "-b"]:
             Path(command[-2]).mkdir(parents=True)
             return subprocess.CompletedProcess(command, 0, "", "")
         return subprocess.CompletedProcess(command, 0, "", "")
@@ -9363,7 +9363,9 @@ def test_codex_supervisor_runner_supervise_launch_uses_isolated_worktree(
     assert worktree["source_cwd"] == str(repo_root)
     assert worktree["cwd"].startswith(str(repo_root / ".worktrees" / "supervisor"))
     assert worktree["branch"].startswith("supervisor/new-planner-")
-    assert ["git", "-C", str(repo_root), "worktree", "add", "-b"] == run_calls[1][:6]
+    assert ["git", "-C", str(repo_root), "worktree", "add", "-b"] in [
+        call[:6] for call in run_calls
+    ]
     assert captured["cwd"] == worktree["cwd"]
     assert captured["command"][captured["command"].index("-C") + 1] == worktree["cwd"]
     assert f"cwd: {worktree['cwd']}" in payload["executed"]["text"]

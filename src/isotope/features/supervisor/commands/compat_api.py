@@ -374,6 +374,7 @@ from .scan import (
     summarize_with_llm as _summarize_with_llm,
     unknown_tmux_bell_hook as _unknown_tmux_bell_hook,
 )
+from ..flow import _tmux_capture_pane
 from .trace import (
     latest_managed_record_events as _latest_managed_record_events,
     lifecycle_next_attention as _lifecycle_next_attention,

@@ -9,7 +9,6 @@ from typing import Any
 
 from isotope.features.supervisor.flow import (
     CodexSupervisorFlow,
-    _tmux_capture_pane,
     render_plain_report,
 )
 from isotope.features.supervisor.llm_action.llm_summary import (
@@ -83,7 +82,7 @@ def scan_report(args: argparse.Namespace, *, api: Any | None = None) -> Any:
         tmux_bell_hook_checker=None
         if needs_bell_hook_health
         else unknown_tmux_bell_hook,
-        tmux_pane_reader=_tmux_capture_pane if needs_tmux_pane else None,
+        tmux_pane_reader=api._tmux_capture_pane if needs_tmux_pane else None,
     )
     return flow.scan(
         limit=args.limit,
