@@ -64,7 +64,7 @@ class ResearchFlow:
             error = {
                 "code": "research_provider_failed",
                 "message": str(exc),
-                "retryable": True,
+                "retryable": exc.retryable,
             }
             if exc.details:
                 error["details"] = exc.details

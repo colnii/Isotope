@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+from isotope.features.research import providers as research_providers
 from isotope.features.research.providers import (
     CodexDelegatedResearchProvider,
     FakeResearchProvider,
@@ -40,6 +41,8 @@ def test_research_provider_registry_lists_implemented_and_planned_providers():
     assert get_research_provider_descriptor("fake").implemented is True
     assert get_research_provider_descriptor("codex").provider_name == "codex_delegated"
     assert get_research_provider_descriptor("tavily").implemented is False
+    assert get_research_provider_descriptor("tavily").status == "preflight"
+    assert get_research_provider_descriptor("tavily").selectable is True
 
 
 def test_build_research_provider_reuses_fake_provider():
@@ -49,9 +52,54 @@ def test_build_research_provider_reuses_fake_provider():
     assert provider.provider_name == "fake"
 
 
-def test_build_research_provider_fails_closed_for_planned_provider(tmp_path):
-    with pytest.raises(ValueError, match="registered but not implemented"):
-        build_research_provider("tavily", workspace_root=tmp_path)
+def test_build_research_provider_reuses_tavily_preflight_provider(tmp_path):
+    provider = build_research_provider(
+        "tavily",
+        tavily_api_key="test-key",
+        tavily_timeout_seconds=9,
+        tavily_max_results=3,
+    )
+
+    assert type(provider).__name__ == "TavilyPreflightResearchProvider"
+    assert provider.provider_name == "tavily"
+    assert provider.timeout_seconds == 9
+    assert provider.max_results == 3
+
+
+def test_tavily_preflight_provider_reports_missing_api_key_as_non_retryable():
+    provider = research_providers.TavilyPreflightResearchProvider(api_key=None)
+
+    with pytest.raises(ResearchProviderError) as exc_info:
+        provider.run("agent memory retrieval")
+
+    assert str(exc_info.value) == "tavily provider requires TAVILY_API_KEY"
+    assert exc_info.value.details == {
+        "provider_id": "tavily",
+        "error_code": "missing_api_key",
+        "required_env": "TAVILY_API_KEY",
+        "retryable": False,
+    }
+
+
+def test_tavily_preflight_provider_reports_deferred_network_execution():
+    provider = research_providers.TavilyPreflightResearchProvider(
+        api_key="test-key",
+        timeout_seconds=7,
+        max_results=3,
+    )
+
+    with pytest.raises(ResearchProviderError) as exc_info:
+        provider.run("agent memory retrieval")
+
+    assert "preflight only" in str(exc_info.value)
+    assert exc_info.value.details == {
+        "provider_id": "tavily",
+        "error_code": "network_execution_deferred",
+        "api_key_configured": True,
+        "timeout_seconds": 7,
+        "max_results": 3,
+        "retryable": False,
+    }
 
 
 def test_build_research_provider_rejects_unknown_provider():

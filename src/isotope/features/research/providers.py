@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -23,9 +24,19 @@ class ResearchProvider(Protocol):
 class ResearchProviderError(RuntimeError):
     """Raised when a delegated provider fails before returning research data."""
 
-    def __init__(self, message: str, *, details: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        message: str,
+        *,
+        details: dict[str, Any] | None = None,
+        retryable: bool | None = None,
+    ):
         super().__init__(message)
         self.details = dict(details or {})
+        if retryable is None:
+            detail_retryable = self.details.get("retryable")
+            retryable = detail_retryable if isinstance(detail_retryable, bool) else True
+        self.retryable = retryable
 
 
 @dataclass(frozen=True)
@@ -37,6 +48,7 @@ class ResearchProviderDescriptor:
     entrypoint: str
     requires: tuple[str, ...] = ()
     notes: str = ""
+    selectable: bool = False
 
     @property
     def implemented(self) -> bool:
@@ -52,6 +64,7 @@ class ResearchProviderDescriptor:
             "entrypoint": self.entrypoint,
             "requires": list(self.requires),
             "notes": self.notes,
+            "selectable": self.selectable,
         }
 
 
@@ -63,6 +76,7 @@ _PROVIDER_DESCRIPTORS: tuple[ResearchProviderDescriptor, ...] = (
         status="implemented",
         entrypoint="local_fake",
         notes="Deterministic provider for tests and smoke checks.",
+        selectable=True,
     ),
     ResearchProviderDescriptor(
         provider_id="codex",
@@ -72,15 +86,17 @@ _PROVIDER_DESCRIPTORS: tuple[ResearchProviderDescriptor, ...] = (
         entrypoint="codex_cli",
         requires=("codex_cli",),
         notes="Delegates the research prompt to a Codex CLI task and stores provider traces on failure.",
+        selectable=True,
     ),
     ResearchProviderDescriptor(
         provider_id="tavily",
         provider_name="tavily",
         label="Tavily API provider",
-        status="planned",
+        status="preflight",
         entrypoint="api",
-        requires=("api_key",),
-        notes="Planned normal API provider; not wired until config, budget, and trace handling land.",
+        requires=("TAVILY_API_KEY",),
+        notes="Preflight-only provider; validates config and records provider traces before real API wiring.",
+        selectable=True,
     ),
     ResearchProviderDescriptor(
         provider_id="searxng",
@@ -127,9 +143,12 @@ def build_research_provider(
     model: str | None = None,
     timeout_seconds: int = 120,
     max_attempts: int = 2,
+    tavily_api_key: str | None = None,
+    tavily_timeout_seconds: int = 30,
+    tavily_max_results: int = 5,
 ) -> ResearchProvider:
     descriptor = get_research_provider_descriptor(provider_id)
-    if not descriptor.implemented:
+    if not descriptor.implemented and not descriptor.selectable:
         raise ValueError(
             f"research provider {provider_id} is registered but not implemented yet; "
             "run `isotope-research providers` to inspect provider status"
@@ -146,6 +165,16 @@ def build_research_provider(
                 timeout_seconds=timeout_seconds,
             ),
             max_attempts=max_attempts,
+        )
+    if provider_id == "tavily":
+        return TavilyPreflightResearchProvider(
+            api_key=(
+                tavily_api_key
+                if tavily_api_key is not None
+                else os.environ.get("TAVILY_API_KEY")
+            ),
+            timeout_seconds=tavily_timeout_seconds,
+            max_results=tavily_max_results,
         )
     raise RuntimeError(f"research provider registry is missing builder for: {provider_id}")
 
@@ -187,6 +216,47 @@ class FakeResearchProvider:
             },
             "provenance": {"provider": self.provider_name},
         }
+
+
+class TavilyPreflightResearchProvider:
+    provider_name = "tavily"
+
+    def __init__(
+        self,
+        *,
+        api_key: str | None,
+        timeout_seconds: int = 120,
+        max_results: int = 5,
+    ):
+        self.api_key = api_key.strip() if isinstance(api_key, str) else None
+        self.timeout_seconds = timeout_seconds
+        self.max_results = max_results
+
+    def run(self, query: str) -> dict[str, Any]:
+        _require_query(query)
+        if not self.api_key:
+            raise ResearchProviderError(
+                "tavily provider requires TAVILY_API_KEY",
+                details={
+                    "provider_id": "tavily",
+                    "error_code": "missing_api_key",
+                    "required_env": "TAVILY_API_KEY",
+                    "retryable": False,
+                },
+                retryable=False,
+            )
+        raise ResearchProviderError(
+            "tavily provider is preflight only; network execution is deferred",
+            details={
+                "provider_id": "tavily",
+                "error_code": "network_execution_deferred",
+                "api_key_configured": True,
+                "timeout_seconds": self.timeout_seconds,
+                "max_results": self.max_results,
+                "retryable": False,
+            },
+            retryable=False,
+        )
 
 
 class CodexDelegatedResearchProvider:

@@ -423,6 +423,22 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
     research_parser.add_argument("--codex-home", help="Codex home for --provider codex.")
     research_parser.add_argument("--model", help="Codex model for --provider codex.")
     research_parser.add_argument(
+        "--tavily-api-key",
+        help="Tavily API key for --provider tavily.",
+    )
+    research_parser.add_argument(
+        "--tavily-timeout-seconds",
+        type=int,
+        default=30,
+        help="Tavily request timeout for future Tavily execution.",
+    )
+    research_parser.add_argument(
+        "--tavily-max-results",
+        type=int,
+        default=5,
+        help="Maximum Tavily results requested by future Tavily execution.",
+    )
+    research_parser.add_argument(
         "--timeout-seconds",
         type=int,
         default=120,

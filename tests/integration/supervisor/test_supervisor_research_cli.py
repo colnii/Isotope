@@ -65,7 +65,12 @@ def test_supervisor_research_providers_proxies_registry_json(tmp_path):
     ]
 
 
-def test_supervisor_research_search_fails_closed_for_planned_provider(tmp_path):
+def test_supervisor_research_search_records_tavily_preflight_failure(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+
     result = _run_cli(
         "research",
         "--root",
@@ -77,10 +82,12 @@ def test_supervisor_research_search_fails_closed_for_planned_provider(tmp_path):
         "--json",
     )
 
-    assert result.returncode == 2
+    assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout)
-    assert "registered but not implemented" in payload["error"]["message"]
-    assert not (tmp_path / "runs").exists()
+    assert payload["status"] == "provider_failed"
+    assert payload["error"]["retryable"] is False
+    assert payload["error"]["details"]["provider_id"] == "tavily"
+    assert payload["artifacts"][0]["artifact_type"] == "research.provider_trace"
 
 
 def test_supervisor_research_plain_output_lists_artifacts(tmp_path):

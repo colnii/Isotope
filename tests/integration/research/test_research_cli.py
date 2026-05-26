@@ -75,10 +75,12 @@ def test_research_cli_providers_plain_output_marks_planned_provider():
 
     assert result.returncode == 0, result.stderr
     assert "provider: fake implemented provider_name: fake" in result.stdout
-    assert "provider: tavily planned provider_name: tavily" in result.stdout
+    assert "provider: tavily preflight provider_name: tavily" in result.stdout
 
 
-def test_research_cli_search_fails_closed_for_planned_provider(tmp_path):
+def test_research_cli_search_records_tavily_preflight_failure(tmp_path, monkeypatch):
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+
     result = _run_cli(
         "search",
         "--root",
@@ -90,11 +92,44 @@ def test_research_cli_search_fails_closed_for_planned_provider(tmp_path):
         "--json",
     )
 
-    assert result.returncode == 2
+    assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout)
-    assert payload["status"] == "error"
-    assert "registered but not implemented" in payload["error"]["message"]
-    assert not (tmp_path / "runs").exists()
+    assert payload["status"] == "provider_failed"
+    assert payload["error"]["retryable"] is False
+    assert payload["error"]["details"]["error_code"] == "missing_api_key"
+    assert [artifact["artifact_type"] for artifact in payload["artifacts"]] == [
+        "research.provider_trace"
+    ]
+
+
+def test_research_cli_tavily_preflight_does_not_echo_api_key(tmp_path, monkeypatch):
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+
+    result = _run_cli(
+        "search",
+        "--root",
+        str(tmp_path),
+        "--query",
+        "agent memory retrieval",
+        "--provider",
+        "tavily",
+        "--tavily-api-key",
+        "test-secret-key",
+        "--tavily-timeout-seconds",
+        "9",
+        "--tavily-max-results",
+        "3",
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "provider_failed"
+    assert payload["error"]["details"]["error_code"] == "network_execution_deferred"
+    assert payload["error"]["details"]["api_key_configured"] is True
+    assert payload["error"]["details"]["timeout_seconds"] == 9
+    assert payload["error"]["details"]["max_results"] == 3
+    assert "test-secret-key" not in result.stdout
 
 
 def test_research_cli_plain_output_lists_artifacts(tmp_path):

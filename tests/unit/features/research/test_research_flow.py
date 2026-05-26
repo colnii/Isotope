@@ -164,6 +164,33 @@ def test_research_flow_marks_provider_errors_without_success_artifact(tmp_path):
     }
 
 
+def test_research_flow_preserves_non_retryable_provider_preflight_trace(tmp_path):
+    class MissingConfigProvider:
+        provider_name = "tavily"
+
+        def run(self, query: str) -> dict:
+            raise ResearchProviderError(
+                "tavily provider requires TAVILY_API_KEY",
+                details={
+                    "provider_id": "tavily",
+                    "error_code": "missing_api_key",
+                    "required_env": "TAVILY_API_KEY",
+                    "retryable": False,
+                },
+            )
+
+    flow = ResearchFlow.in_process(tmp_path, provider=MissingConfigProvider())
+
+    result = flow.search("agent memory retrieval")
+
+    assert result.status == "provider_failed"
+    assert result.error["retryable"] is False
+    trace_content = json.loads(flow.core.runtime.artifact_store.get_content(result.artifact_refs[0]))
+    assert trace_content["provider"] == "tavily"
+    assert trace_content["error"]["retryable"] is False
+    assert trace_content["error"]["details"]["error_code"] == "missing_api_key"
+
+
 def test_research_flow_persists_retry_attempt_details_in_provider_trace(tmp_path):
     class FailingProvider:
         provider_name = "codex_delegated"

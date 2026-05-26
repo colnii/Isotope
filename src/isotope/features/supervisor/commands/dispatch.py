@@ -74,6 +74,9 @@ def handle_research_command(args: argparse.Namespace, *, api) -> int:
             model=args.model,
             timeout_seconds=args.timeout_seconds,
             max_attempts=args.max_attempts,
+            tavily_api_key=args.tavily_api_key,
+            tavily_timeout_seconds=args.tavily_timeout_seconds,
+            tavily_max_results=args.tavily_max_results,
         ),
     )
     payload = flow.search(args.query).to_dict()

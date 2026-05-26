@@ -200,9 +200,12 @@
 - Provider registry / selection design（提供方注册与选择设计）第一片已完成：
   `isotope-research providers` 与 `isotope-supervisor research providers` 都能列出
   `fake`、`codex`、`tavily`、`searxng`、`browser`；`fake` / `codex` implemented，
-  其余 provider fail closed，不会绕过 `ResearchFlow` 或 artifact/provenance 边界。
-- 下一步优先做 Tavily provider 的 config/preflight 小片：只接环境变量或显式参数、
-  明确 budget / timeout / trace 字段，并继续复用 provider registry。
+  `tavily` 已接 config/preflight，SearXNG / browser 仍 fail closed；这些路径都不会
+  绕过 `ResearchFlow` 或 artifact/provenance 边界。
+- Tavily provider 的 config/preflight 小片已完成：只接 `TAVILY_API_KEY` 或显式
+  `--tavily-api-key`，并把缺配置或网络执行暂缓写入 `research.provider_trace`。
+- 下一步优先做 Tavily provider 的真实 API execution 小片：显式网络开关、timeout /
+  max results、响应归一化和 source-backed report 校验必须继续复用 provider registry。
 - Codex delegated provider 保持可信 fallback，Tavily 作为普通 API provider 候选，
   SearXNG 保持可选 self-hosted / fallback，browser/crawler 只做最低层 fetch
   fallback。
