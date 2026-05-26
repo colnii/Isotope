@@ -76,7 +76,18 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
     `restore_window_requires_approval` 恢复建议；`isotope-screen inspect/report`
     可读取单个 screen artifact 或生成 run 级低敏 observe 摘要，不展开截图正文；
     `control-restore` 可生成恢复窗口 dry-run plan，真实恢复仍必须显式批准。
-11. 代码结构继续以 `src/isotope/` 为 Python 主包，不新增 `packages/`、
+11. Web research 已有 shared Research flow（共享研究流程）和可用测试入口：
+    `isotope-research search/list/inspect` 与
+    `isotope-supervisor research search/list/inspect` 都复用同一套
+    `ResearchFlow`、artifact store 和 plain/json 输出边界。成功结果写
+    `research.raw_transcript` 与 `research.report`；provider 失败只写
+    `research.provider_trace`，并保留 retry attempt、Codex event/error
+    diagnostics（诊断）供 `inspect` 查看。当前 durable ingestion（持久摄取）
+    路径是 `search/fetch -> research.* artifact / provenance -> retrieval ->
+    optional memory promotion`；raw web text 不直接进入长期 memory。Codex delegated
+    provider 已有小预算 retry；Tavily / SearXNG / browser crawler 仍是后续 provider
+    layering（提供方分层）工作，不要另造绕开 artifact/provenance 的搜索系统。
+12. 代码结构继续以 `src/isotope/` 为 Python 主包，不新增 `packages/`、
    `aios` 或 kernel 主叙事。
 
 ## 当前入口
@@ -101,6 +112,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner scan --lim
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner dashboard --limit 3
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner state --json
 PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner check
+PYTHONPATH=src .venv/bin/python -m isotope.features.research.runner search --root /tmp/isotope-research --query "agent memory retrieval" --provider fake
+PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner research list --root /tmp/isotope-research
 ```
 
 文档-only 改动至少跑 `git diff --check` 和 Markdown link check。

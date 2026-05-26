@@ -17,6 +17,7 @@ Web dashboard，把这些分散的 AI 编程过程组织成可观察、可恢复
 - **多 worker 托管**：可启动后台 Codex worker 或接管 tmux 会话，并跟踪 worker 的状态协议和日志输出。
 - **目标队列**：支持把长期目标写入队列，由后台 daemon 动态消费、推进、归档或等待用户拍板。
 - **集成审查**：对已完成 worker 做只读检查，汇总分支、提交、diff、合并风险和后续验证建议。
+- **Web research substrate**：通过 `isotope-research` 或 Supervisor 代理入口执行 search / list / inspect，结果先落为 `research.*` artifact 和 provenance 证据，不直接写入长期 memory。
 - **Webhook 通知**：`loop`、`supervise`、`daemon start`、`integration-review` 和 `decision answer` 可用 `--webhook-url` 发送低敏结构化事件，`--webhook-secret` 会添加 HMAC 签名。
 - **Web dashboard**：本地页面展示和新增目标、查看 worker 详情、处理等待拍板，并可控制后台循环。
 
@@ -72,6 +73,14 @@ python3 -m venv .venv
 .venv/bin/isotope-supervisor decision list
 ```
 
+测试 research artifact 闭环：
+
+```bash
+.venv/bin/isotope-research search --root /tmp/isotope-research --query "agent memory retrieval" --provider fake
+.venv/bin/isotope-research list --root /tmp/isotope-research
+.venv/bin/isotope-supervisor research inspect --root /tmp/isotope-research --run-id run_001 --artifact-id artifact_002
+```
+
 ## 架构概览
 
 ```text
@@ -103,6 +112,7 @@ CLI report + Web dashboard + local event logs
 
 - CLI 和本地 Web dashboard 已可运行。
 - 目标队列、拍板记录、后台 daemon、worker 启动和集成审查已形成闭环。
+- Research 测试入口已形成 artifact-backed search / list / inspect 闭环，并可从 Supervisor 侧代理查看。
 - 仍在迭代产品交互、README 展示、前端可视化和更稳定的任务回收流程。
 
 这不是一个成熟商业产品，而是一个围绕真实 AI 编程工作流持续演进的工程项目。

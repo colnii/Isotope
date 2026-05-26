@@ -102,6 +102,11 @@
 - `supervisor.worker_review` 已进入 capability runner：`isotope-capability`
   可 search/plan/run，运行时复用既有 lightweight `worker-review`，只返回低敏
   决策摘要，不自动合并、不清理 worktree 或分支。
+- Web research 当前入口已闭环：`isotope-research search/list/inspect` 和
+  `isotope-supervisor research search/list/inspect` 复用同一套 Research flow、
+  `research.*` artifact 和 provenance 边界；成功 report、失败 trace、list
+  和 inspect 都已有 CLI / Supervisor 测试。后续不要另开孤立搜索系统，先复用
+  这些 artifact-backed entrypoints。
 
 ## 下一批任务
 
@@ -170,6 +175,27 @@
 - `docs/current/` 保持当前入口，不重新塞入长历史流水。
 - 旧文档线默认停止；除非用户明确指定单一类别，不继续移动 track、checkpoint、
   memory、kernel 或 status 文档。
+
+### 6. Web research provider layering 下一小片
+
+目标：
+
+- 在现有 `ResearchFlow` / `research.*` artifact / Supervisor proxy 入口上继续做，
+  不另造新搜索路径。
+- 下一步优先做 provider registry / selection design（提供方注册与选择设计）：
+  Codex delegated provider 保持可信 fallback，Tavily 作为普通 API provider 候选，
+  SearXNG 保持可选 self-hosted / fallback，browser/crawler 只做最低层 fetch
+  fallback。
+- durable memory promotion 仍保持 deferred：只能从 structured source-backed
+  artifact / observation 显式提升，不能从 raw web text 直写。
+
+验收：
+
+- 新 provider 或 provider registry 必须复用 `ResearchProvider`、`ResearchFlowResult.to_dict()`、
+  `research.provider_trace` 和 `isotope-research` / `isotope-supervisor research`
+  入口。
+- provider failure 仍要落 `research.provider_trace`，plain/json 输出继续可 inspect。
+- 更新相关 tests 和 current docs，不让 CLI、Supervisor、artifact、memory 边界分离。
 
 ## 验证命令
 

@@ -27,7 +27,7 @@
 | 受限清理 worktree | `cleanup list`、`cleanup delete-worktree` |
 | 规划或执行 capability | `capacity plan`、`capacity plan --execute-agent-loop`、`isotope-capability search/plan/run` |
 | 查询本地 memory preview | `memory --query <query>` |
-| 代理 Research flow | `research --root . --query "..." --provider fake --json` |
+| 代理 Research flow | `research --root . --query "..." --provider fake --json`、`research list --root .`、`research inspect --root . --run-id <run> --artifact-id <artifact>` |
 
 安装后优先使用：
 
@@ -57,7 +57,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 | `capacity` | 生成 capacity decision；显式执行时通过 tick driver 运行一次 `call_capability`。 | [capability inventory](./supervisor-capability-inventory.md)、[agent-loop tick driver boundary](../architecture/agent-loop-tick-driver-boundary-v0.2.md) |
 | `isotope-capability` | 搜索、预检或运行低敏 capability；`supervisor.worker_review` 会复用 lightweight worker review，不做合并或清理。 | [capability inventory](./supervisor-capability-inventory.md) |
 | `memory` / `worker-event` / `worker-manager` | 查询本地 memory preview、worker event、multi-worker read model 和 supervised capacity run 摘要。 | [terminology](./terminology.md)、[capability inventory](./supervisor-capability-inventory.md) |
-| `research` | 代理 shared Research flow，成功写 `research.report`，provider 失败只写 `research.provider_trace`。 | [application structure plan](./application-structure-plan.md)、[terminology](./terminology.md) |
+| `research` | 代理 shared Research flow，支持 search / list / inspect；成功写 `research.report`，provider 失败只写 `research.provider_trace`。 | [application structure plan](./application-structure-plan.md)、[terminology](./terminology.md) |
 | `isotope-screen inspect/report` | 读取 screen artifact 或生成 run 级低敏 observe 摘要，方便看清 metadata-only、截图可用性和恢复建议。 | [application structure plan](./application-structure-plan.md)、[terminology](./terminology.md) |
 
 ## 常用闭环
@@ -79,6 +79,22 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 .venv/bin/isotope-supervisor goal list
 .venv/bin/isotope-supervisor decision list
 .venv/bin/isotope-supervisor decision answer --request-id <request-id> --answer "..."
+```
+
+### Research artifact 闭环
+
+```bash
+.venv/bin/isotope-supervisor research --root /tmp/isotope-research --query "agent memory retrieval" --provider fake
+.venv/bin/isotope-supervisor research list --root /tmp/isotope-research --limit 5
+.venv/bin/isotope-supervisor research inspect --root /tmp/isotope-research --run-id run_001 --artifact-id artifact_002
+```
+
+独立入口同样可用：
+
+```bash
+.venv/bin/isotope-research search --root /tmp/isotope-research --query "agent memory retrieval" --provider fake
+.venv/bin/isotope-research list --root /tmp/isotope-research --artifact-type research.provider_trace
+.venv/bin/isotope-research inspect --root /tmp/isotope-research --run-id run_001 --artifact-id artifact_001
 ```
 
 ### 过夜和早上收口
@@ -113,11 +129,18 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
   `agent_loop_summary` 低敏字段，供 dashboard / web 复用。
 - `memory --query` 只返回 summary / refs / provenance preview；plain 输出会标出
   `content_policy`、匹配数量、source refs 和 provenance，不返回 raw content。
-- `research` provider 失败时只保存 `research.provider_trace`，并写入低敏
-  diagnostics（event counts、error messages、是否出现 agent_message、
-  timeout seconds），不生成成功 report。
+- `research` 是 artifact/provenance-backed search substrate（基于产物和来源证据的搜索底座），不是 memory 直写入口。
+- `research` search 成功时保存 `research.raw_transcript` 与 `research.report`；
+  provider 失败时只保存 `research.provider_trace`，并写入低敏 diagnostics
+  （event counts、error messages、是否出现 agent_message、timeout seconds、
+  retry attempts），不生成成功 report。
+- `research list` 只列 `research.*` artifact，按最近修改时间倒序；plain 输出给
+  可复制的 `run_id` / `artifact_id`，用于后续 `research inspect`。
 - `isotope-research inspect --root ... --run-id ... --artifact-id ...` 可读取
-  单个 `research.*` artifact 内容；非 research artifact 会被拒绝。
+  单个 `research.*` artifact 内容；非 research artifact 会被拒绝。Supervisor
+  侧 `research inspect` 复用同一边界。
+- raw web text 后续要进入 durable memory 时，必须先经过 artifact / provenance /
+  retrieval 和显式 promotion policy，不得绕过 Research flow 直接写 memory。
 
 ## 更新规则
 

@@ -42,6 +42,14 @@ worker，汇总证据，生成下一步建议，并通过白名单动作进行�
 .venv/bin/isotope-supervisor integration-review
 ```
 
+Research 测试入口：
+
+```bash
+.venv/bin/isotope-supervisor research --root /tmp/isotope-research --query "agent memory retrieval" --provider fake
+.venv/bin/isotope-supervisor research list --root /tmp/isotope-research
+.venv/bin/isotope-supervisor research inspect --root /tmp/isotope-research --run-id run_001 --artifact-id artifact_002
+```
+
 ## 当前边界
 
 - 自动动作必须走白名单、cooldown（冷却）和 workspace（工作区）边界。
@@ -50,6 +58,8 @@ worker，汇总证据，生成下一步建议，并通过白名单动作进行�
 - `delete_worktree` 只有在 done、archived、already_integrated 且路径安全时才允许。
 - 新增 Supervisor 能力前先查
   [Supervisor 能力详情](./supervisor-capability-details.md)。
+- `research` 只代理 artifact/provenance-backed Research flow；search 成功写
+  `research.report`，失败写 `research.provider_trace`，不直接写 durable memory。
 
 ## 相关文档
 
