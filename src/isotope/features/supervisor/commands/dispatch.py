@@ -42,6 +42,19 @@ def handle_research_command(args: argparse.Namespace, *, api) -> int:
         else:
             api._print_research_list_plain(payload)
         return 0
+    if args.research_action == "inspect":
+        if not args.run_id or not args.artifact_id:
+            raise ValueError("supervisor research inspect requires --run-id and --artifact-id")
+        payload = api.inspect_research_artifact(
+            api.Path(args.root),
+            run_id=args.run_id,
+            artifact_id=args.artifact_id,
+        )
+        if args.json:
+            api._print_json(payload)
+        else:
+            api._print_research_inspect_plain(payload)
+        return 0
     if not args.query:
         raise ValueError("supervisor research search requires --query")
     flow = api.ResearchFlow.in_process(

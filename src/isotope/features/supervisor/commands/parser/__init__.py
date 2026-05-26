@@ -399,7 +399,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
     research_parser.add_argument(
         "research_action",
         nargs="?",
-        choices=("search", "list"),
+        choices=("search", "list", "inspect"),
         default="search",
         help="Research action. Defaults to search for compatibility.",
     )
@@ -421,6 +421,8 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         default=20,
         help="Maximum number of research artifacts to list.",
     )
+    research_parser.add_argument("--run-id", help="Run id for research inspect.")
+    research_parser.add_argument("--artifact-id", help="Artifact id for research inspect.")
     research_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     capacity_parser = subparsers.add_parser(
         "capacity",

@@ -14,7 +14,9 @@ from isotope.capabilities.runner import CapabilityRunner
 from ..research.flow import ResearchFlow
 from ..research.providers import FakeResearchProvider
 from ..research.runner import (
+    inspect_research_artifact,
     list_research_artifacts,
+    print_research_inspect_plain as _print_research_inspect_plain,
     print_research_list_plain as _print_research_list_plain,
     print_artifacts_plain as _print_research_artifacts_plain,
 )

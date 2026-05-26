@@ -118,3 +118,85 @@ def test_supervisor_research_list_plain_output_is_copyable(tmp_path):
     assert "status: ok" in result.stdout
     assert "artifacts: 1" in result.stdout
     assert f"artifact: research.report {artifact.artifact_id} run: run_001 Fake research summary." in result.stdout
+
+
+def test_supervisor_research_inspect_proxies_research_artifact_json(tmp_path):
+    store = ArtifactStore(tmp_path)
+    artifact = store.create_artifact(
+        "run_001",
+        execution_id="exec_001",
+        artifact_type="research.report",
+        summary="Fake research summary.",
+        content='{"status":"ok","report":{"summary":"Fake research summary."}}',
+    )
+
+    result = _run_cli(
+        "research",
+        "inspect",
+        "--root",
+        str(tmp_path),
+        "--run-id",
+        "run_001",
+        "--artifact-id",
+        artifact.artifact_id,
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert payload["artifact"]["artifact_type"] == "research.report"
+    assert payload["artifact"]["ref"] == artifact.ref.to_dict()
+    assert payload["content"]["report"]["summary"] == "Fake research summary."
+
+
+def test_supervisor_research_inspect_plain_output_summarizes_provider_trace(tmp_path):
+    store = ArtifactStore(tmp_path)
+    artifact = store.create_artifact(
+        "run_001",
+        execution_id="exec_001",
+        artifact_type="research.provider_trace",
+        summary="provider failure trace: python docs",
+        content=json.dumps(
+            {
+                "status": "provider_failed",
+                "provider": "codex_delegated",
+                "query": "python docs",
+                "error": {
+                    "code": "research_provider_failed",
+                    "message": "codex cli did not return an agent message",
+                    "retryable": True,
+                    "details": {
+                        "attempt_count": 1,
+                        "retry_exhausted": True,
+                        "attempts": [
+                            {
+                                "attempt": 1,
+                                "retryable": True,
+                                "message": "codex cli did not return an agent message: request timed out",
+                                "details": {
+                                    "codex_error_messages": ["request timed out on attempt 1"],
+                                },
+                            }
+                        ],
+                    },
+                },
+            }
+        ),
+    )
+
+    result = _run_cli(
+        "research",
+        "inspect",
+        "--root",
+        str(tmp_path),
+        "--run-id",
+        "run_001",
+        "--artifact-id",
+        artifact.artifact_id,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert f"artifact: research.provider_trace {artifact.artifact_id}" in result.stdout
+    assert "attempts: 1 retry_exhausted: true" in result.stdout
+    assert "- attempt 1 retryable: true request timed out on attempt 1" in result.stdout

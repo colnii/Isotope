@@ -105,7 +105,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.json:
                 _print_json(payload)
             else:
-                _print_inspect_plain(payload)
+                print_research_inspect_plain(payload)
             return 0
         if args.command == "list":
             payload = list_research_artifacts(
@@ -222,7 +222,7 @@ def _decode_json_content(content: str) -> Any:
         return content
 
 
-def _print_inspect_plain(payload: dict[str, Any]) -> None:
+def print_research_inspect_plain(payload: dict[str, Any]) -> None:
     artifact = payload["artifact"]
     ref = artifact["ref"]
     print(f"status: {payload['status']}")
