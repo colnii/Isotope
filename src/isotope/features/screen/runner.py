@@ -194,6 +194,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     allowlist_validate_parser.add_argument("--path", required=True, help="Allowlist JSON file.")
     allowlist_validate_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    allowlist_template_parser = allowlist_subparsers.add_parser(
+        "template",
+        help="Print an editable reusable target allowlist template.",
+    )
+    allowlist_template_parser.add_argument("--json", action="store_true", help="Print JSON output.")
 
     matrix_parser = subparsers.add_parser("smoke-matrix", help="Print the manual smoke matrix.")
     matrix_parser.add_argument("--json", action="store_true", help="Print JSON output.")
@@ -280,14 +285,18 @@ def main(argv: list[str] | None = None) -> int:
                     print(command)
             return 0
         if args.command == "allowlist":
-            if args.allowlist_command != "validate":
-                raise ValueError(f"unknown allowlist command: {args.allowlist_command}")
-            payload = validate_target_allowlist_file(args.path)
-            if args.json:
+            if args.allowlist_command == "validate":
+                payload = validate_target_allowlist_file(args.path)
+                if args.json:
+                    _print_json(payload)
+                else:
+                    print_screen_allowlist_validate_plain(payload)
+                return 0
+            if args.allowlist_command == "template":
+                payload = build_target_allowlist_template()
                 _print_json(payload)
-            else:
-                print_screen_allowlist_validate_plain(payload)
-            return 0
+                return 0
+            raise ValueError(f"unknown allowlist command: {args.allowlist_command}")
         if args.command == "inspect":
             payload = inspect_screen_artifact(
                 Path(args.root),
@@ -489,6 +498,13 @@ def validate_target_allowlist_file(path: str) -> dict[str, Any]:
         "allowed_app_count": len(allowlist["allowed_apps"]),
         "allowed_title_contains_count": len(allowlist["allowed_title_contains"]),
         "allow_first_match_execute": False,
+    }
+
+
+def build_target_allowlist_template() -> dict[str, list[str]]:
+    return {
+        "allowed_apps": ["notepad.exe"],
+        "allowed_title_contains": ["Untitled - Notepad"],
     }
 
 

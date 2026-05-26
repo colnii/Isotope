@@ -110,6 +110,16 @@ def test_validate_target_allowlist_file_returns_low_sensitive_summary(tmp_path):
     }
 
 
+def test_build_target_allowlist_template_returns_editable_json_shape():
+    template = runner.build_target_allowlist_template()
+
+    assert template == {
+        "allowed_apps": ["notepad.exe"],
+        "allowed_title_contains": ["Untitled - Notepad"],
+    }
+    assert "allow_first_match_execute" not in template
+
+
 def test_build_click_action_uses_control_action_schema():
     assert runner._build_click_action(x=100, y=120, button="left") == {
         "type": "click",
@@ -198,6 +208,20 @@ def test_allowlist_validate_parser_accepts_path():
     assert args.command == "allowlist"
     assert args.allowlist_command == "validate"
     assert args.path == "screen-allowlist.json"
+    assert args.json is True
+
+
+def test_allowlist_template_parser_accepts_json_flag():
+    args = runner._build_parser().parse_args(
+        [
+            "allowlist",
+            "template",
+            "--json",
+        ]
+    )
+
+    assert args.command == "allowlist"
+    assert args.allowlist_command == "template"
     assert args.json is True
 
 

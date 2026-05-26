@@ -333,3 +333,24 @@ def test_screen_cli_allowlist_validate_rejects_malformed_json(tmp_path):
     assert payload["error"]["message"] == (
         "allowlist-file.allowed_apps must be a list of strings"
     )
+
+
+def test_screen_cli_allowlist_template_returns_editable_json():
+    result = _run_cli("allowlist", "template", "--json")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload == {
+        "allowed_apps": ["notepad.exe"],
+        "allowed_title_contains": ["Untitled - Notepad"],
+    }
+    assert "allow_first_match_execute" not in payload
+
+
+def test_screen_cli_allowlist_template_plain_output_is_json():
+    result = _run_cli("allowlist", "template")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["allowed_apps"] == ["notepad.exe"]
+    assert payload["allowed_title_contains"] == ["Untitled - Notepad"]
