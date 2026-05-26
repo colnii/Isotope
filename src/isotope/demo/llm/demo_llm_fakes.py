@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..llm.provider import LLMFinalAnswerResponse, LLMResponse, LLMToolCall, LLMToolCallResponse
+from ...llm.provider import LLMFinalAnswerResponse, LLMResponse, LLMToolCall, LLMToolCallResponse
 
 ACTION_EXECUTION_EVENTS = {
     "action.started",

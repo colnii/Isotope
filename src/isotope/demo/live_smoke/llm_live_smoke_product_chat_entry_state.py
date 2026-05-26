@@ -7,12 +7,12 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from ..features.chat.flow import (
+from ...features.chat.flow import (
     build_llm_product_chat_entry_resume_state,
     mark_llm_product_chat_entry_state_resumed,
     validate_llm_product_chat_entry_resume_state,
 )
-from ..platform.errors import IsotopeError
+from ...platform.errors import IsotopeError
 
 
 def _product_chat_entry_exit_code(payload: dict[str, Any]) -> int:

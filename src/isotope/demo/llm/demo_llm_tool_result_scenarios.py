@@ -7,17 +7,17 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from .demo_llm_fakes import (
+from ..llm.demo_llm_fakes import (
     _DemoToolCallProvider,
     _demo_final_answer_response,
     _demo_tool_call_response,
 )
-from .demo_terminal_scenarios import _DemoCompletedProcess, _RecordingProcessRunner
-from ..integrations.codex import server as codex_server
-from ..interfaces.http import create_llm_provider_http_app
-from ..llm.provider import build_llm_tool_result_message, submit_llm_tool_result_followup
-from ..platform.state.checkpoint_store import FileCheckpointStore
-from ..platform.state.projector import RunProjector
+from ..demo_terminal_scenarios import _DemoCompletedProcess, _RecordingProcessRunner
+from ...integrations.codex import server as codex_server
+from ...interfaces.http import create_llm_provider_http_app
+from ...llm.provider import build_llm_tool_result_message, submit_llm_tool_result_followup
+from ...platform.state.checkpoint_store import FileCheckpointStore
+from ...platform.state.projector import RunProjector
 
 
 def _run_llm_tool_result_loop_demo(root: Path) -> dict[str, Any]:

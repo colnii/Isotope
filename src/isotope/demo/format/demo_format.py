@@ -35,7 +35,7 @@ from .demo_format_llm import (
     _format_model_tool_bridge_plain_text,
     _format_terminal_exec_plain_text,
 )
-from .demo_trace_format import _format_trace
+from ..demo_trace_format import _format_trace
 
 
 _FORMATTERS: dict[str, Callable[[dict[str, Any]], str]] = {

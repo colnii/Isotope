@@ -6,17 +6,17 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from .demo_agent_loop_scenarios import _deterministic_planner_decisions
-from .demo_planner_helpers import (
+from ..agent_loop.demo_agent_loop_scenarios import _deterministic_planner_decisions
+from ..demo_planner_helpers import (
     _fixture_rejected,
     _planner_decision_summaries,
     _planner_io_fixture,
     _planner_io_validator_input,
     _validate_planner_io_output,
 )
-from ..platform.state.checkpoint_store import FileCheckpointStore
-from ..platform.state.projector import RunProjector
-from ..runtime.in_process import InProcessServer
+from ...platform.state.checkpoint_store import FileCheckpointStore
+from ...platform.state.projector import RunProjector
+from ...runtime.in_process import InProcessServer
 
 
 def _run_agent_loop_planner_io_validator_spike(root: Path) -> dict[str, Any]:

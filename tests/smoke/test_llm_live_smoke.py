@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 
 import isotope.integrations.codex.server as codex_server
-import isotope.demo.llm_live_smoke as llm_live_smoke
+import isotope.demo.live_smoke.llm_live_smoke as llm_live_smoke
 from isotope.interfaces.http import (
     create_codex_cli_http_app,
     create_http_app,

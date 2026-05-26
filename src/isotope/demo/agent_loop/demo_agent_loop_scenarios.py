@@ -6,9 +6,9 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from ..platform.state.checkpoint_store import FileCheckpointStore
-from ..platform.state.projector import RunProjector
-from ..runtime.in_process import InProcessServer
+from ...platform.state.checkpoint_store import FileCheckpointStore
+from ...platform.state.projector import RunProjector
+from ...runtime.in_process import InProcessServer
 
 
 def _run_agent_loop_friction_spike(root: Path) -> dict[str, Any]:
