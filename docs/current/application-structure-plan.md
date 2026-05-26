@@ -141,7 +141,7 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 第一片：
 
 - `src/isotope/capabilities/tools/terminal.py`
-- `src/isotope/execution/terminal_runner.py`
+- `src/isotope/execution/terminal/runner.py`
 - `tests/isotope/test_terminal_tool.py`
 - `tests/isotope/test_terminal_backend_app.py`
 
@@ -156,7 +156,7 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 - API 入口：`apps/api/` 已建立薄入口，`src/isotope/apps/api.py`
   提供 ASGI 兼容 `ApiApp` 和 `isotope-api routes`；已支持 query string
   转 body、JSON 响应头和稳定 invalid JSON 错误；当前只转发到
-  `interfaces/http.py`，不是完整 FastAPI 服务。
+  `interfaces/http/__init__.py`，不是完整 FastAPI 服务。
 - 平台 schema：动作、产物、记忆、外部快照、资源引用和工具协议已放入
   `src/isotope/platform/schemas/` 的具体文件；根 `isotope.models` 已删除。
 - 平台事件：`events.py`、`event_schema.py` 已迁入 `src/isotope/platform/events/`，活跃导入已切到新路径。
@@ -205,9 +205,9 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   `isotope-workbench`、`GET /workbench` 和 `POST /workbench` 已可调用；
   `isotope-demo --scenario workbench --trace` 可展示一条人类可读工作台流程；
   当前不是完整 UI。
-- Demo 输出：`src/isotope/demo.py` 仍是场景入口；plain text formatter
-  已拆到 `demo_format_core.py`、`demo_format_agent_loop.py` 和
-  `demo_format_llm.py`，`demo_format.py` 只保留 facade（门面）和兼容导出。
+- Demo 输出：`src/isotope/demo/__init__.py` 仍是场景入口；plain text formatter
+  已拆到 `demo/format/core.py`、`demo/format/agent_loop.py` 和
+  `demo/format/llm.py`，`demo/format/format.py` 只保留 facade（门面）和兼容导出。
 - Codex Supervisor：`src/isotope/features/supervisor/` 已提供
   本机会话扫描、中文汇报、托管启动和一行指令发送，
   `isotope-supervisor scan/advise/supervise/watch/launch/send`
@@ -226,11 +226,11 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
 - 平台注册表与错误：`action_registry.py`、`errors.py` 已迁入 `src/isotope/platform/`。
 - 平台工具：`ids.py` 已迁入 `src/isotope/platform/ids.py`。
 - 执行器：`executor.py` 已迁入 `src/isotope/execution/executor.py`。
-- 终端执行器：活跃实现已迁入 `src/isotope/execution/terminal_runner.py`；
-  `src/isotope/execution/terminal_backend.py` 和顶层旧路径已删除。
+- 终端执行器：活跃实现已迁入 `src/isotope/execution/terminal/runner.py`；
+  `src/isotope/execution/terminal/backend_adapter.py` 和顶层旧路径已删除。
 - 工具能力：`src/isotope/tools/` 旧空包已删除；真实工具能力放入
   `src/isotope/capabilities/tools/`，动作声明放入平台注册表。
-- 接口层：`http_api.py` 已迁入 `src/isotope/interfaces/http.py`；
+- 接口层：`http_api.py` 已迁入 `src/isotope/interfaces/http/__init__.py`；
   `HttpApiApp` 仍是库内 HTTP facade（门面入口），具体 dispatch（分发）
   已按 artifact、LLM、product 和 run 拆到 `interfaces/http_*_routes.py`。
 - LLM 层：模型 provider 和 tool bridge 已迁入 `src/isotope/llm/`；
@@ -244,10 +244,10 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   已迁入 `src/isotope/platform/state/`；checkpoint-assisted rebuild 的
   validation chain 已从 `projector_checkpoint.py` 拆到
   `projector_checkpoint_validation.py`。
-- 运行入口：活跃实现已迁入 `src/isotope/runtime/in_process.py`；
+- 运行入口：活跃实现已迁入 `src/isotope/runtime/in_process/`；
   `src/isotope/runtime/server.py` 旧代理已删除；workspace lease、workspace
-  artifact capture 和 worker handoff helper 已从 `in_process_workspace.py`
-  拆入同目录专门模块，`in_process_workspace.py` 只保留兼容导出。
+  artifact capture 和 worker handoff helper 已从 `in_process/workspace.py`
+  拆入同目录专门模块，`in_process/workspace.py` 只保留兼容导出。
 - 动作编译：`action_compiler.py` 已迁入 `src/isotope/runtime/action_compiler.py`。
 - 旧根路径和旧空包已完成当前已知清理；后续新增兼容代理需先登记。
 - 产品 core：`ProductCore`、`RuntimeDispatch`、`CoreSession`、

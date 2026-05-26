@@ -22,11 +22,11 @@
 | 托管控制 | `launch`、`resume`、`adopt`、`send`、`archive` | `features/supervisor/registry.py`、`runner.py` |
 | 目标队列 | `goal add/list/archive/plan`、goal replenish | `goal_queue.py`、Supervisor commands |
 | 拍板系统 | `decision list/answer/archive`、dashboard 等待拍板 | decision ledger、web handlers |
-| LLM planner | `--llm-action`、`--llm-execute`、context 后续动作 | `commands/llm_action.py`、`llm_summary.py` |
+| LLM planner | `--llm-action`、`--llm-execute`、context 后续动作 | `commands/llm/action.py`、`llm_summary.py` |
 | 上下文检索 | `context`、`request_context`、`supervisor.request_context` | `context.py`、`capabilities/runner.py` |
 | worker 审查 | `worker-review`、`integration-review`、`replan` | `worker_review.py`、`integration_review.py`、`replan.py` |
 | merge 工单 | `merge-work-order`、merge dispatch、auto promote | `merge_work_order.py`、`merge_dispatch.py` |
-| 状态投影 | `state`、`build_supervisor_state_snapshot(...)` | `features/supervisor/state/projection.py`、`platform/state/supervisor_snapshot.py`、`commands/state.py` |
+| 状态投影 | `state`、`build_supervisor_state_snapshot(...)` | `features/supervisor/state/projection.py`、`platform/state/supervisor_snapshot.py`、`commands/handlers/state.py` |
 | 本机页面 | `/dashboard.json`、`/events`、`/managed/send`、`/llm-action` | `web.py`、dashboard modules |
 | cleanup 护栏 | `delete_worktree` deny-by-default | cleanup command modules |
 

@@ -13,7 +13,7 @@
 - `src/isotope/` 根目录已不再保留顶层兼容代理。
 - `core/` 已开始承接产品主流程，当前不是兼容代理目录。
 - `assistant` 旧包已删除。
-- `demo.py`、`llm_live_smoke.py` 是正式命令入口。
+- `demo/__init__.py`、`llm_live_smoke.py` 是正式命令入口。
 - `capability_runner.py` 旧根入口已删除，正式命令指向
   `isotope.capabilities.runner`。
 - `tools/` 旧空包已删除；工具能力以 `capabilities/tools/`

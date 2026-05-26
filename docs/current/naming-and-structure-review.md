@@ -101,7 +101,7 @@ src/isotope/
 | `features/chat/product_chat.py` | product 前缀多余 | 已迁到 `features/chat/flow.py` |
 | `integrations/llm/provider.py` | LLM 不是普通外部系统集成 | 已迁到 `llm/provider.py` |
 | `integrations/llm/tool_bridge.py` | LLM 工具桥属于模型交互层 | 已迁到 `llm/tool_bridge.py` |
-| `execution/terminal_backend.py` | backend 泛，像临时实现 | 已迁到 `execution/terminal_runner.py` |
+| `execution/terminal/backend_adapter.py` | backend 泛，像临时实现 | 已迁到 `execution/terminal/runner.py` |
 | `platform/schemas/models.py` | `models` 太泛 | 已拆成 `actions.py`、`artifacts.py`、`memory.py`、`snapshots.py` |
 | `platform/errors.py` | 旧 `KernelError` 名称容易带回内核叙事 | 已改用 `IsotopeError`，旧名仅作兼容别名 |
 | 顶层 `state`、`events`、`rag`、`workspace` 旧入口 | 纯兼容代理，容易误导活跃路径 | 已删除第一批低风险代理 |
@@ -124,7 +124,7 @@ src/isotope/
 - `workspace/artifacts.py`：可接受。
 - `rag/ingestion.py`、`rag/retrieval.py`：可接受。
 - `capabilities/catalog.py`：可接受。
-- `interfaces/http.py`：当前测试和 demo 大量使用，先保留为库内 facade；
+- `interfaces/http/__init__.py`：当前测试和 demo 大量使用，先保留为库内 facade；
   具体 route handler 已拆进 `http_artifact_routes.py`、`http_llm_routes.py`、
   `http_product_routes.py` 和 `http_run_routes.py`。
 - `integrations/codex/`：外部接入语义明确。
@@ -175,7 +175,7 @@ src/isotope/
 
 目标：
 
-- 当前 `interfaces/http.py` 先保留，因为 demo 和测试大量使用。
+- 当前 `interfaces/http/__init__.py` 先保留，因为 demo 和测试大量使用。
 - `interfaces/` 只表示库内 facade，不表示真正 `apps/api/` 或 SDK。
 - 不新增 `interfaces/cli.py`、`interfaces/sdk.py`，除非已有明确调用方。
 
@@ -186,7 +186,7 @@ src/isotope/
 目标：
 
 - 将 `features/chat/product_chat.py` 改成更自然的 `flow.py`。
-- 将 `execution/terminal_backend.py` 改成更自然的 `terminal_runner.py`。
+- 将 `execution/terminal/backend_adapter.py` 改成更自然的 `terminal_runner.py`。
 - 需要有真实 tasks / projects / files 功能时，再建对应目录。
 - 不为了目录漂亮提前建一堆空功能。
 
@@ -357,7 +357,7 @@ src/isotope/
 
 - 新增 `src/isotope/apps/api.py` 作为可安装 API 应用入口。
 - 新增 `apps/api/` 薄入口目录和说明。
-- 新增 ASGI 兼容 `ApiApp`，把真实请求转发到 `interfaces/http.py`。
+- 新增 ASGI 兼容 `ApiApp`，把真实请求转发到 `interfaces/http/__init__.py`。
 - 新增 `isotope-api routes`，用于检查当前后端路由。
 - ASGI 入口已支持 query string、JSON 响应头和稳定 invalid JSON 错误。
 - 暂不引入 FastAPI / Uvicorn，不监听端口，不把业务逻辑放进 `apps/`。

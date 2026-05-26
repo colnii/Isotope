@@ -45,16 +45,16 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 | --- | --- | --- | --- |
 | 用户功能层 | `start-here`、`scan`、`dashboard`、`trace`、`guide`、`up`、`discover`、`web`、`watch`、`advise`、`supervise`、`loop`、`daemon` | `features/supervisor/runner.py`、`features/supervisor/commands/` | 面向人类使用的命令入口；dashboard、trace、decision、context、replan、memory、worker event 等命令的 handler/payload/rendering 已迁出 runner |
 | 托管控制层 | `launch`、`adopt`、`send`、`archive`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
-| Worker 审查层 | `worker-review`、`integration-review`、`replan` | `features/supervisor/worker_review.py`、`features/supervisor/integration_review.py`、`features/supervisor/replan.py`、`features/supervisor/commands/replan.py` | 汇总已托管 worker 的 worktree、branch、状态协议、改动、复查提示、合并提示、只读集成分组和下一轮候选 |
-| Merge 工单层 | `merge-work-order` builder、merge dispatch、merge promotion | `features/supervisor/merge_work_order.py`、`features/supervisor/merge_dispatch.py`、`features/supervisor/merge_promotion.py`、`features/supervisor/commands/merge_dispatch.py`、`features/supervisor/commands/promotion.py`、`features/supervisor/runner.py` | 根据 `integration-review` 生成动态 merge worker 工单；命令层负责 loop 派发、递归 worker guard、promotion gate、CI watch 和兼容接线 |
+| Worker 审查层 | `worker-review`、`integration-review`、`replan` | `features/supervisor/worker_review.py`、`features/supervisor/integration_review.py`、`features/supervisor/replan.py`、`features/supervisor/commands/handlers/replan.py` | 汇总已托管 worker 的 worktree、branch、状态协议、改动、复查提示、合并提示、只读集成分组和下一轮候选 |
+| Merge 工单层 | `merge-work-order` builder、merge dispatch、merge promotion | `features/supervisor/merge_work_order.py`、`features/supervisor/merge_dispatch.py`、`features/supervisor/merge_promotion.py`、`features/supervisor/commands/merge/dispatch.py`、`features/supervisor/commands/merge/promotion.py`、`features/supervisor/runner.py` | 根据 `integration-review` 生成动态 merge worker 工单；命令层负责 loop 派发、递归 worker guard、promotion gate、CI watch 和兼容接线 |
 | Codex 执行通道 | `resume`、`codex exec resume`、`--last` | `features/supervisor/runner.py`、`features/supervisor/registry.py` | 不依赖 tmux 恢复历史会话并投喂新 prompt |
-| 上下文能力层 | `context`、`request_context`、`supervisor.request_context`、上下文结果记录 | `features/supervisor/context.py`、`features/supervisor/commands/context.py`、`capabilities/catalog.py`、`capabilities/runner.py` | LLM 按需请求检索项目资料，BM25 后端按 query 对文档和代码候选排序，不固定注入全文；能力目录已提供 workspace read-only wrapper，会写入既有 Supervisor context store |
+| 上下文能力层 | `context`、`request_context`、`supervisor.request_context`、上下文结果记录 | `features/supervisor/context.py`、`features/supervisor/commands/handlers/context.py`、`capabilities/catalog.py`、`capabilities/runner.py` | LLM 按需请求检索项目资料，BM25 后端按 query 对文档和代码候选排序，不固定注入全文；能力目录已提供 workspace read-only wrapper，会写入既有 Supervisor context store |
 | Codex 集成层 | 读取 Codex session（会话记录）、索引标题和 agent 元数据 | `features/supervisor/flow.py` | 当前读取本机 `.jsonl`、`session_index.jsonl` 和 SQLite |
 | 扫描优化层 | 最近候选、首尾读取和标题兜底 | `features/supervisor/flow.py` | 避免每次页面刷新全量读历史 |
 | tmux 集成层 | tmux 启动、buffer/paste 发送和 bell hook | `bell_events.py`、`flow.py`、`registry.py` | 只控制登记过的 tmux 会话 |
 | 状态判断层 | 工作中、等待用户、疑似停住、疑似报错 | `features/supervisor/flow.py` | 规则提供候选和证据，不替代 LLM 判断 |
 | 状态依据层 | `status_evidence` 说明每个状态标签的来源 | `features/supervisor/flow.py` | 避免只给结论、不说明证据 |
-| 建议执行层 | `recommendation`、`command_suggestions`、`--execute` | `flow.py`、`commands/advice.py`、`commands/supervise_execution.py`、`commands/llm_action.py`、`commands/llm_execution.py`、`runner.py` | command suggestion（命令建议）、supervise/loop execution dispatch（执行分发）、LLM action dispatch（模型动作分发）和 LLM side-effect execution（副作用执行）已拆到命令层；tmux send 执行护栏仍复用 `runner.py` |
+| 建议执行层 | `recommendation`、`command_suggestions`、`--execute` | `flow.py`、`commands/advice/__init__.py`、`commands/supervise/execution.py`、`commands/llm/action.py`、`commands/llm/execution.py`、`runner.py` | command suggestion（命令建议）、supervise/loop execution dispatch（执行分发）、LLM action dispatch（模型动作分发）和 LLM side-effect execution（副作用执行）已拆到命令层；tmux send 执行护栏仍复用 `runner.py` |
 | 模型管理层 | `LLM summary`、`LLM planner` 和 TOML 号池 | `llm_summary.py` | 承担判断、调度和动作选择的 AI 路径 |
 | 状态协议层 | `SUPERVISOR_STATUS` 等状态协议 | `flow.py`、`registry.py` | 给被托管 Codex 主动汇报状态 |
 | 状态账本层 | lane state（窗口状态）和限频 | `lane_state.py` | 避免重复催促和刷屏 |
@@ -201,7 +201,7 @@ merge worker 成功合入后的交接边界也要分清：
 | --- | --- | --- |
 | `current_batch` | dashboard/web read model（读取模型） | 只展示仍活跃的 `active_goals` 和当前托管 worker；不启动 worker、不改目标状态、不替代 cleanup。 |
 | `fanout` | `loop` 与 `goal plan --fanout-execute` | 把多个活跃目标或 `parallel_recommendations` 展开成一批受控 `launch_session`；复用 goal queue、managed registry、prompt cooldown 和预算 gate，不另建队列。 |
-| `replan` | `commands/llm_context.py::maybe_replan_after_context_request` | 只在同一轮 `request_context` 成功后追加最近上下文，再让 LLM planner 重新选择一次受控动作；不得无限循环，不得绕过 `ask_user` gate。 |
+| `replan` | `commands/llm/context.py::maybe_replan_after_context_request` | 只在同一轮 `request_context` 成功后追加最近上下文，再让 LLM planner 重新选择一次受控动作；不得无限循环，不得绕过 `ask_user` gate。 |
 | `merge dispatch` | 已接入 runner loop | 读取 `ready_to_integrate` 候选，生成 `merge-work-order`，再用现有 `launch_session` 路径启动专门 merge worker；登记表写入 `worker_role=merge_dispatch`，runner 本身不得直接 cherry-pick、delete branch 或改写历史。 |
 
 ### 建议调用顺序
@@ -342,21 +342,21 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
 - `features/supervisor/commands/trace.py`：已承接 `trace` 命令和 `loop`
   payload 共用的 lifecycle trace 生成、轻量投影和 plain renderer；底层
   goal、decision、cleanup 与 registry 账本继续复用既有模块。
-- `features/supervisor/commands/cleanup.py`：已承接 `cleanup` 命令层、
+- `features/supervisor/commands/cleanup/__init__.py`：已承接 `cleanup` 命令层、
   可归档项和可删除 worktree 候选展示；继续复用 managed registry、
   goal queue 与 notification。
-- `features/supervisor/commands/cleanup_worktree.py`：已承接删除确认护栏、
+- `features/supervisor/commands/cleanup/cleanup_worktree.py`：已承接删除确认护栏、
   worktree 候选扫描、integration review 校验和 branch cleanup；继续复用
   现有 `.worktrees/supervisor` 路径边界。
-- `features/supervisor/commands/auto_action.py`：已承接 `loop --auto-execute`
+- `features/supervisor/commands/auto/auto_action.py`：已承接 `loop --auto-execute`
   的 rule-based auto action（规则自动动作）选择、continue/run budget
-  与 prompt cooldown 判断；执行仍通过 `commands/advice_execution.py`
+  与 prompt cooldown 判断；执行仍通过 `commands/advice/advice_execution.py`
   的旧 command suggestion 执行护栏。
-- `features/supervisor/commands/llm_action.py`：已承接 LLM action execution
+- `features/supervisor/commands/llm/action.py`：已承接 LLM action execution
   dispatch（模型动作执行分发）、failure guard（失败护栏）、context request
   budget 和 active-goal resume gate；底层 `resume/launch/context/ask_user`
-  执行函数继续走 `commands/llm_execution.py`，并保留 `runner.py` 兼容 alias。
-- `features/supervisor/commands/llm_planner.py`：已承接 LLM planner
+  执行函数继续走 `commands/llm/execution.py`，并保留 `runner.py` 兼容 alias。
+- `features/supervisor/commands/llm/planner.py`：已承接 LLM planner
   provider/failure glue（模型规划器供应商与失败处理胶水），包括无 target
   fallback、provider 选择、invalid response 失败记录和 retry-limit 拍板动作；
   继续通过 runner 兼容 alias 复用 `generate_llm_action_decision(...)` 和
@@ -365,7 +365,7 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   （失败账本护栏），包括失败事件记录、retry exhausted（重试耗尽）判断、
   failure decision request action（失败拍板动作）构造、lane name 和 goal id
   归属解析；继续复用 `failure_ledger.py`，不新建账本格式。
-- `features/supervisor/commands/llm_execution.py`：已承接 LLM side-effect
+- `features/supervisor/commands/llm/execution.py`：已承接 LLM side-effect
   execution（模型动作副作用执行）的 `resume_session`、`launch_session`、
   `request_context`、`ask_user`、worker profile、worktree 准备和运行中
   worker 检查；实现仍通过 `api` 复用 runner 兼容名，保护旧测试和
@@ -375,11 +375,11 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   action、fanout log 和批量 launch 执行汇总；纯规划仍复用
   `agents/scheduler/fanout.py`，status summary（状态摘要）复用
   `agents/scheduler/fanout_status.py`，不在命令层再写一套调度算法或摘要。
-- `features/supervisor/commands/merge_dispatch.py`：已承接 merge dispatch
+- `features/supervisor/commands/merge/dispatch.py`：已承接 merge dispatch
   orchestration（合并派发编排）、当前 worktree worker role 判断、recursive
   worker guard（递归 worker 护栏）和 merge dispatch execution 标记；底层
   launch spec 仍复用 `features/supervisor/merge_dispatch.py` 的纯 builder。
-- `features/supervisor/commands/promotion.py`：已承接 merge promotion
+- `features/supervisor/commands/merge/promotion.py`：已承接 merge promotion
   orchestration（合并提升编排），包括 blocked merge worker 修复派发、
   promotion gate、CI watch、拍板请求、repair worker lifecycle 和旧
   runner 私有入口兼容；底层 CI/git 判定仍复用
@@ -389,15 +389,15 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   非零退出/usage limit/timeout 解析、自动重试、retry-limit 拍板请求和
   lane failure payload；底层继续复用 `lane_state.py`、managed registry、
   decision request 和 runner 兼容 alias，不新建失败账本。
-- `features/supervisor/commands/auto_cleanup.py`：已承接 auto cleanup lifecycle
+- `features/supervisor/commands/auto/auto_cleanup.py`：已承接 auto cleanup lifecycle
   （自动清理生命周期），包括集成后 merge/source worker 自动归档、关联
   merge goal 归档、低敏通知写入、归档后 worktree 删除串联和 integration
   review 摘要 helper；继续复用 `cleanup.py`、`cleanup_worktree.py`、
   `goal_queue.py`、`notifications.py` 和 managed registry，不绕过删除护栏。
-- `features/supervisor/commands/advice.py`：已承接 `advise`、`supervise`
+- `features/supervisor/commands/advice/__init__.py`：已承接 `advise`、`supervise`
   和 `loop` 共同使用的 advice payload、automation status 和
   command suggestion 生成；实际发送、预算、cooldown（冷却时间）和托管
-  发送护栏已拆到 `features/supervisor/commands/advice_execution.py`。
+  发送护栏已拆到 `features/supervisor/commands/advice/advice_execution.py`。
 - `features/supervisor/commands/plain_rendering.py`：已承接 `advise` 和
   `supervise` 的 plain rendering（终端文本渲染），包括 LLM action、
   follow-up action、auto action、fanout execution、ask-user 和旧 command
@@ -412,49 +412,49 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   workspace scope（工作区作用域）过滤、scope payload、workspace root 解析和
   context cwd 选择；保留 runner alias 供 merge dispatch/promotion 等命令层
   复用同一工作区边界。
-- `features/supervisor/commands/supervise_payload.py`：已承接 supervise/loop
+- `features/supervisor/commands/supervise/payload.py`：已承接 supervise/loop
   base payload（基础载荷）初始化，包括 action report、state snapshot、
   active goals、goal replenishment、advice payload、workspace scope 和固定
   lifecycle 字段。
-- `features/supervisor/commands/llm_context.py`：已承接 supervise/loop 传给
+- `features/supervisor/commands/llm/context.py`：已承接 supervise/loop 传给
   LLM planner 的 context payload（上下文载荷），包括 recent context、
   decision answers、capacity decisions/call specs、worker review 和
   delete-worktree candidates；也承接成功 `request_context` 后的 follow-up
   replan，runner 只保留兼容 alias。
-- `features/supervisor/commands/supervise_planning.py`：已承接 supervise/loop
+- `features/supervisor/commands/supervise/planning.py`：已承接 supervise/loop
   planning payload（规划载荷），包括 current batch、fanout status/plan、
   fanout log、merge dispatch 和 recursive worker guard；继续复用
   `dashboard.py`、`fanout.py` 和 `merge_dispatch.py` 的 helper，不重写调度规则。
-- `features/supervisor/commands/supervise_action.py`：已承接 supervise/loop
+- `features/supervisor/commands/supervise/action.py`：已承接 supervise/loop
   LLM action selection（模型动作选择），按 fanout pause/plan、recursive worker
   guard、merge dispatch、idle loop 和 LLM planner 顺序选择本轮 `llm_action`；
   继续复用既有 action builder 和 `_promote_llm_command_suggestion(...)`。
-- `features/supervisor/commands/capacity.py`：已承接 capacity plan 命令、
+- `features/supervisor/commands/handlers/capacity.py`：已承接 capacity plan 命令、
   low-risk capability execution（低风险能力执行）和 loop
   `capacity_decisions` / `capacity_call_specs` 生产 glue；plain 输出已补齐
   低敏 planner / tick / artifact handoff summary；继续复用
   `agents/scheduler/capacity_graph.py`、`CapabilityRunner` 和
   `llm.capacity_calling`，不在 runner 中重写 capacity graph。
-- `features/supervisor/commands/advice_execution.py`：已承接旧 command
+- `features/supervisor/commands/advice/advice_execution.py`：已承接旧 command
   suggestion 执行路径，包括 `send_status`/`send_continue` 白名单校验、
   tmux target 选择、run budget、prompt cooldown、busy lane 拦截、
   `send_to_managed_codex` 调用和 lane prompt 记录；继续复用 runner
   兼容 alias，保护既有 monkeypatch 测试表面。
-- `features/supervisor/commands/decision.py`：已承接 `decision list/archive/answer`
+- `features/supervisor/commands/handlers/decision.py`：已承接 `decision list/archive/answer`
   的 payload 和 plain renderer；继续复用既有 decision request 账本与
   answer/webhook helper，避免在命令入口重写拍板流程。
-- `features/supervisor/commands/context.py`：已承接 `context` CLI handler；
+- `features/supervisor/commands/handlers/context.py`：已承接 `context` CLI handler；
   继续复用 `features/supervisor/context.py` 的 BM25 检索和结果存储，后续
   再判断是否下沉到通用 RAG 或 capability 层。
-- `features/supervisor/commands/replan.py`：已承接 `replan` CLI handler；
+- `features/supervisor/commands/handlers/replan.py`：已承接 `replan` CLI handler；
   只聚合 worker review、integration review 和 active goals，不执行 merge、
   归档或删除 worktree。
-- `features/supervisor/commands/memory.py`：已承接 `memory`、
+- `features/supervisor/commands/handlers/memory.py`：已承接 `memory`、
   `worker-event` 和 `worker-manager` CLI handler；底层继续复用 memory view，
   `memory --query` 会返回 summary / refs / provenance 的低敏 recall 结果；
   并通过 `platform/state` 的 worker event channel、`WorkerEvent` schema
   和 multi-worker read model 读取低敏 worker 状态。
-- `features/supervisor/commands/parser_memory.py`：已承接 `memory`、
+- `features/supervisor/commands/parser/memory.py`：已承接 `memory`、
   `worker-event` 和 `worker-manager` 的 argparse（参数解析器）注册；
   `parser.py` 只导入该 helper，避免继续扩大巨型 parser 函数。
 - `features/supervisor/state/projection.py`：已承接第一片只读 Supervisor
