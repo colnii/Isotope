@@ -36,6 +36,8 @@ def report_screen_artifacts(root: Path, *, run_id: str) -> dict[str, Any]:
     artifact_records: list[dict[str, Any]] = []
     metadata_payloads: list[dict[str, Any]] = []
     diagnostics: list[dict[str, Any]] = []
+    control_plans: list[dict[str, Any]] = []
+    control_results: list[dict[str, Any]] = []
     screenshot_count = 0
     for artifact in artifacts:
         record = {
@@ -53,16 +55,30 @@ def report_screen_artifacts(root: Path, *, run_id: str) -> dict[str, Any]:
             diagnostics.append(_screen_diagnostic_summary(record, content))
         elif artifact.artifact_type == "screen_screenshot":
             screenshot_count += 1
+        elif artifact.artifact_type == "screen_control_plan":
+            control_plans.append(_screen_control_summary(record, content))
+        elif artifact.artifact_type == "screen_control_result":
+            control_results.append(_screen_control_summary(record, content))
 
     reason_codes = [
         item["reason_code"]
         for item in diagnostics
         if isinstance(item.get("reason_code"), str) and item["reason_code"]
     ]
+    control_actions = [*control_plans, *control_results]
     summary = {
         "artifact_count": len(artifact_records),
         "metadata_count": len(metadata_payloads),
         "diagnostic_count": len(diagnostics),
+        "control_plan_count": len(control_plans),
+        "control_result_count": len(control_results),
+        "control_status": _screen_control_status(
+            plan_count=len(control_plans),
+            result_count=len(control_results),
+        ),
+        "control_actions": control_actions,
+        "approval_required": bool(control_plans),
+        "interferes_with_screen": bool(control_actions),
         "screenshot_count": screenshot_count,
         "screenshot_available": screenshot_count > 0,
         "observe_status": _screen_observe_status(
@@ -123,6 +139,23 @@ def print_screen_report_plain(payload: dict[str, Any]) -> None:
         print(f"selection: {summary['selection_reason']}")
     for recovery in summary.get("recovery_actions", []):
         print(f"recovery: {recovery}")
+    if summary.get("control_status") != "none":
+        print(f"control: {summary['control_status']}")
+        approval = "required" if summary.get("approval_required") else "not_required"
+        print(f"approval: {approval}")
+        print(f"interference: {str(summary.get('interferes_with_screen', False)).lower()}")
+        for action in summary.get("control_actions", []):
+            if not isinstance(action, dict):
+                continue
+            action_types = action.get("action_types")
+            if not isinstance(action_types, list) or not action_types:
+                action_types = ["unknown"]
+            print(
+                "action: "
+                f"{','.join(str(action_type) for action_type in action_types)} "
+                f"count={action.get('action_count', 0)} "
+                f"executed={str(action.get('executed', False)).lower()}"
+            )
     for artifact in payload.get("artifacts", []):
         print(
             "artifact: "
@@ -158,6 +191,31 @@ def _screen_diagnostic_summary(record: dict[str, Any], content: Any) -> dict[str
     return summary
 
 
+def _screen_control_summary(record: dict[str, Any], content: Any) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "artifact_id": record["artifact_id"],
+        "action_count": 0,
+        "executed": False,
+        "action_types": [],
+    }
+    if not isinstance(content, dict):
+        return summary
+    action_count = content.get("action_count")
+    if isinstance(action_count, int) and action_count >= 0:
+        summary["action_count"] = action_count
+    executed = content.get("executed")
+    if isinstance(executed, bool):
+        summary["executed"] = executed
+    planned_actions = content.get("planned_actions")
+    if isinstance(planned_actions, list):
+        summary["action_types"] = [
+            action_type
+            for action_type in planned_actions
+            if isinstance(action_type, str) and action_type
+        ]
+    return summary
+
+
 def _latest_target(metadata_payloads: list[dict[str, Any]]) -> dict[str, Any] | None:
     for payload in reversed(metadata_payloads):
         target = payload.get("target")
@@ -185,6 +243,14 @@ def _screen_observe_status(
     if metadata_count > 0 or "screen_screenshot_unavailable" in reason_codes:
         return "metadata_only"
     return "no_screen_artifacts"
+
+
+def _screen_control_status(*, plan_count: int, result_count: int) -> str:
+    if result_count > 0:
+        return "completed"
+    if plan_count > 0:
+        return "planned"
+    return "none"
 
 
 def _unique_strings(values: Any) -> list[str]:

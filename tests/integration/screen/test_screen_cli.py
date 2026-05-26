@@ -162,3 +162,68 @@ def test_screen_cli_report_plain_output_is_low_sensitive(tmp_path):
     assert "screenshot: unavailable" in result.stdout
     assert "recovery: restore_window_requires_approval" in result.stdout
     assert "raw backend stack" not in result.stdout
+
+
+def test_screen_cli_report_summarizes_control_plan(tmp_path):
+    store = ArtifactStore(tmp_path)
+    plan = store.create_artifact(
+        "run_001",
+        execution_id="exec_001",
+        artifact_type="screen_control_plan",
+        summary="screen control result",
+        content=json.dumps(
+            {
+                "action_count": 2,
+                "executed": False,
+                "planned_actions": ["restore_window", "click"],
+            },
+            sort_keys=True,
+        ),
+    )
+
+    result = _run_cli("report", "--root", str(tmp_path), "--run-id", "run_001", "--json")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert payload["summary"]["control_status"] == "planned"
+    assert payload["summary"]["control_plan_count"] == 1
+    assert payload["summary"]["control_result_count"] == 0
+    assert payload["summary"]["approval_required"] is True
+    assert payload["summary"]["interferes_with_screen"] is True
+    assert payload["summary"]["control_actions"] == [
+        {
+            "artifact_id": plan.artifact_id,
+            "action_count": 2,
+            "executed": False,
+            "action_types": ["restore_window", "click"],
+        }
+    ]
+
+
+def test_screen_cli_report_plain_output_summarizes_control_plan(tmp_path):
+    store = ArtifactStore(tmp_path)
+    store.create_artifact(
+        "run_001",
+        execution_id="exec_001",
+        artifact_type="screen_control_plan",
+        summary="screen control result",
+        content=json.dumps(
+            {
+                "action_count": 1,
+                "executed": False,
+                "planned_actions": ["restore_window"],
+                "private_note": "raw control payload should not print",
+            },
+            sort_keys=True,
+        ),
+    )
+
+    result = _run_cli("report", "--root", str(tmp_path), "--run-id", "run_001")
+
+    assert result.returncode == 0, result.stderr
+    assert "control: planned" in result.stdout
+    assert "approval: required" in result.stdout
+    assert "interference: true" in result.stdout
+    assert "action: restore_window count=1 executed=false" in result.stdout
+    assert "raw control payload" not in result.stdout

@@ -75,7 +75,8 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
     `metadata_only`，并通过 `screen_diagnostic` 返回
     `restore_window_requires_approval` 恢复建议；`isotope-screen inspect/report`
     可读取单个 screen artifact 或生成 run 级低敏 observe 摘要，不展开截图正文；
-    `control-restore` 可生成恢复窗口 dry-run plan，真实恢复仍必须显式批准。
+    `control-restore` 可生成恢复窗口 dry-run plan，真实恢复仍必须显式批准；
+    report 也会总结 control plan 的 action 类型、approval 需求和是否干扰屏幕。
 11. Web research 已有 shared Research flow（共享研究流程）和可用测试入口：
     `isotope-research search/list/inspect` 与
     `isotope-supervisor research search/list/inspect` 都复用同一套
