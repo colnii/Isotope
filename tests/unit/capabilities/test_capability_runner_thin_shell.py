@@ -132,6 +132,19 @@ def test_runner_discovers_supervisor_worker_review_from_default_catalog():
     assert "no_merge_or_cleanup" in description["safety_boundaries"]
 
 
+def test_runner_discovers_supervisor_integration_review_from_default_catalog():
+    runner = _runner()
+
+    assert "supervisor.integration_review" in _ids(runner.list_capabilities())
+    search = runner.search_capabilities(query="integration-review")
+
+    assert _ids(search["capabilities"]) == ["supervisor.integration_review"]
+    description = runner.describe_capability("supervisor.integration_review")
+    assert description["input_contract"]["required"] == ["codex_home"]
+    assert "workspace_read_only" in description["safety_boundaries"]
+    assert "no_merge_push_or_cleanup" in description["safety_boundaries"]
+
+
 def test_runner_status_mirrors_catalog_status_without_executing_capability():
     catalog = CapabilityCatalog(
         capabilities=[
@@ -274,11 +287,63 @@ def test_worker_review_plan_stops_when_required_inputs_are_missing():
     assert plan["scenario"] is None
 
 
+def test_integration_review_plan_stops_when_required_inputs_are_missing():
+    plan = _runner().plan_capability_run("supervisor.integration_review", inputs={})
+
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["missing_inputs"] == ["codex_home"]
+    assert plan["scenario"] is None
+
+
 def test_worker_review_plan_rejects_non_string_codex_home():
     with pytest.raises(ValueError, match="codex_home"):
         _runner().plan_capability_run(
             "supervisor.worker_review",
             inputs={"codex_home": 123},
+        )
+
+
+@pytest.mark.parametrize(
+    ("field_name", "bad_value"),
+    [
+        ("codex_home", 123),
+        ("base_ref", ["main"]),
+    ],
+)
+def test_integration_review_plan_rejects_non_string_inputs(field_name, bad_value):
+    inputs = {"codex_home": "/tmp/codex-home", "base_ref": "main"}
+    inputs[field_name] = bad_value
+
+    with pytest.raises(ValueError, match=field_name):
+        _runner().plan_capability_run("supervisor.integration_review", inputs=inputs)
+
+
+@pytest.mark.parametrize(
+    ("field_name", "bad_value"),
+    [
+        ("include_unfinished", "false"),
+        ("include_missing_worktrees", 1),
+        ("run_test_gate", "false"),
+        ("run_candidate_validation", None),
+    ],
+)
+def test_integration_review_plan_rejects_non_boolean_flags(field_name, bad_value):
+    inputs = {"codex_home": "/tmp/codex-home", field_name: bad_value}
+
+    with pytest.raises(ValueError, match=field_name):
+        _runner().plan_capability_run("supervisor.integration_review", inputs=inputs)
+
+
+def test_integration_review_plan_rejects_inputs_outside_contract():
+    with pytest.raises(ValueError, match="not allowed by input_contract"):
+        _runner().plan_capability_run(
+            "supervisor.integration_review",
+            inputs={
+                "codex_home": "/tmp/codex-home",
+                "prompt": "PRIVATE_CONTENT_SHOULD_NOT_PASS",
+            },
         )
 
 
@@ -564,5 +629,157 @@ def test_worker_review_capability_runs_existing_lightweight_review(tmp_path):
         }
     ]
     json.dumps(result)
+    for mapping in _walk_mapping(result):
+        assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
+
+
+def test_integration_review_capability_runs_existing_readonly_review(monkeypatch):
+    supervisor_module = importlib.import_module("isotope.capabilities.supervisor")
+    calls = []
+
+    def fake_collect_integration_reviews(**kwargs):
+        calls.append(kwargs)
+        return {
+            "status": "ok",
+            "base_ref": "main",
+            "include_unfinished": False,
+            "include_missing_worktrees": False,
+            "summary": {
+                "total": 1,
+                "merge_workers": 0,
+                "ready_to_integrate": 1,
+                "already_integrated": 0,
+                "needs_review": 0,
+                "conflict_risk": 0,
+                "stale_missing_worktrees": 0,
+            },
+            "groups": {
+                "merge_workers": [],
+                "ready_to_integrate": [
+                    {
+                        "record_id": "managed-ready",
+                        "name": "ready",
+                        "cwd": "/tmp/repo/.worktrees/supervisor/ready",
+                        "cwd_exists": True,
+                        "branch": "supervisor/ready",
+                        "worker_commit": "abc123",
+                        "base_ref": "main",
+                        "base_commit": "def456",
+                        "main_contains_worker": False,
+                        "main_has_worker_patch": False,
+                        "worker_contains_main": True,
+                        "dirty": False,
+                        "dirty_paths": [],
+                        "test_status": "skipped",
+                        "test_passed": None,
+                        "test_exit_code": None,
+                        "supervisor_protocol": {
+                            "status": "done",
+                            "summary": "ready",
+                            "next": "merge",
+                        },
+                        "merge_worker": False,
+                        "merge_worker_source": None,
+                        "merge_conflict": False,
+                        "merge_check": {
+                            "available": True,
+                            "conflict": False,
+                            "returncode": 0,
+                            "stdout": "PRIVATE_TREE_SHOULD_NOT_PASS",
+                            "stderr": "PRIVATE_STDERR_SHOULD_NOT_PASS",
+                        },
+                        "validation": {
+                            "status": "skipped",
+                            "commands": [
+                                {"command": ["pytest"], "stdout_tail": "PRIVATE"}
+                            ],
+                        },
+                        "group": "ready_to_integrate",
+                        "reason": "ready",
+                        "reasons": ["done"],
+                    }
+                ],
+                "already_integrated": [],
+                "needs_review": [],
+                "conflict_risk": [],
+            },
+            "workers": [],
+            "stale_missing_worktrees": [],
+            "safety": {
+                "auto_merge": False,
+                "push": False,
+                "delete_branch": False,
+                "note": "只读扫描 managed worker、git 分支和提交包含关系，不执行 merge/push/delete。",
+            },
+        }
+
+    monkeypatch.setattr(
+        supervisor_module,
+        "collect_integration_reviews",
+        fake_collect_integration_reviews,
+    )
+
+    result = _runner().run_capability(
+        "supervisor.integration_review",
+        inputs={"codex_home": "/tmp/codex-home"},
+    )
+
+    assert calls == [
+        {
+            "codex_home": Path("/tmp/codex-home"),
+            "base_ref": "main",
+            "include_unfinished": False,
+            "include_missing_worktrees": False,
+            "run_test_gate": False,
+            "run_candidate_validation": False,
+        }
+    ]
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "supervisor.integration_review"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "deterministic_readonly"
+    review = result["integration_review"]
+    assert review["status"] == "ok"
+    assert review["summary"]["ready_to_integrate"] == 1
+    assert review["groups"]["ready_to_integrate"] == [
+        {
+            "record_id": "managed-ready",
+            "name": "ready",
+            "cwd": "/tmp/repo/.worktrees/supervisor/ready",
+            "cwd_exists": True,
+            "branch": "supervisor/ready",
+            "worker_commit": "abc123",
+            "base_ref": "main",
+            "base_commit": "def456",
+            "main_contains_worker": False,
+            "main_has_worker_patch": False,
+            "worker_contains_main": True,
+            "dirty": False,
+            "dirty_path_count": 0,
+            "test_status": "skipped",
+            "test_passed": None,
+            "test_exit_code": None,
+            "supervisor_protocol": {
+                "status": "done",
+                "summary": "ready",
+                "next": "merge",
+            },
+            "merge_worker": False,
+            "merge_worker_source": None,
+            "merge_conflict": False,
+            "merge_check": {
+                "available": True,
+                "conflict": False,
+                "returncode": 0,
+            },
+            "validation": {"status": "skipped"},
+            "group": "ready_to_integrate",
+            "reason": "ready",
+            "reasons": ["done"],
+        }
+    ]
+    assert "PRIVATE_TREE_SHOULD_NOT_PASS" not in json.dumps(result)
+    assert "PRIVATE_STDERR_SHOULD_NOT_PASS" not in json.dumps(result)
+    assert "PRIVATE" not in json.dumps(result)
     for mapping in _walk_mapping(result):
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)

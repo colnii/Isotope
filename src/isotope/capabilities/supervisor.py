@@ -6,16 +6,22 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from ..features.supervisor.notifications.context import request_project_context
+from ..features.supervisor.workers.integration_review import (
+    GROUPS as INTEGRATION_REVIEW_GROUPS,
+    collect_integration_reviews,
+)
 from ..features.supervisor.workers.review import collect_worker_reviews
 from ..platform.schemas.input_contract import missing_required_input_keys
 
 
+SUPERVISOR_INTEGRATION_REVIEW_CAPABILITY = "supervisor.integration_review"
 SUPERVISOR_REQUEST_CONTEXT_CAPABILITY = "supervisor.request_context"
 SUPERVISOR_WORKER_REVIEW_CAPABILITY = "supervisor.worker_review"
 
 
 def is_supervisor_readonly_capability(capability_id: str) -> bool:
     return capability_id in {
+        SUPERVISOR_INTEGRATION_REVIEW_CAPABILITY,
         SUPERVISOR_REQUEST_CONTEXT_CAPABILITY,
         SUPERVISOR_WORKER_REVIEW_CAPABILITY,
     }
@@ -29,6 +35,11 @@ def validate_supervisor_readonly_inputs(
 ) -> dict[str, Any]:
     if capability_id == SUPERVISOR_REQUEST_CONTEXT_CAPABILITY:
         return _validate_supervisor_request_context_inputs(
+            inputs=inputs,
+            missing_inputs=missing_inputs,
+        )
+    if capability_id == SUPERVISOR_INTEGRATION_REVIEW_CAPABILITY:
+        return _validate_supervisor_integration_review_inputs(
             inputs=inputs,
             missing_inputs=missing_inputs,
         )
@@ -66,6 +77,34 @@ def run_supervisor_request_context(
         "status": "completed",
         "runner_kind": "deterministic_readonly",
         "context_result": context_result,
+    }
+
+
+def run_supervisor_integration_review(
+    *, inputs: Mapping[str, Any] | None
+) -> dict[str, Any]:
+    required_inputs = ["codex_home"]
+    missing_inputs = _missing_inputs(required_inputs, inputs)
+    if missing_inputs:
+        raise ValueError("missing required capability inputs: " + ", ".join(missing_inputs))
+    input_mapping = _validate_supervisor_integration_review_inputs(
+        inputs=inputs,
+        missing_inputs=missing_inputs,
+    )
+    payload = collect_integration_reviews(
+        codex_home=Path(input_mapping["codex_home"]),
+        base_ref=input_mapping["base_ref"],
+        include_unfinished=input_mapping["include_unfinished"],
+        include_missing_worktrees=input_mapping["include_missing_worktrees"],
+        run_test_gate=input_mapping["run_test_gate"],
+        run_candidate_validation=input_mapping["run_candidate_validation"],
+    )
+    return {
+        "kind": "capability_run_result",
+        "capability_id": SUPERVISOR_INTEGRATION_REVIEW_CAPABILITY,
+        "status": "completed",
+        "runner_kind": "deterministic_readonly",
+        "integration_review": _integration_review_capability_payload(payload),
     }
 
 
@@ -134,6 +173,45 @@ def _validate_supervisor_worker_review_inputs(
     ):
         raise ValueError("codex_home must be a string")
     return dict(input_mapping)
+
+
+def _validate_supervisor_integration_review_inputs(
+    *,
+    inputs: Mapping[str, Any] | None,
+    missing_inputs: list[str],
+) -> dict[str, Any]:
+    input_mapping = inputs or {}
+    if "codex_home" not in missing_inputs and not isinstance(
+        input_mapping.get("codex_home"), str
+    ):
+        raise ValueError("codex_home must be a string")
+
+    base_ref = input_mapping.get("base_ref", "main")
+    if not isinstance(base_ref, str) or not base_ref.strip():
+        raise ValueError("base_ref must be a string")
+
+    normalized = dict(input_mapping)
+    normalized["base_ref"] = base_ref
+    for name in (
+        "include_unfinished",
+        "include_missing_worktrees",
+        "run_test_gate",
+        "run_candidate_validation",
+    ):
+        normalized[name] = _bool_input(input_mapping, name, default=False)
+    return normalized
+
+
+def _bool_input(
+    input_mapping: Mapping[str, Any],
+    name: str,
+    *,
+    default: bool,
+) -> bool:
+    value = input_mapping.get(name, default)
+    if not isinstance(value, bool):
+        raise ValueError(f"{name} must be a boolean")
+    return value
 
 
 def _worker_review_capability_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -238,6 +316,110 @@ def _worker_review_safety_payload(raw: Any) -> dict[str, Any]:
         return {}
     return {
         "auto_merge": raw.get("auto_merge"),
+        "delete_branch": raw.get("delete_branch"),
+        "note": raw.get("note"),
+    }
+
+
+def _integration_review_capability_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    raw_groups = payload.get("groups") if isinstance(payload.get("groups"), Mapping) else {}
+    return {
+        "status": payload.get("status"),
+        "base_ref": payload.get("base_ref"),
+        "include_unfinished": payload.get("include_unfinished"),
+        "include_missing_worktrees": payload.get("include_missing_worktrees"),
+        "summary": dict(payload.get("summary") or {}),
+        "stale_missing_worktrees": [
+            _integration_missing_worktree_payload(item)
+            for item in payload.get("stale_missing_worktrees", [])
+            if isinstance(item, Mapping)
+        ],
+        "groups": {
+            group: [
+                _integration_review_item_payload(item)
+                for item in raw_groups.get(group, [])
+                if isinstance(item, Mapping)
+            ]
+            for group in INTEGRATION_REVIEW_GROUPS
+        },
+        "workers": [
+            _integration_review_item_payload(worker)
+            for worker in payload.get("workers", [])
+            if isinstance(worker, Mapping)
+        ],
+        "safety": _integration_review_safety_payload(payload.get("safety")),
+    }
+
+
+def _integration_missing_worktree_payload(item: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "record_id": item.get("record_id"),
+        "name": item.get("name"),
+        "cwd": item.get("cwd"),
+        "branch": item.get("branch"),
+        "status": item.get("status"),
+    }
+
+
+def _integration_review_item_payload(item: Mapping[str, Any]) -> dict[str, Any]:
+    protocol = (
+        item.get("supervisor_protocol")
+        if isinstance(item.get("supervisor_protocol"), Mapping)
+        else {}
+    )
+    merge_check = (
+        item.get("merge_check") if isinstance(item.get("merge_check"), Mapping) else {}
+    )
+    validation = (
+        item.get("validation") if isinstance(item.get("validation"), Mapping) else {}
+    )
+    dirty_paths = item.get("dirty_paths")
+    dirty_path_count = len(dirty_paths) if isinstance(dirty_paths, list) else 0
+    return {
+        "record_id": item.get("record_id"),
+        "name": item.get("name"),
+        "cwd": item.get("cwd"),
+        "cwd_exists": item.get("cwd_exists"),
+        "branch": item.get("branch"),
+        "worker_commit": item.get("worker_commit"),
+        "base_ref": item.get("base_ref"),
+        "base_commit": item.get("base_commit"),
+        "main_contains_worker": item.get("main_contains_worker"),
+        "main_has_worker_patch": item.get("main_has_worker_patch"),
+        "worker_contains_main": item.get("worker_contains_main"),
+        "dirty": item.get("dirty"),
+        "dirty_path_count": dirty_path_count,
+        "test_status": item.get("test_status"),
+        "test_passed": item.get("test_passed"),
+        "test_exit_code": item.get("test_exit_code"),
+        "supervisor_protocol": {
+            "status": protocol.get("status"),
+            "summary": protocol.get("summary"),
+            "next": protocol.get("next"),
+        },
+        "merge_worker": item.get("merge_worker"),
+        "merge_worker_source": item.get("merge_worker_source"),
+        "merge_conflict": item.get("merge_conflict"),
+        "merge_check": {
+            "available": merge_check.get("available"),
+            "conflict": merge_check.get("conflict"),
+            "returncode": merge_check.get("returncode"),
+        },
+        "validation": {
+            "status": validation.get("status"),
+        },
+        "group": item.get("group"),
+        "reason": item.get("reason"),
+        "reasons": list(item.get("reasons") or []),
+    }
+
+
+def _integration_review_safety_payload(raw: Any) -> dict[str, Any]:
+    if not isinstance(raw, Mapping):
+        return {}
+    return {
+        "auto_merge": raw.get("auto_merge"),
+        "push": raw.get("push"),
         "delete_branch": raw.get("delete_branch"),
         "note": raw.get("note"),
     }

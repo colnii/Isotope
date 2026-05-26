@@ -107,6 +107,10 @@
   `research.*` artifact 和 provenance 边界；成功 report、失败 trace、list
   和 inspect 都已有 CLI / Supervisor 测试。后续不要另开孤立搜索系统，先复用
   这些 artifact-backed entrypoints。
+- `supervisor.integration_review` 已进入同一 capability runner：默认复用既有
+  `integration-review`，关闭 test gate 和候选 validation，只返回
+  ready/already/needs/conflict 等低敏分组摘要，不 merge、不 push、不 archive、
+  不 cleanup。
 
 ## 下一批任务
 
@@ -136,20 +140,22 @@
 - 能给出先合哪一个、怎么验证、哪些测试必须跑。
 - 不和 root runtime 拆分或 flat refactor 混提交。
 
-### 3. Supervisor capability 下一小片
+### 3. Capability 路由下一小片
 
 目标：
 
-- 继续把已开发好的只读 Supervisor 组件挂到 capability runner。
-- 优先候选是 `supervisor.integration_review`，复用现有 `integration-review`
-  读取逻辑，输出 ready/already/needs/conflict 分组的低敏摘要。
-- 完成后再让 LLM planner / capacity path 复用这些 capability id，减少私有动作路径。
+- 让 LLM planner / capacity path 复用 `supervisor.worker_review` 和
+  `supervisor.integration_review` 的 capability id。
+- 优先从现有 `capacity_graph` / `CapabilityRunner.plan_capability_run(...)`
+  入口接，不新增私有 `worker-review` / `integration-review` 执行分支。
+- 保持模型只选择 capability 与输入，执行仍由 runner allowlist 和 input contract
+  控制。
 
 验收：
 
-- `isotope-capability search/plan/run` 能发现并运行该只读能力。
-- plan 缺必需输入时返回 missing inputs，不执行读盘或 git 命令。
-- run 只返回 low-sensitive summary，不 merge、不 push、不 delete、不 archive。
+- LLM/capacity 输出里能看到这两个 Supervisor capability 的 launch plan。
+- 缺输入或类型错误时走 capability runner 的 controlled error，不进入私有命令。
+- dashboard / docs 继续只展示低敏 summary，不读取 raw review payload。
 
 ### 4. Supervisor 大分支暂缓
 

@@ -166,6 +166,79 @@ class CapabilityCatalog:
                     tags=("external", "snapshot", "review"),
                 ),
                 Capability(
+                    capability_id="supervisor.integration_review",
+                    title="Supervisor Integration Review",
+                    description=(
+                        "Run existing integration-review collection in lightweight "
+                        "read-only mode for Supervisor merge readiness decisions."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "supervisor",
+                        "integration-review",
+                        "integration",
+                        "review",
+                        "merge",
+                        "read_only",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["codex_home"],
+                        "properties": {
+                            "codex_home": {
+                                "type": "string",
+                                "description": "Codex home directory containing the managed worker registry.",
+                            },
+                            "base_ref": {
+                                "type": "string",
+                                "description": "Base branch or ref used for integration checks.",
+                                "default": "main",
+                            },
+                            "include_unfinished": {
+                                "type": "boolean",
+                                "description": "Include unfinished workers in the read-only review.",
+                                "default": False,
+                            },
+                            "include_missing_worktrees": {
+                                "type": "boolean",
+                                "description": "Include missing worktrees in the review output.",
+                                "default": False,
+                            },
+                            "run_test_gate": {
+                                "type": "boolean",
+                                "description": "Run worker pytest gate during review.",
+                                "default": False,
+                            },
+                            "run_candidate_validation": {
+                                "type": "boolean",
+                                "description": "Run lint/test validation for ready candidates.",
+                                "default": False,
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "summary",
+                            "groups",
+                            "workers",
+                            "stale_missing_worktrees",
+                            "safety",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "workspace_read_only",
+                        "managed_registry_read_only",
+                        "git_read_only",
+                        "lightweight_integration_review",
+                        "no_merge_push_or_cleanup",
+                        "low_sensitive_summary_only",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="supervisor.request_context",
                     title="Supervisor Request Context",
                     description=(

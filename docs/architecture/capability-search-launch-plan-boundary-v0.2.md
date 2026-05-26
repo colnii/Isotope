@@ -31,8 +31,9 @@ aggressive branch 里有很多 search / route / ask / interactive / workflow 想
   - `python -m isotope.capabilities.runner search ...`
   - `python -m isotope.capabilities.runner plan ...`
 
-第一批不执行 capability；后续 `supervisor.request_context` 和
-`supervisor.worker_review` 已作为受限只读 capability 接入 `run`。
+第一批不执行 capability；后续 `supervisor.request_context`、
+`supervisor.worker_review` 和 `supervisor.integration_review` 已作为受限只读
+capability 接入 `run`。
 
 ## 4. Search Boundary
 

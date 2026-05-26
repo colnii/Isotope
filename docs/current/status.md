@@ -66,6 +66,10 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    `isotope-capability list/search/plan/run` 能发现、预检和运行它；执行时复用
    现有 `worker-review` lightweight 路径，只返回低敏 worker 决策摘要，
    不自动合并、不清理 worktree 或分支。
+   `supervisor.integration_review` 也已注册为同一路径的只读 capability；
+   默认复用现有 `integration-review`，但关闭 pytest gate 和候选 lint/test
+   validation，只返回 ready/already/needs/conflict 等低敏分组摘要，不执行
+   merge、push、archive 或 cleanup。
 10. Screen observe/control 已有 policy-gated（策略门控）第一片：
     `screen_observe` / `screen_control` 走 registry、policy、executor 和 artifact
     边界，Windows backend 仅用于手动 smoke；observe/control 已支持命令级

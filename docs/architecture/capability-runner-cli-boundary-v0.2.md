@@ -17,8 +17,11 @@ PYTHONPATH=src .venv/bin/python -m isotope.capabilities.runner list --json
 PYTHONPATH=src .venv/bin/python -m isotope.capabilities.runner describe artifact.review --json
 PYTHONPATH=src .venv/bin/python -m isotope.capabilities.runner status artifact.review --json
 PYTHONPATH=src .venv/bin/python -m isotope.capabilities.runner search worker-review --json
+PYTHONPATH=src .venv/bin/python -m isotope.capabilities.runner search integration-review --json
 PYTHONPATH=src .venv/bin/python -m isotope.capabilities.runner plan supervisor.worker_review --input-json '{"codex_home":"/home/lumber/.codex"}' --json
 PYTHONPATH=src .venv/bin/python -m isotope.capabilities.runner run supervisor.worker_review --input-json '{"codex_home":"/home/lumber/.codex"}' --json
+PYTHONPATH=src .venv/bin/python -m isotope.capabilities.runner plan supervisor.integration_review --input-json '{"codex_home":"/home/lumber/.codex"}' --json
+PYTHONPATH=src .venv/bin/python -m isotope.capabilities.runner run supervisor.integration_review --input-json '{"codex_home":"/home/lumber/.codex"}' --json
 ```
 
 当前 CLI 仍只复用 `CapabilityRunner` 的小 allowlist：
@@ -26,6 +29,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.capabilities.runner run supervisor.wo
 - `artifact.review`
 - `external.snapshot.review`
 - `approval.tool.runner`
+- `supervisor.integration_review`
 - `supervisor.request_context`
 - `supervisor.worker_review`
 
@@ -38,6 +42,7 @@ CLI 只做一层薄包装：
 - unknown capability 会在 side effect 前 fail closed。
 - JSON output 是低敏 summary。
 - `supervisor.worker_review` 强制走 lightweight worker review，只返回压缩决策摘要。
+- `supervisor.integration_review` 默认关闭 test gate 和候选 validation，只返回压缩分组摘要。
 - 不返回 raw input、prompt、trace、artifact full content、API key 或 provider raw response。
 
 明确不做：

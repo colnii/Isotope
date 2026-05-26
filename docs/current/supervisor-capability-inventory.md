@@ -158,6 +158,14 @@
   lightweight=True)`，返回 summary、decision summary、automation candidates
   和压缩 worker 项，不返回 prompt、validation command 或 raw diff，不自动
   merge、cleanup、delete branch。
+- `supervisor.integration_review` 已注册为同一 capability runner 下的只读
+  capability：`list/search/describe` 能看到它，`plan/run --input-json`
+  只要求 `codex_home`，可选 `base_ref`、`include_unfinished`、
+  `include_missing_worktrees`、`run_test_gate` 和 `run_candidate_validation`；
+  默认关闭 test gate 与候选 validation，复用现有
+  `collect_integration_reviews(...)` 只返回低敏分组摘要，不返回 merge-tree
+  stdout/stderr、validation command 输出或 raw payload，不自动 merge、push、
+  archive、cleanup 或 delete branch。
 - `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
 - `/managed/send` 成功发送后会更新 lane state。
 - `guide` 会按 cwd、lane name 和 tmux session 打印可复制工作流命令。

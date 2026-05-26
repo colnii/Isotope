@@ -63,6 +63,7 @@ def test_capability_runner_cli_lists_capabilities_as_json():
         "approval.tool.runner",
         "artifact.review",
         "external.snapshot.review",
+        "supervisor.integration_review",
         "supervisor.request_context",
         "supervisor.worker_review",
     ]
@@ -114,6 +115,18 @@ def test_capability_runner_cli_searches_supervisor_request_context_as_json():
     assert payload["status"] == "ok"
     assert [item["capability_id"] for item in payload["search"]["capabilities"]] == [
         "supervisor.request_context"
+    ]
+    _assert_low_sensitive(payload)
+
+
+def test_capability_runner_cli_searches_supervisor_integration_review_as_json():
+    result = _run_cli("search", "integration-review", "--json")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert [item["capability_id"] for item in payload["search"]["capabilities"]] == [
+        "supervisor.integration_review"
     ]
     _assert_low_sensitive(payload)
 
@@ -174,6 +187,21 @@ def test_capability_runner_cli_plans_worker_review_missing_inputs_as_json():
     assert payload["status"] == "ok"
     plan = payload["plan"]
     assert plan["capability_id"] == "supervisor.worker_review"
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["missing_inputs"] == ["codex_home"]
+    _assert_low_sensitive(payload)
+
+
+def test_capability_runner_cli_plans_integration_review_missing_inputs_as_json():
+    result = _run_cli("plan", "supervisor.integration_review", "--json")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    plan = payload["plan"]
+    assert plan["capability_id"] == "supervisor.integration_review"
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_readonly"
@@ -323,6 +351,33 @@ def test_capability_runner_cli_runs_worker_review_with_input_json(tmp_path):
     assert run["worker_review"]["status"] == "ok"
     assert run["worker_review"]["summary"]["total"] == 0
     assert run["worker_review"]["workers"] == []
+    _assert_low_sensitive(payload)
+
+
+def test_capability_runner_cli_runs_integration_review_with_input_json(tmp_path):
+    codex_home = tmp_path / "codex-home"
+    input_json = json.dumps({"codex_home": str(codex_home)})
+
+    result = _run_cli(
+        "run",
+        "supervisor.integration_review",
+        "--input-json",
+        input_json,
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    run = payload["run"]
+    assert run["capability_id"] == "supervisor.integration_review"
+    assert run["status"] == "completed"
+    assert run["runner_kind"] == "deterministic_readonly"
+    review = run["integration_review"]
+    assert review["status"] == "ok"
+    assert review["summary"]["total"] == 0
+    assert review["groups"]["ready_to_integrate"] == []
+    assert review["workers"] == []
     _assert_low_sensitive(payload)
 
 
