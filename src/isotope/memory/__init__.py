@@ -34,6 +34,31 @@ def _has_controlled_expand_grant(grants: dict[str, Any]) -> bool:
     )
 
 
+def _denied_memory_query_result(
+    *,
+    capability: str,
+    reason_code: str,
+    content_policy: str,
+) -> dict[str, Any]:
+    return {
+        "status": "denied",
+        "capability": capability,
+        "reason_code": reason_code,
+        "content_policy": content_policy,
+        "results": [],
+    }
+
+
+def _not_enabled_memory_query_result() -> dict[str, Any]:
+    return {
+        "status": "not_enabled",
+        "capability": "memory_query",
+        "reason_code": "memory_query_not_enabled",
+        "content_policy": "summary_refs_provenance_only",
+        "results": [],
+    }
+
+
 def _validate_memory_record_shape(record: MemoryRecord | dict[str, Any]) -> None:
     if isinstance(record, MemoryRecord):
         return
@@ -103,9 +128,17 @@ class LocalMemoryQueryService:
         if not isinstance(caller_context, dict):
             raise ValueError("memory_query caller_context must be provided as a dict")
         if not _has_memory_query_grant(grants):
-            return {"status": "denied", "capability": "memory_query", "results": []}
+            return _denied_memory_query_result(
+                capability="memory_query",
+                reason_code="missing_memory_query_grant",
+                content_policy="no_memory_read",
+            )
         if controlled_expand and not _has_controlled_expand_grant(grants):
-            return {"status": "denied", "capability": "memory_controlled_expand", "results": []}
+            return _denied_memory_query_result(
+                capability="memory_controlled_expand",
+                reason_code="missing_controlled_expand_grant",
+                content_policy="no_full_content_read",
+            )
         if not isinstance(query, str) or not query.strip():
             raise ValueError("memory query must be a non-empty string")
         if scope is not None and scope not in {"thread", "run", "session"}:
@@ -127,7 +160,12 @@ class LocalMemoryQueryService:
             }
             for record in matches.visible
         ]
-        return {"status": "ok", "capability": "memory_query", "results": results}
+        return {
+            "status": "ok",
+            "capability": "memory_query",
+            "content_policy": "summary_refs_provenance_only",
+            "results": results,
+        }
 
 
 class NotEnabledMemoryQueryService:
@@ -149,10 +187,18 @@ class NotEnabledMemoryQueryService:
         if not isinstance(caller_context, dict):
             raise ValueError("memory_query caller_context must be provided as a dict")
         if not _has_memory_query_grant(grants):
-            return {"status": "denied", "capability": "memory_query"}
+            return _denied_memory_query_result(
+                capability="memory_query",
+                reason_code="missing_memory_query_grant",
+                content_policy="no_memory_read",
+            )
         if controlled_expand and not _has_controlled_expand_grant(grants):
-            return {"status": "denied", "capability": "memory_controlled_expand"}
-        return {"status": "not_enabled", "capability": "memory_query", "results": []}
+            return _denied_memory_query_result(
+                capability="memory_controlled_expand",
+                reason_code="missing_controlled_expand_grant",
+                content_policy="no_full_content_read",
+            )
+        return _not_enabled_memory_query_result()
 
 
 class NotEnabledMemoryService:

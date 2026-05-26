@@ -60,7 +60,13 @@ def test_memory_query_without_query_grant_does_not_read_memory_store():
         caller_context={"run_id": "run_001"},
     )
 
-    assert result["status"] in {"denied", "limited", "not_enabled"}
+    assert result == {
+        "status": "denied",
+        "capability": "memory_query",
+        "reason_code": "missing_memory_query_grant",
+        "content_policy": "no_memory_read",
+        "results": [],
+    }
     assert store.calls == []
 
 
@@ -76,7 +82,13 @@ def test_controlled_expand_without_expand_grant_does_not_read_full_content():
         controlled_expand=True,
     )
 
-    assert result["status"] in {"denied", "limited", "not_enabled"}
+    assert result == {
+        "status": "denied",
+        "capability": "memory_controlled_expand",
+        "reason_code": "missing_controlled_expand_grant",
+        "content_policy": "no_full_content_read",
+        "results": [],
+    }
     assert "content" not in result
     assert "artifact_content" not in result
     assert "full_text" not in result
@@ -94,7 +106,9 @@ def test_memory_query_default_shape_excludes_full_content():
         caller_context={"run_id": "run_001"},
     )
 
-    assert result["status"] in {"denied", "limited", "not_enabled"}
+    assert result["status"] == "not_enabled"
+    assert result["reason_code"] == "memory_query_not_enabled"
+    assert result["content_policy"] == "summary_refs_provenance_only"
     assert "content" not in result
     assert "artifact_content" not in result
     assert "full_text" not in result
@@ -104,6 +118,41 @@ def test_memory_query_default_shape_excludes_full_content():
         assert "artifact_content" not in item
         assert "full_text" not in item
         assert "raw_artifact_content" not in item
+
+
+def test_local_memory_query_denials_use_same_reason_contract():
+    store = ExplodingMemoryStore()
+    service = memory.LocalMemoryQueryService(memory_store=store)
+
+    missing_query_grant = service.query(
+        run_id="run_001",
+        query="worked examples",
+        grants={"memory": {"query": False}},
+        caller_context={"run_id": "run_001"},
+    )
+    missing_expand_grant = service.query(
+        run_id="run_001",
+        query="worked examples",
+        grants={"memory": {"query": True, "controlled_expand": False}},
+        caller_context={"run_id": "run_001"},
+        controlled_expand=True,
+    )
+
+    assert missing_query_grant == {
+        "status": "denied",
+        "capability": "memory_query",
+        "reason_code": "missing_memory_query_grant",
+        "content_policy": "no_memory_read",
+        "results": [],
+    }
+    assert missing_expand_grant == {
+        "status": "denied",
+        "capability": "memory_controlled_expand",
+        "reason_code": "missing_controlled_expand_grant",
+        "content_policy": "no_full_content_read",
+        "results": [],
+    }
+    assert store.calls == []
 
 
 def test_projector_rebuild_still_does_not_read_memory_query_or_store(tmp_path):

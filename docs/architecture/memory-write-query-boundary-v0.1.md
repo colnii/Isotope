@@ -21,6 +21,8 @@
 - missing / malformed `grants` 或 `caller_context` 会受控 `ValueError` fail closed。
 - 无 memory query grant 时，不读取 memory store。
 - `controlled_expand=True` 但没有 expand grant / budget 时，受控拒绝且不读取 full content。
+- memory query denial / not-enabled result 现在包含低敏 `reason_code` 和
+  `content_policy`，便于 CLI / future API 解释拒绝原因而不暴露 raw content。
 - query result 默认不返回 full content、artifact content、raw content 或 full text。
 - `NotEnabledMemoryQueryService` 不是 query engine；controlled expand 仍未实现。
 - query 默认不返回 full content / artifact content。
@@ -367,8 +369,11 @@ Memory record persistence boundary design note 已落在 `memory-record-persiste
 
 - `NotEnabledMemoryQueryService` exists。
 - missing / malformed `grants` 或 `caller_context` is controlled rejected。
-- missing query grant does not read memory store。
-- controlled expand without expand grant / budget does not read full content。
+- missing query grant returns `reason_code: missing_memory_query_grant` and does not read memory store。
+- controlled expand without expand grant / budget returns
+  `reason_code: missing_controlled_expand_grant` and does not read full content。
+- not-enabled query returns `reason_code: memory_query_not_enabled` while preserving
+  summary / refs / provenance-only content policy。
 - default query result excludes full content / artifact content / raw content。
 - projector still does not read memory query service or memory store to advance `RunState`。
 - server still has no public `query_memory(...)` API。
