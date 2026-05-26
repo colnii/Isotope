@@ -22,6 +22,12 @@ from ..research.runner import (
     print_research_providers_plain as _print_research_providers_plain,
     print_artifacts_plain as _print_research_artifacts_plain,
 )
+from ..screen.artifacts import (
+    inspect_screen_artifact,
+    print_screen_inspect_plain as _print_screen_inspect_plain,
+    print_screen_report_plain as _print_screen_report_plain,
+    report_screen_artifacts,
+)
 from .notifications.context import read_recent_context_results, request_project_context
 from .planner.decision_requests import (
     DEFAULT_DECISION_TIMEOUT_SECONDS,

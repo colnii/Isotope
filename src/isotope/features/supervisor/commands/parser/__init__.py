@@ -447,6 +447,19 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
     research_parser.add_argument("--run-id", help="Run id for research inspect.")
     research_parser.add_argument("--artifact-id", help="Artifact id for research inspect.")
     research_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    screen_parser = subparsers.add_parser(
+        "screen",
+        help="Inspect or summarize screen artifacts through the shared screen report boundary.",
+    )
+    screen_parser.add_argument(
+        "screen_action",
+        choices=("report", "inspect"),
+        help="Screen artifact action.",
+    )
+    screen_parser.add_argument("--root", required=True, help="Runtime root directory.")
+    screen_parser.add_argument("--run-id", required=True, help="Run id for screen artifacts.")
+    screen_parser.add_argument("--artifact-id", help="Artifact id for screen inspect.")
+    screen_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     capacity_parser = subparsers.add_parser(
         "capacity",
         help="Plan one low-risk Supervisor capacity call.",

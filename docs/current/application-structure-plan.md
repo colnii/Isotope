@@ -207,7 +207,8 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   或截图不可用时 observe 降级为 `metadata_only` 并写入 diagnostic artifact；
   `inspect` 可读取单个 screen artifact，`report` 可生成 run 级低敏摘要
   （artifact 列表、target metadata、截图可用性、恢复建议、control plan
-  action 类型、approval 需求和屏幕干扰标记），当前不是默认自动 GUI agent。
+  action 类型、approval 需求和屏幕干扰标记）；Supervisor `screen report/inspect`
+  复用同一套 screen artifact report 边界，当前不是默认自动 GUI agent。
 - 工作台功能入口：`src/isotope/features/workbench/flow.py` 已提供
   `WorkbenchFlow` 和 `WorkbenchView`，可聚合 projects/tasks/files
   低敏摘要、可选 search 结果、空状态与最近更新时间；

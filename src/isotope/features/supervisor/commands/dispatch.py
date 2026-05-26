@@ -93,6 +93,33 @@ def handle_research_command(args: argparse.Namespace, *, api) -> int:
     return 0
 
 
+def handle_screen_command(args: argparse.Namespace, *, api) -> int:
+    if args.screen_action == "report":
+        payload = api.report_screen_artifacts(
+            api.Path(args.root),
+            run_id=args.run_id,
+        )
+        if args.json:
+            api._print_json(payload)
+        else:
+            api._print_screen_report_plain(payload)
+        return 0
+    if args.screen_action == "inspect":
+        if not args.artifact_id:
+            raise ValueError("supervisor screen inspect requires --artifact-id")
+        payload = api.inspect_screen_artifact(
+            api.Path(args.root),
+            run_id=args.run_id,
+            artifact_id=args.artifact_id,
+        )
+        if args.json:
+            api._print_json(payload)
+        else:
+            api._print_screen_inspect_plain(payload)
+        return 0
+    raise ValueError("supervisor screen action is not supported")
+
+
 COMMAND_HANDLERS = {
     "dashboard": _handle_dashboard_command,
     "integration-review": _handle_integration_review_command,
@@ -105,6 +132,7 @@ COMMAND_HANDLERS = {
     "memory": _handle_memory_command,
     "research": handle_research_command,
     "replan": _handle_replan_command,
+    "screen": handle_screen_command,
     "state": _handle_state_command,
     "worker-event": _handle_worker_event_command,
     "worker-manager": _handle_worker_manager_command,
