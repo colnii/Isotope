@@ -139,6 +139,10 @@ class ActionCompiler:
             "mode": _normalized_screen_mode(intent.get("mode", "non_intrusive")),
             "capture": _normalized_capture(intent.get("capture", ["metadata", "screenshot"])),
         }
+        if "target_allowlist" in intent:
+            payload["target_allowlist"] = _normalized_target_allowlist(
+                intent["target_allowlist"]
+            )
         if "summary" in intent:
             payload["summary"] = deepcopy(intent["summary"])
         return payload
@@ -152,6 +156,10 @@ class ActionCompiler:
             "actions": _normalized_screen_actions(intent.get("actions")),
             "capture": _normalized_capture(intent.get("capture", ["control_plan", "control_result"])),
         }
+        if "target_allowlist" in intent:
+            payload["target_allowlist"] = _normalized_target_allowlist(
+                intent["target_allowlist"]
+            )
         if "summary" in intent:
             payload["summary"] = deepcopy(intent["summary"])
         return payload
@@ -168,6 +176,31 @@ def _normalized_target_selector(value: Any) -> dict[str, Any]:
         "kind": normalized.kind,
         "selector": deepcopy(normalized.selector),
     }
+
+
+def _normalized_target_allowlist(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ValueError("screen target_allowlist must be a dict")
+    result = {
+        "allowed_apps": _string_list(
+            "screen target_allowlist.allowed_apps",
+            value.get("allowed_apps", []),
+        ),
+        "allowed_title_contains": _string_list(
+            "screen target_allowlist.allowed_title_contains",
+            value.get("allowed_title_contains", []),
+        ),
+        "allow_first_match_execute": value.get("allow_first_match_execute") is True,
+    }
+    if not result["allowed_apps"] and not result["allowed_title_contains"]:
+        raise ValueError("screen target_allowlist must include at least one allow rule")
+    return result
+
+
+def _string_list(field_name: str, value: Any) -> list[str]:
+    if not isinstance(value, list) or not all(isinstance(item, str) and item for item in value):
+        raise ValueError(f"{field_name} must be a list of non-empty strings")
+    return list(value)
 
 
 def _normalized_screen_mode(value: Any) -> str:

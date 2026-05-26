@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 import isotope.runtime.in_process as server
+from isotope.execution.screen import windows_backend
 
 
 class FakeScreenBackend:
@@ -177,3 +178,28 @@ def test_backend_reported_widened_grants_are_rejected(tmp_path):
     assert result["status"] == "failed"
     failed = next(event for event in api.get_events(run_id) if event.event_type == "action.failed")
     assert failed.payload["error_reason_code"] == "screen_backend_protocol_error"
+
+
+def test_windows_backend_request_payload_carries_target_selection_policy(tmp_path):
+    backend = FakeScreenBackend(_backend_result())
+    api, run_id = _new_run(tmp_path, backend)
+
+    api.submit_action(run_id, _observe_intent())
+
+    payload = windows_backend._request_payload(backend.calls[0])
+    assert payload["target_selection_policy"] == {
+        "allowed_apps": [],
+        "allowed_title_contains": [],
+        "allow_first_match_execute": False,
+    }
+
+
+def test_windows_backend_script_reports_first_match_metadata_and_guards_execute():
+    script = windows_backend._POWERSHELL_SCRIPT
+
+    assert "matched_count" in script
+    assert "selected_window_id" in script
+    assert "selection_reason" in script
+    assert "first_match" in script
+    assert "allow_first_match_execute" in script
+    assert "screen_target_ambiguous" in script

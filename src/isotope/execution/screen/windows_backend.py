@@ -121,6 +121,10 @@ def _load_result_payload(output_path: Path) -> dict[str, Any]:
 
 
 def _request_payload(request: ScreenBackendRequest) -> dict[str, Any]:
+    screen_grants = request.grants.get("screen", {})
+    target_selection_policy = {}
+    if isinstance(screen_grants, dict):
+        target_selection_policy = dict(screen_grants.get("target_selector_policy", {}))
     return {
         "operation": request.operation,
         "tool_name": request.tool_name,
@@ -133,6 +137,16 @@ def _request_payload(request: ScreenBackendRequest) -> dict[str, Any]:
         "execution_mode": request.execution_mode,
         "actions": [action.to_dict() for action in request.actions],
         "artifact_policy": dict(request.artifact_policy),
+        "target_selection_policy": {
+            "allowed_apps": list(target_selection_policy.get("allowed_apps", [])),
+            "allowed_title_contains": list(
+                target_selection_policy.get("allowed_title_contains", [])
+            ),
+            "allow_first_match_execute": target_selection_policy.get(
+                "allow_first_match_execute"
+            )
+            is True,
+        },
         "budget": dict(request.budget),
     }
 
@@ -267,15 +281,40 @@ _POWERSHELL_SCRIPT = textwrap.dedent(
         return $items
     }
 
-    function Select-Target($windows, $selector) {
+    function Select-MatchingWindows($windows, $selector) {
+        $matchingWindows = New-Object System.Collections.Generic.List[object]
         foreach ($window in $windows) {
-            $matches = $true
-            if ($selector.app -and ($window.process -ine $selector.app)) { $matches = $false }
-            if ($selector.title_contains -and ($window.title -notlike ("*" + $selector.title_contains + "*"))) { $matches = $false }
-            if ($selector.window_id -and ($window.window_id -ne $selector.window_id)) { $matches = $false }
-            if ($matches) { return $window }
+            $isMatch = $true
+            if ($selector.app -and ($window.process -ine $selector.app)) { $isMatch = $false }
+            if ($selector.title_contains -and ($window.title -notlike ("*" + $selector.title_contains + "*"))) { $isMatch = $false }
+            if ($selector.window_id -and ($window.window_id -ne $selector.window_id)) { $isMatch = $false }
+            if ($isMatch) { $matchingWindows.Add($window) }
         }
+        return $matchingWindows
+    }
+
+    function Select-Target($matches) {
+        if ($matches.Count -gt 0) { return $matches[0] }
         return $null
+    }
+
+    function Window-Summary($window) {
+        if ($null -eq $window) { return $null }
+        return [pscustomobject]@{
+            window_id = $window.window_id
+            title = $window.title
+            process = $window.process
+            bounds = $window.bounds
+        }
+    }
+
+    function Candidate-Summaries($matches) {
+        $items = New-Object System.Collections.Generic.List[object]
+        foreach ($window in $matches) {
+            if ($items.Count -ge 5) { break }
+            $items.Add((Window-Summary $window))
+        }
+        return $items
     }
 
     function Add-Artifact($artifacts, [string]$type, [string]$summary, [string]$content) {
@@ -349,10 +388,17 @@ _POWERSHELL_SCRIPT = textwrap.dedent(
         $request = Read-Request
         $windows = Get-Windows
         $selector = $request.target_selector.selector
-        $target = Select-Target $windows $selector
+        $matches = Select-MatchingWindows $windows $selector
+        $target = Select-Target $matches
+        $selectionReason = "no_match"
+        if ($matches.Count -gt 0) { $selectionReason = "first_match" }
         $metadata = @{
             window_count = $windows.Count
+            matched_count = $matches.Count
             target_found = ($null -ne $target)
+            selected_window_id = $(if ($null -ne $target) { $target.window_id } else { $null })
+            selection_reason = $selectionReason
+            candidates = Candidate-Summaries $matches
             target = $target
         } | ConvertTo-Json -Depth 8 -Compress
         if ($request.capture -contains "metadata") {
@@ -363,6 +409,16 @@ _POWERSHELL_SCRIPT = textwrap.dedent(
             $summary = "screen target was not observable"
             $reason = "screen_target_not_observable"
         } elseif ($request.operation -eq "control") {
+            if (
+                $request.execution_mode -eq "execute" -and
+                $matches.Count -gt 1 -and
+                -not $request.target_selection_policy.allow_first_match_execute
+            ) {
+                Add-Artifact $artifacts "screen_diagnostic" "screen ambiguous target diagnostic" $metadata
+                $status = "ambiguous_target"
+                $summary = "screen target matched multiple windows"
+                $reason = "screen_target_ambiguous"
+            } else {
             $control = Invoke-Control $target $request.actions $request.execution_mode
             $artifactType = "screen_control_plan"
             if ($request.execution_mode -eq "execute") { $artifactType = "screen_control_result" }
@@ -370,6 +426,7 @@ _POWERSHELL_SCRIPT = textwrap.dedent(
             $status = "completed"
             $summary = "screen control completed"
             $reason = "screen_control_completed"
+            }
         } else {
             if ($request.capture -contains "screenshot") {
                 try {

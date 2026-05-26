@@ -30,6 +30,15 @@ def _observe_intent() -> dict:
     }
 
 
+def _observe_intent_with_allowlist() -> dict:
+    intent = _observe_intent()
+    intent["target_allowlist"] = {
+        "allowed_apps": ["notepad.exe"],
+        "allowed_title_contains": [],
+    }
+    return intent
+
+
 def _control_intent(*, execution_mode: str = "execute") -> dict:
     return {
         "action": "call_tool",
@@ -86,6 +95,33 @@ def test_policy_grants_screen_observe_with_artifact_policy():
     assert decision.grants["screen"]["observe"] is True
     assert decision.grants["screen"]["control"] is False
     assert decision.grants["screen"]["artifact_policy"]["full_content_in_events"] is False
+
+
+def test_policy_carries_intent_target_allowlist_into_screen_grants():
+    compiler = ActionCompiler(registry=ActionTypeRegistry.default())
+    proposal = compiler.compile(_observe_intent_with_allowlist(), _runtime_context())
+
+    decision = PolicyEngine(registry=ActionTypeRegistry.default()).decide(proposal)
+
+    assert decision.outcome == "approved"
+    assert decision.grants["screen"]["target_selector_policy"]["allowed_apps"] == [
+        "notepad.exe"
+    ]
+
+
+def test_policy_denies_target_outside_intent_target_allowlist():
+    compiler = ActionCompiler(registry=ActionTypeRegistry.default())
+    intent = _observe_intent()
+    intent["target_allowlist"] = {
+        "allowed_apps": ["calc.exe"],
+        "allowed_title_contains": [],
+    }
+    proposal = compiler.compile(intent, _runtime_context())
+
+    decision = PolicyEngine(registry=ActionTypeRegistry.default()).decide(proposal)
+
+    assert decision.outcome == "denied"
+    assert decision.reason_codes == ["screen_target_not_allowed"]
 
 
 def test_policy_denies_execute_control_without_approval():

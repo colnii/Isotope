@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 from pathlib import Path
 from typing import Any
 
@@ -42,19 +43,19 @@ def _default_smoke_matrix() -> list[dict[str, str]]:
             "category": "basic_desktop_app",
             "sample": "notepad.exe or another simple text editor",
             "observe": "metadata,screenshot",
-            "control": "dry_run click/key plan",
+            "control": "real backend metadata smoke plus dry_run click/key plan",
         },
         {
             "category": "browser_or_web_app",
             "sample": "browser tab with a non-sensitive local page",
             "observe": "metadata,screenshot",
-            "control": "dry_run click/wheel plan",
+            "control": "real backend metadata smoke plus dry_run click/wheel plan",
         },
         {
             "category": "graphics_or_game_window",
             "sample": "windowed game/tool sample with no account or payment flow",
             "observe": "metadata,screenshot",
-            "control": "manual approval only",
+            "control": "real backend metadata smoke plus manual approval only",
         },
     ]
 
@@ -63,8 +64,9 @@ def _build_observe_intent(
     *,
     target_selector: dict[str, Any],
     capture: list[str],
+    target_allowlist: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return {
+    intent = {
         "action": "call_tool",
         "tool": "screen_observe",
         "target_selector": target_selector,
@@ -72,6 +74,9 @@ def _build_observe_intent(
         "capture": list(capture),
         "summary": "manual screen observe smoke",
     }
+    if target_allowlist is not None:
+        intent["target_allowlist"] = target_allowlist
+    return intent
 
 
 def _build_control_intent(
@@ -79,8 +84,9 @@ def _build_control_intent(
     target_selector: dict[str, Any],
     actions: list[dict[str, Any]],
     execution_mode: str,
+    target_allowlist: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return {
+    intent = {
         "action": "call_tool",
         "tool": "screen_control",
         "target_selector": target_selector,
@@ -89,6 +95,9 @@ def _build_control_intent(
         "actions": list(actions),
         "summary": "manual screen control smoke",
     }
+    if target_allowlist is not None:
+        intent["target_allowlist"] = target_allowlist
+    return intent
 
 
 def _build_click_action(*, x: int, y: int, button: str) -> dict[str, Any]:
@@ -151,6 +160,14 @@ def _build_parser() -> argparse.ArgumentParser:
 
     matrix_parser = subparsers.add_parser("smoke-matrix", help="Print the manual smoke matrix.")
     matrix_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    real_smoke_parser = subparsers.add_parser(
+        "real-smoke-plan",
+        help="Print real backend smoke commands for a target window.",
+    )
+    real_smoke_parser.add_argument("--root", required=True, help="Runtime root directory.")
+    real_smoke_parser.add_argument("--app", help="Target process name, for example notepad.exe.")
+    real_smoke_parser.add_argument("--title-contains", help="Substring expected in the target window title.")
+    real_smoke_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     return parser
 
 
@@ -164,6 +181,18 @@ def _add_target_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--app", help="Target process name, for example notepad.exe.")
     parser.add_argument("--title-contains", help="Substring expected in the target window title.")
     parser.add_argument("--window-id", help="Native window id from a prior metadata observation.")
+    parser.add_argument(
+        "--allow-app",
+        action="append",
+        default=None,
+        help="Allowed process name for this smoke command. Can be repeated.",
+    )
+    parser.add_argument(
+        "--allow-title-contains",
+        action="append",
+        default=None,
+        help="Allowed title fragment for this smoke command. Can be repeated.",
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -182,11 +211,28 @@ def main(argv: list[str] | None = None) -> int:
                         )
                     )
             return 0
+        if args.command == "real-smoke-plan":
+            commands = _real_smoke_commands(
+                root=args.root,
+                app=args.app,
+                title_contains=args.title_contains,
+            )
+            payload = {"status": "ok", "commands": commands}
+            if args.json:
+                _print_json(payload)
+            else:
+                for command in commands:
+                    print(command)
+            return 0
 
         target_selector = _target_selector_from_args(
             app=args.app,
             title_contains=args.title_contains,
             window_id=args.window_id,
+        )
+        target_allowlist = _target_allowlist_from_args(
+            allow_apps=args.allow_app,
+            allow_title_contains=args.allow_title_contains,
         )
         api = _new_server(Path(args.root))
         session = api.create_session()
@@ -197,7 +243,11 @@ def main(argv: list[str] | None = None) -> int:
             capture = args.capture or ["metadata", "screenshot"]
             result = api.submit_action(
                 run_id,
-                _build_observe_intent(target_selector=target_selector, capture=capture),
+                _build_observe_intent(
+                    target_selector=target_selector,
+                    capture=capture,
+                    target_allowlist=target_allowlist,
+                ),
             )
         elif args.command == "control":
             actions = _actions_from_json(args.action_json)
@@ -208,6 +258,7 @@ def main(argv: list[str] | None = None) -> int:
                     target_selector=target_selector,
                     actions=actions,
                     execution_mode=execution_mode,
+                    target_allowlist=target_allowlist,
                 ),
                 requires_approval=args.approve_execute,
             )
@@ -230,6 +281,7 @@ def main(argv: list[str] | None = None) -> int:
                     target_selector=target_selector,
                     actions=[_build_click_action(x=args.x, y=args.y, button=args.button)],
                     execution_mode=execution_mode,
+                    target_allowlist=target_allowlist,
                 ),
                 requires_approval=args.approve_execute,
             )
@@ -297,6 +349,53 @@ def _actions_from_json(value: str) -> list[dict[str, Any]]:
         if not isinstance(item, dict):
             raise ValueError(f"action-json[{index}] must be an object")
     return parsed
+
+
+def _target_allowlist_from_args(
+    *,
+    allow_apps: list[str] | None,
+    allow_title_contains: list[str] | None,
+) -> dict[str, Any] | None:
+    if not allow_apps and not allow_title_contains:
+        return None
+    return {
+        "allowed_apps": list(allow_apps or []),
+        "allowed_title_contains": list(allow_title_contains or []),
+        "allow_first_match_execute": False,
+    }
+
+
+def _real_smoke_commands(
+    *,
+    root: str,
+    app: str | None,
+    title_contains: str | None,
+) -> list[str]:
+    target_args: list[str] = []
+    allow_args: list[str] = []
+    if app:
+        target_args.extend(["--app", app])
+        allow_args.extend(["--allow-app", app])
+    if title_contains:
+        target_args.extend(["--title-contains", title_contains])
+        allow_args.extend(["--allow-title-contains", title_contains])
+    if not target_args:
+        raise ValueError("real smoke plan requires --app or --title-contains")
+    base = ["PYTHONPATH=src", ".venv/bin/python", "-m", "isotope.features.screen.runner"]
+    shared = ["--root", root, *target_args, *allow_args]
+    return [
+        _shell_join([*base, "observe", *shared, "--capture", "metadata", "--json"]),
+        _shell_join([*base, "observe", *shared, "--capture", "metadata", "--capture", "screenshot", "--json"]),
+        _shell_join([*base, "control-click", *shared, "--x", "10", "--y", "10", "--json"]),
+    ]
+
+
+def _shell_join(parts: list[str]) -> str:
+    return " ".join(_shell_quote(part) for part in parts)
+
+
+def _shell_quote(value: str) -> str:
+    return shlex.quote(value)
 
 
 def _ref_to_dict(value: Any) -> dict[str, Any] | None:

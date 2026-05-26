@@ -62,7 +62,10 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    它仍不调用真实 LLM，不自动多轮循环。
 10. Screen observe/control 已有 policy-gated（策略门控）第一片：
     `screen_observe` / `screen_control` 走 registry、policy、executor 和 artifact
-    边界，Windows backend 仅用于手动 smoke；当前不是默认自动 GUI agent。
+    边界，Windows backend 仅用于手动 smoke；observe/control 已支持命令级
+    target allowlist（目标白名单）和 deterministic first-match（确定性首个匹配）
+    metadata，execute 控制遇到多窗口匹配时默认拒绝 first-match 点击；当前不是
+    默认自动 GUI agent。
 11. 代码结构继续以 `src/isotope/` 为 Python 主包，不新增 `packages/`、
    `aios` 或 kernel 主叙事。
 

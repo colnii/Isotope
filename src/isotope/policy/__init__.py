@@ -124,6 +124,10 @@ class PolicyEngine:
             if not isinstance(screen_capabilities, dict):
                 raise ValueError("registry required_capabilities.screen must be a dict")
             screen_grant = _screen_grant_from_capabilities(screen_capabilities)
+            _apply_target_allowlist(
+                screen_grant,
+                proposal.payload.get("target_allowlist"),
+            )
             target_selector = _screen_target_selector_from_payload(
                 proposal.payload.get("target_selector")
             )
@@ -251,6 +255,7 @@ def _screen_grant_from_capabilities(capabilities: dict) -> dict:
         "target_selector_policy": {
             "allowed_apps": list(target_policy.get("allowed_apps", [])),
             "allowed_title_contains": list(target_policy.get("allowed_title_contains", [])),
+            "allow_first_match_execute": target_policy.get("allow_first_match_execute") is True,
         },
         "action_policy": {
             "modes": list(action_policy.get("modes", [])),
@@ -277,6 +282,24 @@ def _screen_target_selector_from_payload(value: object) -> ScreenTargetSelector:
     if not isinstance(selector, dict):
         raise ValueError("screen target_selector.selector must be a dict")
     return ScreenTargetSelector(kind=value.get("kind"), selector=dict(selector))
+
+
+def _apply_target_allowlist(screen_grant: dict, target_allowlist: object) -> None:
+    if target_allowlist is None:
+        return
+    if not isinstance(target_allowlist, dict):
+        raise ValueError("screen target_allowlist must be a dict")
+    allowed_apps = target_allowlist.get("allowed_apps", [])
+    if not isinstance(allowed_apps, list):
+        raise ValueError("screen target_allowlist.allowed_apps must be a list")
+    allowed_titles = target_allowlist.get("allowed_title_contains", [])
+    if not isinstance(allowed_titles, list):
+        raise ValueError("screen target_allowlist.allowed_title_contains must be a list")
+    screen_grant["target_selector_policy"] = {
+        "allowed_apps": list(allowed_apps),
+        "allowed_title_contains": list(allowed_titles),
+        "allow_first_match_execute": target_allowlist.get("allow_first_match_execute") is True,
+    }
 
 
 def _target_policy_denial(

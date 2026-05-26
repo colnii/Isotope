@@ -23,6 +23,7 @@ def test_smoke_matrix_output_requires_non_unique_samples():
 
     assert len(matrix) >= 3
     assert len({entry["category"] for entry in matrix}) >= 3
+    assert any("real" in entry["control"] for entry in matrix)
 
 
 def test_build_observe_intent_is_screen_observe():
@@ -32,11 +33,31 @@ def test_build_observe_intent_is_screen_observe():
             "selector": {"title_contains": "sample"},
         },
         capture=["metadata"],
+        target_allowlist=None,
     )
 
     assert intent["action"] == "call_tool"
     assert intent["tool"] == "screen_observe"
     assert intent["capture"] == ["metadata"]
+
+
+def test_build_observe_intent_can_carry_target_allowlist():
+    intent = runner._build_observe_intent(
+        target_selector={
+            "kind": "window",
+            "selector": {"title_contains": "sample"},
+        },
+        capture=["metadata"],
+        target_allowlist={
+            "allowed_apps": ["notepad.exe"],
+            "allowed_title_contains": ["sample"],
+        },
+    )
+
+    assert intent["target_allowlist"] == {
+        "allowed_apps": ["notepad.exe"],
+        "allowed_title_contains": ["sample"],
+    }
 
 
 def test_build_click_action_uses_control_action_schema():
@@ -56,6 +77,8 @@ def test_control_click_parser_accepts_coordinate_arguments():
             "runtime-root",
             "--app",
             "notepad.exe",
+            "--allow-app",
+            "notepad.exe",
             "--x",
             "100",
             "--y",
@@ -67,7 +90,20 @@ def test_control_click_parser_accepts_coordinate_arguments():
     assert args.button == "left"
     assert args.x == 100
     assert args.y == 120
+    assert args.allow_app == ["notepad.exe"]
     assert args.approve_execute is False
+
+
+def test_real_smoke_plan_prints_real_backend_commands():
+    commands = runner._real_smoke_commands(
+        root="runtime-root",
+        app="notepad.exe",
+        title_contains=None,
+    )
+
+    assert any(" observe " in command and "--capture metadata" in command for command in commands)
+    assert any(" control-click " in command for command in commands)
+    assert all("fake" not in command for command in commands)
 
 
 def test_json_print_writes_serializable_payload(capsys):

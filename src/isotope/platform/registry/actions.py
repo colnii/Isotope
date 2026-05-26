@@ -183,6 +183,8 @@ def _validate_target_selector_policy(policy: Any) -> None:
         value = policy.get(field_name, [])
         if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
             raise ValueError(f"screen.target_selector_policy.{field_name} must be a list of strings")
+    if policy.get("allow_first_match_execute", False) is not False:
+        raise ValueError("screen.target_selector_policy.allow_first_match_execute must default false")
 
 
 def _validate_action_policy(policy: Any) -> None:
@@ -301,6 +303,7 @@ def _default_screen_target_selector_policy() -> dict[str, Any]:
     return {
         "allowed_apps": [],
         "allowed_title_contains": [],
+        "allow_first_match_execute": False,
     }
 
 
