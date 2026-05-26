@@ -2693,6 +2693,9 @@ def test_codex_supervisor_web_serves_dashboard_html_and_json(tmp_path):
     assert "renderOperatorFocus" in html
     assert "renderFocusItem" in html
     assert "focus-primary-action" in html
+    assert "supervised-execution-focus" in html
+    assert "renderSupervisedExecutionFocus" in html
+    assert "recent_capacity_runs" in html
     assert "preferredWorkspaceItems" in html
     assert "itemInWorkspace" in html
     assert "workspace_cwd" in html

@@ -46,6 +46,13 @@ DASHBOARD_BODY = r'''  <header>
           <span class="focus-detail" id="focus-active-goals-detail">暂无</span>
         </div>
       </div>
+      <div class="supervised-focus" id="supervised-execution-focus">
+        <div class="supervised-focus-head">
+          <span>受监督执行</span>
+          <span id="supervised-execution-count">0</span>
+        </div>
+        <div class="focus-detail" id="supervised-execution-detail">暂无 supervised capacity run</div>
+      </div>
       <div class="focus-list" id="focus-list"></div>
     </div>
     <div class="control-center" id="control-center">

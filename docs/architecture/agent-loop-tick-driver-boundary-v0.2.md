@@ -43,6 +43,8 @@
 - Dashboard plain view 会优先从
   `multi_worker.supervised_execution.recent_capacity_runs` 打印最近 capacity 的
   tick / step / artifact 摘要，不读取或展开 raw `tick_result`。
+- Web 运行焦点区也直接读取 `multi_worker.supervised_execution`，只显示最近
+  supervised capacity run 的低敏 tick / step / artifact 摘要。
 
 HTTP body 只接受：
 

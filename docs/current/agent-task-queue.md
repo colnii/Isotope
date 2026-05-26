@@ -96,6 +96,9 @@
 - Dashboard plain view 已直接读取 `multi_worker.supervised_execution`，展示
   capacity worker 数、agent-loop capacity 调用数和最近 run 摘要；旧 worker
   summary 只作为缺少聚合视图时的 fallback。
+- Web 运行焦点区已直接读取 `multi_worker.supervised_execution`，展示最近
+  supervised capacity run 的 worker、capacity id、tick、step 和 artifact
+  低敏摘要。
 
 ## 下一批任务
 
@@ -125,19 +128,19 @@
 - 能给出先合哪一个、怎么验证、哪些测试必须跑。
 - 不和 root runtime 拆分或 flat refactor 混提交。
 
-### 3. Agent loop 下一小片
+### 3. Supervisor capability 下一小片
 
 目标：
 
-- 把 `supervised_execution` read model 接到更完整的 live dashboard 或 web
-  交互入口。
-- 仍不接真实 LLM，不做自动多轮循环，不引入 scheduler。
+- 把一个只读 Supervisor 操作注册成 capability，优先候选是
+  `worker-review` 或 `integration-review`。
+- 继续减少私有 LLM action，把可复用操作放进 capability catalog / runner。
 
 验收：
 
-- 新入口直接读取 `multi_worker.supervised_execution`，不重复遍历 memory store。
-- Dashboard / web 继续只从 summary 读取，不读取 raw tick payload。
-- 保持 no raw payload（不暴露原始内容）边界。
+- capability `list/search/describe/plan` 可发现，默认 plan-only 或只读执行。
+- 输出只含低敏 summary，不自动 merge、不删除 worktree、不 push。
+- Supervisor LLM planner 后续可通过 capacity calling 选择该能力。
 
 ### 4. Supervisor 大分支暂缓
 

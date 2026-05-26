@@ -125,6 +125,22 @@ DASHBOARD_STYLE_BASE = r'''    :root {
       gap: 8px;
       margin-top: 10px;
     }
+    .supervised-focus {
+      margin-top: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #f8fafc;
+      padding: 10px;
+      min-width: 0;
+    }
+    .supervised-focus-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      color: var(--text);
+      font-weight: 800;
+    }
     .focus-title {
       color: var(--text);
       font-weight: 800;

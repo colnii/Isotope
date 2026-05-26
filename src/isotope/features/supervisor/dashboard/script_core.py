@@ -208,6 +208,7 @@ DASHBOARD_SCRIPT_CORE = r'''    const groups = ["needs_attention", "done", "work
       document.getElementById("focus-active-goals-detail").textContent = goals.length
         ? goalNames(goals)
         : "暂无活跃目标";
+      renderSupervisedExecutionFocus(payload.multi_worker || {});
 
       const target = document.getElementById("focus-list");
       target.replaceChildren();
@@ -225,6 +226,31 @@ DASHBOARD_SCRIPT_CORE = r'''    const groups = ["needs_attention", "done", "work
       for (const item of focusItems) {
         target.append(renderFocusItem(item));
       }
+    }
+
+    function renderSupervisedExecutionFocus(multiWorker) {
+      const supervised = multiWorker.supervised_execution || {};
+      const runs = Array.isArray(supervised.recent_capacity_runs)
+        ? supervised.recent_capacity_runs.filter((item) => item && typeof item === "object")
+        : [];
+      const count = document.getElementById("supervised-execution-count");
+      const detail = document.getElementById("supervised-execution-detail");
+      count.textContent = String(runs.length);
+      if (!runs.length) {
+        detail.textContent = "暂无 supervised capacity run";
+        return;
+      }
+      const latest = runs[0];
+      const loop = latest.agent_loop_summary && typeof latest.agent_loop_summary === "object"
+        ? latest.agent_loop_summary
+        : {};
+      detail.textContent = [
+        latest.worker || "unknown",
+        latest.capacity_id || "unknown",
+        "tick=" + text(loop.agent_loop_tick_status),
+        "step=" + text(loop.agent_loop_planner_selected_step),
+        "artifact=" + text(loop.agent_loop_artifact_id)
+      ].join(" · ");
     }
 
     function renderFocusItem(item) {
