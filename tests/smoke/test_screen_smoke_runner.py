@@ -153,6 +153,49 @@ def test_validate_target_allowlist_file_returns_low_sensitive_summary(tmp_path):
     }
 
 
+def test_list_target_allowlist_profiles_returns_low_sensitive_sorted_summary(tmp_path):
+    profile_dir = tmp_path / "profiles"
+    profile_dir.mkdir()
+    (profile_dir / "mahjong.json").write_text(
+        json.dumps(
+            {
+                "allowed_apps": ["msedge.exe"],
+                "allowed_title_contains": ["Mahjong Soul"],
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    (profile_dir / "notes.json").write_text(
+        json.dumps({"allowed_apps": ["notepad.exe"]}, sort_keys=True),
+        encoding="utf-8",
+    )
+
+    result = runner.list_target_allowlist_profiles(str(profile_dir))
+
+    assert result == {
+        "status": "ok",
+        "profile_dir": str(profile_dir),
+        "profile_count": 2,
+        "profiles": [
+            {
+                "profile": "mahjong",
+                "path": str(profile_dir / "mahjong.json"),
+                "allowed_app_count": 1,
+                "allowed_title_contains_count": 1,
+                "allow_first_match_execute": False,
+            },
+            {
+                "profile": "notes",
+                "path": str(profile_dir / "notes.json"),
+                "allowed_app_count": 1,
+                "allowed_title_contains_count": 0,
+                "allow_first_match_execute": False,
+            },
+        ],
+    }
+
+
 def test_build_target_allowlist_template_returns_editable_json_shape():
     template = runner.build_target_allowlist_template()
 
@@ -285,6 +328,23 @@ def test_allowlist_template_parser_accepts_json_flag():
 
     assert args.command == "allowlist"
     assert args.allowlist_command == "template"
+    assert args.json is True
+
+
+def test_allowlist_list_parser_accepts_profile_dir():
+    args = runner._build_parser().parse_args(
+        [
+            "allowlist",
+            "list",
+            "--profile-dir",
+            "profiles",
+            "--json",
+        ]
+    )
+
+    assert args.command == "allowlist"
+    assert args.allowlist_command == "list"
+    assert args.profile_dir == "profiles"
     assert args.json is True
 
 

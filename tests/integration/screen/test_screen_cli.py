@@ -367,6 +367,82 @@ def test_screen_cli_allowlist_validate_rejects_malformed_json(tmp_path):
     )
 
 
+def test_screen_cli_allowlist_list_returns_low_sensitive_json(tmp_path):
+    profile_dir = tmp_path / "profiles"
+    profile_dir.mkdir()
+    (profile_dir / "mahjong.json").write_text(
+        json.dumps(
+            {
+                "allowed_apps": ["msedge.exe"],
+                "allowed_title_contains": ["private game title"],
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    (profile_dir / "notes.json").write_text(
+        json.dumps({"allowed_apps": ["notepad.exe"]}, sort_keys=True),
+        encoding="utf-8",
+    )
+
+    result = _run_cli(
+        "allowlist",
+        "list",
+        "--profile-dir",
+        str(profile_dir),
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload == {
+        "status": "ok",
+        "profile_dir": str(profile_dir),
+        "profile_count": 2,
+        "profiles": [
+            {
+                "profile": "mahjong",
+                "path": str(profile_dir / "mahjong.json"),
+                "allowed_app_count": 1,
+                "allowed_title_contains_count": 1,
+                "allow_first_match_execute": False,
+            },
+            {
+                "profile": "notes",
+                "path": str(profile_dir / "notes.json"),
+                "allowed_app_count": 1,
+                "allowed_title_contains_count": 0,
+                "allow_first_match_execute": False,
+            },
+        ],
+    }
+    assert "private game title" not in result.stdout
+
+
+def test_screen_cli_allowlist_list_plain_output_is_low_sensitive(tmp_path):
+    profile_dir = tmp_path / "profiles"
+    profile_dir.mkdir()
+    (profile_dir / "mahjong.json").write_text(
+        json.dumps(
+            {
+                "allowed_apps": ["msedge.exe"],
+                "allowed_title_contains": ["private game title"],
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    result = _run_cli("allowlist", "list", "--profile-dir", str(profile_dir))
+
+    assert result.returncode == 0, result.stderr
+    assert "status: ok" in result.stdout
+    assert "profile_dir:" in result.stdout
+    assert "profile_count: 1" in result.stdout
+    assert "profile: mahjong allowed_apps=1 allowed_title_contains=1" in result.stdout
+    assert "private game title" not in result.stdout
+
+
 def test_screen_cli_allowlist_template_returns_editable_json():
     result = _run_cli("allowlist", "template", "--json")
 

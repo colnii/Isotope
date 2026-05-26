@@ -106,7 +106,8 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
     `--allowlist-file` 只注入 target allowlist，不绕过 execute approval gate；
     `--allowlist-profile` 可从 profile 目录解析命名 allowlist，同样不绕过
     approval gate；
-    `allowlist validate` 可离线检查 allowlist 格式并只输出低敏计数；
+    `allowlist validate` 可离线检查 allowlist 格式并只输出低敏计数，
+    `allowlist list --profile-dir <dir>` 可只读列出 profile 名和低敏计数；
     `allowlist template` 可打印可编辑 JSON 骨架；
     deterministic first-match（确定性首个匹配）
     metadata，execute 控制遇到多窗口匹配时默认拒绝 first-match 点击；当前不是
