@@ -192,7 +192,7 @@ class InProcessAgentLoopMixin:
             query=query,
             scope=scope,
             grants={"memory": {"query": True}},
-            caller_context={"run_id": run_id, "surface": "agent_loop"},
+            caller_context={"run_id": run_id, "caller": "agent_loop", "purpose": "agent_recall"},
         )
         return {"step_status": "completed", **result}
 

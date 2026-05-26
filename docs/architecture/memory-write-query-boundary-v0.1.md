@@ -21,6 +21,8 @@
 - missing / malformed `grants` 或 `caller_context` 会受控 `ValueError` fail closed。
 - `caller_context.run_id` 缺失或与 query `run_id` 不一致时，会在读取 memory store
   前返回 `reason_code: caller_context_run_mismatch`。
+- `caller_context.caller` / `caller_context.purpose` 缺失、空白或不是字符串时，会在读取
+  memory store 前返回 `reason_code: invalid_caller_context`。
 - 无 memory query grant 时，不读取 memory store。
 - `controlled_expand=True` 但没有 expand grant / budget 时，受控拒绝且不读取 full content。
 - memory query denial / not-enabled result 现在包含低敏 `reason_code` 和
@@ -162,6 +164,8 @@ memory query 是 read-side recall。
 
 - `NotEnabledMemoryQueryService.query(...)` 必须显式接收 `grants` 和 `caller_context`。
 - missing / malformed `grants` 或 `caller_context` 受控拒绝，不能泄漏原生 `AttributeError` / `TypeError`。
+- `caller_context.run_id` 必须和 query `run_id` 对齐；`caller_context.caller` /
+  `caller_context.purpose` 必须是非空字符串，供后续 audit / policy 解释调用来源和目的。
 - 没有 query grant 时不能读取 memory store。
 - 请求 `controlled_expand=True` 时，缺少 expand grant / budget 不能读取 full content。
 - 返回结果不得包含 full content、artifact content、raw content 或 full text。
@@ -373,6 +377,8 @@ Memory record persistence boundary design note 已落在 `memory-record-persiste
 - missing / malformed `grants` 或 `caller_context` is controlled rejected。
 - missing or mismatched caller context run returns `reason_code: caller_context_run_mismatch`
   before reading memory store。
+- missing / empty / non-string caller audit context returns
+  `reason_code: invalid_caller_context` before reading memory store。
 - missing query grant returns `reason_code: missing_memory_query_grant` and does not read memory store。
 - controlled expand without expand grant / budget returns
   `reason_code: missing_controlled_expand_grant` and does not read full content。

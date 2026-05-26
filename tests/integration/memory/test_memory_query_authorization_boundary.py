@@ -78,7 +78,7 @@ def test_controlled_expand_without_expand_grant_does_not_read_full_content():
         run_id="run_001",
         query="worked examples",
         grants={"memory": {"query": True, "controlled_expand": False}},
-        caller_context={"run_id": "run_001"},
+        caller_context={"run_id": "run_001", "caller": "agent_loop", "purpose": "agent_recall"},
         controlled_expand=True,
     )
 
@@ -103,7 +103,7 @@ def test_memory_query_default_shape_excludes_full_content():
         run_id="run_001",
         query="worked examples",
         grants={"memory": {"query": True}},
-        caller_context={"run_id": "run_001"},
+        caller_context={"run_id": "run_001", "caller": "agent_loop", "purpose": "agent_recall"},
     )
 
     assert result["status"] == "not_enabled"
@@ -134,7 +134,7 @@ def test_local_memory_query_denials_use_same_reason_contract():
         run_id="run_001",
         query="worked examples",
         grants={"memory": {"query": True, "controlled_expand": False}},
-        caller_context={"run_id": "run_001"},
+        caller_context={"run_id": "run_001", "caller": "agent_loop", "purpose": "agent_recall"},
         controlled_expand=True,
     )
 
@@ -188,6 +188,46 @@ def test_memory_query_rejects_caller_context_run_mismatch_without_store_read(
         "status": "denied",
         "capability": "memory_query",
         "reason_code": reason_code,
+        "content_policy": "no_memory_read",
+        "results": [],
+    }
+    assert store.calls == []
+
+
+@pytest.mark.parametrize(
+    "caller_context",
+    [
+        {"run_id": "run_allowed"},
+        {"run_id": "run_allowed", "caller": "", "purpose": "agent_recall"},
+        {"run_id": "run_allowed", "caller": "agent_loop", "purpose": ""},
+        {"run_id": "run_allowed", "caller": "agent_loop", "purpose": 123},
+    ],
+)
+@pytest.mark.parametrize(
+    "service_factory",
+    [
+        memory.NotEnabledMemoryQueryService,
+        memory.LocalMemoryQueryService,
+    ],
+)
+def test_memory_query_rejects_missing_caller_audit_context_without_store_read(
+    service_factory,
+    caller_context,
+):
+    store = ExplodingMemoryStore()
+    service = service_factory(memory_store=store)
+
+    result = service.query(
+        run_id="run_allowed",
+        query="worked examples",
+        grants={"memory": {"query": True}},
+        caller_context=caller_context,
+    )
+
+    assert result == {
+        "status": "denied",
+        "capability": "memory_query",
+        "reason_code": "invalid_caller_context",
         "content_policy": "no_memory_read",
         "results": [],
     }
