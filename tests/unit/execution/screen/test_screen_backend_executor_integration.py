@@ -180,6 +180,51 @@ def test_backend_reported_widened_grants_are_rejected(tmp_path):
     assert failed.payload["error_reason_code"] == "screen_backend_protocol_error"
 
 
+def test_screen_observe_accepts_metadata_only_fallback_result(tmp_path):
+    backend = FakeScreenBackend(
+        {
+            "backend_session_id": "screen_backend_001",
+            "status": "metadata_only",
+            "started_at": "2026-05-24T00:00:00Z",
+            "finished_at": "2026-05-24T00:00:01Z",
+            "summary": "screen observe captured metadata only",
+            "output_artifacts": [
+                {
+                    "artifact_type": "screen_metadata",
+                    "summary": "screen metadata captured",
+                    "content": json.dumps({"target": {"is_minimized": True}}, sort_keys=True),
+                },
+                {
+                    "artifact_type": "screen_diagnostic",
+                    "summary": "screen screenshot diagnostic",
+                    "content": json.dumps(
+                        {
+                            "reason_code": "screen_screenshot_unavailable",
+                            "recovery": "restore_window_requires_approval",
+                        },
+                        sort_keys=True,
+                    ),
+                },
+            ],
+            "reason_code": "screen_screenshot_unavailable",
+            "retryable": False,
+            "resource_usage": {"duration_ms": 10},
+        }
+    )
+    api, run_id = _new_run(tmp_path, backend)
+
+    result = api.submit_action(
+        run_id,
+        {
+            **_observe_intent(),
+            "capture": ["metadata", "screenshot"],
+        },
+    )
+
+    assert result["status"] == "completed"
+    assert len(api.artifact_store.list_artifacts(run_id)) == 2
+
+
 def test_windows_backend_request_payload_carries_target_selection_policy(tmp_path):
     backend = FakeScreenBackend(_backend_result())
     api, run_id = _new_run(tmp_path, backend)
@@ -203,3 +248,13 @@ def test_windows_backend_script_reports_first_match_metadata_and_guards_execute(
     assert "first_match" in script
     assert "allow_first_match_execute" in script
     assert "screen_target_ambiguous" in script
+
+
+def test_windows_backend_script_downgrades_uncapturable_screenshot_to_metadata_only():
+    script = windows_backend._POWERSHELL_SCRIPT
+
+    assert "IsIconic" in script
+    assert "is_minimized" in script
+    assert "metadata_only" in script
+    assert "screen_screenshot_unavailable" in script
+    assert "restore_window_requires_approval" in script

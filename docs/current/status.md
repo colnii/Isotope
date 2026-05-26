@@ -66,7 +66,9 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
     边界，Windows backend 仅用于手动 smoke；observe/control 已支持命令级
     target allowlist（目标白名单）和 deterministic first-match（确定性首个匹配）
     metadata，execute 控制遇到多窗口匹配时默认拒绝 first-match 点击；当前不是
-    默认自动 GUI agent。
+    默认自动 GUI agent。窗口最小化或截图不可用时 observe 会降级为
+    `metadata_only`，并通过 `screen_diagnostic` 返回
+    `restore_window_requires_approval` 恢复建议。
 11. 代码结构继续以 `src/isotope/` 为 Python 主包，不新增 `packages/`、
    `aios` 或 kernel 主叙事。
 

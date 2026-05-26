@@ -225,6 +225,7 @@ _POWERSHELL_SCRIPT = textwrap.dedent(
         public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
         [DllImport("user32.dll")] public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
         [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
+        [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
         [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
         [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
@@ -269,6 +270,7 @@ _POWERSHELL_SCRIPT = textwrap.dedent(
                 window_id = $hWnd.ToInt64().ToString()
                 title = $title
                 process = $processName
+                is_minimized = [NativeScreen]::IsIconic($hWnd)
                 bounds = @{
                     left = $rect.Left
                     top = $rect.Top
@@ -326,6 +328,7 @@ _POWERSHELL_SCRIPT = textwrap.dedent(
     }
 
     function Capture-Screenshot($target, $policy) {
+        if ($target.is_minimized) { throw "target is minimized; restore_window_requires_approval" }
         $bounds = $target.bounds
         if (-not $bounds -or $bounds.width -le 0 -or $bounds.height -le 0) { throw "target bounds are not capturable" }
         $maxWidth = [int]$policy.max_screenshot_width
@@ -428,16 +431,29 @@ _POWERSHELL_SCRIPT = textwrap.dedent(
             $reason = "screen_control_completed"
             }
         } else {
+            $screenshotCaptured = $false
             if ($request.capture -contains "screenshot") {
                 try {
                     Add-Artifact $artifacts "screen_screenshot" "screen screenshot captured" (Capture-Screenshot $target $request.artifact_policy)
+                    $screenshotCaptured = $true
                 } catch {
-                    Add-Artifact $artifacts "screen_diagnostic" "screen screenshot diagnostic" $_.Exception.Message
+                    $diagnostic = @{
+                        reason_code = "screen_screenshot_unavailable"
+                        recovery = "restore_window_requires_approval"
+                        message = $_.Exception.Message
+                    } | ConvertTo-Json -Compress
+                    Add-Artifact $artifacts "screen_diagnostic" "screen screenshot diagnostic" $diagnostic
                 }
             }
-            $status = "captured"
-            $summary = "screen observe captured"
-            $reason = "screen_observe_captured"
+            if (($request.capture -contains "screenshot") -and -not $screenshotCaptured) {
+                $status = "metadata_only"
+                $summary = "screen observe captured metadata only"
+                $reason = "screen_screenshot_unavailable"
+            } else {
+                $status = "captured"
+                $summary = "screen observe captured"
+                $reason = "screen_observe_captured"
+            }
         }
         @{
             backend_session_id = "windows_screen_" + [Guid]::NewGuid().ToString("N")
