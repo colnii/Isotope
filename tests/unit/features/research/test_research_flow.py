@@ -164,6 +164,48 @@ def test_research_flow_marks_provider_errors_without_success_artifact(tmp_path):
     }
 
 
+def test_research_flow_persists_retry_attempt_details_in_provider_trace(tmp_path):
+    class FailingProvider:
+        provider_name = "codex_delegated"
+
+        def run(self, query: str) -> dict:
+            raise ResearchProviderError(
+                "codex cli did not return an agent message: request timed out",
+                details={
+                    "attempt_count": 2,
+                    "retry_exhausted": True,
+                    "attempts": [
+                        {
+                            "attempt": 1,
+                            "message": "codex cli did not return an agent message: request timed out",
+                            "retryable": True,
+                            "details": {
+                                "codex_error_messages": ["request timed out on attempt 1"],
+                            },
+                        },
+                        {
+                            "attempt": 2,
+                            "message": "codex cli did not return an agent message: request timed out",
+                            "retryable": True,
+                            "details": {
+                                "codex_error_messages": ["request timed out on attempt 2"],
+                            },
+                        },
+                    ],
+                },
+            )
+
+    flow = ResearchFlow.in_process(tmp_path, provider=FailingProvider())
+
+    result = flow.search("python docs")
+
+    trace_content = json.loads(flow.core.runtime.artifact_store.get_content(result.artifact_refs[0]))
+    assert trace_content["error"]["details"]["attempt_count"] == 2
+    assert trace_content["error"]["details"]["retry_exhausted"] is True
+    assert [attempt["attempt"] for attempt in trace_content["error"]["details"]["attempts"]] == [1, 2]
+    assert trace_content["error"]["details"]["attempts"][0]["retryable"] is True
+
+
 def test_research_report_can_be_found_through_artifact_record(tmp_path):
     flow = ResearchFlow.in_process(tmp_path, provider=FakeResearchProvider())
 

@@ -69,13 +69,16 @@ class FakeResearchProvider:
 class CodexDelegatedResearchProvider:
     provider_name = "codex_delegated"
 
-    def __init__(self, backend: Callable[[str], str]):
+    def __init__(self, backend: Callable[[str], str], *, max_attempts: int = 1):
+        if max_attempts < 1:
+            raise ValueError("max_attempts must be at least 1")
         self.backend = backend
+        self.max_attempts = max_attempts
 
     def run(self, query: str) -> dict[str, Any]:
         clean_query = _require_query(query)
         prompt = build_codex_research_prompt(clean_query)
-        raw_output = self.backend(prompt)
+        raw_output = self._run_backend_with_retry(prompt)
         payload = _normalize_codex_research_payload(extract_research_json(raw_output))
         payload["query"] = clean_query
         payload["provider"] = self.provider_name
@@ -87,6 +90,22 @@ class CodexDelegatedResearchProvider:
         payload.setdefault("status", "ok")
         payload.setdefault("evidence_status", "partial")
         return payload
+
+    def _run_backend_with_retry(self, prompt: str) -> str:
+        attempts: list[dict[str, Any]] = []
+        for attempt in range(1, self.max_attempts + 1):
+            try:
+                return self.backend(prompt)
+            except ResearchProviderError as exc:
+                attempt_record = _provider_error_attempt(attempt, exc)
+                attempts.append(attempt_record)
+                if attempt == self.max_attempts or not attempt_record["retryable"]:
+                    raise _provider_error_with_attempts(
+                        exc,
+                        attempts=attempts,
+                        retry_exhausted=attempt_record["retryable"] and attempt == self.max_attempts,
+                    ) from exc
+        raise RuntimeError("unreachable research provider retry state")
 
 
 def build_codex_research_prompt(query: str) -> str:
@@ -254,6 +273,54 @@ def _raise_if_codex_error_only_jsonl(stdout: str, *, timeout_seconds: int) -> No
             "codex cli did not return an agent message: " + "; ".join(error_messages),
             details=diagnostics,
         )
+
+
+_RETRYABLE_PROVIDER_ERROR_SNIPPETS = (
+    "request timed out",
+    "timed out",
+    "timeout",
+    "stream disconnected",
+    "error sending request",
+    "temporarily unavailable",
+    "network",
+    "connection reset",
+    "connection refused",
+    "reconnecting",
+)
+
+
+def _provider_error_attempt(attempt: int, exc: ResearchProviderError) -> dict[str, Any]:
+    return {
+        "attempt": attempt,
+        "message": str(exc),
+        "retryable": _is_retryable_provider_error(exc),
+        "details": dict(exc.details),
+    }
+
+
+def _provider_error_with_attempts(
+    exc: ResearchProviderError,
+    *,
+    attempts: list[dict[str, Any]],
+    retry_exhausted: bool,
+) -> ResearchProviderError:
+    details = dict(exc.details)
+    details["attempt_count"] = len(attempts)
+    details["attempts"] = attempts
+    details["retry_exhausted"] = retry_exhausted
+    return ResearchProviderError(str(exc), details=details)
+
+
+def _is_retryable_provider_error(exc: ResearchProviderError) -> bool:
+    texts = [str(exc)]
+    messages = exc.details.get("codex_error_messages")
+    if isinstance(messages, list):
+        texts.extend(message for message in messages if isinstance(message, str))
+    return any(
+        snippet in text.lower()
+        for text in texts
+        for snippet in _RETRYABLE_PROVIDER_ERROR_SNIPPETS
+    )
 
 
 def _codex_jsonl_diagnostics(stdout: str, *, timeout_seconds: int) -> dict[str, Any]:

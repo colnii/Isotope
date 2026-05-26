@@ -250,6 +250,8 @@ def test_research_cli_accepts_codex_provider_args(tmp_path):
             "codex",
             "--timeout-seconds",
             "60",
+            "--max-attempts",
+            "2",
         ]
     )
 
@@ -257,3 +259,4 @@ def test_research_cli_accepts_codex_provider_args(tmp_path):
     assert args.workspace_root == str(tmp_path)
     assert args.codex_executable == "codex"
     assert args.timeout_seconds == 60
+    assert args.max_attempts == 2

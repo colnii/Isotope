@@ -95,6 +95,73 @@ def test_codex_delegated_provider_normalizes_common_codex_report_shape():
     }
 
 
+def test_codex_delegated_provider_retries_retryable_failure_once():
+    calls = []
+
+    def backend(prompt: str) -> str:
+        calls.append(prompt)
+        if len(calls) == 1:
+            raise ResearchProviderError(
+                "codex cli did not return an agent message: request timed out",
+                details={
+                    "codex_error_messages": ["Reconnecting... 2/5 (request timed out)"],
+                    "codex_has_agent_message": False,
+                },
+            )
+        return json.dumps(FakeResearchProvider().run("python docs"))
+
+    provider = CodexDelegatedResearchProvider(backend=backend, max_attempts=2)
+
+    payload = provider.run("python docs")
+
+    assert len(calls) == 2
+    assert payload["provider"] == "codex_delegated"
+    assert payload["query"] == "python docs"
+
+
+def test_codex_delegated_provider_records_attempts_when_retry_budget_exhausted():
+    calls = []
+
+    def backend(prompt: str) -> str:
+        calls.append(prompt)
+        raise ResearchProviderError(
+            "codex cli did not return an agent message: request timed out",
+            details={
+                "codex_error_messages": [f"request timed out on attempt {len(calls)}"],
+                "codex_timeout_seconds": 60,
+            },
+        )
+
+    provider = CodexDelegatedResearchProvider(backend=backend, max_attempts=2)
+
+    with pytest.raises(ResearchProviderError) as exc_info:
+        provider.run("python docs")
+
+    assert len(calls) == 2
+    assert exc_info.value.details["attempt_count"] == 2
+    assert exc_info.value.details["retry_exhausted"] is True
+    assert exc_info.value.details["attempts"] == [
+        {
+            "attempt": 1,
+            "message": "codex cli did not return an agent message: request timed out",
+            "retryable": True,
+            "details": {
+                "codex_error_messages": ["request timed out on attempt 1"],
+                "codex_timeout_seconds": 60,
+            },
+        },
+        {
+            "attempt": 2,
+            "message": "codex cli did not return an agent message: request timed out",
+            "retryable": True,
+            "details": {
+                "codex_error_messages": ["request timed out on attempt 2"],
+                "codex_timeout_seconds": 60,
+            },
+        },
+    ]
+
+
 def test_build_codex_cli_research_backend_returns_callable(tmp_path):
     backend = build_codex_cli_research_backend(
         workspace_root=tmp_path,

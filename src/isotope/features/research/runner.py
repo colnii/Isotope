@@ -50,6 +50,12 @@ def _build_parser() -> argparse.ArgumentParser:
         default=120,
         help="Codex delegated research timeout in seconds.",
     )
+    search_parser.add_argument(
+        "--max-attempts",
+        type=int,
+        default=2,
+        help="Maximum Codex delegated provider attempts for retryable failures.",
+    )
     search_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     inspect_parser = subparsers.add_parser("inspect", help="Inspect a research artifact.")
     inspect_parser.add_argument("--root", required=True, help="Runtime root directory.")
@@ -175,7 +181,8 @@ def _provider_from_args(args: argparse.Namespace):
                 codex_home=args.codex_home,
                 model=args.model,
                 timeout_seconds=args.timeout_seconds,
-            )
+            ),
+            max_attempts=args.max_attempts,
         )
     raise ValueError(f"unsupported research provider: {args.provider}")
 
