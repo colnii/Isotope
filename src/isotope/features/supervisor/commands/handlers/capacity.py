@@ -293,8 +293,11 @@ def loop_capacity_decision_payload(
         "capacity_decisions": decisions,
         "capacity_call_specs": capacity_call_specs(plan, goal=goal),
     }
-    if plan.get("status_reason") == "no_offered_capacities":
-        payload["capacity_blocked_reason"] = "no_offered_capacities"
+    blocked_reason = plan.get("capacity_blocked_reason")
+    if blocked_reason is None and plan.get("status_reason") == "no_offered_capacities":
+        blocked_reason = "no_offered_capacities"
+    if isinstance(blocked_reason, str) and blocked_reason:
+        payload["capacity_blocked_reason"] = blocked_reason
     return payload
 
 
