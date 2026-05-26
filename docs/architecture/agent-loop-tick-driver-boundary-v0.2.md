@@ -27,6 +27,9 @@
   persisted policy` 的可读链路。
 - `isotope-supervisor capacity plan --execute-agent-loop` 的 plain 输出会打印
   低敏 planner selected step、tick status、tick stop reason 和 artifact ref。
+- `isotope-supervisor capacity plan --json --execute-agent-loop` 会返回同一组
+  `agent_loop_summary` 低敏字段，后续 dashboard / web 应复用它，不直接读取
+  原始 `tick_result` 深层结构。
 
 HTTP body 只接受：
 
@@ -63,12 +66,12 @@ HTTP body 只接受：
 
 ## 5. 验证
 
-- `tests/isotope/test_agent_loop_tick_driver.py`
-- `tests/isotope/test_http_api_agent_loop_tick_driver.py`
-- `tests/isotope/test_agent_loop_tick_driver_demo_scenario.py`
-- `tests/isotope/test_supervisor_capacity_handoff_demo_scenario.py`
-- `tests/isotope/test_agent_loop_planner_step_adapter.py`
-- `tests/isotope/test_agent_loop_tick_policy.py`
-- `tests/isotope/test_supervisor_capacity_path.py`
-- `tests/isotope/test_http_api_boundary.py`
-- `tests/isotope/test_http_api_route_inventory.py`
+- `tests/unit/agents/loop/test_agent_loop_tick_driver.py`
+- `tests/unit/interfaces/http/test_http_api_agent_loop_tick_driver.py`
+- `tests/e2e/test_agent_loop_tick_driver_demo_scenario.py`
+- `tests/e2e/test_supervisor_capacity_handoff_demo_scenario.py`
+- `tests/unit/agents/loop/test_agent_loop_planner_step_adapter.py`
+- `tests/unit/agents/loop/test_agent_loop_tick_policy.py`
+- `tests/unit/features/supervisor/test_supervisor_capacity_path.py`
+- `tests/unit/interfaces/http/test_http_api_boundary.py`
+- `tests/unit/interfaces/http/test_http_api_route_inventory.py`

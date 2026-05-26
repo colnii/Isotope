@@ -107,7 +107,8 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 - `web` 默认只监听本机地址；`/managed/send` 只接受受控动作。
 - `decision answer` 只写拍板答案账本，下一轮 LLM planner 再读取答案继续判断。
 - `capacity plan --execute-agent-loop` 只允许已标记可执行的 `call_capacity`
-  通过单 tick driver 跑一次 `call_capability`，不打开自动多轮循环。
+  通过单 tick driver 跑一次 `call_capability`，不打开自动多轮循环；JSON 输出会带
+  `agent_loop_summary` 低敏字段，供 dashboard / web 复用。
 - `memory --query` 只返回 summary / refs / provenance preview；plain 输出会标出
   `content_policy`、匹配数量、source refs 和 provenance，不返回 raw content。
 - `research` provider 失败时只保存 `research.provider_trace`，不生成成功 report。

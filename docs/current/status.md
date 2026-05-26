@@ -51,7 +51,8 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    driver；`supervisor-capacity-handoff-trace` demo 可展示
    `Supervisor action -> planner_output_summary -> tick_result -> persisted policy`。
    `isotope-supervisor capacity plan` 的 plain 输出也会显示低敏 planner / tick
-   / artifact handoff summary。
+   / artifact handoff summary；JSON payload 同步暴露
+   `agent_loop_summary`，供后续 dashboard / web 复用同一组低敏字段。
    它仍不调用真实 LLM，不自动多轮循环。
 10. Screen observe/control 已有 policy-gated（策略门控）第一片：
     `screen_observe` / `screen_control` 走 registry、policy、executor 和 artifact

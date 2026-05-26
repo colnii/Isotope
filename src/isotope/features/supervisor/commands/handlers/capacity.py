@@ -110,7 +110,7 @@ def build_supervisor_capacity_plan(
     )
     if selection.status != "ready_to_call":
         selection_payload = selection.to_dict()
-        return {
+        payload = {
             "status": "needs_input",
             "status_reason": "needs_input",
             "capacity_blocked_reason": _capacity_blocked_reason(
@@ -130,6 +130,8 @@ def build_supervisor_capacity_plan(
             ),
             "safety": _capacity_plan_safety(execute_agent_loop=execute_agent_loop),
         }
+        payload["agent_loop_summary"] = agent_loop_json_summary(payload)
+        return payload
     node = capacity_graph_node_from_call_selection(selection)
     graph = build_capacity_graph([node])
     capacity_plan = resolve_ready_capacity_plan(graph, states={})
@@ -169,6 +171,7 @@ def build_supervisor_capacity_plan(
         ),
         "safety": _capacity_plan_safety(execute_agent_loop=execute_agent_loop),
     }
+    payload["agent_loop_summary"] = agent_loop_json_summary(payload)
     blocked_reason = _capacity_blocked_reason(
         status_reason=status_reason,
         launch_plan=launch_plan,
@@ -341,6 +344,45 @@ def capacity_decision_goal(
         if isinstance(value, str) and value.strip():
             return value.strip()
     return None
+
+
+def agent_loop_json_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Return low-sensitive capacity handoff fields for JSON and plain output."""
+    agent_loop = payload.get("agent_loop") if isinstance(payload, Mapping) else None
+    summary: dict[str, Any] = {"agent_loop_executed": isinstance(agent_loop, Mapping)}
+    if not isinstance(agent_loop, Mapping):
+        return summary
+
+    handoff = agent_loop.get("handoff")
+    if isinstance(handoff, Mapping):
+        summary["agent_loop_next_tick_kind"] = handoff.get("initial_next_tick_kind")
+        summary["agent_loop_post_step_phase"] = handoff.get("post_step_phase")
+        summary["agent_loop_post_step_should_continue"] = handoff.get(
+            "post_step_should_continue"
+        )
+        summary["agent_loop_post_step_stop_reason"] = handoff.get(
+            "post_step_stop_reason"
+        )
+
+    planner_summary = agent_loop.get("planner_output_summary")
+    if isinstance(planner_summary, Mapping):
+        summary["agent_loop_planner_selected_step"] = planner_summary.get(
+            "selected_step"
+        )
+
+    tick_result = agent_loop.get("tick_result")
+    if not isinstance(tick_result, Mapping):
+        return summary
+    summary["agent_loop_tick_status"] = tick_result.get("tick_status")
+    after_policy = tick_result.get("after_policy")
+    if isinstance(after_policy, Mapping):
+        summary["agent_loop_tick_after_stop_reason"] = after_policy.get(
+            "must_stop_reason"
+        )
+    artifact_ref = _agent_loop_artifact_ref(tick_result)
+    if isinstance(artifact_ref, Mapping):
+        summary["agent_loop_artifact_id"] = artifact_ref.get("artifact_id")
+    return summary
 
 
 def _capacity_call_spec(
@@ -531,7 +573,7 @@ def _no_offered_capacities_plan(
     execute_agent_loop: bool,
 ) -> dict[str, Any]:
     status_reason = "no_offered_capacities"
-    return {
+    payload = {
         "status": "blocked",
         "status_reason": status_reason,
         "capacity_blocked_reason": status_reason,
@@ -553,6 +595,8 @@ def _no_offered_capacities_plan(
         ),
         "safety": _capacity_plan_safety(execute_agent_loop=execute_agent_loop),
     }
+    payload["agent_loop_summary"] = agent_loop_json_summary(payload)
+    return payload
 
 
 def _blocked_capacity_graph(selection: Any) -> dict[str, Any]:
@@ -609,50 +653,39 @@ def _print_capacity_plan_plain(payload: Mapping[str, Any]) -> None:
             f"{supervisor_decision.get('next_action')}"
         )
     _print_capacity_blockers(payload, selection=selection, launch_plan=launch_plan)
-    print(f"agent_loop_executed: {bool(payload.get('agent_loop'))}")
-    agent_loop = payload.get("agent_loop")
-    handoff = agent_loop.get("handoff") if isinstance(agent_loop, Mapping) else None
-    if isinstance(handoff, Mapping):
-        print(f"agent_loop_next_tick_kind: {handoff.get('initial_next_tick_kind')}")
-        planner_summary = agent_loop.get("planner_output_summary")
-        if isinstance(planner_summary, Mapping):
-            print(
-                "agent_loop_planner_selected_step: "
-                f"{planner_summary.get('selected_step')}"
-            )
-        tick_result = agent_loop.get("tick_result")
-        if isinstance(tick_result, Mapping):
-            print(f"agent_loop_tick_status: {tick_result.get('tick_status')}")
-            after_policy = tick_result.get("after_policy")
-            if isinstance(after_policy, Mapping):
-                print(
-                    "agent_loop_tick_after_stop_reason: "
-                    f"{after_policy.get('must_stop_reason')}"
-                )
-            planner_result = tick_result.get("planner_result")
-            step_result = (
-                planner_result.get("step_result")
-                if isinstance(planner_result, Mapping)
-                else None
-            )
-            action_result = (
-                step_result.get("action_result")
-                if isinstance(step_result, Mapping)
-                else None
-            )
-            artifact_ref = (
-                action_result.get("artifact_ref")
-                if isinstance(action_result, Mapping)
-                else None
-            )
-            if isinstance(artifact_ref, Mapping):
-                print(f"agent_loop_artifact_ref: {artifact_ref.get('artifact_id')}")
-        print(f"agent_loop_post_step_phase: {handoff.get('post_step_phase')}")
+    agent_loop_summary = agent_loop_json_summary(payload)
+    print(f"agent_loop_executed: {agent_loop_summary['agent_loop_executed']}")
+    if agent_loop_summary["agent_loop_executed"]:
+        print(
+            "agent_loop_next_tick_kind: "
+            f"{agent_loop_summary.get('agent_loop_next_tick_kind')}"
+        )
+        print(
+            "agent_loop_planner_selected_step: "
+            f"{agent_loop_summary.get('agent_loop_planner_selected_step')}"
+        )
+        print(
+            f"agent_loop_tick_status: {agent_loop_summary.get('agent_loop_tick_status')}"
+        )
+        print(
+            "agent_loop_tick_after_stop_reason: "
+            f"{agent_loop_summary.get('agent_loop_tick_after_stop_reason')}"
+        )
+        artifact_id = agent_loop_summary.get("agent_loop_artifact_id")
+        if artifact_id is not None:
+            print(f"agent_loop_artifact_ref: {artifact_id}")
+        print(
+            "agent_loop_post_step_phase: "
+            f"{agent_loop_summary.get('agent_loop_post_step_phase')}"
+        )
         print(
             "agent_loop_post_step_should_continue: "
-            f"{handoff.get('post_step_should_continue')}"
+            f"{agent_loop_summary.get('agent_loop_post_step_should_continue')}"
         )
-        print(f"agent_loop_post_step_stop_reason: {handoff.get('post_step_stop_reason')}")
+        print(
+            "agent_loop_post_step_stop_reason: "
+            f"{agent_loop_summary.get('agent_loop_post_step_stop_reason')}"
+        )
 
 
 def _print_capacity_blockers(
@@ -682,3 +715,19 @@ def _string_list(value: Any) -> list[str]:
     if not isinstance(value, list):
         return []
     return [item for item in value if isinstance(item, str)]
+
+
+def _agent_loop_artifact_ref(tick_result: Mapping[str, Any]) -> Mapping[str, Any] | None:
+    planner_result = tick_result.get("planner_result")
+    step_result = (
+        planner_result.get("step_result")
+        if isinstance(planner_result, Mapping)
+        else None
+    )
+    action_result = (
+        step_result.get("action_result") if isinstance(step_result, Mapping) else None
+    )
+    artifact_ref = (
+        action_result.get("artifact_ref") if isinstance(action_result, Mapping) else None
+    )
+    return artifact_ref if isinstance(artifact_ref, Mapping) else None

@@ -31,6 +31,29 @@ class FakeCapacityProvider:
         )
 
 
+FORBIDDEN_AGENT_LOOP_SUMMARY_KEYS = {
+    "action_result",
+    "capability_run",
+    "content",
+    "planner_result",
+    "raw",
+    "raw_content",
+    "step_result",
+    "tick_result",
+}
+
+
+def _assert_no_agent_loop_raw_payload(value):
+    if isinstance(value, dict):
+        forbidden = FORBIDDEN_AGENT_LOOP_SUMMARY_KEYS.intersection(value)
+        assert forbidden == set()
+        for nested in value.values():
+            _assert_no_agent_loop_raw_payload(nested)
+    elif isinstance(value, list):
+        for nested in value:
+            _assert_no_agent_loop_raw_payload(nested)
+
+
 def test_supervisor_capacity_plan_uses_capacity_calling_graph_and_capability_runner(tmp_path):
     provider = FakeCapacityProvider(
         '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
@@ -145,6 +168,36 @@ def test_supervisor_capacity_plan_can_execute_low_risk_agent_loop_step(tmp_path)
     capability_run = step_result["action_result"]["capability_run"]
     assert capability_run["capability_id"] == "artifact.review"
     assert capability_run["status"] == "completed"
+
+
+def test_supervisor_capacity_plan_exposes_low_sensitive_agent_loop_json_summary(tmp_path):
+    provider = FakeCapacityProvider(
+        '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
+        '"rationale":"low risk review"}'
+    )
+
+    result = capacity_command.build_supervisor_capacity_plan(
+        goal="通过 agent loop 调用 artifact review 能力",
+        provider=provider,
+        state_root=tmp_path / "state",
+        execute_agent_loop=True,
+    )
+
+    assert result["agent_loop_summary"] == capacity_command.agent_loop_json_summary(result)
+    assert result["agent_loop_summary"] == {
+        "agent_loop_executed": True,
+        "agent_loop_next_tick_kind": "planner_step",
+        "agent_loop_planner_selected_step": "call_capability",
+        "agent_loop_tick_status": "executed",
+        "agent_loop_tick_after_stop_reason": "tick_budget_exhausted",
+        "agent_loop_artifact_id": result["agent_loop"]["tick_result"]["planner_result"][
+            "step_result"
+        ]["action_result"]["artifact_ref"]["artifact_id"],
+        "agent_loop_post_step_phase": "ready",
+        "agent_loop_post_step_should_continue": True,
+        "agent_loop_post_step_stop_reason": None,
+    }
+    _assert_no_agent_loop_raw_payload(result["agent_loop_summary"])
 
 
 def test_supervisor_capacity_plan_reports_ready_supervisor_decision(tmp_path):
@@ -610,6 +663,7 @@ def test_supervisor_capacity_command_handler_prints_json_status_reason(capsys):
     assert payload["status"] == "blocked"
     assert payload["status_reason"] == "not_launchable"
     assert payload["agent_loop"] is None
+    assert payload["agent_loop_summary"] == {"agent_loop_executed": False}
 
 
 def test_loop_capacity_payload_explains_no_offered_capacities():
