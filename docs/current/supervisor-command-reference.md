@@ -93,7 +93,9 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 `worktree-audit` 只读取 `git worktree list --porcelain` 和每个 worktree 的
 `git status --porcelain=v1`，按 branch/path 里的非泛化主题词提示可能重复开发的
 worktree，也会报告多个 dirty worktree 是否修改了同一个文件。它是 human review
-（人工复查）入口，不会自动删除 worktree、合并分支或阻止任务启动。
+（人工复查）入口，不会自动删除 worktree 或合并分支。`launch_session`
+执行路径会复用同一套只读主题匹配；发现同主题 worktree 时会跳过新启动并返回
+需要确认的候选。
 
 ### Research artifact 闭环
 

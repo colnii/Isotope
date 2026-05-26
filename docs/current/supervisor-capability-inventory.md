@@ -275,6 +275,10 @@
 - `launch_session` 会写入 lane state 并遵守 `--prompt-cooldown`，
   发现同名后台 process worker 仍在运行时会跳过，避免长跑时对同一个
   `target_name` 反复启动后台 Codex。
+- `launch_session` 创建新 worktree 前会复用 `worktree-audit` 的只读解析逻辑，
+  按 `target_name` 和 goal 的主题词检查现有 branch/worktree；发现同主题候选时
+  返回 `coordination preflight needs user`，让人先确认复用或接入已有分支，
+  不直接制造重复 worktree。
 - process worker 非零退出或显式 `--max-run-minutes` 超时会把失败原因
   写入 lane state（含 `timeout`/`exit_code`、stderr 摘要和托管记录 id），
   并自动重试 2 次；重试仍失败后会生成 `worker_retry_failed` 拍板请求，

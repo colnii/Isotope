@@ -360,8 +360,11 @@ from .handlers.state import (
 from .handlers.worktree_audit import (
     audit_worktree_records as _audit_worktree_records,
     handle_worktree_audit_command as _handle_worktree_audit_command,
+    launch_coordination_preflight as _launch_coordination_preflight,
+    launch_coordination_preflight_from_records as _launch_coordination_preflight_from_records,
     parse_worktree_list_porcelain as _parse_worktree_list_porcelain,
     print_worktree_audit_plain as _print_worktree_audit_plain,
+    topic_tokens_for_text as _topic_tokens_for_text,
     worktree_audit_payload as _worktree_audit_payload,
 )
 from .scan import (

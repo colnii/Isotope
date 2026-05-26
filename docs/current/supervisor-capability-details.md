@@ -78,7 +78,10 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 完成条件和停等用户条件。
 
 当前已做 A 层：把这些边界写进 `launch_session` 的 prompt。
-这只能提高 worker 自觉遵守的概率，不代表 Supervisor 已经能强制预算。
+`coordination_preflight` 已有第一段 B 层拦截：执行 `launch_session`
+创建新 worktree 前会只读扫描现有 worktree/branch，命中同主题候选时跳过启动，
+把候选返回给人工确认或复用。其他字段仍只能提高 worker 自觉遵守的概率，
+不代表 Supervisor 已经能强制预算。
 不得把 A 层描述成真正的 `max_run_minutes`、`max_continue_count` 或
 `max_context_requests` 控制。
 
