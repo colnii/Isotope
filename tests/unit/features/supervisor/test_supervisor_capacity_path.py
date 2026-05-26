@@ -8,6 +8,7 @@ from isotope.features.supervisor import runner
 from isotope.features.supervisor.commands.handlers import capacity as capacity_command
 from isotope.capabilities.catalog import Capability, CapabilityCatalog
 from isotope.capabilities.runner import CapabilityRunner
+from isotope.llm.pool import PoolEntry
 from isotope.llm.provider import LLMResponse
 from isotope.platform.state.memory_store import FileMemoryStore
 from isotope.workspace.artifacts import ArtifactStore
@@ -54,6 +55,34 @@ def _assert_no_agent_loop_raw_payload(value):
     elif isinstance(value, list):
         for nested in value:
             _assert_no_agent_loop_raw_payload(nested)
+
+
+def test_capacity_provider_uses_supervisor_pool_default_path(monkeypatch):
+    captured = {}
+
+    def fake_resolve_pool_entries_from_env(environ, **kwargs):
+        captured.update(kwargs)
+        return (
+            PoolEntry(
+                provider="test",
+                api_key="test-key",
+                base_url="https://example.invalid",
+                model="test-model",
+            ),
+        )
+
+    monkeypatch.setattr(
+        capacity_command,
+        "resolve_pool_entries_from_env",
+        fake_resolve_pool_entries_from_env,
+    )
+
+    capacity_command.resolve_capacity_calling_provider_from_env(environ={})
+
+    default_paths = captured["default_paths"]
+    assert len(default_paths) == 1
+    assert default_paths[0].name == "supervisor_llm_pool.toml"
+    assert default_paths[0].parent.name == "supervisor"
 
 
 def test_supervisor_capacity_plan_uses_capacity_calling_graph_and_capability_runner(tmp_path):

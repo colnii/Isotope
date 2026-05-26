@@ -115,6 +115,10 @@
   当该读模型为 `call_capacity` 且 `--llm-execute` 打开时，
   LLM planner 可选择 `call_capacity`，Supervisor 会用已保存的
   `capacity_call_specs` 通过 agent loop 的 `call_capability` 步骤执行；
+  capacity planner 默认读取 Supervisor 包目录下的
+  `supervisor_llm_pool.toml`，也可用 `SUPERVISOR_LLM_POOL_TOML_FILES`
+  显式指向本机 pool 文件；多 worktree 验证时要注意真实 pool 文件通常被
+  git-ignore，不会自动出现在新 worktree；
   `isotope-supervisor capacity plan --execute-agent-loop` 的 plain 输出会打印
   低敏 handoff summary，包括 planner selected step、tick status、
   tick stop reason 和 artifact ref；当 agent loop 调用 `screen.report` 时，

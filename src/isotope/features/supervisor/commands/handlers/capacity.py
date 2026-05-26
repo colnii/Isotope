@@ -87,7 +87,7 @@ def resolve_capacity_calling_provider_from_env(
     entries = resolve_pool_entries_from_env(
         env,
         env_var="SUPERVISOR_LLM_POOL_TOML_FILES",
-        default_paths=(Path(__file__).resolve().parents[1] / "supervisor_llm_pool.toml",),
+        default_paths=(Path(__file__).resolve().parents[2] / "supervisor_llm_pool.toml",),
     )
     if not entries:
         raise ValueError(
