@@ -57,6 +57,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 | `capacity` | 生成 capacity decision；显式执行时通过 tick driver 运行一次 `call_capability`。 | [capability inventory](./supervisor-capability-inventory.md)、[agent-loop tick driver boundary](../architecture/agent-loop-tick-driver-boundary-v0.2.md) |
 | `memory` / `worker-event` / `worker-manager` | 查询本地 memory preview、worker event、multi-worker read model 和 supervised capacity run 摘要。 | [terminology](./terminology.md)、[capability inventory](./supervisor-capability-inventory.md) |
 | `research` | 代理 shared Research flow，成功写 `research.report`，provider 失败只写 `research.provider_trace`。 | [application structure plan](./application-structure-plan.md)、[terminology](./terminology.md) |
+| `isotope-screen inspect/report` | 读取 screen artifact 或生成 run 级低敏 observe 摘要，方便看清 metadata-only、截图可用性和恢复建议。 | [application structure plan](./application-structure-plan.md)、[terminology](./terminology.md) |
 
 ## 常用闭环
 

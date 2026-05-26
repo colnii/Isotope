@@ -1,0 +1,164 @@
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+from isotope.workspace.artifacts import ArtifactStore
+
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+SRC_ROOT = REPO_ROOT / "src"
+
+
+def _run_cli(*args: str) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(SRC_ROOT)
+    return subprocess.run(
+        [sys.executable, "-m", "isotope.features.screen.runner", *args],
+        cwd=REPO_ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        timeout=20,
+        check=False,
+    )
+
+
+def test_screen_cli_inspect_returns_screen_artifact_json(tmp_path):
+    store = ArtifactStore(tmp_path)
+    artifact = store.create_artifact(
+        "run_001",
+        execution_id="exec_001",
+        artifact_type="screen_metadata",
+        summary="screen metadata captured",
+        content=json.dumps({"target": {"app": "notepad.exe"}}, sort_keys=True),
+    )
+
+    result = _run_cli(
+        "inspect",
+        "--root",
+        str(tmp_path),
+        "--run-id",
+        "run_001",
+        "--artifact-id",
+        artifact.artifact_id,
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert payload["artifact"]["artifact_type"] == "screen_metadata"
+    assert payload["artifact"]["ref"] == artifact.ref.to_dict()
+    assert payload["content"]["target"]["app"] == "notepad.exe"
+
+
+def test_screen_cli_inspect_rejects_non_screen_artifact(tmp_path):
+    store = ArtifactStore(tmp_path)
+    artifact = store.create_artifact(
+        "run_001",
+        execution_id="exec_001",
+        artifact_type="research.report",
+        summary="not screen",
+        content="{}",
+    )
+
+    result = _run_cli(
+        "inspect",
+        "--root",
+        str(tmp_path),
+        "--run-id",
+        "run_001",
+        "--artifact-id",
+        artifact.artifact_id,
+        "--json",
+    )
+
+    assert result.returncode == 2
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "error"
+    assert payload["error"]["code"] == "screen_runner_error"
+    assert payload["error"]["message"] == "artifact is not a screen artifact"
+
+
+def test_screen_cli_report_summarizes_metadata_only_observe(tmp_path):
+    store = ArtifactStore(tmp_path)
+    metadata = store.create_artifact(
+        "run_001",
+        execution_id="exec_001",
+        artifact_type="screen_metadata",
+        summary="screen metadata captured",
+        content=json.dumps(
+            {
+                "target": {
+                    "window_id": "123",
+                    "title": "Notes",
+                    "app": "notepad.exe",
+                    "is_minimized": True,
+                },
+                "matched_count": 3,
+                "selected_window_id": "123",
+                "selection_reason": "first_match",
+            },
+            sort_keys=True,
+        ),
+    )
+    diagnostic = store.create_artifact(
+        "run_001",
+        execution_id="exec_001",
+        artifact_type="screen_diagnostic",
+        summary="screen screenshot diagnostic",
+        content=json.dumps(
+            {
+                "reason_code": "screen_screenshot_unavailable",
+                "recovery": "restore_window_requires_approval",
+            },
+            sort_keys=True,
+        ),
+    )
+
+    result = _run_cli("report", "--root", str(tmp_path), "--run-id", "run_001", "--json")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert payload["summary"]["observe_status"] == "metadata_only"
+    assert payload["summary"]["screenshot_available"] is False
+    assert payload["summary"]["target"]["is_minimized"] is True
+    assert payload["summary"]["matched_count"] == 3
+    assert payload["summary"]["selection_reason"] == "first_match"
+    assert payload["summary"]["recovery_actions"] == ["restore_window_requires_approval"]
+    assert [artifact["artifact_id"] for artifact in payload["artifacts"]] == [
+        metadata.artifact_id,
+        diagnostic.artifact_id,
+    ]
+
+
+def test_screen_cli_report_plain_output_is_low_sensitive(tmp_path):
+    store = ArtifactStore(tmp_path)
+    store.create_artifact(
+        "run_001",
+        execution_id="exec_001",
+        artifact_type="screen_diagnostic",
+        summary="screen screenshot diagnostic",
+        content=json.dumps(
+            {
+                "reason_code": "screen_screenshot_unavailable",
+                "message": "raw backend stack should not print in report",
+                "recovery": "restore_window_requires_approval",
+            },
+            sort_keys=True,
+        ),
+    )
+
+    result = _run_cli("report", "--root", str(tmp_path), "--run-id", "run_001")
+
+    assert result.returncode == 0, result.stderr
+    assert "status: ok" in result.stdout
+    assert "observe: metadata_only" in result.stdout
+    assert "screenshot: unavailable" in result.stdout
+    assert "recovery: restore_window_requires_approval" in result.stdout
+    assert "raw backend stack" not in result.stdout

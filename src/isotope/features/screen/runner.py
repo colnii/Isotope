@@ -11,6 +11,13 @@ from typing import Any
 from isotope.execution.screen.windows_backend import WindowsScreenBackend
 from isotope.runtime.in_process import InProcessServer
 
+from .artifacts import (
+    inspect_screen_artifact,
+    print_screen_inspect_plain,
+    print_screen_report_plain,
+    report_screen_artifacts,
+)
+
 
 def _print_json(payload: dict[str, Any]) -> None:
     print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
@@ -168,6 +175,15 @@ def _build_parser() -> argparse.ArgumentParser:
     real_smoke_parser.add_argument("--app", help="Target process name, for example notepad.exe.")
     real_smoke_parser.add_argument("--title-contains", help="Substring expected in the target window title.")
     real_smoke_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    inspect_parser = subparsers.add_parser("inspect", help="Inspect a screen artifact.")
+    inspect_parser.add_argument("--root", required=True, help="Runtime root directory.")
+    inspect_parser.add_argument("--run-id", required=True, help="Run id for the artifact ref.")
+    inspect_parser.add_argument("--artifact-id", required=True, help="Artifact id to inspect.")
+    inspect_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    report_parser = subparsers.add_parser("report", help="Summarize screen artifacts for one run.")
+    report_parser.add_argument("--root", required=True, help="Runtime root directory.")
+    report_parser.add_argument("--run-id", required=True, help="Run id to summarize.")
+    report_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     return parser
 
 
@@ -223,6 +239,24 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 for command in commands:
                     print(command)
+            return 0
+        if args.command == "inspect":
+            payload = inspect_screen_artifact(
+                Path(args.root),
+                run_id=args.run_id,
+                artifact_id=args.artifact_id,
+            )
+            if args.json:
+                _print_json(payload)
+            else:
+                print_screen_inspect_plain(payload)
+            return 0
+        if args.command == "report":
+            payload = report_screen_artifacts(Path(args.root), run_id=args.run_id)
+            if args.json:
+                _print_json(payload)
+            else:
+                print_screen_report_plain(payload)
             return 0
 
         target_selector = _target_selector_from_args(
@@ -311,7 +345,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0
-    except ValueError as exc:
+    except (FileNotFoundError, ValueError) as exc:
         if getattr(args, "json", False):
             _print_json(
                 {

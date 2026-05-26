@@ -69,7 +69,8 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
     metadata，execute 控制遇到多窗口匹配时默认拒绝 first-match 点击；当前不是
     默认自动 GUI agent。窗口最小化或截图不可用时 observe 会降级为
     `metadata_only`，并通过 `screen_diagnostic` 返回
-    `restore_window_requires_approval` 恢复建议。
+    `restore_window_requires_approval` 恢复建议；`isotope-screen inspect/report`
+    可读取单个 screen artifact 或生成 run 级低敏 observe 摘要，不展开截图正文。
 11. 代码结构继续以 `src/isotope/` 为 Python 主包，不新增 `packages/`、
    `aios` 或 kernel 主叙事。
 
