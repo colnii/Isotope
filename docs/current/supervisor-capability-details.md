@@ -433,7 +433,8 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
   low-risk capability execution（低风险能力执行）和 loop
   `capacity_decisions` / `capacity_call_specs` 生产 glue；plain 输出已补齐
   低敏 planner / tick / artifact handoff summary，JSON payload 已暴露同源
-  `agent_loop_summary` helper；继续复用
+  `agent_loop_summary` helper，dashboard / web 的 multi-worker 卡片已消费该
+  summary；继续复用
   `agents/scheduler/capacity_graph.py`、`CapabilityRunner` 和
   `llm.capacity_calling`，不在 runner 中重写 capacity graph。
 - `features/supervisor/commands/advice/advice_execution.py`：已承接旧 command

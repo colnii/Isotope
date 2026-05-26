@@ -28,8 +28,10 @@
 - `isotope-supervisor capacity plan --execute-agent-loop` 的 plain 输出会打印
   低敏 planner selected step、tick status、tick stop reason 和 artifact ref。
 - `isotope-supervisor capacity plan --json --execute-agent-loop` 会返回同一组
-  `agent_loop_summary` 低敏字段，后续 dashboard / web 应复用它，不直接读取
-  原始 `tick_result` 深层结构。
+  `agent_loop_summary` 低敏字段。
+- Dashboard / web 的 multi-worker payload 会从 capacity memory record 读取
+  `agent_loop_summary`，只展示 tick / step / artifact 摘要，不直接读取原始
+  `tick_result` 深层结构。
 
 HTTP body 只接受：
 

@@ -59,6 +59,13 @@ def test_supervisor_worker_manager_groups_memory_events_and_capacity_calls(
                 "worker_id": "worker-a",
                 "capacity_id": "artifact.review",
                 "arguments": {"secret": "PRIVATE_CAPACITY_ARGUMENT"},
+                "agent_loop_summary": {
+                    "agent_loop_executed": True,
+                    "agent_loop_planner_selected_step": "call_capability",
+                    "agent_loop_tick_status": "executed",
+                    "agent_loop_artifact_id": "artifact_safe_summary",
+                    "tick_result": {"raw": "PRIVATE_TICK_PAYLOAD"},
+                },
             },
             summary="Worker A selected artifact.review.",
             source_refs=[],
@@ -120,11 +127,23 @@ def test_supervisor_worker_manager_groups_memory_events_and_capacity_calls(
     assert workers["worker-a"]["memory_records_total"] == 2
     assert workers["worker-a"]["capacity_calls_total"] == 1
     assert workers["worker-a"]["capacity_ids"] == ["artifact.review"]
+    assert workers["worker-a"]["recent_capacity_summary"] == {
+        "record_id": "mem_worker_a_capacity",
+        "capacity_id": "artifact.review",
+        "summary": "Worker A selected artifact.review.",
+        "agent_loop_summary": {
+            "agent_loop_executed": True,
+            "agent_loop_planner_selected_step": "call_capability",
+            "agent_loop_tick_status": "executed",
+            "agent_loop_artifact_id": "artifact_safe_summary",
+        },
+    }
     assert workers["worker-a"]["outgoing_events_total"] == 1
     assert workers["worker-b"]["memory_records_total"] == 1
     assert workers["worker-b"]["incoming_events_total"] == 2
     assert workers["worker-b"]["outgoing_events_total"] == 1
     assert "content" not in workers["worker-a"]
+    assert "tick_result" not in output
     assert "PRIVATE_" not in output
 
 
@@ -182,6 +201,13 @@ def test_supervisor_dashboard_json_includes_multi_worker_status(tmp_path, capsys
                 "worker_id": "worker-a",
                 "capacity_id": "artifact.review",
                 "arguments": {"secret": "PRIVATE_CAPACITY_ARGUMENT"},
+                "agent_loop_summary": {
+                    "agent_loop_executed": True,
+                    "agent_loop_tick_status": "executed",
+                    "agent_loop_tick_after_stop_reason": "tick_budget_exhausted",
+                    "agent_loop_artifact_id": "artifact_safe_summary",
+                    "step_result": {"raw": "PRIVATE_STEP_PAYLOAD"},
+                },
             },
             summary="Worker A selected artifact.review.",
             source_refs=[],
@@ -224,7 +250,19 @@ def test_supervisor_dashboard_json_includes_multi_worker_status(tmp_path, capsys
     assert payload["multi_worker"]["summary"]["capacity_calls_total"] == 1
     workers = {worker["name"]: worker for worker in payload["multi_worker"]["workers"]}
     assert workers["worker-a"]["capacity_ids"] == ["artifact.review"]
+    assert workers["worker-a"]["recent_capacity_summary"] == {
+        "record_id": "mem_worker_a_capacity",
+        "capacity_id": "artifact.review",
+        "summary": "Worker A selected artifact.review.",
+        "agent_loop_summary": {
+            "agent_loop_executed": True,
+            "agent_loop_tick_status": "executed",
+            "agent_loop_tick_after_stop_reason": "tick_budget_exhausted",
+            "agent_loop_artifact_id": "artifact_safe_summary",
+        },
+    }
     assert workers["worker-b"]["incoming_events_total"] == 1
+    assert "step_result" not in output
     assert "PRIVATE_" not in output
 
 

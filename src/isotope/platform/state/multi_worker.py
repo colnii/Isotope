@@ -11,6 +11,17 @@ from isotope.platform.state.worker_event_channel import DEFAULT_CHANNEL, WORKER_
 
 
 CAPACITY_KINDS = {"capacity_call", "capacity_call_selection"}
+AGENT_LOOP_SUMMARY_KEYS = {
+    "agent_loop_executed",
+    "agent_loop_next_tick_kind",
+    "agent_loop_planner_selected_step",
+    "agent_loop_tick_status",
+    "agent_loop_tick_after_stop_reason",
+    "agent_loop_artifact_id",
+    "agent_loop_post_step_phase",
+    "agent_loop_post_step_should_continue",
+    "agent_loop_post_step_stop_reason",
+}
 
 
 def build_multi_worker_status_payload(
@@ -148,6 +159,7 @@ def _build_worker_payload(
         "broadcast_events_total": len(broadcast_events),
         "capacity_calls_total": len(capacity_records),
         "capacity_ids": capacity_ids,
+        "recent_capacity_summary": _recent_capacity_summary(capacity_records),
         "recent_memory": _recent_memory_preview(related_memory),
         "recent_event": _recent_event_preview(related_events),
     }
@@ -211,6 +223,31 @@ def _capacity_id(record: MemoryRecord) -> str | None:
     if isinstance(selection, dict):
         return _optional_text(selection.get("capacity_id"))
     return None
+
+
+def _recent_capacity_summary(records: list[MemoryRecord]) -> dict[str, Any] | None:
+    record = _latest_record(records)
+    if record is None:
+        return None
+    return {
+        "record_id": record.memory_id,
+        "capacity_id": _capacity_id(record),
+        "summary": record.summary,
+        "agent_loop_summary": _agent_loop_summary(
+            record.content.get("agent_loop_summary")
+        ),
+    }
+
+
+def _agent_loop_summary(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {"agent_loop_executed": False}
+    return {
+        key: item
+        for key, item in value.items()
+        if key in AGENT_LOOP_SUMMARY_KEYS
+        and (isinstance(item, (str, bool, int, float)) or item is None)
+    }
 
 
 def _recent_memory_preview(records: list[MemoryRecord]) -> dict[str, Any] | None:

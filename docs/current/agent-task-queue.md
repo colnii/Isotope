@@ -76,6 +76,9 @@
 - `isotope-supervisor capacity plan` 的 JSON payload 已补齐
   `agent_loop_summary` helper，复用 plain 输出同一组低敏字段；测试覆盖
   JSON summary 和 no raw payload 边界。
+- Dashboard / web 的 multi-worker read model 已消费 capacity memory record 里的
+  `agent_loop_summary`，展示最近能力调用的 tick / step / artifact 低敏摘要，
+  不读取原始 `tick_result` / `step_result`。
 
 ## 下一批任务
 
@@ -109,13 +112,14 @@
 
 目标：
 
-- 让 dashboard / web 消费现有 `agent_loop_summary`，不要重新从
-  `tick_result` / `step_result` 深层结构里手工拼字段。
+- 让真实 `call_capacity` 执行动作把 `agent_loop_summary` 写入 worker / memory
+  record，打通“执行 -> read model -> dashboard/web”链路。
 - 仍不接真实 LLM，不做自动多轮循环。
 
 验收：
 
-- 目标测试覆盖 dashboard / web 展示字段来自 `agent_loop_summary`。
+- 目标测试覆盖执行端落盘记录包含 `agent_loop_summary`。
+- Dashboard / web 继续只从 summary 读取，不读取 raw tick payload。
 - 继续保持 no raw payload（不暴露原始内容）边界。
 - smoke 使用 fixture / fake provider，不要求真实 provider 配置。
 
