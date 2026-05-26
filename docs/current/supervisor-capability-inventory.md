@@ -126,7 +126,9 @@
   status、screenshot availability 和 interference 标记，仍不展开截图正文或
   原始 artifact content；当 agent loop 调用 `research.search` 时，同一 summary
   只提升 research status、provider、source_count 和 artifact_count，不返回
-  report 正文或 raw transcript；
+  report 正文或 raw transcript；当 agent loop 调用 `research.promote` 时，
+  summary 只提升 promotion status、action_type 和 proposal-only memory_write
+  标记，以及 quality gate status，不返回 proposal payload content；
   `capacity_call_specs` 只会从 `status=ok`、`status_reason=ready`，
   且 `capability_launch_plan.can_launch=true`、`capacity_id` 匹配的计划生成；
   执行前仍会重新确认同一 `capacity_id` 存在 ready 的
@@ -206,6 +208,13 @@
   只允许 deterministic `fake` provider，不打开 Tavily 网络，也不委托 Codex；
   结果只返回 research status、query、provider、evidence status、source_count
   和 artifact refs / metadata，不直接返回 report 正文或 raw transcript。
+- `research.promote` 已注册为可发现、可预检、可运行的 proposal-only
+  capability：`list/search/describe` 能看到它，`plan/run --input-json` 要求
+  `root/run_id/artifact_id/agent_id/thread_id`；执行时复用
+  `build_research_memory_promotion_payload(...)` 和 `memory.promotion` proposal
+  boundary，只从 `research.report` artifact metadata 和 quality gate 生成
+  write_memory proposal summary，不写 memory、不读取 raw transcript、不返回
+  proposal payload content。
 - `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
 - `/managed/send` 成功发送后会更新 lane state。
 - `guide` 会按 cwd、lane name 和 tmux session 打印可复制工作流命令。

@@ -413,6 +413,99 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="research.promote",
+                    title="Research Promote",
+                    description=(
+                        "Build a write_memory proposal summary from an existing "
+                        "research.report record using the memory promotion boundary."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "research",
+                        "promote",
+                        "memory",
+                        "proposal",
+                        "provenance",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": [
+                            "root",
+                            "run_id",
+                            "artifact_id",
+                            "agent_id",
+                            "thread_id",
+                        ],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "description": "Runtime root containing research artifacts.",
+                            },
+                            "run_id": {
+                                "type": "string",
+                                "description": "Run id for the research.report artifact.",
+                            },
+                            "artifact_id": {
+                                "type": "string",
+                                "description": "Artifact id for the research.report artifact.",
+                            },
+                            "agent_id": {
+                                "type": "string",
+                                "description": "Agent id recorded on the write_memory proposal.",
+                            },
+                            "thread_id": {
+                                "type": "string",
+                                "description": "Thread id recorded on the write_memory proposal.",
+                            },
+                            "scope": {
+                                "type": "string",
+                                "enum": ["thread", "run", "session"],
+                                "description": "Memory promotion scope.",
+                                "default": "run",
+                            },
+                            "quality": {
+                                "type": "string",
+                                "description": "Memory candidate quality label.",
+                                "default": "candidate",
+                            },
+                            "proposal_id": {
+                                "type": "string",
+                                "description": "Optional stable proposal id.",
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "artifact_type",
+                            "artifact_ref",
+                            "proposal_id",
+                            "action_type",
+                            "scope",
+                            "quality",
+                            "summary",
+                            "source_refs",
+                            "requested_capabilities",
+                            "quality_gate_status",
+                            "quality_gate_reasons",
+                            "memory_write",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "reuses_research_memory_promotion_payload",
+                        "reuses_memory_promotion_boundary",
+                        "research_report_artifact_only",
+                        "proposal_only_no_memory_write",
+                        "no_raw_transcript_read",
+                        "no_proposal_payload_content_return",
+                        "low_sensitive_summary_only",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="supervisor.integration_review",
                     title="Supervisor Integration Review",
                     description=(

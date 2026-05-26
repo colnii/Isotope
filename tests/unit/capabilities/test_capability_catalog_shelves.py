@@ -130,6 +130,7 @@ def test_default_builtins_are_small_product_candidate_set_only():
         "external.snapshot.review",
         "memory.promotion.preview",
         "memory.query",
+        "research.promote",
         "research.search",
         "screen.report",
         "supervisor.integration_review",

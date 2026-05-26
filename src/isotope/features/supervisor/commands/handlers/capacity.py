@@ -427,6 +427,7 @@ def agent_loop_json_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
             summary.update(_agent_loop_screen_report_summary(screen_report))
         summary.update(_agent_loop_memory_query_summary(capability_run))
         summary.update(_agent_loop_research_search_summary(capability_run))
+        summary.update(_agent_loop_research_promotion_summary(capability_run))
     return summary
 
 
@@ -872,6 +873,27 @@ def _print_capacity_plan_plain(payload: Mapping[str, Any]) -> None:
                 "agent_loop_research_artifact_count: "
                 f"{agent_loop_summary.get('agent_loop_research_artifact_count')}"
             )
+        promotion_status = agent_loop_summary.get(
+            "agent_loop_research_promotion_status"
+        )
+        if promotion_status is not None:
+            print(f"agent_loop_research_promotion_status: {promotion_status}")
+            print(
+                "agent_loop_research_promotion_action_type: "
+                f"{agent_loop_summary.get('agent_loop_research_promotion_action_type')}"
+            )
+            print(
+                "agent_loop_research_promotion_memory_write: "
+                f"{agent_loop_summary.get('agent_loop_research_promotion_memory_write')}"
+            )
+            quality_gate_status = agent_loop_summary.get(
+                "agent_loop_research_promotion_quality_gate_status"
+            )
+            if quality_gate_status is not None:
+                print(
+                    "agent_loop_research_promotion_quality_gate_status: "
+                    f"{quality_gate_status}"
+                )
 
 
 def _print_capacity_blockers(
@@ -993,4 +1015,22 @@ def _agent_loop_research_search_summary(
         "agent_loop_research_provider": research_search.get("provider"),
         "agent_loop_research_source_count": research_search.get("source_count"),
         "agent_loop_research_artifact_count": research_search.get("artifact_count"),
+    }
+
+
+def _agent_loop_research_promotion_summary(
+    capability_run: Mapping[str, Any],
+) -> dict[str, Any]:
+    if capability_run.get("capability_id") != "research.promote":
+        return {}
+    promotion = capability_run.get("research_promotion")
+    if not isinstance(promotion, Mapping):
+        return {}
+    return {
+        "agent_loop_research_promotion_status": promotion.get("status"),
+        "agent_loop_research_promotion_action_type": promotion.get("action_type"),
+        "agent_loop_research_promotion_memory_write": promotion.get("memory_write"),
+        "agent_loop_research_promotion_quality_gate_status": promotion.get(
+            "quality_gate_status"
+        ),
     }

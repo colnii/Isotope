@@ -7,15 +7,24 @@ from typing import Any, Mapping
 
 from ..features.research.flow import ResearchFlow
 from ..features.research.providers import build_research_provider
+from ..features.research.runner import build_research_memory_promotion_payload
 from ..platform.schemas.input_contract import missing_required_input_keys
 
 
+RESEARCH_PROMOTE_CAPABILITY = "research.promote"
 RESEARCH_SEARCH_CAPABILITY = "research.search"
+RESEARCH_CAPABILITIES = frozenset(
+    {
+        RESEARCH_PROMOTE_CAPABILITY,
+        RESEARCH_SEARCH_CAPABILITY,
+    }
+)
 VALID_RESEARCH_CAPABILITY_PROVIDERS = frozenset({"fake"})
+VALID_RESEARCH_PROMOTION_SCOPES = frozenset({"thread", "run", "session"})
 
 
 def is_research_capability(capability_id: str) -> bool:
-    return capability_id == RESEARCH_SEARCH_CAPABILITY
+    return capability_id in RESEARCH_CAPABILITIES
 
 
 def validate_research_inputs(
@@ -24,12 +33,17 @@ def validate_research_inputs(
     inputs: Mapping[str, Any] | None,
     missing_inputs: list[str],
 ) -> dict[str, Any]:
-    if capability_id != RESEARCH_SEARCH_CAPABILITY:
-        return dict(inputs or {})
-    return _validate_research_search_inputs(
-        inputs=inputs,
-        missing_inputs=missing_inputs,
-    )
+    if capability_id == RESEARCH_SEARCH_CAPABILITY:
+        return _validate_research_search_inputs(
+            inputs=inputs,
+            missing_inputs=missing_inputs,
+        )
+    if capability_id == RESEARCH_PROMOTE_CAPABILITY:
+        return _validate_research_promote_inputs(
+            inputs=inputs,
+            missing_inputs=missing_inputs,
+        )
+    return dict(inputs or {})
 
 
 def run_research_search(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
@@ -82,6 +96,59 @@ def run_research_search(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
     }
 
 
+def run_research_promote(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
+    required_inputs = ["root", "run_id", "artifact_id", "agent_id", "thread_id"]
+    missing_inputs = _missing_inputs(required_inputs, inputs)
+    if missing_inputs:
+        raise ValueError(
+            "missing required capability inputs: " + ", ".join(missing_inputs)
+        )
+    input_mapping = _validate_research_promote_inputs(
+        inputs=inputs,
+        missing_inputs=missing_inputs,
+    )
+    payload = build_research_memory_promotion_payload(
+        Path(input_mapping["root"]).expanduser(),
+        run_id=input_mapping["run_id"],
+        artifact_id=input_mapping["artifact_id"],
+        agent_id=input_mapping["agent_id"],
+        thread_id=input_mapping["thread_id"],
+        scope=input_mapping["scope"],
+        quality=input_mapping["quality"],
+        proposal_id=input_mapping.get("proposal_id"),
+    )
+    artifact = payload.get("artifact")
+    proposal = payload.get("proposal")
+    quality_gate = payload.get("quality_gate")
+    if not isinstance(artifact, Mapping) or not isinstance(proposal, Mapping):
+        raise ValueError("research promotion payload must include artifact and proposal")
+    if not isinstance(quality_gate, Mapping):
+        raise ValueError("research promotion payload must include quality_gate")
+    proposal_payload = proposal.get("payload")
+    proposal_payload = proposal_payload if isinstance(proposal_payload, Mapping) else {}
+    return {
+        "kind": "capability_run_result",
+        "capability_id": RESEARCH_PROMOTE_CAPABILITY,
+        "status": "completed",
+        "runner_kind": "deterministic_local",
+        "research_promotion": {
+            "status": payload.get("status"),
+            "artifact_type": artifact.get("artifact_type"),
+            "artifact_ref": artifact.get("ref"),
+            "proposal_id": proposal.get("proposal_id"),
+            "action_type": proposal.get("action_type"),
+            "scope": proposal_payload.get("scope"),
+            "quality": proposal_payload.get("quality"),
+            "summary": proposal_payload.get("summary"),
+            "source_refs": proposal_payload.get("source_refs"),
+            "requested_capabilities": proposal.get("requested_capabilities"),
+            "quality_gate_status": quality_gate.get("status"),
+            "quality_gate_reasons": quality_gate.get("reasons"),
+            "memory_write": "proposal_only",
+        },
+    }
+
+
 def _missing_inputs(
     required_inputs: list[str], inputs: Mapping[str, Any] | None
 ) -> list[str]:
@@ -112,4 +179,41 @@ def _validate_research_search_inputs(
 
     normalized = dict(input_mapping)
     normalized["provider"] = provider
+    return normalized
+
+
+def _validate_research_promote_inputs(
+    *,
+    inputs: Mapping[str, Any] | None,
+    missing_inputs: list[str],
+) -> dict[str, Any]:
+    input_mapping = inputs or {}
+    for name in ("root", "run_id", "artifact_id", "agent_id", "thread_id"):
+        if name in missing_inputs:
+            continue
+        value = input_mapping.get(name)
+        if not isinstance(value, str):
+            raise ValueError(f"{name} must be a string")
+        if not value.strip():
+            raise ValueError(f"{name} must be a non-empty string")
+
+    scope = input_mapping.get("scope", "run")
+    if not isinstance(scope, str) or scope not in VALID_RESEARCH_PROMOTION_SCOPES:
+        raise ValueError("scope must be thread, run, or session")
+
+    quality = input_mapping.get("quality", "candidate")
+    if not isinstance(quality, str) or not quality.strip():
+        raise ValueError("quality must be a non-empty string")
+
+    proposal_id = input_mapping.get("proposal_id")
+    if proposal_id is not None and (
+        not isinstance(proposal_id, str) or not proposal_id.strip()
+    ):
+        raise ValueError("proposal_id must be a non-empty string")
+
+    normalized = dict(input_mapping)
+    normalized["scope"] = scope
+    normalized["quality"] = quality.strip()
+    if isinstance(proposal_id, str):
+        normalized["proposal_id"] = proposal_id.strip()
     return normalized

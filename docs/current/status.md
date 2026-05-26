@@ -103,6 +103,11 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    只允许 deterministic `fake` provider，不打开 Tavily 网络、不委托 Codex；capacity
    agent-loop summary 只提升 status、provider、source_count 和 artifact_count，
    不返回 report 正文或 raw transcript。
+   `research.promote` 也已注册为 proposal-only capability：执行时复用
+   `build_research_memory_promotion_payload(...)` 和 `memory.promotion` 边界，要求
+   `root/run_id/artifact_id/agent_id/thread_id`，只从 `research.report` metadata
+   与结构化 report quality gate 生成 `write_memory` proposal summary，不写 memory、
+   不返回 proposal payload content、不读取 raw transcript。
 10. Screen observe/control 已有 policy-gated（策略门控）第一片：
     `screen_observe` / `screen_control` 走 registry、policy、executor 和 artifact
     边界，Windows backend 仅用于手动 smoke；observe/control 已支持命令级

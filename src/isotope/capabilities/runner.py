@@ -19,8 +19,10 @@ from .memory import (
     validate_memory_readonly_inputs,
 )
 from .research import (
+    RESEARCH_PROMOTE_CAPABILITY,
     RESEARCH_SEARCH_CAPABILITY,
     is_research_capability,
+    run_research_promote,
     run_research_search,
     validate_research_inputs,
 )
@@ -278,6 +280,8 @@ class CapabilityRunner:
             return run_memory_query(inputs=input_mapping)
         if capability_id == MEMORY_PROMOTION_PREVIEW_CAPABILITY:
             return run_memory_promotion_preview(inputs=input_mapping)
+        if capability_id == RESEARCH_PROMOTE_CAPABILITY:
+            return run_research_promote(inputs=input_mapping)
         if capability_id == RESEARCH_SEARCH_CAPABILITY:
             return run_research_search(inputs=input_mapping)
         if capability_id == SCREEN_REPORT_CAPABILITY:

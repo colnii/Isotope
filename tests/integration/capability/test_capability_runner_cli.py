@@ -69,6 +69,7 @@ def test_capability_runner_cli_lists_capabilities_as_json():
         "external.snapshot.review",
         "memory.promotion.preview",
         "memory.query",
+        "research.promote",
         "research.search",
         "screen.report",
         "supervisor.integration_review",
@@ -172,6 +173,18 @@ def test_capability_runner_cli_searches_research_search_as_json():
     assert payload["status"] == "ok"
     assert [item["capability_id"] for item in payload["search"]["capabilities"]] == [
         "research.search"
+    ]
+    _assert_low_sensitive(payload)
+
+
+def test_capability_runner_cli_searches_research_promote_as_json():
+    result = _run_cli("search", "research promote", "--json")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert [item["capability_id"] for item in payload["search"]["capabilities"]] == [
+        "research.promote"
     ]
     _assert_low_sensitive(payload)
 
@@ -302,6 +315,33 @@ def test_capability_runner_cli_plans_research_search_missing_inputs_as_json():
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_local"
     assert plan["missing_inputs"] == ["query"]
+    _assert_low_sensitive(payload)
+
+
+def test_capability_runner_cli_plans_research_promote_missing_inputs_as_json():
+    result = _run_cli(
+        "plan",
+        "research.promote",
+        "--input-json",
+        json.dumps(
+            {
+                "root": "/tmp/isotope-runtime",
+                "run_id": "run_research",
+                "artifact_id": "artifact_report",
+            }
+        ),
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    plan = payload["plan"]
+    assert plan["capability_id"] == "research.promote"
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_local"
+    assert plan["missing_inputs"] == ["agent_id", "thread_id"]
     _assert_low_sensitive(payload)
 
 

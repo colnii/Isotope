@@ -206,6 +206,30 @@ def test_runner_discovers_research_search_from_default_catalog():
     assert "no_network_provider" in description["safety_boundaries"]
 
 
+def test_runner_discovers_research_promote_from_default_catalog():
+    runner = _runner()
+
+    assert "research.promote" in _ids(runner.list_capabilities())
+    search = runner.search_capabilities(query="research promote")
+
+    assert _ids(search["capabilities"]) == ["research.promote"]
+    description = runner.describe_capability("research.promote")
+    assert description["input_contract"]["required"] == [
+        "root",
+        "run_id",
+        "artifact_id",
+        "agent_id",
+        "thread_id",
+    ]
+    assert description["input_contract"]["properties"]["scope"]["enum"] == [
+        "thread",
+        "run",
+        "session",
+    ]
+    assert "reuses_memory_promotion_boundary" in description["safety_boundaries"]
+    assert "proposal_only_no_memory_write" in description["safety_boundaries"]
+
+
 def test_runner_status_mirrors_catalog_status_without_executing_capability():
     catalog = CapabilityCatalog(
         capabilities=[
@@ -1135,6 +1159,68 @@ def test_research_search_capability_runs_existing_fake_research_flow(tmp_path):
         "research.report",
     ]
     assert "research" not in result
+    for mapping in _walk_mapping(result):
+        assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
+
+
+def test_research_promote_capability_builds_low_sensitive_proposal_summary(tmp_path):
+    store = ArtifactStore(tmp_path)
+    artifact = store.create_artifact(
+        "run_research",
+        execution_id="exec_research",
+        artifact_type="research.report",
+        summary="Fake research summary for capacity promotion.",
+        content=json.dumps(
+            {
+                "evidence_status": "complete",
+                "sources": [{"source_id": "src_001", "title": "Source"}],
+                "report": {
+                    "summary": "raw report body must not leak through capability",
+                    "claims": [
+                        {"text": "Source-backed claim.", "source_ids": ["src_001"]}
+                    ],
+                },
+            },
+            sort_keys=True,
+        ),
+    )
+
+    result = _runner().run_capability(
+        "research.promote",
+        inputs={
+            "root": str(tmp_path),
+            "run_id": "run_research",
+            "artifact_id": artifact.artifact_id,
+            "agent_id": "agent_capacity",
+            "thread_id": "thread_capacity",
+            "scope": "session",
+            "quality": "candidate",
+            "proposal_id": "prop_capacity_research",
+        },
+    )
+
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "research.promote"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "deterministic_local"
+    promotion = result["research_promotion"]
+    assert promotion == {
+        "status": "ok",
+        "artifact_type": "research.report",
+        "artifact_ref": artifact.ref.to_dict(),
+        "proposal_id": "prop_capacity_research",
+        "action_type": "write_memory",
+        "scope": "session",
+        "quality": "candidate",
+        "summary": "Fake research summary for capacity promotion.",
+        "source_refs": [artifact.ref.to_dict()],
+        "requested_capabilities": {"tools": ["write_memory"]},
+        "quality_gate_status": "promotable",
+        "quality_gate_reasons": [],
+        "memory_write": "proposal_only",
+    }
+    output = json.dumps(result, sort_keys=True)
+    assert "raw report body" not in output
     for mapping in _walk_mapping(result):
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
 
