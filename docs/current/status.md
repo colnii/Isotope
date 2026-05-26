@@ -62,6 +62,10 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    `worker-manager` plain 输出也会展开同一份 supervised capacity run 摘要；
    Web 运行焦点区会显示最近 supervised capacity run 的低敏摘要。
    它仍不调用真实 LLM，不自动多轮循环。
+   `supervisor.worker_review` 已注册为 capability runner 的只读能力，
+   `isotope-capability list/search/plan/run` 能发现、预检和运行它；执行时复用
+   现有 `worker-review` lightweight 路径，只返回低敏 worker 决策摘要，
+   不自动合并、不清理 worktree 或分支。
 10. Screen observe/control 已有 policy-gated（策略门控）第一片：
     `screen_observe` / `screen_control` 走 registry、policy、executor 和 artifact
     边界，Windows backend 仅用于手动 smoke；observe/control 已支持命令级

@@ -5,6 +5,11 @@ from pathlib import Path
 import pytest
 
 from isotope.capabilities.catalog import Capability, CapabilityCatalog
+from isotope.features.supervisor.registry import (
+    ManagedCodexRecord,
+    append_managed_record,
+    default_registry_path,
+)
 
 
 FORBIDDEN_RESULT_KEYS = {
@@ -112,6 +117,19 @@ def test_runner_discovers_supervisor_request_context_from_default_catalog():
     assert description["input_contract"]["required"] == ["codex_home", "cwd", "query"]
     assert "workspace_read_only" in description["safety_boundaries"]
     assert "writes_existing_supervisor_context_store" in description["safety_boundaries"]
+
+
+def test_runner_discovers_supervisor_worker_review_from_default_catalog():
+    runner = _runner()
+
+    assert "supervisor.worker_review" in _ids(runner.list_capabilities())
+    search = runner.search_capabilities(query="worker-review")
+
+    assert _ids(search["capabilities"]) == ["supervisor.worker_review"]
+    description = runner.describe_capability("supervisor.worker_review")
+    assert description["input_contract"]["required"] == ["codex_home"]
+    assert "workspace_read_only" in description["safety_boundaries"]
+    assert "no_merge_or_cleanup" in description["safety_boundaries"]
 
 
 def test_runner_status_mirrors_catalog_status_without_executing_capability():
@@ -244,6 +262,35 @@ def test_request_context_plan_stops_when_required_inputs_are_missing():
     assert plan["runner_kind"] == "deterministic_readonly"
     assert plan["missing_inputs"] == ["codex_home", "query"]
     assert plan["scenario"] is None
+
+
+def test_worker_review_plan_stops_when_required_inputs_are_missing():
+    plan = _runner().plan_capability_run("supervisor.worker_review", inputs={})
+
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["missing_inputs"] == ["codex_home"]
+    assert plan["scenario"] is None
+
+
+def test_worker_review_plan_rejects_non_string_codex_home():
+    with pytest.raises(ValueError, match="codex_home"):
+        _runner().plan_capability_run(
+            "supervisor.worker_review",
+            inputs={"codex_home": 123},
+        )
+
+
+def test_worker_review_plan_rejects_inputs_outside_contract():
+    with pytest.raises(ValueError, match="not allowed by input_contract"):
+        _runner().plan_capability_run(
+            "supervisor.worker_review",
+            inputs={
+                "codex_home": "/tmp/codex-home",
+                "prompt": "PRIVATE_CONTENT_SHOULD_NOT_PASS",
+            },
+        )
 
 
 @pytest.mark.parametrize(
@@ -430,6 +477,92 @@ def test_request_context_capability_runs_existing_readonly_context_search(tmp_pa
     assert result["context_result"]["created_at"]
     assert result["context_result"]["item_count"] >= 1
     assert (codex_home / "supervisor" / "context_results.jsonl").is_file()
+    json.dumps(result)
+    for mapping in _walk_mapping(result):
+        assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
+
+
+def test_worker_review_capability_runs_existing_lightweight_review(tmp_path):
+    codex_home = tmp_path / "codex-home"
+    workspace = tmp_path / "repo" / ".worktrees" / "supervisor" / "feature-a"
+    workspace.mkdir(parents=True)
+    log_path = codex_home / "supervisor" / "logs" / "managed-001.log"
+    log_path.parent.mkdir(parents=True)
+    log_path.write_text(
+        "\n".join(
+            [
+                "SUPERVISOR_STATUS: done",
+                "SUPERVISOR_SUMMARY: worker finished",
+                "SUPERVISOR_NEXT: review diff",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    append_managed_record(
+        default_registry_path(codex_home),
+        ManagedCodexRecord(
+            record_id="managed-001",
+            name="feature-a",
+            cwd=str(workspace),
+            prompt="PRIVATE_PROMPT_SHOULD_NOT_PASS",
+            command=("codex", "exec"),
+            pid=0,
+            started_at="2026-05-27T00:00:00+00:00",
+            log_path=str(log_path),
+            backend="tmux",
+            tmux_session="feature-a",
+        ),
+    )
+
+    result = _runner().run_capability(
+        "supervisor.worker_review",
+        inputs={"codex_home": str(codex_home)},
+    )
+
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "supervisor.worker_review"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "deterministic_readonly"
+    review = result["worker_review"]
+    assert review["status"] == "ok"
+    assert review["summary"]["total"] == 1
+    assert review["decision_summary"]["merge_candidates"] == 1
+    assert review["safety"]["auto_merge"] is False
+    assert review["safety"]["delete_branch"] is False
+    assert review["workers"] == [
+        {
+            "record_id": "managed-001",
+            "name": "feature-a",
+            "backend": "tmux",
+            "registry_status": "launched",
+            "cwd": str(workspace),
+            "cwd_exists": True,
+            "worktree": {
+                "exists": True,
+                "branch": "supervisor/feature-a",
+                "inferred_branch": None,
+            },
+            "supervisor_protocol": {
+                "status": "done",
+                "summary": "worker finished",
+                "next": "review diff",
+            },
+            "changes": {
+                "status": "unknown",
+                "summary": "loop 快速状态未读取 diff",
+            },
+            "test_status": "skipped",
+            "test_passed": None,
+            "test_exit_code": None,
+            "next_decision": {
+                "recommendation": "review_then_merge_candidate",
+                "summary": "worker 已完成且有本地改动；建议先复查 diff 并跑验证，通过后再人工合并。",
+                "merge_suitable": True,
+                "continue_or_split_task": False,
+                "risk_level": "medium",
+            },
+        }
+    ]
     json.dumps(result)
     for mapping in _walk_mapping(result):
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)

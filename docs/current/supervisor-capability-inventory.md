@@ -152,6 +152,12 @@
   `request_project_context`，保持 workspace read-only、BM25 排序和原有
   context 结果存储格式；执行时会写入既有 Supervisor context store，
   输出仍是低敏摘要。
+- `supervisor.worker_review` 已注册为可发现、可预检、可运行的只读
+  capability：`list/search/describe` 能看到它，`plan/run --input-json`
+  只要求 `codex_home`；执行时复用现有 `collect_worker_reviews(...,
+  lightweight=True)`，返回 summary、decision summary、automation candidates
+  和压缩 worker 项，不返回 prompt、validation command 或 raw diff，不自动
+  merge、cleanup、delete branch。
 - `web` 会通过 `/events` 接收 bell 事件并立刻刷新 dashboard。
 - `/managed/send` 成功发送后会更新 lane state。
 - `guide` 会按 cwd、lane name 和 tmux session 打印可复制工作流命令。

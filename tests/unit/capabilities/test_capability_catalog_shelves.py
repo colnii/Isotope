@@ -129,6 +129,7 @@ def test_default_builtins_are_small_product_candidate_set_only():
         "artifact.review",
         "external.snapshot.review",
         "supervisor.request_context",
+        "supervisor.worker_review",
     ]
     assert all(entry["shelf"] == "product_candidate" for entry in entries)
     assert "self.evolution.review" not in capability_ids

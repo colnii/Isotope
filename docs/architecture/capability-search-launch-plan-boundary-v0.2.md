@@ -26,10 +26,13 @@ aggressive branch 里有很多 search / route / ask / interactive / workflow 想
 - `search_capabilities(...)`: 在 `CapabilityCatalog` 里做低敏搜索。
 - `plan_capability_run(...)`: 对一个 capability 生成低敏 launch plan。
 - optional CLI:
-  - `python -m isotope.capability_runner search ...`
-  - `python -m isotope.capability_runner plan ...`
+  - `isotope-capability search ...`
+  - `isotope-capability plan ...`
+  - `python -m isotope.capabilities.runner search ...`
+  - `python -m isotope.capabilities.runner plan ...`
 
-第一批不执行 capability。
+第一批不执行 capability；后续 `supervisor.request_context` 和
+`supervisor.worker_review` 已作为受限只读 capability 接入 `run`。
 
 ## 4. Search Boundary
 

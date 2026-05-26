@@ -99,6 +99,9 @@
 - Web 运行焦点区已直接读取 `multi_worker.supervised_execution`，展示最近
   supervised capacity run 的 worker、capacity id、tick、step 和 artifact
   低敏摘要。
+- `supervisor.worker_review` 已进入 capability runner：`isotope-capability`
+  可 search/plan/run，运行时复用既有 lightweight `worker-review`，只返回低敏
+  决策摘要，不自动合并、不清理 worktree 或分支。
 
 ## 下一批任务
 
@@ -132,15 +135,16 @@
 
 目标：
 
-- 把一个只读 Supervisor 操作注册成 capability，优先候选是
-  `worker-review` 或 `integration-review`。
-- 继续减少私有 LLM action，把可复用操作放进 capability catalog / runner。
+- 继续把已开发好的只读 Supervisor 组件挂到 capability runner。
+- 优先候选是 `supervisor.integration_review`，复用现有 `integration-review`
+  读取逻辑，输出 ready/already/needs/conflict 分组的低敏摘要。
+- 完成后再让 LLM planner / capacity path 复用这些 capability id，减少私有动作路径。
 
 验收：
 
-- capability `list/search/describe/plan` 可发现，默认 plan-only 或只读执行。
-- 输出只含低敏 summary，不自动 merge、不删除 worktree、不 push。
-- Supervisor LLM planner 后续可通过 capacity calling 选择该能力。
+- `isotope-capability search/plan/run` 能发现并运行该只读能力。
+- plan 缺必需输入时返回 missing inputs，不执行读盘或 git 命令。
+- run 只返回 low-sensitive summary，不 merge、不 push、不 delete、不 archive。
 
 ### 4. Supervisor 大分支暂缓
 

@@ -215,6 +215,52 @@ class CapabilityCatalog:
                     default_enabled=True,
                     network_required=False,
                 ),
+                Capability(
+                    capability_id="supervisor.worker_review",
+                    title="Supervisor Worker Review",
+                    description=(
+                        "Run existing worker-review collection in lightweight "
+                        "read-only mode for Supervisor worker decisions."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "supervisor",
+                        "worker",
+                        "worker-review",
+                        "review",
+                        "read_only",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["codex_home"],
+                        "properties": {
+                            "codex_home": {
+                                "type": "string",
+                                "description": "Codex home directory containing the managed worker registry.",
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "summary",
+                            "decision_summary",
+                            "automation_candidates",
+                            "workers",
+                            "safety",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "workspace_read_only",
+                        "managed_registry_read_only",
+                        "lightweight_worker_review",
+                        "no_merge_or_cleanup",
+                        "low_sensitive_summary_only",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
             ]
         )
 

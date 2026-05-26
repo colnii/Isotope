@@ -10,8 +10,15 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .catalog import CapabilityCatalog
+from .supervisor import (
+    SUPERVISOR_REQUEST_CONTEXT_CAPABILITY,
+    SUPERVISOR_WORKER_REVIEW_CAPABILITY,
+    is_supervisor_readonly_capability,
+    run_supervisor_request_context,
+    run_supervisor_worker_review,
+    validate_supervisor_readonly_inputs,
+)
 from ..demo import run_demo
-from ..features.supervisor.notifications.context import request_project_context
 from ..platform.schemas.input_contract import (
     contract_properties,
     contract_value_violation,
@@ -20,8 +27,6 @@ from ..platform.schemas.input_contract import (
     unexpected_contract_keys,
 )
 
-
-SUPERVISOR_REQUEST_CONTEXT_CAPABILITY = "supervisor.request_context"
 
 _CAPABILITY_SCENARIOS = {
     "approval.tool.runner": "approval-tool-runner",
@@ -126,11 +131,11 @@ class CapabilityRunner:
         scenario = _CAPABILITY_SCENARIOS.get(capability_id)
         required_inputs = _required_inputs(capability)
         missing_inputs = _missing_inputs(required_inputs, input_mapping)
-        if capability_id == SUPERVISOR_REQUEST_CONTEXT_CAPABILITY:
-            _validate_supervisor_request_context_inputs(
-                inputs=input_mapping,
-                missing_inputs=missing_inputs,
-            )
+        validate_supervisor_readonly_inputs(
+            capability_id=capability_id,
+            inputs=input_mapping,
+            missing_inputs=missing_inputs,
+        )
         _validate_inputs_against_contract(capability, inputs=input_mapping)
         runner_kind = _runner_kind(capability, scenario=scenario)
         blocking_reasons: list[str] = []
@@ -149,7 +154,7 @@ class CapabilityRunner:
         elif missing_inputs:
             launch_status = "missing_inputs"
             blocking_reasons.append("missing_inputs")
-        elif scenario is None and capability_id != SUPERVISOR_REQUEST_CONTEXT_CAPABILITY:
+        elif scenario is None and not is_supervisor_readonly_capability(capability_id):
             launch_status = "not_allowlisted"
             blocking_reasons.append("not_allowlisted")
         else:
@@ -189,10 +194,11 @@ class CapabilityRunner:
     ) -> dict[str, Any]:
         capability = self._lookup_capability(capability_id)
         input_mapping = _input_mapping(inputs)
-        if capability_id == SUPERVISOR_REQUEST_CONTEXT_CAPABILITY:
+        if is_supervisor_readonly_capability(capability_id):
             required_inputs = _required_inputs(capability)
             missing_inputs = _missing_inputs(required_inputs, input_mapping)
-            _validate_supervisor_request_context_inputs(
+            validate_supervisor_readonly_inputs(
+                capability_id=capability_id,
                 inputs=input_mapping,
                 missing_inputs=missing_inputs,
             )
@@ -206,7 +212,9 @@ class CapabilityRunner:
             raise PermissionError(f"capability not ready: {status['status']}")
 
         if capability_id == SUPERVISOR_REQUEST_CONTEXT_CAPABILITY:
-            return _run_supervisor_request_context(inputs=input_mapping)
+            return run_supervisor_request_context(inputs=input_mapping)
+        if capability_id == SUPERVISOR_WORKER_REVIEW_CAPABILITY:
+            return run_supervisor_worker_review(inputs=input_mapping)
 
         try:
             scenario = _CAPABILITY_SCENARIOS[capability_id]
@@ -314,12 +322,13 @@ def _validate_inputs_against_contract(
                 f"capability input {name} is not allowed by input_contract enum"
             )
 
+
 def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
     if capability.get("network_required") or capability.get("provider"):
         return "provider_required"
     if scenario is not None:
         return "deterministic_demo"
-    if capability.get("capability_id") == SUPERVISOR_REQUEST_CONTEXT_CAPABILITY:
+    if is_supervisor_readonly_capability(str(capability.get("capability_id", ""))):
         return "deterministic_readonly"
     return "deferred"
 
@@ -353,59 +362,6 @@ def _unknown_launch_plan(capability_id: str) -> dict[str, Any]:
         "safety_boundaries": [],
         "output_policy": _output_policy(),
     }
-
-
-def _run_supervisor_request_context(
-    *, inputs: Mapping[str, Any] | None
-) -> dict[str, Any]:
-    required_inputs = ["codex_home", "cwd", "query"]
-    missing_inputs = _missing_inputs(required_inputs, inputs)
-    if missing_inputs:
-        raise ValueError("missing required capability inputs: " + ", ".join(missing_inputs))
-    input_mapping = _validate_supervisor_request_context_inputs(
-        inputs=inputs,
-        missing_inputs=missing_inputs,
-    )
-    result = request_project_context(
-        codex_home=input_mapping["codex_home"],
-        cwd=input_mapping["cwd"],
-        query=input_mapping["query"],
-        max_results=input_mapping["max_results"],
-    )
-    result_dict = result.to_dict()
-    context_result = dict(result_dict)
-    context_result["item_count"] = len(result_dict["items"])
-    return {
-        "kind": "capability_run_result",
-        "capability_id": SUPERVISOR_REQUEST_CONTEXT_CAPABILITY,
-        "status": "completed",
-        "runner_kind": "deterministic_readonly",
-        "context_result": context_result,
-    }
-
-
-def _validate_supervisor_request_context_inputs(
-    *,
-    inputs: Mapping[str, Any] | None,
-    missing_inputs: list[str],
-) -> dict[str, Any]:
-    input_mapping = inputs or {}
-    for name in ("codex_home", "cwd", "query"):
-        if name in missing_inputs:
-            continue
-        value = input_mapping.get(name)
-        if not isinstance(value, str):
-            raise ValueError(f"{name} must be a string")
-
-    max_results = input_mapping.get("max_results", 5)
-    if isinstance(max_results, bool) or not isinstance(max_results, int):
-        raise ValueError("max_results must be a positive integer")
-    if max_results <= 0:
-        raise ValueError("max_results must be a positive integer")
-
-    normalized = dict(input_mapping)
-    normalized["max_results"] = max_results
-    return normalized
 
 
 from .runner_cli import _build_parser, _json_object_argument, main  # noqa: E402

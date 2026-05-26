@@ -8,7 +8,7 @@ import sys
 from typing import Any
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
 
 FORBIDDEN_KEYS = {
@@ -64,6 +64,7 @@ def test_capability_runner_cli_lists_capabilities_as_json():
         "artifact.review",
         "external.snapshot.review",
         "supervisor.request_context",
+        "supervisor.worker_review",
     ]
     _assert_low_sensitive(payload)
 
@@ -117,6 +118,18 @@ def test_capability_runner_cli_searches_supervisor_request_context_as_json():
     _assert_low_sensitive(payload)
 
 
+def test_capability_runner_cli_searches_supervisor_worker_review_as_json():
+    result = _run_cli("search", "worker-review", "--json")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert [item["capability_id"] for item in payload["search"]["capabilities"]] == [
+        "supervisor.worker_review"
+    ]
+    _assert_low_sensitive(payload)
+
+
 def test_capability_runner_cli_plans_capability_run_as_json():
     result = _run_cli("plan", "artifact.review", "--json")
 
@@ -150,6 +163,21 @@ def test_capability_runner_cli_plans_request_context_missing_inputs_as_json():
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_readonly"
     assert plan["missing_inputs"] == ["codex_home", "query"]
+    _assert_low_sensitive(payload)
+
+
+def test_capability_runner_cli_plans_worker_review_missing_inputs_as_json():
+    result = _run_cli("plan", "supervisor.worker_review", "--json")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    plan = payload["plan"]
+    assert plan["capability_id"] == "supervisor.worker_review"
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["missing_inputs"] == ["codex_home"]
     _assert_low_sensitive(payload)
 
 
@@ -270,6 +298,31 @@ def test_capability_runner_cli_runs_request_context_with_input_json(tmp_path):
     assert run["context_result"]["created_at"]
     assert run["context_result"]["item_count"] >= 1
     assert (codex_home / "supervisor" / "context_results.jsonl").is_file()
+    _assert_low_sensitive(payload)
+
+
+def test_capability_runner_cli_runs_worker_review_with_input_json(tmp_path):
+    codex_home = tmp_path / "codex-home"
+    input_json = json.dumps({"codex_home": str(codex_home)})
+
+    result = _run_cli(
+        "run",
+        "supervisor.worker_review",
+        "--input-json",
+        input_json,
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    run = payload["run"]
+    assert run["capability_id"] == "supervisor.worker_review"
+    assert run["status"] == "completed"
+    assert run["runner_kind"] == "deterministic_readonly"
+    assert run["worker_review"]["status"] == "ok"
+    assert run["worker_review"]["summary"]["total"] == 0
+    assert run["worker_review"]["workers"] == []
     _assert_low_sensitive(payload)
 
 

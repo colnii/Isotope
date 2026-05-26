@@ -29,8 +29,8 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 - 主路径已经接入：Web/CLI、goal queue、fanout、current batch、
   dependency batch、worker/integration review、merge dispatch、
   decision/failure ledger adapter、Codex session reader、`capacity plan`、
-  `supervisor.request_context` capability、Supervisor state projection
-  （状态投影）。
+  `supervisor.request_context` capability、`supervisor.worker_review`
+  capability、Supervisor state projection（状态投影）。
 - 半成品或闲置：`agents/loop` 尚未驱动 Supervisor 主循环；
   `llm/capacity_calling.py`、`agents/scheduler/capacity_graph.py`、
   `capabilities/runner.py` 已完成 Supervisor plan-only 第一片，但尚未进入
@@ -45,7 +45,7 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
 | --- | --- | --- | --- |
 | 用户功能层 | `start-here`、`scan`、`dashboard`、`trace`、`guide`、`up`、`discover`、`web`、`watch`、`advise`、`supervise`、`loop`、`daemon` | `features/supervisor/runner.py`、`features/supervisor/commands/` | 面向人类使用的命令入口；dashboard、trace、decision、context、replan、memory、worker event 等命令的 handler/payload/rendering 已迁出 runner |
 | 托管控制层 | `launch`、`adopt`、`send`、`archive`、托管登记 | `features/supervisor/registry.py` | 管理 Supervisor 登记的 Codex |
-| Worker 审查层 | `worker-review`、`integration-review`、`replan` | `features/supervisor/worker_review.py`、`features/supervisor/integration_review.py`、`features/supervisor/replan.py`、`features/supervisor/commands/handlers/replan.py` | 汇总已托管 worker 的 worktree、branch、状态协议、改动、复查提示、合并提示、只读集成分组和下一轮候选 |
+| Worker 审查层 | `worker-review`、`supervisor.worker_review`、`integration-review`、`replan` | `features/supervisor/worker_review.py`、`capabilities/runner.py`、`features/supervisor/integration_review.py`、`features/supervisor/replan.py`、`features/supervisor/commands/handlers/replan.py` | 汇总已托管 worker 的 worktree、branch、状态协议、改动、复查提示、合并提示、只读集成分组和下一轮候选；capability runner 已提供 lightweight 只读 worker-review 包装 |
 | Merge 工单层 | `merge-work-order` builder、merge dispatch、merge promotion | `features/supervisor/merge_work_order.py`、`features/supervisor/merge_dispatch.py`、`features/supervisor/merge_promotion.py`、`features/supervisor/commands/merge/dispatch.py`、`features/supervisor/commands/merge/promotion.py`、`features/supervisor/runner.py` | 根据 `integration-review` 生成动态 merge worker 工单；命令层负责 loop 派发、递归 worker guard、promotion gate、CI watch 和兼容接线 |
 | Codex 执行通道 | `resume`、`codex exec resume`、`--last` | `features/supervisor/runner.py`、`features/supervisor/registry.py` | 不依赖 tmux 恢复历史会话并投喂新 prompt |
 | 上下文能力层 | `context`、`request_context`、`supervisor.request_context`、上下文结果记录 | `features/supervisor/context.py`、`features/supervisor/commands/handlers/context.py`、`capabilities/catalog.py`、`capabilities/runner.py` | LLM 按需请求检索项目资料，BM25 后端按 query 对文档和代码候选排序，不固定注入全文；能力目录已提供 workspace read-only wrapper，会写入既有 Supervisor context store |
