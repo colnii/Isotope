@@ -164,5 +164,18 @@ def test_codex_cli_research_backend_rejects_error_only_jsonl(tmp_path):
         )(),
     )
 
-    with pytest.raises(ResearchProviderError, match="codex cli did not return an agent message"):
+    with pytest.raises(ResearchProviderError, match="codex cli did not return an agent message") as exc_info:
         backend("research prompt")
+
+    assert exc_info.value.details == {
+        "codex_event_counts": {
+            "error": 2,
+            "thread.started": 1,
+        },
+        "codex_error_messages": [
+            "Reconnecting... 2/5 (request timed out)",
+            "stream disconnected before final answer",
+        ],
+        "codex_has_agent_message": False,
+        "codex_timeout_seconds": 120,
+    }

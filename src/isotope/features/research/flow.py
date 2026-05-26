@@ -66,6 +66,8 @@ class ResearchFlow:
                 "message": str(exc),
                 "retryable": True,
             }
+            if exc.details:
+                error["details"] = exc.details
             trace_artifact = self.core.runtime.create_source_artifact(
                 run.run_id,
                 summary=f"provider failure trace: {clean_query}",

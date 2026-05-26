@@ -192,8 +192,9 @@ agent loop 活跃实现已迁到 `src/isotope/agents/loop/`。
   可按 run/artifact id 读取 research artifact 内容。
   Codex delegated provider 的 error-only JSONL 会归类成 retryable
   `provider_failed`；provider 失败只落 `research.provider_trace` 调用轨迹，
-  不生成 `research.report`。当前是低敏 artifact 入口，不是浏览器爬虫或
-  完整 research agent。
+  trace 会带低敏 diagnostics（event counts、error messages、是否出现
+  agent_message、timeout seconds），不生成 `research.report`。当前是低敏
+  artifact 入口，不是浏览器爬虫或完整 research agent。
 - Screen 功能入口：`src/isotope/features/screen/` 已提供 `isotope-screen`
   manual smoke runner；底层 `screen_observe` / `screen_control` 作为普通 tool
   通过 ActionTypeRegistry、PolicyEngine、Executor 和 artifact store。

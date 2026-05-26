@@ -108,7 +108,14 @@ def test_research_flow_marks_provider_errors_without_success_artifact(tmp_path):
         provider_name = "failing"
 
         def run(self, query: str) -> dict:
-            raise ResearchProviderError("codex cli did not return an agent message")
+            raise ResearchProviderError(
+                "codex cli did not return an agent message",
+                details={
+                    "codex_error_messages": ["Reconnecting... 2/5 (request timed out)"],
+                    "codex_has_agent_message": False,
+                    "codex_timeout_seconds": 120,
+                },
+            )
 
     flow = ResearchFlow.in_process(tmp_path, provider=FailingProvider())
 
@@ -119,6 +126,11 @@ def test_research_flow_marks_provider_errors_without_success_artifact(tmp_path):
     assert len(result.artifact_refs) == 1
     assert result.error == {
         "code": "research_provider_failed",
+        "details": {
+            "codex_error_messages": ["Reconnecting... 2/5 (request timed out)"],
+            "codex_has_agent_message": False,
+            "codex_timeout_seconds": 120,
+        },
         "message": "codex cli did not return an agent message",
         "retryable": True,
     }
@@ -138,6 +150,11 @@ def test_research_flow_marks_provider_errors_without_success_artifact(tmp_path):
     assert trace_content == {
         "error": {
             "code": "research_provider_failed",
+            "details": {
+                "codex_error_messages": ["Reconnecting... 2/5 (request timed out)"],
+                "codex_has_agent_message": False,
+                "codex_timeout_seconds": 120,
+            },
             "message": "codex cli did not return an agent message",
             "retryable": True,
         },

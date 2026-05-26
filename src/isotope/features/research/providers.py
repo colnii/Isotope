@@ -22,6 +22,10 @@ class ResearchProvider(Protocol):
 class ResearchProviderError(RuntimeError):
     """Raised when a delegated provider fails before returning research data."""
 
+    def __init__(self, message: str, *, details: dict[str, Any] | None = None):
+        super().__init__(message)
+        self.details = dict(details or {})
+
 
 class FakeResearchProvider:
     provider_name = "fake"
@@ -182,14 +186,14 @@ def build_codex_cli_research_backend(
                 agent_text = extract_codex_agent_message_text(content)
                 if agent_text is not None:
                     return agent_text
-                _raise_if_codex_error_only_jsonl(content)
+                _raise_if_codex_error_only_jsonl(content, timeout_seconds=timeout_seconds)
                 return content
             stdout = transcript.get("stdout")
             if isinstance(stdout, str):
                 agent_text = extract_codex_agent_message_text(stdout)
                 if agent_text is not None:
                     return agent_text
-                _raise_if_codex_error_only_jsonl(stdout)
+                _raise_if_codex_error_only_jsonl(stdout, timeout_seconds=timeout_seconds)
                 return stdout
             return content
         return result.summary
@@ -242,18 +246,25 @@ def extract_codex_agent_message_text(stdout: str) -> str | None:
     return latest_text
 
 
-def _raise_if_codex_error_only_jsonl(stdout: str) -> None:
-    error_messages = _extract_codex_error_messages(stdout)
+def _raise_if_codex_error_only_jsonl(stdout: str, *, timeout_seconds: int) -> None:
+    diagnostics = _codex_jsonl_diagnostics(stdout, timeout_seconds=timeout_seconds)
+    error_messages = diagnostics["codex_error_messages"]
     if error_messages:
         raise ResearchProviderError(
-            "codex cli did not return an agent message: " + "; ".join(error_messages)
+            "codex cli did not return an agent message: " + "; ".join(error_messages),
+            details=diagnostics,
         )
 
 
-def _extract_codex_error_messages(stdout: str) -> list[str]:
+def _codex_jsonl_diagnostics(stdout: str, *, timeout_seconds: int) -> dict[str, Any]:
+    diagnostics: dict[str, Any] = {
+        "codex_event_counts": {},
+        "codex_error_messages": [],
+        "codex_has_agent_message": False,
+        "codex_timeout_seconds": timeout_seconds,
+    }
     if not isinstance(stdout, str):
-        return []
-    messages: list[str] = []
+        return diagnostics
     for line in stdout.splitlines():
         if not line.strip():
             continue
@@ -261,12 +272,20 @@ def _extract_codex_error_messages(stdout: str) -> list[str]:
             event = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if event.get("type") != "error":
+        event_type = event.get("type")
+        if isinstance(event_type, str) and event_type:
+            counts = diagnostics["codex_event_counts"]
+            counts[event_type] = counts.get(event_type, 0) + 1
+        if event_type == "item.completed":
+            item = event.get("item")
+            if isinstance(item, dict) and item.get("type") == "agent_message":
+                diagnostics["codex_has_agent_message"] = True
+        if event_type != "error":
             continue
         message = event.get("message")
         if isinstance(message, str) and message.strip():
-            messages.append(message.strip())
-    return messages
+            diagnostics["codex_error_messages"].append(message.strip())
+    return diagnostics
 
 
 def _require_query(query: str) -> str:

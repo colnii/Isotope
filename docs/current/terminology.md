@@ -52,7 +52,7 @@
 | `POST /search` | 搜索 API 入口，按 query 返回低敏摘要结果，支持 `types` 和 `limit` | 接口 | `src/isotope/interfaces/http/__init__.py` |
 | `ResearchFlow` | Research 功能入口，把 delegated web research 结果保存成低敏 report/raw transcript artifacts；provider 失败时只保存 provider trace，不生成 report | 产品功能/外部研究 | `src/isotope/features/research/flow.py` |
 | `ResearchReport` | Research 报告模型，记录 query、provider、sources、findings 和 evidence status | 产品功能/外部研究 | `src/isotope/features/research/models.py` |
-| `ResearchProvider` | Research provider contract，封装 fake 或 Codex delegated research backend；Codex backend 会提取 JSONL agent message，error-only JSONL 会归类为 provider failure，不写成功 report | 产品功能/外部研究 | `src/isotope/features/research/providers.py` |
+| `ResearchProvider` | Research provider contract，封装 fake 或 Codex delegated research backend；Codex backend 会提取 JSONL agent message，error-only JSONL 会归类为 provider failure，并带低敏 diagnostics，不写成功 report | 产品功能/外部研究 | `src/isotope/features/research/providers.py` |
 | `isotope-research` | Research 命令行入口，可运行 delegated research、返回 artifact refs 与低敏 artifact metadata，并 inspect 单个 research artifact 内容 | 应用入口 | `src/isotope/features/research/runner.py` |
 | `screen_observe` | Screen 观察 tool，通过 policy-gated backend 捕获窗口 metadata/screenshot，并只把低敏 summary/ref 暴露给事件和读模型 | 工具/本机控制 | `src/isotope/execution/screen/backend_adapter.py`, `src/isotope/execution/screen/windows_backend.py` |
 | `screen_control` | Screen 控制 tool，默认 dry-run 生成控制计划，execute 需要显式批准或策略放行 | 工具/本机控制 | `src/isotope/execution/screen/backend_adapter.py`, `src/isotope/policy/__init__.py` |

@@ -111,7 +111,9 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
   `agent_loop_summary` 低敏字段，供 dashboard / web 复用。
 - `memory --query` 只返回 summary / refs / provenance preview；plain 输出会标出
   `content_policy`、匹配数量、source refs 和 provenance，不返回 raw content。
-- `research` provider 失败时只保存 `research.provider_trace`，不生成成功 report。
+- `research` provider 失败时只保存 `research.provider_trace`，并写入低敏
+  diagnostics（event counts、error messages、是否出现 agent_message、
+  timeout seconds），不生成成功 report。
 - `isotope-research inspect --root ... --run-id ... --artifact-id ...` 可读取
   单个 `research.*` artifact 内容；非 research artifact 会被拒绝。
 
