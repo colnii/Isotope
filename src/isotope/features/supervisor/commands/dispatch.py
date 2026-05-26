@@ -63,6 +63,26 @@ def handle_research_command(args: argparse.Namespace, *, api) -> int:
         else:
             api._print_research_inspect_plain(payload)
         return 0
+    if args.research_action == "promote":
+        if not args.run_id or not args.artifact_id:
+            raise ValueError("supervisor research promote requires --run-id and --artifact-id")
+        if not args.agent_id or not args.thread_id:
+            raise ValueError("supervisor research promote requires --agent-id and --thread-id")
+        payload = api.build_research_memory_promotion_payload(
+            api.Path(args.root),
+            run_id=args.run_id,
+            artifact_id=args.artifact_id,
+            agent_id=args.agent_id,
+            thread_id=args.thread_id,
+            scope=args.scope,
+            quality=args.quality,
+            proposal_id=args.proposal_id,
+        )
+        if args.json:
+            api._print_json(payload)
+        else:
+            api._print_research_promotion_plain(payload)
+        return 0
     if not args.query:
         raise ValueError("supervisor research search requires --query")
     flow = api.ResearchFlow.in_process(

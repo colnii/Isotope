@@ -219,6 +219,86 @@ def test_research_cli_inspect_returns_research_artifact_json(tmp_path):
     assert payload["content"]["report"]["summary"] == "Fake research summary for agent memory retrieval."
 
 
+def test_research_cli_promotes_report_artifact_as_memory_proposal(tmp_path):
+    search_result = _run_cli(
+        "search",
+        "--root",
+        str(tmp_path),
+        "--query",
+        "agent memory retrieval",
+        "--provider",
+        "fake",
+        "--json",
+    )
+    assert search_result.returncode == 0, search_result.stderr
+    search_payload = json.loads(search_result.stdout)
+    report_ref = search_payload["artifact_refs"][1]
+
+    result = _run_cli(
+        "promote",
+        "--root",
+        str(tmp_path),
+        "--run-id",
+        report_ref["run_id"],
+        "--artifact-id",
+        report_ref["artifact_id"],
+        "--agent-id",
+        "agent_research",
+        "--thread-id",
+        "thread_research",
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert payload["artifact"]["artifact_type"] == "research.report"
+    proposal = payload["proposal"]
+    assert proposal["action_type"] == "write_memory"
+    assert proposal["run_id"] == report_ref["run_id"]
+    assert proposal["agent_id"] == "agent_research"
+    assert proposal["thread_id"] == "thread_research"
+    assert proposal["payload"]["source_refs"] == [report_ref]
+    assert proposal["payload"]["content"]["source_type"] == "artifact"
+    assert proposal["payload"]["content"]["artifact_type"] == "research.report"
+    assert "raw research provider output" not in json.dumps(proposal)
+
+
+def test_research_cli_promote_rejects_raw_transcript_artifact(tmp_path):
+    search_result = _run_cli(
+        "search",
+        "--root",
+        str(tmp_path),
+        "--query",
+        "agent memory retrieval",
+        "--provider",
+        "fake",
+        "--json",
+    )
+    assert search_result.returncode == 0, search_result.stderr
+    search_payload = json.loads(search_result.stdout)
+    raw_ref = search_payload["artifact_refs"][0]
+
+    result = _run_cli(
+        "promote",
+        "--root",
+        str(tmp_path),
+        "--run-id",
+        raw_ref["run_id"],
+        "--artifact-id",
+        raw_ref["artifact_id"],
+        "--agent-id",
+        "agent_research",
+        "--thread-id",
+        "thread_research",
+        "--json",
+    )
+
+    assert result.returncode == 2
+    payload = json.loads(result.stdout)
+    assert payload["error"]["message"] == "only research.report artifacts can be promoted"
+
+
 def test_research_cli_inspect_prints_research_artifact_plain(tmp_path):
     search = _run_cli(
         "search",

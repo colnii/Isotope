@@ -115,6 +115,46 @@ def test_supervisor_research_accepts_tavily_config_path(tmp_path, monkeypatch):
     assert "test-secret-key" not in result.stdout
 
 
+def test_supervisor_research_promote_proxies_research_memory_promotion(tmp_path):
+    search_result = _run_cli(
+        "research",
+        "--root",
+        str(tmp_path),
+        "--query",
+        "agent memory retrieval",
+        "--provider",
+        "fake",
+        "--json",
+    )
+    assert search_result.returncode == 0, search_result.stderr
+    search_payload = json.loads(search_result.stdout)
+    report_ref = search_payload["artifact_refs"][1]
+
+    result = _run_cli(
+        "research",
+        "promote",
+        "--root",
+        str(tmp_path),
+        "--run-id",
+        report_ref["run_id"],
+        "--artifact-id",
+        report_ref["artifact_id"],
+        "--agent-id",
+        "agent_supervisor",
+        "--thread-id",
+        "thread_supervisor",
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert payload["artifact"]["artifact_type"] == "research.report"
+    assert payload["proposal"]["action_type"] == "write_memory"
+    assert payload["proposal"]["agent_id"] == "agent_supervisor"
+    assert payload["proposal"]["payload"]["source_refs"] == [report_ref]
+
+
 def test_supervisor_research_plain_output_lists_artifacts(tmp_path):
     result = _run_cli(
         "research",

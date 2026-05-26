@@ -106,8 +106,8 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
     report 也会总结 control plan 的 action 类型、approval 需求和是否干扰屏幕；
     `isotope-supervisor screen report/inspect` 复用同一套 screen artifact report。
 11. Web research 已有 shared Research flow（共享研究流程）和可用测试入口：
-    `isotope-research search/list/inspect/providers` 与
-    `isotope-supervisor research search/list/inspect/providers` 都复用同一套
+    `isotope-research search/list/inspect/providers/promote` 与
+    `isotope-supervisor research search/list/inspect/providers/promote` 都复用同一套
     `ResearchFlow`、artifact store、provider registry 和 plain/json 输出边界。
     provider registry 当前列出 `fake`、`codex`、`tavily`、`searxng`、`browser`；
     `fake`、`codex` 与 `tavily` implemented；Tavily 默认仍是 preflight（预检），
@@ -122,9 +122,10 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
     `research.provider_trace`，并保留 retry attempt、Codex event/error
     diagnostics（诊断）供 `inspect` 查看。当前 durable ingestion（持久摄取）
     路径是 `search/fetch -> research.* artifact / provenance -> retrieval ->
-    optional memory promotion`；raw web text 不直接进入长期 memory。Codex delegated
-    provider 已有小预算 retry；SearXNG / browser crawler 的真实接入仍是后续 provider
-    layering（提供方分层）工作，不要另造绕开 artifact/provenance 的搜索系统。
+    optional memory promotion`；`promote` 只允许 `research.report` artifact metadata
+    生成 `write_memory` proposal，不写 memory、不读取 raw transcript。Codex delegated
+    provider 已有小预算 retry；SearXNG / browser crawler 的真实接入仍是后续
+    provider layering（提供方分层）工作，不要另造绕开 artifact/provenance 的搜索系统。
 12. 代码结构继续以 `src/isotope/` 为 Python 主包，不新增 `packages/`、
    `aios` 或 kernel 主叙事。
 

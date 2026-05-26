@@ -228,8 +228,12 @@
 - Tavily provider 的真实 API execution 小片已完成：必须显式
   `--tavily-enable-network`，并把 Tavily `/search` 响应归一化为 source-backed
   `research.raw_transcript` / `research.report`。
-- 下一步优先做 Tavily live smoke / guardrail 小片：只在检测到真实 Tavily key
-  且用户显式确认时跑一条小预算 live smoke，并记录 inspect 检查步骤。
+- Tavily live smoke 已跑通：真实 `tavily` provider 返回 `research.raw_transcript`
+  / `research.report`，usage 记录在 provenance，artifact 未泄露 key。
+- Research memory promotion 接入片已完成：`isotope-research promote` 与
+  `isotope-supervisor research promote` 复用 `memory.promotion` proposal boundary，
+  只从 `research.report` artifact metadata 生成 `write_memory` proposal，不读取
+  raw transcript、不写 memory。
 - Codex delegated provider 保持可信 fallback，Tavily 作为普通 API provider 候选，
   SearXNG 保持可选 self-hosted / fallback，browser/crawler 只做最低层 fetch
   fallback。

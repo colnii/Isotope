@@ -103,6 +103,28 @@ def _build_parser() -> argparse.ArgumentParser:
     list_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     providers_parser = subparsers.add_parser("providers", help="List research provider registry.")
     providers_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    promote_parser = subparsers.add_parser(
+        "promote",
+        help="Build a write_memory proposal from a research.report artifact.",
+    )
+    promote_parser.add_argument("--root", required=True, help="Runtime root directory.")
+    promote_parser.add_argument("--run-id", required=True, help="Run id for the artifact ref.")
+    promote_parser.add_argument("--artifact-id", required=True, help="Artifact id to promote.")
+    promote_parser.add_argument("--agent-id", required=True, help="Agent id for the proposal.")
+    promote_parser.add_argument("--thread-id", required=True, help="Thread id for the proposal.")
+    promote_parser.add_argument(
+        "--scope",
+        default="run",
+        choices=("thread", "run", "session"),
+        help="Memory promotion scope. Defaults to run.",
+    )
+    promote_parser.add_argument(
+        "--quality",
+        default="candidate",
+        help="Memory candidate quality label. Defaults to candidate.",
+    )
+    promote_parser.add_argument("--proposal-id", help="Optional stable proposal id.")
+    promote_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     return parser
 
 
@@ -152,6 +174,22 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print_research_providers_plain(payload)
             return 0
+        if args.command == "promote":
+            payload = build_research_memory_promotion_payload(
+                Path(args.root),
+                run_id=args.run_id,
+                artifact_id=args.artifact_id,
+                agent_id=args.agent_id,
+                thread_id=args.thread_id,
+                scope=args.scope,
+                quality=args.quality,
+                proposal_id=args.proposal_id,
+            )
+            if args.json:
+                _print_json(payload)
+            else:
+                print_research_promotion_plain(payload)
+            return 0
     except (FileNotFoundError, ValueError) as exc:
         error = {
             "status": "error",
@@ -195,6 +233,51 @@ def inspect_research_artifact(root: Path, *, run_id: str, artifact_id: str) -> d
             "ref": ref.to_dict(),
         },
         "content": _decode_json_content(content_text),
+    }
+
+
+def build_research_memory_promotion_payload(
+    root: Path,
+    *,
+    run_id: str,
+    artifact_id: str,
+    agent_id: str,
+    thread_id: str,
+    scope: str = "run",
+    quality: str = "candidate",
+    proposal_id: str | None = None,
+) -> dict[str, Any]:
+    from isotope.memory.promotion import build_memory_promotion_proposal
+
+    ref = make_artifact_ref(run_id=run_id, artifact_id=artifact_id)
+    store = ArtifactStore(root)
+    metadata = store.get_metadata(ref, include_provenance=True)
+    if metadata["artifact_type"] != "research.report":
+        raise ValueError("only research.report artifacts can be promoted")
+    artifact = {
+        **metadata,
+        "ref": ref.to_dict(),
+    }
+    proposal = build_memory_promotion_proposal(
+        run_id=run_id,
+        agent_id=agent_id,
+        thread_id=thread_id,
+        candidate={
+            "source_type": "artifact",
+            "artifact_ref": ref.to_dict(),
+            "artifact_type": metadata["artifact_type"],
+            "summary": metadata["summary"],
+            "provenance": metadata.get("provenance") or {},
+        },
+        scope=scope,
+        quality=quality,
+        proposal_id=proposal_id,
+    )
+    return {
+        "status": "ok",
+        "artifact": artifact,
+        "proposal": _proposal_to_dict(proposal),
+        "note": "proposal only; memory is not written",
     }
 
 
@@ -256,6 +339,20 @@ def _decode_json_content(content: str) -> Any:
         return content
 
 
+def _proposal_to_dict(proposal: Any) -> dict[str, Any]:
+    return {
+        "proposal_id": proposal.proposal_id,
+        "run_id": proposal.run_id,
+        "agent_id": proposal.agent_id,
+        "thread_id": proposal.thread_id,
+        "action_type": proposal.action_type,
+        "payload": dict(proposal.payload),
+        "requested_capabilities": dict(proposal.requested_capabilities),
+        "registry_id": proposal.registry_id,
+        "registry_version": proposal.registry_version,
+    }
+
+
 def print_research_inspect_plain(payload: dict[str, Any]) -> None:
     artifact = payload["artifact"]
     ref = artifact["ref"]
@@ -283,6 +380,18 @@ def print_research_list_plain(payload: dict[str, Any]) -> None:
             f"run: {artifact.get('run_id', '')} "
             f"{artifact.get('summary', '')}"
         )
+
+
+def print_research_promotion_plain(payload: dict[str, Any]) -> None:
+    proposal = payload["proposal"]
+    artifact = payload["artifact"]
+    ref = artifact["ref"]
+    print(f"status: {payload['status']}")
+    print(f"artifact: {artifact['artifact_type']} {ref['artifact_id']}")
+    print(f"proposal: {proposal['proposal_id']}")
+    print(f"action_type: {proposal['action_type']}")
+    print(f"summary: {proposal['payload']['summary']}")
+    print("memory_write: proposal_only")
 
 
 def list_research_providers() -> dict[str, Any]:

@@ -13,11 +13,13 @@ from isotope.capabilities.runner import CapabilityRunner
 from ..research.flow import ResearchFlow
 from ..research.providers import build_research_provider, research_provider_choices
 from ..research.runner import (
+    build_research_memory_promotion_payload,
     inspect_research_artifact,
     list_research_artifacts,
     list_research_providers,
     print_research_inspect_plain as _print_research_inspect_plain,
     print_research_list_plain as _print_research_list_plain,
+    print_research_promotion_plain as _print_research_promotion_plain,
     print_research_providers_plain as _print_research_providers_plain,
     print_artifacts_plain as _print_research_artifacts_plain,
 )

@@ -413,7 +413,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
     research_parser.add_argument(
         "research_action",
         nargs="?",
-        choices=("search", "list", "inspect", "providers"),
+        choices=("search", "list", "inspect", "providers", "promote"),
         default="search",
         help="Research action. Defaults to search for compatibility.",
     )
@@ -485,6 +485,20 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
     )
     research_parser.add_argument("--run-id", help="Run id for research inspect.")
     research_parser.add_argument("--artifact-id", help="Artifact id for research inspect.")
+    research_parser.add_argument("--agent-id", help="Agent id for research promote.")
+    research_parser.add_argument("--thread-id", help="Thread id for research promote.")
+    research_parser.add_argument(
+        "--scope",
+        choices=("thread", "run", "session"),
+        default="run",
+        help="Memory promotion scope for research promote. Defaults to run.",
+    )
+    research_parser.add_argument(
+        "--quality",
+        default="candidate",
+        help="Memory candidate quality label for research promote.",
+    )
+    research_parser.add_argument("--proposal-id", help="Optional stable proposal id.")
     research_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     screen_parser = subparsers.add_parser(
         "screen",

@@ -161,6 +161,10 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
 - `isotope-research inspect --root ... --run-id ... --artifact-id ...` 可读取
   单个 `research.*` artifact 内容；非 research artifact 会被拒绝。Supervisor
   侧 `research inspect` 复用同一边界。
+- `isotope-research promote --root ... --run-id ... --artifact-id ... --agent-id ...
+  --thread-id ...` 从 `research.report` artifact metadata 生成 `write_memory`
+  proposal；Supervisor 侧 `research promote` 复用同一 helper。该入口只生成提案，
+  不写 memory、不读取 `research.raw_transcript` 正文。
 - `research providers` 列出 provider registry；当前 `fake` / `codex` 可运行，
   `tavily` 也可运行但默认 preflight；只有显式 `--tavily-enable-network` 才会请求
   Tavily `/search`。Tavily key 可来自 `--tavily-api-key`、`TAVILY_API_KEY`，或
