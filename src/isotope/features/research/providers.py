@@ -13,6 +13,7 @@ from typing import Any, Callable, Protocol
 
 from ...integrations.codex.cli import CodexCliBackend, CodexCliBackendConfig
 from ...integrations.codex.task import CodexTaskConfig, CodexTaskRequest
+from .source_classification import classify_research_source
 
 DEFAULT_TAVILY_CONFIG_PATH = Path(__file__).resolve().parent / "research_tavily.toml"
 
@@ -58,6 +59,8 @@ class ResearchProviderDescriptor:
         return self.status == "implemented"
 
     def to_dict(self) -> dict[str, Any]:
+        source_url = "https://docs.python.org/3/library/urllib.parse.html"
+        source_title = "Fake source-backed research note"
         return {
             "provider_id": self.provider_id,
             "provider_name": self.provider_name,
@@ -215,6 +218,8 @@ class FakeResearchProvider:
 
     def run(self, query: str) -> dict[str, Any]:
         clean_query = _require_query(query)
+        source_title = "Fake source-backed research note"
+        source_url = "https://example.com/isotope-research"
         return {
             "research_id": "research_fake_001",
             "query": clean_query,
@@ -225,12 +230,13 @@ class FakeResearchProvider:
             "sources": [
                 {
                     "source_id": "src_001",
-                    "title": "Fake source-backed research note",
-                    "url": "https://example.com/isotope-research",
+                    "title": source_title,
+                    "url": source_url,
                     "snippet": "Research claims should cite source ids.",
                     "why_used": "deterministic fake source for tests",
                     "retrieved_at": _utc_now(),
                     "provider_rank": 1,
+                    **classify_research_source({"title": source_title, "url": source_url}),
                 }
             ],
             "report": {

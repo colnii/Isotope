@@ -46,6 +46,8 @@ def test_research_cli_search_returns_json(tmp_path):
     assert payload["status"] == "ok"
     assert payload["research"]["provider"] == "fake"
     assert payload["research"]["sources"][0]["url"] == "https://example.com/isotope-research"
+    assert payload["research"]["sources"][0]["source_kind"] == "unknown"
+    assert payload["research"]["sources"][0]["source_authority"] == "unknown"
     assert len(payload["artifact_refs"]) == 2
     assert [artifact["artifact_type"] for artifact in payload["artifacts"]] == [
         "research.raw_transcript",

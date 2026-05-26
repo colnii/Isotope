@@ -257,13 +257,15 @@
   `research.provider_trace`。
 - Tavily provider 的真实 API execution 小片已完成：必须显式
   `--tavily-enable-network`，并把 Tavily `/search` 响应归一化为 source-backed
-  `research.raw_transcript` / `research.report`。
+  `research.raw_transcript` / `research.report`，source 会带低敏
+  `source_kind` / `source_authority` 分类字段。
 - Tavily live smoke 已跑通：真实 `tavily` provider 返回 `research.raw_transcript`
   / `research.report`，usage 记录在 provenance，artifact 未泄露 key。
 - Research memory promotion 接入片已完成：`isotope-research promote` 与
   `isotope-supervisor research promote` 复用 `memory.promotion` proposal boundary，
   从 `research.report` artifact metadata 与结构化 report quality gate 生成
-  `write_memory` proposal；低质量 report 返回 review-required reasons，不读取
+  `write_memory` proposal；quality gate 会统计 high-authority 和 unknown
+  sources，低质量 report 返回 review-required reasons，不读取
   raw transcript、不写 memory。
 - Memory promotion preview capability 已完成：`memory.promotion.preview` 可作为
   其他系统接入 promotion boundary 的统一只读入口，避免直接散落 import helper。

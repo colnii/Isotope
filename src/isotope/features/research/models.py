@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from .source_classification import normalize_source_authority, normalize_source_kind
+
 
 COMPLETE_EVIDENCE_STATUSES = {"complete", "partial", "incomplete_evidence"}
 RUN_STATUSES = {"ok", "partial", "provider_failed", "validation_failed"}
@@ -19,6 +21,8 @@ class ResearchSource:
     why_used: str
     retrieved_at: str
     provider_rank: int | None = None
+    source_kind: str = "unknown"
+    source_authority: str = "unknown"
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ResearchSource":
@@ -30,6 +34,8 @@ class ResearchSource:
             why_used=_required_string(data, "why_used"),
             retrieved_at=_required_string(data, "retrieved_at"),
             provider_rank=_optional_int(data, "provider_rank"),
+            source_kind=normalize_source_kind(data.get("source_kind")),
+            source_authority=normalize_source_authority(data.get("source_authority")),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -43,6 +49,8 @@ class ResearchSource:
         }
         if self.provider_rank is not None:
             payload["provider_rank"] = self.provider_rank
+        payload["source_kind"] = self.source_kind
+        payload["source_authority"] = self.source_authority
         return payload
 
 

@@ -26,6 +26,8 @@ def test_fake_research_provider_returns_source_backed_report():
     assert payload["query"] == "agent memory retrieval"
     assert payload["provider"] == "fake"
     assert payload["sources"][0]["source_id"] == "src_001"
+    assert payload["sources"][0]["source_kind"] == "unknown"
+    assert payload["sources"][0]["source_authority"] == "unknown"
     assert payload["report"]["claims"][0]["source_ids"] == ["src_001"]
 
 
@@ -201,11 +203,13 @@ def test_tavily_provider_executes_search_with_injected_http_backend():
             "title": "Isotope research note",
             "url": "https://example.com/research-note",
             "snippet": "Research claims should cite source-backed snippets.",
-            "why_used": "Tavily search result rank 1, score 0.91",
-            "retrieved_at": payload["sources"][0]["retrieved_at"],
-            "provider_rank": 1,
-        }
-    ]
+                "why_used": "Tavily search result rank 1, score 0.91",
+                "retrieved_at": payload["sources"][0]["retrieved_at"],
+                "provider_rank": 1,
+                "source_kind": "unknown",
+                "source_authority": "unknown",
+            }
+        ]
     assert payload["report"]["claims"][0]["source_ids"] == ["src_001"]
     assert payload["provenance"]["tavily"]["response_time"] == 0.42
     assert payload["provenance"]["tavily"]["usage"] == {"credits": 1}

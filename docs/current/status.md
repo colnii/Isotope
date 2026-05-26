@@ -145,7 +145,9 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
     `src/isotope/features/research/research_tavily.toml`。缺 key 或未打开网络开关
     都会复用 `ResearchFlow` 写 `research.provider_trace`，不落成功 report；真实
     Tavily 响应会归一化为 source-backed `research.raw_transcript` 与
-    `research.report`。SearXNG / browser 仍 fail closed（失败关闭，创建 flow 前报错）。
+    `research.report`，source 会带低敏 `source_kind` / `source_authority`
+    分类字段，当前只做统计辅助，不作为 promotion 硬拦截。SearXNG / browser
+    仍 fail closed（失败关闭，创建 flow 前报错）。
     成功结果写
     `research.raw_transcript` 与 `research.report`；provider 失败只写
     `research.provider_trace`，并保留 retry attempt、Codex event/error
@@ -153,7 +155,8 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
     路径是 `search/fetch -> research.* artifact / provenance -> retrieval ->
     optional memory promotion`；`promote` 只允许 `research.report` artifact metadata
     与结构化 report quality gate 生成 `write_memory` proposal，不写 memory、不读取
-    raw transcript；低质量 report 会返回 review-required reasons。Codex delegated
+    raw transcript；quality gate 会统计 high-authority 和 unknown sources，低质量
+    report 会返回 review-required reasons。Codex delegated
     provider 已有小预算 retry；SearXNG / browser crawler 的真实接入仍是后续
     provider layering（提供方分层）工作，不要另造绕开 artifact/provenance 的搜索系统。
 12. 代码结构继续以 `src/isotope/` 为 Python 主包，不新增 `packages/`、

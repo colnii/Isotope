@@ -8,6 +8,7 @@ from urllib import error as urlerror
 from urllib import request as urlrequest
 
 from .providers import ResearchProviderError, _require_query, _utc_now
+from .source_classification import classify_research_source
 
 
 class TavilyResearchProvider:
@@ -190,6 +191,7 @@ def _normalize_tavily_search_payload(
             "why_used": why_used,
             "retrieved_at": retrieved_at,
             "provider_rank": index,
+            **classify_research_source({"title": title, "url": url}),
         }
         sources.append(source)
         claims.append(

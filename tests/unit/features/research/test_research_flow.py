@@ -18,6 +18,8 @@ def test_research_flow_persists_raw_and_normalized_artifacts(tmp_path):
     payload = result.to_dict()
     assert payload["status"] == "ok"
     assert payload["research"]["evidence_status"] == "complete"
+    assert payload["research"]["sources"][0]["source_kind"] == "unknown"
+    assert payload["research"]["sources"][0]["source_authority"] == "unknown"
     assert len(payload["artifact_refs"]) == 2
     assert payload["artifacts"] == [
         {

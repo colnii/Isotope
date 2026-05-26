@@ -44,6 +44,8 @@ def test_supervisor_research_command_proxies_research_flow(tmp_path):
     assert payload["status"] == "ok"
     assert payload["research"]["query"] == "agent memory retrieval"
     assert payload["research"]["provider"] == "fake"
+    assert payload["research"]["sources"][0]["source_kind"] == "unknown"
+    assert payload["research"]["sources"][0]["source_authority"] == "unknown"
     assert [artifact["artifact_type"] for artifact in payload["artifacts"]] == [
         "research.raw_transcript",
         "research.report",

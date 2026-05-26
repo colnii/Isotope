@@ -10,6 +10,15 @@ def research_quality_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
     report = payload.get("report") if isinstance(payload.get("report"), Mapping) else {}
     claims = _list_of_mappings(report.get("claims") if isinstance(report, Mapping) else None)
     source_count = len(sources)
+    high_authority_source_count = sum(
+        1 for source in sources if _string(source.get("source_authority")) == "high"
+    )
+    unknown_source_count = sum(
+        1
+        for source in sources
+        if _string(source.get("source_authority")) in {"", "unknown"}
+        or _string(source.get("source_kind")) in {"", "unknown"}
+    )
     claim_count = len(claims)
     source_backed_claim_count = sum(1 for claim in claims if _claim_has_source_ids(claim))
     uncited_claim_count = claim_count - source_backed_claim_count
@@ -26,6 +35,8 @@ def research_quality_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "status": "promotable" if not reasons else "review_required",
         "source_count": source_count,
+        "high_authority_source_count": high_authority_source_count,
+        "unknown_source_count": unknown_source_count,
         "claim_count": claim_count,
         "source_backed_claim_count": source_backed_claim_count,
         "uncited_claim_count": uncited_claim_count,

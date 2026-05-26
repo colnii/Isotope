@@ -155,6 +155,7 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
   content。
 - `research` 是 artifact/provenance-backed search substrate（基于产物和来源证据的搜索底座），不是 memory 直写入口。
 - `research` search 成功时保存 `research.raw_transcript` 与 `research.report`；
+  source 会带 `source_kind` / `source_authority` 低敏分类字段；
   provider 失败时只保存 `research.provider_trace`，并写入低敏 diagnostics
   （event counts、error messages、是否出现 agent_message、timeout seconds、
   retry attempts），不生成成功 report。
@@ -165,8 +166,10 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
   侧 `research inspect` 复用同一边界。
 - `isotope-research promote --root ... --run-id ... --artifact-id ... --agent-id ...
   --thread-id ...` 从 `research.report` artifact metadata 与结构化 report quality
-  gate 生成 `write_memory` proposal；Supervisor 侧 `research promote` 复用同一
-  helper。该入口只生成提案，不写 memory、不读取 `research.raw_transcript` 正文。
+  gate 生成 `write_memory` proposal；quality gate 会统计 high-authority 和
+  unknown sources，但当前不因 unknown source 单独拒绝；Supervisor 侧
+  `research promote` 复用同一 helper。该入口只生成提案，不写 memory、不读取
+  `research.raw_transcript` 正文。
 - `research providers` 列出 provider registry；当前 `fake` / `codex` 可运行，
   `tavily` 也可运行但默认 preflight；只有显式 `--tavily-enable-network` 才会请求
   Tavily `/search`。Tavily key 可来自 `--tavily-api-key`、`TAVILY_API_KEY`，或

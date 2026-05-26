@@ -15,6 +15,8 @@ def _report_payload() -> dict:
                 "snippet": "retrieval with provenance",
                 "why_used": "explains source-backed retrieval",
                 "retrieved_at": "2026-05-24T00:00:00Z",
+                "source_kind": "official_docs",
+                "source_authority": "high",
             }
         ],
         "report": {
@@ -38,6 +40,8 @@ def test_research_quality_summary_marks_source_backed_report_promotable():
     assert summary == {
         "status": "promotable",
         "source_count": 1,
+        "high_authority_source_count": 1,
+        "unknown_source_count": 0,
         "claim_count": 1,
         "source_backed_claim_count": 1,
         "uncited_claim_count": 0,
@@ -60,3 +64,15 @@ def test_research_quality_summary_requires_complete_evidence_and_cited_claims():
         "evidence_status_not_complete",
         "uncited_claims",
     ]
+
+
+def test_research_quality_summary_counts_unknown_sources_without_rejecting_them():
+    payload = _report_payload()
+    payload["sources"][0]["source_authority"] = "unknown"
+    payload["sources"][0]["source_kind"] = "unknown"
+
+    summary = research_quality_summary(payload)
+
+    assert summary["status"] == "promotable"
+    assert summary["high_authority_source_count"] == 0
+    assert summary["unknown_source_count"] == 1
