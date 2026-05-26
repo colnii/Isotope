@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .llm_live_smoke_product_chat_entry_state import (
+from .product_chat_entry_state import (
     _blocked_product_chat_entry_summary,
     _entry_initial_complete_run,
     _invalid_product_chat_entry_mode_payload,

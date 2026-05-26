@@ -7,7 +7,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from ..llm.demo_llm_fakes import (
+from .fakes import (
     ACTION_EXECUTION_EVENTS as _ACTION_EXECUTION_EVENTS,
     _DemoToolCallProvider,
     _demo_tool_call_response,

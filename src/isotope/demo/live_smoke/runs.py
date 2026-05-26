@@ -11,18 +11,18 @@ from ...llm.provider import (
     resolve_llm_tool_call_provider,
     submit_llm_tool_call,
 )
-from .llm_live_smoke_cases import (
+from .cases import (
     _messages,
     _run_llm_product_chat_live_smoke_cases,
     _terminal_tool_messages,
 )
-from .llm_live_smoke_config import (
+from .config import (
     DeepSeekToolCallLiveSmokeConfig,
     LLMProductChatLiveSmokeConfig,
     LLMTerminalToolLiveSmokeConfig,
     LLMToolCallLiveSmokeConfig,
 )
-from .llm_live_smoke_diagnosis import (
+from .diagnosis import (
     _diagnosis_for,
     _legacy_deepseek_result,
     _llm_diagnosis_for,

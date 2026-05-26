@@ -17,7 +17,7 @@ from ...features.chat.flow import (
     summarize_llm_product_chat_entry_response,
 )
 from ...llm.provider import resolve_llm_tool_call_provider
-from .llm_live_smoke_cli_support import (
+from .cli_support import (
     _blocked_product_chat_entry_summary,
     _entry_initial_complete_run,
     _invalid_product_chat_entry_mode_payload,
@@ -39,11 +39,11 @@ from .llm_live_smoke_cli_support import (
     _terminal_tool_smoke_exit_code,
     _validate_product_chat_entry_resume_root,
 )
-from .llm_live_smoke_cases import (
+from .cases import (
     _create_smoke_run,
     _product_chat_messages,
 )
-from .llm_live_smoke_config import (
+from .config import (
     DEFAULT_DEEPSEEK_LIVE_SMOKE_PROMPT,
     DEFAULT_LLM_LIVE_SMOKE_PROMPT,
     DEFAULT_LLM_PRODUCT_CHAT_DIRECT_PROMPT,
@@ -55,10 +55,10 @@ from .llm_live_smoke_config import (
     LLMTerminalToolLiveSmokeConfig,
     LLMToolCallLiveSmokeConfig,
 )
-from .llm_live_smoke_diagnosis import (
+from .diagnosis import (
     _maybe_diagnose_terminal_tool_missing_configuration,
 )
-from .llm_live_smoke_fakes import (
+from .fakes import (
     _RecordingFakeCodexRunner,
     _fake_codex_executable_resolver,
     _fake_product_chat_entry_provider,
@@ -66,8 +66,8 @@ from .llm_live_smoke_fakes import (
     _fake_terminal_tool_provider,
     _provider_call_count,
 )
-from .llm_live_smoke_parser import _build_arg_parser
-from .llm_live_smoke_runs import (
+from .parser import _build_arg_parser
+from .runs import (
     diagnose_deepseek_tool_call_live_smoke,
     diagnose_llm_product_chat_live_smoke,
     diagnose_llm_terminal_tool_live_smoke,

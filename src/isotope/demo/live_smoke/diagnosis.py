@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .llm_live_smoke_terminal_diagnosis import (
+from .terminal_diagnosis import (
     _llm_terminal_tool_diagnosis_for,
     _llm_terminal_tool_preflight_for,
     _maybe_diagnose_terminal_tool_missing_configuration,

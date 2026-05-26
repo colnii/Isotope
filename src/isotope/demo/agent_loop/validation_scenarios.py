@@ -6,7 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from ..agent_loop.demo_agent_loop_scenarios import _deterministic_planner_decisions
+from .scenarios import _deterministic_planner_decisions
 from ..demo_planner_helpers import (
     _fixture_rejected,
     _planner_decision_summaries,

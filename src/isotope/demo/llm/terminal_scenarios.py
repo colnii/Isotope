@@ -7,7 +7,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from ..llm.demo_llm_fakes import (
+from .fakes import (
     _DemoProductChatProvider,
     _demo_terminal_final_answer_response,
     _demo_terminal_tool_call_response,

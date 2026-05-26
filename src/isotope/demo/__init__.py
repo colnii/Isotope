@@ -9,22 +9,22 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from .format.demo_format import _format_plain_text, _format_trace
+from .format.format import _format_plain_text, _format_trace
 from .demo_common import _deferred_status, _latest_action_status
-from .agent_loop.demo_agent_loop_scenarios import (
+from .agent_loop.scenarios import (
     _run_agent_loop_friction_spike,
     _run_agent_loop_planner_adapter_spike,
 )
-from .agent_loop.demo_agent_loop_matrix_scenarios import (
+from .agent_loop.matrix_scenarios import (
     _run_agent_loop_planner_matrix_spike,
     _run_agent_loop_planner_restart_pause_spike,
 )
-from .agent_loop.demo_agent_loop_tick_scenarios import (
+from .agent_loop.tick_scenarios import (
     _run_agent_loop_tick_driver_trace,
     _run_agent_loop_tick_policy_trace,
     _run_supervisor_capacity_handoff_trace,
 )
-from .agent_loop.demo_agent_loop_validation_scenarios import (
+from .agent_loop.validation_scenarios import (
     _run_agent_loop_planner_io_validator_spike,
     _run_agent_loop_planner_validated_runner_spike,
 )
@@ -39,13 +39,13 @@ from .demo_workspace_scenarios import (
     _run_workbench_ask_demo,
     _run_workbench_demo,
 )
-from .llm.demo_llm_bridge_scenarios import (
+from .llm.bridge_scenarios import (
     _run_llm_provider_route_demo,
     _run_model_tool_bridge_demo,
 )
-from .llm.demo_llm_product_chat_scenarios import _run_llm_product_chat_app_entry_demo
-from .llm.demo_llm_terminal_scenarios import _run_llm_terminal_tool_loop_demo
-from .llm.demo_llm_tool_result_scenarios import _run_llm_tool_result_loop_demo
+from .llm.product_chat_scenarios import _run_llm_product_chat_app_entry_demo
+from .llm.terminal_scenarios import _run_llm_terminal_tool_loop_demo
+from .llm.tool_result_scenarios import _run_llm_tool_result_loop_demo
 from .demo_memory_scenarios import _run_memory_query_smoke_demo
 from .demo_terminal_scenarios import _run_terminal_exec_demo
 from ..platform.state.checkpoint_store import FileCheckpointStore

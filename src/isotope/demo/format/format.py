@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from .demo_format_agent_loop import (
+from .agent_loop import (
     _format_agent_loop_friction_plain_text,
     _format_agent_loop_planner_friction_plain_text,
     _format_agent_loop_planner_io_validator_plain_text,
@@ -16,7 +16,7 @@ from .demo_format_agent_loop import (
     _format_agent_loop_tick_policy_trace_plain_text,
     _format_supervisor_capacity_handoff_trace_plain_text,
 )
-from .demo_format_core import (
+from .core import (
     _format_approval_tool_runner_plain_text,
     _format_artifact_review_plain_text,
     _format_default_plain_text,
@@ -27,7 +27,7 @@ from .demo_format_core import (
     _format_workbench_ask_plain_text,
     _format_workbench_plain_text,
 )
-from .demo_format_llm import (
+from .llm import (
     _format_llm_product_chat_app_entry_plain_text,
     _format_llm_provider_route_plain_text,
     _format_llm_terminal_tool_loop_plain_text,

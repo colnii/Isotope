@@ -6,7 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from ..llm.demo_llm_fakes import (
+from .fakes import (
     _DemoProductChatProvider,
     _demo_product_chat_blocked_preflight,
     _demo_product_chat_ready_preflight,

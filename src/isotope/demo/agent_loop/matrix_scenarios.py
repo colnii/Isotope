@@ -6,7 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from ..agent_loop.demo_agent_loop_scenarios import _run_agent_loop_planner_adapter_spike
+from .scenarios import _run_agent_loop_planner_adapter_spike
 from ..demo_planner_helpers import (
     _planner_happy_fixture_summary,
     _run_planner_blocked_deferred_fixture,
