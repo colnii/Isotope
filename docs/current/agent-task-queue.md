@@ -140,22 +140,22 @@
 - 能给出先合哪一个、怎么验证、哪些测试必须跑。
 - 不和 root runtime 拆分或 flat refactor 混提交。
 
-### 3. Capability 路由下一小片
+### 3. Capability 路由已接上
 
-目标：
+状态：
 
-- 让 LLM planner / capacity path 复用 `supervisor.worker_review` 和
+- LLM planner / capacity path 已复用 `supervisor.worker_review` 和
   `supervisor.integration_review` 的 capability id。
-- 优先从现有 `capacity_graph` / `CapabilityRunner.plan_capability_run(...)`
-  入口接，不新增私有 `worker-review` / `integration-review` 执行分支。
-- 保持模型只选择 capability 与输入，执行仍由 runner allowlist 和 input contract
-  控制。
+- `build_supervisor_capacity_plan(...)` 会从 `CapabilityRunner` 取得可提供给
+  LLM 的 manifest；这两个 Supervisor review capability 缺 `codex_home` 时也会
+  以 missing-inputs 状态暴露给 planner 补参。
+- 选中并补齐输入后仍复用 `capacity_graph` /
+  `CapabilityRunner.plan_capability_run(...)` / agent loop `call_capability`
+  路径，不新增私有 `worker-review` 或 `integration-review` 执行分支。
 
-验收：
+后续：
 
-- LLM/capacity 输出里能看到这两个 Supervisor capability 的 launch plan。
-- 缺输入或类型错误时走 capability runner 的 controlled error，不进入私有命令。
-- dashboard / docs 继续只展示低敏 summary，不读取 raw review payload。
+- 只在真实 capacity run 发现缺口时补测试或 UI 摘要，不继续凭空扩展。
 
 ### 4. Supervisor 大分支暂缓
 
