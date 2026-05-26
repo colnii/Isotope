@@ -380,7 +380,8 @@ def _supervisor_capacity_input_defaults(args: Any) -> dict[str, Any]:
     codex_home = getattr(args, "codex_home", None)
     if not isinstance(codex_home, str) or not codex_home:
         return {}
-    return {"codex_home": str(Path(codex_home))}
+    root = str(Path(codex_home))
+    return {"codex_home": root, "root": root}
 
 
 def agent_loop_json_summary(payload: Mapping[str, Any]) -> dict[str, Any]:

@@ -154,13 +154,15 @@
   LLM 的 manifest；这两个 Supervisor review capability 缺 `codex_home` 时也会
   以 missing-inputs 状态暴露给 planner 补参。
 - `loop/supervise --capacity-decisions` 会把当前 `args.codex_home` 作为
-  capacity input default 注入，不要求 LLM 猜本机 `.codex` 路径；模型显式给出的
-  argument 仍优先，不会被 default 覆盖。
+  `codex_home` 和 `root` capacity input default 注入，不要求 LLM 猜本机
+  `.codex` / memory store 路径；模型显式给出的 argument 仍优先，不会被
+  default 覆盖。
 - 选中并补齐输入后仍复用 `capacity_graph` /
   `CapabilityRunner.plan_capability_run(...)` / agent loop `call_capability`
   路径，不新增私有 `worker-review` 或 `integration-review` 执行分支。
-- `memory.query` 已接入同一 capability runner；后续 memory recall 的上层路由
-  也应优先复用 capability id，而不是再开私有入口。
+- `memory.query` 已接入同一 capability runner；capacity path 会给它补
+  `root` default，但 `query/run_id` 仍必须来自目标或模型参数，避免把 recall
+  变成每轮自动步骤。
 
 后续：
 

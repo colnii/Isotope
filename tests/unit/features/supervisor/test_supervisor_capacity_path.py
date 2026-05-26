@@ -617,6 +617,81 @@ def test_supervisor_capacity_plan_applies_codex_home_default_for_review_capabili
     assert capability_run["integration_review"]["summary"]["total"] == 0
 
 
+def test_supervisor_capacity_plan_applies_root_default_for_memory_query(tmp_path):
+    codex_home = tmp_path / "codex-home"
+    memory_dir = codex_home / "memory"
+    memory_dir.mkdir(parents=True)
+    memory_dir.joinpath("mem_capacity.json").write_text(
+        json.dumps(
+            {
+                "memory_id": "mem_capacity",
+                "scope": "run",
+                "content": {"raw": "raw memory content must not leak"},
+                "summary": "Capacity memory recall is routed through memory query.",
+                "source_refs": [
+                    {"ref_type": "artifact", "artifact_id": "artifact_capacity_memory"}
+                ],
+                "provenance": {
+                    "run_id": "run_memory_capacity",
+                    "execution_id": "exec_memory_capacity",
+                    "action_type": "write_memory",
+                },
+                "created_at": "2026-05-27T00:00:00Z",
+                "supersedes": [],
+                "quality": "verified",
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    provider = FakeCapacityProvider(
+        json.dumps(
+            {
+                "capacity_id": "memory.query",
+                "arguments": {
+                    "query": "memory recall",
+                    "run_id": "run_memory_capacity",
+                },
+                "confidence": 0.88,
+                "rationale": "recall existing memory",
+            }
+        )
+    )
+
+    result = capacity_command.build_supervisor_capacity_plan(
+        goal="查询 run_memory_capacity 的 memory recall",
+        provider=provider,
+        state_root=tmp_path / "state",
+        execute_agent_loop=True,
+        input_defaults={"root": str(codex_home)},
+    )
+
+    assert result["status"] == "ok"
+    assert result["selection"]["capacity_id"] == "memory.query"
+    assert result["selection"]["arguments"] == {
+        "query": "memory recall",
+        "root": str(codex_home),
+        "run_id": "run_memory_capacity",
+    }
+    assert result["selection"]["missing_inputs"] == []
+    assert result["capability_launch_plan"]["can_launch"] is True
+    loop = result["agent_loop"]
+    assert loop["step_request"] == {
+        "step": "call_capability",
+        "capability_id": "memory.query",
+        "inputs": {
+            "query": "memory recall",
+            "root": str(codex_home),
+            "run_id": "run_memory_capacity",
+        },
+    }
+    capability_run = loop["step_result"]["action_result"]["capability_run"]
+    assert capability_run["capability_id"] == "memory.query"
+    assert capability_run["status"] == "completed"
+    assert capability_run["memory_query"]["results"][0]["record_id"] == "mem_capacity"
+    assert "raw memory content" not in json.dumps(result)
+
+
 def test_supervisor_capacity_plan_blocks_missing_inputs_without_graph_call_or_execution(tmp_path):
     provider = FakeCapacityProvider(
         '{"capacity_id":"context.search","arguments":{},"confidence":0.77,'
@@ -904,7 +979,7 @@ def test_loop_capacity_payload_propagates_agent_loop_summary_from_plan():
     _assert_no_agent_loop_raw_payload(payload["agent_loop_summary"])
 
 
-def test_loop_capacity_payload_passes_codex_home_as_capacity_input_default(tmp_path):
+def test_loop_capacity_payload_passes_supervisor_capacity_input_defaults(tmp_path):
     captured: dict[str, object] = {}
     decision = {
         "kind": "supervisor_capacity_decision",
@@ -938,7 +1013,10 @@ def test_loop_capacity_payload_passes_codex_home_as_capacity_input_default(tmp_p
         api=FakeCapacityApi(),
     )
 
-    assert captured["input_defaults"] == {"codex_home": str(tmp_path / ".codex")}
+    assert captured["input_defaults"] == {
+        "codex_home": str(tmp_path / ".codex"),
+        "root": str(tmp_path / ".codex"),
+    }
     assert payload["capacity_decisions"] == [decision]
 
 
