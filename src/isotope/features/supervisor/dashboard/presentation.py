@@ -761,6 +761,7 @@ def print_dashboard_plain(payload: dict[str, Any], *, api: Any | None = None) ->
         context_status = item.get("context_status") or "unknown"
         print(f"- {item['question']} context={context_status} target={target}")
     print_dashboard_dependency_batch(payload)
+    print_dashboard_capacity_summaries(payload)
     for group_key, label in api.DASHBOARD_GROUP_LABELS.items():
         items = payload["groups"][group_key]
         print(f"{label}：{len(items)}")
@@ -773,6 +774,61 @@ def print_dashboard_plain(payload: dict[str, Any], *, api: Any | None = None) ->
             if item["status_evidence"]:
                 evidence = item["status_evidence"]
                 print(f"  依据：{evidence['label']} - {evidence['detail']}")
+
+
+def print_dashboard_capacity_summaries(payload: dict[str, Any]) -> None:
+    multi_worker = payload.get("multi_worker")
+    if not isinstance(multi_worker, dict):
+        return
+    summary = multi_worker.get("summary") if isinstance(multi_worker.get("summary"), dict) else {}
+    total = summary.get("capacity_calls_total", 0)
+    print(f"能力调用：{total}")
+    workers = multi_worker.get("workers")
+    if not isinstance(workers, list):
+        return
+    for worker in workers:
+        if not isinstance(worker, dict):
+            continue
+        recent = worker.get("recent_capacity_summary")
+        if not isinstance(recent, dict):
+            continue
+        print(f"- {_dashboard_capacity_summary_text(worker, recent)}")
+
+
+def _dashboard_capacity_summary_text(
+    worker: dict[str, Any],
+    recent: dict[str, Any],
+) -> str:
+    loop = (
+        recent.get("agent_loop_summary")
+        if isinstance(recent.get("agent_loop_summary"), dict)
+        else {}
+    )
+    parts = [
+        _dashboard_text(worker.get("name"), "unknown"),
+        _dashboard_text(recent.get("capacity_id"), "unknown"),
+        f"tick={_dashboard_text(loop.get('agent_loop_tick_status'), 'unknown')}",
+        "step="
+        f"{_dashboard_text(loop.get('agent_loop_planner_selected_step'), 'unknown')}",
+    ]
+    artifact_id = _dashboard_text(loop.get("agent_loop_artifact_id"), "")
+    if artifact_id:
+        parts.append(f"artifact={artifact_id}")
+    stop_reason = _dashboard_text(loop.get("agent_loop_tick_after_stop_reason"), "")
+    if stop_reason:
+        parts.append(f"stop={stop_reason}")
+    summary = _dashboard_text(recent.get("summary"), "")
+    if summary:
+        parts.append(f"/ {summary}")
+    return " ".join(parts)
+
+
+def _dashboard_text(value: Any, fallback: str) -> str:
+    if isinstance(value, str) and value.strip():
+        return " ".join(value.split())
+    if isinstance(value, (bool, int, float)):
+        return str(value)
+    return fallback
 
 
 def print_dashboard_dependency_batch(payload: dict[str, Any]) -> None:

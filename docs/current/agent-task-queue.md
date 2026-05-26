@@ -84,6 +84,9 @@
 - `supervisor-capacity-dashboard-smoke` demo 已补齐执行到 dashboard 的
   fixture smoke：执行 `call_capacity`、读取 capacity memory record、刷新
   multi-worker read model，并确认三段使用同一组低敏 `agent_loop_summary`。
+- Dashboard plain view（终端可读视图）已展示 multi-worker capacity summary：
+  总能力调用数、worker、capacity id、tick / step / artifact 摘要都复用
+  capacity memory record 的低敏 `agent_loop_summary`。
 
 ## 下一批任务
 
@@ -123,7 +126,8 @@
 
 验收：
 
-- 新视图或入口复用 capacity memory record 里的 `agent_loop_summary`。
+- 后续新视图或入口继续复用 capacity memory record 里的
+  `agent_loop_summary`。
 - Dashboard / web 继续只从 summary 读取，不读取 raw tick payload。
 - 保持 no raw payload（不暴露原始内容）边界。
 

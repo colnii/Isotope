@@ -268,6 +268,65 @@ def test_supervisor_dashboard_json_includes_multi_worker_status(tmp_path, capsys
     assert "PRIVATE_" not in output
 
 
+def test_supervisor_dashboard_plain_shows_capacity_summary(tmp_path, capsys):
+    codex_home = tmp_path / ".codex"
+    memory_dir = codex_home / "memory"
+    memory_dir.mkdir(parents=True)
+    _write_memory_record(
+        memory_dir,
+        MemoryRecord(
+            memory_id="mem_worker_a_capacity",
+            scope="run",
+            content={
+                "kind": "capacity_call",
+                "worker_id": "worker-a",
+                "capacity_id": "artifact.review",
+                "arguments": {"secret": "PRIVATE_CAPACITY_ARGUMENT"},
+                "agent_loop_summary": {
+                    "agent_loop_executed": True,
+                    "agent_loop_planner_selected_step": "call_capability",
+                    "agent_loop_tick_status": "executed",
+                    "agent_loop_tick_after_stop_reason": "tick_budget_exhausted",
+                    "agent_loop_artifact_id": "artifact_safe_summary",
+                    "step_result": {"raw": "PRIVATE_STEP_PAYLOAD"},
+                },
+            },
+            summary="Worker A selected artifact.review.",
+            source_refs=[],
+            provenance={
+                "run_id": "run_a",
+                "execution_id": "exec_capacity",
+                "action_type": "capacity_call",
+            },
+            created_at="2026-05-22T01:10:00Z",
+            supersedes=[],
+            quality="verified",
+        ),
+    )
+    capsys.readouterr()
+
+    assert (
+        runner.main(
+            [
+                "dashboard",
+                "--codex-home",
+                str(codex_home),
+                "--stale-after",
+                "999999",
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    assert "能力调用：1" in output
+    assert "- worker-a artifact.review tick=executed step=call_capability" in output
+    assert "artifact=artifact_safe_summary" in output
+    assert "Worker A selected artifact.review." in output
+    assert "step_result" not in output
+    assert "PRIVATE_" not in output
+
+
 def test_capacity_action_record_flows_into_dashboard_multi_worker_status(
     tmp_path,
     monkeypatch,
