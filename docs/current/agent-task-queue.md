@@ -93,6 +93,9 @@
 - `worker-manager` plain 输出已展开 `supervised_execution` 的最近 capacity
   run：worker、capacity id、tick、step、artifact 和低敏 summary 可直接在
   CLI 里检查。
+- Dashboard plain view 已直接读取 `multi_worker.supervised_execution`，展示
+  capacity worker 数、agent-loop capacity 调用数和最近 run 摘要；旧 worker
+  summary 只作为缺少聚合视图时的 fallback。
 
 ## 下一批任务
 

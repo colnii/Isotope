@@ -371,6 +371,7 @@ def test_supervisor_dashboard_plain_shows_capacity_summary(tmp_path, capsys):
 
     output = capsys.readouterr().out
     assert "能力调用：1" in output
+    assert "受监督执行：workers=1 agent_loop_calls=1 recent=1" in output
     assert "- worker-a artifact.review tick=executed step=call_capability" in output
     assert "artifact=artifact_safe_summary" in output
     assert "Worker A selected artifact.review." in output

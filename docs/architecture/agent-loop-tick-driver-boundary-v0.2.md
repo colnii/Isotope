@@ -40,7 +40,8 @@
   会执行 fixture `call_capacity`、读取 capacity memory record、刷新
   dashboard/web multi-worker payload，并确认三段复用同一组低敏
   `agent_loop_summary`。
-- Dashboard plain view 会从同一个 multi-worker payload 打印最近 capacity 的
+- Dashboard plain view 会优先从
+  `multi_worker.supervised_execution.recent_capacity_runs` 打印最近 capacity 的
   tick / step / artifact 摘要，不读取或展开 raw `tick_result`。
 
 HTTP body 只接受：

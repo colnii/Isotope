@@ -783,6 +783,23 @@ def print_dashboard_capacity_summaries(payload: dict[str, Any]) -> None:
     summary = multi_worker.get("summary") if isinstance(multi_worker.get("summary"), dict) else {}
     total = summary.get("capacity_calls_total", 0)
     print(f"能力调用：{total}")
+    supervised = multi_worker.get("supervised_execution")
+    if isinstance(supervised, dict):
+        runs = supervised.get("recent_capacity_runs")
+        recent_runs = (
+            [item for item in runs if isinstance(item, dict)]
+            if isinstance(runs, list)
+            else []
+        )
+        print(
+            "受监督执行："
+            f"workers={supervised.get('capacity_workers_total', 0)} "
+            f"agent_loop_calls={supervised.get('capacity_agent_loop_calls_total', 0)} "
+            f"recent={len(recent_runs)}"
+        )
+        for run in recent_runs:
+            print(f"- {_dashboard_supervised_capacity_run_text(run)}")
+        return
     workers = multi_worker.get("workers")
     if not isinstance(workers, list):
         return
@@ -795,6 +812,20 @@ def print_dashboard_capacity_summaries(payload: dict[str, Any]) -> None:
         print(f"- {_dashboard_capacity_summary_text(worker, recent)}")
 
 
+def _dashboard_supervised_capacity_run_text(run: dict[str, Any]) -> str:
+    loop = (
+        run.get("agent_loop_summary")
+        if isinstance(run.get("agent_loop_summary"), dict)
+        else {}
+    )
+    return _dashboard_capacity_line_text(
+        worker=run.get("worker"),
+        capacity_id=run.get("capacity_id"),
+        summary=run.get("summary"),
+        loop=loop,
+    )
+
+
 def _dashboard_capacity_summary_text(
     worker: dict[str, Any],
     recent: dict[str, Any],
@@ -804,9 +835,24 @@ def _dashboard_capacity_summary_text(
         if isinstance(recent.get("agent_loop_summary"), dict)
         else {}
     )
+    return _dashboard_capacity_line_text(
+        worker=worker.get("name"),
+        capacity_id=recent.get("capacity_id"),
+        summary=recent.get("summary"),
+        loop=loop,
+    )
+
+
+def _dashboard_capacity_line_text(
+    *,
+    worker: Any,
+    capacity_id: Any,
+    summary: Any,
+    loop: dict[str, Any],
+) -> str:
     parts = [
-        _dashboard_text(worker.get("name"), "unknown"),
-        _dashboard_text(recent.get("capacity_id"), "unknown"),
+        _dashboard_text(worker, "unknown"),
+        _dashboard_text(capacity_id, "unknown"),
         f"tick={_dashboard_text(loop.get('agent_loop_tick_status'), 'unknown')}",
         "step="
         f"{_dashboard_text(loop.get('agent_loop_planner_selected_step'), 'unknown')}",
@@ -817,9 +863,9 @@ def _dashboard_capacity_summary_text(
     stop_reason = _dashboard_text(loop.get("agent_loop_tick_after_stop_reason"), "")
     if stop_reason:
         parts.append(f"stop={stop_reason}")
-    summary = _dashboard_text(recent.get("summary"), "")
-    if summary:
-        parts.append(f"/ {summary}")
+    summary_text = _dashboard_text(summary, "")
+    if summary_text:
+        parts.append(f"/ {summary_text}")
     return " ".join(parts)
 
 
