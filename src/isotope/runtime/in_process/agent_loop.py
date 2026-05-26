@@ -9,6 +9,7 @@ from ...agents.loop.control import build_agent_loop_control, build_agent_loop_ti
 from ...agents.loop.conversation import arbitrate_agent_conversation_turn
 from ...agents.loop.planner_adapter import run_agent_loop_planner_step
 from ...agents.loop.planner_contract import run_agent_loop_real_planner_contract_step
+from ...agents.loop.provider_planner import run_agent_loop_provider_planner_tick
 from ...agents.loop.runner import run_agent_loop_until_stop
 from ...agents.loop.step import run_agent_loop_step
 from ...agents.loop.tick import run_agent_loop_tick
@@ -84,6 +85,30 @@ class InProcessAgentLoopMixin:
             candidates,
             turn_id=turn_id,
             max_visible_messages=max_visible_messages,
+        )
+
+    def run_agent_loop_provider_planner_tick(
+        self,
+        run_id: str,
+        *,
+        provider: Any,
+        agent_id: str,
+        tick_id: str,
+        decision_id: str,
+        tick_budget: dict[str, Any] | None = None,
+        user_pause: dict[str, Any] | None = None,
+        max_tokens: int = 512,
+    ) -> dict[str, Any]:
+        return run_agent_loop_provider_planner_tick(
+            self,
+            run_id,
+            provider=provider,
+            agent_id=agent_id,
+            tick_id=tick_id,
+            decision_id=decision_id,
+            tick_budget=tick_budget,
+            user_pause=user_pause,
+            max_tokens=max_tokens,
         )
 
     def record_agent_loop_turn_memory(self, run_id: str, request: dict[str, Any]) -> dict[str, Any]:

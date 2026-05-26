@@ -69,7 +69,13 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    `AgentConversationMessage` 表达单个 agent 的候选发言，`arbitrate_agent_conversation_turn(...)`
    负责按 interrupt / priority / state_lock / max visible messages 做确定性筛选，
    支持沉默、延迟和状态锁冲突防护；它是低敏同步仲裁壳，不是实时 streaming
-   群聊、真实 LLM 发言或跨进程 event bus。
+   群聊或跨进程 event bus。`run_agent_loop_provider_planner_tick(...)` 已补
+   provider planner 第一片：用注入的 provider 生成 JSON planner decision，
+   解析成现有 `planner_output`，再经 `run_agent_loop_real_planner_contract_step(...)`
+   和 `run_agent_loop_planner_step(...)` 执行一个 tick；测试只用 fake provider，
+   不接真实网络或 TOML 号池，raw prompt/messages/raw response 只留在
+   provider/planner 边界内，外层只返回低敏 provider/result summary 和结构化
+   decision。
    `supervisor.worker_review` 已注册为 capability runner 的只读能力，
    `isotope-capability list/search/plan/run` 能发现、预检和运行它；执行时复用
    现有 `worker-review` lightweight 路径，只返回低敏 worker 决策摘要，

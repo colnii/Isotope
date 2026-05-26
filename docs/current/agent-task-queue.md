@@ -65,6 +65,12 @@
   会在单 tick driver 外做有限 `while`，每轮重新读取 tick policy、调用外部
   planner callable、再执行一个 tick；它复用现有 tick policy / planner adapter /
   step driver，不接真实 LLM，不定义 agent-to-agent 对话协议，也不会无限循环。
+- Agent loop provider planner tick 已补第一片：
+  `run_agent_loop_provider_planner_tick(...)` 用注入 provider 生成 JSON planner
+  decision，解析成现有 `planner_output`，再走
+  `run_agent_loop_real_planner_contract_step(...)` /
+  `run_agent_loop_planner_step(...)` 执行；测试只用 fake provider，不接真实网络，
+  raw prompt/messages/raw response 不出 provider/planner 边界。
 - Agent loop agent-to-agent conversation arbiter 已补第一片：
   `AgentConversationMessage` 表达单个 agent 的候选发言，
   `arbitrate_agent_conversation_turn(...)` 按 interrupt、priority、state lock
