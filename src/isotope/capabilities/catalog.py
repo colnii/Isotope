@@ -232,6 +232,79 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="memory.promotion.preview",
+                    title="Memory Promotion Preview",
+                    description=(
+                        "Build a low-sensitive write_memory proposal preview from "
+                        "structured artifact or external observation metadata."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=("memory", "promotion", "proposal", "preview"),
+                    input_contract={
+                        "type": "object",
+                        "required": [
+                            "run_id",
+                            "agent_id",
+                            "thread_id",
+                            "candidate",
+                        ],
+                        "properties": {
+                            "run_id": {
+                                "type": "string",
+                                "description": "Run id for the proposed write_memory action.",
+                            },
+                            "agent_id": {
+                                "type": "string",
+                                "description": "Agent id proposing memory promotion.",
+                            },
+                            "thread_id": {
+                                "type": "string",
+                                "description": "Thread id for the proposed action.",
+                            },
+                            "candidate": {
+                                "type": "object",
+                                "description": (
+                                    "Structured artifact or accepted external "
+                                    "observation promotion candidate."
+                                ),
+                            },
+                            "scope": {
+                                "type": "string",
+                                "enum": ["thread", "run", "session"],
+                                "description": "Memory scope for the proposal.",
+                                "default": "run",
+                            },
+                            "quality": {
+                                "type": "string",
+                                "description": "Candidate quality label.",
+                                "default": "candidate",
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "action_type",
+                            "scope",
+                            "summary",
+                            "source_refs",
+                            "provenance",
+                            "quality",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "proposal_preview_only",
+                        "no_memory_write",
+                        "no_canonical_event_append",
+                        "structured_source_required",
+                        "no_raw_content",
+                        "summary_refs_provenance_only",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="screen.report",
                     title="Screen Report",
                     description=(

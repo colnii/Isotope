@@ -161,6 +161,24 @@ def test_runner_discovers_memory_query_from_default_catalog():
     assert "summary_refs_provenance_only" in description["safety_boundaries"]
 
 
+def test_runner_discovers_memory_promotion_preview_from_default_catalog():
+    runner = _runner()
+
+    assert "memory.promotion.preview" in _ids(runner.list_capabilities())
+    search = runner.search_capabilities(query="promotion")
+
+    assert "memory.promotion.preview" in _ids(search["capabilities"])
+    description = runner.describe_capability("memory.promotion.preview")
+    assert description["input_contract"]["required"] == [
+        "run_id",
+        "agent_id",
+        "thread_id",
+        "candidate",
+    ]
+    assert "proposal_preview_only" in description["safety_boundaries"]
+    assert "no_memory_write" in description["safety_boundaries"]
+
+
 def test_runner_discovers_screen_report_from_default_catalog():
     runner = _runner()
 
@@ -353,6 +371,23 @@ def test_memory_query_plan_stops_when_required_inputs_are_missing():
     assert plan["scenario"] is None
 
 
+def test_memory_promotion_preview_plan_stops_when_required_inputs_are_missing():
+    plan = _runner().plan_capability_run(
+        "memory.promotion.preview",
+        inputs={
+            "run_id": "run_memory",
+            "agent_id": "agent_memo",
+            "thread_id": "thread_memory",
+        },
+    )
+
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["missing_inputs"] == ["candidate"]
+    assert plan["scenario"] is None
+
+
 def test_screen_report_plan_stops_when_required_inputs_are_missing():
     plan = _runner().plan_capability_run(
         "screen.report",
@@ -388,6 +423,41 @@ def test_memory_query_plan_rejects_invalid_inputs(field_name, bad_value):
 
     with pytest.raises(ValueError, match=field_name):
         _runner().plan_capability_run("memory.query", inputs=inputs)
+
+
+@pytest.mark.parametrize(
+    ("field_name", "bad_value"),
+    [
+        ("run_id", 123),
+        ("agent_id", {"agent": "memo"}),
+        ("thread_id", ["thread_memory"]),
+        ("candidate", "raw text"),
+        ("scope", "project"),
+        ("quality", ""),
+    ],
+)
+def test_memory_promotion_preview_plan_rejects_invalid_inputs(field_name, bad_value):
+    inputs = {
+        "run_id": "run_memory",
+        "agent_id": "agent_memo",
+        "thread_id": "thread_memory",
+        "candidate": {
+            "source_type": "artifact",
+            "artifact_ref": {
+                "ref_type": "artifact",
+                "scope": "run",
+                "run_id": "run_memory",
+                "artifact_id": "artifact_report",
+            },
+            "artifact_type": "research.report",
+            "summary": "Memory promotion preview.",
+            "provenance": {"execution_id": "exec_report"},
+        },
+    }
+    inputs[field_name] = bad_value
+
+    with pytest.raises((TypeError, ValueError), match=field_name):
+        _runner().plan_capability_run("memory.promotion.preview", inputs=inputs)
 
 
 def test_worker_review_plan_rejects_non_string_codex_home():
@@ -938,6 +1008,62 @@ def test_memory_query_capability_runs_existing_low_sensitive_query(tmp_path):
         }
     ]
     output = json.dumps(result)
+    assert "raw memory content" not in output
+    for mapping in _walk_mapping(result):
+        assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
+
+
+def test_memory_promotion_preview_capability_returns_low_sensitive_proposal():
+    result = _runner().run_capability(
+        "memory.promotion.preview",
+        inputs={
+            "run_id": "run_memory",
+            "agent_id": "agent_memo",
+            "thread_id": "thread_memory",
+            "candidate": {
+                "source_type": "artifact",
+                "artifact_ref": {
+                    "ref_type": "artifact",
+                    "scope": "run",
+                    "run_id": "run_memory",
+                    "artifact_id": "artifact_report",
+                },
+                "artifact_type": "research.report",
+                "summary": "Promote research report summary into memory.",
+                "provenance": {"execution_id": "exec_report"},
+            },
+            "scope": "session",
+            "quality": "verified",
+        },
+    )
+
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "memory.promotion.preview"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "deterministic_readonly"
+    preview = result["memory_promotion_preview"]
+    assert preview == {
+        "action_type": "write_memory",
+        "requested_capabilities": {"tools": ["write_memory"]},
+        "scope": "session",
+        "quality": "verified",
+        "summary": "Promote research report summary into memory.",
+        "source_refs": [
+            {
+                "ref_type": "artifact",
+                "scope": "run",
+                "run_id": "run_memory",
+                "artifact_id": "artifact_report",
+            }
+        ],
+        "provenance": {
+            "promotion_source": "artifact",
+            "source_execution_id": "exec_report",
+        },
+        "content_policy": "summary_refs_provenance_only",
+    }
+    output = json.dumps(result)
+    assert "raw_content" not in output
     assert "raw memory content" not in output
     for mapping in _walk_mapping(result):
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)

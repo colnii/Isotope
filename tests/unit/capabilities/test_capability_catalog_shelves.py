@@ -128,6 +128,7 @@ def test_default_builtins_are_small_product_candidate_set_only():
         "approval.tool.runner",
         "artifact.review",
         "external.snapshot.review",
+        "memory.promotion.preview",
         "memory.query",
         "research.search",
         "screen.report",

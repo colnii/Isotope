@@ -187,6 +187,13 @@
   不读取 full content。经 Supervisor capacity / agent loop 调用时，
   `agent_loop_summary` 会额外暴露 memory query 的低敏 status、result_count
   和 content_policy，plain 输出复用同一字段，不暴露 results 或 raw content。
+- `memory.promotion.preview` 已注册为可发现、可预检、可运行的只读
+  capability：`list/search/describe` 能看到它，`plan/run --input-json` 要求
+  `run_id/agent_id/thread_id/candidate`，可选 `scope/quality`；执行时复用
+  `memory.promotion` proposal boundary，只从 structured artifact metadata 或
+  accepted external observation metadata 生成低敏 `write_memory` proposal
+  preview。它不写 memory store、不追加 canonical event，也不返回 raw text、
+  raw content、artifact 正文或 provider payload。
 - `screen.report` 已注册为可发现、可预检、可运行的只读 capability：
   `list/search/describe` 能看到它，`plan/run --input-json` 要求 `root/run_id`；
   执行时复用现有 screen artifact report，只返回 observe/control plan 低敏摘要，

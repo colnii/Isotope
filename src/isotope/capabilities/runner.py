@@ -11,8 +11,10 @@ from typing import Any, Mapping
 
 from .catalog import CapabilityCatalog
 from .memory import (
+    MEMORY_PROMOTION_PREVIEW_CAPABILITY,
     MEMORY_QUERY_CAPABILITY,
     is_memory_readonly_capability,
+    run_memory_promotion_preview,
     run_memory_query,
     validate_memory_readonly_inputs,
 )
@@ -274,6 +276,8 @@ class CapabilityRunner:
 
         if capability_id == MEMORY_QUERY_CAPABILITY:
             return run_memory_query(inputs=input_mapping)
+        if capability_id == MEMORY_PROMOTION_PREVIEW_CAPABILITY:
+            return run_memory_promotion_preview(inputs=input_mapping)
         if capability_id == RESEARCH_SEARCH_CAPABILITY:
             return run_research_search(inputs=input_mapping)
         if capability_id == SCREEN_REPORT_CAPABILITY:

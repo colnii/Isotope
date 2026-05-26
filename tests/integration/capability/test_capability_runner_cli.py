@@ -67,6 +67,7 @@ def test_capability_runner_cli_lists_capabilities_as_json():
         "approval.tool.runner",
         "artifact.review",
         "external.snapshot.review",
+        "memory.promotion.preview",
         "memory.query",
         "research.search",
         "screen.report",
@@ -109,7 +110,8 @@ def test_capability_runner_cli_searches_capabilities_as_json():
     assert payload["search"]["kind"] == "capability_search_result"
     assert payload["search"]["query"] == "artifact"
     assert [item["capability_id"] for item in payload["search"]["capabilities"]] == [
-        "artifact.review"
+        "artifact.review",
+        "memory.promotion.preview",
     ]
     _assert_low_sensitive(payload)
 
@@ -520,6 +522,49 @@ def test_capability_runner_cli_runs_memory_query_with_input_json(tmp_path):
     assert run["runner_kind"] == "deterministic_readonly"
     assert run["memory_query"]["content_policy"] == "summary_refs_provenance_only"
     assert run["memory_query"]["results"][0]["record_id"] == "mem_cli"
+    assert "raw memory content" not in result.stdout
+    _assert_low_sensitive(payload)
+
+
+def test_capability_runner_cli_runs_memory_promotion_preview_with_input_json():
+    result = _run_cli(
+        "run",
+        "memory.promotion.preview",
+        "--input-json",
+        json.dumps(
+            {
+                "run_id": "run_memory",
+                "agent_id": "agent_memo",
+                "thread_id": "thread_memory",
+                "candidate": {
+                    "source_type": "artifact",
+                    "artifact_ref": {
+                        "ref_type": "artifact",
+                        "scope": "run",
+                        "run_id": "run_memory",
+                        "artifact_id": "artifact_report",
+                    },
+                    "artifact_type": "research.report",
+                    "summary": "Promote report summary into memory.",
+                    "provenance": {"execution_id": "exec_report"},
+                },
+            }
+        ),
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    run = payload["run"]
+    assert run["capability_id"] == "memory.promotion.preview"
+    assert run["status"] == "completed"
+    assert run["runner_kind"] == "deterministic_readonly"
+    preview = run["memory_promotion_preview"]
+    assert preview["action_type"] == "write_memory"
+    assert preview["content_policy"] == "summary_refs_provenance_only"
+    assert preview["source_refs"][0]["artifact_id"] == "artifact_report"
+    assert "raw_content" not in result.stdout
     assert "raw memory content" not in result.stdout
     _assert_low_sensitive(payload)
 

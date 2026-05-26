@@ -133,6 +133,9 @@
   metadata 或 accepted external observation metadata 整理为待批准的
   `write_memory` `ActionProposal`；raw text / raw content 会 fail closed，且
   helper 本身不写 store、不 append event、不定义完整 promotion policy。
+- `memory.promotion.preview` 已进入 capability runner：`isotope-capability` 可
+  search/plan/run，运行时复用 `memory.promotion` proposal boundary，只返回低敏
+  proposal preview，不写 memory、不 append event。
 - Supervisor `worktree-audit` 已补第一片：开工前可只读读取
   `git worktree list --porcelain`，按 branch/path 主题词提示可能重复开发的
   worktree 候选；现在还会只读读取每个 worktree 的 `git status --porcelain=v1`，
@@ -248,6 +251,8 @@
   从 `research.report` artifact metadata 与结构化 report quality gate 生成
   `write_memory` proposal；低质量 report 返回 review-required reasons，不读取
   raw transcript、不写 memory。
+- Memory promotion preview capability 已完成：`memory.promotion.preview` 可作为
+  其他系统接入 promotion boundary 的统一只读入口，避免直接散落 import helper。
 - Codex delegated provider 保持可信 fallback，Tavily 作为普通 API provider 候选，
   SearXNG 保持可选 self-hosted / fallback，browser/crawler 只做最低层 fetch
   fallback。

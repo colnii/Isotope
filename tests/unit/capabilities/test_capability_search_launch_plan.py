@@ -70,7 +70,7 @@ def test_search_capabilities_finds_matching_catalog_entries():
     assert result["kind"] == "capability_search_result"
     assert result["query"] == "artifact"
     ids = [entry["capability_id"] for entry in result["capabilities"]]
-    assert ids == ["artifact.review"]
+    assert ids == ["artifact.review", "memory.promotion.preview"]
 
 
 def test_search_capabilities_returns_low_sensitive_metadata_only():
