@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 
 from .notifications.bell_events import default_bell_events_path, read_latest_bell_events
 from .notifications.context import read_recent_context_results
+from .desktop_snapshot import build_desktop_snapshot
 from .dashboard.html import dashboard_page_html
 from .planner.decision_requests import (
     DEFAULT_DECISION_TIMEOUT_SECONDS,
@@ -105,6 +106,9 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
             codex_home=self.codex_home,
             workspace_cwd=Path.cwd(),
         )
+
+    def desktop_snapshot_payload(self) -> dict[str, Any]:
+        return build_desktop_snapshot(codex_home=self.codex_home)
 
     def llm_action_payload(self) -> dict[str, Any]:
         report = self._scan_report()
@@ -249,6 +253,13 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/dashboard.json":
             payload = self.server.dashboard_payload()
+            self._send_text(
+                json.dumps(payload, ensure_ascii=False, sort_keys=True),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+        if path == "/desktop/snapshot":
+            payload = self.server.desktop_snapshot_payload()
             self._send_text(
                 json.dumps(payload, ensure_ascii=False, sort_keys=True),
                 content_type="application/json; charset=utf-8",
