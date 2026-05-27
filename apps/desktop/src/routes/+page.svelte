@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { createIsotopeClient } from '$lib/client/isotopeClient';
   import FloatingOrb from '$lib/components/orb/FloatingOrb.svelte';
+  import MiniWindow from '$lib/components/mini/MiniWindow.svelte';
   import SourceBadge from '$lib/components/common/SourceBadge.svelte';
   import { createAppState } from '$lib/stores/appState';
   import { buildSnapshotView } from '$lib/view/snapshotView';
@@ -11,6 +12,7 @@
   const { snapshot, selectedActivity, isLoading } = appState;
 
   let loadError = $state<string | null>(null);
+  let miniOpen = $state(false);
   const view = $derived($snapshot ? buildSnapshotView($snapshot, $selectedActivity) : null);
 
   onMount(() => {
@@ -115,6 +117,9 @@
   </div>
 
   {#if $snapshot}
-    <FloatingOrb snapshot={$snapshot} />
+    <FloatingOrb snapshot={$snapshot} onOpenMini={() => (miniOpen = true)} />
+    {#if miniOpen}
+      <MiniWindow snapshot={$snapshot} onClose={() => (miniOpen = false)} />
+    {/if}
   {/if}
 </main>
