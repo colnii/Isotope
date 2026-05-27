@@ -31,7 +31,11 @@ def build_desktop_snapshot(*, codex_home: Path | str) -> dict[str, Any]:
         "snapshotId": new_id("desktop_snapshot"),
         "generatedAt": datetime.now(UTC).isoformat(),
         "source": source,
-        "activeActivity": supervisor_activity,
+        # Task 3 keeps activeActivity on the supervisor root so the first
+        # frontend slice has a stable anchor before richer activity selection.
+        # TODO(desktop-task4): revisit once MiniWindow/MainWindow state wiring
+        # can preserve user-selected activity context.
+        "activeActivity": _activity_summary(supervisor_activity),
         "activeAgent": supervisor_agent,
         "counts": {
             "runningAgents": 0,
@@ -88,6 +92,16 @@ def _supervisor_activity(source: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _activity_summary(activity: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": activity["id"],
+        "kind": activity["kind"],
+        "title": activity["title"],
+        "status": activity["status"],
+        "source": activity["source"],
+    }
+
+
 def _goal_activity(
     goal: dict[str, Any],
     *,
@@ -123,7 +137,6 @@ def _goal_summary(goal: dict[str, Any]) -> dict[str, Any]:
     source_ref = {"kind": "goal", "id": goal_id, "label": title}
     return {
         "id": goal_id,
-        "kind": "goal",
         "title": title,
         "status": _goal_status(goal),
         "source": {
@@ -149,7 +162,6 @@ def _approval_summary(decision: dict[str, Any]) -> dict[str, Any]:
             "label": "supervisor_decision_request",
             "sourceRef": source_ref,
         },
-        "createdAt": decision.get("created_at"),
     }
 
 

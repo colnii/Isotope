@@ -38,6 +38,7 @@ def test_desktop_snapshot_empty_root_uses_contract_shape(tmp_path):
     assert snapshot["agents"][0]["kind"] == "supervisor"
     assert snapshot["activities"][0]["kind"] == "supervisor"
     assert snapshot["activities"][0]["source"]["backendRef"] == f"codex_home:{tmp_path}"
+    assert set(snapshot["activeActivity"]) == {"id", "kind", "title", "status", "source"}
     assert "activeGoal" not in snapshot
     assert "eventCursor" not in snapshot
     assert "lastEventId" not in snapshot
@@ -64,7 +65,9 @@ def test_desktop_snapshot_maps_active_goal_to_activity(tmp_path):
 
     assert snapshot["activities"][0]["kind"] == "supervisor"
     assert snapshot["activeActivity"]["id"] == snapshot["activities"][0]["id"]
+    assert set(snapshot["activeActivity"]) == {"id", "kind", "title", "status", "source"}
     assert snapshot["activeGoal"]["title"] == "Ship the desktop MVP"
+    assert "kind" not in snapshot["activeGoal"]
     goal_node = next(activity for activity in snapshot["activities"] if activity["kind"] == "goal")
     assert goal_node["title"] == "Ship the desktop MVP"
     assert goal_node["parentId"] == snapshot["activities"][0]["id"]
@@ -129,7 +132,6 @@ def test_desktop_snapshot_maps_active_decision_to_approval_summary(tmp_path):
                     "label": "Approve launch?",
                 },
             },
-            "createdAt": snapshot["approvals"][0]["createdAt"],
         }
     ]
 
