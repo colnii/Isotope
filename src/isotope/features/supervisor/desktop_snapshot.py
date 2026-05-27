@@ -31,10 +31,9 @@ def build_desktop_snapshot(*, codex_home: Path | str) -> dict[str, Any]:
         "snapshotId": new_id("desktop_snapshot"),
         "generatedAt": datetime.now(UTC).isoformat(),
         "source": source,
-        # Task 3 keeps activeActivity on the supervisor root so the first
-        # frontend slice has a stable anchor before richer activity selection.
-        # TODO(desktop-task4): revisit once MiniWindow/MainWindow state wiring
-        # can preserve user-selected activity context.
+        # activeActivity is backend-authored and remains the supervisor root
+        # for now; user-selected activity context is tracked locally in the
+        # desktop frontend.
         "activeActivity": _activity_summary(supervisor_activity),
         "activeAgent": supervisor_agent,
         "counts": {
@@ -112,7 +111,7 @@ def _goal_activity(
     title = str(goal["goal"])
     source_ref = {"kind": "goal", "id": goal_id, "label": title}
     summary = _low_sensitive_preview(goal.get("last_summary") or title)
-    return {
+    return _omit_none({
         "id": f"activity_goal_{goal_id}",
         "kind": "goal",
         "title": title,
@@ -128,14 +127,14 @@ def _goal_activity(
         "createdAt": goal.get("created_at"),
         "updatedAt": goal.get("last_status_at") or goal.get("created_at"),
         "summary": summary,
-    }
+    })
 
 
 def _goal_summary(goal: dict[str, Any]) -> dict[str, Any]:
     goal_id = str(goal["goal_id"])
     title = str(goal["goal"])
     source_ref = {"kind": "goal", "id": goal_id, "label": title}
-    return {
+    return _omit_none({
         "id": goal_id,
         "title": title,
         "status": _goal_status(goal),
@@ -145,7 +144,7 @@ def _goal_summary(goal: dict[str, Any]) -> dict[str, Any]:
             "sourceRef": source_ref,
         },
         "updatedAt": goal.get("last_status_at") or goal.get("created_at"),
-    }
+    })
 
 
 def _approval_summary(decision: dict[str, Any]) -> dict[str, Any]:
@@ -153,7 +152,7 @@ def _approval_summary(decision: dict[str, Any]) -> dict[str, Any]:
     title = _low_sensitive_preview(decision.get("question") or "Supervisor approval required")
     title = title or "Supervisor approval required"
     source_ref = {"kind": "approval", "id": request_id, "label": title}
-    return {
+    return _omit_none({
         "id": request_id,
         "title": title,
         "status": "pending",
@@ -162,7 +161,7 @@ def _approval_summary(decision: dict[str, Any]) -> dict[str, Any]:
             "label": "supervisor_decision_request",
             "sourceRef": source_ref,
         },
-    }
+    })
 
 
 def _goal_status(goal: dict[str, Any]) -> str:
@@ -182,3 +181,7 @@ def _low_sensitive_preview(value: object) -> str | None:
     if any(marker in lowered for marker in ("api_key", "api-key", "secret", "token=", "sk-")):
         return None
     return text
+
+
+def _omit_none(data: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in data.items() if value is not None}

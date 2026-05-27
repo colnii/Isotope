@@ -99,7 +99,7 @@ def test_desktop_snapshot_redacts_long_or_secret_preview_content(tmp_path):
     assert "sk-test-secret" not in serialized
     assert "token=" not in serialized
     assert "x" * 2200 not in serialized
-    assert goal_node.get("summary") is None
+    assert "summary" not in goal_node
 
 
 def test_desktop_snapshot_maps_active_decision_to_approval_summary(tmp_path):
