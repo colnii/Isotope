@@ -121,7 +121,14 @@
   {#if $snapshot}
     <FloatingOrb snapshot={$snapshot} onOpenMini={() => (miniOpen = true)} />
     {#if miniOpen}
-      <MiniWindow snapshot={$snapshot} onOpenMain={() => (mainOpen = true)} onClose={() => (miniOpen = false)} />
+      <MiniWindow
+        snapshot={$snapshot}
+        onOpenMain={() => {
+          mainOpen = true;
+          miniOpen = false;
+        }}
+        onClose={() => (miniOpen = false)}
+      />
     {/if}
     {#if mainOpen}
       <MainWindowSnapshotShell

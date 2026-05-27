@@ -1,10 +1,11 @@
-import type { ActivityNode, ApprovalSummary, IsotopeSnapshot } from '../contracts/isotope';
+import type { ActivityNode, ApprovalSummary, DataSourceInfo, IsotopeSnapshot } from '../contracts/isotope';
 
 export type MainWindowApprovalItem = {
   id: string;
   title: string;
   status: ApprovalSummary['status'];
   riskLevel?: ApprovalSummary['riskLevel'];
+  source: DataSourceInfo;
 };
 
 export type MainWindowSnapshotView = {
@@ -50,7 +51,8 @@ export function buildMainWindowSnapshotView(
       id: approval.id,
       title: approval.title,
       status: approval.status,
-      riskLevel: approval.riskLevel
+      riskLevel: approval.riskLevel,
+      source: approval.source
     }))
   };
 }

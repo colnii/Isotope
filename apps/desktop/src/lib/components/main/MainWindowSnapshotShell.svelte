@@ -96,9 +96,14 @@
         <ul class="mt-2 space-y-2">
           {#each view.approvalItems as approval (approval.id)}
             <li class="border border-isotope-line p-2 text-sm">
-              <span class="block font-medium">{approval.title}</span>
-              <span class="text-xs text-isotope-muted">
-                {approval.status}{approval.riskLevel ? ` · ${approval.riskLevel}` : ''}
+              <span class="flex items-start justify-between gap-2">
+                <span class="min-w-0">
+                  <span class="block truncate font-medium">{approval.title}</span>
+                  <span class="text-xs text-isotope-muted">
+                    {approval.status}{approval.riskLevel ? ` · ${approval.riskLevel}` : ''}
+                  </span>
+                </span>
+                <SourceBadge source={approval.source} />
               </span>
             </li>
           {/each}
