@@ -1,0 +1,35 @@
+{
+  "name": "@isotope/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "prepare": "svelte-kit sync",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@sveltejs/adapter-static": "^3.0.8",
+    "@sveltejs/kit": "^2.15.0",
+    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-global-shortcut": "^2.0.0",
+    "svelte": "^5.0.0"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^5.0.0",
+    "@tauri-apps/cli": "^2.0.0",
+    "@types/node": "^22.15.21",
+    "autoprefixer": "^10.4.20",
+    "jsdom": "^26.0.0",
+    "postcss": "^8.4.49",
+    "svelte-check": "^4.0.0",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.0",
+    "vitest": "^3.2.4"
+  }
+}
