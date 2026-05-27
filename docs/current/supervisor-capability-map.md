@@ -14,6 +14,33 @@
 1. 新增 Supervisor 功能前，现有能力在哪里？
 2. 哪些能力已经有实现，不能重复造一套？
 
+## Agent Harness Lens
+
+Agent Harness 只作为工程审计镜头，不替代 Isotope / Supervisor 的现有架构。
+新增或调整能力时，用它检查能力、边界、证据和回归风险：
+
+1. State is not context（状态不是上下文）。Durable state（持久状态）必须落在
+   events、artifacts、provenance、permissions、decisions 和 verification
+   evidence；context 只是当前模型或界面看到的 projection（投影）。
+2. ETCLOVG 是 debt table（负债表），不是替代架构。按
+   `layer / current capability / missing invariant / risk if absent / evidence signal`
+   记录 Execution、Tooling、Context、Lifecycle、Observability、Verification
+   和 Governance 的覆盖与缺口。
+3. Handoff 必须 resumable（可恢复）。交接内容要包含 objective、permissions、
+   workspace scope、artifacts、evidence、risks、unresolved decisions、
+   resume checks 和 stop conditions，不能只有文本摘要。
+4. Harness change 必须有 deletion story（删除条件）。新增 wrapper、guardrail、
+   verifier、planner、reset 或 reviewer 时，说明 failure class、cost、eval
+   signal 以及 rollback / deletion condition。
+
+Deferred capability directions（暂缓能力方向，不新增对象）：
+
+- Scoped temporary permission grants：权限应按 task / workspace 临时授予，并且
+  auditable、expirable、revocable。
+- Lightweight tool ergonomics checks：关键 capability 后续补 `when_to_use` 和
+  `when_not_to_use`；高风险 capability 补 1-2 条 negative eval，确认模型知道何时
+  不该调用它。
+
 ## 当前能力索引
 
 | 能力层 | 入口 | 主要位置 |
