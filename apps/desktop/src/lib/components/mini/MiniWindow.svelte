@@ -9,8 +9,9 @@
   import QuickActionArea from '../common/QuickActionArea.svelte';
   import SourceBadge from '../common/SourceBadge.svelte';
 
-  let { snapshot, onClose } = $props<{
+  let { snapshot, onOpenMain, onClose } = $props<{
     snapshot: IsotopeSnapshot;
+    onOpenMain: () => void;
     onClose: () => void;
   }>();
 
@@ -36,6 +37,9 @@
     </div>
     <div class="flex items-center gap-2">
       <SourceBadge source={snapshot.source} />
+      <button class="border border-isotope-line px-2 text-sm" type="button" onclick={onOpenMain}>
+        Open Main
+      </button>
       <button class="border border-isotope-line px-2 text-sm" type="button" aria-label="Close mini" onclick={onClose}>
         x
       </button>

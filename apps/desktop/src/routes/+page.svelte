@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { createIsotopeClient } from '$lib/client/isotopeClient';
   import FloatingOrb from '$lib/components/orb/FloatingOrb.svelte';
+  import MainWindowSnapshotShell from '$lib/components/main/MainWindowSnapshotShell.svelte';
   import MiniWindow from '$lib/components/mini/MiniWindow.svelte';
   import SourceBadge from '$lib/components/common/SourceBadge.svelte';
   import { createAppState } from '$lib/stores/appState';
@@ -9,10 +10,11 @@
 
   const desktopApiBaseUrl = import.meta.env.VITE_ISOTOPE_DESKTOP_API_BASE as string | undefined;
   const appState = createAppState(createIsotopeClient(desktopApiBaseUrl?.trim() || null));
-  const { snapshot, selectedActivity, isLoading } = appState;
+  const { snapshot, selectedActivity, selectedActivityId, isLoading } = appState;
 
   let loadError = $state<string | null>(null);
   let miniOpen = $state(false);
+  let mainOpen = $state(false);
   const view = $derived($snapshot ? buildSnapshotView($snapshot, $selectedActivity) : null);
 
   onMount(() => {
@@ -119,7 +121,16 @@
   {#if $snapshot}
     <FloatingOrb snapshot={$snapshot} onOpenMini={() => (miniOpen = true)} />
     {#if miniOpen}
-      <MiniWindow snapshot={$snapshot} onClose={() => (miniOpen = false)} />
+      <MiniWindow snapshot={$snapshot} onOpenMain={() => (mainOpen = true)} onClose={() => (miniOpen = false)} />
+    {/if}
+    {#if mainOpen}
+      <MainWindowSnapshotShell
+        snapshot={$snapshot}
+        selectedActivity={$selectedActivity}
+        selectedActivityId={$selectedActivityId}
+        onSelectActivity={(activityId) => appState.selectActivity(activityId)}
+        onClose={() => (mainOpen = false)}
+      />
     {/if}
   {/if}
 </main>
