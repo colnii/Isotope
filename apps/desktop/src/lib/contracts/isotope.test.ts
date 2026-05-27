@@ -4,7 +4,8 @@ import {
   isLowSensitivePreview,
   sortActivityNodes,
   type ActivityNode,
-  type IsotopeEvent
+  type IsotopeEvent,
+  type IsotopeSnapshot
 } from './isotope';
 
 const realSource = { kind: 'real' as const, label: 'test', backendRef: 'test://source' };
@@ -51,5 +52,46 @@ describe('desktop contract helpers', () => {
     expect(isLowSensitivePreview('Short status summary.')).toBe(true);
     expect(isLowSensitivePreview('token=sk-test-secret')).toBe(false);
     expect(isLowSensitivePreview('x'.repeat(2200))).toBe(false);
+  });
+
+  test('accepts Task 3 snapshot shape with omitted optional fields', () => {
+    const snapshot: IsotopeSnapshot = {
+      schemaVersion: 1,
+      snapshotId: 'desktop_snapshot_1',
+      generatedAt: '2026-05-27T00:00:00Z',
+      source: realSource,
+      activeActivity: {
+        id: 'activity_supervisor_root',
+        kind: 'supervisor',
+        title: 'Isotope Supervisor',
+        status: 'idle',
+        source: realSource
+      },
+      activeAgent: {
+        id: 'supervisor_root',
+        title: 'Isotope Supervisor',
+        status: 'idle',
+        kind: 'supervisor',
+        role: 'coordinator',
+        source: realSource
+      },
+      counts: {
+        runningAgents: 0,
+        needsAttention: 0,
+        approvals: 0,
+        artifacts: 0,
+        errors: 0
+      },
+      agents: [],
+      activities: [],
+      approvals: [],
+      artifacts: [],
+      runningToolCalls: []
+    };
+
+    expect('activeGoal' in snapshot).toBe(false);
+    expect('eventCursor' in snapshot).toBe(false);
+    expect('lastEventId' in snapshot).toBe(false);
+    expect(Object.keys(snapshot.activeActivity ?? {})).toEqual(['id', 'kind', 'title', 'status', 'source']);
   });
 });
