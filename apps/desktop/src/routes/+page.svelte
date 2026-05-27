@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { createIsotopeClient } from '$lib/client/isotopeClient';
+  import FloatingOrb from '$lib/components/orb/FloatingOrb.svelte';
+  import SourceBadge from '$lib/components/common/SourceBadge.svelte';
   import { createAppState } from '$lib/stores/appState';
   import { buildSnapshotView } from '$lib/view/snapshotView';
 
@@ -23,8 +25,8 @@
     <aside class="border border-isotope-line bg-white/90 p-4">
       <div class="flex items-center justify-between gap-3">
         <h2 class="text-sm font-semibold">Activity</h2>
-        {#if view}
-          <span class="border border-isotope-line px-1.5 py-0.5 text-[11px] text-isotope-muted">{view.sourceKind}</span>
+        {#if $snapshot}
+          <SourceBadge source={$snapshot.source} />
         {/if}
       </div>
       <div class="mt-3 space-y-2">
@@ -111,4 +113,8 @@
       {/if}
     </aside>
   </div>
+
+  {#if $snapshot}
+    <FloatingOrb snapshot={$snapshot} />
+  {/if}
 </main>
