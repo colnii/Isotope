@@ -3,9 +3,10 @@
   import { buildFloatingOrbView } from '../../view/orbView';
   import SourceBadge from '../common/SourceBadge.svelte';
 
-  let { snapshot, quietMode = false } = $props<{
+  let { snapshot, quietMode = false, onOpenMini = () => {} } = $props<{
     snapshot: IsotopeSnapshot;
     quietMode?: boolean;
+    onOpenMini?: () => void;
   }>();
 
   const view = $derived(buildFloatingOrbView(snapshot));
@@ -18,6 +19,7 @@
     class:animate-pulse={!quietMode && view.needsAttention > 0}
     aria-label={`Isotope orb: ${view.title}`}
     title={view.title}
+    onclick={onOpenMini}
   >
     <span>Iso</span>
     {#if view.attentionText}

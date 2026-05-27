@@ -1,0 +1,69 @@
+<script lang="ts">
+  import type { IsotopeSnapshot } from '../../contracts/isotope';
+  import {
+    buildMiniWindowView,
+    buildMockSubmitPreview,
+    type MiniSubmitMode
+  } from '../../view/miniWindowView';
+  import CommandComposer from '../common/CommandComposer.svelte';
+  import QuickActionArea from '../common/QuickActionArea.svelte';
+  import SourceBadge from '../common/SourceBadge.svelte';
+
+  let { snapshot, onClose } = $props<{
+    snapshot: IsotopeSnapshot;
+    onClose: () => void;
+  }>();
+
+  let submitMode = $state<MiniSubmitMode>('mock');
+  let submitPreview = $state('No command submitted yet.');
+  const view = $derived(buildMiniWindowView(snapshot, submitMode));
+
+  function submitMockCommand(text: string) {
+    const result = buildMockSubmitPreview(text);
+    submitMode = result.mode;
+    submitPreview = result.preview;
+  }
+</script>
+
+<section
+  class="fixed bottom-28 right-5 z-20 w-[min(360px,calc(100vw-2.5rem))] border border-isotope-line bg-white p-3 shadow-xl"
+  aria-label="Isotope MiniWindow preview"
+>
+  <header class="flex items-start justify-between gap-3">
+    <div class="min-w-0">
+      <div class="truncate text-sm font-semibold">{view.title}</div>
+      <div class="mt-1 text-xs text-isotope-muted">submit: {view.submitMode}</div>
+    </div>
+    <div class="flex items-center gap-2">
+      <SourceBadge source={snapshot.source} />
+      <button class="border border-isotope-line px-2 text-sm" type="button" aria-label="Close mini" onclick={onClose}>
+        x
+      </button>
+    </div>
+  </header>
+
+  <div class="mt-3 grid grid-cols-3 gap-2 text-xs">
+    <div class="bg-isotope-bg p-2">Running<br /><span class="font-semibold">{view.counts.runningAgents}</span></div>
+    <div class="bg-isotope-bg p-2">Attention<br /><span class="font-semibold">{view.counts.needsAttention}</span></div>
+    <div class="bg-isotope-bg p-2">Approvals<br /><span class="font-semibold">{view.counts.approvals}</span></div>
+  </div>
+
+  <div class="mt-3 border-t border-isotope-line pt-3">
+    <div class="text-xs text-isotope-muted">Agent</div>
+    <div class="truncate text-sm">{view.agentTitle}</div>
+    <div class="mt-2 text-xs text-isotope-muted">Goal</div>
+    <div class="truncate text-sm">{view.activeGoalTitle}</div>
+  </div>
+
+  <div class="mt-3">
+    <CommandComposer disabled={submitMode === 'disabled'} onSubmit={submitMockCommand} />
+  </div>
+
+  <p class="mt-2 border border-isotope-line bg-isotope-panel px-2 py-1 text-xs text-isotope-muted">
+    {submitPreview}
+  </p>
+
+  <div class="mt-3">
+    <QuickActionArea />
+  </div>
+</section>
