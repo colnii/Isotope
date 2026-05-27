@@ -1,19 +1,20 @@
 <script lang="ts">
-  import type { ActivityNode, IsotopeSnapshot } from '../../contracts/isotope';
-  import { replayMockEvents } from '../../client/replayMockEvents';
+  import type { ActivityNode, IsotopeEvent, IsotopeSnapshot } from '../../contracts/isotope';
   import { buildMainWindowSnapshotView } from '../../view/mainWindowView';
   import ActivityTree from '../activity/ActivityTree.svelte';
   import SourceBadge from '../common/SourceBadge.svelte';
-  import EventStream from '../event/EventStream.svelte';
+  import EventStream from '../events/EventStream.svelte';
 
   let {
     snapshot,
+    events = [],
     selectedActivity,
     selectedActivityId = null,
     onSelectActivity,
     onClose
   } = $props<{
     snapshot: IsotopeSnapshot;
+    events?: IsotopeEvent[];
     selectedActivity: ActivityNode | null;
     selectedActivityId?: string | null;
     onSelectActivity: (id: string) => void;
@@ -116,7 +117,7 @@
     </section>
 
     <div class="mt-4">
-      <EventStream events={replayMockEvents} />
+      <EventStream events={events} />
     </div>
   </aside>
 </section>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { createIsotopeClient } from '$lib/client/isotopeClient';
+  import { replayMockEvents } from '$lib/client/replayMockEvents';
   import FloatingOrb from '$lib/components/orb/FloatingOrb.svelte';
   import MainWindowSnapshotShell from '$lib/components/main/MainWindowSnapshotShell.svelte';
   import MiniWindow from '$lib/components/mini/MiniWindow.svelte';
@@ -133,6 +134,7 @@
     {#if mainOpen}
       <MainWindowSnapshotShell
         snapshot={$snapshot}
+        events={replayMockEvents}
         selectedActivity={$selectedActivity}
         selectedActivityId={$selectedActivityId}
         onSelectActivity={(activityId) => appState.selectActivity(activityId)}
