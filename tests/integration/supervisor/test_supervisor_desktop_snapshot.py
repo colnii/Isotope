@@ -8,7 +8,11 @@ from isotope.features.supervisor.desktop_snapshot import (
     _low_sensitive_preview,
     build_desktop_snapshot,
 )
-from isotope.features.supervisor.planner.goal_queue import record_supervisor_goal
+from isotope.features.supervisor.planner.decision_requests import record_decision_request
+from isotope.features.supervisor.planner.goal_queue import (
+    record_supervisor_goal,
+    record_supervisor_goal_status,
+)
 from isotope.features.supervisor.web import create_dashboard_server
 
 
@@ -34,6 +38,9 @@ def test_desktop_snapshot_empty_root_uses_contract_shape(tmp_path):
     assert snapshot["agents"][0]["kind"] == "supervisor"
     assert snapshot["activities"][0]["kind"] == "supervisor"
     assert snapshot["activities"][0]["source"]["backendRef"] == f"codex_home:{tmp_path}"
+    assert "activeGoal" not in snapshot
+    assert "eventCursor" not in snapshot
+    assert "lastEventId" not in snapshot
     assert snapshot["approvals"] == []
     assert snapshot["artifacts"] == []
     assert snapshot["runningToolCalls"] == []
@@ -67,13 +74,64 @@ def test_desktop_snapshot_maps_active_goal_to_activity(tmp_path):
 
 
 def test_desktop_snapshot_redacts_long_or_secret_preview_content(tmp_path):
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    goal = record_supervisor_goal(
+        codex_home=tmp_path,
+        goal="Inspect preview redaction",
+        cwd=workspace,
+    )
+    record_supervisor_goal_status(
+        codex_home=tmp_path,
+        goal_id=goal.goal_id,
+        status="needs_user",
+        summary="token=sk-test-secret " + "x" * 2200,
+    )
+
     snapshot = build_desktop_snapshot(codex_home=tmp_path)
 
     serialized = str(snapshot).lower()
+    goal_node = next(activity for activity in snapshot["activities"] if activity["kind"] == "goal")
 
     assert "sk-test-secret" not in serialized
     assert "token=" not in serialized
     assert "x" * 2200 not in serialized
+    assert goal_node.get("summary") is None
+
+
+def test_desktop_snapshot_maps_active_decision_to_approval_summary(tmp_path):
+    record_decision_request(
+        codex_home=tmp_path,
+        action={
+            "session_id": "session-1",
+            "question": "Approve launch?",
+            "reason": "worker needs confirmation",
+            "target_name": "desktop-worker",
+            "context_status": "ready",
+        },
+    )
+
+    snapshot = build_desktop_snapshot(codex_home=tmp_path)
+
+    assert snapshot["counts"]["approvals"] == 1
+    assert snapshot["counts"]["needsAttention"] == 1
+    assert snapshot["approvals"] == [
+        {
+            "id": snapshot["approvals"][0]["id"],
+            "title": "Approve launch?",
+            "status": "pending",
+            "source": {
+                "kind": "derived",
+                "label": "supervisor_decision_request",
+                "sourceRef": {
+                    "kind": "approval",
+                    "id": snapshot["approvals"][0]["id"],
+                    "label": "Approve launch?",
+                },
+            },
+            "createdAt": snapshot["approvals"][0]["createdAt"],
+        }
+    ]
 
 
 def test_low_sensitive_preview_guard_rejects_secrets_and_long_content():

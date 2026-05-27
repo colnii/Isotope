@@ -18,36 +18,38 @@ def build_desktop_snapshot(*, codex_home: Path | str) -> dict[str, Any]:
     supervisor_agent = _supervisor_agent(source)
     supervisor_activity = _supervisor_activity(source)
     active_goals = list(supervisor.get("active_goals", []))
+    active_decisions = list(supervisor.get("active_decisions", []))
     goal_activities = [
         _goal_activity(goal, index=index + 1, parent_id=supervisor_activity["id"])
         for index, goal in enumerate(active_goals)
     ]
     active_goal = _goal_summary(active_goals[0]) if active_goals else None
+    approvals = [_approval_summary(decision) for decision in active_decisions]
 
-    return {
+    snapshot = {
         "schemaVersion": 1,
         "snapshotId": new_id("desktop_snapshot"),
         "generatedAt": datetime.now(UTC).isoformat(),
-        "eventCursor": None,
-        "lastEventId": None,
         "source": source,
         "activeActivity": supervisor_activity,
         "activeAgent": supervisor_agent,
-        "activeGoal": active_goal,
         "counts": {
             "runningAgents": 0,
-            "needsAttention": int(summary.get("active_decisions", 0) or 0)
+            "needsAttention": len(approvals)
             + int(summary.get("failed_lanes", 0) or 0),
-            "approvals": int(summary.get("active_decisions", 0) or 0),
+            "approvals": len(approvals),
             "artifacts": 0,
             "errors": int(summary.get("failed_lanes", 0) or 0),
         },
         "agents": [supervisor_agent],
         "activities": [supervisor_activity, *goal_activities],
-        "approvals": [],
+        "approvals": approvals,
         "artifacts": [],
         "runningToolCalls": [],
     }
+    if active_goal is not None:
+        snapshot["activeGoal"] = active_goal
+    return snapshot
 
 
 def _supervisor_source(root: Path) -> dict[str, Any]:
@@ -130,6 +132,24 @@ def _goal_summary(goal: dict[str, Any]) -> dict[str, Any]:
             "sourceRef": source_ref,
         },
         "updatedAt": goal.get("last_status_at") or goal.get("created_at"),
+    }
+
+
+def _approval_summary(decision: dict[str, Any]) -> dict[str, Any]:
+    request_id = str(decision["request_id"])
+    title = _low_sensitive_preview(decision.get("question") or "Supervisor approval required")
+    title = title or "Supervisor approval required"
+    source_ref = {"kind": "approval", "id": request_id, "label": title}
+    return {
+        "id": request_id,
+        "title": title,
+        "status": "pending",
+        "source": {
+            "kind": "derived",
+            "label": "supervisor_decision_request",
+            "sourceRef": source_ref,
+        },
+        "createdAt": decision.get("created_at"),
     }
 
 
