@@ -1,8 +1,10 @@
 <script lang="ts">
   import type { ActivityNode, IsotopeSnapshot } from '../../contracts/isotope';
+  import { replayMockEvents } from '../../client/replayMockEvents';
   import { buildMainWindowSnapshotView } from '../../view/mainWindowView';
   import ActivityTree from '../activity/ActivityTree.svelte';
   import SourceBadge from '../common/SourceBadge.svelte';
+  import EventStream from '../event/EventStream.svelte';
 
   let {
     snapshot,
@@ -112,5 +114,9 @@
         <p class="mt-2 text-sm text-isotope-muted">No approval items.</p>
       {/if}
     </section>
+
+    <div class="mt-4">
+      <EventStream events={replayMockEvents} />
+    </div>
   </aside>
 </section>
