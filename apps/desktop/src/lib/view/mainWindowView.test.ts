@@ -91,8 +91,16 @@ describe('buildMainWindowSnapshotView', () => {
       approvalCount: 1,
       artifactCount: 3,
       errorCount: 0,
-      approvalItems: [{ id: 'approval-1', title: 'Review command', status: 'pending', riskLevel: 'medium' }]
+      approvalItems: [
+        { id: 'approval-1', title: 'Review command', status: 'pending', riskLevel: 'medium', source }
+      ]
     });
+  });
+
+  test('preserves approval source for source badges', () => {
+    const snapshot = snapshotWith();
+
+    expect(buildMainWindowSnapshotView(snapshot, null).approvalItems[0]?.source.kind).toBe('real');
   });
 
   test('falls back to backend-authored activeActivity when no local activity is selected', () => {
