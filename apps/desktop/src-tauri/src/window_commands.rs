@@ -64,7 +64,7 @@ impl DesktopWindowLabel {
 }
 
 fn window_url(label: DesktopWindowLabel) -> WebviewUrl {
-    WebviewUrl::App(format!("index.html?window={}", label.as_str()).into())
+    WebviewUrl::App(format!("/?window={}", label.as_str()).into())
 }
 
 fn apply_focus(window: &WebviewWindow, focus: bool) -> Result<(), String> {
