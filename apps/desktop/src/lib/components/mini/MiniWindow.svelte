@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { IsotopeSnapshot } from '../../contracts/isotope';
+  import { buildMiniWindowSurfaceClass, type ComponentSurface } from '../../window/windowSurface';
   import {
     buildMiniWindowView,
     buildMockSubmitPreview,
@@ -9,8 +10,9 @@
   import QuickActionArea from '../common/QuickActionArea.svelte';
   import SourceBadge from '../common/SourceBadge.svelte';
 
-  let { snapshot, onOpenMain, onClose } = $props<{
+  let { snapshot, surface = 'dev', onOpenMain, onClose } = $props<{
     snapshot: IsotopeSnapshot;
+    surface?: ComponentSurface;
     onOpenMain: () => void;
     onClose: () => void;
   }>();
@@ -27,7 +29,7 @@
 </script>
 
 <section
-  class="fixed bottom-28 right-5 z-20 w-[min(360px,calc(100vw-2.5rem))] border border-isotope-line bg-white p-3 shadow-xl"
+  class={buildMiniWindowSurfaceClass(surface)}
   aria-label="Isotope MiniWindow preview"
 >
   <header class="flex items-start justify-between gap-3">
