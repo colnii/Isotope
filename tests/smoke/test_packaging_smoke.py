@@ -168,8 +168,12 @@ def test_pyproject_console_script_targets_are_importable():
     for name, target in scripts.items():
         module_name, attribute = target.split(":", 1)
         module = __import__(module_name, fromlist=[attribute])
+        message = (
+            f"{name}: target {target!r} module {module_name!r} "
+            f"has no callable {attribute!r}"
+        )
 
-        assert callable(getattr(module, attribute)), name
+        assert callable(getattr(module, attribute)), message
 
 
 def test_package_discovery_covers_src_isotope():
