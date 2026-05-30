@@ -25,6 +25,8 @@ review 推断下一批迁移。
 - [Docs migration plan](docs-migration-plan.md)：文档迁移计划和暂停边界。
 - [Docs migration phase 1 dry run](docs-migration-phase-1-dry-run.md)：第一轮迁移演练记录。
 - [Current docs refactor plan](current-docs-refactor-plan.md)：current 长文拆分记录和后续边界。
+- [Concept docs reinvestigation](concept-docs-reinvestigation-2026-05-30.md)：重新调查
+  `docs/archive/concepts/` 的应用层价值、kernel-first 偏差和后续重写路径。
 - [Kernel archive placement review](kernel-archive-placement-review.md)：记录旧 kernel
   参考文档暂不迁入 `docs/kernel/` 的判断。
 - [Status docs placement review](status-docs-placement-review.md)：记录暂不创建
