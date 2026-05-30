@@ -111,13 +111,10 @@
       isLoading={$isLoading}
       {loadError}
       {view}
-      {miniOpen}
       {mainOpen}
       events={replayMockEvents}
       onSelectActivity={(activityId) => appState.selectActivity(activityId)}
-      onOpenMini={openMiniWindow}
       onOpenMain={openMainWindow}
-      onCloseMini={closeMiniWindow}
       onCloseMain={closeMainWindow}
     />
   {/if}
