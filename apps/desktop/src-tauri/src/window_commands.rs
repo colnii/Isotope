@@ -130,8 +130,8 @@ fn apply_window_shape(window: &WebviewWindow, label: DesktopWindowLabel) -> Resu
         return Ok(());
     }
 
-    let (width, height) = label.size();
-    set_elliptic_window_region(window, width.round() as i32, height.round() as i32)
+    let size = window.inner_size().map_err(|error| error.to_string())?;
+    set_elliptic_window_region(window, size.width as i32, size.height as i32)
 }
 
 #[cfg(not(windows))]
