@@ -9,6 +9,10 @@ export type FloatingOrbView = {
   title: string;
 };
 
+export function buildFloatingOrbButtonTitle(surface: 'dev' | 'window', title: string): string | null {
+  return surface === 'window' ? null : title;
+}
+
 export function buildFloatingOrbView(snapshot: IsotopeSnapshot): FloatingOrbView {
   const label = snapshot.activeActivity?.title ?? snapshot.activeAgent?.title ?? 'Isotope';
   const status = snapshot.activeActivity?.status ?? snapshot.activeAgent?.status ?? 'idle';

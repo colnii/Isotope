@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { IsotopeSnapshot } from '../../contracts/isotope';
-  import { buildFloatingOrbView } from '../../view/orbView';
+  import { buildFloatingOrbButtonTitle, buildFloatingOrbView } from '../../view/orbView';
   import { windowDragClient } from '../../window/windowDragClient';
 
   let { snapshot, quietMode = false, surface = 'dev', onOpenMini = () => {} } = $props<{
@@ -11,6 +11,7 @@
   }>();
 
   const view = $derived(buildFloatingOrbView(snapshot));
+  const buttonTitle = $derived(buildFloatingOrbButtonTitle(surface, view.title));
   const orbButtonClass = $derived(
     surface === 'window'
       ? 'relative grid h-16 w-16 cursor-move select-none place-items-center rounded-full border border-white/30 bg-teal-600 text-lg font-bold text-white outline-none'
@@ -95,7 +96,7 @@
     class={orbButtonClass}
     class:animate-pulse={!quietMode && view.needsAttention > 0}
     aria-label={`Isotope orb: ${view.title}`}
-    title={view.title}
+    title={buttonTitle}
     oncontextmenu={preventWindowContextMenu}
     onpointerdown={handleOrbPointerDown}
     onpointermove={handleOrbPointerMove}
