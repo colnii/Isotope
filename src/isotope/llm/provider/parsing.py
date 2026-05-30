@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
-from collections.abc import Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from typing import Any
 
 from ...platform.errors import IsotopeError
@@ -12,6 +12,7 @@ from .types import (
     LLMChatTurnResponse,
     LLMFinalAnswerResponse,
     LLMResponse,
+    LLMStreamChunk,
     LLMToolCall,
     LLMToolCallResponse,
 )
@@ -124,6 +125,36 @@ def _parse_chat_completion(
         usage=_safe_usage(usage),
         raw=copy.deepcopy(raw),
     )
+
+
+def _stream_chat_completion_chunks(
+    events: Iterable[dict[str, Any]],
+    *,
+    provider: str,
+    fallback_model: str,
+) -> Iterator[LLMStreamChunk]:
+    for raw in events:
+        if not isinstance(raw, dict):
+            raise ValueError("malformed model stream response")
+        choices = raw.get("choices", [])
+        if choices == []:
+            continue
+        if not isinstance(choices, list):
+            raise ValueError("malformed model stream response: invalid choices")
+        first_choice = choices[0]
+        if not isinstance(first_choice, dict):
+            raise ValueError("malformed model stream response: invalid choice")
+        delta = first_choice.get("delta")
+        if not isinstance(delta, dict):
+            continue
+        content = delta.get("content")
+        if isinstance(content, str) and content:
+            yield LLMStreamChunk(
+                provider=provider,
+                model=str(raw.get("model") or fallback_model),
+                content=content,
+                raw=copy.deepcopy(raw),
+            )
 
 
 def _is_length_limited_reasoning_only_response(raw: dict[str, Any]) -> bool:

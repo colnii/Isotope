@@ -1,8 +1,20 @@
 import type { IsotopeSnapshot } from '../contracts/isotope';
 import { mockSnapshot } from './mockData';
 
+export type DesktopChatAnswer = {
+  question: string;
+  answer: string;
+  provider?: string;
+  model?: string;
+};
+
+export type DesktopChatHandlers = {
+  onDelta?: (text: string) => void;
+};
+
 export type AgentClient = {
   loadSnapshot(): Promise<IsotopeSnapshot>;
+  askDesktopQuestion(question: string, handlers?: DesktopChatHandlers): Promise<DesktopChatAnswer>;
 };
 
 export function createAgentClient(baseUrl: string | null = null): AgentClient {
@@ -19,6 +31,28 @@ export function createAgentClient(baseUrl: string | null = null): AgentClient {
       } catch {
         return mockSnapshot;
       }
+    },
+    async askDesktopQuestion(question, handlers = {}) {
+      if (!apiBaseUrl) {
+        throw new Error('Desktop chat requires a configured backend URL');
+      }
+      const cleanQuestion = question.trim();
+      if (!cleanQuestion) {
+        throw new Error('Question must not be empty');
+      }
+      const response = await fetch(`${apiBaseUrl}/desktop/chat`, {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ question: cleanQuestion })
+      });
+      if (!response.ok) {
+        throw new Error(await responseErrorMessage(response));
+      }
+      if (!response.body) {
+        throw new Error('Desktop chat response did not include a stream');
+      }
+      return readDesktopChatStream(response.body, cleanQuestion, handlers);
     }
   };
 }
@@ -27,4 +61,73 @@ function normalizeBaseUrl(baseUrl: string | null): string | null {
   const trimmed = baseUrl?.trim();
   if (!trimmed) return null;
   return trimmed.replace(/\/$/, '');
+}
+
+async function readDesktopChatStream(
+  body: ReadableStream<Uint8Array>,
+  question: string,
+  handlers: DesktopChatHandlers
+): Promise<DesktopChatAnswer> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let answer = '';
+  let provider: string | undefined;
+  let model: string | undefined;
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (value) {
+      buffer += decoder.decode(value, { stream: !done });
+      const blocks = buffer.split('\n\n');
+      buffer = blocks.pop() ?? '';
+      for (const block of blocks) {
+        const event = parseDesktopChatEvent(block);
+        if (event.name === 'delta') {
+          const text = typeof event.data.text === 'string' ? event.data.text : '';
+          if (text) {
+            answer += text;
+            handlers.onDelta?.(text);
+          }
+        } else if (event.name === 'done') {
+          provider = typeof event.data.provider === 'string' ? event.data.provider : undefined;
+          model = typeof event.data.model === 'string' ? event.data.model : undefined;
+        } else if (event.name === 'error') {
+          throw new Error(typeof event.data.message === 'string' ? event.data.message : 'Desktop chat failed');
+        }
+      }
+    }
+    if (done) break;
+  }
+
+  if (buffer.trim()) {
+    const event = parseDesktopChatEvent(buffer);
+    if (event.name === 'delta') {
+      const text = typeof event.data.text === 'string' ? event.data.text : '';
+      answer += text;
+      handlers.onDelta?.(text);
+    }
+  }
+
+  return { question, answer, provider, model };
+}
+
+function parseDesktopChatEvent(block: string): { name: string; data: Record<string, unknown> } {
+  const lines = block.split(/\r?\n/);
+  const eventLine = lines.find((line) => line.startsWith('event: '));
+  const dataLine = lines.find((line) => line.startsWith('data: '));
+  const name = eventLine?.slice('event: '.length).trim() || 'message';
+  const data = dataLine ? JSON.parse(dataLine.slice('data: '.length)) : {};
+  return { name, data };
+}
+
+async function responseErrorMessage(response: Response): Promise<string> {
+  try {
+    const payload = await response.json();
+    const message = payload?.error?.message;
+    if (typeof message === 'string' && message) return message;
+  } catch {
+    // Fall through to stable status text.
+  }
+  return `Desktop chat failed with HTTP ${response.status}`;
 }

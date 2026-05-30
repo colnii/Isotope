@@ -92,7 +92,10 @@ function realSnapshot(): IsotopeSnapshot {
 describe('appState', () => {
   test('loads real snapshot and initializes local selected activity from backend activeActivity', async () => {
     const state = createAppState({
-      agentClient: { loadSnapshot: async () => realSnapshot() }
+      agentClient: {
+        loadSnapshot: async () => realSnapshot(),
+        askDesktopQuestion: async () => ({ question: '', answer: '' })
+      }
     });
 
     await state.initialize();
@@ -105,7 +108,10 @@ describe('appState', () => {
 
   test('keeps user-selected activity local without changing backend activeActivity', async () => {
     const state = createAppState({
-      agentClient: { loadSnapshot: async () => realSnapshot() }
+      agentClient: {
+        loadSnapshot: async () => realSnapshot(),
+        askDesktopQuestion: async () => ({ question: '', answer: '' })
+      }
     });
 
     await state.initialize();
@@ -114,5 +120,38 @@ describe('appState', () => {
     expect(get(state.selectedActivityId)).toBe('activity_goal_goal-1');
     expect(get(state.selectedActivity)?.title).toBe('Ship the desktop MVP');
     expect(get(state.snapshot)?.activeActivity?.id).toBe('activity_supervisor_root');
+  });
+
+  test('submits desktop question and updates assistant message from backend stream deltas', async () => {
+    const state = createAppState({
+      agentClient: {
+        loadSnapshot: async () => realSnapshot(),
+        askDesktopQuestion: async (question, handlers) => {
+          handlers?.onDelta?.('后端');
+          handlers?.onDelta?.(' 回答');
+          return { question, answer: '后端 回答', provider: 'fake', model: 'fake' };
+        }
+      }
+    });
+
+    await state.initialize();
+    await state.askDesktopQuestion('loop 现在怎样？');
+
+    expect(get(state.chatMessages)).toEqual([
+      {
+        id: 'chat_user_1',
+        role: 'user',
+        content: 'loop 现在怎样？'
+      },
+      {
+        id: 'chat_assistant_1',
+        role: 'assistant',
+        content: '后端 回答',
+        provider: 'fake',
+        model: 'fake'
+      }
+    ]);
+    expect(get(state.isAskingDesktop)).toBe(false);
+    expect(get(state.chatError)).toBe(null);
   });
 });

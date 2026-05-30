@@ -165,5 +165,40 @@ def test_desktop_snapshot_endpoint_serves_real_snapshot(tmp_path):
         thread.join(timeout=2)
 
     assert response.status == 200
+    assert response.getheader("access-control-allow-origin") == "*"
     assert payload["schemaVersion"] == 1
     assert payload["source"]["kind"] == "real"
+
+
+def test_desktop_snapshot_endpoint_allows_browser_preflight(tmp_path):
+    server = create_dashboard_server(
+        codex_home=tmp_path,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        conn.request(
+            "OPTIONS",
+            "/desktop/snapshot",
+            headers={
+                "origin": "http://127.0.0.1:5173",
+                "access-control-request-method": "GET",
+            },
+        )
+        response = conn.getresponse()
+        response.read()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert response.status == 204
+    assert response.getheader("access-control-allow-origin") == "*"
+    assert "GET" in response.getheader("access-control-allow-methods")

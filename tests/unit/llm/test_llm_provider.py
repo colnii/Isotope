@@ -109,6 +109,88 @@ def test_openai_compatible_provider_uses_configured_chat_completions_contract():
     assert response.content == "summary result"
 
 
+def test_openai_compatible_provider_streams_chat_completion_deltas():
+    captured: dict = {}
+
+    def fake_stream_transport(url, payload, headers, timeout):
+        captured["url"] = url
+        captured["payload"] = payload
+        captured["headers"] = headers
+        captured["timeout"] = timeout
+        return iter(
+            [
+                {
+                    "model": "custom-chat",
+                    "choices": [{"delta": {"role": "assistant"}}],
+                },
+                {
+                    "model": "custom-chat",
+                    "choices": [{"delta": {"content": "Loop"}}],
+                },
+                {
+                    "model": "custom-chat",
+                    "choices": [{"delta": {"content": " 正常"}}],
+                },
+            ]
+        )
+
+    provider = OpenAICompatibleChatProvider(
+        provider="custom",
+        api_key="test_secret",
+        base_url="https://api.custom.example.com/v1",
+        model="custom-chat",
+        stream_transport=fake_stream_transport,
+    )
+
+    chunks = list(provider.stream_generate([{"role": "user", "content": "hello"}], max_tokens=64))
+
+    assert captured["url"] == "https://api.custom.example.com/v1/chat/completions"
+    assert captured["payload"] == {
+        "model": "custom-chat",
+        "messages": [{"role": "user", "content": "hello"}],
+        "temperature": 0,
+        "max_tokens": 64,
+        "stream": True,
+    }
+    assert captured["headers"]["Authorization"] == "Bearer test_secret"
+    assert captured["timeout"] == 60
+    assert [chunk.content for chunk in chunks] == ["Loop", " 正常"]
+    assert chunks[0].provider == "custom"
+    assert chunks[0].model == "custom-chat"
+
+
+def test_deepseek_provider_streams_with_thinking_disabled():
+    captured: dict = {}
+
+    def fake_stream_transport(url, payload, headers, timeout):
+        captured["url"] = url
+        captured["payload"] = payload
+        return iter(
+            [
+                {
+                    "model": "deepseek-v4-flash",
+                    "choices": [{"delta": {"content": "正在"}}],
+                },
+                {
+                    "model": "deepseek-v4-flash",
+                    "choices": [{"delta": {"content": "回答"}}],
+                },
+            ]
+        )
+
+    provider = DeepSeekChatProvider(
+        api_key="test_secret",
+        stream_transport=fake_stream_transport,
+    )
+
+    chunks = list(provider.stream_generate([{"role": "user", "content": "hello"}], max_tokens=32))
+
+    assert captured["url"] == "https://api.deepseek.com/chat/completions"
+    assert captured["payload"]["thinking"] == {"type": "disabled"}
+    assert captured["payload"]["stream"] is True
+    assert [chunk.content for chunk in chunks] == ["正在", "回答"]
+
+
 def test_openai_compatible_provider_retries_length_limited_reasoning_without_thinking():
     captured_payloads: list[dict] = []
 

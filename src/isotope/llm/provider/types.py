@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol
 
 
 Transport = Callable[[str, dict[str, Any], dict[str, str], int], dict[str, Any]]
+StreamTransport = Callable[
+    [str, dict[str, Any], dict[str, str], int],
+    Iterable[dict[str, Any]],
+]
 
 
 @dataclass(frozen=True)
@@ -43,6 +47,14 @@ class LLMResponse:
     finish_reason: str
     usage: dict[str, Any]
     raw: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class LLMStreamChunk:
+    provider: str
+    model: str
+    content: str
+    raw: dict[str, Any] = field(default_factory=dict)
 
 
 LLMChatTurnResponse = LLMToolCallResponse | LLMFinalAnswerResponse
