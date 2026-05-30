@@ -13,7 +13,7 @@
 - `src/isotope/` 根目录已不再保留顶层兼容代理。
 - `core/` 已开始承接产品主流程，当前不是兼容代理目录。
 - `assistant` 旧包已删除。
-- `demo/__init__.py`、`llm_live_smoke.py` 是正式命令入口。
+- `demo/__init__.py`、`demo/live_smoke/llm_live_smoke.py` 是正式命令入口。
 - `capability_runner.py` 旧根入口已删除，正式命令指向
   `isotope.capabilities.runner`。
 - `tools/` 旧空包已删除；工具能力以 `capabilities/tools/`
@@ -39,7 +39,7 @@
 ## 可优先进入删除计划
 
 当前没有已确认应继续删除的兼容代理。
-根层只剩 `__init__.py`（`loop_engine.py` 已移入 `agents/loop/`，`demo`/`llm_live_smoke` 已移入 `demo/` 子包）。
+根层只剩 `__init__.py`（`loop_engine.py` 已移入 `agents/loop/`，LLM smoke 已移入 `demo/live_smoke/` 子包）。
 
 ## 已删除代理
 
@@ -67,6 +67,8 @@
 | `isotope.capability_runner` | `isotope.capabilities.runner` |
 | `isotope.codex_cli` | `isotope.integrations.codex.cli` |
 | `isotope.codex_live_smoke` | `isotope.integrations.codex.live_smoke` |
+| `isotope.features.supervisor.state.time_utils` | `isotope.core.time` |
+| `isotope.features.supervisor.state.worker_event_channel` | `isotope.platform.state.worker_event_channel` |
 | `isotope.codex_server` | `isotope.integrations.codex.server` |
 | `isotope.codex_task` | `isotope.integrations.codex.task` |
 | `isotope.agent_loop_control` | `isotope.agents.loop.control` |
@@ -107,7 +109,7 @@
 | 路径 | 原因 |
 | --- | --- |
 | `isotope.demo` | 正式 demo 入口包（`demo/__init__.py`），`isotope-demo` 指向它 |
-| `isotope.demo.llm_live_smoke` | 正式 smoke 命令，`isotope-llm-smoke` 指向 `isotope.demo.llm_live_smoke` |
+| `isotope.demo.live_smoke.llm_live_smoke` | 正式 smoke 命令，`isotope-llm-smoke` 指向 `isotope.demo.live_smoke.llm_live_smoke` |
 
 ## 空壳和旧叙事
 

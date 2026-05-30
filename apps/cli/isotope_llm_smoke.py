@@ -1,6 +1,6 @@
 """Thin app entry for Isotope LLM smoke checks."""
 
-from isotope.llm_live_smoke import main
+from isotope.demo.live_smoke.llm_live_smoke import main
 
 
 if __name__ == "__main__":

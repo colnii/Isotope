@@ -52,6 +52,7 @@ from isotope.features.supervisor.runner import (
 
 
 NOW = datetime(2026, 5, 16, 12, 0, tzinfo=timezone.utc)
+NON_STALE_SECONDS = "999999999"
 STATUS_REQUEST_TEXT = EXECUTABLE_ADVICE_TEXT["send_status"]
 CONTINUE_REQUEST_TEXT = EXECUTABLE_ADVICE_TEXT["send_continue"]
 EXISTING_WORKSPACE = str(Path(__file__).resolve().parents[2])
@@ -802,7 +803,7 @@ def test_codex_supervisor_runner_dashboard_json_groups_lanes(tmp_path, capsys):
             "--limit",
             "10",
             "--stale-after",
-            "999999",
+            NON_STALE_SECONDS,
             "--json",
         ]
     )
@@ -1036,7 +1037,7 @@ def test_codex_supervisor_dashboard_json_includes_display_title_and_short_hash(
             "--limit",
             "1",
             "--stale-after",
-            "999999",
+            NON_STALE_SECONDS,
             "--json",
         ]
     )
@@ -5662,7 +5663,7 @@ def test_codex_supervisor_runner_advise_prints_json_command_suggestion(tmp_path,
             "--limit",
             "1",
             "--stale-after",
-            "999999",
+            NON_STALE_SECONDS,
             "--json",
         ]
     )
@@ -8177,7 +8178,7 @@ def test_codex_supervisor_runner_supervise_json_includes_llm_summary_and_advice(
             "--limit",
             "1",
             "--stale-after",
-            "999999",
+            NON_STALE_SECONDS,
             "--iterations",
             "1",
             "--interval",

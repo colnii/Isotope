@@ -4,7 +4,6 @@ Keep this file lean — only genuinely cross-cutting fixtures live here.
 Module-level or domain-specific fixtures belong in tests/fixtures/.
 """
 
-from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 

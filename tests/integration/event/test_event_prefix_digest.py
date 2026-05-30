@@ -210,7 +210,7 @@ def test_create_checkpoint_includes_event_prefix_digest_metadata():
 def test_event_prefix_digest_is_stable_for_same_event_prefix(monkeypatch):
     class FrozenDateTime:
         @staticmethod
-        def now(tz):
+        def now(_tz):
             return datetime(2026, 4, 28, 0, 0, 0, tzinfo=timezone.utc)
 
     monkeypatch.setattr(projector, "datetime", FrozenDateTime)

@@ -14,7 +14,7 @@
 - `isotope-ask`：运行 workbench ask 功能入口，用低敏工作台摘要回答一个自然语言问题；可用 `--llm-pool` 复用本机 TOML 模型号池。
 - `isotope-api`：检查 API 后端入口，当前可列出 ASGI 路由。
 - `isotope-supervisor`：观察、建议、启动和发送本机 Codex 指令，支持 tmux、定时、变化触发、LLM 摘要和 supervise 小闭环。
-- `isotope-llm-smoke`：运行 LLM smoke 检查，对应 `isotope.llm_live_smoke:main`。
+- `isotope-llm-smoke`：运行 LLM smoke 检查，对应 `isotope.demo.live_smoke.llm_live_smoke:main`。
 
 本目录用于说明和本地直接调用；正式安装入口在 `pyproject.toml` 的
 `[project.scripts]` 中声明。

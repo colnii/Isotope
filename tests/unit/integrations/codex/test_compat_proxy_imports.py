@@ -36,6 +36,8 @@ REMOVED_PROXIES = (
     "isotope.errors",
     "isotope.execution.terminal_backend",
     "isotope.features.chat.product_chat",
+    "isotope.features.supervisor.state.time_utils",
+    "isotope.features.supervisor.state.worker_event_channel",
     "isotope.http_api",
     "isotope.ids",
     "isotope.ingestion",

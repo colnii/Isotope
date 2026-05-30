@@ -197,7 +197,7 @@ def test_checkpoint_hash_uses_deterministic_canonical_json_excluding_integrity()
 def test_checkpoint_hash_is_stable_for_same_checkpoint_content(monkeypatch):
     class FrozenDateTime:
         @staticmethod
-        def now(tz):
+        def now(_tz):
             return datetime(2026, 4, 28, 0, 0, 0, tzinfo=timezone.utc)
 
     monkeypatch.setattr(projector, "datetime", FrozenDateTime)
