@@ -14,14 +14,20 @@ fn main() -> windows::core::Result<()> {
 
 #[cfg(windows)]
 mod win32 {
-    use native_floating_orb_win32::geometry::point_in_circle;
+    use std::{mem::size_of, ptr::copy_nonoverlapping};
+
+    use native_floating_orb_win32::{
+        geometry::point_in_circle,
+        render::{orb_bitmap_to_bgra_bytes, render_orb_bitmap},
+    };
     use windows::{
         core::w,
         Win32::{
-            Foundation::{COLORREF, HINSTANCE, HWND, LPARAM, LRESULT, POINT, RECT, WPARAM},
+            Foundation::{COLORREF, HINSTANCE, HWND, LPARAM, LRESULT, POINT, SIZE, WPARAM},
             Graphics::Gdi::{
-                BeginPaint, CreateEllipticRgn, CreateSolidBrush, DeleteObject, Ellipse, EndPaint,
-                FillRect, ScreenToClient, SelectObject, SetWindowRgn, HBRUSH, PAINTSTRUCT,
+                CreateCompatibleDC, CreateDIBSection, CreateEllipticRgn, DeleteDC, DeleteObject,
+                GetDC, ReleaseDC, ScreenToClient, SelectObject, SetWindowRgn, AC_SRC_ALPHA,
+                AC_SRC_OVER, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, BLENDFUNCTION, DIB_RGB_COLORS,
             },
             System::LibraryLoader::GetModuleHandleW,
             UI::{
@@ -31,15 +37,16 @@ mod win32 {
                 WindowsAndMessaging::{
                     CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetMessageW,
                     LoadCursorW, PostQuitMessage, RegisterClassW, ShowWindow, TranslateMessage,
-                    CS_HREDRAW, CS_VREDRAW, HTCAPTION, HTNOWHERE, IDC_ARROW, MSG, SW_SHOW,
-                    WINDOW_EX_STYLE, WM_DESTROY, WM_ERASEBKGND, WM_NCHITTEST, WM_PAINT,
-                    WM_RBUTTONUP, WNDCLASSW, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
+                    UpdateLayeredWindow, CS_HREDRAW, CS_VREDRAW, HTCAPTION, HTNOWHERE, IDC_ARROW,
+                    MSG, SW_SHOWNOACTIVATE, ULW_ALPHA, WINDOW_EX_STYLE, WM_DESTROY, WM_ERASEBKGND,
+                    WM_NCHITTEST, WM_RBUTTONUP, WNDCLASSW, WS_EX_LAYERED, WS_EX_NOACTIVATE,
+                    WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
                 },
             },
         },
     };
 
-    const ORB_SIZE: i32 = 96;
+    const ORB_WINDOW_SIZE: i32 = 112;
     const START_X: i32 = 240;
     const START_Y: i32 = 240;
 
@@ -63,14 +70,16 @@ mod win32 {
             RegisterClassW(&window_class);
 
             let hwnd = CreateWindowExW(
-                WINDOW_EX_STYLE(WS_EX_TOPMOST.0 | WS_EX_TOOLWINDOW.0),
+                WINDOW_EX_STYLE(
+                    WS_EX_TOPMOST.0 | WS_EX_TOOLWINDOW.0 | WS_EX_LAYERED.0 | WS_EX_NOACTIVATE.0,
+                ),
                 class_name,
                 w!("Native Orb Spike"),
                 WS_POPUP,
                 START_X,
                 START_Y,
-                ORB_SIZE,
-                ORB_SIZE,
+                ORB_WINDOW_SIZE,
+                ORB_WINDOW_SIZE,
                 None,
                 None,
                 Some(instance),
@@ -78,7 +87,8 @@ mod win32 {
             )?;
 
             apply_circle_region(hwnd)?;
-            let _ = ShowWindow(hwnd, SW_SHOW);
+            update_layered_orb(hwnd)?;
+            let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
             run_message_loop();
         }
 
@@ -86,7 +96,7 @@ mod win32 {
     }
 
     unsafe fn apply_circle_region(hwnd: HWND) -> windows::core::Result<()> {
-        let region = CreateEllipticRgn(0, 0, ORB_SIZE, ORB_SIZE);
+        let region = CreateEllipticRgn(0, 0, ORB_WINDOW_SIZE, ORB_WINDOW_SIZE);
         if region.is_invalid() {
             return Err(windows::core::Error::from_win32());
         }
@@ -97,6 +107,88 @@ mod win32 {
         }
 
         Ok(())
+    }
+
+    unsafe fn update_layered_orb(hwnd: HWND) -> windows::core::Result<()> {
+        let bitmap = render_orb_bitmap(ORB_WINDOW_SIZE as u32);
+        let bytes = orb_bitmap_to_bgra_bytes(&bitmap);
+
+        let screen_dc = GetDC(None);
+        if screen_dc.is_invalid() {
+            return Err(windows::core::Error::from_win32());
+        }
+
+        let memory_dc = CreateCompatibleDC(Some(screen_dc));
+        if memory_dc.is_invalid() {
+            let _ = ReleaseDC(None, screen_dc);
+            return Err(windows::core::Error::from_win32());
+        }
+
+        let mut bitmap_info = BITMAPINFO::default();
+        bitmap_info.bmiHeader = BITMAPINFOHEADER {
+            biSize: size_of::<BITMAPINFOHEADER>() as u32,
+            biWidth: ORB_WINDOW_SIZE,
+            biHeight: -ORB_WINDOW_SIZE,
+            biPlanes: 1,
+            biBitCount: 32,
+            biCompression: BI_RGB.0,
+            ..Default::default()
+        };
+
+        let mut bits = std::ptr::null_mut();
+        let hbitmap = match CreateDIBSection(
+            Some(screen_dc),
+            &bitmap_info,
+            DIB_RGB_COLORS,
+            &mut bits,
+            None,
+            0,
+        ) {
+            Ok(hbitmap) => hbitmap,
+            Err(error) => {
+                let _ = DeleteDC(memory_dc);
+                let _ = ReleaseDC(None, screen_dc);
+                return Err(error);
+            }
+        };
+
+        copy_nonoverlapping(bytes.as_ptr(), bits.cast::<u8>(), bytes.len());
+        let previous_object = SelectObject(memory_dc, hbitmap.into());
+
+        let source = POINT { x: 0, y: 0 };
+        let destination = POINT {
+            x: START_X,
+            y: START_Y,
+        };
+        let size = SIZE {
+            cx: ORB_WINDOW_SIZE,
+            cy: ORB_WINDOW_SIZE,
+        };
+        let blend = BLENDFUNCTION {
+            BlendOp: AC_SRC_OVER as u8,
+            BlendFlags: 0,
+            SourceConstantAlpha: 255,
+            AlphaFormat: AC_SRC_ALPHA as u8,
+        };
+
+        let update_result = UpdateLayeredWindow(
+            hwnd,
+            Some(screen_dc),
+            Some(&destination),
+            Some(&size),
+            Some(memory_dc),
+            Some(&source),
+            COLORREF(0),
+            Some(&blend),
+            ULW_ALPHA,
+        );
+
+        let _ = SelectObject(memory_dc, previous_object);
+        let _ = DeleteObject(hbitmap.into());
+        let _ = DeleteDC(memory_dc);
+        let _ = ReleaseDC(None, screen_dc);
+
+        update_result
     }
 
     unsafe fn run_message_loop() {
@@ -116,10 +208,6 @@ mod win32 {
         unsafe {
             match message {
                 WM_ERASEBKGND => LRESULT(1),
-                WM_PAINT => {
-                    paint_orb(hwnd);
-                    LRESULT(0)
-                }
                 WM_NCHITTEST => hit_test_orb(hwnd, lparam),
                 WM_RBUTTONUP => {
                     let _ = DestroyWindow(hwnd);
@@ -141,47 +229,11 @@ mod win32 {
         };
 
         let _ = ScreenToClient(hwnd, &mut point);
-        if point_in_circle(point.x, point.y, ORB_SIZE, ORB_SIZE) {
+        if point_in_circle(point.x, point.y, ORB_WINDOW_SIZE, ORB_WINDOW_SIZE) {
             return LRESULT(HTCAPTION as isize);
         }
 
         LRESULT(HTNOWHERE as isize)
-    }
-
-    unsafe fn paint_orb(hwnd: HWND) {
-        let mut paint = PAINTSTRUCT::default();
-        let hdc = BeginPaint(hwnd, &mut paint);
-
-        let orb_brush = CreateSolidBrush(rgb(20, 158, 146));
-        let previous_brush = SelectObject(hdc, orb_brush.into());
-        let _ = Ellipse(hdc, 0, 0, ORB_SIZE, ORB_SIZE);
-        let _ = SelectObject(hdc, previous_brush);
-        let _ = DeleteObject(orb_brush.into());
-
-        let white_brush = CreateSolidBrush(rgb(255, 255, 255));
-        fill_rect(hdc, white_brush, 45, 28, 51, 68);
-        fill_rect(hdc, white_brush, 39, 28, 57, 34);
-        fill_rect(hdc, white_brush, 39, 62, 57, 68);
-        let _ = DeleteObject(white_brush.into());
-
-        let _ = EndPaint(hwnd, &paint);
-    }
-
-    unsafe fn fill_rect(
-        hdc: windows::Win32::Graphics::Gdi::HDC,
-        brush: HBRUSH,
-        left: i32,
-        top: i32,
-        right: i32,
-        bottom: i32,
-    ) {
-        let rect = RECT {
-            left,
-            top,
-            right,
-            bottom,
-        };
-        let _ = FillRect(hdc, &rect, brush);
     }
 
     fn low_word_signed(lparam: LPARAM) -> i32 {
@@ -190,9 +242,5 @@ mod win32 {
 
     fn high_word_signed(lparam: LPARAM) -> i32 {
         ((lparam.0 >> 16) & 0xffff) as i16 as i32
-    }
-
-    fn rgb(red: u8, green: u8, blue: u8) -> COLORREF {
-        COLORREF((red as u32) | ((green as u32) << 8) | ((blue as u32) << 16))
     }
 }
