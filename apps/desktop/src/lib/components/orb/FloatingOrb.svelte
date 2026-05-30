@@ -11,6 +11,16 @@
   }>();
 
   const view = $derived(buildFloatingOrbView(snapshot));
+  const orbButtonClass = $derived(
+    surface === 'window'
+      ? 'relative grid h-16 w-16 cursor-move select-none place-items-center rounded-full border border-white/30 bg-teal-600 text-lg font-bold text-white outline-none'
+      : 'relative grid h-16 w-16 place-items-center rounded-full border border-isotope-line bg-white text-sm font-semibold text-isotope-text shadow-lg transition hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-isotope-running'
+  );
+  const attentionClass = $derived(
+    surface === 'window'
+      ? 'absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-isotope-attention px-1 text-[10px] leading-none text-white'
+      : 'absolute -right-1 -top-1 min-w-5 rounded-full bg-isotope-attention px-1 text-xs text-white'
+  );
 
   function startWindowDrag(event: PointerEvent) {
     if (surface !== 'window' || event.button !== 0) return;
@@ -26,17 +36,16 @@
 >
   <button
     type="button"
-    class="relative grid h-16 w-16 place-items-center rounded-full border border-isotope-line bg-white text-sm font-semibold text-isotope-text shadow-lg transition hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-isotope-running"
-    class:cursor-move={surface === 'window'}
+    class={orbButtonClass}
     class:animate-pulse={!quietMode && view.needsAttention > 0}
     aria-label={`Isotope orb: ${view.title}`}
     title={view.title}
     onpointerdown={startWindowDrag}
     onclick={onOpenMini}
   >
-    <span>Iso</span>
+    <span>{surface === 'window' ? 'I' : 'Iso'}</span>
     {#if view.attentionText}
-      <span class="absolute -right-1 -top-1 min-w-5 rounded-full bg-isotope-attention px-1 text-xs text-white">
+      <span class={attentionClass}>
         {view.attentionText}
       </span>
     {/if}
