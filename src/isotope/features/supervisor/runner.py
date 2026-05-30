@@ -125,14 +125,11 @@ from .planner.work_order import build_launch_work_order_prompt
 from .commands.compat_api import *  # noqa: F403 - legacy runner helper re-exports
 from .commands.dispatch import (
     COMMAND_HANDLERS as _COMMAND_HANDLERS,
-    handle_research_command as _handle_research_command,
     run_cli_impl as _run_cli_impl,
 )
 from .state.constants import *  # noqa: F403 - legacy runner constant re-exports
 from .supervise.fingerprint import (
-    attention_bell_fingerprint as _attention_bell_fingerprint,
     report_fingerprint as _report_fingerprint,
-    status_evidence_fingerprint as _status_evidence_fingerprint,
     supervise_bell_fingerprint as _supervise_bell_fingerprint,
 )
 from .supervise.goal_lifecycle import (

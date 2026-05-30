@@ -155,11 +155,21 @@ def test_pyproject_declares_cli_scripts():
 
     assert scripts["isotope-demo"] == "isotope.demo:main"
     assert scripts["isotope-capability"] == "isotope.capabilities.runner:main"
-    assert scripts["isotope-llm-smoke"] == "isotope.llm_live_smoke:main"
+    assert scripts["isotope-llm-smoke"] == "isotope.demo.live_smoke.llm_live_smoke:main"
     assert scripts["isotope-api"] == "isotope.apps.api:main"
     assert scripts["isotope-supervisor"] == "isotope.features.supervisor.runner:main"
     assert scripts["isotope-ask"] == "isotope.features.ask.runner:main"
     assert scripts["isotope-notification"] == "isotope.features.notifications.runner:main"
+
+
+def test_pyproject_console_script_targets_are_importable():
+    scripts = _load_pyproject()["project"]["scripts"]
+
+    for name, target in scripts.items():
+        module_name, attribute = target.split(":", 1)
+        module = __import__(module_name, fromlist=[attribute])
+
+        assert callable(getattr(module, attribute)), name
 
 
 def test_package_discovery_covers_src_isotope():
@@ -230,6 +240,18 @@ def test_editable_install_runs_demo_console_script(installed_python):
     data = json.loads(result.stdout)
     assert REQUIRED_DEMO_JSON_FIELDS.issubset(data)
     _assert_no_forbidden_content_keys(data)
+
+
+def test_editable_install_runs_llm_smoke_console_script_help(installed_python):
+    python, outside_cwd = installed_python
+
+    result = _run(
+        [_script_path(python, "isotope-llm-smoke"), "--help"],
+        cwd=outside_cwd,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Run Isotope LLM developer smoke checks." in result.stdout
 
 
 def test_installed_package_source_does_not_import_x_agent():

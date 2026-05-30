@@ -17,6 +17,7 @@ from isotope.features.supervisor.runner import main as supervisor_main
 
 
 NOW = datetime(2026, 5, 16, 12, 0, tzinfo=timezone.utc)
+LONG_COOLDOWN_SECONDS = "999999999"
 
 
 def test_supervisor_loop_monitors_when_no_controllable_target(
@@ -128,7 +129,7 @@ def test_supervisor_loop_blocks_prompt_action_during_cooldown(
         codex_home=codex_home,
         workspace_root=tmp_path,
         capsys=capsys,
-        extra_args=["--prompt-cooldown", "999999"],
+        extra_args=["--prompt-cooldown", LONG_COOLDOWN_SECONDS],
     )
 
     assert payload["executed"]["kind"] == "send_status"
