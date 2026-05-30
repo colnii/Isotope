@@ -42,8 +42,9 @@ describe('buildMiniWindowSurfaceClass', () => {
   });
 
   test('uses document-flow layout inside the independent MiniWindow', () => {
-    expect(buildMiniWindowSurfaceClass('window')).toContain('min-h-screen');
+    expect(buildMiniWindowSurfaceClass('window')).toContain('h-screen');
     expect(buildMiniWindowSurfaceClass('window')).toContain('w-screen');
+    expect(buildMiniWindowSurfaceClass('window')).toContain('box-border');
     expect(buildMiniWindowSurfaceClass('window')).toContain('overflow-hidden');
     expect(buildMiniWindowSurfaceClass('window')).not.toContain('overflow-auto');
     expect(buildMiniWindowSurfaceClass('window')).not.toContain('fixed');

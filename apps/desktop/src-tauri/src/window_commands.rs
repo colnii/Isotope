@@ -8,6 +8,12 @@ enum DesktopWindowLabel {
     Main,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum WindowShape {
+    Rectangle,
+    Ellipse,
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WindowCommandResult {
@@ -50,7 +56,7 @@ impl DesktopWindowLabel {
 
     fn size(self) -> (f64, f64) {
         match self {
-            Self::Orb => (80.0, 80.0),
+            Self::Orb => (64.0, 64.0),
             Self::Mini => (380.0, 520.0),
             Self::Main => (1180.0, 760.0),
         }
@@ -66,6 +72,13 @@ impl DesktopWindowLabel {
 
     fn resizable(self) -> bool {
         !matches!(self, Self::Orb)
+    }
+
+    fn window_shape(self) -> WindowShape {
+        match self {
+            Self::Orb => WindowShape::Ellipse,
+            Self::Mini | Self::Main => WindowShape::Rectangle,
+        }
     }
 }
 
@@ -95,7 +108,7 @@ fn build_window(
 ) -> Result<WebviewWindow, String> {
     let (width, height) = label.size();
 
-    WebviewWindowBuilder::new(app, label.as_str(), window_url(label))
+    let window = WebviewWindowBuilder::new(app, label.as_str(), window_url(label))
         .title(label.title())
         .inner_size(width, height)
         .resizable(label.resizable())
@@ -105,7 +118,50 @@ fn build_window(
         .focused(focus)
         .visible(true)
         .build()
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string())?;
+
+    apply_window_shape(&window, label)?;
+    Ok(window)
+}
+
+#[cfg(windows)]
+fn apply_window_shape(window: &WebviewWindow, label: DesktopWindowLabel) -> Result<(), String> {
+    if label.window_shape() != WindowShape::Ellipse {
+        return Ok(());
+    }
+
+    let (width, height) = label.size();
+    set_elliptic_window_region(window, width.round() as i32, height.round() as i32)
+}
+
+#[cfg(not(windows))]
+fn apply_window_shape(_window: &WebviewWindow, _label: DesktopWindowLabel) -> Result<(), String> {
+    Ok(())
+}
+
+#[cfg(windows)]
+fn set_elliptic_window_region(
+    window: &WebviewWindow,
+    width: i32,
+    height: i32,
+) -> Result<(), String> {
+    use windows::Win32::Graphics::Gdi::{CreateEllipticRgn, DeleteObject, SetWindowRgn};
+
+    let hwnd = window.hwnd().map_err(|error| error.to_string())?;
+
+    unsafe {
+        let region = CreateEllipticRgn(0, 0, width, height);
+        if region.is_invalid() {
+            return Err("failed to create orb window region".to_string());
+        }
+
+        if SetWindowRgn(hwnd, Some(region), true) == 0 {
+            let _ = DeleteObject(region.into());
+            return Err("failed to apply orb window region".to_string());
+        }
+    }
+
+    Ok(())
 }
 
 fn show_or_create_window(
@@ -191,6 +247,14 @@ mod tests {
 
     #[test]
     fn orb_window_uses_square_button_bounds() {
-        assert_eq!(DesktopWindowLabel::Orb.size(), (80.0, 80.0));
+        assert_eq!(DesktopWindowLabel::Orb.size(), (64.0, 64.0));
+    }
+
+    #[test]
+    fn orb_window_uses_elliptic_click_region() {
+        assert_eq!(
+            DesktopWindowLabel::Orb.window_shape(),
+            super::WindowShape::Ellipse
+        );
     }
 }

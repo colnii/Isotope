@@ -19,5 +19,5 @@ export function buildMiniWindowSurfaceClass(surface: ComponentSurface): string {
   const base = 'z-20 border border-isotope-line bg-white p-3 shadow-xl';
   return surface === 'dev'
     ? `${base} fixed bottom-28 right-5 w-[min(360px,calc(100vw-2.5rem))]`
-    : `${base} min-h-screen w-screen overflow-hidden`;
+    : `${base} box-border h-screen w-screen overflow-hidden`;
 }

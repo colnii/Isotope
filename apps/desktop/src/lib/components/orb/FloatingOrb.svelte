@@ -21,7 +21,7 @@
 <div
   class={surface === 'dev'
     ? 'fixed bottom-5 right-5 z-20 flex flex-col items-end gap-2'
-    : 'grid h-screen w-screen place-items-center bg-transparent p-2'}
+    : 'grid h-screen w-screen place-items-center bg-transparent p-0'}
   aria-label="Isotope floating orb preview"
 >
   <button
