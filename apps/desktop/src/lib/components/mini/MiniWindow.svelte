@@ -6,6 +6,7 @@
     buildMockSubmitPreview,
     type MiniSubmitMode
   } from '../../view/miniWindowView';
+  import { windowDragClient } from '../../window/windowDragClient';
   import CommandComposer from '../common/CommandComposer.svelte';
   import QuickActionArea from '../common/QuickActionArea.svelte';
   import SourceBadge from '../common/SourceBadge.svelte';
@@ -26,6 +27,11 @@
     submitMode = result.mode;
     submitPreview = result.preview;
   }
+
+  function startWindowDrag(event: PointerEvent) {
+    if (surface !== 'window' || event.button !== 0) return;
+    void windowDragClient.startDragging();
+  }
 </script>
 
 <section
@@ -33,10 +39,22 @@
   aria-label="Isotope MiniWindow preview"
 >
   <header class="flex items-start justify-between gap-3">
-    <div class="min-w-0">
-      <div class="truncate text-sm font-semibold">{view.title}</div>
-      <div class="mt-1 text-xs text-isotope-muted">submit: {view.submitMode}</div>
-    </div>
+    {#if surface === 'window'}
+      <button
+        type="button"
+        class="min-w-0 flex-1 cursor-move select-none appearance-none border-0 bg-transparent p-0 text-left text-inherit focus:outline-none focus:ring-2 focus:ring-isotope-running"
+        aria-label="Move MiniWindow"
+        onpointerdown={startWindowDrag}
+      >
+        <div class="truncate text-sm font-semibold">{view.title}</div>
+        <div class="mt-1 text-xs text-isotope-muted">submit: {view.submitMode}</div>
+      </button>
+    {:else}
+      <div class="min-w-0 flex-1">
+        <div class="truncate text-sm font-semibold">{view.title}</div>
+        <div class="mt-1 text-xs text-isotope-muted">submit: {view.submitMode}</div>
+      </div>
+    {/if}
     <div class="flex items-center gap-2">
       <SourceBadge source={snapshot.source} />
       <button class="border border-isotope-line px-2 text-sm" type="button" onclick={onOpenMain}>
