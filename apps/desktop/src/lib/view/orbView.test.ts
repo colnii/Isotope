@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import type { IsotopeSnapshot } from '../contracts/isotope';
 import { mockSnapshot } from '../client/mockData';
-import { buildFloatingOrbView } from './orbView';
+import { buildFloatingOrbButtonTitle, buildFloatingOrbView } from './orbView';
 
 const realSource = {
   kind: 'real' as const,
@@ -60,5 +60,12 @@ describe('orbView', () => {
     expect(view.label).toBe('Mock Supervisor');
     expect(view.source.kind).toBe('mock');
     expect(view.attentionText).toBeNull();
+  });
+
+  test('omits browser tooltip text for native window surface', () => {
+    expect(buildFloatingOrbButtonTitle('window', 'Mock Supervisor / running / mock')).toBeNull();
+    expect(buildFloatingOrbButtonTitle('dev', 'Mock Supervisor / running / mock')).toBe(
+      'Mock Supervisor / running / mock'
+    );
   });
 });
