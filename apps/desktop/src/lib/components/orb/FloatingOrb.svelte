@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { IsotopeSnapshot } from '../../contracts/isotope';
   import { buildFloatingOrbView } from '../../view/orbView';
+  import { windowDragClient } from '../../window/windowDragClient';
   import SourceBadge from '../common/SourceBadge.svelte';
 
   let { snapshot, quietMode = false, surface = 'dev', onOpenMini = () => {} } = $props<{
@@ -11,6 +12,11 @@
   }>();
 
   const view = $derived(buildFloatingOrbView(snapshot));
+
+  function startWindowDrag(event: PointerEvent) {
+    if (surface !== 'window' || event.button !== 0) return;
+    void windowDragClient.startDragging();
+  }
 </script>
 
 <div
@@ -34,15 +40,26 @@
       </span>
     {/if}
   </button>
-  <div
-    class={surface === 'dev'
-      ? 'max-w-44 border border-isotope-line bg-white/95 px-2 py-1 text-right text-xs shadow-sm'
-      : 'max-w-24 text-center text-[10px] leading-tight text-isotope-muted'}
-  >
-    <div class="truncate font-medium">{view.label}</div>
-    <div class="mt-1 flex items-center justify-end gap-1 text-isotope-muted">
-      <span>{view.status}</span>
-      <SourceBadge source={view.source} />
+  {#if surface === 'window'}
+    <button
+      type="button"
+      class="max-w-24 cursor-move select-none appearance-none border-0 bg-transparent p-0 text-center text-[10px] leading-tight text-isotope-muted focus:outline-none focus:ring-2 focus:ring-isotope-running"
+      aria-label="Move Isotope floating orb"
+      onpointerdown={startWindowDrag}
+    >
+      <div class="truncate font-medium">{view.label}</div>
+      <div class="mt-1 flex items-center justify-center gap-1 text-isotope-muted">
+        <span>{view.status}</span>
+        <SourceBadge source={view.source} />
+      </div>
+    </button>
+  {:else}
+    <div class="max-w-44 border border-isotope-line bg-white/95 px-2 py-1 text-right text-xs shadow-sm">
+      <div class="truncate font-medium">{view.label}</div>
+      <div class="mt-1 flex items-center justify-end gap-1 text-isotope-muted">
+        <span>{view.status}</span>
+        <SourceBadge source={view.source} />
+      </div>
     </div>
-  </div>
+  {/if}
 </div>
