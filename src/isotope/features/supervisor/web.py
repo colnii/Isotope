@@ -12,6 +12,10 @@ from urllib.parse import urlparse
 
 from .notifications.bell_events import default_bell_events_path, read_latest_bell_events
 from .notifications.context import read_recent_context_results
+from .desktop_chat import (
+    DesktopChatProvider,
+    stream_desktop_chat,
+)
 from .desktop_snapshot import build_desktop_snapshot
 from .dashboard.html import dashboard_page_html
 from .planner.decision_requests import (
@@ -42,6 +46,8 @@ from .llm_action.llm_summary import (
     generate_llm_action_decision,
     resolve_summary_provider_from_env,
 )
+from isotope.llm.provider import DeepSeekChatProvider
+from ..ask.pool import resolve_workbench_ask_provider_from_env
 from .registry import TmuxBellHookRepair, repair_tmux_bell_hooks, send_to_managed_codex
 from .state.multi_worker import build_multi_worker_status_payload
 from .runner import (
@@ -59,6 +65,8 @@ from .state.projection import build_supervisor_state_snapshot
 
 
 SERVICE_ACTION_PATHS = {"/daemon/start", "/daemon/stop", "/watcher/start", "/watcher/stop"}
+CORS_ALLOW_METHODS = "GET, POST, OPTIONS"
+CORS_ALLOW_HEADERS = "content-type"
 
 
 class SupervisorDashboardServer(ThreadingHTTPServer):
@@ -75,6 +83,7 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         send_run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
         repair_run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
         llm_action_provider: SummaryProvider | None = None,
+        desktop_chat_provider: DesktopChatProvider | None = None,
     ) -> None:
         super().__init__(server_address, _DashboardRequestHandler)
         self.codex_home = codex_home
@@ -83,6 +92,7 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         self.active_within_seconds = active_within_seconds
         self.send_run = send_run
         self.llm_action_provider = llm_action_provider
+        self.desktop_chat_provider = desktop_chat_provider
         self.bell_events_path = default_bell_events_path(self.codex_home)
         self.bell_hook_repairs: tuple[TmuxBellHookRepair, ...] = repair_tmux_bell_hooks(
             codex_home=self.codex_home,
@@ -109,6 +119,17 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
 
     def desktop_snapshot_payload(self) -> dict[str, Any]:
         return build_desktop_snapshot(codex_home=self.codex_home)
+
+    def desktop_chat_provider_or_default(self) -> DesktopChatProvider:
+        if self.desktop_chat_provider is not None:
+            return self.desktop_chat_provider
+        try:
+            return resolve_workbench_ask_provider_from_env(agent_name="supervisor")
+        except ValueError as pool_error:
+            try:
+                return DeepSeekChatProvider()
+            except ValueError:
+                raise pool_error
 
     def llm_action_payload(self) -> dict[str, Any]:
         report = self._scan_report()
@@ -157,6 +178,7 @@ def create_dashboard_server(
     send_run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
     repair_run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
     llm_action_provider: SummaryProvider | None = None,
+    desktop_chat_provider: DesktopChatProvider | None = None,
 ) -> SupervisorDashboardServer:
     return SupervisorDashboardServer(
         (host, port),
@@ -167,6 +189,7 @@ def create_dashboard_server(
         send_run=send_run,
         repair_run=repair_run,
         llm_action_provider=llm_action_provider,
+        desktop_chat_provider=desktop_chat_provider,
     )
 
 
@@ -246,6 +269,12 @@ def _context_cwd_for_report(report: Any) -> str | None:
 class _DashboardRequestHandler(BaseHTTPRequestHandler):
     server: SupervisorDashboardServer
 
+    def do_OPTIONS(self) -> None:
+        self.send_response(204)
+        self._send_cors_headers()
+        self.send_header("access-control-max-age", "600")
+        self.end_headers()
+
     def do_GET(self) -> None:
         path = urlparse(self.path).path
         if path in {"/", "/index.html"}:
@@ -277,6 +306,9 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/llm-action":
             self._send_llm_action()
+            return
+        if path == "/desktop/chat":
+            self._send_desktop_chat()
             return
         if path == "/decision/answer":
             self._send_decision_answer()
@@ -367,6 +399,61 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             )
             return
         self._send_json(payload)
+
+    def _send_desktop_chat(self) -> None:
+        try:
+            payload = self._read_json_body()
+            question = _required_string(payload.get("question"), "question")
+            max_tokens = _positive_int(payload.get("max_tokens"), "max_tokens", default=512)
+        except ValueError as exc:
+            self._send_json(
+                {
+                    "status": "error",
+                    "error": {
+                        "code": "codex_supervisor_web_error",
+                        "message": str(exc),
+                    },
+                },
+                status_code=400,
+            )
+            return
+
+        self.send_response(200)
+        self.send_header("content-type", "text/event-stream; charset=utf-8")
+        self.send_header("cache-control", "no-store")
+        self._send_cors_headers()
+        self.end_headers()
+        self._write_sse("start", {"status": "ok"})
+        provider_name = "unknown"
+        model_name = "unknown"
+        try:
+            for chunk in stream_desktop_chat(
+                codex_home=self.server.codex_home,
+                question=question,
+                provider=self.server.desktop_chat_provider_or_default(),
+                max_tokens=max_tokens,
+            ):
+                provider_name = chunk.provider
+                model_name = chunk.model
+                self._write_sse("delta", {"text": chunk.content})
+        except Exception as exc:  # noqa: BLE001 - stream should surface backend failure.
+            self._write_sse(
+                "error",
+                {
+                    "status": "error",
+                    "message": str(exc) or type(exc).__name__,
+                    "error_type": type(exc).__name__,
+                },
+            )
+            return
+        self._write_sse(
+            "done",
+            {
+                "status": "ok",
+                "provider": provider_name,
+                "model": model_name,
+            },
+        )
 
     def _send_goal_plan(self) -> None:
         try:
@@ -501,6 +588,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         self.send_header("content-type", "text/event-stream; charset=utf-8")
         self.send_header("cache-control", "no-store")
         self.send_header("connection", "keep-alive")
+        self._send_cors_headers()
         self.end_headers()
         previous_stamp = self.server.bell_event_stamp()
         self._write_sse("ready", {"status": "ok"})
@@ -549,6 +637,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         self.send_header("content-type", content_type)
         self.send_header("content-length", str(len(body)))
         self.send_header("cache-control", "no-store")
+        self._send_cors_headers()
         self.end_headers()
         self.wfile.write(body)
 
@@ -558,8 +647,14 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         self.send_header("content-type", "application/json; charset=utf-8")
         self.send_header("content-length", str(len(body)))
         self.send_header("cache-control", "no-store")
+        self._send_cors_headers()
         self.end_headers()
         self.wfile.write(body)
+
+    def _send_cors_headers(self) -> None:
+        self.send_header("access-control-allow-origin", "*")
+        self.send_header("access-control-allow-methods", CORS_ALLOW_METHODS)
+        self.send_header("access-control-allow-headers", CORS_ALLOW_HEADERS)
 
 
 def _required_string(value: object, field: str) -> str:

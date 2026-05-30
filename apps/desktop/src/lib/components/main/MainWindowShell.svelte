@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ActivityNode, IsotopeEvent, IsotopeSnapshot } from '../../contracts/isotope';
+  import type { DesktopChatMessage } from '../../stores/appState';
   import { buildMainWindowProductView } from '../../view/mainWindowProductView';
   import ActivityRail from './ActivityRail.svelte';
   import ConversationWorkspace from './ConversationWorkspace.svelte';
@@ -9,14 +10,22 @@
     snapshot,
     selectedActivity,
     selectedActivityId = null,
+    chatMessages = [],
+    chatError = null,
+    isAskingDesktop = false,
     events = [],
-    onSelectActivity
+    onSelectActivity,
+    onAskDesktop
   } = $props<{
     snapshot: IsotopeSnapshot;
     selectedActivity: ActivityNode | null;
     selectedActivityId?: string | null;
+    chatMessages?: DesktopChatMessage[];
+    chatError?: string | null;
+    isAskingDesktop?: boolean;
     events?: IsotopeEvent[];
     onSelectActivity: (activityId: string) => void;
+    onAskDesktop: (question: string) => void;
   }>();
 
   const view = $derived(buildMainWindowProductView(snapshot, selectedActivity));
@@ -27,6 +36,14 @@
   aria-label="Isotope MainWindow product shell"
 >
   <ActivityRail activities={snapshot.activities} selectedId={selectedActivityId} onSelect={onSelectActivity} />
-  <ConversationWorkspace title={view.workspaceTitle} subtitle={view.workspaceSubtitle} body={view.workspaceBody} />
+  <ConversationWorkspace
+    title={view.workspaceTitle}
+    subtitle={view.workspaceSubtitle}
+    body={view.workspaceBody}
+    {chatMessages}
+    {chatError}
+    isAsking={isAskingDesktop}
+    onAsk={onAskDesktop}
+  />
   <InspectorDock title={view.inspectorTitle} summary={view.inspectorSummary} source={snapshot.source} {events} />
 </section>

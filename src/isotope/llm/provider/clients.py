@@ -7,6 +7,7 @@ import json
 import os
 import urllib.error
 import urllib.request
+from collections.abc import Iterator
 from typing import Any
 
 from .parsing import (
@@ -15,6 +16,7 @@ from .parsing import (
     _parse_chat_turn_completion,
     _parse_tool_call_completion,
     _require_non_empty_string,
+    _stream_chat_completion_chunks,
     _to_openai_tool,
     _validate_messages,
     _validate_model_tools,
@@ -22,7 +24,9 @@ from .parsing import (
 from .types import (
     LLMChatTurnResponse,
     LLMResponse,
+    LLMStreamChunk,
     LLMToolCallResponse,
+    StreamTransport,
     Transport,
 )
 
@@ -38,6 +42,7 @@ class DeepSeekChatProvider:
         base_url: str = "https://api.deepseek.com",
         timeout: int = 60,
         transport: Transport | None = None,
+        stream_transport: StreamTransport | None = None,
     ) -> None:
         key = api_key if api_key is not None else os.environ.get("DEEPSEEK_API_KEY", "")
         if not isinstance(key, str) or not key.strip():
@@ -50,6 +55,9 @@ class DeepSeekChatProvider:
             raise ValueError("timeout must be a positive integer")
         self.timeout = timeout
         self._transport = transport if transport is not None else _urllib_transport
+        self._stream_transport = (
+            stream_transport if stream_transport is not None else _urllib_stream_transport
+        )
 
     def generate(
         self,
@@ -92,6 +100,38 @@ class DeepSeekChatProvider:
             )
         return _parse_chat_completion(raw, provider=self.provider, fallback_model=self.model)
 
+    def stream_generate(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int = 512,
+    ) -> Iterator[LLMStreamChunk]:
+        _validate_messages(messages)
+        if not isinstance(max_tokens, int) or max_tokens <= 0:
+            raise ValueError("max_tokens must be a positive integer")
+
+        payload = {
+            "model": self.model,
+            "messages": copy.deepcopy(messages),
+            "thinking": {"type": "disabled"},
+            "temperature": 0,
+            "max_tokens": max_tokens,
+            "stream": True,
+        }
+        return _stream_chat_completion_chunks(
+            self._stream_transport(
+                f"{self.base_url}/chat/completions",
+                payload,
+                {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                self.timeout,
+            ),
+            provider=self.provider,
+            fallback_model=self.model,
+        )
+
 
 class OpenAICompatibleChatProvider:
     """Generic OpenAI-compatible chat provider using only stdlib HTTP."""
@@ -105,6 +145,7 @@ class OpenAICompatibleChatProvider:
         model: str,
         timeout: int = 60,
         transport: Transport | None = None,
+        stream_transport: StreamTransport | None = None,
     ) -> None:
         self.provider = _require_non_empty_string("provider", provider)
         self.api_key = _require_non_empty_string("api_key", api_key)
@@ -114,6 +155,9 @@ class OpenAICompatibleChatProvider:
             raise ValueError("timeout must be a positive integer")
         self.timeout = timeout
         self._transport = transport if transport is not None else _urllib_transport
+        self._stream_transport = (
+            stream_transport if stream_transport is not None else _urllib_stream_transport
+        )
 
     def generate(
         self,
@@ -154,6 +198,37 @@ class OpenAICompatibleChatProvider:
                 self.timeout,
             )
         return _parse_chat_completion(raw, provider=self.provider, fallback_model=self.model)
+
+    def stream_generate(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int = 512,
+    ) -> Iterator[LLMStreamChunk]:
+        _validate_messages(messages)
+        if not isinstance(max_tokens, int) or max_tokens <= 0:
+            raise ValueError("max_tokens must be a positive integer")
+
+        payload = {
+            "model": self.model,
+            "messages": copy.deepcopy(messages),
+            "temperature": 0,
+            "max_tokens": max_tokens,
+            "stream": True,
+        }
+        return _stream_chat_completion_chunks(
+            self._stream_transport(
+                f"{self.base_url}/chat/completions",
+                payload,
+                {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                self.timeout,
+            ),
+            provider=self.provider,
+            fallback_model=self.model,
+        )
 
 
 class DeepSeekToolCallProvider:
@@ -271,6 +346,37 @@ def _urllib_transport(
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(f"DeepSeek API request failed with HTTP {exc.code}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"DeepSeek API request failed: {exc.reason}") from exc
+
+
+def _urllib_stream_transport(
+    url: str,
+    payload: dict[str, Any],
+    headers: dict[str, str],
+    timeout: int,
+) -> Iterator[dict[str, Any]]:
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers=headers,
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            for raw_line in response:
+                line = raw_line.decode("utf-8").strip()
+                if not line or line.startswith(":") or not line.startswith("data:"):
+                    continue
+                data = line.removeprefix("data:").strip()
+                if data == "[DONE]":
+                    break
+                try:
+                    yield json.loads(data)
+                except json.JSONDecodeError as exc:
+                    raise RuntimeError("LLM stream returned invalid JSON") from exc
     except urllib.error.HTTPError as exc:
         raise RuntimeError(f"DeepSeek API request failed with HTTP {exc.code}") from exc
     except urllib.error.URLError as exc:

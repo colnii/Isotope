@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from pathlib import Path
 
 from ...llm.pool import (
@@ -11,7 +11,13 @@ from ...llm.pool import (
     PoolEntry,
     resolve_pool_entries_from_env,
 )
-from ...llm.provider import LLMResponse, OpenAICompatibleChatProvider, Transport
+from ...llm.provider import (
+    LLMResponse,
+    LLMStreamChunk,
+    OpenAICompatibleChatProvider,
+    StreamTransport,
+    Transport,
+)
 
 DEFAULT_WORKBENCH_ASK_POOL_PATH = (
     Path(__file__).resolve().parents[1] / "supervisor" / "supervisor_llm_pool.toml"
@@ -27,12 +33,14 @@ class PooledWorkbenchAskProvider:
         entries: tuple[PoolEntry, ...],
         timeout: int = 60,
         transport: Transport | None = None,
+        stream_transport: StreamTransport | None = None,
     ) -> None:
         if not entries:
             raise ValueError("entries must not be empty")
         self._entries = entries
         self._timeout = timeout
         self._transport = transport
+        self._stream_transport = stream_transport
         self.provider = "llm_pool"
         self.model = "configured"
 
@@ -58,6 +66,40 @@ class PooledWorkbenchAskProvider:
                     max_tokens=entry.max_tokens or max_tokens,
                 )
             except Exception as exc:
+                failures.append(f"{entry.provider}:{type(exc).__name__}")
+        raise ValueError(
+            "All Workbench Ask LLM pool entries failed: " + ", ".join(failures)
+        )
+
+    def stream_generate(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int = DEFAULT_LLM_MAX_TOKENS,
+    ) -> Iterator[LLMStreamChunk]:
+        failures: list[str] = []
+        for entry in self._entries:
+            yielded = False
+            try:
+                provider = OpenAICompatibleChatProvider(
+                    provider=entry.provider,
+                    api_key=entry.api_key,
+                    base_url=entry.base_url,
+                    model=entry.model,
+                    timeout=self._timeout,
+                    transport=self._transport,
+                    stream_transport=self._stream_transport,
+                )
+                for chunk in provider.stream_generate(
+                    messages,
+                    max_tokens=entry.max_tokens or max_tokens,
+                ):
+                    yielded = True
+                    yield chunk
+                return
+            except Exception as exc:
+                if yielded:
+                    raise
                 failures.append(f"{entry.provider}:{type(exc).__name__}")
         raise ValueError(
             "All Workbench Ask LLM pool entries failed: " + ", ".join(failures)

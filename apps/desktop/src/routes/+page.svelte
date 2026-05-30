@@ -18,7 +18,15 @@
 
   const desktopApiBaseUrl = import.meta.env.VITE_ISOTOPE_DESKTOP_API_BASE as string | undefined;
   const appState = createAppState(createIsotopeClient(desktopApiBaseUrl?.trim() || null));
-  const { snapshot, selectedActivity, selectedActivityId, isLoading } = appState;
+  const {
+    snapshot,
+    selectedActivity,
+    selectedActivityId,
+    isLoading,
+    chatMessages,
+    isAskingDesktop,
+    chatError
+  } = appState;
 
   let loadError = $state<string | null>(null);
   let miniOpen = $state(false);
@@ -96,7 +104,11 @@
         events={replayMockEvents}
         selectedActivity={$selectedActivity}
         selectedActivityId={$selectedActivityId}
+        chatMessages={$chatMessages}
+        chatError={$chatError}
+        isAskingDesktop={$isAskingDesktop}
         onSelectActivity={(activityId) => appState.selectActivity(activityId)}
+        onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
       />
     {:else}
       <div class="border border-isotope-line bg-white p-5 text-sm text-isotope-muted">

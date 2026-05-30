@@ -84,4 +84,52 @@ describe('agentClient', () => {
     expect(snapshot.source.kind).toBe('mock');
     expect(snapshot.source.expectedRealContract).toContain('IsotopeSnapshot');
   });
+
+  test('streams desktop chat answer from the configured backend', async () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        const encoder = new TextEncoder();
+        controller.enqueue(encoder.encode('event: start\ndata: {"status":"ok"}\n\n'));
+        controller.enqueue(encoder.encode('event: delta\ndata: {"text":"Loop"}\n\n'));
+        controller.enqueue(encoder.encode('event: delta\ndata: {"text":" 正常"}\n\n'));
+        controller.enqueue(
+          encoder.encode('event: done\ndata: {"status":"ok","provider":"fake","model":"fake"}\n\n')
+        );
+        controller.close();
+      }
+    });
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(stream, {
+          status: 200,
+          headers: { 'content-type': 'text/event-stream; charset=utf-8' }
+        })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const deltas: string[] = [];
+
+    const answer = await createAgentClient('http://127.0.0.1:8765').askDesktopQuestion('loop?', {
+      onDelta: (text) => deltas.push(text)
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:8765/desktop/chat', {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ question: 'loop?' })
+    });
+    expect(deltas).toEqual(['Loop', ' 正常']);
+    expect(answer).toEqual({
+      question: 'loop?',
+      answer: 'Loop 正常',
+      provider: 'fake',
+      model: 'fake'
+    });
+  });
+
+  test('desktop chat requires a real backend base URL', async () => {
+    await expect(createAgentClient(null).askDesktopQuestion('loop?')).rejects.toThrow(
+      'Desktop chat requires a configured backend URL'
+    );
+  });
 });
