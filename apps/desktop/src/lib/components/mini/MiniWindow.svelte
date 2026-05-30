@@ -30,6 +30,7 @@
 
   function startWindowDrag(event: PointerEvent) {
     if (surface !== 'window' || event.button !== 0) return;
+    if (event.target instanceof Element && event.target.closest('button')) return;
     void windowDragClient.startDragging();
   }
 </script>
@@ -38,29 +39,24 @@
   class={buildMiniWindowSurfaceClass(surface)}
   aria-label="Isotope MiniWindow preview"
 >
-  <header class="flex items-start justify-between gap-3">
-    {#if surface === 'window'}
-      <button
-        type="button"
-        class="min-w-0 flex-1 cursor-move select-none appearance-none border-0 bg-transparent p-0 text-left text-inherit focus:outline-none focus:ring-2 focus:ring-isotope-running"
-        aria-label="Move MiniWindow"
-        onpointerdown={startWindowDrag}
-      >
-        <div class="truncate text-sm font-semibold">{view.title}</div>
-        <div class="mt-1 text-xs text-isotope-muted">submit: {view.submitMode}</div>
-      </button>
-    {:else}
-      <div class="min-w-0 flex-1">
-        <div class="truncate text-sm font-semibold">{view.title}</div>
-        <div class="mt-1 text-xs text-isotope-muted">submit: {view.submitMode}</div>
-      </div>
-    {/if}
+  <header
+    class={surface === 'window'
+      ? 'flex cursor-move select-none items-start justify-between gap-3'
+      : 'flex items-start justify-between gap-3'}
+    role="presentation"
+    aria-label="MiniWindow header"
+    onpointerdown={startWindowDrag}
+  >
+    <div class="min-w-0 flex-1">
+      <div class="truncate text-sm font-semibold">{view.title}</div>
+      <div class="mt-1 text-xs text-isotope-muted">submit: {view.submitMode}</div>
+    </div>
     <div class="flex items-center gap-2">
       <SourceBadge source={snapshot.source} />
-      <button class="border border-isotope-line px-2 text-sm" type="button" onclick={onOpenMain}>
+      <button class="cursor-pointer border border-isotope-line px-2 text-sm" type="button" onclick={onOpenMain}>
         Open Main
       </button>
-      <button class="border border-isotope-line px-2 text-sm" type="button" aria-label="Close mini" onclick={onClose}>
+      <button class="cursor-pointer border border-isotope-line px-2 text-sm" type="button" aria-label="Close mini" onclick={onClose}>
         x
       </button>
     </div>
