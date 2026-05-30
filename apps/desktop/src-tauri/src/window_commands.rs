@@ -50,7 +50,7 @@ impl DesktopWindowLabel {
 
     fn size(self) -> (f64, f64) {
         match self {
-            Self::Orb => (96.0, 112.0),
+            Self::Orb => (80.0, 80.0),
             Self::Mini => (380.0, 520.0),
             Self::Main => (1180.0, 760.0),
         }
@@ -187,5 +187,10 @@ mod tests {
 
         assert_eq!(request.label.as_str(), "orb");
         assert!(!request.focus);
+    }
+
+    #[test]
+    fn orb_window_uses_square_button_bounds() {
+        assert_eq!(DesktopWindowLabel::Orb.size(), (80.0, 80.0));
     }
 }
