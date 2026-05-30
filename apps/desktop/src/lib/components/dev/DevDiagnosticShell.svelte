@@ -2,8 +2,6 @@
   import type { ActivityNode, IsotopeEvent, IsotopeSnapshot } from '../../contracts/isotope';
   import type { SnapshotView } from '../../view/snapshotView';
   import MainWindowSnapshotShell from '../main/MainWindowSnapshotShell.svelte';
-  import MiniWindow from '../mini/MiniWindow.svelte';
-  import FloatingOrb from '../orb/FloatingOrb.svelte';
   import DebugSourceBadge from './DebugSourceBadge.svelte';
 
   let {
@@ -13,13 +11,10 @@
     isLoading,
     loadError,
     view,
-    miniOpen,
     mainOpen,
     events,
     onSelectActivity,
-    onOpenMini,
     onOpenMain,
-    onCloseMini,
     onCloseMain
   } = $props<{
     snapshot: IsotopeSnapshot | null;
@@ -28,13 +23,10 @@
     isLoading: boolean;
     loadError: string | null;
     view: SnapshotView | null;
-    miniOpen: boolean;
     mainOpen: boolean;
     events: IsotopeEvent[];
     onSelectActivity: (activityId: string) => void;
-    onOpenMini: () => void;
     onOpenMain: () => void;
-    onCloseMini: () => void;
     onCloseMain: () => void;
   }>();
 </script>
@@ -133,10 +125,6 @@
 </div>
 
 {#if snapshot}
-  <FloatingOrb snapshot={snapshot} onOpenMini={onOpenMini} />
-  {#if miniOpen}
-    <MiniWindow snapshot={snapshot} surface="dev" onOpenMain={onOpenMain} onClose={onCloseMini} />
-  {/if}
   {#if mainOpen}
     <MainWindowSnapshotShell
       snapshot={snapshot}
