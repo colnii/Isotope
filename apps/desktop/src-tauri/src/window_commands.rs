@@ -16,6 +16,12 @@ pub struct WindowCommandResult {
     focused: bool,
 }
 
+#[derive(Clone, Copy)]
+struct WindowOpenRequest {
+    label: DesktopWindowLabel,
+    focus: bool,
+}
+
 impl DesktopWindowLabel {
     fn parse(label: &str) -> Result<Self, String> {
         match label {
@@ -123,6 +129,18 @@ fn show_or_create_window(
     Ok(command_result(label, true, focus))
 }
 
+fn startup_window_request() -> WindowOpenRequest {
+    WindowOpenRequest {
+        label: DesktopWindowLabel::Orb,
+        focus: false,
+    }
+}
+
+pub fn open_startup_orb(app: &AppHandle) -> Result<WindowCommandResult, String> {
+    let request = startup_window_request();
+    show_or_create_window(app, request.label, request.focus)
+}
+
 #[tauri::command]
 pub async fn open_window(
     app: AppHandle,
@@ -161,5 +179,13 @@ mod tests {
     #[test]
     fn rejects_unknown_window_labels() {
         assert!(DesktopWindowLabel::parse("settings").is_err());
+    }
+
+    #[test]
+    fn startup_window_request_opens_orb_without_focus() {
+        let request = super::startup_window_request();
+
+        assert_eq!(request.label.as_str(), "orb");
+        assert!(!request.focus);
     }
 }

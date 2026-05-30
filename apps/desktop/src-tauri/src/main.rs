@@ -20,6 +20,12 @@ fn register_global_shortcuts(app: &tauri::App) {
     }
 }
 
+fn open_startup_windows(app: &tauri::App) {
+    if let Err(error) = window_commands::open_startup_orb(app.handle()) {
+        eprintln!("failed to open startup orb window: {error}");
+    }
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -29,6 +35,7 @@ fn main() {
         ])
         .setup(|app| {
             register_global_shortcuts(app);
+            open_startup_windows(app);
             Ok(())
         })
         .run(tauri::generate_context!())
