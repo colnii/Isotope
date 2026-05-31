@@ -6,10 +6,11 @@ Isotope is a local-first AI engineering workbench focused on Agent supervision,
 Codex session management, controlled worker launch, evidence collection, and
 recoverable development workflows.
 
-The main Python package lives under `src/isotope/`; tests live under
-`tests/isotope/`. Current product status and longer notes live under `docs/`.
-Start with `README.md` for the public overview and `docs/current/status.md` for
-the detailed current state.
+The main Python package lives under `src/isotope/`; tests originally lived under
+`tests/isotope/` and have been restructured into `tests/unit/`, `tests/integration/`,
+`tests/e2e/`, `tests/smoke/`, and `tests/fixtures/`. Current product status and
+longer notes live under `docs/`. Start with `README.md` for the public overview
+and `docs/current/status.md` for the detailed current state.
 
 ## Common Commands
 
@@ -19,7 +20,7 @@ Use Python `3.13` or newer.
 python3 -m venv .venv
 .venv/bin/python -m pip install -U pip
 .venv/bin/python -m pip install -e ".[test]"
-.venv/bin/python -m pytest tests/isotope -q
+.venv/bin/python -m pytest tests/ -q
 .venv/bin/isotope-supervisor scan --limit 5
 .venv/bin/isotope-supervisor web --host 127.0.0.1 --port 8765
 ```
@@ -32,6 +33,17 @@ Python code uses 4-space indentation, `snake_case` modules/functions, and
 focused files with clear responsibilities. Test files and test functions use the
 `test_*` naming pattern. Keep public interfaces small and prefer explicit data
 objects over loosely shaped dictionaries when behavior is shared.
+
+### Directory boundaries
+
+A directory should contain 3 to 15 immediate children (files + subdirectories).
+Below 3 may indicate over-splitting; above 15 suggests a grouping opportunity.
+When grouping, move related items into a subdirectory and drop redundant
+prefixes from their names — the container name already provides context.
+
+This rule applies to source (`src/`), tests (`tests/`), and docs (`docs/`)
+equally. It is a guide, not a hard ceiling; the goal is navigability, not
+mechanical compliance.
 
 New dependencies are acceptable when they reduce maintenance cost; document why
 they are needed and avoid duplicating mature libraries without a clear reason.
@@ -55,7 +67,7 @@ scope for the change:
 - CLI/API behavior changes: run the targeted test file plus relevant smoke
   command.
 - Shared state, recovery, or Supervisor changes: run the relevant regression
-  tests under `tests/isotope/`.
+  tests.
 
 If verification is skipped or blocked, state that explicitly.
 
