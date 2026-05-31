@@ -53,6 +53,13 @@ def answer_desktop_chat(
     clean_question = _require_question(question)
     if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
         raise ValueError("max_tokens must be a positive integer")
+    if _is_developer_capacity_list_request(clean_question):
+        return DesktopChatAnswer(
+            question=clean_question,
+            answer=build_developer_capacity_list_answer(),
+            provider="isotope",
+            model="desktop-capability-list",
+        )
     snapshot = build_desktop_snapshot(codex_home=codex_home)
     response = provider.generate(
         _desktop_chat_messages(clean_question, snapshot),
@@ -79,6 +86,16 @@ def stream_desktop_chat(
     clean_question = _require_question(question)
     if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
         raise ValueError("max_tokens must be a positive integer")
+    if _is_developer_capacity_list_request(clean_question):
+        answer = build_developer_capacity_list_answer()
+        for chunk in desktop_chat_answer_chunks(answer):
+            yield LLMStreamChunk(
+                provider="isotope",
+                model="desktop-capability-list",
+                content=chunk,
+                raw={},
+            )
+        return
     stream_generate = getattr(provider, "stream_generate", None)
     if callable(stream_generate):
         snapshot = build_desktop_snapshot(codex_home=codex_home)
@@ -179,6 +196,26 @@ def build_desktop_chat_context() -> dict[str, Any]:
     }
 
 
+def build_developer_capacity_list_answer() -> str:
+    context = build_desktop_chat_context()
+    capabilities = context["capabilities"]
+    lines = [
+        f"当前接收 capacity：{context['capability_count']} 个。",
+        "执行边界：/desktop/chat 只读回答；真正执行走 Supervisor loop 的 call_capacity -> agent_loop。",
+        "接收清单：",
+    ]
+    for capability in capabilities:
+        detail_parts = [
+            str(capability.get("title", "")),
+            "required=" + _comma_join(capability.get("required_inputs"), empty="none"),
+        ]
+        operations = capability.get("operations")
+        if operations:
+            detail_parts.append("operations=" + _comma_join(operations, empty="none"))
+        lines.append(f"- {capability['capability_id']} | " + " | ".join(detail_parts))
+    return "\n".join(lines)
+
+
 def _desktop_chat_capability_summary(capability: dict[str, Any]) -> dict[str, Any]:
     input_contract = capability.get("input_contract")
     properties = (
@@ -210,6 +247,22 @@ def _desktop_chat_capability_summary(capability: dict[str, Any]) -> dict[str, An
             "network_required": capability.get("network_required"),
         }
     )
+
+
+def _is_developer_capacity_list_request(question: str) -> bool:
+    normalized = question.lower().replace(" ", "")
+    if "接收list" in normalized or "接收清单" in normalized:
+        return True
+    if "capacity" not in normalized and "capability" not in normalized:
+        return False
+    list_markers = ("list", "列表", "清单", "有哪些", "哪些", "接收", "开发者")
+    return any(marker in normalized for marker in list_markers)
+
+
+def _comma_join(value: Any, *, empty: str) -> str:
+    if not isinstance(value, list) or not value:
+        return empty
+    return ", ".join(str(item) for item in value)
 
 
 def _omit_empty(value: dict[str, Any]) -> dict[str, Any]:
