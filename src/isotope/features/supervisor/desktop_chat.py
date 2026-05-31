@@ -12,7 +12,7 @@ from isotope.capabilities.runner import CapabilityRunner
 from isotope.capabilities.supervisor import SUPERVISOR_CODEX_OPERATION_CAPABILITY
 from isotope.llm.provider import LLMResponse, LLMStreamChunk
 
-from .desktop_snapshot import build_desktop_snapshot
+from .state.projection import build_supervisor_state_snapshot
 
 
 class DesktopChatProvider(Protocol):
@@ -53,9 +53,9 @@ def answer_desktop_chat(
     clean_question = _require_question(question)
     if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
         raise ValueError("max_tokens must be a positive integer")
-    snapshot = build_desktop_snapshot(codex_home=codex_home)
+    supervisor_context = build_supervisor_chat_context(codex_home=codex_home)
     response = provider.generate(
-        _desktop_chat_messages(clean_question, snapshot),
+        _desktop_chat_messages(clean_question, supervisor_context),
         max_tokens=max_tokens,
     )
     answer = response.content.strip()
@@ -81,10 +81,10 @@ def stream_desktop_chat(
         raise ValueError("max_tokens must be a positive integer")
     stream_generate = getattr(provider, "stream_generate", None)
     if callable(stream_generate):
-        snapshot = build_desktop_snapshot(codex_home=codex_home)
+        supervisor_context = build_supervisor_chat_context(codex_home=codex_home)
         yielded = False
         for chunk in stream_generate(
-            _desktop_chat_messages(clean_question, snapshot),
+            _desktop_chat_messages(clean_question, supervisor_context),
             max_tokens=max_tokens,
         ):
             if not isinstance(chunk, LLMStreamChunk):
@@ -118,17 +118,18 @@ def desktop_chat_answer_chunks(answer: str, *, chunk_size: int = 12) -> list[str
     return [answer[index : index + chunk_size] for index in range(0, len(answer), chunk_size)]
 
 
-def _desktop_chat_messages(question: str, snapshot: dict[str, Any]) -> list[dict[str, str]]:
-    desktop_context = build_desktop_chat_context()
+def _desktop_chat_messages(
+    question: str,
+    supervisor_context: dict[str, Any],
+) -> list[dict[str, str]]:
     return [
         {
             "role": "system",
             "content": (
                 "你是 Isotope 的产品内 AI 助手，服务对象是正在开发和调试 "
                 "Isotope 的用户。你可以回答当前状态、架构、capacity、loop、"
-                "前后端接线和下一步排障。回答时结合提供的 desktop_snapshot "
-                "和 desktop_context，自然说明你能确认的内容；信息不够时"
-                "直接说还缺什么。中文、直接。"
+                "前后端接线和下一步排障。回答时结合 supervisor_context "
+                "自然说明你能确认的内容；信息不够时直接说还缺什么。中文、直接。"
             ),
         },
         {
@@ -136,8 +137,7 @@ def _desktop_chat_messages(question: str, snapshot: dict[str, Any]) -> list[dict
             "content": json.dumps(
                 {
                     "question": question,
-                    "desktop_snapshot": snapshot,
-                    "desktop_context": desktop_context,
+                    "supervisor_context": supervisor_context,
                 },
                 ensure_ascii=False,
                 sort_keys=True,
@@ -146,12 +146,13 @@ def _desktop_chat_messages(question: str, snapshot: dict[str, Any]) -> list[dict
     ]
 
 
-def build_desktop_chat_context() -> dict[str, Any]:
+def build_supervisor_chat_context(*, codex_home: Path | str) -> dict[str, Any]:
     capabilities = [
         _desktop_chat_capability_summary(capability)
         for capability in CapabilityRunner().list_capabilities()
     ]
     return {
+        "state": build_supervisor_state_snapshot(codex_home=codex_home),
         "capability_count": len(capabilities),
         "capabilities": capabilities,
         "loop_capacity_path": {
