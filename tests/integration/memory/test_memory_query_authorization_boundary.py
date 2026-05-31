@@ -238,7 +238,73 @@ def test_not_enabled_memory_query_with_valid_controlled_expand_returns_deferred_
     assert store.calls == []
 
 
-def test_valid_controlled_expand_grant_still_returns_preview_only_without_full_content_read():
+def test_valid_controlled_expand_grant_materializes_record_content_with_budget():
+    store = PreviewOnlyMemoryStore()
+    service = memory.LocalMemoryQueryService(memory_store=store)
+
+    result = service.query(
+        run_id="run_001",
+        query="controlled expand preview",
+        grants={
+            "memory": {
+                "query": True,
+                "controlled_expand": True,
+                "expand_budget": 100,
+            }
+        },
+        caller_context={
+            "run_id": "run_001",
+            "caller": "agent_loop",
+            "purpose": "agent_recall",
+        },
+        controlled_expand=True,
+    )
+
+    assert result["status"] == "ok"
+    assert result["content_policy"] == "summary_refs_provenance_only"
+    assert result["controlled_expand"]["status"] == "materialized"
+    assert result["controlled_expand"]["budget"] == 100
+    assert result["controlled_expand"]["used"] > 0
+    assert result["controlled_expand"]["content_policy"] == (
+        "controlled_expand_memory_record_content_only"
+    )
+    assert result["controlled_expand"]["materialized_results"] == [
+        {
+            "record_id": "mem_preview_001",
+            "scope": "run",
+            "encoding": "json",
+            "materialized_text": (
+                '{"kind": "structured_note", '
+                '"text": "hidden full memory content must not be returned"}'
+            ),
+            "used": result["controlled_expand"]["used"],
+            "truncated": False,
+            "source_refs": [{"ref_type": "artifact", "artifact_id": "artifact_001"}],
+            "provenance": {
+                "run_id": "run_001",
+                "execution_id": "exec_001",
+                "action_type": "write_memory",
+            },
+        }
+    ]
+    assert result["results"] == [
+        {
+            "record_id": "mem_preview_001",
+            "scope": "run",
+            "summary": "Resume from controlled expand preview.",
+            "source_refs": [{"ref_type": "artifact", "artifact_id": "artifact_001"}],
+            "provenance": {
+                "run_id": "run_001",
+                "execution_id": "exec_001",
+                "action_type": "write_memory",
+            },
+            "quality": "candidate",
+        }
+    ]
+    assert store.calls == ["list_records"]
+
+
+def test_valid_controlled_expand_grant_truncates_to_budget():
     store = PreviewOnlyMemoryStore()
     service = memory.LocalMemoryQueryService(memory_store=store)
 
@@ -260,28 +326,13 @@ def test_valid_controlled_expand_grant_still_returns_preview_only_without_full_c
         controlled_expand=True,
     )
 
-    assert result["status"] == "ok"
-    assert result["content_policy"] == "summary_refs_provenance_only"
-    assert result["controlled_expand"] == {
-        "status": "deferred",
-        "budget": 2,
-        "content_policy": "summary_refs_provenance_only",
-    }
-    assert result["results"] == [
-        {
-            "record_id": "mem_preview_001",
-            "scope": "run",
-            "summary": "Resume from controlled expand preview.",
-            "source_refs": [{"ref_type": "artifact", "artifact_id": "artifact_001"}],
-            "provenance": {
-                "run_id": "run_001",
-                "execution_id": "exec_001",
-                "action_type": "write_memory",
-            },
-            "quality": "candidate",
-        }
-    ]
-    assert "hidden full memory content" not in repr(result)
+    controlled_expand = result["controlled_expand"]
+    assert controlled_expand["status"] == "materialized"
+    assert controlled_expand["budget"] == 2
+    assert controlled_expand["used"] == 2
+    assert controlled_expand["materialized_results"][0]["truncated"] is True
+    assert controlled_expand["materialized_results"][0]["encoding"] == "json_prefix"
+    assert controlled_expand["materialized_results"][0]["materialized_text"] == '{"kind":'
     assert store.calls == ["list_records"]
 
 

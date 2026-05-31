@@ -120,6 +120,8 @@ class InProcessAgentLoopMixin:
         scope = request.get("scope", "run")
         if scope not in {"thread", "run", "session"}:
             raise ValueError("memory scope must be thread, run, or session")
+        if scope == "session":
+            raise ValueError("session memory must be promoted with promote_run_memory")
         source_refs = request.get("source_refs", [])
         if not isinstance(source_refs, list):
             raise ValueError("memory source_refs must be a list")
@@ -195,6 +197,7 @@ class InProcessAgentLoopMixin:
             source_refs=[dict(ref) for ref in source_refs],
             provenance={
                 "run_id": run_id,
+                "session_id": run["session_id"],
                 "execution_id": execution_id,
                 "action_type": "write_memory",
             },
@@ -239,12 +242,163 @@ class InProcessAgentLoopMixin:
             "quality": record.quality,
         }
 
+    def promote_agent_loop_run_memory(self, run_id: str, request: dict[str, Any]) -> dict[str, Any]:
+        run = self._runtime_context_for_write_helper(run_id)
+        source_record_id = self._dict_string(request, "source_record_id")
+        reason = self._dict_string(request, "reason")
+        source_record = self.memory_store.load_record(source_record_id)
+        if source_record is None:
+            raise ValueError("source memory record not found")
+        if source_record.scope != "run":
+            raise ValueError("only run memory can be promoted to session memory")
+        if source_record.provenance.get("run_id") != run_id:
+            raise ValueError("source memory record must belong to the current run")
+
+        summary_value = request.get("summary", source_record.summary)
+        if not isinstance(summary_value, str) or not summary_value.strip():
+            raise ValueError("summary must be a non-empty string")
+        quality_value = request.get("quality", source_record.quality)
+        if not isinstance(quality_value, str) or not quality_value.strip():
+            raise ValueError("memory quality must be a non-empty string")
+        supersedes = request.get("supersedes", [])
+        if not isinstance(supersedes, list):
+            raise ValueError("memory supersedes must be a list")
+
+        proposal_id = new_id("prop")
+        decision_id = new_id("dec")
+        execution_id = new_id("exec")
+        grants = {
+            "tools": ["write_memory"],
+            "workspace": {"mode": "shared_ro"},
+            "memory": {
+                "promotion": True,
+                "from_scope": "run",
+                "to_scope": "session",
+            },
+            "budget": {"seconds": 30},
+        }
+        self._append(
+            run_id,
+            "action.proposed",
+            {
+                "proposal_id": proposal_id,
+                "agent_id": run["agent_id"],
+                "thread_id": run["thread_id"],
+                "action_type": "write_memory",
+                "registry_id": "agent_loop_memory_promotion",
+                "registry_version": "v0.2",
+                "requested_action_summary": {
+                    "action_type": "write_memory",
+                    "promotion": "run_to_session",
+                    "source_record_id": source_record.memory_id,
+                },
+            },
+        )
+        self._append(
+            run_id,
+            "action.decided",
+            {
+                "decision_id": decision_id,
+                "proposal_id": proposal_id,
+                "outcome": "approved",
+                "grants": deepcopy(grants),
+                "reason_codes": [],
+                "policy_profile_id": self.policy.policy_profile_id,
+                "policy_version": self.policy.policy_version,
+                "policy_basis": {
+                    "policy_profile_id": self.policy.policy_profile_id,
+                    "policy_version": self.policy.policy_version,
+                    "mode": "agent_loop_memory_promotion",
+                },
+            },
+        )
+        self._append(
+            run_id,
+            "action.started",
+            {
+                "execution_id": execution_id,
+                "proposal_id": proposal_id,
+                "decision_id": decision_id,
+            },
+        )
+        completed = self._append(
+            run_id,
+            "action.completed",
+            {
+                "execution_id": execution_id,
+                "status": "completed",
+                "artifact_refs": [],
+            },
+        )
+        record = MemoryRecord(
+            memory_id=new_id("mem"),
+            scope="session",
+            content=deepcopy(source_record.content),
+            summary=summary_value.strip(),
+            source_refs=[dict(ref) for ref in source_record.source_refs],
+            provenance={
+                "run_id": run_id,
+                "session_id": run["session_id"],
+                "execution_id": execution_id,
+                "action_type": "write_memory",
+                "promotion_source_record_id": source_record.memory_id,
+                "promotion_source_scope": source_record.scope,
+            },
+            created_at="2026-04-27T00:00:00Z",
+            supersedes=[str(record_id) for record_id in supersedes],
+            quality=quality_value.strip(),
+        )
+        memory_event = self._build_event(
+            run_id,
+            "memory.record_created",
+            {
+                "record_id": record.memory_id,
+                "execution_id": execution_id,
+                "summary": record.summary,
+                "source_refs": [dict(ref) for ref in record.source_refs],
+                "provenance": dict(record.provenance),
+                "basis_event_id": completed.event_id,
+                "quality": record.quality,
+            },
+        )
+        self._project_with_candidate(run_id, memory_event)
+        execution = ActionExecution(
+            execution_id=execution_id,
+            proposal_id=proposal_id,
+            decision_id=decision_id,
+            action_type="write_memory",
+            status="completed",
+            effective_grants_snapshot=deepcopy(grants),
+        )
+        self.memory_store.save_record(record, execution=execution, grants=grants)
+        appended = self.event_store.append(memory_event)
+        return {
+            "step_status": "completed",
+            "status": "completed",
+            "record_id": record.memory_id,
+            "execution_id": execution_id,
+            "basis_event_id": appended.event_id,
+            "summary": record.summary,
+            "scope": record.scope,
+            "source_refs": [dict(ref) for ref in record.source_refs],
+            "provenance": dict(record.provenance),
+            "quality": record.quality,
+            "promotion": {
+                "source_record_id": source_record.memory_id,
+                "source_scope": source_record.scope,
+                "target_scope": "session",
+                "reason": reason,
+            },
+        }
+
     def query_agent_loop_memory(self, run_id: str, request: dict[str, Any]) -> dict[str, Any]:
         self._validate_known_run_id(run_id)
         query = self._dict_string(request, "query")
         scope = request.get("scope")
         if scope is not None and scope not in {"thread", "run", "session"}:
             raise ValueError("memory query scope must be thread, run, or session")
+        control = self.get_agent_loop_control(run_id)
+        session_id = control.get("session_id") if scope == "session" else None
         controlled_expand = _memory_query_controlled_expand(request)
         grants: dict[str, Any] = {"memory": {"query": True}}
         if controlled_expand:
@@ -258,8 +412,14 @@ class InProcessAgentLoopMixin:
             run_id=run_id,
             query=query,
             scope=scope,
+            session_id=session_id if isinstance(session_id, str) and session_id else None,
             grants=grants,
-            caller_context={"run_id": run_id, "caller": "agent_loop", "purpose": "agent_recall"},
+            caller_context={
+                "run_id": run_id,
+                "session_id": session_id,
+                "caller": "agent_loop",
+                "purpose": "agent_recall",
+            },
             controlled_expand=controlled_expand,
         )
         return {"step_status": "completed", **result}

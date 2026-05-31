@@ -203,12 +203,18 @@ class CapabilityCatalog:
                             },
                             "controlled_expand": {
                                 "type": "boolean",
-                                "description": "Return deferred controlled-expand metadata only.",
+                                "description": (
+                                    "Materialize matched memory record content within "
+                                    "expand_budget."
+                                ),
                                 "default": False,
                             },
                             "expand_budget": {
                                 "type": "integer",
-                                "description": "Positive preview budget when controlled_expand is true.",
+                                "description": (
+                                    "Positive materialization budget when "
+                                    "controlled_expand is true."
+                                ),
                             },
                         },
                     },
@@ -225,8 +231,8 @@ class CapabilityCatalog:
                         "memory_query_grant_gated",
                         "caller_context_audited",
                         "summary_refs_provenance_only",
-                        "controlled_expand_deferred",
-                        "no_full_content_read",
+                        "controlled_expand_materialized_budgeted",
+                        "no_source_artifact_full_content_read",
                     ),
                     default_enabled=True,
                     network_required=False,

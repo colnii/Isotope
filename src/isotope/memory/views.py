@@ -63,6 +63,7 @@ def build_memory_query_payload(
     query: str,
     scope: str | None = None,
     run_id: str | None = None,
+    session_id: str | None = None,
     limit: int = 20,
 ) -> dict[str, Any]:
     root_path = Path(root).expanduser()
@@ -77,6 +78,7 @@ def build_memory_query_payload(
         records,
         query=clean_query,
         run_id=run_id,
+        session_id=session_id,
         limit=limit,
     )
     return {
@@ -89,6 +91,7 @@ def build_memory_query_payload(
         "query": clean_query,
         "scope": scope,
         "run_id": run_id,
+        "session_id": session_id,
         "summary": {
             "total": len(records),
             "matched": len(matched.all_matches),
@@ -103,6 +106,7 @@ def query_memory_records(
     *,
     query: str,
     run_id: str | None = None,
+    session_id: str | None = None,
     limit: int = 20,
 ) -> "_MemoryQueryMatches":
     if limit <= 0:
@@ -112,7 +116,13 @@ def query_memory_records(
     matches = [
         record
         for record in records
-        if _record_matches(record, query=clean_query, terms=terms, run_id=run_id)
+        if _record_matches(
+            record,
+            query=clean_query,
+            terms=terms,
+            run_id=run_id,
+            session_id=session_id,
+        )
     ]
     ranked = sorted(
         matches,
@@ -178,6 +188,7 @@ def render_memory_query_plain(payload: dict[str, Any]) -> str:
         "content_policy: summary_refs_provenance_only",
         f"scope: {payload.get('scope') or 'all'}",
         f"run_id: {payload.get('run_id') or 'all'}",
+        f"session_id: {payload.get('session_id') or 'all'}",
         f"matched: {summary.get('matched', len(results))}",
         f"result_count: {len(results)}",
     ]
@@ -188,9 +199,14 @@ def render_memory_query_plain(payload: dict[str, Any]) -> str:
         lines.append(f"controlled_expand: {controlled_expand.get('status', '')}")
         if "budget" in controlled_expand:
             lines.append(f"controlled_expand_budget: {controlled_expand['budget']}")
+        if "used" in controlled_expand:
+            lines.append(f"controlled_expand_used: {controlled_expand['used']}")
         content_policy = controlled_expand.get("content_policy")
         if isinstance(content_policy, str) and content_policy:
             lines.append(f"controlled_expand_content_policy: {content_policy}")
+        materialized_results = controlled_expand.get("materialized_results")
+        if isinstance(materialized_results, list):
+            lines.append(f"controlled_expand_result_count: {len(materialized_results)}")
     if results:
         lines.append("results:")
         for record in results:
@@ -264,8 +280,11 @@ def _record_matches(
     query: str,
     terms: list[str],
     run_id: str | None,
+    session_id: str | None,
 ) -> bool:
     if run_id is not None and record.provenance.get("run_id") != run_id:
+        return False
+    if session_id is not None and record.provenance.get("session_id") != session_id:
         return False
     haystack = _record_search_text(record)
     return query.casefold() in haystack or any(term in haystack for term in terms)

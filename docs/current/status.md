@@ -76,12 +76,12 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    不接真实网络或 TOML 号池，raw prompt/messages/raw response 只留在
    provider/planner 边界内，外层只返回低敏 provider/result summary 和结构化
    decision；provider prompt 现在会带 `default_context.memory` 这一层默认
-   记忆上下文，由 runtime 在每个 planner tick 前自动查询当前 run 的低敏
-   memory preview，只暴露 summary / refs / provenance，不追加 event，也不展开
-   full content。当前这只是第一片：默认 query 来自当前 run goal，只查当前
-   run 的 memory preview；尚未接入其他对话 / 跨 session recall、超长上下文
-   自动整理晋升、session scope promotion policy，或真正的 controlled expand
-   materialization。
+   记忆上下文，由 runtime 在每个 planner tick 前按当前 run goal 自动查询
+   当前 run memory 和同一 session 内已晋升的 session memory，只暴露 summary /
+   refs / provenance / quality，不追加 event，也不注入 memory `content`、
+   artifact content 或 raw payload。跨 run 连续性来自显式 `promote_run_memory`
+   晋升；不同 session 的 memory 不会进入默认上下文。尚未接入其他对话 /
+   跨 session/global recall、超长上下文自动整理晋升或自动 promotion policy。
    `supervisor.worker_review` 已注册为 capability runner 的只读能力，
    `isotope-capability list/search/plan/run` 能发现、预检和运行它；执行时复用
    现有 `worker-review` lightweight 路径，只返回低敏 worker 决策摘要，
@@ -97,10 +97,12 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    统一到 `PolicyDecision.grants`。
    `memory.query` 也已注册为只读 capability：执行时复用现有
    `LocalMemoryQueryService`，要求 `root/query/run_id`，通过 caller audit 和
-   memory query grant 读取 summary / refs / provenance，`controlled_expand`
-   仅返回 deferred metadata，不读取 full content。capacity path 的
-   `agent_loop_summary` / plain 输出只提升 status、result_count 和
-   content_policy 等低敏 recall 元数据，不提升 raw memory 内容。
+   memory query grant 读取 summary / refs / provenance；`controlled_expand=True`
+   在有 expand grant 和正预算时会物化 matched `MemoryRecord.content` 的
+   budgeted `materialized_text`，并带 budget / used / truncated / provenance
+   metadata。它仍不读取 source artifact full content，也不会进入默认
+   `default_context.memory`。capacity path 的 `agent_loop_summary` / plain 输出只提升
+   status、result_count 和 content_policy 等低敏 recall 元数据，不提升 raw memory 内容。
    `memory.promotion` 已补 proposal boundary（提案边界）第一片：
    `build_memory_promotion_proposal(...)` 只从 structured artifact metadata 或
    accepted external observation metadata 生成待批准的 `write_memory`
@@ -115,6 +117,10 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    通过 `LocalMemoryWriteService` 写入 `FileMemoryStore`，再追加低敏
    `memory.record_created` canonical event，事件只含 record id、summary、
    source refs、provenance、quality，不含 content/raw content。
+   Agent loop 另有显式 `promote_run_memory` step，可把当前 run 内已结构化、
+   已落盘的 run memory 复制为同一 session 的 session memory；该路径仍走
+   `write_memory` action / policy decision / execution / `memory.record_created`
+   事件链，默认 `record_turn_memory` 不能直接写 session memory。
    `screen.report` 已注册为只读 capability：执行时复用现有 screen artifact
    report，要求 `root/run_id`，只返回 observe/control plan 低敏摘要，不读取
    screenshot 正文、不执行输入、不改变窗口；capacity agent-loop 执行后，

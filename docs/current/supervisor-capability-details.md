@@ -475,7 +475,9 @@ Supervisor 后续不能只把目标 `1-10` 排序后全部从当前 `main` 分�
 - `capabilities/memory.py`：已承接 `memory.query` capability runner wrapper；
   它复用 `LocalMemoryQueryService`、`FileMemoryStore` 和既有 memory query grant
   / caller audit 边界，要求 `root/query/run_id`，只返回 summary / refs /
-  provenance，`controlled_expand` 只暴露 deferred metadata。
+  provenance；`controlled_expand` 有 expand grant 和正预算时会物化 matched
+  `MemoryRecord.content` 的 budgeted `materialized_text`，不读取 source artifact
+  full content。
 - `features/supervisor/commands/parser/memory.py`：已承接 `memory`、
   `worker-event` 和 `worker-manager` 的 argparse（参数解析器）注册；
   `parser.py` 只导入该 helper，避免继续扩大巨型 parser 函数。

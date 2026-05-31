@@ -101,7 +101,7 @@ def test_memory_views_build_memory_query_payload_without_content(tmp_path):
     assert "raw memory" not in json.dumps(payload)
 
 
-def test_memory_query_plain_output_shows_deferred_controlled_expand_metadata():
+def test_memory_query_plain_output_shows_materialized_controlled_expand_metadata():
     output = render_memory_query_plain(
         {
             "status": "ok",
@@ -110,9 +110,17 @@ def test_memory_query_plain_output_shows_deferred_controlled_expand_metadata():
             "run_id": "run_001",
             "summary": {"matched": 1, "hidden_records": 0},
             "controlled_expand": {
-                "status": "deferred",
-                "budget": 2,
-                "content_policy": "summary_refs_provenance_only",
+                "status": "materialized",
+                "budget": 20,
+                "used": 5,
+                "content_policy": "controlled_expand_memory_record_content_only",
+                "materialized_results": [
+                    {
+                        "record_id": "mem_preview",
+                        "encoding": "json",
+                        "truncated": False,
+                    }
+                ],
             },
             "results": [
                 {
@@ -125,10 +133,14 @@ def test_memory_query_plain_output_shows_deferred_controlled_expand_metadata():
         }
     )
 
-    assert "controlled_expand: deferred" in output
-    assert "controlled_expand_budget: 2" in output
-    assert "controlled_expand_content_policy: summary_refs_provenance_only" in output
-    assert "full content" not in output
+    assert "controlled_expand: materialized" in output
+    assert "controlled_expand_budget: 20" in output
+    assert "controlled_expand_used: 5" in output
+    assert (
+        "controlled_expand_content_policy: controlled_expand_memory_record_content_only"
+        in output
+    )
+    assert "controlled_expand_result_count: 1" in output
 
 
 def test_memory_views_build_multi_worker_status_payload(tmp_path):

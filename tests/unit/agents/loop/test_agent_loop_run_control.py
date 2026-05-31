@@ -71,6 +71,7 @@ def test_agent_loop_control_for_new_run_exposes_ready_product_summary(tmp_path):
         "query_memory",
         "create_source_artifact",
         "record_turn_memory",
+        "promote_run_memory",
         "submit_worker_handoff",
         "submit_approval_gated_action",
         "call_capability",

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -65,6 +66,72 @@ def _controlled_expand_preview_metadata(grants: dict[str, Any]) -> dict[str, Any
     }
 
 
+def _controlled_expand_materialization(
+    records: list[MemoryRecord],
+    grants: dict[str, Any],
+) -> dict[str, Any]:
+    budget = _controlled_expand_budget(_memory_grants(grants))
+    if budget is None:
+        raise ValueError("controlled expand materialization requires a valid budget")
+    used = 0
+    materialized_results = []
+    for record in records:
+        if used >= budget:
+            break
+        item, item_used = _materialize_memory_record(
+            record,
+            budget=budget - used,
+        )
+        used += item_used
+        materialized_results.append(item)
+    return {
+        "status": "materialized",
+        "budget": budget,
+        "used": used,
+        "content_policy": "controlled_expand_memory_record_content_only",
+        "result_count": len(materialized_results),
+        "hidden_results": max(0, len(records) - len(materialized_results)),
+        "materialized_results": materialized_results,
+    }
+
+
+def _materialize_memory_record(
+    record: MemoryRecord,
+    *,
+    budget: int,
+) -> tuple[dict[str, Any], int]:
+    serialized = json.dumps(record.content, ensure_ascii=False, sort_keys=True)
+    token_count = _estimated_token_count(serialized)
+    truncated = token_count > budget
+    if truncated:
+        materialized_text = serialized[: budget * 4]
+        encoding = "json_prefix"
+        used = budget
+    else:
+        materialized_text = serialized
+        encoding = "json"
+        used = token_count
+    return (
+        {
+            "record_id": record.memory_id,
+            "scope": record.scope,
+            "encoding": encoding,
+            "materialized_text": materialized_text,
+            "used": used,
+            "truncated": truncated,
+            "source_refs": [dict(ref) for ref in record.source_refs],
+            "provenance": dict(record.provenance),
+        },
+        used,
+    )
+
+
+def _estimated_token_count(text: str) -> int:
+    if not text:
+        return 0
+    return max(1, (len(text) + 3) // 4)
+
+
 def _denied_memory_query_result(
     *,
     capability: str,
@@ -106,6 +173,16 @@ def _caller_context_invalid_audit_shape(caller_context: dict[str, Any]) -> bool:
         if not isinstance(value, str) or not value.strip():
             return True
     return False
+
+
+def _caller_context_session_mismatch(
+    session_id: str | None,
+    caller_context: dict[str, Any],
+) -> bool:
+    if session_id is None:
+        return False
+    caller_session_id = caller_context.get("session_id")
+    return not isinstance(caller_session_id, str) or caller_session_id != session_id
 
 
 def _validate_memory_record_shape(record: MemoryRecord | dict[str, Any]) -> None:
@@ -190,6 +267,7 @@ class LocalMemoryQueryService:
         caller_context: dict[str, Any] | None = None,
         controlled_expand: bool = False,
         scope: str | None = None,
+        session_id: str | None = None,
         limit: int = 20,
     ) -> dict[str, Any]:
         if not isinstance(grants, dict):
@@ -214,6 +292,12 @@ class LocalMemoryQueryService:
                 reason_code="invalid_caller_context",
                 content_policy="no_memory_read",
             )
+        if _caller_context_session_mismatch(session_id, caller_context):
+            return _denied_memory_query_result(
+                capability="memory_query",
+                reason_code="caller_context_session_mismatch",
+                content_policy="no_memory_read",
+            )
         if controlled_expand:
             if _controlled_expand_budget_is_invalid(grants):
                 return _denied_memory_query_result(
@@ -231,13 +315,20 @@ class LocalMemoryQueryService:
             raise ValueError("memory query must be a non-empty string")
         if scope is not None and scope not in {"thread", "run", "session"}:
             raise ValueError("memory query scope must be thread, run, or session")
+        if session_id is not None and (
+            not isinstance(session_id, str) or not session_id.strip()
+        ):
+            raise ValueError("memory query session_id must be a non-empty string")
         if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0:
             raise ValueError("memory query limit must be a positive integer")
 
+        record_run_id = None if scope == "session" and session_id is not None else run_id
+        record_session_id = session_id if scope == "session" else None
         matches = query_memory_records(
             self.memory_store.list_records(scope=scope),
             query=query,
-            run_id=run_id,
+            run_id=record_run_id,
+            session_id=record_session_id,
             limit=limit,
         )
         results = [
@@ -258,7 +349,10 @@ class LocalMemoryQueryService:
             "results": results,
         }
         if controlled_expand:
-            result["controlled_expand"] = _controlled_expand_preview_metadata(grants)
+            result["controlled_expand"] = _controlled_expand_materialization(
+                matches.visible,
+                grants,
+            )
         return result
 
 
@@ -275,6 +369,9 @@ class NotEnabledMemoryQueryService:
         grants: dict[str, Any] | None = None,
         caller_context: dict[str, Any] | None = None,
         controlled_expand: bool = False,
+        scope: str | None = None,
+        session_id: str | None = None,
+        limit: int = 20,
     ) -> dict[str, Any]:
         if not isinstance(grants, dict):
             raise ValueError("memory_query grants must be provided as a dict")
@@ -296,6 +393,12 @@ class NotEnabledMemoryQueryService:
             return _denied_memory_query_result(
                 capability="memory_query",
                 reason_code="invalid_caller_context",
+                content_policy="no_memory_read",
+            )
+        if _caller_context_session_mismatch(session_id, caller_context):
+            return _denied_memory_query_result(
+                capability="memory_query",
+                reason_code="caller_context_session_mismatch",
                 content_policy="no_memory_read",
             )
         if controlled_expand:

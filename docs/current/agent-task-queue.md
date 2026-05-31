@@ -72,11 +72,11 @@
   `run_agent_loop_planner_step(...)` 执行；测试只用 fake provider，不接真实网络，
   raw prompt/messages/raw response 不出 provider/planner 边界。每个 planner tick
   现在会默认注入 `default_context.memory`，复用 agent-loop memory query 的
-  summary / refs / provenance preview；这只是 runtime 构造上下文，不写 event、
-  不读取 full content、不打开 embedding/ranking。当前实现只用当前 run goal
-  查询当前 run memory preview；其他对话 / 跨 session recall、超长上下文自动
-  晋升、session memory promotion policy 和 controlled expand materialization
-  仍是后续任务。
+  summary / refs / provenance / quality preview；这只是 runtime 构造上下文，
+  不写 event、不读取 full content、不打开 embedding/ranking。当前实现用
+  当前 run goal 查询当前 run memory 和同一 session 内显式晋升的 session
+  memory；其他对话、跨 session/global recall、超长上下文自动整理晋升和
+  自动 promotion policy 仍是后续任务。
 - Agent loop agent-to-agent conversation arbiter 已补第一片：
   `AgentConversationMessage` 表达单个 agent 的候选发言，
   `arbitrate_agent_conversation_turn(...)` 按 interrupt、priority、state lock
@@ -145,7 +145,9 @@
 - `memory.query` 已进入 capability runner：`isotope-capability` 可
   search/plan/run，运行时复用 `LocalMemoryQueryService` 和 `FileMemoryStore`，
   通过 memory query grant / caller audit 返回 summary / refs / provenance；
-  `controlled_expand` 只返回 deferred metadata。
+  `controlled_expand` 有 expand grant 和正预算时会物化 matched
+  `MemoryRecord.content` 的 budgeted `materialized_text`，不读取 source
+  artifact full content。
 - `memory.promotion` 已有 proposal boundary 第一片：只把 structured artifact
   metadata 或 accepted external observation metadata 整理为待批准的
   `write_memory` `ActionProposal`；raw text / raw content 会 fail closed，且
@@ -156,6 +158,11 @@
 - approval-gated durable memory write 第一片已打开：默认 runtime 能编译
   `write_memory` action，但必须显式 approval；批准后写入 `FileMemoryStore`
   并追加低敏 `memory.record_created` canonical event。
+- Agent loop run -> session promotion 已补第一片：`promote_run_memory` 只能把
+  当前 run 内已有的 structured run memory 晋升为同一 session 的 session memory，
+  并复用 `write_memory` action / policy / execution / event 链；`record_turn_memory`
+  默认不能直接写 session memory。自动长上下文整理、跨 session/global promotion
+  和 source artifact full-content expand 仍不包含。
 - Supervisor `worktree-audit` 已补第一片：开工前可只读读取
   `git worktree list --porcelain`，按 branch/path 主题词提示可能重复开发的
   worktree 候选；现在还会只读读取每个 worktree 的 `git status --porcelain=v1`，

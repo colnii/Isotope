@@ -27,17 +27,21 @@
 - `controlled_expand=True` 但没有 expand grant / positive integer budget 时，受控拒绝且不读取 full content。
 - `controlled_expand=True` 且 budget 字段存在但不是正整数时，会在读取 memory store 前返回
   `reason_code: invalid_controlled_expand_budget`。
-- `controlled_expand=True` 且授权/budget 有效时，当前仍只返回 summary / refs / provenance preview，
-  并附带 `controlled_expand.status: deferred` metadata；不读取 full content。
-- `NotEnabledMemoryQueryService` 在 valid controlled expand 请求下也会返回同样的 deferred metadata，
-  同时保持 `reason_code: memory_query_not_enabled`。
-- agent-loop `query_memory` 可透传 controlled expand 请求并在 action result 中显示 deferred metadata。
+- `controlled_expand=True` 且授权/budget 有效时，`LocalMemoryQueryService` 会对 matched
+  `MemoryRecord.content` 返回 budgeted `materialized_text`，并附带
+  `controlled_expand.status: materialized`、budget、used、truncated 和 provenance metadata。
+- `NotEnabledMemoryQueryService` 在 valid controlled expand 请求下仍返回 deferred metadata，
+  同时保持 `reason_code: memory_query_not_enabled`，表示 query engine 未启用。
+- agent-loop `query_memory` 可透传 controlled expand 请求并在 action result 中显示
+  materialized metadata。
 - Supervisor memory plain renderer 会显示已有 `controlled_expand.status` / budget / content policy metadata，
   但不会自己开启 full-content expand。
 - memory query denial / not-enabled result 现在包含低敏 `reason_code` 和
   `content_policy`，便于 CLI / future API 解释拒绝原因而不暴露 raw content。
-- query result 默认不返回 full content、artifact content、raw content 或 full text。
-- `NotEnabledMemoryQueryService` 不是 query engine；controlled expand 仍未实现。
+- query result 默认不返回 full content、artifact content、raw content 或 full text；只有
+  explicit controlled expand grant + positive budget 才返回 matched record 的
+  `materialized_text`。
+- `NotEnabledMemoryQueryService` 不是 query engine；它只验证授权形状并返回 deferred metadata。
 - query 默认不返回 full content / artifact content。
 - memory action-chain boundary tests 已落地并通过。
 - `ActionCompiler` 已支持 registry-backed non-`call_tool` action type，只要 `intent.action` 与 registry entry `action_type` 匹配。
@@ -88,7 +92,9 @@
 - 当前没有 successful memory record persistence implementation。
 - 当前已有本地低敏 query read model：`memory/views.py` 和 Supervisor
   `memory --query` 返回 summary / refs / provenance preview，不返回 full content。
-- 当前没有 vector index、ranking 或 controlled expand implementation。
+- 当前已有 controlled expand 第一片：显式 grant + 正预算后，只物化 matched
+  `MemoryRecord.content` 的 budgeted `materialized_text`；仍没有 vector index、
+  semantic ranking 或 source artifact full-content expand。
 - 当前测试基线是 `539 passed`。
 
 当前已有相关基础：
@@ -178,14 +184,16 @@ memory query 是 read-side recall。
 - 没有 query grant 时不能读取 memory store。
 - 请求 `controlled_expand=True` 时，缺少 expand grant / positive integer budget 不能读取 full content；
   invalid budget shape 必须在读取 memory store 前 fail closed。
-- 请求 `controlled_expand=True` 且授权有效时，当前 implementation 仍是 preview-only：返回
-  `controlled_expand.status: deferred` / budget metadata，但不调用 full-content expand。
-- not-enabled fallback 也返回 deferred metadata，明确表达授权形状有效但 query engine 仍未开启。
-- agent-loop query result 和 Supervisor plain renderer 可以展示 deferred metadata，帮助用户区分
-  “已请求 expand” 与 “full-content expand 尚未实现”。
-- 返回结果不得包含 full content、artifact content、raw content 或 full text。
+- 请求 `controlled_expand=True` 且授权有效时，local implementation 会物化 matched
+  `MemoryRecord.content` 的 budgeted `materialized_text`，并返回 budget / used /
+  truncated / provenance metadata。
+- not-enabled fallback 仍返回 deferred metadata，明确表达授权形状有效但 query engine 未开启。
+- agent-loop query result 和 Supervisor plain renderer 可以展示 controlled expand metadata，
+  帮助用户区分“已物化 record content”与“fallback 未开启 query engine”。
+- 默认返回结果不得包含 full content、artifact content、raw content 或 full text；受控
+  materialization 只出现在 explicit controlled expand 子结构中。
 
-这不是 memory query engine，也不是 controlled expand implementation。
+这仍不是完整 product memory query engine，也不是 source artifact full-content expand implementation。
 
 query result 应返回：
 
@@ -204,6 +212,21 @@ memory query 不能绕过 `ResourceRef` authorization。memory refs 应使用 st
 memory query 不是每个 run 必跑的一步。runtime 可以按需要查询，也可以不查询。
 
 memory query 不应默认内联大块 artifact content。默认返回 summary / preview / refs。
+
+### Codex compaction reference
+
+已对照 `openai/codex` `rust-v0.135.0` 的上下文压缩实现：Codex 不会把过往历史全量塞回默认
+prompt。`thread/compact/start` 只是触发 compaction turn，进度通过 `contextCompaction` item
+流出；core 会按 token window 在 pre-turn / mid-turn 自动触发 compact。local / remote
+compaction 都会生成受预算的 `replacement_history`：保留少量最近 user material，加 summary /
+compaction item，并重新注入当前 initial context；完整 rollout 仍留在持久历史中。resume 时从最新带
+`replacement_history` 的 `Compacted` item 作为 base，再 replay 后续 suffix。
+
+Isotope 的 `controlled_expand` 复用这个边界，而不是把 `default_context.memory` 扩成 raw
+history：默认上下文继续 summary-only；只有 explicit query + expand grant + positive budget 才物化；
+当前第一片只物化 matched `MemoryRecord.content` 的 serialized `materialized_text`，source artifact
+full content 仍必须走 `ResourceRef` / retrieval grant；materialization 带 budget、used、truncated、
+provenance，不写 event，不扩大 grants。
 
 ## 6. MemoryRecord v0 Implementation Shape
 
@@ -302,17 +325,17 @@ Memory record persistence boundary design note 已落在 `memory-record-persiste
 
 以下能力继续 deferred：
 
-- real memory storage implementation。
-- successful durable memory write implementation。
+- product memory storage beyond local `FileMemoryStore` first slice。
+- successful durable memory write beyond approval-gated local runtime path。
 - successful memory update / supersession write implementation。
-- memory query implementation。
-- successful memory record persistence implementation。
+- product memory query implementation beyond local summary/ref recall。
+- memory record persistence beyond local file store。
 - memory record index。
 - ranking / exposure strategy。
-- session memory promotion policy。
+- automatic session / cross-session / global memory promotion policy。
 - vector index。
 - embedding provider。
-- controlled expand budget implementation。
+- source artifact full-content controlled expand。
 - memory compaction。
 - memory GC。
 - public memory HTTP API。
@@ -384,7 +407,9 @@ Memory record persistence boundary design note 已落在 `memory-record-persiste
 - projector still does not read memory store to advance `RunState`。
 - query default shape still excludes full content / artifact content。
 
-第六批 memory query authorization not-enabled boundary tests 已落地并通过，但只覆盖 query-time auth / fail-closed，不实现 query engine 或 controlled expand。
+第六批 memory query authorization not-enabled boundary tests 已落地并通过；后续已补本地
+`LocalMemoryQueryService` summary/ref recall、same-session filtering 和 controlled expand materialization
+第一片，但仍不是完整 product query engine。
 
 已覆盖：
 
@@ -399,12 +424,13 @@ Memory record persistence boundary design note 已落在 `memory-record-persiste
   `reason_code: missing_controlled_expand_grant` and does not read full content。
 - controlled expand with invalid budget shape returns
   `reason_code: invalid_controlled_expand_budget` before reading memory store。
-- valid controlled expand grant still returns summary / refs / provenance preview only,
-  includes `controlled_expand.status: deferred`, and does not read full content。
+- valid controlled expand grant returns summary / refs / provenance preview plus
+  budgeted `controlled_expand.status: materialized` `materialized_text` for matched
+  `MemoryRecord.content`。
 - not-enabled query with valid controlled expand grant returns
   `reason_code: memory_query_not_enabled` plus deferred controlled expand metadata。
-- agent-loop query memory surfaces deferred controlled expand metadata without leaking content。
-- Supervisor memory plain renderer prints deferred controlled expand metadata when present in the payload。
+- agent-loop query memory surfaces materialized controlled expand metadata only after explicit grant。
+- Supervisor memory plain renderer prints materialized controlled expand metadata when present in the payload。
 - not-enabled query returns `reason_code: memory_query_not_enabled` while preserving
   summary / refs / provenance-only content policy。
 - default query result excludes full content / artifact content / raw content。
@@ -425,7 +451,7 @@ Memory record persistence boundary design note 已落在 `memory-record-persiste
 - executor + not-enabled memory service still cannot create `memory.record_created`。
 - server still has no public direct memory write API。
 
-第八批 memory read-model checkpoint boundary tests 已落地并通过，但只覆盖 checkpoint/read-model boundary，不实现 durable memory storage 或 query engine。
+第八批 memory read-model checkpoint boundary tests 已落地并通过，只覆盖 checkpoint/read-model boundary。
 
 已覆盖：
 
@@ -444,4 +470,7 @@ Memory record persistence boundary design note 已落在 `memory-record-persiste
 - public-open-source cleanup plan。
 - 或停在当前稳定点。
 
-这些 tests 的目标仍是锁住边界：memory 必须通过 action/policy/execution/event 进入 durable state，query 只能是受控 recall，不能成为第二事实源。不要在 v0.1 demo 前默认继续实现 memory storage、successful write、query engine 或 controlled expand。
+这些 tests 的目标仍是锁住边界：memory 必须通过 action/policy/execution/event 进入 durable state，
+query 只能是受控 recall，不能成为第二事实源。后续不要把本地 first slice 直接解释成完整
+product memory：source artifact full-content expand、semantic ranking、automatic compaction/promotion
+和 cross-session/global memory 仍需要单独设计与 red tests。

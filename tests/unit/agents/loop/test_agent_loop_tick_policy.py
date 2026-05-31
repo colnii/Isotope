@@ -50,6 +50,7 @@ def test_tick_policy_for_ready_run_allows_one_planner_tick_without_side_effects(
         "query_memory",
         "create_source_artifact",
         "record_turn_memory",
+        "promote_run_memory",
         "submit_worker_handoff",
         "submit_approval_gated_action",
         "call_capability",

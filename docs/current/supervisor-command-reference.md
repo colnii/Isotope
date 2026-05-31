@@ -151,8 +151,9 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
   `content_policy`、匹配数量、source refs 和 provenance，不返回 raw content。
 - `isotope-capability run memory.query --input-json ...` 复用同一条
   `LocalMemoryQueryService` 低敏 recall 路径，要求 `root/query/run_id` 和
-  caller audit；`controlled_expand` 只返回 deferred metadata，不返回 full
-  content。
+  caller audit；`controlled_expand` 有 expand grant 和正预算时会物化 matched
+  `MemoryRecord.content` 的 budgeted `materialized_text`，但不读取 source
+  artifact full content。
 - `write_memory` 是 runtime action，不是 Supervisor 直写命令；默认 action
   registry 已启用它，但 policy 要求显式 approval。批准后只追加低敏
   `memory.record_created` event，query/read model 仍不返回 raw content。

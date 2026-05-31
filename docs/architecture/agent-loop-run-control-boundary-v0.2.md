@@ -28,7 +28,9 @@
 现在产品层可以直接拿到一份更像“驾驶舱”的结果：
 
 - 新 run：`phase=ready`，可以继续创建 source artifact、交给 worker、或提交需要审批的动作。
-- 如果需要回合间上下文，`ready` 阶段也可以按需 `query_memory`，或用 `record_turn_memory` 写入结构化 turn memory。
+- 如果需要回合间上下文，`ready` 阶段也可以按需 `query_memory`，用
+  `record_turn_memory` 写入结构化 turn memory，或用 `promote_run_memory`
+  显式晋升当前 run 的 memory 到同一 session。
 - 等审批：`phase=awaiting_approval`，明确显示 pending approval 和可执行的 `get_approval` / `resolve_approval`。
 - 已完成：`phase=completed`，没有下一步动作。
 

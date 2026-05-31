@@ -18,6 +18,7 @@
   - `query_memory`
   - `create_source_artifact`
   - `record_turn_memory`
+  - `promote_run_memory`
   - `submit_worker_handoff`
   - `submit_approval_gated_action`
   - `call_capability`
@@ -57,7 +58,10 @@ Step driver 会先读取 `get_agent_loop_control(run_id)`，只允许执行当�
 - 不自动串联任意 capability；unsupported、diagnostic、experimental、
   provider-required 或 unallowlisted capability 仍由 `CapabilityRunner`
   fail closed。
-- agent-loop memory 只支持本地 structured record + summary/ref query；不实现 embedding、ranking、controlled expand、promotion policy、product UI、auth、notification 或 real listening HTTP server。
+- agent-loop memory 支持本地 structured record、summary/ref query、explicit run -> same-session
+  promotion，以及 grant/budget gated `MemoryRecord.content` controlled expand 第一片；不实现
+  embedding、semantic ranking、source artifact full-content expand、automatic promotion policy、
+  product UI、auth、notification 或 real listening HTTP server。
 - 不允许执行不在当前 `next_actions` 里的 step；这种请求在写入 event 前 fail closed。
 - HTTP 入口仍是 in-process facade，不是 hosted API。
 

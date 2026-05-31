@@ -185,8 +185,9 @@
   `list/search/describe` 能看到它，`plan/run --input-json` 要求
   `root/query/run_id`；执行时复用现有 `LocalMemoryQueryService` 和
   `FileMemoryStore`，走 memory query grant 与 caller audit，只返回
-  summary / refs / provenance。`controlled_expand` 只返回 deferred metadata，
-  不读取 full content。经 Supervisor capacity / agent loop 调用时，
+  summary / refs / provenance。`controlled_expand` 有 expand grant 和正预算时
+  会物化 matched `MemoryRecord.content` 的 budgeted `materialized_text`，
+  不读取 source artifact full content。经 Supervisor capacity / agent loop 调用时，
   `agent_loop_summary` 会额外暴露 memory query 的低敏 status、result_count
   和 content_policy，plain 输出复用同一字段，不暴露 results 或 raw content。
 - `memory.promotion.preview` 已注册为可发现、可预检、可运行的只读

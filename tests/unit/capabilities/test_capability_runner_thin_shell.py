@@ -1001,7 +1001,7 @@ def test_memory_query_capability_runs_existing_low_sensitive_query(tmp_path):
             "query": "memory boundaries",
             "run_id": "run_memory",
             "controlled_expand": True,
-            "expand_budget": 3,
+            "expand_budget": 100,
         },
     )
 
@@ -1012,11 +1012,27 @@ def test_memory_query_capability_runs_existing_low_sensitive_query(tmp_path):
     memory_query = result["memory_query"]
     assert memory_query["status"] == "ok"
     assert memory_query["content_policy"] == "summary_refs_provenance_only"
-    assert memory_query["controlled_expand"] == {
-        "status": "deferred",
-        "budget": 3,
-        "content_policy": "summary_refs_provenance_only",
-    }
+    assert memory_query["controlled_expand"]["status"] == "materialized"
+    assert memory_query["controlled_expand"]["budget"] == 100
+    assert memory_query["controlled_expand"]["content_policy"] == (
+        "controlled_expand_memory_record_content_only"
+    )
+    assert memory_query["controlled_expand"]["materialized_results"] == [
+        {
+            "record_id": "mem_capability",
+            "scope": "run",
+            "encoding": "json",
+            "materialized_text": '{"raw": "raw memory content must not leak"}',
+            "used": memory_query["controlled_expand"]["used"],
+            "truncated": False,
+            "source_refs": [{"ref_type": "artifact", "artifact_id": "artifact_memory"}],
+            "provenance": {
+                "run_id": "run_memory",
+                "execution_id": "exec_memory",
+                "action_type": "write_memory",
+            },
+        }
+    ]
     assert memory_query["results"] == [
         {
             "record_id": "mem_capability",
@@ -1031,8 +1047,6 @@ def test_memory_query_capability_runs_existing_low_sensitive_query(tmp_path):
             "quality": "verified",
         }
     ]
-    output = json.dumps(result)
-    assert "raw memory content" not in output
     for mapping in _walk_mapping(result):
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
 

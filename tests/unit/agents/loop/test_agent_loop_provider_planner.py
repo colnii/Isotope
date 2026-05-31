@@ -219,6 +219,7 @@ def test_provider_planner_tick_injects_default_memory_context_without_side_effec
             "source_refs": [source["action_result"]["artifact_ref"]],
             "provenance": {
                 "run_id": run_id,
+                "session_id": api.get_agent_loop_control(run_id)["session_id"],
                 "execution_id": memory["results"][0]["provenance"]["execution_id"],
                 "action_type": "write_memory",
             },
@@ -229,6 +230,77 @@ def test_provider_planner_tick_injects_default_memory_context_without_side_effec
     assert "SECRET_CONTEXT_PAYLOAD" not in serialized_context
     assert "source artifact content" not in serialized_context
     _assert_no_forbidden_memory_context_keys(default_context)
+
+
+def test_provider_planner_default_context_recalls_same_session_promoted_memory(tmp_path):
+    api = server.InProcessServer(tmp_path)
+    session = api.create_session()
+    source_run = api.create_run(
+        session["session_id"],
+        goal="capture summary-only planner context",
+    )
+    source = api.run_agent_loop_step(
+        source_run["run_id"],
+        {
+            "step": "record_turn_memory",
+            "scope": "run",
+            "summary": "Prefer summary-only planner context.",
+            "content": {"kind": "turn_state", "text": "SECRET_PROMOTED_CONTEXT"},
+            "source_refs": [],
+            "quality": "candidate",
+        },
+    )
+    promoted = api.run_agent_loop_step(
+        source_run["run_id"],
+        {
+            "step": "promote_run_memory",
+            "source_record_id": source["action_result"]["record_id"],
+            "summary": "Prefer summary-only planner context.",
+            "reason": "same session planner context",
+        },
+    )
+    later_run = api.create_run(
+        session["session_id"],
+        goal="summary-only planner context",
+    )
+    provider = FakePlannerProvider("not-json")
+
+    with pytest.raises(ValueError, match="planner provider response must contain a JSON object"):
+        api.run_agent_loop_provider_planner_tick(
+            later_run["run_id"],
+            provider=provider,
+            agent_id="agent_loop",
+            tick_id="tick_promoted_context",
+            decision_id="decision_promoted_context",
+        )
+
+    prompt_payload = json.loads(provider.calls[0]["messages"][1]["content"])
+    memory = prompt_payload["default_context"]["memory"]
+    assert memory["content_policy"] == "summary_refs_provenance_only"
+    assert memory["results"] == [
+        {
+            "record_id": promoted["action_result"]["record_id"],
+            "scope": "session",
+            "summary": "Prefer summary-only planner context.",
+            "source_refs": [],
+            "provenance": {
+                "run_id": source_run["run_id"],
+                "session_id": session["session_id"],
+                "execution_id": promoted["action_result"]["execution_id"],
+                "action_type": "write_memory",
+                "promotion_source_record_id": source["action_result"]["record_id"],
+                "promotion_source_scope": "run",
+            },
+            "quality": "candidate",
+        }
+    ]
+    assert memory["scopes"] == [
+        {"scope": "run", "status": "ok", "result_count": 0},
+        {"scope": "session", "status": "ok", "result_count": 1},
+    ]
+    serialized_context = json.dumps(prompt_payload["default_context"], sort_keys=True)
+    assert "SECRET_PROMOTED_CONTEXT" not in serialized_context
+    _assert_no_forbidden_memory_context_keys(prompt_payload["default_context"])
 
 
 def test_provider_planner_tick_rejects_missing_decision_without_side_effects(tmp_path):

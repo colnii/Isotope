@@ -214,6 +214,6 @@ Track C 当前可以 effectively complete / closed for now。已满足：
 - caller context / grants 是必填。
 - projector / checkpoint / HTTP summary route 仍不暴露 full content。
 - HTTP full-content route has an explicit enablement guard and still remains not enabled.
-- real HTTP server、external ingestion、memory controlled expand、ranking 和 semantic retrieval 仍 deferred。
+- real HTTP server、external ingestion、memory source-artifact full-content expand、ranking 和 semantic retrieval 仍 deferred。
 
-如果后续重新打开 Track C，默认下一步必须先写新的 design / red tests；不能直接开启 HTTP full-content route，也不能把 retrieval boundary 扩展成 ranking / semantic retrieval / memory controlled expand。
+如果后续重新打开 Track C，默认下一步必须先写新的 design / red tests；不能直接开启 HTTP full-content route，也不能把 retrieval boundary 扩展成 ranking / semantic retrieval / memory source-artifact full-content expand。

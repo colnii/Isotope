@@ -10,7 +10,7 @@ def build_agent_loop_default_context(
     run_id: str,
     *,
     control: dict[str, Any],
-    memory_limit: int = 3,
+    memory_limit: int = 4,
 ) -> dict[str, Any]:
     """Build low-sensitive runtime context for one provider planner decision."""
     return {
@@ -64,29 +64,75 @@ def _default_memory_context(
             content_policy="summary_refs_provenance_only",
         )
 
+    scope_payloads = [
+        _query_memory_scope(query_memory, run_id, query=query, scope="run", limit=limit),
+    ]
+    if _safe_string(control.get("session_id")):
+        scope_payloads.append(
+            _query_memory_scope(query_memory, run_id, query=query, scope="session", limit=limit)
+        )
+    results = _dedupe_memory_results(
+        [
+            result
+            for payload in scope_payloads
+            for result in _safe_memory_results(payload.get("results", []), limit=limit)
+        ],
+        limit=limit,
+    )
+    return {
+        "source": "agent_loop_default_context",
+        "query": query,
+        "status": _combined_status(scope_payloads),
+        "content_policy": "summary_refs_provenance_only",
+        "result_count": len(results),
+        "results": results,
+        "scopes": [
+            {
+                "scope": scope,
+                "status": _safe_string(payload.get("status", "unknown")),
+                "result_count": len(
+                    _safe_memory_results(payload.get("results", []), limit=limit)
+                ),
+            }
+            for scope, payload in (
+                (str(payload.get("scope", "")), payload) for payload in scope_payloads
+            )
+        ],
+        "safety": {
+            "runtime_invoked": True,
+            "event_append": False,
+            "content_policy": "summary_refs_provenance_only",
+            "scopes": ["run", "session"],
+        },
+    }
+
+
+def _query_memory_scope(
+    query_memory: Any,
+    run_id: str,
+    *,
+    query: str,
+    scope: str,
+    limit: int,
+) -> dict[str, Any]:
     payload = query_memory(
         run_id,
         {
             "query": query,
             "limit": limit,
+            "scope": scope,
         },
     )
-    results = _safe_memory_results(payload.get("results", []), limit=limit)
-    return {
-        "source": "agent_loop_default_context",
-        "query": query,
-        "status": _safe_string(payload.get("status", "unknown")),
-        "content_policy": _safe_string(
-            payload.get("content_policy", "summary_refs_provenance_only")
-        ),
-        "result_count": len(results),
-        "results": results,
-        "safety": {
-            "runtime_invoked": True,
-            "event_append": False,
+    if not isinstance(payload, dict):
+        return {
+            "scope": scope,
+            "status": "not_available",
             "content_policy": "summary_refs_provenance_only",
-        },
-    }
+            "results": [],
+        }
+    result = dict(payload)
+    result["scope"] = scope
+    return result
 
 
 def _empty_memory_context(
@@ -106,6 +152,7 @@ def _empty_memory_context(
             "runtime_invoked": True,
             "event_append": False,
             "content_policy": "summary_refs_provenance_only",
+            "scopes": ["run", "session"],
         },
     }
 
@@ -122,19 +169,20 @@ def _default_memory_query(control: dict[str, Any], *, fallback_run_id: str) -> s
 
 def _safe_memory_context(memory: dict[str, Any]) -> dict[str, Any]:
     results = _safe_memory_results(memory.get("results", []), limit=20)
+    scopes = _safe_scope_summaries(memory.get("scopes", []), limit=10)
     return {
         "source": _safe_string(memory.get("source", "agent_loop_default_context")),
         "query": _safe_string(memory.get("query", "")),
         "status": _safe_string(memory.get("status", "unknown")),
-        "content_policy": _safe_string(
-            memory.get("content_policy", "summary_refs_provenance_only")
-        ),
+        "content_policy": "summary_refs_provenance_only",
         "result_count": len(results),
         "results": results,
+        "scopes": scopes,
         "safety": {
             "runtime_invoked": True,
             "event_append": False,
             "content_policy": "summary_refs_provenance_only",
+            "scopes": ["run", "session"],
         },
     }
 
@@ -173,6 +221,57 @@ def _safe_memory_results(results: Any, *, limit: int) -> list[dict[str, Any]]:
         if safe_item:
             safe_results.append(safe_item)
     return safe_results
+
+
+def _safe_scope_summaries(scopes: Any, *, limit: int) -> list[dict[str, Any]]:
+    if not isinstance(scopes, list):
+        return []
+    safe_scopes = []
+    for item in scopes[:limit]:
+        if not isinstance(item, dict):
+            continue
+        scope = _safe_string(item.get("scope", ""))
+        status = _safe_string(item.get("status", "unknown"))
+        result_count = item.get("result_count", 0)
+        if isinstance(result_count, bool) or not isinstance(result_count, int):
+            result_count = 0
+        if scope:
+            safe_scopes.append(
+                {
+                    "scope": scope,
+                    "status": status or "unknown",
+                    "result_count": max(0, result_count),
+                }
+            )
+    return safe_scopes
+
+
+def _combined_status(payloads: list[dict[str, Any]]) -> str:
+    statuses = [_safe_string(payload.get("status", "")) for payload in payloads]
+    if any(status == "ok" for status in statuses):
+        return "ok"
+    if any(status for status in statuses):
+        return statuses[0]
+    return "unknown"
+
+
+def _dedupe_memory_results(
+    results: list[dict[str, Any]],
+    *,
+    limit: int,
+) -> list[dict[str, Any]]:
+    deduped: list[dict[str, Any]] = []
+    seen = set()
+    for result in results:
+        record_id = result.get("record_id")
+        key = record_id if isinstance(record_id, str) and record_id else repr(result)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(result)
+        if len(deduped) >= limit:
+            break
+    return deduped
 
 
 def _safe_string(value: object) -> str:
