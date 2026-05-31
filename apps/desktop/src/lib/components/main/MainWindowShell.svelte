@@ -37,9 +37,13 @@
 >
   <ActivityRail activities={snapshot.activities} selectedId={selectedActivityId} onSelect={onSelectActivity} />
   <ConversationWorkspace
+    eyebrow={view.chatEyebrow}
     title={view.workspaceTitle}
     subtitle={view.workspaceSubtitle}
     body={view.workspaceBody}
+    emptyTitle={view.emptyChatTitle}
+    emptyBody={view.emptyChatBody}
+    composerPlaceholder={view.composerPlaceholder}
     {chatMessages}
     {chatError}
     isAsking={isAskingDesktop}
