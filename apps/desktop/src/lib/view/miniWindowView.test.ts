@@ -63,6 +63,12 @@ describe('miniWindowView', () => {
     expect(view.sourceKind).toBe('real');
     expect(view.submitMode).toBe('mock');
     expect(view.counts.needsAttention).toBe(2);
+    expect(view.conversationLabel).toBe('AI conversation');
+    expect(view.statusLine).toBe('0 running / 2 attention / 1 approval');
+    expect(view.suggestedPrompts).toEqual([
+      'Summarize current state',
+      'What needs attention?'
+    ]);
   });
 
   test('keeps mock source visible for fallback snapshots', () => {

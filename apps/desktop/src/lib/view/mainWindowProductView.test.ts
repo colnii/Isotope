@@ -11,5 +11,8 @@ describe('buildMainWindowProductView', () => {
     expect(view.workspaceSubtitle).toBe('Mock Supervisor');
     expect(view.inspectorTitle).toBe('Inspector');
     expect(view.sourceKind).toBe('mock');
+    expect(view.chatEyebrow).toBe('Supervisor chat');
+    expect(view.emptyChatTitle).toBe('Ask Isotope about this workspace');
+    expect(view.composerPlaceholder).toBe('Ask Isotope about this run');
   });
 });
