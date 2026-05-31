@@ -5,6 +5,7 @@ import json
 import threading
 from typing import Any
 
+from isotope.capabilities.runner import CapabilityRunner
 from isotope.features.supervisor.planner.goal_queue import record_supervisor_goal
 from isotope.features.supervisor.web import create_dashboard_server
 from isotope.llm.provider import LLMResponse, LLMStreamChunk
@@ -65,6 +66,16 @@ class StreamingDesktopChatProvider(RecordingDesktopChatProvider):
                 content=chunk,
                 raw={"id": "fake-stream"},
             )
+
+
+class FailingDesktopChatProvider(RecordingDesktopChatProvider):
+    def generate(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int = 512,
+    ) -> LLMResponse:
+        raise AssertionError("developer capacity list should not call the LLM")
 
 
 def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
@@ -175,6 +186,58 @@ def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
         "execution_note": "desktop_chat answers from context; Supervisor loop executes capacity calls through agent_loop",
     }
     assert provider.calls[0]["max_tokens"] == 512
+
+
+def test_desktop_chat_endpoint_streams_developer_capacity_accept_list(tmp_path) -> None:
+    provider = FailingDesktopChatProvider()
+    server = create_dashboard_server(
+        codex_home=tmp_path,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+        desktop_chat_provider=provider,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        conn.request(
+            "POST",
+            "/desktop/chat",
+            body=json.dumps({"question": "直接给我们的接收list，我是开发者"}),
+            headers={"content-type": "application/json"},
+        )
+        response = conn.getresponse()
+        body = response.read().decode("utf-8")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert response.status == 200
+    events = _parse_sse(body)
+    assert events[0]["event"] == "start"
+    assert events[-1]["event"] == "done"
+    answer = "".join(
+        event["data"].get("text", "")
+        for event in events
+        if event["event"] == "delta"
+    )
+    capabilities = CapabilityRunner().list_capabilities()
+    assert f"当前接收 capacity：{len(capabilities)} 个" in answer
+    for capability in capabilities:
+        assert f"- {capability['capability_id']}" in answer
+    assert "supervisor.codex_operation" in answer
+    assert "operations=request_context, worker_review, integration_review, launch_worker, resume_worker" in answer
+    assert events[-1]["data"] == {
+        "status": "ok",
+        "provider": "isotope",
+        "model": "desktop-capability-list",
+    }
+    assert provider.calls == []
 
 
 def test_desktop_chat_endpoint_streams_provider_deltas(tmp_path) -> None:
