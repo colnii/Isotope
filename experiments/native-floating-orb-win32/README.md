@@ -2,7 +2,7 @@
 
 This is a Windows-only native desktop experiment. It does not use Tauri, Svelte, or WebView.
 
-The spike creates a small topmost `WS_POPUP` layered window, clips it with `SetWindowRgn`, paints a supersampled premultiplied-alpha BGRA orb with `UpdateLayeredWindow`, and returns `HTCAPTION` for hit tests inside the circle so the orb can be dragged by holding the visible circle.
+The spike creates a 96px topmost `WS_POPUP` layered window, clips it with `SetWindowRgn`, paints a supersampled premultiplied-alpha BGRA orb with `UpdateLayeredWindow`, and returns `HTCAPTION` for hit tests inside the circle so the orb can be dragged by holding the visible circle.
 
 Run from PowerShell on Windows:
 

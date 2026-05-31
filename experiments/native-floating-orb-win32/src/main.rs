@@ -18,7 +18,7 @@ mod win32 {
 
     use native_floating_orb_win32::{
         geometry::point_in_circle,
-        render::{orb_bitmap_to_bgra_bytes, render_orb_bitmap},
+        render::{orb_bitmap_to_bgra_bytes, render_default_orb_bitmap, ORB_BITMAP_SIZE},
     };
     use windows::{
         core::w,
@@ -46,7 +46,7 @@ mod win32 {
         },
     };
 
-    const ORB_WINDOW_SIZE: i32 = 112;
+    const ORB_WINDOW_SIZE: i32 = ORB_BITMAP_SIZE as i32;
     const START_X: i32 = 240;
     const START_Y: i32 = 240;
 
@@ -110,7 +110,7 @@ mod win32 {
     }
 
     unsafe fn update_layered_orb(hwnd: HWND) -> windows::core::Result<()> {
-        let bitmap = render_orb_bitmap(ORB_WINDOW_SIZE as u32);
+        let bitmap = render_default_orb_bitmap();
         let bytes = orb_bitmap_to_bgra_bytes(&bitmap);
 
         let screen_dc = GetDC(None);

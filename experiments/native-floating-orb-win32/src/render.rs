@@ -12,12 +12,18 @@ pub struct OrbBitmap {
     pub pixels: Vec<BgraPixel>,
 }
 
+pub const ORB_BITMAP_SIZE: u32 = 96;
+
 const SUPERSAMPLE: u32 = 4;
-const BODY_RADIUS_RATIO: f64 = 0.455;
+const BODY_RADIUS_RATIO: f64 = 0.445;
 const SHADOW_OFFSET_Y_RATIO: f64 = 0.06;
 const SHADOW_RADIUS_RATIO: f64 = 0.48;
 const MARK_HALF_WIDTH_RATIO: f64 = 0.032;
 const MARK_HALF_HEIGHT_RATIO: f64 = 0.18;
+const STATUS_CENTER_X_RATIO: f64 = 0.80;
+const STATUS_CENTER_Y_RATIO: f64 = 0.80;
+const STATUS_RADIUS_RATIO: f64 = 0.073;
+const STATUS_BORDER_RADIUS_RATIO: f64 = 0.096;
 
 impl OrbBitmap {
     pub fn pixel(&self, x: u32, y: u32) -> BgraPixel {
@@ -36,6 +42,10 @@ pub fn render_orb_bitmap(size: u32) -> OrbBitmap {
     }
 
     OrbBitmap { size, pixels }
+}
+
+pub fn render_default_orb_bitmap() -> OrbBitmap {
+    render_orb_bitmap(ORB_BITMAP_SIZE)
 }
 
 pub fn orb_bitmap_to_bgra_bytes(bitmap: &OrbBitmap) -> Vec<u8> {
@@ -81,10 +91,23 @@ fn sample_color(size: f64, x: f64, y: f64) -> LinearColor {
     if distance <= body_radius {
         let light = ((-dx * 0.65 - dy * 0.85) / body_radius).clamp(-1.0, 1.0);
         let shade = ((dx * 0.45 + dy * 0.75) / body_radius).clamp(0.0, 1.0);
-        let red = (0.05 + light.max(0.0) * 0.06 - shade * 0.02).clamp(0.0, 1.0);
-        let green = (0.60 + light.max(0.0) * 0.22 - shade * 0.16).clamp(0.0, 1.0);
-        let blue = (0.55 + light.max(0.0) * 0.22 - shade * 0.18).clamp(0.0, 1.0);
+        let red = (0.04 + light.max(0.0) * 0.07 - shade * 0.02).clamp(0.0, 1.0);
+        let green = (0.62 + light.max(0.0) * 0.24 - shade * 0.18).clamp(0.0, 1.0);
+        let blue = (0.56 + light.max(0.0) * 0.24 - shade * 0.20).clamp(0.0, 1.0);
         color = color.over(LinearColor::rgba(red, green, blue, 1.0));
+    }
+
+    let lower_shadow_x = center + body_radius * 0.30;
+    let lower_shadow_y = center + body_radius * 0.36;
+    let lower_shadow_radius = body_radius * 0.58;
+    let lower_shadow_distance = point_distance(x, y, lower_shadow_x, lower_shadow_y);
+    if lower_shadow_distance <= lower_shadow_radius && distance <= body_radius {
+        let fade = 1.0 - lower_shadow_distance / lower_shadow_radius;
+        color = color.over(LinearColor::rgba(0.0, 0.21, 0.19, 0.28 * fade));
+    }
+
+    if distance <= body_radius && distance >= body_radius - size * 0.014 {
+        color = color.over(LinearColor::rgba(1.0, 1.0, 1.0, 0.28));
     }
 
     let highlight_x = center - body_radius * 0.33;
@@ -97,11 +120,46 @@ fn sample_color(size: f64, x: f64, y: f64) -> LinearColor {
         color = color.over(LinearColor::rgba(1.0, 1.0, 1.0, (1.0 - highlight) * 0.16));
     }
 
+    let inner_ring_radius = body_radius - size * 0.09;
+    if distance <= inner_ring_radius && distance >= inner_ring_radius - size * 0.010 {
+        color = color.over(LinearColor::rgba(1.0, 1.0, 1.0, 0.16));
+    }
+
     if point_in_mark(size, x, y) {
         color = color.over(LinearColor::rgba(1.0, 1.0, 1.0, 0.95));
     }
 
-    color
+    color.over(status_badge_color(size, x, y))
+}
+
+fn status_badge_color(size: f64, x: f64, y: f64) -> LinearColor {
+    let center_x = size * STATUS_CENTER_X_RATIO;
+    let center_y = size * STATUS_CENTER_Y_RATIO;
+    let distance = point_distance(x, y, center_x, center_y);
+    let fill_radius = size * STATUS_RADIUS_RATIO;
+    let border_radius = size * STATUS_BORDER_RADIUS_RATIO;
+
+    if distance <= fill_radius {
+        return LinearColor::rgba(1.0, 0.82, 0.24, 1.0);
+    }
+
+    if distance <= border_radius {
+        return LinearColor::rgba(0.00, 0.26, 0.24, 0.95);
+    }
+
+    let glow_radius = size * 0.16;
+    if distance <= glow_radius {
+        let fade = 1.0 - distance / glow_radius;
+        return LinearColor::rgba(1.0, 0.78, 0.16, 0.20 * fade * fade);
+    }
+
+    LinearColor::default()
+}
+
+fn point_distance(x: f64, y: f64, center_x: f64, center_y: f64) -> f64 {
+    let dx = x - center_x;
+    let dy = y - center_y;
+    (dx * dx + dy * dy).sqrt()
 }
 
 fn point_in_mark(size: f64, x: f64, y: f64) -> bool {
@@ -182,7 +240,18 @@ fn unit_to_byte(value: f64) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use super::{orb_bitmap_to_bgra_bytes, render_orb_bitmap, BgraPixel, OrbBitmap};
+    use super::{
+        orb_bitmap_to_bgra_bytes, render_default_orb_bitmap, render_orb_bitmap, BgraPixel,
+        OrbBitmap, ORB_BITMAP_SIZE,
+    };
+
+    #[test]
+    fn default_orb_matches_electron_spike_window_size() {
+        let bitmap = render_default_orb_bitmap();
+
+        assert_eq!(ORB_BITMAP_SIZE, 96);
+        assert_eq!(bitmap.size, 96);
+    }
 
     #[test]
     fn renders_transparent_corners_and_teal_center() {
@@ -202,9 +271,20 @@ mod tests {
     fn renders_antialiased_circle_edge() {
         let bitmap = render_orb_bitmap(96);
 
-        let top_edge = bitmap.pixel(48, 4);
+        let top_edge = bitmap.pixel(48, 5);
         assert!(top_edge.alpha > 0);
         assert!(top_edge.alpha < 255);
+    }
+
+    #[test]
+    fn renders_electron_style_status_badge() {
+        let bitmap = render_orb_bitmap(96);
+
+        let badge = bitmap.pixel(77, 77);
+        assert!(badge.red > 180);
+        assert!(badge.green > 150);
+        assert!(badge.blue < 120);
+        assert_eq!(badge.alpha, 255);
     }
 
     #[test]
