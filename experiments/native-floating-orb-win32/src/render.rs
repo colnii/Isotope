@@ -45,7 +45,8 @@ pub fn render_orb_bitmap(size: u32) -> OrbBitmap {
 }
 
 pub fn render_default_orb_bitmap() -> OrbBitmap {
-    render_orb_bitmap(ORB_BITMAP_SIZE)
+    crate::asset::render_default_orb_asset(ORB_BITMAP_SIZE)
+        .unwrap_or_else(|_| render_orb_bitmap(ORB_BITMAP_SIZE))
 }
 
 pub fn orb_bitmap_to_bgra_bytes(bitmap: &OrbBitmap) -> Vec<u8> {
@@ -243,7 +244,8 @@ mod tests {
     use crate::geometry::point_in_circle;
 
     use super::{
-        orb_bitmap_to_bgra_bytes, render_default_orb_bitmap, BgraPixel, OrbBitmap, ORB_BITMAP_SIZE,
+        orb_bitmap_to_bgra_bytes, render_default_orb_bitmap, render_orb_bitmap, BgraPixel,
+        OrbBitmap, ORB_BITMAP_SIZE,
     };
 
     #[test]
@@ -255,8 +257,19 @@ mod tests {
     }
 
     #[test]
-    fn renders_transparent_corners_and_teal_center() {
+    fn default_orb_uses_the_packaged_brand_asset_palette() {
         let bitmap = render_default_orb_bitmap();
+
+        let center = bitmap.pixel(44, 44);
+        assert!(center.red > 180);
+        assert!(center.green < 90);
+        assert!(center.blue < 90);
+        assert_eq!(center.alpha, 255);
+    }
+
+    #[test]
+    fn procedural_fallback_renders_transparent_corners_and_teal_center() {
+        let bitmap = render_orb_bitmap(ORB_BITMAP_SIZE);
 
         assert_eq!(bitmap.pixel(0, 0).alpha, 0);
         assert_eq!(bitmap.pixel(87, 0).alpha, 0);
@@ -270,7 +283,7 @@ mod tests {
 
     #[test]
     fn renders_antialiased_circle_edge() {
-        let bitmap = render_default_orb_bitmap();
+        let bitmap = render_orb_bitmap(ORB_BITMAP_SIZE);
 
         let top_edge = bitmap.pixel(44, 4);
         assert!(top_edge.alpha > 0);
@@ -279,7 +292,7 @@ mod tests {
 
     #[test]
     fn renders_status_badge_inside_the_window_region() {
-        let bitmap = render_default_orb_bitmap();
+        let bitmap = render_orb_bitmap(ORB_BITMAP_SIZE);
 
         let badge = bitmap.pixel(68, 68);
         assert!(badge.red > 180);
