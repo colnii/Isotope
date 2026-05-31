@@ -14,11 +14,12 @@ def build_desktop_snapshot(*, codex_home: Path | str) -> dict[str, Any]:
     root = Path(codex_home).expanduser()
     supervisor = build_supervisor_state_snapshot(codex_home=root)
     summary = supervisor.get("summary", {})
-    source = _supervisor_source(root)
-    supervisor_agent = _supervisor_agent(source)
-    supervisor_activity = _supervisor_activity(source)
     active_goals = list(supervisor.get("active_goals", []))
     active_decisions = list(supervisor.get("active_decisions", []))
+    root_status = _supervisor_root_status(summary)
+    source = _supervisor_source(root)
+    supervisor_agent = _supervisor_agent(source, status=root_status)
+    supervisor_activity = _supervisor_activity(source, status=root_status)
     goal_activities = [
         _goal_activity(goal, index=index + 1, parent_id=supervisor_activity["id"])
         for index, goal in enumerate(active_goals)
@@ -37,7 +38,7 @@ def build_desktop_snapshot(*, codex_home: Path | str) -> dict[str, Any]:
         "activeActivity": _activity_summary(supervisor_activity),
         "activeAgent": supervisor_agent,
         "counts": {
-            "runningAgents": 0,
+            "runningAgents": int(root_status == "running"),
             "needsAttention": len(approvals)
             + int(summary.get("failed_lanes", 0) or 0),
             "approvals": len(approvals),
@@ -63,23 +64,23 @@ def _supervisor_source(root: Path) -> dict[str, Any]:
     }
 
 
-def _supervisor_agent(source: dict[str, Any]) -> dict[str, Any]:
+def _supervisor_agent(source: dict[str, Any], *, status: str) -> dict[str, Any]:
     return {
         "id": "supervisor_root",
         "title": "Isotope Supervisor",
-        "status": "idle",
+        "status": status,
         "kind": "supervisor",
         "role": "coordinator",
         "source": source,
     }
 
 
-def _supervisor_activity(source: dict[str, Any]) -> dict[str, Any]:
+def _supervisor_activity(source: dict[str, Any], *, status: str) -> dict[str, Any]:
     return {
         "id": "activity_supervisor_root",
         "kind": "supervisor",
         "title": "Isotope Supervisor",
-        "status": "idle",
+        "status": status,
         "source": source,
         "sourceRef": {
             "kind": "agent",
@@ -89,6 +90,20 @@ def _supervisor_activity(source: dict[str, Any]) -> dict[str, Any]:
         "order": 0,
         "summary": "Supervisor state projection is connected.",
     }
+
+
+def _supervisor_root_status(summary: dict[str, Any]) -> str:
+    if int(summary.get("failed_lanes", 0) or 0) > 0:
+        return "error"
+    if int(summary.get("active_decisions", 0) or 0) > 0:
+        return "needs_attention"
+    if int(summary.get("goals_needs_user", 0) or 0) > 0:
+        return "needs_attention"
+    if int(summary.get("goals_blocked", 0) or 0) > 0:
+        return "blocked"
+    if int(summary.get("active_goals", 0) or 0) > 0:
+        return "running"
+    return "idle"
 
 
 def _activity_summary(activity: dict[str, Any]) -> dict[str, Any]:

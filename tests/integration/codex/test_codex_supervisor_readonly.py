@@ -58,6 +58,11 @@ CONTINUE_REQUEST_TEXT = EXECUTABLE_ADVICE_TEXT["send_continue"]
 EXISTING_WORKSPACE = str(Path(__file__).resolve().parents[2])
 
 
+@pytest.fixture(autouse=True)
+def _freeze_supervisor_flow_now(monkeypatch):
+    monkeypatch.setattr(supervisor_flow, "_utc_now", lambda: NOW)
+
+
 def _runner_args(codex_home: Path) -> argparse.Namespace:
     return argparse.Namespace(
         codex_home=str(codex_home),

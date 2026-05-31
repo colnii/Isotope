@@ -64,6 +64,10 @@ def test_desktop_snapshot_maps_active_goal_to_activity(tmp_path):
     snapshot = build_desktop_snapshot(codex_home=tmp_path)
 
     assert snapshot["activities"][0]["kind"] == "supervisor"
+    assert snapshot["activities"][0]["status"] == "running"
+    assert snapshot["activeActivity"]["status"] == "running"
+    assert snapshot["activeAgent"]["status"] == "running"
+    assert snapshot["counts"]["runningAgents"] == 1
     assert snapshot["activeActivity"]["id"] == snapshot["activities"][0]["id"]
     assert set(snapshot["activeActivity"]) == {"id", "kind", "title", "status", "source"}
     assert snapshot["activeGoal"]["title"] == "Ship the desktop MVP"
@@ -116,6 +120,8 @@ def test_desktop_snapshot_maps_active_decision_to_approval_summary(tmp_path):
 
     snapshot = build_desktop_snapshot(codex_home=tmp_path)
 
+    assert snapshot["activeAgent"]["status"] == "needs_attention"
+    assert snapshot["activeActivity"]["status"] == "needs_attention"
     assert snapshot["counts"]["approvals"] == 1
     assert snapshot["counts"]["needsAttention"] == 1
     assert snapshot["approvals"] == [
