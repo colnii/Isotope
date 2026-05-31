@@ -68,16 +68,6 @@ class StreamingDesktopChatProvider(RecordingDesktopChatProvider):
             )
 
 
-class FailingDesktopChatProvider(RecordingDesktopChatProvider):
-    def generate(
-        self,
-        messages: list[dict[str, str]],
-        *,
-        max_tokens: int = 512,
-    ) -> LLMResponse:
-        raise AssertionError("developer capacity list should not call the LLM")
-
-
 def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
     tmp_path,
 ) -> None:
@@ -142,24 +132,16 @@ def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
     system_prompt = provider.calls[0]["messages"][0]["content"]
     assert "产品内 AI 助手" in system_prompt
     assert "正在开发和调试 Isotope" in system_prompt
-    assert "只描述低敏状态" not in system_prompt
-    assert "不要因为 Supervisor idle" not in system_prompt
-    assert "/desktop/chat 不直接执行 capacity" in system_prompt
-    assert "call_capacity -> agent_loop" in system_prompt
-    assert "capability_count" in system_prompt
+    assert "desktop_snapshot" in system_prompt
+    assert "desktop_context" in system_prompt
+    assert "output_requirements" not in system_prompt
+    assert "必须" not in system_prompt
+    assert "不要" not in system_prompt
 
     prompt_payload = json.loads(provider.calls[0]["messages"][1]["content"])
     assert prompt_payload["question"] == "loop 现在怎样？"
     assert prompt_payload["desktop_snapshot"]["activeGoal"]["title"] == "检查当前 loop 效果"
-    assert prompt_payload["output_requirements"] == [
-        "不要输出 JSON",
-        "优先直接回答用户问题",
-        "默认一到三句话，复杂实现问题可以适当展开",
-        "不要复读 idle 状态，除非它和问题直接相关",
-        "capacity 或 loop 接线问题要回答已注册的 capability 和当前执行边界",
-        "不要说 /desktop/chat 会直接触发或执行 capacity",
-        "能给下一步就给下一步",
-    ]
+    assert "output_requirements" not in prompt_payload
     capacity_ids = [
         item["capability_id"]
         for item in prompt_payload["desktop_context"]["capabilities"]
@@ -188,8 +170,8 @@ def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
     assert provider.calls[0]["max_tokens"] == 512
 
 
-def test_desktop_chat_endpoint_streams_developer_capacity_accept_list(tmp_path) -> None:
-    provider = FailingDesktopChatProvider()
+def test_desktop_chat_endpoint_sends_developer_capacity_question_to_llm_with_context(tmp_path) -> None:
+    provider = RecordingDesktopChatProvider(content="我会按上下文列出 capacity。")
     server = create_dashboard_server(
         codex_home=tmp_path,
         host="127.0.0.1",
@@ -226,18 +208,21 @@ def test_desktop_chat_endpoint_streams_developer_capacity_accept_list(tmp_path) 
         for event in events
         if event["event"] == "delta"
     )
-    capabilities = CapabilityRunner().list_capabilities()
-    assert f"当前接收 capacity：{len(capabilities)} 个" in answer
-    for capability in capabilities:
-        assert f"- {capability['capability_id']}" in answer
-    assert "supervisor.codex_operation" in answer
-    assert "operations=request_context, worker_review, integration_review, launch_worker, resume_worker" in answer
+    assert answer == "我会按上下文列出 capacity。"
     assert events[-1]["data"] == {
         "status": "ok",
-        "provider": "isotope",
-        "model": "desktop-capability-list",
+        "provider": "fake",
+        "model": "fake-desktop-chat",
     }
-    assert provider.calls == []
+    prompt_payload = json.loads(provider.calls[0]["messages"][1]["content"])
+    assert prompt_payload["question"] == "直接给我们的接收list，我是开发者"
+    assert "output_requirements" not in prompt_payload
+    capacity_ids = [
+        item["capability_id"]
+        for item in prompt_payload["desktop_context"]["capabilities"]
+    ]
+    assert prompt_payload["desktop_context"]["capability_count"] == len(capacity_ids)
+    assert "supervisor.codex_operation" in capacity_ids
 
 
 def test_desktop_chat_endpoint_streams_provider_deltas(tmp_path) -> None:
