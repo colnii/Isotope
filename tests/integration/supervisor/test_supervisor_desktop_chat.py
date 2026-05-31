@@ -128,13 +128,32 @@ def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
     assert "messages" not in body
     assert "raw" not in body
 
+    system_prompt = provider.calls[0]["messages"][0]["content"]
+    assert "产品内 AI 助手" in system_prompt
+    assert "正在开发和调试 Isotope" in system_prompt
+    assert "只描述低敏状态" not in system_prompt
+    assert "不要因为 Supervisor idle" not in system_prompt
+    assert "/desktop/chat 不直接执行 capacity" in system_prompt
+    assert "call_capacity -> agent_loop" in system_prompt
+    assert "capability_count" in system_prompt
+
     prompt_payload = json.loads(provider.calls[0]["messages"][1]["content"])
     assert prompt_payload["question"] == "loop 现在怎样？"
     assert prompt_payload["desktop_snapshot"]["activeGoal"]["title"] == "检查当前 loop 效果"
+    assert prompt_payload["output_requirements"] == [
+        "不要输出 JSON",
+        "优先直接回答用户问题",
+        "默认一到三句话，复杂实现问题可以适当展开",
+        "不要复读 idle 状态，除非它和问题直接相关",
+        "capacity 或 loop 接线问题要回答已注册的 capability 和当前执行边界",
+        "不要说 /desktop/chat 会直接触发或执行 capacity",
+        "能给下一步就给下一步",
+    ]
     capacity_ids = [
         item["capability_id"]
         for item in prompt_payload["desktop_context"]["capabilities"]
     ]
+    assert prompt_payload["desktop_context"]["capability_count"] == len(capacity_ids)
     assert "supervisor.codex_operation" in capacity_ids
     codex_operation = next(
         item
