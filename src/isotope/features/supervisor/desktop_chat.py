@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
+from isotope.capabilities.runner import CapabilityRunner
+from isotope.capabilities.supervisor import SUPERVISOR_CODEX_OPERATION_CAPABILITY
 from isotope.llm.provider import LLMResponse, LLMStreamChunk
 
 from .desktop_snapshot import build_desktop_snapshot
@@ -117,13 +119,18 @@ def desktop_chat_answer_chunks(answer: str, *, chunk_size: int = 12) -> list[str
 
 
 def _desktop_chat_messages(question: str, snapshot: dict[str, Any]) -> list[dict[str, str]]:
+    desktop_context = build_desktop_chat_context()
     return [
         {
             "role": "system",
             "content": (
-                "你是 Isotope 桌面端助手。只根据提供的低敏 Supervisor 状态回答，"
-                "不要编造不存在的 worker、goal、approval 或 artifact。回答要短，"
-                "用中文，说人话，优先说明当前 loop 能不能继续推进。"
+                "你是 Isotope 桌面端助手。根据提供的低敏 Supervisor 状态和 "
+                "desktop_context 回答。不要编造不存在的 worker、goal、approval "
+                "或 artifact。用户问 capacity、loop、backend wiring 时，优先使用 "
+                "desktop_context.capabilities 和 loop_capacity_path；不要因为 "
+                "Supervisor idle 就说 capacity 没接入。/desktop/chat 只解释和展示"
+                "这些低敏上下文，不直接执行 capacity；真正执行发生在 Supervisor "
+                "loop 的 call_capacity/agent_loop 路径。回答要短，用中文，说人话。"
             ),
         },
         {
@@ -132,10 +139,13 @@ def _desktop_chat_messages(question: str, snapshot: dict[str, Any]) -> list[dict
                 {
                     "question": question,
                     "desktop_snapshot": snapshot,
+                    "desktop_context": desktop_context,
                     "output_requirements": [
                         "不要输出 JSON",
                         "一到三句话",
                         "只描述低敏状态",
+                        "capacity 或 loop 接线问题要回答已注册的 capability 和当前执行边界",
+                        "不要说 /desktop/chat 会直接触发或执行 capacity",
                         "能给下一步就给下一步",
                     ],
                 },
@@ -144,6 +154,65 @@ def _desktop_chat_messages(question: str, snapshot: dict[str, Any]) -> list[dict
             ),
         },
     ]
+
+
+def build_desktop_chat_context() -> dict[str, Any]:
+    return {
+        "capabilities": [
+            _desktop_chat_capability_summary(capability)
+            for capability in CapabilityRunner().list_capabilities()
+        ],
+        "loop_capacity_path": {
+            "chat_entry": "/desktop/chat",
+            "agent_loop_capacity_call": "call_capacity",
+            "codex_operation_capacity": SUPERVISOR_CODEX_OPERATION_CAPABILITY,
+            "execution_note": (
+                "desktop_chat answers from context; Supervisor loop executes "
+                "capacity calls through agent_loop"
+            ),
+        },
+    }
+
+
+def _desktop_chat_capability_summary(capability: dict[str, Any]) -> dict[str, Any]:
+    input_contract = capability.get("input_contract")
+    properties = (
+        input_contract.get("properties", {})
+        if isinstance(input_contract, dict)
+        else {}
+    )
+    operation_property = (
+        properties.get("operation", {}) if isinstance(properties, dict) else {}
+    )
+    operations = (
+        operation_property.get("enum")
+        if isinstance(operation_property, dict)
+        else None
+    )
+    return _omit_empty(
+        {
+            "capability_id": capability.get("capability_id"),
+            "title": capability.get("title"),
+            "description": capability.get("description"),
+            "shelf": capability.get("shelf"),
+            "domain_tags": capability.get("domain_tags"),
+            "required_inputs": (
+                input_contract.get("required", [])
+                if isinstance(input_contract, dict)
+                else []
+            ),
+            "operations": operations,
+            "network_required": capability.get("network_required"),
+        }
+    )
+
+
+def _omit_empty(value: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: item
+        for key, item in value.items()
+        if item not in (None, "", [], {})
+    }
 
 
 def _require_question(value: str) -> str:

@@ -131,6 +131,30 @@ def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
     prompt_payload = json.loads(provider.calls[0]["messages"][1]["content"])
     assert prompt_payload["question"] == "loop 现在怎样？"
     assert prompt_payload["desktop_snapshot"]["activeGoal"]["title"] == "检查当前 loop 效果"
+    capacity_ids = [
+        item["capability_id"]
+        for item in prompt_payload["desktop_context"]["capabilities"]
+    ]
+    assert "supervisor.codex_operation" in capacity_ids
+    codex_operation = next(
+        item
+        for item in prompt_payload["desktop_context"]["capabilities"]
+        if item["capability_id"] == "supervisor.codex_operation"
+    )
+    assert codex_operation["required_inputs"] == ["operation", "codex_home"]
+    assert codex_operation["operations"] == [
+        "request_context",
+        "worker_review",
+        "integration_review",
+        "launch_worker",
+        "resume_worker",
+    ]
+    assert prompt_payload["desktop_context"]["loop_capacity_path"] == {
+        "chat_entry": "/desktop/chat",
+        "agent_loop_capacity_call": "call_capacity",
+        "codex_operation_capacity": "supervisor.codex_operation",
+        "execution_note": "desktop_chat answers from context; Supervisor loop executes capacity calls through agent_loop",
+    }
     assert provider.calls[0]["max_tokens"] == 512
 
 
