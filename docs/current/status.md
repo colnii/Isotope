@@ -75,7 +75,10 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    和 `run_agent_loop_planner_step(...)` 执行一个 tick；测试只用 fake provider，
    不接真实网络或 TOML 号池，raw prompt/messages/raw response 只留在
    provider/planner 边界内，外层只返回低敏 provider/result summary 和结构化
-   decision。
+   decision；provider prompt 现在会带 `default_context.memory` 这一层默认
+   记忆上下文，由 runtime 在每个 planner tick 前自动查询当前 run 的低敏
+   memory preview，只暴露 summary / refs / provenance，不追加 event，也不展开
+   full content。
    `supervisor.worker_review` 已注册为 capability runner 的只读能力，
    `isotope-capability list/search/plan/run` 能发现、预检和运行它；执行时复用
    现有 `worker-review` lightweight 路径，只返回低敏 worker 决策摘要，

@@ -70,7 +70,10 @@
   decision，解析成现有 `planner_output`，再走
   `run_agent_loop_real_planner_contract_step(...)` /
   `run_agent_loop_planner_step(...)` 执行；测试只用 fake provider，不接真实网络，
-  raw prompt/messages/raw response 不出 provider/planner 边界。
+  raw prompt/messages/raw response 不出 provider/planner 边界。每个 planner tick
+  现在会默认注入 `default_context.memory`，复用 agent-loop memory query 的
+  summary / refs / provenance preview；这只是 runtime 构造上下文，不写 event、
+  不读取 full content、不打开 embedding/ranking。
 - Agent loop agent-to-agent conversation arbiter 已补第一片：
   `AgentConversationMessage` 表达单个 agent 的候选发言，
   `arbitrate_agent_conversation_turn(...)` 按 interrupt、priority、state lock
