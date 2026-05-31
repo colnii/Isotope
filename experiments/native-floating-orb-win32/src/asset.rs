@@ -46,10 +46,11 @@ pub fn render_orb_asset_png(bytes: &[u8], size: u32) -> Result<OrbBitmap, OrbAss
     }
 
     let source = decode_png_rgba(bytes)?;
+    let crop = content_crop_bounds(&source);
     let mut pixels = Vec::with_capacity((size * size) as usize);
     for y in 0..size {
         for x in 0..size {
-            let mut pixel = sample_source_pixel(&source, x, y, size);
+            let mut pixel = sample_source_pixel(&source, &crop, x, y, size);
             if !point_in_circle(x as i32, y as i32, size as i32, size as i32) {
                 pixel.alpha = 0;
                 pixel.red = 0;
@@ -61,6 +62,70 @@ pub fn render_orb_asset_png(bytes: &[u8], size: u32) -> Result<OrbBitmap, OrbAss
     }
 
     Ok(OrbBitmap { size, pixels })
+}
+
+fn content_crop_bounds(source: &DecodedPng) -> CropBounds {
+    let mut left = source.width;
+    let mut top = source.height;
+    let mut right = 0;
+    let mut bottom = 0;
+
+    for y in 0..source.height {
+        for x in 0..source.width {
+            if is_artwork_pixel(source.pixel(x, y)) {
+                left = left.min(x);
+                top = top.min(y);
+                right = right.max(x);
+                bottom = bottom.max(y);
+            }
+        }
+    }
+
+    if left > right || top > bottom {
+        return CropBounds {
+            left: 0,
+            top: 0,
+            size: source.width.min(source.height).max(1),
+        };
+    }
+
+    let content_width = right - left + 1;
+    let content_height = bottom - top + 1;
+    let crop_size = content_width
+        .max(content_height)
+        .min(source.width)
+        .min(source.height)
+        .max(1);
+    let center_x = (left + right + 1) as f64 / 2.0;
+    let center_y = (top + bottom + 1) as f64 / 2.0;
+    let max_left = source.width - crop_size;
+    let max_top = source.height - crop_size;
+    let crop_left = (center_x - crop_size as f64 / 2.0)
+        .round()
+        .clamp(0.0, max_left as f64) as u32;
+    let crop_top = (center_y - crop_size as f64 / 2.0)
+        .round()
+        .clamp(0.0, max_top as f64) as u32;
+
+    CropBounds {
+        left: crop_left,
+        top: crop_top,
+        size: crop_size,
+    }
+}
+
+fn is_artwork_pixel(pixel: RgbaPixel) -> bool {
+    if pixel.alpha == 0 {
+        return false;
+    }
+
+    if pixel.alpha < 255 {
+        return true;
+    }
+
+    let max_channel = pixel.red.max(pixel.green).max(pixel.blue);
+    let min_channel = pixel.red.min(pixel.green).min(pixel.blue);
+    !(min_channel >= 235 && max_channel - min_channel <= 6)
 }
 
 fn decode_png_rgba(bytes: &[u8]) -> Result<DecodedPng, OrbAssetError> {
@@ -135,12 +200,13 @@ fn rgba_pixels_from_grayscale(bytes: &[u8]) -> Vec<RgbaPixel> {
 
 fn sample_source_pixel(
     source: &DecodedPng,
+    crop: &CropBounds,
     output_x: u32,
     output_y: u32,
     output_size: u32,
 ) -> BgraPixel {
-    let source_x = map_output_center_to_source(output_x, output_size, source.width);
-    let source_y = map_output_center_to_source(output_y, output_size, source.height);
+    let source_x = crop.left as f64 + map_output_center_to_source(output_x, output_size, crop.size);
+    let source_y = crop.top as f64 + map_output_center_to_source(output_y, output_size, crop.size);
     let x0 = source_x.floor().clamp(0.0, (source.width - 1) as f64) as u32;
     let y0 = source_y.floor().clamp(0.0, (source.height - 1) as f64) as u32;
     let x1 = (x0 + 1).min(source.width - 1);
@@ -190,6 +256,12 @@ struct DecodedPng {
     pixels: Vec<RgbaPixel>,
 }
 
+struct CropBounds {
+    left: u32,
+    top: u32,
+    size: u32,
+}
+
 impl DecodedPng {
     fn pixel(&self, x: u32, y: u32) -> RgbaPixel {
         self.pixels[(y * self.width + x) as usize]
@@ -234,6 +306,18 @@ mod tests {
         assert!(center.green < 90);
         assert!(center.blue < 90);
         assert_eq!(center.alpha, 255);
+    }
+
+    #[test]
+    fn crops_packaged_asset_to_the_visible_orb_content() {
+        let bitmap = render_default_orb_asset(88).expect("asset should decode");
+
+        let left_middle = bitmap.pixel(5, 44);
+        assert!(left_middle.alpha > 200);
+        assert!(
+            left_middle.red < 235 || left_middle.green < 235 || left_middle.blue < 235,
+            "left edge should contain orb artwork, not checkerboard margin"
+        );
     }
 
     #[test]
