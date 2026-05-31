@@ -37,6 +37,12 @@ Deferred capability directions（暂缓能力方向，不新增对象）：
 
 - Scoped temporary permission grants：权限应按 task / workspace 临时授予，并且
   auditable、expirable、revocable。
+- Supervisor permission unification：kernel 已有 `ActionProposal ->
+  PolicyDecision -> grants -> Executor` 权限链；当前 Supervisor 主路径仍同时使用
+  feature-level guardrail、CLI 开关、registry、cooldown、failure ledger 和命令
+  handler 校验。后续要把更多 Supervisor side effect 迁入同一套
+  `PolicyDecision.grants`，不能把现状误读成 Supervisor 已经统一接入完整权限
+  设计。
 - Lightweight tool ergonomics checks：关键 capability 后续补 `when_to_use` 和
   `when_not_to_use`；高风险 capability 补 1-2 条 negative eval，确认模型知道何时
   不该调用它。
