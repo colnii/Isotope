@@ -151,16 +151,19 @@ PYTHONPATH=src .venv/bin/python -m isotope.demo
 
 ### CI 与本地差异
 
-当前 GitHub Actions smoke 使用 Python `3.13` 和 `3.14`
-matrix，并通过 test extra 安装依赖：
+当前默认 GitHub Actions smoke 使用带 `isotope-ci` 标签的 Linux x64 self-hosted
+runner，只跑 Python `3.13`，并通过 test extra 安装依赖：
 
 ```bash
 python -m pip install -U pip
 python -m pip install -e ".[test]"
-python -m pytest tests/isotope -q
+python -m pytest tests/ -q
 python -m isotope.demo
 python -m isotope.demo --json
 ```
+
+需要临时使用 GitHub-hosted runner 时，只运行手动备用 workflow
+`.github/workflows/ci-cloud.yml`，不要让它在 push / PR 自动触发。
 
 如果本地和 CI 结果不同，先确认本地是否使用同一个 install path、同一个 repo commit，以及是否误用了其他虚拟环境。
 
