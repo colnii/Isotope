@@ -53,13 +53,6 @@ def answer_desktop_chat(
     clean_question = _require_question(question)
     if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
         raise ValueError("max_tokens must be a positive integer")
-    if _is_developer_capacity_list_request(clean_question):
-        return DesktopChatAnswer(
-            question=clean_question,
-            answer=build_developer_capacity_list_answer(),
-            provider="isotope",
-            model="desktop-capability-list",
-        )
     snapshot = build_desktop_snapshot(codex_home=codex_home)
     response = provider.generate(
         _desktop_chat_messages(clean_question, snapshot),
@@ -86,16 +79,6 @@ def stream_desktop_chat(
     clean_question = _require_question(question)
     if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
         raise ValueError("max_tokens must be a positive integer")
-    if _is_developer_capacity_list_request(clean_question):
-        answer = build_developer_capacity_list_answer()
-        for chunk in desktop_chat_answer_chunks(answer):
-            yield LLMStreamChunk(
-                provider="isotope",
-                model="desktop-capability-list",
-                content=chunk,
-                raw={},
-            )
-        return
     stream_generate = getattr(provider, "stream_generate", None)
     if callable(stream_generate):
         snapshot = build_desktop_snapshot(codex_home=codex_home)
@@ -143,13 +126,9 @@ def _desktop_chat_messages(question: str, snapshot: dict[str, Any]) -> list[dict
             "content": (
                 "你是 Isotope 的产品内 AI 助手，服务对象是正在开发和调试 "
                 "Isotope 的用户。你可以回答当前状态、架构、capacity、loop、"
-                "前后端接线和下一步排障。先直接回答问题，再给必要依据。"
-                "涉及运行状态时使用 desktop_snapshot；涉及能力、权限或执行链时"
-                "使用 desktop_context.capabilities 和 desktop_context.loop_capacity_path。"
-                "不要编造不存在的 worker、goal、approval、artifact 或执行结果。"
-                "/desktop/chat 不直接执行 capacity；真正执行边界是 Supervisor "
-                "loop 中的 call_capacity -> agent_loop。提到 capacity 数量时必须使用 "
-                "desktop_context.capability_count，不要自己估算。中文回答，少说套话。"
+                "前后端接线和下一步排障。回答时结合提供的 desktop_snapshot "
+                "和 desktop_context，自然说明你能确认的内容；信息不够时"
+                "直接说还缺什么。中文、直接。"
             ),
         },
         {
@@ -159,15 +138,6 @@ def _desktop_chat_messages(question: str, snapshot: dict[str, Any]) -> list[dict
                     "question": question,
                     "desktop_snapshot": snapshot,
                     "desktop_context": desktop_context,
-                    "output_requirements": [
-                        "不要输出 JSON",
-                        "优先直接回答用户问题",
-                        "默认一到三句话，复杂实现问题可以适当展开",
-                        "不要复读 idle 状态，除非它和问题直接相关",
-                        "capacity 或 loop 接线问题要回答已注册的 capability 和当前执行边界",
-                        "不要说 /desktop/chat 会直接触发或执行 capacity",
-                        "能给下一步就给下一步",
-                    ],
                 },
                 ensure_ascii=False,
                 sort_keys=True,
@@ -194,26 +164,6 @@ def build_desktop_chat_context() -> dict[str, Any]:
             ),
         },
     }
-
-
-def build_developer_capacity_list_answer() -> str:
-    context = build_desktop_chat_context()
-    capabilities = context["capabilities"]
-    lines = [
-        f"当前接收 capacity：{context['capability_count']} 个。",
-        "执行边界：/desktop/chat 只读回答；真正执行走 Supervisor loop 的 call_capacity -> agent_loop。",
-        "接收清单：",
-    ]
-    for capability in capabilities:
-        detail_parts = [
-            str(capability.get("title", "")),
-            "required=" + _comma_join(capability.get("required_inputs"), empty="none"),
-        ]
-        operations = capability.get("operations")
-        if operations:
-            detail_parts.append("operations=" + _comma_join(operations, empty="none"))
-        lines.append(f"- {capability['capability_id']} | " + " | ".join(detail_parts))
-    return "\n".join(lines)
 
 
 def _desktop_chat_capability_summary(capability: dict[str, Any]) -> dict[str, Any]:
@@ -247,22 +197,6 @@ def _desktop_chat_capability_summary(capability: dict[str, Any]) -> dict[str, An
             "network_required": capability.get("network_required"),
         }
     )
-
-
-def _is_developer_capacity_list_request(question: str) -> bool:
-    normalized = question.lower().replace(" ", "")
-    if "接收list" in normalized or "接收清单" in normalized:
-        return True
-    if "capacity" not in normalized and "capability" not in normalized:
-        return False
-    list_markers = ("list", "列表", "清单", "有哪些", "哪些", "接收", "开发者")
-    return any(marker in normalized for marker in list_markers)
-
-
-def _comma_join(value: Any, *, empty: str) -> str:
-    if not isinstance(value, list) or not value:
-        return empty
-    return ", ".join(str(item) for item in value)
 
 
 def _omit_empty(value: dict[str, Any]) -> dict[str, Any]:
