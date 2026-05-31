@@ -15,12 +15,22 @@ from ..platform.schemas.input_contract import missing_required_input_keys
 
 
 SUPERVISOR_INTEGRATION_REVIEW_CAPABILITY = "supervisor.integration_review"
+SUPERVISOR_CODEX_OPERATION_CAPABILITY = "supervisor.codex_operation"
 SUPERVISOR_REQUEST_CONTEXT_CAPABILITY = "supervisor.request_context"
 SUPERVISOR_WORKER_REVIEW_CAPABILITY = "supervisor.worker_review"
+
+SUPERVISOR_CODEX_OPERATIONS = (
+    "request_context",
+    "worker_review",
+    "integration_review",
+    "launch_worker",
+    "resume_worker",
+)
 
 
 def is_supervisor_readonly_capability(capability_id: str) -> bool:
     return capability_id in {
+        SUPERVISOR_CODEX_OPERATION_CAPABILITY,
         SUPERVISOR_INTEGRATION_REVIEW_CAPABILITY,
         SUPERVISOR_REQUEST_CONTEXT_CAPABILITY,
         SUPERVISOR_WORKER_REVIEW_CAPABILITY,
@@ -38,6 +48,11 @@ def validate_supervisor_readonly_inputs(
             inputs=inputs,
             missing_inputs=missing_inputs,
         )
+    if capability_id == SUPERVISOR_CODEX_OPERATION_CAPABILITY:
+        return _validate_supervisor_codex_operation_inputs(
+            inputs=inputs,
+            missing_inputs=missing_inputs,
+        )
     if capability_id == SUPERVISOR_INTEGRATION_REVIEW_CAPABILITY:
         return _validate_supervisor_integration_review_inputs(
             inputs=inputs,
@@ -49,6 +64,46 @@ def validate_supervisor_readonly_inputs(
             missing_inputs=missing_inputs,
         )
     return dict(inputs or {})
+
+
+def run_supervisor_codex_operation(
+    *, inputs: Mapping[str, Any] | None
+) -> dict[str, Any]:
+    required_inputs = ["operation", "codex_home"]
+    missing_inputs = _missing_inputs(required_inputs, inputs)
+    if missing_inputs:
+        raise ValueError("missing required capability inputs: " + ", ".join(missing_inputs))
+    input_mapping = _validate_supervisor_codex_operation_inputs(
+        inputs=inputs,
+        missing_inputs=missing_inputs,
+    )
+    operation = input_mapping["operation"]
+    operation_inputs = dict(input_mapping)
+    operation_inputs.pop("operation", None)
+
+    if operation == "request_context":
+        operation_result = run_supervisor_request_context(inputs=operation_inputs)
+    elif operation == "worker_review":
+        operation_result = run_supervisor_worker_review(inputs=operation_inputs)
+    elif operation == "integration_review":
+        operation_result = run_supervisor_integration_review(inputs=operation_inputs)
+    else:
+        operation_result = {
+            "kind": "capability_run_result",
+            "capability_id": SUPERVISOR_CODEX_OPERATION_CAPABILITY,
+            "status": "skipped",
+            "reason": "operation requires Supervisor runtime wrapper",
+            "operation": operation,
+        }
+
+    return {
+        "kind": "capability_run_result",
+        "capability_id": SUPERVISOR_CODEX_OPERATION_CAPABILITY,
+        "status": operation_result.get("status", "completed"),
+        "runner_kind": "supervisor_codex_operation",
+        "operation": operation,
+        "operation_result": operation_result,
+    }
 
 
 def run_supervisor_request_context(
@@ -160,6 +215,44 @@ def _validate_supervisor_request_context_inputs(
     normalized = dict(input_mapping)
     normalized["max_results"] = max_results
     return normalized
+
+
+def _validate_supervisor_codex_operation_inputs(
+    *,
+    inputs: Mapping[str, Any] | None,
+    missing_inputs: list[str],
+) -> dict[str, Any]:
+    input_mapping = inputs or {}
+    if "operation" not in missing_inputs:
+        operation = input_mapping.get("operation")
+        if operation not in SUPERVISOR_CODEX_OPERATIONS:
+            supported = ", ".join(SUPERVISOR_CODEX_OPERATIONS)
+            raise ValueError(f"operation must be one of: {supported}")
+    if "codex_home" not in missing_inputs and not isinstance(
+        input_mapping.get("codex_home"), str
+    ):
+        raise ValueError("codex_home must be a string")
+    operation = input_mapping.get("operation")
+    if operation == "request_context":
+        return _validate_supervisor_request_context_inputs(
+            inputs=input_mapping,
+            missing_inputs=[
+                name
+                for name in ("codex_home", "cwd", "query")
+                if name not in input_mapping or input_mapping.get(name) in (None, "")
+            ],
+        )
+    if operation == "worker_review":
+        return _validate_supervisor_worker_review_inputs(
+            inputs=input_mapping,
+            missing_inputs=["codex_home"] if "codex_home" in missing_inputs else [],
+        )
+    if operation == "integration_review":
+        return _validate_supervisor_integration_review_inputs(
+            inputs=input_mapping,
+            missing_inputs=["codex_home"] if "codex_home" in missing_inputs else [],
+        )
+    return dict(input_mapping)
 
 
 def _validate_supervisor_worker_review_inputs(

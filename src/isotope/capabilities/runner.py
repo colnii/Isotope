@@ -33,10 +33,12 @@ from .screen import (
     validate_screen_readonly_inputs,
 )
 from .supervisor import (
+    SUPERVISOR_CODEX_OPERATION_CAPABILITY,
     SUPERVISOR_INTEGRATION_REVIEW_CAPABILITY,
     SUPERVISOR_REQUEST_CONTEXT_CAPABILITY,
     SUPERVISOR_WORKER_REVIEW_CAPABILITY,
     is_supervisor_readonly_capability,
+    run_supervisor_codex_operation,
     run_supervisor_integration_review,
     run_supervisor_request_context,
     run_supervisor_worker_review,
@@ -286,6 +288,8 @@ class CapabilityRunner:
             return run_research_search(inputs=input_mapping)
         if capability_id == SCREEN_REPORT_CAPABILITY:
             return run_screen_report(inputs=input_mapping)
+        if capability_id == SUPERVISOR_CODEX_OPERATION_CAPABILITY:
+            return run_supervisor_codex_operation(inputs=input_mapping)
         if capability_id == SUPERVISOR_REQUEST_CONTEXT_CAPABILITY:
             return run_supervisor_request_context(inputs=input_mapping)
         if capability_id == SUPERVISOR_INTEGRATION_REVIEW_CAPABILITY:

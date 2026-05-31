@@ -70,6 +70,14 @@ def _runner_args(codex_home: Path) -> argparse.Namespace:
     )
 
 
+def _codex_operation_context_result(executed: dict) -> dict:
+    assert executed["kind"] == "call_capacity"
+    assert executed["capacity_id"] == "supervisor.codex_operation"
+    assert executed["operation"] == "request_context"
+    action_result = executed["agent_loop"]["step_result"]["action_result"]
+    return action_result["capability_run"]["operation_result"]["context_result"]
+
+
 def _supervisor_send_command(name: str, text: str) -> str:
     return shlex.join(["isotope-supervisor", "send", "--name", name, "--text", text])
 
@@ -9746,10 +9754,10 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_request_context(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["llm_action"]["kind"] == "request_context"
-    assert payload["executed"]["kind"] == "request_context"
-    assert payload["executed"]["context"]["query"] == "Supervisor 下一步节奏"
-    assert payload["executed"]["context"]["items"][0]["path"] == "docs/current/status.md"
-    assert "LLM 主导" in payload["executed"]["context"]["items"][0]["text"]
+    context = _codex_operation_context_result(payload["executed"])
+    assert context["query"] == "Supervisor 下一步节奏"
+    assert context["items"][0]["path"] == "docs/current/status.md"
+    assert "LLM 主导" in context["items"][0]["text"]
 
     context_log = codex_home / "supervisor" / "context_results.jsonl"
     records = [
@@ -10021,7 +10029,7 @@ def test_codex_supervisor_runner_supervise_request_context_replans_same_iteratio
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["llm_action"]["kind"] == "request_context"
-    assert payload["executed"]["kind"] == "request_context"
+    _codex_operation_context_result(payload["executed"])
     assert payload["llm_followup_action"]["kind"] == "send_status"
     assert payload["followup_executed"]["kind"] == "send_status"
     assert calls == _tmux_send_calls(STATUS_REQUEST_TEXT)
@@ -10103,7 +10111,7 @@ def test_codex_supervisor_runner_supervise_respects_max_context_requests(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["llm_action"]["kind"] == "request_context"
-    assert payload["executed"]["kind"] == "request_context"
+    _codex_operation_context_result(payload["executed"])
     assert payload["llm_followup_action"]["kind"] == "request_context"
     assert payload["followup_executed"] == {
         "kind": "request_context",
@@ -10183,8 +10191,8 @@ def test_codex_supervisor_runner_supervise_default_allows_context_followup(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["executed"]["kind"] == "request_context"
-    assert payload["followup_executed"]["kind"] == "request_context"
+    _codex_operation_context_result(payload["executed"])
+    _codex_operation_context_result(payload["followup_executed"])
     assert "skipped" not in payload["followup_executed"]
     context_log = codex_home / "supervisor" / "context_results.jsonl"
     records = [
@@ -10287,7 +10295,7 @@ def test_codex_supervisor_runner_supervise_context_followup_can_ask_user_after_g
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["llm_action"]["kind"] == "request_context"
-    assert payload["executed"]["kind"] == "request_context"
+    _codex_operation_context_result(payload["executed"])
     assert payload["llm_followup_action"]["kind"] == "ask_user"
     followup = payload["followup_executed"]
     assert followup["kind"] == "ask_user"
@@ -10671,7 +10679,7 @@ def test_codex_supervisor_runner_loop_with_goal_context_request_feeds_next_plann
     assert exit_code == 0
     lines = [line for line in capsys.readouterr().out.splitlines() if line.strip()]
     assert len(lines) == 1
-    assert json.loads(lines[0])["executed"]["kind"] == "request_context"
+    _codex_operation_context_result(json.loads(lines[0])["executed"])
     assert seen_context_on_second_call is True
 
 
@@ -16479,8 +16487,8 @@ def test_codex_supervisor_runner_loop_replans_blocked_goal_with_llm_context(
     payload = json.loads(capsys.readouterr().out)
     assert payload["active_goals"][0]["last_status"] == "blocked"
     assert payload["llm_action"]["kind"] == "request_context"
-    assert payload["executed"]["kind"] == "request_context"
-    assert payload["executed"]["context"]["query"] == "Supervisor 目标阻塞后如何继续推进"
+    context = _codex_operation_context_result(payload["executed"])
+    assert context["query"] == "Supervisor 目标阻塞后如何继续推进"
     assert payload["llm_followup_action"]["kind"] == "monitor"
 
 
@@ -16616,7 +16624,7 @@ def test_codex_supervisor_runner_loop_records_goal_level_decision_request(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["llm_action"]["kind"] == "request_context"
-    assert payload["executed"]["kind"] == "request_context"
+    _codex_operation_context_result(payload["executed"])
     assert payload["llm_followup_action"]["kind"] == "ask_user"
     followup = payload["followup_executed"]
     assert followup["kind"] == "ask_user"
