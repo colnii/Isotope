@@ -72,6 +72,7 @@ def test_capability_runner_cli_lists_capabilities_as_json():
         "research.promote",
         "research.search",
         "screen.report",
+        "supervisor.codex_operation",
         "supervisor.integration_review",
         "supervisor.request_context",
         "supervisor.worker_review",
