@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pytest
@@ -22,6 +23,14 @@ FORBIDDEN_PROVIDER_KEYS = {
     "raw_content",
     "raw_prompt",
     "raw_response",
+}
+FORBIDDEN_MEMORY_CONTEXT_KEYS = {
+    "artifact_content",
+    "content",
+    "full_content",
+    "full_text",
+    "raw_artifact_content",
+    "raw_content",
 }
 
 
@@ -94,6 +103,17 @@ def _assert_no_forbidden_provider_keys(value: Any) -> None:
             _assert_no_forbidden_provider_keys(nested)
 
 
+def _assert_no_forbidden_memory_context_keys(value: Any) -> None:
+    if isinstance(value, dict):
+        forbidden = FORBIDDEN_MEMORY_CONTEXT_KEYS.intersection(value)
+        assert forbidden == set()
+        for nested in value.values():
+            _assert_no_forbidden_memory_context_keys(nested)
+    elif isinstance(value, list):
+        for nested in value:
+            _assert_no_forbidden_memory_context_keys(nested)
+
+
 def test_provider_planner_tick_runs_fake_provider_through_tick_execution(tmp_path):
     api, run_id = _new_run(tmp_path)
     control = api.get_agent_loop_control(run_id)
@@ -144,6 +164,71 @@ def test_provider_planner_tick_rejects_bad_json_without_side_effects(tmp_path):
 
     assert api.get_events(run_id) == before_events
     assert len(provider.calls) == 1
+
+
+def test_provider_planner_tick_injects_default_memory_context_without_side_effects(tmp_path):
+    api, run_id = _new_run(tmp_path)
+    source = api.run_agent_loop_step(
+        run_id,
+        {
+            "step": "create_source_artifact",
+            "summary": "default context source",
+            "content": "source artifact content must stay out of planner context",
+        },
+    )
+    api.run_agent_loop_step(
+        run_id,
+        {
+            "step": "record_turn_memory",
+            "scope": "run",
+            "summary": "Loop provider planner should recall default context.",
+            "content": {
+                "kind": "turn_state",
+                "text": "SECRET_CONTEXT_PAYLOAD",
+            },
+            "source_refs": [source["action_result"]["artifact_ref"]],
+            "quality": "candidate",
+        },
+    )
+    provider = FakePlannerProvider("not-json")
+    before_events = list(api.get_events(run_id))
+
+    with pytest.raises(ValueError, match="planner provider response must contain a JSON object"):
+        api.run_agent_loop_provider_planner_tick(
+            run_id,
+            provider=provider,
+            agent_id="agent_loop",
+            tick_id="tick_default_context",
+            decision_id="decision_default_context",
+        )
+
+    assert api.get_events(run_id) == before_events
+    prompt_payload = json.loads(provider.calls[0]["messages"][1]["content"])
+    default_context = prompt_payload["default_context"]
+    memory = default_context["memory"]
+    assert memory["source"] == "agent_loop_default_context"
+    assert memory["query"] == "loop provider planner"
+    assert memory["status"] == "ok"
+    assert memory["content_policy"] == "summary_refs_provenance_only"
+    assert memory["result_count"] == 1
+    assert memory["results"] == [
+        {
+            "record_id": memory["results"][0]["record_id"],
+            "scope": "run",
+            "summary": "Loop provider planner should recall default context.",
+            "source_refs": [source["action_result"]["artifact_ref"]],
+            "provenance": {
+                "run_id": run_id,
+                "execution_id": memory["results"][0]["provenance"]["execution_id"],
+                "action_type": "write_memory",
+            },
+            "quality": "candidate",
+        }
+    ]
+    serialized_context = json.dumps(default_context, ensure_ascii=False, sort_keys=True)
+    assert "SECRET_CONTEXT_PAYLOAD" not in serialized_context
+    assert "source artifact content" not in serialized_context
+    _assert_no_forbidden_memory_context_keys(default_context)
 
 
 def test_provider_planner_tick_rejects_missing_decision_without_side_effects(tmp_path):

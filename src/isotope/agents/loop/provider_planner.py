@@ -8,6 +8,10 @@ import re
 from typing import Any, Protocol
 
 from ...llm.provider import LLMResponse
+from .context import (
+    build_agent_loop_default_context,
+    safe_agent_loop_default_context,
+)
 from .planner_contract import RAW_PROVIDER_FIELDS
 
 
@@ -64,9 +68,15 @@ def run_agent_loop_provider_planner_tick(
         }
 
     control = api.get_agent_loop_control(run_id)
+    default_context = build_agent_loop_default_context(
+        api,
+        run_id,
+        control=control,
+    )
     provider_result = build_agent_loop_provider_planner_result(
         provider,
         control=control,
+        default_context=default_context,
         agent_id=agent_id,
         tick_id=tick_id,
         decision_id=decision_id,
@@ -94,6 +104,7 @@ def build_agent_loop_provider_planner_result(
     provider: AgentLoopPlannerProvider,
     *,
     control: dict[str, Any],
+    default_context: dict[str, Any] | None = None,
     agent_id: str,
     tick_id: str,
     decision_id: str,
@@ -102,6 +113,7 @@ def build_agent_loop_provider_planner_result(
     """Return quarantined provider output shaped for the real planner contract."""
     messages = _build_planner_messages(
         control=control,
+        default_context=default_context,
         agent_id=agent_id,
         tick_id=tick_id,
         decision_id=decision_id,
@@ -143,6 +155,7 @@ def build_agent_loop_provider_planner_result(
 def _build_planner_messages(
     *,
     control: dict[str, Any],
+    default_context: dict[str, Any] | None,
     agent_id: str,
     tick_id: str,
     decision_id: str,
@@ -152,9 +165,12 @@ def _build_planner_messages(
         "tick_id": tick_id,
         "decision_id": decision_id,
         "control": _safe_control(control),
+        "default_context": safe_agent_loop_default_context(default_context),
         "rules": [
             "Return only a JSON object.",
             "Choose exactly one available step from control.next_actions.",
+            "Use default_context.memory before selecting query_memory.",
+            "Choose query_memory only when default_context.memory is insufficient.",
             "Do not execute tools or mutate state.",
             "Do not include raw prompt, raw response, messages, stdout, or artifact content.",
         ],
