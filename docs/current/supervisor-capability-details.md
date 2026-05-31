@@ -39,6 +39,12 @@ LLM 不能被降级成可有可无的摘要插件，规则也不能替代产品�
   `integrations/codex/CodexCliBackend` 尚未成为 Supervisor 主执行路径。
 - 当前最高杠杆方向：把 `agent loop + capacity calling + capabilities`
   打通为主路径，再把 Codex worker 生命周期和状态投影迁出 feature 私有实现。
+- 权限统一状态：kernel 层 `PolicyDecision.grants` 已是 executor 的有效授权
+  snapshot；agent-loop、memory write/query 和部分 capability 路径已开始接入。
+  但 Supervisor 旧主路径还不是完整 policy/grants 驱动：`launch/resume/send`、
+  `--llm-execute`、cleanup、failure guard 和 goal/lane registry 仍主要靠
+  feature-level guardrail 与命令层校验。新增 side effect 时应优先评估能否落到
+  action/policy/executor 链，而不是继续扩大私有 guardrail。
 
 ## 当前分层
 

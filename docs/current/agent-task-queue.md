@@ -73,7 +73,10 @@
   raw prompt/messages/raw response 不出 provider/planner 边界。每个 planner tick
   现在会默认注入 `default_context.memory`，复用 agent-loop memory query 的
   summary / refs / provenance preview；这只是 runtime 构造上下文，不写 event、
-  不读取 full content、不打开 embedding/ranking。
+  不读取 full content、不打开 embedding/ranking。当前实现只用当前 run goal
+  查询当前 run memory preview；其他对话 / 跨 session recall、超长上下文自动
+  晋升、session memory promotion policy 和 controlled expand materialization
+  仍是后续任务。
 - Agent loop agent-to-agent conversation arbiter 已补第一片：
   `AgentConversationMessage` 表达单个 agent 的候选发言，
   `arbitrate_agent_conversation_turn(...)` 按 interrupt、priority、state lock

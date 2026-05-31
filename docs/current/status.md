@@ -78,7 +78,10 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    decision；provider prompt 现在会带 `default_context.memory` 这一层默认
    记忆上下文，由 runtime 在每个 planner tick 前自动查询当前 run 的低敏
    memory preview，只暴露 summary / refs / provenance，不追加 event，也不展开
-   full content。
+   full content。当前这只是第一片：默认 query 来自当前 run goal，只查当前
+   run 的 memory preview；尚未接入其他对话 / 跨 session recall、超长上下文
+   自动整理晋升、session scope promotion policy，或真正的 controlled expand
+   materialization。
    `supervisor.worker_review` 已注册为 capability runner 的只读能力，
    `isotope-capability list/search/plan/run` 能发现、预检和运行它；执行时复用
    现有 `worker-review` lightweight 路径，只返回低敏 worker 决策摘要，
@@ -87,6 +90,11 @@ Isotope 是 local-first（本地优先）的 AI engineering workbench（AI 工�
    默认复用现有 `integration-review`，但关闭 pytest gate 和候选 lint/test
    validation，只返回 ready/already/needs/conflict 等低敏分组摘要，不执行
    merge、push、archive 或 cleanup。
+   权限层当前仍是分层过渡态：kernel 的 `ActionProposal -> PolicyDecision ->
+   grants -> Executor` 链路已存在，agent-loop / memory / capability 的一部分
+   已接入；但 Supervisor 旧主路径仍大量依赖 feature-level guardrail、CLI
+   开关、registry/cooldown/failure ledger 和 command handler 校验，尚未完全
+   统一到 `PolicyDecision.grants`。
    `memory.query` 也已注册为只读 capability：执行时复用现有
    `LocalMemoryQueryService`，要求 `root/query/run_id`，通过 caller audit 和
    memory query grant 读取 summary / refs / provenance，`controlled_expand`
