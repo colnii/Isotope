@@ -62,7 +62,7 @@ def execute_llm_action(
             payload=payload,
             action=action,
             event_type="context_retrieval_failed",
-            execute=lambda: api._execute_context_action(args, action),
+            execute=lambda: api._execute_codex_operation_action(args, action),
             api=api,
         )
     if kind == "ask_user":
@@ -277,10 +277,12 @@ def context_request_count(payload: dict[str, Any]) -> int:
     count = 0
     for key in ("executed", "followup_executed"):
         item = payload.get(key)
-        if (
-            isinstance(item, dict)
-            and item.get("kind") == "request_context"
-            and not item.get("skipped")
+        if not isinstance(item, dict) or item.get("skipped"):
+            continue
+        if item.get("kind") == "request_context" or (
+            item.get("kind") == "call_capacity"
+            and item.get("capacity_id") == "supervisor.codex_operation"
+            and item.get("operation") == "request_context"
         ):
             count += 1
     return count

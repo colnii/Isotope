@@ -490,10 +490,14 @@ def test_supervisor_loop_executes_request_context(
         extra_args=["--goal", "查明 Supervisor 当前状态。"],
     )
 
-    assert payload["executed"]["kind"] == "request_context"
-    assert payload["executed"]["context"]["cwd"] == str(workspace)
-    assert payload["executed"]["context"]["query"] == "Supervisor 当前状态"
-    assert payload["executed"]["context"]["items"]
+    assert payload["executed"]["kind"] == "call_capacity"
+    assert payload["executed"]["capacity_id"] == "supervisor.codex_operation"
+    assert payload["executed"]["operation"] == "request_context"
+    action_result = payload["executed"]["agent_loop"]["step_result"]["action_result"]
+    context = action_result["capability_run"]["operation_result"]["context_result"]
+    assert context["cwd"] == str(workspace)
+    assert context["query"] == "Supervisor 当前状态"
+    assert context["items"]
 
 
 def test_supervisor_loop_executes_ask_user_after_context_check(

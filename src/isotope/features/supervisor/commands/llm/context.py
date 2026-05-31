@@ -51,11 +51,11 @@ def maybe_replan_after_context_request(
         from isotope.features.supervisor import runner as api
 
     executed = payload.get("executed")
-    if not isinstance(executed, dict) or executed.get("kind") != "request_context":
+    context_result = _executed_request_context_result(executed)
+    if context_result is None:
         return False
-    if executed.get("skipped"):
+    if isinstance(executed, dict) and executed.get("skipped"):
         return False
-    context_result = executed.get("context")
     if isinstance(context_result, dict):
         recent = list(payload.get("recent_context_results") or [])
         recent.append(context_result)
@@ -75,3 +75,34 @@ def maybe_replan_after_context_request(
         followup_payload,
     )
     return True
+
+
+def _executed_request_context_result(executed: Any) -> dict[str, Any] | None:
+    if not isinstance(executed, dict):
+        return None
+    if executed.get("kind") == "request_context":
+        context_result = executed.get("context")
+        return context_result if isinstance(context_result, dict) else None
+    if (
+        executed.get("kind") != "call_capacity"
+        or executed.get("capacity_id") != "supervisor.codex_operation"
+        or executed.get("operation") != "request_context"
+    ):
+        return None
+    agent_loop = executed.get("agent_loop")
+    if not isinstance(agent_loop, dict):
+        return None
+    step_result = agent_loop.get("step_result")
+    if not isinstance(step_result, dict):
+        return None
+    action_result = step_result.get("action_result")
+    if not isinstance(action_result, dict):
+        return None
+    capability_run = action_result.get("capability_run")
+    if not isinstance(capability_run, dict):
+        return None
+    operation_result = capability_run.get("operation_result")
+    if not isinstance(operation_result, dict):
+        return None
+    context_result = operation_result.get("context_result")
+    return context_result if isinstance(context_result, dict) else None

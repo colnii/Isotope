@@ -16,6 +16,7 @@ from isotope.agents.scheduler.capacity_graph import (
     resolve_ready_capacity_plan,
 )
 from isotope.capabilities.runner import CapabilityRunner
+from isotope.capabilities.supervisor import SUPERVISOR_CODEX_OPERATION_CAPABILITY
 from isotope.llm.capacity_calling import CapacityCallingProvider, select_capacity_call
 from isotope.llm.pool import PoolEntry, resolve_pool_entries_from_env
 from isotope.llm.provider import OpenAICompatibleChatProvider, Transport, LLMResponse
@@ -273,6 +274,66 @@ def execute_capacity_action(
         "agent_loop": agent_loop,
         "agent_loop_summary": agent_loop_summary,
     }
+
+
+def execute_codex_operation_via_agent_loop(
+    *,
+    goal: str,
+    operation: str,
+    inputs: Mapping[str, Any],
+    state_root: Path | str,
+) -> dict[str, Any]:
+    if not isinstance(goal, str) or not goal.strip():
+        raise ValueError("goal must not be empty")
+    if not isinstance(operation, str) or not operation.strip():
+        raise ValueError("operation must not be empty")
+    if not isinstance(inputs, Mapping):
+        raise ValueError("inputs must be a mapping")
+    capability_inputs = {"operation": operation, **copy.deepcopy(dict(inputs))}
+    agent_loop = _execute_agent_loop_capacity_step(
+        goal=goal.strip(),
+        capability_id=SUPERVISOR_CODEX_OPERATION_CAPABILITY,
+        inputs=capability_inputs,
+        state_root=Path(state_root),
+    )
+    agent_loop_summary = agent_loop_json_summary({"agent_loop": agent_loop})
+    return {
+        "kind": "call_capacity",
+        "capacity_id": SUPERVISOR_CODEX_OPERATION_CAPABILITY,
+        "operation": operation,
+        "goal": goal.strip(),
+        "agent_loop": agent_loop,
+        "agent_loop_summary": agent_loop_summary,
+    }
+
+
+def execute_codex_operation_action(
+    args: Any,
+    action: Mapping[str, Any],
+) -> dict[str, Any]:
+    kind = action.get("kind")
+    if kind == "request_context":
+        cwd = action.get("cwd")
+        query = action.get("query")
+        if not isinstance(cwd, str) or not cwd.strip():
+            raise ValueError("cwd is required for request_context")
+        if not isinstance(query, str) or not query.strip():
+            raise ValueError("query is required for request_context")
+        inputs: dict[str, Any] = {
+            "codex_home": str(Path(args.codex_home)),
+            "cwd": cwd,
+            "query": query,
+        }
+        max_results = action.get("max_results")
+        if isinstance(max_results, int) and not isinstance(max_results, bool):
+            inputs["max_results"] = max_results
+        return execute_codex_operation_via_agent_loop(
+            goal=f"Request context: {query}",
+            operation="request_context",
+            inputs=inputs,
+            state_root=Path(args.codex_home) / "supervisor" / "capacity-loop-runs",
+        )
+    raise ValueError(f"unsupported codex operation action: {kind}")
 
 
 def loop_capacity_decision_payload(

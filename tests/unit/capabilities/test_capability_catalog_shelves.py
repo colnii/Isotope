@@ -133,6 +133,7 @@ def test_default_builtins_are_small_product_candidate_set_only():
         "research.promote",
         "research.search",
         "screen.report",
+        "supervisor.codex_operation",
         "supervisor.integration_review",
         "supervisor.request_context",
         "supervisor.worker_review",

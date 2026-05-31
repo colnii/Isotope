@@ -60,6 +60,7 @@ from .handlers.capacity import (
     build_supervisor_capacity_plan,
     capacity_call_specs as _capacity_call_specs,
     capacity_decision_goal as _capacity_decision_goal,
+    execute_codex_operation_action as _execute_codex_operation_action,
     execute_capacity_action as _execute_capacity_action,
     loop_capacity_decision_payload as _loop_capacity_decision_payload,
     resolve_capacity_calling_provider_from_env,

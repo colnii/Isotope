@@ -506,6 +506,84 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="supervisor.codex_operation",
+                    title="Supervisor Codex Operation",
+                    description=(
+                        "Unified Supervisor-facing Codex operation capacity. "
+                        "Operations are selected by enum and dispatched through "
+                        "existing managed Supervisor boundaries."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "supervisor",
+                        "codex",
+                        "operation",
+                        "worker",
+                        "agent-loop",
+                        "capacity",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["operation", "codex_home"],
+                        "properties": {
+                            "operation": {
+                                "type": "string",
+                                "enum": [
+                                    "request_context",
+                                    "worker_review",
+                                    "integration_review",
+                                    "launch_worker",
+                                    "resume_worker",
+                                ],
+                                "description": "Codex/Supervisor operation to dispatch.",
+                            },
+                            "codex_home": {
+                                "type": "string",
+                                "description": "Codex home directory used by Supervisor state.",
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Workspace directory for context or worker launch.",
+                            },
+                            "query": {
+                                "type": "string",
+                                "description": "Context query for request_context.",
+                            },
+                            "target_name": {
+                                "type": "string",
+                                "description": "Managed worker target name for launch_worker.",
+                            },
+                            "worker_goal": {
+                                "type": "string",
+                                "description": "Worker goal for launch_worker.",
+                            },
+                            "session_id": {
+                                "type": "string",
+                                "description": "Codex session id for resume_worker.",
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "operation",
+                            "operation_result",
+                            "runner_kind",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "single_codex_operation_capacity",
+                        "no_arbitrary_codex_command",
+                        "reuses_existing_supervisor_boundaries",
+                        "agent_loop_call_capability_compatible",
+                        "low_sensitive_summary_only",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="supervisor.integration_review",
                     title="Supervisor Integration Review",
                     description=(
