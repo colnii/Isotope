@@ -186,17 +186,19 @@ JSON 输出不得包含 full artifact content、memory full content、raw provid
 - installed demo 不在 repo 根目录写 `runs/` / `artifacts/` / `checkpoints/`。
 - installed package source 不 import `x_agent.*`。
 
-`tests/isotope/test_ci_workflow.py` 已落地并通过，覆盖：
+`tests/unit/test_ci_workflow.py` 已落地并通过，覆盖：
 
 - `.github/workflows/ci.yml` exists。
 - workflow 在 `push` / `pull_request` 时触发。
-- workflow 使用 `ubuntu-latest` 和 Python `3.13` / `3.14`
-  matrix。
+- workflow 使用带 `isotope-ci` 标签的 Linux x64 self-hosted runner 和 Python `3.13`。
+- workflow 用 concurrency 取消同一 ref 上被新 push 取代的旧 run。
 - workflow 执行 editable install with test extra：`python -m pip install -e ".[test]"`。
-- workflow 运行 `python -m pytest tests/isotope -q`。
+- workflow 运行 `python -m pytest tests/ -q`。
 - workflow 运行 demo plain / JSON smoke。
 - workflow 不需要 secrets，不引用本地绝对路径，不引用 `x-agent` / `x_agent`。
 - workflow 不引入 release、coverage、lint matrix 或 real integration services。
+- `.github/workflows/ci-cloud.yml` 仅允许 `workflow_dispatch` 手动触发，作为
+  GitHub-hosted runner 的省额度备用 smoke。
 - latest remote GitHub Actions run 已由网页确认通过。
 
 该 demo 仍是 developer demo，不是产品 CLI。后续扩展必须继续保持 no real LLM / no network / no repo-root side effects / summary-only output 边界。

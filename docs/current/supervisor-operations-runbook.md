@@ -103,7 +103,11 @@ python -m isotope.demo --json
 通过标准：
 
 - 本机测试与 demo smoke 通过；远端 CI 只在本轮允许 push 或已有 PR 时检查
-  GitHub Actions 的 `CI / smoke (3.13)` 和 `CI / smoke (3.14)`。
+  GitHub Actions 的 `CI / smoke (3.13 self-hosted)`。该 workflow 需要一个在线的
+  Linux x64 self-hosted runner，并带 `isotope-ci` 标签；云端额度紧张时不要依赖
+  GitHub-hosted runner 自动触发。
+- `.github/workflows/ci-cloud.yml` 是手动备用的 GitHub-hosted smoke，只能在
+  `workflow_dispatch` 下按需运行，不能作为 push / PR 默认 gate。
 - `daemon watchdog` 对仍存活的 daemon 返回 `alive`，不会重复拉起；
   手动停止或异常退出后再次执行，应按 `daemon.json` 的原始命令重启，
   并保留 `--max-fanout-launches` 等启动参数。
