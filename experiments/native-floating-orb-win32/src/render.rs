@@ -12,7 +12,7 @@ pub struct OrbBitmap {
     pub pixels: Vec<BgraPixel>,
 }
 
-pub const ORB_BITMAP_SIZE: u32 = 96;
+pub const ORB_BITMAP_SIZE: u32 = 88;
 
 const SUPERSAMPLE: u32 = 4;
 const BODY_RADIUS_RATIO: f64 = 0.445;
@@ -20,10 +20,10 @@ const SHADOW_OFFSET_Y_RATIO: f64 = 0.06;
 const SHADOW_RADIUS_RATIO: f64 = 0.48;
 const MARK_HALF_WIDTH_RATIO: f64 = 0.032;
 const MARK_HALF_HEIGHT_RATIO: f64 = 0.18;
-const STATUS_CENTER_X_RATIO: f64 = 0.80;
-const STATUS_CENTER_Y_RATIO: f64 = 0.80;
+const STATUS_CENTER_X_RATIO: f64 = 0.78;
+const STATUS_CENTER_Y_RATIO: f64 = 0.78;
 const STATUS_RADIUS_RATIO: f64 = 0.073;
-const STATUS_BORDER_RADIUS_RATIO: f64 = 0.096;
+const STATUS_BORDER_RADIUS_RATIO: f64 = 0.090;
 
 impl OrbBitmap {
     pub fn pixel(&self, x: u32, y: u32) -> BgraPixel {
@@ -240,27 +240,28 @@ fn unit_to_byte(value: f64) -> u8 {
 
 #[cfg(test)]
 mod tests {
+    use crate::geometry::point_in_circle;
+
     use super::{
-        orb_bitmap_to_bgra_bytes, render_default_orb_bitmap, render_orb_bitmap, BgraPixel,
-        OrbBitmap, ORB_BITMAP_SIZE,
+        orb_bitmap_to_bgra_bytes, render_default_orb_bitmap, BgraPixel, OrbBitmap, ORB_BITMAP_SIZE,
     };
 
     #[test]
-    fn default_orb_matches_electron_spike_window_size() {
+    fn default_orb_is_one_step_smaller_than_the_electron_spike() {
         let bitmap = render_default_orb_bitmap();
 
-        assert_eq!(ORB_BITMAP_SIZE, 96);
-        assert_eq!(bitmap.size, 96);
+        assert_eq!(ORB_BITMAP_SIZE, 88);
+        assert_eq!(bitmap.size, 88);
     }
 
     #[test]
     fn renders_transparent_corners_and_teal_center() {
-        let bitmap = render_orb_bitmap(96);
+        let bitmap = render_default_orb_bitmap();
 
         assert_eq!(bitmap.pixel(0, 0).alpha, 0);
-        assert_eq!(bitmap.pixel(95, 0).alpha, 0);
+        assert_eq!(bitmap.pixel(87, 0).alpha, 0);
 
-        let center = bitmap.pixel(48, 48);
+        let center = bitmap.pixel(44, 44);
         assert_eq!(center.alpha, 255);
         assert!(center.green > center.red);
         assert!(center.green > center.blue);
@@ -269,22 +270,31 @@ mod tests {
 
     #[test]
     fn renders_antialiased_circle_edge() {
-        let bitmap = render_orb_bitmap(96);
+        let bitmap = render_default_orb_bitmap();
 
-        let top_edge = bitmap.pixel(48, 5);
+        let top_edge = bitmap.pixel(44, 4);
         assert!(top_edge.alpha > 0);
         assert!(top_edge.alpha < 255);
     }
 
     #[test]
-    fn renders_electron_style_status_badge() {
-        let bitmap = render_orb_bitmap(96);
+    fn renders_status_badge_inside_the_window_region() {
+        let bitmap = render_default_orb_bitmap();
 
-        let badge = bitmap.pixel(77, 77);
+        let badge = bitmap.pixel(68, 68);
         assert!(badge.red > 180);
         assert!(badge.green > 150);
         assert!(badge.blue < 120);
         assert_eq!(badge.alpha, 255);
+
+        let badge_outer_edge = bitmap.pixel(73, 73);
+        assert!(badge_outer_edge.alpha > 200);
+        assert!(point_in_circle(
+            73,
+            73,
+            ORB_BITMAP_SIZE as i32,
+            ORB_BITMAP_SIZE as i32
+        ));
     }
 
     #[test]

@@ -14,16 +14,17 @@ fn main() -> windows::core::Result<()> {
 
 #[cfg(windows)]
 mod win32 {
-    use std::{mem::size_of, ptr::copy_nonoverlapping};
+    use std::{mem::size_of, ptr::copy_nonoverlapping, sync::Mutex};
 
     use native_floating_orb_win32::{
         geometry::point_in_circle,
+        interaction::moved_far_enough_to_drag,
         render::{orb_bitmap_to_bgra_bytes, render_default_orb_bitmap, ORB_BITMAP_SIZE},
     };
     use windows::{
         core::w,
         Win32::{
-            Foundation::{COLORREF, HINSTANCE, HWND, LPARAM, LRESULT, POINT, SIZE, WPARAM},
+            Foundation::{COLORREF, HINSTANCE, HWND, LPARAM, LRESULT, POINT, RECT, SIZE, WPARAM},
             Graphics::Gdi::{
                 CreateCompatibleDC, CreateDIBSection, CreateEllipticRgn, DeleteDC, DeleteObject,
                 GetDC, ReleaseDC, ScreenToClient, SelectObject, SetWindowRgn, AC_SRC_ALPHA,
@@ -34,21 +35,34 @@ mod win32 {
                 HiDpi::{
                     SetProcessDpiAwarenessContext, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2,
                 },
+                Input::KeyboardAndMouse::{ReleaseCapture, SetCapture},
                 WindowsAndMessaging::{
-                    CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetMessageW,
-                    LoadCursorW, PostQuitMessage, RegisterClassW, ShowWindow, TranslateMessage,
-                    UpdateLayeredWindow, CS_HREDRAW, CS_VREDRAW, HTCAPTION, HTNOWHERE, IDC_ARROW,
-                    MSG, SW_SHOWNOACTIVATE, ULW_ALPHA, WINDOW_EX_STYLE, WM_DESTROY, WM_ERASEBKGND,
-                    WM_NCHITTEST, WM_RBUTTONUP, WNDCLASSW, WS_EX_LAYERED, WS_EX_NOACTIVATE,
-                    WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
+                    CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetCursorPos,
+                    GetMessageW, GetWindowRect, LoadCursorW, MessageBoxW, PostQuitMessage,
+                    RegisterClassW, SetWindowPos, ShowWindow, TranslateMessage,
+                    UpdateLayeredWindow, CS_HREDRAW, CS_VREDRAW, HTCLIENT, HTNOWHERE, IDC_ARROW,
+                    MB_ICONINFORMATION, MB_OK, MSG, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER,
+                    SW_SHOWNOACTIVATE, ULW_ALPHA, WINDOW_EX_STYLE, WM_DESTROY, WM_ERASEBKGND,
+                    WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEMOVE, WM_NCHITTEST, WM_NCRBUTTONDOWN,
+                    WM_NCRBUTTONUP, WM_RBUTTONDOWN, WM_RBUTTONUP, WNDCLASSW, WS_EX_LAYERED,
+                    WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
                 },
             },
         },
     };
 
+    static DRAG_STATE: Mutex<Option<DragState>> = Mutex::new(None);
+
     const ORB_WINDOW_SIZE: i32 = ORB_BITMAP_SIZE as i32;
     const START_X: i32 = 240;
     const START_Y: i32 = 240;
+
+    #[derive(Clone, Copy)]
+    struct DragState {
+        start_cursor: POINT,
+        start_window: RECT,
+        dragging: bool,
+    }
 
     pub fn run() -> windows::core::Result<()> {
         unsafe {
@@ -209,7 +223,10 @@ mod win32 {
             match message {
                 WM_ERASEBKGND => LRESULT(1),
                 WM_NCHITTEST => hit_test_orb(hwnd, lparam),
-                WM_RBUTTONUP => {
+                WM_LBUTTONDOWN => handle_left_button_down(hwnd),
+                WM_MOUSEMOVE => handle_mouse_move(hwnd),
+                WM_LBUTTONUP => handle_left_button_up(hwnd),
+                WM_NCRBUTTONDOWN | WM_NCRBUTTONUP | WM_RBUTTONDOWN | WM_RBUTTONUP => {
                     let _ = DestroyWindow(hwnd);
                     LRESULT(0)
                 }
@@ -230,10 +247,98 @@ mod win32 {
 
         let _ = ScreenToClient(hwnd, &mut point);
         if point_in_circle(point.x, point.y, ORB_WINDOW_SIZE, ORB_WINDOW_SIZE) {
-            return LRESULT(HTCAPTION as isize);
+            return LRESULT(HTCLIENT as isize);
         }
 
         LRESULT(HTNOWHERE as isize)
+    }
+
+    unsafe fn handle_left_button_down(hwnd: HWND) -> LRESULT {
+        let mut cursor = POINT::default();
+        if GetCursorPos(&mut cursor).is_err() {
+            return LRESULT(0);
+        }
+
+        let mut window_rect = RECT::default();
+        if GetWindowRect(hwnd, &mut window_rect).is_err() {
+            return LRESULT(0);
+        }
+
+        let _ = SetCapture(hwnd);
+        *DRAG_STATE.lock().expect("drag state mutex poisoned") = Some(DragState {
+            start_cursor: cursor,
+            start_window: window_rect,
+            dragging: false,
+        });
+
+        LRESULT(0)
+    }
+
+    unsafe fn handle_mouse_move(hwnd: HWND) -> LRESULT {
+        let mut guard = DRAG_STATE.lock().expect("drag state mutex poisoned");
+        let Some(state) = guard.as_mut() else {
+            return LRESULT(0);
+        };
+
+        let mut cursor = POINT::default();
+        if GetCursorPos(&mut cursor).is_err() {
+            return LRESULT(0);
+        }
+
+        let dx = cursor.x - state.start_cursor.x;
+        let dy = cursor.y - state.start_cursor.y;
+        if !state.dragging
+            && !moved_far_enough_to_drag(
+                state.start_cursor.x,
+                state.start_cursor.y,
+                cursor.x,
+                cursor.y,
+            )
+        {
+            return LRESULT(0);
+        }
+
+        state.dragging = true;
+        let _ = SetWindowPos(
+            hwnd,
+            None,
+            state.start_window.left + dx,
+            state.start_window.top + dy,
+            0,
+            0,
+            SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
+        );
+
+        LRESULT(0)
+    }
+
+    unsafe fn handle_left_button_up(hwnd: HWND) -> LRESULT {
+        let _ = ReleaseCapture();
+        let state = DRAG_STATE.lock().expect("drag state mutex poisoned").take();
+        if let Some(state) = state {
+            let mut cursor = POINT::default();
+            let still_click = GetCursorPos(&mut cursor).is_ok()
+                && !moved_far_enough_to_drag(
+                    state.start_cursor.x,
+                    state.start_cursor.y,
+                    cursor.x,
+                    cursor.y,
+                );
+            if !state.dragging || still_click {
+                show_left_click_placeholder(hwnd);
+            }
+        }
+
+        LRESULT(0)
+    }
+
+    unsafe fn show_left_click_placeholder(_hwnd: HWND) {
+        let _ = MessageBoxW(
+            None,
+            w!("Left click received. In the Tauri integration this will open MiniWindow."),
+            w!("Isotope Orb"),
+            MB_OK | MB_ICONINFORMATION,
+        );
     }
 
     fn low_word_signed(lparam: LPARAM) -> i32 {

@@ -2,7 +2,7 @@
 
 This is a Windows-only native desktop experiment. It does not use Tauri, Svelte, or WebView.
 
-The spike creates a 96px topmost `WS_POPUP` layered window, clips it with `SetWindowRgn`, paints a supersampled premultiplied-alpha BGRA orb with `UpdateLayeredWindow`, and returns `HTCAPTION` for hit tests inside the circle so the orb can be dragged by holding the visible circle.
+The spike creates an 88px topmost `WS_POPUP` layered window, clips it with `SetWindowRgn`, paints a supersampled premultiplied-alpha BGRA orb with `UpdateLayeredWindow`, and treats the visible circle as client-area input so left-click, right-click, and drag can be handled separately.
 
 Run from PowerShell on Windows:
 
@@ -14,4 +14,4 @@ cargo build
 Start-Process "E:\DevCache\cargo-target\native-floating-orb-win32\debug\native-floating-orb-win32.exe"
 ```
 
-Right-click the orb to close it.
+Left-click the orb to show the MiniWindow integration placeholder. Right-click the orb to close it.
