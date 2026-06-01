@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
+import signal
+import sys
+from pathlib import Path
 
 import pytest
 
@@ -150,6 +154,28 @@ def test_windows_system_terminal_runner_reports_nonzero_timeout_and_start_failur
     assert start_failure.reason_code == "terminal_windows_runner_start_failed"
 
 
+def test_windows_system_terminal_runner_default_runner_exposes_pid_for_timeout_cleanup(tmp_path):
+    python_exe = _python_executable_with_exe_suffix(tmp_path)
+    cleanup_calls = []
+    runner = WindowsSystemTerminalRunner(
+        tmp_path,
+        executable_resolver=lambda command: str(python_exe),
+        cleanup_process_tree=lambda process_id: _record_and_terminate(cleanup_calls, process_id),
+    )
+
+    result = runner.run(
+        _request(
+            argv=["python", "-c", "import time; time.sleep(10)"],
+            allowed_commands=["python"],
+            timeout_seconds=1,
+        )
+    )
+
+    assert result.status == "timeout"
+    assert result.reason_code == "terminal_windows_runner_timeout"
+    assert cleanup_calls and isinstance(cleanup_calls[0], int)
+
+
 def _request(
     *,
     argv: list[str] | None = None,
@@ -157,6 +183,7 @@ def _request(
     max_output_bytes: int = 4096,
     grants: dict | None = None,
     command_request: dict | None = None,
+    timeout_seconds: int = 5,
 ) -> TerminalBackendRequest:
     argv = argv or ["safe"]
     return TerminalBackendRequest(
@@ -183,7 +210,26 @@ def _request(
             "mode": "shared_ro",
         },
         command_request=command_request or {"kind": "exec_argv", "argv": argv},
-        budget={"seconds": 5},
+        budget={"seconds": timeout_seconds},
         artifact_policy={"capture": ["transcript"]},
         basis_event_ids=["evt_decided"],
     )
+
+
+def _python_executable_with_exe_suffix(tmp_path: Path) -> Path:
+    executable = Path(sys.executable)
+    if executable.suffix.lower() == ".exe":
+        return executable
+    linked = tmp_path / "python.exe"
+    linked.symlink_to(executable)
+    return linked
+
+
+def _record_and_terminate(cleanup_calls: list[int | None], process_id: int | None) -> dict:
+    cleanup_calls.append(process_id)
+    if process_id is not None:
+        try:
+            os.kill(process_id, signal.SIGTERM)
+        except OSError:
+            pass
+    return {"attempted": True, "succeeded": True, "method": "test", "process_id": process_id}

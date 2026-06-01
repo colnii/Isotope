@@ -302,22 +302,23 @@ def _subprocess_process_runner(
 ) -> WindowsProcessResult:
     env = {"PATH": os.environ.get("PATH", os.defpath), **env_overlay}
     try:
-        completed = subprocess.run(
+        process = subprocess.Popen(
             argv,
             cwd=cwd,
             env=env,
             text=True,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             shell=False,
-            timeout=timeout_seconds,
-            check=False,
         )
+        stdout, stderr = process.communicate(timeout=timeout_seconds)
     except subprocess.TimeoutExpired as exc:
         return WindowsProcessResult(
             exit_code=None,
             stdout=_timeout_text(exc.stdout),
             stderr=_timeout_text(exc.stderr),
             timed_out=True,
+            process_id=process.pid,
         )
     except OSError as exc:
         return WindowsProcessResult(
@@ -328,9 +329,9 @@ def _subprocess_process_runner(
             start_error=str(exc),
         )
     return WindowsProcessResult(
-        exit_code=completed.returncode,
-        stdout=completed.stdout,
-        stderr=completed.stderr,
+        exit_code=process.returncode,
+        stdout=stdout,
+        stderr=stderr,
         timed_out=False,
     )
 

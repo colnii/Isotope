@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
+import signal
+import sys
 from pathlib import Path
 
 import pytest
@@ -134,6 +137,20 @@ def test_workspace_resolver_allows_direct_only_for_safe_read_only_windows_paths(
     assert decision.workspace_root == "C:\\repo\\isotope"
     assert decision.cleanup_on_success is False
     assert decision.keep_on_failure is True
+
+
+def test_workspace_resolver_rejects_direct_mutation_without_explicit_allowance():
+    with pytest.raises(WindowsSmokeWorkspaceError) as exc_info:
+        resolve_windows_workspace(
+            source_root="C:\\repo\\isotope",
+            host_mode="windows_python",
+            workspace_strategy="direct",
+            source_root_kind="windows_local",
+            mutation_policy="build",
+            allow_direct_mutation=False,
+        )
+
+    assert exc_info.value.reason_code == "windows_smoke_workspace_direct_mutation_rejected"
 
 
 def test_workspace_resolver_uses_short_temp_copy_for_wsl_mutation_or_long_paths():
@@ -424,6 +441,41 @@ def test_run_windows_smoke_plan_records_process_tree_cleanup_on_timeout(tmp_path
     }
 
 
+def test_run_windows_smoke_plan_default_runner_exposes_pid_for_timeout_cleanup(tmp_path):
+    python_exe = _python_executable_with_exe_suffix(tmp_path)
+    cleanup_calls = []
+    plan = WindowsSmokePlan(
+        source_root=tmp_path,
+        profile_id="custom_timeout",
+        profile_version="2026-06-02",
+        workspace_strategy="direct",
+        steps=[WindowsSmokeStep(name="slow", argv=[str(python_exe), "-c", "import time; time.sleep(10)"], cwd=".")],
+        timeout_seconds=1,
+        max_output_bytes=4096,
+    )
+    workspace_decision = resolve_windows_workspace(
+        source_root=tmp_path,
+        host_mode="windows_python",
+        workspace_strategy="direct",
+        source_root_kind="windows_local",
+    )
+
+    report = run_windows_native_smoke_plan(
+        plan,
+        host_mode="windows_python",
+        source_root_kind="windows_local",
+        workspace_decision=workspace_decision,
+        cleanup_process_tree=lambda process_id: _record_and_terminate(cleanup_calls, process_id),
+        now=_fake_clock(),
+        platform_info={"system": "Windows"},
+        tool_versions={},
+        repo_revision_if_available=None,
+    )
+
+    assert report.status == "timeout"
+    assert cleanup_calls and isinstance(cleanup_calls[0], int)
+
+
 def test_powershell_helper_invocation_uses_fixed_file_shape(tmp_path):
     argv = build_windows_powershell_helper_argv(
         helper_script=tmp_path / "fixed_helper.ps1",
@@ -529,3 +581,22 @@ def _fake_clock():
         ]
     )
     return lambda: next(values)
+
+
+def _python_executable_with_exe_suffix(tmp_path: Path) -> Path:
+    executable = Path(sys.executable)
+    if executable.suffix.lower() == ".exe":
+        return executable
+    linked = tmp_path / "python.exe"
+    linked.symlink_to(executable)
+    return linked
+
+
+def _record_and_terminate(cleanup_calls: list[int | None], process_id: int | None) -> dict:
+    cleanup_calls.append(process_id)
+    if process_id is not None:
+        try:
+            os.kill(process_id, signal.SIGTERM)
+        except OSError:
+            pass
+    return {"attempted": True, "succeeded": True, "method": "test", "process_id": process_id}

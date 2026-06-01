@@ -321,6 +321,12 @@ def resolve_windows_workspace(
             keep_on_failure=True,
         )
     if workspace_strategy == "direct":
+        if mutation_policy not in READ_ONLY_MUTATION_POLICIES and not allow_direct_mutation:
+            raise WindowsSmokeWorkspaceError(
+                "direct workspace mutation requires an explicit profile allowance",
+                reason_code="windows_smoke_workspace_direct_mutation_rejected",
+                details={"mutation_policy": mutation_policy, "source_root": source_text},
+            )
         return _direct_workspace_decision(source_text, source_kind, reason="workspace_strategy_direct")
     if workspace_strategy == "copy_to_temp":
         return _copy_workspace_decision(
