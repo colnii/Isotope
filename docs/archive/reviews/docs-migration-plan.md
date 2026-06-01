@@ -154,7 +154,7 @@ Reason: README, AGENTS, current-status, roadmap, and recent task instructions li
 | `../architecture/memory-v0.1/memory-write-query-boundary-v0.1.md` | `docs/memory/memory-write-query-boundary-v0.1.md` | memory | No | Medium | Placement reviewed in `deferred-docs-placement-review.md`; move only with memory batch. |
 | `post-v0.2-tag-delta.md` | `docs/status/post-v0.2-tag-delta.md` | status | No | High | Placement reviewed in `status-docs-placement-review.md`; keep in reviews until full status batch. |
 | `../features/release-draft-v0.1-demo.md` | `../archive/release/release-draft-v0.1-demo.md` | release | Done | Low | Phase 1a completed; old path stub removed in Phase 1d. |
-| `../architecture/checkpoint-v0.1/checkpoint-v0.1/server-checkpoint-boundary-v0.1.md` | `docs/checkpoint/server-checkpoint-boundary-v0.1.md` | checkpoint | No | Medium | Placement reviewed in `deferred-docs-placement-review.md`; move only with checkpoint batch. |
+| `../architecture/checkpoint-v0.1/server-checkpoint-boundary-v0.1.md` | `docs/checkpoint/server-checkpoint-boundary-v0.1.md` | checkpoint | No | Medium | Placement reviewed in `deferred-docs-placement-review.md`; move only with checkpoint batch. |
 | `../features/v0.1-demo-acceptance.md` | `../features/demo/v0.1-demo-acceptance.md` | demo | Done | Low | Phase 1c completed; old path stub removed in Phase 1d. |
 | `v0.2-cycle-closure-review.md` | `docs/status/v0.2-cycle-closure-review.md` | status | No | High | Placement reviewed in `status-docs-placement-review.md`; keep in reviews until full status batch. |
 | `../features/v0.2-demo-acceptance.md` | `../features/demo/v0.2-demo-acceptance.md` | demo/status | Done | Low | Phase 1c completed; old path stub removed in Phase 1d. |
