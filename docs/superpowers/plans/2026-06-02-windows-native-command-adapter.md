@@ -130,29 +130,29 @@ Commit:
 
 Write failing tests first for:
 
-- [ ] Reject non-`exec_argv` command requests.
-- [ ] Require terminal grants and reject `terminal.shell == True`.
-- [ ] Resolve `argv[0]` with `shutil.which` and record `resolved_executable`.
-- [ ] Reject `.cmd` and `.bat` for general runner.
-- [ ] Reject npm / pnpm / yarn / npx as arbitrary `exec_argv`.
-- [ ] Completed, nonzero, timeout, and start-failure results all return structured `TerminalBackendResult`.
-- [ ] Transcript artifact includes argv, cwd, exit code, capped output, timeout, truncation, `shell=false`, `platform=windows`, `resolved_executable`, and process-tree cleanup status.
-- [ ] Summary does not expose full stdout/stderr.
+- [x] Reject non-`exec_argv` command requests.
+- [x] Require terminal grants and reject `terminal.shell == True`.
+- [x] Resolve `argv[0]` with `shutil.which` and record `resolved_executable`.
+- [x] Reject `.cmd` and `.bat` for general runner.
+- [x] Reject npm / pnpm / yarn / npx as arbitrary `exec_argv`.
+- [x] Completed, nonzero, timeout, and start-failure results all return structured `TerminalBackendResult`.
+- [x] Transcript artifact includes argv, cwd, exit code, capped output, timeout, truncation, `shell=false`, `platform=windows`, `resolved_executable`, and process-tree cleanup status.
+- [x] Summary does not expose full stdout/stderr.
 
 Implementation:
 
-- [ ] Add `src/isotope/execution/terminal/windows_runner.py`.
-- [ ] Export `WindowsSystemTerminalRunner` from `runner.py`.
-- [ ] Mirror Linux runner shape while keeping Windows-specific checks inside the new runner.
+- [x] Add `src/isotope/execution/terminal/windows_runner.py`.
+- [x] Export `WindowsSystemTerminalRunner` from `runner.py`.
+- [x] Mirror Linux runner shape while keeping Windows-specific checks inside the new runner.
 
 Verification:
 
-- [ ] `PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest tests/unit/execution/terminal/test_windows_runner.py -q`
-- [ ] `PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest tests/unit/execution/terminal -q`
+- [x] `PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest tests/unit/execution/terminal/test_windows_runner.py -q`
+- [x] `PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest tests/unit/execution/terminal -q`
 
 Commit:
 
-- [ ] `feat(terminal): add windows system terminal runner`
+- [x] `feat(terminal): add windows system terminal runner`
 
 ## Task 5: Integration Verification and Handoff
 

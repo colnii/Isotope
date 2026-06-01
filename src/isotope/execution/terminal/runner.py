@@ -17,6 +17,7 @@ from .backend_types import (
     TerminalBackendRunResult,
 )
 from .linux_runner import LinuxSystemTerminalRunner
+from .windows_runner import WindowsSystemTerminalRunner, WindowsTerminalProcessResult
 
 
 __all__ = [
@@ -32,6 +33,8 @@ __all__ = [
     "TerminalBackendRequest",
     "TerminalBackendResult",
     "TerminalBackendRunResult",
+    "WindowsSystemTerminalRunner",
+    "WindowsTerminalProcessResult",
     "build_terminal_backend_request",
     "default_terminal_backend_config",
 ]
