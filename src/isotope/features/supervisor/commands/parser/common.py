@@ -3,7 +3,23 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 from typing import Any
+
+
+def add_state_root_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--state-root",
+        dest="codex_home",
+        default=str(Path.home() / ".codex"),
+        help="Supervisor state root directory. Defaults to ~/.codex.",
+    )
+    parser.add_argument(
+        "--codex-home",
+        dest="codex_home",
+        default=argparse.SUPPRESS,
+        help=argparse.SUPPRESS,
+    )
 
 
 def add_goal_replenishment_args(

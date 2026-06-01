@@ -117,7 +117,8 @@ def test_runner_discovers_supervisor_request_context_from_default_catalog():
 
     assert _ids(search["capabilities"]) == ["supervisor.request_context"]
     description = runner.describe_capability("supervisor.request_context")
-    assert description["input_contract"]["required"] == ["codex_home", "cwd", "query"]
+    assert description["input_contract"]["required"] == ["state_root", "cwd", "query"]
+    assert "codex_home" not in description["input_contract"]["properties"]
     assert "workspace_read_only" in description["safety_boundaries"]
     assert "writes_existing_supervisor_context_store" in description["safety_boundaries"]
 
@@ -130,7 +131,8 @@ def test_runner_discovers_supervisor_worker_review_from_default_catalog():
 
     assert _ids(search["capabilities"]) == ["supervisor.worker_review"]
     description = runner.describe_capability("supervisor.worker_review")
-    assert description["input_contract"]["required"] == ["codex_home"]
+    assert description["input_contract"]["required"] == ["state_root"]
+    assert "codex_home" not in description["input_contract"]["properties"]
     assert "workspace_read_only" in description["safety_boundaries"]
     assert "no_merge_or_cleanup" in description["safety_boundaries"]
 
@@ -143,7 +145,8 @@ def test_runner_discovers_supervisor_integration_review_from_default_catalog():
 
     assert _ids(search["capabilities"]) == ["supervisor.integration_review"]
     description = runner.describe_capability("supervisor.integration_review")
-    assert description["input_contract"]["required"] == ["codex_home"]
+    assert description["input_contract"]["required"] == ["state_root"]
+    assert "codex_home" not in description["input_contract"]["properties"]
     assert "workspace_read_only" in description["safety_boundaries"]
     assert "no_merge_push_or_cleanup" in description["safety_boundaries"]
 
@@ -358,7 +361,7 @@ def test_request_context_plan_stops_when_required_inputs_are_missing():
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_readonly"
-    assert plan["missing_inputs"] == ["codex_home", "query"]
+    assert plan["missing_inputs"] == ["state_root", "query"]
     assert plan["scenario"] is None
 
 
@@ -368,7 +371,7 @@ def test_worker_review_plan_stops_when_required_inputs_are_missing():
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_readonly"
-    assert plan["missing_inputs"] == ["codex_home"]
+    assert plan["missing_inputs"] == ["state_root"]
     assert plan["scenario"] is None
 
 
@@ -378,7 +381,7 @@ def test_integration_review_plan_stops_when_required_inputs_are_missing():
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_readonly"
-    assert plan["missing_inputs"] == ["codex_home"]
+    assert plan["missing_inputs"] == ["state_root"]
     assert plan["scenario"] is None
 
 
@@ -484,23 +487,23 @@ def test_memory_promotion_preview_plan_rejects_invalid_inputs(field_name, bad_va
         _runner().plan_capability_run("memory.promotion.preview", inputs=inputs)
 
 
-def test_worker_review_plan_rejects_non_string_codex_home():
-    with pytest.raises(ValueError, match="codex_home"):
+def test_worker_review_plan_rejects_non_string_state_root():
+    with pytest.raises(ValueError, match="state_root"):
         _runner().plan_capability_run(
             "supervisor.worker_review",
-            inputs={"codex_home": 123},
+            inputs={"state_root": 123},
         )
 
 
 @pytest.mark.parametrize(
     ("field_name", "bad_value"),
     [
-        ("codex_home", 123),
+        ("state_root", 123),
         ("base_ref", ["main"]),
     ],
 )
 def test_integration_review_plan_rejects_non_string_inputs(field_name, bad_value):
-    inputs = {"codex_home": "/tmp/codex-home", "base_ref": "main"}
+    inputs = {"state_root": "/tmp/supervisor-state", "base_ref": "main"}
     inputs[field_name] = bad_value
 
     with pytest.raises(ValueError, match=field_name):
@@ -548,14 +551,14 @@ def test_worker_review_plan_rejects_inputs_outside_contract():
 @pytest.mark.parametrize(
     ("field_name", "bad_value"),
     [
-        ("codex_home", 123),
+        ("state_root", 123),
         ("cwd", ["workspace"]),
         ("query", {"text": "request_context"}),
     ],
 )
 def test_request_context_plan_rejects_non_string_required_inputs(field_name, bad_value):
     inputs = {
-        "codex_home": "/tmp/codex-home",
+        "state_root": "/tmp/supervisor-state",
         "cwd": "/tmp/workspace",
         "query": "request_context",
     }

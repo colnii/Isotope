@@ -10,8 +10,8 @@ from isotope.features.supervisor.state.projection import build_supervisor_state_
 from isotope.platform.ids import new_id
 
 
-def build_desktop_snapshot(*, codex_home: Path | str) -> dict[str, Any]:
-    root = Path(codex_home).expanduser()
+def build_desktop_snapshot(*, state_root: Path | str) -> dict[str, Any]:
+    root = Path(state_root).expanduser()
     supervisor = build_supervisor_state_snapshot(codex_home=root)
     summary = supervisor.get("summary", {})
     active_goals = list(supervisor.get("active_goals", []))
@@ -60,7 +60,7 @@ def _supervisor_source(root: Path) -> dict[str, Any]:
     return {
         "kind": "real",
         "label": "supervisor_state_projection",
-        "backendRef": f"codex_home:{root}",
+        "backendRef": f"supervisor_state:{root}",
     }
 
 

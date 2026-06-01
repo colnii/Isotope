@@ -38,6 +38,7 @@ from .supervisor import (
     SUPERVISOR_REQUEST_CONTEXT_CAPABILITY,
     SUPERVISOR_WORKER_REVIEW_CAPABILITY,
     is_supervisor_readonly_capability,
+    normalize_supervisor_state_root_inputs,
     run_supervisor_codex_operation,
     run_supervisor_integration_review,
     run_supervisor_request_context,
@@ -153,6 +154,8 @@ class CapabilityRunner:
             return _unknown_launch_plan(capability_id)
 
         input_mapping = _input_mapping(inputs)
+        if is_supervisor_readonly_capability(capability_id):
+            input_mapping = normalize_supervisor_state_root_inputs(input_mapping)
         status = self._catalog.get_capability_status(capability_id, env=env)
         scenario = _CAPABILITY_SCENARIOS.get(capability_id)
         required_inputs = _required_inputs(capability)
@@ -241,6 +244,8 @@ class CapabilityRunner:
     ) -> dict[str, Any]:
         capability = self._lookup_capability(capability_id)
         input_mapping = _input_mapping(inputs)
+        if is_supervisor_readonly_capability(capability_id):
+            input_mapping = normalize_supervisor_state_root_inputs(input_mapping)
         if (
             is_memory_readonly_capability(capability_id)
             or is_research_capability(capability_id)

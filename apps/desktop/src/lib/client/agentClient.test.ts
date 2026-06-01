@@ -5,7 +5,7 @@ import { createAgentClient } from './agentClient';
 const realSource = {
   kind: 'real' as const,
   label: 'supervisor_state_projection',
-  backendRef: 'codex_home:/tmp/isotope'
+  backendRef: 'supervisor_state:/tmp/isotope'
 };
 
 const realSnapshot: IsotopeSnapshot = {

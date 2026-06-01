@@ -17,14 +17,14 @@ from isotope.features.supervisor.web import create_dashboard_server
 
 
 def test_desktop_snapshot_empty_root_uses_contract_shape(tmp_path):
-    snapshot = build_desktop_snapshot(codex_home=tmp_path)
+    snapshot = build_desktop_snapshot(state_root=tmp_path)
 
     assert snapshot["schemaVersion"] == 1
     assert isinstance(snapshot["snapshotId"], str)
     assert snapshot["source"] == {
         "kind": "real",
         "label": "supervisor_state_projection",
-        "backendRef": f"codex_home:{tmp_path}",
+        "backendRef": f"supervisor_state:{tmp_path}",
     }
     assert snapshot["counts"] == {
         "runningAgents": 0,
@@ -37,7 +37,10 @@ def test_desktop_snapshot_empty_root_uses_contract_shape(tmp_path):
     assert snapshot["activeAgent"]["source"]["kind"] == "real"
     assert snapshot["agents"][0]["kind"] == "supervisor"
     assert snapshot["activities"][0]["kind"] == "supervisor"
-    assert snapshot["activities"][0]["source"]["backendRef"] == f"codex_home:{tmp_path}"
+    assert (
+        snapshot["activities"][0]["source"]["backendRef"]
+        == f"supervisor_state:{tmp_path}"
+    )
     assert set(snapshot["activeActivity"]) == {"id", "kind", "title", "status", "source"}
     assert "activeGoal" not in snapshot
     assert "eventCursor" not in snapshot
@@ -61,7 +64,7 @@ def test_desktop_snapshot_maps_active_goal_to_activity(tmp_path):
         merge_gate="manual",
     )
 
-    snapshot = build_desktop_snapshot(codex_home=tmp_path)
+    snapshot = build_desktop_snapshot(state_root=tmp_path)
 
     assert snapshot["activities"][0]["kind"] == "supervisor"
     assert snapshot["activities"][0]["status"] == "running"
@@ -95,7 +98,7 @@ def test_desktop_snapshot_redacts_long_or_secret_preview_content(tmp_path):
         summary="token=sk-test-secret " + "x" * 2200,
     )
 
-    snapshot = build_desktop_snapshot(codex_home=tmp_path)
+    snapshot = build_desktop_snapshot(state_root=tmp_path)
 
     serialized = str(snapshot).lower()
     goal_node = next(activity for activity in snapshot["activities"] if activity["kind"] == "goal")
@@ -118,7 +121,7 @@ def test_desktop_snapshot_maps_active_decision_to_approval_summary(tmp_path):
         },
     )
 
-    snapshot = build_desktop_snapshot(codex_home=tmp_path)
+    snapshot = build_desktop_snapshot(state_root=tmp_path)
 
     assert snapshot["activeAgent"]["status"] == "needs_attention"
     assert snapshot["activeActivity"]["status"] == "needs_attention"

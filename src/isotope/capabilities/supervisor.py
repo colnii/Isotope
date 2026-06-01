@@ -27,6 +27,9 @@ SUPERVISOR_CODEX_OPERATIONS = (
     "resume_worker",
 )
 
+SUPERVISOR_STATE_ROOT_INPUT = "state_root"
+LEGACY_SUPERVISOR_STATE_ROOT_INPUT = "codex_home"
+
 
 def is_supervisor_readonly_capability(capability_id: str) -> bool:
     return capability_id in {
@@ -43,6 +46,7 @@ def validate_supervisor_readonly_inputs(
     inputs: Mapping[str, Any] | None,
     missing_inputs: list[str],
 ) -> dict[str, Any]:
+    inputs = normalize_supervisor_state_root_inputs(inputs)
     if capability_id == SUPERVISOR_REQUEST_CONTEXT_CAPABILITY:
         return _validate_supervisor_request_context_inputs(
             inputs=inputs,
@@ -69,7 +73,8 @@ def validate_supervisor_readonly_inputs(
 def run_supervisor_codex_operation(
     *, inputs: Mapping[str, Any] | None
 ) -> dict[str, Any]:
-    required_inputs = ["operation", "codex_home"]
+    inputs = normalize_supervisor_state_root_inputs(inputs)
+    required_inputs = ["operation", SUPERVISOR_STATE_ROOT_INPUT]
     missing_inputs = _missing_inputs(required_inputs, inputs)
     if missing_inputs:
         raise ValueError("missing required capability inputs: " + ", ".join(missing_inputs))
@@ -109,7 +114,8 @@ def run_supervisor_codex_operation(
 def run_supervisor_request_context(
     *, inputs: Mapping[str, Any] | None
 ) -> dict[str, Any]:
-    required_inputs = ["codex_home", "cwd", "query"]
+    inputs = normalize_supervisor_state_root_inputs(inputs)
+    required_inputs = [SUPERVISOR_STATE_ROOT_INPUT, "cwd", "query"]
     missing_inputs = _missing_inputs(required_inputs, inputs)
     if missing_inputs:
         raise ValueError("missing required capability inputs: " + ", ".join(missing_inputs))
@@ -118,7 +124,7 @@ def run_supervisor_request_context(
         missing_inputs=missing_inputs,
     )
     result = request_project_context(
-        codex_home=input_mapping["codex_home"],
+        codex_home=input_mapping[SUPERVISOR_STATE_ROOT_INPUT],
         cwd=input_mapping["cwd"],
         query=input_mapping["query"],
         max_results=input_mapping["max_results"],
@@ -138,7 +144,8 @@ def run_supervisor_request_context(
 def run_supervisor_integration_review(
     *, inputs: Mapping[str, Any] | None
 ) -> dict[str, Any]:
-    required_inputs = ["codex_home"]
+    inputs = normalize_supervisor_state_root_inputs(inputs)
+    required_inputs = [SUPERVISOR_STATE_ROOT_INPUT]
     missing_inputs = _missing_inputs(required_inputs, inputs)
     if missing_inputs:
         raise ValueError("missing required capability inputs: " + ", ".join(missing_inputs))
@@ -147,7 +154,7 @@ def run_supervisor_integration_review(
         missing_inputs=missing_inputs,
     )
     payload = collect_integration_reviews(
-        codex_home=Path(input_mapping["codex_home"]),
+        codex_home=Path(input_mapping[SUPERVISOR_STATE_ROOT_INPUT]),
         base_ref=input_mapping["base_ref"],
         include_unfinished=input_mapping["include_unfinished"],
         include_missing_worktrees=input_mapping["include_missing_worktrees"],
@@ -166,7 +173,8 @@ def run_supervisor_integration_review(
 def run_supervisor_worker_review(
     *, inputs: Mapping[str, Any] | None
 ) -> dict[str, Any]:
-    required_inputs = ["codex_home"]
+    inputs = normalize_supervisor_state_root_inputs(inputs)
+    required_inputs = [SUPERVISOR_STATE_ROOT_INPUT]
     missing_inputs = _missing_inputs(required_inputs, inputs)
     if missing_inputs:
         raise ValueError("missing required capability inputs: " + ", ".join(missing_inputs))
@@ -175,7 +183,7 @@ def run_supervisor_worker_review(
         missing_inputs=missing_inputs,
     )
     payload = collect_worker_reviews(
-        codex_home=Path(input_mapping["codex_home"]),
+        codex_home=Path(input_mapping[SUPERVISOR_STATE_ROOT_INPUT]),
         lightweight=True,
     )
     return {
@@ -193,13 +201,30 @@ def _missing_inputs(
     return missing_required_input_keys(inputs, required_inputs)
 
 
+def normalize_supervisor_state_root_inputs(
+    inputs: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    input_mapping = dict(inputs or {})
+    if LEGACY_SUPERVISOR_STATE_ROOT_INPUT not in input_mapping:
+        return input_mapping
+    legacy_value = input_mapping[LEGACY_SUPERVISOR_STATE_ROOT_INPUT]
+    if (
+        SUPERVISOR_STATE_ROOT_INPUT in input_mapping
+        and input_mapping[SUPERVISOR_STATE_ROOT_INPUT] != legacy_value
+    ):
+        raise ValueError("state_root and codex_home must refer to the same directory")
+    input_mapping[SUPERVISOR_STATE_ROOT_INPUT] = legacy_value
+    input_mapping.pop(LEGACY_SUPERVISOR_STATE_ROOT_INPUT, None)
+    return input_mapping
+
+
 def _validate_supervisor_request_context_inputs(
     *,
     inputs: Mapping[str, Any] | None,
     missing_inputs: list[str],
 ) -> dict[str, Any]:
     input_mapping = inputs or {}
-    for name in ("codex_home", "cwd", "query"):
+    for name in (SUPERVISOR_STATE_ROOT_INPUT, "cwd", "query"):
         if name in missing_inputs:
             continue
         value = input_mapping.get(name)
@@ -228,29 +253,37 @@ def _validate_supervisor_codex_operation_inputs(
         if operation not in SUPERVISOR_CODEX_OPERATIONS:
             supported = ", ".join(SUPERVISOR_CODEX_OPERATIONS)
             raise ValueError(f"operation must be one of: {supported}")
-    if "codex_home" not in missing_inputs and not isinstance(
-        input_mapping.get("codex_home"), str
+    if SUPERVISOR_STATE_ROOT_INPUT not in missing_inputs and not isinstance(
+        input_mapping.get(SUPERVISOR_STATE_ROOT_INPUT), str
     ):
-        raise ValueError("codex_home must be a string")
+        raise ValueError("state_root must be a string")
     operation = input_mapping.get("operation")
     if operation == "request_context":
         return _validate_supervisor_request_context_inputs(
             inputs=input_mapping,
             missing_inputs=[
                 name
-                for name in ("codex_home", "cwd", "query")
+                for name in (SUPERVISOR_STATE_ROOT_INPUT, "cwd", "query")
                 if name not in input_mapping or input_mapping.get(name) in (None, "")
             ],
         )
     if operation == "worker_review":
         return _validate_supervisor_worker_review_inputs(
             inputs=input_mapping,
-            missing_inputs=["codex_home"] if "codex_home" in missing_inputs else [],
+            missing_inputs=(
+                [SUPERVISOR_STATE_ROOT_INPUT]
+                if SUPERVISOR_STATE_ROOT_INPUT in missing_inputs
+                else []
+            ),
         )
     if operation == "integration_review":
         return _validate_supervisor_integration_review_inputs(
             inputs=input_mapping,
-            missing_inputs=["codex_home"] if "codex_home" in missing_inputs else [],
+            missing_inputs=(
+                [SUPERVISOR_STATE_ROOT_INPUT]
+                if SUPERVISOR_STATE_ROOT_INPUT in missing_inputs
+                else []
+            ),
         )
     return dict(input_mapping)
 
@@ -261,10 +294,10 @@ def _validate_supervisor_worker_review_inputs(
     missing_inputs: list[str],
 ) -> dict[str, Any]:
     input_mapping = inputs or {}
-    if "codex_home" not in missing_inputs and not isinstance(
-        input_mapping.get("codex_home"), str
+    if SUPERVISOR_STATE_ROOT_INPUT not in missing_inputs and not isinstance(
+        input_mapping.get(SUPERVISOR_STATE_ROOT_INPUT), str
     ):
-        raise ValueError("codex_home must be a string")
+        raise ValueError("state_root must be a string")
     return dict(input_mapping)
 
 
@@ -274,10 +307,10 @@ def _validate_supervisor_integration_review_inputs(
     missing_inputs: list[str],
 ) -> dict[str, Any]:
     input_mapping = inputs or {}
-    if "codex_home" not in missing_inputs and not isinstance(
-        input_mapping.get("codex_home"), str
+    if SUPERVISOR_STATE_ROOT_INPUT not in missing_inputs and not isinstance(
+        input_mapping.get(SUPERVISOR_STATE_ROOT_INPUT), str
     ):
-        raise ValueError("codex_home must be a string")
+        raise ValueError("state_root must be a string")
 
     base_ref = input_mapping.get("base_ref", "main")
     if not isinstance(base_ref, str) or not base_ref.strip():

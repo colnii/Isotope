@@ -513,9 +513,9 @@ class CapabilityCatalog:
                 ),
                 Capability(
                     capability_id="supervisor.codex_operation",
-                    title="Supervisor Codex Operation",
+                    title="Supervisor Operation",
                     description=(
-                        "Unified Supervisor-facing Codex operation capacity. "
+                        "Unified Supervisor operation capacity. "
                         "Operations are selected by enum and dispatched through "
                         "existing managed Supervisor boundaries."
                     ),
@@ -523,7 +523,6 @@ class CapabilityCatalog:
                     shelf="product_candidate",
                     domain_tags=(
                         "supervisor",
-                        "codex",
                         "operation",
                         "worker",
                         "agent-loop",
@@ -531,7 +530,7 @@ class CapabilityCatalog:
                     ),
                     input_contract={
                         "type": "object",
-                        "required": ["operation", "codex_home"],
+                        "required": ["operation", "state_root"],
                         "properties": {
                             "operation": {
                                 "type": "string",
@@ -542,11 +541,11 @@ class CapabilityCatalog:
                                     "launch_worker",
                                     "resume_worker",
                                 ],
-                                "description": "Codex/Supervisor operation to dispatch.",
+                                "description": "Supervisor operation to dispatch.",
                             },
-                            "codex_home": {
+                            "state_root": {
                                 "type": "string",
-                                "description": "Codex home directory used by Supervisor state.",
+                                "description": "Supervisor state root directory.",
                             },
                             "cwd": {
                                 "type": "string",
@@ -566,7 +565,7 @@ class CapabilityCatalog:
                             },
                             "session_id": {
                                 "type": "string",
-                                "description": "Codex session id for resume_worker.",
+                                "description": "Managed worker session id for resume_worker.",
                             },
                         },
                     },
@@ -580,8 +579,8 @@ class CapabilityCatalog:
                         ],
                     },
                     safety_boundaries=(
-                        "single_codex_operation_capacity",
-                        "no_arbitrary_codex_command",
+                        "single_supervisor_operation_capacity",
+                        "no_arbitrary_worker_command",
                         "reuses_existing_supervisor_boundaries",
                         "agent_loop_call_capability_compatible",
                         "low_sensitive_summary_only",
@@ -608,11 +607,11 @@ class CapabilityCatalog:
                     ),
                     input_contract={
                         "type": "object",
-                        "required": ["codex_home"],
+                        "required": ["state_root"],
                         "properties": {
-                            "codex_home": {
+                            "state_root": {
                                 "type": "string",
-                                "description": "Codex home directory containing the managed worker registry.",
+                                "description": "Supervisor state root containing the managed worker registry.",
                             },
                             "base_ref": {
                                 "type": "string",
@@ -674,11 +673,11 @@ class CapabilityCatalog:
                     domain_tags=("supervisor", "request_context", "context", "search"),
                     input_contract={
                         "type": "object",
-                        "required": ["codex_home", "cwd", "query"],
+                        "required": ["state_root", "cwd", "query"],
                         "properties": {
-                            "codex_home": {
+                            "state_root": {
                                 "type": "string",
-                                "description": "Codex home directory used for existing context result storage.",
+                                "description": "Supervisor state root used for context result storage.",
                             },
                             "cwd": {
                                 "type": "string",
@@ -730,11 +729,11 @@ class CapabilityCatalog:
                     ),
                     input_contract={
                         "type": "object",
-                        "required": ["codex_home"],
+                        "required": ["state_root"],
                         "properties": {
-                            "codex_home": {
+                            "state_root": {
                                 "type": "string",
-                                "description": "Codex home directory containing the managed worker registry.",
+                                "description": "Supervisor state root containing the managed worker registry.",
                             },
                         },
                     },

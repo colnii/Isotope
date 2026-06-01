@@ -416,7 +416,7 @@ def _build_capacity_plan_with_timeout(
         execute_agent_loop=True,
         runner=runner,
         input_defaults={
-            "codex_home": str(root),
+            "state_root": str(root),
             "root": str(root),
             "run_id": "desktop_chat",
             "cwd": str(Path.cwd()),

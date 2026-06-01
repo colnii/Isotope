@@ -205,11 +205,11 @@
 - LLM planner / capacity path 已复用 `supervisor.worker_review` 和
   `supervisor.integration_review` 的 capability id。
 - `build_supervisor_capacity_plan(...)` 会从 `CapabilityRunner` 取得可提供给
-  LLM 的 manifest；这两个 Supervisor review capability 缺 `codex_home` 时也会
+  LLM 的 manifest；这两个 Supervisor review capability 缺 `state_root` 时也会
   以 missing-inputs 状态暴露给 planner 补参。
-- `loop/supervise --capacity-decisions` 会把当前 `args.codex_home` 作为
-  `codex_home` 和 `root` capacity input default 注入，不要求 LLM 猜本机
-  `.codex` / memory store 路径；模型显式给出的 argument 仍优先，不会被
+- `loop/supervise --capacity-decisions` 会把当前 Supervisor state root 作为
+  `state_root` 和 `root` capacity input default 注入，不要求 LLM 猜本机
+  Supervisor 状态根 / memory store 路径；模型显式给出的 argument 仍优先，不会被
   default 覆盖。
 - 选中并补齐输入后仍复用 `capacity_graph` /
   `CapabilityRunner.plan_capability_run(...)` / agent loop `call_capability`

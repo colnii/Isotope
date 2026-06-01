@@ -9,6 +9,7 @@ from typing import Any
 from isotope.features.supervisor.commands.parser.common import (
     add_failure_retry_args,
     add_goal_replenishment_args,
+    add_state_root_arg,
     add_webhook_args,
 )
 
@@ -22,11 +23,7 @@ def add_loop_command_parsers(
         "loop",
         help="Run the daily managed Supervisor loop with safe defaults.",
     )
-    loop_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    add_state_root_arg(loop_parser)
     loop_parser.add_argument("--limit", type=int, default=10, help="Maximum sessions.")
     loop_parser.add_argument(
         "--stale-after",
@@ -184,11 +181,7 @@ def add_loop_command_parsers(
         "up",
         help="Start the daily Supervisor daemon if needed, then print status.",
     )
-    up_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    add_state_root_arg(up_parser)
     up_parser.add_argument(
         "--limit",
         type=int,

@@ -220,7 +220,7 @@ def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
         for item in capacity_manifest["capabilities"]
         if item["capability_id"] == "supervisor.codex_operation"
     )
-    assert codex_operation["required_inputs"] == ["operation", "codex_home"]
+    assert codex_operation["required_inputs"] == ["operation", "state_root"]
     assert codex_operation["operations"] == [
         "request_context",
         "worker_review",

@@ -222,7 +222,7 @@ def test_capability_runner_cli_plans_request_context_missing_inputs_as_json():
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_readonly"
-    assert plan["missing_inputs"] == ["codex_home", "query"]
+    assert plan["missing_inputs"] == ["state_root", "query"]
     _assert_low_sensitive(payload)
 
 
@@ -237,7 +237,7 @@ def test_capability_runner_cli_plans_worker_review_missing_inputs_as_json():
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_readonly"
-    assert plan["missing_inputs"] == ["codex_home"]
+    assert plan["missing_inputs"] == ["state_root"]
     _assert_low_sensitive(payload)
 
 
@@ -252,7 +252,7 @@ def test_capability_runner_cli_plans_integration_review_missing_inputs_as_json()
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_readonly"
-    assert plan["missing_inputs"] == ["codex_home"]
+    assert plan["missing_inputs"] == ["state_root"]
     _assert_low_sensitive(payload)
 
 
@@ -373,7 +373,7 @@ def test_capability_runner_cli_rejects_required_input_type_errors(tmp_path):
         "--input-json",
         json.dumps(
             {
-                "codex_home": str(tmp_path / "codex-home"),
+                "state_root": str(tmp_path / "supervisor-state"),
                 "cwd": str(tmp_path),
                 "query": 123,
             }
@@ -395,7 +395,7 @@ def test_capability_runner_cli_rejects_invalid_max_results(tmp_path):
         "--input-json",
         json.dumps(
             {
-                "codex_home": str(tmp_path / "codex-home"),
+                "state_root": str(tmp_path / "supervisor-state"),
                 "cwd": str(tmp_path),
                 "query": "request_context",
                 "max_results": 0,
@@ -433,10 +433,10 @@ def test_capability_runner_cli_runs_request_context_with_input_json(tmp_path):
         "Supervisor request_context can retrieve project context.\n",
         encoding="utf-8",
     )
-    codex_home = tmp_path / "codex-home"
+    state_root = tmp_path / "supervisor-state"
     input_json = json.dumps(
         {
-            "codex_home": str(codex_home),
+            "state_root": str(state_root),
             "cwd": str(workspace),
             "query": "request_context project context",
             "max_results": 2,
@@ -462,13 +462,13 @@ def test_capability_runner_cli_runs_request_context_with_input_json(tmp_path):
     assert isinstance(run["context_result"]["created_at"], str)
     assert run["context_result"]["created_at"]
     assert run["context_result"]["item_count"] >= 1
-    assert (codex_home / "supervisor" / "context_results.jsonl").is_file()
+    assert (state_root / "supervisor" / "context_results.jsonl").is_file()
     _assert_low_sensitive(payload)
 
 
 def test_capability_runner_cli_runs_worker_review_with_input_json(tmp_path):
-    codex_home = tmp_path / "codex-home"
-    input_json = json.dumps({"codex_home": str(codex_home)})
+    state_root = tmp_path / "supervisor-state"
+    input_json = json.dumps({"state_root": str(state_root)})
 
     result = _run_cli(
         "run",
@@ -492,8 +492,8 @@ def test_capability_runner_cli_runs_worker_review_with_input_json(tmp_path):
 
 
 def test_capability_runner_cli_runs_integration_review_with_input_json(tmp_path):
-    codex_home = tmp_path / "codex-home"
-    input_json = json.dumps({"codex_home": str(codex_home)})
+    state_root = tmp_path / "supervisor-state"
+    input_json = json.dumps({"state_root": str(state_root)})
 
     result = _run_cli(
         "run",

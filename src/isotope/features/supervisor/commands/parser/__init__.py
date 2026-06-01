@@ -9,6 +9,7 @@ from typing import Any
 from isotope.features.supervisor.commands.parser.common import (
     add_failure_retry_args as _add_failure_retry_args,
     add_goal_replenishment_args as _add_goal_replenishment_args,
+    add_state_root_arg as _add_state_root_arg,
     add_webhook_args as _add_webhook_args,
 )
 from isotope.features.supervisor.commands.parser.daemon import add_daemon_command_parser
@@ -25,21 +26,17 @@ def build_parser(*, api: Any | None = None) -> argparse.ArgumentParser:
 
 
 def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Watch local Codex sessions.")
+    parser = argparse.ArgumentParser(description="Manage local Isotope Supervisor state.")
     subparsers = parser.add_subparsers(dest="command", required=True)
     for command, help_text in (
-        ("scan", "Print one Codex supervisor report."),
+        ("scan", "Print one Supervisor session report."),
         ("dashboard", "Print one grouped supervisor dashboard."),
         ("watch", "Print reports repeatedly."),
         ("advise", "Print one compact next-action suggestion."),
         ("supervise", "Run repeated reports with advice, optional LLM summary, and send execution."),
     ):
         subparser = subparsers.add_parser(command, help=help_text)
-        subparser.add_argument(
-            "--codex-home",
-            default=str(Path.home() / ".codex"),
-            help="Codex home directory. Defaults to ~/.codex.",
-        )
+        _add_state_root_arg(subparser)
         subparser.add_argument("--limit", type=int, default=10, help="Maximum sessions.")
         subparser.add_argument(
             "--stale-after",
@@ -74,11 +71,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         "state",
         help="Print the unified low-sensitive Supervisor state projection.",
     )
-    state_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    _add_state_root_arg(state_parser)
     state_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     worktree_audit_parser = subparsers.add_parser(
         "worktree-audit",
@@ -234,11 +227,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         ),
     ):
         check_parser = subparsers.add_parser(check_command, help=help_text)
-        check_parser.add_argument(
-            "--codex-home",
-            default=str(Path.home() / ".codex"),
-            help="Codex home directory. Defaults to ~/.codex.",
-        )
+        _add_state_root_arg(check_parser)
         check_parser.add_argument(
             "--base",
             default="main",
@@ -247,11 +236,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         check_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     add_daemon_command_parser(subparsers, api=api)
     web_parser = subparsers.add_parser("web", help="Serve a local Supervisor dashboard page.")
-    web_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    _add_state_root_arg(web_parser)
     web_parser.add_argument("--limit", type=int, default=10, help="Maximum sessions.")
     web_parser.add_argument(
         "--stale-after",
@@ -273,11 +258,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         help="Print the local URL and exit without starting the server.",
     )
     launch_parser = subparsers.add_parser("launch", help="Launch and register a Codex process.")
-    launch_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    _add_state_root_arg(launch_parser)
     launch_parser.add_argument("--cwd", required=True, help="Workspace directory for Codex.")
     launch_parser.add_argument("--name", required=True, help="Managed lane name.")
     launch_parser.add_argument("--prompt", required=True, help="Initial Codex prompt.")
@@ -316,22 +297,14 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         "worker-review",
         help="Summarize Supervisor-managed workers for human review.",
     )
-    worker_review_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    _add_state_root_arg(worker_review_parser)
     worker_review_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     add_memory_command_parsers(subparsers)
     integration_review_parser = subparsers.add_parser(
         "integration-review",
         help="Group managed workers by read-only integration readiness.",
     )
-    integration_review_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    _add_state_root_arg(integration_review_parser)
     integration_review_parser.add_argument(
         "--base",
         default="main",
@@ -357,11 +330,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         "merge-work-order",
         help="Build a read-only merge work order from integration-review.",
     )
-    merge_work_order_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    _add_state_root_arg(merge_work_order_parser)
     merge_work_order_parser.add_argument(
         "--base",
         default="main",
@@ -372,11 +341,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         "replan",
         help="Build read-only next-round advice from worker-review candidates.",
     )
-    replan_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    _add_state_root_arg(replan_parser)
     replan_parser.add_argument(
         "--base",
         default="main",
@@ -392,11 +357,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         "context",
         help="Search project context and record the result for the LLM planner.",
     )
-    context_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    _add_state_root_arg(context_parser)
     context_parser.add_argument("--cwd", required=True, help="Workspace directory.")
     context_parser.add_argument("--query", required=True, help="Context search query.")
     context_parser.add_argument(
@@ -553,11 +514,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
             decision_command,
             help=help_text,
         )
-        command_parser.add_argument(
-            "--codex-home",
-            default=str(Path.home() / ".codex"),
-            help="Codex home directory. Defaults to ~/.codex.",
-        )
+        _add_state_root_arg(command_parser)
         command_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     decision_subparsers.choices["archive"].add_argument(
         "--request-id",
@@ -592,11 +549,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         nargs="?",
         help="Goal text. Positional form for one-sentence goal entry.",
     )
-    goal_add_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    _add_state_root_arg(goal_add_parser)
     goal_add_parser.add_argument(
         "--cwd",
         default=str(Path.cwd()),
@@ -617,11 +570,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         nargs="?",
         help="Optional high-level user goal to seed planning.",
     )
-    goal_plan_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    _add_state_root_arg(goal_plan_parser)
     goal_plan_parser.add_argument(
         "--cwd",
         default=str(Path.cwd()),
@@ -683,11 +632,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         ("archive", "Archive one handled Supervisor goal."),
     ):
         goal_command_parser = goal_subparsers.add_parser(goal_command, help=help_text)
-        goal_command_parser.add_argument(
-            "--codex-home",
-            default=str(Path.home() / ".codex"),
-            help="Codex home directory. Defaults to ~/.codex.",
-        )
+        _add_state_root_arg(goal_command_parser)
         goal_command_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     goal_subparsers.choices["archive"].add_argument(
         "--goal-id",
@@ -724,11 +669,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
             cleanup_command,
             help=help_text,
         )
-        cleanup_command_parser.add_argument(
-            "--codex-home",
-            default=str(Path.home() / ".codex"),
-            help="Codex home directory. Defaults to ~/.codex.",
-        )
+        _add_state_root_arg(cleanup_command_parser)
         cleanup_command_parser.add_argument(
             "--json",
             action="store_true",
@@ -775,21 +716,13 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         "trace",
         help="Print a read-only Supervisor lifecycle trace.",
     )
-    trace_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    _add_state_root_arg(trace_parser)
     trace_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     resume_parser = subparsers.add_parser(
         "resume",
         help="Resume a Codex session with a prompt and register the managed process.",
     )
-    resume_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    _add_state_root_arg(resume_parser)
     resume_parser.add_argument(
         "--cwd",
         default=str(Path.cwd()),
@@ -823,11 +756,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
     adopt_parser = subparsers.add_parser(
         "adopt", help="Register an existing tmux session as a managed Codex lane."
     )
-    adopt_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    _add_state_root_arg(adopt_parser)
     adopt_parser.add_argument("--cwd", required=True, help="Workspace directory.")
     adopt_parser.add_argument("--name", required=True, help="Managed lane name.")
     adopt_parser.add_argument("--tmux-session", required=True, help="Existing tmux session.")
@@ -840,11 +769,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
     discover_parser = subparsers.add_parser(
         "discover", help="List existing tmux sessions that can be adopted."
     )
-    discover_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    _add_state_root_arg(discover_parser)
     discover_parser.add_argument(
         "--cwd",
         default=str(Path.cwd()),
@@ -878,21 +803,13 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
     archive_parser = subparsers.add_parser(
         "archive", help="Archive a managed Codex lane so it stops appearing as active."
     )
-    archive_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    _add_state_root_arg(archive_parser)
     archive_parser.add_argument("--name", required=True, help="Managed lane name.")
     archive_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     send_parser = subparsers.add_parser(
         "send", help="Send one line to a tmux-managed Codex process."
     )
-    send_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    _add_state_root_arg(send_parser)
     send_parser.add_argument("--name", required=True, help="Managed lane name.")
     send_parser.add_argument("--text", required=True, help="Text to send.")
     send_parser.add_argument("--json", action="store_true", help="Print JSON output.")
@@ -900,21 +817,13 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         "repair-hooks",
         help="Repair tmux bell hooks for registered managed Codex lanes.",
     )
-    repair_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    _add_state_root_arg(repair_parser)
     repair_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     start_here_parser = subparsers.add_parser(
         "start-here",
         help="Print the shortest human-first Supervisor trial workflow.",
     )
-    start_here_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    _add_state_root_arg(start_here_parser)
     start_here_parser.add_argument(
         "--cwd",
         default=str(Path.cwd()),

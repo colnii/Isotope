@@ -107,9 +107,9 @@
   `not_launchable` 归一成 `call_capacity`、`request_input` 和 `blocked`
   三类下一步；`supervise --capacity-decisions` 与
   `loop --capacity-decisions` 会为当前显式 goal 或第一个 active goal
-  生成一条 `capacity_decisions`，并把当前 `args.codex_home` 作为受控
-  `codex_home` / `root` input default 传给 capacity plan；LLM 不需要猜本机
-  `.codex` 或 memory store 路径，且模型显式 argument 优先于 default；
+  生成一条 `capacity_decisions`，并把当前 Supervisor state root 作为受控
+  `state_root` / `root` input default 传给 capacity plan；LLM 不需要猜本机
+  Supervisor 状态根或 memory store 路径，且模型显式 argument 优先于 default；
   `memory.query` 仍必须由目标或模型参数提供 `query/run_id`；随后读模型放进
   LLM action prompt，供真实决策点读取；
   当该读模型为 `call_capacity` 且 `--llm-execute` 打开时，
@@ -169,13 +169,13 @@
   输出仍是低敏摘要。
 - `supervisor.worker_review` 已注册为可发现、可预检、可运行的只读
   capability：`list/search/describe` 能看到它，`plan/run --input-json`
-  只要求 `codex_home`；执行时复用现有 `collect_worker_reviews(...,
+  只要求 `state_root`；执行时复用现有 `collect_worker_reviews(...,
   lightweight=True)`，返回 summary、decision summary、automation candidates
   和压缩 worker 项，不返回 prompt、validation command 或 raw diff，不自动
   merge、cleanup、delete branch。
 - `supervisor.integration_review` 已注册为同一 capability runner 下的只读
   capability：`list/search/describe` 能看到它，`plan/run --input-json`
-  只要求 `codex_home`，可选 `base_ref`、`include_unfinished`、
+  只要求 `state_root`，可选 `base_ref`、`include_unfinished`、
   `include_missing_worktrees`、`run_test_gate` 和 `run_candidate_validation`；
   默认关闭 test gate 与候选 validation，复用现有
   `collect_integration_reviews(...)` 只返回低敏分组摘要，不返回 merge-tree

@@ -12,17 +12,17 @@
 这组清单用于真实 daemon（后台守护进程）验收，不是单元测试替代品。
 运行前先确认当前仓库没有未保存改动，Codex CLI 已登录，且本轮允许
 后台 worker 创建 `.worktrees/supervisor/...` 工作区。建议用独立
-`--codex-home` 保存 smoke 账本，避免污染日常 Supervisor 记录：
+`--state-root` 保存 smoke 账本，避免污染日常 Supervisor 记录：
 
 ```bash
 export ISO_ROOT=/home/lumber/Github/isotope
-export SMOKE_HOME="$ISO_ROOT/.tmp/supervisor-night-smoke-codex-home"
+export SMOKE_HOME="$ISO_ROOT/.tmp/supervisor-night-smoke-state-root"
 
 cd "$ISO_ROOT"
 git status --short --branch
 mkdir -p "$SMOKE_HOME"
-.venv/bin/isotope-supervisor daemon stop --codex-home "$SMOKE_HOME" || true
-.venv/bin/isotope-supervisor daemon watcher stop --codex-home "$SMOKE_HOME" || true
+.venv/bin/isotope-supervisor daemon stop --state-root "$SMOKE_HOME" || true
+.venv/bin/isotope-supervisor daemon watcher stop --state-root "$SMOKE_HOME" || true
 ```
 
 第一段确认 daemon 能用真实 LLM planner 启动多批 worker，并触发
@@ -30,19 +30,19 @@ fanout（同轮多目标派发）：
 
 ```bash
 .venv/bin/isotope-supervisor goal add \
-  --codex-home "$SMOKE_HOME" \
+  --state-root "$SMOKE_HOME" \
   --cwd "$ISO_ROOT" \
   --target-name night-smoke-a \
   "只改 docs/current/codex-supervisor-readonly.md，补一行 night smoke A 标记后提交。"
 
 .venv/bin/isotope-supervisor goal add \
-  --codex-home "$SMOKE_HOME" \
+  --state-root "$SMOKE_HOME" \
   --cwd "$ISO_ROOT" \
   --target-name night-smoke-b \
   "只改 docs/current/codex-supervisor-readonly.md，补一行 night smoke B 标记后提交。"
 
 .venv/bin/isotope-supervisor daemon start \
-  --codex-home "$SMOKE_HOME" \
+  --state-root "$SMOKE_HOME" \
   --interval 60 \
   --max-fanout-launches 2 \
   --worker-profile light \
@@ -53,8 +53,8 @@ fanout（同轮多目标派发）：
 
 通过标准：
 
-- `daemon status --codex-home "$SMOKE_HOME"` 显示后台 loop 正在运行。
-- `goal list --codex-home "$SMOKE_HOME"` 能看到两个活跃目标及其最近状态。
+- `daemon status --state-root "$SMOKE_HOME"` 显示后台 loop 正在运行。
+- `goal list --state-root "$SMOKE_HOME"` 能看到两个活跃目标及其最近状态。
 - `rg "fanout_launch_sessions|night-smoke-a|night-smoke-b" "$SMOKE_HOME/supervisor/logs/daemon.log"`
   能看到同轮 fanout 计划或两条 worker 启动记录。
 - `$ISO_ROOT/.worktrees/supervisor/` 下出现两个独立 worker 工作区；
@@ -63,11 +63,11 @@ fanout（同轮多目标派发）：
 第二段确认目标生命周期、merge dispatch（合并派发）和 cleanup（收尾归档）：
 
 ```bash
-.venv/bin/isotope-supervisor goal list --codex-home "$SMOKE_HOME"
-.venv/bin/isotope-supervisor integration-review --codex-home "$SMOKE_HOME" --json
-.venv/bin/isotope-supervisor merge-work-order --codex-home "$SMOKE_HOME" --json
-.venv/bin/isotope-supervisor loop --codex-home "$SMOKE_HOME" --iterations 1 --json
-.venv/bin/isotope-supervisor cleanup list --codex-home "$SMOKE_HOME"
+.venv/bin/isotope-supervisor goal list --state-root "$SMOKE_HOME"
+.venv/bin/isotope-supervisor integration-review --state-root "$SMOKE_HOME" --json
+.venv/bin/isotope-supervisor merge-work-order --state-root "$SMOKE_HOME" --json
+.venv/bin/isotope-supervisor loop --state-root "$SMOKE_HOME" --iterations 1 --json
+.venv/bin/isotope-supervisor cleanup list --state-root "$SMOKE_HOME"
 ```
 
 通过标准：
@@ -81,7 +81,7 @@ fanout（同轮多目标派发）：
   `loop --iterations 1 --json` 在存在 `ready_to_integrate` 候选时应出现
   `merge_dispatch`，并启动名为 `supervisor-merge-dispatch` 的受控 worker。
 - `cleanup list` 只列出已完成目标、已完成托管 worker 或可读通知；
-  `cleanup archive --all --codex-home "$SMOKE_HOME"` 只追加归档事件，
+  `cleanup archive --all --state-root "$SMOKE_HOME"` 只追加归档事件，
   不手删账本、不删除源码分支、不删除 worktree。
 - `loop --iterations 1 --json` 对 `already_integrated` 且位于
   `.worktrees/supervisor/...` 的已归档 worker 可自动执行
@@ -95,9 +95,9 @@ fanout（同轮多目标派发）：
 python -m isotope.demo
 python -m isotope.demo --json
 
-.venv/bin/isotope-supervisor daemon watchdog --codex-home "$SMOKE_HOME"
-.venv/bin/isotope-supervisor daemon watcher start --codex-home "$SMOKE_HOME" --interval 60
-.venv/bin/isotope-supervisor daemon watcher status --codex-home "$SMOKE_HOME"
+.venv/bin/isotope-supervisor daemon watchdog --state-root "$SMOKE_HOME"
+.venv/bin/isotope-supervisor daemon watcher start --state-root "$SMOKE_HOME" --interval 60
+.venv/bin/isotope-supervisor daemon watcher status --state-root "$SMOKE_HOME"
 ```
 
 通过标准：
@@ -117,10 +117,10 @@ python -m isotope.demo --json
 收尾必须显式执行：
 
 ```bash
-.venv/bin/isotope-supervisor cleanup list --codex-home "$SMOKE_HOME"
-.venv/bin/isotope-supervisor cleanup archive --all --codex-home "$SMOKE_HOME"
-.venv/bin/isotope-supervisor daemon watcher stop --codex-home "$SMOKE_HOME"
-.venv/bin/isotope-supervisor daemon stop --codex-home "$SMOKE_HOME"
+.venv/bin/isotope-supervisor cleanup list --state-root "$SMOKE_HOME"
+.venv/bin/isotope-supervisor cleanup archive --all --state-root "$SMOKE_HOME"
+.venv/bin/isotope-supervisor daemon watcher stop --state-root "$SMOKE_HOME"
+.venv/bin/isotope-supervisor daemon stop --state-root "$SMOKE_HOME"
 git worktree list
 git status --short --branch
 ```

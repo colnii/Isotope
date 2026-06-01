@@ -366,7 +366,7 @@ def execute_codex_operation_action(
         if not isinstance(query, str) or not query.strip():
             raise ValueError("query is required for request_context")
         inputs: dict[str, Any] = {
-            "codex_home": str(Path(args.codex_home)),
+            "state_root": str(Path(args.codex_home)),
             "cwd": cwd,
             "query": query,
         }
@@ -488,7 +488,7 @@ def _supervisor_capacity_input_defaults(args: Any) -> dict[str, Any]:
     if not isinstance(codex_home, str) or not codex_home:
         return {}
     root = str(Path(codex_home))
-    return {"codex_home": root, "root": root}
+    return {"state_root": root, "root": root}
 
 
 def agent_loop_json_summary(payload: Mapping[str, Any]) -> dict[str, Any]:

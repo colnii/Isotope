@@ -6,7 +6,7 @@ import { createAppState } from './appState';
 const realSource = {
   kind: 'real' as const,
   label: 'supervisor_state_projection',
-  backendRef: 'codex_home:/tmp/isotope'
+  backendRef: 'supervisor_state:/tmp/isotope'
 };
 
 function realSnapshot(): IsotopeSnapshot {

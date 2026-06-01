@@ -122,7 +122,7 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         )
 
     def desktop_snapshot_payload(self) -> dict[str, Any]:
-        return build_desktop_snapshot(codex_home=self.codex_home)
+        return build_desktop_snapshot(state_root=self.codex_home)
 
     def desktop_chat_provider_or_default(self) -> DesktopChatProvider:
         if self.desktop_chat_provider is not None:

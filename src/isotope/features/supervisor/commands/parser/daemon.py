@@ -9,6 +9,7 @@ from typing import Any
 from isotope.features.supervisor.commands.parser.common import (
     add_failure_retry_args,
     add_goal_replenishment_args,
+    add_state_root_arg,
     add_webhook_args,
 )
 
@@ -30,11 +31,7 @@ def add_daemon_command_parser(
         "start",
         help="Start the Supervisor loop in the background.",
     )
-    daemon_start_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    add_state_root_arg(daemon_start_parser)
     daemon_start_parser.add_argument(
         "--limit",
         type=int,
@@ -154,11 +151,7 @@ def add_daemon_command_parser(
             daemon_command,
             help=f"{daemon_command.title()} the background Supervisor loop.",
         )
-        daemon_command_parser.add_argument(
-            "--codex-home",
-            default=str(Path.home() / ".codex"),
-            help="Codex home directory. Defaults to ~/.codex.",
-        )
+        add_state_root_arg(daemon_command_parser)
         daemon_command_parser.add_argument(
             "--json",
             action="store_true",
@@ -176,11 +169,7 @@ def add_daemon_command_parser(
         "start",
         help="Start the periodic watchdog in the background.",
     )
-    watcher_start_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    add_state_root_arg(watcher_start_parser)
     watcher_start_parser.add_argument(
         "--interval",
         type=int,
@@ -196,11 +185,7 @@ def add_daemon_command_parser(
         "run",
         help="Run watchdog checks in the foreground.",
     )
-    watcher_run_parser.add_argument(
-        "--codex-home",
-        default=str(Path.home() / ".codex"),
-        help="Codex home directory. Defaults to ~/.codex.",
-    )
+    add_state_root_arg(watcher_run_parser)
     watcher_run_parser.add_argument(
         "--interval",
         type=int,
@@ -222,11 +207,7 @@ def add_daemon_command_parser(
             watcher_command,
             help=f"{watcher_command.title()} the periodic watchdog.",
         )
-        watcher_command_parser.add_argument(
-            "--codex-home",
-            default=str(Path.home() / ".codex"),
-            help="Codex home directory. Defaults to ~/.codex.",
-        )
+        add_state_root_arg(watcher_command_parser)
         watcher_command_parser.add_argument(
             "--json",
             action="store_true",
