@@ -6,9 +6,10 @@ import shutil
 import subprocess
 from collections.abc import Callable
 from typing import Any
+from urllib.parse import urlparse
 
 from ..pool import PoolEntry
-from .clients import OpenAICompatibleChatProvider
+from .clients import DeepSeekChatProvider, OpenAICompatibleChatProvider
 from .codex import CODEX_DEFAULT_MODEL_LABEL, CodexCliLLMProvider
 from .parsing import _normalized_provider_name
 from .types import StreamTransport, Transport
@@ -37,6 +38,15 @@ def create_chat_provider_from_pool_entry(
             skip_git_repo_check=_option_bool(entry, "skip_git_repo_check", default=True),
             inherit_proxy_env=_option_bool(entry, "inherit_proxy_env", default=False),
         )
+    if _is_deepseek_entry(entry):
+        return DeepSeekChatProvider(
+            api_key=entry.api_key,
+            model=entry.model,
+            base_url=entry.base_url,
+            timeout=timeout,
+            transport=transport,
+            stream_transport=stream_transport,
+        )
     return OpenAICompatibleChatProvider(
         provider=entry.provider,
         api_key=entry.api_key,
@@ -46,6 +56,13 @@ def create_chat_provider_from_pool_entry(
         transport=transport,
         stream_transport=stream_transport,
     )
+
+
+def _is_deepseek_entry(entry: PoolEntry) -> bool:
+    if _normalized_provider_name(entry.provider) == "deepseek":
+        return True
+    host = urlparse(entry.base_url).hostname or ""
+    return host.lower() == "api.deepseek.com"
 
 
 def _option_string(entry: PoolEntry, name: str) -> str | None:

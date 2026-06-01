@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from isotope.llm.pool import resolve_pool_entries_from_env
+from isotope.llm.pool import PoolEntry, resolve_pool_entries_from_env
+from isotope.llm.provider import create_chat_provider_from_pool_entry
 
 
 def test_pool_entries_accept_codex_provider_without_api_key(tmp_path):
@@ -40,3 +41,42 @@ max_tokens = 1024
         "codex_home": str(codex_home),
         "profile": "chatgpt",
     }
+
+
+def test_deepseek_pool_entry_uses_deepseek_chat_payload_for_streaming():
+    captured: dict[str, object] = {}
+
+    def stream_transport(url, payload, headers, timeout):
+        captured["url"] = url
+        captured["payload"] = payload
+        captured["headers"] = headers
+        captured["timeout"] = timeout
+        yield {
+            "model": "deepseek-v4-flash",
+            "choices": [{"delta": {"content": "你好"}}],
+        }
+
+    provider = create_chat_provider_from_pool_entry(
+        PoolEntry(
+            provider="llm_pool",
+            api_key="sk-test",
+            base_url="https://api.deepseek.com",
+            model="deepseek-v4-flash",
+        ),
+        timeout=6,
+        stream_transport=stream_transport,
+    )
+
+    chunks = list(
+        provider.stream_generate(
+            [{"role": "user", "content": "你好"}],
+            max_tokens=128,
+        )
+    )
+
+    assert chunks[0].provider == "deepseek"
+    assert chunks[0].content == "你好"
+    assert captured["url"] == "https://api.deepseek.com/chat/completions"
+    assert captured["payload"]["thinking"] == {"type": "disabled"}
+    assert captured["payload"]["stream"] is True
+    assert captured["timeout"] == 6
