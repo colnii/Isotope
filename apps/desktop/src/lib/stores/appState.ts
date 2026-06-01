@@ -1,5 +1,5 @@
 import { derived, writable } from 'svelte/store';
-import type { AgentClient } from '../client/agentClient';
+import type { AgentClient, DesktopCapacityCall } from '../client/agentClient';
 import type { ActivityNode, IsotopeSnapshot } from '../contracts/isotope';
 
 export type DesktopChatMessage = {
@@ -8,6 +8,7 @@ export type DesktopChatMessage = {
   content: string;
   provider?: string;
   model?: string;
+  capacityCalls?: DesktopCapacityCall[];
 };
 
 export type AppClients = {
@@ -66,6 +67,15 @@ export function createAppState(clients: AppClients) {
       isAskingDesktop.set(true);
       try {
         const answer = await clients.agentClient.askDesktopQuestion(cleanQuestion, {
+          onCapacityStart: (call) => {
+            updateAssistantCapacityCall(chatMessages, assistantId, call);
+          },
+          onCapacityUpdate: (call) => {
+            updateAssistantCapacityCall(chatMessages, assistantId, call);
+          },
+          onCapacityResult: (call) => {
+            updateAssistantCapacityCall(chatMessages, assistantId, call);
+          },
           onDelta: (text) => {
             chatMessages.update((messages) =>
               messages.map((message) =>
@@ -83,7 +93,10 @@ export function createAppState(clients: AppClients) {
                   ...message,
                   content: answer.answer || message.content,
                   provider: answer.provider,
-                  model: answer.model
+                  model: answer.model,
+                  ...(answer.capacityCalls?.length
+                    ? { capacityCalls: answer.capacityCalls }
+                    : {})
                 }
               : message
           )
@@ -103,4 +116,21 @@ export function createAppState(clients: AppClients) {
       }
     }
   };
+}
+
+function updateAssistantCapacityCall(
+  chatMessages: ReturnType<typeof writable<DesktopChatMessage[]>>,
+  assistantId: string,
+  call: DesktopCapacityCall
+) {
+  chatMessages.update((messages) =>
+    messages.map((message) => {
+      if (message.id !== assistantId) return message;
+      const existing = message.capacityCalls ?? [];
+      const nextCalls = existing.some((item) => item.id === call.id)
+        ? existing.map((item) => (item.id === call.id ? { ...item, ...call } : item))
+        : [...existing, call];
+      return { ...message, capacityCalls: nextCalls };
+    })
+  );
 }

@@ -90,6 +90,16 @@ describe('agentClient', () => {
       start(controller) {
         const encoder = new TextEncoder();
         controller.enqueue(encoder.encode('event: start\ndata: {"status":"ok"}\n\n'));
+        controller.enqueue(
+          encoder.encode(
+            'event: capacity_start\ndata: {"id":"capacity_memory_query","capacity_id":"memory.query","title":"Memory Query","status":"running","input_summary":{"query":"capacity"},"result_summary":{},"details":[{"label":"Inputs","kind":"json","content":{"query":"capacity"}}]}\n\n'
+          )
+        );
+        controller.enqueue(
+          encoder.encode(
+            'event: capacity_result\ndata: {"id":"capacity_memory_query","capacity_id":"memory.query","title":"Memory Query","status":"ok","input_summary":{"query":"capacity"},"result_summary":{"result_count":2},"details":[{"label":"Results","kind":"json","content":{"result_count":2}}]}\n\n'
+          )
+        );
         controller.enqueue(encoder.encode('event: delta\ndata: {"text":"Loop"}\n\n'));
         controller.enqueue(encoder.encode('event: delta\ndata: {"text":" 正常"}\n\n'));
         controller.enqueue(
@@ -107,9 +117,12 @@ describe('agentClient', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
     const deltas: string[] = [];
+    const capacityEvents: string[] = [];
 
     const answer = await createAgentClient('http://127.0.0.1:8765').askDesktopQuestion('loop?', {
-      onDelta: (text) => deltas.push(text)
+      onDelta: (text) => deltas.push(text),
+      onCapacityStart: (call) => capacityEvents.push(`start:${call.capacityId}`),
+      onCapacityResult: (call) => capacityEvents.push(`result:${call.status}`)
     });
 
     expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:8765/desktop/chat', {
@@ -119,11 +132,29 @@ describe('agentClient', () => {
       body: JSON.stringify({ question: 'loop?' })
     });
     expect(deltas).toEqual(['Loop', ' 正常']);
+    expect(capacityEvents).toEqual(['start:memory.query', 'result:ok']);
     expect(answer).toEqual({
       question: 'loop?',
       answer: 'Loop 正常',
       provider: 'fake',
-      model: 'fake'
+      model: 'fake',
+      capacityCalls: [
+        {
+          id: 'capacity_memory_query',
+          capacityId: 'memory.query',
+          title: 'Memory Query',
+          status: 'ok',
+          inputSummary: { query: 'capacity' },
+          resultSummary: { result_count: 2 },
+          details: [
+            {
+              label: 'Results',
+              kind: 'json',
+              content: { result_count: 2 }
+            }
+          ]
+        }
+      ]
     });
   });
 

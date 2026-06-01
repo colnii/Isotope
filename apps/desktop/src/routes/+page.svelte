@@ -2,13 +2,10 @@
   import { browser } from '$app/environment';
   import { onMount } from 'svelte';
   import { createIsotopeClient } from '$lib/client/isotopeClient';
-  import { replayMockEvents } from '$lib/client/replayMockEvents';
-  import DevDiagnosticShell from '$lib/components/dev/DevDiagnosticShell.svelte';
   import MainWindowShell from '$lib/components/main/MainWindowShell.svelte';
   import FloatingOrb from '$lib/components/orb/FloatingOrb.svelte';
   import MiniWindow from '$lib/components/mini/MiniWindow.svelte';
   import { createAppState } from '$lib/stores/appState';
-  import { buildSnapshotView } from '$lib/view/snapshotView';
   import { windowClient } from '$lib/window/windowClient';
   import {
     buildPageSurfaceClass,
@@ -21,8 +18,6 @@
   const {
     snapshot,
     selectedActivity,
-    selectedActivityId,
-    isLoading,
     chatMessages,
     isAskingDesktop,
     chatError
@@ -30,9 +25,7 @@
 
   let loadError = $state<string | null>(null);
   let miniOpen = $state(false);
-  let mainOpen = $state(false);
   let surface = $state<DesktopWindowSurface>(browser ? resolveWindowSurface(window.location.search) : 'dev');
-  const view = $derived($snapshot ? buildSnapshotView($snapshot, $selectedActivity) : null);
 
   onMount(() => {
     surface = resolveWindowSurface(window.location.search);
@@ -52,7 +45,6 @@
 
   function openMainWindow() {
     if (surface === 'dev') {
-      mainOpen = true;
       miniOpen = false;
       return;
     }
@@ -70,20 +62,12 @@
     void windowClient.hide('mini');
   }
 
-  function closeMainWindow() {
-    if (surface === 'dev') {
-      mainOpen = false;
-      return;
-    }
-
-    void windowClient.hide('main');
-  }
 </script>
 
 <main class={buildPageSurfaceClass(surface)}>
   {#if surface === 'orb'}
     {#if $snapshot}
-      <FloatingOrb snapshot={$snapshot} surface="window" onOpenMini={openMiniWindow} />
+      <FloatingOrb surface="window" onOpenMini={openMiniWindow} />
     {:else}
       <div class="grid min-h-[96px] place-items-center text-xs text-isotope-muted">
         {loadError ? 'Orb snapshot unavailable' : 'Loading orb'}
@@ -91,7 +75,16 @@
     {/if}
   {:else if surface === 'mini'}
     {#if $snapshot}
-      <MiniWindow snapshot={$snapshot} surface="window" onOpenMain={openMainWindow} onClose={closeMiniWindow} />
+      <MiniWindow
+        snapshot={$snapshot}
+        surface="window"
+        chatMessages={$chatMessages}
+        chatError={$chatError}
+        isAsking={$isAskingDesktop}
+        onAsk={(question) => void appState.askDesktopQuestion(question)}
+        onOpenMain={openMainWindow}
+        onClose={closeMiniWindow}
+      />
     {:else}
       <div class="border border-isotope-line bg-white p-3 text-sm text-isotope-muted">
         {loadError ? 'MiniWindow snapshot unavailable' : 'Loading MiniWindow'}
@@ -101,13 +94,10 @@
     {#if $snapshot}
       <MainWindowShell
         snapshot={$snapshot}
-        events={replayMockEvents}
         selectedActivity={$selectedActivity}
-        selectedActivityId={$selectedActivityId}
         chatMessages={$chatMessages}
         chatError={$chatError}
         isAskingDesktop={$isAskingDesktop}
-        onSelectActivity={(activityId) => appState.selectActivity(activityId)}
         onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
       />
     {:else}
@@ -116,18 +106,30 @@
       </div>
     {/if}
   {:else}
-    <DevDiagnosticShell
-      snapshot={$snapshot}
-      selectedActivity={$selectedActivity}
-      selectedActivityId={$selectedActivityId}
-      isLoading={$isLoading}
-      {loadError}
-      {view}
-      {mainOpen}
-      events={replayMockEvents}
-      onSelectActivity={(activityId) => appState.selectActivity(activityId)}
-      onOpenMain={openMainWindow}
-      onCloseMain={closeMainWindow}
-    />
+    {#if $snapshot}
+      <MainWindowShell
+        snapshot={$snapshot}
+        selectedActivity={$selectedActivity}
+        chatMessages={$chatMessages}
+        chatError={$chatError}
+        isAskingDesktop={$isAskingDesktop}
+        onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
+      />
+      {#if miniOpen}
+        <MiniWindow
+          snapshot={$snapshot}
+          chatMessages={$chatMessages}
+          chatError={$chatError}
+          isAsking={$isAskingDesktop}
+          onAsk={(question) => void appState.askDesktopQuestion(question)}
+          onOpenMain={openMainWindow}
+          onClose={closeMiniWindow}
+        />
+      {/if}
+    {:else}
+      <div class="border border-isotope-line bg-white p-5 text-sm text-isotope-muted">
+        {loadError ? 'Chat unavailable' : 'Loading Isotope chat'}
+      </div>
+    {/if}
   {/if}
 </main>

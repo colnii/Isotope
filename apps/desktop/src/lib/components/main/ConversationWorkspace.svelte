@@ -1,6 +1,7 @@
 <script lang="ts">
   import CommandComposer from '../common/CommandComposer.svelte';
   import type { DesktopChatMessage } from '../../stores/appState';
+  import CapacityCallCard from './CapacityCallCard.svelte';
 
   let {
     eyebrow,
@@ -87,6 +88,13 @@
                 <p>{message.content}</p>
               {:else}
                 <p class="text-isotope-muted">...</p>
+              {/if}
+              {#if message.role === 'assistant' && message.capacityCalls?.length}
+                <div class="mt-3 space-y-2">
+                  {#each message.capacityCalls as call (call.id)}
+                    <CapacityCallCard {call} />
+                  {/each}
+                </div>
               {/if}
               {#if message.role === 'assistant' && (message.provider || message.model)}
                 <div class="mt-2 text-[11px] uppercase text-isotope-muted">

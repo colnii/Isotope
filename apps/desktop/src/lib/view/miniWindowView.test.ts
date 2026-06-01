@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import type { IsotopeSnapshot } from '../contracts/isotope';
 import { mockSnapshot } from '../client/mockData';
-import { buildMiniWindowView, buildMockSubmitPreview } from './miniWindowView';
+import { buildMiniWindowView } from './miniWindowView';
 
 const realSource = {
   kind: 'real' as const,
@@ -10,7 +10,7 @@ const realSource = {
 };
 
 describe('miniWindowView', () => {
-  test('summarizes real snapshot state for MiniWindow', () => {
+  test('builds chat-only MiniWindow copy without monitor counts', () => {
     const snapshot: IsotopeSnapshot = {
       schemaVersion: 1,
       snapshotId: 'desktop_snapshot_real',
@@ -57,31 +57,20 @@ describe('miniWindowView', () => {
 
     const view = buildMiniWindowView(snapshot, 'mock');
 
-    expect(view.title).toBe('Isotope Supervisor');
-    expect(view.agentTitle).toBe('Supervisor Agent');
-    expect(view.activeGoalTitle).toBe('Ship MiniWindow shell');
-    expect(view.sourceKind).toBe('real');
-    expect(view.submitMode).toBe('mock');
-    expect(view.counts.needsAttention).toBe(2);
+    expect(view.title).toBe('Isotope');
     expect(view.conversationLabel).toBe('AI conversation');
-    expect(view.statusLine).toBe('0 running / 2 attention / 1 approval');
-    expect(view.suggestedPrompts).toEqual([
-      'Summarize current state',
-      'What needs attention?'
-    ]);
+    expect(view.submitMode).toBe('mock');
+    expect(view.composerPlaceholder).toBe('Ask Isotope');
+    expect('counts' in view).toBe(false);
+    expect('statusLine' in view).toBe(false);
+    expect('activeGoalTitle' in view).toBe(false);
+    expect('suggestedPrompts' in view).toBe(false);
   });
 
-  test('keeps mock source visible for fallback snapshots', () => {
+  test('keeps fallback snapshots out of visible chat copy', () => {
     const view = buildMiniWindowView(mockSnapshot, 'mock');
 
-    expect(view.sourceKind).toBe('mock');
-    expect(view.title).toBe('Mock Supervisor');
-  });
-
-  test('builds local-only mock submit preview without claiming real interaction', () => {
-    expect(buildMockSubmitPreview('  inspect state  ')).toEqual({
-      mode: 'mock',
-      preview: 'Mock submit only: inspect state'
-    });
+    expect(view.title).toBe('Isotope');
+    expect('sourceKind' in view).toBe(false);
   });
 });

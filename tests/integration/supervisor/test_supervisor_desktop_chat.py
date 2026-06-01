@@ -68,6 +68,37 @@ class StreamingDesktopChatProvider(RecordingDesktopChatProvider):
             )
 
 
+class RecordingCapacityProvider:
+    provider = "fake-capacity"
+    model = "fake-capacity-model"
+
+    def __init__(
+        self,
+        content: str = (
+            '{"capacity_id":"artifact.review","arguments":{},'
+            '"confidence":0.9,"rationale":"需要查看 artifact 能力"}'
+        ),
+    ) -> None:
+        self.content = content
+        self.calls: list[dict[str, Any]] = []
+
+    def generate(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int = 512,
+    ) -> LLMResponse:
+        self.calls.append({"messages": messages, "max_tokens": max_tokens})
+        return LLMResponse(
+            provider=self.provider,
+            model=self.model,
+            content=self.content,
+            finish_reason="stop",
+            usage={"prompt_tokens": 13, "completion_tokens": 5},
+            raw={"id": "fake-capacity"},
+        )
+
+
 def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
     tmp_path,
 ) -> None:
@@ -173,6 +204,75 @@ def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
         "execution_note": "desktop_chat answers from context; Supervisor loop executes capacity calls through agent_loop",
     }
     assert provider.calls[0]["max_tokens"] == 512
+
+
+def test_desktop_chat_endpoint_streams_capacity_events_before_answer(tmp_path) -> None:
+    provider = RecordingDesktopChatProvider(content="我查到了能力调用结果。")
+    capacity_provider = RecordingCapacityProvider()
+    server = create_dashboard_server(
+        codex_home=tmp_path,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+        desktop_chat_provider=provider,
+        desktop_chat_capacity_provider=capacity_provider,
+    )
+
+    response, body = _post_desktop_chat(
+        server,
+        {"question": "用 capacity 看一下当前上下文。"},
+    )
+
+    assert response.status == 200
+    events = _parse_sse(body)
+    names = [event["event"] for event in events]
+    assert names[0] == "start"
+    assert "capacity_start" in names
+    assert "capacity_result" in names
+    assert names.index("capacity_start") < names.index("delta")
+    assert names.index("capacity_result") < names.index("delta")
+    assert names[-1] == "done"
+    capacity_start = next(
+        event["data"] for event in events if event["event"] == "capacity_start"
+    )
+    assert capacity_start == {
+        "id": "capacity_artifact_review",
+        "capacity_id": "artifact.review",
+        "title": "Artifact Review",
+        "status": "running",
+        "input_summary": {},
+        "result_summary": {},
+        "details": [
+            {
+                "label": "Inputs",
+                "kind": "json",
+                "content": {},
+            }
+        ],
+    }
+    capacity_result = next(
+        event["data"] for event in events if event["event"] == "capacity_result"
+    )
+    assert capacity_result["id"] == "capacity_artifact_review"
+    assert capacity_result["capacity_id"] == "artifact.review"
+    assert capacity_result["title"] == "Artifact Review"
+    assert capacity_result["status"] == "ok"
+    assert capacity_result["result_summary"]["agent_loop_tick_status"] == "executed"
+    assert any(section["label"] == "Result summary" for section in capacity_result["details"])
+    assert "我查到了能力调用结果。" == "".join(
+        event["data"].get("text", "")
+        for event in events
+        if event["event"] == "delta"
+    )
+    assert "raw" not in body
+    assert "messages" not in body
+    assert capacity_provider.calls[0]["max_tokens"] == 512
+    prompt_payload = json.loads(provider.calls[0]["messages"][1]["content"])
+    capacity_call = prompt_payload["supervisor_context"]["capacity_call"]
+    assert capacity_call["capacity_id"] == "artifact.review"
+    assert capacity_call["status"] == "ok"
 
 
 def test_desktop_chat_endpoint_sends_developer_capacity_question_to_llm_with_context(tmp_path) -> None:
@@ -360,3 +460,27 @@ def _parse_sse(body: str) -> list[dict[str, Any]]:
             }
         )
     return events
+
+
+def _post_desktop_chat(
+    server: Any,
+    payload: dict[str, Any],
+) -> tuple[http.client.HTTPResponse, str]:
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        conn.request(
+            "POST",
+            "/desktop/chat",
+            body=json.dumps(payload),
+            headers={"content-type": "application/json"},
+        )
+        response = conn.getresponse()
+        body = response.read().decode("utf-8")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+    return response, body

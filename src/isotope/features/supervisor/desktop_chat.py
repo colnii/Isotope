@@ -10,6 +10,10 @@ from typing import Any, Protocol
 
 from isotope.capabilities.runner import CapabilityRunner
 from isotope.capabilities.supervisor import SUPERVISOR_CODEX_OPERATION_CAPABILITY
+from isotope.features.supervisor.commands.handlers.capacity import (
+    build_supervisor_capacity_plan,
+)
+from isotope.llm.capacity_calling import CapacityCallingProvider
 from isotope.llm.provider import LLMResponse, LLMStreamChunk
 
 from .state.projection import build_supervisor_state_snapshot
@@ -43,6 +47,14 @@ class DesktopChatAnswer:
         }
 
 
+@dataclass(frozen=True)
+class DesktopChatStreamEvent:
+    event: str
+    payload: dict[str, Any]
+    provider: str = "unknown"
+    model: str = "unknown"
+
+
 def answer_desktop_chat(
     *,
     codex_home: Path | str,
@@ -54,8 +66,10 @@ def answer_desktop_chat(
     if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
         raise ValueError("max_tokens must be a positive integer")
     supervisor_context = build_supervisor_chat_context(codex_home=codex_home)
-    response = provider.generate(
-        _desktop_chat_messages(clean_question, supervisor_context),
+    response = _desktop_chat_response(
+        clean_question,
+        supervisor_context,
+        provider=provider,
         max_tokens=max_tokens,
     )
     answer = response.content.strip()
@@ -69,6 +83,58 @@ def answer_desktop_chat(
     )
 
 
+def stream_desktop_chat_events(
+    *,
+    codex_home: Path | str,
+    question: str,
+    provider: DesktopChatProvider,
+    max_tokens: int = 512,
+    capacity_provider: CapacityCallingProvider | None = None,
+    capacity_runner: CapabilityRunner | None = None,
+) -> Iterator[DesktopChatStreamEvent]:
+    clean_question = _require_question(question)
+    if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
+        raise ValueError("max_tokens must be a positive integer")
+    supervisor_context = build_supervisor_chat_context(codex_home=codex_home)
+    if capacity_provider is not None:
+        for event in _desktop_chat_capacity_events(
+            codex_home=codex_home,
+            question=clean_question,
+            provider=capacity_provider,
+            runner=capacity_runner,
+        ):
+            supervisor_context["capacity_call"] = event.payload
+            yield event
+    for chunk in _stream_desktop_chat_chunks(
+        clean_question,
+        supervisor_context,
+        provider=provider,
+        max_tokens=max_tokens,
+    ):
+        yield DesktopChatStreamEvent(
+            event="delta",
+            payload={"text": chunk.content},
+            provider=chunk.provider,
+            model=chunk.model,
+        )
+
+
+def _desktop_chat_response(
+    question: str,
+    supervisor_context: dict[str, Any],
+    *,
+    provider: DesktopChatProvider,
+    max_tokens: int,
+) -> LLMResponse:
+    response = provider.generate(
+        _desktop_chat_messages(question, supervisor_context),
+        max_tokens=max_tokens,
+    )
+    if not response.content.strip():
+        raise ValueError("provider returned empty answer")
+    return response
+
+
 def stream_desktop_chat(
     *,
     codex_home: Path | str,
@@ -79,12 +145,27 @@ def stream_desktop_chat(
     clean_question = _require_question(question)
     if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
         raise ValueError("max_tokens must be a positive integer")
+    supervisor_context = build_supervisor_chat_context(codex_home=codex_home)
+    yield from _stream_desktop_chat_chunks(
+        clean_question,
+        supervisor_context,
+        provider=provider,
+        max_tokens=max_tokens,
+    )
+
+
+def _stream_desktop_chat_chunks(
+    question: str,
+    supervisor_context: dict[str, Any],
+    *,
+    provider: DesktopChatProvider,
+    max_tokens: int,
+) -> Iterator[LLMStreamChunk]:
     stream_generate = getattr(provider, "stream_generate", None)
     if callable(stream_generate):
-        supervisor_context = build_supervisor_chat_context(codex_home=codex_home)
         yielded = False
         for chunk in stream_generate(
-            _desktop_chat_messages(clean_question, supervisor_context),
+            _desktop_chat_messages(question, supervisor_context),
             max_tokens=max_tokens,
         ):
             if not isinstance(chunk, LLMStreamChunk):
@@ -97,16 +178,16 @@ def stream_desktop_chat(
             raise ValueError("provider returned empty answer")
         return
 
-    answer = answer_desktop_chat(
-        codex_home=codex_home,
-        question=clean_question,
+    response = _desktop_chat_response(
+        question,
+        supervisor_context,
         provider=provider,
         max_tokens=max_tokens,
     )
-    for chunk in desktop_chat_answer_chunks(answer.answer):
+    for chunk in desktop_chat_answer_chunks(response.content.strip()):
         yield LLMStreamChunk(
-            provider=answer.provider,
-            model=answer.model,
+            provider=response.provider,
+            model=response.model,
             content=chunk,
             raw={},
         )
@@ -165,6 +246,204 @@ def build_supervisor_chat_context(*, codex_home: Path | str) -> dict[str, Any]:
             ),
         },
     }
+
+
+def _desktop_chat_capacity_events(
+    *,
+    codex_home: Path | str,
+    question: str,
+    provider: CapacityCallingProvider,
+    runner: CapabilityRunner | None,
+) -> Iterator[DesktopChatStreamEvent]:
+    root = Path(codex_home).expanduser()
+    try:
+        plan = build_supervisor_capacity_plan(
+            goal=question,
+            provider=provider,
+            state_root=root / "supervisor" / "capacity-loop-runs",
+            execute_agent_loop=True,
+            runner=runner,
+            input_defaults={
+                "codex_home": str(root),
+                "root": str(root),
+                "run_id": "desktop_chat",
+                "cwd": str(Path.cwd()),
+            },
+        )
+    except Exception as exc:  # noqa: BLE001 - chat should surface capacity failure safely.
+        payload = _capacity_error_projection(exc)
+        yield DesktopChatStreamEvent(event="capacity_result", payload=payload)
+        return
+    result = _capacity_plan_projection(plan)
+    yield DesktopChatStreamEvent(
+        event="capacity_start",
+        payload={
+            **result,
+            "status": "running",
+            "result_summary": {},
+            "details": [
+                section
+                for section in result["details"]
+                if section.get("label") == "Inputs"
+            ],
+        },
+    )
+    yield DesktopChatStreamEvent(event="capacity_result", payload=result)
+
+
+def _capacity_plan_projection(plan: dict[str, Any]) -> dict[str, Any]:
+    selection = _mapping(plan.get("selection"))
+    launch_plan = _mapping(plan.get("capability_launch_plan"))
+    capacity_id = _string(
+        selection.get("capacity_id")
+        or launch_plan.get("capability_id")
+        or _mapping(plan.get("supervisor_decision")).get("capacity_id")
+        or "unknown"
+    )
+    arguments = _mapping(selection.get("arguments"))
+    result_summary = _mapping(plan.get("agent_loop_summary"))
+    status = "ok" if plan.get("status") == "ok" else "blocked"
+    if plan.get("status_reason") not in (None, "ready"):
+        result_summary = {
+            **result_summary,
+            "status_reason": plan.get("status_reason"),
+        }
+    details = [
+        {
+            "label": "Inputs",
+            "kind": "json",
+            "content": _safe_detail_value(arguments),
+        }
+    ]
+    if selection:
+        details.append(
+            {
+                "label": "Selection",
+                "kind": "json",
+                "content": _safe_detail_value(
+                    {
+                        "capacity_id": capacity_id,
+                        "confidence": selection.get("confidence"),
+                        "rationale": selection.get("rationale"),
+                        "missing_inputs": selection.get("missing_inputs"),
+                    }
+                ),
+            }
+        )
+    if result_summary:
+        details.append(
+            {
+                "label": "Result summary",
+                "kind": "json",
+                "content": _safe_detail_value(result_summary),
+            }
+        )
+    capability_run = _capability_run_from_plan(plan)
+    if capability_run:
+        details.append(
+            {
+                "label": "Capability result",
+                "kind": "json",
+                "content": _safe_detail_value(capability_run),
+            }
+        )
+    return {
+        "id": _capacity_event_id(capacity_id),
+        "capacity_id": capacity_id,
+        "title": _string(launch_plan.get("capability_title") or capacity_id),
+        "status": status,
+        "input_summary": _safe_detail_value(arguments),
+        "result_summary": _safe_detail_value(result_summary),
+        "details": details,
+    }
+
+
+def _capacity_error_projection(exc: Exception) -> dict[str, Any]:
+    return {
+        "id": "capacity_error",
+        "capacity_id": "unknown",
+        "title": "Capacity call",
+        "status": "error",
+        "input_summary": {},
+        "result_summary": {
+            "error_type": type(exc).__name__,
+            "message": str(exc) or type(exc).__name__,
+        },
+        "details": [
+            {
+                "label": "Error",
+                "kind": "json",
+                "content": {
+                    "error_type": type(exc).__name__,
+                    "message": str(exc) or type(exc).__name__,
+                },
+            }
+        ],
+    }
+
+
+def _capability_run_from_plan(plan: dict[str, Any]) -> dict[str, Any]:
+    agent_loop = _mapping(plan.get("agent_loop"))
+    tick_result = _mapping(agent_loop.get("tick_result"))
+    planner_result = _mapping(tick_result.get("planner_result"))
+    step_result = _mapping(planner_result.get("step_result"))
+    action_result = _mapping(step_result.get("action_result"))
+    return _mapping(action_result.get("capability_run"))
+
+
+def _capacity_event_id(capacity_id: str) -> str:
+    safe = "".join(char if char.isalnum() else "_" for char in capacity_id.lower())
+    return f"capacity_{safe.strip('_') or 'unknown'}"
+
+
+def _safe_detail_value(value: Any, *, depth: int = 0) -> Any:
+    if depth > 4:
+        return "[truncated: nested content]"
+    if isinstance(value, dict):
+        result: dict[str, Any] = {}
+        for index, (key, item) in enumerate(value.items()):
+            if index >= 40:
+                result["truncated"] = "object contained more than 40 keys"
+                break
+            if not isinstance(key, str) or _unsafe_detail_key(key):
+                continue
+            result[key] = _safe_detail_value(item, depth=depth + 1)
+        return result
+    if isinstance(value, list):
+        items = [_safe_detail_value(item, depth=depth + 1) for item in value[:20]]
+        if len(value) > 20:
+            items.append({"truncated": f"list contained {len(value)} items"})
+        return items
+    if isinstance(value, str):
+        return value if len(value) <= 4000 else value[:4000] + "\n[truncated]"
+    if isinstance(value, (int, float, bool)) or value is None:
+        return value
+    return str(value)
+
+
+def _unsafe_detail_key(key: str) -> bool:
+    lowered = key.lower()
+    return any(
+        marker in lowered
+        for marker in (
+            "api_key",
+            "apikey",
+            "secret",
+            "token",
+            "raw",
+            "messages",
+            "prompt",
+            "transcript",
+        )
+    )
+
+
+def _mapping(value: Any) -> dict[str, Any]:
+    return dict(value) if isinstance(value, dict) else {}
+
+
+def _string(value: Any) -> str:
+    return value if isinstance(value, str) and value else str(value)
 
 
 def _desktop_chat_capability_summary(capability: dict[str, Any]) -> dict[str, Any]:

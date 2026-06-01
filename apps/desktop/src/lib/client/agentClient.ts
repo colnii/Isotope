@@ -6,10 +6,30 @@ export type DesktopChatAnswer = {
   answer: string;
   provider?: string;
   model?: string;
+  capacityCalls?: DesktopCapacityCall[];
+};
+
+export type DesktopCapacityDetailSection = {
+  label: string;
+  kind: 'json' | 'text';
+  content: unknown;
+};
+
+export type DesktopCapacityCall = {
+  id: string;
+  capacityId: string;
+  title: string;
+  status: 'running' | 'ok' | 'blocked' | 'error' | 'unknown';
+  inputSummary: Record<string, unknown>;
+  resultSummary: Record<string, unknown>;
+  details: DesktopCapacityDetailSection[];
 };
 
 export type DesktopChatHandlers = {
   onDelta?: (text: string) => void;
+  onCapacityStart?: (call: DesktopCapacityCall) => void;
+  onCapacityUpdate?: (call: DesktopCapacityCall) => void;
+  onCapacityResult?: (call: DesktopCapacityCall) => void;
 };
 
 export type AgentClient = {
@@ -74,6 +94,7 @@ async function readDesktopChatStream(
   let answer = '';
   let provider: string | undefined;
   let model: string | undefined;
+  const capacityCalls = new Map<string, DesktopCapacityCall>();
 
   while (true) {
     const { value, done } = await reader.read();
@@ -89,6 +110,18 @@ async function readDesktopChatStream(
             answer += text;
             handlers.onDelta?.(text);
           }
+        } else if (event.name === 'capacity_start') {
+          const call = normalizeCapacityCall(event.data);
+          capacityCalls.set(call.id, call);
+          handlers.onCapacityStart?.(call);
+        } else if (event.name === 'capacity_update') {
+          const call = mergeCapacityCall(capacityCalls.get(capacityCallId(event.data)), event.data);
+          capacityCalls.set(call.id, call);
+          handlers.onCapacityUpdate?.(call);
+        } else if (event.name === 'capacity_result') {
+          const call = mergeCapacityCall(capacityCalls.get(capacityCallId(event.data)), event.data);
+          capacityCalls.set(call.id, call);
+          handlers.onCapacityResult?.(call);
         } else if (event.name === 'done') {
           provider = typeof event.data.provider === 'string' ? event.data.provider : undefined;
           model = typeof event.data.model === 'string' ? event.data.model : undefined;
@@ -106,10 +139,15 @@ async function readDesktopChatStream(
       const text = typeof event.data.text === 'string' ? event.data.text : '';
       answer += text;
       handlers.onDelta?.(text);
+    } else if (event.name === 'capacity_result') {
+      const call = mergeCapacityCall(capacityCalls.get(capacityCallId(event.data)), event.data);
+      capacityCalls.set(call.id, call);
+      handlers.onCapacityResult?.(call);
     }
   }
 
-  return { question, answer, provider, model };
+  const calls = [...capacityCalls.values()];
+  return { question, answer, provider, model, ...(calls.length ? { capacityCalls: calls } : {}) };
 }
 
 function parseDesktopChatEvent(block: string): { name: string; data: Record<string, unknown> } {
@@ -130,4 +168,65 @@ async function responseErrorMessage(response: Response): Promise<string> {
     // Fall through to stable status text.
   }
   return `Desktop chat failed with HTTP ${response.status}`;
+}
+
+function normalizeCapacityCall(payload: Record<string, unknown>): DesktopCapacityCall {
+  const capacityId = stringField(payload, 'capacity_id', 'unknown');
+  return {
+    id: capacityCallId(payload),
+    capacityId,
+    title: stringField(payload, 'title', capacityId),
+    status: capacityStatus(payload.status),
+    inputSummary: recordField(payload.input_summary),
+    resultSummary: recordField(payload.result_summary),
+    details: detailSections(payload.details)
+  };
+}
+
+function mergeCapacityCall(
+  existing: DesktopCapacityCall | undefined,
+  payload: Record<string, unknown>
+): DesktopCapacityCall {
+  const next = normalizeCapacityCall(payload);
+  if (!existing) return next;
+  return {
+    ...existing,
+    ...next,
+    inputSummary: Object.keys(next.inputSummary).length ? next.inputSummary : existing.inputSummary,
+    resultSummary: Object.keys(next.resultSummary).length ? next.resultSummary : existing.resultSummary,
+    details: next.details.length ? next.details : existing.details
+  };
+}
+
+function capacityCallId(payload: Record<string, unknown>): string {
+  const id = payload.id;
+  if (typeof id === 'string' && id.trim()) return id;
+  const capacityId = stringField(payload, 'capacity_id', 'unknown');
+  return `capacity_${capacityId.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'unknown'}`;
+}
+
+function stringField(payload: Record<string, unknown>, key: string, fallback: string): string {
+  const value = payload[key];
+  return typeof value === 'string' && value.trim() ? value : fallback;
+}
+
+function recordField(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function capacityStatus(value: unknown): DesktopCapacityCall['status'] {
+  return value === 'running' || value === 'ok' || value === 'blocked' || value === 'error'
+    ? value
+    : 'unknown';
+}
+
+function detailSections(value: unknown): DesktopCapacityDetailSection[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+    const section = item as Record<string, unknown>;
+    const label = stringField(section, 'label', 'Details');
+    const kind = section.kind === 'text' ? 'text' : 'json';
+    return [{ label, kind, content: section.content }];
+  });
 }

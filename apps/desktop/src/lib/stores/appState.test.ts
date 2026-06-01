@@ -127,9 +127,43 @@ describe('appState', () => {
       agentClient: {
         loadSnapshot: async () => realSnapshot(),
         askDesktopQuestion: async (question, handlers) => {
+          handlers?.onCapacityStart?.({
+            id: 'capacity_memory_query',
+            capacityId: 'memory.query',
+            title: 'Memory Query',
+            status: 'running',
+            inputSummary: { query: 'loop' },
+            resultSummary: {},
+            details: []
+          });
           handlers?.onDelta?.('后端');
           handlers?.onDelta?.(' 回答');
-          return { question, answer: '后端 回答', provider: 'fake', model: 'fake' };
+          handlers?.onCapacityResult?.({
+            id: 'capacity_memory_query',
+            capacityId: 'memory.query',
+            title: 'Memory Query',
+            status: 'ok',
+            inputSummary: { query: 'loop' },
+            resultSummary: { result_count: 2 },
+            details: [{ label: 'Results', kind: 'json', content: { result_count: 2 } }]
+          });
+          return {
+            question,
+            answer: '后端 回答',
+            provider: 'fake',
+            model: 'fake',
+            capacityCalls: [
+              {
+                id: 'capacity_memory_query',
+                capacityId: 'memory.query',
+                title: 'Memory Query',
+                status: 'ok',
+                inputSummary: { query: 'loop' },
+                resultSummary: { result_count: 2 },
+                details: [{ label: 'Results', kind: 'json', content: { result_count: 2 } }]
+              }
+            ]
+          };
         }
       }
     });
@@ -148,7 +182,18 @@ describe('appState', () => {
         role: 'assistant',
         content: '后端 回答',
         provider: 'fake',
-        model: 'fake'
+        model: 'fake',
+        capacityCalls: [
+          {
+            id: 'capacity_memory_query',
+            capacityId: 'memory.query',
+            title: 'Memory Query',
+            status: 'ok',
+            inputSummary: { query: 'loop' },
+            resultSummary: { result_count: 2 },
+            details: [{ label: 'Results', kind: 'json', content: { result_count: 2 } }]
+          }
+        ]
       }
     ]);
     expect(get(state.isAskingDesktop)).toBe(false);

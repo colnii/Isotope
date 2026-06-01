@@ -14,9 +14,13 @@ from .notifications.bell_events import default_bell_events_path, read_latest_bel
 from .notifications.context import read_recent_context_results
 from .desktop_chat import (
     DesktopChatProvider,
-    stream_desktop_chat,
+    stream_desktop_chat_events,
+)
+from isotope.features.supervisor.commands.handlers.capacity import (
+    resolve_capacity_calling_provider_from_env,
 )
 from .desktop_snapshot import build_desktop_snapshot
+from isotope.llm.capacity_calling import CapacityCallingProvider
 from .dashboard.html import dashboard_page_html
 from .planner.decision_requests import (
     DEFAULT_DECISION_TIMEOUT_SECONDS,
@@ -84,6 +88,7 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         repair_run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
         llm_action_provider: SummaryProvider | None = None,
         desktop_chat_provider: DesktopChatProvider | None = None,
+        desktop_chat_capacity_provider: CapacityCallingProvider | None = None,
     ) -> None:
         super().__init__(server_address, _DashboardRequestHandler)
         self.codex_home = codex_home
@@ -93,6 +98,7 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         self.send_run = send_run
         self.llm_action_provider = llm_action_provider
         self.desktop_chat_provider = desktop_chat_provider
+        self.desktop_chat_capacity_provider = desktop_chat_capacity_provider
         self.bell_events_path = default_bell_events_path(self.codex_home)
         self.bell_hook_repairs: tuple[TmuxBellHookRepair, ...] = repair_tmux_bell_hooks(
             codex_home=self.codex_home,
@@ -130,6 +136,16 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
             if resolution.status == "configured" and resolution.provider is not None:
                 return resolution.provider
             raise pool_error
+
+    def desktop_chat_capacity_provider_or_default(self) -> CapacityCallingProvider | None:
+        if self.desktop_chat_capacity_provider is not None:
+            return self.desktop_chat_capacity_provider
+        try:
+            return resolve_capacity_calling_provider_from_env()
+        except ValueError:
+            if self.desktop_chat_provider is not None:
+                return None
+            return self.desktop_chat_provider_or_default()
 
     def llm_action_payload(self) -> dict[str, Any]:
         report = self._scan_report()
@@ -179,6 +195,7 @@ def create_dashboard_server(
     repair_run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
     llm_action_provider: SummaryProvider | None = None,
     desktop_chat_provider: DesktopChatProvider | None = None,
+    desktop_chat_capacity_provider: CapacityCallingProvider | None = None,
 ) -> SupervisorDashboardServer:
     return SupervisorDashboardServer(
         (host, port),
@@ -190,6 +207,7 @@ def create_dashboard_server(
         repair_run=repair_run,
         llm_action_provider=llm_action_provider,
         desktop_chat_provider=desktop_chat_provider,
+        desktop_chat_capacity_provider=desktop_chat_capacity_provider,
     )
 
 
@@ -427,15 +445,17 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         provider_name = "unknown"
         model_name = "unknown"
         try:
-            for chunk in stream_desktop_chat(
+            for event in stream_desktop_chat_events(
                 codex_home=self.server.codex_home,
                 question=question,
                 provider=self.server.desktop_chat_provider_or_default(),
+                capacity_provider=self.server.desktop_chat_capacity_provider_or_default(),
                 max_tokens=max_tokens,
             ):
-                provider_name = chunk.provider
-                model_name = chunk.model
-                self._write_sse("delta", {"text": chunk.content})
+                if event.event == "delta":
+                    provider_name = event.provider
+                    model_name = event.model
+                self._write_sse(event.event, event.payload)
         except Exception as exc:  # noqa: BLE001 - stream should surface backend failure.
             self._write_sse(
                 "error",
