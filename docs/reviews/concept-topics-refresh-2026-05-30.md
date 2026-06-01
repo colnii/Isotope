@@ -1,6 +1,6 @@
 # Concept Topics 逐主题重查报告
 
-状态：`review record / committed`
+状态：`review record`
 
 日期：2026-05-30
 
@@ -19,6 +19,13 @@
 
 本轮使用的外部资料都只作为 2026-05-30 的刷新依据。外部产品变化快，后续如果
 要写 active concept 文档，仍应在写作当日再刷新一次来源。
+
+本轮还需要纠正一个旧前提：当时引用 Codex、Claude Code、OpenClaw、
+LangGraph、AutoGen、GenericAgent、PetGPT、Hermes Agent 等外部应用，主要目的
+不是证明 Isotope 应该以内核为中心，而是参考它们已经暴露出来的功能设计和产品
+边界。旧文档采用 `kernel-first` 叙事后，这层价值被压低了，很多应用案例容易只
+被读成架构差异材料。本报告后续按两层重看：先抽应用层功能设计 pressure，再检查
+Isotope 现有 platform / kernel contract 是否够用。
 
 ## 1. Isotope 自身定位：kernel 变成够不够用的问题
 
@@ -48,6 +55,10 @@
   真实 friction，再反压底层 contract。
 - 因此，kernel 不是被降级，而是从 `kernel-first identity` 重新定位为
   application-driven sufficiency boundary（应用驱动的够用性边界）。
+- 对外部应用的参考也应这样处理：先看它们暴露的功能设计，例如 session、
+  workspace、approval、provenance、memory、skills、agent handoff、channel
+  routing，再判断 Isotope 当前底层能力是否足够支撑，而不是先把它们纳入
+  kernel 身份论证。
 
 建议处理：
 
@@ -178,7 +189,7 @@
 - 这篇可以直接引用当前 `ResearchFlow`，把旧 concept 从抽象要求接回已落地能力。
 - 不新增新 provider，不绕开已有 `ResearchFlow`。
 
-## 5. Codex / Claude Code / OpenClaw：旧分类要重写，产品面已经变了
+## 5. Codex / Claude Code / OpenClaw：旧分类要重写，功能设计参考更重要
 
 对应旧文档：
 
@@ -213,6 +224,9 @@
 
 - 旧文档“Codex 是 coding product，Claude Code 是 coding harness，OpenClaw 是
   assistant/gateway product”这个大方向仍成立。
+- 这些产品最值得参考的首先是功能设计：多表面入口、session / workspace 管理、
+  worktree、permission / approval、subagent isolation、skills / memory、
+  gateway / channel 边界、source-of-truth 管理。
 - 但旧文档把 Isotope 对照列写成 `kernel / platform`，需要重写为
   “应用产品 + 底层够用性边界”的对照。
 - 现在更准确的对照是：
@@ -226,8 +240,9 @@
 
 - 旧文档不应原样恢复。
 - 新文档应叫 `reference-pressure/coding-agent-products-refresh.md`。
-- 重点从“Isotope 和它们谁更像 kernel”改成“这些成熟产品暴露了 Isotope
-  应用层必须解决的运营和安全问题，以及现有底层 contract 是否够用”。
+- 重点从“Isotope 和它们谁更像 kernel”改成“这些成熟产品有哪些功能设计值得
+  Isotope 应用层借鉴；这些功能暴露了哪些运营和安全问题；现有底层 contract
+  是否够用”。
 
 ## 6. LangGraph / AutoGen：旧判断基本成立，但不应变成 Isotope 自证
 
@@ -260,6 +275,9 @@
 - 现在应该改成：
   LangGraph 和 AutoGen 是 reference pressure，提醒 Isotope 应用层不要忽视
   durable state、resume、human approval、agent messaging 和 observability。
+- 这里的参考价值同样先落在功能设计：长任务如何恢复、状态如何被审计、人类批准
+  如何插入、agent message 如何追踪，而不是先落在“Isotope 要不要做 runtime
+  kernel”的身份判断。
 - Isotope 不需要因为这些对比而自建完整 workflow engine 或 distributed actor runtime。
 
 建议处理：
@@ -331,7 +349,7 @@
 
 对应旧文档：
 
-- `isotope-vs-hermes-agent.md`
+- `docs/archive/concepts/isotope-vs-hermes-agent.md`
 
 外部重新核对：
 
@@ -354,6 +372,9 @@
 - 旧文档对 Hermes 的关注点仍成立，而且重要性更高：learning loop、skills、
   persistent memory、gateway、scheduled automations、subagent delegation、
   real execution backends。
+- 这篇旧文其实已经写到 Hermes “适合作为 Isotope 的产品层和应用层压力来源”，
+  但中间仍用了较多 kernel skeleton / kernel discipline 语言。重写时应该保留
+  前者，弱化后者，把 Hermes 先当作长期 agent 产品的功能设计参考。
 - 但 Hermes 的 memory 注入模式和 skill 可被 agent 修改，也正好说明 Isotope
   需要更硬的 provenance / approval / source artifact 边界。
 - 对 Isotope 当前主线的直接启发不是“复刻 Hermes”，而是让 Supervisor /
@@ -363,6 +384,8 @@
 
 - 新 brief 应把 Hermes 和 GenericAgent 放在同一组：learning-loop pressure。
 - 明确哪些能力是产品层：gateway、messaging、cron、desktop / mobile entry。
+- 明确哪些能力是功能设计参考：memory promotion、skill creation/update、
+  session search、subagent delegation、provider routing、real workspace backend。
 - 明确哪些能力是平台压力：memory provenance、skill identity/version/scope、
   skill use trace、tool execution evidence。
 
@@ -429,8 +452,8 @@ docs/concepts/
 | Study companion kernel requirements | 标题和 framing 有风险 | 改写为平台能力够用性压力 |
 | Study companion tension notes | 张力仍成立 | 改写为 application/platform boundary notes |
 | ChatGPT share feedback notes | 应用 artifact 方向有价值 | 吸收到 study companion brief |
-| Codex / Claude / OpenClaw | 外部产品已变化，仍是强参考 | source refresh 后重写 |
-| LangGraph / AutoGen | 抽象判断基本成立 | 重写成 orchestration pressure，不作 Isotope 自证 |
+| Codex / Claude / OpenClaw | 外部产品已变化，功能设计参考价值更强 | source refresh 后重写为 coding product pressure |
+| LangGraph / AutoGen | 抽象判断基本成立，功能设计压力仍有价值 | 重写成 orchestration pressure，不作 Isotope 自证 |
 | GenericAgent | 学习闭环压力成立 | 重写成 self-evolving / skill pressure |
 | PetGPT | workspace-backed assistant 压力成立 | 放入 personal assistant / desktop pressure |
 | Hermes Agent | 长期 agent product 压力成立 | 与 GenericAgent 合并为 learning-loop pressure |
@@ -442,8 +465,10 @@ docs/concepts/
 1. 新建 `docs/concepts/README.md`。
 2. 新建 `docs/concepts/application-pressure/persona-pack-boundary.md`。
 3. 新建 `docs/concepts/application-pressure/study-companion-brief.md`。
-4. 在两个新 brief 里链接旧 archive 原文。
-5. 跑 Markdown 链接检查。
+4. 新建 `docs/concepts/reference-pressure/coding-agent-products-refresh.md`，
+   先只抽功能设计参考，不写 kernel 自证。
+5. 在新 brief 里链接旧 archive 原文。
+6. 跑 Markdown 链接检查。
 
 这样可以先纠正 archive 路径造成的参考价值弱化，同时避免旧 kernel-first
 叙事原样复活。
