@@ -512,8 +512,7 @@ def test_smoke_process_argv_routes_profile_backed_cmd_through_fixed_cmd_exe():
         "/d",
         "/s",
         "/c",
-        "C:\\Program Files\\nodejs\\npm.cmd",
-        "--version",
+        '"C:\\Program Files\\nodejs\\npm.cmd" --version',
     ]
 
 
