@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import http.client
 import json
+import time
 import threading
 from typing import Any
 
+import pytest
+
 from isotope.capabilities.runner import CapabilityRunner
+from isotope.features.supervisor.desktop_chat import stream_desktop_chat_events
 from isotope.features.supervisor.planner.goal_queue import record_supervisor_goal
 from isotope.features.supervisor.web import create_dashboard_server
 from isotope.llm.provider import LLMResponse, LLMStreamChunk
@@ -68,6 +72,25 @@ class StreamingDesktopChatProvider(RecordingDesktopChatProvider):
             )
 
 
+class SlowDesktopChatProvider(RecordingDesktopChatProvider):
+    def generate(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int = 512,
+    ) -> LLMResponse:
+        self.calls.append({"messages": messages, "max_tokens": max_tokens})
+        time.sleep(0.2)
+        return LLMResponse(
+            provider=self.provider,
+            model=self.model,
+            content=self.content,
+            finish_reason="stop",
+            usage={},
+            raw={},
+        )
+
+
 class RecordingCapacityProvider:
     provider = "fake-capacity"
     model = "fake-capacity-model"
@@ -97,6 +120,18 @@ class RecordingCapacityProvider:
             usage={"prompt_tokens": 13, "completion_tokens": 5},
             raw={"id": "fake-capacity"},
         )
+
+
+class SlowCapacityProvider(RecordingCapacityProvider):
+    def generate(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int = 512,
+    ) -> LLMResponse:
+        self.calls.append({"messages": messages, "max_tokens": max_tokens})
+        time.sleep(0.2)
+        return super().generate(messages, max_tokens=max_tokens)
 
 
 def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
@@ -273,6 +308,73 @@ def test_desktop_chat_endpoint_streams_capacity_events_before_answer(tmp_path) -
     capacity_call = prompt_payload["supervisor_context"]["capacity_call"]
     assert capacity_call["capacity_id"] == "artifact.review"
     assert capacity_call["status"] == "ok"
+
+
+def test_desktop_chat_endpoint_skips_capacity_for_plain_greeting(tmp_path) -> None:
+    provider = RecordingDesktopChatProvider(content="你好，我在。")
+    capacity_provider = RecordingCapacityProvider(
+        json.dumps(
+            {
+                "capacity_id": None,
+                "arguments": {},
+                "confidence": 0.91,
+                "rationale": "普通问候不需要能力调用。",
+            }
+        )
+    )
+    server = create_dashboard_server(
+        codex_home=tmp_path,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+        desktop_chat_provider=provider,
+        desktop_chat_capacity_provider=capacity_provider,
+    )
+
+    response, body = _post_desktop_chat(server, {"question": "你好"})
+
+    assert response.status == 200
+    events = _parse_sse(body)
+    assert [event["event"] for event in events] == ["start", "delta", "done"]
+    assert events[1]["data"]["text"] == "你好，我在。"
+    assert len(capacity_provider.calls) == 1
+
+
+def test_desktop_chat_stream_skips_slow_capacity_selection_and_answers(tmp_path) -> None:
+    provider = RecordingDesktopChatProvider(content="我先直接回答。")
+    capacity_provider = SlowCapacityProvider()
+
+    events = list(
+        stream_desktop_chat_events(
+            codex_home=tmp_path,
+            question="用 capacity 看一下当前上下文。",
+            provider=provider,
+            capacity_provider=capacity_provider,
+            capacity_timeout_seconds=0.01,
+        )
+    )
+
+    assert [event.event for event in events] == ["delta"]
+    assert events[0].payload == {"text": "我先直接回答。"}
+    assert capacity_provider.calls
+
+
+def test_desktop_chat_stream_times_out_slow_answer_provider(tmp_path) -> None:
+    provider = SlowDesktopChatProvider(content="太晚了")
+
+    with pytest.raises(TimeoutError, match="desktop chat response timed out"):
+        list(
+            stream_desktop_chat_events(
+                codex_home=tmp_path,
+                question="你好",
+                provider=provider,
+                chat_timeout_seconds=0.01,
+            )
+        )
+
+    assert provider.calls
 
 
 def test_desktop_chat_endpoint_sends_developer_capacity_question_to_llm_with_context(tmp_path) -> None:

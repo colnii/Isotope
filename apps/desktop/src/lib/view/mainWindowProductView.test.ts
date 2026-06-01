@@ -11,9 +11,10 @@ describe('buildMainWindowProductView', () => {
     expect('sourceKind' in view).toBe(false);
     expect(view.chatEyebrow).toBe('AI chat');
     expect(view.workspaceTitle).toBe('Isotope');
-    expect(view.workspaceSubtitle).toBe('Capacity-aware assistant');
+    expect(view.workspaceSubtitle).toBe('');
     expect(view.emptyChatTitle).toBe('Ask Isotope');
-    expect(view.emptyChatBody).toBe('Capacity calls will appear inline when the assistant uses one.');
+    expect(view.emptyChatBody).toBe('');
+    expect(view.workspaceBody).toBe('');
     expect(view.composerPlaceholder).toBe('Ask Isotope');
   });
 });

@@ -93,6 +93,7 @@ class PooledCapacityCallingProvider:
 def resolve_capacity_calling_provider_from_env(
     environ: Mapping[str, str] | None = None,
     *,
+    timeout: int | None = None,
     transport: Transport | None = None,
     codex_process_runner: Callable[..., Any] = subprocess.run,
     codex_executable_resolver: Callable[[str], str | None] = shutil.which,
@@ -110,6 +111,7 @@ def resolve_capacity_calling_provider_from_env(
         )
     return PooledCapacityCallingProvider(
         entries=entries,
+        timeout=timeout or 60,
         transport=transport,
         codex_process_runner=codex_process_runner,
         codex_executable_resolver=codex_executable_resolver,
@@ -124,6 +126,7 @@ def build_supervisor_capacity_plan(
     execute_agent_loop: bool = False,
     runner: CapabilityRunner | None = None,
     input_defaults: Mapping[str, Any] | None = None,
+    allow_no_capacity: bool = False,
 ) -> dict[str, Any]:
     """Plan one Supervisor capacity call, optionally proving the agent-loop path."""
     capacity_runner = runner or CapabilityRunner()
@@ -137,12 +140,37 @@ def build_supervisor_capacity_plan(
         provider,
         goal=goal,
         capacities=offered_capacities,
+        allow_no_capacity=allow_no_capacity,
     )
     selection_payload = _selection_with_input_defaults(
         selection.to_dict(),
         offered_capacities=offered_capacities,
         input_defaults=input_defaults,
     )
+    if selection_payload["status"] == "no_capacity":
+        payload = {
+            "status": "skipped",
+            "status_reason": "no_capacity",
+            "kind": "supervisor_capacity_plan",
+            "goal": goal,
+            "selection": selection_payload,
+            "capacity_graph": {
+                "kind": "capacity_graph_plan",
+                "status": "skipped",
+                "summary": {"ready": 0, "blocked": 0},
+                "calls": [],
+            },
+            "capability_launch_plan": None,
+            "agent_loop": None,
+            "supervisor_decision": _capacity_supervisor_decision(
+                status_reason="no_capacity",
+                selection=selection_payload,
+                launch_plan=None,
+            ),
+            "safety": _capacity_plan_safety(execute_agent_loop=execute_agent_loop),
+        }
+        payload["agent_loop_summary"] = agent_loop_json_summary(payload)
+        return payload
     if selection_payload["status"] != "ready_to_call":
         payload = {
             "status": "needs_input",
@@ -809,6 +837,10 @@ def _selection_with_input_defaults(
     input_defaults: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
     payload = copy.deepcopy(dict(selection))
+    if payload.get("status") == "no_capacity":
+        payload["arguments"] = {}
+        payload["missing_inputs"] = []
+        return payload
     capacity = _offered_capacity_by_id(payload.get("capacity_id"), offered_capacities)
     contract = capacity.get("input_contract") if isinstance(capacity, Mapping) else {}
     properties = contract_properties(contract if isinstance(contract, Mapping) else {})

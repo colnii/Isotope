@@ -129,6 +129,7 @@ def resolve_workbench_ask_provider_from_env(
     environ: Mapping[str, str] | None = None,
     *,
     agent_name: str | None = None,
+    timeout: int | None = None,
     transport: Transport | None = None,
     codex_process_runner: Callable[..., Any] = subprocess.run,
     codex_executable_resolver: Callable[[str], str | None] = shutil.which,
@@ -152,14 +153,14 @@ def resolve_workbench_ask_provider_from_env(
             "Check ISOTOPE_LLM_POOL_TOML_FILES, SUPERVISOR_LLM_POOL_TOML_FILES, "
             "or the default supervisor_llm_pool.toml configuration."
         )
-    timeout = _env_int(
+    resolved_timeout = timeout or _env_int(
         env,
         "ISOTOPE_LLM_TIMEOUT_SECONDS",
         default=_env_int(env, "SUPERVISOR_LLM_TIMEOUT_SECONDS", default=60),
     )
     return PooledWorkbenchAskProvider(
         entries=entries,
-        timeout=timeout,
+        timeout=resolved_timeout,
         transport=transport,
         codex_process_runner=codex_process_runner,
         codex_executable_resolver=codex_executable_resolver,

@@ -182,6 +182,27 @@ def test_supervisor_capacity_plan_uses_capacity_calling_graph_and_capability_run
     assert "artifact.review" in provider.messages[0][1]["content"]
 
 
+def test_supervisor_capacity_plan_can_skip_when_no_capacity_is_needed(tmp_path):
+    provider = FakeCapacityProvider(
+        '{"capacity_id":null,"arguments":{},"confidence":0.91,'
+        '"rationale":"plain greeting"}'
+    )
+
+    result = capacity_command.build_supervisor_capacity_plan(
+        goal="你好",
+        provider=provider,
+        state_root=tmp_path / "state",
+        execute_agent_loop=True,
+        allow_no_capacity=True,
+    )
+
+    assert result["status"] == "skipped"
+    assert result["status_reason"] == "no_capacity"
+    assert result["selection"]["status"] == "no_capacity"
+    assert result["capability_launch_plan"] is None
+    assert result["agent_loop"] is None
+
+
 def test_supervisor_capacity_plan_passes_selection_arguments_to_launch_plan(tmp_path):
     workspace = tmp_path / "workspace"
     workspace.mkdir()

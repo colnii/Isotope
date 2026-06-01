@@ -73,6 +73,7 @@ def select_capacity_call(
     goal: str,
     capacities: list[Mapping[str, Any]] | tuple[Mapping[str, Any], ...],
     max_tokens: int = 512,
+    allow_no_capacity: bool = False,
 ) -> CapacityCallSelection:
     """Ask an LLM to select one offered capacity and fill its arguments.
 
@@ -90,7 +91,11 @@ def select_capacity_call(
 
     try:
         response = provider.generate(
-            _build_messages(goal=clean_goal, capacities=safe_capacities),
+            _build_messages(
+                goal=clean_goal,
+                capacities=safe_capacities,
+                allow_no_capacity=allow_no_capacity,
+            ),
             max_tokens=max_tokens,
         )
     except IsotopeError:
@@ -108,6 +113,20 @@ def select_capacity_call(
         ) from exc
 
     payload = _extract_json_object(response.content, provider=provider)
+    if allow_no_capacity and _payload_selects_no_capacity(payload):
+        return CapacityCallSelection(
+            kind="capacity_call_selection",
+            status="no_capacity",
+            capacity_id="",
+            arguments={},
+            missing_inputs=[],
+            confidence=_payload_confidence(payload, provider=provider),
+            rationale=_payload_optional_string(payload, "rationale"),
+            provider=response.provider,
+            model=response.model,
+            finish_reason=response.finish_reason,
+            usage=_safe_usage(response.usage),
+        )
     capacity_id = _payload_string(payload, "capacity_id", provider=provider)
     if capacity_id not in offered:
         raise IsotopeError(
@@ -157,28 +176,37 @@ def _build_messages(
     *,
     goal: str,
     capacities: list[dict[str, Any]],
+    allow_no_capacity: bool = False,
 ) -> list[dict[str, str]]:
+    rules = [
+        "Select one offered capacity_id only when the goal needs a capacity call.",
+        "Fill only arguments needed by that capacity input_contract.",
+        "If a required value is absent from the goal, omit that argument.",
+        "Return only a JSON object and do not execute anything.",
+    ]
+    required_json_shape = {
+        "capacity_id": "string",
+        "arguments": "object",
+        "confidence": "number between 0 and 1",
+        "rationale": "short low-sensitive string",
+    }
+    if allow_no_capacity:
+        rules.insert(
+            1,
+            "If the goal can be answered without a capacity call, set capacity_id to null and arguments to {}.",
+        )
+        required_json_shape["capacity_id"] = "string or null"
     payload = {
         "goal": goal,
         "capacities": capacities,
-        "rules": [
-            "Select exactly one offered capacity_id.",
-            "Fill only arguments needed by that capacity input_contract.",
-            "If a required value is absent from the goal, omit that argument.",
-            "Return only a JSON object and do not execute anything.",
-        ],
-        "required_json_shape": {
-            "capacity_id": "string",
-            "arguments": "object",
-            "confidence": "number between 0 and 1",
-            "rationale": "short low-sensitive string",
-        },
+        "rules": rules,
+        "required_json_shape": required_json_shape,
     }
     return [
         {
             "role": "system",
             "content": (
-                "You select an Isotope capacity and fill its arguments. "
+                "You decide whether an Isotope capacity is needed and fill its arguments. "
                 "Return a single low-sensitive JSON object."
             ),
         },
@@ -338,6 +366,20 @@ def _payload_string(
         return _require_non_empty_string(key, payload.get(key))
     except ValueError as exc:
         raise _invalid_response(provider, f"capacity response field {key} must be a string") from exc
+
+
+def _payload_selects_no_capacity(payload: Mapping[str, Any]) -> bool:
+    capacity_id = payload.get("capacity_id")
+    if capacity_id is None:
+        return True
+    return isinstance(capacity_id, str) and capacity_id.strip().lower() in {
+        "",
+        "none",
+        "null",
+        "no_capacity",
+        "no-op",
+        "noop",
+    }
 
 
 def _payload_optional_string(payload: Mapping[str, Any], key: str) -> str:

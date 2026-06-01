@@ -20,10 +20,10 @@ export function buildMainWindowProductView(
   return {
     chatEyebrow: 'AI chat',
     workspaceTitle: 'Isotope',
-    workspaceSubtitle: 'Capacity-aware assistant',
-    workspaceBody: 'Ask a question and review capacity calls inline when the assistant uses one.',
+    workspaceSubtitle: '',
+    workspaceBody: '',
     emptyChatTitle: 'Ask Isotope',
-    emptyChatBody: 'Capacity calls will appear inline when the assistant uses one.',
+    emptyChatBody: '',
     composerPlaceholder: 'Ask Isotope'
   };
 }

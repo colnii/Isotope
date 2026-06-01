@@ -101,6 +101,33 @@ def test_select_capacity_call_asks_llm_to_choose_capacity_and_fill_arguments():
     assert provider.calls[0]["max_tokens"] == 192
 
 
+def test_select_capacity_call_can_decline_capacity_when_allowed():
+    provider = RecordingProvider(
+        json.dumps(
+            {
+                "capacity_id": None,
+                "arguments": {},
+                "confidence": 0.93,
+                "rationale": "普通问候不需要能力调用。",
+            }
+        )
+    )
+
+    selection = select_capacity_call(
+        provider,
+        goal="你好",
+        capacities=[_capacity()],
+        allow_no_capacity=True,
+    )
+
+    assert selection.status == "no_capacity"
+    assert selection.capacity_id == ""
+    assert selection.arguments == {}
+    prompt_payload = json.loads(provider.calls[0]["messages"][1]["content"])
+    assert prompt_payload["required_json_shape"]["capacity_id"] == "string or null"
+    assert "set capacity_id to null" in " ".join(prompt_payload["rules"])
+
+
 def test_select_capacity_call_reports_missing_required_arguments_without_execution():
     provider = RecordingProvider(
         json.dumps(

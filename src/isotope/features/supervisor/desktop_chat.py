@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
+from queue import Empty, Queue
+from time import monotonic
 from typing import Any, Protocol
 
 from isotope.capabilities.runner import CapabilityRunner
@@ -91,6 +94,8 @@ def stream_desktop_chat_events(
     max_tokens: int = 512,
     capacity_provider: CapacityCallingProvider | None = None,
     capacity_runner: CapabilityRunner | None = None,
+    capacity_timeout_seconds: float = 3.0,
+    chat_timeout_seconds: float = 18.0,
 ) -> Iterator[DesktopChatStreamEvent]:
     clean_question = _require_question(question)
     if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
@@ -102,14 +107,16 @@ def stream_desktop_chat_events(
             question=clean_question,
             provider=capacity_provider,
             runner=capacity_runner,
+            timeout_seconds=capacity_timeout_seconds,
         ):
             supervisor_context["capacity_call"] = event.payload
             yield event
-    for chunk in _stream_desktop_chat_chunks(
+    for chunk in _stream_desktop_chat_chunks_with_timeout(
         clean_question,
         supervisor_context,
         provider=provider,
         max_tokens=max_tokens,
+        timeout_seconds=chat_timeout_seconds,
     ):
         yield DesktopChatStreamEvent(
             event="delta",
@@ -193,6 +200,59 @@ def _stream_desktop_chat_chunks(
         )
 
 
+def _stream_desktop_chat_chunks_with_timeout(
+    question: str,
+    supervisor_context: dict[str, Any],
+    *,
+    provider: DesktopChatProvider,
+    max_tokens: int,
+    timeout_seconds: float,
+) -> Iterator[LLMStreamChunk]:
+    if timeout_seconds <= 0:
+        raise TimeoutError("desktop chat response timed out")
+    queue: Queue[tuple[str, LLMStreamChunk | BaseException | None]] = Queue()
+
+    def run_provider() -> None:
+        try:
+            for chunk in _stream_desktop_chat_chunks(
+                question,
+                supervisor_context,
+                provider=provider,
+                max_tokens=max_tokens,
+            ):
+                queue.put(("chunk", chunk))
+            queue.put(("done", None))
+        except BaseException as exc:  # noqa: BLE001 - forwarded to SSE error.
+            queue.put(("error", exc))
+
+    executor = ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(run_provider)
+    deadline = monotonic() + timeout_seconds
+    try:
+        while True:
+            remaining = deadline - monotonic()
+            if remaining <= 0:
+                future.cancel()
+                raise TimeoutError("desktop chat response timed out")
+            try:
+                kind, payload = queue.get(timeout=remaining)
+            except Empty as exc:
+                future.cancel()
+                raise TimeoutError("desktop chat response timed out") from exc
+            if kind == "chunk":
+                if not isinstance(payload, LLMStreamChunk):
+                    raise ValueError("provider returned malformed stream chunk")
+                yield payload
+            elif kind == "error":
+                if isinstance(payload, BaseException):
+                    raise payload
+                raise RuntimeError("desktop chat provider failed")
+            else:
+                return
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
+
+
 def desktop_chat_answer_chunks(answer: str, *, chunk_size: int = 12) -> list[str]:
     if isinstance(chunk_size, bool) or not isinstance(chunk_size, int) or chunk_size <= 0:
         raise ValueError("chunk_size must be a positive integer")
@@ -254,25 +314,20 @@ def _desktop_chat_capacity_events(
     question: str,
     provider: CapacityCallingProvider,
     runner: CapabilityRunner | None,
+    timeout_seconds: float,
 ) -> Iterator[DesktopChatStreamEvent]:
     root = Path(codex_home).expanduser()
     try:
-        plan = build_supervisor_capacity_plan(
+        plan = _build_capacity_plan_with_timeout(
+            timeout_seconds=timeout_seconds,
             goal=question,
             provider=provider,
-            state_root=root / "supervisor" / "capacity-loop-runs",
-            execute_agent_loop=True,
+            root=root,
             runner=runner,
-            input_defaults={
-                "codex_home": str(root),
-                "root": str(root),
-                "run_id": "desktop_chat",
-                "cwd": str(Path.cwd()),
-            },
         )
     except Exception as exc:  # noqa: BLE001 - chat should surface capacity failure safely.
-        payload = _capacity_error_projection(exc)
-        yield DesktopChatStreamEvent(event="capacity_result", payload=payload)
+        return
+    if plan.get("status") == "skipped" and plan.get("status_reason") == "no_capacity":
         return
     result = _capacity_plan_projection(plan)
     yield DesktopChatStreamEvent(
@@ -289,6 +344,41 @@ def _desktop_chat_capacity_events(
         },
     )
     yield DesktopChatStreamEvent(event="capacity_result", payload=result)
+
+
+def _build_capacity_plan_with_timeout(
+    *,
+    timeout_seconds: float,
+    goal: str,
+    provider: CapacityCallingProvider,
+    root: Path,
+    runner: CapabilityRunner | None,
+) -> dict[str, Any]:
+    if timeout_seconds <= 0:
+        raise TimeoutError("capacity selection timed out")
+    executor = ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(
+        build_supervisor_capacity_plan,
+        goal=goal,
+        provider=provider,
+        state_root=root / "supervisor" / "capacity-loop-runs",
+        execute_agent_loop=True,
+        runner=runner,
+        input_defaults={
+            "codex_home": str(root),
+            "root": str(root),
+            "run_id": "desktop_chat",
+            "cwd": str(Path.cwd()),
+        },
+        allow_no_capacity=True,
+    )
+    try:
+        return future.result(timeout=timeout_seconds)
+    except FutureTimeoutError as exc:
+        future.cancel()
+        raise TimeoutError("capacity selection timed out") from exc
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
 
 
 def _capacity_plan_projection(plan: dict[str, Any]) -> dict[str, Any]:

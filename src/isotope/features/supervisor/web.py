@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -130,7 +131,15 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         if self.desktop_chat_provider is not None:
             return self.desktop_chat_provider
         try:
-            return resolve_workbench_ask_provider_from_env(agent_name="supervisor")
+            return resolve_workbench_ask_provider_from_env(
+                agent_name="supervisor",
+                timeout=int(
+                    _env_number(
+                        "ISOTOPE_DESKTOP_CHAT_PROVIDER_TIMEOUT_SECONDS",
+                        default=6,
+                    )
+                ),
+            )
         except ValueError as pool_error:
             resolution = resolve_llm_chat_provider()
             if resolution.status == "configured" and resolution.provider is not None:
@@ -143,7 +152,14 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         if self.desktop_chat_provider is not None:
             return None
         try:
-            return resolve_capacity_calling_provider_from_env()
+            return resolve_capacity_calling_provider_from_env(
+                timeout=int(
+                    _env_number(
+                        "ISOTOPE_DESKTOP_CAPACITY_PROVIDER_TIMEOUT_SECONDS",
+                        default=4,
+                    )
+                ),
+            )
         except ValueError:
             return self.desktop_chat_provider_or_default()
 
@@ -451,6 +467,14 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
                 provider=self.server.desktop_chat_provider_or_default(),
                 capacity_provider=self.server.desktop_chat_capacity_provider_or_default(),
                 max_tokens=max_tokens,
+                capacity_timeout_seconds=_env_number(
+                    "ISOTOPE_DESKTOP_CAPACITY_TIMEOUT_SECONDS",
+                    default=4,
+                ),
+                chat_timeout_seconds=_env_number(
+                    "ISOTOPE_DESKTOP_CHAT_TIMEOUT_SECONDS",
+                    default=18,
+                ),
             ):
                 if event.event == "delta":
                     provider_name = event.provider
@@ -681,6 +705,19 @@ def _required_string(value: object, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{field} must not be empty")
     return value.strip()
+
+
+def _env_number(name: str, *, default: float) -> float:
+    raw = os.environ.get(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a number") from exc
+    if value <= 0:
+        raise ValueError(f"{name} must be positive")
+    return value
 
 
 def _optional_string(value: object) -> str | None:
