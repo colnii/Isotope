@@ -156,14 +156,20 @@ Commit:
 
 ## Task 5: Integration Verification and Handoff
 
-- [ ] Run full terminal unit suite.
-- [ ] Run `git diff --check`.
-- [ ] Re-read the spec success criteria and record any deferred items.
-- [ ] Commit final docs/test cleanup if needed.
-- [ ] Push branch.
+- [x] Run full terminal unit suite.
+- [x] Run `git diff --check`.
+- [x] Re-read the spec success criteria and record any deferred items.
+- [x] Commit final docs/test cleanup if needed.
+- [x] Push branch.
 
 Manual Windows validation remains required after this Linux/WSL implementation pass:
 
 ```bash
 PYTHONPATH=src .venv\\Scripts\\python.exe -m pytest tests/unit/execution/terminal -q
 ```
+
+Deferred after this WSL/Linux implementation pass:
+
+- Windows-native execution smoke still needs to run on an actual Windows Python host.
+- `taskkill` process-tree cleanup is unit-tested through metadata and injected cleanup hooks; the real Windows fallback still needs native validation.
+- Backend selector auto-switching and product terminal UI remain outside this A/B implementation scope.
