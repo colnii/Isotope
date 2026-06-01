@@ -3,12 +3,54 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 
 WINDOWS_SMOKE_SCHEMA_VERSION = "windows-smoke.v0.1"
+WINDOWS_PATH_RISK_LENGTH = 200
+COPY_INCLUDE_FILES = (
+    "package.json",
+    "package-lock.json",
+    "npm-shrinkwrap.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "pyproject.toml",
+    "Cargo.toml",
+    "Cargo.lock",
+)
+COPY_INCLUDE_DIRS = (
+    "apps/desktop",
+    "src",
+    "apps/desktop/src-tauri",
+)
+COPY_EXCLUDE_NAMES = {
+    ".git",
+    ".venv",
+    "node_modules",
+    "target",
+    "dist",
+    "build",
+    ".svelte-kit",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+}
+READ_ONLY_MUTATION_POLICIES = {"read_only", "check"}
+
+
+class WindowsSmokeWorkspaceError(RuntimeError):
+    """Workspace resolution or copy-policy failure."""
+
+    def __init__(self, message: str, *, reason_code: str, details: dict[str, Any] | None = None) -> None:
+        super().__init__(message)
+        self.reason_code = reason_code
+        self.details = dict(details or {})
 
 
 @dataclass(frozen=True)
@@ -195,6 +237,158 @@ class WindowsSmokeReport:
         return json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n"
 
 
+@dataclass(frozen=True)
+class WindowsWorkspaceDecision:
+    strategy: str
+    source_root: str
+    source_root_kind: str
+    workspace_root: str | None
+    reason: str
+    cleanup_on_success: bool
+    keep_on_failure: bool
+
+    def __post_init__(self) -> None:
+        if self.strategy not in {"direct", "copy_to_temp", "unsupported"}:
+            raise ValueError("workspace decision strategy is not supported")
+        _non_empty_string("source_root", self.source_root)
+        _non_empty_string("source_root_kind", self.source_root_kind)
+        if self.workspace_root is not None:
+            _non_empty_string("workspace_root", self.workspace_root)
+        _non_empty_string("reason", self.reason)
+        if not isinstance(self.cleanup_on_success, bool):
+            raise ValueError("cleanup_on_success must be a bool")
+        if not isinstance(self.keep_on_failure, bool):
+            raise ValueError("keep_on_failure must be a bool")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "strategy": self.strategy,
+            "source_root": self.source_root,
+            "source_root_kind": self.source_root_kind,
+            "workspace_root": self.workspace_root,
+            "reason": self.reason,
+            "cleanup_on_success": self.cleanup_on_success,
+            "keep_on_failure": self.keep_on_failure,
+        }
+
+
+def resolve_windows_host_mode(
+    *,
+    platform_name: str | None = None,
+    has_wsl_interop: bool | None = None,
+) -> str:
+    platform = platform_name or sys.platform
+    if platform == "win32":
+        return "windows_python"
+    if has_wsl_interop is None:
+        has_wsl_interop = _detect_wsl_windows_interop()
+    if platform.startswith("linux") and has_wsl_interop:
+        return "wsl_to_windows_helper"
+    return "unsupported"
+
+
+def resolve_windows_workspace(
+    *,
+    source_root: str | Path,
+    host_mode: str,
+    workspace_strategy: str,
+    source_root_kind: str | None = None,
+    mutation_policy: str = "read_only",
+    temp_root: str = "C:\\isotope-smoke",
+    run_id: str = "run",
+    allow_direct_mutation: bool = False,
+    windows_path_risk_length: int = WINDOWS_PATH_RISK_LENGTH,
+) -> WindowsWorkspaceDecision:
+    source_text = str(source_root)
+    _non_empty_string("source_root", source_text)
+    if host_mode not in {"windows_python", "wsl_to_windows_helper", "unsupported"}:
+        raise ValueError("host_mode is not supported")
+    if workspace_strategy not in {"direct", "copy_to_temp", "auto"}:
+        raise ValueError("workspace_strategy must be direct, copy_to_temp, or auto")
+    _non_empty_string("mutation_policy", mutation_policy)
+    _non_empty_string("temp_root", temp_root)
+    _non_empty_string("run_id", run_id)
+    source_kind = source_root_kind or classify_windows_source_root(source_text)
+
+    if host_mode == "unsupported":
+        return WindowsWorkspaceDecision(
+            strategy="unsupported",
+            source_root=source_text,
+            source_root_kind=source_kind,
+            workspace_root=None,
+            reason="windows_host_unsupported",
+            cleanup_on_success=False,
+            keep_on_failure=True,
+        )
+    if workspace_strategy == "direct":
+        return _direct_workspace_decision(source_text, source_kind, reason="workspace_strategy_direct")
+    if workspace_strategy == "copy_to_temp":
+        return _copy_workspace_decision(
+            source_text,
+            source_kind,
+            temp_root=temp_root,
+            run_id=run_id,
+            reason="workspace_strategy_copy_to_temp",
+        )
+    if host_mode != "windows_python" or source_kind != "windows_local":
+        return _copy_workspace_decision(
+            source_text,
+            source_kind,
+            temp_root=temp_root,
+            run_id=run_id,
+            reason="source_root_requires_windows_local_copy",
+        )
+    if mutation_policy not in READ_ONLY_MUTATION_POLICIES and not allow_direct_mutation:
+        return _copy_workspace_decision(
+            source_text,
+            source_kind,
+            temp_root=temp_root,
+            run_id=run_id,
+            reason="mutation_policy_requires_copy",
+        )
+    if len(source_text) >= windows_path_risk_length:
+        return _copy_workspace_decision(
+            source_text,
+            source_kind,
+            temp_root=temp_root,
+            run_id=run_id,
+            reason="windows_path_length_risk",
+        )
+    return _direct_workspace_decision(source_text, source_kind, reason="safe_windows_local_read_only")
+
+
+def classify_windows_source_root(source_root: str | Path) -> str:
+    text = str(source_root)
+    normalized = text.replace("/", "\\")
+    if normalized.lower().startswith("\\\\wsl.localhost\\") or normalized.lower().startswith("\\\\wsl$\\"):
+        return "wsl_unc"
+    if len(normalized) >= 3 and normalized[1:3] == ":\\" and normalized[0].isalpha():
+        return "windows_local"
+    if text.startswith("/"):
+        return "posix_path"
+    return "unknown"
+
+
+def collect_windows_workspace_copy_items(source_root: str | Path) -> list[Path]:
+    root = Path(source_root).resolve()
+    if not root.exists() or not root.is_dir():
+        raise WindowsSmokeWorkspaceError(
+            "workspace source root is unavailable",
+            reason_code="windows_smoke_workspace_unavailable",
+            details={"source_root": str(source_root)},
+        )
+    items: list[Path] = []
+    for relative_name in COPY_INCLUDE_FILES:
+        candidate = root / relative_name
+        if candidate.exists() and _is_copyable_path(root, candidate):
+            items.append(Path(relative_name))
+    for relative_name in COPY_INCLUDE_DIRS:
+        candidate = root / relative_name
+        if candidate.exists() and candidate.is_dir():
+            items.extend(_copyable_tree_items(root, candidate))
+    return sorted(set(items), key=lambda item: item.as_posix())
+
+
 def redact_public_summary(
     *,
     status: str,
@@ -241,6 +435,91 @@ def _public_step_summary(step: Any) -> dict[str, Any]:
     }
 
 
+def _direct_workspace_decision(source_root: str, source_root_kind: str, *, reason: str) -> WindowsWorkspaceDecision:
+    return WindowsWorkspaceDecision(
+        strategy="direct",
+        source_root=source_root,
+        source_root_kind=source_root_kind,
+        workspace_root=source_root,
+        reason=reason,
+        cleanup_on_success=False,
+        keep_on_failure=True,
+    )
+
+
+def _copy_workspace_decision(
+    source_root: str,
+    source_root_kind: str,
+    *,
+    temp_root: str,
+    run_id: str,
+    reason: str,
+) -> WindowsWorkspaceDecision:
+    return WindowsWorkspaceDecision(
+        strategy="copy_to_temp",
+        source_root=source_root,
+        source_root_kind=source_root_kind,
+        workspace_root=_join_windows_path(temp_root, run_id),
+        reason=reason,
+        cleanup_on_success=True,
+        keep_on_failure=True,
+    )
+
+
+def _join_windows_path(root: str, child: str) -> str:
+    return root.rstrip("\\/") + "\\" + child.strip("\\/")
+
+
+def _copyable_tree_items(root: Path, directory: Path) -> list[Path]:
+    items: list[Path] = []
+    for current_root, dirnames, filenames in os.walk(directory, followlinks=False):
+        current = Path(current_root)
+        _reject_escaping_symlink(root, current)
+        dirnames[:] = [
+            dirname
+            for dirname in dirnames
+            if not _is_excluded_relative((current / dirname).relative_to(root))
+        ]
+        for dirname in list(dirnames):
+            _reject_escaping_symlink(root, current / dirname)
+        for filename in filenames:
+            path = current / filename
+            if _is_copyable_path(root, path):
+                items.append(path.relative_to(root))
+    return items
+
+
+def _is_copyable_path(root: Path, path: Path) -> bool:
+    relative = path.relative_to(root)
+    if _is_excluded_relative(relative):
+        return False
+    _reject_escaping_symlink(root, path)
+    return path.is_file() or path.is_symlink()
+
+
+def _is_excluded_relative(relative: Path) -> bool:
+    return any(part in COPY_EXCLUDE_NAMES for part in relative.parts)
+
+
+def _reject_escaping_symlink(root: Path, path: Path) -> None:
+    if not path.is_symlink():
+        return
+    root_resolved = root.resolve()
+    target = path.resolve()
+    try:
+        target.relative_to(root_resolved)
+    except ValueError as exc:
+        raise WindowsSmokeWorkspaceError(
+            "workspace copy policy rejects symlinks escaping source_root",
+            reason_code="windows_smoke_workspace_symlink_escape",
+            details={"path": str(path), "target": str(target), "source_root": str(root)},
+        ) from exc
+
+
+def _detect_wsl_windows_interop() -> bool:
+    return bool(os.environ.get("WSL_INTEROP") and shutil.which("powershell.exe"))
+
+
 def _argv(value: list[str]) -> None:
     if not isinstance(value, list) or not value:
         raise ValueError("argv must be a non-empty list")
@@ -282,9 +561,14 @@ def _positive_int(field_name: str, value: Any) -> None:
 
 __all__ = [
     "WINDOWS_SMOKE_SCHEMA_VERSION",
+    "WindowsSmokeWorkspaceError",
     "WindowsSmokePlan",
     "WindowsSmokeReport",
     "WindowsSmokeStep",
     "WindowsSmokeStepResult",
+    "WindowsWorkspaceDecision",
+    "collect_windows_workspace_copy_items",
     "redact_public_summary",
+    "resolve_windows_host_mode",
+    "resolve_windows_workspace",
 ]

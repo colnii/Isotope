@@ -78,26 +78,26 @@ Commit:
 
 Write failing tests first for:
 
-- [ ] `resolve_windows_host_mode(...)` returns `windows_python`, `wsl_to_windows_helper`, or `unsupported`.
-- [ ] Workspace resolver chooses direct for safe Windows local paths.
-- [ ] Workspace resolver chooses short temp copy root for WSL/UNC or long-path risk.
-- [ ] Copy policy includes known project files and excludes `.git`, `.venv`, `node_modules`, `target`, `dist`, `build`, `.svelte-kit`, caches.
-- [ ] Symlinks escaping `source_root` are rejected.
-- [ ] Mutation policy keeps install/build/smoke off the source workspace unless explicitly allowed.
+- [x] `resolve_windows_host_mode(...)` returns `windows_python`, `wsl_to_windows_helper`, or `unsupported`.
+- [x] Workspace resolver chooses direct for safe Windows local paths.
+- [x] Workspace resolver chooses short temp copy root for WSL/UNC or long-path risk.
+- [x] Copy policy includes known project files and excludes `.git`, `.venv`, `node_modules`, `target`, `dist`, `build`, `.svelte-kit`, caches.
+- [x] Symlinks escaping `source_root` are rejected.
+- [x] Mutation policy keeps install/build/smoke off the source workspace unless explicitly allowed.
 
 Implementation:
 
-- [ ] Add `WindowsWorkspaceDecision`.
-- [ ] Add deterministic copy include/exclude walker.
-- [ ] Add cleanup policy fields: `cleanup_on_success` and `keep_on_failure`.
+- [x] Add `WindowsWorkspaceDecision`.
+- [x] Add deterministic copy include/exclude walker.
+- [x] Add cleanup policy fields: `cleanup_on_success` and `keep_on_failure`.
 
 Verification:
 
-- [ ] `PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest tests/unit/execution/terminal/test_windows_smoke.py -q`
+- [x] `PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest tests/unit/execution/terminal/test_windows_smoke.py -q`
 
 Commit:
 
-- [ ] `feat(terminal): resolve windows smoke workspace`
+- [x] `feat(terminal): resolve windows smoke workspace`
 
 ## Task 3: Smoke Step Runner and Fixed Profiles
 
