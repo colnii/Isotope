@@ -24,6 +24,7 @@ from isotope.execution.terminal.windows_smoke import (
     resolve_windows_workspace,
     run_windows_native_smoke_plan,
 )
+from isotope.execution.terminal.windows_smoke_runner import _resolve_smoke_process_argv
 
 
 def test_windows_smoke_plan_serializes_structured_steps_without_shell_strings(tmp_path):
@@ -496,6 +497,34 @@ def test_powershell_helper_invocation_uses_fixed_file_shape(tmp_path):
     ]
     assert "-Command" not in argv
     assert "-EncodedCommand" not in argv
+
+
+def test_smoke_process_argv_routes_profile_backed_cmd_through_fixed_cmd_exe():
+    routed = _resolve_smoke_process_argv(
+        ["npm", "--version"],
+        platform_name="nt",
+        executable_resolver=lambda command: "C:\\Program Files\\nodejs\\npm.cmd",
+        comspec="C:\\Windows\\System32\\cmd.exe",
+    )
+
+    assert routed == [
+        "C:\\Windows\\System32\\cmd.exe",
+        "/d",
+        "/s",
+        "/c",
+        "C:\\Program Files\\nodejs\\npm.cmd",
+        "--version",
+    ]
+
+
+def test_smoke_process_argv_rejects_non_profile_cmd_scripts():
+    with pytest.raises(OSError, match="profile-backed"):
+        _resolve_smoke_process_argv(
+            ["custom", "--version"],
+            platform_name="nt",
+            executable_resolver=lambda command: "C:\\Tools\\custom.cmd",
+            comspec="C:\\Windows\\System32\\cmd.exe",
+        )
 
 
 def _golden_report(

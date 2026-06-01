@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -23,6 +24,7 @@ from .windows_smoke import (
 
 RUNNER_VERSION = "windows-smoke-runner.v0.1"
 PROFILE_VERSION = "2026-06-02"
+PROFILE_BACKED_SCRIPT_COMMANDS = {"npm", "pnpm", "yarn", "npx"}
 ProcessRunner = Callable[..., "WindowsProcessResult"]
 CleanupProcessTree = Callable[[int | None], dict[str, Any]]
 
@@ -302,8 +304,9 @@ def _subprocess_process_runner(
 ) -> WindowsProcessResult:
     env = {"PATH": os.environ.get("PATH", os.defpath), **env_overlay}
     try:
+        process_argv = _resolve_smoke_process_argv(argv)
         process = subprocess.Popen(
-            argv,
+            process_argv,
             cwd=cwd,
             env=env,
             text=True,
@@ -334,6 +337,34 @@ def _subprocess_process_runner(
         stderr=stderr,
         timed_out=False,
     )
+
+
+def _resolve_smoke_process_argv(
+    argv: list[str],
+    *,
+    platform_name: str | None = None,
+    executable_resolver: Callable[[str], str | None] | None = None,
+    comspec: str | None = None,
+) -> list[str]:
+    if (platform_name or os.name) != "nt":
+        return list(argv)
+    resolver = executable_resolver or shutil.which
+    resolved = resolver(argv[0])
+    if not resolved:
+        return list(argv)
+    suffix = Path(resolved).suffix.lower()
+    if suffix in {".cmd", ".bat"}:
+        if argv[0].lower() not in PROFILE_BACKED_SCRIPT_COMMANDS:
+            raise OSError("Windows smoke .cmd/.bat execution requires a profile-backed command")
+        return [
+            comspec or os.environ.get("ComSpec", r"C:\Windows\System32\cmd.exe"),
+            "/d",
+            "/s",
+            "/c",
+            resolved,
+            *argv[1:],
+        ]
+    return [resolved, *argv[1:]]
 
 
 def _default_process_tree_cleanup(process_id: int | None) -> dict[str, Any]:
