@@ -55,24 +55,24 @@ Existing contracts to reuse:
 
 Write failing tests first for:
 
-- [ ] `WindowsSmokeStep`, `WindowsSmokePlan`, and `WindowsSmokeReport` structured serialization.
-- [ ] `WindowsSmokeReport` includes schema version, runner version, profile id/version, host mode, platform info, tool versions, workspace decision, repo revision, timestamps, diagnostic report, and public summary.
-- [ ] Public summary redacts user home/temp paths and excludes full stdout/stderr.
-- [ ] Golden JSON fixture remains stable.
+- [x] `WindowsSmokeStep`, `WindowsSmokePlan`, and `WindowsSmokeReport` structured serialization.
+- [x] `WindowsSmokeReport` includes schema version, runner version, profile id/version, host mode, platform info, tool versions, workspace decision, repo revision, timestamps, diagnostic report, and public summary.
+- [x] Public summary redacts user home/temp paths and excludes full stdout/stderr.
+- [x] Golden JSON fixture remains stable.
 
 Implementation:
 
-- [ ] Add dataclasses and `to_dict()` / `to_json()` helpers in `windows_smoke.py`.
-- [ ] Add `redact_public_summary(...)` helper.
-- [ ] Keep diagnostic report full enough for local debugging.
+- [x] Add dataclasses and `to_dict()` / `to_json()` helpers in `windows_smoke.py`.
+- [x] Add `redact_public_summary(...)` helper.
+- [x] Keep diagnostic report full enough for local debugging.
 
 Verification:
 
-- [ ] `PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest tests/unit/execution/terminal/test_windows_smoke.py -q`
+- [x] `PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest tests/unit/execution/terminal/test_windows_smoke.py -q`
 
 Commit:
 
-- [ ] `feat(terminal): add windows smoke report schema`
+- [x] `feat(terminal): add windows smoke report schema`
 
 ## Task 2: Host Mode and Workspace Resolver
 

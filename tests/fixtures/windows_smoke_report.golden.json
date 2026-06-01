@@ -1,0 +1,72 @@
+{
+  "diagnostic_report": {
+    "source_root": "C:\\Users\\lumber\\Github\\isotope",
+    "steps": [
+      {
+        "artifacts": [
+          "C:\\isotope-smoke\\run-001\\node-version.txt"
+        ],
+        "argv": [
+          "node",
+          "--version"
+        ],
+        "copied_workspace_path": "C:\\isotope-smoke\\run-001",
+        "cwd": "C:\\isotope-smoke\\run-001\\apps\\desktop",
+        "exit_code": 0,
+        "finished_at": "2026-06-02T00:00:01Z",
+        "name": "node_version",
+        "process_tree_cleanup": {
+          "attempted": false,
+          "method": null,
+          "succeeded": null
+        },
+        "reason_code": "windows_smoke_command_completed",
+        "started_at": "2026-06-02T00:00:00Z",
+        "stderr": "",
+        "stdout": "v22.11.0\n",
+        "truncated": false
+      }
+    ],
+    "workspace_root": "C:\\isotope-smoke\\run-001"
+  },
+  "finished_at": "2026-06-02T00:00:01Z",
+  "host_mode": "windows_python",
+  "platform_info": {
+    "machine": "AMD64",
+    "release": "11",
+    "system": "Windows"
+  },
+  "profile_id": "desktop_tools_versions",
+  "profile_version": "2026-06-02",
+  "public_summary": {
+    "host_mode": "windows_python",
+    "profile_id": "desktop_tools_versions",
+    "reason_code": "windows_smoke_completed",
+    "status": "completed",
+    "step_summaries": [
+      {
+        "exit_code": 0,
+        "name": "node_version",
+        "reason_code": "windows_smoke_command_completed",
+        "truncated": false
+      }
+    ],
+    "workspace_strategy": "copy_to_temp"
+  },
+  "reason_code": "windows_smoke_completed",
+  "repo_revision_if_available": "abc1234",
+  "runner_version": "windows-smoke-runner.v0.1",
+  "schema_version": "windows-smoke.v0.1",
+  "source_root_kind": "windows_local",
+  "started_at": "2026-06-02T00:00:00Z",
+  "status": "completed",
+  "tool_versions": {
+    "node": "v22.11.0",
+    "npm": "10.9.0",
+    "python": "3.13.3"
+  },
+  "workspace_strategy_decision": {
+    "reason": "mutation_policy_requires_copy",
+    "strategy": "copy_to_temp"
+  }
+}
