@@ -507,13 +507,7 @@ def test_smoke_process_argv_routes_profile_backed_cmd_through_fixed_cmd_exe():
         comspec="C:\\Windows\\System32\\cmd.exe",
     )
 
-    assert routed == [
-        "C:\\Windows\\System32\\cmd.exe",
-        "/d",
-        "/s",
-        "/c",
-        '"C:\\Program Files\\nodejs\\npm.cmd" --version',
-    ]
+    assert routed == '"C:\\Windows\\System32\\cmd.exe" /d /s /c ""C:\\Program Files\\nodejs\\npm.cmd" --version"'
 
 
 def test_smoke_process_argv_rejects_non_profile_cmd_scripts():

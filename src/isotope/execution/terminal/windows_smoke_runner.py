@@ -345,7 +345,7 @@ def _resolve_smoke_process_argv(
     platform_name: str | None = None,
     executable_resolver: Callable[[str], str | None] | None = None,
     comspec: str | None = None,
-) -> list[str]:
+) -> list[str] | str:
     if (platform_name or os.name) != "nt":
         return list(argv)
     resolver = executable_resolver or shutil.which
@@ -356,16 +356,10 @@ def _resolve_smoke_process_argv(
     if suffix in {".cmd", ".bat"}:
         if argv[0].lower() not in PROFILE_BACKED_SCRIPT_COMMANDS:
             raise OSError("Windows smoke .cmd/.bat execution requires a profile-backed command")
-        command_line = f'"{resolved}"'
+        command_line = f'"{comspec or os.environ.get("ComSpec", r"C:\Windows\System32\cmd.exe")}" /d /s /c ""{resolved}"'
         if len(argv) > 1:
             command_line += " " + subprocess.list2cmdline(argv[1:])
-        return [
-            comspec or os.environ.get("ComSpec", r"C:\Windows\System32\cmd.exe"),
-            "/d",
-            "/s",
-            "/c",
-            command_line,
-        ]
+        return command_line + '"'
     return [resolved, *argv[1:]]
 
 
