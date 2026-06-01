@@ -12,6 +12,10 @@ from pathlib import Path
 from typing import Any, Callable, Protocol
 
 from ...integrations.codex.cli import CodexCliBackend, CodexCliBackendConfig
+from ...integrations.codex.jsonl import (
+    codex_jsonl_diagnostics,
+    extract_codex_agent_message_text,
+)
 from ...integrations.codex.task import CodexTaskConfig, CodexTaskRequest
 from .source_classification import classify_research_source
 
@@ -432,30 +436,8 @@ def _normalize_codex_research_payload(payload: dict[str, Any]) -> dict[str, Any]
     return normalized
 
 
-def extract_codex_agent_message_text(stdout: str) -> str | None:
-    if not isinstance(stdout, str):
-        return None
-    latest_text: str | None = None
-    for line in stdout.splitlines():
-        if not line.strip():
-            continue
-        try:
-            event = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if event.get("type") != "item.completed":
-            continue
-        item = event.get("item")
-        if not isinstance(item, dict) or item.get("type") != "agent_message":
-            continue
-        text = item.get("text")
-        if isinstance(text, str) and text.strip():
-            latest_text = text.strip()
-    return latest_text
-
-
 def _raise_if_codex_error_only_jsonl(stdout: str, *, timeout_seconds: int) -> None:
-    diagnostics = _codex_jsonl_diagnostics(stdout, timeout_seconds=timeout_seconds)
+    diagnostics = codex_jsonl_diagnostics(stdout, timeout_seconds=timeout_seconds)
     error_messages = diagnostics["codex_error_messages"]
     if error_messages:
         raise ResearchProviderError(
@@ -510,38 +492,6 @@ def _is_retryable_provider_error(exc: ResearchProviderError) -> bool:
         for text in texts
         for snippet in _RETRYABLE_PROVIDER_ERROR_SNIPPETS
     )
-
-
-def _codex_jsonl_diagnostics(stdout: str, *, timeout_seconds: int) -> dict[str, Any]:
-    diagnostics: dict[str, Any] = {
-        "codex_event_counts": {},
-        "codex_error_messages": [],
-        "codex_has_agent_message": False,
-        "codex_timeout_seconds": timeout_seconds,
-    }
-    if not isinstance(stdout, str):
-        return diagnostics
-    for line in stdout.splitlines():
-        if not line.strip():
-            continue
-        try:
-            event = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        event_type = event.get("type")
-        if isinstance(event_type, str) and event_type:
-            counts = diagnostics["codex_event_counts"]
-            counts[event_type] = counts.get(event_type, 0) + 1
-        if event_type == "item.completed":
-            item = event.get("item")
-            if isinstance(item, dict) and item.get("type") == "agent_message":
-                diagnostics["codex_has_agent_message"] = True
-        if event_type != "error":
-            continue
-        message = event.get("message")
-        if isinstance(message, str) and message.strip():
-            diagnostics["codex_error_messages"].append(message.strip())
-    return diagnostics
 
 
 def _require_query(query: str) -> str:

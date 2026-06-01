@@ -5,7 +5,10 @@ from __future__ import annotations
 import copy
 import json
 import os
+import shutil
+import subprocess
 import uuid
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
@@ -19,7 +22,11 @@ from isotope.capabilities.runner import CapabilityRunner
 from isotope.capabilities.supervisor import SUPERVISOR_CODEX_OPERATION_CAPABILITY
 from isotope.llm.capacity_calling import CapacityCallingProvider, select_capacity_call
 from isotope.llm.pool import PoolEntry, resolve_pool_entries_from_env
-from isotope.llm.provider import OpenAICompatibleChatProvider, Transport, LLMResponse
+from isotope.llm.provider import (
+    LLMResponse,
+    Transport,
+    create_chat_provider_from_pool_entry,
+)
 from isotope.platform.schemas.input_contract import (
     contract_properties,
     missing_required_input_keys,
@@ -48,12 +55,16 @@ class PooledCapacityCallingProvider:
         entries: tuple[PoolEntry, ...],
         timeout: int = 60,
         transport: Transport | None = None,
+        codex_process_runner: Callable[..., Any] = subprocess.run,
+        codex_executable_resolver: Callable[[str], str | None] = shutil.which,
     ) -> None:
         if not entries:
             raise ValueError("entries must not be empty")
         self._entries = entries
         self._timeout = timeout
         self._transport = transport
+        self._codex_process_runner = codex_process_runner
+        self._codex_executable_resolver = codex_executable_resolver
 
     def generate(
         self,
@@ -64,14 +75,14 @@ class PooledCapacityCallingProvider:
         failures: list[str] = []
         for entry in self._entries:
             try:
-                return OpenAICompatibleChatProvider(
-                    provider=entry.provider,
-                    api_key=entry.api_key,
-                    base_url=entry.base_url,
-                    model=entry.model,
+                provider = create_chat_provider_from_pool_entry(
+                    entry,
                     timeout=self._timeout,
                     transport=self._transport,
-                ).generate(messages, max_tokens=entry.max_tokens or max_tokens)
+                    codex_process_runner=self._codex_process_runner,
+                    codex_executable_resolver=self._codex_executable_resolver,
+                )
+                return provider.generate(messages, max_tokens=entry.max_tokens or max_tokens)
             except Exception as exc:
                 failures.append(f"{entry.provider}:{type(exc).__name__}")
         raise ValueError(
@@ -83,6 +94,8 @@ def resolve_capacity_calling_provider_from_env(
     environ: Mapping[str, str] | None = None,
     *,
     transport: Transport | None = None,
+    codex_process_runner: Callable[..., Any] = subprocess.run,
+    codex_executable_resolver: Callable[[str], str | None] = shutil.which,
 ) -> PooledCapacityCallingProvider:
     env = os.environ if environ is None else environ
     entries = resolve_pool_entries_from_env(
@@ -95,7 +108,12 @@ def resolve_capacity_calling_provider_from_env(
             "No capacity-calling LLM pool entries found. "
             "Check SUPERVISOR_LLM_POOL_TOML_FILES or supervisor_llm_pool.toml."
         )
-    return PooledCapacityCallingProvider(entries=entries, transport=transport)
+    return PooledCapacityCallingProvider(
+        entries=entries,
+        transport=transport,
+        codex_process_runner=codex_process_runner,
+        codex_executable_resolver=codex_executable_resolver,
+    )
 
 
 def build_supervisor_capacity_plan(

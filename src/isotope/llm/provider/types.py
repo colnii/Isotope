@@ -79,4 +79,4 @@ class LLMProviderResolution:
     status: str
     reason_code: str
     provider_name: str
-    provider: ToolCallProvider | None = field(default=None, repr=False)
+    provider: Any | None = field(default=None, repr=False)

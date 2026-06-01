@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import inspect
 import json
+from typing import Any
 
 from isotope.features.supervisor import runner
 from isotope.features.supervisor.commands.handlers import capacity as capacity_command
@@ -46,6 +47,36 @@ FORBIDDEN_AGENT_LOOP_SUMMARY_KEYS = {
 }
 
 
+class _FakeCompletedProcess:
+    def __init__(self, *, stdout: str) -> None:
+        self.returncode = 0
+        self.stdout = stdout
+        self.stderr = ""
+
+
+class _RecordingCodexRunner:
+    def __init__(self, agent_text: str) -> None:
+        self.agent_text = agent_text
+        self.calls: list[dict[str, Any]] = []
+
+    def __call__(self, argv, **kwargs):
+        self.calls.append({"argv": list(argv), "kwargs": dict(kwargs)})
+        return _FakeCompletedProcess(
+            stdout=json.dumps(
+                {
+                    "type": "item.completed",
+                    "item": {"type": "agent_message", "text": self.agent_text},
+                }
+            )
+            + "\n"
+        )
+
+
+def _resolve_codex_executable(executable: str) -> str:
+    assert executable == "codex"
+    return "/opt/codex/bin/codex"
+
+
 def _assert_no_agent_loop_raw_payload(value):
     if isinstance(value, dict):
         forbidden = FORBIDDEN_AGENT_LOOP_SUMMARY_KEYS.intersection(value)
@@ -83,6 +114,45 @@ def test_capacity_provider_uses_supervisor_pool_default_path(monkeypatch):
     assert len(default_paths) == 1
     assert default_paths[0].name == "supervisor_llm_pool.toml"
     assert default_paths[0].parent.name == "supervisor"
+
+
+def test_capacity_provider_uses_codex_pool_entry_without_api_key(tmp_path):
+    runner = _RecordingCodexRunner(
+        json.dumps(
+            {
+                "capacity_id": "artifact.review",
+                "arguments": {},
+                "confidence": 0.8,
+                "rationale": "unit",
+            }
+        )
+    )
+    provider = capacity_command.PooledCapacityCallingProvider(
+        entries=(
+            PoolEntry(
+                provider="codex",
+                api_key="",
+                base_url="codex://cli",
+                model="codex-default",
+                options={"workspace_root": str(tmp_path)},
+            ),
+        ),
+        codex_process_runner=runner,
+        codex_executable_resolver=_resolve_codex_executable,
+    )
+
+    response = provider.generate(
+        [{"role": "user", "content": "choose capacity"}],
+        max_tokens=222,
+    )
+
+    assert response.provider == "codex"
+    assert response.content == (
+        '{"capacity_id": "artifact.review", "arguments": {}, '
+        '"confidence": 0.8, "rationale": "unit"}'
+    )
+    assert runner.calls
+    assert runner.calls[0]["kwargs"]["cwd"] == str(tmp_path.resolve())
 
 
 def test_supervisor_capacity_plan_uses_capacity_calling_graph_and_capability_runner(tmp_path):

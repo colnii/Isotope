@@ -1,10 +1,41 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pytest
 
 from isotope.features.ask.pool import resolve_workbench_ask_provider_from_env
+
+
+class _FakeCompletedProcess:
+    def __init__(self, *, stdout: str) -> None:
+        self.returncode = 0
+        self.stdout = stdout
+        self.stderr = ""
+
+
+class _RecordingCodexRunner:
+    def __init__(self, agent_text: str) -> None:
+        self.agent_text = agent_text
+        self.calls: list[dict[str, Any]] = []
+
+    def __call__(self, argv, **kwargs):
+        self.calls.append({"argv": list(argv), "kwargs": dict(kwargs)})
+        return _FakeCompletedProcess(
+            stdout=json.dumps(
+                {
+                    "type": "item.completed",
+                    "item": {"type": "agent_message", "text": self.agent_text},
+                }
+            )
+            + "\n"
+        )
+
+
+def _resolve_codex_executable(executable: str) -> str:
+    assert executable == "codex"
+    return "/opt/codex/bin/codex"
 
 
 def test_workbench_ask_pool_provider_uses_isotope_toml_alias(tmp_path):
@@ -117,3 +148,35 @@ def test_workbench_ask_pool_provider_reports_missing_entries(tmp_path):
         resolve_workbench_ask_provider_from_env(
             {"ISOTOPE_LLM_POOL_TOML_FILES": str(missing)}
         )
+
+
+def test_workbench_ask_pool_provider_uses_codex_entry_without_api_key(tmp_path):
+    toml_path = tmp_path / "pool.toml"
+    toml_path.write_text(
+        f"""\
+[[agents]]
+name = "workbench_ask"
+
+[[agents.providers]]
+provider = "codex"
+workspace_root = "{tmp_path}"
+""",
+        encoding="utf-8",
+    )
+    runner = _RecordingCodexRunner("Codex pooled answer")
+
+    provider = resolve_workbench_ask_provider_from_env(
+        {"ISOTOPE_LLM_POOL_TOML_FILES": str(toml_path)},
+        agent_name="workbench_ask",
+        codex_process_runner=runner,
+        codex_executable_resolver=_resolve_codex_executable,
+    )
+    response = provider.generate(
+        [{"role": "user", "content": "下一步做什么？"}],
+        max_tokens=128,
+    )
+
+    assert response.provider == "codex"
+    assert response.content == "Codex pooled answer"
+    assert runner.calls
+    assert runner.calls[0]["kwargs"]["cwd"] == str(tmp_path.resolve())

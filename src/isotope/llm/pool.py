@@ -5,10 +5,12 @@ from __future__ import annotations
 import os
 import tomllib
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 DEFAULT_LLM_MAX_TOKENS = 512
+CODEX_POOL_BASE_URL = "codex://cli"
 
 
 @dataclass(frozen=True)
@@ -20,6 +22,7 @@ class PoolEntry:
     base_url: str
     model: str
     max_tokens: int | None = None
+    options: dict[str, Any] = field(default_factory=dict)
 
 
 def resolve_pool_entries_from_env(
@@ -109,15 +112,22 @@ def _append_entries_from_toml_item(
     default_provider: str,
 ) -> None:
     provider = _optional_toml_str(item, "provider") or default_provider
+    max_tokens_val = _optional_max_tokens(item)
+    if provider.strip().lower() == "codex":
+        entries.append(
+            PoolEntry(
+                provider="codex",
+                api_key="",
+                base_url=CODEX_POOL_BASE_URL,
+                model=_optional_toml_str(item, "model") or "codex-default",
+                max_tokens=max_tokens_val,
+                options=_codex_options_from_toml_item(item),
+            )
+        )
+        return
+
     base_url = _require_toml_str(item, "base_url")
     model = _require_toml_str(item, "model")
-    max_tokens_val = item.get("max_tokens")
-    if max_tokens_val is not None:
-        if not isinstance(max_tokens_val, int) or max_tokens_val <= 0:
-            raise ValueError(
-                "TOML pool entry max_tokens must be a positive integer, "
-                f"got: {max_tokens_val!r}"
-            )
     raw_keys = item.get("api_keys")
     if not isinstance(raw_keys, list):
         return
@@ -140,6 +150,33 @@ def _append_entries_from_toml_item(
                 max_tokens=max_tokens_val,
             )
         )
+
+
+def _optional_max_tokens(item: dict[str, object]) -> int | None:
+    max_tokens_val = item.get("max_tokens")
+    if max_tokens_val is None:
+        return None
+    if not isinstance(max_tokens_val, int) or max_tokens_val <= 0:
+        raise ValueError(
+            "TOML pool entry max_tokens must be a positive integer, "
+            f"got: {max_tokens_val!r}"
+        )
+    return max_tokens_val
+
+
+def _codex_options_from_toml_item(item: dict[str, object]) -> dict[str, Any]:
+    options: dict[str, Any] = {}
+    for key in ("workspace_root", "codex_home", "executable", "profile"):
+        value = _optional_toml_str(item, key)
+        if value is not None:
+            options[key] = value
+    for key in ("skip_git_repo_check", "inherit_proxy_env"):
+        value = item.get(key)
+        if value is not None:
+            if not isinstance(value, bool):
+                raise ValueError(f"TOML pool entry {key} must be a boolean")
+            options[key] = value
+    return options
 
 
 def _require_toml_str(item: dict[str, object], key: str) -> str:

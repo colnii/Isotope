@@ -46,7 +46,7 @@ from .llm_action.llm_summary import (
     generate_llm_action_decision,
     resolve_summary_provider_from_env,
 )
-from isotope.llm.provider import DeepSeekChatProvider
+from isotope.llm.provider import resolve_llm_chat_provider
 from ..ask.pool import resolve_workbench_ask_provider_from_env
 from .registry import TmuxBellHookRepair, repair_tmux_bell_hooks, send_to_managed_codex
 from .state.multi_worker import build_multi_worker_status_payload
@@ -126,10 +126,10 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         try:
             return resolve_workbench_ask_provider_from_env(agent_name="supervisor")
         except ValueError as pool_error:
-            try:
-                return DeepSeekChatProvider()
-            except ValueError:
-                raise pool_error
+            resolution = resolve_llm_chat_provider()
+            if resolution.status == "configured" and resolution.provider is not None:
+                return resolution.provider
+            raise pool_error
 
     def llm_action_payload(self) -> dict[str, Any]:
         report = self._scan_report()

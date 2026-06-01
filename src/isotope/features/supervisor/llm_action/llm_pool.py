@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import os
 import re
-from collections.abc import Mapping
+import shutil
+import subprocess
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 from ....llm.pool import PoolEntry, resolve_pool_entries_from_env
-from ....llm.provider import OpenAICompatibleChatProvider, Transport
+from ....llm.provider import Transport, create_chat_provider_from_pool_entry
 
 DEFAULT_MAX_TOKENS = 2048
 DEFAULT_SUPERVISOR_LLM_POOL_PATH = (
@@ -32,6 +34,8 @@ class PooledSummaryProvider:
         timeout: int = 60,
         max_tokens: int = DEFAULT_MAX_TOKENS,
         transport: Transport | None = None,
+        codex_process_runner: Callable[..., Any] = subprocess.run,
+        codex_executable_resolver: Callable[[str], str | None] = shutil.which,
     ) -> None:
         if not entries:
             raise ValueError("entries must not be empty")
@@ -39,18 +43,19 @@ class PooledSummaryProvider:
         self._timeout = timeout
         self._max_tokens = max_tokens
         self._transport = transport
+        self._codex_process_runner = codex_process_runner
+        self._codex_executable_resolver = codex_executable_resolver
 
     def summarize(self, messages: list[dict[str, str]]) -> str:
         failures: list[str] = []
         for entry in self._entries:
             try:
-                provider = OpenAICompatibleChatProvider(
-                    provider=entry.provider,
-                    api_key=entry.api_key,
-                    base_url=entry.base_url,
-                    model=entry.model,
+                provider = create_chat_provider_from_pool_entry(
+                    entry,
                     timeout=self._timeout,
                     transport=self._transport,
+                    codex_process_runner=self._codex_process_runner,
+                    codex_executable_resolver=self._codex_executable_resolver,
                 )
                 response = provider.generate(
                     messages,
@@ -70,6 +75,8 @@ def resolve_summary_provider_from_env(
     *,
     agent_name: str | None = None,
     transport: Transport | None = None,
+    codex_process_runner: Callable[..., Any] = subprocess.run,
+    codex_executable_resolver: Callable[[str], str | None] = shutil.which,
 ) -> SummaryProvider:
     """从 TOML 号池创建摘要 provider（模型适配器）。
 
@@ -103,6 +110,8 @@ def resolve_summary_provider_from_env(
         timeout=timeout,
         max_tokens=max_tokens,
         transport=transport,
+        codex_process_runner=codex_process_runner,
+        codex_executable_resolver=codex_executable_resolver,
     )
 
 

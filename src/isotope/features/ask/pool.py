@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Iterator, Mapping
+import shutil
+import subprocess
+from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
+from typing import Any
 
 from ...llm.pool import (
     DEFAULT_LLM_MAX_TOKENS,
@@ -14,9 +17,9 @@ from ...llm.pool import (
 from ...llm.provider import (
     LLMResponse,
     LLMStreamChunk,
-    OpenAICompatibleChatProvider,
     StreamTransport,
     Transport,
+    create_chat_provider_from_pool_entry,
 )
 
 DEFAULT_WORKBENCH_ASK_POOL_PATH = (
@@ -34,6 +37,8 @@ class PooledWorkbenchAskProvider:
         timeout: int = 60,
         transport: Transport | None = None,
         stream_transport: StreamTransport | None = None,
+        codex_process_runner: Callable[..., Any] = subprocess.run,
+        codex_executable_resolver: Callable[[str], str | None] = shutil.which,
     ) -> None:
         if not entries:
             raise ValueError("entries must not be empty")
@@ -41,6 +46,8 @@ class PooledWorkbenchAskProvider:
         self._timeout = timeout
         self._transport = transport
         self._stream_transport = stream_transport
+        self._codex_process_runner = codex_process_runner
+        self._codex_executable_resolver = codex_executable_resolver
         self.provider = "llm_pool"
         self.model = "configured"
 
@@ -53,13 +60,13 @@ class PooledWorkbenchAskProvider:
         failures: list[str] = []
         for entry in self._entries:
             try:
-                provider = OpenAICompatibleChatProvider(
-                    provider=entry.provider,
-                    api_key=entry.api_key,
-                    base_url=entry.base_url,
-                    model=entry.model,
+                provider = create_chat_provider_from_pool_entry(
+                    entry,
                     timeout=self._timeout,
                     transport=self._transport,
+                    stream_transport=self._stream_transport,
+                    codex_process_runner=self._codex_process_runner,
+                    codex_executable_resolver=self._codex_executable_resolver,
                 )
                 return provider.generate(
                     messages,
@@ -81,16 +88,28 @@ class PooledWorkbenchAskProvider:
         for entry in self._entries:
             yielded = False
             try:
-                provider = OpenAICompatibleChatProvider(
-                    provider=entry.provider,
-                    api_key=entry.api_key,
-                    base_url=entry.base_url,
-                    model=entry.model,
+                provider = create_chat_provider_from_pool_entry(
+                    entry,
                     timeout=self._timeout,
                     transport=self._transport,
                     stream_transport=self._stream_transport,
+                    codex_process_runner=self._codex_process_runner,
+                    codex_executable_resolver=self._codex_executable_resolver,
                 )
-                for chunk in provider.stream_generate(
+                stream_generate = getattr(provider, "stream_generate", None)
+                if not callable(stream_generate):
+                    response = provider.generate(
+                        messages,
+                        max_tokens=entry.max_tokens or max_tokens,
+                    )
+                    yield LLMStreamChunk(
+                        provider=response.provider,
+                        model=response.model,
+                        content=response.content,
+                        raw=response.raw,
+                    )
+                    return
+                for chunk in stream_generate(
                     messages,
                     max_tokens=entry.max_tokens or max_tokens,
                 ):
@@ -111,6 +130,8 @@ def resolve_workbench_ask_provider_from_env(
     *,
     agent_name: str | None = None,
     transport: Transport | None = None,
+    codex_process_runner: Callable[..., Any] = subprocess.run,
+    codex_executable_resolver: Callable[[str], str | None] = shutil.which,
 ) -> PooledWorkbenchAskProvider:
     env = dict(os.environ if environ is None else environ)
     if (
@@ -140,6 +161,8 @@ def resolve_workbench_ask_provider_from_env(
         entries=entries,
         timeout=timeout,
         transport=transport,
+        codex_process_runner=codex_process_runner,
+        codex_executable_resolver=codex_executable_resolver,
     )
 
 
