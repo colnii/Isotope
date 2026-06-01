@@ -135,7 +135,7 @@ Memory Write / Query Boundary docs、第一批 memory boundary tests、memory ac
 
 推荐顺序：
 
-1. `../architecture/memory-write-query-boundary-v0.1.md` 已落文档。
+1. `../architecture/memory-v0.1/memory-write-query-boundary-v0.1.md` 已落文档。
 2. 第一批 not-enabled / rejection boundary tests 已通过。
 3. memory action-chain boundary tests 已通过：compiler 支持 registry-backed `write_memory` payload requirements，policy 可处理 registry-backed `write_memory` proposal。
 4. `MemoryRecord` v0 implementation shape 已通过测试：structured `content`、list `source_refs`、required provenance、limited scope、no top-level `artifact_content`。

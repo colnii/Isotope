@@ -23,7 +23,7 @@
 2. 文档分层整理：`docs/` 根目录没有 Markdown 残留，入口集中到 `docs/current/`。
 3. 术语索引：保留英文定位词，补中文解释和主要位置。
 4. 应用目录方案：已写 [application-structure-plan](../../current/application-structure-plan.md)。
-5. 分支审计清理：结果见 [branch-cleanup](../../reviews/branch-cleanup-2026-05-15.md)。
+5. 分支审计清理：结果见 [branch-cleanup](../../archive/reviews/branch-cleanup-2026-05-15.md)。
 6. 文档二次清理：当前入口已刷新，不再传播旧分支暂停口径。
 7. 包名迁移：`src/isotope_kernel/` 已迁到 `src/isotope/`。
 8. 应用内分层第一批：平台 schema、平台事件、能力目录已迁入子目录。

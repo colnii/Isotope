@@ -30,8 +30,8 @@
 | Approval pause / resume | `approval.requested` / `approval.resolved`、approved resume、denied no-execute、duplicate conflict、read helpers、HTTP in-process resolve/read routes 已有 | Track E tests、approval-tool-runner spike | product UI、identity/auth、notification、timeout scheduler、full approval state machine |
 | External ingestion boundary | `ingestion.py` fail-closed boundary、`ImportedSnapshot` slice model、`snapshot.imported` -> `RunState.external_observations`、conflict diagnostics、native state priority、checkpoint support 已有 | Track F tests、external-snapshot-review spike | provider adapter、webhook、external ingestion product API、reconciliation engine |
 | Artifact content read policy | summary default、structured `ResourceRef`、explicit grants + caller context + purpose for content retrieval、HTTP full-content route disabled 已有 | Track C tests、artifact-review spike | hosted content API、semantic retrieval / ranking、broad retrieval policy engine |
-| Policy profile / action registry versioning | `registry_id` / `registry_version` and `policy_profile_id` / `policy_version` basis metadata now flows through proposal / decision / events / `RunState.actions`; first slice closed for now | `tests/isotope/test_action_registry_version_basis.py`、`tests/isotope/test_policy_profile_version_basis.py`、`../architecture/policy-registry-version-basis-closure-review.md` | plugin marketplace、remote registry loading、policy DSL、migration framework |
-| Event schema registry / compatibility | static `EventSchemaRegistry` lists known canonical event types, separates envelope/schema versions, and makes unknown event types / unsupported payload schema versions fail closed; legacy/current known events missing `event_schema_version` use explicit compatibility mapping; first slice closed for now | `tests/isotope/test_event_schema_registry_boundary.py`、`tests/isotope/test_event_schema_version_compatibility.py`、`../architecture/event-schema-registry-closure-review.md` | JSON Schema / protobuf / Avro、remote/plugin registry、schema migration framework、multi-version projector matrix |
+| Policy profile / action registry versioning | `registry_id` / `registry_version` and `policy_profile_id` / `policy_version` basis metadata now flows through proposal / decision / events / `RunState.actions`; first slice closed for now | `tests/isotope/test_action_registry_version_basis.py`、`tests/isotope/test_policy_profile_version_basis.py`、`../architecture/closure/policy-registry-version-basis-closure-review.md` | plugin marketplace、remote registry loading、policy DSL、migration framework |
+| Event schema registry / compatibility | static `EventSchemaRegistry` lists known canonical event types, separates envelope/schema versions, and makes unknown event types / unsupported payload schema versions fail closed; legacy/current known events missing `event_schema_version` use explicit compatibility mapping; first slice closed for now | `tests/isotope/test_event_schema_registry_boundary.py`、`tests/isotope/test_event_schema_version_compatibility.py`、`../architecture/closure/event-schema-registry-closure-review.md` | JSON Schema / protobuf / Avro、remote/plugin registry、schema migration framework、multi-version projector matrix |
 
 ## 3. Still-Open Kernel-Level Gaps
 
@@ -45,7 +45,7 @@
 | Policy profile / action registry versioning | first slice 已完成并 closed for now；后续仍缺 reason-code taxonomy 和 broader compatibility / migration story | helper / demo 越多，requested capabilities、grants、workspace modes 和 action schemas 越容易漂移 | closed for now; defer plugin / DSL / migration |
 | Session / run lifecycle | session/run 能创建和 replay，但 multi-run continuity、run pause/finalization/cancel/supersede、session history visibility 仍未成 contract | app spikes 目前多是 single-run；一旦做 app-like workflow，run boundaries 会变成 hidden glue | docs-only lifecycle review; do not mix with memory promotion |
 | Error taxonomy | server/helper/HTTP/projector 都有 controlled errors，但 error code taxonomy 还不是统一 kernel contract | facade/helper 增长后，客户端难以稳定处理 unknown / malformed / conflict / not_enabled / policy denied | small docs/red-test slice after next boundary |
-| Event schema registry / migration | Event Schema Registry / Compatibility first slice 已完成并 closed for now，见 `../architecture/event-schema-registry-compatibility-boundary-v0.2.md` 和 `../architecture/event-schema-registry-closure-review.md`；仍缺 schema migration policy 和 multi-version projector matrix | read model fields 越多，future breaking change 成本越高 | closed for now; no migration framework |
+| Event schema registry / migration | Event Schema Registry / Compatibility first slice 已完成并 closed for now，见 `../architecture/event-schema-registry-compatibility-boundary-v0.2.md` 和 `../architecture/closure/event-schema-registry-closure-review.md`；仍缺 schema migration policy 和 multi-version projector matrix | read model fields 越多，future breaking change 成本越高 | closed for now; no migration framework |
 | Tool protocol | first slice 已 closed for now：最小 `ToolInvocation` / `ToolResult` / `ToolError` models、artifact event provenance 和 structured `action.failed` error 已固定 | future tool examples still risk coupling executor, artifact store, workspace and policy if they bypass the boundary; executor still does not pass `ToolInvocation` as a runtime object to handlers | application-layer friction intake; no plugin / remote / sandbox / streaming / public SDK |
 
 ## 4. Not-Now Product / Integration Gaps
@@ -85,7 +85,7 @@ Completed follow-up:
 - Batch name: `Workspace Resource Lifecycle Closure Review`
 - Type: docs-only closure review
 - Result: `first slice complete / closed for now`
-- Closure doc: `../architecture/workspace-resource-lifecycle-closure-review.md`
+- Closure doc: `../architecture/closure/workspace-resource-lifecycle-closure-review.md`
 
 Completed follow-up:
 
@@ -104,7 +104,7 @@ Completed follow-up:
 - Batch name: `Policy Registry Version Basis Closure Review`
 - Type: docs-only closure review
 - Result: `first slice complete / closed for now`
-- Closure doc: `../architecture/policy-registry-version-basis-closure-review.md`
+- Closure doc: `../architecture/closure/policy-registry-version-basis-closure-review.md`
 
 Completed follow-up:
 
@@ -124,7 +124,7 @@ Completed follow-up:
 - Batch name: `Event Schema Registry / Compatibility Closure Review`
 - Type: docs-only closure review
 - Result: `first slice complete / closed for now`
-- Closure doc: `../architecture/event-schema-registry-closure-review.md`
+- Closure doc: `../architecture/closure/event-schema-registry-closure-review.md`
 
 Completed follow-up:
 
@@ -139,7 +139,7 @@ Completed follow-up:
 - Batch name: `Tool Protocol Closure Review`
 - Type: docs-only closure review
 - Result: first slice complete / closed for now
-- Closure doc: `../architecture/tool-protocol-closure-review.md`
+- Closure doc: `../architecture/closure/tool-protocol-closure-review.md`
 - Scope note: model / event-shape first slice only; executor does not yet wire `ToolInvocation` as the handler runtime object.
 
 Recommended next batch:
@@ -152,7 +152,7 @@ Recommended next batch:
   - avoid implementing further tool runtime wiring unless friction is concrete or the user explicitly opens that batch
   - keep tag / release, real server, real LLM, provider adapters, migration framework, plugin marketplace, sandboxed tools, and product APIs out of scope unless explicitly requested
 
-Follow-up: `../architecture/workspace-resource-lifecycle-boundary-v0.2.md` / `../architecture/workspace-resource-lifecycle-closure-review.md` and `../architecture/policy-registry-version-basis-closure-review.md` now record the closed first slices. The next implementation-facing step should not be real filesystem substrate or plugin/policy infrastructure unless a new boundary explicitly asks for it.
+Follow-up: `../architecture/workspace-resource-lifecycle-boundary-v0.2.md` / `../architecture/closure/workspace-resource-lifecycle-closure-review.md` and `../architecture/closure/policy-registry-version-basis-closure-review.md` now record the closed first slices. The next implementation-facing step should not be real filesystem substrate or plugin/policy infrastructure unless a new boundary explicitly asks for it.
 
 Stop conditions:
 

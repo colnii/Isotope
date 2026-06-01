@@ -8,8 +8,8 @@
 ## 主要入口
 
 - [Demo 文档](demo/)：当前 demo 相关说明、验收和场景。
-- [Capability runner thin shell closure](capability-runner-thin-shell-closure-review.md)
-- [Worker handoff helper closure](worker-handoff-helper-closure-review.md)
+- [Capability runner thin shell closure](../archive/features/capability-runner-thin-shell-closure-review.md)
+- [Worker handoff helper closure](../archive/features/worker-handoff-helper-closure-review.md)
 - [Usability pressure test plan v0.2](usability-pressure-test-plan-v0.2.md)
 
 ## 旧路径说明

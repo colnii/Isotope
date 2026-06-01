@@ -25,7 +25,7 @@
 
 ## 清理规则
 
-- `docs/reviews/docs-migration-plan.md` 当前状态是 `phase 1 closed / paused`。
+- `docs/archive/reviews/docs-migration-plan.md` 当前状态是 `phase 1 closed / paused`。
   不要把 track、checkpoint、memory、kernel 或 status 文档当作默认下一批迁移。
 - 已移动过的 demo / release 文档曾保留旧路径 compatibility stub（兼容占位文件）；
   稳定一轮并完成链接审计后，低风险 stub 已删除。新增链接应直接指向真实文件。
@@ -41,4 +41,4 @@ git diff --check
 rg -n "\]\((?!https?://)[^)]+\.md\)" README.md AGENTS.md docs
 ```
 
-如果移动了文件，再按 [迁移计划](reviews/docs-migration-plan.md) 的验证清单执行。
+如果移动了文件，再按 [迁移计划](archive/reviews/docs-migration-plan.md) 的验证清单执行。

@@ -490,7 +490,7 @@ UI、CLI 和 API client 应消费同一套 event stream，不应各自维护一�
 
 `Isotope` 应该从中吸收 learning-loop pressure（学习闭环压力），但仍保持 action proposal、policy decision、execution、artifact provenance、event replay 和 checkpoint 是 runtime truth。
 
-详细比较见 [Isotope vs Hermes Agent](../archive/concepts/isotope-vs-hermes-agent.md)。
+详细比较见 [Isotope vs Hermes Agent](../../archive/concepts/isotope-vs-hermes-agent.md)。
 
 ### 9.4 Study Companion
 

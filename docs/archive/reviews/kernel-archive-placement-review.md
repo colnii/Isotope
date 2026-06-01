@@ -15,9 +15,9 @@
 - `docs/reviews/docs-migration-plan.md` 把它们标成 medium-risk kernel batch，
   不是低风险旧文档清理。
 - 真实 kernel 批次不只包含这两个文件，还会牵动
-  `docs/architecture/kernel-spec-v0.1.md`、
-  `docs/architecture/kernel-architecture-v0.1.md`、
-  `docs/architecture/kernel-living-spec.md`、
+  `docs/architecture/kernel-v0.1/kernel-spec-v0.1.md`、
+  `docs/architecture/kernel-v0.1/kernel-architecture-v0.1.md`、
+  `docs/architecture/kernel-v0.1/kernel-living-spec.md`、
   `docs/architecture/commitment-levels.md` 和 event/action registry 文档。
 - 单独创建 `docs/kernel/` 并只放两个 archive 文件，会让读者误以为这些早期
   kernel 叙事重新成为当前事实入口。

@@ -24,10 +24,10 @@
 
 | 文件 | 类型 | 留在根目录的原因 | 当前替代入口 |
 | --- | --- | --- | --- |
-| [docs-inventory-pre-reorg](docs-inventory-pre-reorg.md) | migration record（迁移记录） | `docs-migration-plan` 和 dry run 仍引用它作为迁移前清单。 | [docs-map](../current/docs-map.md)、[docs migration plan](../reviews/docs-migration-plan.md) |
+| [docs-inventory-pre-reorg](docs-inventory-pre-reorg.md) | migration record（迁移记录） | `docs-migration-plan` 和 dry run 仍引用它作为迁移前清单。 | [docs-map](../current/docs-map.md)、[docs migration plan](../archive/reviews/docs-migration-plan.md) |
 | [kernel-mainline-maintenance-mode](kernel-mainline-maintenance-mode.md) | obsolete rule（废止规则） | 已在 archive；保留是为了解释“底座保守维护”规则为什么不再适用。 | [AGENTS](../../AGENTS.md)、[current status](../current/status.md) |
-| [kernel-one-pager](kernel-one-pager.md) | historical kernel reference（历史 kernel 参考） | 已记录 placement review，暂不单独迁入 `docs/kernel/`；后续若移动，应随完整 kernel 批次处理。 | [current status](../current/status.md)、[architecture README](../architecture/)、[placement review](../reviews/kernel-archive-placement-review.md) |
-| [kernel-decision-log](kernel-decision-log.md) | historical kernel reference（历史 kernel 参考） | 已记录 placement review，暂不单独迁入 `docs/kernel/`；后续若移动，应随完整 kernel 批次处理。 | [current status](../current/status.md)、[architecture README](../architecture/)、[placement review](../reviews/kernel-archive-placement-review.md) |
+| [kernel-one-pager](kernel-one-pager.md) | historical kernel reference（历史 kernel 参考） | 已记录 placement review，暂不单独迁入 `docs/kernel/`；后续若移动，应随完整 kernel 批次处理。 | [current status](../current/status.md)、[architecture README](../architecture/)、[placement review](../archive/reviews/kernel-archive-placement-review.md) |
+| [kernel-decision-log](kernel-decision-log.md) | historical kernel reference（历史 kernel 参考） | 已记录 placement review，暂不单独迁入 `docs/kernel/`；后续若移动，应随完整 kernel 批次处理。 | [current status](../current/status.md)、[architecture README](../architecture/)、[placement review](../archive/reviews/kernel-archive-placement-review.md) |
 
 ## 使用规则
 
