@@ -340,7 +340,7 @@ def test_desktop_chat_stream_skips_slow_capacity_selection_and_answers(tmp_path)
 
     events = list(
         stream_desktop_chat_events(
-            codex_home=tmp_path,
+            state_root=tmp_path,
             question="用 capacity 看一下当前上下文。",
             provider=provider,
             capacity_provider=capacity_provider,
@@ -359,7 +359,7 @@ def test_desktop_chat_stream_times_out_slow_answer_provider(tmp_path) -> None:
     with pytest.raises(TimeoutError, match="desktop chat response timed out"):
         list(
             stream_desktop_chat_events(
-                codex_home=tmp_path,
+                state_root=tmp_path,
                 question="你好",
                 provider=provider,
                 chat_timeout_seconds=0.01,
@@ -483,7 +483,7 @@ def test_desktop_chat_keeps_full_history_message_when_context_fits(tmp_path) -> 
 
     events = list(
         stream_desktop_chat_events(
-            codex_home=tmp_path,
+            state_root=tmp_path,
             question="刚才那条长消息是什么？",
             provider=provider,
             history=[{"role": "user", "content": long_message}],
@@ -508,7 +508,7 @@ def test_desktop_chat_compacts_oversized_history_instead_of_dropping_old_turns(t
 
     events = list(
         stream_desktop_chat_events(
-            codex_home=tmp_path,
+            state_root=tmp_path,
             question="最早的上下文还在吗？",
             provider=provider,
             history=history,

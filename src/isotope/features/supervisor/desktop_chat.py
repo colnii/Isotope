@@ -60,7 +60,7 @@ class DesktopChatStreamEvent:
 
 def answer_desktop_chat(
     *,
-    codex_home: Path | str,
+    state_root: Path | str,
     question: str,
     provider: DesktopChatProvider,
     max_tokens: int = 512,
@@ -90,7 +90,7 @@ def answer_desktop_chat(
 
 def stream_desktop_chat_events(
     *,
-    codex_home: Path | str,
+    state_root: Path | str,
     question: str,
     provider: DesktopChatProvider,
     max_tokens: int = 512,
@@ -106,7 +106,7 @@ def stream_desktop_chat_events(
     chat_context = build_desktop_chat_context(capacity_runner=capacity_runner)
     if capacity_provider is not None:
         for event in _desktop_chat_capacity_events(
-            codex_home=codex_home,
+            state_root=state_root,
             question=clean_question,
             provider=capacity_provider,
             runner=capacity_runner,
@@ -149,7 +149,7 @@ def _desktop_chat_response(
 
 def stream_desktop_chat(
     *,
-    codex_home: Path | str,
+    state_root: Path | str,
     question: str,
     provider: DesktopChatProvider,
     max_tokens: int = 512,
@@ -361,13 +361,13 @@ def build_desktop_chat_context(
 
 def _desktop_chat_capacity_events(
     *,
-    codex_home: Path | str,
+    state_root: Path | str,
     question: str,
     provider: CapacityCallingProvider,
     runner: CapabilityRunner | None,
     timeout_seconds: float,
 ) -> Iterator[DesktopChatStreamEvent]:
-    root = Path(codex_home).expanduser()
+    root = Path(state_root).expanduser()
     try:
         plan = _build_capacity_plan_with_timeout(
             timeout_seconds=timeout_seconds,

@@ -449,7 +449,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         model_name = "unknown"
         try:
             for event in stream_desktop_chat_events(
-                codex_home=self.server.codex_home,
+                state_root=self.server.codex_home,
                 question=question,
                 provider=self.server.desktop_chat_provider_or_default(),
                 capacity_provider=self.server.desktop_chat_capacity_provider_or_default(),
