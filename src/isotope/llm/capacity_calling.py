@@ -18,7 +18,7 @@ from ..platform.schemas.input_contract import (
     unexpected_contract_keys,
 )
 from ..platform.errors import IsotopeError
-from .prompts import load_system_prompt
+from .prompts import load_system_prompt, render_json_prompt_template
 from .provider import LLMResponse
 
 
@@ -179,30 +179,11 @@ def _build_messages(
     capacities: list[dict[str, Any]],
     allow_no_capacity: bool = False,
 ) -> list[dict[str, str]]:
-    rules = [
-        "Select one offered capacity_id only when the goal needs a capacity call.",
-        "Fill only arguments needed by that capacity input_contract.",
-        "If a required value is absent from the goal, omit that argument.",
-        "Return only a JSON object and do not execute anything.",
-    ]
-    required_json_shape = {
-        "capacity_id": "string",
-        "arguments": "object",
-        "confidence": "number between 0 and 1",
-        "rationale": "short low-sensitive string",
-    }
-    if allow_no_capacity:
-        rules.insert(
-            1,
-            "If the goal can be answered without a capacity call, set capacity_id to null and arguments to {}.",
-        )
-        required_json_shape["capacity_id"] = "string or null"
-    payload = {
-        "goal": goal,
-        "capacities": capacities,
-        "rules": rules,
-        "required_json_shape": required_json_shape,
-    }
+    template_name = (
+        "capacity_calling_user_allow_no_capacity"
+        if allow_no_capacity
+        else "capacity_calling_user"
+    )
     return [
         {
             "role": "system",
@@ -210,7 +191,13 @@ def _build_messages(
         },
         {
             "role": "user",
-            "content": json.dumps(payload, ensure_ascii=False, sort_keys=True),
+            "content": render_json_prompt_template(
+                template_name,
+                {
+                    "goal": goal,
+                    "capacities": capacities,
+                },
+            ),
         },
     ]
 

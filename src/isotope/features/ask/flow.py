@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
 from ...core import ProductCore
-from ...llm.prompts import load_system_prompt
+from ...llm.prompts import load_system_prompt, render_json_prompt_template
 from ...llm.provider import LLMResponse
 from ..search.flow import SearchResult
 from ..workbench.flow import WorkbenchFlow, WorkbenchView
@@ -135,21 +134,13 @@ def _build_workbench_ask_messages(
         },
         {
             "role": "user",
-            "content": json.dumps(
+            "content": render_json_prompt_template(
+                "workbench_ask_user",
                 {
                     "question": question,
                     "references": [reference.to_dict() for reference in references],
                     "workbench": workbench.to_dict(),
-                    "output_requirements": [
-                        "用中文回答",
-                        "一到三句话",
-                        "优先给可执行下一步",
-                        "如果 references 不为空，优先根据 references 中的条目回答",
-                        "不要输出 JSON",
-                    ],
                 },
-                ensure_ascii=False,
-                sort_keys=True,
             ),
         },
     ]

@@ -6,10 +6,9 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
-from isotope.llm.prompts import load_system_prompt
+from isotope.llm.prompts import load_system_prompt, render_json_prompt_template
 
 from ..flow import CodexSupervisorReport
 from .guards import (
@@ -100,20 +99,13 @@ def build_llm_summary_messages(report: CodexSupervisorReport) -> list[dict[str, 
         },
         {
             "role": "user",
-            "content": json.dumps(
+            "content": render_json_prompt_template(
+                "supervisor_llm_summary_user",
                 {
                     "generated_at": report.generated_at,
                     "recommendation": report.recommendation.to_dict(),
                     "sessions": compact_sessions,
-                    "output_requirements": [
-                        "用中文输出 3-6 行",
-                        "每行都要短",
-                        "说明优先处理建议",
-                        "不要输出 JSON",
-                    ],
                 },
-                ensure_ascii=False,
-                sort_keys=True,
             ),
         },
     ]

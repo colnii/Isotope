@@ -16,7 +16,7 @@ from isotope.features.supervisor.commands.handlers.capacity import (
     build_supervisor_capacity_plan,
 )
 from isotope.llm.capacity_calling import CapacityCallingProvider
-from isotope.llm.prompts import load_system_prompt
+from isotope.llm.prompts import render_json_prompt_template
 from isotope.llm.provider import LLMResponse, LLMStreamChunk
 
 from .desktop_chat_context import compact_desktop_chat_history_messages
@@ -303,11 +303,9 @@ def _desktop_chat_messages(
 
 
 def _desktop_chat_system_prompt(capacity_manifest: dict[str, Any]) -> str:
-    return "\n\n".join(
-        (
-            load_system_prompt("desktop_chat"),
-            _json_context_message("capacity_manifest", capacity_manifest),
-        )
+    return render_json_prompt_template(
+        "desktop_chat",
+        {"capacity_manifest": capacity_manifest},
     )
 
 

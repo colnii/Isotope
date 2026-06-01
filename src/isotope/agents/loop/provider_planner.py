@@ -7,7 +7,7 @@ import json
 import re
 from typing import Any, Protocol
 
-from ...llm.prompts import load_system_prompt
+from ...llm.prompts import load_system_prompt, render_json_prompt_template
 from ...llm.provider import LLMResponse
 from .context import (
     build_agent_loop_default_context,
@@ -161,36 +161,6 @@ def _build_planner_messages(
     tick_id: str,
     decision_id: str,
 ) -> list[dict[str, str]]:
-    payload = {
-        "agent_id": agent_id,
-        "tick_id": tick_id,
-        "decision_id": decision_id,
-        "control": _safe_control(control),
-        "default_context": safe_agent_loop_default_context(default_context),
-        "rules": [
-            "Return only a JSON object.",
-            "Choose exactly one available step from control.next_actions.",
-            "Use default_context.memory before selecting query_memory.",
-            "Choose query_memory only when default_context.memory is insufficient.",
-            "Do not execute tools or mutate state.",
-            "Do not include raw prompt, raw response, messages, stdout, or artifact content.",
-        ],
-        "required_json_shape": {
-            "planner_run_id": "string",
-            "agent_id": agent_id,
-            "tick_id": tick_id,
-            "decision_id": decision_id,
-            "basis": {
-                "run_id": control.get("run_id"),
-                "last_event_id": control.get("last_event_id"),
-            },
-            "decision": {
-                "step": "one of control.next_actions",
-                "request": "object",
-            },
-            "rationale": "short low-sensitive string",
-        },
-    }
     return [
         {
             "role": "system",
@@ -198,7 +168,18 @@ def _build_planner_messages(
         },
         {
             "role": "user",
-            "content": json.dumps(payload, ensure_ascii=False, sort_keys=True),
+            "content": render_json_prompt_template(
+                "agent_loop_planner_user",
+                {
+                    "agent_id": agent_id,
+                    "tick_id": tick_id,
+                    "decision_id": decision_id,
+                    "control": _safe_control(control),
+                    "default_context": safe_agent_loop_default_context(default_context),
+                    "run_id": control.get("run_id"),
+                    "last_event_id": control.get("last_event_id"),
+                },
+            ),
         },
     ]
 
