@@ -19,6 +19,8 @@ from isotope.llm.capacity_calling import CapacityCallingProvider
 from isotope.llm.prompts import load_system_prompt
 from isotope.llm.provider import LLMResponse, LLMStreamChunk
 
+from .desktop_chat_context import compact_desktop_chat_history_messages
+
 
 class DesktopChatProvider(Protocol):
     provider: str
@@ -319,13 +321,11 @@ def _json_context_message(label: str, value: dict[str, Any]) -> str:
 
 def _desktop_chat_history_messages(
     history: list[dict[str, str]] | None,
-    *,
-    limit: int = 12,
 ) -> list[dict[str, str]]:
     if history is None:
         return []
     messages: list[dict[str, str]] = []
-    for item in history[-limit:]:
+    for item in history:
         if not isinstance(item, dict):
             continue
         role = item.get("role")
@@ -337,8 +337,8 @@ def _desktop_chat_history_messages(
         clean_content = content.strip()
         if not clean_content:
             continue
-        messages.append({"role": role, "content": clean_content[:4000]})
-    return messages
+        messages.append({"role": role, "content": clean_content})
+    return compact_desktop_chat_history_messages(messages)
 
 
 def build_desktop_chat_context(

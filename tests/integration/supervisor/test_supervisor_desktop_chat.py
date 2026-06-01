@@ -477,6 +477,55 @@ def test_desktop_chat_endpoint_includes_session_history_before_current_question(
     ]
 
 
+def test_desktop_chat_keeps_full_history_message_when_context_fits(tmp_path) -> None:
+    provider = RecordingDesktopChatProvider(content="我保留了完整历史。")
+    long_message = "FULL_HISTORY_MARKER:" + ("0123456789" * 430)
+
+    events = list(
+        stream_desktop_chat_events(
+            codex_home=tmp_path,
+            question="刚才那条长消息是什么？",
+            provider=provider,
+            history=[{"role": "user", "content": long_message}],
+        )
+    )
+
+    assert [event.event for event in events] == ["delta"]
+    messages = provider.calls[0]["messages"]
+    assert messages[1] == {"role": "user", "content": long_message}
+    assert len(messages[1]["content"]) > 4000
+
+
+def test_desktop_chat_compacts_oversized_history_instead_of_dropping_old_turns(tmp_path) -> None:
+    provider = RecordingDesktopChatProvider(content="我看到了压缩上下文。")
+    history = [
+        {
+            "role": "user" if index % 2 == 0 else "assistant",
+            "content": f"HISTORY_MARKER_{index:02d} " + ("长上下文 " * 900),
+        }
+        for index in range(16)
+    ]
+
+    events = list(
+        stream_desktop_chat_events(
+            codex_home=tmp_path,
+            question="最早的上下文还在吗？",
+            provider=provider,
+            history=history,
+        )
+    )
+
+    assert [event.event for event in events] == ["delta"]
+    messages = provider.calls[0]["messages"]
+    summary = messages[1]
+    assert summary["role"] == "system"
+    assert "desktop_chat_history_compaction" in summary["content"]
+    assert "HISTORY_MARKER_00" in summary["content"]
+    rendered = json.dumps(messages, ensure_ascii=False)
+    assert "HISTORY_MARKER_15" in rendered
+    assert messages[-1] == {"role": "user", "content": "最早的上下文还在吗？"}
+
+
 def test_desktop_chat_endpoint_streams_provider_deltas(tmp_path) -> None:
     provider = StreamingDesktopChatProvider(chunks=("loop ", "实时", "返回。"))
     server = create_dashboard_server(
