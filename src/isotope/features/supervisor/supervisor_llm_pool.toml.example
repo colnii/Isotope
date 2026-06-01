@@ -13,9 +13,19 @@
 # Optional per-provider fields:
 #   max_tokens = override the global SUPERVISOR_LLM_MAX_TOKENS default (512)
 #                Use this for reasoning models that need more token budget.
+#
+# Codex provider fields:
+#   provider = "codex" means use local Codex CLI auth/runtime, not an API key.
+#   workspace_root defaults to the current process cwd when omitted.
+#   codex_home defaults to ~/.codex when omitted.
 
 [[agents]]
 name = "supervisor"
+
+[[agents.providers]]
+provider = "codex"
+model = "gpt-5-codex"
+max_tokens = 2048
 
 [[agents.providers]]
 base_url = "https://api.deepseek.com"
@@ -37,6 +47,9 @@ api_keys = [
 # name = "workbench_ask"
 #
 # [[agents.providers]]
+# provider = "codex"
+#
+# [[agents.providers]]
 # base_url = "https://api.deepseek.com"
 # model = "deepseek-chat"
 # api_keys = [
@@ -45,6 +58,9 @@ api_keys = [
 
 # [[agents]]
 # name = "codex_runner"
+#
+# [[agents.providers]]
+# provider = "codex"
 #
 # [[agents.providers]]
 # base_url = "https://api.deepseek.com"
