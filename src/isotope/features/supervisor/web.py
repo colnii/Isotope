@@ -140,11 +140,11 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
     def desktop_chat_capacity_provider_or_default(self) -> CapacityCallingProvider | None:
         if self.desktop_chat_capacity_provider is not None:
             return self.desktop_chat_capacity_provider
+        if self.desktop_chat_provider is not None:
+            return None
         try:
             return resolve_capacity_calling_provider_from_env()
         except ValueError:
-            if self.desktop_chat_provider is not None:
-                return None
             return self.desktop_chat_provider_or_default()
 
     def llm_action_payload(self) -> dict[str, Any]:
