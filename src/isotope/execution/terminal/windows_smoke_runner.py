@@ -25,6 +25,22 @@ from .windows_smoke import (
 RUNNER_VERSION = "windows-smoke-runner.v0.1"
 PROFILE_VERSION = "2026-06-02"
 PROFILE_BACKED_SCRIPT_COMMANDS = {"npm", "pnpm", "yarn", "npx"}
+WINDOWS_PROCESS_ENV_ALLOWLIST = (
+    "PATH",
+    "PATHEXT",
+    "SystemRoot",
+    "WINDIR",
+    "ComSpec",
+    "TEMP",
+    "TMP",
+    "USERPROFILE",
+    "APPDATA",
+    "LOCALAPPDATA",
+    "ProgramData",
+    "ProgramFiles",
+    "ProgramFiles(x86)",
+    "PROCESSOR_ARCHITECTURE",
+)
 ProcessRunner = Callable[..., "WindowsProcessResult"]
 CleanupProcessTree = Callable[[int | None], dict[str, Any]]
 
@@ -302,7 +318,7 @@ def _subprocess_process_runner(
     env_overlay: dict[str, str],
     timeout_seconds: int,
 ) -> WindowsProcessResult:
-    env = {"PATH": os.environ.get("PATH", os.defpath), **env_overlay}
+    env = _sanitized_smoke_env(env_overlay=env_overlay)
     try:
         process_argv = _resolve_smoke_process_argv(argv)
         process = subprocess.Popen(
@@ -361,6 +377,30 @@ def _resolve_smoke_process_argv(
             command_line += " " + subprocess.list2cmdline(argv[1:])
         return command_line + '"'
     return [resolved, *argv[1:]]
+
+
+def _sanitized_smoke_env(
+    *,
+    env_overlay: dict[str, str] | None = None,
+    platform_name: str | None = None,
+    base_env: dict[str, str] | None = None,
+) -> dict[str, str]:
+    source = base_env or os.environ
+    if (platform_name or os.name) == "nt":
+        env = {
+            key: source[key]
+            for key in WINDOWS_PROCESS_ENV_ALLOWLIST
+            if key in source and isinstance(source[key], str)
+        }
+        env.setdefault("PATH", os.defpath)
+    else:
+        env = {
+            "PATH": source.get("PATH", os.defpath),
+            "LANG": "C.UTF-8",
+            "LC_ALL": "C.UTF-8",
+        }
+    env.update(dict(env_overlay or {}))
+    return env
 
 
 def _default_process_tree_cleanup(process_id: int | None) -> dict[str, Any]:

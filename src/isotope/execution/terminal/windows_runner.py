@@ -22,6 +22,22 @@ from .backend_types import (
 
 WINDOWS_PROFILE_BACKED_COMMANDS = {"npm", "pnpm", "yarn", "npx"}
 WINDOWS_REJECTED_SCRIPT_EXTENSIONS = {".cmd", ".bat"}
+WINDOWS_PROCESS_ENV_ALLOWLIST = (
+    "PATH",
+    "PATHEXT",
+    "SystemRoot",
+    "WINDIR",
+    "ComSpec",
+    "TEMP",
+    "TMP",
+    "USERPROFILE",
+    "APPDATA",
+    "LOCALAPPDATA",
+    "ProgramData",
+    "ProgramFiles",
+    "ProgramFiles(x86)",
+    "PROCESSOR_ARCHITECTURE",
+)
 ExecutableResolver = Callable[[str], str | None]
 WindowsProcessRunner = Callable[..., "WindowsTerminalProcessResult"]
 WindowsCleanupProcessTree = Callable[[int | None], dict[str, Any]]
@@ -259,7 +275,7 @@ def _subprocess_process_runner(
         process = subprocess.Popen(
             argv,
             cwd=cwd,
-            env=_sanitized_env(),
+            env=_sanitized_windows_env(),
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -322,9 +338,22 @@ def _timeout_text(value: str | bytes | None) -> str:
     return value
 
 
-def _sanitized_env() -> dict[str, str]:
+def _sanitized_windows_env(
+    *,
+    platform_name: str | None = None,
+    base_env: dict[str, str] | None = None,
+) -> dict[str, str]:
+    source = base_env or os.environ
+    if (platform_name or os.name) == "nt":
+        env = {
+            key: source[key]
+            for key in WINDOWS_PROCESS_ENV_ALLOWLIST
+            if key in source and isinstance(source[key], str)
+        }
+        env.setdefault("PATH", os.defpath)
+        return env
     return {
-        "PATH": os.environ.get("PATH", os.defpath),
+        "PATH": source.get("PATH", os.defpath),
         "LANG": "C.UTF-8",
         "LC_ALL": "C.UTF-8",
     }

@@ -24,7 +24,7 @@ from isotope.execution.terminal.windows_smoke import (
     resolve_windows_workspace,
     run_windows_native_smoke_plan,
 )
-from isotope.execution.terminal.windows_smoke_runner import _resolve_smoke_process_argv
+from isotope.execution.terminal.windows_smoke_runner import _resolve_smoke_process_argv, _sanitized_smoke_env
 
 
 def test_windows_smoke_plan_serializes_structured_steps_without_shell_strings(tmp_path):
@@ -518,6 +518,26 @@ def test_smoke_process_argv_rejects_non_profile_cmd_scripts():
             executable_resolver=lambda command: "C:\\Tools\\custom.cmd",
             comspec="C:\\Windows\\System32\\cmd.exe",
         )
+
+
+def test_windows_smoke_env_preserves_required_windows_process_variables():
+    env = _sanitized_smoke_env(
+        platform_name="nt",
+        base_env={
+            "PATH": "C:\\Tools",
+            "SystemRoot": "C:\\Windows",
+            "WINDIR": "C:\\Windows",
+            "ComSpec": "C:\\Windows\\System32\\cmd.exe",
+            "SECRET_TOKEN": "do-not-copy",
+        },
+        env_overlay={"PYTHONUTF8": "1"},
+    )
+
+    assert env["PATH"] == "C:\\Tools"
+    assert env["SystemRoot"] == "C:\\Windows"
+    assert env["ComSpec"] == "C:\\Windows\\System32\\cmd.exe"
+    assert env["PYTHONUTF8"] == "1"
+    assert "SECRET_TOKEN" not in env
 
 
 def _golden_report(

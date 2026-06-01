@@ -13,6 +13,7 @@ from isotope.execution.terminal.runner import (
     WindowsSystemTerminalRunner,
     WindowsTerminalProcessResult,
 )
+from isotope.execution.terminal.windows_runner import _sanitized_windows_env
 
 
 def test_windows_system_terminal_runner_rejects_non_exec_argv(tmp_path):
@@ -174,6 +175,24 @@ def test_windows_system_terminal_runner_default_runner_exposes_pid_for_timeout_c
     assert result.status == "timeout"
     assert result.reason_code == "terminal_windows_runner_timeout"
     assert cleanup_calls and isinstance(cleanup_calls[0], int)
+
+
+def test_windows_runner_env_preserves_required_windows_process_variables():
+    env = _sanitized_windows_env(
+        platform_name="nt",
+        base_env={
+            "PATH": "C:\\Tools",
+            "SystemRoot": "C:\\Windows",
+            "WINDIR": "C:\\Windows",
+            "ComSpec": "C:\\Windows\\System32\\cmd.exe",
+            "SECRET_TOKEN": "do-not-copy",
+        },
+    )
+
+    assert env["PATH"] == "C:\\Tools"
+    assert env["SystemRoot"] == "C:\\Windows"
+    assert env["ComSpec"] == "C:\\Windows\\System32\\cmd.exe"
+    assert "SECRET_TOKEN" not in env
 
 
 def _request(
