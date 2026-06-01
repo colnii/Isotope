@@ -180,3 +180,57 @@ workspace_root = "{tmp_path}"
     assert response.content == "Codex pooled answer"
     assert runner.calls
     assert runner.calls[0]["kwargs"]["cwd"] == str(tmp_path.resolve())
+
+
+def test_workbench_ask_pool_provider_can_skip_codex_for_low_latency_chat(tmp_path):
+    toml_path = tmp_path / "pool.toml"
+    toml_path.write_text(
+        f"""\
+[[agents]]
+name = "supervisor"
+
+[[agents.providers]]
+provider = "codex"
+workspace_root = "{tmp_path}"
+
+[[agents.providers]]
+provider = "fast-chat"
+base_url = "https://api.fast.example.com"
+model = "fast-model"
+api_keys = ["env:FAST_KEY"]
+""",
+        encoding="utf-8",
+    )
+    runner = _RecordingCodexRunner("slow codex answer")
+    captured: dict[str, Any] = {}
+
+    def transport(
+        url: str,
+        payload: dict[str, Any],
+        headers: dict[str, str],
+        timeout: int,
+    ) -> dict[str, Any]:
+        captured["url"] = url
+        captured["payload"] = payload
+        captured["headers"] = headers
+        captured["timeout"] = timeout
+        return {"choices": [{"message": {"content": "fast answer"}}]}
+
+    provider = resolve_workbench_ask_provider_from_env(
+        {
+            "ISOTOPE_LLM_POOL_TOML_FILES": str(toml_path),
+            "FAST_KEY": "sk-fast",
+        },
+        agent_name="supervisor",
+        allow_codex=False,
+        transport=transport,
+        codex_process_runner=runner,
+        codex_executable_resolver=_resolve_codex_executable,
+    )
+
+    response = provider.generate([{"role": "user", "content": "你好"}])
+
+    assert response.provider == "fast-chat"
+    assert response.content == "fast answer"
+    assert runner.calls == []
+    assert captured["url"] == "https://api.fast.example.com/chat/completions"

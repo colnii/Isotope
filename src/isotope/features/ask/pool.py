@@ -130,6 +130,7 @@ def resolve_workbench_ask_provider_from_env(
     *,
     agent_name: str | None = None,
     timeout: int | None = None,
+    allow_codex: bool = True,
     transport: Transport | None = None,
     codex_process_runner: Callable[..., Any] = subprocess.run,
     codex_executable_resolver: Callable[[str], str | None] = shutil.which,
@@ -146,6 +147,12 @@ def resolve_workbench_ask_provider_from_env(
         env_var="SUPERVISOR_LLM_POOL_TOML_FILES",
         default_paths=(DEFAULT_WORKBENCH_ASK_POOL_PATH,),
     )
+    if not allow_codex:
+        entries = tuple(
+            entry
+            for entry in entries
+            if entry.provider.strip().lower() != "codex"
+        )
     if not entries:
         agent_hint = f" for agent '{agent_name}'" if agent_name else ""
         raise ValueError(

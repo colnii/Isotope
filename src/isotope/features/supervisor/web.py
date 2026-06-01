@@ -17,9 +17,6 @@ from .desktop_chat import (
     DesktopChatProvider,
     stream_desktop_chat_events,
 )
-from isotope.features.supervisor.commands.handlers.capacity import (
-    resolve_capacity_calling_provider_from_env,
-)
 from .desktop_snapshot import build_desktop_snapshot
 from isotope.llm.capacity_calling import CapacityCallingProvider
 from .dashboard.html import dashboard_page_html
@@ -139,6 +136,7 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
                         default=6,
                     )
                 ),
+                allow_codex=False,
             )
         except ValueError as pool_error:
             resolution = resolve_llm_chat_provider()
@@ -149,19 +147,7 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
     def desktop_chat_capacity_provider_or_default(self) -> CapacityCallingProvider | None:
         if self.desktop_chat_capacity_provider is not None:
             return self.desktop_chat_capacity_provider
-        if self.desktop_chat_provider is not None:
-            return None
-        try:
-            return resolve_capacity_calling_provider_from_env(
-                timeout=int(
-                    _env_number(
-                        "ISOTOPE_DESKTOP_CAPACITY_PROVIDER_TIMEOUT_SECONDS",
-                        default=4,
-                    )
-                ),
-            )
-        except ValueError:
-            return self.desktop_chat_provider_or_default()
+        return None
 
     def llm_action_payload(self) -> dict[str, Any]:
         report = self._scan_report()
