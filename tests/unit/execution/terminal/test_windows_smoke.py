@@ -94,8 +94,8 @@ def test_windows_smoke_report_keeps_diagnostics_separate_from_public_summary(tmp
     payload = report.to_dict()
     public_json = json.dumps(payload["public_summary"], sort_keys=True)
 
-    assert full_stdout in json.dumps(payload["diagnostic_report"], sort_keys=True)
-    assert str(copied_workspace) in json.dumps(payload["diagnostic_report"], sort_keys=True)
+    assert payload["diagnostic_report"]["steps"][0]["stdout"] == full_stdout
+    assert payload["diagnostic_report"]["workspace_root"] == str(copied_workspace)
     assert full_stdout not in public_json
     assert str(copied_workspace) not in public_json
     assert str(user_home) not in public_json
