@@ -10,8 +10,8 @@ Supervisor、受控 worker 和应用层可用性路径。当前事实以
 
 本文件基于：
 
-- `../../architecture/kernel-spec-v0.1.md`
-- `../../architecture/kernel-architecture-v0.1.md`
+- `../../archive/architecture/kernel-v0.1/kernel-spec-v0.1.md`
+- `../../archive/architecture/kernel-v0.1/kernel-architecture-v0.1.md`
 - `../../architecture/commitment-levels.md`
 
 它的目的不是新增架构概念，也不是最终代码任务拆解，而是把 v0.1 第一条最小 vertical slice（纵向切片）定清楚：先证明 kernel hard contracts 能跑通，再进入具体实现计划。

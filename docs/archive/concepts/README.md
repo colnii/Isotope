@@ -8,7 +8,7 @@
 
 1. [Current Status](../../current/status.md)
 2. [Agent Task Queue](../../current/agent-task-queue.md)
-3. [Kernel Living Spec](../../architecture/kernel-living-spec.md)
+3. [Kernel Living Spec](../../archive/architecture/kernel-v0.1/kernel-living-spec.md)
 
 ## 来源映射
 

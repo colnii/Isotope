@@ -32,7 +32,7 @@ Research artifact 展开。
   [Kernel Archive Placement Review](kernel-archive-placement-review.md)。
 - 概念公开边界：[Public / Internal Docs Boundary](../architecture/public-internal-docs-boundary.md)。
 - 当前 kernel 草案中已经吸收的参考压力：
-  [Kernel Living Spec](../architecture/kernel-living-spec.md)。
+  [Kernel Living Spec](../architecture/kernel-v0.1/kernel-living-spec.md)。
 - 当前代码目录，用来确认项目已按应用软件结构组织到 `src/isotope/core/`、
   `src/isotope/features/`、`src/isotope/agents/`、`src/isotope/capabilities/`、
   `src/isotope/memory/`、`src/isotope/workspace/` 等层级。
@@ -108,20 +108,20 @@ concept 应该有独立层级，只是后来被归档路径覆盖了。
 
 | 文件 | 当前判断 | 后续处理建议 |
 | --- | --- | --- |
-| [2026-04-21-isotope-platform-kernel-reference-design](../archive/concepts/2026-04-21-isotope-platform-kernel-reference-design.md) | 有历史价值，但 `kernel-first` 主叙事已经不适合作为当前 concept 入口。 | 不直接搬出 archive。后续只抽取 action、policy、artifact、workspace、event 等可复用边界，重写为 platform pressure 摘要。 |
-| [2026-04-22-isotope-first-study-companion-spec](../archive/concepts/2026-04-22-isotope-first-study-companion-spec.md) | 仍是重要的私有应用规格材料。 | 应进入新 `docs/concepts/` 的 application-pressure 层，但要重写成当前应用层 brief，并保留旧文档链接。 |
-| [2026-04-22-isotope-marxist-leninist-study-agent-design](../archive/concepts/2026-04-22-isotope-marxist-leninist-study-agent-design.md) | 仍是私有 study app 方向材料，不是公开产品叙事。 | 可作为 internal/private application concept。重写时强调能力建设、来源纪律、边界和私有 orientation 分离。 |
-| [2026-04-22-isotope-persona-architecture](../archive/concepts/2026-04-22-isotope-persona-architecture.md) | 仍然高度可用。它已经明确说 orientation / method / pedagogy / persona 属于应用层。 | 优先恢复为 active concept brief。它可成为 future app pack 设计的入口。 |
-| [2026-04-22-isotope-study-agent-boundaries](../archive/concepts/2026-04-22-isotope-study-agent-boundaries.md) | 仍然可用，尤其是应用边界、政治行动边界和能力建设原则。 | 应重写为 private study app boundary brief，不作为 kernel requirement。 |
-| [2026-04-22-study-companion-to-isotope-kernel-requirements](../archive/concepts/2026-04-22-study-companion-to-isotope-kernel-requirements.md) | 内容有价值，但标题和 framing（框架）最容易把 AI 带回 kernel-first。 | 不应原样恢复。应改写为 “Study Companion 对平台能力的压力”，把 `kernel requirements` 降级为 platform/runtime pressure。 |
-| [2026-04-23-isotope-study-companion-kernel-tension-notes](../archive/concepts/2026-04-23-isotope-study-companion-kernel-tension-notes.md) | 有价值，尤其是 orientation leakage（取向泄漏）、citation discipline（引用纪律）、memory dependency（记忆依赖）张力。 | 可重写为 application/platform boundary notes，减少 `kernel` 主叙事。 |
-| [2026-05-11-isotope-chatgpt-share-feedback-notes](../archive/concepts/2026-05-11-isotope-chatgpt-share-feedback-notes.md) | 有价值，补充了 interest capture、concept grounding、historical density 等应用 artifact。 | 应吸收到 study companion active brief，旧 share 只保留来源。 |
-| [2026-04-22-isotope-vs-langgraph-vs-autogen](../archive/concepts/2026-04-22-isotope-vs-langgraph-vs-autogen.md) | 参考方向仍有价值，但外部资料可能已变化。 | 恢复前必须刷新官方资料。新文档应关注 “对 Isotope 应用/平台的压力”，不再证明 Isotope 是 kernel-first。 |
-| [2026-04-22-isotope-vs-codex-claude-code-openclaw](../archive/concepts/2026-04-22-isotope-vs-codex-claude-code-openclaw.md) | 参考价值高，但 Codex / Claude Code 等产品变化快。 | 恢复前必须 source refresh。当前 Isotope 已以 Codex Supervisor 为产品主线，对比框架需要重写。 |
-| [2026-04-24-isotope-vs-genericagent](../archive/concepts/2026-04-24-isotope-vs-genericagent.md) | 仍有价值：active context density、execution-verified memory、skill/SOP 沉淀。 | 可重写为 “learning loop pressure” 参考，不作为 memory 实现授权。 |
-| [2026-04-24-isotope-vs-petgpt](../archive/concepts/2026-04-24-isotope-vs-petgpt.md) | 仍有价值：真实 workspace、文件安全、tool/session guardrails、trace/export。 | 可作为 workspace/product-shell pressure。外部信息需刷新。 |
-| [isotope-vs-hermes-agent](../archive/concepts/isotope-vs-hermes-agent.md) | 仍有价值，且已被 `kernel-living-spec` 引用为压力来源。 | 可重写为 long-running agent product pressure。外部信息需刷新。 |
-| [README](../archive/concepts/README.md) | 当前索引承认它们有长期概念价值，但放在 archive 下会误导。 | 后续若建立 `docs/concepts/`，应新写索引，不直接搬这个 README。 |
+| [2026-04-21-isotope-platform-kernel-reference-design](../concepts/2026-04-21-isotope-platform-kernel-reference-design.md) | 有历史价值，但 `kernel-first` 主叙事已经不适合作为当前 concept 入口。 | 不直接搬出 archive。后续只抽取 action、policy、artifact、workspace、event 等可复用边界，重写为 platform pressure 摘要。 |
+| [2026-04-22-isotope-first-study-companion-spec](../concepts/2026-04-22-isotope-first-study-companion-spec.md) | 仍是重要的私有应用规格材料。 | 应进入新 `docs/concepts/` 的 application-pressure 层，但要重写成当前应用层 brief，并保留旧文档链接。 |
+| [2026-04-22-isotope-marxist-leninist-study-agent-design](../concepts/2026-04-22-isotope-marxist-leninist-study-agent-design.md) | 仍是私有 study app 方向材料，不是公开产品叙事。 | 可作为 internal/private application concept。重写时强调能力建设、来源纪律、边界和私有 orientation 分离。 |
+| [2026-04-22-isotope-persona-architecture](../concepts/2026-04-22-isotope-persona-architecture.md) | 仍然高度可用。它已经明确说 orientation / method / pedagogy / persona 属于应用层。 | 优先恢复为 active concept brief。它可成为 future app pack 设计的入口。 |
+| [2026-04-22-isotope-study-agent-boundaries](../concepts/2026-04-22-isotope-study-agent-boundaries.md) | 仍然可用，尤其是应用边界、政治行动边界和能力建设原则。 | 应重写为 private study app boundary brief，不作为 kernel requirement。 |
+| [2026-04-22-study-companion-to-isotope-kernel-requirements](../concepts/2026-04-22-study-companion-to-isotope-kernel-requirements.md) | 内容有价值，但标题和 framing（框架）最容易把 AI 带回 kernel-first。 | 不应原样恢复。应改写为 “Study Companion 对平台能力的压力”，把 `kernel requirements` 降级为 platform/runtime pressure。 |
+| [2026-04-23-isotope-study-companion-kernel-tension-notes](../concepts/2026-04-23-isotope-study-companion-kernel-tension-notes.md) | 有价值，尤其是 orientation leakage（取向泄漏）、citation discipline（引用纪律）、memory dependency（记忆依赖）张力。 | 可重写为 application/platform boundary notes，减少 `kernel` 主叙事。 |
+| [2026-05-11-isotope-chatgpt-share-feedback-notes](../concepts/2026-05-11-isotope-chatgpt-share-feedback-notes.md) | 有价值，补充了 interest capture、concept grounding、historical density 等应用 artifact。 | 应吸收到 study companion active brief，旧 share 只保留来源。 |
+| [2026-04-22-isotope-vs-langgraph-vs-autogen](../concepts/2026-04-22-isotope-vs-langgraph-vs-autogen.md) | 参考方向仍有价值，但外部资料可能已变化。 | 恢复前必须刷新官方资料。新文档应关注 “对 Isotope 应用/平台的压力”，不再证明 Isotope 是 kernel-first。 |
+| [2026-04-22-isotope-vs-codex-claude-code-openclaw](../concepts/2026-04-22-isotope-vs-codex-claude-code-openclaw.md) | 参考价值高，但 Codex / Claude Code 等产品变化快。 | 恢复前必须 source refresh。当前 Isotope 已以 Codex Supervisor 为产品主线，对比框架需要重写。 |
+| [2026-04-24-isotope-vs-genericagent](../concepts/2026-04-24-isotope-vs-genericagent.md) | 仍有价值：active context density、execution-verified memory、skill/SOP 沉淀。 | 可重写为 “learning loop pressure” 参考，不作为 memory 实现授权。 |
+| [2026-04-24-isotope-vs-petgpt](../concepts/2026-04-24-isotope-vs-petgpt.md) | 仍有价值：真实 workspace、文件安全、tool/session guardrails、trace/export。 | 可作为 workspace/product-shell pressure。外部信息需刷新。 |
+| [isotope-vs-hermes-agent](../concepts/isotope-vs-hermes-agent.md) | 仍有价值，且已被 `kernel-living-spec` 引用为压力来源。 | 可重写为 long-running agent product pressure。外部信息需刷新。 |
+| [README](../concepts/README.md) | 当前索引承认它们有长期概念价值，但放在 archive 下会误导。 | 后续若建立 `docs/concepts/`，应新写索引，不直接搬这个 README。 |
 
 ## 6. 推荐的新文档形态
 

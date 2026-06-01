@@ -43,20 +43,20 @@
   [kernel-one-pager](../archive/kernel-one-pager.md) 和
   [kernel-decision-log](../archive/kernel-decision-log.md) 暂不单独迁入
   `docs/kernel/`；原因见
-  [kernel archive placement review](../reviews/kernel-archive-placement-review.md)。
+  [kernel archive placement review](../archive/reviews/kernel-archive-placement-review.md)。
 - status docs placement 已记录：暂不创建 `docs/status/`，不移动
   [当前状态](./status.md)、`v0.2-roadmap`、v0.2 closure、tag delta 或
   docs inventory；原因见
-  [status docs placement review](../reviews/status-docs-placement-review.md)。
+  [status docs placement review](../archive/reviews/status-docs-placement-review.md)。
 - track / checkpoint / memory placement 已记录：继续暂停这三类目录迁移；原因见
-  [deferred docs placement review](../reviews/deferred-docs-placement-review.md)。
+  [deferred docs placement review](../archive/reviews/deferred-docs-placement-review.md)。
 - 旧文档整理收束审计已完成：旧文档线可以停止，下一步回 Supervisor 前先做
   工作区、冲突和分支归属审计；原因见
-  [old docs closure audit](../reviews/old-docs-closure-audit.md)。
+  [old docs closure audit](../archive/reviews/old-docs-closure-audit.md)。
 - Supervisor 工作恢复前状态归属审计已刷新：root `main` 已跟上 `origin/main`，
   runtime / projector 拆分、state command 和 worker event state migration 已进入主线，
   剩余 worktree 需要逐条处理；原因见
-  [supervisor worktree recovery audit](../reviews/supervisor-worktree-recovery-audit.md)。
+  [supervisor worktree recovery audit](../archive/reviews/supervisor-worktree-recovery-audit.md)。
 - Agent loop 单 tick driver 已补齐：`run_agent_loop_tick(...)` 和
   `POST /runs/{run_id}/agent-loop-tick` 会先看 tick policy，允许继续时只执行
   一个已解析的 planner-selected step，再返回执行后的 tick policy；它仍不接

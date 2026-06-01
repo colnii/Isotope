@@ -23,5 +23,5 @@
   [archive/plans](../archive/plans/)，因为它们是历史实施拆解，不是当前
   architecture boundary。
 - 移动 architecture 文档前先看
-  [docs migration plan](../reviews/docs-migration-plan.md)，当前默认不继续迁移
+  [docs migration plan](../archive/reviews/docs-migration-plan.md)，当前默认不继续迁移
   kernel、checkpoint、memory 或 track 文档。

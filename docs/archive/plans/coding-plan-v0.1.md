@@ -9,8 +9,8 @@
 
 本文件基于：
 
-- `../../architecture/kernel-spec-v0.1.md`
-- `../../architecture/kernel-architecture-v0.1.md`
+- `../../archive/architecture/kernel-v0.1/kernel-spec-v0.1.md`
+- `../../archive/architecture/kernel-v0.1/kernel-architecture-v0.1.md`
 - `implementation-plan-v0.1.md`
 
 它的目的，是把第一条 v0.1 vertical slice 拆成可执行的 coding plan（编码计划）。它不是最终 package 结构，也不是永久 API 协议。
