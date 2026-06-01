@@ -103,28 +103,28 @@ Commit:
 
 Write failing tests first for:
 
-- [ ] Fixed profiles: `desktop_tools_versions`, `desktop_frontend_check`, `desktop_frontend_build`.
-- [ ] `env_overlay` is profile-owned data, not arbitrary model input.
-- [ ] Step runner uses structured `argv`, `cwd`, timeout, output cap, and ordered execution.
-- [ ] Nonzero exit and missing required artifact produce structured reason codes.
-- [ ] Timeout records process-tree cleanup attempt and success/failure.
-- [ ] PowerShell helper invocation, when needed, uses only:
+- [x] Fixed profiles: `desktop_tools_versions`, `desktop_frontend_check`, `desktop_frontend_build`.
+- [x] `env_overlay` is profile-owned data, not arbitrary model input.
+- [x] Step runner uses structured `argv`, `cwd`, timeout, output cap, and ordered execution.
+- [x] Nonzero exit and missing required artifact produce structured reason codes.
+- [x] Timeout records process-tree cleanup attempt and success/failure.
+- [x] PowerShell helper invocation, when needed, uses only:
   `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File <fixed_helper.ps1> <json paths>`.
 
 Implementation:
 
-- [ ] Add `WindowsCommandProfile` and built-in profile registry.
-- [ ] Add injectable process runner for unit tests.
-- [ ] Add process tree cleanup abstraction with Windows `taskkill` fallback metadata.
-- [ ] Add `run_windows_native_smoke_plan(...)`.
+- [x] Add `WindowsCommandProfile` and built-in profile registry.
+- [x] Add injectable process runner for unit tests.
+- [x] Add process tree cleanup abstraction with Windows `taskkill` fallback metadata.
+- [x] Add `run_windows_native_smoke_plan(...)`.
 
 Verification:
 
-- [ ] `PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest tests/unit/execution/terminal/test_windows_smoke.py -q`
+- [x] `PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest tests/unit/execution/terminal/test_windows_smoke.py -q`
 
 Commit:
 
-- [ ] `feat(terminal): run fixed windows smoke profiles`
+- [x] `feat(terminal): run fixed windows smoke profiles`
 
 ## Task 4: Windows System Terminal Runner
 

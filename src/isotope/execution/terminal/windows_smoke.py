@@ -559,16 +559,32 @@ def _positive_int(field_name: str, value: Any) -> None:
         raise ValueError(f"{field_name} must be a positive int")
 
 
+from .windows_smoke_runner import (  # noqa: E402
+    WindowsCommandProfile,
+    WindowsProcessResult,
+    build_windows_powershell_helper_argv,
+    build_windows_smoke_plan_from_profile,
+    get_windows_command_profile,
+    run_windows_native_smoke_plan,
+)
+
+
 __all__ = [
     "WINDOWS_SMOKE_SCHEMA_VERSION",
+    "WindowsCommandProfile",
+    "WindowsProcessResult",
     "WindowsSmokeWorkspaceError",
     "WindowsSmokePlan",
     "WindowsSmokeReport",
     "WindowsSmokeStep",
     "WindowsSmokeStepResult",
     "WindowsWorkspaceDecision",
+    "build_windows_powershell_helper_argv",
+    "build_windows_smoke_plan_from_profile",
     "collect_windows_workspace_copy_items",
+    "get_windows_command_profile",
     "redact_public_summary",
     "resolve_windows_host_mode",
     "resolve_windows_workspace",
+    "run_windows_native_smoke_plan",
 ]

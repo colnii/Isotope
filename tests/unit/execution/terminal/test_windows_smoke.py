@@ -6,15 +6,20 @@ from pathlib import Path
 import pytest
 
 from isotope.execution.terminal.windows_smoke import (
+    WindowsProcessResult,
     WindowsSmokeWorkspaceError,
     WindowsSmokePlan,
     WindowsSmokeReport,
     WindowsSmokeStep,
     WindowsSmokeStepResult,
+    build_windows_powershell_helper_argv,
+    build_windows_smoke_plan_from_profile,
     collect_windows_workspace_copy_items,
+    get_windows_command_profile,
     redact_public_summary,
     resolve_windows_host_mode,
     resolve_windows_workspace,
+    run_windows_native_smoke_plan,
 )
 
 
@@ -214,6 +219,233 @@ def test_workspace_copy_policy_rejects_symlinks_escaping_source_root(tmp_path):
     assert exc_info.value.reason_code == "windows_smoke_workspace_symlink_escape"
 
 
+def test_fixed_windows_command_profiles_are_structured_and_profile_owned():
+    tools_profile = get_windows_command_profile("desktop_tools_versions")
+    check_profile = get_windows_command_profile("desktop_frontend_check")
+
+    assert tools_profile.id == "desktop_tools_versions"
+    assert [step.argv for step in tools_profile.steps] == [
+        ["node", "--version"],
+        ["npm", "--version"],
+        ["python", "--version"],
+    ]
+    assert tools_profile.mutation_policy == "read_only"
+    assert check_profile.steps[0].argv == ["npm", "ci"]
+    assert check_profile.steps[1].argv == ["npm", "run", "check"]
+    assert check_profile.mutation_policy == "build"
+    assert all(isinstance(step.env_overlay, dict) for step in check_profile.steps)
+
+    plan = build_windows_smoke_plan_from_profile(
+        "desktop_tools_versions",
+        source_root="C:\\repo\\isotope",
+        workspace_strategy="auto",
+    )
+    assert plan.profile_id == "desktop_tools_versions"
+    assert [step.name for step in plan.steps] == ["node_version", "npm_version", "python_version"]
+    assert "command" not in plan.steps[0].to_dict()
+
+    with pytest.raises(ValueError, match="unknown windows command profile"):
+        get_windows_command_profile("model_authored_profile")
+
+
+def test_run_windows_smoke_plan_records_ordered_steps_and_caps_output(tmp_path):
+    calls = []
+
+    def process_runner(*, argv, cwd, env_overlay, timeout_seconds):
+        calls.append(
+            {
+                "argv": argv,
+                "cwd": cwd,
+                "env_overlay": env_overlay,
+                "timeout_seconds": timeout_seconds,
+            }
+        )
+        return WindowsProcessResult(exit_code=0, stdout="0123456789", stderr="", timed_out=False)
+
+    plan = build_windows_smoke_plan_from_profile(
+        "desktop_tools_versions",
+        source_root=tmp_path,
+        workspace_strategy="direct",
+        max_output_bytes=8,
+    )
+    workspace_decision = resolve_windows_workspace(
+        source_root=tmp_path,
+        host_mode="windows_python",
+        workspace_strategy="direct",
+        source_root_kind="windows_local",
+    )
+
+    report = run_windows_native_smoke_plan(
+        plan,
+        host_mode="windows_python",
+        source_root_kind="windows_local",
+        workspace_decision=workspace_decision,
+        process_runner=process_runner,
+        now=_fake_clock(),
+        platform_info={"system": "Windows"},
+        tool_versions={"node": "v22.11.0"},
+        repo_revision_if_available="abc1234",
+    )
+
+    assert report.status == "completed"
+    assert [call["argv"] for call in calls] == [
+        ["node", "--version"],
+        ["npm", "--version"],
+        ["python", "--version"],
+    ]
+    first_step = report.diagnostic_report["steps"][0]
+    assert first_step["stdout"] == "01234567"
+    assert first_step["truncated"] is True
+    assert "0123456789" not in json.dumps(report.public_summary, sort_keys=True)
+
+
+def test_run_windows_smoke_plan_stops_on_nonzero_exit(tmp_path):
+    calls = []
+
+    def process_runner(*, argv, cwd, env_overlay, timeout_seconds):
+        calls.append(argv)
+        return WindowsProcessResult(exit_code=7, stdout="", stderr="failed", timed_out=False)
+
+    plan = build_windows_smoke_plan_from_profile(
+        "desktop_tools_versions",
+        source_root=tmp_path,
+        workspace_strategy="direct",
+    )
+    workspace_decision = resolve_windows_workspace(
+        source_root=tmp_path,
+        host_mode="windows_python",
+        workspace_strategy="direct",
+        source_root_kind="windows_local",
+    )
+
+    report = run_windows_native_smoke_plan(
+        plan,
+        host_mode="windows_python",
+        source_root_kind="windows_local",
+        workspace_decision=workspace_decision,
+        process_runner=process_runner,
+        now=_fake_clock(),
+        platform_info={"system": "Windows"},
+        tool_versions={},
+        repo_revision_if_available=None,
+    )
+
+    assert report.status == "failed"
+    assert report.reason_code == "windows_smoke_command_exit_nonzero"
+    assert calls == [["node", "--version"]]
+
+
+def test_run_windows_smoke_plan_fails_when_required_artifact_is_missing(tmp_path):
+    step = WindowsSmokeStep(
+        name="build",
+        argv=["npm", "run", "build"],
+        cwd=".",
+        required_artifacts=["dist/app.exe"],
+    )
+    plan = WindowsSmokePlan(
+        source_root=tmp_path,
+        profile_id="custom_build",
+        profile_version="2026-06-02",
+        workspace_strategy="direct",
+        steps=[step],
+        timeout_seconds=30,
+        max_output_bytes=4096,
+    )
+    workspace_decision = resolve_windows_workspace(
+        source_root=tmp_path,
+        host_mode="windows_python",
+        workspace_strategy="direct",
+        source_root_kind="windows_local",
+    )
+
+    report = run_windows_native_smoke_plan(
+        plan,
+        host_mode="windows_python",
+        source_root_kind="windows_local",
+        workspace_decision=workspace_decision,
+        process_runner=lambda **_: WindowsProcessResult(exit_code=0, stdout="", stderr="", timed_out=False),
+        now=_fake_clock(),
+        platform_info={"system": "Windows"},
+        tool_versions={},
+        repo_revision_if_available=None,
+    )
+
+    assert report.status == "failed"
+    assert report.reason_code == "windows_smoke_required_artifact_missing"
+    assert report.diagnostic_report["missing_artifacts"] == ["dist/app.exe"]
+
+
+def test_run_windows_smoke_plan_records_process_tree_cleanup_on_timeout(tmp_path):
+    cleanup_calls = []
+
+    def cleanup_process_tree(process_id):
+        cleanup_calls.append(process_id)
+        return {"attempted": True, "succeeded": True, "method": "taskkill", "process_id": process_id}
+
+    plan = build_windows_smoke_plan_from_profile(
+        "desktop_tools_versions",
+        source_root=tmp_path,
+        workspace_strategy="direct",
+    )
+    workspace_decision = resolve_windows_workspace(
+        source_root=tmp_path,
+        host_mode="windows_python",
+        workspace_strategy="direct",
+        source_root_kind="windows_local",
+    )
+
+    report = run_windows_native_smoke_plan(
+        plan,
+        host_mode="windows_python",
+        source_root_kind="windows_local",
+        workspace_decision=workspace_decision,
+        process_runner=lambda **_: WindowsProcessResult(
+            exit_code=None,
+            stdout="partial",
+            stderr="timed out",
+            timed_out=True,
+            process_id=1234,
+        ),
+        cleanup_process_tree=cleanup_process_tree,
+        now=_fake_clock(),
+        platform_info={"system": "Windows"},
+        tool_versions={},
+        repo_revision_if_available=None,
+    )
+
+    assert report.status == "timeout"
+    assert report.reason_code == "windows_smoke_command_timeout"
+    assert cleanup_calls == [1234]
+    assert report.diagnostic_report["steps"][0]["process_tree_cleanup"] == {
+        "attempted": True,
+        "succeeded": True,
+        "method": "taskkill",
+        "process_id": 1234,
+    }
+
+
+def test_powershell_helper_invocation_uses_fixed_file_shape(tmp_path):
+    argv = build_windows_powershell_helper_argv(
+        helper_script=tmp_path / "fixed_helper.ps1",
+        request_json=tmp_path / "request.json",
+        result_json=tmp_path / "result.json",
+    )
+
+    assert argv == [
+        "powershell.exe",
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        str(tmp_path / "fixed_helper.ps1"),
+        str(tmp_path / "request.json"),
+        str(tmp_path / "result.json"),
+    ]
+    assert "-Command" not in argv
+    assert "-EncodedCommand" not in argv
+
+
 def _golden_report(
     *,
     diagnostic_report: dict | None = None,
@@ -281,3 +513,19 @@ def _golden_report(
 def _touch(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("x")
+
+
+def _fake_clock():
+    values = iter(
+        [
+            "2026-06-02T00:00:00Z",
+            "2026-06-02T00:00:01Z",
+            "2026-06-02T00:00:02Z",
+            "2026-06-02T00:00:03Z",
+            "2026-06-02T00:00:04Z",
+            "2026-06-02T00:00:05Z",
+            "2026-06-02T00:00:06Z",
+            "2026-06-02T00:00:07Z",
+        ]
+    )
+    return lambda: next(values)
