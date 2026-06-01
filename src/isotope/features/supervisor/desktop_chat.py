@@ -1,4 +1,4 @@
-"""Desktop chat answer flow over the low-sensitive Supervisor snapshot."""
+"""Desktop chat answer flow over registered capacity metadata."""
 
 from __future__ import annotations
 
@@ -12,14 +12,11 @@ from time import monotonic
 from typing import Any, Protocol
 
 from isotope.capabilities.runner import CapabilityRunner
-from isotope.capabilities.supervisor import SUPERVISOR_CODEX_OPERATION_CAPABILITY
 from isotope.features.supervisor.commands.handlers.capacity import (
     build_supervisor_capacity_plan,
 )
 from isotope.llm.capacity_calling import CapacityCallingProvider
 from isotope.llm.provider import LLMResponse, LLMStreamChunk
-
-from .state.projection import build_supervisor_state_snapshot
 
 
 class DesktopChatProvider(Protocol):
@@ -68,10 +65,10 @@ def answer_desktop_chat(
     clean_question = _require_question(question)
     if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
         raise ValueError("max_tokens must be a positive integer")
-    supervisor_context = build_supervisor_chat_context(codex_home=codex_home)
+    chat_context = build_desktop_chat_context()
     response = _desktop_chat_response(
         clean_question,
-        supervisor_context,
+        chat_context,
         provider=provider,
         max_tokens=max_tokens,
     )
@@ -100,7 +97,7 @@ def stream_desktop_chat_events(
     clean_question = _require_question(question)
     if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
         raise ValueError("max_tokens must be a positive integer")
-    supervisor_context = build_supervisor_chat_context(codex_home=codex_home)
+    chat_context = build_desktop_chat_context(capacity_runner=capacity_runner)
     if capacity_provider is not None:
         for event in _desktop_chat_capacity_events(
             codex_home=codex_home,
@@ -109,11 +106,11 @@ def stream_desktop_chat_events(
             runner=capacity_runner,
             timeout_seconds=capacity_timeout_seconds,
         ):
-            supervisor_context["capacity_call"] = event.payload
+            chat_context["capacity_result"] = event.payload
             yield event
     for chunk in _stream_desktop_chat_chunks_with_timeout(
         clean_question,
-        supervisor_context,
+        chat_context,
         provider=provider,
         max_tokens=max_tokens,
         timeout_seconds=chat_timeout_seconds,
@@ -128,13 +125,13 @@ def stream_desktop_chat_events(
 
 def _desktop_chat_response(
     question: str,
-    supervisor_context: dict[str, Any],
+    chat_context: dict[str, Any],
     *,
     provider: DesktopChatProvider,
     max_tokens: int,
 ) -> LLMResponse:
     response = provider.generate(
-        _desktop_chat_messages(question, supervisor_context),
+        _desktop_chat_messages(question, chat_context),
         max_tokens=max_tokens,
     )
     if not response.content.strip():
@@ -152,10 +149,10 @@ def stream_desktop_chat(
     clean_question = _require_question(question)
     if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
         raise ValueError("max_tokens must be a positive integer")
-    supervisor_context = build_supervisor_chat_context(codex_home=codex_home)
+    chat_context = build_desktop_chat_context()
     yield from _stream_desktop_chat_chunks(
         clean_question,
-        supervisor_context,
+        chat_context,
         provider=provider,
         max_tokens=max_tokens,
     )
@@ -163,7 +160,7 @@ def stream_desktop_chat(
 
 def _stream_desktop_chat_chunks(
     question: str,
-    supervisor_context: dict[str, Any],
+    chat_context: dict[str, Any],
     *,
     provider: DesktopChatProvider,
     max_tokens: int,
@@ -172,7 +169,7 @@ def _stream_desktop_chat_chunks(
     if callable(stream_generate):
         yielded = False
         for chunk in stream_generate(
-            _desktop_chat_messages(question, supervisor_context),
+            _desktop_chat_messages(question, chat_context),
             max_tokens=max_tokens,
         ):
             if not isinstance(chunk, LLMStreamChunk):
@@ -187,7 +184,7 @@ def _stream_desktop_chat_chunks(
 
     response = _desktop_chat_response(
         question,
-        supervisor_context,
+        chat_context,
         provider=provider,
         max_tokens=max_tokens,
     )
@@ -202,7 +199,7 @@ def _stream_desktop_chat_chunks(
 
 def _stream_desktop_chat_chunks_with_timeout(
     question: str,
-    supervisor_context: dict[str, Any],
+    chat_context: dict[str, Any],
     *,
     provider: DesktopChatProvider,
     max_tokens: int,
@@ -216,7 +213,7 @@ def _stream_desktop_chat_chunks_with_timeout(
         try:
             for chunk in _stream_desktop_chat_chunks(
                 question,
-                supervisor_context,
+                chat_context,
                 provider=provider,
                 max_tokens=max_tokens,
             ):
@@ -261,49 +258,66 @@ def desktop_chat_answer_chunks(answer: str, *, chunk_size: int = 12) -> list[str
 
 def _desktop_chat_messages(
     question: str,
-    supervisor_context: dict[str, Any],
+    chat_context: dict[str, Any],
 ) -> list[dict[str, str]]:
-    return [
+    capacity_manifest = _mapping(chat_context.get("capacity_manifest"))
+    messages = [
         {
             "role": "system",
-            "content": (
-                "你是 Isotope 的产品内 AI 助手，服务对象是正在开发和调试 "
-                "Isotope 的用户。你可以回答当前状态、架构、capacity、loop、"
-                "前后端接线和下一步排障。回答时结合 supervisor_context "
-                "自然说明你能确认的内容；信息不够时直接说还缺什么。中文、直接。"
-            ),
-        },
-        {
-            "role": "user",
-            "content": json.dumps(
-                {
-                    "question": question,
-                    "supervisor_context": supervisor_context,
-                },
-                ensure_ascii=False,
-                sort_keys=True,
-            ),
+            "content": _desktop_chat_system_prompt(capacity_manifest),
         },
     ]
+    capacity_result = _mapping(chat_context.get("capacity_result"))
+    if capacity_result:
+        messages.append(
+            {
+                "role": "system",
+                "content": _json_context_message(
+                    "capacity_result",
+                    {
+                        "kind": "capacity_result",
+                        "result": capacity_result,
+                    },
+                ),
+            }
+        )
+    messages.append({"role": "user", "content": question})
+    return messages
 
 
-def build_supervisor_chat_context(*, codex_home: Path | str) -> dict[str, Any]:
+def _desktop_chat_system_prompt(capacity_manifest: dict[str, Any]) -> str:
+    return (
+        "你是 Isotope 的产品内 AI 助手，服务对象是正在开发和调试 Isotope 的用户。"
+        "你可以直接回答，也可以根据可用能力清单判断是否需要 capacity。"
+        "能力清单是注册表生成的发现信息，不是用户请求或执行结果；普通问候直接自然回应。"
+        "如果本轮提供了 capacity_result，把它当作已执行能力的观察结果。中文、直接。"
+        "\n\n"
+        + _json_context_message("capacity_manifest", capacity_manifest)
+    )
+
+
+def _json_context_message(label: str, value: dict[str, Any]) -> str:
+    return f"{label}:\n" + json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+    )
+
+
+def build_desktop_chat_context(
+    *, capacity_runner: CapabilityRunner | None = None
+) -> dict[str, Any]:
+    runner = capacity_runner if capacity_runner is not None else CapabilityRunner()
     capabilities = [
         _desktop_chat_capability_summary(capability)
-        for capability in CapabilityRunner().list_capabilities()
+        for capability in runner.list_capabilities()
     ]
     return {
-        "state": build_supervisor_state_snapshot(codex_home=codex_home),
-        "capability_count": len(capabilities),
-        "capabilities": capabilities,
-        "loop_capacity_path": {
-            "chat_entry": "/desktop/chat",
-            "agent_loop_capacity_call": "call_capacity",
-            "codex_operation_capacity": SUPERVISOR_CODEX_OPERATION_CAPABILITY,
-            "execution_note": (
-                "desktop_chat answers from context; Supervisor loop executes "
-                "capacity calls through agent_loop"
-            ),
+        "capacity_manifest": {
+            "kind": "capacity_manifest",
+            "source": "registered_capabilities",
+            "capability_count": len(capabilities),
+            "capabilities": capabilities,
         },
     }
 

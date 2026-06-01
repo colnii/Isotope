@@ -195,33 +195,29 @@ def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
     assert "messages" not in body
     assert "raw" not in body
 
-    system_prompt = provider.calls[0]["messages"][0]["content"]
+    messages = provider.calls[0]["messages"]
+    system_prompt = messages[0]["content"]
     assert "产品内 AI 助手" in system_prompt
     assert "正在开发和调试 Isotope" in system_prompt
-    assert "supervisor_context" in system_prompt
+    assert "capacity_manifest" in system_prompt
+    assert "supervisor_context" not in system_prompt
     assert "desktop_snapshot" not in system_prompt
     assert "desktop_context" not in system_prompt
     assert "output_requirements" not in system_prompt
-    assert "必须" not in system_prompt
-    assert "不要" not in system_prompt
 
-    prompt_payload = json.loads(provider.calls[0]["messages"][1]["content"])
-    assert prompt_payload["question"] == "loop 现在怎样？"
-    assert set(prompt_payload) == {"question", "supervisor_context"}
-    assert "desktop_snapshot" not in prompt_payload
-    assert "desktop_context" not in prompt_payload
-    supervisor_context = prompt_payload["supervisor_context"]
-    assert supervisor_context["state"]["active_goals"][0]["goal"] == "检查当前 loop 效果"
-    assert "output_requirements" not in prompt_payload
-    capacity_ids = [
-        item["capability_id"]
-        for item in supervisor_context["capabilities"]
-    ]
-    assert supervisor_context["capability_count"] == len(capacity_ids)
+    assert messages[1] == {"role": "user", "content": "loop 现在怎样？"}
+    assert "检查当前 loop 效果" not in json.dumps(messages, ensure_ascii=False)
+    assert "active_goals" not in json.dumps(messages, ensure_ascii=False)
+    assert "notifications" not in json.dumps(messages, ensure_ascii=False)
+
+    capacity_manifest = _system_json_section(system_prompt, "capacity_manifest")
+    assert capacity_manifest["source"] == "registered_capabilities"
+    capacity_ids = [item["capability_id"] for item in capacity_manifest["capabilities"]]
+    assert capacity_manifest["capability_count"] == len(capacity_ids)
     assert "supervisor.codex_operation" in capacity_ids
     codex_operation = next(
         item
-        for item in supervisor_context["capabilities"]
+        for item in capacity_manifest["capabilities"]
         if item["capability_id"] == "supervisor.codex_operation"
     )
     assert codex_operation["required_inputs"] == ["operation", "codex_home"]
@@ -232,12 +228,6 @@ def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
         "launch_worker",
         "resume_worker",
     ]
-    assert supervisor_context["loop_capacity_path"] == {
-        "chat_entry": "/desktop/chat",
-        "agent_loop_capacity_call": "call_capacity",
-        "codex_operation_capacity": "supervisor.codex_operation",
-        "execution_note": "desktop_chat answers from context; Supervisor loop executes capacity calls through agent_loop",
-    }
     assert provider.calls[0]["max_tokens"] == 512
 
 
@@ -304,8 +294,10 @@ def test_desktop_chat_endpoint_streams_capacity_events_before_answer(tmp_path) -
     assert "raw" not in body
     assert "messages" not in body
     assert capacity_provider.calls[0]["max_tokens"] == 512
-    prompt_payload = json.loads(provider.calls[0]["messages"][1]["content"])
-    capacity_call = prompt_payload["supervisor_context"]["capacity_call"]
+    messages = provider.calls[0]["messages"]
+    assert messages[-1] == {"role": "user", "content": "用 capacity 看一下当前上下文。"}
+    capacity_context = _system_json_section(messages[1]["content"], "capacity_result")
+    capacity_call = capacity_context["result"]
     assert capacity_call["capacity_id"] == "artifact.review"
     assert capacity_call["status"] == "ok"
 
@@ -421,17 +413,18 @@ def test_desktop_chat_endpoint_sends_developer_capacity_question_to_llm_with_con
         "provider": "fake",
         "model": "fake-desktop-chat",
     }
-    prompt_payload = json.loads(provider.calls[0]["messages"][1]["content"])
-    assert prompt_payload["question"] == "直接给我们的接收list，我是开发者"
-    assert set(prompt_payload) == {"question", "supervisor_context"}
-    assert "desktop_snapshot" not in prompt_payload
-    assert "desktop_context" not in prompt_payload
-    assert "output_requirements" not in prompt_payload
+    messages = provider.calls[0]["messages"]
+    assert messages[1] == {"role": "user", "content": "直接给我们的接收list，我是开发者"}
+    system_prompt = messages[0]["content"]
+    assert "desktop_snapshot" not in system_prompt
+    assert "desktop_context" not in system_prompt
+    assert "output_requirements" not in system_prompt
+    capacity_manifest = _system_json_section(system_prompt, "capacity_manifest")
     capacity_ids = [
         item["capability_id"]
-        for item in prompt_payload["supervisor_context"]["capabilities"]
+        for item in capacity_manifest["capabilities"]
     ]
-    assert prompt_payload["supervisor_context"]["capability_count"] == len(capacity_ids)
+    assert capacity_manifest["capability_count"] == len(capacity_ids)
     assert "supervisor.codex_operation" in capacity_ids
 
 
@@ -562,6 +555,12 @@ def _parse_sse(body: str) -> list[dict[str, Any]]:
             }
         )
     return events
+
+
+def _system_json_section(content: str, label: str) -> dict[str, Any]:
+    prefix = label + ":\n"
+    start = content.index(prefix) + len(prefix)
+    return json.loads(content[start:])
 
 
 def _post_desktop_chat(
