@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
+from isotope.llm.prompts import load_system_prompt
+
 from .goal_queue import record_supervisor_goal
 
 PLANNING_DOCS = (
@@ -160,13 +162,7 @@ def build_goal_planning_messages(
     return [
         {
             "role": "system",
-            "content": (
-                "你是 Codex Supervisor 的 AI-first goal planner。"
-                "只能基于用户显式执行 goal plan 命令，或用户显式启用的 low_water 低水位补任务，"
-                "生成一小批可执行 Supervisor goals；"
-                "不得让无人授权的 loop 自行发明任务。"
-                "只输出 JSON。"
-            ),
+            "content": load_system_prompt("goal_planning"),
         },
         {
             "role": "user",
@@ -267,11 +263,7 @@ def build_goal_planning_repair_messages(
     return [
         {
             "role": "system",
-            "content": (
-                "你是 goal planning 输出修复器。"
-                "把上一个回答里的 TOML 或中文条目转换成系统可用 JSON。"
-                "不要新增目标，不要解释，只输出 JSON。"
-            ),
+            "content": load_system_prompt("goal_planning_repair"),
         },
         {
             "role": "user",

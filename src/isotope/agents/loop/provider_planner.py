@@ -7,6 +7,7 @@ import json
 import re
 from typing import Any, Protocol
 
+from ...llm.prompts import load_system_prompt
 from ...llm.provider import LLMResponse
 from .context import (
     build_agent_loop_default_context,
@@ -193,10 +194,7 @@ def _build_planner_messages(
     return [
         {
             "role": "system",
-            "content": (
-                "You are an Isotope Agent loop planner. Select one symbolic "
-                "planner decision. You never execute actions directly."
-            ),
+            "content": load_system_prompt("agent_loop_planner"),
         },
         {
             "role": "user",

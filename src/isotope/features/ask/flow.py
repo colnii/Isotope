@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from ...core import ProductCore
+from ...llm.prompts import load_system_prompt
 from ...llm.provider import LLMResponse
 from ..search.flow import SearchResult
 from ..workbench.flow import WorkbenchFlow, WorkbenchView
@@ -130,11 +131,7 @@ def _build_workbench_ask_messages(
     return [
         {
             "role": "system",
-            "content": (
-                "你是 Isotope 的工作台助手。"
-                "只根据给出的低敏摘要回答，不要编造不存在的项目、任务或文件。"
-                "回答要短，中文，给出明确下一步。"
-            ),
+            "content": load_system_prompt("workbench_ask"),
         },
         {
             "role": "user",

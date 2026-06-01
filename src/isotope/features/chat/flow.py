@@ -11,11 +11,12 @@ from collections.abc import Mapping
 from copy import deepcopy
 from typing import Any
 
+from ...llm.prompts import load_system_prompt
 from ...platform.errors import IsotopeError
 from ...interfaces.http import HttpResponse
 
 
-DEFAULT_PRODUCT_CHAT_SYSTEM_MESSAGE = "Use the product chat route."
+DEFAULT_PRODUCT_CHAT_SYSTEM_MESSAGE = load_system_prompt("product_chat")
 PRODUCT_CHAT_ENTRY_STATE_SCHEMA = "product_chat_entry_state_v1"
 
 

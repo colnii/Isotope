@@ -18,6 +18,7 @@ from ..platform.schemas.input_contract import (
     unexpected_contract_keys,
 )
 from ..platform.errors import IsotopeError
+from .prompts import load_system_prompt
 from .provider import LLMResponse
 
 
@@ -205,10 +206,7 @@ def _build_messages(
     return [
         {
             "role": "system",
-            "content": (
-                "You decide whether an Isotope capacity is needed and fill its arguments. "
-                "Return a single low-sensitive JSON object."
-            ),
+            "content": load_system_prompt("capacity_calling"),
         },
         {
             "role": "user",

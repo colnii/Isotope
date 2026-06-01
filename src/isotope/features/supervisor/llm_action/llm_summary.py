@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from isotope.llm.prompts import load_system_prompt
+
 from ..flow import CodexSupervisorReport
 from .guards import (
     has_any_llm_target as _has_any_llm_target,
@@ -94,11 +96,7 @@ def build_llm_summary_messages(report: CodexSupervisorReport) -> list[dict[str, 
     return [
         {
             "role": "system",
-            "content": (
-                "你是 Codex Supervisor 的中文摘要层。"
-                "根据压缩后的会话状态，判断每个窗口在干什么、是否需要介入、"
-                "优先处理哪个窗口。不要编造日志里没有的信息。"
-            ),
+            "content": load_system_prompt("supervisor_llm_summary"),
         },
         {
             "role": "user",

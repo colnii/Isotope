@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from isotope.llm.prompts import load_system_prompt
+
 from ..flow import CodexSupervisorReport
 
 LLM_ACTION_ALLOWED_KINDS = (
@@ -82,13 +84,7 @@ def build_llm_action_messages(
     return [
         {
             "role": "system",
-            "content": (
-                "你是 Codex Supervisor 的 LLM planner（规划器）。"
-                "你负责根据窗口状态选择下一步动作；"
-                "规则和白名单只是 guardrail（护栏）。"
-                "只能从允许动作里选择一个动作，不得编造命令，不得要求任意文本发送。"
-                "只输出 JSON。"
-            ),
+            "content": load_system_prompt("supervisor_llm_action"),
         },
         {
             "role": "user",

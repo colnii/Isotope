@@ -31,5 +31,8 @@ test = ["pytest>=8.0"]
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"isotope.llm.prompts" = ["*.md"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
