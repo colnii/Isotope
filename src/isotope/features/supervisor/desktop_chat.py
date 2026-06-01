@@ -61,6 +61,7 @@ def answer_desktop_chat(
     question: str,
     provider: DesktopChatProvider,
     max_tokens: int = 512,
+    history: list[dict[str, str]] | None = None,
 ) -> DesktopChatAnswer:
     clean_question = _require_question(question)
     if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
@@ -71,6 +72,7 @@ def answer_desktop_chat(
         chat_context,
         provider=provider,
         max_tokens=max_tokens,
+        history=history,
     )
     answer = response.content.strip()
     if not answer:
@@ -93,6 +95,7 @@ def stream_desktop_chat_events(
     capacity_runner: CapabilityRunner | None = None,
     capacity_timeout_seconds: float = 3.0,
     chat_timeout_seconds: float = 18.0,
+    history: list[dict[str, str]] | None = None,
 ) -> Iterator[DesktopChatStreamEvent]:
     clean_question = _require_question(question)
     if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
@@ -114,6 +117,7 @@ def stream_desktop_chat_events(
         provider=provider,
         max_tokens=max_tokens,
         timeout_seconds=chat_timeout_seconds,
+        history=history,
     ):
         yield DesktopChatStreamEvent(
             event="delta",
@@ -129,9 +133,10 @@ def _desktop_chat_response(
     *,
     provider: DesktopChatProvider,
     max_tokens: int,
+    history: list[dict[str, str]] | None = None,
 ) -> LLMResponse:
     response = provider.generate(
-        _desktop_chat_messages(question, chat_context),
+        _desktop_chat_messages(question, chat_context, history=history),
         max_tokens=max_tokens,
     )
     if not response.content.strip():
@@ -145,6 +150,7 @@ def stream_desktop_chat(
     question: str,
     provider: DesktopChatProvider,
     max_tokens: int = 512,
+    history: list[dict[str, str]] | None = None,
 ) -> Iterator[LLMStreamChunk]:
     clean_question = _require_question(question)
     if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
@@ -155,6 +161,7 @@ def stream_desktop_chat(
         chat_context,
         provider=provider,
         max_tokens=max_tokens,
+        history=history,
     )
 
 
@@ -164,12 +171,13 @@ def _stream_desktop_chat_chunks(
     *,
     provider: DesktopChatProvider,
     max_tokens: int,
+    history: list[dict[str, str]] | None = None,
 ) -> Iterator[LLMStreamChunk]:
     stream_generate = getattr(provider, "stream_generate", None)
     if callable(stream_generate):
         yielded = False
         for chunk in stream_generate(
-            _desktop_chat_messages(question, chat_context),
+            _desktop_chat_messages(question, chat_context, history=history),
             max_tokens=max_tokens,
         ):
             if not isinstance(chunk, LLMStreamChunk):
@@ -187,6 +195,7 @@ def _stream_desktop_chat_chunks(
         chat_context,
         provider=provider,
         max_tokens=max_tokens,
+        history=history,
     )
     for chunk in desktop_chat_answer_chunks(response.content.strip()):
         yield LLMStreamChunk(
@@ -204,6 +213,7 @@ def _stream_desktop_chat_chunks_with_timeout(
     provider: DesktopChatProvider,
     max_tokens: int,
     timeout_seconds: float,
+    history: list[dict[str, str]] | None = None,
 ) -> Iterator[LLMStreamChunk]:
     if timeout_seconds <= 0:
         raise TimeoutError("desktop chat response timed out")
@@ -216,6 +226,7 @@ def _stream_desktop_chat_chunks_with_timeout(
                 chat_context,
                 provider=provider,
                 max_tokens=max_tokens,
+                history=history,
             ):
                 queue.put(("chunk", chunk))
             queue.put(("done", None))
@@ -259,6 +270,8 @@ def desktop_chat_answer_chunks(answer: str, *, chunk_size: int = 12) -> list[str
 def _desktop_chat_messages(
     question: str,
     chat_context: dict[str, Any],
+    *,
+    history: list[dict[str, str]] | None = None,
 ) -> list[dict[str, str]]:
     capacity_manifest = _mapping(chat_context.get("capacity_manifest"))
     messages = [
@@ -281,6 +294,7 @@ def _desktop_chat_messages(
                 ),
             }
         )
+    messages.extend(_desktop_chat_history_messages(history))
     messages.append({"role": "user", "content": question})
     return messages
 
@@ -302,6 +316,30 @@ def _json_context_message(label: str, value: dict[str, Any]) -> str:
         ensure_ascii=False,
         sort_keys=True,
     )
+
+
+def _desktop_chat_history_messages(
+    history: list[dict[str, str]] | None,
+    *,
+    limit: int = 12,
+) -> list[dict[str, str]]:
+    if history is None:
+        return []
+    messages: list[dict[str, str]] = []
+    for item in history[-limit:]:
+        if not isinstance(item, dict):
+            continue
+        role = item.get("role")
+        content = item.get("content")
+        if role not in {"user", "assistant"}:
+            continue
+        if not isinstance(content, str):
+            continue
+        clean_content = content.strip()
+        if not clean_content:
+            continue
+        messages.append({"role": role, "content": clean_content[:4000]})
+    return messages
 
 
 def build_desktop_chat_context(

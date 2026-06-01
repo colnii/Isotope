@@ -25,7 +25,13 @@ export type DesktopCapacityCall = {
   details: DesktopCapacityDetailSection[];
 };
 
+export type DesktopChatHistoryMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
+
 export type DesktopChatHandlers = {
+  history?: DesktopChatHistoryMessage[];
   onDelta?: (text: string) => void;
   onCapacityStart?: (call: DesktopCapacityCall) => void;
   onCapacityUpdate?: (call: DesktopCapacityCall) => void;
@@ -64,7 +70,10 @@ export function createAgentClient(baseUrl: string | null = null): AgentClient {
         method: 'POST',
         cache: 'no-store',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ question: cleanQuestion })
+        body: JSON.stringify({
+          question: cleanQuestion,
+          history: normalizeChatHistory(handlers.history)
+        })
       });
       if (!response.ok) {
         throw new Error(await responseErrorMessage(response));
@@ -75,6 +84,16 @@ export function createAgentClient(baseUrl: string | null = null): AgentClient {
       return readDesktopChatStream(response.body, cleanQuestion, handlers);
     }
   };
+}
+
+function normalizeChatHistory(history: DesktopChatHistoryMessage[] = []): DesktopChatHistoryMessage[] {
+  return history
+    .map((message) => ({
+      role: message.role,
+      content: message.content.trim()
+    }))
+    .filter((message) => (message.role === 'user' || message.role === 'assistant') && message.content.length > 0)
+    .slice(-12);
 }
 
 function normalizeBaseUrl(baseUrl: string | null): string | null {

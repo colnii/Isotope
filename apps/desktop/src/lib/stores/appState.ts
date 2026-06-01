@@ -1,5 +1,5 @@
-import { derived, writable } from 'svelte/store';
-import type { AgentClient, DesktopCapacityCall } from '../client/agentClient';
+import { derived, get, writable } from 'svelte/store';
+import type { AgentClient, DesktopCapacityCall, DesktopChatHistoryMessage } from '../client/agentClient';
 import type { ActivityNode, IsotopeSnapshot } from '../contracts/isotope';
 
 export type DesktopChatMessage = {
@@ -55,6 +55,7 @@ export function createAppState(clients: AppClients) {
     async askDesktopQuestion(question: string) {
       const cleanQuestion = question.trim();
       if (!cleanQuestion) return;
+      const history = desktopChatHistory(get(chatMessages));
       chatTurnCount += 1;
       const userId = `chat_user_${chatTurnCount}`;
       const assistantId = `chat_assistant_${chatTurnCount}`;
@@ -67,6 +68,7 @@ export function createAppState(clients: AppClients) {
       isAskingDesktop.set(true);
       try {
         const answer = await clients.agentClient.askDesktopQuestion(cleanQuestion, {
+          history,
           onCapacityStart: (call) => {
             updateAssistantCapacityCall(chatMessages, assistantId, call);
           },
@@ -116,6 +118,16 @@ export function createAppState(clients: AppClients) {
       }
     }
   };
+}
+
+function desktopChatHistory(messages: DesktopChatMessage[]): DesktopChatHistoryMessage[] {
+  return messages
+    .map((message) => ({
+      role: message.role,
+      content: message.content.trim()
+    }))
+    .filter((message) => message.content.length > 0)
+    .slice(-12);
 }
 
 function updateAssistantCapacityCall(

@@ -428,6 +428,55 @@ def test_desktop_chat_endpoint_sends_developer_capacity_question_to_llm_with_con
     assert "supervisor.codex_operation" in capacity_ids
 
 
+def test_desktop_chat_endpoint_includes_session_history_before_current_question(tmp_path) -> None:
+    provider = RecordingDesktopChatProvider(content="你的上句话是：之前跑过的 screen run？")
+    server = create_dashboard_server(
+        codex_home=tmp_path,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+        desktop_chat_provider=provider,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        conn.request(
+            "POST",
+            "/desktop/chat",
+            body=json.dumps(
+                {
+                    "question": "我的上句话是什么",
+                    "history": [
+                        {"role": "user", "content": "之前跑过的 screen run？"},
+                        {"role": "assistant", "content": "需要 root 和 run_id。"},
+                    ],
+                }
+            ),
+            headers={"content-type": "application/json"},
+        )
+        response = conn.getresponse()
+        body = response.read().decode("utf-8")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert response.status == 200
+    events = _parse_sse(body)
+    assert events[0]["event"] == "start"
+    assert events[-1]["event"] == "done"
+    messages = provider.calls[0]["messages"]
+    assert messages[1:] == [
+        {"role": "user", "content": "之前跑过的 screen run？"},
+        {"role": "assistant", "content": "需要 root 和 run_id。"},
+        {"role": "user", "content": "我的上句话是什么"},
+    ]
+
+
 def test_desktop_chat_endpoint_streams_provider_deltas(tmp_path) -> None:
     provider = StreamingDesktopChatProvider(chunks=("loop ", "实时", "返回。"))
     server = create_dashboard_server(

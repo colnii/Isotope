@@ -425,6 +425,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             payload = self._read_json_body()
             question = _required_string(payload.get("question"), "question")
             max_tokens = _positive_int(payload.get("max_tokens"), "max_tokens", default=512)
+            history = _desktop_chat_history(payload.get("history"))
         except ValueError as exc:
             self._send_json(
                 {
@@ -453,6 +454,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
                 provider=self.server.desktop_chat_provider_or_default(),
                 capacity_provider=self.server.desktop_chat_capacity_provider_or_default(),
                 max_tokens=max_tokens,
+                history=history,
                 capacity_timeout_seconds=_env_number(
                     "ISOTOPE_DESKTOP_CAPACITY_TIMEOUT_SECONDS",
                     default=4,
@@ -773,6 +775,28 @@ def _positive_int(value: object, field: str, *, default: int) -> int:
     if number <= 0:
         raise ValueError(f"{field} must be a positive integer")
     return number
+
+
+def _desktop_chat_history(value: object) -> list[dict[str, str]]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise ValueError("history must be a list")
+    history: list[dict[str, str]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        role = item.get("role")
+        content = item.get("content")
+        if role not in {"user", "assistant"}:
+            continue
+        if not isinstance(content, str):
+            continue
+        clean_content = content.strip()
+        if not clean_content:
+            continue
+        history.append({"role": role, "content": clean_content})
+    return history[-12:]
 
 
 def _write_goal_plan_candidates(

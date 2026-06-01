@@ -119,17 +119,30 @@ describe('agentClient', () => {
     const deltas: string[] = [];
     const capacityEvents: string[] = [];
 
-    const answer = await createAgentClient('http://127.0.0.1:8765').askDesktopQuestion('loop?', {
-      onDelta: (text) => deltas.push(text),
-      onCapacityStart: (call) => capacityEvents.push(`start:${call.capacityId}`),
-      onCapacityResult: (call) => capacityEvents.push(`result:${call.status}`)
-    });
+    const answer = await createAgentClient('http://127.0.0.1:8765').askDesktopQuestion(
+      'loop?',
+      {
+        history: [
+          { role: 'user', content: '上一句' },
+          { role: 'assistant', content: '上一句回复' }
+        ],
+        onDelta: (text) => deltas.push(text),
+        onCapacityStart: (call) => capacityEvents.push(`start:${call.capacityId}`),
+        onCapacityResult: (call) => capacityEvents.push(`result:${call.status}`)
+      }
+    );
 
     expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:8765/desktop/chat', {
       method: 'POST',
       cache: 'no-store',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ question: 'loop?' })
+      body: JSON.stringify({
+        question: 'loop?',
+        history: [
+          { role: 'user', content: '上一句' },
+          { role: 'assistant', content: '上一句回复' }
+        ]
+      })
     });
     expect(deltas).toEqual(['Loop', ' 正常']);
     expect(capacityEvents).toEqual(['start:memory.query', 'result:ok']);

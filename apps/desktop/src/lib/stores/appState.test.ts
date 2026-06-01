@@ -199,4 +199,43 @@ describe('appState', () => {
     expect(get(state.isAskingDesktop)).toBe(false);
     expect(get(state.chatError)).toBe(null);
   });
+
+  test('submits previous chat messages as session history on follow-up questions', async () => {
+    const calls: Array<{ question: string; history?: Array<{ role: string; content: string }> }> = [];
+    const state = createAppState({
+      agentClient: {
+        loadSnapshot: async () => realSnapshot(),
+        askDesktopQuestion: async (question, handlers) => {
+          calls.push({
+            question,
+            history: handlers?.history
+          });
+          return {
+            question,
+            answer: question === '第一句' ? '第一句回复' : '第二句回复',
+            provider: 'fake',
+            model: 'fake'
+          };
+        }
+      }
+    });
+
+    await state.initialize();
+    await state.askDesktopQuestion('第一句');
+    await state.askDesktopQuestion('我的上句话是什么');
+
+    expect(calls).toEqual([
+      {
+        question: '第一句',
+        history: []
+      },
+      {
+        question: '我的上句话是什么',
+        history: [
+          { role: 'user', content: '第一句' },
+          { role: 'assistant', content: '第一句回复' }
+        ]
+      }
+    ]);
+  });
 });
