@@ -291,7 +291,6 @@ def test_runner_runs_coding_task_preview_without_side_effects(tmp_path):
     assert result["preview"]["blocked_capabilities"] == [
         "workspace.changed_files",
         "workspace.release",
-        "code.apply_patch",
         "test.run",
         "vcs.status",
         "vcs.diff",
@@ -800,6 +799,131 @@ def test_code_read_plan_stops_when_required_inputs_are_missing():
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_readonly"
     assert plan["missing_inputs"] == ["root", "path"]
+    assert plan["scenario"] is None
+
+
+def test_runner_discovers_code_apply_patch_from_default_catalog():
+    runner = _runner()
+
+    assert "code.apply_patch" in _ids(runner.list_capabilities())
+    search = runner.search_capabilities(query="apply patch")
+
+    assert "code.apply_patch" in _ids(search["capabilities"])
+    description = runner.describe_capability("code.apply_patch")
+    assert description["input_contract"]["required"] == ["root", "cwd", "patch"]
+    assert "unified_diff_only" in description["safety_boundaries"]
+    assert "workspace_escape_rejected" in description["safety_boundaries"]
+
+
+def test_runner_applies_unified_patch_inside_workspace(tmp_path):
+    workspace = tmp_path / "workspace"
+    (workspace / "src").mkdir(parents=True)
+    target = workspace / "src" / "app.py"
+    target.write_text(
+        "def alpha():\n"
+        "    return 'old'\n",
+        encoding="utf-8",
+    )
+    patch = (
+        "--- a/src/app.py\n"
+        "+++ b/src/app.py\n"
+        "@@ -1,2 +1,3 @@\n"
+        " def alpha():\n"
+        "-    return 'old'\n"
+        "+    value = 'new'\n"
+        "+    return value\n"
+    )
+    root = tmp_path / "state"
+
+    result = _runner().run_capability(
+        "code.apply_patch",
+        inputs={
+            "root": str(root),
+            "cwd": str(workspace),
+            "patch": patch,
+        },
+    )
+
+    patch_result = result["patch_result"]
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "code.apply_patch"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "deterministic_local"
+    assert patch_result["status"] == "applied"
+    assert patch_result["changed_files"] == ["src/app.py"]
+    assert patch_result["file_count"] == 1
+    assert patch_result["hunk_count"] == 1
+    assert patch_result["write_policy"] == "workspace_relative_patch_only"
+    assert target.read_text(encoding="utf-8") == (
+        "def alpha():\n"
+        "    value = 'new'\n"
+        "    return value\n"
+    )
+    assert not list(root.rglob("*"))
+
+
+def test_code_apply_patch_rejects_path_escape_without_writing(tmp_path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    outside = tmp_path / "outside.py"
+    outside.write_text("keep\n", encoding="utf-8")
+    patch = (
+        "--- a/../outside.py\n"
+        "+++ b/../outside.py\n"
+        "@@ -1 +1 @@\n"
+        "-keep\n"
+        "+changed\n"
+    )
+
+    with pytest.raises(ValueError, match="patch path"):
+        _runner().run_capability(
+            "code.apply_patch",
+            inputs={
+                "root": str(tmp_path / "state"),
+                "cwd": str(workspace),
+                "patch": patch,
+            },
+        )
+
+    assert outside.read_text(encoding="utf-8") == "keep\n"
+
+
+def test_code_apply_patch_rejects_context_mismatch_without_partial_write(tmp_path):
+    workspace = tmp_path / "workspace"
+    (workspace / "src").mkdir(parents=True)
+    target = workspace / "src" / "app.py"
+    target.write_text("actual\n", encoding="utf-8")
+    patch = (
+        "--- a/src/app.py\n"
+        "+++ b/src/app.py\n"
+        "@@ -1 +1 @@\n"
+        "-expected\n"
+        "+changed\n"
+    )
+
+    with pytest.raises(ValueError, match="patch context mismatch"):
+        _runner().run_capability(
+            "code.apply_patch",
+            inputs={
+                "root": str(tmp_path / "state"),
+                "cwd": str(workspace),
+                "patch": patch,
+            },
+        )
+
+    assert target.read_text(encoding="utf-8") == "actual\n"
+
+
+def test_code_apply_patch_plan_stops_when_required_inputs_are_missing():
+    plan = _runner().plan_capability_run(
+        "code.apply_patch",
+        inputs={"cwd": "/tmp/project"},
+    )
+
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_local"
+    assert plan["missing_inputs"] == ["root", "patch"]
     assert plan["scenario"] is None
 
 

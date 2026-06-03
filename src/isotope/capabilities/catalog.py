@@ -588,6 +588,60 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="code.apply_patch",
+                    title="Code Apply Patch",
+                    description=(
+                        "Apply a workspace-relative unified diff with hunk "
+                        "context validation and changed-file reporting."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "code",
+                        "patch",
+                        "edit",
+                        "native-coding",
+                        "workspace",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["root", "cwd", "patch"],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "description": "Runtime root for future patch artifacts.",
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Materialized workspace directory to patch.",
+                            },
+                            "patch": {
+                                "type": "string",
+                                "description": "Unified diff to apply inside cwd.",
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "runner_kind",
+                            "patch_result",
+                            "changed_files",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "unified_diff_only",
+                        "workspace_escape_rejected",
+                        "workspace_relative_patch_only",
+                        "context_mismatch_fails_without_write",
+                        "no_command_execution",
+                        "diff_summary_only",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="memory.query",
                     title="Memory Query",
                     description=(

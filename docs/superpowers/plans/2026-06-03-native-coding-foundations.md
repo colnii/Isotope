@@ -65,6 +65,14 @@ This objective spans multiple subsystems, so it must not be implemented as one b
 - Modify `src/isotope/capabilities/coding.py`: remove `workspace.lease_create` and `workspace.materialize` from the native coding preview blocked-capability list.
 - Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, materialization under state root, overwrite refusal, unsafe path rejection, and missing-input planning.
 
+## Slice 6 File Structure
+
+- Create `src/isotope/capabilities/code_edit.py`: controlled `code.apply_patch` runner for workspace-relative unified diffs with hunk context validation.
+- Modify `src/isotope/capabilities/catalog.py`: register `code.apply_patch` with `unified_diff_only`, `workspace_escape_rejected`, and `context_mismatch_fails_without_write` safety boundaries.
+- Modify `src/isotope/capabilities/runner.py`: route patch planning and execution through the code edit runner and report `deterministic_local`.
+- Modify `src/isotope/capabilities/coding.py`: remove `code.apply_patch` from the native coding preview blocked-capability list.
+- Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, successful patch application, path escape rejection, context mismatch no-write behavior, and missing-input planning.
+
 ## Task 1: Register Coding Preview Capability
 
 **Files:**
