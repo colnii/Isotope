@@ -94,6 +94,7 @@ def run_supervisor_conversation_events(
                 decision,
                 state_root=Path(state_root).expanduser(),
                 context=context,
+                timeout_seconds=timeout_seconds,
             ):
                 yield event
                 if event.event == "capacity_result":
@@ -264,10 +265,30 @@ def _conversation_capability_summary(capability: dict[str, Any]) -> dict[str, An
                 if isinstance(input_contract, dict)
                 else []
             ),
+            "input_properties": _conversation_input_properties(properties),
             "operations": operations,
             "network_required": capability.get("network_required"),
         }
     )
+
+
+def _conversation_input_properties(
+    properties: dict[str, Any] | Any,
+) -> dict[str, dict[str, Any]]:
+    if not isinstance(properties, dict):
+        return {}
+    result: dict[str, dict[str, Any]] = {}
+    for name, schema in properties.items():
+        if not isinstance(name, str) or not isinstance(schema, dict):
+            continue
+        summary = {
+            key: schema[key]
+            for key in ("type", "enum", "default", "description")
+            if key in schema
+        }
+        if summary:
+            result[name] = summary
+    return result
 
 
 def _omit_empty(value: dict[str, Any]) -> dict[str, Any]:
@@ -297,6 +318,7 @@ def _run_capability_decision(
     *,
     state_root: Path,
     context: dict[str, Any],
+    timeout_seconds: float | None,
 ) -> Iterator[SupervisorConversationEvent]:
     capacity_id = _require_text(decision.get("capacity_id"), "capacity_id")
     arguments = decision.get("arguments", {})
@@ -325,24 +347,33 @@ def _run_capability_decision(
             ],
         },
     )
-    agent_loop = _execute_agent_loop_capacity_step(
-        goal=f"Conversation capability call: {capacity_id}",
-        capability_id=capacity_id,
-        inputs=inputs,
-        state_root=state_root / "supervisor" / "conversation-loop-runs",
-    )
-    result_summary = agent_loop_json_summary({"agent_loop": agent_loop})
+    try:
+        agent_loop = _execute_capacity_step_with_timeout(
+            goal=f"Conversation capability call: {capacity_id}",
+            capability_id=capacity_id,
+            inputs=inputs,
+            state_root=state_root / "supervisor" / "conversation-loop-runs",
+            timeout_seconds=timeout_seconds,
+        )
+        result_summary = agent_loop_json_summary({"agent_loop": agent_loop})
+        status = (
+            "ok"
+            if result_summary.get("agent_loop_tick_status") == "executed"
+            else "blocked"
+        )
+    except Exception as exc:  # noqa: BLE001 - stream low-sensitive capacity failure.
+        result_summary = {
+            "error_type": type(exc).__name__,
+            "message": str(exc) or type(exc).__name__,
+        }
+        status = "error"
     yield SupervisorConversationEvent(
         event="capacity_result",
         payload={
             "id": _capacity_event_id(capacity_id),
             "capacity_id": capacity_id,
             "title": capacity_id,
-            "status": (
-                "ok"
-                if result_summary.get("agent_loop_tick_status") == "executed"
-                else "blocked"
-            ),
+            "status": status,
             "input_summary": _safe_detail_value(inputs),
             "result_summary": _safe_detail_value(result_summary),
             "details": [
@@ -359,6 +390,40 @@ def _run_capability_decision(
             ],
         },
     )
+
+
+def _execute_capacity_step_with_timeout(
+    *,
+    goal: str,
+    capability_id: str,
+    inputs: dict[str, Any],
+    state_root: Path,
+    timeout_seconds: float | None,
+) -> dict[str, Any]:
+    if timeout_seconds is None:
+        return _execute_agent_loop_capacity_step(
+            goal=goal,
+            capability_id=capability_id,
+            inputs=inputs,
+            state_root=state_root,
+        )
+    if timeout_seconds <= 0:
+        raise TimeoutError("capacity execution timed out")
+    executor = ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(
+        _execute_agent_loop_capacity_step,
+        goal=goal,
+        capability_id=capability_id,
+        inputs=inputs,
+        state_root=state_root,
+    )
+    try:
+        return future.result(timeout=timeout_seconds)
+    except FutureTimeoutError as exc:
+        future.cancel()
+        raise TimeoutError("capacity execution timed out") from exc
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
 
 
 def _capability_inputs_from_decision(
@@ -380,7 +445,23 @@ def _capability_inputs_from_decision(
         for key, value in system_context.items():
             if key in allowed_inputs:
                 inputs[key] = value
+    inputs = _normalize_conversation_capability_inputs(capacity_id, inputs)
     return inputs
+
+
+def _normalize_conversation_capability_inputs(
+    capacity_id: str,
+    inputs: dict[str, Any],
+) -> dict[str, Any]:
+    if capacity_id != "research.search":
+        return inputs
+    if inputs.get("provider") == "tavily":
+        return inputs
+    return {
+        key: value
+        for key, value in inputs.items()
+        if key not in {"allow_network", "tavily_max_results"}
+    }
 
 
 def _capability_input_names(capacity_id: str) -> set[str]:

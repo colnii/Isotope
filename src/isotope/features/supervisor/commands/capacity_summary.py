@@ -149,12 +149,19 @@ def _agent_loop_research_search_summary(
     research_search = capability_run.get("research_search")
     if not isinstance(research_search, Mapping):
         return {}
-    return {
+    summary: dict[str, Any] = {
         "agent_loop_research_search_status": research_search.get("status"),
         "agent_loop_research_provider": research_search.get("provider"),
         "agent_loop_research_source_count": research_search.get("source_count"),
         "agent_loop_research_artifact_count": research_search.get("artifact_count"),
     }
+    report_summary = research_search.get("report_summary")
+    if isinstance(report_summary, str) and report_summary:
+        summary["agent_loop_research_report_summary"] = report_summary
+    source_previews = research_search.get("source_previews")
+    if isinstance(source_previews, list):
+        summary["agent_loop_research_source_previews"] = source_previews[:5]
+    return summary
 
 
 def _agent_loop_research_promotion_summary(

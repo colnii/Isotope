@@ -91,6 +91,9 @@ def run_research_search(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
         "artifact_refs": artifact_refs if isinstance(artifact_refs, list) else [],
         "artifacts": artifacts if isinstance(artifacts, list) else [],
     }
+    if isinstance(research, Mapping):
+        research_search["report_summary"] = _research_report_summary(research)
+        research_search["source_previews"] = _research_source_previews(sources)
     error = payload.get("error")
     if isinstance(error, Mapping):
         research_search["error"] = {
@@ -236,6 +239,38 @@ def _research_provider_kwargs(input_mapping: Mapping[str, Any]) -> dict[str, Any
         ):
             kwargs["tavily_max_results"] = tavily_max_results
     return kwargs
+
+
+def _research_report_summary(research: Mapping[str, Any]) -> str:
+    report = research.get("report")
+    if not isinstance(report, Mapping):
+        return ""
+    summary = report.get("summary")
+    return _truncate_text(summary.strip(), 1000) if isinstance(summary, str) else ""
+
+
+def _research_source_previews(sources: Any) -> list[dict[str, Any]]:
+    if not isinstance(sources, list):
+        return []
+    previews: list[dict[str, Any]] = []
+    for source in sources[:5]:
+        if not isinstance(source, Mapping):
+            continue
+        preview: dict[str, Any] = {}
+        for key in ("source_id", "title", "url", "snippet", "why_used"):
+            value = source.get(key)
+            if isinstance(value, str) and value.strip():
+                preview[key] = _truncate_text(value.strip(), 1000)
+        rank = source.get("provider_rank")
+        if isinstance(rank, int) and not isinstance(rank, bool):
+            preview["provider_rank"] = rank
+        if preview:
+            previews.append(preview)
+    return previews
+
+
+def _truncate_text(value: str, limit: int) -> str:
+    return value if len(value) <= limit else value[: limit - 1].rstrip() + "..."
 
 
 def _validate_research_promote_inputs(

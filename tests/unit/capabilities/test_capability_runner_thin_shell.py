@@ -1190,6 +1190,20 @@ def test_research_search_capability_runs_existing_fake_research_flow(tmp_path):
     assert research_search["provider"] == "fake"
     assert research_search["evidence_status"] == "complete"
     assert research_search["source_count"] == 1
+    assert (
+        research_search["report_summary"]
+        == "Fake research summary for capacity research integration."
+    )
+    assert research_search["source_previews"] == [
+        {
+            "source_id": "src_001",
+            "title": "Fake source-backed research note",
+            "url": "https://example.com/isotope-research",
+            "snippet": "Research claims should cite source ids.",
+            "why_used": "deterministic fake source for tests",
+            "provider_rank": 1,
+        }
+    ]
     assert [item["artifact_type"] for item in research_search["artifacts"]] == [
         "research.raw_transcript",
         "research.report",

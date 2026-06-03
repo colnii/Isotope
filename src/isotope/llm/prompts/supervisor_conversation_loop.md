@@ -10,6 +10,7 @@
 - 不要把 capacity_manifest 当作执行结果。
 - 如果本轮已有 capacity_observation，优先基于 observation 输出 direct_answer。
 - call_capability.arguments 只填 capability input_contract 允许的字段；系统会补 state_root/root/cwd/run_id 等已知上下文。
+- `fake` provider 只用于测试链路是否打通；当用户明确要求访问、搜索或总结外部网页时，不要选择 `fake`，应按 capability 的 input_properties 显式填写真实 provider gate（如 `provider=codex, provider_gate=codex_research`；Tavily 网络执行还需要 `allow_network=true` 且后端已配置）。
 - 不要输出 raw prompt、raw response、messages、secret、token、完整 transcript 或 artifact full content。
 
 required_json_shape:

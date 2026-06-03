@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import Any
 
 from isotope.features.supervisor.conversation_loop import (
@@ -65,6 +66,30 @@ def test_conversation_loop_accepts_plain_text_as_direct_answer(tmp_path) -> None
     assert "call_capability" in rendered
     assert "report_capability_gap" in rendered
     assert "raw_response" not in rendered
+
+
+def test_conversation_loop_manifest_exposes_research_provider_gate_contract(
+    tmp_path,
+) -> None:
+    provider = RecordingConversationProvider(["你好，我在。"])
+
+    list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path,
+            cwd=tmp_path / "repo",
+            user_message="你好",
+            provider=provider,
+        )
+    )
+
+    system_prompt = provider.calls[0]["messages"][0]["content"]
+
+    assert '"capability_id": "research.search"' in system_prompt
+    assert '"provider"' in system_prompt
+    assert '"enum": ["fake", "codex", "tavily"]' in system_prompt
+    assert '"provider_gate"' in system_prompt
+    assert '"enum": ["codex_research", "tavily_research"]' in system_prompt
+    assert '"allow_network"' in system_prompt
 
 
 def test_conversation_loop_calls_capability_then_returns_final_answer(tmp_path) -> None:
@@ -167,6 +192,176 @@ def test_conversation_loop_filters_model_supplied_inputs_to_capability_contract(
     assert events[1].payload["status"] == "ok"
     assert events[1].payload["result_summary"]["agent_loop_research_provider"] == "fake"
     assert events[2].payload == {"text": "research.search 已执行。"}
+
+
+def test_conversation_loop_drops_tavily_network_flag_from_codex_research(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    from isotope.capabilities import research as research_capability
+
+    provider_calls: list[dict[str, Any]] = []
+
+    class RecordingCodexProvider:
+        provider_name = "codex_delegated"
+
+        def run(self, query: str) -> dict[str, Any]:
+            return {
+                "research_id": "research_codex_unit",
+                "query": query,
+                "provider": "codex_delegated",
+                "created_at": "2026-06-03T00:00:00Z",
+                "status": "ok",
+                "evidence_status": "complete",
+                "sources": [
+                    {
+                        "source_id": "src_001",
+                        "title": "Codex delegated source",
+                        "url": "https://example.com/research",
+                        "snippet": "Codex delegated research returns cited snippets.",
+                        "why_used": "unit test Codex provider",
+                        "retrieved_at": "2026-06-03T00:00:00Z",
+                    }
+                ],
+                "report": {
+                    "summary": "Codex delegated research summary.",
+                    "claims": [
+                        {
+                            "text": "Codex delegated research returns cited snippets.",
+                            "source_ids": ["src_001"],
+                            "confidence": "medium",
+                        }
+                    ],
+                    "limitations": [],
+                    "next_queries": [],
+                },
+                "provenance": {"provider": "codex_delegated"},
+            }
+
+    def build_provider(provider_id: str, **kwargs: Any) -> RecordingCodexProvider:
+        provider_calls.append({"provider_id": provider_id, **kwargs})
+        return RecordingCodexProvider()
+
+    monkeypatch.setattr(
+        research_capability,
+        "build_research_provider",
+        build_provider,
+    )
+
+    provider = RecordingConversationProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "research.search",
+                    "arguments": {
+                        "query": "https://example.com/research",
+                        "provider": "codex",
+                        "provider_gate": "codex_research",
+                        "allow_network": True,
+                    },
+                    "rationale": "需要真实 provider。",
+                }
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "research.search 已尝试真实 provider。",
+                    "rationale": "基于 capability observation 回答。",
+                }
+            ),
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path,
+            cwd=tmp_path / "repo",
+            user_message="访问网页并总结",
+            provider=provider,
+            max_turns=3,
+        )
+    )
+
+    inputs = events[0].payload["input_summary"]
+    assert inputs == {
+        "provider": "codex",
+        "provider_gate": "codex_research",
+        "query": "https://example.com/research",
+        "root": str(tmp_path),
+    }
+    assert events[0].event == "capacity_start"
+    assert events[1].event == "capacity_result"
+    assert events[1].payload["result_summary"]["agent_loop_research_provider"] == (
+        "codex_delegated"
+    )
+    assert provider_calls == [
+        {
+            "provider_id": "codex",
+            "workspace_root": str(tmp_path),
+        }
+    ]
+
+
+def test_conversation_loop_returns_capacity_error_when_execution_times_out(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    from isotope.features.supervisor import conversation_loop
+
+    def slow_capacity_step(**kwargs: Any) -> dict[str, Any]:
+        time.sleep(0.2)
+        return {}
+
+    monkeypatch.setattr(
+        conversation_loop,
+        "_execute_agent_loop_capacity_step",
+        slow_capacity_step,
+    )
+    provider = RecordingConversationProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "research.search",
+                    "arguments": {"query": "https://example.com/research"},
+                    "rationale": "需要调用 research.search。",
+                }
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "research.search 执行超时，未拿到网页内容。",
+                    "rationale": "基于 capability observation 回答。",
+                }
+            ),
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path,
+            cwd=tmp_path / "repo",
+            user_message="访问网页并总结",
+            provider=provider,
+            max_turns=3,
+            timeout_seconds=0.05,
+        )
+    )
+
+    assert [event.event for event in events] == [
+        "capacity_start",
+        "capacity_result",
+        "delta",
+    ]
+    assert events[1].payload["status"] == "error"
+    assert events[1].payload["result_summary"] == {
+        "error_type": "TimeoutError",
+        "message": "capacity execution timed out",
+    }
+    assert events[2].payload == {
+        "text": "research.search 执行超时，未拿到网页内容。"
+    }
 
 
 def test_conversation_loop_records_low_sensitive_capability_gap(tmp_path) -> None:

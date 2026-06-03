@@ -915,10 +915,28 @@ def test_supervisor_capacity_plan_summarizes_research_search_agent_loop_result(t
     research_search = capability_run["research_search"]
     assert research_search["status"] == "ok"
     assert research_search["provider"] == "fake"
+    assert (
+        research_search["report_summary"]
+        == "Fake research summary for capacity research integration."
+    )
     assert result["agent_loop_summary"]["agent_loop_research_search_status"] == "ok"
     assert result["agent_loop_summary"]["agent_loop_research_provider"] == "fake"
     assert result["agent_loop_summary"]["agent_loop_research_source_count"] == 1
     assert result["agent_loop_summary"]["agent_loop_research_artifact_count"] == 2
+    assert (
+        result["agent_loop_summary"]["agent_loop_research_report_summary"]
+        == "Fake research summary for capacity research integration."
+    )
+    assert result["agent_loop_summary"]["agent_loop_research_source_previews"] == [
+        {
+            "source_id": "src_001",
+            "title": "Fake source-backed research note",
+            "url": "https://example.com/isotope-research",
+            "snippet": "Research claims should cite source ids.",
+            "why_used": "deterministic fake source for tests",
+            "provider_rank": 1,
+        }
+    ]
     assert "raw_transcript" not in json.dumps(result["agent_loop_summary"])
     _assert_no_agent_loop_raw_payload(result["agent_loop_summary"])
 
