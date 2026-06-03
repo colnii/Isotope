@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from ....rag.retrieval import (
+from .....rag.retrieval import (
     SummarySearchDocument,
     rank_summary_documents,
 )
