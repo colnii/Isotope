@@ -237,6 +237,57 @@ def test_model_tool_bridge_routes_terminal_exec_through_controlled_action_chain(
     assert transcript["shell"] is False
 
 
+def test_model_tool_bridge_auto_requests_approval_for_gated_terminal_command(tmp_path):
+    app = create_http_app(tmp_path)
+    run_id = _create_run(app)
+
+    result = submit_model_tool_call(
+        app,
+        run_id,
+        {
+            "tool_name": "terminal_exec",
+            "arguments": {
+                "argv": ["bash", "-lc", "printf MODEL_SHELL_SECRET"],
+                "summary": "model-selected shell command",
+            },
+        },
+    )
+
+    assert result["status"] == "pending_user_approval"
+    assert result["tool_name"] == "terminal_exec"
+    assert result["route"] == "in-process:submit_action"
+    assert result["requires_approval"] is True
+    assert result["approval_id"].startswith("approval_")
+    assert "MODEL_SHELL_SECRET" not in repr(result)
+    event_types = _event_types(app, run_id)
+    assert "approval.requested" in event_types
+    assert not ACTION_EXECUTION_EVENTS.intersection(event_types)
+
+
+def test_model_tool_bridge_rejects_model_attempt_to_disable_terminal_approval(tmp_path):
+    app = create_http_app(tmp_path)
+    run_id = _create_run(app)
+    before_events = _event_types(app, run_id)
+
+    with pytest.raises(IsotopeError) as exc_info:
+        submit_model_tool_call(
+            app,
+            run_id,
+            {
+                "tool_name": "terminal_exec",
+                "arguments": {
+                    "argv": ["bash", "-lc", "printf should-not-run"],
+                    "requires_approval": False,
+                },
+            },
+        )
+
+    assert exc_info.value.code == "invalid_model_tool_call"
+    assert exc_info.value.details == {"field": "requires_approval"}
+    assert _event_types(app, run_id) == before_events
+    assert app.server.artifact_store.list_artifacts(run_id) == []
+
+
 def test_model_tool_bridge_terminal_exec_rejects_shell_string_without_side_effects(tmp_path):
     app = create_http_app(tmp_path)
     run_id = _create_run(app)

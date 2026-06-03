@@ -544,7 +544,7 @@ def test_llm_terminal_tool_diagnosis_reports_invalid_terminal_arguments_without_
     assert "/bin/echo" not in repr(result)
 
 
-def test_llm_terminal_tool_diagnosis_reports_policy_denial_without_execution(tmp_path):
+def test_llm_terminal_tool_diagnosis_reports_pending_approval_without_execution(tmp_path):
     app = create_http_app(tmp_path)
     run_id = _create_run(app)
     provider = RecordingToolProvider(
@@ -557,8 +557,8 @@ def test_llm_terminal_tool_diagnosis_reports_policy_denial_without_execution(tmp
                 call_id="call_terminal_diag_policy_denied",
                 tool_name="terminal_exec",
                 arguments={
-                    "argv": ["bash", "-lc", "POLICY_DENIED_STDOUT_SHOULD_NOT_LEAK"],
-                    "summary": "terminal policy denial",
+                    "argv": ["bash", "-lc", "PENDING_APPROVAL_STDOUT_SHOULD_NOT_LEAK"],
+                    "summary": "terminal approval request",
                 },
             ),
         )
@@ -572,13 +572,14 @@ def test_llm_terminal_tool_diagnosis_reports_policy_denial_without_execution(tmp
     )
 
     assert result["status"] == "completed"
-    assert result["tool_result_status"] == "denied"
-    assert result["diagnosis"]["category"] == "terminal_policy_denied"
+    assert result["tool_result_status"] == "pending_user_approval"
+    assert result["diagnosis"]["category"] == "terminal_approval_required"
     assert result["diagnosis"]["terminal_tool_selected"] is True
     assert result["diagnosis"]["terminal_executed"] is False
     assert result["preflight"]["ready"] is False
     assert "action.started" not in _event_types(app, run_id)
-    assert "POLICY_DENIED_STDOUT_SHOULD_NOT_LEAK" not in repr(result)
+    assert "approval.requested" in _event_types(app, run_id)
+    assert "PENDING_APPROVAL_STDOUT_SHOULD_NOT_LEAK" not in repr(result)
 
 
 def test_llm_terminal_tool_diagnosis_reports_terminal_execution_failure_without_output_leak(tmp_path):

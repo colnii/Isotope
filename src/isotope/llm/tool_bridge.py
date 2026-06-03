@@ -76,6 +76,7 @@ def submit_model_tool_call(
             app,
             run_id,
             arguments,
+            catalog_entry=enabled_tools[tool_name],
             complete_run=complete_run,
         )
 
@@ -111,12 +112,15 @@ def _submit_terminal_exec_tool_call(
     run_id: str,
     arguments: dict[str, Any],
     *,
+    catalog_entry: dict[str, Any],
     complete_run: bool,
 ) -> dict[str, Any]:
-    requires_approval = arguments.get("requires_approval", False)
-    if not isinstance(requires_approval, bool):
-        raise _invalid_call("requires_approval", "terminal_exec requires_approval must be a bool")
     intent = _terminal_exec_intent(arguments)
+    requires_approval = _terminal_exec_requires_approval(
+        intent["argv"],
+        arguments,
+        catalog_entry,
+    )
     try:
         body = app.server.submit_action(
             run_id,
@@ -143,6 +147,33 @@ def _submit_terminal_exec_tool_call(
         body=body,
         requires_approval=requires_approval,
     )
+
+
+def _terminal_exec_requires_approval(
+    argv: list[str],
+    arguments: dict[str, Any],
+    catalog_entry: dict[str, Any],
+) -> bool:
+    if "requires_approval" in arguments and not isinstance(arguments["requires_approval"], bool):
+        raise _invalid_call("requires_approval", "terminal_exec requires_approval must be a bool")
+    requested = arguments.get("requires_approval")
+    constraints = catalog_entry.get("constraints", {})
+    if not isinstance(constraints, dict):
+        constraints = {}
+    approval_required_commands = constraints.get("approval_required_commands", [])
+    if not isinstance(approval_required_commands, list):
+        approval_required_commands = []
+    command_requires_approval = argv[0] in {
+        command for command in approval_required_commands if isinstance(command, str)
+    }
+    if command_requires_approval:
+        if requested is False:
+            raise _invalid_call(
+                "requires_approval",
+                "terminal_exec command requires approval",
+            )
+        return True
+    return requested is True
 
 
 def _codex_task_body(

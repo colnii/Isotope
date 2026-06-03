@@ -31,6 +31,9 @@ def test_model_tool_catalog_exposes_terminal_exec_as_llm_callable_tool(tmp_path)
     assert terminal["constraints"]["shell"] is False
     assert terminal["constraints"]["argv_policy"] == "allowlist"
     assert terminal["constraints"]["allowed_commands"]
+    assert {"bash", "pwsh", "powershell.exe"}.issubset(
+        set(terminal["constraints"]["approval_required_commands"])
+    )
     assert terminal["output_contract"] == {
         "result_kind": "terminal_output",
         "content_location": "artifact_ref",

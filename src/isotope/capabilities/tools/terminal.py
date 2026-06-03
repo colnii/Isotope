@@ -11,6 +11,7 @@ from typing import Any
 
 
 DEFAULT_ALLOWED_COMMANDS = ("echo", "printf", "pwd", "true", "false", "sleep")
+DEFAULT_APPROVAL_REQUIRED_COMMANDS = ("bash", "pwsh", "powershell.exe")
 DEFAULT_MAX_OUTPUT_BYTES = 4096
 
 
@@ -197,7 +198,7 @@ def default_terminal_capabilities() -> dict[str, Any]:
         "shell": False,
         "argv_policy": "allowlist",
         "allowed_commands": list(DEFAULT_ALLOWED_COMMANDS),
-        "approval_required_commands": [],
+        "approval_required_commands": list(DEFAULT_APPROVAL_REQUIRED_COMMANDS),
         "max_output_bytes": DEFAULT_MAX_OUTPUT_BYTES,
     }
 
@@ -245,6 +246,7 @@ def _sanitized_env() -> dict[str, str]:
 
 __all__ = [
     "ControlledTerminalRunner",
+    "DEFAULT_APPROVAL_REQUIRED_COMMANDS",
     "TerminalExecutionError",
     "TerminalExecutionResult",
     "cap_terminal_output",

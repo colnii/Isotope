@@ -103,6 +103,7 @@ def test_default_registry_exposes_terminal_exec_as_controlled_tool():
     assert entry.required_capabilities["workspace"] == {"mode": "shared_ro"}
     assert entry.required_capabilities["terminal"]["shell"] is False
     assert entry.required_capabilities["terminal"]["argv_policy"] == "allowlist"
+    assert "bash" in entry.required_capabilities["terminal"]["approval_required_commands"]
 
 
 @pytest.mark.parametrize("bad_argv", ["printf hello", "", None, ["printf", 123], []])
@@ -178,18 +179,40 @@ def test_terminal_exec_projects_safe_action_summary_and_artifact_ref(tmp_path):
     assert "read-model-secret" not in repr(action)
 
 
-def test_terminal_exec_policy_denies_shell_and_does_not_start_execution(tmp_path):
+def test_terminal_exec_default_shell_command_requires_approval_without_execution(tmp_path):
     api, run_id = _new_run(tmp_path)
 
     result = api.submit_action(
         run_id,
-        _terminal_intent(["bash", "-lc", "printf forbidden"]),
+        _terminal_intent(["bash", "-lc", "printf needs-approval"]),
     )
 
     assert result["status"] == "denied"
-    assert result["decision"].reason_codes == ["terminal_command_not_allowed"]
+    assert result["decision"].reason_codes == ["terminal_approval_required"]
     assert not any(event_type in {"action.started", "action.failed"} for event_type in _event_types(api, run_id))
     assert api.artifact_store.list_artifacts(run_id) == []
+
+
+def test_terminal_exec_default_shell_command_runs_after_approval(tmp_path):
+    api, run_id = _new_run(tmp_path)
+
+    pending = api.submit_action(
+        run_id,
+        _terminal_intent(["bash", "-lc", "printf approved-shell"]),
+        requires_approval=True,
+    )
+
+    assert pending["status"] == "pending_user_approval"
+    assert pending["approval_id"]
+    assert "action.started" not in _event_types(api, run_id)
+
+    result = api.resolve_approval(pending["approval_id"], _approved_body())
+
+    assert result["status"] == "completed"
+    content = _artifact_content(api, result)
+    assert content["argv"] == ["bash", "-lc", "printf approved-shell"]
+    assert content["stdout"] == "approved-shell"
+    assert content["shell"] is False
 
 
 def test_terminal_exec_timeout_uses_structured_action_failed_error(tmp_path):

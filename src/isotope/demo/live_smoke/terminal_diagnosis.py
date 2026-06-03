@@ -107,6 +107,17 @@ def _llm_terminal_tool_diagnosis_for(result: dict[str, Any]) -> dict[str, Any]:
             summary="provider selected terminal_exec and Isotope completed the terminal action",
             next_step="use this as a dev-only preflight before application-layer terminal wiring",
         )
+    if status == "completed" and terminal_selected and tool_result_status == "pending_user_approval":
+        return _terminal_tool_diagnosis(
+            category="terminal_approval_required",
+            provider_request_started=True,
+            terminal_tool_selected=True,
+            terminal_executed=False,
+            terminal_completed=False,
+            codex_started=False,
+            summary="Isotope stopped the selected terminal command at pending user approval",
+            next_step="resolve the pending approval before expecting terminal execution",
+        )
     if reason_code == "llm_provider_request_failed":
         return _terminal_tool_diagnosis(
             category="provider_request_failed",
