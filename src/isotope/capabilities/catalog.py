@@ -457,6 +457,114 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="workspace.changed_files",
+                    title="Workspace Changed Files",
+                    description=(
+                        "Compare a materialized isolated workspace against its "
+                        "source workspace and return changed-file summaries."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "workspace",
+                        "changed-files",
+                        "diff",
+                        "native-coding",
+                        "readonly",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["root", "cwd", "workspace_id"],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "description": "Runtime state root containing workspaces.",
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Source workspace directory to compare against.",
+                            },
+                            "workspace_id": {
+                                "type": "string",
+                                "description": "Materialized workspace id.",
+                            },
+                            "include_paths": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Workspace-relative files or directories to compare.",
+                                "default": ["."],
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "runner_kind",
+                            "changed_files",
+                            "changed_file_count",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "diff_summary_only",
+                        "relative_paths_only",
+                        "no_filesystem_write",
+                        "no_artifact_write",
+                        "no_event_append",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
+                    capability_id="workspace.release",
+                    title="Workspace Release",
+                    description=(
+                        "Release a materialized isolated workspace by deleting "
+                        "only root/workspaces/<workspace_id>."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "workspace",
+                        "release",
+                        "cleanup",
+                        "native-coding",
+                        "isolated",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["root", "workspace_id"],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "description": "Runtime state root containing workspaces.",
+                            },
+                            "workspace_id": {
+                                "type": "string",
+                                "description": "Materialized workspace id to remove.",
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "runner_kind",
+                            "released_workspace",
+                            "removed_path",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "deletes_only_materialized_workspace",
+                        "workspace_id_path_guard",
+                        "no_source_workspace_write",
+                        "no_event_append",
+                        "low_sensitive_summary_only",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="code.read",
                     title="Code Read",
                     description=(

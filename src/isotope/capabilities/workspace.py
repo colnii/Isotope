@@ -24,10 +24,9 @@ WORKSPACE_CAPABILITIES = {
 
 _ARRAY_INPUTS = ("allowed_paths", "forbidden_paths")
 _NEXT_REQUIRED_CAPABILITIES = [
-    "workspace.lease_create",
-    "workspace.materialize",
-    "workspace.changed_files",
-    "workspace.release",
+    "artifact.diff_summary",
+    "artifact.changed_files",
+    "coding_task.execute",
 ]
 _WORKSPACE_ID_RE = re.compile(r"[^a-z0-9]+")
 _STABLE_WORKSPACE_ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")

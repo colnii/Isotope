@@ -312,8 +312,9 @@ def test_runner_runs_coding_task_preview_without_side_effects(tmp_path):
         "optional_vcs_adapter",
     ]
     assert result["preview"]["blocked_capabilities"] == [
-        "workspace.changed_files",
-        "workspace.release",
+        "artifact.diff_summary",
+        "artifact.changed_files",
+        "coding_task.execute",
     ]
     assert not list(root.rglob("*"))
 
@@ -423,10 +424,9 @@ def test_runner_runs_workspace_isolated_rw_proposal_without_creating_workspace(t
     ]
     assert proposal["forbidden_paths"] == ["src/isotope/features/supervisor"]
     assert proposal["next_required_capabilities"] == [
-        "workspace.lease_create",
-        "workspace.materialize",
-        "workspace.changed_files",
-        "workspace.release",
+        "artifact.diff_summary",
+        "artifact.changed_files",
+        "coding_task.execute",
     ]
     assert not list(root.rglob("*"))
 
@@ -660,6 +660,140 @@ def test_workspace_materialize_plan_stops_when_required_inputs_are_missing():
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_local"
+    assert plan["missing_inputs"] == ["root", "workspace_id"]
+    assert plan["scenario"] is None
+
+
+def test_runner_discovers_workspace_changed_files_and_release_from_default_catalog():
+    runner = _runner()
+
+    assert "workspace.changed_files" in _ids(runner.list_capabilities())
+    assert "workspace.release" in _ids(
+        runner.search_capabilities(query="workspace release")["capabilities"]
+    )
+
+    changed_description = runner.describe_capability("workspace.changed_files")
+    release_description = runner.describe_capability("workspace.release")
+    assert changed_description["input_contract"]["required"] == [
+        "root",
+        "cwd",
+        "workspace_id",
+    ]
+    assert release_description["input_contract"]["required"] == ["root", "workspace_id"]
+    assert "diff_summary_only" in changed_description["safety_boundaries"]
+    assert "deletes_only_materialized_workspace" in release_description["safety_boundaries"]
+
+
+def test_runner_reports_workspace_changed_files_against_source(tmp_path):
+    source = tmp_path / "repo"
+    (source / "src").mkdir(parents=True)
+    (source / "src" / "app.py").write_text("old\n", encoding="utf-8")
+    (source / "src" / "delete.py").write_text("delete me\n", encoding="utf-8")
+    (source / "README.md").write_text("same\n", encoding="utf-8")
+    root = tmp_path / "state"
+    workspace_root = root / "workspaces" / "workspace_native_coding_slice_9"
+    (workspace_root / "src").mkdir(parents=True)
+    (workspace_root / "src" / "app.py").write_text("new\n", encoding="utf-8")
+    (workspace_root / "src" / "new.py").write_text("added\n", encoding="utf-8")
+    (workspace_root / "README.md").write_text("same\n", encoding="utf-8")
+
+    result = _runner().run_capability(
+        "workspace.changed_files",
+        inputs={
+            "root": str(root),
+            "cwd": str(source),
+            "workspace_id": "workspace_native_coding_slice_9",
+            "include_paths": ["src", "README.md"],
+        },
+    )
+
+    changed = result["changed_files"]
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "workspace.changed_files"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "deterministic_readonly"
+    assert changed["status"] == "changed"
+    assert changed["workspace_id"] == "workspace_native_coding_slice_9"
+    assert changed["changed_file_count"] == 3
+    assert changed["changed_files"] == [
+        {"path": "src/app.py", "status": "modified"},
+        {"path": "src/delete.py", "status": "deleted"},
+        {"path": "src/new.py", "status": "added"},
+    ]
+    assert changed["artifact_write"] == "not_performed"
+    assert changed["content_policy"] == "diff_summary_only"
+
+
+def test_workspace_changed_files_rejects_missing_materialized_workspace(tmp_path):
+    source = tmp_path / "repo"
+    source.mkdir()
+
+    with pytest.raises(ValueError, match="materialized workspace"):
+        _runner().run_capability(
+            "workspace.changed_files",
+            inputs={
+                "root": str(tmp_path / "state"),
+                "cwd": str(source),
+                "workspace_id": "workspace_missing",
+            },
+        )
+
+
+def test_runner_releases_materialized_workspace_without_touching_source(tmp_path):
+    source = tmp_path / "repo"
+    source.mkdir()
+    (source / "keep.py").write_text("source\n", encoding="utf-8")
+    root = tmp_path / "state"
+    workspace_root = root / "workspaces" / "workspace_native_coding_slice_9"
+    workspace_root.mkdir(parents=True)
+    (workspace_root / "temp.py").write_text("generated\n", encoding="utf-8")
+
+    result = _runner().run_capability(
+        "workspace.release",
+        inputs={
+            "root": str(root),
+            "workspace_id": "workspace_native_coding_slice_9",
+        },
+    )
+
+    released = result["released_workspace"]
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "workspace.release"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "deterministic_local"
+    assert released["status"] == "released"
+    assert released["workspace_id"] == "workspace_native_coding_slice_9"
+    assert released["removed_path"] == str(workspace_root)
+    assert released["event_append"] == "not_performed"
+    assert not workspace_root.exists()
+    assert (source / "keep.py").read_text(encoding="utf-8") == "source\n"
+
+
+def test_workspace_release_rejects_unknown_workspace_without_side_effects(tmp_path):
+    root = tmp_path / "state"
+    root.mkdir()
+
+    with pytest.raises(ValueError, match="materialized workspace"):
+        _runner().run_capability(
+            "workspace.release",
+            inputs={
+                "root": str(root),
+                "workspace_id": "workspace_missing",
+            },
+        )
+
+    assert root.exists()
+
+
+def test_workspace_changed_files_plan_stops_when_required_inputs_are_missing():
+    plan = _runner().plan_capability_run(
+        "workspace.changed_files",
+        inputs={"cwd": "/tmp/project"},
+    )
+
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_readonly"
     assert plan["missing_inputs"] == ["root", "workspace_id"]
     assert plan["scenario"] is None
 
