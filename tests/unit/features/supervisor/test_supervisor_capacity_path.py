@@ -210,13 +210,13 @@ def test_supervisor_capacity_plan_passes_selection_arguments_to_launch_plan(tmp_
         "Supervisor request_context can retrieve project context.\n",
         encoding="utf-8",
     )
-    codex_home = tmp_path / "codex-home"
+    state_root = tmp_path / "state-root"
     provider = FakeCapacityProvider(
         json.dumps(
             {
                 "capacity_id": "supervisor.request_context",
                 "arguments": {
-                    "codex_home": str(codex_home),
+                    "state_root": str(state_root),
                     "cwd": str(workspace),
                     "query": "request_context project context",
                     "max_results": 2,
@@ -671,7 +671,7 @@ def test_supervisor_capacity_plan_passes_arguments_into_agent_loop_inputs(tmp_pa
     )
     provider = FakeCapacityProvider(
         '{"capacity_id":"supervisor.request_context","arguments":{'
-        f'"codex_home":"{tmp_path / "codex-home"}",'
+        f'"state_root":"{tmp_path / "state-root"}",'
         f'"cwd":"{workspace}",'
         '"query":"capacity arguments",'
         '"max_results":1'
@@ -693,7 +693,7 @@ def test_supervisor_capacity_plan_passes_arguments_into_agent_loop_inputs(tmp_pa
         "step": "call_capability",
         "capability_id": "supervisor.request_context",
         "inputs": {
-            "codex_home": str(tmp_path / "codex-home"),
+            "state_root": str(tmp_path / "state-root"),
             "cwd": str(workspace),
             "query": "capacity arguments",
             "max_results": 1,
@@ -706,8 +706,8 @@ def test_supervisor_capacity_plan_passes_arguments_into_agent_loop_inputs(tmp_pa
     assert capability_run["context_result"]["item_count"] >= 1
 
 
-def test_supervisor_capacity_plan_applies_codex_home_default_for_review_capability(tmp_path):
-    codex_home = tmp_path / "codex-home"
+def test_supervisor_capacity_plan_applies_state_root_default_for_review_capability(tmp_path):
+    state_root = tmp_path / "state-root"
     provider = FakeCapacityProvider(
         '{"capacity_id":"supervisor.integration_review","arguments":{},'
         '"confidence":0.88,"rationale":"review managed workers"}'
@@ -718,19 +718,19 @@ def test_supervisor_capacity_plan_applies_codex_home_default_for_review_capabili
         provider=provider,
         state_root=tmp_path / "state",
         execute_agent_loop=True,
-        input_defaults={"codex_home": str(codex_home)},
+        input_defaults={"state_root": str(state_root)},
     )
 
     assert result["status"] == "ok"
     assert result["selection"]["capacity_id"] == "supervisor.integration_review"
-    assert result["selection"]["arguments"] == {"codex_home": str(codex_home)}
+    assert result["selection"]["arguments"] == {"state_root": str(state_root)}
     assert result["selection"]["missing_inputs"] == []
     assert result["capability_launch_plan"]["can_launch"] is True
     loop = result["agent_loop"]
     assert loop["step_request"] == {
         "step": "call_capability",
         "capability_id": "supervisor.integration_review",
-        "inputs": {"codex_home": str(codex_home)},
+        "inputs": {"state_root": str(state_root)},
     }
     capability_run = loop["step_result"]["action_result"]["capability_run"]
     assert capability_run["capability_id"] == "supervisor.integration_review"
@@ -1323,7 +1323,7 @@ def test_loop_capacity_payload_passes_supervisor_capacity_input_defaults(tmp_pat
     )
 
     assert captured["input_defaults"] == {
-        "codex_home": str(tmp_path / ".codex"),
+        "state_root": str(tmp_path / ".codex"),
         "root": str(tmp_path / ".codex"),
     }
     assert payload["capacity_decisions"] == [decision]
@@ -1450,7 +1450,7 @@ def test_supervisor_capacity_plain_output_explains_missing_inputs(capsys):
     assert "selection_status: missing_inputs" in output
     assert "status_reason: needs_input" in output
     assert "capacity_blocked_reason: missing_inputs" in output
-    assert "capacity_missing_inputs: codex_home, cwd, query" in output
+    assert "capacity_missing_inputs: state_root, cwd, query" in output
     assert "agent_loop_executed: False" in output
 
 
