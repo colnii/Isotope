@@ -306,6 +306,89 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="workspace.lease_create",
+                    title="Workspace Lease Create",
+                    description=(
+                        "Build a workspace.lease_created event candidate for a "
+                        "future isolated writable workspace without appending it."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "workspace",
+                        "lease",
+                        "isolated",
+                        "native-coding",
+                        "event-candidate",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": [
+                            "root",
+                            "run_id",
+                            "workspace_id",
+                            "agent_id",
+                            "decision_id",
+                            "proposal_id",
+                            "execution_id",
+                        ],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "description": "Runtime root for the future event append.",
+                            },
+                            "run_id": {
+                                "type": "string",
+                                "description": "Run id that will own the workspace lease.",
+                            },
+                            "workspace_id": {
+                                "type": "string",
+                                "description": "Stable workspace id for the lease.",
+                            },
+                            "agent_id": {
+                                "type": "string",
+                                "description": "Agent id that the lease is bound to.",
+                            },
+                            "decision_id": {
+                                "type": "string",
+                                "description": "Decision id granting the lease.",
+                            },
+                            "proposal_id": {
+                                "type": "string",
+                                "description": "Workspace proposal id used to create the lease.",
+                            },
+                            "execution_id": {
+                                "type": "string",
+                                "description": "Execution id producing the event candidate.",
+                            },
+                            "mode": {
+                                "type": "string",
+                                "enum": ["isolated_rw"],
+                                "description": "Future workspace lease mode.",
+                                "default": "isolated_rw",
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "runner_kind",
+                            "lease_event",
+                            "append_required",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "event_candidate_only",
+                        "no_event_append",
+                        "no_filesystem_write",
+                        "no_workspace_materialization",
+                        "low_sensitive_summary_only",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="memory.query",
                     title="Memory Query",
                     description=(

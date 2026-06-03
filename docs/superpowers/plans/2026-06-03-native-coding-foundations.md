@@ -15,13 +15,14 @@
 This objective spans multiple subsystems, so it must not be implemented as one broad patch. Each phase below should become a separate implementation plan or a clearly bounded task group before code changes.
 
 1. `coding_task.preview`: low-sensitive native coding task contract and launch preview.
-2. `workspace.isolated_rw`: policy-granted writable isolated workspace lease with path safety.
-3. `code.read` / `code.search`: controlled file listing, file read summaries, and code search refs.
-4. `code.apply_patch`: structured patch application with path policy, diff artifact, and changed-files artifact.
-5. `test.run`: allowlisted validation command runner with stdout/stderr artifacts and stable failure reasons.
-6. `vcs.status` / `vcs.diff`: optional Git adapter diagnostics and artifact-backed diff summaries.
-7. `coding_task.execute`: bounded agent loop that plans, reads, patches, tests, revises, and reports.
-8. Supervisor/Desktop integration: expose native coding capacity in conversation loop and dashboard.
+2. `workspace.isolated_rw`: proposal-only isolated writable workspace contract with path safety.
+3. `workspace.lease_create`: event-candidate lease expression for `isolated_rw` without append or materialization.
+4. `code.read` / `code.search`: controlled file listing, file read summaries, and code search refs.
+5. `code.apply_patch`: structured patch application with path policy, diff artifact, and changed-files artifact.
+6. `test.run`: allowlisted validation command runner with stdout/stderr artifacts and stable failure reasons.
+7. `vcs.status` / `vcs.diff`: optional Git adapter diagnostics and artifact-backed diff summaries.
+8. `coding_task.execute`: bounded agent loop that plans, reads, patches, tests, revises, and reports.
+9. Supervisor/Desktop integration: expose native coding capacity in conversation loop and dashboard.
 
 ## Slice 1 File Structure
 
@@ -36,6 +37,16 @@ This objective spans multiple subsystems, so it must not be implemented as one b
 - Modify `src/isotope/capabilities/catalog.py`: register `workspace.isolated_rw` in the default catalog.
 - Modify `src/isotope/capabilities/runner.py`: route planning and execution through the workspace proposal runner.
 - Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, successful proposal, required-input planning, and unsafe path rejection.
+
+## Slice 3 File Structure
+
+- Modify `src/isotope/capabilities/workspace.py`: add `workspace.lease_create`, which returns a `workspace.lease_created` event candidate and still performs no append, no filesystem write, and no workspace materialization.
+- Modify `src/isotope/capabilities/catalog.py`: register `workspace.lease_create` with required provenance ids and `mode="isolated_rw"`.
+- Modify `src/isotope/capabilities/runner.py`: route lease-create planning and execution through the workspace runner.
+- Modify `src/isotope/platform/state/projector/domain_validation.py`: allow `workspace.lease_created` events to express `isolated_rw` while keeping `workspace.bound` fail-closed to `shared_ro`.
+- Modify `src/isotope/platform/state/projector/checkpoint_validation.py`: allow checkpoint-assisted rebuilds to preserve created `isolated_rw` leases.
+- Modify `tests/integration/workspace/test_workspace_lease_lifecycle_boundary.py`: cover `isolated_rw` lease projection and checkpoint rebuild.
+- Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, successful event candidate, and missing-input launch planning.
 
 ## Task 1: Register Coding Preview Capability
 

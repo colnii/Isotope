@@ -7,6 +7,9 @@ from typing import Any
 from ...events.events import CanonicalEvent
 
 
+_SUPPORTED_WORKSPACE_LEASE_MODES = {"shared_ro", "isolated_rw"}
+
+
 class RunProjectorDomainValidationMixin:
     """Validate delegation, worker, workspace, memory, and snapshot payloads."""
 
@@ -129,7 +132,7 @@ class RunProjectorDomainValidationMixin:
                 raise ValueError(f"workspace.lease_created {field_name} must be a non-empty string")
         if payload["run_id"] != event.run_id:
             raise ValueError("workspace.lease_created run_id must match event run_id")
-        if payload["mode"] != "shared_ro":
+        if payload["mode"] not in _SUPPORTED_WORKSPACE_LEASE_MODES:
             raise PermissionError("workspace mode is not supported")
         if payload["lease_status"] != "created":
             raise ValueError("workspace.lease_created lease_status must be created")

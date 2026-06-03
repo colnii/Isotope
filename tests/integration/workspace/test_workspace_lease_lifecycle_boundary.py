@@ -9,6 +9,7 @@ import isotope.workspace as workspace
 
 RUN_ID = "run_001"
 WORKSPACE_ID = "workspace_shared_ro"
+ISOLATED_WORKSPACE_ID = "workspace_native_coding_slice_3"
 
 
 def _event(event_id: str, event_type: str, payload: dict):
@@ -98,6 +99,34 @@ def _workspace_released(**overrides):
     return _event("evt_005", "workspace.released", payload)
 
 
+def _isolated_rw_lease_created(**overrides):
+    payload = {
+        "workspace_id": ISOLATED_WORKSPACE_ID,
+        "run_id": RUN_ID,
+        "mode": "isolated_rw",
+        "lease_status": "created",
+        "bound_to": {"type": "agent", "agent_id": "agent_supervisor"},
+        "granted_by": {"decision_id": "dec_workspace_isolated_001"},
+        "created_by": {
+            "proposal_id": "prop_workspace_isolated_001",
+            "execution_id": "exec_workspace_isolated_001",
+        },
+        "provenance": {
+            "decision_id": "dec_workspace_isolated_001",
+            "proposal_id": "prop_workspace_isolated_001",
+            "execution_id": "exec_workspace_isolated_001",
+            "grant_basis": {"workspace": {"mode": "isolated_rw"}},
+            "path_policy": {
+                "relative_paths_only": True,
+                "parent_traversal_allowed": False,
+                "absolute_paths_allowed": False,
+            },
+        },
+    }
+    payload.update(overrides)
+    return _event("evt_006", "workspace.lease_created", payload)
+
+
 def _events(*tail):
     return [_run_created(), _agent_created(), *tail]
 
@@ -125,6 +154,41 @@ def test_workspace_lease_created_projects_lifecycle_read_model():
     assert lease["released_at"] is None
     assert lease["last_event_id"] == "evt_003"
     assert lease["provenance"]["decision_id"] == "dec_workspace_001"
+
+
+def test_isolated_rw_workspace_lease_projects_lifecycle_read_model():
+    state = projector.RunProjector().project(_events(_isolated_rw_lease_created()))
+
+    lease = state.workspaces[ISOLATED_WORKSPACE_ID]
+    assert lease["workspace_id"] == ISOLATED_WORKSPACE_ID
+    assert lease["mode"] == "isolated_rw"
+    assert lease["lease_status"] == "created"
+    assert lease["granted_by"] == {"decision_id": "dec_workspace_isolated_001"}
+    assert lease["created_by"]["execution_id"] == "exec_workspace_isolated_001"
+    assert lease["provenance"]["grant_basis"]["workspace"] == {"mode": "isolated_rw"}
+    assert lease["provenance"]["path_policy"] == {
+        "relative_paths_only": True,
+        "parent_traversal_allowed": False,
+        "absolute_paths_allowed": False,
+    }
+
+
+def test_isolated_rw_workspace_lease_checkpoint_assisted_rebuild(tmp_path):
+    canonical_events = _events(_isolated_rw_lease_created())
+    events_store = event_store.FileEventStore(tmp_path)
+    checkpoints = checkpoint_store.FileCheckpointStore(tmp_path)
+    _write_events(events_store, canonical_events)
+    checkpoint = projector.RunProjector().create_checkpoint(RUN_ID, canonical_events)
+    checkpoints.save_checkpoint(RUN_ID, checkpoint)
+
+    restored = projector.RunProjector().rebuild_with_checkpoint(
+        RUN_ID,
+        events_store,
+        checkpoints,
+    )
+
+    assert restored.workspaces[ISOLATED_WORKSPACE_ID]["mode"] == "isolated_rw"
+    assert restored.workspaces[ISOLATED_WORKSPACE_ID]["lease_status"] == "created"
 
 
 def test_workspace_bound_lifecycle_entry_preserves_policy_and_creator_basis():

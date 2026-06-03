@@ -53,8 +53,10 @@ from .supervisor import (
 )
 from .workspace import (
     WORKSPACE_ISOLATED_RW_CAPABILITY,
+    WORKSPACE_LEASE_CREATE_CAPABILITY,
     is_workspace_capability,
     run_workspace_isolated_rw,
+    run_workspace_lease_create,
     validate_workspace_inputs,
 )
 from ..demo import run_demo
@@ -341,6 +343,8 @@ class CapabilityRunner:
             return run_coding_task_preview(inputs=input_mapping)
         if capability_id == WORKSPACE_ISOLATED_RW_CAPABILITY:
             return run_workspace_isolated_rw(inputs=input_mapping)
+        if capability_id == WORKSPACE_LEASE_CREATE_CAPABILITY:
+            return run_workspace_lease_create(inputs=input_mapping)
 
         try:
             scenario = _CAPABILITY_SCENARIOS[capability_id]

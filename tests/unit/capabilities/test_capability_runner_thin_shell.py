@@ -450,6 +450,87 @@ def test_workspace_isolated_rw_plan_stops_when_required_inputs_are_missing():
     assert plan["scenario"] is None
 
 
+def test_runner_discovers_workspace_lease_create_from_default_catalog():
+    runner = _runner()
+
+    assert "workspace.lease_create" in _ids(runner.list_capabilities())
+    search = runner.search_capabilities(query="workspace lease create")
+
+    assert "workspace.lease_create" in _ids(search["capabilities"])
+    description = runner.describe_capability("workspace.lease_create")
+    assert description["input_contract"]["required"] == [
+        "root",
+        "run_id",
+        "workspace_id",
+        "agent_id",
+        "decision_id",
+        "proposal_id",
+        "execution_id",
+    ]
+    assert description["input_contract"]["properties"]["mode"]["enum"] == ["isolated_rw"]
+    assert "event_candidate_only" in description["safety_boundaries"]
+    assert "no_event_append" in description["safety_boundaries"]
+
+
+def test_runner_runs_workspace_lease_create_event_candidate_without_side_effects(tmp_path):
+    root = tmp_path / "state"
+
+    result = _runner().run_capability(
+        "workspace.lease_create",
+        inputs={
+            "root": str(root),
+            "run_id": "run_native_coding",
+            "workspace_id": "workspace_native_coding_slice_3",
+            "agent_id": "agent_supervisor",
+            "decision_id": "dec_workspace_001",
+            "proposal_id": "prop_workspace_001",
+            "execution_id": "exec_workspace_001",
+            "mode": "isolated_rw",
+        },
+    )
+
+    event = result["lease_event"]
+    payload = event["payload"]
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "workspace.lease_create"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "deterministic_proposal"
+    assert event["event_type"] == "workspace.lease_created"
+    assert payload["workspace_id"] == "workspace_native_coding_slice_3"
+    assert payload["run_id"] == "run_native_coding"
+    assert payload["mode"] == "isolated_rw"
+    assert payload["lease_status"] == "created"
+    assert payload["bound_to"] == {"agent_id": "agent_supervisor"}
+    assert payload["granted_by"] == {"decision_id": "dec_workspace_001"}
+    assert payload["created_by"] == {
+        "proposal_id": "prop_workspace_001",
+        "execution_id": "exec_workspace_001",
+    }
+    assert payload["provenance"]["grant_basis"]["workspace"] == {"mode": "isolated_rw"}
+    assert result["append_required"] is True
+    assert not list(root.rglob("*"))
+
+
+def test_workspace_lease_create_plan_stops_when_required_inputs_are_missing():
+    plan = _runner().plan_capability_run(
+        "workspace.lease_create",
+        inputs={"run_id": "run_native_coding"},
+    )
+
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_proposal"
+    assert plan["missing_inputs"] == [
+        "root",
+        "workspace_id",
+        "agent_id",
+        "decision_id",
+        "proposal_id",
+        "execution_id",
+    ]
+    assert plan["scenario"] is None
+
+
 def test_runner_status_mirrors_catalog_status_without_executing_capability():
     catalog = CapabilityCatalog(
         capabilities=[

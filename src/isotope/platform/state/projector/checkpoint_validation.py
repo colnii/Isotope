@@ -7,6 +7,9 @@ from typing import Any
 from .state import RunState
 
 
+_SUPPORTED_CHECKPOINT_WORKSPACE_MODES = {"shared_ro", "isolated_rw"}
+
+
 class RunProjectorCheckpointValidationMixin:
     """Validate checkpoint state before rebuilding a RunState from it."""
 
@@ -180,8 +183,8 @@ class RunProjectorCheckpointValidationMixin:
                 raise ValueError(f"checkpoint workspace entry missing required field: {field_name}")
         if workspace["workspace_id"] != workspace_id:
             raise ValueError("checkpoint workspace id must match entry workspace_id")
-        if workspace["mode"] != "shared_ro":
-            raise ValueError("checkpoint workspace mode must be shared_ro")
+        if workspace["mode"] not in _SUPPORTED_CHECKPOINT_WORKSPACE_MODES:
+            raise ValueError("checkpoint workspace mode must be supported")
         if workspace["lease_status"] not in self.KNOWN_WORKSPACE_LEASE_STATUSES:
             raise ValueError("checkpoint workspace lease_status must be known")
         if not isinstance(workspace["bound_to"], dict):
