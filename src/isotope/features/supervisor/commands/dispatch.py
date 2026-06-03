@@ -5,21 +5,25 @@ from __future__ import annotations
 import argparse
 from typing import Any
 
-from ..commands.compat_api import (
-    _handle_capacity_command,
-    _handle_cleanup_command,
-    _handle_context_command,
-    _handle_dashboard_command,
-    _handle_decision_command,
-    _handle_goal_command,
-    _handle_integration_review_command,
-    _handle_memory_command,
-    _handle_merge_work_order_command,
-    _handle_replan_command,
-    _handle_state_command,
-    _handle_worker_event_command,
-    _handle_worker_manager_command,
-    _handle_worktree_audit_command,
+from .cleanup import handle_cleanup_command as _handle_cleanup_command
+from .dashboard import handle_dashboard_command as _handle_dashboard_command
+from .handlers.capacity import handle_capacity_command as _handle_capacity_command
+from .handlers.context import handle_context_command as _handle_context_command
+from .handlers.decision import handle_decision_command as _handle_decision_command
+from .handlers.goal import handle_goal_command as _handle_goal_command
+from .handlers.memory import (
+    handle_memory_command as _handle_memory_command,
+    handle_worker_event_command as _handle_worker_event_command,
+    handle_worker_manager_command as _handle_worker_manager_command,
+)
+from .handlers.replan import handle_replan_command as _handle_replan_command
+from .handlers.state import handle_state_command as _handle_state_command
+from .handlers.worktree_audit import (
+    handle_worktree_audit_command as _handle_worktree_audit_command,
+)
+from .merge import (
+    handle_integration_review_command as _handle_integration_review_command,
+    handle_merge_work_order_command as _handle_merge_work_order_command,
 )
 
 

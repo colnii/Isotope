@@ -1273,6 +1273,23 @@ def test_supervisor_runner_delegates_cli_dispatch():
     assert "_COMMAND_HANDLERS = {" not in source
 
 
+def test_supervisor_dispatch_imports_command_handlers_directly():
+    dispatch_module = importlib.import_module(
+        "isotope.features.supervisor.commands.dispatch"
+    )
+    dashboard_module = importlib.import_module("isotope.features.supervisor.commands.dashboard")
+    goal_module = importlib.import_module("isotope.features.supervisor.commands.handlers.goal")
+    cleanup_module = importlib.import_module("isotope.features.supervisor.commands.cleanup")
+
+    assert dispatch_module._handle_dashboard_command is dashboard_module.handle_dashboard_command
+    assert dispatch_module._handle_goal_command is goal_module.handle_goal_command
+    assert dispatch_module._handle_cleanup_command is cleanup_module.handle_cleanup_command
+
+    source = inspect.getsource(dispatch_module)
+    assert "commands.compat_api" not in source
+    assert "compat_api import" not in source
+
+
 def test_supervisor_runner_delegates_supervise_loop():
     loop_module = importlib.import_module("isotope.features.supervisor.supervise.loop")
 

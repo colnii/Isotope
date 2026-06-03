@@ -48,6 +48,9 @@ Codex worker 在改 Supervisor 前必须先做 reuse audit（复用审计）：
 - 阶段 2 健康：`runner.py` 降到 400-600 行；已迁出
   `supervise/loop.py`、`supervise/payload.py` 和
   `commands/dispatch.py` 的命令分发主干。
+- `commands/dispatch.py` 已直接导入真实 command handler，不再通过
+  `commands/compat_api.py` 进入运行主路径；`compat_api.py` 继续只作为
+  `runner.py` 旧 helper re-export 的兼容面。
 - 阶段 3 理想：`runner.py` 降到 250-400 行，只保留 `main`、
   parser 调用、顶层 dispatch、少量异常处理和兼容 re-export；`scan/report`
   已抽出，下一步优先拆 goal replenishment 和剩余 notification/context glue。
