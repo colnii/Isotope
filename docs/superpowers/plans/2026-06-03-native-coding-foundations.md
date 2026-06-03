@@ -73,6 +73,14 @@ This objective spans multiple subsystems, so it must not be implemented as one b
 - Modify `src/isotope/capabilities/coding.py`: remove `code.apply_patch` from the native coding preview blocked-capability list.
 - Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, successful patch application, path escape rejection, context mismatch no-write behavior, and missing-input planning.
 
+## Slice 7 File Structure
+
+- Create `src/isotope/capabilities/testing.py`: controlled `test.run` runner that reuses the terminal argv validation, command allowlist, timeout, and output capping boundary.
+- Modify `src/isotope/capabilities/catalog.py`: register `test.run` with `argv_allowlist_only`, `shell_false`, and bounded stdout/stderr safety boundaries.
+- Modify `src/isotope/capabilities/runner.py`: route test planning and execution through the testing runner and report `deterministic_local`.
+- Modify `src/isotope/capabilities/coding.py`: remove `test.run` from the native coding preview blocked-capability list.
+- Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, successful allowlisted command, nonzero exit reporting, non-allowlisted command rejection, and missing-input planning.
+
 ## Task 1: Register Coding Preview Capability
 
 **Files:**

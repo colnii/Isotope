@@ -291,7 +291,6 @@ def test_runner_runs_coding_task_preview_without_side_effects(tmp_path):
     assert result["preview"]["blocked_capabilities"] == [
         "workspace.changed_files",
         "workspace.release",
-        "test.run",
         "vcs.status",
         "vcs.diff",
     ]
@@ -924,6 +923,98 @@ def test_code_apply_patch_plan_stops_when_required_inputs_are_missing():
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_local"
     assert plan["missing_inputs"] == ["root", "patch"]
+    assert plan["scenario"] is None
+
+
+def test_runner_discovers_test_run_from_default_catalog():
+    runner = _runner()
+
+    assert "test.run" in _ids(runner.list_capabilities())
+    search = runner.search_capabilities(query="test run")
+
+    assert "test.run" in _ids(search["capabilities"])
+    description = runner.describe_capability("test.run")
+    assert description["input_contract"]["required"] == ["root", "cwd", "argv"]
+    assert description["input_contract"]["properties"]["argv"]["type"] == "array"
+    assert "argv_allowlist_only" in description["safety_boundaries"]
+    assert "shell_false" in description["safety_boundaries"]
+
+
+def test_runner_runs_allowlisted_test_command_without_artifact_write(tmp_path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    root = tmp_path / "state"
+
+    result = _runner().run_capability(
+        "test.run",
+        inputs={
+            "root": str(root),
+            "cwd": str(workspace),
+            "argv": ["printf", "ok\n"],
+        },
+    )
+
+    test_result = result["test_result"]
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "test.run"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "deterministic_local"
+    assert test_result["status"] == "passed"
+    assert test_result["exit_code"] == 0
+    assert test_result["argv"] == ["printf", "ok\n"]
+    assert test_result["stdout_excerpt"] == "ok\n"
+    assert test_result["stderr_excerpt"] == ""
+    assert test_result["output_truncated"] is False
+    assert test_result["artifact_write"] == "not_performed"
+    assert not list(root.rglob("*"))
+
+
+def test_test_run_reports_nonzero_exit_without_raising(tmp_path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+
+    result = _runner().run_capability(
+        "test.run",
+        inputs={
+            "root": str(tmp_path / "state"),
+            "cwd": str(workspace),
+            "argv": ["false"],
+        },
+    )
+
+    assert result["test_result"]["status"] == "failed"
+    assert result["test_result"]["exit_code"] == 1
+    assert result["test_result"]["reason_code"] == "terminal_exit_nonzero"
+
+
+def test_test_run_rejects_not_allowlisted_command_without_side_effects(tmp_path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    root = tmp_path / "state"
+
+    with pytest.raises(PermissionError, match="terminal command is not allowed"):
+        _runner().run_capability(
+            "test.run",
+            inputs={
+                "root": str(root),
+                "cwd": str(workspace),
+                "argv": ["python3", "-c", "print('not allowlisted')"],
+            },
+        )
+
+    assert not list(root.rglob("*"))
+
+
+def test_test_run_plan_stops_when_required_inputs_are_missing():
+    plan = _runner().plan_capability_run(
+        "test.run",
+        inputs={"cwd": "/tmp/project"},
+    )
+
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_local"
+    assert plan["missing_inputs"] == ["root", "argv"]
     assert plan["scenario"] is None
 
 

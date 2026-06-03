@@ -642,6 +642,78 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="test.run",
+                    title="Test Run",
+                    description=(
+                        "Run an argv-only allowlisted validation command inside "
+                        "a materialized workspace."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "test",
+                        "validation",
+                        "terminal",
+                        "native-coding",
+                        "workspace",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["root", "cwd", "argv"],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "description": "Runtime root for future test artifacts.",
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Materialized workspace directory for the command.",
+                            },
+                            "argv": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Shell-free argv command to run.",
+                            },
+                            "allowed_commands": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Command-name allowlist.",
+                                "default": ["echo", "printf", "pwd", "true", "false", "sleep"],
+                            },
+                            "timeout_seconds": {
+                                "type": "integer",
+                                "description": "Maximum command runtime.",
+                                "default": 30,
+                            },
+                            "max_output_bytes": {
+                                "type": "integer",
+                                "description": "Combined stdout/stderr excerpt budget.",
+                                "default": 4096,
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "runner_kind",
+                            "test_result",
+                            "stdout_excerpt",
+                            "stderr_excerpt",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "argv_allowlist_only",
+                        "shell_false",
+                        "bounded_stdout_stderr_excerpts",
+                        "no_artifact_write",
+                        "no_event_append",
+                        "workspace_cwd_required",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="memory.query",
                     title="Memory Query",
                     description=(
