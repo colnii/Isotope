@@ -150,7 +150,6 @@ def _conversation_context(
             "root": str(state_root),
             "cwd": str(cwd),
         },
-        "_capacity_runner": runner,
         "capacity_manifest": {
             "kind": "capacity_manifest",
             "source": "registered_capabilities",
@@ -326,42 +325,12 @@ def _run_capability_decision(
             ],
         },
     )
-    try:
-        agent_loop = _execute_agent_loop_capacity_step(
-            goal=f"Conversation capability call: {capacity_id}",
-            capability_id=capacity_id,
-            inputs=inputs,
-            state_root=state_root / "supervisor" / "conversation-loop-runs",
-        )
-    except Exception as exc:
-        error_summary = {
-            "error_type": type(exc).__name__,
-            "message": str(exc),
-        }
-        yield SupervisorConversationEvent(
-            event="capacity_result",
-            payload={
-                "id": _capacity_event_id(capacity_id),
-                "capacity_id": capacity_id,
-                "title": capacity_id,
-                "status": "error",
-                "input_summary": _safe_detail_value(inputs),
-                "result_summary": error_summary,
-                "details": [
-                    {
-                        "label": "Inputs",
-                        "kind": "json",
-                        "content": _safe_detail_value(inputs),
-                    },
-                    {
-                        "label": "Error",
-                        "kind": "json",
-                        "content": error_summary,
-                    },
-                ],
-            },
-        )
-        return
+    agent_loop = _execute_agent_loop_capacity_step(
+        goal=f"Conversation capability call: {capacity_id}",
+        capability_id=capacity_id,
+        inputs=inputs,
+        state_root=state_root / "supervisor" / "conversation-loop-runs",
+    )
     result_summary = agent_loop_json_summary({"agent_loop": agent_loop})
     yield SupervisorConversationEvent(
         event="capacity_result",
@@ -398,31 +367,31 @@ def _capability_inputs_from_decision(
     arguments: dict[str, Any],
     context: dict[str, Any],
 ) -> dict[str, Any]:
-    inputs = dict(arguments)
-    allowed_context_keys = _capability_input_keys(capacity_id, context=context)
-    system_context = context.get("system_context", {})
-    if not isinstance(system_context, dict):
-        return inputs
-    for key, value in system_context.items():
-        if key in inputs or key not in allowed_context_keys:
-            continue
-        inputs[key] = value
+    allowed_inputs = _capability_input_names(capacity_id)
+    if not allowed_inputs:
+        return dict(arguments)
+    inputs = {
+        key: value
+        for key, value in arguments.items()
+        if isinstance(key, str) and key in allowed_inputs
+    }
+    system_context = context.get("system_context")
+    if isinstance(system_context, dict):
+        for key, value in system_context.items():
+            if key in allowed_inputs:
+                inputs[key] = value
     return inputs
 
 
-def _capability_input_keys(
-    capacity_id: str,
-    *,
-    context: dict[str, Any],
-) -> set[str]:
-    runner = context.get("_capacity_runner")
-    if not isinstance(runner, CapabilityRunner):
-        runner = CapabilityRunner()
+def _capability_input_names(capacity_id: str) -> set[str]:
     try:
-        capability = runner.describe_capability(capacity_id)
+        capability = CapabilityRunner().describe_capability(capacity_id)
     except ValueError:
         return set()
-    properties = contract_properties(capability.get("input_contract", {}))
+    input_contract = capability.get("input_contract")
+    properties = contract_properties(
+        input_contract if isinstance(input_contract, dict) else {}
+    )
     return set(properties)
 
 
