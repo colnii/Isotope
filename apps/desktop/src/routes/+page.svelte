@@ -30,7 +30,7 @@
   onMount(() => {
     surface = resolveWindowSurface(window.location.search);
     appState.initialize().catch((error: unknown) => {
-      loadError = error instanceof Error ? error.message : 'Failed to load desktop snapshot.';
+      loadError = error instanceof Error ? error.message : '加载桌面快照失败。';
     });
   });
 

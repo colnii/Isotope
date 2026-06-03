@@ -6,7 +6,7 @@
     onOpenMini?: () => void;
   }>();
 
-  const buttonTitle = $derived(surface === 'window' ? 'Open Isotope chat' : 'Open MiniWindow');
+  const buttonTitle = $derived(surface === 'window' ? '打开 Isotope 对话' : '打开迷你窗口');
   const orbButtonClass = $derived(
     surface === 'window'
       ? 'relative grid h-16 w-16 cursor-move select-none place-items-center rounded-full border border-white/30 bg-teal-600 text-lg font-bold text-white outline-none'
@@ -79,12 +79,12 @@
   class={surface === 'dev'
     ? 'fixed bottom-5 right-5 z-20 flex flex-col items-end gap-2'
     : 'grid h-screen w-screen place-items-center bg-transparent p-0'}
-  aria-label="Isotope floating orb preview"
+  aria-label="Isotope 悬浮球预览"
 >
   <button
     type="button"
     class={orbButtonClass}
-    aria-label="Open Isotope chat"
+    aria-label="打开 Isotope 对话"
     title={buttonTitle}
     oncontextmenu={preventWindowContextMenu}
     onpointerdown={handleOrbPointerDown}

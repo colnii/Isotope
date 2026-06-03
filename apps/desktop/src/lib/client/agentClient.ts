@@ -64,7 +64,7 @@ export function createAgentClient(baseUrl: string | null = null): AgentClient {
       }
       const cleanQuestion = question.trim();
       if (!cleanQuestion) {
-        throw new Error('Question must not be empty');
+        throw new Error('问题不能为空');
       }
       const response = await fetch(`${apiBaseUrl}/desktop/chat`, {
         method: 'POST',
@@ -274,7 +274,7 @@ function detailSections(value: unknown): DesktopCapacityDetailSection[] {
   return value.flatMap((item) => {
     if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
     const section = item as Record<string, unknown>;
-    const label = stringField(section, 'label', 'Details');
+    const label = stringField(section, 'label', '详情');
     const kind = section.kind === 'text' ? 'text' : 'json';
     return [{ label, kind, content: section.content }];
   });

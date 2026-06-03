@@ -215,4 +215,10 @@ describe('agentClient', () => {
       '桌面对话需要配置后端 URL'
     );
   });
+
+  test('desktop chat rejects an empty question with Chinese copy', async () => {
+    await expect(createAgentClient('http://127.0.0.1:8765').askDesktopQuestion('   ')).rejects.toThrow(
+      '问题不能为空'
+    );
+  });
 });
