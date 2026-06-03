@@ -24,8 +24,6 @@ WORKSPACE_CAPABILITIES = {
 
 _ARRAY_INPUTS = ("allowed_paths", "forbidden_paths")
 _NEXT_REQUIRED_CAPABILITIES = [
-    "artifact.diff_summary",
-    "artifact.changed_files",
     "coding_task.execute",
 ]
 _WORKSPACE_ID_RE = re.compile(r"[^a-z0-9]+")

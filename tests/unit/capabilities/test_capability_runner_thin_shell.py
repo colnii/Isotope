@@ -312,8 +312,6 @@ def test_runner_runs_coding_task_preview_without_side_effects(tmp_path):
         "optional_vcs_adapter",
     ]
     assert result["preview"]["blocked_capabilities"] == [
-        "artifact.diff_summary",
-        "artifact.changed_files",
         "coding_task.execute",
     ]
     assert not list(root.rglob("*"))
@@ -424,8 +422,6 @@ def test_runner_runs_workspace_isolated_rw_proposal_without_creating_workspace(t
     ]
     assert proposal["forbidden_paths"] == ["src/isotope/features/supervisor"]
     assert proposal["next_required_capabilities"] == [
-        "artifact.diff_summary",
-        "artifact.changed_files",
         "coding_task.execute",
     ]
     assert not list(root.rglob("*"))
@@ -795,6 +791,114 @@ def test_workspace_changed_files_plan_stops_when_required_inputs_are_missing():
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_readonly"
     assert plan["missing_inputs"] == ["root", "workspace_id"]
+    assert plan["scenario"] is None
+
+
+def test_runner_discovers_artifact_diff_summary_and_changed_files_from_default_catalog():
+    runner = _runner()
+
+    assert "artifact.diff_summary" in _ids(runner.list_capabilities())
+    assert "artifact.changed_files" in _ids(
+        runner.search_capabilities(query="artifact changed files")["capabilities"]
+    )
+
+    diff_description = runner.describe_capability("artifact.diff_summary")
+    changed_description = runner.describe_capability("artifact.changed_files")
+    required = ["root", "cwd", "workspace_id", "run_id", "execution_id"]
+    assert diff_description["input_contract"]["required"] == required
+    assert changed_description["input_contract"]["required"] == required
+    assert "writes_only_artifact_store" in diff_description["safety_boundaries"]
+    assert "no_event_append" in changed_description["safety_boundaries"]
+
+
+def test_runner_writes_changed_files_artifact_from_materialized_workspace(tmp_path):
+    source = tmp_path / "repo"
+    (source / "src").mkdir(parents=True)
+    (source / "src" / "app.py").write_text("old secret\n", encoding="utf-8")
+    root = tmp_path / "state"
+    workspace_root = root / "workspaces" / "workspace_native_coding_slice_10"
+    (workspace_root / "src").mkdir(parents=True)
+    (workspace_root / "src" / "app.py").write_text("new secret\n", encoding="utf-8")
+    (workspace_root / "src" / "new.py").write_text("added secret\n", encoding="utf-8")
+
+    result = _runner().run_capability(
+        "artifact.changed_files",
+        inputs={
+            "root": str(root),
+            "cwd": str(source),
+            "workspace_id": "workspace_native_coding_slice_10",
+            "run_id": "run_native_coding",
+            "execution_id": "execution_changed_files",
+            "include_paths": ["src"],
+        },
+    )
+
+    artifact = result["artifact"]
+    content = json.loads(ArtifactStore(root).get_content(artifact["artifact_id"]))
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "artifact.changed_files"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "deterministic_local"
+    assert artifact["artifact_type"] == "native_coding.changed_files"
+    assert artifact["ref"] == {
+        "ref_type": "artifact",
+        "scope": "run",
+        "run_id": "run_native_coding",
+        "artifact_id": artifact["artifact_id"],
+    }
+    assert artifact["artifact_write"] == "performed"
+    assert artifact["event_append"] == "not_performed"
+    assert content["changed_file_count"] == 2
+    assert content["changed_files"] == [
+        {"path": "src/app.py", "status": "modified"},
+        {"path": "src/new.py", "status": "added"},
+    ]
+    assert "secret" not in json.dumps(content)
+
+
+def test_runner_writes_diff_summary_artifact_without_raw_file_content(tmp_path):
+    source = tmp_path / "repo"
+    (source / "src").mkdir(parents=True)
+    (source / "src" / "app.py").write_text("old raw content\n", encoding="utf-8")
+    root = tmp_path / "state"
+    workspace_root = root / "workspaces" / "workspace_native_coding_slice_10"
+    (workspace_root / "src").mkdir(parents=True)
+    (workspace_root / "src" / "app.py").write_text("new raw content\n", encoding="utf-8")
+
+    result = _runner().run_capability(
+        "artifact.diff_summary",
+        inputs={
+            "root": str(root),
+            "cwd": str(source),
+            "workspace_id": "workspace_native_coding_slice_10",
+            "run_id": "run_native_coding",
+            "execution_id": "execution_diff_summary",
+            "include_paths": ["src"],
+        },
+    )
+
+    artifact = result["artifact"]
+    metadata = ArtifactStore(root).get_metadata(artifact["artifact_id"])
+    content_text = ArtifactStore(root).get_content(artifact["artifact_id"])
+    content = json.loads(content_text)
+    assert artifact["artifact_type"] == "native_coding.diff_summary"
+    assert metadata["summary"] == "1 changed file in workspace_native_coding_slice_10"
+    assert content["summary_lines"] == ["modified src/app.py"]
+    assert content["content_policy"] == "diff_summary_only"
+    assert "old raw content" not in content_text
+    assert "new raw content" not in content_text
+
+
+def test_artifact_changed_files_plan_stops_when_required_inputs_are_missing():
+    plan = _runner().plan_capability_run(
+        "artifact.changed_files",
+        inputs={"cwd": "/tmp/project", "run_id": "run_native_coding"},
+    )
+
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_local"
+    assert plan["missing_inputs"] == ["root", "workspace_id", "execution_id"]
     assert plan["scenario"] is None
 
 

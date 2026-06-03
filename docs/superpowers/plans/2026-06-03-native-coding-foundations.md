@@ -21,10 +21,11 @@ This objective spans multiple subsystems, so it must not be implemented as one b
 5. `workspace.materialize`: create an isolated writable workspace under the runtime state root.
 6. `code.apply_patch`: structured patch application with path policy, diff artifact, and changed-files artifact.
 7. `test.run`: allowlisted validation command runner with stdout/stderr artifacts and stable failure reasons.
-8. `vcs.status` / `vcs.diff`: optional Git adapter diagnostics and artifact-backed diff summaries.
+8. `vcs.status` / `vcs.diff`: optional Git adapter diagnostics and diff summaries.
 9. `workspace.changed_files` / `workspace.release`: summarize materialized workspace changes and clean up isolated workspaces.
-10. `coding_task.execute`: bounded agent loop that plans, reads, patches, tests, revises, and reports.
-11. Supervisor/Desktop integration: expose native coding capacity in conversation loop and dashboard.
+10. `artifact.diff_summary` / `artifact.changed_files`: persist changed-file and diff-summary artifacts with structured `ResourceRef`s.
+11. `coding_task.execute`: bounded agent loop that plans, reads, patches, tests, revises, and reports.
+12. Supervisor/Desktop integration: expose native coding capacity in conversation loop and dashboard.
 
 ## Slice 1 File Structure
 
@@ -98,6 +99,15 @@ This objective spans multiple subsystems, so it must not be implemented as one b
 - Modify `src/isotope/capabilities/coding.py`: move native coding preview's blocked list forward to artifact-backed diff summaries and `coding_task.execute`.
 - Modify `src/isotope/capabilities/workspace.py`: move proposal `next_required_capabilities` forward to artifact-backed diff summaries and `coding_task.execute`.
 - Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, changed-file summaries, missing materialized workspace rejection, release cleanup, and missing-input planning.
+
+## Slice 10 File Structure
+
+- Create `src/isotope/capabilities/artifact_outputs.py`: write `artifact.diff_summary` and `artifact.changed_files` through the existing `ArtifactStore`.
+- Modify `src/isotope/capabilities/catalog.py`: register both artifact-backed native coding summaries with `writes_only_artifact_store`, `structured_resource_ref`, and `no_raw_file_content`.
+- Modify `src/isotope/capabilities/runner.py`: route artifact-output planning and execution through the artifact-output runner.
+- Modify `src/isotope/capabilities/coding.py`: move native coding preview's blocked list forward to `coding_task.execute`.
+- Modify `src/isotope/capabilities/workspace.py`: move proposal `next_required_capabilities` forward to `coding_task.execute`.
+- Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, artifact persistence, structured refs, raw-content exclusion, and missing-input planning.
 
 ## Task 1: Register Coding Preview Capability
 
@@ -355,4 +365,4 @@ git commit -m "feat(capabilities): add native coding preview contract"
 - It validates `root`, `cwd`, `workspace_name`, `allowed_paths`, and `forbidden_paths`.
 - It rejects absolute paths, parent traversal, empty relative paths, and non-list path fields.
 - It does not create directories, create git worktrees, copy files, append events, or mutate workspace state.
-- It reports the next required capabilities: `artifact.diff_summary`, `artifact.changed_files`, and `coding_task.execute`.
+- It reports the next required capabilities: `coding_task.execute`.

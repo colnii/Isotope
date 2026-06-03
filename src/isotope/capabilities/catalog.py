@@ -159,6 +159,154 @@ class CapabilityCatalog:
                     description="Review artifact summaries through ResourceRef and content-policy boundaries.",
                     tags=("artifact", "review"),
                 ),
+                Capability(
+                    capability_id="artifact.diff_summary",
+                    title="Artifact Diff Summary",
+                    description=(
+                        "Capture a materialized workspace diff summary as a "
+                        "structured artifact without exposing raw file content."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "artifact",
+                        "diff",
+                        "summary",
+                        "native-coding",
+                        "workspace",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": [
+                            "root",
+                            "cwd",
+                            "workspace_id",
+                            "run_id",
+                            "execution_id",
+                        ],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "description": "Runtime state root containing artifact storage.",
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Source workspace directory to compare against.",
+                            },
+                            "workspace_id": {
+                                "type": "string",
+                                "description": "Materialized workspace id.",
+                            },
+                            "run_id": {
+                                "type": "string",
+                                "description": "Run id for the artifact ResourceRef.",
+                            },
+                            "execution_id": {
+                                "type": "string",
+                                "description": "Execution id recorded in artifact provenance.",
+                            },
+                            "include_paths": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Workspace-relative files or directories to summarize.",
+                                "default": ["."],
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "runner_kind",
+                            "artifact",
+                            "artifact_ref",
+                            "artifact_type",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "writes_only_artifact_store",
+                        "diff_summary_only",
+                        "structured_resource_ref",
+                        "no_raw_file_content",
+                        "no_event_append",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
+                    capability_id="artifact.changed_files",
+                    title="Artifact Changed Files",
+                    description=(
+                        "Capture materialized workspace changed-file metadata "
+                        "as a structured artifact."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "artifact",
+                        "changed-files",
+                        "native-coding",
+                        "workspace",
+                        "summary",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": [
+                            "root",
+                            "cwd",
+                            "workspace_id",
+                            "run_id",
+                            "execution_id",
+                        ],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "description": "Runtime state root containing artifact storage.",
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Source workspace directory to compare against.",
+                            },
+                            "workspace_id": {
+                                "type": "string",
+                                "description": "Materialized workspace id.",
+                            },
+                            "run_id": {
+                                "type": "string",
+                                "description": "Run id for the artifact ResourceRef.",
+                            },
+                            "execution_id": {
+                                "type": "string",
+                                "description": "Execution id recorded in artifact provenance.",
+                            },
+                            "include_paths": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Workspace-relative files or directories to summarize.",
+                                "default": ["."],
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "runner_kind",
+                            "artifact",
+                            "artifact_ref",
+                            "artifact_type",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "writes_only_artifact_store",
+                        "diff_summary_only",
+                        "structured_resource_ref",
+                        "no_raw_file_content",
+                        "no_event_append",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
                 _builtin_capability(
                     "external.snapshot.review",
                     title="External Snapshot Review",
