@@ -11,7 +11,7 @@ from typing import Any
 from isotope.execution.screen.windows_backend import WindowsScreenBackend
 from isotope.runtime.in_process import InProcessServer
 
-from .artifacts import (
+from ..artifacts import (
     inspect_screen_artifact,
     print_screen_inspect_plain,
     print_screen_report_plain,
