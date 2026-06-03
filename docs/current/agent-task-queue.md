@@ -2,19 +2,13 @@
 
 状态：`当前入口 / 短队列`
 
-本文件只保留当前可执行任务。历史批次已经移到
-[agent-task-history](../archive/current/agent-task-history.md)。
+本文件只保留当前可执行任务。
 
 ## 当前事实
 
 - Isotope 是 AI 应用软件，不是单纯内核项目。
-- `docs/current/` 只放当前入口；历史流水、外部审查原文和一次性快照放入
-  `docs/archive/current/`。
-- Supervisor 是当前主线最活跃的产品能力；新增能力先查
-  [Supervisor 能力地图](./supervisor-capability-map.md) 和
-  [Supervisor 架构迁移表](./supervisor-architecture-migration-table.md)。
-- 文档迁移仍保持收窄：不默认移动 `architecture/` 里的 kernel、
-  checkpoint、memory 或 track 文档。
+- Supervisor 是当前主线最活跃的产品能力。
+- 功能默认 AI-first，guardrail 是护栏不是替代品。
 
 ## 已完成
 

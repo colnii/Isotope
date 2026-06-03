@@ -203,10 +203,10 @@
 | `assistant` | 助手，只作为产品描述或历史术语，不作为新目录叙事 | 产品描述/历史术语 | 已删除旧目录 |
 | `agent loop` | 智能体循环，AI 多步规划、调用工具、读取结果并继续执行 | 应用/智能体 | `src/isotope/agents/loop/step.py`, `docs/features/` |
 | `app_friction` | 应用摩擦，应用层试跑暴露的卡点或待收束问题 | 应用验证 | `src/isotope/demo/__init__.py`, `docs/features/` |
-| `planner` | 规划器，把用户目标转成可执行步骤或工具选择 | 智能体 | `docs/architecture/planner-input-output-contract-v0.2.md`, `src/isotope/agents/loop/planner_adapter.py` |
+| `planner` | 规划器，把用户目标转成可执行步骤或工具选择 | 智能体 | `src/isotope/agents/loop/planner_adapter.py` |
 | `planner adapter` | 规划器适配层，把规划输出接到现有执行循环 | 智能体 | `src/isotope/agents/loop/planner_adapter.py` |
-| `tick policy` | 步进策略，决定智能体循环每轮是否继续、暂停或停止 | 智能体 | `src/isotope/agents/loop/control.py`, `docs/architecture/agent-loop-tick-policy-boundary-v0.2.md` |
-| `tick driver` | 单 tick 驱动器，先看 tick policy，允许时执行一个 planner-selected step，再返回执行后的 policy | 智能体 | `src/isotope/agents/loop/tick.py`, `docs/architecture/agent-loop-tick-driver-boundary-v0.2.md` |
+| `tick policy` | 步进策略，决定智能体循环每轮是否继续、暂停或停止 | 智能体 | `src/isotope/agents/loop/control.py` |
+| `tick driver` | 单 tick 驱动器，先看 tick policy，允许时执行一个 planner-selected step，再返回执行后的 policy | 智能体 | `src/isotope/agents/loop/tick.py` |
 | `bounded goal runner` | 有界目标 runner，在单 tick driver 外做有限循环，每轮复用 tick policy、planner adapter 和 step driver；当前不接真实 LLM、不默认打开 Supervisor 长循环 | 智能体 | `src/isotope/agents/loop/runner.py` |
 | `provider planner tick` | provider 驱动的单 tick 规划入口，用注入的 LLM provider 生成 JSON planner decision，再走现有 planner contract 和 step driver；当前测试只用 fake provider，不打开真实网络；prompt 默认带 `default_context.memory` 低敏记忆 preview | 智能体/模型 | `src/isotope/agents/loop/provider_planner.py`, `src/isotope/agents/loop/context.py` |
 | `AgentConversationMessage` | agent 候选发言 contract，表达哪个 agent 想回应、插话、内部记录或沉默 | 智能体/对话 | `src/isotope/agents/loop/conversation.py` |
