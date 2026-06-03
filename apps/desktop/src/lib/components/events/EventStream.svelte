@@ -10,10 +10,10 @@
   const view = $derived(buildEventStreamView(events));
 </script>
 
-<section class="border-t border-isotope-line pt-4" aria-label="EventStream static contract shell">
+<section class="border-t border-isotope-line pt-4" aria-label="事件流静态契约外壳">
   <div class="flex items-center justify-between gap-3">
-    <h3 class="text-xs font-semibold uppercase text-isotope-muted">Event stream</h3>
-    <span class="text-xs text-isotope-muted">static contract</span>
+    <h3 class="text-xs font-semibold uppercase text-isotope-muted">事件流</h3>
+    <span class="text-xs text-isotope-muted">静态契约</span>
   </div>
 
   {#if view.empty}

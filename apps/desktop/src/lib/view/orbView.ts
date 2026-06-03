@@ -1,4 +1,5 @@
 import type { DataSourceInfo, IsotopeSnapshot } from '../contracts/isotope';
+import { activityStatusLabel, dataSourceKindLabel } from './labels';
 
 export type FloatingOrbView = {
   label: string;
@@ -15,7 +16,7 @@ export function buildFloatingOrbButtonTitle(surface: 'dev' | 'window', title: st
 
 export function buildFloatingOrbView(snapshot: IsotopeSnapshot): FloatingOrbView {
   const label = snapshot.activeActivity?.title ?? snapshot.activeAgent?.title ?? 'Isotope';
-  const status = snapshot.activeActivity?.status ?? snapshot.activeAgent?.status ?? 'idle';
+  const status = activityStatusLabel(snapshot.activeActivity?.status ?? snapshot.activeAgent?.status ?? 'idle');
   const needsAttention = snapshot.counts.needsAttention;
 
   return {
@@ -24,6 +25,6 @@ export function buildFloatingOrbView(snapshot: IsotopeSnapshot): FloatingOrbView
     source: snapshot.source,
     needsAttention,
     attentionText: needsAttention > 0 ? String(needsAttention) : null,
-    title: `${label} / ${status} / ${snapshot.source.kind}`
+    title: `${label} / ${status} / ${dataSourceKindLabel(snapshot.source.kind)}`
   };
 }

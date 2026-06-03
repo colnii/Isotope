@@ -39,14 +39,14 @@
 
 <section
   class={`${buildMiniWindowSurfaceClass(surface)} flex flex-col`}
-  aria-label="Isotope MiniWindow preview"
+  aria-label="Isotope 迷你窗口预览"
 >
   <header
     class={surface === 'window'
       ? 'flex cursor-move select-none items-start justify-between gap-3 border-b border-isotope-line pb-3'
       : 'flex items-start justify-between gap-3 border-b border-isotope-line pb-3'}
     role="presentation"
-    aria-label="MiniWindow header"
+    aria-label="迷你窗口标题栏"
     onpointerdown={startWindowDrag}
   >
     <div class="min-w-0 flex-1">
@@ -57,9 +57,9 @@
     </div>
     <div class="flex items-center gap-2">
       <button class="cursor-pointer border border-isotope-line bg-white px-2 py-1 text-xs font-medium" type="button" onclick={onOpenMain}>
-        Main
+        主窗口
       </button>
-      <button class="cursor-pointer border border-isotope-line bg-white px-2 py-1 text-xs" type="button" aria-label="Close mini" onclick={onClose}>
+      <button class="cursor-pointer border border-isotope-line bg-white px-2 py-1 text-xs" type="button" aria-label="关闭迷你窗口" onclick={onClose}>
         x
       </button>
     </div>
@@ -70,7 +70,7 @@
       <div class="border border-isotope-line bg-isotope-bg px-3 py-2">
         <div class="text-xs font-semibold uppercase text-isotope-muted">AI</div>
         <p class="mt-1 text-sm leading-5 text-isotope-text">
-          Ask Isotope. Capacity calls will appear in the main chat when used.
+          向 Isotope 提问；使用 capacity 时，调用过程会显示在主对话中。
         </p>
       </div>
     {:else}
@@ -78,14 +78,14 @@
         {#each visibleMessages as message (message.id)}
           <article class="border border-isotope-line bg-isotope-bg px-3 py-2">
             <div class="text-xs font-semibold uppercase text-isotope-muted">
-              {message.role === 'user' ? 'You' : 'Isotope'}
+              {message.role === 'user' ? '你' : 'Isotope'}
             </div>
             <p class="mt-1 max-h-16 overflow-hidden text-sm leading-5 text-isotope-text">
               {message.content || '...'}
             </p>
             {#if message.capacityCalls?.length}
               <div class="mt-2 text-xs text-isotope-muted">
-                {message.capacityCalls.length} capacity call{message.capacityCalls.length === 1 ? '' : 's'}
+                {message.capacityCalls.length} 次 capacity 调用
               </div>
             {/if}
           </article>

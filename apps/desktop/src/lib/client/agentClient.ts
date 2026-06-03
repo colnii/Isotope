@@ -60,7 +60,7 @@ export function createAgentClient(baseUrl: string | null = null): AgentClient {
     },
     async askDesktopQuestion(question, handlers = {}) {
       if (!apiBaseUrl) {
-        throw new Error('Desktop chat requires a configured backend URL');
+        throw new Error('桌面对话需要配置后端 URL');
       }
       const cleanQuestion = question.trim();
       if (!cleanQuestion) {
@@ -79,7 +79,7 @@ export function createAgentClient(baseUrl: string | null = null): AgentClient {
         throw new Error(await responseErrorMessage(response));
       }
       if (!response.body) {
-        throw new Error('Desktop chat response did not include a stream');
+        throw new Error('桌面对话响应缺少数据流');
       }
       return readDesktopChatStream(response.body, cleanQuestion, handlers);
     }
@@ -145,7 +145,7 @@ async function readDesktopChatStream(
           provider = typeof event.data.provider === 'string' ? event.data.provider : undefined;
           model = typeof event.data.model === 'string' ? event.data.model : undefined;
         } else if (event.name === 'error') {
-          throw new Error(typeof event.data.message === 'string' ? event.data.message : 'Desktop chat failed');
+          throw new Error(typeof event.data.message === 'string' ? event.data.message : '桌面对话失败');
         }
       }
     }
@@ -186,7 +186,7 @@ async function responseErrorMessage(response: Response): Promise<string> {
   } catch {
     // Fall through to stable status text.
   }
-  return `Desktop chat failed with HTTP ${response.status}`;
+  return `桌面对话请求失败：HTTP ${response.status}`;
 }
 
 function normalizeCapacityCall(payload: Record<string, unknown>): DesktopCapacityCall {

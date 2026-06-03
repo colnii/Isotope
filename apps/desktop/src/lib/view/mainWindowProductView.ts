@@ -18,12 +18,12 @@ export function buildMainWindowProductView(
   void selectedActivity;
 
   return {
-    chatEyebrow: 'AI chat',
+    chatEyebrow: 'AI 对话',
     workspaceTitle: 'Isotope',
     workspaceSubtitle: '',
     workspaceBody: '',
-    emptyChatTitle: 'Ask Isotope',
+    emptyChatTitle: '问问 Isotope',
     emptyChatBody: '',
-    composerPlaceholder: 'Ask Isotope'
+    composerPlaceholder: '问问 Isotope'
   };
 }

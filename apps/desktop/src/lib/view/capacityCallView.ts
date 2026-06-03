@@ -3,15 +3,15 @@ import type { DesktopCapacityCall, DesktopCapacityDetailSection } from '../clien
 export function capacityCallStatusLabel(call: DesktopCapacityCall): string {
   switch (call.status) {
     case 'running':
-      return 'Running';
+      return '运行中';
     case 'ok':
-      return 'Done';
+      return '已完成';
     case 'blocked':
-      return 'Blocked';
+      return '受阻';
     case 'error':
-      return 'Error';
+      return '错误';
     default:
-      return 'Unknown';
+      return '未知';
   }
 }
 
@@ -36,6 +36,6 @@ function formatInlineValue(value: unknown): string {
   if (typeof value === 'string') return value;
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
   if (value === null || value === undefined) return '';
-  if (Array.isArray(value)) return `${value.length} items`;
+  if (Array.isArray(value)) return `${value.length} 项`;
   return JSON.stringify(value);
 }

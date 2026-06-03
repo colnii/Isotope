@@ -1,5 +1,5 @@
 <script lang="ts">
-  const actions = ['/ commands', 'Context', 'Attention', 'Artifacts'];
+  const actions = ['/ 命令', '上下文', '需处理', '产物'];
 </script>
 
 <div class="grid grid-cols-2 gap-2 text-xs">

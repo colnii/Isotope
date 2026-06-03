@@ -10,7 +10,7 @@
 
 {#if details.length === 0}
   <p class="border border-isotope-line bg-isotope-panel px-3 py-2 text-sm text-isotope-muted">
-    No detail payload was returned for this capacity call.
+    本次 capacity 调用没有返回详情载荷。
   </p>
 {:else}
   <div class="space-y-3">

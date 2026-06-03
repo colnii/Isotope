@@ -408,7 +408,7 @@ def _desktop_chat_capacity_events(
             "details": [
                 section
                 for section in result["details"]
-                if section.get("label") == "Inputs"
+                if section.get("label") == "输入"
             ],
         },
     )
@@ -469,7 +469,7 @@ def _capacity_plan_projection(plan: dict[str, Any]) -> dict[str, Any]:
         }
     details = [
         {
-            "label": "Inputs",
+            "label": "输入",
             "kind": "json",
             "content": _safe_detail_value(arguments),
         }
@@ -477,7 +477,7 @@ def _capacity_plan_projection(plan: dict[str, Any]) -> dict[str, Any]:
     if selection:
         details.append(
             {
-                "label": "Selection",
+                "label": "选择结果",
                 "kind": "json",
                 "content": _safe_detail_value(
                     {
@@ -492,7 +492,7 @@ def _capacity_plan_projection(plan: dict[str, Any]) -> dict[str, Any]:
     if result_summary:
         details.append(
             {
-                "label": "Result summary",
+                "label": "结果摘要",
                 "kind": "json",
                 "content": _safe_detail_value(result_summary),
             }
@@ -501,7 +501,7 @@ def _capacity_plan_projection(plan: dict[str, Any]) -> dict[str, Any]:
     if capability_run:
         details.append(
             {
-                "label": "Capability result",
+                "label": "能力执行结果",
                 "kind": "json",
                 "content": _safe_detail_value(capability_run),
             }
@@ -521,7 +521,7 @@ def _capacity_error_projection(exc: Exception) -> dict[str, Any]:
     return {
         "id": "capacity_error",
         "capacity_id": "unknown",
-        "title": "Capacity call",
+        "title": "capacity 调用",
         "status": "error",
         "input_summary": {},
         "result_summary": {
@@ -530,7 +530,7 @@ def _capacity_error_projection(exc: Exception) -> dict[str, Any]:
         },
         "details": [
             {
-                "label": "Error",
+                "label": "错误",
                 "kind": "json",
                 "content": {
                     "error_type": type(exc).__name__,

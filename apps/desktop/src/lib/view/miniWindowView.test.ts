@@ -58,9 +58,9 @@ describe('miniWindowView', () => {
     const view = buildMiniWindowView(snapshot, 'mock');
 
     expect(view.title).toBe('Isotope');
-    expect(view.conversationLabel).toBe('AI conversation');
+    expect(view.conversationLabel).toBe('AI 对话');
     expect(view.submitMode).toBe('mock');
-    expect(view.composerPlaceholder).toBe('Ask Isotope');
+    expect(view.composerPlaceholder).toBe('问问 Isotope');
     expect('counts' in view).toBe(false);
     expect('statusLine' in view).toBe(false);
     expect('activeGoalTitle' in view).toBe(false);

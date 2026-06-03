@@ -81,8 +81,8 @@ describe('buildMainWindowSnapshotView', () => {
     expect(buildMainWindowSnapshotView(snapshot, selected)).toEqual({
       sourceKind: 'real',
       selectedActivityTitle: 'Ship desktop MVP',
-      selectedActivityKind: 'goal',
-      selectedActivityStatus: 'running',
+      selectedActivityKind: '目标',
+      selectedActivityStatus: '运行中',
       selectedActivitySummary: 'Thin main shell only.',
       activeGoalTitle: 'Ship desktop MVP',
       activityCount: 2,
@@ -92,7 +92,7 @@ describe('buildMainWindowSnapshotView', () => {
       artifactCount: 3,
       errorCount: 0,
       approvalItems: [
-        { id: 'approval-1', title: 'Review command', status: 'pending', riskLevel: 'medium', source }
+        { id: 'approval-1', title: 'Review command', status: '待处理', riskLevel: '中风险', source }
       ]
     });
   });

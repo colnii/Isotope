@@ -31,10 +31,10 @@
   }>();
 </script>
 
-<div class="mx-auto grid max-w-6xl gap-4 lg:grid-cols-[260px_minmax(0,1fr)_260px]" aria-label="Dev diagnostic shell">
+<div class="mx-auto grid max-w-6xl gap-4 lg:grid-cols-[260px_minmax(0,1fr)_260px]" aria-label="开发诊断外壳">
   <aside class="border border-isotope-line bg-white/90 p-4">
     <div class="flex items-center justify-between gap-3">
-      <h2 class="text-sm font-semibold">Activity</h2>
+      <h2 class="text-sm font-semibold">活动</h2>
       {#if snapshot}
         <DebugSourceBadge source={snapshot.source} />
       {/if}
@@ -53,58 +53,58 @@
           </button>
         {/each}
       {:else if isLoading}
-        <p class="text-sm text-isotope-muted">Loading snapshot...</p>
+        <p class="text-sm text-isotope-muted">正在加载快照...</p>
       {:else}
-        <p class="text-sm text-isotope-muted">No snapshot loaded.</p>
+        <p class="text-sm text-isotope-muted">暂无已加载快照。</p>
       {/if}
     </div>
   </aside>
 
   <section class="border border-isotope-line bg-white/95 p-5">
     {#if view}
-      <div class="text-xs uppercase text-isotope-muted">Current agent</div>
+      <div class="text-xs uppercase text-isotope-muted">当前 Agent</div>
       <h1 class="mt-1 text-xl font-semibold">{view.agentTitle}</h1>
-      <p class="mt-3 text-sm text-isotope-muted">Active goal</p>
+      <p class="mt-3 text-sm text-isotope-muted">活跃目标</p>
       <p class="mt-1 text-base">{view.activeGoalTitle}</p>
       <div class="mt-5 border-t border-isotope-line pt-4">
-        <div class="text-xs uppercase text-isotope-muted">Selected activity</div>
+        <div class="text-xs uppercase text-isotope-muted">当前活动</div>
         <h2 class="mt-1 text-lg font-semibold">{view.selectedActivityTitle}</h2>
         {#if selectedActivity?.summary}
           <p class="mt-2 text-sm text-isotope-muted">{selectedActivity.summary}</p>
         {/if}
       </div>
     {:else if loadError}
-      <h1 class="text-xl font-semibold">Snapshot unavailable</h1>
+      <h1 class="text-xl font-semibold">快照不可用</h1>
       <p class="mt-2 text-sm text-isotope-muted">{loadError}</p>
     {:else}
       <h1 class="text-xl font-semibold">Isotope Desktop</h1>
-      <p class="mt-2 text-sm text-isotope-muted">Waiting for desktop snapshot.</p>
+      <p class="mt-2 text-sm text-isotope-muted">等待桌面快照。</p>
     {/if}
   </section>
 
   <aside class="border border-isotope-line bg-white/90 p-4">
-    <h2 class="text-sm font-semibold">Status</h2>
+    <h2 class="text-sm font-semibold">状态</h2>
     {#if view && snapshot}
       <dl class="mt-3 grid grid-cols-2 gap-2 text-sm">
         <div class="border border-isotope-line p-2">
-          <dt class="text-xs text-isotope-muted">Activities</dt>
+          <dt class="text-xs text-isotope-muted">活动</dt>
           <dd class="mt-1 font-semibold">{view.activityCount}</dd>
         </div>
         <div class="border border-isotope-line p-2">
-          <dt class="text-xs text-isotope-muted">Approvals</dt>
+          <dt class="text-xs text-isotope-muted">审批</dt>
           <dd class="mt-1 font-semibold">{view.approvalCount}</dd>
         </div>
         <div class="border border-isotope-line p-2">
-          <dt class="text-xs text-isotope-muted">Attention</dt>
+          <dt class="text-xs text-isotope-muted">需处理</dt>
           <dd class="mt-1 font-semibold">{view.needsAttention}</dd>
         </div>
         <div class="border border-isotope-line p-2">
-          <dt class="text-xs text-isotope-muted">Errors</dt>
+          <dt class="text-xs text-isotope-muted">错误</dt>
           <dd class="mt-1 font-semibold">{snapshot.counts.errors}</dd>
         </div>
       </dl>
       <div class="mt-4">
-        <h3 class="text-xs font-semibold uppercase text-isotope-muted">Approval summary</h3>
+        <h3 class="text-xs font-semibold uppercase text-isotope-muted">审批摘要</h3>
         {#if snapshot.approvals.length > 0}
           <ul class="mt-2 space-y-2">
             {#each snapshot.approvals as approval (approval.id)}
@@ -115,11 +115,11 @@
             {/each}
           </ul>
         {:else}
-          <p class="mt-2 text-sm text-isotope-muted">No approval items.</p>
+          <p class="mt-2 text-sm text-isotope-muted">暂无审批项。</p>
         {/if}
       </div>
     {:else}
-      <p class="mt-3 text-sm text-isotope-muted">No status yet.</p>
+      <p class="mt-3 text-sm text-isotope-muted">暂无状态。</p>
     {/if}
   </aside>
 </div>

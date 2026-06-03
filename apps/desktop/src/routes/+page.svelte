@@ -70,7 +70,7 @@
       <FloatingOrb surface="window" onOpenMini={openMiniWindow} />
     {:else}
       <div class="grid min-h-[96px] place-items-center text-xs text-isotope-muted">
-        {loadError ? 'Orb snapshot unavailable' : 'Loading orb'}
+        {loadError ? '悬浮球快照不可用' : '正在加载悬浮球'}
       </div>
     {/if}
   {:else if surface === 'mini'}
@@ -87,7 +87,7 @@
       />
     {:else}
       <div class="border border-isotope-line bg-white p-3 text-sm text-isotope-muted">
-        {loadError ? 'MiniWindow snapshot unavailable' : 'Loading MiniWindow'}
+        {loadError ? '迷你窗口快照不可用' : '正在加载迷你窗口'}
       </div>
     {/if}
   {:else if surface === 'main'}
@@ -102,7 +102,7 @@
       />
     {:else}
       <div class="border border-isotope-line bg-white p-5 text-sm text-isotope-muted">
-        {loadError ? 'MainWindow snapshot unavailable' : 'Loading MainWindow'}
+        {loadError ? '主窗口快照不可用' : '正在加载主窗口'}
       </div>
     {/if}
   {:else}
@@ -128,7 +128,7 @@
       {/if}
     {:else}
       <div class="border border-isotope-line bg-white p-5 text-sm text-isotope-muted">
-        {loadError ? 'Chat unavailable' : 'Loading Isotope chat'}
+        {loadError ? '对话不可用' : '正在加载 Isotope 对话'}
       </div>
     {/if}
   {/if}

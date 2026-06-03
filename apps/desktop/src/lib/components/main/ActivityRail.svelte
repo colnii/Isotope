@@ -8,8 +8,8 @@
   }>();
 </script>
 
-<nav class="h-full border-r border-isotope-line bg-white/80 px-3 py-4" aria-label="Activity rail">
-  <div class="text-xs font-semibold uppercase text-isotope-muted">Activities</div>
+<nav class="h-full border-r border-isotope-line bg-white/80 px-3 py-4" aria-label="活动导航">
+  <div class="text-xs font-semibold uppercase text-isotope-muted">活动</div>
   <div class="mt-3 space-y-1">
     {#each activities as activity (activity.id)}
       <button

@@ -19,7 +19,7 @@ export type EventStreamView = {
 export function buildEventStreamView(events: IsotopeEvent[]): EventStreamView {
   return {
     empty: events.length === 0,
-    emptyMessage: 'No events in the static replay fixture.',
+    emptyMessage: '静态回放样例中暂无事件。',
     items: events.map((event) => ({
       id: event.id,
       type: event.type,

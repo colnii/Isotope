@@ -16,8 +16,8 @@ export function buildMiniWindowView(
   void snapshot;
   return {
     title: 'Isotope',
-    conversationLabel: 'AI conversation',
+    conversationLabel: 'AI 对话',
     submitMode,
-    composerPlaceholder: 'Ask Isotope'
+    composerPlaceholder: '问问 Isotope'
   };
 }

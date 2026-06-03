@@ -306,7 +306,7 @@ def test_desktop_chat_endpoint_streams_capacity_events_before_answer(tmp_path) -
         "result_summary": {},
         "details": [
             {
-                "label": "Inputs",
+                "label": "输入",
                 "kind": "json",
                 "content": {},
             }
@@ -320,7 +320,7 @@ def test_desktop_chat_endpoint_streams_capacity_events_before_answer(tmp_path) -
     assert capacity_result["title"] == "Artifact Review"
     assert capacity_result["status"] == "ok"
     assert capacity_result["result_summary"]["agent_loop_tick_status"] == "executed"
-    assert any(section["label"] == "Result summary" for section in capacity_result["details"])
+    assert any(section["label"] == "结果摘要" for section in capacity_result["details"])
     assert "我查到了能力调用结果。" == "".join(
         event["data"].get("text", "")
         for event in events

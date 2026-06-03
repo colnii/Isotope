@@ -1,10 +1,11 @@
 import type { ActivityNode, ApprovalSummary, DataSourceInfo, IsotopeSnapshot } from '../contracts/isotope';
+import { activityKindLabel, activityStatusLabel, approvalRiskLabel, approvalStatusLabel } from './labels';
 
 export type MainWindowApprovalItem = {
   id: string;
   title: string;
-  status: ApprovalSummary['status'];
-  riskLevel?: ApprovalSummary['riskLevel'];
+  status: string;
+  riskLevel?: string;
   source: DataSourceInfo;
 };
 
@@ -36,11 +37,11 @@ export function buildMainWindowSnapshotView(
 
   return {
     sourceKind: snapshot.source.kind,
-    selectedActivityTitle: activity?.title ?? 'No activity',
-    selectedActivityKind: activity?.kind ?? 'unknown',
-    selectedActivityStatus: activity?.status ?? 'unknown',
+    selectedActivityTitle: activity?.title ?? '暂无活动',
+    selectedActivityKind: activity ? activityKindLabel(activity.kind) : '未知',
+    selectedActivityStatus: activity ? activityStatusLabel(activity.status) : '未知',
     selectedActivitySummary: activity?.summary,
-    activeGoalTitle: snapshot.activeGoal?.title ?? 'No active goal',
+    activeGoalTitle: snapshot.activeGoal?.title ?? '暂无活跃目标',
     activityCount: snapshot.activities.length,
     runningAgents: snapshot.counts.runningAgents,
     needsAttention: snapshot.counts.needsAttention,
@@ -50,8 +51,8 @@ export function buildMainWindowSnapshotView(
     approvalItems: snapshot.approvals.map((approval) => ({
       id: approval.id,
       title: approval.title,
-      status: approval.status,
-      riskLevel: approval.riskLevel,
+      status: approvalStatusLabel(approval.status),
+      riskLevel: approvalRiskLabel(approval.riskLevel),
       source: approval.source
     }))
   };

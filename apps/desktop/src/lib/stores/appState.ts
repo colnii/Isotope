@@ -104,7 +104,7 @@ export function createAppState(clients: AppClients) {
           )
         );
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Desktop chat failed';
+        const message = error instanceof Error ? error.message : '桌面对话失败';
         chatError.set(message);
         chatMessages.update((messages) =>
           messages.map((item) =>

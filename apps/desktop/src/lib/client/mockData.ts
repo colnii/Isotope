@@ -3,7 +3,7 @@ import type { IsotopeSnapshot } from '../contracts/isotope';
 const mockSource = {
   kind: 'mock' as const,
   label: 'desktop_mock_snapshot',
-  mockReason: 'The real /desktop/snapshot endpoint is unavailable in this frontend runtime.',
+  mockReason: '当前前端运行环境无法访问真实 /desktop/snapshot 端点。',
   expectedRealContract: 'IsotopeSnapshot from Python/Supervisor desktop snapshot adapter'
 };
 
@@ -15,13 +15,13 @@ export const mockSnapshot: IsotopeSnapshot = {
   activeActivity: {
     id: 'activity_supervisor_mock',
     kind: 'supervisor',
-    title: 'Mock Supervisor',
+    title: '模拟 Supervisor',
     status: 'running',
     source: mockSource
   },
   activeAgent: {
     id: 'supervisor_mock',
-    title: 'Mock Supervisor',
+    title: '模拟 Supervisor',
     status: 'running',
     kind: 'supervisor',
     role: 'coordinator',
@@ -29,7 +29,7 @@ export const mockSnapshot: IsotopeSnapshot = {
   },
   activeGoal: {
     id: 'goal_desktop_mock',
-    title: 'Connect the desktop MVP',
+    title: '连接桌面 MVP',
     status: 'running',
     source: mockSource
   },
@@ -43,7 +43,7 @@ export const mockSnapshot: IsotopeSnapshot = {
   agents: [
     {
       id: 'supervisor_mock',
-      title: 'Mock Supervisor',
+      title: '模拟 Supervisor',
       status: 'running',
       kind: 'supervisor',
       role: 'coordinator',
@@ -54,11 +54,11 @@ export const mockSnapshot: IsotopeSnapshot = {
     {
       id: 'activity_supervisor_mock',
       kind: 'supervisor',
-      title: 'Mock Supervisor',
+      title: '模拟 Supervisor',
       status: 'running',
       source: mockSource,
       order: 0,
-      summary: 'Fallback snapshot is active because no desktop API base URL is configured.'
+      summary: '未配置桌面 API 地址，当前使用 fallback 快照。'
     }
   ],
   approvals: [],

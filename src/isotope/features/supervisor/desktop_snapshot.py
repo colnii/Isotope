@@ -88,7 +88,7 @@ def _supervisor_activity(source: dict[str, Any], *, status: str) -> dict[str, An
             "label": "Isotope Supervisor",
         },
         "order": 0,
-        "summary": "Supervisor state projection is connected.",
+        "summary": "Supervisor 状态投影已连接。",
     }
 
 
@@ -164,8 +164,8 @@ def _goal_summary(goal: dict[str, Any]) -> dict[str, Any]:
 
 def _approval_summary(decision: dict[str, Any]) -> dict[str, Any]:
     request_id = str(decision["request_id"])
-    title = _low_sensitive_preview(decision.get("question") or "Supervisor approval required")
-    title = title or "Supervisor approval required"
+    title = _low_sensitive_preview(decision.get("question") or "需要 Supervisor 审批")
+    title = title or "需要 Supervisor 审批"
     source_ref = {"kind": "approval", "id": request_id, "label": title}
     return _omit_none({
         "id": request_id,

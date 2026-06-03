@@ -2,8 +2,8 @@ import type { IsotopeEvent } from '../contracts/isotope';
 
 const replayMockSource = {
   kind: 'replay_mock',
-  label: 'Static replay fixture',
-  mockReason: 'Task 8R static EventStream contract shell; no live event stream is connected.',
+  label: '静态回放样例',
+  mockReason: '静态 EventStream 契约样例；尚未连接实时事件流。',
   expectedRealContract: 'GET desktop event replay and stream endpoints in a later task.'
 } as const;
 
@@ -14,12 +14,12 @@ export const replayMockEvents = [
     type: 'message_created',
     createdAt: '2026-05-27T00:00:01Z',
     source: replayMockSource,
-    title: 'User asked for the desktop shell',
-    summary: 'Replay-only event fixture for static UI validation.',
+    title: '用户请求桌面外壳',
+    summary: '用于静态 UI 验证的回放事件。',
     payload: {
       messageId: 'message-1',
       role: 'user',
-      preview: 'Build the desktop companion shell.'
+      preview: '构建桌面伴随窗口。'
     }
   },
   {
@@ -28,8 +28,8 @@ export const replayMockEvents = [
     type: 'worker_started',
     createdAt: '2026-05-27T00:00:03Z',
     source: replayMockSource,
-    title: 'Worker session started',
-    summary: 'Static worker-started event for ActivityTree adjacency.',
+    title: 'worker 会话已启动',
+    summary: '用于验证活动树相邻关系的静态 worker-started 事件。',
     payload: {
       workerId: 'worker-1',
       workerTitle: 'desktop-worker'
@@ -41,12 +41,12 @@ export const replayMockEvents = [
     type: 'approval_required',
     createdAt: '2026-05-27T00:00:05Z',
     source: replayMockSource,
-    title: 'Approval required for command preview',
-    summary: 'Approval fixture remains replay_mock until a real approval stream exists.',
+    title: '命令预览需要审批',
+    summary: '真实审批事件流接入前，此审批样例保持为 replay_mock。',
     payload: {
       approvalId: 'approval-1',
       riskLevel: 'medium',
-      promptPreview: 'Approve the previewed command?'
+      promptPreview: '是否批准预览命令？'
     }
   },
   {
@@ -55,8 +55,8 @@ export const replayMockEvents = [
     type: 'artifact_created',
     createdAt: '2026-05-27T00:00:07Z',
     source: replayMockSource,
-    title: 'Artifact summary created',
-    summary: 'Only a low-sensitive ResourceRef is shown in this static shell.',
+    title: '产物摘要已创建',
+    summary: '此静态外壳只展示低敏 ResourceRef。',
     payload: {
       artifactRef: {
         kind: 'artifact',
@@ -71,11 +71,11 @@ export const replayMockEvents = [
     type: 'error_reported',
     createdAt: '2026-05-27T00:00:09Z',
     source: replayMockSource,
-    title: 'Tool preview failed',
-    summary: 'Static error fixture used to validate error rendering.',
+    title: '工具预览失败',
+    summary: '用于验证错误渲染的静态错误样例。',
     payload: {
       errorCode: 'preview_failed',
-      message: 'A preview-only tool call failed.'
+      message: '仅用于预览的工具调用失败。'
     }
   }
 ] satisfies IsotopeEvent[];

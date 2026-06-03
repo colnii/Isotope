@@ -1,6 +1,6 @@
 <script lang="ts">
   let {
-    placeholder = 'Message Isotope',
+    placeholder = '给 Isotope 发消息',
     disabled = false,
     onSubmit
   } = $props<{
@@ -37,6 +37,6 @@
     type="submit"
     {disabled}
   >
-    Send
+    发送
   </button>
 </form>

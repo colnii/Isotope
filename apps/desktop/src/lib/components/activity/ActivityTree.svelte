@@ -16,7 +16,7 @@
   const rows = $derived(buildActivityTreeRows(nodes, selectedId));
 </script>
 
-<nav class="space-y-1" aria-label="Activity tree">
+<nav class="space-y-1" aria-label="活动树">
   {#each rows as row (row.node.id)}
     <button
       type="button"

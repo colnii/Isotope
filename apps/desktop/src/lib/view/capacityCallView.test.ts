@@ -24,11 +24,11 @@ const call: DesktopCapacityCall = {
 
 describe('capacityCallView', () => {
   test('labels capacity statuses for compact cards', () => {
-    expect(capacityCallStatusLabel({ ...call, status: 'running' })).toBe('Running');
-    expect(capacityCallStatusLabel({ ...call, status: 'ok' })).toBe('Done');
-    expect(capacityCallStatusLabel({ ...call, status: 'blocked' })).toBe('Blocked');
-    expect(capacityCallStatusLabel({ ...call, status: 'error' })).toBe('Error');
-    expect(capacityCallStatusLabel({ ...call, status: 'unknown' })).toBe('Unknown');
+    expect(capacityCallStatusLabel({ ...call, status: 'running' })).toBe('运行中');
+    expect(capacityCallStatusLabel({ ...call, status: 'ok' })).toBe('已完成');
+    expect(capacityCallStatusLabel({ ...call, status: 'blocked' })).toBe('受阻');
+    expect(capacityCallStatusLabel({ ...call, status: 'error' })).toBe('错误');
+    expect(capacityCallStatusLabel({ ...call, status: 'unknown' })).toBe('未知');
   });
 
   test('summarizes capacity identity and result fields', () => {

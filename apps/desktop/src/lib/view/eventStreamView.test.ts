@@ -8,15 +8,15 @@ describe('buildEventStreamView', () => {
 
     expect(view.empty).toBe(false);
     expect(view.items.map((item) => [item.type, item.title, item.sourceKind])).toEqual([
-      ['message_created', 'User asked for the desktop shell', 'replay_mock'],
-      ['worker_started', 'Worker session started', 'replay_mock'],
-      ['approval_required', 'Approval required for command preview', 'replay_mock'],
-      ['artifact_created', 'Artifact summary created', 'replay_mock'],
-      ['error_reported', 'Tool preview failed', 'replay_mock']
+      ['message_created', '用户请求桌面外壳', 'replay_mock'],
+      ['worker_started', 'worker 会话已启动', 'replay_mock'],
+      ['approval_required', '命令预览需要审批', 'replay_mock'],
+      ['artifact_created', '产物摘要已创建', 'replay_mock'],
+      ['error_reported', '工具预览失败', 'replay_mock']
     ]);
     expect(view.items[0]).toMatchObject({
       createdAt: '2026-05-27T00:00:01Z',
-      summary: 'Replay-only event fixture for static UI validation.'
+      summary: '用于静态 UI 验证的回放事件。'
     });
   });
 
@@ -29,7 +29,7 @@ describe('buildEventStreamView', () => {
   test('reports an explicit empty state', () => {
     expect(buildEventStreamView([])).toEqual({
       empty: true,
-      emptyMessage: 'No events in the static replay fixture.',
+      emptyMessage: '静态回放样例中暂无事件。',
       items: []
     });
   });

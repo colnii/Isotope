@@ -25,7 +25,7 @@
 
 <section
   class="min-h-screen bg-white text-isotope-text"
-  aria-label="Isotope AI chat"
+  aria-label="Isotope AI 对话"
 >
   <ConversationWorkspace
     eyebrow={view.chatEyebrow}

@@ -37,6 +37,7 @@ def test_desktop_snapshot_empty_root_uses_contract_shape(tmp_path):
     assert snapshot["activeAgent"]["source"]["kind"] == "real"
     assert snapshot["agents"][0]["kind"] == "supervisor"
     assert snapshot["activities"][0]["kind"] == "supervisor"
+    assert snapshot["activities"][0]["summary"] == "Supervisor 状态投影已连接。"
     assert (
         snapshot["activities"][0]["source"]["backendRef"]
         == f"supervisor_state:{tmp_path}"

@@ -173,7 +173,7 @@ describe('agentClient', () => {
 
   test('desktop chat requires a real backend base URL', async () => {
     await expect(createAgentClient(null).askDesktopQuestion('loop?')).rejects.toThrow(
-      'Desktop chat requires a configured backend URL'
+      '桌面对话需要配置后端 URL'
     );
   });
 });

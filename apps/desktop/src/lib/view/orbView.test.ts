@@ -48,7 +48,7 @@ describe('orbView', () => {
     const view = buildFloatingOrbView(snapshot);
 
     expect(view.label).toBe('Isotope Supervisor');
-    expect(view.status).toBe('idle');
+    expect(view.status).toBe('空闲');
     expect(view.needsAttention).toBe(2);
     expect(view.source.kind).toBe('real');
     expect(view.attentionText).toBe('2');
@@ -57,15 +57,15 @@ describe('orbView', () => {
   test('keeps mock source visible for fallback snapshots', () => {
     const view = buildFloatingOrbView(mockSnapshot);
 
-    expect(view.label).toBe('Mock Supervisor');
+    expect(view.label).toBe('模拟 Supervisor');
     expect(view.source.kind).toBe('mock');
     expect(view.attentionText).toBeNull();
   });
 
   test('omits browser tooltip text for native window surface', () => {
-    expect(buildFloatingOrbButtonTitle('window', 'Mock Supervisor / running / mock')).toBeNull();
-    expect(buildFloatingOrbButtonTitle('dev', 'Mock Supervisor / running / mock')).toBe(
-      'Mock Supervisor / running / mock'
+    expect(buildFloatingOrbButtonTitle('window', '模拟 Supervisor / 运行中 / 模拟数据')).toBeNull();
+    expect(buildFloatingOrbButtonTitle('dev', '模拟 Supervisor / 运行中 / 模拟数据')).toBe(
+      '模拟 Supervisor / 运行中 / 模拟数据'
     );
   });
 });

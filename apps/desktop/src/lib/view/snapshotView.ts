@@ -16,9 +16,9 @@ export function buildSnapshotView(
 ): SnapshotView {
   return {
     agentTitle: snapshot.activeAgent?.title ?? 'Isotope Supervisor',
-    activeGoalTitle: snapshot.activeGoal?.title ?? 'No active goal',
+    activeGoalTitle: snapshot.activeGoal?.title ?? '暂无活跃目标',
     selectedActivityTitle:
-      selectedActivity?.title ?? snapshot.activeActivity?.title ?? snapshot.activities[0]?.title ?? 'No activity',
+      selectedActivity?.title ?? snapshot.activeActivity?.title ?? snapshot.activities[0]?.title ?? '暂无活动',
     sourceKind: snapshot.source.kind,
     activityCount: snapshot.activities.length,
     approvalCount: snapshot.counts.approvals,
