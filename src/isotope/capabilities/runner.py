@@ -10,6 +10,12 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .catalog import CapabilityCatalog
+from .coding import (
+    CODING_TASK_PREVIEW_CAPABILITY,
+    is_coding_capability,
+    run_coding_task_preview,
+    validate_coding_inputs,
+)
 from .memory import (
     MEMORY_PROMOTION_PREVIEW_CAPABILITY,
     MEMORY_QUERY_CAPABILITY,
@@ -180,6 +186,11 @@ class CapabilityRunner:
             inputs=input_mapping,
             missing_inputs=missing_inputs,
         )
+        validate_coding_inputs(
+            capability_id=capability_id,
+            inputs=input_mapping,
+            missing_inputs=missing_inputs,
+        )
         _validate_inputs_against_contract(capability, inputs=input_mapping)
         runner_kind = _runner_kind(capability, scenario=scenario)
         blocking_reasons: list[str] = []
@@ -204,6 +215,7 @@ class CapabilityRunner:
             and not is_research_capability(capability_id)
             and not is_screen_readonly_capability(capability_id)
             and not is_supervisor_readonly_capability(capability_id)
+            and not is_coding_capability(capability_id)
         ):
             launch_status = "not_allowlisted"
             blocking_reasons.append("not_allowlisted")
@@ -251,6 +263,7 @@ class CapabilityRunner:
             or is_research_capability(capability_id)
             or is_screen_readonly_capability(capability_id)
             or is_supervisor_readonly_capability(capability_id)
+            or is_coding_capability(capability_id)
         ):
             required_inputs = _required_inputs(capability)
             missing_inputs = _missing_inputs(required_inputs, input_mapping)
@@ -270,6 +283,11 @@ class CapabilityRunner:
                 missing_inputs=missing_inputs,
             )
             validate_supervisor_readonly_inputs(
+                capability_id=capability_id,
+                inputs=input_mapping,
+                missing_inputs=missing_inputs,
+            )
+            validate_coding_inputs(
                 capability_id=capability_id,
                 inputs=input_mapping,
                 missing_inputs=missing_inputs,
@@ -301,6 +319,8 @@ class CapabilityRunner:
             return run_supervisor_integration_review(inputs=input_mapping)
         if capability_id == SUPERVISOR_WORKER_REVIEW_CAPABILITY:
             return run_supervisor_worker_review(inputs=input_mapping)
+        if capability_id == CODING_TASK_PREVIEW_CAPABILITY:
+            return run_coding_task_preview(inputs=input_mapping)
 
         try:
             scenario = _CAPABILITY_SCENARIOS[capability_id]
@@ -422,6 +442,8 @@ def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
         return "deterministic_readonly"
     if is_supervisor_readonly_capability(str(capability.get("capability_id", ""))):
         return "deterministic_readonly"
+    if is_coding_capability(str(capability.get("capability_id", ""))):
+        return "deterministic_preview"
     return "deferred"
 
 

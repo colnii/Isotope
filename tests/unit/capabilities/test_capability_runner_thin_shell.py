@@ -239,6 +239,126 @@ def test_runner_discovers_research_promote_from_default_catalog():
     assert "proposal_only_no_memory_write" in description["safety_boundaries"]
 
 
+def test_runner_discovers_coding_task_preview_from_default_catalog():
+    runner = _runner()
+
+    assert "coding_task.preview" in _ids(runner.list_capabilities())
+    search = runner.search_capabilities(query="native coding")
+
+    assert "coding_task.preview" in _ids(search["capabilities"])
+    description = runner.describe_capability("coding_task.preview")
+    assert description["input_contract"]["required"] == ["root", "cwd", "goal"]
+    assert description["input_contract"]["properties"]["allowed_paths"]["type"] == "array"
+    assert (
+        description["input_contract"]["properties"]["verification_commands"]["type"]
+        == "array"
+    )
+    assert "no_codex_delegation" in description["safety_boundaries"]
+    assert "preview_only_no_workspace_write" in description["safety_boundaries"]
+
+
+def test_runner_runs_coding_task_preview_without_side_effects(tmp_path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    root = tmp_path / "state"
+
+    result = _runner().run_capability(
+        "coding_task.preview",
+        inputs={
+            "root": str(root),
+            "cwd": str(workspace),
+            "goal": "Add a native code edit action.",
+            "allowed_paths": ["src/isotope/capabilities"],
+            "verification_commands": ["pytest tests/unit/capabilities -q"],
+        },
+    )
+
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "coding_task.preview"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "deterministic_preview"
+    assert result["preview"]["goal"] == "Add a native code edit action."
+    assert result["preview"]["cwd_status"] == "exists"
+    assert result["preview"]["execution_mode"] == "preview_only"
+    assert result["preview"]["native_coding_requirements"] == [
+        "policy_granted_writable_workspace",
+        "controlled_code_read_search",
+        "structured_patch_application",
+        "allowlisted_test_execution",
+        "artifact_backed_diff_and_changed_files",
+        "optional_vcs_adapter",
+    ]
+    assert result["preview"]["blocked_capabilities"] == [
+        "workspace.isolated_rw",
+        "code.read",
+        "code.search",
+        "code.apply_patch",
+        "test.run",
+        "vcs.status",
+        "vcs.diff",
+    ]
+    assert not list(root.rglob("*"))
+
+
+def test_coding_task_preview_rejects_malformed_path_lists(tmp_path):
+    with pytest.raises(ValueError, match="allowed_paths"):
+        _runner().run_capability(
+            "coding_task.preview",
+            inputs={
+                "root": str(tmp_path / "state"),
+                "cwd": str(tmp_path),
+                "goal": "Edit code.",
+                "allowed_paths": "src",
+            },
+        )
+
+
+def test_coding_task_preview_reports_missing_cwd_without_creating_it(tmp_path):
+    missing = tmp_path / "missing"
+
+    result = _runner().run_capability(
+        "coding_task.preview",
+        inputs={
+            "root": str(tmp_path / "state"),
+            "cwd": str(missing),
+            "goal": "Edit code.",
+        },
+    )
+
+    assert result["preview"]["cwd_status"] == "missing"
+    assert not missing.exists()
+
+
+def test_coding_task_preview_plan_stops_when_required_inputs_are_missing():
+    plan = _runner().plan_capability_run(
+        "coding_task.preview",
+        inputs={"cwd": "/tmp/project"},
+    )
+
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_preview"
+    assert plan["missing_inputs"] == ["root", "goal"]
+    assert plan["scenario"] is None
+
+
+def test_coding_task_preview_plan_is_launchable_with_required_inputs(tmp_path):
+    plan = _runner().plan_capability_run(
+        "coding_task.preview",
+        inputs={
+            "root": str(tmp_path / "state"),
+            "cwd": str(tmp_path),
+            "goal": "Preview native coding.",
+        },
+    )
+
+    assert plan["can_launch"] is True
+    assert plan["status"] == "launchable"
+    assert plan["runner_kind"] == "deterministic_preview"
+    assert plan["blocking_reasons"] == []
+    assert "preview_only_no_workspace_write" in plan["safety_boundaries"]
+
+
 def test_runner_status_mirrors_catalog_status_without_executing_capability():
     catalog = CapabilityCatalog(
         capabilities=[

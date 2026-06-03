@@ -166,6 +166,79 @@ class CapabilityCatalog:
                     tags=("external", "snapshot", "review"),
                 ),
                 Capability(
+                    capability_id="coding_task.preview",
+                    title="Native Coding Task Preview",
+                    description=(
+                        "Preview a native coding task contract and report the "
+                        "missing execution substrate without delegating to Codex."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "native",
+                        "coding",
+                        "preview",
+                        "workspace",
+                        "policy",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["root", "cwd", "goal"],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "description": "Runtime root for future coding artifacts.",
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Workspace directory to preview.",
+                            },
+                            "goal": {
+                                "type": "string",
+                                "description": "Native coding task goal.",
+                            },
+                            "allowed_paths": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Relative paths that future coding work may touch.",
+                                "default": [],
+                            },
+                            "forbidden_paths": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Relative paths that future coding work must not touch.",
+                                "default": [],
+                            },
+                            "verification_commands": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Allowlist candidates for future test.run execution.",
+                                "default": [],
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "runner_kind",
+                            "preview",
+                            "native_coding_requirements",
+                            "blocked_capabilities",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "no_codex_delegation",
+                        "preview_only_no_workspace_write",
+                        "no_patch_apply",
+                        "no_test_execution",
+                        "no_vcs_mutation",
+                        "low_sensitive_summary_only",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="memory.query",
                     title="Memory Query",
                     description=(
