@@ -104,8 +104,7 @@ def stream_desktop_chat_events(
     clean_question = _require_question(question)
     if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
         raise ValueError("max_tokens must be a positive integer")
-    stream_generate = getattr(provider, "stream_generate", None)
-    use_conversation_loop = capacity_provider is None and not callable(stream_generate)
+    use_conversation_loop = capacity_provider is None
     if use_conversation_loop:
         for event in run_supervisor_conversation_events(
             state_root=state_root,

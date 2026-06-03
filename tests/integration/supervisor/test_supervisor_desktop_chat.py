@@ -9,7 +9,10 @@ from typing import Any
 import pytest
 
 from isotope.capabilities.runner import CapabilityRunner
-from isotope.features.supervisor.desktop_chat import stream_desktop_chat_events
+from isotope.features.supervisor.desktop_chat import (
+    stream_desktop_chat,
+    stream_desktop_chat_events,
+)
 from isotope.features.supervisor.planner.goal_queue import record_supervisor_goal
 from isotope.features.supervisor.web import create_dashboard_server
 from isotope.llm.provider import LLMResponse, LLMStreamChunk
@@ -154,6 +157,16 @@ class MultiResponseDesktopChatProvider(RecordingDesktopChatProvider):
             usage={},
             raw={"raw_response": "must not leak"},
         )
+
+
+class StreamingCapableDecisionProvider(MultiResponseDesktopChatProvider):
+    def stream_generate(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int = 512,
+    ):
+        raise AssertionError("desktop chat should route default providers through conversation loop")
 
 
 def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
@@ -415,6 +428,45 @@ def test_desktop_chat_stream_uses_conversation_loop_for_model_capacity_choice(
     assert len(provider.calls) == 2
 
 
+def test_desktop_chat_stream_uses_conversation_loop_for_streaming_capable_provider(
+    tmp_path,
+) -> None:
+    provider = StreamingCapableDecisionProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "artifact.review",
+                    "arguments": {},
+                    "rationale": "用户要求能力执行。",
+                }
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "streaming-capable provider 也走了 capacity loop。",
+                }
+            ),
+        ]
+    )
+
+    events = list(
+        stream_desktop_chat_events(
+            state_root=tmp_path,
+            question="调用 artifact review capacity。",
+            provider=provider,
+        )
+    )
+
+    assert [event.event for event in events] == [
+        "capacity_start",
+        "capacity_result",
+        "delta",
+    ]
+    assert events[1].payload["capacity_id"] == "artifact.review"
+    assert events[2].payload["text"] == "streaming-capable provider 也走了 capacity loop。"
+
+
 def test_desktop_chat_stream_times_out_slow_answer_provider(tmp_path) -> None:
     provider = SlowDesktopChatProvider(content="太晚了")
 
@@ -588,47 +640,19 @@ def test_desktop_chat_compacts_oversized_history_instead_of_dropping_old_turns(t
     assert messages[-1] == {"role": "user", "content": "最早的上下文还在吗？"}
 
 
-def test_desktop_chat_endpoint_streams_provider_deltas(tmp_path) -> None:
+def test_stream_desktop_chat_helper_streams_provider_deltas(tmp_path) -> None:
     provider = StreamingDesktopChatProvider(chunks=("loop ", "实时", "返回。"))
-    server = create_dashboard_server(
-        codex_home=tmp_path,
-        host="127.0.0.1",
-        port=0,
-        limit=5,
-        stale_after_seconds=999999,
-        active_within_seconds=180,
-        desktop_chat_provider=provider,
-    )
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    host, port = server.server_address
-    try:
-        conn = http.client.HTTPConnection(host, port, timeout=5)
-        conn.request(
-            "POST",
-            "/desktop/chat",
-            body=json.dumps({"question": "loop 现在怎样？"}),
-            headers={"content-type": "application/json"},
+    chunks = list(
+        stream_desktop_chat(
+            state_root=tmp_path,
+            question="loop 现在怎样？",
+            provider=provider,
         )
-        response = conn.getresponse()
-        body = response.read().decode("utf-8")
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join(timeout=2)
+    )
 
-    assert response.status == 200
-    events = _parse_sse(body)
-    assert [event["data"]["text"] for event in events if event["event"] == "delta"] == [
-        "loop ",
-        "实时",
-        "返回。",
-    ]
-    assert events[-1]["data"] == {
-        "status": "ok",
-        "provider": "fake-stream",
-        "model": "fake-stream-chat",
-    }
+    assert [chunk.content for chunk in chunks] == ["loop ", "实时", "返回。"]
+    assert chunks[-1].provider == "fake-stream"
+    assert chunks[-1].model == "fake-stream-chat"
     assert provider.calls[0]["max_tokens"] == 512
 
 
