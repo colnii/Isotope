@@ -20,6 +20,13 @@ from isotope.agents.scheduler.capacity_graph import (
 )
 from isotope.capabilities.runner import CapabilityRunner
 from isotope.capabilities.supervisor import SUPERVISOR_CODEX_OPERATION_CAPABILITY
+from isotope.features.supervisor.commands.capacity_rendering import (
+    print_capacity_plan_plain,
+)
+from isotope.features.supervisor.commands.capacity_summary import (
+    agent_loop_handoff_summary,
+    agent_loop_json_summary,
+)
 from isotope.llm.capacity_calling import CapacityCallingProvider, select_capacity_call
 from isotope.llm.pool import PoolEntry, resolve_pool_entries_from_env
 from isotope.llm.provider import (
@@ -41,6 +48,8 @@ from isotope.runtime.in_process import InProcessServer
 DEFAULT_CAPACITY_PLAN_STATE_ROOT = (
     Path.home() / ".codex" / "supervisor" / "capacity-loop-runs"
 )
+
+_print_capacity_plan_plain = print_capacity_plan_plain
 
 
 class PooledCapacityCallingProvider:
@@ -265,7 +274,7 @@ def handle_capacity_command(
     if args.json:
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
     else:
-        _print_capacity_plan_plain(payload)
+        print_capacity_plan_plain(payload)
     return 0
 
 
@@ -491,53 +500,6 @@ def _supervisor_capacity_input_defaults(args: Any) -> dict[str, Any]:
     return {"state_root": root, "root": root}
 
 
-def agent_loop_json_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
-    """Return low-sensitive capacity handoff fields for JSON and plain output."""
-    agent_loop = payload.get("agent_loop") if isinstance(payload, Mapping) else None
-    summary: dict[str, Any] = {"agent_loop_executed": isinstance(agent_loop, Mapping)}
-    if not isinstance(agent_loop, Mapping):
-        return summary
-
-    handoff = agent_loop.get("handoff")
-    if isinstance(handoff, Mapping):
-        summary["agent_loop_next_tick_kind"] = handoff.get("initial_next_tick_kind")
-        summary["agent_loop_post_step_phase"] = handoff.get("post_step_phase")
-        summary["agent_loop_post_step_should_continue"] = handoff.get(
-            "post_step_should_continue"
-        )
-        summary["agent_loop_post_step_stop_reason"] = handoff.get(
-            "post_step_stop_reason"
-        )
-
-    planner_summary = agent_loop.get("planner_output_summary")
-    if isinstance(planner_summary, Mapping):
-        summary["agent_loop_planner_selected_step"] = planner_summary.get(
-            "selected_step"
-        )
-
-    tick_result = agent_loop.get("tick_result")
-    if not isinstance(tick_result, Mapping):
-        return summary
-    summary["agent_loop_tick_status"] = tick_result.get("tick_status")
-    after_policy = tick_result.get("after_policy")
-    if isinstance(after_policy, Mapping):
-        summary["agent_loop_tick_after_stop_reason"] = after_policy.get(
-            "must_stop_reason"
-        )
-    artifact_ref = _agent_loop_artifact_ref(tick_result)
-    if isinstance(artifact_ref, Mapping):
-        summary["agent_loop_artifact_id"] = artifact_ref.get("artifact_id")
-    capability_run = _agent_loop_capability_run(tick_result)
-    if isinstance(capability_run, Mapping):
-        screen_report = capability_run.get("screen_report")
-        if isinstance(screen_report, Mapping):
-            summary.update(_agent_loop_screen_report_summary(screen_report))
-        summary.update(_agent_loop_memory_query_summary(capability_run))
-        summary.update(_agent_loop_research_search_summary(capability_run))
-        summary.update(_agent_loop_research_promotion_summary(capability_run))
-    return summary
-
-
 def _record_capacity_call_memory(
     *,
     codex_home: Path,
@@ -674,22 +636,10 @@ def _execute_agent_loop_capacity_step(
         "step_request": step_request,
         "step_result": step_result,
         "tick_policy_after": tick_policy_after,
-        "handoff": _agent_loop_handoff_summary(
+        "handoff": agent_loop_handoff_summary(
             tick_result["before_policy"],
             tick_policy_after,
         ),
-    }
-
-
-def _agent_loop_handoff_summary(
-    tick_policy_before: Mapping[str, Any],
-    tick_policy_after: Mapping[str, Any],
-) -> dict[str, Any]:
-    return {
-        "initial_next_tick_kind": tick_policy_before.get("max_next_tick_kind"),
-        "post_step_phase": tick_policy_after.get("phase"),
-        "post_step_should_continue": tick_policy_after.get("should_continue"),
-        "post_step_stop_reason": tick_policy_after.get("must_stop_reason"),
     }
 
 
@@ -894,254 +844,7 @@ def _capacity_plan_safety(*, execute_agent_loop: bool) -> dict[str, Any]:
     }
 
 
-def _print_capacity_plan_plain(payload: Mapping[str, Any]) -> None:
-    selection = payload.get("selection") if isinstance(payload, Mapping) else {}
-    launch_plan = (
-        payload.get("capability_launch_plan") if isinstance(payload, Mapping) else {}
-    )
-    print("Supervisor capacity plan")
-    capacity_id = (
-        selection.get("capacity_id") if isinstance(selection, Mapping) else "unknown"
-    )
-    selection_status = (
-        selection.get("status") if isinstance(selection, Mapping) else "unknown"
-    )
-    launch_status = (
-        launch_plan.get("status") if isinstance(launch_plan, Mapping) else "unknown"
-    )
-    status_reason = payload.get("status_reason", "unknown")
-    print(f"capacity_id: {capacity_id}")
-    print(f"selection_status: {selection_status}")
-    print(f"status_reason: {status_reason}")
-    print(f"launch_status: {launch_status}")
-    supervisor_decision = payload.get("supervisor_decision")
-    if isinstance(supervisor_decision, Mapping):
-        print(
-            "supervisor_decision_next_action: "
-            f"{supervisor_decision.get('next_action')}"
-        )
-    _print_capacity_blockers(payload, selection=selection, launch_plan=launch_plan)
-    agent_loop_summary = agent_loop_json_summary(payload)
-    print(f"agent_loop_executed: {agent_loop_summary['agent_loop_executed']}")
-    if agent_loop_summary["agent_loop_executed"]:
-        print(
-            "agent_loop_next_tick_kind: "
-            f"{agent_loop_summary.get('agent_loop_next_tick_kind')}"
-        )
-        print(
-            "agent_loop_planner_selected_step: "
-            f"{agent_loop_summary.get('agent_loop_planner_selected_step')}"
-        )
-        print(
-            f"agent_loop_tick_status: {agent_loop_summary.get('agent_loop_tick_status')}"
-        )
-        print(
-            "agent_loop_tick_after_stop_reason: "
-            f"{agent_loop_summary.get('agent_loop_tick_after_stop_reason')}"
-        )
-        artifact_id = agent_loop_summary.get("agent_loop_artifact_id")
-        if artifact_id is not None:
-            print(f"agent_loop_artifact_ref: {artifact_id}")
-        print(
-            "agent_loop_post_step_phase: "
-            f"{agent_loop_summary.get('agent_loop_post_step_phase')}"
-        )
-        print(
-            "agent_loop_post_step_should_continue: "
-            f"{agent_loop_summary.get('agent_loop_post_step_should_continue')}"
-        )
-        print(
-            "agent_loop_post_step_stop_reason: "
-            f"{agent_loop_summary.get('agent_loop_post_step_stop_reason')}"
-        )
-        memory_query_status = agent_loop_summary.get("agent_loop_memory_query_status")
-        if memory_query_status is not None:
-            print(f"agent_loop_memory_query_status: {memory_query_status}")
-            print(
-                "agent_loop_memory_query_result_count: "
-                f"{agent_loop_summary.get('agent_loop_memory_query_result_count')}"
-            )
-            content_policy = agent_loop_summary.get(
-                "agent_loop_memory_query_content_policy"
-            )
-            if content_policy is not None:
-                print(
-                    "agent_loop_memory_query_content_policy: "
-                    f"{content_policy}"
-                )
-        research_status = agent_loop_summary.get("agent_loop_research_search_status")
-        if research_status is not None:
-            print(f"agent_loop_research_search_status: {research_status}")
-            print(
-                "agent_loop_research_provider: "
-                f"{agent_loop_summary.get('agent_loop_research_provider')}"
-            )
-            print(
-                "agent_loop_research_source_count: "
-                f"{agent_loop_summary.get('agent_loop_research_source_count')}"
-            )
-            print(
-                "agent_loop_research_artifact_count: "
-                f"{agent_loop_summary.get('agent_loop_research_artifact_count')}"
-            )
-        promotion_status = agent_loop_summary.get(
-            "agent_loop_research_promotion_status"
-        )
-        if promotion_status is not None:
-            print(f"agent_loop_research_promotion_status: {promotion_status}")
-            print(
-                "agent_loop_research_promotion_action_type: "
-                f"{agent_loop_summary.get('agent_loop_research_promotion_action_type')}"
-            )
-            print(
-                "agent_loop_research_promotion_memory_write: "
-                f"{agent_loop_summary.get('agent_loop_research_promotion_memory_write')}"
-            )
-            quality_gate_status = agent_loop_summary.get(
-                "agent_loop_research_promotion_quality_gate_status"
-            )
-            if quality_gate_status is not None:
-                print(
-                    "agent_loop_research_promotion_quality_gate_status: "
-                    f"{quality_gate_status}"
-                )
-
-
-def _print_capacity_blockers(
-    payload: Mapping[str, Any],
-    *,
-    selection: Any,
-    launch_plan: Any,
-) -> None:
-    blocked_reason = payload.get("capacity_blocked_reason")
-    if isinstance(blocked_reason, str) and blocked_reason:
-        print(f"capacity_blocked_reason: {blocked_reason}")
-    if payload.get("status_reason") == "needs_input" and isinstance(selection, Mapping):
-        missing_inputs = selection.get("missing_inputs")
-        if isinstance(missing_inputs, list) and missing_inputs:
-            print(f"capacity_missing_inputs: {_comma_join_strings(missing_inputs)}")
-    if payload.get("status_reason") == "not_launchable" and isinstance(launch_plan, Mapping):
-        blocking_reasons = launch_plan.get("blocking_reasons")
-        if isinstance(blocking_reasons, list) and blocking_reasons:
-            print(f"launch_blocking_reasons: {_comma_join_strings(blocking_reasons)}")
-
-
-def _comma_join_strings(values: list[Any]) -> str:
-    return ", ".join(str(value) for value in values if isinstance(value, str))
-
-
 def _string_list(value: Any) -> list[str]:
     if not isinstance(value, list):
         return []
     return [item for item in value if isinstance(item, str)]
-
-
-def _agent_loop_artifact_ref(tick_result: Mapping[str, Any]) -> Mapping[str, Any] | None:
-    planner_result = tick_result.get("planner_result")
-    step_result = (
-        planner_result.get("step_result")
-        if isinstance(planner_result, Mapping)
-        else None
-    )
-    action_result = (
-        step_result.get("action_result") if isinstance(step_result, Mapping) else None
-    )
-    artifact_ref = (
-        action_result.get("artifact_ref") if isinstance(action_result, Mapping) else None
-    )
-    return artifact_ref if isinstance(artifact_ref, Mapping) else None
-
-
-def _agent_loop_capability_run(
-    tick_result: Mapping[str, Any],
-) -> Mapping[str, Any] | None:
-    planner_result = tick_result.get("planner_result")
-    step_result = (
-        planner_result.get("step_result")
-        if isinstance(planner_result, Mapping)
-        else None
-    )
-    action_result = (
-        step_result.get("action_result") if isinstance(step_result, Mapping) else None
-    )
-    capability_run = (
-        action_result.get("capability_run")
-        if isinstance(action_result, Mapping)
-        else None
-    )
-    return capability_run if isinstance(capability_run, Mapping) else None
-
-
-def _agent_loop_screen_report_summary(
-    screen_report: Mapping[str, Any],
-) -> dict[str, Any]:
-    summary: dict[str, Any] = {
-        "agent_loop_screen_report_status": screen_report.get("status")
-    }
-    screen_summary = screen_report.get("summary")
-    if not isinstance(screen_summary, Mapping):
-        return summary
-    summary["agent_loop_screen_observe_status"] = screen_summary.get("observe_status")
-    summary["agent_loop_screen_control_status"] = screen_summary.get("control_status")
-    summary["agent_loop_screen_screenshot_available"] = screen_summary.get(
-        "screenshot_available"
-    )
-    summary["agent_loop_screen_interferes_with_screen"] = screen_summary.get(
-        "interferes_with_screen"
-    )
-    return summary
-
-
-def _agent_loop_memory_query_summary(
-    capability_run: Mapping[str, Any],
-) -> dict[str, Any]:
-    if capability_run.get("capability_id") != "memory.query":
-        return {}
-    memory_query = capability_run.get("memory_query")
-    if not isinstance(memory_query, Mapping):
-        return {}
-    results = memory_query.get("results")
-    summary: dict[str, Any] = {
-        "agent_loop_memory_query_status": memory_query.get("status"),
-        "agent_loop_memory_query_result_count": (
-            len(results) if isinstance(results, list) else 0
-        ),
-    }
-    content_policy = memory_query.get("content_policy")
-    if isinstance(content_policy, str) and content_policy:
-        summary["agent_loop_memory_query_content_policy"] = content_policy
-    return summary
-
-
-def _agent_loop_research_search_summary(
-    capability_run: Mapping[str, Any],
-) -> dict[str, Any]:
-    if capability_run.get("capability_id") != "research.search":
-        return {}
-    research_search = capability_run.get("research_search")
-    if not isinstance(research_search, Mapping):
-        return {}
-    return {
-        "agent_loop_research_search_status": research_search.get("status"),
-        "agent_loop_research_provider": research_search.get("provider"),
-        "agent_loop_research_source_count": research_search.get("source_count"),
-        "agent_loop_research_artifact_count": research_search.get("artifact_count"),
-    }
-
-
-def _agent_loop_research_promotion_summary(
-    capability_run: Mapping[str, Any],
-) -> dict[str, Any]:
-    if capability_run.get("capability_id") != "research.promote":
-        return {}
-    promotion = capability_run.get("research_promotion")
-    if not isinstance(promotion, Mapping):
-        return {}
-    return {
-        "agent_loop_research_promotion_status": promotion.get("status"),
-        "agent_loop_research_promotion_action_type": promotion.get("action_type"),
-        "agent_loop_research_promotion_memory_write": promotion.get("memory_write"),
-        "agent_loop_research_promotion_quality_gate_status": promotion.get(
-            "quality_gate_status"
-        ),
-    }
