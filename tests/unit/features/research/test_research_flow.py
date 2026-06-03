@@ -3,15 +3,46 @@ from __future__ import annotations
 import json
 
 from isotope.features.research.flow import ResearchFlow
-from isotope.features.research.providers import (
-    FakeResearchProvider,
-    ResearchProviderError,
-)
+from isotope.features.research.providers import ResearchProviderError
 from isotope.features.research.tavily import TavilyResearchProvider
 
 
+class _TestProvider:
+    provider_name = "test"
+
+    def run(self, query: str) -> dict:
+        from isotope.features.research.providers import _utc_now
+        from isotope.features.research.source_classification import classify_research_source
+        source = {
+            "source_id": "src_001",
+            "title": "Test source",
+            "url": "https://example.com/test",
+            "snippet": "Test snippet.",
+            "why_used": "test",
+            "retrieved_at": _utc_now(),
+            "provider_rank": 1,
+        }
+        source.update(classify_research_source(source))
+        return {
+            "research_id": "test_001",
+            "query": query,
+            "provider": self.provider_name,
+            "created_at": _utc_now(),
+            "status": "ok",
+            "evidence_status": "complete",
+            "sources": [source],
+            "report": {
+                "summary": f"Test summary for {query}.",
+                "claims": [{"text": "Test claim.", "source_ids": ["src_001"], "confidence": "high"}],
+                "limitations": [],
+                "next_queries": [],
+            },
+            "provenance": {"provider": self.provider_name},
+        }
+
+
 def test_research_flow_persists_raw_and_normalized_artifacts(tmp_path):
-    flow = ResearchFlow.in_process(tmp_path, provider=FakeResearchProvider())
+    flow = ResearchFlow.in_process(tmp_path, provider=_TestProvider())
 
     result = flow.search("agent memory retrieval")
 
@@ -30,7 +61,7 @@ def test_research_flow_persists_raw_and_normalized_artifacts(tmp_path):
         {
             "artifact_type": "research.report",
             "ref": result.artifact_refs[1].to_dict(),
-            "summary": "Fake research summary for agent memory retrieval.",
+            "summary": "Test summary for agent memory retrieval.",
         },
     ]
     records = [
@@ -41,7 +72,7 @@ def test_research_flow_persists_raw_and_normalized_artifacts(tmp_path):
         "research.raw_transcript",
         "research.report",
     ]
-    assert records[1]["summary"] == "Fake research summary for agent memory retrieval."
+    assert records[1]["summary"] == "Test summary for agent memory retrieval."
 
 
 def test_research_flow_persists_tavily_execution_artifacts(tmp_path):
@@ -318,11 +349,11 @@ def test_research_flow_persists_retry_attempt_details_in_provider_trace(tmp_path
 
 
 def test_research_report_can_be_found_through_artifact_record(tmp_path):
-    flow = ResearchFlow.in_process(tmp_path, provider=FakeResearchProvider())
+    flow = ResearchFlow.in_process(tmp_path, provider=_TestProvider())
 
     result = flow.search("agent memory retrieval")
     record = flow.core.runtime.get_artifact_record(result.artifact_refs[1])
 
     assert record["artifact_type"] == "research.report"
-    assert "Fake research summary" in record["summary"]
+    assert "Test summary for" in record["summary"]
     assert record["source_refs"] == [result.artifact_refs[0].to_dict()]

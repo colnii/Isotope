@@ -10,7 +10,7 @@ from typing import Any
 from ...core import ProductCore
 from ...platform.schemas.refs import ResourceRef
 from .models import WebResearchRun
-from .providers import FakeResearchProvider, ResearchProvider, ResearchProviderError
+from .providers import ResearchProvider, ResearchProviderError
 
 
 @dataclass(frozen=True)
@@ -40,9 +40,9 @@ class ResearchFlowResult:
 class ResearchFlow:
     """Run delegated research and persist source-backed artifacts."""
 
-    def __init__(self, core: ProductCore, provider: ResearchProvider | None = None):
+    def __init__(self, core: ProductCore, provider: ResearchProvider):
         self.core = core
-        self.provider = provider if provider is not None else FakeResearchProvider()
+        self.provider = provider
 
     @classmethod
     def in_process(

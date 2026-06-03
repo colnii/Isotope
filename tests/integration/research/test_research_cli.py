@@ -37,17 +37,14 @@ def test_research_cli_search_returns_json(tmp_path):
         "--query",
         "agent memory retrieval",
         "--provider",
-        "fake",
         "--json",
     )
 
     assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout)
     assert payload["status"] == "ok"
-    assert payload["research"]["provider"] == "fake"
-    assert payload["research"]["sources"][0]["url"] == "https://example.com/isotope-research"
+    assert payload["research"]["provider"] == "codex"
     assert payload["research"]["sources"][0]["source_kind"] == "unknown"
-    assert payload["research"]["sources"][0]["source_authority"] == "unknown"
     assert len(payload["artifact_refs"]) == 2
     assert [artifact["artifact_type"] for artifact in payload["artifacts"]] == [
         "research.raw_transcript",
@@ -62,21 +59,19 @@ def test_research_cli_lists_provider_registry_json():
     payload = json.loads(result.stdout)
     assert payload["status"] == "ok"
     assert [provider["provider_id"] for provider in payload["providers"]] == [
-        "fake",
         "codex",
         "tavily",
         "searxng",
         "browser",
     ]
     assert payload["providers"][0]["implemented"] is True
-    assert payload["providers"][2]["implemented"] is True
+    assert payload["providers"][1]["implemented"] is True
 
 
 def test_research_cli_providers_plain_output_marks_planned_provider():
     result = _run_cli("providers")
 
     assert result.returncode == 0, result.stderr
-    assert "provider: fake implemented provider_name: fake" in result.stdout
     assert "provider: tavily implemented provider_name: tavily" in result.stdout
 
 
@@ -176,7 +171,6 @@ def test_research_cli_plain_output_lists_artifacts(tmp_path):
         "--query",
         "agent memory retrieval",
         "--provider",
-        "fake",
     )
 
     assert result.returncode == 0, result.stderr
@@ -193,7 +187,6 @@ def test_research_cli_inspect_returns_research_artifact_json(tmp_path):
         "--query",
         "agent memory retrieval",
         "--provider",
-        "fake",
         "--json",
     )
     assert search.returncode == 0, search.stderr
@@ -231,7 +224,6 @@ def test_research_cli_promotes_report_artifact_as_memory_proposal(tmp_path):
         "--query",
         "agent memory retrieval",
         "--provider",
-        "fake",
         "--json",
     )
     assert search_result.returncode == 0, search_result.stderr
@@ -278,7 +270,6 @@ def test_research_cli_promote_rejects_raw_transcript_artifact(tmp_path):
         "--query",
         "agent memory retrieval",
         "--provider",
-        "fake",
         "--json",
     )
     assert search_result.returncode == 0, search_result.stderr
@@ -367,7 +358,6 @@ def test_research_cli_inspect_prints_research_artifact_plain(tmp_path):
         "--query",
         "agent memory retrieval",
         "--provider",
-        "fake",
     )
     assert search.returncode == 0, search.stderr
 
@@ -385,7 +375,7 @@ def test_research_cli_inspect_prints_research_artifact_plain(tmp_path):
     assert "status: ok" in result.stdout
     assert "artifact: research.raw_transcript artifact_001" in result.stdout
     assert "summary: raw research provider output: agent memory retrieval" in result.stdout
-    assert '"provider": "fake"' in result.stdout
+    assert '"provider": "codex"' in result.stdout
 
 
 def test_research_cli_inspect_rejects_non_research_artifact(tmp_path):
@@ -647,7 +637,6 @@ def test_research_cli_list_accepts_type_filter(tmp_path):
 
 
 def test_research_cli_requires_query(tmp_path):
-    result = _run_cli("search", "--root", str(tmp_path), "--provider", "fake", "--json")
 
     assert result.returncode == 2
     assert json.loads(result.stdout)["error"]["code"] == "research_runner_error"

@@ -6,7 +6,6 @@ import pytest
 
 from isotope.features.research.providers import (
     CodexDelegatedResearchProvider,
-    FakeResearchProvider,
     ResearchProviderError,
     build_research_provider,
     build_codex_cli_research_backend,
@@ -18,40 +17,20 @@ from isotope.features.research.providers import (
 from isotope.features.research.tavily import TavilyResearchProvider
 
 
-def test_fake_research_provider_returns_source_backed_report():
-    provider = FakeResearchProvider()
-
-    payload = provider.run("agent memory retrieval")
-
-    assert payload["query"] == "agent memory retrieval"
-    assert payload["provider"] == "fake"
-    assert payload["sources"][0]["source_id"] == "src_001"
-    assert payload["sources"][0]["source_kind"] == "unknown"
-    assert payload["sources"][0]["source_authority"] == "unknown"
-    assert payload["report"]["claims"][0]["source_ids"] == ["src_001"]
-
 
 def test_research_provider_registry_lists_implemented_and_planned_providers():
     descriptors = list_research_provider_descriptors()
 
     assert [descriptor.provider_id for descriptor in descriptors] == [
-        "fake",
         "codex",
         "tavily",
         "searxng",
         "browser",
     ]
-    assert get_research_provider_descriptor("fake").implemented is True
     assert get_research_provider_descriptor("codex").provider_name == "codex_delegated"
     assert get_research_provider_descriptor("tavily").implemented is True
     assert get_research_provider_descriptor("tavily").selectable is True
 
-
-def test_build_research_provider_reuses_fake_provider():
-    provider = build_research_provider("fake")
-
-    assert isinstance(provider, FakeResearchProvider)
-    assert provider.provider_name == "fake"
 
 
 def test_build_research_provider_reuses_tavily_preflight_provider(tmp_path):
@@ -292,7 +271,11 @@ def test_codex_delegated_provider_builds_research_prompt():
 
     def backend(prompt: str) -> str:
         calls.append(prompt)
-        return json.dumps(FakeResearchProvider().run("agent memory retrieval"))
+        return json.dumps({
+            "provider": "codex_delegated",
+            "sources": [{"source_id": "src_001", "url": "https://example.com"}],
+            "report": {"summary": "test"},
+        })
 
     provider = CodexDelegatedResearchProvider(backend=backend)
     payload = provider.run("agent memory retrieval")
@@ -360,7 +343,11 @@ def test_codex_delegated_provider_retries_retryable_failure_once():
                     "codex_has_agent_message": False,
                 },
             )
-        return json.dumps(FakeResearchProvider().run("python docs"))
+        return json.dumps({
+            "provider": "codex_delegated",
+            "sources": [{"source_id": "src_001", "url": "https://example.com"}],
+            "report": {"summary": "test"},
+        })
 
     provider = CodexDelegatedResearchProvider(backend=backend, max_attempts=2)
 

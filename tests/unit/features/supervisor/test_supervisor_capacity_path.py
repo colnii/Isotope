@@ -916,9 +916,9 @@ def test_supervisor_capacity_plan_summarizes_research_search_agent_loop_result(t
     assert capability_run["status"] == "completed"
     research_search = capability_run["research_search"]
     assert research_search["status"] == "ok"
-    assert research_search["provider"] == "fake"
+    assert research_search["provider"] == "codex"
     assert result["agent_loop_summary"]["agent_loop_research_search_status"] == "ok"
-    assert result["agent_loop_summary"]["agent_loop_research_provider"] == "fake"
+    assert result["agent_loop_summary"]["agent_loop_research_provider"] == "codex"
     assert result["agent_loop_summary"]["agent_loop_research_source_count"] == 1
     assert result["agent_loop_summary"]["agent_loop_research_artifact_count"] == 2
     assert "raw_transcript" not in json.dumps(result["agent_loop_summary"])

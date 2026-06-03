@@ -19,7 +19,7 @@ RESEARCH_CAPABILITIES = frozenset(
         RESEARCH_SEARCH_CAPABILITY,
     }
 )
-VALID_RESEARCH_CAPABILITY_PROVIDERS = frozenset({"fake", "codex", "tavily"})
+VALID_RESEARCH_CAPABILITY_PROVIDERS = frozenset({"codex", "tavily"})
 RESEARCH_PROVIDER_GATES = {
     "codex": "codex_research",
     "tavily": "tavily_research",
@@ -184,21 +184,16 @@ def _validate_research_search_inputs(
         if not value.strip():
             raise ValueError(f"{name} must be a non-empty string")
 
-    provider = input_mapping.get("provider", "fake")
-    if not isinstance(provider, str) or not provider.strip():
+    provider_input = input_mapping.get("provider")
+    if not isinstance(provider_input, str) or not provider_input.strip():
         raise ValueError("provider must be a non-empty string")
-    provider = provider.strip()
+    provider = provider_input.strip()
     if provider not in VALID_RESEARCH_CAPABILITY_PROVIDERS:
-        raise ValueError("provider must be fake, codex, or tavily")
+        raise ValueError("provider must be codex or tavily")
 
-    provider_gate = input_mapping.get("provider_gate")
-    if provider == "fake":
-        if provider_gate is not None and (
-            not isinstance(provider_gate, str) or not provider_gate.strip()
-        ):
-            raise ValueError("provider_gate must be a non-empty string")
-    else:
-        expected_gate = RESEARCH_PROVIDER_GATES[provider]
+    expected_gate = RESEARCH_PROVIDER_GATES.get(provider)
+    if expected_gate:
+        provider_gate = input_mapping.get("provider_gate")
         if provider_gate != expected_gate:
             raise ValueError(
                 f"provider_gate must be {expected_gate} for {provider} provider"
@@ -227,11 +222,8 @@ def _validate_research_search_inputs(
 
 
 def _research_provider_kwargs(input_mapping: Mapping[str, Any]) -> dict[str, Any]:
-    provider = input_mapping["provider"]
-    if provider == "fake":
-        return {}
     kwargs: dict[str, Any] = {"workspace_root": input_mapping["root"]}
-    if provider == "tavily":
+    if input_mapping["provider"] == "tavily":
         kwargs["tavily_enable_network"] = input_mapping["allow_network"]
         tavily_max_results = input_mapping.get("tavily_max_results")
         if isinstance(tavily_max_results, int) and not isinstance(

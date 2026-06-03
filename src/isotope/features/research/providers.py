@@ -80,15 +80,6 @@ class ResearchProviderDescriptor:
 
 _PROVIDER_DESCRIPTORS: tuple[ResearchProviderDescriptor, ...] = (
     ResearchProviderDescriptor(
-        provider_id="fake",
-        provider_name="fake",
-        label="Fake deterministic provider",
-        status="implemented",
-        entrypoint="local_fake",
-        notes="Deterministic provider for tests and smoke checks.",
-        selectable=True,
-    ),
-    ResearchProviderDescriptor(
         provider_id="codex",
         provider_name="codex_delegated",
         label="Codex delegated provider",
@@ -187,8 +178,6 @@ def build_research_provider(
             f"research provider {provider_id} is registered but not implemented yet; "
             "run `isotope-research providers` to inspect provider status"
         )
-    if provider_id == "fake":
-        return FakeResearchProvider()
     if provider_id == "codex":
         return CodexDelegatedResearchProvider(
             build_codex_cli_research_backend(
@@ -216,47 +205,6 @@ def build_research_provider(
         )
     raise RuntimeError(f"research provider registry is missing builder for: {provider_id}")
 
-
-class FakeResearchProvider:
-    provider_name = "fake"
-
-    def run(self, query: str) -> dict[str, Any]:
-        clean_query = _require_query(query)
-        source_title = "Fake source-backed research note"
-        source_url = "https://example.com/isotope-research"
-        return {
-            "research_id": "research_fake_001",
-            "query": clean_query,
-            "provider": self.provider_name,
-            "created_at": _utc_now(),
-            "status": "ok",
-            "evidence_status": "complete",
-            "sources": [
-                {
-                    "source_id": "src_001",
-                    "title": source_title,
-                    "url": source_url,
-                    "snippet": "Research claims should cite source ids.",
-                    "why_used": "deterministic fake source for tests",
-                    "retrieved_at": _utc_now(),
-                    "provider_rank": 1,
-                    **classify_research_source({"title": source_title, "url": source_url}),
-                }
-            ],
-            "report": {
-                "summary": f"Fake research summary for {clean_query}.",
-                "claims": [
-                    {
-                        "text": "Research reports must keep source-backed claims.",
-                        "source_ids": ["src_001"],
-                        "confidence": "high",
-                    }
-                ],
-                "limitations": ["fake provider"],
-                "next_queries": [],
-            },
-            "provenance": {"provider": self.provider_name},
-        }
 
 
 class CodexDelegatedResearchProvider:

@@ -191,7 +191,7 @@ def test_conversation_loop_filters_model_supplied_inputs_to_capability_contract(
     }
     assert events[1].payload["capacity_id"] == "research.search"
     assert events[1].payload["status"] == "ok"
-    assert events[1].payload["result_summary"]["agent_loop_research_provider"] == "fake"
+    assert events[1].payload["result_summary"]["agent_loop_research_provider"] == "codex"
     assert events[2].payload == {"text": "research.search 已执行。"}
 
 
