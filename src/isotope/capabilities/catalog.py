@@ -389,6 +389,74 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="workspace.materialize",
+                    title="Workspace Materialize",
+                    description=(
+                        "Materialize an isolated writable workspace under the "
+                        "runtime state root without appending events."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "workspace",
+                        "materialize",
+                        "isolated",
+                        "writable",
+                        "native-coding",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["root", "cwd", "workspace_id"],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "description": "Runtime state root that will contain materialized workspaces.",
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Source workspace directory to copy from.",
+                            },
+                            "workspace_id": {
+                                "type": "string",
+                                "description": "Stable workspace id for the materialized copy.",
+                            },
+                            "include_paths": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Workspace-relative files or directories to copy.",
+                                "default": ["."],
+                            },
+                            "forbidden_paths": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Workspace-relative files or directories to exclude.",
+                                "default": [],
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "runner_kind",
+                            "materialized_workspace",
+                            "workspace_root",
+                            "root_ref",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "writes_only_under_state_root",
+                        "workspace_escape_rejected",
+                        "relative_paths_only",
+                        "no_event_append",
+                        "no_command_execution",
+                        "no_vcs_mutation",
+                        "source_workspace_not_modified",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="code.read",
                     title="Code Read",
                     description=(

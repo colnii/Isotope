@@ -18,11 +18,12 @@ This objective spans multiple subsystems, so it must not be implemented as one b
 2. `workspace.isolated_rw`: proposal-only isolated writable workspace contract with path safety.
 3. `workspace.lease_create`: event-candidate lease expression for `isolated_rw` without append or materialization.
 4. `code.read` / `code.search`: controlled file listing, file read summaries, and code search refs.
-5. `code.apply_patch`: structured patch application with path policy, diff artifact, and changed-files artifact.
-6. `test.run`: allowlisted validation command runner with stdout/stderr artifacts and stable failure reasons.
-7. `vcs.status` / `vcs.diff`: optional Git adapter diagnostics and artifact-backed diff summaries.
-8. `coding_task.execute`: bounded agent loop that plans, reads, patches, tests, revises, and reports.
-9. Supervisor/Desktop integration: expose native coding capacity in conversation loop and dashboard.
+5. `workspace.materialize`: create an isolated writable workspace under the runtime state root.
+6. `code.apply_patch`: structured patch application with path policy, diff artifact, and changed-files artifact.
+7. `test.run`: allowlisted validation command runner with stdout/stderr artifacts and stable failure reasons.
+8. `vcs.status` / `vcs.diff`: optional Git adapter diagnostics and artifact-backed diff summaries.
+9. `coding_task.execute`: bounded agent loop that plans, reads, patches, tests, revises, and reports.
+10. Supervisor/Desktop integration: expose native coding capacity in conversation loop and dashboard.
 
 ## Slice 1 File Structure
 
@@ -55,6 +56,14 @@ This objective spans multiple subsystems, so it must not be implemented as one b
 - Modify `src/isotope/capabilities/runner.py`: route planning and execution through the code access runner and mark both capabilities `deterministic_readonly`.
 - Modify `src/isotope/capabilities/coding.py`: remove `code.read` and `code.search` from the native coding preview blocked-capability list.
 - Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, bounded read excerpts, bounded search matches, path escape rejection, and missing-input planning.
+
+## Slice 5 File Structure
+
+- Modify `src/isotope/capabilities/workspace.py`: add `workspace.materialize`, which copies selected workspace-relative files into `root/workspaces/<workspace_id>` using a temporary directory and refuses overwrite.
+- Modify `src/isotope/capabilities/catalog.py`: register `workspace.materialize` with `writes_only_under_state_root`, `relative_paths_only`, and `no_event_append` safety boundaries.
+- Modify `src/isotope/capabilities/runner.py`: route materialization through the workspace runner and report `deterministic_local`.
+- Modify `src/isotope/capabilities/coding.py`: remove `workspace.lease_create` and `workspace.materialize` from the native coding preview blocked-capability list.
+- Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, materialization under state root, overwrite refusal, unsafe path rejection, and missing-input planning.
 
 ## Task 1: Register Coding Preview Capability
 

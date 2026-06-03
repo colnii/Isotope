@@ -289,8 +289,6 @@ def test_runner_runs_coding_task_preview_without_side_effects(tmp_path):
         "optional_vcs_adapter",
     ]
     assert result["preview"]["blocked_capabilities"] == [
-        "workspace.lease_create",
-        "workspace.materialize",
         "workspace.changed_files",
         "workspace.release",
         "code.apply_patch",
@@ -526,6 +524,124 @@ def test_workspace_lease_create_plan_stops_when_required_inputs_are_missing():
         "proposal_id",
         "execution_id",
     ]
+    assert plan["scenario"] is None
+
+
+def test_runner_discovers_workspace_materialize_from_default_catalog():
+    runner = _runner()
+
+    assert "workspace.materialize" in _ids(runner.list_capabilities())
+    search = runner.search_capabilities(query="workspace materialize")
+
+    assert "workspace.materialize" in _ids(search["capabilities"])
+    description = runner.describe_capability("workspace.materialize")
+    assert description["input_contract"]["required"] == ["root", "cwd", "workspace_id"]
+    assert description["input_contract"]["properties"]["include_paths"]["type"] == "array"
+    assert "writes_only_under_state_root" in description["safety_boundaries"]
+    assert "no_event_append" in description["safety_boundaries"]
+
+
+def test_runner_materializes_isolated_workspace_under_state_root(tmp_path):
+    source = tmp_path / "repo"
+    (source / "src").mkdir(parents=True)
+    (source / ".git").mkdir()
+    (source / ".venv").mkdir()
+    (source / "src" / "app.py").write_text("print('native')\n", encoding="utf-8")
+    (source / "src" / "skip.py").write_text("skip me\n", encoding="utf-8")
+    (source / "README.md").write_text("hello\n", encoding="utf-8")
+    (source / ".git" / "config").write_text("private git metadata\n", encoding="utf-8")
+    (source / ".venv" / "secret.py").write_text("private venv file\n", encoding="utf-8")
+    root = tmp_path / "state"
+
+    result = _runner().run_capability(
+        "workspace.materialize",
+        inputs={
+            "root": str(root),
+            "cwd": str(source),
+            "workspace_id": "workspace_native_coding_slice_5",
+            "include_paths": ["src", "README.md"],
+            "forbidden_paths": ["src/skip.py"],
+        },
+    )
+
+    materialized = result["materialized_workspace"]
+    workspace_root = root / "workspaces" / "workspace_native_coding_slice_5"
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "workspace.materialize"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "deterministic_local"
+    assert materialized["status"] == "materialized"
+    assert materialized["mode"] == "isolated_rw"
+    assert materialized["workspace_id"] == "workspace_native_coding_slice_5"
+    assert materialized["workspace_root"] == str(workspace_root)
+    assert materialized["root_ref"] == "workspace://workspace_native_coding_slice_5/materialized"
+    assert materialized["copied_file_count"] == 2
+    assert materialized["skipped_file_count"] == 1
+    assert materialized["copied_paths"] == ["README.md", "src/app.py"]
+    assert materialized["path_policy"]["relative_paths_only"] is True
+    assert (workspace_root / "src" / "app.py").read_text(encoding="utf-8") == "print('native')\n"
+    assert (workspace_root / "README.md").read_text(encoding="utf-8") == "hello\n"
+    assert not (workspace_root / "src" / "skip.py").exists()
+    assert not (workspace_root / ".git").exists()
+    assert not (workspace_root / ".venv").exists()
+    assert (source / "src" / "app.py").read_text(encoding="utf-8") == "print('native')\n"
+
+
+def test_workspace_materialize_rejects_existing_target_without_overwrite(tmp_path):
+    source = tmp_path / "repo"
+    source.mkdir()
+    root = tmp_path / "state"
+    target = root / "workspaces" / "workspace_existing"
+    target.mkdir(parents=True)
+    marker = target / "marker.txt"
+    marker.write_text("keep\n", encoding="utf-8")
+
+    with pytest.raises(FileExistsError, match="workspace target already exists"):
+        _runner().run_capability(
+            "workspace.materialize",
+            inputs={
+                "root": str(root),
+                "cwd": str(source),
+                "workspace_id": "workspace_existing",
+            },
+        )
+
+    assert marker.read_text(encoding="utf-8") == "keep\n"
+
+
+@pytest.mark.parametrize(
+    ("field_name", "bad_value"),
+    [
+        ("include_paths", ["../outside"]),
+        ("include_paths", ["/tmp/outside"]),
+        ("forbidden_paths", ["../secret"]),
+        ("forbidden_paths", "src"),
+    ],
+)
+def test_workspace_materialize_rejects_unsafe_paths(tmp_path, field_name, bad_value):
+    source = tmp_path / "repo"
+    source.mkdir()
+    inputs = {
+        "root": str(tmp_path / "state"),
+        "cwd": str(source),
+        "workspace_id": "workspace_safe",
+    }
+    inputs[field_name] = bad_value
+
+    with pytest.raises(ValueError, match=field_name):
+        _runner().run_capability("workspace.materialize", inputs=inputs)
+
+
+def test_workspace_materialize_plan_stops_when_required_inputs_are_missing():
+    plan = _runner().plan_capability_run(
+        "workspace.materialize",
+        inputs={"cwd": "/tmp/project"},
+    )
+
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_local"
+    assert plan["missing_inputs"] == ["root", "workspace_id"]
     assert plan["scenario"] is None
 
 

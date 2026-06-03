@@ -62,9 +62,11 @@ from .supervisor import (
 from .workspace import (
     WORKSPACE_ISOLATED_RW_CAPABILITY,
     WORKSPACE_LEASE_CREATE_CAPABILITY,
+    WORKSPACE_MATERIALIZE_CAPABILITY,
     is_workspace_capability,
     run_workspace_isolated_rw,
     run_workspace_lease_create,
+    run_workspace_materialize,
     validate_workspace_inputs,
 )
 from ..demo import run_demo
@@ -369,6 +371,8 @@ class CapabilityRunner:
             return run_workspace_isolated_rw(inputs=input_mapping)
         if capability_id == WORKSPACE_LEASE_CREATE_CAPABILITY:
             return run_workspace_lease_create(inputs=input_mapping)
+        if capability_id == WORKSPACE_MATERIALIZE_CAPABILITY:
+            return run_workspace_materialize(inputs=input_mapping)
 
         try:
             scenario = _CAPABILITY_SCENARIOS[capability_id]
@@ -494,6 +498,8 @@ def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
         return "deterministic_preview"
     if is_code_access_capability(str(capability.get("capability_id", ""))):
         return "deterministic_readonly"
+    if capability.get("capability_id") == WORKSPACE_MATERIALIZE_CAPABILITY:
+        return "deterministic_local"
     if is_workspace_capability(str(capability.get("capability_id", ""))):
         return "deterministic_proposal"
     return "deferred"
