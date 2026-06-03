@@ -169,7 +169,7 @@ def _conversation_messages(
         {
             "role": "system",
             "content": render_json_prompt_template(
-                "desktop_chat",
+                "supervisor_conversation_loop",
                 {"capacity_manifest": context["capacity_manifest"]},
             ),
         },
@@ -177,12 +177,10 @@ def _conversation_messages(
     if observations:
         messages.append(
             {
-                "role": "system",
-                "content": "capacity_observation:\n"
-                + json.dumps(
+                "role": "user",
+                "content": _json_context_message(
+                    "capacity_observation",
                     {"kind": "capacity_observations", "items": observations},
-                    ensure_ascii=False,
-                    sort_keys=True,
                 ),
             }
         )
@@ -206,6 +204,14 @@ def _history_messages(history: list[dict[str, str]] | None) -> list[dict[str, st
         if stripped:
             clean.append({"role": role, "content": stripped})
     return compact_desktop_chat_history_messages(clean)
+
+
+def _json_context_message(label: str, value: dict[str, Any]) -> str:
+    return f"{label}:\n" + json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+    )
 
 
 def _generate_with_timeout(

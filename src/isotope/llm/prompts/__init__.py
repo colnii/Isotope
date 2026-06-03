@@ -15,6 +15,7 @@ SYSTEM_PROMPT_NAMES = (
     "goal_planning",
     "goal_planning_repair",
     "product_chat",
+    "supervisor_conversation_loop",
     "supervisor_llm_action",
     "supervisor_llm_summary",
     "workbench_ask",

@@ -232,8 +232,8 @@ def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
 
     messages = provider.calls[0]["messages"]
     system_prompt = messages[0]["content"]
-    assert "产品内 AI 助手" in system_prompt
-    assert "正在开发和调试 Isotope" in system_prompt
+    assert "产品对话决策层" in system_prompt
+    assert "只输出一个低敏 JSON object" in system_prompt
     assert "capacity_manifest" in system_prompt
     assert "supervisor_context" not in system_prompt
     assert "desktop_snapshot" not in system_prompt

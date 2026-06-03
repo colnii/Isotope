@@ -61,6 +61,9 @@ def test_conversation_loop_accepts_plain_text_as_direct_answer(tmp_path) -> None
     assert messages[-1] == {"role": "user", "content": "你好"}
     rendered = json.dumps(messages, ensure_ascii=False)
     assert "capacity_manifest" in rendered
+    assert "direct_answer" in rendered
+    assert "call_capability" in rendered
+    assert "report_capability_gap" in rendered
     assert "raw_response" not in rendered
 
 
