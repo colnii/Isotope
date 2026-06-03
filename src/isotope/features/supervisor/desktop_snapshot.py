@@ -8,6 +8,8 @@ from typing import Any
 
 from isotope.features.supervisor.state.projection import build_supervisor_state_snapshot
 from isotope.platform.ids import new_id
+from isotope.platform.state.event_store import FileEventStore
+from isotope.platform.state.projector import RunProjector
 
 
 def build_desktop_snapshot(*, state_root: Path | str) -> dict[str, Any]:
@@ -25,7 +27,10 @@ def build_desktop_snapshot(*, state_root: Path | str) -> dict[str, Any]:
         for index, goal in enumerate(active_goals)
     ]
     active_goal = _goal_summary(active_goals[0]) if active_goals else None
-    approvals = [_approval_summary(decision) for decision in active_decisions]
+    approvals = [
+        *[_approval_summary(decision) for decision in active_decisions],
+        *_runtime_pending_approval_summaries(root),
+    ]
 
     snapshot = {
         "schemaVersion": 1,
@@ -179,6 +184,72 @@ def _approval_summary(decision: dict[str, Any]) -> dict[str, Any]:
     })
 
 
+def _runtime_pending_approval_summaries(root: Path) -> list[dict[str, Any]]:
+    runs_root = root / "runs"
+    if not runs_root.exists():
+        return []
+    event_store = FileEventStore(root)
+    projector = RunProjector()
+    approvals: list[dict[str, Any]] = []
+    for event_path in sorted(runs_root.glob("*/events.jsonl")):
+        run_id = event_path.parent.name
+        state = projector.rebuild(run_id, event_store)
+        for approval in state.approvals.values():
+            if approval.get("status") != "pending":
+                continue
+            approvals.append(_runtime_approval_summary(approval))
+    return approvals
+
+
+def _runtime_approval_summary(approval: dict[str, Any]) -> dict[str, Any]:
+    approval_id = str(approval["approval_id"])
+    requested_summary = _low_sensitive_mapping(
+        approval.get("requested_action_summary"),
+    )
+    title = _runtime_approval_title(requested_summary)
+    source_ref = {"kind": "approval", "id": approval_id, "label": title}
+    return _omit_none({
+        "id": approval_id,
+        "title": title,
+        "status": "pending",
+        "riskLevel": "medium",
+        "runId": approval.get("run_id"),
+        "proposalId": approval.get("proposal_id"),
+        "decisionId": approval.get("decision_id"),
+        "reasonCodes": list(approval.get("reason_codes", [])),
+        "requestedActionSummary": requested_summary,
+        "source": {
+            "kind": "derived",
+            "label": "runtime_approval_request",
+            "sourceRef": source_ref,
+        },
+    })
+
+
+def _runtime_approval_title(requested_summary: dict[str, Any] | None) -> str:
+    tool = _summary_string(requested_summary, "tool")
+    if tool == "terminal_exec":
+        command = _summary_string(requested_summary, "terminal_command")
+        if command:
+            return f"需要批准 terminal_exec: {command}"
+        return "需要批准 terminal_exec"
+    if tool:
+        return f"需要批准 {tool}"
+    action_type = _summary_string(requested_summary, "action_type")
+    if action_type:
+        return f"需要批准 {action_type}"
+    return "需要批准运行时操作"
+
+
+def _summary_string(summary: dict[str, Any] | None, key: str) -> str | None:
+    if summary is None:
+        return None
+    value = summary.get(key)
+    if not isinstance(value, str) or not value:
+        return None
+    return _low_sensitive_preview(value)
+
+
 def _goal_status(goal: dict[str, Any]) -> str:
     status = goal.get("last_status")
     if status == "needs_user":
@@ -196,6 +267,32 @@ def _low_sensitive_preview(value: object) -> str | None:
     if any(marker in lowered for marker in ("api_key", "api-key", "secret", "token=", "sk-")):
         return None
     return text
+
+
+def _low_sensitive_mapping(value: object) -> dict[str, Any] | None:
+    if not isinstance(value, dict):
+        return None
+    sanitized: dict[str, Any] = {}
+    for key, nested in value.items():
+        if not isinstance(key, str):
+            continue
+        clean = _low_sensitive_value(nested)
+        if clean is not None:
+            sanitized[key] = clean
+    return sanitized
+
+
+def _low_sensitive_value(value: object) -> Any:
+    if isinstance(value, str):
+        return _low_sensitive_preview(value)
+    if isinstance(value, bool) or isinstance(value, int) or isinstance(value, float):
+        return value
+    if isinstance(value, list):
+        sanitized = [_low_sensitive_value(item) for item in value]
+        return [item for item in sanitized if item is not None]
+    if isinstance(value, dict):
+        return _low_sensitive_mapping(value)
+    return None
 
 
 def _omit_none(data: dict[str, Any]) -> dict[str, Any]:

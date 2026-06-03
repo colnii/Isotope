@@ -4,6 +4,7 @@ import http.client
 import json
 import threading
 
+import isotope.runtime.in_process as runtime
 from isotope.features.supervisor.desktop_snapshot import (
     _low_sensitive_preview,
     build_desktop_snapshot,
@@ -14,6 +15,15 @@ from isotope.features.supervisor.planner.goal_queue import (
     record_supervisor_goal_status,
 )
 from isotope.features.supervisor.web import create_dashboard_server
+
+
+def _terminal_intent(argv: list[str]) -> dict:
+    return {
+        "action": "call_tool",
+        "tool": "terminal_exec",
+        "argv": argv,
+        "summary": "terminal command",
+    }
 
 
 def test_desktop_snapshot_empty_root_uses_contract_shape(tmp_path):
@@ -146,6 +156,34 @@ def test_desktop_snapshot_maps_active_decision_to_approval_summary(tmp_path):
     ]
 
 
+def test_desktop_snapshot_includes_runtime_pending_approval_without_command_leak(tmp_path):
+    api = runtime.InProcessServer(tmp_path)
+    session = api.create_session()
+    run = api.create_run(session["session_id"], goal="approve terminal command")
+
+    pending = api.submit_action(
+        run["run_id"],
+        _terminal_intent(["bash", "-lc", "printf SHOULD_NOT_LEAK"]),
+        requires_approval=True,
+    )
+
+    snapshot = build_desktop_snapshot(state_root=tmp_path)
+
+    assert snapshot["counts"]["approvals"] == 1
+    assert snapshot["counts"]["needsAttention"] == 1
+    approval = snapshot["approvals"][0]
+    assert approval["id"] == pending["approval_id"]
+    assert approval["runId"] == run["run_id"]
+    assert approval["proposalId"] == pending["proposal_id"]
+    assert approval["decisionId"] == pending["decision_id"]
+    assert approval["status"] == "pending"
+    assert approval["title"] == "需要批准 terminal_exec: bash"
+    assert approval["source"]["label"] == "runtime_approval_request"
+    assert approval["requestedActionSummary"]["tool"] == "terminal_exec"
+    assert approval["requestedActionSummary"]["terminal_command"] == "bash"
+    assert "SHOULD_NOT_LEAK" not in json.dumps(snapshot, ensure_ascii=False)
+
+
 def test_low_sensitive_preview_guard_rejects_secrets_and_long_content():
     assert _low_sensitive_preview("Short status summary.") == "Short status summary."
     assert _low_sensitive_preview("token=sk-test-secret") is None
@@ -212,3 +250,48 @@ def test_desktop_snapshot_endpoint_allows_browser_preflight(tmp_path):
     assert response.status == 204
     assert response.getheader("access-control-allow-origin") == "*"
     assert "GET" in response.getheader("access-control-allow-methods")
+
+
+def test_desktop_approval_resolve_endpoint_approves_runtime_pending_action(tmp_path):
+    api = runtime.InProcessServer(tmp_path)
+    session = api.create_session()
+    run = api.create_run(session["session_id"], goal="approve from desktop")
+    pending = api.submit_action(
+        run["run_id"],
+        _terminal_intent(["bash", "-lc", "printf desktop-approved"]),
+        requires_approval=True,
+    )
+    server = create_dashboard_server(
+        codex_home=tmp_path,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        conn.request(
+            "POST",
+            f"/desktop/approvals/{pending['approval_id']}/resolve",
+            body=json.dumps({"resolution": "approved", "reason": "desktop operator approved"}),
+            headers={"content-type": "application/json"},
+        )
+        response = conn.getresponse()
+        payload = json.loads(response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert response.status == 200
+    assert payload["status"] == "ok"
+    assert payload["approvalId"] == pending["approval_id"]
+    assert payload["resolution"] == "approved"
+    assert payload["runStatus"] == "completed"
+    event_types = [event.event_type for event in api.get_events(run["run_id"])]
+    assert event_types.index("approval.resolved") < event_types.index("action.started")
+    assert payload["snapshot"]["counts"]["approvals"] == 0

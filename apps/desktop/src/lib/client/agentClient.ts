@@ -1,6 +1,16 @@
 import type { IsotopeSnapshot } from '../contracts/isotope';
 import { mockSnapshot } from './mockData';
 
+export type ApprovalResolution = 'approved' | 'denied';
+
+export type DesktopApprovalResolutionResult = {
+  status: 'ok';
+  approvalId: string;
+  resolution: ApprovalResolution;
+  runStatus?: string;
+  snapshot: IsotopeSnapshot;
+};
+
 export type DesktopChatAnswer = {
   question: string;
   answer: string;
@@ -40,6 +50,11 @@ export type DesktopChatHandlers = {
 
 export type AgentClient = {
   loadSnapshot(): Promise<IsotopeSnapshot>;
+  resolveApproval(
+    approvalId: string,
+    resolution: ApprovalResolution,
+    reason?: string
+  ): Promise<DesktopApprovalResolutionResult>;
   askDesktopQuestion(question: string, handlers?: DesktopChatHandlers): Promise<DesktopChatAnswer>;
 };
 
@@ -57,6 +72,32 @@ export function createAgentClient(baseUrl: string | null = null): AgentClient {
       } catch {
         return mockSnapshot;
       }
+    },
+    async resolveApproval(approvalId, resolution, reason) {
+      if (!apiBaseUrl) {
+        throw new Error('审批操作需要配置后端 URL');
+      }
+      const cleanApprovalId = approvalId.trim();
+      if (!cleanApprovalId) {
+        throw new Error('审批 ID 不能为空');
+      }
+      const response = await fetch(
+        `${apiBaseUrl}/desktop/approvals/${encodeURIComponent(cleanApprovalId)}/resolve`,
+        {
+          method: 'POST',
+          cache: 'no-store',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            resolution,
+            reason: reason?.trim() || defaultApprovalReason(resolution),
+            resolver: 'desktop_frontend'
+          })
+        }
+      );
+      if (!response.ok) {
+        throw new Error(await responseErrorMessage(response));
+      }
+      return (await response.json()) as DesktopApprovalResolutionResult;
     },
     async askDesktopQuestion(question, handlers = {}) {
       if (!apiBaseUrl) {
@@ -84,6 +125,10 @@ export function createAgentClient(baseUrl: string | null = null): AgentClient {
       return readDesktopChatStream(response.body, cleanQuestion, handlers);
     }
   };
+}
+
+function defaultApprovalReason(resolution: ApprovalResolution): string {
+  return resolution === 'approved' ? 'desktop operator approved' : 'desktop operator denied';
 }
 
 function normalizeChatHistory(history: DesktopChatHistoryMessage[] = []): DesktopChatHistoryMessage[] {

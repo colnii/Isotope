@@ -91,6 +91,11 @@ export type ApprovalSummary = {
   title: string;
   status: 'pending' | 'resolved' | 'expired';
   riskLevel?: 'low' | 'medium' | 'high';
+  runId?: string;
+  proposalId?: string;
+  decisionId?: string;
+  reasonCodes?: string[];
+  requestedActionSummary?: Record<string, unknown>;
   source: DataSourceInfo;
 };
 

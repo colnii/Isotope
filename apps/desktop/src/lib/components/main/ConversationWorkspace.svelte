@@ -1,5 +1,7 @@
 <script lang="ts">
   import CommandComposer from '../common/CommandComposer.svelte';
+  import type { ApprovalResolution } from '../../client/agentClient';
+  import type { ApprovalSummary } from '../../contracts/isotope';
   import type { DesktopChatMessage } from '../../stores/appState';
   import CapacityCallCard from './CapacityCallCard.svelte';
 
@@ -11,10 +13,14 @@
     emptyTitle,
     emptyBody,
     composerPlaceholder,
+    approvals = [],
+    resolvingApprovalId = null,
+    approvalError = null,
     chatMessages = [],
     chatError = null,
     isAsking = false,
-    onAsk
+    onAsk,
+    onResolveApproval
   } = $props<{
     eyebrow: string;
     title: string;
@@ -23,11 +29,33 @@
     emptyTitle: string;
     emptyBody: string;
     composerPlaceholder: string;
+    approvals?: ApprovalSummary[];
+    resolvingApprovalId?: string | null;
+    approvalError?: string | null;
     chatMessages?: DesktopChatMessage[];
     chatError?: string | null;
     isAsking?: boolean;
     onAsk: (question: string) => void;
+    onResolveApproval: (approvalId: string, resolution: ApprovalResolution) => void;
   }>();
+
+  function approvalSourceLabel(approval: ApprovalSummary): string {
+    if (approval.source.label === 'runtime_approval_request') return '运行时审批';
+    if (approval.source.label === 'supervisor_decision_request') return 'Supervisor 审批';
+    return approval.source.label;
+  }
+
+  function approvalDetail(approval: ApprovalSummary): string {
+    const summary = approval.requestedActionSummary ?? {};
+    const tool = typeof summary.tool === 'string' ? summary.tool : null;
+    const command = typeof summary.terminal_command === 'string' ? summary.terminal_command : null;
+    const argvCount = typeof summary.argv_count === 'number' ? summary.argv_count : null;
+    if (tool === 'terminal_exec' && command) {
+      return argvCount === null ? command : `${command} / argv ${argvCount}`;
+    }
+    if (tool) return tool;
+    return approval.reasonCodes?.join(', ') || '等待人工确认';
+  }
 </script>
 
 <section class="flex min-h-screen min-w-0 flex-col bg-white" aria-label="Conversation workspace">
@@ -46,6 +74,51 @@
   </header>
 
   <div class="min-h-0 flex flex-1 flex-col overflow-y-auto px-7 py-6" aria-live="polite">
+    {#if approvals.length}
+      <div class="mx-auto mb-5 w-full max-w-3xl border border-isotope-warning/50 bg-isotope-warning/10">
+        <div class="flex items-center justify-between gap-3 border-b border-isotope-warning/30 px-4 py-3">
+          <div class="min-w-0">
+            <div class="text-xs font-semibold uppercase text-isotope-warning">Pending approval</div>
+            <div class="mt-1 text-sm font-semibold text-isotope-text">有 {approvals.length} 个操作等待批准</div>
+          </div>
+        </div>
+        <div class="divide-y divide-isotope-warning/20">
+          {#each approvals as approval (approval.id)}
+            <article class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="truncate text-sm font-semibold text-isotope-text">{approval.title}</span>
+                  <span class="border border-isotope-warning/40 bg-white px-2 py-0.5 text-[11px] uppercase text-isotope-warning">
+                    {approvalSourceLabel(approval)}
+                  </span>
+                </div>
+                <div class="mt-1 text-xs text-isotope-muted">
+                  {approvalDetail(approval)}
+                </div>
+              </div>
+              <div class="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  class="border border-isotope-line bg-white px-3 py-1.5 text-xs font-semibold text-isotope-muted disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={resolvingApprovalId === approval.id}
+                  onclick={() => onResolveApproval(approval.id, 'denied')}
+                >
+                  拒绝
+                </button>
+                <button
+                  type="button"
+                  class="border border-isotope-running bg-isotope-running px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={resolvingApprovalId === approval.id}
+                  onclick={() => onResolveApproval(approval.id, 'approved')}
+                >
+                  {resolvingApprovalId === approval.id ? '处理中' : '批准'}
+                </button>
+              </div>
+            </article>
+          {/each}
+        </div>
+      </div>
+    {/if}
     {#if chatMessages.length === 0}
       <div class="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-4">
         <article class="flex items-start gap-3">
@@ -119,6 +192,11 @@
     {#if chatError}
       <div class="mb-3 border border-isotope-error/40 bg-white px-3 py-2 text-xs text-isotope-error" role="alert">
         {chatError}
+      </div>
+    {/if}
+    {#if approvalError}
+      <div class="mb-3 border border-isotope-error/40 bg-white px-3 py-2 text-xs text-isotope-error" role="alert">
+        {approvalError}
       </div>
     {/if}
     <CommandComposer placeholder={composerPlaceholder} disabled={isAsking} onSubmit={onAsk} />

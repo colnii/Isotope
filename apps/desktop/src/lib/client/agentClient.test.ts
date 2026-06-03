@@ -85,6 +85,42 @@ describe('agentClient', () => {
     expect(snapshot.source.expectedRealContract).toContain('IsotopeSnapshot');
   });
 
+  test('resolves desktop approval through configured backend', async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            status: 'ok',
+            approvalId: 'approval-1',
+            resolution: 'approved',
+            runStatus: 'completed',
+            snapshot: realSnapshot
+          }),
+          { status: 200 }
+        )
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await createAgentClient('http://127.0.0.1:8765').resolveApproval(
+      'approval-1',
+      'approved',
+      'operator approved from desktop'
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:8765/desktop/approvals/approval-1/resolve', {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        resolution: 'approved',
+        reason: 'operator approved from desktop',
+        resolver: 'desktop_frontend'
+      })
+    });
+    expect(result.status).toBe('ok');
+    expect(result.snapshot.counts.approvals).toBe(1);
+  });
+
   test('streams desktop chat answer from the configured backend', async () => {
     const stream = new ReadableStream({
       start(controller) {

@@ -94,6 +94,13 @@ describe('appState', () => {
     const state = createAppState({
       agentClient: {
         loadSnapshot: async () => realSnapshot(),
+        resolveApproval: async () => ({
+          status: 'ok',
+          approvalId: 'decision-1',
+          resolution: 'approved',
+          runStatus: 'completed',
+          snapshot: realSnapshot()
+        }),
         askDesktopQuestion: async () => ({ question: '', answer: '' })
       }
     });
@@ -110,6 +117,13 @@ describe('appState', () => {
     const state = createAppState({
       agentClient: {
         loadSnapshot: async () => realSnapshot(),
+        resolveApproval: async () => ({
+          status: 'ok',
+          approvalId: 'decision-1',
+          resolution: 'approved',
+          runStatus: 'completed',
+          snapshot: realSnapshot()
+        }),
         askDesktopQuestion: async () => ({ question: '', answer: '' })
       }
     });
@@ -126,6 +140,13 @@ describe('appState', () => {
     const state = createAppState({
       agentClient: {
         loadSnapshot: async () => realSnapshot(),
+        resolveApproval: async () => ({
+          status: 'ok',
+          approvalId: 'decision-1',
+          resolution: 'approved',
+          runStatus: 'completed',
+          snapshot: realSnapshot()
+        }),
         askDesktopQuestion: async (question, handlers) => {
           handlers?.onCapacityStart?.({
             id: 'capacity_memory_query',
@@ -205,6 +226,13 @@ describe('appState', () => {
     const state = createAppState({
       agentClient: {
         loadSnapshot: async () => realSnapshot(),
+        resolveApproval: async () => ({
+          status: 'ok',
+          approvalId: 'decision-1',
+          resolution: 'approved',
+          runStatus: 'completed',
+          snapshot: realSnapshot()
+        }),
         askDesktopQuestion: async (question, handlers) => {
           calls.push({
             question,
@@ -237,5 +265,53 @@ describe('appState', () => {
         ]
       }
     ]);
+  });
+
+  test('resolves approval and refreshes snapshot from backend response', async () => {
+    const before = realSnapshot();
+    const after: IsotopeSnapshot = {
+      ...realSnapshot(),
+      snapshotId: 'desktop_snapshot_after_approval',
+      counts: {
+        runningAgents: 0,
+        needsAttention: 0,
+        approvals: 0,
+        artifacts: 0,
+        errors: 0
+      },
+      approvals: []
+    };
+    const resolved: Array<{ approvalId: string; resolution: string; reason?: string }> = [];
+    const state = createAppState({
+      agentClient: {
+        loadSnapshot: async () => before,
+        resolveApproval: async (approvalId, resolution, reason) => {
+          resolved.push({ approvalId, resolution, reason });
+          return {
+            status: 'ok',
+            approvalId,
+            resolution,
+            runStatus: 'completed',
+            snapshot: after
+          };
+        },
+        askDesktopQuestion: async () => ({ question: '', answer: '' })
+      }
+    });
+
+    await state.initialize();
+    await state.resolveApproval('decision-1', 'approved');
+
+    expect(resolved).toEqual([
+      {
+        approvalId: 'decision-1',
+        resolution: 'approved',
+        reason: 'desktop operator approved'
+      }
+    ]);
+    expect(get(state.snapshot)?.snapshotId).toBe('desktop_snapshot_after_approval');
+    expect(get(state.snapshot)?.approvals).toEqual([]);
+    expect(get(state.isResolvingApproval)).toBe(null);
+    expect(get(state.approvalError)).toBe(null);
   });
 });

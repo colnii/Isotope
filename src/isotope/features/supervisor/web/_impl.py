@@ -9,7 +9,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 from ..notifications.bell_events import default_bell_events_path, read_latest_bell_events
 from ..notifications.context import read_recent_context_results
@@ -19,6 +19,7 @@ from ..desktop_chat import (
 )
 from ..desktop_snapshot import build_desktop_snapshot
 from isotope.llm.capacity_calling import CapacityCallingProvider
+from isotope.runtime.in_process import InProcessServer
 from ..dashboard.html import dashboard_page_html
 from ..planner.decision_requests import (
     DEFAULT_DECISION_TIMEOUT_SECONDS,
@@ -123,6 +124,31 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
 
     def desktop_snapshot_payload(self) -> dict[str, Any]:
         return build_desktop_snapshot(state_root=self.codex_home)
+
+    def resolve_desktop_approval_payload(
+        self,
+        approval_id: str,
+        *,
+        resolution: str,
+        reason: str,
+        resolver: str,
+    ) -> dict[str, Any]:
+        result = InProcessServer(self.codex_home).resolve_approval(
+            approval_id,
+            {
+                "resolution": resolution,
+                "reason": reason,
+                "resolver": resolver,
+            },
+        )
+        run_state = result.get("run_state")
+        return {
+            "status": "ok",
+            "approvalId": approval_id,
+            "resolution": resolution,
+            "runStatus": getattr(run_state, "status", str(result.get("status", "unknown"))),
+            "snapshot": self.desktop_snapshot_payload(),
+        }
 
     def desktop_chat_provider_or_default(self) -> DesktopChatProvider:
         if self.desktop_chat_provider is not None:
@@ -330,6 +356,10 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/desktop/chat":
             self._send_desktop_chat()
             return
+        approval_id = _desktop_approval_resolve_id(path)
+        if approval_id is not None:
+            self._send_desktop_approval_resolution(approval_id)
+            return
         if path == "/decision/answer":
             self._send_decision_answer()
             return
@@ -486,6 +516,36 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
                 "model": model_name,
             },
         )
+
+    def _send_desktop_approval_resolution(self, approval_id: str) -> None:
+        try:
+            payload = self._read_json_body()
+            resolution = _required_string(payload.get("resolution"), "resolution")
+            if resolution not in {"approved", "denied"}:
+                raise ValueError("resolution must be approved or denied")
+            reason = _optional_string(payload.get("reason")) or (
+                "desktop operator approved" if resolution == "approved" else "desktop operator denied"
+            )
+            resolver = _optional_string(payload.get("resolver")) or "desktop_frontend"
+            result = self.server.resolve_desktop_approval_payload(
+                approval_id,
+                resolution=resolution,
+                reason=reason,
+                resolver=resolver,
+            )
+        except ValueError as exc:
+            self._send_json(
+                {
+                    "status": "error",
+                    "error": {
+                        "code": "codex_supervisor_web_error",
+                        "message": str(exc),
+                    },
+                },
+                status_code=400,
+            )
+            return
+        self._send_json(result)
 
     def _send_goal_plan(self) -> None:
         try:
@@ -693,6 +753,17 @@ def _required_string(value: object, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{field} must not be empty")
     return value.strip()
+
+
+def _desktop_approval_resolve_id(path: str) -> str | None:
+    prefix = "/desktop/approvals/"
+    suffix = "/resolve"
+    if not path.startswith(prefix) or not path.endswith(suffix):
+        return None
+    approval_id = unquote(path[len(prefix):-len(suffix)])
+    if "/" in approval_id or not approval_id:
+        return None
+    return approval_id
 
 
 def _env_number(name: str, *, default: float) -> float:

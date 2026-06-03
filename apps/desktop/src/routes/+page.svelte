@@ -20,7 +20,9 @@
     selectedActivity,
     chatMessages,
     isAskingDesktop,
-    chatError
+    chatError,
+    isResolvingApproval,
+    approvalError
   } = appState;
 
   let loadError = $state<string | null>(null);
@@ -98,7 +100,10 @@
         chatMessages={$chatMessages}
         chatError={$chatError}
         isAskingDesktop={$isAskingDesktop}
+        resolvingApprovalId={$isResolvingApproval}
+        approvalError={$approvalError}
         onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
+        onResolveApproval={(approvalId, resolution) => void appState.resolveApproval(approvalId, resolution)}
       />
     {:else}
       <div class="border border-isotope-line bg-white p-5 text-sm text-isotope-muted">
@@ -113,7 +118,10 @@
         chatMessages={$chatMessages}
         chatError={$chatError}
         isAskingDesktop={$isAskingDesktop}
+        resolvingApprovalId={$isResolvingApproval}
+        approvalError={$approvalError}
         onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
+        onResolveApproval={(approvalId, resolution) => void appState.resolveApproval(approvalId, resolution)}
       />
       {#if miniOpen}
         <MiniWindow

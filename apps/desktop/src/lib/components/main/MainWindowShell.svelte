@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { ActivityNode, IsotopeSnapshot } from '../../contracts/isotope';
+  import type { ApprovalSummary, ActivityNode, IsotopeSnapshot } from '../../contracts/isotope';
+  import type { ApprovalResolution } from '../../client/agentClient';
   import type { DesktopChatMessage } from '../../stores/appState';
   import { buildMainWindowProductView } from '../../view/mainWindowProductView';
   import ConversationWorkspace from './ConversationWorkspace.svelte';
@@ -10,17 +11,26 @@
     chatMessages = [],
     chatError = null,
     isAskingDesktop = false,
-    onAskDesktop
+    resolvingApprovalId = null,
+    approvalError = null,
+    onAskDesktop,
+    onResolveApproval
   } = $props<{
     snapshot: IsotopeSnapshot;
     selectedActivity: ActivityNode | null;
     chatMessages?: DesktopChatMessage[];
     chatError?: string | null;
     isAskingDesktop?: boolean;
+    resolvingApprovalId?: string | null;
+    approvalError?: string | null;
     onAskDesktop: (question: string) => void;
+    onResolveApproval: (approvalId: string, resolution: ApprovalResolution) => void;
   }>();
 
   const view = $derived(buildMainWindowProductView(snapshot, selectedActivity));
+  const pendingApprovals = $derived.by((): ApprovalSummary[] =>
+    snapshot.approvals.filter((approval: ApprovalSummary) => approval.status === 'pending')
+  );
 </script>
 
 <section
@@ -35,9 +45,13 @@
     emptyTitle={view.emptyChatTitle}
     emptyBody={view.emptyChatBody}
     composerPlaceholder={view.composerPlaceholder}
+    approvals={pendingApprovals}
+    {resolvingApprovalId}
+    {approvalError}
     {chatMessages}
     {chatError}
     isAsking={isAskingDesktop}
     onAsk={onAskDesktop}
+    onResolveApproval={onResolveApproval}
   />
 </section>
