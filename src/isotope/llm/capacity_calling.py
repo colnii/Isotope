@@ -142,6 +142,11 @@ def select_capacity_call(
     arguments = payload.get("arguments")
     if not isinstance(arguments, dict):
         raise _invalid_response(provider, "capacity arguments must be a JSON object")
+    arguments = _normalize_legacy_capacity_arguments(
+        arguments,
+        capacity=offered[capacity_id],
+        provider=provider,
+    )
     _validate_argument_keys(arguments, capacity=offered[capacity_id], provider=provider)
     confidence = _payload_confidence(payload, provider=provider)
     rationale = _payload_optional_string(payload, "rationale")
@@ -279,6 +284,26 @@ def _validate_argument_keys(
             + ", ".join(unexpected),
         )
     _validate_argument_types(arguments, properties=properties, provider=provider)
+
+
+def _normalize_legacy_capacity_arguments(
+    arguments: Mapping[str, Any],
+    *,
+    capacity: Mapping[str, Any],
+    provider: CapacityCallingProvider,
+) -> dict[str, Any]:
+    properties = contract_properties(capacity.get("input_contract", {}))
+    normalized = dict(arguments)
+    if "state_root" not in properties or "codex_home" not in normalized:
+        return normalized
+    legacy_value = normalized.pop("codex_home")
+    if "state_root" in normalized and normalized["state_root"] != legacy_value:
+        raise _invalid_response(
+            provider,
+            "capacity arguments state_root and codex_home must refer to the same directory",
+        )
+    normalized["state_root"] = legacy_value
+    return normalized
 
 
 def _validate_argument_types(

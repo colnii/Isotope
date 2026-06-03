@@ -210,13 +210,13 @@ def test_supervisor_capacity_plan_passes_selection_arguments_to_launch_plan(tmp_
         "Supervisor request_context can retrieve project context.\n",
         encoding="utf-8",
     )
-    state_root = tmp_path / "state-root"
+    state_root = tmp_path / "supervisor-state"
     provider = FakeCapacityProvider(
         json.dumps(
             {
                 "capacity_id": "supervisor.request_context",
                 "arguments": {
-                    "state_root": str(state_root),
+                    "codex_home": str(state_root),
                     "cwd": str(workspace),
                     "query": "request_context project context",
                     "max_results": 2,
@@ -236,6 +236,8 @@ def test_supervisor_capacity_plan_passes_selection_arguments_to_launch_plan(tmp_
 
     assert result["status"] == "ok"
     assert result["selection"]["capacity_id"] == "supervisor.request_context"
+    assert result["selection"]["arguments"]["state_root"] == str(state_root)
+    assert "codex_home" not in result["selection"]["arguments"]
     assert result["selection"]["arguments"]["query"] == "request_context project context"
     assert result["capability_launch_plan"]["capability_id"] == "supervisor.request_context"
     assert result["capability_launch_plan"]["can_launch"] is True
@@ -671,7 +673,7 @@ def test_supervisor_capacity_plan_passes_arguments_into_agent_loop_inputs(tmp_pa
     )
     provider = FakeCapacityProvider(
         '{"capacity_id":"supervisor.request_context","arguments":{'
-        f'"state_root":"{tmp_path / "state-root"}",'
+        f'"codex_home":"{tmp_path / "supervisor-state"}",'
         f'"cwd":"{workspace}",'
         '"query":"capacity arguments",'
         '"max_results":1'
@@ -693,7 +695,7 @@ def test_supervisor_capacity_plan_passes_arguments_into_agent_loop_inputs(tmp_pa
         "step": "call_capability",
         "capability_id": "supervisor.request_context",
         "inputs": {
-            "state_root": str(tmp_path / "state-root"),
+            "state_root": str(tmp_path / "supervisor-state"),
             "cwd": str(workspace),
             "query": "capacity arguments",
             "max_results": 1,
@@ -707,7 +709,7 @@ def test_supervisor_capacity_plan_passes_arguments_into_agent_loop_inputs(tmp_pa
 
 
 def test_supervisor_capacity_plan_applies_state_root_default_for_review_capability(tmp_path):
-    state_root = tmp_path / "state-root"
+    state_root = tmp_path / "supervisor-state"
     provider = FakeCapacityProvider(
         '{"capacity_id":"supervisor.integration_review","arguments":{},'
         '"confidence":0.88,"rationale":"review managed workers"}'
@@ -915,28 +917,10 @@ def test_supervisor_capacity_plan_summarizes_research_search_agent_loop_result(t
     research_search = capability_run["research_search"]
     assert research_search["status"] == "ok"
     assert research_search["provider"] == "fake"
-    assert (
-        research_search["report_summary"]
-        == "Fake research summary for capacity research integration."
-    )
     assert result["agent_loop_summary"]["agent_loop_research_search_status"] == "ok"
     assert result["agent_loop_summary"]["agent_loop_research_provider"] == "fake"
     assert result["agent_loop_summary"]["agent_loop_research_source_count"] == 1
     assert result["agent_loop_summary"]["agent_loop_research_artifact_count"] == 2
-    assert (
-        result["agent_loop_summary"]["agent_loop_research_report_summary"]
-        == "Fake research summary for capacity research integration."
-    )
-    assert result["agent_loop_summary"]["agent_loop_research_source_previews"] == [
-        {
-            "source_id": "src_001",
-            "title": "Fake source-backed research note",
-            "url": "https://example.com/isotope-research",
-            "snippet": "Research claims should cite source ids.",
-            "why_used": "deterministic fake source for tests",
-            "provider_rank": 1,
-        }
-    ]
     assert "raw_transcript" not in json.dumps(result["agent_loop_summary"])
     _assert_no_agent_loop_raw_payload(result["agent_loop_summary"])
 

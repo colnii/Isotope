@@ -6371,7 +6371,7 @@ def test_codex_supervisor_llm_action_messages_include_capacity_decisions(tmp_pat
         "reason": "needs_input",
         "capacity_id": "supervisor.request_context",
         "can_execute_agent_loop": False,
-        "missing_inputs": ["codex_home", "cwd", "query"],
+        "missing_inputs": ["state_root", "cwd", "query"],
         "blocking_reasons": [],
     }
 
@@ -6631,7 +6631,7 @@ def test_codex_supervisor_generate_llm_action_decision_passes_capacity_decisions
         "reason": "needs_input",
         "capacity_id": "supervisor.request_context",
         "can_execute_agent_loop": False,
-        "missing_inputs": ["codex_home", "cwd", "query"],
+        "missing_inputs": ["state_root", "cwd", "query"],
         "blocking_reasons": [],
     }
 
