@@ -239,6 +239,73 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="workspace.isolated_rw",
+                    title="Isolated Writable Workspace",
+                    description=(
+                        "Build a low-sensitive proposal for a future isolated "
+                        "writable workspace without creating files or directories."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "workspace",
+                        "isolated",
+                        "writable",
+                        "native-coding",
+                        "path-safety",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["root", "cwd", "workspace_name"],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "description": "Runtime root for future workspace leases.",
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Source workspace directory to isolate.",
+                            },
+                            "workspace_name": {
+                                "type": "string",
+                                "description": "Stable human-readable workspace name.",
+                            },
+                            "allowed_paths": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Workspace-relative paths allowed for future writes.",
+                                "default": [],
+                            },
+                            "forbidden_paths": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Workspace-relative paths forbidden for future writes.",
+                                "default": [],
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "runner_kind",
+                            "workspace_proposal",
+                            "path_policy",
+                            "next_required_capabilities",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "proposal_only_no_filesystem_write",
+                        "path_traversal_rejected",
+                        "relative_paths_only",
+                        "no_workspace_materialization",
+                        "no_git_worktree_creation",
+                        "low_sensitive_summary_only",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="memory.query",
                     title="Memory Query",
                     description=(

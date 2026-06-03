@@ -289,7 +289,10 @@ def test_runner_runs_coding_task_preview_without_side_effects(tmp_path):
         "optional_vcs_adapter",
     ]
     assert result["preview"]["blocked_capabilities"] == [
-        "workspace.isolated_rw",
+        "workspace.lease_create",
+        "workspace.materialize",
+        "workspace.changed_files",
+        "workspace.release",
         "code.read",
         "code.search",
         "code.apply_patch",
@@ -357,6 +360,94 @@ def test_coding_task_preview_plan_is_launchable_with_required_inputs(tmp_path):
     assert plan["runner_kind"] == "deterministic_preview"
     assert plan["blocking_reasons"] == []
     assert "preview_only_no_workspace_write" in plan["safety_boundaries"]
+
+
+def test_runner_discovers_workspace_isolated_rw_from_default_catalog():
+    runner = _runner()
+
+    assert "workspace.isolated_rw" in _ids(runner.list_capabilities())
+    search = runner.search_capabilities(query="isolated writable workspace")
+
+    assert "workspace.isolated_rw" in _ids(search["capabilities"])
+    description = runner.describe_capability("workspace.isolated_rw")
+    assert description["input_contract"]["required"] == ["root", "cwd", "workspace_name"]
+    assert description["input_contract"]["properties"]["allowed_paths"]["type"] == "array"
+    assert "proposal_only_no_filesystem_write" in description["safety_boundaries"]
+    assert "path_traversal_rejected" in description["safety_boundaries"]
+
+
+def test_runner_runs_workspace_isolated_rw_proposal_without_creating_workspace(tmp_path):
+    source = tmp_path / "repo"
+    source.mkdir()
+    root = tmp_path / "state"
+
+    result = _runner().run_capability(
+        "workspace.isolated_rw",
+        inputs={
+            "root": str(root),
+            "cwd": str(source),
+            "workspace_name": "Native Coding Slice 2!",
+            "allowed_paths": ["src/isotope/capabilities", "tests/unit/capabilities"],
+            "forbidden_paths": ["src/isotope/features/supervisor"],
+        },
+    )
+
+    proposal = result["workspace_proposal"]
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "workspace.isolated_rw"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "deterministic_proposal"
+    assert proposal["mode"] == "isolated_rw"
+    assert proposal["execution_mode"] == "proposal_only"
+    assert proposal["workspace_id"] == "workspace_native_coding_slice_2"
+    assert proposal["cwd_status"] == "exists"
+    assert proposal["root_ref"] == "workspace://workspace_native_coding_slice_2/isolated_rw"
+    assert proposal["allowed_paths"] == [
+        "src/isotope/capabilities",
+        "tests/unit/capabilities",
+    ]
+    assert proposal["forbidden_paths"] == ["src/isotope/features/supervisor"]
+    assert proposal["next_required_capabilities"] == [
+        "workspace.lease_create",
+        "workspace.materialize",
+        "workspace.changed_files",
+        "workspace.release",
+    ]
+    assert not list(root.rglob("*"))
+
+
+@pytest.mark.parametrize(
+    ("field_name", "bad_value"),
+    [
+        ("allowed_paths", ["/tmp/outside"]),
+        ("allowed_paths", ["src/../secrets"]),
+        ("forbidden_paths", ["../outside"]),
+        ("forbidden_paths", "src"),
+    ],
+)
+def test_workspace_isolated_rw_rejects_unsafe_paths(tmp_path, field_name, bad_value):
+    inputs = {
+        "root": str(tmp_path / "state"),
+        "cwd": str(tmp_path),
+        "workspace_name": "safe-workspace",
+    }
+    inputs[field_name] = bad_value
+
+    with pytest.raises(ValueError, match=field_name):
+        _runner().run_capability("workspace.isolated_rw", inputs=inputs)
+
+
+def test_workspace_isolated_rw_plan_stops_when_required_inputs_are_missing():
+    plan = _runner().plan_capability_run(
+        "workspace.isolated_rw",
+        inputs={"cwd": "/tmp/project"},
+    )
+
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_proposal"
+    assert plan["missing_inputs"] == ["root", "workspace_name"]
+    assert plan["scenario"] is None
 
 
 def test_runner_status_mirrors_catalog_status_without_executing_capability():

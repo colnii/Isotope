@@ -51,6 +51,12 @@ from .supervisor import (
     run_supervisor_worker_review,
     validate_supervisor_readonly_inputs,
 )
+from .workspace import (
+    WORKSPACE_ISOLATED_RW_CAPABILITY,
+    is_workspace_capability,
+    run_workspace_isolated_rw,
+    validate_workspace_inputs,
+)
 from ..demo import run_demo
 from ..platform.schemas.input_contract import (
     contract_properties,
@@ -191,6 +197,11 @@ class CapabilityRunner:
             inputs=input_mapping,
             missing_inputs=missing_inputs,
         )
+        validate_workspace_inputs(
+            capability_id=capability_id,
+            inputs=input_mapping,
+            missing_inputs=missing_inputs,
+        )
         _validate_inputs_against_contract(capability, inputs=input_mapping)
         runner_kind = _runner_kind(capability, scenario=scenario)
         blocking_reasons: list[str] = []
@@ -216,6 +227,7 @@ class CapabilityRunner:
             and not is_screen_readonly_capability(capability_id)
             and not is_supervisor_readonly_capability(capability_id)
             and not is_coding_capability(capability_id)
+            and not is_workspace_capability(capability_id)
         ):
             launch_status = "not_allowlisted"
             blocking_reasons.append("not_allowlisted")
@@ -264,6 +276,7 @@ class CapabilityRunner:
             or is_screen_readonly_capability(capability_id)
             or is_supervisor_readonly_capability(capability_id)
             or is_coding_capability(capability_id)
+            or is_workspace_capability(capability_id)
         ):
             required_inputs = _required_inputs(capability)
             missing_inputs = _missing_inputs(required_inputs, input_mapping)
@@ -288,6 +301,11 @@ class CapabilityRunner:
                 missing_inputs=missing_inputs,
             )
             validate_coding_inputs(
+                capability_id=capability_id,
+                inputs=input_mapping,
+                missing_inputs=missing_inputs,
+            )
+            validate_workspace_inputs(
                 capability_id=capability_id,
                 inputs=input_mapping,
                 missing_inputs=missing_inputs,
@@ -321,6 +339,8 @@ class CapabilityRunner:
             return run_supervisor_worker_review(inputs=input_mapping)
         if capability_id == CODING_TASK_PREVIEW_CAPABILITY:
             return run_coding_task_preview(inputs=input_mapping)
+        if capability_id == WORKSPACE_ISOLATED_RW_CAPABILITY:
+            return run_workspace_isolated_rw(inputs=input_mapping)
 
         try:
             scenario = _CAPABILITY_SCENARIOS[capability_id]
@@ -444,6 +464,8 @@ def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
         return "deterministic_readonly"
     if is_coding_capability(str(capability.get("capability_id", ""))):
         return "deterministic_preview"
+    if is_workspace_capability(str(capability.get("capability_id", ""))):
+        return "deterministic_proposal"
     return "deferred"
 
 

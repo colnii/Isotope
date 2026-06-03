@@ -30,6 +30,13 @@ This objective spans multiple subsystems, so it must not be implemented as one b
 - Modify `src/isotope/capabilities/runner.py`: route planning and execution through the coding preview runner.
 - Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, launch plan, successful preview, and fail-closed input validation.
 
+## Slice 2 File Structure
+
+- Create `src/isotope/capabilities/workspace.py`: proposal-only isolated writable workspace contract with path-safety validation.
+- Modify `src/isotope/capabilities/catalog.py`: register `workspace.isolated_rw` in the default catalog.
+- Modify `src/isotope/capabilities/runner.py`: route planning and execution through the workspace proposal runner.
+- Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, successful proposal, required-input planning, and unsafe path rejection.
+
 ## Task 1: Register Coding Preview Capability
 
 **Files:**
@@ -275,3 +282,15 @@ git commit -m "feat(capabilities): add native coding preview contract"
 - Spec coverage: this plan covers only Slice 1 in implementation detail and preserves the broader series roadmap for later plans.
 - Placeholder scan: no implementation step depends on a TBD value.
 - Type consistency: `coding_task.preview`, `root`, `cwd`, `goal`, `allowed_paths`, `forbidden_paths`, and `verification_commands` are used consistently across tests, catalog, and runner.
+
+## Slice 2: Isolated Writable Workspace Proposal
+
+**Goal:** Register `workspace.isolated_rw` as the next native-coding substrate contract without claiming real workspace materialization.
+
+**Current implementation boundary:**
+
+- `workspace.isolated_rw` returns a deterministic `workspace_proposal`.
+- It validates `root`, `cwd`, `workspace_name`, `allowed_paths`, and `forbidden_paths`.
+- It rejects absolute paths, parent traversal, empty relative paths, and non-list path fields.
+- It does not create directories, create git worktrees, copy files, append events, or mutate workspace state.
+- It reports the next required capabilities: `workspace.lease_create`, `workspace.materialize`, `workspace.changed_files`, and `workspace.release`.

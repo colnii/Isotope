@@ -23,7 +23,10 @@ _NATIVE_CODING_REQUIREMENTS = [
     "optional_vcs_adapter",
 ]
 _BLOCKED_CAPABILITIES = [
-    "workspace.isolated_rw",
+    "workspace.lease_create",
+    "workspace.materialize",
+    "workspace.changed_files",
+    "workspace.release",
     "code.read",
     "code.search",
     "code.apply_patch",
