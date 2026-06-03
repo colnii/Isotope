@@ -363,8 +363,8 @@ class CapabilityCatalog:
                     capability_id="research.search",
                     title="Research Search",
                     description=(
-                        "Run the existing research flow with the deterministic "
-                        "fake provider and return a low-sensitive result summary."
+                        "Run the existing research flow with an explicitly gated "
+                        "research provider and return a low-sensitive result summary."
                     ),
                     maturity="v0.2",
                     shelf="product_candidate",
@@ -388,9 +388,30 @@ class CapabilityCatalog:
                             },
                             "provider": {
                                 "type": "string",
-                                "enum": ["fake"],
+                                "enum": ["fake", "codex", "tavily"],
                                 "description": "Capability-safe research provider.",
                                 "default": "fake",
+                            },
+                            "provider_gate": {
+                                "type": "string",
+                                "enum": ["codex_research", "tavily_research"],
+                                "description": (
+                                    "Explicit gate required before a non-fake "
+                                    "provider can enter the capability path."
+                                ),
+                            },
+                            "allow_network": {
+                                "type": "boolean",
+                                "description": (
+                                    "Allow Tavily network execution after the "
+                                    "provider gate is satisfied."
+                                ),
+                                "default": False,
+                            },
+                            "tavily_max_results": {
+                                "type": "integer",
+                                "description": "Maximum Tavily search results.",
+                                "default": 5,
                             },
                         },
                     },
@@ -408,9 +429,8 @@ class CapabilityCatalog:
                     },
                     safety_boundaries=(
                         "reuses_research_flow",
-                        "fake_provider_only",
-                        "no_network_provider",
-                        "no_codex_delegation",
+                        "explicit_provider_gate",
+                        "tavily_network_requires_allow_network",
                         "writes_research_artifacts",
                         "low_sensitive_summary_only",
                         "no_raw_transcript_return",

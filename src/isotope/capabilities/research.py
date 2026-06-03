@@ -19,7 +19,11 @@ RESEARCH_CAPABILITIES = frozenset(
         RESEARCH_SEARCH_CAPABILITY,
     }
 )
-VALID_RESEARCH_CAPABILITY_PROVIDERS = frozenset({"fake"})
+VALID_RESEARCH_CAPABILITY_PROVIDERS = frozenset({"fake", "codex", "tavily"})
+RESEARCH_PROVIDER_GATES = {
+    "codex": "codex_research",
+    "tavily": "tavily_research",
+}
 VALID_RESEARCH_PROMOTION_SCOPES = frozenset({"thread", "run", "session"})
 
 
@@ -58,10 +62,17 @@ def run_research_search(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
         missing_inputs=missing_inputs,
     )
     provider_id = input_mapping["provider"]
-    payload = ResearchFlow.in_process(
-        Path(input_mapping["root"]).expanduser(),
-        provider=build_research_provider(provider_id),
-    ).search(input_mapping["query"]).to_dict()
+    payload = (
+        ResearchFlow.in_process(
+            Path(input_mapping["root"]).expanduser(),
+            provider=build_research_provider(
+                provider_id,
+                **_research_provider_kwargs(input_mapping),
+            ),
+        )
+        .search(input_mapping["query"])
+        .to_dict()
+    )
     research = payload.get("research") if isinstance(payload, Mapping) else None
     sources = research.get("sources") if isinstance(research, Mapping) else None
     artifacts = payload.get("artifacts")
@@ -175,11 +186,56 @@ def _validate_research_search_inputs(
         raise ValueError("provider must be a non-empty string")
     provider = provider.strip()
     if provider not in VALID_RESEARCH_CAPABILITY_PROVIDERS:
-        raise ValueError("provider must be fake")
+        raise ValueError("provider must be fake, codex, or tavily")
+
+    provider_gate = input_mapping.get("provider_gate")
+    if provider == "fake":
+        if provider_gate is not None and (
+            not isinstance(provider_gate, str) or not provider_gate.strip()
+        ):
+            raise ValueError("provider_gate must be a non-empty string")
+    else:
+        expected_gate = RESEARCH_PROVIDER_GATES[provider]
+        if provider_gate != expected_gate:
+            raise ValueError(
+                f"provider_gate must be {expected_gate} for {provider} provider"
+            )
+
+    allow_network = input_mapping.get("allow_network", False)
+    if not isinstance(allow_network, bool):
+        raise ValueError("allow_network must be a boolean")
+    if allow_network and provider != "tavily":
+        raise ValueError("allow_network is only supported for tavily provider")
+
+    tavily_max_results = input_mapping.get("tavily_max_results")
+    if tavily_max_results is not None and (
+        not isinstance(tavily_max_results, int)
+        or isinstance(tavily_max_results, bool)
+        or tavily_max_results < 1
+    ):
+        raise ValueError("tavily_max_results must be a positive integer")
 
     normalized = dict(input_mapping)
     normalized["provider"] = provider
+    normalized["allow_network"] = allow_network
+    if isinstance(provider_gate, str):
+        normalized["provider_gate"] = provider_gate.strip()
     return normalized
+
+
+def _research_provider_kwargs(input_mapping: Mapping[str, Any]) -> dict[str, Any]:
+    provider = input_mapping["provider"]
+    if provider == "fake":
+        return {}
+    kwargs: dict[str, Any] = {"workspace_root": input_mapping["root"]}
+    if provider == "tavily":
+        kwargs["tavily_enable_network"] = input_mapping["allow_network"]
+        tavily_max_results = input_mapping.get("tavily_max_results")
+        if isinstance(tavily_max_results, int) and not isinstance(
+            tavily_max_results, bool
+        ):
+            kwargs["tavily_max_results"] = tavily_max_results
+    return kwargs
 
 
 def _validate_research_promote_inputs(

@@ -204,9 +204,15 @@ def test_runner_discovers_research_search_from_default_catalog():
     assert _ids(search["capabilities"]) == ["research.search"]
     description = runner.describe_capability("research.search")
     assert description["input_contract"]["required"] == ["root", "query"]
-    assert description["input_contract"]["properties"]["provider"]["enum"] == ["fake"]
+    assert description["input_contract"]["properties"]["provider"]["enum"] == [
+        "fake",
+        "codex",
+        "tavily",
+    ]
+    assert "provider_gate" in description["input_contract"]["properties"]
+    assert "allow_network" in description["input_contract"]["properties"]
     assert "reuses_research_flow" in description["safety_boundaries"]
-    assert "no_network_provider" in description["safety_boundaries"]
+    assert "explicit_provider_gate" in description["safety_boundaries"]
 
 
 def test_runner_discovers_research_promote_from_default_catalog():
@@ -485,6 +491,19 @@ def test_memory_promotion_preview_plan_rejects_invalid_inputs(field_name, bad_va
 
     with pytest.raises((TypeError, ValueError), match=field_name):
         _runner().plan_capability_run("memory.promotion.preview", inputs=inputs)
+
+
+@pytest.mark.parametrize("provider", ["codex", "tavily"])
+def test_research_search_plan_rejects_real_provider_without_provider_gate(provider):
+    with pytest.raises(ValueError, match="provider_gate"):
+        _runner().plan_capability_run(
+            "research.search",
+            inputs={
+                "root": "/tmp/isotope-runtime",
+                "query": "capacity research integration",
+                "provider": provider,
+            },
+        )
 
 
 def test_worker_review_plan_rejects_non_string_state_root():
@@ -1176,6 +1195,170 @@ def test_research_search_capability_runs_existing_fake_research_flow(tmp_path):
         "research.report",
     ]
     assert "research" not in result
+    for mapping in _walk_mapping(result):
+        assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
+
+
+def test_research_search_tavily_gate_uses_research_flow_artifacts(
+    tmp_path, monkeypatch
+):
+    from isotope.capabilities import research as research_capability
+
+    calls = []
+
+    class RecordingTavilyProvider:
+        provider_name = "tavily"
+
+        def run(self, query):
+            return {
+                "research_id": "research_tavily_unit",
+                "query": query,
+                "provider": "tavily",
+                "created_at": "2026-06-03T00:00:00Z",
+                "status": "ok",
+                "evidence_status": "complete",
+                "sources": [
+                    {
+                        "source_id": "src_001",
+                        "title": "Isotope research note",
+                        "url": "https://example.com/research-note",
+                        "snippet": "Research claims should cite source-backed snippets.",
+                        "why_used": "unit test Tavily provider",
+                        "retrieved_at": "2026-06-03T00:00:00Z",
+                    }
+                ],
+                "report": {
+                    "summary": "Tavily research summary.",
+                    "claims": [
+                        {
+                            "text": "Research claims should cite source-backed snippets.",
+                            "source_ids": ["src_001"],
+                            "confidence": "medium",
+                        }
+                    ],
+                    "limitations": [],
+                    "next_queries": [],
+                },
+                "provenance": {"provider": "tavily"},
+            }
+
+    def build_provider(provider_id, **kwargs):
+        calls.append({"provider_id": provider_id, **kwargs})
+        return RecordingTavilyProvider()
+
+    monkeypatch.setattr(
+        research_capability,
+        "build_research_provider",
+        build_provider,
+    )
+
+    result = _runner().run_capability(
+        "research.search",
+        inputs={
+            "root": str(tmp_path),
+            "query": "capacity research integration",
+            "provider": "tavily",
+            "provider_gate": "tavily_research",
+            "allow_network": True,
+            "tavily_max_results": 3,
+        },
+    )
+
+    assert calls == [
+        {
+            "provider_id": "tavily",
+            "workspace_root": str(tmp_path),
+            "tavily_enable_network": True,
+            "tavily_max_results": 3,
+        }
+    ]
+    research_search = result["research_search"]
+    assert research_search["provider"] == "tavily"
+    assert research_search["source_count"] == 1
+    assert [item["artifact_type"] for item in research_search["artifacts"]] == [
+        "research.raw_transcript",
+        "research.report",
+    ]
+    for mapping in _walk_mapping(result):
+        assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
+
+
+def test_research_search_codex_gate_uses_research_flow_artifacts(
+    tmp_path, monkeypatch
+):
+    from isotope.capabilities import research as research_capability
+
+    calls = []
+
+    class RecordingCodexProvider:
+        provider_name = "codex_delegated"
+
+        def run(self, query):
+            return {
+                "research_id": "research_codex_unit",
+                "query": query,
+                "provider": "codex_delegated",
+                "created_at": "2026-06-03T00:00:00Z",
+                "status": "ok",
+                "evidence_status": "complete",
+                "sources": [
+                    {
+                        "source_id": "src_001",
+                        "title": "Codex delegated source",
+                        "url": "https://example.com/codex-source",
+                        "snippet": "Codex delegated research returns cited snippets.",
+                        "why_used": "unit test Codex provider",
+                        "retrieved_at": "2026-06-03T00:00:00Z",
+                    }
+                ],
+                "report": {
+                    "summary": "Codex delegated research summary.",
+                    "claims": [
+                        {
+                            "text": "Codex delegated research returns cited snippets.",
+                            "source_ids": ["src_001"],
+                            "confidence": "medium",
+                        }
+                    ],
+                    "limitations": [],
+                    "next_queries": [],
+                },
+                "provenance": {"provider": "codex_delegated"},
+            }
+
+    def build_provider(provider_id, **kwargs):
+        calls.append({"provider_id": provider_id, **kwargs})
+        return RecordingCodexProvider()
+
+    monkeypatch.setattr(
+        research_capability,
+        "build_research_provider",
+        build_provider,
+    )
+
+    result = _runner().run_capability(
+        "research.search",
+        inputs={
+            "root": str(tmp_path),
+            "query": "capacity research integration",
+            "provider": "codex",
+            "provider_gate": "codex_research",
+        },
+    )
+
+    assert calls == [
+        {
+            "provider_id": "codex",
+            "workspace_root": str(tmp_path),
+        }
+    ]
+    research_search = result["research_search"]
+    assert research_search["provider"] == "codex_delegated"
+    assert research_search["source_count"] == 1
+    assert [item["artifact_type"] for item in research_search["artifacts"]] == [
+        "research.raw_transcript",
+        "research.report",
+    ]
     for mapping in _walk_mapping(result):
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
 
