@@ -145,6 +145,7 @@ async function readDesktopChatStream(
           provider = typeof event.data.provider === 'string' ? event.data.provider : undefined;
           model = typeof event.data.model === 'string' ? event.data.model : undefined;
         } else if (event.name === 'error') {
+          markRunningCapacityCallsError(capacityCalls, event.data, handlers);
           throw new Error(typeof event.data.message === 'string' ? event.data.message : '桌面对话失败');
         }
       }
@@ -167,6 +168,35 @@ async function readDesktopChatStream(
 
   const calls = [...capacityCalls.values()];
   return { question, answer, provider, model, ...(calls.length ? { capacityCalls: calls } : {}) };
+}
+
+function markRunningCapacityCallsError(
+  capacityCalls: Map<string, DesktopCapacityCall>,
+  payload: Record<string, unknown>,
+  handlers: DesktopChatHandlers
+): void {
+  const message = typeof payload.message === 'string' && payload.message ? payload.message : '桌面对话失败';
+  for (const [id, call] of capacityCalls.entries()) {
+    if (call.status !== 'running') continue;
+    const updated: DesktopCapacityCall = {
+      ...call,
+      status: 'error',
+      resultSummary: {
+        ...call.resultSummary,
+        error_message: message
+      },
+      details: [
+        ...call.details,
+        {
+          label: 'Error',
+          kind: 'text',
+          content: message
+        }
+      ]
+    };
+    capacityCalls.set(id, updated);
+    handlers.onCapacityResult?.(updated);
+  }
 }
 
 function parseDesktopChatEvent(block: string): { name: string; data: Record<string, unknown> } {

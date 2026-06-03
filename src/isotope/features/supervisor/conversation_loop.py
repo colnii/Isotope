@@ -18,6 +18,7 @@ from isotope.features.supervisor.commands.handlers.capacity import (
 )
 from isotope.llm.prompts import render_json_prompt_template
 from isotope.llm.provider import LLMResponse
+from isotope.platform.schemas.input_contract import contract_properties
 
 from .desktop_chat_context import compact_desktop_chat_history_messages
 
@@ -149,6 +150,7 @@ def _conversation_context(
             "root": str(state_root),
             "cwd": str(cwd),
         },
+        "_capacity_runner": runner,
         "capacity_manifest": {
             "kind": "capacity_manifest",
             "source": "registered_capabilities",
@@ -301,14 +303,11 @@ def _run_capability_decision(
     arguments = decision.get("arguments", {})
     if not isinstance(arguments, dict):
         raise ValueError("arguments must be an object")
-    inputs = {
-        **arguments,
-        **{
-            key: value
-            for key, value in context["system_context"].items()
-            if key not in arguments
-        },
-    }
+    inputs = _capability_inputs_from_decision(
+        capacity_id,
+        arguments=arguments,
+        context=context,
+    )
     yield SupervisorConversationEvent(
         event="capacity_start",
         payload={
@@ -327,12 +326,42 @@ def _run_capability_decision(
             ],
         },
     )
-    agent_loop = _execute_agent_loop_capacity_step(
-        goal=f"Conversation capability call: {capacity_id}",
-        capability_id=capacity_id,
-        inputs=inputs,
-        state_root=state_root / "supervisor" / "conversation-loop-runs",
-    )
+    try:
+        agent_loop = _execute_agent_loop_capacity_step(
+            goal=f"Conversation capability call: {capacity_id}",
+            capability_id=capacity_id,
+            inputs=inputs,
+            state_root=state_root / "supervisor" / "conversation-loop-runs",
+        )
+    except Exception as exc:
+        error_summary = {
+            "error_type": type(exc).__name__,
+            "message": str(exc),
+        }
+        yield SupervisorConversationEvent(
+            event="capacity_result",
+            payload={
+                "id": _capacity_event_id(capacity_id),
+                "capacity_id": capacity_id,
+                "title": capacity_id,
+                "status": "error",
+                "input_summary": _safe_detail_value(inputs),
+                "result_summary": error_summary,
+                "details": [
+                    {
+                        "label": "Inputs",
+                        "kind": "json",
+                        "content": _safe_detail_value(inputs),
+                    },
+                    {
+                        "label": "Error",
+                        "kind": "json",
+                        "content": error_summary,
+                    },
+                ],
+            },
+        )
+        return
     result_summary = agent_loop_json_summary({"agent_loop": agent_loop})
     yield SupervisorConversationEvent(
         event="capacity_result",
@@ -361,6 +390,40 @@ def _run_capability_decision(
             ],
         },
     )
+
+
+def _capability_inputs_from_decision(
+    capacity_id: str,
+    *,
+    arguments: dict[str, Any],
+    context: dict[str, Any],
+) -> dict[str, Any]:
+    inputs = dict(arguments)
+    allowed_context_keys = _capability_input_keys(capacity_id, context=context)
+    system_context = context.get("system_context", {})
+    if not isinstance(system_context, dict):
+        return inputs
+    for key, value in system_context.items():
+        if key in inputs or key not in allowed_context_keys:
+            continue
+        inputs[key] = value
+    return inputs
+
+
+def _capability_input_keys(
+    capacity_id: str,
+    *,
+    context: dict[str, Any],
+) -> set[str]:
+    runner = context.get("_capacity_runner")
+    if not isinstance(runner, CapabilityRunner):
+        runner = CapabilityRunner()
+    try:
+        capability = runner.describe_capability(capacity_id)
+    except ValueError:
+        return set()
+    properties = contract_properties(capability.get("input_contract", {}))
+    return set(properties)
 
 
 def _capacity_event_id(capacity_id: str) -> str:

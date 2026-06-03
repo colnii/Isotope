@@ -115,6 +115,54 @@ def test_conversation_loop_calls_capability_then_returns_final_answer(tmp_path) 
     assert "raw_response" not in second_prompt
 
 
+def test_conversation_loop_filters_system_context_to_capability_contract(tmp_path) -> None:
+    provider = RecordingConversationProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "research.search",
+                    "arguments": {"query": "capacity research integration"},
+                    "rationale": "需要执行 research capability。",
+                }
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "research.search 已返回低敏摘要。",
+                    "rationale": "基于 capability observation 回答。",
+                }
+            ),
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path,
+            cwd=tmp_path / "repo",
+            user_message="查一下 capacity research integration",
+            provider=provider,
+            max_turns=3,
+        )
+    )
+
+    assert [event.event for event in events] == [
+        "capacity_start",
+        "capacity_result",
+        "delta",
+    ]
+    start = events[0].payload
+    assert start["capacity_id"] == "research.search"
+    assert start["input_summary"] == {
+        "query": "capacity research integration",
+        "root": str(tmp_path),
+    }
+    result = events[1].payload
+    assert result["status"] == "ok"
+    assert result["result_summary"]["agent_loop_research_provider"] == "fake"
+    assert events[2].payload == {"text": "research.search 已返回低敏摘要。"}
+
+
 def test_conversation_loop_records_low_sensitive_capability_gap(tmp_path) -> None:
     provider = RecordingConversationProvider(
         [

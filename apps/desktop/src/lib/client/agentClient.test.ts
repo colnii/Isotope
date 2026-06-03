@@ -171,6 +171,45 @@ describe('agentClient', () => {
     });
   });
 
+  test('marks running capacity calls as error when the stream reports an error', async () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        const encoder = new TextEncoder();
+        controller.enqueue(encoder.encode('event: start\ndata: {"status":"ok"}\n\n'));
+        controller.enqueue(
+          encoder.encode(
+            'event: capacity_start\ndata: {"id":"capacity_research_search","capacity_id":"research.search","title":"Research Search","status":"running","input_summary":{"query":"capacity"},"result_summary":{},"details":[{"label":"Inputs","kind":"json","content":{"query":"capacity"}}]}\n\n'
+          )
+        );
+        controller.enqueue(
+          encoder.encode(
+            'event: error\ndata: {"status":"error","message":"capability inputs not allowed by input_contract: cwd, state_root"}\n\n'
+          )
+        );
+        controller.close();
+      }
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(stream, {
+            status: 200,
+            headers: { 'content-type': 'text/event-stream; charset=utf-8' }
+          })
+      )
+    );
+    const capacityEvents: string[] = [];
+
+    await expect(
+      createAgentClient('http://127.0.0.1:8765').askDesktopQuestion('search?', {
+        onCapacityResult: (call) => capacityEvents.push(`${call.capacityId}:${call.status}`)
+      })
+    ).rejects.toThrow('capability inputs not allowed by input_contract: cwd, state_root');
+
+    expect(capacityEvents).toEqual(['research.search:error']);
+  });
+
   test('desktop chat requires a real backend base URL', async () => {
     await expect(createAgentClient(null).askDesktopQuestion('loop?')).rejects.toThrow(
       '桌面对话需要配置后端 URL'
