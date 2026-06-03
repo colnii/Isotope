@@ -387,6 +387,122 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="coding_task.execute",
+                    title="Native Coding Task Execute",
+                    description=(
+                        "Run a bounded native coding loop in an isolated "
+                        "workspace without delegating implementation to Codex."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "native",
+                        "coding",
+                        "execute",
+                        "workspace",
+                        "artifact",
+                        "test",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": [
+                            "root",
+                            "cwd",
+                            "workspace_id",
+                            "goal",
+                            "patch",
+                            "argv",
+                            "run_id",
+                            "execution_id",
+                        ],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "description": "Runtime state root.",
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Source workspace directory.",
+                            },
+                            "workspace_id": {
+                                "type": "string",
+                                "description": "Isolated workspace id to materialize.",
+                            },
+                            "goal": {
+                                "type": "string",
+                                "description": "Native coding task goal.",
+                            },
+                            "patch": {
+                                "type": "string",
+                                "description": "Workspace-relative unified diff to apply.",
+                            },
+                            "argv": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Verification command argv.",
+                            },
+                            "run_id": {
+                                "type": "string",
+                                "description": "Run id for artifact ResourceRefs.",
+                            },
+                            "execution_id": {
+                                "type": "string",
+                                "description": "Execution id recorded in artifact provenance.",
+                            },
+                            "include_paths": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Workspace-relative files or directories to copy and summarize.",
+                                "default": ["."],
+                            },
+                            "forbidden_paths": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Workspace-relative files or directories excluded from copy.",
+                                "default": [],
+                            },
+                            "allowed_commands": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Allowed verification command names.",
+                                "default": [],
+                            },
+                            "timeout_seconds": {
+                                "type": "integer",
+                                "description": "Verification timeout in seconds.",
+                                "default": 30,
+                            },
+                            "max_output_bytes": {
+                                "type": "integer",
+                                "description": "Maximum captured verification output bytes.",
+                                "default": 4096,
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "runner_kind",
+                            "coding_execution",
+                            "artifact_refs",
+                            "verification",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "no_codex_delegation",
+                        "bounded_step_count",
+                        "isolated_workspace_write_only",
+                        "workspace_relative_patch_only",
+                        "argv_allowlist_only",
+                        "writes_only_artifact_store",
+                        "source_workspace_not_modified",
+                        "no_event_append",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="workspace.isolated_rw",
                     title="Isolated Writable Workspace",
                     description=(

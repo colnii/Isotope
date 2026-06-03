@@ -109,6 +109,15 @@ This objective spans multiple subsystems, so it must not be implemented as one b
 - Modify `src/isotope/capabilities/workspace.py`: move proposal `next_required_capabilities` forward to `coding_task.execute`.
 - Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, artifact persistence, structured refs, raw-content exclusion, and missing-input planning.
 
+## Slice 11 File Structure
+
+- Create `src/isotope/capabilities/coding_execute.py`: bounded deterministic native coding loop that materializes an isolated workspace, applies a patch, runs allowlisted verification, and captures artifacts.
+- Modify `src/isotope/capabilities/catalog.py`: register `coding_task.execute` with `no_codex_delegation`, `bounded_step_count`, `isolated_workspace_write_only`, and artifact-store boundaries.
+- Modify `src/isotope/capabilities/runner.py`: route execute planning and execution through the coding execute runner.
+- Modify `src/isotope/capabilities/coding.py`: clear native coding preview's blocked-capability list and point `next_slice` at Supervisor/Desktop integration.
+- Modify `src/isotope/capabilities/workspace.py`: clear proposal `next_required_capabilities`.
+- Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, isolated execution, source workspace non-mutation, artifact capture, and missing-input planning.
+
 ## Task 1: Register Coding Preview Capability
 
 **Files:**
@@ -365,4 +374,4 @@ git commit -m "feat(capabilities): add native coding preview contract"
 - It validates `root`, `cwd`, `workspace_name`, `allowed_paths`, and `forbidden_paths`.
 - It rejects absolute paths, parent traversal, empty relative paths, and non-list path fields.
 - It does not create directories, create git worktrees, copy files, append events, or mutate workspace state.
-- It reports the next required capabilities: `coding_task.execute`.
+- It reports an empty next-required capability list after the core native coding capability chain is available.

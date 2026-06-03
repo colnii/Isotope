@@ -311,9 +311,7 @@ def test_runner_runs_coding_task_preview_without_side_effects(tmp_path):
         "artifact_backed_diff_and_changed_files",
         "optional_vcs_adapter",
     ]
-    assert result["preview"]["blocked_capabilities"] == [
-        "coding_task.execute",
-    ]
+    assert result["preview"]["blocked_capabilities"] == []
     assert not list(root.rglob("*"))
 
 
@@ -376,6 +374,111 @@ def test_coding_task_preview_plan_is_launchable_with_required_inputs(tmp_path):
     assert "preview_only_no_workspace_write" in plan["safety_boundaries"]
 
 
+def test_runner_discovers_coding_task_execute_from_default_catalog():
+    runner = _runner()
+
+    assert "coding_task.execute" in _ids(runner.list_capabilities())
+    assert "coding_task.execute" in _ids(
+        runner.search_capabilities(query="native coding execute")["capabilities"]
+    )
+
+    description = runner.describe_capability("coding_task.execute")
+    assert description["input_contract"]["required"] == [
+        "root",
+        "cwd",
+        "workspace_id",
+        "goal",
+        "patch",
+        "argv",
+        "run_id",
+        "execution_id",
+    ]
+    assert "no_codex_delegation" in description["safety_boundaries"]
+    assert "bounded_step_count" in description["safety_boundaries"]
+
+
+def test_runner_executes_native_coding_task_in_isolated_workspace(tmp_path):
+    source = tmp_path / "repo"
+    (source / "src").mkdir(parents=True)
+    (source / "src" / "app.py").write_text("value = 1\n", encoding="utf-8")
+    root = tmp_path / "state"
+
+    result = _runner().run_capability(
+        "coding_task.execute",
+        inputs={
+            "root": str(root),
+            "cwd": str(source),
+            "workspace_id": "workspace_native_coding_execute",
+            "goal": "Change value to 2.",
+            "patch": (
+                "--- a/src/app.py\n"
+                "+++ b/src/app.py\n"
+                "@@ -1 +1 @@\n"
+                "-value = 1\n"
+                "+value = 2\n"
+            ),
+            "argv": [
+                "python3",
+                "-c",
+                "from pathlib import Path; assert Path('src/app.py').read_text() == 'value = 2\\n'",
+            ],
+            "allowed_commands": ["python3"],
+            "run_id": "run_native_coding",
+            "execution_id": "execution_native_coding",
+            "include_paths": ["src"],
+        },
+    )
+
+    execution = result["coding_execution"]
+    artifacts = ArtifactStore(root).list_artifacts("run_native_coding")
+    workspace_file = (
+        root
+        / "workspaces"
+        / "workspace_native_coding_execute"
+        / "src"
+        / "app.py"
+    )
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "coding_task.execute"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "deterministic_local"
+    assert execution["status"] == "verified"
+    assert execution["workspace_id"] == "workspace_native_coding_execute"
+    assert execution["step_count"] == 5
+    assert execution["source_workspace_write"] == "not_performed"
+    assert execution["patch_result"]["status"] == "applied"
+    assert execution["verification"]["status"] == "passed"
+    assert execution["artifact_refs"]["changed_files"]["ref_type"] == "artifact"
+    assert execution["artifact_refs"]["diff_summary"]["ref_type"] == "artifact"
+    assert sorted(artifact.artifact_type for artifact in artifacts) == [
+        "native_coding.changed_files",
+        "native_coding.diff_summary",
+    ]
+    assert (source / "src" / "app.py").read_text(encoding="utf-8") == "value = 1\n"
+    assert workspace_file.read_text(encoding="utf-8") == "value = 2\n"
+    assert "patch" not in execution
+
+
+def test_coding_task_execute_plan_stops_when_required_inputs_are_missing():
+    plan = _runner().plan_capability_run(
+        "coding_task.execute",
+        inputs={"cwd": "/tmp/project", "goal": "Edit code."},
+    )
+
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_local"
+    assert plan["missing_inputs"] == [
+        "root",
+        "workspace_id",
+        "patch",
+        "argv",
+        "run_id",
+        "execution_id",
+    ]
+    assert plan["scenario"] is None
+
+
 def test_runner_discovers_workspace_isolated_rw_from_default_catalog():
     runner = _runner()
 
@@ -421,9 +524,7 @@ def test_runner_runs_workspace_isolated_rw_proposal_without_creating_workspace(t
         "tests/unit/capabilities",
     ]
     assert proposal["forbidden_paths"] == ["src/isotope/features/supervisor"]
-    assert proposal["next_required_capabilities"] == [
-        "coding_task.execute",
-    ]
+    assert proposal["next_required_capabilities"] == []
     assert not list(root.rglob("*"))
 
 

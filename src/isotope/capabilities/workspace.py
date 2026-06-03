@@ -23,9 +23,7 @@ WORKSPACE_CAPABILITIES = {
 }
 
 _ARRAY_INPUTS = ("allowed_paths", "forbidden_paths")
-_NEXT_REQUIRED_CAPABILITIES = [
-    "coding_task.execute",
-]
+_NEXT_REQUIRED_CAPABILITIES: list[str] = []
 _WORKSPACE_ID_RE = re.compile(r"[^a-z0-9]+")
 _STABLE_WORKSPACE_ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _SKIPPED_MATERIALIZE_DIRS = frozenset(
