@@ -404,3 +404,86 @@ def test_conversation_loop_records_low_sensitive_capability_gap(tmp_path) -> Non
     rendered = json.dumps(saved, ensure_ascii=False)
     assert "raw_response" not in rendered
     assert "messages" not in rendered
+def test_conversation_loop_executes_native_coding_capacity_with_safe_observation(
+    tmp_path,
+) -> None:
+    workspace = tmp_path / "repo"
+    (workspace / "src").mkdir(parents=True)
+    (workspace / "src" / "app.py").write_text("value = 1\n", encoding="utf-8")
+    provider = RecordingConversationProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "coding_task.execute",
+                    "arguments": {
+                        "workspace_id": "workspace_desktop_native_coding",
+                        "goal": "Change value to 2.",
+                        "patch": (
+                            "--- a/src/app.py\n"
+                            "+++ b/src/app.py\n"
+                            "@@ -1 +1 @@\n"
+                            "-value = 1\n"
+                            "+value = 2\n"
+                        ),
+                        "argv": [
+                            "python3",
+                            "-c",
+                            "from pathlib import Path; assert Path('src/app.py').read_text() == 'value = 2\\n'",
+                        ],
+                        "allowed_commands": ["python3"],
+                        "include_paths": ["src"],
+                    },
+                    "rationale": "Use native coding capacity.",
+                }
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "已完成 native coding capacity。",
+                }
+            ),
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path / "state",
+            cwd=workspace,
+            user_message="把 src/app.py 的 value 改成 2。",
+            provider=provider,
+            max_turns=3,
+        )
+    )
+
+    assert [event.event for event in events] == [
+        "capacity_start",
+        "capacity_result",
+        "delta",
+    ]
+    assert events[0].payload["capacity_id"] == "coding_task.execute"
+    assert events[1].payload["status"] == "ok"
+    assert events[1].payload["result_summary"]["agent_loop_tick_status"] == "executed"
+    assert events[2].payload["text"] == "已完成 native coding capacity。"
+    assert (workspace / "src" / "app.py").read_text(encoding="utf-8") == "value = 1\n"
+    materialized = (
+        tmp_path
+        / "state"
+        / "workspaces"
+        / "workspace_desktop_native_coding"
+        / "src"
+        / "app.py"
+    )
+    assert materialized.read_text(encoding="utf-8") == "value = 2\n"
+    rendered_events = json.dumps(
+        [event.payload for event in events],
+        ensure_ascii=False,
+    )
+    assert "value = 1" not in rendered_events
+    assert "value = 2" not in rendered_events
+    second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
+    assert "capacity_observation" in second_prompt
+    assert "value = 1" not in second_prompt
+    assert "value = 2" not in second_prompt
+
+

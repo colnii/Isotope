@@ -118,6 +118,13 @@ This objective spans multiple subsystems, so it must not be implemented as one b
 - Modify `src/isotope/capabilities/workspace.py`: clear proposal `next_required_capabilities`.
 - Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, isolated execution, source workspace non-mutation, artifact capture, and missing-input planning.
 
+## Slice 12 File Structure
+
+- Modify `src/isotope/features/supervisor/conversation_loop.py`: filter system defaults through the selected capability input contract before agent-loop execution, add `run_id` / `execution_id` defaults, and hide raw `patch` / `argv` detail fields.
+- Modify `src/isotope/features/supervisor/desktop_chat.py`: pass `execution_id` as a capacity input default for the legacy capacity-provider path.
+- Modify `tests/unit/features/supervisor/test_supervisor_conversation_loop.py`: cover model-selected `coding_task.execute` through the conversation loop, including source workspace non-mutation and safe observations.
+- Modify `tests/integration/supervisor/test_supervisor_desktop_chat.py`: cover native coding capability discovery in the desktop chat capacity manifest.
+
 ## Task 1: Register Coding Preview Capability
 
 **Files:**

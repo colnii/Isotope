@@ -250,6 +250,7 @@ def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
     capacity_ids = [item["capability_id"] for item in capacity_manifest["capabilities"]]
     assert capacity_manifest["capability_count"] == len(capacity_ids)
     assert "supervisor.codex_operation" in capacity_ids
+    assert "coding_task.execute" in capacity_ids
     codex_operation = next(
         item
         for item in capacity_manifest["capabilities"]

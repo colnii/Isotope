@@ -437,6 +437,7 @@ def _build_capacity_plan_with_timeout(
             "state_root": str(root),
             "root": str(root),
             "run_id": "desktop_chat",
+            "execution_id": "desktop_chat_capacity",
             "cwd": str(Path.cwd()),
         },
         allow_no_capacity=True,
