@@ -216,6 +216,61 @@ def test_tavily_provider_executes_search_with_injected_http_backend():
     assert "test-secret-key" not in json.dumps(payload)
 
 
+def test_tavily_provider_fetches_exact_url_content_before_search():
+    search_calls = []
+    fetch_calls = []
+
+    def http_post(url, *, headers, payload, timeout_seconds):
+        search_calls.append(payload)
+        return {"results": []}
+
+    def http_get(url, *, timeout_seconds):
+        fetch_calls.append({"url": url, "timeout_seconds": timeout_seconds})
+        return {
+            "url": url,
+            "content_type": "text/html; charset=utf-8",
+            "text": """
+                <html>
+                  <head><title>Exact Lenin Page</title></head>
+                  <body>
+                    <nav>navigation</nav>
+                    <article>
+                      <h1>Exact Lenin Page</h1>
+                      <p>第一段正文说明列宁回忆录的具体内容。</p>
+                      <p>第二段正文提供页面里的可总结材料。</p>
+                    </article>
+                    <script>hidden()</script>
+                  </body>
+                </html>
+            """,
+        }
+
+    provider = TavilyResearchProvider(
+        api_key="test-secret-key",
+        enable_network=True,
+        http_post=http_post,
+        http_get=http_get,
+    )
+
+    payload = provider.run("https://example.com/lenin-page.html")
+
+    assert search_calls == []
+    assert fetch_calls == [
+        {
+            "url": "https://example.com/lenin-page.html",
+            "timeout_seconds": 120,
+        }
+    ]
+    assert payload["provider"] == "tavily"
+    assert payload["status"] == "ok"
+    assert payload["sources"][0]["url"] == "https://example.com/lenin-page.html"
+    assert payload["sources"][0]["title"] == "Exact Lenin Page"
+    assert "第一段正文说明列宁回忆录的具体内容" in payload["sources"][0]["snippet"]
+    assert "第二段正文提供页面里的可总结材料" in payload["report"]["summary"]
+    assert "hidden()" not in json.dumps(payload, ensure_ascii=False)
+    assert payload["provenance"]["tavily"]["mode"] == "exact_url_fetch"
+
+
 def test_build_research_provider_rejects_unknown_provider():
     with pytest.raises(ValueError, match="unknown research provider"):
         build_research_provider("missing")

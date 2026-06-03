@@ -90,6 +90,7 @@ def test_conversation_loop_manifest_exposes_research_provider_gate_contract(
     assert '"provider_gate"' in system_prompt
     assert '"enum": ["codex_research", "tavily_research"]' in system_prompt
     assert '"allow_network"' in system_prompt
+    assert "外部 URL 或普通网页搜索优先用 `provider=tavily" in system_prompt
 
 
 def test_conversation_loop_calls_capability_then_returns_final_answer(tmp_path) -> None:

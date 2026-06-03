@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import html
+from html.parser import HTMLParser
 import json
+import re
 from typing import Any, Callable
 from urllib import error as urlerror
+from urllib import parse as urlparse
 from urllib import request as urlrequest
 
 from .providers import ResearchProviderError, _require_query, _utc_now
@@ -24,6 +28,7 @@ class TavilyResearchProvider:
         max_results: int = 5,
         search_depth: str = "basic",
         http_post: Callable[..., dict[str, Any]] | None = None,
+        http_get: Callable[..., dict[str, Any]] | None = None,
     ):
         self.api_key = api_key.strip() if isinstance(api_key, str) else None
         self.enable_network = enable_network
@@ -31,6 +36,7 @@ class TavilyResearchProvider:
         self.max_results = max_results
         self.search_depth = search_depth
         self.http_post = http_post or _post_json
+        self.http_get = http_get or _get_url_text
 
     def run(self, query: str) -> dict[str, Any]:
         clean_query = _require_query(query)
@@ -57,6 +63,13 @@ class TavilyResearchProvider:
                     "retryable": False,
                 },
                 retryable=False,
+            )
+        if _is_http_url(clean_query):
+            fetched = self.http_get(clean_query, timeout_seconds=self.timeout_seconds)
+            return _normalize_exact_url_payload(
+                fetched,
+                query=clean_query,
+                timeout_seconds=self.timeout_seconds,
             )
         request_payload = {
             "query": clean_query,
@@ -147,6 +160,143 @@ def _post_json(
             retryable=False,
         )
     return decoded
+
+
+def _get_url_text(url: str, *, timeout_seconds: int) -> dict[str, Any]:
+    request = urlrequest.Request(
+        url,
+        headers={
+            "User-Agent": "IsotopeResearch/0.1",
+            "Accept": "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8",
+        },
+        method="GET",
+    )
+    try:
+        with urlrequest.urlopen(request, timeout=timeout_seconds) as response:
+            raw_bytes = response.read()
+            content_type = response.headers.get("content-type", "")
+            final_url = response.geturl()
+    except urlerror.HTTPError as exc:
+        retryable = exc.code == 429 or exc.code >= 500
+        raise ResearchProviderError(
+            "exact URL fetch failed",
+            details={
+                "provider_id": "tavily",
+                "error_code": "http_error",
+                "http_status": exc.code,
+                "retryable": retryable,
+            },
+            retryable=retryable,
+        ) from exc
+    except (TimeoutError, OSError) as exc:
+        raise ResearchProviderError(
+            "exact URL fetch failed",
+            details={
+                "provider_id": "tavily",
+                "error_code": "network_error",
+                "retryable": True,
+            },
+            retryable=True,
+        ) from exc
+    return {
+        "url": final_url,
+        "content_type": content_type,
+        "text": _decode_response_text(raw_bytes, content_type),
+    }
+
+
+def _decode_response_text(raw_bytes: bytes, content_type: str) -> str:
+    charset = ""
+    match = re.search(r"charset=([^;\s]+)", content_type, flags=re.IGNORECASE)
+    if match:
+        charset = match.group(1).strip("\"'")
+    candidates = [charset, "utf-8", "gb18030", "latin-1"]
+    for candidate in candidates:
+        if not candidate:
+            continue
+        try:
+            return raw_bytes.decode(candidate)
+        except (LookupError, UnicodeDecodeError):
+            continue
+    return raw_bytes.decode("utf-8", errors="replace")
+
+
+def _normalize_exact_url_payload(
+    payload: dict[str, Any],
+    *,
+    query: str,
+    timeout_seconds: int,
+) -> dict[str, Any]:
+    url = _clean_optional_string(payload.get("url")) or query
+    raw_text = _clean_optional_string(payload.get("text"))
+    if not raw_text:
+        raise ResearchProviderError(
+            "exact URL fetch returned no readable text",
+            details={
+                "provider_id": "tavily",
+                "error_code": "empty_url_text",
+                "retryable": False,
+            },
+            retryable=False,
+        )
+    title, extracted_text = _extract_page_text(raw_text)
+    if not extracted_text:
+        raise ResearchProviderError(
+            "exact URL fetch returned no readable text",
+            details={
+                "provider_id": "tavily",
+                "error_code": "empty_extracted_text",
+                "retryable": False,
+            },
+            retryable=False,
+        )
+    retrieved_at = _utc_now()
+    source_title = title or url
+    snippet = _truncate_text(extracted_text, 1200)
+    summary = _truncate_text(extracted_text, 1600)
+    return {
+        "research_id": "research_tavily_exact_url",
+        "query": query,
+        "provider": "tavily",
+        "created_at": _utc_now(),
+        "status": "ok",
+        "evidence_status": "complete",
+        "sources": [
+            {
+                "source_id": "src_001",
+                "title": source_title,
+                "url": url,
+                "snippet": snippet,
+                "why_used": "Exact URL content fetched for the user-provided URL.",
+                "retrieved_at": retrieved_at,
+                "provider_rank": 1,
+                **classify_research_source({"title": source_title, "url": url}),
+            }
+        ],
+        "report": {
+            "summary": summary,
+            "claims": [
+                {
+                    "text": snippet,
+                    "source_ids": ["src_001"],
+                    "confidence": "medium",
+                }
+            ],
+            "limitations": [
+                "Exact URL content was extracted with a lightweight HTML/text parser.",
+            ],
+            "next_queries": [],
+        },
+        "provenance": {
+            "provider": "tavily",
+            "tavily": {
+                "mode": "exact_url_fetch",
+                "url": url,
+                "content_type": payload.get("content_type"),
+                "timeout_seconds": timeout_seconds,
+            },
+        },
+    }
 
 
 def _normalize_tavily_search_payload(
@@ -246,3 +396,106 @@ def _clean_optional_string(value: Any) -> str:
 def _truncate_text(value: str, limit: int) -> str:
     stripped = value.strip()
     return stripped if len(stripped) <= limit else stripped[: limit - 1].rstrip() + "..."
+
+
+def _is_http_url(value: str) -> bool:
+    parsed = urlparse.urlparse(value)
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+
+
+def _extract_page_text(raw_text: str) -> tuple[str, str]:
+    parser = _ReadableHtmlParser()
+    try:
+        parser.feed(raw_text)
+        parser.close()
+    except Exception:
+        text = raw_text
+        title = ""
+    else:
+        text = parser.readable_text()
+        title = parser.title_text()
+    if not text:
+        text = re.sub(r"<[^>]+>", " ", raw_text)
+    text = html.unescape(text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return title, text
+
+
+class _ReadableHtmlParser(HTMLParser):
+    _SKIP_TAGS = {"script", "style", "noscript", "svg", "canvas"}
+    _BLOCK_TAGS = {
+        "article",
+        "aside",
+        "blockquote",
+        "br",
+        "dd",
+        "div",
+        "dl",
+        "dt",
+        "figcaption",
+        "footer",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "header",
+        "hr",
+        "li",
+        "main",
+        "nav",
+        "ol",
+        "p",
+        "pre",
+        "section",
+        "table",
+        "td",
+        "th",
+        "tr",
+        "ul",
+    }
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self._parts: list[str] = []
+        self._title_parts: list[str] = []
+        self._skip_depth = 0
+        self._in_title = False
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        lowered = tag.lower()
+        if lowered in self._SKIP_TAGS:
+            self._skip_depth += 1
+            return
+        if lowered == "title":
+            self._in_title = True
+        if lowered in self._BLOCK_TAGS:
+            self._parts.append(" ")
+
+    def handle_endtag(self, tag: str) -> None:
+        lowered = tag.lower()
+        if lowered in self._SKIP_TAGS and self._skip_depth > 0:
+            self._skip_depth -= 1
+            return
+        if lowered == "title":
+            self._in_title = False
+        if lowered in self._BLOCK_TAGS:
+            self._parts.append(" ")
+
+    def handle_data(self, data: str) -> None:
+        if self._skip_depth > 0:
+            return
+        stripped = data.strip()
+        if not stripped:
+            return
+        if self._in_title:
+            self._title_parts.append(stripped)
+            return
+        self._parts.append(stripped)
+
+    def readable_text(self) -> str:
+        return " ".join(self._parts).strip()
+
+    def title_text(self) -> str:
+        return " ".join(self._title_parts).strip()

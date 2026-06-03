@@ -1297,6 +1297,81 @@ def test_research_search_tavily_gate_uses_research_flow_artifacts(
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
 
 
+def test_research_search_tavily_exact_url_returns_extract_summary(
+    tmp_path, monkeypatch
+):
+    from isotope.capabilities import research as research_capability
+
+    class ExactUrlTavilyProvider:
+        provider_name = "tavily"
+
+        def run(self, query):
+            return {
+                "research_id": "research_exact_url_unit",
+                "query": query,
+                "provider": "tavily",
+                "created_at": "2026-06-03T00:00:00Z",
+                "status": "ok",
+                "evidence_status": "complete",
+                "sources": [
+                    {
+                        "source_id": "src_001",
+                        "title": "Exact URL Article",
+                        "url": query,
+                        "snippet": "真实 URL 正文片段，可直接用于总结。",
+                        "why_used": "Exact URL content fetched for the user-provided URL.",
+                        "retrieved_at": "2026-06-03T00:00:00Z",
+                        "provider_rank": 1,
+                    }
+                ],
+                "report": {
+                    "summary": "真实 URL 正文摘要，包含页面实际内容。",
+                    "claims": [
+                        {
+                            "text": "真实 URL 正文片段，可直接用于总结。",
+                            "source_ids": ["src_001"],
+                            "confidence": "medium",
+                        }
+                    ],
+                    "limitations": [],
+                    "next_queries": [],
+                },
+                "provenance": {"provider": "tavily", "tavily": {"mode": "exact_url_fetch"}},
+            }
+
+    monkeypatch.setattr(
+        research_capability,
+        "build_research_provider",
+        lambda provider_id, **kwargs: ExactUrlTavilyProvider(),
+    )
+
+    result = _runner().run_capability(
+        "research.search",
+        inputs={
+            "root": str(tmp_path),
+            "query": "https://example.com/exact-url",
+            "provider": "tavily",
+            "provider_gate": "tavily_research",
+            "allow_network": True,
+        },
+    )
+
+    research_search = result["research_search"]
+    assert research_search["provider"] == "tavily"
+    assert research_search["report_summary"] == "真实 URL 正文摘要，包含页面实际内容。"
+    assert research_search["source_previews"] == [
+        {
+            "source_id": "src_001",
+            "title": "Exact URL Article",
+            "url": "https://example.com/exact-url",
+            "snippet": "真实 URL 正文片段，可直接用于总结。",
+            "why_used": "Exact URL content fetched for the user-provided URL.",
+            "provider_rank": 1,
+        }
+    ]
+    assert "raw_content" not in json.dumps(result, ensure_ascii=False)
+
+
 def test_research_search_codex_gate_uses_research_flow_artifacts(
     tmp_path, monkeypatch
 ):

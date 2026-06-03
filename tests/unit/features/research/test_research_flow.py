@@ -83,6 +83,45 @@ def test_research_flow_persists_tavily_execution_artifacts(tmp_path):
     assert report_content["report"]["claims"][0]["source_ids"] == ["src_001"]
 
 
+def test_research_flow_persists_exact_url_extracted_report(tmp_path):
+    def http_get(url, *, timeout_seconds):
+        return {
+            "url": url,
+            "content_type": "text/html; charset=utf-8",
+            "text": """
+                <html>
+                  <head><title>Exact URL Article</title></head>
+                  <body>
+                    <article>
+                      <h1>Exact URL Article</h1>
+                      <p>这是真实 URL 正文第一段，用于验证 summary。</p>
+                      <p>这是真实 URL 正文第二段，用于验证 source preview。</p>
+                    </article>
+                  </body>
+                </html>
+            """,
+        }
+
+    flow = ResearchFlow.in_process(
+        tmp_path,
+        provider=TavilyResearchProvider(
+            api_key="test-key",
+            enable_network=True,
+            http_get=http_get,
+        ),
+    )
+
+    result = flow.search("https://example.com/exact-url")
+
+    assert result.status == "ok"
+    report_content = json.loads(flow.core.runtime.artifact_store.get_content(result.artifact_refs[1]))
+    assert report_content["provider"] == "tavily"
+    assert report_content["sources"][0]["title"] == "Exact URL Article"
+    assert report_content["sources"][0]["url"] == "https://example.com/exact-url"
+    assert "真实 URL 正文第一段" in report_content["report"]["summary"]
+    assert "真实 URL 正文第二段" in report_content["report"]["claims"][0]["text"]
+
+
 def test_research_flow_marks_missing_sources_incomplete(tmp_path):
     class NoSourcesProvider:
         provider_name = "no_sources"
