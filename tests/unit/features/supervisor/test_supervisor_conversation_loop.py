@@ -110,3 +110,44 @@ def test_conversation_loop_calls_capability_then_returns_final_answer(tmp_path) 
     second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
     assert "capacity_observation" in second_prompt
     assert "raw_response" not in second_prompt
+
+
+def test_conversation_loop_records_low_sensitive_capability_gap(tmp_path) -> None:
+    provider = RecordingConversationProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "report_capability_gap",
+                    "gap": {
+                        "missing_capability_kind": "supervisor.discovery.worker_list",
+                        "reason": "需要查询 worker 列表，但没有对应 discovery capability。",
+                        "needed_context": ["worker list", "active run state"],
+                    },
+                    "rationale": "缺少基础 discovery 能力。",
+                }
+            )
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path,
+            cwd=tmp_path,
+            user_message="看看哪个 worker 卡住了",
+            provider=provider,
+        )
+    )
+
+    assert [event.event for event in events] == ["capability_gap", "delta"]
+    gap = events[0].payload
+    assert gap["missing_capability_kind"] == "supervisor.discovery.worker_list"
+    assert gap["source_entrypoint"] == "desktop_chat"
+    assert gap["status"] == "recorded"
+    assert events[1].payload["text"] == "我缺少对应的基础能力，已记录 capability gap。"
+    gap_files = list((tmp_path / "supervisor" / "capability-gaps").glob("*.json"))
+    assert len(gap_files) == 1
+    saved = json.loads(gap_files[0].read_text(encoding="utf-8"))
+    assert saved["missing_capability_kind"] == "supervisor.discovery.worker_list"
+    rendered = json.dumps(saved, ensure_ascii=False)
+    assert "raw_response" not in rendered
+    assert "messages" not in rendered

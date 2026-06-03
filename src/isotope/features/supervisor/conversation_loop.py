@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Protocol
+from uuid import uuid4
 
 from isotope.capabilities.runner import CapabilityRunner
 from isotope.features.supervisor.commands.handlers.capacity import (
@@ -98,6 +100,21 @@ def run_supervisor_conversation_events(
                         }
                     )
             continue
+        if decision["kind"] == "report_capability_gap":
+            gap = _record_capability_gap(
+                decision,
+                state_root=Path(state_root).expanduser(),
+                user_message=clean_message,
+                source_entrypoint=str(context.get("entrypoint", "desktop_chat")),
+            )
+            yield SupervisorConversationEvent(event="capability_gap", payload=gap)
+            yield SupervisorConversationEvent(
+                event="delta",
+                payload={"text": "我缺少对应的基础能力，已记录 capability gap。"},
+                provider=response.provider,
+                model=response.model,
+            )
+            return
     raise ValueError("conversation loop exhausted max_turns without a direct answer")
 
 
@@ -322,6 +339,63 @@ def _unsafe_detail_key(key: str) -> bool:
             "transcript",
         )
     )
+
+
+def _record_capability_gap(
+    decision: dict[str, Any],
+    *,
+    state_root: Path,
+    user_message: str,
+    source_entrypoint: str,
+) -> dict[str, Any]:
+    raw_gap = decision.get("gap", {})
+    if not isinstance(raw_gap, dict):
+        raw_gap = {}
+    gap_id = "gap_" + uuid4().hex[:12]
+    payload = {
+        "kind": "capability_gap",
+        "gap_id": gap_id,
+        "status": "recorded",
+        "missing_capability_kind": _safe_string(
+            raw_gap.get("missing_capability_kind"),
+            default="unknown",
+        ),
+        "reason": _safe_string(raw_gap.get("reason"), default="capability gap reported"),
+        "needed_context": _safe_string_list(raw_gap.get("needed_context")),
+        "user_goal_summary": user_message[:500],
+        "suggested_next_capability": _safe_string(
+            raw_gap.get("suggested_next_capability"),
+            default="",
+        ),
+        "source_entrypoint": source_entrypoint,
+        "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    }
+    gap_dir = state_root / "supervisor" / "capability-gaps"
+    gap_dir.mkdir(parents=True, exist_ok=True)
+    (gap_dir / f"{gap_id}.json").write_text(
+        json.dumps(payload, ensure_ascii=False, sort_keys=True),
+        encoding="utf-8",
+    )
+    return payload
+
+
+def _safe_string(value: Any, *, default: str) -> str:
+    if not isinstance(value, str):
+        return default
+    stripped = value.strip()
+    if not stripped:
+        return default
+    return stripped[:1000]
+
+
+def _safe_string_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    result: list[str] = []
+    for item in value[:20]:
+        if isinstance(item, str) and item.strip():
+            result.append(item.strip()[:500])
+    return result
 
 
 def _require_text(value: object, field_name: str) -> str:
