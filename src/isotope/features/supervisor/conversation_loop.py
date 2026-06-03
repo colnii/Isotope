@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -15,6 +16,7 @@ from isotope.features.supervisor.commands.handlers.capacity import (
     _execute_agent_loop_capacity_step,
     agent_loop_json_summary,
 )
+from isotope.llm.prompts import render_json_prompt_template
 from isotope.llm.provider import LLMResponse
 
 from .desktop_chat_context import compact_desktop_chat_history_messages
@@ -51,6 +53,7 @@ def run_supervisor_conversation_events(
     history: list[dict[str, str]] | None = None,
     capacity_runner: CapabilityRunner | None = None,
     max_turns: int = 3,
+    timeout_seconds: float | None = None,
 ) -> Iterator[SupervisorConversationEvent]:
     clean_message = _require_text(user_message, "user_message")
     if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
@@ -64,14 +67,16 @@ def run_supervisor_conversation_events(
     )
     observations: list[dict[str, Any]] = []
     for _turn_index in range(max_turns):
-        response = provider.generate(
-            _conversation_messages(
+        response = _generate_with_timeout(
+            provider,
+            messages=_conversation_messages(
                 clean_message,
                 context,
                 history=history,
                 observations=observations,
             ),
             max_tokens=max_tokens,
+            timeout_seconds=timeout_seconds,
         )
         decision = _parse_decision(response.content)
         if decision["kind"] == "direct_answer":
@@ -132,7 +137,7 @@ def _conversation_context(
             "description": capability.get("description"),
             "shelf": capability.get("shelf"),
             "domain_tags": capability.get("domain_tags"),
-            "input_contract": capability.get("input_contract"),
+            **_conversation_capability_summary(capability),
         }
         for capability in runner.list_capabilities()
     ]
@@ -163,15 +168,10 @@ def _conversation_messages(
     messages = [
         {
             "role": "system",
-            "content": (
-                "你是 Isotope Supervisor 的对话 agent。可以直接回答，也可以返回 "
-                "JSON 决策调用 capability 或记录 capability gap。系统会校验并执行。"
+            "content": render_json_prompt_template(
+                "desktop_chat",
+                {"capacity_manifest": context["capacity_manifest"]},
             ),
-        },
-        {
-            "role": "system",
-            "content": "supervisor_conversation_context:\n"
-            + json.dumps(context, ensure_ascii=False, sort_keys=True),
         },
     ]
     if observations:
@@ -206,6 +206,69 @@ def _history_messages(history: list[dict[str, str]] | None) -> list[dict[str, st
         if stripped:
             clean.append({"role": role, "content": stripped})
     return compact_desktop_chat_history_messages(clean)
+
+
+def _generate_with_timeout(
+    provider: SupervisorConversationProvider,
+    *,
+    messages: list[dict[str, str]],
+    max_tokens: int,
+    timeout_seconds: float | None,
+) -> LLMResponse:
+    if timeout_seconds is None:
+        return provider.generate(messages, max_tokens=max_tokens)
+    if timeout_seconds <= 0:
+        raise TimeoutError("desktop chat response timed out")
+    executor = ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(provider.generate, messages, max_tokens=max_tokens)
+    try:
+        return future.result(timeout=timeout_seconds)
+    except FutureTimeoutError as exc:
+        future.cancel()
+        raise TimeoutError("desktop chat response timed out") from exc
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
+
+
+def _conversation_capability_summary(capability: dict[str, Any]) -> dict[str, Any]:
+    input_contract = capability.get("input_contract")
+    properties = (
+        input_contract.get("properties", {})
+        if isinstance(input_contract, dict)
+        else {}
+    )
+    operation_property = (
+        properties.get("operation", {}) if isinstance(properties, dict) else {}
+    )
+    operations = (
+        operation_property.get("enum")
+        if isinstance(operation_property, dict)
+        else None
+    )
+    return _omit_empty(
+        {
+            "capability_id": capability.get("capability_id"),
+            "title": capability.get("title"),
+            "description": capability.get("description"),
+            "shelf": capability.get("shelf"),
+            "domain_tags": capability.get("domain_tags"),
+            "required_inputs": (
+                input_contract.get("required", [])
+                if isinstance(input_contract, dict)
+                else []
+            ),
+            "operations": operations,
+            "network_required": capability.get("network_required"),
+        }
+    )
+
+
+def _omit_empty(value: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: item
+        for key, item in value.items()
+        if item not in (None, [], {})
+    }
 
 
 def _parse_decision(content: str) -> dict[str, Any]:

@@ -134,6 +134,28 @@ class SlowCapacityProvider(RecordingCapacityProvider):
         return super().generate(messages, max_tokens=max_tokens)
 
 
+class MultiResponseDesktopChatProvider(RecordingDesktopChatProvider):
+    def __init__(self, responses: list[str]) -> None:
+        super().__init__(content="")
+        self.responses = list(responses)
+
+    def generate(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int = 512,
+    ) -> LLMResponse:
+        self.calls.append({"messages": messages, "max_tokens": max_tokens})
+        return LLMResponse(
+            provider=self.provider,
+            model=self.model,
+            content=self.responses.pop(0),
+            finish_reason="stop",
+            usage={},
+            raw={"raw_response": "must not leak"},
+        )
+
+
 def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
     tmp_path,
 ) -> None:
@@ -351,6 +373,46 @@ def test_desktop_chat_stream_skips_slow_capacity_selection_and_answers(tmp_path)
     assert [event.event for event in events] == ["delta"]
     assert events[0].payload == {"text": "我先直接回答。"}
     assert capacity_provider.calls
+
+
+def test_desktop_chat_stream_uses_conversation_loop_for_model_capacity_choice(
+    tmp_path,
+) -> None:
+    provider = MultiResponseDesktopChatProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "artifact.review",
+                    "arguments": {},
+                    "rationale": "用户要求能力执行。",
+                }
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "已经通过 Supervisor agent loop 执行 capability。",
+                }
+            ),
+        ]
+    )
+
+    events = list(
+        stream_desktop_chat_events(
+            state_root=tmp_path,
+            question="调用 artifact review capacity。",
+            provider=provider,
+        )
+    )
+
+    assert [event.event for event in events] == [
+        "capacity_start",
+        "capacity_result",
+        "delta",
+    ]
+    assert events[1].payload["result_summary"]["agent_loop_tick_status"] == "executed"
+    assert events[2].payload["text"] == "已经通过 Supervisor agent loop 执行 capability。"
+    assert len(provider.calls) == 2
 
 
 def test_desktop_chat_stream_times_out_slow_answer_provider(tmp_path) -> None:

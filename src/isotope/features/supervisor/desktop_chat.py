@@ -19,6 +19,7 @@ from isotope.llm.capacity_calling import CapacityCallingProvider
 from isotope.llm.prompts import render_json_prompt_template
 from isotope.llm.provider import LLMResponse, LLMStreamChunk
 
+from .conversation_loop import run_supervisor_conversation_events
 from .desktop_chat_context import compact_desktop_chat_history_messages
 
 
@@ -103,6 +104,26 @@ def stream_desktop_chat_events(
     clean_question = _require_question(question)
     if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
         raise ValueError("max_tokens must be a positive integer")
+    stream_generate = getattr(provider, "stream_generate", None)
+    use_conversation_loop = capacity_provider is None and not callable(stream_generate)
+    if use_conversation_loop:
+        for event in run_supervisor_conversation_events(
+            state_root=state_root,
+            cwd=Path.cwd(),
+            user_message=clean_question,
+            provider=provider,
+            max_tokens=max_tokens,
+            history=history,
+            capacity_runner=capacity_runner,
+            timeout_seconds=chat_timeout_seconds,
+        ):
+            yield DesktopChatStreamEvent(
+                event=event.event,
+                payload=event.payload,
+                provider=event.provider,
+                model=event.model,
+            )
+        return
     chat_context = build_desktop_chat_context(capacity_runner=capacity_runner)
     if capacity_provider is not None:
         for event in _desktop_chat_capacity_events(
