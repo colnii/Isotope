@@ -389,6 +389,137 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="code.read",
+                    title="Code Read",
+                    description=(
+                        "Read a bounded excerpt and low-sensitive metadata from "
+                        "one workspace-relative code file."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "code",
+                        "read",
+                        "native-coding",
+                        "workspace",
+                        "readonly",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["root", "cwd", "path"],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "description": "Runtime root for future read artifacts.",
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Workspace directory that bounds the read.",
+                            },
+                            "path": {
+                                "type": "string",
+                                "description": "Workspace-relative file path to inspect.",
+                            },
+                            "max_excerpt_chars": {
+                                "type": "integer",
+                                "description": "Maximum returned excerpt characters.",
+                                "default": 2000,
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "runner_kind",
+                            "code_read",
+                            "code_ref",
+                            "excerpt",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "relative_paths_only",
+                        "workspace_escape_rejected",
+                        "bounded_excerpts_only",
+                        "no_filesystem_write",
+                        "no_command_execution",
+                        "low_sensitive_summary_only",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
+                    capability_id="code.search",
+                    title="Code Search",
+                    description=(
+                        "Search workspace-relative code files with bounded "
+                        "line excerpts and stable code refs."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "code",
+                        "search",
+                        "native-coding",
+                        "workspace",
+                        "readonly",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["root", "cwd", "query"],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "description": "Runtime root for future search artifacts.",
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Workspace directory that bounds the search.",
+                            },
+                            "query": {
+                                "type": "string",
+                                "description": "Literal text query to find.",
+                            },
+                            "include_paths": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Workspace-relative files or directories to search.",
+                                "default": ["."],
+                            },
+                            "max_results": {
+                                "type": "integer",
+                                "description": "Maximum returned matches.",
+                                "default": 20,
+                            },
+                            "max_excerpt_chars": {
+                                "type": "integer",
+                                "description": "Maximum characters per returned line excerpt.",
+                                "default": 2000,
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "runner_kind",
+                            "code_search",
+                            "matches",
+                            "code_refs",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "relative_paths_only",
+                        "workspace_escape_rejected",
+                        "bounded_excerpts_only",
+                        "no_filesystem_write",
+                        "no_command_execution",
+                        "low_sensitive_summary_only",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="memory.query",
                     title="Memory Query",
                     description=(

@@ -293,8 +293,6 @@ def test_runner_runs_coding_task_preview_without_side_effects(tmp_path):
         "workspace.materialize",
         "workspace.changed_files",
         "workspace.release",
-        "code.read",
-        "code.search",
         "code.apply_patch",
         "test.run",
         "vcs.status",
@@ -528,6 +526,164 @@ def test_workspace_lease_create_plan_stops_when_required_inputs_are_missing():
         "proposal_id",
         "execution_id",
     ]
+    assert plan["scenario"] is None
+
+
+def test_runner_discovers_code_read_and_search_from_default_catalog():
+    runner = _runner()
+
+    assert "code.read" in _ids(runner.list_capabilities())
+    assert "code.search" in _ids(runner.search_capabilities(query="code search")["capabilities"])
+
+    read_description = runner.describe_capability("code.read")
+    search_description = runner.describe_capability("code.search")
+    assert read_description["input_contract"]["required"] == ["root", "cwd", "path"]
+    assert search_description["input_contract"]["required"] == ["root", "cwd", "query"]
+    assert "relative_paths_only" in read_description["safety_boundaries"]
+    assert "bounded_excerpts_only" in read_description["safety_boundaries"]
+    assert "no_filesystem_write" in search_description["safety_boundaries"]
+
+
+def test_runner_reads_code_file_excerpt_without_side_effects(tmp_path):
+    workspace = tmp_path / "repo"
+    source_dir = workspace / "src"
+    source_dir.mkdir(parents=True)
+    source = source_dir / "app.py"
+    source.write_text(
+        "def alpha():\n"
+        "    return 'needle one'\n"
+        "\n"
+        "def beta():\n"
+        "    return 'needle two'\n",
+        encoding="utf-8",
+    )
+    root = tmp_path / "state"
+
+    result = _runner().run_capability(
+        "code.read",
+        inputs={
+            "root": str(root),
+            "cwd": str(workspace),
+            "path": "src/app.py",
+            "max_excerpt_chars": 37,
+        },
+    )
+
+    code_read = result["code_read"]
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "code.read"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "deterministic_readonly"
+    assert code_read["status"] == "readable"
+    assert code_read["path"] == "src/app.py"
+    assert code_read["line_count"] == 5
+    assert code_read["excerpt"] == "def alpha():\n    return 'needle one'\n"
+    assert code_read["truncated"] is True
+    assert code_read["code_ref"]["ref_type"] == "code"
+    assert code_read["code_ref"]["scope"] == "workspace"
+    assert code_read["code_ref"]["path"] == "src/app.py"
+    assert len(code_read["code_ref"]["sha256"]) == 64
+    assert "content" not in code_read
+    assert not list(root.rglob("*"))
+
+
+def test_runner_searches_code_with_bounded_line_excerpts(tmp_path):
+    workspace = tmp_path / "repo"
+    (workspace / "src").mkdir(parents=True)
+    (workspace / "src" / "app.py").write_text(
+        "def alpha():\n    return 'needle one'\n",
+        encoding="utf-8",
+    )
+    (workspace / "src" / "other.py").write_text(
+        "needle two\nneedle three\n",
+        encoding="utf-8",
+    )
+    root = tmp_path / "state"
+
+    result = _runner().run_capability(
+        "code.search",
+        inputs={
+            "root": str(root),
+            "cwd": str(workspace),
+            "query": "needle",
+            "include_paths": ["src"],
+            "max_results": 2,
+            "max_excerpt_chars": 18,
+        },
+    )
+
+    code_search = result["code_search"]
+    assert result["capability_id"] == "code.search"
+    assert result["runner_kind"] == "deterministic_readonly"
+    assert code_search["status"] == "matched"
+    assert code_search["query"] == "needle"
+    assert code_search["match_count"] == 2
+    assert code_search["truncated"] is True
+    assert code_search["matches"] == [
+        {
+            "path": "src/app.py",
+            "line_number": 2,
+            "excerpt": "    return 'needle",
+            "truncated": True,
+            "code_ref": {
+                "ref_type": "code",
+                "scope": "workspace",
+                "path": "src/app.py",
+                "line_number": 2,
+            },
+        },
+        {
+            "path": "src/other.py",
+            "line_number": 1,
+            "excerpt": "needle two",
+            "truncated": False,
+            "code_ref": {
+                "ref_type": "code",
+                "scope": "workspace",
+                "path": "src/other.py",
+                "line_number": 1,
+            },
+        },
+    ]
+    assert not list(root.rglob("*"))
+
+
+@pytest.mark.parametrize(
+    ("capability_id", "inputs", "message"),
+    [
+        ("code.read", {"path": "../secret.py"}, "path"),
+        ("code.read", {"path": "/tmp/secret.py"}, "path"),
+        ("code.search", {"include_paths": ["../src"]}, "include_paths"),
+        ("code.search", {"include_paths": ["/tmp/src"]}, "include_paths"),
+    ],
+)
+def test_code_capabilities_reject_paths_outside_workspace(
+    tmp_path, capability_id, inputs, message
+):
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    payload = {
+        "root": str(tmp_path / "state"),
+        "cwd": str(workspace),
+        "path": "src/app.py",
+        "query": "needle",
+    }
+    payload.update(inputs)
+
+    with pytest.raises(ValueError, match=message):
+        _runner().run_capability(capability_id, inputs=payload)
+
+
+def test_code_read_plan_stops_when_required_inputs_are_missing():
+    plan = _runner().plan_capability_run(
+        "code.read",
+        inputs={"cwd": "/tmp/project"},
+    )
+
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["missing_inputs"] == ["root", "path"]
     assert plan["scenario"] is None
 
 

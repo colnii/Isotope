@@ -16,6 +16,14 @@ from .coding import (
     run_coding_task_preview,
     validate_coding_inputs,
 )
+from .code_access import (
+    CODE_READ_CAPABILITY,
+    CODE_SEARCH_CAPABILITY,
+    is_code_access_capability,
+    run_code_read,
+    run_code_search,
+    validate_code_access_inputs,
+)
 from .memory import (
     MEMORY_PROMOTION_PREVIEW_CAPABILITY,
     MEMORY_QUERY_CAPABILITY,
@@ -199,6 +207,11 @@ class CapabilityRunner:
             inputs=input_mapping,
             missing_inputs=missing_inputs,
         )
+        validate_code_access_inputs(
+            capability_id=capability_id,
+            inputs=input_mapping,
+            missing_inputs=missing_inputs,
+        )
         validate_workspace_inputs(
             capability_id=capability_id,
             inputs=input_mapping,
@@ -229,6 +242,7 @@ class CapabilityRunner:
             and not is_screen_readonly_capability(capability_id)
             and not is_supervisor_readonly_capability(capability_id)
             and not is_coding_capability(capability_id)
+            and not is_code_access_capability(capability_id)
             and not is_workspace_capability(capability_id)
         ):
             launch_status = "not_allowlisted"
@@ -278,6 +292,7 @@ class CapabilityRunner:
             or is_screen_readonly_capability(capability_id)
             or is_supervisor_readonly_capability(capability_id)
             or is_coding_capability(capability_id)
+            or is_code_access_capability(capability_id)
             or is_workspace_capability(capability_id)
         ):
             required_inputs = _required_inputs(capability)
@@ -303,6 +318,11 @@ class CapabilityRunner:
                 missing_inputs=missing_inputs,
             )
             validate_coding_inputs(
+                capability_id=capability_id,
+                inputs=input_mapping,
+                missing_inputs=missing_inputs,
+            )
+            validate_code_access_inputs(
                 capability_id=capability_id,
                 inputs=input_mapping,
                 missing_inputs=missing_inputs,
@@ -341,6 +361,10 @@ class CapabilityRunner:
             return run_supervisor_worker_review(inputs=input_mapping)
         if capability_id == CODING_TASK_PREVIEW_CAPABILITY:
             return run_coding_task_preview(inputs=input_mapping)
+        if capability_id == CODE_READ_CAPABILITY:
+            return run_code_read(inputs=input_mapping)
+        if capability_id == CODE_SEARCH_CAPABILITY:
+            return run_code_search(inputs=input_mapping)
         if capability_id == WORKSPACE_ISOLATED_RW_CAPABILITY:
             return run_workspace_isolated_rw(inputs=input_mapping)
         if capability_id == WORKSPACE_LEASE_CREATE_CAPABILITY:
@@ -468,6 +492,8 @@ def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
         return "deterministic_readonly"
     if is_coding_capability(str(capability.get("capability_id", ""))):
         return "deterministic_preview"
+    if is_code_access_capability(str(capability.get("capability_id", ""))):
+        return "deterministic_readonly"
     if is_workspace_capability(str(capability.get("capability_id", ""))):
         return "deterministic_proposal"
     return "deferred"

@@ -27,8 +27,6 @@ _BLOCKED_CAPABILITIES = [
     "workspace.materialize",
     "workspace.changed_files",
     "workspace.release",
-    "code.read",
-    "code.search",
     "code.apply_patch",
     "test.run",
     "vcs.status",
@@ -85,7 +83,7 @@ def run_coding_task_preview(*, inputs: Mapping[str, Any] | None) -> dict[str, An
             "verification_command_count": len(input_mapping["verification_commands"]),
             "native_coding_requirements": list(_NATIVE_CODING_REQUIREMENTS),
             "blocked_capabilities": list(_BLOCKED_CAPABILITIES),
-            "next_slice": "workspace.isolated_rw",
+            "next_slice": "workspace.materialize",
         },
     }
 

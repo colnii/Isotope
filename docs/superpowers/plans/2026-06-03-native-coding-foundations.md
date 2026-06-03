@@ -48,6 +48,14 @@ This objective spans multiple subsystems, so it must not be implemented as one b
 - Modify `tests/integration/workspace/test_workspace_lease_lifecycle_boundary.py`: cover `isolated_rw` lease projection and checkpoint rebuild.
 - Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, successful event candidate, and missing-input launch planning.
 
+## Slice 4 File Structure
+
+- Create `src/isotope/capabilities/code_access.py`: controlled `code.read` and `code.search` runners with workspace-relative path validation, bounded excerpts, code refs, and no filesystem writes.
+- Modify `src/isotope/capabilities/catalog.py`: register `code.read` and `code.search` in the default catalog with low-sensitive safety boundaries.
+- Modify `src/isotope/capabilities/runner.py`: route planning and execution through the code access runner and mark both capabilities `deterministic_readonly`.
+- Modify `src/isotope/capabilities/coding.py`: remove `code.read` and `code.search` from the native coding preview blocked-capability list.
+- Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, bounded read excerpts, bounded search matches, path escape rejection, and missing-input planning.
+
 ## Task 1: Register Coding Preview Capability
 
 **Files:**
