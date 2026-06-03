@@ -18,6 +18,8 @@ class SupervisorStateSnapshot:
     failed_lanes: list[dict[str, Any]] = field(default_factory=list)
     recent_worker_events: list[dict[str, Any]] = field(default_factory=list)
     notifications: dict[str, Any] = field(default_factory=dict)
+    memory: dict[str, Any] = field(default_factory=dict)
+    artifacts: dict[str, Any] = field(default_factory=dict)
     status: str = "ok"
 
     def __post_init__(self) -> None:
@@ -30,6 +32,10 @@ class SupervisorStateSnapshot:
         _list_of_dicts(self.recent_worker_events, "recent_worker_events")
         if not isinstance(self.notifications, dict):
             raise TypeError("notifications must be a dict")
+        if not isinstance(self.memory, dict):
+            raise TypeError("memory must be a dict")
+        if not isinstance(self.artifacts, dict):
+            raise TypeError("artifacts must be a dict")
 
     @classmethod
     def empty(cls, *, codex_home: Path | str) -> SupervisorStateSnapshot:
@@ -45,8 +51,16 @@ class SupervisorStateSnapshot:
                 "worker_events": 0,
                 "notifications": 0,
                 "unread_notifications": 0,
+                "memory_records": 0,
+                "artifact_summaries": 0,
             },
             notifications={"total": 0, "unread": 0, "recent": []},
+            memory={
+                "total": 0,
+                "by_scope": {"thread": 0, "run": 0, "session": 0},
+                "recent": [],
+            },
+            artifacts={"total": 0, "recent": []},
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -61,6 +75,8 @@ class SupervisorStateSnapshot:
             "failed_lanes": [dict(item) for item in self.failed_lanes],
             "recent_worker_events": [dict(item) for item in self.recent_worker_events],
             "notifications": dict(self.notifications),
+            "memory": dict(self.memory),
+            "artifacts": dict(self.artifacts),
         }
 
 

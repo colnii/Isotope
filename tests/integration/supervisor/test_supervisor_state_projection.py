@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from datetime import UTC, datetime
 
 from isotope.features.notifications.flow import NotificationFlow
@@ -24,6 +25,8 @@ from isotope.platform.state.supervisor_snapshot import SupervisorStateSnapshot
 from isotope.platform.state.worker_event_summary import SupervisorWorkerEventSummary
 from isotope.features.supervisor.state.projection import build_supervisor_state_snapshot
 from isotope.memory.worker_event_channel import publish_worker_event
+from isotope.platform.schemas.memory import MemoryRecord
+from isotope.workspace.artifacts import ArtifactStore
 
 
 def test_supervisor_state_projection_uses_platform_snapshot_schema(tmp_path):
@@ -246,12 +249,20 @@ def test_supervisor_state_snapshot_empty_root_is_read_only(tmp_path):
             "worker_events": 0,
             "notifications": 0,
             "unread_notifications": 0,
+            "memory_records": 0,
+            "artifact_summaries": 0,
         },
         "active_goals": [],
         "active_decisions": [],
         "failed_lanes": [],
         "recent_worker_events": [],
         "notifications": {"total": 0, "unread": 0, "recent": []},
+        "memory": {
+            "total": 0,
+            "by_scope": {"thread": 0, "run": 0, "session": 0},
+            "recent": [],
+        },
+        "artifacts": {"total": 0, "recent": []},
     }
     assert list(tmp_path.rglob("*")) == []
 
@@ -318,6 +329,8 @@ def test_supervisor_state_snapshot_projects_existing_low_sensitive_state(tmp_pat
         "worker_events": 1,
         "notifications": 2,
         "unread_notifications": 2,
+        "memory_records": 1,
+        "artifact_summaries": 0,
     }
     assert snapshot["active_decisions"] == [
         {
@@ -347,6 +360,10 @@ def test_supervisor_state_snapshot_projects_existing_low_sensitive_state(tmp_pat
     assert snapshot["recent_worker_events"][0]["to_worker"] == "worker-b"
     assert snapshot["recent_worker_events"][0]["event_type"] == "handoff"
     assert snapshot["recent_worker_events"][0]["payload"] == {"branch": "feature/a"}
+    assert snapshot["memory"]["total"] == 1
+    assert snapshot["memory"]["by_scope"] == {"thread": 0, "run": 0, "session": 1}
+    assert snapshot["memory"]["recent"][0]["record_id"].startswith("mem_event_")
+    assert snapshot["artifacts"] == {"total": 0, "recent": []}
     assert snapshot["notifications"]["total"] == 2
     assert snapshot["notifications"]["unread"] == 2
     assert [item["type"] for item in snapshot["notifications"]["recent"]] == [
@@ -411,6 +428,76 @@ def test_supervisor_state_snapshot_includes_active_goal_status_summary(tmp_path)
     ]
 
 
+def test_supervisor_state_snapshot_includes_memory_and_artifact_summaries_without_content(tmp_path):
+    memory_dir = tmp_path / "memory"
+    memory_dir.mkdir()
+    record = MemoryRecord(
+        memory_id="mem-supervisor-summary",
+        scope="run",
+        content={"secret": "RAW_MEMORY_CONTENT_SHOULD_NOT_LEAK"},
+        summary="Projection boundary memory summary.",
+        source_refs=[],
+        provenance={
+            "run_id": "run_001",
+            "execution_id": "exec_memory",
+            "action_type": "write_memory",
+        },
+        created_at="2026-05-24T04:00:00Z",
+        supersedes=[],
+        quality="verified",
+    )
+    (memory_dir / f"{record.memory_id}.json").write_text(
+        json.dumps(asdict(record), sort_keys=True),
+        encoding="utf-8",
+    )
+    artifact = ArtifactStore(tmp_path).create_artifact(
+        run_id="run_001",
+        execution_id="exec_artifact",
+        artifact_type="report",
+        summary="Projection boundary artifact summary.",
+        content="RAW_ARTIFACT_CONTENT_SHOULD_NOT_LEAK",
+    )
+
+    snapshot = build_supervisor_state_snapshot(codex_home=tmp_path)
+
+    assert snapshot["summary"]["memory_records"] == 1
+    assert snapshot["summary"]["artifact_summaries"] == 1
+    assert snapshot["memory"] == {
+        "total": 1,
+        "by_scope": {"thread": 0, "run": 1, "session": 0},
+        "recent": [
+            {
+                "record_id": "mem-supervisor-summary",
+                "scope": "run",
+                "summary": "Projection boundary memory summary.",
+                "source_refs": [],
+                "provenance": {
+                    "run_id": "run_001",
+                    "execution_id": "exec_memory",
+                    "action_type": "write_memory",
+                },
+                "created_at": "2026-05-24T04:00:00Z",
+                "supersedes": [],
+                "quality": "verified",
+            }
+        ],
+    }
+    assert snapshot["artifacts"] == {
+        "total": 1,
+        "recent": [
+            {
+                "ref": artifact.ref.to_dict(),
+                "artifact_type": "report",
+                "summary": "Projection boundary artifact summary.",
+                "provenance": {"execution_id": "exec_artifact"},
+            }
+        ],
+    }
+    serialized = json.dumps(snapshot, sort_keys=True)
+    assert "RAW_MEMORY_CONTENT_SHOULD_NOT_LEAK" not in serialized
+    assert "RAW_ARTIFACT_CONTENT_SHOULD_NOT_LEAK" not in serialized
+
+
 def test_supervisor_state_command_outputs_snapshot_json(tmp_path, capsys):
     goal = record_supervisor_goal(
         codex_home=tmp_path,
@@ -454,7 +541,7 @@ def test_supervisor_state_command_plain_prints_compact_summary(tmp_path, capsys)
     assert "状态快照：supervisor_state_snapshot v1" in text
     assert (
         "来源账本：goal queue / decision requests / lane state / "
-        "worker events / notifications"
+        "worker events / notifications / memory records / artifact summaries"
     ) in text
     assert "active goals：0" in text
     assert "decisions：1" in text

@@ -98,3 +98,27 @@ def test_dashboard_current_payload_marks_current_goals_and_workers():
         "total": 2,
     }
     assert payload["target_names"] == ["current-goal", "current-worker"]
+
+
+def test_dashboard_current_payload_can_read_active_goals_from_state_snapshot():
+    payload = dashboard_current_payload(
+        [],
+        state_snapshot={
+            "active_goals": [
+                {
+                    "goal_id": "goal-from-snapshot",
+                    "target_name": "snapshot-goal",
+                    "goal": "continue from projected snapshot",
+                    "cwd": "/repo/current-goal",
+                    "last_status": "working",
+                }
+            ]
+        },
+        api=_FakeDashboardApi(),
+    )
+
+    assert [goal["goal_id"] for goal in payload["active_goals"]] == [
+        "goal-from-snapshot"
+    ]
+    assert payload["active_goals"][0]["current"] is True
+    assert payload["target_names"] == ["snapshot-goal"]

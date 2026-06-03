@@ -30,11 +30,30 @@ def build_multi_worker_status_payload(
     worker: str | None = None,
     limit: int = 50,
 ) -> dict[str, Any]:
+    root_path = Path(root).expanduser()
+    records = FileMemoryStore(root_path).list_records()
+    payload = build_multi_worker_status_from_records(
+        records=records,
+        worker=worker,
+        limit=limit,
+    )
+    payload["store"] = {
+        "root": str(root_path),
+        "path": str(root_path / "memory"),
+        "format": "file_memory_store",
+    }
+    return payload
+
+
+def build_multi_worker_status_from_records(
+    *,
+    records: list[MemoryRecord],
+    worker: str | None = None,
+    limit: int = 50,
+) -> dict[str, Any]:
     if limit <= 0:
         raise ValueError("limit must be positive")
-    root_path = Path(root).expanduser()
     worker_filter = _optional_text(worker)
-    records = FileMemoryStore(root_path).list_records()
     event_records = [record for record in records if _is_worker_event_record(record)]
     memory_records = [record for record in records if not _is_worker_event_record(record)]
     worker_names = _discover_worker_names(memory_records=memory_records, events=event_records)
@@ -54,9 +73,9 @@ def build_multi_worker_status_payload(
     return {
         "status": "ok",
         "store": {
-            "root": str(root_path),
-            "path": str(root_path / "memory"),
-            "format": "file_memory_store",
+            "root": "",
+            "path": "",
+            "format": "memory_records",
         },
         "filters": {"worker": worker_filter},
         "summary": {

@@ -90,6 +90,7 @@ def dashboard_payload(
         "current": dashboard_current_payload(
             display_sessions,
             active_goals=active_goals,
+            state_snapshot=state_snapshot,
             api=api,
         ),
         "multi_worker": multi_worker or empty_multi_worker_payload(),
@@ -195,6 +196,7 @@ def dashboard_current_payload(
     display_sessions: list[tuple[Any, Any | None, dict[str, Any] | None]],
     *,
     active_goals: list[dict[str, Any]] | None = None,
+    state_snapshot: dict[str, Any] | None = None,
     dependency_limit: int | None = None,
     api: Any | None = None,
 ) -> dict[str, Any]:
@@ -202,7 +204,11 @@ def dashboard_current_payload(
         api = _default_api()
     return current_batch_payload_from_display_sessions(
         display_sessions,
-        active_goals=active_goals,
+        active_goals=_active_goals_from_snapshot(
+            active_goals,
+            state_snapshot=state_snapshot,
+        ),
+        state_snapshot=state_snapshot,
         dependency_limit=dependency_limit,
         api=api,
     )
@@ -212,6 +218,7 @@ def current_batch_payload(
     report: Any,
     *,
     active_goals: list[dict[str, Any]] | None = None,
+    state_snapshot: dict[str, Any] | None = None,
     worker_reviews: dict[str, Any] | None = None,
     dependency_limit: int | None = None,
     api: Any | None = None,
@@ -220,7 +227,11 @@ def current_batch_payload(
         api = _default_api()
     return current_batch_payload_from_display_sessions(
         dashboard_display_sessions(report.sessions, api=api),
-        active_goals=active_goals,
+        active_goals=_active_goals_from_snapshot(
+            active_goals,
+            state_snapshot=state_snapshot,
+        ),
+        state_snapshot=state_snapshot,
         worker_reviews=worker_reviews,
         dependency_limit=dependency_limit,
         api=api,
@@ -231,12 +242,17 @@ def current_batch_payload_from_display_sessions(
     display_sessions: list[tuple[Any, Any | None, dict[str, Any] | None]],
     *,
     active_goals: list[dict[str, Any]] | None = None,
+    state_snapshot: dict[str, Any] | None = None,
     worker_reviews: dict[str, Any] | None = None,
     dependency_limit: int | None = None,
     api: Any | None = None,
 ) -> dict[str, Any]:
     if api is None:
         api = _default_api()
+    active_goals = _active_goals_from_snapshot(
+        active_goals,
+        state_snapshot=state_snapshot,
+    )
     current_goals = [
         item
         for item in (dashboard_active_goal_item(goal, api=api) for goal in active_goals or [])
@@ -257,6 +273,21 @@ def current_batch_payload_from_display_sessions(
         worker_reviews=worker_reviews,
         dependency_limit=dependency_limit,
     ).to_dict()
+
+
+def _active_goals_from_snapshot(
+    active_goals: list[dict[str, Any]] | None,
+    *,
+    state_snapshot: dict[str, Any] | None,
+) -> list[dict[str, Any]] | None:
+    if active_goals is not None:
+        return active_goals
+    if not isinstance(state_snapshot, dict):
+        return None
+    snapshot_goals = state_snapshot.get("active_goals")
+    if not isinstance(snapshot_goals, list):
+        return None
+    return [dict(goal) for goal in snapshot_goals if isinstance(goal, dict)]
 
 
 def dashboard_active_goal_item(goal: dict[str, Any], *, api: Any | None = None) -> dict[str, Any]:

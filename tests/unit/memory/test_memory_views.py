@@ -9,6 +9,7 @@ from isotope.memory.views import (
     build_multi_worker_status_payload,
     render_memory_query_plain,
 )
+import isotope.platform.state.multi_worker as platform_multi_worker
 from isotope.platform.schemas.memory import MemoryRecord
 
 
@@ -199,6 +200,63 @@ def test_memory_views_build_multi_worker_status_payload(tmp_path):
 
     assert payload["summary"]["worker_count"] == 2
     assert payload["summary"]["capacity_calls_total"] == 1
+    workers = {worker["name"]: worker for worker in payload["workers"]}
+    assert workers["worker-a"]["capacity_ids"] == ["artifact.review"]
+    assert workers["worker-b"]["incoming_events_total"] == 1
+    assert "PRIVATE" not in json.dumps(payload)
+
+
+def test_multi_worker_status_can_be_built_from_memory_records():
+    records = [
+        MemoryRecord(
+            memory_id="mem-worker-record-input",
+            scope="run",
+            content={
+                "kind": "capacity_call",
+                "worker_id": "worker-a",
+                "capacity_id": "artifact.review",
+                "arguments": {"secret": "PRIVATE"},
+            },
+            summary="Worker A selected artifact.review.",
+            source_refs=[],
+            provenance={
+                "run_id": "run-a",
+                "execution_id": "exec-capacity",
+                "action_type": "capacity_call",
+            },
+            created_at="2026-05-22T01:00:00Z",
+            supersedes=[],
+            quality="verified",
+        ),
+        MemoryRecord(
+            memory_id="worker-event-record-input",
+            scope="session",
+            content={
+                "kind": "worker_event",
+                "channel": "supervisor",
+                "from_worker": "worker-a",
+                "to_worker": "worker-b",
+                "event_type": "handoff",
+                "message": "Ready.",
+            },
+            summary="worker-a -> worker-b: Ready.",
+            source_refs=[],
+            provenance={
+                "run_id": "supervisor_worker_event_channel",
+                "execution_id": "worker-event-record-input",
+                "action_type": "publish_worker_event",
+            },
+            created_at="2026-05-22T01:10:00Z",
+            supersedes=[],
+            quality="verified",
+        ),
+    ]
+
+    payload = platform_multi_worker.build_multi_worker_status_from_records(records=records)
+
+    assert payload["summary"]["worker_count"] == 2
+    assert payload["summary"]["memory_records_total"] == 1
+    assert payload["summary"]["worker_events_total"] == 1
     workers = {worker["name"]: worker for worker in payload["workers"]}
     assert workers["worker-a"]["capacity_ids"] == ["artifact.review"]
     assert workers["worker-b"]["incoming_events_total"] == 1

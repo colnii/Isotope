@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
 from isotope.features.notifications.flow import NotificationFlow, NotificationSummary
+from isotope.platform.schemas.memory import MemoryRecord
+from isotope.platform.state.memory_store import FileMemoryStore
 from isotope.platform.state.active_goal import SupervisorActiveGoal
 from isotope.platform.state.decision_request import SupervisorDecisionRequest
 from isotope.platform.state.notification_summary import SupervisorNotificationSummary
 from isotope.platform.state.supervisor_snapshot import SupervisorStateSnapshot
 from isotope.platform.state.worker_event_channel import list_worker_events
 from isotope.platform.state.worker_event_summary import SupervisorWorkerEventSummary
+from isotope.rag.retrieval import RetrievalService
+from isotope.workspace.artifacts import ArtifactStore
 
 from ..planner.decision_requests import read_active_decision_requests
 from ..planner.goal_queue import (
@@ -49,6 +54,8 @@ def build_supervisor_state_snapshot(
         codex_home_path,
         limit=notification_limit,
     )
+    memory = _memory_payload(codex_home_path, limit=worker_event_limit)
+    artifacts = _artifact_payload(codex_home_path, limit=worker_event_limit)
     worker_event_summary = worker_events.get("summary", {})
     total_worker_events = (
         worker_event_summary.get("total", 0)
@@ -68,6 +75,8 @@ def build_supervisor_state_snapshot(
             "worker_events": total_worker_events,
             "notifications": notifications["total"],
             "unread_notifications": notifications["unread"],
+            "memory_records": memory["total"],
+            "artifact_summaries": artifacts["total"],
         },
         active_goals=active_goals,
         active_decisions=active_decisions,
@@ -76,6 +85,8 @@ def build_supervisor_state_snapshot(
             _worker_event_payload(item) for item in worker_events.get("events") or []
         ],
         notifications=notifications,
+        memory=memory,
+        artifacts=artifacts,
     ).to_dict()
 
 
@@ -136,3 +147,72 @@ def _notification_payload(codex_home: Path, *, limit: int) -> dict[str, Any]:
 
 def _notification_summary_payload(summary: NotificationSummary) -> dict[str, Any]:
     return SupervisorNotificationSummary.from_payload(summary.to_dict()).to_state_payload()
+
+
+def _memory_payload(codex_home: Path, *, limit: int) -> dict[str, Any]:
+    records = FileMemoryStore(codex_home).list_records()
+    by_scope = Counter(record.scope for record in records)
+    sorted_records = sorted(
+        records,
+        key=lambda record: (record.created_at, record.memory_id),
+        reverse=True,
+    )
+    return {
+        "total": len(records),
+        "by_scope": {
+            "thread": by_scope.get("thread", 0),
+            "run": by_scope.get("run", 0),
+            "session": by_scope.get("session", 0),
+        },
+        "recent": [_memory_record_payload(record) for record in sorted_records[:limit]],
+    }
+
+
+def _memory_record_payload(record: MemoryRecord) -> dict[str, Any]:
+    return {
+        "record_id": record.memory_id,
+        "scope": record.scope,
+        "summary": record.summary,
+        "source_refs": [dict(ref) for ref in record.source_refs],
+        "provenance": dict(record.provenance),
+        "created_at": record.created_at,
+        "supersedes": list(record.supersedes),
+        "quality": record.quality,
+    }
+
+
+def _artifact_payload(codex_home: Path, *, limit: int) -> dict[str, Any]:
+    store = ArtifactStore(codex_home)
+    retrieval = RetrievalService(store)
+    summaries: list[dict[str, Any]] = []
+    for artifact in _list_artifacts_safely(store, codex_home):
+        try:
+            summaries.append(
+                retrieval.get_artifact_summary(
+                    artifact.ref,
+                    {"artifact": {"read": "summary"}},
+                )
+            )
+        except (OSError, TypeError, ValueError, KeyError, PermissionError):
+            continue
+    sorted_summaries = sorted(
+        summaries,
+        key=lambda item: (
+            str((item.get("ref") or {}).get("run_id", "")),
+            str((item.get("ref") or {}).get("artifact_id", "")),
+        ),
+        reverse=True,
+    )
+    return {"total": len(summaries), "recent": sorted_summaries[:limit]}
+
+
+def _list_artifacts_safely(store: ArtifactStore, codex_home: Path) -> list[Any]:
+    artifacts: list[Any] = []
+    for run_dir in sorted((codex_home / "runs").glob("*")):
+        if not run_dir.is_dir():
+            continue
+        try:
+            artifacts.extend(store.list_artifacts(run_dir.name))
+        except (OSError, TypeError, ValueError, KeyError):
+            continue
+    return artifacts
