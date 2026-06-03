@@ -25,8 +25,6 @@ _NATIVE_CODING_REQUIREMENTS = [
 _BLOCKED_CAPABILITIES = [
     "workspace.changed_files",
     "workspace.release",
-    "vcs.status",
-    "vcs.diff",
 ]
 
 
@@ -79,7 +77,7 @@ def run_coding_task_preview(*, inputs: Mapping[str, Any] | None) -> dict[str, An
             "verification_command_count": len(input_mapping["verification_commands"]),
             "native_coding_requirements": list(_NATIVE_CODING_REQUIREMENTS),
             "blocked_capabilities": list(_BLOCKED_CAPABILITIES),
-            "next_slice": "vcs.status",
+            "next_slice": "workspace.changed_files",
         },
     }
 

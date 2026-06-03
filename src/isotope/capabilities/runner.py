@@ -71,6 +71,14 @@ from .testing import (
     run_test_run,
     validate_test_run_inputs,
 )
+from .vcs import (
+    VCS_DIFF_CAPABILITY,
+    VCS_STATUS_CAPABILITY,
+    is_vcs_capability,
+    run_vcs_diff,
+    run_vcs_status,
+    validate_vcs_inputs,
+)
 from .workspace import (
     WORKSPACE_ISOLATED_RW_CAPABILITY,
     WORKSPACE_LEASE_CREATE_CAPABILITY,
@@ -236,6 +244,11 @@ class CapabilityRunner:
             inputs=input_mapping,
             missing_inputs=missing_inputs,
         )
+        validate_vcs_inputs(
+            capability_id=capability_id,
+            inputs=input_mapping,
+            missing_inputs=missing_inputs,
+        )
         validate_workspace_inputs(
             capability_id=capability_id,
             inputs=input_mapping,
@@ -269,6 +282,7 @@ class CapabilityRunner:
             and not is_code_access_capability(capability_id)
             and not is_code_edit_capability(capability_id)
             and not is_test_run_capability(capability_id)
+            and not is_vcs_capability(capability_id)
             and not is_workspace_capability(capability_id)
         ):
             launch_status = "not_allowlisted"
@@ -321,6 +335,7 @@ class CapabilityRunner:
             or is_code_access_capability(capability_id)
             or is_code_edit_capability(capability_id)
             or is_test_run_capability(capability_id)
+            or is_vcs_capability(capability_id)
             or is_workspace_capability(capability_id)
         ):
             required_inputs = _required_inputs(capability)
@@ -361,6 +376,11 @@ class CapabilityRunner:
                 missing_inputs=missing_inputs,
             )
             validate_test_run_inputs(
+                capability_id=capability_id,
+                inputs=input_mapping,
+                missing_inputs=missing_inputs,
+            )
+            validate_vcs_inputs(
                 capability_id=capability_id,
                 inputs=input_mapping,
                 missing_inputs=missing_inputs,
@@ -407,6 +427,10 @@ class CapabilityRunner:
             return run_code_apply_patch(inputs=input_mapping)
         if capability_id == TEST_RUN_CAPABILITY:
             return run_test_run(inputs=input_mapping)
+        if capability_id == VCS_STATUS_CAPABILITY:
+            return run_vcs_status(inputs=input_mapping)
+        if capability_id == VCS_DIFF_CAPABILITY:
+            return run_vcs_diff(inputs=input_mapping)
         if capability_id == WORKSPACE_ISOLATED_RW_CAPABILITY:
             return run_workspace_isolated_rw(inputs=input_mapping)
         if capability_id == WORKSPACE_LEASE_CREATE_CAPABILITY:
@@ -542,6 +566,8 @@ def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
         return "deterministic_local"
     if is_test_run_capability(str(capability.get("capability_id", ""))):
         return "deterministic_local"
+    if is_vcs_capability(str(capability.get("capability_id", ""))):
+        return "deterministic_readonly"
     if capability.get("capability_id") == WORKSPACE_MATERIALIZE_CAPABILITY:
         return "deterministic_local"
     if is_workspace_capability(str(capability.get("capability_id", ""))):

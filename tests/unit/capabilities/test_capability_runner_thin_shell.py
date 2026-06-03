@@ -1,5 +1,6 @@
 import importlib
 import json
+import subprocess
 from dataclasses import asdict
 from pathlib import Path
 
@@ -38,6 +39,28 @@ def _runner(*, catalog=None):
 
 def _ids(entries):
     return [entry["capability_id"] for entry in entries]
+
+
+def _git(cwd, *args):
+    return subprocess.run(
+        ["git", *args],
+        cwd=cwd,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+
+
+def _git_repo(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init")
+    _git(repo, "config", "user.email", "test@example.invalid")
+    _git(repo, "config", "user.name", "Test User")
+    (repo / "app.py").write_text("print('old')\n", encoding="utf-8")
+    _git(repo, "add", "app.py")
+    _git(repo, "commit", "-m", "initial")
+    return repo
 
 
 def _walk_mapping(value):
@@ -291,8 +314,6 @@ def test_runner_runs_coding_task_preview_without_side_effects(tmp_path):
     assert result["preview"]["blocked_capabilities"] == [
         "workspace.changed_files",
         "workspace.release",
-        "vcs.status",
-        "vcs.diff",
     ]
     assert not list(root.rglob("*"))
 
@@ -1015,6 +1036,102 @@ def test_test_run_plan_stops_when_required_inputs_are_missing():
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_local"
     assert plan["missing_inputs"] == ["root", "argv"]
+    assert plan["scenario"] is None
+
+
+def test_runner_discovers_vcs_status_and_diff_from_default_catalog():
+    runner = _runner()
+
+    assert "vcs.status" in _ids(runner.list_capabilities())
+    assert "vcs.diff" in _ids(runner.search_capabilities(query="vcs diff")["capabilities"])
+
+    status_description = runner.describe_capability("vcs.status")
+    diff_description = runner.describe_capability("vcs.diff")
+    assert status_description["input_contract"]["required"] == ["root", "cwd"]
+    assert diff_description["input_contract"]["required"] == ["root", "cwd"]
+    assert "fixed_git_subcommands_only" in status_description["safety_boundaries"]
+    assert "diff_summary_only" in diff_description["safety_boundaries"]
+
+
+def test_runner_reports_git_status_summary_without_artifact_write(tmp_path):
+    repo = _git_repo(tmp_path)
+    (repo / "app.py").write_text("print('new')\n", encoding="utf-8")
+    (repo / "new.py").write_text("print('new file')\n", encoding="utf-8")
+    root = tmp_path / "state"
+
+    result = _runner().run_capability(
+        "vcs.status",
+        inputs={
+            "root": str(root),
+            "cwd": str(repo),
+        },
+    )
+
+    status = result["vcs_status"]
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "vcs.status"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "deterministic_readonly"
+    assert status["status"] == "dirty"
+    assert status["branch"] in {"master", "main"}
+    assert status["changed_files"] == [
+        {"path": "app.py", "index_status": " ", "worktree_status": "M"},
+        {"path": "new.py", "index_status": "?", "worktree_status": "?"},
+    ]
+    assert status["changed_file_count"] == 2
+    assert status["artifact_write"] == "not_performed"
+    assert not list(root.rglob("*"))
+
+
+def test_runner_reports_git_diff_summary_and_changed_files(tmp_path):
+    repo = _git_repo(tmp_path)
+    (repo / "app.py").write_text("print('new')\n", encoding="utf-8")
+    root = tmp_path / "state"
+
+    result = _runner().run_capability(
+        "vcs.diff",
+        inputs={
+            "root": str(root),
+            "cwd": str(repo),
+        },
+    )
+
+    diff = result["vcs_diff"]
+    assert result["capability_id"] == "vcs.diff"
+    assert result["runner_kind"] == "deterministic_readonly"
+    assert diff["status"] == "changed"
+    assert diff["changed_files"] == ["app.py"]
+    assert diff["changed_file_count"] == 1
+    assert "app.py" in diff["stat_excerpt"]
+    assert "print('new')" not in repr(diff)
+    assert diff["artifact_write"] == "not_performed"
+    assert not list(root.rglob("*"))
+
+
+def test_vcs_capabilities_reject_non_git_workspace(tmp_path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+
+    with pytest.raises(ValueError, match="git repository"):
+        _runner().run_capability(
+            "vcs.status",
+            inputs={
+                "root": str(tmp_path / "state"),
+                "cwd": str(workspace),
+            },
+        )
+
+
+def test_vcs_status_plan_stops_when_required_inputs_are_missing():
+    plan = _runner().plan_capability_run(
+        "vcs.status",
+        inputs={"cwd": "/tmp/project"},
+    )
+
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["missing_inputs"] == ["root"]
     assert plan["scenario"] is None
 
 

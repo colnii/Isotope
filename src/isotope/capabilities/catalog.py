@@ -714,6 +714,115 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="vcs.status",
+                    title="VCS Status",
+                    description=(
+                        "Read git branch and porcelain status through fixed "
+                        "read-only subcommands."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "vcs",
+                        "git",
+                        "status",
+                        "native-coding",
+                        "readonly",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["root", "cwd"],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "description": "Runtime root for future status artifacts.",
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Git workspace directory to inspect.",
+                            },
+                            "max_stat_chars": {
+                                "type": "integer",
+                                "description": "Reserved stat excerpt budget.",
+                                "default": 4000,
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "runner_kind",
+                            "vcs_status",
+                            "changed_files",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "fixed_git_subcommands_only",
+                        "read_only_git_status",
+                        "no_vcs_mutation",
+                        "no_artifact_write",
+                        "low_sensitive_summary_only",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
+                    capability_id="vcs.diff",
+                    title="VCS Diff",
+                    description=(
+                        "Read git diff stat and changed-file names through "
+                        "fixed read-only subcommands."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "vcs",
+                        "git",
+                        "diff",
+                        "native-coding",
+                        "readonly",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["root", "cwd"],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "description": "Runtime root for future diff artifacts.",
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Git workspace directory to inspect.",
+                            },
+                            "max_stat_chars": {
+                                "type": "integer",
+                                "description": "Maximum returned diff stat characters.",
+                                "default": 4000,
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "runner_kind",
+                            "vcs_diff",
+                            "changed_files",
+                            "stat_excerpt",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "fixed_git_subcommands_only",
+                        "read_only_git_diff",
+                        "diff_summary_only",
+                        "no_vcs_mutation",
+                        "no_artifact_write",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="memory.query",
                     title="Memory Query",
                     description=(

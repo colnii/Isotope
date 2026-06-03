@@ -81,6 +81,14 @@ This objective spans multiple subsystems, so it must not be implemented as one b
 - Modify `src/isotope/capabilities/coding.py`: remove `test.run` from the native coding preview blocked-capability list.
 - Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, successful allowlisted command, nonzero exit reporting, non-allowlisted command rejection, and missing-input planning.
 
+## Slice 8 File Structure
+
+- Create `src/isotope/capabilities/vcs.py`: read-only `vcs.status` and `vcs.diff` runners using fixed git subcommands only.
+- Modify `src/isotope/capabilities/catalog.py`: register `vcs.status` and `vcs.diff` with `fixed_git_subcommands_only`, `no_vcs_mutation`, and `diff_summary_only` safety boundaries.
+- Modify `src/isotope/capabilities/runner.py`: route VCS planning and execution through the VCS runner and report `deterministic_readonly`.
+- Modify `src/isotope/capabilities/coding.py`: remove `vcs.status` and `vcs.diff` from the native coding preview blocked-capability list.
+- Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, git status summary, git diff summary, non-git workspace rejection, and missing-input planning.
+
 ## Task 1: Register Coding Preview Capability
 
 **Files:**
