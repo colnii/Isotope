@@ -6,7 +6,7 @@ this module keeps the existing command import path stable.
 
 from __future__ import annotations
 
-from isotope.features.supervisor.dashboard.presentation import (
+from isotope.features.supervisor.dashboard._presentation import (
     active_terminal_match_text,
     best_linked_session_for_managed,
     best_linked_sessions_for_managed_lanes,

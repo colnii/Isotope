@@ -11,22 +11,22 @@ from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import urlparse
 
-from .notifications.bell_events import default_bell_events_path, read_latest_bell_events
-from .notifications.context import read_recent_context_results
-from .desktop_chat import (
+from ..notifications.bell_events import default_bell_events_path, read_latest_bell_events
+from ..notifications.context import read_recent_context_results
+from ..desktop_chat import (
     DesktopChatProvider,
     stream_desktop_chat_events,
 )
-from .desktop_snapshot import build_desktop_snapshot
+from ..desktop_snapshot import build_desktop_snapshot
 from isotope.llm.capacity_calling import CapacityCallingProvider
-from .dashboard.html import dashboard_page_html
-from .planner.decision_requests import (
+from ..dashboard.html import dashboard_page_html
+from ..planner.decision_requests import (
     DEFAULT_DECISION_TIMEOUT_SECONDS,
     read_active_decision_requests,
     read_recent_decision_answers,
     record_decision_answer,
 )
-from .daemon import (
+from ..daemon import (
     start_supervisor_daemon,
     start_supervisor_watcher,
     stop_supervisor_daemon,
@@ -34,25 +34,25 @@ from .daemon import (
     supervisor_daemon_status,
     supervisor_watcher_status,
 )
-from .state.fanout import DEFAULT_FANOUT_LIMIT
-from .flow import CodexSupervisorFlow, _tmux_capture_pane
-from .planner.goal_planner import plan_supervisor_goals
-from .planner.goal_queue import record_supervisor_goal
-from .state.lane_state import (
+from ..state.fanout import DEFAULT_FANOUT_LIMIT
+from ..flow import CodexSupervisorFlow, _tmux_capture_pane
+from ..planner.goal_planner import plan_supervisor_goals
+from ..planner.goal_queue import record_supervisor_goal
+from ..state.lane_state import (
     DEFAULT_MAX_CONTINUE_COUNT,
     DEFAULT_PROMPT_COOLDOWN_SECONDS,
     record_lane_prompt,
 )
-from .llm_action.llm_summary import (
+from ..llm_action.llm_summary import (
     SummaryProvider,
     generate_llm_action_decision,
     resolve_summary_provider_from_env,
 )
 from isotope.llm.provider import resolve_llm_chat_provider
-from ..ask.pool import resolve_workbench_ask_provider_from_env
-from .registry import TmuxBellHookRepair, repair_tmux_bell_hooks, send_to_managed_codex
-from .state.multi_worker import build_multi_worker_status_payload
-from .runner import (
+from ...ask.pool import resolve_workbench_ask_provider_from_env
+from ..registry import TmuxBellHookRepair, repair_tmux_bell_hooks, send_to_managed_codex
+from ..state.multi_worker import build_multi_worker_status_payload
+from ..runner import (
     EXECUTABLE_ADVICE_KINDS,
     EXECUTABLE_ADVICE_TEXT,
     DEFAULT_MAX_CONTEXT_REQUESTS,
@@ -63,7 +63,7 @@ from .runner import (
     _advice_payload,
     _dashboard_payload,
 )
-from .state.projection import build_supervisor_state_snapshot
+from ..state.projection import build_supervisor_state_snapshot
 
 
 SERVICE_ACTION_PATHS = {"/daemon/start", "/daemon/stop", "/watcher/start", "/watcher/stop"}
