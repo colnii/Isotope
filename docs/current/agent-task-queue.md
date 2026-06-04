@@ -118,8 +118,8 @@
   可 search/plan/run，运行时复用既有 lightweight `worker-review`，只返回低敏
   决策摘要，不自动合并、不清理 worktree 或分支。
 - `supervisor.goal_plan` 已进入 capability runner / capacity path：
-  `isotope-capability` 可 search/plan/run，运行时复用 dashboard 使用的
-  `plan_supervisor_goals`；默认只返回规划候选，只有显式 `write=true`
+  `isotope-capability` 可 search/plan/run；dashboard 的“规划目标”入口也走同一个
+  `supervisor.goal_plan` capability。默认只返回规划候选，只有显式 `write=true`
   才写入 `goals.jsonl`。
 - Web research 当前入口已闭环：`isotope-research search/list/inspect` 和
   `isotope-supervisor research search/list/inspect` 复用同一套 Research flow、

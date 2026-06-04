@@ -996,6 +996,71 @@ def test_supervisor_goal_plan_prompt_allows_toml_but_not_markdown(tmp_path):
     assert "Markdown" not in content
 
 
+def test_supervisor_goal_plan_prompt_forbids_unstated_provider_claims(tmp_path):
+    root = tmp_path / "repo"
+    root.mkdir()
+    messages = build_goal_planning_messages(
+        root=root,
+        facts={
+            "docs/current/status.md": "状态",
+            "docs/current/agent-task-queue.md": "任务",
+            "docs/current/supervisor-capability-map.md": "能力",
+        },
+        user_goal="验证真实 API 路径",
+        limit=3,
+        write_mode=False,
+    )
+
+    system_prompt = messages[0]["content"]
+    assert "provider" in system_prompt
+    assert "fake" in system_prompt
+    assert "不要猜测" in system_prompt
+    assert "除非 user_goal 原文点名 provider/fake" in system_prompt
+    assert "不要猜文件路径" in system_prompt
+
+
+def test_supervisor_goal_plan_redacts_provider_facts_unless_user_asks(tmp_path):
+    root = tmp_path / "repo"
+    root.mkdir()
+    messages = build_goal_planning_messages(
+        root=root,
+        facts={
+            "docs/current/status.md": "目标规划入口已接入 capacity。\n测试只用 fake provider。",
+            "docs/current/agent-task-queue.md": "下一步接 dashboard。",
+            "docs/current/supervisor-capability-map.md": "provider 配置背景不该变成任务。",
+        },
+        user_goal="验证 dashboard 目标规划入口真实可用",
+        limit=3,
+        write_mode=False,
+    )
+
+    user_payload = json.loads(messages[1]["content"])
+    serialized_facts = json.dumps(user_payload["facts"], ensure_ascii=False).lower()
+    assert "fake" not in serialized_facts
+    assert "provider" not in serialized_facts
+    assert "目标规划入口已接入 capacity" in serialized_facts
+    assert "下一步接 dashboard" in serialized_facts
+
+
+def test_supervisor_goal_plan_keeps_provider_facts_when_user_asks(tmp_path):
+    root = tmp_path / "repo"
+    root.mkdir()
+    messages = build_goal_planning_messages(
+        root=root,
+        facts={
+            "docs/current/status.md": "测试只用 fake provider。",
+            "docs/current/agent-task-queue.md": "下一步接 dashboard。",
+        },
+        user_goal="检查 provider 配置",
+        limit=3,
+        write_mode=False,
+    )
+
+    user_payload = json.loads(messages[1]["content"])
+    serialized_facts = json.dumps(user_payload["facts"], ensure_ascii=False).lower()
+    assert "fake provider" in serialized_facts
+
+
 def test_supervisor_goal_plan_json_reports_actionable_parse_error(
     tmp_path,
     capsys,

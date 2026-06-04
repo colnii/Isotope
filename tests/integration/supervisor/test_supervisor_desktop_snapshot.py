@@ -9,6 +9,7 @@ from isotope.features.supervisor.desktop_snapshot import (
     _public_metadata_preview,
     build_desktop_snapshot,
 )
+import isotope.features.supervisor.web as dashboard_web_impl
 from isotope.features.supervisor.planner.decision_requests import record_decision_request
 from isotope.features.supervisor.planner.goal_queue import (
     record_supervisor_goal,
@@ -347,3 +348,93 @@ def test_desktop_approval_resolve_endpoint_approves_runtime_pending_action(tmp_p
     event_types = [event.event_type for event in api.get_events(run["run_id"])]
     assert event_types.index("approval.resolved") < event_types.index("action.started")
     assert payload["snapshot"]["counts"]["approvals"] == 0
+
+
+def test_dashboard_goal_plan_endpoint_routes_through_capacity_runner(
+    tmp_path,
+    monkeypatch,
+):
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    calls: list[dict[str, object]] = []
+
+    class RecordingCapacityRunner:
+        def run_capability(self, capability_id, *, inputs=None):
+            calls.append({"capability_id": capability_id, "inputs": dict(inputs or {})})
+            return {
+                "status": "completed",
+                "goal_plan": {
+                    "status": "ok",
+                    "mode": "preview",
+                    "planning_trigger": "capacity",
+                    "candidates": [
+                        {
+                            "goal": "把 dashboard 目标规划接入 capacity。",
+                            "target_name": "dashboard-goal-plan-capacity",
+                            "reason": "dashboard 入口应该复用 capacity runner。",
+                        }
+                    ],
+                    "written_goals": [],
+                },
+            }
+
+    def old_goal_planner_should_not_be_used(**_kwargs):
+        raise ValueError("old goal planner path used")
+
+    monkeypatch.chdir(workspace)
+    monkeypatch.setattr(
+        dashboard_web_impl,
+        "CapabilityRunner",
+        RecordingCapacityRunner,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        dashboard_web_impl,
+        "plan_supervisor_goals",
+        old_goal_planner_should_not_be_used,
+        raising=False,
+    )
+    server = create_dashboard_server(
+        codex_home=tmp_path / ".codex",
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        conn.request(
+            "POST",
+            "/goal/plan",
+            body=json.dumps({"goal": "接 dashboard 目标规划", "limit": 1}),
+            headers={"content-type": "application/json"},
+        )
+        response = conn.getresponse()
+        payload = json.loads(response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert response.status == 200
+    assert payload["status"] == "ok"
+    assert payload["planning_trigger"] == "capacity"
+    assert [item["target_name"] for item in payload["candidates"]] == [
+        "dashboard-goal-plan-capacity"
+    ]
+    assert calls == [
+        {
+            "capability_id": "supervisor.goal_plan",
+            "inputs": {
+                "state_root": str(tmp_path / ".codex"),
+                "cwd": str(workspace),
+                "goal": "接 dashboard 目标规划",
+                "limit": 1,
+                "write": False,
+            },
+        }
+    ]

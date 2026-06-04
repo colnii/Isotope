@@ -172,13 +172,41 @@ def build_goal_planning_messages(
                     "workspace": str(root),
                     "user_goal": user_goal,
                     "planning_trigger": planning_trigger,
-                    "facts": facts,
+                    "facts": _facts_for_goal_planning(facts, user_goal=user_goal),
                     "parallel_launch_limit": limit,
                     "write_mode": write_mode,
                 },
             ),
         },
     ]
+
+
+def _facts_for_goal_planning(
+    facts: dict[str, str],
+    *,
+    user_goal: str | None,
+) -> dict[str, str]:
+    if _user_goal_mentions_provider_context(user_goal):
+        return dict(facts)
+    return {
+        name: _without_provider_context_lines(text)
+        for name, text in facts.items()
+    }
+
+
+def _user_goal_mentions_provider_context(user_goal: str | None) -> bool:
+    if user_goal is None:
+        return False
+    return re.search(r"\b(provider|fake)\b", user_goal, flags=re.IGNORECASE) is not None
+
+
+def _without_provider_context_lines(text: str) -> str:
+    lines = [
+        line
+        for line in text.splitlines()
+        if not re.search(r"\b(provider|fake)\b", line, flags=re.IGNORECASE)
+    ]
+    return "\n".join(lines)
 
 
 def parse_goal_candidates(raw_answer: str) -> list[GoalCandidate]:

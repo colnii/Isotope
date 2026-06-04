@@ -22,7 +22,6 @@ from isotope.runtime.in_process import InProcessServer
 from ..dashboard.html import dashboard_page_html
 from ..planner.decision_requests import record_decision_answer
 from ..flow import CodexSupervisorFlow, _tmux_capture_pane
-from ..planner.goal_planner import plan_supervisor_goals
 from ..planner.goal_queue import record_supervisor_goal
 from ..state.lane_state import record_lane_prompt
 from ..llm_action.llm_summary import (
@@ -38,6 +37,7 @@ from ..runner import (
     EXECUTABLE_ADVICE_TEXT,
     _advice_payload,
 )
+from isotope.capabilities.runner import CapabilityRunner
 from .routes.dashboard import (
     active_goal_dicts_for_codex_home,
     build_dashboard_web_payload,
@@ -514,17 +514,11 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
                     payload=payload,
                 )
             else:
-                provider = self.server.llm_action_provider or resolve_summary_provider_from_env(
-                    agent_name="supervisor"
-                )
-                planned = plan_supervisor_goals(
-                    root=Path.cwd(),
+                planned = _run_goal_plan_capacity(
                     codex_home=self.server.codex_home,
-                    provider=provider,
-                    user_goal=_required_string(payload.get("goal"), "goal"),
+                    goal=_required_string(payload.get("goal"), "goal"),
                     write=write,
                     limit=_positive_int(payload.get("limit"), "limit", default=3),
-                    planning_trigger="web",
                 )
             planned["active_goals"] = active_goal_dicts_for_codex_home(
                 self.server.codex_home,
@@ -753,3 +747,26 @@ def _positive_int(value: object, field: str, *, default: int) -> int:
     if number <= 0:
         raise ValueError(f"{field} must be a positive integer")
     return number
+
+
+def _run_goal_plan_capacity(
+    *,
+    codex_home: Path,
+    goal: str,
+    write: bool,
+    limit: int,
+) -> dict[str, Any]:
+    result = CapabilityRunner().run_capability(
+        "supervisor.goal_plan",
+        inputs={
+            "state_root": str(codex_home),
+            "cwd": str(Path.cwd()),
+            "goal": goal,
+            "limit": limit,
+            "write": write,
+        },
+    )
+    planned = result.get("goal_plan")
+    if not isinstance(planned, dict):
+        raise ValueError("supervisor.goal_plan did not return a goal_plan payload")
+    return dict(planned)

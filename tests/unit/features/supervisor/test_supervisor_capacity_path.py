@@ -249,7 +249,7 @@ def test_supervisor_capacity_plan_offers_goal_plan_capability(tmp_path):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     state_root = tmp_path / "supervisor-state"
-    provider = FakeCapacityProvider(
+    provider = DeterministicCapacityProvider(
         json.dumps(
             {
                 "capacity_id": "supervisor.goal_plan",
