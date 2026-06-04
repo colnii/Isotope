@@ -9,6 +9,7 @@ from typing import Any
 
 from ...integrations.qq import FakeOneBotClient, OneBotAdapter, OneBotWebSocketClient
 from .audit_log import SocialAuditEntry, SocialAuditLog
+from .beta_pack import QQBetaPackConfig, create_qq_beta_pack
 from .character_card import CharacterCard
 from .config import SocialGroupPolicy, SocialOperationsConfig
 from .lorebook import Lorebook, LorebookEntry
@@ -67,6 +68,28 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     live_run.add_argument("--send", action="store_true", help="Allow real sends.")
     live_run.add_argument("--json", action="store_true", help="Print JSON output.")
+
+    init_beta = qq_subparsers.add_parser(
+        "init-beta",
+        help="Create a controlled QQ beta config and script pack.",
+    )
+    init_beta.add_argument("--output-dir", required=True, help="Directory to create.")
+    init_beta.add_argument("--group", required=True, help="Controlled QQ group id.")
+    init_beta.add_argument("--operator", required=True, help="Operator QQ user id.")
+    init_beta.add_argument("--bot-user-id", required=True, help="Bot QQ user id.")
+    init_beta.add_argument("--websocket-url", required=True, help="NapCat OneBot WebSocket URL.")
+    init_beta.add_argument(
+        "--max-events",
+        type=int,
+        default=10,
+        help="Default event count for dry-run and send scripts.",
+    )
+    init_beta.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite files in an existing beta pack directory.",
+    )
+    init_beta.add_argument("--json", action="store_true", help="Print JSON output.")
 
     for name, help_text in (
         ("pause", "Pause one QQ group."),
@@ -133,6 +156,8 @@ def _handle_qq(args: argparse.Namespace) -> dict[str, Any]:
         return _handle_run(args)
     if args.command == "live-run":
         return _handle_live_run(args)
+    if args.command == "init-beta":
+        return _handle_init_beta(args)
     if args.command in {"pause", "resume"}:
         return _handle_pause_resume(args)
     if args.command == "inspect":
@@ -209,6 +234,23 @@ def _handle_live_run(args: argparse.Namespace) -> dict[str, Any]:
         "turns": turns,
         "health": health,
     }
+
+
+def _handle_init_beta(args: argparse.Namespace) -> dict[str, Any]:
+    result = create_qq_beta_pack(
+        QQBetaPackConfig(
+            output_dir=Path(args.output_dir),
+            group_id=args.group,
+            operator_user_id=args.operator,
+            bot_user_id=args.bot_user_id,
+            websocket_url=args.websocket_url,
+            max_events=args.max_events,
+            force=bool(args.force),
+        )
+    )
+    payload = result.to_public_dict()
+    payload.update({"status": "ok", "command": "init-beta"})
+    return payload
 
 
 def _handle_pause_resume(args: argparse.Namespace) -> dict[str, Any]:

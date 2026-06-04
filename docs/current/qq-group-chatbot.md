@@ -47,6 +47,19 @@ Keep the runtime config equivalent to this shape:
 Start beta in dry-run, inspect decisions, then enable sends only for the
 controlled group.
 
+You can generate a self-contained beta directory instead of hand-writing the
+config and commands:
+
+```bash
+isotope-social qq init-beta --output-dir .isotope/qq-beta \
+  --group <controlled_group_id> --operator <operator_qq_id> \
+  --bot-user-id <bot_qq> --websocket-url ws://127.0.0.1:3001 --json
+```
+
+The generated pack contains `config.json`, `state/`, `logs/`, `health.sh`,
+`dry-run.sh`, `send-run.sh`, `pause.sh`, `resume.sh`, `export-log.sh`, and a
+`README.md` with the first-run order.
+
 ## Run
 
 NapCat must expose a OneBot 11 WebSocket endpoint. The live path is:
@@ -79,6 +92,15 @@ Enable sends only after dry-run decisions are acceptable:
 ```bash
 isotope-social qq live-run --config-json config.json --state-root .isotope/qq \
   --websocket-url ws://127.0.0.1:3001 --max-events 10 --send --json
+```
+
+For a generated beta pack, use:
+
+```bash
+cd .isotope/qq-beta
+./health.sh
+./dry-run.sh
+ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
 ```
 
 If NapCat has an access token, pass it explicitly:

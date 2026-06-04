@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import subprocess
 import tomllib
 
 from isotope.features.social import runner
@@ -430,6 +431,150 @@ def test_social_runner_qq_live_run_reports_missing_websocket_dependency(
     payload = json.loads(capsys.readouterr().out)
     assert payload["error"]["code"] == "social_runner_error"
     assert "websockets is required" in payload["error"]["message"]
+
+
+def test_social_runner_qq_init_beta_writes_operator_pack(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    output_dir = tmp_path / "qq-beta"
+
+    code = main(
+        [
+            "qq",
+            "init-beta",
+            "--output-dir",
+            str(output_dir),
+            "--group",
+            "99999",
+            "--operator",
+            "op",
+            "--bot-user-id",
+            "bot_qq",
+            "--websocket-url",
+            "ws://127.0.0.1:3001",
+            "--max-events",
+            "7",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["command"] == "init-beta"
+    assert payload["output_dir"] == str(output_dir)
+    assert sorted(payload["scripts"]) == [
+        "dry-run.sh",
+        "export-log.sh",
+        "health.sh",
+        "pause.sh",
+        "resume.sh",
+        "send-run.sh",
+    ]
+
+    config = _read_json(output_dir / "config.json")
+    assert config["bot_user_id"] == "bot_qq"
+    assert config["group_policy"]["allowed_groups"] == ["99999"]
+    assert config["group_policy"]["operator_user_ids"] == ["op"]
+    assert config["dry_run"] is True
+    assert (output_dir / "state").is_dir()
+    assert (output_dir / "logs").is_dir()
+    assert "First run order" in (output_dir / "README.md").read_text(encoding="utf-8")
+
+    health = (output_dir / "health.sh").read_text(encoding="utf-8")
+    assert "live-run" in health
+    assert "--max-events 0" in health
+    assert "--send" not in health
+
+    dry_run = (output_dir / "dry-run.sh").read_text(encoding="utf-8")
+    assert "--max-events 7" in dry_run
+    assert "--send" not in dry_run
+
+    send_run = (output_dir / "send-run.sh").read_text(encoding="utf-8")
+    assert "ISOTOPE_QQ_ENABLE_SEND" in send_run
+    assert "--send" in send_run
+
+    pause = (output_dir / "pause.sh").read_text(encoding="utf-8")
+    assert " qq pause " in pause
+    assert "--operator op" in pause
+    resume = (output_dir / "resume.sh").read_text(encoding="utf-8")
+    assert " qq resume " in resume
+    export_log = (output_dir / "export-log.sh").read_text(encoding="utf-8")
+    assert " qq export-log " in export_log
+    assert "logs/qq-99999.json" in export_log
+    for script in payload["scripts"]:
+        subprocess.run(
+            ["bash", "-n", str(output_dir / script)],
+            check=True,
+        )
+
+
+def test_social_runner_qq_init_beta_refuses_existing_pack_without_force(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    output_dir = tmp_path / "qq-beta"
+    output_dir.mkdir()
+    (output_dir / "config.json").write_text("{}", encoding="utf-8")
+
+    code = main(
+        [
+            "qq",
+            "init-beta",
+            "--output-dir",
+            str(output_dir),
+            "--group",
+            "99999",
+            "--operator",
+            "op",
+            "--bot-user-id",
+            "bot_qq",
+            "--websocket-url",
+            "ws://127.0.0.1:3001",
+            "--json",
+        ]
+    )
+
+    assert code == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error"]["code"] == "social_runner_error"
+    assert "already exists" in payload["error"]["message"]
+
+
+def test_social_runner_qq_init_beta_force_overwrites_pack(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    output_dir = tmp_path / "qq-beta"
+    output_dir.mkdir()
+    (output_dir / "config.json").write_text("{}", encoding="utf-8")
+
+    code = main(
+        [
+            "qq",
+            "init-beta",
+            "--output-dir",
+            str(output_dir),
+            "--group",
+            "99999",
+            "--operator",
+            "op",
+            "--bot-user-id",
+            "bot_qq",
+            "--websocket-url",
+            "ws://127.0.0.1:3001",
+            "--force",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert _read_json(output_dir / "config.json")["group_policy"]["allowed_groups"] == [
+        "99999"
+    ]
 
 
 def test_social_runner_entry_point_is_registered() -> None:

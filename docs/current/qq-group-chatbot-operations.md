@@ -27,6 +27,18 @@ isotope-social qq resume --config-json config.json --state-root .isotope/qq \
 Only configured operators can pause or resume a group. A non-operator response
 must name the rejected user ID.
 
+For a controlled beta, generate the operator pack first:
+
+```bash
+isotope-social qq init-beta --output-dir .isotope/qq-beta \
+  --group <group_id> --operator <operator_qq_id> \
+  --bot-user-id <bot_qq> --websocket-url ws://127.0.0.1:3001 --json
+```
+
+The pack writes `health.sh`, `dry-run.sh`, `send-run.sh`, `pause.sh`,
+`resume.sh`, and `export-log.sh`. Run `send-run.sh` only with
+`ISOTOPE_QQ_ENABLE_SEND=1`.
+
 ## Inspect
 
 Inspect before enabling real sends:
@@ -138,7 +150,9 @@ regression locations:
 Run this checklist for each controlled beta day:
 
 - Confirm the bot is in the intended group only.
+- If starting from a fresh directory, generate the beta pack with `qq init-beta`.
 - Confirm `allowed_groups` and `operator_user_ids`.
+- Run `./health.sh` before consuming messages.
 - Start in dry-run and review at least five representative messages.
 - Enable sends only after dry-run decisions look correct.
 - Check health and adapter state at least once per session.
