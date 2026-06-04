@@ -25,6 +25,8 @@ def print_supervise_plain(
     print()
     print("[托管自动化]")
     print(automation["reason"])
+    if lifecycle_decision := payload.get("worker_lifecycle_decision"):
+        print_worker_lifecycle_plain(lifecycle_decision)
     if auto_adopted := payload.get("auto_adopted"):
         for item in auto_adopted:
             print(
@@ -175,6 +177,52 @@ def print_executed_plain(
         print(f"已跳过：{executed_activity_detail(executed, executed['reason'])}")
         return
     print(f"已执行：{executed_activity_detail(executed, executed['command'])}")
+
+
+def print_worker_lifecycle_plain(decision: Any) -> None:
+    if not isinstance(decision, dict):
+        return
+    print()
+    print("[Worker 生命周期]")
+    stage = _plain_text(decision.get("stage"), "unknown")
+    next_step = _plain_text(decision.get("next_step"), "unknown")
+    policy = decision.get("policy")
+    policy_status = (
+        _plain_text(policy.get("policy_status"), "unknown")
+        if isinstance(policy, dict)
+        else "unknown"
+    )
+    print(f"stage={stage} next_step={next_step} policy={policy_status}")
+    if isinstance(policy, dict):
+        remaining_step = policy.get("remaining_step")
+        blocked_reason = policy.get("blocked_reason")
+        if remaining_step:
+            print(f"remaining_step={remaining_step}")
+        if blocked_reason:
+            print(f"blocked_reason={blocked_reason}")
+    timeline_summary = _worker_lifecycle_timeline_summary(decision.get("timeline"))
+    if timeline_summary:
+        print(f"timeline: {timeline_summary}")
+
+
+def _worker_lifecycle_timeline_summary(timeline: Any) -> str:
+    if not isinstance(timeline, list):
+        return ""
+    parts: list[str] = []
+    for item in timeline[:4]:
+        if not isinstance(item, dict):
+            continue
+        stage = _plain_text(item.get("stage"), "unknown")
+        action = _plain_text(item.get("action"), "unknown")
+        status = _plain_text(item.get("status"), "unknown")
+        parts.append(f"{stage}/{action} {status}")
+    if len(timeline) > 4:
+        parts.append(f"+{len(timeline) - 4} more")
+    return "; ".join(parts)
+
+
+def _plain_text(value: Any, fallback: str) -> str:
+    return value if isinstance(value, str) and value else fallback
 
 
 def llm_action_activity_kind(
