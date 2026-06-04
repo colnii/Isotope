@@ -1893,6 +1893,7 @@ class CapabilityCatalog:
                             },
                             "cwd": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Workspace directory whose docs seed goal planning.",
                             },
                             "goal": {
