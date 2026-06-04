@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from isotope.features.notifications.flow import NotificationFlow, NotificationSummary
+from isotope.features.supervisor.agent_group.store import AgentGroupStore
 from isotope.platform.schemas.memory import MemoryRecord
 from isotope.platform.state.memory_store import FileMemoryStore
 from isotope.platform.state.active_goal import SupervisorActiveGoal
@@ -56,6 +57,7 @@ def build_supervisor_state_snapshot(
     )
     memory = _memory_payload(codex_home_path, limit=worker_event_limit)
     artifacts = _artifact_payload(codex_home_path, limit=worker_event_limit)
+    agent_groups = _agent_group_payload(codex_home_path, limit=worker_event_limit)
     worker_event_summary = worker_events.get("summary", {})
     total_worker_events = (
         worker_event_summary.get("total", 0)
@@ -63,7 +65,7 @@ def build_supervisor_state_snapshot(
         else 0
     )
 
-    return SupervisorStateSnapshot(
+    snapshot = SupervisorStateSnapshot(
         codex_home=str(codex_home_path),
         summary={
             "active_goals": len(active_goals),
@@ -77,6 +79,7 @@ def build_supervisor_state_snapshot(
             "unread_notifications": notifications["unread"],
             "memory_records": memory["total"],
             "artifact_summaries": artifacts["total"],
+            "agent_groups": agent_groups["total"],
         },
         active_goals=active_goals,
         active_decisions=active_decisions,
@@ -88,6 +91,8 @@ def build_supervisor_state_snapshot(
         memory=memory,
         artifacts=artifacts,
     ).to_dict()
+    snapshot["agent_groups"] = agent_groups
+    return snapshot
 
 
 def worker_lifecycle_projection_payload(
@@ -283,6 +288,22 @@ def _artifact_payload(codex_home: Path, *, limit: int) -> dict[str, Any]:
         reverse=True,
     )
     return {"total": len(summaries), "recent": sorted_summaries[:limit]}
+
+
+def _agent_group_payload(codex_home: Path, *, limit: int) -> dict[str, Any]:
+    try:
+        groups = AgentGroupStore(codex_home).list_groups()
+    except (OSError, TypeError, ValueError):
+        groups = []
+    recent = sorted(
+        groups,
+        key=lambda group: (group.updated_at, group.group_id),
+        reverse=True,
+    )[:limit]
+    return {
+        "total": len(groups),
+        "recent": [group.to_public_dict() for group in recent],
+    }
 
 
 def _list_artifacts_safely(store: ArtifactStore, codex_home: Path) -> list[Any]:

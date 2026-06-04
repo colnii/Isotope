@@ -23,6 +23,7 @@
 | 追加或归档目标 | `goal add`、`goal list`、`goal archive` |
 | 提交用户拍板答案 | `decision list`、`decision answer` |
 | 托管 worker | `launch`、`resume`、`adopt`、`send`、`archive` |
+| 内部 Agent 群聊 | `agent-group create/send/tick/list/inspect` |
 | 后台常驻和看门 | `loop`、`daemon start/status/watchdog/watcher/stop` |
 | 审查 worker 合入状态 | `worker-review`、`integration-review`、`replan`、`merge-work-order` |
 | 受限清理 worktree | `cleanup list`、`cleanup delete-worktree` |
@@ -49,6 +50,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 | `start-here` / `guide` / `discover` | 打印可复制的上手、接管和观察命令；不启动任务、不发送指令。 | [quick start](./codex-supervisor-readonly.md)、[capability details](./supervisor-capability-details.md) |
 | `up` / `loop` / `daemon` / `check` | 日常监督入口，负责后台 loop、watchdog、状态摘要和活跃目标读取。 | [operations runbook](./supervisor-operations-runbook.md) |
 | `goal` / `decision` / `state` | 持久目标队列、用户拍板账本和统一低敏 state projection（状态投影）。 | [capability inventory](./supervisor-capability-inventory.md)、[architecture migration table](./supervisor-architecture-migration-table.md) |
+| `agent-group` | 创建、发送、tick 和查看 Supervisor 内部 Agent group chat。 | [terminology](./terminology.md) |
 | `worktree-audit` | 只读检查本地 worktree/branch 主题词，提示可能重复开发的候选；不删除、不合并、不修改文件。 | 本文 |
 | `dashboard` / `web` / `events` | 本机 dashboard、web 页面、bell 事件和受控按钮入口。 | [quick start](./codex-supervisor-readonly.md)、[operations runbook](./supervisor-operations-runbook.md) |
 | `advise` / `supervise` / `llm-action` | LLM planner（模型规划器）建议、白名单动作选择和显式执行。 | [capability inventory](./supervisor-capability-inventory.md) |

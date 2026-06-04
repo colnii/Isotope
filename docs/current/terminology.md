@@ -82,6 +82,7 @@
 | `notification index` | 通知摘要索引，持久化低敏通知摘要，写入时用临时文件替换 | 产品功能/通知 | `src/isotope/features/notifications/flow.py` |
 | `Supervisor notification bridge` | Supervisor 通知桥，把 goal 状态、decision request/answer 和通过 integration-review 的 done worker 派生成低敏通知或 webhook；通知失败不影响原账本 | 产品功能/通知/状态账本 | `src/isotope/features/supervisor/notifications.py` |
 | `Codex Supervisor` | Codex 监督器，Isotope 后续核心管理层，让 LLM 参与判断和调度，工程规则提供护栏 | 产品功能 | `src/isotope/features/supervisor/flow.py` |
+| `agent group chat` | Supervisor 内部多 Agent 群聊运行时；成员是 Isotope 内部 LLM agent，不是外部 Codex worker；消息复用 worker event channel，回合选择复用 conversation arbiter | 产品功能/智能体/对话 | `src/isotope/features/supervisor/agent_group/` |
 | `isotope-supervisor` | Codex Supervisor 命令行入口，支持扫描、dashboard 汇总、本机 web 页面、建议面板、supervise 小闭环、定时汇报、变化触发、托管启动、恢复历史会话、接管 tmux 和发送指令 | 应用入口 | `src/isotope/features/supervisor/runner.py`, `apps/cli/isotope_supervisor.py` |
 | `start-here` | Supervisor 第一次试用入口，打印启动后台、打开页面、查看状态、反馈观察点和停止后台的最短路径 | 应用入口/可用性 | `src/isotope/features/supervisor/runner.py` |
 | `Codex session` | Codex 会话记录，本机通常保存在 `~/.codex/sessions` | 外部集成 | `src/isotope/features/supervisor/flow.py` |
