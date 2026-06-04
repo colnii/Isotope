@@ -97,6 +97,28 @@ def test_contract_properties_returns_empty_for_malformed_contract_shapes():
     assert contract_properties({}) == {}
 
 
+def test_public_contract_helpers_exclude_system_inputs():
+    contract = {
+        "type": "object",
+        "required": ["goal", "cwd", "root"],
+        "properties": {
+            "goal": {"type": "string"},
+            "cwd": {"type": "string", "x-system-input": True},
+            "root": {"type": "string", "x-system-input": True},
+        },
+    }
+
+    from isotope.platform.schemas.input_contract import (
+        public_contract_properties,
+        public_required_contract_keys,
+        system_contract_keys,
+    )
+
+    assert list(public_contract_properties(contract)) == ["goal"]
+    assert public_required_contract_keys(contract) == ["goal"]
+    assert system_contract_keys(contract) == ["cwd", "root"]
+
+
 def test_unexpected_contract_keys_reports_inputs_outside_properties():
     unexpected = unexpected_contract_keys(
         {"query": "capacity", "raw_content": "...", "mode": "summary"},

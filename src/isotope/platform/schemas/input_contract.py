@@ -19,6 +19,39 @@ def contract_properties(input_contract: Any) -> Mapping[str, Any]:
     return properties
 
 
+def public_contract_properties(input_contract: Any) -> dict[str, Any]:
+    """Return properties that are safe to show to users and models."""
+
+    properties = contract_properties(input_contract)
+    return {
+        name: schema
+        for name, schema in properties.items()
+        if isinstance(schema, Mapping) and schema.get("x-system-input") is not True
+    }
+
+
+def system_contract_keys(input_contract: Any) -> list[str]:
+    """Return input keys supplied by Isotope rather than users or models."""
+
+    properties = contract_properties(input_contract)
+    return [
+        name
+        for name, schema in properties.items()
+        if isinstance(schema, Mapping) and schema.get("x-system-input") is True
+    ]
+
+
+def public_required_contract_keys(input_contract: Any) -> list[str]:
+    """Return required keys after removing system-supplied inputs."""
+
+    system_keys = set(system_contract_keys(input_contract))
+    return [
+        key
+        for key in required_contract_keys(input_contract)
+        if key not in system_keys
+    ]
+
+
 def matches_contract_type(value: Any, expected_type: str) -> bool:
     """Return whether a JSON-like value matches a top-level contract type."""
 
@@ -119,7 +152,10 @@ __all__ = [
     "duplicate_required_contract_keys",
     "matches_contract_type",
     "missing_required_input_keys",
+    "public_contract_properties",
+    "public_required_contract_keys",
     "required_contract_keys",
+    "system_contract_keys",
     "undeclared_required_contract_keys",
     "unexpected_contract_keys",
 ]
