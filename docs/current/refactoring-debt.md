@@ -6,10 +6,14 @@
   dispatch moved from `src/isotope/features/social/runner.py` into
   `src/isotope/features/social/qq_runner.py`, and a structure regression keeps
   `runner.py` below 700 lines.
-- Remaining debt: QQ handler implementations still live in `runner.py` with
-  state loading, config loading, runtime construction, and command handlers in
-  one file. Move those handlers and shared helpers behind an explicit QQ runtime
-  command module before adding more QQ commands.
+- Addressed second split on 2026-06-04: QQ command handlers, state loading,
+  config loading, runtime construction, and command-specific helpers moved into
+  `src/isotope/features/social/qq_handlers.py`. `runner.py` is now a thin CLI
+  entry point kept below 120 lines by a structure regression.
+- Remaining debt: `qq_handlers.py` is a 600+ line module and
+  `src/isotope/features/social/` contains 30+ Python files. Before adding more
+  QQ commands, split handler groups into a QQ command package, with separate
+  runtime, profile/replay, beta-operations, and state/config helper modules.
 
 ## Supervisor Web Handler
 

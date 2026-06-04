@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 import tomllib
 
-from isotope.features.social import CharacterCard, StickerLibrary, runner
+from isotope.features.social import CharacterCard, StickerLibrary, qq_handlers
 from isotope.features.social.runner import main
 from tests.unit.features.social.test_character_card import _card_dict
 
@@ -386,7 +386,7 @@ def test_social_runner_qq_live_run_defaults_to_dry_run(
     monkeypatch,
 ) -> None:
     FakeLiveOneBotClient.instances = []
-    monkeypatch.setattr(runner, "OneBotWebSocketClient", FakeLiveOneBotClient, raising=False)
+    monkeypatch.setattr(qq_handlers, "OneBotWebSocketClient", FakeLiveOneBotClient, raising=False)
     config = _write_json(tmp_path / "config.json", _config())
 
     code = main(
@@ -421,7 +421,7 @@ def test_social_runner_qq_review_dry_run_writes_operator_report(
     monkeypatch,
 ) -> None:
     FakeLiveOneBotClient.instances = []
-    monkeypatch.setattr(runner, "OneBotWebSocketClient", FakeLiveOneBotClient, raising=False)
+    monkeypatch.setattr(qq_handlers, "OneBotWebSocketClient", FakeLiveOneBotClient, raising=False)
     config_payload = _config()
     config_payload["runtime"] = {
         "sticker_emotion": "positive",
@@ -662,7 +662,7 @@ def test_social_runner_qq_live_run_send_records_feedback(
     monkeypatch,
 ) -> None:
     FakeLiveOneBotClient.instances = []
-    monkeypatch.setattr(runner, "OneBotWebSocketClient", FakeLiveOneBotClient, raising=False)
+    monkeypatch.setattr(qq_handlers, "OneBotWebSocketClient", FakeLiveOneBotClient, raising=False)
     config = _write_json(tmp_path / "config.json", _config())
 
     code = main(
@@ -696,7 +696,7 @@ def test_social_runner_qq_live_run_health_only_connects_without_consuming_event(
     monkeypatch,
 ) -> None:
     FakeLiveOneBotClient.instances = []
-    monkeypatch.setattr(runner, "OneBotWebSocketClient", FakeLiveOneBotClient, raising=False)
+    monkeypatch.setattr(qq_handlers, "OneBotWebSocketClient", FakeLiveOneBotClient, raising=False)
     config = _write_json(tmp_path / "config.json", _config())
 
     code = main(
@@ -732,7 +732,7 @@ def test_social_runner_qq_live_run_reports_missing_websocket_dependency(
         def __init__(self, *args, **kwargs):
             raise RuntimeError("websockets is required for qq live-run")
 
-    monkeypatch.setattr(runner, "OneBotWebSocketClient", MissingDependencyClient, raising=False)
+    monkeypatch.setattr(qq_handlers, "OneBotWebSocketClient", MissingDependencyClient, raising=False)
     config = _write_json(tmp_path / "config.json", _config())
 
     code = main(
