@@ -926,6 +926,7 @@ def test_codex_supervisor_runner_dashboard_json_reads_persisted_worker_lifecycle
         "execution_status": "skipped",
         "execution_reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
         "execute_hint": "--lifecycle-cleanup-execute",
+        "execute_command": "isotope-supervisor loop --iterations 1 --lifecycle-cleanup-execute",
     }
     assert payload["state_snapshot"]["worker_lifecycle"] == payload["worker_lifecycle"]
     assert payload["state_snapshot"]["worker_lifecycle_execution"]["kind"] == "cleanup_worktree"

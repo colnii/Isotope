@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import shlex
 from pathlib import Path
 from typing import Any
 
@@ -864,6 +865,9 @@ def print_dashboard_worker_lifecycle_execution(execution: Any) -> None:
         print(f"  execution_reason={reason}")
     if hint:
         print(f"  execute_hint={hint}")
+    command = _dashboard_text(execution.get("execute_command"), "")
+    if command:
+        print(f"  execute_command={command}")
 
 
 def dashboard_worker_lifecycle_execution_payload(
@@ -890,6 +894,7 @@ def dashboard_worker_lifecycle_execution_payload(
             _dashboard_text(result.get("reason"), "") if result is not None else ""
         ),
         "execute_hint": _dashboard_lifecycle_execution_hint(plan, result),
+        "execute_command": _dashboard_lifecycle_execution_command(plan, result),
     }
 
 
@@ -918,6 +923,16 @@ def _dashboard_lifecycle_execution_hint(
     ):
         return "--merge-dispatch-execute"
     return ""
+
+
+def _dashboard_lifecycle_execution_command(
+    plan: dict[str, Any],
+    result: dict[str, Any] | None,
+) -> str:
+    hint = _dashboard_lifecycle_execution_hint(plan, result)
+    if not hint:
+        return ""
+    return shlex.join(["isotope-supervisor", "loop", "--iterations", "1", hint])
 
 
 def _dashboard_worker_lifecycle_timeline_summary(timeline: Any) -> str:

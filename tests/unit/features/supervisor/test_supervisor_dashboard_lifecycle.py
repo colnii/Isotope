@@ -187,7 +187,39 @@ def test_dashboard_payload_projects_worker_lifecycle_execution_from_snapshot() -
         "execution_status": "skipped",
         "execution_reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
         "execute_hint": "--lifecycle-cleanup-execute",
+        "execute_command": "isotope-supervisor loop --iterations 1 --lifecycle-cleanup-execute",
     }
+
+
+def test_dashboard_payload_projects_merge_lifecycle_execute_command() -> None:
+    state_snapshot = _state_snapshot_with_lifecycle()
+    state_snapshot["worker_lifecycle_execution"] = {
+        "kind": "merge_dispatch",
+        "source": "worker_lifecycle",
+        "next_step": "launch_merge_worker",
+        "status": "ready_to_launch",
+        "merge_dispatch": {
+            "status": "ready_to_launch",
+            "target_name": "source-worker",
+        },
+    }
+    state_snapshot["worker_lifecycle_execution_result"] = {
+        "kind": "launch_session",
+        "display_kind": "merge_dispatch",
+        "source": "integration_review",
+        "skipped": True,
+        "reason": "merge dispatch launch adapter required",
+    }
+
+    payload = dashboard_payload(
+        _report(),
+        state_snapshot=state_snapshot,
+        api=_StubDashboardApi(),
+    )
+
+    assert payload["worker_lifecycle_execution"]["execute_command"] == (
+        "isotope-supervisor loop --iterations 1 --merge-dispatch-execute"
+    )
 
 
 def test_dashboard_plain_prints_worker_lifecycle(capsys) -> None:
@@ -239,6 +271,10 @@ def test_dashboard_plain_prints_worker_lifecycle_execution(capsys) -> None:
     text = capsys.readouterr().out
     assert "execution=archive_cleanup status=skipped actions=1" in text
     assert "execute_hint=--lifecycle-cleanup-execute" in text
+    assert (
+        "execute_command=isotope-supervisor loop --iterations 1 "
+        "--lifecycle-cleanup-execute"
+    ) in text
 
 
 def test_dashboard_html_includes_worker_lifecycle_card() -> None:
@@ -246,4 +282,6 @@ def test_dashboard_html_includes_worker_lifecycle_card() -> None:
 
     assert 'id="worker-lifecycle-card"' in html
     assert 'id="worker-lifecycle-execution"' in html
+    assert 'id="worker-lifecycle-execution-copy"' in html
+    assert "copyWorkerLifecycleExecutionCommand" in html
     assert "renderWorkerLifecycle" in html

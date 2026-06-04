@@ -124,6 +124,20 @@ DASHBOARD_STYLE_BASE = r'''    :root {
       background: #f8fafc;
       padding: 8px;
     }
+    .worker-lifecycle-execution-copy {
+      margin-top: 8px;
+      padding: 5px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .worker-lifecycle-execution-copy[hidden] {
+      display: none;
+    }
     .worker-lifecycle-execution[data-state="executed"] {
       border-left: 4px solid var(--ok);
     }

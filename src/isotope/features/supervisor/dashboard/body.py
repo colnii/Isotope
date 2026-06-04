@@ -43,6 +43,12 @@ DASHBOARD_BODY = r'''  <header>
         <span class="worker-lifecycle-label">execution</span>
         <strong class="worker-lifecycle-value" id="worker-lifecycle-execution-kind">暂无</strong>
         <span id="worker-lifecycle-execution-detail">暂无执行计划</span>
+        <button
+          class="worker-lifecycle-execution-copy"
+          id="worker-lifecycle-execution-copy"
+          type="button"
+          hidden
+        >复制执行命令</button>
       </div>
       <div class="worker-lifecycle-timeline" id="worker-lifecycle-timeline">暂无 timeline</div>
     </div>

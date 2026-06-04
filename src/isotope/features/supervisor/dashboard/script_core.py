@@ -237,6 +237,20 @@ DASHBOARD_SCRIPT_CORE = r'''    const groups = ["needs_attention", "done", "work
       document.getElementById("worker-lifecycle-execution-detail").textContent = item.status === "absent"
         ? "暂无执行计划"
         : workerLifecycleExecutionText(item);
+      renderWorkerLifecycleExecutionCommand(item);
+    }
+
+    function renderWorkerLifecycleExecutionCommand(item) {
+      const button = document.getElementById("worker-lifecycle-execution-copy");
+      const command = item && typeof item === "object" ? item.execute_command : "";
+      if (!command) {
+        button.hidden = true;
+        button.dataset.command = "";
+        return;
+      }
+      button.hidden = false;
+      button.dataset.command = command;
+      button.textContent = "复制执行命令";
     }
 
     function workerLifecycleExecutionText(item) {
@@ -245,6 +259,7 @@ DASHBOARD_SCRIPT_CORE = r'''    const groups = ["needs_attention", "done", "work
         "actions=" + text(item.action_count),
       ];
       if (item.execute_hint) parts.push("hint=" + text(item.execute_hint));
+      if (item.execute_command) parts.push("command=" + text(item.execute_command));
       if (item.execution_reason) parts.push("reason=" + text(item.execution_reason));
       return parts.join(" · ");
     }

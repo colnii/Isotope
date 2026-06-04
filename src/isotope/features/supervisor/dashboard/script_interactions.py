@@ -21,6 +21,10 @@ DASHBOARD_SCRIPT_INTERACTIONS = r'''    async function copyResumeCommand(item, b
       await copyText(command.command, button, label);
     }
 
+    async function copyWorkerLifecycleExecutionCommand(button) {
+      await copyText(button.dataset.command || "", button, "复制执行命令");
+    }
+
     async function copyText(textValue, button, label) {
       try {
         await navigator.clipboard.writeText(textValue);
@@ -371,6 +375,9 @@ DASHBOARD_SCRIPT_INTERACTIONS = r'''    async function copyResumeCommand(item, b
     });
     document.getElementById("goal-plan-write-button").addEventListener("click", (event) => {
       submitGoalPlan(event.currentTarget, true);
+    });
+    document.getElementById("worker-lifecycle-execution-copy").addEventListener("click", (event) => {
+      copyWorkerLifecycleExecutionCommand(event.currentTarget);
     });
     document.getElementById("notification-toggle").addEventListener("click", () => {
       notificationsExpanded = !notificationsExpanded;
