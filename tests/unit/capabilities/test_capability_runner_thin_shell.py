@@ -146,6 +146,37 @@ def test_runner_discovers_supervisor_request_context_from_default_catalog():
     assert "writes_existing_supervisor_context_store" in description["safety_boundaries"]
 
 
+def test_runner_discovers_supervisor_project_status_from_default_catalog():
+    runner = _runner()
+
+    ids = _ids(runner.list_capabilities())
+    assert "supervisor.project_status" in ids
+    description = runner.describe_capability("supervisor.project_status")
+
+    assert description["input_contract"]["required"] == ["state_root"]
+    assert description["input_contract"]["properties"]["state_root"]["type"] == "string"
+    assert "project_state_summary" in description["output_contract"]["fields"]
+    assert "read_only_state_projection" in description["safety_boundaries"]
+
+
+def test_project_status_capability_returns_low_sensitive_snapshot_summary(tmp_path):
+    runner = _runner()
+
+    result = runner.run_capability(
+        "supervisor.project_status",
+        inputs={"state_root": str(tmp_path)},
+    )
+
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "supervisor.project_status"
+    assert result["status"] == "completed"
+    summary = result["project_state_summary"]
+    assert summary["snapshot_id"]
+    assert summary["counts"]["runningAgents"] == 0
+    assert "raw" not in json.dumps(result, ensure_ascii=False).lower()
+    assert "messages" not in json.dumps(result, ensure_ascii=False).lower()
+
+
 def test_runner_discovers_supervisor_worker_review_from_default_catalog():
     runner = _runner()
 

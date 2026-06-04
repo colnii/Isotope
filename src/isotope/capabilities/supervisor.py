@@ -16,6 +16,7 @@ from ..platform.schemas.input_contract import missing_required_input_keys
 
 SUPERVISOR_INTEGRATION_REVIEW_CAPABILITY = "supervisor.integration_review"
 SUPERVISOR_CODEX_OPERATION_CAPABILITY = "supervisor.codex_operation"
+SUPERVISOR_PROJECT_STATUS_CAPABILITY = "supervisor.project_status"
 SUPERVISOR_REQUEST_CONTEXT_CAPABILITY = "supervisor.request_context"
 SUPERVISOR_WORKER_REVIEW_CAPABILITY = "supervisor.worker_review"
 
@@ -35,6 +36,7 @@ def is_supervisor_readonly_capability(capability_id: str) -> bool:
     return capability_id in {
         SUPERVISOR_CODEX_OPERATION_CAPABILITY,
         SUPERVISOR_INTEGRATION_REVIEW_CAPABILITY,
+        SUPERVISOR_PROJECT_STATUS_CAPABILITY,
         SUPERVISOR_REQUEST_CONTEXT_CAPABILITY,
         SUPERVISOR_WORKER_REVIEW_CAPABILITY,
     }
@@ -59,6 +61,11 @@ def validate_supervisor_readonly_inputs(
         )
     if capability_id == SUPERVISOR_INTEGRATION_REVIEW_CAPABILITY:
         return _validate_supervisor_integration_review_inputs(
+            inputs=inputs,
+            missing_inputs=missing_inputs,
+        )
+    if capability_id == SUPERVISOR_PROJECT_STATUS_CAPABILITY:
+        return _validate_supervisor_project_status_inputs(
             inputs=inputs,
             missing_inputs=missing_inputs,
         )
@@ -138,6 +145,44 @@ def run_supervisor_request_context(
         "status": "completed",
         "runner_kind": "deterministic_readonly",
         "context_result": context_result,
+    }
+
+
+def run_supervisor_project_status(
+    *, inputs: Mapping[str, Any] | None
+) -> dict[str, Any]:
+    inputs = normalize_supervisor_state_root_inputs(inputs)
+    required_inputs = [SUPERVISOR_STATE_ROOT_INPUT]
+    missing_inputs = _missing_inputs(required_inputs, inputs)
+    if missing_inputs:
+        raise ValueError("missing required capability inputs: " + ", ".join(missing_inputs))
+    input_mapping = _validate_supervisor_project_status_inputs(
+        inputs=inputs,
+        missing_inputs=missing_inputs,
+    )
+
+    from ..features.supervisor.desktop_snapshot import build_desktop_snapshot
+
+    snapshot = build_desktop_snapshot(
+        state_root=input_mapping[SUPERVISOR_STATE_ROOT_INPUT]
+    )
+    summary = {
+        "snapshot_id": snapshot.get("snapshotId"),
+        "generated_at": snapshot.get("generatedAt"),
+        "source": snapshot.get("source"),
+        "active_goal": snapshot.get("activeGoal"),
+        "active_agent": snapshot.get("activeAgent"),
+        "counts": snapshot.get("counts", {}),
+        "approvals": snapshot.get("approvals", [])[:10],
+        "activities": snapshot.get("activities", [])[:20],
+        "artifacts": snapshot.get("artifacts", [])[:10],
+    }
+    return {
+        "kind": "capability_run_result",
+        "capability_id": SUPERVISOR_PROJECT_STATUS_CAPABILITY,
+        "status": "completed",
+        "runner_kind": "deterministic_readonly",
+        "project_state_summary": summary,
     }
 
 
@@ -240,6 +285,19 @@ def _validate_supervisor_request_context_inputs(
     normalized = dict(input_mapping)
     normalized["max_results"] = max_results
     return normalized
+
+
+def _validate_supervisor_project_status_inputs(
+    *,
+    inputs: Mapping[str, Any] | None,
+    missing_inputs: list[str],
+) -> dict[str, Any]:
+    input_mapping = inputs or {}
+    if SUPERVISOR_STATE_ROOT_INPUT not in missing_inputs and not isinstance(
+        input_mapping.get(SUPERVISOR_STATE_ROOT_INPUT), str
+    ):
+        raise ValueError("state_root must be a string")
+    return dict(input_mapping)
 
 
 def _validate_supervisor_codex_operation_inputs(

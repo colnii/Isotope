@@ -1795,6 +1795,45 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="supervisor.project_status",
+                    title="Supervisor Project Status",
+                    description=(
+                        "Read the current low-sensitive Supervisor desktop "
+                        "snapshot summary for project status, blockers, "
+                        "approvals, workers, and artifacts."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "supervisor",
+                        "project-status",
+                        "desktop-chat",
+                        "snapshot",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["state_root"],
+                        "properties": {
+                            "state_root": {
+                                "type": "string",
+                                "description": "Supervisor state root directory.",
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": ["status", "project_state_summary"],
+                    },
+                    safety_boundaries=(
+                        "read_only_state_projection",
+                        "desktop_snapshot_summary_only",
+                        "no_raw_transcript_return",
+                        "public_result_metadata",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="supervisor.integration_review",
                     title="Supervisor Integration Review",
                     description=(

@@ -78,12 +78,14 @@ from .screen import (
 from .supervisor import (
     SUPERVISOR_CODEX_OPERATION_CAPABILITY,
     SUPERVISOR_INTEGRATION_REVIEW_CAPABILITY,
+    SUPERVISOR_PROJECT_STATUS_CAPABILITY,
     SUPERVISOR_REQUEST_CONTEXT_CAPABILITY,
     SUPERVISOR_WORKER_REVIEW_CAPABILITY,
     is_supervisor_readonly_capability,
     normalize_supervisor_state_root_inputs,
     run_supervisor_codex_operation,
     run_supervisor_integration_review,
+    run_supervisor_project_status,
     run_supervisor_request_context,
     run_supervisor_worker_review,
     validate_supervisor_readonly_inputs,
@@ -514,6 +516,8 @@ class CapabilityRunner:
             return run_supervisor_request_context(inputs=input_mapping)
         if capability_id == SUPERVISOR_INTEGRATION_REVIEW_CAPABILITY:
             return run_supervisor_integration_review(inputs=input_mapping)
+        if capability_id == SUPERVISOR_PROJECT_STATUS_CAPABILITY:
+            return run_supervisor_project_status(inputs=input_mapping)
         if capability_id == SUPERVISOR_WORKER_REVIEW_CAPABILITY:
             return run_supervisor_worker_review(inputs=input_mapping)
         if capability_id == SUPERVISOR_GOAL_PLAN_CAPABILITY:
