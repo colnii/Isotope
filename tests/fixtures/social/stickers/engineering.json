@@ -1,0 +1,17 @@
+{
+  "entries": [
+    {
+      "sticker_id": "ship-it",
+      "pack_id": "engineering",
+      "media": {
+        "media_ref": "qq-image://ship-it",
+        "kind": "sticker",
+        "source": "local_pack"
+      },
+      "tags": ["ship", "review", "cheer"],
+      "meaning": "代码通过时的轻松回应",
+      "allowed_groups": ["12345"],
+      "source": "engineering_pack"
+    }
+  ]
+}
