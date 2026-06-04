@@ -1,5 +1,6 @@
 node_modules/
 .svelte-kit/
+.env.local
 build/
 dist/
 src-tauri/target/

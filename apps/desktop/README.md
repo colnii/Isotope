@@ -6,11 +6,16 @@ Windows-first desktop frontend for Isotope.
 
 ```bash
 npm install
+npm run dev:full
 npm run check
 npm run test
 npm run build
 npm run tauri dev
 ```
+
+`npm run dev:full` writes `VITE_ISOTOPE_DESKTOP_API_BASE` to `.env.local` when
+the key is missing, starts the local Supervisor backend, then starts the Vite
+desktop frontend.
 
 ## MVP Boundaries
 

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "dev:full": "node ./scripts/dev-full.mjs",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
     "prepare": "svelte-kit sync",
