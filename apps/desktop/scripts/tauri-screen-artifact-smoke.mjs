@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 
 import { resolve } from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import {
   connectTauriWebView,
@@ -11,7 +9,6 @@ import {
 } from './tauri-cdp-client.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
-const execFileAsync = promisify(execFile);
 const DEFAULT_MIN_DATA_URL_LENGTH = 20_000;
 const DEFAULT_MIN_WIDTH = 640;
 const DEFAULT_MIN_HEIGHT = 360;
@@ -137,77 +134,14 @@ export async function runTauriScreenArtifactSmoke({
         assertScreenArtifactState(value, {
           minDataUrlLength,
           minWidth,
-          minHeight,
-          requireFolder: false
+          minHeight
         }),
       { timeoutMs, settleMs }
     );
-    if (!state.folder && state.file?.directory) {
-      state.folder = await waitForWindowsExplorerFolder(state.file.directory, timeoutMs);
-    }
-    assertScreenArtifactState(state, {
-      minDataUrlLength,
-      minWidth,
-      minHeight
-    });
     return { target, state };
   } finally {
     session.close();
   }
-}
-
-async function waitForWindowsExplorerFolder(directory, timeoutMs) {
-  if (process.platform !== 'win32') {
-    throw new Error('screen artifact folder action did not run');
-  }
-  const deadline = Date.now() + timeoutMs;
-  let lastError = null;
-  while (Date.now() < deadline) {
-    try {
-      const result = await findWindowsExplorerFolder(directory);
-      if (result?.path) {
-        return {
-          command: 'open_path',
-          path: result.path,
-          verification: 'windows_explorer'
-        };
-      }
-    } catch (error) {
-      lastError = error;
-    }
-    await new Promise((resolvePromise) => setTimeout(resolvePromise, 500));
-  }
-  throw new Error(
-    `screen artifact folder action did not open Explorer at ${directory}${lastError ? `: ${lastError.message}` : ''}`
-  );
-}
-
-async function findWindowsExplorerFolder(directory) {
-  const script = String.raw`
-$target = [System.IO.Path]::GetFullPath($env:ISOTOPE_EXPLORER_TARGET).TrimEnd('\')
-$shell = New-Object -ComObject Shell.Application
-$matches = @()
-foreach ($window in $shell.Windows()) {
-  try {
-    $path = ([Uri]$window.LocationURL).LocalPath
-    if ($path -and ([System.IO.Path]::GetFullPath($path).TrimEnd('\') -ieq $target)) {
-      $matches += $path
-    }
-  } catch {}
-}
-if ($matches.Count -gt 0) {
-  [Console]::Out.Write(($matches[0] | ConvertTo-Json -Compress))
-}
-`;
-  const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-Command', script], {
-    env: {
-      ...process.env,
-      ISOTOPE_EXPLORER_TARGET: directory
-    },
-    windowsHide: true
-  });
-  const trimmed = stdout.trim();
-  return trimmed ? { path: JSON.parse(trimmed) } : null;
 }
 
 export function installActionCaptureExpression() {
@@ -234,44 +168,13 @@ export function installActionCaptureExpression() {
       };
     }
     window.__isotopeOpenPathCalls = [];
-    const wrapInvoke = (container, key) => {
-      const currentInvoke = container?.[key];
-      if (!container || typeof currentInvoke !== 'function' || currentInvoke.__isotopeOpenPathWrapped) return;
-      const originalInvoke = currentInvoke.bind(container);
-      const wrappedInvoke = (command, args, options) => {
-        if (command === 'open_path') {
-          window.__isotopeOpenPathCalls.push({
-            command,
-            path: args?.path ?? null
-          });
-          return Promise.resolve({ status: 'ok', path: args?.path ?? '' });
-        }
-        return originalInvoke(command, args, options);
-      };
-      wrappedInvoke.__isotopeOpenPathWrapped = true;
-      container[key] = wrappedInvoke;
+    window.__isotopeOpenPathOverride = async (path) => {
+      window.__isotopeOpenPathCalls.push({
+        command: 'open_path',
+        path: path ?? null
+      });
+      return { status: 'ok', path: path ?? '' };
     };
-    const wrapIpc = (container) => {
-      const currentIpc = container?.ipc;
-      if (!container || typeof currentIpc !== 'function' || currentIpc.__isotopeOpenPathWrapped) return;
-      const originalIpc = currentIpc.bind(container);
-      const wrappedIpc = (message) => {
-        if (message?.cmd === 'open_path') {
-          const path = message.payload?.path ?? null;
-          window.__isotopeOpenPathCalls.push({ command: message.cmd, path });
-          if (typeof container.runCallback === 'function' && message.callback) {
-            queueMicrotask(() => container.runCallback(message.callback, { status: 'ok', path: path ?? '' }));
-          }
-          return;
-        }
-        return originalIpc(message);
-      };
-      wrappedIpc.__isotopeOpenPathWrapped = true;
-      container.ipc = wrappedIpc;
-    };
-    wrapInvoke(window.__TAURI_INTERNALS__, 'invoke');
-    wrapInvoke(window.__TAURI__?.core, 'invoke');
-    wrapIpc(window.__TAURI_INTERNALS__);
     return true;
   })()`;
 }

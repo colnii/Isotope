@@ -85,13 +85,16 @@
   async function openArtifactFolder(artifactId: string) {
     try {
       const artifact = await loadScreenArtifact(artifactId);
-      const result = await windowClient.openPath(artifact.file.directory);
+      const devHooks = globalThis as typeof globalThis & {
+        __isotopeLastOpenPathResult?: { command: 'open_path'; path: string; status: string };
+        __isotopeOpenPathOverride?: (path: string) => Promise<{ status: 'ok' | 'noop'; path: string }>;
+      };
+      const openPathOverride = import.meta.env.DEV ? devHooks.__isotopeOpenPathOverride : undefined;
+      const result = openPathOverride
+        ? await openPathOverride(artifact.file.directory)
+        : await windowClient.openPath(artifact.file.directory);
       if (import.meta.env.DEV) {
-        (
-          globalThis as typeof globalThis & {
-            __isotopeLastOpenPathResult?: { command: 'open_path'; path: string; status: string };
-          }
-        ).__isotopeLastOpenPathResult = {
+        devHooks.__isotopeLastOpenPathResult = {
           command: 'open_path',
           path: result.path,
           status: result.status

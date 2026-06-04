@@ -124,57 +124,20 @@ describe('tauri screen artifact CDP smoke', () => {
     expect(FakeWebSocket.instances[0].closed).toBe(true);
   });
 
-  test('re-wraps Tauri invoke when the runtime replaces the function', async () => {
+  test('installs a dev-only open_path override for folder smoke checks', async () => {
     const originalCreateElement = document.createElement.bind(document);
     try {
-      window.__TAURI_INTERNALS__ = {
-        invoke: async () => ({ status: 'real' })
-      };
-
       eval(installActionCaptureExpression());
-      await window.__TAURI_INTERNALS__.invoke('open_path', { path: 'C:\\first' });
-      expect(window.__isotopeOpenPathCalls).toEqual([{ command: 'open_path', path: 'C:\\first' }]);
-
-      window.__TAURI_INTERNALS__.invoke = async () => ({ status: 'replacement' });
-      eval(installActionCaptureExpression());
-      await window.__TAURI_INTERNALS__.invoke('open_path', { path: 'C:\\second' });
-      expect(window.__isotopeOpenPathCalls).toEqual([{ command: 'open_path', path: 'C:\\second' }]);
-    } finally {
-      document.createElement = originalCreateElement;
-      delete window.__TAURI_INTERNALS__;
-      delete window.__isotopeDownloadCaptureInstalled;
-      delete window.__isotopeDownloadInfo;
-      delete window.__isotopeOpenPathCalls;
-    }
-  });
-
-  test('captures open_path at the Tauri IPC layer', async () => {
-    const originalCreateElement = document.createElement.bind(document);
-    const callbacks = [];
-    try {
-      window.__TAURI_INTERNALS__ = {
-        ipc: () => {
-          throw new Error('open_path should not reach real IPC');
-        },
-        runCallback: (id, payload) => callbacks.push({ id, payload })
-      };
-
-      eval(installActionCaptureExpression());
-      window.__TAURI_INTERNALS__.ipc({
-        cmd: 'open_path',
-        payload: { path: 'C:\\artifacts' },
-        callback: 42
-      });
-      await new Promise((resolve) => queueMicrotask(resolve));
+      const result = await window.__isotopeOpenPathOverride('C:\\artifacts');
 
       expect(window.__isotopeOpenPathCalls).toEqual([{ command: 'open_path', path: 'C:\\artifacts' }]);
-      expect(callbacks).toEqual([{ id: 42, payload: { status: 'ok', path: 'C:\\artifacts' } }]);
+      expect(result).toEqual({ status: 'ok', path: 'C:\\artifacts' });
     } finally {
       document.createElement = originalCreateElement;
-      delete window.__TAURI_INTERNALS__;
       delete window.__isotopeDownloadCaptureInstalled;
       delete window.__isotopeDownloadInfo;
       delete window.__isotopeOpenPathCalls;
+      delete window.__isotopeOpenPathOverride;
     }
   });
 });
