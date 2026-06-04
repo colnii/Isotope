@@ -200,6 +200,10 @@ def test_lifecycle_execution_plan_archives_ready_cleanup_workers() -> None:
     assert worker_lifecycle_execution_action(plan.to_dict()) == {
         "kind": "archive_cleanup",
         "source": "worker_lifecycle",
+        "decision_source": "worker_lifecycle_execution",
+        "routing_reason": (
+            "program-owned lifecycle execution recommended archive_ready"
+        ),
         "count": 1,
         "target_name": "source-worker",
         "record_id": "managed-source",
@@ -273,6 +277,10 @@ def test_lifecycle_execution_plan_deletes_guarded_worktree_candidates() -> None:
     assert worker_lifecycle_execution_action(plan.to_dict()) == {
         "kind": "cleanup_worktree",
         "source": "worker_lifecycle",
+        "decision_source": "worker_lifecycle_execution",
+        "routing_reason": (
+            "program-owned lifecycle execution recommended delete_ready"
+        ),
         "count": 1,
         "target_name": "source-worker",
         "record_id": "managed-source",
@@ -348,6 +356,10 @@ def test_lifecycle_execution_action_monitors_delete_blockers() -> None:
     assert worker_lifecycle_execution_action(plan.to_dict()) == {
         "kind": "monitor",
         "source": "worker_lifecycle",
+        "decision_source": "worker_lifecycle_execution",
+        "routing_reason": (
+            "program-owned lifecycle execution recommended delete_blocked"
+        ),
         "reason": "worker lifecycle delete is blocked",
         "recommended_next_step": "delete_blocked",
         "blockers": 1,
@@ -416,6 +428,10 @@ def test_supervise_action_routes_delete_blockers_without_llm() -> None:
     assert action == {
         "kind": "monitor",
         "source": "worker_lifecycle",
+        "decision_source": "worker_lifecycle_execution",
+        "routing_reason": (
+            "program-owned lifecycle execution recommended delete_blocked"
+        ),
         "reason": "worker lifecycle delete is blocked",
         "recommended_next_step": "delete_blocked",
         "blockers": 1,

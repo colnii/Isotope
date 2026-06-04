@@ -134,6 +134,7 @@ def worker_lifecycle_execution_action(plan: Mapping[str, Any]) -> dict[str, Any]
         return {
             "kind": "archive_cleanup",
             "source": "worker_lifecycle",
+            **_lifecycle_route_trace("archive_ready"),
             "count": len(candidates),
             "target_name": first.get("name"),
             "record_id": first.get("record_id"),
@@ -146,6 +147,7 @@ def worker_lifecycle_execution_action(plan: Mapping[str, Any]) -> dict[str, Any]
             return {
                 "kind": "monitor",
                 "source": "worker_lifecycle",
+                **_lifecycle_route_trace("delete_blocked"),
                 "reason": "worker lifecycle delete is blocked",
                 "recommended_next_step": "delete_blocked",
                 "blockers": len(blockers),
@@ -155,6 +157,7 @@ def worker_lifecycle_execution_action(plan: Mapping[str, Any]) -> dict[str, Any]
         return {
             "kind": "cleanup_worktree",
             "source": "worker_lifecycle",
+            **_lifecycle_route_trace("delete_ready" if actions else "monitor"),
             "count": len(actions),
             "target_name": first.get("target_name"),
             "record_id": first.get("record_id"),
@@ -185,6 +188,16 @@ def worker_lifecycle_execution_action(plan: Mapping[str, Any]) -> dict[str, Any]
         "target_name": None,
         "reason": "worker lifecycle merge dispatch has no launch_spec",
         "command_suggestion": None,
+    }
+
+
+def _lifecycle_route_trace(recommended_next_step: str) -> dict[str, str]:
+    return {
+        "decision_source": "worker_lifecycle_execution",
+        "routing_reason": (
+            "program-owned lifecycle execution recommended "
+            f"{recommended_next_step}"
+        ),
     }
 
 
