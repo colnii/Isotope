@@ -298,6 +298,13 @@ def test_conversation_loop_goal_plan_write_guardrail_respects_preview_request() 
     ) is True
 
 
+def test_conversation_loop_uses_longer_timeout_for_research_search_capacity() -> None:
+    from isotope.features.supervisor import conversation_loop
+
+    assert conversation_loop._capacity_timeout_seconds("artifact.review", 18) == 18
+    assert conversation_loop._capacity_timeout_seconds("research.search", 18) >= 90
+
+
 def test_conversation_loop_calls_capability_then_returns_final_answer(tmp_path) -> None:
     provider = RecordingConversationProvider(
         [
@@ -1109,6 +1116,52 @@ def test_conversation_loop_returns_capacity_error_when_execution_times_out(
     assert events[2].payload == {
         "text": "research.search 执行超时，未拿到网页内容。"
     }
+
+
+def test_conversation_loop_stops_when_model_repeats_failed_capacity(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    from isotope.features.supervisor import conversation_loop
+
+    def failing_capacity_step(**kwargs: Any) -> dict[str, Any]:
+        raise TimeoutError("capacity execution timed out")
+
+    monkeypatch.setattr(
+        conversation_loop,
+        "_execute_agent_loop_capacity_step",
+        failing_capacity_step,
+    )
+    repeated_call = json.dumps(
+        {
+            "kind": "call_capability",
+            "capacity_id": "research.search",
+            "arguments": {"query": "OpenAI news"},
+            "rationale": "需要调用 research.search。",
+        }
+    )
+    provider = RecordingConversationProvider([repeated_call, repeated_call])
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path,
+            cwd=tmp_path / "repo",
+            user_message="实际搜索 OpenAI news",
+            provider=provider,
+            max_turns=3,
+        )
+    )
+
+    assert [event.event for event in events] == [
+        "capacity_start",
+        "capacity_result",
+        "delta",
+    ]
+    assert events[1].payload["status"] == "error"
+    assert events[2].payload == {
+        "text": "research.search 执行失败：capacity execution timed out"
+    }
+    assert len(provider.calls) == 2
 
 
 def test_conversation_loop_records_public_metadata_capability_gap(tmp_path) -> None:

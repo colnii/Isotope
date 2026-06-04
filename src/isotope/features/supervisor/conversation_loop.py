@@ -40,6 +40,7 @@ from .conversation_observations import (
 
 
 GOAL_PLAN_CAPACITY_TIMEOUT_SECONDS = 90.0
+RESEARCH_SEARCH_CAPACITY_TIMEOUT_SECONDS = 120.0
 
 
 class SupervisorConversationProvider(Protocol):
@@ -87,6 +88,7 @@ def run_supervisor_conversation_events(
         capacity_runner=capacity_runner,
     )
     observations: list[dict[str, Any]] = []
+    failed_capabilities: dict[str, dict[str, Any]] = {}
     for _turn_index in range(max_turns):
         response = _generate_with_timeout(
             provider,
@@ -110,6 +112,20 @@ def run_supervisor_conversation_events(
             )
             return
         if decision["kind"] == "call_capability":
+            capacity_id = _require_text(decision.get("capacity_id"), "capacity_id")
+            if capacity_id in failed_capabilities:
+                yield SupervisorConversationEvent(
+                    event="delta",
+                    payload={
+                        "text": _repeated_failed_capacity_answer(
+                            capacity_id,
+                            failed_capabilities[capacity_id],
+                        )
+                    },
+                    provider=response.provider,
+                    model=response.model,
+                )
+                return
             for event in _run_capability_decision(
                 decision,
                 state_root=Path(state_root).expanduser(),
@@ -126,6 +142,20 @@ def run_supervisor_conversation_events(
                             private=event.private,
                         )
                     )
+                    payload_capacity_id = event.payload.get("capacity_id")
+                    if isinstance(payload_capacity_id, str):
+                        if event.payload.get("status") == "error":
+                            result_summary = event.payload.get(
+                                "result",
+                                event.payload.get("result_summary"),
+                            )
+                            failed_capabilities[payload_capacity_id] = (
+                                dict(result_summary)
+                                if isinstance(result_summary, dict)
+                                else {}
+                            )
+                        else:
+                            failed_capabilities.pop(payload_capacity_id, None)
             continue
         if decision["kind"] == "report_capability_gap":
             gap = _record_capability_gap(
@@ -493,11 +523,27 @@ def _capacity_timeout_seconds(
     capacity_id: str,
     timeout_seconds: float | None,
 ) -> float | None:
+    if capacity_id == "research.search":
+        if timeout_seconds is None:
+            return RESEARCH_SEARCH_CAPACITY_TIMEOUT_SECONDS
+        if timeout_seconds < 1:
+            return timeout_seconds
+        return max(timeout_seconds, RESEARCH_SEARCH_CAPACITY_TIMEOUT_SECONDS)
     if capacity_id != "supervisor.goal_plan":
         return timeout_seconds
     if timeout_seconds is None:
         return GOAL_PLAN_CAPACITY_TIMEOUT_SECONDS
     return max(timeout_seconds, GOAL_PLAN_CAPACITY_TIMEOUT_SECONDS)
+
+
+def _repeated_failed_capacity_answer(
+    capacity_id: str,
+    result_summary: dict[str, Any],
+) -> str:
+    message = result_summary.get("message")
+    if not isinstance(message, str) or not message.strip():
+        message = "能力执行失败"
+    return f"{capacity_id} 执行失败：{message.strip()}"
 
 
 def _capability_inputs_from_decision(
