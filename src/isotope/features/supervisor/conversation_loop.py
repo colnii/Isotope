@@ -25,6 +25,7 @@ from .conversation_observations import (
     capacity_observation_from_event_payload,
     capacity_observation_message_content,
     model_observation_from_agent_loop,
+    research_artifact_detail_from_agent_loop,
     screen_artifact_detail_from_agent_loop,
 )
 
@@ -324,12 +325,13 @@ def _run_capability_decision(
         context=context,
     )
     display_inputs = _capacity_display_inputs(capacity_id, inputs)
+    title = _capability_title(capacity_id, context=context)
     yield SupervisorConversationEvent(
         event="capacity_start",
         payload={
             "id": _capacity_event_id(capacity_id),
             "capacity_id": capacity_id,
-            "title": capacity_id,
+            "title": title,
             "status": "running",
             "input_summary": _safe_detail_value(display_inputs),
             "result_summary": {},
@@ -353,7 +355,10 @@ def _run_capability_decision(
         result_summary = agent_loop_json_summary({"agent_loop": agent_loop})
         extra_details = [
             detail
-            for detail in [screen_artifact_detail_from_agent_loop(agent_loop)]
+            for detail in [
+                screen_artifact_detail_from_agent_loop(agent_loop),
+                research_artifact_detail_from_agent_loop(agent_loop),
+            ]
             if detail is not None
         ]
         private = {
@@ -390,7 +395,7 @@ def _run_capability_decision(
         payload={
             "id": _capacity_event_id(capacity_id),
             "capacity_id": capacity_id,
-            "title": capacity_id,
+            "title": title,
             "status": status,
             "input_summary": _safe_detail_value(display_inputs),
             "result_summary": _safe_detail_value(result_summary),
@@ -504,6 +509,21 @@ def _capability_input_names(capacity_id: str) -> set[str]:
 def _capacity_event_id(capacity_id: str) -> str:
     safe = "".join(char if char.isalnum() else "_" for char in capacity_id.lower())
     return f"capacity_{safe.strip('_') or 'unknown'}"
+
+
+def _capability_title(capacity_id: str, *, context: dict[str, Any]) -> str:
+    manifest = context.get("capacity_manifest")
+    capabilities = manifest.get("capabilities") if isinstance(manifest, dict) else None
+    if isinstance(capabilities, list):
+        for capability in capabilities:
+            if not isinstance(capability, dict):
+                continue
+            if capability.get("capability_id") != capacity_id:
+                continue
+            title = capability.get("title")
+            if isinstance(title, str) and title.strip():
+                return title
+    return capacity_id
 
 
 def _capacity_display_inputs(capacity_id: str, inputs: dict[str, Any]) -> dict[str, Any]:

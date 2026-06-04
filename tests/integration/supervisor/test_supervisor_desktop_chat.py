@@ -429,6 +429,134 @@ def test_desktop_chat_stream_uses_conversation_loop_for_model_capacity_choice(
     assert len(provider.calls) == 2
 
 
+def test_desktop_chat_stream_projects_research_search_artifacts(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    from isotope.capabilities import research as research_capability
+
+    class RecordingCodexProvider:
+        provider_name = "codex_delegated"
+
+        def run(self, query: str) -> dict[str, Any]:
+            return {
+                "research_id": "research_desktop_chat",
+                "query": query,
+                "provider": "codex_delegated",
+                "created_at": "2026-06-03T00:00:00Z",
+                "status": "ok",
+                "evidence_status": "complete",
+                "sources": [
+                    {
+                        "source_id": "src_001",
+                        "title": "Research source",
+                        "url": "https://example.com/research",
+                        "snippet": "Research source-backed result.",
+                        "why_used": "integration test source",
+                        "retrieved_at": "2026-06-03T00:00:00Z",
+                    }
+                ],
+                "report": {
+                    "summary": "Research report summary for desktop chat.",
+                    "claims": [
+                        {
+                            "text": "Research source-backed result.",
+                            "source_ids": ["src_001"],
+                            "confidence": "medium",
+                        }
+                    ],
+                    "limitations": [],
+                    "next_queries": [],
+                },
+                "provenance": {"provider": "codex_delegated"},
+            }
+
+    monkeypatch.setattr(
+        research_capability,
+        "build_research_provider",
+        lambda provider_id, **kwargs: RecordingCodexProvider(),
+    )
+    provider = MultiResponseDesktopChatProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "research.search",
+                    "arguments": {"query": "desktop chat research"},
+                    "rationale": "用户要求搜索并总结。",
+                }
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "已完成搜索并写入 research artifacts。",
+                }
+            ),
+        ]
+    )
+
+    events = list(
+        stream_desktop_chat_events(
+            state_root=tmp_path,
+            question="搜索 desktop chat research",
+            provider=provider,
+        )
+    )
+
+    assert [event.event for event in events] == [
+        "capacity_start",
+        "capacity_result",
+        "delta",
+    ]
+    capacity_result = events[1].payload
+    assert capacity_result["capacity_id"] == "research.search"
+    assert capacity_result["title"] == "Research Search"
+    assert capacity_result["status"] == "ok"
+    assert capacity_result["input_summary"] == {
+        "query": "desktop chat research",
+        "root": str(tmp_path),
+    }
+    assert capacity_result["result_summary"]["agent_loop_research_provider"] == (
+        "codex_delegated"
+    )
+    assert (
+        capacity_result["result_summary"]["agent_loop_research_report_summary"]
+        == "Research report summary for desktop chat."
+    )
+    artifact_details = [
+        section
+        for section in capacity_result["details"]
+        if section["label"] == "Research artifacts"
+    ]
+    assert len(artifact_details) == 1
+    assert artifact_details[0]["label"] == "Research artifacts"
+    assert artifact_details[0]["kind"] == "json"
+    artifacts = artifact_details[0]["content"]["artifacts"]
+    assert [artifact["artifact_type"] for artifact in artifacts] == [
+        "research.raw_transcript",
+        "research.report",
+    ]
+    assert [artifact["summary"] for artifact in artifacts] == [
+        "raw research provider output: desktop chat research",
+        "Research report summary for desktop chat.",
+    ]
+    assert artifacts[0]["run_id"] == artifacts[1]["run_id"]
+    for artifact in artifacts:
+        assert artifact["artifact_id"].startswith("artifact_")
+        assert artifact["run_id"].startswith("run_")
+        assert artifact["ref"] == {
+            "ref_type": "artifact",
+            "scope": "run",
+            "run_id": artifact["run_id"],
+            "artifact_id": artifact["artifact_id"],
+        }
+    second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
+    assert "Research report summary for desktop chat." in second_prompt
+    assert "Research source-backed result." in second_prompt
+    assert "raw_output" not in second_prompt
+    assert events[2].payload["text"] == "已完成搜索并写入 research artifacts。"
+
+
 def test_desktop_chat_stream_uses_conversation_loop_for_streaming_capable_provider(
     tmp_path,
 ) -> None:

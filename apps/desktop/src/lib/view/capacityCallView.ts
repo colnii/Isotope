@@ -24,6 +24,19 @@ export function capacityCallStatusLabel(call: DesktopCapacityCall): string {
 }
 
 export function capacityCallSummary(call: DesktopCapacityCall): string {
+  if (call.capacityId === 'research.search') {
+    const reportSummary = stringValue(call.resultSummary.agent_loop_research_report_summary);
+    const sourceCount = call.resultSummary.agent_loop_research_source_count;
+    const provider = stringValue(call.resultSummary.agent_loop_research_provider);
+    const resultParts = [
+      reportSummary,
+      typeof sourceCount === 'number' ? `sources: ${sourceCount}` : '',
+      provider ? `provider: ${provider}` : ''
+    ].filter(Boolean);
+    if (resultParts.length) {
+      return [call.capacityId, ...resultParts].join(' · ');
+    }
+  }
   const resultParts = Object.entries(call.resultSummary)
     .filter(([, value]) => value !== undefined && value !== null && value !== '')
     .slice(0, 3)

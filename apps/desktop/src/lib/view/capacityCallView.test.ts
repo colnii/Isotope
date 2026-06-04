@@ -38,6 +38,24 @@ describe('capacityCallView', () => {
     expect(capacityCallSummary({ ...call, resultSummary: {} })).toBe('memory.query');
   });
 
+  test('summarizes research search cards by report summary first', () => {
+    expect(
+      capacityCallSummary({
+        ...call,
+        capacityId: 'research.search',
+        resultSummary: {
+          agent_loop_executed: true,
+          agent_loop_tick_status: 'executed',
+          agent_loop_research_provider: 'codex_delegated',
+          agent_loop_research_report_summary: 'Research report summary for desktop chat.',
+          agent_loop_research_source_count: 1
+        }
+      })
+    ).toBe(
+      'research.search · Research report summary for desktop chat. · sources: 1 · provider: codex_delegated'
+    );
+  });
+
   test('formats json and text details for scrollable display', () => {
     expect(
       formatCapacityDetailContent({
