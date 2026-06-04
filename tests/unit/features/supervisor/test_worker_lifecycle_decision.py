@@ -49,6 +49,30 @@ def test_lifecycle_decision_archives_when_workers_are_integrated() -> None:
     assert decision["summary"]["cleanup_candidates"] == 1
 
 
+def test_lifecycle_decision_records_archive_execution() -> None:
+    decision = build_worker_lifecycle_decision(
+        cleanup_archived=[
+            {
+                "kind": "merge_worker",
+                "record_id": "managed-merge",
+                "managed": {"status": "archived"},
+            }
+        ],
+    )
+
+    assert decision["action"] == "archive_integrated"
+    assert decision["source"] == "cleanup"
+    assert decision["reason"] == "integrated workers archived"
+    assert decision["summary"]["cleanup_archived"] == 1
+    assert decision["execution"] == [
+        {
+            "kind": "merge_worker",
+            "record_id": "managed-merge",
+            "managed": {"status": "archived"},
+        }
+    ]
+
+
 def test_lifecycle_decision_needs_human_for_conflicts() -> None:
     decision = build_worker_lifecycle_decision(
         integration_review=_integration_review(conflict=1, needs_review=1),

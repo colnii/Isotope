@@ -559,6 +559,12 @@ def test_supervisor_loop_auto_archives_done_merge_worker_after_integrated_review
     assert payload["cleanup_archived"][0]["kind"] == "merge_worker"
     assert payload["cleanup_archived"][0]["managed"]["status"] == "archived"
     assert payload["cleanup_archived"][0]["goal"]["goal_id"] == goal.goal_id
+    assert payload["worker_lifecycle_decision"]["action"] == "archive_integrated"
+    assert payload["worker_lifecycle_decision"]["source"] == "cleanup"
+    assert (
+        payload["worker_lifecycle_decision"]["execution"]
+        == payload["cleanup_archived"]
+    )
     assert merge_workspace.exists() is True
 
     registry_events = [

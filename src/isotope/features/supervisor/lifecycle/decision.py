@@ -12,14 +12,25 @@ def build_worker_lifecycle_decision(
     integration_review: Mapping[str, Any] | None = None,
     merge_dispatch: Mapping[str, Any] | None = None,
     cleanup_candidates: Sequence[Mapping[str, Any]] | None = None,
+    cleanup_archived: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     del worker_reviews
     integration_summary = _integration_summary(integration_review)
     cleanup_count = len(cleanup_candidates or [])
+    archived_items = [dict(item) for item in cleanup_archived or []]
     summary = {
         **integration_summary,
         "cleanup_candidates": cleanup_count,
+        "cleanup_archived": len(archived_items),
     }
+    if archived_items:
+        return _decision(
+            action="archive_integrated",
+            reason="integrated workers archived",
+            source="cleanup",
+            summary=summary,
+            execution=archived_items,
+        )
     if merge_dispatch is not None:
         status = _text(merge_dispatch.get("status"))
         summary["merge_dispatch_status"] = status
@@ -68,6 +79,7 @@ def _decision(
     reason: str,
     source: str,
     summary: Mapping[str, Any],
+    execution: Any | None = None,
 ) -> dict[str, Any]:
     return {
         "kind": "worker_lifecycle_decision",
@@ -75,7 +87,7 @@ def _decision(
         "reason": reason,
         "source": source,
         "summary": dict(summary),
-        "execution": None,
+        "execution": execution,
     }
 
 

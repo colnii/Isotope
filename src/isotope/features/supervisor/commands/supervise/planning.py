@@ -86,6 +86,11 @@ def append_supervise_planning_payload(
             else None
         ),
         merge_dispatch=merge_dispatch,
+        cleanup_archived=(
+            payload.get("cleanup_archived")
+            if isinstance(payload.get("cleanup_archived"), list)
+            else None
+        ),
     )
     payload["worker_lifecycle_decision"] = lifecycle_decision
     if (
