@@ -107,7 +107,9 @@ describe('capacityCallView', () => {
 
   test('localizes detail section labels', () => {
     expect(capacityDetailLabel('Inputs')).toBe('输入');
+    expect(capacityDetailLabel('Result')).toBe('结果');
     expect(capacityDetailLabel('Result summary')).toBe('结果摘要');
+    expect(capacityDetailLabel('Research artifacts')).toBe('研究产物');
     expect(capacityDetailLabel('Screen artifacts')).toBe('屏幕产物');
     expect(capacityDetailLabel('Custom')).toBe('Custom');
   });
@@ -121,13 +123,34 @@ describe('capacityCallView', () => {
           agent_loop_executed: true,
           agent_loop_tick_status: 'executed',
           agent_loop_research_provider: 'codex_delegated',
-          agent_loop_research_report_summary: 'Research report summary for desktop chat.',
+          agent_loop_research_report: 'Research report summary for desktop chat.',
           agent_loop_research_source_count: 1
         }
       })
     ).toBe(
       'research.search · Research report summary for desktop chat. · sources: 1 · provider: codex_delegated'
     );
+  });
+
+  test('summarizes research search cards from result details when result summary is absent', () => {
+    expect(
+      capacityCallSummary({
+        ...call,
+        capacityId: 'research.search',
+        resultSummary: {},
+        details: [
+          {
+            label: 'Result',
+            kind: 'json',
+            content: {
+              agent_loop_research_provider: 'tavily',
+              agent_loop_research_report: 'Tavily returned 5 source-backed results.',
+              agent_loop_research_source_count: 5
+            }
+          }
+        ]
+      })
+    ).toBe('research.search · Tavily returned 5 source-backed results. · sources: 5 · provider: tavily');
   });
 
   test('formats json and text details for scrollable display', () => {

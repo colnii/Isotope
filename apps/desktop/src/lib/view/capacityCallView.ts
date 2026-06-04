@@ -29,9 +29,12 @@ export function capacityCallProductTitle(call: DesktopCapacityCall): string {
 
 export function capacityCallSummary(call: DesktopCapacityCall): string {
   if (call.capacityId === 'research.search') {
-    const reportSummary = stringValue(call.resultSummary.agent_loop_research_report_summary);
-    const sourceCount = call.resultSummary.agent_loop_research_source_count;
-    const provider = stringValue(call.resultSummary.agent_loop_research_provider);
+    const resultRecord = resultRecordForCapacityCall(call);
+    const reportSummary =
+      stringValue(resultRecord.agent_loop_research_report) ||
+      stringValue(resultRecord.agent_loop_research_report_summary);
+    const sourceCount = resultRecord.agent_loop_research_source_count;
+    const provider = stringValue(resultRecord.agent_loop_research_provider);
     const resultParts = [
       reportSummary,
       typeof sourceCount === 'number' ? `sources: ${sourceCount}` : '',
@@ -107,6 +110,22 @@ function formatInlineValue(value: unknown): string {
   if (value === null || value === undefined) return '';
   if (Array.isArray(value)) return `${value.length} 项`;
   return JSON.stringify(value);
+}
+
+function resultRecordForCapacityCall(call: DesktopCapacityCall): Record<string, unknown> {
+  if (Object.keys(call.resultSummary).length > 0) {
+    return call.resultSummary;
+  }
+  const resultSection = call.details.find(
+    (section) =>
+      ['Result', 'Results', 'Result summary', '结果', '结果摘要'].includes(section.label) &&
+      isRecord(section.content)
+  );
+  return resultSection && isRecord(resultSection.content) ? resultSection.content : {};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function summaryFieldLabel(key: string): string {
@@ -196,7 +215,9 @@ const ACTION_STATUS_VALUES: Record<string, string> = {
 
 const DETAIL_LABELS: Record<string, string> = {
   Inputs: '输入',
+  Result: '结果',
   'Result summary': '结果摘要',
   Results: '结果',
+  'Research artifacts': '研究产物',
   'Screen artifacts': '屏幕产物'
 };
