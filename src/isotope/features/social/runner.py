@@ -39,6 +39,11 @@ from .replay import (
     runtime_overrides,
     write_replay_report,
 )
+from .regression_intake import (
+    QQRegressionIntakeConfig,
+    build_qq_regression_intake,
+    write_qq_regression_intake,
+)
 from .runtime import SocialRuntime, SocialRuntimeConfig
 from .stickers import StickerLibrary
 from .startup_gate import QQStartupGateConfig, check_qq_startup_gate
@@ -206,6 +211,25 @@ def _build_parser() -> argparse.ArgumentParser:
     beta_day_report.add_argument("--output", required=True, help="Beta day report JSON file.")
     beta_day_report.add_argument("--json", action="store_true", help="Print JSON output.")
 
+    regression_intake = qq_subparsers.add_parser(
+        "regression-intake",
+        help="Create QQ replay drafts from open beta failure records.",
+    )
+    regression_intake.add_argument("--group", required=True, help="QQ group id.")
+    regression_intake.add_argument("--bot-user-id", required=True, help="Bot QQ user id.")
+    regression_intake.add_argument(
+        "--failures-json",
+        required=True,
+        help="Operator-maintained failure records JSON file.",
+    )
+    regression_intake.add_argument("--output-dir", required=True, help="Replay draft directory.")
+    regression_intake.add_argument(
+        "--index-output",
+        required=True,
+        help="Regression intake index JSON file.",
+    )
+    regression_intake.add_argument("--json", action="store_true", help="Print JSON output.")
+
     for name, help_text in (
         ("pause", "Pause one QQ group."),
         ("resume", "Resume one QQ group."),
@@ -290,6 +314,8 @@ def _handle_qq(args: argparse.Namespace) -> dict[str, Any]:
         return _handle_review_dry_run(args)
     if args.command == "beta-day-report":
         return _handle_beta_day_report(args)
+    if args.command == "regression-intake":
+        return _handle_regression_intake(args)
     if args.command in {"pause", "resume"}:
         return _handle_pause_resume(args)
     if args.command == "inspect":
@@ -547,6 +573,33 @@ def _handle_beta_day_report(args: argparse.Namespace) -> dict[str, Any]:
         "open_failure_count": int(report["summary"]["open_failure_count"]),
         "summary": report["summary"],
         "next_actions": report["next_actions"],
+    }
+
+
+def _handle_regression_intake(args: argparse.Namespace) -> dict[str, Any]:
+    index_output = Path(args.index_output)
+    intake = build_qq_regression_intake(
+        QQRegressionIntakeConfig(
+            group_id=str(args.group),
+            bot_user_id=str(args.bot_user_id),
+            failures_json=Path(args.failures_json),
+            output_dir=Path(args.output_dir),
+            index_output=index_output,
+        )
+    )
+    write_qq_regression_intake(index_output, intake)
+    return {
+        "status": "ok",
+        "command": "regression-intake",
+        "output_dir": str(args.output_dir),
+        "index_output": str(index_output),
+        "open_failure_count": int(intake["open_failure_count"]),
+        "draft_count": int(intake["draft_count"]),
+        "drafts": [
+            str(draft["replay_json"])
+            for draft in intake["drafts"]
+            if isinstance(draft, dict)
+        ],
     }
 
 

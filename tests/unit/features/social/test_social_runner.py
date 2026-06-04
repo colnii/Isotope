@@ -577,6 +577,85 @@ def test_social_runner_qq_beta_day_report_combines_review_log_and_failures(
     assert report["failures"][0]["symptom"] == "表情包语气太像公告"
 
 
+def test_social_runner_qq_regression_intake_writes_replay_drafts(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    failures = _write_json(
+        tmp_path / "failures.json",
+        {
+            "failures": [
+                {
+                    "id": "qq-beta-1",
+                    "date": "2026-06-04",
+                    "group": "99999",
+                    "status": "open",
+                    "symptom": "表情包语气太像公告",
+                    "observed_input": "bot 这个能不能别像公告？",
+                    "root_cause": "role-card sticker meaning too broad",
+                    "regression_test": "tests/integration/social/test_social_fake_platform_flow.py",
+                },
+                {
+                    "id": "qq-beta-closed",
+                    "group": "99999",
+                    "status": "closed",
+                    "symptom": "已修复问题",
+                    "observed_input": "bot 已经好了",
+                },
+            ]
+        },
+    )
+    output_dir = tmp_path / "regressions"
+    index_output = tmp_path / "regression-intake.json"
+
+    code = main(
+        [
+            "qq",
+            "regression-intake",
+            "--group",
+            "99999",
+            "--bot-user-id",
+            "bot_qq",
+            "--failures-json",
+            str(failures),
+            "--output-dir",
+            str(output_dir),
+            "--index-output",
+            str(index_output),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["command"] == "regression-intake"
+    assert payload["draft_count"] == 1
+    assert payload["open_failure_count"] == 1
+    assert payload["index_output"] == str(index_output)
+
+    index = _read_json(index_output)
+    assert index["kind"] == "qq_regression_intake"
+    assert index["group_id"] == "99999"
+    assert index["drafts"][0]["failure_id"] == "qq-beta-1"
+    draft_path = Path(index["drafts"][0]["replay_json"])
+    assert payload["drafts"] == [str(draft_path)]
+
+    replay = _read_json(draft_path)
+    assert replay["schema_version"] == "isotope.qq_replay.v1"
+    assert replay["name"] == "QQ regression draft: qq-beta-1"
+    assert replay["metadata"]["failure_id"] == "qq-beta-1"
+    assert replay["metadata"]["symptom"] == "表情包语气太像公告"
+    assert replay["expectations"]["require_processed_events"] == 1
+    assert replay["expectations"]["max_send_feedback"] == 0
+    assert len(replay["events"]) == 1
+    event = replay["events"][0]
+    assert event["group_id"] == 99999
+    assert event["message"][0] == {"type": "at", "data": {"qq": "bot_qq"}}
+    assert event["message"][1]["data"]["text"] == " bot 这个能不能别像公告？"
+    assert event["raw_message"] == "[CQ:at,qq=bot_qq] bot 这个能不能别像公告？"
+
+
 def test_social_runner_qq_live_run_send_records_feedback(
     tmp_path: Path,
     capsys,
@@ -715,6 +794,7 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
         "export-log.sh",
         "health.sh",
         "pause.sh",
+        "regression-intake.sh",
         "resume.sh",
         "review-dry-run.sh",
         "send-run.sh",
@@ -728,6 +808,7 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
     assert config["dry_run"] is True
     assert (output_dir / "state").is_dir()
     assert (output_dir / "logs").is_dir()
+    assert (output_dir / "regressions").is_dir()
     assert "First run order" in (output_dir / "README.md").read_text(encoding="utf-8")
 
     health = (output_dir / "health.sh").read_text(encoding="utf-8")
@@ -754,6 +835,14 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
     assert "--failures-json logs/failures.json" in beta_day
     assert "--output logs/beta-day-report.json" in beta_day
     assert _read_json(output_dir / "logs" / "failures.json") == {"failures": []}
+
+    regression_intake = (output_dir / "regression-intake.sh").read_text(encoding="utf-8")
+    assert " qq regression-intake " in regression_intake
+    assert "--group 99999" in regression_intake
+    assert "--bot-user-id bot_qq" in regression_intake
+    assert "--failures-json logs/failures.json" in regression_intake
+    assert "--output-dir regressions" in regression_intake
+    assert "--index-output logs/regression-intake.json" in regression_intake
 
     send_run = (output_dir / "send-run.sh").read_text(encoding="utf-8")
     assert "ISOTOPE_QQ_ENABLE_SEND" in send_run

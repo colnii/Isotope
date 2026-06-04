@@ -36,9 +36,10 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
 ```
 
 The pack writes `health.sh`, `startup-check.sh`, `dry-run.sh`,
-`review-dry-run.sh`, `beta-day-report.sh`, `send-run.sh`, `pause.sh`,
-`resume.sh`, and `export-log.sh`. It also writes `logs/failures.json`. Run
-`send-run.sh` only with `ISOTOPE_QQ_ENABLE_SEND=1`.
+`review-dry-run.sh`, `beta-day-report.sh`, `regression-intake.sh`,
+`send-run.sh`, `pause.sh`, `resume.sh`, and `export-log.sh`. It also writes
+`logs/failures.json` and creates `regressions/`. Run `send-run.sh` only with
+`ISOTOPE_QQ_ENABLE_SEND=1`.
 
 Generate an editable profile pack and apply it to the beta pack before checking
 or running it:
@@ -133,6 +134,11 @@ isotope-social qq beta-day-report --date 2026-06-04 \
   --export-log .isotope/qq-beta/logs/qq-<group_id>.json \
   --failures-json .isotope/qq-beta/logs/failures.json \
   --output .isotope/qq-beta/logs/beta-day-report.json --json
+isotope-social qq regression-intake --group <group_id> \
+  --bot-user-id <bot_qq> \
+  --failures-json .isotope/qq-beta/logs/failures.json \
+  --output-dir .isotope/qq-beta/regressions \
+  --index-output .isotope/qq-beta/logs/regression-intake.json --json
 isotope-social qq inspect role --config-json config.json
 isotope-social qq inspect lorebook --config-json config.json
 isotope-social qq inspect stickers --config-json config.json
@@ -225,12 +231,20 @@ For generated packs, the same flow is:
 ```bash
 ./export-log.sh
 ./beta-day-report.sh
+./regression-intake.sh
 ```
 
 `beta-day-report.json` contains `review_warnings`, audit counts,
 `open_failure_count`, and `next_actions`. Treat `open_failure_count > 0` as
 unfinished product work: fix the behavior, add or update regression tests, then
 close the failure entry.
+
+`regression-intake.sh` reads open entries from `logs/failures.json`, writes
+replay draft files under `regressions/`, and writes
+`logs/regression-intake.json`. It does not close failures. Open each generated
+replay draft, fill any missing context from the real logs, then run it with
+`qq replay`. Once the replay captures the failure, add or update the matching
+pytest case named in the failure's `regression_test`.
 
 To enable real sends in the controlled group, use the same live command with
 `--send`:
@@ -313,6 +327,8 @@ Run this checklist for each controlled beta day:
 - Run `qq beta-day-report` or `./beta-day-report.sh`.
 - Inspect `beta-day-report.json`, especially `open_failure_count` and
   `next_actions`.
+- Run `qq regression-intake` or `./regression-intake.sh` when failures are open.
+- Inspect `regression-intake.json` and replay drafts under `regressions/`.
 - Enable sends only after dry-run decisions look correct and the report has no
   unresolved failures.
 - Check health and adapter state at least once per session.

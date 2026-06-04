@@ -5,12 +5,12 @@
 - Added on 2026-06-04: `src/isotope/features/social/runner.py` is now a
   800+ line CLI dispatcher covering runtime commands, beta pack generation,
   profile application, replay, startup checks, dry-run review reports,
-  beta day reports, inspection, health, and log export. Keep domain behavior in
-  focused modules such as `beta_pack.py`, `beta_check.py`, `profile_pack.py`,
-  `replay.py`, `startup_gate.py`, `dry_run_review.py`, and
-  `beta_day_report.py`. If more QQ commands are added, split parser/handler
-  registration into a QQ command package instead of continuing to grow
-  `runner.py`.
+  beta day reports, regression intake, inspection, health, and log export. Keep
+  domain behavior in focused modules such as `beta_pack.py`, `beta_check.py`,
+  `profile_pack.py`, `replay.py`, `startup_gate.py`, `dry_run_review.py`,
+  `beta_day_report.py`, and `regression_intake.py`. If more QQ commands are
+  added, split parser/handler registration into a QQ command package instead of
+  continuing to grow `runner.py`.
 
 ## Supervisor Web Handler
 

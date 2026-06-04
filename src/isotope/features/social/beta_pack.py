@@ -19,6 +19,7 @@ SCRIPT_NAMES = (
     "pause.sh",
     "resume.sh",
     "export-log.sh",
+    "regression-intake.sh",
 )
 
 
@@ -73,8 +74,10 @@ def create_qq_beta_pack(config: QQBetaPackConfig) -> QQBetaPackResult:
     output_dir.mkdir(parents=True, exist_ok=True)
     state_dir = output_dir / "state"
     logs_dir = output_dir / "logs"
+    regressions_dir = output_dir / "regressions"
     state_dir.mkdir(exist_ok=True)
     logs_dir.mkdir(exist_ok=True)
+    regressions_dir.mkdir(exist_ok=True)
     failures_path = logs_dir / "failures.json"
     if not failures_path.exists():
         failures_path.write_text(
@@ -158,6 +161,9 @@ def _script_body(name: str, config: QQBetaPackConfig) -> str:
             "isotope-social qq export-log --state-root state "
             f"--group {shlex.quote(config.group_id)} --output {shlex.quote(output)} --json\n"
         )
+    if name == "regression-intake.sh":
+        command = _regression_intake_command(config)
+        return f"{common}\n{command}\n"
     raise ValueError(f"unknown beta pack script: {name}")
 
 
@@ -254,6 +260,26 @@ def _beta_day_report_command(config: QQBetaPackConfig) -> str:
     return " ".join(_quote_command_part(part) for part in parts)
 
 
+def _regression_intake_command(config: QQBetaPackConfig) -> str:
+    parts = [
+        "isotope-social",
+        "qq",
+        "regression-intake",
+        "--group",
+        config.group_id,
+        "--bot-user-id",
+        config.bot_user_id,
+        "--failures-json",
+        "logs/failures.json",
+        "--output-dir",
+        "regressions",
+        "--index-output",
+        "logs/regression-intake.json",
+        "--json",
+    ]
+    return " ".join(shlex.quote(part) for part in parts)
+
+
 def _quote_command_part(part: str) -> str:
     if part in {'"$ONEBOT_ACCESS_TOKEN"', '"${ISOTOPE_QQ_BETA_DATE:-$(date +%F)}"'}:
         return part
@@ -339,7 +365,8 @@ OneBot WebSocket: `{config.websocket_url}`
 6. Run `./export-log.sh`.
 7. Record observed issues in `logs/failures.json`.
 8. Run `./beta-day-report.sh` and inspect `logs/beta-day-report.json`.
-9. Only after dry-run behavior is acceptable, run:
+9. Run `./regression-intake.sh` for open failures and inspect `regressions/`.
+10. Only after dry-run behavior is acceptable, run:
 
 ```bash
 ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
@@ -351,6 +378,7 @@ ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
 - Resume with `./resume.sh` only after the issue is understood.
 - Export the audit log with `./export-log.sh`.
 - Write the daily beta report with `./beta-day-report.sh`.
+- Draft replay regressions with `./regression-intake.sh`.
 
 Automated scripts start in dry-run. `send-run.sh` refuses to send unless
 `ISOTOPE_QQ_ENABLE_SEND=1` is set for that command. `dry-run.sh` and
@@ -358,6 +386,8 @@ Automated scripts start in dry-run. `send-run.sh` refuses to send unless
 `review-dry-run.sh` only writes a review report; it does not enable sends.
 `beta-day-report.sh` combines the dry-run review, exported audit log, and
 `logs/failures.json`; it does not enable sends.
+`regression-intake.sh` writes replay drafts under `regressions/`; it does not
+close failures automatically.
 """
 
 

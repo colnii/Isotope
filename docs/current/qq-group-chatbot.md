@@ -58,9 +58,10 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
 
 The generated pack contains `config.json`, `state/`, `logs/`, `health.sh`,
 `startup-check.sh`, `dry-run.sh`, `review-dry-run.sh`, `beta-day-report.sh`,
-`send-run.sh`, `pause.sh`, `resume.sh`, `export-log.sh`, and a `README.md`
-with the first-run order. It also creates `logs/failures.json` for operator
-failure records.
+`regression-intake.sh`, `send-run.sh`, `pause.sh`, `resume.sh`,
+`export-log.sh`, and a `README.md` with the first-run order. It also creates
+`logs/failures.json` for operator failure records and `regressions/` for replay
+drafts.
 
 Generate editable role and sticker files before the first real session:
 
@@ -176,6 +177,21 @@ isotope-social qq beta-day-report --date 2026-06-04 \
 continuing. Open failures need fixes and regression tests before the next beta
 session.
 
+Create replay drafts for open failures:
+
+```bash
+isotope-social qq regression-intake --group <controlled_group_id> \
+  --bot-user-id <bot_qq> \
+  --failures-json .isotope/qq/failures.json \
+  --output-dir .isotope/qq/regressions \
+  --index-output .isotope/qq/regression-intake.json --json
+```
+
+`regression-intake.json` lists the generated files under `regressions/`. These
+files use the same `isotope.qq_replay.v1` format as `qq replay`. Review and edit
+the draft event until it reproduces the failure, then run it through `qq replay`
+and turn the stable case into a regression test.
+
 Enable sends only after dry-run decisions are acceptable:
 
 ```bash
@@ -206,6 +222,7 @@ cd .isotope/qq-beta
 ./review-dry-run.sh
 ./export-log.sh
 ./beta-day-report.sh
+./regression-intake.sh
 ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
 ```
 
