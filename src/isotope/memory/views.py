@@ -1,4 +1,4 @@
-"""Read-only memory projections for worker and memory status views."""
+"""Public memory projections for worker and memory status views."""
 
 from __future__ import annotations
 

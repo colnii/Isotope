@@ -1,4 +1,4 @@
-"""Read-only multi-worker status view for shared runtime state."""
+"""Public multi-worker status view for shared runtime state."""
 
 from __future__ import annotations
 

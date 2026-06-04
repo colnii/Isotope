@@ -35,6 +35,8 @@ MODEL_FACING_FILES = [
     "src/isotope/features/supervisor/state/projection.py",
     "src/isotope/features/supervisor/workers/integration_review.py",
     "src/isotope/memory/__init__.py",
+    "src/isotope/memory/views.py",
+    "src/isotope/platform/state/multi_worker.py",
     "src/isotope/platform/state/projector/handlers.py",
     "src/isotope/rag/sparse.py",
     "src/isotope/rag/ingestion.py",
