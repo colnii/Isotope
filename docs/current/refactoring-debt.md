@@ -16,10 +16,17 @@
   `src/isotope/features/social/qq_runtime_commands.py`. A structure regression
   keeps `qq_handlers.py` below 350 lines and keeps WebSocket transport out of
   that module.
-- Remaining debt: `src/isotope/features/social/` contains 30+ Python files, and
-  `qq_handlers.py` still groups beta, profile, replay-template, and operations
-  commands. If more QQ commands are added, split those handler groups into
-  focused QQ command modules or a QQ command subpackage.
+- Addressed fourth split on 2026-06-04: beta/report commands moved into
+  `src/isotope/features/social/qq_beta_commands.py`, profile commands moved
+  into `src/isotope/features/social/qq_profile_commands.py`, replay-template
+  init moved into `src/isotope/features/social/qq_replay_commands.py`, and
+  pause/inspect/health/export-log moved into
+  `src/isotope/features/social/qq_operations_commands.py`. `qq_handlers.py` is
+  now a dispatch table kept below 120 lines by a structure regression.
+- Remaining debt: `src/isotope/features/social/` contains 30+ Python files. If
+  more QQ-specific modules are added, consider moving the QQ command, runtime,
+  state/config, and adapter-facing glue modules into a focused `social/qq/`
+  subpackage instead of continuing to grow the top-level social package.
 
 ## Supervisor Web Handler
 
