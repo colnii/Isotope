@@ -41,7 +41,7 @@ COPY_EXCLUDE_NAMES = {
     ".mypy_cache",
     ".ruff_cache",
 }
-READ_ONLY_MUTATION_POLICIES = {"read_snapshot", "check"}
+DIRECT_WORKSPACE_POLICY_NAMES = {"read_snapshot", "check"}
 
 
 class WindowsSmokeWorkspaceError(RuntimeError):
@@ -321,7 +321,7 @@ def resolve_windows_workspace(
             keep_on_failure=True,
         )
     if workspace_strategy == "direct":
-        if mutation_policy not in READ_ONLY_MUTATION_POLICIES and not allow_direct_mutation:
+        if mutation_policy not in DIRECT_WORKSPACE_POLICY_NAMES and not allow_direct_mutation:
             raise WindowsSmokeWorkspaceError(
                 "direct workspace mutation requires an explicit profile allowance",
                 reason_code="windows_smoke_workspace_direct_mutation_rejected",
@@ -344,7 +344,7 @@ def resolve_windows_workspace(
             run_id=run_id,
             reason="source_root_requires_windows_local_copy",
         )
-    if mutation_policy not in READ_ONLY_MUTATION_POLICIES and not allow_direct_mutation:
+    if mutation_policy not in DIRECT_WORKSPACE_POLICY_NAMES and not allow_direct_mutation:
         return _copy_workspace_decision(
             source_text,
             source_kind,
