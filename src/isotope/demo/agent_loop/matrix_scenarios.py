@@ -9,7 +9,7 @@ from typing import Any
 from .scenarios import _run_agent_loop_planner_adapter_spike
 from ..demo_planner_helpers import (
     _planner_happy_fixture_summary,
-    _run_planner_blocked_queued_fixture,
+    _run_planner_rejected_out_of_contract_fixture,
     _run_planner_malformed_action_fixture,
 )
 from ...platform.state.checkpoint_store import FileCheckpointStore
@@ -20,15 +20,15 @@ from ...runtime.in_process import InProcessServer
 def _run_agent_loop_planner_matrix_spike(root: Path) -> dict[str, Any]:
     root.mkdir(parents=True, exist_ok=True)
     happy = _run_agent_loop_planner_adapter_spike(root / "happy-path")
-    blocked = _run_planner_blocked_queued_fixture()
+    blocked = _run_planner_rejected_out_of_contract_fixture()
     malformed = _run_planner_malformed_action_fixture(root / "malformed-action")
     fixtures = [happy, blocked, malformed]
-    app_queued_friction = list(blocked["app_queued_friction"])
+    contract_friction = list(blocked["contract_friction"])
     app_friction: list[dict[str, Any]] = []
     planner_matrix_ok = (
         happy["planner_adapter_friction_ok"] is True
-        and blocked["status"] == "blocked_queued"
-        and malformed["status"] == "failed_closed"
+        and blocked["status"] == "rejected_out_of_contract"
+        and malformed["status"] == "rejected"
         and malformed["partial_events_appended"] is False
         and app_friction == []
     )
@@ -44,11 +44,11 @@ def _run_agent_loop_planner_matrix_spike(root: Path) -> dict[str, Any]:
             malformed,
         ],
         "happy_path_ok": happy["planner_adapter_friction_ok"],
-        "blocked_queued_ok": blocked["status"] == "blocked_queued",
+        "rejected_out_of_contract_ok": blocked["status"] == "rejected_out_of_contract",
         "malformed_rejected_ok": malformed["partial_events_appended"] is False,
         "app_friction": app_friction,
         "app_friction_count": len(app_friction),
-        "app_queued_friction": app_queued_friction,
+        "contract_friction": contract_friction,
         "model_status": "not_used",
         "scheduler_status": "not_used",
         "provider_status": "not_used",

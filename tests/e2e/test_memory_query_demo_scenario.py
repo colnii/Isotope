@@ -62,7 +62,7 @@ def test_memory_query_smoke_plain_cli_shows_write_query_recall_closure():
     assert "memory_query_status: ok" in result.stdout
     assert "query_result_count: 1" in result.stdout
     assert "recalled_record_id: mem_demo_query" in result.stdout
-    assert "content_policy: summary_refs_provenance_only" in result.stdout
+    assert "content_policy: memory_record_refs_expandable" in result.stdout
     assert "raw memory" not in result.stdout
 
 
@@ -79,6 +79,6 @@ def test_memory_query_smoke_json_reports_public_metadata_recall():
         {"ref_type": "artifact", "artifact_id": "artifact_demo_query"}
     ]
     assert data["recalled_record"]["provenance"]["run_id"] == "run_demo_query"
-    assert data["content_policy"] == "summary_refs_provenance_only"
+    assert data["content_policy"] == "memory_record_refs_expandable"
     _assert_no_forbidden_content_keys(data)
     assert "raw memory" not in json.dumps(data)

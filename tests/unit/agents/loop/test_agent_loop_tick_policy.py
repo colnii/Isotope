@@ -55,7 +55,7 @@ def test_tick_policy_for_ready_run_allows_one_planner_tick_without_side_effects(
         "submit_approval_gated_action",
         "call_capability",
     ]
-    assert policy["queued_capabilities"] == [
+    assert policy["integration_slots"] == [
         "real_llm_provider",
         "scheduler",
         "real_worker_runtime",

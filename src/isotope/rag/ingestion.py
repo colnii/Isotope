@@ -1,9 +1,4 @@
-"""External ingestion boundary for the v0.2 slice.
-
-This module deliberately does not integrate real providers or append
-state-changing canonical events. It only captures structured raw input as
-artifact-only provenance or rejects malformed input.
-"""
+"""External ingestion service for structured provider input."""
 
 from __future__ import annotations
 
@@ -20,7 +15,7 @@ INGESTION_RESULT_STATUSES = (
 
 
 class ExternalIngestionService:
-    """Minimal external ingestion boundary; not a provider adapter."""
+    """Capture structured provider input as run artifacts."""
 
     def __init__(self, *, event_store, artifact_store):
         self.event_store = event_store
@@ -61,8 +56,3 @@ class ExternalIngestionService:
             and bool(captured_at)
             and isinstance(body, dict)
         )
-
-
-class UnavailableExternalIngestionService(ExternalIngestionService):
-    """Compatibility alias for the current fail-closed ingestion boundary."""
-

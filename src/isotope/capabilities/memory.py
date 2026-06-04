@@ -220,5 +220,5 @@ def _memory_promotion_preview(proposal: Any) -> dict[str, Any]:
         "summary": payload["summary"],
         "source_refs": [dict(ref) for ref in payload["source_refs"]],
         "provenance": dict(payload["provenance"]),
-        "content_policy": "summary_refs_provenance_only",
+        "content_policy": "memory_record_refs_expandable",
     }

@@ -31,7 +31,7 @@ def safe_agent_loop_default_context(
             "memory": _empty_memory_context(
                 query="",
                 status="not_available",
-                content_policy="summary_refs_provenance_only",
+                content_policy="memory_record_refs_expandable",
             )
         }
     memory = default_context.get("memory")
@@ -40,7 +40,7 @@ def safe_agent_loop_default_context(
             "memory": _empty_memory_context(
                 query="",
                 status="not_available",
-                content_policy="summary_refs_provenance_only",
+                content_policy="memory_record_refs_expandable",
             )
         }
     return {"memory": _safe_memory_context(memory)}
@@ -61,7 +61,7 @@ def _default_memory_context(
         return _empty_memory_context(
             query=query,
             status="not_available",
-            content_policy="summary_refs_provenance_only",
+            content_policy="memory_record_refs_expandable",
         )
 
     scope_payloads = [
@@ -83,7 +83,7 @@ def _default_memory_context(
         "source": "agent_loop_default_context",
         "query": query,
         "status": _combined_status(scope_payloads),
-        "content_policy": "summary_refs_provenance_only",
+        "content_policy": "memory_record_refs_expandable",
         "result_count": len(results),
         "results": results,
         "scopes": [
@@ -101,7 +101,7 @@ def _default_memory_context(
         "safety": {
             "runtime_invoked": True,
             "event_append": False,
-            "content_policy": "summary_refs_provenance_only",
+            "content_policy": "memory_record_refs_expandable",
             "scopes": ["run", "session"],
         },
     }
@@ -127,7 +127,7 @@ def _query_memory_scope(
         return {
             "scope": scope,
             "status": "not_available",
-            "content_policy": "summary_refs_provenance_only",
+            "content_policy": "memory_record_refs_expandable",
             "results": [],
         }
     result = dict(payload)
@@ -151,7 +151,7 @@ def _empty_memory_context(
         "safety": {
             "runtime_invoked": True,
             "event_append": False,
-            "content_policy": "summary_refs_provenance_only",
+            "content_policy": "memory_record_refs_expandable",
             "scopes": ["run", "session"],
         },
     }
@@ -174,14 +174,14 @@ def _safe_memory_context(memory: dict[str, Any]) -> dict[str, Any]:
         "source": _safe_string(memory.get("source", "agent_loop_default_context")),
         "query": _safe_string(memory.get("query", "")),
         "status": _safe_string(memory.get("status", "unknown")),
-        "content_policy": "summary_refs_provenance_only",
+        "content_policy": "memory_record_refs_expandable",
         "result_count": len(results),
         "results": results,
         "scopes": scopes,
         "safety": {
             "runtime_invoked": True,
             "event_append": False,
-            "content_policy": "summary_refs_provenance_only",
+            "content_policy": "memory_record_refs_expandable",
             "scopes": ["run", "session"],
         },
     }

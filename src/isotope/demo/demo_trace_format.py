@@ -179,15 +179,15 @@ def _format_agent_loop_planner_friction_trace(result: dict[str, Any]) -> str:
 def _format_agent_loop_planner_matrix_trace(result: dict[str, Any]) -> str:
     fixtures = {fixture["fixture_id"]: fixture for fixture in result["fixtures"]}
     happy = fixtures["happy_path"]
-    blocked = fixtures["blocked_queued_capability"]
+    blocked = fixtures["rejected_out_of_contract_capability"]
     malformed = fixtures["malformed_symbolic_action"]
     steps = [
         f"happy_path session/run: {happy['session_id']} / {happy['run_id']}",
         f"fixture happy_path action/policy/artifact path: {happy['status']}",
         f"happy_path replay verified: {_bool_text(happy['replay_ok'])}",
         f"happy_path checkpoint verified: {_bool_text(happy['checkpoint_ok'])}",
-        f"fixture blocked_queued_capability: {blocked['blocked_capability']}",
-        "blocked_queued_capability classified as app_or_product_queued",
+        f"fixture rejected_out_of_contract_capability: {blocked['blocked_capability']}",
+        "rejected_out_of_contract_capability classified as app_or_product_queued",
         f"fixture malformed_symbolic_action: {malformed['status']}",
         f"malformed_symbolic_action partial events appended: {_bool_text(malformed['partial_events_appended'])}",
         f"app friction count: {result['app_friction_count']}",

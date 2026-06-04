@@ -19,7 +19,7 @@ READY_NEXT_ACTIONS = [
     "call_capability",
 ]
 APPROVAL_NEXT_ACTIONS = ["get_approval", "resolve_approval"]
-QUEUED_CAPABILITIES = [
+INTEGRATION_SLOTS = [
     "real_llm_provider",
     "scheduler",
     "real_worker_runtime",
@@ -50,7 +50,7 @@ def build_agent_loop_control(state: RunState) -> dict[str, Any]:
             "pending_ids": [str(approval["approval_id"]) for approval in pending_approvals],
         },
         "progress": _progress(state),
-        "queued_capabilities": list(QUEUED_CAPABILITIES),
+        "integration_slots": list(INTEGRATION_SLOTS),
         "last_event_id": state.last_event_id,
     }
 
@@ -85,7 +85,7 @@ def build_agent_loop_tick_policy(
         "next_actions": next_actions,
         "pending_approval_ids": pending_approval_ids,
         "blocked_reason_codes": list(control.get("blocked_reason_codes", [])),
-        "queued_capabilities": list(control.get("queued_capabilities", [])),
+        "integration_slots": list(control.get("integration_slots", [])),
         "tick_budget": budget_summary,
         "user_pause": pause_summary,
         "last_event_id": control.get("last_event_id"),

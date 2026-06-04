@@ -185,7 +185,7 @@ def render_memory_query_plain(payload: dict[str, Any]) -> str:
         f"status: {payload.get('status', '')}",
         f"root: {store.get('root', '')}",
         f"query: {payload.get('query', '')}",
-        "content_policy: summary_refs_provenance_only",
+        "content_policy: memory_record_refs_expandable",
         f"scope: {payload.get('scope') or 'all'}",
         f"run_id: {payload.get('run_id') or 'all'}",
         f"session_id: {payload.get('session_id') or 'all'}",

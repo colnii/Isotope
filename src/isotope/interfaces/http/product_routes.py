@@ -191,7 +191,7 @@ class HttpProductRouteMixin:
                 return self._error(
                     501,
                     "unavailable",
-                    "workbench_ask is not enabled",
+                    "workbench_ask provider is required",
                     capability="workbench_ask",
                 )
             ask_options = self._workbench_ask_options(json_body)

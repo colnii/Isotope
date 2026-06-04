@@ -28,7 +28,7 @@ class ExplodingMemoryStore:
         raise AssertionError("memory query must not controlled-expand without expand grant")
 
 
-class PreviewOnlyMemoryStore:
+class MemoryRecordStore:
     def __init__(self):
         self.calls = []
         self.records = [
@@ -39,7 +39,7 @@ class PreviewOnlyMemoryStore:
                     "kind": "structured_note",
                     "text": "hidden full memory content must not be returned",
                 },
-                summary="Resume from controlled expand preview.",
+                summary="Resume from controlled expand.",
                 source_refs=[{"ref_type": "artifact", "artifact_id": "artifact_001"}],
                 provenance={
                     "run_id": "run_001",
@@ -58,19 +58,15 @@ class PreviewOnlyMemoryStore:
 
     def load_record(self, *args, **kwargs):
         self.calls.append("load_record")
-        raise AssertionError("preview-only query must not load full memory records")
+        raise AssertionError("default query must not load full memory records")
 
     def read_content(self, *args, **kwargs):
         self.calls.append("read_content")
-        raise AssertionError("preview-only query must not read full memory content")
+        raise AssertionError("default query must not read full memory content")
 
     def controlled_expand(self, *args, **kwargs):
         self.calls.append("controlled_expand")
-        raise AssertionError("preview-only query must not controlled-expand full content")
-
-
-def test_unavailable_memory_query_service_boundary_exists():
-    assert hasattr(memory, "UnavailableMemoryQueryService")
+        raise AssertionError("query materializes content directly from listed records")
 
 
 @pytest.mark.parametrize(
@@ -84,15 +80,15 @@ def test_unavailable_memory_query_service_boundary_exists():
     ],
 )
 def test_memory_query_requires_explicit_grants_and_caller_context(kwargs):
-    service = memory.UnavailableMemoryQueryService(memory_store=ExplodingMemoryStore())
+    service = memory.LocalMemoryQueryService(memory_store=ExplodingMemoryStore())
 
-    with pytest.raises((PermissionError, ValueError), match="grants|caller_context|memory_query|not enabled|denied"):
+    with pytest.raises((PermissionError, ValueError), match="grants|caller_context|memory_query|denied"):
         service.query(run_id="run_001", query="worked examples", **kwargs)
 
 
 def test_memory_query_without_query_grant_does_not_read_memory_store():
     store = ExplodingMemoryStore()
-    service = memory.UnavailableMemoryQueryService(memory_store=store)
+    service = memory.LocalMemoryQueryService(memory_store=store)
 
     result = service.query(
         run_id="run_001",
@@ -113,7 +109,7 @@ def test_memory_query_without_query_grant_does_not_read_memory_store():
 
 def test_controlled_expand_without_expand_grant_does_not_read_full_content():
     store = ExplodingMemoryStore()
-    service = memory.UnavailableMemoryQueryService(memory_store=store)
+    service = memory.LocalMemoryQueryService(memory_store=store)
 
     result = service.query(
         run_id="run_001",
@@ -138,16 +134,9 @@ def test_controlled_expand_without_expand_grant_does_not_read_full_content():
 
 
 @pytest.mark.parametrize("budget", [0, -1, "1", True, None])
-@pytest.mark.parametrize(
-    "service_factory",
-    [
-        memory.UnavailableMemoryQueryService,
-        memory.LocalMemoryQueryService,
-    ],
-)
-def test_controlled_expand_rejects_invalid_budget_without_store_read(service_factory, budget):
+def test_controlled_expand_rejects_invalid_budget_without_store_read(budget):
     store = ExplodingMemoryStore()
-    service = service_factory(memory_store=store)
+    service = memory.LocalMemoryQueryService(memory_store=store)
 
     result = service.query(
         run_id="run_001",
@@ -178,7 +167,7 @@ def test_controlled_expand_rejects_invalid_budget_without_store_read(service_fac
 
 
 def test_memory_query_default_shape_excludes_full_content():
-    service = memory.UnavailableMemoryQueryService(memory_store=ExplodingMemoryStore())
+    service = memory.LocalMemoryQueryService(memory_store=MemoryRecordStore())
 
     result = service.query(
         run_id="run_001",
@@ -187,9 +176,8 @@ def test_memory_query_default_shape_excludes_full_content():
         caller_context={"run_id": "run_001", "caller": "agent_loop", "purpose": "agent_recall"},
     )
 
-    assert result["status"] == "unavailable"
-    assert result["reason_code"] == "memory_query_unavailable"
-    assert result["content_policy"] == "summary_refs_provenance_only"
+    assert result["status"] == "ok"
+    assert result["content_policy"] == "memory_record_refs_expandable"
     assert "content" not in result
     assert "artifact_content" not in result
     assert "full_text" not in result
@@ -201,50 +189,13 @@ def test_memory_query_default_shape_excludes_full_content():
         assert "raw_artifact_content" not in item
 
 
-def test_unavailable_memory_query_with_valid_controlled_expand_returns_queued_metadata():
-    store = ExplodingMemoryStore()
-    service = memory.UnavailableMemoryQueryService(memory_store=store)
-
-    result = service.query(
-        run_id="run_001",
-        query="worked examples",
-        grants={
-            "memory": {
-                "query": True,
-                "controlled_expand": True,
-                "expand_budget": 2,
-            }
-        },
-        caller_context={
-            "run_id": "run_001",
-            "caller": "agent_loop",
-            "purpose": "agent_recall",
-        },
-        controlled_expand=True,
-    )
-
-    assert result == {
-        "status": "unavailable",
-        "capability": "memory_query",
-        "reason_code": "memory_query_unavailable",
-        "content_policy": "summary_refs_provenance_only",
-        "controlled_expand": {
-            "status": "queued",
-            "budget": 2,
-            "content_policy": "summary_refs_provenance_only",
-        },
-        "results": [],
-    }
-    assert store.calls == []
-
-
 def test_valid_controlled_expand_grant_materializes_record_content_with_budget():
-    store = PreviewOnlyMemoryStore()
+    store = MemoryRecordStore()
     service = memory.LocalMemoryQueryService(memory_store=store)
 
     result = service.query(
         run_id="run_001",
-        query="controlled expand preview",
+        query="controlled expand",
         grants={
             "memory": {
                 "query": True,
@@ -261,7 +212,7 @@ def test_valid_controlled_expand_grant_materializes_record_content_with_budget()
     )
 
     assert result["status"] == "ok"
-    assert result["content_policy"] == "summary_refs_provenance_only"
+    assert result["content_policy"] == "memory_record_refs_expandable"
     assert result["controlled_expand"]["status"] == "materialized"
     assert result["controlled_expand"]["budget"] == 100
     assert result["controlled_expand"]["used"] > 0
@@ -291,7 +242,7 @@ def test_valid_controlled_expand_grant_materializes_record_content_with_budget()
         {
             "record_id": "mem_preview_001",
             "scope": "run",
-            "summary": "Resume from controlled expand preview.",
+            "summary": "Resume from controlled expand.",
             "source_refs": [{"ref_type": "artifact", "artifact_id": "artifact_001"}],
             "provenance": {
                 "run_id": "run_001",
@@ -305,12 +256,12 @@ def test_valid_controlled_expand_grant_materializes_record_content_with_budget()
 
 
 def test_valid_controlled_expand_grant_truncates_to_budget():
-    store = PreviewOnlyMemoryStore()
+    store = MemoryRecordStore()
     service = memory.LocalMemoryQueryService(memory_store=store)
 
     result = service.query(
         run_id="run_001",
-        query="controlled expand preview",
+        query="controlled expand",
         grants={
             "memory": {
                 "query": True,
@@ -378,20 +329,12 @@ def test_local_memory_query_denials_use_same_reason_contract():
         ({}, "caller_context_run_mismatch"),
     ],
 )
-@pytest.mark.parametrize(
-    "service_factory",
-    [
-        memory.UnavailableMemoryQueryService,
-        memory.LocalMemoryQueryService,
-    ],
-)
 def test_memory_query_rejects_caller_context_run_mismatch_without_store_read(
-    service_factory,
     caller_context,
     reason_code,
 ):
     store = ExplodingMemoryStore()
-    service = service_factory(memory_store=store)
+    service = memory.LocalMemoryQueryService(memory_store=store)
 
     result = service.query(
         run_id="run_allowed",
@@ -419,19 +362,11 @@ def test_memory_query_rejects_caller_context_run_mismatch_without_store_read(
         {"run_id": "run_allowed", "caller": "agent_loop", "purpose": 123},
     ],
 )
-@pytest.mark.parametrize(
-    "service_factory",
-    [
-        memory.UnavailableMemoryQueryService,
-        memory.LocalMemoryQueryService,
-    ],
-)
 def test_memory_query_rejects_missing_caller_audit_context_without_store_read(
-    service_factory,
     caller_context,
 ):
     store = ExplodingMemoryStore()
-    service = service_factory(memory_store=store)
+    service = memory.LocalMemoryQueryService(memory_store=store)
 
     result = service.query(
         run_id="run_allowed",

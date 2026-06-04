@@ -305,7 +305,7 @@ def _select_model_tools(
         available = {tool["name"] for tool in model_tools}
         missing = sorted(selected_names.difference(available))
         raise IsotopeError(
-            "requested model tools are not enabled",
+            "requested model tools are outside the active catalog",
             code="llm_tool_unavailable",
             category="unavailable",
             retryable=False,

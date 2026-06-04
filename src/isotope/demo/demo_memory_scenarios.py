@@ -55,7 +55,7 @@ def _run_memory_query_smoke_demo(root: Path) -> dict[str, Any]:
         "query_result_count": len(results),
         "recalled_record": recalled,
         "recalled_record_id": recalled.get("record_id"),
-        "content_policy": "summary_refs_provenance_only",
+        "content_policy": "memory_record_refs_expandable",
         "model_status": "not_used",
         "provider_status": "not_used",
         "network_listener_status": "not_used",

@@ -68,7 +68,7 @@ def run_coding_task_preview(*, inputs: Mapping[str, Any] | None) -> dict[str, An
         "preview": {
             "goal": input_mapping["goal"],
             "cwd_status": "exists" if cwd.exists() else "missing",
-            "execution_mode": "preview_only",
+            "execution_mode": "proposal_plan",
             "allowed_path_count": len(input_mapping["allowed_paths"]),
             "forbidden_path_count": len(input_mapping["forbidden_paths"]),
             "verification_command_count": len(input_mapping["verification_commands"]),

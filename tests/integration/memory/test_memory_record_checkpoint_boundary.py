@@ -411,8 +411,8 @@ def test_projector_does_not_read_memory_store_or_query_service_for_checkpoint():
     assert boundary is not None
 
 
-def test_durable_memory_storage_still_unavailable(tmp_path):
-    store = memory.UnavailableMemoryStore(tmp_path)
+def test_file_memory_store_starts_empty(tmp_path):
+    store = memory.FileMemoryStore(tmp_path)
 
     assert store.list_records() == []
     assert not store.record_path("mem_old").exists()

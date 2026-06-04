@@ -98,7 +98,7 @@ from .llm.context import (
     planner_context_payload as _planner_context_payload,
 )
 from .llm.planner import (
-    UnavailableSummaryProvider as _UnavailableSummaryProvider,
+    ContextRequiredSummaryProvider as _ContextRequiredSummaryProvider,
     decide_action_with_llm as _decide_action_with_llm,
 )
 from .failure_guard import (

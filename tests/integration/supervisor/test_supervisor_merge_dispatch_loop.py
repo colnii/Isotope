@@ -343,7 +343,7 @@ def test_supervisor_daemon_status_surfaces_merge_dispatch_activity(
     )
     assert activity["recent_execution"] == {
         "status": "skipped",
-        "detail": "merge_dispatch / merge dispatch launch not enabled",
+        "detail": "merge_dispatch / merge dispatch launch adapter required",
     }
 
 

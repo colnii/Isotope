@@ -274,11 +274,11 @@ def test_supervisor_runner_delegates_llm_planner_helpers():
     )
 
     assert runner._decide_action_with_llm is planner_module.decide_action_with_llm
-    assert runner._UnavailableSummaryProvider is planner_module.UnavailableSummaryProvider
+    assert runner._ContextRequiredSummaryProvider is planner_module.ContextRequiredSummaryProvider
 
     source = inspect.getsource(runner)
     assert "def _decide_action_with_llm(" not in source
-    assert "class _UnavailableSummaryProvider" not in source
+    assert "class _ContextRequiredSummaryProvider" not in source
 
 
 def test_supervisor_runner_delegates_llm_side_effect_execution_helpers():

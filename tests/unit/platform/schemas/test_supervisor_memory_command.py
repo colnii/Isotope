@@ -184,7 +184,7 @@ def test_supervisor_memory_query_plain_output_explains_public_metadata_preview(
     output = capsys.readouterr().out
     assert "Memory query" in output
     assert "status: ok" in output
-    assert "content_policy: summary_refs_provenance_only" in output
+    assert "content_policy: memory_record_refs_expandable" in output
     assert "run_id: run_plain" in output
     assert "result_count: 1" in output
     assert "mem_plain_query / run / candidate / Resume from the memory query smoke boundary." in output

@@ -61,7 +61,7 @@ def _format_agent_loop_planner_matrix_plain_text(result: dict[str, Any]) -> str:
         f"planner_matrix_ok: {str(result['planner_matrix_ok']).lower()}",
         f"fixture_count: {result['fixture_count']}",
         f"happy_path_ok: {str(result['happy_path_ok']).lower()}",
-        f"blocked_queued_ok: {str(result['blocked_queued_ok']).lower()}",
+        f"rejected_out_of_contract_ok: {str(result['rejected_out_of_contract_ok']).lower()}",
         f"malformed_rejected_ok: {str(result['malformed_rejected_ok']).lower()}",
         f"app_friction_count: {result['app_friction_count']}",
         f"model_status: {result['model_status']}",

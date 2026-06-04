@@ -33,7 +33,7 @@ def _planner_io_validator_input(run_id: str) -> dict[str, Any]:
             "bind_workspace",
             "verify_replay_checkpoint",
         ],
-        "queued_capabilities": [
+        "integration_slots": [
             "real_llm_plan",
             "scheduler",
             "provider_adapter",
@@ -151,13 +151,13 @@ def _planner_happy_fixture_summary(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _run_planner_blocked_queued_fixture() -> dict[str, Any]:
+def _run_planner_rejected_out_of_contract_fixture() -> dict[str, Any]:
     return {
-        "fixture_id": "blocked_queued_capability",
-        "status": "blocked_queued",
+        "fixture_id": "rejected_out_of_contract_capability",
+        "status": "rejected_out_of_contract",
         "blocked_capability": "real_llm_plan",
         "reason": "real LLM planning is product/app-layer queued and is not a core implementation request",
-        "app_queued_friction": [
+        "contract_friction": [
             {
                 "kind": "queued_capability",
                 "capability": "real_llm_plan",
@@ -177,7 +177,7 @@ def _run_planner_malformed_action_fixture(root: Path) -> dict[str, Any]:
     run_id = run["run_id"]
     before_count = len(api.get_events(run_id))
     unknown_action = "unknown_symbolic_action"
-    status = "failed_closed"
+    status = "rejected"
     error_code = ""
     try:
         _validate_planner_symbolic_action(unknown_action)

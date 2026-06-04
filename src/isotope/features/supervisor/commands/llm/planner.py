@@ -24,7 +24,7 @@ def decide_action_with_llm(
             api,
             report,
             payload,
-            UnavailableSummaryProvider(),
+            ContextRequiredSummaryProvider(),
         )
     try:
         provider = api.resolve_summary_provider_from_env(agent_name="supervisor")
@@ -73,6 +73,6 @@ def _generate_llm_action_decision(
     )
 
 
-class UnavailableSummaryProvider:
+class ContextRequiredSummaryProvider:
     def summarize(self, messages: list[dict[str, str]]) -> str:
         raise AssertionError("LLM provider should not be called without Supervisor context")

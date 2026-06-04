@@ -1,9 +1,8 @@
-"""Not-enabled memory boundary for the Isotope v0.1 slice."""
+"""Local memory services for structured Isotope memory records."""
 
 from __future__ import annotations
 
 import json
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -62,7 +61,7 @@ def _controlled_expand_preview_metadata(grants: dict[str, Any]) -> dict[str, Any
     return {
         "status": "queued",
         "budget": budget,
-        "content_policy": "summary_refs_provenance_only",
+        "content_policy": "memory_record_refs_expandable",
     }
 
 
@@ -147,21 +146,6 @@ def _denied_memory_query_result(
     }
 
 
-def _unavailable_memory_query_result(
-    controlled_expand: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    result: dict[str, Any] = {
-        "status": "unavailable",
-        "capability": "memory_query",
-        "reason_code": "memory_query_unavailable",
-        "content_policy": "summary_refs_provenance_only",
-        "results": [],
-    }
-    if controlled_expand is not None:
-        result["controlled_expand"] = controlled_expand
-    return result
-
-
 def _caller_context_run_mismatch(run_id: str, caller_context: dict[str, Any]) -> bool:
     caller_run_id = caller_context.get("run_id")
     return not isinstance(caller_run_id, str) or caller_run_id != run_id
@@ -201,37 +185,6 @@ def _validate_memory_record_shape(record: MemoryRecord | dict[str, Any]) -> None
         value = provenance.get(field_name)
         if not isinstance(value, str) or not value:
             raise ValueError(f"memory record provenance.{field_name} must be a non-empty string")
-
-
-class UnavailableMemoryStore:
-    """Not-enabled persistence boundary; it never writes durable records."""
-
-    def __init__(self, root: str | Path | None = None) -> None:
-        self.root = (
-            Path(root)
-            if root is not None
-            else Path(tempfile.gettempdir()) / "isotope-not-enabled-memory"
-        )
-
-    def save_record(
-        self,
-        record: MemoryRecord | dict[str, Any],
-        execution=None,
-        grants: dict[str, Any] | None = None,
-        event_store=None,
-    ) -> dict[str, str]:
-        if execution is None:
-            raise PermissionError("memory persistence requires authorized execution; not enabled")
-        if not _has_write_memory_grant(grants):
-            raise PermissionError("memory persistence requires write_memory grant; not enabled")
-        _validate_memory_record_shape(record)
-        raise PermissionError("memory persistence not enabled for memory_record")
-
-    def list_records(self, scope: str | None = None) -> list[MemoryRecord]:
-        return []
-
-    def record_path(self, memory_id: str) -> Path:
-        return self.root / "memory" / f"{memory_id}.json"
 
 
 class LocalMemoryWriteService:
@@ -345,7 +298,7 @@ class LocalMemoryQueryService:
         result: dict[str, Any] = {
             "status": "ok",
             "capability": "memory_query",
-            "content_policy": "summary_refs_provenance_only",
+            "content_policy": "memory_record_refs_expandable",
             "results": results,
         }
         if controlled_expand:
@@ -354,88 +307,3 @@ class LocalMemoryQueryService:
                 grants,
             )
         return result
-
-
-class UnavailableMemoryQueryService:
-    """Not-enabled query boundary; it validates auth shape before refusing."""
-
-    def __init__(self, memory_store=None) -> None:
-        self.memory_store = memory_store
-
-    def query(
-        self,
-        run_id: str,
-        query: str,
-        grants: dict[str, Any] | None = None,
-        caller_context: dict[str, Any] | None = None,
-        controlled_expand: bool = False,
-        scope: str | None = None,
-        session_id: str | None = None,
-        limit: int = 20,
-    ) -> dict[str, Any]:
-        if not isinstance(grants, dict):
-            raise ValueError("memory_query grants must be provided as a dict")
-        if not isinstance(caller_context, dict):
-            raise ValueError("memory_query caller_context must be provided as a dict")
-        if not _has_memory_query_grant(grants):
-            return _denied_memory_query_result(
-                capability="memory_query",
-                reason_code="missing_memory_query_grant",
-                content_policy="no_memory_read",
-            )
-        if _caller_context_run_mismatch(run_id, caller_context):
-            return _denied_memory_query_result(
-                capability="memory_query",
-                reason_code="caller_context_run_mismatch",
-                content_policy="no_memory_read",
-            )
-        if _caller_context_invalid_audit_shape(caller_context):
-            return _denied_memory_query_result(
-                capability="memory_query",
-                reason_code="invalid_caller_context",
-                content_policy="no_memory_read",
-            )
-        if _caller_context_session_mismatch(session_id, caller_context):
-            return _denied_memory_query_result(
-                capability="memory_query",
-                reason_code="caller_context_session_mismatch",
-                content_policy="no_memory_read",
-            )
-        if controlled_expand:
-            if _controlled_expand_budget_is_invalid(grants):
-                return _denied_memory_query_result(
-                    capability="memory_controlled_expand",
-                    reason_code="invalid_controlled_expand_budget",
-                    content_policy="no_full_content_read",
-                )
-            if not _has_controlled_expand_grant(grants):
-                return _denied_memory_query_result(
-                    capability="memory_controlled_expand",
-                    reason_code="missing_controlled_expand_grant",
-                    content_policy="no_full_content_read",
-                )
-        controlled_expand_metadata = (
-            _controlled_expand_preview_metadata(grants) if controlled_expand else None
-        )
-        return _unavailable_memory_query_result(controlled_expand_metadata)
-
-
-class UnavailableMemoryService:
-    """Queued memory query boundary for the v0.1 slice."""
-
-    def write_record(
-        self,
-        record: dict,
-        execution=None,
-        grants: dict | None = None,
-    ) -> dict[str, str]:
-        raise PermissionError("memory_write not enabled without authorized execution")
-
-    def query(
-        self,
-        run_id: str,
-        query: str,
-        grants: dict | None = None,
-        caller_context: dict | None = None,
-    ) -> dict[str, str]:
-        return {"status": "unavailable", "capability": "memory_query"}

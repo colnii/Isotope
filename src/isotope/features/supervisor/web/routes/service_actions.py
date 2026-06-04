@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 from typing import Any, Protocol
 
 from ...daemon import (
@@ -35,6 +36,11 @@ class ServiceActionServer(Protocol):
     active_within_seconds: int
 
 
+def _service_function(name: str):
+    web_package = importlib.import_module("isotope.features.supervisor.web")
+    return getattr(web_package, name)
+
+
 def run_service_action(
     server: ServiceActionServer,
     path: str,
@@ -43,7 +49,7 @@ def run_service_action(
         return {
             "target": "daemon",
             "action": "start",
-            "service": start_supervisor_daemon(
+            "service": _service_function("start_supervisor_daemon")(
                 codex_home=server.codex_home,
                 interval=30,
                 limit=server.limit,
@@ -64,13 +70,15 @@ def run_service_action(
         return {
             "target": "daemon",
             "action": "stop",
-            "service": stop_supervisor_daemon(codex_home=server.codex_home),
+            "service": _service_function("stop_supervisor_daemon")(
+                codex_home=server.codex_home
+            ),
         }
     if path == "/watcher/start":
         return {
             "target": "watcher",
             "action": "start",
-            "service": start_supervisor_watcher(
+            "service": _service_function("start_supervisor_watcher")(
                 codex_home=server.codex_home,
                 interval=60,
             ),
@@ -79,6 +87,8 @@ def run_service_action(
         return {
             "target": "watcher",
             "action": "stop",
-            "service": stop_supervisor_watcher(codex_home=server.codex_home),
+            "service": _service_function("stop_supervisor_watcher")(
+                codex_home=server.codex_home
+            ),
         }
     raise ValueError("unknown service action")

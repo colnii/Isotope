@@ -253,7 +253,7 @@ def test_memory_record_created_rejects_completed_non_memory_execution():
         )
 
 
-def test_executor_unavailable_memory_service_still_cannot_create_memory_record_event(tmp_path):
+def test_executor_local_memory_service_creates_memory_record_event(tmp_path):
     registry = action_registry.ActionTypeRegistry(
         entries=[
             {
@@ -305,21 +305,20 @@ def test_executor_unavailable_memory_service_still_cannot_create_memory_record_e
         },
         reason_codes=[],
     )
+    memory_store = memory.FileMemoryStore(tmp_path)
     runner = executor.Executor(
         event_store=event_store.FileEventStore(tmp_path),
         artifact_store=artifact_store.ArtifactStore(tmp_path),
         workspace_manager=workspace.WorkspaceManager(),
         registry=registry,
-        memory_service=memory.UnavailableMemoryService(),
+        memory_service=memory.LocalMemoryWriteService(memory_store),
     )
 
-    with pytest.raises(PermissionError, match="memory_write not enabled"):
-        runner.execute(decision, proposal)
+    runner.execute(decision, proposal)
 
     event_types = [event.event_type for event in runner.event_store.list_events("run_001")]
-    assert event_types == ["action.started", "action.failed"]
-    assert "memory.record_created" not in event_types
-    assert "action.completed" not in event_types
+    assert event_types == ["action.started", "action.completed", "memory.record_created"]
+    assert len(memory_store.list_records()) == 1
     assert runner.artifact_store.list_artifacts("run_001") == []
 
 

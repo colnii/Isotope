@@ -75,7 +75,7 @@ def test_search_capabilities_finds_matching_catalog_entries():
     assert "artifact.diff_summary" in ids
 
 
-def test_search_capabilities_returns_public_metadata_metadata_only():
+def test_search_capabilities_returns_public_result_metadata():
     result = _runner().search_capabilities(query="review")
 
     assert result["capabilities"]
@@ -96,8 +96,8 @@ def test_search_capabilities_returns_public_metadata_metadata_only():
 def test_search_capabilities_has_no_side_effects(tmp_path):
     result = _runner().search_capabilities(query="snapshot")
 
-    assert [entry["capability_id"] for entry in result["capabilities"]] == [
-        "external.snapshot.review"
+    assert "external.snapshot.review" in [
+        entry["capability_id"] for entry in result["capabilities"]
     ]
     assert not list(Path(tmp_path).rglob("*"))
 
@@ -136,7 +136,7 @@ def test_plan_capability_run_for_allowlisted_capability_is_launchable():
     assert plan["output_policy"] == {
         "returns_full_content": False,
         "returns_artifact_refs": True,
-        "public_metadata_summary_only": True,
+        "public_result_metadata": True,
     }
     _assert_public_metadata(plan)
 

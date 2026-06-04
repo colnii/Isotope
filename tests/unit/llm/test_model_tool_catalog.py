@@ -72,7 +72,7 @@ def test_model_tool_catalog_exposes_write_memory_as_approval_gated_tool(tmp_path
     }
 
 
-def test_model_tool_catalog_is_view_only_and_returns_copies(tmp_path):
+def test_model_tool_catalog_is_read_snapshot_and_returns_copies(tmp_path):
     api = server.InProcessServer(tmp_path)
 
     catalog = api.get_model_tool_catalog()

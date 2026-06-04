@@ -85,7 +85,7 @@ def test_agent_loop_control_for_new_run_exposes_ready_product_summary(tmp_path):
         "workers_total": 0,
         "workspaces_total": 0,
     }
-    assert control["queued_capabilities"] == [
+    assert control["integration_slots"] == [
         "real_llm_provider",
         "scheduler",
         "real_worker_runtime",

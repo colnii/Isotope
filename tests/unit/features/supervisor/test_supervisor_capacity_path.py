@@ -816,7 +816,7 @@ def test_supervisor_capacity_plan_applies_root_default_for_memory_query(tmp_path
     assert result["agent_loop_summary"]["agent_loop_memory_query_result_count"] == 1
     assert (
         result["agent_loop_summary"]["agent_loop_memory_query_content_policy"]
-        == "summary_refs_provenance_only"
+        == "memory_record_refs_expandable"
     )
     _assert_no_agent_loop_raw_payload(result["agent_loop_summary"])
     assert "raw memory content" not in json.dumps(result)
@@ -1467,7 +1467,7 @@ def test_supervisor_capacity_plain_output_includes_memory_query_summary(
     assert "agent_loop_memory_query_status: ok" in output
     assert "agent_loop_memory_query_result_count: 1" in output
     assert (
-        "agent_loop_memory_query_content_policy: summary_refs_provenance_only"
+        "agent_loop_memory_query_content_policy: memory_record_refs_expandable"
         in output
     )
     assert "raw memory content" not in output

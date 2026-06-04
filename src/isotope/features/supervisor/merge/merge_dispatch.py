@@ -106,7 +106,7 @@ def merge_dispatch_planned_executed(
         "source": "integration_review",
         "target_name": target_name,
         "skipped": True,
-        "reason": "merge dispatch launch not enabled",
+        "reason": "merge dispatch launch adapter required",
     }
 
 

@@ -91,7 +91,7 @@ def test_http_agent_loop_control_returns_product_read_model(tmp_path):
         "submit_approval_gated_action",
         "call_capability",
     ]
-    assert body["queued_capabilities"] == [
+    assert body["integration_slots"] == [
         "real_llm_provider",
         "scheduler",
         "real_worker_runtime",

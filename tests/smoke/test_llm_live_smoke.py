@@ -2613,7 +2613,7 @@ def test_deepseek_tool_call_diagnosis_reports_unavailable_requested_tool(tmp_pat
         "provider_request_started": False,
         "approval_requested": False,
         "codex_started": False,
-        "summary": "the requested tool is not enabled in the model-facing catalog",
+        "summary": "the requested tool is absent from the model-facing catalog",
         "next_step": "wire the intended tool explicitly or keep the smoke limited to codex_task",
     }
     assert provider.calls == []

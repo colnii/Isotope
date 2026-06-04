@@ -122,13 +122,13 @@ def test_resolve_windows_host_mode_is_explicit_and_rejected():
     assert resolve_windows_host_mode(platform_name="darwin", has_wsl_interop=True) == "unsupported"
 
 
-def test_workspace_resolver_allows_direct_only_for_safe_view_only_windows_paths():
+def test_workspace_resolver_allows_direct_only_for_safe_read_snapshot_windows_paths():
     decision = resolve_windows_workspace(
         source_root="C:\\repo\\isotope",
         host_mode="windows_python",
         workspace_strategy="auto",
         source_root_kind="windows_local",
-        mutation_policy="view_only",
+        mutation_policy="read_snapshot",
         temp_root="C:\\isotope-smoke",
         run_id="run001",
     )
@@ -160,7 +160,7 @@ def test_workspace_resolver_uses_short_temp_copy_for_wsl_mutation_or_long_paths(
         host_mode="wsl_to_windows_helper",
         workspace_strategy="auto",
         source_root_kind="wsl_unc",
-        mutation_policy="view_only",
+        mutation_policy="read_snapshot",
         temp_root="C:\\isotope-smoke",
         run_id="run002",
     )
@@ -178,7 +178,7 @@ def test_workspace_resolver_uses_short_temp_copy_for_wsl_mutation_or_long_paths(
         host_mode="windows_python",
         workspace_strategy="auto",
         source_root_kind="windows_local",
-        mutation_policy="view_only",
+        mutation_policy="read_snapshot",
         temp_root="C:\\isotope-smoke",
         run_id="run004",
     )
@@ -247,7 +247,7 @@ def test_fixed_windows_command_profiles_are_structured_and_profile_owned():
         ["npm", "--version"],
         ["python", "--version"],
     ]
-    assert tools_profile.mutation_policy == "view_only"
+    assert tools_profile.mutation_policy == "read_snapshot"
     assert check_profile.steps[0].argv == ["npm", "ci"]
     assert check_profile.steps[1].argv == ["npm", "run", "check"]
     assert check_profile.mutation_policy == "build"

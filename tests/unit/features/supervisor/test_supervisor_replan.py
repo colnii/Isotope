@@ -9,7 +9,7 @@ from isotope.features.supervisor.replan import (
 from isotope.features.supervisor.runner import main as supervisor_main
 
 
-def test_supervisor_replan_turns_worker_review_candidates_into_view_only_advice():
+def test_supervisor_replan_turns_worker_review_candidates_into_read_snapshot_advice():
     worker_reviews = {
         "automation_candidates": {
             "review_then_merge": [
@@ -93,7 +93,7 @@ def test_supervisor_replan_turns_worker_review_candidates_into_view_only_advice(
         "active_goals": 2,
     }
     assert payload["safety"] == {
-        "view_only": True,
+        "read_snapshot": True,
         "auto_merge": False,
         "auto_archive": False,
         "delete_branch": False,
@@ -116,7 +116,7 @@ def test_supervisor_replan_turns_worker_review_candidates_into_view_only_advice(
         "goal": "完成可合并 worker。",
         "last_status": "done",
     }
-    assert merge_advice["view_only"] is True
+    assert merge_advice["read_snapshot"] is True
     assert "不自动合并" in merge_advice["guardrail"]
     assert merge_advice["next_actions"] == [
         "审查 git diff",
@@ -168,7 +168,7 @@ def test_supervisor_replan_reports_active_goals_without_worker_candidates():
             ],
             "validation_commands": [],
             "reviewer_command": None,
-            "view_only": True,
+            "read_snapshot": True,
             "guardrail": "只提出继续/拆分建议；不自动启动、不自动归档、不自动合并。",
         }
     ]
@@ -280,7 +280,7 @@ def test_supervisor_replan_turns_integration_review_groups_into_next_advice():
             "base_ref": "main",
             "reason": "worker 已完成、分支干净、main 尚未包含且未检测到 merge conflict。",
             "handoff": "dynamic_codex_worker",
-            "view_only": True,
+            "read_snapshot": True,
         }
     ]
 
@@ -387,7 +387,7 @@ def test_supervisor_replan_cli_json_turns_worker_review_candidates_into_advice(
     assert payload["status"] == "ok"
     assert payload["summary"]["review_then_merge"] == 1
     assert payload["recommendations"][0]["target_name"] == "ready-worker"
-    assert payload["recommendations"][0]["view_only"] is True
+    assert payload["recommendations"][0]["read_snapshot"] is True
     assert payload["safety"]["auto_merge"] is False
 
 
@@ -448,7 +448,7 @@ def test_supervisor_replan_cli_json_reads_integration_review_candidates(
     assert payload["recommendations"][0]["dynamic_codex_candidate"] is True
 
 
-def test_supervisor_replan_cli_plain_prints_view_only_advice(
+def test_supervisor_replan_cli_plain_prints_read_snapshot_advice(
     tmp_path,
     capsys,
     monkeypatch,

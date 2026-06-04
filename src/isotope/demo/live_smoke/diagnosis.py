@@ -75,7 +75,7 @@ def _llm_diagnosis_for(result: dict[str, Any]) -> dict[str, Any]:
             provider_request_started=False,
             approval_requested=False,
             codex_started=False,
-            summary="the requested tool is not enabled in the model-facing catalog",
+            summary="the requested tool is absent from the model-facing catalog",
             next_step="wire the intended tool explicitly or keep the smoke limited to codex_task",
         )
     if reason_code == "llm_provider_request_failed":
@@ -342,7 +342,7 @@ def _diagnosis_for(result: dict[str, Any]) -> dict[str, Any]:
             provider_request_started=False,
             approval_requested=False,
             codex_started=False,
-            summary="the requested tool is not enabled in the model-facing catalog",
+            summary="the requested tool is absent from the model-facing catalog",
             next_step="wire the intended tool explicitly or keep the smoke limited to codex_task",
         )
     if reason_code == "llm_provider_request_failed":

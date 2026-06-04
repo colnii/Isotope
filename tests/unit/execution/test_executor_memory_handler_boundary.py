@@ -24,7 +24,7 @@ class RecordingMemoryService:
                 "grants": grants,
             }
         )
-        raise PermissionError("memory_write not enabled")
+        raise PermissionError("recording memory service rejected write")
 
 
 def _memory_registry() -> action_registry.ActionTypeRegistry:
@@ -145,23 +145,28 @@ def _record_value(record, key: str):
 def test_executor_accepts_explicit_memory_service(tmp_path):
     runner = _runner(
         tmp_path,
-        memory_service=memory.UnavailableMemoryService(),
+        memory_service=memory.LocalMemoryWriteService(memory.FileMemoryStore(tmp_path)),
     )
 
     assert isinstance(runner, executor.Executor)
 
 
-def test_authorized_write_memory_enters_unavailable_memory_handler_boundary(tmp_path):
+def test_authorized_write_memory_enters_local_memory_handler(tmp_path):
     proposal = _memory_proposal()
+    store = memory.FileMemoryStore(tmp_path)
     runner = _runner(
         tmp_path,
-        memory_service=memory.UnavailableMemoryService(),
+        memory_service=memory.LocalMemoryWriteService(store),
     )
 
-    with pytest.raises(PermissionError, match="memory_write not enabled"):
-        runner.execute(_decision(proposal), proposal)
+    runner.execute(_decision(proposal), proposal)
 
-    assert _event_types(runner) == ["action.started", "action.failed"]
+    assert _event_types(runner) == [
+        "action.started",
+        "action.completed",
+        "memory.record_created",
+    ]
+    assert len(store.list_records()) == 1
     assert runner.artifact_store.list_artifacts(proposal.run_id) == []
 
 
@@ -171,7 +176,7 @@ def test_memory_handler_passes_record_execution_and_grants_to_memory_service(tmp
     memory_service = RecordingMemoryService()
     runner = _runner(tmp_path, memory_service=memory_service)
 
-    with pytest.raises(PermissionError, match="memory_write not enabled"):
+    with pytest.raises(PermissionError, match="recording memory service rejected write"):
         runner.execute(decision, proposal)
 
     assert len(memory_service.calls) == 1
@@ -208,7 +213,7 @@ def test_memory_failure_does_not_create_artifact_or_memory_success_event(tmp_pat
     proposal = _memory_proposal()
     runner = _runner(tmp_path, memory_service=RecordingMemoryService())
 
-    with pytest.raises(PermissionError, match="memory_write not enabled"):
+    with pytest.raises(PermissionError, match="recording memory service rejected write"):
         runner.execute(_decision(proposal), proposal)
 
     event_types = _event_types(runner)

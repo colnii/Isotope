@@ -451,7 +451,7 @@ _WINDOWS_COMMAND_PROFILES = {
         timeout_seconds=30,
         allowed_executable_extensions=[".exe", ".cmd"],
         required_artifacts=[],
-        mutation_policy="view_only",
+        mutation_policy="read_snapshot",
     ),
     "desktop_frontend_check": WindowsCommandProfile(
         id="desktop_frontend_check",

@@ -209,7 +209,7 @@ def test_provider_planner_tick_injects_default_memory_context_without_side_effec
     assert memory["source"] == "agent_loop_default_context"
     assert memory["query"] == "loop provider planner"
     assert memory["status"] == "ok"
-    assert memory["content_policy"] == "summary_refs_provenance_only"
+    assert memory["content_policy"] == "memory_record_refs_expandable"
     assert memory["result_count"] == 1
     assert memory["results"] == [
         {
@@ -276,7 +276,7 @@ def test_provider_planner_default_context_recalls_same_session_promoted_memory(t
 
     prompt_payload = json.loads(provider.calls[0]["messages"][1]["content"])
     memory = prompt_payload["default_context"]["memory"]
-    assert memory["content_policy"] == "summary_refs_provenance_only"
+    assert memory["content_policy"] == "memory_record_refs_expandable"
     assert memory["results"] == [
         {
             "record_id": promoted["action_result"]["record_id"],

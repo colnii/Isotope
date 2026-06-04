@@ -231,7 +231,7 @@ def test_supervisor_worker_event_summary_uses_platform_schema():
     }
 
 
-def test_supervisor_state_snapshot_empty_root_is_view_only(tmp_path):
+def test_supervisor_state_snapshot_empty_root_is_read_snapshot(tmp_path):
     snapshot = build_supervisor_state_snapshot(codex_home=tmp_path)
 
     assert snapshot == {

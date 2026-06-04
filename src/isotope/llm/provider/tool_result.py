@@ -249,7 +249,7 @@ def _request_tool_result_followup(
     tool_name = _require_non_empty_string("tool_name", provider_response.tool_call.tool_name)
     if tool_name not in offered_names:
         raise IsotopeError(
-            "provider selected a tool that is not enabled",
+            "provider selected a tool outside the active catalog",
             code="llm_tool_unavailable",
             category="unavailable",
             retryable=False,

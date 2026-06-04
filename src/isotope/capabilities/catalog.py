@@ -335,7 +335,7 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
-                                "description": "Runtime root for future coding artifacts.",
+                                "description": "Runtime root for coding artifacts.",
                             },
                             "cwd": {
                                 "type": "string",
@@ -348,19 +348,19 @@ class CapabilityCatalog:
                             "allowed_paths": {
                                 "type": "array",
                                 "items": {"type": "string"},
-                                "description": "Relative paths that future coding work may touch.",
+                                "description": "Relative paths that coding work may touch.",
                                 "default": [],
                             },
                             "forbidden_paths": {
                                 "type": "array",
                                 "items": {"type": "string"},
-                                "description": "Relative paths that future coding work must not touch.",
+                                "description": "Relative paths that coding work must not touch.",
                                 "default": [],
                             },
                             "verification_commands": {
                                 "type": "array",
                                 "items": {"type": "string"},
-                                "description": "Allowlist candidates for future test.run execution.",
+                                "description": "Allowlist candidates for test.run execution.",
                                 "default": [],
                             },
                         },
@@ -377,11 +377,11 @@ class CapabilityCatalog:
                     },
                     safety_boundaries=(
                         "no_codex_delegation",
-                        "preview_only_no_workspace_write",
+                        "proposal_plan_no_workspace_write",
                         "no_patch_apply",
                         "no_test_execution",
                         "no_vcs_mutation",
-                        "public_metadata_summary_only",
+                        "public_result_metadata",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -506,7 +506,7 @@ class CapabilityCatalog:
                     capability_id="workspace.isolated_rw",
                     title="Isolated Writable Workspace",
                     description=(
-                        "Build a public proposal for a future isolated "
+                        "Build a public proposal for an isolated "
                         "writable workspace without creating files or directories."
                     ),
                     maturity="v0.2",
@@ -524,7 +524,7 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
-                                "description": "Runtime root for future workspace leases.",
+                                "description": "Runtime root for workspace leases.",
                             },
                             "cwd": {
                                 "type": "string",
@@ -537,13 +537,13 @@ class CapabilityCatalog:
                             "allowed_paths": {
                                 "type": "array",
                                 "items": {"type": "string"},
-                                "description": "Workspace-relative paths allowed for future writes.",
+                                "description": "Workspace-relative paths allowed for writes.",
                                 "default": [],
                             },
                             "forbidden_paths": {
                                 "type": "array",
                                 "items": {"type": "string"},
-                                "description": "Workspace-relative paths forbidden for future writes.",
+                                "description": "Workspace-relative paths forbidden for writes.",
                                 "default": [],
                             },
                         },
@@ -564,7 +564,7 @@ class CapabilityCatalog:
                         "relative_paths_only",
                         "no_workspace_materialization",
                         "no_git_worktree_creation",
-                        "public_metadata_summary_only",
+                        "public_result_metadata",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -574,7 +574,7 @@ class CapabilityCatalog:
                     title="Workspace Lease Create",
                     description=(
                         "Build a workspace.lease_created event candidate for a "
-                        "future isolated writable workspace without appending it."
+                        "isolated writable workspace without appending it."
                     ),
                     maturity="v0.2",
                     shelf="product_candidate",
@@ -599,7 +599,7 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
-                                "description": "Runtime root for the future event append.",
+                                "description": "Runtime root for the event append.",
                             },
                             "run_id": {
                                 "type": "string",
@@ -628,7 +628,7 @@ class CapabilityCatalog:
                             "mode": {
                                 "type": "string",
                                 "enum": ["isolated_rw"],
-                                "description": "Future workspace lease mode.",
+                                "description": "Workspace lease mode.",
                                 "default": "isolated_rw",
                             },
                         },
@@ -647,7 +647,7 @@ class CapabilityCatalog:
                         "no_event_append",
                         "no_filesystem_write",
                         "no_workspace_materialization",
-                        "public_metadata_summary_only",
+                        "public_result_metadata",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -823,7 +823,7 @@ class CapabilityCatalog:
                         "workspace_id_path_guard",
                         "no_source_workspace_write",
                         "no_event_append",
-                        "public_metadata_summary_only",
+                        "public_result_metadata",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -850,7 +850,7 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
-                                "description": "Runtime root for future read artifacts.",
+                                "description": "Runtime root for read artifacts.",
                             },
                             "cwd": {
                                 "type": "string",
@@ -883,7 +883,7 @@ class CapabilityCatalog:
                         "limited_excerpts_only",
                         "no_filesystem_write",
                         "no_command_execution",
-                        "public_metadata_summary_only",
+                        "public_result_metadata",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -910,7 +910,7 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
-                                "description": "Runtime root for future search artifacts.",
+                                "description": "Runtime root for search artifacts.",
                             },
                             "cwd": {
                                 "type": "string",
@@ -954,7 +954,7 @@ class CapabilityCatalog:
                         "limited_excerpts_only",
                         "no_filesystem_write",
                         "no_command_execution",
-                        "public_metadata_summary_only",
+                        "public_result_metadata",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -981,7 +981,7 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
-                                "description": "Runtime root for future patch artifacts.",
+                                "description": "Runtime root for patch artifacts.",
                             },
                             "cwd": {
                                 "type": "string",
@@ -1035,7 +1035,7 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
-                                "description": "Runtime root for future test artifacts.",
+                                "description": "Runtime root for test artifacts.",
                             },
                             "cwd": {
                                 "type": "string",
@@ -1107,7 +1107,7 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
-                                "description": "Runtime root for future status artifacts.",
+                                "description": "Runtime root for status artifacts.",
                             },
                             "cwd": {
                                 "type": "string",
@@ -1131,10 +1131,10 @@ class CapabilityCatalog:
                     },
                     safety_boundaries=(
                         "fixed_git_subcommands_only",
-                        "view_only_git_status",
+                        "read_snapshot_git_status",
                         "no_vcs_mutation",
                         "no_artifact_write",
-                        "public_metadata_summary_only",
+                        "public_result_metadata",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -1161,7 +1161,7 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
-                                "description": "Runtime root for future diff artifacts.",
+                                "description": "Runtime root for diff artifacts.",
                             },
                             "cwd": {
                                 "type": "string",
@@ -1186,7 +1186,7 @@ class CapabilityCatalog:
                     },
                     safety_boundaries=(
                         "fixed_git_subcommands_only",
-                        "view_only_git_diff",
+                        "read_snapshot_git_diff",
                         "diff_summary_only",
                         "no_vcs_mutation",
                         "no_artifact_write",
@@ -1259,7 +1259,7 @@ class CapabilityCatalog:
                     safety_boundaries=(
                         "memory_query_grant_gated",
                         "caller_context_audited",
-                        "summary_refs_provenance_only",
+                        "memory_record_refs_expandable",
                         "controlled_expand_materialized_budgeted",
                         "no_source_artifact_full_content_read",
                     ),
@@ -1329,12 +1329,12 @@ class CapabilityCatalog:
                         ],
                     },
                     safety_boundaries=(
-                        "proposal_preview_only",
+                        "proposal_payload",
                         "no_memory_write",
                         "no_canonical_event_append",
                         "structured_source_required",
                         "no_raw_content",
-                        "summary_refs_provenance_only",
+                        "memory_record_refs_expandable",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -1344,7 +1344,7 @@ class CapabilityCatalog:
                     title="Screen Observe",
                     description=(
                         "Run a policy-gated local screen observation and return "
-                        "the shared low-sensitive screen report."
+                        "the shared shared screen report."
                     ),
                     maturity="v0.2",
                     shelf="product_candidate",
@@ -1404,7 +1404,7 @@ class CapabilityCatalog:
                     safety_boundaries=(
                         "policy_gated_screen_observe",
                         "local_backend_only",
-                        "low_sensitive_report_only",
+                        "screen_report_artifact",
                         "no_screenshot_content_in_events",
                         "screenshot_content_for_model_observation",
                         "no_input_execution",
@@ -1453,8 +1453,8 @@ class CapabilityCatalog:
                         ],
                     },
                     safety_boundaries=(
-                        "screen_artifact_view_only",
-                        "public_metadata_summary_only",
+                        "screen_artifact_read_snapshot",
+                        "public_result_metadata",
                         "no_screenshot_content",
                         "no_input_execution",
                         "no_window_mutation",
@@ -1508,7 +1508,7 @@ class CapabilityCatalog:
                         "runtime_provider_policy",
                         "network_access_controlled_by_provider_policy",
                         "writes_research_artifacts",
-                        "public_metadata_summary_only",
+                        "public_result_metadata",
                         "no_raw_transcript_return",
                     ),
                     default_enabled=True,
@@ -1602,7 +1602,7 @@ class CapabilityCatalog:
                         "proposal_only_no_memory_write",
                         "no_raw_transcript_read",
                         "no_proposal_payload_content_return",
-                        "public_metadata_summary_only",
+                        "public_result_metadata",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -1679,7 +1679,7 @@ class CapabilityCatalog:
                         "no_arbitrary_worker_command",
                         "reuses_existing_supervisor_boundaries",
                         "agent_loop_call_capability_compatible",
-                        "public_metadata_summary_only",
+                        "public_result_metadata",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -1699,7 +1699,7 @@ class CapabilityCatalog:
                         "integration",
                         "review",
                         "merge",
-                        "view_only",
+                        "read_snapshot",
                     ),
                     input_contract={
                         "type": "object",
@@ -1747,12 +1747,12 @@ class CapabilityCatalog:
                         ],
                     },
                     safety_boundaries=(
-                        "workspace_view_only",
-                        "managed_registry_view_only",
-                        "git_view_only",
+                        "workspace_read_snapshot",
+                        "managed_registry_read_snapshot",
+                        "git_read_snapshot",
                         "lightweight_integration_review",
                         "no_merge_push_or_cleanup",
-                        "public_metadata_summary_only",
+                        "public_result_metadata",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -1800,9 +1800,9 @@ class CapabilityCatalog:
                         ],
                     },
                     safety_boundaries=(
-                        "workspace_view_only",
+                        "workspace_read_snapshot",
                         "writes_existing_supervisor_context_store",
-                        "public_metadata_summary_only",
+                        "public_result_metadata",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -1821,7 +1821,7 @@ class CapabilityCatalog:
                         "worker",
                         "worker-review",
                         "review",
-                        "view_only",
+                        "read_snapshot",
                     ),
                     input_contract={
                         "type": "object",
@@ -1844,11 +1844,11 @@ class CapabilityCatalog:
                         ],
                     },
                     safety_boundaries=(
-                        "workspace_view_only",
-                        "managed_registry_view_only",
+                        "workspace_read_snapshot",
+                        "managed_registry_read_snapshot",
                         "lightweight_worker_review",
                         "no_merge_or_cleanup",
-                        "public_metadata_summary_only",
+                        "public_result_metadata",
                     ),
                     default_enabled=True,
                     network_required=False,

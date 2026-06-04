@@ -662,7 +662,7 @@ def _output_policy() -> dict[str, bool]:
     return {
         "returns_full_content": False,
         "returns_artifact_refs": True,
-        "public_metadata_summary_only": True,
+        "public_result_metadata": True,
     }
 
 

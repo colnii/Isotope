@@ -142,7 +142,7 @@ def test_runner_discovers_supervisor_request_context_from_default_catalog():
     description = runner.describe_capability("supervisor.request_context")
     assert description["input_contract"]["required"] == ["state_root", "cwd", "query"]
     assert "codex_home" not in description["input_contract"]["properties"]
-    assert "workspace_view_only" in description["safety_boundaries"]
+    assert "workspace_read_snapshot" in description["safety_boundaries"]
     assert "writes_existing_supervisor_context_store" in description["safety_boundaries"]
 
 
@@ -156,7 +156,7 @@ def test_runner_discovers_supervisor_worker_review_from_default_catalog():
     description = runner.describe_capability("supervisor.worker_review")
     assert description["input_contract"]["required"] == ["state_root"]
     assert "codex_home" not in description["input_contract"]["properties"]
-    assert "workspace_view_only" in description["safety_boundaries"]
+    assert "workspace_read_snapshot" in description["safety_boundaries"]
     assert "no_merge_or_cleanup" in description["safety_boundaries"]
 
 
@@ -170,7 +170,7 @@ def test_runner_discovers_supervisor_integration_review_from_default_catalog():
     description = runner.describe_capability("supervisor.integration_review")
     assert description["input_contract"]["required"] == ["state_root"]
     assert "codex_home" not in description["input_contract"]["properties"]
-    assert "workspace_view_only" in description["safety_boundaries"]
+    assert "workspace_read_snapshot" in description["safety_boundaries"]
     assert "no_merge_push_or_cleanup" in description["safety_boundaries"]
 
 
@@ -184,7 +184,7 @@ def test_runner_discovers_memory_query_from_default_catalog():
     description = runner.describe_capability("memory.query")
     assert description["input_contract"]["required"] == ["root", "query", "run_id"]
     assert "memory_query_grant_gated" in description["safety_boundaries"]
-    assert "summary_refs_provenance_only" in description["safety_boundaries"]
+    assert "memory_record_refs_expandable" in description["safety_boundaries"]
 
 
 def test_runner_discovers_memory_promotion_preview_from_default_catalog():
@@ -201,7 +201,7 @@ def test_runner_discovers_memory_promotion_preview_from_default_catalog():
         "thread_id",
         "candidate",
     ]
-    assert "proposal_preview_only" in description["safety_boundaries"]
+    assert "proposal_payload" in description["safety_boundaries"]
     assert "no_memory_write" in description["safety_boundaries"]
 
 
@@ -214,8 +214,8 @@ def test_runner_discovers_screen_report_from_default_catalog():
     assert "screen.report" in _ids(search["capabilities"])
     description = runner.describe_capability("screen.report")
     assert description["input_contract"]["required"] == ["root", "run_id"]
-    assert "screen_artifact_view_only" in description["safety_boundaries"]
-    assert "public_metadata_summary_only" in description["safety_boundaries"]
+    assert "screen_artifact_read_snapshot" in description["safety_boundaries"]
+    assert "public_result_metadata" in description["safety_boundaries"]
 
 
 def test_runner_discovers_screen_observe_from_default_catalog():
@@ -228,7 +228,7 @@ def test_runner_discovers_screen_observe_from_default_catalog():
     description = runner.describe_capability("screen.observe")
     assert description["input_contract"]["required"] == ["target_selector"]
     assert "policy_gated_screen_observe" in description["safety_boundaries"]
-    assert "low_sensitive_report_only" in description["safety_boundaries"]
+    assert "screen_report_artifact" in description["safety_boundaries"]
     assert "no_screenshot_content_in_events" in description["safety_boundaries"]
     assert "screenshot_content_for_model_observation" in description["safety_boundaries"]
 
@@ -289,7 +289,7 @@ def test_runner_discovers_coding_task_preview_from_default_catalog():
         == "array"
     )
     assert "no_codex_delegation" in description["safety_boundaries"]
-    assert "preview_only_no_workspace_write" in description["safety_boundaries"]
+    assert "proposal_plan_no_workspace_write" in description["safety_boundaries"]
 
 
 def test_runner_runs_coding_task_preview_without_side_effects(tmp_path):
@@ -314,7 +314,7 @@ def test_runner_runs_coding_task_preview_without_side_effects(tmp_path):
     assert result["runner_kind"] == "deterministic_preview"
     assert result["preview"]["goal"] == "Add a native code edit action."
     assert result["preview"]["cwd_status"] == "exists"
-    assert result["preview"]["execution_mode"] == "preview_only"
+    assert result["preview"]["execution_mode"] == "proposal_plan"
     assert result["preview"]["native_coding_requirements"] == [
         "policy_granted_writable_workspace",
         "controlled_code_read_search",
@@ -383,7 +383,7 @@ def test_coding_task_preview_plan_is_launchable_with_required_inputs(tmp_path):
     assert plan["status"] == "launchable"
     assert plan["runner_kind"] == "deterministic_preview"
     assert plan["blocking_reasons"] == []
-    assert "preview_only_no_workspace_write" in plan["safety_boundaries"]
+    assert "proposal_plan_no_workspace_write" in plan["safety_boundaries"]
 
 
 def test_runner_discovers_coding_task_execute_from_default_catalog():
@@ -2294,7 +2294,7 @@ def test_memory_query_capability_runs_existing_public_metadata_query(tmp_path):
     assert result["runner_kind"] == "deterministic_readonly"
     memory_query = result["memory_query"]
     assert memory_query["status"] == "ok"
-    assert memory_query["content_policy"] == "summary_refs_provenance_only"
+    assert memory_query["content_policy"] == "memory_record_refs_expandable"
     assert memory_query["controlled_expand"]["status"] == "materialized"
     assert memory_query["controlled_expand"]["budget"] == 100
     assert memory_query["controlled_expand"]["content_policy"] == (
@@ -2381,7 +2381,7 @@ def test_memory_promotion_preview_capability_returns_public_metadata_proposal():
             "promotion_source": "artifact",
             "source_execution_id": "exec_report",
         },
-        "content_policy": "summary_refs_provenance_only",
+        "content_policy": "memory_record_refs_expandable",
     }
     output = json.dumps(result)
     assert "raw_content" not in output

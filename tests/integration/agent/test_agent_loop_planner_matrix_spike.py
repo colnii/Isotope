@@ -15,7 +15,7 @@ REQUIRED_TEXT_FIELDS = (
     "planner_matrix_ok: true",
     "fixture_count: 3",
     "happy_path_ok: true",
-    "blocked_queued_ok: true",
+    "rejected_out_of_contract_ok: true",
     "malformed_rejected_ok: true",
     "app_friction_count: 0",
     "model_status: not_used",
@@ -29,7 +29,7 @@ REQUIRED_JSON_FIELDS = {
     "fixtures",
     "app_friction",
     "app_friction_count",
-    "app_queued_friction",
+    "contract_friction",
     "model_status",
     "scheduler_status",
     "provider_status",
@@ -112,14 +112,14 @@ def test_planner_matrix_json_reports_happy_blocked_and_malformed_paths():
     assert happy["replay_ok"] is True
     assert happy["checkpoint_ok"] is True
 
-    blocked = _fixture(data, "blocked_queued_capability")
-    assert blocked["status"] == "blocked_queued"
+    blocked = _fixture(data, "rejected_out_of_contract_capability")
+    assert blocked["status"] == "rejected_out_of_contract"
     assert blocked["blocked_capability"] in {"real_llm_plan", "memory_query"}
     assert blocked["app_friction"] == []
-    assert blocked["app_queued_friction"]
+    assert blocked["contract_friction"]
 
     malformed = _fixture(data, "malformed_symbolic_action")
-    assert malformed["status"] == "failed_closed"
+    assert malformed["status"] == "rejected"
     assert malformed["unknown_action"] == "unknown_symbolic_action"
     assert malformed["partial_events_appended"] is False
     assert malformed["app_friction"] == []
@@ -148,7 +148,7 @@ def test_planner_matrix_trace_shows_all_fixture_paths_and_next_step():
     assert result.returncode == 0, result.stderr
     assert "scenario: agent-loop-planner-matrix" in result.stdout
     assert "happy_path" in result.stdout
-    assert "blocked_queued_capability" in result.stdout
+    assert "rejected_out_of_contract_capability" in result.stdout
     assert "malformed_symbolic_action" in result.stdout
     assert "next development step" in result.stdout
     assert "raw artifact content" not in result.stdout.lower()
