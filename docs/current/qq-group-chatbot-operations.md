@@ -35,11 +35,11 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
   --bot-user-id <bot_qq> --websocket-url ws://127.0.0.1:3001 --json
 ```
 
-The pack writes `diagnostics.sh`, `health.sh`, `startup-check.sh`, `dry-run.sh`,
-`review-dry-run.sh`, `beta-day-report.sh`, `regression-intake.sh`,
-`send-run.sh`, `pause.sh`, `resume.sh`, and `export-log.sh`. It also writes
-`logs/failures.json` and creates `regressions/`. Run `send-run.sh` only with
-`ISOTOPE_QQ_ENABLE_SEND=1`.
+The pack writes `diagnostics.sh`, `first-run.sh`, `health.sh`,
+`startup-check.sh`, `dry-run.sh`, `review-dry-run.sh`, `beta-day-report.sh`,
+`regression-intake.sh`, `send-run.sh`, `pause.sh`, `resume.sh`, and
+`export-log.sh`. It also writes `logs/failures.json` and creates
+`regressions/`. Run `send-run.sh` only with `ISOTOPE_QQ_ENABLE_SEND=1`.
 
 Generate an editable profile pack and apply it to the beta pack before checking
 or running it:
@@ -71,6 +71,9 @@ cd .isotope/qq-beta
 Diagnostics does not connect to QQ. It summarizes the configured group,
 operator, bot user, OneBot URL, `reply_provider`, profile/sticker/replay state,
 LLM provider status when needed, and ordered `next_steps` for the operator.
+`first-run.sh` then runs diagnostics, beta-check, startup-check, and health in
+order. It stops before health if `logs/replay-report.json` is missing, and it
+does not run dry-run or send-enabled commands.
 
 Before the first live session, run the pack check:
 
@@ -339,8 +342,8 @@ Run this checklist for each controlled beta day:
 - Run `qq beta-diagnostics` or `./diagnostics.sh` and follow `next_steps`.
 - Run `isotope-social qq beta-check --pack-dir .isotope/qq-beta --json`.
 - Run `qq init-replay` and `qq replay`, then review `replay-report.json`.
-- Run `qq startup-check` and require `ready: true`.
-- Run `./health.sh` before consuming messages.
+- Run `qq startup-check` or `./first-run.sh` and require `ready: true`.
+- Confirm `./first-run.sh` reaches `./health.sh` before consuming messages.
 - Start in dry-run and review at least five representative messages.
 - Run `qq review-dry-run` or `./review-dry-run.sh` and inspect warnings.
 - Run `qq export-log` or `./export-log.sh`.

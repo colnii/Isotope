@@ -61,11 +61,11 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
 ```
 
 The generated pack contains `config.json`, `state/`, `logs/`, `diagnostics.sh`,
-`health.sh`, `startup-check.sh`, `dry-run.sh`, `review-dry-run.sh`,
-`beta-day-report.sh`, `regression-intake.sh`, `send-run.sh`, `pause.sh`,
-`resume.sh`, `export-log.sh`, and a `README.md` with the first-run order. It
-also creates `logs/failures.json` for operator failure records and
-`regressions/` for replay drafts.
+`first-run.sh`, `health.sh`, `startup-check.sh`, `dry-run.sh`,
+`review-dry-run.sh`, `beta-day-report.sh`, `regression-intake.sh`,
+`send-run.sh`, `pause.sh`, `resume.sh`, `export-log.sh`, and a `README.md`
+with the first-run order. It also creates `logs/failures.json` for operator
+failure records and `regressions/` for replay drafts.
 
 Generate editable role and sticker files before the first real session:
 
@@ -108,6 +108,10 @@ isotope-social qq beta-check --pack-dir .isotope/qq-beta --json
 The check validates required files, parses `config.json`, runs shell syntax
 checks, exercises `pause.sh`, `resume.sh`, and `export-log.sh`, and confirms
 `send-run.sh` still refuses to run unless `ISOTOPE_QQ_ENABLE_SEND=1` is set.
+For generated packs, `./first-run.sh` runs diagnostics, beta-check,
+startup-check, and `./health.sh` in order. It stops with replay commands if
+`logs/replay-report.json` is missing, and it never runs `dry-run.sh` or
+`send-run.sh`.
 
 Create and run a replay before connecting NapCat:
 
@@ -266,9 +270,7 @@ isotope-social qq replay --config-json .isotope/qq-beta/config.json \
 isotope-social qq startup-check --pack-dir .isotope/qq-beta \
   --replay-report .isotope/qq-beta/logs/replay-report.json --json
 cd .isotope/qq-beta
-./diagnostics.sh
-./startup-check.sh
-./health.sh
+./first-run.sh
 ./dry-run.sh
 ./review-dry-run.sh
 ./export-log.sh

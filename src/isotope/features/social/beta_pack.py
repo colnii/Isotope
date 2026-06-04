@@ -12,6 +12,7 @@ from typing import Any
 SCRIPT_NAMES = (
     "beta-day-report.sh",
     "diagnostics.sh",
+    "first-run.sh",
     "health.sh",
     "startup-check.sh",
     "dry-run.sh",
@@ -121,6 +122,9 @@ def _script_body(name: str, config: QQBetaPackConfig) -> str:
         return f"{common}\n{command}\n"
     if name == "diagnostics.sh":
         command = _diagnostics_command()
+        return f"{common}\n{command}\n"
+    if name == "first-run.sh":
+        command = _first_run_command(config)
         return f"{common}\n{command}\n"
     if name == "health.sh":
         command = _live_run_command(config, max_events=0, send=False)
@@ -232,6 +236,58 @@ def _diagnostics_command() -> str:
         "beta-diagnostics",
         "--pack-dir",
         ".",
+        "--json",
+    ]
+    return " ".join(shlex.quote(part) for part in parts)
+
+
+def _first_run_command(config: QQBetaPackConfig) -> str:
+    replay_command = _qq_replay_command(config)
+    return (
+        "./diagnostics.sh || true\n"
+        "isotope-social qq beta-check --pack-dir . --json\n"
+        "if ! [ -f logs/replay-report.json ]; then\n"
+        '  echo "Missing logs/replay-report.json. Run these commands before first-run:" >&2\n'
+        "  echo "
+        f"{shlex.quote(_init_replay_command(config))} >&2\n"
+        "  echo "
+        f"{shlex.quote(replay_command)} >&2\n"
+        "  exit 2\n"
+        "fi\n"
+        "./startup-check.sh\n"
+        "./health.sh\n"
+    )
+
+
+def _init_replay_command(config: QQBetaPackConfig) -> str:
+    parts = [
+        "isotope-social",
+        "qq",
+        "init-replay",
+        "--output",
+        "replay.json",
+        "--group",
+        config.group_id,
+        "--bot-user-id",
+        config.bot_user_id,
+        "--json",
+    ]
+    return " ".join(shlex.quote(part) for part in parts)
+
+
+def _qq_replay_command(config: QQBetaPackConfig) -> str:
+    parts = [
+        "isotope-social",
+        "qq",
+        "replay",
+        "--config-json",
+        "config.json",
+        "--state-root",
+        "state",
+        "--replay-json",
+        "replay.json",
+        "--output",
+        "logs/replay-report.json",
         "--json",
     ]
     return " ".join(shlex.quote(part) for part in parts)
@@ -378,9 +434,9 @@ OneBot WebSocket: `{config.websocket_url}`
 ## First run order
 
 1. Apply an editable profile pack.
-2. Run `./diagnostics.sh`.
-3. Create and run replay, then run `./startup-check.sh`.
-4. Run `./health.sh`.
+2. Create and run replay.
+3. Run `./first-run.sh`.
+4. Run `./diagnostics.sh` again after config or profile edits.
 5. Run `./dry-run.sh`.
 6. Run `./review-dry-run.sh` and inspect `logs/dry-run-review.json`.
 7. Run `./export-log.sh`.
@@ -408,6 +464,9 @@ Automated scripts start in dry-run. `send-run.sh` refuses to send unless
 `isotope-social qq beta-diagnostics --pack-dir . --json`, reads this pack, and
 reports the configured group, operator, bot, OneBot URL, reply provider, replay
 report, and next steps.
+`first-run.sh` runs diagnostics, beta-check, startup-check, and health in order.
+It stops with replay commands if `logs/replay-report.json` is missing, and it
+does not call `dry-run.sh` or `send-run.sh`.
 The generated `config.json` defaults to `runtime.reply_provider = "deterministic"`
 for stable replay output. To use LLM-generated text replies, change it to
 `runtime.reply_provider = "llm"` and configure the shared Isotope LLM provider;

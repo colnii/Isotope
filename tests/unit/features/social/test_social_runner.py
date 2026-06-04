@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import subprocess
 import tomllib
@@ -893,6 +894,7 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
         "diagnostics.sh",
         "dry-run.sh",
         "export-log.sh",
+        "first-run.sh",
         "health.sh",
         "pause.sh",
         "regression-intake.sh",
@@ -921,6 +923,21 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
     diagnostics = (output_dir / "diagnostics.sh").read_text(encoding="utf-8")
     assert " qq beta-diagnostics " in diagnostics
     assert "--pack-dir ." in diagnostics
+
+    first_run = (output_dir / "first-run.sh").read_text(encoding="utf-8")
+    assert "./diagnostics.sh" in first_run
+    assert " qq beta-check " in first_run
+    assert "--pack-dir ." in first_run
+    assert "[ -f logs/replay-report.json ]" in first_run
+    assert "qq init-replay" in first_run
+    assert "qq replay" in first_run
+    assert first_run.index("[ -f logs/replay-report.json ]") < first_run.index(
+        "./startup-check.sh"
+    )
+    assert first_run.index("./startup-check.sh") < first_run.index("./health.sh")
+    assert "./dry-run.sh" not in first_run
+    assert "./send-run.sh" not in first_run
+    assert "--send" not in first_run
 
     health = (output_dir / "health.sh").read_text(encoding="utf-8")
     assert "live-run" in health
@@ -1046,6 +1063,82 @@ def test_social_runner_qq_init_beta_force_overwrites_pack(
         "99999"
     ]
     assert _read_json(existing_failures)["failures"][0]["symptom"] == "existing issue"
+
+
+def test_social_runner_qq_first_run_stops_before_missing_replay(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    output_dir = tmp_path / "qq-beta"
+    profile_dir = tmp_path / "qq-profile"
+    assert main(
+        [
+            "qq",
+            "init-beta",
+            "--output-dir",
+            str(output_dir),
+            "--group",
+            "99999",
+            "--operator",
+            "op",
+            "--bot-user-id",
+            "bot_qq",
+            "--websocket-url",
+            "ws://127.0.0.1:3001",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+    assert main(
+        [
+            "qq",
+            "init-profile",
+            "--output-dir",
+            str(profile_dir),
+            "--group",
+            "99999",
+            "--name",
+            "群聊工程猫",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+    assert main(
+        [
+            "qq",
+            "apply-profile",
+            "--pack-dir",
+            str(output_dir),
+            "--profile-dir",
+            str(profile_dir),
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+
+    result = subprocess.run(
+        ["./first-run.sh"],
+        cwd=output_dir,
+        env={
+            **os.environ,
+            "PATH": "/home/lumber/Github/isotope/.venv/bin:"
+            + os.environ.get("PATH", ""),
+            "PYTHONPATH": str(Path.cwd() / "src")
+            + os.pathsep
+            + os.environ.get("PYTHONPATH", ""),
+        },
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert "Missing logs/replay-report.json" in result.stderr
+    assert "qq init-replay" in result.stderr
+    assert "qq replay" in result.stderr
+    assert "qq live-run" not in result.stderr
+    assert "qq live-run" not in result.stdout
 
 
 def test_social_runner_qq_beta_check_exercises_operator_pack(
