@@ -224,6 +224,52 @@ describe('appState', () => {
     expect(get(state.chatError)).toBe(null);
   });
 
+  test('refreshes desktop snapshot after a successful chat turn', async () => {
+    const before = realSnapshot();
+    const after: IsotopeSnapshot = {
+      ...realSnapshot(),
+      snapshotId: 'desktop_snapshot_after_chat',
+      counts: {
+        runningAgents: 1,
+        needsAttention: 0,
+        approvals: 0,
+        artifacts: 1,
+        errors: 0
+      }
+    };
+    let loadCount = 0;
+    const state = createAppState({
+      agentClient: {
+        loadSnapshot: async () => {
+          loadCount += 1;
+          return loadCount === 1 ? before : after;
+        },
+        loadScreenArtifactContent: async () => { throw new Error('not used'); },
+        resolveApproval: async () => ({
+          status: 'ok',
+          approvalId: 'decision-1',
+          resolution: 'approved',
+          runStatus: 'completed',
+          snapshot: after
+        }),
+        askDesktopQuestion: async (question) => ({
+          question,
+          answer: '已执行动作。',
+          provider: 'deterministic_test',
+          model: 'deterministic_test'
+        })
+      }
+    });
+
+    await state.initialize();
+    await state.askDesktopQuestion('检查项目态势');
+
+    expect(loadCount).toBe(2);
+    expect(get(state.snapshot)?.snapshotId).toBe('desktop_snapshot_after_chat');
+    expect(get(state.snapshot)?.counts.runningAgents).toBe(1);
+    expect(get(state.chatError)).toBe(null);
+  });
+
   test('submits previous chat messages as session history on follow-up questions', async () => {
     const calls: Array<{ question: string; history?: Array<{ role: string; content: string }> }> = [];
     const state = createAppState({

@@ -130,6 +130,7 @@ export function createAppState(clients: AppClients) {
               : message
           )
         );
+        await refreshSnapshotAfterChat(clients.agentClient, snapshot, selectedActivityId);
       } catch (error) {
         const message = error instanceof Error ? error.message : '桌面对话失败';
         chatError.set(message);
@@ -145,6 +146,24 @@ export function createAppState(clients: AppClients) {
       }
     }
   };
+}
+
+async function refreshSnapshotAfterChat(
+  agentClient: AgentClient,
+  snapshot: ReturnType<typeof writable<IsotopeSnapshot | null>>,
+  selectedActivityId: ReturnType<typeof writable<string | null>>
+) {
+  try {
+    const loadedSnapshot = await agentClient.loadSnapshot();
+    snapshot.set(loadedSnapshot);
+    const selected = get(selectedActivityId);
+    if (selected && loadedSnapshot.activities.some((activity) => activity.id === selected)) {
+      return;
+    }
+    selectedActivityId.set(loadedSnapshot.activeActivity?.id ?? loadedSnapshot.activities[0]?.id ?? null);
+  } catch {
+    // Chat already succeeded; keep the existing snapshot if the refresh fails.
+  }
 }
 
 function defaultApprovalReason(resolution: ApprovalResolution): string {
