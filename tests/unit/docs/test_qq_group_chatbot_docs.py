@@ -1,0 +1,31 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+
+DOCS = (
+    Path("docs/current/qq-group-chatbot.md"),
+    Path("docs/current/qq-group-chatbot-operations.md"),
+)
+
+
+def test_qq_group_chatbot_runbooks_cover_beta_operations() -> None:
+    combined = "\n".join(path.read_text(encoding="utf-8") for path in DOCS)
+
+    for required in (
+        "Setup",
+        "Config",
+        "Run",
+        "Pause",
+        "Inspect",
+        "Shutdown",
+        "live-run",
+        "--send",
+        "--max-events 0",
+        "ISOTOPE_QQ_REAL_SMOKE",
+        "Role-Card Tuning",
+        "Sticker Pack Setup",
+        "Failure Log",
+        "Multi-Day Checklist",
+    ):
+        assert required in combined

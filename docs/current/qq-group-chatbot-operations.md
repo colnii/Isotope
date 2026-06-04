@@ -45,6 +45,8 @@ isotope-social qq inspect role --config-json config.json
 isotope-social qq inspect lorebook --config-json config.json
 isotope-social qq inspect stickers --config-json config.json
 isotope-social qq health --config-json config.json --state-root .isotope/qq
+isotope-social qq live-run --config-json config.json --state-root .isotope/qq \
+  --websocket-url ws://127.0.0.1:3001 --max-events 0 --json
 ```
 
 Inspect output must answer:
@@ -86,6 +88,8 @@ Dry-run mode returns proposed actions without sending:
 ```bash
 isotope-social qq dry-run --config-json config.json --state-root .isotope/qq \
   --event-json onebot-event.json --json
+isotope-social qq live-run --config-json config.json --state-root .isotope/qq \
+  --websocket-url ws://127.0.0.1:3001 --max-events 10 --json
 ```
 
 Before enabling sends, review:
@@ -95,6 +99,14 @@ Before enabling sends, review:
 - sticker selection reasons;
 - capability reports;
 - whether send feedback from a previous turn suppresses repeated replies.
+
+To enable real sends in the controlled group, use the same live command with
+`--send`:
+
+```bash
+isotope-social qq live-run --config-json config.json --state-root .isotope/qq \
+  --websocket-url ws://127.0.0.1:3001 --max-events 10 --send --json
+```
 
 ## Failure Log
 
@@ -142,7 +154,7 @@ Real QQ smoke is opt-in:
 
 ```bash
 ISOTOPE_QQ_REAL_SMOKE=1 \
-ISOTOPE_QQ_ONEBOT_URL=http://127.0.0.1:3000 \
+ISOTOPE_QQ_ONEBOT_URL=ws://127.0.0.1:3001 \
 ISOTOPE_QQ_TEST_GROUP=<controlled_group_id> \
 PYTHONPATH=src .venv/bin/python -m pytest tests/integration/qq/test_fake_onebot_flow.py -q
 ```

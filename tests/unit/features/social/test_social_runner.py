@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import tomllib
 
+from isotope.features.social import runner
 from isotope.features.social.runner import main
 from tests.unit.features.social.test_character_card import _card_dict
 
@@ -60,6 +61,56 @@ def _write_json(path: Path, payload: dict) -> Path:
 
 def _read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+class FakeLiveOneBotClient:
+    instances: list["FakeLiveOneBotClient"] = []
+
+    def __init__(
+        self,
+        url: str,
+        *,
+        access_token: str | None = None,
+        request_timeout_seconds: float = 5.0,
+        receive_timeout_seconds: float = 30.0,
+    ):
+        self.url = url
+        self.access_token = access_token
+        self.request_timeout_seconds = request_timeout_seconds
+        self.receive_timeout_seconds = receive_timeout_seconds
+        self.connected = False
+        self.events = [_event()]
+        self.sent_group_messages: list[dict] = []
+        self.sent_private_messages: list[dict] = []
+        FakeLiveOneBotClient.instances.append(self)
+
+    def connect(self) -> None:
+        self.connected = True
+
+    def receive_event(self) -> dict | None:
+        self.connected = True
+        if not self.events:
+            return None
+        return self.events.pop(0)
+
+    def send_group_msg(self, *, group_id: str, message: list[dict]) -> dict:
+        self.sent_group_messages.append({"group_id": group_id, "message": message})
+        return {"status": "ok", "message_id": "live-group-1"}
+
+    def send_private_msg(self, *, user_id: str, message: list[dict]) -> dict:
+        self.sent_private_messages.append({"user_id": user_id, "message": message})
+        return {"status": "ok", "message_id": "live-private-1"}
+
+    def connection_state(self) -> dict:
+        return {
+            "connected": self.connected,
+            "pending_events": len(self.events),
+            "seen_message_count": 0,
+            "api_sequence": len(self.sent_group_messages) + len(self.sent_private_messages),
+        }
+
+    def close(self) -> None:
+        self.connected = False
 
 
 def test_social_runner_qq_dry_run_records_decision_without_sending(
@@ -243,6 +294,142 @@ def test_social_runner_qq_health_and_export_log(tmp_path: Path, capsys) -> None:
     export_payload = json.loads(capsys.readouterr().out)
     assert export_payload["output"] == str(output)
     assert [entry["kind"] for entry in _read_json(output)["entries"]] == ["decision", "send"]
+
+
+def test_social_runner_qq_live_run_defaults_to_dry_run(
+    tmp_path: Path,
+    capsys,
+    monkeypatch,
+) -> None:
+    FakeLiveOneBotClient.instances = []
+    monkeypatch.setattr(runner, "OneBotWebSocketClient", FakeLiveOneBotClient, raising=False)
+    config = _write_json(tmp_path / "config.json", _config())
+
+    code = main(
+        [
+            "qq",
+            "live-run",
+            "--config-json",
+            str(config),
+            "--state-root",
+            str(tmp_path / "state"),
+            "--websocket-url",
+            "ws://127.0.0.1:3001",
+            "--max-events",
+            "1",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["command"] == "live-run"
+    assert payload["processed_events"] == 1
+    assert payload["turns"][0]["decision"]["dry_run"] is True
+    assert payload["turns"][0]["send_feedback"] == []
+    assert FakeLiveOneBotClient.instances[0].sent_group_messages == []
+
+
+def test_social_runner_qq_live_run_send_records_feedback(
+    tmp_path: Path,
+    capsys,
+    monkeypatch,
+) -> None:
+    FakeLiveOneBotClient.instances = []
+    monkeypatch.setattr(runner, "OneBotWebSocketClient", FakeLiveOneBotClient, raising=False)
+    config = _write_json(tmp_path / "config.json", _config())
+
+    code = main(
+        [
+            "qq",
+            "live-run",
+            "--config-json",
+            str(config),
+            "--state-root",
+            str(tmp_path / "state"),
+            "--websocket-url",
+            "ws://127.0.0.1:3001",
+            "--max-events",
+            "1",
+            "--send",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["turns"][0]["send_feedback"][0]["status"] == "sent"
+    assert FakeLiveOneBotClient.instances[0].sent_group_messages[0]["group_id"] == "99999"
+    state = _read_json(tmp_path / "state" / "social-qq-state.json")
+    assert [entry["kind"] for entry in state["audit_entries"]] == ["decision", "send"]
+
+
+def test_social_runner_qq_live_run_health_only_connects_without_consuming_event(
+    tmp_path: Path,
+    capsys,
+    monkeypatch,
+) -> None:
+    FakeLiveOneBotClient.instances = []
+    monkeypatch.setattr(runner, "OneBotWebSocketClient", FakeLiveOneBotClient, raising=False)
+    config = _write_json(tmp_path / "config.json", _config())
+
+    code = main(
+        [
+            "qq",
+            "live-run",
+            "--config-json",
+            str(config),
+            "--state-root",
+            str(tmp_path / "state"),
+            "--websocket-url",
+            "ws://127.0.0.1:3001",
+            "--max-events",
+            "0",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["processed_events"] == 0
+    assert payload["turns"] == []
+    assert payload["health"]["adapter_states"][0]["connected"] is True
+    assert payload["health"]["adapter_states"][0]["pending_events"] == 1
+
+
+def test_social_runner_qq_live_run_reports_missing_websocket_dependency(
+    tmp_path: Path,
+    capsys,
+    monkeypatch,
+) -> None:
+    class MissingDependencyClient:
+        def __init__(self, *args, **kwargs):
+            raise RuntimeError("websockets is required for qq live-run")
+
+    monkeypatch.setattr(runner, "OneBotWebSocketClient", MissingDependencyClient, raising=False)
+    config = _write_json(tmp_path / "config.json", _config())
+
+    code = main(
+        [
+            "qq",
+            "live-run",
+            "--config-json",
+            str(config),
+            "--state-root",
+            str(tmp_path / "state"),
+            "--websocket-url",
+            "ws://127.0.0.1:3001",
+            "--max-events",
+            "1",
+            "--json",
+        ]
+    )
+
+    assert code == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error"]["code"] == "social_runner_error"
+    assert "websockets is required" in payload["error"]["message"]
 
 
 def test_social_runner_entry_point_is_registered() -> None:

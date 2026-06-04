@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from ...integrations.qq import FakeOneBotClient, OneBotAdapter
+from ...integrations.qq import FakeOneBotClient, OneBotAdapter, OneBotWebSocketClient
 from .audit_log import SocialAuditEntry, SocialAuditLog
 from .character_card import CharacterCard
 from .config import SocialGroupPolicy, SocialOperationsConfig
@@ -39,6 +39,34 @@ def _build_parser() -> argparse.ArgumentParser:
         command.add_argument("--event-json", required=True, help="OneBot event JSON file.")
         command.add_argument("--send", action="store_true", help="Allow sending for qq run.")
         command.add_argument("--json", action="store_true", help="Print JSON output.")
+
+    live_run = qq_subparsers.add_parser(
+        "live-run",
+        help="Connect to a OneBot WebSocket endpoint and process QQ events.",
+    )
+    _add_config_state_args(live_run)
+    live_run.add_argument("--websocket-url", required=True, help="NapCat OneBot WebSocket URL.")
+    live_run.add_argument("--access-token", help="Optional OneBot access token.")
+    live_run.add_argument(
+        "--max-events",
+        type=int,
+        default=1,
+        help="Stop after this many received events; 0 means health-only.",
+    )
+    live_run.add_argument(
+        "--receive-timeout-seconds",
+        type=float,
+        default=30.0,
+        help="Stop cleanly when no event arrives within this many seconds.",
+    )
+    live_run.add_argument(
+        "--request-timeout-seconds",
+        type=float,
+        default=5.0,
+        help="Timeout for OneBot API responses.",
+    )
+    live_run.add_argument("--send", action="store_true", help="Allow real sends.")
+    live_run.add_argument("--json", action="store_true", help="Print JSON output.")
 
     for name, help_text in (
         ("pause", "Pause one QQ group."),
@@ -88,7 +116,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             _print_plain(payload)
         return 0
-    except (FileNotFoundError, ValueError) as exc:
+    except (FileNotFoundError, RuntimeError, TimeoutError, ValueError) as exc:
         payload = {
             "status": "error",
             "error": {"code": "social_runner_error", "message": str(exc)},
@@ -103,6 +131,8 @@ def main(argv: list[str] | None = None) -> int:
 def _handle_qq(args: argparse.Namespace) -> dict[str, Any]:
     if args.command in {"dry-run", "run"}:
         return _handle_run(args)
+    if args.command == "live-run":
+        return _handle_live_run(args)
     if args.command in {"pause", "resume"}:
         return _handle_pause_resume(args)
     if args.command == "inspect":
@@ -120,16 +150,10 @@ def _handle_run(args: argparse.Namespace) -> dict[str, Any]:
     operations = _operations_from_config(config, state=state)
     client = FakeOneBotClient()
     client.queue_event(_read_json_file(Path(args.event_json)))
-    runtime = SocialRuntime(
-        adapter=OneBotAdapter(client=client),
-        character_card=_character_card_from_config(config),
+    runtime = _runtime_from_adapter(
+        config=config,
         operations=operations,
-        config=SocialRuntimeConfig(
-            bot_user_id=_config_string(config, "bot_user_id"),
-            dry_run=bool(config.get("dry_run", True)),
-        ),
-        lorebook=_optional_lorebook_from_config(config),
-        sticker_library=_optional_stickers_from_config(config),
+        adapter=OneBotAdapter(client=client),
     )
     dry_run = True if args.command == "dry-run" else not bool(args.send)
     turn = runtime.process_next(dry_run=dry_run)
@@ -141,6 +165,49 @@ def _handle_run(args: argparse.Namespace) -> dict[str, Any]:
         "turn": turn.to_public_dict() if turn is not None else None,
         "sent_group_messages": list(client.sent_group_messages),
         "sent_private_messages": list(client.sent_private_messages),
+    }
+
+
+def _handle_live_run(args: argparse.Namespace) -> dict[str, Any]:
+    if args.max_events < 0:
+        raise ValueError("max-events must be 0 or greater")
+    config = _load_config(Path(args.config_json))
+    state_root = Path(args.state_root)
+    operations = _operations_from_config(config, state=_load_state(state_root))
+    client = OneBotWebSocketClient(
+        args.websocket_url,
+        access_token=args.access_token,
+        request_timeout_seconds=args.request_timeout_seconds,
+        receive_timeout_seconds=args.receive_timeout_seconds,
+    )
+    adapter = OneBotAdapter(client=client)
+    runtime = _runtime_from_adapter(config=config, operations=operations, adapter=adapter)
+    turns: list[dict[str, Any]] = []
+    try:
+        if args.max_events == 0:
+            if hasattr(client, "connect"):
+                client.connect()
+        for _ in range(args.max_events):
+            turn = runtime.process_next(dry_run=not bool(args.send))
+            if turn is None:
+                break
+            turns.append(turn.to_public_dict())
+            _save_state(state_root, operations)
+        if not turns:
+            _save_state(state_root, operations)
+        health = runtime.health()
+    finally:
+        if hasattr(client, "close"):
+            client.close()
+    return {
+        "status": "ok",
+        "command": "live-run",
+        "state_file": str(_state_path(state_root)),
+        "websocket_url": args.websocket_url,
+        "dry_run": not bool(args.send),
+        "processed_events": len(turns),
+        "turns": turns,
+        "health": health,
     }
 
 
@@ -197,6 +264,25 @@ def _handle_export_log(args: argparse.Namespace) -> dict[str, Any]:
         "output": str(output),
         "entry_count": len(entries),
     }
+
+
+def _runtime_from_adapter(
+    *,
+    config: dict[str, Any],
+    operations: SocialOperationsController,
+    adapter: OneBotAdapter,
+) -> SocialRuntime:
+    return SocialRuntime(
+        adapter=adapter,
+        character_card=_character_card_from_config(config),
+        operations=operations,
+        config=SocialRuntimeConfig(
+            bot_user_id=_config_string(config, "bot_user_id"),
+            dry_run=bool(config.get("dry_run", True)),
+        ),
+        lorebook=_optional_lorebook_from_config(config),
+        sticker_library=_optional_stickers_from_config(config),
+    )
 
 
 class _StoredState:
