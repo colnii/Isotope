@@ -203,6 +203,7 @@ def test_lifecycle_execution_plan_archives_ready_cleanup_workers() -> None:
         "count": 1,
         "target_name": "source-worker",
         "record_id": "managed-source",
+        "recommended_next_step": "archive_ready",
     }
     assert worker_lifecycle_execution_planned_executed(plan.to_dict()) == {
         "kind": "archive_cleanup",
@@ -275,6 +276,7 @@ def test_lifecycle_execution_plan_deletes_guarded_worktree_candidates() -> None:
         "count": 1,
         "target_name": "source-worker",
         "record_id": "managed-source",
+        "recommended_next_step": "delete_ready",
     }
 
 

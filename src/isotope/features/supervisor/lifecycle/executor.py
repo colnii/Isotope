@@ -137,6 +137,7 @@ def worker_lifecycle_execution_action(plan: Mapping[str, Any]) -> dict[str, Any]
             "count": len(candidates),
             "target_name": first.get("name"),
             "record_id": first.get("record_id"),
+            "recommended_next_step": "archive_ready",
         }
     if plan.get("kind") == "cleanup_worktree":
         actions = _mapping_list(plan.get("delete_worktree_actions"))
@@ -157,6 +158,7 @@ def worker_lifecycle_execution_action(plan: Mapping[str, Any]) -> dict[str, Any]
             "count": len(actions),
             "target_name": first.get("target_name"),
             "record_id": first.get("record_id"),
+            "recommended_next_step": "delete_ready" if actions else "monitor",
         }
     merge_dispatch = _merge_dispatch(plan)
     if plan.get("kind") != "merge_dispatch" or merge_dispatch is None:
