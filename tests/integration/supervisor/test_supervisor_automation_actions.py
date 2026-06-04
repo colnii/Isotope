@@ -308,20 +308,20 @@ def test_supervisor_loop_executes_resume_session(
     )
     captured: dict[str, Any] = {}
 
-    class FakeRecord:
+    class StubRecord:
         name = "resume-resume-session"
         record_id = "managed-resume"
         pid = 56789
         backend = "codex_exec_resume"
         resume_session_id = "resume-session"
 
-    def fake_resume_managed_codex(**kwargs: Any) -> FakeRecord:
+    def stub_resume_managed_codex(**kwargs: Any) -> StubRecord:
         captured.update(kwargs)
-        return FakeRecord()
+        return StubRecord()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resume_managed_codex",
-        fake_resume_managed_codex,
+        stub_resume_managed_codex,
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._git_branch_for",
@@ -364,10 +364,10 @@ def test_supervisor_loop_executes_launch_session(
     goal = "继续推进 Supervisor 集成测试。"
     captured: dict[str, Any] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 45678
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -375,12 +375,12 @@ def test_supervisor_loop_executes_launch_session(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
         captured["cwd"] = cwd
-        return FakeProcess()
+        return StubProcess()
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
     _patch_provider(
         monkeypatch,
         {
@@ -694,7 +694,7 @@ def _patch_managed_tmux(
         lambda session: "SUPERVISOR_STATUS: working\nSUPERVISOR_SUMMARY: 等待输入。",
     )
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool = False,
@@ -704,7 +704,7 @@ def _patch_managed_tmux(
         run_calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
 
 def _write_session(

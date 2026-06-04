@@ -127,7 +127,7 @@ def test_capacity_graph_node_from_llm_capacity_selection_keeps_only_call_plan_fi
         confidence=0.82,
         rationale="用户要检查 artifact 摘要。",
         provider="deterministic-provider",
-        model="fake-model",
+        model="test-model",
         finish_reason="stop",
         usage={"total_tokens": 18},
     )
@@ -168,7 +168,7 @@ def test_capacity_graph_node_from_llm_capacity_selection_keeps_only_call_plan_fi
     }
     serialized_payload = str(payload)
     assert "deterministic-provider" not in serialized_payload
-    assert "fake-model" not in serialized_payload
+    assert "test-model" not in serialized_payload
     assert "total_tokens" not in serialized_payload
 
 
@@ -182,7 +182,7 @@ def test_capacity_graph_node_rejects_selection_with_missing_inputs():
         confidence=0.61,
         rationale="缺少问题。",
         provider="deterministic-provider",
-        model="fake-model",
+        model="test-model",
         finish_reason="stop",
         usage={},
     )

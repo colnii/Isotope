@@ -11,7 +11,7 @@ import isotope.integrations.codex.task as codex_task
 from isotope.platform.schemas.refs import ResourceRef
 
 
-class FakeCodexBackend:
+class StubCodexBackend:
     def __init__(self, result):
         self.result = result
         self.calls = []
@@ -67,7 +67,7 @@ def test_codex_live_smoke_is_skipped_by_default_without_artifacts(tmp_path):
 
 
 def test_codex_live_smoke_accepts_backend_result_into_artifact(tmp_path):
-    backend = FakeCodexBackend(_codex_result(content="codex-secret-transcript"))
+    backend = StubCodexBackend(_codex_result(content="codex-secret-transcript"))
 
     result = codex_live_smoke.run_codex_live_smoke(
         tmp_path,
@@ -88,7 +88,7 @@ def test_codex_live_smoke_accepts_backend_result_into_artifact(tmp_path):
 def test_codex_live_smoke_result_does_not_expose_prompt_or_transcript(tmp_path):
     prompt = "PROMPT_SHOULD_NOT_LEAK"
     transcript = "TRANSCRIPT_SHOULD_NOT_LEAK"
-    backend = FakeCodexBackend(_codex_result(content=transcript))
+    backend = StubCodexBackend(_codex_result(content=transcript))
 
     result = codex_live_smoke.run_codex_live_smoke(
         tmp_path,
@@ -102,7 +102,7 @@ def test_codex_live_smoke_result_does_not_expose_prompt_or_transcript(tmp_path):
 
 def test_codex_live_smoke_diagnoses_network_unreachable_without_leaking_transcript(tmp_path):
     network_error = "Network unreachable (os error 101)"
-    backend = FakeCodexBackend(
+    backend = StubCodexBackend(
         _codex_result(
             status="timeout",
             content=_transcript(stderr=f"failed to connect to websocket: {network_error}"),
@@ -127,7 +127,7 @@ def test_codex_live_smoke_diagnoses_network_unreachable_without_leaking_transcri
 
 def test_codex_live_smoke_diagnoses_auth_failure_without_leaking_transcript(tmp_path):
     auth_error = "401 Unauthorized: login required"
-    backend = FakeCodexBackend(
+    backend = StubCodexBackend(
         _codex_result(
             status="failed",
             content=_transcript(stderr=auth_error, exit_code=1),

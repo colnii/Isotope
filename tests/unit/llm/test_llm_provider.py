@@ -14,7 +14,7 @@ from isotope.llm.provider import (
 )
 
 
-class _FakeCompletedProcess:
+class _StubCompletedProcess:
     def __init__(self, *, stdout: str, stderr: str = "", returncode: int = 0) -> None:
         self.stdout = stdout
         self.stderr = stderr
@@ -29,7 +29,7 @@ class _RecordingCodexRunner:
 
     def __call__(self, argv, **kwargs):
         self.calls.append({"argv": list(argv), "kwargs": dict(kwargs)})
-        return _FakeCompletedProcess(
+        return _StubCompletedProcess(
             stdout=json.dumps(
                 {
                     "type": "item.completed",
@@ -49,7 +49,7 @@ def _resolve_codex_executable(executable: str) -> str:
 def test_deepseek_provider_uses_v4_flash_chat_completions_contract():
     captured: dict = {}
 
-    def fake_transport(url, payload, headers, timeout):
+    def stub_transport(url, payload, headers, timeout):
         captured["url"] = url
         captured["payload"] = payload
         captured["headers"] = headers
@@ -66,7 +66,7 @@ def test_deepseek_provider_uses_v4_flash_chat_completions_contract():
             "usage": {"prompt_tokens": 3, "completion_tokens": 2, "total_tokens": 5},
         }
 
-    provider = DeepSeekChatProvider(api_key="test_secret", transport=fake_transport)
+    provider = DeepSeekChatProvider(api_key="test_secret", transport=stub_transport)
 
     response = provider.generate(
         [
@@ -97,10 +97,10 @@ def test_deepseek_provider_requires_api_key_without_echoing_key_value():
 
 
 def test_deepseek_provider_rejects_malformed_response():
-    def fake_transport(url, payload, headers, timeout):
+    def stub_transport(url, payload, headers, timeout):
         return {"choices": [{"message": {"content": ""}}]}
 
-    provider = DeepSeekChatProvider(api_key="test_secret", transport=fake_transport)
+    provider = DeepSeekChatProvider(api_key="test_secret", transport=stub_transport)
 
     with pytest.raises(ValueError, match="empty model response"):
         provider.generate([{"role": "user", "content": "hello"}])
@@ -109,7 +109,7 @@ def test_deepseek_provider_rejects_malformed_response():
 def test_openai_compatible_provider_uses_configured_chat_completions_contract():
     captured: dict = {}
 
-    def fake_transport(url, payload, headers, timeout):
+    def stub_transport(url, payload, headers, timeout):
         captured["url"] = url
         captured["payload"] = payload
         captured["headers"] = headers
@@ -131,7 +131,7 @@ def test_openai_compatible_provider_uses_configured_chat_completions_contract():
         api_key="test_secret",
         base_url="https://api.custom.example.com/v1",
         model="custom-chat",
-        transport=fake_transport,
+        transport=stub_transport,
     )
 
     response = provider.generate([{"role": "user", "content": "hello"}], max_tokens=64)
@@ -153,7 +153,7 @@ def test_openai_compatible_provider_uses_configured_chat_completions_contract():
 def test_openai_compatible_provider_allows_user_image_url_content_blocks():
     captured: dict = {}
 
-    def fake_transport(url, payload, headers, timeout):
+    def stub_transport(url, payload, headers, timeout):
         captured["payload"] = payload
         return {
             "id": "chatcmpl_test",
@@ -172,7 +172,7 @@ def test_openai_compatible_provider_allows_user_image_url_content_blocks():
         api_key="test_secret",
         base_url="https://api.custom.example.com/v1",
         model="vision-chat",
-        transport=fake_transport,
+        transport=stub_transport,
     )
     messages = [
         {
@@ -224,7 +224,7 @@ def test_openai_compatible_provider_rejects_invalid_image_url_content_blocks():
 def test_openai_compatible_provider_streams_chat_completion_deltas():
     captured: dict = {}
 
-    def fake_stream_transport(url, payload, headers, timeout):
+    def stub_stream_transport(url, payload, headers, timeout):
         captured["url"] = url
         captured["payload"] = payload
         captured["headers"] = headers
@@ -251,7 +251,7 @@ def test_openai_compatible_provider_streams_chat_completion_deltas():
         api_key="test_secret",
         base_url="https://api.custom.example.com/v1",
         model="custom-chat",
-        stream_transport=fake_stream_transport,
+        stream_transport=stub_stream_transport,
     )
 
     chunks = list(provider.stream_generate([{"role": "user", "content": "hello"}], max_tokens=64))
@@ -274,7 +274,7 @@ def test_openai_compatible_provider_streams_chat_completion_deltas():
 def test_deepseek_provider_streams_with_thinking_disabled():
     captured: dict = {}
 
-    def fake_stream_transport(url, payload, headers, timeout):
+    def stub_stream_transport(url, payload, headers, timeout):
         captured["url"] = url
         captured["payload"] = payload
         return iter(
@@ -292,7 +292,7 @@ def test_deepseek_provider_streams_with_thinking_disabled():
 
     provider = DeepSeekChatProvider(
         api_key="test_secret",
-        stream_transport=fake_stream_transport,
+        stream_transport=stub_stream_transport,
     )
 
     chunks = list(provider.stream_generate([{"role": "user", "content": "hello"}], max_tokens=32))
@@ -306,7 +306,7 @@ def test_deepseek_provider_streams_with_thinking_disabled():
 def test_openai_compatible_provider_retries_length_limited_reasoning_without_thinking():
     captured_payloads: list[dict] = []
 
-    def fake_transport(url, payload, headers, timeout):
+    def stub_transport(url, payload, headers, timeout):
         captured_payloads.append(payload)
         if len(captured_payloads) == 1:
             return {
@@ -341,7 +341,7 @@ def test_openai_compatible_provider_retries_length_limited_reasoning_without_thi
         api_key="test_secret",
         base_url="https://api.custom.example.com/v1",
         model="reasoning-chat",
-        transport=fake_transport,
+        transport=stub_transport,
     )
 
     response = provider.generate([{"role": "user", "content": "hello"}], max_tokens=512)

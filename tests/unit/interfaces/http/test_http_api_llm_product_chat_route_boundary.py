@@ -8,7 +8,7 @@ from isotope.interfaces.http import create_http_app, create_llm_provider_http_ap
 from isotope.llm.provider import LLMToolCall, LLMToolCallResponse
 
 
-class FakeCompletedProcess:
+class StubCompletedProcess:
     returncode = 0
     stdout = '{"event":"task_complete","secret":"PRODUCT_CHAT_STDOUT_SHOULD_NOT_LEAK"}\n'
     stderr = ""
@@ -20,7 +20,7 @@ class RecordingProcessRunner:
 
     def __call__(self, argv, **kwargs):
         self.calls.append({"argv": list(argv), "kwargs": dict(kwargs)})
-        return FakeCompletedProcess()
+        return StubCompletedProcess()
 
 
 class RecordingToolProvider:

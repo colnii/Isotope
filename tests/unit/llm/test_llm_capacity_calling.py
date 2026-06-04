@@ -31,7 +31,7 @@ class RecordingProvider:
             content=self.content,
             finish_reason="stop",
             usage={"prompt_tokens": 10, "completion_tokens": 8, "total_tokens": 18},
-            raw={"id": "fake-response"},
+            raw={"id": "stub-response"},
         )
 
 

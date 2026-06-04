@@ -20,7 +20,7 @@ ACTION_EXECUTION_EVENTS = {
 }
 
 
-class FakeCompletedProcess:
+class StubCompletedProcess:
     def __init__(self, *, returncode: int = 0, stdout: str = "", stderr: str = "") -> None:
         self.returncode = returncode
         self.stdout = stdout
@@ -28,7 +28,7 @@ class FakeCompletedProcess:
 
 
 class RecordingProcessRunner:
-    def __init__(self, result: FakeCompletedProcess) -> None:
+    def __init__(self, result: StubCompletedProcess) -> None:
         self.result = result
         self.calls = []
 
@@ -122,7 +122,7 @@ def test_default_http_codex_task_route_submits_pending_approval(tmp_path):
 
 def test_codex_http_route_is_listed_by_default(tmp_path):
     default_app = create_http_app(tmp_path / "default")
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     codex_app = _codex_http_app(tmp_path / "codex", runner)
 
     assert ("POST", "/runs/{run_id}/codex-tasks") in default_app.routes()
@@ -130,7 +130,7 @@ def test_codex_http_route_is_listed_by_default(tmp_path):
 
 
 def test_codex_http_route_submits_pending_approval_without_starting_codex(tmp_path):
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
 
@@ -164,7 +164,7 @@ def test_codex_http_approval_resolution_runs_cli_backend_and_keeps_response_publ
     monkeypatch.setenv("OPENAI_API_KEY", "SECRET_ENV_SHOULD_NOT_BE_INHERITED")
     monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:7890")
     runner = RecordingProcessRunner(
-        FakeCompletedProcess(stdout='{"event":"task_complete","message":"ok"}\n')
+        StubCompletedProcess(stdout='{"event":"task_complete","message":"ok"}\n')
     )
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
@@ -221,7 +221,7 @@ def test_codex_http_approval_resolution_runs_cli_backend_and_keeps_response_publ
     ],
 )
 def test_codex_http_route_rejects_malformed_body_without_action_side_effects(tmp_path, body):
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
@@ -237,7 +237,7 @@ def test_codex_http_route_rejects_malformed_body_without_action_side_effects(tmp
 
 
 def test_codex_http_route_idempotency_replays_pending_response_without_duplicate_approval(tmp_path):
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
     body = {

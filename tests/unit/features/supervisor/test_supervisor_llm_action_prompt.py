@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from isotope.features.supervisor.llm_action.prompt import build_llm_action_messages
 
 
-class _FakeRecommendation:
+class _StubRecommendation:
     def to_dict(self) -> dict[str, str | None]:
         return {"action": "monitor", "target_session_id": None}
 
@@ -14,7 +14,7 @@ class _FakeRecommendation:
 def test_llm_action_prompt_builder_exposes_guarded_prompt_contract():
     report = SimpleNamespace(
         generated_at="2026-05-24T00:00:00Z",
-        recommendation=_FakeRecommendation(),
+        recommendation=_StubRecommendation(),
         sessions=[],
     )
 

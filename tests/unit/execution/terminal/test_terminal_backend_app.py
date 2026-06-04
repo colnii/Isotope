@@ -61,7 +61,7 @@ def _workspace_binding() -> dict:
     }
 
 
-class FakeBackend:
+class StubBackend:
     def __init__(self, result):
         self.result = result
         self.calls = []
@@ -93,7 +93,7 @@ def test_build_terminal_backend_request_snapshots_decision_grants():
 def test_terminal_backend_adapter_stores_backend_output_as_artifact(tmp_path):
     proposal = _proposal()
     decision = _decision(proposal)
-    backend = FakeBackend(
+    backend = StubBackend(
         TerminalBackendResult(
             backend_session_id="backend_session_001",
             status="completed",
@@ -132,7 +132,7 @@ def test_terminal_backend_adapter_stores_backend_output_as_artifact(tmp_path):
 def test_terminal_backend_adapter_rejects_summary_leaking_full_content(tmp_path):
     proposal = _proposal()
     decision = _decision(proposal)
-    backend = FakeBackend(
+    backend = StubBackend(
         TerminalBackendResult(
             backend_session_id="backend_session_001",
             status="completed",

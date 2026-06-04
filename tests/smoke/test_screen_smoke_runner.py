@@ -417,7 +417,7 @@ def test_real_smoke_plan_prints_real_backend_commands():
     assert any(" observe " in command and "--capture metadata" in command for command in commands)
     assert any(" control-click " in command for command in commands)
     assert any(" control-restore " in command for command in commands)
-    assert all("fake" not in command for command in commands)
+    assert all("stub" not in command for command in commands)
 
 
 def test_real_smoke_plan_carries_reusable_allowlist_file():

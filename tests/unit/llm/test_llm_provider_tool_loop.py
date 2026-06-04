@@ -29,7 +29,7 @@ ACTION_EXECUTION_EVENTS = {
 }
 
 
-class FakeCompletedProcess:
+class StubCompletedProcess:
     def __init__(self, *, stdout: str = "") -> None:
         self.returncode = 0
         self.stdout = stdout
@@ -37,7 +37,7 @@ class FakeCompletedProcess:
 
 
 class RecordingProcessRunner:
-    def __init__(self, result: FakeCompletedProcess) -> None:
+    def __init__(self, result: StubCompletedProcess) -> None:
         self.result = result
         self.calls: list[dict[str, Any]] = []
 
@@ -165,7 +165,7 @@ def _provider_call(call_id: str, prompt_secret: str, summary: str) -> LLMToolCal
 
 
 def test_llm_tool_loop_sends_catalog_to_provider_and_waits_for_approval(tmp_path):
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
     provider = RecordingToolProvider(
@@ -218,7 +218,7 @@ def test_llm_tool_loop_sends_catalog_to_provider_and_waits_for_approval(tmp_path
 
 def test_llm_tool_result_message_returns_artifact_ref_without_transcript_or_prompt(tmp_path):
     runner = RecordingProcessRunner(
-        FakeCompletedProcess(stdout='{"message":"TOOL_RESULT_STDOUT_SHOULD_NOT_LEAK"}\n')
+        StubCompletedProcess(stdout='{"message":"TOOL_RESULT_STDOUT_SHOULD_NOT_LEAK"}\n')
     )
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
@@ -265,7 +265,7 @@ def test_llm_tool_result_followup_sends_safe_tool_message_for_next_model_choice_
     tmp_path,
 ):
     runner = RecordingProcessRunner(
-        FakeCompletedProcess(stdout='{"message":"FOLLOWUP_STDOUT_SHOULD_NOT_LEAK"}\n')
+        StubCompletedProcess(stdout='{"message":"FOLLOWUP_STDOUT_SHOULD_NOT_LEAK"}\n')
     )
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
@@ -343,7 +343,7 @@ def test_llm_tool_result_followup_can_submit_second_action_when_first_action_kee
     tmp_path,
 ):
     runner = RecordingProcessRunner(
-        FakeCompletedProcess(stdout='{"message":"MULTI_STEP_STDOUT_SHOULD_NOT_LEAK"}\n')
+        StubCompletedProcess(stdout='{"message":"MULTI_STEP_STDOUT_SHOULD_NOT_LEAK"}\n')
     )
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
@@ -427,7 +427,7 @@ def test_llm_tool_result_followup_submission_rejects_completed_run_before_provid
     tmp_path,
 ):
     runner = RecordingProcessRunner(
-        FakeCompletedProcess(stdout='{"message":"COMPLETED_RUN_STDOUT_SHOULD_NOT_LEAK"}\n')
+        StubCompletedProcess(stdout='{"message":"COMPLETED_RUN_STDOUT_SHOULD_NOT_LEAK"}\n')
     )
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
@@ -479,7 +479,7 @@ def test_llm_tool_result_followup_submission_rejects_completed_run_before_provid
 
 
 def test_llm_tool_result_followup_rejects_unknown_run_before_provider_call(tmp_path):
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"message":"unused"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"message":"unused"}\n'))
     app = _codex_http_app(tmp_path, runner)
     provider = SequencedToolProvider(
         [
@@ -549,7 +549,7 @@ def test_llm_tool_result_message_requires_artifact_ref_for_completed_tool():
 def test_deepseek_tool_provider_posts_openai_compatible_tool_call_request():
     captured: dict[str, Any] = {}
 
-    def fake_transport(url, payload, headers, timeout):
+    def stub_transport(url, payload, headers, timeout):
         captured["url"] = url
         captured["payload"] = payload
         captured["headers"] = headers
@@ -584,7 +584,7 @@ def test_deepseek_tool_provider_posts_openai_compatible_tool_call_request():
             "usage": {"prompt_tokens": 10, "completion_tokens": 4, "total_tokens": 14},
         }
 
-    provider = DeepSeekToolCallProvider(api_key="test_secret", transport=fake_transport)
+    provider = DeepSeekToolCallProvider(api_key="test_secret", transport=stub_transport)
 
     response = provider.select_tool(
         _messages(),
@@ -626,7 +626,7 @@ def test_deepseek_tool_provider_posts_openai_compatible_tool_call_request():
 def test_deepseek_tool_provider_chat_turn_can_return_final_answer():
     captured: dict[str, Any] = {}
 
-    def fake_transport(url, payload, headers, timeout):
+    def stub_transport(url, payload, headers, timeout):
         captured["url"] = url
         captured["payload"] = payload
         captured["headers"] = headers
@@ -645,7 +645,7 @@ def test_deepseek_tool_provider_chat_turn_can_return_final_answer():
             "usage": {"prompt_tokens": 8, "completion_tokens": 6, "total_tokens": 14},
         }
 
-    provider = DeepSeekToolCallProvider(api_key="test_secret", transport=fake_transport)
+    provider = DeepSeekToolCallProvider(api_key="test_secret", transport=stub_transport)
 
     response = provider.select_chat_turn(
         _messages(),
@@ -665,7 +665,7 @@ def test_deepseek_tool_provider_chat_turn_can_return_final_answer():
 
 
 def test_llm_tool_loop_rejects_text_response_without_side_effects(tmp_path):
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
@@ -684,7 +684,7 @@ def test_llm_tool_loop_rejects_text_response_without_side_effects(tmp_path):
 
 
 def test_deepseek_tool_provider_rejects_bad_tool_arguments_without_raw_leak():
-    def fake_transport(url, payload, headers, timeout):
+    def stub_transport(url, payload, headers, timeout):
         return {
             "model": "deepseek-v4-flash",
             "choices": [
@@ -707,7 +707,7 @@ def test_deepseek_tool_provider_rejects_bad_tool_arguments_without_raw_leak():
             ],
         }
 
-    provider = DeepSeekToolCallProvider(api_key="test_secret", transport=fake_transport)
+    provider = DeepSeekToolCallProvider(api_key="test_secret", transport=stub_transport)
 
     with pytest.raises(ValueError) as exc_info:
         provider.select_tool(_messages(), tools=[{"name": "codex_task", "input_schema": {}}])

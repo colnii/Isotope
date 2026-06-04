@@ -938,7 +938,7 @@ def test_supervise_payload_refreshes_current_batch_only_when_execution_requires_
     )
     calls: list[tuple[str, object]] = []
 
-    class FakeApi:
+    class StubApi:
         def _executed_action_forces_print(self, executed):
             calls.append(("force", executed))
             return executed.get("force_print") is True
@@ -972,7 +972,7 @@ def test_supervise_payload_refreshes_current_batch_only_when_execution_requires_
     payload = {"current_batch": {"target_names": ["old-worker"]}}
     active_goals = [{"goal_id": "goal-1"}]
     worker_reviews = {"workers": []}
-    api = FakeApi()
+    api = StubApi()
 
     assert (
         payload_module.refresh_current_batch_after_execution(
@@ -1021,7 +1021,7 @@ def test_supervise_payload_appends_final_decisions_and_loop_trace():
     )
     calls: list[tuple[str, object]] = []
 
-    class FakeApi:
+    class StubApi:
         def _decision_request_dicts(self, args):
             calls.append(("decisions", args))
             return [{"request_id": "decision-1"}]
@@ -1033,7 +1033,7 @@ def test_supervise_payload_appends_final_decisions_and_loop_trace():
     args = argparse.Namespace(command="loop")
     payload: dict[str, object] = {}
 
-    payload_module.append_supervise_final_payload(args, payload, api=FakeApi())
+    payload_module.append_supervise_final_payload(args, payload, api=StubApi())
 
     assert payload == {
         "decision_requests": [{"request_id": "decision-1"}],
@@ -1050,7 +1050,7 @@ def test_supervise_payload_omits_lifecycle_trace_outside_loop():
         "isotope.features.supervisor.commands.supervise.payload"
     )
 
-    class FakeApi:
+    class StubApi:
         def _decision_request_dicts(self, args):
             return []
 
@@ -1062,7 +1062,7 @@ def test_supervise_payload_omits_lifecycle_trace_outside_loop():
     payload_module.append_supervise_final_payload(
         argparse.Namespace(command="supervise"),
         payload,
-        api=FakeApi(),
+        api=StubApi(),
     )
 
     assert payload == {"decision_requests": []}
@@ -1088,7 +1088,7 @@ def test_llm_context_replans_after_successful_context_request():
     )
     calls: list[tuple[str, object]] = []
 
-    class FakeApi:
+    class StubApi:
         def _decide_action_with_llm(self, args, report, payload):
             calls.append(
                 ("decide", {"args": args, "report": report, "payload": payload})
@@ -1118,7 +1118,7 @@ def test_llm_context_replans_after_successful_context_request():
         args,
         "report",
         payload,
-        api=FakeApi(),
+        api=StubApi(),
     )
 
     assert replanned is True
@@ -1151,7 +1151,7 @@ def test_llm_context_skips_followup_replan_for_non_context_execution():
         "isotope.features.supervisor.commands.llm.context"
     )
 
-    class FakeApi:
+    class StubApi:
         def _decide_action_with_llm(self, args, report, payload):
             raise AssertionError("non-context executions must not replan")
 
@@ -1164,7 +1164,7 @@ def test_llm_context_skips_followup_replan_for_non_context_execution():
         argparse.Namespace(),
         "report",
         payload,
-        api=FakeApi(),
+        api=StubApi(),
     )
 
     assert replanned is False

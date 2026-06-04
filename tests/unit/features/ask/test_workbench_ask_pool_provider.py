@@ -8,7 +8,7 @@ import pytest
 from isotope.features.ask.pool import resolve_workbench_ask_provider_from_env
 
 
-class _FakeCompletedProcess:
+class _StubCompletedProcess:
     def __init__(self, *, stdout: str) -> None:
         self.returncode = 0
         self.stdout = stdout
@@ -22,7 +22,7 @@ class _RecordingCodexRunner:
 
     def __call__(self, argv, **kwargs):
         self.calls.append({"argv": list(argv), "kwargs": dict(kwargs)})
-        return _FakeCompletedProcess(
+        return _StubCompletedProcess(
             stdout=json.dumps(
                 {
                     "type": "item.completed",

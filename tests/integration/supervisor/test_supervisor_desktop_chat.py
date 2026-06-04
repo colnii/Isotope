@@ -20,7 +20,7 @@ from isotope.llm.provider import LLMResponse, LLMStreamChunk
 
 class RecordingDesktopChatProvider:
     provider = "deterministic_test"
-    model = "fake-desktop-chat"
+    model = "stub-desktop-chat"
 
     def __init__(self, content: str = "loop 正在监督 worker。") -> None:
         self.content = content
@@ -39,13 +39,13 @@ class RecordingDesktopChatProvider:
             content=self.content,
             finish_reason="stop",
             usage={"prompt_tokens": 21, "completion_tokens": 7},
-            raw={"id": "fake"},
+            raw={"id": "stub"},
         )
 
 
 class StreamingDesktopChatProvider(RecordingDesktopChatProvider):
-    provider = "fake-stream"
-    model = "fake-stream-chat"
+    provider = "stub-stream"
+    model = "stub-stream-chat"
 
     def __init__(self, chunks: tuple[str, ...] = ("loop ", "正在推进。")) -> None:
         super().__init__(content="")
@@ -71,7 +71,7 @@ class StreamingDesktopChatProvider(RecordingDesktopChatProvider):
                 provider=self.provider,
                 model=self.model,
                 content=chunk,
-                raw={"id": "fake-stream"},
+                raw={"id": "stub-stream"},
             )
 
 
@@ -95,8 +95,8 @@ class SlowDesktopChatProvider(RecordingDesktopChatProvider):
 
 
 class RecordingCapacityProvider:
-    provider = "fake-capacity"
-    model = "fake-capacity-model"
+    provider = "stub-capacity"
+    model = "stub-capacity-model"
 
     def __init__(
         self,
@@ -121,7 +121,7 @@ class RecordingCapacityProvider:
             content=self.content,
             finish_reason="stop",
             usage={"prompt_tokens": 13, "completion_tokens": 5},
-            raw={"id": "fake-capacity"},
+            raw={"id": "stub-capacity"},
         )
 
 
@@ -224,7 +224,7 @@ def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
     assert events[-1]["data"] == {
         "status": "ok",
         "provider": "deterministic_test",
-        "model": "fake-desktop-chat",
+        "model": "stub-desktop-chat",
     }
     assert "context" not in body
     assert "messages" not in body
@@ -526,7 +526,7 @@ def test_desktop_chat_endpoint_sends_developer_capacity_question_to_llm_with_con
     assert events[-1]["data"] == {
         "status": "ok",
         "provider": "deterministic_test",
-        "model": "fake-desktop-chat",
+        "model": "stub-desktop-chat",
     }
     messages = provider.calls[0]["messages"]
     assert messages[1] == {"role": "user", "content": "直接给我们的接收list，我是开发者"}
@@ -652,8 +652,8 @@ def test_stream_desktop_chat_helper_streams_provider_deltas(tmp_path) -> None:
     )
 
     assert [chunk.content for chunk in chunks] == ["loop ", "实时", "返回。"]
-    assert chunks[-1].provider == "fake-stream"
-    assert chunks[-1].model == "fake-stream-chat"
+    assert chunks[-1].provider == "stub-stream"
+    assert chunks[-1].model == "stub-stream-chat"
     assert provider.calls[0]["max_tokens"] == 512
 
 

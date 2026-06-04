@@ -22,7 +22,7 @@ def test_supervisor_integration_review_groups_ready_and_already_integrated(tmp_p
     _write_done_record(codex_home, record_id="managed-ready", name="ready", cwd=ready_cwd)
     _write_done_record(codex_home, record_id="managed-done", name="done", cwd=done_cwd)
 
-    fake_run = _fake_git(
+    stub_run = _stub_git(
         {
             ready_cwd: {
                 ("rev-parse", "--abbrev-ref", "HEAD"): (0, "supervisor/ready-12345678\n", ""),
@@ -49,8 +49,8 @@ def test_supervisor_integration_review_groups_ready_and_already_integrated(tmp_p
     payload = collect_integration_reviews(
         codex_home=codex_home,
         include_unfinished=True,
-        run=fake_run,
-        validation_run=_fake_validation(
+        run=stub_run,
+        validation_run=_stub_validation(
             {
                 ready_cwd: {
                     _lint_command(): (0, "lint ok\n", ""),
@@ -99,7 +99,7 @@ def test_supervisor_integration_review_can_skip_candidate_validation(tmp_path):
     cwd.mkdir(parents=True)
     _write_done_record(codex_home, record_id="managed-ready", name="ready", cwd=cwd)
 
-    fake_run = _fake_git(
+    stub_run = _stub_git(
         {
             cwd: {
                 ("rev-parse", "--abbrev-ref", "HEAD"): (0, "supervisor/ready-fast-scan\n", ""),
@@ -119,7 +119,7 @@ def test_supervisor_integration_review_can_skip_candidate_validation(tmp_path):
 
     payload = collect_integration_reviews(
         codex_home=codex_home,
-        run=fake_run,
+        run=stub_run,
         validation_run=fail_validation,
         run_test_gate=False,
         run_candidate_validation=False,
@@ -142,7 +142,7 @@ def test_supervisor_integration_review_blocks_ready_worker_when_tests_fail(tmp_p
     cwd.mkdir(parents=True)
     _write_done_record(codex_home, record_id="managed-ready", name="ready", cwd=cwd)
 
-    fake_run = _fake_git(
+    stub_run = _stub_git(
         {
             cwd: {
                 ("rev-parse", "--abbrev-ref", "HEAD"): (0, "supervisor/ready-tests-fail\n", ""),
@@ -159,8 +159,8 @@ def test_supervisor_integration_review_blocks_ready_worker_when_tests_fail(tmp_p
 
     payload = collect_integration_reviews(
         codex_home=codex_home,
-        run=fake_run,
-        validation_run=_fake_validation(
+        run=stub_run,
+        validation_run=_stub_validation(
             {
                 cwd: {
                     _lint_command(): (0, "lint ok\n", ""),
@@ -200,7 +200,7 @@ def test_supervisor_integration_review_uses_make_lint_when_available(tmp_path):
 
     payload = collect_integration_reviews(
         codex_home=codex_home,
-        run=_fake_git(
+        run=_stub_git(
             {
                 cwd: {
                     ("rev-parse", "--abbrev-ref", "HEAD"): (0, "supervisor/ready-make-lint\n", ""),
@@ -214,7 +214,7 @@ def test_supervisor_integration_review_uses_make_lint_when_available(tmp_path):
                 },
             }
         ),
-        validation_run=_fake_validation(
+        validation_run=_stub_validation(
             {
                 cwd: {
                     ("make", "lint"): (0, "lint ok\n", ""),
@@ -241,7 +241,7 @@ def test_supervisor_integration_review_treats_cherry_picked_worker_as_integrated
         cwd=picked_cwd,
     )
 
-    fake_run = _fake_git(
+    stub_run = _stub_git(
         {
             picked_cwd: {
                 ("rev-parse", "--abbrev-ref", "HEAD"): (0, "supervisor/picked-12345678\n", ""),
@@ -256,7 +256,7 @@ def test_supervisor_integration_review_treats_cherry_picked_worker_as_integrated
         }
     )
 
-    payload = collect_integration_reviews(codex_home=codex_home, run=fake_run)
+    payload = collect_integration_reviews(codex_home=codex_home, run=stub_run)
 
     assert payload["summary"]["ready_to_integrate"] == 0
     assert payload["summary"]["already_integrated"] == 1
@@ -280,7 +280,7 @@ def test_supervisor_integration_review_treats_noop_merge_tree_as_integrated(tmp_
         cwd=absorbed_cwd,
     )
 
-    fake_run = _fake_git(
+    stub_run = _stub_git(
         {
             absorbed_cwd: {
                 ("rev-parse", "--abbrev-ref", "HEAD"): (
@@ -304,7 +304,7 @@ def test_supervisor_integration_review_treats_noop_merge_tree_as_integrated(tmp_
         }
     )
 
-    payload = collect_integration_reviews(codex_home=codex_home, run=fake_run)
+    payload = collect_integration_reviews(codex_home=codex_home, run=stub_run)
 
     assert payload["summary"]["ready_to_integrate"] == 0
     assert payload["summary"]["already_integrated"] == 1
@@ -332,7 +332,7 @@ def test_supervisor_integration_review_flags_dirty_and_unfinished_workers(tmp_pa
         protocol_status="blocked",
     )
 
-    fake_run = _fake_git(
+    stub_run = _stub_git(
         {
             dirty_cwd: {
                 ("rev-parse", "--abbrev-ref", "HEAD"): (0, "supervisor/dirty-12345678\n", ""),
@@ -358,7 +358,7 @@ def test_supervisor_integration_review_flags_dirty_and_unfinished_workers(tmp_pa
     payload = collect_integration_reviews(
         codex_home=codex_home,
         include_unfinished=True,
-        run=fake_run,
+        run=stub_run,
     )
 
     assert payload["summary"]["needs_review"] == 2
@@ -396,7 +396,7 @@ def test_supervisor_integration_review_groups_merge_workers_separately(tmp_path)
         prompt="WORK ORDER\nsource=integration_review\nmerge ready workers",
     )
 
-    fake_run = _fake_git(
+    stub_run = _stub_git(
         {
             dispatch_cwd: {
                 ("rev-parse", "--abbrev-ref", "HEAD"): (0, "supervisor/supervisor-merge-dispatch\n", ""),
@@ -419,7 +419,7 @@ def test_supervisor_integration_review_groups_merge_workers_separately(tmp_path)
         }
     )
 
-    payload = collect_integration_reviews(codex_home=codex_home, run=fake_run)
+    payload = collect_integration_reviews(codex_home=codex_home, run=stub_run)
 
     assert payload["summary"]["total"] == 2
     assert payload["include_unfinished"] is False
@@ -461,7 +461,7 @@ def test_supervisor_integration_review_defaults_to_done_unarchived_workers(tmp_p
         record_status="archived",
     )
 
-    fake_run = _fake_git(
+    stub_run = _stub_git(
         {
             done_cwd: {
                 ("rev-parse", "--abbrev-ref", "HEAD"): (0, "supervisor/done-12345678\n", ""),
@@ -476,7 +476,7 @@ def test_supervisor_integration_review_defaults_to_done_unarchived_workers(tmp_p
         }
     )
 
-    payload = collect_integration_reviews(codex_home=codex_home, run=fake_run)
+    payload = collect_integration_reviews(codex_home=codex_home, run=stub_run)
 
     assert payload["include_unfinished"] is False
     assert payload["summary"]["total"] == 1
@@ -570,7 +570,7 @@ def test_supervisor_integration_review_flags_merge_conflict_risk(tmp_path):
         cwd=conflict_cwd,
     )
 
-    fake_run = _fake_git(
+    stub_run = _stub_git(
         {
             conflict_cwd: {
                 ("rev-parse", "--abbrev-ref", "HEAD"): (0, "supervisor/conflict-12345678\n", ""),
@@ -589,7 +589,7 @@ def test_supervisor_integration_review_flags_merge_conflict_risk(tmp_path):
         }
     )
 
-    payload = collect_integration_reviews(codex_home=codex_home, run=fake_run)
+    payload = collect_integration_reviews(codex_home=codex_home, run=stub_run)
 
     assert payload["summary"]["conflict_risk"] == 1
     item = payload["groups"]["conflict_risk"][0]
@@ -606,7 +606,7 @@ def test_supervisor_integration_review_cli_json(tmp_path, capsys, monkeypatch):
     _write_done_record(codex_home, record_id="managed-ready", name="ready", cwd=cwd)
     monkeypatch.setattr(
         "isotope.features.supervisor.workers.integration_review.subprocess.run",
-        _fake_git(
+        _stub_git(
             {
                 cwd: {
                     ("rev-parse", "--abbrev-ref", "HEAD"): (0, "supervisor/ready-12345678\n", ""),
@@ -643,7 +643,7 @@ def test_supervisor_integration_review_cli_posts_webhook_for_passing_done_worker
 
     payloads: list[dict[str, object]] = []
 
-    def fake_collect(**_kwargs):
+    def stub_collect(**_kwargs):
         return {
             "status": "ok",
             "summary": {
@@ -669,7 +669,7 @@ def test_supervisor_integration_review_cli_posts_webhook_for_passing_done_worker
             "workers": [],
         }
 
-    def fake_urlopen(request, timeout):
+    def stub_urlopen(request, timeout):
         payloads.append(json.loads(request.data.decode("utf-8")))
 
         class Response:
@@ -684,10 +684,10 @@ def test_supervisor_integration_review_cli_posts_webhook_for_passing_done_worker
 
         return Response()
 
-    monkeypatch.setattr(runner, "collect_integration_reviews", fake_collect)
+    monkeypatch.setattr(runner, "collect_integration_reviews", stub_collect)
     monkeypatch.setattr(
         "isotope.features.supervisor.notifications.notifications.urllib.request.urlopen",
-        fake_urlopen,
+        stub_urlopen,
     )
 
     exit_code = supervisor_main(
@@ -717,10 +717,10 @@ def test_supervisor_integration_review_cli_posts_webhook_for_passing_done_worker
     assert "raw_content=secret" not in json.dumps(payloads, ensure_ascii=False)
 
 
-def _fake_git(
+def _stub_git(
     responses: dict[Path, dict[tuple[str, ...], tuple[int, str, str]]],
 ):
-    def fake_run(
+    def stub_run(
         command: list[str],
         **kwargs,
     ) -> subprocess.CompletedProcess[str]:
@@ -752,13 +752,13 @@ def _fake_git(
             raise AssertionError(f"unexpected command: {command}") from exc
         return subprocess.CompletedProcess(command, returncode, stdout, stderr)
 
-    return fake_run
+    return stub_run
 
 
-def _fake_validation(
+def _stub_validation(
     responses: dict[Path, dict[tuple[str, ...], tuple[int, str, str]]],
 ):
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         cwd: str | Path,
@@ -778,7 +778,7 @@ def _fake_validation(
             raise AssertionError(f"unexpected validation command: {command}") from exc
         return subprocess.CompletedProcess(command, returncode, stdout, stderr)
 
-    return fake_run
+    return stub_run
 
 
 def _lint_command() -> tuple[str, ...]:

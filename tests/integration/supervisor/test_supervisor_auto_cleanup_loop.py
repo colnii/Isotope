@@ -114,20 +114,20 @@ def test_auto_promote_blocked_merge_worker_launches_same_worktree_repair(
     )
     launched: dict[str, Any] = {}
 
-    class FakeRecord:
+    class StubRecord:
         name = "supervisor-merge-dispatch-repair"
         record_id = "managed-repair"
         pid = 45690
         backend = "process"
         worker_role = "merge_repair"
 
-    def fake_launch_managed_codex(**kwargs: Any) -> FakeRecord:
+    def stub_launch_managed_codex(**kwargs: Any) -> StubRecord:
         launched.update(kwargs)
-        return FakeRecord()
+        return StubRecord()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.launch_managed_codex",
-        fake_launch_managed_codex,
+        stub_launch_managed_codex,
     )
     args = type(
         "Args",
@@ -412,7 +412,7 @@ def test_auto_promote_done_merge_worker_fast_forwards_main_after_branch_ci_succe
     )
     calls: list[list[str]] = []
 
-    def fake_run(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+    def stub_run(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
         calls.append(command)
         if command[:3] == ["gh", "run", "list"]:
             branch = command[command.index("--branch") + 1]
@@ -486,7 +486,7 @@ def test_auto_promote_done_merge_worker_fast_forwards_main_after_branch_ci_succe
         },
     )()
 
-    promoted = _auto_promote_done_merge_workers_to_main(args, run=fake_run)
+    promoted = _auto_promote_done_merge_workers_to_main(args, run=stub_run)
 
     assert promoted == [
         {
@@ -550,7 +550,7 @@ def test_auto_promote_done_merge_worker_records_decision_when_branch_ci_fails(
     )
     calls: list[list[str]] = []
 
-    def fake_run(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+    def stub_run(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
         calls.append(command)
         if command[:3] == ["gh", "run", "list"]:
             stdout = json.dumps(
@@ -580,7 +580,7 @@ def test_auto_promote_done_merge_worker_records_decision_when_branch_ci_fails(
         },
     )()
 
-    promoted = _auto_promote_done_merge_workers_to_main(args, run=fake_run)
+    promoted = _auto_promote_done_merge_workers_to_main(args, run=stub_run)
 
     assert promoted[0]["status"] == "blocked"
     assert promoted[0]["reason"] == "branch CI did not succeed"
@@ -631,7 +631,7 @@ def test_auto_promote_done_merge_worker_honors_abandon_decision_without_retry(
     )
     calls: list[list[str]] = []
 
-    def fake_run(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+    def stub_run(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
         calls.append(command)
         if command[:3] == ["gh", "run", "list"]:
             stdout = json.dumps(
@@ -659,7 +659,7 @@ def test_auto_promote_done_merge_worker_honors_abandon_decision_without_retry(
             "webhook_secret": None,
         },
     )()
-    first = _auto_promote_done_merge_workers_to_main(args, run=fake_run)
+    first = _auto_promote_done_merge_workers_to_main(args, run=stub_run)
     decision = first[0]["decision_request"]
     assert decision["reason"] == "merge_promotion_failed"
     record_decision_answer(
@@ -669,7 +669,7 @@ def test_auto_promote_done_merge_worker_honors_abandon_decision_without_retry(
     )
     calls.clear()
 
-    second = _auto_promote_done_merge_workers_to_main(args, run=fake_run)
+    second = _auto_promote_done_merge_workers_to_main(args, run=stub_run)
 
     assert second[0]["status"] == "skipped_by_decision"
     assert second[0]["reason"] == "merge promotion abandoned by decision"
@@ -721,7 +721,7 @@ def test_auto_promote_done_merge_worker_launches_repair_worker_from_decision(
         lambda *, codex_home, base_ref, include_unfinished, **kwargs: review_payload,
     )
 
-    def fake_run(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+    def stub_run(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
         if command[:3] == ["gh", "run", "list"]:
             stdout = json.dumps(
                 [
@@ -752,7 +752,7 @@ def test_auto_promote_done_merge_worker_launches_repair_worker_from_decision(
             "worker_codex_config": None,
         },
     )()
-    first = _auto_promote_done_merge_workers_to_main(args, run=fake_run)
+    first = _auto_promote_done_merge_workers_to_main(args, run=stub_run)
     decision = first[0]["decision_request"]
     record_decision_answer(
         codex_home=codex_home,
@@ -771,23 +771,23 @@ def test_auto_promote_done_merge_worker_launches_repair_worker_from_decision(
     )
     launched: dict[str, Any] = {}
 
-    class FakeRecord:
+    class StubRecord:
         name = "supervisor-merge-dispatch-repair"
         record_id = "managed-repair"
         pid = 45690
         backend = "process"
         worker_role = "merge_repair"
 
-    def fake_launch_managed_codex(**kwargs: Any) -> FakeRecord:
+    def stub_launch_managed_codex(**kwargs: Any) -> StubRecord:
         launched.update(kwargs)
-        return FakeRecord()
+        return StubRecord()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.launch_managed_codex",
-        fake_launch_managed_codex,
+        stub_launch_managed_codex,
     )
 
-    repaired = _auto_promote_done_merge_workers_to_main(args, run=fake_run)
+    repaired = _auto_promote_done_merge_workers_to_main(args, run=stub_run)
 
     assert repaired[0]["status"] == "repair_launched"
     assert repaired[0]["repair"]["kind"] == "launch_session"
@@ -834,7 +834,7 @@ def test_auto_promote_done_merge_worker_retries_after_retry_decision(
     ci_succeeds = False
     calls: list[list[str]] = []
 
-    def fake_run(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+    def stub_run(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
         calls.append(command)
         if command[:3] == ["gh", "run", "list"]:
             branch = command[command.index("--branch") + 1]
@@ -894,7 +894,7 @@ def test_auto_promote_done_merge_worker_retries_after_retry_decision(
             "webhook_secret": None,
         },
     )()
-    first = _auto_promote_done_merge_workers_to_main(args, run=fake_run)
+    first = _auto_promote_done_merge_workers_to_main(args, run=stub_run)
     decision = first[0]["decision_request"]
     record_decision_answer(
         codex_home=codex_home,
@@ -904,7 +904,7 @@ def test_auto_promote_done_merge_worker_retries_after_retry_decision(
     ci_succeeds = True
     calls.clear()
 
-    retried = _auto_promote_done_merge_workers_to_main(args, run=fake_run)
+    retried = _auto_promote_done_merge_workers_to_main(args, run=stub_run)
 
     assert retried[0]["status"] == "done"
     assert ["git", "-C", str(repo_root), "merge", "--ff-only", "merge123"] in calls
@@ -946,7 +946,7 @@ def test_auto_promote_done_merge_worker_retries_after_repair_worker_done(
     ci_succeeds = False
     calls: list[list[str]] = []
 
-    def fake_run(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+    def stub_run(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
         calls.append(command)
         if command[:3] == ["gh", "run", "list"]:
             branch = command[command.index("--branch") + 1]
@@ -1009,7 +1009,7 @@ def test_auto_promote_done_merge_worker_retries_after_repair_worker_done(
             "worker_codex_config": None,
         },
     )()
-    first = _auto_promote_done_merge_workers_to_main(args, run=fake_run)
+    first = _auto_promote_done_merge_workers_to_main(args, run=stub_run)
     decision = first[0]["decision_request"]
     record_decision_answer(
         codex_home=codex_home,
@@ -1027,7 +1027,7 @@ def test_auto_promote_done_merge_worker_retries_after_repair_worker_done(
     ci_succeeds = True
     calls.clear()
 
-    retried = _auto_promote_done_merge_workers_to_main(args, run=fake_run)
+    retried = _auto_promote_done_merge_workers_to_main(args, run=stub_run)
 
     assert retried[0]["status"] == "done"
     assert retried[0]["repair_completed"]["managed"]["record_id"] == "managed-repair"

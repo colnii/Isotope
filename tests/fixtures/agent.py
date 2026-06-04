@@ -1,7 +1,7 @@
 """Agent / scheduler / loop test fixtures.
 
-Provides fake schedulers, recording loop drivers, and other agent-level
+Provides stub schedulers, recording loop drivers, and other agent-level
 test infrastructure.
 """
 
-# TODO: extract shared FakeScheduler / RecordingLoopDriver classes here
+# TODO: extract shared StubScheduler / RecordingLoopDriver classes here

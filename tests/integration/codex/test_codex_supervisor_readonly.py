@@ -2962,26 +2962,26 @@ def test_codex_supervisor_web_can_control_daemon_and_watcher(tmp_path, monkeypat
     codex_home = tmp_path / ".codex"
     calls: list[tuple[str, dict[str, object]]] = []
 
-    def fake_start_daemon(**kwargs):
+    def stub_start_daemon(**kwargs):
         calls.append(("daemon_start", dict(kwargs)))
         return {"action": "started", "status": "running", "pid": 111}
 
-    def fake_stop_daemon(**kwargs):
+    def stub_stop_daemon(**kwargs):
         calls.append(("daemon_stop", dict(kwargs)))
         return {"status": "stopped", "pid": 111}
 
-    def fake_start_watcher(**kwargs):
+    def stub_start_watcher(**kwargs):
         calls.append(("watcher_start", dict(kwargs)))
         return {"action": "started", "status": "running", "pid": 222}
 
-    def fake_stop_watcher(**kwargs):
+    def stub_stop_watcher(**kwargs):
         calls.append(("watcher_stop", dict(kwargs)))
         return {"status": "stopped", "pid": 222}
 
-    monkeypatch.setattr(web, "start_supervisor_daemon", fake_start_daemon)
-    monkeypatch.setattr(web, "stop_supervisor_daemon", fake_stop_daemon)
-    monkeypatch.setattr(web, "start_supervisor_watcher", fake_start_watcher)
-    monkeypatch.setattr(web, "stop_supervisor_watcher", fake_stop_watcher)
+    monkeypatch.setattr(web, "start_supervisor_daemon", stub_start_daemon)
+    monkeypatch.setattr(web, "stop_supervisor_daemon", stub_stop_daemon)
+    monkeypatch.setattr(web, "start_supervisor_watcher", stub_start_watcher)
+    monkeypatch.setattr(web, "stop_supervisor_watcher", stub_stop_watcher)
 
     server = web.create_dashboard_server(
         codex_home=codex_home,
@@ -3362,7 +3362,7 @@ def test_codex_supervisor_web_repairs_bell_hooks_on_startup(tmp_path):
     _write_managed_tmux_record(codex_home, workspace=workspace)
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         text: bool,
@@ -3382,7 +3382,7 @@ def test_codex_supervisor_web_repairs_bell_hooks_on_startup(tmp_path):
         limit=5,
         stale_after_seconds=999999,
         active_within_seconds=180,
-        repair_run=fake_run,
+        repair_run=stub_run,
     )
     server.server_close()
 
@@ -3434,7 +3434,7 @@ def test_codex_supervisor_web_returns_manual_llm_action_without_sending(
             assert "command_suggestions" in messages[1]["content"]
             return '{"kind":"send_status","target_name":"lane-a","reason":"先看进度。"}'
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -3451,7 +3451,7 @@ def test_codex_supervisor_web_returns_manual_llm_action_without_sending(
         limit=5,
         stale_after_seconds=999999,
         active_within_seconds=180,
-        send_run=fake_run,
+        send_run=stub_run,
         llm_action_provider=DeterministicProvider(),
     )
     thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -4216,10 +4216,10 @@ def test_codex_supervisor_runner_loop_uses_decision_answer_to_continue_goal(
     )
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 45683
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -4227,12 +4227,12 @@ def test_codex_supervisor_runner_loop_uses_decision_answer_to_continue_goal(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
         captured["cwd"] = cwd
-        return FakeProcess()
+        return StubProcess()
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
 
     exit_code = supervisor_main(
         [
@@ -4634,7 +4634,7 @@ def test_codex_supervisor_cleanup_list_skips_expensive_worktree_validation(
     )
     captured = {}
 
-    def fake_review(record, **kwargs):
+    def stub_review(record, **kwargs):
         captured.update(kwargs)
         return {
             "group": "already_integrated",
@@ -4647,7 +4647,7 @@ def test_codex_supervisor_cleanup_list_skips_expensive_worktree_validation(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.review_managed_record_integration",
-        fake_review,
+        stub_review,
     )
 
     exit_code = supervisor_main(["cleanup", "list", "--codex-home", str(codex_home), "--json"])
@@ -4851,7 +4851,7 @@ def test_codex_supervisor_runner_cleanup_delete_worktree_uses_guarded_action(
     codex_home = tmp_path / ".codex"
     captured: dict[str, Any] = {}
 
-    def fake_execute(args: Any, action: dict[str, Any]) -> dict[str, Any]:
+    def stub_execute(args: Any, action: dict[str, Any]) -> dict[str, Any]:
         captured["action"] = action
         return {
             "kind": "delete_worktree",
@@ -4862,7 +4862,7 @@ def test_codex_supervisor_runner_cleanup_delete_worktree_uses_guarded_action(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner._execute_delete_worktree_action",
-        fake_execute,
+        stub_execute,
     )
 
     exit_code = supervisor_main(
@@ -4899,7 +4899,7 @@ def test_codex_supervisor_runner_cleanup_delete_worktree_plain_reports_deleted(
 ):
     codex_home = tmp_path / ".codex"
 
-    def fake_execute(args: Any, action: dict[str, Any]) -> dict[str, Any]:
+    def stub_execute(args: Any, action: dict[str, Any]) -> dict[str, Any]:
         return {
             "kind": "delete_worktree",
             "target_name": action["target_name"],
@@ -4909,7 +4909,7 @@ def test_codex_supervisor_runner_cleanup_delete_worktree_plain_reports_deleted(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner._execute_delete_worktree_action",
-        fake_execute,
+        stub_execute,
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner._delete_worktree_candidate_payloads",
@@ -5542,7 +5542,7 @@ def test_codex_supervisor_web_can_send_allowed_managed_command(tmp_path):
     _write_managed_tmux_record(codex_home, workspace=workspace)
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -5562,7 +5562,7 @@ def test_codex_supervisor_web_can_send_allowed_managed_command(tmp_path):
         limit=5,
         stale_after_seconds=999999,
         active_within_seconds=180,
-        send_run=fake_run,
+        send_run=stub_run,
     )
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -6674,7 +6674,7 @@ def test_codex_supervisor_runner_decide_action_passes_capacity_decisions(monkeyp
     }
     captured: dict[str, object] = {}
 
-    def fake_generate(*args: object, **kwargs: object) -> dict[str, object]:
+    def stub_generate(*args: object, **kwargs: object) -> dict[str, object]:
         captured["capacity_decisions"] = kwargs.get("capacity_decisions")
         return {
             "kind": "monitor",
@@ -6689,7 +6689,7 @@ def test_codex_supervisor_runner_decide_action_passes_capacity_decisions(monkeyp
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.generate_llm_action_decision",
-        fake_generate,
+        stub_generate,
     )
 
     result = supervisor_runner._decide_action_with_llm(
@@ -6736,7 +6736,7 @@ def test_codex_supervisor_loop_payload_produces_capacity_decisions_for_llm(
         lambda: provider,
     )
 
-    def fake_build_capacity_plan(**kwargs: object) -> dict[str, object]:
+    def stub_build_capacity_plan(**kwargs: object) -> dict[str, object]:
         assert kwargs["goal"] == goal
         assert kwargs["provider"] is provider
         assert kwargs["execute_agent_loop"] is False
@@ -6754,11 +6754,11 @@ def test_codex_supervisor_loop_payload_produces_capacity_decisions_for_llm(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.build_supervisor_capacity_plan",
-        fake_build_capacity_plan,
+        stub_build_capacity_plan,
     )
     captured: dict[str, object] = {}
 
-    def fake_decide_action(args: object, report: object, payload: dict[str, object]):
+    def stub_decide_action(args: object, report: object, payload: dict[str, object]):
         captured["capacity_decisions"] = payload.get("capacity_decisions")
         return {
             "kind": "monitor",
@@ -6769,7 +6769,7 @@ def test_codex_supervisor_loop_payload_produces_capacity_decisions_for_llm(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner._decide_action_with_llm",
-        fake_decide_action,
+        stub_decide_action,
     )
 
     args = argparse.Namespace(
@@ -6898,7 +6898,7 @@ def test_codex_supervisor_execute_llm_action_dispatches_call_capacity(
     }
     captured: dict[str, object] = {}
 
-    def fake_execute_capacity_action(args: object, action: dict[str, object], payload):
+    def stub_execute_capacity_action(args: object, action: dict[str, object], payload):
         captured["action"] = action
         captured["payload"] = payload
         return {
@@ -6909,7 +6909,7 @@ def test_codex_supervisor_execute_llm_action_dispatches_call_capacity(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner._execute_capacity_action",
-        fake_execute_capacity_action,
+        stub_execute_capacity_action,
         raising=False,
     )
 
@@ -7554,13 +7554,13 @@ def test_codex_supervisor_runner_advise_can_add_llm_action(
 
     captured: dict[str, object] = {}
 
-    def fake_resolver(**kwargs: object) -> DeterministicProvider:
+    def stub_resolver(**kwargs: object) -> DeterministicProvider:
         captured.update(kwargs)
         return DeterministicProvider()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        fake_resolver,
+        stub_resolver,
     )
 
     exit_code = supervisor_main(
@@ -7875,7 +7875,7 @@ def test_codex_supervisor_runner_advise_execute_send_status(
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -7890,7 +7890,7 @@ def test_codex_supervisor_runner_advise_execute_send_status(
         assert capture_output is True
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -8028,7 +8028,7 @@ def test_codex_supervisor_runner_advise_name_targets_managed_lane(
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -8040,7 +8040,7 @@ def test_codex_supervisor_runner_advise_name_targets_managed_lane(
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -8090,7 +8090,7 @@ def test_codex_supervisor_runner_advise_name_missing_does_not_fallback(
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -8102,7 +8102,7 @@ def test_codex_supervisor_runner_advise_name_missing_does_not_fallback(
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -8176,13 +8176,13 @@ def test_codex_supervisor_runner_supervise_json_includes_llm_summary_and_advice(
 
     captured: dict[str, object] = {}
 
-    def fake_resolver(**kwargs: object) -> DeterministicProvider:
+    def stub_resolver(**kwargs: object) -> DeterministicProvider:
         captured.update(kwargs)
         return DeterministicProvider()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        fake_resolver,
+        stub_resolver,
     )
 
     exit_code = supervisor_main(
@@ -8260,7 +8260,7 @@ def test_codex_supervisor_runner_supervise_can_execute_send_status(
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -8272,7 +8272,7 @@ def test_codex_supervisor_runner_supervise_can_execute_send_status(
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -8335,7 +8335,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_sends_whitelisted_action(
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -8347,7 +8347,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_sends_whitelisted_action(
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -8423,7 +8423,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_blocks_busy_tmux_send(
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -8435,7 +8435,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_blocks_busy_tmux_send(
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -8512,7 +8512,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_uses_selected_target_comm
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -8524,7 +8524,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_uses_selected_target_comm
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -8573,7 +8573,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_skips_monitor(
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -8585,7 +8585,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_skips_monitor(
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
     class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
@@ -8673,10 +8673,10 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_resume_session(
     )
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 34567
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -8684,16 +8684,16 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_resume_session(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
         captured["cwd"] = cwd
         captured["stdin"] = stdin
         captured["stdout"] = stdout
         captured["stderr"] = stderr
         captured["start_new_session"] = start_new_session
-        return FakeProcess()
+        return StubProcess()
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
 
     exit_code = supervisor_main(
         [
@@ -8797,12 +8797,12 @@ def test_codex_supervisor_llm_execute_blocks_old_resume_when_active_goal_exists(
         },
     }
 
-    def fake_resume_managed_codex(*args: object, **kwargs: object) -> object:
+    def stub_resume_managed_codex(*args: object, **kwargs: object) -> object:
         raise AssertionError("old session must not be resumed while active goals exist")
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resume_managed_codex",
-        fake_resume_managed_codex,
+        stub_resume_managed_codex,
     )
 
     result = _execute_llm_action(
@@ -8892,12 +8892,12 @@ def test_codex_supervisor_runner_supervise_resume_skips_running_process_cwd(
         lambda **_: DeterministicProvider(),
     )
 
-    def fake_resume_managed_codex(*args: object, **kwargs: object) -> object:
+    def stub_resume_managed_codex(*args: object, **kwargs: object) -> object:
         raise AssertionError("running worker cwd should not be resumed")
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resume_managed_codex",
-        fake_resume_managed_codex,
+        stub_resume_managed_codex,
     )
 
     exit_code = supervisor_main(
@@ -8967,12 +8967,12 @@ def test_codex_supervisor_runner_supervise_resume_skips_missing_cwd(
         lambda **_: DeterministicProvider(),
     )
 
-    def fake_resume_managed_codex(*args: object, **kwargs: object) -> object:
+    def stub_resume_managed_codex(*args: object, **kwargs: object) -> object:
         raise AssertionError("missing cwd should not be passed to codex exec resume")
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resume_managed_codex",
-        fake_resume_managed_codex,
+        stub_resume_managed_codex,
     )
 
     exit_code = supervisor_main(
@@ -9104,10 +9104,10 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_launch_session(
     )
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 45678
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -9115,16 +9115,16 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_launch_session(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
         captured["cwd"] = cwd
         captured["stdin"] = stdin
         captured["stdout"] = stdout
         captured["stderr"] = stderr
         captured["start_new_session"] = start_new_session
-        return FakeProcess()
+        return StubProcess()
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
 
     exit_code = supervisor_main(
         [
@@ -9230,10 +9230,10 @@ def test_codex_supervisor_runner_supervise_launch_uses_light_worker_profile(
     )
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 45678
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -9241,12 +9241,12 @@ def test_codex_supervisor_runner_supervise_launch_uses_light_worker_profile(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
         captured["cwd"] = cwd
-        return FakeProcess()
+        return StubProcess()
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
 
     exit_code = supervisor_main(
         [
@@ -9322,7 +9322,7 @@ def test_codex_supervisor_runner_supervise_launch_uses_isolated_worktree(
     )
     run_calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool = False,
@@ -9339,10 +9339,10 @@ def test_codex_supervisor_runner_supervise_launch_uses_isolated_worktree(
 
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 45678
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -9350,13 +9350,13 @@ def test_codex_supervisor_runner_supervise_launch_uses_isolated_worktree(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
         captured["cwd"] = cwd
-        return FakeProcess()
+        return StubProcess()
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
 
     exit_code = supervisor_main(
         [
@@ -9431,7 +9431,7 @@ def test_codex_supervisor_runner_supervise_launch_preserves_subdir_in_worktree(
         lambda cwd: None,
     )
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool = False,
@@ -9448,10 +9448,10 @@ def test_codex_supervisor_runner_supervise_launch_preserves_subdir_in_worktree(
 
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 45678
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -9459,13 +9459,13 @@ def test_codex_supervisor_runner_supervise_launch_preserves_subdir_in_worktree(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
         captured["cwd"] = cwd
-        return FakeProcess()
+        return StubProcess()
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
 
     exit_code = supervisor_main(
         [
@@ -9535,10 +9535,10 @@ def test_codex_supervisor_runner_supervise_launch_respects_prompt_cooldown(
     )
     popen_calls: list[list[str]] = []
 
-    class FakeProcess:
+    class StubProcess:
         pid = 45678
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -9546,11 +9546,11 @@ def test_codex_supervisor_runner_supervise_launch_respects_prompt_cooldown(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         popen_calls.append(command)
-        return FakeProcess()
+        return StubProcess()
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
 
     exit_code = supervisor_main(
         [
@@ -9662,12 +9662,12 @@ def test_codex_supervisor_runner_supervise_launch_skips_running_named_process(
         lambda **_: DeterministicProvider(),
     )
 
-    def fake_launch_managed_codex(*args: object, **kwargs: object) -> object:
+    def stub_launch_managed_codex(*args: object, **kwargs: object) -> object:
         raise AssertionError("running planner-session should not be relaunched")
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.launch_managed_codex",
-        fake_launch_managed_codex,
+        stub_launch_managed_codex,
     )
 
     exit_code = supervisor_main(
@@ -9788,7 +9788,7 @@ def test_execute_context_action_routes_through_request_context_capability(
     def fail_direct_request_context(**kwargs: object) -> object:
         raise AssertionError("direct request_project_context should not be called")
 
-    def fake_run_capability(
+    def stub_run_capability(
         self: object,
         capability_id: str,
         *,
@@ -9837,7 +9837,7 @@ def test_execute_context_action_routes_through_request_context_capability(
     monkeypatch.setattr(
         runner_module.CapabilityRunner,
         "run_capability",
-        fake_run_capability,
+        stub_run_capability,
     )
 
     result = _execute_context_action(
@@ -9999,7 +9999,7 @@ def test_codex_supervisor_runner_supervise_request_context_replans_same_iteratio
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -10015,7 +10015,7 @@ def test_codex_supervisor_runner_supervise_request_context_replans_same_iteratio
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -10355,7 +10355,7 @@ def test_codex_supervisor_context_request_uses_bm25_backend_without_rg(tmp_path)
         encoding="utf-8",
     )
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         cwd: str,
@@ -10371,7 +10371,7 @@ def test_codex_supervisor_context_request_uses_bm25_backend_without_rg(tmp_path)
         codex_home=codex_home,
         cwd=workspace,
         query="Supervisor 下一步节奏",
-        run=fake_run,
+        run=stub_run,
         rg_bin="rg",
     )
 
@@ -10503,7 +10503,7 @@ def test_codex_supervisor_context_request_surfaces_project_context_anchors(tmp_p
         encoding="utf-8",
     )
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         cwd: str,
@@ -10519,7 +10519,7 @@ def test_codex_supervisor_context_request_surfaces_project_context_anchors(tmp_p
         codex_home=codex_home,
         cwd=workspace,
         query="Supervisor request_context docs/current 能力图 状态文档 代码入口",
-        run=fake_run,
+        run=stub_run,
         rg_bin="rg",
         max_results=5,
     )
@@ -10555,7 +10555,7 @@ def test_codex_supervisor_context_request_groups_current_docs_and_supervisor_cod
         encoding="utf-8",
     )
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         cwd: str,
@@ -10571,7 +10571,7 @@ def test_codex_supervisor_context_request_groups_current_docs_and_supervisor_cod
         codex_home=codex_home,
         cwd=workspace,
         query="Supervisor request_context docs/current 状态文档 代码入口",
-        run=fake_run,
+        run=stub_run,
         rg_bin="rg",
         max_results=4,
     )
@@ -10826,7 +10826,7 @@ def test_codex_supervisor_runner_supervise_ignores_exited_managed_lane(
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -10838,7 +10838,7 @@ def test_codex_supervisor_runner_supervise_ignores_exited_managed_lane(
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -10952,7 +10952,7 @@ def test_codex_supervisor_runner_supervise_auto_waits_without_protocol_while_run
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -10964,7 +10964,7 @@ def test_codex_supervisor_runner_supervise_auto_waits_without_protocol_while_run
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -11059,7 +11059,7 @@ def test_codex_supervisor_runner_supervise_auto_prefers_busy_terminal_over_old_d
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -11071,7 +11071,7 @@ def test_codex_supervisor_runner_supervise_auto_prefers_busy_terminal_over_old_d
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -11145,7 +11145,7 @@ def test_codex_supervisor_runner_supervise_auto_requests_status_when_terminal_re
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -11157,7 +11157,7 @@ def test_codex_supervisor_runner_supervise_auto_requests_status_when_terminal_re
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -11247,7 +11247,7 @@ def test_codex_supervisor_runner_supervise_auto_name_targets_ready_lane(
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -11259,7 +11259,7 @@ def test_codex_supervisor_runner_supervise_auto_name_targets_ready_lane(
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -11354,7 +11354,7 @@ def test_codex_supervisor_runner_supervise_auto_finds_ready_lane_after_running_l
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -11366,7 +11366,7 @@ def test_codex_supervisor_runner_supervise_auto_finds_ready_lane_after_running_l
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -11438,7 +11438,7 @@ def test_codex_supervisor_runner_supervise_auto_continues_done_lane(
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -11450,7 +11450,7 @@ def test_codex_supervisor_runner_supervise_auto_continues_done_lane(
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -11537,7 +11537,7 @@ def test_codex_supervisor_runner_supervise_auto_respects_max_continue_count(
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -11549,7 +11549,7 @@ def test_codex_supervisor_runner_supervise_auto_respects_max_continue_count(
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -11625,7 +11625,7 @@ def test_codex_supervisor_runner_supervise_auto_respects_max_run_minutes(
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -11637,7 +11637,7 @@ def test_codex_supervisor_runner_supervise_auto_respects_max_run_minutes(
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -11732,7 +11732,7 @@ def test_codex_supervisor_runner_supervise_default_allows_long_continue_lane(
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -11744,7 +11744,7 @@ def test_codex_supervisor_runner_supervise_default_allows_long_continue_lane(
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -11814,7 +11814,7 @@ def test_codex_supervisor_runner_supervise_auto_stops_terminal_done_lane(
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -11826,7 +11826,7 @@ def test_codex_supervisor_runner_supervise_auto_stops_terminal_done_lane(
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -12097,7 +12097,7 @@ def test_codex_supervisor_runner_supervise_bell_skips_auto_handled_continue(
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -12109,7 +12109,7 @@ def test_codex_supervisor_runner_supervise_bell_skips_auto_handled_continue(
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -12172,7 +12172,7 @@ def test_codex_supervisor_runner_execute_skips_repeated_prompt_in_cooldown(
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -12184,7 +12184,7 @@ def test_codex_supervisor_runner_execute_skips_repeated_prompt_in_cooldown(
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     first_exit = supervisor_main(
         [
@@ -12323,7 +12323,7 @@ def test_codex_supervisor_runner_supervise_auto_skips_cooldown_lane_for_next_act
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -12335,7 +12335,7 @@ def test_codex_supervisor_runner_supervise_auto_skips_cooldown_lane_for_next_act
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -12406,7 +12406,7 @@ def test_codex_supervisor_runner_execute_can_disable_prompt_cooldown(
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -12418,7 +12418,7 @@ def test_codex_supervisor_runner_execute_can_disable_prompt_cooldown(
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     for _ in range(2):
         exit_code = supervisor_main(
@@ -12540,13 +12540,13 @@ def test_codex_supervisor_runner_scan_can_add_llm_summary(
 
     captured: dict[str, object] = {}
 
-    def fake_resolver(**kwargs: object) -> DeterministicProvider:
+    def stub_resolver(**kwargs: object) -> DeterministicProvider:
         captured.update(kwargs)
         return DeterministicProvider()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        fake_resolver,
+        stub_resolver,
     )
 
     exit_code = supervisor_main(
@@ -12956,7 +12956,7 @@ def test_codex_supervisor_runner_discover_lists_adoptable_tmux_codex_sessions(
     workspace.mkdir()
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -12984,7 +12984,7 @@ def test_codex_supervisor_runner_discover_lists_adoptable_tmux_codex_sessions(
             return subprocess.CompletedProcess(command, 0, str(workspace) + "\n", "")
         raise AssertionError(f"unexpected command: {command}")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -13032,7 +13032,7 @@ def test_codex_supervisor_runner_discover_treats_missing_tmux_socket_as_empty(
     workspace = tmp_path / "workspace"
     workspace.mkdir()
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -13050,7 +13050,7 @@ def test_codex_supervisor_runner_discover_treats_missing_tmux_socket_as_empty(
             "error connecting to /tmp/tmux-1001/default (No such file or directory)",
         )
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -13077,7 +13077,7 @@ def test_codex_supervisor_runner_discover_can_adopt_candidate_by_index(
     workspace.mkdir()
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool = False,
@@ -13109,7 +13109,7 @@ def test_codex_supervisor_runner_discover_can_adopt_candidate_by_index(
             return subprocess.CompletedProcess(command, 0, "main\n", "")
         raise AssertionError(f"unexpected command: {command}")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -13155,7 +13155,7 @@ def test_codex_supervisor_runner_discover_can_adopt_first_candidate(
     workspace = tmp_path / "workspace"
     workspace.mkdir()
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool = False,
@@ -13184,7 +13184,7 @@ def test_codex_supervisor_runner_discover_can_adopt_first_candidate(
             return subprocess.CompletedProcess(command, 0, "main\n", "")
         raise AssertionError(f"unexpected command: {command}")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -13252,7 +13252,7 @@ def test_codex_supervisor_runner_loop_auto_adopts_discovered_tmux_candidate(
     workspace.mkdir()
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool = False,
@@ -13282,7 +13282,7 @@ def test_codex_supervisor_runner_loop_auto_adopts_discovered_tmux_candidate(
             return subprocess.CompletedProcess(command, 0, "main\n", "")
         raise AssertionError(f"unexpected command: {command}")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._tmux_session_exists",
         lambda session: session == "iso_dev",
@@ -13358,7 +13358,7 @@ def test_codex_supervisor_runner_loop_auto_executes_even_when_report_unchanged(
     monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -13370,7 +13370,7 @@ def test_codex_supervisor_runner_loop_auto_executes_even_when_report_unchanged(
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -13409,27 +13409,27 @@ def test_codex_supervisor_runner_daemon_start_spawns_background_loop(
     codex_home = tmp_path / ".codex"
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 45678
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         stdin: object,
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
         captured["stdin"] = stdin
         captured["stdout"] = stdout
         captured["stderr"] = stderr
         captured["start_new_session"] = start_new_session
-        return FakeProcess()
+        return StubProcess()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon.subprocess.Popen",
-        fake_popen,
+        stub_popen,
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon._process_is_alive",
@@ -13498,23 +13498,23 @@ def test_codex_supervisor_runner_daemon_start_passes_merge_automation_flags(
     codex_home = tmp_path / ".codex"
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 45678
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         stdin: object,
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
-        return FakeProcess()
+        return StubProcess()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon.subprocess.Popen",
-        fake_popen,
+        stub_popen,
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon._process_is_alive",
@@ -13548,23 +13548,23 @@ def test_codex_supervisor_runner_daemon_start_defaults_to_strong_worker(
     codex_home = tmp_path / ".codex"
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 45678
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         stdin: object,
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
-        return FakeProcess()
+        return StubProcess()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon.subprocess.Popen",
-        fake_popen,
+        stub_popen,
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon._process_is_alive",
@@ -13615,23 +13615,23 @@ def test_codex_supervisor_runner_daemon_start_passes_max_fanout_launches_to_loop
     codex_home = tmp_path / ".codex"
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 45679
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         stdin: object,
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
-        return FakeProcess()
+        return StubProcess()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon.subprocess.Popen",
-        fake_popen,
+        stub_popen,
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon._process_is_alive",
@@ -13691,23 +13691,23 @@ def test_codex_supervisor_runner_daemon_start_queues_goal_instead_of_repeating_e
     goal = "持续跟进 isotope 的 Supervisor worker。"
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 45680
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         stdin: object,
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
-        return FakeProcess()
+        return StubProcess()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon.subprocess.Popen",
-        fake_popen,
+        stub_popen,
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon._process_is_alive",
@@ -13780,23 +13780,23 @@ def test_codex_supervisor_runner_daemon_start_uses_goal_queue_dynamically(
     capsys.readouterr()
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 45682
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         stdin: object,
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
-        return FakeProcess()
+        return StubProcess()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon.subprocess.Popen",
-        fake_popen,
+        stub_popen,
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon._process_is_alive",
@@ -13831,25 +13831,25 @@ def test_codex_supervisor_runner_up_starts_daemon_with_strong_worker_defaults(
     codex_home = tmp_path / ".codex"
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 45678
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         stdin: object,
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
         captured["stdin"] = stdin
         captured["stderr"] = stderr
-        return FakeProcess()
+        return StubProcess()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon.subprocess.Popen",
-        fake_popen,
+        stub_popen,
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon._process_is_alive",
@@ -13950,23 +13950,23 @@ def test_codex_supervisor_runner_up_goal_enters_persistent_queue(
     goal = "用日常入口启动后自动消费目标。"
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 45683
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         stdin: object,
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
-        return FakeProcess()
+        return StubProcess()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon.subprocess.Popen",
-        fake_popen,
+        stub_popen,
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon._process_is_alive",
@@ -14034,7 +14034,7 @@ def test_codex_supervisor_runner_loop_defaults_to_llm_driver(
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -14046,7 +14046,7 @@ def test_codex_supervisor_runner_loop_defaults_to_llm_driver(
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -14307,12 +14307,12 @@ def test_codex_supervisor_runner_loop_retries_exited_process_worker(
     monkeypatch.setattr("isotope.features.supervisor.flow._git_branch_for", lambda _: None)
     monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
 
-    class FakeProcess:
+    class StubProcess:
         pid = 5252
 
     captured: dict[str, object] = {}
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -14320,15 +14320,15 @@ def test_codex_supervisor_runner_loop_retries_exited_process_worker(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
         captured["cwd"] = cwd
         captured["stdin"] = stdin
         captured["stderr"] = stderr
         captured["start_new_session"] = start_new_session
-        return FakeProcess()
+        return StubProcess()
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
 
     exit_code = supervisor_main(
         [
@@ -14601,12 +14601,12 @@ def test_codex_supervisor_runner_loop_retries_timed_out_process_worker(
     monkeypatch.setattr("isotope.features.supervisor.flow._git_branch_for", lambda _: None)
     monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
 
-    class FakeProcess:
+    class StubProcess:
         pid = 5252
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.subprocess.Popen",
-        lambda *_args, **_kwargs: FakeProcess(),
+        lambda *_args, **_kwargs: StubProcess(),
     )
 
     exit_code = supervisor_main(
@@ -14747,10 +14747,10 @@ def test_codex_supervisor_runner_loop_goal_can_launch_first_worker(
     )
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 45679
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -14758,15 +14758,15 @@ def test_codex_supervisor_runner_loop_goal_can_launch_first_worker(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
         captured["cwd"] = cwd
         captured["stdin"] = stdin
         captured["stderr"] = stderr
         captured["start_new_session"] = start_new_session
-        return FakeProcess()
+        return StubProcess()
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
 
     exit_code = supervisor_main(
         [
@@ -14872,10 +14872,10 @@ def test_codex_supervisor_runner_loop_uses_persisted_goal_queue(
     )
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 45681
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -14883,12 +14883,12 @@ def test_codex_supervisor_runner_loop_uses_persisted_goal_queue(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
         captured["cwd"] = cwd
-        return FakeProcess()
+        return StubProcess()
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
 
     exit_code = supervisor_main(
         [
@@ -14998,11 +14998,11 @@ def test_codex_supervisor_runner_loop_fanout_launches_parallel_active_goals(
     )
     captured: list[list[str]] = []
 
-    class FakeProcess:
+    class StubProcess:
         def __init__(self, pid: int) -> None:
             self.pid = pid
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -15010,13 +15010,13 @@ def test_codex_supervisor_runner_loop_fanout_launches_parallel_active_goals(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured.append(command)
         pid = 45690 + len(captured)
         running_pids.add(pid)
-        return FakeProcess(pid)
+        return StubProcess(pid)
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
 
     exit_code = supervisor_main(
         [
@@ -15836,7 +15836,7 @@ def test_codex_supervisor_runner_loop_cleans_worktree_after_merge_worker_archive
     )
     deleted_actions: list[dict[str, Any]] = []
 
-    def fake_delete(args: Any, action: dict[str, Any]) -> dict[str, Any]:
+    def stub_delete(args: Any, action: dict[str, Any]) -> dict[str, Any]:
         deleted_actions.append(action)
         deleted_worktree = (
             str(source_worktree)
@@ -15852,7 +15852,7 @@ def test_codex_supervisor_runner_loop_cleans_worktree_after_merge_worker_archive
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner._execute_delete_worktree_action",
-        fake_delete,
+        stub_delete,
     )
 
     exit_code = supervisor_main(
@@ -16799,7 +16799,7 @@ def test_codex_supervisor_runner_loop_can_continue_multiple_lanes_with_default_b
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -16811,7 +16811,7 @@ def test_codex_supervisor_runner_loop_can_continue_multiple_lanes_with_default_b
         calls.append(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -16897,10 +16897,10 @@ def test_codex_supervisor_runner_supervise_resume_respects_prompt_cooldown(
     )
     popen_calls: list[list[str]] = []
 
-    class FakeProcess:
+    class StubProcess:
         pid = 34567
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -16908,11 +16908,11 @@ def test_codex_supervisor_runner_supervise_resume_respects_prompt_cooldown(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         popen_calls.append(command)
-        return FakeProcess()
+        return StubProcess()
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
 
     exit_code = supervisor_main(
         [
@@ -17671,23 +17671,23 @@ def test_codex_supervisor_runner_daemon_watchdog_restarts_stale_loop(
     )
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 22222
 
-    def fake_popen(
+    def stub_popen(
         command_: list[str],
         *,
         stdin: object,
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command_
         captured["stdin"] = stdin
         captured["stdout"] = stdout
         captured["stderr"] = stderr
         captured["start_new_session"] = start_new_session
-        return FakeProcess()
+        return StubProcess()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon._process_is_alive",
@@ -17695,7 +17695,7 @@ def test_codex_supervisor_runner_daemon_watchdog_restarts_stale_loop(
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon.subprocess.Popen",
-        fake_popen,
+        stub_popen,
     )
 
     exit_code = supervisor_main(
@@ -17778,23 +17778,23 @@ def test_codex_supervisor_runner_daemon_watcher_start_spawns_periodic_watchdog(
     codex_home = tmp_path / ".codex"
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 33333
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         stdin: object,
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
         captured["stdin"] = stdin
         captured["stdout"] = stdout
         captured["stderr"] = stderr
         captured["start_new_session"] = start_new_session
-        return FakeProcess()
+        return StubProcess()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon._process_is_alive",
@@ -17802,7 +17802,7 @@ def test_codex_supervisor_runner_daemon_watcher_start_spawns_periodic_watchdog(
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon.subprocess.Popen",
-        fake_popen,
+        stub_popen,
     )
 
     exit_code = supervisor_main(
@@ -17860,7 +17860,7 @@ def test_codex_supervisor_runner_daemon_watcher_run_calls_watchdog_periodically(
     codex_home = tmp_path / ".codex"
     calls: list[str] = []
 
-    def fake_watchdog(*, codex_home: Path) -> dict[str, object]:
+    def stub_watchdog(*, codex_home: Path) -> dict[str, object]:
         calls.append(str(codex_home))
         return {
             "action": "alive" if len(calls) == 1 else "restarted",
@@ -17870,7 +17870,7 @@ def test_codex_supervisor_runner_daemon_watcher_run_calls_watchdog_periodically(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon.watchdog_supervisor_daemon",
-        fake_watchdog,
+        stub_watchdog,
     )
     monkeypatch.setattr("isotope.features.supervisor.daemon._sleep", lambda _seconds: None)
 
@@ -17962,10 +17962,10 @@ def test_codex_supervisor_runner_launch_records_managed_codex(
     workspace.mkdir()
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 12345
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -17973,16 +17973,16 @@ def test_codex_supervisor_runner_launch_records_managed_codex(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
         captured["cwd"] = cwd
         captured["stdin"] = stdin
         captured["stdout"] = stdout
         captured["stderr"] = stderr
         captured["start_new_session"] = start_new_session
-        return FakeProcess()
+        return StubProcess()
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
 
     exit_code = supervisor_main(
         [
@@ -18042,10 +18042,10 @@ def test_codex_supervisor_runner_launch_can_override_codex_worker_options(
     workspace.mkdir()
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 12346
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -18053,11 +18053,11 @@ def test_codex_supervisor_runner_launch_can_override_codex_worker_options(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
-        return FakeProcess()
+        return StubProcess()
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
 
     exit_code = supervisor_main(
         [
@@ -18103,7 +18103,7 @@ def test_codex_supervisor_runner_launch_can_use_tmux_backend(
     workspace.mkdir()
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -18116,7 +18116,7 @@ def test_codex_supervisor_runner_launch_can_use_tmux_backend(
         assert capture_output is True
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -18170,10 +18170,10 @@ def test_codex_supervisor_runner_resume_exec_records_managed_codex(
     workspace.mkdir()
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 23456
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -18181,16 +18181,16 @@ def test_codex_supervisor_runner_resume_exec_records_managed_codex(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
         captured["cwd"] = cwd
         captured["stdin"] = stdin
         captured["stdout"] = stdout
         captured["stderr"] = stderr
         captured["start_new_session"] = start_new_session
-        return FakeProcess()
+        return StubProcess()
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
 
     exit_code = supervisor_main(
         [
@@ -18253,10 +18253,10 @@ def test_codex_supervisor_runner_resume_can_override_codex_worker_options(
     workspace.mkdir()
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 23458
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -18264,11 +18264,11 @@ def test_codex_supervisor_runner_resume_can_override_codex_worker_options(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
-        return FakeProcess()
+        return StubProcess()
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
 
     exit_code = supervisor_main(
         [
@@ -18317,10 +18317,10 @@ def test_codex_supervisor_runner_resume_exec_last_uses_last_flag(
     workspace.mkdir()
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 23457
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -18328,16 +18328,16 @@ def test_codex_supervisor_runner_resume_exec_last_uses_last_flag(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
         captured["cwd"] = cwd
         captured["stdin"] = stdin
         captured["stdout"] = stdout
         captured["stderr"] = stderr
         captured["start_new_session"] = start_new_session
-        return FakeProcess()
+        return StubProcess()
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
 
     exit_code = supervisor_main(
         [
@@ -18382,7 +18382,7 @@ def test_codex_supervisor_runner_adopt_registers_existing_tmux_session(
     workspace.mkdir()
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         text: bool,
@@ -18395,7 +18395,7 @@ def test_codex_supervisor_runner_adopt_registers_existing_tmux_session(
         assert check is (command[:2] == ["tmux", "set-hook"])
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -18445,7 +18445,7 @@ def test_codex_supervisor_runner_repair_hooks_installs_for_existing_tmux_records
     _write_managed_tmux_record(codex_home, workspace=workspace)
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         text: bool,
@@ -18458,7 +18458,7 @@ def test_codex_supervisor_runner_repair_hooks_installs_for_existing_tmux_records
         assert check is (command[:2] == ["tmux", "set-hook"])
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         ["repair-hooks", "--codex-home", str(codex_home), "--json"]
@@ -18990,7 +18990,7 @@ def test_codex_supervisor_runner_send_text_to_tmux_managed_session(
     )
     calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         *,
         check: bool,
@@ -19003,7 +19003,7 @@ def test_codex_supervisor_runner_send_text_to_tmux_managed_session(
         assert capture_output is True
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
 
     exit_code = supervisor_main(
         [
@@ -19133,9 +19133,9 @@ def test_codex_supervisor_pooled_provider_strips_thinking():
         entries=(
             PoolEntry(
                 provider="deterministic_test",
-                api_key="fake-key",
-                base_url="https://fake-chat.example.com/v1",
-                model="fake-model",
+                api_key="test-key",
+                base_url="https://test-chat.example.com/v1",
+                model="test-model",
             ),
         ),
         transport=transport,
@@ -19144,13 +19144,13 @@ def test_codex_supervisor_pooled_provider_strips_thinking():
     summary = provider.summarize([{"role": "user", "content": "hello"}])
 
     assert summary == "窗口 A 正在测试，建议继续观察。"
-    assert captured["url"] == "https://fake-chat.example.com/v1/chat/completions"
+    assert captured["url"] == "https://test-chat.example.com/v1/chat/completions"
     assert captured["headers"] == {
-        "Authorization": "Bearer fake-key",
+        "Authorization": "Bearer test-key",
         "Content-Type": "application/json",
     }
     assert captured["payload"] == {
-        "model": "fake-model",
+        "model": "test-model",
         "messages": [{"role": "user", "content": "hello"}],
         "temperature": 0,
         "max_tokens": 2048,
@@ -19188,18 +19188,18 @@ def test_codex_supervisor_pooled_provider_calls_openai_compatible_shape():
         entries=(
             PoolEntry(
                 provider="deterministic_test",
-                api_key="fake-key",
-                base_url="https://fake-openai.example.com",
-                model="fake-chat-v1",
+                api_key="test-key",
+                base_url="https://test-openai.example.com",
+                model="test-chat-v1",
             ),
         ),
         transport=transport,
     )
 
     assert provider.summarize([{"role": "user", "content": "hello"}]) == "窗口 A 正在测试。"
-    assert captured["url"] == "https://fake-openai.example.com/chat/completions"
+    assert captured["url"] == "https://test-openai.example.com/chat/completions"
     assert captured["payload"]["temperature"] == 0
-    assert captured["headers"]["Authorization"] == "Bearer fake-key"
+    assert captured["headers"]["Authorization"] == "Bearer test-key"
 
 
 def test_codex_supervisor_pooled_provider_falls_back_during_summary():
@@ -19573,8 +19573,8 @@ def test_codex_supervisor_pooled_provider_uses_per_entry_max_tokens():
         entries=(
             PoolEntry(
                 provider="deterministic_test",
-                api_key="fake-key",
-                base_url="https://fake-reasoning.example.com",
+                api_key="test-key",
+                base_url="https://test-reasoning.example.com",
                 model="reasoning-model",
                 max_tokens=2048,
             ),
@@ -19607,9 +19607,9 @@ def test_codex_supervisor_pooled_provider_falls_back_max_tokens_to_global():
         entries=(
             PoolEntry(
                 provider="deterministic_test",
-                api_key="fake-key",
-                base_url="https://fake.example.com",
-                model="fake-model",
+                api_key="test-key",
+                base_url="https://test.example.com",
+                model="test-model",
             ),
         ),
         max_tokens=256,

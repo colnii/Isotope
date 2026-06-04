@@ -21,7 +21,7 @@ ACTION_EXECUTION_EVENTS = {
 }
 
 
-class FakeCompletedProcess:
+class StubCompletedProcess:
     def __init__(self, *, returncode: int = 0, stdout: str = "", stderr: str = "") -> None:
         self.returncode = returncode
         self.stdout = stdout
@@ -29,7 +29,7 @@ class FakeCompletedProcess:
 
 
 class RecordingProcessRunner:
-    def __init__(self, result: FakeCompletedProcess) -> None:
+    def __init__(self, result: StubCompletedProcess) -> None:
         self.result = result
         self.calls: list[dict[str, Any]] = []
 
@@ -85,7 +85,7 @@ def _approved_body() -> dict[str, str]:
 
 
 def test_model_tool_bridge_submits_enabled_codex_task_and_waits_for_approval(tmp_path):
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
 
@@ -137,7 +137,7 @@ def test_model_tool_bridge_accepts_default_codex_task_without_execution_side_eff
 
 def test_model_tool_bridge_approval_resolution_runs_existing_codex_http_path(tmp_path):
     runner = RecordingProcessRunner(
-        FakeCompletedProcess(stdout='{"event":"task_complete","message":"ok"}\n')
+        StubCompletedProcess(stdout='{"event":"task_complete","message":"ok"}\n')
     )
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
@@ -169,7 +169,7 @@ def test_model_tool_bridge_approval_resolution_runs_existing_codex_http_path(tmp
 
 
 def test_model_tool_bridge_rejects_model_attempt_to_disable_approval(tmp_path):
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
@@ -353,7 +353,7 @@ def test_model_tool_bridge_rejects_enabled_tool_without_bridge_route(tmp_path):
 
 
 def test_model_tool_bridge_preserves_route_error_shape_for_unknown_run(tmp_path):
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _codex_http_app(tmp_path, runner)
 
     with pytest.raises(IsotopeError) as exc_info:

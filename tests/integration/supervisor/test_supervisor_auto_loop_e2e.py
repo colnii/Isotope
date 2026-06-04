@@ -50,11 +50,11 @@ def test_supervisor_loop_replenishes_done_workers_and_dispatches_merge_e2e(
     _write_current_docs(workspace)
     launched_commands: list[list[str]] = []
 
-    class FakeProcess:
+    class StubProcess:
         def __init__(self, pid: int) -> None:
             self.pid = pid
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -62,16 +62,16 @@ def test_supervisor_loop_replenishes_done_workers_and_dispatches_merge_e2e(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         del cwd, stdin, stdout, stderr, start_new_session
         launched_commands.append(command)
-        return FakeProcess(51000 + len(launched_commands))
+        return StubProcess(51000 + len(launched_commands))
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
         lambda **_: LowWaterClosedLoopProvider(),
     )
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._git_branch_for",
         lambda cwd: None,
@@ -145,11 +145,11 @@ def test_supervisor_loop_dispatches_merge_before_launching_more_fanout(
     _write_current_docs(workspace)
     launched_commands: list[list[str]] = []
 
-    class FakeProcess:
+    class StubProcess:
         def __init__(self, pid: int) -> None:
             self.pid = pid
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -157,10 +157,10 @@ def test_supervisor_loop_dispatches_merge_before_launching_more_fanout(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         del cwd, stdin, stdout, stderr, start_new_session
         launched_commands.append(command)
-        return FakeProcess(52000 + len(launched_commands))
+        return StubProcess(52000 + len(launched_commands))
 
     done_goal = record_supervisor_goal(
         codex_home=codex_home,
@@ -189,7 +189,7 @@ def test_supervisor_loop_dispatches_merge_before_launching_more_fanout(
         target_name="pending-worker-b",
     )
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._git_branch_for",
         lambda cwd: None,

@@ -410,13 +410,13 @@ def test_capacity_action_record_flows_into_dashboard_multi_worker_status(
         },
     }
 
-    def fake_execute_agent_loop_capacity_step(**kwargs):
+    def stub_execute_agent_loop_capacity_step(**kwargs):
         return agent_loop
 
     monkeypatch.setattr(
         capacity_command,
         "_execute_agent_loop_capacity_step",
-        fake_execute_agent_loop_capacity_step,
+        stub_execute_agent_loop_capacity_step,
     )
     result = capacity_command.execute_capacity_action(
         argparse.Namespace(codex_home=str(codex_home), name="capa"),

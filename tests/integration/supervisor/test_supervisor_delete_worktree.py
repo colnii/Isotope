@@ -77,7 +77,7 @@ def test_execute_delete_worktree_removes_archived_integrated_supervisor_worktree
     )
     run_calls: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         **kwargs: object,
     ) -> subprocess.CompletedProcess[str]:
@@ -169,10 +169,10 @@ def test_execute_delete_worktree_removes_archived_integrated_supervisor_worktree
             )
         raise AssertionError(f"unexpected command: {command}")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
     monkeypatch.setattr(
         "isotope.features.supervisor.workers.integration_review.subprocess.run",
-        fake_run,
+        stub_run,
     )
 
     result = _execute_llm_action(
@@ -247,7 +247,7 @@ def test_delete_worktree_candidates_include_archived_integrated_merge_worker(
         prompt="source=integration_review merge managed-source",
     )
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         **kwargs: object,
     ) -> subprocess.CompletedProcess[str]:
@@ -276,10 +276,10 @@ def test_delete_worktree_candidates_include_archived_integrated_merge_worker(
             return subprocess.CompletedProcess(command, 0, "tree-ok\n", "")
         raise AssertionError(f"unexpected command: {command}")
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
     monkeypatch.setattr(
         "isotope.features.supervisor.workers.integration_review.subprocess.run",
-        fake_run,
+        stub_run,
     )
 
     candidates = _delete_worktree_candidate_payloads(_runner_args(codex_home))

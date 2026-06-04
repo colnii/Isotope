@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from isotope.features.supervisor.commands.dashboard import dashboard_current_payload
 
 
-class _FakeDashboardApi:
+class _StubDashboardApi:
     def _cwd_is_existing_dir(self, value):
         return value in {"/repo/current-goal", "/repo/current-worker"}
 
@@ -79,7 +79,7 @@ def test_dashboard_current_payload_marks_current_goals_and_workers():
                 "last_status": "working",
             },
         ],
-        api=_FakeDashboardApi(),
+        api=_StubDashboardApi(),
     )
 
     assert [goal["goal_id"] for goal in payload["active_goals"]] == ["goal-current"]
@@ -114,7 +114,7 @@ def test_dashboard_current_payload_can_read_active_goals_from_state_snapshot():
                 }
             ]
         },
-        api=_FakeDashboardApi(),
+        api=_StubDashboardApi(),
     )
 
     assert [goal["goal_id"] for goal in payload["active_goals"]] == [

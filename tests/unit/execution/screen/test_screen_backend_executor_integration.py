@@ -6,7 +6,7 @@ import isotope.runtime.in_process as server
 from isotope.execution.screen import windows_backend
 
 
-class FakeScreenBackend:
+class StubScreenBackend:
     def __init__(self, result: dict):
         self.result = result
         self.calls = []
@@ -41,7 +41,7 @@ def _new_run(tmp_path, backend):
         tmp_path,
         screen_backend=backend,
         screen_backend_config={
-            "backend_id": "fake_screen",
+            "backend_id": "stub_screen",
             "backend_version": "0.1",
         },
     )
@@ -93,7 +93,7 @@ def _approved_body():
 
 def test_screen_observe_creates_artifact_without_leaking_content_to_events(tmp_path):
     secret = '{"window_title": "secret title"}'
-    backend = FakeScreenBackend(_backend_result(content=secret))
+    backend = StubScreenBackend(_backend_result(content=secret))
     api, run_id = _new_run(tmp_path, backend)
 
     result = api.submit_action(run_id, _observe_intent())
@@ -118,7 +118,7 @@ def test_screen_observe_creates_artifact_without_leaking_content_to_events(tmp_p
 
 
 def test_screen_control_execute_requires_approval_before_backend_call(tmp_path):
-    backend = FakeScreenBackend(_backend_result(content='{"clicked": true}'))
+    backend = StubScreenBackend(_backend_result(content='{"clicked": true}'))
     api, run_id = _new_run(tmp_path, backend)
 
     result = api.submit_action(run_id, _control_intent(execution_mode="execute"))
@@ -130,7 +130,7 @@ def test_screen_control_execute_requires_approval_before_backend_call(tmp_path):
 
 
 def test_screen_control_execute_runs_after_approval(tmp_path):
-    backend = FakeScreenBackend(
+    backend = StubScreenBackend(
         {
             "backend_session_id": "screen_backend_001",
             "status": "completed",
@@ -168,7 +168,7 @@ def test_screen_control_execute_runs_after_approval(tmp_path):
 
 
 def test_screen_restore_window_execute_requires_approval_before_backend_call(tmp_path):
-    backend = FakeScreenBackend(_backend_result(content='{"restored": true}'))
+    backend = StubScreenBackend(_backend_result(content='{"restored": true}'))
     api, run_id = _new_run(tmp_path, backend)
     intent = _control_intent(execution_mode="execute")
     intent["actions"] = [{"type": "restore_window"}]
@@ -183,7 +183,7 @@ def test_screen_restore_window_execute_requires_approval_before_backend_call(tmp
 def test_backend_reported_widened_grants_are_rejected(tmp_path):
     raw_result = _backend_result()
     raw_result["reported_grants"] = {"tools": ["screen_observe", "screen_control"]}
-    backend = FakeScreenBackend(raw_result)
+    backend = StubScreenBackend(raw_result)
     api, run_id = _new_run(tmp_path, backend)
 
     result = api.submit_action(run_id, _observe_intent())
@@ -194,7 +194,7 @@ def test_backend_reported_widened_grants_are_rejected(tmp_path):
 
 
 def test_screen_observe_accepts_metadata_only_fallback_result(tmp_path):
-    backend = FakeScreenBackend(
+    backend = StubScreenBackend(
         {
             "backend_session_id": "screen_backend_001",
             "status": "metadata_only",
@@ -239,7 +239,7 @@ def test_screen_observe_accepts_metadata_only_fallback_result(tmp_path):
 
 
 def test_windows_backend_request_payload_carries_target_selection_policy(tmp_path):
-    backend = FakeScreenBackend(_backend_result())
+    backend = StubScreenBackend(_backend_result())
     api, run_id = _new_run(tmp_path, backend)
 
     api.submit_action(run_id, _observe_intent())

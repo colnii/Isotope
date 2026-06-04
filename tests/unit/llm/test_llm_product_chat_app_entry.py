@@ -17,7 +17,7 @@ from isotope.features.chat.flow import (
 )
 
 
-class FakeCompletedProcess:
+class StubCompletedProcess:
     returncode = 0
     stdout = '{"event":"task_complete","secret":"APP_ENTRY_STDOUT_SHOULD_NOT_LEAK"}\n'
     stderr = ""
@@ -29,7 +29,7 @@ class RecordingProcessRunner:
 
     def __call__(self, argv, **kwargs):
         self.calls.append({"argv": list(argv), "kwargs": dict(kwargs)})
-        return FakeCompletedProcess()
+        return StubCompletedProcess()
 
 
 class SequencedChatProvider:

@@ -262,7 +262,7 @@ def test_supervisor_research_list_plain_output_is_copyable(tmp_path):
         "run_001",
         execution_id="exec_001",
         artifact_type="research.report",
-        summary="Fake research summary.",
+        summary="Stub research summary.",
         content='{"status":"ok"}',
     )
 
@@ -271,7 +271,7 @@ def test_supervisor_research_list_plain_output_is_copyable(tmp_path):
     assert result.returncode == 0, result.stderr
     assert "status: ok" in result.stdout
     assert "artifacts: 1" in result.stdout
-    assert f"artifact: research.report {artifact.artifact_id} run: run_001 Fake research summary." in result.stdout
+    assert f"artifact: research.report {artifact.artifact_id} run: run_001 Stub research summary." in result.stdout
 
 
 def test_supervisor_research_inspect_proxies_research_artifact_json(tmp_path):
@@ -280,8 +280,8 @@ def test_supervisor_research_inspect_proxies_research_artifact_json(tmp_path):
         "run_001",
         execution_id="exec_001",
         artifact_type="research.report",
-        summary="Fake research summary.",
-        content='{"status":"ok","report":{"summary":"Fake research summary."}}',
+        summary="Stub research summary.",
+        content='{"status":"ok","report":{"summary":"Stub research summary."}}',
     )
 
     result = _run_cli(
@@ -301,7 +301,7 @@ def test_supervisor_research_inspect_proxies_research_artifact_json(tmp_path):
     assert payload["status"] == "ok"
     assert payload["artifact"]["artifact_type"] == "research.report"
     assert payload["artifact"]["ref"] == artifact.ref.to_dict()
-    assert payload["content"]["report"]["summary"] == "Fake research summary."
+    assert payload["content"]["report"]["summary"] == "Stub research summary."
 
 
 def test_supervisor_research_inspect_plain_output_summarizes_provider_trace(tmp_path):

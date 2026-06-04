@@ -5,7 +5,7 @@ import isotope.integrations.codex.task as codex_task
 import isotope.runtime.in_process as server
 
 
-class FakeCodexBackend:
+class StubCodexBackend:
     def __init__(self, result):
         self.result = result
         self.calls = []
@@ -52,7 +52,7 @@ def _api(tmp_path, backend):
 
 
 def test_codex_task_requires_approval_before_adapter_call(tmp_path):
-    backend = FakeCodexBackend(_completed_result())
+    backend = StubCodexBackend(_completed_result())
     api = _api(tmp_path, backend)
     session = api.create_session()
     run = api.create_run(session["session_id"], "codex approval required")
@@ -74,7 +74,7 @@ def test_codex_task_requires_approval_before_adapter_call(tmp_path):
 
 def test_approved_codex_task_runs_through_adapter_and_projects_safe_summary(tmp_path):
     secret = "SECRET_CODEX_TRANSCRIPT_must_stay_in_artifact"
-    backend = FakeCodexBackend(_completed_result(content=secret))
+    backend = StubCodexBackend(_completed_result(content=secret))
     api = _api(tmp_path, backend)
     session = api.create_session()
     run = api.create_run(session["session_id"], "codex adapter spike")
@@ -96,7 +96,7 @@ def test_approved_codex_task_runs_through_adapter_and_projects_safe_summary(tmp_
         pending["approval_id"],
         {
             "resolution": "approved",
-            "reason": "allow fake Codex adapter spike",
+            "reason": "allow stub Codex adapter spike",
             "resolver": "reviewer",
         },
     )

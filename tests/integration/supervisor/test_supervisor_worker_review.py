@@ -42,7 +42,7 @@ def test_supervisor_worker_review_collects_completed_worker_with_changes(
         pid=111,
     )
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         **kwargs,
     ) -> subprocess.CompletedProcess[str]:
@@ -80,7 +80,7 @@ def test_supervisor_worker_review_collects_completed_worker_with_changes(
 
     payload = collect_worker_reviews(
         codex_home=codex_home,
-        run=fake_run,
+        run=stub_run,
         process_checker=lambda pid: False,
     )
 
@@ -273,7 +273,7 @@ def test_supervisor_worker_review_reports_clean_worker_and_cli_json(
         pid=333,
     )
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         **kwargs,
     ) -> subprocess.CompletedProcess[str]:
@@ -288,7 +288,7 @@ def test_supervisor_worker_review_reports_clean_worker_and_cli_json(
             return subprocess.CompletedProcess(command, 0, "", "")
         raise AssertionError(f"unexpected command: {command}")
 
-    monkeypatch.setattr("isotope.features.supervisor.workers.review.subprocess.run", fake_run)
+    monkeypatch.setattr("isotope.features.supervisor.workers.review.subprocess.run", stub_run)
     monkeypatch.setattr(
         "isotope.features.supervisor.workers.review._pid_is_running",
         lambda pid: False,
@@ -342,7 +342,7 @@ def test_supervisor_worker_review_ignores_status_protocol_prompt_template(tmp_pa
         pid=444,
     )
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         **kwargs,
     ) -> subprocess.CompletedProcess[str]:
@@ -359,7 +359,7 @@ def test_supervisor_worker_review_ignores_status_protocol_prompt_template(tmp_pa
 
     payload = collect_worker_reviews(
         codex_home=codex_home,
-        run=fake_run,
+        run=stub_run,
         process_checker=lambda pid: False,
     )
 
@@ -394,7 +394,7 @@ def test_supervisor_worker_review_decides_blocked_worker_should_continue_or_spli
         pid=555,
     )
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         **kwargs,
     ) -> subprocess.CompletedProcess[str]:
@@ -413,7 +413,7 @@ def test_supervisor_worker_review_decides_blocked_worker_should_continue_or_spli
 
     payload = collect_worker_reviews(
         codex_home=codex_home,
-        run=fake_run,
+        run=stub_run,
         process_checker=lambda pid: False,
     )
 
@@ -462,7 +462,7 @@ def test_supervisor_worker_review_quotes_reviewer_command(tmp_path):
         pid=444,
     )
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         **kwargs,
     ) -> subprocess.CompletedProcess[str]:
@@ -495,7 +495,7 @@ def test_supervisor_worker_review_quotes_reviewer_command(tmp_path):
 
     payload = collect_worker_reviews(
         codex_home=codex_home,
-        run=fake_run,
+        run=stub_run,
         process_checker=lambda pid: False,
     )
 

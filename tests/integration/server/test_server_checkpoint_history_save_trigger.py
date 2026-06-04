@@ -203,10 +203,10 @@ def test_save_checkpoint_history_for_run_does_not_call_checkpoint_store_directly
 
     api = _server_with_events(tmp_path, DirectWriteForbiddenCheckpointStore())
 
-    def fake_projector_history_save(self, run_id, event_store_arg, checkpoint_store_arg, *args, **kwargs):
+    def stub_projector_history_save(self, run_id, event_store_arg, checkpoint_store_arg, *args, **kwargs):
         return {"run_id": run_id, "basis_event_id": "evt_008", "state": {"opaque": True}}
 
-    monkeypatch.setattr(projector.RunProjector, "save_checkpoint_history", fake_projector_history_save)
+    monkeypatch.setattr(projector.RunProjector, "save_checkpoint_history", stub_projector_history_save)
 
     result = api.save_checkpoint_history_for_run("run_001")
 
@@ -224,11 +224,11 @@ def test_save_checkpoint_history_for_run_does_not_call_latest_projector_save(
     def fail_latest_save(self, run_id, event_store_arg, checkpoint_store_arg, *args, **kwargs):
         raise AssertionError("history save trigger must not call latest save")
 
-    def fake_projector_history_save(self, run_id, event_store_arg, checkpoint_store_arg, *args, **kwargs):
+    def stub_projector_history_save(self, run_id, event_store_arg, checkpoint_store_arg, *args, **kwargs):
         return {"run_id": run_id, "basis_event_id": "evt_008", "state": {"opaque": True}}
 
     monkeypatch.setattr(projector.RunProjector, "save_checkpoint", fail_latest_save)
-    monkeypatch.setattr(projector.RunProjector, "save_checkpoint_history", fake_projector_history_save)
+    monkeypatch.setattr(projector.RunProjector, "save_checkpoint_history", stub_projector_history_save)
 
     result = api.save_checkpoint_history_for_run("run_001")
 

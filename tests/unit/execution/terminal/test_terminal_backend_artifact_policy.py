@@ -11,7 +11,7 @@ import isotope.workspace as workspace
 from isotope.platform.schemas.refs import ResourceRef
 
 
-class FakeTerminalBackend:
+class StubTerminalBackend:
     def __init__(self, result):
         self.result = result
         self.calls = []
@@ -99,7 +99,7 @@ def test_transcript_diff_and_changed_files_are_artifacts_not_event_content(tmp_p
     transcript = "TRANSCRIPT_SECRET_full terminal transcript"
     diff = "DIFF_SECRET_diff --git a/file.py b/file.py"
     changed_files = "CHANGED_FILES_SECRET_src/isotope/file.py"
-    backend = FakeTerminalBackend(
+    backend = StubTerminalBackend(
         _completed_result(
             [
                 {
@@ -152,7 +152,7 @@ def test_transcript_diff_and_changed_files_are_artifacts_not_event_content(tmp_p
 def test_artifact_policy_rejects_output_kind_that_is_not_captured(tmp_path):
     proposal = _proposal()
     decision = _decision(proposal)
-    backend = FakeTerminalBackend(
+    backend = StubTerminalBackend(
         _completed_result(
             [
                 {
@@ -189,7 +189,7 @@ def test_artifact_policy_capture_only_uses_safe_full_content_defaults(tmp_path):
     proposal = _proposal()
     decision = _decision(proposal)
     diff = "DIFF_SECRET_capture_only_policy"
-    backend = FakeTerminalBackend(
+    backend = StubTerminalBackend(
         _completed_result(
             [
                 {
@@ -224,7 +224,7 @@ def test_artifact_policy_capture_only_uses_safe_full_content_defaults(tmp_path):
 def test_artifact_policy_rejects_full_content_in_events_before_backend_call(tmp_path):
     proposal = _proposal()
     decision = _decision(proposal)
-    backend = FakeTerminalBackend(
+    backend = StubTerminalBackend(
         _completed_result(
             [
                 {

@@ -63,7 +63,7 @@ def _workspace_binding() -> dict:
     }
 
 
-class FakeCodexBackend:
+class StubCodexBackend:
     def __init__(self, result):
         self.result = result
         self.calls = []
@@ -133,7 +133,7 @@ def test_denied_or_pending_decision_does_not_call_codex_backend(
     message,
 ):
     proposal = _proposal()
-    backend = FakeCodexBackend(_completed_result())
+    backend = StubCodexBackend(_completed_result())
     adapter = codex_task.CodexTaskAdapter(
         artifact_store=artifact_store.ArtifactStore(tmp_path),
         backend=backend,
@@ -160,7 +160,7 @@ def test_codex_result_creates_artifact_without_exposing_full_output(tmp_path):
     proposal = _proposal()
     decision = _decision(proposal)
     secret = "very-secret-codex-transcript"
-    backend = FakeCodexBackend(_completed_result(content=secret))
+    backend = StubCodexBackend(_completed_result(content=secret))
     store = artifact_store.ArtifactStore(tmp_path)
     adapter = codex_task.CodexTaskAdapter(artifact_store=store, backend=backend)
 
@@ -185,7 +185,7 @@ def test_codex_backend_reported_widened_grants_are_rejected(tmp_path):
     proposal = _proposal()
     backend_result = _completed_result()
     backend_result.reported_grants = {"tools": ["codex_task", "terminal_exec"]}
-    backend = FakeCodexBackend(backend_result)
+    backend = StubCodexBackend(backend_result)
     adapter = codex_task.CodexTaskAdapter(
         artifact_store=artifact_store.ArtifactStore(tmp_path),
         backend=backend,

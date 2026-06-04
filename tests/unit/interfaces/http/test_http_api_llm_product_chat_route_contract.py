@@ -20,7 +20,7 @@ ACTION_EXECUTION_EVENTS = {
 }
 
 
-class FakeCompletedProcess:
+class StubCompletedProcess:
     def __init__(self, *, stdout: str = "") -> None:
         self.returncode = 0
         self.stdout = stdout
@@ -28,7 +28,7 @@ class FakeCompletedProcess:
 
 
 class RecordingProcessRunner:
-    def __init__(self, result: FakeCompletedProcess) -> None:
+    def __init__(self, result: StubCompletedProcess) -> None:
         self.result = result
         self.calls: list[dict[str, Any]] = []
 
@@ -205,7 +205,7 @@ def test_product_chat_route_is_listed_by_default_and_with_provider(tmp_path):
     provider = SequencedToolProvider(
         [_provider_response("PRODUCT_CHAT_PROMPT_SHOULD_NOT_LEAK", call_id="call_product", summary="chat task")]
     )
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _product_chat_app(tmp_path / "product", provider, runner)
 
     assert ("POST", "/runs/{run_id}/llm/chat-turns") in default_app.routes()
@@ -224,7 +224,7 @@ def test_product_chat_initial_turn_submits_one_pending_approval_without_starting
             )
         ]
     )
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _product_chat_app(tmp_path, provider, runner)
     run_id = _create_run(app)
 
@@ -275,7 +275,7 @@ def test_product_chat_resume_turn_uses_safe_tool_result_and_submits_next_pending
         ]
     )
     runner = RecordingProcessRunner(
-        FakeCompletedProcess(stdout='{"event":"task_complete","secret":"PRODUCT_CHAT_STDOUT_SHOULD_NOT_LEAK"}\n')
+        StubCompletedProcess(stdout='{"event":"task_complete","secret":"PRODUCT_CHAT_STDOUT_SHOULD_NOT_LEAK"}\n')
     )
     app = _product_chat_app(tmp_path, provider, runner)
     run_id = _create_run(app)
@@ -349,7 +349,7 @@ def test_product_chat_route_rejects_multi_step_loop_in_one_request_without_side_
     provider = SequencedToolProvider(
         [_provider_response("PRODUCT_CHAT_PROMPT_SHOULD_NOT_LEAK", call_id="call_product", summary="chat task")]
     )
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _product_chat_app(tmp_path, provider, runner)
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
@@ -376,7 +376,7 @@ def test_product_chat_route_rejects_multi_step_loop_in_one_request_without_side_
 
 def test_product_chat_initial_turn_can_return_final_answer_and_complete_run(tmp_path):
     provider = SequencedChatProvider([_final_answer_response("Safe final answer for the user.")])
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _product_chat_app(tmp_path, provider, runner)
     run_id = _create_run(app)
 
@@ -417,7 +417,7 @@ def test_product_chat_initial_turn_can_return_final_answer_and_complete_run(tmp_
 
 def test_product_chat_final_answer_requires_non_empty_content_without_side_effects(tmp_path):
     provider = SequencedChatProvider([_final_answer_response("   ")])
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _product_chat_app(tmp_path, provider, runner)
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
@@ -454,7 +454,7 @@ def test_product_chat_resume_turn_can_return_final_answer_after_safe_tool_result
         ]
     )
     runner = RecordingProcessRunner(
-        FakeCompletedProcess(stdout='{"event":"task_complete","secret":"PRODUCT_CHAT_FINAL_STDOUT_SHOULD_NOT_LEAK"}\n')
+        StubCompletedProcess(stdout='{"event":"task_complete","secret":"PRODUCT_CHAT_FINAL_STDOUT_SHOULD_NOT_LEAK"}\n')
     )
     app = _product_chat_app(tmp_path, provider, runner)
     run_id = _create_run(app)
@@ -523,7 +523,7 @@ def test_product_chat_route_can_offer_terminal_exec_and_resume_with_safe_tool_re
             _final_answer_response("Final answer after safe terminal result."),
         ]
     )
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _product_chat_app(tmp_path, provider, runner, tool_names=("terminal_exec",))
     run_id = _create_run(app)
 
@@ -614,7 +614,7 @@ def test_product_chat_route_rejects_provider_selected_unoffered_tool_without_sid
             )
         ]
     )
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _product_chat_app(tmp_path, provider, runner, tool_names=("terminal_exec",))
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)

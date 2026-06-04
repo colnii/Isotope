@@ -269,11 +269,11 @@ def test_supervisor_fanout_execution_dedupes_duplicate_launch_specs(
     workspace.mkdir()
     captured: list[list[str]] = []
 
-    class FakeProcess:
+    class StubProcess:
         def __init__(self, pid: int) -> None:
             self.pid = pid
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -281,13 +281,13 @@ def test_supervisor_fanout_execution_dedupes_duplicate_launch_specs(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured.append(command)
-        return FakeProcess(47100 + len(captured))
+        return StubProcess(47100 + len(captured))
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.subprocess.Popen",
-        fake_popen,
+        stub_popen,
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner._pid_is_running",

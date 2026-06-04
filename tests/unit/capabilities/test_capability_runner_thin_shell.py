@@ -2107,7 +2107,7 @@ def test_integration_review_capability_runs_existing_readonly_review(monkeypatch
     supervisor_module = importlib.import_module("isotope.capabilities.supervisor")
     calls = []
 
-    def fake_collect_integration_reviews(**kwargs):
+    def stub_collect_integration_reviews(**kwargs):
         calls.append(kwargs)
         return {
             "status": "ok",
@@ -2186,7 +2186,7 @@ def test_integration_review_capability_runs_existing_readonly_review(monkeypatch
     monkeypatch.setattr(
         supervisor_module,
         "collect_integration_reviews",
-        fake_collect_integration_reviews,
+        stub_collect_integration_reviews,
     )
 
     result = _runner().run_capability(
@@ -2438,14 +2438,14 @@ def test_screen_observe_capability_runs_policy_gated_observe_and_reports_artifac
 ):
     from isotope.capabilities import screen as screen_capability
 
-    class FakeScreenBackend:
+    class StubScreenBackend:
         def __init__(self):
             self.calls = []
 
         def run(self, request):
             self.calls.append(request)
             return {
-                "backend_session_id": "fake_screen_001",
+                "backend_session_id": "stub_screen_001",
                 "status": "captured",
                 "started_at": "2026-05-24T00:00:00Z",
                 "finished_at": "2026-05-24T00:00:01Z",
@@ -2480,7 +2480,7 @@ def test_screen_observe_capability_runs_policy_gated_observe_and_reports_artifac
                 "resource_usage": {"window_count": 1},
             }
 
-    backend = FakeScreenBackend()
+    backend = StubScreenBackend()
     monkeypatch.setattr(
         screen_capability,
         "WindowsScreenBackend",
@@ -2525,10 +2525,10 @@ def test_screen_observe_capability_reports_backend_failure_without_artifacts(
 ):
     from isotope.capabilities import screen as screen_capability
 
-    class FakeScreenBackend:
+    class StubScreenBackend:
         def run(self, request):
             return {
-                "backend_session_id": "fake_screen_unavailable",
+                "backend_session_id": "stub_screen_unavailable",
                 "status": "failed",
                 "started_at": "2026-05-24T00:00:00Z",
                 "finished_at": "2026-05-24T00:00:01Z",
@@ -2542,7 +2542,7 @@ def test_screen_observe_capability_reports_backend_failure_without_artifacts(
     monkeypatch.setattr(
         screen_capability,
         "WindowsScreenBackend",
-        FakeScreenBackend,
+        StubScreenBackend,
         raising=False,
     )
 
@@ -2904,7 +2904,7 @@ def test_research_promote_capability_builds_public_metadata_proposal_summary(tmp
         "run_research",
         execution_id="exec_research",
         artifact_type="research.report",
-        summary="Fake research summary for capacity promotion.",
+        summary="Stub research summary for capacity promotion.",
         content=json.dumps(
             {
                 "evidence_status": "complete",
@@ -2947,7 +2947,7 @@ def test_research_promote_capability_builds_public_metadata_proposal_summary(tmp
         "action_type": "write_memory",
         "scope": "session",
         "quality": "candidate",
-        "summary": "Fake research summary for capacity promotion.",
+        "summary": "Stub research summary for capacity promotion.",
         "source_refs": [artifact.ref.to_dict()],
         "requested_capabilities": {"tools": ["write_memory"]},
         "quality_gate_status": "promotable",

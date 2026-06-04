@@ -103,7 +103,7 @@ def test_merge_work_order_prompt_handles_empty_ready_group():
 def test_supervisor_merge_work_order_cli_prints_plain_prompt(capsys, monkeypatch):
     calls = []
 
-    def fake_collect_integration_reviews(
+    def stub_collect_integration_reviews(
         *, codex_home, base_ref, include_unfinished, **kwargs
     ):
         calls.append(
@@ -117,7 +117,7 @@ def test_supervisor_merge_work_order_cli_prints_plain_prompt(capsys, monkeypatch
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        fake_collect_integration_reviews,
+        stub_collect_integration_reviews,
     )
 
     exit_code = supervisor_main(

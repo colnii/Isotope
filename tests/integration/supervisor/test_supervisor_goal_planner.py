@@ -10,7 +10,7 @@ from isotope.features.supervisor.planner.goal_queue import read_active_superviso
 from isotope.features.supervisor.runner import main as supervisor_main
 
 
-class FakeGoalProvider:
+class StubGoalProvider:
     def __init__(self) -> None:
         self.messages: list[list[dict[str, str]]] = []
 
@@ -307,7 +307,7 @@ def test_supervisor_goal_plan_previews_llm_generated_candidates(
     root.mkdir()
     _write_current_docs(root)
     codex_home = tmp_path / ".codex"
-    provider = FakeGoalProvider()
+    provider = StubGoalProvider()
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
         lambda **_: provider,
@@ -348,7 +348,7 @@ def test_supervisor_goal_plan_writes_selected_candidates(
     codex_home = tmp_path / ".codex"
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeGoalProvider(),
+        lambda **_: StubGoalProvider(),
     )
 
     exit_code = supervisor_main(
@@ -494,7 +494,7 @@ def test_supervisor_goal_plan_can_fanout_execute_parallel_recommendations(
     prepared_target_names: list[str] = []
     captured_cwds: list[str] = []
 
-    def fake_prepare_launch_worktree(*, cwd, target_name):
+    def stub_prepare_launch_worktree(*, cwd, target_name):
         prepared_target_names.append(target_name)
         worker_cwd = root / ".worktrees" / "supervisor" / target_name
         worker_cwd.mkdir(parents=True)
@@ -507,15 +507,15 @@ def test_supervisor_goal_plan_can_fanout_execute_parallel_recommendations(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner._prepare_launch_worktree",
-        fake_prepare_launch_worktree,
+        stub_prepare_launch_worktree,
     )
     captured: list[list[str]] = []
 
-    class FakeProcess:
+    class StubProcess:
         def __init__(self, pid: int) -> None:
             self.pid = pid
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -523,12 +523,12 @@ def test_supervisor_goal_plan_can_fanout_execute_parallel_recommendations(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured.append(command)
         captured_cwds.append(cwd)
-        return FakeProcess(45700 + len(captured))
+        return StubProcess(45700 + len(captured))
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
 
     exit_code = supervisor_main(
         [
@@ -593,7 +593,7 @@ def test_supervisor_goal_plan_fanout_records_launch_errors_and_continues(
     )
     attempted: list[str] = []
 
-    def fake_execute_launch_action(args, action):
+    def stub_execute_launch_action(args, action):
         target_name = action["target_name"]
         attempted.append(target_name)
         if target_name == "worker-a":
@@ -615,7 +615,7 @@ def test_supervisor_goal_plan_fanout_records_launch_errors_and_continues(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner._execute_launch_action",
-        fake_execute_launch_action,
+        stub_execute_launch_action,
     )
 
     exit_code = supervisor_main(
@@ -802,10 +802,10 @@ def test_supervisor_goal_plan_write_feeds_loop_without_explicit_goal(
     )
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 45682
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -813,12 +813,12 @@ def test_supervisor_goal_plan_write_feeds_loop_without_explicit_goal(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
         captured["cwd"] = cwd
-        return FakeProcess()
+        return StubProcess()
 
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
 
     exit_code = supervisor_main(
         [

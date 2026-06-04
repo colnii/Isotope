@@ -1,4 +1,4 @@
-"""Generic fake data factories for test objects.
+"""Generic test data factories for test objects.
 
 Keeps test files from repeating the same minimal-object construction.
 """

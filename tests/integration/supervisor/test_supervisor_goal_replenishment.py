@@ -145,11 +145,11 @@ def test_supervisor_loop_replenishes_goals_from_docs_when_low_water(
     captured: list[list[str]] = []
     running_pids: set[int] = set()
 
-    class FakeProcess:
+    class StubProcess:
         def __init__(self, pid: int) -> None:
             self.pid = pid
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -157,17 +157,17 @@ def test_supervisor_loop_replenishes_goals_from_docs_when_low_water(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured.append(command)
         pid = 47000 + len(captured)
         running_pids.add(pid)
-        return FakeProcess(pid)
+        return StubProcess(pid)
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
         lambda **_: provider,
     )
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._pid_is_running",
         lambda pid: pid in running_pids,
@@ -241,11 +241,11 @@ def test_low_water_fanout_respects_launch_limit_and_logs_trigger(
     captured: list[list[str]] = []
     running_pids: set[int] = set()
 
-    class FakeProcess:
+    class StubProcess:
         def __init__(self, pid: int) -> None:
             self.pid = pid
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -253,17 +253,17 @@ def test_low_water_fanout_respects_launch_limit_and_logs_trigger(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured.append(command)
         pid = 48000 + len(captured)
         running_pids.add(pid)
-        return FakeProcess(pid)
+        return StubProcess(pid)
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
         lambda **_: ThreeGoalProvider(),
     )
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._pid_is_running",
         lambda pid: pid in running_pids,
@@ -337,11 +337,11 @@ def test_supervisor_loop_fanout_uses_replenished_plan_parallel_recommendations(
     captured: list[list[str]] = []
     running_pids: set[int] = set()
 
-    class FakeProcess:
+    class StubProcess:
         def __init__(self, pid: int) -> None:
             self.pid = pid
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -349,17 +349,17 @@ def test_supervisor_loop_fanout_uses_replenished_plan_parallel_recommendations(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured.append(command)
         pid = 49000 + len(captured)
         running_pids.add(pid)
-        return FakeProcess(pid)
+        return StubProcess(pid)
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
         lambda **_: LowWaterParallelGoalProvider(),
     )
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._pid_is_running",
         lambda pid: pid in running_pids,
@@ -480,11 +480,11 @@ def test_supervisor_loop_replenishment_skips_blocked_goal_during_fanout(
     captured: list[list[str]] = []
     running_pids: set[int] = set()
 
-    class FakeProcess:
+    class StubProcess:
         def __init__(self, pid: int) -> None:
             self.pid = pid
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -492,17 +492,17 @@ def test_supervisor_loop_replenishment_skips_blocked_goal_during_fanout(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured.append(command)
         pid = 50000 + len(captured)
         running_pids.add(pid)
-        return FakeProcess(pid)
+        return StubProcess(pid)
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
         lambda **_: LowWaterGoalProvider(),
     )
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._pid_is_running",
         lambda pid: pid in running_pids,
@@ -606,23 +606,23 @@ def test_supervisor_daemon_start_passes_goal_replenishment_options_to_loop(
     codex_home = tmp_path / ".codex"
     captured: dict[str, object] = {}
 
-    class FakeProcess:
+    class StubProcess:
         pid = 47010
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         stdin: object,
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured["command"] = command
-        return FakeProcess()
+        return StubProcess()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon.subprocess.Popen",
-        fake_popen,
+        stub_popen,
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon._process_is_alive",
@@ -685,24 +685,24 @@ def test_supervisor_daemon_watchdog_preserves_low_water_defaults_on_restart(
     codex_home = tmp_path / ".codex"
     captured: list[list[str]] = []
 
-    class FakeProcess:
+    class StubProcess:
         def __init__(self, pid: int) -> None:
             self.pid = pid
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         stdin: object,
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured.append(command)
-        return FakeProcess(47020 + len(captured))
+        return StubProcess(47020 + len(captured))
 
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon.subprocess.Popen",
-        fake_popen,
+        stub_popen,
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.daemon._process_is_alive",

@@ -38,10 +38,10 @@ def test_supervisor_loop_dispatches_merge_worker_for_ready_integration(
         def summarize(self, messages: list[dict[str, str]]) -> str:
             raise AssertionError("merge dispatch should not wait for planner LLM")
 
-    class FakeProcess:
+    class StubProcess:
         pid = 45678
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -49,9 +49,9 @@ def test_supervisor_loop_dispatches_merge_worker_for_ready_integration(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
+    ) -> StubProcess:
         captured.append(command)
-        return FakeProcess()
+        return StubProcess()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
@@ -61,7 +61,7 @@ def test_supervisor_loop_dispatches_merge_worker_for_ready_integration(
         "isotope.features.supervisor.flow._git_branch_for",
         lambda cwd: None,
     )
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
 
     exit_code = supervisor_main(
         [
@@ -135,12 +135,12 @@ def test_supervisor_loop_does_not_dispatch_merge_worker_inside_merge_worker_work
         encoding="utf-8",
     )
 
-    def fake_collect_integration_reviews(**kwargs: object) -> dict[str, object]:
+    def stub_collect_integration_reviews(**kwargs: object) -> dict[str, object]:
         raise AssertionError("merge worker workspace must not recursively review/dispatch")
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        fake_collect_integration_reviews,
+        stub_collect_integration_reviews,
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._git_branch_for",
@@ -203,12 +203,12 @@ def test_supervisor_loop_does_not_dispatch_merge_worker_inside_repair_workspace(
         encoding="utf-8",
     )
 
-    def fake_collect_integration_reviews(**kwargs: object) -> dict[str, object]:
+    def stub_collect_integration_reviews(**kwargs: object) -> dict[str, object]:
         raise AssertionError("repair worker workspace must not recursively review/dispatch")
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_integration_reviews",
-        fake_collect_integration_reviews,
+        stub_collect_integration_reviews,
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._git_branch_for",
@@ -264,10 +264,10 @@ def test_supervisor_daemon_status_surfaces_merge_dispatch_activity(
         },
     )
 
-    class FakeProcess:
+    class StubProcess:
         pid = 45678
 
-    def fake_popen(
+    def stub_popen(
         command: list[str],
         *,
         cwd: str,
@@ -275,14 +275,14 @@ def test_supervisor_daemon_status_surfaces_merge_dispatch_activity(
         stdout: object,
         stderr: object,
         start_new_session: bool,
-    ) -> FakeProcess:
-        return FakeProcess()
+    ) -> StubProcess:
+        return StubProcess()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._git_branch_for",
         lambda cwd: None,
     )
-    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.Popen", stub_popen)
 
     exit_code = supervisor_main(
         [
@@ -410,7 +410,7 @@ def test_supervisor_loop_waits_when_merge_worker_is_already_running(
                 ensure_ascii=False,
             )
 
-    def fake_launch_managed_codex(*args: object, **kwargs: object) -> object:
+    def stub_launch_managed_codex(*args: object, **kwargs: object) -> object:
         raise AssertionError("running merge worker should not be relaunched")
 
     monkeypatch.setattr(
@@ -419,7 +419,7 @@ def test_supervisor_loop_waits_when_merge_worker_is_already_running(
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.launch_managed_codex",
-        fake_launch_managed_codex,
+        stub_launch_managed_codex,
     )
 
     exit_code = supervisor_main(

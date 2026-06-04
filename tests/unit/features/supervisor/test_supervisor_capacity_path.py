@@ -47,7 +47,7 @@ FORBIDDEN_AGENT_LOOP_SUMMARY_KEYS = {
 }
 
 
-class _FakeCompletedProcess:
+class _StubCompletedProcess:
     def __init__(self, *, stdout: str) -> None:
         self.returncode = 0
         self.stdout = stdout
@@ -61,7 +61,7 @@ class _RecordingCodexRunner:
 
     def __call__(self, argv, **kwargs):
         self.calls.append({"argv": list(argv), "kwargs": dict(kwargs)})
-        return _FakeCompletedProcess(
+        return _StubCompletedProcess(
             stdout=json.dumps(
                 {
                     "type": "item.completed",
@@ -91,7 +91,7 @@ def _assert_no_agent_loop_raw_payload(value):
 def test_capacity_provider_uses_supervisor_pool_default_path(monkeypatch):
     captured = {}
 
-    def fake_resolve_pool_entries_from_env(environ, **kwargs):
+    def stub_resolve_pool_entries_from_env(environ, **kwargs):
         captured.update(kwargs)
         return (
             PoolEntry(
@@ -105,7 +105,7 @@ def test_capacity_provider_uses_supervisor_pool_default_path(monkeypatch):
     monkeypatch.setattr(
         capacity_command,
         "resolve_pool_entries_from_env",
-        fake_resolve_pool_entries_from_env,
+        stub_resolve_pool_entries_from_env,
     )
 
     capacity_command.resolve_capacity_calling_provider_from_env(environ={})
@@ -469,14 +469,14 @@ def test_supervisor_capacity_plan_blocks_when_no_capabilities_can_be_offered(tmp
 def test_execute_capacity_action_requires_matching_ready_decision(tmp_path, monkeypatch):
     calls: list[object] = []
 
-    def fake_execute_agent_loop_capacity_step(**kwargs):
+    def stub_execute_agent_loop_capacity_step(**kwargs):
         calls.append(kwargs)
         raise AssertionError("stale capacity call spec must not execute")
 
     monkeypatch.setattr(
         capacity_command,
         "_execute_agent_loop_capacity_step",
-        fake_execute_agent_loop_capacity_step,
+        stub_execute_agent_loop_capacity_step,
     )
 
     result = capacity_command.execute_capacity_action(
@@ -535,13 +535,13 @@ def test_execute_capacity_action_returns_public_metadata_agent_loop_summary(
         },
     }
 
-    def fake_execute_agent_loop_capacity_step(**kwargs):
+    def stub_execute_agent_loop_capacity_step(**kwargs):
         return agent_loop
 
     monkeypatch.setattr(
         capacity_command,
         "_execute_agent_loop_capacity_step",
-        fake_execute_agent_loop_capacity_step,
+        stub_execute_agent_loop_capacity_step,
     )
 
     codex_home = tmp_path / ".codex"
@@ -980,7 +980,7 @@ def test_supervisor_capacity_plan_summarizes_research_promote_agent_loop_result(
         "run_research",
         execution_id="exec_research",
         artifact_type="research.report",
-        summary="Fake research summary for promotion.",
+        summary="Stub research summary for promotion.",
         content=json.dumps(
             {
                 "evidence_status": "complete",
@@ -1241,7 +1241,7 @@ def test_loop_capacity_payload_explains_no_offered_capacities():
         "blocking_reasons": ["no_offered_capacities"],
     }
 
-    class FakeCapacityApi:
+    class StubCapacityApi:
         def resolve_capacity_calling_provider_from_env(self):
             return object()
 
@@ -1256,7 +1256,7 @@ def test_loop_capacity_payload_explains_no_offered_capacities():
         argparse.Namespace(capacity_decisions=True),
         active_goals=[{"goal": "检查 provider-backed 能力"}],
         explicit_goal=None,
-        api=FakeCapacityApi(),
+        api=StubCapacityApi(),
     )
 
     assert payload["status"] == "blocked"
@@ -1277,7 +1277,7 @@ def test_loop_capacity_payload_propagates_blocked_reason_from_plan():
         "blocking_reasons": ["not_allowlisted"],
     }
 
-    class FakeCapacityApi:
+    class StubCapacityApi:
         def resolve_capacity_calling_provider_from_env(self):
             return object()
 
@@ -1293,7 +1293,7 @@ def test_loop_capacity_payload_propagates_blocked_reason_from_plan():
         argparse.Namespace(capacity_decisions=True),
         active_goals=[{"goal": "搜索项目文档"}],
         explicit_goal=None,
-        api=FakeCapacityApi(),
+        api=StubCapacityApi(),
     )
 
     assert payload["status"] == "blocked"
@@ -1315,7 +1315,7 @@ def test_loop_capacity_payload_propagates_agent_loop_summary_from_plan():
     }
     summary = {"agent_loop_executed": False}
 
-    class FakeCapacityApi:
+    class StubCapacityApi:
         def resolve_capacity_calling_provider_from_env(self):
             return object()
 
@@ -1332,7 +1332,7 @@ def test_loop_capacity_payload_propagates_agent_loop_summary_from_plan():
         argparse.Namespace(capacity_decisions=True),
         active_goals=[{"goal": "搜索项目文档"}],
         explicit_goal=None,
-        api=FakeCapacityApi(),
+        api=StubCapacityApi(),
     )
 
     assert payload["agent_loop_summary"] == summary
@@ -1351,7 +1351,7 @@ def test_loop_capacity_payload_passes_supervisor_capacity_input_defaults(tmp_pat
         "blocking_reasons": [],
     }
 
-    class FakeCapacityApi:
+    class StubCapacityApi:
         def resolve_capacity_calling_provider_from_env(self):
             return object()
 
@@ -1370,7 +1370,7 @@ def test_loop_capacity_payload_passes_supervisor_capacity_input_defaults(tmp_pat
         ),
         active_goals=[{"goal": "审查 managed workers"}],
         explicit_goal=None,
-        api=FakeCapacityApi(),
+        api=StubCapacityApi(),
     )
 
     assert captured["input_defaults"] == {

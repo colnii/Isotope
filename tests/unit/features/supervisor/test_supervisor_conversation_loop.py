@@ -13,7 +13,7 @@ from isotope.llm.provider import LLMResponse
 
 class RecordingConversationProvider:
     provider = "deterministic_test"
-    model = "fake-conversation"
+    model = "stub-conversation"
 
     def __init__(self, responses: list[str]) -> None:
         self.responses = list(responses)
@@ -54,7 +54,7 @@ def test_conversation_loop_accepts_plain_text_as_direct_answer(tmp_path) -> None
             event="delta",
             payload={"text": "你好，我在。"},
             provider="deterministic_test",
-            model="fake-conversation",
+            model="stub-conversation",
         )
     ]
     assert len(provider.calls) == 1
@@ -525,10 +525,10 @@ def test_conversation_loop_executes_screen_observe_capacity_with_generic_events(
 ) -> None:
     from isotope.capabilities import screen as screen_capability
 
-    class FakeScreenBackend:
+    class StubScreenBackend:
         def run(self, request):
             return {
-                "backend_session_id": "fake_screen_001",
+                "backend_session_id": "stub_screen_001",
                 "status": "captured",
                 "started_at": "2026-05-24T00:00:00Z",
                 "finished_at": "2026-05-24T00:00:01Z",
@@ -575,7 +575,7 @@ def test_conversation_loop_executes_screen_observe_capacity_with_generic_events(
     monkeypatch.setattr(
         screen_capability,
         "WindowsScreenBackend",
-        FakeScreenBackend,
+        StubScreenBackend,
         raising=False,
     )
     provider = RecordingConversationProvider(

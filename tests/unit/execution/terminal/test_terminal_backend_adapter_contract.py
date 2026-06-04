@@ -63,7 +63,7 @@ def _workspace_binding() -> dict:
     }
 
 
-class FakeBackend:
+class StubBackend:
     def __init__(self, result):
         self.result = result
         self.calls = []
@@ -131,7 +131,7 @@ def test_approved_decision_creates_request_with_exact_grants_snapshot(tmp_path):
 
 def test_denied_decision_does_not_call_backend(tmp_path):
     proposal = _proposal()
-    backend = FakeBackend(_completed_backend_result())
+    backend = StubBackend(_completed_backend_result())
     adapter = terminal_backend.TerminalBackendAdapter(
         artifact_store=artifact_store.ArtifactStore(tmp_path),
         backend=backend,
@@ -151,7 +151,7 @@ def test_denied_decision_does_not_call_backend(tmp_path):
 
 def test_pending_approval_does_not_call_backend(tmp_path):
     proposal = _proposal()
-    backend = FakeBackend(_completed_backend_result())
+    backend = StubBackend(_completed_backend_result())
     adapter = terminal_backend.TerminalBackendAdapter(
         artifact_store=artifact_store.ArtifactStore(tmp_path),
         backend=backend,
@@ -174,7 +174,7 @@ def test_backend_result_creates_artifact_refs_without_exposing_full_output(tmp_p
     proposal = _proposal()
     decision = _decision(proposal)
     secret = "very-secret-terminal-output"
-    backend = FakeBackend(_completed_backend_result(content=secret))
+    backend = StubBackend(_completed_backend_result(content=secret))
     store = artifact_store.ArtifactStore(tmp_path)
     adapter = terminal_backend.TerminalBackendAdapter(artifact_store=store, backend=backend)
 
@@ -199,7 +199,7 @@ def test_backend_reported_grants_are_rejected(tmp_path):
     proposal = _proposal()
     backend_result = _completed_backend_result()
     backend_result.reported_grants = {"tools": ["terminal_exec", "write_artifact_tool"]}
-    backend = FakeBackend(backend_result)
+    backend = StubBackend(backend_result)
     adapter = terminal_backend.TerminalBackendAdapter(
         artifact_store=artifact_store.ArtifactStore(tmp_path),
         backend=backend,
@@ -219,7 +219,7 @@ def test_backend_reported_grants_are_rejected(tmp_path):
 
 def test_backend_raw_file_artifact_ref_is_rejected(tmp_path):
     proposal = _proposal()
-    backend = FakeBackend(
+    backend = StubBackend(
         {
             "backend_session_id": "backend_session_001",
             "status": "completed",
@@ -250,7 +250,7 @@ def test_backend_raw_file_artifact_ref_is_rejected(tmp_path):
 
 def test_unknown_backend_status_fails_closed_with_structured_error(tmp_path):
     proposal = _proposal()
-    backend = FakeBackend(
+    backend = StubBackend(
         {
             "backend_session_id": "backend_session_001",
             "status": "mystery",
@@ -312,7 +312,7 @@ def test_cancel_request_calls_backend_and_preserves_basis_linkage(tmp_path):
         workspace_binding=_workspace_binding(),
         basis_event_ids=["evt_proposed", "evt_decided"],
     )
-    backend = FakeBackend(_completed_backend_result())
+    backend = StubBackend(_completed_backend_result())
     adapter = terminal_backend.TerminalBackendAdapter(
         artifact_store=artifact_store.ArtifactStore(tmp_path),
         backend=backend,

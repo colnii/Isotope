@@ -12,7 +12,7 @@ import isotope.workspace as workspace
 from isotope.platform.schemas.refs import ResourceRef
 
 
-class FakeTerminalBackend:
+class StubTerminalBackend:
     def __init__(self, result):
         self.result = result
         self.calls = []
@@ -135,7 +135,7 @@ def test_executor_routes_terminal_exec_through_configured_backend_adapter(tmp_pa
     proposal = _proposal()
     decision = _decision(proposal)
     secret = "adapter-secret-output"
-    backend = FakeTerminalBackend(_completed_backend_result(content=secret))
+    backend = StubTerminalBackend(_completed_backend_result(content=secret))
     runner = _runner(tmp_path, backend)
 
     execution = runner.execute(decision, proposal)
@@ -174,7 +174,7 @@ def test_executor_completed_event_has_public_metadata_terminal_backend_summary(t
     decision = _decision(proposal)
     secret = "SECRET_OUTPUT_must_stay_in_artifact"
     internal_session_id = "backend_session_/Users/alice/.codex/TOKEN"
-    backend = FakeTerminalBackend(
+    backend = StubTerminalBackend(
         _completed_backend_result_with_session(
             backend_session_id=internal_session_id,
             content=secret,
@@ -211,7 +211,7 @@ def test_executor_completed_event_has_public_metadata_terminal_backend_summary(t
 
 def test_in_process_server_projects_public_metadata_terminal_backend_summary(tmp_path):
     secret = "SERVER_SECRET_OUTPUT_must_stay_in_artifact"
-    backend = FakeTerminalBackend(
+    backend = StubTerminalBackend(
         _completed_backend_result_with_session(
             backend_session_id="backend_session_/Users/alice/.codex/TOKEN",
             content=secret,
@@ -260,7 +260,7 @@ def test_in_process_server_projects_public_metadata_terminal_backend_summary(tmp
 def test_executor_terminal_backend_protocol_error_fails_without_artifact(tmp_path):
     proposal = _proposal()
     decision = _decision(proposal)
-    backend = FakeTerminalBackend(
+    backend = StubTerminalBackend(
         {
             "backend_session_id": "backend_session_executor_001",
             "status": "mystery",
@@ -290,7 +290,7 @@ def test_executor_terminal_backend_protocol_error_fails_without_artifact(tmp_pat
 def test_executor_rejects_completed_terminal_backend_without_output_artifact(tmp_path):
     proposal = _proposal()
     decision = _decision(proposal)
-    backend = FakeTerminalBackend(
+    backend = StubTerminalBackend(
         terminal_backend.TerminalBackendResult(
             backend_session_id="backend_session_executor_001",
             status="completed",
@@ -318,7 +318,7 @@ def test_executor_rejects_completed_terminal_backend_without_output_artifact(tmp
 def test_executor_terminal_backend_reported_failure_becomes_action_failed(tmp_path):
     proposal = _proposal()
     decision = _decision(proposal)
-    backend = FakeTerminalBackend(
+    backend = StubTerminalBackend(
         terminal_backend.TerminalBackendResult(
             backend_session_id="backend_session_executor_001",
             status="failed",
@@ -348,7 +348,7 @@ def test_executor_terminal_backend_reported_failure_becomes_action_failed(tmp_pa
 
 def test_in_process_server_can_use_configured_terminal_backend(tmp_path):
     secret = "server-backend-secret-output"
-    backend = FakeTerminalBackend(_completed_backend_result(content=secret))
+    backend = StubTerminalBackend(_completed_backend_result(content=secret))
     api = server.InProcessServer(tmp_path, terminal_backend=backend)
     session = api.create_session()
     run = api.create_run(session["session_id"], goal="terminal backend server route")

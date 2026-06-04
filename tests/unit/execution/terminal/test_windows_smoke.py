@@ -299,7 +299,7 @@ def test_run_windows_smoke_plan_records_ordered_steps_and_caps_output(tmp_path):
         source_root_kind="windows_local",
         workspace_decision=workspace_decision,
         process_runner=process_runner,
-        now=_fake_clock(),
+        now=_stub_clock(),
         platform_info={"system": "Windows"},
         tool_versions={"node": "v22.11.0"},
         repo_revision_if_available="abc1234",
@@ -342,7 +342,7 @@ def test_run_windows_smoke_plan_stops_on_nonzero_exit(tmp_path):
         source_root_kind="windows_local",
         workspace_decision=workspace_decision,
         process_runner=process_runner,
-        now=_fake_clock(),
+        now=_stub_clock(),
         platform_info={"system": "Windows"},
         tool_versions={},
         repo_revision_if_available=None,
@@ -382,7 +382,7 @@ def test_run_windows_smoke_plan_fails_when_required_artifact_is_missing(tmp_path
         source_root_kind="windows_local",
         workspace_decision=workspace_decision,
         process_runner=lambda **_: WindowsProcessResult(exit_code=0, stdout="", stderr="", timed_out=False),
-        now=_fake_clock(),
+        now=_stub_clock(),
         platform_info={"system": "Windows"},
         tool_versions={},
         repo_revision_if_available=None,
@@ -425,7 +425,7 @@ def test_run_windows_smoke_plan_records_process_tree_cleanup_on_timeout(tmp_path
             process_id=1234,
         ),
         cleanup_process_tree=cleanup_process_tree,
-        now=_fake_clock(),
+        now=_stub_clock(),
         platform_info={"system": "Windows"},
         tool_versions={},
         repo_revision_if_available=None,
@@ -467,7 +467,7 @@ def test_run_windows_smoke_plan_default_runner_exposes_pid_for_timeout_cleanup(t
         source_root_kind="windows_local",
         workspace_decision=workspace_decision,
         cleanup_process_tree=lambda process_id: _record_and_terminate(cleanup_calls, process_id),
-        now=_fake_clock(),
+        now=_stub_clock(),
         platform_info={"system": "Windows"},
         tool_versions={},
         repo_revision_if_available=None,
@@ -609,7 +609,7 @@ def _touch(path: Path) -> None:
     path.write_text("x")
 
 
-def _fake_clock():
+def _stub_clock():
     values = iter(
         [
             "2026-06-02T00:00:00Z",

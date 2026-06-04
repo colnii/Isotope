@@ -19,7 +19,7 @@ ACTION_EXECUTION_EVENTS = {
 }
 
 
-class FakeCompletedProcess:
+class StubCompletedProcess:
     def __init__(self, *, stdout: str = "") -> None:
         self.returncode = 0
         self.stdout = stdout
@@ -27,7 +27,7 @@ class FakeCompletedProcess:
 
 
 class RecordingProcessRunner:
-    def __init__(self, result: FakeCompletedProcess) -> None:
+    def __init__(self, result: StubCompletedProcess) -> None:
         self.result = result
         self.calls: list[dict[str, Any]] = []
 
@@ -210,7 +210,7 @@ def test_default_llm_provider_route_requires_provider_without_side_effects(tmp_p
 def test_llm_provider_route_is_listed_by_default_and_with_provider(tmp_path):
     default_app = create_http_app(tmp_path / "default")
     provider = RecordingToolProvider(_provider_response())
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _provider_http_app(tmp_path / "provider", provider, runner)
 
     assert ("POST", "/runs/{run_id}/llm/tool-calls") in default_app.routes()
@@ -221,7 +221,7 @@ def test_llm_provider_route_is_listed_by_default_and_with_provider(tmp_path):
 
 def test_llm_provider_route_submits_pending_approval_without_starting_codex(tmp_path):
     provider = RecordingToolProvider(_provider_response())
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _provider_http_app(tmp_path, provider, runner)
     run_id = _create_run(app)
 
@@ -272,7 +272,7 @@ def test_llm_provider_route_rejects_malformed_body_without_side_effects(
     json_body,
 ):
     provider = RecordingToolProvider(_provider_response())
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _provider_http_app(tmp_path, provider, runner)
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
@@ -289,7 +289,7 @@ def test_llm_provider_route_rejects_malformed_body_without_side_effects(
 
 def test_llm_provider_route_provider_failure_has_no_action_side_effects(tmp_path):
     provider = RecordingToolProvider(RuntimeError("network failed: SECRET_PROVIDER_TEXT"))
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _provider_http_app(tmp_path, provider, runner)
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
@@ -308,7 +308,7 @@ def test_llm_provider_route_provider_failure_has_no_action_side_effects(tmp_path
 
 def test_llm_provider_route_idempotency_replays_without_duplicate_provider_call(tmp_path):
     provider = RecordingToolProvider(_provider_response())
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _provider_http_app(tmp_path, provider, runner)
     run_id = _create_run(app)
     body = {
@@ -343,7 +343,7 @@ def test_llm_tool_result_followup_route_submits_second_pending_approval(tmp_path
         ]
     )
     runner = RecordingProcessRunner(
-        FakeCompletedProcess(stdout='{"event":"task_complete","secret":"FOLLOWUP_STDOUT_SHOULD_NOT_LEAK"}\n')
+        StubCompletedProcess(stdout='{"event":"task_complete","secret":"FOLLOWUP_STDOUT_SHOULD_NOT_LEAK"}\n')
     )
     app = _provider_http_app(tmp_path, provider, runner)
     run_id = _create_run(app)
@@ -421,7 +421,7 @@ def test_llm_tool_result_followup_route_rejects_malformed_body_without_side_effe
     json_body,
 ):
     provider = RecordingToolProvider(_provider_response())
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _provider_http_app(tmp_path, provider, runner)
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
@@ -450,7 +450,7 @@ def test_llm_tool_result_followup_route_rejects_completed_run_before_provider_ca
             ),
         ]
     )
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _provider_http_app(tmp_path, provider, runner)
     run_id = _create_run(app)
     first = _body(_request(app, "POST", _provider_route(run_id), {"messages": _messages()}))

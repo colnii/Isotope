@@ -36,7 +36,7 @@ FORBIDDEN_MEMORY_CONTEXT_KEYS = {
 
 class DeterministicPlannerProvider:
     provider = "deterministic_test"
-    model = "fake-loop-planner"
+    model = "stub-loop-planner"
 
     def __init__(self, content: str) -> None:
         self.content = content

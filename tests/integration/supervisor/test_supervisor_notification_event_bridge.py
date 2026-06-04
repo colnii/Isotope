@@ -248,7 +248,7 @@ def test_notification_bridge_does_not_leak_target_name_value(tmp_path):
 def test_goal_status_webhook_posts_public_metadata_signed_payload(tmp_path, monkeypatch):
     requests: list[dict[str, Any]] = []
 
-    def fake_urlopen(request, timeout):
+    def stub_urlopen(request, timeout):
         requests.append(
             {
                 "url": request.full_url,
@@ -272,7 +272,7 @@ def test_goal_status_webhook_posts_public_metadata_signed_payload(tmp_path, monk
 
     monkeypatch.setattr(
         "isotope.features.supervisor.notifications.notifications.urllib.request.urlopen",
-        fake_urlopen,
+        stub_urlopen,
     )
     goal = record_supervisor_goal(
         codex_home=tmp_path,
@@ -312,7 +312,7 @@ def test_goal_status_webhook_posts_public_metadata_signed_payload(tmp_path, monk
 def test_decision_answer_webhook_posts_without_answer_text(tmp_path, monkeypatch):
     payloads: list[dict[str, Any]] = []
 
-    def fake_urlopen(request, timeout):
+    def stub_urlopen(request, timeout):
         payloads.append(json.loads(request.data.decode("utf-8")))
 
         class Response:
@@ -329,7 +329,7 @@ def test_decision_answer_webhook_posts_without_answer_text(tmp_path, monkeypatch
 
     monkeypatch.setattr(
         "isotope.features.supervisor.notifications.notifications.urllib.request.urlopen",
-        fake_urlopen,
+        stub_urlopen,
     )
     request = record_decision_request(
         codex_home=tmp_path,
@@ -370,12 +370,12 @@ def test_decision_answer_webhook_posts_without_answer_text(tmp_path, monkeypatch
 
 
 def test_webhook_failure_warns_without_breaking_goal_ledger(tmp_path, monkeypatch, caplog):
-    def fake_urlopen(_request, _timeout):
+    def stub_urlopen(_request, _timeout):
         raise OSError("network down")
 
     monkeypatch.setattr(
         "isotope.features.supervisor.notifications.notifications.urllib.request.urlopen",
-        fake_urlopen,
+        stub_urlopen,
     )
     goal = record_supervisor_goal(
         codex_home=tmp_path,

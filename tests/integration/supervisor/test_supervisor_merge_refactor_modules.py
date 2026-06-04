@@ -78,7 +78,7 @@ def test_merge_promotion_helpers_classify_decisions_and_check_clean_main(tmp_pat
 
     commands: list[list[str]] = []
 
-    def fake_run(
+    def stub_run(
         command: list[str],
         **_: Any,
     ) -> subprocess.CompletedProcess[str]:
@@ -89,7 +89,7 @@ def test_merge_promotion_helpers_classify_decisions_and_check_clean_main(tmp_pat
             return subprocess.CompletedProcess(command, 0, "", "")
         raise AssertionError(command)
 
-    assert check_main_promotion_preconditions(tmp_path, run=fake_run) is None
+    assert check_main_promotion_preconditions(tmp_path, run=stub_run) is None
     assert commands == [
         ["git", "-C", str(tmp_path), "rev-parse", "--abbrev-ref", "HEAD"],
         ["git", "-C", str(tmp_path), "status", "--short"],

@@ -257,7 +257,7 @@ def test_save_checkpoint_history_rejects_malformed_events_without_writing_histor
     assert checkpoints.load_latest_checkpoint("run_001") is None
 
 
-def test_save_checkpoint_history_failure_does_not_fake_success(tmp_path):
+def test_save_checkpoint_history_failure_does_not_stub_success(tmp_path):
     class FailingHistoryCheckpointStore:
         def save_checkpoint_history(self, run_id, checkpoint):
             raise RuntimeError("history write failed")

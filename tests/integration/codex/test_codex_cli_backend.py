@@ -10,7 +10,7 @@ import isotope.integrations.codex.task as codex_task
 from isotope.platform.schemas.actions import ActionProposal, PolicyDecision
 
 
-class FakeCompletedProcess:
+class StubCompletedProcess:
     def __init__(self, *, returncode: int = 0, stdout: str = "", stderr: str = "") -> None:
         self.returncode = returncode
         self.stdout = stdout
@@ -18,7 +18,7 @@ class FakeCompletedProcess:
 
 
 class RecordingProcessRunner:
-    def __init__(self, result: FakeCompletedProcess) -> None:
+    def __init__(self, result: StubCompletedProcess) -> None:
         self.result = result
         self.calls = []
 
@@ -86,7 +86,7 @@ def test_codex_cli_backend_invokes_codex_exec_with_stdin_and_isotope_limits(tmp_
     workspace_root = tmp_path / "workspace"
     codex_home = tmp_path / "codex-home"
     runner = RecordingProcessRunner(
-        FakeCompletedProcess(stdout='{"event":"task_complete"}\n', stderr="diagnostic\n")
+        StubCompletedProcess(stdout='{"event":"task_complete"}\n', stderr="diagnostic\n")
     )
     backend = codex_cli.CodexCliBackend(
         codex_cli.CodexCliBackendConfig(
@@ -247,7 +247,7 @@ def test_supervisor_resume_exec_argv_builder_matches_last_flag_shape(tmp_path):
 
 def test_codex_cli_backend_can_skip_git_repo_check_for_temp_workspace(tmp_path):
     workspace_root = tmp_path / "workspace"
-    runner = RecordingProcessRunner(FakeCompletedProcess())
+    runner = RecordingProcessRunner(StubCompletedProcess())
     backend = codex_cli.CodexCliBackend(
         codex_cli.CodexCliBackendConfig(
             executable="/opt/codex/bin/codex",
@@ -267,7 +267,7 @@ def test_codex_cli_backend_can_inherit_proxy_env_without_sensitive_keys(tmp_path
     monkeypatch.setenv("http_proxy", "http://127.0.0.1:7890")
     monkeypatch.setenv("NO_PROXY", "localhost,127.0.0.1")
     monkeypatch.setenv("OPENAI_API_KEY", "SECRET_ENV_SHOULD_NOT_BE_INHERITED")
-    runner = RecordingProcessRunner(FakeCompletedProcess())
+    runner = RecordingProcessRunner(StubCompletedProcess())
     backend = codex_cli.CodexCliBackend(
         codex_cli.CodexCliBackendConfig(
             executable="/opt/codex/bin/codex",
@@ -294,7 +294,7 @@ def test_codex_cli_backend_requires_discovered_executable(tmp_path):
                 workspace_root=str(tmp_path),
             ),
             executable_resolver=lambda _name: None,
-            process_runner=RecordingProcessRunner(FakeCompletedProcess()),
+            process_runner=RecordingProcessRunner(StubCompletedProcess()),
         )
 
     assert exc_info.value.error_reason_code == "codex_task_adapter_not_configured"
@@ -311,7 +311,7 @@ def test_codex_cli_backend_rejects_unsafe_codex_sandbox(tmp_path):
 
 
 def test_codex_cli_backend_requires_shared_read_snapshot_workspace(tmp_path):
-    runner = RecordingProcessRunner(FakeCompletedProcess())
+    runner = RecordingProcessRunner(StubCompletedProcess())
     backend = codex_cli.CodexCliBackend(
         codex_cli.CodexCliBackendConfig(
             executable="/opt/codex/bin/codex",
@@ -329,7 +329,7 @@ def test_codex_cli_backend_requires_shared_read_snapshot_workspace(tmp_path):
 
 def test_codex_cli_backend_maps_nonzero_exit_to_failed_result_without_prompt_leak(tmp_path):
     runner = RecordingProcessRunner(
-        FakeCompletedProcess(
+        StubCompletedProcess(
             returncode=2,
             stdout="partial codex output",
             stderr="model failed",

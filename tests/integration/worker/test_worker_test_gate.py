@@ -20,7 +20,7 @@ def test_worker_review_marks_done_worker_test_passed(tmp_path):
 
     payload = collect_worker_reviews(
         codex_home=codex_home,
-        run=_fake_worker_review_run(
+        run=_stub_worker_review_run(
             cwd,
             pytest_result=(0, "12 passed in 0.34s\n", ""),
         ),
@@ -51,7 +51,7 @@ def test_done_worker_gate_falls_back_to_current_python_when_worktree_venv_missin
     _write_done_record(codex_home, record_id="managed-pass", name="pass", cwd=cwd)
     commands: list[list[str]] = []
 
-    def fake_run(command: list[str], **kwargs):
+    def stub_run(command: list[str], **kwargs):
         commands.append(command)
         _assert_completed_process_kwargs(kwargs)
         if command == [sys.executable, "-m", "pytest", "tests", "-q"]:
@@ -64,7 +64,7 @@ def test_done_worker_gate_falls_back_to_current_python_when_worktree_venv_missin
 
     payload = collect_worker_reviews(
         codex_home=codex_home,
-        run=fake_run,
+        run=stub_run,
         process_checker=lambda pid: False,
     )
 
@@ -77,7 +77,7 @@ def test_failed_done_worker_gate_moves_integration_review_to_needs_review(tmp_pa
     cwd = tmp_path / "repo" / ".worktrees" / "supervisor" / "fail-12345678"
     cwd.mkdir(parents=True)
     _write_done_record(codex_home, record_id="managed-fail", name="fail", cwd=cwd)
-    fake_run = _fake_integration_run(
+    stub_run = _stub_integration_run(
         cwd,
         worker_commit="fail111",
         pytest_result=(1, "FAILED tests/unit/test_gate.py::test_x\n", ""),
@@ -85,7 +85,7 @@ def test_failed_done_worker_gate_moves_integration_review_to_needs_review(tmp_pa
 
     worker_payload = collect_worker_reviews(
         codex_home=codex_home,
-        run=_fake_worker_review_run(
+        run=_stub_worker_review_run(
             cwd,
             pytest_result=(1, "FAILED tests/unit/test_gate.py::test_x\n", ""),
         ),
@@ -93,7 +93,7 @@ def test_failed_done_worker_gate_moves_integration_review_to_needs_review(tmp_pa
     )
     assert worker_payload["workers"][0]["test_passed"] is False
 
-    integration_payload = collect_integration_reviews(codex_home=codex_home, run=fake_run)
+    integration_payload = collect_integration_reviews(codex_home=codex_home, run=stub_run)
 
     assert integration_payload["summary"]["ready_to_integrate"] == 0
     assert integration_payload["summary"]["needs_review"] == 1
@@ -124,12 +124,12 @@ def test_worker_review_marks_deleted_worktree_test_skipped(tmp_path):
     assert payload["automation_candidates"]["recover_or_archive"][0]["test_status"] == "skipped"
 
 
-def _fake_worker_review_run(
+def _stub_worker_review_run(
     cwd: Path,
     *,
     pytest_result: tuple[int, str, str],
 ):
-    def fake_run(
+    def stub_run(
         command: list[str],
         **kwargs,
     ) -> subprocess.CompletedProcess[str]:
@@ -150,16 +150,16 @@ def _fake_worker_review_run(
                 return subprocess.CompletedProcess(command, 0, " src/example.py | 1 +\n", "")
         raise AssertionError(f"unexpected command: {command}")
 
-    return fake_run
+    return stub_run
 
 
-def _fake_integration_run(
+def _stub_integration_run(
     cwd: Path,
     *,
     worker_commit: str,
     pytest_result: tuple[int, str, str],
 ):
-    def fake_run(
+    def stub_run(
         command: list[str],
         **kwargs,
     ) -> subprocess.CompletedProcess[str]:
@@ -195,7 +195,7 @@ def _fake_integration_run(
                 raise AssertionError(f"unexpected command: {command}") from exc
         raise AssertionError(f"unexpected command: {command}")
 
-    return fake_run
+    return stub_run
 
 
 def _assert_completed_process_kwargs(kwargs: dict[str, object]) -> None:

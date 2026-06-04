@@ -101,8 +101,8 @@ def test_backend_config_metadata_is_included_in_request(tmp_path):
     proposal = _proposal()
     decision = _decision(proposal)
     config = terminal_backend.TerminalBackendConfig(
-        backend_id="fake-local-agent",
-        backend_version="0.1.fake",
+        backend_id="stub-local-agent",
+        backend_version="0.1.stub",
         protocol_version="terminal-backend.v0.2",
         mode="external_local",
     )
@@ -122,8 +122,8 @@ def test_backend_config_metadata_is_included_in_request(tmp_path):
     )
 
     assert backend.calls[0].backend_config == {
-        "backend_id": "fake-local-agent",
-        "backend_version": "0.1.fake",
+        "backend_id": "stub-local-agent",
+        "backend_version": "0.1.stub",
         "protocol_version": "terminal-backend.v0.2",
         "mode": "external_local",
         "configured": True,
@@ -157,8 +157,8 @@ def test_incompatible_backend_protocol_fails_before_backend_call(tmp_path):
     proposal = _proposal()
     decision = _decision(proposal)
     config = terminal_backend.TerminalBackendConfig(
-        backend_id="fake-local-agent",
-        backend_version="0.1.fake",
+        backend_id="stub-local-agent",
+        backend_version="0.1.stub",
         protocol_version="terminal-backend.v9",
         mode="external_local",
     )
@@ -181,8 +181,8 @@ def test_backend_native_task_requires_explicit_policy_gate(tmp_path):
     proposal = _proposal()
     decision = _decision(proposal)
     config = terminal_backend.TerminalBackendConfig(
-        backend_id="fake-local-agent",
-        backend_version="0.1.fake",
+        backend_id="stub-local-agent",
+        backend_version="0.1.stub",
         protocol_version="terminal-backend.v0.2",
         mode="external_local",
     )

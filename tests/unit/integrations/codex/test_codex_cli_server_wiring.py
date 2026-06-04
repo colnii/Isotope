@@ -9,7 +9,7 @@ import isotope.integrations.codex.server as codex_server
 import isotope.runtime.in_process as server
 
 
-class FakeCompletedProcess:
+class StubCompletedProcess:
     def __init__(self, *, returncode: int = 0, stdout: str = "", stderr: str = "") -> None:
         self.returncode = returncode
         self.stdout = stdout
@@ -17,7 +17,7 @@ class FakeCompletedProcess:
 
 
 class RecordingProcessRunner:
-    def __init__(self, result: FakeCompletedProcess) -> None:
+    def __init__(self, result: StubCompletedProcess) -> None:
         self.result = result
         self.calls = []
 
@@ -60,7 +60,7 @@ def test_default_server_accepts_codex_task_for_approval(tmp_path):
 
 
 def test_codex_cli_server_requires_approval_before_process_call(tmp_path):
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(StubCompletedProcess(stdout='{"event":"task_complete"}\n'))
     api = codex_server.create_codex_cli_server(
         tmp_path,
         config=codex_server.CodexCliServerConfig(
@@ -82,7 +82,7 @@ def test_codex_cli_server_runs_approved_codex_task_through_cli_backend(tmp_path,
     monkeypatch.setenv("OPENAI_API_KEY", "SECRET_ENV_SHOULD_NOT_BE_INHERITED")
     monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:7890")
     runner = RecordingProcessRunner(
-        FakeCompletedProcess(stdout='{"event":"task_complete","message":"ok"}\n')
+        StubCompletedProcess(stdout='{"event":"task_complete","message":"ok"}\n')
     )
     api = codex_server.create_codex_cli_server(
         tmp_path,
