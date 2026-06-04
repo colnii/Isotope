@@ -189,3 +189,10 @@ PYTHONPATH=src .venv/bin/python -m pytest \
 - 如果 review payload 语义漂移，decision 层可能误判。缓解方式是只读现有 summary/groups，并用测试固定关键 group 名。
 - 如果过早自动 cleanup，可能误删活跃 worktree。缓解方式是第一版只复用现有 cleanup safety，不新增删除条件。
 - 如果执行层和 LLM action 同时触发，可能重复启动 merge worker。缓解方式是先检查 running merge worker，并把 lifecycle decision 放在 LLM action 前作为单一入口。
+
+## Implementation Checkpoint
+
+The first implementation slice adds the decision module, exposes
+`worker_lifecycle_decision` in supervisor loop payloads, and records merge
+dispatch execution into that decision. Prompt slimming remains the next slice
+after payload and execution behavior are stable in tests.
