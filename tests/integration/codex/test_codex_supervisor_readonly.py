@@ -13961,6 +13961,55 @@ def test_codex_supervisor_runner_daemon_start_passes_merge_automation_flags(
     assert captured["command"] == payload["daemon"]["command"]
 
 
+def test_codex_supervisor_runner_daemon_start_passes_lifecycle_archive_execute_flag(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    captured: dict[str, object] = {}
+
+    class StubProcess:
+        pid = 45678
+
+    def stub_popen(
+        command: list[str],
+        *,
+        stdin: object,
+        stdout: object,
+        stderr: object,
+        start_new_session: bool,
+    ) -> StubProcess:
+        captured["command"] = command
+        return StubProcess()
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon.subprocess.Popen",
+        stub_popen,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.daemon._process_is_alive",
+        lambda _: False,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "daemon",
+            "start",
+            "--codex-home",
+            str(codex_home),
+            "--lifecycle-archive-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert "--lifecycle-archive-execute" in payload["daemon"]["command"]
+    assert "--lifecycle-cleanup-execute" not in payload["daemon"]["command"]
+    assert captured["command"] == payload["daemon"]["command"]
+
+
 def test_codex_supervisor_runner_daemon_start_defaults_to_strong_worker(
     tmp_path,
     capsys,
@@ -15724,7 +15773,8 @@ def test_codex_supervisor_start_here_prints_human_first_workflow(
         + shlex.quote(str(codex_home))
         + " --goal '让 Supervisor 帮我推进当前项目。' --goal-low-water 2"
         + " --goal-replenish-limit 2 --max-fanout-launches 2"
-        + " --merge-dispatch-execute --auto-merge-promote"
+        + " --merge-dispatch-execute --lifecycle-archive-execute"
+        + " --auto-merge-promote"
     )
     assert payload["commands"]["open_web"] == (
         "isotope-supervisor web --codex-home "

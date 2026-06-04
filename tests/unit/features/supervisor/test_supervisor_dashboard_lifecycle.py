@@ -293,10 +293,10 @@ def test_dashboard_plain_prints_worker_lifecycle_execution(capsys) -> None:
     text = capsys.readouterr().out
     assert "execution=archive_cleanup status=executed actions=1" in text
     assert "result=archived source-worker" in text
-    assert "execute_hint=--lifecycle-cleanup-execute" in text
+    assert "execute_hint=--lifecycle-archive-execute" in text
     assert (
         "execute_command=isotope-supervisor loop --iterations 1 "
-        "--lifecycle-cleanup-execute"
+        "--lifecycle-archive-execute"
     ) in text
 
 

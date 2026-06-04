@@ -924,7 +924,9 @@ def _dashboard_lifecycle_execution_hint(
 ) -> str:
     kind = plan.get("kind")
     reason = result.get("reason") if isinstance(result, dict) else None
-    if kind in {"archive_cleanup", "cleanup_worktree"}:
+    if kind == "archive_cleanup":
+        return "--lifecycle-archive-execute"
+    if kind == "cleanup_worktree":
         return "--lifecycle-cleanup-execute"
     if (
         kind == "merge_dispatch"

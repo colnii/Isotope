@@ -168,6 +168,14 @@ def add_loop_command_parsers(
         ),
     )
     loop_parser.add_argument(
+        "--lifecycle-archive-execute",
+        action="store_true",
+        help=(
+            "Execute program-owned archive cleanup lifecycle plans without "
+            "deleting worker worktrees."
+        ),
+    )
+    loop_parser.add_argument(
         "--auto-merge-promote",
         action="store_true",
         help=(
@@ -292,6 +300,11 @@ def add_loop_command_parsers(
         "--merge-dispatch-execute",
         action="store_true",
         help="Let the daemon loop launch merge-dispatch workers.",
+    )
+    up_parser.add_argument(
+        "--lifecycle-archive-execute",
+        action="store_true",
+        help="Let the daemon loop archive completed managed workers.",
     )
     up_parser.add_argument(
         "--auto-merge-promote",

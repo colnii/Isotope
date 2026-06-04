@@ -130,7 +130,7 @@ def worker_lifecycle_execution_planned_executed(
             "kind": "archive_cleanup",
             "source": "worker_lifecycle",
             "skipped": True,
-            "reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
+            "reason": "lifecycle archive execution requires --lifecycle-archive-execute",
             "count": len(_mapping_list(plan.get("cleanup_candidates"))),
         }
     if plan.get("kind") == "cleanup_worktree":

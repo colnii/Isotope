@@ -158,7 +158,9 @@ def _worker_lifecycle_execution_executed(
 ) -> dict[str, Any]:
     kind = lifecycle_execution.get("kind")
     if kind == "archive_cleanup":
-        if not getattr(args, "lifecycle_cleanup_execute", False):
+        archive_execute = getattr(args, "lifecycle_archive_execute", False)
+        cleanup_execute = getattr(args, "lifecycle_cleanup_execute", False)
+        if not (archive_execute or cleanup_execute):
             return worker_lifecycle_execution_planned_executed(lifecycle_execution)
         return _worker_lifecycle_archive_cleanup_executed(
             args,

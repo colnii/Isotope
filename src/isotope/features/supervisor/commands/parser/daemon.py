@@ -136,6 +136,11 @@ def add_daemon_command_parser(
         help="Let the daemon loop launch merge-dispatch workers.",
     )
     daemon_start_parser.add_argument(
+        "--lifecycle-archive-execute",
+        action="store_true",
+        help="Let the daemon loop archive completed managed workers.",
+    )
+    daemon_start_parser.add_argument(
         "--auto-merge-promote",
         action="store_true",
         help="Let the daemon loop promote or repair merge-dispatch workers.",

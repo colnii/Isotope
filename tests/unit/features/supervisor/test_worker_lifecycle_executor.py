@@ -145,6 +145,13 @@ def test_lifecycle_execution_plan_archives_ready_cleanup_workers() -> None:
         "target_name": "source-worker",
         "record_id": "managed-source",
     }
+    assert worker_lifecycle_execution_planned_executed(plan.to_dict()) == {
+        "kind": "archive_cleanup",
+        "source": "worker_lifecycle",
+        "skipped": True,
+        "reason": "lifecycle archive execution requires --lifecycle-archive-execute",
+        "count": 1,
+    }
 
 
 def test_lifecycle_execution_plan_deletes_guarded_worktree_candidates() -> None:
@@ -397,6 +404,70 @@ def test_supervise_execution_archives_lifecycle_cleanup_candidates() -> None:
     ]
 
 
+def test_supervise_execution_archives_with_archive_execute_flag() -> None:
+    api = _StubExecutionApi()
+    payload: dict[str, object] = {}
+    plan = build_worker_lifecycle_execution_plan(
+        worker_lifecycle_decision=_decision(
+            next_step="archive_worker",
+            program_action="archive_integrated",
+        ),
+        cleanup_candidates=[
+            {
+                "kind": "managed_worker",
+                "name": "source-worker",
+                "record_id": "managed-source",
+            }
+        ],
+    )
+    assert plan is not None
+
+    executed = append_supervise_execution(
+        argparse.Namespace(
+            llm_execute=True,
+            auto_execute=False,
+            execute=False,
+            codex_home="/tmp/codex-home",
+            merge_dispatch_execute=False,
+            lifecycle_archive_execute=True,
+            lifecycle_cleanup_execute=False,
+        ),
+        payload,
+        report=object(),
+        action_report=object(),
+        active_goals=[],
+        goal_replenishment=None,
+        worker_reviews=None,
+        fanout_status=None,
+        fanout_paused=False,
+        worker_role_guard=None,
+        merge_dispatch=None,
+        fanout_plan=None,
+        lifecycle_execution=plan.to_dict(),
+        api=api,
+    )
+
+    assert executed == {
+        "kind": "archive_cleanup",
+        "source": "worker_lifecycle",
+        "archived": [
+            {
+                "kind": "managed_worker",
+                "name": "source-worker",
+                "record_id": "managed-source",
+                "archived": True,
+            }
+        ],
+    }
+    assert api.archived == [
+        {
+            "kind": "managed_worker",
+            "name": "source-worker",
+            "record_id": "managed-source",
+        }
+    ]
+
+
 def test_supervise_execution_deletes_lifecycle_worktree_candidates() -> None:
     api = _StubExecutionApi()
     payload: dict[str, object] = {
@@ -466,6 +537,61 @@ def test_supervise_execution_deletes_lifecycle_worktree_candidates() -> None:
             "source": "worker_lifecycle",
         }
     ]
+
+
+def test_supervise_execution_does_not_delete_worktrees_with_archive_execute_flag() -> None:
+    api = _StubExecutionApi()
+    payload: dict[str, object] = {}
+    plan = build_worker_lifecycle_execution_plan(
+        worker_lifecycle_decision=_decision(
+            next_step="cleanup_worktree",
+            program_action="archive_integrated",
+        ),
+        delete_worktree_candidates=[
+            {
+                "name": "source-worker",
+                "target_name": "source-worker",
+                "record_id": "managed-source",
+                "archived": True,
+                "integration_group": "already_integrated",
+            }
+        ],
+    )
+    assert plan is not None
+
+    executed = append_supervise_execution(
+        argparse.Namespace(
+            llm_execute=True,
+            auto_execute=False,
+            execute=False,
+            codex_home="/tmp/codex-home",
+            merge_dispatch_execute=False,
+            lifecycle_archive_execute=True,
+            lifecycle_cleanup_execute=False,
+        ),
+        payload,
+        report=object(),
+        action_report=object(),
+        active_goals=[],
+        goal_replenishment=None,
+        worker_reviews=None,
+        fanout_status=None,
+        fanout_paused=False,
+        worker_role_guard=None,
+        merge_dispatch=None,
+        fanout_plan=None,
+        lifecycle_execution=plan.to_dict(),
+        api=api,
+    )
+
+    assert executed == {
+        "kind": "cleanup_worktree",
+        "source": "worker_lifecycle",
+        "skipped": True,
+        "reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
+        "count": 1,
+    }
+    assert api.deleted == []
 
 
 def test_supervise_execution_uses_lifecycle_execution_plan() -> None:

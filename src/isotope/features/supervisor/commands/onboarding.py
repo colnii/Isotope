@@ -44,6 +44,7 @@ def start_here_payload(
                     "--max-fanout-launches",
                     "2",
                     "--merge-dispatch-execute",
+                    "--lifecycle-archive-execute",
                     "--auto-merge-promote",
                 ]
             ),

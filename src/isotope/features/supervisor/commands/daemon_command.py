@@ -129,6 +129,7 @@ def start_daemon_from_args(
         llm_summary=args.llm_summary,
         auto_adopt=args.auto_adopt,
         merge_dispatch_execute=getattr(args, "merge_dispatch_execute", False),
+        lifecycle_archive_execute=getattr(args, "lifecycle_archive_execute", False),
         auto_merge_promote=getattr(args, "auto_merge_promote", False),
         worker_codex_model=api._worker_codex_model(args, profile=worker_profile),
         worker_codex_config=api._worker_codex_config(args, profile=worker_profile),

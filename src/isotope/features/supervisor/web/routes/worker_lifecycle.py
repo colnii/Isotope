@@ -90,7 +90,11 @@ def _worker_lifecycle_execute_argv(
     execution: dict[str, Any],
 ) -> list[str]:
     hint = _optional_string(execution.get("execute_hint"))
-    if hint not in {"--lifecycle-cleanup-execute", "--merge-dispatch-execute"}:
+    if hint not in {
+        "--lifecycle-archive-execute",
+        "--lifecycle-cleanup-execute",
+        "--merge-dispatch-execute",
+    }:
         raise WorkerLifecycleExecuteError(
             "worker lifecycle execution hint is unsupported",
             code="worker_lifecycle_execute_unavailable",
