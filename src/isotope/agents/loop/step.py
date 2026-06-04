@@ -146,7 +146,11 @@ def _capability_inputs_for_agent_loop(
         system_inputs["run_id"] = run_id
     if "execution_id" in properties or "execution_id" in system_keys:
         system_inputs["execution_id"] = new_id("exec")
-    if "workspace_id" in system_keys and "workspace_id" not in system_inputs:
+    if (
+        "workspace_id" in system_keys
+        and "workspace_id" not in system_inputs
+        and "workspace_id" not in inputs
+    ):
         system_inputs["workspace_id"] = (
             "workspace_coding_task_run_"
             + new_id("workspace").split("_", 1)[-1]

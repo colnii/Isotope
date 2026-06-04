@@ -16,6 +16,10 @@ from isotope.features.supervisor.commands.handlers.capacity import (
     _execute_agent_loop_capacity_step,
     agent_loop_json_summary,
 )
+from isotope.features.supervisor.native_coding_run import (
+    CODING_TASK_RUN_CAPABILITY,
+    run_native_coding_agent_loop,
+)
 from isotope.llm.prompts import render_json_prompt_template
 from isotope.llm.provider import LLMResponse
 from isotope.platform.schemas.input_contract import (
@@ -106,6 +110,7 @@ def run_supervisor_conversation_events(
                 decision,
                 state_root=Path(state_root).expanduser(),
                 context=context,
+                provider=provider,
                 timeout_seconds=timeout_seconds,
             ):
                 yield event
@@ -319,6 +324,7 @@ def _run_capability_decision(
     *,
     state_root: Path,
     context: dict[str, Any],
+    provider: SupervisorConversationProvider,
     timeout_seconds: float | None,
 ) -> Iterator[SupervisorConversationEvent]:
     capacity_id = _require_text(decision.get("capacity_id"), "capacity_id")
@@ -351,13 +357,26 @@ def _run_capability_decision(
         },
     )
     try:
-        agent_loop = _execute_capacity_step_with_timeout(
-            goal=f"Conversation capability call: {capacity_id}",
-            capability_id=capacity_id,
-            inputs=inputs,
-            state_root=state_root / "supervisor" / "conversation-loop-runs",
-            timeout_seconds=timeout_seconds,
-        )
+        if capacity_id == CODING_TASK_RUN_CAPABILITY:
+            system_context = context.get("system_context")
+            if not isinstance(system_context, dict):
+                raise ValueError("system_context must be available for coding_task.run")
+            agent_loop = run_native_coding_agent_loop(
+                state_root=state_root,
+                cwd=Path(_require_text(system_context.get("cwd"), "cwd")),
+                goal=_require_text(inputs.get("goal"), "goal"),
+                inputs=inputs,
+                provider=provider,
+                max_steps=_bounded_coding_steps(inputs.get("max_steps")),
+            )
+        else:
+            agent_loop = _execute_capacity_step_with_timeout(
+                goal=f"Conversation capability call: {capacity_id}",
+                capability_id=capacity_id,
+                inputs=inputs,
+                state_root=state_root / "supervisor" / "conversation-loop-runs",
+                timeout_seconds=timeout_seconds,
+            )
         result_summary = agent_loop_json_summary({"agent_loop": agent_loop})
         extra_details = [
             detail
@@ -453,6 +472,12 @@ def _execute_capacity_step_with_timeout(
         executor.shutdown(wait=False, cancel_futures=True)
 
 
+def _bounded_coding_steps(value: Any) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        return 6
+    return min(max(value, 1), 12)
+
+
 def _capability_inputs_from_decision(
     capacity_id: str,
     *,
@@ -517,6 +542,8 @@ def _capacity_result_status(result_summary: dict[str, Any]) -> str:
     research_status = result_summary.get("agent_loop_research_search_status")
     if research_status in {"provider_failed", "validation_failed"}:
         return "blocked"
+    if result_summary.get("agent_loop_coding_status") == "verified":
+        return "ok"
     return "ok" if result_summary.get("agent_loop_tick_status") == "executed" else "blocked"
 
 
@@ -536,6 +563,12 @@ def _capability_title(capacity_id: str, *, context: dict[str, Any]) -> str:
 
 
 def _capacity_display_inputs(capacity_id: str, inputs: dict[str, Any]) -> dict[str, Any]:
+    if capacity_id == CODING_TASK_RUN_CAPABILITY:
+        return {
+            key: value
+            for key, value in inputs.items()
+            if key not in {"root", "cwd", "run_id", "execution_id", "workspace_id"}
+        }
     if capacity_id != "coding_task.execute":
         return dict(inputs)
     display = dict(inputs)

@@ -11,6 +11,9 @@ def agent_loop_json_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
     summary: dict[str, Any] = {"agent_loop_executed": isinstance(agent_loop, Mapping)}
     if not isinstance(agent_loop, Mapping):
         return summary
+    if agent_loop.get("kind") == "native_coding_agent_loop":
+        summary.update(_agent_loop_native_coding_summary(agent_loop))
+        return summary
 
     handoff = agent_loop.get("handoff")
     if isinstance(handoff, Mapping):
@@ -50,6 +53,16 @@ def agent_loop_json_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
         summary.update(_agent_loop_research_search_summary(capability_run))
         summary.update(_agent_loop_research_promotion_summary(capability_run))
     return summary
+
+
+def _agent_loop_native_coding_summary(agent_loop: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "agent_loop_coding_status": agent_loop.get("status"),
+        "agent_loop_coding_workspace_id": agent_loop.get("workspace_id"),
+        "agent_loop_coding_tick_count": agent_loop.get("tick_count"),
+        "agent_loop_coding_context_calls": agent_loop.get("context_call_count"),
+        "agent_loop_coding_source_workspace_write": agent_loop.get("source_workspace_write"),
+    }
 
 
 def agent_loop_handoff_summary(

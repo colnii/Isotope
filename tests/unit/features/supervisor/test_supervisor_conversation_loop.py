@@ -37,6 +37,96 @@ class RecordingConversationProvider:
         )
 
 
+class NativeCodingSequenceProvider:
+    provider = "deterministic_test"
+    model = "stub-native-coding"
+
+    def __init__(
+        self,
+        planner_steps: list[tuple[str, dict[str, Any]]],
+        *,
+        goal: str = "Change src/app.py value to 2.",
+    ) -> None:
+        self.goal = goal
+        self.planner_steps = list(planner_steps)
+        self.conversation_calls = 0
+        self.calls: list[dict[str, Any]] = []
+
+    def generate(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int = 512,
+    ) -> LLMResponse:
+        self.calls.append({"messages": messages, "max_tokens": max_tokens})
+        planner_prompt = _planner_prompt_payload(messages)
+        if planner_prompt is not None:
+            capability_id, inputs = self.planner_steps.pop(0)
+            return LLMResponse(
+                provider=self.provider,
+                model=self.model,
+                content=json.dumps(
+                    {
+                        "planner_run_id": f"planner-{len(self.calls)}",
+                        "basis": {
+                            "run_id": planner_prompt["control"]["run_id"],
+                            "last_event_id": planner_prompt["control"]["last_event_id"],
+                        },
+                        "decision": {
+                            "step": "call_capability",
+                            "request": {
+                                "capability_id": capability_id,
+                                "inputs": inputs,
+                            },
+                        },
+                    }
+                ),
+                finish_reason="stop",
+                usage={"prompt_tokens": 1, "completion_tokens": 1},
+                raw={"raw_response": "must not leak"},
+            )
+
+        self.conversation_calls += 1
+        if self.conversation_calls == 1:
+            content = json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "coding_task.run",
+                    "arguments": {"goal": self.goal},
+                    "rationale": "Use native coding.",
+                }
+            )
+        else:
+            content = json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "改动已验证，等待你审阅。",
+                }
+            )
+        return LLMResponse(
+            provider=self.provider,
+            model=self.model,
+            content=content,
+            finish_reason="stop",
+            usage={"prompt_tokens": 1, "completion_tokens": 1},
+            raw={"raw_response": "must not leak"},
+        )
+
+
+def _planner_prompt_payload(messages: list[dict[str, str]]) -> dict[str, Any] | None:
+    if len(messages) < 2:
+        return None
+    try:
+        payload = json.loads(messages[1]["content"])
+    except (KeyError, json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    if "control" not in payload or "default_context" not in payload:
+        return None
+    return payload
+
+
 def test_conversation_loop_accepts_plain_text_as_direct_answer(tmp_path) -> None:
     provider = RecordingConversationProvider(["你好，我在。"])
 
@@ -536,6 +626,66 @@ def test_conversation_loop_executes_native_coding_capacity_with_safe_observation
     assert "capacity_observation" in second_prompt
     assert "value = 1" not in second_prompt
     assert "value = 2" not in second_prompt
+
+
+def test_conversation_loop_runs_coding_task_run_through_existing_agent_loop(
+    tmp_path,
+) -> None:
+    workspace = tmp_path / "repo"
+    (workspace / "src").mkdir(parents=True)
+    (workspace / "src" / "app.py").write_text("value = 1\n", encoding="utf-8")
+    provider = NativeCodingSequenceProvider(
+        [
+            ("code.search", {"query": "value", "include_paths": ["src"]}),
+            ("code.read", {"path": "src/app.py"}),
+            (
+                "coding_task.execute",
+                {
+                    "goal": "Change src/app.py value to 2.",
+                    "patch": (
+                        "--- a/src/app.py\n"
+                        "+++ b/src/app.py\n"
+                        "@@ -1 +1 @@\n"
+                        "-value = 1\n"
+                        "+value = 2\n"
+                    ),
+                    "argv": [
+                        "python3",
+                        "-c",
+                        "from pathlib import Path; assert Path('src/app.py').read_text() == 'value = 2\\n'",
+                    ],
+                    "allowed_commands": ["python3"],
+                    "include_paths": ["src"],
+                },
+            ),
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path / "state",
+            cwd=workspace,
+            user_message="把 src/app.py 的 value 改成 2。",
+            provider=provider,
+            max_turns=4,
+        )
+    )
+
+    assert [event.event for event in events] == [
+        "capacity_start",
+        "capacity_result",
+        "delta",
+    ]
+    assert events[0].payload["capacity_id"] == "coding_task.run"
+    assert events[1].payload["status"] == "ok"
+    summary = events[1].payload["result_summary"]
+    assert summary["agent_loop_coding_status"] == "verified"
+    assert summary["agent_loop_coding_context_calls"] >= 2
+    assert (workspace / "src" / "app.py").read_text(encoding="utf-8") == "value = 1\n"
+    rendered = json.dumps([event.payload for event in events], ensure_ascii=False)
+    assert "value = 1" not in rendered
+    assert "value = 2" not in rendered
+    assert "argv" not in rendered
 
 
 def test_conversation_loop_executes_screen_observe_capacity_with_generic_events(

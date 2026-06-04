@@ -1085,6 +1085,11 @@ def test_coding_related_capabilities_mark_routing_inputs_as_system_only():
         properties = description["input_contract"]["properties"]
         assert properties["root"]["x-system-input"] is True
         assert properties["cwd"]["x-system-input"] is True
+    execute_properties = runner.describe_capability("coding_task.execute")[
+        "input_contract"
+    ]["properties"]
+    for name in ("workspace_id", "run_id", "execution_id"):
+        assert execute_properties[name]["x-system-input"] is True
 
 
 def test_runner_reads_code_file_excerpt_without_side_effects(tmp_path):

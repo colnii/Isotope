@@ -434,6 +434,7 @@ class CapabilityCatalog:
                             },
                             "workspace_id": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Isolated workspace id to materialize.",
                             },
                             "goal": {
@@ -451,10 +452,12 @@ class CapabilityCatalog:
                             },
                             "run_id": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Run id for artifact ResourceRefs.",
                             },
                             "execution_id": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Execution id recorded in artifact provenance.",
                             },
                             "include_paths": {
