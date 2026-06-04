@@ -23,10 +23,8 @@ def test_launch_work_order_prompt_includes_commit_rules():
     assert "cwd: /tmp/isotope-worker" in prompt
     assert "goal: 实现目标队列 worker。" in prompt
     assert "必须在本 worktree 内提交一个 Conventional Commits 提交" in prompt
-    assert (
-        "commit_exception: 只有验证失败、需求需要用户拍板或任务明确只读时才可以不提交"
-        in prompt
-    )
+    assert "commit_exception: 验证失败、需求需要用户拍板或任务明确为调查时" in prompt
+    assert "提交要求转为在 SUPERVISOR_SUMMARY 或 SUPERVISOR_NEXT 说明原因和恢复入口" in prompt
     assert "提交哈希和剩余风险" in prompt
 
 
@@ -51,8 +49,8 @@ def test_launch_work_order_prompt_can_allow_ci_push_for_merge_workers():
         allow_remote_push=True,
     )
 
-    assert "只允许按本工单要求推送当前工作分支，用于远端 CI 验证" in prompt
-    assert "不主动推送远端" not in prompt
+    assert "按本工单要求推送当前工作分支用于远端 CI 验证" in prompt
+    assert "远端推送留给显式 push/CI 工单" not in prompt
 
 
 def test_launch_work_order_prompt_includes_ask_user_gate():
@@ -64,7 +62,7 @@ def test_launch_work_order_prompt_includes_ask_user_gate():
 
     assert (
         "ask_user_conditions: 只有 Codex 明确请求拍板、既有用户指示不足，"
-        "且上下文缺失、过时或冲突时才停下来问用户。"
+        "且上下文缺失、过时或冲突时才升级给用户拍板。"
     ) in prompt
     assert (
         "report_protocol: 完成、暂停或遇到阻塞时，严格输出 "
@@ -109,14 +107,31 @@ def test_launch_work_order_prompt_includes_worker_prompt_contract():
     )
 
     assert "worker_prompt_contract:" in prompt
-    assert "task_goal: 只完成本工单 goal" in prompt
+    assert "task_goal: 完成本工单 goal" in prompt
     assert "context_evidence: 先复用仓库已有实现、测试和文档" in prompt
-    assert "allowed_actions: 修改本 goal 直接相关文件、补测试、跑验证、提交本 worktree 改动" in prompt
-    assert "forbidden_actions: 不合并 main、不删除 worktree、不改无关文件、不改写共享历史" in prompt
+    assert "execution_actions: 修改本 goal 直接相关文件、补测试、跑验证、提交本 worktree 改动" in prompt
+    assert "protected_actions: main 合并、worktree 删除、无关文件调整、共享历史改写属于本工单外动作" in prompt
     assert "verification_evidence: SUPERVISOR_SUMMARY 必须写明验证命令和结果" in prompt
     assert "SUPERVISOR_STATUS: working|done|blocked|needs_user" in prompt
     assert "SUPERVISOR_SUMMARY: 用一句或几句中文写明改动、验证证据和提交哈希" in prompt
     assert "SUPERVISOR_NEXT: 用一句中文说明建议下一步" in prompt
+
+
+def test_launch_work_order_prompt_uses_execution_protocol_language():
+    prompt = build_launch_work_order_prompt(
+        target_name="worker-a",
+        cwd="/tmp/isotope-worker",
+        goal="实现目标队列 worker。",
+    )
+
+    assert "forbidden_actions" not in prompt
+    assert "forbidden_scope" not in prompt
+    assert "不主动" not in prompt
+    assert "不合并" not in prompt
+    assert "不删除" not in prompt
+    assert "不改" not in prompt
+    assert "不扩大" not in prompt
+    assert "只读" not in prompt
 
 
 def test_coding_worker_profile_defaults_to_high_reasoning_gpt_5_5():

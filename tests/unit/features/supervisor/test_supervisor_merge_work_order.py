@@ -29,17 +29,16 @@ def test_merge_work_order_prompt_excludes_non_ready_workers_from_merge_plan():
     assert "conflict-one / managed-conflict [conflict_risk]" in prompt
     assert "review-one / managed-review [needs_review]" in prompt
     assert "done-one / managed-done [already_integrated]" in prompt
-    assert "不要 cherry-pick excluded_workers" in prompt
+    assert "excluded_workers 仅用于报告原因" in prompt
 
 
 def test_merge_work_order_prompt_keeps_branch_and_history_safety_rules():
     prompt = build_merge_work_order_prompt(_integration_review_payload())
 
-    assert "禁止删除 worker 分支、base 分支或 worktree" in prompt
-    assert "禁止 force push、reset --hard、rebase 已共享分支或重写远端历史" in prompt
-    assert "遇到 conflict、测试失败、CI 失败或权限不足时停止并汇报 blocked" in prompt
-    assert "禁止删除来源分支或 worktree" in prompt
-    assert "cleanup 只允许归档 Supervisor 账本" in prompt
+    assert "worker 分支、base 分支、来源分支、worktree、Git 历史和工作目录保持原状" in prompt
+    assert "force push、reset --hard、rebase 已共享分支或重写远端历史属于本工单外动作" in prompt
+    assert "遇到 conflict、测试失败、CI 失败或权限不足时汇报 blocked" in prompt
+    assert "cleanup 仅归档 Supervisor 账本" in prompt
 
 
 def test_merge_work_order_prompt_requires_ci_watch_result_writeback():
@@ -66,8 +65,8 @@ def test_merge_work_order_prompt_requires_automatic_ci_verification_after_push()
     )
     assert "gh run watch CI_RUN_ID --exit-status" in prompt
     assert "gh run view CI_RUN_ID" in prompt
-    assert "未找到 CI run" in prompt
-    assert "CI conclusion 不是 success" in prompt
+    assert "CI run 缺失" in prompt
+    assert "CI conclusion 非 success" in prompt
 
 
 def test_merge_work_order_prompt_requires_ci_failure_reason_and_stop():
@@ -75,7 +74,7 @@ def test_merge_work_order_prompt_requires_ci_failure_reason_and_stop():
 
     assert "gh run view CI_RUN_ID --log-failed" in prompt
     assert "测试失败、lint 错误、安装失败或 workflow 配置错误" in prompt
-    assert "不要 rerun CI、不要再次 push、不要无限重试" in prompt
+    assert "rerun CI、再次 push 和重复尝试留给后续明确工单" in prompt
     assert "SUPERVISOR_STATUS: blocked" in prompt
 
 
@@ -85,7 +84,7 @@ def test_merge_work_order_prompt_requires_ci_timeout_stop():
     assert "最多等待 30 分钟" in prompt
     assert "CI timeout" in prompt
     assert "超过 30 分钟" in prompt
-    assert "停止并汇报 blocked" in prompt
+    assert "汇报 blocked" in prompt
 
 
 def test_merge_work_order_prompt_handles_empty_ready_group():
@@ -96,8 +95,20 @@ def test_merge_work_order_prompt_handles_empty_ready_group():
     prompt = build_merge_work_order_prompt(payload)
 
     assert "ready_workers: 0" in prompt
-    assert "没有 ready_to_integrate worker；不要执行 cherry-pick/push" in prompt
+    assert "没有 ready_to_integrate worker；cherry-pick/push 路径无候选" in prompt
     assert "SUPERVISOR_STATUS: needs_user|blocked|done" in prompt
+
+
+def test_merge_work_order_prompt_uses_execution_protocol_language():
+    prompt = build_merge_work_order_prompt(_integration_review_payload())
+
+    assert "forbidden_scope" not in prompt
+    assert "禁止" not in prompt
+    assert "不要" not in prompt
+    assert "不能" not in prompt
+    assert "只读" not in prompt
+    assert "停止并汇报" not in prompt
+    assert "自动解决大范围冲突" not in prompt
 
 
 def test_supervisor_merge_work_order_cli_prints_plain_prompt(capsys, monkeypatch):
@@ -204,7 +215,7 @@ def _integration_review_payload() -> dict[str, object]:
                     "cwd": "/repo/.worktrees/supervisor/conflict-12345678",
                     "branch": "supervisor/conflict-12345678",
                     "worker_commit": "conflict111",
-                    "reason": "只读 merge-tree 检测到 conflict；需要人工 rebase/merge 处理。",
+                    "reason": "merge-tree 检查检测到 conflict；需要人工 rebase/merge 处理。",
                 }
             ],
             "needs_review": [

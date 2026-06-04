@@ -25,16 +25,15 @@ def build_merge_work_order_prompt(payload: Mapping[str, Any]) -> str:
         f"goal: 将 ready_to_integrate worker 审查后合入 {base_ref}，并跟踪 push 后 CI 结果。",
         f"base_ref: {base_ref}",
         f"ready_workers: {len(ready_workers)}",
-        "allowed_scope: 只处理下面 merge_candidates 对应的 worker commit 和必要组合测试修复。",
+        "execution_scope: 处理下面 merge_candidates 对应的 worker commit 和必要组合测试修复。",
         (
-            "forbidden_scope: 禁止删除 worker 分支、base 分支或 worktree；"
-            "禁止 force push、reset --hard、rebase 已共享分支或重写远端历史；"
-            "禁止删除来源分支或 worktree；cleanup 只允许归档 Supervisor 账本，"
-            "不能删除 Git 历史或工作目录。"
+            "protected_scope: worker 分支、base 分支、来源分支、worktree、Git 历史"
+            "和工作目录保持原状；force push、reset --hard、rebase 已共享分支"
+            "或重写远端历史属于本工单外动作；cleanup 仅归档 Supervisor 账本。"
         ),
         (
-            "safety_note: integration-review 是只读 payload；本工单允许动态 worker "
-            "按步骤人工复查后执行合并，但本 builder 模块不直接执行合并。"
+            "execution_note: integration-review 是投影 payload；本工单允许动态 worker "
+            "按步骤人工复查后执行合并，builder 模块只生成工单文本。"
         ),
     ]
 
@@ -65,7 +64,7 @@ def _ready_worker_lines(ready_workers: Sequence[Mapping[str, Any]]) -> list[str]
         return [
             *lines,
             "- none",
-            "empty_ready_action: 没有 ready_to_integrate worker；不要执行 cherry-pick/push。",
+            "empty_ready_action: 没有 ready_to_integrate worker；cherry-pick/push 路径无候选，直接报告当前状态。",
         ]
     for worker in ready_workers:
         lines.extend(
@@ -99,7 +98,7 @@ def _excluded_worker_lines(groups: Mapping[str, Any]) -> list[str]:
             )
     if not has_excluded:
         lines.append("- none")
-    lines.append("excluded_rule: 不要 cherry-pick excluded_workers；只在报告里解释原因。")
+    lines.append("excluded_rule: excluded_workers 仅用于报告原因，cherry-pick 输入只来自 merge_candidates。")
     return lines
 
 
@@ -117,7 +116,7 @@ def _execution_steps(
         ),
         (
             "3. cherry-pick: 按 merge_candidates 顺序执行 git cherry-pick -x COMMIT；"
-            "如果出现 conflict，立即停止，不要自动解决大范围冲突。"
+            "如果出现 conflict，进入 needs_user/blocked 报告路径，写明冲突文件和恢复入口。"
         ),
         (
             "4. 组合测试: cherry-pick 全部成功后运行相关 pytest；共享路径改动时运行 "
@@ -147,12 +146,13 @@ def _execution_steps(
             "安装失败或 workflow 配置错误。"
         ),
         (
-            "   CI retry rule: CI 失败后停止并汇报 SUPERVISOR_STATUS: blocked；"
-            "不要 rerun CI、不要再次 push、不要无限重试或静默退出。"
+            "   CI retry rule: CI 失败后汇报 SUPERVISOR_STATUS: blocked；"
+            "下一步写明失败 run、关键错误和建议的后续修复 worker；rerun CI、再次 push "
+            "和重复尝试留给后续明确工单。"
         ),
         (
             "   CI timeout rule: 如果超过 30 分钟仍没有 terminal conclusion，"
-            "按 CI timeout 处理，停止并汇报 blocked，写明 run id、head sha "
+            "按 CI timeout 处理并汇报 blocked，写明 run id、head sha "
             "和已等待时长。"
         ),
         (
@@ -161,14 +161,14 @@ def _execution_steps(
             "会基于 done 状态归档账本。"
         ),
         (
-            "9. stop rules: 遇到 conflict、测试失败、CI 失败或权限不足时停止并汇报 blocked；"
-            "未找到 CI run 或 CI conclusion 不是 success 都按 CI 失败处理；"
-            "CI 失败时保留当前 merge worktree 供人工复查；不要删除分支、不要重写历史。"
+            "9. escalation rules: 遇到 conflict、测试失败、CI 失败或权限不足时汇报 blocked；"
+            "CI run 缺失或 CI conclusion 非 success 都按 CI 失败处理；"
+            "CI 失败时保留当前 merge worktree 供复查；分支和历史保持原状。"
         ),
     ]
     if not ready_workers:
         lines.append(
-            "no_ready_override: 没有 ready_to_integrate worker；不要执行 cherry-pick/push。"
+            "no_ready_override: 没有 ready_to_integrate worker；cherry-pick/push 路径无候选。"
         )
     return lines
 

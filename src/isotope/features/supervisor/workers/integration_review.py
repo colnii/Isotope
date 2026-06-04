@@ -83,7 +83,7 @@ def collect_integration_reviews(
             "auto_merge": False,
             "push": False,
             "delete_branch": False,
-            "note": "只读扫描 managed worker、git 分支和提交包含关系，不执行 merge/push/delete。",
+            "note": "扫描 managed worker、git 分支和提交包含关系；merge/push/delete 由后续工单执行。",
         },
     }
 
@@ -386,7 +386,7 @@ def _classify(
     if merge_conflict:
         return (
             "conflict_risk",
-            "只读 merge-tree 检测到 conflict；需要人工 rebase/merge 处理。",
+            "merge-tree 检查检测到 conflict；需要人工 rebase/merge 处理。",
             [*reasons, "merge-tree conflict"],
         )
     return (

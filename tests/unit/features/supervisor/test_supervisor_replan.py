@@ -227,7 +227,7 @@ def test_supervisor_replan_turns_integration_review_groups_into_next_advice():
                     "branch": "supervisor/conflict-worker",
                     "worker_commit": "conflict444",
                     "base_ref": "main",
-                    "reason": "只读 merge-tree 检测到 conflict；需要人工 rebase/merge 处理。",
+                    "reason": "merge-tree 检查检测到 conflict；需要人工 rebase/merge 处理。",
                 }
             ],
         },

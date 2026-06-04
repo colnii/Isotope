@@ -595,7 +595,7 @@ def test_supervisor_integration_review_flags_merge_conflict_risk(tmp_path):
     item = payload["groups"]["conflict_risk"][0]
     assert item["record_id"] == "managed-conflict"
     assert item["merge_conflict"] is True
-    assert item["reason"] == "只读 merge-tree 检测到 conflict；需要人工 rebase/merge 处理。"
+    assert item["reason"] == "merge-tree 检查检测到 conflict；需要人工 rebase/merge 处理。"
     assert "CONFLICT (content)" in item["merge_check"]["stderr"]
 
 

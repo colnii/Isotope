@@ -11,9 +11,9 @@ def build_launch_work_order_prompt(
     allow_remote_push: bool = False,
 ) -> str:
     remote_push_rule = (
-        "只允许按本工单要求推送当前工作分支，用于远端 CI 验证；不推送无关分支。"
+        "按本工单要求推送当前工作分支用于远端 CI 验证；其他分支保持原状。"
         if allow_remote_push
-        else "不主动推送远端。"
+        else "远端推送留给显式 push/CI 工单。"
     )
     return "\n".join(
         [
@@ -22,18 +22,18 @@ def build_launch_work_order_prompt(
             f"cwd: {cwd.strip()}",
             f"target_name: {target_name.strip()}",
             "worker_prompt_contract:",
-            "task_goal: 只完成本工单 goal，不主动扩写产品范围。",
+            "task_goal: 完成本工单 goal，产品范围按用户目标收束。",
             "context_evidence: 先复用仓库已有实现、测试和文档；引用关键文件、命令或证据。",
-            "allowed_actions: 修改本 goal 直接相关文件、补测试、跑验证、提交本 worktree 改动。",
-            "forbidden_actions: 不合并 main、不删除 worktree、不改无关文件、不改写共享历史。",
+            "execution_actions: 修改本 goal 直接相关文件、补测试、跑验证、提交本 worktree 改动。",
+            "protected_actions: main 合并、worktree 删除、无关文件调整、共享历史改写属于本工单外动作。",
             "verification_evidence: SUPERVISOR_SUMMARY 必须写明验证命令和结果。",
             "report_lines: SUPERVISOR_STATUS: working|done|blocked|needs_user",
             "report_lines: SUPERVISOR_SUMMARY: 用一句或几句中文写明改动、验证证据和提交哈希",
             "report_lines: SUPERVISOR_NEXT: 用一句中文说明建议下一步",
-            "allowed_scope: 只处理本次 goal 直接相关的代码、测试和必要文档。",
+            "execution_scope: 处理本次 goal 直接相关的代码、测试和必要文档。",
             (
-                f"forbidden_scope: {remote_push_rule}"
-                "不扩大到无关功能；不改用户未要求的仓库规则。"
+                f"protected_scope: {remote_push_rule}"
+                "无关功能和用户未要求的仓库规则保持原状。"
             ),
             (
                 "coordination: 使用当前工单指定的 cwd 和目标分支推进；"
@@ -69,12 +69,12 @@ def build_launch_work_order_prompt(
                 "或等价补丁时，integration-review 会自动归入 already_integrated。"
             ),
             (
-                "commit_exception: 只有验证失败、需求需要用户拍板或任务明确只读时才可以不提交，"
-                "并必须在 SUPERVISOR_SUMMARY 或 SUPERVISOR_NEXT 说明原因。"
+                "commit_exception: 验证失败、需求需要用户拍板或任务明确为调查时，"
+                "提交要求转为在 SUPERVISOR_SUMMARY 或 SUPERVISOR_NEXT 说明原因和恢复入口。"
             ),
             (
                 "ask_user_conditions: 只有 Codex 明确请求拍板、既有用户指示不足，"
-                "且上下文缺失、过时或冲突时才停下来问用户。"
+                "且上下文缺失、过时或冲突时才升级给用户拍板。"
             ),
             (
                 "report_protocol: 完成、暂停或遇到阻塞时，严格输出 "
