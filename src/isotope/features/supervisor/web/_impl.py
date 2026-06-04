@@ -22,6 +22,7 @@ from isotope.runtime.in_process import InProcessServer
 from ..dashboard.html import dashboard_page_html
 from ..planner.decision_requests import record_decision_answer
 from ..flow import CodexSupervisorFlow, _tmux_capture_pane
+from ..planner.goal_planner import plan_supervisor_goals
 from ..planner.goal_queue import record_supervisor_goal
 from ..state.lane_state import record_lane_prompt
 from ..llm_action.llm_summary import (
@@ -519,6 +520,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
                     goal=_required_string(payload.get("goal"), "goal"),
                     write=write,
                     limit=_positive_int(payload.get("limit"), "limit", default=3),
+                    provider=self.server.llm_action_provider,
                 )
             planned["active_goals"] = active_goal_dicts_for_codex_home(
                 self.server.codex_home,
@@ -755,7 +757,18 @@ def _run_goal_plan_capacity(
     goal: str,
     write: bool,
     limit: int,
+    provider: SummaryProvider | None,
 ) -> dict[str, Any]:
+    if provider is not None:
+        return plan_supervisor_goals(
+            root=Path.cwd(),
+            codex_home=codex_home,
+            provider=provider,
+            user_goal=goal,
+            write=write,
+            limit=limit,
+            planning_trigger="capacity",
+        )
     result = CapabilityRunner().run_capability(
         "supervisor.goal_plan",
         inputs={
