@@ -78,6 +78,7 @@ def test_capability_runner_cli_lists_capabilities_as_json():
         "research.search",
         "screen.report",
         "supervisor.codex_operation",
+        "supervisor.goal_plan",
         "supervisor.integration_review",
         "supervisor.request_context",
         "supervisor.worker_review",
@@ -154,6 +155,18 @@ def test_capability_runner_cli_searches_supervisor_worker_review_as_json():
     assert payload["status"] == "ok"
     assert [item["capability_id"] for item in payload["search"]["capabilities"]] == [
         "supervisor.worker_review"
+    ]
+    _assert_public_metadata(payload)
+
+
+def test_capability_runner_cli_searches_supervisor_goal_plan_as_json():
+    result = _run_cli("search", "goal plan", "--json")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert "supervisor.goal_plan" in [
+        item["capability_id"] for item in payload["search"]["capabilities"]
     ]
     _assert_public_metadata(payload)
 
@@ -257,6 +270,21 @@ def test_capability_runner_cli_plans_integration_review_missing_inputs_as_json()
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_readonly"
     assert plan["missing_inputs"] == ["state_root"]
+    _assert_public_metadata(payload)
+
+
+def test_capability_runner_cli_plans_goal_plan_missing_inputs_as_json():
+    result = _run_cli("plan", "supervisor.goal_plan", "--json")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    plan = payload["plan"]
+    assert plan["capability_id"] == "supervisor.goal_plan"
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "supervisor_goal_plan"
+    assert plan["missing_inputs"] == ["state_root", "cwd", "goal"]
     _assert_public_metadata(payload)
 
 

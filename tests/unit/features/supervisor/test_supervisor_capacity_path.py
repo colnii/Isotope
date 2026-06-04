@@ -245,6 +245,46 @@ def test_supervisor_capacity_plan_passes_selection_arguments_to_launch_plan(tmp_
     assert result["agent_loop"] is None
 
 
+def test_supervisor_capacity_plan_offers_goal_plan_capability(tmp_path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    state_root = tmp_path / "supervisor-state"
+    provider = FakeCapacityProvider(
+        json.dumps(
+            {
+                "capacity_id": "supervisor.goal_plan",
+                "arguments": {
+                    "state_root": str(state_root),
+                    "cwd": str(workspace),
+                    "goal": "把 dashboard 目标规划接入 capacity",
+                },
+                "confidence": 0.9,
+                "rationale": "dashboard goal planning should be callable as capacity",
+            }
+        )
+    )
+
+    result = capacity_command.build_supervisor_capacity_plan(
+        goal="把 dashboard 目标规划接入 capacity",
+        provider=provider,
+        state_root=tmp_path / "state",
+        execute_agent_loop=False,
+    )
+
+    assert result["status"] == "ok"
+    assert result["selection"]["capacity_id"] == "supervisor.goal_plan"
+    assert result["selection"]["arguments"] == {
+        "state_root": str(state_root),
+        "cwd": str(workspace),
+        "goal": "把 dashboard 目标规划接入 capacity",
+    }
+    assert result["capability_launch_plan"]["capability_id"] == "supervisor.goal_plan"
+    assert result["capability_launch_plan"]["runner_kind"] == "supervisor_goal_plan"
+    assert result["capability_launch_plan"]["can_launch"] is True
+    assert result["capability_launch_plan"]["missing_inputs"] == []
+    assert result["agent_loop"] is None
+
+
 def test_supervisor_capacity_plan_can_execute_low_risk_agent_loop_step(tmp_path):
     provider = DeterministicCapacityProvider(
         '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'

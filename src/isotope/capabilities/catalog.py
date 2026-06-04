@@ -1758,6 +1758,76 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="supervisor.goal_plan",
+                    title="Supervisor Goal Plan",
+                    description=(
+                        "Plan Supervisor dashboard goals through the existing goal "
+                        "planner boundary."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "supervisor",
+                        "goal",
+                        "goal-plan",
+                        "dashboard",
+                        "planning",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["state_root", "cwd", "goal"],
+                        "properties": {
+                            "state_root": {
+                                "type": "string",
+                                "description": "Supervisor state root used for goal queue writes.",
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Workspace directory whose docs seed goal planning.",
+                            },
+                            "goal": {
+                                "type": "string",
+                                "description": "User goal to decompose into Supervisor goals.",
+                            },
+                            "limit": {
+                                "type": "integer",
+                                "description": "Maximum planned goal candidates.",
+                                "default": 3,
+                            },
+                            "write": {
+                                "type": "boolean",
+                                "description": "Write planned candidates into the goal queue.",
+                                "default": False,
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "mode",
+                            "root",
+                            "user_goal",
+                            "planning_trigger",
+                            "candidates",
+                            "written_goals",
+                            "plan_summary",
+                            "phases",
+                            "parallel_recommendations",
+                            "stop_conditions",
+                            "acceptance_conditions",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "reuses_goal_planner",
+                        "write_requires_explicit_flag",
+                        "goal_queue_write_only_when_requested",
+                        "low_sensitive_summary_only",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="supervisor.request_context",
                     title="Supervisor Request Context",
                     description=(

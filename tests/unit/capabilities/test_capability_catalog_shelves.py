@@ -142,6 +142,7 @@ def test_default_builtins_expose_active_product_candidate_set():
         "screen.observe",
         "screen.report",
         "supervisor.codex_operation",
+        "supervisor.goal_plan",
         "supervisor.integration_review",
         "supervisor.request_context",
         "supervisor.worker_review",

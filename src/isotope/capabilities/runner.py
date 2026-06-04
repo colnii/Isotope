@@ -82,6 +82,12 @@ from .supervisor import (
     run_supervisor_worker_review,
     validate_supervisor_readonly_inputs,
 )
+from .supervisor_goal_plan import (
+    SUPERVISOR_GOAL_PLAN_CAPABILITY,
+    is_supervisor_goal_plan_capability,
+    run_supervisor_goal_plan,
+    validate_supervisor_goal_plan_inputs,
+)
 from .testing import (
     TEST_RUN_CAPABILITY,
     is_test_run_capability,
@@ -223,7 +229,10 @@ class CapabilityRunner:
             return _unknown_launch_plan(capability_id)
 
         input_mapping = _input_mapping(inputs)
-        if is_supervisor_readonly_capability(capability_id):
+        if (
+            is_supervisor_readonly_capability(capability_id)
+            or is_supervisor_goal_plan_capability(capability_id)
+        ):
             input_mapping = normalize_supervisor_state_root_inputs(input_mapping)
         status = self._catalog.get_capability_status(capability_id, env=env)
         scenario = _CAPABILITY_SCENARIOS.get(capability_id)
@@ -245,6 +254,11 @@ class CapabilityRunner:
             missing_inputs=missing_inputs,
         )
         validate_supervisor_readonly_inputs(
+            capability_id=capability_id,
+            inputs=input_mapping,
+            missing_inputs=missing_inputs,
+        )
+        validate_supervisor_goal_plan_inputs(
             capability_id=capability_id,
             inputs=input_mapping,
             missing_inputs=missing_inputs,
@@ -318,6 +332,7 @@ class CapabilityRunner:
             and not is_research_capability(capability_id)
             and not is_screen_capability(capability_id)
             and not is_supervisor_readonly_capability(capability_id)
+            and not is_supervisor_goal_plan_capability(capability_id)
             and not is_coding_capability(capability_id)
             and not is_coding_execute_capability(capability_id)
             and not is_code_access_capability(capability_id)
@@ -367,13 +382,17 @@ class CapabilityRunner:
     ) -> dict[str, Any]:
         capability = self._lookup_capability(capability_id)
         input_mapping = _input_mapping(inputs)
-        if is_supervisor_readonly_capability(capability_id):
+        if (
+            is_supervisor_readonly_capability(capability_id)
+            or is_supervisor_goal_plan_capability(capability_id)
+        ):
             input_mapping = normalize_supervisor_state_root_inputs(input_mapping)
         if (
             is_memory_readonly_capability(capability_id)
             or is_research_capability(capability_id)
             or is_screen_capability(capability_id)
             or is_supervisor_readonly_capability(capability_id)
+            or is_supervisor_goal_plan_capability(capability_id)
             or is_coding_capability(capability_id)
             or is_coding_execute_capability(capability_id)
             or is_code_access_capability(capability_id)
@@ -402,6 +421,11 @@ class CapabilityRunner:
                 missing_inputs=missing_inputs,
             )
             validate_supervisor_readonly_inputs(
+                capability_id=capability_id,
+                inputs=input_mapping,
+                missing_inputs=missing_inputs,
+            )
+            validate_supervisor_goal_plan_inputs(
                 capability_id=capability_id,
                 inputs=input_mapping,
                 missing_inputs=missing_inputs,
@@ -480,6 +504,8 @@ class CapabilityRunner:
             return run_supervisor_integration_review(inputs=input_mapping)
         if capability_id == SUPERVISOR_WORKER_REVIEW_CAPABILITY:
             return run_supervisor_worker_review(inputs=input_mapping)
+        if capability_id == SUPERVISOR_GOAL_PLAN_CAPABILITY:
+            return run_supervisor_goal_plan(inputs=input_mapping)
         if capability_id == CODING_TASK_PREVIEW_CAPABILITY:
             return run_coding_task_preview(inputs=input_mapping)
         if capability_id == CODING_TASK_EXECUTE_CAPABILITY:
@@ -633,6 +659,8 @@ def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
         return "deterministic_readonly"
     if is_supervisor_readonly_capability(str(capability.get("capability_id", ""))):
         return "deterministic_readonly"
+    if is_supervisor_goal_plan_capability(str(capability.get("capability_id", ""))):
+        return "supervisor_goal_plan"
     if is_coding_capability(str(capability.get("capability_id", ""))):
         return "deterministic_preview"
     if is_coding_execute_capability(str(capability.get("capability_id", ""))):

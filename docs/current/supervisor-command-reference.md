@@ -57,7 +57,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 | `merge-work-order` / `merge-dispatch` / `promotion` | 生成 merge worker 工单、派发合并、CI watch 和 promotion gate。 | [architecture migration table](./supervisor-architecture-migration-table.md) |
 | `cleanup` | 只在 done、archived、already_integrated 且路径安全时删除 worktree。 | [capability inventory](./supervisor-capability-inventory.md) |
 | `capacity` | 生成 capacity decision；显式执行时通过 tick driver 运行一次 `call_capability`。 | [capability inventory](./supervisor-capability-inventory.md)、[agent-loop tick driver boundary](../architecture/agent-loop-tick-driver-boundary-v0.2.md) |
-| `isotope-capability` | 搜索、预检或运行低敏 capability；`supervisor.worker_review` / `supervisor.integration_review` 复用既有只读审查路径，`memory.query` / `screen.observe` / `screen.report` 复用既有低敏查询、观察和报告边界。 | [capability inventory](./supervisor-capability-inventory.md) |
+| `isotope-capability` | 搜索、预检或运行低敏 capability；`supervisor.goal_plan` 复用目标规划，`supervisor.worker_review` / `supervisor.integration_review` 复用既有只读审查路径，`memory.query` / `screen.observe` / `screen.report` 复用既有低敏查询、观察和报告边界。 | [capability inventory](./supervisor-capability-inventory.md) |
 | `memory` / `worker-event` / `worker-manager` | 查询本地 memory preview、worker event、multi-worker read model 和 supervised capacity run 摘要。 | [terminology](./terminology.md)、[capability inventory](./supervisor-capability-inventory.md) |
 | `research` | 代理 shared Research flow，支持 search / list / inspect；成功写 `research.report`，provider 失败只写 `research.provider_trace`。 | [application structure plan](./application-structure-plan.md)、[terminology](./terminology.md) |
 | `isotope-screen inspect/report` / `screen` | 读取 screen artifact 或生成 run 级低敏 observe/control plan 摘要；Supervisor `screen report/inspect` 复用同一 screen artifact report 边界。 | [application structure plan](./application-structure-plan.md)、[terminology](./terminology.md) |
@@ -147,6 +147,8 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
 - `capacity plan --execute-agent-loop` 只允许已标记可执行的 `call_capacity`
   通过单 tick driver 跑一次 `call_capability`，不打开自动多轮循环；JSON 输出会带
   `agent_loop_summary` 低敏字段，供 dashboard / web 复用。
+- `supervisor.goal_plan` capability 默认只预览目标规划；只有输入里显式
+  `write=true` 才会写入 Supervisor goal queue。
 - `memory --query` 只返回 summary / refs / provenance preview；plain 输出会标出
   `content_policy`、匹配数量、source refs 和 provenance，不返回 raw content。
 - `isotope-capability run memory.query --input-json ...` 复用同一条

@@ -160,6 +160,20 @@ def test_runner_discovers_supervisor_worker_review_from_default_catalog():
     assert "no_merge_or_cleanup" in description["safety_boundaries"]
 
 
+def test_runner_discovers_supervisor_goal_plan_from_default_catalog():
+    runner = _runner()
+
+    assert "supervisor.goal_plan" in _ids(runner.list_capabilities())
+    search = runner.search_capabilities(query="goal plan")
+
+    assert "supervisor.goal_plan" in _ids(search["capabilities"])
+    description = runner.describe_capability("supervisor.goal_plan")
+    assert description["input_contract"]["required"] == ["state_root", "cwd", "goal"]
+    assert "codex_home" not in description["input_contract"]["properties"]
+    assert "reuses_goal_planner" in description["safety_boundaries"]
+    assert "write_requires_explicit_flag" in description["safety_boundaries"]
+
+
 def test_runner_discovers_supervisor_integration_review_from_default_catalog():
     runner = _runner()
 

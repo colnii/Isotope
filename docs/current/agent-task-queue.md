@@ -117,6 +117,10 @@
 - `supervisor.worker_review` 已进入 capability runner：`isotope-capability`
   可 search/plan/run，运行时复用既有 lightweight `worker-review`，只返回低敏
   决策摘要，不自动合并、不清理 worktree 或分支。
+- `supervisor.goal_plan` 已进入 capability runner / capacity path：
+  `isotope-capability` 可 search/plan/run，运行时复用 dashboard 使用的
+  `plan_supervisor_goals`；默认只返回规划候选，只有显式 `write=true`
+  才写入 `goals.jsonl`。
 - Web research 当前入口已闭环：`isotope-research search/list/inspect` 和
   `isotope-supervisor research search/list/inspect` 复用同一套 Research flow、
   `research.*` artifact 和 provenance 边界；成功 report、失败 trace、list
@@ -196,8 +200,8 @@
 
 状态：
 
-- LLM planner / capacity path 已复用 `supervisor.worker_review` 和
-  `supervisor.integration_review` 的 capability id。
+- LLM planner / capacity path 已复用 `supervisor.goal_plan`、
+  `supervisor.worker_review` 和 `supervisor.integration_review` 的 capability id。
 - `build_supervisor_capacity_plan(...)` 会从 `CapabilityRunner` 取得可提供给
   LLM 的 manifest；这两个 Supervisor review capability 缺 `state_root` 时也会
   以 missing-inputs 状态暴露给 planner 补参。
