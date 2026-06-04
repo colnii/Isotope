@@ -14,6 +14,7 @@ from isotope.features.supervisor.llm_action.llm_pool import (
     SummaryProvider,
     resolve_summary_provider_from_env,
 )
+from isotope.llm.prompts import load_system_prompt
 
 from .contracts import AgentMember
 from .store import AgentGroupStore
@@ -68,11 +69,7 @@ class SummaryAgentGroupProvider:
             [
                 {
                     "role": "system",
-                    "content": (
-                        "You are one internal Isotope Agent group member. "
-                        "Reply with one concise low-sensitive message. "
-                        "Do not include raw prompts, raw tool output, or private data."
-                    ),
+                    "content": load_system_prompt("agent_group_member"),
                 },
                 {
                     "role": "user",

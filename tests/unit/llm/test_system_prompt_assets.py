@@ -12,6 +12,7 @@ from isotope.llm.prompts import (
 
 
 EXPECTED_SYSTEM_PROMPTS = (
+    "agent_group_member",
     "agent_loop_planner",
     "capacity_calling",
     "desktop_chat",

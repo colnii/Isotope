@@ -9,6 +9,7 @@ import re
 from typing import Any
 
 SYSTEM_PROMPT_NAMES = (
+    "agent_group_member",
     "agent_loop_planner",
     "capacity_calling",
     "desktop_chat",
