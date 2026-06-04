@@ -209,7 +209,7 @@
 | `tick policy` | 步进策略，决定智能体循环每轮是否继续、暂停或停止 | 智能体 | `src/isotope/agents/loop/control.py` |
 | `tick driver` | 单 tick 驱动器，先看 tick policy，允许时执行一个 planner-selected step，再返回执行后的 policy | 智能体 | `src/isotope/agents/loop/tick.py` |
 | `bounded goal runner` | 有界目标 runner，在单 tick driver 外做有限循环，每轮复用 tick policy、planner adapter 和 step driver；当前不接真实 LLM、不默认打开 Supervisor 长循环 | 智能体 | `src/isotope/agents/loop/runner.py` |
-| `provider planner tick` | provider 驱动的单 tick 规划入口，用注入的 LLM provider 生成 JSON planner decision，再走现有 planner contract 和 step driver；当前测试只用 fake provider，不打开真实网络；prompt 默认带 `default_context.memory` 低敏记忆 preview | 智能体/模型 | `src/isotope/agents/loop/provider_planner.py`, `src/isotope/agents/loop/context.py` |
+| `provider planner tick` | provider 驱动的单 tick 规划入口，用注入的 LLM provider 生成 JSON planner decision，再走现有 planner contract 和 step driver；当前测试只用 deterministic test provider，不打开真实网络；prompt 默认带 `default_context.memory` 低敏记忆 preview | 智能体/模型 | `src/isotope/agents/loop/provider_planner.py`, `src/isotope/agents/loop/context.py` |
 | `AgentConversationMessage` | agent 候选发言 contract，表达哪个 agent 想回应、插话、内部记录或沉默 | 智能体/对话 | `src/isotope/agents/loop/conversation.py` |
 | `conversation arbiter` | 对话仲裁器，在同一回合内按 interrupt、priority、state_lock 和可见消息上限筛选 agent 候选发言，避免抢话和状态锁冲突 | 智能体/对话 | `src/isotope/agents/loop/conversation.py` |
 | `executor` | 执行器，执行已批准的动作或工具调用 | 执行 | `src/isotope/execution/executor.py` |

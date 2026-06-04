@@ -63,7 +63,7 @@
   `run_agent_loop_provider_planner_tick(...)` 用注入 provider 生成 JSON planner
   decision，解析成现有 `planner_output`，再走
   `run_agent_loop_real_planner_contract_step(...)` /
-  `run_agent_loop_planner_step(...)` 执行；测试只用 fake provider，不接真实网络，
+  `run_agent_loop_planner_step(...)` 执行；测试只用 deterministic test provider，不接真实网络，
   raw prompt/messages/raw response 不出 provider/planner 边界。每个 planner tick
   现在会默认注入 `default_context.memory`，复用 agent-loop memory query 的
   summary / refs / provenance / quality preview；这只是 runtime 构造上下文，

@@ -9,7 +9,7 @@ def _valid_payload() -> dict:
     return {
         "research_id": "research_001",
         "query": "agent memory retrieval",
-        "provider": "fake",
+        "provider": "codex_delegated",
         "created_at": "2026-05-24T00:00:00Z",
         "status": "ok",
         "evidence_status": "complete",
@@ -36,7 +36,7 @@ def _valid_payload() -> dict:
             "limitations": ["single source"],
             "next_queries": ["controlled expand grants"],
         },
-        "provenance": {"provider": "fake"},
+        "provenance": {"provider": "codex_delegated"},
     }
 
 
@@ -45,6 +45,13 @@ def test_web_research_run_requires_source_backed_claims():
 
     assert run.evidence_status == "complete"
     assert run.to_dict()["report"]["claims"][0]["source_ids"] == ["src_001"]
+
+
+def test_web_research_run_fixture_uses_real_provider_name():
+    payload = _valid_payload()
+
+    assert payload["provider"] == "codex_delegated"
+    assert payload["provenance"]["provider"] == "codex_delegated"
 
 
 def test_web_research_run_marks_missing_sources_as_incomplete_evidence():
