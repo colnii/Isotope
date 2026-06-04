@@ -56,6 +56,11 @@ from .routes.desktop_artifacts import (
 )
 from .routes.goals import write_goal_plan_candidates
 from .routes.service_actions import SERVICE_ACTION_PATHS, run_service_action
+from .routes.worker_lifecycle import (
+    WORKER_LIFECYCLE_EXECUTE_PATH,
+    WorkerLifecycleExecuteError,
+    run_worker_lifecycle_execute,
+)
 
 
 CORS_ALLOW_METHODS = "GET, POST, OPTIONS"
@@ -74,6 +79,7 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         stale_after_seconds: int,
         active_within_seconds: int,
         send_run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+        lifecycle_run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
         repair_run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
         llm_action_provider: SummaryProvider | None = None,
         desktop_chat_provider: DesktopChatProvider | None = None,
@@ -85,6 +91,7 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         self.stale_after_seconds = stale_after_seconds
         self.active_within_seconds = active_within_seconds
         self.send_run = send_run
+        self.lifecycle_run = lifecycle_run
         self.llm_action_provider = llm_action_provider
         self.desktop_chat_provider = desktop_chat_provider
         self.desktop_chat_capacity_provider = desktop_chat_capacity_provider
@@ -216,6 +223,7 @@ def create_dashboard_server(
     stale_after_seconds: int,
     active_within_seconds: int,
     send_run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+    lifecycle_run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
     repair_run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
     llm_action_provider: SummaryProvider | None = None,
     desktop_chat_provider: DesktopChatProvider | None = None,
@@ -228,6 +236,7 @@ def create_dashboard_server(
         stale_after_seconds=stale_after_seconds,
         active_within_seconds=active_within_seconds,
         send_run=send_run,
+        lifecycle_run=lifecycle_run,
         repair_run=repair_run,
         llm_action_provider=llm_action_provider,
         desktop_chat_provider=desktop_chat_provider,
@@ -295,6 +304,9 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/goal/plan":
             self._send_goal_plan()
+            return
+        if path == WORKER_LIFECYCLE_EXECUTE_PATH:
+            self._send_worker_lifecycle_execute()
             return
         if path in SERVICE_ACTION_PATHS:
             self._send_service_action(path)
@@ -627,6 +639,24 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
                 "service": result["service"],
             }
         )
+
+    def _send_worker_lifecycle_execute(self) -> None:
+        try:
+            payload = self._read_json_body()
+            result = run_worker_lifecycle_execute(self.server, payload)
+        except WorkerLifecycleExecuteError as exc:
+            self._send_json(
+                {
+                    "status": "error",
+                    "error": {
+                        "code": exc.code,
+                        "message": str(exc),
+                    },
+                },
+                status_code=exc.status_code,
+            )
+            return
+        self._send_json(result)
 
     def _send_events(self) -> None:
         self.send_response(200)

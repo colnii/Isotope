@@ -3052,6 +3052,205 @@ def test_codex_supervisor_web_dashboard_payload_reads_persisted_worker_lifecycle
     assert payload["state_snapshot"]["worker_lifecycle"] == payload["worker_lifecycle"]
 
 
+def test_codex_supervisor_web_executes_current_worker_lifecycle_plan(tmp_path):
+    from isotope.features.supervisor import web
+
+    codex_home = tmp_path / ".codex"
+    _record_cleanup_lifecycle_execution(codex_home, with_result=True)
+    calls: list[list[str]] = []
+
+    def stub_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        assert check is False
+        assert text is True
+        assert capture_output is True
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            json.dumps(
+                {
+                    "status": "ok",
+                    "executed": {
+                        "kind": "cleanup_worktree",
+                        "source": "worker_lifecycle",
+                        "deleted": [{"target_name": "source-worker"}],
+                    },
+                },
+                ensure_ascii=False,
+            ),
+            "",
+        )
+
+    server = web.create_dashboard_server(
+        codex_home=codex_home,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+        lifecycle_run=stub_run,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        body = json.dumps(
+            {
+                "execute_command": (
+                    "isotope-supervisor loop --iterations 1 "
+                    "--lifecycle-cleanup-execute"
+                )
+            }
+        ).encode("utf-8")
+        conn.request(
+            "POST",
+            "/worker-lifecycle/execute",
+            body,
+            {"content-type": "application/json"},
+        )
+        response = conn.getresponse()
+        payload = json.loads(response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert response.status == 200
+    assert payload["status"] == "ok"
+    assert payload["execution"]["executed"]["kind"] == "cleanup_worktree"
+    assert calls == [
+        [
+            "isotope-supervisor",
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--limit",
+            "5",
+            "--stale-after",
+            "999999",
+            "--active-within",
+            "180",
+            "--iterations",
+            "1",
+            "--json",
+            "--lifecycle-cleanup-execute",
+        ]
+    ]
+
+
+def test_codex_supervisor_web_rejects_stale_worker_lifecycle_execute_command(tmp_path):
+    from isotope.features.supervisor import web
+
+    codex_home = tmp_path / ".codex"
+    _record_cleanup_lifecycle_execution(codex_home)
+    calls: list[list[str]] = []
+
+    def stub_run(
+        command: list[str],
+        *,
+        check: bool,
+        text: bool,
+        capture_output: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "{}", "")
+
+    server = web.create_dashboard_server(
+        codex_home=codex_home,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+        lifecycle_run=stub_run,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        body = json.dumps(
+            {
+                "execute_command": (
+                    "isotope-supervisor loop --iterations 1 "
+                    "--merge-dispatch-execute"
+                )
+            }
+        ).encode("utf-8")
+        conn.request(
+            "POST",
+            "/worker-lifecycle/execute",
+            body,
+            {"content-type": "application/json"},
+        )
+        response = conn.getresponse()
+        payload = json.loads(response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert response.status == 409
+    assert payload["status"] == "error"
+    assert payload["error"]["code"] == "worker_lifecycle_execute_stale"
+    assert calls == []
+
+
+def _record_cleanup_lifecycle_execution(
+    codex_home: Path,
+    *,
+    with_result: bool = False,
+) -> None:
+    result = (
+        {
+            "kind": "cleanup_worktree",
+            "source": "worker_lifecycle",
+            "skipped": True,
+            "reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
+            "count": 1,
+        }
+        if with_result
+        else None
+    )
+    record_worker_lifecycle_decision(
+        codex_home=codex_home,
+        worker_lifecycle_decision={
+            "stage": "archived",
+            "next_step": "cleanup_worktree",
+            "policy": {
+                "policy_status": "program_resolved",
+                "program_action": "archive_integrated",
+                "remaining_step": "cleanup_worktree",
+                "blocked_reason": None,
+            },
+        },
+        worker_lifecycle_execution={
+            "kind": "cleanup_worktree",
+            "source": "worker_lifecycle",
+            "next_step": "cleanup_worktree",
+            "status": "ready_to_delete",
+            "delete_worktree_actions": [
+                {
+                    "kind": "delete_worktree",
+                    "target_name": "source-worker",
+                    "record_id": "managed-source",
+                    "confirm_delete_worktree": True,
+                    "base_ref": "main",
+                    "source": "worker_lifecycle",
+                }
+            ],
+        },
+        worker_lifecycle_execution_result=result,
+    )
+
+
 def test_codex_supervisor_web_dashboard_payload_builder_keeps_degraded_snapshot_meta(
     tmp_path,
 ):

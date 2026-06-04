@@ -283,5 +283,8 @@ def test_dashboard_html_includes_worker_lifecycle_card() -> None:
     assert 'id="worker-lifecycle-card"' in html
     assert 'id="worker-lifecycle-execution"' in html
     assert 'id="worker-lifecycle-execution-copy"' in html
+    assert 'id="worker-lifecycle-execution-run"' in html
     assert "copyWorkerLifecycleExecutionCommand" in html
+    assert "executeWorkerLifecyclePlan" in html
+    assert "/worker-lifecycle/execute" in html
     assert "renderWorkerLifecycle" in html

@@ -242,15 +242,22 @@ DASHBOARD_SCRIPT_CORE = r'''    const groups = ["needs_attention", "done", "work
 
     function renderWorkerLifecycleExecutionCommand(item) {
       const button = document.getElementById("worker-lifecycle-execution-copy");
+      const runButton = document.getElementById("worker-lifecycle-execution-run");
       const command = item && typeof item === "object" ? item.execute_command : "";
       if (!command) {
         button.hidden = true;
         button.dataset.command = "";
+        runButton.hidden = true;
+        runButton.dataset.command = "";
         return;
       }
       button.hidden = false;
       button.dataset.command = command;
       button.textContent = "复制执行命令";
+      runButton.hidden = false;
+      runButton.dataset.command = command;
+      runButton.textContent = "确认执行";
+      runButton.disabled = false;
     }
 
     function workerLifecycleExecutionText(item) {

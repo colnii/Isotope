@@ -49,6 +49,12 @@ DASHBOARD_BODY = r'''  <header>
           type="button"
           hidden
         >复制执行命令</button>
+        <button
+          class="worker-lifecycle-execution-run"
+          id="worker-lifecycle-execution-run"
+          type="button"
+          hidden
+        >确认执行</button>
       </div>
       <div class="worker-lifecycle-timeline" id="worker-lifecycle-timeline">暂无 timeline</div>
     </div>

@@ -124,8 +124,10 @@ DASHBOARD_STYLE_BASE = r'''    :root {
       background: #f8fafc;
       padding: 8px;
     }
-    .worker-lifecycle-execution-copy {
+    .worker-lifecycle-execution-copy,
+    .worker-lifecycle-execution-run {
       margin-top: 8px;
+      margin-right: 6px;
       padding: 5px 8px;
       border: 1px solid var(--line);
       border-radius: 6px;
@@ -135,7 +137,12 @@ DASHBOARD_STYLE_BASE = r'''    :root {
       font-weight: 700;
       cursor: pointer;
     }
-    .worker-lifecycle-execution-copy[hidden] {
+    .worker-lifecycle-execution-run {
+      border-color: var(--attention);
+      color: var(--attention);
+    }
+    .worker-lifecycle-execution-copy[hidden],
+    .worker-lifecycle-execution-run[hidden] {
       display: none;
     }
     .worker-lifecycle-execution[data-state="executed"] {

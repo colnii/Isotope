@@ -25,6 +25,33 @@ DASHBOARD_SCRIPT_INTERACTIONS = r'''    async function copyResumeCommand(item, b
       await copyText(button.dataset.command || "", button, "复制执行命令");
     }
 
+    async function executeWorkerLifecyclePlan(button) {
+      const command = button.dataset.command || "";
+      if (!command) return;
+      const confirmed = window.confirm("确认执行当前 Worker 生命周期计划？");
+      if (!confirmed) return;
+      button.disabled = true;
+      const label = button.textContent;
+      button.textContent = "执行中";
+      try {
+        const response = await fetch("/worker-lifecycle/execute", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ execute_command: command })
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error ? payload.error.message : "执行失败");
+        button.textContent = "已执行";
+        loadDashboard();
+      } catch (error) {
+        button.textContent = text(error.message);
+      }
+      setTimeout(() => {
+        button.disabled = false;
+        button.textContent = label;
+      }, 1800);
+    }
+
     async function copyText(textValue, button, label) {
       try {
         await navigator.clipboard.writeText(textValue);
@@ -378,6 +405,9 @@ DASHBOARD_SCRIPT_INTERACTIONS = r'''    async function copyResumeCommand(item, b
     });
     document.getElementById("worker-lifecycle-execution-copy").addEventListener("click", (event) => {
       copyWorkerLifecycleExecutionCommand(event.currentTarget);
+    });
+    document.getElementById("worker-lifecycle-execution-run").addEventListener("click", (event) => {
+      executeWorkerLifecyclePlan(event.currentTarget);
     });
     document.getElementById("notification-toggle").addEventListener("click", () => {
       notificationsExpanded = !notificationsExpanded;
