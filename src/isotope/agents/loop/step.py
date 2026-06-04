@@ -142,9 +142,9 @@ def _capability_inputs_for_agent_loop(
         for key, value in request_system_inputs.items()
         if key in system_keys
     }
-    if "run_id" in properties or "run_id" in system_keys:
+    if "run_id" in system_keys:
         system_inputs["run_id"] = run_id
-    if "execution_id" in properties or "execution_id" in system_keys:
+    if "execution_id" in system_keys:
         system_inputs["execution_id"] = new_id("exec")
     if (
         "workspace_id" in system_keys

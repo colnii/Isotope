@@ -1862,10 +1862,12 @@ class CapabilityCatalog:
                         "properties": {
                             "state_root": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Supervisor state root directory.",
                             },
                             "cwd": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Isotope repository workspace to repair.",
                             },
                             "user_goal": {

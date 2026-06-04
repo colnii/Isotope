@@ -287,7 +287,7 @@ class CapabilityRunner:
             inputs=input_mapping,
             missing_inputs=missing_inputs,
         )
-        if is_coding_run_capability(capability_id):
+        if is_coding_run_capability(capability_id) and not missing_inputs:
             input_mapping = validate_coding_run_inputs(input_mapping)
         validate_code_access_inputs(
             capability_id=capability_id,
