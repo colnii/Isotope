@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, Mapping
 
 from .artifact_outputs import run_artifact_changed_files, run_artifact_diff_summary
@@ -11,6 +12,7 @@ from .testing import run_test_run
 from .tools.terminal import default_terminal_capabilities, validate_argv
 from .workspace import run_workspace_materialize
 from ..platform.schemas.input_contract import missing_required_input_keys
+from ..workspace.artifacts import ArtifactStore
 
 
 CODING_TASK_EXECUTE_CAPABILITY = "coding_task.execute"
@@ -126,6 +128,30 @@ def run_coding_task_execute(*, inputs: Mapping[str, Any] | None) -> dict[str, An
         inputs=_artifact_inputs(input_mapping)
     )["artifact"]
     changed_files = list(patch_result["changed_files"])
+    expected_source_digests = reviewed_apply_source_digests(
+        cwd=input_mapping["cwd"],
+        changed_files=[
+            {"path": path, "status": "modified"} for path in changed_files
+        ],
+    )
+    review_handle = ArtifactStore(input_mapping["root"]).create_artifact(
+        input_mapping["run_id"],
+        input_mapping["execution_id"],
+        "native_coding.reviewed_apply_request",
+        "Reviewed native coding apply request",
+        json.dumps(
+            {
+                "kind": "native_coding_reviewed_apply_request",
+                "workspace_id": input_mapping["workspace_id"],
+                "changed_files": changed_files,
+                "expected_changed_files": changed_files,
+                "expected_source_digests": expected_source_digests,
+                "include_paths": input_mapping["include_paths"],
+                "content_policy": "digest_and_path_only",
+            },
+            sort_keys=True,
+        ),
+    )
 
     return {
         "kind": "capability_run_result",
@@ -153,12 +179,9 @@ def run_coding_task_execute(*, inputs: Mapping[str, Any] | None) -> dict[str, An
             "reviewed_apply": {
                 "workspace_id": input_mapping["workspace_id"],
                 "changed_files": changed_files,
-                "expected_source_digests": reviewed_apply_source_digests(
-                    cwd=input_mapping["cwd"],
-                    changed_files=[
-                        {"path": path, "status": "modified"} for path in changed_files
-                    ],
-                ),
+                "expected_source_digests": expected_source_digests,
+                "review_handle_id": review_handle.artifact_id,
+                "review_handle_ref": review_handle.ref.to_dict(),
                 "source_workspace_write": "requires_explicit_apply",
                 "content_policy": "digest_and_path_only",
             },

@@ -968,10 +968,25 @@ def test_runner_executes_native_coding_task_in_isolated_workspace(tmp_path):
     assert sorted(artifact.artifact_type for artifact in artifacts) == [
         "native_coding.changed_files",
         "native_coding.diff_summary",
+        "native_coding.reviewed_apply_request",
     ]
     reviewed_apply = execution["reviewed_apply"]
     assert reviewed_apply["workspace_id"] == "workspace_native_coding_execute"
     assert reviewed_apply["expected_source_digests"]["src/app.py"]
+    assert reviewed_apply["review_handle_id"]
+    assert reviewed_apply["review_handle_ref"]["ref_type"] == "artifact"
+    handle_content = json.loads(
+        ArtifactStore(root).get_content(reviewed_apply["review_handle_id"])
+    )
+    assert handle_content == {
+        "kind": "native_coding_reviewed_apply_request",
+        "workspace_id": "workspace_native_coding_execute",
+        "changed_files": ["src/app.py"],
+        "expected_changed_files": ["src/app.py"],
+        "expected_source_digests": reviewed_apply["expected_source_digests"],
+        "include_paths": ["src"],
+        "content_policy": "digest_and_path_only",
+    }
     assert (source / "src" / "app.py").read_text(encoding="utf-8") == "value = 1\n"
     assert workspace_file.read_text(encoding="utf-8") == "value = 2\n"
     assert "patch" not in execution
