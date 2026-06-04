@@ -83,6 +83,9 @@ def test_supervisor_loop_dispatches_merge_worker_for_ready_integration(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["merge_dispatch"]["launch_spec"]["target_name"] == DEFAULT_TARGET_NAME
+    assert payload["worker_lifecycle_decision"]["action"] == "dispatch_merge"
+    assert payload["worker_lifecycle_decision"]["source"] == "integration_review"
+    assert payload["worker_lifecycle_decision"]["summary"]["ready_to_integrate"] == 1
     assert payload["llm_action"]["kind"] == "launch_session"
     assert payload["llm_action"]["source"] == "integration_review"
     assert payload["executed"]["kind"] == "launch_session"

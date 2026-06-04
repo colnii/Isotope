@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from isotope.features.supervisor.lifecycle import build_worker_lifecycle_decision
+
 
 @dataclass
 class SupervisePlanningPayload:
@@ -76,6 +78,16 @@ def append_supervise_planning_payload(
         )
     if merge_dispatch is not None:
         payload["merge_dispatch"] = merge_dispatch
+    lifecycle_decision = build_worker_lifecycle_decision(
+        worker_reviews=worker_reviews,
+        integration_review=(
+            merge_dispatch.get("integration_review")
+            if isinstance(merge_dispatch, dict)
+            else None
+        ),
+        merge_dispatch=merge_dispatch,
+    )
+    payload["worker_lifecycle_decision"] = lifecycle_decision
     if (
         fanout_plan is None
         and merge_dispatch is None

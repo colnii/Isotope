@@ -122,6 +122,11 @@ def test_supervisor_loop_replenishes_done_workers_and_dispatches_merge_e2e(
     assert second_payload["merge_dispatch"]["integration_review"]["summary"][
         "ready_to_integrate"
     ] == 2
+    assert second_payload["worker_lifecycle_decision"]["action"] == "dispatch_merge"
+    assert (
+        second_payload["worker_lifecycle_decision"]["summary"]["ready_to_integrate"]
+        == 2
+    )
     assert second_payload["llm_action"]["kind"] == "launch_session"
     assert second_payload["llm_action"]["source"] == "integration_review"
     assert second_payload["executed"]["display_kind"] == "merge_dispatch"
