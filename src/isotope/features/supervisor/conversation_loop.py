@@ -18,7 +18,11 @@ from isotope.features.supervisor.commands.handlers.capacity import (
 )
 from isotope.llm.prompts import render_json_prompt_template
 from isotope.llm.provider import LLMResponse
-from isotope.platform.schemas.input_contract import contract_properties
+from isotope.platform.schemas.input_contract import (
+    contract_properties,
+    public_contract_properties,
+    public_required_contract_keys,
+)
 
 from .desktop_chat_context import compact_desktop_chat_history_messages
 from .conversation_observations import (
@@ -240,6 +244,12 @@ def _conversation_capability_summary(capability: dict[str, Any]) -> dict[str, An
         if isinstance(input_contract, dict)
         else {}
     )
+    public_properties = public_contract_properties(
+        input_contract if isinstance(input_contract, dict) else {}
+    )
+    public_required = public_required_contract_keys(
+        input_contract if isinstance(input_contract, dict) else {}
+    )
     operation_property = (
         properties.get("operation", {}) if isinstance(properties, dict) else {}
     )
@@ -255,12 +265,8 @@ def _conversation_capability_summary(capability: dict[str, Any]) -> dict[str, An
             "description": capability.get("description"),
             "shelf": capability.get("shelf"),
             "domain_tags": capability.get("domain_tags"),
-            "required_inputs": (
-                input_contract.get("required", [])
-                if isinstance(input_contract, dict)
-                else []
-            ),
-            "input_properties": _conversation_input_properties(properties),
+            "required_inputs": public_required,
+            "input_properties": _conversation_input_properties(public_properties),
             "operations": operations,
             "network_required": capability.get("network_required"),
         }

@@ -96,6 +96,25 @@ def test_conversation_loop_manifest_keeps_research_provider_policy_internal(
     assert "provider=tavily" not in system_prompt
 
 
+def test_conversation_manifest_hides_system_routing_inputs(tmp_path) -> None:
+    provider = RecordingConversationProvider(["你好，我在。"])
+
+    list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path / "state",
+            cwd=tmp_path / "repo",
+            user_message="你好",
+            provider=provider,
+        )
+    )
+
+    system_prompt = provider.calls[0]["messages"][0]["content"]
+    assert '"code.search"' in system_prompt
+    assert '"query"' in system_prompt
+    assert '"cwd"' not in system_prompt
+    assert '"root"' not in system_prompt
+
+
 def test_conversation_loop_calls_capability_then_returns_final_answer(tmp_path) -> None:
     provider = RecordingConversationProvider(
         [

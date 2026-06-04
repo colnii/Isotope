@@ -1044,6 +1044,22 @@ def test_runner_discovers_code_read_and_search_from_default_catalog():
     assert "no_filesystem_write" in search_description["safety_boundaries"]
 
 
+def test_coding_related_capabilities_mark_routing_inputs_as_system_only():
+    runner = _runner()
+
+    for capability_id in (
+        "code.search",
+        "code.read",
+        "code.apply_patch",
+        "test.run",
+        "coding_task.execute",
+    ):
+        description = runner.describe_capability(capability_id)
+        properties = description["input_contract"]["properties"]
+        assert properties["root"]["x-system-input"] is True
+        assert properties["cwd"]["x-system-input"] is True
+
+
 def test_runner_reads_code_file_excerpt_without_side_effects(tmp_path):
     workspace = tmp_path / "repo"
     source_dir = workspace / "src"

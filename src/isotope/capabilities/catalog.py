@@ -187,10 +187,12 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Runtime state root containing artifact storage.",
                             },
                             "cwd": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Source workspace directory to compare against.",
                             },
                             "workspace_id": {
@@ -261,10 +263,12 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Runtime state root containing artifact storage.",
                             },
                             "cwd": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Source workspace directory to compare against.",
                             },
                             "workspace_id": {
@@ -335,10 +339,12 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Runtime root for coding artifacts.",
                             },
                             "cwd": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Workspace directory to preview.",
                             },
                             "goal": {
@@ -418,10 +424,12 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Runtime state root.",
                             },
                             "cwd": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Source workspace directory.",
                             },
                             "workspace_id": {
@@ -524,10 +532,12 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Runtime root for workspace leases.",
                             },
                             "cwd": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Source workspace directory to isolate.",
                             },
                             "workspace_name": {
@@ -599,6 +609,7 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Runtime root for the event append.",
                             },
                             "run_id": {
@@ -674,10 +685,12 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Runtime state root that will contain materialized workspaces.",
                             },
                             "cwd": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Source workspace directory to copy from.",
                             },
                             "workspace_id": {
@@ -742,10 +755,12 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Runtime state root containing workspaces.",
                             },
                             "cwd": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Source workspace directory to compare against.",
                             },
                             "workspace_id": {
@@ -801,6 +816,7 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Runtime state root containing workspaces.",
                             },
                             "workspace_id": {
@@ -850,10 +866,12 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Runtime root for read artifacts.",
                             },
                             "cwd": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Workspace directory that bounds the read.",
                             },
                             "path": {
@@ -910,10 +928,12 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Runtime root for search artifacts.",
                             },
                             "cwd": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Workspace directory that bounds the search.",
                             },
                             "query": {
@@ -981,10 +1001,12 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Runtime root for patch artifacts.",
                             },
                             "cwd": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Materialized workspace directory to patch.",
                             },
                             "patch": {
@@ -1035,10 +1057,12 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Runtime root for test artifacts.",
                             },
                             "cwd": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Materialized workspace directory for the command.",
                             },
                             "argv": {
@@ -1107,10 +1131,12 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Runtime root for status artifacts.",
                             },
                             "cwd": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Git workspace directory to inspect.",
                             },
                             "max_stat_chars": {
@@ -1161,10 +1187,12 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Runtime root for diff artifacts.",
                             },
                             "cwd": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Git workspace directory to inspect.",
                             },
                             "max_stat_chars": {
@@ -1210,6 +1238,7 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Runtime root containing memory/*.json.",
                             },
                             "query": {
@@ -1386,6 +1415,7 @@ class CapabilityCatalog:
                             },
                             "root": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": (
                                     "Optional runtime root. Agent loop calls use "
                                     "their capability root when this is omitted."
@@ -1435,6 +1465,7 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Runtime root containing runs/*/artifacts.",
                             },
                             "run_id": {
@@ -1483,6 +1514,7 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Runtime root used to persist research artifacts.",
                             },
                             "query": {
@@ -1542,6 +1574,7 @@ class CapabilityCatalog:
                         "properties": {
                             "root": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Runtime root containing research artifacts.",
                             },
                             "run_id": {
@@ -1645,6 +1678,7 @@ class CapabilityCatalog:
                             },
                             "cwd": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Workspace directory for context or worker launch.",
                             },
                             "query": {
@@ -1847,6 +1881,7 @@ class CapabilityCatalog:
                             },
                             "cwd": {
                                 "type": "string",
+                                "x-system-input": True,
                                 "description": "Workspace directory to search.",
                             },
                             "query": {
